@@ -21,19 +21,19 @@ macOS/CLI-shaped product (djdl).
 
 **Fit for Diceroll, service by service:**
 
-| Need | Polaris today | Verdict |
-|---|---|---|
-| Signed, pinned-key trust with rotation, clock floor, anti-replay | Excellent, frozen wire contract + 81-case corpus | **Reuse the design and format** (and optionally the signer) |
-| Content-pack catalog (ids, hashes, sizes, deltas, per-platform, caps) | Nothing | **Gap**: new document type + store |
-| Byte hosting on R2 / CDN | GitHub Releases only, streamed through the Worker | **Gap** (and GitHub proxying is the wrong model for packs) |
-| Channels | stable/beta/pr-N/manual regex, resolved live against GitHub | Partly reusable concept; tied to GitHub tags |
-| Staged % rollouts, kill switches, min-version in feed | None (compat window only on the licence doc / `entitled` mode) | **Gap** |
-| Signed feeds | `/update/version` and the appcast are **unsigned**; only the Sparkle item signature is checked server-side | **Gap** |
-| Anonymous access | Yes (`public` access mode is the default) | OK |
-| CI-driven publishing | **No machine credential at all** — admin API = browser session cookie only | **Gap** (GitHub OIDC recommended) |
-| Web builds (cross-origin) | Worker emits **no CORS headers** anywhere | **Gap** for any Worker route consumed by a Web build |
-| Paid DLC across stores | Licence keys/seats; no StoreKit/Play/Steam receipt validation | Not a fit; use store-native entitlements |
-| Remote tuning / flags | Config document works for licence-less devices, but only catalog defaults + per-device overrides; per-device signed, uncacheable | Workable but the wrong shape; put live-ops flags in the signed catalog |
+| Need                                                                  | Polaris today                                                                                                                    | Verdict                                                                |
+| --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| Signed, pinned-key trust with rotation, clock floor, anti-replay      | Excellent, frozen wire contract + 81-case corpus                                                                                 | **Reuse the design and format** (and optionally the signer)            |
+| Content-pack catalog (ids, hashes, sizes, deltas, per-platform, caps) | Nothing                                                                                                                          | **Gap**: new document type + store                                     |
+| Byte hosting on R2 / CDN                                              | GitHub Releases only, streamed through the Worker                                                                                | **Gap** (and GitHub proxying is the wrong model for packs)             |
+| Channels                                                              | stable/beta/pr-N/manual regex, resolved live against GitHub                                                                      | Partly reusable concept; tied to GitHub tags                           |
+| Staged % rollouts, kill switches, min-version in feed                 | None (compat window only on the licence doc / `entitled` mode)                                                                   | **Gap**                                                                |
+| Signed feeds                                                          | `/update/version` and the appcast are **unsigned**; only the Sparkle item signature is checked server-side                       | **Gap**                                                                |
+| Anonymous access                                                      | Yes (`public` access mode is the default)                                                                                        | OK                                                                     |
+| CI-driven publishing                                                  | **No machine credential at all** — admin API = browser session cookie only                                                       | **Gap** (GitHub OIDC recommended)                                      |
+| Web builds (cross-origin)                                             | Worker emits **no CORS headers** anywhere                                                                                        | **Gap** for any Worker route consumed by a Web build                   |
+| Paid DLC across stores                                                | Licence keys/seats; no StoreKit/Play/Steam receipt validation                                                                    | Not a fit; use store-native entitlements                               |
+| Remote tuning / flags                                                 | Config document works for licence-less devices, but only catalog defaults + per-device overrides; per-device signed, uncacheable | Workable but the wrong shape; put live-ops flags in the signed catalog |
 
 **Godot verification (measured on 4.7.2):** Godot's `Crypto` (mbedTLS) verifies RSA-PKCS#1 v1.5
 and **ECDSA P-256**, but **cannot load Ed25519 keys** (mbedTLS `-0x3C80`, unknown PK algorithm)
@@ -51,9 +51,9 @@ WebCrypto bridge or dual-signing unnecessary.
    signed in CI with an Ed25519 key, re-signed daily for freshness, with `seq` + `expiresAt`. No
    Worker on the hot path, $0/month, works on every platform including Web (with R2 CORS).
 2. **Later, if live-ops UX (rollout sliders, one-click kill switch, audit) is worth ~3–4 weeks:**
-   add a small **Content service** to Polaris that *signs* the same document with the product key
-   (KEK-custodied), authenticates CI with **GitHub Actions OIDC**, and *writes the signed catalog
-   to R2*. Clients only change their pinned trust set. Serving stays static on R2, so game
+   add a small **Content service** to Polaris that _signs_ the same document with the product key
+   (KEK-custodied), authenticates CI with **GitHub Actions OIDC**, and _writes the signed catalog
+   to R2_. Clients only change their pinned trust set. Serving stays static on R2, so game
    availability never depends on the Worker, D1 or the KEK.
 
 Money is not the deciding factor: every variant costs $0–7/month at 100k installs × 4 checks/day
@@ -90,15 +90,15 @@ Web CORS, and implementation effort.
 
 ### 1.2 Data model (D1)
 
-| Table | Migration | Contents |
-|---|---|---|
-| `release_config` | `PK/packages/worker/migrations/0001_init.sql:122-134`, + `metadata_access`/`artifacts_access` (`0007_backend_contracts.sql:144-145`), + `artifact_policy_json` (`0006_hardening.sql:21`) | one row per product: `gh_owner/gh_repo/gh_installation_id`, `channel_workflow`, `beta_branch`, `manual_channels_json`, `binary_name`, `install_template`, `sparkle_ed25519_pub`, `summary_marker` |
-| `release_metadata` | `0007:46-67` | one row per published non-draft release (version, notes, `source_url`, access modes, `published_at`) |
-| `release_artifacts` | `0007:69-93` | one row per asset: `kind`, `platform`, `arch`, `content_type`, `size_bytes`, **`sha256` (always NULL)**, `source_url` (GitHub's `browser_download_url`), **`storage_key` (always NULL)**, `sparkle_signature` (NULL) |
-| `release_channels` | `0007:95-104` | moving pointer channel → release_id |
-| `release_health` | `0007:106-118` | status per subject (release/channel) |
-| `release_download_tokens` | `0007:120-141` (re-created in `0016`) | portal single-use download tokens |
-| `product_sync_state` | `0005_product_sync_state.sql:5-16` | last manifest sync outcome |
+| Table                     | Migration                                                                                                                                                                                | Contents                                                                                                                                                                                                             |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `release_config`          | `PK/packages/worker/migrations/0001_init.sql:122-134`, + `metadata_access`/`artifacts_access` (`0007_backend_contracts.sql:144-145`), + `artifact_policy_json` (`0006_hardening.sql:21`) | one row per product: `gh_owner/gh_repo/gh_installation_id`, `channel_workflow`, `beta_branch`, `manual_channels_json`, `binary_name`, `install_template`, `sparkle_ed25519_pub`, `summary_marker`                    |
+| `release_metadata`        | `0007:46-67`                                                                                                                                                                             | one row per published non-draft release (version, notes, `source_url`, access modes, `published_at`)                                                                                                                 |
+| `release_artifacts`       | `0007:69-93`                                                                                                                                                                             | one row per asset: `kind`, `platform`, `arch`, `content_type`, `size_bytes`, **`sha256` (always NULL)**, `source_url` (GitHub's `browser_download_url`), **`storage_key` (always NULL)**, `sparkle_signature` (NULL) |
+| `release_channels`        | `0007:95-104`                                                                                                                                                                            | moving pointer channel → release_id                                                                                                                                                                                  |
+| `release_health`          | `0007:106-118`                                                                                                                                                                           | status per subject (release/channel)                                                                                                                                                                                 |
+| `release_download_tokens` | `0007:120-141` (re-created in `0016`)                                                                                                                                                    | portal single-use download tokens                                                                                                                                                                                    |
+| `product_sync_state`      | `0005_product_sync_state.sql:5-16`                                                                                                                                                       | last manifest sync outcome                                                                                                                                                                                           |
 
 - Row shapes and writers are in `services/release/store.ts:49-100, 205-317`.
 - Rows are upserts only, never deleted (`store.ts:23-31`).
@@ -220,15 +220,15 @@ match is `release_channels.policy_json`, which is always written as `NULL` (`sto
   `max-age=86400, immutable` (`gateway.ts:65-67`).
 - The Cache API is used **only when the effective mode is `public`**. The key is synthesised from
   (product, kind, version, channel, arch), never the raw query (`gateway.ts:118-141, 188-203, 249-253`).
-- **Important cost/latency detail:** the cache lookup runs *after* `loadProduct`. `src/index.ts:75-77`
+- **Important cost/latency detail:** the cache lookup runs _after_ `loadProduct`. `src/index.ts:75-77`
   calls `core/products.ts:102-142` (3 D1 queries plus AES-GCM unsealing of the signing key) and
-  then `getReleaseConfig` (`gateway.ts:182`) on *every* request, cache hit or not.
+  then `getReleaseConfig` (`gateway.ts:182`) on _every_ request, cache hit or not.
 
 **Are feeds signed?**
 
 - **No JWS on any Update surface.** The appcast is XML with `sparkle:edSignature` copied from a
   `<dmg>.sig` release asset.
-- The Worker *verifies* that EdDSA signature over the DMG bytes against `sparkle_ed25519_pub` as a
+- The Worker _verifies_ that EdDSA signature over the DMG bytes against `sparkle_ed25519_pub` as a
   **publishing gate** and memoises the verdict in KV for 1 day (`feed.ts:166-202`; `sparkle.ts:75-125`).
 - Signing is required by default. Only an operator can switch that off (`config.ts:89-120`).
 - The trust anchor stays Sparkle's own `SUPublicEDKey` in the app bundle
@@ -263,7 +263,7 @@ by a usable licence (`access.ts:143-151`; `core/entitledAccess.ts:62`).
 - Domain separation is `typ` only (`PK/docs/security/WIRE-CONTRACT-V3.md:24-33`;
   `PK/packages/shared-jws/src/index.ts:31-35`).
 - There is **no offline root key and no delegation**. The trust manifest is signed by the
-  *currently active* product key (`core/trust.ts:58-104`).
+  _currently active_ product key (`core/trust.ts:58-104`).
 
 **Wire format** (frozen; `WIRE-CONTRACT-V3.md:12-22`; `shared-jws/src/index.ts:275-379`):
 
@@ -286,7 +286,7 @@ by a usable licence (`access.ts:143-151`; `core/entitledAccess.ts:62`).
 **Trust manifest (`pkey-trust+jws`):**
 
 - Payload `{schemaVersion:1, aud, iss, issuedAt, expiresAt=issuedAt+300, jwksUrl, cacheSeconds:300,
-  keys[{kid,alg,kty,crv,publicKey,status}]}`, served at `GET /<p>/.well-known/polaris-trust.jws`,
+keys[{kid,alg,kty,crv,publicKey,status}]}`, served at `GET /<p>/.well-known/polaris-trust.jws`,
   `max-age=300` (`core/trust.ts:22, 58-120`).
 - Clients verify it **against pinned keys only**. Pins are spread last. The discovered set is
   **replaced wholesale** (absence means revocation). A pinned kid with different bytes rejects the
@@ -406,7 +406,7 @@ refreshes trust on its own cadence so the floor keeps moving for any service mix
 - **Recommendation:**
   - Use store-native entitlements per platform. The catalog marks a pack `entitlement: "supporter"`
     and the client checks StoreKit, Play or Steam before mounting.
-  - For direct/sideload builds, an optional Polaris licence key could gate a *presigned* download (§6.5).
+  - For direct/sideload builds, an optional Polaris licence key could gate a _presigned_ download (§6.5).
   - The packs are cosmetic, CC0-derived data, so DRM beyond that isn't worth building.
 
 ---
@@ -426,11 +426,11 @@ Load: 100k installs × a check every 6 h = 400k checks/day ≈ **12.0M/month**.
 - An R2 public bucket on a custom domain can use the Cloudflare cache ("Cache Everything"; Smart Tiered Cache recommended).
 - Static assets are free.
 
-| Scenario | Monthly requests hitting Worker | Other metered | Est. cost |
-|---|---|---|---|
-| **A. Static signed catalog + packs on R2 custom domain, CDN-cached** (TTL 60–300 s for catalogs, `immutable` for packs, tiered cache) | 0 | R2 Class B only on upper-tier misses: ≈ 10 catalog objects × 12/h × 720 h ≈ 86k (free tier); pack egress free | **$0** (works on the Free plan) |
-| **B. Polaris Worker serves a public, edge-cached signed catalog** (current Update-style pipeline) | 12M (cache lookup happens *inside* the Worker, after `loadProduct`) | ~3–4 D1 rows read/request ≈ 45M rows (≪ 25B); CPU ~1–3 ms/request ≈ 12–36M CPU-ms | **≈ $5.6–6.2** (the Free plan's 100k/day is exceeded 4×) |
-| **C. Per-device signed docs** (register + `GET /config/document` every 6 h) | 12M | KV 12M token reads (+$1); D1 ≈ 84M rows read, ~12–24M rows written (within included); Ed25519 sign + unseal CPU ≈ 24–48M CPU-ms; DO 100k register calls | **≈ $7–8**, plus a privacy disclosure and CGNAT rate-limit risk |
+| Scenario                                                                                                                              | Monthly requests hitting Worker                                     | Other metered                                                                                                                                           | Est. cost                                                       |
+| ------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| **A. Static signed catalog + packs on R2 custom domain, CDN-cached** (TTL 60–300 s for catalogs, `immutable` for packs, tiered cache) | 0                                                                   | R2 Class B only on upper-tier misses: ≈ 10 catalog objects × 12/h × 720 h ≈ 86k (free tier); pack egress free                                           | **$0** (works on the Free plan)                                 |
+| **B. Polaris Worker serves a public, edge-cached signed catalog** (current Update-style pipeline)                                     | 12M (cache lookup happens _inside_ the Worker, after `loadProduct`) | ~3–4 D1 rows read/request ≈ 45M rows (≪ 25B); CPU ~1–3 ms/request ≈ 12–36M CPU-ms                                                                       | **≈ $5.6–6.2** (the Free plan's 100k/day is exceeded 4×)        |
+| **C. Per-device signed docs** (register + `GET /config/document` every 6 h)                                                           | 12M                                                                 | KV 12M token reads (+$1); D1 ≈ 84M rows read, ~12–24M rows written (within included); Ed25519 sign + unseal CPU ≈ 24–48M CPU-ms; DO 100k register calls | **≈ $7–8**, plus a privacy disclosure and CGNAT rate-limit risk |
 
 - Pack egress at, say, 100k installs × 30 MB/month = 3 TB costs **$0** on R2/CDN.
 - Storage for ~3–5 GB of versioned packs and deltas is inside the 10 GB free tier.
@@ -461,7 +461,7 @@ free, needs no Worker plan and has no single-region dependency on the hot path.
 4. **Feeds are unsigned** (§2).
 5. **No CI credential** (§3).
 6. **No CORS** anywhere in the Worker. `grep -ri access-control-allow-origin
-   PK/packages/worker/src` returns nothing. A Godot Web build on itch.io or GitHub Pages can't
+PK/packages/worker/src` returns nothing. A Godot Web build on itch.io or GitHub Pages can't
    call discovery, trust, register or any feed.
 7. **Artifact naming and platform model is macOS/CLI-centric** (arm64/x86_64; DMG or bare binary).
 8. **The hot path touches D1 and the KEK before the cache check** (`src/index.ts:75-77`).
@@ -470,17 +470,17 @@ free, needs no Worker plan and has no single-region dependency on the hot path.
 
 ### 6.2 Architecture options
 
-| | **S. Standalone static** (CI signs, R2 serves, no Worker) | **P. Polaris Content service** (Worker stores + signs + serves) | **H. Hybrid** (CI builds and uploads; Polaris *signs*; R2 serves static JWS) |
-|---|---|---|---|
-| Hot-path availability | CDN + R2 only | Worker + D1 + KEK + DO (a KEK misconfiguration 404s every product route; `RUNBOOK.md:336`) | CDN + R2 only |
-| Signing key custody | GitHub Actions secret (same as today's RSA `UPDATE_SIGNING_KEY`) | KEK-sealed in D1, never exported, rotation tooling, audit | KEK-sealed; CI never holds a signing key |
-| Freshness re-signing | Scheduled GH Action (daily) | Worker cron | Worker cron re-signs and writes to R2 |
-| Kill switch / rollout UX | `gh workflow run content-policy -f …` (≈ 2–5 min to live) | Console buttons, immediate | Console/CLI, immediate |
-| Web CORS | R2 bucket CORS policy | Must add CORS to the Worker | R2 bucket CORS policy |
-| Privacy | No identifiers | No identifiers if catalog is public | No identifiers |
-| Polaris governance cost | none | new service + wire type + corpus + CLI + admin UI | same as P, minus the serving path |
-| Effort (one person) | **~1.5–2.5 weeks** incl. Godot SDK core | ~4–6 weeks | ~3–4 weeks on top of S |
-| Monthly cost | $0 | ~$6 | ~$0–5 |
+|                          | **S. Standalone static** (CI signs, R2 serves, no Worker)        | **P. Polaris Content service** (Worker stores + signs + serves)                            | **H. Hybrid** (CI builds and uploads; Polaris _signs_; R2 serves static JWS) |
+| ------------------------ | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------- |
+| Hot-path availability    | CDN + R2 only                                                    | Worker + D1 + KEK + DO (a KEK misconfiguration 404s every product route; `RUNBOOK.md:336`) | CDN + R2 only                                                                |
+| Signing key custody      | GitHub Actions secret (same as today's RSA `UPDATE_SIGNING_KEY`) | KEK-sealed in D1, never exported, rotation tooling, audit                                  | KEK-sealed; CI never holds a signing key                                     |
+| Freshness re-signing     | Scheduled GH Action (daily)                                      | Worker cron                                                                                | Worker cron re-signs and writes to R2                                        |
+| Kill switch / rollout UX | `gh workflow run content-policy -f …` (≈ 2–5 min to live)        | Console buttons, immediate                                                                 | Console/CLI, immediate                                                       |
+| Web CORS                 | R2 bucket CORS policy                                            | Must add CORS to the Worker                                                                | R2 bucket CORS policy                                                        |
+| Privacy                  | No identifiers                                                   | No identifiers if catalog is public                                                        | No identifiers                                                               |
+| Polaris governance cost  | none                                                             | new service + wire type + corpus + CLI + admin UI                                          | same as P, minus the serving path                                            |
+| Effort (one person)      | **~1.5–2.5 weeks** incl. Godot SDK core                          | ~4–6 weeks                                                                                 | ~3–4 weeks on top of S                                                       |
+| Monthly cost             | $0                                                               | ~$6                                                                                        | ~$0–5                                                                        |
 
 **Recommendation: S now, H later, never P's "Worker serves the catalog".**
 
@@ -516,7 +516,7 @@ free, needs no Worker plan and has no single-region dependency on the hot path.
     It doesn't stream the bytes itself. Godot `HTTPRequest` follows redirects
     (`DR/game/update/update_fetcher.gd:91-96`).
   - Worker streaming, as Release does from GitHub, is only justified when every request must be
-    authorised *and* edge-cached. Diceroll doesn't need that.
+    authorised _and_ edge-cached. Diceroll doesn't need that.
 - **CORS:** allow `GET, HEAD` from the Web origins (itch.io HTML5 zones, GitHub Pages, the game's
   own domain), and expose `Content-Length`, `Content-Range`, `ETag`.
 - **Integrity:**
@@ -529,8 +529,8 @@ free, needs no Worker plan and has no single-region dependency on the hot path.
   - Apple Background Assets pack id;
   - Play asset-pack name;
   - Steam depot or DLC app id.
-  The bytes then come from the platform. The client still checks the hash after the platform
-  delivers the pack (cheap, native SHA-256).
+    The bytes then come from the platform. The client still checks the hash after the platform
+    delivers the pack (cheap, native SHA-256).
 
 ### 6.4 The signed catalog document: `pkey-catalog+jws`
 
@@ -540,55 +540,89 @@ free, needs no Worker plan and has no single-region dependency on the hot path.
 
 ```jsonc
 {
-  "iss": "key.plrs.im",            // fixed; same rule as WIRE-CONTRACT-V3 §8
-  "aud": "diceroll",               // product slug
-  "schemaVersion": 1,              // catalog format version (fail closed on unknown)
-  "channel": "stable",             // must equal the client's requested channel
-  "platform": "web",               // macos|windows|linux|android|ios|web|any
-  "seq": 1842,                     // monotonic per (aud, channel, platform): content version
+  "iss": "key.plrs.im", // fixed; same rule as WIRE-CONTRACT-V3 §8
+  "aud": "diceroll", // product slug
+  "schemaVersion": 1, // catalog format version (fail closed on unknown)
+  "channel": "stable", // must equal the client's requested channel
+  "platform": "web", // macos|windows|linux|android|ios|web|any
+  "seq": 1842, // monotonic per (aud, channel, platform): content version
   "issuedAt": 1790640000,
-  "expiresAt": 1791244800,         // issuedAt + 7 d; freshness (re-signed daily)
-  "graceUntil": 1793232000,        // issuedAt + 30 d; how long a cached catalog may drive enforcement offline
-  "cdn": "https://cdn.example/",   // base for relative object keys (never trusted for integrity)
+  "expiresAt": 1791244800, // issuedAt + 7 d; freshness (re-signed daily)
+  "graceUntil": 1793232000, // issuedAt + 30 d; how long a cached catalog may drive enforcement offline
+  "cdn": "https://cdn.example/", // base for relative object keys (never trusted for integrity)
 
-  "client": {                      // kill switches / forced update (replaces min_binary/min_supported)
+  "client": {
+    // kill switches / forced update (replaces min_binary/min_supported)
     "minBinary": "0.5.0",
     "blockedBinaries": ["0.4.2"],
-    "stores": {"ios": "https://apps.apple.com/…", "android": "https://play.google.com/…"},
-    "binaries": {"linux.x86_64": {"version": "0.6.1", "url": "…", "sha256": "…", "size": 91234567}}
+    "stores": {
+      "ios": "https://apps.apple.com/…",
+      "android": "https://play.google.com/…",
+    },
+    "binaries": {
+      "linux.x86_64": {
+        "version": "0.6.1",
+        "url": "…",
+        "sha256": "…",
+        "size": 91234567,
+      },
+    },
   },
 
-  "code": {                        // desktop/sideload only; same as today's `pack`, pinned to exact data packs
-    "version": "0.6.1", "key": "p/<sha256>.pck", "sha256": "…", "size": 4900000,
-    "engine": "4.7", "requiresPacks": {"core3d": "<sha256>", "foes": "<sha256>"}
+  "code": {
+    // desktop/sideload only; same as today's `pack`, pinned to exact data packs
+    "version": "0.6.1",
+    "key": "p/<sha256>.pck",
+    "sha256": "…",
+    "size": 4900000,
+    "engine": "4.7",
+    "requiresPacks": { "core3d": "<sha256>", "foes": "<sha256>" },
   },
 
   "packs": [
     {
-      "id": "weapons-2026-10",     // [a-z0-9-]{1,64}
+      "id": "weapons-2026-10", // [a-z0-9-]{1,64}
       "version": 3,
-      "sha256": "…", "size": 1843200, "key": "p/<sha256>.pck",
-      "source": "cdn",             // embedded | platform | cdn
-      "platformRef": null,         // {"appleAssetPack":"…"} | {"playAssetPack":"…"} | {"steamDepot":1234}
-      "engine": "4.7", "format": 1,                       // never mount on mismatch
-      "requires": {"binary": ">=0.5.0", "caps": ["tex:astc"]}, // capability requirements
-      "stage": 5, "required": false,
-      "entitlement": null,         // or "supporter": client checks the store before mounting
+      "sha256": "…",
+      "size": 1843200,
+      "key": "p/<sha256>.pck",
+      "source": "cdn", // embedded | platform | cdn
+      "platformRef": null, // {"appleAssetPack":"…"} | {"playAssetPack":"…"} | {"steamDepot":1234}
+      "engine": "4.7",
+      "format": 1, // never mount on mismatch
+      "requires": { "binary": ">=0.5.0", "caps": ["tex:astc"] }, // capability requirements
+      "stage": 5,
+      "required": false,
+      "entitlement": null, // or "supporter": client checks the store before mounting
       "deltas": [
-        {"from": "<sha256 of v2>", "algo": "godot-pck-delta", "key": "d/<from>-<to>.pd", "sha256": "…", "size": 120000}
+        {
+          "from": "<sha256 of v2>",
+          "algo": "godot-pck-delta",
+          "key": "d/<from>-<to>.pd",
+          "sha256": "…",
+          "size": 120000,
+        },
       ],
-      "rollout": {                 // staged rollout, bucketed client-side
-        "pct": 25, "salt": "wpn-2026-10-v3",
-        "fallback": {"version": 2, "sha256": "…", "key": "p/<sha256>.pck", "size": 1790000}
+      "rollout": {
+        // staged rollout, bucketed client-side
+        "pct": 25,
+        "salt": "wpn-2026-10-v3",
+        "fallback": {
+          "version": 2,
+          "sha256": "…",
+          "key": "p/<sha256>.pck",
+          "size": 1790000,
+        },
       },
-      "disabled": false            // kill switch for this pack: unmount, use fallback/embedded
-    }
+      "disabled": false, // kill switch for this pack: unmount, use fallback/embedded
+    },
   ],
 
-  "flags": {                       // small live-ops block, evaluated against effectiveNow
-    "event.halloween": {"from": 1792800000, "to": 1793500000, "value": true},
-    "balance.overrides": {"crit_mult": 1.5}
-  }
+  "flags": {
+    // small live-ops block, evaluated against effectiveNow
+    "event.halloween": { "from": 1792800000, "to": 1793500000, "value": true },
+    "balance.overrides": { "crit_mult": 1.5 },
+  },
 }
 ```
 
@@ -725,16 +759,16 @@ CREATE TABLE IF NOT EXISTS ci_publishers (     -- GitHub OIDC trust policy (mani
 
 **Routes** (each needs an OpenAPI entry plus a `routeCoverage` row, AGENTS rule 10, `AGENTS.md:168-173`):
 
-| Route | Auth | Purpose |
-|---|---|---|
-| `GET /<p>/content/catalog/<channel>/<platform>.jws` | public | Fallback/debug. Canonical delivery is the R2 object. Set `application/jose` and CORS; move the cache check before `loadProduct` |
-| `POST /<p>/content/grant` | `pkeyt_` + usable licence (or a store-receipt adapter later) | returns 302 or JSON presigned R2 URLs for `entitlement` packs |
-| `POST /manage/api/products/<p>/content/versions` | **GitHub OIDC** (`content:publish`) or admin session | register uploaded pack versions: HEAD R2 → size + `checksums.sha256` must match → insert |
-| `POST /manage/api/products/<p>/content/publish` | OIDC or admin | atomically set channel pointers/policy → `seq+1` → sign → `CONTENT.put("c/<ch>/<platform>.jws")` → log |
-| `PATCH /manage/api/products/<p>/content/channels/<ch>/<platform>/<pack>` | admin (or OIDC with scope) | rollout %, candidate, disable (kill), source |
-| `PATCH /manage/api/products/<p>/content/policy/<ch>/<platform>` | admin | minBinary, blockedBinaries, flags |
-| `POST /manage/api/products/<p>/content/resign` | admin/cron | refresh `issuedAt/expiresAt` without a `seq` change |
-| `GET /manage/api/products/<p>/content/{packs,catalogs,health}` | admin | console views and R2 object health |
+| Route                                                                    | Auth                                                         | Purpose                                                                                                                         |
+| ------------------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /<p>/content/catalog/<channel>/<platform>.jws`                      | public                                                       | Fallback/debug. Canonical delivery is the R2 object. Set `application/jose` and CORS; move the cache check before `loadProduct` |
+| `POST /<p>/content/grant`                                                | `pkeyt_` + usable licence (or a store-receipt adapter later) | returns 302 or JSON presigned R2 URLs for `entitlement` packs                                                                   |
+| `POST /manage/api/products/<p>/content/versions`                         | **GitHub OIDC** (`content:publish`) or admin session         | register uploaded pack versions: HEAD R2 → size + `checksums.sha256` must match → insert                                        |
+| `POST /manage/api/products/<p>/content/publish`                          | OIDC or admin                                                | atomically set channel pointers/policy → `seq+1` → sign → `CONTENT.put("c/<ch>/<platform>.jws")` → log                          |
+| `PATCH /manage/api/products/<p>/content/channels/<ch>/<platform>/<pack>` | admin (or OIDC with scope)                                   | rollout %, candidate, disable (kill), source                                                                                    |
+| `PATCH /manage/api/products/<p>/content/policy/<ch>/<platform>`          | admin                                                        | minBinary, blockedBinaries, flags                                                                                               |
+| `POST /manage/api/products/<p>/content/resign`                           | admin/cron                                                   | refresh `issuedAt/expiresAt` without a `seq` change                                                                             |
+| `GET /manage/api/products/<p>/content/{packs,catalogs,health}`           | admin                                                        | console views and R2 object health                                                                                              |
 
 Discovery fragment (`services.content`): `{enabled, configured, cdnBase, catalog:
 "{cdnBase}c/{channel}/{platform}.jws", channels, platforms}`.
@@ -821,20 +855,20 @@ the cost doubles.
 
 ### 6.7 Effort estimates (one person, familiar with both repos)
 
-| Work item | Phase | Estimate |
-|---|---|---|
-| Catalog JSON schema + `catalog.py` signer + R2 upload + daily re-sign + policy workflows | S | 2–3 d |
-| Godot SDK core (Ed25519/SHA-512, JWS, catalog verify, floor, cache) from the prototype | S | 3–4 d |
-| Godot pack manager (plan, Range resume, SHA-256, stage, mount, evict, rollout bucket), reusing `update_fetcher`/`update_store` | S | 3–5 d (overlaps content-streaming Phase 1/3) |
-| Godot conformance runner + vectors | S | 1 d |
-| **Phase S total** | | **≈ 1.5–2.5 weeks** |
-| Polaris `content` service (routes, D1, R2 binding, signing, cron re-sign, discovery, OpenAPI/routeCoverage, tests incl. attack tests) | H | 6–9 d |
-| GitHub OIDC CI auth (+ API-token fallback) | H | 2–3 d |
-| `pkey content …` CLI | H | 1–2 d |
-| Admin console Content section | H | 3–4 d |
-| Wire: shared-protocol types, client-core `verifyCatalog`, corpus `catalogCases`, WIRE-CONTRACT addendum, mirrors | H | 2–3 d (+2–3 d if Python/Swift must follow) |
-| **Phase H total** | | **≈ 3–4.5 weeks** |
-| Optional: store-receipt → licence adapters (App Store Server API, Play Developer API, Steam) | later | 1–2 weeks each |
+| Work item                                                                                                                             | Phase | Estimate                                     |
+| ------------------------------------------------------------------------------------------------------------------------------------- | ----- | -------------------------------------------- |
+| Catalog JSON schema + `catalog.py` signer + R2 upload + daily re-sign + policy workflows                                              | S     | 2–3 d                                        |
+| Godot SDK core (Ed25519/SHA-512, JWS, catalog verify, floor, cache) from the prototype                                                | S     | 3–4 d                                        |
+| Godot pack manager (plan, Range resume, SHA-256, stage, mount, evict, rollout bucket), reusing `update_fetcher`/`update_store`        | S     | 3–5 d (overlaps content-streaming Phase 1/3) |
+| Godot conformance runner + vectors                                                                                                    | S     | 1 d                                          |
+| **Phase S total**                                                                                                                     |       | **≈ 1.5–2.5 weeks**                          |
+| Polaris `content` service (routes, D1, R2 binding, signing, cron re-sign, discovery, OpenAPI/routeCoverage, tests incl. attack tests) | H     | 6–9 d                                        |
+| GitHub OIDC CI auth (+ API-token fallback)                                                                                            | H     | 2–3 d                                        |
+| `pkey content …` CLI                                                                                                                  | H     | 1–2 d                                        |
+| Admin console Content section                                                                                                         | H     | 3–4 d                                        |
+| Wire: shared-protocol types, client-core `verifyCatalog`, corpus `catalogCases`, WIRE-CONTRACT addendum, mirrors                      | H     | 2–3 d (+2–3 d if Python/Swift must follow)   |
+| **Phase H total**                                                                                                                     |       | **≈ 3–4.5 weeks**                            |
+| Optional: store-receipt → licence adapters (App Store Server API, Play Developer API, Steam)                                          | later | 1–2 weeks each                               |
 
 ---
 
@@ -845,12 +879,12 @@ the cost doubles.
 Probe `SP/probe/probe.gd`, keys and signatures made with OpenSSL 3.0.13, run with
 `godot --headless --path SP/probe -s probe.gd`:
 
-| Algorithm | `CryptoKey.load(pub)` | `Crypto.verify` valid / tampered |
-|---|---|---|
-| RSA PKCS#1 v1.5 SHA-256 | OK | true / false |
-| RSA-PSS | OK | false (not supported by `Crypto.verify`) |
-| **ECDSA P-256 (DER sig)** | OK | **true / false** |
-| **Ed25519** | **Failed**: `Error parsing key '-15488'` (`-0x3C80`, mbedTLS `PK_UNKNOWN_PK_ALG`) | — |
+| Algorithm                 | `CryptoKey.load(pub)`                                                             | `Crypto.verify` valid / tampered         |
+| ------------------------- | --------------------------------------------------------------------------------- | ---------------------------------------- |
+| RSA PKCS#1 v1.5 SHA-256   | OK                                                                                | true / false                             |
+| RSA-PSS                   | OK                                                                                | false (not supported by `Crypto.verify`) |
+| **ECDSA P-256 (DER sig)** | OK                                                                                | **true / false**                         |
+| **Ed25519**               | **Failed**: `Error parsing key '-15488'` (`-0x3C80`, mbedTLS `PK_UNKNOWN_PK_ALG`) | —                                        |
 
 - `HashingContext` offers only `HASH_MD5`, `HASH_SHA1` and `HASH_SHA256`. **There is no SHA-512**,
   which Ed25519 requires.
@@ -878,18 +912,18 @@ Probe `SP/probe/probe.gd`, keys and signatures made with OpenSSL 3.0.13, run wit
 
 **Results** (Godot 4.7.2 editor binary, headless, Intel Xeon 2.1 GHz):
 
-| Test | Result |
-|---|---|
-| SHA-512 vs Python `hashlib` (9 lengths across block boundaries) | 9/9 |
-| Ed25519 (`SP/proj/test_ed25519.gd`): RFC 8032 TEST 1–3, random keys and messages of 0…16384 bytes, tampered msg / R / S, `S+L` malleability, wrong key | **48/48** |
-| **Polaris corpus v2** (`SP/proj/run_corpus.gd`): `jwsCases` 36, `licenseDocCases` 16, `configDocCases` 18, `trustCases` 11 | **81/81** |
-| Ed25519 verify, short message | **14.5 ms** avg |
-| `verify_jws` on a typical doc (953 chars) | **15.8 ms** |
-| `verify_jws` at the 64 KiB payload cap (87,561 chars) | **65.0 ms** |
-| SHA-512 of 16 KiB | 6.3 ms |
-| `fe_mul` / `fe_sq` / point decode | 2.68 µs / 2.18 µs / 0.66 ms |
-| 48 verifies on `WorkerThreadPool` (4 cores) | 0 wrong, 878 ms wall |
-| Native ES256 (raw r‖s → DER in GDScript) / RSA-2048, for comparison | 1.06 ms / 0.09 ms |
+| Test                                                                                                                                                   | Result                      |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------- |
+| SHA-512 vs Python `hashlib` (9 lengths across block boundaries)                                                                                        | 9/9                         |
+| Ed25519 (`SP/proj/test_ed25519.gd`): RFC 8032 TEST 1–3, random keys and messages of 0…16384 bytes, tampered msg / R / S, `S+L` malleability, wrong key | **48/48**                   |
+| **Polaris corpus v2** (`SP/proj/run_corpus.gd`): `jwsCases` 36, `licenseDocCases` 16, `configDocCases` 18, `trustCases` 11                             | **81/81**                   |
+| Ed25519 verify, short message                                                                                                                          | **14.5 ms** avg             |
+| `verify_jws` on a typical doc (953 chars)                                                                                                              | **15.8 ms**                 |
+| `verify_jws` at the 64 KiB payload cap (87,561 chars)                                                                                                  | **65.0 ms**                 |
+| SHA-512 of 16 KiB                                                                                                                                      | 6.3 ms                      |
+| `fe_mul` / `fe_sq` / point decode                                                                                                                      | 2.68 µs / 2.18 µs / 0.66 ms |
+| 48 verifies on `WorkerThreadPool` (4 cores)                                                                                                            | 0 wrong, 878 ms wall        |
+| Native ES256 (raw r‖s → DER in GDScript) / RSA-2048, for comparison                                                                                    | 1.06 ms / 0.09 ms           |
 
 **Caveats:**
 
@@ -906,12 +940,12 @@ Probe `SP/probe/probe.gd`, keys and signatures made with OpenSSL 3.0.13, run wit
 
 ### 7.3 Options compared
 
-| Option | Works on | Effort / risk | Verdict |
-|---|---|---|---|
-| **Pure-GDScript Ed25519 + SHA-512** | all (iOS, Android, Web, desktop), same code | done (prototype); 14–60 ms per verify; auditable, corpus-tested | **Recommended** |
-| GDExtension (Monocypher/libsodium) | needs per-platform binaries: macOS universal, Windows, Linux x64/arm64, Android arm64/x86_64, iOS xcframework, Web (dlink templates + wasm side module) | 1–2 weeks initially plus CI for 7–8 targets on every engine bump; Web GDExtension constraints | Not worth it for a few verifies per session |
-| WebCrypto via `JavaScriptBridge` (Web only) | Web (Ed25519 in all evergreen browsers) | async Promise bridging; a second code path only for Web | Unnecessary; pure GDScript runs on Web |
-| **Dual-sign** (EdDSA + ES256 or RSA the engine can verify) | all | wire contract is EdDSA-only and frozen (`WIRE-CONTRACT-V3.md:21`); adding `alg` = all-languages break | Only for a *standalone* catalog key if pure GDScript were too slow; it isn't. ES256 verify is proven to work (1.06 ms) as a fallback |
+| Option                                                     | Works on                                                                                                                                                | Effort / risk                                                                                         | Verdict                                                                                                                              |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| **Pure-GDScript Ed25519 + SHA-512**                        | all (iOS, Android, Web, desktop), same code                                                                                                             | done (prototype); 14–60 ms per verify; auditable, corpus-tested                                       | **Recommended**                                                                                                                      |
+| GDExtension (Monocypher/libsodium)                         | needs per-platform binaries: macOS universal, Windows, Linux x64/arm64, Android arm64/x86_64, iOS xcframework, Web (dlink templates + wasm side module) | 1–2 weeks initially plus CI for 7–8 targets on every engine bump; Web GDExtension constraints         | Not worth it for a few verifies per session                                                                                          |
+| WebCrypto via `JavaScriptBridge` (Web only)                | Web (Ed25519 in all evergreen browsers)                                                                                                                 | async Promise bridging; a second code path only for Web                                               | Unnecessary; pure GDScript runs on Web                                                                                               |
+| **Dual-sign** (EdDSA + ES256 or RSA the engine can verify) | all                                                                                                                                                     | wire contract is EdDSA-only and frozen (`WIRE-CONTRACT-V3.md:21`); adding `alg` = all-languages break | Only for a _standalone_ catalog key if pure GDScript were too slow; it isn't. ES256 verify is proven to work (1.06 ms) as a fallback |
 
 ### 7.4 SDK shape and API
 

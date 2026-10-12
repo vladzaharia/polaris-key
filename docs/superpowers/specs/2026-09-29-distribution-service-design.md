@@ -9,7 +9,7 @@ gaps, costs, a measured pure-GDScript Ed25519 verifier) and `2026-09-29-distribu
 
 ## 0. Summary
 
-Add a **Distribution** service (`dist`) that runs the *publishing* side of software and content
+Add a **Distribution** service (`dist`) that runs the _publishing_ side of software and content
 distribution for products that ship to many platforms: a GitHub-OIDC publish gateway, a content
 signer, release-document intake, a timestamp signer with a halt switch, staged rollouts, garbage
 collection, a console section and `pkey dist` commands. Players never talk to it: they read static,
@@ -50,23 +50,23 @@ algorithm** (never trusted from the header alone).
 
 **Differences from v3:**
 
-| | v3 documents | DIST-1 documents |
-|---|---|---|
-| Audience | one device (`deviceId`) | broadcast, cacheable: no `deviceId` |
-| Algorithms | EdDSA only | per key: **ES256** (default, verifies natively in Godot's mbedTLS) or EdDSA |
-| Serialization | compact | compact; **General JSON** for the root document (two root signatures) |
-| Trust | pinned product key + online-signed trust manifest | pinned **offline roots** → root-signed key list with **scopes** and `notAfter` |
-| Freshness | `expiresAt`/`graceUntil`, per-type `issuedAt` floors | `timestamp` document (7 d) vouches for current documents; per-type `seq` floors; clock floor |
+|               | v3 documents                                         | DIST-1 documents                                                                             |
+| ------------- | ---------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Audience      | one device (`deviceId`)                              | broadcast, cacheable: no `deviceId`                                                          |
+| Algorithms    | EdDSA only                                           | per key: **ES256** (default, verifies natively in Godot's mbedTLS) or EdDSA                  |
+| Serialization | compact                                              | compact; **General JSON** for the root document (two root signatures)                        |
+| Trust         | pinned product key + online-signed trust manifest    | pinned **offline roots** → root-signed key list with **scopes** and `notAfter`               |
+| Freshness     | `expiresAt`/`graceUntil`, per-type `issuedAt` floors | `timestamp` document (7 d) vouches for current documents; per-type `seq` floors; clock floor |
 
 **Types** (payload shapes in the Diceroll design §7.3):
 
-| `typ` | Signed by | Mutable? |
-|---|---|---|
-| `pkey-dist-root+jws` | offline roots (2 of 3) | new version per ceremony |
-| `pkey-dist-timestamp+jws` | timestamp key (Worker) | the only mutable object |
-| `pkey-dist-release+jws` | release key (hardware, off-Worker) | immutable per `seq` |
-| `pkey-dist-catalog+jws` | content key (Worker) | immutable per `seq` |
-| `pkey-dist-pack+jws` | release key (hardware, off-Worker) | approves one asset-pack revision; `packs/<sha256>.jws` and inside store-delivered packs |
+| `typ`                     | Signed by                          | Mutable?                                                                                |
+| ------------------------- | ---------------------------------- | --------------------------------------------------------------------------------------- |
+| `pkey-dist-root+jws`      | offline roots (2 of 3)             | new version per ceremony                                                                |
+| `pkey-dist-timestamp+jws` | timestamp key (Worker)             | the only mutable object                                                                 |
+| `pkey-dist-release+jws`   | release key (hardware, off-Worker) | immutable per `seq`                                                                     |
+| `pkey-dist-catalog+jws`   | content key (Worker)               | immutable per `seq`                                                                     |
+| `pkey-dist-pack+jws`      | release key (hardware, off-Worker) | approves one asset-pack revision; `packs/<sha256>.jws` and inside store-delivered packs |
 
 **Scopes** in the root document (`{typ, aud pattern, code: bool}`) are enforced by clients: a content
 key can never sign a release or pack document; a timestamp key can only halt, disable or choose
@@ -80,12 +80,12 @@ kid; floor reset; root step-through; oversize; malformed hash rejects the whole 
 
 ## 3. Keys and custody
 
-| Key | Where | Rotation |
-|---|---|---|
-| Roots A, B, C (ES256), 2 of 3 | product owner's hardware keys and one air-gapped key; never in Polaris | yearly root document; roots every 3–5 years |
-| Release key | product owner's YubiKey; signs release documents and pack documents locally (`pkey dist sign-release` / `sign-packs` using PKCS#11) | 12 months |
-| Content key (ES256) | `dist` Worker secret (not the KEK-sealed product key store) | 12 months, via the root document |
-| Timestamp key (ES256) | `dist` Worker secret | 12 months |
+| Key                           | Where                                                                                                                               | Rotation                                    |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| Roots A, B, C (ES256), 2 of 3 | product owner's hardware keys and one air-gapped key; never in Polaris                                                              | yearly root document; roots every 3–5 years |
+| Release key                   | product owner's YubiKey; signs release documents and pack documents locally (`pkey dist sign-release` / `sign-packs` using PKCS#11) | 12 months                                   |
+| Content key (ES256)           | `dist` Worker secret (not the KEK-sealed product key store)                                                                         | 12 months, via the root document            |
+| Timestamp key (ES256)         | `dist` Worker secret                                                                                                                | 12 months                                   |
 
 The Worker never holds a key that can authorise code or new binary content. A content-key compromise
 is bounded to JSON definitions and references to already-approved packs; a timestamp-key compromise
@@ -131,17 +131,17 @@ CREATE TABLE dist_channels (            -- current pointers, rollout and switche
 
 ## 5. Routes (each needs an OpenAPI entry and a `routeCoverage` row, rule 10)
 
-| Route | Auth | Purpose |
-|---|---|---|
-| `POST /<p>/dist/uploads` | GitHub OIDC (`upload`) | declare objects `{key-kind, sha256, size}` → presigned R2 PUTs (`If-None-Match: *`, checksum header, ≤ 30 min) for keys not yet present |
-| `POST /<p>/dist/catalogs` | GitHub OIDC (`catalog:<channel>`) | compose + sign a catalog: policy (seq + 1; objects exist with matching size/checksum; every referenced pack has a valid pack document and passed the Worker's script scan; pack prefixes and kinds allowed by the product's catalog schema; no prerelease on `stable`) → write `catalog/<ch>/<seq>.jws` → re-sign timestamp |
-| `POST /<p>/dist/releases` | GitHub OIDC (`release:intake`) or admin | accept a release document already signed with the release key; verify chain, scope and policy → store → re-sign timestamp |
-| `POST /<p>/dist/channels/<ch>/promote` | GitHub OIDC (`promote:<ch>`) or admin | set candidate catalog + ramp, or promote fully |
-| `POST /<p>/dist/channels/<ch>/halt` · `/unhalt` · `/disable` | admin (or OIDC with scope) | re-sign timestamp with the switch; audit-logged |
-| `POST /<p>/dist/channels/<ch>/rollback` | admin or OIDC | new catalog revoking hashes / restoring previous revisions |
-| `GET /<p>/dist/status` | admin | channels, documents, expiry countdowns, R2 health |
-| `POST /<p>/dist/gc/plan` · `/apply` | admin (apply) | unreferenced objects older than retention; apply needs approval |
-| `POST /<p>/dist/packs` | GitHub OIDC (`upload`) or admin | accept pack documents signed on the YubiKey; verify chain and scope; run the script scan over the uploaded pack (PCK directory + binary resource type strings) and record the result |
+| Route                                                        | Auth                                    | Purpose                                                                                                                                                                                                                                                                                                                     |
+| ------------------------------------------------------------ | --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `POST /<p>/dist/uploads`                                     | GitHub OIDC (`upload`)                  | declare objects `{key-kind, sha256, size}` → presigned R2 PUTs (`If-None-Match: *`, checksum header, ≤ 30 min) for keys not yet present                                                                                                                                                                                     |
+| `POST /<p>/dist/catalogs`                                    | GitHub OIDC (`catalog:<channel>`)       | compose + sign a catalog: policy (seq + 1; objects exist with matching size/checksum; every referenced pack has a valid pack document and passed the Worker's script scan; pack prefixes and kinds allowed by the product's catalog schema; no prerelease on `stable`) → write `catalog/<ch>/<seq>.jws` → re-sign timestamp |
+| `POST /<p>/dist/releases`                                    | GitHub OIDC (`release:intake`) or admin | accept a release document already signed with the release key; verify chain, scope and policy → store → re-sign timestamp                                                                                                                                                                                                   |
+| `POST /<p>/dist/channels/<ch>/promote`                       | GitHub OIDC (`promote:<ch>`) or admin   | set candidate catalog + ramp, or promote fully                                                                                                                                                                                                                                                                              |
+| `POST /<p>/dist/channels/<ch>/halt` · `/unhalt` · `/disable` | admin (or OIDC with scope)              | re-sign timestamp with the switch; audit-logged                                                                                                                                                                                                                                                                             |
+| `POST /<p>/dist/channels/<ch>/rollback`                      | admin or OIDC                           | new catalog revoking hashes / restoring previous revisions                                                                                                                                                                                                                                                                  |
+| `GET /<p>/dist/status`                                       | admin                                   | channels, documents, expiry countdowns, R2 health                                                                                                                                                                                                                                                                           |
+| `POST /<p>/dist/gc/plan` · `/apply`                          | admin (apply)                           | unreferenced objects older than retention; apply needs approval                                                                                                                                                                                                                                                             |
+| `POST /<p>/dist/packs`                                       | GitHub OIDC (`upload`) or admin         | accept pack documents signed on the YubiKey; verify chain and scope; run the script scan over the uploaded pack (PCK directory + binary resource type strings) and record the result                                                                                                                                        |
 
 **OIDC verification:** GitHub JWKS (cached), `iss = https://token.actions.githubusercontent.com`,
 custom `aud` (`https://dist.plrs.im/<product>`), `exp`/`iat`/`nbf` with ≤ 60 s skew, **single-use
@@ -169,7 +169,7 @@ ever needed, get a Worker 302 to a short-lived presigned URL; public ones never 
   (seq, issued, expiry), pack revisions with sizes and sources, rollout slider with the ramp, halt and
   disable switches with reasons, publish log with one-click rollback, R2 health, GC plan.
 - **CLI:** `pkey dist upload | catalog | sign-release (YubiKey, PKCS#11) | release | promote | rollout
-  | halt | unhalt | disable | rollback | status | verify <url> | gc plan|apply`.
+| halt | unhalt | disable | rollback | status | verify <url> | gc plan|apply`.
 
 ## 8. Godot SDK (`sdks/godot`)
 
@@ -189,15 +189,15 @@ Pure GDScript addon vendored by products (`addons/polaris_key`), from the protot
 
 ## 9. Effort
 
-| Item | Days |
-|---|---|
-| DIST-1 addendum, ES256 in the JWS package, corpus sections, Godot mirror | 3–4 |
-| `dist` service: OIDC gateway, uploads, catalog signer, release intake, timestamp cron, halt/disable, attack tests | 6–9 |
-| Rollout ramps, GC, monitors | 2–3 |
-| Console section | 3–4 |
-| CLI (`pkey dist …`, PKCS#11 signing) | 1–2 |
-| Godot SDK from the prototypes | 5–7 |
-| **Total** | **20–29** (the Diceroll plan counts the SDK under its M3) |
+| Item                                                                                                              | Days                                                      |
+| ----------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| DIST-1 addendum, ES256 in the JWS package, corpus sections, Godot mirror                                          | 3–4                                                       |
+| `dist` service: OIDC gateway, uploads, catalog signer, release intake, timestamp cron, halt/disable, attack tests | 6–9                                                       |
+| Rollout ramps, GC, monitors                                                                                       | 2–3                                                       |
+| Console section                                                                                                   | 3–4                                                       |
+| CLI (`pkey dist …`, PKCS#11 signing)                                                                              | 1–2                                                       |
+| Godot SDK from the prototypes                                                                                     | 5–7                                                       |
+| **Total**                                                                                                         | **20–29** (the Diceroll plan counts the SDK under its M3) |
 
 ## 10. Open questions
 
