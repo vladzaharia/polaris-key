@@ -178,6 +178,21 @@ describe("extractFeedCredential: the credential extractor", () => {
     expect(extractFeedCredential(fake)).toBeNull();
   });
 
+  it("parses nothing from two Authorization headers (Headers joins them with a comma): one request, one credential", () => {
+    // curl sends both a .curlrc `header =` and a `-H` Authorization; the harness once let a
+    // read-only feed token ride along with the publish token and got a 401 for it.
+    const both = new Request(PKG, {
+      headers: [
+        ["authorization", "Bearer readtok"],
+        ["authorization", "Bearer publishtok"],
+      ],
+    });
+    expect(both.headers.get("authorization")).toBe(
+      "Bearer readtok, Bearer publishtok",
+    );
+    expect(extractFeedCredential(both)).toBeNull();
+  });
+
   it("resolves to anonymous when nothing it holds is a registry credential", async () => {
     for (const h of [
       undefined,
