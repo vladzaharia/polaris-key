@@ -3827,6 +3827,16 @@ msgstr "服务出现问题"
 msgid "core.codes.document_not_representable.message"
 msgstr "服务无法准备你的设置。请联系开发者。"
 
+#. Signing unavailable
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.signing_unavailable.title"
+msgstr "签名不可用"
+
+#. The service can't sign a document right now. Try again in a few minutes.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.signing_unavailable.message"
+msgstr "服务目前无法签署文档。请几分钟后重试。"
+
 #. Device limit reached
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.device_limit.title"

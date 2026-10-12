@@ -8553,8 +8553,10 @@ control.
   `sdks/python/src/polaris_key/core/context.py`, `sdks/swift/Sources/PolarisKeyCore/Endpoints.swift`,
   `sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/Endpoints.kt` and
   `sdks/godot/addons/polaris_key/core/transport.gd` (`check_base_url`). The React browser adapter
-  (`packages/sdk-react/src/browser/browserAdapter.ts`) and `pkey bundle`
-  (`packages/cli/src/bundle.ts`) take their base URL as given and do not check its scheme.
+  (`packages/sdk-react/src/browser/browserAdapter.ts`) applies the same rule at construction
+  (`InsecureBaseUrlError`), and `pkey bundle` and `pkey listing import` (`packages/cli/src/bundle.ts`,
+  `packages/cli/src/listing.ts`) refuse a non-loopback plaintext `--base-url` before sending a
+  credential.
 - **What is pinned is an Ed25519 key, not a TLS certificate.** The pins in the app verify the
   signed documents (§6); no client pins a TLS certificate or public key of the connection. So an
   on-path attacker who can break TLS (a rogue or coerced CA, a trusted middlebox) cannot forge a

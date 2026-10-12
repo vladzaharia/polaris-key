@@ -1445,6 +1445,10 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_document_not_representable_message">The service couldn't prepare your settings. Contact the developer.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_signing_unavailable_title">Signing unavailable</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_signing_unavailable_message">The service can't sign a document right now. Try again in a few minutes.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_device_limit_title">Device limit reached</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_device_limit_message">This license is already on all its devices. Replace a device to use it here.</string>

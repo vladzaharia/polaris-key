@@ -643,6 +643,8 @@
   "core.codes.value_not_representable.message": "No se pudo guardar un valor. Cámbialo y vuelve a intentarlo.",
   "core.codes.document_not_representable.title": "Problema del servicio",
   "core.codes.document_not_representable.message": "El servicio no pudo preparar tus ajustes. Contacta con el desarrollador.",
+  "core.codes.signing_unavailable.title": "Firma no disponible",
+  "core.codes.signing_unavailable.message": "El servicio no puede firmar un documento ahora mismo. Vuelve a intentarlo en unos minutos.",
   "core.codes.device_limit.title": "Límite de dispositivos alcanzado",
   "core.codes.device_limit.message": "Esta licencia ya está en todos sus dispositivos. Reemplaza un dispositivo para usarla aquí.",
   "core.codes.key_entry_limit.title": "No quedan usos de la clave",
