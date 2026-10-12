@@ -145,6 +145,11 @@ export async function compileSwift(snippets: Snippet[]): Promise<Failure[]> {
   const bin = (
     await run("swift", ["build", "--show-bin-path"], { cwd: SWIFT_DIR })
   ).out.trim();
+  // SwiftPM puts each `.swiftmodule` in `<bin>/Modules` (the native build system, Swift 6.1 on the
+  // macOS runner) or directly in `<bin>` (the swift-build system, Swift 6.4 locally): search both.
+  const modules = existsSync(join(bin, "Modules"))
+    ? [join(bin, "Modules"), bin]
+    : [bin];
   // libzstd is vendored as a C target since SP-52 (no SwiftPM checkout): its module map is in the source.
   const zstd = join(SWIFT_DIR, "Sources/libzstd");
   const dir = mkdtempSync(join(tmpdir(), "pkey-docs-swift-"));
@@ -164,8 +169,7 @@ export async function compileSwift(snippets: Snippet[]): Promise<Failure[]> {
           "-swift-version",
           "6",
           ...(lib ? ["-parse-as-library"] : []),
-          "-I",
-          bin,
+          ...modules.flatMap((m) => ["-I", m]),
           "-F",
           bin,
           "-Xcc",
@@ -186,6 +190,17 @@ export async function compileSwift(snippets: Snippet[]): Promise<Failure[]> {
             snippet: s,
             line: s.line + Number(m[1]) - 1,
             message: m[2] ?? "",
+          });
+        // An error in a harness file (the config sample, the placeholders) is not a block's line, but
+        // swiftc reports a missing module once, in whichever file it meets the import first.
+        const h = /(Config|Placeholders)\.swift:\d+:\d+: error: (.*)$/.exec(
+          line,
+        );
+        if (h)
+          found.push({
+            snippet: s,
+            line: s.line,
+            message: `${h[1]}.swift: ${h[2] ?? ""}`,
           });
       }
       if (r.code !== 0 && found.length === 0)
