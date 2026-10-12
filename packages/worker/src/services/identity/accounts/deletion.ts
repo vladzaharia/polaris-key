@@ -153,7 +153,7 @@ export const ERASURE_BACKOFF_SECONDS = [
 export const ERASURE_STUCK_ATTEMPTS = 5;
 /** Erasures one sweep resumes at most. */
 export const ERASURE_SWEEP_MAX = 25;
-/** Rounds of "re-read the subjects, delete the new ones' data" before the commit (SEC-PRV-19). */
+/** Rounds of "re-read the subjects, delete the new ones' data" before the commit. */
 const ERASURE_SUBJECT_ROUNDS = 5;
 
 export interface ErasureResult {
@@ -175,8 +175,7 @@ function failure(step: string, e: unknown): ErasureFailure {
 }
 
 /**
- * Erase an account (right to erasure; S-16 §5.5) as a resumable, idempotent state machine
- * (SEC-PRV-1):
+ * Erase an account (right to erasure; S-16 §5.5) as a resumable, idempotent state machine:
  *
  *   0. LEDGER. The id is recorded on the erasure ledger (`erasureLedger.ts`: create-only, in R2,
  *      so outside D1) BEFORE any D1 change: a D1 restore rewinds the tombstone together with the
@@ -194,7 +193,7 @@ function failure(step: string, e: unknown): ErasureFailure {
  *      attempt ends with `{ ok: true, erasing: true }`; nothing was removed that a retry needs.
  *   3. ERASED. Only when every hook succeeded, one atomic batch removes every row naming the
  *      person: links, subjects (ALL of the account's, so a subject minted during the run is not
- *      orphaned, SEC-PRV-19) and aliases, grants, terms acceptances, passkeys, library entries,
+ *      orphaned) and aliases, grants, terms acceptances, passkeys, library entries,
  *      the account, and the pre-I-05 `portal_*` rows (so a Worker rollback cannot resurrect
  *      them), then the progress row. The product `audit` rows that name the person as actor
  *      (`accountAudit.ts`) are anonymised first in the same batch, ahead of the statements that
@@ -338,8 +337,8 @@ async function runErasure(
     );
   const licenses = await accountLicenses(db, accountId);
   let subjects = await readSubjects();
-  // The stores run first, per subject; a subject minted while this runs gets its own round
-  // (SEC-PRV-19), then the final batch deletes every subject row of the account regardless.
+  // The stores run first, per subject; a subject minted while this runs gets its own round,
+  // then the final batch deletes every subject row of the account regardless.
   for (let round = 0; round < ERASURE_SUBJECT_ROUNDS; round++) {
     const fresh = subjects.filter(
       (s) => !done.has(`${s.product}\0${s.subject}`),
@@ -469,7 +468,7 @@ function commitStatements(
     );
   }
   stmts.push(
-    // SEC-PRV-19: every alias and every subject row of the account, including one minted since
+    // Every alias and every subject row of the account, including one minted since
     // the list above was read.
     {
       sql: `DELETE FROM account_product_subject_aliases
@@ -580,8 +579,8 @@ function commitStatements(
 }
 
 /**
- * The retry sweeper (SEC-PRV-1), run by both cron ticks: adopt `status = 'deleted'` accounts that
- * have no progress row (an erasure a Worker before SEC-WP-04 left half done), then resume up to
+ * The retry sweeper, run by both cron ticks: adopt `status = 'deleted'` accounts that
+ * have no progress row (an erasure an older Worker left half done), then resume up to
  * {@link ERASURE_SWEEP_MAX} erasures whose back-off elapsed and whose lease is free (each is
  * recorded on the ledger first, unless `deleteAccount` did). Returns how many it completed; an
  * erasure that fails again is re-scheduled, not thrown.

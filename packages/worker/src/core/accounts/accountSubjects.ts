@@ -119,7 +119,7 @@ export async function subjectFor(
 ): Promise<string> {
   const existing = await existingSubjectFor(db, accountId, product);
   if (existing) return existing;
-  // SEC-WP-04: an account being erased (`status = 'deleted'`) mints nothing new; a subject minted
+  // An account being erased (`status = 'deleted'`) mints nothing new; a subject minted
   // after the erasure read its list would escape the store hooks and the `subject.deleted` event.
   if (
     await db.first(

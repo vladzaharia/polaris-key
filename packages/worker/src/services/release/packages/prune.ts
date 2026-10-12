@@ -96,7 +96,7 @@ export const MAIN_CHANNEL = "main";
 /** The built-in release track (P2-08) whose builds are ephemeral beside `main`'s (F-36). */
 export const DEV_CHANNEL = "dev";
 
-/** The blob-ref kind a package version's files are held by (`ingest.ts`; SEC-DST-1). */
+/** The blob-ref kind a package version's files are held by (`ingest.ts`). */
 const ARTIFACT_REF = PACKAGE_FILE_REF;
 
 // ── Versions ─────────────────────────────────────────────────────────────────────────────────

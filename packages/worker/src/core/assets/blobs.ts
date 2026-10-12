@@ -1042,7 +1042,7 @@ export async function refHolders(
 }
 
 /**
- * SEC-DST-1: the `blob_refs.ref_kind` a package version's files are held by (F-03,
+ * The `blob_refs.ref_kind` a package version's files are held by (F-03,
  * `services/release/packages/ingest.ts`), with `<releaseId>/<artifactId>` as the ref id. It is
  * possession only, like `oci-push`: the package feeds (`services/distribution/registry/`) serve
  * the bytes under the feed's own ladder (`stricter(feed access_mode, dist_access)`), and the
@@ -1174,7 +1174,7 @@ export interface BlobResponseOptions {
   /**
    * The `Cache-Control` of an ungated 200/206/304, default one year immutable. A route whose
    * audience can narrow later (an app artifact: its deliverable's mode can tighten) passes
-   * `PUBLIC_BLOB_CACHE`, so a shared cache cannot outlive the change by a year (SEC-DST-1).
+   * `PUBLIC_BLOB_CACHE`, so a shared cache cannot outlive the change by a year.
    */
   publicCache?: string;
 }
@@ -1262,7 +1262,7 @@ function ifNoneMatchHits(header: string | null, etag: string): boolean {
  *
  * Headers on every 200/206/304: `ETag: "<hex>"`, `Repr-Digest` (the whole representation,
  * also on a 206), `Accept-Ranges: bytes`, `X-Content-Type-Options: nosniff`, `BLOB_CSP`, and
- * `Cache-Control` — `public, max-age=31536000, immutable, no-transform` ungated (`opts.publicCache` bounds it, SEC-DST-1; no edge
+ * `Cache-Control` — `public, max-age=31536000, immutable, no-transform` ungated (`opts.publicCache` bounds it; no edge
  * recompression: hashes and ranges depend on the stored bytes), `private, no-store,
  * no-transform` gated (the edge must not recompress `application/wasm` and break
  * `Content-Length`, `Range` and `Repr-Digest` on a private response either).

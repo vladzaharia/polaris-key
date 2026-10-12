@@ -1425,11 +1425,11 @@ export async function claimDeviceSeat(
   now: number,
   opts: {
     /**
-     * SEC-LIC-1: the licence id AND status the caller OBSERVED on the row it was authorised to
+     * The licence id AND status the caller OBSERVED on the row it was authorised to
      * take over (ownership proven, or a dead row). A compare-and-set: the upsert below moves a
      * row off another licence only while it still shows exactly this pair, so a row that changed
      * hands, or that its owner re-activated after the check, is left alone rather than stolen.
-     * SEC-LIC-2: the same batch clears what the row carried for that licence, so a bind that
+     * The same batch clears what the row carried for that licence, so a bind that
      * fails after the claim cannot leave the old overrides or label on the new licence.
      */
     adoptFrom?: { licenseId: string; status: string };
@@ -1570,7 +1570,7 @@ export async function releaseDeviceSeat(
 }
 
 /**
- * SEC-LIC-2: drop what a device row carried for its previous licence — the operator overrides, the
+ * Drop what a device row carried for its previous licence — the operator overrides, the
  * label, the reported data, the commerce customer and the software snapshot. `upsertDevice` never
  * rewrites `overrides_json` / `reported_json` and keeps an existing label, so a row changing
  * licence must be cleared explicitly or the new licence's document inherits them.
