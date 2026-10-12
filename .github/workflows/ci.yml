@@ -307,8 +307,11 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/setup-js
         with:
-          install-args: --frozen-lockfile --filter=@polaris-key/react...
-      - run: pnpm exec turbo run build --filter=@polaris-key/react^...
+          # The React 19 fixture is a workspace package nothing depends on, so it is named here.
+          install-args: --frozen-lockfile --filter=@polaris-key/react... --filter=@polaris-key/react-react19
+      # The kit's own dist too (no `^`): its tests import `@polaris-key/react` and `@polaris-key/react/kit`
+      # through the package's exports map, which points at dist.
+      - run: pnpm exec turbo run build --filter=@polaris-key/react...
       # The Vitest workspace has React 18 and React 19 projects; keep both supported majors live.
       - run: pnpm --filter @polaris-key/react test
       - run: pnpm --filter @polaris-key/react test:browser
