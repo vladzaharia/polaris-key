@@ -22,7 +22,7 @@ from polaris_key.core.bundle import (
     INNER_DOC_REJECTED,
 )
 from polaris_key.core.errors import PolarisError
-from polaris_key.core.store import CACHE_FORMAT_VERSION
+from polaris_key.core.store import CACHE_FORMAT_VERSION, CacheRecord
 from polaris_key.devices.store import FileStore, InMemoryStore
 from polaris_key.local import create_bundle_client, create_local_client
 
@@ -251,6 +251,53 @@ def test_a_refusal_names_the_step_and_writes_nothing(build, reason: str, tmp_pat
     assert exc.value.message, "the operator gets a human-readable remedy too"
     assert store.read_cache() is None, "all-or-nothing: nothing was written"
     assert client.status().status == "needs-activation"
+    client.close()
+
+
+def test_the_import_window_resists_a_rolled_back_clock(tmp_path) -> None:
+    """§7 step 2 checks the bundle's own import window with network-path freshness, and §3
+    runs that path at the EFFECTIVE clock — ``max(system clock, floor)``, never the bare system
+    clock. So winding the clock back inside a window that has already closed must not make
+    the bundle importable again."""
+    store = FileStore(PRODUCT, str(tmp_path))
+    device_id = store.get_device_id()
+    issued = NOW - 90 * DAY
+    bundle = sign_bundle(
+        device_id, issued=issued, docs={"license": sign_license(device_id, issued=issued)}
+    )  # the import window is [issued, issued + 30 days]
+    # A cached, verified trust manifest dated AFTER the window closed is what raises the floor:
+    # a signed lower bound on real time that no clock change can lower.
+    after_window = issued + 40 * DAY
+    store.write_cache(
+        CacheRecord(trustJws=sign_manifest([key_entry(KID, PUBKEY_RAW)], issued=after_window))
+    )
+    client = _local(store=FileStore(PRODUCT, str(tmp_path)))
+    assert client.core.high_water_mark == after_window
+
+    # The attacker's clock: back inside the window the bundle was minted for.
+    with pytest.raises(PolarisError) as exc:
+        client.import_bundle(bundle, issued + DAY)
+    assert exc.value.code == BUNDLE_CLAIMS_REJECTED
+    assert store.read_cache().bundle is None, "all-or-nothing: nothing was written"
+    assert client.status().status == "needs-activation"
+    client.close()
+
+
+def test_a_floor_below_the_clock_does_not_stop_an_honest_import(tmp_path) -> None:
+    """The floor is a minimum, never a substitute: without this pair a client that refused
+    every bundle would pass the case above."""
+    store = FileStore(PRODUCT, str(tmp_path))
+    device_id = store.get_device_id()
+    store.write_cache(
+        CacheRecord(trustJws=sign_manifest([key_entry(KID, PUBKEY_RAW)], issued=NOW - 10 * DAY))
+    )
+    client = _local(store=FileStore(PRODUCT, str(tmp_path)))
+    assert client.core.high_water_mark == NOW - 10 * DAY
+    result = client.import_bundle(
+        sign_bundle(device_id, docs={"license": sign_license(device_id)}), NOW
+    )
+    assert result.imported == ["license"]
+    assert client.status().status == "ok"
     client.close()
 
 

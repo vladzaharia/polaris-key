@@ -6,6 +6,13 @@ deprecated aliases).
 
 ## Unreleased
 
+Hostile-input fixes.
+
+- **A poisoned `blocked` hint drops the hint, not the cache.** A cache record whose `blocked.reason` is outside `BlockReason` now loads without the hint; it used to discard the whole record. `BlockReason` is `CaseIterable`.
+- **`JSONValue.intValue` no longer traps.** A JSON number outside `Int` (`1e30`, an infinity) reads as nil instead of crashing the process; a fractional number is still nil.
+- **A bundle's import window runs at the effective clock.** `importBundle` checks the 30-day window at `max(system clock, floor)`, so winding the clock back no longer reopens a lapsed window.
+- **A cached document stamped far ahead of the system clock reloads.** `CoreContext` no longer refuses a cached licence or config document stamped more than `MAX_GRACE_SECONDS` past the system clock, so a device with a dead clock keeps its licence and the floor takes the newest artifact, as in the other SDKs.
+
 Gate and SDK correctness.
 
 - **Signed-in user (`license.signedinuser`).** `licenseUser(_:)`, `LicenseClient.licenseUser()` and `DocProfile.user` read the pairwise subject from a verified licence document's `profile.user`; a malformed or absent member is nil.

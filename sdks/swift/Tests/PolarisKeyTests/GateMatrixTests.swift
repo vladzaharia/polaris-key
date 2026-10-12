@@ -1,6 +1,6 @@
 // @pkey-feature license.gate
 // Cross-SDK gate parity — wire contract v3 §5, driven off `conformance/corpus/v2`'s
-// `gate-matrix.json` (version 2, 38 rows).
+// `gate-matrix.json` (version 2, 43 rows).
 //
 // Each row carries the BUILD-gate inputs (version/channel/compat window/entitlements) and the
 // LICENSE-state inputs, paired with one expected decision. The first fourteen rows are corpus
@@ -8,8 +8,11 @@
 // and `hasToken → activation` — so a v3 gate that changes any v2 decision goes red here (P0-04
 // retired a fifteenth, the pre-R3-01 dev bypass). The next six pin what v1 could not express:
 // `not-applicable` (D-08), `activation: "bundle"` (§7), and the one ordering v3 changed — the
-// activation guard runs BEFORE the unsigned `blocked` hint. The last eighteen pin the channel
-// vocabulary of WIRE-CONTRACT-V3 §5.1 (P0-04).
+// activation guard runs BEFORE the unsigned `blocked` hint. The next eighteen pin the channel
+// vocabulary of WIRE-CONTRACT-V3 §5.1 (P0-04). The last five carry a `license.blocked` hint and
+// pin the blocked-reason VOCABULARY: a reason outside it never makes the gate usable, one inside
+// it is honoured verbatim, and a poisoned hint outranks neither the activation guard nor
+// `not-applicable`.
 //
 // The build-gate half is a PORT: `checkBuildGate` mirrors the Worker's, rebuilt from `Semver.*`,
 // with the fixture as the oracle (the Worker replays the same rows through its real gate in
@@ -49,6 +52,16 @@ final class GateMatrixTests: XCTestCase {
         let now: Int
         let lastSyncUnauthorized: Bool?
         let lastVerifiedAt: Int?
+        /// The unsigned hint supplied DIRECTLY, replacing whatever the build gate would derive.
+        /// A poisoned hint is exactly one no build gate produced, so the vocabulary rows cannot be
+        /// expressed through `gate` at all.
+        let blocked: RawBlocked?
+    }
+    /// `reason` is a raw `String`, not a `BlockReason` — the whole point of those rows is a value
+    /// OUTSIDE the union, which a closed enum cannot even hold.
+    private struct RawBlocked: Decodable {
+        let reason: String
+        let allowedRange: AllowedRange?
     }
     private struct ExpectDecision: Decodable {
         let status: String
@@ -164,7 +177,18 @@ final class GateMatrixTests: XCTestCase {
 
     func testGateMatrixParityAcrossEveryRow() throws {
         for row in try loadMatrix().rows {
-            let blocked = checkBuildGate(row.gate)
+            let derived = checkBuildGate(row.gate)
+            // Swift is the one implementation where an out-of-vocabulary reason is
+            // UNREPRESENTABLE: `BlockReason` is a closed `String` enum, so it cannot be
+            // constructed and `init(rawValue:)` answers nil. Falling back to the strictest reason
+            // here is the same coercion the other SDKs apply inside the gate — which is exactly
+            // what the vocabulary rows assert they all agree on.
+            let blocked =
+                row.license.blocked.map { raw in
+                    BlockInfo(
+                        reason: BlockReason(rawValue: raw.reason) ?? .versionTooOld,
+                        allowedRange: raw.allowedRange)
+                } ?? derived
             let state = licenseState(
                 GateInput(
                     licenseServiceEnabled: row.license.licenseServiceEnabled,
@@ -180,8 +204,9 @@ final class GateMatrixTests: XCTestCase {
             if let reason = row.expect.reason {
                 // `expect.reason` names the build-gate hint that was DERIVED, which on the
                 // activation-precedes-blocked row is deliberately NOT the status — that is the
-                // ordering v3 changed.
-                XCTAssertEqual(blocked?.reason, reason, "\(row.name) reason")
+                // ordering v3 changed. Asserted against `derived`, never against a fixture-supplied
+                // `license.blocked`.
+                XCTAssertEqual(derived?.reason, reason, "\(row.name) reason")
             }
             XCTAssertEqual(
                 state.allowedRange, row.expect.allowedRange, "\(row.name) allowedRange")
@@ -209,7 +234,7 @@ final class GateMatrixTests: XCTestCase {
     func testMatrixCoversTheP004ChannelRows() throws {
         let rows = try loadMatrix().rows
         let names = Set(rows.map(\.name))
-        XCTAssertEqual(rows.count, 38)
+        XCTAssertEqual(rows.count, 43)
         for name in [
             "ok — beta header, channels [stable, beta]",
             "ok — beta header, channels [stable, staging] (alias)",
@@ -236,5 +261,27 @@ final class GateMatrixTests: XCTestCase {
             names.contains(
                 "ok — dev build bypasses the gate despite an out-of-range window + non-entitled channel"
             ))
+    }
+
+    /// The five rows that carry a `license.blocked` hint, asserted by NAME.
+    func testMatrixCoversTheBlockedVocabularyRows() throws {
+        let rows = try loadMatrix().rows
+        let byName = Dictionary(uniqueKeysWithValues: rows.map { ($0.name, $0) })
+        for name in [
+            "version-too-old — an out-of-vocabulary blocked.reason coerces to the STRICTER reason",
+            "version-too-old — `not-applicable` as a blocked.reason is coerced too, allowedRange kept",
+            "channel-not-entitled — an IN-vocabulary blocked.reason is still honoured verbatim",
+            "needs-activation — a poisoned blocked.reason does not outrank the activation guard",
+            "not-applicable — a poisoned blocked.reason cannot be used to gate an unlicensed product either",
+        ] {
+            guard let row = byName[name] else {
+                XCTFail("gate-matrix v2 must carry: \(name)")
+                continue
+            }
+            XCTAssertNotNil(row.license.blocked, "\(name) must carry the hint it is about")
+        }
+        // A usable reason is in there, so the rows can fail an implementation that returns the
+        // hint's reason verbatim as the status.
+        XCTAssertTrue(rows.contains { $0.license.blocked?.reason == "ok" })
     }
 }

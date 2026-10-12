@@ -145,4 +145,34 @@ final class StoreSecurityTests: XCTestCase {
         let record = try JSONDecoder().decode(CacheRecord.self, from: Data(json.utf8))
         XCTAssertEqual(record.docs, [.license: "a.b.c"])
     }
+
+    /// §4.1 — `blocked` is unsigned and the gate returns its reason AS the status, so a hint the
+    /// `BlockReason` enum cannot hold must never become one. Read back through the real file
+    /// store, it costs the HINT only: the verified artifacts beside it still load.
+    func testAPoisonedBlockedHintOnDiskIsDroppedAndTheRestOfTheRecordLoads() async throws {
+        let store = KeychainStore(productSlug: "djdl", configDir: root)
+        try await store.writeCache(CacheRecord())  // creates the product directory
+        for hint in [
+            #"{"reason":"ok"}"#, #"{"reason":"grace"}"#, #"{"reason":"not-applicable"}"#,
+            #"{"reason":""}"#, #"{"reason":5}"#, #"{"reason":null}"#, #"{"allowedRange":{"min":"1"}}"#,
+            #""version-too-old""#, #"["version-too-old"]"#,
+        ] {
+            let json = #"{"v":3,"trustJws":"d.e.f","docs":{"license":"a.b.c"},"blocked":\#(hint)}"#
+            try Data(json.utf8).write(to: cacheURL)
+            let loaded = await store.readCache()
+            XCTAssertNotNil(loaded, "\(hint) must not discard the record")
+            XCTAssertNil(loaded?.blocked, "\(hint) is not a hint")
+            XCTAssertEqual(loaded?.trustJws, "d.e.f", "\(hint): the trust slice survives")
+            XCTAssertEqual(loaded?.docs, [.license: "a.b.c"], "\(hint): the documents survive")
+        }
+        for reason in BlockReason.allCases {
+            let json =
+                #"{"v":3,"blocked":{"reason":"\#(reason.rawValue)","allowedRange":{"min":"1.0.0"}}}"#
+            try Data(json.utf8).write(to: cacheURL)
+            let loaded = await store.readCache()
+            XCTAssertEqual(
+                loaded?.blocked,
+                BlockInfoRecord(reason: reason, allowedRange: AllowedRange(min: "1.0.0")))
+        }
+    }
 }

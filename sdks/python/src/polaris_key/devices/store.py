@@ -19,6 +19,11 @@ state — the trust set, the per-type anti-replay floors, ``lastVerifiedAt``, th
 clock floor — is *derived* by re-verifying those artifacts against the host application's
 **pinned** keys on every load. A record from any other cache version is **discarded, not
 migrated** (§4.1).
+
+HOSTILE FILESYSTEM. :class:`FileStore` reads a state file with ``O_NOFOLLOW`` and bounds it at
+:data:`MAX_STATE_FILE_BYTES`: a symlink, a non-regular file, an oversize file or one that is not
+UTF-8 reads as ABSENT, never as the attacker's bytes and never as a crash. A write refuses to
+follow a symlink and repairs a pre-existing loose mode back to 0600.
 """
 
 from __future__ import annotations
@@ -26,6 +31,7 @@ from __future__ import annotations
 import errno
 import json
 import os
+import stat
 from typing import Any, Callable, Optional, Tuple
 
 from ..core.store import (
@@ -39,6 +45,7 @@ from .deviceid import derive_device_id
 
 __all__ = [
     "CACHE_FORMAT_VERSION",
+    "MAX_STATE_FILE_BYTES",
     "SYMLINK_GUARD",
     "CacheRecord",
     "Store",
@@ -86,17 +93,38 @@ class InMemoryStore:
 
 
 _O_NOFOLLOW: Optional[int] = getattr(os, "O_NOFOLLOW", None)
+#: ``O_CLOEXEC`` is POSIX-only; on Windows there is nothing to add and ``0`` is the honest
+#: spelling of that. Keeps a forked helper from inheriting the descriptor mid-read.
+_O_CLOEXEC: int = getattr(os, "O_CLOEXEC", 0)
+#: ``O_NONBLOCK`` is POSIX-only too. Opening a FIFO read-only BLOCKS until a writer shows
+#: up, so without it a FIFO planted at a state path would hang the process inside
+#: ``open(2)``, before :func:`_read_secure` could refuse it for not being a regular file.
+_O_NONBLOCK: int = getattr(os, "O_NONBLOCK", 0)
 
-#: How the symlink guard in :func:`_write_secure` is enforced on this platform.
+#: Largest on-disk state file :func:`_read_secure` will read, in bytes.
+#:
+#: Without a bound, a huge file planted at one of the state paths is read whole into this
+#: process. (The symlink half of the same attack is closed by ``O_NOFOLLOW``; see
+#: :data:`SYMLINK_GUARD`.)
+#:
+#: Three files live under the product directory: the ``pkeyt_`` token, a 32-char device id, and
+#: ``managed.json``. The record holds only compact JWSs plus a few unsigned hints, and a signed
+#: document's payload is capped at ``MAX_DOC_BYTES`` (64 KiB), which base64url-encodes to
+#: ~87 KiB, while the documents a real product signs are a few KiB each. 1 MiB is several times
+#: any realistic record and nowhere near "read the attacker's 8 GiB file".
+MAX_STATE_FILE_BYTES = 1024 * 1024
+
+#: How the symlink guard in :func:`_write_secure` and :func:`_read_secure` is enforced on
+#: this platform.
 #:
 #: ``"O_NOFOLLOW"``     the kernel refuses the ``open(2)`` atomically — POSIX.
 #: ``"lstat-precheck"`` ``os.O_NOFOLLOW`` does not exist (Windows). We ``lstat`` the
-#:   target and refuse to write through a link before opening. This is a **best-effort,
-#:   TOCTOU-racy** check, not the atomic guarantee POSIX gives — but it is an explicit,
-#:   documented degradation. The previous code did ``flags |= getattr(os, "O_NOFOLLOW", 0)``,
-#:   which silently OR-ed in a zero and left the docstring promising a protection that was
-#:   not there (R4-10). Callers can read this value (and surface it in a `doctor`-style
-#:   command) to know which guarantee they actually have.
+#:   target and refuse to read or write through a link before opening. This is a
+#:   **best-effort, TOCTOU-racy** check, not the atomic guarantee POSIX gives — but it is an
+#:   explicit, documented degradation. The previous code did
+#:   ``flags |= getattr(os, "O_NOFOLLOW", 0)``, which silently OR-ed in a zero and left the
+#:   docstring promising a protection that was not there (R4-10). Callers can read this value
+#:   (and surface it in a `doctor`-style command) to know which guarantee they actually have.
 SYMLINK_GUARD = "O_NOFOLLOW" if _O_NOFOLLOW is not None else "lstat-precheck"
 
 
@@ -106,24 +134,62 @@ def _write_secure(path: str, data: str) -> None:
     See :data:`SYMLINK_GUARD` for the per-platform strength of that refusal. Raises
     ``OSError`` (``ELOOP``) rather than writing through a link.
     """
-    flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
+    flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC | _O_CLOEXEC
     if _O_NOFOLLOW is not None:
         flags |= _O_NOFOLLOW
     elif os.path.islink(path):
         raise OSError(errno.ELOOP, "refusing to write through a symlink", path)
     fd = os.open(path, flags, 0o600)
     try:
+        # The creation mode applies only to a NEW file; repair a pre-existing loose one.
+        # Failing to TIGHTEN a mode (Windows, some network filesystems) must not fail the
+        # write that was going to happen anyway.
+        try:
+            os.fchmod(fd, 0o600)
+        except (AttributeError, OSError):
+            pass
         os.write(fd, data.encode("utf-8"))
     finally:
         os.close(fd)
 
 
-def _read_maybe(path: str) -> Optional[str]:
+def _read_secure(path: str) -> Optional[str]:
+    """Read ``path``, refusing to follow a symlink and bounding the read at
+    :data:`MAX_STATE_FILE_BYTES`.
+
+    Every refusal — absent, symlinked (``ELOOP``/``EMLINK``), not a regular file, over the
+    cap, unreadable, not UTF-8 — returns ``None``, which is this store's single spelling of
+    **ABSENT**. That is the standing convention (§4.1: a missing, unreadable or unparseable
+    cache is "no cache", which Core treats as needs-activation), and it is what keeps a
+    planted file from being either trusted *or* fatal.
+    """
+    flags = os.O_RDONLY | _O_CLOEXEC | _O_NONBLOCK
+    if _O_NOFOLLOW is not None:
+        flags |= _O_NOFOLLOW
+    elif os.path.islink(path):
+        return None
     try:
-        with open(path, "r", encoding="utf-8") as f:
-            return f.read()
+        fd = os.open(path, flags)
     except OSError:
         return None
+    try:
+        st = os.fstat(fd)
+        # A directory, FIFO or device node at this path is not the file we wrote.
+        if not stat.S_ISREG(st.st_mode) or st.st_size > MAX_STATE_FILE_BYTES:
+            return None
+        with os.fdopen(fd, "rb") as handle:
+            fd = -1  # ownership transferred to `handle`
+            # One byte past the cap: the file may have grown since the `fstat`, and a read
+            # that comes back longer than the cap is the same refusal as a `stat` that said so.
+            data = handle.read(MAX_STATE_FILE_BYTES + 1)
+        if len(data) > MAX_STATE_FILE_BYTES:
+            return None
+        return data.decode("utf-8")
+    except (OSError, ValueError):  # ValueError covers UnicodeDecodeError
+        return None
+    finally:
+        if fd >= 0:
+            os.close(fd)
 
 
 class FileStore:
@@ -143,7 +209,7 @@ class FileStore:
         self._device_path = os.path.join(self._dir, "device")
 
     def get_token(self) -> Optional[str]:
-        raw = _read_maybe(self._token_path)
+        raw = _read_secure(self._token_path)
         return raw.strip() if raw and raw.strip() else None
 
     def set_token(self, token: str) -> None:
@@ -156,7 +222,7 @@ class FileStore:
             pass
 
     def get_device_id(self) -> str:
-        existing = _read_maybe(self._device_path)
+        existing = _read_secure(self._device_path)
         if existing and existing.strip():
             return existing.strip()
         device_id = derive_device_id(self._product_slug)
@@ -169,7 +235,7 @@ class FileStore:
         _write_secure(self._device_path, device_id)
 
     def read_cache(self) -> Optional[CacheRecord]:
-        raw = _read_maybe(self._cache_path)
+        raw = _read_secure(self._cache_path)
         if not raw:
             return None
         try:

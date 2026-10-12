@@ -6,12 +6,14 @@ from __future__ import annotations
 import json
 import os
 import stat
+import threading
 
 import pytest
 
 from polaris_key.core.b64url import b64url_decode, b64url_encode, b64url_encode_str
 from polaris_key.core.jws import sign_jws, verify_jws
 from polaris_key.core.models import (
+    BLOCK_REASONS,
     MAX_DOC_BYTES,
     TYP_LICENSE,
     AllowedRange,
@@ -19,7 +21,12 @@ from polaris_key.core.models import (
 )
 from polaris_key.core.store import CACHE_FORMAT_VERSION, CacheRecord
 from polaris_key.devices.deviceid import derive_device_id
-from polaris_key.devices.store import FileStore, InMemoryStore, KeyringStore
+from polaris_key.devices.store import (
+    MAX_STATE_FILE_BYTES,
+    FileStore,
+    InMemoryStore,
+    KeyringStore,
+)
 
 KID = "pkey-test-prod-2026"
 PUBKEY_RAW = "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
@@ -152,6 +159,54 @@ def test_a_non_string_bundle_slice_is_dropped_and_the_old_marker_is_never_read()
     assert old.bundle is None and "importedBundle" not in old.to_dict()
 
 
+@pytest.mark.parametrize(
+    "poisoned",
+    [
+        {"reason": "ok"},
+        {"reason": "grace"},
+        {"reason": "not-applicable"},
+        {"reason": "definitely-fine"},
+        {"reason": ""},
+        {"reason": None},
+        {"reason": 5},
+        {"reason": ["version-too-old"]},
+        {"allowedRange": {"min": "1.0.0"}},
+        "version-too-old",
+        ["version-too-old"],
+    ],
+)
+def test_a_blocked_hint_outside_the_vocabulary_is_dropped_and_the_rest_of_the_record_survives(
+    poisoned,
+) -> None:
+    """§4.1 keeps ``blocked`` unsigned on the argument that it can only ever make the gate
+    STRICTER, and the gate returns its reason AS the status — so a reason outside
+    ``BLOCK_REASONS`` (``{"reason": "ok"}`` is the one that matters) must not survive the
+    decode. It is DROPPED, not coerced: the record is simply not one this client wrote, and
+    the honest reading of a hint that does not parse is that there is none."""
+    rec = CacheRecord.from_dict(
+        {
+            "v": CACHE_FORMAT_VERSION,
+            "docs": {"license": "l.w.s"},
+            "trustJws": "t.w.s",
+            "blocked": poisoned,
+        }
+    )
+    assert rec.blocked is None
+    assert rec.docs == {"license": "l.w.s"} and rec.trustJws == "t.w.s"
+
+
+@pytest.mark.parametrize("reason", BLOCK_REASONS)
+def test_a_blocked_hint_inside_the_vocabulary_is_read_back_with_its_range(reason: str) -> None:
+    """The drop narrows the hint; it does not delete the feature."""
+    rec = CacheRecord.from_dict(
+        {
+            "v": CACHE_FORMAT_VERSION,
+            "blocked": {"reason": reason, "allowedRange": {"min": "1.0.0"}},
+        }
+    )
+    assert rec.blocked == BlockedState(reason=reason, allowedRange=AllowedRange(min="1.0.0"))
+
+
 # ── FileStore ───────────────────────────────────────────────────────────────────────
 def test_filestore_roundtrip_and_permissions(tmp_path) -> None:
     store = FileStore("djdl", str(tmp_path))
@@ -235,6 +290,212 @@ def test_filestore_ignores_an_unreadable_cache(tmp_path) -> None:
     ) as f:
         f.write("{not json")
     assert store.read_cache() is None
+
+
+# ── hostile filesystem: O_NOFOLLOW + a size cap on the READ ─────────────────────────
+#
+# Mode 0600 applies at creation, so a symlink planted at ``managed.json``/``token``/``device``
+# would redirect a plain ``open()`` read to a file the attacker chose, and a huge file at the
+# path would be read whole into the process. Every refusal must land as **ABSENT** (``None``) —
+# this store's one spelling of a failed artifact (§4.1) — never as a crash and never as the
+# attacker's bytes.
+
+
+def _cache_json(padding: str = "") -> str:
+    rec: dict = {
+        "v": CACHE_FORMAT_VERSION,
+        "docs": {"license": "a.b.c"},
+        "etags": {"license": "lic-1"},
+        "lastSyncUnauthorized": False,
+    }
+    if padding:
+        rec["pad"] = padding
+    return json.dumps(rec)
+
+
+def _cache_json_of_size(size: int) -> str:
+    """All-ASCII JSON of EXACTLY ``size`` bytes, so the cap is pinned on both sides."""
+    body = _cache_json("x" * (size - len(_cache_json("x")) + 1))
+    assert len(body.encode("utf-8")) == size, f"fixture is {len(body)} bytes"
+    return body
+
+
+def test_a_symlinked_cache_path_reads_as_absent(tmp_path) -> None:
+    """The target is a perfectly parseable v3 record; the only reason the read is ``None``
+    is the refusal to follow the link."""
+    store = FileStore("djdl", str(tmp_path))
+    outside = tmp_path / "attacker-owned"
+    outside.write_text(_cache_json(), encoding="utf-8")
+    cache_path = os.path.join(str(tmp_path), "djdl", "managed.json")
+    os.symlink(str(outside), cache_path)
+
+    assert CacheRecord.from_dict(json.loads(outside.read_text())).docs["license"] == "a.b.c"
+    assert store.read_cache() is None
+    assert outside.read_text(encoding="utf-8") == _cache_json()
+
+
+def test_a_symlinked_token_path_reads_as_absent(tmp_path) -> None:
+    store = FileStore("djdl", str(tmp_path))
+    outside = tmp_path / "attacker-token"
+    outside.write_text("pkeyt_attacker-chose-this\n", encoding="utf-8")
+    os.symlink(str(outside), os.path.join(str(tmp_path), "djdl", "token"))
+    assert store.get_token() is None
+
+
+def test_a_symlinked_device_path_refuses_rather_than_adopting_the_id(tmp_path) -> None:
+    """The device id is the Device principal's NAME (§6). Reading one through a link would
+    let a local attacker rename this install; writing the freshly-minted replacement through
+    the same link would let them place it. So the read is absent and the write refuses."""
+    store = FileStore("djdl", str(tmp_path))
+    outside = tmp_path / "attacker-device"
+    outside.write_text("attacker-chosen-device-id", encoding="utf-8")
+    os.symlink(str(outside), os.path.join(str(tmp_path), "djdl", "device"))
+
+    with pytest.raises(OSError):
+        store.get_device_id()
+    assert outside.read_text(encoding="utf-8") == "attacker-chosen-device-id"
+
+
+def test_the_lstat_precheck_refuses_a_symlink_on_the_read_too(monkeypatch, tmp_path) -> None:
+    """Force the no-``O_NOFOLLOW`` (Windows) path: the read still refuses the link."""
+    import polaris_key.devices.store as store_mod
+
+    store = FileStore("djdl", str(tmp_path))
+    outside = tmp_path / "attacker-owned"
+    outside.write_text(_cache_json(), encoding="utf-8")
+    token_outside = tmp_path / "attacker-token"
+    token_outside.write_text("pkeyt_attacker-chose-this\n", encoding="utf-8")
+    os.symlink(str(outside), os.path.join(str(tmp_path), "djdl", "managed.json"))
+    os.symlink(str(token_outside), os.path.join(str(tmp_path), "djdl", "token"))
+
+    monkeypatch.setattr(store_mod, "_O_NOFOLLOW", None)
+    assert store.read_cache() is None
+    assert store.get_token() is None
+
+
+def test_the_read_cap_is_named_and_generous() -> None:
+    # A signed document's payload is capped at 64 KiB, which base64url-encodes to ~87 KiB, and
+    # the record holds only compact JWSs plus a few hints.
+    assert MAX_STATE_FILE_BYTES == 1024 * 1024
+
+
+def test_a_cache_file_exactly_at_the_cap_still_reads(tmp_path) -> None:
+    store = FileStore("djdl", str(tmp_path))
+    path = os.path.join(str(tmp_path), "djdl", "managed.json")
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(_cache_json_of_size(MAX_STATE_FILE_BYTES))
+    loaded = store.read_cache()
+    assert loaded is not None and loaded.docs["license"] == "a.b.c"
+
+
+def test_a_cache_file_one_byte_over_the_cap_reads_as_absent(tmp_path) -> None:
+    """Byte-for-byte the same shape as the case above; only the size differs."""
+    store = FileStore("djdl", str(tmp_path))
+    path = os.path.join(str(tmp_path), "djdl", "managed.json")
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(_cache_json_of_size(MAX_STATE_FILE_BYTES + 1))
+    assert store.read_cache() is None
+
+
+def test_the_cap_binds_the_token_and_the_device_file_too(tmp_path) -> None:
+    store = FileStore("djdl", str(tmp_path))
+    token_path = os.path.join(str(tmp_path), "djdl", "token")
+    with open(token_path, "w", encoding="utf-8") as f:
+        f.write("t" * MAX_STATE_FILE_BYTES)
+    assert store.get_token() == "t" * MAX_STATE_FILE_BYTES
+    with open(token_path, "w", encoding="utf-8") as f:
+        f.write("t" * (MAX_STATE_FILE_BYTES + 1))
+    assert store.get_token() is None
+
+    # An oversize device file is ABSENT, so the id is re-derived and the file replaced.
+    device_path = os.path.join(str(tmp_path), "djdl", "device")
+    with open(device_path, "w", encoding="utf-8") as f:
+        f.write("d" * (MAX_STATE_FILE_BYTES + 1))
+    device_id = store.get_device_id()
+    assert len(device_id) == 32
+    assert os.path.getsize(device_path) == 32
+
+
+def test_a_directory_planted_at_the_cache_path_reads_as_absent(tmp_path) -> None:
+    """Not a regular file => not the file we wrote. ``EISDIR`` must degrade to "re-fetch",
+    not to a client that cannot boot."""
+    store = FileStore("djdl", str(tmp_path))
+    os.mkdir(os.path.join(str(tmp_path), "djdl", "managed.json"))
+    assert store.read_cache() is None
+
+
+@pytest.mark.skipif(not hasattr(os, "mkfifo"), reason="needs POSIX FIFOs")
+def test_a_fifo_planted_at_a_state_path_reads_as_absent_without_blocking(tmp_path) -> None:
+    """Opening a FIFO read-only blocks until a writer appears, so without ``O_NONBLOCK`` a
+    planted FIFO would hang the process inside ``open(2)`` before the regular-file check could
+    refuse it."""
+    store = FileStore("djdl", str(tmp_path))
+    fifo = os.path.join(str(tmp_path), "djdl", "managed.json")
+    os.mkfifo(fifo)
+    result: list = []
+    reader = threading.Thread(target=lambda: result.append(store.read_cache()), daemon=True)
+    reader.start()
+    reader.join(timeout=10)
+    try:
+        assert not reader.is_alive(), "reading a FIFO must not wait for a writer"
+        assert result == [None]
+    finally:
+        if reader.is_alive():
+            # Release a reader a regression left blocked in open(2), so the suite can exit.
+            fd = os.open(fifo, os.O_WRONLY)
+            os.close(fd)
+            reader.join(timeout=5)
+
+
+def test_a_state_file_that_is_not_utf8_reads_as_absent_instead_of_raising(tmp_path) -> None:
+    store = FileStore("djdl", str(tmp_path))
+    for name in ("token", "managed.json"):
+        with open(os.path.join(str(tmp_path), "djdl", name), "wb") as f:
+            f.write(b"\xff\xfe\xfa not utf-8")
+    assert store.get_token() is None
+    assert store.read_cache() is None
+
+
+def test_the_hardened_read_still_round_trips_and_stays_0600(tmp_path) -> None:
+    store = FileStore("djdl", str(tmp_path))
+    store.set_token("pkeyt_roundtrip")
+    rec = CacheRecord(docs={"license": "a.b.c"}, etags={"license": "lic-1"})
+    store.write_cache(rec)
+    device_id = store.get_device_id()
+
+    fresh = FileStore("djdl", str(tmp_path))
+    assert fresh.get_token() == "pkeyt_roundtrip"
+    assert fresh.read_cache() == rec
+    assert fresh.get_device_id() == device_id
+
+    for name in ("token", "managed.json", "device"):
+        mode = stat.S_IMODE(os.stat(os.path.join(str(tmp_path), "djdl", name)).st_mode)
+        assert mode == 0o600, f"{name} must be 0600"
+
+
+@pytest.mark.skipif(not hasattr(os, "fchmod"), reason="needs POSIX file modes")
+@pytest.mark.parametrize(
+    "name,write",
+    [
+        ("managed.json", lambda s: s.write_cache(CacheRecord(docs={"license": "a.b.c"}))),
+        ("token", lambda s: s.set_token("pkeyt_repaired")),
+        ("device", lambda s: s.set_device_id("d" * 32)),
+    ],
+    ids=["cache", "token", "device"],
+)
+def test_a_pre_existing_loose_mode_is_repaired_on_write(name, write, tmp_path) -> None:
+    """0600 applies AT CREATION only, so a record left world-readable by an older build (or
+    by a first write that died between ``open`` and ``chmod``) is tightened by the next
+    write rather than inherited."""
+    store = FileStore("djdl", str(tmp_path))
+    path = os.path.join(str(tmp_path), "djdl", name)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write("placeholder")
+    os.chmod(path, 0o644)
+    assert stat.S_IMODE(os.stat(path).st_mode) == 0o644
+
+    write(store)
+    assert stat.S_IMODE(os.stat(path).st_mode) == 0o600
 
 
 def test_keyring_store_falls_back_to_files_and_uses_the_pkey_tag(tmp_path) -> None:

@@ -32,6 +32,7 @@ from ..core.models import (
     BlockedState,
     LicenseDoc,
     LicenseStatus,
+    coerce_block_reason,
 )
 
 __all__ = ["LicenseState", "BlockedState", "AllowedRange", "license_state", "is_usable"]
@@ -89,7 +90,16 @@ def license_state(
     if activation is None:
         return LicenseState(status="needs-activation")
     if blocked is not None:
-        return LicenseState(status=blocked.reason, allowedRange=blocked.allowedRange)
+        # §4.1's "the unsigned hints can only ever make the gate STRICTER" is a claim about
+        # the VOCABULARY, and ``BlockReason`` is just ``str``. Without this coercion the
+        # reason is returned verbatim as the status, so an unsigned ``{"reason": "ok"}`` on
+        # disk (or in a 403 body) would walk straight through ``is_usable`` and licence the
+        # client with no signature anywhere. The edges validate too; this is here so the
+        # invariant holds at the DECISION point, not only where the value was last handled.
+        return LicenseState(
+            status=coerce_block_reason(blocked.reason),
+            allowedRange=blocked.allowedRange,
+        )
     if last_sync_unauthorized:
         return LicenseState(status="revoked")
     if doc is None or not _has_valid_window(doc):

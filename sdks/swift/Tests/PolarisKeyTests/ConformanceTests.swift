@@ -58,8 +58,12 @@ struct CorpusJwsCase: Decodable {
     let trust: TrustSet
     /// v3 pins a `typ` on EVERY vector — the untyped tolerance window is over (§2).
     let typ: String
-    /// Present only on the two `pkey-bundle+jws` vectors, which exercise §1's raised cap.
+    /// Present only on the `pkey-bundle+jws` vectors, which exercise §1's raised cap.
     let maxPayloadBytes: Int?
+    /// Drive this vector through a call site that names NO `typ`. `typ` above still records what
+    /// the ARTIFACT is; this says what the CALLER asked for. Present on the one vector that
+    /// proves §1's raised payload cap is granted to a `typ` rather than to a caller.
+    let callSiteOmitsTyp: Bool?
     let expect: JwsExpect
 }
 
@@ -226,8 +230,12 @@ final class ConformanceTests: XCTestCase {
         for c in try loadCorpus().jwsCases {
             let typ = JwsTyp(rawValue: c.typ)
             XCTAssertNotNil(typ, "\(c.id): corpus names a typ this SDK does not know — \(c.typ)")
+            // Every vector demands its `typ`, except one that sets `callSiteOmitsTyp`: it drives a
+            // call site that names no type at all, which is how §1's raised payload cap is proved
+            // to be granted to a `typ` rather than to a caller.
+            let omitsTyp = c.callSiteOmitsTyp == true
             let result = JWSVerifier.verify(
-                c.jws, trust: c.trust, typ: typ, requireTyp: true,
+                c.jws, trust: c.trust, typ: omitsTyp ? nil : typ, requireTyp: !omitsTyp,
                 maxPayloadBytes: c.maxPayloadBytes)
             if c.expect.verify == "ok" {
                 guard let result else {

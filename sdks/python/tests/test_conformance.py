@@ -107,6 +107,21 @@ def test_jws_case(case: Dict[str, Any]) -> None:
     # the runner does not have a mode where it is off. The raised payload cap travels
     # WITH the vector, so a runner cannot accidentally grant bundle sizes to ordinary
     # documents.
+    #
+    # ...with ONE exception: `callSiteOmitsTyp` describes a call site that names no type at
+    # all, which is how §1's raised payload cap is proved to be granted to a `typ` rather than
+    # to a caller. Python's `typ` is a REQUIRED keyword, so that call site cannot be written
+    # here: the verdict the corpus pins (`fail`) is reached structurally, by a `TypeError`,
+    # which is stronger than a runtime refusal.
+    if case.get("callSiteOmitsTyp") is True:
+        assert case["expect"]["verify"] == "fail", case["id"]
+        with pytest.raises(TypeError):
+            verify_jws(  # type: ignore[call-arg]
+                case["jws"],
+                case["trust"],
+                max_payload_bytes=case.get("maxPayloadBytes"),
+            )
+        return
     result = verify_jws(
         case["jws"],
         case["trust"],

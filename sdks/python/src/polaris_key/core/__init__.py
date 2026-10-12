@@ -73,6 +73,8 @@ from .models import (
     TYP_CONFIG,
     TYP_LICENSE,
     TYP_TRUST,
+    BLOCK_REASONS,
+    STRICTEST_BLOCK_REASON,
     AllowedRange,
     BlockedState,
     ConfigDoc,
@@ -81,6 +83,8 @@ from .models import (
     LicenseDoc,
     ManagedEntry,
     SignedInUser,
+    coerce_block_reason,
+    is_block_reason,
     license_user,
 )
 from .semver import (
@@ -257,6 +261,10 @@ __all__ = [
     "HEADER_ARCH",
     "HEADER_SDK_NAME",
     "HEADER_SDK_VERSION",
+    "BLOCK_REASONS",
+    "STRICTEST_BLOCK_REASON",
+    "is_block_reason",
+    "coerce_block_reason",
     "AllowedRange",
     "BlockedState",
     "ManagedEntry",

@@ -100,7 +100,13 @@ public struct CacheRecord: Sendable, Codable, Equatable {
             try c.decodeIfPresent([String: String].self, forKey: .etags))
         bundle = try? c.decodeIfPresent(String.self, forKey: .bundle)
         lastSyncUnauthorized = try c.decodeIfPresent(Bool.self, forKey: .lastSyncUnauthorized)
-        blocked = try c.decodeIfPresent(BlockInfoRecord.self, forKey: .blocked)
+        // `try?`, not `try`: a `reason` outside the `BlockReason` enum must drop the HINT, not the
+        // whole record. §4.1 keeps `blocked` unsigned on the argument that it can only ever make
+        // the gate STRICTER, and Swift's closed enum is what makes that true here — but a throwing
+        // decode would turn a poisoned two-field hint into "discard the entire verified cache",
+        // where the other SDKs drop just the field. Same acceptance decision, different blast
+        // radius, for identical bytes.
+        blocked = try? c.decodeIfPresent(BlockInfoRecord.self, forKey: .blocked)
         // A slice that does not decode is no slice: nothing in it could be re-verified anyway.
         feeds = (try? c.decodeIfPresent([String: String].self, forKey: .feeds)) ?? [:]
         releaseRecords =

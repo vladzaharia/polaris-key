@@ -928,33 +928,40 @@ public actor CoreContext {
         feedFloorsValue = reloaded.floors
     }
 
-    /// Re-verify a CACHED document. Every §3 claim is checked exactly as on the network path,
-    /// with two reload-specific differences:
+    /// Re-verify a CACHED document: every §3 claim exactly as on the network path, minus
+    /// freshness — a cached document is EXPECTED to be past its short `expiresAt`, and deciding
+    /// what that means is the gate's job (`grace`/`expired`, bounded by `graceUntil` against the
+    /// monotonic floor, §4.2).
     ///
-    /// - freshness is NOT enforced — a cached document is expected to be past its short
-    ///   `expiresAt`, and deciding what that means is the gate's job (`grace`/`expired`); and
-    /// - the time claims are evaluated at `max(effectiveNow, doc.issuedAt)`, so a rolled-back
-    ///   clock cannot widen a window and an honestly-wrong clock cannot silently delete a
-    ///   licence the user paid for.
+    /// How far ahead of the system clock a cached document may be stamped is NOT bounded here.
+    /// The reload profile bounds a document by `graceUntil` alone (§3), and §10 forbids local
+    /// tolerances beyond the contract. This used to take a signature-verified "peek" at `issuedAt`
+    /// and refuse a document stamped more than `MAX_GRACE_SECONDS` past the system clock, and
+    /// neither half of that held up:
     ///
-    /// Called AFTER the cached manifest is applied, so `effectiveNow` already carries the
-    /// manifest's floor.
+    ///   * The refusal is a rule §3 does not state. It made Swift the only SDK that could refuse a
+    ///     document Node and Python accept, for identical signed bytes and an identical cache
+    ///     file. Where it bit it also kept an artifact out of the floor, so a rolled-back clock
+    ///     read `grace` where the corpus's `floor-max-over-three-artifacts` says `expired`.
+    ///   * It decided against the SYSTEM clock, which is the dependency §4.2 exists to remove: a
+    ///     device with a dead RTC — the machine most likely to be running offline in the first
+    ///     place — could refuse its own valid cached licence.
+    ///   * The `max(now(), peek.issuedAt)` evaluation time was inert regardless: on the reload
+    ///     profile `now` is consulted only inside the `checkFreshness` branch, which is skipped.
+    ///     Dropping it changes no decision and saves a second signature check per document per
+    ///     load.
+    ///
+    /// A cached document still has to VERIFY — against the effective set, on the pins-rooted
+    /// manifest — so nothing here loosens what may enter the trust chain.
+    ///
+    /// Called AFTER the cached manifest is applied, so the floor already carries the manifest's
+    /// `issuedAt`.
     private func verifyCached<T: DocClaims>(_ jws: String, spec: DocTypeSpec<T>) -> T? {
-        // Signature-verified peek (never an unauthenticated parse) to learn `issuedAt`.
-        guard
-            let peek = JWSVerifier.verifyDecoding(
-                T.self, jws, trust: trust, typ: spec.typ, requireTyp: true)
-        else { return nil }
-        // Evaluating at the document's own `issuedAt` is what makes a wrong clock survivable,
-        // so bound how far forward ONE artifact may drag the floor: a cached doc may sit ahead
-        // of a badly-set clock, but not decades ahead of it.
-        guard peek.issuedAt <= saturatingAdd(now(), MAX_GRACE_SECONDS) else { return nil }
-        return verifyDoc(
+        verifyDoc(
             jws, spec: spec,
             options: VerifyOptions(
                 trust: trust, expectedAud: product, deviceId: deviceIdValue,
-                lastAcceptedIssuedAt: nil,
-                now: Swift.max(now(), peek.issuedAt), checkFreshness: false))
+                lastAcceptedIssuedAt: nil, now: now(), checkFreshness: false))
     }
 
     /// Read-modify-write the whole record. The ONLY mutation path (§4.1): a service module that
@@ -983,7 +990,14 @@ public actor CoreContext {
     public func importBundle(
         _ jws: String, now importedAt: Int? = nil
     ) async throws -> ImportBundleResult {
-        let stamp = importedAt ?? systemClock()
+        // §7 step 2 checks the bundle's own import deadline with network-path freshness, and §3
+        // runs that path at the EFFECTIVE clock — `max(systemClock, floor)`, the §4.2 monotonic
+        // floor, which exists so a rolled-back clock buys nothing — never the bare system clock.
+        // Passing the raw wall clock here let winding the machine back inside a lapsed 30-day
+        // import window make an expired bundle importable again. The floor only ever rises, and
+        // only from content whose signature has been checked, so using it can extend no window —
+        // only refuse one a tampered clock was reopening.
+        let stamp = now(importedAt)
         // A byte-identical re-import of the bundle this install holds (and that re-verified):
         // success, nothing written.
         if let held = loaded.bundle, record?.bundle == jws {
