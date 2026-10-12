@@ -48,6 +48,7 @@ jobs:
   client:
     name: Registry client (${{ matrix.name || matrix.client }})
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -215,7 +216,7 @@ jobs:
           cache: pnpm
       - if: ${{ env.PICKED == 'true' && matrix.bun }}
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
         if: env.PICKED == 'true' && matrix.go
         with:
           go-version: stable
@@ -232,7 +233,7 @@ jobs:
         if: env.PICKED == 'true'
       # F-09: GodotEnv is a .NET tool; the godot client fails rather than skips without it here.
       - if: env.PICKED == 'true' && matrix.client == 'godot'
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
         with:
           dotnet-version: "8.0.x"
       - if: env.PICKED == 'true' && matrix.client == 'godot'

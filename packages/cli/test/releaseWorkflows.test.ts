@@ -59,6 +59,7 @@ interface Job {
   name?: string;
   needs?: string | string[];
   "runs-on"?: string;
+  "timeout-minutes"?: number;
   environment?: string | { name: string };
   permissions?: Record<string, string>;
   strategy?: { matrix?: Record<string, unknown> };
@@ -409,8 +410,8 @@ describe("publish-package.yml (the trusted publisher)", () => {
 
   it("verifies the downloaded artifact and retries the download once (a stalled download exits 0 with an empty dir)", () => {
     const steps = job.steps ?? [];
-    const downloads = steps.filter(
-      (s) => s.uses === "actions/download-artifact@v4",
+    const downloads = steps.filter((s) =>
+      s.uses?.startsWith("actions/download-artifact@"),
     );
     expect(downloads).toHaveLength(2);
     const checks = steps.filter((s) =>
@@ -422,7 +423,7 @@ describe("publish-package.yml (the trusted publisher)", () => {
     for (const s of [...downloads, ...checks])
       expect(steps.indexOf(s)).toBeLessThan(publishAt);
     expect(raw("publish-package.yml")).toMatch(
-      /id: download\n\s+uses: actions\/download-artifact@v4\n\s+continue-on-error: true/,
+      /id: download\n\s+uses: actions\/download-artifact@[0-9a-f]{40} # v4\.\d+\.\d+\n\s+continue-on-error: true/,
     );
   });
 
@@ -1052,5 +1053,116 @@ describe("Swift releases are signed or not published (plans/F-01.md §5.3)", () 
     );
     expect(failure?.code).toBe(1);
     expect(failure?.stdout?.trim()).toBe(SWIFT_ERROR);
+  });
+});
+
+describe("workflow hardening", () => {
+  it("pins every third-party action to a full commit SHA with a version comment", () => {
+    const files = [
+      ...workflowFiles.map((f) => path.join(WORKFLOWS, f)),
+      path.join(ROOT, ".github", "actions", "setup-js", "action.yml"),
+    ];
+    for (const file of files)
+      for (const line of readFileSync(file, "utf8").split("\n")) {
+        const m = /^\s*(?:-\s+)?uses:\s*(\S+)(.*)$/.exec(line);
+        if (!m || m[1]!.startsWith("./")) continue;
+        expect(m[1], `${path.basename(file)}: ${line.trim()}`).toMatch(
+          /@[0-9a-f]{40}$/,
+        );
+        expect(m[2], `${path.basename(file)}: ${line.trim()}`).toMatch(
+          /^\s+# v\d+(\.\d+)*\s*$/,
+        );
+      }
+  });
+
+  it("bounds every job that runs steps with timeout-minutes", () => {
+    for (const file of workflowFiles)
+      for (const [id, job] of Object.entries(workflow(file).jobs ?? {})) {
+        // A job that calls a reusable workflow cannot set it; the called jobs do.
+        if (job.uses) continue;
+        expect(job["timeout-minutes"], `${file} ${id}`).toBeGreaterThan(0);
+      }
+  });
+
+  it("allows native builds through pnpm-workspace.yaml, the only place pnpm 10 reads them", () => {
+    const ws = parseYaml(
+      readFileSync(path.join(ROOT, "pnpm-workspace.yaml"), "utf8"),
+    ) as { onlyBuiltDependencies?: string[] };
+    expect(ws.onlyBuiltDependencies).toEqual([
+      "better-sqlite3",
+      "esbuild",
+      "workerd",
+    ]);
+    const pkg = JSON.parse(
+      readFileSync(path.join(ROOT, "package.json"), "utf8"),
+    ) as Record<string, unknown>;
+    expect(pkg.pnpm).toBeUndefined();
+  });
+
+  describe("deploy.yml", () => {
+    const deploy = workflow("deploy.yml");
+    const verifySteps = deploy.jobs.verify!.steps ?? [];
+    const gateAt = verifySteps.findIndex(
+      (s) => s.name === "Require green checks on the tagged commit",
+    );
+    const gate = verifySteps[gateAt]!;
+
+    it("requires every check run on the tagged commit to be green, failing closed, before anything is installed", () => {
+      expect(deploy.jobs.verify!.permissions).toEqual({
+        contents: "read",
+        checks: "read",
+      });
+      expect(gateAt).toBeGreaterThan(-1);
+      const ancestry = verifySteps.findIndex((s) =>
+        s.run?.includes("merge-base --is-ancestor"),
+      );
+      const install = verifySteps.findIndex((s) =>
+        s.run?.includes("pnpm install"),
+      );
+      expect(gateAt).toBeGreaterThan(ancestry);
+      expect(gateAt).toBeLessThan(install);
+      // Reads the check runs of the tagged SHA, excludes this run's own, and fails closed on
+      // an API error and on zero check runs.
+      expect(gate.run).toContain("commits/$SHA/check-runs");
+      expect(gate.run).toContain('$ENV.RUN_ID + "/"');
+      expect(gate.run).toContain("could not read check runs");
+      expect(gate.run).toContain("no check runs recorded");
+      expect(gate.run).toContain(
+        "completed:success | completed:skipped | completed:neutral",
+      );
+      // In-progress runs are polled for a bounded number of attempts, never forever.
+      expect(gate.run).toMatch(/MAX_ATTEMPTS=\d+/);
+      expect(gate.run).not.toContain("while true");
+    });
+
+    it("keeps the privileged job's permissions free of checks", () => {
+      expect(deploy.jobs["deploy-worker"]!.permissions).toEqual({
+        contents: "read",
+        "id-token": "write",
+      });
+    });
+
+    it("smoke-checks both doors into the gated docs bundle", () => {
+      const smoke = (deploy.jobs["deploy-worker"]!.steps ?? []).find(
+        (s) => s.id === "smoke",
+      );
+      expect(smoke?.run).toContain('"$ORIGIN/docs/"');
+      expect(smoke?.run).toContain('"$ORIGIN/manage/docs/index.html"');
+      expect(smoke?.run).toContain('[ "$BYPASS_CODE" = "200" ]');
+    });
+
+    it("keeps the production environment and says why it must stay", () => {
+      expect(deploy.jobs["deploy-worker"]!.environment).toBe("production");
+      expect(raw("deploy.yml")).toContain(
+        "DO NOT DELETE `environment: production`",
+      );
+      const docs = readFileSync(
+        path.join(ROOT, "docs", "DEPLOYMENT.md"),
+        "utf8",
+      );
+      expect(docs).toContain(
+        "must exist **only** as an environment secret on the `production`",
+      );
+    });
   });
 });
