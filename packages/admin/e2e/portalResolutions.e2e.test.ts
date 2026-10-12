@@ -252,18 +252,22 @@ describe("the signed-in header (PORTAL.md §3.2, §8)", () => {
         'header button[aria-label^="Account:"]',
       ];
       // The header lays out after a viewport change, so a control can be absent or hidden for a
-      // moment. Wait for each one to be visible (a timeout names the control) before measuring it;
-      // measuring `undefined` threw a TypeError instead.
+      // moment. Wait for each one to be visible before measuring it, and name the control if it
+      // never is; measuring `undefined` threw a TypeError instead.
       const heights = async () => {
         for (const sel of headerControls)
-          await o.page.waitForFunction(
-            (s) =>
-              [...document.querySelectorAll(s)].some((e) =>
-                e.checkVisibility(),
-              ),
-            sel,
-            { timeout: 8000 },
-          );
+          await o.page
+            .waitForFunction(
+              (s) =>
+                [...document.querySelectorAll(s)].some((e) =>
+                  e.checkVisibility(),
+                ),
+              sel,
+              { timeout: 8000 },
+            )
+            .catch(() => {
+              throw new Error(`header control never became visible: ${sel}`);
+            });
         return o.page.evaluate(
           (selectors) =>
             selectors.map((sel) =>
