@@ -23,6 +23,7 @@ import {
   openManagedValue,
   sealManagedValue,
 } from "../src/core/managedSecrets.js";
+import { MANAGED_SCAN_ROWS } from "../src/console/handlers/products.js";
 import type { ManagedPayload } from "../src/core/licensing/payload.js";
 import { handleAdmin } from "../src/console/index.js";
 import {
@@ -531,6 +532,8 @@ interface KekResponse {
   };
   remaining?: number;
   unopenable?: number;
+  countsComplete?: boolean;
+  countsTruncated?: string[];
   resealed?: number;
   skipped?: number;
   failed?: number;
@@ -1265,6 +1268,192 @@ describe("KEK rotation sweep (GET|POST /api/products/kek)", () => {
     expect((await kek(env, db, "POST", { body: { limit: 9999 } })).status).toBe(
       422,
     );
+  });
+});
+
+// ── the managed-payload scan is bounded, and a bounded count says so ──────────────────────────
+
+describe("KEK keyring count is bounded and honest about it", () => {
+  /** `n` profiles for `slug`, each carrying one sealed managed secret under `sealEnv`'s active
+   *  key, exactly as `applyOverrides` writes them. */
+  async function seedManagedProfiles(
+    db: Db,
+    sealEnv: Env,
+    slug: string,
+    n: number,
+  ): Promise<void> {
+    const value = await sealManagedValue(sealEnv, slug, "TOKEN", "plaintext");
+    const payload = JSON.stringify({
+      config: {},
+      secrets: { TOKEN: { state: "enforced", value, updatedAt: NOW } },
+      entitlements: {},
+    });
+    await db.batch(
+      Array.from({ length: n }, (_, i) => ({
+        sql: `INSERT INTO profiles (product, id, name, description, payload_json, modified_by, modified_at)
+              VALUES (?, ?, ?, NULL, ?, NULL, ?)`,
+        params: [
+          slug,
+          `profile-${String(i).padStart(5, "0")}`,
+          `Profile ${i}`,
+          payload,
+          NOW,
+        ],
+      })),
+    );
+  }
+
+  it("never pulls an unbounded set of managed-payload rows into the isolate", async () => {
+    const { db, kv } = await seedSealedRows();
+    const env = kekAdminEnv(kv, { PLATFORM_KEK: KEK_OLD });
+    await seedManagedProfiles(db, env, "djdl", MANAGED_SCAN_ROWS + 25);
+
+    // Every SELECT the request issues is recorded; each managed-payload scan must be bounded.
+    const seen: string[] = [];
+    const watched: Db = {
+      all<T = Record<string, unknown>>(sql: string, ...params: DbParam[]) {
+        seen.push(sql);
+        return db.all<T>(sql, ...params);
+      },
+      first<T = Record<string, unknown>>(sql: string, ...params: DbParam[]) {
+        return db.first<T>(sql, ...params);
+      },
+      run: db.run.bind(db),
+      batch: db.batch.bind(db),
+      runChanges: db.runChanges.bind(db),
+    };
+
+    const { status, body } = await kek(env, watched, "GET");
+
+    expect(status).toBe(200);
+    // One scan per table that nests envelopes in a payload: profiles, licences, account overrides.
+    const scans = seen.filter((sql) => sql.includes("'%kekId%'"));
+    expect(scans).toHaveLength(3);
+    for (const sql of scans)
+      expect(sql).toMatch(/ORDER BY product, \w+\s+LIMIT/);
+    // The cap held: the count stopped at the cap rather than at the end of the table.
+    expect(body.counts!.managed).toEqual({ default: MANAGED_SCAN_ROWS });
+  });
+
+  it("a truncated count cannot report remaining 0, so it cannot green-light deleting a key", async () => {
+    // This is the trap the bound creates, and the reason `countsComplete` exists: `remaining` is
+    // the precondition an operator checks before DELETING a key, and a key deleted while values
+    // are still sealed under it is unrecoverable data. A scan that stopped counting must never
+    // be able to produce the number that says "safe".
+    const { db, kv } = await seedSealedRows();
+    const env = kekAdminEnv(kv, { PLATFORM_KEK: KEK_OLD });
+    // Everything sealed under the ACTIVE kid, so the counted portion contributes 0 to
+    // `remaining`: exactly the shape that read as "rotation finished".
+    await seedManagedProfiles(db, env, "djdl", MANAGED_SCAN_ROWS + 1);
+
+    for (const method of ["GET", "POST"] as const) {
+      const res = await kek(env, db, method);
+      expect(res.status).toBe(200);
+      expect(res.body, method).toMatchObject({
+        countsComplete: false,
+        countsTruncated: ["profiles"],
+        unopenable: 0,
+      });
+      expect(res.body.remaining, method).toBeGreaterThan(0);
+    }
+  });
+
+  it("reports a complete count as complete, and still reaches remaining 0", async () => {
+    const { db, kv } = await seedSealedRows();
+    const env = kekAdminEnv(kv, { PLATFORM_KEK: KEK_OLD });
+    await seedManagedProfiles(db, env, "djdl", 3);
+
+    const res = await kek(env, db, "GET");
+
+    expect(res.body).toMatchObject({
+      countsComplete: true,
+      countsTruncated: [],
+      remaining: 0,
+    });
+    expect(res.body.counts!.managed).toEqual({ default: 3 });
+  });
+
+  it("is complete at exactly the cap and truncated one row past it", async () => {
+    const { db, kv } = await seedSealedRows();
+    const env = kekAdminEnv(kv, { PLATFORM_KEK: KEK_OLD });
+    await seedManagedProfiles(db, env, "djdl", MANAGED_SCAN_ROWS);
+    expect((await kek(env, db, "GET")).body).toMatchObject({
+      countsComplete: true,
+      countsTruncated: [],
+      remaining: 0,
+    });
+
+    await db.run(
+      `INSERT INTO profiles (product, id, name, description, payload_json, modified_by, modified_at)
+       SELECT product, 'profile-extra', 'Extra', NULL, payload_json, NULL, modified_at
+         FROM profiles WHERE product = 'djdl' AND id = 'profile-00000'`,
+    );
+    expect((await kek(env, db, "GET")).body).toMatchObject({
+      countsComplete: false,
+      countsTruncated: ["profiles"],
+    });
+  });
+
+  it("a truncated scan keeps an open-only legacy key from reading as safe to delete", async () => {
+    const { db, kv } = await seedSealedRows();
+    const env = kekAdminEnv(kv, {
+      PLATFORM_KEK_KEYS: JSON.stringify({ k2: KEK_NEW }),
+      PLATFORM_KEK_ACTIVE: "k2",
+      PLATFORM_KEK: KEK_OLD,
+    });
+    // Move every stored sealed row to the active kid: the sealed tables hold nothing under the
+    // legacy `default`, and everything the scan can see is under `k2` too.
+    expect((await kek(env, db, "POST")).body).toMatchObject({
+      resealed: 4,
+      remaining: 0,
+    });
+    await seedManagedProfiles(db, env, "djdl", MANAGED_SCAN_ROWS + 1);
+
+    const cut = await kek(env, db, "GET");
+    expect(cut.body).toMatchObject({
+      countsComplete: false,
+      legacy: {
+        kid: "default",
+        openOnly: true,
+        workerSecrets: [],
+        safeToDelete: false,
+      },
+    });
+    expect(cut.body.legacy!.remaining).toBeGreaterThan(0);
+
+    // The same ring with a complete scan: nothing under the legacy kid, so it is safe.
+    await db.run("DELETE FROM profiles WHERE product = 'djdl'");
+    expect((await kek(env, db, "GET")).body).toMatchObject({
+      countsComplete: true,
+      legacy: { kid: "default", remaining: 0, safeToDelete: true },
+    });
+  });
+
+  it("a sweep over a truncated scan says so in its response and its audit trail", async () => {
+    const { db, kv } = await seedSealedRows();
+    const sealing = kekAdminEnv(kv, { PLATFORM_KEK: KEK_OLD });
+    await seedManagedProfiles(db, sealing, "djdl", MANAGED_SCAN_ROWS + 1);
+    const env = kekAdminEnv(kv, {
+      PLATFORM_KEK_KEYS: JSON.stringify({ default: KEK_OLD, k2: KEK_NEW }),
+      PLATFORM_KEK_ACTIVE: "k2",
+    });
+
+    const sweep = await kek(env, db, "POST", { body: { limit: 5 } });
+
+    expect(sweep.body).toMatchObject({
+      resealed: 5,
+      countsComplete: false,
+      countsTruncated: ["profiles"],
+    });
+    const [row] = await listPlatformAudit(db);
+    expect(row!.summary).toContain("at least");
+    expect(JSON.parse(row!.before_json!)).toMatchObject({
+      countsComplete: false,
+    });
+    expect(JSON.parse(row!.after_json!)).toMatchObject({
+      countsComplete: false,
+      countsTruncated: ["profiles"],
+    });
   });
 });
 

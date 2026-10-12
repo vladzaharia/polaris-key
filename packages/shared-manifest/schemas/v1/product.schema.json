@@ -36,7 +36,7 @@
       "deprecated": true
     },
     "defaultDeviceLimit": {
-      "$ref": "#/$defs/nonNegativeInteger",
+      "$ref": "#/$defs/deviceLimit",
       "description": "Deprecated: write licensing.defaultDeviceLimit. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
       "deprecated": true
     },
@@ -89,7 +89,7 @@
     "licensing": {
       "type": "object",
       "properties": {
-        "defaultDeviceLimit": { "$ref": "#/$defs/nonNegativeInteger" },
+        "defaultDeviceLimit": { "$ref": "#/$defs/deviceLimit" },
         "defaultMaxOfflineDays": { "$ref": "#/$defs/nonNegativeInteger" },
         "profiles": { "$ref": "#/$defs/profiles" },
         "tiers": { "$ref": "#/$defs/tiers" },
@@ -428,6 +428,12 @@
       "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
     },
     "nonNegativeInteger": { "type": "integer", "minimum": 0 },
+    "deviceLimit": {
+      "description": "A device-seat cap: a whole number from 0 to 1000 (MAX_DEVICE_LIMIT in @polaris-key/manifest). The value becomes the bound on claimDeviceSeat's per-seat recursive scan, so an unbounded cap is a denial of service rather than a generous plan. Rejected, never clamped.",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 1000
+    },
     "fingerprintMode": {
       "description": "Drift-tolerance strength: off (never enforce) · lenient (4) · normal (2, default) · strict (0, and a fingerprint becomes mandatory).",
       "enum": ["off", "lenient", "normal", "strict"]
@@ -441,7 +447,7 @@
         "compatMin": { "$ref": "#/$defs/semver" },
         "compatMax": { "$ref": "#/$defs/semver" },
         "defaultDeviceLimit": {
-          "$ref": "#/$defs/nonNegativeInteger",
+          "$ref": "#/$defs/deviceLimit",
           "description": "Deprecated: write licensing.defaultDeviceLimit. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
           "deprecated": true
         },
@@ -539,10 +545,7 @@
             "deprecated": true
           },
           "policyDeviceLimit": {
-            "anyOf": [
-              { "$ref": "#/$defs/nonNegativeInteger" },
-              { "type": "null" }
-            ]
+            "anyOf": [{ "$ref": "#/$defs/deviceLimit" }, { "type": "null" }]
           },
           "policyFingerprint": {
             "description": "Fingerprint enforcement for this tier; null (or omitted) inherits the product default.",

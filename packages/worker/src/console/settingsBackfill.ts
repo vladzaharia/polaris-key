@@ -30,7 +30,7 @@
  */
 
 import { Catalog } from "@polaris-key/catalog";
-import type { ParsedManifest } from "@polaris-key/manifest";
+import { MAX_DEVICE_LIMIT, type ParsedManifest } from "@polaris-key/manifest";
 import type { Env } from "../platform/env.js";
 import type { Db, DbStatement } from "../db/types.js";
 import {
@@ -130,7 +130,9 @@ const isRecord = (v: unknown): v is Record<string, unknown> =>
 
 /**
  * The system product's manifest: its stored deploy-hook snapshot (a normalised ParsedManifest),
- * checked for the members the backfill reads before it is trusted.
+ * checked for the members the backfill reads before it is trusted. The deploy hook validated the
+ * manifest when it stored it, but a snapshot older than the device-limit ceiling can still carry
+ * a limit the validator now refuses, and the backfill writes it straight to the column.
  */
 function snapshotManifest(json: string): BackfillManifest | null {
   let parsed: unknown;
@@ -147,6 +149,7 @@ function snapshotManifest(json: string): BackfillManifest | null {
     typeof product.name !== "string" ||
     typeof product.defaultMaxOfflineDays !== "number" ||
     typeof product.defaultDeviceLimit !== "number" ||
+    product.defaultDeviceLimit > MAX_DEVICE_LIMIT ||
     !isRecord(m.catalog) ||
     !Array.isArray(m.tiers) ||
     !Array.isArray(m.profiles) ||

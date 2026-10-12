@@ -1182,7 +1182,7 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
       "deprecated": true
     },
     "defaultDeviceLimit": {
-      "$ref": "#/$defs/nonNegativeInteger",
+      "$ref": "#/$defs/deviceLimit",
       "description": "Deprecated: write licensing.defaultDeviceLimit. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
       "deprecated": true
     },
@@ -1235,7 +1235,7 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
     "licensing": {
       "type": "object",
       "properties": {
-        "defaultDeviceLimit": { "$ref": "#/$defs/nonNegativeInteger" },
+        "defaultDeviceLimit": { "$ref": "#/$defs/deviceLimit" },
         "defaultMaxOfflineDays": { "$ref": "#/$defs/nonNegativeInteger" },
         "profiles": { "$ref": "#/$defs/profiles" },
         "tiers": { "$ref": "#/$defs/tiers" },
@@ -1574,6 +1574,12 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
       "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
     },
     "nonNegativeInteger": { "type": "integer", "minimum": 0 },
+    "deviceLimit": {
+      "description": "A device-seat cap: a whole number from 0 to 1000 (MAX_DEVICE_LIMIT in @polaris-key/manifest). The value becomes the bound on claimDeviceSeat's per-seat recursive scan, so an unbounded cap is a denial of service rather than a generous plan. Rejected, never clamped.",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 1000
+    },
     "fingerprintMode": {
       "description": "Drift-tolerance strength: off (never enforce) · lenient (4) · normal (2, default) · strict (0, and a fingerprint becomes mandatory).",
       "enum": ["off", "lenient", "normal", "strict"]
@@ -1587,7 +1593,7 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
         "compatMin": { "$ref": "#/$defs/semver" },
         "compatMax": { "$ref": "#/$defs/semver" },
         "defaultDeviceLimit": {
-          "$ref": "#/$defs/nonNegativeInteger",
+          "$ref": "#/$defs/deviceLimit",
           "description": "Deprecated: write licensing.defaultDeviceLimit. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
           "deprecated": true
         },
@@ -1685,10 +1691,7 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
             "deprecated": true
           },
           "policyDeviceLimit": {
-            "anyOf": [
-              { "$ref": "#/$defs/nonNegativeInteger" },
-              { "type": "null" }
-            ]
+            "anyOf": [{ "$ref": "#/$defs/deviceLimit" }, { "type": "null" }]
           },
           "policyFingerprint": {
             "description": "Fingerprint enforcement for this tier; null (or omitted) inherits the product default.",
@@ -18569,6 +18572,7 @@ var MAX_TEXT_LENGTH = 2e3;
 var MAX_PROBE_TARGET_LENGTH = 512;
 var MAX_REDIRECT_URIS = 20;
 var MAX_URL_LENGTH = 2048;
+var MAX_DEVICE_LIMIT = 1e3;
 var MAX_MANIFEST_BYTES = 64 * 1024;
 var MAX_MANIFEST_DEPTH = 32;
 var MAX_YAML_ALIASES = 100;
@@ -18718,11 +18722,9 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
       );
     }
   }
+  const declaredDeviceLimit = productNode.defaultDeviceLimit ?? productRoot.defaultDeviceLimit ?? licensing.defaultDeviceLimit;
   for (const [key, path32] of [
-    [
-      productNode.defaultDeviceLimit ?? productRoot.defaultDeviceLimit ?? licensing.defaultDeviceLimit,
-      "/licensing/defaultDeviceLimit"
-    ],
+    [declaredDeviceLimit, "/licensing/defaultDeviceLimit"],
     [
       productNode.defaultMaxOfflineDays ?? productRoot.defaultMaxOfflineDays ?? licensing.defaultMaxOfflineDays,
       "/licensing/defaultMaxOfflineDays"
@@ -18737,6 +18739,15 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
         "Value must be a non-negative integer."
       );
     }
+  }
+  if (typeof declaredDeviceLimit === "number" && Number.isInteger(declaredDeviceLimit) && declaredDeviceLimit > MAX_DEVICE_LIMIT) {
+    add4(
+      errors,
+      "product",
+      "/licensing/defaultDeviceLimit",
+      "invalid_device_limit",
+      `defaultDeviceLimit must be at most ${MAX_DEVICE_LIMIT}.`
+    );
   }
   validateLicensingSettings(licensing, errors);
   validateIdentityBlock(productRoot, modules, errors, warnings);
@@ -18876,13 +18887,13 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
         `Tier references unknown profile ${profile}.`
       );
     }
-    if (record.policyDeviceLimit !== void 0 && !nonNegativeInteger2(record.policyDeviceLimit)) {
+    if (record.policyDeviceLimit !== void 0 && (!nonNegativeInteger2(record.policyDeviceLimit) || typeof record.policyDeviceLimit === "number" && record.policyDeviceLimit > MAX_DEVICE_LIMIT)) {
       add4(
         errors,
         "product",
         `/licensing/tiers/${i}/policyDeviceLimit`,
         "invalid_device_limit",
-        "policyDeviceLimit must be a non-negative integer."
+        `policyDeviceLimit must be a non-negative integer of at most ${MAX_DEVICE_LIMIT}.`
       );
     }
     if (record.rank !== void 0 && !nonNegativeInteger2(record.rank)) {

@@ -8,7 +8,7 @@ description: "Every error and warning validateManifestDocuments and validateInge
 
 The `.pkey/` validator (`@polaris-key/manifest`) aggregates ALL problems instead of
 stopping at the first; `pkey validate` and the console's link/resync surfaces show these
-codes with their JSON-pointer paths. 248 distinct emit sites.
+codes with their JSON-pointer paths. 249 distinct emit sites.
 
 Interpolated segments (`${…}`) in paths/messages are per-instance values — an array index,
 the offending value, or the allowed set.
@@ -73,7 +73,8 @@ the offending value, or the allowed set.
 | `invalid_deliverable_id` | error | release | `/release/deliverables` | release.deliverables must be an object keyed by deliverable id. |
 | `invalid_deliverable_kind` | error | release | `/release/deliverables/${id}/kind` | each deliverable must be an object whose kind is one of $\{DELIVERABLE_KINDS.join(", ")\}. |
 | `invalid_deliverable_kind` | error | release | `/release/deliverables/${id}/kind` | the deliverable named $\{APP_DELIVERABLE_ID\} is the product's application (kind: app), and no other deliverable may be kind app. |
-| `invalid_device_limit` | error | product | `/licensing/tiers/${i}/policyDeviceLimit` | policyDeviceLimit must be a non-negative integer. |
+| `invalid_device_limit` | error | product | `/licensing/defaultDeviceLimit` | defaultDeviceLimit must be at most $\{MAX_DEVICE_LIMIT\}. |
+| `invalid_device_limit` | error | product | `/licensing/tiers/${i}/policyDeviceLimit` | policyDeviceLimit must be a non-negative integer of at most $\{MAX_DEVICE_LIMIT\}. |
 | `invalid_display_text` | error | distribution | `/listing/developerName` | listing.developerName must not hold control, zero-width or bidirectional-formatting characters, or start or end with whitespace. |
 | `invalid_display_text` | error | distribution | `/listing/name` | listing.name must not hold control, zero-width or bidirectional-formatting characters, or start or end with whitespace. |
 | `invalid_display_text` | error | distribution | `/outlets/${id}/listing/developerName` | outlets.$\{id\}.listing.developerName must not hold control, zero-width or bidirectional-formatting characters, or start or end with whitespace. |

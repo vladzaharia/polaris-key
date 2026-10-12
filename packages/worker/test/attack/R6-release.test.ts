@@ -284,7 +284,17 @@ const PRODUCT_JSON = JSON.stringify({
   tiers: [{ id: "pro", label: "Pro" }],
 });
 
-/** The same manifest as a repo *writer* would rewrite it: new IdP, new admin group, fat tier. */
+/**
+ * The same manifest as a repo *writer* would rewrite it: new IdP, new admin group, fat tier.
+ *
+ * `policyDeviceLimit` is 999 and not the 100,000 it used to be. The device-limit ceiling
+ * (`MAX_DEVICE_LIMIT`, 1,000) covers every seat-cap write path, and this manifest is applied as
+ * ONE document, so a six-figure limit makes ingest refuse the whole thing, and the tests that
+ * use it would pass for the wrong reason: not because the gate they are about held, but because
+ * the manifest never parsed. 999 keeps the fixture hostile in the dimension these tests are
+ * about (a repo push rewriting operator-owned policy) while staying inside the ceiling. The
+ * ceiling itself is covered separately, below.
+ */
 const ATTACKER_PRODUCT_JSON = JSON.stringify({
   slug: "acme",
   name: "Acme",
@@ -299,7 +309,18 @@ const ATTACKER_PRODUCT_JSON = JSON.stringify({
     redirectUris: ["https://attacker.example/cb"],
     groupRoleMap: { everyone: { role: "admin" } },
   },
-  tiers: [{ id: "pro", label: "Pro", policyDeviceLimit: 100000 }],
+  tiers: [{ id: "pro", label: "Pro", policyDeviceLimit: 999 }],
+});
+
+/** The seat cap the ceiling refuses: `claimDeviceSeat`'s recursive CTE is O(limit) inside ONE
+ *  statement, so this is a repo push that turns every later activation into a hang. */
+const OVERSIZED_LIMIT_PRODUCT_JSON = JSON.stringify({
+  slug: "acme",
+  name: "Acme",
+  compatMin: "1.0.0",
+  compatMax: "9.0.0",
+  adminGroup: "acme-admins",
+  tiers: [{ id: "pro", label: "Pro", policyDeviceLimit: 100_000 }],
 });
 
 function releaseJson(over: Record<string, unknown> = {}): string {
@@ -1191,7 +1212,7 @@ describe("R6-07 webhook resync trusts payload-supplied ref and has no replay pro
       "acme",
       "pro",
     );
-    expect(tier?.policy_device_limit).not.toBe(100000);
+    expect(tier?.policy_device_limit).not.toBe(999);
   });
 
   // STILL NOT FIXED (R6-05 proper): once the issuer host IS operator-blessed, everything else
@@ -1237,6 +1258,58 @@ describe("R6-07 webhook resync trusts payload-supplied ref and has no replay pro
       "acme",
     );
     expect(product?.admin_group).toBe("attacker-controlled-group");
+  });
+
+  // The same push is also the delivery vehicle for an unbounded seat cap: a tier's
+  // `policyDeviceLimit` feeds `claimDeviceSeat`'s recursive CTE, which is O(limit) inside a
+  // SINGLE statement, so a six-figure limit is not a big number, it is a statement that never
+  // returns, on every subsequent activation for that product.
+  it("a repo push cannot raise a tier's seat cap past the ceiling", async () => {
+    const db = makeTestDb();
+    const env = envFor();
+    env.GITHUB_WEBHOOK_SECRET = "webhook-secret";
+    const stub = pkeyFetch({
+      ".pkey/schema.json": SCHEMA_JSON,
+      ".pkey/product.json": PRODUCT_JSON,
+      ".pkey/release.json": releaseJson(),
+    });
+    expect(
+      (await linkRepo(env, db, "acme-org/acme-app", NOW, stub.fetchImpl)).ok,
+    ).toBe(true);
+
+    stub.files[".pkey/product.json"] = OVERSIZED_LIMIT_PRODUCT_JSON;
+    const res = await handleGithubWebhook(
+      deliveryRequest(
+        await signedPush(
+          pushPayload({ head_commit: { modified: [".pkey/product.json"] } }),
+          "webhook-secret",
+        ),
+      ),
+      env,
+      db,
+      NOW + 10,
+      stub.fetchImpl,
+    );
+    // The webhook still ACKs (it always does); the resync inside it reports the refusal.
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      products: Array<{ ok: boolean; errors?: string[] }>;
+    };
+    expect(body.products[0]?.ok).toBe(false);
+    // The operator has to be able to see WHY their push did not apply, so the refusal names
+    // the offending path and the ceiling, not just "invalid".
+    const errors = JSON.stringify(body.products[0]?.errors ?? []);
+    expect(errors).toContain("policyDeviceLimit");
+    expect(errors).toContain("1000");
+
+    // Refuse, never coerce: nothing from the document landed, so there is no clamped-but-applied
+    // row to reason about later.
+    const tier = await db.first<{ policy_device_limit: number | null }>(
+      "SELECT policy_device_limit FROM tiers WHERE product = ? AND id = ?",
+      "acme",
+      "pro",
+    );
+    expect(tier?.policy_device_limit ?? 0).toBeLessThan(100_000);
   });
 });
 

@@ -40,6 +40,7 @@ import { manifestIngestFor } from "../src/core/registry.js";
 import { SERVICES } from "../src/mount.js";
 import { stmtClaim } from "../src/core/settingsClaims.js";
 import { withDefaultHead } from "./githubHead.js";
+import { MAX_DEVICE_LIMIT } from "@polaris-key/manifest";
 
 const SLUG = "acme";
 const PLATFORM_GROUP = "platform-admins";
@@ -606,6 +607,27 @@ describe("a refused resync leaves every row unchanged (ST-01b)", () => {
     });
     expect(await state(ctx)).toEqual(before);
   });
+
+  it("by a device limit past the ceiling (the manifest is refused as a whole)", async () => {
+    const ctx = await linked();
+    const before = await state(ctx);
+    const res = await resync(ctx, {
+      name: "Acme Two",
+      devices: MAX_DEVICE_LIMIT + 1,
+    });
+    expect(res).toMatchObject({ ok: false });
+    expect(JSON.stringify(res)).toContain(
+      `defaultDeviceLimit must be at most ${MAX_DEVICE_LIMIT}.`,
+    );
+    // Refused, not clamped: no field of the document landed, the name included.
+    expect(await state(ctx)).toEqual(before);
+  });
+
+  it("accepts the ceiling itself", async () => {
+    const ctx = await linked();
+    await okResync(ctx, { devices: MAX_DEVICE_LIMIT });
+    expect((await productRow(ctx)).default_device_limit).toBe(MAX_DEVICE_LIMIT);
+  });
 });
 
 // ── Revert ───────────────────────────────────────────────────────────────────────────────
@@ -631,6 +653,32 @@ describe("Revert to manifest (ST-01b)", () => {
     // With the claim gone, the next resync owns the field again.
     await okResync(ctx, { devices: 4 });
     expect((await productRow(ctx)).default_device_limit).toBe(4);
+  });
+
+  it("puts back no snapshot limit past the ceiling: the claim goes, the value stays", async () => {
+    // A snapshot stored before the ceiling existed can still carry a limit the registry and the
+    // manifest validator now refuse, and Revert writes the snapshot's value straight to the
+    // column: it must read as "no manifest value known", not be applied.
+    const ctx = await linked({ devices: 3 });
+    await call(ctx, "PATCH", "", { defaultDeviceLimit: 9 });
+    await ctx.db.run(
+      `UPDATE product_manifest_snapshot
+          SET manifest_json = json_set(manifest_json, '$.product.defaultDeviceLimit', ?)
+        WHERE product = ?`,
+      MAX_DEVICE_LIMIT + 1,
+      SLUG,
+    );
+    const res = await call(
+      ctx,
+      "DELETE",
+      "claims/license.defaults.deviceLimit",
+    );
+    expect(res).toMatchObject({
+      status: 200,
+      json: { ok: true, applied: false, message: "applies at the next resync" },
+    });
+    expect((await productRow(ctx)).default_device_limit).toBe(9);
+    expect(await claimRows(ctx)).toEqual([]);
   });
 
   it("restores the snapshot's catalog as a new active version", async () => {

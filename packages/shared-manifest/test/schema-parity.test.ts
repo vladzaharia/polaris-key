@@ -911,6 +911,23 @@ const MUTATIONS: Mutation[] = [
     mutate: (d) => (p(d).licensing.tiers[0].policyDeviceLimit = 1.5),
   },
   {
+    code: "invalid_device_limit",
+    file: "product",
+    schema: "rejects",
+    // The CEILING arm on a tier (`MAX_DEVICE_LIMIT`): the cap becomes the bound on
+    // `claimDeviceSeat`'s per-seat recursive scan, so an unbounded one is a statement that never
+    // returns. The schema expresses it as `maximum: 1000`.
+    mutate: (d) => (p(d).licensing.tiers[0].policyDeviceLimit = 100_000_000),
+  },
+  {
+    code: "invalid_device_limit",
+    file: "product",
+    schema: "rejects",
+    // The same ceiling on the product default: the value every licence without a tier cap falls
+    // back to, and the one a `.pkey/product` push sets directly.
+    mutate: (d) => (p(d).licensing.defaultDeviceLimit = 100_000_000),
+  },
+  {
     code: "invalid_tier_label",
     file: "product",
     schema: "rejects",

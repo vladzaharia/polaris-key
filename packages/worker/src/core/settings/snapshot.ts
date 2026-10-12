@@ -8,6 +8,8 @@
  * known"), so neither Revert nor drift ever guesses.
  */
 
+import { MAX_DEVICE_LIMIT } from "@polaris-key/manifest";
+
 /** The fields of a stored snapshot the claimable keys read. */
 export interface SnapshotManifest {
   product?: {
@@ -25,7 +27,9 @@ function intAtLeast(v: unknown, min: number): v is number {
 
 /**
  * `key`'s value in `manifest`, or `undefined` when the snapshot carries no usable one. The checks
- * are the write path's own (a blank name, a non-integer limit is not a value).
+ * are the write path's own (a blank name, a non-integer limit or one past `MAX_DEVICE_LIMIT` is
+ * not a value): Revert writes this value straight to the column, so a snapshot taken before the
+ * ceiling existed cannot put a limit back that the registry would refuse.
  */
 export function snapshotValue(
   key: string,
@@ -45,7 +49,8 @@ export function snapshotValue(
         ? p.defaultMaxOfflineDays
         : undefined;
     case "license.defaults.deviceLimit":
-      return intAtLeast(p.defaultDeviceLimit, 1)
+      return intAtLeast(p.defaultDeviceLimit, 1) &&
+        p.defaultDeviceLimit <= MAX_DEVICE_LIMIT
         ? p.defaultDeviceLimit
         : undefined;
     case "core.web.origins":

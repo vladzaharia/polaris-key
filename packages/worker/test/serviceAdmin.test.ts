@@ -34,6 +34,8 @@ import {
   issueSession,
 } from "../src/core/console/session.js";
 import { getProduct, listAudit } from "../src/core/repo.js";
+import { listTiers } from "../src/core/console/repo.js";
+import { MAX_DEVICE_LIMIT } from "@polaris-key/manifest";
 import { getReleaseConfig } from "../src/services/release/index.js";
 
 const ADMIN_SECRET = "test-admin-session-secret";
@@ -892,5 +894,148 @@ describe("productView carries the enablement set (D-15)", () => {
     };
     expect(product.effectiveRegistration).toBe("requires-license");
     expect(product.servicesSource).toBe("manifest");
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────────────────────────────
+// The tier editor is the OTHER admin write path that sets a device limit.
+//
+// `policy_device_limit` becomes the `deviceLimit` entitlement (`core/licensing/entitlements.ts`),
+// which is the number `claimDeviceSeat` enumerates seat ordinals up to inside one statement.
+// The lower bound was already held (0 or -1 read as UNLIMITED); nothing bounded it from above,
+// so a tier was a second, equally unguarded way to wedge every activation on a product.
+// ───────────────────────────────────────────────────────────────────────────────────────────
+
+describe("device-limit ceiling on license/tiers", () => {
+  const TIERS = `/api/products/${SLUG}/license/tiers`;
+
+  it("POST license/tiers refuses a device limit no activation could survive", async () => {
+    const { db, env, auth } = await fixture(false);
+    for (const bad of [MAX_DEVICE_LIMIT + 1, 100000000, 2.5, 0, -1, 2 ** 53]) {
+      const res = await dispatch(
+        mkReq("POST", TIERS, {
+          cookie: auth.cookie,
+          csrf: auth.csrf,
+          body: { id: "pro", label: "Pro", policyDeviceLimit: bad },
+        }),
+        env,
+        db,
+        TIERS,
+      );
+      expect(`${bad}=${res.status}`).toBe(`${bad}=422`);
+      const body = (await res.json()) as { message: string; fields: string[] };
+      expect(body.fields).toEqual(["policyDeviceLimit"]);
+      expect(body.message).toContain(String(MAX_DEVICE_LIMIT));
+    }
+    expect(await listTiers(db, SLUG)).toEqual([]);
+
+    // The ceiling is a legal seat count, not an off-by-one.
+    const ok = await dispatch(
+      mkReq("POST", TIERS, {
+        cookie: auth.cookie,
+        csrf: auth.csrf,
+        body: { id: "pro", label: "Pro", policyDeviceLimit: MAX_DEVICE_LIMIT },
+      }),
+      env,
+      db,
+      TIERS,
+    );
+    expect(ok.status).toBe(201);
+    expect((await listTiers(db, SLUG))[0]?.policy_device_limit).toBe(
+      MAX_DEVICE_LIMIT,
+    );
+  });
+
+  it("PATCH license/tiers/<id> refuses an unbounded device limit", async () => {
+    const { db, env, auth } = await fixture(false);
+    await dispatch(
+      mkReq("POST", TIERS, {
+        cookie: auth.cookie,
+        csrf: auth.csrf,
+        body: { id: "pro", label: "Pro", policyDeviceLimit: 5 },
+      }),
+      env,
+      db,
+      TIERS,
+    );
+    const path = `${TIERS}/pro`;
+
+    for (const bad of [MAX_DEVICE_LIMIT + 1, 1e300]) {
+      const rejected = await dispatch(
+        mkReq("PATCH", path, {
+          cookie: auth.cookie,
+          csrf: auth.csrf,
+          body: { policyDeviceLimit: bad },
+        }),
+        env,
+        db,
+        path,
+      );
+      expect(`${bad}=${rejected.status}`).toBe(`${bad}=422`);
+      const body = (await rejected.json()) as {
+        message: string;
+        fields: string[];
+      };
+      expect(body.fields).toEqual(["policyDeviceLimit"]);
+      expect(body.message).toContain(String(MAX_DEVICE_LIMIT));
+    }
+    // Refused, not clamped: the stored value is the one the operator last actually set.
+    expect((await listTiers(db, SLUG))[0]?.policy_device_limit).toBe(5);
+
+    const accepted = await dispatch(
+      mkReq("PATCH", path, {
+        cookie: auth.cookie,
+        csrf: auth.csrf,
+        body: { policyDeviceLimit: MAX_DEVICE_LIMIT },
+      }),
+      env,
+      db,
+      path,
+    );
+    expect(accepted.status).toBe(200);
+    expect((await listTiers(db, SLUG))[0]?.policy_device_limit).toBe(
+      MAX_DEVICE_LIMIT,
+    );
+  });
+
+  it("still allows NULL: a tier that inherits the product default sets no limit at all", async () => {
+    const { db, env, auth } = await fixture(false);
+    const res = await dispatch(
+      mkReq("POST", TIERS, {
+        cookie: auth.cookie,
+        csrf: auth.csrf,
+        body: { id: "free", label: "Free" },
+      }),
+      env,
+      db,
+      TIERS,
+    );
+    expect(res.status).toBe(201);
+    expect((await listTiers(db, SLUG))[0]?.policy_device_limit).toBeNull();
+
+    // …and a PATCH can hand a limit back to the product default.
+    await dispatch(
+      mkReq("PATCH", `${TIERS}/free`, {
+        cookie: auth.cookie,
+        csrf: auth.csrf,
+        body: { policyDeviceLimit: 7 },
+      }),
+      env,
+      db,
+      `${TIERS}/free`,
+    );
+    expect((await listTiers(db, SLUG))[0]?.policy_device_limit).toBe(7);
+    const cleared = await dispatch(
+      mkReq("PATCH", `${TIERS}/free`, {
+        cookie: auth.cookie,
+        csrf: auth.csrf,
+        body: { policyDeviceLimit: null },
+      }),
+      env,
+      db,
+      `${TIERS}/free`,
+    );
+    expect(cleared.status).toBe(200);
+    expect((await listTiers(db, SLUG))[0]?.policy_device_limit).toBeNull();
   });
 });

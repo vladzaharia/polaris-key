@@ -909,6 +909,29 @@ export function stmtInsertProductKey(row: ProductKeyRow): DbStatement {
   };
 }
 
+/**
+ * Insert a key and say whether the `kid` was free: `false` means that kid already exists for the
+ * product, not that something went wrong.
+ *
+ * A bare `INSERT` turned a rotation `kid` collision on `PRIMARY KEY (product, kid)` into an
+ * undiagnosable 500 with nothing naming the cause. `ON CONFLICT DO NOTHING` plus the changes
+ * count turns it into a fact the caller can report, and leaves the existing row untouched.
+ *
+ * Not a batch, because the caller needs the answer. Staging a key is a single-row insert of a
+ * STAGED key; it has nothing to be atomic with.
+ */
+export async function insertProductKeyIfAbsent(
+  db: Db,
+  row: ProductKeyRow,
+): Promise<boolean> {
+  const stmt = stmtInsertProductKey(row);
+  const changes = await db.runChanges(
+    `${stmt.sql} ON CONFLICT(product, kid) DO NOTHING`,
+    ...stmt.params,
+  );
+  return changes > 0;
+}
+
 // ── Licenses ─────────────────────────────────────────────────────────────────
 export async function getLicense(
   db: Db,

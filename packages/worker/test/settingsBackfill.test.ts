@@ -23,7 +23,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, onTestFinished } from "vitest";
-import { SYSTEM_PRODUCT_SLUG } from "@polaris-key/manifest";
+import { MAX_DEVICE_LIMIT, SYSTEM_PRODUCT_SLUG } from "@polaris-key/manifest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedProduct, TEST_KEK } from "./seed.js";
@@ -1512,6 +1512,28 @@ describe("the system product (its manifest is the deploy hook's snapshot)", () =
     const report = await okRun(ctx, {}, SYSTEM_PRODUCT_SLUG);
     expect(report.outcome).toBe("unreadable");
     expect(report.message).toMatch(/^cannot read \.pkey\//);
+  });
+
+  it("a snapshot carrying a device limit past the ceiling is unreadable, never written to the column", async () => {
+    // The deploy hook validated the manifest when it stored it, but a snapshot older than the
+    // device-limit ceiling can still carry a limit the validator now refuses; the backfill
+    // writes the manifest's value straight to `products.default_device_limit`.
+    const ctx = await deployed();
+    const stored = (await productRow(ctx.db, SYSTEM_PRODUCT_SLUG))
+      .default_device_limit;
+    await ctx.db.run(
+      `UPDATE product_manifest_snapshot
+          SET manifest_json = json_set(manifest_json, '$.product.defaultDeviceLimit', ?)
+        WHERE product = ?`,
+      MAX_DEVICE_LIMIT + 1,
+      SYSTEM_PRODUCT_SLUG,
+    );
+    const report = await okRun(ctx, {}, SYSTEM_PRODUCT_SLUG);
+    expect(report.outcome).toBe("unreadable");
+    expect(report.message).toMatch(/^cannot read \.pkey\//);
+    expect(
+      (await productRow(ctx.db, SYSTEM_PRODUCT_SLUG)).default_device_limit,
+    ).toBe(stored);
   });
 });
 

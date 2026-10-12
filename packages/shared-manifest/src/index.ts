@@ -1351,6 +1351,24 @@ const MAX_PROBE_TARGET_LENGTH = 512;
 const MAX_REDIRECT_URIS = 20;
 const MAX_URL_LENGTH = 2048;
 
+/**
+ * Ceiling on every manifest-declared device seat cap: `defaultDeviceLimit` (in each spelling the
+ * validator accepts) and a tier's `policyDeviceLimit`.
+ *
+ * The number does not stay a number. It becomes `claimDeviceSeat`'s `limit`, which materialises
+ * one row per seat in a recursive CTE inside a single D1 statement and which the seat loop
+ * re-runs up to `limit + 1` times. Nothing downstream bounds it, so `defaultDeviceLimit:
+ * 100000000` in a `.pkey/product` that a third party pushes would turn one ordinary activation
+ * into a statement that never returns. A thousand seats is orders of magnitude past any real
+ * per-licence fleet and keeps the worst case bounded.
+ *
+ * Rejected, never clamped, as everywhere in this file: a manifest that asks for a hundred
+ * million seats is a mistake or an attack, and quietly applying 1000 would hide both. The
+ * Worker's admin write paths and settings registry take this same constant, so every way in
+ * agrees on what a legal cap is.
+ */
+export const MAX_DEVICE_LIMIT = 1000;
+
 // ── Ingest limits (R7-02) ────────────────────────────────────────────────────
 // `parseDocument` is reachable from a *GitHub push webhook* on a third party's repo
 // (`githubWebhook.ts` → `release/resync.ts` → here), so the bytes it parses are attacker-chosen
@@ -1601,13 +1619,12 @@ function validateDocuments(
       );
     }
   }
+  const declaredDeviceLimit =
+    productNode.defaultDeviceLimit ??
+    productRoot.defaultDeviceLimit ??
+    licensing.defaultDeviceLimit;
   for (const [key, path] of [
-    [
-      productNode.defaultDeviceLimit ??
-        productRoot.defaultDeviceLimit ??
-        licensing.defaultDeviceLimit,
-      "/licensing/defaultDeviceLimit",
-    ],
+    [declaredDeviceLimit, "/licensing/defaultDeviceLimit"],
     [
       productNode.defaultMaxOfflineDays ??
         productRoot.defaultMaxOfflineDays ??
@@ -1624,6 +1641,23 @@ function validateDocuments(
         "Value must be a non-negative integer.",
       );
     }
+  }
+  // A seat cap is not just a number: it bounds the per-seat recursive scan every activation runs
+  // (`MAX_DEVICE_LIMIT`). `defaultMaxOfflineDays` above needs no such ceiling: it is compared
+  // against, never counted through. A non-integer is reported by its own rule above, so only a
+  // whole number past the ceiling raises this one.
+  if (
+    typeof declaredDeviceLimit === "number" &&
+    Number.isInteger(declaredDeviceLimit) &&
+    declaredDeviceLimit > MAX_DEVICE_LIMIT
+  ) {
+    add(
+      errors,
+      "product",
+      "/licensing/defaultDeviceLimit",
+      "invalid_device_limit",
+      `defaultDeviceLimit must be at most ${MAX_DEVICE_LIMIT}.`,
+    );
   }
   validateLicensingSettings(licensing, errors);
   validateIdentityBlock(productRoot, modules, errors, warnings);
@@ -1781,16 +1815,20 @@ function validateDocuments(
         `Tier references unknown profile ${profile}.`,
       );
     }
+    // The ceiling arm is the same rule as for `defaultDeviceLimit`: a tier's cap is what reaches
+    // `claimDeviceSeat` whenever the tier publishes a `deviceLimit` entitlement.
     if (
       record.policyDeviceLimit !== undefined &&
-      !nonNegativeInteger(record.policyDeviceLimit)
+      (!nonNegativeInteger(record.policyDeviceLimit) ||
+        (typeof record.policyDeviceLimit === "number" &&
+          record.policyDeviceLimit > MAX_DEVICE_LIMIT))
     ) {
       add(
         errors,
         "product",
         `/licensing/tiers/${i}/policyDeviceLimit`,
         "invalid_device_limit",
-        "policyDeviceLimit must be a non-negative integer.",
+        `policyDeviceLimit must be a non-negative integer of at most ${MAX_DEVICE_LIMIT}.`,
       );
     }
     // LX-08 (plans/LX-01.md §3.1): the tier's rank (an integer ≥ 0, not unique) and its offline
