@@ -121,8 +121,8 @@ check "4.7 releases/?stable_only=true" '[r["version"] for r in d]==["1.1.0","1.0
   "$S/releases/$PUBLISHER/$NAME/?stable_only=true"
 
 # ── GodotEnv: index.json and a real install ─────────────────────────────────────────────────────
-check "index.json: latest 1.1.0, beta 1.2.0-beta.1, yanked 1.0.1 absent, an addons.json entry" \
-  'd["packages"][0]["tags"]=={"beta":"1.2.0-beta.1","latest":"1.1.0"} and [v["version"] for v in d["packages"][0]["versions"]]==["1.2.0-beta.1","1.1.0","1.0.0"] and d["packages"][0]["versions"][2]["deprecated"]=="use 1.1.0" and d["packages"][0]["godotenv"]["smoke_addon"]["source"]=="zip"' \
+check "index.json: latest 1.1.0, beta and dev 1.2.0-beta.1, yanked 1.0.1 absent, an addons.json entry" \
+  'd["packages"][0]["tags"]=={"beta":"1.2.0-beta.1","dev":"1.2.0-beta.1","latest":"1.1.0"} and [v["version"] for v in d["packages"][0]["versions"]]==["1.2.0-beta.1","1.1.0","1.0.0"] and d["packages"][0]["versions"][2]["deprecated"]=="use 1.1.0" and d["packages"][0]["godotenv"]["smoke_addon"]["source"]=="zip"' \
   "$BASE/index.json"
 
 if command -v godotenv >/dev/null 2>&1 || [ -x "$HOME/.dotnet/tools/godotenv" ]; then

@@ -16,7 +16,7 @@ if [ -n "${REGISTRY_AUTH:-}" ]; then
   else bad "crane auth login"; fi
 fi
 
-if [ "$(crane ls --insecure "$REF" | paste -sd, -)" = "0.8.0,1.0.0,1.1.0-beta.1,beta,latest" ]; then
+if [ "$(crane ls --insecure "$REF" | paste -sd, -)" = "0.8.0,1.0.0,1.1.0-beta.1,beta,dev,latest" ]; then
   ok "crane ls"
 else bad "crane ls"; fi
 if [ "$(crane digest --insecure "$REF:latest")" = "$(crane digest --insecure "$REF:1.0.0")" ]; then
