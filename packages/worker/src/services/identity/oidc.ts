@@ -1487,7 +1487,7 @@ async function beginAuthFlow(
     }
   | Response
 > {
-  // SEC-LIC-9 / SEC-IDN-5: the id the sign-in will bind is client-claimed; refuse a malformed one
+  // The id the sign-in will bind is client-claimed; refuse a malformed one
   // (and every server-minted `browser:<licence>` id) before it enters the flow record.
   if (deviceId !== undefined && !isValidClientDeviceId(deviceId))
     return errorResponse(400, "bad_request", "malformed device id");

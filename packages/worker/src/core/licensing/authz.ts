@@ -389,7 +389,7 @@ export async function authorizeDevice(
      * and store binding never pass it.
      */
     keyEntry?: { surface: "app" | "browser" };
-    /** SEC-LIC-1: set only by the account sign-in (device-code) flow; see `provesOwnership`. */
+    /** Set only by the account sign-in (device-code) flow; see `provesOwnership`. */
     adoptAnonymousEnrolled?: boolean;
   } = {},
 ): Promise<{ token: string; device: DeviceRow } | AuthzError> {

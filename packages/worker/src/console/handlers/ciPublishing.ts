@@ -13,7 +13,7 @@
  * token is for a CI that is not GitHub; it expires at most 90 days out and only its peppered hash
  * is stored. Every write is audited with the session's actor.
  *
- * SEC-WP-05 (SEC-ADM-1): the SYSTEM product (`polaris-key`) feeds the platform's own package
+ * The SYSTEM product (`polaris-key`) feeds the platform's own package
  * feeds, so its publisher policy is manifest-authoritative: `PUT …/ci-publisher` and
  * `POST …/ci-tokens` are refused for it, for every console session (a platform admin is one
  * group, not a second factor), and the refusal is audited. Reading and revoking still work. The

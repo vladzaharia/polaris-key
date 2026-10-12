@@ -203,11 +203,11 @@ export type LinkSystemProduct =
       packages: string[];
       /** What the manifest-owned trusted publisher now is (`null`: none declared). */
       publisher: { workflow: string; environment: string } | null;
-      /** SEC-WP-05: a claim (`source = 'admin'`) was found and replaced by the manifest's policy. */
+      /** A claim (`source = 'admin'`) was found and replaced by the manifest's policy. */
       publisherClaimed: boolean;
-      /** SEC-WP-05: live static CI tokens this run revoked (none can be issued any more). */
+      /** Live static CI tokens this run revoked (none can be issued any more). */
       staticTokensRevoked: number;
-      /** SEC-WP-05 forensics: the claimed policy this run replaced (`null`: none was claimed). */
+      /** Forensics: the claimed policy this run replaced (`null`: none was claimed). */
       replacedClaim: {
         source: string;
         repository: string;
@@ -411,7 +411,7 @@ export async function linkSystemProduct(
         environment: declared.environment,
       }
     : null;
-  // SEC-WP-05: the system product's policy is manifest-authoritative and the console can no longer
+  // The system product's policy is manifest-authoritative and the console can no longer
   // claim it. A claim found here (a pre-fix one, or a direct D1 write) is replaced by the
   // manifest's policy, and every live static CI token on the product is revoked with its open
   // tickets: the platform publishes through GitHub OIDC only.

@@ -162,8 +162,8 @@ export interface LicensedDeviceToken extends ValidDeviceToken {
 /** The hardware-reconciliation outcome that aborts an authorization. Structurally identical to
  *  `AuthzError`'s `hardware_mismatch` member, which stays license-side with `authorizeDevice`. */
 /**
- * SEC-LIC-1: the device id is held, live, by a licence the caller has not proven it controls.
- * Carries nothing: not who holds it, not which components differ (SEC-LIC-10).
+ * The device id is held, live, by a licence the caller has not proven it controls.
+ * Carries nothing: not who holds it, not which components differ.
  */
 export interface DeviceConflict {
   error: "unauthorized";
@@ -217,7 +217,7 @@ export const NO_LICENSE_ID = "";
  * enough for every id an SDK has ever sent and narrow enough that the value going into a primary
  * key, a KV key, a signed `deviceId` claim and a CSV export is opaque and separator-free.
  *
- * SEC-LIC-9 / SEC-IDN-5: `:` is outside the set, so a client can never claim a SERVER-MINTED id.
+ * `:` is outside the set, so a client can never claim a SERVER-MINTED id.
  * `browser:<licenceId>` (the browser session's device row) is minted only by `browserSession.ts`
  * and `licenseChoice.ts`; the validator is what keeps a key holder from naming it.
  */
@@ -301,7 +301,7 @@ async function provesOwnership(
     // The account sign-in flow (device code) carries no fingerprint, and signing in on a machine
     // that enrolled free is its whole purpose. The device-code holder is the device here, so the
     // machine's own anonymous enrolment licence is adoptable by that flow and by nothing else.
-    // Residual: the starter names the device id unauthenticated (SEC-WP-10 / SEC-IDN-4).
+    // Residual: the starter names the device id unauthenticated.
     if (adoptAnonymousEnrolled && held.origin === "enroll" && held.sub === null)
       return true;
   }
@@ -342,7 +342,7 @@ export async function reconcileDeviceHardware(
   const { mode, presented } = opts;
   const existing = await getDevice(db, product.slug, deviceId);
 
-  // SEC-LIC-1 / SEC-CLI-18 / SEC-IDN-5: `devices` is keyed (product, device_id) and the id is
+  // `devices` is keyed (product, device_id) and the id is
   // client-claimed, so a row held LIVE by another licence is not this caller's to rewrite. Until
   // ownership is shown, nothing below may run: the mismatch arm retires the row, the seat claim
   // moves it, and `changed[]` would leak which components differ. A dead row (deauthorized) holds
@@ -535,7 +535,7 @@ export async function bindDevice(
     await deleteTokenRecord(env, product.slug, existing.token_hash);
   }
 
-  // SEC-LIC-2: a row changing licence carries nothing of the previous one. Operator overrides,
+  // A row changing licence carries nothing of the previous one. Operator overrides,
   // the label and the reported data were set for ANOTHER licence's device; inheriting them would
   // put that licence's comped entitlements and config into this licence's signed document.
   const relicensed = existing !== null && existing.license_id !== license.id;

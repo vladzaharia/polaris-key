@@ -596,7 +596,7 @@ export async function runAccountDeletionSweep(
 }
 
 /**
- * The account-erasure retry sweep (SEC-PRV-1, `services/identity/accounts/deletion.ts`): resume
+ * The account-erasure retry sweep (`services/identity/accounts/deletion.ts`): resume
  * every unfinished erasure whose back-off elapsed. `reportStuck` (the nightly tick only) fails
  * the `erasures` step while any erasure has failed `ERASURE_STUCK_ATTEMPTS` times, naming the
  * opaque account ids and the failing step, so the Operations page shows a stuck erasure.
@@ -812,7 +812,7 @@ export async function handleScheduled(
   }
   const registry: MaintenanceReport = { counts: {}, failures: {} };
   await runRegistryRenders(env, db, now, registry);
-  // SEC-DST-1: heal package refs the deploy window's old Worker wrote as `artifact`, every tick.
+  // Heal package refs the deploy window's old Worker wrote as `artifact`, every tick.
   await step(registry, "packageFileRefs", () =>
     reconcilePackageFileRefs(db, "cron"),
   );

@@ -113,7 +113,7 @@ export async function runSubjectDelete(
 }
 
 /**
- * Like {@link runSubjectDelete}, but fault-isolated per store (SEC-PRV-1): every store gets its
+ * Like {@link runSubjectDelete}, but fault-isolated per store: every store gets its
  * turn even when an earlier one threw, and the failures come back by store name instead of
  * aborting the run. Account erasure uses it so one failing store cannot leave the others
  * undeleted, and so the retry knows which store to run again. A store's `delete` is idempotent.
