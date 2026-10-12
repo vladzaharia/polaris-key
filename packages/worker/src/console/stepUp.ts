@@ -1,10 +1,10 @@
 /**
  * Why each step-up route needs one, and the gate that reads it. A route that is irreversible,
- * exports personal data, or forces a key change is listed here. Since ST-29 the route table
- * (`./routes.ts`, `stepUp: true`) is what the dispatcher enforces, before the handler runs. The
- * one row whose step-up depends on the request body (a break-glass key activation) keeps its own
- * `requireStepUp` in the handler, and `(a|b)` spells two table rows. `test/rbacRouteMatrix.test.ts`
- * keeps this list and the table's step-up rows in step.
+ * exports personal data, forces a key change or leaves a long-lived credential behind is listed
+ * here. Since ST-29 the route table (`./routes.ts`, `stepUp: true`) is what the dispatcher
+ * enforces, before the handler runs. The one row whose step-up depends on the request body (a
+ * break-glass key activation) keeps its own `requireStepUp` in the handler, and `(a|b)` spells two
+ * table rows. `test/rbacRouteMatrix.test.ts` keeps this list and the table's step-up rows in step.
  *
  * A step-up is `session.stepUpAt` (see ./session.ts): set only by a `prompt=login` flow the IdP
  * proved with `auth_time`, never by an ordinary sign-in.
@@ -67,6 +67,11 @@ export const STEP_UP_ROUTES: readonly StepUpRoute[] = [
     method: "POST",
     path: "/platform/override-migration/run",
     why: "rewrites every product's licence overrides",
+  },
+  {
+    method: "POST",
+    path: "/tokens",
+    why: "mints an admin API credential that outlives the session",
   },
 ];
 

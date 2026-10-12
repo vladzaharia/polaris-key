@@ -352,6 +352,38 @@ describe("R1-02 cross-realm session signing", () => {
     expect(await verifyPortalSession(env, legacy, NOW)).toBeNull();
   });
 
+  it("with NO session secret at all, BOTH verifiers answer null instead of throwing", async () => {
+    const env = adminEnv(new KvMock());
+    delete env.ADMIN_SESSION_SECRET;
+    delete env.PORTAL_SESSION_SECRET;
+
+    // `sessionKey()` throws in this configuration. A gate whose verifier raises into its caller
+    // is a gate whose behaviour belongs to whoever catches, which is not failing closed: the
+    // configuration in which no session can be authentic must refuse like a bad signature.
+    // Asserted for both realms together so a fix to one cannot leave the other as the
+    // counter-example.
+    expect(await verifySession(env, "forged.token", NOW)).toBeNull();
+    expect(await verifyPortalSession(env, "forged.token", NOW)).toBeNull();
+
+    // Not merely "a malformed token is rejected": a WELL-FORMED token signed with a key the
+    // attacker chose is refused for the same reason, there is nothing to verify it against.
+    const body = b64urlStr(
+      JSON.stringify({
+        accountId: "acct_1",
+        sub: "u1",
+        name: "Mallory",
+        email: "m@evil.test",
+        groups: [PLATFORM_GROUP],
+        csrf: "x",
+        exp: NOW + 3600,
+      }),
+    );
+    const forgedAdmin = `${body}.${await hmacB64url("attacker-chosen", `pkey.admin.v1|${body}`)}`;
+    const forgedPortal = `${body}.${await hmacB64url("attacker-chosen", `pkey.portal.v1|${body}`)}`;
+    expect(await verifySession(env, forgedAdmin, NOW)).toBeNull();
+    expect(await verifyPortalSession(env, forgedPortal, NOW)).toBeNull();
+  });
+
   it("R1-02e: REFUTED — lastIndexOf('.') splitting is not forgeable (extra dots move the signed body)", async () => {
     const env = adminEnv(new KvMock());
     const { token } = await issueSession(
@@ -585,8 +617,19 @@ describe("R1-05 /<product>/mint/<id>/auth renders stored HTML with no CSP and no
       claimsTemplate: {},
       ttlSeconds: 3600,
     });
-    expect(stmt.sql).toContain("auth_page_template");
-    expect(stmt.sql).toMatch(/VALUES \(\?, \?, \?, \?, \?, \?, \?, \?, NULL\)/);
+    // Positional, not a literal placeholder string: the same INSERT also carries the recipe's
+    // `requires` / `required_entitlement`, and the claim being pinned is that
+    // `auth_page_template`'s slot is a hard-coded NULL whatever else the column list carries.
+    const columns = stmt.sql
+      .match(/\(([^)]*)\)\s*\n?\s*VALUES/)![1]!
+      .split(",")
+      .map((c) => c.trim());
+    const values = stmt.sql
+      .match(/VALUES \(([^)]*)\)/)![1]!
+      .split(",")
+      .map((v) => v.trim());
+    expect(columns).toContain("auth_page_template");
+    expect(values[columns.indexOf("auth_page_template")]).toBe("NULL");
     await db.batch([stmt]);
     const row = await db.first<{ auth_page_template: string | null }>(
       "SELECT auth_page_template FROM edge_mint_config WHERE product = ? AND id = ?",

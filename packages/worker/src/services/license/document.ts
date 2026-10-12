@@ -183,11 +183,13 @@ export async function handleLicenseDocument(
       headers: { etag, "cache-control": "no-store" },
     });
   }
+  const signingKey = await product.signingKey();
+  if (!signingKey) return wireError(503, "signing_unavailable");
   let jws: string;
   try {
     jws = await signDoc(
       doc,
-      product.signingKeyPem,
+      signingKey,
       product.signingKid,
       "pkey-license+jws",
     );

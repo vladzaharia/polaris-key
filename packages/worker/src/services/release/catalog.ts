@@ -40,6 +40,7 @@ import {
 import type { ReleaseArtifactRow, ReleaseMetadataRow } from "./store.js";
 import { getReleaseConfig, readAccessMode } from "./config.js";
 import { entitledSelectorFor } from "./access.js";
+import { meterUpstreamCalls } from "./gateway.js";
 import {
   isVersionSelector,
   knownChannels,
@@ -124,6 +125,16 @@ export function releaseCatalog(ctx: HookContext): ReleaseCatalog {
   // for the metadata mode, the selector classification and the resolution in turn.
   let cfgRead: ReturnType<typeof getReleaseConfig> | undefined;
   const config = () => (cfgRead ??= getReleaseConfig(db, slug));
+  // Every GitHub call a byte route, an artifact read or the portal's repository gate makes is
+  // charged to the product's upstream budget (`meterUpstreamCalls`). The platform `fetch` is read
+  // at call time, as `openSource`'s own default always was: the suites swap the global around a
+  // dispatch.
+  const upstreamFetch = meterUpstreamCalls(
+    ctx.env,
+    slug,
+    ctx.now,
+    (input: string, init?: RequestInit) => fetch(input, init),
+  );
   return {
     ...packCatalog({ db, env: ctx.env, slug, now: ctx.now }),
     ...packageCatalog({ db, slug }),
@@ -315,11 +326,11 @@ export function releaseCatalog(ctx: HookContext): ReleaseCatalog {
 
     resolve: (q: CatalogResolveQuery) => resolveTarget(ctx, q, config),
 
-    openSource: (ref, req) => openSource(ctx, ref, req),
+    openSource: (ref, req) => openSource(ctx, ref, req, upstreamFetch),
 
     installScript: (origin: string) => installScript(db, product, origin),
 
-    repositoryPublic: () => repositoryPublic(ctx),
+    repositoryPublic: () => repositoryPublic(ctx, upstreamFetch),
   };
 }
 

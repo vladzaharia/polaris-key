@@ -90,6 +90,11 @@ export const COPY_CODES: Readonly<Record<string, CopyEntry>> = {
     message:
       "The service couldn't prepare your settings. Contact the developer.",
   },
+  signing_unavailable: {
+    title: "Signing unavailable",
+    message:
+      "The service can't sign a document right now. Try again in a few minutes.",
+  },
   device_limit: {
     title: "Device limit reached",
     message:

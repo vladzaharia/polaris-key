@@ -65,6 +65,10 @@
       "title": "Problem mit dem Dienst",
       "message": "Der Dienst konnte Ihre Einstellungen nicht vorbereiten. Wenden Sie sich an den Entwickler."
     },
+    "signing_unavailable": {
+      "title": "Signieren nicht verfügbar",
+      "message": "Der Dienst kann derzeit kein Dokument signieren. Versuchen Sie es in einigen Minuten erneut."
+    },
     "device_limit": {
       "title": "Gerätelimit erreicht",
       "message": "Diese Lizenz ist bereits auf allen zulässigen Geräten in Gebrauch. Ersetzen Sie ein Gerät, um sie hier zu verwenden."

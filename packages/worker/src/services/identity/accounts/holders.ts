@@ -9,10 +9,11 @@
  *                          `attachLicense(…, via: "email")`
  *
  * Both obey the sweep's rules and nothing looser: only an address the account VERIFIED drives an
- * attach (R5-01), only on a product whose auto-link resolves on (custom issuers default off), an
- * owned licence is never touched, and a licence the account removed from its library is never
- * attached to it again automatically (D19). There are no placeholder accounts (D2): an address no
- * account has verified leaves the licence waiting.
+ * attach, only where auto-link resolves on for the licence (one minted under a custom issuer
+ * defaults off, whatever the product's provider is now: `email_issuer_class`), an owned licence
+ * is never touched, and a licence the account removed from its library is never attached to it
+ * again automatically. There are no placeholder accounts: an address no account has verified
+ * leaves the licence waiting.
  */
 
 import { getLicense } from "../../../core/repo.js";
@@ -26,7 +27,7 @@ import { normalizeEmail } from "../../../platform/email.js";
 import type { Db } from "../../../db/types.js";
 import {
   attachWaitingLicensesByEmail,
-  autoLinkEnabled,
+  licenseAutoLinkEnabled,
 } from "../portal/repo.js";
 import { attachLicense } from "./claim.js";
 import { accountsVerifyingEmail, verifiedAccountEmails } from "./repo.js";
@@ -73,7 +74,7 @@ export async function licenseEmailAssigned(
     args.licenseId,
   );
   if ((license.account_id ?? null) !== null) return false;
-  if (!(await autoLinkEnabled(db, args.product))) return false;
+  if (!(await licenseAutoLinkEnabled(db, license))) return false;
   const eligible = candidates.filter((c) => !blocked.has(c.accountId));
   const chosen =
     eligible.find((c) => c.emailMethod) ??

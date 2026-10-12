@@ -213,6 +213,44 @@ def test_document_403_defaults_to_the_stricter_reason_when_the_body_says_nothing
     assert res.allowedRange is None
 
 
+@pytest.mark.parametrize(
+    "body",
+    [
+        {"error": {"reason": "ok"}},
+        {"reason": "ok"},
+        {"reason": "grace"},
+        {"error": {"reason": "not-applicable"}},
+        {"error": {"reason": 5}, "reason": ["version-too-old"]},
+        {"error": {"reason": ""}, "reason": None},
+    ],
+)
+def test_document_403_reads_a_reason_outside_the_vocabulary_as_the_stricter_reason(body) -> None:
+    """The reason is lifted from attacker-shaped JSON and ends up, unsigned, as the gate's
+    status, so ``is_block_reason`` is checked here. A body claiming a usable reason is treated
+    exactly like a body that says nothing at all."""
+    res = _get_document(lambda r: httpx.Response(403, json=body))
+    assert isinstance(res, DocumentBlocked)
+    assert res.reason == "version-too-old"
+
+
+def test_document_403_takes_the_first_reason_that_is_inside_the_vocabulary() -> None:
+    res = _get_document(
+        lambda r: httpx.Response(
+            403, json={"error": {"reason": "ok"}, "reason": "version-too-new"}
+        )
+    )
+    assert isinstance(res, DocumentBlocked) and res.reason == "version-too-new"
+
+
+def test_document_403_falls_back_to_the_error_code_when_the_reason_is_outside_the_vocabulary() -> None:
+    res = _get_document(
+        lambda r: httpx.Response(
+            403, json={"error": {"code": "channel_not_allowed", "reason": "ok"}}
+        )
+    )
+    assert isinstance(res, DocumentBlocked) and res.reason == "channel-not-entitled"
+
+
 def test_document_500_is_server_error_with_status() -> None:
     res = _get_document(lambda r: httpx.Response(500, text="boom"))
     assert isinstance(res, DocumentError)

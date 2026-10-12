@@ -19,9 +19,9 @@
  * `/identity/session` serves it as plain JSON to a page, unsigned, so there is nothing to
  * domain-separate. It gets a `typ` if and when it is ever signed.
  *
- * Key MATERIAL is loaded by `core/products.ts` (`loadProduct` opens the sealed `product_keys`
- * row under the KEK; `loadPublicSigningKey(s)` reads the public halves), and published by
- * `core/trust/trust.ts`. This module never touches storage.
+ * Key material is opened by `Product.signingKey()` in `core/products.ts` when a route needs it;
+ * `loadPublicSigningKey(s)` reads only public halves, which `core/trust/trust.ts` publishes.
+ * This module never touches storage.
  *
  * ── THE SIGNER GUARDS (plans/P3-01.md §2.2, "Keeping the signer total") ─────────────────────
  *
@@ -104,10 +104,10 @@ export function isStrictJsonError(e: unknown): e is StrictJsonError {
 
 export async function signDoc(
   doc: unknown,
-  signingKeyPem: string,
+  privateKeyPem: string,
   kid: string,
   typ?: JwsTyp,
 ): Promise<string> {
   assertIntegerClaims(doc, typ);
-  return signJws(doc, signingKeyPem, kid, typ);
+  return signJws(doc, privateKeyPem, kid, typ);
 }

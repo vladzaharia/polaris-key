@@ -26,6 +26,16 @@ export const configService: ServiceDescriptor = {
   /** ST-03: this service's settings registry slice (`settings.ts`). */
   settings: CONFIG_SETTINGS_SLICE,
   handle: handleConfigRoutes,
+  /** The canonical surface `routes.ts` dispatches; what `routeCoverage` pins. */
+  surface: [
+    { path: "/{product}/config/document", methods: ["get"] },
+    { path: "/{product}/config/schema", methods: ["get"] },
+    {
+      path: "/{product}/config/mint/{mintId}/token",
+      methods: ["get", "post"],
+    },
+    { path: "/{product}/config/mint/{mintId}/auth", methods: ["get"] },
+  ],
   /** `config/{catalog,profiles,mint}` on the console API (§R1; `mint` is P0-12). */
   adminHandle: handleConfigAdmin,
   /**

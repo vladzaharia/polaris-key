@@ -8,11 +8,11 @@
  * stays in that one file.
  */
 
+import { MAX_DEVICE_LIMIT } from "@polaris-key/manifest";
 import { setting } from "../../core/settings/define.js";
 import {
   DEFAULT_DEVICE_LIMIT,
   DEFAULT_MAX_OFFLINE_DAYS,
-  DEVICE_LIMIT_MAX,
   OFFLINE_DAYS_MAX,
 } from "../../core/settings/platform.js";
 import type {
@@ -34,7 +34,7 @@ const LICENSE_SETTINGS: readonly SettingDef[] = [
       "How many devices a licence may activate when neither its tier nor the licence sets a limit.",
     keywords: ["seats", "devices", "activations"],
     docs: "/docs/features/licensing/access/",
-    value: { kind: "integer", unit: "count", min: 1, max: DEVICE_LIMIT_MAX },
+    value: { kind: "integer", unit: "count", min: 1, max: MAX_DEVICE_LIMIT },
     defaultValue: DEFAULT_DEVICE_LIMIT,
     merge: "cascade",
     inherits: "platform",

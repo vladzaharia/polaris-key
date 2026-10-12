@@ -19,15 +19,18 @@ import type { Env } from "../../platform/env.js";
 import type { Db } from "../../db/types.js";
 import type { Product } from "../../core/products.js";
 import { json, notFound } from "../../core/errors.js";
+import { bearer } from "../../platform/http.js";
+import { resolvedReleaseRefusal } from "../../core/licensing/entitledAccess.js";
 import type { UpdateArch } from "@polaris-key/protocol/update";
 import type { ReleaseAccess } from "@polaris-key/protocol/release";
 import type { FetchImpl } from "../release/githubApp.js";
 import { fetchTextAsset, getReleaseByTag } from "../release/github.js";
 import { matchAsset, normalizeArch, sigAssetName } from "../release/assets.js";
 import { extractSummary } from "../release/changelog.js";
-import { versionFromTag } from "../release/channels.js";
+import { isMovingSelector, versionFromTag } from "../release/channels.js";
 import { verifySparkleSignature } from "../release/sparkle.js";
 import {
+  accessModeFor,
   artifactPolicy,
   isResolved,
   operatorPolicy,
@@ -109,9 +112,11 @@ export function handleUpdate(
 }
 
 async function handleVersion({
+  req,
   env,
   db,
   cfg,
+  product,
   params,
   now,
   fetchImpl,
@@ -125,6 +130,22 @@ async function handleVersion({
     now,
     fetchImpl,
   );
+  // The window is re-asserted against the RESOLVED release. `/update/version` is the surface
+  // that TELLS a caller which version is current, so answering `latest` or a channel with a
+  // release outside the caller's ceiling advertises the artifact the pinned download refuses.
+  // Governed by the METADATA mode, like the check itself.
+  if (isMovingSelector(sel)) {
+    const blocked = await resolvedReleaseRefusal(
+      env,
+      db,
+      product,
+      bearer(req),
+      accessModeFor(artifactPolicy(cfg), "version"),
+      release.tag_name,
+      now,
+    );
+    if (blocked) return blocked;
+  }
   return json(
     {
       version: versionFromTag(release.tag_name),
@@ -137,7 +158,7 @@ async function handleVersion({
 
 async function handleAppcast(
   params: ReleaseParams,
-  { env, db, cfg, product, origin, now, fetchImpl }: SurfaceContext,
+  { req, env, db, cfg, product, origin, now, fetchImpl }: SurfaceContext,
   artifactsAccess: ReleaseAccess | undefined,
   waitUntil?: (promise: Promise<unknown>) => void,
 ): Promise<Response> {
@@ -153,6 +174,23 @@ async function handleAppcast(
     now,
     fetchImpl,
   );
+  const policy = artifactPolicy(cfg, artifactsAccess);
+  // A bare `/update/appcast.xml` or a channel appcast names no version, so the grant's ceiling
+  // was never applied to it: the release the selector resolved to is checked now. The feed's
+  // whole job is to hand an updater an enclosure URL, so listing one for an out-of-window
+  // release discloses it as surely as serving the DMG would.
+  if (isMovingSelector(sel)) {
+    const blocked = await resolvedReleaseRefusal(
+      env,
+      db,
+      product,
+      bearer(req),
+      accessModeFor(policy, "appcast"),
+      release.tag_name,
+      now,
+    );
+    if (blocked) return blocked;
+  }
 
   const suffix = channelSuffix(sel);
   const dmg = matchAsset(release.assets, {
@@ -166,7 +204,6 @@ async function handleAppcast(
   // The EdDSA signature lives in a sibling `<dmg>.sig` asset uploaded by the pipeline.
   // Signed Sparkle appcasts are required by default; only an operator (never a `.pkey/`
   // push) can opt a product out. R6-03.
-  const policy = artifactPolicy(cfg, artifactsAccess);
   if (policy.requireSparkleSignature && !cfg.sparkle_ed25519_pub) {
     return notFound();
   }

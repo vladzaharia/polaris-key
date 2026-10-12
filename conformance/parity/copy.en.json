@@ -64,6 +64,10 @@
       "title": "Service problem",
       "message": "The service couldn't prepare your settings. Contact the developer."
     },
+    "signing_unavailable": {
+      "title": "Signing unavailable",
+      "message": "The service can't sign a document right now. Try again in a few minutes."
+    },
     "device_limit": {
       "title": "Device limit reached",
       "message": "This license is already on all its devices. Replace a device to use it here."

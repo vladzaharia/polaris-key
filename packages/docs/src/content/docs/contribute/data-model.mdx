@@ -48,6 +48,7 @@ this page or fails the freshness gate.
 | `platform_audit` | 0054_b_platform_audit.sql | `id`, `at`, `actor_sub`, `actor_name`, `actor_email`, `action`, `target_kind`, `target_id`, `summary`, `before_json`, `after_json`, `origin (0101)`, `reason (0101)`, `setting_key (0101)` |
 | `registry_render_queue` | 0058_d_registry.sql | `product`, `deliverable_id`, `reason`, `enqueued_at`, `generation`, `attempts (0060)` |
 | `registry_tokens` | 0067_registry_tokens.sql | `product`, `token_id`, `token_hash`, `hint`, `label`, `scopes_json`, `ecosystems_json`, `binding`, `license_id`, `presentation`, `created_by`, `portal_account_id`, `created_at`, `expires_at`, `last_used_at`, `revoked_at`, `revoked_by`, `revoke_reason` |
+| `admin_api_tokens` | 0119_admin_api_tokens.sql | `id`, `token_hash`, `label`, `scopes_json`, `created_at`, `expires_at`, `last_used_at`, `revoked_at` |
 | `platform_settings` | 0056_platform_settings.sql | `key`, `value_json`, `version`, `updated_at`, `updated_by` |
 | `platform_job_runs` | 0057_platform_operations.sql | `id`, `run_id`, `job`, `cron`, `step`, `started_at`, `duration_ms`, `outcome`, `items`, `rows_affected`, `error_summary` |
 | `platform_heartbeats` | 0057_platform_operations.sql | `script`, `at`, `version_tag`, `cf_version_id`, `outcome`, `backlog_count`, `backlog_bytes`, `oldest_at` |
@@ -64,7 +65,7 @@ this page or fails the freshness gate.
 
 | Table | Since | Columns (ALTERs annotated with their migration) |
 | --- | --- | --- |
-| `licenses` | 0001_init.sql | `product`, `id`, `status`, `sub`, `name`, `email`, `groups_json`, `tier_id`, `activated_at`, `expires_at`, `max_offline_days`, `overrides_json`, `modified_by`, `modified_at`, `channels_json (0002)`, `min_version (0002)`, `max_version (0002)`, `origin (0011)`, `enroll_hwid (0011)`, `account_id (0068)`, `device_limit (0084)`, `batch_id (0095)`, `kind (0105)`, `ended_reason (0105)`, `superseded_by (0105)`, `source (0105)`, `external_ref_hash (0105)` |
+| `licenses` | 0001_init.sql | `product`, `id`, `status`, `sub`, `name`, `email`, `groups_json`, `tier_id`, `activated_at`, `expires_at`, `max_offline_days`, `overrides_json`, `modified_by`, `modified_at`, `channels_json (0002)`, `min_version (0002)`, `max_version (0002)`, `origin (0011)`, `enroll_hwid (0011)`, `account_id (0068)`, `device_limit (0084)`, `batch_id (0095)`, `kind (0105)`, `ended_reason (0105)`, `superseded_by (0105)`, `source (0105)`, `external_ref_hash (0105)`, `email_issuer_class (0118)` |
 | `keys_index` | 0001_init.sql | `product`, `key_hash`, `license_id`, `status`, `label`, `created_at`, `created_by`, `last_used_at` |
 | `tiers` | 0001_init.sql | `product`, `id`, `label`, `profile_id`, `policy_expiry_days`, `policy_device_limit`, `modified_by`, `modified_at`, `policy_fingerprint (0010)`, `source (0086)`, `rank (0105)`, `policy_offline_grace_days (0105)` |
 | `license_profiles` | 0004_license_profiles.sql | `product`, `license_id`, `profile_id`, `sort_order` |
@@ -77,8 +78,8 @@ this page or fails the freshness gate.
 | --- | --- | --- |
 | `product_schema` | 0001_init.sql | `product`, `catalog_version`, `catalog_json`, `active`, `created_at` |
 | `profiles` | 0001_init.sql | `product`, `id`, `name`, `description`, `payload_json`, `modified_by`, `modified_at`, `source (0086)` |
-| `edge_mint_config` | 0001_init.sql | `product`, `id`, `alg`, `signing_key_secret`, `kid`, `claims_template_json`, `ttl_seconds`, `auth_page_template`, `audience (0003)` |
-| `edge_mint_approvals` | 0025_b_edge_mint_approvals.sql | `product`, `id`, `alg`, `signing_key_secret`, `kid`, `claims_template_json`, `ttl_seconds`, `audience`, `open_registration_acknowledged`, `license_enabled`, `identity_enabled`, `oidc_provider`, `oidc_issuer`, `oidc_client_id`, `oidc_group_role_map_json`, `approved_at`, `approved_by` |
+| `edge_mint_config` | 0001_init.sql | `product`, `id`, `alg`, `signing_key_secret`, `kid`, `claims_template_json`, `ttl_seconds`, `auth_page_template`, `audience (0003)`, `requires (0117)`, `required_entitlement (0117)` |
+| `edge_mint_approvals` | 0025_b_edge_mint_approvals.sql | `product`, `id`, `alg`, `signing_key_secret`, `kid`, `claims_template_json`, `ttl_seconds`, `audience`, `open_registration_acknowledged`, `license_enabled`, `identity_enabled`, `oidc_provider`, `oidc_issuer`, `oidc_client_id`, `oidc_group_role_map_json`, `approved_at`, `approved_by`, `requires (0117)`, `required_entitlement (0117)` |
 | `account_overrides` | 0103_account_overrides.sql | `product`, `subject`, `payload_json`, `updated_at`, `updated_by` |
 | `override_migration_report` | 0103_account_overrides.sql | `product`, `run_id`, `license_id`, `outcome`, `subject`, `buyer_email`, `keys_json`, `values_json`, `created_at`, `expires_at` |
 | `override_migration` | 0103_account_overrides.sql | `id`, `login_card_live_at`, `login_card_live_by`, `library_live_at`, `library_live_by`, `notice_started_at`, `notice_started_by`, `run_not_before`, `run_id`, `run_started_at`, `run_started_by`, `run_completed_at`, `products_done_json`, `run_lease_until`, `run_lease_holder`, `inventory_json`, `inventory_computed_at`, `columns_emptied_at`, `updated_at` |

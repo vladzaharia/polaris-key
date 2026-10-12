@@ -203,6 +203,30 @@ export interface ScheduledServiceContext {
 }
 
 /**
+ * One canonical route a service serves, as DATA.
+ *
+ * `path` is the OpenAPI-style template the spec documents it under —
+ * `/{product}/license/activate`, `/{product}/config/mint/{mintId}/token` — so the drift gate
+ * compares like with like instead of transcribing one shape into another.
+ *
+ * The list lives on the descriptor, not in the test. `test/routeCoverage.test.ts` used to carry
+ * it as a hand-written literal, which made the gate answerable in the wrong direction: a service
+ * could grow a route in its `routes.ts`, nobody would document it, and the test stayed green
+ * because the only thing it compared was one copy of the spec against another copy of the spec.
+ * `routes.ts` is imperative and there is nothing to reflect over, so the list is not
+ * self-derived; but it sits in the same directory as the router it describes (a route added
+ * without a `surface` entry is a diff a reviewer reads in one place), and it is executable:
+ * `routeCoverage` instantiates every declared path and asserts the core router actually
+ * dispatches it to this slug, so a declared path the router cannot reach fails too.
+ */
+export interface ServiceRoute {
+  /** The OpenAPI path template, product placeholder included. */
+  path: string;
+  /** Lower-case HTTP methods this route answers. */
+  methods: readonly string[];
+}
+
+/**
  * One service's contract with Core.
  *
  * `handle` returns `null` — not a 404 — when no route inside the service matched. The
@@ -214,6 +238,13 @@ export interface ServiceDescriptor extends DescriptorHooks {
   slug: ServiceSlug;
   /** Handle a product-scoped request. `null` = no route matched inside this service. */
   handle(ctx: ServiceContext): Promise<Response | null>;
+  /**
+   * The canonical routes this service serves, as spec path templates. The permanent
+   * pre-namespace aliases are NOT listed: they are the router's rewrites, not a service's
+   * surface, and `routeCoverage` pins them separately. A service that serves no route yet
+   * declares `[]`.
+   */
+  surface: readonly ServiceRoute[];
   /**
    * This service's settings (ST-03, `core/settings/`): the product-scope registry entries under
    * the namespaces it owns. Data only, read by `buildSettingsRegistry` at the composition root,

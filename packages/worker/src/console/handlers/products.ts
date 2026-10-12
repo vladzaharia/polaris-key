@@ -15,7 +15,8 @@
  *                                             with a free suggestion. Any signed-in operator: a
  *                                             product's slug is public (its discovery document).
  *   - `GET  /api/products/kek`              — platform KEK keyring status: which kid is active
- *                                             and how many sealed rows sit under each kid.
+ *                                             and how many sealed rows sit under each kid (and
+ *                                             whether that count reached every row).
  *   - `POST /api/products/kek`              — re-seal a bounded batch of rows under the active
  *                                             KEK (the rotation sweep; idempotent + resumable).
  *   - `PUT  /api/products/<slug>/secrets/<name>` — write-only sealed secret (never echoed).
@@ -48,6 +49,7 @@ import {
   getProduct,
   getProductSecret,
   getTier,
+  insertProductKeyIfAbsent,
   type ProductRow,
   listProducts,
   stmtInsertProduct,
@@ -55,6 +57,7 @@ import {
   stmtInsertSchema,
   upsertProductSecret,
 } from "../../core/repo.js";
+import { mintKid } from "../../core/keys.js";
 import { deleteTokenRecord } from "../../platform/kv.js";
 import {
   deleteProduct,
@@ -91,6 +94,10 @@ import {
   parseFingerprintPolicy,
 } from "../../core/fingerprint.js";
 import { audit, platformAudit } from "../../core/console/audit.js";
+import {
+  deviceLimitMessage,
+  invalidDeviceLimit,
+} from "../../core/console/deviceLimit.js";
 import { canSeeProduct } from "../authz.js";
 import { requireStepUp } from "../stepUp.js";
 import type { AdminSession } from "../../core/console/session.js";
@@ -109,6 +116,7 @@ import {
   WriteChecks,
 } from "../../core/console/writeChecks.js";
 import { reservedNamesMode } from "../../core/licensing/reservedNames.js";
+import { resealManagedValue } from "../../core/managedSecrets.js";
 import { handleOutletCredentials } from "./outletCredentials.js";
 
 /** Compile a schema supplied as a JSON/YAML string or a parsed object. Returns the catalog or
@@ -349,16 +357,14 @@ export async function handleProducts(
       .offlineDays("defaultMaxOfflineDays", body.defaultMaxOfflineDays)
       .response();
     if (refused) return refused;
-    // R11-02 part 2: `limit > 0` in licenseCore means a 0/negative limit reads as UNLIMITED.
-    if (
-      typeof body.defaultDeviceLimit === "number" &&
-      (!Number.isInteger(body.defaultDeviceLimit) ||
-        body.defaultDeviceLimit <= 0)
-    ) {
+    // A 0 or negative limit reads as UNLIMITED (the licence core gates the seat check on
+    // `limit > 0`), and an unbounded one is a `claimDeviceSeat` recursive CTE that never
+    // returns: both are refused, and a value past the ceiling is refused rather than clamped.
+    if (invalidDeviceLimit(body.defaultDeviceLimit)) {
       return err(
         422,
         ErrorCode.BadRequest,
-        "defaultDeviceLimit must be a positive integer",
+        deviceLimitMessage("defaultDeviceLimit"),
         { fields: ["defaultDeviceLimit"] },
       );
     }
@@ -596,6 +602,22 @@ async function manualCreate(
     .response();
   if (refused) return refused;
 
+  // `Number(body.defaultDeviceLimit ?? 5)` used to be the ENTIRE validation here: the PATCH above
+  // bounded the field and create bounded nothing, so a ceiling on the update alone was one POST
+  // away from irrelevant. The coercion stays (this endpoint has always taken a numeric string)
+  // but it is the RESULT that is checked: `Number("1e9")` is a number like any other, and
+  // `invalidDeviceLimit` refuses NaN and Infinity along with the ceiling, so a string cannot
+  // walk past a bound that the number itself could not.
+  const deviceLimit = Number(body.defaultDeviceLimit ?? 5);
+  if (invalidDeviceLimit(deviceLimit)) {
+    return err(
+      422,
+      ErrorCode.BadRequest,
+      deviceLimitMessage("defaultDeviceLimit"),
+      { fields: ["defaultDeviceLimit"] },
+    );
+  }
+
   // A schema is now required so the product gets a real, usable catalog. If none is supplied,
   // seed the empty catalog (still mints a signing key).
   const supplied = body.schema;
@@ -640,7 +662,7 @@ async function manualCreate(
       compat_min: String(body.compatMin ?? "0.0.0"),
       compat_max: String(body.compatMax ?? "99.0.0"),
       default_max_offline_days: Number(body.defaultMaxOfflineDays ?? 30),
-      default_device_limit: Number(body.defaultDeviceLimit ?? 5),
+      default_device_limit: deviceLimit,
       admin_group: typeof body.adminGroup === "string" ? body.adminGroup : null,
       branding_json: null,
       release_source: null,
@@ -755,8 +777,11 @@ const SEALED_TABLES = [
  * a config document with a missing secret, not as an error.)
  *
  * Each table is keyed `(product, <idColumn>)` and stores `JSON.stringify(ManagedPayload)` with
- * sealed values under `config` / `secrets` (`account_overrides` has no `entitlements`). The AAD is `…:product-secret:managed:<key>`, exactly as
- * `core/managedSecrets.ts` writes it.
+ * sealed values under `config` / `secrets` (`account_overrides` has no `entitlements`). The AAD
+ * belongs to `core/managedSecrets.ts` and is built there: `resealManagedValue` is what this pass
+ * calls, so the sweep cannot fall behind a change to the context (it did once: managed values
+ * moved off `kind: "product-secret"`, and an envelope written under the earlier AAD is still
+ * found and rewritten under the current one).
  */
 const MANAGED_PAYLOAD_TABLES = [
   { table: "profiles", column: "payload_json", idColumn: "id" },
@@ -771,7 +796,37 @@ const NESTED_KEK_MARK = '\\"kekId\\":\\"';
 const RESEAL_DEFAULT_LIMIT = 50;
 const RESEAL_MAX_LIMIT = 200;
 
+/**
+ * How many managed-payload rows ONE keyring status call will pull into the isolate and parse,
+ * per table.
+ *
+ * The envelope columns (`SEALED_TABLES`) are counted by a `GROUP BY` aggregate: SQLite does the
+ * work and hands back one row per kid. The envelopes nested inside managed payloads can only be
+ * found by parsing the payload, and that pass had no `LIMIT`: `GET /api/products/kek` selected
+ * every `profiles`, `licenses` and `account_overrides` row containing the substring `kekId`,
+ * streamed all of them into the Worker and ran `JSON.parse` on each (the sweep's POST did it
+ * twice), an admin call whose cost grew without bound with the size of the deployment, on the
+ * one endpoint an operator hits repeatedly during a rotation.
+ *
+ * 500 rows per table is far above any real deployment and far below anything that costs an
+ * isolate its memory. What matters much more than the number is that exceeding it is REPORTED:
+ * see `KekScan.partial`. A row counts toward the cap whenever it carries an envelope, re-sealed
+ * or not, so sweeping never shrinks the scan.
+ */
+export const MANAGED_SCAN_ROWS = 500;
+
 type KekCounts = Record<string, Record<string, number>>;
+
+/** The result of one keyring count, and whether it is the whole truth. */
+interface KekScan {
+  counts: KekCounts;
+  /**
+   * Managed-payload tables whose scan stopped at `MANAGED_SCAN_ROWS`. Empty means every sealed
+   * value in the deployment was counted; non-empty means `counts.managed`, and therefore
+   * `remaining` and `unopenable`, are FLOORS, not totals.
+   */
+  partial: string[];
+}
 
 /** The kid inside a sealed envelope string, or null if the value is not one. */
 function envelopeKekId(value: unknown): string | null {
@@ -847,8 +902,9 @@ function managedNeedsWorkParams(
 
 /** `{ keys: {k1:3,k2:12}, secrets: {k1:1}, outletCredentials: {k2:1}, managed: {k1:2} }` —
  *  sealed values per kid: whole rows for the envelope columns, individual leaves for the managed
- *  payloads. */
-async function kekCounts(db: Db): Promise<KekCounts> {
+ *  payloads (at most `MANAGED_SCAN_ROWS` rows of each table; `partial` names the tables that
+ *  hit it). */
+async function kekCounts(db: Db): Promise<KekScan> {
   const counts: KekCounts = {};
   for (const t of SEALED_TABLES) {
     const rows = await db.all<{ kek_id: string | null; n: number }>(
@@ -860,12 +916,23 @@ async function kekCounts(db: Db): Promise<KekCounts> {
       perKid[row.kek_id ?? UNREADABLE_KEK] = Number(row.n);
     counts[t.label] = perKid;
   }
-  // Only rows that actually carry an envelope are parsed; the rest never leave SQLite.
+  // Only rows that actually carry an envelope are parsed; the rest never leave SQLite. And at
+  // most `MANAGED_SCAN_ROWS` of THOSE do: one row over the cap is fetched on purpose, the
+  // cheapest possible proof that more exist, and it is what `partial` reports.
   const managed: Record<string, number> = {};
+  const partial: string[] = [];
   for (const t of MANAGED_PAYLOAD_TABLES) {
     const rows = await db.all<{ blob: string }>(
-      `SELECT ${t.column} AS blob FROM ${t.table} WHERE ${t.column} LIKE '%kekId%'`,
+      `SELECT ${t.column} AS blob FROM ${t.table}
+        WHERE ${t.column} LIKE '%kekId%'
+        ORDER BY product, ${t.idColumn}
+        LIMIT ?`,
+      MANAGED_SCAN_ROWS + 1,
     );
+    if (rows.length > MANAGED_SCAN_ROWS) {
+      partial.push(t.table);
+      rows.pop();
+    }
     for (const row of rows) {
       for (const leaf of managedLeaves(row.blob).leaves)
         managed[leaf.kekId] = (managed[leaf.kekId] ?? 0) + 1;
@@ -880,33 +947,54 @@ async function kekCounts(db: Db): Promise<KekCounts> {
   ))
     platform[row.kek_id ?? UNREADABLE_KEK] = Number(row.n);
   counts.platformCredentials = platform;
-  return counts;
+  return { counts, partial };
 }
 
 /**
- * Two different numbers an operator must not conflate:
+ * Two different numbers an operator must not conflate, and one flag saying whether to trust them:
  *
  *  - `remaining`  — rows not yet re-sealed under the active kid. Reaching 0 is the gate for
  *                   retiring the old KEK; without it a rotation ends in a guess.
  *  - `unopenable` — rows whose kid is not in the ring AT ALL. These are already dark: their
  *                   product's routes are 404ing right now. Non-zero means a key was dropped
  *                   from `PLATFORM_KEK_KEYS` too early — put it back.
+ *  - `countsComplete` — false when a managed-payload scan hit `MANAGED_SCAN_ROWS`;
+ *                   `countsTruncated` names the tables.
+ *
+ * That last flag exists because of what `remaining` is FOR. It is not a progress bar; it is the
+ * precondition an operator checks before deleting a key, and a key deleted while something is
+ * still sealed under it is unrecoverable data. A bounded scan that reported `remaining: 0`
+ * because it stopped counting would be the most dangerous possible output of this endpoint, so
+ * a partial scan is not merely labelled: it is prevented from ever producing the number that
+ * says "safe to delete". The floor is honest, because past the cap there are rows nobody
+ * looked at.
  */
 function progressOf(
-  counts: KekCounts,
+  scan: KekScan,
   active: string,
   kids: string[],
-): { remaining: number; unopenable: number } {
+): {
+  remaining: number;
+  unopenable: number;
+  countsComplete: boolean;
+  countsTruncated: string[];
+} {
   let remaining = 0;
   let unopenable = 0;
-  for (const perKid of Object.values(counts)) {
+  for (const perKid of Object.values(scan.counts)) {
     for (const [kid, n] of Object.entries(perKid)) {
       if (kid === active) continue;
       remaining += n;
       if (!kids.includes(kid)) unopenable += n;
     }
   }
-  return { remaining, unopenable };
+  const countsComplete = scan.partial.length === 0;
+  return {
+    remaining: countsComplete ? remaining : Math.max(remaining, 1),
+    unopenable,
+    countsComplete,
+    countsTruncated: scan.partial,
+  };
 }
 
 /**
@@ -927,11 +1015,15 @@ const SEALED_WORKER_SECRETS: readonly string[] = Object.values(SIGNIN_ENV).map(
  * job, done when it reaches 0. `workerSecrets` are the sealed Worker secrets still under it —
  * the operator's job. `safeToDelete` is the gate for `wrangler secret delete PLATFORM_KEK`: both
  * empty, or the legacy key is a redundant copy of a `PLATFORM_KEK_KEYS` entry anyway.
+ *
+ * A cut scan has not looked at every managed payload, so a legacy count of 0 proves nothing:
+ * like `progressOf`'s total it is floored at 1, which keeps an open-only legacy key from reading
+ * as safe to delete on a count that merely stopped.
  */
 function legacyProgress(
   env: Env,
   legacy: LegacyKey | undefined,
-  counts: KekCounts,
+  scan: KekScan,
 ):
   | {
       legacy: LegacyKey & {
@@ -944,8 +1036,9 @@ function legacyProgress(
   if (!legacy) return {};
   let remaining = 0;
   // An own-property read: a legacy kid such as `toString` must not pick up an inherited member.
-  for (const perKid of Object.values(counts))
+  for (const perKid of Object.values(scan.counts))
     if (Object.hasOwn(perKid, legacy.kid)) remaining += perKid[legacy.kid]!;
+  if (scan.partial.length > 0) remaining = Math.max(remaining, 1);
   const workerSecrets = SEALED_WORKER_SECRETS.filter((name) => {
     const value = env[name];
     // Trimmed as `providers/config.ts` reads it: a blob piped into `wrangler secret put` keeps
@@ -1071,17 +1164,15 @@ async function resealSweep(
       let rewritten = 0;
       for (const leaf of leaves) {
         if (leaf.kekId === active) continue;
-        const ctx = {
-          product: row.product,
-          kind: "product-secret" as const,
-          id: `managed:${leaf.key}`,
-        };
         try {
-          const plaintext = await open(env, leaf.value, ctx);
-          const next = await seal(env, plaintext, ctx);
-          if ((await open(env, next, ctx)) !== plaintext)
-            throw new Error("re-sealed value did not round-trip");
-          payload![leaf.bucket]![leaf.key]!.value = next;
+          // The AAD is `managedSecrets.ts`'s to build, not this sweep's to reconstruct: a second
+          // copy of the spelling here is how the two drift apart.
+          payload![leaf.bucket]![leaf.key]!.value = await resealManagedValue(
+            env,
+            row.product,
+            leaf.key,
+            leaf.value,
+          );
           rewritten++;
         } catch (e) {
           failures.push({
@@ -1194,14 +1285,14 @@ async function handleKekKeyring(
   }
 
   if (req.method === "GET") {
-    const counts = await kekCounts(db);
+    const scan = await kekCounts(db);
     return adminJson({
       ok: true,
       active,
       kids,
-      counts,
-      ...progressOf(counts, active, kids),
-      ...legacyProgress(env, legacy, counts),
+      counts: scan.counts,
+      ...progressOf(scan, active, kids),
+      ...legacyProgress(env, legacy, scan),
     });
   }
 
@@ -1238,8 +1329,8 @@ async function handleKekKeyring(
       `Re-sealed ${count} value(s) for ${product} under KEK ${active}`,
     );
   }
-  const counts = await kekCounts(db);
-  const after = progressOf(counts, active, kids);
+  const scan = await kekCounts(db);
+  const after = progressOf(scan, active, kids);
   // Counts only, never key material: `before`/`after` are the rows not yet under `active`.
   await platformAudit(
     db,
@@ -1247,7 +1338,7 @@ async function handleKekKeyring(
     now,
     "kek.reseal",
     { kind: "kek", id: active },
-    `Re-sealed ${sweep.resealed} value(s) under KEK ${active} (${after.remaining} remaining)`,
+    `Re-sealed ${sweep.resealed} value(s) under KEK ${active} (${after.countsComplete ? "" : "at least "}${after.remaining} remaining)`,
     {
       before,
       after: {
@@ -1266,9 +1357,9 @@ async function handleKekKeyring(
     skipped: sweep.skipped,
     failed: sweep.failures.length,
     failures: sweep.failures,
-    counts,
+    counts: scan.counts,
     ...after,
-    ...legacyProgress(env, legacy, counts),
+    ...legacyProgress(env, legacy, scan),
   });
 }
 
@@ -1604,7 +1695,17 @@ async function handleKeys(
     return err(405, ErrorCode.BadRequest, "method not allowed");
 
   if (action === "prepare" || action === "rotate") {
-    const kid = `${slug}-${new Date(now * 1000).getUTCFullYear()}-${(now % 100000).toString(36)}`;
+    // A random suffix, not `now % 100000`: that value repeats every ~28 hours (and is constant
+    // within a second), so two rotations of one product minted the same kid and collided on
+    // `PRIMARY KEY (product, kid)`.
+    const kid = mintKid(slug, now);
+    if (kid === null)
+      return err(
+        422,
+        ErrorCode.BadRequest,
+        "cannot derive a usable kid for this product; its slug is too long",
+        { fields: ["slug"] },
+      );
     const { privatePkcs8Pem, publicRawB64url } = await generateEd25519();
     const encPrivate = await seal(env, privatePkcs8Pem, {
       product: slug,
@@ -1612,19 +1713,26 @@ async function handleKeys(
       id: kid,
     });
 
-    await db.batch([
-      stmtInsertProductKey({
-        product: slug,
-        kid,
-        alg: "Ed25519",
-        public_b64url: publicRawB64url,
-        enc_private_json: encPrivate,
-        status: "staged",
-        created_at: now,
-        rotated_at: null,
-        revoked_at: null,
-      }),
-    ]);
+    // …and the residual collision is REPORTED rather than thrown: a bare INSERT turned "that kid
+    // exists" into an opaque 500 that named neither the kid nor the cause.
+    const inserted = await insertProductKeyIfAbsent(db, {
+      product: slug,
+      kid,
+      alg: "Ed25519",
+      public_b64url: publicRawB64url,
+      enc_private_json: encPrivate,
+      status: "staged",
+      created_at: now,
+      rotated_at: null,
+      revoked_at: null,
+    });
+    if (!inserted)
+      return err(
+        409,
+        ErrorCode.BadRequest,
+        `signing key ${kid} already exists for this product; retry to mint a different kid`,
+        { kid },
+      );
     await audit(
       db,
       slug,

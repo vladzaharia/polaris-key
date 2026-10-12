@@ -3847,6 +3847,16 @@ msgstr "Problema del servicio"
 msgid "core.codes.document_not_representable.message"
 msgstr "El servicio no pudo preparar tus ajustes. Contacta con el desarrollador."
 
+#. Signing unavailable
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.signing_unavailable.title"
+msgstr "Firma no disponible"
+
+#. The service can't sign a document right now. Try again in a few minutes.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.signing_unavailable.message"
+msgstr "El servicio no puede firmar un documento ahora mismo. Vuelve a intentarlo en unos minutos."
+
 #. Device limit reached
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.device_limit.title"

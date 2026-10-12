@@ -8,7 +8,7 @@ description: "Every error and warning validateManifestDocuments and validateInge
 
 The `.pkey/` validator (`@polaris-key/manifest`) aggregates ALL problems instead of
 stopping at the first; `pkey validate` and the console's link/resync surfaces show these
-codes with their JSON-pointer paths. 248 distinct emit sites.
+codes with their JSON-pointer paths. 251 distinct emit sites.
 
 Interpolated segments (`${…}`) in paths/messages are per-instance values — an array index,
 the offending value, or the allowed set.
@@ -73,7 +73,8 @@ the offending value, or the allowed set.
 | `invalid_deliverable_id` | error | release | `/release/deliverables` | release.deliverables must be an object keyed by deliverable id. |
 | `invalid_deliverable_kind` | error | release | `/release/deliverables/${id}/kind` | each deliverable must be an object whose kind is one of $\{DELIVERABLE_KINDS.join(", ")\}. |
 | `invalid_deliverable_kind` | error | release | `/release/deliverables/${id}/kind` | the deliverable named $\{APP_DELIVERABLE_ID\} is the product's application (kind: app), and no other deliverable may be kind app. |
-| `invalid_device_limit` | error | product | `/licensing/tiers/${i}/policyDeviceLimit` | policyDeviceLimit must be a non-negative integer. |
+| `invalid_device_limit` | error | product | `/licensing/defaultDeviceLimit` | defaultDeviceLimit must be at most $\{MAX_DEVICE_LIMIT\}. |
+| `invalid_device_limit` | error | product | `/licensing/tiers/${i}/policyDeviceLimit` | policyDeviceLimit must be a non-negative integer of at most $\{MAX_DEVICE_LIMIT\}. |
 | `invalid_display_text` | error | distribution | `/listing/developerName` | listing.developerName must not hold control, zero-width or bidirectional-formatting characters, or start or end with whitespace. |
 | `invalid_display_text` | error | distribution | `/listing/name` | listing.name must not hold control, zero-width or bidirectional-formatting characters, or start or end with whitespace. |
 | `invalid_display_text` | error | distribution | `/outlets/${id}/listing/developerName` | outlets.$\{id\}.listing.developerName must not hold control, zero-width or bidirectional-formatting characters, or start or end with whitespace. |
@@ -82,9 +83,11 @@ the offending value, or the allowed set.
 | `invalid_distribution` | error | distribution | `/` | the distribution document must be an object with outlets, transports and listing. |
 | `invalid_edge_mint_alg` | error | release | `/edgeMint/${i}/alg` | Edge mint alg must be ES256, RS256, or EdDSA. |
 | `invalid_edge_mint_audience` | error | release | `/edgeMint/${i}/audience` | Edge mint audience |
+| `invalid_edge_mint_entitlement` | error | release | `/edgeMint/${i}/requiredEntitlement` | Edge mint requiredEntitlement must be a catalog key matching ^[A-Za-z0-9._:-]\{1,64\}$. |
 | `invalid_edge_mint_id` | error | release | `/edgeMint/${i}/id` | Edge mint recipes require id. |
-| `invalid_edge_mint_id` | error | release | `/edgeMint/${i}/id` | Edge mint ids must match ^[A-Za-z0-9._:-]\{1,64\}$. |
+| `invalid_edge_mint_id` | error | release | `/edgeMint/${i}/id` | Edge mint ids must match ^[a-z0-9-]\{1,64\}$ (the mint route's own alphabet). |
 | `invalid_edge_mint_kid` | error | release | `/edgeMint/${i}/kid` | Edge mint kid must match ^[A-Za-z0-9][A-Za-z0-9._:-]\{0,127\}$. |
+| `invalid_edge_mint_requires` | error | release | `/edgeMint/${i}/requires` | Edge mint requires must be none, registered, or licensed. |
 | `invalid_entitlement_key` | error | product | `/provisioning/${i}/entitlementKey` | Provisioned entitlement keys must be catalog identifiers. |
 | `invalid_fingerprint_enabled` | error | product | `/fingerprint/enabled` | fingerprint.enabled must be a boolean. |
 | `invalid_fingerprint_mode` | error | product | `/fingerprint/defaultMode` | fingerprint.defaultMode must be one of $\{FINGERPRINT_MODE_VALUES.join(", ")\}. |
@@ -113,7 +116,7 @@ the offending value, or the allowed set.
 | `invalid_listing` | error | distribution | `${at}` | $\{label\} $\{problem\}. |
 | `invalid_manual_channel` | error | release | `/release/manualChannels` | release.manualChannels must be an array of \{ name, regex \} entries. |
 | `invalid_manual_channel` | error | release | `${at}/name` | manualChannels[].name must match ^[A-Za-z0-9][A-Za-z0-9._-]\{0,63\}$. |
-| `invalid_manual_channel` | error | release | `${at}/regex` | manualChannels[].regex must be a compilable regular expression of at most $\{MANUAL_CHANNEL_REGEX_MAX\} characters (it is matched anchored against release tags). |
+| `invalid_manual_channel` | error | release | `${at}/regex` | manualChannels[].regex must be a backtracking-free regular expression of at most $\{MANUAL_CHANNEL_REGEX_MAX\} characters (it is matched anchored against release tags; backreferences, lookaround and \\b are refused because they cannot be matched in linear time). |
 | `invalid_name` | error | product | `/product/name` | product.name |
 | `invalid_oidc_client_id` | error | product | `/oidc/clientId` | oidc.clientId must match ^[A-Za-z0-9][A-Za-z0-9._:@/~-]\{0,255\}$. |
 | `invalid_oidc_issuer` | error | product | `/oidc/issuer` | oidc.issuer $\{issuerProblem\}. It is the base of the token request that carries this product's OIDC client secret. |
@@ -184,8 +187,8 @@ the offending value, or the allowed set.
 | `invalid_secret_url_template` | error | product | `/provisioning/${i}/secretUrlTemplate` | provisioning.secretUrlTemplate $\{problem\}. |
 | `invalid_semver` | error | product | `/licensing/tiers/${i}/${bound}` | Tier $\{bound\} must be a semver string. |
 | `invalid_slug` | error | product | `/product/slug` | product.slug must match ^[a-z0-9][a-z0-9-]\{0,63\}$. |
-| `invalid_stable_tag_pattern` | error | release | `/release/deliverables/app/versioning/stableTagPattern` | deliverables.app.versioning.stableTagPattern must be a compilable regular expression of at most $\{MANUAL_CHANNEL_REGEX_MAX\} characters (it is matched anchored against release tags). |
-| `invalid_stable_tag_pattern` | error | release | `/release/stableTagPattern` | release.stableTagPattern must be a compilable regular expression of at most $\{MANUAL_CHANNEL_REGEX_MAX\} characters (it is matched anchored against release tags). |
+| `invalid_stable_tag_pattern` | error | release | `/release/deliverables/app/versioning/stableTagPattern` | deliverables.app.versioning.stableTagPattern must be a backtracking-free regular expression of at most $\{MANUAL_CHANNEL_REGEX_MAX\} characters (it is matched anchored against release tags; backreferences, lookaround and \\b are refused because they cannot be matched in linear time). |
+| `invalid_stable_tag_pattern` | error | release | `/release/stableTagPattern` | release.stableTagPattern must be a backtracking-free regular expression of at most $\{MANUAL_CHANNEL_REGEX_MAX\} characters (it is matched anchored against release tags; backreferences, lookaround and \\b are refused because they cannot be matched in linear time). |
 | `invalid_tier_fingerprint_mode` | error | product | `/licensing/tiers/${i}/policyFingerprint` | Tier policyFingerprint must be one of $\{FINGERPRINT_MODE_VALUES.join(", ")\}. |
 | `invalid_tier_id` | error | product | `/licensing/tiers/${i}/id` | Tier ids must be non-empty simple identifiers. |
 | `invalid_tier_label` | error | product | `/licensing/tiers/${i}/label` | Tier label |
@@ -200,7 +203,7 @@ the offending value, or the allowed set.
 | `invalid_trusted_publisher_environment` | error | release | `/release/publishing/trustedPublisher/environment` | publishing.trustedPublisher.environment must be a GitHub environment name of at most 100 characters (letters, digits, space, . _ -). |
 | `invalid_trusted_publisher_workflow` | error | release | `/release/publishing/trustedPublisher/workflow` | publishing.trustedPublisher.workflow must be a workflow path like .github/workflows/release.yml. |
 | `invalid_trusted_publisher_workflow` | error | release | `/release/publishing/trustedPublisher` | publishing.trustedPublisher must be an object with a workflow (.github/workflows/\<file>.yml). |
-| `invalid_ttl` | error | release | `/edgeMint/${i}/ttlSeconds` | Edge mint TTL must be a positive integer. |
+| `invalid_ttl` | error | release | `/edgeMint/${i}/ttlSeconds` | Edge mint TTL must be a positive integer of at most $\{MAX_EDGE_MINT_TTL_SECONDS\} seconds. |
 | `invalid_version_scheme` | error | release | `/release/deliverables/app/versioning/buildNumber` | versioning.buildNumber must be one of $\{BUILD_NUMBER_SOURCES.join(", ")\}. |
 | `invalid_version_scheme` | error | release | `/release/deliverables/app/versioning/scheme` | versioning.scheme must be one of $\{VERSION_SCHEMES.join(", ")\}. |
 | `invalid_version_scheme` | error | release | `/release/deliverables/app/versioning` | deliverables.app.versioning must be an object. |

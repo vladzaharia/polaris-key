@@ -50,6 +50,7 @@ import {
   issuePortalSession,
 } from "../../src/services/identity/portal/session.js";
 import {
+  attachWaitingLicensesByEmail,
   createPortalDownloadToken,
   getOrCreateAccountByEmail,
   getOrCreateAccountByIdentity,
@@ -316,13 +317,13 @@ describe("R5-01 cross-tenant license injection by unverified email", () => {
 // `portal_account_identities.subject` is always minted by the PLATFORM IdP, while
 // `licenses.sub` is minted by each tenant's own (possibly custom) IdP. One flat namespace.
 // ───────────────────────────────────────────────────────────────────────────────
-// FIXED (R5-02): the left side of this join is ALWAYS a platform-IdP subject (portal/auth.ts
+// The left side of this join is ALWAYS a platform-IdP subject (portal/auth.ts
 // keys it by the issuer from platformOidcConfig, migrations/0059), so the right side is now
 // restricted to licenses whose product also authenticates against the PLATFORM issuer. The
 // qualifier is derived from oidc_config rather than a new denormalised column, so the
 // product-OIDC lane needs no change. A tenant that mints `sub = "1000"` in its own namespace
 // can no longer collide with a platform subject.
-describe("R5-02 cross-issuer OIDC subject collision", () => {
+describe("cross-issuer OIDC subject collision", () => {
   it("a tenant-controlled IdP subject can no longer link into a platform-IdP portal account", async () => {
     const db = makeTestDb();
     const e = env();
@@ -356,7 +357,8 @@ describe("R5-02 cross-issuer OIDC subject collision", () => {
       },
       NOW,
     );
-    const injectedId = (minted as { licenseId: string }).licenseId;
+    if (!("licenseId" in minted)) throw new Error("expected a license");
+    const injectedId = minted.licenseId;
 
     await syncAccountLicenseLinks(db, victim.id, NOW);
     expect(await listPortalLicenses(db, victim.id)).toEqual([]);
@@ -379,16 +381,191 @@ describe("R5-02 cross-issuer OIDC subject collision", () => {
     await syncAccountLicenseLinks(db, victim.id, NOW);
     expect(await listPortalLicenses(db, victim.id)).toEqual([]);
 
-    // Control: the same subject on a PLATFORM-issuer product still links, so idempotent
-    // re-sign-in for first-party products is unaffected.
+    // INVERTED. This used to read as a control — "the same subject on a PLATFORM-issuer product
+    // still links" — but the way it got there is the attack: it flips the LIVE provider AFTER the
+    // licence was minted, which is exactly the `.pkey/product` push a malicious tenant would
+    // make. The containment used to be evaluated at read time from the product's current
+    // provider, so this one UPDATE retroactively re-enabled every licence evilco had already
+    // minted under its own issuer. `licenses.email_issuer_class` records the provider that was
+    // actually resolved when the row was written, so the answer no longer moves.
     await db.run(
       "UPDATE oidc_config SET provider = 'platform' WHERE product = ?",
       EVILCO,
     );
     await syncAccountLicenseLinks(db, victim.id, NOW);
+    expect(await listPortalLicenses(db, victim.id)).toEqual([]);
+    expect(
+      (await db.first<{ email_issuer_class: string }>(
+        "SELECT email_issuer_class FROM licenses WHERE product = ? AND id = ?",
+        EVILCO,
+        injectedId,
+      ))!.email_issuer_class,
+    ).toBe("custom");
+
+    // The real control: a sign-in that happens WHILE the product authenticates against the
+    // platform issuer stamps `platform` and links, so idempotent re-sign-in for a first-party
+    // product is unaffected. (It lands on the same row, because `sub` is what identifies a
+    // licence — but by then the PLATFORM IdP has vouched for that subject, which is the whole
+    // question, and the row's `name`/`email` are overwritten from those claims.)
+    const honest = await activateFromIdentity(
+      db,
+      evilco,
+      {
+        sub: "1000",
+        email: "victim@corp.example",
+        name: "Victim",
+        groups: ["staff"],
+        claims: {},
+      },
+      NOW,
+    );
+    if (!("licenseId" in honest)) throw new Error("expected a licence");
+    expect(honest.licenseId).toBe(injectedId);
+    expect(
+      (await db.first<{ email_issuer_class: string }>(
+        "SELECT email_issuer_class FROM licenses WHERE product = ? AND id = ?",
+        EVILCO,
+        honest.licenseId,
+      ))!.email_issuer_class,
+    ).toBe("platform");
+    await syncAccountLicenseLinks(db, victim.id, NOW);
     expect((await listPortalLicenses(db, victim.id)).map((r) => r.id)).toEqual([
-      injectedId,
+      honest.licenseId,
     ]);
+  });
+});
+
+describe("issuer provenance controls automatic license links", () => {
+  it("does not link a custom-issuer license after the product moves to platform", async () => {
+    const db = makeTestDb();
+    const e = env();
+    const email = "ceo@victim-corp.example";
+    await seedProduct(db, EVILCO);
+    await seedOidcConfig(db, EVILCO);
+    const evilco = (await loadProduct(e, db, EVILCO))!;
+    const victim = await getOrCreateAccountByEmail(db, email, NOW);
+    await linkEmail(db, victim.id, email, NOW);
+
+    const minted = await activateFromIdentity(
+      db,
+      evilco,
+      {
+        sub: "evil-subject",
+        email,
+        name: "Impersonated executive",
+        groups: ["staff"],
+        claims: {},
+      },
+      NOW,
+    );
+    if (!("licenseId" in minted)) throw new Error("expected a license");
+    expect(
+      (await db.first<{ email_issuer_class: string | null }>(
+        "SELECT email_issuer_class FROM licenses WHERE product = ? AND id = ?",
+        EVILCO,
+        minted.licenseId,
+      ))!.email_issuer_class,
+    ).toBe("custom");
+
+    await db.run(
+      "UPDATE oidc_config SET provider = 'platform' WHERE product = ?",
+      EVILCO,
+    );
+    await syncAccountLicenseLinks(db, victim.id, NOW);
+    expect(await listPortalLicenses(db, victim.id)).toEqual([]);
+    expect(await attachWaitingLicensesByEmail(db, victim.id, email, NOW)).toBe(
+      0,
+    );
+  });
+
+  it("stamps an enrolled claim and moves the class when a later sign-in rewrites the email", async () => {
+    const db = makeTestDb();
+    const e = env();
+    await seedProduct(db, EVILCO);
+    await seedOidcConfig(db, EVILCO);
+    const evilco = (await loadProduct(e, db, EVILCO))!;
+    await seedLicenseWithKey(db, EVILCO, { id: "lic_enrolled" });
+    await db.run(
+      "UPDATE licenses SET origin = 'enroll', sub = NULL WHERE product = ? AND id = ?",
+      EVILCO,
+      "lic_enrolled",
+    );
+    const identity = {
+      sub: "same-subject",
+      email: "person@corp.example",
+      name: "Person",
+      groups: ["staff"],
+      claims: {},
+    };
+    const claimed = await activateFromIdentity(db, evilco, identity, NOW, {
+      enrolledLicenseId: "lic_enrolled",
+    });
+    expect(claimed).toMatchObject({
+      licenseId: "lic_enrolled",
+      merged: "claimed",
+    });
+    expect(
+      (await db.first<{ email_issuer_class: string | null }>(
+        "SELECT email_issuer_class FROM licenses WHERE product = ? AND id = ?",
+        EVILCO,
+        "lic_enrolled",
+      ))!.email_issuer_class,
+    ).toBe("custom");
+
+    await db.run(
+      "UPDATE oidc_config SET provider = 'platform' WHERE product = ?",
+      EVILCO,
+    );
+    await activateFromIdentity(db, evilco, identity, NOW + 1);
+    expect(
+      (await db.first<{ email_issuer_class: string | null }>(
+        "SELECT email_issuer_class FROM licenses WHERE product = ? AND id = ?",
+        EVILCO,
+        "lic_enrolled",
+      ))!.email_issuer_class,
+    ).toBe("platform");
+  });
+});
+
+describe("self-service license mint auditing", () => {
+  it("writes one atomic row with the issuer class and does not repeat it on sign-in", async () => {
+    const db = makeTestDb();
+    const e = env();
+    await seedProduct(db, ACME);
+    await seedOidcConfig(db, ACME);
+    await db.run(
+      "UPDATE oidc_config SET provider = 'platform' WHERE product = ?",
+      ACME,
+    );
+    const acme = (await loadProduct(e, db, ACME))!;
+    const identity = {
+      sub: "ada",
+      email: "ada@corp.example",
+      name: "Ada",
+      groups: ["staff"],
+      claims: {},
+    };
+    const minted = await activateFromIdentity(db, acme, identity, NOW);
+    if (!("licenseId" in minted)) throw new Error("expected a license");
+    await activateFromIdentity(db, acme, identity, NOW + 1);
+
+    const rows = await db.all<{
+      target_id: string;
+      actor_sub: string;
+      actor_email: string;
+      summary: string;
+    }>(
+      `SELECT target_id, actor_sub, actor_email, summary
+         FROM audit WHERE product = ? AND action = 'license.mint.oidc'`,
+      ACME,
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      target_id: minted.licenseId,
+      actor_sub: identity.sub,
+      actor_email: identity.email,
+    });
+    expect(rows[0]!.summary).toContain("platform");
   });
 });
 

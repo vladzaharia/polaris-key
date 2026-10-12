@@ -86,6 +86,12 @@ export type {
   ClientArch,
 } from "./core.js";
 
+export {
+  BLOCK_REASONS,
+  STRICTEST_BLOCK_REASON,
+  coerceBlockReason,
+  isBlockReason,
+} from "./license.js";
 export type {
   DocProfile,
   SignedInUser,

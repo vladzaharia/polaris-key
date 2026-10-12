@@ -158,7 +158,13 @@ async function capabilities(
 async function seedRelease(
   db: ReturnType<typeof makeTestDb>,
   slug: string,
-  opts: { releaseId: string; version: string; artifactId: string },
+  opts: {
+    releaseId: string;
+    version: string;
+    artifactId: string;
+    /** `release_metadata.metadata_access`; defaults to the suite's `authenticated`. */
+    metadataAccess?: string;
+  },
 ): Promise<void> {
   await db.run(
     `INSERT INTO release_metadata
@@ -172,7 +178,7 @@ async function seedRelease(
     null,
     null,
     `https://github.com/acme/${slug}/releases/tag/v${opts.version}`,
-    "authenticated",
+    opts.metadataAccess ?? "authenticated",
     "authenticated",
     NOW,
     null,
@@ -536,5 +542,88 @@ describe("portal download tokens follow services_json", () => {
     expect(
       (await mint(env, db, session, "djdl", "rel_1", "art_1")).status,
     ).toBe(404);
+  });
+});
+
+// `release_metadata.metadata_access` had a column, a writer and a reader that ignored it: a product
+// that gated its release METADATA behind a licence still listed every version, title, note and
+// source URL to any linked portal account. The column is enforced, on the same `usable` value the
+// `licensed` download rule uses.
+describe("portal downloads listing: release metadata_access", () => {
+  async function world(licence: { expiresAt?: number | null } = {}) {
+    const db = makeTestDb();
+    const env = portalEnv();
+    await seedProduct(db, "djdl");
+    await seedLicenseWithKey(db, "djdl", licence);
+    await setProductServices(db, "djdl", { release: { enabled: true } });
+    const session = await portalSession(env, db);
+    return { db, env, session };
+  }
+
+  async function list(
+    env: Env,
+    db: ReturnType<typeof makeTestDb>,
+    session: { cookie: string },
+  ): Promise<Array<{ product: string; version: string }>> {
+    const res = await handlePortalApi(
+      req("GET", "/api/releases", { cookie: session.cookie }),
+      env,
+      db,
+      "/api/releases",
+      NOW,
+    );
+    expect(res.status).toBe(200);
+    return (
+      (await res.json()) as {
+        releases: Array<{ product: string; version: string }>;
+      }
+    ).releases;
+  }
+
+  const release = (metadataAccess: string) => ({
+    releaseId: "rel_1",
+    version: "1.2.3",
+    artifactId: "art_1",
+    metadataAccess,
+  });
+
+  it("withholds a `licensed` release from an account whose only licence is expired", async () => {
+    const { db, env, session } = await world({ expiresAt: NOW - 1 });
+    await seedRelease(db, "djdl", release("licensed"));
+    // Not merely blanked: the version and the release id are themselves the disclosure.
+    expect(await list(env, db, session)).toEqual([]);
+  });
+
+  it("serves the `licensed` release once the account's licence is usable", async () => {
+    const { db, env, session } = await world();
+    await seedRelease(db, "djdl", release("licensed"));
+    expect(await list(env, db, session)).toMatchObject([
+      { product: "djdl", version: "1.2.3" },
+    ]);
+  });
+
+  it.each(["public", "authenticated"])(
+    "still serves a `%s` release to the same unlicensed account",
+    async (access) => {
+      const { db, env, session } = await world({ expiresAt: NOW - 1 });
+      await seedRelease(db, "djdl", release(access));
+      expect(await list(env, db, session)).toMatchObject([
+        { product: "djdl", version: "1.2.3" },
+      ]);
+    },
+  );
+
+  it("withholds only the gated release when a product lists both", async () => {
+    const { db, env, session } = await world({ expiresAt: NOW - 1 });
+    await seedRelease(db, "djdl", release("licensed"));
+    await seedRelease(db, "djdl", {
+      releaseId: "rel_2",
+      version: "1.2.4",
+      artifactId: "art_2",
+      metadataAccess: "public",
+    });
+    expect(await list(env, db, session)).toMatchObject([
+      { product: "djdl", version: "1.2.4" },
+    ]);
   });
 });

@@ -3,11 +3,11 @@
  * S-16 §5.5: erasure "scrubs audit rows naming the account").
  *
  * `audit` is a product's console history, read by its developers, and a PERSON's identity reaches
- * it from exactly three writers: the portal's Discover claim (`license.create`, `portal/discover.ts`)
- * and the product sign-in's licence merge, tier change and licence chooser (`oidc.ts`). Each stores
- * the person's platform IdP subject as `actor_sub`, their name and email as `actor_name` and
- * `actor_email`, and the email (or the subject) again inside `summary`. Erasure removes the account;
- * without this scrub those rows outlive it by up to 180 days (`pruneAudit`).
+ * it from these writers only: the portal's Discover claim (`license.create`, `portal/discover.ts`)
+ * and the product sign-in's licence mint, merge, tier change and licence chooser (`oidc.ts`).
+ * Each stores the person's platform IdP subject as `actor_sub`, their name and email as
+ * `actor_name` and `actor_email`, and the email (or the subject) again inside `summary`. Erasure
+ * removes the account; without this scrub those rows outlive it by up to 180 days (`pruneAudit`).
  *
  * ── WHICH ROWS ──────────────────────────────────────────────────────────────────────────────
  *

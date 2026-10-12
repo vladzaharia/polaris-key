@@ -40,6 +40,10 @@ interface LicenseInputs {
   graceUntil?: number;
   lastSyncUnauthorized?: boolean;
   lastVerifiedAt?: number;
+  /** The unsigned hint supplied DIRECTLY, replacing whatever the build gate would derive.
+   *  `reason` is `string`, not `BlockReason`: the vocabulary rows carry a value outside the
+   *  union on purpose. */
+  blocked?: { reason: string; allowedRange?: AllowedRange };
 }
 interface ExpectDecision {
   status: string;
@@ -108,12 +112,21 @@ describe(`gate-matrix v${matrix.gateMatrixVersion} (React)`, () => {
 
   for (const row of matrix.rows) {
     it(row.name, () => {
-      // A build-gated row carries a 403-style block reason; the React transport surfaces it
-      // as `blocked`. Non-build-gated rows have no reason → no block.
-      const blocked =
-        row.expect.reason !== undefined
-          ? { reason: row.expect.reason, allowedRange: row.expect.allowedRange }
-          : null;
+      // A row may supply `license.blocked` DIRECTLY, which WINS: that models the unsigned hint
+      // read straight off the wire (or off disk), which is what `blocked` is at every real call
+      // site, and the only way to express a reason OUTSIDE the `BlockReason` union. Otherwise a
+      // build-gated row carries a 403-style block reason, which the React transport surfaces as
+      // `blocked`; non-build-gated rows have no reason, so no block.
+      const blocked = (
+        row.license.blocked !== undefined
+          ? row.license.blocked
+          : row.expect.reason !== undefined
+            ? {
+                reason: row.expect.reason,
+                allowedRange: row.expect.allowedRange,
+              }
+            : null
+      ) as Parameters<typeof licenseState>[0]["blocked"];
       const input = {
         licenseServiceEnabled: row.license.licenseServiceEnabled,
         activation: row.license.activation,

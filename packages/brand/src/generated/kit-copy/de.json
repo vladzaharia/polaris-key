@@ -643,6 +643,8 @@
   "core.codes.value_not_representable.message": "Ein Wert konnte nicht gespeichert werden. Ändern Sie ihn und versuchen Sie es erneut.",
   "core.codes.document_not_representable.title": "Problem mit dem Dienst",
   "core.codes.document_not_representable.message": "Der Dienst konnte Ihre Einstellungen nicht vorbereiten. Wenden Sie sich an den Entwickler.",
+  "core.codes.signing_unavailable.title": "Signieren nicht verfügbar",
+  "core.codes.signing_unavailable.message": "Der Dienst kann derzeit kein Dokument signieren. Versuchen Sie es in einigen Minuten erneut.",
   "core.codes.device_limit.title": "Gerätelimit erreicht",
   "core.codes.device_limit.message": "Diese Lizenz ist bereits auf allen zulässigen Geräten in Gebrauch. Ersetzen Sie ein Gerät, um sie hier zu verwenden.",
   "core.codes.key_entry_limit.title": "Keine Schlüsseleingaben mehr",

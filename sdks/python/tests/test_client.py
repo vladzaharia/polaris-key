@@ -11,12 +11,16 @@ Heir of the v2 ``test_client.py``, re-pointed at the v3 routes and the split doc
 from __future__ import annotations
 
 import json
+import os
 from typing import Any, Dict
 
 import httpx
 import pytest
 
+from polaris_key.core.models import BlockedState
+from polaris_key.core.store import CACHE_FORMAT_VERSION, CacheRecord
 from polaris_key.devices.client import DeviceManagementUnsupportedError
+from polaris_key.devices.store import FileStore, InMemoryStore
 from polaris_key.license.gate import LicenseState
 
 from helpers import (
@@ -284,6 +288,81 @@ def test_a_403_with_a_bare_code_falls_back_to_the_stricter_reason() -> None:
     c = make_client(handler, expected_services=["license"])
     c.license.activate_with_key("k")
     assert c.status().status == "channel-not-entitled"
+    c.close()
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        {"error": {"code": "version_blocked", "reason": "ok"}},
+        {"reason": "grace"},
+        {"error": {"reason": "not-applicable"}},
+        {"error": {"reason": 5}, "reason": ["version-too-old"]},
+    ],
+)
+def test_a_403_body_naming_a_usable_reason_cannot_licence_the_client(body: Dict[str, Any]) -> None:
+    """The 403 body is attacker-shaped JSON, and its ``reason`` ends up, unsigned, as the
+    gate's status. A body that names ``ok`` (or anything else outside ``BLOCK_REASONS``) is
+    read like a body that says nothing: the stricter reason, never a usable one."""
+
+    def handler(r: httpx.Request) -> httpx.Response:
+        p = f"/{PRODUCT}"
+        if r.url.path == f"{p}/license/activate":
+            return httpx.Response(200, json={"token": TOKEN, "schemaVersion": 4})
+        if r.url.path == f"{p}/license/document":
+            return httpx.Response(403, json=body)
+        if r.url.path == f"{p}/devices/report":
+            return httpx.Response(200, json={"ok": True})
+        return httpx.Response(404)
+
+    c = make_client(handler, expected_services=["license"])
+    c.license.activate_with_key("k")
+    assert c.status().status == "version-too-old"
+    assert c.is_licensed() is False
+    blocked = c.get_sync_state().blocked
+    assert blocked is not None and blocked.reason == "version-too-old"
+    c.close()
+
+
+def test_a_blocked_hint_planted_in_the_cache_file_cannot_licence_the_client(tmp_path) -> None:
+    """``{"v": 3, "blocked": {"reason": "ok"}}`` written into ``managed.json`` is read BEFORE
+    the no-document check, so it would need neither a document nor a signature. The reload
+    edge drops a hint outside the vocabulary, leaving the install un-activated; a member of
+    the vocabulary still blocks."""
+    store = FileStore(PRODUCT, str(tmp_path))
+    store.set_token(TOKEN)
+    path = os.path.join(str(tmp_path), PRODUCT, "managed.json")
+
+    def status_with(hint: Dict[str, Any]) -> LicenseState:
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump({"v": CACHE_FORMAT_VERSION, "blocked": hint}, f)
+        c = make_client(
+            lambda r: httpx.Response(404),
+            store=FileStore(PRODUCT, str(tmp_path)),
+            expected_services=["license"],
+        )
+        try:
+            assert c.is_licensed() is False
+            return c.status()
+        finally:
+            c.close()
+
+    assert status_with({"reason": "ok"}).status == "needs-activation"
+    assert status_with({"reason": "version-too-new"}).status == "version-too-new"
+
+
+def test_a_blocked_hint_a_custom_store_hands_back_is_coerced_by_the_gate() -> None:
+    """A host-supplied ``Store`` is not obliged to decode through ``CacheRecord.from_dict``,
+    so the gate coerces too: the invariant holds at the DECISION point, not only at the
+    edges that happened to validate."""
+    store = InMemoryStore(PRODUCT)
+    store.set_token(TOKEN)
+    store.write_cache(CacheRecord(blocked=BlockedState(reason="ok")))
+    c = make_client(
+        lambda r: httpx.Response(404), store=store, expected_services=["license"]
+    )
+    assert c.status().status == "version-too-old"
+    assert c.is_licensed() is False
     c.close()
 
 

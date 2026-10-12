@@ -91,6 +91,8 @@ export type GlobalPageId =
   | "home"
   | "products"
   | "product-new"
+  // the deployment's admin API tokens: a credential store that belongs to no product or service
+  | "api-tokens"
   // the Platform section (notes/S-13 §9.1)
   | "platform-settings"
   | "platform-deployment"
@@ -829,6 +831,17 @@ export const GLOBAL_PAGES: NavPage[] = [
     icon: Plus,
     docs: "/docs/operate/console/products/",
     inNav: false,
+  },
+  {
+    // The admin API tokens (`pkeya_…`, the machine credential `pkey bundle` presents): instance
+    // wide, so a top-level link like Products at `#/tokens`, with no product segment.
+    page: "api-tokens",
+    label: "API tokens",
+    keywords: "pkeya bearer credential ci bundle mint",
+    path: "tokens",
+    icon: KeySquare,
+    docs: "/docs/features/licensing/offline/",
+    inNav: true,
   },
   ...PLATFORM_PAGES,
 ];

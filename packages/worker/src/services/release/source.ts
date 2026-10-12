@@ -27,11 +27,12 @@
  * caller hardens the answer, exactly as the gateway's `runSurface` did.
  */
 
-import { isAllowedStorageHost } from "../../platform/http.js";
+import { bearer, isAllowedStorageHost } from "../../platform/http.js";
 import type { Db } from "../../db/types.js";
 import type { Env } from "../../platform/env.js";
 import type { ProductPublic } from "../../core/products.js";
 import type { CatalogLocation, CatalogSourceRef } from "../../core/hooks.js";
+import { resolvedReleaseRefusal } from "../../core/licensing/entitledAccess.js";
 import { notFound } from "../../core/errors.js";
 import {
   blobKey,
@@ -67,8 +68,12 @@ import {
   putCachedSignedUrl,
 } from "./ghCache.js";
 import { findBinaryAsset, matchAsset, normalizeArch } from "./assets.js";
-import { type InstallContext, renderInstallScript } from "./install.js";
-import type { ChannelSelector } from "./channels.js";
+import {
+  deriveVersionEnv,
+  type InstallContext,
+  renderInstallScript,
+} from "./install.js";
+import { isMovingSelector, type ChannelSelector } from "./channels.js";
 import type { ReleaseArtifactRow } from "./store.js";
 
 // ── Locations ────────────────────────────────────────────────────────────────────────────────
@@ -308,6 +313,22 @@ async function serveLegacyDownload(
     now,
     fetchImpl,
   );
+  // Before the first byte, and before the checksum sidecar (an out-of-window release's digest
+  // is part of what the window withholds). `entitled` checked the window against a PINNED
+  // selector before resolution; `latest`, `beta` and a channel name only name a release here, so
+  // the release they resolved to is held to the caller's window now.
+  if (isMovingSelector(sel)) {
+    const blocked = await resolvedReleaseRefusal(
+      env,
+      db,
+      product,
+      bearer(req),
+      ref.access,
+      release.tag_name,
+      now,
+    );
+    if (blocked) return blocked;
+  }
 
   const suffix = channelSuffix(sel);
   const asset =
@@ -469,7 +490,7 @@ export async function installScript(
     installPath: `/${product.slug}/release/install.sh`,
     binaryName,
     channels: ["staging", "beta"],
-    versionEnv: `${binaryName.toUpperCase().replace(/[^A-Z0-9]+/g, "_")}_VERSION`,
+    versionEnv: deriveVersionEnv(binaryName),
   };
   return renderInstallScript(cfg.install_template, ctx);
 }

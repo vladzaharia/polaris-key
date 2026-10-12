@@ -7,7 +7,8 @@ extends RefCounted
 ##   2. licence service disabled             -> not-applicable (usable; before everything)
 ##   3. no activation (no token, no bundle)  -> needs-activation
 ##   4. a recorded 403 build block           -> its reason (version-too-old | version-too-new |
-##                                              channel-not-entitled), with allowedRange
+##                                              channel-not-entitled), with allowedRange; a reason
+##                                              outside BLOCK_REASONS reads as STRICTEST_BLOCK_REASON
 ##   5. a recorded hard 401                  -> revoked
 ##   6. no verified licence document         -> needs-activation
 ##   7. now > graceUntil                     -> expired
@@ -19,7 +20,18 @@ extends RefCounted
 ## ({reason, allowedRange?} or null), last_verified_at.
 ## Output: {status, grace_until?, last_verified_at?, allowed_range?}.
 
+## The three 403 block reasons `GET /<p>/license/document` may return, as a RUNTIME vocabulary.
+##
+## The gate returns the reason AS the status, and USABLE says yes to ok, grace and not-applicable.
+## So §4.1's "the unsigned hints can only ever make the gate STRICTER" is a claim about this
+## vocabulary, and GDScript will not check it for us: an unsigned `{"reason": "ok"}` in the cache
+## file or a 403 body would otherwise walk straight through `is_usable` and licence the client
+## with no signature anywhere. Membership is checked at the 403 ingress (PKeyCore.get_document),
+## at the cache reload edge (sanitize_blocked) and inside the gate itself.
 const BLOCK_REASONS := ["version-too-old", "version-too-new", "channel-not-entitled"]
+## What a reason outside BLOCK_REASONS reads as: the STRICTEST of the three (all are non-usable;
+## this one names the remedy that is always available). Never fall back to a permissive status.
+const STRICTEST_BLOCK_REASON := "version-too-old"
 const USABLE := ["ok", "grace", "not-applicable"]
 
 
@@ -34,7 +46,9 @@ static func license_state(input: Dictionary) -> Dictionary:
 		return {"status": "needs-activation"}
 	var blocked = input.get("blocked")
 	if blocked is Dictionary and not blocked.is_empty():
-		var out := {"status": blocked.get("reason")}
+		# The reason comes from an UNSIGNED hint: coerced at the decision point, so the invariant
+		# holds whoever handed this function the hint (the edges validate too).
+		var out := {"status": coerce_block_reason(blocked.get("reason"))}
 		if blocked.has("allowedRange"):
 			out["allowed_range"] = blocked["allowedRange"]
 		return out
@@ -54,6 +68,17 @@ static func license_state(input: Dictionary) -> Dictionary:
 static func is_usable(state: Variant) -> bool:
 	var status = state.get("status") if state is Dictionary else state
 	return status is String and USABLE.has(status)
+
+
+## True when `value` is a block reason: a String that is a member of BLOCK_REASONS. A number, an
+## Array, a Dictionary or null is not one.
+static func is_block_reason(value: Variant) -> bool:
+	return value is String and BLOCK_REASONS.has(value)
+
+
+## `value` when it is a block reason, else STRICTEST_BLOCK_REASON.
+static func coerce_block_reason(value: Variant) -> String:
+	return String(value) if is_block_reason(value) else STRICTEST_BLOCK_REASON
 
 
 ## A recorded block hint as the gate may read it: {reason, allowedRange?} with a known reason,

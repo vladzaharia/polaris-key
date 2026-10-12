@@ -775,6 +775,9 @@ export const KIT_COPY: Readonly<
     "core.codes.document_not_representable.title": "Service problem",
     "core.codes.document_not_representable.message":
       "The service couldn't prepare your settings. Contact the developer.",
+    "core.codes.signing_unavailable.title": "Signing unavailable",
+    "core.codes.signing_unavailable.message":
+      "The service can't sign a document right now. Try again in a few minutes.",
     "core.codes.device_limit.title": "Device limit reached",
     "core.codes.device_limit.message":
       "This license is already on all its devices. Replace a device to use it here.",
@@ -2082,6 +2085,9 @@ export const KIT_COPY: Readonly<
     "core.codes.document_not_representable.title": "Problem mit dem Dienst",
     "core.codes.document_not_representable.message":
       "Der Dienst konnte Ihre Einstellungen nicht vorbereiten. Wenden Sie sich an den Entwickler.",
+    "core.codes.signing_unavailable.title": "Signieren nicht verfügbar",
+    "core.codes.signing_unavailable.message":
+      "Der Dienst kann derzeit kein Dokument signieren. Versuchen Sie es in einigen Minuten erneut.",
     "core.codes.device_limit.title": "Gerätelimit erreicht",
     "core.codes.device_limit.message":
       "Diese Lizenz ist bereits auf allen zulässigen Geräten in Gebrauch. Ersetzen Sie ein Gerät, um sie hier zu verwenden.",
@@ -3392,6 +3398,9 @@ export const KIT_COPY: Readonly<
     "core.codes.document_not_representable.title": "Service problem",
     "core.codes.document_not_representable.message":
       "The service couldn't prepare your settings. Contact the developer.",
+    "core.codes.signing_unavailable.title": "Signing unavailable",
+    "core.codes.signing_unavailable.message":
+      "The service can't sign a document right now. Try again in a few minutes.",
     "core.codes.device_limit.title": "Device limit reached",
     "core.codes.device_limit.message":
       "This license is already on all its devices. Replace a device to use it here.",
@@ -4674,6 +4683,9 @@ export const KIT_COPY: Readonly<
     "core.codes.document_not_representable.title": "Problema del servicio",
     "core.codes.document_not_representable.message":
       "El servicio no pudo preparar tus ajustes. Contacta con el desarrollador.",
+    "core.codes.signing_unavailable.title": "Firma no disponible",
+    "core.codes.signing_unavailable.message":
+      "El servicio no puede firmar un documento ahora mismo. Vuelve a intentarlo en unos minutos.",
     "core.codes.device_limit.title": "Límite de dispositivos alcanzado",
     "core.codes.device_limit.message":
       "Esta licencia ya está en todos sus dispositivos. Reemplaza un dispositivo para usarla aquí.",
@@ -5970,6 +5982,9 @@ export const KIT_COPY: Readonly<
     "core.codes.document_not_representable.title": "Problema no serviço",
     "core.codes.document_not_representable.message":
       "O serviço não conseguiu preparar suas configurações. Contate o desenvolvedor.",
+    "core.codes.signing_unavailable.title": "Assinatura indisponível",
+    "core.codes.signing_unavailable.message":
+      "O serviço não pode assinar um documento agora. Tente novamente em alguns minutos.",
     "core.codes.device_limit.title": "Limite de dispositivos atingido",
     "core.codes.device_limit.message":
       "Esta licença já está em todos os dispositivos permitidos. Substitua um dispositivo para usá-la aqui.",
@@ -7255,6 +7270,9 @@ export const KIT_COPY: Readonly<
     "core.codes.document_not_representable.title": "Problema del servizio",
     "core.codes.document_not_representable.message":
       "Il servizio non è riuscito a preparare le tue impostazioni. Contatta lo sviluppatore.",
+    "core.codes.signing_unavailable.title": "Firma non disponibile",
+    "core.codes.signing_unavailable.message":
+      "Il servizio non può firmare un documento al momento. Riprova tra qualche minuto.",
     "core.codes.device_limit.title": "Limite di dispositivi raggiunto",
     "core.codes.device_limit.message":
       "Questa licenza è già in uso su tutti i dispositivi consentiti. Sostituisci un dispositivo per usarla qui.",
@@ -8557,6 +8575,9 @@ export const KIT_COPY: Readonly<
     "core.codes.document_not_representable.title": "サービスの問題",
     "core.codes.document_not_representable.message":
       "サービスが設定を準備できませんでした。開発者に問い合わせてください。",
+    "core.codes.signing_unavailable.title": "署名を利用できません",
+    "core.codes.signing_unavailable.message":
+      "現在、サービスはドキュメントに署名できません。数分後にもう一度お試しください。",
     "core.codes.device_limit.title": "デバイスの上限に達しました",
     "core.codes.device_limit.message":
       "このライセンスはすべてのデバイス枠が使用中です。ここで使うにはデバイスを置き換えてください。",
@@ -9824,6 +9845,9 @@ export const KIT_COPY: Readonly<
     "core.codes.document_not_representable.title": "서비스 문제",
     "core.codes.document_not_representable.message":
       "서비스에서 설정을 준비하지 못했어요. 개발자에게 문의하세요.",
+    "core.codes.signing_unavailable.title": "서명을 사용할 수 없음",
+    "core.codes.signing_unavailable.message":
+      "지금은 서비스에서 문서에 서명할 수 없어요. 몇 분 후에 다시 시도하세요.",
     "core.codes.device_limit.title": "기기 한도 도달",
     "core.codes.device_limit.message":
       "이 라이선스는 이미 모든 기기에서 사용 중이에요. 여기에서 사용하려면 기기를 교체하세요.",
@@ -11020,6 +11044,9 @@ export const KIT_COPY: Readonly<
     "core.codes.document_not_representable.title": "服务出现问题",
     "core.codes.document_not_representable.message":
       "服务无法准备你的设置。请联系开发者。",
+    "core.codes.signing_unavailable.title": "签名不可用",
+    "core.codes.signing_unavailable.message":
+      "服务目前无法签署文档。请几分钟后重试。",
     "core.codes.device_limit.title": "已达到设备上限",
     "core.codes.device_limit.message":
       "此许可证已用满所有设备。请替换一台设备以在此使用。",

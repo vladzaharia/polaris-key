@@ -43,6 +43,7 @@
  */
 
 import { hashKey } from "../../../platform/crypto.js";
+import { parseFlowRecord } from "../../../platform/json.js";
 import { pkceChallenge } from "../../../platform/pkce.js";
 import {
   PORTAL_SIGNIN_RETURN_TO,
@@ -476,12 +477,8 @@ export async function handleProviderCallback(
   const flowKey = await signInFlowKey(env, state);
   const raw = await getArtefact(env, flowKey);
   if (!raw) return signInPage.tookTooLong();
-  let flow: SignInFlowRecord;
-  try {
-    flow = JSON.parse(raw) as SignInFlowRecord;
-  } catch {
-    return signInPage.tookTooLong();
-  }
+  const flow = parseFlowRecord<SignInFlowRecord>(raw);
+  if (!flow) return signInPage.tookTooLong();
   // Mix-up defence: a state minted for one provider is never redeemed on another's callback.
   if (flow.provider !== kind) {
     return signInPage.tookTooLong();

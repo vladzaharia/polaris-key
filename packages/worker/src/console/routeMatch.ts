@@ -10,6 +10,7 @@
 
 import type { AreaId } from "../core/rbac/areas.js";
 import type { Level } from "../core/rbac/can.js";
+import type { AdminApiScope } from "./apiTokens.js";
 
 export type Method = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
@@ -43,6 +44,12 @@ export interface RouteDecl<H> {
   level?: Level;
   /** A console step-up (a proven sign-in within 5 minutes) is required. */
   stepUp?: true;
+  /**
+   * The scope an admin API token (`./apiTokens.ts`) must hold to call this row. A row without one
+   * refuses every token: default deny, so a new route is unreachable by token until somebody
+   * decides which scope it belongs to. Never set on a row that needs a step-up: a token has none.
+   */
+  tokenScope?: AdminApiScope;
   handler: H;
 }
 

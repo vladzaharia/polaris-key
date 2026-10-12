@@ -25,8 +25,11 @@ DJDL onboarding, use [DEPLOYMENT.md](./DEPLOYMENT.md).
 Reserved platform routes:
 
 - `/manage/*` - admin SPA, admin OIDC, and admin JSON API.
+- `/docs/*` - the documentation site, gated by tier (public, console member or platform admin,
+  by directory).
 - `/api/*`, `/login`, `/callback`, `/logout`, `/magic/verify`, `/download/*` - customer
   portal.
+- `/assets/*` - the customer portal SPA's static assets.
 - `/webhooks/github` - signed GitHub App push webhooks.
 - `/<product>/*` - product-scoped licensing, config, OIDC activation, releases, and JWKS.
 
@@ -39,8 +42,16 @@ pnpm build
 pnpm typecheck
 pnpm test
 pnpm lint
+# The Worker's [assets] root (packages/worker/assets) is gitignored: it is assembled from the
+# built admin and docs sites, and `wrangler deploy` aborts without it.
+pnpm --filter @polaris-key/worker assemble
 cd packages/worker
 npx wrangler d1 migrations apply polaris_key_prod --env prod --remote
+# Re-assert the required indexes. The assertion migration runs once per database, so this is
+# what turns a vanished index into a failed deploy. Always the NEWEST *_index_assertion.sql:
+# each one replaces the full list, so an older file would shorten what is checked.
+ASSERTION="$(ls migrations/*_index_assertion.sql | sort | tail -1)"
+npx wrangler d1 execute polaris_key_prod --env prod --remote --file "$ASSERTION"
 pnpm check:representable          # see "Representability check" below; must report clean
 npx wrangler deploy --env prod
 ```
@@ -368,9 +379,21 @@ curl -fsS https://key.plrs.im/manage/api/products/kek -H "cookie: __Host-pkey_ad
 # { "active": "k2", "kids": ["k1","k2"],
 #   "counts": { "keys": {"k1":3,"k2":12}, "secrets": {"k1":1}, "outletCredentials": {"k2":1},
 #               "managed": {"k1":2} },
-#   "remaining": 6,        ← sealed values not yet re-sealed under the active kid
-#   "unopenable": 0 }      ← values under a kid the ring does NOT hold: these are DARK right now
+#   "remaining": 6,          ← sealed values not yet re-sealed under the active kid
+#   "unopenable": 0,         ← values under a kid the ring does NOT hold: these are DARK right now
+#   "countsComplete": true,  ← false ⇒ the numbers above are FLOORS, not totals (see below)
+#   "countsTruncated": [] }  ← the tables whose scan was cut short
 ```
+
+`countsComplete` is the one field to read before acting on `remaining`. The `managed` bucket is
+counted by parsing payload rows, so that pass reads at most 500 rows per table
+(`MANAGED_SCAN_ROWS` in `console/handlers/products.ts`). A row counts toward the cap whenever it
+carries an envelope, already re-sealed or not, so sweeping never shrinks it. If a deployment ever
+exceeds the cap, `countsComplete` goes `false`, `countsTruncated` names the tables (`profiles`,
+`licenses`, `account_overrides`), and `remaining` is reported as a floor that can never be 0 (the
+same floor keeps `legacy.safeToDelete` `false`). **A `false` here means the rotation gate in step
+8 cannot be evaluated from this endpoint at all.** Do not drop the old key on it: keep the old
+key in the ring and raise `MANAGED_SCAN_ROWS` (a deploy) so one scan covers the table.
 
 While `PLATFORM_KEK` sits beside `PLATFORM_KEK_KEYS`, the answer also carries `legacy` (it is
 absent in either single shape):
@@ -445,7 +468,7 @@ migration). Do not skip step 6.
    ```sh
    curl -fsS https://key.plrs.im/djdl/.well-known/jwks.json | jq .
    curl -fsS https://key.plrs.im/manage/api/products/kek -H "cookie: __Host-pkey_admin=…" | jq .
-   # expect: remaining 0, unopenable 0
+   # expect: remaining 0, unopenable 0, countsComplete true
    ```
 
    A 404 from a product route here means the ring did not parse. Re-run step 3 with the old key
@@ -485,12 +508,18 @@ migration). Do not skip step 6.
 
    ```sh
    curl -fsS https://key.plrs.im/manage/api/products/kek -H "cookie: __Host-pkey_admin=…" | jq .
-   # counts must show ZERO rows under any kid other than the active one
+   # counts must show ZERO rows under any kid other than the active one,
+   # AND "countsComplete": true — otherwise the count stopped early and proves nothing
    ```
 
 7. Soak for **24 hours** with both keys in the ring. Nothing should reference the old kid.
 
-8. **Drop the old key and delete `PLATFORM_KEK` in the same call.** Only after `remaining` is 0.
+8. **Drop the old key and delete `PLATFORM_KEK` in the same call.** Only after `remaining` is 0
+   **and** `countsComplete` is `true`. Both, not either: `remaining: 0` from a truncated scan
+   would be a count that stopped rather than a rotation that finished, and a key dropped while
+   values are still sealed under it is unrecoverable data. (The endpoint will not emit that
+   combination, because `remaining` is floored above 0 whenever `countsComplete` is `false`, but
+   check the flag, not the absence of a bug.)
    `"PLATFORM_KEK": null` makes `wrangler secret bulk` delete that secret in the same new
    version. It must not be left for later: while `PLATFORM_KEK` is set, the Worker keeps the key
    it holds in the ring as the legacy key, open-only, under its legacy kid (`PLATFORM_KEK_ID`,
@@ -510,17 +539,18 @@ migration). Do not skip step 6.
 
    ```sh
    curl -fsS https://key.plrs.im/manage/api/products/kek -H "cookie: __Host-pkey_admin=…" \
-     | jq -e '.remaining == 0 and .unopenable == 0' \
+     | jq -e '.remaining == 0 and .unopenable == 0 and .countsComplete == true' \
      && npx wrangler secret bulk /tmp/kek.json --env prod; rm -f /tmp/kek.json
    ```
 
-   The bulk call runs only if the check prints `true`; a failed request or any value still under
-   the old kid stops it. Then re-check at once:
+   The bulk call runs only if the check prints `true`; a failed request, any value still under
+   the old kid, or a count that stopped early (`countsComplete` false) stops it. Then re-check at
+   once:
 
    ```sh
    curl -fsS https://key.plrs.im/manage/api/products/kek -H "cookie: __Host-pkey_admin=…" \
-     | jq '{active, kids, remaining, unopenable, legacy}'
-   # "kids": ["k2"], "remaining": 0, "unopenable": 0, and no "legacy"
+     | jq '{active, kids, remaining, unopenable, countsComplete, legacy}'
+   # "kids": ["k2"], "remaining": 0, "unopenable": 0, "countsComplete": true, and no "legacy"
    ```
 
    - `unopenable` above 0: the old key left too early. Put it back at once (step 5's call, which
@@ -707,8 +737,8 @@ CSRF=$(curl -fsS "$BASE/me" -H "$COOKIE" | jq -er .csrf) || echo "STOP: no CSRF 
 5. **Verify zero legacy blobs.**
 
    ```sh
-   curl -fsS "$BASE/products/kek" -H "$COOKIE" | jq '{remaining, unopenable, legacy}'
-   # "remaining": 0, "unopenable": 0,
+   curl -fsS "$BASE/products/kek" -H "$COOKIE" | jq '{remaining, unopenable, countsComplete, legacy}'
+   # "remaining": 0, "unopenable": 0, "countsComplete": true,
    # "legacy": { "kid": "default", "openOnly": true, "remaining": 0, "workerSecrets": [], "safeToDelete": true }
    ```
 
@@ -724,7 +754,7 @@ CSRF=$(curl -fsS "$BASE/me" -H "$COOKIE" | jq -er .csrf) || echo "STOP: no CSRF 
 
    ```sh
    curl -fsS "$BASE/products/kek" -H "$COOKIE" \
-     | jq -e '.unopenable == 0 and .legacy.safeToDelete == true' &&
+     | jq -e '.unopenable == 0 and .countsComplete == true and .legacy.safeToDelete == true' &&
    npx wrangler secret delete PLATFORM_KEK --env <env>
    curl -fsS "$BASE/products/kek" -H "$COOKIE" | jq '{active, kids, remaining, unopenable, legacy}'
    # "kids": ["k2026-10"], "remaining": 0, "unopenable": 0, and no "legacy"
@@ -813,7 +843,7 @@ data-access incident first: rotate Cloudflare credentials, audit D1/KV access, a
 short-lived flows expire.
 
 There is no safe in-place rotation today. Changing the pepper invalidates device-token,
-licence-key, CI-token, registry-token, portal-session and single-use-flow hashes. Licence-key
+licence-key, CI-token, registry-token, admin-API-token, portal-session and single-use-flow hashes. Licence-key
 plaintext is shown once and is not stored, so old keys cannot be re-hashed. A forced rotation is a
 planned, owner-approved platform-wide credential reissue, and it **replaces `ADMIN_SESSION_SECRET`
 in the same update**. Do not begin without a customer communication and recovery plan.
@@ -2397,7 +2427,7 @@ Repo-link or release sync cannot access GitHub:
   `GITHUB_WEBHOOK_SECRET`.
 - Confirm the app has Contents: read and Actions: read.
 
-Every product route 404s at once (JWKS, `/config`, `/activate`, appcast), with nothing in the
+Every product route 404s at once (JWKS, `/config/document`, `/license/activate`, appcast), with nothing in the
 admin broken:
 
 - This is the KEK failure signature. `loadProduct` swallows a sealed-value error and returns
@@ -2410,11 +2440,17 @@ admin broken:
     KEK is unknown).
   - `unopenable > 0` — a KEK was removed from `PLATFORM_KEK_KEYS` while rows were still sealed
     under it. Put that kid back, then run the sweep (Secrets → Rotating PLATFORM_KEK, step 6).
+  - `countsComplete: false` — a managed-payload table holds more envelope-carrying rows than one
+    scan reads (`countsTruncated` names it), so `remaining` is a floor, not a total. The old key
+    is not provably unused: leave it in the ring (Secrets → Rotating PLATFORM_KEK, step 8).
 - Check whether `PLATFORM_KEK_ID` was set or changed. It renames the kid, which orphans every
   existing blob; unset it, or add the old kid to `PLATFORM_KEK_KEYS` instead.
 - Check whether a `wrangler rollback` restored a pre-rotation keyring.
 
 Deploy fails on bindings:
 
-- Confirm `REPLACE_ME_PROD_D1_ID` and `REPLACE_ME_PROD_KV_ID` in
-  `packages/worker/wrangler.toml` have been replaced with real Cloudflare IDs.
+- Production's D1 and KV ids in `packages/worker/wrangler.toml` are real. Only staging and dev
+  carry `REPLACE_ME_*` placeholders (`REPLACE_ME_STAGING_D1_ID`, `REPLACE_ME_STAGING_KV_ID`,
+  `REPLACE_ME_DEV_D1_ID`, `REPLACE_ME_DEV_KV_ID`). A staging or dev deploy fails until those are
+  replaced with the ids `wrangler d1 create` and `wrangler kv namespace create` print for that
+  environment.

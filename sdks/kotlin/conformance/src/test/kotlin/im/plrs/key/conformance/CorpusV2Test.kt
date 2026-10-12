@@ -10,6 +10,7 @@
 //   clockFloorCases  §4.2 the floor over three artifacts    → the reload path + licenseState
 //   bundleCases      §7 offline bundle import               → inspectBundle (the refusing step)
 //   pointer sets     V4 §4.1 nonWireIntegers, the five families above
+//   callSiteOmitsTyp one jwsCases vector driven with NO `typ` named → JwsVerifier.verify(typ = null)
 //
 // The remaining families are the later slices' (feedCases, feedContentCases, releaseRecordCases,
 // revocationCases, packRecordCases, markerCases, delegationCases: P6-07 and P6-08), which add
@@ -95,10 +96,20 @@ class CorpusV2Test : ConformanceSuite() {
         for (c in cases("jwsCases")) {
             val id = c["id"].stringValue!!
             val expect = c["expect"]!!.obj
-            val result = JwsVerifier.verify(
-                c["jws"].stringValue!!, trust(c["trust"]), JwsTyp.of(c["typ"].stringValue),
-                maxPayloadBytes = c["maxPayloadBytes"].longValue?.toInt(),
-            )
+            val jws = c["jws"].stringValue!!
+            val keys = trust(c["trust"])
+            val cap = c["maxPayloadBytes"].longValue?.toInt()
+            // §2: every vector names its `typ`, except the one that sets `callSiteOmitsTyp`: it drives a call
+            // site that names NO type at all, which is how §1's raised payload cap is proved to be granted to a
+            // `typ` rather than to a caller. The very same bytes verify, typ named, as `bundle-payload-at-cap`,
+            // so the refusal is the missing type and nothing else.
+            val omitsTyp = c["callSiteOmitsTyp"].boolValue == true
+            val result = JwsVerifier.verify(jws, keys, if (omitsTyp) null else JwsTyp.of(c["typ"].stringValue), maxPayloadBytes = cap)
+            if (omitsTyp) {
+                f.equal("fail", expect["verify"].stringValue) { "$id: callSiteOmitsTyp is only for a refusal" }
+                // Neither spelling of "no type" is a way to the raised cap.
+                f.check(JwsVerifier.verify(jws, keys, null, requireTyp = false, maxPayloadBytes = cap) == null) { "$id must fail with no typ and requireTyp off" }
+            }
             if (expect["verify"].stringValue == "ok") {
                 f.check(result != null) { "$id should verify" }
                 if (result != null) {
@@ -109,7 +120,7 @@ class CorpusV2Test : ConformanceSuite() {
                 f.check(result == null) { "$id must fail verification" }
             }
         }
-        f.done(85)
+        f.done(86)
     }
 
     @Test
@@ -178,7 +189,7 @@ class CorpusV2Test : ConformanceSuite() {
             f.equal(expect["revokedPins"]?.arrayValue?.map { it.stringValue!! } ?: emptyList<String>(), tombstones) { "$id revokedPins" }
             expect["issuedAt"].longValue?.let { f.equal(it, result.doc?.issuedAt) { "$id issuedAt" } }
         }
-        f.done(30)
+        f.done(32)
     }
 
     /** §4.2: the cache-RELOAD path as pure data, then the gate at max(systemClock, floor). */
@@ -275,7 +286,7 @@ class CorpusV2Test : ConformanceSuite() {
         val f = Failures("nonWireIntegers")
         data class Spec(val jws: String, val keys: TrustSet, val typ: JwsTyp?, val cap: Int?)
         val families: List<Pair<String, (JsonObject) -> Spec>> = listOf(
-            "jwsCases" to { c -> Spec(c["jws"].stringValue!!, trust(c["trust"]), JwsTyp.of(c["typ"].stringValue), c["maxPayloadBytes"].longValue?.toInt()) },
+            "jwsCases" to { c -> Spec(c["jws"].stringValue!!, trust(c["trust"]), if (c["callSiteOmitsTyp"].boolValue == true) null else JwsTyp.of(c["typ"].stringValue), c["maxPayloadBytes"].longValue?.toInt()) },
             "licenseDocCases" to { c -> Spec(c["jws"].stringValue!!, trust(c["trust"]), JwsTyp.of(c["typ"].stringValue), null) },
             "configDocCases" to { c -> Spec(c["jws"].stringValue!!, trust(c["trust"]), JwsTyp.of(c["typ"].stringValue), null) },
             "trustCases" to { c -> Spec(c["manifestJws"].stringValue!!, trust(c["pinned"]), JwsTyp.trust, null) },

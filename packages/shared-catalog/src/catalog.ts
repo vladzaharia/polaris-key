@@ -77,12 +77,41 @@ export class Catalog {
   }
 
   /**
-   * Analyse every entry's schema, throwing on the first one this validator will not accept.
+   * Analyse every entry, throwing on the first one this validator will not accept.
    * Call it on any path that *publishes* a catalog so operators get told at publish time;
    * request-time validation never calls it and never throws.
+   *
+   * Two structural rules are checked here as well as the schema fragments, because both are
+   * decidable at publish time and neither is expressible as a per-value verdict:
+   *
+   * **Duplicate keys.** `byKey` and `analysed` are both key-addressed maps, so a catalog with
+   * the same key twice keeps only the LAST entry for lookups while `entries` still lists both.
+   * The publish screen iterates `entries` and would analyse the first one's fragment; every
+   * request-time question (`entryByKey`, `validateKeyValue`, `isManagedSecretKey`, the document
+   * prune's `kind` check) answers from the last. That is a value screened against one
+   * declaration and delivered under another, including a `delivery: "serverOnly"` entry
+   * shadowed by a plain one, so the duplicate is refused rather than silently resolved.
+   *
+   * **`secret: true` on a `kind: "flag"`.** A flag's value is an ENTITLEMENT: it merges into
+   * `payload.entitlements`, which `openManagedPayload` never opens and no signed document ever
+   * decrypts. Marking one secret makes `isManagedSecretKey` true, so the console KEK-seals it
+   * into the entitlements bucket and the device receives the ciphertext envelope as the flag's
+   * value. Teaching the opener a third bucket would make that work; refusing the declaration is
+   * better, because a secret entitlement is a category error: an entitlement is a statement
+   * ABOUT the licence, evaluated by gates that must read it in the clear.
    */
   compileAll(): void {
+    const seen = new Set<string>();
     for (const entry of this.entries) {
+      if (seen.has(entry.key))
+        throw new UnsupportedSchemaError(
+          `${entry.key}: duplicate catalog key (declared more than once)`,
+        );
+      seen.add(entry.key);
+      if (entry.kind === "flag" && entry.secret === true)
+        throw new UnsupportedSchemaError(
+          `${entry.key}: secret is not valid on a flag entry (an entitlement is never sealed)`,
+        );
       const result = this.analyse(entry);
       if (isRejected(result))
         throw new UnsupportedSchemaError(`${entry.key}: ${result.rejected}`);

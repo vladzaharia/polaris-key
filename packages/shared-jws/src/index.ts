@@ -71,6 +71,12 @@ export interface VerifyOptions {
    * site out of step with the wire contract. Absent (or non-finite) ⇒ byte-identical to the
    * cap-less behavior. The HEADER cap is untouched — moving a blob into the header is R2-04,
    * and no `typ` widens it.
+   *
+   * A raise is only honoured alongside a `typ`: a call with `maxPayloadBytes` above the default
+   * and no `typ` is REFUSED (returns null), not downgraded to the default cap. The cap and the
+   * domain separator are one grant, because a payload accepted at the raised cap with no type
+   * demanded could be re-presented at an ordinary document call site with that cap already in
+   * force (WIRE-CONTRACT-V4 §1).
    */
   maxPayloadBytes?: number;
 }
@@ -845,6 +851,12 @@ export async function verifyJws<T = unknown>(
 
   // --- 1. Bound the ENCODED segments before decoding anything (R2-04). -------------------
   const maxPayloadBytes = payloadCapFor(opts.maxPayloadBytes);
+  // §1's raised cap is an exception granted to ONE `typ`, and the cap and the type travel
+  // together. Refused outright rather than silently downgraded to 64 KiB: a caller asking for the
+  // bundle cap without naming the bundle type has made a mistake worth surfacing. Swift, Kotlin
+  // and Python enforce the same pairing, so the same call is never accepted in one SDK and
+  // refused in another.
+  if (maxPayloadBytes > MAX_DOC_BYTES && opts.typ === undefined) return null;
   if (encHeader.length > MAX_HEADER_B64) return null;
   if (encPayload.length > b64Cap(maxPayloadBytes)) return null;
 
@@ -869,8 +881,16 @@ export async function verifyJws<T = unknown>(
   if (opts.typ !== undefined && header.typ !== opts.typ) return null;
   if (header.typ !== undefined && typeof header.typ !== "string") return null;
   if (typeof header.kid !== "string") return null;
-  const rawKey = trustedKeys[header.kid];
-  if (!rawKey) return null;
+  // OWN properties of the trust set only, and a non-empty string. A plain `trustedKeys[kid]`
+  // for `__proto__` answers `Object.prototype`: truthy, and not a key. It would still fail
+  // closed further down (the key import throws), but "fails closed by accident, two statements
+  // later" is not the property §1 states, which is that the kid is not in the trust set.
+  // `hasOwnProperty.call` and not `Object.hasOwn`: this module ships in the React bundle, and
+  // `Object.hasOwn` is missing before Safari 15.4 (`tools/runtime-floor.test.ts`).
+  const rawKey = Object.prototype.hasOwnProperty.call(trustedKeys, header.kid)
+    ? trustedKeys[header.kid]
+    : undefined;
+  if (typeof rawKey !== "string" || rawKey === "") return null;
 
   let key: CryptoKey;
   try {

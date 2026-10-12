@@ -496,7 +496,13 @@ public let DEVICE_TOKEN_PREFIX = "pkeyt_"
 // ── Gate vocabulary (§5) ────────────────────────────────────────────────────────────────────
 
 /// A 403 block reason returned by `GET /<product>/license/document`.
-public enum BlockReason: String, Sendable, Codable, Equatable {
+///
+/// A closed enum, so a reason outside it cannot be constructed at all: that is what makes §4.1's
+/// "the unsigned `blocked` hint can only make the gate STRICTER" true here, where the other SDKs
+/// check the vocabulary at runtime. A decode that meets any other reason fails; `CacheRecord`
+/// drops just the hint when that happens. `CaseIterable` lets a test assert that every reason the
+/// gate can hold is a non-usable status.
+public enum BlockReason: String, Sendable, Codable, Equatable, CaseIterable {
     case versionTooOld = "version-too-old"
     case versionTooNew = "version-too-new"
     case channelNotEntitled = "channel-not-entitled"

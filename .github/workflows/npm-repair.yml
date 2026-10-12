@@ -54,6 +54,7 @@ jobs:
     name: Plan the backfill
     if: github.repository == 'vladzaharia/polaris-key'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     outputs:
       tag: ${{ steps.tag.outputs.tag }}
       version: ${{ steps.v.outputs.version }}
@@ -133,6 +134,7 @@ jobs:
     name: Pack at the tag
     needs: plan
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       # The tag's tree, as its own npm-pack job built it (the plan job validated the tag).
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -181,7 +183,7 @@ jobs:
             pnpm --filter "@polaris-key/$n" pack --pack-destination "$GITHUB_WORKSPACE/dist-pkg/$n"
           done
           ls -R dist-pkg
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: npm-repair
           path: dist-pkg/
@@ -191,12 +193,13 @@ jobs:
     name: Every pinned version is on the feed
     needs: [plan, pack]
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 22
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: npm-repair
           path: dist-pkg
@@ -235,6 +238,7 @@ jobs:
     name: Every pin at that version resolves
     needs: [plan, publish]
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0

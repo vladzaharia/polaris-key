@@ -58,6 +58,12 @@ names its profile with `profileId` and sets `policyDeviceLimit: 5` and no expiry
 validate` warns with `tier_ignored_field` for either. A tier's offline grace default is
 `policyOfflineGraceDays` (0 to 365 days; omitted, the product default applies).
 
+A device limit is a whole number of seats: `licensing.defaultDeviceLimit` and a tier's
+`policyDeviceLimit` take 0 to 1000 (`MAX_DEVICE_LIMIT` in `@polaris-key/manifest`). A larger value
+fails validation with `invalid_device_limit` and the whole manifest is refused, never clamped,
+because the number bounds the work every activation does to find a free seat. The console and the
+settings API hold the same ceiling.
+
 A tier's `rank` (an integer from 0, default 0, not unique) says which tier is better. When an
 identity's groups map to several tiers, sign-in picks the highest-ranked one; equal ranks keep the
 first match. With `oidc.syncTierOnSignIn: upgradeOnly`, a sign-in moves an existing licence to a
@@ -938,12 +944,27 @@ owns them, and so is the trusted-publisher policy once claimed. The licensing se
 `oidc.syncTierOnSignIn` are claimed one setting at a time, and the resync result lists each
 claimed one it left alone.
 
-Profiles are the manifest's, with one exception: **secret values**. A manifest can't carry a
-secret value, so you set a profile's secrets (a `secret` entry, or a `config` entry flagged
-`secret: true`) in the console, and a re-sync carries them forward, still sealed, onto every
-profile the manifest still lists — unless the manifest's own profile payload declares that key,
-or the catalog in the same push no longer declares it a secret. Only sealed values are carried;
-a plaintext one written before sealing existed is not.
+Profiles are the manifest's, with one exception: **secret values**. You normally set a profile's
+secrets (a `secret` entry, or a `config` entry flagged `secret: true`) in the console, and a
+re-sync carries them forward, still sealed, onto every profile the manifest still lists — unless
+the manifest's own profile payload declares that key, or the catalog in the same push no longer
+declares it a secret. Only sealed values are carried; a plaintext one written before sealing
+existed is not.
+
+A manifest can also declare a secret value, but it is never stored as written: the Worker seals
+it under the platform key before it reaches the database, on link and on every re-sync, whether
+the key is a secret in the pushed catalog or in the one it replaces. Once a value is sealed, a
+push may not replace it with a different one: the whole push is refused, before anything is
+written, and says which key and profile. Pushing the same value again changes nothing. To rotate
+a secret, change it in the console, and remove the value from the manifest (or leave the stored
+one to win) rather than leaving the old value in the repo.
+
+A repo push also may not remove a `serverOnly` or `edgeMint` secret from the catalog, or change
+its `delivery`, while any profile, licence, device or account still stores a value for the key:
+the stored value would outlive the catalog entry and be signed into device documents the day a
+later catalog declares the key as a delivered secret. Clear the stored values in the console
+first.
+
 A profile's plain config values and flags follow the manifest, so declare those in
 `.pkey/product`; a console edit to one lasts only until the next push. A profile the manifest
 drops is removed with its secrets. So the flow is:

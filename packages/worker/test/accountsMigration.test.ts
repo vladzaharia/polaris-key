@@ -158,16 +158,38 @@ async function productionShaped(): Promise<{
   // lic-2: linked by email to acct_2 and by admin to acct_3 (email outranks admin).
   // lic-3: linked by key to acct_1 (t=5) and acct_2 (t=3): a tie on source, the earliest wins.
   // lic-custom: a custom-issuer `sub`-only licence with no link (stays floating, §8 Q6).
-  await insertLicense(
-    db,
+  // This is the database at 0067: seed it through that era's column list rather than the current
+  // `insertLicense`, which correctly names columns introduced by later migrations.
+  for (const row of [
     license("acme", "lic-1", { sub: "user-1", email: "ada@example.com" }),
-  );
-  await insertLicense(
-    db,
     license("acme", "lic-2", { email: "bob@example.com" }),
-  );
-  await insertLicense(db, license("acme", "lic-3", {}));
-  await insertLicense(db, license("custom", "lic-custom", { sub: "user-1" }));
+    license("acme", "lic-3", {}),
+    license("custom", "lic-custom", { sub: "user-1" }),
+  ]) {
+    run(
+      `INSERT INTO licenses (product, id, status, sub, name, email, groups_json, tier_id,
+         activated_at, expires_at, max_offline_days, overrides_json, channels_json, min_version,
+         max_version, origin, enroll_hwid, modified_by, modified_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'admin', NULL, ?, ?)`,
+      row.product,
+      row.id,
+      row.status,
+      row.sub,
+      row.name,
+      row.email,
+      row.groups_json,
+      row.tier_id,
+      row.activated_at,
+      row.expires_at,
+      row.max_offline_days,
+      row.overrides_json,
+      row.channels_json,
+      row.min_version,
+      row.max_version,
+      row.modified_by,
+      row.modified_at,
+    );
+  }
   for (const [acct, lic, source, at] of [
     ["acct_1", "lic-1", "oidc", NOW - 100],
     ["acct_3", "lic-1", "license-key", NOW - 500],

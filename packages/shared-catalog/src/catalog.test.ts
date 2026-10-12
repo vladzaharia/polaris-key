@@ -396,3 +396,79 @@ describe("Catalog — ordering, dependsOn, idempotency", () => {
     expect(cat.entries.length).toBe(KEYWORD_CATALOG.entries.length);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// compileAll() is the PUBLISH gate, so the structural refusals live there too.
+// ─────────────────────────────────────────────────────────────────────────────
+describe("compileAll structural refusals", () => {
+  const entry = (
+    over: Partial<ProductCatalog["entries"][number]>,
+  ): ProductCatalog["entries"][number] => ({
+    key: "a.key",
+    kind: "config",
+    category: "C",
+    label: "L",
+    description: "",
+    schema: { type: "string" },
+    ...over,
+  });
+
+  it("refuses a catalog that declares the same key twice", () => {
+    const cat = new Catalog({
+      schemaVersion: 1,
+      entries: [
+        entry({ key: "dup", kind: "secret", delivery: "serverOnly" }),
+        entry({ key: "dup", kind: "secret", delivery: "clientScoped" }),
+      ],
+    });
+    expect(() => cat.compileAll()).toThrow(/duplicate catalog key/);
+  });
+
+  it("refuses the duplicate because lookups and the entries list disagree", () => {
+    // Why the refusal matters: `entryByKey` answers with the LAST declaration while `entries`
+    // (what a publish screen walks) still lists the first, so a serverOnly secret could be
+    // screened as serverOnly and delivered as clientScoped.
+    const cat = new Catalog({
+      schemaVersion: 1,
+      entries: [
+        entry({ key: "dup", kind: "secret", delivery: "serverOnly" }),
+        entry({ key: "dup", kind: "secret", delivery: "clientScoped" }),
+      ],
+    });
+    expect(cat.entries).toHaveLength(2);
+    expect(cat.entryByKey("dup")!.delivery).toBe("clientScoped");
+  });
+
+  it("refuses `secret: true` on a flag (an entitlement is never sealed)", () => {
+    const cat = new Catalog({
+      schemaVersion: 1,
+      entries: [
+        entry({
+          key: "premium",
+          kind: "flag",
+          secret: true,
+          schema: { type: "boolean" },
+        }),
+      ],
+    });
+    expect(() => cat.compileAll()).toThrow(/secret is not valid on a flag/);
+  });
+
+  it("still accepts `secret: true` on config and secret kinds, and a plain flag", () => {
+    const cat = new Catalog({
+      schemaVersion: 1,
+      entries: [
+        entry({ key: "cfg.tok", kind: "config", secret: true }),
+        entry({ key: "sec.tok", kind: "secret", secret: true }),
+        entry({ key: "flg", kind: "flag", schema: { type: "boolean" } }),
+        entry({
+          key: "flg.off",
+          kind: "flag",
+          secret: false,
+          schema: { type: "boolean" },
+        }),
+      ],
+    });
+    expect(() => cat.compileAll()).not.toThrow();
+  });
+});

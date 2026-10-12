@@ -19,6 +19,7 @@ import {
   DEFAULT_RESERVED_DISPLAY_NAMES_MODE,
   DEFAULT_RESERVED_NAMES_MODE,
   IDENTITY_KEY_ENTRY_LIMIT,
+  MAX_DEVICE_LIMIT,
 } from "@polaris-key/manifest";
 import { setting } from "./define.js";
 import type { SettingDef } from "./types.js";
@@ -42,11 +43,14 @@ export const KEY_ENTRY_LIMIT_DEFAULT = IDENTITY_KEY_ENTRY_LIMIT.default;
 
 /** The console's offline-window bound (`core/console/writeChecks.ts` `MAX_OFFLINE_DAYS`; a test pins them). */
 export const OFFLINE_DAYS_MAX = 365;
-/** The column defaults of `products.default_max_offline_days` / `default_device_limit` (0001). */
+/**
+ * The column defaults of `products.default_max_offline_days` / `default_device_limit` (0001). The
+ * device limit's ceiling is `MAX_DEVICE_LIMIT` from `@polaris-key/manifest`: the registry bound,
+ * the admin write checks and the manifest validator are one number (a limit feeds
+ * `claimDeviceSeat`'s per-seat recursive scan, so it cannot be unbounded on any of them).
+ */
 export const DEFAULT_MAX_OFFLINE_DAYS = 30;
 export const DEFAULT_DEVICE_LIMIT = 5;
-/** No device-limit maximum exists today; the registry bounds the value so it stays an integer. */
-export const DEVICE_LIMIT_MAX = 1_000_000;
 
 /**
  * HA-10 (notes/S-20 owner decision 9): the hosting quotas' defaults and bounds. The defaults are
@@ -530,7 +534,7 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
       "The device limit a product starts from when it sets none of its own. A change reaches every product that inherits it.",
     keywords: ["seats", "devices"],
     docs: "/docs/features/licensing/access/",
-    value: { kind: "integer", unit: "count", min: 1, max: DEVICE_LIMIT_MAX },
+    value: { kind: "integer", unit: "count", min: 1, max: MAX_DEVICE_LIMIT },
     defaultValue: DEFAULT_DEVICE_LIMIT,
     merge: "cascade",
     productLink: { default: true, bound: false },

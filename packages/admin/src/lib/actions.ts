@@ -217,6 +217,8 @@ export const ACTION_LEVELS = {
   "feed.tighten": 1,
   "registryToken.revoke": 2,
   "registryToken.revokeAll": 2,
+  // The admin API tokens (`pkeya_…`): a revoked token cannot be restored, only replaced.
+  "apiToken.revoke": 2,
 } as const satisfies Record<string, ActionLevel>;
 
 export type ActionId = keyof typeof ACTION_LEVELS;

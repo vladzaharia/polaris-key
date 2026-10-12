@@ -36,7 +36,7 @@
       "deprecated": true
     },
     "defaultDeviceLimit": {
-      "$ref": "#/$defs/nonNegativeInteger",
+      "$ref": "#/$defs/deviceLimit",
       "description": "Deprecated: write licensing.defaultDeviceLimit. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
       "deprecated": true
     },
@@ -89,7 +89,7 @@
     "licensing": {
       "type": "object",
       "properties": {
-        "defaultDeviceLimit": { "$ref": "#/$defs/nonNegativeInteger" },
+        "defaultDeviceLimit": { "$ref": "#/$defs/deviceLimit" },
         "defaultMaxOfflineDays": { "$ref": "#/$defs/nonNegativeInteger" },
         "profiles": { "$ref": "#/$defs/profiles" },
         "tiers": { "$ref": "#/$defs/tiers" },
@@ -428,6 +428,12 @@
       "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
     },
     "nonNegativeInteger": { "type": "integer", "minimum": 0 },
+    "deviceLimit": {
+      "description": "A device-seat cap: a whole number from 0 to 1000 (MAX_DEVICE_LIMIT in @polaris-key/manifest). The value becomes the bound on claimDeviceSeat's per-seat recursive scan, so an unbounded cap is a denial of service rather than a generous plan. Rejected, never clamped.",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 1000
+    },
     "fingerprintMode": {
       "description": "Drift-tolerance strength: off (never enforce) · lenient (4) · normal (2, default) · strict (0, and a fingerprint becomes mandatory).",
       "enum": ["off", "lenient", "normal", "strict"]
@@ -441,7 +447,7 @@
         "compatMin": { "$ref": "#/$defs/semver" },
         "compatMax": { "$ref": "#/$defs/semver" },
         "defaultDeviceLimit": {
-          "$ref": "#/$defs/nonNegativeInteger",
+          "$ref": "#/$defs/deviceLimit",
           "description": "Deprecated: write licensing.defaultDeviceLimit. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
           "deprecated": true
         },
@@ -539,10 +545,7 @@
             "deprecated": true
           },
           "policyDeviceLimit": {
-            "anyOf": [
-              { "$ref": "#/$defs/nonNegativeInteger" },
-              { "type": "null" }
-            ]
+            "anyOf": [{ "$ref": "#/$defs/deviceLimit" }, { "type": "null" }]
           },
           "policyFingerprint": {
             "description": "Fingerprint enforcement for this tier; null (or omitted) inherits the product default.",
@@ -771,7 +774,11 @@
       "description": "Edge-mint recipe (a Config-service secret-delivery capability, served at /<product>/config/mint/<id>/...). May also live in the release document.",
       "type": "object",
       "properties": {
-        "id": { "$ref": "#/$defs/identifier" },
+        "id": {
+          "description": "A URL path segment on the mint route, held to that route's own alphabet so ingest cannot write a recipe no request could reach.",
+          "type": "string",
+          "pattern": "^[a-z0-9-]{1,64}$"
+        },
         "alg": { "enum": ["ES256", "RS256", "EdDSA"] },
         "signingKeySecret": { "$ref": "#/$defs/secretRef" },
         "kid": {
@@ -779,9 +786,22 @@
           "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
         },
         "claimsTemplate": { "type": "object" },
-        "ttlSeconds": { "type": "integer", "exclusiveMinimum": 0 },
+        "ttlSeconds": {
+          "description": "Lifetime of a minted token, in seconds. Capped at one hour: the manifest is repo-writable, so it may not dictate how long a leaked minted token stays valid.",
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 3600
+        },
         "audience": {
           "anyOf": [{ "$ref": "#/$defs/label" }, { "type": "null" }]
+        },
+        "requires": {
+          "description": "Who may mint this recipe: none (any device of this product) · registered (a device of this product, stated explicitly) · licensed (a device whose licence is usable; the product must run License). Omitted means licensed: a recipe signs with the product's third-party key, so it fails closed.",
+          "enum": ["none", "registered", "licensed"]
+        },
+        "requiredEntitlement": {
+          "description": "A catalog key that must be present and truthy in the caller's merged payload before this recipe may be minted.",
+          "anyOf": [{ "$ref": "#/$defs/identifier" }, { "type": "null" }]
         }
       },
       "required": ["id", "alg", "signingKeySecret"]

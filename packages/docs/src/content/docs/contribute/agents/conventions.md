@@ -119,14 +119,17 @@ a change pass.
 
 ### 4. Docs CSP parity
 
-|             |                                                                                                                                                                                                      |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Catches** | A stale `packages/worker/src/docsCsp.generated.ts` — someone rebuilt the site and skipped the hash-collection step, leaving a policy that would block (or over-allow) inline script on the live site |
-| **How**     | `packages/worker/test/docsCspParity.test.ts` recomputes SHA-256 CSP hashes straight from `packages/docs/dist` and compares them with the committed hash sets                                         |
-| **Command** | `pnpm --filter @polaris-key/docs build && pnpm --filter @polaris-key/worker test docsCspParity`                                                                                                      |
+|             |                                                                                                                                                                                                                                      |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Catches** | A hand edit to `packages/worker/src/docsCsp.generated.ts`, or a docs change whose regenerated hash set was not committed with it — leaving a policy that would block (or over-allow) inline script on the live site                  |
+| **How**     | `packages/worker/test/docsCspParity.test.ts` compares the file on disk with the copy committed in git (`git show HEAD:…`), and recomputes SHA-256 CSP hashes straight from `packages/docs/dist` and compares them with the hash sets |
+| **Command** | `pnpm --filter @polaris-key/docs build && pnpm --filter @polaris-key/worker test docsCspParity`                                                                                                                                      |
 
-Skips cleanly when the docs `dist` does not exist. In CI the docs build runs first, so it is
-always live there — but it is **not** live in a fresh clone.
+The committed-copy half is what makes this live in CI: the docs build there rewrites the file
+before the tests run, so comparing it only with `dist` could not fail; comparing it with git does.
+Both halves skip cleanly when they have nothing to compare against: the committed-copy half outside
+a git checkout, the `dist` half when the docs `dist` does not exist (a fresh clone). Locally, a docs
+rebuild that changes the file fails the committed-copy half until the result is committed.
 
 ### 5. Generated-reference freshness
 

@@ -237,11 +237,11 @@ async function reload(
     checkFreshness: false,
   });
   expect(trust.doc).not.toBeNull();
-  // `mergeTrust(discovered, pinned)` — pins spread last, so a manifest can never shadow one
+  // `mergeTrust(pinned, discovered)` — pins spread last, so a manifest can never shadow one
   // (§1 rule 1). The documents verify against the EFFECTIVE set, never against pins alone.
   const opts = {
     ...verifyOpts(device, systemNow),
-    trust: mergeTrust(trust.discovered, TRUST),
+    trust: mergeTrust(TRUST, trust.discovered),
     checkFreshness: false,
   };
   const license = await verifyLicenseDoc(cache.docs.license, opts);

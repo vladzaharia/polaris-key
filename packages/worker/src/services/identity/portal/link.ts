@@ -35,6 +35,7 @@
  */
 
 import { hashKey } from "../../../platform/crypto.js";
+import { parseFlowRecord } from "../../../platform/json.js";
 import { randomToken } from "../../../platform/random.js";
 import type { Db } from "../../../db/types.js";
 import type { Env } from "../../../platform/env.js";
@@ -116,11 +117,8 @@ async function currentFlow(
   const ref = await flowRef(env, secret);
   const raw = await getArtefact(env, ref);
   if (!raw) return null;
-  try {
-    return { ref, flow: JSON.parse(raw) as LinkFlow };
-  } catch {
-    return null;
-  }
+  const flow = parseFlowRecord<LinkFlow>(raw);
+  return flow ? { ref, flow } : null;
 }
 
 const clearFlowCookie = (): string => clearAccountRealmCookie(LINK_FLOW_COOKIE);

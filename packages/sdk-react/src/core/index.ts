@@ -20,6 +20,7 @@ export {
 export {
   PolarisError,
   initialState,
+  isSecureTransportUrl,
   type PolarisAdapter,
   type PolarisDocs,
   type PolarisMode,

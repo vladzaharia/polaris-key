@@ -396,6 +396,8 @@ describe("api — every product-scoped resource is under its owning service", ()
             claimsTemplateJson: null,
             ttlSeconds: 60,
             audience: null,
+            requires: "licensed",
+            requiredEntitlement: null,
           },
           null,
           true,
@@ -499,6 +501,8 @@ describe("api — every product-scoped resource is under its owning service", ()
       claimsTemplateJson: '{"iss":"T"}',
       ttlSeconds: 3600,
       audience: null,
+      requires: "licensed" as const,
+      requiredEntitlement: "musicPro",
     };
     const identity = {
       provider: "custom",
@@ -667,5 +671,55 @@ describe("api — release channel policy (P2-07)", () => {
     expect(releasePolicyMessage(new ApiError(500))).toBe(
       "Request failed (500).",
     );
+  });
+});
+
+describe("api — admin API tokens", () => {
+  it("the routes are platform-scoped, with no product segment, and the writes echo CSRF", async () => {
+    setCsrf("tok-t");
+    stubFetch(() => json({ tokens: [] }));
+    await api.apiTokens();
+    expect(calls[0]!.url).toBe("/manage/api/tokens");
+    expect(calls[0]!.init.method).toBeUndefined();
+
+    await api.mintApiToken({
+      label: "CI",
+      scopes: ["bundles:mint"],
+      expiresInDays: 90,
+    });
+    expect(calls[1]!.url).toBe("/manage/api/tokens");
+    expect(calls[1]!.init.method).toBe("POST");
+    expect((calls[1]!.init.headers as Headers).get("X-PKey-CSRF")).toBe(
+      "tok-t",
+    );
+    expect(JSON.parse(calls[1]!.init.body as string)).toEqual({
+      label: "CI",
+      scopes: ["bundles:mint"],
+      expiresInDays: 90,
+    });
+
+    await api.revokeApiToken("apitok_1/x");
+    expect(calls[2]!.url).toBe("/manage/api/tokens/apitok_1%2Fx");
+    expect(calls[2]!.init.method).toBe("DELETE");
+    expect((calls[2]!.init.headers as Headers).get("X-PKey-CSRF")).toBe(
+      "tok-t",
+    );
+  });
+
+  it("a refused mint carries the field names the form puts its messages on", async () => {
+    stubFetch(() =>
+      json(
+        {
+          error: { code: "bad_request", message: "invalid token request" },
+          code: "bad_request",
+          message: "invalid token request",
+          fields: ["expiresInDays"],
+        },
+        422,
+      ),
+    );
+    await expect(
+      api.mintApiToken({ label: "CI", expiresInDays: 400 }),
+    ).rejects.toMatchObject({ status: 422, fields: ["expiresInDays"] });
   });
 });

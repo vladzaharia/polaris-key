@@ -3836,6 +3836,16 @@ msgstr ""
 msgid "core.codes.document_not_representable.message"
 msgstr ""
 
+#. Signing unavailable
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.signing_unavailable.title"
+msgstr ""
+
+#. The service can't sign a document right now. Try again in a few minutes.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.signing_unavailable.message"
+msgstr ""
+
 #. Device limit reached
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.device_limit.title"

@@ -10,7 +10,15 @@ from __future__ import annotations
 
 import pytest
 
-from polaris_key.core.models import AllowedRange, BlockedState, LicenseDoc
+from polaris_key.core.models import (
+    BLOCK_REASONS,
+    STRICTEST_BLOCK_REASON,
+    AllowedRange,
+    BlockedState,
+    LicenseDoc,
+    coerce_block_reason,
+    is_block_reason,
+)
 from polaris_key.core.semver import (
     channel_for_version,
     compare_semver,
@@ -102,6 +110,108 @@ def test_blocked_takes_precedence_over_a_valid_doc() -> None:
     st = license_state(activation="token", doc=doc, now=500, blocked=blocked)
     assert st.status == "version-too-old"
     assert st.allowedRange is not None and st.allowedRange.min == "1.0.0"
+
+
+# ── the unsigned hint's VOCABULARY ──────────────────────────────────────────────────
+def test_the_block_reason_vocabulary_is_the_three_non_usable_403_reasons() -> None:
+    assert BLOCK_REASONS == ("version-too-old", "version-too-new", "channel-not-entitled")
+    assert STRICTEST_BLOCK_REASON == "version-too-old"
+    assert STRICTEST_BLOCK_REASON in BLOCK_REASONS
+    # Every member is a status the gate refuses to run on: the vocabulary can only tighten.
+    assert not any(is_usable(reason) for reason in BLOCK_REASONS)
+
+
+def test_the_vocabulary_is_exported_from_core() -> None:
+    import polaris_key.core as core
+
+    assert core.BLOCK_REASONS is BLOCK_REASONS
+    assert core.STRICTEST_BLOCK_REASON == STRICTEST_BLOCK_REASON
+    assert core.is_block_reason is is_block_reason
+    assert core.coerce_block_reason is coerce_block_reason
+
+
+@pytest.mark.parametrize("reason", BLOCK_REASONS)
+def test_a_member_of_the_vocabulary_survives_coercion_unchanged(reason: str) -> None:
+    assert is_block_reason(reason) is True
+    assert coerce_block_reason(reason) == reason
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "ok",
+        "grace",
+        "not-applicable",
+        "expired",
+        "definitely-fine",
+        "",
+        "Version-Too-Old",
+        " version-too-old",
+        None,
+        5,
+        True,
+        b"version-too-old",
+        ["version-too-old"],
+        {"reason": "version-too-old"},
+    ],
+)
+def test_anything_outside_the_vocabulary_coerces_to_the_strictest_reason(value) -> None:
+    assert is_block_reason(value) is False
+    assert coerce_block_reason(value) == STRICTEST_BLOCK_REASON
+
+
+@pytest.mark.parametrize(
+    "reason", ["ok", "grace", "not-applicable", "definitely-fine", ""]
+)
+@pytest.mark.parametrize("with_doc", [True, False], ids=["valid-doc", "no-doc-at-all"])
+def test_an_out_of_vocabulary_blocked_reason_never_makes_the_gate_usable(
+    reason: str, with_doc: bool
+) -> None:
+    """§4.1 keeps ``blocked`` unsigned on the argument that it can only ever make the gate
+    STRICTER. That is a claim about the VOCABULARY, and ``BlockReason`` is just ``str``: the
+    gate returns the reason AS the status, and ``is_usable`` answers True for
+    ``ok``/``grace``/``not-applicable``. So an unsigned ``{"reason": "ok"}`` would licence the
+    client with no signature anywhere — and ``blocked`` is read BEFORE the ``doc is None``
+    check, so it needs no document either. The gate coerces at the decision point."""
+    st = license_state(
+        activation="token",
+        doc=_doc(issued=1000, expires=4600, grace=2593000) if with_doc else None,
+        now=1500,
+        blocked=BlockedState(reason=reason),
+    )
+    assert st.status == "version-too-old"
+    assert not is_usable(st)
+    assert not is_usable(st.status)
+
+
+@pytest.mark.parametrize("reason", BLOCK_REASONS)
+def test_an_in_vocabulary_blocked_reason_is_still_honoured_verbatim(reason: str) -> None:
+    """The fix narrows the hint; it does not delete it. Without this an implementation that
+    coerced EVERY reason would pass the case above while destroying the feature."""
+    st = license_state(
+        activation="token",
+        doc=_doc(issued=1000, expires=4600, grace=2593000),
+        now=1500,
+        blocked=BlockedState(reason=reason, allowedRange=AllowedRange(min="1.0.0")),
+    )
+    assert st.status == reason
+    assert st.allowedRange == AllowedRange(min="1.0.0")
+
+
+def test_a_poisoned_blocked_reason_still_loses_to_the_activation_and_applicability_guards() -> None:
+    """The guards that precede ``blocked`` still precede it: a poisoned hint is not a way to
+    gate an unactivated install or a product without the licence service."""
+    poisoned = BlockedState(reason="ok")
+    assert (
+        license_state(activation=None, doc=None, now=1500, blocked=poisoned).status
+        == "needs-activation"
+    )
+    assert (
+        license_state(
+            license_service_enabled=False, activation=None, doc=None, now=1500, blocked=poisoned
+        ).status
+        == "not-applicable"
+    )
 
 
 def test_ok_within_expiry() -> None:

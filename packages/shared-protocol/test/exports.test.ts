@@ -13,6 +13,7 @@ import * as release from "../src/release.js";
 import * as trust from "../src/trust.js";
 import * as update from "../src/update.js";
 import { DEFAULT_RELEASE_ACCESS } from "../src/release.js";
+import * as license from "../src/license.js";
 import type { DocProfile, SignedInUser } from "../src/license.js";
 
 describe("@polaris-key/protocol layout", () => {
@@ -115,6 +116,57 @@ describe("@polaris-key/protocol layout", () => {
   it("the gate vocabulary includes not-applicable", () => {
     const status: barrel.LicenseStatus = "not-applicable";
     expect(status).toBe("not-applicable");
+  });
+
+  it("the 403 block reasons are a runtime vocabulary, one identifier set (WIRE-CONTRACT-V4 §4.1)", () => {
+    // `BlockReason` is derived from the tuple, so the type and the value cannot disagree.
+    expect(license.BLOCK_REASONS).toEqual([
+      "version-too-old",
+      "version-too-new",
+      "channel-not-entitled",
+    ]);
+    expect(barrel.BLOCK_REASONS).toBe(license.BLOCK_REASONS);
+    expect(barrel.isBlockReason).toBe(license.isBlockReason);
+    expect(barrel.coerceBlockReason).toBe(license.coerceBlockReason);
+    expect(barrel.STRICTEST_BLOCK_REASON).toBe("version-too-old");
+    // Every member is a non-usable status; a reason is never one of the three usable ones.
+    for (const reason of license.BLOCK_REASONS) {
+      expect(["ok", "grace", "not-applicable"]).not.toContain(reason);
+      expect(license.isBlockReason(reason)).toBe(true);
+      expect(license.coerceBlockReason(reason)).toBe(reason);
+    }
+  });
+
+  it("only a member of the block vocabulary is a block reason; everything else coerces to the strictest", () => {
+    for (const bad of [
+      "ok",
+      "grace",
+      "not-applicable",
+      "expired",
+      "revoked",
+      "needs-activation",
+      "",
+      "Version-Too-Old",
+      " version-too-old",
+      "version-too-old\n",
+      "toString",
+      "__proto__",
+      "constructor",
+      0,
+      1,
+      true,
+      null,
+      undefined,
+      {},
+      [],
+      ["version-too-old"],
+      { reason: "version-too-old" },
+    ]) {
+      expect(license.isBlockReason(bad), JSON.stringify(bad)).toBe(false);
+      expect(license.coerceBlockReason(bad), JSON.stringify(bad)).toBe(
+        license.STRICTEST_BLOCK_REASON,
+      );
+    }
   });
 
   it("the v4 feed, record and decision constants (WIRE-CONTRACT-V4 §2.3, §2.4)", () => {

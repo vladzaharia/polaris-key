@@ -355,6 +355,8 @@ interface RecipeView {
   claimsTemplateJson: string | null;
   ttlSeconds: number;
   audience: string | null;
+  requires: string;
+  requiredEntitlement: string | null;
   status: string;
   secretUsage: string;
   changedFields: string[];
@@ -396,6 +398,8 @@ function echoOf(
     kid: r.kid,
     claimsTemplateJson: r.claimsTemplateJson,
     ttlSeconds: r.ttlSeconds,
+    requires: r.requires,
+    requiredEntitlement: r.requiredEntitlement,
     audience: r.audience,
     identity,
     licenseEnabled,
@@ -762,7 +766,10 @@ describe("P0-12 recipe approval via the Config admin API", () => {
       },
     );
     expect(accepted.status).toBe(200);
-    expect((await mint(env, db, opened, token)).status).toBe(200);
+    // Approved, and the approval is the operator's. The mint itself is now the recipe's own
+    // demand: a default (`licensed`) recipe on a product that no longer runs License is a
+    // misconfiguration, not a pass. A recipe meant for such a product declares `registered`.
+    expect((await mint(env, db, opened, token)).status).toBe(500);
     expect((await listRecipes(env, db)).recipes[0]).toMatchObject({
       status: "approved",
       changedFields: [],
@@ -1257,7 +1264,10 @@ describe("P0-12 the approval binds whether the mint checks licences", () => {
       status: "approved",
       approval: { licenseEnabled: false },
     });
-    expect(await mintNow(token)).toBe(200);
+    // The hole this binding guards (a disabled licence minting once licences stop being checked)
+    // is also closed by the recipe: `licensed` on a product that no longer runs License is a
+    // misconfiguration (500), never a pass.
+    expect(await mintNow(token)).toBe(500);
   });
 
   it("after a License-off push sweeps the approval, a re-approval that echoes License on is refused", async () => {
@@ -1645,7 +1655,12 @@ describe("P0-12 migration backfill keeps deployed products minting", () => {
       const product = (await loadProduct(env, db, "djdl"))!;
       expect(mintIsPublic(product)).toBe(true);
       const token = await activate(env, db, product);
-      expect((await mint(env, db, product, token, recipe.id)).status).toBe(200);
+      // A recipe deployed before `requires` reads as `licensed`, which a product that does not
+      // run License cannot meet: it keeps minting only where License is on, and answers 500
+      // `misconfigured` until the manifest declares `registered` and an operator re-approves.
+      expect((await mint(env, db, product, token, recipe.id)).status).toBe(
+        how.startsWith("License off") ? 500 : 200,
+      );
     });
   }
 
@@ -1829,5 +1844,207 @@ describe("P0-12 migration backfill keeps deployed products minting", () => {
         open_registration_acknowledged: 0,
       },
     ]);
+  });
+});
+
+// ── Per-recipe authorization: `requires` and `required_entitlement` ────────────────────────────
+//
+// The route used to ask ONE product-wide question (a usable licence, while License is on) on
+// behalf of every approved recipe, so a free-tier device minted the recipe meant for a paid tier.
+// A recipe now declares who may mint it, defaulting to `licensed` so a row that predates the
+// column fails closed, and the approval binds that declaration.
+describe("per-recipe mint authorization", () => {
+  let db: SqliteDb;
+  let env: Env;
+  let product: Product;
+
+  beforeEach(async () => {
+    db = makeTestDb();
+    env = makeEnv(new KvMock(), ["djdl"]);
+    await seedProduct(db, "djdl");
+    await seedProductSecret(
+      db,
+      "djdl",
+      "applemusic_devkey",
+      ES_PEM,
+      "edge-mint",
+    );
+    product = (await loadProduct(env, db, "djdl"))!;
+  });
+
+  /** A device token on a licence carrying `grant`, activated while the licence was usable. */
+  async function tokenFor(
+    grant: Parameters<typeof seedLicenseWithKey>[2] = {},
+    device = "dev-1",
+  ): Promise<string> {
+    const { key } = await seedLicenseWithKey(db, "djdl", {
+      id: `lic_${device}`,
+      ...grant,
+    });
+    const res = await handleActivate(
+      mkReq("POST", {
+        authorization: `Bearer ${key}`,
+        "x-pkey-device": device,
+      }),
+      env,
+      db,
+      product,
+      NOW,
+    );
+    expect(res.status).toBe(200);
+    return ((await res.json()) as { token: string }).token;
+  }
+
+  /** The recipe as the manifest ingest writes it, with its posture, approved as it stands. */
+  async function recipeWith(
+    requires: string,
+    requiredEntitlement: string | null = null,
+  ): Promise<void> {
+    await db.run("DELETE FROM edge_mint_config WHERE product = 'djdl'");
+    await seedRecipe(db, {}, { approve: false });
+    await db.run(
+      "UPDATE edge_mint_config SET requires = ?, required_entitlement = ? WHERE product = 'djdl' AND id = 'applemusic'",
+      requires,
+      requiredEntitlement,
+    );
+    await approveEdgeMintRecipe(db, "djdl", "applemusic");
+  }
+
+  const mint = (token: string, id = "applemusic") =>
+    handleMintToken(
+      mkReq("POST", { authorization: `Bearer ${token}` }),
+      env,
+      db,
+      product,
+      id,
+      NOW,
+    );
+
+  it("a recipe that declares nothing is `licensed`, and a usable licence still mints it", async () => {
+    await seedRecipe(db);
+    const row = await db.first<{ requires: string }>(
+      "SELECT requires FROM edge_mint_config WHERE id = 'applemusic'",
+    );
+    expect(row?.requires).toBe("licensed");
+    expect((await mint(await tokenFor())).status).toBe(200);
+  });
+
+  it("refuses a free-tier device the recipe that needs a paid entitlement", async () => {
+    await seedTier(db, "djdl", "free");
+    await recipeWith("licensed", "premiumPartner");
+    const res = await mint(await tokenFor({ tierId: "free" }));
+    expect(res.status).toBe(403);
+    expect(await res.text()).toContain("premiumPartner");
+  });
+
+  it.each([false, 0, ""])(
+    "an entitlement stored as %j is a denial, not a mention",
+    async (value) => {
+      await recipeWith("licensed", "premiumPartner");
+      const token = await tokenFor({
+        entitlements: {
+          premiumPartner: { state: "enforced", value, updatedAt: NOW },
+        },
+      });
+      expect((await mint(token)).status).toBe(403);
+    },
+  );
+
+  it("mints for a licence whose own grant holds the entitlement", async () => {
+    await recipeWith("licensed", "premiumPartner");
+    const token = await tokenFor({
+      entitlements: {
+        premiumPartner: { state: "enforced", value: true, updatedAt: NOW },
+      },
+    });
+    expect((await mint(token)).status).toBe(200);
+  });
+
+  it("answers 401 to an unusable licence for a licensed recipe, and the same for an id that is not there", async () => {
+    await recipeWith("licensed");
+    const token = await tokenFor();
+    await db.run(
+      "UPDATE licenses SET expires_at = ? WHERE id = 'lic_dev-1'",
+      NOW - 1,
+    );
+    expect((await mint(token)).status).toBe(401);
+    // No oracle: a caller with no usable licence cannot tell an unknown id from a licensed one.
+    expect((await mint(token, "no-such-recipe")).status).toBe(401);
+  });
+
+  it.each(["none", "registered"])(
+    "`requires: %s` mints without a usable licence",
+    async (requires) => {
+      await recipeWith(requires);
+      const token = await tokenFor();
+      await db.run(
+        "UPDATE licenses SET expires_at = ? WHERE id = 'lic_dev-1'",
+        NOW - 1,
+      );
+      expect((await mint(token)).status).toBe(200);
+    },
+  );
+
+  it("an unrecognised `requires` is a misconfiguration, never a pass", async () => {
+    await seedRecipe(db);
+    const token = await tokenFor();
+    await db.run("PRAGMA ignore_check_constraints = ON");
+    await db.run("UPDATE edge_mint_config SET requires = 'bogus'");
+    await approveEdgeMintRecipe(db, "djdl", "applemusic");
+    const res = await mint(token);
+    expect(res.status).toBe(500);
+    expect(await res.text()).toContain("misconfigured");
+  });
+
+  it("the approval binds the posture: relaxing `requires` or dropping the entitlement leaves the recipe inert", async () => {
+    await recipeWith("licensed", "premiumPartner");
+    const token = await tokenFor({
+      entitlements: {
+        premiumPartner: { state: "enforced", value: true, updatedAt: NOW },
+      },
+    });
+    expect((await mint(token)).status).toBe(200);
+    for (const change of ["requires = 'none'", "required_entitlement = NULL"]) {
+      await recipeWith("licensed", "premiumPartner");
+      await db.run(
+        `UPDATE edge_mint_config SET ${change} WHERE id = 'applemusic'`,
+      );
+      expect(
+        await getApprovedEdgeMintConfig(db, product, "applemusic"),
+      ).toBeNull();
+      expect((await mint(token)).status).toBe(404);
+    }
+  });
+
+  describe("corrupt operator key material (answers 500 misconfigured, never throws)", () => {
+    const NOT_BASE64 =
+      "-----BEGIN PRIVATE KEY-----\nnot base64 at all !!!\n-----END PRIVATE KEY-----";
+    // Valid base64 of bytes that are not a DER private key.
+    const NOT_DER =
+      "-----BEGIN PRIVATE KEY-----\nMIGHAgEAMBMGByqGSM49\n-----END PRIVATE KEY-----";
+    it.each([
+      ["ES256", NOT_BASE64],
+      ["RS256", NOT_BASE64],
+      ["EdDSA", NOT_BASE64],
+      ["ES256", NOT_DER],
+      ["RS256", NOT_DER],
+      ["EdDSA", NOT_DER],
+      // A valid P-256 key under the wrong algorithm.
+      ["RS256", ES_PEM],
+      ["EdDSA", ES_PEM],
+    ])("%s with %#: an unusable key", async (alg, pem) => {
+      await seedProductSecret(db, "djdl", "bad_key", pem, "edge-mint");
+      await seedRecipe(db, {
+        id: "broken",
+        alg,
+        signing_key_secret: "bad_key",
+      });
+      const res = await mint(await tokenFor(), "broken");
+      expect(res.status).toBe(500);
+      const body = await res.text();
+      expect(body).toContain("misconfigured");
+      // The message never quotes the exception: it is derived from the key.
+      expect(body).not.toMatch(/atob|InvalidCharacter|DataError|SyntaxError/i);
+    });
   });
 });

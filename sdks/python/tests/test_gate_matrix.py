@@ -11,7 +11,10 @@ entitlements) — which the Worker enforces and the SDK mirrors via ``_check_bui
 below, rebuilt from the SDK's exported semver/channel primitives — and the license-state
 inputs (``licenseServiceEnabled`` / ``activation`` / doc window / now / sync outcome). We
 derive the 403-style ``blocked`` from the build gate, feed it into ``license_state``, and
-compare the resulting status / usable / reason / allowedRange to the fixture.
+compare the resulting status / usable / reason / allowedRange to the fixture. A row may also
+carry ``license.blocked``: the unsigned hint as read back off disk or out of a 403 body, which
+REPLACES the derived one — a hint outside the vocabulary is one no build gate could have
+produced, so those rows cannot be expressed through the build-gate inputs at all.
 
 gate-matrix v2 adds what v1 could not express: ``not-applicable`` for a product that does
 not enable the licence service (D-08), ``activation: "bundle"`` for an air-gapped install
@@ -159,6 +162,22 @@ def _build_doc(lic: Dict[str, Any]) -> Optional[LicenseDoc]:
     )
 
 
+def _row_blocked(lic: Dict[str, Any], gate: Dict[str, Any]) -> Optional[BlockedState]:
+    """A fixture-supplied hint WINS over the derived one.
+
+    It models the unsigned value read back off disk, which is what ``blocked`` is at every
+    real call site — and a poisoned cache record is exactly a hint no build gate produced, so
+    the vocabulary rows cannot be expressed through ``gate`` at all.
+    """
+    raw = lic.get("blocked")
+    if raw is None:
+        return _check_build_gate(gate)
+    return BlockedState(
+        reason=raw["reason"],
+        allowedRange=AllowedRange.from_dict(raw.get("allowedRange")),
+    )
+
+
 def test_gate_matrix_is_v2_and_has_rows() -> None:
     assert _MATRIX["gateMatrixVersion"] == 2
     assert len(_ROWS) > 0
@@ -190,7 +209,7 @@ _P0_04_CHANNEL_ROWS = [
 # @pkey-feature license.gate
 def test_gate_matrix_covers_the_p0_04_channel_rows() -> None:
     names = {r["name"] for r in _ROWS}
-    assert len(_ROWS) == 38
+    assert len(_ROWS) == 43
     for name in _P0_04_CHANNEL_ROWS:
         assert name in names, name
     assert (
@@ -199,10 +218,31 @@ def test_gate_matrix_covers_the_p0_04_channel_rows() -> None:
     )
 
 
+# The rows appended for the blocked-reason vocabulary: each carries a `license.blocked` hint.
+_VOCABULARY_ROWS = [
+    "version-too-old — an out-of-vocabulary blocked.reason coerces to the STRICTER reason",
+    "version-too-old — `not-applicable` as a blocked.reason is coerced too, allowedRange kept",
+    "channel-not-entitled — an IN-vocabulary blocked.reason is still honoured verbatim",
+    "needs-activation — a poisoned blocked.reason does not outrank the activation guard",
+    "not-applicable — a poisoned blocked.reason cannot be used to gate an unlicensed product either",
+]
+
+
+# @pkey-feature license.gate
+def test_gate_matrix_covers_the_blocked_vocabulary_rows() -> None:
+    by_name = {r["name"]: r for r in _ROWS}
+    for name in _VOCABULARY_ROWS:
+        assert name in by_name, name
+        assert "blocked" in by_name[name]["license"], f"{name} must carry the hint it is about"
+    # A usable reason is in there, so the rows can fail an implementation that returns the
+    # hint's reason verbatim as the status.
+    assert any(r["license"].get("blocked", {}).get("reason") == "ok" for r in _ROWS)
+
+
 @pytest.mark.parametrize("row", _ROWS, ids=[r["name"] for r in _ROWS])
 def test_gate_matrix_row(row: Dict[str, Any]) -> None:
     lic = row["license"]
-    blocked = _check_build_gate(row["gate"])
+    blocked = _row_blocked(lic, row["gate"])
     state = license_state(
         license_service_enabled=lic["licenseServiceEnabled"],
         activation=lic["activation"],
@@ -219,9 +259,11 @@ def test_gate_matrix_row(row: Dict[str, Any]) -> None:
     assert is_usable(state.status) is expect["ok"], f"{row['name']} usable(str)"
 
     # `reason` describes the DERIVED build-gate hint, which on the unactivated+blocked row
-    # is deliberately not the status — that row is the whole point of v3's ordering.
+    # is deliberately not the status — that row is the whole point of v3's ordering. It is
+    # checked against the derived hint, never against a fixture-supplied `license.blocked`.
     if expect.get("reason") is not None:
-        assert blocked is not None and blocked.reason == expect["reason"], row["name"]
+        derived = _check_build_gate(row["gate"])
+        assert derived is not None and derived.reason == expect["reason"], row["name"]
 
     expected_range = expect.get("allowedRange")
     if expected_range is not None:

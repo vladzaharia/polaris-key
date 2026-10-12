@@ -643,6 +643,8 @@
   "core.codes.value_not_representable.message": "값을 저장하지 못했어요. 값을 변경한 후 다시 시도하세요.",
   "core.codes.document_not_representable.title": "서비스 문제",
   "core.codes.document_not_representable.message": "서비스에서 설정을 준비하지 못했어요. 개발자에게 문의하세요.",
+  "core.codes.signing_unavailable.title": "서명을 사용할 수 없음",
+  "core.codes.signing_unavailable.message": "지금은 서비스에서 문서에 서명할 수 없어요. 몇 분 후에 다시 시도하세요.",
   "core.codes.device_limit.title": "기기 한도 도달",
   "core.codes.device_limit.message": "이 라이선스는 이미 모든 기기에서 사용 중이에요. 여기에서 사용하려면 기기를 교체하세요.",
   "core.codes.key_entry_limit.title": "남은 키 등록 횟수 없음",

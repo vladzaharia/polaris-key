@@ -180,6 +180,59 @@ final class BundleImportTests: XCTestCase {
         XCTAssertEqual(status.status, .ok, "…and the previous licence still gates")
     }
 
+    /// §7 step 2 checks the bundle's own import window with network-path freshness, and §3 runs
+    /// that path at the EFFECTIVE clock — `max(systemClock, floor)`, never the bare system clock.
+    /// So winding the clock back inside a window that has already closed must not make the
+    /// bundle importable again.
+    func testTheImportWindowResistsARolledBackClock() async throws {
+        let t = nowSec()
+        let issued = t - 90 * SECONDS_PER_DAY  // the import window is [issued, issued + 30 days]
+        // A cached, verified trust manifest dated AFTER the window closed is what raises the
+        // floor: a signed lower bound on real time that no clock change can lower.
+        let afterWindow = issued + 40 * SECONDS_PER_DAY
+        let store = InMemoryStore(deviceId: "dev")
+        await store.writeCache(CacheRecord(trustJws: manifestJws(afterWindow)))
+        let c = try await client(store: store)
+        let floor = await c.core.highWaterMark
+        XCTAssertEqual(floor, afterWindow, "the cached manifest raised the floor")
+
+        let bundle = vendor.sign(
+            Fixtures.bundle(
+                issuedAt: issued, license: vendor.sign(Fixtures.license(issuedAt: issued)),
+                trust: manifestJws(issued)))
+        // The attacker's clock: back inside the window the bundle was minted for.
+        do {
+            _ = try await c.importBundle(bundle, now: issued + SECONDS_PER_DAY)
+            XCTFail("a lapsed bundle must stay refused when the system clock is wound back")
+        } catch let error as PolarisError {
+            XCTAssertEqual(error.code, BundleRefusalReason.bundleClaimsRejected.rawValue)
+        }
+        let record = await store.readCache()
+        XCTAssertNil(record?.bundle, "all-or-nothing: nothing was written")
+        let status = await c.status().status
+        XCTAssertEqual(status, .needsActivation)
+    }
+
+    /// The floor is a minimum, never a substitute: without this pair a client that refused every
+    /// bundle would pass the case above.
+    func testAFloorBelowTheClockDoesNotStopAnHonestImport() async throws {
+        let t = nowSec()
+        let store = InMemoryStore(deviceId: "dev")
+        await store.writeCache(CacheRecord(trustJws: manifestJws(t - 10 * SECONDS_PER_DAY)))
+        let c = try await client(store: store)
+        let floor = await c.core.highWaterMark
+        XCTAssertEqual(floor, t - 10 * SECONDS_PER_DAY)
+
+        let bundle = vendor.sign(
+            Fixtures.bundle(
+                issuedAt: t, license: vendor.sign(Fixtures.license(issuedAt: t)),
+                trust: manifestJws(t)))
+        let imported = try await c.importBundle(bundle, now: t)
+        XCTAssertEqual(imported.imported, [.license])
+        let status = await c.status().status
+        XCTAssertEqual(status, .ok)
+    }
+
     /// A bundle whose inner licence fails takes the untouched config document down with it.
     /// All-or-nothing is structural: a refusal hands back no documents at all.
     func testOneBadInnerDocumentRefusesTheWholeImport() async throws {

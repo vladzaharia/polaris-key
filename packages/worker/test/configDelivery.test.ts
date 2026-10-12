@@ -71,6 +71,39 @@ describe("no silent declassification", () => {
     expect(await declassifyRefusal(db, "p", prev, next)).toContain("s");
     expect(await declassifyRefusal(db, "other", prev, next)).toBeNull();
   });
+  it("counts removing a held secret from the catalog, and only a held one", () => {
+    // Removal is the first step of the remove-then-re-add route to delivery.
+    expect(declassifiedKeys(prev, [])).toEqual(["s"]);
+    const edgeMint = JSON.stringify({
+      entries: [{ ...base, key: "m", kind: "secret", delivery: "edgeMint" }],
+    });
+    expect(declassifiedKeys(edgeMint, [])).toEqual(["m"]);
+    // A delivered secret or a plain config key was never held back, so dropping it is free.
+    const delivered = JSON.stringify({
+      entries: [
+        { ...base, key: "d", kind: "secret", delivery: "clientScoped" },
+        { ...base, key: "c", kind: "config" },
+      ],
+    });
+    expect(declassifiedKeys(delivered, [])).toEqual([]);
+  });
+  it("refuses removal only while a layer stores a value for the key", async () => {
+    const db = await makeTestDb();
+    await seedProduct(db, "p");
+    // Nothing stored yet: removing the entry is allowed.
+    expect(await declassifyRefusal(db, "p", prev, [])).toBeNull();
+    await db.run(
+      "INSERT INTO profiles (product, id, name, description, payload_json, modified_by, modified_at) VALUES ('p','pr','n','',?,'t',1)",
+      JSON.stringify({ config: {}, secrets: { s: e("v") }, entitlements: {} }),
+    );
+    const refusal = await declassifyRefusal(db, "p", prev, []);
+    expect(refusal).toContain("remove or declassify");
+    expect(refusal).toContain("s");
+    // Another product's values do not count, and clearing the value lifts the refusal.
+    expect(await declassifyRefusal(db, "other", prev, [])).toBeNull();
+    await db.run("DELETE FROM profiles WHERE product = 'p'");
+    expect(await declassifyRefusal(db, "p", prev, [])).toBeNull();
+  });
 });
 
 describe("malformed layers", () => {

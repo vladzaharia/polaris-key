@@ -238,13 +238,58 @@ adding the subscription should not ask installations to re-approve; confirm on t
 permissions page. Until the subscription is added, the Worker's release-event handling is
 inert.
 
-### GitHub Actions secret
+### GitHub Actions secret (environment-scoped, not repository-scoped)
 
-In `vladzaharia/polaris-key`, create the repository secret:
+`CLOUDFLARE_API_TOKEN` must exist **only** as an environment secret on the `production`
+environment. It must not exist as a repository secret.
 
-```text
-CLOUDFLARE_API_TOKEN
-```
+Why the distinction matters, because it is the entire deploy gate:
+
+`.github/workflows/deploy.yml` triggers on `push: tags`. For a push event, GitHub runs the
+copy of the workflow file carried by **the pushed ref's own tree**, not the copy on `main`.
+Anyone holding `contents: write` can branch locally, delete every check in that file, commit,
+and push the result straight to `refs/tags/v9.9.9`; the commit never lands on a branch and
+never appears in a PR, and GitHub runs their edited workflow. So the semver check, the "must be
+an ancestor of `origin/main`" check and the CI-green check are all **advisory**: they stop
+mistakes, never someone who can write a tag, because that person edits them out in the same
+commit they deploy.
+
+What such a person cannot rewrite from inside the tag is which secrets the job is allowed to
+see. A repository secret is visible to every workflow in the repo, so with a repository-scoped
+token `environment: production` is decorative and deleting that line costs the attacker
+nothing. With an environment-scoped token, deleting the line removes the credential: the
+deploy reaches `wrangler` with no token and fails. The environment binding is the only
+enforcement; everything else in the workflow file is a lint.
+
+Steps:
+
+1. **Create the `production` environment** (repo → Settings → Environments → New environment →
+   `production`) if it does not exist.
+2. **Add the secret to the environment, not the repository.** Inside the `production`
+   environment, add `CLOUDFLARE_API_TOKEN`.
+3. **Delete any repository-level `CLOUDFLARE_API_TOKEN`** (repo → Settings → Secrets and
+   variables → Actions → Repository secrets) and **rotate the value**: a token that was ever
+   repository-wide was readable by every workflow in the repo, including any workflow file
+   introduced on a tag, so treat it as exposed and create a new Cloudflare API token rather
+   than moving the old one.
+4. **Add protection rules to the `production` environment:**
+
+   | Rule                         | Value                                           |
+   | ---------------------------- | ----------------------------------------------- |
+   | Required reviewers           | at least one operator other than the tag pusher |
+   | Deployment branches and tags | **Selected branches and tags** → tag rule `v*`  |
+
+   Required reviewers make a deploy pause for a human even when the workflow file in the tag
+   says otherwise. The `v*` tag policy makes the environment, and therefore the token,
+   unreachable from any ref that is not a release tag.
+
+5. **Verify.** Push a throwaway tag and confirm the run pauses for review before the first
+   step that uses the token, then reject it. Confirm
+   `gh api repos/vladzaharia/polaris-key/actions/secrets` does not list
+   `CLOUDFLARE_API_TOKEN` (repository scope), while
+   `gh api repos/vladzaharia/polaris-key/environments/production/secrets` does.
+
+Token permissions:
 
 The token must be able to apply D1 migrations and deploy Workers in the `Polaris`
 Cloudflare account. The local OAuth login already has the needed account access, but CI
@@ -1001,7 +1046,25 @@ The workflow applies D1 migrations, deploys the lazy-delta consumer Worker
 Worker/admin assets, and smoke-checks
 `https://key.plrs.im/djdl/.well-known/jwks.json`, asserting a non-empty key set. That is a
 data-plane endpoint on purpose: `/manage` is a static asset and returns 200 with D1, KV and
-the signing path all down.
+the signing path all down. The smoke check also asserts the gated docs site is not reachable
+without a session through either door: `/docs/` must redirect to sign-in and
+`/manage/docs/index.html` must not return 200.
+
+Before it touches production the unprivileged `verify` job requires, in order:
+
+1. the tag to be semver `vMAJOR.MINOR.PATCH` (optionally with a prerelease suffix);
+2. the tagged commit to be an ancestor of `origin/main`; and
+3. every check run recorded against that exact commit SHA (other than the deploy run's own) to
+   be green, skipped or neutral. A commit can reach `main` with CI red (an admin merge, a
+   check that was not required yet, a workflow that errored before reporting) and ancestry
+   alone does not notice. The gate fails closed: zero check runs, or an API error reading
+   them, is a failure. Runs still in progress are polled for up to 15 minutes, then the
+   deploy is refused.
+
+Then the `deploy-worker` job waits for approval from a required reviewer on the `production`
+environment. Only that approval and the environment-scoped token are enforcement; (1)–(3)
+live in the workflow file that the tag itself carries, so they catch mistakes and nothing more
+(see "GitHub Actions secret (environment-scoped, not repository-scoped)" in section 2).
 
 Create a production release tag:
 
@@ -1010,7 +1073,8 @@ git tag v0.1.0
 git push origin v0.1.0
 ```
 
-If a tag is malformed, the workflow exits before applying migrations or deploying.
+If a tag is malformed, if its commit is not on `main`, or if CI was not green on that commit,
+the workflow exits before applying migrations or deploying.
 
 **Deploy identity (A-11).** Both `wrangler deploy` calls carry the release tag and commit:
 `--var PKEY_RELEASE_TAG:<tag>`, `--var PKEY_GIT_SHA:<sha>`, and the same values on the
@@ -1188,6 +1252,9 @@ Validate portal email:
 - DJDL product secrets are configured.
 - DJDL SDK/app has the returned trust key pinned.
 - CI deploys production from semver tags only.
+- `CLOUDFLARE_API_TOKEN` exists as a `production` **environment** secret and **not** as a
+  repository secret, and the `production` environment has required reviewers and a `v*`
+  deployment tag policy.
 - The GitHub environment `package-registry` admits the `main` branch and `v*` tags, holds the
   three `SWIFT_REGISTRY_*` secrets, `main` is protected and a tag ruleset covers `v*` (§3); `polaris-key`'s trusted
   publisher is `publish-package.yml` in `package-registry`, and it holds the root `.pkey/`
@@ -1244,6 +1311,11 @@ Portal says email sign-in is disabled.
 - Only `env.prod` carries real IDs. For `staging`/`dev`, replace the `REPLACE_ME_*_D1_ID`
   and `REPLACE_ME_*_KV_ID` placeholders in `wrangler.toml` with IDs from the resource
   creation commands.
+
+Deploy fails with `Refusing to deploy: no check runs recorded against <sha>.`
+
+- Nothing ever ran CI on the tagged commit. The gate fails closed by design. Push the commit
+  to `main`, let `.github/workflows/ci.yml` finish, then tag.
 
 `wrangler deploy --env <env>` fails on the `BLOBS` R2 binding.
 

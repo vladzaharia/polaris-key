@@ -9,7 +9,10 @@
 
 package im.plrs.key.core
 
-/** A server 403 block, reflected locally; unsigned is safe because it only tightens (§4.1). */
+/**
+ * A server 403 block, reflected locally; unsigned is safe because it only tightens (§4.1). That claim is about the
+ * VOCABULARY, and [BlockReason] is what makes it true: a closed enum of the three non-usable reasons.
+ */
 public data class BlockInfo(val reason: BlockReason, val allowedRange: AllowedRange? = null)
 
 public data class LicenseState(

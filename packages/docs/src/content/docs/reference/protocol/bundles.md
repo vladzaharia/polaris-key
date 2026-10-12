@@ -187,7 +187,8 @@ would reach, and the only way to be sure of that is to take the same route.
 ## Minting
 
 Two front doors onto one endpoint, `POST /manage/api/products/<slug>/bundles`. It is an admin
-surface: authenticated, CSRF-protected, rate-limited with the rest of the admin API, and
+surface: authenticated (a console session, or an admin API token scoped to `bundles:mint`),
+CSRF-protected for session callers, rate-limited with the rest of the admin API, and
 **audit-logged** — the audit row is the only record that a mint happened, since the artifact
 itself is stored nowhere.
 
@@ -198,10 +199,11 @@ pkey bundle --product <slug> --device <id> --grace-days <n> \
   [--no-config] [--license <id>] [--base-url <url>] [--out <file>] [--force]
 ```
 
-The CLI authenticates with a live console session cookie read from `PKEY_ADMIN_COOKIE`; there
-is no API-token surface yet. It writes the compact JWS to a single file — by default
-`<product>-<first 8 chars of deviceId>.pkeybundle` — with no trailing newline, so a naive read
-feeds a verifier directly.
+The CLI authenticates with an admin API token read from `PKEY_ADMIN_TOKEN` and sent as
+`Authorization: Bearer pkeya_…`: scoped to `bundles:mint`, which reaches this route and no
+other, and CSRF-exempt because an `Authorization` header is never ambient. It writes the compact
+JWS to a single file, by default `<product>-<first 8 chars of deviceId>.pkeybundle` (mode
+`0600`), with no trailing newline, so a naive read feeds a verifier directly.
 
 What the server decides rather than the caller:
 

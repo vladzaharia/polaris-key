@@ -48,6 +48,7 @@ import {
   issueSession,
 } from "../src/core/console/session.js";
 import { loadProduct, type Product } from "../src/core/products.js";
+import { MAX_DEVICE_LIMIT } from "@polaris-key/manifest";
 import { handleActivate } from "../src/services/license/activation.js";
 import { handleLicenseDocument } from "../src/services/license/document.js";
 import { handleConfigDocument } from "../src/services/config/document.js";
@@ -442,9 +443,19 @@ describe("the admin handlers take the manifest's own rules (422 bad_request)", (
     expect(ok.status, JSON.stringify(ok.body)).toBe(201);
   });
 
-  it("a policyDeviceLimit above MAX_WIRE_INTEGER", async () => {
+  it("a policyDeviceLimit above MAX_WIRE_INTEGER, and above the device-limit ceiling far below it", async () => {
+    // The device limit's own range (1 to `MAX_DEVICE_LIMIT`) sits so far inside the wire range
+    // that it is the only check a tier limit takes: both of these answer with its one message.
     expectCode(
       await call(w, "POST", TIERS, { id: "pro", policyDeviceLimit: 2 ** 53 }),
+      "bad_request",
+      "policyDeviceLimit",
+    );
+    expectCode(
+      await call(w, "POST", TIERS, {
+        id: "pro",
+        policyDeviceLimit: MAX_DEVICE_LIMIT + 1,
+      }),
       "bad_request",
       "policyDeviceLimit",
     );
@@ -452,7 +463,7 @@ describe("the admin handlers take the manifest's own rules (422 bad_request)", (
       (
         await call(w, "POST", TIERS, {
           id: "pro",
-          policyDeviceLimit: 2 ** 53 - 1,
+          policyDeviceLimit: MAX_DEVICE_LIMIT,
         })
       ).status,
     ).toBe(201);

@@ -52,6 +52,8 @@ export const qk = {
   /** Settings → History: the settings writes of the platform trail (under `platformActivity`). */
   platformSettingsHistory: (): QueryKey => ["platform", "activity", "settings"],
   platformOperations: (): QueryKey => ["platform", "operations"],
+  /** The admin API tokens (`GET /manage/api/tokens`): the deployment's, so under `platform`. */
+  apiTokens: (): QueryKey => ["platform", "api-tokens"],
   /**
    * The licence override migration (U-03): its state and inventory. As a prefix, also the
    * per-product reads and the report.

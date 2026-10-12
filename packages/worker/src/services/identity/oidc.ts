@@ -61,7 +61,7 @@ import {
   safeReturnTo,
 } from "../../platform/returnTo.js";
 import { randomBytes, randomToken } from "../../platform/random.js";
-import { tryParseJson } from "../../platform/json.js";
+import { parseFlowRecord, tryParseJson } from "../../platform/json.js";
 import type { Db } from "../../db/types.js";
 import {
   openProductSecret,
@@ -115,6 +115,11 @@ import {
 } from "../../core/devices.js";
 import { applyProvisionedAccountSecrets } from "../../core/accounts/accountOverrides.js";
 import { licenseConfigOverridesFrozen } from "../../core/ops/overrideMigration.js";
+import { loadCatalog } from "../../core/activeCatalog.js";
+import {
+  isManagedSecretKey,
+  sealManagedValue,
+} from "../../core/managedSecrets.js";
 import {
   createBrowserSession,
   type BrowserSessionSubject,
@@ -551,23 +556,6 @@ function redirectUriAllowed(oidc: OidcConfigRow, redirectUri: string): boolean {
   return Array.isArray(allowed) && allowed.includes(redirectUri);
 }
 
-/**
- * Parse a stored flow record, treating a corrupt value exactly like a missing one (R11-06).
- *
- * Every caller already has a well-defined answer for "this flow does not exist" — `expired`,
- * `unknown state`, `timeout`. A truncated or garbled KV value is indistinguishable from that
- * for every purpose the handler has, so it should take the same branch rather than escape as
- * an uncaught `SyntaxError` and 500 a sign-in path.
- */
-function parseFlowRecord<T>(raw: string): T | null {
-  try {
-    const parsed: unknown = JSON.parse(raw);
-    return parsed && typeof parsed === "object" ? (parsed as T) : null;
-  } catch {
-    return null;
-  }
-}
-
 /** Whether a verified claim genuinely enables a provisioning hook. Truthiness is NOT enough:
  *  an IdP that emits `"false"`, `"0"`, `"null"`, `0`, `[]` or `{}` must not grant an
  *  entitlement, so we require a real boolean `true` or a meaningful string (R8-05c). */
@@ -772,11 +760,13 @@ async function identityTier(
   product: Pick<ProductPublic, "slug" | "autoIssue">,
   identity: Pick<OidcIdentity, "groups">,
   now: number,
+  oidc?: OidcConfigRow | null,
 ): Promise<AutoIssueGrant | { error: string }> {
-  const oidc = await getOidcConfig(db, product.slug);
+  const config =
+    oidc === undefined ? await getOidcConfig(db, product.slug) : oidc;
   // A malformed map grants nothing (fail closed) instead of throwing out of sign-in (R8-06).
   const map =
-    (tryParseJson(oidc?.group_role_map_json) as
+    (tryParseJson(config?.group_role_map_json) as
       | Record<string, { role: string; tier?: string }>
       | undefined) ?? {};
 
@@ -903,14 +893,14 @@ async function signInProvisioning(
 
 /** The device limit `row` will carry once `activateFromIdentity` has activated `identity` onto
  *  it, so the limit the row holds NOW is not mistaken for the one it will have after the attach.
- *  Read-only: the P1-07 attach measures its seat bound with this (R1-07).
+ *  Read-only: the P1-07 attach measures its seat bound with this (R1-07). Both arms rewrite the
+ *  row's `overrides_json` only at the provisioning's declared keys (`mergeProvisionedOverrides`),
+ *  so an operator `deviceLimit` override survives and counts:
  *  - `claim` (`claimEnrolledLicense`): the anonymous row is rewritten onto the identity's mapped
- *    tier, its expiry and the provisioned overrides (an enroll tier and anything stored on the
- *    row are replaced).
+ *    tier and its expiry (an enroll tier is replaced).
  *  - `signin` (an existing licence of the identity, the migrate destination): since LX-02 the
- *    update keeps the row's own `tier_id` and `expires_at` and rewrites only the provisioning's
- *    declared override keys, so the limit is the stored tier plus the surgically merged
- *    overrides (an operator `deviceLimit` override survives and counts). */
+ *    update keeps the row's own `tier_id` and `expires_at`, so the limit is the stored tier plus
+ *    the merged overrides. */
 async function postActivationDeviceLimit(
   db: Db,
   product: Product,
@@ -924,39 +914,27 @@ async function postActivationDeviceLimit(
     | { kind: "signin" },
   now: number,
 ): Promise<number> {
-  if (arm.kind === "signin") {
-    const { provisioned, declared } = await signInProvisioning(
-      db,
-      product,
-      identity,
-      now,
-    );
-    // The hypothetical column carries the provisioned keys themselves (LX-08 writes them to the
-    // `oidc` grant instead, with the same values): the stored grant is not read on top.
-    return licenseDeviceLimit(
-      db,
-      product,
-      {
-        ...row,
-        overrides_json: mergeProvisionedOverrides(
-          row.overrides_json,
-          provisioned,
-          declared,
-        ),
-      },
-      now,
-      { withoutOidcGrant: true },
-    );
-  }
-  const overrides = await provisionedOverrides(db, product, identity, now);
+  const { provisioned, declared } = await signInProvisioning(
+    db,
+    product,
+    identity,
+    now,
+  );
+  // The hypothetical column carries the provisioned keys themselves (LX-08 writes them to the
+  // `oidc` grant instead, with the same values): the stored grant is not read on top.
   return licenseDeviceLimit(
     db,
     product,
     {
       ...row,
-      tier_id: arm.tier.tierId,
-      expires_at: arm.tier.expiresAt,
-      overrides_json: JSON.stringify(overrides),
+      ...(arm.kind === "claim"
+        ? { tier_id: arm.tier.tierId, expires_at: arm.tier.expiresAt }
+        : {}),
+      overrides_json: mergeProvisionedOverrides(
+        row.overrides_json,
+        provisioned,
+        declared,
+      ),
     },
     now,
     { withoutOidcGrant: true },
@@ -1047,16 +1025,63 @@ const SIGNIN_UPDATE_ATTEMPTS = 3;
  * ENTITLEMENT keys never go into `overrides_json` any more, they are the licence's `oidc` grant
  * (`core/licensing/grants.ts`); provisioned secrets go to the column until the U-03 run freezes it (then to
  * the owner's account overrides). Config is never provisioned.
+ *
+ * The secrets on their way to the column are SEALED under `PLATFORM_KEK`, as the console seals the
+ * same catalog keys (`core/console/overrides.ts`) and as `applyProvisionedAccountSecrets` seals
+ * them on the account side: a templated subscription URL with a verified claim interpolated into
+ * it is a real product secret, and a read-only dump of `licenses.overrides_json` must not yield
+ * it in the clear while the admin-authored value for the very same catalog key is ciphertext.
+ * `mergeProvisionedOverrides` copies what it is given and never seals again.
  */
-function provisionedColumn(
+async function provisionedColumn(
+  env: Env | undefined,
+  db: Db,
+  product: string,
   provisioned: ManagedPayload,
   frozen: boolean,
-): ManagedPayload {
+): Promise<ManagedPayload> {
   return {
     config: {},
-    secrets: frozen ? {} : provisioned.secrets,
+    secrets: frozen
+      ? {}
+      : await sealProvisionedSecrets(env, db, product, provisioned.secrets),
     entitlements: {},
   };
+}
+
+/**
+ * `secrets` with every catalog-declared secret sealed (`sealManagedValue`: the console's helper,
+ * so either writer can rotate the other's value). The catalog is read once per call, and only
+ * when there is something to seal. A catalog that cannot be read FAILS CLOSED: the value is sealed
+ * anyway, because `validatePayload` lets only a `kind: "secret"` entry out of this bucket and
+ * `isManagedSecretKey` is true for every such entry, so refusing to classify is not a reason to
+ * write plaintext. Without an `env` there is nothing to seal with and the value is stored as the
+ * column has always held it (`openManagedValue` reads both); every production caller passes one.
+ */
+async function sealProvisionedSecrets(
+  env: Env | undefined,
+  db: Db,
+  product: string,
+  secrets: Record<string, ManagedEntry>,
+): Promise<Record<string, ManagedEntry>> {
+  if (!env || Object.keys(secrets).length === 0) return secrets;
+  const catalog = await loadCatalog(db, product);
+  const sealed: Record<string, ManagedEntry> = {};
+  for (const [key, entry] of Object.entries(secrets)) {
+    sealed[key] =
+      !catalog || isManagedSecretKey(catalog, key)
+        ? {
+            ...entry,
+            value: (await sealManagedValue(
+              env,
+              product,
+              key,
+              entry.value,
+            )) as ManagedEntry["value"],
+          }
+        : entry;
+  }
+  return sealed;
 }
 
 /**
@@ -1095,6 +1120,9 @@ async function upgradedTier(
  * (`mergeProvisionedOverrides`), so operator overrides survive and a declared key whose claim
  * disappeared is removed.
  *
+ * `email_issuer_class` is rewritten with `email`, not merely on insert: the address on this row
+ * is whatever the LATEST sign-in asserted, so the class that vouches for it moves with it.
+ *
  * LX-08 (S-19 §7.14 step 4): the provisioned ENTITLEMENT keys are the licence's `oidc` grant,
  * re-evaluated here on every sign-in (a declared key whose claim disappeared leaves the grant),
  * and the declared keys leave the column, so this sign-in also moves its own licence. The grant
@@ -1110,6 +1138,8 @@ async function updateLicenseOnSignIn(
   identity: OidcIdentity,
   existing: LicenseRow,
   now: number,
+  /** The issuer class that produced `identity.email` on this sign-in. */
+  emailIssuerClass: string,
   env?: Env,
   /** The tier the identity's group map (or `oidcDefault`) resolves to, for `syncTierOnSignIn`. */
   identityTierId?: string | null,
@@ -1120,7 +1150,13 @@ async function updateLicenseOnSignIn(
   // target the licence owner's account overrides (its declared secret keys are still removed
   // from the column, so nothing stale lingers there).
   const frozen = await licenseConfigOverridesFrozen(db);
-  const column = provisionedColumn(signIn.provisioned, frozen);
+  const column = await provisionedColumn(
+    env,
+    db,
+    product.slug,
+    signIn.provisioned,
+    frozen,
+  );
   if (frozen && existing.account_id)
     await applyProvisionedAccountSecrets(
       env,
@@ -1177,13 +1213,14 @@ async function updateLicenseOnSignIn(
       ],
       {
         sql: `UPDATE licenses SET name = ?, email = ?, groups_json = ?, overrides_json = ?,
-                ${tier ? "tier_id = ?, " : ""}modified_by = ?, modified_at = ?
+                email_issuer_class = ?, ${tier ? "tier_id = ?, " : ""}modified_by = ?, modified_at = ?
               WHERE product = ? AND id = ? AND overrides_json IS ?`,
         params: [
           identity.name ?? null,
           identity.email ?? null,
           JSON.stringify(identity.groups),
           merged,
+          emailIssuerClass,
           ...(tier ? [tier.id] : []),
           "oidc",
           now,
@@ -1226,14 +1263,20 @@ export async function activateFromIdentity(
      *  identity's licence; without it the migrate is refused (`license-merge-unavailable`)
      *  rather than strand them on a disabled row. */
     licenseMerge?: LicenseMerge;
-    /** U-03: seals provisioned secrets written to the owner's account overrides (from the
-     *  licence-override migration's run on). Every caller passes it. */
+    /** Seals secrets provisioned into the licence column until the override migration runs, then
+     *  into the owner's account overrides. Every caller passes it. */
     env?: Env;
+    /** The sign-in's mint writes its own audit row (`license.mint.oidc`) in the batch that
+     *  inserts the licence. The portal's Discover claim passes `false`: it audits the licence it
+     *  mints itself (`license.create`, with the Discover path and reason in the summary), and one
+     *  claim is one row. Every other caller leaves it on. */
+    mintAudit?: boolean;
   } = {},
 ): Promise<
   { licenseId: string; merged?: "claimed" | "migrated" } | { error: string }
 > {
-  const tier = await identityTier(db, product, identity, now);
+  const oidc = await getOidcConfig(db, product.slug);
+  const tier = await identityTier(db, product, identity, now, oidc);
   if ("error" in tier) return tier;
   const { tierId, expiresAt } = tier;
 
@@ -1243,15 +1286,18 @@ export async function activateFromIdentity(
     identity,
     now,
   );
-  // U-03: from the migration run on, provisioned secrets go to the owner's account overrides
-  // (below, for a licence that has an owner). `overrides` is what the provisioning amounts to on
-  // the licence (the device-limit previews read it); LX-08 writes its entitlement keys to the
-  // licence's `oidc` grant (`oidcGrant`) and the rest to the column (`column`).
+  // After the override migration, provisioned secrets go to the owner's account overrides (below,
+  // for a licence that has an owner). `overrides` is what the provisioning amounts to on the
+  // licence (the device-limit previews read it); entitlement keys go to the licence's `oidc`
+  // grant (`oidcGrant`) and the rest to the column (`column`).
   const frozen = await licenseConfigOverridesFrozen(db);
   const overrides: ManagedPayload = frozen
     ? { ...provisionedAll, secrets: {} }
     : provisionedAll;
-  const column = provisionedColumn(provisionedAll, frozen);
+  // What the column holds for the provisioned keys: sealed (`provisionedColumn`), so only the two
+  // arms that write it (the claim and the new licence) compute it.
+  const column = () =>
+    provisionedColumn(opts.env, db, product.slug, provisionedAll, frozen);
   const oidcGrant = (licenseId: string) =>
     oidcGrantStatements({
       product: product.slug,
@@ -1275,6 +1321,11 @@ export async function activateFromIdentity(
 
   const existing = await getLicenseBySub(db, product.slug, identity.sub);
 
+  // The issuer class that produces `identity.email` on this sign-in is stamped with the address.
+  // Auto-linking must not re-derive it from a later manifest edit, which could turn a custom
+  // issuer's assertion into a platform assertion retroactively.
+  const emailIssuerClass = oidc?.provider === "custom" ? "custom" : "platform";
+
   // Case 1 — a claimable enrolled license and no identity license yet: attach the identity to
   // the SAME row. Devices, overrides, and the client's local state all survive; the user
   // simply becomes known.
@@ -1290,13 +1341,25 @@ export async function activateFromIdentity(
         groupsJson: JSON.stringify(identity.groups),
         tierId,
         expiresAt,
+        emailIssuerClass,
       },
       now,
     );
+    // Provisioning wins only on the keys its hooks declare (`mergeProvisionedOverrides`): an
+    // operator's override of any other key on the enrolled licence survives the claim, as the
+    // sign-in arm keeps it. Writing the column wholesale destroyed it.
     await db.batch([
       {
         sql: "UPDATE licenses SET overrides_json = ? WHERE product = ? AND id = ?",
-        params: [JSON.stringify(column), product.slug, claimable.id],
+        params: [
+          mergeProvisionedOverrides(
+            claimable.overrides_json,
+            await column(),
+            declared,
+          ),
+          product.slug,
+          claimable.id,
+        ],
       },
       ...oidcGrant(claimable.id),
     ]);
@@ -1404,6 +1467,7 @@ export async function activateFromIdentity(
       identity,
       existing,
       now,
+      emailIssuerClass,
       opts.env,
       tierId,
     );
@@ -1427,16 +1491,40 @@ export async function activateFromIdentity(
       activated_at: now,
       expires_at: expiresAt,
       max_offline_days: null,
-      overrides_json: JSON.stringify(column),
+      overrides_json: JSON.stringify(await column()),
       channels_json: null,
       min_version: null,
       max_version: null,
       // S-16 G14: without this the column defaults to 'admin' (migrations/0011).
       origin: "oidc",
+      email_issuer_class: emailIssuerClass,
       modified_by: "oidc",
       modified_at: now,
     }),
     ...oidcGrant(licenseId),
+    // The self-service MINT is audited like every other way a licence comes into existence (the
+    // merge arms above write `license.merge`, `enroll.ts` audits its auto-issue): the one path
+    // where a stranger turns a verified claim into a brand-new licence row used to write nothing
+    // at all. It rides the insert's batch, so there is no licence without its row and no row for
+    // a licence a racing sign-in already created. The issuer class is in the summary because it
+    // is the fact that decides whether the licence may ever auto-link into a portal account.
+    ...(opts.mintAudit === false
+      ? []
+      : [
+          auditStatement({
+            product: product.slug,
+            id: randomId("aud"),
+            at: now,
+            actor_sub: identity.sub,
+            actor_name: identity.name ?? null,
+            actor_email: identity.email ?? null,
+            action: "license.mint.oidc",
+            target_kind: "license",
+            target_id: licenseId,
+            parent_id: null,
+            summary: `Minted a license for ${identity.email ?? identity.sub} via ${emailIssuerClass} OIDC`,
+          }),
+        ]),
   ]);
   return { licenseId };
 }

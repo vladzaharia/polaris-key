@@ -313,45 +313,129 @@ describe("verifyJws structural failures", () => {
   });
 });
 
-// WIRE-CONTRACT-V3 §1: the payload cap is 65 536 bytes for every artifact EXCEPT
+// WIRE-CONTRACT-V4 §1: the payload cap is 65 536 bytes for every artifact EXCEPT
 // `pkey-bundle+jws`, which wraps up to three inner compact JWSs and is capped at 262 144.
 // The bundle verifier passes that cap explicitly, per call — it is not a global relaxation,
-// and it can only ever raise.
+// it can only ever raise, and it is only honoured alongside the `typ` it is granted to.
 describe("verifyJws — maxPayloadBytes (the pkey-bundle+jws cap, §1)", () => {
   // 100 KiB: over the 64 KiB default, under the 256 KiB bundle cap. Sizes stay just past the
   // boundary being proved — the multi-MiB versions of these tests are what timed out CI once.
   const oversizeDoc = { schemaVersion: 1, blob: "A".repeat(100 * 1024) };
 
   it("a raised cap accepts a payload the default refuses", async () => {
-    const jws = await signJws(oversizeDoc, DJDL_TEST_PEM, DJDL_TEST_KID);
+    // Signed and verified AS a bundle: the cap and the `typ` are one grant.
+    const jws = await signJws(
+      oversizeDoc,
+      DJDL_TEST_PEM,
+      DJDL_TEST_KID,
+      "pkey-bundle+jws",
+    );
     expect(
-      (await verifyJws(jws, TRUST, { maxPayloadBytes: 262_144 }))?.payload,
+      (
+        await verifyJws(jws, TRUST, {
+          typ: "pkey-bundle+jws",
+          maxPayloadBytes: 262_144,
+        })
+      )?.payload,
     ).toEqual(oversizeDoc);
+  });
+
+  it("a raised cap with NO typ is refused outright", async () => {
+    // §1 grants the raise to `pkey-bundle+jws` alone. A 256 KiB payload accepted with no type
+    // demanded could be re-presented at an ordinary document call site with the raised cap
+    // already in force, which is the whole reason the exception is typed.
+    const jws = await signJws(
+      oversizeDoc,
+      DJDL_TEST_PEM,
+      DJDL_TEST_KID,
+      "pkey-bundle+jws",
+    );
+    expect(
+      await verifyJws(jws, TRUST, { maxPayloadBytes: 262_144 }),
+    ).toBeNull();
+    // Refused, not downgraded: a small payload that would verify at the default cap is
+    // refused too, so the failure is the missing type and not the size.
+    const small = { schemaVersion: 1, blob: "A".repeat(1024) };
+    const smallJws = await signJws(small, DJDL_TEST_PEM, DJDL_TEST_KID);
+    expect(
+      await verifyJws(smallJws, TRUST, { maxPayloadBytes: 262_144 }),
+    ).toBeNull();
+    expect((await verifyJws(smallJws, TRUST))?.payload).toEqual(small);
   });
 
   it("the SAME jws is still rejected on the default path", async () => {
     // The option is per call. Nothing about a bundle-sized document leaks into the ordinary
     // license/config/trust verifiers, which never pass it.
-    const jws = await signJws(oversizeDoc, DJDL_TEST_PEM, DJDL_TEST_KID);
-    expect(await verifyJws(jws, TRUST)).toBeNull();
+    const jws = await signJws(
+      oversizeDoc,
+      DJDL_TEST_PEM,
+      DJDL_TEST_KID,
+      "pkey-bundle+jws",
+    );
+    expect(await verifyJws(jws, TRUST, { typ: "pkey-bundle+jws" })).toBeNull();
   });
 
   it("the raised cap is still a cap — past 262 144 decoded bytes is rejected", async () => {
     const huge = { schemaVersion: 1, blob: "A".repeat(300 * 1024) };
-    const jws = await signJws(huge, DJDL_TEST_PEM, DJDL_TEST_KID);
+    const jws = await signJws(
+      huge,
+      DJDL_TEST_PEM,
+      DJDL_TEST_KID,
+      "pkey-bundle+jws",
+    );
     expect(
-      await verifyJws(jws, TRUST, { maxPayloadBytes: 262_144 }),
+      await verifyJws(jws, TRUST, {
+        typ: "pkey-bundle+jws",
+        maxPayloadBytes: 262_144,
+      }),
     ).toBeNull();
   });
 
   it("a value BELOW the default is inert — the option raises, never lowers", async () => {
     // Otherwise one call site could quietly enforce a stricter bound than the wire contract
-    // and start refusing documents every other implementation accepts.
+    // and start refusing documents every other implementation accepts. Inert also means it
+    // does not trip the typed-raise rule: 16 is not a raise, so no `typ` is required.
     const doc = { schemaVersion: 1, blob: "A".repeat(4096) };
     const jws = await signJws(doc, DJDL_TEST_PEM, DJDL_TEST_KID);
     expect(
       (await verifyJws(jws, TRUST, { maxPayloadBytes: 16 }))?.payload,
     ).toEqual(doc);
+  });
+});
+
+// A kid is an opaque string with no reserved values (WIRE-CONTRACT-V4 §1): the trust set is read
+// by OWN property, so a kid that names something `Object.prototype` has can neither be answered
+// by the prototype nor be missed when the set really holds it.
+describe("verifyJws — the kid is looked up as an own property of the trust set", () => {
+  const doc = { schemaVersion: 1, blob: "x" };
+
+  it("refuses a header kid the trust set does not hold, even when Object.prototype has the name", async () => {
+    for (const kid of [
+      "__proto__",
+      "constructor",
+      "toString",
+      "hasOwnProperty",
+    ]) {
+      const jws = await signJws(doc, DJDL_TEST_PEM, kid);
+      expect(await verifyJws(jws, TRUST), kid).toBeNull();
+    }
+  });
+
+  it("verifies under a kid of `__proto__` when the trust set really holds that key", async () => {
+    // A COMPUTED key: the literal `__proto__: x` form sets the object's prototype instead of
+    // creating a member, which is the very mistake this test exists to catch.
+    const trust: TrustSet = { ["__proto__"]: DJDL_TEST_PUB };
+    expect(Object.keys(trust)).toEqual(["__proto__"]);
+    const jws = await signJws(doc, DJDL_TEST_PEM, "__proto__");
+    expect((await verifyJws(jws, trust))?.kid).toBe("__proto__");
+  });
+
+  it("refuses a kid whose trust-set value is not a non-empty string", async () => {
+    const jws = await signJws(doc, DJDL_TEST_PEM, DJDL_TEST_KID);
+    for (const bad of ["", 7, null, {}, []]) {
+      const trust = { [DJDL_TEST_KID]: bad } as unknown as TrustSet;
+      expect(await verifyJws(jws, trust), JSON.stringify(bad)).toBeNull();
+    }
   });
 });
 

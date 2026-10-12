@@ -24,10 +24,13 @@ import { portalMagicKey } from "../../src/services/identity/portal/auth.js";
 import { KvMock, asKv } from "../kvMock.js";
 import {
   makeEnv,
+  mkReq as wireReq,
   NOW,
   seedLicenseWithKey,
   seedProduct,
+  TEST_KID,
   TEST_PEM,
+  TEST_PUB,
 } from "../seed.js";
 import type { Env } from "../../src/platform/env.js";
 import type { Db } from "../../src/db/types.js";
@@ -43,6 +46,8 @@ import { loadCatalog } from "../../src/core/activeCatalog.js";
 import {
   openManagedPayload,
   openManagedValue,
+  resealManagedValue,
+  sealManagedValue,
 } from "../../src/core/managedSecrets.js";
 import {
   hashKey,
@@ -53,7 +58,7 @@ import {
   getInstallationToken,
   installationTokenSlot,
 } from "../../src/services/release/githubApp.js";
-import { open } from "../../src/platform/keyvault.js";
+import { open, seal } from "../../src/platform/keyvault.js";
 import {
   handleMagicStart,
   handleMagicVerify,
@@ -61,17 +66,38 @@ import {
   handlePortalLogin,
 } from "../../src/services/identity/portal/auth.js";
 import {
+  activateFromIdentity,
   handleAuthCallback,
   handleAuthDevicePoll,
   handleAuthDeviceStart,
   handleAuthDeviceVerify,
   handleAuthStart,
 } from "../../src/services/identity/oidc.js";
-import { loadProduct, type Product } from "../../src/core/products.js";
+import {
+  loadProduct,
+  openProductSecret,
+  type Product,
+} from "../../src/core/products.js";
 import { upsertPortalProductSettings } from "../../src/services/identity/portal/repo.js";
-import { insertSchema, upsertDevice } from "../../src/core/repo.js";
+import {
+  getLicense,
+  insertSchema,
+  upsertDevice,
+  upsertProductSecret,
+} from "../../src/core/repo.js";
 import { deactivateSchemas } from "../../src/core/console/repo.js";
 import { verifyJws, signJws } from "@polaris-key/jws";
+import type { ConfigDoc } from "@polaris-key/protocol/config";
+import {
+  prunePayloadAgainstCatalog,
+  type ManagedPayload,
+} from "../../src/core/licensing/payload.js";
+import { handleActivate } from "../../src/services/license/activation.js";
+import { handleConfigDocument } from "../../src/services/config/document.js";
+import {
+  handleBrowserSession,
+  handleBrowserSessionLicense,
+} from "../../src/services/identity/browserSession.js";
 
 // Swap ONLY jose's remote key getter (the R12-04 sign-in flows below need a test IdP); the
 // REAL jwtVerify still checks iss/aud/alg/signature/nonce. Nothing else in this file reaches a
@@ -370,6 +396,158 @@ describe("R12-01 redactPayload now fails CLOSED without a catalog", () => {
 });
 
 // ───────────────────────────────────────────────────────────────────────────────
+// A product with no active catalog fails CLOSED wherever a payload is pruned for delivery:
+// `delivery: "serverOnly"` is only true rather than descriptive because the prune enforces it.
+// ───────────────────────────────────────────────────────────────────────────────
+
+/** A catalog with one `delivery: "serverOnly"` secret and one ordinary client secret. */
+const DELIVERY_CATALOG = {
+  schemaVersion: 1,
+  entries: [
+    {
+      key: "srv.key",
+      kind: "secret",
+      secret: true,
+      category: "Secrets",
+      label: "Server-only key",
+      description:
+        "Consumed by the worker; never signed into a device document.",
+      schema: { type: "string" },
+      delivery: "serverOnly",
+    },
+    {
+      key: "cli.key",
+      kind: "secret",
+      secret: true,
+      category: "Secrets",
+      label: "Client key",
+      description: "Delivered to the OS keyring.",
+      schema: { type: "string" },
+      delivery: "clientScoped",
+    },
+  ],
+};
+
+describe("a serverOnly secret cannot reach a signed config document", () => {
+  it("FIXED: not with an active catalog, and not with the catalog row deactivated", async () => {
+    const kv = new KvMock();
+    const db: Db = makeTestDb();
+    const env = makeEnv(kv, ["djdl"]);
+    await seedProduct(db, "djdl", { catalog: DELIVERY_CATALOG });
+    const { key } = await seedLicenseWithKey(db, "djdl", {
+      secrets: {
+        "srv.key": {
+          state: "hidden",
+          value: "SERVER-ONLY-PLAINTEXT",
+          updatedAt: NOW,
+        },
+        "cli.key": {
+          state: "hidden",
+          value: "CLIENT-SCOPED-PLAINTEXT",
+          updatedAt: NOW,
+        },
+      },
+    });
+    const product = (await loadProduct(env, db, "djdl"))!;
+
+    const activated = await handleActivate(
+      wireReq("POST", {
+        authorization: `Bearer ${key}`,
+        "x-pkey-device": "dev-no-catalog",
+      }),
+      env,
+      db,
+      product,
+      NOW,
+    );
+    expect(activated.status).toBe(200);
+    const { token } = (await activated.json()) as { token: string };
+    const docReq = (): Request =>
+      wireReq("GET", {
+        authorization: `Bearer ${token}`,
+        "x-pkey-version": "1.2.3",
+      });
+
+    const ok = await handleConfigDocument(docReq(), env, db, product, NOW);
+    expect(ok.status).toBe(200);
+    const doc = await verifyJws<ConfigDoc>(await ok.text(), {
+      [TEST_KID]: TEST_PUB,
+    });
+    expect(doc!.payload.secrets["cli.key"]?.value).toBe(
+      "CLIENT-SCOPED-PLAINTEXT",
+    );
+    expect(doc!.payload.secrets["srv.key"]).toBeUndefined();
+
+    // THE ATTACK. A product with no active catalog row (never published one, or a row an
+    // operator or restore removed) used to switch the prune OFF: `prunePayloadAgainstCatalog`
+    // handed the payload back UNPRUNED, so the very next poll signed the server-only secret
+    // into a device document. It now answers 500 `catalog_unavailable`.
+    await deactivateSchemas(db, "djdl");
+    const after = await handleConfigDocument(
+      docReq(),
+      env,
+      db,
+      product,
+      NOW + 1,
+    );
+    expect(after.status).toBe(500);
+    const body = await after.text();
+    expect(body).toContain("catalog_unavailable");
+    expect(body).not.toContain("SERVER-ONLY-PLAINTEXT");
+  });
+
+  it("FIXED: the prune answers null without a usable catalog, and prunes under an empty one", async () => {
+    const db: Db = makeTestDb();
+    await seedProduct(db, "acme", { catalog: DELIVERY_CATALOG });
+    const entry = (value: string) => ({
+      state: "hidden" as const,
+      value,
+      updatedAt: NOW,
+    });
+    const payload: ManagedPayload = {
+      config: {},
+      secrets: {
+        "srv.key": entry("SERVER-ONLY"),
+        "cli.key": entry("CLIENT-SCOPED"),
+        "ghost.key": entry("UNDECLARED"),
+      },
+      entitlements: {},
+    };
+
+    // An active catalog drops what it does not deliver.
+    const pruned = await prunePayloadAgainstCatalog(db, "acme", payload);
+    expect(Object.keys(pruned!.secrets)).toEqual(["cli.key"]);
+
+    // A catalog that will not parse is a catalog that cannot be enforced…
+    await db.run(
+      "UPDATE product_schema SET catalog_json = ? WHERE product = ? AND active = 1",
+      "{ not json",
+      "acme",
+    );
+    expect(await prunePayloadAgainstCatalog(db, "acme", payload)).toBeNull();
+
+    // …and so is no catalog at all (this used to return the payload unpruned).
+    await deactivateSchemas(db, "acme");
+    expect(await prunePayloadAgainstCatalog(db, "acme", payload)).toBeNull();
+
+    // An EMPTY catalog is a legal catalog ("this product declares no keys"): it prunes every
+    // entry rather than refusing.
+    await insertSchema(db, {
+      product: "acme",
+      catalog_version: 3,
+      catalog_json: JSON.stringify({ schemaVersion: 1, entries: [] }),
+      active: 1,
+      created_at: NOW,
+    });
+    expect(await prunePayloadAgainstCatalog(db, "acme", payload)).toEqual({
+      config: {},
+      secrets: {},
+      entitlements: {},
+    });
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────────────────
 // R12-02 — managed "secrets" are stored in D1 as PLAINTEXT, unlike product_secrets.
 // ───────────────────────────────────────────────────────────────────────────────
 // FIXED (R12-02): catalog-declared secrets are now envelope-encrypted under PLATFORM_KEK by
@@ -448,6 +626,350 @@ describe("R12-02 managed secret values are SEALED at rest in D1", () => {
         payload.config["api.token"]!.value,
       ),
     ).toBeNull();
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────────────────
+// Managed values are sealed in their OWN AAD namespace, WITH a read fallback to the one they
+// were first sealed under, so nothing already stored becomes undecryptable.
+// ───────────────────────────────────────────────────────────────────────────────
+describe("managed-secret AAD is disjoint from the product-secret namespace", () => {
+  /** The slot managed values were first sealed under: shared with product secrets. */
+  const EARLIER = (product: string, key: string) =>
+    ({ product, kind: "product-secret", id: `managed:${key}` }) as const;
+  const CURRENT = (product: string, key: string) =>
+    ({ product, kind: "managed-secret", id: key }) as const;
+
+  it("FIXED: a value sealed under the earlier AAD still opens, directly and through the payload opener", async () => {
+    const env = makeEnv(new KvMock(), ["acme"]);
+    const earlier = await seal(
+      env,
+      "EARLIER-MANAGED-SECRET",
+      EARLIER("acme", "api.token"),
+    );
+    expect(await openManagedValue(env, "acme", "api.token", earlier)).toBe(
+      "EARLIER-MANAGED-SECRET",
+    );
+    // …including through the payload opener the document path uses.
+    const opened = await openManagedPayload(env, "acme", {
+      config: {
+        "api.token": { state: "hidden", value: earlier, updatedAt: NOW },
+      },
+      secrets: {},
+      entitlements: {},
+    });
+    expect(opened.config["api.token"]!.value).toBe("EARLIER-MANAGED-SECRET");
+  });
+
+  it("FIXED: the next write re-seals it under the current AAD and retires the earlier one", async () => {
+    const env = makeEnv(new KvMock(), ["acme"]);
+    const earlier = await seal(
+      env,
+      "EARLIER-MANAGED-SECRET",
+      EARLIER("acme", "api.token"),
+    );
+    const migrated = await sealManagedValue(env, "acme", "api.token", earlier);
+    expect(migrated).not.toBe(earlier);
+    expect(await open(env, migrated, CURRENT("acme", "api.token"))).toBe(
+      "EARLIER-MANAGED-SECRET",
+    );
+    await expect(
+      open(env, migrated, EARLIER("acme", "api.token")),
+    ).rejects.toThrow();
+
+    // An already-current envelope is carried forward byte for byte (no needless re-seal).
+    expect(await sealManagedValue(env, "acme", "api.token", migrated)).toBe(
+      migrated,
+    );
+  });
+
+  it("FIXED: an envelope that opens under neither AAD is carried forward exactly as it was", async () => {
+    // Re-sealing something we cannot read would replace the only copy of a value an operator
+    // may still recover with a KEK we do not hold now.
+    const env = makeEnv(new KvMock(), ["acme"]);
+    const foreign = await seal(env, "FOREIGN", CURRENT("acme", "other.key"));
+    expect(await sealManagedValue(env, "acme", "api.token", foreign)).toBe(
+      foreign,
+    );
+    expect(
+      await openManagedValue(env, "acme", "api.token", foreign),
+    ).toBeNull();
+  });
+
+  it("FIXED: a managed value is no longer readable as a product secret named managed:<key>", async () => {
+    const db: Db = makeTestDb();
+    const env = makeEnv(new KvMock(), ["acme"]);
+    await seedProduct(db, "acme");
+    const managed = await sealManagedValue(
+      env,
+      "acme",
+      "api.token",
+      "MANAGED-VALUE",
+    );
+    // The aliasing this closes: a per-product secret NAMED `managed:api.token` used to sit in
+    // the very AAD slot of the managed value for catalog key `api.token`, so a blob lifted out
+    // of a payload column into `product_secrets` under that name was opened by
+    // `openProductSecret` (and the reverse).
+    await upsertProductSecret(db, {
+      product: "acme",
+      name: "managed:api.token",
+      enc_value_json: managed,
+      created_at: NOW,
+      modified_at: NOW,
+    });
+    expect(
+      await openProductSecret(db, env, "acme", "managed:api.token", "general"),
+    ).toBeUndefined();
+    await expect(
+      open(env, managed, EARLIER("acme", "api.token")),
+    ).rejects.toThrow();
+
+    // A product secret's ciphertext is still bound to ITS key: it is not another key's value.
+    const productSecret = await seal(
+      env,
+      "PRODUCT-SECRET-VALUE",
+      EARLIER("acme", "other.key"),
+    );
+    expect(
+      await openManagedValue(env, "acme", "api.token", productSecret),
+    ).toBeNull();
+  });
+
+  it("FIXED: resealManagedValue moves an earlier envelope to the current AAD and refuses what it cannot open", async () => {
+    const env = makeEnv(new KvMock(), ["acme"]);
+    const earlier = await seal(
+      env,
+      "EARLIER-MANAGED-SECRET",
+      EARLIER("acme", "api.token"),
+    );
+    const next = await resealManagedValue(env, "acme", "api.token", earlier);
+    expect(await open(env, next, CURRENT("acme", "api.token"))).toBe(
+      "EARLIER-MANAGED-SECRET",
+    );
+    await expect(
+      open(env, next, EARLIER("acme", "api.token")),
+    ).rejects.toThrow();
+
+    // Unlike `sealManagedValue`, a current envelope is rewritten too: the sweep exists to move
+    // a value to the active KEK.
+    const again = await resealManagedValue(env, "acme", "api.token", next);
+    expect(again).not.toBe(next);
+    expect(await open(env, again, CURRENT("acme", "api.token"))).toBe(
+      "EARLIER-MANAGED-SECRET",
+    );
+
+    // An envelope bound to another key opens under neither context: the sweep records a
+    // failure rather than overwriting it.
+    const foreign = await seal(env, "FOREIGN", CURRENT("acme", "other.key"));
+    await expect(
+      resealManagedValue(env, "acme", "api.token", foreign),
+    ).rejects.toThrow(/did not open/);
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────────────────
+// A catalog is screened once at publish; two declarations of one key, or an entitlement
+// declared secret, would be screened against one reading and delivered under another.
+// ───────────────────────────────────────────────────────────────────────────────
+describe("a catalog that shadows a secret or seals an entitlement is refused at publish", () => {
+  const declared = (over: Record<string, unknown>) => ({
+    key: "k",
+    kind: "config",
+    category: "C",
+    label: "L",
+    description: "",
+    schema: { type: "string" },
+    ...over,
+  });
+
+  /** PUT a catalog as the console would; returns the response and the db. */
+  async function publish(
+    entries: unknown[],
+  ): Promise<{ res: Response; db: Db }> {
+    const kv = new KvMock();
+    const db: Db = makeTestDb();
+    const env = adminEnv(kv, ["acme"]);
+    await seedProduct(db, "acme", { catalog: DELIVERY_CATALOG });
+    const { cookie, csrf } = await sessionCookie(env);
+    const path = "/api/products/acme/config/catalog";
+    const res = await handleAdmin(
+      mkReq("PUT", path, {
+        cookie,
+        csrf,
+        body: { catalog: { schemaVersion: 0, entries } },
+      }),
+      env,
+      db,
+      path,
+      { now: NOW },
+    );
+    return { res, db };
+  }
+
+  const versions = (db: Db) =>
+    db.all<{ catalog_version: number; active: number }>(
+      "SELECT catalog_version, active FROM product_schema WHERE product = ? ORDER BY catalog_version",
+      "acme",
+    );
+
+  it("FIXED: a serverOnly secret shadowed by a plain declaration of the same key is a 422 and writes nothing", async () => {
+    const { res, db } = await publish([
+      declared({ key: "dup", kind: "secret", delivery: "serverOnly" }),
+      declared({ key: "dup", kind: "secret", delivery: "clientScoped" }),
+    ]);
+    expect(res.status).toBe(422);
+    const body = (await res.json()) as { fields: string[] };
+    expect(body.fields[0]).toMatch(/duplicate catalog key/);
+    expect(await versions(db)).toEqual([{ catalog_version: 1, active: 1 }]);
+  });
+
+  it("FIXED: `secret: true` on a flag is a 422 and writes nothing", async () => {
+    const { res, db } = await publish([
+      declared({
+        key: "premium",
+        kind: "flag",
+        secret: true,
+        schema: { type: "boolean" },
+      }),
+    ]);
+    expect(res.status).toBe(422);
+    const body = (await res.json()) as { fields: string[] };
+    expect(body.fields[0]).toMatch(/secret is not valid on a flag/);
+    expect(await versions(db)).toEqual([{ catalog_version: 1, active: 1 }]);
+  });
+
+  it("still publishes `secret: true` on config and secret kinds", async () => {
+    const { res, db } = await publish([
+      declared({ key: "cfg.token", kind: "config", secret: true }),
+      declared({ key: "sec.token", kind: "secret", secret: true }),
+      declared({ key: "premium", kind: "flag", schema: { type: "boolean" } }),
+    ]);
+    expect(res.status).toBe(200);
+    expect(await versions(db)).toEqual([
+      { catalog_version: 1, active: 0 },
+      { catalog_version: 2, active: 1 },
+    ]);
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────────────────
+// OIDC provisioning writes real product secrets — a subscription URL with a verified claim
+// interpolated into it — into `licenses.overrides_json`, the column the console seals its own
+// writes to. It wrote them in PLAINTEXT, so a read-only D1 dump yielded every provisioned secret
+// while the admin-authored value for the very same catalog key was ciphertext. And a claim of an
+// enrolled licence replaced whatever an operator had set on it with the provisioning's output.
+// ───────────────────────────────────────────────────────────────────────────────
+describe("OIDC provisioning seals what it writes and keeps what it does not own", () => {
+  const TOKEN = "IDP-ISSUED-SUBSCRIPTION-TOKEN";
+  const SUBSCRIPTION_URL = `https://vpn.example.com/${TOKEN}`;
+  const STAFF = {
+    sub: "staff-1",
+    email: "ada@corp.example",
+    name: "Ada",
+    groups: ["staff"],
+    claims: { vpnSub: TOKEN },
+  };
+
+  async function provisioned() {
+    const db: Db = makeTestDb();
+    const env = adminEnv(new KvMock(), ["acme"]);
+    await seedProduct(db, "acme", { catalog: catalogWithSecrets(true) });
+    await db.run(
+      `INSERT INTO oidc_config (product, provider, issuer, client_id,
+         client_secret_secret, redirect_uris_json, group_role_map_json)
+       VALUES (?, 'platform', NULL, NULL, NULL, NULL, ?)`,
+      "acme",
+      JSON.stringify({ staff: { role: "user" } }),
+    );
+    await db.run(
+      `INSERT INTO provisioning_config (product, claim, entitlement_key,
+         entitlement_value_json, secret_key, secret_url_template, allowed_hosts_json)
+       VALUES (?,?,?,?,?,?,?)`,
+      "acme",
+      "vpnSub",
+      "vpnFlag",
+      JSON.stringify(true),
+      "proxy.subscriptionUrl",
+      "https://vpn.example.com/{claim}",
+      JSON.stringify(["vpn.example.com"]),
+    );
+    return { db, env, product: (await loadProduct(env, db, "acme"))! };
+  }
+
+  it("ATTACK FAILS: a D1 dump of licenses.overrides_json yields no provisioned secret, on mint or on a later sign-in", async () => {
+    const { db, env, product } = await provisioned();
+    const minted = await activateFromIdentity(db, product, STAFF, NOW, { env });
+    if (!("licenseId" in minted)) throw new Error("expected a licence");
+
+    for (const at of [NOW, NOW + 60]) {
+      if (at !== NOW)
+        await activateFromIdentity(db, product, STAFF, at, { env });
+      const row = await getLicense(db, "acme", minted.licenseId);
+      // The at-rest assertion: the URL carrying the IdP-issued token is ciphertext, exactly like
+      // the same catalog key written from the console.
+      expect(row!.overrides_json).not.toContain(TOKEN);
+      expect(row!.overrides_json).toContain('\\"v\\":2');
+
+      // …and the delivery path still recovers it.
+      const stored = parsePayload(row!.overrides_json);
+      const opened = await openManagedPayload(env, "acme", stored);
+      expect(opened.secrets["proxy.subscriptionUrl"]!.value).toBe(
+        SUBSCRIPTION_URL,
+      );
+      // A blob lifted onto another catalog key does not open (AAD binds product AND key).
+      expect(
+        await openManagedValue(
+          env,
+          "acme",
+          "api.token",
+          stored.secrets["proxy.subscriptionUrl"]!.value,
+        ),
+      ).toBeNull();
+    }
+  });
+
+  it("ATTACK FAILS: an operator's override on an enrolled licence survives the OIDC claim of it", async () => {
+    const { db, env, product } = await provisioned();
+    await seedLicenseWithKey(db, "acme", { id: "lic_enrolled" });
+    await db.run(
+      `UPDATE licenses SET origin = 'enroll', sub = NULL, enroll_hwid = 'HW-1',
+         overrides_json = ? WHERE product = ? AND id = ?`,
+      JSON.stringify({
+        config: {
+          "api.token": {
+            state: "enforced",
+            value: "ADMIN-AUTHORED",
+            updatedAt: NOW,
+          },
+        },
+        secrets: {},
+        entitlements: {},
+      }),
+      "acme",
+      "lic_enrolled",
+    );
+
+    // THE ATTACK: the claim used to replace the column with the provisioning's output, so one
+    // sign-in silently destroyed what an operator had set on the licence: no error, no audit row.
+    const claimed = await activateFromIdentity(db, product, STAFF, NOW + 10, {
+      env,
+      enrolledLicenseId: "lic_enrolled",
+    });
+    expect(claimed).toMatchObject({
+      licenseId: "lic_enrolled",
+      merged: "claimed",
+    });
+
+    const stored = parsePayload(
+      (await getLicense(db, "acme", "lic_enrolled"))!.overrides_json,
+    );
+    expect(stored.config["api.token"]!.value).toBe("ADMIN-AUTHORED");
+    // …and provisioning still WINS on the keys it owns, sealed.
+    expect(JSON.stringify(stored)).not.toContain(TOKEN);
+    const opened = await openManagedPayload(env, "acme", stored);
+    expect(opened.secrets["proxy.subscriptionUrl"]!.value).toBe(
+      SUBSCRIPTION_URL,
+    );
   });
 });
 
@@ -572,6 +1094,182 @@ describe("R12-03 GitHub installation token is sealed in KV", () => {
     );
     expect(token).toBe("ghs_LIVE_INSTALLATION_TOKEN");
     expect(kv.keys()).toEqual([]);
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────────────────
+// A product browser session keeps its device bearer in KV: a live `pkeyt_` principal.
+// ───────────────────────────────────────────────────────────────────────────────
+
+/** A product-surface request (no `/manage` prefix), as a browser page would send it. */
+function pageReq(
+  method: string,
+  path: string,
+  opts: { cookie?: string; body?: unknown } = {},
+): Request {
+  const headers: Record<string, string> = {};
+  if (opts.cookie) headers.cookie = opts.cookie;
+  const init: RequestInit = { method, headers };
+  if (opts.body !== undefined) {
+    headers["content-type"] = "application/json";
+    init.body = JSON.stringify(opts.body);
+  }
+  return new Request(`https://key.plrs.im${path}`, init) as unknown as Request;
+}
+
+describe("a KV dump of a browser session yields no usable device bearer", () => {
+  interface SessionWorld {
+    kv: KvMock;
+    db: Db;
+    env: Env;
+    product: Product;
+  }
+
+  async function world(): Promise<SessionWorld> {
+    const kv = new KvMock();
+    const db: Db = makeTestDb();
+    const env = makeEnv(kv, ["djdl"]);
+    await seedProduct(db, "djdl");
+    const product = (await loadProduct(env, db, "djdl"))!;
+    return { kv, db, env, product };
+  }
+
+  /** Sign a browser in with a licence key; returns the `name=value` cookie to send back. */
+  async function signIn(w: SessionWorld, key: string): Promise<string> {
+    const login = await handleBrowserSessionLicense(
+      pageReq("POST", "/djdl/identity/session/license", { body: { key } }),
+      w.env,
+      w.db,
+      w.product,
+      NOW,
+    );
+    expect(login.status).toBe(201);
+    return login.headers.get("set-cookie")!.split(";")[0]!;
+  }
+
+  async function read(
+    w: SessionWorld,
+    cookie: string,
+  ): Promise<{ authenticated: boolean; doc: unknown }> {
+    const res = await handleBrowserSession(
+      pageReq("GET", "/djdl/identity/session", { cookie }),
+      w.env,
+      w.db,
+      w.product,
+      NOW + 1,
+    );
+    return (await res.json()) as { authenticated: boolean; doc: unknown };
+  }
+
+  /** The KV entry a cookie's session record lives in. */
+  async function slotOf(w: SessionWorld, cookie: string): Promise<string> {
+    const token = decodeURIComponent(cookie.split("=")[1]!);
+    return `p:djdl:browser-session:${await hashKey(token, w.env.KEY_HASH_PEPPER)}`;
+  }
+
+  it("FIXED: the stored record is an envelope bound to that one session", async () => {
+    const w = await world();
+    const { key } = await seedLicenseWithKey(w.db, "djdl");
+    const cookie = await signIn(w, key);
+
+    // Dump KV, exactly as a leaked Cloudflare API token with KV:read would. NOTHING in the
+    // namespace is a live `pkeyt_` device principal: the invariant `src/platform/kv.ts` states.
+    for (const k of w.kv.keys()) {
+      expect(
+        await asKv(w.kv).get(k),
+        `${k} must not hold a device bearer`,
+      ).not.toContain("pkeyt_");
+    }
+
+    const slot = await slotOf(w, cookie);
+    const hash = slot.slice("p:djdl:browser-session:".length);
+    const stored = JSON.parse((await asKv(w.kv).get(slot))!) as {
+      token: string;
+    };
+    const envelope = JSON.parse(stored.token) as Record<string, unknown>;
+    expect(envelope.v).toBe(2);
+    expect(typeof envelope.ct).toBe("string");
+
+    // It opens ONLY under this session's own context…
+    const bearer = await open(w.env, stored.token, {
+      product: "djdl",
+      kind: "browser-session",
+      id: hash,
+    });
+    expect(bearer.startsWith("pkeyt_")).toBe(true);
+    // …so a blob lifted into another session's slot, another product's, or another custody
+    // domain's is not replayable.
+    for (const other of [
+      { product: "djdl", kind: "browser-session", id: "0".repeat(64) },
+      { product: "acme", kind: "browser-session", id: hash },
+      {
+        product: "djdl",
+        kind: "product-secret",
+        id: `browser-session:${hash}`,
+      },
+    ] as const) {
+      await expect(open(w.env, stored.token, other)).rejects.toThrow();
+    }
+
+    // The real session still works.
+    expect((await read(w, cookie)).authenticated).toBe(true);
+  });
+
+  it("FIXED: a record written before sealing, or lifted from another session, reads as no session", async () => {
+    const w = await world();
+    const a = await seedLicenseWithKey(w.db, "djdl", { id: "lic_a" });
+    const b = await seedLicenseWithKey(w.db, "djdl", { id: "lic_b" });
+    const cookieA = await signIn(w, a.key);
+    const cookieB = await signIn(w, b.key);
+    const slotA = await slotOf(w, cookieA);
+    const slotB = await slotOf(w, cookieB);
+    const recordA = JSON.parse((await asKv(w.kv).get(slotA))!) as {
+      token: string;
+    };
+    const recordB = JSON.parse((await asKv(w.kv).get(slotB))!) as {
+      token: string;
+    };
+
+    // Session A's sealed bearer pasted into session B's entry: the auth tag refuses it.
+    await w.kv.put(slotB, JSON.stringify({ ...recordB, token: recordA.token }));
+    expect(await read(w, cookieB)).toEqual({ authenticated: false, doc: null });
+    expect((await read(w, cookieA)).authenticated).toBe(true);
+
+    // A record from before the bearer was sealed (the live token in the clear) reads as no
+    // session, not a 500: that browser signs in again.
+    const bearer = await open(w.env, recordA.token, {
+      product: "djdl",
+      kind: "browser-session",
+      id: slotA.slice("p:djdl:browser-session:".length),
+    });
+    await w.kv.put(slotA, JSON.stringify({ ...recordA, token: bearer }));
+    expect(await read(w, cookieA)).toEqual({ authenticated: false, doc: null });
+  });
+
+  it("FIXED: with no usable KEK no session is created and no bearer is written", async () => {
+    const w = await world();
+    const { key } = await seedLicenseWithKey(w.db, "djdl");
+    // A deployment missing its KEK: sealing is impossible, and the old code wrote the bearer in
+    // the clear anyway. `Env` types the secret as present; the test models its absence.
+    const bare = w.env as unknown as Record<string, unknown>;
+    delete bare.PLATFORM_KEK;
+
+    const res = await handleBrowserSessionLicense(
+      pageReq("POST", "/djdl/identity/session/license", { body: { key } }),
+      w.env,
+      w.db,
+      w.product,
+      NOW,
+    );
+    expect(res.status).toBe(500);
+    expect(await res.text()).toContain("misconfigured");
+    expect(res.headers.get("set-cookie")).toBeNull();
+    expect(w.kv.keys().filter((k) => k.includes(":browser-session:"))).toEqual(
+      [],
+    );
+    for (const k of w.kv.keys()) {
+      expect(await asKv(w.kv).get(k)).not.toContain("pkeyt_");
+    }
   });
 });
 
@@ -892,7 +1590,7 @@ describe("R12-04 credentials are KV key names, so a KV LIST is a credential dump
     expectNoCredentialInKeys(kv, { state, nonce }, env);
   });
 
-  it("FIXED: the magic-link token is not a KV key name (the value still names the recipient)", async () => {
+  it("FIXED: the magic-link token is not a KV key name (and the value no longer names the recipient)", async () => {
     const kv = new RecordingKv();
     const db: Db = makeTestDb();
     const env = signInEnv(kv);
@@ -930,11 +1628,15 @@ describe("R12-04 credentials are KV key names, so a KV LIST is a credential dump
       .keys()
       .filter((k) => k.startsWith("portal-magic:"));
     expect(keys).toEqual([`portal-magic:${await hashKey(token!, PEPPER)}`]);
-    // The record shape is unchanged (out of scope for R12-04): the value still names the
-    // recipient, but a listing no longer yields a token that opens it.
-    expect(
-      await artefacts(env).get(await portalMagicKey(env, token!)),
-    ).toContain("victim@example.com");
+    // The address is sealed under the platform KEK and bound to this one record: a dump of the
+    // store's VALUES lists nobody who was sent a link.
+    const stored = (await artefacts(env).get(
+      await portalMagicKey(env, token!),
+    ))!;
+    expect(stored).not.toContain("victim@example.com");
+    expect(JSON.parse(stored)).toMatchObject({
+      email: expect.stringContaining('"ct"') as string,
+    });
 
     // I-07: the landing page's POST, from the browser that asked (its flow cookie).
     const flowCookie = (res.headers.get("set-cookie") ?? "").split(";")[0]!;

@@ -1455,6 +1455,10 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_document_not_representable_message">El servicio no pudo preparar tus ajustes. Contacta con el desarrollador.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_signing_unavailable_title">Firma no disponible</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_signing_unavailable_message">El servicio no puede firmar un documento ahora mismo. Vuelve a intentarlo en unos minutos.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_device_limit_title">Límite de dispositivos alcanzado</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_device_limit_message">Esta licencia ya está en todos sus dispositivos. Reemplaza un dispositivo para usarla aquí.</string>

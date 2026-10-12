@@ -1,5 +1,7 @@
 import {
+  compileLinearPattern,
   representabilityIssue,
+  type LinearPattern,
   type ProductCatalog,
 } from "@polaris-key/catalog";
 import { type SecretDelivery } from "@polaris-key/protocol/config";
@@ -630,6 +632,9 @@ export type ManifestCatalog = Omit<ProductCatalog, "entries"> & {
   entries: ManifestCatalogEntry[];
 };
 
+/** Who may mint a recipe. See `EDGE_MINT_REQUIRES_VALUES`. */
+export type ManifestEdgeMintRequires = "none" | "registered" | "licensed";
+
 export interface ManifestEdgeMint {
   id: string;
   alg: string;
@@ -638,6 +643,14 @@ export interface ManifestEdgeMint {
   claimsTemplate: Record<string, unknown>;
   ttlSeconds: number;
   audience?: string | null;
+  /**
+   * The caller class this recipe demands. Always populated by the normalizer, and `licensed`
+   * when the manifest is silent: a recipe signs with the product's third-party key, so an
+   * undeclared one fails closed.
+   */
+  requires: ManifestEdgeMintRequires;
+  /** A catalog flag that must be present and truthy in the caller's merged payload, or null. */
+  requiredEntitlement?: string | null;
 }
 
 export interface ParsedManifest {
@@ -733,8 +746,10 @@ export const SEMVER_RE =
 // R6-07). Reject, never coerce: a manifest that fails these is not applied at all.
 /** `binaryName` — interpolated into the served POSIX shell installer. */
 const BINARY_NAME_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
-/** `ghOwner` / `ghRepo` — interpolated unencoded into `api.github.com` paths. */
-const GH_SLUG_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/;
+/** `ghOwner` / `ghRepo` — interpolated unencoded into `api.github.com` paths. Exported so the
+ *  Worker's `parseRepoUrl`, which derives the same two values from a pasted URL instead of from
+ *  `.pkey/release`, applies this rule rather than a second, looser one. */
+export const GH_SLUG_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/;
 /** `channelWorkflow` — a workflow filename or numeric id in an API path segment. */
 const CHANNEL_WORKFLOW_RE = /^(?:[0-9]{1,20}|[A-Za-z0-9._-]{1,100}\.ya?ml)$/;
 /** `publishing.trustedPublisher.workflow`: a workflow file path as `job_workflow_ref` spells it. */
@@ -787,23 +802,55 @@ const CLIENT_ID_RE = /^[A-Za-z0-9][A-Za-z0-9._:@/~-]{0,255}$/;
 /** `edgeMint[].kid` — emitted verbatim in a JWS protected header. Exported (P3-12) for the
  *  admin product handler's `signingKid`, as `ID_RE` is. */
 export const KID_RE = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
+/**
+ * `edgeMint[].id`: a URL path segment on the mint route (`/<product>/config/mint/<id>/{token,auth}`),
+ * which matches it with `^[a-z0-9-]+$` (`services/config/routes.ts`), strictly narrower than the
+ * `ID_RE` shared with profile, tier and catalog ids. Held to the route's own alphabet, ingest
+ * cannot write a recipe no request could ever reach (`AppleMusic`, `apple.music`): it refuses
+ * what the route cannot serve. The 64-character bound is `ID_RE`'s, so the column stays bounded.
+ */
+const MINT_ID_RE = /^[a-z0-9-]{1,64}$/;
 /** Channel / architecture names — they reach URL path segments and asset-match patterns.
  *  Exported (P3-12) for the admin tier and licence handlers' channels, as `ID_RE` is. */
 export const CHANNEL_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
-/** `release.manualChannels[].regex` source-length cap (see `compileManualChannelRegex`). */
+/**
+ * `release.manualChannels[].regex` source-length cap (see `compileManualChannelRegex`).
+ *
+ * Deliberately NOT reconciled away against the catalog engine's `MAX_PATTERN_SOURCE` (300).
+ * They are two bounds on the same matcher and this is the tighter one, so it is always the
+ * binding check: the anchored form `compileManualChannelRegex` compiles is at most 86
+ * characters, well inside the engine's own limit. It stays because it is the bound the field
+ * DOCUMENTS — a channel rule is a tag shape, not a grammar — and because `release.schema.json`
+ * publishes it verbatim as `maxLength: 80`. Neither number is the ReDoS control; the matcher is.
+ */
 export const MANUAL_CHANNEL_REGEX_MAX = 80;
 /**
  * Compile a manual-channel tag regex under the SAME safety rules the worker's runtime
  * `parseManualChannels` applies: anchor it (so `beta` can't match `beta-old` unless the
- * author wrote it), cap its source length, and reject anything that fails to compile.
+ * author wrote it), cap its source length, and reject anything the matcher will not take.
  * Returns `null` rather than throwing. Exported so ingest validation and the runtime reader
- * are one rule, not two copies (the audit's B1).
+ * are one rule, not two copies.
+ *
+ * The anchored source goes to `compileLinearPattern` (the Thompson/Pike NFA that already
+ * screens catalog `pattern` values), never to `new RegExp`. V8 backtracks, and the source is
+ * attacker-chosen: `.pkey/release` in any linked repo reaches here through a push webhook, and
+ * the worker's `resolveChannel` then matches the compiled pattern against up to 100 release tags
+ * per request. The eight-character `(x+x+)+y` cost seconds against a 28-character tag and doubled
+ * per extra character; a source-length cap is no mitigation because the pathological patterns are
+ * short. The NFA cannot backtrack, so every pattern, hostile ones included, matches in
+ * O(program x tag); the constructs that genuinely need backtracking (backreferences, lookaround,
+ * `\b`) are refused at compile time instead of being handed to an engine that would.
+ *
+ * `LinearPattern.test` is an unanchored "contains a match", so the anchors have to live in the
+ * source; the engine supports `^`/`$` and `(?:…)`, which keeps this identical to the old
+ * `^(?:…)$` wrapping.
  */
-export function compileManualChannelRegex(source: string): RegExp | null {
+export function compileManualChannelRegex(
+  source: string,
+): LinearPattern | null {
   if (source.length > MANUAL_CHANNEL_REGEX_MAX) return null;
-  const anchored = `^(?:${source})$`;
   try {
-    return new RegExp(anchored);
+    return compileLinearPattern(`^(?:${source})$`);
   } catch {
     return null;
   }
@@ -1351,6 +1398,24 @@ const MAX_PROBE_TARGET_LENGTH = 512;
 const MAX_REDIRECT_URIS = 20;
 const MAX_URL_LENGTH = 2048;
 
+/**
+ * Ceiling on every manifest-declared device seat cap: `defaultDeviceLimit` (in each spelling the
+ * validator accepts) and a tier's `policyDeviceLimit`.
+ *
+ * The number does not stay a number. It becomes `claimDeviceSeat`'s `limit`, which materialises
+ * one row per seat in a recursive CTE inside a single D1 statement and which the seat loop
+ * re-runs up to `limit + 1` times. Nothing downstream bounds it, so `defaultDeviceLimit:
+ * 100000000` in a `.pkey/product` that a third party pushes would turn one ordinary activation
+ * into a statement that never returns. A thousand seats is orders of magnitude past any real
+ * per-licence fleet and keeps the worst case bounded.
+ *
+ * Rejected, never clamped, as everywhere in this file: a manifest that asks for a hundred
+ * million seats is a mistake or an attack, and quietly applying 1000 would hide both. The
+ * Worker's admin write paths and settings registry take this same constant, so every way in
+ * agrees on what a legal cap is.
+ */
+export const MAX_DEVICE_LIMIT = 1000;
+
 // ── Ingest limits (R7-02) ────────────────────────────────────────────────────
 // `parseDocument` is reachable from a *GitHub push webhook* on a third party's repo
 // (`githubWebhook.ts` → `release/resync.ts` → here), so the bytes it parses are attacker-chosen
@@ -1365,6 +1430,41 @@ export const MAX_MANIFEST_DEPTH = 32;
 /** Bound on YAML anchor expansion ("billion laughs"). Same as the `yaml` default, pinned here
  *  so a dependency default change cannot silently widen it. */
 const MAX_YAML_ALIASES = 100;
+/**
+ * Ceiling on `edgeMint[].ttlSeconds`: one hour.
+ *
+ * `ttlSeconds` is the lifetime of a token the PLATFORM mints with the product's third-party
+ * signing key, and it arrives from a `.pkey/` file any repo writer can push. Without a ceiling
+ * the manifest dictates how long a leaked minted token stays valid: `ttlSeconds: 31536000` is a
+ * one-line edit that turns a short-lived credential into a year-long bearer token. An operator's
+ * approval of the recipe already binds the value; this is the hard limit that holds even for an
+ * approving operator or a careless default. One hour is what the normalizer has always
+ * defaulted to, so nothing that did not deliberately raise it is affected.
+ */
+export const MAX_EDGE_MINT_TTL_SECONDS = 3600;
+
+/**
+ * `edgeMint[].requires`: who may mint this recipe.
+ *
+ *   none        the recipe adds no demand of its own.
+ *   registered  a device of THIS product, stated explicitly.
+ *   licensed    a device whose licence is usable. The product must run License, or the recipe
+ *               is a misconfiguration and the route refuses it.
+ *
+ * `none` and `registered` are both satisfied by the device token EVERY mint request must
+ * present: the route spends the product's third-party signing key, so it is never anonymous.
+ * They differ in what they say, not in what they check: a config-only product declares
+ * `registered` to record that a device token is the whole of its gate, and `none` records that
+ * the recipe is deliberately ungated beyond that. Neither is safe by default: on a config-only
+ * product registration is derived `open`, so an anonymous caller can obtain that device token in
+ * one credential-free request. Hence `licensed` is the default the normalizer and the column
+ * both apply.
+ */
+export const EDGE_MINT_REQUIRES_VALUES = [
+  "none",
+  "registered",
+  "licensed",
+] as const;
 
 const RELEASE_ACCESS_VALUES = ["public", "authenticated", "licensed"] as const;
 const OIDC_PROVIDER_VALUES = ["platform", "custom"] as const;
@@ -1601,13 +1701,12 @@ function validateDocuments(
       );
     }
   }
+  const declaredDeviceLimit =
+    productNode.defaultDeviceLimit ??
+    productRoot.defaultDeviceLimit ??
+    licensing.defaultDeviceLimit;
   for (const [key, path] of [
-    [
-      productNode.defaultDeviceLimit ??
-        productRoot.defaultDeviceLimit ??
-        licensing.defaultDeviceLimit,
-      "/licensing/defaultDeviceLimit",
-    ],
+    [declaredDeviceLimit, "/licensing/defaultDeviceLimit"],
     [
       productNode.defaultMaxOfflineDays ??
         productRoot.defaultMaxOfflineDays ??
@@ -1624,6 +1723,23 @@ function validateDocuments(
         "Value must be a non-negative integer.",
       );
     }
+  }
+  // A seat cap is not just a number: it bounds the per-seat recursive scan every activation runs
+  // (`MAX_DEVICE_LIMIT`). `defaultMaxOfflineDays` above needs no such ceiling: it is compared
+  // against, never counted through. A non-integer is reported by its own rule above, so only a
+  // whole number past the ceiling raises this one.
+  if (
+    typeof declaredDeviceLimit === "number" &&
+    Number.isInteger(declaredDeviceLimit) &&
+    declaredDeviceLimit > MAX_DEVICE_LIMIT
+  ) {
+    add(
+      errors,
+      "product",
+      "/licensing/defaultDeviceLimit",
+      "invalid_device_limit",
+      `defaultDeviceLimit must be at most ${MAX_DEVICE_LIMIT}.`,
+    );
   }
   validateLicensingSettings(licensing, errors);
   validateIdentityBlock(productRoot, modules, errors, warnings);
@@ -1781,16 +1897,20 @@ function validateDocuments(
         `Tier references unknown profile ${profile}.`,
       );
     }
+    // The ceiling arm is the same rule as for `defaultDeviceLimit`: a tier's cap is what reaches
+    // `claimDeviceSeat` whenever the tier publishes a `deviceLimit` entitlement.
     if (
       record.policyDeviceLimit !== undefined &&
-      !nonNegativeInteger(record.policyDeviceLimit)
+      (!nonNegativeInteger(record.policyDeviceLimit) ||
+        (typeof record.policyDeviceLimit === "number" &&
+          record.policyDeviceLimit > MAX_DEVICE_LIMIT))
     ) {
       add(
         errors,
         "product",
         `/licensing/tiers/${i}/policyDeviceLimit`,
         "invalid_device_limit",
-        "policyDeviceLimit must be a non-negative integer.",
+        `policyDeviceLimit must be a non-negative integer of at most ${MAX_DEVICE_LIMIT}.`,
       );
     }
     // LX-08 (plans/LX-01.md §3.1): the tier's rank (an integer ≥ 0, not unique) and its offline
@@ -2234,7 +2354,7 @@ function validateDocuments(
                 "release",
                 `${at}/regex`,
                 "invalid_manual_channel",
-                `manualChannels[].regex must be a compilable regular expression of at most ${MANUAL_CHANNEL_REGEX_MAX} characters (it is matched anchored against release tags).`,
+                `manualChannels[].regex must be a backtracking-free regular expression of at most ${MANUAL_CHANNEL_REGEX_MAX} characters (it is matched anchored against release tags; backreferences, lookaround and \\b are refused because they cannot be matched in linear time).`,
               );
             }
           }
@@ -2253,7 +2373,7 @@ function validateDocuments(
           "release",
           "/release/stableTagPattern",
           "invalid_stable_tag_pattern",
-          `release.stableTagPattern must be a compilable regular expression of at most ${MANUAL_CHANNEL_REGEX_MAX} characters (it is matched anchored against release tags).`,
+          `release.stableTagPattern must be a backtracking-free regular expression of at most ${MANUAL_CHANNEL_REGEX_MAX} characters (it is matched anchored against release tags; backreferences, lookaround and \\b are refused because they cannot be matched in linear time).`,
         );
       }
       if (relRoot.ignoreTags !== undefined) {
@@ -2413,15 +2533,16 @@ function validateDocuments(
       );
       continue;
     }
-    // The recipe id is a URL path segment (`/<product>/mint/<id>/auth`) and a table key.
+    // The recipe id is a URL path segment (`/<product>/config/mint/<id>/…`) and a table key,
+    // held to the ROUTE's alphabet so ingest cannot write an unreachable recipe.
     constrained(
       errors,
       "release",
       raw.id,
       `/edgeMint/${i}/id`,
       "invalid_edge_mint_id",
-      ID_RE,
-      "Edge mint ids must match ^[A-Za-z0-9._:-]{1,64}$.",
+      MINT_ID_RE,
+      "Edge mint ids must match ^[a-z0-9-]{1,64}$ (the mint route's own alphabet).",
     );
     // `kid` is emitted verbatim in the JWS protected header; `audience` becomes `aud`.
     constrained(
@@ -2461,15 +2582,44 @@ function validateDocuments(
         "Edge mint signing key refs must be stable uppercase names.",
       );
     }
-    if (raw.ttlSeconds !== undefined && !positiveInteger(raw.ttlSeconds)) {
+    const ttl: unknown = raw.ttlSeconds;
+    if (
+      ttl !== undefined &&
+      (!positiveInteger(ttl) ||
+        (typeof ttl === "number" && ttl > MAX_EDGE_MINT_TTL_SECONDS))
+    ) {
       add(
         errors,
         "release",
         `/edgeMint/${i}/ttlSeconds`,
         "invalid_ttl",
-        "Edge mint TTL must be a positive integer.",
+        `Edge mint TTL must be a positive integer of at most ${MAX_EDGE_MINT_TTL_SECONDS} seconds.`,
       );
     }
+    // Both are ENFORCEMENT: an unrecognised value is refused, never coerced, or a typo'd
+    // `requires: "licenced"` would decide who may mint with the product's signing key.
+    if (
+      raw.requires !== undefined &&
+      !isOneOf(raw.requires, EDGE_MINT_REQUIRES_VALUES)
+    ) {
+      add(
+        errors,
+        "release",
+        `/edgeMint/${i}/requires`,
+        "invalid_edge_mint_requires",
+        "Edge mint requires must be none, registered, or licensed.",
+      );
+    }
+    // Names a catalog entry, so it is held to the key alphabet catalog entries are.
+    constrained(
+      errors,
+      "release",
+      raw.requiredEntitlement,
+      `/edgeMint/${i}/requiredEntitlement`,
+      "invalid_edge_mint_entitlement",
+      ID_RE,
+      "Edge mint requiredEntitlement must be a catalog key matching ^[A-Za-z0-9._:-]{1,64}$.",
+    );
   }
 
   // ── Fingerprint + auto-issue policy blocks ──────────────────────────────────────────────
@@ -4180,7 +4330,7 @@ function validateAppDeliverable(
         "release",
         "/release/deliverables/app/versioning/stableTagPattern",
         "invalid_stable_tag_pattern",
-        `deliverables.app.versioning.stableTagPattern must be a compilable regular expression of at most ${MANUAL_CHANNEL_REGEX_MAX} characters (it is matched anchored against release tags).`,
+        `deliverables.app.versioning.stableTagPattern must be a backtracking-free regular expression of at most ${MANUAL_CHANNEL_REGEX_MAX} characters (it is matched anchored against release tags; backreferences, lookaround and \\b are refused because they cannot be matched in linear time).`,
       );
     }
     if (versioning.ignoreTags !== undefined) {
@@ -5243,8 +5393,25 @@ function normalizeEdgeMint(raw: unknown): ManifestEdgeMint | null {
     signingKeySecret: String(raw.signingKeySecret ?? ""),
     kid: typeof raw.kid === "string" ? raw.kid : undefined,
     claimsTemplate: asRecord(raw.claimsTemplate),
-    ttlSeconds: typeof raw.ttlSeconds === "number" ? raw.ttlSeconds : 3600,
+    // Validation has already refused anything above the ceiling (reject, never coerce), so the
+    // `Math.min` is belt-and-braces for a caller that reaches the normalizer directly. The
+    // omitted-value default has always been one hour, which is also the ceiling.
+    ttlSeconds:
+      typeof raw.ttlSeconds === "number"
+        ? Math.min(raw.ttlSeconds, MAX_EDGE_MINT_TTL_SECONDS)
+        : MAX_EDGE_MINT_TTL_SECONDS,
     audience: typeof raw.audience === "string" ? raw.audience : null,
+    // Same shape as `ttlSeconds`: validation has already refused anything outside the enum, so
+    // this only decides the OMITTED case, and the omitted case is `licensed`, the same
+    // fail-closed default the column carries. A recipe that means to be reachable without a
+    // licence has to say so.
+    requires: isOneOf(raw.requires, EDGE_MINT_REQUIRES_VALUES)
+      ? raw.requires
+      : "licensed",
+    requiredEntitlement:
+      typeof raw.requiredEntitlement === "string" && raw.requiredEntitlement
+        ? raw.requiredEntitlement
+        : null,
   };
 }
 
@@ -5412,6 +5579,15 @@ function validateCatalogShape(catalog: ProductCatalog): string[] {
           `entries[${i}].delivery must be serverOnly, clientScoped, or edgeMint.`,
         );
       }
+    }
+    // A flag's value is an ENTITLEMENT and entitlements are never sealed: they merge into
+    // `payload.entitlements`, which the worker's `openManagedPayload` does not open, so a
+    // `secret: true` flag would be KEK-sealed on write and shipped to the device as the
+    // ciphertext envelope. The declaration is a category error (an entitlement is a statement
+    // about the licence, read in the clear by the gates that enforce it), so it is refused here
+    // as well as by `Catalog.compileAll()` at every publish.
+    if (entry.secret === true && entry.kind === "flag") {
+      issues.push(`entries[${i}].secret is not valid for flag entries.`);
     }
     // Documented CONFIG-only from day one; on any other kind the worker ignores it, so a
     // manifest carrying one is declaring an intent nothing will honour.

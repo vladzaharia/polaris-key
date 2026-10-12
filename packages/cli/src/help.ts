@@ -11,11 +11,8 @@
 
 import { SERVICE_SLUGS } from "@polaris-key/manifest";
 import { cellWidth, wrapSpans, type Line } from "@polaris-key/node/terminal";
-import {
-  ADMIN_COOKIE_ENV,
-  ADMIN_COOKIE_NAME,
-  DEFAULT_BASE_URL,
-} from "./bundle.js";
+import { ADMIN_TOKEN_ENV, DEFAULT_BASE_URL } from "./bundle.js";
+import { ADMIN_COOKIE_ENV, ADMIN_COOKIE_NAME } from "./listing.js";
 import { CI_TOKEN_ENV } from "./oidc.js";
 import { LOGO_COLS, LOGO_STAR_GLYPH, logoLines, logoMode } from "./logo.js";
 import type { Term } from "./terminal.js";
@@ -114,15 +111,25 @@ const CI_ENV: EnvVar = {
     "not GitHub Actions. Unset in Actions, where the job's OIDC token is exchanged instead.",
 };
 
+const TOKEN_ENV: EnvVar = {
+  name: ADMIN_TOKEN_ENV,
+  text:
+    "Required by `pkey bundle`. An admin API token (`pkeya_...`), sent as `Authorization: " +
+    "Bearer`. Mint one in the console: /manage -> API tokens -> New token; the value is shown " +
+    "ONCE, at mint. It is scoped to `bundles:mint`, individually revocable, and expires on the " +
+    "date you chose. It can still mint a bundle for any product: do not commit it, and do not " +
+    "export it into a shared shell.",
+};
+
 const COOKIE_ENV: EnvVar = {
   name: ADMIN_COOKIE_ENV,
   text:
-    "Required by `pkey bundle` and `pkey listing import`. The console's admin session cookie, " +
-    `as \`${ADMIN_COOKIE_NAME}=<value>\` (the bare value is accepted too). The admin API is ` +
-    "authenticated by the console's browser session — there is no API token yet — so copy the " +
-    "cookie from an authenticated console tab: devtools -> Application -> Cookies -> the " +
-    "console origin. It is a SHORT-LIVED session credential carrying full admin authority: do " +
-    "not commit it, and do not export it into a shared shell.",
+    "Required by `pkey listing import`. The console's admin session cookie, " +
+    `as \`${ADMIN_COOKIE_NAME}=<value>\` (the bare value is accepted too). The admin API token ` +
+    "`pkey bundle` uses reaches the bundle mint only, so the import is authenticated by the " +
+    "console's browser session. Copy the cookie from an authenticated console tab: devtools -> " +
+    "Application -> Cookies -> the console origin. It is a SHORT-LIVED session credential " +
+    "carrying full admin authority: do not commit it, and do not export it into a shared shell.",
 };
 
 const ciEnvFor = (subs: readonly string[]): EnvVar => ({ ...CI_ENV, subs });
@@ -355,8 +362,16 @@ export const COMMANDS: readonly PkeyCommand[] = [
           "<product>-<first 8 of device id>.pkeybundle; --base-url defaults to " +
           `${DEFAULT_BASE_URL}). Copy that file to the air-gapped machine and import it there.`,
       },
+      {
+        text:
+          "--base-url must be https:, or http:// on localhost or 127.0.0.1 for local " +
+          "development: the token is sent to whatever origin you name, so any other origin " +
+          "is refused before anything is sent. The file is written with mode 0600, is never " +
+          "created over an existing one without --force, and is never written through a " +
+          "symbolic link.",
+      },
     ],
-    env: [COOKIE_ENV],
+    env: [TOKEN_ENV],
   },
   {
     name: "auth",
@@ -721,7 +736,10 @@ export const COMMANDS: readonly PkeyCommand[] = [
         subs: ["import"],
         text:
           "pkey listing import reads the Godot project and imports it into the product's shared " +
-          "listing: the diff first, written only with --apply.",
+          "listing: the diff first, written only with --apply. --base-url must be https:, or " +
+          "http:// on localhost or 127.0.0.1 for local development: the console session cookie " +
+          "is sent to whatever origin you name, so any other origin is refused before anything " +
+          "is sent.",
       },
       {
         subs: ["assets"],

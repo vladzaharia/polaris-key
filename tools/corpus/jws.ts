@@ -73,6 +73,13 @@ interface JwsCaseV2 {
   /** §1 — present ONLY on the `pkey-bundle+jws` vectors, which is the one artifact allowed
    *  past 65 536 bytes. Runners must not pass it anywhere else. */
   maxPayloadBytes?: number;
+  /**
+   * Drive this vector through a call site that names NO `typ`. `typ` above still records what the
+   * ARTIFACT is; this says what the CALLER asked for. §1's raised payload cap is granted to a
+   * type, so a runner has to be able to ask for the cap without the type to prove the
+   * combination is refused. Absent means the call site names `typ`, as every shipping one does.
+   */
+  callSiteOmitsTyp?: boolean;
   /** `doc` is omitted where the payload is a quarter-megabyte of padding: the vector pins
    *  the size boundary, and the id already says which side of it. */
   expect: VerifyExpect;
@@ -583,7 +590,8 @@ export async function buildJwsCases(): Promise<JwsCaseV2[]> {
   const v4 = await buildJwsCasesV4();
   // V4 §1's canonical base64url follows, appended so every earlier case stays byte-identical.
   const canonical = await buildJwsCasesCanonical();
-  return [...cases, ...v4, ...canonical].map((c) =>
+  const capTyp = await buildJwsCasesCapTyp();
+  return [...cases, ...v4, ...canonical, ...capTyp].map((c) =>
     placeNonWire({ ...c, expect: annotateNul(c.expect) }),
   );
 }
@@ -1168,4 +1176,47 @@ async function buildJwsCasesV4(): Promise<(JwsCaseV2 & JwsCaseV4Extra)[]> {
       throw new Error(`jwsCases v4: ${c.id}'s doc is not its payload`);
   }
   return out;
+}
+
+// ── §1: the raised payload cap is one grant with the `typ` ───────────────────────────────────
+// Appended after every other family so each of those stays byte-identical.
+
+async function buildJwsCasesCapTyp(): Promise<JwsCaseV2[]> {
+  const TRUST = { [PIN_KID]: pub(PIN_KID) };
+  const jws = await signAs(
+    docOfExactBytes(MAX_BUNDLE_BYTES, {
+      bundleId: "01JBUNDLECAP00000000000001",
+      aud: AUD_V3,
+      deviceId: DEVICE_V3,
+      issuedAt: V3_ISSUED,
+      expiresAt: V3_GRACE,
+      docs: {},
+      trust: "",
+    }),
+    PIN_KID,
+    "pkey-bundle+jws",
+  );
+  // The reference accepts the same bytes when the call site names the type, so the refusal below
+  // is the missing type and nothing else.
+  if (refVerifyJws(jws, TRUST, "pkey-bundle+jws", MAX_BUNDLE_BYTES) === null)
+    throw new Error(
+      "jwsCases cap-typ: the reference refuses the typed control",
+    );
+  if (refVerifyJws(jws, TRUST, undefined, MAX_BUNDLE_BYTES) !== null)
+    throw new Error(
+      "jwsCases cap-typ: the reference accepts a raised cap with no typ",
+    );
+  return [
+    {
+      id: "bundle-payload-raised-cap-without-typ",
+      description:
+        "The at-cap bundle payload again, with the SAME raised cap but NO `typ` demanded by the call site. §1 grants the 262 144-byte exception to `pkey-bundle+jws` alone, and the cap and the type are one grant: a quarter-megabyte payload accepted with no type demanded could be re-presented at an ordinary document call site with the raised cap already in force. Refused outright rather than silently downgraded to 64 KiB, because a caller asking for the bundle cap without naming the bundle type has made a mistake worth surfacing.",
+      jws,
+      trust: TRUST,
+      typ: "pkey-bundle+jws",
+      callSiteOmitsTyp: true,
+      maxPayloadBytes: MAX_BUNDLE_BYTES,
+      expect: { verify: "fail" },
+    },
+  ];
 }

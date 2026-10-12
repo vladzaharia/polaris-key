@@ -3,8 +3,11 @@
  *
  * - `delivery` only means something on a secret, and a secret carries no `default`/`examples`
  *   (the public `/config/schema` and the editor show them).
- * - Moving a stored `serverOnly`/`edgeMint` secret to a delivered mode silently declassifies a
- *   sealed value: refused while any layer still stores a value for the key.
+ * - Moving a stored `serverOnly`/`edgeMint` secret to a delivered mode, or dropping it from the
+ *   catalog, silently declassifies a sealed value: refused while any layer still stores a value
+ *   for the key. Dropping counts because the stored value outlives the catalog entry (the prune
+ *   only hides an unknown key), so a later catalog that re-declares the key as a delivered secret
+ *   would sign it into every device document.
  */
 import type { Db } from "../db/types.js";
 
@@ -41,7 +44,8 @@ export function catalogDeliveryIssues(entries: readonly unknown[]): string[] {
   return out;
 }
 
-/** Keys whose hold (serverOnly/edgeMint) the next catalog drops. */
+/** Keys whose hold (serverOnly/edgeMint) the next catalog drops: reclassified to a delivered
+ *  mode, or removed from the catalog altogether. */
 export function declassifiedKeys(
   prevJson: string | null | undefined,
   next: readonly unknown[],
@@ -54,8 +58,7 @@ export function declassifiedKeys(
   for (const p of entriesOf(prevJson)) {
     if (p.kind !== "secret" || !HELD.has(String(p.delivery))) continue;
     const n = nextBy.get(String(p.key));
-    if (!n) continue; // removal: the prune drops unknown keys
-    if (n.kind !== "secret" || !HELD.has(String(n.delivery)))
+    if (!n || n.kind !== "secret" || !HELD.has(String(n.delivery)))
       out.push(String(p.key));
   }
   return out;
@@ -90,7 +93,7 @@ export async function storedKeys(
   return out;
 }
 
-/** Refusal text when the swap would declassify a stored secret, else null. */
+/** Refusal text when the swap would remove or declassify a stored secret, else null. */
 export async function declassifyRefusal(
   db: Db,
   product: string,
@@ -102,5 +105,5 @@ export async function declassifyRefusal(
   const stored = await storedKeys(db, product, keys);
   return stored.length === 0
     ? null
-    : `would declassify stored server-only secret(s): ${stored.join(", ")}; clear the stored values first`;
+    : `would remove or declassify stored server-only secret(s): ${stored.join(", ")}; clear the stored values first`;
 }

@@ -151,6 +151,110 @@ describe("browser sessions", () => {
     expect(broken.status).toBe(500);
     expect(await broken.text()).toContain("catalog_unavailable");
   });
+
+  // The OTHER half of the same hole. `GET /<p>/identity/session` failed closed on a MALFORMED
+  // catalog row but skipped the prune entirely when there was NO active row, so a product with
+  // no catalog handed its browser an unvalidated payload. It now reads the catalog through the
+  // loader Core's prune uses, so both spellings of "no enforceable catalog" get the same 500.
+  it("no active catalog row fails CLOSED too, not just a malformed one", async () => {
+    const db = makeTestDb();
+    const kv = new KvMock();
+    const env = makeEnv(kv, ["djdl"]);
+    await seedProduct(db, "djdl");
+    const product = (await loadProduct(env, db, "djdl"))!;
+    const { key } = await seedLicenseWithKey(db, "djdl");
+
+    const login = await handleBrowserSessionLicense(
+      req("POST", "/djdl/identity/session/license", { body: { key } }),
+      env,
+      db,
+      product,
+      NOW,
+    );
+    const cookie = login.headers.get("set-cookie")!;
+
+    await db.run(
+      "UPDATE product_schema SET active = 0 WHERE product = ?",
+      "djdl",
+    );
+    const res = await handleBrowserSession(
+      req("GET", "/djdl/identity/session", { cookie }),
+      env,
+      db,
+      product,
+      NOW + 1,
+    );
+    expect(res.status).toBe(500);
+    expect(await res.text()).toContain("catalog_unavailable");
+  });
+
+  // A `kind: "config"` entry flagged `secret: true` is a secret too: the config bucket reaches
+  // the page, so this is the one filter between the page's JS and that value.
+  it("withholds a secret-flagged config entry, and every secret, from the page", async () => {
+    const db = makeTestDb();
+    const env = makeEnv(new KvMock(), ["djdl"]);
+    const entry = (over: Record<string, unknown>) => ({
+      category: "General",
+      label: "L",
+      description: "",
+      schema: { type: "string" },
+      ...over,
+    });
+    await seedProduct(db, "djdl", {
+      catalog: {
+        schemaVersion: 1,
+        entries: [
+          entry({ key: "ui.theme", kind: "config" }),
+          entry({ key: "api.token", kind: "config", secret: true }),
+          entry({ key: "vpn.url", kind: "secret", secret: true }),
+        ],
+      },
+    });
+    const enforced = (value: string) => ({
+      state: "enforced" as const,
+      value,
+      updatedAt: NOW,
+    });
+    const { key } = await seedLicenseWithKey(db, "djdl", {
+      config: {
+        "ui.theme": enforced("dark"),
+        "api.token": enforced("CONFIG-SECRET-VALUE"),
+      },
+      secrets: { "vpn.url": enforced("SECRET-KIND-VALUE") },
+    });
+    const product = (await loadProduct(env, db, "djdl"))!;
+    const login = await handleBrowserSessionLicense(
+      req("POST", "/djdl/identity/session/license", { body: { key } }),
+      env,
+      db,
+      product,
+      NOW,
+    );
+    const cookie = login.headers.get("set-cookie")!;
+
+    const res = await handleBrowserSession(
+      req("GET", "/djdl/identity/session", { cookie }),
+      env,
+      db,
+      product,
+      NOW + 1,
+    );
+    expect(res.status).toBe(200);
+    const text = await res.text();
+    expect(text).not.toContain("CONFIG-SECRET-VALUE");
+    expect(text).not.toContain("SECRET-KIND-VALUE");
+    const body = JSON.parse(text) as {
+      doc: {
+        payload: {
+          config: Record<string, { value: unknown }>;
+          secrets: Record<string, unknown>;
+        };
+      };
+    };
+    expect(Object.keys(body.doc.payload.config)).toEqual(["ui.theme"]);
+    expect(body.doc.payload.config["ui.theme"]!.value).toBe("dark");
+    expect(body.doc.payload.secrets).toEqual({});
+  });
 });
 
 describe("a corrupt session record", () => {
@@ -190,5 +294,50 @@ describe("a corrupt session record", () => {
     );
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ authenticated: false, doc: null });
+  });
+
+  it("reads as no session when the stored bearer is missing, mistyped or not an envelope", async () => {
+    // The record's `token` is a sealed envelope. A record that parses but carries no usable one
+    // (none at all, the wrong type, a string that is not a v2 envelope) is not a session this
+    // code can open, and every caller already answers "no session" rather than throwing.
+    const db = makeTestDb();
+    const kv = new KvMock();
+    const env = makeEnv(kv, ["djdl"]);
+    await seedProduct(db, "djdl");
+    const product = (await loadProduct(env, db, "djdl"))!;
+    const { key } = await seedLicenseWithKey(db, "djdl");
+
+    const created = await handleBrowserSessionLicense(
+      req("POST", "/djdl/identity/session/license", { body: { key } }),
+      env,
+      db,
+      product,
+      NOW,
+    );
+    const cookie = created.headers.get("set-cookie")!.split(";")[0]!;
+    const slot = kv.keys().find((k) => k.includes(":browser-session:"))!;
+    const stored = JSON.parse((await kv.get(slot))!) as Record<string, unknown>;
+    const { token: _sealed, ...withoutToken } = stored;
+
+    for (const record of [
+      withoutToken,
+      { ...stored, token: 42 },
+      { ...stored, token: "" },
+      { ...stored, token: "pkeyt_not_an_envelope" },
+      { ...stored, token: JSON.stringify({ v: 1, ct: "x" }) },
+      null,
+      [],
+    ]) {
+      await kv.put(slot, JSON.stringify(record));
+      const res = await handleBrowserSession(
+        req("GET", "/djdl/identity/session", { cookie }),
+        env,
+        db,
+        product,
+        NOW + 1,
+      );
+      expect(res.status, JSON.stringify(record)).toBe(200);
+      expect(await res.json()).toEqual({ authenticated: false, doc: null });
+    }
   });
 });

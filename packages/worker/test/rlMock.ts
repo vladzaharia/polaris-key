@@ -64,3 +64,34 @@ class RlNamespaceMock {
 export function makeRlNamespace(): DurableObjectNamespace {
   return new RlNamespaceMock() as unknown as DurableObjectNamespace;
 }
+
+/** One check a limiter object received: `rateLimitOk`'s request body. */
+export interface LimiterCheck {
+  bucket: string;
+  id: string;
+  limit: number;
+  windowSec: number;
+  now: number;
+}
+
+/**
+ * Record every check `env.RL` receives, handing each to the real limiter unchanged. Install it
+ * after the setup a test does not want recorded.
+ */
+export function recordLimiterChecks(env: Env): LimiterCheck[] {
+  const checks: LimiterCheck[] = [];
+  const real = env.RL;
+  env.RL = {
+    idFromName: (name: string) => real.idFromName(name),
+    get: (id: DurableObjectId) => {
+      const stub = real.get(id);
+      return {
+        fetch: (input: string, init?: RequestInit) => {
+          checks.push(JSON.parse(String(init?.body)) as LimiterCheck);
+          return stub.fetch(input, init as never);
+        },
+      };
+    },
+  } as unknown as DurableObjectNamespace;
+  return checks;
+}

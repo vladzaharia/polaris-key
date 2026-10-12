@@ -9,6 +9,21 @@ as the GitHub Release notes, and the same text is the Asset Store version's chan
 
 ## Unreleased
 
+Hostile-input fixes.
+
+- **A `blocked` hint outside the block vocabulary reads as the strictest block at the gate.** The
+  gate returns the hint's reason as the status, and `ok`, `grace` and `not-applicable` are usable,
+  so an unsigned `{"reason": "ok"}` that reached `PKeyGate.license_state` would have licensed the
+  client. The cache reload already dropped such a hint and a 403 body already read as the stricter
+  block; the gate now coerces too, so the rule holds at the decision point whoever hands it the
+  hint. `PKeyGate` exports `STRICTEST_BLOCK_REASON` (`version-too-old`), `is_block_reason()` and
+  `coerce_block_reason()`. A 403 body takes the first reason that is inside `BLOCK_REASONS` (the
+  nested `error.reason`, then the top-level one) rather than the first non-empty one, and falls back
+  to `channel-not-entitled` for `channel_not_allowed` and `version-too-old` otherwise.
+- **A raised payload cap needs a `typ`.** `PKeyJws.verify`, `verify_async` and `prepare` refuse a
+  `max_payload_bytes` above 65 536 when no `typ` is named, rather than verifying at the raised cap
+  with no type demanded. Offline bundles name both, so nothing changes for them.
+
 Local-trust fixes, the product's presentation, and the UI kit's headless layer.
 
 - **The UI kit's headless layer (`addons/polaris_key/ui/model/`).** One view model per kit

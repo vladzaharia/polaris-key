@@ -4,9 +4,11 @@
 // two derived caches that are NOT product-scoped because the thing they cache is not:
 // `ghInstallationTokenKey()` (below) and the Sparkle verdict memo in `release/sparkle.ts`.
 //
-// R12-03: the one KV entry that holds a *directly usable* credential — the GitHub App
-// installation token — is sealed under `PLATFORM_KEK` before it is written, so a KV dump
-// yields ciphertext. Everything else credential-shaped in KV is a hash.
+// Every KV entry that holds a *directly usable* credential is sealed under `PLATFORM_KEK`
+// before it is written, so a KV dump yields ciphertext: the GitHub App installation token
+// (`release/githubApp.ts`), the outlet access tokens (`core/outletTokens.ts`) and the browser
+// session's device bearer (`identity/browserSession.ts`: a live `pkeyt_` principal that used to
+// sit here in cleartext for 30 days). Everything else credential-shaped in KV is a hash.
 
 import type { Env } from "./env.js";
 

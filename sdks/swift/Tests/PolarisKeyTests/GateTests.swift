@@ -6,6 +6,7 @@
 // The v2 suite's cases are all carried; what is added is the two guards v3 introduced and the
 // one ordering it changed.
 
+import Foundation
 import PolarisKeyCore
 import PolarisKeyLicense
 import XCTest
@@ -117,6 +118,41 @@ final class GateTests: XCTestCase {
             XCTAssertEqual(
                 gate(now: 1, blocked: BlockInfo(reason: reason)).status, expected,
                 "reason \(reason) → \(expected)")
+        }
+    }
+
+    /// The decode edge, from the one side Swift can express it.
+    ///
+    /// `BlockReason` is a closed `String` enum, so the out-of-vocabulary value that would license a
+    /// client that returns the hint's reason as the status (`{"v":3,"blocked":{"reason":"ok"}}` on
+    /// disk, no document and no signature anywhere) is UNREPRESENTABLE here. What Swift owns is the
+    /// decode, and the failure mode to avoid is too harsh rather than too lax: a throwing decode
+    /// would discard the WHOLE verified cache record over a poisoned two-field hint. It drops just
+    /// the hint, which is what the other SDKs do.
+    func testAPoisonedBlockedReasonDropsTheHintNotTheWholeRecord() throws {
+        let poisoned = Data(
+            #"{"v":\#(CACHE_RECORD_VERSION),"trustJws":"a.b.c","blocked":{"reason":"ok"}}"#.utf8)
+        let record = try JSONDecoder().decode(CacheRecord.self, from: poisoned)
+        XCTAssertNil(record.blocked, "an unknown reason is not a hint")
+        XCTAssertEqual(record.trustJws, "a.b.c", "the rest of the record survives")
+
+        // …and an IN-vocabulary reason still round-trips, so the drop is a narrowing rather than
+        // a deletion.
+        let kept = try JSONDecoder().decode(
+            CacheRecord.self,
+            from: Data(
+                #"{"v":\#(CACHE_RECORD_VERSION),"blocked":{"reason":"version-too-new"}}"#.utf8))
+        XCTAssertEqual(kept.blocked?.reason, .versionTooNew)
+    }
+
+    /// The gate half: every reason it CAN hold is a non-usable status, so a hint can only ever
+    /// tighten. The corpus's gate-matrix rows drive the same assertion through every SDK's gate
+    /// against a value none of them may honour.
+    func testEveryRepresentableBlockReasonIsNonUsable() {
+        XCTAssertEqual(BlockReason.allCases.count, 3)
+        for reason in BlockReason.allCases {
+            let state = gate(now: 1, blocked: BlockInfo(reason: reason))
+            XCTAssertFalse(isUsable(state), "reason \(reason) must never be usable")
         }
     }
 

@@ -643,6 +643,8 @@
   "core.codes.value_not_representable.message": "A value couldn't be saved. Change it and try again.",
   "core.codes.document_not_representable.title": "Service problem",
   "core.codes.document_not_representable.message": "The service couldn't prepare your settings. Contact the developer.",
+  "core.codes.signing_unavailable.title": "Signing unavailable",
+  "core.codes.signing_unavailable.message": "The service can't sign a document right now. Try again in a few minutes.",
   "core.codes.device_limit.title": "Device limit reached",
   "core.codes.device_limit.message": "This license is already on all its devices. Replace a device to use it here.",
   "core.codes.key_entry_limit.title": "No key entries left",

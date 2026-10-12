@@ -25,13 +25,6 @@
     "ui:lint": "pnpm --filter @polaris-key/ui-qa exec tsx src/cli/lint.ts",
     "ui:report": "pnpm --filter @polaris-key/ui-qa exec tsx src/cli/report.ts"
   },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "better-sqlite3",
-      "esbuild",
-      "workerd"
-    ]
-  },
   "devDependencies": {
     "@types/node": "^22.20.5",
     "@types/react": "^19.2.0",

@@ -36,7 +36,7 @@ export interface InstallContext {
   binaryName: string;
   /** Channel selectors the installer should advertise (e.g. `staging`, `beta`). */
   channels: string[];
-  /** Env var the script reads for an explicit version (defaults `<BINARY>_VERSION`). */
+  /** Env var the script reads for an explicit version: `deriveVersionEnv(binaryName)`. */
   versionEnv: string;
 }
 
@@ -52,8 +52,43 @@ const ORIGIN_RE = /^https?:\/\/[A-Za-z0-9._-]+(?::[0-9]{1,5})?$/;
  * work — and the bound stays finite so no caller-derived value can grow a path arbitrarily.
  */
 const PRODUCT_PATH_RE = /^\/[A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+){1,3}$/;
-/** Shell env-var name, so it must be a shell-legal identifier. */
-const VERSION_ENV_RE = /^[A-Za-z_][A-Za-z0-9_]{0,63}$/;
+/**
+ * Shell env-var name, so it must be a shell-legal identifier: a leading letter or underscore,
+ * then letters, digits and underscores.
+ *
+ * The bound is 73 characters, not 64, because this value is DERIVED rather than supplied.
+ * `deriveVersionEnv` appends `_VERSION` (8 characters) to a `binaryName` the manifest validator
+ * admits at up to 64, and prepends `_` when the name starts with a digit: 64 + 8 + 1 = 73 is the
+ * longest legal derived name. A 64-character bound made every binary name of 57-64 characters
+ * produce a `versionEnv` this rejected, so `validateInstallContext` failed, `renderInstallScript`
+ * returned `null` and the install surface served a permanent 404 for a name ingest had accepted.
+ */
+const VERSION_ENV_RE = /^[A-Za-z_][A-Za-z0-9_]{0,72}$/;
+
+/** The `_VERSION` suffix every derived env var carries. */
+const VERSION_ENV_SUFFIX = "_VERSION";
+
+/**
+ * The env var the installer reads for an explicit version, derived from the binary name.
+ *
+ * One rule, in one place. `BINARY_NAME_RE` permits a leading digit (`7zip` is a legal binary
+ * name) and `VERSION_ENV_RE` correctly refuses `7ZIP_VERSION`: `7ZIP_VERSION=1.2.3 sh` is not a
+ * variable assignment to any POSIX shell, it is a command named `7ZIP_VERSION=1.2.3`. So the
+ * derivation lives next to the rule it has to satisfy, and every caller uses it.
+ *
+ * The contract is total: every string matching `BINARY_NAME_RE` maps to a string matching
+ * `VERSION_ENV_RE`.
+ *   - uppercased, with every run of non-alphanumerics collapsed to a single `_` (so `.`, `-`
+ *     and `_`, the three punctuation characters a binary name may contain, all become `_`);
+ *   - prefixed with `_` when the first character is a digit, the only way a manifest-legal name
+ *     can start with something a shell identifier may not;
+ *   - bounded at 73 characters (`_` + 64 + `_VERSION`), which `VERSION_ENV_RE` admits.
+ */
+export function deriveVersionEnv(binaryName: string): string {
+  const upper = binaryName.toUpperCase().replace(/[^A-Z0-9]+/g, "_");
+  const shellSafe = /^[0-9]/.test(upper) ? `_${upper}` : upper;
+  return `${shellSafe}${VERSION_ENV_SUFFIX}`;
+}
 
 /**
  * POSIX single-quote a value so a shell reads it as one literal token: wrap in `'…'` and

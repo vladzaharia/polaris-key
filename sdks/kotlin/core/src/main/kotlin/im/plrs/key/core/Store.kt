@@ -91,6 +91,11 @@ public data class CacheRecord(
         public fun fromJson(e: JsonElement?): CacheRecord? {
             val o = e.objectValue ?: return null
             val v = o["v"].longValue ?: return null
+            // §4.1 keeps `blocked` unsigned because a forged one can only tighten the gate, which holds only
+            // for the three reasons in [BlockReason]. A non-member is DROPPED rather than coerced, and the
+            // record is kept: coercion is right at the network ingress, where a real 403 with an unreadable
+            // body still means blocked, but a cache record is simply not one this client wrote, and an
+            // unparseable hint is the weaker of the two states it could name.
             val blocked = o["blocked"].objectValue?.let { b ->
                 val reason = BlockReason.of(b["reason"].stringValue) ?: return@let null
                 val range = b["allowedRange"].objectValue?.let { AllowedRange(it["min"].stringValue, it["max"].stringValue) }

@@ -404,6 +404,10 @@ static func _normalize(rec: Dictionary) -> Dictionary:
 		out["bundle"] = rec["bundle"]
 	if PKeyClaims.is_true(rec.get("lastSyncUnauthorized")):
 		out["lastSyncUnauthorized"] = true
+	# §4.1 keeps `blocked` unsigned because a forged one can only tighten the gate, which holds only
+	# for the three reasons in PKeyGate.BLOCK_REASONS (the gate returns the reason AS the status, and
+	# `ok` is usable). A non-member is DROPPED rather than coerced, and the record is kept: a record
+	# this client did not write holds no hint, and the hint is display state a writer could delete anyway.
 	var b = PKeyGate.sanitize_blocked(rec.get("blocked"))
 	if b != null:
 		out["blocked"] = b

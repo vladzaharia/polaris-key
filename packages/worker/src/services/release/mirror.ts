@@ -88,7 +88,7 @@ import {
   withinQuota,
 } from "../../core/assets/assetQuota.js";
 import { getReleaseConfig, isResolved, type ResolvedConfig } from "./config.js";
-import { installationToken } from "./gateway.js";
+import { installationToken, meterUpstreamCalls } from "./gateway.js";
 import {
   assetSha256,
   getReleaseAsset,
@@ -553,7 +553,14 @@ export async function processReleaseMirror(
   deps: MirrorDeps = {},
 ): Promise<MirrorOutcome> {
   const { env, db, now } = ctx;
-  const fetchImpl = ctx.fetchImpl ?? fetch;
+  // Every GitHub API call this mirror makes (the token mint, the asset lookup, the pull) is
+  // charged to the product's upstream budget; GitHub's storage hop and external URLs are not.
+  const fetchImpl = meterUpstreamCalls(
+    env,
+    msg.product,
+    now,
+    ctx.fetchImpl ?? fetch,
+  );
   if (!env.BLOBS) return "unavailable";
   const row = await db.first<ArtifactRow>(
     `SELECT a.*, m.deliverable_id

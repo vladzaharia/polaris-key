@@ -199,19 +199,22 @@ describe("reading the fixture project", () => {
 });
 
 /** A fake admin API: `/manage/api/me`, then the import (`preview` or `apply` answers). */
-function fakeAdmin(answers: {
-  preview: Record<string, unknown>;
-  apply?: Record<string, unknown> | { status: number; body: unknown };
-}) {
+function fakeAdmin(
+  answers: {
+    preview: Record<string, unknown>;
+    apply?: Record<string, unknown> | { status: number; body: unknown };
+  },
+  origin = ORIGIN,
+) {
   const calls: Array<{ url: string; init: RequestInit; body: any }> = [];
   const fetchImpl = (async (input: string, init: RequestInit = {}) => {
     const body =
       typeof init.body === "string" ? JSON.parse(init.body) : undefined;
     calls.push({ url: input, init, body });
-    if (input === `${ORIGIN}/manage/api/me`)
+    if (input === `${origin}/manage/api/me`)
       return new Response(JSON.stringify({ csrf: CSRF }), { status: 200 });
     if (
-      input === `${ORIGIN}/manage/api/products/djdl/distribution/listing/import`
+      input === `${origin}/manage/api/products/djdl/distribution/listing/import`
     ) {
       if (!body.confirm)
         return new Response(JSON.stringify({ import: answers.preview }), {
@@ -412,6 +415,75 @@ describe("pkey listing import --godot", () => {
       "changed since the preview, so nothing was written",
     );
     expect(t.err()).toContain("No changes");
+  });
+
+  it("keeps the session cookie to https, or loopback http: the same --base-url rule as pkey bundle", async () => {
+    const remote = fakeAdmin({ preview: PREVIEW });
+    const refused = io(remote.fetchImpl);
+    expect(
+      await runPkey(
+        [
+          "listing",
+          "import",
+          "--godot",
+          PROJECT,
+          "--product",
+          "djdl",
+          "--base-url",
+          "http://key.example",
+        ],
+        refused.io as never,
+      ),
+    ).toBe(1);
+    expect(refused.err()).toContain("--base-url must be https:");
+    expect(refused.err()).toContain("http://key.example");
+    expect(refused.err()).toContain(
+      `${ADMIN_COOKIE_ENV} is sent to this origin`,
+    );
+    // The refusal is the point: not even the CSRF read, which already carries the cookie.
+    expect(remote.calls).toEqual([]);
+
+    const notAUrl = io(remote.fetchImpl);
+    expect(
+      await runPkey(
+        [
+          "listing",
+          "import",
+          "--godot",
+          PROJECT,
+          "--product",
+          "djdl",
+          "--base-url",
+          "key.example",
+        ],
+        notAUrl.io as never,
+      ),
+    ).toBe(1);
+    expect(notAUrl.err()).toContain("--base-url is not a valid URL");
+    expect(remote.calls).toEqual([]);
+
+    const loopback = fakeAdmin({ preview: PREVIEW }, "http://127.0.0.1:8787");
+    const ok = io(loopback.fetchImpl);
+    expect(
+      await runPkey(
+        [
+          "listing",
+          "import",
+          "--godot",
+          PROJECT,
+          "--product",
+          "djdl",
+          "--base-url",
+          "http://127.0.0.1:8787/",
+        ],
+        ok.io as never,
+      ),
+    ).toBe(0);
+    expect(ok.err()).toBe("");
+    expect(loopback.calls.map((c) => c.url)).toEqual([
+      "http://127.0.0.1:8787/manage/api/me",
+      "http://127.0.0.1:8787/manage/api/products/djdl/distribution/listing/import",
+    ]);
   });
 
   it("--dry-run prints the upload and contacts nothing; refusals cost no call", async () => {

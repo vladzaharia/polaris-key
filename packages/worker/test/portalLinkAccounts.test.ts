@@ -29,6 +29,8 @@ import {
 } from "../src/services/identity/accounts/lifecycle.js";
 import type { Db } from "../src/db/types.js";
 import { EMAIL_ISSUER } from "../src/services/identity/accounts/repo.js";
+import { putArtefact, artefactRef } from "../src/core/singleUse.js";
+import { hashKey } from "../src/platform/crypto.js";
 
 const LINK = "/api/me/link";
 
@@ -450,6 +452,23 @@ describe("joining needs proof of both accounts in one browser", () => {
     expect(c.d.jar.has(LINK_FLOW_COOKIE)).toBe(true);
     await c.d.send("POST", "/logout");
     expect(c.d.jar.has(LINK_FLOW_COOKIE)).toBe(false);
+  });
+
+  it("treats a stored flow that parses to a non-object as no flow, not an error", async () => {
+    const w = await seededWorld();
+    const a = await emailAccount(w, "a@example.com");
+    expect((await a.d.send("POST", `${LINK}/start`, {})).status).toBe(200);
+    const secret = a.d.jar.get(LINK_FLOW_COOKIE)!;
+    const ref = artefactRef(
+      "link-flow",
+      await hashKey(`link-flow:${secret}`, w.env.KEY_HASH_PEPPER),
+    );
+    for (const stored of ["null", "2", "not json"]) {
+      await putArtefact(w.env, ref, stored, 600);
+      const view = await a.d.send("GET", LINK);
+      expect(view.status).toBe(200);
+      expect(((await view.json()) as { flow: unknown }).flow).toBeNull();
+    }
   });
 });
 

@@ -263,6 +263,39 @@ describe("licensing", () => {
     expect(second.status).toBe(304);
   });
 
+  it("returns retryable signing errors when the active key cannot open", async () => {
+    const { key } = await seedLicenseWithKey(db, "djdl");
+    const token = await activate(env, db, product, key, "dev-1");
+    env.PLATFORM_KEK = btoa(String.fromCharCode(1).repeat(32));
+
+    const license = await handleLicenseDocument(
+      mkReq("GET", {
+        authorization: `Bearer ${token}`,
+        "x-pkey-version": "1.2.3",
+      }),
+      env,
+      db,
+      product,
+      NOW,
+    );
+    expect(license.status).toBe(503);
+    expect(await license.json()).toEqual({
+      error: { code: "signing_unavailable" },
+    });
+
+    const config = await handleConfigDocument(
+      mkReq("GET", { authorization: `Bearer ${token}` }),
+      env,
+      db,
+      product,
+      NOW,
+    );
+    expect(config.status).toBe(503);
+    expect(await config.json()).toEqual({
+      error: { code: "signing_unavailable" },
+    });
+  });
+
   it("enforces the device limit", async () => {
     const { key } = await seedLicenseWithKey(db, "djdl", {
       entitlements: {

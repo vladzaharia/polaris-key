@@ -61,6 +61,10 @@ __all__ = [
     "ManagementState",
     "LicenseStatus",
     "BlockReason",
+    "BLOCK_REASONS",
+    "STRICTEST_BLOCK_REASON",
+    "is_block_reason",
+    "coerce_block_reason",
     "ActivationSource",
     "AllowedRange",
     "BlockedState",
@@ -168,6 +172,37 @@ BlockReason = str
 #: How an install became activated (§7). ``token`` supersedes ``bundle``.
 ActivationSource = str
 
+#: The three 403 block reasons ``GET /<p>/license/document`` may return, as a RUNTIME
+#: vocabulary rather than a type alias.
+#:
+#: ``BlockReason`` is ``str``, and the gate returns the reason string AS the
+#: ``LicenseStatus``, where ``is_usable`` answers True for ``ok``/``grace``/
+#: ``not-applicable``. So the alias would be the only thing between an unsigned,
+#: attacker-writable hint and a licensed client: ``{"v": 3, "blocked": {"reason": "ok"}}``
+#: in the cache file needs no document and no signature at all. Membership is therefore
+#: checked at runtime — at the network ingress, at the reload edge, and inside the gate
+#: itself.
+BLOCK_REASONS: Tuple[str, ...] = (
+    "version-too-old",
+    "version-too-new",
+    "channel-not-entitled",
+)
+
+#: The fallback for an out-of-vocabulary reason. ``version-too-old`` is the STRICTEST of
+#: the three (all are non-usable; this one names the remedy that is always available).
+#: Never fall back to a permissive status — an unrecognised hint must not loosen anything.
+STRICTEST_BLOCK_REASON: BlockReason = "version-too-old"
+
+
+def is_block_reason(value: Any) -> bool:
+    """Runtime membership test for :data:`BLOCK_REASONS`."""
+    return isinstance(value, str) and value in BLOCK_REASONS
+
+
+def coerce_block_reason(value: Any) -> BlockReason:
+    """``value`` when it is a block reason, else the strictest one."""
+    return value if is_block_reason(value) else STRICTEST_BLOCK_REASON
+
 
 # ── Envelope shape helpers ──────────────────────────────────────────────────────────
 def _int_or_none(value: Any) -> Optional[int]:
@@ -223,7 +258,10 @@ class BlockedState:
     """The unsigned 403 hint recorded from the last ``/license/document`` fetch.
 
     Unsigned is safe because it can only ever make the gate STRICTER (§4.1): clearing it
-    gains an attacker nothing that deleting the whole cache file would not.
+    gains an attacker nothing that deleting the whole cache file would not. That is a claim
+    about the VOCABULARY — see :data:`BLOCK_REASONS`, which is what makes it true. This
+    dataclass does NOT validate ``reason``; the edges that handle one do: the 403 ingress
+    (:meth:`CoreContext.get_document`), the cache record decode and the gate itself.
     """
 
     reason: BlockReason

@@ -32,16 +32,16 @@
 
 /// <reference types="@cloudflare/workers-types" />
 
-import { Catalog } from "@polaris-key/catalog";
+import type { Catalog } from "@polaris-key/catalog";
 import type { ManagedEntry } from "@polaris-key/protocol";
 import type { Db } from "../../db/types.js";
+import { loadCatalog } from "../activeCatalog.js";
 import { mergePayloads } from "./merge.js";
 import { storeGrantLayer } from "./storeGrants.js";
 import { oidcGrantLayer } from "./grants.js";
 import { accountOverrideLayer } from "../accounts/accountOverrides.js";
 import { licenseConfigOverridesRetired } from "../ops/overrideMigration.js";
 import {
-  getActiveSchema,
   getProfile,
   getTier,
   listLicenseProfiles,
@@ -79,27 +79,22 @@ async function catalogDefaultPayload(
   product: string,
   now: number,
 ): Promise<string | null> {
-  const schemaRow = await getActiveSchema(db, product);
-  if (!schemaRow) return null;
-  try {
-    const catalog = new Catalog(JSON.parse(schemaRow.catalog_json));
-    const payload: ManagedPayload = {
-      config: {},
-      secrets: {},
-      entitlements: {},
+  const catalog = await loadCatalog(db, product);
+  if (!catalog) return null;
+  const payload: ManagedPayload = {
+    config: {},
+    secrets: {},
+    entitlements: {},
+  };
+  for (const entry of catalog.entries) {
+    if (entry.kind !== "config" || entry.default === undefined) continue;
+    payload.config[entry.key] = {
+      state: entry.managementDefault ?? "default",
+      value: entry.default as ManagedEntry["value"],
+      updatedAt: now,
     };
-    for (const entry of catalog.entries) {
-      if (entry.kind !== "config" || entry.default === undefined) continue;
-      payload.config[entry.key] = {
-        state: entry.managementDefault ?? "default",
-        value: entry.default as ManagedEntry["value"],
-        updatedAt: now,
-      };
-    }
-    return JSON.stringify(payload);
-  } catch {
-    return null;
   }
+  return JSON.stringify(payload);
 }
 
 /**
@@ -262,26 +257,46 @@ export function validatePayload(
 }
 
 /**
- * Run the merged payload through the product's ACTIVE catalog, or `null` when the catalog row
- * exists but cannot be parsed.
+ * Run the merged payload through the product's ACTIVE catalog, or `null` when there is no usable
+ * catalog: no active `product_schema` row, or one whose JSON will not parse or compile
+ * (`loadCatalog`, the one reader of the active catalog, folds both into `null`).
  *
- * The null is the fail-closed arm both document routes answer `500 catalog_unavailable` to: a
+ * The null is the fail-closed arm every document route answers `500 catalog_unavailable` to: a
  * catalog we cannot interpret is a catalog we cannot enforce, and delivering the unpruned
- * payload would ship exactly what the catalog exists to refuse. A product with NO active schema
- * row is a different thing — nothing to validate against, payload passes through unchanged.
+ * payload would ship exactly what the catalog exists to refuse.
+ *
+ * ── WHY "NO ACTIVE CATALOG" IS THE SAME ANSWER (deliberate, not an oversight) ────────────────
+ *
+ * Passing the payload through unpruned when there was no active schema is defensible for a
+ * payload assembled only out of catalog-derived layers (an empty catalog contributes no defaults,
+ * so there would be nothing to drop), and it is WRONG in composition, because the payload
+ * reaching here is NOT only catalog-derived:
+ *
+ *   • `services/identity/oidc.ts` writes `payload.secrets[<key>]` straight from a
+ *     `provisioning_config` row, with no catalog consulted at all;
+ *   • `licenses.overrides_json`, `profiles.payload_json` and the account override layer keep
+ *     whatever a previous catalog version, or a previous admin, put there.
+ *
+ * So "no active catalog" is not "nothing to drop": it is "everything, including a
+ * `delivery: "serverOnly"` secret, passes into a signed document". `delivery: "serverOnly"` is
+ * only true rather than descriptive because THIS prune enforces it (see `validatePayload`), which
+ * means the enforcement may not be conditional on a row being there.
+ *
+ * The cost of the closed door is honest and bounded: a product that has not published a catalog
+ * cannot serve a config document, and gets a 500 naming the reason instead of a silently
+ * over-broad document. A product that wants config publishes a catalog; an empty one is a legal
+ * catalog and prunes everything, which is the correct reading of "this product declares no
+ * keys".
  */
 export async function prunePayloadAgainstCatalog(
   db: Db,
   product: string,
   payload: ManagedPayload,
 ): Promise<ManagedPayload | null> {
-  const schemaRow = await getActiveSchema(db, product);
-  if (!schemaRow) return payload;
+  const catalog = await loadCatalog(db, product);
+  if (!catalog) return null;
   try {
-    return validatePayload(
-      payload,
-      new Catalog(JSON.parse(schemaRow.catalog_json)),
-    );
+    return validatePayload(payload, catalog);
   } catch {
     return null;
   }

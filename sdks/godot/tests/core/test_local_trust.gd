@@ -1,6 +1,7 @@
 extends RefCounted
 # The local-trust set: the anti-replay floor is a required option, a hard 401
-# or a 403 build block removes the document it answered for in the same write as the hint, the
+# or a 403 build block removes the document it answered for in the same write as the hint, a block
+# hint planted in the cache file with a reason outside the vocabulary cannot license the client, the
 # licence gate follows the build and discovery can only switch it on, network verification runs
 # on the effective clock, a desktop file store's device id is re-derived from the platform anchor
 # at every start, and the keyring switch and secret-tool follow the shipped-build rules.
@@ -18,6 +19,7 @@ func run(t: PKeyTestContext) -> void:
 	_required_floor(t)
 	await _revocation_removes_the_slice(t)
 	await _block_removes_the_licence(t)
+	await _planted_block_hint(t)
 	_gate_follows_the_build(t)
 	await _effective_clock(t)
 	server.queue_free()
@@ -109,6 +111,28 @@ func _block_removes_the_licence(t: PKeyTestContext) -> void:
 	sdk.core.cache.flush({"blocked": null})
 	t.check("block: clearing the hint gives needs-activation", sdk.status()["status"] == "needs-activation", str(sdk.status()))
 	sdk.queue_free()
+
+
+# An unsigned block hint planted in the cache file
+
+## `{"v": 3, "blocked": {"reason": "ok"}}` written into managed.json is read BEFORE the no-document
+## check, so it would need neither a document nor a signature. The reload edge drops a hint outside
+## the vocabulary, leaving the install un-activated; a member of the vocabulary still blocks.
+func _planted_block_hint(t: PKeyTestContext) -> void:
+	for planted in ["ok", "grace", "not-applicable", 5, ["version-too-old"]]:
+		var store := PKeyMemoryStore.new(F["device_id"], F["token"])
+		store.cache = {"v": 3, "blocked": {"reason": planted}}
+		var sdk = await _sdk(store, [F["now"]])
+		var st: Dictionary = sdk.status()
+		t.check("planted hint: a block hint naming %s cannot license the client" % JSON.stringify(planted), st["status"] == "needs-activation" and not sdk.license.is_licensed(), str(st))
+		sdk.queue_free()
+	for member in PKeyGate.BLOCK_REASONS:
+		var store := PKeyMemoryStore.new(F["device_id"], F["token"])
+		store.cache = {"v": 3, "blocked": {"reason": member, "allowedRange": {"min": "2.0.0"}}}
+		var sdk = await _sdk(store, [F["now"]])
+		var st: Dictionary = sdk.status()
+		t.check("planted hint: a block hint naming %s still blocks, with its range" % member, st["status"] == member and st.get("allowed_range") is Dictionary and st["allowed_range"] == {"min": "2.0.0"} and not sdk.license.is_licensed(), str(st))
+		sdk.queue_free()
 
 
 # The licence gate input

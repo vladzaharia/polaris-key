@@ -35,9 +35,12 @@ this page is the two human sides of that flow.
 the file:
 
 ```sh
-PKEY_ADMIN_COOKIE='__Host-pkey_admin=<console session cookie>' \
+PKEY_ADMIN_TOKEN='pkeya_<admin API token>' \
   pkey bundle --product djdl --device <deviceId> --grace-days 365
 ```
+
+Mint the token in the console (/manage → API tokens); it is shown once, scoped to
+`bundles:mint`, and revocable on its own. The written file is mode `0600`.
 
 The console's offline-bundle dialog does the same mint over the UI; both hit
 `POST /manage/api/products/<slug>/bundles`, which signs the license document (and the config
@@ -171,26 +174,35 @@ pkey bundle --product djdl --device <32-char-request-code> --grace-days 30 \
   [--no-config] [--license <id>] [--base-url https://key.plrs.im] [--out file.pkeybundle] [--force]
 ```
 
-It authenticates the same way the console does — there is no API-token surface yet, so this is
-the operator's own browser session, exported by hand:
+It authenticates with an **admin API token**, not with your browser session:
 
-1. Sign in to the console, open devtools → Application → Cookies, and copy the
-   `__Host-pkey_admin` cookie's value.
-2. `export PKEY_ADMIN_COOKIE='__Host-pkey_admin=<value>'` in the shell you'll run `pkey bundle`
-   in (the bare value works too — the command prefixes the cookie name itself when it sees no
-   `=`).
+1. In the console, go to **API tokens** (under /manage) and mint one. Give it a label naming
+   where it runs and an expiry of 1 to 365 days. Minting asks you to sign in again first, and
+   the value is shown **once**: the server keeps only a hash.
+2. `export PKEY_ADMIN_TOKEN='pkeya_<value>'` in the shell you'll run `pkey bundle` in.
 
-The command then does exactly what the console does under the hood: `GET /manage/api/me` to
-read that session's CSRF token, then `POST /manage/api/products/<slug>/bundles` echoing it. It's
-a short-lived credential carrying full admin authority — don't commit it, script it into a file,
-or export it into a shell other people share.
+The command then makes exactly one call: `POST /manage/api/products/<slug>/bundles` with
+`Authorization: Bearer pkeya_…`. There's no `GET /manage/api/me` pre-flight and no
+`X-PKey-CSRF` header, because a token-authenticated request is CSRF-exempt: nothing but the
+caller attaches an `Authorization` header, so there is no ambient credential to forge.
 
-Everything checkable locally is checked before either network call: the device id against the
-same 32-character shape the server enforces, grace-days against the same 1–365 range, and the
-output path against an existing file (a mint is an audited, non-free server-side event, so
-discovering a name collision _after_ minting would waste one). The default output filename is
-`<product>-<first 8 chars of device id>.pkeybundle`; the file **is** the JWS with no trailing
-newline, so a naive read hands it straight to a verifier.
+The token is scoped to `bundles:mint`, which covers that one route and nothing else; every
+other admin route refuses a token outright, and a token can never mint, list or revoke a token.
+It's still a credential that can mint a bundle for any product on the platform, so don't commit
+it, script it into a file, or export it into a shell other people share. When one leaks, revoke
+that token from the same screen; unlike the session cookie it replaces, that costs nobody their
+console session. Every use of a token is an audit row under the product it acted on, attributed
+to the token and not to the operator who minted it.
+
+Everything checkable locally is checked before the network call: the device id against the same
+32-character shape the server enforces, grace-days against the same 1–365 range, the token
+against the same `pkeya_` + 43 base64url shape (so a pasted cookie costs a sentence rather than
+an uninformative `401`), `--base-url` against an https-or-loopback rule (that flag decides which
+origin receives the token), and the output path against an existing file (a mint is an audited,
+non-free server-side event, so discovering a name collision _after_ minting would waste one).
+The default output filename is `<product>-<first 8 chars of device id>.pkeybundle`, written mode
+`0600` and refusing to follow a symlink; the file **is** the JWS with no trailing newline, so a
+naive read hands it straight to a verifier.
 
 ## Two different clocks, and why they're not the same number
 

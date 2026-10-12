@@ -94,6 +94,13 @@ const FAIL_MODE: Record<string, FailMode> = {
   adminCallback: "closed",
   portalLogin: "closed",
   portalMagic: "closed",
+  // The two legs of the portal's own sign-in that had no budget: `/callback` runs a token
+  // exchange and an ID-token verification for anyone who names a `state`, and `/magic/verify` is
+  // a bearer-token redemption endpoint (the shape a guessing loop wants). Their START surfaces
+  // (`portalLogin`, `portalMagic`) were limited, which left the budget on the cheap half of each
+  // flow and the half that mints a session unbounded.
+  portalCallback: "closed",
+  portalMagicVerify: "closed",
   // I-06: the login card's Google, Apple and Steam legs (start and callback), and Apple's
   // server-to-server notifications.
   portalProviderStart: "closed",
@@ -204,6 +211,12 @@ const FAIL_MODE: Record<string, FailMode> = {
   // metadata reads and multi-hundred-MB artifact streams have different legitimate rates.
   release: "open",
   releaseArtifact: "open",
+  // The per-PRODUCT upstream budget (`services/release/gateway.ts`, `meterUpstreamCalls`): one
+  // charge per GitHub API call, keyed on the product slug alone rather than on the caller, so it
+  // bounds the installation quota itself instead of one client's share of it. Same reasoning as
+  // its two per-IP siblings above: it guards a cost budget, and a limiter outage must not stop
+  // software distribution.
+  releaseUpstream: "open",
   // P2b-05: the public storefront feeds (AltStore, Obtainium, F-Droid relay, Scoop, Flathub).
   // A D1-read budget per IP, nothing secret behind it.
   distributionFeed: "open",

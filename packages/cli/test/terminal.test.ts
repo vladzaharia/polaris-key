@@ -225,8 +225,14 @@ describe("per-command help", () => {
       expect(feeds.out).toContain(`pkey feeds ${sub}`);
 
     const bundle = await run(["help", "bundle"]);
-    expect(bundle.out).toContain("PKEY_ADMIN_COOKIE");
+    expect(bundle.out).toContain("PKEY_ADMIN_TOKEN");
+    expect(bundle.out).not.toContain("PKEY_ADMIN_COOKIE");
     expect(bundle.out).toContain("--no-config");
+
+    // The import still presents the console session, so its help names the cookie, not the token.
+    const listing = await run(["help", "listing", "import"]);
+    expect(listing.out).toContain("PKEY_ADMIN_COOKIE");
+    expect(listing.out).not.toContain("PKEY_ADMIN_TOKEN");
   });
 
   it("help for an unknown command exits 2", async () => {

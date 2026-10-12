@@ -32,6 +32,7 @@ const COPY_CODES := {
 	"registration_closed": {"title": "Registration closed", "message": "New devices can't register right now. Activate with a license key or sign in."},
 	"value_not_representable": {"title": "Value not accepted", "message": "A value couldn't be saved. Change it and try again."},
 	"document_not_representable": {"title": "Service problem", "message": "The service couldn't prepare your settings. Contact the developer."},
+	"signing_unavailable": {"title": "Signing unavailable", "message": "The service can't sign a document right now. Try again in a few minutes."},
 	"device_limit": {"title": "Device limit reached", "message": "This license is already on all its devices. Replace a device to use it here."},
 	"key_entry_limit": {"title": "No key entries left", "message": "This key has no entries left. Add it to your account and sign in instead."},
 	"license_disabled": {"title": "License disabled", "message": "This license has been disabled. Contact the developer."},

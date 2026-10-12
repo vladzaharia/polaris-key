@@ -64,10 +64,22 @@ public enum JSONValue: Sendable, Equatable, Codable {
         return nil
     }
 
+    /// The integral value, or nil when this value is not one.
+    ///
+    /// `Int(exactly:)`, never the trapping `Int(_:)`. Swift TRAPS on an out-of-range narrowing
+    /// conversion — an uncatchable `fatalError`, not a thrown error the caller could fail closed
+    /// on — so `Int(1e30)` is a process kill, and `1e30` is a number `JSONDecoder` accepts without
+    /// complaint. Every value in here came off a wire or off disk (a discovery document's
+    /// `protocolVersion`, a managed entry's value, a pack index's sizes), so a trapping conversion
+    /// is a remote crash reachable by anyone who can answer a request. Same rule as
+    /// `saturatingAdd`: nothing on a parsed-input path may use trapping arithmetic.
+    ///
+    /// `Int(exactly:)` answers nil for a fractional value (`3.7` does not read as `3`), for NaN and
+    /// the infinities, and for everything outside `Int`'s range.
     public var intValue: Int? {
         switch self {
         case .int(let i): return i
-        case .double(let d) where d == d.rounded(): return Int(d)
+        case .double(let d): return Int(exactly: d)
         default: return nil
         }
     }

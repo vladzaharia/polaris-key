@@ -608,6 +608,59 @@ async function buildTrustCustodyCases(): Promise<TrustCaseV2[]> {
       expect: { accepted: false, trust: PINS2 },
     },
   ];
+  // The entry's IDENTITY, and a kid that names a member of `Object.prototype` (V4 §1).
+  cases.push(
+    {
+      id: "trust-key-missing-kid-is-fatal",
+      description:
+        "The OTHER half of the entry-shape rule, which is why the two have to be pinned together: an entry with no `kid` is not a forward-compatible key, it is a malformed manifest, because the entry has no identity and the pinned-substitution rule cannot even be evaluated against it. The WHOLE manifest is rejected and the previous trust set is kept. A missing `publicKey` is the same case. An entry that merely omits `alg`, `kty` or `crv` is skipped, not fatal.",
+      pinned: PINNED_V3,
+      before: { [ALT_KID]: pub(ALT_KID) },
+      manifestJws: await manifest(
+        [
+          keyEntry(PIN_KID, pub(PIN_KID), "active"),
+          {
+            alg: "EdDSA",
+            kty: "OKP",
+            crv: "Ed25519",
+            publicKey: pub(ALT_KID),
+            status: "active",
+          },
+        ],
+        PIN_KID,
+      ),
+      now,
+      expect: {
+        accepted: false,
+        trust: { [PIN_KID]: pub(PIN_KID), [ALT_KID]: pub(ALT_KID) },
+      },
+    },
+    {
+      id: "trust-kid-proto-is-stored-not-dropped",
+      description:
+        "A published kid of `__proto__`. A kid is an opaque string with no reserved values: Python's dict and Swift's Dictionary store it, and an implementation whose map inherits member names (a JavaScript object literal) must build its set on a prototype-free map, or the entry silently vanishes and one implementation holds a smaller trust set than the others for identical signed bytes. Nothing is granted by this: the kid still has to be named in a header before it verifies anything, and the pins still spread last.",
+      pinned: PINNED_V3,
+      before: {},
+      manifestJws: await manifest(
+        [
+          keyEntry(PIN_KID, pub(PIN_KID), "active"),
+          keyEntry("__proto__", pub(ALT_KID), "active"),
+        ],
+        PIN_KID,
+      ),
+      now,
+      expect: {
+        accepted: true,
+        // A COMPUTED key, not the literal `__proto__:` form: the literal sets the object's
+        // prototype and creates no own property, which is the very bug this vector pins.
+        trust: {
+          [PIN_KID]: pub(PIN_KID),
+          ["__proto__"]: pub(ALT_KID),
+        },
+        issuedAt: V3_ISSUED,
+      },
+    },
+  );
   return cases;
 }
 

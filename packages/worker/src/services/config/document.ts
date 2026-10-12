@@ -183,14 +183,11 @@ export async function handleConfigDocument(
   if (req.headers.get("if-none-match") === etag) {
     return new Response(null, { status: 304, headers: { etag } });
   }
+  const signingKey = await product.signingKey();
+  if (!signingKey) return wireError(503, "signing_unavailable");
   let jws: string;
   try {
-    jws = await signDoc(
-      doc,
-      product.signingKeyPem,
-      product.signingKid,
-      "pkey-config+jws",
-    );
+    jws = await signDoc(doc, signingKey, product.signingKid, "pkey-config+jws");
   } catch (e) {
     // The catalog prune drops a flagged config or secret value before this point, so only a
     // value the prune cannot see reaches the guard (plans/P3-01.md §2.2). Refuse with the

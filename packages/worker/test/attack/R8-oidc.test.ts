@@ -2188,8 +2188,24 @@ describe("R8-03 login CSRF / flow-fixation", () => {
       ctx.db,
       ctx.product,
     );
-    expect(res.status).toBe(302); // portal/auth.ts:100 would have rejected this
-    const state = new URL(res.headers.get("location")!).searchParams.get(
+    // INVERTED: the product flow refuses the console exactly as the portal twin does. The
+    // product copy of the validator checked the origin and nothing else, so a product sign-in
+    // could be aimed at the admin console's landing page.
+    expect(res.status).toBe(400);
+    expect(await res.text()).toContain("return_to not allowed");
+    expect(res.headers.get("location")).toBeNull();
+
+    // Control: an ordinary same-origin target is still accepted and round-trips, query and
+    // fragment intact (the React SDK sends `window.location.href`).
+    const target = `${ORIGIN}/djdl/app?tab=settings#/downloads`;
+    const good = await handleAuthStart(
+      req(`${ORIGIN}/djdl/auth/start?return_to=${encodeURIComponent(target)}`),
+      ctx.env,
+      ctx.db,
+      ctx.product,
+    );
+    expect(good.status).toBe(302);
+    const state = new URL(good.headers.get("location")!).searchParams.get(
       "state",
     )!;
     const flow = JSON.parse(
@@ -2197,7 +2213,7 @@ describe("R8-03 login CSRF / flow-fixation", () => {
     ) as {
       returnTo: string;
     };
-    expect(flow.returnTo).toBe(`${ORIGIN}/manage/products/djdl`);
+    expect(flow.returnTo).toBe(target);
   });
 
   it("FIXED: the ADMIN flow (/manage/callback) is bound to the browser that started it", async () => {
@@ -2917,14 +2933,20 @@ describe("R8-08 portal magic link", () => {
 
     // FIXED (R12-04): the store key is `portal-magic:<hashKey(token, pepper)>` (I-02 moved it
     // from KV into the single-use store), so a listing no longer yields a working token. The
-    // value still names the target email (the record shape is unchanged).
+    // value no longer names the target email either: it is sealed (below).
     const stored = [...kv.keys(), ...singleUseMock(env).keys()];
     expect(stored.some((k) => k.includes(token))).toBe(false);
     const magicKey = await portalMagicKey(env, token);
     expect(singleUseMock(env).keys()).toContain(
       `${magicKey.kind}:${magicKey.id}`,
     );
-    expect(await artefacts(env).get(magicKey)).toContain("victim@corp.com");
+    // The address in the record is sealed under the platform KEK and bound to this one record,
+    // so a dump of the store's VALUES lists nobody who was sent a link.
+    const value = (await artefacts(env).get(magicKey))!;
+    expect(value).not.toContain("victim");
+    expect(JSON.parse(value)).toMatchObject({
+      email: expect.stringContaining('"ct"') as string,
+    });
 
     // The emailed token itself still signs the holder in: from the browser that asked (its flow
     // cookie), by the landing page's POST (I-07; a GET consumes nothing).
@@ -2952,6 +2974,10 @@ describe("R8-08 portal magic link", () => {
     env.PORTAL_SESSION_SECRET = "s";
     await seedProduct(db, "djdl");
     const rlSpy = vi.spyOn(env.RL, "get");
+    // FIXED: the REDEMPTION surface is the online oracle, and it is the one that had no budget
+    // while the surface that merely sends the mail was capped at 8/min.
+    const beforeVerify = rlSpy.mock.calls.length;
+    let throttled = 0;
     for (let i = 0; i < 100; i++) {
       const res = await handleMagicVerify(
         req(`https://key.plrs.im/magic/verify?token=${randomId("magic")}`),
@@ -2959,11 +2985,14 @@ describe("R8-08 portal magic link", () => {
         db,
         NOW,
       );
-      expect(res.status).toBe(400); // "expired", never 429
+      if (res.status === 429) throttled++;
+      else expect(res.status).toBe(400);
     }
-    expect(rlSpy).not.toHaveBeenCalled();
+    expect(rlSpy.mock.calls.length).toBeGreaterThan(beforeVerify);
+    expect(throttled).toBeGreaterThan(0);
 
-    // Control: the START surface IS limited.
+    // Control: the START surface is still limited too.
+    const beforeStart = rlSpy.mock.calls.length;
     for (let i = 0; i < 12; i++) {
       await handleMagicStart(
         req("https://key.plrs.im/api/auth/magic", {
@@ -2974,7 +3003,7 @@ describe("R8-08 portal magic link", () => {
         db,
       );
     }
-    expect(rlSpy).toHaveBeenCalled();
+    expect(rlSpy.mock.calls.length).toBeGreaterThan(beforeStart);
   });
 });
 

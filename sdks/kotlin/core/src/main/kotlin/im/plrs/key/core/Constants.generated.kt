@@ -27,6 +27,7 @@ public object ErrorCode {
     public const val registrationClosed: String = "registration_closed"
     public const val valueNotRepresentable: String = "value_not_representable"
     public const val documentNotRepresentable: String = "document_not_representable"
+    public const val signingUnavailable: String = "signing_unavailable"
     public const val deviceLimit: String = "device_limit"
     public const val keyEntryLimit: String = "key_entry_limit"
     public const val licenseDisabled: String = "license_disabled"
@@ -192,6 +193,7 @@ public val ERROR_CODE_VALUES: List<String> = listOf(
     "registration_closed",
     "value_not_representable",
     "document_not_representable",
+    "signing_unavailable",
     "device_limit",
     "key_entry_limit",
     "license_disabled",
@@ -357,6 +359,7 @@ public val ERROR_CODE_KINDS: Map<String, String> = mapOf(
     "registration_closed" to "wire",
     "value_not_representable" to "wire",
     "document_not_representable" to "wire",
+    "signing_unavailable" to "wire",
     "device_limit" to "wire",
     "key_entry_limit" to "wire",
     "license_disabled" to "wire",

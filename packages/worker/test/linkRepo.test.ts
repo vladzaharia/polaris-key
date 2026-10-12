@@ -1188,6 +1188,8 @@ describe("edge-mint approvals across link and resync (P0-12)", () => {
     claimsTemplate: { iss: "TEAMID" },
     ttlSeconds: 3600,
     audience: "appstoreconnect-v1",
+    // A device token is the whole gate: these tests pin approvals, including with License off.
+    requires: "registered",
   };
   const releaseWith = (edgeMint: Array<Record<string, unknown>>) =>
     JSON.stringify({ ...JSON.parse(RELEASE_JSON), edgeMint });
@@ -1310,7 +1312,7 @@ describe("edge-mint approvals across link and resync (P0-12)", () => {
     ["audience", { audience: "https://attacker.example" }],
     ["alg", { alg: "RS256" }],
     ["kid", { kid: "KID2" }],
-    ["ttlSeconds", { ttlSeconds: 86400 }],
+    ["ttlSeconds", { ttlSeconds: 1800 }],
     ["signingKeySecret", { signingKeySecret: "OTHER_KEY" }],
   ];
   for (const [field, change] of CHANGES) {
@@ -1981,7 +1983,9 @@ describe("edge-mint approvals across link and resync (P0-12)", () => {
   // operator disabled would mint again. The approval records License, and the ingest drops it.
   it("a push that turns License off does not bring back a disabled licence", async () => {
     const w = await linked();
-    await w.resync([BASE_RECIPE], JSON.stringify(IDENTITY_PRODUCT));
+    // The recipe that DEMANDS a licence: the shared one declares `registered`, which checks none.
+    const LICENSED = { ...BASE_RECIPE, requires: "licensed" };
+    await w.resync([LICENSED], JSON.stringify(IDENTITY_PRODUCT));
     await approveEdgeMintRecipe(w.db, "acme", "applemusic");
     expect(await w.mint()).toBe(200);
     await w.db.run(
@@ -1990,7 +1994,7 @@ describe("edge-mint approvals across link and resync (P0-12)", () => {
     expect(await w.mint()).toBe(401);
 
     await w.resync(
-      [BASE_RECIPE],
+      [LICENSED],
       JSON.stringify({
         ...IDENTITY_PRODUCT,
         modules: {

@@ -2,6 +2,7 @@
 
 export {
   BrowserAdapter,
+  InsecureBaseUrlError,
   browserAdapter,
   splitSessionDoc,
   WEB_OUTLET_STAMP,

@@ -147,10 +147,13 @@ A `200` carries `content-type: application/jwt`; a `304` carries only the `etag`
 
 ## Fails closed, never unsigned
 
-`resolveConfigPayload` returns `null` in exactly one case: an active catalog row **exists** but
-cannot be parsed. That is different from having no catalog row at all — a product with no active
-schema simply passes the merged payload through unpruned, since there is nothing yet to enforce.
-The unparseable case answers:
+`resolveConfigPayload` returns `null` when the product has no usable active catalog: no active
+catalog row at all (a product that has not published one), or a row that cannot be parsed. The
+catalog prune is the last gate before signing and the only thing that makes a secret's
+`delivery: "serverOnly"` true, so it cannot be skipped for a product that has nothing to enforce:
+an unpruned payload would carry whatever the stored layers hold. A product that serves config
+publishes a catalog, and an empty one (a version with no entries) is enough: it declares no keys,
+so it prunes every stored value. Both failing cases answer:
 
 ```json
 {
@@ -171,7 +174,7 @@ catalog behind it.
 | `304`                     | `If-None-Match` matched the current ETag. No body.          |
 | `401 unauthorized`        | Missing or invalid device token.                            |
 | `405`                     | Anything but `GET`.                                         |
-| `500 catalog_unavailable` | An active catalog row exists but could not be parsed.       |
+| `500 catalog_unavailable` | No active catalog, or one that could not be parsed.         |
 
 ## Discovery
 

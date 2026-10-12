@@ -102,11 +102,46 @@ export type Route =
       rest: string[];
       alias?: true;
     }
-  | { kind: "notFound" };
+  | { kind: "notFound" }
+  /**
+   * The request's PATH could not be parsed: a percent-escape that does not decode. Distinct from
+   * `notFound`, and deliberately. `notFound` says the URL is well formed and addresses nothing;
+   * `badRequest` says it is not well formed enough to address anything, so no lookup was
+   * attempted. The dispatcher answers it `400 bad_request`.
+   */
+  | { kind: "badRequest" };
 
 /** One alias route: same slug, same segments, marked. */
 function alias(slug: ServiceSlug, product: string, rest: string[]): Route {
   return { kind: "service", slug, product, rest, alias: true };
+}
+
+/**
+ * Percent-decode one path segment, or `null` when it is not decodable.
+ *
+ * `decodeURIComponent` THROWS a `URIError` on a truncated or invalid escape — `%`, `%zz`, a
+ * lone surrogate — and `matchRoute` is the first thing every request runs. The two call sites
+ * below feed it an attacker-chosen segment, so without this guard `GET /download/%` left the
+ * router by throwing: no 404, no 400, an unhandled rejection out of the dispatcher before any
+ * handler existed to have an opinion.
+ *
+ * `null` becomes `badRequest` at both call sites, a 400 and not a 404. An undecodable segment
+ * does not name a download token or a device id, but neither does it name a resource that is
+ * absent: nothing was looked up, because there was nothing to look up, and answering 404 would
+ * assert the outcome of a lookup that never ran.
+ *
+ * It is deliberately NOT "fall back to the raw segment": that would make the router's idea of
+ * the id depend on whether the escape happened to be valid, the kind of parser disagreement
+ * that turns into a bypass one layer down. `dispatchWith` carries a boundary for the same class
+ * of failure; the two are not redundant. This one decides what a bad PATH means, that one keeps
+ * a `URIError` from anywhere else in the request from becoming a 500.
+ */
+function decodeSegment(segment: string): string | null {
+  try {
+    return decodeURIComponent(segment);
+  } catch {
+    return null;
+  }
 }
 
 export function matchRoute(pathname: string): Route {
@@ -160,11 +195,12 @@ export function matchRoute(pathname: string): Route {
   if (path === "/media" || path.startsWith("/media/"))
     return { kind: "portalMedia" };
   const portalDownload = path.match(/^\/download\/([^/]+)$/);
-  if (portalDownload?.[1])
-    return {
-      kind: "portalDownload",
-      token: decodeURIComponent(portalDownload[1]),
-    };
+  if (portalDownload?.[1]) {
+    const token = decodeSegment(portalDownload[1]);
+    return token === null
+      ? { kind: "badRequest" }
+      : { kind: "portalDownload", token };
+  }
 
   // `/<p>` alone — the public download page's alias (P2b-06). Only the bytes host serves the page
   // (`services/distribution/page/`); on the console host the rewritten route is Distribution's
@@ -246,12 +282,12 @@ export function matchRoute(pathname: string): Route {
     return alias("update", product, [appcast[1], "appcast.xml"]);
 
   const devices = rest.match(/^\/devices\/([^/]+)$/);
-  if (devices && devices[1])
-    return {
-      kind: "devices",
-      product,
-      deviceId: decodeURIComponent(devices[1]),
-    };
+  if (devices && devices[1]) {
+    const deviceId = decodeSegment(devices[1]);
+    return deviceId === null
+      ? { kind: "badRequest" }
+      : { kind: "devices", product, deviceId };
+  }
 
   return { kind: "notFound" };
 }

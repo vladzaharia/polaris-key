@@ -644,6 +644,10 @@ function carriedRows(): readonly unknown[] {
 
 export function buildGateMatrixV2(): unknown {
   const matrix = gateMatrixV2();
+  // The vocabulary rows are described beside the generator that appends them, not inside the
+  // frozen description of the carried rows above.
+  matrix.description +=
+    " The final five rows supply `license.blocked` DIRECTLY instead of deriving the unsigned hint from the build gate (a poisoned cache record is exactly a hint no build gate produced), and pin the hint's VOCABULARY (WIRE-CONTRACT-V4 §4.1): an out-of-vocabulary `blocked.reason` coerces to the stricter `version-too-old` and never to a usable status, an in-vocabulary one is still honoured verbatim, and neither outranks the `licenseServiceEnabled` and `activation` guards that precede it. A fixture-supplied `license.blocked` REPLACES the derived hint; `expect.reason` keeps naming the DERIVED build-gate hint.";
   const emitted = new Set(matrix.rows.map((r) => (r as { name: string }).name));
   if (emitted.size !== matrix.rows.length)
     throw new Error("gate-matrix v2 has two rows with one name");
@@ -740,6 +744,89 @@ function gateMatrixV2(): {
         },
       },
       ...channelRows(),
+      // ── The unsigned hint's VOCABULARY (WIRE-CONTRACT-V4 §4.1) ───────────────────────────────
+      // `blocked` is unsigned because it is display state and a forged one can only tighten the
+      // gate. That is a claim about the vocabulary, and the gate returns `blocked.reason` AS the
+      // status while `isUsable` says yes to `ok`/`grace`/`not-applicable`: writing
+      // `{"v":3,"blocked":{"reason":"ok"}}` into the cache file licensed the client with no
+      // document and no signature. These rows supply the hint DIRECTLY (`license.blocked`)
+      // rather than deriving it from the build gate, because a poisoned cache record is exactly
+      // a hint no build gate produced. `expect.reason` keeps naming the DERIVED hint.
+      {
+        name: "version-too-old — an out-of-vocabulary blocked.reason coerces to the STRICTER reason",
+        gate: PASSING_GATE,
+        license: {
+          licenseServiceEnabled: true,
+          activation: "token",
+          ...MATRIX_DOC,
+          now: 1500,
+          blocked: { reason: "ok" },
+        },
+        expect: { status: "version-too-old", ok: false },
+      },
+      {
+        name: "version-too-old — `not-applicable` as a blocked.reason is coerced too, allowedRange kept",
+        gate: PASSING_GATE,
+        license: {
+          licenseServiceEnabled: true,
+          activation: "token",
+          ...MATRIX_DOC,
+          now: 1500,
+          blocked: {
+            reason: "not-applicable",
+            allowedRange: { min: "1.0.0", max: "3.0.0" },
+          },
+        },
+        // The RANGE is display furniture and survives; only the reason is coerced. A gate that
+        // dropped the range would still be safe, and one that honoured the reason would not,
+        // which is why the assertion covers both.
+        expect: {
+          status: "version-too-old",
+          ok: false,
+          allowedRange: { min: "1.0.0", max: "3.0.0" },
+        },
+      },
+      {
+        name: "channel-not-entitled — an IN-vocabulary blocked.reason is still honoured verbatim",
+        gate: PASSING_GATE,
+        license: {
+          licenseServiceEnabled: true,
+          activation: "token",
+          ...MATRIX_DOC,
+          now: 1500,
+          blocked: { reason: "channel-not-entitled" },
+        },
+        // Without this row an implementation that coerced EVERY reason to `version-too-old`
+        // would pass the two above while destroying the hint's only useful property.
+        expect: { status: "channel-not-entitled", ok: false },
+      },
+      {
+        name: "needs-activation — a poisoned blocked.reason does not outrank the activation guard",
+        gate: PASSING_GATE,
+        license: {
+          licenseServiceEnabled: true,
+          activation: null,
+          now: 1500,
+          blocked: { reason: "ok" },
+        },
+        // The documented ordering holds for a poisoned hint too: coercion happens where the
+        // hint is READ, not by reordering the machine around it.
+        expect: { status: "needs-activation", ok: false },
+      },
+      {
+        name: "not-applicable — a poisoned blocked.reason cannot be used to gate an unlicensed product either",
+        gate: PASSING_GATE,
+        license: {
+          licenseServiceEnabled: false,
+          activation: null,
+          now: 1500,
+          blocked: { reason: "version-too-new" },
+        },
+        // The mirror of the row above, with a LEGITIMATE reason: `licenseServiceEnabled: false`
+        // precedes `blocked`, so a product that runs no licence service stays usable rather than
+        // being blocked by a hint that cannot apply to it (D-08).
+        expect: { status: "not-applicable", ok: true },
+      },
     ],
     entitlementRows: entitlementRows(),
   };

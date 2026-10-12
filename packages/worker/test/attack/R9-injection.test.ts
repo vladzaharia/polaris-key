@@ -251,7 +251,7 @@ function makeProduct(): Product {
     slug: SLUG,
     name: "djdl",
     signingKid: "kid",
-    signingKeyPem: "pem",
+    signingKey: async () => "pem",
     signingPub: null,
     compatMin: "0.0.0",
     compatMax: "99.0.0",
@@ -911,28 +911,32 @@ describe("R9-03 release_config.channel_workflow is interpolated unencoded", () =
 });
 
 // ═════════════════════════════════════════════════════════════════════════════
-// R9-04 — gh_owner / gh_repo are unencoded too, and parseRepoUrl is permissive
+// R9-04 — gh_owner / gh_repo are unencoded too; parseRepoUrl used to be permissive
 // ═════════════════════════════════════════════════════════════════════════════
 describe("R9-04 gh_owner/gh_repo path injection", () => {
-  it("parseRepoUrl accepts `..`, `?` and `:` in the owner/repo it persists", () => {
-    expect(parseRepoUrl("https://github.com/o/..")).toEqual({
-      owner: "o",
-      repo: "..",
+  // `parseRepoUrl` applies the manifest validator's own `GH_SLUG_RE` to both halves, so none of
+  // these ever becomes a stored coordinate. The URL arm used to match `[^/]+`, which admits every
+  // non-slash byte; the rule is imported from `@polaris-key/manifest` rather than re-typed, so
+  // the console door and the `.pkey/release` door cannot drift apart.
+  it("parseRepoUrl refuses `..`, `?`, `:` and `#` in the owner/repo it would persist", () => {
+    expect(parseRepoUrl("https://github.com/o/..")).toBeNull();
+    expect(parseRepoUrl("https://github.com/o/r?per_page=1")).toBeNull();
+    expect(parseRepoUrl("https://github.com/a:b/c:d")).toBeNull();
+    expect(parseRepoUrl("https://github.com/o/r#frag")).toBeNull();
+    expect(parseRepoUrl("../../orgs/attacker/repos")).toBeNull();
+    // …and the ordinary shapes still parse, so the tightening is not a blanket denial.
+    expect(parseRepoUrl("https://github.com/acme-org/acme-app")).toEqual({
+      owner: "acme-org",
+      repo: "acme-app",
     });
-    expect(parseRepoUrl("https://github.com/o/r?per_page=1")).toEqual({
-      owner: "o",
-      repo: "r?per_page=1",
+    expect(parseRepoUrl("git@github.com:acme-org/acme-app.git")).toEqual({
+      owner: "acme-org",
+      repo: "acme-app",
     });
-    expect(parseRepoUrl("https://github.com/a:b/c:d")).toEqual({
-      owner: "a:b",
-      repo: "c:d",
+    expect(parseRepoUrl("acme-org/acme.app_1")).toEqual({
+      owner: "acme-org",
+      repo: "acme.app_1",
     });
-    // Feeding that straight into the (unencoded) githubApp URL template traverses:
-    const p = parseRepoUrl("https://github.com/o/..")!;
-    expect(
-      new URL(`https://api.github.com/repos/${p.owner}/${p.repo}/installation`)
-        .pathname,
-    ).toBe("/repos/installation");
   });
 
   it("a stored gh_repo of `..` retargets the authenticated releases call", async () => {
@@ -1297,14 +1301,32 @@ describe("R9-06 safeReturnTo: /manage is allowed on the product flow, denied on 
       db,
       product,
     );
-    expect(res.status).toBe(302); // accepted
-    const state = new URL(res.headers.get("location")!).searchParams.get(
+    // INVERTED. The product copy of the validator checked the ORIGIN and nothing else, so it
+    // parked a CUSTOMER sign-in on `/manage/…` — the one surface that reads an operator's
+    // session — while its portal twin refused the identical value by name. Both customer realms
+    // refuse it now.
+    expect(res.status).toBe(400);
+    expect(await res.json()).toMatchObject({ error: "bad_request" });
+
+    // Control: `/manage` is refused, not `return_to` as such. An ordinary same-origin target is
+    // accepted and round-trips onto the flow record, query string intact.
+    const allowed = "https://key.plrs.im/djdl/welcome?tab=account";
+    const ok = await handleAuthStart(
+      req(
+        `https://key.plrs.im/${SLUG}/auth/start?return_to=${encodeURIComponent(allowed)}`,
+      ),
+      env,
+      db,
+      product,
+    );
+    expect(ok.status).toBe(302);
+    const state = new URL(ok.headers.get("location")!).searchParams.get(
       "state",
     )!;
     const flow = JSON.parse(
       (await artefacts(env).get(await flowKey(env, SLUG, state)))!,
     ) as { returnTo?: string };
-    expect(flow.returnTo).toBe("https://key.plrs.im/manage/api/products");
+    expect(flow.returnTo).toBe(allowed);
 
     // The portal twin (portal/auth.ts:100) refuses the same value.
     const portal = await handlePortalLogin(
@@ -1655,9 +1677,23 @@ describe("R9-11 edge-mint auth page", () => {
       join(HERE, "..", "..", "src", "core", "repo.ts"),
       "utf8",
     );
-    // The only INSERT that touches the column hardcodes NULL.
-    expect(repoSrc).toContain("ttl_seconds, audience, auth_page_template)");
-    expect(repoSrc).toContain("VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL)");
+    // The only INSERT that touches the column hardcodes NULL, asserted POSITIONALLY: the same
+    // statement carries the recipe's `requires` / `required_entitlement`, and the claim is that
+    // whatever the column list is, `auth_page_template`'s slot is a literal NULL.
+    const insert = repoSrc.match(
+      /INSERT INTO edge_mint_config \(([^)]*)\)\s*\n\s*VALUES \(([^)]*)\)/,
+    );
+    expect(
+      insert,
+      "the edge_mint_config INSERT is still recognisable",
+    ).not.toBe(null);
+    const columns = insert![1]!.split(",").map((c) => c.trim());
+    const values = insert![2]!.split(",").map((v) => v.trim());
+    expect(columns).toContain("auth_page_template");
+    expect(values[columns.indexOf("auth_page_template")]).toBe("NULL");
+    // And exactly ONE mention of the column in the repository layer, so no second statement (an
+    // UPDATE, an upsert) has appeared that could bind it.
+    expect(repoSrc.match(/auth_page_template/g)).toHaveLength(1);
   });
 });
 

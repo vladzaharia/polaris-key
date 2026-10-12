@@ -468,9 +468,12 @@ async function issueIdentityLicense(
   const { product } = target;
   let licenseId: string;
   try {
-    // U-03: `env` seals provisioned secrets written to the owner's account overrides.
+    // `env` seals provisioned secrets (the licence's column, then the owner's account
+    // overrides). The mint is audited below (`license.create`, with the Discover path and reason),
+    // so the sign-in's own `license.mint.oidc` row is left off: one claim, one row.
     const result = await activateFromIdentity(db, product, identity, now, {
       env,
+      mintAudit: false,
     });
     if ("error" in result) return { error: "not_eligible" };
     licenseId = result.licenseId;

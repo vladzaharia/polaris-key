@@ -643,6 +643,8 @@
   "core.codes.value_not_representable.message": "某个值无法保存。请修改后重试。",
   "core.codes.document_not_representable.title": "服务出现问题",
   "core.codes.document_not_representable.message": "服务无法准备你的设置。请联系开发者。",
+  "core.codes.signing_unavailable.title": "签名不可用",
+  "core.codes.signing_unavailable.message": "服务目前无法签署文档。请几分钟后重试。",
   "core.codes.device_limit.title": "已达到设备上限",
   "core.codes.device_limit.message": "此许可证已用满所有设备。请替换一台设备以在此使用。",
   "core.codes.key_entry_limit.title": "密钥已无剩余输入次数",

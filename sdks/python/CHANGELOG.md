@@ -6,6 +6,12 @@ only API (no deprecated aliases).
 
 ## Unreleased
 
+Hostile-input fixes.
+
+- **A `blocked` hint outside the block vocabulary can no longer unlock the gate.** The gate returns the hint's reason as the status, and `ok`, `grace` and `not-applicable` are usable, so an unsigned `{"reason": "ok"}` in `managed.json` or in a 403 body would have licensed the client. `polaris_key.core` now exports `BLOCK_REASONS`, `STRICTEST_BLOCK_REASON`, `is_block_reason` and `coerce_block_reason`. A 403 reason that is not a member reads as the stricter `version-too-old` (`channel-not-entitled` for `channel_not_allowed`), `CacheRecord.from_dict` drops a hint whose reason is not a member, and `license_state` coerces at the decision point.
+- **State files are read with `O_NOFOLLOW` and a 1 MiB cap.** `FileStore` reads a symlink, a non-regular file (a directory, a FIFO), a file over `MAX_STATE_FILE_BYTES` or a file that is not UTF-8 as absent, never as the planted bytes; a symlink planted at the device path makes `get_device_id()` raise instead of adopting the id. A write repairs a pre-existing loose mode back to 0600.
+- **A bundle's import window runs at the effective clock.** `import_bundle` checks the 30-day window at `max(system clock, floor)`, so winding the clock back no longer reopens a lapsed window.
+
 Trust custody and offline bundles.
 
 - **Signed-in user (`license.signedinuser`).** `license_user(doc)`, `client.license.get_license_user()` and `DocProfile.user` read the pairwise subject from a verified licence document's `profile.user`; a malformed or absent member is `None`. The terminal kit's `status` reads "signed in" from it, no longer from the holder's email, so a key-activated device reads as not signed in.

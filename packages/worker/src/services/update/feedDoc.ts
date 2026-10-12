@@ -34,7 +34,10 @@
  * ── access ──────────────────────────────────────────────────────────────────────────────────
  *
  * The release METADATA mode. Under `entitled` the licence's entitlements must hold the CANONICAL
- * channel, checked per request before the stored body is returned. `public` is
+ * channel, checked per request before the stored body is returned, and the release the requested
+ * platform resolves to must sit inside the licence's version window (`403 version_blocked`): the
+ * document is the same bytes for every caller, so the window decides who may read it, never what
+ * it says. `public` is
  * `public, max-age=60, no-transform`; anything else `private, no-store, no-transform`.
  */
 
@@ -60,6 +63,8 @@ import { sha256Hex } from "../../platform/hash.js";
 import type { Db } from "../../db/types.js";
 import { errorResponse, wireError } from "../../core/errors.js";
 import { clientNetwork, rateLimitOk } from "../../core/rateLimit.js";
+import { bearer } from "../../platform/http.js";
+import { resolvedReleaseRefusal } from "../../core/licensing/entitledAccess.js";
 import { signDoc } from "../../core/signing.js";
 import { appendAudit } from "../../core/repo.js";
 import {
@@ -549,6 +554,18 @@ export async function handleFeedRoute(
   const channel = canonicalFeedChannel(requested, cfg);
   if (channel === null) return null;
 
+  // The limiter first, so a refusal spends the caller's budget like any other request: refusing
+  // a stranger is a licence read and an entitlement merge, and charging only the callers who get
+  // through would leave a gated feed free to enumerate.
+  if (
+    !(await rateLimitOk(
+      env,
+      product.slug,
+      { bucket: "updateFeed", id: clientNetwork(req), ...FEED_RATE_LIMIT },
+      now,
+    ))
+  )
+    return harden(errorResponse(429, "rate_limited", "too many feed requests"));
   // Access before any composition: the metadata mode; under `entitled`, the canonical channel's
   // grant, checked per request before the stored body is served.
   const refused = await enforceReleaseAccess(
@@ -562,22 +579,32 @@ export async function handleFeedRoute(
     now,
   );
   if (refused) return harden(refused);
-  if (
-    !(await rateLimitOk(
-      env,
-      product.slug,
-      { bucket: "updateFeed", id: clientNetwork(req), ...FEED_RATE_LIMIT },
-      now,
-    ))
-  )
-    return harden(errorResponse(429, "rate_limited", "too many feed requests"));
-  const gated = accessModeFor(artifactPolicy(cfg), "feed") !== "public";
+  const mode = accessModeFor(artifactPolicy(cfg), "feed");
+  const gated = mode !== "public";
 
   const composed = await composeChannelFeed(
     { db, product: product.slug, hooks: ctx.hooks, cfg, env },
     requested,
   );
   if (!composed) return null;
+
+  // `entitled` decided the CANONICAL channel above; the release this request's platform resolves
+  // to is held to the caller's version window now that the composition names it. Nothing in the
+  // document is per caller, so it is neither filtered nor re-signed: the window only gates the
+  // read.
+  const target = composed.targets.find((t) => t.platform === platform);
+  if (target) {
+    const blocked = await resolvedReleaseRefusal(
+      env,
+      db,
+      product,
+      bearer(req),
+      mode,
+      target.release.version,
+      now,
+    );
+    if (blocked) return harden(blocked);
+  }
 
   // A channel that offers nothing and has never offered anything (no state row) — an unused
   // `pr-<n>` or manual channel, or a product with no app release yet — is signed at the seq a row
@@ -600,9 +627,11 @@ export async function handleFeedRoute(
         now,
       );
       if (!feedSelfCheck(empty, null)) return notComposable();
+      const signingKey = await product.signingKey();
+      if (!signingKey) return null;
       const signed = await signDoc(
         empty,
-        product.signingKeyPem,
+        signingKey,
         product.signingKid,
         "pkey-feed+jws",
       );
@@ -682,6 +711,8 @@ export async function handleFeedRoute(
         )
       : probe;
     if (!feedSelfCheck(signing.doc, signing.platform)) return notComposable();
+    const signingKey = await product.signingKey();
+    if (!signingKey) return null;
     for (const a of signing.audits)
       await appendAudit(db, {
         product: product.slug,
@@ -698,7 +729,7 @@ export async function handleFeedRoute(
       });
     jws = await signDoc(
       signing.doc,
-      product.signingKeyPem,
+      signingKey,
       product.signingKid,
       "pkey-feed+jws",
     );

@@ -29,6 +29,7 @@ import {
   listAudit,
   setServices,
 } from "../src/core/repo.js";
+import { SETTINGS } from "../src/mount.js";
 import { loadProduct } from "../src/core/products.js";
 import type { ServiceHooks } from "../src/core/hooks.js";
 import type { ServiceDescriptor } from "../src/core/registry.js";
@@ -47,6 +48,7 @@ import type { DocProfile } from "@polaris-key/protocol";
 import type { FusedSessionDoc } from "../src/services/identity/doc.js";
 import type { ManagedPayload } from "../src/core/licensing/payload.js";
 import type { LicenseDoc } from "@polaris-key/protocol/license";
+import { MAX_DEVICE_LIMIT } from "@polaris-key/manifest";
 import { getTokenRecord } from "../src/platform/kv.js";
 import { hashKey } from "../src/platform/crypto.js";
 
@@ -792,7 +794,7 @@ describe("admin api", () => {
     expect(rows[0]?.actor_sub).toBe("u1");
   });
 
-  it("fails closed: with NO ADMIN_SESSION_SECRET, issuing/verifying a session throws (D1)", async () => {
+  it("fails closed: with NO ADMIN_SESSION_SECRET, issuing a session throws and verifying returns null (D1)", async () => {
     const env = adminEnv(new KvMock(), []);
     // Remove the secret — the worker must NOT fall back to a guessable signing key.
     delete (env as { ADMIN_SESSION_SECRET?: string }).ADMIN_SESSION_SECRET;
@@ -803,10 +805,8 @@ describe("admin api", () => {
         NOW,
       ),
     ).rejects.toThrow("ADMIN_SESSION_SECRET is required");
-    // Verification of any token must also throw (so no request can authenticate).
-    await expect(verifySession(env, "forged.token", NOW)).rejects.toThrow(
-      "ADMIN_SESSION_SECRET is required",
-    );
+    // Verification of any token is null (no request can authenticate), not a thrown error.
+    expect(await verifySession(env, "forged.token", NOW)).toBeNull();
   });
 
   it("manual create with an uploaded schema yields a usable product (loadProduct + /config sign)", async () => {
@@ -851,10 +851,10 @@ describe("admin api", () => {
     expect(body.slug).toBe("manualco");
     expect(typeof body.kid).toBe("string");
 
-    // The product loads with a real, KEK-sealed signing key.
+    // The product's accessor opens a real, KEK-sealed signing key.
     const product = await loadProduct(env, db, "manualco");
     expect(product).not.toBeNull();
-    expect(product!.signingKeyPem).toContain("BEGIN PRIVATE KEY");
+    expect(await product!.signingKey()).toContain("BEGIN PRIVATE KEY");
 
     // The schema it uploaded is the active catalog.
     const schemaRes = await dispatch(
@@ -887,7 +887,11 @@ describe("admin api", () => {
       profile,
       payload,
     });
-    const jws = await signDoc(doc, product!.signingKeyPem, product!.signingKid);
+    const jws = await signDoc(
+      doc,
+      (await product!.signingKey())!,
+      product!.signingKid,
+    );
     const verified = await verifyJws<FusedSessionDoc>(jws, {
       [product!.signingKid]: product!.signingPub!,
     });
@@ -895,10 +899,10 @@ describe("admin api", () => {
     expect(verified!.payload.aud).toBe("manualco");
   });
 
-  // ── P4 regression: manual-create atomicity ────────────────────────────────────
+  // ── Manual-create atomicity ───────────────────────────────────────────────────
   // A manual product is minted in ONE batch: the `products` row AND an active `product_keys`
   // row must BOTH exist, so a product can never be half-created (a row with no usable signing
-  // key). We assert both rows directly, then prove the pair is usable end-to-end (loadProduct
+  // key). We assert both rows directly, then prove the pair is usable end-to-end (the accessor
   // opens the sealed key + /config signs a verifiable doc).
   it("manual create atomically yields BOTH a products row AND an active product_keys row", async () => {
     const db = makeTestDb();
@@ -939,9 +943,9 @@ describe("admin api", () => {
     // Sealed at rest — the private key is never stored in plaintext.
     expect(keyRow!.enc_private_json).not.toContain("BEGIN PRIVATE KEY");
 
-    // 3) The pair is usable: loadProduct opens the sealed key + /config signs a verifiable doc.
+    // 3) The pair is usable: the signing-key accessor opens the sealed key + /config signs.
     const product = (await loadProduct(env, db, "atomicco"))!;
-    expect(product.signingKeyPem).toContain("BEGIN PRIVATE KEY");
+    expect(await product.signingKey()).toContain("BEGIN PRIVATE KEY");
     const { key } = await seedLicenseWithKey(db, "atomicco");
     const activateRes = await handleActivate(
       mkLicReq("POST", {
@@ -1961,5 +1965,282 @@ describe("admin product setup: Sparkle warning", () => {
         withDmg: true,
       }),
     ).toEqual([SPARKLE]);
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────────────────────────────
+// The device-limit CEILING, on every admin path that can set a product's default.
+//
+// `claimDeviceSeat` finds the lowest free seat with a recursive CTE that enumerates 1..limit
+// inside ONE statement, so the cost of an activation is O(deviceLimit). Every write path checked
+// the lower bound (`limit > 0` reads as UNLIMITED) and none checked the upper one, which made
+// `deviceLimit: 100000000` a legal admin write and a permanently wedged activation route for
+// that product.
+// ───────────────────────────────────────────────────────────────────────────────────────────
+
+describe("device-limit ceiling on the product registry", () => {
+  async function platform(): Promise<{
+    db: Db;
+    env: Env;
+    cookie: string;
+    csrf: string;
+  }> {
+    const db = makeTestDb();
+    const env = adminEnv(new KvMock(), []);
+    const { cookie, csrf } = await sessionCookie(env, {
+      sub: "u1",
+      name: "Ada",
+      email: "a@x.io",
+      groups: [PLATFORM_GROUP],
+    });
+    return { db, env, cookie, csrf };
+  }
+
+  it("POST /api/products refuses a device limit no activation could survive", async () => {
+    // Create checked NOTHING (`Number(body.defaultDeviceLimit ?? 5)` was the whole of it), so a
+    // ceiling on the PATCH alone would have been one POST away from irrelevant.
+    const { db, env, cookie, csrf } = await platform();
+    for (const bad of [MAX_DEVICE_LIMIT + 1, 100000000, 2.5, 0, -1]) {
+      const res = await dispatch(
+        mkReq("POST", "/api/products", {
+          cookie,
+          csrf,
+          body: { slug: "acme", name: "Acme", defaultDeviceLimit: bad },
+        }),
+        env,
+        db,
+        "/api/products",
+      );
+      expect(`${bad}=${res.status}`).toBe(`${bad}=422`);
+      const body = (await res.json()) as { message: string; fields: string[] };
+      expect(body.fields).toEqual(["defaultDeviceLimit"]);
+      expect(body.message).toContain(String(MAX_DEVICE_LIMIT));
+    }
+    // Nothing was written on the way to any of those refusals.
+    expect(await getProduct(db, "acme")).toBeNull();
+
+    // …and the ceiling itself is a legal value, not an off-by-one.
+    const ok = await dispatch(
+      mkReq("POST", "/api/products", {
+        cookie,
+        csrf,
+        body: {
+          slug: "acme",
+          name: "Acme",
+          defaultDeviceLimit: MAX_DEVICE_LIMIT,
+        },
+      }),
+      env,
+      db,
+      "/api/products",
+    );
+    expect(ok.status).toBe(201);
+    expect((await getProduct(db, "acme"))?.default_device_limit).toBe(
+      MAX_DEVICE_LIMIT,
+    );
+  });
+
+  it("create without a device limit keeps the default of 5", async () => {
+    const { db, env, cookie, csrf } = await platform();
+    const res = await dispatch(
+      mkReq("POST", "/api/products", {
+        cookie,
+        csrf,
+        body: { slug: "acme", name: "Acme" },
+      }),
+      env,
+      db,
+      "/api/products",
+    );
+    expect(res.status).toBe(201);
+    expect((await getProduct(db, "acme"))?.default_device_limit).toBe(5);
+  });
+
+  it("the numeric coercion on create cannot smuggle a string past the ceiling", async () => {
+    // `Number(body.defaultDeviceLimit ?? 5)` accepts `"1e9"` and `"100000000"` as readily as the
+    // numbers, so the check has to run on the COERCED value, not on the raw field.
+    const { db, env, cookie, csrf } = await platform();
+    for (const bad of ["1e9", "100000000", "abc", "", "1001"]) {
+      const res = await dispatch(
+        mkReq("POST", "/api/products", {
+          cookie,
+          csrf,
+          body: { slug: "acme", name: "Acme", defaultDeviceLimit: bad },
+        }),
+        env,
+        db,
+        "/api/products",
+      );
+      const body = (await res.json()) as { fields: string[] };
+      expect(`${JSON.stringify(bad)}=${res.status}`).toBe(
+        `${JSON.stringify(bad)}=422`,
+      );
+      expect(body.fields).toEqual(["defaultDeviceLimit"]);
+    }
+    expect(await getProduct(db, "acme")).toBeNull();
+  });
+
+  it("PATCH /api/products/<slug> refuses an unbounded device limit", async () => {
+    const { db, env, cookie, csrf } = await platform();
+    await seedProduct(db, "acme");
+    const path = "/api/products/acme";
+
+    for (const bad of [MAX_DEVICE_LIMIT + 1, 100000000, 2.5, 0, -1]) {
+      const rejected = await dispatch(
+        mkReq("PATCH", path, {
+          cookie,
+          csrf,
+          body: { defaultDeviceLimit: bad },
+        }),
+        env,
+        db,
+        path,
+      );
+      expect(`${bad}=${rejected.status}`).toBe(`${bad}=422`);
+      const body = (await rejected.json()) as {
+        message: string;
+        fields: string[];
+      };
+      expect(body.fields).toEqual(["defaultDeviceLimit"]);
+      expect(body.message).toContain(String(MAX_DEVICE_LIMIT));
+    }
+    // Refused, not clamped: the stored value is still the one nobody touched.
+    expect((await getProduct(db, "acme"))?.default_device_limit).toBe(5);
+
+    // A legal write still lands: the ceiling refuses, it does not get in the way of a real
+    // seat count.
+    const accepted = await dispatch(
+      mkReq("PATCH", path, {
+        cookie,
+        csrf,
+        body: { defaultDeviceLimit: MAX_DEVICE_LIMIT },
+      }),
+      env,
+      db,
+      path,
+    );
+    expect(accepted.status).toBe(200);
+    expect((await getProduct(db, "acme"))?.default_device_limit).toBe(
+      MAX_DEVICE_LIMIT,
+    );
+  });
+
+  it("the settings registry holds the same ceiling, at platform and product scope", () => {
+    // The generic settings writers validate against the registry's value spec, so a bound that
+    // differs from the ceiling here is a second way in.
+    for (const scope of ["platform", "product"] as const)
+      expect(
+        SETTINGS.get("license.defaults.deviceLimit", scope)?.value,
+      ).toEqual({
+        kind: "integer",
+        unit: "count",
+        min: 1,
+        max: MAX_DEVICE_LIMIT,
+      });
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────────────────────────────
+// Rotation kids: a fresh kid per rotation, and a collision is a 409 rather than an opaque 500.
+// ───────────────────────────────────────────────────────────────────────────────────────────
+
+describe("signing-key rotation mints distinct kids", () => {
+  const ROTATE = "/api/products/djdl/keys/rotate";
+
+  /** POST keys/rotate as a platform admin whose session was issued at `at`. */
+  async function rotateAt(
+    env: Env,
+    db: Db,
+    at: number,
+  ): Promise<{ status: number; body: { kid?: string; message?: string } }> {
+    const { token, session } = await issueSession(
+      env,
+      {
+        sub: "u1",
+        name: "Ada",
+        email: "a@x.io",
+        groups: [PLATFORM_GROUP],
+        authTime: at,
+        stepUp: true,
+      },
+      at,
+    );
+    const res = await handleAdmin(
+      mkReq("POST", ROTATE, {
+        cookie: `${ADMIN_COOKIE}=${token}`,
+        csrf: session.csrf,
+      }),
+      env,
+      db,
+      ROTATE,
+      { now: at },
+    );
+    const body = (await res.json()) as { kid?: string; message?: string };
+    return { status: res.status, body };
+  }
+
+  it("two rotations in the same second, and two a day apart, never collide", async () => {
+    // The kid used to end in `(now % 100000).toString(36)`: constant within a second and
+    // repeating every 100000 s (~28 h), so a second rotation at either moment collided on
+    // `PRIMARY KEY (product, kid)` and surfaced as an opaque 500 naming neither kid nor cause.
+    const db = makeTestDb();
+    const env = adminEnv(new KvMock(), ["djdl"]);
+    await seedProduct(db, "djdl");
+
+    const first = await rotateAt(env, db, NOW);
+    const sameSecond = await rotateAt(env, db, NOW);
+    const dayLater = await rotateAt(env, db, NOW + 100_000);
+    for (const r of [first, sameSecond, dayLater])
+      expect(r.status, JSON.stringify(r.body)).toBe(200);
+    const kids = [first, sameSecond, dayLater].map((r) => r.body.kid!);
+    expect(new Set(kids).size).toBe(3);
+    for (const kid of kids)
+      expect(kid).toMatch(/^djdl-20\d\d-[0-9a-hjkmnp-tv-z]{8}$/);
+
+    const staged = await db.all<{ kid: string }>(
+      "SELECT kid FROM product_keys WHERE product = 'djdl' AND status = 'staged'",
+    );
+    expect(staged.map((r) => r.kid).sort()).toEqual([...kids].sort());
+  });
+
+  it("a collision on the primary key is a 409 naming the kid, not a 500", async () => {
+    const db = makeTestDb();
+    const env = adminEnv(new KvMock(), ["djdl"]);
+    await seedProduct(db, "djdl");
+    // Another writer takes whatever kid the handler minted in the instant between the mint and
+    // the insert, the only way a 40-bit random suffix can collide.
+    const colliding: Db = {
+      all: (sql, ...params) => db.all(sql, ...params),
+      first: (sql, ...params) => db.first(sql, ...params),
+      run: (sql, ...params) => db.run(sql, ...params),
+      batch: (statements) => db.batch(statements),
+      async runChanges(sql, ...params) {
+        if (sql.includes("INSERT INTO product_keys"))
+          await db.run(
+            `INSERT INTO product_keys (product, kid, alg, public_b64url, enc_private_json, status, created_at)
+             VALUES (?, ?, 'Ed25519', 'taken-pub', '{}', 'staged', ?)`,
+            params[0],
+            params[1],
+            NOW,
+          );
+        return db.runChanges(sql, ...params);
+      },
+    };
+
+    const res = await rotateAt(env, colliding, NOW);
+    expect(res.status).toBe(409);
+    const taken = await db.first<{ kid: string; public_b64url: string }>(
+      "SELECT kid, public_b64url FROM product_keys WHERE public_b64url = 'taken-pub'",
+    );
+    expect(taken).not.toBeNull();
+    expect(res.body.message).toContain(taken!.kid);
+    expect(res.body.message).toContain("already exists");
+    // The existing row is untouched: a reported collision is not a silent overwrite, and the
+    // refused rotation left no second staged key behind.
+    expect(taken!.public_b64url).toBe("taken-pub");
+    const staged = await db.all<{ kid: string }>(
+      "SELECT kid FROM product_keys WHERE product = 'djdl' AND status = 'staged'",
+    );
+    expect(staged.map((r) => r.kid)).toEqual([taken!.kid]);
   });
 });

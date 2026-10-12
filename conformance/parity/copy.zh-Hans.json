@@ -65,6 +65,10 @@
       "title": "服务出现问题",
       "message": "服务无法准备你的设置。请联系开发者。"
     },
+    "signing_unavailable": {
+      "title": "签名不可用",
+      "message": "服务目前无法签署文档。请几分钟后重试。"
+    },
     "device_limit": {
       "title": "已达到设备上限",
       "message": "此许可证已用满所有设备。请替换一台设备以在此使用。"

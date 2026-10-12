@@ -37,6 +37,21 @@ deprecated aliases).
   control plane out of its explicit directory starts fresh in the nested one (a new local token,
   device id and cache); nothing moves, and production's files stay where they are.
 
+Hostile-input fixes.
+
+- **A `blocked` hint outside the block vocabulary cannot unlock the gate.** The gate returns the
+  hint's reason as the status, and `ok`, `grace` and `not-applicable` are usable. `BlockReason` is a
+  closed enum of the three 403 reasons, so the gate cannot be handed another, and the two places that
+  decode a reason from unsigned JSON already refuse a non-member: a 403 body reads as the first reason
+  inside the vocabulary (the nested `error.reason`, then the top-level one), else
+  `channel-not-entitled` for `channel_not_allowed` and `version-too-old`; a cache record whose
+  `blocked.reason` is not a member loads without the hint and keeps the record. No behaviour changes:
+  the five new `gate-matrix.json` rows and `BlockedHintVocabularyTest` now pin it.
+- **A raised payload cap needs a `typ`.** `JwsVerifier.verify` already refuses a `maxPayloadBytes`
+  above 65 536 when no `typ` is named, rather than downgrading the cap; the
+  `bundle-payload-raised-cap-without-typ` vector (`callSiteOmitsTyp`) and the two new trust-kid
+  vectors run in `:conformance`.
+
 Key-custody and offline-bundle fixes (wire contract v4). Each **breaking** line names what to change.
 
 - **Signed-in user (`license.signedinuser`).** `licenseUser(...)`, `LicenseClient.licenseUser()` and `DocProfile.user` read the pairwise subject from a verified licence document's `profile.user`; a malformed or absent member is null.

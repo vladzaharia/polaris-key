@@ -132,3 +132,20 @@ describe("admin SPA", () => {
     );
   });
 });
+
+describe("API tokens", () => {
+  it("is reachable from the sidebar, platform-scoped at #/tokens", async () => {
+    boot("#/", { extra: { "/manage/api/tokens": { tokens: [] } } });
+    await screen.findByRole("heading", { level: 1, name: "Home" });
+    await userEvent.click(
+      within(
+        screen.getAllByRole("navigation", { name: "Console" })[0]!,
+      ).getByRole("link", { name: "API tokens" }),
+    );
+    expect(window.location.hash).toBe("#/tokens");
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "API tokens" }),
+    ).toBeTruthy();
+    expect(await screen.findByText("No API tokens")).toBeTruthy();
+  });
+});

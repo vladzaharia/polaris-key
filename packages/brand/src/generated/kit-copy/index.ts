@@ -657,6 +657,8 @@ export type KitCopyKey =
   | "core.codes.value_not_representable.message"
   | "core.codes.document_not_representable.title"
   | "core.codes.document_not_representable.message"
+  | "core.codes.signing_unavailable.title"
+  | "core.codes.signing_unavailable.message"
   | "core.codes.device_limit.title"
   | "core.codes.device_limit.message"
   | "core.codes.key_entry_limit.title"

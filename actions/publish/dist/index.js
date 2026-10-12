@@ -1182,7 +1182,7 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
       "deprecated": true
     },
     "defaultDeviceLimit": {
-      "$ref": "#/$defs/nonNegativeInteger",
+      "$ref": "#/$defs/deviceLimit",
       "description": "Deprecated: write licensing.defaultDeviceLimit. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
       "deprecated": true
     },
@@ -1235,7 +1235,7 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
     "licensing": {
       "type": "object",
       "properties": {
-        "defaultDeviceLimit": { "$ref": "#/$defs/nonNegativeInteger" },
+        "defaultDeviceLimit": { "$ref": "#/$defs/deviceLimit" },
         "defaultMaxOfflineDays": { "$ref": "#/$defs/nonNegativeInteger" },
         "profiles": { "$ref": "#/$defs/profiles" },
         "tiers": { "$ref": "#/$defs/tiers" },
@@ -1574,6 +1574,12 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
       "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
     },
     "nonNegativeInteger": { "type": "integer", "minimum": 0 },
+    "deviceLimit": {
+      "description": "A device-seat cap: a whole number from 0 to 1000 (MAX_DEVICE_LIMIT in @polaris-key/manifest). The value becomes the bound on claimDeviceSeat's per-seat recursive scan, so an unbounded cap is a denial of service rather than a generous plan. Rejected, never clamped.",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 1000
+    },
     "fingerprintMode": {
       "description": "Drift-tolerance strength: off (never enforce) · lenient (4) · normal (2, default) · strict (0, and a fingerprint becomes mandatory).",
       "enum": ["off", "lenient", "normal", "strict"]
@@ -1587,7 +1593,7 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
         "compatMin": { "$ref": "#/$defs/semver" },
         "compatMax": { "$ref": "#/$defs/semver" },
         "defaultDeviceLimit": {
-          "$ref": "#/$defs/nonNegativeInteger",
+          "$ref": "#/$defs/deviceLimit",
           "description": "Deprecated: write licensing.defaultDeviceLimit. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
           "deprecated": true
         },
@@ -1685,10 +1691,7 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
             "deprecated": true
           },
           "policyDeviceLimit": {
-            "anyOf": [
-              { "$ref": "#/$defs/nonNegativeInteger" },
-              { "type": "null" }
-            ]
+            "anyOf": [{ "$ref": "#/$defs/deviceLimit" }, { "type": "null" }]
           },
           "policyFingerprint": {
             "description": "Fingerprint enforcement for this tier; null (or omitted) inherits the product default.",
@@ -1917,7 +1920,11 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
       "description": "Edge-mint recipe (a Config-service secret-delivery capability, served at /<product>/config/mint/<id>/...). May also live in the release document.",
       "type": "object",
       "properties": {
-        "id": { "$ref": "#/$defs/identifier" },
+        "id": {
+          "description": "A URL path segment on the mint route, held to that route's own alphabet so ingest cannot write a recipe no request could reach.",
+          "type": "string",
+          "pattern": "^[a-z0-9-]{1,64}$"
+        },
         "alg": { "enum": ["ES256", "RS256", "EdDSA"] },
         "signingKeySecret": { "$ref": "#/$defs/secretRef" },
         "kid": {
@@ -1925,9 +1932,22 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
           "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
         },
         "claimsTemplate": { "type": "object" },
-        "ttlSeconds": { "type": "integer", "exclusiveMinimum": 0 },
+        "ttlSeconds": {
+          "description": "Lifetime of a minted token, in seconds. Capped at one hour: the manifest is repo-writable, so it may not dictate how long a leaked minted token stays valid.",
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 3600
+        },
         "audience": {
           "anyOf": [{ "$ref": "#/$defs/label" }, { "type": "null" }]
+        },
+        "requires": {
+          "description": "Who may mint this recipe: none (any device of this product) · registered (a device of this product, stated explicitly) · licensed (a device whose licence is usable; the product must run License). Omitted means licensed: a recipe signs with the product's third-party key, so it fails closed.",
+          "enum": ["none", "registered", "licensed"]
+        },
+        "requiredEntitlement": {
+          "description": "A catalog key that must be present and truthy in the caller's merged payload before this recipe may be minted.",
+          "anyOf": [{ "$ref": "#/$defs/identifier" }, { "type": "null" }]
         }
       },
       "required": ["id", "alg", "signingKeySecret"]
@@ -3014,8 +3034,9 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
       "type": "object",
       "properties": {
         "id": {
+          "description": "A URL path segment on the mint route, held to that route's own alphabet so ingest cannot write a recipe no request could reach.",
           "type": "string",
-          "pattern": "^[A-Za-z0-9._:-]{1,64}$"
+          "pattern": "^[a-z0-9-]{1,64}$"
         },
         "alg": {
           "enum": ["ES256", "RS256", "EdDSA"]
@@ -3032,8 +3053,10 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
           "type": "object"
         },
         "ttlSeconds": {
+          "description": "Lifetime of a minted token, in seconds. Capped at one hour: the manifest is repo-writable, so it may not dictate how long a leaked minted token stays valid.",
           "type": "integer",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "maximum": 3600
         },
         "audience": {
           "anyOf": [
@@ -3041,6 +3064,22 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
               "type": "string",
               "maxLength": 200,
               "pattern": "^[^\\\\u0000-\\\\u001f\\\\u007f]*$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "requires": {
+          "description": "Who may mint this recipe: none (any device of this product) · registered (a device of this product, stated explicitly) · licensed (a device whose licence is usable; the product must run License). Omitted means licensed: a recipe signs with the product's third-party key, so it fails closed.",
+          "enum": ["none", "registered", "licensed"]
+        },
+        "requiredEntitlement": {
+          "description": "A catalog key that must be present and truthy in the caller's merged payload before this recipe may be minted.",
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9._:-]{1,64}$"
             },
             {
               "type": "null"
@@ -3925,6 +3964,14 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
             "properties": { "kind": { "const": "config" } },
             "required": ["kind"]
           }
+        },
+        {
+          "$comment": "secret: true is a category error on a flag entry: a flag's value is an entitlement, and entitlements are never sealed.",
+          "if": {
+            "properties": { "kind": { "const": "flag" } },
+            "required": ["kind"]
+          },
+          "then": { "properties": { "secret": { "const": false } } }
         },
         {
           "$comment": "user is only valid on config entries (user_setting_wrong_kind). On a key whose managementDefault is enforced or hidden it has no effect, which the validator reports as a warning (user_setting_locked_default).",
@@ -11451,12 +11498,19 @@ init_define_PKEY_EMBEDDED_SCHEMAS();
 
 // src/index.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { mkdir as mkdir12, readFile as readFile25, writeFile as writeFile21 } from "node:fs/promises";
+import { mkdir as mkdir12, readFile as readFile25, writeFile as writeFile20 } from "node:fs/promises";
 import path30 from "node:path";
 
 // src/bundle.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { stat, writeFile } from "node:fs/promises";
+import {
+  closeSync,
+  constants as fsc,
+  fchmodSync,
+  openSync,
+  writeSync
+} from "node:fs";
+import { stat } from "node:fs/promises";
 import path from "node:path";
 
 // src/untrusted.ts
@@ -12429,12 +12483,19 @@ function guardOutput(out, env) {
 
 // src/bundle.ts
 var DEFAULT_BASE_URL = "https://key.plrs.im";
-var ADMIN_COOKIE_ENV = "PKEY_ADMIN_COOKIE";
-var ADMIN_COOKIE_NAME = "__Host-pkey_admin";
-var CSRF_HEADER = "X-PKey-CSRF";
+var ADMIN_TOKEN_ENV = "PKEY_ADMIN_TOKEN";
+var ADMIN_TOKEN_PREFIX = "pkeya_";
+var ADMIN_TOKEN = /^pkeya_[A-Za-z0-9_-]{43,}$/;
 var MAX_GRACE_DAYS = 365;
 var DEVICE_ID = /^[A-Za-z0-9_-]{32}$/;
+var LOOPBACK_HOSTS = [
+  "localhost",
+  "127.0.0.1",
+  "::1",
+  "[::1]"
+];
 var BUNDLE_EXTENSION = ".pkeybundle";
+var NOFOLLOW = typeof fsc.O_NOFOLLOW === "number" ? fsc.O_NOFOLLOW : 0;
 var BUNDLE_USAGE = "Usage: pkey bundle --product <slug> --device <id> --grace-days <n> [--no-config] [--license <id>] [--base-url <url>] [--out <file>] [--force]";
 function bundleFileName(product, deviceId) {
   const safe = product.replace(/[^A-Za-z0-9._-]+/g, "-");
@@ -12456,10 +12517,10 @@ ${BUNDLE_USAGE}`);
     );
   }
   const licenseId = opts.licenseId?.trim() || void 0;
-  const cookie = adminCookie(opts.cookie);
-  const baseUrl = (opts.baseUrl?.trim() || DEFAULT_BASE_URL).replace(
-    /\/+$/,
-    ""
+  const token = adminToken(opts.token);
+  const baseUrl = normalizeBaseUrl(
+    opts.baseUrl?.trim() || DEFAULT_BASE_URL,
+    ADMIN_TOKEN_ENV
   );
   const file = path.resolve(
     opts.cwd,
@@ -12468,7 +12529,6 @@ ${BUNDLE_USAGE}`);
   const force = opts.force === true;
   await refuseIfExists(file, force);
   const f = opts.fetchImpl ?? fetch;
-  const csrf = await readCsrf(f, baseUrl, cookie, opts.signal);
   const url = `${baseUrl}/manage/api/products/${encodeURIComponent(product)}/bundles`;
   const body = JSON.stringify({
     deviceId,
@@ -12481,8 +12541,7 @@ ${BUNDLE_USAGE}`);
     headers: {
       accept: "application/json",
       "content-type": "application/json",
-      cookie,
-      [CSRF_HEADER]: csrf
+      authorization: `Bearer ${token}`
     },
     body,
     signal: opts.signal
@@ -12496,7 +12555,7 @@ ${BUNDLE_USAGE}`);
       `${url} answered ${res.status} without a bundle. Expected {bundleId, bundle}.`
     );
   }
-  await writeNewFile(file, bundle, force);
+  writeNewFile(file, bundle, force);
   return {
     bundleId,
     bundle,
@@ -12507,35 +12566,42 @@ ${BUNDLE_USAGE}`);
     url
   };
 }
-async function readCsrf(f, baseUrl, cookie, signal) {
-  const url = `${baseUrl}/manage/api/me`;
-  const res = await request(f, url, {
-    headers: { accept: "application/json", cookie },
-    signal
-  });
-  if (!res.ok)
-    throw await httpError(res, `Reading the admin session at ${url}`);
-  const body = await readJson(res, url);
-  const csrf = asString(body.csrf);
-  if (!csrf) {
-    throw new Error(
-      `${url} returned no CSRF token, so the mint cannot be authorised. Check that ${ADMIN_COOKIE_ENV} holds a console session cookie and not, say, a proxy's.`
-    );
-  }
-  return csrf;
-}
-function adminCookie(raw, command = "`pkey bundle` mints") {
+function adminToken(raw) {
   const value = raw?.trim();
   if (!value) {
     throw new Error(
-      `${ADMIN_COOKIE_ENV} is not set.
-${command} through the admin API, which is authenticated by the console's browser session — there is no API token yet.
-Sign in to the console, then in devtools: Application -> Cookies -> the console origin -> copy the \`${ADMIN_COOKIE_NAME}\` cookie, and run:
-  export ${ADMIN_COOKIE_ENV}='${ADMIN_COOKIE_NAME}=<value>'
-It is a short-lived session credential carrying full admin authority: do not commit it and do not export it into a shared shell.`
+      `${ADMIN_TOKEN_ENV} is not set.
+\`pkey bundle\` mints through the admin API, which authenticates this command with an admin API token sent as \`Authorization: Bearer pkeya_…\`.
+Mint one in the console: /manage -> API tokens -> New token. Choose a label that says where it will run and an expiry. The value is shown ONCE, at mint — nothing stored can reproduce it — so copy it then, and run:
+  export ${ADMIN_TOKEN_ENV}='${ADMIN_TOKEN_PREFIX}…'
+It can mint an offline bundle for any product on the platform: do not commit it, and do not export it into a shell other people share. If it leaks, revoke that one token in the console.`
     );
   }
-  return value.includes("=") ? value : `${ADMIN_COOKIE_NAME}=${value}`;
+  if (!ADMIN_TOKEN.test(value)) {
+    const prefix = value.startsWith(ADMIN_TOKEN_PREFIX) ? "" : ` starting \`${clip(value.split(/[=\s]/, 1)[0] ?? "", 12)}\``;
+    throw new Error(
+      `${ADMIN_TOKEN_ENV} does not look like an admin API token. Expected \`${ADMIN_TOKEN_PREFIX}\` followed by 43 base64url characters (A-Z a-z 0-9 - _); got ${value.length} characters${prefix}.
+A console session cookie is a DIFFERENT credential and is no longer accepted here. Mint a token in the console (/manage -> API tokens) and export that instead.`
+    );
+  }
+  return value;
+}
+function normalizeBaseUrl(raw, credentialEnv) {
+  let url;
+  try {
+    url = new URL(raw);
+  } catch {
+    throw new Error(
+      `--base-url is not a valid URL: ${raw}. Give a full origin, e.g. ${DEFAULT_BASE_URL}.`
+    );
+  }
+  const loopback = url.protocol === "http:" && LOOPBACK_HOSTS.includes(url.hostname.toLowerCase());
+  if (url.protocol !== "https:" && !loopback) {
+    throw new Error(
+      `--base-url must be https: (got ${url.protocol}//${url.host}). ${credentialEnv} is sent to this origin as a credential, so plaintext http:// is only accepted for localhost/127.0.0.1 during local development.`
+    );
+  }
+  return raw.replace(/\/+$/, "");
 }
 async function request(f, url, init) {
   try {
@@ -12558,10 +12624,10 @@ ${hint}` : ""}`
 }
 function statusHint(status) {
   if (status === 401) {
-    return `The admin session cookie in ${ADMIN_COOKIE_ENV} is missing or expired. Sign in to the console again and copy a fresh \`${ADMIN_COOKIE_NAME}\` cookie (devtools -> Application -> Cookies).`;
+    return `The admin API token in ${ADMIN_TOKEN_ENV} was refused. The server answers one 401 for unknown, revoked and expired alike, on purpose — check the roster in the console (/manage -> API tokens) to see which, and mint a replacement there.`;
   }
   if (status === 403) {
-    return `Rejected on authorization or CSRF. Confirm the account is a platform admin, and that ${ADMIN_COOKIE_ENV} holds the CURRENT \`${ADMIN_COOKIE_NAME}\` value — the ${CSRF_HEADER} token is read from /manage/api/me with that same cookie, so a half-stale session fails here.`;
+    return "Authenticated, but not allowed. Two causes look identical from here: the token is not scoped for this route (a `pkeya_` token needs `bundles:mint`, and every admin route outside the bundle mint refuses tokens outright), or the identity behind it is not a platform admin.";
   }
   if (status === 404) {
     return "No such product, or it has no usable signing key — a product that cannot sign cannot mint.";
@@ -12617,9 +12683,32 @@ async function refuseIfExists(file, force) {
   }
   throw new Error(`${file} already exists. Pass --force to overwrite.`);
 }
-async function writeNewFile(file, body, force) {
-  await refuseIfExists(file, force);
-  await writeFile(file, body, "utf8");
+function writeNewFile(file, body, force) {
+  const flags = force ? fsc.O_WRONLY | fsc.O_CREAT | fsc.O_TRUNC | NOFOLLOW : fsc.O_WRONLY | fsc.O_CREAT | fsc.O_EXCL | NOFOLLOW;
+  let fd;
+  try {
+    fd = openSync(file, flags, 384);
+  } catch (err) {
+    throw openFailure(file, err);
+  }
+  try {
+    try {
+      fchmodSync(fd, 384);
+    } catch {
+    }
+    writeSync(fd, body);
+  } finally {
+    closeSync(fd);
+  }
+}
+function openFailure(file, err) {
+  if (err.code === "EEXIST")
+    return new Error(`${file} already exists. Pass --force to overwrite.`);
+  if (err.code === "ELOOP")
+    return new Error(
+      `${file} is a symbolic link, and this command refuses to follow one. A bundle is a signed credential-bearing artifact; write it to a real path in a directory you control.`
+    );
+  return new Error(`Could not write the bundle to ${file}: ${err.message}`);
 }
 function clip(value, max = 200) {
   return value.length > max ? `${value.slice(0, max)}…` : value;
@@ -13242,9 +13331,24 @@ function literal(cp3) {
 }
 var Program = class {
   insts = [];
-  emit(inst) {
-    if (this.insts.length >= MAX_PATTERN_PROGRAM)
+  /** Compile-time work units charged so far: emitted instructions AND pure traversal. */
+  steps = 0;
+  /**
+   * Charge one unit of compile-time work, refusing the pattern once the budget is gone.
+   *
+   * Counting emitted instructions is not enough. A repeated body that emits nothing still costs
+   * a recursion, and `{n,m}` multiplies those recursions: `(?:(?:(?:){100}){100}){100}` is a
+   * million traversals for a zero-instruction program, and each nesting level is another factor
+   * of a hundred, so an instruction-only budget never fires while compilation itself runs away.
+   * The budget therefore prices the WORK, not its output: `MAX_PATTERN_PROGRAM` is the ceiling
+   * on both, which makes compile time bounded by the same constant that bounds match time.
+   */
+  spend() {
+    if (++this.steps > MAX_PATTERN_PROGRAM)
       throw new UnsupportedPatternError(`pattern: expands past the ${MAX_PATTERN_PROGRAM}-instruction budget`);
+  }
+  emit(inst) {
+    this.spend();
     this.insts.push(inst);
     return this.insts.length - 1;
   }
@@ -13257,6 +13361,7 @@ var Program = class {
   }
 };
 function emitNode(p, node) {
+  p.spend();
   switch (node.k) {
     case "empty":
       return;
@@ -13295,8 +13400,10 @@ function emitNode(p, node) {
     }
     case "rep": {
       const { min, max } = node;
-      for (let i = 0; i < min; i++)
+      for (let i = 0; i < min; i++) {
+        p.spend();
         emitNode(p, node.node);
+      }
       if (max === Infinity) {
         const split = p.emit({ op: "split", x: 0, y: 0 });
         p.setX(split, p.insts.length);
@@ -13306,6 +13413,7 @@ function emitNode(p, node) {
       } else {
         const splits = [];
         for (let i = min; i < max; i++) {
+          p.spend();
           const split = p.emit({ op: "split", x: 0, y: 0 });
           p.setX(split, p.insts.length);
           splits.push(split);
@@ -18270,13 +18378,13 @@ var RESERVED_PROPERTY_NAMES = /* @__PURE__ */ new Set([
 ]);
 var CLIENT_ID_RE = /^[A-Za-z0-9][A-Za-z0-9._:@/~-]{0,255}$/;
 var KID_RE = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
+var MINT_ID_RE = /^[a-z0-9-]{1,64}$/;
 var CHANNEL_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 var MANUAL_CHANNEL_REGEX_MAX = 80;
 function compileManualChannelRegex(source) {
   if (source.length > MANUAL_CHANNEL_REGEX_MAX) return null;
-  const anchored = `^(?:${source})$`;
   try {
-    return new RegExp(anchored);
+    return compileLinearPattern(`^(?:${source})$`);
   } catch {
     return null;
   }
@@ -18519,9 +18627,16 @@ var MAX_TEXT_LENGTH = 2e3;
 var MAX_PROBE_TARGET_LENGTH = 512;
 var MAX_REDIRECT_URIS = 20;
 var MAX_URL_LENGTH = 2048;
+var MAX_DEVICE_LIMIT = 1e3;
 var MAX_MANIFEST_BYTES = 64 * 1024;
 var MAX_MANIFEST_DEPTH = 32;
 var MAX_YAML_ALIASES = 100;
+var MAX_EDGE_MINT_TTL_SECONDS = 3600;
+var EDGE_MINT_REQUIRES_VALUES = [
+  "none",
+  "registered",
+  "licensed"
+];
 var RELEASE_ACCESS_VALUES = ["public", "authenticated", "licensed"];
 var OIDC_PROVIDER_VALUES = ["platform", "custom"];
 var FINGERPRINT_MODE_VALUES = ["off", "lenient", "normal", "strict"];
@@ -18668,11 +18783,9 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
       );
     }
   }
+  const declaredDeviceLimit = productNode.defaultDeviceLimit ?? productRoot.defaultDeviceLimit ?? licensing.defaultDeviceLimit;
   for (const [key, path32] of [
-    [
-      productNode.defaultDeviceLimit ?? productRoot.defaultDeviceLimit ?? licensing.defaultDeviceLimit,
-      "/licensing/defaultDeviceLimit"
-    ],
+    [declaredDeviceLimit, "/licensing/defaultDeviceLimit"],
     [
       productNode.defaultMaxOfflineDays ?? productRoot.defaultMaxOfflineDays ?? licensing.defaultMaxOfflineDays,
       "/licensing/defaultMaxOfflineDays"
@@ -18687,6 +18800,15 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
         "Value must be a non-negative integer."
       );
     }
+  }
+  if (typeof declaredDeviceLimit === "number" && Number.isInteger(declaredDeviceLimit) && declaredDeviceLimit > MAX_DEVICE_LIMIT) {
+    add4(
+      errors,
+      "product",
+      "/licensing/defaultDeviceLimit",
+      "invalid_device_limit",
+      `defaultDeviceLimit must be at most ${MAX_DEVICE_LIMIT}.`
+    );
   }
   validateLicensingSettings(licensing, errors);
   validateIdentityBlock(productRoot, modules, errors, warnings);
@@ -18826,13 +18948,13 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
         `Tier references unknown profile ${profile}.`
       );
     }
-    if (record.policyDeviceLimit !== void 0 && !nonNegativeInteger2(record.policyDeviceLimit)) {
+    if (record.policyDeviceLimit !== void 0 && (!nonNegativeInteger2(record.policyDeviceLimit) || typeof record.policyDeviceLimit === "number" && record.policyDeviceLimit > MAX_DEVICE_LIMIT)) {
       add4(
         errors,
         "product",
         `/licensing/tiers/${i}/policyDeviceLimit`,
         "invalid_device_limit",
-        "policyDeviceLimit must be a non-negative integer."
+        `policyDeviceLimit must be a non-negative integer of at most ${MAX_DEVICE_LIMIT}.`
       );
     }
     if (record.rank !== void 0 && !nonNegativeInteger2(record.rank)) {
@@ -19221,7 +19343,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
                 "release",
                 `${at}/regex`,
                 "invalid_manual_channel",
-                `manualChannels[].regex must be a compilable regular expression of at most ${MANUAL_CHANNEL_REGEX_MAX} characters (it is matched anchored against release tags).`
+                `manualChannels[].regex must be a backtracking-free regular expression of at most ${MANUAL_CHANNEL_REGEX_MAX} characters (it is matched anchored against release tags; backreferences, lookaround and \\b are refused because they cannot be matched in linear time).`
               );
             }
           }
@@ -19233,7 +19355,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
           "release",
           "/release/stableTagPattern",
           "invalid_stable_tag_pattern",
-          `release.stableTagPattern must be a compilable regular expression of at most ${MANUAL_CHANNEL_REGEX_MAX} characters (it is matched anchored against release tags).`
+          `release.stableTagPattern must be a backtracking-free regular expression of at most ${MANUAL_CHANNEL_REGEX_MAX} characters (it is matched anchored against release tags; backreferences, lookaround and \\b are refused because they cannot be matched in linear time).`
         );
       }
       if (relRoot.ignoreTags !== void 0) {
@@ -19386,8 +19508,8 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
       raw.id,
       `/edgeMint/${i}/id`,
       "invalid_edge_mint_id",
-      ID_RE,
-      "Edge mint ids must match ^[A-Za-z0-9._:-]{1,64}$."
+      MINT_ID_RE,
+      "Edge mint ids must match ^[a-z0-9-]{1,64}$ (the mint route's own alphabet)."
     );
     constrained(
       errors,
@@ -19426,15 +19548,34 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
         "Edge mint signing key refs must be stable uppercase names."
       );
     }
-    if (raw.ttlSeconds !== void 0 && !positiveInteger2(raw.ttlSeconds)) {
+    const ttl = raw.ttlSeconds;
+    if (ttl !== void 0 && (!positiveInteger2(ttl) || typeof ttl === "number" && ttl > MAX_EDGE_MINT_TTL_SECONDS)) {
       add4(
         errors,
         "release",
         `/edgeMint/${i}/ttlSeconds`,
         "invalid_ttl",
-        "Edge mint TTL must be a positive integer."
+        `Edge mint TTL must be a positive integer of at most ${MAX_EDGE_MINT_TTL_SECONDS} seconds.`
       );
     }
+    if (raw.requires !== void 0 && !isOneOf2(raw.requires, EDGE_MINT_REQUIRES_VALUES)) {
+      add4(
+        errors,
+        "release",
+        `/edgeMint/${i}/requires`,
+        "invalid_edge_mint_requires",
+        "Edge mint requires must be none, registered, or licensed."
+      );
+    }
+    constrained(
+      errors,
+      "release",
+      raw.requiredEntitlement,
+      `/edgeMint/${i}/requiredEntitlement`,
+      "invalid_edge_mint_entitlement",
+      ID_RE,
+      "Edge mint requiredEntitlement must be a catalog key matching ^[A-Za-z0-9._:-]{1,64}$."
+    );
   }
   if (productRoot.fingerprint !== void 0 && !isRecord6(productRoot.fingerprint)) {
     add4(
@@ -20710,7 +20851,7 @@ function validateAppDeliverable(errors, warnings, relRoot, def, packIds, deliver
         "release",
         "/release/deliverables/app/versioning/stableTagPattern",
         "invalid_stable_tag_pattern",
-        `deliverables.app.versioning.stableTagPattern must be a compilable regular expression of at most ${MANUAL_CHANNEL_REGEX_MAX} characters (it is matched anchored against release tags).`
+        `deliverables.app.versioning.stableTagPattern must be a backtracking-free regular expression of at most ${MANUAL_CHANNEL_REGEX_MAX} characters (it is matched anchored against release tags; backreferences, lookaround and \\b are refused because they cannot be matched in linear time).`
       );
     }
     if (versioning.ignoreTags !== void 0) {
@@ -21444,8 +21585,17 @@ function normalizeEdgeMint(raw) {
     signingKeySecret: String(raw.signingKeySecret ?? ""),
     kid: typeof raw.kid === "string" ? raw.kid : void 0,
     claimsTemplate: asRecord(raw.claimsTemplate),
-    ttlSeconds: typeof raw.ttlSeconds === "number" ? raw.ttlSeconds : 3600,
-    audience: typeof raw.audience === "string" ? raw.audience : null
+    // Validation has already refused anything above the ceiling (reject, never coerce), so the
+    // `Math.min` is belt-and-braces for a caller that reaches the normalizer directly. The
+    // omitted-value default has always been one hour, which is also the ceiling.
+    ttlSeconds: typeof raw.ttlSeconds === "number" ? Math.min(raw.ttlSeconds, MAX_EDGE_MINT_TTL_SECONDS) : MAX_EDGE_MINT_TTL_SECONDS,
+    audience: typeof raw.audience === "string" ? raw.audience : null,
+    // Same shape as `ttlSeconds`: validation has already refused anything outside the enum, so
+    // this only decides the OMITTED case, and the omitted case is `licensed`, the same
+    // fail-closed default the column carries. A recipe that means to be reachable without a
+    // licence has to say so.
+    requires: isOneOf2(raw.requires, EDGE_MINT_REQUIRES_VALUES) ? raw.requires : "licensed",
+    requiredEntitlement: typeof raw.requiredEntitlement === "string" && raw.requiredEntitlement ? raw.requiredEntitlement : null
   };
 }
 function collectRequiredSecrets(secrets, product, release) {
@@ -21572,6 +21722,9 @@ function validateCatalogShape(catalog) {
         );
       }
     }
+    if (entry.secret === true && entry.kind === "flag") {
+      issues.push(`entries[${i}].secret is not valid for flag entries.`);
+    }
     if (entry.managementDefault !== void 0) {
       if (entry.kind !== "config") {
         issues.push(
@@ -21684,7 +21837,7 @@ function webOriginProblem(value) {
   }
   return null;
 }
-var LOOPBACK_HOSTS = /* @__PURE__ */ new Set(["localhost", "127.0.0.1", "[::1]"]);
+var LOOPBACK_HOSTS2 = /* @__PURE__ */ new Set(["localhost", "127.0.0.1", "[::1]"]);
 var IPV4_LITERAL_RE = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
 var IPV6_GROUP_RE = /^[0-9a-fA-F]{1,4}$/;
 function issuerUrlProblem(value) {
@@ -21705,7 +21858,7 @@ function issuerUrlProblem(value) {
   if (url.search || url.hash) {
     return "must not carry a query string or fragment";
   }
-  const loopback = url.protocol === "http:" && LOOPBACK_HOSTS.has(url.hostname.toLowerCase());
+  const loopback = url.protocol === "http:" && LOOPBACK_HOSTS2.has(url.hostname.toLowerCase());
   if (url.protocol !== "https:" && !loopback) {
     return "must use https (http is accepted only for localhost during development)";
   }
@@ -21829,7 +21982,7 @@ function secretUrlTemplateProblem(value) {
     return "must be an absolute https URL";
   }
   if (url.username || url.password) return "must not embed credentials";
-  const loopback = LOOPBACK_HOSTS.has(url.hostname.toLowerCase());
+  const loopback = LOOPBACK_HOSTS2.has(url.hostname.toLowerCase());
   if (url.protocol !== "https:" && !(url.protocol === "http:" && loopback)) {
     return "must use https (http is accepted only for localhost during development)";
   }
@@ -22115,6 +22268,589 @@ function add4(list2, file, path32, code, message) {
   list2.push({ file, path: path32, code, message });
 }
 
+// src/listing.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+
+// src/godotProject.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+import { createHash } from "node:crypto";
+import { readFile, stat as stat2 } from "node:fs/promises";
+import path2 from "node:path";
+var ConfigParser = class {
+  constructor(src, file) {
+    this.src = src;
+    this.file = file;
+  }
+  src;
+  file;
+  i = 0;
+  fail(message) {
+    const line = this.src.slice(0, this.i).split("\n").length;
+    throw new Error(`${this.file}:${line}: ${message}`);
+  }
+  peek() {
+    return this.src[this.i] ?? "";
+  }
+  skipSpace(newlines) {
+    for (; ; ) {
+      const c = this.peek();
+      if (c === " " || c === "	" || c === "\r" || newlines && c === "\n")
+        this.i++;
+      else if ((c === ";" || c === "#") && newlines) {
+        while (this.i < this.src.length && this.peek() !== "\n") this.i++;
+      } else return;
+    }
+  }
+  parse() {
+    const out = { "": {} };
+    let section = "";
+    for (; ; ) {
+      this.skipSpace(true);
+      if (this.i >= this.src.length) return out;
+      if (this.peek() === "[") {
+        const end = this.src.indexOf("]", this.i);
+        const eol = this.src.indexOf("\n", this.i);
+        if (end < 0 || eol >= 0 && end > eol) this.fail("unclosed section");
+        section = this.src.slice(this.i + 1, end).trim();
+        out[section] ??= {};
+        this.i = end + 1;
+        continue;
+      }
+      const key = this.key();
+      this.skipSpace(false);
+      if (this.peek() !== "=") this.fail(`expected "=" after ${key}`);
+      this.i++;
+      this.skipSpace(false);
+      out[section][key] = this.value();
+      this.skipSpace(false);
+      const c = this.peek();
+      if (c === ";" || c === "#") this.skipSpace(true);
+      else if (c !== "\n" && c !== "")
+        this.fail(`unexpected ${JSON.stringify(c)}`);
+    }
+  }
+  key() {
+    if (this.peek() === '"') return this.string();
+    const start = this.i;
+    while (this.i < this.src.length && !"=\n".includes(this.peek())) this.i++;
+    const key = this.src.slice(start, this.i).trim();
+    if (!key) this.fail("empty key");
+    return key;
+  }
+  string() {
+    const start = this.i;
+    this.i++;
+    let out = "";
+    for (; ; ) {
+      if (this.i >= this.src.length) {
+        this.i = start;
+        this.fail("unterminated string");
+      }
+      const c = this.src[this.i++];
+      if (c === '"') return out;
+      if (c !== "\\") {
+        out += c;
+        continue;
+      }
+      const e = this.src[this.i++] ?? "";
+      switch (e) {
+        case "n":
+          out += "\n";
+          break;
+        case "t":
+          out += "	";
+          break;
+        case "r":
+          out += "\r";
+          break;
+        case "b":
+          out += "\b";
+          break;
+        case "f":
+          out += "\f";
+          break;
+        case "u":
+        case "U": {
+          const len = e === "u" ? 4 : 6;
+          const hex5 = this.src.slice(this.i, this.i + len);
+          if (!/^[0-9A-Fa-f]+$/.test(hex5) || hex5.length !== len)
+            this.fail("invalid unicode escape");
+          out += String.fromCodePoint(parseInt(hex5, 16));
+          this.i += len;
+          break;
+        }
+        default:
+          out += e;
+      }
+    }
+  }
+  list(close) {
+    const out = [];
+    this.skipSpace(true);
+    if (this.peek() === close) {
+      this.i++;
+      return out;
+    }
+    for (; ; ) {
+      this.skipSpace(true);
+      out.push(this.value());
+      this.skipSpace(true);
+      const c = this.src[this.i++];
+      if (c === close) return out;
+      if (c !== ",") this.fail(`expected "," or "${close}"`);
+      this.skipSpace(true);
+      if (this.peek() === close) {
+        this.i++;
+        return out;
+      }
+    }
+  }
+  value() {
+    const c = this.peek();
+    if (c === '"') return this.string();
+    if ((c === "&" || c === "^") && this.src[this.i + 1] === '"') {
+      this.i++;
+      return this.string();
+    }
+    if (c === "[") {
+      this.i++;
+      return this.list("]");
+    }
+    if (c === "{") {
+      this.i++;
+      const out = {};
+      this.skipSpace(true);
+      if (this.peek() === "}") {
+        this.i++;
+        return out;
+      }
+      for (; ; ) {
+        this.skipSpace(true);
+        const k = this.value();
+        this.skipSpace(true);
+        if (this.src[this.i++] !== ":")
+          this.fail('expected ":" in a dictionary');
+        this.skipSpace(true);
+        out[typeof k === "string" ? k : JSON.stringify(k)] = this.value();
+        this.skipSpace(true);
+        const d = this.src[this.i++];
+        if (d === "}") return out;
+        if (d !== ",") this.fail('expected "," or "}"');
+        this.skipSpace(true);
+        if (this.peek() === "}") {
+          this.i++;
+          return out;
+        }
+      }
+    }
+    const num = /^[-+]?(?:\d+\.?\d*(?:e[-+]?\d+)?|\.\d+(?:e[-+]?\d+)?)/i.exec(
+      this.src.slice(this.i, this.i + 64)
+    );
+    if (num) {
+      this.i += num[0].length;
+      return Number(num[0]);
+    }
+    const ident = /^[A-Za-z_][A-Za-z0-9_]*/.exec(
+      this.src.slice(this.i, this.i + 128)
+    );
+    if (!ident) this.fail(`unexpected ${JSON.stringify(c)}`);
+    this.i += ident[0].length;
+    const word = ident[0];
+    if (word === "true") return true;
+    if (word === "false") return false;
+    if (word === "null") return null;
+    if (word === "inf" || word === "inf_neg" || word === "nan") return null;
+    let type = word;
+    if (this.peek() === "[") {
+      const end = this.src.indexOf("]", this.i);
+      if (end < 0) this.fail("unclosed type");
+      type += this.src.slice(this.i, end + 1);
+      this.i = end + 1;
+    }
+    this.skipSpace(false);
+    if (this.peek() !== "(") this.fail(`unexpected word ${word}`);
+    this.i++;
+    return { $type: type, args: this.list(")") };
+  }
+};
+function parseGodotConfig(text, file = "config") {
+  return new ConfigParser(text.replace(/^\uFEFF/, ""), file).parse();
+}
+var PLATFORMS = {
+  Android: "android",
+  iOS: "ios",
+  macOS: "macos",
+  "Windows Desktop": "windows",
+  Linux: "linux",
+  "Linux/X11": "linux",
+  Web: "web",
+  HTML5: "web"
+};
+var ANDROID_CATEGORIES = [
+  "accessibility",
+  "music",
+  "games",
+  "photo-and-video",
+  "navigation",
+  "news",
+  "productivity",
+  "social-networking",
+  "photo-and-video",
+  null
+];
+var str2 = (v) => typeof v === "string" && v.trim() !== "" ? v.trim() : void 0;
+async function exists(file) {
+  try {
+    return (await stat2(file)).isFile();
+  } catch {
+    return false;
+  }
+}
+function pngSize(bytes) {
+  const sig = [137, 80, 78, 71, 13, 10, 26, 10];
+  if (bytes.length < 24 || !sig.every((b, i) => bytes[i] === b)) return null;
+  if (String.fromCharCode(...bytes.slice(12, 16)) !== "IHDR") return null;
+  const v = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  return { width: v.getUint32(16), height: v.getUint32(20) };
+}
+function resolveResPath(root, res) {
+  if (!res.startsWith("res://")) return null;
+  const rel = res.slice("res://".length);
+  const file = path2.resolve(root, rel);
+  const within = path2.relative(root, file);
+  if (!within || within.startsWith("..") || path2.isAbsolute(within))
+    return null;
+  return file;
+}
+async function readGodotListing(dir, opts = {}) {
+  const root = path2.basename(dir) === "project.godot" ? path2.dirname(dir) : path2.resolve(dir);
+  const projectFile = path2.join(root, "project.godot");
+  let projectText;
+  try {
+    projectText = await readFile(projectFile, "utf8");
+  } catch {
+    throw new Error(
+      `No project.godot in ${root}: --godot takes the Godot project's directory.`
+    );
+  }
+  const project = parseGodotConfig(projectText, "project.godot");
+  const app = project.application ?? {};
+  const warnings = [];
+  const listing = {
+    project: path2.basename(root),
+    versions: [],
+    bundleIds: [],
+    categoryHints: [],
+    icons: []
+  };
+  const name = str2(app["config/name"]);
+  if (name) listing.name = name;
+  const localized = app["config/name_localized"];
+  if (localized && typeof localized === "object" && !Array.isArray(localized) && !("$type" in localized)) {
+    const names = {};
+    for (const [locale, v] of Object.entries(localized)) {
+      const n = str2(v);
+      if (n) names[locale] = n;
+    }
+    if (Object.keys(names).length) listing.nameLocalized = names;
+  }
+  const version = str2(app["config/version"]);
+  if (version) listing.versions.push({ platform: "project", value: version });
+  const presetsFile = path2.join(root, "export_presets.cfg");
+  const presetsRead = [];
+  const options = {};
+  if (await exists(presetsFile)) {
+    const cfg = parseGodotConfig(
+      await readFile(presetsFile, "utf8"),
+      "export_presets.cfg"
+    );
+    const sections = Object.keys(cfg).map((s) => /^preset\.(\d+)$/.exec(s)).filter((m) => m !== null).sort((a, b) => Number(a[1]) - Number(b[1]));
+    for (const m of sections) {
+      const preset = cfg[m[0]];
+      const presetName = str2(preset.name) ?? m[0];
+      const godotPlatform = str2(preset.platform) ?? "";
+      const platform = PLATFORMS[godotPlatform];
+      if (opts.presets?.length ? !opts.presets.includes(presetName) : platform && options[platform])
+        continue;
+      if (!platform) {
+        warnings.push(
+          `preset "${presetName}": platform "${godotPlatform}" is not read`
+        );
+        continue;
+      }
+      if (options[platform]) {
+        warnings.push(
+          `preset "${presetName}": a ${platform} preset was already read`
+        );
+        continue;
+      }
+      options[platform] = cfg[`${m[0]}.options`] ?? {};
+      presetsRead.push(`${presetName} (${godotPlatform})`);
+    }
+    for (const p of opts.presets ?? [])
+      if (!presetsRead.some((r) => r.startsWith(`${p} (`)))
+        warnings.push(`no export preset named "${p}"`);
+  } else if (opts.presets?.length) {
+    throw new Error(
+      `--preset was given but ${root} has no export_presets.cfg.`
+    );
+  }
+  const opt = (platform, key) => str2(options[platform]?.[key]);
+  for (const [platform, key] of [
+    ["android", "version/name"],
+    ["ios", "application/short_version"],
+    ["macos", "application/short_version"],
+    ["windows", "application/product_version"]
+  ]) {
+    const v = opt(platform, key);
+    if (v) listing.versions.push({ platform, value: v });
+  }
+  for (const [platform, key] of [
+    ["ios", "application/bundle_identifier"],
+    ["macos", "application/bundle_identifier"],
+    ["android", "package/unique_name"]
+  ]) {
+    const v = opt(platform, key);
+    if (!v) continue;
+    if (v.includes("$"))
+      warnings.push(
+        `${platform} ${key} "${v}" is a template (it holds $), not an id`
+      );
+    else listing.bundleIds.push({ platform, value: v });
+  }
+  const macCategory = opt("macos", "application/app_category");
+  if (macCategory)
+    listing.categoryHints.push({ platform: "macos", value: macCategory });
+  const androidCategory = options.android?.["package/app_category"];
+  if (typeof androidCategory === "number") {
+    const hint = ANDROID_CATEGORIES[androidCategory];
+    if (hint) listing.categoryHints.push({ platform: "android", value: hint });
+  }
+  const copyright = opt("macos", "application/copyright") ?? opt("windows", "application/copyright");
+  if (copyright) listing.copyright = copyright;
+  const company = opt("windows", "application/company_name");
+  if (company) listing.company = company;
+  const master = opt("ios", "icons/app_store_1024x1024") && {
+    setting: "icons/app_store_1024x1024",
+    path: opt("ios", "icons/app_store_1024x1024")
+  } || opt("ios", "icons/icon_1024x1024") && {
+    setting: "icons/icon_1024x1024",
+    path: opt("ios", "icons/icon_1024x1024")
+  } || str2(app["config/icon"]) && {
+    setting: "application/config/icon",
+    path: str2(app["config/icon"])
+  } || null;
+  const wanted = [];
+  if (master) wanted.push({ slot: "icon-master", ...master });
+  for (const [slot, layer] of [
+    ["icon-adaptive-fg", "foreground"],
+    ["icon-adaptive-bg", "background"],
+    ["icon-adaptive-mono", "monochrome"]
+  ]) {
+    const setting = `launcher_icons/adaptive_${layer}_432x432`;
+    const p = opt("android", setting);
+    if (p) wanted.push({ slot, setting, path: p });
+  }
+  for (const w of wanted) {
+    const icon2 = { slot: w.slot, path: w.path, setting: w.setting };
+    const file = resolveResPath(root, w.path);
+    if (!file) {
+      warnings.push(
+        `${w.setting} "${w.path}" is not a res:// path inside the project; it is reported without a digest`
+      );
+    } else if (!await exists(file)) {
+      warnings.push(`${w.setting} "${w.path}" does not exist in the project`);
+    } else {
+      const bytes = new Uint8Array(await readFile(file));
+      icon2.sha256 = createHash("sha256").update(bytes).digest("hex");
+      const size = pngSize(bytes);
+      if (size) {
+        icon2.width = size.width;
+        icon2.height = size.height;
+      }
+    }
+    listing.icons.push(icon2);
+  }
+  return { listing, presets: presetsRead, warnings };
+}
+
+// src/listing.ts
+var ADMIN_COOKIE_ENV = "PKEY_ADMIN_COOKIE";
+var ADMIN_COOKIE_NAME = "__Host-pkey_admin";
+var CSRF_HEADER = "X-PKey-CSRF";
+var LISTING_USAGE = "Usage: pkey listing import --godot <project> --product <slug> [--preset <name> ...]\n              [--locale <code>] [--overwrite] [--apply [--fields a,b]] [--json]\n              [--base-url <url>]\n       pkey listing import --godot <project> --dry-run [--preset <name> ...]";
+var LOCALE = /^[a-z]{2,3}(-[A-Za-z0-9]{2,8}){0,3}$/;
+function cookieHint(status) {
+  if (status === 401) {
+    return `The admin session cookie in ${ADMIN_COOKIE_ENV} is missing or expired. Sign in to the console again and copy a fresh \`${ADMIN_COOKIE_NAME}\` cookie (devtools -> Application -> Cookies).`;
+  }
+  if (status === 403) {
+    return `Rejected on authorization or CSRF. Confirm the account is a platform admin, and that ${ADMIN_COOKIE_ENV} holds the CURRENT \`${ADMIN_COOKIE_NAME}\` value — the ${CSRF_HEADER} token is read from /manage/api/me with that same cookie, so a half-stale session fails here.`;
+  }
+  return status === 429 ? statusHint(status) : void 0;
+}
+function listingHint(status) {
+  if (status === 404)
+    return "No such product, or the product has no Distribution service enabled.";
+  return cookieHint(status);
+}
+function adminCookie(raw) {
+  const value = raw?.trim();
+  if (!value) {
+    throw new Error(
+      `${ADMIN_COOKIE_ENV} is not set.
+\`pkey listing import\` imports through the admin API, which this command authenticates with the console's browser session: the admin API token \`pkey bundle\` uses is scoped to minting bundles and cannot reach this route.
+Sign in to the console, then in devtools: Application -> Cookies -> the console origin -> copy the \`${ADMIN_COOKIE_NAME}\` cookie, and run:
+  export ${ADMIN_COOKIE_ENV}='${ADMIN_COOKIE_NAME}=<value>'
+It is a short-lived session credential carrying full admin authority: do not commit it and do not export it into a shared shell.`
+    );
+  }
+  return value.includes("=") ? value : `${ADMIN_COOKIE_NAME}=${value}`;
+}
+async function readCsrf(f, baseUrl, cookie) {
+  const url = `${baseUrl}/manage/api/me`;
+  const res = await request(f, url, {
+    headers: { accept: "application/json", cookie }
+  });
+  if (!res.ok)
+    throw await httpError(
+      res,
+      `Reading the admin session at ${url}`,
+      cookieHint
+    );
+  const csrf = (await readJson(res, url)).csrf;
+  if (typeof csrf !== "string" || !csrf.trim()) {
+    throw new Error(
+      `${url} returned no CSRF token, so the import cannot be authorised. Check that ${ADMIN_COOKIE_ENV} holds a console session cookie and not, say, a proxy's.`
+    );
+  }
+  return csrf;
+}
+async function listingImport(opts) {
+  if (opts.locale !== void 0 && !LOCALE.test(opts.locale))
+    throw new Error(`--locale must be a code such as en-US.
+${LISTING_USAGE}`);
+  if (opts.fields?.length && !opts.apply)
+    throw new Error(`--fields goes with --apply.
+${LISTING_USAGE}`);
+  const read2 = await readGodotListing(opts.godot, {
+    ...opts.presets?.length ? { presets: opts.presets } : {}
+  });
+  const result = {
+    upload: read2.listing,
+    presets: read2.presets,
+    warnings: read2.warnings
+  };
+  if (opts.dryRun) return result;
+  const product = opts.product?.trim();
+  if (!product) throw new Error(`--product is required.
+${LISTING_USAGE}`);
+  const cookie = adminCookie(opts.cookie);
+  const baseUrl = normalizeBaseUrl(
+    opts.baseUrl?.trim() || DEFAULT_BASE_URL,
+    ADMIN_COOKIE_ENV
+  );
+  const f = opts.fetchImpl ?? fetch;
+  const csrf = await readCsrf(f, baseUrl, cookie);
+  const url = `${baseUrl}/manage/api/products/${encodeURIComponent(product)}/distribution/listing/import`;
+  const body = {
+    source: "godot",
+    godot: read2.listing,
+    ...opts.locale ? { locale: opts.locale } : {},
+    ...opts.overwrite ? { overwrite: true } : {}
+  };
+  const post = async (extra) => {
+    const res = await request(f, url, {
+      method: "POST",
+      headers: {
+        accept: "application/json",
+        "content-type": "application/json",
+        cookie,
+        [CSRF_HEADER]: csrf
+      },
+      body: JSON.stringify({ ...body, ...extra })
+    });
+    if (res.status === 409) {
+      const payload2 = await readJson(res, url);
+      if (payload2.reason === "import_changed" && payload2.import) {
+        result.import = payload2.import;
+        throw new Error(
+          `The listing or its sources changed since the preview, so nothing was written. The new diff:
+${formatImport(result)}
+Re-run to review and apply it.`
+        );
+      }
+      throw new Error(
+        `Importing at ${url} failed (409): ${untrusted(payload2.message ?? payload2.reason ?? "conflict", {})}`
+      );
+    }
+    if (!res.ok) throw await httpError(res, `Importing at ${url}`, listingHint);
+    const payload = await readJson(res, url);
+    const answer = payload.import;
+    if (!answer || typeof answer.digest !== "string")
+      throw new Error(`${url} answered ${res.status} without an import diff.`);
+    return answer;
+  };
+  const preview = await post({});
+  result.import = preview;
+  if (!opts.apply) return result;
+  result.import = await post({
+    confirm: preview.digest,
+    ...opts.fields?.length ? { fields: opts.fields } : {}
+  });
+  return result;
+}
+function show2(v, env) {
+  const s = JSON.stringify(v) ?? "null";
+  return untrusted(s.length > 72 ? `${s.slice(0, 71)}…` : s, env);
+}
+function formatImport(r, env = {}) {
+  const u = (v) => untrusted(v, env);
+  const lines3 = [];
+  if (r.presets.length) lines3.push(`Presets read: ${r.presets.join(", ")}`);
+  for (const w of r.warnings) lines3.push(`warning: ${u(w)}`);
+  const imp = r.import;
+  if (!imp) {
+    lines3.push(JSON.stringify(r.upload, null, 2));
+    return lines3.join("\n");
+  }
+  if (imp.createsListing)
+    lines3.push(
+      `The product has no listing yet: this creates it (default locale ${u(imp.defaultLocale)}).`
+    );
+  if (!imp.changes.length)
+    lines3.push("No changes: the listing already holds what the project has.");
+  const width = Math.max(0, ...imp.changes.map((c) => u(c.field).length));
+  for (const c of imp.changes) {
+    const value = c.action === "replace" ? `${show2(c.current, env)} -> ${show2(c.proposed, env)}` : c.action === "keep" ? `${show2(c.current, env)} (kept: ${u(c.reason ?? "kept")}; godot has ${show2(c.proposed, env)})` : show2(c.proposed, env);
+    lines3.push(
+      `  ${u(c.action).padEnd(7)}  ${u(c.field).padEnd(width)}  ${value}`
+    );
+  }
+  for (const x of imp.refused)
+    lines3.push(`refused  ${u(x.field)}: ${u(x.message)}`);
+  for (const i of imp.identifiers) {
+    const where2 = i.outlets.length ? i.outlets.map(
+      (o) => `${u(o.outlet)} ${o.matches ? "matches" : `has ${u(o.value)}`}`
+    ).join(", ") : "no outlet declares one";
+    lines3.push(`${u(i.kind)} (${u(i.platform)}) ${u(i.value)}: ${where2}`);
+  }
+  for (const a of imp.assets)
+    lines3.push(
+      `icon ${u(a.slot)}: ${u(a.ref)}${a.width && a.height ? ` (${u(a.width)}x${u(a.height)})` : ""}; upload it with pkey listing assets`
+    );
+  const applicable = imp.changes.filter((c) => c.action !== "keep").length;
+  if (imp.applied)
+    lines3.push(
+      imp.written.length ? `Applied ${imp.written.length} change${imp.written.length === 1 ? "" : "s"}: ${imp.written.map(u).join(", ")}` : "Nothing to apply."
+    );
+  else if (applicable)
+    lines3.push(
+      `Nothing written. Re-run with --apply to write ${applicable} change${applicable === 1 ? "" : "s"}.`
+    );
+  return lines3.join("\n");
+}
+
 // src/oidc.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
 import { appendFile } from "node:fs/promises";
@@ -22139,7 +22875,7 @@ var CiRequestError = class extends Error {
     this.retryable = retryable;
   }
 };
-function normalizeBaseUrl(baseUrl) {
+function normalizeBaseUrl2(baseUrl) {
   const raw = (baseUrl?.trim() || DEFAULT_BASE_URL).replace(/\/+$/, "");
   let url;
   try {
@@ -22154,7 +22890,7 @@ function normalizeBaseUrl(baseUrl) {
   return raw;
 }
 function ciClient(opts) {
-  const baseUrl = normalizeBaseUrl(opts.baseUrl);
+  const baseUrl = normalizeBaseUrl2(opts.baseUrl);
   const product = opts.product.trim();
   if (!PRODUCT_SLUG_RE.test(product))
     throw new Error(
@@ -22503,9 +23239,13 @@ var CI_ENV = {
   name: CI_TOKEN_ENV,
   text: "Optional for the CI commands: a static pkeyci_ token an operator issued, for CI that is not GitHub Actions. Unset in Actions, where the job's OIDC token is exchanged instead."
 };
+var TOKEN_ENV = {
+  name: ADMIN_TOKEN_ENV,
+  text: "Required by `pkey bundle`. An admin API token (`pkeya_...`), sent as `Authorization: Bearer`. Mint one in the console: /manage -> API tokens -> New token; the value is shown ONCE, at mint. It is scoped to `bundles:mint`, individually revocable, and expires on the date you chose. It can still mint a bundle for any product: do not commit it, and do not export it into a shared shell."
+};
 var COOKIE_ENV = {
   name: ADMIN_COOKIE_ENV,
-  text: `Required by \`pkey bundle\` and \`pkey listing import\`. The console's admin session cookie, as \`${ADMIN_COOKIE_NAME}=<value>\` (the bare value is accepted too). The admin API is authenticated by the console's browser session — there is no API token yet — so copy the cookie from an authenticated console tab: devtools -> Application -> Cookies -> the console origin. It is a SHORT-LIVED session credential carrying full admin authority: do not commit it, and do not export it into a shared shell.`
+  text: `Required by \`pkey listing import\`. The console's admin session cookie, as \`${ADMIN_COOKIE_NAME}=<value>\` (the bare value is accepted too). The admin API token \`pkey bundle\` uses reaches the bundle mint only, so the import is authenticated by the console's browser session. Copy the cookie from an authenticated console tab: devtools -> Application -> Cookies -> the console origin. It is a SHORT-LIVED session credential carrying full admin authority: do not commit it, and do not export it into a shared shell.`
 };
 var ciEnvFor = (subs) => ({ ...CI_ENV, subs });
 var STORE_SUBS = ["winget", "homebrew", "scoop", "flathub"];
@@ -22674,9 +23414,12 @@ var COMMANDS = [
     about: [
       {
         text: `pkey bundle mints one offline activation bundle and writes it to a file (default <product>-<first 8 of device id>.pkeybundle; --base-url defaults to ${DEFAULT_BASE_URL}). Copy that file to the air-gapped machine and import it there.`
+      },
+      {
+        text: "--base-url must be https:, or http:// on localhost or 127.0.0.1 for local development: the token is sent to whatever origin you name, so any other origin is refused before anything is sent. The file is written with mode 0600, is never created over an existing one without --force, and is never written through a symbolic link."
       }
     ],
-    env: [COOKIE_ENV]
+    env: [TOKEN_ENV]
   },
   {
     name: "auth",
@@ -22921,7 +23664,7 @@ var COMMANDS = [
     about: [
       {
         subs: ["import"],
-        text: "pkey listing import reads the Godot project and imports it into the product's shared listing: the diff first, written only with --apply."
+        text: "pkey listing import reads the Godot project and imports it into the product's shared listing: the diff first, written only with --apply. --base-url must be https:, or http:// on localhost or 127.0.0.1 for local development: the console session cookie is sent to whatever origin you name, so any other origin is refused before anything is sent."
       },
       {
         subs: ["assets"],
@@ -23567,14 +24310,14 @@ function completionScript(shell) {
 
 // src/devCommand.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { readFile as readFile2, writeFile as writeFile3 } from "node:fs/promises";
-import path3 from "node:path";
+import { readFile as readFile3, writeFile as writeFile2 } from "node:fs/promises";
+import path4 from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 // src/manifest.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { mkdir, readFile, stat as stat2, writeFile as writeFile2 } from "node:fs/promises";
-import path2 from "node:path";
+import { mkdir, readFile as readFile2, stat as stat3, writeFile } from "node:fs/promises";
+import path3 from "node:path";
 var import_yaml2 = __toESM(require_dist(), 1);
 var SCHEMA_BASE = "../node_modules/@polaris-key/manifest/schemas/v1";
 var PRODUCT_FILES = ["product.json", "product.yaml", "product.yml"];
@@ -23609,11 +24352,11 @@ function normalizeModules2(raw) {
   return servicesOf(parsed);
 }
 async function findProductManifest(cwd) {
-  for (let dir = path2.resolve(cwd); ; dir = path2.dirname(dir)) {
-    const file = await findExisting(path2.join(dir, ".pkey"), PRODUCT_FILES);
+  for (let dir = path3.resolve(cwd); ; dir = path3.dirname(dir)) {
+    const file = await findExisting(path3.join(dir, ".pkey"), PRODUCT_FILES);
     if (file) {
       try {
-        const doc = parseFile(file, await readFile(file, "utf8"));
+        const doc = parseFile(file, await readFile2(file, "utf8"));
         if (!isRecord7(doc)) return null;
         const wrapped = isRecord7(doc.product) ? doc.product : doc;
         const slug = wrapped.slug;
@@ -23628,11 +24371,11 @@ async function findProductManifest(cwd) {
         return null;
       }
     }
-    if (path2.dirname(dir) === dir) return null;
+    if (path3.dirname(dir) === dir) return null;
   }
 }
 async function loadManifest(cwd) {
-  const rootDir = path2.join(cwd, ".pkey");
+  const rootDir = path3.join(cwd, ".pkey");
   const productFile = await findExisting(rootDir, PRODUCT_FILES);
   if (!productFile) {
     throw new Error(
@@ -23655,10 +24398,10 @@ async function loadManifest(cwd) {
         `${found.map((f) => `.pkey/${f}`).join(" and ")} are one document; only .pkey/${found[0]} is read (json, then yaml, then yml), here and on the platform. Keep one file.`
       );
   }
-  const product = parseFile(productFile, await readFile(productFile, "utf8"));
+  const product = parseFile(productFile, await readFile2(productFile, "utf8"));
   if (!isRecord7(product))
     throw new Error(
-      `${path2.relative(cwd, productFile)} must parse to an object.`
+      `${path3.relative(cwd, productFile)} must parse to an object.`
     );
   return {
     rootDir,
@@ -23667,23 +24410,23 @@ async function loadManifest(cwd) {
     ...fileWarnings.length ? { fileWarnings } : {},
     ...schemaFile ? {
       schemaPath: schemaFile,
-      schema: parseFile(schemaFile, await readFile(schemaFile, "utf8"))
+      schema: parseFile(schemaFile, await readFile2(schemaFile, "utf8"))
     } : {},
     ...releaseFile ? {
       releasePath: releaseFile,
-      release: parseFile(releaseFile, await readFile(releaseFile, "utf8"))
+      release: parseFile(releaseFile, await readFile2(releaseFile, "utf8"))
     } : {},
     ...distributionFile ? {
       distributionPath: distributionFile,
       distribution: parseFile(
         distributionFile,
-        await readFile(distributionFile, "utf8")
+        await readFile2(distributionFile, "utf8")
       )
     } : {}
   };
 }
 async function findDistributionFile(cwd) {
-  return findExisting(path2.join(cwd, ".pkey"), DISTRIBUTION_FILES);
+  return findExisting(path3.join(cwd, ".pkey"), DISTRIBUTION_FILES);
 }
 function outletIdsFor(manifest, outletId) {
   return distributionOutletIds(
@@ -23700,14 +24443,14 @@ function validateLoadedManifest(manifest) {
   });
 }
 async function initManifest(opts) {
-  const rootDir = path2.join(opts.cwd, ".pkey");
+  const rootDir = path3.join(opts.cwd, ".pkey");
   await mkdir(rootDir, { recursive: true });
   const files = [];
   const services = servicesOf(opts.modules);
-  const productPath = path2.join(rootDir, "product.yaml");
+  const productPath = path3.join(rootDir, "product.yaml");
   await writeNewFile2(productPath, productYaml(opts, services), opts.force);
   files.push(productPath);
-  const schemaPath = path2.join(rootDir, "schema.yaml");
+  const schemaPath = path3.join(rootDir, "schema.yaml");
   await writeNewFile2(
     schemaPath,
     schemaYaml(services.includes("config")),
@@ -23715,7 +24458,7 @@ async function initManifest(opts) {
   );
   files.push(schemaPath);
   if (services.includes("release")) {
-    const releasePath = path2.join(rootDir, "release.yaml");
+    const releasePath = path3.join(rootDir, "release.yaml");
     await writeNewFile2(releasePath, releaseYaml(opts), opts.force);
     files.push(releasePath);
   }
@@ -23848,19 +24591,19 @@ release:
 async function writeNewFile2(file, body, force = false) {
   if (!force) {
     try {
-      await stat2(file);
+      await stat3(file);
       throw new Error(`${file} already exists. Pass --force to overwrite.`);
     } catch (err) {
       if (err.code !== "ENOENT") throw err;
     }
   }
-  await writeFile2(file, body, "utf8");
+  await writeFile(file, body, "utf8");
 }
 async function findExisting(rootDir, names) {
   for (const name of names) {
-    const file = path2.join(rootDir, name);
+    const file = path3.join(rootDir, name);
     try {
-      await stat2(file);
+      await stat3(file);
       return file;
     } catch (err) {
       if (err.code !== "ENOENT") throw err;
@@ -23872,7 +24615,7 @@ async function findAll(rootDir, names) {
   const out = [];
   for (const name of names) {
     try {
-      await stat2(path2.join(rootDir, name));
+      await stat3(path3.join(rootDir, name));
       out.push(name);
     } catch (err) {
       if (err.code !== "ENOENT") throw err;
@@ -23928,8 +24671,8 @@ async function loadDevBundle(file) {
     throw new Error(
       `pkey dev needs Node ${MIN_NODE.join(".")} or newer (its built-in SQLite); this is ${process.versions.node}.`
     );
-  const target = file ?? path3.join(
-    path3.dirname(fileURLToPath(import.meta.url)),
+  const target = file ?? path4.join(
+    path4.dirname(fileURLToPath(import.meta.url)),
     "dev",
     "server.mjs"
   );
@@ -24014,10 +24757,10 @@ async function serveDev(args, io, bundlePath) {
     if (repo) info.notes.unshift(`Seeded from ${repo.dir}.`);
     let wrote = null;
     if (args.out !== null) {
-      const file = path3.resolve(io.cwd, args.out);
-      await writeFile3(file, `${JSON.stringify(configFile(info), null, 2)}
+      const file = path4.resolve(io.cwd, args.out);
+      await writeFile2(file, `${JSON.stringify(configFile(info), null, 2)}
 `);
-      wrote = path3.relative(io.cwd, file) || file;
+      wrote = path4.relative(io.cwd, file) || file;
     }
     io.stdout.write(
       args.json ? `${JSON.stringify(info)}
@@ -24033,7 +24776,7 @@ async function serveDev(args, io, bundlePath) {
 async function devConfigUrl(cwd) {
   try {
     const file = JSON.parse(
-      await readFile2(path3.join(cwd, DEV_CONFIG_FILE), "utf8")
+      await readFile3(path4.join(cwd, DEV_CONFIG_FILE), "utf8")
     );
     if (typeof file.baseUrl === "string" && file.dev)
       return file.baseUrl.replace(/\/+$/, "");
@@ -24130,8 +24873,8 @@ ${DEV_USAGE.join("\n")}`);
 // src/fix.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
 var import_yaml3 = __toESM(require_dist(), 1);
-import { readFile as readFile3, writeFile as writeFile4 } from "node:fs/promises";
-import path4 from "node:path";
+import { readFile as readFile4, writeFile as writeFile3 } from "node:fs/promises";
+import path5 from "node:path";
 function fixableSpellings() {
   return DEPRECATED_SPELLINGS.filter(
     (s) => s.code === "deprecated_spelling" && s.canonicalPointer !== null && s.canonicalPointer.doc === s.doc && !s.pointer.includes("*") && !s.canonicalPointer.pointer.includes("*") && (s.wins === "canonical" || s.wins === "deprecated") && !s.unreadWhenWrapped && !s.checkedElsewhere
@@ -24192,7 +24935,7 @@ async function fixManifest(manifest, cwd) {
   const moves = [];
   for (const [name, file] of Object.entries(files)) {
     if (!file) continue;
-    const raw = await readFile3(file, "utf8");
+    const raw = await readFile4(file, "utf8");
     const edit = file.endsWith(".json") ? jsonEditable(JSON.parse(raw)) : yamlEditable((0, import_yaml3.parseDocument)(raw));
     let changed = false;
     for (const s of fixableSpellings().filter((x) => x.doc === name)) {
@@ -24204,12 +24947,12 @@ async function fixManifest(manifest, cwd) {
       edit.remove(from);
       changed = true;
       moves.push({
-        file: path4.relative(cwd, file),
+        file: path5.relative(cwd, file),
         from: s.pointer,
         to: s.canonicalPointer.pointer
       });
     }
-    if (changed) await writeFile4(file, edit.text());
+    if (changed) await writeFile3(file, edit.text());
   }
   return moves;
 }
@@ -24445,14 +25188,14 @@ var Spinner = class {
 
 // src/publish.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { createHash as createHash6 } from "node:crypto";
+import { createHash as createHash7 } from "node:crypto";
 import { createReadStream as createReadStream2 } from "node:fs";
-import { readdir as readdir3, readFile as readFile7, stat as stat3 } from "node:fs/promises";
-import path8 from "node:path";
+import { readdir as readdir3, readFile as readFile8, stat as stat4 } from "node:fs/promises";
+import path9 from "node:path";
 
 // src/s3.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { createHash, createHmac } from "node:crypto";
+import { createHash as createHash2, createHmac } from "node:crypto";
 import { createReadStream } from "node:fs";
 import { Readable } from "node:stream";
 var MAX_SINGLE_PUT_BYTES = 5 * 1024 ** 3 - 5 * 1024 ** 2;
@@ -24460,7 +25203,7 @@ function hmac(key, data) {
   return createHmac("sha256", key).update(data, "utf8").digest();
 }
 function hex(data) {
-  return createHash("sha256").update(data, "utf8").digest("hex");
+  return createHash2("sha256").update(data, "utf8").digest("hex");
 }
 function encodeSegment(segment) {
   return encodeURIComponent(segment).replace(
@@ -24581,7 +25324,7 @@ async function putFile(opts) {
 
 // src/buildMetadata.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { createHash as createHash2 } from "node:crypto";
+import { createHash as createHash3 } from "node:crypto";
 
 // src/plist.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
@@ -25049,7 +25792,7 @@ var MetadataError = class extends Error {
     this.name = "MetadataError";
   }
 };
-var sha256 = (b) => createHash2("sha256").update(b).digest("hex");
+var sha256 = (b) => createHash3("sha256").update(b).digest("hex");
 function dict(v) {
   return v && typeof v === "object" && !Array.isArray(v) && !Buffer.isBuffer(v) ? v : null;
 }
@@ -25426,9 +26169,9 @@ async function buildMetadataFor(platform, format, file) {
 
 // src/saveCompat.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { createHash as createHash3 } from "node:crypto";
-import { readFile as readFile4 } from "node:fs/promises";
-import path5 from "node:path";
+import { createHash as createHash4 } from "node:crypto";
+import { readFile as readFile5 } from "node:fs/promises";
+import path6 from "node:path";
 var byCodeUnit = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function canonicalJson(value) {
   if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
@@ -25441,7 +26184,7 @@ function canonicalJson(value) {
 async function readJson2(file, what) {
   let text;
   try {
-    text = await readFile4(file, "utf8");
+    text = await readFile5(file, "utf8");
   } catch (e) {
     if (e.code === "ENOENT")
       throw new Error(`${what} ${file} does not exist.`);
@@ -25460,11 +26203,11 @@ async function collectProvides(o) {
   const out = {};
   const policy = o.pack.provides;
   let file = null;
-  if (o.providesFile !== void 0) file = path5.resolve(o.cwd, o.providesFile);
+  if (o.providesFile !== void 0) file = path6.resolve(o.cwd, o.providesFile);
   else if (policy) {
-    const declared = path5.resolve(o.cwd, policy.from);
+    const declared = path6.resolve(o.cwd, policy.from);
     try {
-      await readFile4(declared);
+      await readFile5(declared);
       file = declared;
     } catch {
       if (policy.required)
@@ -25481,7 +26224,7 @@ async function collectProvides(o) {
     const problem = providesListProblem(list2);
     if (problem)
       throw new Error(
-        `The provides file ${path5.relative(o.cwd, file) || file} ${problem}.`
+        `The provides file ${path6.relative(o.cwd, file) || file} ${problem}.`
       );
     out.provides = [...list2].sort(byCodeUnit);
   }
@@ -25494,10 +26237,10 @@ async function collectProvides(o) {
 }
 async function contentInterfaceFingerprint(cwd, file) {
   const value = await readJson2(
-    path5.resolve(cwd, file),
+    path6.resolve(cwd, file),
     "The content-interface registry"
   );
-  return createHash3("sha256").update(canonicalJson(value)).digest("hex");
+  return createHash4("sha256").update(canonicalJson(value)).digest("hex");
 }
 function judgeContentInterface(answer, fingerprint2, contentApi, strict) {
   const a = answer ?? {};
@@ -25532,12 +26275,12 @@ function judgeContentInterface(answer, fingerprint2, contentApi, strict) {
 // src/releaseKeys.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
 import {
-  createHash as createHash4,
+  createHash as createHash5,
   createPrivateKey,
   createPublicKey,
   generateKeyPairSync
 } from "node:crypto";
-import { writeFile as writeFile5 } from "node:fs/promises";
+import { writeFile as writeFile4 } from "node:fs/promises";
 
 // ../shared-jws/dist/index.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
@@ -26012,6 +26755,7 @@ async function verifyJws(jws, trustedKeys, opts = {}) {
   if (parts.length !== 3) return null;
   const [encHeader, encPayload, encSig] = parts;
   const maxPayloadBytes = payloadCapFor(opts.maxPayloadBytes);
+  if (maxPayloadBytes > MAX_DOC_BYTES && opts.typ === void 0) return null;
   if (encHeader.length > MAX_HEADER_B64) return null;
   if (encPayload.length > b64Cap(maxPayloadBytes)) return null;
   const headerBytes = base64UrlDecodeStrict(encHeader);
@@ -26023,8 +26767,8 @@ async function verifyJws(jws, trustedKeys, opts = {}) {
   if (opts.typ !== void 0 && header.typ !== opts.typ) return null;
   if (header.typ !== void 0 && typeof header.typ !== "string") return null;
   if (typeof header.kid !== "string") return null;
-  const rawKey2 = trustedKeys[header.kid];
-  if (!rawKey2) return null;
+  const rawKey2 = Object.prototype.hasOwnProperty.call(trustedKeys, header.kid) ? trustedKeys[header.kid] : void 0;
+  if (typeof rawKey2 !== "string" || rawKey2 === "") return null;
   let key;
   try {
     key = await importVerifyKey(rawKey2);
@@ -26775,7 +27519,7 @@ function publicKeyOfPem(pem, source = RELEASE_KEY_ENV) {
   return jwk.x;
 }
 function fingerprintOf(publicKey) {
-  return createHash4("sha256").update(Buffer.from(publicKey, "base64url")).digest("hex");
+  return createHash5("sha256").update(Buffer.from(publicKey, "base64url")).digest("hex");
 }
 async function generateReleaseKey(opts) {
   if (!RELEASE_KEY_KID_PATTERN.test(opts.kid))
@@ -26787,7 +27531,7 @@ ${KEYS_USAGE}`
   const pem = privateKey.export({ format: "pem", type: "pkcs8" }).toString();
   const raw = publicKey.export({ format: "jwk" }).x;
   try {
-    await writeFile5(opts.out, pem, {
+    await writeFile4(opts.out, pem, {
       mode: 384,
       flag: opts.force ? "w" : "wx"
     });
@@ -26859,8 +27603,8 @@ async function checkSignedRecord(jws, record, declared) {
 
 // src/contentStamp.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { readdir as readdir2, readFile as readFile6, writeFile as writeFile6 } from "node:fs/promises";
-import path7 from "node:path";
+import { readdir as readdir2, readFile as readFile7, writeFile as writeFile5 } from "node:fs/promises";
+import path8 from "node:path";
 
 // ../client-core/dist/packs/index.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
@@ -27972,15 +28716,15 @@ async function requirePacksDiscovery(client, fetchImpl = fetch) {
 // src/packArtifacts.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
 import { execFileSync } from "node:child_process";
-import { createHash as createHash5 } from "node:crypto";
+import { createHash as createHash6 } from "node:crypto";
 import { mkdirSync, readFileSync as readFileSync2, writeFileSync } from "node:fs";
-import { lstat, readdir, readFile as readFile5 } from "node:fs/promises";
-import path6 from "node:path";
+import { lstat, readdir, readFile as readFile6 } from "node:fs/promises";
+import path7 from "node:path";
 var PATCH_METHOD = "zstd-patch-from";
 var ZSTD_LEVEL = 19;
 var MIN_ZSTD_VERSION = "1.5.5";
 function sha256Hex2(b) {
-  return createHash5("sha256").update(b).digest("hex");
+  return createHash6("sha256").update(b).digest("hex");
 }
 function concat(parts) {
   const n = parts.reduce((a, p) => a + p.byteLength, 0);
@@ -28030,7 +28774,7 @@ function zstdCli(workDir, bin = "zstd") {
     });
   };
   const fresh = (label) => {
-    const d = path6.join(workDir, `${label}${n++}`);
+    const d = path7.join(workDir, `${label}${n++}`);
     mkdirSync(d, { recursive: true });
     return d;
   };
@@ -28041,14 +28785,14 @@ function zstdCli(workDir, bin = "zstd") {
       const inDir = fresh("in");
       const outDir = fresh("out");
       const names = slice.map((b, i) => {
-        const f = path6.join(inDir, `${i}${inExt}`);
+        const f = path7.join(inDir, `${i}${inExt}`);
         writeFileSync(f, b);
         return f;
       });
       run2([...args, "--output-dir-flat", outDir, ...names]);
       for (const i of slice.keys())
         results.push(
-          new Uint8Array(readFileSync2(path6.join(outDir, `${i}${outExt}`)))
+          new Uint8Array(readFileSync2(path7.join(outDir, `${i}${outExt}`)))
         );
     }
     return results;
@@ -28059,9 +28803,9 @@ function zstdCli(workDir, bin = "zstd") {
     decodeMany: (frames) => many(frames, ["-d", "--long=31"], ".zst", ""),
     patchFrom(base, target) {
       const d = fresh("pf");
-      const b = path6.join(d, "base");
-      const t = path6.join(d, "target");
-      const o = path6.join(d, "out.zst");
+      const b = path7.join(d, "base");
+      const t = path7.join(d, "target");
+      const o = path7.join(d, "out.zst");
       writeFileSync(b, base);
       writeFileSync(t, target);
       run2([`-${ZSTD_LEVEL}`, `--patch-from=${b}`, t, "-o", o]);
@@ -28069,9 +28813,9 @@ function zstdCli(workDir, bin = "zstd") {
     },
     decodePatch(frame, base) {
       const d = fresh("dp");
-      const b = path6.join(d, "base");
-      const f = path6.join(d, "in.zst");
-      const o = path6.join(d, "out");
+      const b = path7.join(d, "base");
+      const f = path7.join(d, "in.zst");
+      const o = path7.join(d, "out");
       writeFileSync(b, base);
       writeFileSync(f, frame);
       run2(["-d", "--long=31", `--patch-from=${b}`, f, "-o", o]);
@@ -28125,7 +28869,7 @@ async function readTree(root) {
     for (const e of entries) {
       const rel = prefix ? `${prefix}/${e.name}` : e.name;
       if (!prefix && e.name === ".pkey") continue;
-      const full = path6.join(dir, e.name);
+      const full = path7.join(dir, e.name);
       const st = await lstat(full);
       if (st.isSymbolicLink()) {
         errors.push(
@@ -28141,7 +28885,7 @@ async function readTree(root) {
         errors.push(`${rel}: not a regular file.`);
         continue;
       }
-      const data = new Uint8Array(await readFile5(full));
+      const data = new Uint8Array(await readFile6(full));
       files.push({
         path: rel,
         size: data.byteLength,
@@ -28501,9 +29245,9 @@ async function findMarkers(dir) {
   async function walk3(d) {
     const entries = await readdir2(d, { withFileTypes: true });
     for (const e of entries) {
-      const full = path7.join(d, e.name);
+      const full = path8.join(d, e.name);
       if (e.isDirectory()) await walk3(full);
-      else if (e.isFile() && (e.name.endsWith(MARKER_SUFFIX) || e.name === "pack.json" && path7.basename(d) === ".pkey"))
+      else if (e.isFile() && (e.name.endsWith(MARKER_SUFFIX) || e.name === "pack.json" && path8.basename(d) === ".pkey"))
         out.push(full);
     }
   }
@@ -28520,7 +29264,7 @@ async function readMarker(file, ctx) {
   const fail4 = (step, why) => {
     throw new Error(`${file}: marker rejected at ${step}: ${why}`);
   };
-  const text = await readFile6(file, "utf8");
+  const text = await readFile7(file, "utf8");
   if (!scanStrictJson(text).ok) fail4("format", "not strict JSON");
   const m = JSON.parse(text);
   if (!m || typeof m !== "object" || m.format !== MARKER_FORMAT || !isPackId(m.packId) || typeof m.version !== "string" || !VERSION_RE4.test(m.version) || typeof m.release !== "string")
@@ -28544,13 +29288,13 @@ async function readMarker(file, ctx) {
     const payloadFile = file.slice(0, -MARKER_SUFFIX.length);
     let bytes;
     try {
-      bytes = await readFile6(payloadFile);
+      bytes = await readFile7(payloadFile);
     } catch {
-      return fail4("payload", `${path7.basename(payloadFile)} is not beside it`);
+      return fail4("payload", `${path8.basename(payloadFile)} is not beside it`);
     }
     identity = { size: bytes.byteLength, sha256: sha256Hex2(bytes) };
   } else {
-    const root = path7.dirname(path7.dirname(file));
+    const root = path8.dirname(path8.dirname(file));
     const tree = await readTree(root);
     identity = await payloadIdentity({ layout: "tree", files: tree.files });
   }
@@ -28753,7 +29497,7 @@ function stampText(content) {
 async function readContentStamp(file) {
   let bytes;
   try {
-    bytes = await readFile6(file);
+    bytes = await readFile7(file);
   } catch {
     throw new Error(`--content-stamp ${file} is not readable.`);
   }
@@ -28826,7 +29570,7 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
   const pins = [];
   if (opts.embedded)
     pins.push(
-      ...await markerPins(path7.resolve(opts.cwd, opts.embedded), {
+      ...await markerPins(path8.resolve(opts.cwd, opts.embedded), {
         product: opts.product,
         releaseKeys: ctx.releaseKeys
       })
@@ -28866,10 +29610,10 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
       `The content stamp breaks the publish rules:
 ${problems.map((p) => `  ${p}`).join("\n")}`
     );
-  const file = path7.resolve(opts.cwd, opts.out);
-  await writeFile6(file, stampText(content));
+  const file = path8.resolve(opts.cwd, opts.out);
+  await writeFile5(file, stampText(content));
   describeContent(opts.stdout, content, merged, opts.env);
-  opts.stdout.write(`Wrote ${path7.relative(opts.cwd, file) || file}
+  opts.stdout.write(`Wrote ${path8.relative(opts.cwd, file) || file}
 `);
   return { content, file };
 }
@@ -28887,7 +29631,7 @@ async function scanDir(dir) {
     const entries = await readdir3(d, { withFileTypes: true });
     entries.sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
     for (const e of entries) {
-      const full = path8.join(d, e.name);
+      const full = path9.join(d, e.name);
       if (e.isDirectory()) await walk3(full);
       else if (e.isFile()) out.push({ path: full, name: e.name });
     }
@@ -28925,7 +29669,7 @@ function matchArtifacts(files, entries) {
     }
     if (hits.length > 1) {
       errors.push(
-        `artifacts entry ${entry.id} (${entry.match}) matches ${hits.length} files: ${hits.map((h) => path8.basename(h.path)).join(", ")}. Exactly one file may play a build's ${entry.role}.`
+        `artifacts entry ${entry.id} (${entry.match}) matches ${hits.length} files: ${hits.map((h) => path9.basename(h.path)).join(", ")}. Exactly one file may play a build's ${entry.role}.`
       );
       continue;
     }
@@ -28941,7 +29685,7 @@ function matchArtifacts(files, entries) {
     const matched = [{ ...hit, role: entry.role }];
     for (const [suffix, role] of SIDECARS) {
       const side = files.find(
-        (f) => f.name === `${hit.name}${suffix}` && path8.dirname(f.path) === path8.dirname(hit.path)
+        (f) => f.name === `${hit.name}${suffix}` && path9.dirname(f.path) === path9.dirname(hit.path)
       );
       if (side) matched.push({ ...side, role });
     }
@@ -28964,7 +29708,7 @@ function matchArtifacts(files, entries) {
   return { builds, warnings, errors };
 }
 async function hashFile(file) {
-  const hash = createHash6("sha256");
+  const hash = createHash7("sha256");
   let size = 0;
   for await (const chunk of createReadStream2(file)) {
     const buf = chunk;
@@ -28976,7 +29720,7 @@ async function hashFile(file) {
 async function readMeta(file, entryIds) {
   let raw;
   try {
-    raw = JSON.parse(await readFile7(file, "utf8"));
+    raw = JSON.parse(await readFile8(file, "utf8"));
   } catch (e) {
     throw new Error(
       `--meta ${file} is not readable JSON: ${e.message}`
@@ -29153,13 +29897,13 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
     throw new Error(
       ".pkey/release declares no deliverables.app with an artifacts map; pkey release publish classifies files only by that map."
     );
-  const dir = path8.resolve(opts.cwd, opts.dir);
+  const dir = path9.resolve(opts.cwd, opts.dir);
   const match = matchArtifacts(await scanDir(dir), app.artifacts);
   for (const w of match.warnings) opts.stderr.write(`warning: ${w}
 `);
   if (match.errors.length) throw new Error(match.errors.join("\n"));
   const meta = opts.meta ? await readMeta(
-    path8.resolve(opts.cwd, opts.meta),
+    path9.resolve(opts.cwd, opts.meta),
     app.artifacts.map((e) => e.id)
   ) : {};
   const hashed = [];
@@ -29169,7 +29913,7 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
   for (const b of match.builds) {
     const files = [];
     for (const f of b.files) {
-      const { size } = await stat3(f.path);
+      const { size } = await stat4(f.path);
       if (source === "r2" && size > MAX_SINGLE_PUT_BYTES)
         throw new Error(
           `${f.name} is ${size} bytes; one upload is at most ${MAX_SINGLE_PUT_BYTES} bytes (a single-part PUT).`
@@ -29199,7 +29943,7 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
   }
   const fileCount = hashed.reduce((n, b) => n + b.files.length, 0);
   out.write(
-    `Matched ${hashed.length} build${hashed.length === 1 ? "" : "s"} (${fileCount} files) in ${path8.relative(opts.cwd, dir) || "."}
+    `Matched ${hashed.length} build${hashed.length === 1 ? "" : "s"} (${fileCount} files) in ${path9.relative(opts.cwd, dir) || "."}
 `
   );
   for (const b of hashed) {
@@ -29260,11 +30004,11 @@ ${problems.map((p) => `  ${p}`).join("\n")}`
   };
   if (opts.contentStamp !== void 0)
     setContent(
-      await readContentStamp(path8.resolve(opts.cwd, opts.contentStamp))
+      await readContentStamp(path9.resolve(opts.cwd, opts.contentStamp))
     );
   else if (opts.embedded !== void 0)
     pinSources.push(
-      ...await markerPins(path8.resolve(opts.cwd, opts.embedded), {
+      ...await markerPins(path9.resolve(opts.cwd, opts.embedded), {
         product: opts.product,
         releaseKeys: context.releaseKeys
       })
@@ -29455,7 +30199,7 @@ ${JSON.stringify(record, null, 2)}
       await checkSignedRecord(recordJws, record, declared);
       result.recordJws = recordJws;
       out.write(
-        `Signed the release record (seq ${record.seq}, sha256 ${createHash6("sha256").update(recordJws).digest("hex").slice(0, 12)}…)
+        `Signed the release record (seq ${record.seq}, sha256 ${createHash7("sha256").update(recordJws).digest("hex").slice(0, 12)}…)
 `
       );
     }
@@ -29543,7 +30287,7 @@ ${JSON.stringify(record, null, 2)}
 
 // src/sdkConfig.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { createHash as createHash7 } from "node:crypto";
+import { createHash as createHash8 } from "node:crypto";
 var SDK_LANGS = [
   "node",
   "react",
@@ -29569,9 +30313,9 @@ var KEY_RE = /^[A-Za-z0-9_-]{43}$/;
 var URL_CHARS_RE = /^[A-Za-z0-9:/._~%-]+$/;
 var KOTLIN_PACKAGE_RE = /^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)*$/;
 function fingerprint(publicKey) {
-  return createHash7("sha256").update(Buffer.from(publicKey, "base64url")).digest("hex");
+  return createHash8("sha256").update(Buffer.from(publicKey, "base64url")).digest("hex");
 }
-function normalizeBaseUrl2(raw) {
+function normalizeBaseUrl3(raw) {
   let url;
   try {
     url = new URL(raw);
@@ -29607,7 +30351,7 @@ async function resolveSdkFacts(opts) {
     throw new Error(
       `--product must be a lower-case slug; got ${opts.product}.`
     );
-  const baseUrl = normalizeBaseUrl2(opts.baseUrl);
+  const baseUrl = normalizeBaseUrl3(opts.baseUrl);
   const discoveryUrl = `${baseUrl}/${opts.product}/.well-known/polaris.json`;
   const doFetch = opts.fetchImpl ?? fetch;
   let res;
@@ -30005,8 +30749,8 @@ function isSdkLang(v) {
 
 // src/mirrors.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { mkdir as mkdir2, readFile as readFile8, writeFile as writeFile7 } from "node:fs/promises";
-import path9 from "node:path";
+import { mkdir as mkdir2, readFile as readFile9, writeFile as writeFile6 } from "node:fs/promises";
+import path10 from "node:path";
 var BANNER = "// @generated by tools/gen-mirrors.ts — do not edit. Run `pnpm gen mirrors`.";
 var PY_BANNER = "# @generated by tools/gen-mirrors.ts — do not edit. Run `pnpm gen mirrors`.";
 function settingPolicies(catalog) {
@@ -30597,8 +31341,8 @@ async function writeMirrors(opts) {
 ${MIRROR_USAGE}`);
   let catalog;
   if (opts.catalog) {
-    const file = path9.resolve(opts.cwd, opts.catalog);
-    catalog = assertCatalog(JSON.parse(await readFile8(file, "utf8")), file);
+    const file = path10.resolve(opts.cwd, opts.catalog);
+    catalog = assertCatalog(JSON.parse(await readFile9(file, "utf8")), file);
   } else if (opts.product) {
     if (!/^[a-z0-9][a-z0-9_-]*$/.test(opts.product))
       throw new Error(`--product must be a lower-case slug.`);
@@ -30618,15 +31362,15 @@ ${MIRROR_USAGE}`
   }
   const out = [];
   for (const lang of opts.langs) {
-    const target = path9.resolve(opts.cwd, opts.outDir, MIRROR_FILENAME[lang]);
+    const target = path10.resolve(opts.cwd, opts.outDir, MIRROR_FILENAME[lang]);
     const content = renderCliMirror(lang, catalog, {
       ...opts.kotlinPackage ? { kotlinPackage: opts.kotlinPackage } : {}
     });
-    const current = await readFile8(target, "utf8").catch(() => null);
+    const current = await readFile9(target, "utf8").catch(() => null);
     const changed = current !== content;
     if (changed && !opts.check) {
-      await mkdir2(path9.dirname(target), { recursive: true });
-      await writeFile7(target, content, "utf8");
+      await mkdir2(path10.dirname(target), { recursive: true });
+      await writeFile6(target, content, "utf8");
     }
     out.push({ path: target, changed });
   }
@@ -30702,9 +31446,9 @@ ${CHANNEL_USAGE}`);
 
 // src/package/publish.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { mkdtemp, rm, stat as stat5 } from "node:fs/promises";
+import { mkdtemp, rm, stat as stat6 } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import path14 from "node:path";
+import path15 from "node:path";
 
 // src/package/extract.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
@@ -31745,9 +32489,9 @@ async function extractCargo(input) {
 
 // src/package/go.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { createHash as createHash8 } from "node:crypto";
-import { lstat as lstat2, readFile as readFile9, readdir as readdir4, writeFile as writeFile8 } from "node:fs/promises";
-import path10 from "node:path";
+import { createHash as createHash9 } from "node:crypto";
+import { lstat as lstat2, readFile as readFile10, readdir as readdir4, writeFile as writeFile7 } from "node:fs/promises";
+import path11 from "node:path";
 var GO_MAX_ZIP_BYTES = 500 << 20;
 var GO_MAX_GO_MOD_BYTES = 16 << 20;
 var GO_MAX_LICENSE_BYTES = 16 << 20;
@@ -31756,13 +32500,13 @@ function goHash1(files) {
   const sorted = [...files].sort(
     (a, b) => Buffer.compare(Buffer.from(a.name), Buffer.from(b.name))
   );
-  const summary = createHash8("sha256");
+  const summary = createHash9("sha256");
   for (const f of sorted) {
     if (f.name.includes("\n"))
       throw new PackageExtractError(
         `${JSON.stringify(f.name)}: a file name with a newline cannot be hashed.`
       );
-    const h = createHash8("sha256").update(f.data).digest("hex");
+    const h = createHash9("sha256").update(f.data).digest("hex");
     summary.update(`${h}  ${f.name}
 `);
   }
@@ -31858,7 +32602,7 @@ function checkModuleFiles(files) {
 }
 async function goModuleFiles(root) {
   const out = [];
-  const rootMod = await readFile9(path10.join(root, "go.mod"), "utf8").catch(
+  const rootMod = await readFile10(path11.join(root, "go.mod"), "utf8").catch(
     () => null
   );
   const go = rootMod === null ? void 0 : parseGoMod(rootMod).go;
@@ -31866,11 +32610,11 @@ async function goModuleFiles(root) {
     const entries = await readdir4(dir, { withFileTypes: true });
     entries.sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
     for (const e of entries) {
-      const full = path10.join(dir, e.name);
+      const full = path11.join(dir, e.name);
       const r = rel ? `${rel}/${e.name}` : e.name;
       if (e.isDirectory()) {
         if ([".bzr", ".git", ".hg", ".svn"].includes(e.name)) continue;
-        const nested = await lstat2(path10.join(full, "go.mod")).catch(() => null);
+        const nested = await lstat2(path11.join(full, "go.mod")).catch(() => null);
         if (nested?.isFile()) continue;
         await walk3(full, r);
       } else if (e.isFile() && !goVendored(r, go)) out.push(r);
@@ -31884,7 +32628,7 @@ async function goZipFromDir(root, module, version) {
   const files = await Promise.all(
     rels.map(async (rel) => ({
       rel,
-      data: new Uint8Array(await readFile9(path10.join(root, ...rel.split("/"))))
+      data: new Uint8Array(await readFile10(path11.join(root, ...rel.split("/"))))
     }))
   );
   checkModuleFiles(files.map((f) => ({ rel: f.rel, size: f.data.length })));
@@ -31966,13 +32710,13 @@ async function extractGo(input) {
         `--version ${input.version} is not a semantic version without the v and without build metadata.`
       );
     version = input.version;
-    const depth = (p) => p.split(path10.sep).length;
-    const root = path10.dirname(
+    const depth = (p) => p.split(path11.sep).length;
+    const root = path11.dirname(
       [...mods].sort((a, b) => depth(a.path) - depth(b.path))[0].path
     );
     zipFiles = await goZipFromDir(root, module, version);
-    const out = path10.join(input.workDir, `v${version}.zip`);
-    await writeFile8(out, zipStore(zipFiles));
+    const out = path11.join(input.workDir, `v${version}.zip`);
+    await writeFile7(out, zipStore(zipFiles));
     zipFile = { path: out, name: `v${version}.zip`, type: "go-zip" };
   }
   const major = goMajorProblem(module, version);
@@ -31989,8 +32733,8 @@ async function extractGo(input) {
     throw new PackageExtractError(
       `go.mod declares module ${parsed.module ?? "(none)"}, not ${module}: the module path is the package name.`
     );
-  const goModPath = path10.join(input.workDir, "go.mod");
-  await writeFile8(goModPath, goModEntry.data);
+  const goModPath = path11.join(input.workDir, "go.mod");
+  await writeFile7(goModPath, goModEntry.data);
   return {
     version,
     files: [zipFile, { path: goModPath, name: "go.mod", type: "go-mod" }],
@@ -32072,7 +32816,7 @@ async function extractGodot(input) {
 
 // src/package/maven.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { readFile as readFile10 } from "node:fs/promises";
+import { readFile as readFile11 } from "node:fs/promises";
 var SIDECAR = /\.(md5|sha1|sha256|sha512|asc)$/;
 function pomField(xml2, field) {
   const flat = xml2.replace(/<!--[\s\S]*?-->/g, "").replace(
@@ -32093,7 +32837,7 @@ async function extractMaven(input) {
     throw new PackageExtractError(
       poms.length === 0 ? "no POM (.pom) under --dir matches the package's artifacts globs." : `${poms.length} POMs match (${poms.map((p) => p.name).join(", ")}); one version's directory has one.`
     );
-  const pom = await readFile10(poms[0].path, "utf8");
+  const pom = await readFile11(poms[0].path, "utf8");
   const artifactId = pomField(pom, "artifactId");
   const version = pomField(pom, "version");
   const groupId = pomField(pom, "groupId") ?? // A POM may inherit its groupId from its parent.
@@ -32199,8 +32943,8 @@ async function extractNpm(input) {
 
 // src/package/oci.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { readdir as readdir5, readFile as readFile11, stat as stat4 } from "node:fs/promises";
-import path11 from "node:path";
+import { readdir as readdir5, readFile as readFile12, stat as stat5 } from "node:fs/promises";
+import path12 from "node:path";
 var INDEX_TYPES = /* @__PURE__ */ new Set([
   "application/vnd.oci.image.index.v1+json",
   "application/vnd.docker.distribution.manifest.list.v2+json"
@@ -32217,12 +32961,12 @@ async function layoutRoot(dir) {
     throw new PackageExtractError(
       "no OCI image layout (an oci-layout file) under --dir."
     );
-  return path11.dirname(layout.path);
+  return path12.dirname(layout.path);
 }
 async function extractOci(input) {
   const root = await layoutRoot(input.dir);
   const index = JSON.parse(
-    await readFile11(path11.join(root, "index.json"), "utf8")
+    await readFile12(path12.join(root, "index.json"), "utf8")
   );
   const entries = index.manifests ?? [];
   if (entries.length !== 1 || !entries[0]?.digest)
@@ -32233,7 +32977,7 @@ async function extractOci(input) {
     throw new PackageExtractError(
       "an OCI image carries no version: pass --version (it is also the image's tag)."
     );
-  const blobDir = path11.join(root, "blobs", "sha256");
+  const blobDir = path12.join(root, "blobs", "sha256");
   const byDigest = /* @__PURE__ */ new Map();
   const platforms = /* @__PURE__ */ new Set();
   let parsed = 0;
@@ -32247,9 +32991,9 @@ async function extractOci(input) {
       platforms.add(
         `${d.platform.os}/${d.platform.architecture}${d.platform.variant ? `/${d.platform.variant}` : ""}`
       );
-    const file = path11.join(blobDir, m[1]);
+    const file = path12.join(blobDir, m[1]);
     try {
-      await stat4(file);
+      await stat5(file);
     } catch {
       throw new PackageExtractError(`the layout has no blob ${digest}.`);
     }
@@ -32262,7 +33006,7 @@ async function extractOci(input) {
         throw new PackageExtractError(
           `the image references more than ${MAX_DOCUMENTS} manifests.`
         );
-      const doc = JSON.parse(await readFile11(file, "utf8"));
+      const doc = JSON.parse(await readFile12(file, "utf8"));
       for (const child of [
         ...doc.manifests ?? [],
         ...doc.config ? [doc.config] : [],
@@ -32274,7 +33018,7 @@ async function extractOci(input) {
   await visit(entries[0]);
   const present2 = new Set(await readdir5(blobDir));
   const files = [...byDigest].filter(([digest]) => present2.has(digest.slice("sha256:".length))).map(([digest, v]) => ({
-    path: path11.join(blobDir, digest.slice("sha256:".length)),
+    path: path12.join(blobDir, digest.slice("sha256:".length)),
     name: digest,
     type: v.type,
     mediaType: v.mediaType
@@ -32294,8 +33038,8 @@ async function extractOci(input) {
 
 // src/package/pypi.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { writeFile as writeFile9 } from "node:fs/promises";
-import path12 from "node:path";
+import { writeFile as writeFile8 } from "node:fs/promises";
+import path13 from "node:path";
 function parseCoreMetadata(text) {
   const out = /* @__PURE__ */ new Map();
   for (const line of text.split(/\r?\n/)) {
@@ -32326,8 +33070,8 @@ async function extractPypi(input) {
       return (await zip.read(entry)).toString("utf8");
     });
     const metaName = `${w.name}.metadata`;
-    const metaPath = path12.join(input.workDir, metaName);
-    await writeFile9(metaPath, text);
+    const metaPath = path13.join(input.workDir, metaName);
+    await writeFile8(metaPath, text);
     files.push(
       { path: w.path, name: w.name, type: "wheel" },
       { path: metaPath, name: metaName, type: "core-metadata" }
@@ -32370,7 +33114,7 @@ async function extractPypi(input) {
 
 // src/package/swift.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import path13 from "node:path";
+import path14 from "node:path";
 import { readdir as readdir6 } from "node:fs/promises";
 async function extractSwift(input) {
   const zip = exactlyOne(
@@ -32381,7 +33125,7 @@ async function extractSwift(input) {
     throw new PackageExtractError(
       "a Swift registry archive carries no version: pass --version."
     );
-  const dir = path13.dirname(zip.path);
+  const dir = path14.dirname(zip.path);
   const names = (await readdir6(dir)).sort();
   const files = [
     { path: zip.path, name: zip.name, type: "source-archive" }
@@ -32393,7 +33137,7 @@ async function extractSwift(input) {
     );
   if (sigs[0])
     files.push({
-      path: path13.join(dir, sigs[0]),
+      path: path14.join(dir, sigs[0]),
       name: sigs[0],
       type: "source-archive-signature"
     });
@@ -32401,7 +33145,7 @@ async function extractSwift(input) {
     (n) => /^Package(@swift-[0-9][0-9.]*)?\.swift$/.test(n)
   );
   for (const m of manifests)
-    files.push({ path: path13.join(dir, m), name: m, type: "manifest" });
+    files.push({ path: path14.join(dir, m), name: m, type: "manifest" });
   const toolsVersions = manifests.map((m) => /^Package@swift-([0-9.]+)\.swift$/.exec(m)?.[1]).filter((v) => v !== void 0);
   return {
     version: input.version,
@@ -32481,11 +33225,11 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
     throw new Error(
       `--deliverable ${opts.deliverable} is not a package deliverable .pkey/release declares.`
     );
-  const workDir = await mkdtemp(path14.join(tmpdir(), "pkey-package-"));
+  const workDir = await mkdtemp(path15.join(tmpdir(), "pkey-package-"));
   try {
     const extracted = await extractPackage(declared.ecosystem, {
       declaration: declared,
-      dir: path14.resolve(opts.cwd, opts.dir),
+      dir: path15.resolve(opts.cwd, opts.dir),
       workDir,
       ...opts.version?.trim() ? { version: opts.version.trim() } : {}
     });
@@ -32496,7 +33240,7 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
       );
     const hashed = [];
     for (const f of extracted.files) {
-      const { size } = await stat5(f.path);
+      const { size } = await stat6(f.path);
       if (size > MAX_SINGLE_PUT_BYTES)
         throw new Error(
           `${f.name} is ${size} bytes; one upload is at most ${MAX_SINGLE_PUT_BYTES} bytes (a single-part PUT).`
@@ -32671,9 +33415,9 @@ Dry run: nothing uploaded, nothing written.
 // src/packPublish.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
 import { mkdtempSync, rmSync } from "node:fs";
-import { cp, mkdir as mkdir3, readdir as readdir7, readFile as readFile13, writeFile as writeFile11 } from "node:fs/promises";
+import { cp, mkdir as mkdir3, readdir as readdir7, readFile as readFile14, writeFile as writeFile10 } from "node:fs/promises";
 import os from "node:os";
-import path16 from "node:path";
+import path17 from "node:path";
 
 // pkey-zstd-wasm:zstd-wasm-embedded
 init_define_PKEY_EMBEDDED_SCHEMAS();
@@ -32782,7 +33526,7 @@ function parseVersion(scheme, v) {
 
 // src/pck.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { createHash as createHash9 } from "node:crypto";
+import { createHash as createHash10 } from "node:crypto";
 var PCK_MAGIC = 1129333831;
 var PACK_DIR_ENCRYPTED = 1;
 var PACK_REL_FILEBASE = 2;
@@ -32952,7 +33696,7 @@ function writePck(src, header, keep) {
   return out;
 }
 function sha2562(b) {
-  return createHash9("sha256").update(b).digest("hex");
+  return createHash10("sha256").update(b).digest("hex");
 }
 function stripPck(src, name = "the payload") {
   const dir = readPck(src, name);
@@ -33186,9 +33930,9 @@ function readGodotZip(b, name = "the zip") {
 
 // src/delegate.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { createHash as createHash10, generateKeyPairSync as generateKeyPairSync2 } from "node:crypto";
-import { readFile as readFile12, writeFile as writeFile10 } from "node:fs/promises";
-import path15 from "node:path";
+import { createHash as createHash11, generateKeyPairSync as generateKeyPairSync2 } from "node:crypto";
+import { readFile as readFile13, writeFile as writeFile9 } from "node:fs/promises";
+import path16 from "node:path";
 var CONTENT_KEY_ENV = "PKEY_CONTENT_KEY";
 var CONTENT_KEYS_USAGE = "Usage: pkey release keys generate --content --out <file>";
 var DELEGATE_USAGE = "Usage: pkey release delegate --product <slug> --prefix <packId> --types <type,…> --public-key <base64url> [--expires-in <days>] [--notes <text>] [--release-key-file pem] [--base-url <url>] [--dry-run]";
@@ -33197,14 +33941,14 @@ var MAX_DELEGATION_DAYS = MAX_DELEGATION_TTL_SECONDS / SECONDS_PER_DAY;
 var WINDOW_WARN_DAYS = 14;
 var KEY_B64URL_RE2 = /^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$/;
 var SHA256_RE5 = /^[0-9a-f]{64}$/;
-var sha256Hex3 = (s) => createHash10("sha256").update(s).digest("hex");
+var sha256Hex3 = (s) => createHash11("sha256").update(s).digest("hex");
 var iso = (t) => new Date(t * 1e3).toISOString();
 async function generateContentKey(opts) {
   const { privateKey, publicKey } = generateKeyPairSync2("ed25519");
   const pem = privateKey.export({ format: "pem", type: "pkcs8" }).toString();
   const raw = publicKey.export({ format: "jwk" }).x;
   try {
-    await writeFile10(opts.out, pem, { mode: 384, flag: "wx" });
+    await writeFile9(opts.out, pem, { mode: 384, flag: "wx" });
   } catch (e) {
     if (e.code === "EEXIST")
       throw new Error(
@@ -33311,8 +34055,8 @@ function parseDelegationTypes(types) {
   return list2;
 }
 async function keepSignedDelegation(cwd, jws, sha2566) {
-  const file = path15.join(cwd, `pkey-delegation-${sha2566}.jws`);
-  await writeFile10(file, `${jws}
+  const file = path16.join(cwd, `pkey-delegation-${sha2566}.jws`);
+  await writeFile9(file, `${jws}
 `, { mode: 384, flag: "wx" });
   return file;
 }
@@ -33471,7 +34215,7 @@ Content kid: ${kid}
     }
     throw new Error(
       `${e.message}
-` + (saved ? `The signed delegation was kept at ${saved} (public material only). Revoke it with pkey release revoke --delegation ${path15.relative(opts.cwd, saved)} --reason <text> if it may have leaked, or retry.` : `The signed delegation could not be kept beside the run; its sha256 is ${sha2566}.`)
+` + (saved ? `The signed delegation was kept at ${saved} (public material only). Revoke it with pkey release revoke --delegation ${path16.relative(opts.cwd, saved)} --reason <text> if it may have leaked, or retry.` : `The signed delegation could not be kept beside the run; its sha256 is ${sha2566}.`)
     );
   }
   out.write(
@@ -34492,7 +35236,7 @@ function lintTreePaths(paths) {
 
 // src/packChunks.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { createHash as createHash11 } from "node:crypto";
+import { createHash as createHash12 } from "node:crypto";
 var CHUNK_MIN_PAYLOAD_BYTES = 4 * 1024 * 1024;
 var CHUNK_PARAMS = {
   chunker: "fastcdc-2016-nc1",
@@ -34510,7 +35254,7 @@ var HEADER_BYTES2 = 64;
 var RECORD_BYTES2 = 48;
 var FLAG_FILE_AWARE2 = 1;
 var TWO_322 = 4294967296;
-var sha256Hex4 = (b) => createHash11("sha256").update(b).digest("hex");
+var sha256Hex4 = (b) => createHash12("sha256").update(b).digest("hex");
 function hexBytes(h) {
   const out = new Uint8Array(h.length / 2);
   for (let i = 0; i < out.length; i++)
@@ -34920,15 +35664,15 @@ async function findPck(dir, ext = ".pck") {
     throw new Error(
       `${dir} must hold exactly one ${ext} file (found ${names.length}${names.length ? `: ${names.join(", ")}` : ""}).`
     );
-  return path16.join(dir, names[0]);
+  return path17.join(dir, names[0]);
 }
 async function loadVariant(pack, variant, root, settings = {}) {
   const key = variantKey(variant);
-  const dir = path16.join(root, variantDirName(variant));
+  const dir = path17.join(root, variantDirName(variant));
   if (pack.type === "godot.pck") {
     const file = await findPck(dir);
-    const src = new Uint8Array(await readFile13(file));
-    const name = path16.basename(file);
+    const src = new Uint8Array(await readFile14(file));
+    const name = path17.basename(file);
     const strip = stripPck(src, name);
     const lint = lintPck(strip.directory, strip.bytes, {
       prefixes: pack.handler.prefixes ?? [],
@@ -34953,8 +35697,8 @@ async function loadVariant(pack, variant, root, settings = {}) {
   }
   if (pack.type === "godot.zip") {
     const file = await findPck(dir, ".zip");
-    const bytes = new Uint8Array(await readFile13(file));
-    const name = path16.basename(file);
+    const bytes = new Uint8Array(await readFile14(file));
+    const name = path17.basename(file);
     let zipDir;
     try {
       zipDir = readGodotZip(bytes, name);
@@ -35016,7 +35760,7 @@ function decodeJwsPayload(jws) {
   }
 }
 async function cachedReleases(bases, packId, warn) {
-  const root = path16.join(bases, packId);
+  const root = path17.join(bases, packId);
   let versions;
   try {
     versions = (await readdir7(root, { withFileTypes: true })).filter((e) => e.isDirectory()).map((e) => e.name);
@@ -35025,10 +35769,10 @@ async function cachedReleases(bases, packId, warn) {
   }
   const out = [];
   for (const version of versions) {
-    const dir = path16.join(root, version);
+    const dir = path17.join(root, version);
     let jws;
     try {
-      jws = (await readFile13(path16.join(dir, "record.jws"), "utf8")).trim();
+      jws = (await readFile14(path17.join(dir, "record.jws"), "utf8")).trim();
     } catch {
       warn(`--bases: ${dir} has no record.jws; it is not a base.`);
       continue;
@@ -35064,12 +35808,12 @@ async function loadBase(pack, release, keys, warn) {
       );
       continue;
     }
-    const dir = path16.join(release.dir, key || "default");
+    const dir = path17.join(release.dir, key || "default");
     try {
       if (isMountedPackType(pack.type)) {
         const zip = pack.type === "godot.zip";
         const bytes = new Uint8Array(
-          await readFile13(await findPck(dir, zip ? ".zip" : ".pck"))
+          await readFile14(await findPck(dir, zip ? ".zip" : ".pck"))
         );
         const sha = sha256Hex2(bytes);
         if (sha !== v.payload.sha256 || bytes.byteLength !== v.payload.size) {
@@ -35105,17 +35849,17 @@ async function chunkChainBase(proven, key, gateClass, warn) {
     const v = c.record.variants.find((x) => variantKey(x.variant) === key);
     if (!v?.chunks || (c.record.entitlement ?? null) !== gateClass) continue;
     const label = `${c.record.deliverable} ${c.version} (${key || "default"})`;
-    const file = path16.join(
+    const file = path17.join(
       c.dir,
       key || "default",
       `chunks.${v.chunks.sha256}`
     );
     let stored;
     try {
-      stored = new Uint8Array(await readFile13(file));
+      stored = new Uint8Array(await readFile14(file));
     } catch {
       warn(
-        `chunk chain ${label}: the cached index ${path16.basename(file)} is missing; an older cached release is tried, else the chunks are packed fresh.`
+        `chunk chain ${label}: the cached index ${path17.basename(file)} is missing; an older cached release is tried, else the chunks are packed fresh.`
       );
       continue;
     }
@@ -35142,7 +35886,7 @@ function markerJson(packId, version, jws) {
 `;
 }
 function markerPathFor(type, location) {
-  return isMountedPackType(type) ? `${location}${MARKER_SUFFIX}` : path16.join(location, ...TREE_MARKER_PATH.split("/"));
+  return isMountedPackType(type) ? `${location}${MARKER_SUFFIX}` : path17.join(location, ...TREE_MARKER_PATH.split("/"));
 }
 async function publishPack(opts) {
   const out = opts.stdout;
@@ -35204,7 +35948,7 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
   else if (saveCompat.removes)
     out.write(`Removes: ${saveCompat.removes.join(", ")}
 `);
-  const root = path16.resolve(opts.cwd, opts.dir);
+  const root = path17.resolve(opts.cwd, opts.dir);
   const variants = [];
   const declared = declaredVariants(pack);
   opts.progress?.stage(
@@ -35232,7 +35976,7 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
   for (const v of variants) {
     const n = v.payload.files.length;
     out.write(
-      `- ${(v.key || "default").padEnd(20)} ${path16.relative(opts.cwd, v.location) || "."}: ${n} entr${n === 1 ? "y" : "ies"}${v.stripped.length ? `; strip${opts.dryRun ? " would remove" : "s"} ${v.stripped.join(", ")}` : ""}
+      `- ${(v.key || "default").padEnd(20)} ${path17.relative(opts.cwd, v.location) || "."}: ${n} entr${n === 1 ? "y" : "ies"}${v.stripped.length ? `; strip${opts.dryRun ? " would remove" : "s"} ${v.stripped.join(", ")}` : ""}
 `
     );
   }
@@ -35271,7 +36015,7 @@ ${errors.map((e) => `  ${e}`).join("\n")}`
     out.write("Data-only: every file passes (plans/P4-19.md §2.5)\n");
   }
   const issuedNow = opts.now ?? Math.floor(Date.now() / 1e3);
-  const work = mkdtempSync(path16.join(os.tmpdir(), "pkey-pack-"));
+  const work = mkdtempSync(path17.join(os.tmpdir(), "pkey-pack-"));
   try {
     const z = zstdCli(work, opts.zstdBin);
     const built = /* @__PURE__ */ new Map();
@@ -35373,7 +36117,7 @@ ${errors.map((e) => `  ${e}`).join("\n")}`
     }
     const deltaWanted = pack.patch.strategies.includes("delta") && pack.patch.deltaBases > 0;
     const cached = opts.bases && (deltaWanted || chunked.size > 0) ? (await cachedReleases(
-      path16.resolve(opts.cwd, opts.bases),
+      path17.resolve(opts.cwd, opts.bases),
       packId,
       warn
     )).filter((c) => c.version !== version) : [];
@@ -35748,13 +36492,13 @@ ${JSON.stringify(seq === void 0 ? shown2 : record, null, 2)}
     );
     for (const v of variants)
       if (v.rewrite) {
-        await writeFile11(v.location, v.rewrite);
+        await writeFile10(v.location, v.rewrite);
         out.write(
-          `Wrote the stripped ${path16.basename(v.location)} back in place
+          `Wrote the stripped ${path17.basename(v.location)} back in place
 `
         );
       }
-    const objDir = path16.join(work, "objects");
+    const objDir = path17.join(work, "objects");
     await mkdir3(objDir, { recursive: true });
     opts.progress?.stage(
       `Uploading ${list2.length} object${list2.length === 1 ? "" : "s"}`
@@ -35805,8 +36549,8 @@ ${JSON.stringify(seq === void 0 ? shown2 : record, null, 2)}
     const marker2 = markerJson(packId, version, jws);
     for (const v of variants) {
       const file = markerPathFor(pack.type, v.location);
-      await mkdir3(path16.dirname(file), { recursive: true });
-      await writeFile11(file, marker2);
+      await mkdir3(path17.dirname(file), { recursive: true });
+      await writeFile10(file, marker2);
       result.markers.push(file);
     }
     out.write(
@@ -35814,32 +36558,32 @@ ${JSON.stringify(seq === void 0 ? shown2 : record, null, 2)}
 `
     );
     if (opts.out) {
-      const dest = path16.join(path16.resolve(opts.cwd, opts.out), packId, version);
+      const dest = path17.join(path17.resolve(opts.cwd, opts.out), packId, version);
       await mkdir3(dest, { recursive: true });
-      await writeFile11(path16.join(dest, "record.jws"), `${jws}
+      await writeFile10(path17.join(dest, "record.jws"), `${jws}
 `);
       for (const v of variants) {
-        const vdir = path16.join(dest, variantDirName(v.variant));
+        const vdir = path17.join(dest, variantDirName(v.variant));
         await mkdir3(vdir, { recursive: true });
         if (isMountedPackType(pack.type))
-          await writeFile11(
-            path16.join(vdir, path16.basename(v.location)),
+          await writeFile10(
+            path17.join(vdir, path17.basename(v.location)),
             v.payload.bytes
           );
         else
           await cp(v.location, vdir, {
             recursive: true,
-            filter: (src) => path16.relative(v.location, src).split(path16.sep)[0] !== ".pkey"
+            filter: (src) => path17.relative(v.location, src).split(path17.sep)[0] !== ".pkey"
           });
         const ck = builtChunks.get(v.key);
         if (ck)
-          await writeFile11(
-            path16.join(vdir, `chunks.${ck.index.ref.sha256}`),
+          await writeFile10(
+            path17.join(vdir, `chunks.${ck.index.ref.sha256}`),
             ck.index.stored
           );
       }
       out.write(
-        `Kept the record and payloads at ${path16.relative(opts.cwd, dest) || dest} (for --bases)
+        `Kept the record and payloads at ${path17.relative(opts.cwd, dest) || dest} (for --bases)
 `
       );
     }
@@ -35897,8 +36641,8 @@ async function stageRound(client, round, gated, packId, objDir, opts, result, ob
       throw new Error(
         `The ticket names ${o.sha256}, which pkey did not ask for.`
       );
-    const file = path16.join(objDir, obj.sha256);
-    await writeFile11(file, obj.bytes);
+    const file = path17.join(objDir, obj.sha256);
+    await writeFile10(file, obj.bytes);
     await putFile({
       creds: ticket.credentials,
       key: o.key,
@@ -35961,8 +36705,8 @@ ${objectCount} distinct objects
 
 // src/revoke.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { readFile as readFile14 } from "node:fs/promises";
-import path17 from "node:path";
+import { readFile as readFile15 } from "node:fs/promises";
+import path18 from "node:path";
 var REVOKE_USAGE = "Usage: pkey release revoke <packId>@<version> --reason <text> --product <slug> [--replacement <version>] [--release-key-file pem] [--base-url <url>] [--dry-run]";
 async function requireRevocationsDiscovery(client, fetchImpl = fetch) {
   const url = client.url(".well-known/polaris.json");
@@ -36142,7 +36886,7 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
   let fileJws = null;
   if (!byHash) {
     try {
-      fileJws = (await readFile14(path17.resolve(opts.cwd, opts.delegation), "utf8")).trim();
+      fileJws = (await readFile15(path18.resolve(opts.cwd, opts.delegation), "utf8")).trim();
     } catch (e) {
       throw new Error(
         `--delegation is neither a sha256 nor a readable file (${e.message}).
@@ -36412,26 +37156,26 @@ ${DISTRIBUTION_CI_USAGE}`
 
 // src/schemas.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { mkdir as mkdir4, readdir as readdir8, readFile as readFile15, writeFile as writeFile12 } from "node:fs/promises";
+import { mkdir as mkdir4, readdir as readdir8, readFile as readFile16, writeFile as writeFile11 } from "node:fs/promises";
 import { createRequire } from "node:module";
-import path18 from "node:path";
+import path19 from "node:path";
 async function manifestSchemas() {
   if (typeof define_PKEY_EMBEDDED_SCHEMAS_default !== "undefined")
     return define_PKEY_EMBEDDED_SCHEMAS_default;
   const entry = createRequire(import.meta.url).resolve("@polaris-key/manifest");
-  const dir = path18.join(path18.dirname(entry), "..", "schemas", "v1");
+  const dir = path19.join(path19.dirname(entry), "..", "schemas", "v1");
   const names = (await readdir8(dir)).filter((n) => n.endsWith(".schema.json")).sort();
   const out = {};
   for (const name of names)
-    out[name] = await readFile15(path18.join(dir, name), "utf8");
+    out[name] = await readFile16(path19.join(dir, name), "utf8");
   return out;
 }
 async function writeManifestSchemas(outDir) {
   await mkdir4(outDir, { recursive: true });
   const written = [];
   for (const [name, body] of Object.entries(await manifestSchemas())) {
-    const file = path18.join(outDir, name);
-    await writeFile12(file, body, "utf8");
+    const file = path19.join(outDir, name);
+    await writeFile11(file, body, "utf8");
     written.push(file);
   }
   return written;
@@ -36439,11 +37183,11 @@ async function writeManifestSchemas(outDir) {
 
 // src/transport.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { createHash as createHash12 } from "node:crypto";
-import { cp as cp2, mkdir as mkdir5, readFile as readFile16, writeFile as writeFile13 } from "node:fs/promises";
-import path19 from "node:path";
+import { createHash as createHash13 } from "node:crypto";
+import { cp as cp2, mkdir as mkdir5, readFile as readFile17, writeFile as writeFile12 } from "node:fs/promises";
+import path20 from "node:path";
 var TRANSPORT_USAGE = "Usage: pkey transport apple-ba package --deliverable <packId> --release <v> --from <dir> [--content-api n]\n              [--variant key] [--out dir] [--platforms iOS[,macOS]] [--no-archive] [--no-report]\n       pkey transport apple-ba upload --deliverable <packId> --release <v> --dir <package out> [--from <dir>] [--content-api n]\n              [--expect-resource id] [--lock file] [--wait minutes] [--no-report]\n       pkey transport play-pad modules --deliverable <packId> --release <v> --from <dir> --project <gradle dir>\n              [--delivery fast-follow|on-demand] [--default-texture fmt] [--variant key] [--no-report]\n       pkey transport steam-depot vdf --deliverable <packId> --release <v> --from <dir> --depot <id>\n              (--branch <name> | --channel <c>) [--setlive] [--app <id>] [--out dir] [--no-report]\n  (each also takes --product slug, --base-url url; reports need distribution:report, the default CI grant)";
-var sha256Hex5 = (b) => createHash12("sha256").update(b).digest("hex");
+var sha256Hex5 = (b) => createHash13("sha256").update(b).digest("hex");
 function jwsPayload(jws) {
   const parts = jws.split(".");
   if (parts.length !== 3) throw new Error("record.jws is not a compact JWS.");
@@ -36489,19 +37233,19 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
 }
 async function loadTransportPack(common, from) {
   const { slug, pack, app, distribution } = await loadTransportProduct(common);
-  const root = path19.resolve(common.cwd, from, pack.id, common.version);
+  const root = path20.resolve(common.cwd, from, pack.id, common.version);
   let recordJws;
   try {
-    recordJws = (await readFile16(path19.join(root, "record.jws"), "utf8")).trim();
+    recordJws = (await readFile17(path20.join(root, "record.jws"), "utf8")).trim();
   } catch {
     throw new Error(
-      `No cached release at ${path19.relative(common.cwd, root) || root}: run pkey release publish --deliverable ${pack.id} --version ${common.version} --out ${from} first (or restore that cache).`
+      `No cached release at ${path20.relative(common.cwd, root) || root}: run pkey release publish --deliverable ${pack.id} --version ${common.version} --out ${from} first (or restore that cache).`
     );
   }
   const record = jwsPayload(recordJws);
   if (record?.kind !== "pack" || record.deliverable !== pack.id || record.version !== common.version)
     throw new Error(
-      `${path19.join(root, "record.jws")} is not ${pack.id}@${common.version}'s pack record.`
+      `${path20.join(root, "record.jws")} is not ${pack.id}@${common.version}'s pack record.`
     );
   const variants = [];
   for (const v of declaredVariants(pack)) {
@@ -36530,14 +37274,14 @@ async function loadTransportPack(common, from) {
     }
     if (payload.sha256 !== signed.payload.sha256 || payload.size !== signed.payload.size)
       throw new Error(
-        `${path19.relative(common.cwd, lv.location) || lv.location} is not the payload ${pack.id}@${common.version}'s record pins for variant ${variantDirName(v)} (sha256 ${payload.sha256.slice(0, 12)}…, want ${signed.payload.sha256.slice(0, 12)}…).`
+        `${path20.relative(common.cwd, lv.location) || lv.location} is not the payload ${pack.id}@${common.version}'s record pins for variant ${variantDirName(v)} (sha256 ${payload.sha256.slice(0, 12)}…, want ${signed.payload.sha256.slice(0, 12)}…).`
       );
     variants.push({
       variant: v,
       key,
       layout: lv.payload.layout,
       location: lv.location,
-      ext: lv.payload.layout === "container" ? path19.extname(lv.location) : "",
+      ext: lv.payload.layout === "container" ? path20.extname(lv.location) : "",
       payload
     });
   }
@@ -36629,14 +37373,14 @@ async function placePayload(loaded2, v, dir, name) {
   await mkdir5(dir, { recursive: true });
   if (v.layout === "container") {
     const file = `${name}${v.ext}`;
-    await cp2(v.location, path19.join(dir, file));
-    await writeFile13(path19.join(dir, `${file}${MARKER_SUFFIX}`), loaded2.marker);
+    await cp2(v.location, path20.join(dir, file));
+    await writeFile12(path20.join(dir, `${file}${MARKER_SUFFIX}`), loaded2.marker);
     return [file, `${file}${MARKER_SUFFIX}`];
   }
   await cp2(v.location, dir, { recursive: true });
-  const marker2 = path19.join(dir, ...TREE_MARKER_PATH.split("/"));
-  await mkdir5(path19.dirname(marker2), { recursive: true });
-  await writeFile13(marker2, loaded2.marker);
+  const marker2 = path20.join(dir, ...TREE_MARKER_PATH.split("/"));
+  await mkdir5(path20.dirname(marker2), { recursive: true });
+  await writeFile12(marker2, loaded2.marker);
   return [".", TREE_MARKER_PATH];
 }
 async function reportTransport(common, loaded2, outlets, state, platformRef) {
@@ -36673,8 +37417,8 @@ function prettyJson(v) {
 init_define_PKEY_EMBEDDED_SCHEMAS();
 import { createPrivateKey as createPrivateKey2, sign } from "node:crypto";
 import { execFileSync as execFileSync2 } from "node:child_process";
-import { mkdir as mkdir6, readFile as readFile17, rm as rm2, stat as stat6, writeFile as writeFile14 } from "node:fs/promises";
-import path20 from "node:path";
+import { mkdir as mkdir6, readFile as readFile18, rm as rm2, stat as stat7, writeFile as writeFile13 } from "node:fs/promises";
+import path21 from "node:path";
 var ASC_API = "https://api.appstoreconnect.apple.com";
 var DEFAULT_BA_OUT = "build/pkey-transport/apple-ba";
 var DEFAULT_ASSET_PACK_LOCK = ".pkey/asset-packs.json";
@@ -36713,10 +37457,10 @@ async function baPackage(o) {
     throw new Error(
       `${loaded2.pack.id} has ${loaded2.variants.length} variants; an asset pack carries one: choose it with --variant.`
     );
-  const out = path20.resolve(o.cwd, o.out ?? DEFAULT_BA_OUT);
-  const dir = path20.join(out, assetPackId);
+  const out = path21.resolve(o.cwd, o.out ?? DEFAULT_BA_OUT);
+  const dir = path21.join(out, assetPackId);
   await rm2(dir, { recursive: true, force: true });
-  const contentDir = path20.join(dir, "pkey", assetPackId);
+  const contentDir = path21.join(dir, "pkey", assetPackId);
   await placePayload(loaded2, v, contentDir, assetPackId);
   const manifest = {
     assetPackID: assetPackId,
@@ -36725,7 +37469,7 @@ async function baPackage(o) {
     platforms: o.platforms?.length ? o.platforms : ["iOS"]
   };
   const manifestText = prettyJson(manifest);
-  await writeFile14(path20.join(dir, "Manifest.json"), manifestText);
+  await writeFile13(path21.join(dir, "Manifest.json"), manifestText);
   const inputs = {
     format: BA_INPUTS_FORMAT,
     assetPackId,
@@ -36737,12 +37481,12 @@ async function baPackage(o) {
     payloadSha256: v.payload.sha256,
     manifestSha256: sha256Hex5(manifestText)
   };
-  await writeFile14(
-    path20.join(out, `${assetPackId}.inputs.json`),
+  await writeFile13(
+    path21.join(out, `${assetPackId}.inputs.json`),
     prettyJson(inputs)
   );
   o.stdout.write(
-    `Wrote asset pack ${assetPackId} (${loaded2.pack.id}@${o.version}, ${Object.keys(manifest.downloadPolicy)[0]}) at ${path20.relative(o.cwd, dir) || dir}
+    `Wrote asset pack ${assetPackId} (${loaded2.pack.id}@${o.version}, ${Object.keys(manifest.downloadPolicy)[0]}) at ${path21.relative(o.cwd, dir) || dir}
 `
   );
   let aar = null;
@@ -36751,13 +37495,13 @@ async function baPackage(o) {
       throw new Error(
         "xcrun ba-package runs on macOS (Xcode 26 or later). Apple's Linux tools are unverified; run this step on a macOS runner, or pass --no-archive to write the manifest and files only."
       );
-    aar = path20.join(out, `${assetPackId}.aar`);
+    aar = path21.join(out, `${assetPackId}.aar`);
     await rm2(aar, { force: true });
     const exec = o.exec ?? ((cmd, args, cwd) => {
       execFileSync2(cmd, args, { cwd, stdio: ["ignore", "pipe", "pipe"] });
     });
     exec("xcrun", ["ba-package", "package", "Manifest.json", "-o", aar], dir);
-    o.stdout.write(`Archived ${path20.relative(o.cwd, aar) || aar}
+    o.stdout.write(`Archived ${path21.relative(o.cwd, aar) || aar}
 `);
   }
   await reportTransport(o, loaded2, outlets, "pending", {
@@ -36771,8 +37515,8 @@ async function ascCredentials(o) {
   const issuerId = o.env.ASC_ISSUER_ID?.trim();
   let pem = o.env.ASC_PRIVATE_KEY?.trim();
   if (!pem && o.env.ASC_KEY_PATH?.trim())
-    pem = await readFile17(
-      path20.resolve(o.cwd, o.env.ASC_KEY_PATH.trim()),
+    pem = await readFile18(
+      path21.resolve(o.cwd, o.env.ASC_KEY_PATH.trim()),
       "utf8"
     );
   if (!keyId || !issuerId || !pem)
@@ -36833,7 +37577,7 @@ var AscApi = class {
 };
 async function readLock(file) {
   try {
-    const v = JSON.parse(await readFile17(file, "utf8"));
+    const v = JSON.parse(await readFile18(file, "utf8"));
     if (v?.format !== ASSET_PACK_LOCK_FORMAT || typeof v.assetPacks !== "object")
       throw new Error(`${file} is not a ${ASSET_PACK_LOCK_FORMAT} document.`);
     return v;
@@ -36861,36 +37605,36 @@ async function baUpload(o) {
   const outlets = requireRouted(product, "apple-ba");
   const level = contentLevel(product, o.contentApi);
   const assetPackId = assetPackIdFor(product, level);
-  const dir = path20.resolve(o.cwd, o.dir ?? DEFAULT_BA_OUT);
-  const aar = path20.join(dir, `${assetPackId}.aar`);
-  const manifestFile = path20.join(dir, assetPackId, "Manifest.json");
+  const dir = path21.resolve(o.cwd, o.dir ?? DEFAULT_BA_OUT);
+  const aar = path21.join(dir, `${assetPackId}.aar`);
+  const manifestFile = path21.join(dir, assetPackId, "Manifest.json");
   const inputs = JSON.parse(
-    await readFile17(path20.join(dir, `${assetPackId}.inputs.json`), "utf8").catch(
+    await readFile18(path21.join(dir, `${assetPackId}.inputs.json`), "utf8").catch(
       () => {
         throw new AscUploadError(
           "asset-pack-inputs-mismatch",
-          `no ${assetPackId}.inputs.json under ${path20.relative(o.cwd, dir) || dir}: run pkey transport apple-ba package first.`
+          `no ${assetPackId}.inputs.json under ${path21.relative(o.cwd, dir) || dir}: run pkey transport apple-ba package first.`
         );
       }
     )
   );
-  if (inputs.packId !== product.pack.id || inputs.version !== o.version || inputs.contentApi !== level || inputs.manifestSha256 !== sha256Hex5(await readFile17(manifestFile)))
+  if (inputs.packId !== product.pack.id || inputs.version !== o.version || inputs.contentApi !== level || inputs.manifestSha256 !== sha256Hex5(await readFile18(manifestFile)))
     throw new AscUploadError(
       "asset-pack-inputs-mismatch",
-      `${path20.relative(o.cwd, dir) || dir} holds ${String(inputs.packId)}@${String(inputs.version)} at level ${String(inputs.contentApi)}, not ${product.pack.id}@${o.version} at level ${level} (or its Manifest.json changed since packaging).`
+      `${path21.relative(o.cwd, dir) || dir} holds ${String(inputs.packId)}@${String(inputs.version)} at level ${String(inputs.contentApi)}, not ${product.pack.id}@${o.version} at level ${level} (or its Manifest.json changed since packaging).`
     );
-  await stat6(aar).catch(() => {
+  await stat7(aar).catch(() => {
     throw new AscUploadError(
       "asset-pack-inputs-mismatch",
-      `${path20.relative(o.cwd, aar)} is missing: package on macOS (without --no-archive) first.`
+      `${path21.relative(o.cwd, aar)} is missing: package on macOS (without --no-archive) first.`
     );
   });
-  const content = path20.join(dir, assetPackId, "pkey", assetPackId);
+  const content = path21.join(dir, assetPackId, "pkey", assetPackId);
   const packaged = await packagedPayload(content, assetPackId);
   if (packaged.sha256 !== inputs.payloadSha256)
     throw new AscUploadError(
       "asset-pack-inputs-mismatch",
-      `the packaged content under ${path20.relative(o.cwd, content) || content} hashes to ${packaged.sha256.slice(0, 12)}…, not the payload ${String(inputs.payloadSha256).slice(0, 12)}… the package step recorded: package again.`
+      `the packaged content under ${path21.relative(o.cwd, content) || content} hashes to ${packaged.sha256.slice(0, 12)}…, not the payload ${String(inputs.payloadSha256).slice(0, 12)}… the package step recorded: package again.`
     );
   if (o.from !== void 0) {
     const loaded2 = await loadTransportPack(o, o.from);
@@ -36902,13 +37646,13 @@ async function baUpload(o) {
       );
   }
   const appId = appIdOf(product, outlets, o.env);
-  const lockFile = path20.resolve(o.cwd, o.lock ?? DEFAULT_ASSET_PACK_LOCK);
+  const lockFile = path21.resolve(o.cwd, o.lock ?? DEFAULT_ASSET_PACK_LOCK);
   const lock = await readLock(lockFile);
   const recorded = lock.assetPacks[assetPackId];
   if (recorded && recorded.packId !== product.pack.id)
     throw new AscUploadError(
       "asset-pack-resource-mismatch",
-      `${path20.relative(o.cwd, lockFile)} records asset pack ${assetPackId} for ${recorded.packId}, not ${product.pack.id}.`
+      `${path21.relative(o.cwd, lockFile)} records asset pack ${assetPackId} for ${recorded.packId}, not ${product.pack.id}.`
     );
   if (recorded && o.expectResource && recorded.resource !== o.expectResource)
     throw new AscUploadError(
@@ -36933,7 +37677,7 @@ async function baUpload(o) {
     if (expected === void 0)
       throw new AscUploadError(
         "asset-pack-unrecorded",
-        `App Store Connect already has asset pack ${assetPackId} (resource ${u(resource)}), but ${path20.relative(o.cwd, lockFile)} records none. Confirm in App Store Connect that it is ${product.pack.id}'s, then pass --expect-resource ${u(resource)}.`
+        `App Store Connect already has asset pack ${assetPackId} (resource ${u(resource)}), but ${path21.relative(o.cwd, lockFile)} records none. Confirm in App Store Connect that it is ${product.pack.id}'s, then pass --expect-resource ${u(resource)}.`
       );
     if (resource !== expected)
       throw new AscUploadError(
@@ -36970,10 +37714,10 @@ async function baUpload(o) {
     lock.assetPacks = Object.fromEntries(
       Object.entries(lock.assetPacks).sort(([a], [b]) => a < b ? -1 : 1)
     );
-    await mkdir6(path20.dirname(lockFile), { recursive: true });
-    await writeFile14(lockFile, prettyJson(lock));
+    await mkdir6(path21.dirname(lockFile), { recursive: true });
+    await writeFile13(lockFile, prettyJson(lock));
     o.stdout.write(
-      `Recorded ${assetPackId} → ${u(resource)} in ${path20.relative(o.cwd, lockFile)}: commit it, so later uploads can prove the asset pack is this pack's.
+      `Recorded ${assetPackId} → ${u(resource)} in ${path21.relative(o.cwd, lockFile)}: commit it, so later uploads can prove the asset pack is this pack's.
 `
     );
   }
@@ -37041,12 +37785,12 @@ async function baUpload(o) {
 }
 async function packagedPayload(content, name) {
   for (const ext of [".pck", ".zip"]) {
-    const file = path20.join(content, `${name}${ext}`);
-    const bytes = await readFile17(file).catch(() => null);
+    const file = path21.join(content, `${name}${ext}`);
+    const bytes = await readFile18(file).catch(() => null);
     if (bytes)
       return {
         sha256: sha256Hex5(bytes),
-        marker: await readFile17(`${file}${MARKER_SUFFIX}`, "utf8").catch(
+        marker: await readFile18(`${file}${MARKER_SUFFIX}`, "utf8").catch(
           () => null
         )
       };
@@ -37059,20 +37803,20 @@ async function packagedPayload(content, name) {
     );
   return {
     sha256: await treeDigest(tree.files),
-    marker: await readFile17(
-      path20.join(content, ...TREE_MARKER_PATH.split("/")),
+    marker: await readFile18(
+      path21.join(content, ...TREE_MARKER_PATH.split("/")),
       "utf8"
     ).catch(() => null)
   };
 }
 async function uploadFile(api, o, versionId, file, assetType) {
-  const bytes = new Uint8Array(await readFile17(file));
+  const bytes = new Uint8Array(await readFile18(file));
   const r = await api.call("POST", "/v1/backgroundAssetUploadFiles", {
     data: {
       type: "backgroundAssetUploadFiles",
       attributes: {
         assetType,
-        fileName: path20.basename(file),
+        fileName: path21.basename(file),
         fileSize: bytes.byteLength
       },
       relationships: {
@@ -37090,7 +37834,7 @@ async function uploadFile(api, o, versionId, file, assetType) {
     if (part.byteLength !== op.length)
       throw new AscUploadError(
         "asc-http-error",
-        `upload operation at ${op.offset}+${op.length} is outside ${path20.basename(file)} (${bytes.byteLength} bytes).`
+        `upload operation at ${op.offset}+${op.length} is outside ${path21.basename(file)} (${bytes.byteLength} bytes).`
       );
     const put = await fetchImpl(op.url, {
       method: op.method,
@@ -37102,7 +37846,7 @@ async function uploadFile(api, o, versionId, file, assetType) {
     if (!put.ok)
       throw new AscUploadError(
         "asc-http-error",
-        `uploading ${path20.basename(file)} at ${op.offset}+${op.length} answered ${put.status}.`
+        `uploading ${path21.basename(file)} at ${op.offset}+${op.length} answered ${put.status}.`
       );
   }
   await api.call("PATCH", `/v1/backgroundAssetUploadFiles/${upload.id}`, {
@@ -37113,15 +37857,15 @@ async function uploadFile(api, o, versionId, file, assetType) {
     }
   });
   o.stdout.write(
-    `Uploaded ${assetType.toLowerCase()} ${path20.basename(file)} (${bytes.byteLength} bytes, ${ops.length} part${ops.length === 1 ? "" : "s"})
+    `Uploaded ${assetType.toLowerCase()} ${path21.basename(file)} (${bytes.byteLength} bytes, ${ops.length} part${ops.length === 1 ? "" : "s"})
 `
   );
 }
 
 // src/transportPlayPad.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { mkdir as mkdir7, readFile as readFile18, rm as rm3, writeFile as writeFile15 } from "node:fs/promises";
-import path21 from "node:path";
+import { mkdir as mkdir7, readFile as readFile19, rm as rm3, writeFile as writeFile14 } from "node:fs/promises";
+import path22 from "node:path";
 var TCF_ALIASES = {
   astc: "astc",
   etc2: "etc2",
@@ -37238,41 +37982,41 @@ async function padModules(o) {
     );
   const variants = pickVariants(loaded2, o.variant, ["texture"]);
   const dirs = padDirectories(variants, o.defaultTexture);
-  const project = path21.resolve(o.cwd, o.project);
-  const settingsFile = path21.join(project, "settings.gradle");
-  const appFile = path21.join(project, "build.gradle");
-  const settings = await readFile18(settingsFile, "utf8").catch(() => {
+  const project = path22.resolve(o.cwd, o.project);
+  const settingsFile = path22.join(project, "settings.gradle");
+  const appFile = path22.join(project, "build.gradle");
+  const settings = await readFile19(settingsFile, "utf8").catch(() => {
     throw new Error(
-      `${path21.relative(o.cwd, settingsFile)} is missing: --project must be a Godot Android Gradle build (android/build).`
+      `${path22.relative(o.cwd, settingsFile)} is missing: --project must be a Godot Android Gradle build (android/build).`
     );
   });
-  const app = await readFile18(appFile, "utf8");
+  const app = await readFile19(appFile, "utf8");
   const textured = [...dirs.values()].some((d) => d !== "pkey");
   const nextApp = patchAppGradle(app, name, textured);
   const nextSettings = patchSettingsGradle(settings, name);
-  const moduleDir = path21.join(project, name);
+  const moduleDir = path22.join(project, name);
   await rm3(moduleDir, { recursive: true, force: true });
-  const assets = path21.join(moduleDir, "src", "main", "assets");
+  const assets = path22.join(moduleDir, "src", "main", "assets");
   const written = [];
   for (const [v, d] of [...dirs.entries()].sort(
     ([, a], [, b]) => a < b ? -1 : 1
   )) {
-    const target = v.layout === "container" ? path21.join(assets, d) : path21.join(assets, d, name);
+    const target = v.layout === "container" ? path22.join(assets, d) : path22.join(assets, d, name);
     await placePayload(loaded2, v, target, name);
     written.push(v.layout === "container" ? d : `${d}/${name}`);
   }
   await mkdir7(moduleDir, { recursive: true });
-  await writeFile15(
-    path21.join(moduleDir, "build.gradle"),
+  await writeFile14(
+    path22.join(moduleDir, "build.gradle"),
     padModuleGradle(name, delivery)
   );
   const patched = [];
   if (nextSettings !== settings) {
-    await writeFile15(settingsFile, nextSettings);
+    await writeFile14(settingsFile, nextSettings);
     patched.push("settings.gradle");
   }
   if (nextApp !== app) {
-    await writeFile15(appFile, nextApp);
+    await writeFile14(appFile, nextApp);
     patched.push("build.gradle");
   }
   o.stdout.write(
@@ -37288,8 +38032,8 @@ async function padModules(o) {
 
 // src/transportSteam.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { mkdir as mkdir8, rm as rm4, writeFile as writeFile16 } from "node:fs/promises";
-import path22 from "node:path";
+import { mkdir as mkdir8, rm as rm4, writeFile as writeFile15 } from "node:fs/promises";
+import path23 from "node:path";
 var DEFAULT_STEAM_OUT = "build/pkey-transport/steam";
 var STEAM_PACK_DIR = "pkey_packs";
 function vdfString(s) {
@@ -37368,20 +38112,20 @@ async function steamVdf(o) {
     throw new Error(
       `${loaded2.pack.id} has ${loaded2.variants.length} variants; a depot carries one: choose it with --variant.`
     );
-  const out = path22.resolve(o.cwd, o.out ?? DEFAULT_STEAM_OUT);
-  const contentRoot = path22.join(out, "content", o.depot);
+  const out = path23.resolve(o.cwd, o.out ?? DEFAULT_STEAM_OUT);
+  const contentRoot = path23.join(out, "content", o.depot);
   await rm4(contentRoot, { recursive: true, force: true });
   await placePayload(
     loaded2,
     v,
-    path22.join(contentRoot, STEAM_PACK_DIR, loaded2.pack.id),
+    path23.join(contentRoot, STEAM_PACK_DIR, loaded2.pack.id),
     loaded2.pack.id
   );
   await mkdir8(out, { recursive: true });
-  const appBuild = path22.join(out, `app_build_${app}.vdf`);
-  const depotBuild = path22.join(out, `depot_build_${o.depot}.vdf`);
+  const appBuild = path23.join(out, `app_build_${app}.vdf`);
+  const depotBuild = path23.join(out, `depot_build_${o.depot}.vdf`);
   const desc = `pkey ${loaded2.pack.id}@${o.version} (${loaded2.recordSha256.slice(0, 12)})`;
-  await writeFile16(
+  await writeFile15(
     appBuild,
     appBuildVdf({
       app,
@@ -37390,9 +38134,9 @@ async function steamVdf(o) {
       setlive: o.setlive ? branch : null
     })
   );
-  await writeFile16(depotBuild, depotBuildVdf({ depot: o.depot }));
+  await writeFile15(depotBuild, depotBuildVdf({ depot: o.depot }));
   o.stdout.write(
-    `Wrote a content-only SteamPipe build of depot ${o.depot} (${loaded2.pack.id}@${o.version}) for app ${app}${o.setlive ? `, set live on ${branch}` : `; set ${branch} live in Steamworks`}: steamcmd +login <account> +run_app_build ${path22.relative(o.cwd, appBuild) || appBuild} +quit
+    `Wrote a content-only SteamPipe build of depot ${o.depot} (${loaded2.pack.id}@${o.version}) for app ${app}${o.setlive ? `, set live on ${branch}` : `; set ${branch} live in Steamworks`}: steamcmd +login <account> +run_app_build ${path23.relative(o.cwd, appBuild) || appBuild} +quit
 `
   );
   await reportTransport(o, loaded2, outlets, "pending", {
@@ -37412,8 +38156,8 @@ async function steamVdf(o) {
 
 // src/storefronts/command.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { readdir as readdir9, stat as stat7 } from "node:fs/promises";
-import path25 from "node:path";
+import { readdir as readdir9, stat as stat8 } from "node:fs/promises";
+import path26 from "node:path";
 
 // src/storefronts/ciPlane.generated.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
@@ -38374,9 +39118,9 @@ function checkPrPaths(store, argv2, paths) {
 
 // src/storefronts/prRun.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { createHash as createHash13 } from "node:crypto";
-import { mkdir as mkdir9, writeFile as writeFile17 } from "node:fs/promises";
-import path24 from "node:path";
+import { createHash as createHash14 } from "node:crypto";
+import { mkdir as mkdir9, writeFile as writeFile16 } from "node:fs/promises";
+import path25 from "node:path";
 
 // src/storefronts/flathub.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
@@ -38528,9 +39272,9 @@ function isHostedAsset(url) {
     return false;
   }
 }
-var str2 = (v) => typeof v === "string" && v.trim() !== "" ? v : null;
+var str3 = (v) => typeof v === "string" && v.trim() !== "" ? v : null;
 function flathubAppId(i) {
-  const id = str2(i.outlet.identity.appId);
+  const id = str3(i.outlet.identity.appId);
   if (!id)
     throw new Error(
       `The ${i.outlet.id} outlet declares no appId in .pkey/distribution.`
@@ -38547,9 +39291,9 @@ function generateMetainfo(i, o = {}) {
   const warnings = [];
   const def = i.app.defaultLocale;
   const dl = payload.locales[def] ?? {};
-  const name = str2(dl.name) ?? i.app.name;
-  const summary = str2(dl.summary);
-  const description = str2(dl.description);
+  const name = str3(dl.name) ?? i.app.name;
+  const summary = str3(dl.summary);
+  const description = str3(dl.description);
   if (!summary || !description)
     throw new Error(
       `The listing's Flathub projection has no ${summary ? "description" : "summary"} in the default locale ${def}.`
@@ -38565,17 +39309,17 @@ function generateMetainfo(i, o = {}) {
     `  <name>${xmlEscape(name)}</name>`
   ];
   for (const l of others) {
-    const v = str2(payload.locales[l]?.name);
+    const v = str3(payload.locales[l]?.name);
     if (v && v !== name)
       x.push(`  <name xml:lang="${xmlEscape(l)}">${xmlEscape(v)}</name>`);
   }
   x.push(`  <summary>${xmlEscape(summary)}</summary>`);
   for (const l of others) {
-    const v = str2(payload.locales[l]?.summary);
+    const v = str3(payload.locales[l]?.summary);
     if (v)
       x.push(`  <summary xml:lang="${xmlEscape(l)}">${xmlEscape(v)}</summary>`);
   }
-  const developer = str2(payload.app.developerName) ?? i.app.developerName;
+  const developer = str3(payload.app.developerName) ?? i.app.developerName;
   if (developer)
     x.push(
       `  <developer id="${xmlEscape(developerId(appId))}">`,
@@ -38588,7 +39332,7 @@ function generateMetainfo(i, o = {}) {
   x.push(
     `  <launchable type="desktop-id">${xmlEscape(appId)}.desktop</launchable>`
   );
-  const homepage = str2(payload.app.homepage) ?? i.app.website;
+  const homepage = str3(payload.app.homepage) ?? i.app.website;
   if (homepage) x.push(`  <url type="homepage">${xmlEscape(homepage)}</url>`);
   else warnings.push("no website: the MetaInfo has no homepage URL");
   if (i.app.supportUrl)
@@ -38643,7 +39387,7 @@ function generateMetainfo(i, o = {}) {
       `content descriptors with no OARS attribute, left out: ${unmapped.join(", ")}`
     );
   const date = isoDate(release.publishedAt);
-  const notes = str2(payload.locales[def]?.releases) ?? i.notes?.[def]?.text;
+  const notes = str3(payload.locales[def]?.releases) ?? i.notes?.[def]?.text;
   x.push(
     "  <releases>",
     `    <release version="${xmlEscape(release.version)}"${date ? ` date="${date}"` : ""}${notes ? "" : "/"}>`
@@ -39114,8 +39858,8 @@ function generateCask(i, o = {}) {
 init_define_PKEY_EMBEDDED_SCHEMAS();
 import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { readFile as readFile19 } from "node:fs/promises";
-import path23 from "node:path";
+import { readFile as readFile20 } from "node:fs/promises";
+import path24 from "node:path";
 function commandLine(tool, argv2) {
   const q2 = (s) => /^[A-Za-z0-9_@%+=:,./-]+$/.test(s) ? s : `'${s.replace(/'/g, `'\\''`)}'`;
   return [tool, ...argv2].map(q2).join(" ");
@@ -39217,7 +39961,7 @@ async function runFileChecks(step, cwd) {
     const check = fc.check;
     if (check === "steam-vdf-setlive-named") {
       const problem = vdfSetliveProblem(
-        await readFile19(path23.resolve(cwd, file), "utf8")
+        await readFile20(path24.resolve(cwd, file), "utf8")
       );
       if (problem)
         throw new Error(
@@ -39249,10 +39993,10 @@ var defaultSpawn = (tool, argv2, cwd) => new Promise((resolve2, reject) => {
   child.on("close", (code) => resolve2(code ?? -1));
 });
 function checkToolPath(toolPath, tool) {
-  const base = path23.basename(toolPath.replace(/\\/g, "/")).replace(/\.(exe|sh|cmd|bat)$/i, "");
+  const base = path24.basename(toolPath.replace(/\\/g, "/")).replace(/\.(exe|sh|cmd|bat)$/i, "");
   if (base.toLowerCase() !== tool.toLowerCase())
     throw new Error(
-      `--tool-path must point at ${tool} itself, not ${path23.basename(toolPath)}.`
+      `--tool-path must point at ${tool} itself, not ${path24.basename(toolPath)}.`
     );
 }
 async function runStoreSteps(steps, o) {
@@ -39470,7 +40214,7 @@ function tag(t) {
   const v = t.trim().toLowerCase().replace(/\s+/g, "-").slice(0, 40);
   return v.length ? v : null;
 }
-var str3 = (v) => typeof v === "string" && v.trim() !== "" ? v : void 0;
+var str4 = (v) => typeof v === "string" && v.trim() !== "" ? v : void 0;
 function yamlFile(kind, body) {
   const clean2 = Object.fromEntries(
     Object.entries(body).filter(([, v]) => v !== void 0 && v !== null)
@@ -39526,7 +40270,7 @@ function installer(b, date, o) {
   return out;
 }
 function generateWinget(i, o = {}) {
-  const id = str3(i.outlet.identity.packageIdentifier);
+  const id = str4(i.outlet.identity.packageIdentifier);
   if (!id)
     throw new Error(
       `The ${i.outlet.id} outlet declares no packageIdentifier in .pkey/distribution.`
@@ -39599,21 +40343,21 @@ function generateWinget(i, o = {}) {
       ...head,
       PackageLocale: locale,
       ...isDefault ? {
-        Publisher: str3(app.Publisher),
+        Publisher: str4(app.Publisher),
         PublisherUrl: i.app.website ?? void 0,
-        PublisherSupportUrl: str3(app.PublisherSupportUrl),
-        PrivacyUrl: str3(app.PrivacyUrl)
+        PublisherSupportUrl: str4(app.PublisherSupportUrl),
+        PrivacyUrl: str4(app.PrivacyUrl)
       } : {},
-      PackageName: str3(l.PackageName),
+      PackageName: str4(l.PackageName),
       ...isDefault ? {
         PackageUrl: i.app.website ?? void 0,
         License: o.license ?? "Proprietary",
-        Copyright: str3(app.Copyright)
+        Copyright: str4(app.Copyright)
       } : {},
-      ShortDescription: str3(l.ShortDescription),
-      Description: str3(l.Description),
+      ShortDescription: str4(l.ShortDescription),
+      Description: str4(l.Description),
       Tags: tags.length ? tags : void 0,
-      ReleaseNotes: str3(l.ReleaseNotes),
+      ReleaseNotes: str4(l.ReleaseNotes),
       ManifestType: isDefault ? "defaultLocale" : "locale",
       ManifestVersion: WINGET_MANIFEST_VERSION
     };
@@ -39634,7 +40378,7 @@ function generateWinget(i, o = {}) {
 
 // src/storefronts/prRun.ts
 var PR_TOKEN_ENV = "PKEY_PR_TOKEN";
-var sha2563 = (s) => createHash13("sha256").update(s).digest("hex");
+var sha2563 = (s) => createHash14("sha256").update(s).digest("hex");
 function identityString(i, field) {
   const v = i.outlet.identity[field];
   if (typeof v !== "string" || !v)
@@ -39873,9 +40617,9 @@ async function runPrStep(o) {
       );
     if (o.outDir) {
       for (const f of plan.files) {
-        const target = path24.resolve(o.cwd, o.outDir, f.path);
-        await mkdir9(path24.dirname(target), { recursive: true });
-        await writeFile17(target, f.content, "utf8");
+        const target = path25.resolve(o.cwd, o.outDir, f.path);
+        await mkdir9(path25.dirname(target), { recursive: true });
+        await writeFile16(target, f.content, "utf8");
       }
       o.stdout.write(`Wrote ${plan.files.length} file(s) under ${o.outDir}.
 `);
@@ -40085,10 +40829,10 @@ async function writeFlathubInit(o) {
   for (const w of warnings) o.stderr.write(`warning: ${u(w)}
 `);
   for (const f of files) {
-    const target = path24.resolve(o.cwd, o.outDir, f.path);
-    await mkdir9(path24.dirname(target), { recursive: true });
-    await writeFile17(target, f.content, "utf8");
-    o.stdout.write(`Wrote ${u(path24.join(o.outDir, f.path))}
+    const target = path25.resolve(o.cwd, o.outDir, f.path);
+    await mkdir9(path25.dirname(target), { recursive: true });
+    await writeFile16(target, f.content, "utf8");
+    o.stdout.write(`Wrote ${u(path25.join(o.outDir, f.path))}
 `);
   }
   o.stdout.write(
@@ -40170,7 +40914,7 @@ function pickOutlet(p, kinds, outletId, label) {
 // src/storefronts/snap.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
 var import_yaml6 = __toESM(require_dist(), 1);
-import { readFile as readFile20, writeFile as writeFile18 } from "node:fs/promises";
+import { readFile as readFile21, writeFile as writeFile17 } from "node:fs/promises";
 function snapReleaseChannels(outlet, channels2) {
   const declared = outlet.identity.channels;
   const map = effectiveTrackMap(
@@ -40271,7 +41015,7 @@ async function writeSnapMetadata(o) {
     { what: "Reading the listing's Snap projection" }
   );
   const fields = snapMetadataFields(body.listing);
-  const current = await readFile20(o.yamlPath, "utf8");
+  const current = await readFile21(o.yamlPath, "utf8");
   const next = applySnapMetadata(current, fields);
   if (o.dryRun) {
     o.stdout.write(
@@ -40282,7 +41026,7 @@ async function writeSnapMetadata(o) {
     );
     return fields;
   }
-  if (next !== current) await writeFile18(o.yamlPath, next, "utf8");
+  if (next !== current) await writeFile17(o.yamlPath, next, "utf8");
   o.stdout.write(
     `${next === current ? "Unchanged" : "Wrote"} the Snap listing's summary and description in ${o.yamlPath} (${untrusted(body.listing.defaultLocale, o.env)}).
 `
@@ -40292,7 +41036,7 @@ async function writeSnapMetadata(o) {
 
 // src/storefronts/command.ts
 var STOREFRONT_USAGE = "Usage: pkey storefront itch push --platform windows|linux|mac|android --dir <dir> --version <v> [--channel c] [--outlet id]\n       pkey storefront snap metadata --yaml <snapcraft.yaml>\n       pkey storefront snap upload --snap <file.snap> --channel c[,c...] [--outlet id]\n       pkey storefront snap upload-metadata --snap <file.snap>\n       pkey storefront exec <store> <command> --op <operation> [--outlet id] [--tool-path p] -- <argv...>\n       pkey storefront allow-list [--store s] [--json]\n       pkey storefront winget|homebrew|scoop|flathub pr [--channel c] [--outlet id] [--out dir]\n              [--portable path] [--command name] [--license l] [--app name] [--project-license spdx]\n       pkey storefront winget|homebrew|scoop|flathub status [--channel c] [--version v] [--outlet id]\n       pkey storefront flathub init [--out dir] [--channel c] [--outlet id] [--command path] [--runtime-version v]\n  (each step also takes --product slug, --base-url url, --dry-run, --no-report)";
-function str4(a, name) {
+function str5(a, name) {
   const v = a.flags[name];
   return typeof v === "string" && v.trim() ? v : void 0;
 }
@@ -40300,36 +41044,36 @@ function bool(a, name) {
   return a.flags[name] === true || a.flags[name] === "true";
 }
 function need(a, name, why) {
-  const v = str4(a, name);
+  const v = str5(a, name);
   if (!v)
     throw new Error(`--${name} is required: ${why}.
 ${STOREFRONT_USAGE}`);
   return v;
 }
 async function resolveSnapFile(cwd, p) {
-  const abs = path25.resolve(cwd, p);
-  if ((await stat7(abs)).isFile()) return p;
+  const abs = path26.resolve(cwd, p);
+  if ((await stat8(abs)).isFile()) return p;
   const snaps = (await readdir9(abs)).filter((f) => f.endsWith(".snap"));
   if (snaps.length !== 1)
     throw new Error(
       `${p} holds ${snaps.length} .snap files; name one (${snaps.join(", ") || "none"}).`
     );
-  return path25.join(p, snaps[0]);
+  return path26.join(p, snaps[0]);
 }
 async function resolveSnapcraftYaml(cwd, p) {
-  const abs = path25.resolve(cwd, p);
-  if ((await stat7(abs)).isFile()) return abs;
+  const abs = path26.resolve(cwd, p);
+  if ((await stat8(abs)).isFile()) return abs;
   for (const candidate of ["snapcraft.yaml", "snap/snapcraft.yaml"]) {
-    const f = path25.join(abs, candidate);
+    const f = path26.join(abs, candidate);
     try {
-      if ((await stat7(f)).isFile()) return f;
+      if ((await stat8(f)).isFile()) return f;
     } catch {
     }
   }
   throw new Error(`${p} has no snapcraft.yaml (or snap/snapcraft.yaml).`);
 }
 function printAllowList(a, io) {
-  const only = str4(a, "store");
+  const only = str5(a, "store");
   if (only && !ciStore(only))
     throw new Error(
       `--store must be one of ${ciStoreIds().join(", ")} (got ${only}).`
@@ -40361,12 +41105,12 @@ function printAllowList(a, io) {
 async function cmdStorefront(a, io) {
   const [store, step] = a.positional;
   if (store === "allow-list") return printAllowList(a, io);
-  const productFlag = str4(a, "product");
+  const productFlag = str5(a, "product");
   const run2 = async (steps, slug) => {
     await runStoreSteps(steps, {
       cwd: io.cwd,
       product: slug,
-      baseUrl: str4(a, "base-url"),
+      baseUrl: str5(a, "base-url"),
       env: io.env,
       stdout: io.stdout,
       stderr: io.stderr,
@@ -40374,7 +41118,7 @@ async function cmdStorefront(a, io) {
       sleep: io.sleep,
       dryRun: bool(a, "dry-run"),
       report: !bool(a, "no-report"),
-      toolPath: str4(a, "tool-path")
+      toolPath: str5(a, "tool-path")
     });
     return 0;
   };
@@ -40383,7 +41127,7 @@ async function cmdStorefront(a, io) {
     const s = ciStore(storeId);
     return {
       slug: p.slug,
-      outlet: pickOutlet(p, s.outletKinds, str4(a, "outlet"), s.label)
+      outlet: pickOutlet(p, s.outletKinds, str5(a, "outlet"), s.label)
     };
   };
   switch (`${store ?? ""} ${step ?? ""}`) {
@@ -40399,7 +41143,7 @@ async function cmdStorefront(a, io) {
               "platform",
               "the platform word the channel starts with"
             ),
-            channel: str4(a, "channel"),
+            channel: str5(a, "channel"),
             version: need(a, "version", "the --userversion butler records")
           })
         ],
@@ -40435,7 +41179,7 @@ async function cmdStorefront(a, io) {
           need(a, "yaml", "the snapcraft.yaml to update")
         ),
         product: p.slug,
-        baseUrl: str4(a, "base-url"),
+        baseUrl: str5(a, "base-url"),
         env: io.env,
         stdout: io.stdout,
         stderr: io.stderr,
@@ -40451,22 +41195,22 @@ async function cmdStorefront(a, io) {
   const pr = store ? prStore(store) : null;
   if (pr && (step === "pr" || step === "status" || step === "init" && pr.store === "flathub")) {
     const generator = {
-      ...str4(a, "portable") ? { portable: str4(a, "portable") } : {},
-      ...str4(a, "command") ? { command: str4(a, "command") } : {},
-      ...str4(a, "license") ? { license: str4(a, "license") } : {},
-      ...str4(a, "app") ? { app: str4(a, "app") } : {},
-      ...str4(a, "project-license") ? { projectLicense: str4(a, "project-license") } : {},
-      ...str4(a, "runtime-version") ? { runtimeVersion: str4(a, "runtime-version") } : {}
+      ...str5(a, "portable") ? { portable: str5(a, "portable") } : {},
+      ...str5(a, "command") ? { command: str5(a, "command") } : {},
+      ...str5(a, "license") ? { license: str5(a, "license") } : {},
+      ...str5(a, "app") ? { app: str5(a, "app") } : {},
+      ...str5(a, "project-license") ? { projectLicense: str5(a, "project-license") } : {},
+      ...str5(a, "runtime-version") ? { runtimeVersion: str5(a, "runtime-version") } : {}
     };
     const slug = productFlag ?? (await loadStepProduct(io.cwd)).slug;
     const common = {
       store: pr.store,
       product: slug,
-      channel: str4(a, "channel") ?? "stable",
-      ...str4(a, "outlet") ? { outlet: str4(a, "outlet") } : {},
-      ...str4(a, "version") ? { version: str4(a, "version") } : {},
+      channel: str5(a, "channel") ?? "stable",
+      ...str5(a, "outlet") ? { outlet: str5(a, "outlet") } : {},
+      ...str5(a, "version") ? { version: str5(a, "version") } : {},
       generator,
-      baseUrl: str4(a, "base-url"),
+      baseUrl: str5(a, "base-url"),
       env: io.env,
       stdout: io.stdout,
       stderr: io.stderr,
@@ -40474,13 +41218,13 @@ async function cmdStorefront(a, io) {
       sleep: io.sleep,
       dryRun: bool(a, "dry-run"),
       report: !bool(a, "no-report"),
-      ...str4(a, "out") ? { outDir: str4(a, "out") } : {},
+      ...str5(a, "out") ? { outDir: str5(a, "out") } : {},
       cwd: io.cwd
     };
     if (step === "pr") await runPrStep(common);
     else if (step === "status") await runPrStatus(common);
     else
-      await writeFlathubInit({ ...common, outDir: str4(a, "out") ?? "flathub" });
+      await writeFlathubInit({ ...common, outDir: str5(a, "out") ?? "flathub" });
     return 0;
   }
   if (store && !pr && (step === "pr" || step === "status"))
@@ -40513,7 +41257,7 @@ ${STOREFRONT_USAGE}`
       );
     let slug;
     let outlet;
-    if (bindsIdentity(s.list, command) || str4(a, "outlet")) {
+    if (bindsIdentity(s.list, command) || str5(a, "outlet")) {
       const r = await outletFor(s.store);
       slug = r.slug;
       outlet = r.outlet;
@@ -40539,26 +41283,26 @@ ${STOREFRONT_USAGE}`
 
 // src/feeds.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { createHash as createHash14 } from "node:crypto";
+import { createHash as createHash15 } from "node:crypto";
 import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
 import {
   lstat as lstat3,
   mkdir as mkdir10,
   readdir as readdir10,
-  readFile as readFile21,
+  readFile as readFile22,
   rm as rm5,
   rmdir,
-  writeFile as writeFile19
+  writeFile as writeFile18
 } from "node:fs/promises";
-import path26 from "node:path";
+import path27 from "node:path";
 import { promisify } from "node:util";
 var FEEDS_USAGE = "Usage: pkey feeds fdroid --product <slug> --channel <c> --out <dir>\n              [--keystore <path> --alias <alias>] [--ks-pass-env NAME] [--apksigner <path>]\n              [--icon <png>] [--base-url <url>] [--dry-run]";
 var FDROID_INDEX_VERSION = 3e4;
 var DEFAULT_KS_PASS_ENV = "PKEY_FDROID_KS_PASS";
-var LOCALE = "en-US";
+var LOCALE2 = "en-US";
 var SAFE_NAME = /^[A-Za-z0-9_~.-]+$/;
-var sha2564 = (b) => createHash14("sha256").update(b).digest("hex");
+var sha2564 = (b) => createHash15("sha256").update(b).digest("hex");
 function sortedJson2(value) {
   return JSON.stringify(value, (_k, v) => {
     if (v && typeof v === "object" && !Array.isArray(v)) {
@@ -40644,7 +41388,7 @@ function buildFdroidIndex(inputs, timestamp, icon2) {
         signer: { sha256: [m.signerSha256] }
       },
       ...v.stable ? {} : { releaseChannels: ["Beta"] },
-      ...v.notes ? { whatsNew: { [LOCALE]: v.notes } } : {}
+      ...v.notes ? { whatsNew: { [LOCALE2]: v.notes } } : {}
     };
   }
   if (problems.length)
@@ -40653,7 +41397,7 @@ function buildFdroidIndex(inputs, timestamp, icon2) {
   ${problems.join("\n  ")}`
     );
   const iconFile = icon2 ? {
-    [LOCALE]: {
+    [LOCALE2]: {
       name: `/${icon2.path}`,
       sha256: icon2.sha256,
       size: icon2.size
@@ -40665,9 +41409,9 @@ function buildFdroidIndex(inputs, timestamp, icon2) {
       metadata: {
         added,
         lastUpdated,
-        name: { [LOCALE]: name },
-        ...listing.subtitle ? { summary: { [LOCALE]: listing.subtitle } } : {},
-        ...listing.description ? { description: { [LOCALE]: listing.description } } : {},
+        name: { [LOCALE2]: name },
+        ...listing.subtitle ? { summary: { [LOCALE2]: listing.subtitle } } : {},
+        ...listing.description ? { description: { [LOCALE2]: listing.description } } : {},
         ...listing.website ? { webSite: listing.website } : {},
         ...listing.developerName ? { authorName: listing.developerName } : {},
         ...preferredSigner ? { preferredSigner } : {},
@@ -40678,15 +41422,15 @@ function buildFdroidIndex(inputs, timestamp, icon2) {
   return {
     repo: {
       name: {
-        [LOCALE]: inputs.channel === "stable" ? name : `${name} (${inputs.channel})`
+        [LOCALE2]: inputs.channel === "stable" ? name : `${name} (${inputs.channel})`
       },
       description: {
-        [LOCALE]: listing.subtitle ?? `${name}, ${inputs.channel} channel, from Polaris Key.`
+        [LOCALE2]: listing.subtitle ?? `${name}, ${inputs.channel} channel, from Polaris Key.`
       },
       ...iconFile ? { icon: iconFile } : {},
       address: inputs.repo.address,
       timestamp,
-      ...hasBeta ? { releaseChannels: { Beta: { name: { [LOCALE]: "Beta" } } } } : {}
+      ...hasBeta ? { releaseChannels: { Beta: { name: { [LOCALE2]: "Beta" } } } } : {}
     },
     packages
   };
@@ -40824,13 +41568,13 @@ async function findApksigner(explicit, env) {
   if (explicit) return explicit;
   const sdk = env.ANDROID_HOME ?? env.ANDROID_SDK_ROOT;
   if (sdk) {
-    const bt = path26.join(sdk, "build-tools");
+    const bt = path27.join(sdk, "build-tools");
     try {
       const versions = (await readdir10(bt)).sort(
         (a, b) => a.localeCompare(b, void 0, { numeric: true })
       );
       for (const v of versions.reverse()) {
-        const p = path26.join(bt, v, "apksigner");
+        const p = path27.join(bt, v, "apksigner");
         if (existsSync(p)) return p;
       }
     } catch {
@@ -40845,7 +41589,7 @@ async function signEntryJar(jar, opts) {
       `The keystore password is not in $${opts.passEnv}; export it from the CI secret (never pass it on the command line).`
     );
   const unsigned = `${jar}.unsigned`;
-  await writeFile19(unsigned, await readFile21(jar));
+  await writeFile18(unsigned, await readFile22(jar));
   try {
     await promisify(execFile)(
       tool,
@@ -40886,8 +41630,8 @@ var OUT_DIRS = {
   icons: /^[A-Za-z0-9_~.-]+\.(png|jpe?g|webp)$/
 };
 async function staleOutFiles(dir, cwd) {
-  const up = path26.relative(dir, path26.resolve(cwd));
-  if (up === "" || up.split(path26.sep)[0] !== ".." && !path26.isAbsolute(up))
+  const up = path27.relative(dir, path27.resolve(cwd));
+  if (up === "" || up.split(path27.sep)[0] !== ".." && !path27.isAbsolute(up))
     throw new Error(
       `--out ${dir} is the working directory or one of its parents; point it at a directory of its own (for example --out fdroid-repo).`
     );
@@ -40903,7 +41647,7 @@ async function staleOutFiles(dir, cwd) {
   const dirs = [];
   const foreign = [];
   for (const name of (await readdir10(dir)).sort()) {
-    const full = path26.join(dir, name);
+    const full = path27.join(dir, name);
     const st = await lstat3(full);
     if (OUT_FILES.has(name) && st.isFile()) {
       files.push(full);
@@ -40913,10 +41657,10 @@ async function staleOutFiles(dir, cwd) {
     if (pattern2 && st.isDirectory()) {
       let clean2 = true;
       for (const inner of (await readdir10(full)).sort()) {
-        const f = path26.join(full, inner);
+        const f = path27.join(full, inner);
         if (pattern2.test(inner) && (await lstat3(f)).isFile()) files.push(f);
         else {
-          foreign.push(path26.join(name, inner));
+          foreign.push(path27.join(name, inner));
           clean2 = false;
         }
       }
@@ -40954,7 +41698,7 @@ async function buildFdroidFeed(opts) {
   if (opts.keystore === void 0 !== (opts.alias === void 0))
     throw new Error(`--keystore and --alias go together.
 ${FEEDS_USAGE}`);
-  const dir = path26.resolve(opts.cwd, opts.out);
+  const dir = path27.resolve(opts.cwd, opts.out);
   await staleOutFiles(dir, opts.cwd);
   const token = await resolveCiToken({
     baseUrl: opts.baseUrl,
@@ -40993,8 +41737,8 @@ ${FEEDS_USAGE}`);
   const prevTs = previous?.repo?.timestamp ?? 0;
   const timestamp = Math.max(now, prevTs + 1);
   const icon2 = opts.icon ? {
-    name: path26.basename(opts.icon),
-    bytes: await readFile21(path26.resolve(opts.cwd, opts.icon))
+    name: path27.basename(opts.icon),
+    bytes: await readFile22(path27.resolve(opts.cwd, opts.icon))
   } : void 0;
   if (icon2 && !/^[A-Za-z0-9_~.-]+\.(png|jpe?g|webp)$/.test(icon2.name))
     throw new Error(
@@ -41009,13 +41753,13 @@ ${FEEDS_USAGE}`);
   for (const d of stale.dirs) await rmdir(d);
   const written = {};
   for (const [p, bytes] of repo.files) {
-    const file = path26.join(dir, ...p.split("/"));
-    await mkdir10(path26.dirname(file), { recursive: true });
-    await writeFile19(file, bytes);
+    const file = path27.join(dir, ...p.split("/"));
+    await mkdir10(path27.dirname(file), { recursive: true });
+    await writeFile18(file, bytes);
     written[p] = file;
   }
-  const jar = path26.join(dir, "entry.jar");
-  await writeFile19(
+  const jar = path27.join(dir, "entry.jar");
+  await writeFile18(
     jar,
     zipStore([{ name: "entry.json", data: repo.files.get("entry.json") }])
   );
@@ -41031,13 +41775,13 @@ ${FEEDS_USAGE}`);
   };
   if (!opts.keystore || !opts.alias) {
     out.write(
-      `Wrote the unsigned repository to ${path26.relative(opts.cwd, dir) || "."}; pass --keystore and --alias to sign, upload and register it.
+      `Wrote the unsigned repository to ${path27.relative(opts.cwd, dir) || "."}; pass --keystore and --alias to sign, upload and register it.
 `
     );
     return result;
   }
   await (opts.sign ?? signEntryJar)(jar, {
-    keystore: path26.resolve(opts.cwd, opts.keystore),
+    keystore: path27.resolve(opts.cwd, opts.keystore),
     alias: opts.alias,
     passEnv: opts.ksPassEnv ?? DEFAULT_KS_PASS_ENV,
     env: opts.env,
@@ -41056,7 +41800,7 @@ ${FEEDS_USAGE}`);
   }
   const all = await Promise.all(
     Object.entries(written).map(async ([p, file]) => {
-      const bytes = await readFile21(file);
+      const bytes = await readFile22(file);
       return { path: p, file, sha256: sha2564(bytes), size: bytes.length };
     })
   );
@@ -41288,545 +42032,6 @@ ${FEEDS_PRUNE_USAGE}`);
   return report;
 }
 
-// src/listing.ts
-init_define_PKEY_EMBEDDED_SCHEMAS();
-
-// src/godotProject.ts
-init_define_PKEY_EMBEDDED_SCHEMAS();
-import { createHash as createHash15 } from "node:crypto";
-import { readFile as readFile22, stat as stat8 } from "node:fs/promises";
-import path27 from "node:path";
-var ConfigParser = class {
-  constructor(src, file) {
-    this.src = src;
-    this.file = file;
-  }
-  src;
-  file;
-  i = 0;
-  fail(message) {
-    const line = this.src.slice(0, this.i).split("\n").length;
-    throw new Error(`${this.file}:${line}: ${message}`);
-  }
-  peek() {
-    return this.src[this.i] ?? "";
-  }
-  skipSpace(newlines) {
-    for (; ; ) {
-      const c = this.peek();
-      if (c === " " || c === "	" || c === "\r" || newlines && c === "\n")
-        this.i++;
-      else if ((c === ";" || c === "#") && newlines) {
-        while (this.i < this.src.length && this.peek() !== "\n") this.i++;
-      } else return;
-    }
-  }
-  parse() {
-    const out = { "": {} };
-    let section = "";
-    for (; ; ) {
-      this.skipSpace(true);
-      if (this.i >= this.src.length) return out;
-      if (this.peek() === "[") {
-        const end = this.src.indexOf("]", this.i);
-        const eol = this.src.indexOf("\n", this.i);
-        if (end < 0 || eol >= 0 && end > eol) this.fail("unclosed section");
-        section = this.src.slice(this.i + 1, end).trim();
-        out[section] ??= {};
-        this.i = end + 1;
-        continue;
-      }
-      const key = this.key();
-      this.skipSpace(false);
-      if (this.peek() !== "=") this.fail(`expected "=" after ${key}`);
-      this.i++;
-      this.skipSpace(false);
-      out[section][key] = this.value();
-      this.skipSpace(false);
-      const c = this.peek();
-      if (c === ";" || c === "#") this.skipSpace(true);
-      else if (c !== "\n" && c !== "")
-        this.fail(`unexpected ${JSON.stringify(c)}`);
-    }
-  }
-  key() {
-    if (this.peek() === '"') return this.string();
-    const start = this.i;
-    while (this.i < this.src.length && !"=\n".includes(this.peek())) this.i++;
-    const key = this.src.slice(start, this.i).trim();
-    if (!key) this.fail("empty key");
-    return key;
-  }
-  string() {
-    const start = this.i;
-    this.i++;
-    let out = "";
-    for (; ; ) {
-      if (this.i >= this.src.length) {
-        this.i = start;
-        this.fail("unterminated string");
-      }
-      const c = this.src[this.i++];
-      if (c === '"') return out;
-      if (c !== "\\") {
-        out += c;
-        continue;
-      }
-      const e = this.src[this.i++] ?? "";
-      switch (e) {
-        case "n":
-          out += "\n";
-          break;
-        case "t":
-          out += "	";
-          break;
-        case "r":
-          out += "\r";
-          break;
-        case "b":
-          out += "\b";
-          break;
-        case "f":
-          out += "\f";
-          break;
-        case "u":
-        case "U": {
-          const len = e === "u" ? 4 : 6;
-          const hex5 = this.src.slice(this.i, this.i + len);
-          if (!/^[0-9A-Fa-f]+$/.test(hex5) || hex5.length !== len)
-            this.fail("invalid unicode escape");
-          out += String.fromCodePoint(parseInt(hex5, 16));
-          this.i += len;
-          break;
-        }
-        default:
-          out += e;
-      }
-    }
-  }
-  list(close) {
-    const out = [];
-    this.skipSpace(true);
-    if (this.peek() === close) {
-      this.i++;
-      return out;
-    }
-    for (; ; ) {
-      this.skipSpace(true);
-      out.push(this.value());
-      this.skipSpace(true);
-      const c = this.src[this.i++];
-      if (c === close) return out;
-      if (c !== ",") this.fail(`expected "," or "${close}"`);
-      this.skipSpace(true);
-      if (this.peek() === close) {
-        this.i++;
-        return out;
-      }
-    }
-  }
-  value() {
-    const c = this.peek();
-    if (c === '"') return this.string();
-    if ((c === "&" || c === "^") && this.src[this.i + 1] === '"') {
-      this.i++;
-      return this.string();
-    }
-    if (c === "[") {
-      this.i++;
-      return this.list("]");
-    }
-    if (c === "{") {
-      this.i++;
-      const out = {};
-      this.skipSpace(true);
-      if (this.peek() === "}") {
-        this.i++;
-        return out;
-      }
-      for (; ; ) {
-        this.skipSpace(true);
-        const k = this.value();
-        this.skipSpace(true);
-        if (this.src[this.i++] !== ":")
-          this.fail('expected ":" in a dictionary');
-        this.skipSpace(true);
-        out[typeof k === "string" ? k : JSON.stringify(k)] = this.value();
-        this.skipSpace(true);
-        const d = this.src[this.i++];
-        if (d === "}") return out;
-        if (d !== ",") this.fail('expected "," or "}"');
-        this.skipSpace(true);
-        if (this.peek() === "}") {
-          this.i++;
-          return out;
-        }
-      }
-    }
-    const num = /^[-+]?(?:\d+\.?\d*(?:e[-+]?\d+)?|\.\d+(?:e[-+]?\d+)?)/i.exec(
-      this.src.slice(this.i, this.i + 64)
-    );
-    if (num) {
-      this.i += num[0].length;
-      return Number(num[0]);
-    }
-    const ident = /^[A-Za-z_][A-Za-z0-9_]*/.exec(
-      this.src.slice(this.i, this.i + 128)
-    );
-    if (!ident) this.fail(`unexpected ${JSON.stringify(c)}`);
-    this.i += ident[0].length;
-    const word = ident[0];
-    if (word === "true") return true;
-    if (word === "false") return false;
-    if (word === "null") return null;
-    if (word === "inf" || word === "inf_neg" || word === "nan") return null;
-    let type = word;
-    if (this.peek() === "[") {
-      const end = this.src.indexOf("]", this.i);
-      if (end < 0) this.fail("unclosed type");
-      type += this.src.slice(this.i, end + 1);
-      this.i = end + 1;
-    }
-    this.skipSpace(false);
-    if (this.peek() !== "(") this.fail(`unexpected word ${word}`);
-    this.i++;
-    return { $type: type, args: this.list(")") };
-  }
-};
-function parseGodotConfig(text, file = "config") {
-  return new ConfigParser(text.replace(/^\uFEFF/, ""), file).parse();
-}
-var PLATFORMS = {
-  Android: "android",
-  iOS: "ios",
-  macOS: "macos",
-  "Windows Desktop": "windows",
-  Linux: "linux",
-  "Linux/X11": "linux",
-  Web: "web",
-  HTML5: "web"
-};
-var ANDROID_CATEGORIES = [
-  "accessibility",
-  "music",
-  "games",
-  "photo-and-video",
-  "navigation",
-  "news",
-  "productivity",
-  "social-networking",
-  "photo-and-video",
-  null
-];
-var str5 = (v) => typeof v === "string" && v.trim() !== "" ? v.trim() : void 0;
-async function exists(file) {
-  try {
-    return (await stat8(file)).isFile();
-  } catch {
-    return false;
-  }
-}
-function pngSize(bytes) {
-  const sig = [137, 80, 78, 71, 13, 10, 26, 10];
-  if (bytes.length < 24 || !sig.every((b, i) => bytes[i] === b)) return null;
-  if (String.fromCharCode(...bytes.slice(12, 16)) !== "IHDR") return null;
-  const v = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-  return { width: v.getUint32(16), height: v.getUint32(20) };
-}
-function resolveResPath(root, res) {
-  if (!res.startsWith("res://")) return null;
-  const rel = res.slice("res://".length);
-  const file = path27.resolve(root, rel);
-  const within = path27.relative(root, file);
-  if (!within || within.startsWith("..") || path27.isAbsolute(within))
-    return null;
-  return file;
-}
-async function readGodotListing(dir, opts = {}) {
-  const root = path27.basename(dir) === "project.godot" ? path27.dirname(dir) : path27.resolve(dir);
-  const projectFile = path27.join(root, "project.godot");
-  let projectText;
-  try {
-    projectText = await readFile22(projectFile, "utf8");
-  } catch {
-    throw new Error(
-      `No project.godot in ${root}: --godot takes the Godot project's directory.`
-    );
-  }
-  const project = parseGodotConfig(projectText, "project.godot");
-  const app = project.application ?? {};
-  const warnings = [];
-  const listing = {
-    project: path27.basename(root),
-    versions: [],
-    bundleIds: [],
-    categoryHints: [],
-    icons: []
-  };
-  const name = str5(app["config/name"]);
-  if (name) listing.name = name;
-  const localized = app["config/name_localized"];
-  if (localized && typeof localized === "object" && !Array.isArray(localized) && !("$type" in localized)) {
-    const names = {};
-    for (const [locale, v] of Object.entries(localized)) {
-      const n = str5(v);
-      if (n) names[locale] = n;
-    }
-    if (Object.keys(names).length) listing.nameLocalized = names;
-  }
-  const version = str5(app["config/version"]);
-  if (version) listing.versions.push({ platform: "project", value: version });
-  const presetsFile = path27.join(root, "export_presets.cfg");
-  const presetsRead = [];
-  const options = {};
-  if (await exists(presetsFile)) {
-    const cfg = parseGodotConfig(
-      await readFile22(presetsFile, "utf8"),
-      "export_presets.cfg"
-    );
-    const sections = Object.keys(cfg).map((s) => /^preset\.(\d+)$/.exec(s)).filter((m) => m !== null).sort((a, b) => Number(a[1]) - Number(b[1]));
-    for (const m of sections) {
-      const preset = cfg[m[0]];
-      const presetName = str5(preset.name) ?? m[0];
-      const godotPlatform = str5(preset.platform) ?? "";
-      const platform = PLATFORMS[godotPlatform];
-      if (opts.presets?.length ? !opts.presets.includes(presetName) : platform && options[platform])
-        continue;
-      if (!platform) {
-        warnings.push(
-          `preset "${presetName}": platform "${godotPlatform}" is not read`
-        );
-        continue;
-      }
-      if (options[platform]) {
-        warnings.push(
-          `preset "${presetName}": a ${platform} preset was already read`
-        );
-        continue;
-      }
-      options[platform] = cfg[`${m[0]}.options`] ?? {};
-      presetsRead.push(`${presetName} (${godotPlatform})`);
-    }
-    for (const p of opts.presets ?? [])
-      if (!presetsRead.some((r) => r.startsWith(`${p} (`)))
-        warnings.push(`no export preset named "${p}"`);
-  } else if (opts.presets?.length) {
-    throw new Error(
-      `--preset was given but ${root} has no export_presets.cfg.`
-    );
-  }
-  const opt = (platform, key) => str5(options[platform]?.[key]);
-  for (const [platform, key] of [
-    ["android", "version/name"],
-    ["ios", "application/short_version"],
-    ["macos", "application/short_version"],
-    ["windows", "application/product_version"]
-  ]) {
-    const v = opt(platform, key);
-    if (v) listing.versions.push({ platform, value: v });
-  }
-  for (const [platform, key] of [
-    ["ios", "application/bundle_identifier"],
-    ["macos", "application/bundle_identifier"],
-    ["android", "package/unique_name"]
-  ]) {
-    const v = opt(platform, key);
-    if (!v) continue;
-    if (v.includes("$"))
-      warnings.push(
-        `${platform} ${key} "${v}" is a template (it holds $), not an id`
-      );
-    else listing.bundleIds.push({ platform, value: v });
-  }
-  const macCategory = opt("macos", "application/app_category");
-  if (macCategory)
-    listing.categoryHints.push({ platform: "macos", value: macCategory });
-  const androidCategory = options.android?.["package/app_category"];
-  if (typeof androidCategory === "number") {
-    const hint = ANDROID_CATEGORIES[androidCategory];
-    if (hint) listing.categoryHints.push({ platform: "android", value: hint });
-  }
-  const copyright = opt("macos", "application/copyright") ?? opt("windows", "application/copyright");
-  if (copyright) listing.copyright = copyright;
-  const company = opt("windows", "application/company_name");
-  if (company) listing.company = company;
-  const master = opt("ios", "icons/app_store_1024x1024") && {
-    setting: "icons/app_store_1024x1024",
-    path: opt("ios", "icons/app_store_1024x1024")
-  } || opt("ios", "icons/icon_1024x1024") && {
-    setting: "icons/icon_1024x1024",
-    path: opt("ios", "icons/icon_1024x1024")
-  } || str5(app["config/icon"]) && {
-    setting: "application/config/icon",
-    path: str5(app["config/icon"])
-  } || null;
-  const wanted = [];
-  if (master) wanted.push({ slot: "icon-master", ...master });
-  for (const [slot, layer] of [
-    ["icon-adaptive-fg", "foreground"],
-    ["icon-adaptive-bg", "background"],
-    ["icon-adaptive-mono", "monochrome"]
-  ]) {
-    const setting = `launcher_icons/adaptive_${layer}_432x432`;
-    const p = opt("android", setting);
-    if (p) wanted.push({ slot, setting, path: p });
-  }
-  for (const w of wanted) {
-    const icon2 = { slot: w.slot, path: w.path, setting: w.setting };
-    const file = resolveResPath(root, w.path);
-    if (!file) {
-      warnings.push(
-        `${w.setting} "${w.path}" is not a res:// path inside the project; it is reported without a digest`
-      );
-    } else if (!await exists(file)) {
-      warnings.push(`${w.setting} "${w.path}" does not exist in the project`);
-    } else {
-      const bytes = new Uint8Array(await readFile22(file));
-      icon2.sha256 = createHash15("sha256").update(bytes).digest("hex");
-      const size = pngSize(bytes);
-      if (size) {
-        icon2.width = size.width;
-        icon2.height = size.height;
-      }
-    }
-    listing.icons.push(icon2);
-  }
-  return { listing, presets: presetsRead, warnings };
-}
-
-// src/listing.ts
-var LISTING_USAGE = "Usage: pkey listing import --godot <project> --product <slug> [--preset <name> ...]\n              [--locale <code>] [--overwrite] [--apply [--fields a,b]] [--json]\n              [--base-url <url>]\n       pkey listing import --godot <project> --dry-run [--preset <name> ...]";
-var LOCALE2 = /^[a-z]{2,3}(-[A-Za-z0-9]{2,8}){0,3}$/;
-function listingHint(status) {
-  if (status === 404)
-    return "No such product, or the product has no Distribution service enabled.";
-  return status === 401 || status === 403 || status === 429 ? statusHint(status) : void 0;
-}
-async function listingImport(opts) {
-  if (opts.locale !== void 0 && !LOCALE2.test(opts.locale))
-    throw new Error(`--locale must be a code such as en-US.
-${LISTING_USAGE}`);
-  if (opts.fields?.length && !opts.apply)
-    throw new Error(`--fields goes with --apply.
-${LISTING_USAGE}`);
-  const read2 = await readGodotListing(opts.godot, {
-    ...opts.presets?.length ? { presets: opts.presets } : {}
-  });
-  const result = {
-    upload: read2.listing,
-    presets: read2.presets,
-    warnings: read2.warnings
-  };
-  if (opts.dryRun) return result;
-  const product = opts.product?.trim();
-  if (!product) throw new Error(`--product is required.
-${LISTING_USAGE}`);
-  const cookie = adminCookie(opts.cookie, "`pkey listing import` imports");
-  const baseUrl = (opts.baseUrl?.trim() || DEFAULT_BASE_URL).replace(
-    /\/+$/,
-    ""
-  );
-  const f = opts.fetchImpl ?? fetch;
-  const csrf = await readCsrf(f, baseUrl, cookie, void 0);
-  const url = `${baseUrl}/manage/api/products/${encodeURIComponent(product)}/distribution/listing/import`;
-  const body = {
-    source: "godot",
-    godot: read2.listing,
-    ...opts.locale ? { locale: opts.locale } : {},
-    ...opts.overwrite ? { overwrite: true } : {}
-  };
-  const post = async (extra) => {
-    const res = await request(f, url, {
-      method: "POST",
-      headers: {
-        accept: "application/json",
-        "content-type": "application/json",
-        cookie,
-        [CSRF_HEADER]: csrf
-      },
-      body: JSON.stringify({ ...body, ...extra })
-    });
-    if (res.status === 409) {
-      const payload2 = await readJson(res, url);
-      if (payload2.reason === "import_changed" && payload2.import) {
-        result.import = payload2.import;
-        throw new Error(
-          `The listing or its sources changed since the preview, so nothing was written. The new diff:
-${formatImport(result)}
-Re-run to review and apply it.`
-        );
-      }
-      throw new Error(
-        `Importing at ${url} failed (409): ${untrusted(payload2.message ?? payload2.reason ?? "conflict", {})}`
-      );
-    }
-    if (!res.ok) throw await httpError(res, `Importing at ${url}`, listingHint);
-    const payload = await readJson(res, url);
-    const answer = payload.import;
-    if (!answer || typeof answer.digest !== "string")
-      throw new Error(`${url} answered ${res.status} without an import diff.`);
-    return answer;
-  };
-  const preview = await post({});
-  result.import = preview;
-  if (!opts.apply) return result;
-  result.import = await post({
-    confirm: preview.digest,
-    ...opts.fields?.length ? { fields: opts.fields } : {}
-  });
-  return result;
-}
-function show2(v, env) {
-  const s = JSON.stringify(v) ?? "null";
-  return untrusted(s.length > 72 ? `${s.slice(0, 71)}…` : s, env);
-}
-function formatImport(r, env = {}) {
-  const u = (v) => untrusted(v, env);
-  const lines3 = [];
-  if (r.presets.length) lines3.push(`Presets read: ${r.presets.join(", ")}`);
-  for (const w of r.warnings) lines3.push(`warning: ${u(w)}`);
-  const imp = r.import;
-  if (!imp) {
-    lines3.push(JSON.stringify(r.upload, null, 2));
-    return lines3.join("\n");
-  }
-  if (imp.createsListing)
-    lines3.push(
-      `The product has no listing yet: this creates it (default locale ${u(imp.defaultLocale)}).`
-    );
-  if (!imp.changes.length)
-    lines3.push("No changes: the listing already holds what the project has.");
-  const width = Math.max(0, ...imp.changes.map((c) => u(c.field).length));
-  for (const c of imp.changes) {
-    const value = c.action === "replace" ? `${show2(c.current, env)} -> ${show2(c.proposed, env)}` : c.action === "keep" ? `${show2(c.current, env)} (kept: ${u(c.reason ?? "kept")}; godot has ${show2(c.proposed, env)})` : show2(c.proposed, env);
-    lines3.push(
-      `  ${u(c.action).padEnd(7)}  ${u(c.field).padEnd(width)}  ${value}`
-    );
-  }
-  for (const x of imp.refused)
-    lines3.push(`refused  ${u(x.field)}: ${u(x.message)}`);
-  for (const i of imp.identifiers) {
-    const where2 = i.outlets.length ? i.outlets.map(
-      (o) => `${u(o.outlet)} ${o.matches ? "matches" : `has ${u(o.value)}`}`
-    ).join(", ") : "no outlet declares one";
-    lines3.push(`${u(i.kind)} (${u(i.platform)}) ${u(i.value)}: ${where2}`);
-  }
-  for (const a of imp.assets)
-    lines3.push(
-      `icon ${u(a.slot)}: ${u(a.ref)}${a.width && a.height ? ` (${u(a.width)}x${u(a.height)})` : ""}; upload it with pkey listing assets`
-    );
-  const applicable = imp.changes.filter((c) => c.action !== "keep").length;
-  if (imp.applied)
-    lines3.push(
-      imp.written.length ? `Applied ${imp.written.length} change${imp.written.length === 1 ? "" : "s"}: ${imp.written.map(u).join(", ")}` : "Nothing to apply."
-    );
-  else if (applicable)
-    lines3.push(
-      `Nothing written. Re-run with --apply to write ${applicable} change${applicable === 1 ? "" : "s"}.`
-    );
-  return lines3.join("\n");
-}
-
 // src/listingAssets.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
 import { createHash as createHash17 } from "node:crypto";
@@ -41838,7 +42043,7 @@ import {
   rm as rm6,
   rmdir as rmdir2,
   stat as stat9,
-  writeFile as writeFile20
+  writeFile as writeFile19
 } from "node:fs/promises";
 import path28 from "node:path";
 
@@ -43169,7 +43374,7 @@ ${LISTING_ASSETS_USAGE}`);
   const writeRel = async (rel2, bytes) => {
     const p = path28.join(dir, ...rel2.split("/"));
     await mkdir11(path28.dirname(p), { recursive: true });
-    await writeFile20(p, bytes);
+    await writeFile19(p, bytes);
     files.push(rel2);
     return p;
   };
@@ -43342,7 +43547,7 @@ ${LISTING_ASSETS_USAGE}`);
   };
   await writeRel("preview.html", new TextEncoder().encode(previewHtml(report)));
   report.files = [...files, "report.json"].sort();
-  await writeFile20(
+  await writeFile19(
     path28.join(dir, "report.json"),
     `${JSON.stringify(report, null, 2)}
 `
@@ -44338,7 +44543,7 @@ async function cmdBundle(parsed, cwd, stdout, env) {
     baseUrl: flagString(parsed, "base-url"),
     out: flagString(parsed, "out"),
     force: flagBool(parsed, "force"),
-    cookie: process.env[ADMIN_COOKIE_ENV]
+    token: process.env[ADMIN_TOKEN_ENV]
   });
   const rel = path30.relative(cwd, result.file);
   stdout.write(`Minted bundle ${untrusted(result.bundleId, env)}
@@ -44480,7 +44685,7 @@ ${SDK_CONFIG_USAGE}`
       `${target} exists and was not written by pkey sdk; pass --force to replace it.`
     );
   await mkdir12(path30.dirname(target), { recursive: true });
-  await writeFile21(target, content, "utf8");
+  await writeFile20(target, content, "utf8");
   stdout.write(`${factsSummary(facts)}
 Wrote ${target}
 `);

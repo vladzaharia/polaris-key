@@ -9,7 +9,8 @@ extends RefCounted
 # fingerprint.test.ts vector for vector. No case id appears here: the corpus decides what is
 # tested, and each section ends with a coverage check against its floor.
 #
-#   jwsCases         PKeyJws.verify              verdict, kid, decoded document
+#   jwsCases         PKeyJws.verify              verdict, kid, decoded document; the vector that
+#                                                sets `callSiteOmitsTyp` is driven with NO typ named
 #   licenseDocCases  PKeyVerify (licence)        accept
 #   configDocCases   PKeyVerify (config)         accept
 #   trustCases       PKeyTrust                   accepted, the merged set, issuedAt
@@ -50,7 +51,8 @@ extends RefCounted
 #                    platformData.listingUrlPrefixes; PKeyOutlet's signal table and platform data
 #                    equal signals and platformData; every row (PKeyOutlet.detect_outlet, P3-11)
 #   timings          INFO only: one feed and one record verify, median of a few runs
-#   gate-matrix rows the build-gate port + PKeyGate status, usable, reason, allowedRange
+#   gate-matrix rows the build-gate port + PKeyGate status, usable, reason, allowedRange; a row's
+#                    `license.blocked` REPLACES the derived hint and reaches the gate as given
 #   deviceIds        PKeyDeviceId.from_raw       the derived id (fingerprint.json)
 #   vectors          PKeyFingerprint             components and hwid (fingerprint.json)
 #   windowsCimCommand / windowsCim / linuxAnchor / ramBuckets
@@ -76,11 +78,11 @@ const OUTLET_MATRIX := "res://tests/corpus/v2/outlet-matrix.json"
 const HEADERS_VERSION := 2
 const CORPUS_VERSION := 2
 const FLOORS := {
-	"jwsCases": 85,
+	"jwsCases": 86,
 	"licenseDocCases": 16,
 	"licenseUserCases": 14,
 	"configDocCases": 18,
-	"trustCases": 30,
+	"trustCases": 32,
 	"clockFloorCases": 7,
 	"bundleCases": 23,
 	"pointerSets": 539,
@@ -96,7 +98,7 @@ const FLOORS := {
 	"outletRows": 48,
 	"bucketVectors": 6,
 	"updateRows": 65,
-	"gate-matrix": 38,
+	"gate-matrix": 43,
 	"deviceIds": 4,
 	"vectors": 6,
 	"windowsCim": 17,
@@ -137,6 +139,7 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	var matrix = _load(t, GATE_MATRIX)
 	if matrix != null:
 		_gate_matrix(t, matrix)
+	_gate_vocabulary(t)
 	var fp = _load(t, FINGERPRINT)
 	if fp != null:
 		_device_ids(t, _section(t, fp, "deviceIds"))
@@ -212,7 +215,11 @@ func _jws_cases(t: PKeyTestContext, cases: Array) -> void:
 			continue
 		var id: String = c["id"]
 		var expect: Dictionary = c["expect"]
-		var r = PKeyJws.verify(c["jws"], c["trust"], c.get("typ", ""), int(c.get("maxPayloadBytes", 0)))
+		# §2: every vector names its typ, except the one that sets `callSiteOmitsTyp`: it drives a
+		# call site that names NO typ at all, which is how §1's raised payload cap is proved to be
+		# granted to a typ rather than to a caller. (The very same bytes verify, typ named, as
+		# `bundle-payload-at-cap`, so the refusal is the missing typ and nothing else.)
+		var r = PKeyJws.verify(c["jws"], c["trust"], _call_site_typ(c), int(c.get("maxPayloadBytes", 0)))
 		var got := "ok" if r != null else "fail"
 		evaluated += 1
 		if not t.check("%s verdict" % id, got == expect["verify"], "expect=%s got=%s" % [expect["verify"], got]):
@@ -264,7 +271,7 @@ func _pointer_sets(t: PKeyTestContext, corpus: Dictionary) -> void:
 			if not (c is Dictionary and c.get(f[1]) is String and c.get(f[2]) is Dictionary):
 				t.check("%s/%s well-formed for the pointer set" % [f[0], str(c.get("id"))], false)
 				continue
-			var typ: String = f[3] if f[3] != "" else str(c.get("typ", ""))
+			var typ: String = f[3] if f[3] != "" else _call_site_typ(c)
 			var cap: int = f[4] if f[0] != "jwsCases" else int(c.get("maxPayloadBytes", 0))
 			var jws: String = _marker_release(c[f[1]]) if f[0] == "markerCases" else c[f[1]]
 			var r = PKeyJws.verify(jws, c[f[2]], typ, cap)
@@ -295,6 +302,12 @@ static func _marker_release(text: String) -> String:
 	return ""
 
 
+## The typ a jwsCases vector's call site names: the vector's own `typ`, or "" (none demanded) when
+## it sets `callSiteOmitsTyp`. `typ` still records what the ARTIFACT is; this is what the CALLER asks.
+static func _call_site_typ(c: Dictionary) -> String:
+	return "" if PKeyClaims.is_true(c.get("callSiteOmitsTyp")) else str(c.get("typ", ""))
+
+
 static func _jws_well_formed(c) -> bool:
 	if not (c is Dictionary):
 		return false
@@ -303,6 +316,8 @@ static func _jws_well_formed(c) -> bool:
 	if c.has("typ") and not (c["typ"] is String):
 		return false
 	if c.has("maxPayloadBytes") and not (c["maxPayloadBytes"] is float):
+		return false
+	if c.has("callSiteOmitsTyp") and not (c["callSiteOmitsTyp"] is bool):
 		return false
 	var e = c.get("expect")
 	if not (e is Dictionary and (e.get("verify") == "ok" or e.get("verify") == "fail")):
@@ -1227,6 +1242,13 @@ func _header_cases(t: PKeyTestContext, corpus: Dictionary) -> void:
 # PKeySemver and PKeyChannel; clients never compute it, they record the Worker's 403. Its
 # verdict feeds PKeyGate.license_state as the `blocked` hint. `expect.reason` describes the
 # derived hint, which on the activation-precedes-blocked row is deliberately not the status.
+#
+# A row may instead carry `license.blocked`: the unsigned hint as read back off disk or out of a
+# 403 body. It REPLACES the derived one and reaches the gate AS GIVEN (never through
+# PKeyGate.sanitize_blocked, which would drop it): a hint outside the vocabulary is one no build
+# gate could have produced, so those rows cannot be written through `gate`, and they pin that the
+# gate itself reads such a reason as the strictest one. `expect.reason` is still checked against
+# the DERIVED hint, never against `license.blocked`.
 
 ## The rows P0-04 appended to gate-matrix v2 (WIRE-CONTRACT-V3 §5.1), and the carried row it
 ## retired (the pre-R3-01 dev bypass).
@@ -1252,6 +1274,18 @@ const P0_04_CHANNEL_ROWS := [
 ]
 const RETIRED_ROW := "ok — dev build bypasses the gate despite an out-of-range window + non-entitled channel"
 
+## The five rows that carry `license.blocked`: the unsigned hint's VOCABULARY (WIRE-CONTRACT-V4 §4.1).
+const BLOCKED_VOCABULARY_ROWS := [
+	"version-too-old — an out-of-vocabulary blocked.reason coerces to the STRICTER reason",
+	"version-too-old — `not-applicable` as a blocked.reason is coerced too, allowedRange kept",
+	"channel-not-entitled — an IN-vocabulary blocked.reason is still honoured verbatim",
+	"needs-activation — a poisoned blocked.reason does not outrank the activation guard",
+	"not-applicable — a poisoned blocked.reason cannot be used to gate an unlicensed product either",
+]
+## Reasons that are NOT block reasons, usable statuses first: planted as an unsigned hint they must
+## read as the strictest reason (spelling variants included; the match is exact and case-sensitive).
+const POISONED_REASONS := ["ok", "grace", "not-applicable", "expired", "revoked", "needs-activation", "definitely-fine", "", "Version-Too-Old", " version-too-old", "version-too-old ", "version_too_old"]
+
 
 func _gate_matrix(t: PKeyTestContext, matrix: Dictionary) -> void:
 	t.check("gateMatrixVersion", PKeyClaims.is_number(matrix.get("gateMatrixVersion")) and int(matrix["gateMatrixVersion"]) == PKeyConstants.GATE_MATRIX_VERSION, str(matrix.get("gateMatrixVersion")))
@@ -1268,7 +1302,10 @@ func _gate_matrix(t: PKeyTestContext, matrix: Dictionary) -> void:
 		var g: Dictionary = row["gate"]
 		var l: Dictionary = row["license"]
 		var expect: Dictionary = row["expect"]
-		var blocked = check_build_gate(g)
+		var derived = check_build_gate(g)
+		# A fixture-supplied hint WINS over the derived one: it models the unsigned value read back
+		# off disk or out of a 403 body, which is what `blocked` is at every real call site.
+		var blocked = l["blocked"] if l.has("blocked") else derived
 		var doc = null
 		if l.has("issuedAt") and l.has("expiresAt") and l.has("graceUntil"):
 			doc = {
@@ -1288,13 +1325,23 @@ func _gate_matrix(t: PKeyTestContext, matrix: Dictionary) -> void:
 		t.check("%s status" % name, state["status"] == expect["status"], "expect=%s got=%s" % [expect["status"], state["status"]])
 		t.check("%s ok" % name, PKeyGate.is_usable(state) == expect["ok"], "usable=%s" % PKeyGate.is_usable(state))
 		if expect.has("reason"):
-			var got = blocked["reason"] if blocked is Dictionary else null
+			var got = derived["reason"] if derived is Dictionary else null
 			t.check("%s reason" % name, got is String and got == expect["reason"], "expect=%s got=%s" % [expect["reason"], str(got)])
 		t.check("%s allowedRange" % name, _same(state.get("allowed_range"), expect.get("allowedRange")), "expect=%s got=%s" % [JSON.stringify(expect.get("allowedRange")), JSON.stringify(state.get("allowed_range"))])
 	_coverage(t, "gate-matrix", evaluated, rows.size(), _ms_since(t0))
 	var missing := P0_04_CHANNEL_ROWS.filter(func(n): return not names.has(n))
 	t.check("gate-matrix carries every P0-04 channel row", missing.is_empty(), JSON.stringify(missing))
 	t.check("gate-matrix no longer carries the retired dev-bypass row", not names.has(RETIRED_ROW))
+	var by_name := {}
+	for row in rows:
+		if row is Dictionary and row.get("name") is String:
+			by_name[row["name"]] = row
+	for vocabulary_row in BLOCKED_VOCABULARY_ROWS:
+		var carried: bool = by_name.has(vocabulary_row) and by_name[vocabulary_row].get("license") is Dictionary and by_name[vocabulary_row]["license"].get("blocked") is Dictionary
+		t.check("gate-matrix carries the blocked-vocabulary row, with its hint: %s" % vocabulary_row, carried)
+	# A usable reason is planted in there, so the rows can fail a gate that returns the hint's reason
+	# verbatim as the status.
+	t.check("gate-matrix plants a usable reason as the unsigned hint", rows.any(func(r): return r is Dictionary and r.get("license") is Dictionary and r["license"].get("blocked") is Dictionary and PKeyGate.is_usable(r["license"]["blocked"].get("reason"))))
 	# The port is not vacuous: a malformed header and an unentitled channel are refused, the
 	# window still applies to a dev build without the dev grant, and the grant reopens it.
 	var base := {"version": "2.0.0", "compatMin": "1.0.0", "compatMax": "3.0.0", "entitlements": {}}
@@ -1309,6 +1356,41 @@ func _gate_matrix(t: PKeyTestContext, matrix: Dictionary) -> void:
 	t.check("gate port: allowDevBuilds false closes it even with the grant", _reason(check_build_gate(dev.merged({"allowDevBuilds": false, "entitlements": _grant(["dev"])}, true))) == "version-too-old")
 
 
+## The unsigned `blocked` hint's VOCABULARY (WIRE-CONTRACT-V4 §4.1), straight at the gate. The
+## matrix rows above pin the decisions; this pins the pieces they stand on, for the values the
+## corpus cannot carry as JSON-typed reasons (a number, an Array, a Dictionary, null). The gate
+## returns the hint's reason AS the status and PKeyGate.USABLE says yes to ok, grace and
+## not-applicable, so a reason outside PKeyGate.BLOCK_REASONS must never reach the status.
+func _gate_vocabulary(t: PKeyTestContext) -> void:
+	t.check("gate vocabulary: the block reasons are the three 403 reasons", PKeyGate.BLOCK_REASONS == ["version-too-old", "version-too-new", "channel-not-entitled"], str(PKeyGate.BLOCK_REASONS))
+	t.check("gate vocabulary: the strictest reason is version-too-old, and a member", PKeyGate.STRICTEST_BLOCK_REASON == "version-too-old" and PKeyGate.BLOCK_REASONS.has(PKeyGate.STRICTEST_BLOCK_REASON))
+	t.check("gate vocabulary: no block reason is usable, so the vocabulary can only tighten", PKeyGate.BLOCK_REASONS.all(func(r): return not PKeyGate.is_usable(r)))
+	var outside: Array = POISONED_REASONS + [null, 5, 5.0, true, ["version-too-old"], {"reason": "version-too-old"}]
+	for reason in PKeyGate.BLOCK_REASONS:
+		t.check("gate vocabulary: %s is a member and survives coercion unchanged" % reason, PKeyGate.is_block_reason(reason) and PKeyGate.coerce_block_reason(reason) == reason)
+	var doc := {"issuedAt": 1000, "expiresAt": 4600, "graceUntil": 2593000}
+	for value in outside:
+		var shown := JSON.stringify(value)
+		t.check("gate vocabulary: %s is not a block reason and coerces to the strictest one" % shown, not PKeyGate.is_block_reason(value) and PKeyGate.coerce_block_reason(value) == PKeyGate.STRICTEST_BLOCK_REASON)
+		# The unsigned hint is read BEFORE the no-document check, so it needs neither a document nor a
+		# signature: the gate must refuse with a document and without one.
+		for held in [doc, null]:
+			var st := PKeyGate.license_state({"activation": "token", "doc": held, "now": 1500, "blocked": {"reason": value}})
+			t.check("gate vocabulary: an unsigned hint naming %s never makes the gate usable (%s)" % [shown, "with a document" if held is Dictionary else "without one"], st["status"] == "version-too-old" and not PKeyGate.is_usable(st), str(st))
+		# The reload edge drops it instead of coercing: a record this client did not write holds no hint.
+		t.check("gate vocabulary: the reload edge drops a hint naming %s" % shown, not (PKeyGate.sanitize_blocked({"reason": value}) is Dictionary))
+	for reason in PKeyGate.BLOCK_REASONS:
+		var st := PKeyGate.license_state({"activation": "token", "doc": doc, "now": 1500, "blocked": {"reason": reason, "allowedRange": {"min": "1.0.0"}}})
+		t.check("gate vocabulary: %s is still honoured verbatim, with its allowedRange" % reason, st["status"] == reason and _same(st.get("allowed_range"), {"min": "1.0.0"}), str(st))
+	var no_reason := PKeyGate.license_state({"activation": "token", "doc": doc, "now": 1500, "blocked": {"allowedRange": {"min": "1.0.0"}}})
+	t.check("gate vocabulary: a hint with no reason at all reads as the strictest one, range kept", no_reason["status"] == "version-too-old" and _same(no_reason.get("allowed_range"), {"min": "1.0.0"}), str(no_reason))
+	# The guards that precede the hint still precede it: a poisoned hint gates neither an
+	# unactivated install nor a product without the licence service.
+	var planted := {"reason": "ok"}
+	t.check("gate vocabulary: a poisoned hint loses to the activation guard", PKeyGate.license_state({"activation": null, "doc": null, "now": 1500, "blocked": planted})["status"] == "needs-activation")
+	t.check("gate vocabulary: a poisoned hint loses to a product without the licence service", PKeyGate.license_state({"license_service_enabled": false, "activation": null, "doc": null, "now": 1500, "blocked": planted})["status"] == "not-applicable")
+
+
 static func _matrix_row_ok(row) -> bool:
 	if not (row is Dictionary and row.get("name") is String and row.get("gate") is Dictionary \
 			and row.get("license") is Dictionary and row.get("expect") is Dictionary):
@@ -1319,6 +1401,7 @@ static func _matrix_row_ok(row) -> bool:
 	return g.get("version") is String and g.get("compatMin") is String and g.get("compatMax") is String \
 			and g.get("entitlements") is Dictionary and (not g.has("channel") or g["channel"] is String) \
 			and l.get("licenseServiceEnabled") is bool and PKeyClaims.is_number(l.get("now")) \
+			and (not l.has("blocked") or (l["blocked"] is Dictionary and l["blocked"].get("reason") is String)) \
 			and e.get("status") is String and e.get("ok") is bool
 
 

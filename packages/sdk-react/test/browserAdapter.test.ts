@@ -2,8 +2,15 @@ import { describe, expect, it, vi } from "vitest";
 import {
   browserAdapter,
   BrowserAdapter,
+  InsecureBaseUrlError,
   splitSessionDoc,
 } from "../src/browser/browserAdapter.js";
+import {
+  PolarisError,
+  isSecureTransportUrl,
+  type PolarisAdapter,
+} from "../src/core/index.js";
+import { safeLink } from "../src/kit/links.js";
 import {
   discoveryBody,
   fuse,
@@ -566,6 +573,154 @@ describe("BrowserAdapter — config / secret / entitlement accessors", () => {
     });
     expect(adapter).toBeInstanceOf(BrowserAdapter);
     expect(adapter.mode).toBe("browser");
+    adapter.dispose();
+  });
+});
+
+describe("BrowserAdapter — baseUrl scheme enforcement", () => {
+  const build = (baseUrl: string): PolarisAdapter =>
+    browserAdapter({
+      auth: "cookie",
+      productSlug: "acme",
+      baseUrl,
+      fetchImpl: makeFakeFetch(null),
+      now: () => NOW_SEC,
+    });
+
+  it("refuses a plaintext base URL at CONSTRUCTION, not on the first request", () => {
+    // The session cookie is `Secure` and bearer mode sends a device token, so a plaintext
+    // control plane is either a cleartext credential or no credential at all. Neither is worth
+    // discovering asynchronously: the same rule `@polaris-key/node` enforces.
+    let caught: unknown;
+    try {
+      build("http://evil.example");
+    } catch (e) {
+      caught = e;
+    }
+    expect(caught).toBeInstanceOf(InsecureBaseUrlError);
+    // It is a PolarisError too, so `e instanceof PolarisError` and `.code` keep working.
+    expect(caught).toBeInstanceOf(PolarisError);
+    expect((caught as PolarisError).code).toBe("insecure-base-url");
+    expect((caught as Error).message).toContain("must be https:");
+  });
+
+  it("refuses every other non-https scheme, and anything that is not a URL at all", () => {
+    for (const bad of [
+      "http://evil.example",
+      "http://key.plrs.im.evil.example",
+      "http://localhost.evil.example",
+      "ftp://key.plrs.im",
+      "javascript:fetch('/acme/identity/session')",
+      "data:text/html,<script>1</script>",
+      "//key.plrs.im",
+      "key.plrs.im",
+      "",
+    ]) {
+      expect(() => build(bad), bad).toThrow(InsecureBaseUrlError);
+    }
+  });
+
+  it("accepts https:, and http: on loopback for wrangler dev", async () => {
+    for (const good of [
+      "https://key.plrs.im",
+      "https://example.test",
+      "http://localhost:8787",
+      "http://127.0.0.1:8787",
+      "http://[::1]:8787",
+    ]) {
+      const adapter = build(good);
+      await ready(adapter);
+      expect(adapter.mode, good).toBe("browser");
+      adapter.dispose();
+    }
+  });
+
+  it("still strips the trailing slash off an accepted loopback base", async () => {
+    const fetchImpl = vi.fn(makeFakeFetch(makeDoc()));
+    const adapter = browserAdapter({
+      auth: "cookie",
+      productSlug: "acme",
+      baseUrl: "http://localhost:8787//",
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+      now: () => NOW_SEC,
+    });
+    await ready(adapter);
+    const urls = fetchImpl.mock.calls.map((c) => String(c[0]));
+    expect(urls).toContain("http://localhost:8787/acme/identity/session");
+    adapter.dispose();
+  });
+
+  it("shares ONE https-or-loopback rule with the kit's link validator", () => {
+    // `isSecureTransportUrl` is the single predicate both surfaces call, so the base URL a
+    // session rides over and a link the kit opens cannot drift apart.
+    expect(isSecureTransportUrl("https://dl.example/app.dmg")).toBe(true);
+    expect(isSecureTransportUrl("http://localhost:8787/app.dmg")).toBe(true);
+    expect(isSecureTransportUrl("http://127.0.0.1/app.dmg")).toBe(true);
+    expect(isSecureTransportUrl("http://[::1]/app.dmg")).toBe(true);
+    expect(isSecureTransportUrl("http://evil.example/app.dmg")).toBe(false);
+    expect(isSecureTransportUrl("javascript:alert(1)")).toBe(false);
+    expect(isSecureTransportUrl("file:///etc/passwd")).toBe(false);
+    expect(isSecureTransportUrl("not a url")).toBe(false);
+    for (const url of [
+      "https://dl.example/app.dmg",
+      "http://localhost:8787/app.dmg",
+      "http://evil.example/app.dmg",
+      "javascript:alert(1)",
+    ]) {
+      expect(safeLink(url) !== null, url).toBe(isSecureTransportUrl(url));
+    }
+    // The kit additionally refuses userinfo, which a base URL never carries either.
+    expect(safeLink("https://user:pw@dl.example/")).toBeNull();
+  });
+});
+
+describe("BrowserAdapter — the unsigned blocked hint in the session response", () => {
+  // The session JSON is deliberately not verified in cookie mode (see the trust-model note in
+  // the adapter), and the gate returns `blocked.reason` AS the status, so a response claiming
+  // `{"blocked":{"reason":"ok"}}` must not license the client.
+  const sessionWith = (blocked: unknown) =>
+    fetchWith((url) =>
+      url.endsWith("/identity/session")
+        ? json({ authenticated: true, doc: null, csrfToken: "c", blocked })
+        : null,
+    );
+  const open = async (blocked: unknown) => {
+    const adapter = browserAdapter({
+      auth: "cookie",
+      productSlug: "acme",
+      fetchImpl: sessionWith(blocked),
+      now: () => NOW_SEC,
+    });
+    await ready(adapter);
+    return adapter;
+  };
+
+  it("an out-of-vocabulary reason is dropped: the client is not licensed by it", async () => {
+    for (const reason of [
+      "ok",
+      "grace",
+      "not-applicable",
+      "definitely-fine",
+      7,
+      null,
+      {},
+    ]) {
+      const adapter = await open({ reason });
+      const s = adapter.snapshot();
+      expect(s.status, JSON.stringify(reason)).toBe("needs-activation");
+      expect(s.status).not.toBe("ok");
+      adapter.dispose();
+    }
+  });
+
+  it("an in-vocabulary reason still reaches the gate, allowed range included", async () => {
+    const adapter = await open({
+      reason: "channel-not-entitled",
+      allowedRange: { min: "1.0.0" },
+    });
+    const s = adapter.snapshot();
+    expect(s.status).toBe("channel-not-entitled");
+    expect(s.gate.allowedRange).toEqual({ min: "1.0.0" });
     adapter.dispose();
   });
 });

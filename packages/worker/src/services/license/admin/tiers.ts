@@ -18,6 +18,10 @@ import {
 } from "../../../core/console/respond.js";
 import { audit } from "../../../core/console/audit.js";
 import {
+  deviceLimitMessage,
+  invalidDeviceLimit,
+} from "../../../core/console/deviceLimit.js";
+import {
   countLicensesUsingTier,
   deleteTier,
   listProfiles,
@@ -37,30 +41,17 @@ function parseChannels(raw: unknown): string | null {
 }
 
 /**
- * R11-02 part 2 — a tier's device limit must be a real seat count.
- *
- * `licenseCore.ts` gates the whole seat check on `limit > 0`, so `PATCH {"policyDeviceLimit":
- * 0}` (or `-1`) did not mean "zero seats", it meant "UNLIMITED seats" for every license on the
- * tier — the core commercial control removed by one mistyped or fuzzed admin field. NULL still
- * means "inherit the product default". 0015_data_integrity.sql enforces the same rule at the
- * database; this returns 422 instead of letting an operator hit a constraint error.
- */
-function invalidDeviceLimit(raw: unknown): boolean {
-  return typeof raw === "number" && (!Number.isInteger(raw) || raw <= 0);
-}
-
-/**
  * The write checks a tier body's signed values take (plans/P3-01.md §2.2's inventory): the
- * label is free text, the channels and version bounds the manifest's patterns, the device limit
- * at most `MAX_WIRE_INTEGER` (the positive-integer rule is `invalidDeviceLimit`'s).
+ * label is free text, the channels and version bounds the manifest's patterns. The device limit
+ * is not here: its whole range, 1 to `MAX_DEVICE_LIMIT` and so far inside `MAX_WIRE_INTEGER`, is
+ * `invalidDeviceLimit`'s, and a tier limit that fails it answers with that one message.
  */
 function tierWriteChecks(body: Record<string, unknown>): WriteChecks {
   return new WriteChecks()
     .text("label", body.label)
     .channels("channels", body.channels)
     .semver("minVersion", body.minVersion)
-    .semver("maxVersion", body.maxVersion)
-    .wireInteger("policyDeviceLimit", body.policyDeviceLimit);
+    .semver("maxVersion", body.maxVersion);
 }
 
 /** A PATCH field: `null` clears it, a value of `type` replaces it, anything else keeps it. */
@@ -121,11 +112,15 @@ export async function handleTiers(
         return err(422, ErrorCode.BadRequest, "unknown profile", {
           fields: ["profile"],
         });
+      // A 0 or negative limit would read as UNLIMITED (the licence core gates the seat check on
+      // `limit > 0`) and an unbounded one wedges `claimDeviceSeat`; NULL still inherits the
+      // product default. 0015_data_integrity.sql holds the lower bound at the database too; this
+      // answers 422 instead of letting an operator hit a constraint error.
       if (invalidDeviceLimit(body.policyDeviceLimit))
         return err(
           422,
           ErrorCode.BadRequest,
-          "policyDeviceLimit must be a positive integer",
+          deviceLimitMessage("policyDeviceLimit"),
           { fields: ["policyDeviceLimit"] },
         );
       await upsertTier(db, {
@@ -178,7 +173,7 @@ export async function handleTiers(
       return err(
         422,
         ErrorCode.BadRequest,
-        "policyDeviceLimit must be a positive integer",
+        deviceLimitMessage("policyDeviceLimit"),
         { fields: ["policyDeviceLimit"] },
       );
     // A-3: `null` clears a nullable field (no profile; the product's expiry and device-limit

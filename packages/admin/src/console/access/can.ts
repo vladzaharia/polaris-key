@@ -93,6 +93,7 @@ const PRODUCT_PAGE_AREAS: Record<ProductPageId, AreaId> = {
 const GLOBAL_PAGE_AREAS: Record<GlobalPageId, AreaId> = {
   home: "console",
   products: "console",
+  "api-tokens": "platform",
   "product-new": "platform",
   "platform-settings": "platform",
   "platform-deployment": "platform",

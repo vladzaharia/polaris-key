@@ -32,6 +32,11 @@ Grouped by what triggers them:
 | Offline bundles           | `bundle.minted` — see [Offline bundles](/docs/admin/bundles/#nothing-is-stored-but-the-audit-row)                                               |
 | Access                    | `access.denied`                                                                                                                                 |
 
+A customer's own sign-in appends one too when it creates the license: `license.mint.oidc`, with the
+signed-in person as the actor and the issuer class that vouched for their address (`platform` or
+`custom`) in the summary. It lands in the same atomic write as the license itself, so a license
+made by signing in always has its row, and a sign-in that loses a race to another creates neither.
+
 ### Settings rows
 
 A change to a registered setting (the [settings reference](/docs/reference/settings/) lists
@@ -124,7 +129,7 @@ tombstones the row and scrubs license PII, but never touches `audit`. A schedule
 rows older than **180 days**, the same cutoff applied to the customer portal's own audit table.
 
 When a person erases their Polaris Key account, the rows that name them as the actor (adding a
-product from Discover, and a sign-in's license merge, tier change or license choice) keep their
+product from Discover, and a sign-in's license mint, merge, tier change or license choice) keep their
 time, action and license, and show `erased-account` as the actor with no name, address or summary.
 Rows for anyone else, and console actions on other people's licenses, are not changed.
 

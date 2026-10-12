@@ -19,10 +19,14 @@ token; the record behind it lives in KV, peppered-hash-keyed, holding the device
 a CSRF value, the `licenseId`, the synthetic `deviceId`, and a creation timestamp — also on a
 30-day TTL, so the cookie and its record always expire together.
 
-A cookie whose KV record is missing or unparseable is treated exactly like no cookie at all, the
-same fail-closed rule the OIDC flow records use: every caller already has a well-defined answer
-for "there is no session here," and a truncated or corrupted value must take that branch rather
-than escape as an unhandled error.
+The `pkeyt_` token is a live device credential, so it is stored sealed (AES-GCM under the platform
+KEK) and bound to that one session: a KV dump yields ciphertext, and a sealed token copied into
+another session's record fails to open. A cookie whose KV record is missing, unparseable or can't
+be opened — one written before the token was sealed, or sealed under a key the Worker no longer
+holds — is treated exactly like no cookie at all, the same fail-closed rule the OIDC flow records
+use: every caller already has a well-defined answer for "there is no session here," and a
+truncated or corrupted value must take that branch rather than escape as an unhandled error. The
+browser signs in again.
 
 ## `GET /identity/session` — the fused document
 
@@ -37,9 +41,9 @@ The response shape depends on how far the request gets:
 
 | Situation                                                                                | Response                                                                                                            |
 | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| No session cookie, or its record is missing/corrupt                                      | `200 { "authenticated": false, "doc": null }`                                                                       |
+| No session cookie, or its record is missing, corrupt or can't be opened                  | `200 { "authenticated": false, "doc": null }`                                                                       |
 | Session valid, but the device token or license fails Core's usability check              | `200 { "authenticated": false, "doc": null }` — identical to no session at all                                      |
-| Session valid, but the active catalog can't validate the payload                         | `500 catalog_unavailable` — fails closed, matching `/config/document`                                               |
+| Session valid, but there is no usable active catalog to validate the payload             | `500 catalog_unavailable` — fails closed, matching `/config/document`                                               |
 | Session valid, device/license usable, but the **build gate** blocks this version/channel | `200 { "authenticated": true, "doc": null, "blocked": { "reason": "…", "allowedRange": {...} }, "csrfToken": "…" }` |
 | Session valid and nothing blocks it                                                      | `200 { "authenticated": true, "doc": {...}, "csrfToken": "…" }`                                                     |
 

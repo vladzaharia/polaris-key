@@ -489,6 +489,28 @@ describe("the entitled access mode on the build, file and blob routes", () => {
     }
   });
 
+  it("a MOVING selector is held to the window once it resolves: `latest` is refused where `1.0.0` is served", async () => {
+    // `accessSelector` names no version for `latest`, so the window could not be asked before the
+    // build resolved. Without the check after resolution a licence capped at 1.0.0 fetched the
+    // newest release (and its digest) by swapping one path segment.
+    const s = await entitledSetup({ maxVersion: "1.0.0" });
+    const auth = { headers: { authorization: `Bearer ${s.token}` } };
+    for (const origin of [BYTES, CONSOLE]) {
+      const base = `${origin}/${SLUG}/release/builds`;
+      for (const query of ["", "?checksum=sha256"]) {
+        const moving = await get(s, `${base}/latest/cli-arm64${query}`, auth);
+        expect(moving.status, `${origin} ${query}`).toBe(403);
+        expect(await moving.json(), `${origin} ${query}`).toMatchObject({
+          error: { code: "version_blocked" },
+          allowedRange: { max: "1.0.0" },
+        });
+      }
+      // The pinned spelling of an in-window release is still served.
+      const pinned = await get(s, `${base}/1.0.0/cli-arm64`, auth);
+      expect(pinned.status, origin).toBe(200);
+    }
+  });
+
   it("SHA256SUMS follows the files' access: a bearer inside the window gets it privately, anonymous and out-of-window callers do not", async () => {
     const s = await entitledSetup({ maxVersion: "1.0.0" });
     const auth = { headers: { authorization: `Bearer ${s.token}` } };

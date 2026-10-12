@@ -4,7 +4,6 @@ import {
   ApiError,
   type EdgeMintIdentity,
   type EdgeMintRecipe,
-  type EdgeMintRecipeFields,
   type EdgeMintRecipesResponse,
 } from "../../../../api.js";
 import { confirmFor } from "../../../../lib/actions.js";
@@ -36,61 +35,16 @@ import { r, withParam } from "../../../routes.js";
 import { CollectionTemplate } from "../../../templates/Collection.js";
 import { useTableUrlState } from "../../../useTableUrlState.js";
 import { useEdgeMint } from "../data.js";
+import {
+  changedLabel,
+  FIELD_LABELS,
+  FIELD_ORDER,
+  fieldsOf,
+  IDENTITY_ROWS,
+  show,
+} from "../model/edgeMintFields.js";
 
 const RECIPE = codecs.string();
-
-const FIELD_LABELS: Record<keyof EdgeMintRecipeFields, string> = {
-  alg: "Algorithm",
-  signingKeySecret: "Signing secret",
-  kid: "Key id (kid)",
-  claimsTemplateJson: "Claims template",
-  ttlSeconds: "Token lifetime (seconds)",
-  audience: "Audience",
-};
-
-const FIELD_ORDER: (keyof EdgeMintRecipeFields)[] = [
-  "alg",
-  "signingKeySecret",
-  "kid",
-  "audience",
-  "ttlSeconds",
-  "claimsTemplateJson",
-];
-
-const REASON_LABELS: Record<string, string> = {
-  registration: "Registration opened",
-  license: "License turned off",
-  identity: "Sign-in trust changed",
-};
-
-const IDENTITY_ROWS: [string, keyof EdgeMintIdentity][] = [
-  ["Provider", "provider"],
-  ["Issuer", "issuer"],
-  ["Client id", "clientId"],
-  ["Group map", "groupRoleMapJson"],
-];
-
-function fieldsOf(recipe: EdgeMintRecipeFields): EdgeMintRecipeFields {
-  return {
-    alg: recipe.alg,
-    signingKeySecret: recipe.signingKeySecret,
-    kid: recipe.kid,
-    claimsTemplateJson: recipe.claimsTemplateJson,
-    ttlSeconds: recipe.ttlSeconds,
-    audience: recipe.audience,
-  };
-}
-
-const show = (value: string | number | null | undefined): string =>
-  value === null || value === undefined ? "—" : String(value);
-
-function changedLabel(field: EdgeMintRecipe["changedFields"][number]): string {
-  return (
-    REASON_LABELS[field] ??
-    FIELD_LABELS[field as keyof EdgeMintRecipeFields] ??
-    field
-  );
-}
 
 /** Why the mint is public, in words, from the response's three flags. */
 function publicReasons(data: EdgeMintRecipesResponse): string {

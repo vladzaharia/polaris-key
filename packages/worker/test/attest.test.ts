@@ -883,7 +883,9 @@ async function mintWorld(policy: Record<string, unknown>) {
     "edge-mint",
   );
   await w.db.run(
-    "INSERT INTO edge_mint_config (product,id,alg,signing_key_secret,kid,claims_template_json,ttl_seconds,audience,auth_page_template) VALUES (?,?,?,?,?,?,?,?,?)",
+    // A config-only product's recipe has to SAY that a device token is the whole of its gate:
+    // `requires` defaults to `licensed`, which a product that does not run License cannot meet.
+    "INSERT INTO edge_mint_config (product,id,alg,signing_key_secret,kid,claims_template_json,ttl_seconds,audience,auth_page_template,requires) VALUES (?,?,?,?,?,?,?,?,?,'registered')",
     "djdl",
     "applemusic",
     "ES256",

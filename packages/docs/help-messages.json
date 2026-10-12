@@ -915,6 +915,12 @@
       "why": "A value stored for the app can't be used, so the service couldn't prepare your settings.",
       "fix": "Nothing you can change. Tell the app's developer."
     },
+    "signing_unavailable": {
+      "page": "other",
+      "entry": "signing_unavailable",
+      "why": "The service couldn't sign the document it was preparing for the app.",
+      "fix": "Wait a few minutes, then try again. If it keeps happening, tell the app's developer."
+    },
     "bad_response": {
       "page": "other",
       "entry": "bad_response",

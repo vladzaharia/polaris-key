@@ -35,6 +35,8 @@ import {
   safeFetchTimeoutMs,
 } from "../src/core/safeFetch.js";
 import { handleAssetQueue, MIRROR_BATCH_BUDGET_MS } from "../src/assetQueue.js";
+import { rateLimitOk } from "../src/core/rateLimit.js";
+import { recordLimiterChecks } from "./rlMock.js";
 import { syncReleaseStoreReport } from "../src/services/release/sync.js";
 import { stmtSetArtifactModel } from "../src/services/release/model.js";
 import {
@@ -474,6 +476,63 @@ describe("release-file mirroring (rules)", () => {
       "failed",
     );
     expect(await job("v1.1.0", "201")).toMatchObject({ error: "github:404" });
+    expect((await artifact("v1.1.0", "201"))?.locations_json).toBeNull();
+  });
+
+  it("charges every GitHub API call to the product's upstream budget, and the storage hop to nobody", async () => {
+    await sync();
+    const checks = recordLimiterChecks(env);
+    const seen = { api: 0, storage: 0 };
+    const counted: FetchImpl = async (input, init) => {
+      const url = typeof input === "string" ? input : input.url;
+      seen[new URL(url).hostname === "api.github.com" ? "api" : "storage"] += 1;
+      return gh.fetchImpl(input, init);
+    };
+
+    expect(
+      await processReleaseMirror(
+        { ...ctx(), fetchImpl: counted },
+        msg("v1.1.0", "201"),
+      ),
+    ).toBe("mirrored");
+
+    // The asset's metadata and the pull are API calls; the signed storage URL the pull is
+    // redirected to is not billed to the App's REST quota.
+    expect(seen.api).toBeGreaterThan(0);
+    expect(seen.storage).toBeGreaterThan(0);
+    const charges = checks.filter((c) => c.bucket === "releaseUpstream");
+    expect(charges).toHaveLength(seen.api);
+    for (const c of charges)
+      expect(c).toMatchObject({ id: SLUG, limit: 4000, windowSec: 3600 });
+  });
+
+  it("a spent upstream budget fails the file as rate-limited before GitHub is asked", async () => {
+    await sync();
+    const spent = {
+      bucket: "releaseUpstream",
+      id: SLUG,
+      limit: 4000,
+      windowSec: 3600,
+    };
+    for (let i = 0; i < spent.limit; i++)
+      await rateLimitOk(env, SLUG, spent, NOW + 10);
+    let asked = 0;
+    const counted: FetchImpl = async (input, init) => {
+      asked += 1;
+      return gh.fetchImpl(input, init);
+    };
+
+    expect(
+      await processReleaseMirror(
+        { ...ctx(), fetchImpl: counted },
+        msg("v1.1.0", "201"),
+      ),
+    ).toBe("failed");
+    expect(await job("v1.1.0", "201")).toMatchObject({
+      status: "failed",
+      error: "github:rate-limited",
+    });
+    expect(asked).toBe(0);
     expect((await artifact("v1.1.0", "201"))?.locations_json).toBeNull();
   });
 

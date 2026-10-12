@@ -22,7 +22,7 @@ import {
   lstatSync,
   mkdirSync,
   openSync,
-  readFileSync,
+  readSync,
   renameSync,
   rmSync,
   writeSync,
@@ -115,8 +115,22 @@ function writeSecure(path: string, data: string): void {
   }
 }
 
-/** Read a regular file we own without following a symlink at `path`. Anything else
- *  reads as absent. */
+/** Largest on-disk state file this store will read, in bytes.
+ *
+ *  `writeSecure` makes the file 0600, but that says nothing about what is at the path on the
+ *  NEXT run: a planted multi-gigabyte file would otherwise be slurped whole into this process.
+ *  A legitimate state file is a few KiB. The most the wire contract lets an install write is a
+ *  bundle at its 262 144-byte cap (a ~343 KiB JWS, `MAX_BUNDLE_BYTES`) beside the three inner
+ *  documents it carries at their own 64 KiB caps, about 600 KiB, so 1 MiB sits comfortably above
+ *  anything this client writes and nowhere near "read the attacker's 8 GiB file". A file at
+ *  exactly the cap still reads; one byte over is absent. */
+export const MAX_STATE_FILE_BYTES = 1024 * 1024;
+
+/** Read a regular file we own without following a symlink at `path`, never more than
+ *  `MAX_STATE_FILE_BYTES`. Anything else (absent, a directory, a symlink, another user's file,
+ *  over the cap, unreadable) reads as absent: that is this store's one spelling of "no file",
+ *  which Core treats as needs-activation (§4.1), so a planted file is neither trusted nor
+ *  fatal. */
 function readMaybe(path: string): string | null {
   let fd: number;
   try {
@@ -128,7 +142,16 @@ function readMaybe(path: string): string | null {
     const st = fstatSync(fd);
     const uid = ownUid();
     if (!st.isFile() || (uid !== null && st.uid !== uid)) return null;
-    return readFileSync(fd, "utf8");
+    if (st.size > MAX_STATE_FILE_BYTES) return null;
+    // Read at most the size just checked, so a file that grows under us cannot defeat the cap.
+    const buf = Buffer.allocUnsafe(st.size);
+    let off = 0;
+    while (off < st.size) {
+      const n = readSync(fd, buf, off, st.size - off, off);
+      if (n === 0) break; // Truncated under us: use what arrived.
+      off += n;
+    }
+    return buf.toString("utf8", 0, off);
   } catch {
     return null;
   } finally {

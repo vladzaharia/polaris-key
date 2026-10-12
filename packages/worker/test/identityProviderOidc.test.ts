@@ -16,7 +16,11 @@ import {
 } from "./identityProviderHarness.js";
 import { EMAIL_GATE_LANDING } from "../src/services/identity/card/gate.js";
 import { PORTAL_COOKIE } from "../src/services/identity/portal/session.js";
-import { SIGNIN_BIND_COOKIE } from "../src/services/identity/providers/flow.js";
+import {
+  SIGNIN_BIND_COOKIE,
+  signInFlowKey,
+} from "../src/services/identity/providers/flow.js";
+import { putArtefact } from "../src/core/singleUse.js";
 import {
   discoverProvider,
   resetProviderCaches,
@@ -387,6 +391,25 @@ describe("Sign in with Google", () => {
       expect(
         (await h.request(`/login/google/callback?${qs}`, { cookie })).status,
       ).toBe(400);
+    });
+
+    it("treats a stored flow that parses to a non-object as an expired flow", async () => {
+      for (const stored of ["null", "2", "not json"]) {
+        const h = await makeProviderHarness();
+        const { state, cookie } = await h.start("google");
+        await putArtefact(
+          h.env,
+          await signInFlowKey(h.env, state),
+          stored,
+          600,
+        );
+        const res = await h.request(
+          `/login/google/callback?code=c&state=${state}`,
+          { cookie },
+        );
+        expect(res.status).toBe(400);
+        expect(h.calls.some((c) => c.url.includes("/auth/token"))).toBe(false);
+      }
     });
 
     it("is bound to the browser that started it", async () => {

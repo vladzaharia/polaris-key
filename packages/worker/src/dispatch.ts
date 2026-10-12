@@ -40,7 +40,7 @@ import {
 } from "./core/accounts/accountCookies.js";
 import { handleGithubWebhook } from "./githubWebhook.js";
 import { handleDeployHook } from "./platformDeploy.js";
-import { notFound } from "./core/errors.js";
+import { ErrorCode, notFound, wireError } from "./core/errors.js";
 import { handleDevices, handleReport } from "./core/devices.js";
 import { handleRegister } from "./core/register.js";
 import {
@@ -110,8 +110,38 @@ export async function dispatch(
  * (`test/transcripts/`) can drive the REAL router, product loading, CORS and every service at a
  * pinned instant, which is what makes a recorded conversation byte-stable. A handler that still
  * reads `Date.now()` itself is pinned by the recorder's fake timers instead.
+ *
+ * It is also the dispatcher's error boundary for a MALFORMED REQUEST. Nothing between
+ * `new URL(req.url)` and a handler's first line used to catch anything, so a percent-decode that
+ * threw left the Worker as an unhandled rejection. The router no longer throws for the two
+ * segments it decodes (`matchRoute` answers `badRequest`), but that does not make this dead
+ * code: it covers every OTHER percent-decode on the request path (the bytes, registry and image
+ * hosts decode their own segments), and makes the class non-fatal rather than the one known
+ * instance impossible.
+ *
+ * Deliberately narrow. It catches `URIError`, which is what every percent-decode in the runtime
+ * throws, and answers 400, because a request that cannot be decoded is a client error no retry
+ * would fix. Everything else is rethrown: a D1 outage or a bug in a handler must not be
+ * laundered into "bad request", which would send an operator to inspect the caller instead of
+ * the outage.
  */
 export async function dispatchWith(
+  req: Request,
+  env: Env,
+  db: Db,
+  now: number,
+  exec?: DispatchExecution,
+): Promise<Response> {
+  try {
+    return await routeRequest(req, env, db, now, exec);
+  } catch (e) {
+    if (e instanceof URIError) return malformedUrl();
+    throw e;
+  }
+}
+
+/** `dispatchWith` without the boundary: match the host and route, then hand off. */
+async function routeRequest(
   req: Request,
   env: Env,
   db: Db,
@@ -212,9 +242,26 @@ export async function dispatchWith(
         db,
         url.pathname.slice("/manage".length) || "/",
       );
+    // The router could not PARSE the path, so it never got as far as deciding whether anything
+    // lives there: 400, not the `notFound` default below, which would report the result of a
+    // lookup that did not happen.
+    case "badRequest":
+      return malformedUrl();
     default:
       return notFound();
   }
+}
+
+/**
+ * The one 400 for an unparseable URL, shared by the router's `badRequest` route and the
+ * `URIError` boundary in `dispatchWith`, so the two cannot drift into describing the same
+ * failure differently. The NESTED wire body: this refusal belongs to the dispatcher, not to a
+ * handler that carried a flat body across a service move.
+ */
+function malformedUrl(): Response {
+  return wireError(400, ErrorCode.BadRequest, {
+    message: "malformed percent-encoding in the request URL",
+  });
 }
 
 /** A product route with the account realm's cookies already removed (`dispatchWith`). */

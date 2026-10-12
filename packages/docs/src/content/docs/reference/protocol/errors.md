@@ -129,10 +129,26 @@ Over-limit is a `429`. On `POST /<p>/devices/register` it is the nested
 | `mint`                  | `/<p>/config/mint/<id>/token`        | 60 / 60 s per IP                          | closed    |
 | `browserSessionLicense` | `POST /<p>/identity/session/license` | 30 / 60 s per IP                          | closed    |
 | `release`               | Release metadata surfaces            | 30 / 60 s per IP                          | open      |
-| `releaseArtifact`       | Artifact downloads                   | 120 / 60 s per IP                         | open      |
+| `releaseArtifact`       | Artifact downloads                   | 60 / 120 s per IP                         | open      |
+| `releaseUpstream`       | GitHub API calls, **per product**    | 4000 / 3600 s per product                 | open      |
 
 The OIDC legs, both interactive logins, the portal surfaces, and the admin API have their own
 buckets; the authoritative table is the fail-mode map in `packages/worker/src/core/rateLimit.ts`.
+
+`releaseUpstream` is not keyed on the caller, because the caller is not what it protects. It is
+charged to the **product** once per `api.github.com` call, not once per request. A download makes
+two calls (the release, then the asset), so a per-IP lane sized as if a request were one call can
+sit above the 5,000-per-hour installation quota it exists to protect, and any per-IP lane is
+defeated by more source addresses. Exhaustion answers `503 upstream_rate_limited` with a
+`Retry-After` for the rest of the hour, never a `404`: a spent quota is a condition of the
+platform, not a withdrawn release. GitHub's signed storage hop and a cached answer are never
+charged.
+
+Every release surface counts a request before it decides access: the edge cache comes first
+where a surface has one, then the rate limit, then access enforcement, then compute. The limiter
+comes before enforcement on purpose, because a refusal that costs nothing is an enumeration
+oracle. A caller the platform turns away spends the same per-IP budget as one it serves. A cache
+**hit** is served before either and is never metered.
 
 ### Why the fail mode is per surface
 

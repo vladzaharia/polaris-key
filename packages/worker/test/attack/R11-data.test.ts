@@ -8,7 +8,9 @@ import { readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { makeTestDb } from "../helpers.js";
-import { NOW, seedProduct } from "../seed.js";
+import { NOW, makeEnv, seedProduct } from "../seed.js";
+import { KvMock } from "../kvMock.js";
+import { handlePortalDownload } from "../portalHarness.js";
 import {
   claimDeviceSeat,
   countActiveDevices,
@@ -31,7 +33,7 @@ import {
   getOrCreateAccountByEmail,
   linkLicense,
   listPortalLicenses,
-  purgeExpiredDownloadTokens,
+  purgeDownloadTokensForProduct,
   syncAccountLicenseLinks,
 } from "../../src/services/identity/portal/repo.js";
 
@@ -734,6 +736,14 @@ describe("R11-05 product scoping", () => {
       // product. The per-product data (`account_overrides`, `override_migration_report`) IS
       // product-first (this loop).
       "override_migration",
+      // 0119 — the admin API's machine credential. Unlike a licence key, this belongs to the
+      // PLATFORM and not to a product: it is minted by a platform admin, authenticates against the
+      // platform-admin group, and its scopes name capabilities rather than tenants. There is no
+      // product column to scope it by, and inventing one would imply a per-product admin
+      // credential that does not exist. The tenant boundary it must not cross is enforced one
+      // layer up: `console/api.ts` runs a token through `can()` for the row's area exactly as it
+      // does a session, and every per-product query the handler then reaches carries the slug.
+      "admin_api_tokens",
     ]);
     const offenders: string[] = [];
     for (const t of tables.map((r) => r.name)) {
@@ -763,10 +773,47 @@ describe("R11-05 product scoping", () => {
     expect(detail).not.toMatch(/SCAN/);
   });
 
-  // FIXED (R11-05, partially): `purgeExpiredDownloadTokens()` is now called from the download
-  // path itself, so the table is bounded by the live token set rather than growing forever.
-  // The worker still exports no `scheduled()` handler — that remains reported, not fixed.
-  it("release_download_tokens now has a purge path", async () => {
+  // The table is pruned by the nightly sweep (`scheduled.ts`), one product at a time, not by the
+  // download route. The purge helper names a product, so it can never reach another tenant's
+  // rows.
+  it("release_download_tokens has a product-scoped purge path", async () => {
+    const db = makeTestDb();
+    await seedProduct(db, "acme");
+    await seedProduct(db, "other");
+    for (const p of ["acme", "other"])
+      await db.run(
+        `INSERT INTO release_metadata (product, release_id, version, created_at, modified_at)
+         VALUES (?, 'r1', '1.0.0', ?, ?)`,
+        p,
+        NOW,
+        NOW,
+      );
+    for (const [p, hash] of [
+      ["acme", "EXPIRED"],
+      ["other", "OTHER-EXPIRED"],
+    ] as const)
+      await db.run(
+        `INSERT INTO release_download_tokens
+           (product, token_hash, release_id, expires_at, created_at)
+         VALUES (?, ?, 'r1', ?, ?)`,
+        p,
+        hash,
+        NOW - 1,
+        NOW - 301,
+      );
+    expect(await purgeDownloadTokensForProduct(db, "acme", NOW)).toBe(1);
+    expect(
+      (
+        await db.all<{ token_hash: string }>(
+          "SELECT token_hash FROM release_download_tokens",
+        )
+      ).map((r) => r.token_hash),
+    ).toEqual(["OTHER-EXPIRED"]);
+  });
+
+  // The unauthenticated download route reads; it never deletes. A request carrying a token that
+  // exists nowhere must not cost any tenant a row, whoever's it is.
+  it("GET /download/<unknown token> deletes no tenant's expired tokens", async () => {
     const db = makeTestDb();
     await seedProduct(db, "acme");
     await db.run(
@@ -775,17 +822,32 @@ describe("R11-05 product scoping", () => {
       NOW,
       NOW,
     );
-    await db.run(
-      `INSERT INTO release_download_tokens
-         (product, token_hash, release_id, expires_at, created_at)
-       VALUES ('acme', 'EXPIRED', 'r1', ?, ?)`,
-      NOW - 1,
-      NOW - 301,
+    for (const [hash, expiresAt] of [
+      ["EXPIRED-1", NOW - 1],
+      ["EXPIRED-2", NOW - 2],
+      ["LIVE", NOW + 300],
+    ] as const)
+      await db.run(
+        `INSERT INTO release_download_tokens
+           (product, token_hash, release_id, expires_at, created_at)
+         VALUES ('acme', ?, 'r1', ?, ?)`,
+        hash,
+        expiresAt,
+        NOW - 301,
+      );
+    const res = await handlePortalDownload(
+      new Request("https://key.plrs.im/download/unknown") as unknown as Request,
+      makeEnv(new KvMock(), ["acme"]),
+      db,
+      "unknown",
+      NOW,
     );
-    expect(await purgeExpiredDownloadTokens(db, NOW)).toBe(1);
-    expect(await db.all("SELECT * FROM release_download_tokens")).toHaveLength(
-      0,
-    );
+    expect(res.status).toBe(404);
+    expect(
+      await db.first<{ n: number }>(
+        "SELECT COUNT(*) AS n FROM release_download_tokens",
+      ),
+    ).toEqual({ n: 3 });
   });
 
   // FIXED (R11-12 / R5-10): a second tenant can no longer register the same hash, so the

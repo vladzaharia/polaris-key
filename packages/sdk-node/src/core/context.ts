@@ -32,7 +32,12 @@ import {
   HEADER_SDK_VERSION,
   HEADER_VERSION,
 } from "@polaris-key/protocol/core";
-import type { AllowedRange, BlockReason } from "@polaris-key/protocol/license";
+import {
+  STRICTEST_BLOCK_REASON,
+  isBlockReason,
+  type AllowedRange,
+  type BlockReason,
+} from "@polaris-key/protocol/license";
 import {
   PolarisError,
   UnsupportedError,
@@ -477,16 +482,25 @@ export class CoreContext {
         // from too-new; a body that predates the nesting is read at the top level too, and a
         // body that says nothing at all falls back to the stricter of the two.
         const body = (await res.json().catch(() => ({}))) as {
-          error?: { code?: string; reason?: BlockReason };
-          reason?: BlockReason;
+          error?: { code?: string; reason?: unknown };
+          reason?: unknown;
           allowedRange?: AllowedRange;
         };
-        const reason =
-          body.error?.reason ??
-          body.reason ??
+        // The reason is lifted from ATTACKER-SHAPED JSON and ends up, unsigned, as the gate's
+        // `LicenseStatus`. `isBlockReason` is the membership check the erased `BlockReason` type
+        // could never perform: a body claiming `{"error":{"reason":"ok"}}` must not be able to
+        // turn a 403 into a licensed client. Anything out of vocabulary (a number, an object, a
+        // status word) falls back exactly as a body that says nothing at all does.
+        const claimed = isBlockReason(body.error?.reason)
+          ? body.error?.reason
+          : isBlockReason(body.reason)
+            ? body.reason
+            : undefined;
+        const reason: BlockReason =
+          claimed ??
           (body.error?.code === "channel_not_allowed"
             ? "channel-not-entitled"
-            : "version-too-old");
+            : STRICTEST_BLOCK_REASON);
         return { kind: "blocked", reason, allowedRange: body.allowedRange };
       }
       case 200: {

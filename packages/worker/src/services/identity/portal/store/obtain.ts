@@ -466,7 +466,10 @@ async function identityEvidence(
     channels_json: null,
     min_version: null,
     max_version: null,
+    // Discover reads the account's platform-issuer identity, so the hypothetical mint carries
+    // the same class `activateFromIdentity` records on the real OIDC row.
     origin: "oidc",
+    email_issuer_class: "platform",
     modified_by: "oidc",
     modified_at: now,
   };

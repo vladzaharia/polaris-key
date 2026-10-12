@@ -30,6 +30,8 @@ import { SYNC_SETTINGS_SLICE } from "./settings.js";
 export const syncService: ServiceDescriptor = {
   slug: "sync",
   handle: async () => null,
+  /** No route yet: until the device routes ship, `handle` answers none (`null` → Core's not-found). */
+  surface: [],
   /** The operator's product ceiling (plans/U-01b.md D6); the quota is an entitlement (D5). */
   settings: SYNC_SETTINGS_SLICE,
   /**

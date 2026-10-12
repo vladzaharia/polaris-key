@@ -327,9 +327,9 @@ export interface Env {
    * pre-keyring blob carries.
    *
    * DO NOT set this to rotate a KEK: it renames the kid `seal` writes AND the only kid the
-   * legacy shape can open, so every existing blob becomes unopenable and every product route
-   * 404s. To rotate, move to `PLATFORM_KEK_KEYS`/`PLATFORM_KEK_ACTIVE` — that is the shape
-   * that has a read window. A kid NAME, not key material.
+   * legacy shape can open, so every existing blob becomes unopenable and any route that needs
+   * one fails closed. To rotate, move to `PLATFORM_KEK_KEYS`/`PLATFORM_KEK_ACTIVE` — that is
+   * the shape that has a read window. A kid NAME, not key material.
    * @inventory var keyring
    */
   PLATFORM_KEK_ID?: string;

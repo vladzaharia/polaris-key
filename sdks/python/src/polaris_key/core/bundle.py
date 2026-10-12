@@ -376,7 +376,14 @@ def import_bundle(
     """
     from .context import now_sec
 
-    when = now_sec() if now is None else now
+    # §7 step 2 checks the bundle's own import deadline with network-path freshness, and §3
+    # runs that path at the EFFECTIVE clock — ``max(system_clock, floor)``, the §4.2
+    # monotonic floor, which exists so a rolled-back clock buys nothing — never the bare
+    # system clock. Passing the raw wall clock here let winding the machine back inside a
+    # lapsed 30-day import window make an expired bundle importable again. The floor only
+    # ever rises, and only from content whose signature has been checked, so using it can
+    # extend no window — only refuse one a tampered clock was reopening.
+    when = ctx.now(now_sec() if now is None else now)
     held = cache.state.bundle
     if held is not None and cache.bundle_jws() == jws:
         return ImportBundleResult(bundleId=held.bundleId, imported=list(held.docs))

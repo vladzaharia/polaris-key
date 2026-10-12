@@ -24,10 +24,14 @@ export const CACHE_VERSION = 3;
  * against a live server (R4-03), or invent a licence outright with no signature anywhere
  * (R2-03/R4-01). Those counters are now DERIVED from re-verified content.
  *
- * `blocked` and `lastSyncUnauthorized` remain unsigned deliberately: they are DISPLAY state. No
- * verdict depends on them, because the document each answered for is deleted in the same write
- * that sets it (WIRE-CONTRACT-V4 §4.3), so clearing one yields `needs-activation`, never a
- * usable document.
+ * `blocked` and `lastSyncUnauthorized` remain unsigned deliberately: they are DISPLAY state, and
+ * the document each answered for is deleted in the same write that sets it (WIRE-CONTRACT-V4
+ * §4.3), so clearing one yields `needs-activation`, never a usable document. A forged one cannot
+ * loosen the gate either, but only because the hint's VOCABULARY is checked: the gate returns
+ * `blocked.reason` AS the `LicenseStatus`, so an out-of-vocabulary `{"reason":"ok"}` would
+ * license the client with no signature anywhere. Membership is asserted where a hint is read
+ * (the cache reload, the 403 ingress, the browser session) and again inside `licenseState`; see
+ * `isBlockReason`.
  *
  * v3 change: `configJws`/`etag` become per-service SLICES (`docs`/`etags`), because license
  * and config are now two independently-fetched, independently-ETagged documents. An offline
@@ -54,7 +58,8 @@ export interface CacheRecordV3 {
   bundle?: string;
   /** A recorded hard 401 — the offline revocation signal (§4.3). */
   lastSyncUnauthorized?: boolean;
-  /** The last 403 version/channel block from `GET /<p>/license/document`. */
+  /** The last 403 version/channel block from `GET /<p>/license/document`. Unsigned: a reason
+   *  outside `BLOCK_REASONS` is not a hint this client wrote and is dropped on load. */
   blocked?: BlockedState;
   /**
    * WIRE-CONTRACT-V4 §4: the committed channel feeds (`pkey-feed+jws`, verbatim), keyed by the

@@ -209,6 +209,103 @@ export const distributionService: ServiceDescriptor = {
   /** `routes.ts`: the byte routes and the CI rollout routes. `null` = Core's not-found. */
   handle: handleDistributionRoutes,
   /**
+   * The canonical surface `routes.ts` dispatches; what `routeCoverage` pins. The installer, the
+   * download and the three byte routes are the ones Release's old `/{product}/release/…`
+   * spellings rewrite to; the last three of those also answer on the bytes host.
+   */
+  surface: [
+    { path: "/{product}/distribution/install.sh", methods: ["get"] },
+    {
+      path: "/{product}/distribution/dl/{version}/{asset}",
+      methods: ["get"],
+    },
+    {
+      path: "/{product}/distribution/builds/{selector}/{buildId}",
+      methods: ["get"],
+    },
+    {
+      path: "/{product}/distribution/files/{releaseId}/{name}",
+      methods: ["get"],
+    },
+    {
+      path: "/{product}/distribution/blobs/sha256/{sha256}",
+      methods: ["get", "head"],
+    },
+    // A pack's decoded container payload, with Compression Dictionary Transport.
+    {
+      path: "/{product}/distribution/packs/{pack}/{variant}/payload/{sha256}",
+      methods: ["get", "head"],
+    },
+    // The CI rollout routes.
+    {
+      path: "/{product}/distribution/rollouts/{outlet}/{channel}",
+      methods: ["post"],
+    },
+    {
+      path: "/{product}/distribution/rollouts/{outlet}/{channel}/pause",
+      methods: ["post"],
+    },
+    {
+      path: "/{product}/distribution/rollouts/{outlet}/{channel}/resume",
+      methods: ["post"],
+    },
+    {
+      path: "/{product}/distribution/rollouts/{outlet}/{channel}/halt",
+      methods: ["post"],
+    },
+    {
+      path: "/{product}/distribution/rollouts/{outlet}/{channel}/complete",
+      methods: ["post"],
+    },
+    // The CI report of availability, submissions and signing keys.
+    { path: "/{product}/distribution/report", methods: ["post"] },
+    // A CI-plane store's projection of the listing model.
+    { path: "/{product}/distribution/listing/{store}", methods: ["get"] },
+    // A PR-plane generator's inputs.
+    { path: "/{product}/distribution/pr/{store}", methods: ["get"] },
+    // The App Store Connect webhook (Apple to the Worker, HMAC-signed).
+    { path: "/{product}/distribution/hooks/asc", methods: ["post"] },
+    // The Sentry alert webhook (Sentry to the Worker, HMAC-signed); opens halt candidates.
+    { path: "/{product}/distribution/hooks/sentry", methods: ["post"] },
+    // The commerce bridge: the binding and claim routes (device token) and the two store
+    // notification hooks (Apple-signed JWS; Google OIDC push).
+    { path: "/{product}/distribution/commerce/binding", methods: ["get"] },
+    { path: "/{product}/distribution/commerce/claim", methods: ["post"] },
+    { path: "/{product}/distribution/hooks/app-store", methods: ["post"] },
+    { path: "/{product}/distribution/hooks/play-rtdn", methods: ["post"] },
+    // The storefront feeds, the F-Droid relay and its CI route.
+    {
+      path: "/{product}/distribution/altstore/{channel}/source.json",
+      methods: ["get"],
+    },
+    {
+      path: "/{product}/distribution/altstore-pal/{channel}/source.json",
+      methods: ["get"],
+    },
+    {
+      path: "/{product}/distribution/obtainium/{channel}.json",
+      methods: ["get"],
+    },
+    {
+      path: "/{product}/distribution/fdroid/{channel}/repo/{path}",
+      methods: ["get"],
+    },
+    { path: "/{product}/distribution/scoop/{channel}.json", methods: ["get"] },
+    {
+      path: "/{product}/distribution/flathub/{channel}.json",
+      methods: ["get"],
+    },
+    {
+      path: "/{product}/distribution/feeds/fdroid/{channel}",
+      methods: ["get", "post"],
+    },
+    // The listing assets CI derived, registered into the listing model.
+    { path: "/{product}/distribution/listing/assets", methods: ["post"] },
+    // The public download page's model (console host) and the page (bytes host only).
+    { path: "/{product}/distribution/download.json", methods: ["get"] },
+    { path: "/{product}/distribution/download", methods: ["get"] },
+  ],
+  /**
    * Distribution's slice of `/.well-known/polaris.json`: the CANONICAL byte URLs (an alias exists
    * so shipped binaries and published curl lines keep working, not so new clients learn it).
    * `builds` and `blobs` are advertised on the bytes host when there is one, so a client

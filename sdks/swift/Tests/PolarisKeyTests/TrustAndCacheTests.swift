@@ -71,6 +71,22 @@ final class TrustAndCacheTests: XCTestCase {
                 services: services))
     }
 
+    /// A client over `record` whose SYSTEM clock is `systemClock` rather than the wall clock: a
+    /// device whose RTC is dead, or whose clock was wound back.
+    private func client(
+        _ record: CacheRecord?, systemClock: @escaping @Sendable () -> Int,
+        services: [ServiceSlug] = [.license]
+    ) async throws -> PolarisKeyClient {
+        try await PolarisKeyClient.create(
+            options: PolarisKeyClientOptions(
+                core: CoreOptions(
+                    productSlug: "djdl", baseUrl: "https://key.example", version: "1.0.0",
+                    pinnedKeys: [pinnedKid: vendor.publicKeyB64], trustRefresh: false,
+                    store: await seededStore(record), transport: server.transport,
+                    expectedServices: services, clock: systemClock),
+                license: LicenseClientOptions(fingerprint: false)))
+    }
+
     private func routeLicense(_ jws: String, etag: String = "v1") async {
         await server.route(licensePath) { _ in
             StubServer.Reply(status: 200, body: jws, headers: ["ETag": etag])
@@ -339,8 +355,11 @@ final class TrustAndCacheTests: XCTestCase {
             XCTAssertEqual(status, .needsActivation, "\(label) must not load")
         }
 
-        // A doc dated absurdly far in the FUTURE cannot load and drag the monotonic floor with
-        // it — that would pin the gate at `ok` indefinitely.
+        // A doc dated past the wire's integer range (V4 §3: `MAX_WIRE_INTEGER`, 2^53 − 1) is not a
+        // document at all, so it cannot load and drag the monotonic floor with it — that would pin
+        // the gate at `ok` indefinitely. Nothing narrower than that range bounds how far AHEAD of
+        // the system clock a cached document may be stamped; see
+        // `testACachedLicenceStampedFarAheadOfTheSystemClockStillLoads`.
         let future = try await client(
             CacheRecord(
                 docs: [
@@ -366,6 +385,49 @@ final class TrustAndCacheTests: XCTestCase {
         let licensed = await stale.isLicensed()
         XCTAssertEqual(staleStatus, .expired)
         XCTAssertFalse(licensed)
+    }
+
+    /// A cached document stamped ahead of the system clock reloads however far ahead. The reload
+    /// profile bounds a document by `graceUntil` alone (§3) and §10 forbids local tolerances beyond
+    /// the contract, so a device whose clock is dead — the machine most likely to be running
+    /// offline — must not refuse its own valid licence. The signed `issuedAt` is a lower bound on
+    /// real time, and the floor takes it (§4.2).
+    func testACachedLicenceStampedFarAheadOfTheSystemClockStillLoads() async throws {
+        let t = nowSec()
+        let deadClock = t - 800 * SECONDS_PER_DAY  // an RTC reset to a firmware date
+        let c = try await client(
+            CacheRecord(docs: [.license: vendor.sign(Fixtures.license(issuedAt: t))]),
+            systemClock: { deadClock })
+        let status = await c.status().status
+        let floor = await c.core.highWaterMark
+        XCTAssertEqual(status, .ok, "a valid cached licence must not be refused for a dead clock")
+        XCTAssertEqual(floor, t, "the document is a signed lower bound on real time")
+    }
+
+    /// The corpus's `floor-max-over-three-artifacts`, through the whole reload path: a licence at
+    /// day 0, a trust manifest at day 7, a CONFIG document at day 399, and a system clock wound
+    /// back before the manifest. The floor is the MAX over all three, so the newest artifact —
+    /// 392 days past the manifest, beyond `MAX_GRACE_SECONDS` — must still count, and the licence
+    /// (30 days of grace) is `expired` rather than `grace`.
+    func testTheReloadPathTakesTheFloorFromTheNewestArtifactHoweverFarAhead() async throws {
+        let t = nowSec()
+        let day0 = t - 500 * SECONDS_PER_DAY
+        let manifestJws = vendor.sign(
+            Fixtures.manifest(
+                issuedAt: day0 + 7 * SECONDS_PER_DAY,
+                keys: [Fixtures.manifestKey(kid: pinnedKid, publicKey: vendor.publicKeyB64)]))
+        let record = CacheRecord(
+            trustJws: manifestJws,
+            docs: [
+                .license: vendor.sign(Fixtures.license(issuedAt: day0)),
+                .config: vendor.sign(Fixtures.config(issuedAt: day0 + 399 * SECONDS_PER_DAY)),
+            ])
+        let rolledBack = day0 + 3 * SECONDS_PER_DAY
+        let c = try await client(record, systemClock: { rolledBack }, services: [.license, .config])
+        let floor = await c.core.highWaterMark
+        let status = await c.status().status
+        XCTAssertEqual(floor, day0 + 399 * SECONDS_PER_DAY, "the config document is the floor")
+        XCTAssertEqual(status, .expired, "a floor that dropped the config document reads `grace`")
     }
 
     /// §4.1 — a record from ANOTHER cache version is discarded rather than migrated, and `v` is

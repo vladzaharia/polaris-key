@@ -63,7 +63,6 @@ import {
   markPortalDownloadUsed,
   portalAuthCapabilities,
   portalAudit,
-  purgeExpiredDownloadTokens,
   releaseServiceEnabled,
   syncAccountLicenseLinks,
   createPortalDownloadToken,
@@ -1088,8 +1087,29 @@ async function handleReleases(
     }
     const releases = await listPortalReleases(db, enabledProducts);
     const gates = new Map<string, DeliveryGate | null>();
+    // Whether the account holds a USABLE licence for each product: read once for the whole
+    // listing, and only when some release's metadata is gated on one.
+    let linked: PortalLicenseRow[] | undefined;
+    const usableByProduct = new Map<string, boolean>();
     const out = [];
     for (const release of releases) {
+      // `release_metadata.metadata_access` is the product's METADATA mode as of the last sync
+      // (`storeAccess`: `entitled` is stored as `licensed`, the strictest thing an account with
+      // no device can be asked for). The whole entry IS the metadata (version, title, notes and
+      // the upstream URL), so a `licensed` gate the account does not satisfy withholds the ROW:
+      // blanking the fields would still disclose that the release exists and which version it
+      // is. `authenticated` and `public` need nothing more than the session already proves.
+      if (release.metadata_access === "licensed") {
+        let usable = usableByProduct.get(release.product);
+        if (usable === undefined) {
+          linked ??= await listPortalLicenses(db, session.accountId);
+          usable = linked.some(
+            (row) => row.product === release.product && licenseUsable(row, now),
+          );
+          usableByProduct.set(release.product, usable);
+        }
+        if (!usable) continue;
+      }
       let gate = gates.get(release.product);
       if (gate === undefined) {
         gate = await deliveryGate(db, hooksFor, release.product, now);
@@ -1842,9 +1862,11 @@ export async function handlePortalDownload(
   hooksFor?: PortalHooksFor,
 ): Promise<Response> {
   if (req.method !== "GET") return err(405, "method_not_allowed");
-  // R11-05: opportunistic retention. Nothing else ever deletes from this table and the worker
-  // has no scheduled() handler, so the read path does a bounded sweep of its own expired rows.
-  await purgeExpiredDownloadTokens(db, now);
+  // No retention work here. This route has no session, no rate limit and a path anyone can
+  // type, so a delete issued before the presented token is even looked up would be a
+  // stranger-triggered write across every tenant's expired rows. Retention is the nightly
+  // sweep's job (`scheduled.ts`, `purgeDownloadTokensForProduct`, per product); this route only
+  // reads.
   // Expiry and single-use are now SQL predicates (R9-05b), so an unusable token never returns.
   const row = await getPortalDownloadToken(env, db, token, now);
   if (!row) return notFound();

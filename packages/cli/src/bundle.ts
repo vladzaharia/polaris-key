@@ -7,29 +7,48 @@
  * them, and returns one compact `pkey-bundle+jws`. This module performs that call and drops the
  * JWS on disk as a single file an operator can hand-carry to the offline machine.
  *
- * ── AUTHENTICATION: WHY A BROWSER COOKIE ────────────────────────────────────────────────────
+ * ── AUTHENTICATION: AN ADMIN API TOKEN ──────────────────────────────────────────────────────
  *
- * The admin API has exactly one credential today: the console's OIDC browser session. There is
- * no API-token surface yet, and inventing one here would mean shipping a second, weaker path to
- * the same authority. So this command reads the operator's live session cookie out of the
- * environment variable `PKEY_ADMIN_COOKIE`, GETs `/manage/api/me` with it to learn that
- * session's CSRF token, and echoes that token in `X-PKey-CSRF` on the POST — the same
- * double-submit the console itself performs (`packages/worker/src/console/api.ts`). This is
- * pre-launch operator-grade pragmatism, stated plainly rather than dressed up: it is the only
- * credential that exists.
+ * This command authenticates with `Authorization: Bearer pkeya_…`, an admin API token read from
+ * the environment variable `PKEY_ADMIN_TOKEN`. That is the whole credential story: no cookie, no
+ * CSRF header, no pre-flight.
  *
- * HOW TO OBTAIN IT. Sign in to the console, open browser devtools → Application → Cookies →
- * the console origin, and copy the `__Host-pkey_admin` cookie. Then, in the shell you are about
- * to run `pkey bundle` in:
+ * WHAT IT REPLACED, AND WHY. This command used to have an operator copy their live
+ * `__Host-pkey_admin` console cookie into the environment and then impersonate a browser well
+ * enough to satisfy the CSRF double-submit: `GET /manage/api/me` for the session's CSRF token,
+ * echoed in `X-PKey-CSRF` on the POST. That worked, and it was wrong in four separate ways. The
+ * cookie could not be NARROWED — it carried the operator's entire admin authority, over every
+ * product and every route, to a command that needs one. It could not be REVOKED in isolation;
+ * killing it meant killing every session that human held. It was INDISTINGUISHABLE in the audit
+ * log from that human clicking around the console, so "what has CI been doing with this?" had no
+ * answer. And it EXPIRED on the session's schedule, which makes automation flaky rather than
+ * safe. A `pkeya_` token fixes each of those separately: it is scoped (`bundles:mint`, which
+ * covers exactly this one route — every other admin route refuses a token outright, by default
+ * deny), individually revocable, separately attributed as `token:<id>` in the audit trail, and
+ * given an explicit expiry at mint. The Worker's admin API token module is the authority on all
+ * four.
  *
- *     export PKEY_ADMIN_COOKIE='__Host-pkey_admin=<value>'
+ * It also removes a network round trip, which is a consequence rather than the point. CSRF
+ * defends against a credential the browser attaches AMBIENTLY; nothing attaches an
+ * `Authorization` header but the caller, so a token-authenticated request is exempt and there is
+ * no CSRF token to go and fetch. One call, one credential.
  *
- * (The bare `<value>` is accepted too — this module prefixes the cookie name when the variable
- * holds no `=`.)
+ * HOW TO OBTAIN ONE. In the console: `/manage` → API tokens → New token. Give it a label naming
+ * where it will run and an expiry you are willing to defend. The plaintext appears ONCE, in the
+ * mint response, and nothing stored can reproduce it — the server keeps only a hash. Then, in
+ * the shell you are about to run `pkey bundle` in:
  *
- * WHAT IT IS. A short-lived session credential that carries the operator's full admin
- * authority. It must not be committed, written into a script, pasted into a ticket, or exported
- * into a shell other people share. It expires on its own; that is a backstop, not a policy.
+ *     export PKEY_ADMIN_TOKEN='pkeya_…'
+ *
+ * WHAT IT IS. A machine credential that can mint an offline bundle for any product on the
+ * platform, and a bundle is a signed artifact carrying up to a year of offline grace. Narrower
+ * than the cookie it replaced is not the same as harmless: keep it out of commits, out of tickets
+ * and out of shells other people share. When one leaks, revoke that token in the console — which
+ * is now a thing you can do without disturbing anybody's session.
+ *
+ * `pkey listing import` shares this module's request plumbing but not its credential: it calls a
+ * route a `bundles:mint` token cannot reach, so it still authenticates with the console session
+ * cookie (`listing.ts`), and applies the same `--base-url` rule below.
  *
  * ── THE FLAG GOTCHA ─────────────────────────────────────────────────────────────────────────
  *
@@ -44,12 +63,44 @@
  * (32 base64url characters; an integer 1…365) BEFORE anything is sent. The server would refuse
  * both with a 400, but a typo in a device id pasted off an offline machine's activation screen
  * should cost a local error message, not a network round trip that reports `fields:
- * ["deviceId"]`. The `--out` collision is checked early for a sharper reason: a mint is an
- * audited, non-free event, so discovering the file name is already taken AFTER minting would
- * burn a bundle to learn something knowable up front.
+ * ["deviceId"]`.
+ *
+ * `PKEY_ADMIN_TOKEN` is shape-checked here against the same pattern the Worker applies to a
+ * presented admin API token, for a sharper version of the same reason. The server deliberately
+ * collapses malformed, unknown, revoked, expired and unusable into ONE 401, so that it cannot
+ * leak whether a dead string was ever a real token — which means it also cannot tell an operator
+ * that they pasted a cookie, or that a copy truncated the value, or that the shell ate a quote.
+ * Everything about the SHAPE is knowable locally, so it is answered locally, and the 401 is left
+ * to mean what it can actually distinguish.
+ *
+ * `--base-url` must be `https:`, or `http:` on a loopback host for `wrangler dev` and integration
+ * tests — the same rule, the same host list and the same spirit as `normalizeBaseUrl` in
+ * `packages/sdk-node/src/core/context.ts`. This command sends a full-authority credential to
+ * whatever origin it is handed, so an origin that is mistyped, downgraded by a copy-paste, or
+ * supplied by a CI variable somebody else can write is a credential disclosure; plaintext makes
+ * it a coffee-shop attack rather than a local one. The check runs before anything is sent.
+ *
+ * The `--out` collision is checked early for a different reason again: a mint is an audited,
+ * non-free event, so discovering the file name is already taken AFTER minting would burn a
+ * bundle to learn something knowable up front.
+ *
+ * ── HOW THE FILE IS WRITTEN ─────────────────────────────────────────────────────────────────
+ *
+ * The bundle is a signed, credential-bearing artifact, so it is created mode 0600 through an
+ * `openSync` with `O_EXCL | O_NOFOLLOW` — the pattern `packages/sdk-node/src/core/store.ts`
+ * already uses for the device token, for the same reasons. A plain `writeFile` leaves the file
+ * 0644 (world-readable) and follows a symlink planted at the output path, which quietly turns
+ * "choose the output name" into "choose where the bundle lands and who gets to read it".
  */
 
-import { stat, writeFile } from "node:fs/promises";
+import {
+  closeSync,
+  constants as fsc,
+  fchmodSync,
+  openSync,
+  writeSync,
+} from "node:fs";
+import { stat } from "node:fs/promises";
 import path from "node:path";
 import { untrusted } from "./untrusted.js";
 
@@ -61,14 +112,17 @@ import { untrusted } from "./untrusted.js";
  */
 export const DEFAULT_BASE_URL = "https://key.plrs.im";
 
-/** The environment variable this command reads its admin session cookie from. */
-export const ADMIN_COOKIE_ENV = "PKEY_ADMIN_COOKIE";
+/** The environment variable this command reads its admin API token from. */
+export const ADMIN_TOKEN_ENV = "PKEY_ADMIN_TOKEN";
 
-/** The console's session cookie name (`packages/worker/src/core/console/session.ts`). */
-export const ADMIN_COOKIE_NAME = "__Host-pkey_admin";
+/** `pkeya_` — `a` for admin. */
+const ADMIN_TOKEN_PREFIX = "pkeya_";
 
-/** The CSRF header every admin-API mutation must echo `/manage/api/me`'s `csrf` in. */
-export const CSRF_HEADER = "X-PKey-CSRF";
+/** An admin API token: the prefix plus 43 base64url characters (256 bits). Kept character for
+ *  character identical to the Worker's shape check — a local check that is STRICTER than the
+ *  server's would refuse a credential the platform accepts, which is worse than not checking at
+ *  all. */
+const ADMIN_TOKEN = /^pkeya_[A-Za-z0-9_-]{43,}$/;
 
 /** The grace ceiling in days — `MAX_GRACE_DAYS` in the Worker's `console/handlers/bundles.ts` (§3.3). */
 export const MAX_GRACE_DAYS = 365;
@@ -76,7 +130,30 @@ export const MAX_GRACE_DAYS = 365;
 /** Wire v3 §6's device id: 32 base64url characters. */
 const DEVICE_ID = /^[A-Za-z0-9_-]{32}$/;
 
+/** Where `http:` is still allowed: the SDK's `LOOPBACK_HOSTS`. `[::1]` appears in bracketed form
+ *  as well because that is what `URL.hostname` hands back for an IPv6 literal. A list, not an
+ *  object keyed by hostname: `constructor` is a hostname too. */
+const LOOPBACK_HOSTS: readonly string[] = [
+  "localhost",
+  "127.0.0.1",
+  "::1",
+  "[::1]",
+];
+
 const BUNDLE_EXTENSION = ".pkeybundle";
+
+/**
+ * How the symlink refusal is enforced on this platform.
+ *
+ * `fs.constants.O_NOFOLLOW` is POSIX and present on darwin and linux, where the kernel refuses
+ * the `open(2)` atomically. On Windows it is `undefined`, and `undefined | O_WRONLY` evaluates to
+ * `NaN` rather than to "the other flags" — a silently broken flag word, not a degraded guard. So
+ * it degrades to an explicit `0`, exactly as `SYMLINK_GUARD` does in
+ * `packages/sdk-node/src/core/store.ts`, and the protection is simply absent there rather than
+ * absent-while-claimed.
+ */
+const NOFOLLOW: number =
+  typeof fsc.O_NOFOLLOW === "number" ? fsc.O_NOFOLLOW : 0;
 
 /** The one usage line, so the help text and every refusal cannot drift apart. */
 export const BUNDLE_USAGE =
@@ -100,8 +177,8 @@ export interface MintBundleOptions {
   /** Output path; relative paths resolve against `cwd`. Defaults to `bundleFileName(...)`. */
   out?: string;
   force?: boolean;
-  /** `process.env.PKEY_ADMIN_COOKIE`, read by the caller — this module never touches env. */
-  cookie?: string;
+  /** `process.env.PKEY_ADMIN_TOKEN`, read by the caller — this module never touches env. */
+  token?: string;
   /** The test seam: `packages/sdk-node/src/discovery.ts` establishes it repo-wide. */
   fetchImpl?: typeof fetch;
   signal?: AbortSignal;
@@ -115,7 +192,7 @@ export interface MintBundleResult {
   file: string;
   deviceId: string;
   graceDays: number;
-  /** The base URL after trailing slashes were stripped. */
+  /** The base URL after validation, with trailing slashes stripped. */
   baseUrl: string;
   /** The mint endpoint that answered. */
   url: string;
@@ -131,9 +208,9 @@ export function bundleFileName(product: string, deviceId: string): string {
 /**
  * Mint one bundle and write it to disk.
  *
- * Two calls, in order: `GET /manage/api/me` for the session's CSRF token, then
- * `POST /manage/api/products/<slug>/bundles`. Everything checkable locally is checked before
- * either of them.
+ * Exactly ONE network call: `POST /manage/api/products/<slug>/bundles`, bearing the admin API
+ * token. Everything checkable locally — the flags, the token's shape, the base URL's scheme, the
+ * output path — is checked before it.
  */
 export async function mintBundle(
   opts: MintBundleOptions,
@@ -162,23 +239,21 @@ export async function mintBundle(
   }
 
   const licenseId = opts.licenseId?.trim() || undefined;
-  const cookie = adminCookie(opts.cookie);
-  const baseUrl = (opts.baseUrl?.trim() || DEFAULT_BASE_URL).replace(
-    /\/+$/,
-    "",
+  const token = adminToken(opts.token);
+  const baseUrl = normalizeBaseUrl(
+    opts.baseUrl?.trim() || DEFAULT_BASE_URL,
+    ADMIN_TOKEN_ENV,
   );
   const file = path.resolve(
     opts.cwd,
     opts.out?.trim() || bundleFileName(product, deviceId),
   );
   const force = opts.force === true;
-  // Checked here AND at write time on purpose: a mint is an audited server-side event, so a
-  // name clash must cost nothing, but the window between the two checks is not zero.
+  // Checked here even though `O_EXCL` enforces it at write time: a mint is an audited
+  // server-side event, so a name clash that is knowable now must cost nothing.
   await refuseIfExists(file, force);
 
   const f = opts.fetchImpl ?? fetch;
-  const csrf = await readCsrf(f, baseUrl, cookie, opts.signal);
-
   const url = `${baseUrl}/manage/api/products/${encodeURIComponent(product)}/bundles`;
   const body = JSON.stringify({
     deviceId,
@@ -191,8 +266,7 @@ export async function mintBundle(
     headers: {
       accept: "application/json",
       "content-type": "application/json",
-      cookie,
-      [CSRF_HEADER]: csrf,
+      authorization: `Bearer ${token}`,
     },
     body,
     signal: opts.signal,
@@ -209,7 +283,7 @@ export async function mintBundle(
   }
 
   // No trailing newline: the file IS the JWS, so a naive read feeds a verifier directly.
-  await writeNewFile(file, bundle, force);
+  writeNewFile(file, bundle, force);
 
   return {
     bundleId,
@@ -222,57 +296,66 @@ export async function mintBundle(
   };
 }
 
-/**
- * `GET /manage/api/me` → the session's CSRF token. The console reads it from the same place
- * for the same reason: the token is bound to the session, so it cannot be derived from the
- * cookie alone, and a stale cookie surfaces HERE rather than as a confusing 403 on the mint.
- */
-export async function readCsrf(
-  f: typeof fetch,
-  baseUrl: string,
-  cookie: string,
-  signal: AbortSignal | undefined,
-): Promise<string> {
-  const url = `${baseUrl}/manage/api/me`;
-  const res = await request(f, url, {
-    headers: { accept: "application/json", cookie },
-    signal,
-  });
-  if (!res.ok)
-    throw await httpError(res, `Reading the admin session at ${url}`);
-
-  const body = await readJson(res, url);
-  const csrf = asString(body.csrf);
-  if (!csrf) {
-    throw new Error(
-      `${url} returned no CSRF token, so the mint cannot be authorised. ` +
-        `Check that ${ADMIN_COOKIE_ENV} holds a console session cookie and not, say, a proxy's.`,
-    );
-  }
-  return csrf;
-}
-
-/** The cookie header value, or an error that says exactly how to get one. */
-export function adminCookie(
-  raw: string | undefined,
-  command = "`pkey bundle` mints",
-): string {
+/** The bearer token, or an error that says exactly what is wrong and how to get a good one. */
+function adminToken(raw: string | undefined): string {
   const value = raw?.trim();
   if (!value) {
     throw new Error(
-      `${ADMIN_COOKIE_ENV} is not set.\n` +
-        `${command} through the admin API, which is authenticated by the console's ` +
-        "browser session — there is no API token yet.\n" +
-        "Sign in to the console, then in devtools: Application -> Cookies -> the console " +
-        `origin -> copy the \`${ADMIN_COOKIE_NAME}\` cookie, and run:\n` +
-        `  export ${ADMIN_COOKIE_ENV}='${ADMIN_COOKIE_NAME}=<value>'\n` +
-        "It is a short-lived session credential carrying full admin authority: do not commit " +
-        "it and do not export it into a shared shell.",
+      `${ADMIN_TOKEN_ENV} is not set.\n` +
+        "`pkey bundle` mints through the admin API, which authenticates this command with an " +
+        "admin API token sent as `Authorization: Bearer pkeya_…`.\n" +
+        "Mint one in the console: /manage -> API tokens -> New token. Choose a label that says " +
+        "where it will run and an expiry. The value is shown ONCE, at mint — nothing stored can " +
+        "reproduce it — so copy it then, and run:\n" +
+        `  export ${ADMIN_TOKEN_ENV}='${ADMIN_TOKEN_PREFIX}…'\n` +
+        "It can mint an offline bundle for any product on the platform: do not commit it, and do " +
+        "not export it into a shell other people share. If it leaks, revoke that one token in the " +
+        "console.",
     );
   }
-  // Operators paste either the whole `name=value` pair or just the value; `__Host-` cookies
-  // always contain `=`, so the absence of one is unambiguous.
-  return value.includes("=") ? value : `${ADMIN_COOKIE_NAME}=${value}`;
+  if (!ADMIN_TOKEN.test(value)) {
+    // Never echo the value itself. It is malformed by definition, but "malformed" is the
+    // caller's claim about a secret and the length is enough to diagnose a truncated paste.
+    const prefix = value.startsWith(ADMIN_TOKEN_PREFIX)
+      ? ""
+      : ` starting \`${clip(value.split(/[=\s]/, 1)[0] ?? "", 12)}\``;
+    throw new Error(
+      `${ADMIN_TOKEN_ENV} does not look like an admin API token. Expected \`${ADMIN_TOKEN_PREFIX}\` ` +
+        `followed by 43 base64url characters (A-Z a-z 0-9 - _); got ${value.length} characters${prefix}.\n` +
+        "A console session cookie is a DIFFERENT credential and is no longer accepted here. Mint a " +
+        "token in the console (/manage -> API tokens) and export that instead.",
+    );
+  }
+  return value;
+}
+
+/**
+ * The base URL, validated and trailing-slash-stripped. `https:` always; `http:` only on a
+ * loopback host, so `wrangler dev` and the integration suites keep working — the same rule
+ * `normalizeBaseUrl` enforces in `packages/sdk-node/src/core/context.ts`, applied here because
+ * the commands that share this module hand the origin a full-authority credential.
+ * `credentialEnv` names that credential's environment variable, for the refusal's message.
+ */
+export function normalizeBaseUrl(raw: string, credentialEnv: string): string {
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    throw new Error(
+      `--base-url is not a valid URL: ${raw}. Give a full origin, e.g. ${DEFAULT_BASE_URL}.`,
+    );
+  }
+  const loopback =
+    url.protocol === "http:" &&
+    LOOPBACK_HOSTS.includes(url.hostname.toLowerCase());
+  if (url.protocol !== "https:" && !loopback) {
+    throw new Error(
+      `--base-url must be https: (got ${url.protocol}//${url.host}). ` +
+        `${credentialEnv} is sent to this origin as a credential, so plaintext http:// ` +
+        "is only accepted for localhost/127.0.0.1 during local development.",
+    );
+  }
+  return raw.replace(/\/+$/, "");
 }
 
 /** `fetch`, with transport failures named. Bare `fetch failed` tells an operator nothing. */
@@ -317,15 +400,17 @@ export async function httpError(
 export function statusHint(status: number): string | undefined {
   if (status === 401) {
     return (
-      `The admin session cookie in ${ADMIN_COOKIE_ENV} is missing or expired. Sign in to the ` +
-      `console again and copy a fresh \`${ADMIN_COOKIE_NAME}\` cookie (devtools -> Application -> Cookies).`
+      `The admin API token in ${ADMIN_TOKEN_ENV} was refused. The server answers one 401 for ` +
+      "unknown, revoked and expired alike, on purpose — check the roster in the console " +
+      "(/manage -> API tokens) to see which, and mint a replacement there."
     );
   }
   if (status === 403) {
     return (
-      `Rejected on authorization or CSRF. Confirm the account is a platform admin, and that ` +
-      `${ADMIN_COOKIE_ENV} holds the CURRENT \`${ADMIN_COOKIE_NAME}\` value — the ${CSRF_HEADER} ` +
-      "token is read from /manage/api/me with that same cookie, so a half-stale session fails here."
+      "Authenticated, but not allowed. Two causes look identical from here: the token is not " +
+      "scoped for this route (a `pkeya_` token needs `bundles:mint`, and every admin route " +
+      "outside the bundle mint refuses tokens outright), or the identity behind it is not a " +
+      "platform admin."
     );
   }
   if (status === 404) {
@@ -389,6 +474,11 @@ export async function readJson(
  * The overwrite guard, the same ENOENT `stat` dance `manifest.ts`'s module-private
  * `writeNewFile` uses — untangled so the refusal is thrown outside the `try` rather than
  * through its own `catch`.
+ *
+ * This is the PRE-MINT check and nothing else: it exists so a knowable name clash is answered
+ * before an audited, non-free server-side event happens, not because it is the enforcement.
+ * `O_EXCL` in `writeNewFile` is the enforcement, and it also collapses the TOCTOU window this
+ * check would otherwise open.
  */
 async function refuseIfExists(file: string, force: boolean): Promise<void> {
   if (force) return;
@@ -401,13 +491,55 @@ async function refuseIfExists(file: string, force: boolean): Promise<void> {
   throw new Error(`${file} already exists. Pass --force to overwrite.`);
 }
 
-async function writeNewFile(
-  file: string,
-  body: string,
-  force: boolean,
-): Promise<void> {
-  await refuseIfExists(file, force);
-  await writeFile(file, body, "utf8");
+/**
+ * Write the bundle, creating it 0600 and refusing to follow a symlink.
+ *
+ * Without `--force` the flags are `O_CREAT | O_EXCL`, which makes "do not overwrite" a kernel
+ * guarantee rather than the result of a `stat` that finished some microseconds ago. `--force`
+ * drops `O_EXCL` and adds `O_TRUNC` — but KEEPS `O_NOFOLLOW`, because the two are answers to
+ * different questions: `--force` says the operator means to replace an existing regular file at
+ * this path, and says nothing whatsoever about following a link that redirects the write to a
+ * path outside the directory they named.
+ */
+function writeNewFile(file: string, body: string, force: boolean): void {
+  const flags = force
+    ? fsc.O_WRONLY | fsc.O_CREAT | fsc.O_TRUNC | NOFOLLOW
+    : fsc.O_WRONLY | fsc.O_CREAT | fsc.O_EXCL | NOFOLLOW;
+  let fd: number;
+  try {
+    fd = openSync(file, flags, 0o600);
+  } catch (err) {
+    throw openFailure(file, err as NodeJS.ErrnoException);
+  }
+  try {
+    // The creation mode applies only to a NEW file, so `--force` over an existing 0644 file
+    // would otherwise leave a signed artifact world-readable. Tightening it is best-effort:
+    // `fchmod` is unimplemented on some Windows and network filesystems, and a failure to
+    // narrow a mode must not fail the write that was already going to happen.
+    try {
+      fchmodSync(fd, 0o600);
+    } catch {
+      /* best effort */
+    }
+    writeSync(fd, body);
+  } finally {
+    closeSync(fd);
+  }
+}
+
+/** An `open(2)` refusal, translated. A raw errno is not an operator-facing sentence. */
+function openFailure(file: string, err: NodeJS.ErrnoException): Error {
+  // O_EXCL. The same words `refuseIfExists` uses, because it is the same situation — this is
+  // just the half of it that the pre-mint check could not see coming.
+  if (err.code === "EEXIST")
+    return new Error(`${file} already exists. Pass --force to overwrite.`);
+  // O_NOFOLLOW. `--force` reaches here; without it, `O_EXCL` reports a symlink as EEXIST.
+  if (err.code === "ELOOP")
+    return new Error(
+      `${file} is a symbolic link, and this command refuses to follow one. A bundle is a signed ` +
+        "credential-bearing artifact; write it to a real path in a directory you control.",
+    );
+  return new Error(`Could not write the bundle to ${file}: ${err.message}`);
 }
 
 function clip(value: string, max = 200): string {

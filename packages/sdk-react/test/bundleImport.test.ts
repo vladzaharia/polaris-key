@@ -463,3 +463,61 @@ describe("desktop importBundle() through the host bridge (protocol v3)", () => {
     adapter.dispose();
   });
 });
+
+describe("browser importBundle() — the import window resists a rolled-back clock", () => {
+  it("refuses a lapsed bundle when the page clock is wound back inside its window", async () => {
+    // §7 step 2 runs the import window at `max(clock, floor)`. A verified trust manifest dated
+    // after the window closes raises the floor, so setting the page clock back reopens nothing.
+    const afterWindow =
+      decode<{ expiresAt: number }>(VALID.bundleJws).expiresAt + 10 * 86_400;
+    const trustJws = await signJws(
+      {
+        schemaVersion: 1,
+        aud: VALID.expectedAud,
+        iss: "key.plrs.im",
+        issuedAt: afterWindow,
+        expiresAt: afterWindow + 300,
+        jwksUrl: `https://key.plrs.im/${VALID.expectedAud}/.well-known/jwks.json`,
+        cacheSeconds: 300,
+        keys: [
+          {
+            kid: PIN.kid,
+            alg: "EdDSA",
+            kty: "OKP",
+            crv: "Ed25519",
+            publicKey: VALID.pinned[PIN.kid],
+            status: "active",
+          },
+        ],
+      },
+      PIN.privateKeyPkcs8Pem,
+      PIN.kid,
+      "pkey-trust+jws",
+    );
+    const store = indexedDbOfflineStore(new IDBFactory())!;
+    await store.write(VALID.expectedAud, {
+      deviceId: VALID.deviceId,
+      cache: { v: 3, trustJws },
+    });
+    const adapter = browserFor(VALID, store);
+    await settled(adapter);
+    await expect(adapter.importBundle(VALID.bundleJws)).rejects.toMatchObject({
+      code: "bundle-rejected",
+      wireCode: "bundle-claims-rejected",
+    });
+    expect(
+      (await store.read(VALID.expectedAud))?.cache?.bundle,
+    ).toBeUndefined();
+    adapter.dispose();
+  });
+
+  it("imports normally when no signed artifact lifts the floor above the clock", async () => {
+    const store = await seededStore(VALID);
+    const adapter = browserFor(VALID, store);
+    await settled(adapter);
+    await expect(adapter.importBundle(VALID.bundleJws)).resolves.toMatchObject({
+      imported: ["license", "config"],
+    });
+    adapter.dispose();
+  });
+});

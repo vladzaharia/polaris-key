@@ -5,8 +5,9 @@ extends RefCounted
 # The licence suite (P1-03): PolarisKey.license against PKeyFakeServer answering like the Worker
 # (both error-body spellings), the §5 re-acquire on both routes with its one-attempt budget, the
 # best-effort deactivation with its mandatory wipe, the grants read off the verified document,
-# and the channel vocabulary this SDK sends (WIRE-CONTRACT-V3 §5.1). The gate-matrix rows run in
-# the conformance suite. Each group is a file under res://tests/license/ with
+# and the channel vocabulary this SDK sends (WIRE-CONTRACT-V3 §5.1). A 403 document whose reason is
+# outside the block vocabulary reads as the stricter block, never a licensed client (activation).
+# The gate-matrix rows run in the conformance suite. Each group is a file under res://tests/license/ with
 # `func run(t: PKeyTestContext) -> void` (it may await); the suite ends with a coverage check
 # that every group ran.
 

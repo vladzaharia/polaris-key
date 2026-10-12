@@ -433,6 +433,7 @@ export const r = {
   home: (query?: QueryInit) => globalPage("home", query),
   products: (query?: QueryInit) => globalPage("products", query),
   productNew: (query?: QueryInit) => globalPage("product-new", query),
+  apiTokens: () => globalPage("api-tokens"),
   /** The Platform group's root, which redirects to its first page. */
   platform: () => `#/${PLATFORM_GROUP.key}`,
   platformSettings: () => globalPage("platform-settings"),

@@ -11,24 +11,40 @@
  * now a regression test.
  */
 
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { makeTestDb } from "../helpers.js";
 import { KvMock } from "../kvMock.js";
-import { makeEnv, NOW, seedLicenseWithKey, seedProduct } from "../seed.js";
+import {
+  makeEnv,
+  mkReq,
+  NOW,
+  seedLicenseWithKey,
+  seedProduct,
+} from "../seed.js";
 import type { Db } from "../../src/db/types.js";
 import type { Env } from "../../src/platform/env.js";
-import type { Product } from "../../src/core/products.js";
+import { loadProduct, type Product } from "../../src/core/products.js";
+import { handleActivate } from "../../src/services/license/activation.js";
 import {
   DEFAULT_AUTO_ISSUE,
   DEFAULT_FINGERPRINT_POLICY,
 } from "../../src/core/fingerprint.js";
-import { DEFAULT_SERVICES } from "../../src/core/services.js";
+import { DEFAULT_SERVICES, type ServicesMap } from "../../src/core/services.js";
+import { buildHooks } from "../../src/core/hooks.js";
+import { rateLimitOk } from "../../src/core/rateLimit.js";
+import { recordLimiterChecks } from "../rlMock.js";
+import { SERVICES } from "../../src/mount.js";
 import type { FetchImpl } from "../../src/services/release/githubApp.js";
 import type { Arch } from "../../src/services/release/assets.js";
-import type {
-  Release,
-  ReleaseAsset,
+import {
+  UpstreamRateLimitedError,
+  type Release,
+  type ReleaseAsset,
 } from "../../src/services/release/github.js";
+import {
+  meterUpstreamCalls,
+  UPSTREAM_RATE_LIMIT,
+} from "../../src/services/release/gateway.js";
 import {
   handleReleaseSurface as handleRelease,
   seedDeliveryAccess,
@@ -46,6 +62,10 @@ import {
   CSRF_HEADER,
   issueSession,
 } from "../../src/core/console/session.js";
+import {
+  deriveVersionEnv,
+  validateInstallContext,
+} from "../../src/services/release/install.js";
 import {
   enableDownloads,
   handlePortalDownload,
@@ -128,7 +148,7 @@ function makeProduct(slug = SLUG): Product {
     slug,
     name: slug,
     signingKid: "kid",
-    signingKeyPem: "pem",
+    signingKey: async () => "pem",
     signingPub: null,
     compatMin: "0.0.0",
     compatMax: "99.0.0",
@@ -280,7 +300,17 @@ const PRODUCT_JSON = JSON.stringify({
   tiers: [{ id: "pro", label: "Pro" }],
 });
 
-/** The same manifest as a repo *writer* would rewrite it: new IdP, new admin group, fat tier. */
+/**
+ * The same manifest as a repo *writer* would rewrite it: new IdP, new admin group, fat tier.
+ *
+ * `policyDeviceLimit` is 999 and not the 100,000 it used to be. The device-limit ceiling
+ * (`MAX_DEVICE_LIMIT`, 1,000) covers every seat-cap write path, and this manifest is applied as
+ * ONE document, so a six-figure limit makes ingest refuse the whole thing, and the tests that
+ * use it would pass for the wrong reason: not because the gate they are about held, but because
+ * the manifest never parsed. 999 keeps the fixture hostile in the dimension these tests are
+ * about (a repo push rewriting operator-owned policy) while staying inside the ceiling. The
+ * ceiling itself is covered separately, below.
+ */
 const ATTACKER_PRODUCT_JSON = JSON.stringify({
   slug: "acme",
   name: "Acme",
@@ -295,7 +325,18 @@ const ATTACKER_PRODUCT_JSON = JSON.stringify({
     redirectUris: ["https://attacker.example/cb"],
     groupRoleMap: { everyone: { role: "admin" } },
   },
-  tiers: [{ id: "pro", label: "Pro", policyDeviceLimit: 100000 }],
+  tiers: [{ id: "pro", label: "Pro", policyDeviceLimit: 999 }],
+});
+
+/** The seat cap the ceiling refuses: `claimDeviceSeat`'s recursive CTE is O(limit) inside ONE
+ *  statement, so this is a repo push that turns every later activation into a hang. */
+const OVERSIZED_LIMIT_PRODUCT_JSON = JSON.stringify({
+  slug: "acme",
+  name: "Acme",
+  compatMin: "1.0.0",
+  compatMax: "9.0.0",
+  adminGroup: "acme-admins",
+  tiers: [{ id: "pro", label: "Pro", policyDeviceLimit: 100_000 }],
 });
 
 function releaseJson(over: Record<string, unknown> = {}): string {
@@ -1187,7 +1228,7 @@ describe("R6-07 webhook resync trusts payload-supplied ref and has no replay pro
       "acme",
       "pro",
     );
-    expect(tier?.policy_device_limit).not.toBe(100000);
+    expect(tier?.policy_device_limit).not.toBe(999);
   });
 
   // STILL NOT FIXED (R6-05 proper): once the issuer host IS operator-blessed, everything else
@@ -1233,6 +1274,58 @@ describe("R6-07 webhook resync trusts payload-supplied ref and has no replay pro
       "acme",
     );
     expect(product?.admin_group).toBe("attacker-controlled-group");
+  });
+
+  // The same push is also the delivery vehicle for an unbounded seat cap: a tier's
+  // `policyDeviceLimit` feeds `claimDeviceSeat`'s recursive CTE, which is O(limit) inside a
+  // SINGLE statement, so a six-figure limit is not a big number, it is a statement that never
+  // returns, on every subsequent activation for that product.
+  it("a repo push cannot raise a tier's seat cap past the ceiling", async () => {
+    const db = makeTestDb();
+    const env = envFor();
+    env.GITHUB_WEBHOOK_SECRET = "webhook-secret";
+    const stub = pkeyFetch({
+      ".pkey/schema.json": SCHEMA_JSON,
+      ".pkey/product.json": PRODUCT_JSON,
+      ".pkey/release.json": releaseJson(),
+    });
+    expect(
+      (await linkRepo(env, db, "acme-org/acme-app", NOW, stub.fetchImpl)).ok,
+    ).toBe(true);
+
+    stub.files[".pkey/product.json"] = OVERSIZED_LIMIT_PRODUCT_JSON;
+    const res = await handleGithubWebhook(
+      deliveryRequest(
+        await signedPush(
+          pushPayload({ head_commit: { modified: [".pkey/product.json"] } }),
+          "webhook-secret",
+        ),
+      ),
+      env,
+      db,
+      NOW + 10,
+      stub.fetchImpl,
+    );
+    // The webhook still ACKs (it always does); the resync inside it reports the refusal.
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      products: Array<{ ok: boolean; errors?: string[] }>;
+    };
+    expect(body.products[0]?.ok).toBe(false);
+    // The operator has to be able to see WHY their push did not apply, so the refusal names
+    // the offending path and the ceiling, not just "invalid".
+    const errors = JSON.stringify(body.products[0]?.errors ?? []);
+    expect(errors).toContain("policyDeviceLimit");
+    expect(errors).toContain("1000");
+
+    // Refuse, never coerce: nothing from the document landed, so there is no clamped-but-applied
+    // row to reason about later.
+    const tier = await db.first<{ policy_device_limit: number | null }>(
+      "SELECT policy_device_limit FROM tiers WHERE product = ? AND id = ?",
+      "acme",
+      "pro",
+    );
+    expect(tier?.policy_device_limit ?? 0).toBeLessThan(100_000);
   });
 });
 
@@ -1812,5 +1905,897 @@ describe("R6-11 portal download redirect host allowlist", () => {
     // database, not the ordering, is what decides which one gets the redirect.
     const [a, b] = await Promise.all([fire(), fire()]);
     expect([a.status, b.status].sort()).toEqual([302, 404]);
+  });
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Two regexes disagreed, so a manifest-legal binary name 404'd install.sh forever
+// ═════════════════════════════════════════════════════════════════════════════
+//
+// `install.ts` bounded `binaryName` with exactly the manifest validator's class, then bounded
+// the DERIVED `versionEnv` with a shell-identifier class, but the derivation lived in `source.ts`
+// and satisfied neither bound. Two axes:
+//   (a) a LEADING DIGIT. `7zip` is a legal binaryName; `7ZIP_VERSION` is not a legal shell
+//       identifier, so `validateInstallContext` failed and the surface 404'd.
+//   (b) LENGTH. `binaryName` may be 64 characters; `<NAME>_VERSION` is 8 longer, over the old
+//       64-character bound. Every name of 57-64 characters 404'd.
+// Both were permanent: nothing about the request changed the answer.
+
+describe("a manifest-legal binaryName permanently 404s install.sh", () => {
+  /** The manifest validator's rule, verbatim from `shared-manifest/src/index.ts`. */
+  const MANIFEST_BINARY_NAME_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
+
+  async function installFor(binaryName: string): Promise<Response> {
+    const db = makeTestDb();
+    await seedReleaseConfig(db, { binary_name: binaryName });
+    const { fetchImpl } = stubFetch([]);
+    return handleRelease(
+      req("https://key.plrs.im/djdl/install.sh"),
+      envFor(),
+      db,
+      makeProduct(),
+      "install",
+      {},
+      fetchImpl,
+    );
+  }
+
+  // A leading digit is genuinely not a POSIX shell identifier, so the regex was right and the
+  // derivation was wrong: the fix prefixes `_` rather than loosening the class.
+  it("a binaryName starting with a digit serves an installer instead of a 404", async () => {
+    const name = "7zip";
+    expect(MANIFEST_BINARY_NAME_RE.test(name)).toBe(true);
+    const res = await installFor(name);
+    expect(res.status).toBe(200);
+    const script = await res.text();
+    expect(script).toContain("_7ZIP_VERSION");
+    // Never the un-prefixed form ANYWHERE: `7ZIP_VERSION=1.2.3 sh` is a COMMAND named
+    // `7ZIP_VERSION=…`, not an assignment, so an installer that emitted it would be quietly
+    // broken even if the renderer had agreed to emit it.
+    expect(script).not.toMatch(/(?:^|[^A-Za-z0-9_])7ZIP_VERSION/m);
+    expect(script).toContain('VERSION="${_7ZIP_VERSION:-latest}"');
+  });
+
+  // 64 characters is exactly what the manifest admits; the derived name is 72.
+  it("a maximum-length binaryName serves an installer instead of a 404", async () => {
+    const name = "a".repeat(64);
+    expect(MANIFEST_BINARY_NAME_RE.test(name)).toBe(true);
+    const res = await installFor(name);
+    expect(res.status).toBe(200);
+    expect(await res.text()).toContain(`${"A".repeat(64)}_VERSION`);
+  });
+
+  it("a 64-character name starting with a digit reaches the 73-character bound and still renders", async () => {
+    const name = `9${"b".repeat(63)}`;
+    expect(MANIFEST_BINARY_NAME_RE.test(name)).toBe(true);
+    expect(deriveVersionEnv(name)).toHaveLength(73);
+    const res = await installFor(name);
+    expect(res.status).toBe(200);
+    expect(await res.text()).toContain(`_9${"B".repeat(63)}_VERSION`);
+  });
+
+  // One rule, so the property holds for the WHOLE class rather than for the cases someone
+  // remembered: every string the manifest admits derives a name the installer admits.
+  it("EVERY manifest-legal binaryName derives an installer-legal versionEnv", () => {
+    const names = [
+      "a",
+      "Z",
+      "0",
+      "9",
+      "7zip",
+      "djdl",
+      "my.tool",
+      "my-tool",
+      "my_tool",
+      "0-._-.0",
+      "a".repeat(64),
+      `9${"b".repeat(63)}`,
+      `${"x".repeat(63)}9`,
+    ];
+    for (const name of names) {
+      expect(MANIFEST_BINARY_NAME_RE.test(name), name).toBe(true);
+      const env = deriveVersionEnv(name);
+      // The shell-identifier rule, verbatim from `install.ts`.
+      expect(
+        /^[A-Za-z_][A-Za-z0-9_]{0,72}$/.test(env),
+        `${name} -> ${env}`,
+      ).toBe(true);
+      expect(
+        validateInstallContext({
+          origin: "https://key.plrs.im",
+          cliBase: "/djdl/release/dl",
+          installPath: "/djdl/release/install.sh",
+          binaryName: name,
+          channels: ["staging", "beta"],
+          versionEnv: env,
+        }),
+      ).toBeNull();
+    }
+  });
+
+  it("an unsafe versionEnv is still refused", () => {
+    const ctx = {
+      origin: "https://key.plrs.im",
+      cliBase: "/djdl/release/dl",
+      installPath: "/djdl/release/install.sh",
+      binaryName: "djdl",
+      channels: ["staging", "beta"],
+    };
+    for (const versionEnv of [
+      "7ZIP_VERSION",
+      "BAD-NAME_VERSION",
+      "X; rm -rf ~ #_VERSION",
+      "A".repeat(74),
+    ])
+      expect(
+        validateInstallContext({ ...ctx, versionEnv }),
+        versionEnv,
+      ).toMatch(/^unsafe versionEnv/);
+  });
+});
+
+// `entitled` evaluated the version window BEFORE the selector resolved, so it only ran for a
+// pinned path
+// ═════════════════════════════════════════════════════════════════════════════
+
+// `entitledSelectorFor` can only populate `version` for a PINNED selector, so the gateway, which
+// runs before the selector resolves, evaluated the caller's window for `/release/dl/2.0.0/…` and
+// skipped it for `latest`, `stable`, a channel and a bare appcast. The ceiling was a property of
+// the URL's SHAPE: the same caller, refused the pinned path, got the identical artifact by
+// swapping one segment. The release a moving selector resolved to is now held to the window,
+// in the `403 version_blocked` + `allowedRange` shape the pinned path answers with.
+describe("entitled: the version window holds for a moving selector", () => {
+  /** A release list whose newest stable is 2.0.0, plus a beta above it. */
+  const STABLE_2 = release({
+    tag_name: "v2.0.0",
+    assets: [asset("djdl-2.0.0-arm64.dmg", 91), asset("djdl-arm64", 92)],
+  });
+  const STABLE_1 = release({
+    tag_name: "v1.0.0",
+    published_at: "2025-01-01T00:00:00Z",
+    assets: [asset("djdl-1.0.0-arm64.dmg", 93), asset("djdl-arm64", 94)],
+  });
+  const BETA_3 = release({
+    tag_name: "v3.0.0-beta.1",
+    prerelease: true,
+    published_at: "2026-03-01T00:00:00Z",
+    assets: [asset("djdl-3.0.0-beta.1-beta-arm64.dmg", 95)],
+  });
+
+  function releaseListFetch(): FetchImpl {
+    return stubFetch([
+      [
+        "/releases?per_page",
+        () =>
+          new Response(JSON.stringify([BETA_3, STABLE_2, STABLE_1]), {
+            status: 200,
+          }),
+      ],
+      [
+        "/releases/tags/",
+        () => new Response(JSON.stringify(STABLE_2), { status: 200 }),
+      ],
+    ]).fetchImpl;
+  }
+
+  /** The product with unsigned feeds, plus an activated device on a licence with `grant`. */
+  async function world(
+    access: Record<string, unknown>,
+    grant: Parameters<typeof seedLicenseWithKey>[2] = {},
+  ): Promise<{ db: Db; env: Env; product: Product; token: string }> {
+    const db = makeTestDb();
+    // No channel workflow, so `beta` resolves through the prerelease heuristic rather than an
+    // Actions lookup this stub does not serve.
+    await seedReleaseConfig(db, {
+      sparkle_ed25519_pub: null,
+      channel_workflow: null,
+      ...access,
+    });
+    // The signature requirement is OPERATOR policy: opt out so the appcast renders and the
+    // tests are about the access decision, not the enclosure.
+    await db.run(
+      "UPDATE release_config SET operator_policy_json = ? WHERE product = ?",
+      JSON.stringify({ requireSparkleSignature: false }),
+      SLUG,
+    );
+    const env = envFor();
+    const product = (await loadProduct(env, db, SLUG))!;
+    const { key } = await seedLicenseWithKey(db, SLUG, grant);
+    const activated = await handleActivate(
+      mkReq("POST", {
+        authorization: `Bearer ${key}`,
+        "x-pkey-device": "dev-window",
+      }),
+      env,
+      db,
+      product,
+      NOW,
+    );
+    expect(activated.status).toBe(200);
+    const { token } = (await activated.json()) as { token: string };
+    return { db, env, product, token };
+  }
+
+  function authed(url: string, token: string): Request {
+    return new Request(url, {
+      headers: { authorization: `Bearer ${token}` },
+    }) as unknown as Request;
+  }
+
+  const BLOCKED = {
+    error: { code: "version_blocked" },
+    // The SAME body the pinned path answers with: clients parse this shape.
+    allowedRange: { min: "0.0.0", max: "1.5.0" },
+  };
+
+  it("blocks `latest` for a caller whose grant caps below the newest release, exactly as the pinned path does", async () => {
+    const { db, env, product, token } = await world(
+      { artifacts_access: "entitled" },
+      { maxVersion: "1.5.0" },
+    );
+    for (const [kind, name, version] of [
+      ["dmg", "djdl-arm64.dmg", "latest"],
+      ["cli", "djdl-arm64", "latest"],
+      // The control: the pinned spelling of the same release was already refused.
+      ["dmg", "djdl-arm64.dmg", "2.0.0"],
+    ] as const) {
+      const res = await handleRelease(
+        authed(`https://key.plrs.im/djdl/release/dl/${version}/${name}`, token),
+        env,
+        db,
+        product,
+        kind,
+        { version, arch: "arm64" },
+        releaseListFetch(),
+      );
+      expect(res.status, `${kind} ${version}`).toBe(403);
+      expect(await res.json(), `${kind} ${version}`).toEqual(BLOCKED);
+    }
+  });
+
+  it("blocks the bare appcast, which names no version at all", async () => {
+    const { db, env, product, token } = await world(
+      { artifacts_access: "entitled" },
+      { maxVersion: "1.5.0" },
+    );
+    const res = await handleRelease(
+      authed("https://key.plrs.im/djdl/update/appcast.xml", token),
+      env,
+      db,
+      product,
+      "appcast",
+      { arch: "arm64" },
+      releaseListFetch(),
+    );
+    expect(res.status).toBe(403);
+    expect(await res.json()).toEqual(BLOCKED);
+  });
+
+  it("blocks the CHANNEL appcast for a beta-entitled caller who is version-capped", async () => {
+    // The channel gate passes (the grant names `beta`) and the version gate is all that is left:
+    // the combination the pre-resolution check could not evaluate.
+    const { db, env, product, token } = await world(
+      { artifacts_access: "entitled" },
+      { channels: ["beta"], maxVersion: "2.5.0" },
+    );
+    const res = await handleRelease(
+      authed("https://key.plrs.im/djdl/update/beta/appcast.xml", token),
+      env,
+      db,
+      product,
+      "channelAppcast",
+      { channel: "beta", arch: "arm64" },
+      releaseListFetch(),
+    );
+    expect(res.status).toBe(403);
+    expect(await res.json()).toMatchObject({
+      error: { code: "version_blocked" },
+      allowedRange: { max: "2.5.0" },
+    });
+  });
+
+  it("blocks /update/version, which ADVERTISES the release it may not serve", async () => {
+    const { db, env, product, token } = await world(
+      { metadata_access: "entitled" },
+      { maxVersion: "1.5.0" },
+    );
+    const res = await handleRelease(
+      authed("https://key.plrs.im/djdl/update/version", token),
+      env,
+      db,
+      product,
+      "version",
+      { version: "latest" },
+      releaseListFetch(),
+    );
+    expect(res.status).toBe(403);
+    expect(await res.json()).toEqual(BLOCKED);
+  });
+
+  // REGRESSION GUARD: over-blocking breaks every legitimate updater on an `entitled` product.
+  it("still serves the moving selector to a caller INSIDE the window", async () => {
+    const { db, env, product, token } = await world(
+      { artifacts_access: "entitled", metadata_access: "entitled" },
+      { maxVersion: "9.0.0" },
+    );
+    const feed = await handleRelease(
+      authed("https://key.plrs.im/djdl/update/appcast.xml", token),
+      env,
+      db,
+      product,
+      "appcast",
+      { arch: "arm64" },
+      releaseListFetch(),
+    );
+    expect(feed.status).toBe(200);
+    expect(await feed.text()).toContain("djdl-2.0.0-arm64.dmg");
+    const version = await handleRelease(
+      authed("https://key.plrs.im/djdl/update/version", token),
+      env,
+      db,
+      product,
+      "version",
+      { version: "latest" },
+      releaseListFetch(),
+    );
+    expect(version.status).toBe(200);
+    expect(((await version.json()) as { version: string }).version).toBe(
+      "2.0.0",
+    );
+    const dl = await handleRelease(
+      authed(
+        "https://key.plrs.im/djdl/release/dl/latest/djdl-arm64.dmg",
+        token,
+      ),
+      env,
+      db,
+      product,
+      "dmg",
+      { version: "latest", arch: "arm64" },
+      releaseListFetch(),
+    );
+    // Not 200 only because the stub serves no asset BYTES: the access decision let it through.
+    expect(dl.status).not.toBe(403);
+  });
+
+  // The mode is opt-in: a `public` product pays nothing for any of this.
+  it("does not touch a product that has not opted in", async () => {
+    const { db, env, product } = await world({}, { maxVersion: "0.0.1" });
+    for (const [kind, url, params] of [
+      [
+        "version",
+        "https://key.plrs.im/djdl/update/version",
+        { version: "latest" },
+      ],
+      [
+        "dmg",
+        "https://key.plrs.im/djdl/release/dl/latest/djdl-arm64.dmg",
+        { version: "latest", arch: "arm64" as const },
+      ],
+    ] as const) {
+      const res = await handleRelease(
+        req(url),
+        env,
+        db,
+        product,
+        kind,
+        params,
+        releaseListFetch(),
+      );
+      expect(res.status, kind).not.toBe(403);
+      expect(res.status, kind).not.toBe(401);
+    }
+  });
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// The per-product upstream budget
+// ═════════════════════════════════════════════════════════════════════════════
+//
+// The per-IP release lanes bound what ONE address costs, and every one of them is keyed on the
+// caller, so the cheapest way round them is more source addresses. Nothing counted what the
+// PRODUCT spends, which is the only number the GitHub installation quota cares about, and
+// exhausting that quota turns every download, appcast and `install.sh` of every product on the
+// installation into a refusal. A download is also two API calls, not one (the selector, then the
+// asset), so an artifact lane sized as if a request were one call sat above the quota it defends.
+//
+// So every `api.github.com` call a release surface issues is charged to one bucket per product
+// (`releaseUpstream`, 4,000 an hour) at the fetch seam, and the per-address artifact lane is held
+// under that budget on its own. GREEN when a flood cannot spend more than the product's own
+// budget, however many addresses it comes from.
+
+/** The product's whole upstream budget for the hour `NOW` falls in, spent. */
+async function spendUpstreamBudget(env: Env): Promise<void> {
+  const rl = { bucket: "releaseUpstream", id: SLUG, ...UPSTREAM_RATE_LIMIT };
+  for (let i = 0; i < UPSTREAM_RATE_LIMIT.limit; i++)
+    await rateLimitOk(env, SLUG, rl, NOW);
+  expect(await rateLimitOk(env, SLUG, rl, NOW)).toBe(false);
+}
+
+/** An artifact request attributed to `ip` — `cf-connecting-ip` is what `clientIp` reads. */
+function fromIp(ip: string): Request {
+  return new Request("https://key.plrs.im/djdl/release/dl/1.2.3/djdl-arm64", {
+    headers: { "cf-connecting-ip": ip },
+  }) as unknown as Request;
+}
+
+/**
+ * A GitHub stub that counts what GitHub bills (`api.github.com` calls) apart from the signed
+ * storage hop an asset read is redirected to, which is not billed to the App's REST quota.
+ */
+function billedStub(
+  rel: Release,
+  opts: { redirect?: boolean } = {},
+): { fetchImpl: FetchImpl; seen: { api: number; storage: number } } {
+  const seen = { api: 0, storage: 0 };
+  const fetchImpl: FetchImpl = async (input) => {
+    const url = String(input);
+    const host = new URL(url).hostname;
+    if (host === "api.github.com") seen.api += 1;
+    else seen.storage += 1;
+    if (url.includes("/access_tokens"))
+      return new Response(JSON.stringify({ token: "ghs_installation_token" }), {
+        status: 200,
+      });
+    if (url.includes("/releases/tags/"))
+      return new Response(JSON.stringify(rel), { status: 200 });
+    if (url.includes("/releases/assets/"))
+      return opts.redirect
+        ? new Response(null, {
+            status: 302,
+            headers: {
+              location:
+                "https://objects.githubusercontent.com/github-production-release-asset/777?X-Amz-Expires=300",
+            },
+          })
+        : new Response("BINARY", { status: 200 });
+    if (host === "objects.githubusercontent.com")
+      return new Response("BINARY", { status: 200 });
+    return new Response("not found", { status: 404 });
+  };
+  return { fetchImpl, seen };
+}
+
+/** Run `fn` with a Cache API bound to `globalThis`, as workerd provides it. */
+async function withEdgeCache<T>(fn: () => Promise<T>): Promise<T> {
+  const store = new Map<string, Response>();
+  const g = globalThis as { caches?: unknown };
+  const prior = g.caches;
+  g.caches = {
+    default: {
+      match: async (r: Request) => store.get(r.url)?.clone(),
+      put: async (r: Request, res: Response) => {
+        store.set(r.url, res);
+      },
+    },
+  };
+  try {
+    return await fn();
+  } finally {
+    if (prior === undefined) delete g.caches;
+    else g.caches = prior;
+  }
+}
+
+describe("the per-product upstream budget", () => {
+  // The budget is a fixed hour. Pinning the clock keeps a long flood from straddling a window
+  // edge, and makes the Retry-After a known number.
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"], now: NOW * 1000 });
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("an artifact flood from rotating addresses cannot spend more GitHub calls than the product's budget", async () => {
+    const db = makeTestDb();
+    await seedReleaseConfig(db, { channel_workflow: null });
+    const env = envFor();
+    const rel = release({
+      tag_name: "v1.2.3",
+      assets: [asset("djdl-arm64", 777)],
+    });
+    const { fetchImpl, seen } = billedStub(rel);
+
+    // Two GitHub calls per request, so this flood is worth ~5% MORE than the budget allows.
+    // Every request names a version nothing has resolved yet (so the resolution cache never
+    // absorbs it) and comes from a different address (so no per-address lane ever fires): the
+    // one thing left to stop it is the product's own budget.
+    const flood = Math.ceil(UPSTREAM_RATE_LIMIT.limit / 2) + 100;
+    const statuses: number[] = [];
+    for (let i = 0; i < flood; i++) {
+      const res = await handleRelease(
+        fromIp(`198.51.100.${i % 250}`),
+        env,
+        db,
+        makeProduct(),
+        "cli",
+        { version: `1.2.${i}`, arch: "arm64" },
+        fetchImpl,
+      );
+      statuses.push(res.status);
+    }
+
+    // THE ASSERTION THAT MATTERS: a count of GitHub calls, not a wall-clock measurement. The
+    // budget is charged once per call and checked BEFORE the call leaves, so it is an exact
+    // ceiling, not an approximation.
+    expect(seen.api).toBe(UPSTREAM_RATE_LIMIT.limit);
+    // …and the flood really did try to spend more than that.
+    expect(flood * 2).toBeGreaterThan(UPSTREAM_RATE_LIMIT.limit);
+
+    // No 429 anywhere: the per-address lanes never fired, so the bound above is the PRODUCT
+    // budget and nothing else.
+    expect(statuses.filter((s) => s === 429)).toEqual([]);
+    // Past the budget the answer is a 503, never the 404 a withdrawn release gets.
+    expect(statuses.filter((s) => s === 404)).toEqual([]);
+    expect(statuses.filter((s) => s === 503).length).toBeGreaterThan(0);
+    expect(statuses.at(-1)).toBe(503);
+    // Serving the early ones is the point: this is a delivery path, not a tarpit.
+    expect(statuses.filter((s) => s === 200).length).toBeGreaterThan(1000);
+
+    // An exhausted quota is a PLATFORM condition, so it wears the same 503 shape GitHub's own
+    // refusal maps to: a Retry-After for the wait, and never cached.
+    const refused = await handleRelease(
+      fromIp("203.0.113.9"),
+      env,
+      db,
+      makeProduct(),
+      "cli",
+      { version: "9.9.9", arch: "arm64" },
+      fetchImpl,
+    );
+    expect(refused.status).toBe(503);
+    expect(refused.headers.get("cache-control")).toBe("no-store");
+    expect(refused.headers.get("retry-after")).toBe(
+      String(
+        UPSTREAM_RATE_LIMIT.windowSec - (NOW % UPSTREAM_RATE_LIMIT.windowSec),
+      ),
+    );
+    expect(await refused.json()).toMatchObject({
+      error: "upstream_rate_limited",
+    });
+    // Still no further spend: the budget cannot be re-borrowed by asking again.
+    expect(seen.api).toBe(UPSTREAM_RATE_LIMIT.limit);
+  }, 120_000);
+
+  it("charges every api.github.com call and none of the storage hop behind it", async () => {
+    const db = makeTestDb();
+    await seedReleaseConfig(db, { channel_workflow: null });
+    const env = envFor();
+    const checks = recordLimiterChecks(env);
+    const rel = release({
+      tag_name: "v1.2.3",
+      assets: [asset("djdl-arm64", 777)],
+    });
+    // The asset read redirects into GitHub's storage host, as GitHub's does.
+    const { fetchImpl, seen } = billedStub(rel, { redirect: true });
+
+    // The second request's signed URL is cached, so it reads the storage host without a
+    // second API call for the asset.
+    for (const version of ["1.2.3", "1.2.4"]) {
+      const res = await handleRelease(
+        fromIp("198.51.100.1"),
+        env,
+        db,
+        makeProduct(),
+        "cli",
+        { version, arch: "arm64" },
+        fetchImpl,
+      );
+      expect(res.status).toBe(200);
+      expect(await res.text()).toBe("BINARY");
+    }
+
+    expect(seen.storage).toBeGreaterThan(0);
+    // One check per call GitHub bills, to this product's bucket, keyed on the product and not
+    // on the caller…
+    const charges = checks.filter((c) => c.bucket === "releaseUpstream");
+    expect(charges).toHaveLength(seen.api);
+    for (const c of charges)
+      expect(c).toMatchObject({ id: SLUG, ...UPSTREAM_RATE_LIMIT });
+    // …beside the per-address lane, which is a different bucket keyed on the caller.
+    expect(
+      checks.filter((c) => c.bucket === "releaseArtifact").map((c) => c.id),
+    ).toEqual(["198.51.100.1", "198.51.100.1"]);
+  });
+
+  it("answers a spent budget on a metadata surface with the same 503, before anything leaves the isolate", async () => {
+    const db = makeTestDb();
+    await seedReleaseConfig(db);
+    const env = envFor();
+    await spendUpstreamBudget(env);
+    const { fetchImpl, calls } = stubFetch([]);
+
+    const res = await handleRelease(
+      req("https://key.plrs.im/djdl/update/version"),
+      env,
+      db,
+      makeProduct(),
+      "version",
+      { version: "1.2.3" },
+      fetchImpl,
+    );
+    expect(res.status).toBe(503);
+    expect(res.headers.get("cache-control")).toBe("no-store");
+    expect(res.headers.get("retry-after")).toBe(
+      String(
+        UPSTREAM_RATE_LIMIT.windowSec - (NOW % UPSTREAM_RATE_LIMIT.windowSec),
+      ),
+    );
+    expect(await res.json()).toMatchObject({ error: "upstream_rate_limited" });
+    expect(calls).toEqual([]);
+  });
+
+  it("serves a cached answer ahead of the limiter, charging neither budget, even once the product's budget is spent", async () => {
+    const db = makeTestDb();
+    await seedReleaseConfig(db, { channel_workflow: null });
+    const env = envFor();
+    const rel = release({ tag_name: "v1.2.3" });
+    const { fetchImpl } = stubFetch([
+      [
+        "/releases?per_page",
+        () => new Response(JSON.stringify([rel]), { status: 200 }),
+      ],
+    ]);
+    await withEdgeCache(async () => {
+      const versionCheck = async (version: string): Promise<number> =>
+        (
+          await handleRelease(
+            req("https://key.plrs.im/djdl/update/version"),
+            env,
+            db,
+            makeProduct(),
+            "version",
+            { version },
+            fetchImpl,
+          )
+        ).status;
+
+      // A miss fills the cache; then the product's whole budget goes.
+      expect(await versionCheck("latest")).toBe(200);
+      await spendUpstreamBudget(env);
+
+      const checks = recordLimiterChecks(env);
+      for (let i = 0; i < 10; i++)
+        expect(await versionCheck("latest")).toBe(200);
+      // Ten hits that touched neither the per-address lane nor the product's budget…
+      expect(checks).toEqual([]);
+      // …while a selector nobody has cached meets the spent budget.
+      expect(await versionCheck("9.9.9")).toBe(503);
+    });
+  });
+
+  describe("the catalog's GitHub reads", () => {
+    const CHAIN: ServicesMap = {
+      license: { enabled: true },
+      config: { enabled: true },
+      release: { enabled: true },
+      distribution: { enabled: true },
+      update: { enabled: true },
+      identity: { enabled: false },
+      sync: { enabled: false },
+    };
+
+    /** `releaseCatalog.repositoryPublic` — the portal's gate — with `fetchImpl` as the platform `fetch`. */
+    async function repositoryPublic(
+      env: Env,
+      db: Db,
+      fetchImpl: FetchImpl,
+    ): Promise<boolean> {
+      const catalog = buildHooks(SERVICES, CHAIN, {
+        env,
+        db,
+        product: makeProduct(),
+        now: NOW,
+      }).releaseCatalog();
+      if (!catalog) throw new Error("Release is on, so the catalog exists");
+      const saved = globalThis.fetch;
+      globalThis.fetch = fetchImpl as typeof fetch;
+      try {
+        return await catalog.repositoryPublic();
+      } finally {
+        globalThis.fetch = saved;
+      }
+    }
+
+    it("charges the portal's repository check: one token mint and one repository read", async () => {
+      const db = makeTestDb();
+      await seedReleaseConfig(db);
+      const env = envFor();
+      const checks = recordLimiterChecks(env);
+      const seen: string[] = [];
+      const fetchImpl: FetchImpl = async (input) => {
+        seen.push(String(input));
+        return String(input).includes("/access_tokens")
+          ? new Response(JSON.stringify({ token: "ghs_installation_token" }), {
+              status: 200,
+            })
+          : new Response(
+              JSON.stringify({ private: false, visibility: "public" }),
+              {
+                status: 200,
+              },
+            );
+      };
+
+      expect(await repositoryPublic(env, db, fetchImpl)).toBe(true);
+      expect(seen).toHaveLength(2);
+      expect(checks.filter((c) => c.bucket === "releaseUpstream")).toHaveLength(
+        2,
+      );
+    });
+
+    it("answers `not public`, without asking GitHub, once the budget is spent", async () => {
+      const db = makeTestDb();
+      await seedReleaseConfig(db);
+      const env = envFor();
+      await spendUpstreamBudget(env);
+      const seen: string[] = [];
+      const fetchImpl: FetchImpl = async (input) => {
+        seen.push(String(input));
+        return new Response("{}", { status: 200 });
+      };
+
+      expect(await repositoryPublic(env, db, fetchImpl)).toBe(false);
+      expect(seen).toEqual([]);
+    });
+  });
+});
+
+describe("meterUpstreamCalls", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"], now: NOW * 1000 });
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("charges the product's bucket for api.github.com and for nothing else", async () => {
+    const env = envFor();
+    const checks = recordLimiterChecks(env);
+    const reached: string[] = [];
+    const metered = meterUpstreamCalls(
+      env,
+      SLUG,
+      NOW,
+      async (input: string) => {
+        reached.push(input);
+        return new Response("ok");
+      },
+    );
+    const urls = [
+      // The one billed call.
+      "https://api.github.com/repos/acme/djdl/releases/latest",
+      // The signed storage hop an asset read is redirected to.
+      "https://objects.githubusercontent.com/github-production-release-asset/1",
+      // Neither is the API host…
+      "https://github.com/acme/djdl/releases/download/v1/djdl",
+      "https://uploads.api.github.com/repos/acme/djdl",
+      "https://api.github.com.attacker.example/repos/acme/djdl",
+      // …and a string that is no URL is passed through, never charged.
+      "not a url",
+    ];
+    for (const url of urls) await metered(url);
+
+    // Every call still reaches the underlying fetch…
+    expect(reached).toEqual(urls);
+    // …and exactly one was charged, to the product's bucket, keyed on the product.
+    expect(checks).toEqual([
+      { bucket: "releaseUpstream", id: SLUG, ...UPSTREAM_RATE_LIMIT, now: NOW },
+    ]);
+  });
+
+  it("reads the URL of a Request as well as a string", async () => {
+    const env = envFor();
+    const checks = recordLimiterChecks(env);
+    const metered = meterUpstreamCalls<Request | string>(
+      env,
+      SLUG,
+      NOW,
+      async () => new Response("ok"),
+    );
+    await metered(
+      new Request(
+        "https://api.github.com/repos/acme/djdl",
+      ) as unknown as Request,
+    );
+    await metered(
+      new Request(
+        "https://objects.githubusercontent.com/x",
+      ) as unknown as Request,
+    );
+    expect(checks).toHaveLength(1);
+  });
+
+  it("refuses with the wait to the next window once the budget is spent, and never calls through", async () => {
+    const env = envFor();
+    await spendUpstreamBudget(env);
+    let reached = 0;
+    const underlying: FetchImpl = async () => {
+      reached += 1;
+      return new Response("ok");
+    };
+    const metered = meterUpstreamCalls(env, SLUG, NOW, underlying);
+
+    const refusal = await metered(
+      "https://api.github.com/repos/acme/djdl/releases/latest",
+    ).catch((err: unknown) => err);
+    expect(refusal).toBeInstanceOf(UpstreamRateLimitedError);
+    expect((refusal as UpstreamRateLimitedError).retryAfterSeconds).toBe(
+      UPSTREAM_RATE_LIMIT.windowSec - (NOW % UPSTREAM_RATE_LIMIT.windowSec),
+    );
+    expect(reached).toBe(0);
+
+    // The storage host is not metered, so an asset already redirected there still streams.
+    await metered("https://objects.githubusercontent.com/signed");
+    expect(reached).toBe(1);
+
+    // The next hour is a fresh budget.
+    const later = meterUpstreamCalls(
+      env,
+      SLUG,
+      NOW + UPSTREAM_RATE_LIMIT.windowSec,
+      underlying,
+    );
+    expect((await later("https://api.github.com/repos/acme/djdl")).ok).toBe(
+      true,
+    );
+    expect(reached).toBe(2);
+  });
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// The release limiter runs before access enforcement
+// ═════════════════════════════════════════════════════════════════════════════
+//
+// Enforcing access first meant a caller the platform refuses paid nothing for being refused. On a
+// `licensed` or `entitled` product an unauthenticated client could collect 401s and 403s forever,
+// at whatever rate it liked, and enumerate selectors (which versions exist, which channels a
+// grant covers) for free. The budget exists to bound work done on behalf of a stranger, and
+// deciding to refuse a stranger is work.
+
+describe("the release limiter runs before access enforcement", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"], now: NOW * 1000 });
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("an unauthenticated caller cannot enumerate a licensed surface for free", async () => {
+    const db = makeTestDb();
+    // `licensed` metadata: an anonymous caller is refused for every selector it names.
+    await seedReleaseConfig(db, { metadata_access: "licensed" });
+    const env = envFor();
+    const { fetchImpl, calls } = stubFetch([]);
+    const probe = async (ip: string, version: string): Promise<number> =>
+      (
+        await handleRelease(
+          new Request(`https://key.plrs.im/djdl/update/version?v=${version}`, {
+            headers: { "cf-connecting-ip": ip },
+          }) as unknown as Request,
+          env,
+          db,
+          makeProduct(),
+          "version",
+          { version },
+          fetchImpl,
+        )
+      ).status;
+
+    const statuses: number[] = [];
+    for (let i = 0; i < 40; i++)
+      statuses.push(await probe("203.0.113.5", `1.2.${i}`));
+
+    // The first 30 are refused on their merits; past the metadata budget the limiter takes
+    // over, because being turned away is work the platform did on a stranger's behalf.
+    expect(statuses.slice(0, 30).every((s) => s === 401)).toBe(true);
+    expect(statuses[30]).toBe(429);
+    expect(statuses.at(-1)).toBe(429);
+    // Another address is untouched: it is refused on the merits, not limited.
+    expect(await probe("203.0.113.6", "1.2.0")).toBe(401);
+    // Nothing ever reached GitHub: access is still enforced before a single byte of release
+    // state is computed.
+    expect(calls).toEqual([]);
   });
 });

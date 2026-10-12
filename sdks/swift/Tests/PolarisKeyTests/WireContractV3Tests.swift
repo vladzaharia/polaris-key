@@ -364,10 +364,10 @@ final class WireContractV3Tests: XCTestCase {
     /// Every one of these is refused on the NETWORK path. On the RELOAD path the far-future
     /// guard is deliberately absent — `checkFreshness: false` turns off both halves of the
     /// freshness window, exactly as `@polaris-key/client-core` does, because a cached document is
-    /// expected to be outside it. The bound that still applies there is
-    /// `CoreContext.verifyCached`'s explicit `issuedAt <= effectiveNow + MAX_GRACE_SECONDS`,
-    /// which is what stops one artifact from dragging the clock floor decades forward; see
-    /// `TrustAndCacheTests.testCachedDocIsReVerifiedOnLoad`.
+    /// expected to be outside it — and `CoreContext.verifyCached` adds no local bound on how far
+    /// ahead of the system clock a cached document may be stamped (V4 §10: no tolerances beyond
+    /// the contract; see `TrustAndCacheTests.testACachedLicenceStampedFarAheadOfTheSystemClockStillLoads`).
+    /// What still binds there is the claim invariants, the grace ceiling and V4 §3's integer range.
     func testExtremeTimestampsAreRejectedWithoutTrapping() {
         let t = issued
         let saturated = Fixtures.license(

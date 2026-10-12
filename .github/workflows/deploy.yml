@@ -19,9 +19,12 @@ jobs:
   verify:
     name: Verify (unprivileged)
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     if: github.repository == 'vladzaharia/polaris-key'
     permissions:
       contents: read
+      # Reads the check runs recorded against the tagged commit ("Require green checks").
+      checks: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -40,6 +43,95 @@ jobs:
             echo "Refusing to deploy: $GITHUB_SHA is not an ancestor of origin/main." >&2
             exit 1
           fi
+      # Ancestry proves only that the tagged commit is REACHABLE from main. It says nothing
+      # about whether anything ran on it: a commit can land on main with CI red (an admin
+      # merge, a check that was not yet required, a workflow that errored before reporting)
+      # and still pass the gate above. So also require every check run recorded against this
+      # exact SHA to be green.
+      #
+      # Fails CLOSED: zero check runs, or an API error reading them, is a failure, not a pass.
+      # Runs still in progress are polled for a bounded time (tagging right after the merge
+      # is normal), never forever. Like the checks above this lives in the tag's own tree, so
+      # it stops mistakes, not an actor who can write a tag (see "environment: production"
+      # below).
+      - name: Require green checks on the tagged commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          MAX_ATTEMPTS=30   # 30 x 30s = 15 minutes for in-progress runs to finish
+          for attempt in $(seq 1 "$MAX_ATTEMPTS"); do
+            # Exclude this workflow run's own check runs (verify, deploy, the called SDK
+            # publish): they are necessarily still in progress while this step executes.
+            # Actions check runs carry an html_url of the form
+            # .../actions/runs/<run_id>/job/<job_id>, so the current run is matched exactly by
+            # id and no job display name is duplicated here. RUN_ID is read through jq's $ENV
+            # rather than interpolated, so nothing is spliced into the program text.
+            # Capture through a variable, not process substitution: `gh` exits non-zero on an
+            # API error but writes the error BODY to stdout, so piping straight into mapfile
+            # would turn "the API was unreachable" into a nonsense check-run row. Test the
+            # exit status explicitly and fail with a distinguishable message.
+            if ! CHECKS_TSV=$(
+              gh api --paginate "repos/$REPO/commits/$SHA/check-runs?per_page=100" \
+                --jq '.check_runs[]
+                      | select(((.html_url // "") | contains("/actions/runs/" + $ENV.RUN_ID + "/")) | not)
+                      | [.name, .status, (.conclusion // "pending")]
+                      | @tsv'
+            ); then
+              echo "Refusing to deploy: could not read check runs for $SHA." >&2
+              echo "This is an API/permissions failure, not a red build. The job needs" >&2
+              echo "'checks: read'; see the permissions block above." >&2
+              exit 1
+            fi
+
+            # A here-string over an empty capture still yields one empty line, so filter.
+            ROWS=()
+            PENDING=0
+            while IFS= read -r LINE; do
+              [ -n "$LINE" ] || continue
+              ROWS+=("$LINE")
+              REST="${LINE#*$'\t'}"
+              [ "${REST%%$'\t'*}" = "completed" ] || PENDING=$((PENDING + 1))
+            done <<< "$CHECKS_TSV"
+
+            if [ "${#ROWS[@]}" -eq 0 ]; then
+              echo "Refusing to deploy: no check runs recorded against $SHA." >&2
+              echo "CI must have run on the tagged commit before it can be deployed." >&2
+              exit 1
+            fi
+            if [ "$PENDING" -eq 0 ]; then break; fi
+            if [ "$attempt" -eq "$MAX_ATTEMPTS" ]; then
+              echo "Refusing to deploy: $PENDING check run(s) on $SHA still not finished after 15 minutes." >&2
+              exit 1
+            fi
+            echo "$PENDING check run(s) still in progress (attempt $attempt/$MAX_ATTEMPTS) — retrying in 30s"
+            sleep 30
+          done
+
+          BAD=0
+          for ROW in "${ROWS[@]}"; do
+            NAME="${ROW%%$'\t'*}"
+            REST="${ROW#*$'\t'}"
+            STATUS="${REST%%$'\t'*}"
+            CONCLUSION="${REST##*$'\t'}"
+            case "$STATUS:$CONCLUSION" in
+              completed:success | completed:skipped | completed:neutral)
+                echo "  ok    $NAME ($CONCLUSION)"
+                ;;
+              *)
+                echo "  FAIL  $NAME (status=$STATUS conclusion=$CONCLUSION)" >&2
+                BAD=1
+                ;;
+            esac
+          done
+
+          if [ "$BAD" -ne 0 ]; then
+            echo "Refusing to deploy: CI is not green on $SHA." >&2
+            exit 1
+          fi
+          echo "All ${#ROWS[@]} check run(s) on $SHA are green."
       # No `version:` here — the action reads `packageManager` from package.json.
       # Specifying both makes v4 abort with "Multiple versions of pnpm specified",
       # which is why every CI run in this repo failed at step 2 until 2026-08-26.
@@ -58,7 +150,33 @@ jobs:
     name: Deploy worker
     needs: verify
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     if: github.repository == 'vladzaharia/polaris-key'
+    # =========================================================================
+    # DO NOT DELETE `environment: production` BELOW. It is the only line in this file that
+    # is actually enforcement.
+    #
+    # This workflow triggers on `push: tags`. For a push event GitHub runs the copy of THIS
+    # FILE carried by the pushed ref's own tree, not the copy on `main`. So anyone holding
+    # `contents: write` (no merge rights, no review) can branch locally, delete every gate
+    # written in this file, commit, and push that commit straight to `refs/tags/v9.9.9`. The
+    # commit never appears on a branch or in a PR, and GitHub runs their edited workflow.
+    #
+    # Therefore every check in this file (tag shape, ancestry, CI green on the tagged commit)
+    # is ADVISORY: each stops a mistake, none stops an actor who can write a tag, because that
+    # actor edits them out in the same commit they deploy.
+    #
+    # The one thing that actor cannot rewrite from inside the tag is WHICH SECRETS THE JOB MAY
+    # SEE. CLOUDFLARE_API_TOKEN is an ENVIRONMENT secret on `production`, not a repository
+    # secret. Deleting the line below does not unlock the deploy; it removes the credential
+    # and wrangler fails with no token. The `production` environment's protection rules
+    # (required reviewers, and a deployment tag policy of `v*`) live in repository settings,
+    # out of reach of anything in this tree.
+    #
+    # If CLOUDFLARE_API_TOKEN is ever recreated as a *repository* secret, this line becomes
+    # decorative again and the whole gate collapses. See docs/DEPLOYMENT.md, "GitHub Actions
+    # secret (environment-scoped, not repository-scoped)".
+    # =========================================================================
     environment: production
     # id-token: write is for "Register the platform packages" only: the deploy hook
     # (POST /webhooks/deploy) authenticates this job by its GitHub OIDC token, so no
@@ -245,6 +363,16 @@ jobs:
             echo "Docs gate not ready (attempt $attempt/12): $DOCS_LOCATION — retrying in 5s"
             sleep 5
           done
+          # /docs/ alone is false assurance. The /manage asset proxy is a second door into the
+          # same assets root, and the docs bundle sits in docs/ of it: a request for
+          # /manage/docs/index.html with no session must never be served the gated site. The
+          # new version is already answering (the poll above), so a 200 here is a real bypass.
+          BYPASS_CODE=$(curl --silent --output /dev/null --write-out '%{http_code}' "$ORIGIN/manage/docs/index.html")
+          if [ "$BYPASS_CODE" = "200" ]; then
+            echo "Smoke check failed: /manage/docs/index.html returned 200 — the docs gate is bypassable." >&2
+            exit 1
+          fi
+          echo "Docs gate OK via /manage proxy: $BYPASS_CODE"
           echo "Smoke check OK: data plane is serving a non-empty JWKS."
       # F-10 automation (owner decision 2026-10-04): keep the platform's own SDKs registered on
       # its package feeds, on every deploy and safe to rerun. The deploy hook bootstraps the system

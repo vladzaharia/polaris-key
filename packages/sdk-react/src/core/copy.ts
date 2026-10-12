@@ -146,6 +146,8 @@ const FR: CopyBundle = {
       "Cette valeur ne peut pas être enregistrée. Retirez les caractères inhabituels et réessayez.",
     document_not_representable:
       "La configuration du développeur ne peut pas être livrée pour le moment. Réessayez plus tard.",
+    signing_unavailable:
+      "Le service ne peut pas signer de document pour le moment. Réessayez dans quelques minutes.",
     device_limit:
       "Cette licence a atteint sa limite d'appareils. Libérez un appareil depuis votre compte, puis réessayez.",
     key_entry_limit:

@@ -51,8 +51,10 @@ from .models import (
     HEADER_SDK_NAME,
     HEADER_SDK_VERSION,
     HEADER_VERSION,
+    STRICTEST_BLOCK_REASON,
     AllowedRange,
     BlockReason,
+    is_block_reason,
 )
 from .semver import channel_for_version
 from .dirs import ProductDirs, default_dir_bases, resolve_dirs, store_namespace
@@ -522,15 +524,27 @@ class CoreContext:
             # tell too-old from too-new; a body that predates the nesting is read at the
             # top level too, and a body that says nothing at all falls back to the
             # stricter of the two.
+            #
+            # The reason is lifted from ATTACKER-SHAPED JSON and ends up, unsigned, as the
+            # gate's status. ``is_block_reason`` is the membership check the ``str`` alias
+            # could never perform: a body claiming ``{"error": {"reason": "ok"}}`` must not
+            # turn a 403 into a licensed client. Anything out of vocabulary is treated
+            # exactly like a body that says nothing at all.
             body = _json_or_empty(res)
             error = body.get("error") if isinstance(body.get("error"), dict) else {}
-            reason = error.get("reason") or body.get("reason")
-            if not reason:
-                reason = (
-                    "channel-not-entitled"
-                    if error.get("code") == "channel_not_allowed"
-                    else "version-too-old"
-                )
+            claimed = next(
+                (
+                    r
+                    for r in (error.get("reason"), body.get("reason"))
+                    if is_block_reason(r)
+                ),
+                None,
+            )
+            reason = claimed or (
+                "channel-not-entitled"
+                if error.get("code") == "channel_not_allowed"
+                else STRICTEST_BLOCK_REASON
+            )
             return DocumentBlocked(
                 reason=reason,
                 allowedRange=AllowedRange.from_dict(body.get("allowedRange")),

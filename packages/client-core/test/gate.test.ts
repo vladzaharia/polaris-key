@@ -251,6 +251,79 @@ describe("licenseState — blocked (403)", () => {
       licenseState(gate({ doc: doc(), now: 1500, blocked: null })).status,
     ).toBe("ok");
   });
+
+  // The unsigned hint is read off a plain JSON file, a 403 body or a session response, and the
+  // gate returns its reason AS the status. `BlockReason` is a type, erased at runtime, so the
+  // vocabulary is checked here, at the decision point, whoever handed the gate the hint.
+  describe("the hint's vocabulary is checked at the decision point", () => {
+    const poisoned = (reason: unknown, range?: { min: string }): GateInput =>
+      gate({
+        doc: null,
+        now: 1500,
+        blocked: {
+          reason,
+          ...(range ? { allowedRange: range } : {}),
+        } as unknown as GateInput["blocked"],
+      });
+
+    it("every usable status, and a value that is not a status at all, coerces to version-too-old", () => {
+      // A fix that special-cased the literal "ok" would pass the first case and fail the rest.
+      for (const reason of [
+        "ok",
+        "grace",
+        "not-applicable",
+        "expired",
+        "revoked",
+        "needs-activation",
+        "definitely-fine",
+        "",
+        "VERSION-TOO-OLD",
+        "toString",
+        "__proto__",
+        7,
+        null,
+        undefined,
+        {},
+        ["ok"],
+      ]) {
+        const s = licenseState(poisoned(reason));
+        expect(s.status, JSON.stringify(reason)).toBe("version-too-old");
+        expect(isUsable(s), JSON.stringify(reason)).toBe(false);
+      }
+    });
+
+    it("a poisoned reason coerces without losing the allowed range, which is display furniture", () => {
+      const s = licenseState(poisoned("ok", { min: "1.0.0" }));
+      expect(s.status).toBe("version-too-old");
+      expect(s.allowedRange).toEqual({ min: "1.0.0" });
+    });
+
+    it("an in-vocabulary reason is still honoured verbatim: the fix narrows the hint, it does not delete it", () => {
+      for (const reason of [
+        "version-too-old",
+        "version-too-new",
+        "channel-not-entitled",
+      ]) {
+        expect(licenseState(poisoned(reason)).status).toBe(reason);
+      }
+    });
+
+    it("a poisoned reason does not outrank the guards that precede the hint", () => {
+      const hint = { reason: "ok" } as unknown as GateInput["blocked"];
+      expect(
+        licenseState(gate({ activation: null, blocked: hint })).status,
+      ).toBe("needs-activation");
+      expect(
+        licenseState(
+          gate({
+            licenseServiceEnabled: false,
+            activation: null,
+            blocked: hint,
+          }),
+        ).status,
+      ).toBe("not-applicable");
+    });
+  });
 });
 
 describe("licenseState — monotonic clock floor (v3 §4.2)", () => {

@@ -207,6 +207,8 @@ function base(): Docs {
           kid: "ABC123",
           claimsTemplate: { iss: "TEAMID" },
           ttlSeconds: 3600,
+          requires: "licensed",
+          requiredEntitlement: "acmeVpn",
         },
       ],
     },
@@ -796,6 +798,15 @@ const MUTATIONS: Mutation[] = [
     mutate: (d) => ((d.schema as any).entries[1].managementDefault = "default"),
   },
   {
+    code: "invalid_catalog_shape",
+    file: "schema",
+    schema: "rejects",
+    // `secret: true` on a FLAG (entries[2]). A flag's value merges into the entitlements map,
+    // which the worker never unseals, so the declaration would ship a KEK envelope to the
+    // device as the entitlement's value. Refused at both publish gates.
+    mutate: (d) => (cat(d).entries[2].secret = true),
+  },
+  {
     // Warnings share the table: a warning is still a code the validator emits. The JSON schema
     // tolerates unknown tier keys, so it accepts.
     code: "tier_ignored_field",
@@ -900,6 +911,23 @@ const MUTATIONS: Mutation[] = [
     file: "product",
     schema: "rejects",
     mutate: (d) => (p(d).licensing.tiers[0].policyDeviceLimit = 1.5),
+  },
+  {
+    code: "invalid_device_limit",
+    file: "product",
+    schema: "rejects",
+    // The CEILING arm on a tier (`MAX_DEVICE_LIMIT`): the cap becomes the bound on
+    // `claimDeviceSeat`'s per-seat recursive scan, so an unbounded one is a statement that never
+    // returns. The schema expresses it as `maximum: 1000`.
+    mutate: (d) => (p(d).licensing.tiers[0].policyDeviceLimit = 100_000_000),
+  },
+  {
+    code: "invalid_device_limit",
+    file: "product",
+    schema: "rejects",
+    // The same ceiling on the product default: the value every licence without a tier cap falls
+    // back to, and the one a `.pkey/product` push sets directly.
+    mutate: (d) => (p(d).licensing.defaultDeviceLimit = 100_000_000),
   },
   {
     code: "invalid_tier_label",
@@ -2445,6 +2473,26 @@ const MUTATIONS: Mutation[] = [
     mutate: (d) => (mint(d).id = "bad id!"),
   },
   {
+    code: "invalid_edge_mint_id",
+    file: "product",
+    schema: "rejects",
+    // `AppleMusic` is inside the shared `ID_RE` and outside the mint ROUTE's `^[a-z0-9-]+$`, so
+    // ingest used to accept a recipe that no request could ever reach.
+    mutate: (d) => (mint(d).id = "AppleMusic"),
+  },
+  {
+    code: "invalid_edge_mint_requires",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (mint(d).requires = "licenced"),
+  },
+  {
+    code: "invalid_edge_mint_entitlement",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (mint(d).requiredEntitlement = "not a key!"),
+  },
+  {
     code: "invalid_edge_mint_kid",
     file: "product",
     schema: "rejects",
@@ -2467,6 +2515,15 @@ const MUTATIONS: Mutation[] = [
     file: "product",
     schema: "rejects",
     mutate: (d) => (mint(d).ttlSeconds = 0),
+  },
+  {
+    code: "invalid_ttl",
+    file: "product",
+    schema: "rejects",
+    // The CEILING arm (`MAX_EDGE_MINT_TTL_SECONDS`): a repo push must not decide how long a token
+    // minted with the product's third-party signing key stays valid. The schema expresses it as
+    // `maximum: 3600`.
+    mutate: (d) => (mint(d).ttlSeconds = 31_536_000),
   },
   // HA-04: `.pkey/product` `presentation { icon, accent, accentDark }`.
   {

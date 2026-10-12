@@ -139,8 +139,9 @@ export interface ConfigPayload {
 }
 
 /**
- * Resolve the config + secrets a device should receive, or `null` when the active catalog
- * exists but cannot be interpreted (the fail-closed arm — see `prunePayloadAgainstCatalog`).
+ * Resolve the config + secrets a device should receive, or `null` when there is no usable active
+ * catalog (none published, or one that cannot be interpreted): the fail-closed arm, see
+ * `prunePayloadAgainstCatalog`.
  *
  * `env` is REQUIRED, unlike on the entitlement side. `core/console/overrides.ts` seals every
  * catalog-declared secret before it reaches `profiles.payload_json` / `licenses.overrides_json`

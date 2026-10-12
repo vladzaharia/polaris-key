@@ -233,6 +233,9 @@ export type CatalogResolution =
  *     caller passes it only for a public deliverable.
  *   - `dl`: the legacy `/dl/<selector>/<binary>-<arch>[.dmg]` route, which resolves a selector
  *     LIVE against GitHub and matches the asset by name. `checksum` serves the `.sha256` sidecar.
+ *     `access` is the app deliverable's delivery access the caller admitted the request under:
+ *     only Release learns which release a moving selector names, so it re-asserts an `entitled`
+ *     window against that release (`resolvedReleaseRefusal`) with the request's own bearer.
  */
 export type CatalogSourceRef =
   | {
@@ -248,6 +251,7 @@ export type CatalogSourceRef =
       arch: string;
       format: "cli" | "dmg";
       checksum: boolean;
+      access: ReleaseAccess;
     };
 
 // ── Packs (P4-02, plans/P4-01.md §6) ─────────────────────────────────────────────────────────

@@ -13,6 +13,7 @@ import {
   isReservedChannelName,
   matchesArtifactGlob,
   MAX_IGNORE_TAG_LENGTH,
+  MAX_EDGE_MINT_TTL_SECONDS,
   MAX_DELIVERABLE_ID_LENGTH,
   RELEASE_ARCHES,
   RELEASE_PLATFORMS,
@@ -697,6 +698,61 @@ describe("secret delivery validation", () => {
   });
 });
 
+describe("secret on a flag entry", () => {
+  const catalogWith = (
+    kind: "config" | "secret" | "flag",
+    secret?: boolean,
+  ): Record<string, unknown> => ({
+    schemaVersion: 1,
+    entries: [
+      {
+        key: "premium",
+        kind,
+        category: "General",
+        label: "Premium",
+        description: "A declared value.",
+        schema: { type: kind === "flag" ? "boolean" : "string" },
+        ...(secret === undefined ? {} : { secret }),
+      },
+    ],
+  });
+
+  it("rejects `secret: true` on a flag: an entitlement is never sealed", () => {
+    const result = validateManifestDocuments({
+      product: PRODUCT,
+      schema: catalogWith("flag", true),
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.errors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          file: "schema",
+          code: "invalid_catalog_shape",
+          message: expect.stringContaining(
+            "entries[0].secret is not valid for flag entries.",
+          ),
+        }),
+      ]),
+    );
+  });
+
+  it.each([
+    ["a flag with no secret member", "flag", undefined],
+    ["a flag with secret: false", "flag", false],
+    ["a config entry with secret: true", "config", true],
+    ["a secret entry with secret: true", "secret", true],
+  ] as const)("accepts %s", (_name, kind, secret) => {
+    const result = validateManifestDocuments({
+      product: PRODUCT,
+      schema: catalogWith(kind, secret),
+    });
+
+    expect(result.errors).toEqual([]);
+    expect(result.ok).toBe(true);
+  });
+});
+
 describe("OIDC issuer safety (R9-01)", () => {
   const withIssuer = (issuer: unknown) =>
     validateManifestDocuments({
@@ -1026,6 +1082,97 @@ describe("manifest identifier character classes (R9-01 audit)", () => {
     expect(product({ autoIssue: { enabled: true, tierId: "a b" } }).ok).toBe(
       false,
     );
+  });
+});
+
+describe("edge-mint recipes: caller class, id alphabet and TTL ceiling", () => {
+  const recipe = (over: Record<string, unknown> = {}) => ({
+    id: "musickit",
+    alg: "ES256",
+    signingKeySecret: "MINT_KEY",
+    ...over,
+  });
+  const validate = (...edgeMint: Record<string, unknown>[]) =>
+    validateManifestDocuments({
+      product: { ...PRODUCT, edgeMint },
+      schema: catalogWithSecretDelivery(),
+    });
+  const codes = (...edgeMint: Record<string, unknown>[]): string[] =>
+    validate(...edgeMint).errors.map((e) => e.code);
+  const parse = (edgeMint: Record<string, unknown>[]) =>
+    parseManifest({
+      product: JSON.stringify({ ...PRODUCT, edgeMint }),
+      schema: JSON.stringify(catalogWithSecretDelivery()),
+    });
+
+  it("holds the id to the mint route's own alphabet, so ingest cannot write an unreachable recipe", () => {
+    // `AppleMusic` and `apple.music` pass the shared identifier class and 404 forever on the
+    // route, which matches `^[a-z0-9-]+$`.
+    for (const id of ["AppleMusic", "apple.music", "apple_music", "a:b"])
+      expect(codes(recipe({ id }))).toContain("invalid_edge_mint_id");
+    expect(codes(recipe({ id: "a".repeat(65) }))).toContain(
+      "invalid_edge_mint_id",
+    );
+    expect(validate(recipe({ id: "apple-music-2" })).ok).toBe(true);
+    expect(validate(recipe({ id: "a".repeat(64) })).ok).toBe(true);
+  });
+
+  it("refuses a ttlSeconds above the one-hour ceiling instead of coercing it", () => {
+    expect(MAX_EDGE_MINT_TTL_SECONDS).toBe(3600);
+    expect(validate(recipe({ ttlSeconds: 3600 })).ok).toBe(true);
+    expect(validate(recipe({ ttlSeconds: 1 })).ok).toBe(true);
+    for (const ttlSeconds of [3601, 86_400, 31_536_000])
+      expect(codes(recipe({ ttlSeconds }))).toContain("invalid_ttl");
+    for (const ttlSeconds of [0, -1, 1.5, "3600", null])
+      expect(codes(recipe({ ttlSeconds }))).toContain("invalid_ttl");
+  });
+
+  it("normalizes ttlSeconds to the ceiling's own default and never above it", () => {
+    const res = parse([recipe({}), recipe({ id: "short", ttlSeconds: 600 })]);
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.manifest.edgeMint.map((e) => e.ttlSeconds)).toEqual([3600, 600]);
+  });
+
+  it("defaults requires to licensed, so a recipe that says nothing fails closed", () => {
+    const res = parse([recipe({})]);
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.manifest.edgeMint[0]).toMatchObject({
+      requires: "licensed",
+      requiredEntitlement: null,
+    });
+  });
+
+  it.each(["none", "registered", "licensed"] as const)(
+    "carries an explicit requires: %s",
+    (requires) => {
+      const res = parse([recipe({ requires })]);
+      expect(res.ok).toBe(true);
+      if (!res.ok) return;
+      expect(res.manifest.edgeMint[0]?.requires).toBe(requires);
+    },
+  );
+
+  it("refuses an unknown requires, never coercing a typo to a posture", () => {
+    for (const requires of ["licenced", "open", "", 1, true, null])
+      expect(codes(recipe({ requires }))).toContain(
+        "invalid_edge_mint_requires",
+      );
+  });
+
+  it("carries requiredEntitlement as a catalog key and refuses anything else", () => {
+    const res = parse([recipe({ requiredEntitlement: "musicPro" })]);
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.manifest.edgeMint[0]?.requiredEntitlement).toBe("musicPro");
+    // Absent, null and empty all mean "no such demand".
+    for (const requiredEntitlement of [undefined, null, ""])
+      expect(validate(recipe({ requiredEntitlement })).ok).toBe(true);
+    for (const requiredEntitlement of ["not a key!", "a".repeat(65), 7, {}])
+      expect(codes(recipe({ requiredEntitlement }))).toContain(
+        "invalid_edge_mint_entitlement",
+      );
   });
 });
 

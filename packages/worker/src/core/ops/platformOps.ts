@@ -38,6 +38,44 @@ export interface JobReport {
   counts: Record<string, number>;
   failures: Record<string, string>;
   timings?: Record<string, StepTiming>;
+  /** Steps that stopped on their batch budget with work left: step name -> rows removed. */
+  truncated?: Record<string, number>;
+  /** Products a nightly sweep did not reach before its product budget ran out. */
+  deferred?: string[];
+}
+
+/** How many step or product names a persisted or thrown summary lists before saying `+N more`. */
+export const SUMMARY_NAMES_MAX = 20;
+/** The row that records the products a nightly sweep did not reach. */
+export const DEFERRED_STEP = "products:deferred";
+
+/** `a, b, c` for at most `SUMMARY_NAMES_MAX` names, then `+N more`. */
+export function listNames(names: readonly string[]): string {
+  const shown = names.slice(0, SUMMARY_NAMES_MAX).join(", ");
+  return names.length > SUMMARY_NAMES_MAX
+    ? `${shown}, +${names.length - SUMMARY_NAMES_MAX} more`
+    : shown;
+}
+
+/**
+ * What a tick left unfinished, as sentences: the steps that stopped on their batch budget with
+ * work remaining, and the products a nightly sweep never reached. Empty when it left nothing.
+ * Neither is a failure — the next nightly tick resumes — which is why they are not in
+ * `failures`; this is how they stay visible instead.
+ */
+export function remainderParts(report: JobReport): string[] {
+  const parts: string[] = [];
+  const truncated = Object.keys(report.truncated ?? {});
+  if (truncated.length > 0)
+    parts.push(
+      `${truncated.length} step(s) stopped on the batch budget with work remaining (${listNames(truncated)})`,
+    );
+  const deferred = report.deferred ?? [];
+  if (deferred.length > 0)
+    parts.push(
+      `${deferred.length} product(s) not reached this run (${listNames(deferred)})`,
+    );
+  return parts;
 }
 
 /** Cut `text` to `ERROR_SUMMARY_MAX` characters, marking the cut. */
@@ -62,10 +100,26 @@ interface JobRunRow {
   error_summary: string | null;
 }
 
+/** The `*` row's `error_summary`: how many steps failed, then what was left unfinished. */
+function summaryOf(
+  failedCount: number,
+  remainder: readonly string[],
+): string | null {
+  const parts = [
+    ...(failedCount > 0 ? [`${failedCount} step(s) failed`] : []),
+    ...remainder,
+  ];
+  return parts.length > 0 ? truncateSummary(parts.join("; ")) : null;
+}
+
 /**
  * The rows one tick becomes (see `migrations/0057_platform_operations.sql`): a `*` summary, one
  * row per successful step family (per-product steps folded together, so a run stays about a dozen
- * rows however many products there are), and one row per failed step under its full name.
+ * rows however many products there are), one row per failed step under its full name, and — for
+ * work a nightly sweep left unfinished — one `ok` row per step that stopped on its batch budget
+ * (at most `SUMMARY_NAMES_MAX`) and one `products:deferred` row for the products it did not
+ * reach. Those rows carry the explanation in `error_summary`; the run's outcome stays `ok`
+ * unless a step failed.
  */
 export function jobRunRows(
   runId: string,
@@ -108,8 +162,7 @@ export function jobRunRows(
       outcome: failed.length > 0 ? "failed" : "ok",
       items: okNames.length + failed.length,
       rows_affected: null,
-      error_summary:
-        failed.length > 0 ? `${failed.length} step(s) failed` : null,
+      error_summary: summaryOf(failed.length, remainderParts(report)),
     },
   ];
   for (const [step, f] of [...families].sort(([a], [b]) => a.localeCompare(b)))
@@ -122,6 +175,33 @@ export function jobRunRows(
       items: f.items,
       rows_affected: f.rows,
       error_summary: null,
+    });
+  for (const [step, removed] of Object.entries(report.truncated ?? {})
+    .sort(([a], [b]) => a.localeCompare(b))
+    .slice(0, SUMMARY_NAMES_MAX))
+    rows.push({
+      id: id(),
+      step: truncateSummary(step, 200),
+      started_at: timings[step]?.startedAt ?? startedAtMs,
+      duration_ms: timings[step]?.durationMs ?? null,
+      outcome: "ok",
+      items: 1,
+      rows_affected: removed,
+      error_summary: "stopped on the batch budget with work remaining",
+    });
+  const deferred = report.deferred ?? [];
+  if (deferred.length > 0)
+    rows.push({
+      id: id(),
+      step: DEFERRED_STEP,
+      started_at: startedAtMs,
+      duration_ms: null,
+      outcome: "ok",
+      items: deferred.length,
+      rows_affected: null,
+      error_summary: truncateSummary(
+        `not reached this run: ${listNames(deferred)}`,
+      ),
     });
   for (const [step, message] of failed.sort(([a], [b]) => a.localeCompare(b)))
     rows.push({

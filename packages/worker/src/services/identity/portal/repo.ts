@@ -388,11 +388,38 @@ export async function linkLicense(
  * platform-issuer products, off for custom-issuer products", so a tenant that stands up its own
  * Keycloak/Authentik after this migration is opted out automatically rather than by an
  * operator remembering to. An explicit 1/0 is an operator override in either direction.
+ *
+ * This is the PRODUCT-level rule, for the callers with no licence in hand (`autoLinkEnabled`,
+ * the storefront's eligibility): it reads the provider as it stands now.
  */
 const AUTO_LINK_ENABLED_SQL = `
   COALESCE(
     s.auto_link_enabled,
     CASE WHEN COALESCE(o.provider, 'platform') = 'custom' THEN 0 ELSE 1 END
+  ) = 1`;
+
+/**
+ * The LICENCE-level rule: the derived default underneath the operator override is a write-time
+ * fact about the row. It used to read the product's provider as it stands at the moment of the
+ * query, so the containment was reversible by editing the product: mint licences for a victim's
+ * address under your own `custom` issuer, push a `.pkey/product` that lowers `oidc.provider`
+ * from `custom` to `platform`, and every one of those rows became auto-linkable RETROACTIVELY,
+ * permanently, with no self-service removal. `licenses.email_issuer_class` (0118) records the
+ * provider that was resolved when the address was written, so a later manifest push cannot
+ * re-decide it. `l` is a licence row (or anything with that column).
+ *
+ * The fallback to `o.provider` is not a hole, it is the earlier rule kept for the rows that
+ * genuinely have no issuer: an admin-created or enrolled licence carries an operator-entered
+ * address that no IdP asserted, and those rows keep behaving exactly as they did. The operator
+ * override (`s.auto_link_enabled`) is unchanged, in either direction: it is a decision only a
+ * platform admin can make, through the console, on the record.
+ */
+const LICENSE_ISSUER_CLASS_SQL = `COALESCE(l.email_issuer_class, COALESCE(o.provider, 'platform'))`;
+
+const LICENSE_AUTO_LINK_ENABLED_SQL = `
+  COALESCE(
+    s.auto_link_enabled,
+    CASE WHEN ${LICENSE_ISSUER_CLASS_SQL} = 'custom' THEN 0 ELSE 1 END
   ) = 1`;
 
 /**
@@ -411,6 +438,28 @@ export async function autoLinkEnabled(
        LEFT JOIN oidc_config o ON o.product = l.product
       WHERE ${AUTO_LINK_ENABLED_SQL}`,
     product,
+  );
+  return row !== null;
+}
+
+/**
+ * `autoLinkEnabled` for one LICENCE: the same rule with the issuer class recorded on the licence
+ * (`email_issuer_class`) in place of the product's live provider, so the answer for a licence
+ * minted under a tenant's own issuer does not change when the product's provider is edited. A
+ * licence with no recorded class (an admin-created or enrolled one) reads the live provider.
+ */
+export async function licenseAutoLinkEnabled(
+  db: Db,
+  license: Pick<LicenseRow, "product" | "email_issuer_class">,
+): Promise<boolean> {
+  const row = await db.first<{ one: number }>(
+    `SELECT 1 AS one
+       FROM (SELECT ? AS product, ? AS email_issuer_class) l
+       LEFT JOIN portal_product_settings s ON s.product = l.product
+       LEFT JOIN oidc_config o ON o.product = l.product
+      WHERE ${LICENSE_AUTO_LINK_ENABLED_SQL}`,
+    license.product,
+    license.email_issuer_class ?? null,
   );
   return row !== null;
 }
@@ -507,13 +556,13 @@ async function attachAutomatically(
 }
 
 /**
- * The email half of the sweep for ONE address the account has verified (LX-26: the body of Core's
+ * The email half of the sweep for ONE address the account has verified (the body of Core's
  * `onAccountEmailVerified` hook, registered by `accounts/holders.ts`). Attaches every licence that
- * names `email`, is in no account, belongs to a product whose auto-link resolves on (R5-01), and
- * is not blocked for this account (S-24 D19: a licence removed from the library stays out).
+ * names `email`, is in no account, whose auto-link resolves on for the issuer class recorded on
+ * the licence, and is not blocked for this account (a licence removed from the library stays out).
  * The caller guarantees the address is verified on the account. Answers how many joined.
  *
- * R11-08: an index SEARCH on `idx_licenses_email_lower`.
+ * The `idx_licenses_email_lower` index serves this query.
  */
 export async function attachWaitingLicensesByEmail(
   db: Db,
@@ -528,7 +577,7 @@ export async function attachWaitingLicensesByEmail(
        FROM licenses l
        LEFT JOIN portal_product_settings s ON s.product = l.product
        LEFT JOIN oidc_config o ON o.product = l.product
-      WHERE lower(l.email) = ? AND l.account_id IS NULL AND ${AUTO_LINK_ENABLED_SQL}
+      WHERE lower(l.email) = ? AND l.account_id IS NULL AND ${LICENSE_AUTO_LINK_ENABLED_SQL}
         AND ${notAutoAttachBlockedSql("l")}`,
     address,
     accountId,
@@ -559,7 +608,9 @@ export async function attachWaitingLicensesByEmail(
  * - **R5-02** — `WHERE sub = ?` with no product AND no issuer qualifier, so subjects minted by
  *   N mutually-untrusted IdPs shared one flat namespace. The left side of this join is ALWAYS a
  *   platform-IdP subject (the account's `oidc` links, keyed by the platform issuer), so the right
- *   side is restricted to licences whose product also authenticates against the platform issuer.
+ *   side is restricted to licences whose product also authenticates against the platform issuer
+ *   and that the platform issuer minted (`email_issuer_class`, so a licence a tenant minted under
+ *   its own issuer does not join once the product is edited to the platform one).
  *   A licence's `sub` therefore joins an account only through an existing link (plans/I-04.md
  *   §6.1); legacy `sub`-only licences of custom-issuer products stay floating (§8 Q6).
  *
@@ -588,7 +639,8 @@ export async function syncAccountLicenseLinks(
          LEFT JOIN oidc_config o ON o.product = l.product
         WHERE l.sub = ? AND l.account_id IS NULL
           AND COALESCE(o.provider, 'platform') = 'platform'
-          AND ${AUTO_LINK_ENABLED_SQL}
+          AND ${LICENSE_ISSUER_CLASS_SQL} = 'platform'
+          AND ${LICENSE_AUTO_LINK_ENABLED_SQL}
           AND ${notAutoAttachBlockedSql("l")}`,
       link.subject,
       accountId,
@@ -1206,39 +1258,22 @@ export async function markPortalDownloadUsed(
 }
 
 /**
- * R11-05 / R11-09 / R12-10 — retention for `release_download_tokens`.
+ * Product-scoped retention for `release_download_tokens`, run by the nightly sweep
+ * (`scheduled.ts`, once per product, in a `drain` loop). Returns how many rows were removed.
  *
- * NOTHING deleted from this table: `grep "DELETE FROM"` over `src/` returned eight statements,
- * none against it, and the worker exports no `scheduled()` handler, so no cron could exist.
- * Every portal download-URL mint added a row with a 300-second TTL and infinite retention, and
- * `idx_release_download_tokens_expiry` existed with no consumer. Until a `scheduled()` handler
- * lands (see the Remediation section of the R11 audit findings), this is called opportunistically from the
- * download path itself — bounded work, on the one route that reads the table.
- */
-export async function purgeExpiredDownloadTokens(
-  db: Db,
-  now: number,
-  limit = 200,
-): Promise<number> {
-  return db.runChanges(
-    `DELETE FROM release_download_tokens
-      WHERE rowid IN (
-        SELECT rowid FROM release_download_tokens WHERE expires_at < ? LIMIT ?
-      )`,
-    now,
-    limit,
-  );
-}
-
-/**
- * Product-scoped retention for `release_download_tokens` — the `scheduled()` counterpart of the
- * opportunistic sweep above. Returns how many rows were removed.
+ * Nothing else deletes from this table, and nothing on a request path may: the portal download
+ * route is unauthenticated, and a delete issued from it would be a stranger-triggered write that
+ * names no product. Every statement here names one.
  *
  * Two statements, not one `OR`, because they want different indexes. The expiry pass rides
  * `idx_release_download_tokens_expiry(product, expires_at)`; the spent pass is a short scan of
  * what the first pass left behind, which by construction is only this product's still-live
  * tokens (a 300-second TTL). Both are bounded by `limit`, so neither can turn into an unbounded
  * delete inside a single cron invocation.
+ *
+ * The returned count is the sum of the two, so up to `2 * limit`. A caller that loops until a
+ * pass comes back short of `limit` (`drain`) stops correctly on that sum: a sum below `limit`
+ * means both passes were short, and a sum at or above it costs at most one confirming pass.
  *
  * A spent token is deleted before it expires on purpose: `markPortalDownloadUsed` is the
  * single-use gate, so a row with `used_at` set can never authorize another download — retaining

@@ -951,7 +951,11 @@ let devices = 0;
 /** A device token on a usable licence of the product (what `licensed` delivery asks for). */
 async function deviceToken(
   w: World,
-  licence: { channels?: string[]; maxVersion?: string } = {},
+  licence: {
+    channels?: string[];
+    maxVersion?: string;
+    minVersion?: string;
+  } = {},
 ): Promise<string> {
   devices += 1;
   const { key } = await seedLicenseWithKey(w.db, SLUG, {
@@ -1579,5 +1583,68 @@ describe("updater renderers", () => {
     expect(xml).toContain('Publisher="CN=&quot;Acme &amp; Co&quot;"');
     expect(xml).toContain('ProcessorArchitecture="x64"');
     expect(xml).toContain("<OnLaunch />");
+  });
+});
+
+// ── The entitled version window ──────────────────────────────────────────────────────────────
+//
+// The access decision of a feed knows the CHANNEL; the releases it lists are chosen afterwards.
+// A caller capped below them was handed the feed anyway, enclosure URLs and all.
+describe("updater feeds: the entitled window holds for the releases a feed lists", () => {
+  /** Artifacts AND metadata entitled: the feeds are artifacts-governed, the version check
+   *  metadata-governed. */
+  async function entitledWorld(): Promise<World> {
+    const w = await world({ access: "entitled" });
+    await w.db.run(
+      "UPDATE release_config SET metadata_access = 'entitled' WHERE product = ?",
+      SLUG,
+    );
+    return w;
+  }
+
+  it.each(EVERY_FEED)(
+    "%s: a licence capped below what the feed lists is refused version_blocked, an open one is served",
+    async (path) => {
+      const w = await entitledWorld();
+      const capped = await deviceToken(w, { maxVersion: "1.0.0" });
+      const refused = await get(w, path, {
+        authorization: `Bearer ${capped}`,
+      });
+      expect(refused.status, await refused.clone().text()).toBe(403);
+      expect(await refused.json()).toMatchObject({
+        error: { code: "version_blocked" },
+        allowedRange: { max: "1.0.0" },
+      });
+      expect(refused.headers.get("cache-control") ?? "").not.toMatch(/^public/);
+      const open = await deviceToken(w, { maxVersion: "9.0.0" });
+      const ok = await get(w, path, { authorization: `Bearer ${open}` });
+      expect(ok.status, path).toBe(200);
+    },
+  );
+
+  it("leaves out an older release below the window's minimum and lists the rest", async () => {
+    const publicFeed = await text(
+      await world(),
+      "update/stable/winsparkle.xml",
+    );
+    expect(publicFeed.body).toContain("1.0.0");
+    const w = await entitledWorld();
+    const token = await deviceToken(w, {
+      minVersion: "1.1.0",
+      maxVersion: "9.0.0",
+    });
+    const res = await get(w, "update/stable/winsparkle.xml", {
+      authorization: `Bearer ${token}`,
+    });
+    expect(res.status).toBe(200);
+    const body = await res.text();
+    expect(body).toContain("1.1.0");
+    expect(body).not.toContain("1.0.0");
+  });
+
+  it("a public feed is untouched by the window", async () => {
+    const w = await world();
+    for (const path of EVERY_FEED)
+      expect((await get(w, path)).status, path).toBe(200);
   });
 });

@@ -114,18 +114,22 @@ pnpm --filter @polaris-key/node test
 
 Deep page: [Offline bundles](/docs/build/offline/) · Console: [Bundles](/docs/admin/bundles/)
 
-| #   | Step                  | Detail                                                                                                                                                                                                                                          |
-| --- | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | Get an admin session  | The admin API is authenticated by the console's browser session — there is no API token. Export the cookie as `PKEY_ADMIN_COOKIE`. It is short-lived and carries **full admin authority**: never commit it, never export it into a shared shell |
-| 2   | Mint                  | `pkey bundle` writes `<product>-<first 8 of device id>.pkeybundle`; `--base-url` defaults to `https://key.plrs.im`                                                                                                                              |
-| 3   | Know what rides along | `bundleId`, `deviceId`, `docs` (a license document, a config document, or both — decided **server-side** by the product's enabled services) and the trust manifest                                                                              |
-| 4   | Transfer and import   | Copy the file to the air-gapped machine and import it there. A verified bundle satisfies activation with no `pkeyt_` token anywhere                                                                                                             |
-| 5   | Expect all-or-nothing | Import verifies against pins, then the trust manifest, then each inner document, and only then writes the cache — there is no partial import                                                                                                    |
+| #   | Step                   | Detail                                                                                                                                                                                                                                                                                                                            |
+| --- | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Get an admin API token | Mint one in the console (/manage → API tokens; minting asks you to sign in again) and export it as `PKEY_ADMIN_TOKEN`. Sent as `Authorization: Bearer pkeya_…`; scoped to `bundles:mint`, shown **once** at mint, individually revocable. It can still mint for any product: never commit it, never export it into a shared shell |
+| 2   | Mint                   | `pkey bundle` writes `<product>-<first 8 of device id>.pkeybundle`; `--base-url` defaults to `https://key.plrs.im`                                                                                                                                                                                                                |
+| 3   | Know what rides along  | `bundleId`, `deviceId`, `docs` (a license document, a config document, or both — decided **server-side** by the product's enabled services) and the trust manifest                                                                                                                                                                |
+| 4   | Transfer and import    | Copy the file to the air-gapped machine and import it there. A verified bundle satisfies activation with no `pkeyt_` token anywhere                                                                                                                                                                                               |
+| 5   | Expect all-or-nothing  | Import verifies against pins, then the trust manifest, then each inner document, and only then writes the cache — there is no partial import                                                                                                                                                                                      |
 
 ```sh
-PKEY_ADMIN_COOKIE='__Host-pkey_admin=<value>' \
+PKEY_ADMIN_TOKEN='pkeya_<value>' \
   pkey bundle --product <slug> --device <deviceId> --grace-days 30
 ```
+
+`--base-url` must be `https:` (or `http://localhost` / `http://127.0.0.1` locally): it decides
+which origin receives the token. The bundle file is written mode `0600` and a symlink at the
+output path is refused rather than followed.
 
 Valueless flags (`--no-config`, `--force`) swallow the next bare word — pass them last, or as
 `--no-config=true`.

@@ -643,6 +643,8 @@
   "core.codes.value_not_representable.message": "Não foi possível salvar um valor. Altere-o e tente novamente.",
   "core.codes.document_not_representable.title": "Problema no serviço",
   "core.codes.document_not_representable.message": "O serviço não conseguiu preparar suas configurações. Contate o desenvolvedor.",
+  "core.codes.signing_unavailable.title": "Assinatura indisponível",
+  "core.codes.signing_unavailable.message": "O serviço não pode assinar um documento agora. Tente novamente em alguns minutos.",
   "core.codes.device_limit.title": "Limite de dispositivos atingido",
   "core.codes.device_limit.message": "Esta licença já está em todos os dispositivos permitidos. Substitua um dispositivo para usá-la aqui.",
   "core.codes.key_entry_limit.title": "Nenhum uso restante da chave",
