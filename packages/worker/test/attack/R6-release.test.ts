@@ -47,6 +47,10 @@ import {
   issueSession,
 } from "../../src/core/console/session.js";
 import {
+  deriveVersionEnv,
+  validateInstallContext,
+} from "../../src/services/release/install.js";
+import {
   enableDownloads,
   handlePortalDownload,
   seedRepositoryVisibility,
@@ -1812,5 +1816,131 @@ describe("R6-11 portal download redirect host allowlist", () => {
     // database, not the ordering, is what decides which one gets the redirect.
     const [a, b] = await Promise.all([fire(), fire()]);
     expect([a.status, b.status].sort()).toEqual([302, 404]);
+  });
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Two regexes disagreed, so a manifest-legal binary name 404'd install.sh forever
+// ═════════════════════════════════════════════════════════════════════════════
+//
+// `install.ts` bounded `binaryName` with exactly the manifest validator's class, then bounded
+// the DERIVED `versionEnv` with a shell-identifier class, but the derivation lived in `source.ts`
+// and satisfied neither bound. Two axes:
+//   (a) a LEADING DIGIT. `7zip` is a legal binaryName; `7ZIP_VERSION` is not a legal shell
+//       identifier, so `validateInstallContext` failed and the surface 404'd.
+//   (b) LENGTH. `binaryName` may be 64 characters; `<NAME>_VERSION` is 8 longer, over the old
+//       64-character bound. Every name of 57-64 characters 404'd.
+// Both were permanent: nothing about the request changed the answer.
+
+describe("a manifest-legal binaryName permanently 404s install.sh", () => {
+  /** The manifest validator's rule, verbatim from `shared-manifest/src/index.ts`. */
+  const MANIFEST_BINARY_NAME_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
+
+  async function installFor(binaryName: string): Promise<Response> {
+    const db = makeTestDb();
+    await seedReleaseConfig(db, { binary_name: binaryName });
+    const { fetchImpl } = stubFetch([]);
+    return handleRelease(
+      req("https://key.plrs.im/djdl/install.sh"),
+      envFor(),
+      db,
+      makeProduct(),
+      "install",
+      {},
+      fetchImpl,
+    );
+  }
+
+  // A leading digit is genuinely not a POSIX shell identifier, so the regex was right and the
+  // derivation was wrong: the fix prefixes `_` rather than loosening the class.
+  it("a binaryName starting with a digit serves an installer instead of a 404", async () => {
+    const name = "7zip";
+    expect(MANIFEST_BINARY_NAME_RE.test(name)).toBe(true);
+    const res = await installFor(name);
+    expect(res.status).toBe(200);
+    const script = await res.text();
+    expect(script).toContain("_7ZIP_VERSION");
+    // Never the un-prefixed form ANYWHERE: `7ZIP_VERSION=1.2.3 sh` is a COMMAND named
+    // `7ZIP_VERSION=…`, not an assignment, so an installer that emitted it would be quietly
+    // broken even if the renderer had agreed to emit it.
+    expect(script).not.toMatch(/(?:^|[^A-Za-z0-9_])7ZIP_VERSION/m);
+    expect(script).toContain('VERSION="${_7ZIP_VERSION:-latest}"');
+  });
+
+  // 64 characters is exactly what the manifest admits; the derived name is 72.
+  it("a maximum-length binaryName serves an installer instead of a 404", async () => {
+    const name = "a".repeat(64);
+    expect(MANIFEST_BINARY_NAME_RE.test(name)).toBe(true);
+    const res = await installFor(name);
+    expect(res.status).toBe(200);
+    expect(await res.text()).toContain(`${"A".repeat(64)}_VERSION`);
+  });
+
+  it("a 64-character name starting with a digit reaches the 73-character bound and still renders", async () => {
+    const name = `9${"b".repeat(63)}`;
+    expect(MANIFEST_BINARY_NAME_RE.test(name)).toBe(true);
+    expect(deriveVersionEnv(name)).toHaveLength(73);
+    const res = await installFor(name);
+    expect(res.status).toBe(200);
+    expect(await res.text()).toContain(`_9${"B".repeat(63)}_VERSION`);
+  });
+
+  // One rule, so the property holds for the WHOLE class rather than for the cases someone
+  // remembered: every string the manifest admits derives a name the installer admits.
+  it("EVERY manifest-legal binaryName derives an installer-legal versionEnv", () => {
+    const names = [
+      "a",
+      "Z",
+      "0",
+      "9",
+      "7zip",
+      "djdl",
+      "my.tool",
+      "my-tool",
+      "my_tool",
+      "0-._-.0",
+      "a".repeat(64),
+      `9${"b".repeat(63)}`,
+      `${"x".repeat(63)}9`,
+    ];
+    for (const name of names) {
+      expect(MANIFEST_BINARY_NAME_RE.test(name), name).toBe(true);
+      const env = deriveVersionEnv(name);
+      // The shell-identifier rule, verbatim from `install.ts`.
+      expect(
+        /^[A-Za-z_][A-Za-z0-9_]{0,72}$/.test(env),
+        `${name} -> ${env}`,
+      ).toBe(true);
+      expect(
+        validateInstallContext({
+          origin: "https://key.plrs.im",
+          cliBase: "/djdl/release/dl",
+          installPath: "/djdl/release/install.sh",
+          binaryName: name,
+          channels: ["staging", "beta"],
+          versionEnv: env,
+        }),
+      ).toBeNull();
+    }
+  });
+
+  it("an unsafe versionEnv is still refused", () => {
+    const ctx = {
+      origin: "https://key.plrs.im",
+      cliBase: "/djdl/release/dl",
+      installPath: "/djdl/release/install.sh",
+      binaryName: "djdl",
+      channels: ["staging", "beta"],
+    };
+    for (const versionEnv of [
+      "7ZIP_VERSION",
+      "BAD-NAME_VERSION",
+      "X; rm -rf ~ #_VERSION",
+      "A".repeat(74),
+    ])
+      expect(
+        validateInstallContext({ ...ctx, versionEnv }),
+        versionEnv,
+      ).toMatch(/^unsafe versionEnv/);
   });
 });

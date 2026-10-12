@@ -23,7 +23,11 @@ import { describe, expect, it } from "vitest";
 import { parse as parseYaml } from "yaml";
 import { matchRoute } from "../src/router.js";
 import { CORS_SERVICE_PATHS, isCorsCoveredRoute } from "../src/core/cors.js";
-import { REGISTRY_OWNERLESS_ROUTES, REGISTRY_ROUTES } from "../src/mount.js";
+import {
+  REGISTRY_OWNERLESS_ROUTES,
+  REGISTRY_ROUTES,
+  SERVICES,
+} from "../src/mount.js";
 import { matchImgPath } from "../src/core/assets/imgHost.js";
 import { FEED_ADAPTERS } from "../src/services/distribution/registry/index.js";
 import {
@@ -53,6 +57,10 @@ const NARRATIVE_ONLY = new Set([
   "portalLogout",
   "portalMagicVerify",
   "portalDownload",
+  // Not a surface: `badRequest` is what the router answers when a path's percent-escape does not
+  // decode, so it documents no endpoint and has no method. It sits here for the same reason
+  // `notFound` does.
+  "badRequest",
   // `adminApi` and `products` stay narrative as kinds: UX-72's create probes are pinned in
   // ADMIN_KIND_PATHS below; the rest of `/manage/api/*` is documented on the docs site.
   // `portalApi` stays narrative as a kind: its PX-W1 library and product routes are pinned in
@@ -241,114 +249,21 @@ const ADMIN_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
 };
 
 /**
- * The canonical service surface — mirrors each `services/<slug>/routes.ts`. The `service`
- * route kind carries every one of these; documenting the KIND means documenting this table.
+ * The canonical service surface, DERIVED from the composition root: each mounted service's
+ * `ServiceDescriptor.surface`. The `service` route kind carries every one of these; documenting
+ * the KIND means documenting this table. This used to be a hand-written literal transcribing each
+ * `services/<slug>/routes.ts`, so it compared one copy of the spec against another copy of the
+ * spec; a service added to or removed from `mount.ts` now changes what this test demands without
+ * anybody editing this file. `mount.ts` is the one table both dispatchers use, so a service that
+ * is declared but never mounted contributes nothing here.
  */
-const SERVICE_PATHS: Array<[string, string[]]> = [
-  ["/{product}/license/activate", ["post"]],
-  ["/{product}/license/enroll", ["post"]],
-  ["/{product}/license/token", ["post"]],
-  ["/{product}/license/deauthorize", ["post"]],
-  ["/{product}/license/document", ["get"]],
-  ["/{product}/config/document", ["get"]],
-  ["/{product}/config/schema", ["get"]],
-  ["/{product}/config/mint/{mintId}/token", ["get", "post"]],
-  ["/{product}/config/mint/{mintId}/auth", ["get"]],
-  ["/{product}/release/changelog", ["get"]],
-  // P2-05: the CI policy routes.
-  ["/{product}/release/channels/{channel}/promote", ["post"]],
-  ["/{product}/release/channels/{channel}/pin", ["post"]],
-  ["/{product}/release/channels/{channel}/unpin", ["post"]],
-  ["/{product}/release/releases/{releaseId}/yank", ["post"]],
-  // Feed retention: the backfill of the builds of main below each package's stable release.
-  ["/{product}/release/packages/prune", ["post"]],
-  // P2-02: trusted publishing.
-  ["/{product}/release/publish/token", ["post"]],
-  ["/{product}/release/publish/uploads", ["post"]],
-  ["/{product}/release/publish/submit", ["post"]],
-  // P4-02: a stage round of a pack's objects.
-  ["/{product}/release/publish/stage", ["post"]],
-  // P4-19: the product's delegations, for `pkey release delegate`.
-  ["/{product}/release/publish/delegations", ["post"]],
-  // P3-03: a CI-signed release record by its hash.
-  ["/{product}/release/records/{sha256}", ["get"]],
-  // P2b-04: all byte delivery is Distribution's (the installer, the download and P2-05's three
-  // byte routes, the last three also on the bytes host), plus the CI rollout routes.
-  ["/{product}/distribution/install.sh", ["get"]],
-  ["/{product}/distribution/dl/{version}/{asset}", ["get"]],
-  ["/{product}/distribution/builds/{selector}/{buildId}", ["get"]],
-  ["/{product}/distribution/files/{releaseId}/{name}", ["get"]],
-  ["/{product}/distribution/blobs/sha256/{sha256}", ["get", "head"]],
-  // P4-18: a pack's decoded container payload, with Compression Dictionary Transport.
-  [
-    "/{product}/distribution/packs/{pack}/{variant}/payload/{sha256}",
-    ["get", "head"],
-  ],
-  ["/{product}/distribution/rollouts/{outlet}/{channel}", ["post"]],
-  ["/{product}/distribution/rollouts/{outlet}/{channel}/pause", ["post"]],
-  ["/{product}/distribution/rollouts/{outlet}/{channel}/resume", ["post"]],
-  ["/{product}/distribution/rollouts/{outlet}/{channel}/halt", ["post"]],
-  ["/{product}/distribution/rollouts/{outlet}/{channel}/complete", ["post"]],
-  // P2b-03: the CI report of availability, submissions and signing keys.
-  ["/{product}/distribution/report", ["post"]],
-  // A-18h: a CI-plane store's projection of the listing model.
-  ["/{product}/distribution/listing/{store}", ["get"]],
-  // A-18i: a PR-plane generator's inputs.
-  ["/{product}/distribution/pr/{store}", ["get"]],
-  // P5-02: the App Store Connect webhook (Apple → Worker, HMAC-signed).
-  ["/{product}/distribution/hooks/asc", ["post"]],
-  // P6-03: the Sentry alert webhook (Sentry → Worker, HMAC-signed); opens halt candidates.
-  ["/{product}/distribution/hooks/sentry", ["post"]],
-  // P6-01: the commerce bridge — the binding and claim routes (device token) and the two store
-  // notification hooks (Apple-signed JWS; Google OIDC push).
-  ["/{product}/distribution/commerce/binding", ["get"]],
-  ["/{product}/distribution/commerce/claim", ["post"]],
-  ["/{product}/distribution/hooks/app-store", ["post"]],
-  ["/{product}/distribution/hooks/play-rtdn", ["post"]],
-  // P2b-05: the storefront feeds, the F-Droid relay and its CI route.
-  ["/{product}/distribution/altstore/{channel}/source.json", ["get"]],
-  ["/{product}/distribution/altstore-pal/{channel}/source.json", ["get"]],
-  ["/{product}/distribution/obtainium/{channel}.json", ["get"]],
-  ["/{product}/distribution/fdroid/{channel}/repo/{path}", ["get"]],
-  ["/{product}/distribution/scoop/{channel}.json", ["get"]],
-  ["/{product}/distribution/flathub/{channel}.json", ["get"]],
-  ["/{product}/distribution/feeds/fdroid/{channel}", ["get", "post"]],
-  // A-18d: the listing assets CI derived, registered into the listing model.
-  ["/{product}/distribution/listing/assets", ["post"]],
-  // P2b-06: the public download page's model (console host) and the page (bytes host only).
-  ["/{product}/distribution/download.json", ["get"]],
-  ["/{product}/distribution/download", ["get"]],
-  ["/{product}/update/appcast.xml", ["get"]],
-  ["/{product}/update/{channel}/appcast.xml", ["get"]],
-  // P3-03: the signed channel feed.
-  ["/{product}/update/{channel}/feed.jws", ["get"]],
-  // P3-09: the app-updater feeds.
-  ["/{product}/update/{channel}/winsparkle.xml", ["get"]],
-  [
-    "/{product}/update/{channel}/velopack/releases.{velopackChannel}.json",
-    ["get"],
-  ],
-  // S-11 §5.1: the package a bare Velopack `FileName` resolves to (a 302 to its delivery URL).
-  ["/{product}/update/{channel}/velopack/{fileName}", ["get"]],
-  ["/{product}/update/{channel}/app.appinstaller", ["get"]],
-  ["/{product}/update/{channel}/{buildId}.AppImage.zsync", ["get"]],
-  ["/{product}/update/version", ["get"]],
-  ["/{product}/identity/session", ["get"]],
-  ["/{product}/identity/session/license", ["post"]],
-  ["/{product}/identity/auth/start", ["get"]],
-  ["/{product}/identity/auth/callback", ["get"]],
-  ["/{product}/identity/auth/logout", ["post"]],
-  ["/{product}/identity/auth/device", ["get", "post"]],
-  ["/{product}/identity/auth/device/start", ["post"]],
-  ["/{product}/identity/auth/device/verify", ["get", "post"]],
-  ["/{product}/identity/auth/device/poll", ["post"]],
-  // I-26: the legacy sign-in's licence chooser (server-rendered HTML).
-  ["/{product}/identity/auth/choose", ["get", "post"]],
-  // I-09: the account on the device wire (device bearer; CORS without credentials).
-  ["/{product}/identity/attach", ["post"]],
-  ["/{product}/identity/subject", ["get"]],
-  ["/{product}/identity/signout", ["post"]],
-];
+const SERVICE_PATHS: Array<[string, string[]]> = [...SERVICES.values()].flatMap(
+  (descriptor) =>
+    descriptor.surface.map((route): [string, string[]] => [
+      route.path,
+      [...route.methods],
+    ]),
+);
 
 /**
  * The permanent aliases: the four pre-namespace spellings (D-07) and Release's old byte paths,
@@ -501,6 +416,50 @@ describe("router → spec", () => {
     for (const [path, methods] of SERVICE_PATHS) {
       for (const method of methods) {
         expect(specMethods(path), `${method} ${path}`).toContain(method);
+      }
+    }
+  });
+
+  it("every mounted service declares a surface", () => {
+    // A service with no HTTP route yet declares `[]` (and is listed here, so the day it gains a
+    // route its surface must be declared with it).
+    const ROUTELESS = new Set(["sync"]);
+    for (const [slug, descriptor] of SERVICES) {
+      expect(
+        Array.isArray(descriptor.surface),
+        `${slug} declares no surface`,
+      ).toBe(true);
+      expect(
+        descriptor.surface.length === 0,
+        `${slug}: an empty surface means no routes`,
+      ).toBe(ROUTELESS.has(slug));
+      for (const route of descriptor.surface) {
+        expect(route.path, `${slug}: ${route.path}`).toMatch(
+          new RegExp(`^/\\{product\\}/${slug}/`),
+        );
+        expect(route.methods.length, `${slug}: ${route.path}`).toBeGreaterThan(
+          0,
+        );
+      }
+    }
+  });
+
+  /**
+   * A DECLARED path must be one the core router actually dispatches to that service. Without
+   * this the surface would be prose in a different file: a service could declare a path it does
+   * not serve and the spec would faithfully document a 404. Templates are instantiated with
+   * concrete segments (`concrete`) because `matchRoute` works on real pathnames.
+   */
+  it("every declared service route is dispatched to its own service", () => {
+    for (const [slug, descriptor] of SERVICES) {
+      for (const route of descriptor.surface) {
+        const pathname = concrete(route.path);
+        const matched = matchRoute(pathname);
+        expect(matched.kind, `${route.path} → ${pathname}`).toBe("service");
+        expect(
+          matched.kind === "service" ? matched.slug : null,
+          `${route.path} → ${pathname}`,
+        ).toBe(slug);
       }
     }
   });

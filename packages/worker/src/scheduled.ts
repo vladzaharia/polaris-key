@@ -9,9 +9,9 @@
 // to activate a new one; and the indexes the security invariants rest on were asserted by no
 // running code, so a half-applied migration was invisible until the invariant it enforced was
 // needed. Every helper those jobs need already existed — `idx_audit_time`, `idx_portal_audit_at`,
-// `purgeExpiredDownloadTokens`, `releaseDormantSeats` — waiting for a caller. This is the caller.
+// `purgeDownloadTokensForProduct`, `releaseDormantSeats` — waiting for a caller. This is the caller.
 //
-// THREE PROPERTIES THIS FILE IS RESPONSIBLE FOR
+// FOUR PROPERTIES THIS FILE IS RESPONSIBLE FOR
 //
 // 1. PRODUCT-SCOPED. Every delete names one product (or, for the platform-level `portal_audit`
 //    rows that name no product, `product IS NULL` explicitly). The sweep never issues a
@@ -30,6 +30,19 @@
 //    cost every later product its retention pass — that is how a single poisoned row turns into
 //    a table that is never pruned again. Failures are collected and re-thrown as one aggregate
 //    at the very end, so the invocation is still recorded as failed.
+// 4. FAIR, AND HONEST ABOUT STOPPING. Every product-scoped step is budgeted, and the product loop
+//    used to start at the same slug every night with no memory of where the last run got to — so
+//    on any deployment whose sweep does not fit in one tick, the head of the slug list was swept
+//    nightly and the tail never, while the report looked identical to a clean run. A nightly run
+//    now resumes after the previous run's `cursor` (kept in KV, `SWEEP_STATE_KEY`), spends an
+//    explicit product budget, and reports what it did not finish (`truncated`, `deferred`,
+//    `complete`) as data rather than leaving it to be inferred from a row count.
+//
+// There is deliberately no log line in here: `test/attack/R12-secrets.test.ts` asserts that no file
+// under `packages/worker/src` names the runtime logger, so "the run stopped early" is carried by
+// the machine-readable fields on the returned `MaintenanceReport`, by the aggregate `handleScheduled`
+// throws, by the rows `recordTick` persists for the Operations page, and by the `SweepState`
+// record written to KV on every nightly tick.
 
 import { reconcilePackageFileRefs } from "./services/release/packages/refReconcile.js";
 import { purgeRegistryTokens } from "./core/registry/registryTokens.js";
@@ -84,9 +97,12 @@ import { recheckHostedAssets } from "./core/assets/hostedAssetPulls.js";
 import { backfillReleaseMirrors } from "./services/release/mirror.js";
 import {
   JOB_RUN_RETENTION_SECONDS,
+  SUMMARY_NAMES_MAX,
+  listNames,
   pruneHeartbeats,
   pruneJobRuns,
   recordJobRun,
+  remainderParts,
   writeHeartbeat,
   type JobName,
   type StepTiming,
@@ -132,6 +148,21 @@ export const AUDIT_RETENTION_SECONDS = 180 * 24 * 60 * 60;
  */
 export const PRUNE_BATCH_ROWS = 500;
 export const PRUNE_MAX_BATCHES = 20;
+
+/**
+ * How many products one nightly tick may sweep before it stops and hands the rest to the next
+ * tick.
+ *
+ * A fairness bound, not a performance one. Nothing here is slow in the steady state — one short
+ * pass per step per product — but a sweep that does not fit in one invocation's wall clock is
+ * killed somewhere in the middle of the list, and when the loop always starts at the
+ * alphabetically first slug that "somewhere" is the same place every night: the head of the list
+ * is swept nightly and the tail never. With a budget the run stops deliberately, names the
+ * products it skipped and returns a cursor, and the next run starts where this one stopped.
+ * Every product is therefore swept within ⌈products / SWEEP_MAX_PRODUCTS⌉ nights, whatever the
+ * list length.
+ */
+export const SWEEP_MAX_PRODUCTS = 100;
 
 /**
  * The indexes the code's correctness depends on, re-checked on every tick.
@@ -211,6 +242,45 @@ export interface MaintenanceReport {
    * report stays valid.
    */
   timings?: Record<string, StepTiming>;
+  /**
+   * Steps that exited on their BATCH BUDGET (`PRUNE_MAX_BATCHES`) rather than on a short pass,
+   * mapped to the rows they did remove: the stop reason `drain()` always knew and never told
+   * anyone. A step that deleted 10 000 rows and ran out of batches has work left over; one that
+   * deleted 10 000 and stopped on a short pass is finished, and both appear in `counts` as the
+   * same number. The value is a floor on what was there, never a remainder — the remainder is
+   * unknown by construction, which is why the budget exists. Set by the nightly sweep; absent on
+   * a hand-built report.
+   */
+  truncated?: Record<string, number>;
+  /** Products the nightly run never reached, because it spent its `maxProducts` budget first. */
+  deferred?: string[];
+  /**
+   * Where the NEXT nightly run resumes: the last slug this run swept, or null to start at the top
+   * of the list (which is what a run that reached every product returns).
+   */
+  cursor?: string | null;
+  /**
+   * Did the nightly sweep discharge everything it found? False if any step threw, any step
+   * stopped on its batch budget or any product went unvisited.
+   */
+  complete?: boolean;
+}
+
+/** Per-run inputs a caller owns. Optional, so a plain call still means "start at the top". */
+export interface MaintenanceOptions {
+  /** The `cursor` the previous run returned. The sweep resumes at the first slug AFTER it. */
+  cursor?: string | null;
+  /** Product budget for this run. Defaults to `SWEEP_MAX_PRODUCTS`. */
+  maxProducts?: number;
+}
+
+/** Did a tick finish everything it found? Failures, budget stops and unvisited products all say no. */
+function isComplete(report: MaintenanceReport): boolean {
+  return (
+    Object.keys(report.failures).length === 0 &&
+    Object.keys(report.truncated ?? {}).length === 0 &&
+    (report.deferred ?? []).length === 0
+  );
 }
 
 /**
@@ -238,22 +308,43 @@ async function step(
 }
 
 /**
- * Delete in bounded passes until a pass comes back short or the batch budget runs out.
+ * Delete in bounded passes until a pass comes back short or the batch budget runs out, and say
+ * which of the two happened.
  *
  * The short-pass exit is what makes this idempotent-and-cheap in the steady state: once the
  * table holds nothing older than the cutoff, the first pass deletes 0 and the loop ends, so a
  * duplicate cron delivery costs exactly one statement.
+ *
+ * `truncated` is deliberately conservative: a run whose last pass was a FULL batch is reported
+ * as truncated even when the table happened to end exactly there. One extra confirming pass
+ * would cost a statement per step per product every night to tell apart two states that are
+ * handled identically anyway (the next run finishes the work).
  */
 async function drain(
   pass: (limit: number) => Promise<number>,
-): Promise<number> {
-  let total = 0;
+): Promise<{ removed: number; truncated: boolean }> {
+  let removed = 0;
   for (let i = 0; i < PRUNE_MAX_BATCHES; i++) {
-    const removed = await pass(PRUNE_BATCH_ROWS);
-    total += removed;
-    if (removed < PRUNE_BATCH_ROWS) break;
+    const n = await pass(PRUNE_BATCH_ROWS);
+    removed += n;
+    if (n < PRUNE_BATCH_ROWS) return { removed, truncated: false };
   }
-  return total;
+  return { removed, truncated: true };
+}
+
+/** `step()` over `drain()`: one bounded delete loop, its stop reason recorded in the report. */
+async function drainStep(
+  report: MaintenanceReport,
+  name: string,
+  pass: (limit: number) => Promise<number>,
+): Promise<void> {
+  await step(report, name, async () => {
+    const { removed, truncated } = await drain(pass);
+    // Recorded before the count is returned, so `truncated[name]` and `counts[name]` agree: a
+    // step that appears in one appears in the other with the same number.
+    if (truncated) (report.truncated ??= {})[name] = removed;
+    return removed;
+  });
 }
 
 /**
@@ -317,8 +408,8 @@ export async function runBlobGc(
     "blobSweep",
     async () => (await sweepObjects(db, bucket, now, settings)).deleted,
   );
-  await step(report, "blobGcLog", () =>
-    drain((limit) => pruneGcLog(db, now - AUDIT_RETENTION_SECONDS, limit)),
+  await drainStep(report, "blobGcLog", (limit) =>
+    pruneGcLog(db, now - AUDIT_RETENTION_SECONDS, limit),
   );
 }
 
@@ -326,14 +417,30 @@ export async function runBlobGc(
  * The whole nightly sweep. Exported separately from the handler so it is directly testable
  * against the in-memory SQLite harness, with an injected clock. With `env`, the blob collector
  * runs after the retention steps (`runBlobGc`).
+ *
+ * The product-scoped steps run for at most `opts.maxProducts` products, starting after
+ * `opts.cursor` and wrapping at the end of the list; the products it did not reach come back in
+ * `deferred` and the slug to resume after in `cursor`. The platform-level steps (the product-less
+ * audit trails, the ops tables, the erasure sweeps, the blob collector) are not product-scoped:
+ * they sit outside that rotation and run on every tick.
  */
 export async function runScheduledMaintenance(
   db: Db,
   now: number,
   env?: Env,
+  opts: MaintenanceOptions = {},
 ): Promise<MaintenanceReport> {
-  const report: MaintenanceReport = { counts: {}, failures: {} };
+  const report: MaintenanceReport = {
+    counts: {},
+    failures: {},
+    truncated: {},
+    deferred: [],
+    cursor: null,
+    complete: false,
+  };
   const cutoff = now - AUDIT_RETENTION_SECONDS;
+  const cursor = opts.cursor ?? null;
+  const maxProducts = Math.max(1, opts.maxProducts ?? SWEEP_MAX_PRODUCTS);
 
   // First, because it is the one step whose failure means the OTHER steps' assumptions may not
   // hold — and because a cron tick is the only recurring execution this worker has, it is also
@@ -353,15 +460,35 @@ export async function runScheduledMaintenance(
     report.failures.products = e instanceof Error ? e.message : String(e);
   }
 
-  for (const product of slugs) {
-    await step(report, `audit:${product}`, () =>
-      drain((limit) => pruneAudit(db, product, cutoff, limit)),
+  // Rotate the list so this run starts after the previous run's cursor, then spend the product
+  // budget on the front of it. `listAllProductSlugs` orders by slug, so a strict `>` finds the
+  // resume point even when the cursor names a product that has since been deleted (an index
+  // would silently shift the whole rotation by one), and a cursor past the end of the list wraps
+  // to the top rather than skipping a whole cycle.
+  const found = cursor === null ? -1 : slugs.findIndex((s) => s > cursor);
+  const resumeAt = Math.max(0, found);
+  const rotated = [...slugs.slice(resumeAt), ...slugs.slice(0, resumeAt)];
+  const sweeping = rotated.slice(0, maxProducts);
+  report.deferred = rotated.slice(maxProducts);
+  // A run that reached everyone hands back null so the next one starts at the top; a run that
+  // did not hands back its last slug, which is where the next one picks up.
+  report.cursor =
+    report.deferred.length === 0
+      ? null
+      : (sweeping[sweeping.length - 1] ?? cursor);
+
+  for (const product of sweeping) {
+    await drainStep(report, `audit:${product}`, (limit) =>
+      pruneAudit(db, product, cutoff, limit),
     );
-    await step(report, `portalAudit:${product}`, () =>
-      drain((limit) => prunePortalAudit(db, product, cutoff, limit)),
+    await drainStep(report, `portalAudit:${product}`, (limit) =>
+      prunePortalAudit(db, product, cutoff, limit),
     );
-    await step(report, `downloadTokens:${product}`, () =>
-      purgeDownloadTokensForProduct(db, product, now, PRUNE_BATCH_ROWS),
+    // Drained like its siblings: a single pass would remove at most PRUNE_BATCH_ROWS per night,
+    // so a product minting download tokens faster than that would accumulate them for ever while
+    // the report showed a healthy-looking count.
+    await drainStep(report, `downloadTokens:${product}`, (limit) =>
+      purgeDownloadTokensForProduct(db, product, now, limit),
     );
     await step(report, `seats:${product}`, () =>
       releaseDormantSeats(db, product, now),
@@ -374,37 +501,36 @@ export async function runScheduledMaintenance(
     // Here and not on the connector poll tick, because the poll reaches only live products with
     // Distribution on and a loadable signing key — a deleted or disabled product's raw payloads
     // would otherwise be kept forever.
-    await step(report, `connectorEvents:${product}`, () =>
-      drain((limit) => pruneConnectorEvents(db, product, now, limit)),
+    await drainStep(report, `connectorEvents:${product}`, (limit) =>
+      pruneConnectorEvents(db, product, now, limit),
     );
     // UX-15: the refusal log past `REFUSAL_RETENTION_SECONDS` (30 days, `core/licensing/refusals.ts`).
-    await step(report, `refusals:${product}`, () =>
-      drain((limit) =>
-        pruneRefusals(db, product, now - REFUSAL_RETENTION_SECONDS, limit),
-      ),
+    await drainStep(report, `refusals:${product}`, (limit) =>
+      pruneRefusals(db, product, now - REFUSAL_RETENTION_SECONDS, limit),
     );
     // PS-04: the storefront's impression dedupe keys older than yesterday (notes/S-21 §6.6:
     // nothing per person is kept past two days).
-    await step(report, `storefrontSeen:${product}`, () =>
-      drain((limit) => pruneStorefrontSeen(db, product, now, limit)),
+    await drainStep(report, `storefrontSeen:${product}`, (limit) =>
+      pruneStorefrontSeen(db, product, now, limit),
     );
   }
 
   // `portal_audit.product` is nullable — a magic-link sign-in belongs to no tenant — so without
-  // this pass those rows would be the one part of the table that still grew forever.
-  await step(report, "portalAudit:_platform", () =>
-    drain((limit) => prunePortalAudit(db, null, cutoff, limit)),
+  // this pass those rows would be the one part of the table that still grew forever. Not
+  // product-scoped, so outside the rotation: it runs on every tick.
+  await drainStep(report, "portalAudit:_platform", (limit) =>
+    prunePortalAudit(db, null, cutoff, limit),
   );
 
   // A-12: the product-less admin trail, under the same 180-day retention as `audit`.
-  await step(report, "platformAudit", () =>
-    drain((limit) => prunePlatformAudit(db, cutoff, limit)),
+  await drainStep(report, "platformAudit", (limit) =>
+    prunePlatformAudit(db, cutoff, limit),
   );
 
   // A-14: the Operations page's own rows, 30 days (`core/ops/platformOps.ts`). Product-less by
   // construction like `platformAudit`: by age alone, bounded per pass.
-  await step(report, "jobRuns", () =>
-    drain((limit) => pruneJobRuns(db, now - JOB_RUN_RETENTION_SECONDS, limit)),
+  await drainStep(report, "jobRuns", (limit) =>
+    pruneJobRuns(db, now - JOB_RUN_RETENTION_SECONDS, limit),
   );
   await step(report, "heartbeats", () =>
     pruneHeartbeats(db, now - JOB_RUN_RETENTION_SECONDS),
@@ -501,6 +627,7 @@ export async function runScheduledMaintenance(
 
   if (env) await runBlobGc(report, env, db, now);
 
+  report.complete = isComplete(report);
   return report;
 }
 
@@ -737,6 +864,10 @@ export async function runRegistryRenders(
  * heartbeat (`core/ops/platformOps.ts`). Recording is not the job: a failure to record is added to
  * the report as the `opsRecord` step, so it surfaces in the thrown aggregate like any other step,
  * but it never hides or replaces the tick's own outcome. Exported for the tests.
+ *
+ * The heartbeat's outcome is `failed` when a step failed, `partial` when none did but the tick
+ * left work unfinished (a step on its batch budget, products not reached), and `ok` otherwise;
+ * the rows carry which steps and products (`jobRunRows`).
  */
 export async function recordTick(
   env: Env,
@@ -750,7 +881,11 @@ export async function recordTick(
 ): Promise<void> {
   const endedAtMs = Date.now();
   const outcome =
-    Object.keys(tick.report.failures).length > 0 ? "failed" : "ok";
+    Object.keys(tick.report.failures).length > 0
+      ? "failed"
+      : isComplete(tick.report)
+        ? "ok"
+        : "partial";
   try {
     await recordJobRun(db, {
       runId: `${tick.startedAtMs.toString(36)}-${crypto.randomUUID().slice(0, 8)}`,
@@ -771,15 +906,93 @@ export async function recordTick(
 }
 
 /**
+ * KV key holding the nightly sweep's resume cursor and the last tick's outcome.
+ *
+ * Not built with `pk()`: the sweep is platform-level and names no product, so it has no product
+ * dimension to scope by. The `maint:` prefix keeps it clear of the `p:` namespace where a real
+ * slug could otherwise collide with it, as `gh:` and `plat:` do for the keys beside it.
+ */
+export const SWEEP_STATE_KEY = "maint:sweep";
+
+/**
+ * What a nightly tick leaves behind for the next one, written on every tick including the green
+ * ones: the cursor to resume after, and the outcome — the only trace a truncated run leaves in
+ * production once the Worker's own report is discarded. The three name lists are cut at
+ * `SUMMARY_NAMES_MAX`; `counts` holds their full sizes.
+ */
+export interface SweepState {
+  /** Resume point for the next run; see `MaintenanceReport.cursor`. */
+  cursor: string | null;
+  /** Unix seconds of the run that wrote this record. */
+  at: number;
+  /** Did that run discharge everything it found? */
+  complete: boolean;
+  /** Steps that stopped on the batch budget with work remaining. */
+  truncated: string[];
+  /** Products that run never reached. */
+  deferred: string[];
+  /** Steps that threw. */
+  failed: string[];
+  /** The full sizes of the three lists above. */
+  counts: { truncated: number; deferred: number; failed: number };
+}
+
+/**
+ * The cursor the previous nightly run stored, or null when there is none or it does not parse. A
+ * corrupt record costs this one run its fairness (it restarts at the top of the list), not its
+ * correctness: it is treated as absent rather than fatal, so a bad byte cannot stop retention.
+ */
+async function readSweepCursor(env: Env): Promise<string | null> {
+  const raw = await env.HOT.get(SWEEP_STATE_KEY);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as { cursor?: unknown } | null;
+    return typeof parsed?.cursor === "string" ? parsed.cursor : null;
+  } catch {
+    return null;
+  }
+}
+
+/** The record a nightly tick stores for the next one. */
+function sweepStateOf(report: MaintenanceReport, now: number): SweepState {
+  const truncated = Object.keys(report.truncated ?? {});
+  const deferred = report.deferred ?? [];
+  const failed = Object.keys(report.failures);
+  return {
+    cursor: report.cursor ?? null,
+    at: now,
+    complete: isComplete(report),
+    truncated: truncated.slice(0, SUMMARY_NAMES_MAX),
+    deferred: deferred.slice(0, SUMMARY_NAMES_MAX),
+    failed: failed.slice(0, SUMMARY_NAMES_MAX),
+    counts: {
+      truncated: truncated.length,
+      deferred: deferred.length,
+      failed: failed.length,
+    },
+  };
+}
+
+/** The ` — …` tail naming what a tick left unfinished. Empty when it left nothing. */
+function remainderSuffix(report: MaintenanceReport): string {
+  const parts = remainderParts(report);
+  return parts.length > 0 ? ` — ${parts.join("; ")}` : "";
+}
+
+/**
  * The `scheduled()` entry point. Throws if any step failed, so the invocation is recorded as
  * errored rather than disappearing into a green dashboard.
  *
- * The message names EVERY failed step and its reason, because that is the whole diagnostic
- * surface. R12 asserts, as a codebase-wide property, that nothing under `packages/worker/src`
- * writes to the runtime log at all — a worker that never logs is a worker that cannot leak a
- * secret through a log — so this handler emits no success summary and the thrown aggregate is
- * doing the job of a log line. It is written to be read cold at 03:20 UTC. Callers that want the
- * row counts (the tests do) take the returned report instead.
+ * The message names EVERY failed step and its reason — and what the tick did not finish — because
+ * that is the whole diagnostic surface. R12 asserts, as a codebase-wide property, that nothing
+ * under `packages/worker/src` writes to the runtime log at all — a worker that never logs is a
+ * worker that cannot leak a secret through a log — so this handler emits no success summary and
+ * the thrown aggregate is doing the job of a log line. It is written to be read cold at 03:20
+ * UTC. Callers that want the row counts (the tests do) take the returned report instead.
+ *
+ * The nightly tick is also the only part of the sweep that knows where the resume cursor is kept
+ * (`SWEEP_STATE_KEY`): it reads it before the run and writes the tick's `SweepState` after, on
+ * every nightly tick. A connector-poll tick sweeps no products and touches neither.
  */
 export async function handleScheduled(
   env: Env,
@@ -787,6 +1000,8 @@ export async function handleScheduled(
   db: Db = new D1Db(env.DB),
   /** `ScheduledController.cron`: which trigger fired (see `CONNECTOR_POLL_CRON`). */
   cron?: string,
+  /** Everything except the cursor, which is this function's to load and to store. */
+  opts: Omit<MaintenanceOptions, "cursor"> = {},
 ): Promise<MaintenanceReport> {
   const startedAtMs = Date.now();
   const now = Math.floor(startedAtMs / 1000);
@@ -794,9 +1009,18 @@ export async function handleScheduled(
   // per-isolate cache would otherwise carry a value across ticks).
   await refreshPlatformSettings(env, db);
   const poll = cron === CONNECTOR_POLL_CRON;
+  let cursor: string | null = null;
+  let stateError: string | null = null;
+  if (!poll) {
+    try {
+      cursor = await readSweepCursor(env);
+    } catch (e) {
+      stateError = `read: ${e instanceof Error ? e.message : String(e)}`;
+    }
+  }
   const report = poll
     ? await runConnectorPolls(env, db, now)
-    : await runScheduledMaintenance(db, now, env);
+    : await runScheduledMaintenance(db, now, env, { ...opts, cursor });
   // The erasure ledger replay, due account deletions and failed erasures are run on each
   // connector-poll tick. Their failures wait for the nightly report so the Operations page reads
   // this tick as connector work.
@@ -824,6 +1048,22 @@ export async function handleScheduled(
   if (!poll) Object.assign(report.failures, registry.failures);
   else
     report.counts["registry:failures"] = Object.keys(registry.failures).length;
+  if (!poll) {
+    try {
+      await env.HOT.put(
+        SWEEP_STATE_KEY,
+        JSON.stringify(sweepStateOf(report, now)),
+      );
+    } catch (e) {
+      stateError = `${stateError ? `${stateError}; ` : ""}write: ${e instanceof Error ? e.message : String(e)}`;
+    }
+    // A cursor that cannot be read or persisted is the starvation defect returning: every run
+    // would restart at the top of the slug list and the tail would starve again, silently and
+    // indefinitely. So it is a failed step, not a warning — the sweep still ran, but the
+    // invocation goes red.
+    if (stateError) report.failures.sweepState = stateError;
+    report.complete = isComplete(report);
+  }
   await recordTick(env, db, {
     job: poll ? "connectorPoll" : "maintenance",
     cron: cron ?? null,
@@ -834,7 +1074,8 @@ export async function handleScheduled(
   if (failed.length > 0) {
     throw new Error(
       `${poll ? "connector poll" : "scheduled maintenance"}: ${failed.length} step(s) failed — ` +
-        failed.map(([name, message]) => `${name}: ${message}`).join("; "),
+        failed.map(([name, message]) => `${name}: ${message}`).join("; ") +
+        remainderSuffix(report),
     );
   }
   return report;

@@ -67,7 +67,11 @@ import {
   putCachedSignedUrl,
 } from "./ghCache.js";
 import { findBinaryAsset, matchAsset, normalizeArch } from "./assets.js";
-import { type InstallContext, renderInstallScript } from "./install.js";
+import {
+  deriveVersionEnv,
+  type InstallContext,
+  renderInstallScript,
+} from "./install.js";
 import type { ChannelSelector } from "./channels.js";
 import type { ReleaseArtifactRow } from "./store.js";
 
@@ -469,7 +473,7 @@ export async function installScript(
     installPath: `/${product.slug}/release/install.sh`,
     binaryName,
     channels: ["staging", "beta"],
-    versionEnv: `${binaryName.toUpperCase().replace(/[^A-Z0-9]+/g, "_")}_VERSION`,
+    versionEnv: deriveVersionEnv(binaryName),
   };
   return renderInstallScript(cfg.install_template, ctx);
 }

@@ -37,6 +37,14 @@ export const licenseService: ServiceDescriptor = {
   manifestIngestAlways: (parsed, product, now) =>
     manifestRowSettingStatements(product, LICENSING_SETTINGS, parsed, now),
   handle: handleLicenseRoutes,
+  /** The canonical surface `routes.ts` dispatches; what `routeCoverage` pins. */
+  surface: [
+    { path: "/{product}/license/activate", methods: ["post"] },
+    { path: "/{product}/license/enroll", methods: ["post"] },
+    { path: "/{product}/license/token", methods: ["post"] },
+    { path: "/{product}/license/deauthorize", methods: ["post"] },
+    { path: "/{product}/license/document", methods: ["get"] },
+  ],
   /** `license/{licenses,tiers,policy}` on the console API (§R1). */
   adminHandle: handleLicenseAdmin,
   /** License's slice of `/.well-known/polaris.json` (design spec §4.3): the activation, token

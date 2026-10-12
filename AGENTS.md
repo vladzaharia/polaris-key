@@ -302,8 +302,11 @@ validator-only cross-reference rules explicitly instead of silently.
 coverage-tested against the router by `packages/worker/test/routeCoverage.test.ts` in three
 directions: every `Route` kind is mapped or explicitly narrative-only, every canonical service
 route and the four permanent aliases exist with the right methods, and the spec contains no path
-outside the expected set (documenting a route that does not exist is drift too). Add a route ⇒
-update the spec **and** the `routeCoverage` table.
+outside the expected set (documenting a route that does not exist is drift too). A service's
+canonical routes are declared once, on its descriptor (`ServiceDescriptor.surface`, a path
+template and methods per route), and `routeCoverage` derives its service table from `SERVICES`
+and checks that the router dispatches every declared path to that service. Add a route ⇒ update
+the spec **and** the descriptor's `surface` (or, for a core route, the `routeCoverage` table).
 
 **11. The docs site is tiered; the repo is the agent-readable source.** `key.plrs.im/docs`
 serves its landing page and the developer sections (`start/`, `build/`, `features/`,

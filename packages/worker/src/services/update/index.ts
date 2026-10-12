@@ -36,6 +36,33 @@ export const updateService: ServiceDescriptor = {
   /** ST-03: this service's settings registry slice (`settings.ts`). */
   settings: UPDATE_SETTINGS_SLICE,
   handle: handleUpdateRoutes,
+  /**
+   * The canonical surface `routes.ts` dispatches; what `routeCoverage` pins. The appcast and
+   * version aliases are the ROUTER's rewrites, not Update's surface.
+   */
+  surface: [
+    { path: "/{product}/update/appcast.xml", methods: ["get"] },
+    { path: "/{product}/update/{channel}/appcast.xml", methods: ["get"] },
+    // The signed channel feed.
+    { path: "/{product}/update/{channel}/feed.jws", methods: ["get"] },
+    // The app-updater feeds.
+    { path: "/{product}/update/{channel}/winsparkle.xml", methods: ["get"] },
+    {
+      path: "/{product}/update/{channel}/velopack/releases.{velopackChannel}.json",
+      methods: ["get"],
+    },
+    // The package a bare Velopack `FileName` resolves to (a 302 to its delivery URL).
+    {
+      path: "/{product}/update/{channel}/velopack/{fileName}",
+      methods: ["get"],
+    },
+    { path: "/{product}/update/{channel}/app.appinstaller", methods: ["get"] },
+    {
+      path: "/{product}/update/{channel}/{buildId}.AppImage.zsync",
+      methods: ["get"],
+    },
+    { path: "/{product}/update/version", methods: ["get"] },
+  ],
   adminHandle: (ctx: ServiceContext & { session: AdminSession }) =>
     handleUpdateAdmin(ctx),
   /**

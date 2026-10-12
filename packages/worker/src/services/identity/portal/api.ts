@@ -63,7 +63,6 @@ import {
   markPortalDownloadUsed,
   portalAuthCapabilities,
   portalAudit,
-  purgeExpiredDownloadTokens,
   releaseServiceEnabled,
   syncAccountLicenseLinks,
   createPortalDownloadToken,
@@ -1842,9 +1841,11 @@ export async function handlePortalDownload(
   hooksFor?: PortalHooksFor,
 ): Promise<Response> {
   if (req.method !== "GET") return err(405, "method_not_allowed");
-  // R11-05: opportunistic retention. Nothing else ever deletes from this table and the worker
-  // has no scheduled() handler, so the read path does a bounded sweep of its own expired rows.
-  await purgeExpiredDownloadTokens(db, now);
+  // No retention work here. This route has no session, no rate limit and a path anyone can
+  // type, so a delete issued before the presented token is even looked up would be a
+  // stranger-triggered write across every tenant's expired rows. Retention is the nightly
+  // sweep's job (`scheduled.ts`, `purgeDownloadTokensForProduct`, per product); this route only
+  // reads.
   // Expiry and single-use are now SQL predicates (R9-05b), so an unusable token never returns.
   const row = await getPortalDownloadToken(env, db, token, now);
   if (!row) return notFound();

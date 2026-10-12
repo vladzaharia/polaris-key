@@ -147,6 +147,55 @@ describe("job-run rows", () => {
     expect([...rows.map((r) => r.id)].sort()).toEqual(rows.map((r) => r.id));
   });
 
+  it("records the work a nightly sweep left unfinished without failing the run", () => {
+    const rows = jobRunRows("run2", 1_000, 1_900, {
+      counts: { indexes: 0, "audit:a": 10_000, "audit:b": 1 },
+      failures: {},
+      timings: { "audit:a": { startedAt: 1_100, durationMs: 40 } },
+      truncated: { "audit:a": 10_000 },
+      deferred: ["p3", "p4", "p5"],
+    });
+    // Neither is a failure: the next nightly tick resumes, so the run is still `ok`, and the
+    // summary says what is outstanding.
+    expect(rows[0]).toMatchObject({
+      step: "*",
+      outcome: "ok",
+      error_summary:
+        "1 step(s) stopped on the batch budget with work remaining (audit:a); 3 product(s) not reached this run (p3, p4, p5)",
+    });
+    // The truncated step keeps its own row under its full name, beside the folded family row.
+    expect(rows.find((r) => r.step === "audit:a")).toMatchObject({
+      outcome: "ok",
+      rows_affected: 10_000,
+      started_at: 1_100,
+      duration_ms: 40,
+      error_summary: "stopped on the batch budget with work remaining",
+    });
+    expect(rows.find((r) => r.step === "audit:*")).toMatchObject({
+      items: 2,
+      rows_affected: 10_001,
+    });
+    expect(rows.find((r) => r.step === "products:deferred")).toMatchObject({
+      outcome: "ok",
+      items: 3,
+      error_summary: "not reached this run: p3, p4, p5",
+    });
+    expect(rows.filter((r) => r.outcome === "failed")).toEqual([]);
+  });
+
+  it("lists a bounded number of names, then says how many more", () => {
+    const deferred = Array.from({ length: 25 }, (_, i) => `p${i}`);
+    const rows = jobRunRows("run3", 1_000, 1_900, {
+      counts: { indexes: 0 },
+      failures: {},
+      deferred,
+    });
+    const row = rows.find((r) => r.step === "products:deferred")!;
+    expect(row.items).toBe(25);
+    expect(row.error_summary).toContain("p19, +5 more");
+    expect(row.error_summary).not.toContain("p20");
+  });
+
   it("persists more rows than one statement may bind", async () => {
     const db = makeTestDb();
     const counts: Record<string, number> = {};
@@ -214,7 +263,10 @@ describe("the cron records itself", () => {
   it("handleScheduled persists the maintenance tick and the main heartbeat", async () => {
     const db = makeTestDb();
     await seedProduct(db, "acme");
-    const env = { PKEY_RELEASE_TAG: "v1.2.3" } as Env;
+    const env = {
+      PKEY_RELEASE_TAG: "v1.2.3",
+      HOT: new KvMock(),
+    } as unknown as Env;
     const report = await handleScheduled(env, db, MAINTENANCE_CRON);
     expect(report.failures).toEqual({});
     expect(report.timings?.["audit:acme"]?.durationMs).toBeGreaterThanOrEqual(
@@ -247,9 +299,9 @@ describe("the cron records itself", () => {
   it("records a failed step with its reason, and still throws the aggregate", async () => {
     const db = makeTestDb();
     await db.run("DROP INDEX idx_devices_seat");
-    await expect(handleScheduled({} as Env, db)).rejects.toThrow(
-      /idx_devices_seat/,
-    );
+    await expect(
+      handleScheduled({ HOT: new KvMock() } as unknown as Env, db),
+    ).rejects.toThrow(/idx_devices_seat/);
     const failed = await db.first<{ step: string; error_summary: string }>(
       "SELECT step, error_summary FROM platform_job_runs WHERE outcome = 'failed' AND step <> '*'",
     );

@@ -165,9 +165,11 @@ work down the list until it passes.
 7. **Migrations and `TABLE_OWNERS`.** Any tables the service owns get a D1 migration and an
    entry in `TABLE_OWNERS` (`packages/docs/scripts/gen-reference.mjs`); regenerate the reference
    pages.
-8. **OpenAPI and `routeCoverage`.** Add the slug to the discovery document's
-   `services.required` in `packages/worker/openapi/polaris-key.v3.yaml` (in table order), and
-   every new route to the spec and to `routeCoverage.test.ts` (rule 10).
+8. **OpenAPI and the surface.** Add the slug to the discovery document's
+   `services.required` in `packages/worker/openapi/polaris-key.v3.yaml` (in table order), every
+   new route to the spec, and each canonical route to the descriptor's `surface` (a path template
+   and its methods; a service with no route yet declares `[]`). `routeCoverage.test.ts` derives
+   its service table from `SERVICES` (rule 10).
 9. **Console.** A `SECTIONS` entry in `packages/admin/src/console/nav.ts` with the table's accent (the
    slug) and its pages (each with a path, an icon and a docs link), a page module in
    `packages/admin/src/console/sections/`, a section accent in

@@ -1206,39 +1206,22 @@ export async function markPortalDownloadUsed(
 }
 
 /**
- * R11-05 / R11-09 / R12-10 — retention for `release_download_tokens`.
+ * Product-scoped retention for `release_download_tokens`, run by the nightly sweep
+ * (`scheduled.ts`, once per product, in a `drain` loop). Returns how many rows were removed.
  *
- * NOTHING deleted from this table: `grep "DELETE FROM"` over `src/` returned eight statements,
- * none against it, and the worker exports no `scheduled()` handler, so no cron could exist.
- * Every portal download-URL mint added a row with a 300-second TTL and infinite retention, and
- * `idx_release_download_tokens_expiry` existed with no consumer. Until a `scheduled()` handler
- * lands (see the Remediation section of the R11 audit findings), this is called opportunistically from the
- * download path itself — bounded work, on the one route that reads the table.
- */
-export async function purgeExpiredDownloadTokens(
-  db: Db,
-  now: number,
-  limit = 200,
-): Promise<number> {
-  return db.runChanges(
-    `DELETE FROM release_download_tokens
-      WHERE rowid IN (
-        SELECT rowid FROM release_download_tokens WHERE expires_at < ? LIMIT ?
-      )`,
-    now,
-    limit,
-  );
-}
-
-/**
- * Product-scoped retention for `release_download_tokens` — the `scheduled()` counterpart of the
- * opportunistic sweep above. Returns how many rows were removed.
+ * Nothing else deletes from this table, and nothing on a request path may: the portal download
+ * route is unauthenticated, and a delete issued from it would be a stranger-triggered write that
+ * names no product. Every statement here names one.
  *
  * Two statements, not one `OR`, because they want different indexes. The expiry pass rides
  * `idx_release_download_tokens_expiry(product, expires_at)`; the spent pass is a short scan of
  * what the first pass left behind, which by construction is only this product's still-live
  * tokens (a 300-second TTL). Both are bounded by `limit`, so neither can turn into an unbounded
  * delete inside a single cron invocation.
+ *
+ * The returned count is the sum of the two, so up to `2 * limit`. A caller that loops until a
+ * pass comes back short of `limit` (`drain`) stops correctly on that sum: a sum below `limit`
+ * means both passes were short, and a sum at or above it costs at most one confirming pass.
  *
  * A spent token is deleted before it expires on purpose: `markPortalDownloadUsed` is the
  * single-use gate, so a row with `used_at` set can never authorize another download — retaining
