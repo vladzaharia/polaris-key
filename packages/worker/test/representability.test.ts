@@ -16,12 +16,7 @@
 import { issuerMetadataResponse } from "./oidcIssuerFake.js";
 import { bindFlow } from "./flowBinderHelper.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  exportJWK,
-  generateKeyPair,
-  importJWK,
-  SignJWT,
-} from "jose";
+import { exportJWK, generateKeyPair, importJWK, SignJWT } from "jose";
 import { verifyConfigDoc } from "@polaris-key/client-core";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";

@@ -20,12 +20,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import {
-  exportJWK,
-  generateKeyPair,
-  SignJWT,
-  type JWK,
-} from "jose";
+import { exportJWK, generateKeyPair, SignJWT, type JWK } from "jose";
 import { SYSTEM_PRODUCT_SLUG } from "@polaris-key/manifest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";

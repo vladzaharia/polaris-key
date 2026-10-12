@@ -1,12 +1,7 @@
 import { issuerMetadataResponse } from "./oidcIssuerFake.js";
 import { bindFlow } from "./flowBinderHelper.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  exportJWK,
-  generateKeyPair,
-  importJWK,
-  SignJWT,
-} from "jose";
+import { exportJWK, generateKeyPair, importJWK, SignJWT } from "jose";
 import type { ManagedPayload } from "../src/core/licensing/payload.js";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";

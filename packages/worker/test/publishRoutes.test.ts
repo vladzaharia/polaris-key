@@ -20,12 +20,7 @@ import {
   it,
   vi,
 } from "vitest";
-import {
-  exportJWK,
-  generateKeyPair,
-  SignJWT,
-  type JWK,
-} from "jose";
+import { exportJWK, generateKeyPair, SignJWT, type JWK } from "jose";
 import { parseManifest } from "@polaris-key/manifest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";

@@ -11,12 +11,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-  exportJWK,
-  generateKeyPair,
-  importJWK,
-  SignJWT,
-} from "jose";
+import { exportJWK, generateKeyPair, importJWK, SignJWT } from "jose";
 import { makeTestDb } from "../helpers.js";
 import { artefacts, singleUseMock } from "../singleUseMock.js";
 import { portalMagicKey } from "../../src/services/identity/portal/auth.js";

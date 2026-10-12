@@ -25,12 +25,7 @@
  */
 import { issuerMetadataResponse } from "../oidcIssuerFake.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  exportJWK,
-  generateKeyPair,
-  importJWK,
-  SignJWT,
-} from "jose";
+import { exportJWK, generateKeyPair, importJWK, SignJWT } from "jose";
 import type { LicenseDoc } from "@polaris-key/protocol/license";
 import { verifyJws } from "@polaris-key/jws";
 import { FINGERPRINT_COMPONENT_LENGTH } from "@polaris-key/protocol";
