@@ -78,7 +78,7 @@ jobs:
           "$HOME/.cache/pkey-godot/native-$GODOT_VERSION" --host-template
       - run: pip3 install --break-system-packages "scons==$(grep '^SCONS_VERSION=' sdks/godot/native/deps.env | cut -d= -f2)"
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter "@polaris-key/worker^..." build
+      - run: pnpm exec turbo run build --filter=@polaris-key/worker^...
       - name: macOS end-to-end
         timeout-minutes: 25
         run: |
@@ -128,7 +128,7 @@ jobs:
           dotnet tool install -g vpk --version $pins.VELOPACK_VERSION
           if (-not (Get-Command iscc -ErrorAction SilentlyContinue) -and -not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) { choco install innosetup -y --no-progress }
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter "@polaris-key/worker^..." build
+      - run: pnpm exec turbo run build --filter=@polaris-key/worker^...
       - name: Windows end-to-end
         # Bounded, so a hung case fails with its log instead of running into the job's limit.
         timeout-minutes: 30
