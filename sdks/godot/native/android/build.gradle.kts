@@ -138,7 +138,7 @@ val platformOnlyClasspaths: List<String> = flavours.flatMap { f ->
     listOf("Debug", "Release").flatMap { b -> listOf("${f}${b}CompileClasspath", "${f}${b}RuntimeClasspath") }
 }
 
-val checkPlatformOnly by tasks.registering {
+val checkPlatformOnly = tasks.register("checkPlatformOnly") {
     group = "verification"
     description = "Fails unless :godot's SDK dependencies are exactly :platform (no other project or im.plrs.key module)."
     val roots = platformOnlyClasspaths.map { name ->

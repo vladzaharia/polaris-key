@@ -73,7 +73,7 @@ tasks.withType<Test>().configureEach {
     }
 }
 
-val testTink by tasks.registering(Test::class) {
+val testTink = tasks.register<Test>("testTink") {
     description = "The conformance suite with the Tink Ed25519 backend forced."
     group = "verification"
     testClassesDirs = sourceSets["test"].output.classesDirs
@@ -88,7 +88,7 @@ tasks.named<Test>("test") {
     dependsOn(testTink)
 }
 
-val liveDevTest by tasks.registering(Test::class) {
+val liveDevTest = tasks.register<Test>("liveDevTest") {
     description = "The generated quickstart config, the SDK client and its real transport against a running `pkey dev`."
     group = "verification"
     testClassesDirs = sourceSets["test"].output.classesDirs
