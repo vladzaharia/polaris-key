@@ -5413,6 +5413,15 @@ function validateCatalogShape(catalog: ProductCatalog): string[] {
         );
       }
     }
+    // A flag's value is an ENTITLEMENT and entitlements are never sealed: they merge into
+    // `payload.entitlements`, which the worker's `openManagedPayload` does not open, so a
+    // `secret: true` flag would be KEK-sealed on write and shipped to the device as the
+    // ciphertext envelope. The declaration is a category error (an entitlement is a statement
+    // about the licence, read in the clear by the gates that enforce it), so it is refused here
+    // as well as by `Catalog.compileAll()` at every publish.
+    if (entry.secret === true && entry.kind === "flag") {
+      issues.push(`entries[${i}].secret is not valid for flag entries.`);
+    }
     // Documented CONFIG-only from day one; on any other kind the worker ignores it, so a
     // manifest carrying one is declaring an intent nothing will honour.
     if (entry.managementDefault !== undefined) {

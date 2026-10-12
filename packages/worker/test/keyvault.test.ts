@@ -836,7 +836,7 @@ describe("KEK rotation sweep (GET|POST /api/products/kek)", () => {
   it("re-seals managed secrets nested in profile and license payloads (R12-02)", async () => {
     const { db, kv } = await seedSealedRows();
     // Sealed exactly as `applyOverrides` writes them: an envelope string nested inside the
-    // JSON payload column, AAD `…:product-secret:managed:<key>`.
+    // JSON payload column, AAD `…:managed-secret:<key>`.
     const profileSecret = await sealManagedValue(
       env,
       "djdl",
@@ -971,6 +971,110 @@ describe("KEK rotation sweep (GET|POST /api/products/kek)", () => {
         payload.secrets.API_TOKEN!.value,
       ),
     ).toBe("account-plaintext");
+  });
+
+  it("re-seals a managed secret still sealed under the earlier AAD, moving it to the current one", async () => {
+    // Managed values once shared `kind: "product-secret"` with a bare `managed:<key>` id. Those
+    // envelopes still open (the read fallback), and a rotation has to find them: the sweep takes
+    // its AAD from `managedSecrets.ts`, not from a copy of the earlier spelling.
+    const { db, kv } = await seedSealedRows();
+    const earlier = await seal(env, "earlier-plaintext", {
+      product: "djdl",
+      kind: "product-secret",
+      id: "managed:PROFILE_TOKEN",
+    });
+    await db.run(
+      `INSERT INTO profiles (product, id, name, description, payload_json, modified_by, modified_at)
+       VALUES ('djdl', 'baseline', 'Baseline', NULL, ?, NULL, ?)`,
+      JSON.stringify({
+        config: {},
+        secrets: {
+          PROFILE_TOKEN: { state: "enforced", value: earlier, updatedAt: NOW },
+        },
+        entitlements: {},
+      }),
+      NOW,
+    );
+    const promoted = kekAdminEnv(kv, {
+      PLATFORM_KEK_KEYS: JSON.stringify({ default: KEK_OLD, k2: KEK_NEW }),
+      PLATFORM_KEK_ACTIVE: "k2",
+    });
+    expect((await kek(promoted, db, "GET")).body.counts!.managed).toEqual({
+      default: 1,
+    });
+
+    const sweep = await kek(promoted, db, "POST");
+    expect(sweep.body).toMatchObject({ failed: 0, remaining: 0 });
+
+    // After the old KEK is retired the value still opens, and now only under the CURRENT AAD.
+    const retired = kekAdminEnv(kv, {
+      PLATFORM_KEK_KEYS: JSON.stringify({ k2: KEK_NEW }),
+      PLATFORM_KEK_ACTIVE: "k2",
+    });
+    const row = await db.first<{ payload_json: string }>(
+      "SELECT payload_json FROM profiles WHERE product = 'djdl' AND id = 'baseline'",
+    );
+    const payload = JSON.parse(row!.payload_json) as ManagedPayload;
+    const swept = payload.secrets.PROFILE_TOKEN!.value as string;
+    expect(
+      await openManagedValue(retired, "djdl", "PROFILE_TOKEN", swept),
+    ).toBe("earlier-plaintext");
+    expect(
+      await open(retired, swept, {
+        product: "djdl",
+        kind: "managed-secret",
+        id: "PROFILE_TOKEN",
+      }),
+    ).toBe("earlier-plaintext");
+    await expect(
+      open(retired, swept, {
+        product: "djdl",
+        kind: "product-secret",
+        id: "managed:PROFILE_TOKEN",
+      }),
+    ).rejects.toThrow();
+  });
+
+  it("reports a managed envelope that opens under no known AAD, and leaves the row as it was", async () => {
+    const { db, kv } = await seedSealedRows();
+    // Sealed for ANOTHER catalog key: it opens under neither context for PROFILE_TOKEN.
+    const foreign = await seal(env, "bound-elsewhere", {
+      product: "djdl",
+      kind: "managed-secret",
+      id: "OTHER_KEY",
+    });
+    const stored = JSON.stringify({
+      config: {},
+      secrets: {
+        PROFILE_TOKEN: { state: "enforced", value: foreign, updatedAt: NOW },
+      },
+      entitlements: {},
+    });
+    await db.run(
+      `INSERT INTO profiles (product, id, name, description, payload_json, modified_by, modified_at)
+       VALUES ('djdl', 'baseline', 'Baseline', NULL, ?, NULL, ?)`,
+      stored,
+      NOW,
+    );
+    const promoted = kekAdminEnv(kv, {
+      PLATFORM_KEK_KEYS: JSON.stringify({ default: KEK_OLD, k2: KEK_NEW }),
+      PLATFORM_KEK_ACTIVE: "k2",
+    });
+
+    const sweep = await kek(promoted, db, "POST");
+    expect(sweep.body.failed).toBe(1);
+    expect(sweep.body.failures).toEqual([
+      expect.objectContaining({
+        table: "profiles",
+        product: "djdl",
+        id: "baseline:secrets.PROFILE_TOKEN",
+        message: expect.stringMatching(/did not open/),
+      }),
+    ]);
+    const row = await db.first<{ payload_json: string }>(
+      "SELECT payload_json FROM profiles WHERE product = 'djdl' AND id = 'baseline'",
+    );
+    expect(row!.payload_json).toBe(stored);
   });
 
   it("rotates off an unknown PLATFORM_KEK: legacy blobs open, the sweep moves them, zero remain", async () => {

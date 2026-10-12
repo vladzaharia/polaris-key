@@ -59,12 +59,25 @@ const dec = new TextDecoder();
  * Google client secret, Apple `.p8` and Steam Web API key, held as sealed Worker secrets) uses the
  * same `_platform` slot under its own kind. An `identity-connection` (I-30 — a platform
  * connection's OIDC client secret, held in `identity_connections.client_secret_sealed`) does too.
+ *
+ * `kind` is a CLOSED set on purpose: it is the namespace separator inside the AAD, so two slots
+ * may only share an AAD if they share a kind. Catalog-declared managed values once did: they were
+ * sealed as `kind: "product-secret"` with `id: "managed:" + key`, and a per-product secret is
+ * sealed as `kind: "product-secret"` with `id: name`, so a product secret literally NAMED
+ * `managed:<key>` produced a byte-identical AAD to the managed value for catalog key `<key>` and
+ * either ciphertext would open in the other's slot. The separation was lexical (a prefix nobody
+ * enforced) where it needed to be structural. A `managed-secret` carries a bare catalog key as
+ * its `id`, which no `product-secret` id can collide with whatever it is called. A
+ * `browser-session` is the device bearer a product browser session keeps in KV, bound to that one
+ * session by the session-token hash as its `id`.
  */
 export interface SealContext {
   product: string;
   kind:
     | "signing-key"
     | "product-secret"
+    | "managed-secret"
+    | "browser-session"
     | "outlet-credential"
     | "platform-credential"
     | "signin-provider-secret"

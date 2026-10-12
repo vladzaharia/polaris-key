@@ -138,13 +138,17 @@ reviewed in full.
 Any value written under a `kind: "secret"` entry, or a `kind: "config"` entry flagged
 `secret: true`, is sealed — AES-GCM, under the platform KEK — **before** it reaches storage, bound
 by an AAD to both the product and the catalog key
-(`pkey:v2:<product>:product-secret:managed:<key>`), so a ciphertext copied between products, or
+(`pkey:v2:<product>:managed-secret:<key>`), so a ciphertext copied between products, or
 between two keys of the same product, fails to open rather than decrypting into the wrong place.
-Validation itself still runs on the plaintext the operator submitted; only the persisted copy is
-opaque. A row written before this sealing existed reads back as plaintext and is re-sealed lazily
-on its next admin write, never by a bulk migration. Opening happens later, immediately before a
-value is minted into a signed document or shown to an operator through a surface allowed to see
-it — never as part of a redacted list or detail response.
+The `managed-secret` kind is its own, so a value sealed now can never share a slot with a
+per-product secret, whatever that secret is named. Validation itself still runs on the plaintext
+the operator submitted; only the persisted copy is opaque. A row written before this sealing
+existed reads back as plaintext, and an envelope sealed under the earlier AAD
+(`…:product-secret:managed:<key>`) still opens; both are re-sealed lazily on their next admin
+write, never by a bulk migration, and the KEK rotation sweep rewrites an earlier-AAD envelope
+under the current one. Opening happens later, immediately before a value is minted into a signed
+document or shown to an operator through a surface allowed to see it — never as part of a
+redacted list or detail response.
 
 ## Where a profile sits in the merge
 

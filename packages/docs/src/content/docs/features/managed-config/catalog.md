@@ -47,6 +47,16 @@ worth stating explicitly:
 | `appliesTo`                        | Optional `cli`/`app` narrowing, for a catalog one schema shares across client shapes.                                                           |
 | `deprecated`, `since`              | Optional metadata. Never affects validation.                                                                                                    |
 
+Two structural rules are checked when a catalog is published, whether from the console or from
+`.pkey/schema`, and a catalog that breaks either is refused:
+
+- **A key is declared once.** A second declaration of the same `key` would shadow the first for
+  every lookup while the entries list kept both, so a value could be screened against one and
+  delivered under the other (a `delivery: "serverOnly"` secret shadowed by a plain one, say).
+- **A `flag` is never `secret`.** A flag's value is an entitlement, read in the clear by the
+  gates that enforce it, and entitlements are never sealed. `secret: true` on a `flag` entry is
+  refused; `secret: false` is fine, and `config` and `secret` entries keep the flag as before.
+
 ## `ui`: presentation hints that never validate
 
 `ui` (`UiHints`) shapes a generated form. None of it changes what `validateKeyValue` accepts — a

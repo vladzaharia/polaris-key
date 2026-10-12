@@ -1800,7 +1800,7 @@ paths:
                     error: { code: license_unusable }
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
         "500":
-          description: The active catalog could not validate the payload — NESTED, fails closed.
+          description: The product has no active catalog, or it could not validate the payload — NESTED, fails closed.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/WireError" }
@@ -6804,8 +6804,9 @@ paths:
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
         "500":
           description: >
-            The active catalog could not validate the payload — LEGACY FLAT. Fails closed:
-            a broken catalog row withholds the document rather than widening it.
+            The product has no active catalog, or it could not validate the payload — LEGACY
+            FLAT. Fails closed: a missing or broken catalog withholds the document rather than
+            widening it.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }

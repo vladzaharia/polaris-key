@@ -109,9 +109,11 @@ Listed roughly by importance.
     `account_product_subject_aliases`, `license_relinks` (includes the operator's name and a
     free-text reason), `store_operations`, and expired `email_suppressions` rows (hashed). None
     holds an email address, but the relink reason is free text.
-14. **The KV browser-session record holds the raw device bearer token**
-    (`W/services/identity/browserSession.ts:66-72,155-165`), the one exception to "credentials are
-    stored hashed". 30-day TTL. Not mentioned in the drafts.
+14. **The KV browser-session record holds the device bearer token, sealed**
+    (`W/services/identity/browserSession.ts`). It used to hold the raw token, the one exception to
+    "credentials are stored hashed"; it is now encrypted under the platform key and bound to that
+    one session, so a KV dump yields ciphertext. A session opened before that change can no longer
+    be used and the browser signs in again. 30-day TTL. Not mentioned in the drafts.
 15. **Licence-key hashing falls back to unpeppered SHA-256** if `KEY_HASH_PEPPER` is unset
     (`W/crypto.ts:129`). Confirm it is set in prod.
 16. **Prod still sends from `noreply@plrs.im`**: `EMAIL_SENDER_ADDRESS` is commented out in prod

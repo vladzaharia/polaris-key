@@ -697,6 +697,61 @@ describe("secret delivery validation", () => {
   });
 });
 
+describe("secret on a flag entry", () => {
+  const catalogWith = (
+    kind: "config" | "secret" | "flag",
+    secret?: boolean,
+  ): Record<string, unknown> => ({
+    schemaVersion: 1,
+    entries: [
+      {
+        key: "premium",
+        kind,
+        category: "General",
+        label: "Premium",
+        description: "A declared value.",
+        schema: { type: kind === "flag" ? "boolean" : "string" },
+        ...(secret === undefined ? {} : { secret }),
+      },
+    ],
+  });
+
+  it("rejects `secret: true` on a flag: an entitlement is never sealed", () => {
+    const result = validateManifestDocuments({
+      product: PRODUCT,
+      schema: catalogWith("flag", true),
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.errors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          file: "schema",
+          code: "invalid_catalog_shape",
+          message: expect.stringContaining(
+            "entries[0].secret is not valid for flag entries.",
+          ),
+        }),
+      ]),
+    );
+  });
+
+  it.each([
+    ["a flag with no secret member", "flag", undefined],
+    ["a flag with secret: false", "flag", false],
+    ["a config entry with secret: true", "config", true],
+    ["a secret entry with secret: true", "secret", true],
+  ] as const)("accepts %s", (_name, kind, secret) => {
+    const result = validateManifestDocuments({
+      product: PRODUCT,
+      schema: catalogWith(kind, secret),
+    });
+
+    expect(result.errors).toEqual([]);
+    expect(result.ok).toBe(true);
+  });
+});
+
 describe("OIDC issuer safety (R9-01)", () => {
   const withIssuer = (issuer: unknown) =>
     validateManifestDocuments({

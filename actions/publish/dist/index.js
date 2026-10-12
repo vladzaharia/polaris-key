@@ -3927,6 +3927,14 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
           }
         },
         {
+          "$comment": "secret: true is a category error on a flag entry: a flag's value is an entitlement, and entitlements are never sealed.",
+          "if": {
+            "properties": { "kind": { "const": "flag" } },
+            "required": ["kind"]
+          },
+          "then": { "properties": { "secret": { "const": false } } }
+        },
+        {
           "$comment": "user is only valid on config entries (user_setting_wrong_kind). On a key whose managementDefault is enforced or hidden it has no effect, which the validator reports as a warning (user_setting_locked_default).",
           "if": { "required": ["user"] },
           "then": {
@@ -21613,6 +21621,9 @@ function validateCatalogShape(catalog) {
           `entries[${i}].delivery must be serverOnly, clientScoped, or edgeMint.`
         );
       }
+    }
+    if (entry.secret === true && entry.kind === "flag") {
+      issues.push(`entries[${i}].secret is not valid for flag entries.`);
     }
     if (entry.managementDefault !== void 0) {
       if (entry.kind !== "config") {

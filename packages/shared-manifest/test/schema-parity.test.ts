@@ -796,6 +796,15 @@ const MUTATIONS: Mutation[] = [
     mutate: (d) => ((d.schema as any).entries[1].managementDefault = "default"),
   },
   {
+    code: "invalid_catalog_shape",
+    file: "schema",
+    schema: "rejects",
+    // `secret: true` on a FLAG (entries[2]). A flag's value merges into the entitlements map,
+    // which the worker never unseals, so the declaration would ship a KEK envelope to the
+    // device as the entitlement's value. Refused at both publish gates.
+    mutate: (d) => (cat(d).entries[2].secret = true),
+  },
+  {
     // Warnings share the table: a warning is still a code the validator emits. The JSON schema
     // tolerates unknown tier keys, so it accepts.
     code: "tier_ignored_field",

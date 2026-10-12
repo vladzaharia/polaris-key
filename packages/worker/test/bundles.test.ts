@@ -600,6 +600,33 @@ describe("bundle mint — refusals", () => {
     expect(await res.json()).toMatchObject({ fields: ["includeConfig"] });
   });
 
+  it("refuses a config document without an active catalog, but still mints a licence-only bundle", async () => {
+    // Fail closed, exactly as `/config/document` does: with no catalog to prune against, the
+    // payload (a serverOnly secret included) would be signed unvalidated into a file destined
+    // for a machine that cannot be corrected afterwards.
+    const world = await fixture();
+    await world.db.run(
+      "UPDATE product_schema SET active = 0 WHERE product = ?",
+      SLUG,
+    );
+    const refused = await mint(world, {
+      deviceId: DEVICE,
+      graceDays: 30,
+      licenseId: world.licenseId,
+    });
+    expect(refused.status).toBe(500);
+    expect(await refused.json()).toMatchObject({ code: "catalog_unavailable" });
+
+    // The entitlements document needs no catalog, so a bundle without the config one is fine.
+    const licenceOnly = await mint(world, {
+      deviceId: DEVICE,
+      graceDays: 30,
+      licenseId: world.licenseId,
+      includeConfig: false,
+    });
+    expect(licenceOnly.status).toBe(200);
+  });
+
   it("refuses a GET on the mint route rather than falling through to a 404", async () => {
     const world = await fixture();
     const res = await dispatch(

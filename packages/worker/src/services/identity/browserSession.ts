@@ -23,10 +23,10 @@
 import { isSameOriginRequest } from "../../core/accounts/browserRequestGuard.js";
 import { constantTimeEqual } from "../../platform/compare.js";
 import { HEADER_CHANNEL, HEADER_VERSION } from "@polaris-key/protocol/core";
-import { Catalog } from "@polaris-key/catalog";
 import { bearer } from "../../platform/http.js";
 import { deleteTokenRecord } from "../../platform/kv.js";
 import { hashKey, mintOpaqueToken, randomId } from "../../platform/crypto.js";
+import { open, seal, type SealContext } from "../../platform/keyvault.js";
 import type { Db } from "../../db/types.js";
 import type { Env } from "../../platform/env.js";
 import type { Product } from "../../core/products.js";
@@ -38,7 +38,6 @@ import {
 } from "../../core/errors.js";
 import { clientNetwork, rateLimitOk } from "../../core/rateLimit.js";
 import {
-  getActiveSchema,
   getKey,
   getLicense,
   setDeviceStatus,
@@ -65,7 +64,11 @@ import {
   requireLicensedDevice,
   resolveEffective,
 } from "../../core/licensing/authz.js";
-import { validatePayload } from "../../core/licensing/payload.js";
+import { loadCatalog } from "../../core/activeCatalog.js";
+import {
+  validatePayload,
+  type ManagedPayload,
+} from "../../core/licensing/payload.js";
 import { clearDeviceSubjects } from "../../core/accounts/subjectHooks.js";
 import {
   checkBuildGate,
@@ -88,6 +91,7 @@ export interface BrowserSessionSubject {
   sub: string;
 }
 
+/** The session as CODE sees it: `token` is the live `pkeyt_` device bearer. */
 interface BrowserSessionRecord {
   token: string;
   csrf: string;
@@ -109,6 +113,11 @@ interface BrowserSessionRecord {
   accountId?: string;
 }
 
+/** The session as KV sees it. Structurally identical to `BrowserSessionRecord`; the separate name
+ *  is what tells a reader (and the next editor) which side of the seal a value is on: here
+ *  `token` holds a `keyvault.seal()` envelope, never the bearer. */
+type StoredBrowserSessionRecord = BrowserSessionRecord;
+
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 30;
 
 function cookieName(product: string): string {
@@ -117,6 +126,28 @@ function cookieName(product: string): string {
 
 function sessionKey(product: string, hash: string): string {
   return `p:${product}:browser-session:${hash}`;
+}
+
+/**
+ * The AAD binding a stored session's device bearer to THIS session.
+ *
+ * `src/platform/kv.ts` states the rule: every KV entry that holds a directly usable credential is
+ * sealed under `PLATFORM_KEK`, so a KV dump yields ciphertext. This record used to be the
+ * exception: a live, replayable `pkeyt_` device principal, in cleartext, for 30 days, so a
+ * read-only KV dump was a device-takeover kit for every signed-in browser.
+ *
+ * The `id` is the session-token HASH, which is the same value the KV key is built from, so the
+ * ciphertext is bound to the one session it was written for: lifting a blob out of one session's
+ * entry and pasting it into another fails the auth tag rather than transplanting the bearer. The
+ * kind is its own, so no other slot (a product secret, a managed value) can spell the same AAD.
+ *
+ * There is deliberately NO plaintext-tolerant read path (unlike `openManagedValue`'s lazy
+ * migration): a session is a 30-day cache of a credential that can be re-minted by signing in
+ * again, so the deploy that ships this simply ends existing sessions instead of carrying a
+ * "cleartext is still acceptable here" branch forward forever.
+ */
+function sessionSealContext(product: string, tokenHash: string): SealContext {
+  return { product, kind: "browser-session", id: tokenHash };
 }
 
 function readCookie(req: Request, name: string): string | null {
@@ -239,9 +270,30 @@ export async function createBrowserSession(
       : {}),
     ...(opts.accountId ? { accountId: opts.accountId } : {}),
   };
+  let stored: StoredBrowserSessionRecord;
+  try {
+    stored = {
+      ...record,
+      token: await seal(
+        env,
+        auth.token,
+        sessionSealContext(product.slug, sessionHash),
+      ),
+    };
+  } catch {
+    // No usable KEK. `seal` throws rather than degrading, and the point is that the bearer is
+    // never written in the clear, so the session is simply not created. The device row and its
+    // token already exist; the browser just gets no cookie.
+    return {
+      ok: false,
+      status: 500,
+      code: "misconfigured",
+      message: "session storage is unavailable",
+    };
+  }
   await env.HOT.put(
     sessionKey(product.slug, sessionHash),
-    JSON.stringify(record),
+    JSON.stringify(stored),
     { expirationTtl: SESSION_TTL_SECONDS },
   );
   return {
@@ -286,6 +338,13 @@ export async function createBrowserSession(
  * ledger that cannot be read: the record is kept, since the failure says nothing about the
  * account, and the next read checks again. The same never-a-500 rule as a corrupt record, and it
  * fails closed.
+ *
+ * The record's device bearer is stored sealed (`sessionSealContext`) and opened here, so every
+ * caller sees the live `pkeyt_` token and none of them touches the envelope. A record whose
+ * bearer will not open reads as no session, the same answer as a corrupt one: one written before
+ * the bearer was sealed (its `token` is a cleartext bearer, not an envelope), a blob lifted from
+ * another session's entry, or one sealed under a KEK the ring no longer holds. The browser signs
+ * in again.
  */
 export async function loadBrowserSession(
   req: Request,
@@ -307,7 +366,21 @@ export async function loadBrowserSession(
     return null;
   }
   if (!parsed || typeof parsed !== "object") return null;
-  const record = parsed as BrowserSessionRecord;
+  const stored = parsed as StoredBrowserSessionRecord;
+  if (typeof stored.token !== "string") return null;
+  // Open under the IDENTICAL context the write used. Any failure is "there is no session here",
+  // which every caller already has a well-defined answer for.
+  let deviceToken: string;
+  try {
+    deviceToken = await open(
+      env,
+      stored.token,
+      sessionSealContext(product.slug, tokenHash),
+    );
+  } catch {
+    return null;
+  }
+  const record: BrowserSessionRecord = { ...stored, token: deviceToken };
   let standing: SessionStanding;
   try {
     standing = await sessionStanding(env, db, record, now);
@@ -395,7 +468,7 @@ async function browserDoc(
   );
   if ("error" in valid) return { ok: false };
 
-  let payload = await resolveEffective(
+  const merged = await resolveEffective(
     db,
     product.slug,
     valid.license,
@@ -404,36 +477,34 @@ async function browserDoc(
     { tighterMin, tighterMax },
     // R12-02 — `env` opens the sealed managed secrets. `secrets` is stripped below, but a
     // `kind: "config"` entry flagged `secret: true` is sealed too and IS delivered here;
-    // without this the envelope reaches validatePayload and is pruned as a schema violation.
+    // without this the envelope reaches the prune below and is dropped as a schema violation.
     env,
   );
-  const schemaRow = await getActiveSchema(db, product.slug);
-  if (schemaRow) {
-    try {
-      const catalog = new Catalog(JSON.parse(schemaRow.catalog_json));
-      payload = validatePayload(payload, catalog);
-      // A `kind: "config"` entry flagged `secret: true` is a secret too; page JS
-      // never sees it.
-      payload = {
-        ...payload,
-        config: Object.fromEntries(
-          Object.entries(payload.config).filter(
-            ([k]) => catalog.entryByKey(k)?.secret !== true,
-          ),
-        ),
-      };
-    } catch {
-      // FAIL CLOSED, matching `/config/document` (500 `catalog_unavailable`).
-      // `validatePayload` is what prunes unknown/invalid keys and stale overrides out of the
-      // payload before it is signed; skipping it on a malformed catalog row delivered exactly
-      // the payload the catalog exists to refuse. The previous comment claimed this was
-      // "aligned with /config" — it was the opposite, and this surface is the one that hands
-      // the doc to a browser. A broken catalog row is an operator problem, not a reason to
-      // widen what a client receives.
-      return { ok: false, catalogUnavailable: true };
-    }
+  // FAIL CLOSED on any catalog we cannot enforce, matching `/config/document` (500
+  // `catalog_unavailable`): no active catalog and a catalog that will not parse are the same
+  // answer, because `loadCatalog` is the reader Core's `prunePayloadAgainstCatalog` uses too.
+  // This used to prune only when a schema row existed, so a product with NO active catalog
+  // skipped the prune and handed a browser exactly the unvalidated payload the catalog exists to
+  // refuse. A broken or missing catalog is an operator problem, not a reason to widen what a
+  // client receives.
+  const catalog = await loadCatalog(db, product.slug);
+  if (!catalog) return { ok: false, catalogUnavailable: true };
+  let pruned: ManagedPayload;
+  try {
+    pruned = validatePayload(merged, catalog);
+  } catch {
+    return { ok: false, catalogUnavailable: true };
   }
-  payload = { ...payload, secrets: {} };
+  const payload: ManagedPayload = {
+    ...pruned,
+    // A `kind: "config"` entry flagged `secret: true` is a secret too; page JS never sees it.
+    config: Object.fromEntries(
+      Object.entries(pruned.config).filter(
+        ([k]) => catalog.entryByKey(k)?.secret !== true,
+      ),
+    ),
+    secrets: {},
+  };
 
   const gate = checkBuildGate({
     version: req.headers.get(HEADER_VERSION) ?? "0.0.0",

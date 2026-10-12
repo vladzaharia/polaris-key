@@ -6508,13 +6508,14 @@ values onto it and drops unowned licences'.
   audit rows and the export name the owner only by the product's pairwise subject (S-16 §5.1);
   the run groups licences by account internally only. Tests assert no account id appears.
 - **Secrets stay sealed.** Account-layer secrets (and config keys the catalog flags `secret`) are
-  sealed under PLATFORM_KEK with the same AAD as the licence's (`…:product-secret:managed:<key>`),
-  so the run copies sealed values as they are and seals any legacy plaintext on the way; the KEK
-  sweep covers the table. The console never echoes a value back (`redactPayload`). The inventory,
-  the dry run, the report (and its CSV), the export and the merge's collision audit row never
-  carry a secret: a value is shown only when the active catalog positively declares the key a
-  non-secret `config` key and the stored value is not a sealed envelope (fail closed). Tests feed
-  sealed and plaintext secrets through every output and search for them.
+  sealed under PLATFORM_KEK with the same AAD as the licence's (`…:managed-secret:<key>`; a value
+  sealed under the earlier `…:product-secret:managed:<key>` still opens and is re-sealed on its
+  next write), so the run copies sealed values as they are and seals any legacy plaintext on the
+  way; the KEK sweep covers the table. The console never echoes a value back (`redactPayload`).
+  The inventory, the dry run, the report (and its CSV), the export and the merge's collision audit
+  row never carry a secret: a value is shown only when the active catalog positively declares the
+  key a non-secret `config` key and the stored value is not a sealed envelope (fail closed). Tests
+  feed sealed and plaintext secrets through every output and search for them.
 - **The migration cannot start early or by accident.** The notice is refused until an operator
   flags the login card (I-07) and the Library (I-11) live in production, and the guard is the
   conditional write itself; the run is refused before the 30-day notice window ends, needs the

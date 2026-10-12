@@ -109,6 +109,7 @@ import {
   WriteChecks,
 } from "../../core/console/writeChecks.js";
 import { reservedNamesMode } from "../../core/licensing/reservedNames.js";
+import { resealManagedValue } from "../../core/managedSecrets.js";
 import { handleOutletCredentials } from "./outletCredentials.js";
 
 /** Compile a schema supplied as a JSON/YAML string or a parsed object. Returns the catalog or
@@ -755,8 +756,11 @@ const SEALED_TABLES = [
  * a config document with a missing secret, not as an error.)
  *
  * Each table is keyed `(product, <idColumn>)` and stores `JSON.stringify(ManagedPayload)` with
- * sealed values under `config` / `secrets` (`account_overrides` has no `entitlements`). The AAD is `…:product-secret:managed:<key>`, exactly as
- * `core/managedSecrets.ts` writes it.
+ * sealed values under `config` / `secrets` (`account_overrides` has no `entitlements`). The AAD
+ * belongs to `core/managedSecrets.ts` and is built there: `resealManagedValue` is what this pass
+ * calls, so the sweep cannot fall behind a change to the context (it did once: managed values
+ * moved off `kind: "product-secret"`, and an envelope written under the earlier AAD is still
+ * found and rewritten under the current one).
  */
 const MANAGED_PAYLOAD_TABLES = [
   { table: "profiles", column: "payload_json", idColumn: "id" },
@@ -1071,17 +1075,15 @@ async function resealSweep(
       let rewritten = 0;
       for (const leaf of leaves) {
         if (leaf.kekId === active) continue;
-        const ctx = {
-          product: row.product,
-          kind: "product-secret" as const,
-          id: `managed:${leaf.key}`,
-        };
         try {
-          const plaintext = await open(env, leaf.value, ctx);
-          const next = await seal(env, plaintext, ctx);
-          if ((await open(env, next, ctx)) !== plaintext)
-            throw new Error("re-sealed value did not round-trip");
-          payload![leaf.bucket]![leaf.key]!.value = next;
+          // The AAD is `managedSecrets.ts`'s to build, not this sweep's to reconstruct: a second
+          // copy of the spelling here is how the two drift apart.
+          payload![leaf.bucket]![leaf.key]!.value = await resealManagedValue(
+            env,
+            row.product,
+            leaf.key,
+            leaf.value,
+          );
           rewritten++;
         } catch (e) {
           failures.push({
