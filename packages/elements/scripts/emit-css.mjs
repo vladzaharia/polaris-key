@@ -3,14 +3,14 @@
 import { copyFileSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const dist = join(root, "dist");
 
 // The light-DOM form: every selector anchored to `.pk-root`, all of it in `@layer polaris-key`
 // (src/contract.ts). The elements adopt the shadow form from JS and never load this file.
-const { lightDomCss } = await import(join(dist, "contract.js"));
+const { lightDomCss } = await import(pathToFileURL(join(dist, "contract.js")).href);
 writeFileSync(
   join(dist, "styles.css"),
   `/* @polaris-key/elements: the shared kit stylesheet (generated at build from src/styles.ts). */\n${lightDomCss()}`,
