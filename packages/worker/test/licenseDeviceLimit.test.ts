@@ -8,6 +8,7 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 import { verifyJws } from "@polaris-key/jws";
+import { MAX_DEVICE_LIMIT } from "@polaris-key/manifest";
 import type { LicenseDoc } from "@polaris-key/protocol/license";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
@@ -322,14 +323,31 @@ describe("per-licence device limit (LX-14a)", () => {
     expect(await read()).toMatchObject({ deviceCount: 2, seatDeviceCount: 1 });
   });
 
-  it("refuses anything but a positive integer or null", async () => {
-    for (const deviceLimit of [0, -1, 1.5, "3", true]) {
+  it("refuses anything but an integer from 1 to the ceiling, or null", async () => {
+    for (const deviceLimit of [
+      0,
+      -1,
+      1.5,
+      "3",
+      true,
+      MAX_DEVICE_LIMIT + 1,
+      100_000_000,
+      Number.MAX_SAFE_INTEGER,
+    ]) {
       const res = await patch({ deviceLimit });
-      expect(res.status).toBe(422);
+      expect(res.status, String(deviceLimit)).toBe(422);
       expect(await res.json()).toMatchObject({
         fields: ["deviceLimit"],
       });
     }
     expect((await getLicense(db, "djdl", licenseId))!.device_limit).toBeNull();
+  });
+
+  it("accepts the ceiling itself, as the tier and the product default do", async () => {
+    const res = await patch({ deviceLimit: MAX_DEVICE_LIMIT });
+    expect(res.status).toBe(200);
+    expect((await getLicense(db, "djdl", licenseId))!.device_limit).toBe(
+      MAX_DEVICE_LIMIT,
+    );
   });
 });

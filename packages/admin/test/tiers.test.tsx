@@ -191,7 +191,7 @@ describe("Tiers", () => {
       await within(drawer).findByText("A tier with this id already exists."),
     ).toBeTruthy();
     expect(
-      within(drawer).getByText(/whole number of devices, 1 or more/),
+      within(drawer).getByText(/whole number of devices from 1 to 1000/),
     ).toBeTruthy();
     const id = within(drawer).getByLabelText(/^Id/);
     await userEvent.clear(id);

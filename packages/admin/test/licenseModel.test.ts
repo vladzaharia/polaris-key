@@ -5,6 +5,7 @@
  */
 
 import { describe, expect, it } from "vitest";
+import { MAX_DEVICE_LIMIT } from "../src/lib/deviceLimit.js";
 import {
   effectivePolicy,
   licenseState,
@@ -230,6 +231,13 @@ describe("tier bodies", () => {
     expect(
       validateTier({ ...EMPTY_TIER, policyDeviceLimit: 1.5 }),
     ).toHaveProperty("policyDeviceLimit");
+    // The Worker's ceiling holds in the form too: one past it is refused, the ceiling is not.
+    expect(
+      validateTier({ ...EMPTY_TIER, policyDeviceLimit: MAX_DEVICE_LIMIT + 1 }),
+    ).toHaveProperty("policyDeviceLimit");
+    expect(
+      validateTier({ ...EMPTY_TIER, policyDeviceLimit: MAX_DEVICE_LIMIT }),
+    ).not.toHaveProperty("policyDeviceLimit");
   });
 });
 

@@ -43,7 +43,10 @@ import { parseManifest } from "@polaris-key/manifest";
 import { manifestIngestFor } from "../src/core/registry.js";
 import { SERVICES } from "../src/mount.js";
 import { stmtClaim } from "../src/core/settingsClaims.js";
-import { isSealedEnvelope } from "../src/core/managedSecrets.js";
+import {
+  isSealedEnvelope,
+  openManagedValue,
+} from "../src/core/managedSecrets.js";
 import {
   ensureSystemProduct,
   linkSystemProduct,
@@ -90,6 +93,8 @@ interface Decl {
   tiers?: { id: string; label?: string; profileId?: string }[];
   profiles?: string[];
   schema?: string;
+  /** A profile's manifest `payload`, by profile id. */
+  payloads?: Record<string, Record<string, unknown>>;
   /** `licensing.*` (LX-06's row-backed settings), when declared. */
   licensing?: Record<string, unknown>;
 }
@@ -118,7 +123,11 @@ function files(d: Decl = {}): Record<string, string> {
       defaultDeviceLimit: m.devices,
       adminGroup: m.adminGroup,
       ...(m.origins ? { web: { origins: m.origins } } : {}),
-      profiles: m.profiles.map((id) => ({ id, name: id })),
+      profiles: m.profiles.map((id) => ({
+        id,
+        name: id,
+        ...(d.payloads?.[id] ? { payload: d.payloads[id] } : {}),
+      })),
       tiers: m.tiers.map((t) => ({ label: t.id, ...t })),
       provisioning: [],
       ...(d.licensing ? { licensing: d.licensing } : {}),
@@ -835,6 +844,104 @@ describe("the apply", () => {
       SLUG,
     );
     expect(row!.report_json).not.toContain("sk-secret-0001");
+  });
+
+  describe("manifest-declared secrets (sealed as a resync seals them)", () => {
+    const API_KEY = "api.key";
+    const withSecret = JSON.stringify({
+      schemaVersion: 1,
+      entries: [
+        entry("run.name"),
+        {
+          key: API_KEY,
+          kind: "secret",
+          category: "api",
+          label: "API key",
+          description: "",
+          schema: { type: "string", minLength: 8 },
+        },
+      ],
+    });
+    const declaring = (value: string) => ({
+      payloads: {
+        standard: {
+          secrets: { [API_KEY]: { state: "default", value, updatedAt: 7 } },
+        },
+      },
+    });
+    const storedPayload = async (ctx: Ctx): Promise<string> => {
+      const row = await ctx.db.first<{ payload_json: string }>(
+        "SELECT payload_json FROM profiles WHERE product = ? AND id = 'standard'",
+        SLUG,
+      );
+      return row!.payload_json;
+    };
+    const secretOf = async (ctx: Ctx): Promise<unknown> => {
+      const parsed: { secrets?: Record<string, { value?: unknown }> } =
+        JSON.parse(await storedPayload(ctx));
+      return parsed.secrets?.[API_KEY]?.value;
+    };
+    const consoleSets = async (ctx: Ctx, key: string, value: string) =>
+      expect(
+        (
+          await call(ctx, "PUT", `products/${SLUG}/config/profiles/standard`, {
+            updates: [{ key, value, state: "enforced" }],
+          })
+        ).status,
+      ).toBe(200);
+
+    it("an apply seals a secret the manifest declares; no cleartext reaches the row, the report or the audit", async () => {
+      const ctx = await linked({ schema: withSecret });
+      expect(await secretOf(ctx)).toBeUndefined();
+
+      const head = { schema: withSecret, ...declaring("from-manifest-0001") };
+      const dry = await okRun(ctx, { dryRun: true, github: { head } });
+      expect(JSON.stringify(dry)).not.toContain("from-manifest-0001");
+      expect(await secretOf(ctx)).toBeUndefined();
+
+      const report = await okRun(ctx, { github: { head } });
+      expect(report.outcome).toBe("applied");
+      const sealed = await secretOf(ctx);
+      expect(isSealedEnvelope(sealed)).toBe(true);
+      expect(await openManagedValue(ctx.env, SLUG, API_KEY, sealed)).toBe(
+        "from-manifest-0001",
+      );
+      expect(await storedPayload(ctx)).not.toContain("from-manifest-0001");
+      expect(JSON.stringify(report)).not.toContain("from-manifest-0001");
+      const audit = await ctx.db.all<{ summary: string }>(
+        "SELECT summary FROM audit WHERE product = ?",
+        SLUG,
+      );
+      expect(JSON.stringify(audit)).not.toContain("from-manifest-0001");
+    });
+
+    it("a manifest value over an already-sealed one refuses the run and writes nothing", async () => {
+      const ctx = await linked({ schema: withSecret });
+      await consoleSets(ctx, API_KEY, "sk-console-0001");
+      const before = await storedPayload(ctx);
+
+      const head = { schema: withSecret, ...declaring("from-manifest-0001") };
+      for (const dryRun of [true, false]) {
+        const report = await okRun(ctx, { dryRun, github: { head } });
+        expect(report.outcome).toBe("refused");
+        expect(report.message).toContain(API_KEY);
+        expect(JSON.stringify(report)).not.toContain("from-manifest-0001");
+        expect(JSON.stringify(report)).not.toContain("sk-console-0001");
+      }
+      expect(await storedPayload(ctx)).toBe(before);
+      expect(await audits(ctx.db, "setting.backfill")).toHaveLength(0);
+    });
+
+    it("the same value over the sealed one keeps the stored envelope byte for byte", async () => {
+      const ctx = await linked({ schema: withSecret });
+      await consoleSets(ctx, API_KEY, "sk-console-0001");
+      const envelope = await secretOf(ctx);
+
+      const head = { schema: withSecret, ...declaring("sk-console-0001") };
+      const report = await okRun(ctx, { github: { head } });
+      expect(report.outcome).not.toBe("refused");
+      expect(await secretOf(ctx)).toEqual(envelope);
+    });
   });
 
   it("a live break-glass claim is kept; an expired one ends (ST-20) and its field reverts", async () => {

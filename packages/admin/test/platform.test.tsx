@@ -122,6 +122,8 @@ function platformRoutes(
       counts: {},
       remaining: 0,
       unopenable: 0,
+      countsComplete: true,
+      countsTruncated: [],
     },
     ...over,
   };

@@ -76,6 +76,7 @@ import { useProduct } from "../../../data/hooks.js";
 import { mutate } from "../../../data/mutations.js";
 import { Link } from "../../../router.js";
 import { r } from "../../../routes.js";
+import { deviceLimitIssue } from "../../../../lib/deviceLimit.js";
 import {
   DangerAction,
   DangerZone,
@@ -126,9 +127,8 @@ export function validateSettings(v: Draft): Record<string, string> {
   const days = v.defaultMaxOfflineDays;
   if (days === null || !Number.isInteger(days) || days < 1 || days > 365)
     out.defaultMaxOfflineDays = "Use a whole number of days from 1 to 365.";
-  const limit = v.defaultDeviceLimit;
-  if (limit === null || !Number.isInteger(limit) || limit < 1)
-    out.defaultDeviceLimit = "Use a whole number of devices, 1 or more.";
+  const limit = deviceLimitIssue(v.defaultDeviceLimit);
+  if (limit) out.defaultDeviceLimit = limit;
   return out;
 }
 

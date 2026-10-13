@@ -10,6 +10,10 @@
 import * as React from "react";
 import type { TierBody, TierSummary } from "../../../../api.js";
 import { useProduct } from "../../../data/hooks.js";
+import {
+  deviceLimitIssue,
+  MAX_DEVICE_LIMIT,
+} from "../../../../lib/deviceLimit.js";
 import { versionRangeError } from "../../../../lib/version.js";
 import { ChannelPicker } from "../../../../ui/ChannelPicker.js";
 import { useDismissGuard } from "../../../../ui/Dialog.js";
@@ -80,9 +84,11 @@ export function validateTier(
   if (!positiveInt(v.policyExpiryDays))
     e.policyExpiryDays =
       "Use a whole number of days, 1 or more, or leave it blank.";
-  if (!positiveInt(v.policyDeviceLimit))
-    e.policyDeviceLimit =
-      "Use a whole number of devices, 1 or more, or leave it blank for the product default.";
+  const deviceIssue = deviceLimitIssue(
+    v.policyDeviceLimit,
+    "leave it blank for the product default",
+  );
+  if (deviceIssue) e.policyDeviceLimit = deviceIssue;
   const range = versionRangeError(v.minVersion, v.maxVersion);
   if (range)
     e[range.field === "min" ? "minVersion" : "maxVersion"] = range.message;
@@ -200,13 +206,22 @@ export function TierFields({
       <FormField
         name="policyDeviceLimit"
         label="Device limit"
-        help={`Devices per license. Blank uses the product default (${
+        help={`Devices per license, up to ${MAX_DEVICE_LIMIT}. Blank uses the product default (${
           product?.defaultDeviceLimit && product.defaultDeviceLimit > 0
             ? product.defaultDeviceLimit
             : "unlimited"
         }).`}
       >
-        {(f) => <NumberInput {...f} nullable integer min={1} unit="devices" />}
+        {(f) => (
+          <NumberInput
+            {...f}
+            nullable
+            integer
+            min={1}
+            max={MAX_DEVICE_LIMIT}
+            unit="devices"
+          />
+        )}
       </FormField>
       <FormField name="minVersion" label="Minimum version">
         {(f) => <VersionInput {...f} placeholder="None" />}

@@ -549,10 +549,20 @@ export interface PlatformKekStatus {
   kids: string[];
   /** Sealed-value group → kid → count. */
   counts: Record<string, Record<string, number>>;
-  /** Values not yet sealed under `active`. */
+  /**
+   * Values not yet sealed under `active`. A FLOOR, not a total, while `countsComplete` is false
+   * (at least 1 then): the scan stopped before it had looked at every row.
+   */
   remaining: number;
-  /** Values under a kid that is no longer in the ring. */
+  /** Values under a kid that is no longer in the ring. A floor while `countsComplete` is false. */
   unopenable: number;
+  /**
+   * False when the managed-payload scan stopped at its row cap, so every count above is a floor
+   * and none of them may be read as "nothing left". `countsTruncated` names the tables.
+   */
+  countsComplete: boolean;
+  /** The tables whose scan stopped at the cap; empty when `countsComplete`. */
+  countsTruncated: string[];
   /**
    * Present only while `PLATFORM_KEK` is set beside `PLATFORM_KEK_KEYS`: the legacy key, kept for
    * opening only (RUNBOOK "Rotating when the old KEK is unknown").

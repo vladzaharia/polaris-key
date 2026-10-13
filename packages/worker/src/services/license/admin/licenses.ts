@@ -67,6 +67,10 @@ import {
   shapeFacts,
   shapeFingerprint,
 } from "../../../core/console/deviceShape.js";
+import {
+  deviceLimitMessage,
+  invalidDeviceLimit,
+} from "../../../core/console/deviceLimit.js";
 import { WriteChecks } from "../../../core/console/writeChecks.js";
 import { tierExpiresAt } from "../../../core/licensing/authz.js";
 import {
@@ -171,17 +175,30 @@ function licenseWriteChecks(body: Record<string, unknown>): Response | null {
 }
 
 /**
- * LX-14a: a licence's own `deviceLimit` is a positive integer, or `null` to inherit; absent keeps
- * it. Anything else (zero, a fraction, a string) is refused rather than silently ignored, the
- * same rule `invalidDeviceLimit` applies to a tier and 0084's CHECK applies at the database.
- * Shared with the batch create (`batches.ts`, LX-28).
+ * LX-14a: a licence's own `deviceLimit` is an integer from 1 to `MAX_DEVICE_LIMIT`, or `null` to
+ * inherit; absent keeps it. Anything else (zero, a fraction, a string, a number past the
+ * ceiling) is refused rather than silently ignored or clamped: the same rule `invalidDeviceLimit`
+ * applies to a tier and a product default, 0084's CHECK applies at the database (its lower
+ * bound), and the ceiling keeps `claimDeviceSeat`'s O(limit) seat scan bounded on this way in
+ * too (`core/console/deviceLimit.ts` says why). Shared with the batch create (`batches.ts`,
+ * LX-28).
  */
 export function invalidLicenseDeviceLimit(
   body: Record<string, unknown>,
 ): boolean {
   if (!("deviceLimit" in body) || body.deviceLimit === null) return false;
   const v = body.deviceLimit;
-  return typeof v !== "number" || !Number.isInteger(v) || v <= 0;
+  return typeof v !== "number" || invalidDeviceLimit(v);
+}
+
+/** The refusal both licence write paths answer a bad `deviceLimit` with. */
+export function licenseDeviceLimitRefusal(): Response {
+  return err(
+    422,
+    ErrorCode.BadRequest,
+    `${deviceLimitMessage("deviceLimit")}, or null`,
+    { fields: ["deviceLimit"] },
+  );
 }
 
 /** The device-limit fields every licence read carries (LX-14a): the stored value, the limit
@@ -512,13 +529,7 @@ export async function handleLicenses(
       const body = await readBody(req);
       const refused = licenseWriteChecks(body);
       if (refused) return refused;
-      if (invalidLicenseDeviceLimit(body))
-        return err(
-          422,
-          ErrorCode.BadRequest,
-          "deviceLimit must be a positive integer or null",
-          { fields: ["deviceLimit"] },
-        );
+      if (invalidLicenseDeviceLimit(body)) return licenseDeviceLimitRefusal();
       // LX-26 (S-24 §6.3): setting an email on a floating licence assigns it; clearing the email
       // of a licence that has one is refused, because that would make it floating (or drop a
       // waiting holder) outside the relink tool's Make floating (I-12, LX-30). No new code.
