@@ -222,6 +222,22 @@ describe("per-licence device limit (LX-14a)", () => {
     ).toBe(1);
   });
 
+  it("a PATCH that leaves a stored limit above the ceiling alone still succeeds; an incoming one above it is refused", async () => {
+    // A limit written before the ceiling existed: an edit that does not change it must not refuse.
+    const stored = MAX_DEVICE_LIMIT + 4000;
+    await db.run(
+      "UPDATE licenses SET device_limit = ? WHERE product = ? AND id = ?",
+      stored,
+      "djdl",
+      licenseId,
+    );
+    expect((await patch({})).status).toBe(200);
+    expect((await getLicense(db, "djdl", licenseId))!.device_limit).toBe(stored);
+    // An incoming limit above the ceiling is still refused, and changes nothing.
+    expect((await patch({ deviceLimit: MAX_DEVICE_LIMIT + 1 })).status).toBe(422);
+    expect((await getLicense(db, "djdl", licenseId))!.device_limit).toBe(stored);
+  });
+
   it("applies to a sign-in licence, and claiming it through sign-in keeps the column", async () => {
     await db.run(
       "UPDATE licenses SET sub = 'oidc|mara', origin = 'oidc' WHERE product = ? AND id = ?",
