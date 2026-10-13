@@ -1,6 +1,6 @@
 import * as React from "react";
 import { isReservedProductSlug } from "@polaris-key/manifest";
-import { ArrowRight, Check, ChevronRight, Github, Plus } from "lucide-react";
+import { ArrowRight, Check, ChevronRight, Plus } from "lucide-react";
 import {
   type CreateManualProductResult,
   type LinkRepoResult,
@@ -16,6 +16,7 @@ import { signingBundleOf, slugError } from "../../../../lib/products.js";
 import { Button } from "../../../../ui/Button.js";
 import { Callout } from "../../../../ui/Callout.js";
 import { FormField } from "../../../../ui/form.js";
+import { GithubIcon } from "../../../../ui/GithubIcon.js";
 import { Input } from "../../../../ui/Input.js";
 import { NumberInput } from "../../../../ui/NumberInput.js";
 import { RadioCards } from "../../../../ui/RadioCards.js";
@@ -465,7 +466,7 @@ export function ProductNew(): React.ReactElement {
                 {
                   value: "github",
                   label: "A GitHub repository",
-                  icon: <Github aria-hidden className="size-4" />,
+                  icon: <GithubIcon aria-hidden className="size-4" />,
                   description: "Reads .pkey/ and publishes from CI",
                 },
               ]}

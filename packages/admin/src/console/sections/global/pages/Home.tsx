@@ -1,5 +1,5 @@
 import * as React from "react";
-import { ArrowRight, Github, Plus } from "lucide-react";
+import { ArrowRight, Plus } from "lucide-react";
 import type { ProductDetail, ServiceSlug } from "../../../../api.js";
 import { formatCount } from "../../../../lib/format.js";
 import { releaseSourceOf } from "../../../../lib/products.js";
@@ -8,6 +8,7 @@ import { Button } from "../../../../ui/Button.js";
 import { StatTile } from "../../../../ui/charts/StatTile.js";
 import { EmptyState } from "../../../../ui/EmptyState.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
+import { GithubIcon } from "../../../../ui/GithubIcon.js";
 import { ProductLogo } from "../../../../ui/ProductLogo.js";
 import { ServiceGlyph, serviceLabel } from "../../../../ui/ServiceBadge.js";
 import { StatusPill } from "../../../../ui/StatusPill.js";
@@ -181,7 +182,7 @@ export function Home(): React.ReactElement {
             primaryAction={
               <Button asChild>
                 <Link to={r.productNew({ via: "github" })}>
-                  <Github aria-hidden />
+                  <GithubIcon aria-hidden />
                   Link a repository
                 </Link>
               </Button>
