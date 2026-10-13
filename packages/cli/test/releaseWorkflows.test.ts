@@ -309,6 +309,7 @@ describe("publishing is automatic and in lockstep (owner decision 2026-10-04)", 
         "godot",
         "image",
         "maven",
+        "maven-ui-core",
         ...NPM_TIERS,
         "python",
         "swift",
@@ -324,6 +325,22 @@ describe("publishing is automatic and in lockstep (owner decision 2026-10-04)", 
       PEP440: "${{ needs.version.outputs.pep440 }}",
       CHANNEL: "${{ needs.version.outputs.channel }}",
     });
+  });
+
+  it("publishes the ui-core deliverables on v* tag builds only, and the drift check skips what a build of main does not publish", () => {
+    const gate = "startsWith(github.ref, 'refs/tags/')";
+    expect(wf.jobs["npm-tier-3"]!.if).toBe(gate);
+    expect(wf.jobs["maven-ui-core"]!.if).toBe(gate);
+    expect(wf.jobs["maven-ui-core"]!.with?.deliverable).toBe("maven.ui-core");
+    const check = (wf.jobs.drift!.steps ?? []).find((s) =>
+      s.run?.includes("tools/feed-drift.mjs"),
+    );
+    expect(check?.run).toContain('--skip "$SKIP"');
+    // Tiers 4 and 5 (node, react, cli) pin ui-core and so skip with tier 3; the drift check
+    // skips exactly those and the ui-core deliverables.
+    expect(String(check?.env?.SKIP)).toBe(
+      "${{ !startsWith(github.ref, 'refs/tags/') && 'npm.ui-core,npm.node,npm.react,npm.cli,maven.ui-core' || '' }}",
+    );
   });
 
   it("the legacy release workflows and Changesets are gone", () => {
@@ -462,6 +479,7 @@ describe("the backstop prune after a stable tag (P0-48, feed retention)", () => 
         "godot",
         "image",
         "maven",
+        "maven-ui-core",
         ...NPM_TIERS,
         "python",
         "swift",
@@ -630,7 +648,14 @@ describe("the npm packages publish in dependency order (P0-52, feed coherence)",
     for (const c of npmCalls) {
       // GitHub ANDs success() into a job with no status function: a failed, cancelled or stuck
       // tier below skips this one. An `if:` (always(), !cancelled()) would undo that.
-      expect(c.job.if, c.id).toBeUndefined();
+      // The one exception: ui-core is published on v* tag builds only, until a tag deploy has
+      // registered its deliverables (the live product answers unknown_deliverable before that).
+      // Its dependents skip with it, which is the point of the tier chain.
+      expect(c.job.if, c.id).toBe(
+        c.id === "npm-tier-3"
+          ? "startsWith(github.ref, 'refs/tags/')"
+          : undefined,
+      );
       expect(needsOf(c.job), c.id).toEqual(
         expect.arrayContaining(["version", "npm-pack"]),
       );

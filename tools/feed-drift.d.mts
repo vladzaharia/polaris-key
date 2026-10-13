@@ -43,6 +43,8 @@ export declare function checkDrift(opts: {
   expected: Expected;
   timeoutSec: number;
   only?: string[];
+  /** Deliverable ids this build does not publish; they are not read. */
+  skip?: string[];
   log?: (m: string) => void;
   sleep?: (ms: number) => Promise<void>;
   /** Filled, for packages in step, with the builds of main a stable build left listed. */

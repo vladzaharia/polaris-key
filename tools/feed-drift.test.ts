@@ -314,4 +314,32 @@ describe("checkDrift", () => {
     expect(problems.size).toBe(0);
     expect(warnings.get("npm.node")).toEqual(["0.9.1-main.4"]);
   });
+
+  it("does not read the deliverables it is told to skip", async () => {
+    const seen: string[] = [];
+    vi.stubGlobal("fetch", async (url: string) => {
+      seen.push(url);
+      return new Response(
+        JSON.stringify({
+          versions: { "0.9.1-main.4": {} },
+          "dist-tags": { main: "0.9.1-main.4" },
+        }),
+        { status: 200 },
+      );
+    });
+    const problems = await checkDrift({
+      origin: "https://pkg.example.test",
+      owner: "polaris-key",
+      root: ROOT,
+      expected: MAIN,
+      timeoutSec: 0,
+      only: ["npm"],
+      skip: ["npm.ui-core", "npm.node"],
+      sleep: async () => undefined,
+    });
+    expect(problems.size).toBe(0);
+    expect(seen.some((u) => u.includes("ui-core"))).toBe(false);
+    expect(seen.some((u) => u.includes("%2fnode"))).toBe(false);
+    expect(seen.some((u) => u.includes("%2freact"))).toBe(true);
+  });
 });

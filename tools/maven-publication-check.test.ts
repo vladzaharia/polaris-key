@@ -42,8 +42,25 @@ describe("maven publication check", () => {
     expect(ds.length).toBeGreaterThanOrEqual(18);
     for (const d of ds) {
       expect(d.name).toMatch(/^im\.plrs\.key:polaris-key-/);
-      expect(d.match).toBe(`${d.name!.split(":")[1]}-*`);
+      // `ui` is the one narrowed glob: `polaris-key-ui-*` would also take ui-core's files.
+      expect(d.match).toBe(
+        d.name === "im.plrs.key:polaris-key-ui"
+          ? "polaris-key-ui-?.*"
+          : `${d.name!.split(":")[1]}-*`,
+      );
     }
+  });
+
+  it("the ui glob does not take polaris-key-ui-core's files", () => {
+    const ui = mavenDeliverables(RELEASE).find((d) => d.id === "maven.ui")!;
+    expect(globMatches(ui.match!, "polaris-key-ui-0.9.4.pom")).toBe(true);
+    expect(
+      globMatches(ui.match!, "polaris-key-ui-0.9.4-main.7-sources.jar"),
+    ).toBe(true);
+    expect(globMatches(ui.match!, "polaris-key-ui-core-0.9.4.pom")).toBe(false);
+    expect(globMatches(ui.match!, "polaris-key-ui-core-0.9.4.module")).toBe(
+      false,
+    );
   });
 
   it("globMatches is the release glob dialect", () => {
