@@ -370,6 +370,40 @@ describe("Discover (PX-16)", () => {
     expect(await axeViolations()).toEqual([]);
   });
 
+  it("keeps the same tile through an Add, so its plate pops in (Discover's refetch drops the offer before the Add resolves)", async () => {
+    // The library answers after the claim late: Discover's refetch lands first and the Worker no
+    // longer lists the product, while the Add (which waits for the library) is still running.
+    const worker = discoverWorker([QUILL, MOSSGARDEN]);
+    const claim = worker[
+      "POST /api/discover/mossgarden/claim"
+    ] as () => unknown;
+    const library = worker["/api/library"] as () => unknown;
+    let claimed = false;
+    mockFetch({
+      ...worker,
+      "POST /api/discover/mossgarden/claim": () => {
+        claimed = true;
+        return claim();
+      },
+      "/api/library": async () => {
+        if (claimed) await new Promise((r) => setTimeout(r, 150));
+        return library();
+      },
+    });
+    renderPortal();
+    await discoverPage();
+    const moss = await tile("Mossgarden");
+    await userEvent.click(
+      within(moss).getByRole("button", { name: "Add to library: Mossgarden" }),
+    );
+    await within(moss).findByRole("link", { name: "Open Mossgarden" });
+    // Never unmounted on the way: the same element, added while on screen, so the plate pops.
+    expect(moss.isConnected).toBe(true);
+    expect(within(moss).getByText("In your library").className).toContain(
+      "pk-pop-in",
+    );
+  });
+
   it("keeps the just-added state after a reload through ?added=", async () => {
     window.history.replaceState(null, "", "/#/discover?added=mossgarden");
     mockFetch(discoverWorker([QUILL, MOSSGARDEN], { held: [MOSS_LICENSE] }));

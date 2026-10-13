@@ -76,9 +76,12 @@ export function DiscoverPage({
   const [added, setAdded] = React.useState<Map<string, PortalDiscoverOffer>>(
     () => new Map(),
   );
-  const [adding, setAdding] = React.useState<ReadonlySet<string>>(
-    () => new Set(),
-  );
+  // Adds in flight, with the offer that was shown: the claim's own refetches (Discover, the
+  // library) land before the Add resolves, and the Worker has stopped listing the product by then,
+  // so the tile is kept from here until `added` takes it over (see `tiles`).
+  const [adding, setAdding] = React.useState<
+    ReadonlyMap<string, PortalDiscoverOffer>
+  >(() => new Map());
   const [errors, setErrors] = React.useState<Map<string, TileError>>(
     () => new Map(),
   );
@@ -110,16 +113,18 @@ export function DiscoverPage({
   for (const tile of fromReload)
     if (!offers.some((o) => o.product === tile.product)) addedTiles.push(tile);
   const addedSlugs = new Set(addedTiles.map((o) => o.product));
+  // An add in flight keeps its tile mounted while the refetches drop the offer, so the tile that
+  // turns "added" is the one on screen (its plate and ring come in once) and not a fresh mount.
   const tiles = mergeAdded(
     offers.filter((o) => !addedSlugs.has(o.product)),
-    addedTiles,
+    [...addedTiles, ...adding.values()],
   );
 
   const add = async (offer: PortalDiscoverOffer): Promise<void> => {
     const slug = offer.product;
     if (inFlight.current.has(slug)) return;
     inFlight.current.add(slug);
-    setAdding((s) => new Set(s).add(slug));
+    setAdding((m) => new Map(m).set(slug, offer));
     setErrors((m) => {
       const next = new Map(m);
       next.delete(slug);
@@ -141,8 +146,8 @@ export function DiscoverPage({
       setErrors((m) => new Map(m).set(slug, tileError(offer, err)));
     } finally {
       inFlight.current.delete(slug);
-      setAdding((s) => {
-        const next = new Set(s);
+      setAdding((m) => {
+        const next = new Map(m);
         next.delete(slug);
         return next;
       });
