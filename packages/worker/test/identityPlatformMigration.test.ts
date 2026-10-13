@@ -16,13 +16,7 @@
 
 import { issuerMetadataResponse } from "./oidcIssuerFake.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  exportJWK,
-  generateKeyPair,
-  importJWK,
-  type KeyLike,
-  SignJWT,
-} from "jose";
+import { exportJWK, generateKeyPair, importJWK, SignJWT } from "jose";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { asR2, R2Mock } from "./r2Mock.js";
@@ -100,7 +94,7 @@ const ADA = "ada@example.com";
 const PAST = "2023-01-01";
 const FUTURE = "2030-01-01";
 
-let priv: KeyLike;
+let priv: CryptoKey;
 /** Every URL the stubbed `fetch` was asked for. */
 let fetched: string[] = [];
 

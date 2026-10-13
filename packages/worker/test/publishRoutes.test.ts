@@ -20,13 +20,7 @@ import {
   it,
   vi,
 } from "vitest";
-import {
-  exportJWK,
-  generateKeyPair,
-  SignJWT,
-  type JWK,
-  type KeyLike,
-} from "jose";
+import { exportJWK, generateKeyPair, SignJWT, type JWK } from "jose";
 import { parseManifest } from "@polaris-key/manifest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
@@ -72,7 +66,7 @@ const OWNER_ID = 77;
 const sha = (b: Uint8Array | string) =>
   createHash("sha256").update(b).digest("hex");
 
-let key: { privateKey: KeyLike; publicKey: KeyLike };
+let key: { privateKey: CryptoKey; publicKey: CryptoKey };
 let jwk: JWK;
 beforeAll(async () => {
   key = await generateKeyPair("RS256");

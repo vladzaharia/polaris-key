@@ -2,7 +2,7 @@
 // §10): sign-in through a connection, from /login/sso/<id> to /callback, and the
 // seed-platform-connection job.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { exportJWK, generateKeyPair, SignJWT, type KeyLike } from "jose";
+import { exportJWK, generateKeyPair, SignJWT } from "jose";
 import { NOW } from "./seed.js";
 import { Device, seededWorld, type CardWorld } from "./identityCardHarness.js";
 import { insertConnection } from "./connectionFixtures.js";
@@ -33,7 +33,7 @@ import type { Db } from "../src/db/types.js";
 const ISSUER = "https://work.idp.example";
 const CONN = "conn_work";
 
-let priv: KeyLike;
+let priv: CryptoKey;
 let pubJwk: Record<string, unknown>;
 
 beforeEach(async () => {

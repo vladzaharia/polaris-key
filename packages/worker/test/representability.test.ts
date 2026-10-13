@@ -16,13 +16,7 @@
 import { issuerMetadataResponse } from "./oidcIssuerFake.js";
 import { bindFlow } from "./flowBinderHelper.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  exportJWK,
-  generateKeyPair,
-  importJWK,
-  SignJWT,
-  type KeyLike,
-} from "jose";
+import { exportJWK, generateKeyPair, importJWK, SignJWT } from "jose";
 import { verifyConfigDoc } from "@polaris-key/client-core";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
@@ -776,7 +770,7 @@ describe("OIDC sign-in stores an unsignable name or email as null", () => {
       .setAudience(AUD)
       .setIssuedAt()
       .setExpirationTime("1h")
-      .sign(pair.privateKey as KeyLike);
+      .sign(pair.privateKey as CryptoKey);
     vi.spyOn(globalThis, "fetch").mockImplementation(
       async (input: RequestInfo | URL) =>
         (await issuerMetadataResponse(String(input), idpKey.getKey, {

@@ -11,13 +11,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-  exportJWK,
-  generateKeyPair,
-  importJWK,
-  type KeyLike,
-  SignJWT,
-} from "jose";
+import { exportJWK, generateKeyPair, importJWK, SignJWT } from "jose";
 import { makeTestDb } from "../helpers.js";
 import { artefacts, singleUseMock } from "../singleUseMock.js";
 import { portalMagicKey } from "../../src/services/identity/portal/auth.js";
@@ -1308,7 +1302,7 @@ const signInReq = (url: string, init?: RequestInit): Request =>
  *  test IdP signing key installed behind the jose shim. */
 async function signInFixture(
   env: Env,
-): Promise<{ db: Db; product: Product; priv: KeyLike }> {
+): Promise<{ db: Db; product: Product; priv: CryptoKey }> {
   const db: Db = makeTestDb();
   await seedProduct(db, SIGN_IN_SLUG);
   await db.run(
@@ -1347,7 +1341,7 @@ async function signInFixture(
 }
 
 function signInIdToken(
-  priv: KeyLike,
+  priv: CryptoKey,
   claims: Record<string, unknown>,
 ): Promise<string> {
   return new SignJWT({ groups: ["members"], ...claims })

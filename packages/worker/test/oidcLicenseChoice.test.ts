@@ -13,13 +13,7 @@
 
 import { issuerMetadataResponse } from "./oidcIssuerFake.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  exportJWK,
-  generateKeyPair,
-  importJWK,
-  type KeyLike,
-  SignJWT,
-} from "jose";
+import { exportJWK, generateKeyPair, importJWK, SignJWT } from "jose";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedProduct } from "./seed.js";
@@ -92,7 +86,7 @@ const IP = "198.51.100.7";
 let db: SqliteDb;
 let env: Env;
 let product: Product;
-let priv: KeyLike;
+let priv: CryptoKey;
 let accountId: string;
 
 async function signIdToken(claims: Record<string, unknown>): Promise<string> {

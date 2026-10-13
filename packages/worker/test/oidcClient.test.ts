@@ -4,7 +4,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { exportJWK, generateKeyPair, SignJWT, type KeyLike } from "jose";
+import { exportJWK, generateKeyPair, SignJWT } from "jose";
 import {
   checkAuthorizationIss,
   connectionHosts,
@@ -67,7 +67,7 @@ async function fakeIdp(
       .setSubject((claims.sub as string) ?? "user-1")
       .setIssuedAt((claims.iat as number) ?? Math.floor(Date.now() / 1000))
       .setExpirationTime("1h")
-      .sign(privateKey as KeyLike);
+      .sign(privateKey as CryptoKey);
   return {
     calls,
     sign,

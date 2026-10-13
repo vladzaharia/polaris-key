@@ -1,13 +1,7 @@
 import { issuerMetadataResponse } from "./oidcIssuerFake.js";
 import { bindFlow } from "./flowBinderHelper.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  exportJWK,
-  generateKeyPair,
-  importJWK,
-  type KeyLike,
-  SignJWT,
-} from "jose";
+import { exportJWK, generateKeyPair, importJWK, SignJWT } from "jose";
 import type { ManagedPayload } from "../src/core/licensing/payload.js";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
@@ -1308,7 +1302,7 @@ describe("handleAuthCallback ID-token verification (D9/D8)", () => {
   let env: Env;
   let kv: KvMock;
   let product: Product;
-  let priv: KeyLike;
+  let priv: CryptoKey;
 
   const ISSUER = "https://id.example";
   const AUD = "client-djdl";

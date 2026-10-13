@@ -48,7 +48,7 @@ import {
 import { createServer } from "node:net";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
-import { exportJWK, generateKeyPair, SignJWT, type KeyLike } from "jose";
+import { exportJWK, generateKeyPair, SignJWT } from "jose";
 import { getPlatformProxy } from "wrangler";
 import { publishPackage } from "../../../cli/src/package/publish.ts";
 import { registerPlatform } from "../register-platform.mjs";
@@ -373,7 +373,7 @@ interface Ctx {
   api: string;
   /** The registry host (PKG_ORIGIN). */
   registry: string;
-  key: { privateKey: KeyLike };
+  key: { privateKey: CryptoKey };
   dev: ChildProcess | null;
 }
 
