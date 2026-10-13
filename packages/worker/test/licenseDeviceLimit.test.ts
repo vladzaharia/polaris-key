@@ -232,10 +232,16 @@ describe("per-licence device limit (LX-14a)", () => {
       licenseId,
     );
     expect((await patch({})).status).toBe(200);
-    expect((await getLicense(db, "djdl", licenseId))!.device_limit).toBe(stored);
+    expect((await getLicense(db, "djdl", licenseId))!.device_limit).toBe(
+      stored,
+    );
     // An incoming limit above the ceiling is still refused, and changes nothing.
-    expect((await patch({ deviceLimit: MAX_DEVICE_LIMIT + 1 })).status).toBe(422);
-    expect((await getLicense(db, "djdl", licenseId))!.device_limit).toBe(stored);
+    expect((await patch({ deviceLimit: MAX_DEVICE_LIMIT + 1 })).status).toBe(
+      422,
+    );
+    expect((await getLicense(db, "djdl", licenseId))!.device_limit).toBe(
+      stored,
+    );
   });
 
   it("applies to a sign-in licence, and claiming it through sign-in keeps the column", async () => {
