@@ -47,13 +47,20 @@ export const DEV_WEB_ORIGINS: readonly string[] = [
   3000, 4173, 5173, 8080,
 ].flatMap((p) => [`http://localhost:${p}`, `http://127.0.0.1:${p}`]);
 
-/** The release deliverable's one build: what a dev release is published for. */
-export const TIDEWATER_BUILD = {
-  id: "macos",
-  platform: "macos",
-  arch: "universal",
-  format: "zip",
-} as const;
+/**
+ * The release deliverable's builds: one per platform the Node SDK canonicalises `os.platform()` to
+ * (`darwin` → `macos`, `win32` → `windows`, `linux`; `PLATFORM_SPELLINGS`), so a dev release has a
+ * feed target and an eligible build on whatever host the integrator runs. `universal` matches every arch.
+ */
+export const TIDEWATER_BUILDS = (["macos", "windows", "linux"] as const).map(
+  (platform) =>
+    ({
+      id: platform,
+      platform,
+      arch: "universal",
+      format: "zip",
+    }) as const,
+);
 
 /** The `.pkey/` documents as text, with the dev release key declared in `.pkey/release`. */
 export function tidewaterFiles(
@@ -91,12 +98,10 @@ export function tidewaterFiles(
           app: {
             kind: "app",
             versioning: { scheme: "semver" },
-            artifacts: [
-              {
-                ...TIDEWATER_BUILD,
-                match: "tidewater-*-macos.zip",
-              },
-            ],
+            artifacts: TIDEWATER_BUILDS.map((b) => ({
+              ...b,
+              match: `tidewater-*-${b.platform}.${b.format}`,
+            })),
           },
         },
       },

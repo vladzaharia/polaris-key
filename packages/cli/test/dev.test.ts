@@ -282,14 +282,8 @@ async function nodeClient(config: NodeQuickstart): Promise<PolarisKeyClient> {
     ...config,
     version: "1.0.0",
     // The generated file pins the release keys; where this build came from is the app's to say.
-    // The dev fixture's one build is macOS (TIDEWATER_BUILD). Pin the install to it, so the update
-    // decision does not depend on the runner's OS (a Linux runner has no feed target and gets `none`).
-    update: {
-      ...config.update,
-      outlet: "direct",
-      format: "zip",
-      platform: "macos",
-    },
+    // No platform or arch pin: the install is the runner's own, as an integrator's is.
+    update: { ...config.update, outlet: "direct", format: "zip" },
     deviceName: "pkey dev test",
     store: new InMemoryStore(),
     configDir: path.join(dir, "config"),
@@ -725,6 +719,32 @@ describe("the Node SDK against a live pkey dev server", () => {
       action: "binary",
       method: "download",
       release: { version: "1.2.0" },
+    });
+  });
+
+  it("B6: the seeded release has a build for this host's platform, with no platform pin", async () => {
+    const running = await start();
+    const { s } = running;
+    // `os.platform()` is what the Node SDK canonicalises: `darwin` is `macos`, `win32` is `windows`.
+    const host = { darwin: "macos", win32: "windows", linux: "linux" }[
+      os.platform() as "darwin" | "win32" | "linux"
+    ];
+    expect(host).toBeDefined();
+    const client = await nodeClient(await nodeQuickstart(running));
+    expect(
+      (await client.license.activateWithKey(running.info.keys.ok!)).kind,
+    ).toBe("ok");
+    expect(
+      (await post(s.url, "release", { version: "1.2.0", channel: "stable" }))
+        .status,
+    ).toBe(200);
+    const next = await client.update.decide({ channel: "latest" });
+    expect(next.errors).toEqual([]);
+    expect(next.decision).toMatchObject({
+      action: "binary",
+      release: { version: "1.2.0" },
+      // The build id is its platform (TIDEWATER_BUILDS).
+      build: host,
     });
   });
 });

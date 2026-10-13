@@ -26,7 +26,6 @@ import { NodeSqliteDb, openMemoryDb } from "./nodeSqlite.js";
 import { MIGRATIONS } from "pkey-dev:migrations";
 import {
   DEV_WEB_ORIGINS,
-  TIDEWATER_BUILD,
   tidewaterFiles,
   TIDEWATER_SLUG,
 } from "./tidewater.js";
@@ -373,13 +372,13 @@ export async function createWorld(opts: WorldOptions): Promise<World> {
 
   // ── Releases: signed, on stable and beta ─────────────────────────────────────────────────
   const published: Array<{ version: string; channel: string }> = [];
-  const build = releaseBuildOf(manifest);
+  const builds = releaseBuildsOf(manifest);
 
   async function publishRelease(
     version: string,
     channel: string,
   ): Promise<string> {
-    if (!services.includes("release") || !build)
+    if (!services.includes("release") || builds.length === 0)
       throw new Error(
         "This product has no app deliverable to publish a release for.",
       );
@@ -401,12 +400,12 @@ export async function createWorld(opts: WorldOptions): Promise<World> {
     const t = now();
     const releaseId = `v${version}`;
     const bytes = `${slug} ${version}`;
-    const artifact = {
+    const artifactOf = (build: ReleaseBuild) => ({
       name: `${manifest.release?.binaryName ?? slug}-${version}-${build.platform}.${build.format}`,
       role: "payload",
       sha256: sha256(bytes),
       size: bytes.length,
-    };
+    });
     const descriptor = {
       descriptorVersion: 1,
       product: slug,
@@ -415,15 +414,13 @@ export async function createWorld(opts: WorldOptions): Promise<World> {
       version,
       seq,
       channel,
-      builds: [
-        {
-          id: build.id,
-          platform: build.platform,
-          arch: build.arch,
-          format: build.format,
-          artifacts: [artifact],
-        },
-      ],
+      builds: builds.map((build) => ({
+        id: build.id,
+        platform: build.platform,
+        arch: build.arch,
+        format: build.format,
+        artifacts: [artifactOf(build)],
+      })),
     };
     const record = descriptorToRecord(
       descriptor as unknown as ReleaseDescriptor,
@@ -463,7 +460,7 @@ export async function createWorld(opts: WorldOptions): Promise<World> {
           channel,
         ],
       ],
-      [
+      ...builds.map((build): [string, unknown[]] => [
         `INSERT INTO release_builds (product, release_id, build_id, platform, arch, format, created_at, modified_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         [
@@ -476,7 +473,7 @@ export async function createWorld(opts: WorldOptions): Promise<World> {
           t,
           t,
         ],
-      ],
+      ]),
       [
         `INSERT INTO release_records (product, deliverable_id, release_id, seq, kind, record_sha256, kid, jws, ingested_at)
          VALUES (?, 'app', ?, ?, 'app', ?, ?, ?, ?)`,
@@ -500,7 +497,7 @@ export async function createWorld(opts: WorldOptions): Promise<World> {
     return `published ${version} on ${channel} (seq ${seq})`;
   }
 
-  if (release && build) {
+  if (release && builds.length > 0) {
     await publishRelease("1.0.0", "stable");
     await publishRelease("1.1.0-beta.1", "beta");
   }
@@ -656,24 +653,33 @@ async function seedReleaseKey(
   return list;
 }
 
-function releaseBuildOf(
+interface ReleaseBuild {
+  id: string;
+  platform: string;
+  arch: string;
+  format: string;
+}
+
+/** Every payload build the manifest's app deliverable declares: a dev release publishes them all. */
+function releaseBuildsOf(
   manifest: ReturnType<typeof parseManifest> extends infer R
     ? R extends { ok: true; manifest: infer M }
       ? M
       : never
     : never,
-): { id: string; platform: string; arch: string; format: string } | null {
+): ReleaseBuild[] {
   const app = manifest.release?.app;
-  const art = (
-    app as { artifacts?: Array<Record<string, unknown>> } | undefined
-  )?.artifacts?.find((a) => (a.role ?? "payload") === "payload");
-  if (!art) return null;
-  return {
-    id: String(art.id),
-    platform: String(art.platform ?? TIDEWATER_BUILD.platform),
-    arch: String(art.arch ?? "any"),
-    format: String(art.format ?? "zip"),
-  };
+  const artifacts =
+    (app as { artifacts?: Array<Record<string, unknown>> } | undefined)
+      ?.artifacts ?? [];
+  return artifacts
+    .filter((a) => (a.role ?? "payload") === "payload")
+    .map((a) => ({
+      id: String(a.id),
+      platform: String(a.platform),
+      arch: String(a.arch ?? "any"),
+      format: String(a.format ?? "zip"),
+    }));
 }
 
 export { TIDEWATER_SLUG };
