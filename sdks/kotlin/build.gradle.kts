@@ -39,7 +39,7 @@ if (findProject(":platform") != null) {
 // this; the kotlin and android CI jobs run it.
 val jvmModules = listOf(":core", ":license", ":config", ":identity", ":release", ":update", ":packs", ":sdk", ":desktop", ":zstd", ":ui-core")
 val serviceModules = listOf(":license", ":config", ":identity", ":release", ":update", ":packs")
-val checkModuleBoundaries by tasks.registering {
+val checkModuleBoundaries = tasks.register("checkModuleBoundaries") {
     group = "verification"
     description = "Fails when a JVM module reaches Android, a service module reaches a sibling, :platform reaches an SDK module, or a module other than :android sees both :core and :platform."
     val jvmProjects = jvmModules.map { project(it) }
@@ -122,7 +122,7 @@ val checkModuleBoundaries by tasks.registering {
                     }
                     for (c in result) {
                         val id = c.id
-                        if (id is org.gradle.api.artifacts.component.ProjectComponentIdentifier && id.build.isCurrentBuild) {
+                        if (id is org.gradle.api.artifacts.component.ProjectComponentIdentifier && id.build.buildPath == ":") {
                             if (id.projectPath == ":core") seesCore = true
                             if (id.projectPath == ":platform") seesPlatform = true
                         }
