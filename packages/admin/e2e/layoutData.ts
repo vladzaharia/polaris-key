@@ -715,6 +715,8 @@ const KEK = {
   },
   remaining: 1,
   unopenable: 0,
+  countsComplete: true,
+  countsTruncated: [],
 };
 
 const HISTORY = {
