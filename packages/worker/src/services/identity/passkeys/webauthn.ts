@@ -31,7 +31,6 @@ import {
   verifyAuthenticationResponse,
   verifyRegistrationResponse,
   type AuthenticationResponseJSON,
-  type AuthenticatorTransportFuture,
   type PublicKeyCredentialCreationOptionsJSON,
   type PublicKeyCredentialRequestOptionsJSON,
   type RegistrationResponseJSON,
@@ -203,7 +202,7 @@ export function registrationOptions(
     attestationType: "none",
     excludeCredentials: exclude.map((c) => ({
       id: c.id,
-      transports: c.transports as AuthenticatorTransportFuture[],
+      transports: c.transports,
     })),
     authenticatorSelection: {
       residentKey: "required",
@@ -282,9 +281,7 @@ export function parseRegistrationResponse(
     response: {
       clientDataJSON: res.clientDataJSON,
       attestationObject: res.attestationObject,
-      transports: cleanTransports(
-        res.transports,
-      ) as AuthenticatorTransportFuture[],
+      transports: cleanTransports(res.transports),
     },
     clientExtensionResults: {},
   };
@@ -344,7 +341,7 @@ export async function verifyAssertion(input: {
         id: input.passkey.credential_id,
         publicKey: isoBase64URL.toBuffer(input.passkey.public_key),
         counter: 0,
-        transports: input.transports as AuthenticatorTransportFuture[],
+        transports: input.transports,
       },
       requireUserVerification: true,
     });
