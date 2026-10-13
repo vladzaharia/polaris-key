@@ -212,6 +212,13 @@ jobs:
   npm-tier-3:
     name: npm feed, tier 3
     needs: [version, npm-pack, npm-tier-2]
+    # ui-core is published on v* tag builds only. The live product rejects npm.ui-core with
+    # `unknown_deliverable` until a v* tag deploy (deploy.yml) registers the deliverable, so a
+    # push to main would fail here. Every tier above needs this one, so node, react, cli and the
+    # install check are skipped with it on a build of main: none can publish before the ui-core
+    # version it pins is on the feed. Remove this `if` after the first release that deploys the
+    # ui-core deliverables.
+    if: startsWith(github.ref, 'refs/tags/')
     strategy:
       fail-fast: false
       max-parallel: 3
@@ -492,7 +499,7 @@ jobs:
           VERSION: ${{ needs.version.outputs.version }}
         run: |
           tools/check_publication.sh
-          expected="android-direct android-play billing config core desktop godot-direct godot-play identity license packs platform-direct platform-play release sdk ui update zstd"
+          expected="android-direct android-play billing config core desktop godot-direct godot-play identity license packs platform-direct platform-play release sdk ui ui-core update zstd"
           repo=build/repo/im/plrs/key
           actual="$(find "$repo" -mindepth 1 -maxdepth 1 -type d -name 'polaris-key-*' -printf '%f\n' | sed 's/^polaris-key-//' | LC_ALL=C sort | tr '\n' ' ' | sed 's/ $//')"
           if [ "$actual" != "$expected" ]; then
@@ -564,12 +571,33 @@ jobs:
       version: ${{ needs.version.outputs.version }}
       channel: ${{ needs.version.outputs.channel }}
 
+  # maven.ui-core is a job of its own, not a leg of the matrix above: a matrix leg cannot be
+  # skipped by a job-level `if`. Same gate as npm-tier-3, for the same reason: the live product
+  # rejects maven.ui-core with `unknown_deliverable` until a v* tag deploy (deploy.yml) registers
+  # the deliverable. Remove the `if` once the first release that deploys it has shipped, and move
+  # `ui-core` into the matrix.
+  maven-ui-core:
+    name: Maven feed (ui-core)
+    needs: [version, kotlin-build]
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/publish-package.yml
+    with:
+      deliverable: maven.ui-core
+      artifact: maven-repo
+      version: ${{ needs.version.outputs.version }}
+      channel: ${{ needs.version.outputs.channel }}
+
   # ── Godot: the polaris_key addon ────────────────────────────────────────────────────────────
   godot-test:
     name: Test the Godot SDK (4.7.2 editor + release template)
     needs: version
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # The whole run_tests.sh lane takes ~26 minutes on a hosted runner (editor ~6, ui-matrix ~13,
+    # template ~6); ci.yml's godot job allows 60.
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -579,7 +607,10 @@ jobs:
       - run: sdks/godot/tools/fetch_godot.sh 4.7.2 "$HOME/.cache/pkey-godot/4.7.2" --template
       - run: |
           D="$HOME/.cache/pkey-godot/4.7.2"
-          GODOT_BIN="$D/godot" GODOT_TEMPLATE="$D/linux_release.x86_64" sdks/godot/tools/run_tests.sh
+          # ci.yml's godot job sets the same: the `ci` selection's editor step takes ~6 minutes on
+          # a hosted runner, past run_tests.sh's default 300 s per step (the ui-matrix step has its
+          # own limit).
+          GODOT_BIN="$D/godot" GODOT_TEMPLATE="$D/linux_release.x86_64" PKEY_TEST_TIMEOUT=900 sdks/godot/tools/run_tests.sh
       - if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -753,6 +784,7 @@ jobs:
         python,
         swift,
         maven,
+        maven-ui-core,
         godot,
         image,
       ]
@@ -776,9 +808,13 @@ jobs:
           VERSION: ${{ needs.version.outputs.version }}
           PEP440: ${{ needs.version.outputs.pep440 }}
           CHANNEL: ${{ needs.version.outputs.channel }}
+          # What a build of main does not publish (see npm-tier-3): the ui-core deliverables and
+          # the npm packages that pin ui-core. A tag build publishes them all.
+          SKIP: ${{ !startsWith(github.ref, 'refs/tags/') && 'npm.ui-core,npm.node,npm.react,npm.cli,maven.ui-core' || '' }}
         run: >-
           node tools/feed-drift.mjs --origin https://pkg.plrs.im --owner polaris-key
           --version "$VERSION" --pep440 "$PEP440" --channel "$CHANNEL" --timeout 600
+          --skip "$SKIP"
       # P0-52: every @polaris-key pin of every package at this version is a version the feed
       # lists. Only this version's broken pins fail the run; a broken pin on an older version is
       # a warning here and an error in the daily feed-closure.yml. It runs after a red drift
@@ -820,6 +856,7 @@ jobs:
         python,
         swift,
         maven,
+        maven-ui-core,
         godot,
         image,
         drift,

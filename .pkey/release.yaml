@@ -189,7 +189,15 @@ release:
       ecosystem: maven
       name: "im.plrs.key:polaris-key-ui"
       artifacts:
-        files: { match: "polaris-key-ui-*" }
+        # `?` takes the version's first digit (a single-digit major), so this glob does not also
+        # take polaris-key-ui-core-*; a 10.x release widens it.
+        files: { match: "polaris-key-ui-?.*" }
+    maven.ui-core:
+      kind: package
+      ecosystem: maven
+      name: "im.plrs.key:polaris-key-ui-core"
+      artifacts:
+        files: { match: "polaris-key-ui-core-*" }
     maven.billing:
       kind: package
       ecosystem: maven

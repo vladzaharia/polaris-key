@@ -5,7 +5,11 @@
  * the newest version of its kind, and fail loudly otherwise.
  *
  *   node tools/feed-drift.mjs --origin https://pkg.plrs.im --version 0.9.1-main.4 \
- *     --pep440 0.9.1.dev4 --channel main [--owner polaris-key] [--root .] [--timeout 600]
+ *     --pep440 0.9.1.dev4 --channel main [--owner polaris-key] [--root .] [--timeout 600] \
+ *     [--only npm,maven] [--skip npm.ui-core,maven.ui-core]
+ *
+ * `--skip` names deliverable ids a build does not publish (publish-sdks.yml publishes the
+ * `ui-core` deliverables, and so the packages that pin it, on v* tag builds only); they are not read.
  *
  * For each package deliverable it reads the feed's own version listing, over plain HTTP, as a
  * client would:
@@ -297,13 +301,15 @@ export async function checkDrift({
   expected,
   timeoutSec,
   only,
+  skip,
   log = () => {},
   sleep,
   warnings,
 }) {
   const wait = sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
   let pending = packageDeliverables(root).filter(
-    (d) => !only?.length || only.includes(d.ecosystem),
+    (d) =>
+      (!only?.length || only.includes(d.ecosystem)) && !skip?.includes(d.id),
   );
   const until = Date.now() + timeoutSec * 1000;
   const problems = new Map();
@@ -353,6 +359,7 @@ async function main(argv) {
     join(fileURLToPath(new URL(".", import.meta.url)), "..");
   const timeoutSec = Number(arg(argv, "--timeout") ?? "600");
   const only = (arg(argv, "--only") ?? "").split(",").filter(Boolean);
+  const skip = (arg(argv, "--skip") ?? "").split(",").filter(Boolean);
   const warnings = new Map();
   const problems = await checkDrift({
     origin,
@@ -361,11 +368,12 @@ async function main(argv) {
     expected: { version, pep440, channel },
     timeoutSec,
     only,
+    skip,
     log: (m) => process.stdout.write(`${m}\n`),
     warnings,
   });
   const all = packageDeliverables(root).filter(
-    (d) => !only.length || only.includes(d.ecosystem),
+    (d) => (!only.length || only.includes(d.ecosystem)) && !skip.includes(d.id),
   );
   for (const d of all) {
     const p = problems.get(d.id);
