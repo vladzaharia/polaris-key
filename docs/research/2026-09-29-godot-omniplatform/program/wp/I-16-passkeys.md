@@ -65,9 +65,8 @@ Passkeys are the main defence of a high-value shared account and are phishing-re
   `GET /api/me/passkeys` → `canAdd` / `reason` for the nudge card's "Add a passkey" row.
 - **RP id** is the console host from `CONSOLE_ORIGIN` (`key.plrs.im` in production,
   `key-staging.plrs.im` on staging), not a constant, and a ceremony is served only on that origin.
-- **Dependency.** `@simplewebauthn/server` is pinned at 14.0.3 (14.x adds optional
-  post-quantum ML-DSA support; the Worker passes its own `supportedAlgorithmIDs`, so it is
-  unaffected, and transports are plain `string[]`).
+- **Dependency.** `@simplewebauthn/server` is pinned at 13.3.3 (the last 13.x; 14.x adds a
+  post-quantum ASN.1 module the Worker does not need).
 - **The workerd lane** ordered migrations by `parseInt` of the prefix, so an unnumbered
   placeholder that alters a table ran before the table existed. It now sorts by filename, as the
   Node lane, `record-deploy` and `LATEST_MIGRATION` do (identical for numbered files). While the
