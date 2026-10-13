@@ -53,6 +53,7 @@ import { PageSkeleton, Skeleton } from "../../../../ui/Skeleton.js";
 import { StatusPill } from "../../../../ui/StatusPill.js";
 import { Timeline, TimelineItem } from "../../../../ui/Timeline.js";
 import { PageHeader } from "../../../../ui/PageHeader.js";
+import { LegacyKeyRow, ResealProgressRow } from "./platformKeyringRows.js";
 import {
   EditableRow,
   fetchSettingsHistory,
@@ -851,24 +852,10 @@ function KeyringSection({
               })}
             </ul>
           </SettingsRow>
-          <SettingsRow label="Re-seal progress">
-            {k.unopenable > 0 ? (
-              <Callout tone="danger" title="Values cannot be opened">
-                {formatCount(k.unopenable)} sealed{" "}
-                {k.unopenable === 1 ? "value is" : "values are"} under a key no
-                longer in the ring. Put that key back in PLATFORM_KEK_KEYS.
-              </Callout>
-            ) : k.remaining > 0 ? (
-              <StatusPill tone="warning">
-                {formatCount(k.remaining)} still on an older key
-              </StatusPill>
-            ) : (
-              <StatusPill tone="success">
-                Every value is under the active key
-              </StatusPill>
-            )}
-          </SettingsRow>
-          {k.legacy ? <LegacyKeyRow legacy={k.legacy} /> : null}
+          <ResealProgressRow status={k} />
+          {k.legacy ? (
+            <LegacyKeyRow legacy={k.legacy} complete={k.countsComplete} />
+          ) : null}
           {groups.length > 0 ? (
             <SettingsRow label="Sealed values" align="block">
               <ul className="space-y-1.5">
@@ -891,62 +878,6 @@ function KeyringSection({
         </>
       )}
     </SettingsSection>
-  );
-}
-
-/**
- * The legacy `PLATFORM_KEK` beside `PLATFORM_KEK_KEYS`: what is still sealed under it, and
- * whether `PLATFORM_KEK` can be deleted yet. The sweep moves the stored values; sealed Worker
- * secrets are re-sealed by hand, so they are named.
- */
-function LegacyKeyRow({
-  legacy,
-}: {
-  legacy: NonNullable<PlatformKekStatus["legacy"]>;
-}): React.ReactElement {
-  return (
-    <SettingsRow label="Legacy key" align="block">
-      <div className="space-y-2">
-        <p className="text-sm text-fg-muted">
-          {legacy.openOnly ? (
-            <>
-              PLATFORM_KEK is kept in the ring as{" "}
-              <span className="font-mono text-xs text-fg">{legacy.kid}</span>,
-              open only: nothing new is sealed under it.
-            </>
-          ) : (
-            <>
-              PLATFORM_KEK is a copy of the ring&apos;s{" "}
-              <span className="font-mono text-xs text-fg">{legacy.kid}</span>{" "}
-              key.
-            </>
-          )}
-        </p>
-        {legacy.safeToDelete ? (
-          <StatusPill tone="success">Safe to delete PLATFORM_KEK</StatusPill>
-        ) : legacy.remaining > 0 ? (
-          <StatusPill tone="warning">
-            {formatCount(legacy.remaining)} still under {legacy.kid}
-          </StatusPill>
-        ) : (
-          <StatusPill tone="warning">
-            Worker secrets still under {legacy.kid}
-          </StatusPill>
-        )}
-        {legacy.workerSecrets.length > 0 ? (
-          <p className="text-sm text-fg-muted">
-            Re-seal and set again before deleting it:{" "}
-            {legacy.workerSecrets.map((name, i) => (
-              <React.Fragment key={name}>
-                {i > 0 ? ", " : null}
-                <span className="font-mono text-xs text-fg">{name}</span>
-              </React.Fragment>
-            ))}
-            .
-          </p>
-        ) : null}
-      </div>
-    </SettingsRow>
   );
 }
 

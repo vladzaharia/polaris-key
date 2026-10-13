@@ -77,11 +77,13 @@ import { isManagedSecretKey } from "../core/managedSecrets.js";
 import { SETTINGS } from "../mount.js";
 import type { FetchImpl } from "../services/release/public.js";
 import {
+  managedSecretKeyPredicate,
   readLinkedManifest,
+  readManifestFilesAt,
   screenCatalog,
+  sealedProfilePayload,
   withStoredSecrets,
 } from "../services/release/public.js";
-import { readManifestFilesAt } from "../services/release/public.js";
 
 export interface BackfillRunOptions {
   dryRun: boolean;
@@ -436,6 +438,38 @@ export async function runSettingsBackfill(
   const catalogKept = claims.live.some((c) => c.key === "config.catalog");
   const carryCatalog =
     catalogKept && storedCatalog ? storedCatalog : screened.catalog;
+
+  // A value the manifest declares under a managed secret key is SEALED before the apply writes
+  // it, and a manifest value that would replace an already-sealed stored one refuses the run:
+  // the same two rules a resync applies to the same rows (`manifestSecrets.ts`), judged by the
+  // union of the catalog being applied and the stored one. Done for a dry run too, so the report
+  // shows the refusal the apply would hit, and never a payload an apply would not write.
+  const sealKey = managedSecretKeyPredicate(
+    storedCatalog ? [screened.catalog, storedCatalog] : [screened.catalog],
+  );
+  const storedProfileById = new Map(profiles.map((p) => [p.id, p]));
+  const sealedProfiles = new Map<string, Record<string, unknown>>();
+  for (const p of manifest.profiles) {
+    const sealed = await sealedProfilePayload(
+      env,
+      slug,
+      p.id,
+      p.payload,
+      sealKey,
+      storedProfileById.get(p.id)?.payload_json,
+    );
+    if (!sealed.ok)
+      return storeOnly(
+        db,
+        emptyReport(slug, opts, "refused", {
+          message: sealed.error,
+          source: source.source,
+          ...(corroboration ? { corroboration } : {}),
+          stateToken: token,
+        }),
+      );
+    sealedProfiles.set(p.id, sealed.payload);
+  }
   const plan = planBackfill(
     manifest,
     {
@@ -450,7 +484,11 @@ export async function runSettingsBackfill(
       now: opts.now,
       system: product.system === 1,
       profilePayload: (p, stored) =>
-        withStoredSecrets(p.payload, stored?.payload_json, carryCatalog),
+        withStoredSecrets(
+          sealedProfiles.get(p.id) ?? p.payload,
+          stored?.payload_json,
+          carryCatalog,
+        ),
       rowSettings: rowSettingInputs(manifest),
       // Redacted in the report when EITHER catalog calls the key a managed secret.
       isSecretKey: (key) =>

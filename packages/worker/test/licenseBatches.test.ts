@@ -12,6 +12,7 @@
  *   - Licence reads carry `batchId` and the list filters on it.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { MAX_DEVICE_LIMIT } from "@polaris-key/manifest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedProduct, seedTier } from "./seed.js";
@@ -275,6 +276,15 @@ describe("POST …/license/batches", () => {
         ["name", "profiles"],
       ],
       [{ label: "x", count: 2, tier: "pro", deviceLimit: 0 }, ["deviceLimit"]],
+      [
+        {
+          label: "x",
+          count: 2,
+          tier: "pro",
+          deviceLimit: MAX_DEVICE_LIMIT + 1,
+        },
+        ["deviceLimit"],
+      ],
       [{ label: "x", count: 2, tier: "pro", expiresAt: "soon" }, ["expiresAt"]],
       [
         { label: "x", count: 2, tier: "pro", maxOfflineDays: 400 },
@@ -305,6 +315,18 @@ describe("POST …/license/batches", () => {
       await db.first<{ n: number }>("SELECT COUNT(*) AS n FROM licenses"),
     ).toEqual({ n: 0 });
     expect(await listAudit(db, SLUG)).toHaveLength(0);
+  });
+
+  it("accepts a device limit up to the ceiling and stores it on every licence", async () => {
+    const { res, body } = await createBatch({
+      label: "Ceiling",
+      count: 2,
+      tier: "pro",
+      deviceLimit: MAX_DEVICE_LIMIT,
+    });
+    expect(res.status).toBe(201);
+    for (const r of await batchLicenses(body.batchId))
+      expect(r.device_limit).toBe(MAX_DEVICE_LIMIT);
   });
 
   it("is all or nothing: a failure on the last licence's key leaves no batch, licence, key or audit row", async () => {

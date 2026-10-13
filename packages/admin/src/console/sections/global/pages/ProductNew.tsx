@@ -20,6 +20,7 @@ import { GithubIcon } from "../../../../ui/GithubIcon.js";
 import { Input } from "../../../../ui/Input.js";
 import { NumberInput } from "../../../../ui/NumberInput.js";
 import { RadioCards } from "../../../../ui/RadioCards.js";
+import { deviceLimitIssue } from "../../../../lib/deviceLimit.js";
 import { useUnsavedChangesGuard } from "../../../../ui/useUnsavedChangesGuard.js";
 import { Breadcrumbs } from "../../../components/Breadcrumbs.js";
 import { PageHeader } from "../../../../ui/PageHeader.js";
@@ -306,10 +307,8 @@ export function ProductNew(): React.ReactElement {
     if (days !== null && (!Number.isInteger(days) || days < 1 || days > 365))
       fieldErrors.maxOfflineDays =
         "Use a whole number from 1 to 365, or leave it blank.";
-    const devices = draft.deviceLimit;
-    if (devices !== null && (!Number.isInteger(devices) || devices < 1))
-      fieldErrors.deviceLimit =
-        "Use a whole number of 1 or more, or leave it blank.";
+    const devices = deviceLimitIssue(draft.deviceLimit, "leave it blank");
+    if (devices) fieldErrors.deviceLimit = devices;
   } else if (draft.repo.trim() === "") {
     fieldErrors.repoUrl = "Enter the repository.";
   } else if (!repo) {

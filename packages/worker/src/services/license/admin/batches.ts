@@ -53,7 +53,11 @@ import {
   unusedCountIs,
 } from "../batches.js";
 import type { LicenseAdminContext } from "./index.js";
-import { invalidLicenseDeviceLimit, parseChannels } from "./licenses.js";
+import {
+  invalidLicenseDeviceLimit,
+  licenseDeviceLimitRefusal,
+  parseChannels,
+} from "./licenses.js";
 
 /** Holder fields a batch refuses: its licences are floating (S-24 D1, D10). */
 const HOLDER_FIELDS = ["name", "email", "profiles", "profile"] as const;
@@ -272,13 +276,7 @@ async function createBatch(ctx: LicenseAdminContext): Promise<Response> {
       `count must be an integer from 1 to ${MAX_BATCH_COUNT}`,
       { fields: ["count"] },
     );
-  if (invalidLicenseDeviceLimit(body))
-    return err(
-      422,
-      ErrorCode.BadRequest,
-      "deviceLimit must be a positive integer or null",
-      { fields: ["deviceLimit"] },
-    );
+  if (invalidLicenseDeviceLimit(body)) return licenseDeviceLimitRefusal();
   if (invalidExpiresAt(body))
     return err(
       422,

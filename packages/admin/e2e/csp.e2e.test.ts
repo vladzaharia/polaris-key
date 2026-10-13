@@ -219,6 +219,8 @@ const ROUTES: Record<string, unknown> = {
     counts: { keys: { "kek-1": 2 } },
     remaining: 0,
     unopenable: 0,
+    countsComplete: true,
+    countsTruncated: [],
   },
   "/manage/api/platform/operations": {
     generatedAt: 1_790_000_000,

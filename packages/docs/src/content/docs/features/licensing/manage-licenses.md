@@ -153,7 +153,7 @@ nobody out: the `PATCH` answers `overLimit` and the next new device is refused. 
 audited as `license.device_limit.set` with the old and new values.
 
 The API is the same `PATCH /manage/api/products/<slug>/license/licenses/<id>` with
-`deviceLimit`: a positive integer, or `null` to inherit; anything else is a `422`. Every license
+`deviceLimit`: a whole number from 1 to 1000, or `null` to inherit; anything else is a `422`. A batch create takes the same range. Every license
 read answers `deviceLimit` (the stored value), `effectiveDeviceLimit` (`0`: no limit),
 `deviceLimitSource` (`license`, `tier`, `entitlement` or `product`) and the inherited pair
 `inheritedDeviceLimit` / `inheritedDeviceLimitSource`. The detail read also answers `seatDeviceCount`, the devices

@@ -30,6 +30,11 @@
 import { APP_DELIVERABLE_ID, type ParsedManifest } from "@polaris-key/manifest";
 import type { ReleaseAccess } from "@polaris-key/protocol/release";
 import type { Db, DbStatement } from "../../db/types.js";
+import { RESYNC_ACTOR } from "../../core/settingsClaims.js";
+import { randomId } from "../../platform/crypto.js";
+
+/** The registry key the delivery-access audit rows are written under. */
+const DISTRIBUTION_ACCESS_SETTING = "distribution.access";
 
 /** The four modes, loosest first. */
 export const ACCESS_MODES: readonly ReleaseAccess[] = [
@@ -263,6 +268,7 @@ export function accessIngestStatements(
   const declared: unknown = parsed.release.access.artifacts;
   const mode: ReleaseAccess = isAccessMode(declared) ? declared : "entitled";
   return [
+    accessIngestAudit(product, mode, now),
     {
       sql: `INSERT INTO dist_access (product, deliverable_id, mode, entitlement, source, modified_at)
             VALUES (?, ?, ?, NULL, 'manifest', ?)
@@ -273,4 +279,46 @@ export function accessIngestStatements(
       params: [product, APP_DELIVERABLE_ID, mode, now],
     },
   ];
+}
+
+/**
+ * The audit row for the `app` row's manifest ingest: one `setting.resync` row naming
+ * `distribution.access` with the mode it moved from and to, written ONLY when the upsert that
+ * follows it in the batch will actually change the row. The condition is the upsert's own
+ * (`source = 'manifest'` and a different mode), evaluated against the row as the batch finds it,
+ * so an operator-owned row, a resync of an unchanged manifest and a first write (the row did not
+ * exist: nothing moved) leave no row. It reads `dist_access`, the truth store: the
+ * `release_config.artifacts_access` column the resync also writes is read by nothing. Must stay
+ * ahead of the upsert in the batch: afterwards the old mode is gone.
+ */
+function accessIngestAudit(
+  product: string,
+  mode: ReleaseAccess,
+  now: number,
+): DbStatement {
+  return {
+    sql: `INSERT INTO audit
+            (product, id, at, actor_sub, actor_name, actor_email, action, target_kind,
+             target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key)
+          SELECT ?, ?, ?, ?, ?, ?, 'setting.resync', 'setting', ?, NULL,
+                 ? || json_quote(mode) || ?, json_object('effective', mode), ?, 'resync', NULL, ?
+            FROM dist_access
+           WHERE product = ? AND deliverable_id = ? AND source = 'manifest' AND mode IS NOT ?`,
+    params: [
+      product,
+      randomId("aud"),
+      now,
+      RESYNC_ACTOR.sub,
+      RESYNC_ACTOR.name,
+      RESYNC_ACTOR.email,
+      DISTRIBUTION_ACCESS_SETTING,
+      `${DISTRIBUTION_ACCESS_SETTING} set from the manifest: `,
+      ` → ${JSON.stringify(mode)}`,
+      JSON.stringify({ effective: mode }),
+      DISTRIBUTION_ACCESS_SETTING,
+      product,
+      APP_DELIVERABLE_ID,
+      mode,
+    ],
+  };
 }

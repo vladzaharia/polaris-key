@@ -331,6 +331,8 @@ const KEK = {
   },
   remaining: 1,
   unopenable: 0,
+  countsComplete: true,
+  countsTruncated: [] as string[],
 };
 
 const HISTORY = {
@@ -1046,6 +1048,8 @@ describe("Keyring", () => {
       },
       remaining: 3,
       unopenable: 0,
+      countsComplete: true,
+      countsTruncated: [],
       legacy: {
         kid: "default",
         openOnly: true,
@@ -1095,6 +1099,45 @@ describe("Keyring", () => {
     expect(
       await within(keyring).findByText("Safe to delete PLATFORM_KEK"),
     ).toBeTruthy();
+  });
+
+  it("never reads a cut-short scan as done: the counts are minimums and a notice names the tables", async () => {
+    boot("#/platform/settings", {
+      extra: routes({
+        "/manage/api/products/kek": {
+          ...KEK,
+          remaining: 1,
+          countsComplete: false,
+          countsTruncated: ["profiles", "licenses"],
+        },
+      }),
+    });
+    const keyring = await section("Keyring");
+    expect(
+      await within(keyring).findByText("At least 1 still on an older key"),
+    ).toBeTruthy();
+    expect(
+      within(keyring).getByText("These counts are not complete"),
+    ).toBeTruthy();
+    expect(within(keyring).getByText(/profiles, licenses/)).toBeTruthy();
+    // Nothing on the panel claims the ring is finished.
+    expect(
+      within(keyring).queryByText("Every value is under the active key"),
+    ).toBeNull();
+    expect(
+      within(keyring).queryByText("Safe to delete PLATFORM_KEK"),
+    ).toBeNull();
+  });
+
+  it("shows no incompleteness notice when the scan covered every row", async () => {
+    boot("#/platform/settings", { extra: routes({}) });
+    const keyring = await section("Keyring");
+    expect(
+      await within(keyring).findByText("1 still on an older key"),
+    ).toBeTruthy();
+    expect(
+      within(keyring).queryByText("These counts are not complete"),
+    ).toBeNull();
   });
 
   it("says when the keyring is unusable", async () => {

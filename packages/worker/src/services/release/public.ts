@@ -26,6 +26,11 @@ export {
   productsByRepository,
 } from "./linkRepo.js";
 export { readManifestFilesAt } from "./manifestFetch.js";
+export {
+  managedSecretKeyPredicate,
+  parseStoredCatalog,
+  sealedProfilePayload,
+} from "./manifestSecrets.js";
 export { mirrorNow } from "./mirror.js";
 export { packageCatalog } from "./packages/catalog.js";
 export {

@@ -62,7 +62,7 @@ A named plan. A tier row is a profile reference plus policy:
 | `channels_json`               | Release channels this tier's licenses are entitled to.                        |
 | `min_version` / `max_version` | The tier's half of the version window.                                        |
 
-`policy_device_limit` must be a **positive integer**. A `0` or a `-1` used to mean "unlimited"
+`policy_device_limit` must be a **positive integer of at most 1000**. A `0` or a `-1` used to mean "unlimited"
 because the seat check was gated on `limit > 0`, which is the core commercial control removed by
 one mistyped admin field; the admin API now answers `422` and the database enforces the same
 rule. `NULL` — not zero — is how a tier says "use the product default".

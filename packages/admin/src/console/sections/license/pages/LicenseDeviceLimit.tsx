@@ -13,6 +13,10 @@ import * as React from "react";
 import type { LicenseDetail, TierSummary } from "../../../../api.js";
 import { mutate } from "../../../data/mutations.js";
 import { errorCopy } from "../../../../lib/errorCopy.js";
+import {
+  deviceLimitIssue,
+  MAX_DEVICE_LIMIT,
+} from "../../../../lib/deviceLimit.js";
 import { Button } from "../../../../ui/Button.js";
 import { Callout } from "../../../../ui/Callout.js";
 import { Drawer, DrawerBody, DrawerFooter } from "../../../../ui/Drawer.js";
@@ -139,8 +143,10 @@ function DeviceLimitForm({
       if (v.deviceLimit === null)
         e.deviceLimit =
           "Enter a number of devices, or use the inherited limit.";
-      else if (!Number.isInteger(v.deviceLimit) || v.deviceLimit < 1)
-        e.deviceLimit = "Enter a whole number of at least 1.";
+      else {
+        const issue = deviceLimitIssue(v.deviceLimit);
+        if (issue) e.deviceLimit = issue;
+      }
       return e;
     },
     onSubmit: async (draft) => {
@@ -192,6 +198,7 @@ function DeviceLimitForm({
               nullable
               integer
               min={1}
+              max={MAX_DEVICE_LIMIT}
               unit="devices"
               placeholder={inherited.text}
               className="sm:max-w-64"

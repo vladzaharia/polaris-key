@@ -851,14 +851,9 @@ async function applyRepoManifest(
           null,
           owned,
         );
-      if ((cfg.artifacts_access ?? null) !== rel.access.artifacts)
-        auditSetting(
-          "distribution.access",
-          cfg.artifacts_access ?? null,
-          rel.access.artifacts,
-          null,
-          owned,
-        );
+      // The artifacts mode is audited where it is written: Distribution's `dist_access` ingest
+      // (`accessIngestStatements`) emits `distribution.access` against the row it moves, not
+      // against the `release_config.artifacts_access` column nothing reads.
     }
     updated.push("release");
   }

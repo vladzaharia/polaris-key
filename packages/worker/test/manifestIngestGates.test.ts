@@ -345,6 +345,11 @@ describe("a resync leaves one audit row per manifest-written field it changes", 
       "UPDATE release_config SET access_source = 'admin' WHERE product = ?",
       SLUG,
     );
+    // The artifacts mode is owned by Distribution's own row, which is what the ingest guards.
+    await ctx.db.run(
+      "UPDATE dist_access SET source = 'admin' WHERE product = ? AND deliverable_id = 'app'",
+      SLUG,
+    );
 
     const res = await resync(ctx, {
       release: { access: { metadata: "licensed", artifacts: "licensed" } },
@@ -359,6 +364,40 @@ describe("a resync leaves one audit row per manifest-written field it changes", 
     expect(res.ok, JSON.stringify(res)).toBe(true);
 
     expect(await resyncAudits(ctx)).toEqual([]);
+  });
+
+  it("audits the delivery-access row the ingest moves, from and to, once; never an unchanged or operator-owned one", async () => {
+    const ctx = await linked();
+    const mode = () =>
+      ctx.db.first<{ mode: string }>(
+        "SELECT mode FROM dist_access WHERE product = ? AND deliverable_id = 'app'",
+        SLUG,
+      );
+    const accessRows = async () =>
+      (await resyncAudits(ctx)).filter(
+        (r) => r.target_id === "distribution.access",
+      );
+    const licensed = { release: { access: { artifacts: "licensed" } } };
+
+    expect((await resync(ctx, licensed)).ok).toBe(true);
+    expect((await mode())?.mode).toBe("licensed");
+    expect(
+      (await accessRows()).map((r) => [r.before_json, r.after_json]),
+    ).toEqual([['{"effective":"public"}', '{"effective":"licensed"}']]);
+
+    // The same manifest again moves nothing, so adds nothing.
+    expect((await resync(ctx, licensed, NOW + 120)).ok).toBe(true);
+    expect(await accessRows()).toHaveLength(1);
+
+    // An operator claim stops the ingest, and with it the audit row for a write it skipped.
+    await ctx.db.run(
+      "UPDATE dist_access SET source = 'admin' WHERE product = ? AND deliverable_id = 'app'",
+      SLUG,
+    );
+    const open = { release: { access: { artifacts: "public" } } };
+    expect((await resync(ctx, open, NOW + 180)).ok).toBe(true);
+    expect((await mode())?.mode).toBe("licensed");
+    expect(await accessRows()).toHaveLength(1);
   });
 });
 

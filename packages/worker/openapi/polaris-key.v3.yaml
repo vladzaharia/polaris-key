@@ -19282,7 +19282,7 @@ components:
         label: { type: string, minLength: 1, maxLength: 80 }
         count: { type: integer, minimum: 1, maximum: 500 }
         tier: { type: string }
-        deviceLimit: { type: [integer, "null"], minimum: 1 }
+        deviceLimit: { type: [integer, "null"], minimum: 1, maximum: 1000 }
         expiresAt: { type: [integer, "null"] }
         maxOfflineDays: { type: integer, minimum: 1, maximum: 365 }
         channels: { type: array, items: { type: string } }
@@ -19315,7 +19315,7 @@ components:
         channels: { type: [array, "null"], items: { type: string } }
         minVersion: { type: [string, "null"] }
         maxVersion: { type: [string, "null"] }
-        deviceLimit: { type: [integer, "null"], minimum: 1 }
+        deviceLimit: { type: [integer, "null"], minimum: 1, maximum: 1000 }
         profiles: { type: array, items: { type: string } }
     AdminOverrideUpdate:
       type: object
