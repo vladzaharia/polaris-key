@@ -6,6 +6,16 @@ deprecated aliases).
 
 ## Unreleased
 
+- **Server drop-ins (`server.license`, `server.signin`, SP-57).** `im.plrs.key:polaris-key-server`
+  (`:server`) decides a request to a product backend from the app's signed licence document,
+  offline (WIRE-CONTRACT-V4 §14): `backendVerdict` (the six steps), `backendProblem` (the
+  `application/problem+json` body, the `PKey-License` challenge and the eight copy locales, copied
+  into the JAR from `conformance/parity`), and `PolarisServer` (the 900 s trust refresh, the
+  unknown-`kid` fetch at most once a minute, the verified-document cache). It replays
+  `backend-matrix.json` on the JCA and with Tink forced. `im.plrs.key:polaris-key-server-ktor`
+  (`:server-ktor`) is the Ktor plugin: `polarisKey { }`, `requireLicense`, `requireEntitlement`,
+  `requireSignIn`, `onRefusal` and `errors = ErrorMode.Throw`. Nothing logs the header, the JWS or
+  the holder.
 - **Product presentation** (`core.presentation`, HA-13): `ProductDiscoveryDocument.presentation`,
   `client.presentation()`, `client.presentationIcon(px, scale)` and `client.presentationSource`
   (`im.plrs.key.core.PresentationSource`); the icon verified by SHA-256 and cached by hash.

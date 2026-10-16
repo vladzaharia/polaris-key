@@ -13,6 +13,8 @@
     "sdks/kotlin/ui/src/test",
     "sdks/kotlin/ui-core/src/test",
     "sdks/kotlin/sdk/src/test",
+    "sdks/kotlin/server/src/test",
+    "sdks/kotlin/server-ktor/src/test",
     "sdks/kotlin/conformance/src/test",
     "sdks/kotlin/android/src/test",
     "sdks/kotlin/android/src/testPlay",
@@ -493,8 +495,7 @@
       "wp": "U-23"
     },
     "server.license": {
-      "status": "planned",
-      "wp": "SP-57",
+      "status": "implemented",
       "except": [
         {
           "runtime": "android",
@@ -502,18 +503,18 @@
           "note": "An Android app is not a server."
         }
       ],
-      "note": "polaris-key-server and the Ktor plugin; Spring Boot follows (SP-61)."
+      "note": "im.plrs.key:polaris-key-server (the verdict, the problem, the trust refresh) and polaris-key-server-ktor (SP-57), replaying backend-matrix.json's verdict and problem sections on the JCA and with Tink forced, and each verdict row over a gated Ktor route. Spring Boot follows (SP-61)."
     },
     "server.signin": {
-      "status": "planned",
-      "wp": "SP-57",
+      "status": "implemented",
       "except": [
         {
           "runtime": "android",
           "reason": "runtime",
           "note": "An Android app is not a server."
         }
-      ]
+      ],
+      "note": "requireSignIn() reads profile.user.subject through :core's licenseUser; the verdict rows pin it (SP-57)."
     },
     "server.config": {
       "status": "planned",
