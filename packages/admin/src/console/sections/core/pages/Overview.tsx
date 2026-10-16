@@ -89,9 +89,8 @@ import { fetchSigningKeys } from "./Keys.js";
 import {
   SDK_OPTIONS,
   SDK_QUICK_START_ID,
-  sdkInit,
-  sdkInstall,
-  sdkInstallNote,
+  codeLanguage,
+  sdkSetup,
   trustPins,
   type SdkId,
 } from "../model/sdkQuickStart.js";
@@ -1218,9 +1217,8 @@ function TrustPanel({
   const services = SERVICE_ORDER.filter((s) => on(p, s));
   const pins = trustPins(keys.data?.keys, { kid, publicKey: pub });
   const staged = pins.length > 1;
-  const install = sdkInstall(sdk);
-  const note = sdkInstallNote(sdk);
-  const init = sdkInit(sdk, { slug, origin, pins, services });
+  const setup = sdkSetup(sdk, { slug, origin, pins, services });
+  const { install, installNote: note, config, start, warnings } = setup;
   return (
     <Panel
       title="Trust & SDK"
@@ -1297,7 +1295,7 @@ function TrustPanel({
           {note ? <p className="text-sm text-fg-muted">{note}</p> : null}
           <div className="space-y-1.5">
             <p className="text-xs font-medium text-fg-muted">
-              Initialise the client
+              Configuration, with your trust pins
             </p>
             {staged ? (
               <p className="text-sm text-fg-muted">
@@ -1305,13 +1303,24 @@ function TrustPanel({
                 build keeps working after the rotation.
               </p>
             ) : null}
-            {init.hint ? (
-              <p className="text-sm text-fg-muted">{init.hint}</p>
-            ) : null}
+            {warnings.map((w) => (
+              <Callout key={w} tone="warning">
+                {w}
+              </Callout>
+            ))}
             <CodeBlock
-              code={init.code}
-              language={init.language}
-              filename={init.filename}
+              code={config.code}
+              language={codeLanguage(config.language)}
+              filename={config.filename}
+              wrap
+            />
+          </div>
+          <div className="space-y-1.5">
+            <p className="text-xs font-medium text-fg-muted">{start.title}</p>
+            <CodeBlock
+              code={start.code}
+              language={codeLanguage(start.language)}
+              filename={start.filename}
               wrap
             />
           </div>

@@ -385,10 +385,17 @@ describe("@polaris-key/cli", () => {
     expect(
       await runPkey(["trust", "--kid", "kid1", "--public-key", "pub1"], trust),
     ).toBe(0);
+    // Every SDK's config module, from the one renderer `pkey sdk` writes with.
     expect(trust.out()).toContain('"kid1": "pub1"');
-    expect(trust.out()).toContain(
-      'const PINNED_TRUST_KEYS := {"kid1": "pub1"}',
-    );
+    for (const file of [
+      "polaris.config.ts",
+      "polaris_config.py",
+      "PolarisConfig.swift",
+      "PolarisConfig.kt",
+      "polaris_key_config.gd",
+    ])
+      expect(trust.out()).toContain(file);
+    expect(trust.out()).toContain("const PINNED_TRUST_KEYS := {");
 
     const sdk = capture();
     expect(

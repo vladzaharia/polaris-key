@@ -4456,7 +4456,7 @@ var require_directives = __commonJS({
         return tag2[0] === "!" ? tag2 : `!<${tag2}>`;
       }
       toString(doc) {
-        const lines3 = this.yaml.explicit ? [`%YAML ${this.yaml.version || "1.2"}`] : [];
+        const lines4 = this.yaml.explicit ? [`%YAML ${this.yaml.version || "1.2"}`] : [];
         const tagEntries = Object.entries(this.tags);
         let tagNames;
         if (doc && tagEntries.length > 0 && identity.isNode(doc.contents)) {
@@ -4472,9 +4472,9 @@ var require_directives = __commonJS({
           if (handle === "!!" && prefix === "tag:yaml.org,2002:")
             continue;
           if (!doc || tagNames.some((tn) => tn.startsWith(prefix)))
-            lines3.push(`%TAG ${handle} ${prefix}`);
+            lines4.push(`%TAG ${handle} ${prefix}`);
         }
-        return lines3.join("\n");
+        return lines4.join("\n");
       }
     };
     Directives.defaultYaml = { explicit: false, version: "1.2" };
@@ -5953,22 +5953,22 @@ var require_stringifyCollection = __commonJS({
       const { indent, options: { commentString } } = ctx;
       const itemCtx = Object.assign({}, ctx, { indent: itemIndent, type: null });
       let chompKeep = false;
-      const lines3 = [];
+      const lines4 = [];
       for (let i = 0; i < items.length; ++i) {
         const item = items[i];
         let comment2 = null;
         if (identity.isNode(item)) {
           if (!chompKeep && item.spaceBefore)
-            lines3.push("");
-          addCommentBefore(ctx, lines3, item.commentBefore, chompKeep);
+            lines4.push("");
+          addCommentBefore(ctx, lines4, item.commentBefore, chompKeep);
           if (item.comment)
             comment2 = item.comment;
         } else if (identity.isPair(item)) {
           const ik = identity.isNode(item.key) ? item.key : null;
           if (ik) {
             if (!chompKeep && ik.spaceBefore)
-              lines3.push("");
-            addCommentBefore(ctx, lines3, ik.commentBefore, chompKeep);
+              lines4.push("");
+            addCommentBefore(ctx, lines4, ik.commentBefore, chompKeep);
           }
         }
         chompKeep = false;
@@ -5977,15 +5977,15 @@ var require_stringifyCollection = __commonJS({
           str7 += stringifyComment.lineComment(str7, itemIndent, commentString(comment2));
         if (chompKeep && comment2)
           chompKeep = false;
-        lines3.push(blockItemPrefix + str7);
+        lines4.push(blockItemPrefix + str7);
       }
       let str6;
-      if (lines3.length === 0) {
+      if (lines4.length === 0) {
         str6 = flowChars.start + flowChars.end;
       } else {
-        str6 = lines3[0];
-        for (let i = 1; i < lines3.length; ++i) {
-          const line = lines3[i];
+        str6 = lines4[0];
+        for (let i = 1; i < lines4.length; ++i) {
+          const line = lines4[i];
           str6 += line ? `
 ${indent}${line}` : "\n";
         }
@@ -6008,22 +6008,22 @@ ${indent}${line}` : "\n";
       });
       let reqNewline = false;
       let linesAtValue = 0;
-      const lines3 = [];
+      const lines4 = [];
       for (let i = 0; i < items.length; ++i) {
         const item = items[i];
         let comment = null;
         if (identity.isNode(item)) {
           if (item.spaceBefore)
-            lines3.push("");
-          addCommentBefore(ctx, lines3, item.commentBefore, false);
+            lines4.push("");
+          addCommentBefore(ctx, lines4, item.commentBefore, false);
           if (item.comment)
             comment = item.comment;
         } else if (identity.isPair(item)) {
           const ik = identity.isNode(item.key) ? item.key : null;
           if (ik) {
             if (ik.spaceBefore)
-              lines3.push("");
-            addCommentBefore(ctx, lines3, ik.commentBefore, false);
+              lines4.push("");
+            addCommentBefore(ctx, lines4, ik.commentBefore, false);
             if (ik.comment)
               reqNewline = true;
           }
@@ -6040,12 +6040,12 @@ ${indent}${line}` : "\n";
         if (comment)
           reqNewline = true;
         let str6 = stringify2.stringify(item, itemCtx, () => comment = null);
-        reqNewline || (reqNewline = lines3.length > linesAtValue || str6.includes("\n"));
+        reqNewline || (reqNewline = lines4.length > linesAtValue || str6.includes("\n"));
         if (i < items.length - 1) {
           str6 += ",";
         } else if (ctx.options.trailingComma) {
           if (ctx.options.lineWidth > 0) {
-            reqNewline || (reqNewline = lines3.reduce((sum, line) => sum + line.length + 2, 2) + (str6.length + 2) > ctx.options.lineWidth);
+            reqNewline || (reqNewline = lines4.reduce((sum, line) => sum + line.length + 2, 2) + (str6.length + 2) > ctx.options.lineWidth);
           }
           if (reqNewline) {
             str6 += ",";
@@ -6053,35 +6053,35 @@ ${indent}${line}` : "\n";
         }
         if (comment)
           str6 += stringifyComment.lineComment(str6, itemIndent, commentString(comment));
-        lines3.push(str6);
-        linesAtValue = lines3.length;
+        lines4.push(str6);
+        linesAtValue = lines4.length;
       }
       const { start, end } = flowChars;
-      if (lines3.length === 0) {
+      if (lines4.length === 0) {
         return start + end;
       } else {
         if (!reqNewline) {
-          const len = lines3.reduce((sum, line) => sum + line.length + 2, 2);
+          const len = lines4.reduce((sum, line) => sum + line.length + 2, 2);
           reqNewline = ctx.options.lineWidth > 0 && len > ctx.options.lineWidth;
         }
         if (reqNewline) {
           let str6 = start;
-          for (const line of lines3)
+          for (const line of lines4)
             str6 += line ? `
 ${indentStep}${indent}${line}` : "\n";
           return `${str6}
 ${indent}${end}`;
         } else {
-          return `${start}${fcPadding}${lines3.join(" ")}${fcPadding}${end}`;
+          return `${start}${fcPadding}${lines4.join(" ")}${fcPadding}${end}`;
         }
       }
     }
-    function addCommentBefore({ indent, options: { commentString } }, lines3, comment, chompKeep) {
+    function addCommentBefore({ indent, options: { commentString } }, lines4, comment, chompKeep) {
       if (comment && chompKeep)
         comment = comment.replace(/^\n+/, "");
       if (comment) {
         const ic = stringifyComment.indentComment(commentString(comment), indent);
-        lines3.push(ic.trimStart());
+        lines4.push(ic.trimStart());
       }
     }
     exports.stringifyCollection = stringifyCollection;
@@ -6732,11 +6732,11 @@ var require_binary = __commonJS({
         if (type !== Scalar.Scalar.QUOTE_DOUBLE) {
           const lineWidth = Math.max(ctx.options.lineWidth - ctx.indent.length, ctx.options.minContentWidth);
           const n = Math.ceil(str6.length / lineWidth);
-          const lines3 = new Array(n);
+          const lines4 = new Array(n);
           for (let i = 0, o = 0; i < n; ++i, o += lineWidth) {
-            lines3[i] = str6.substr(o, lineWidth);
+            lines4[i] = str6.substr(o, lineWidth);
           }
-          str6 = lines3.join(type === Scalar.Scalar.BLOCK_LITERAL ? "\n" : " ");
+          str6 = lines4.join(type === Scalar.Scalar.BLOCK_LITERAL ? "\n" : " ");
         }
         return stringifyString.stringifyString({ comment, type, value: str6 }, ctx, onComment, onChompKeep);
       }
@@ -7427,35 +7427,35 @@ var require_stringifyDocument = __commonJS({
     var stringify2 = require_stringify();
     var stringifyComment = require_stringifyComment();
     function stringifyDocument(doc, options) {
-      const lines3 = [];
+      const lines4 = [];
       let hasDirectives = options.directives === true;
       if (options.directives !== false && doc.directives) {
         const dir = doc.directives.toString(doc);
         if (dir) {
-          lines3.push(dir);
+          lines4.push(dir);
           hasDirectives = true;
         } else if (doc.directives.docStart)
           hasDirectives = true;
       }
       if (hasDirectives)
-        lines3.push("---");
+        lines4.push("---");
       const ctx = stringify2.createStringifyContext(doc, options);
       const { commentString } = ctx.options;
       if (doc.commentBefore) {
-        if (lines3.length !== 1)
-          lines3.unshift("");
+        if (lines4.length !== 1)
+          lines4.unshift("");
         const cs = commentString(doc.commentBefore);
-        lines3.unshift(stringifyComment.indentComment(cs, ""));
+        lines4.unshift(stringifyComment.indentComment(cs, ""));
       }
       let chompKeep = false;
       let contentComment = null;
       if (doc.contents) {
         if (identity.isNode(doc.contents)) {
           if (doc.contents.spaceBefore && hasDirectives)
-            lines3.push("");
+            lines4.push("");
           if (doc.contents.commentBefore) {
             const cs = commentString(doc.contents.commentBefore);
-            lines3.push(stringifyComment.indentComment(cs, ""));
+            lines4.push(stringifyComment.indentComment(cs, ""));
           }
           ctx.forceBlockIndent = !!doc.comment;
           contentComment = doc.contents.comment;
@@ -7464,36 +7464,36 @@ var require_stringifyDocument = __commonJS({
         let body = stringify2.stringify(doc.contents, ctx, () => contentComment = null, onChompKeep);
         if (contentComment)
           body += stringifyComment.lineComment(body, "", commentString(contentComment));
-        if ((body[0] === "|" || body[0] === ">") && lines3[lines3.length - 1] === "---") {
-          lines3[lines3.length - 1] = `--- ${body}`;
+        if ((body[0] === "|" || body[0] === ">") && lines4[lines4.length - 1] === "---") {
+          lines4[lines4.length - 1] = `--- ${body}`;
         } else
-          lines3.push(body);
+          lines4.push(body);
       } else {
-        lines3.push(stringify2.stringify(doc.contents, ctx));
+        lines4.push(stringify2.stringify(doc.contents, ctx));
       }
       if (doc.directives?.docEnd) {
         if (doc.comment) {
           const cs = commentString(doc.comment);
           if (cs.includes("\n")) {
-            lines3.push("...");
-            lines3.push(stringifyComment.indentComment(cs, ""));
+            lines4.push("...");
+            lines4.push(stringifyComment.indentComment(cs, ""));
           } else {
-            lines3.push(`... ${cs}`);
+            lines4.push(`... ${cs}`);
           }
         } else {
-          lines3.push("...");
+          lines4.push("...");
         }
       } else {
         let dc = doc.comment;
         if (dc && chompKeep)
           dc = dc.replace(/^\n+/, "");
         if (dc) {
-          if ((!chompKeep || contentComment) && lines3[lines3.length - 1] !== "")
-            lines3.push("");
-          lines3.push(stringifyComment.indentComment(commentString(dc), ""));
+          if ((!chompKeep || contentComment) && lines4[lines4.length - 1] !== "")
+            lines4.push("");
+          lines4.push(stringifyComment.indentComment(commentString(dc), ""));
         }
       }
-      return lines3.join("\n") + "\n";
+      return lines4.join("\n") + "\n";
     }
     exports.stringifyDocument = stringifyDocument;
   }
@@ -8567,17 +8567,17 @@ var require_resolve_block_scalar = __commonJS({
       if (!header)
         return { value: "", type: null, comment: "", range: [start, start, start] };
       const type = header.mode === ">" ? Scalar.Scalar.BLOCK_FOLDED : Scalar.Scalar.BLOCK_LITERAL;
-      const lines3 = scalar.source ? splitLines(scalar.source) : [];
-      let chompStart = lines3.length;
-      for (let i = lines3.length - 1; i >= 0; --i) {
-        const content = lines3[i][1];
+      const lines4 = scalar.source ? splitLines(scalar.source) : [];
+      let chompStart = lines4.length;
+      for (let i = lines4.length - 1; i >= 0; --i) {
+        const content = lines4[i][1];
         if (content === "" || content === "\r")
           chompStart = i;
         else
           break;
       }
       if (chompStart === 0) {
-        const value2 = header.chomp === "+" && lines3.length > 0 ? "\n".repeat(Math.max(1, lines3.length - 1)) : "";
+        const value2 = header.chomp === "+" && lines4.length > 0 ? "\n".repeat(Math.max(1, lines4.length - 1)) : "";
         let end2 = start + header.length;
         if (scalar.source)
           end2 += scalar.source.length;
@@ -8587,7 +8587,7 @@ var require_resolve_block_scalar = __commonJS({
       let offset = scalar.offset + header.length;
       let contentStart = 0;
       for (let i = 0; i < chompStart; ++i) {
-        const [indent, content] = lines3[i];
+        const [indent, content] = lines4[i];
         if (content === "" || content === "\r") {
           if (header.indent === 0 && indent.length > trimIndent)
             trimIndent = indent.length;
@@ -8607,17 +8607,17 @@ var require_resolve_block_scalar = __commonJS({
         }
         offset += indent.length + content.length + 1;
       }
-      for (let i = lines3.length - 1; i >= chompStart; --i) {
-        if (lines3[i][0].length > trimIndent)
+      for (let i = lines4.length - 1; i >= chompStart; --i) {
+        if (lines4[i][0].length > trimIndent)
           chompStart = i + 1;
       }
       let value = "";
       let sep = "";
       let prevMoreIndented = false;
       for (let i = 0; i < contentStart; ++i)
-        value += lines3[i][0].slice(trimIndent) + "\n";
+        value += lines4[i][0].slice(trimIndent) + "\n";
       for (let i = contentStart; i < chompStart; ++i) {
-        let [indent, content] = lines3[i];
+        let [indent, content] = lines4[i];
         offset += indent.length + content.length + 1;
         const crlf = content[content.length - 1] === "\r";
         if (crlf)
@@ -8654,8 +8654,8 @@ var require_resolve_block_scalar = __commonJS({
         case "-":
           break;
         case "+":
-          for (let i = chompStart; i < lines3.length; ++i)
-            value += "\n" + lines3[i][0].slice(trimIndent);
+          for (let i = chompStart; i < lines4.length; ++i)
+            value += "\n" + lines4[i][0].slice(trimIndent);
           if (value[value.length - 1] !== "\n")
             value += "\n";
           break;
@@ -8730,10 +8730,10 @@ var require_resolve_block_scalar = __commonJS({
       const first = split[0];
       const m = first.match(/^( *)/);
       const line0 = m?.[1] ? [m[1], first.slice(m[1].length)] : ["", first];
-      const lines3 = [line0];
+      const lines4 = [line0];
       for (let i = 1; i < split.length; i += 2)
-        lines3.push([split[i], split[i + 1]]);
-      return lines3;
+        lines4.push([split[i], split[i + 1]]);
+      return lines4;
     }
     exports.resolveBlockScalar = resolveBlockScalar;
   }
@@ -11954,9 +11954,9 @@ function breakPieces(text, kind, width) {
   return second.flatMap((p) => cellWidth(p) > w ? hardSplit(p, w) : [p]);
 }
 function wrapSpans(spans, width, ellipsis = "…") {
-  const lines3 = wrapPieces(shrinkToFit(spans, width, ellipsis), width, ellipsis);
-  balanceLast(lines3, width);
-  return lines3.map(merge);
+  const lines4 = wrapPieces(shrinkToFit(spans, width, ellipsis), width, ellipsis);
+  balanceLast(lines4, width);
+  return lines4.map(merge);
 }
 var textOf = (pieces2) => pieces2.map((p) => p.text).join("");
 var widthOf = (pieces2) => cellWidth(textOf(pieces2).trimEnd());
@@ -11967,12 +11967,12 @@ function isOrphan(pieces2) {
     return false;
   return ![...ws[0].text].some((c) => charWidth(c) === 2);
 }
-function balanceLast(lines3, width) {
-  const n = lines3.length;
-  if (n < 2 || !isOrphan(lines3[n - 1]))
+function balanceLast(lines4, width) {
+  const n = lines4.length;
+  if (n < 2 || !isOrphan(lines4[n - 1]))
     return;
-  const prev = lines3[n - 2];
-  const last = lines3[n - 1];
+  const prev = lines4[n - 2];
+  const last = lines4[n - 1];
   for (let k = prev.length - 1; k >= 1; k--) {
     if (prev.slice(k).some((p) => p.break || p.unit))
       return;
@@ -11984,8 +11984,8 @@ function balanceLast(lines3, width) {
     if (widthOf(head) <= width && widthOf(tail) <= width && words(tail).length >= 2) {
       while (head.length > 1 && SEPARATOR.test(head[head.length - 1].text))
         head.pop();
-      lines3[n - 2] = head;
-      lines3[n - 1] = tail;
+      lines4[n - 2] = head;
+      lines4[n - 1] = tail;
       return;
     }
   }
@@ -12010,15 +12010,15 @@ function pullLeadIn(line, first, width) {
   return moved;
 }
 function wrapPieces(spans, width, ellipsis) {
-  const lines3 = [[]];
+  const lines4 = [[]];
   let w = 0;
-  const cur = () => lines3[lines3.length - 1];
+  const cur = () => lines4[lines4.length - 1];
   const onlyWhitespace = () => cur().every((p) => /^\s*$/.test(p.text));
   const newLine = () => {
     const last = cur();
     while (last.length > 1 && SEPARATOR.test(last[last.length - 1].text))
       last.pop();
-    lines3.push([]);
+    lines4.push([]);
     w = 0;
   };
   const runs = [];
@@ -12076,7 +12076,7 @@ function wrapPieces(spans, width, ellipsis) {
       }
     }
   }
-  return lines3;
+  return lines4;
 }
 var SHRINK_FLOOR = 8;
 function shrinkToFit(spans, width, ellipsis) {
@@ -12146,7 +12146,7 @@ function eraseRows(n) {
     s += UP + ERASE_LINE;
   return s;
 }
-var widthsOf = (lines3) => lines3.map((l) => cellWidth(l));
+var widthsOf = (lines4) => lines4.map((l) => cellWidth(l));
 var rowsOf = (f) => typeof f === "function" ? f() : f;
 function guardCursor(out) {
   if (!out.isTTY || typeof process === "undefined")
@@ -12226,10 +12226,10 @@ var LiveRegion = class {
     return this.headerGone ? rows.filter((r) => r.role !== "header") : rows;
   }
   paint(screen) {
-    const { lines: lines3, head } = this.host.fit(this.rows(screen));
-    this.drawn = widthsOf(lines3);
+    const { lines: lines4, head } = this.host.fit(this.rows(screen));
+    this.drawn = widthsOf(lines4);
     this.head = head;
-    return lines3.join("\n");
+    return lines4.join("\n");
   }
   listen(on) {
     if (on === this.listening)
@@ -12325,9 +12325,9 @@ var LiveRegion = class {
   /** Show `screen` in place of the previous one. */
   draw(screen) {
     if (!this.host.caps.animate) {
-      const lines3 = this.host.render(rowsOf(screen));
-      if (!this.printedOnce && lines3.length)
-        this.out.write(`${lines3.join("\n")}
+      const lines4 = this.host.render(rowsOf(screen));
+      if (!this.printedOnce && lines4.length)
+        this.out.write(`${lines4.join("\n")}
 `);
       this.printedOnce = true;
       return;
@@ -12372,8 +12372,8 @@ var LiveRegion = class {
     const rows = animate2 || plain === void 0 ? this.rows(screen) : rowsOf(plain);
     const s = animate2 ? this.erase(extra) : "";
     const show3 = this.stop();
-    const lines3 = this.host.render(rows);
-    this.out.write(`${s}${lines3.length ? `${lines3.join("\n")}
+    const lines4 = this.host.render(rows);
+    this.out.write(`${s}${lines4.length ? `${lines4.join("\n")}
 ` : ""}${show3}`);
     this.printedOnce = false;
   }
@@ -12734,6 +12734,950 @@ init_define_PKEY_EMBEDDED_SCHEMAS();
 // ../shared-manifest/dist/index.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
 
+// ../shared-manifest/dist/chunk-GGLMZG7G.js
+init_define_PKEY_EMBEDDED_SCHEMAS();
+function namespaceStrings(v) {
+  return Array.isArray(v) ? v.filter((x) => typeof x === "string" && x !== "") : [];
+}
+var ELEMENT = "[A-Za-z0-9_~-](?:[A-Za-z0-9._~-]*[A-Za-z0-9_~-])?";
+var HOST = "[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+";
+var GO_MODULE_PATH = new RegExp(`^${HOST}(?:/${ELEMENT})*$`);
+function goMajorProblem(path32, version) {
+  const major = Number(/^([0-9]+)\./.exec(version)?.[1] ?? NaN);
+  if (!Number.isInteger(major)) return null;
+  const suffix = /\/v([0-9]+)$/.exec(path32)?.[1];
+  if (suffix !== void 0 && (suffix.startsWith("0") || Number(suffix) < 2))
+    return `${path32} ends in /v${suffix}, which is not a Go major-version suffix (the first is /v2).`;
+  if (major >= 2 && suffix !== String(major))
+    return `a v${major} Go module's path ends in /v${major}; ${path32} does not.`;
+  if (major < 2 && suffix !== void 0)
+    return `a v${major} Go module's path carries no major suffix; ${path32} ends in /v${suffix}.`;
+  return null;
+}
+var GO_PACKAGE_RULES = {
+  ecosystem: "go",
+  name: {
+    pattern: GO_MODULE_PATH,
+    maxLength: 255,
+    // Paths are case-sensitive, but two that differ only in case must never coexist.
+    norm: (name) => name.toLowerCase()
+  },
+  fileTypes: ["go-zip", "go-mod"],
+  // One module zip and its go.mod.
+  maxFiles: 2,
+  // The CLI computes both go.sum hashes (`h1:` dirhashes of the zip and of go.mod) and reads the
+  // go directive; the setup page shows the hashes, so a go.sum line can be checked by hand.
+  metadataKeys: ["h1", "goModH1", "goVersion"],
+  namespace: {
+    fields: {
+      modulePrefixes: { kind: "list", pattern: GO_MODULE_PATH }
+    },
+    problem(name, ns) {
+      const prefixes = namespaceStrings(ns.modulePrefixes);
+      if (prefixes.length === 0) return "the Go feed has no module prefixes";
+      return prefixes.some((p) => name === p || name.startsWith(`${p}/`)) ? null : `${name} is not under ${prefixes.join(", ")}`;
+    }
+  }
+};
+function npmScope(name) {
+  const m = /^(@[^/]+)\//.exec(name);
+  return m ? m[1] : null;
+}
+var NPM_PACKAGE_RULES = {
+  ecosystem: "npm",
+  name: {
+    // A scoped npm name, lower case (unscoped names are refused: the scope is the namespace).
+    pattern: /^@[a-z0-9][a-z0-9._~-]*\/[a-z0-9][a-z0-9._~-]*$/,
+    maxLength: 214,
+    // npm compares case-insensitively.
+    norm: (name) => name.toLowerCase()
+  },
+  fileTypes: ["npm-tarball"],
+  maxFiles: 64,
+  metadataKeys: [
+    "description",
+    "license",
+    "dependencies",
+    "devDependencies",
+    "peerDependencies",
+    "optionalDependencies",
+    "engines",
+    "bin",
+    "exports",
+    "main",
+    "types",
+    "os",
+    "cpu",
+    "keywords",
+    "homepage",
+    "repository"
+  ],
+  namespace: {
+    fields: {
+      scope: { kind: "string", pattern: /^@[a-z0-9][a-z0-9._~-]{0,213}$/ }
+    },
+    problem(name, ns) {
+      const scope = typeof ns.scope === "string" ? ns.scope.toLowerCase() : "";
+      if (!scope) return "the npm feed has no scope set";
+      return npmScope(name.toLowerCase()) === scope ? null : `${name} is not under the feed's scope ${scope}`;
+    }
+  }
+};
+function crateNorm(name) {
+  return name.toLowerCase().replace(/_/g, "-");
+}
+var CARGO_PACKAGE_RULES = {
+  ecosystem: "cargo",
+  name: {
+    // crates.io's grammar: an ASCII letter, then letters, digits, `-` and `_`, at most 64.
+    pattern: /^[A-Za-z][A-Za-z0-9_-]{0,63}$/,
+    maxLength: 64,
+    norm: crateNorm
+  },
+  // One `cargo package` output per version.
+  fileTypes: ["crate"],
+  maxFiles: 1,
+  // What the index line needs from the normalised Cargo.toml (the CLI's extractor reads it):
+  // the dependency list, the feature table, `links` and `rust-version`.
+  metadataKeys: [
+    "description",
+    "license",
+    "rustVersion",
+    "links",
+    "deps",
+    "features"
+  ],
+  namespace: {
+    fields: {},
+    problem: () => null
+  }
+};
+var GODOT_PACKAGE_RULES = {
+  ecosystem: "godot",
+  name: {
+    // A Godot addon id.
+    pattern: /^[a-z0-9_]{1,64}$/,
+    maxLength: 64,
+    // The grammar is lower case already.
+    norm: (name) => name
+  },
+  fileTypes: ["godot-zip", "godot-icon"],
+  maxFiles: 64,
+  metadataKeys: ["displayName", "author", "description", "script"],
+  namespace: {
+    fields: {
+      publisher: { kind: "string", pattern: /^[a-z0-9][a-z0-9_-]{0,63}$/ }
+    },
+    problem: (_name, ns) => typeof ns.publisher === "string" && ns.publisher !== "" ? null : "the Godot feed has no publisher set"
+  }
+};
+var MAVEN_PACKAGE_RULES = {
+  ecosystem: "maven",
+  name: {
+    // Maven `groupId:artifactId`.
+    pattern: /^[A-Za-z0-9_-]+(\.[A-Za-z0-9_-]+)*:[A-Za-z0-9_][A-Za-z0-9_.-]*$/,
+    maxLength: 255,
+    // Repositories compare case-insensitively.
+    norm: (name) => name.toLowerCase()
+  },
+  fileTypes: ["maven-file"],
+  maxFiles: 64,
+  metadataKeys: ["groupId", "artifactId", "packaging"],
+  namespace: {
+    fields: {
+      groupPrefixes: {
+        kind: "list",
+        pattern: /^[A-Za-z0-9_-]+(\.[A-Za-z0-9_-]+)*$/
+      }
+    },
+    problem(name, ns) {
+      const prefixes = namespaceStrings(ns.groupPrefixes).map(
+        (p) => p.toLowerCase()
+      );
+      if (prefixes.length === 0) return "the Maven feed has no group prefixes";
+      const group = name.split(":")[0].toLowerCase();
+      return prefixes.some((p) => group === p || group.startsWith(`${p}.`)) ? null : `${name}'s groupId is not under ${prefixes.join(", ")}`;
+    }
+  }
+};
+var OCI_PACKAGE_RULES = {
+  ecosystem: "oci",
+  name: {
+    // An OCI repository path under the owner: lower-case components joined by `/`.
+    pattern: /^[a-z0-9]+((\.|_|__|-+)[a-z0-9]+)*(\/[a-z0-9]+((\.|_|__|-+)[a-z0-9]+)*)*$/,
+    maxLength: 255,
+    // The grammar is lower case already.
+    norm: (name) => name
+  },
+  fileTypes: ["oci-blob", "oci-manifest", "oci-index"],
+  // An image's blobs.
+  maxFiles: 4096,
+  // `root`: the digest of the manifest or index the version's tag points to.
+  metadataKeys: ["mediaType", "platforms", "root"],
+  namespace: {
+    fields: {},
+    problem: () => null
+  }
+};
+function pep503(name) {
+  return name.toLowerCase().replace(/[-_.]+/g, "-");
+}
+var PYPI_NAME = /^[A-Za-z0-9]([A-Za-z0-9._-]*[A-Za-z0-9])?$/;
+var PYPI_PACKAGE_RULES = {
+  ecosystem: "pypi",
+  name: {
+    // PEP 508: letters, digits, `.`, `_` and `-`, starting and ending with a letter or digit.
+    pattern: PYPI_NAME,
+    maxLength: 128,
+    norm: pep503
+  },
+  fileTypes: ["wheel", "sdist", "core-metadata"],
+  maxFiles: 64,
+  metadataKeys: ["summary", "requiresPython", "license"],
+  namespace: {
+    fields: {
+      prefixes: { kind: "list", pattern: PYPI_NAME },
+      names: { kind: "list", pattern: PYPI_NAME }
+    },
+    problem(name, ns) {
+      const norm = pep503(name);
+      const names = namespaceStrings(ns.names).map(pep503);
+      const prefixes = namespaceStrings(ns.prefixes).map(pep503);
+      if (names.length === 0 && prefixes.length === 0)
+        return "the PyPI feed has no names or prefixes";
+      return names.includes(norm) || prefixes.some((p) => norm.startsWith(p)) ? null : `${name} is not one of the feed's names or prefixes`;
+    }
+  }
+};
+var SWIFT_PACKAGE_RULES = {
+  ecosystem: "swift",
+  name: {
+    // SE-0292: `scope.Name`, scope 1-39 of [A-Za-z0-9-], name 1-100 of [A-Za-z0-9_-], each
+    // starting with a letter or digit.
+    pattern: /^[A-Za-z0-9][A-Za-z0-9-]{0,38}\.[A-Za-z0-9][A-Za-z0-9_-]{0,99}$/,
+    maxLength: 140,
+    // The registry compares case-insensitively.
+    norm: (name) => name.toLowerCase()
+  },
+  fileTypes: ["source-archive", "manifest", "source-archive-signature"],
+  maxFiles: 64,
+  metadataKeys: ["toolsVersions", "signatureFormat"],
+  namespace: {
+    fields: {
+      scope: { kind: "string", pattern: /^[A-Za-z0-9][A-Za-z0-9-]{0,38}$/ }
+    },
+    problem(name, ns) {
+      const scope = typeof ns.scope === "string" ? ns.scope.toLowerCase() : "";
+      if (!scope) return "the Swift feed has no scope set";
+      return name.split(".")[0].toLowerCase() === scope ? null : `${name} is not under the feed's scope ${scope}`;
+    }
+  }
+};
+var PACKAGE_ECOSYSTEMS = [
+  "npm",
+  "pypi",
+  "swift",
+  "maven",
+  "oci",
+  "godot",
+  "cargo",
+  "go"
+];
+var MAX_PACKAGE_DELIVERABLES = 64;
+var MAX_PACKAGE_ARTIFACT_ENTRIES = 16;
+var PACKAGE_REFUSED_FIELDS = [
+  "platform",
+  "arch",
+  "format",
+  "content",
+  "binding",
+  "type",
+  "packType"
+];
+var PACKAGE_ECOSYSTEM_RULES = {
+  npm: NPM_PACKAGE_RULES,
+  pypi: PYPI_PACKAGE_RULES,
+  swift: SWIFT_PACKAGE_RULES,
+  maven: MAVEN_PACKAGE_RULES,
+  oci: OCI_PACKAGE_RULES,
+  godot: GODOT_PACKAGE_RULES,
+  cargo: CARGO_PACKAGE_RULES,
+  go: GO_PACKAGE_RULES
+};
+function perEcosystem(pick) {
+  return Object.fromEntries(
+    PACKAGE_ECOSYSTEMS.map((e) => [e, pick(PACKAGE_ECOSYSTEM_RULES[e])])
+  );
+}
+var PACKAGE_NAME_PATTERNS = perEcosystem((r) => r.name.pattern);
+var PACKAGE_NAME_MAX_LENGTH = perEcosystem((r) => r.name.maxLength);
+function isPackageEcosystem(value) {
+  return typeof value === "string" && PACKAGE_ECOSYSTEMS.includes(value);
+}
+function isPackageName(ecosystem, name) {
+  return typeof name === "string" && name.length <= PACKAGE_NAME_MAX_LENGTH[ecosystem] && PACKAGE_NAME_PATTERNS[ecosystem].test(name);
+}
+function packageNameNorm(ecosystem, name) {
+  return PACKAGE_ECOSYSTEM_RULES[ecosystem].name.norm(name);
+}
+var PACKAGE_FILE_TYPES = perEcosystem((r) => r.fileTypes);
+function maxPackageFiles(ecosystem) {
+  return PACKAGE_ECOSYSTEM_RULES[ecosystem].maxFiles;
+}
+var MAX_PACKAGE_METADATA_BYTES = 16 * 1024;
+var PACKAGE_METADATA_KEYS = perEcosystem((r) => r.metadataKeys);
+var DEFAULT_REGISTRY_ORIGIN = "https://pkg.plrs.im";
+var ENV_NAME = /^[A-Za-z_][A-Za-z0-9_]{0,127}$/;
+var TOKEN_VALUE = /^[A-Za-z0-9_.~-]{8,512}$/;
+var OWNER = /^[a-z0-9-]{1,64}$/;
+var VERSION = /^[0-9A-Za-z][0-9A-Za-z.+_-]{0,127}$/;
+function isFeedTokenEnvName(v) {
+  return ENV_NAME.test(v);
+}
+function str(v) {
+  return typeof v === "string" && v !== "" ? v : void 0;
+}
+function list(v) {
+  return Array.isArray(v) ? v.filter((x) => typeof x === "string" && x !== "") : [];
+}
+function hostOf(origin) {
+  return new URL(origin).host;
+}
+function noSlash(url) {
+  return url.endsWith("/") ? url.slice(0, -1) : url;
+}
+function xml(s) {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+function repoName(owner) {
+  return owner.replace(/[^A-Za-z0-9]/g, "_");
+}
+function uvEnvName(index) {
+  return index.toUpperCase().replace(/[^A-Z0-9]/g, "_");
+}
+function shSecret(c) {
+  if (c.kind === "env") return `"$${c.name}"`;
+  if (c.kind === "token") return c.value;
+  return null;
+}
+function fileSecret(c, env) {
+  if (c.kind === "env") return env(c.name);
+  if (c.kind === "token") return c.value;
+  return null;
+}
+function lines(...parts) {
+  return parts.filter((p) => typeof p === "string").join("\n");
+}
+var NPM_SETUP = {
+  clients: ["npm", "pnpm", "Yarn Berry", "Bun"],
+  inputs: ["baseUrl", "namespace.scope", "package.name", "package.version"],
+  feedPath: (owner) => `/npm/${owner}/`,
+  render(v) {
+    const baseUrl = v.get("baseUrl");
+    const name = str(v.get("package.name"));
+    const version = str(v.get("package.version"));
+    const scope = str(v.get("namespace.scope")) ?? /^(@[^/]+)\//.exec(name ?? "")?.[1];
+    const s = scope ?? "@scope";
+    const bare = s.slice(1);
+    const authPath = baseUrl.replace(/^https?:/, "");
+    const npmrcToken = fileSecret(v.credential, (n) => `\${${n}}`);
+    const yarnToken = fileSecret(v.credential, (n) => `\${${n}}`);
+    const bunToken = fileSecret(v.credential, (n) => `$${n}`);
+    return [
+      {
+        id: "npmrc",
+        clients: "npm, pnpm",
+        title: "npm and pnpm: route the scope to this feed",
+        description: `Only ${s} packages are looked up here; every other package stays on its usual registry.`,
+        filename: ".npmrc",
+        language: "text",
+        code: lines(
+          `${s}:registry=${baseUrl}`,
+          npmrcToken !== null && `${authPath}:_authToken=${npmrcToken}`
+        )
+      },
+      {
+        id: "yarn",
+        clients: "Yarn Berry",
+        title: "Yarn Berry",
+        filename: ".yarnrc.yml",
+        language: "yaml",
+        code: lines(
+          "npmScopes:",
+          `  ${bare}:`,
+          `    npmRegistryServer: ${JSON.stringify(baseUrl)}`,
+          yarnToken !== null && `    npmAuthToken: ${JSON.stringify(yarnToken)}
+    npmAlwaysAuth: true`
+        )
+      },
+      {
+        id: "bun",
+        clients: "Bun",
+        title: "Bun",
+        filename: "bunfig.toml",
+        language: "toml",
+        code: lines(
+          "[install.scopes]",
+          bunToken === null ? `${JSON.stringify(s)} = ${JSON.stringify(baseUrl)}` : `${JSON.stringify(s)} = { url = ${JSON.stringify(baseUrl)}, token = ${JSON.stringify(bunToken)} }`
+        )
+      },
+      {
+        id: "install",
+        clients: "npm",
+        title: "Install",
+        language: "sh",
+        code: `npm install ${name ? `${name}${version ? `@${version}` : ""}` : `${s}/<package>`}`
+      }
+    ];
+  }
+};
+var PYPI_SETUP = {
+  clients: ["pip", "uv", "Poetry"],
+  inputs: [
+    "baseUrl",
+    "owner",
+    "namespace.names",
+    "package.name",
+    "package.version"
+  ],
+  feedPath: (owner) => `/pypi/${owner}/simple/`,
+  render(v) {
+    const baseUrl = v.get("baseUrl");
+    const index = v.get("owner");
+    const names = list(v.get("namespace.names"));
+    const name = str(v.get("package.name")) ?? (names.length === 1 ? names[0] : void 0) ?? "<package>";
+    const version = str(v.get("package.version"));
+    const secret = shSecret(v.credential);
+    const uvVar = uvEnvName(index);
+    const authed = secret !== null;
+    const pipUrl = v.credential.kind === "env" ? baseUrl.replace(
+      /^(https?:\/\/)/,
+      `$1__token__:\${${v.credential.name}}@`
+    ) : v.credential.kind === "token" ? baseUrl.replace(
+      /^(https?:\/\/)/,
+      `$1__token__:${v.credential.value}@`
+    ) : baseUrl;
+    const snippets = [
+      {
+        id: "uv",
+        clients: "uv",
+        title: "uv: an explicit index for this project only",
+        description: "explicit = true keeps every other dependency on its usual index.",
+        filename: "pyproject.toml",
+        language: "toml",
+        code: lines(
+          "[[tool.uv.index]]",
+          `name = ${JSON.stringify(index)}`,
+          `url = ${JSON.stringify(baseUrl)}`,
+          "explicit = true",
+          authed && `authenticate = "always"`,
+          "",
+          "[tool.uv.sources]",
+          `${JSON.stringify(name)} = { index = ${JSON.stringify(index)} }`
+        )
+      }
+    ];
+    if (authed)
+      snippets.push({
+        id: "uv-credentials",
+        clients: "uv",
+        title: "uv: the index credentials",
+        language: "sh",
+        code: lines(
+          `export UV_INDEX_${uvVar}_USERNAME=__token__`,
+          `export UV_INDEX_${uvVar}_PASSWORD=${secret}`
+        )
+      });
+    snippets.push(
+      {
+        id: "poetry",
+        clients: "Poetry",
+        title: "Poetry 2: an explicit source",
+        language: "sh",
+        code: lines(
+          `poetry source add --priority=explicit ${index} ${baseUrl}`,
+          authed && `poetry config http-basic.${index} __token__ ${secret}`,
+          `poetry add --source ${index} ${name}${version ? `==${version}` : ""}`
+        )
+      },
+      {
+        id: "pip",
+        clients: "pip",
+        title: "pip: the package alone, without its dependencies",
+        description: "pip cannot route one project to one index: install the dependencies from your usual index first, then this package from the feed.",
+        warning: "Never add this feed with --extra-index-url. pip has no per-project routing: with two indexes it takes the highest version from either, so a public package with the same name could win.",
+        language: "sh",
+        code: `pip install --no-deps --index-url ${pipUrl} ${name}${version ? `==${version}` : ""}`
+      }
+    );
+    return snippets;
+  }
+};
+var SWIFT_SETUP = {
+  clients: ["SwiftPM"],
+  inputs: ["baseUrl", "namespace.scope", "package.name", "package.version"],
+  feedPath: (owner) => `/swift/${owner}/`,
+  render(v) {
+    const url = noSlash(v.get("baseUrl"));
+    const name = str(v.get("package.name"));
+    const version = str(v.get("package.version"));
+    const scope = str(v.get("namespace.scope")) ?? (name?.includes(".") ? name.split(".")[0] : void 0) ?? "<scope>";
+    const id = name ?? `${scope}.<Package>`;
+    const secret = shSecret(v.credential);
+    return [
+      {
+        id: "registries-json",
+        clients: "SwiftPM",
+        title: "Route the scope to this feed and refuse an unsigned release",
+        description: "The whole file, in place of swift package-registry set: SwiftPM needs version and registries beside security. For every project on the machine, ~/.swiftpm/configuration/registries.json. Unless the signer chains to a root SwiftPM already trusts, add trustedRootCertificatesPath under signing.",
+        filename: ".swiftpm/configuration/registries.json",
+        language: "json",
+        code: JSON.stringify(
+          {
+            version: 1,
+            registries: { [scope]: { url } },
+            security: {
+              default: {
+                signing: {
+                  onUnsigned: "error",
+                  onUntrustedCertificate: "error"
+                }
+              }
+            }
+          },
+          null,
+          2
+        )
+      },
+      ...secret !== null ? [
+        {
+          id: "registry-login",
+          clients: "SwiftPM",
+          title: "Sign in to the feed",
+          description: "After the file above: login adds its authentication entry to it.",
+          language: "sh",
+          code: `swift package-registry login ${url} --token ${secret} --no-confirm`
+        }
+      ] : [],
+      {
+        id: "package-swift",
+        clients: "SwiftPM",
+        title: "Depend on the package",
+        filename: "Package.swift",
+        language: "text",
+        code: `.package(id: ${JSON.stringify(id)}, from: ${JSON.stringify(version ?? "1.0.0")})`
+      },
+      {
+        id: "xcode",
+        clients: "Xcode",
+        title: "Add it in an Xcode project",
+        description: "With the registries file above in place: File, Add Package Dependencies, then search for the package by its identity. Choose the products you use.",
+        language: "text",
+        code: id
+      }
+    ];
+  }
+};
+var MAVEN_SETUP = {
+  clients: ["Gradle", "Maven"],
+  inputs: [
+    "baseUrl",
+    "owner",
+    "namespace.groupPrefixes",
+    "package.name",
+    "package.version"
+  ],
+  feedPath: (owner) => `/maven/${owner}/`,
+  render(v) {
+    const baseUrl = v.get("baseUrl");
+    const owner = v.get("owner");
+    const repo = repoName(owner);
+    const name = str(v.get("package.name"));
+    const version = str(v.get("package.version"));
+    const groups = list(v.get("namespace.groupPrefixes"));
+    const fallback = name?.split(":")[0] ?? groups[0] ?? "<group.prefix>";
+    const filters = (groups.length ? groups : [fallback]).map(
+      (g) => `                includeGroupAndSubgroups(${JSON.stringify(g)})`
+    ).join("\n");
+    const coord = name ? `${name}:${version ?? "<version>"}` : `${fallback}:<artifact>:<version>`;
+    const authed = v.credential.kind === "env" || v.credential.kind === "token";
+    const snippets = [
+      {
+        id: "gradle",
+        clients: "Gradle",
+        title: "Gradle: this feed, for its groups only",
+        filename: "settings.gradle.kts",
+        language: "text",
+        code: lines(
+          "dependencyResolutionManagement {",
+          "    repositories {",
+          "        exclusiveContent {",
+          "            forRepository {",
+          authed ? lines(
+            "                maven {",
+            `                    name = ${JSON.stringify(repo)}`,
+            `                    url = uri(${JSON.stringify(baseUrl)})`,
+            "                    credentials(PasswordCredentials::class)",
+            "                }"
+          ) : `                maven { url = uri(${JSON.stringify(baseUrl)}) }`,
+          "            }",
+          "            filter {",
+          filters,
+          "            }",
+          "        }",
+          "        mavenCentral()",
+          "    }",
+          "}"
+        )
+      }
+    ];
+    if (v.credential.kind === "env")
+      snippets.push({
+        id: "gradle-credentials",
+        clients: "Gradle",
+        title: "Gradle: the repository credentials",
+        language: "sh",
+        code: lines(
+          `export ORG_GRADLE_PROJECT_${repo}Username=__token__`,
+          `export ORG_GRADLE_PROJECT_${repo}Password="$${v.credential.name}"`
+        )
+      });
+    else if (v.credential.kind === "token")
+      snippets.push({
+        id: "gradle-credentials",
+        clients: "Gradle",
+        title: "Gradle: the repository credentials",
+        filename: "~/.gradle/gradle.properties",
+        language: "text",
+        code: lines(
+          `${repo}Username=__token__`,
+          `${repo}Password=${v.credential.value}`
+        )
+      });
+    snippets.push(
+      {
+        id: "gradle-dependency",
+        clients: "Gradle",
+        title: "Depend on the artifact",
+        filename: "build.gradle.kts",
+        language: "text",
+        code: `implementation(${JSON.stringify(coord)})`
+      },
+      {
+        id: "maven",
+        clients: "Maven",
+        title: "Maven: the repository, with a fatal checksum policy",
+        warning: "Maven asks every repository for every artifact. Keep the feed's group prefixes ones you hold on Maven Central, so no one else can publish under them there.",
+        filename: "pom.xml",
+        language: "text",
+        code: lines(
+          "<repositories>",
+          "  <repository>",
+          `    <id>${xml(owner)}</id>`,
+          `    <url>${xml(baseUrl)}</url>`,
+          "    <releases><checksumPolicy>fail</checksumPolicy></releases>",
+          "    <snapshots><enabled>false</enabled></snapshots>",
+          "  </repository>",
+          "</repositories>"
+        )
+      }
+    );
+    const mavenSecret = fileSecret(v.credential, (n) => `\${env.${n}}`);
+    if (mavenSecret !== null)
+      snippets.push({
+        id: "maven-credentials",
+        clients: "Maven",
+        title: "Maven: the server credentials",
+        filename: "~/.m2/settings.xml",
+        language: "text",
+        code: lines(
+          "<servers>",
+          "  <server>",
+          `    <id>${xml(owner)}</id>`,
+          "    <username>__token__</username>",
+          `    <password>${xml(mavenSecret)}</password>`,
+          "  </server>",
+          "</servers>"
+        )
+      });
+    return snippets;
+  }
+};
+var OCI_SETUP = {
+  clients: ["docker", "podman", "crane"],
+  inputs: ["registryHost", "owner", "package.name", "package.version"],
+  feedPath: (owner) => `/v2/${owner}/`,
+  render(v) {
+    const host = v.get("registryHost");
+    const owner = v.get("owner");
+    const repo = str(v.get("package.name")) ?? "<repository>";
+    const tag2 = str(v.get("package.version")) ?? "latest";
+    const login = v.credential.kind === "env" ? `echo "$${v.credential.name}" | docker login ${host} -u __token__ --password-stdin` : v.credential.kind === "token" ? `echo ${v.credential.value} | docker login ${host} -u __token__ --password-stdin` : null;
+    return [
+      {
+        id: "pull",
+        clients: "docker, podman, crane",
+        title: "Pull by the fully qualified reference",
+        description: "podman pull and crane pull take the same reference; it never resolves on another registry.",
+        language: "sh",
+        code: lines(login, `docker pull ${host}/${owner}/${repo}:${tag2}`)
+      }
+    ];
+  }
+};
+var GODOT_SETUP = {
+  clients: ["The Godot editor's asset library", "GodotEnv"],
+  inputs: ["baseUrl"],
+  feedPath: (owner) => `/godot/${owner}/`,
+  render(v) {
+    const base = v.get("baseUrl");
+    const root = v.credential.kind === "godot-url" ? `${base}t/${v.credential.value}/` : base;
+    return [
+      {
+        id: "editor-4.6",
+        clients: "Godot 4.4 to 4.6",
+        title: "Godot 4.6 and earlier: Asset Library → Available URLs",
+        description: "Editor Settings, asset_library/available_urls.",
+        language: "text",
+        code: `${root}asset-library/api`
+      },
+      {
+        id: "editor-4.7",
+        clients: "Godot 4.7 and later",
+        title: "Godot 4.7 and later: asset_store/available_urls",
+        description: "Editor Settings, asset_store/available_urls.",
+        language: "text",
+        code: `${root}store/api/v1`
+      },
+      {
+        id: "godotenv",
+        clients: "GodotEnv",
+        title: "GodotEnv: copy a version's addons.json entry from the index",
+        language: "text",
+        code: `${root}index.json`
+      }
+    ];
+  }
+};
+function cargoEnvName(registry) {
+  return registry.toUpperCase().replace(/[^A-Z0-9]/g, "_");
+}
+var CARGO_SETUP = {
+  clients: ["Cargo"],
+  inputs: ["baseUrl", "owner", "package.name", "package.version"],
+  feedPath: (owner) => `/cargo/${owner}/`,
+  render(v) {
+    const baseUrl = v.get("baseUrl");
+    const registry = v.get("owner");
+    const name = str(v.get("package.name")) ?? "<crate>";
+    const version = str(v.get("package.version"));
+    const envVar = `CARGO_REGISTRIES_${cargoEnvName(registry)}_TOKEN`;
+    const authed = v.credential.kind === "env" || v.credential.kind === "token";
+    const snippets = [
+      {
+        id: "config",
+        clients: "Cargo",
+        title: "Cargo: name the feed as a registry",
+        description: authed ? "A sparse index; Cargo 1.74 and later for a private one, which needs a credential provider named. Nothing comes from it unless a dependency names it with registry =." : "A sparse index (Cargo 1.68 and later). Nothing comes from it unless a dependency names it with registry =.",
+        filename: ".cargo/config.toml",
+        language: "toml",
+        code: lines(
+          `[registries.${registry}]`,
+          `index = ${JSON.stringify(`sparse+${baseUrl}`)}`,
+          authed && `credential-provider = "cargo:token"`
+        )
+      }
+    ];
+    if (v.credential.kind === "env")
+      snippets.push({
+        id: "token",
+        clients: "Cargo",
+        title: "Cargo: the registry token",
+        description: "Cargo sends it on every request to a feed whose config.json says auth-required.",
+        language: "sh",
+        code: `export ${envVar}="$${v.credential.name}"`
+      });
+    else if (v.credential.kind === "token")
+      snippets.push({
+        id: "token",
+        clients: "Cargo",
+        title: "Cargo: the registry token",
+        description: "Stored in ~/.cargo/credentials.toml. Cargo sends it on every request to a feed whose config.json says auth-required.",
+        language: "sh",
+        code: `echo ${v.credential.value} | cargo login --registry ${registry}`
+      });
+    snippets.push({
+      id: "dependency",
+      clients: "Cargo",
+      title: "Depend on the crate from this registry",
+      filename: "Cargo.toml",
+      language: "toml",
+      code: lines(
+        "[dependencies]",
+        `${name} = { version = ${JSON.stringify(version ?? "*")}, registry = ${JSON.stringify(registry)} }`
+      )
+    });
+    return snippets;
+  }
+};
+var GO_SETUP = {
+  clients: ["the go command"],
+  inputs: [
+    "baseUrl",
+    "registryHost",
+    "namespace.modulePrefixes",
+    "package.name",
+    "package.version"
+  ],
+  feedPath: (owner) => `/go/${owner}/`,
+  render(v) {
+    const proxy = noSlash(v.get("baseUrl"));
+    const host = v.get("registryHost");
+    const name = str(v.get("package.name"));
+    const version = str(v.get("package.version"));
+    const prefixes = list(v.get("namespace.modulePrefixes"));
+    const private_ = prefixes.length ? prefixes.join(",") : name ?? "<module/prefix>";
+    const snippets = [
+      {
+        id: "goproxy",
+        clients: "the go command",
+        title: "Go: this feed first, then the public proxy",
+        description: `The feed answers only for its own modules (${private_}) and 404s every other path, so Go moves on to the public proxy for everything else. GONOSUMDB keeps these modules away from the public checksum database, which cannot see them; go.sum still pins every hash.`,
+        warning: "Do not list these modules in GOPRIVATE: it sets GONOPROXY too, so Go skips every proxy, this feed included, and goes to the module path's host directly.",
+        language: "sh",
+        code: lines(
+          `go env -w GOPROXY=${proxy},https://proxy.golang.org,direct`,
+          `go env -w GONOSUMDB=${private_}`
+        )
+      }
+    ];
+    if (v.credential.kind === "env")
+      snippets.push({
+        id: "netrc",
+        clients: "the go command",
+        title: "Go: the feed credentials",
+        description: "The go command sends a .netrc entry's login and password as HTTP Basic credentials to the proxy's host.",
+        language: "sh",
+        code: `printf 'machine %s login __token__ password %s\\n' ${host} "$${v.credential.name}" >> ~/.netrc`
+      });
+    else if (v.credential.kind === "token")
+      snippets.push({
+        id: "netrc",
+        clients: "the go command",
+        title: "Go: the feed credentials",
+        description: "The go command sends a .netrc entry's login and password as HTTP Basic credentials to the proxy's host.",
+        filename: "~/.netrc",
+        language: "text",
+        code: lines(
+          `machine ${host}`,
+          "login __token__",
+          `password ${v.credential.value}`
+        )
+      });
+    snippets.push({
+      id: "go-get",
+      clients: "the go command",
+      title: "Depend on the module",
+      language: "sh",
+      code: `go get ${name ?? `${prefixes[0] ?? "<module/prefix>"}/<module>`}@${version ? `v${version}` : "latest"}`
+    });
+    return snippets;
+  }
+};
+var FEED_SETUP = {
+  npm: NPM_SETUP,
+  pypi: PYPI_SETUP,
+  swift: SWIFT_SETUP,
+  maven: MAVEN_SETUP,
+  oci: OCI_SETUP,
+  godot: GODOT_SETUP,
+  cargo: CARGO_SETUP,
+  go: GO_SETUP
+};
+function feedSetupBaseUrl(ecosystem, origin, owner) {
+  return `${noSlash(origin)}${FEED_SETUP[ecosystem].feedPath(encodeURIComponent(owner))}`;
+}
+function feedSetupProblem(ecosystem, ctx) {
+  if (!isPackageEcosystem(ecosystem)) return `unknown ecosystem "${ecosystem}"`;
+  let url;
+  try {
+    url = new URL(ctx.origin);
+  } catch {
+    return `the registry origin "${ctx.origin}" is not a URL`;
+  }
+  if (url.protocol !== "https:" && url.protocol !== "http:")
+    return "the registry origin must be an http(s) URL";
+  if (url.pathname !== "/" || url.search || url.hash || url.username)
+    return "the registry origin is an origin only (no path, query or credentials)";
+  if (!OWNER.test(ctx.owner)) return `the owner "${ctx.owner}" is not a slug`;
+  const rules = PACKAGE_ECOSYSTEM_RULES[ecosystem];
+  for (const [key, value] of Object.entries(ctx.namespace ?? {})) {
+    const field = rules.namespace.fields[key];
+    if (!Object.hasOwn(rules.namespace.fields, key) || !field)
+      return `${ecosystem} has no namespace key "${key}"`;
+    if (value === void 0 || value === null || value === "") continue;
+    if (field.kind === "list" && !Array.isArray(value))
+      return `namespace.${key} is a list`;
+    if (field.kind === "string" && typeof value !== "string")
+      return `namespace.${key} is a string`;
+    const values = field.kind === "list" ? list(value) : [value];
+    for (const item of values)
+      if (!field.pattern.test(item))
+        return `namespace.${key} "${item}" is malformed`;
+  }
+  if (ctx.package) {
+    if (!rules.name.pattern.test(ctx.package.name))
+      return `"${ctx.package.name}" is not a ${ecosystem} package name`;
+    const version = ctx.package.version;
+    if (version !== void 0 && version !== null && !VERSION.test(version))
+      return `"${version}" is not a version`;
+  }
+  const c = ctx.credential;
+  if (c?.kind === "env" && !ENV_NAME.test(c.name))
+    return `"${c.name}" is not an environment variable name`;
+  if ((c?.kind === "token" || c?.kind === "godot-url") && !TOKEN_VALUE.test(c.value))
+    return "the token has characters a snippet cannot carry";
+  return null;
+}
+function renderFeedSetup(ecosystem, ctx) {
+  const problem = feedSetupProblem(ecosystem, ctx);
+  if (problem !== null) throw new Error(`renderFeedSetup: ${problem}`);
+  const decl = FEED_SETUP[ecosystem];
+  const declared = new Set(decl.inputs);
+  const origin = noSlash(ctx.origin);
+  const resolve2 = (input) => {
+    if (input === "baseUrl")
+      return feedSetupBaseUrl(ecosystem, origin, ctx.owner);
+    if (input === "registryHost") return hostOf(origin);
+    if (input === "owner") return ctx.owner;
+    if (input === "package.name") return ctx.package?.name;
+    if (input === "package.version") return ctx.package?.version ?? void 0;
+    return ctx.namespace?.[input.slice("namespace.".length)];
+  };
+  const credential = ctx.credential ?? { kind: "none" };
+  return decl.render({
+    get(input) {
+      if (!declared.has(input))
+        throw new Error(
+          `renderFeedSetup: ${ecosystem} reads "${input}", which its setup does not declare`
+        );
+      return resolve2(input);
+    },
+    // A Godot feed authenticates only through its URL; the others never through one.
+    credential: ecosystem === "godot" === (credential.kind === "godot-url") ? credential : { kind: "none" }
+  });
+}
+function formatFeedSetup(snippets) {
+  return snippets.map(
+    (s) => lines(
+      `# ${s.title}${s.filename ? ` (${s.filename})` : ""}`,
+      s.warning && `# Warning: ${s.warning}`,
+      s.description && `# ${s.description}`,
+      s.code
+    )
+  ).join("\n\n").concat("\n");
+}
+
 // ../shared-catalog/dist/index.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
 
@@ -13050,12 +13994,12 @@ var Parser = class {
   }
   parseQuantified() {
     const atom = this.parseAtom();
-    const q2 = this.parseQuantifier();
-    if (!q2)
+    const q3 = this.parseQuantifier();
+    if (!q3)
       return atom;
     if (atom.k === "start" || atom.k === "end")
       this.fail("a quantifier may not be applied to an anchor");
-    return { k: "rep", node: atom, min: q2.min, max: q2.max };
+    return { k: "rep", node: atom, min: q3.min, max: q3.max };
   }
   parseQuantifier() {
     const cp3 = this.peek();
@@ -15190,296 +16134,6 @@ function normalizeReleaseKeys(raw) {
   }
   return out;
 }
-function crateNorm(name) {
-  return name.toLowerCase().replace(/_/g, "-");
-}
-var CARGO_PACKAGE_RULES = {
-  ecosystem: "cargo",
-  name: {
-    // crates.io's grammar: an ASCII letter, then letters, digits, `-` and `_`, at most 64.
-    pattern: /^[A-Za-z][A-Za-z0-9_-]{0,63}$/,
-    maxLength: 64,
-    norm: crateNorm
-  },
-  // One `cargo package` output per version.
-  fileTypes: ["crate"],
-  maxFiles: 1,
-  // What the index line needs from the normalised Cargo.toml (the CLI's extractor reads it):
-  // the dependency list, the feature table, `links` and `rust-version`.
-  metadataKeys: [
-    "description",
-    "license",
-    "rustVersion",
-    "links",
-    "deps",
-    "features"
-  ],
-  namespace: {
-    fields: {},
-    problem: () => null
-  }
-};
-var GODOT_PACKAGE_RULES = {
-  ecosystem: "godot",
-  name: {
-    // A Godot addon id.
-    pattern: /^[a-z0-9_]{1,64}$/,
-    maxLength: 64,
-    // The grammar is lower case already.
-    norm: (name) => name
-  },
-  fileTypes: ["godot-zip", "godot-icon"],
-  maxFiles: 64,
-  metadataKeys: ["displayName", "author", "description", "script"],
-  namespace: {
-    fields: {
-      publisher: { kind: "string", pattern: /^[a-z0-9][a-z0-9_-]{0,63}$/ }
-    },
-    problem: (_name, ns) => typeof ns.publisher === "string" && ns.publisher !== "" ? null : "the Godot feed has no publisher set"
-  }
-};
-function namespaceStrings(v) {
-  return Array.isArray(v) ? v.filter((x) => typeof x === "string" && x !== "") : [];
-}
-var ELEMENT = "[A-Za-z0-9_~-](?:[A-Za-z0-9._~-]*[A-Za-z0-9_~-])?";
-var HOST = "[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+";
-var GO_MODULE_PATH = new RegExp(`^${HOST}(?:/${ELEMENT})*$`);
-function goMajorProblem(path32, version) {
-  const major = Number(/^([0-9]+)\./.exec(version)?.[1] ?? NaN);
-  if (!Number.isInteger(major)) return null;
-  const suffix = /\/v([0-9]+)$/.exec(path32)?.[1];
-  if (suffix !== void 0 && (suffix.startsWith("0") || Number(suffix) < 2))
-    return `${path32} ends in /v${suffix}, which is not a Go major-version suffix (the first is /v2).`;
-  if (major >= 2 && suffix !== String(major))
-    return `a v${major} Go module's path ends in /v${major}; ${path32} does not.`;
-  if (major < 2 && suffix !== void 0)
-    return `a v${major} Go module's path carries no major suffix; ${path32} ends in /v${suffix}.`;
-  return null;
-}
-var GO_PACKAGE_RULES = {
-  ecosystem: "go",
-  name: {
-    pattern: GO_MODULE_PATH,
-    maxLength: 255,
-    // Paths are case-sensitive, but two that differ only in case must never coexist.
-    norm: (name) => name.toLowerCase()
-  },
-  fileTypes: ["go-zip", "go-mod"],
-  // One module zip and its go.mod.
-  maxFiles: 2,
-  // The CLI computes both go.sum hashes (`h1:` dirhashes of the zip and of go.mod) and reads the
-  // go directive; the setup page shows the hashes, so a go.sum line can be checked by hand.
-  metadataKeys: ["h1", "goModH1", "goVersion"],
-  namespace: {
-    fields: {
-      modulePrefixes: { kind: "list", pattern: GO_MODULE_PATH }
-    },
-    problem(name, ns) {
-      const prefixes = namespaceStrings(ns.modulePrefixes);
-      if (prefixes.length === 0) return "the Go feed has no module prefixes";
-      return prefixes.some((p) => name === p || name.startsWith(`${p}/`)) ? null : `${name} is not under ${prefixes.join(", ")}`;
-    }
-  }
-};
-var MAVEN_PACKAGE_RULES = {
-  ecosystem: "maven",
-  name: {
-    // Maven `groupId:artifactId`.
-    pattern: /^[A-Za-z0-9_-]+(\.[A-Za-z0-9_-]+)*:[A-Za-z0-9_][A-Za-z0-9_.-]*$/,
-    maxLength: 255,
-    // Repositories compare case-insensitively.
-    norm: (name) => name.toLowerCase()
-  },
-  fileTypes: ["maven-file"],
-  maxFiles: 64,
-  metadataKeys: ["groupId", "artifactId", "packaging"],
-  namespace: {
-    fields: {
-      groupPrefixes: {
-        kind: "list",
-        pattern: /^[A-Za-z0-9_-]+(\.[A-Za-z0-9_-]+)*$/
-      }
-    },
-    problem(name, ns) {
-      const prefixes = namespaceStrings(ns.groupPrefixes).map(
-        (p) => p.toLowerCase()
-      );
-      if (prefixes.length === 0) return "the Maven feed has no group prefixes";
-      const group = name.split(":")[0].toLowerCase();
-      return prefixes.some((p) => group === p || group.startsWith(`${p}.`)) ? null : `${name}'s groupId is not under ${prefixes.join(", ")}`;
-    }
-  }
-};
-function npmScope(name) {
-  const m = /^(@[^/]+)\//.exec(name);
-  return m ? m[1] : null;
-}
-var NPM_PACKAGE_RULES = {
-  ecosystem: "npm",
-  name: {
-    // A scoped npm name, lower case (unscoped names are refused: the scope is the namespace).
-    pattern: /^@[a-z0-9][a-z0-9._~-]*\/[a-z0-9][a-z0-9._~-]*$/,
-    maxLength: 214,
-    // npm compares case-insensitively.
-    norm: (name) => name.toLowerCase()
-  },
-  fileTypes: ["npm-tarball"],
-  maxFiles: 64,
-  metadataKeys: [
-    "description",
-    "license",
-    "dependencies",
-    "devDependencies",
-    "peerDependencies",
-    "optionalDependencies",
-    "engines",
-    "bin",
-    "exports",
-    "main",
-    "types",
-    "os",
-    "cpu",
-    "keywords",
-    "homepage",
-    "repository"
-  ],
-  namespace: {
-    fields: {
-      scope: { kind: "string", pattern: /^@[a-z0-9][a-z0-9._~-]{0,213}$/ }
-    },
-    problem(name, ns) {
-      const scope = typeof ns.scope === "string" ? ns.scope.toLowerCase() : "";
-      if (!scope) return "the npm feed has no scope set";
-      return npmScope(name.toLowerCase()) === scope ? null : `${name} is not under the feed's scope ${scope}`;
-    }
-  }
-};
-var OCI_PACKAGE_RULES = {
-  ecosystem: "oci",
-  name: {
-    // An OCI repository path under the owner: lower-case components joined by `/`.
-    pattern: /^[a-z0-9]+((\.|_|__|-+)[a-z0-9]+)*(\/[a-z0-9]+((\.|_|__|-+)[a-z0-9]+)*)*$/,
-    maxLength: 255,
-    // The grammar is lower case already.
-    norm: (name) => name
-  },
-  fileTypes: ["oci-blob", "oci-manifest", "oci-index"],
-  // An image's blobs.
-  maxFiles: 4096,
-  // `root`: the digest of the manifest or index the version's tag points to.
-  metadataKeys: ["mediaType", "platforms", "root"],
-  namespace: {
-    fields: {},
-    problem: () => null
-  }
-};
-function pep503(name) {
-  return name.toLowerCase().replace(/[-_.]+/g, "-");
-}
-var PYPI_NAME = /^[A-Za-z0-9]([A-Za-z0-9._-]*[A-Za-z0-9])?$/;
-var PYPI_PACKAGE_RULES = {
-  ecosystem: "pypi",
-  name: {
-    // PEP 508: letters, digits, `.`, `_` and `-`, starting and ending with a letter or digit.
-    pattern: PYPI_NAME,
-    maxLength: 128,
-    norm: pep503
-  },
-  fileTypes: ["wheel", "sdist", "core-metadata"],
-  maxFiles: 64,
-  metadataKeys: ["summary", "requiresPython", "license"],
-  namespace: {
-    fields: {
-      prefixes: { kind: "list", pattern: PYPI_NAME },
-      names: { kind: "list", pattern: PYPI_NAME }
-    },
-    problem(name, ns) {
-      const norm = pep503(name);
-      const names = namespaceStrings(ns.names).map(pep503);
-      const prefixes = namespaceStrings(ns.prefixes).map(pep503);
-      if (names.length === 0 && prefixes.length === 0)
-        return "the PyPI feed has no names or prefixes";
-      return names.includes(norm) || prefixes.some((p) => norm.startsWith(p)) ? null : `${name} is not one of the feed's names or prefixes`;
-    }
-  }
-};
-var SWIFT_PACKAGE_RULES = {
-  ecosystem: "swift",
-  name: {
-    // SE-0292: `scope.Name`, scope 1-39 of [A-Za-z0-9-], name 1-100 of [A-Za-z0-9_-], each
-    // starting with a letter or digit.
-    pattern: /^[A-Za-z0-9][A-Za-z0-9-]{0,38}\.[A-Za-z0-9][A-Za-z0-9_-]{0,99}$/,
-    maxLength: 140,
-    // The registry compares case-insensitively.
-    norm: (name) => name.toLowerCase()
-  },
-  fileTypes: ["source-archive", "manifest", "source-archive-signature"],
-  maxFiles: 64,
-  metadataKeys: ["toolsVersions", "signatureFormat"],
-  namespace: {
-    fields: {
-      scope: { kind: "string", pattern: /^[A-Za-z0-9][A-Za-z0-9-]{0,38}$/ }
-    },
-    problem(name, ns) {
-      const scope = typeof ns.scope === "string" ? ns.scope.toLowerCase() : "";
-      if (!scope) return "the Swift feed has no scope set";
-      return name.split(".")[0].toLowerCase() === scope ? null : `${name} is not under the feed's scope ${scope}`;
-    }
-  }
-};
-var PACKAGE_ECOSYSTEMS = [
-  "npm",
-  "pypi",
-  "swift",
-  "maven",
-  "oci",
-  "godot",
-  "cargo",
-  "go"
-];
-var MAX_PACKAGE_DELIVERABLES = 64;
-var MAX_PACKAGE_ARTIFACT_ENTRIES = 16;
-var PACKAGE_REFUSED_FIELDS = [
-  "platform",
-  "arch",
-  "format",
-  "content",
-  "binding",
-  "type",
-  "packType"
-];
-var PACKAGE_ECOSYSTEM_RULES = {
-  npm: NPM_PACKAGE_RULES,
-  pypi: PYPI_PACKAGE_RULES,
-  swift: SWIFT_PACKAGE_RULES,
-  maven: MAVEN_PACKAGE_RULES,
-  oci: OCI_PACKAGE_RULES,
-  godot: GODOT_PACKAGE_RULES,
-  cargo: CARGO_PACKAGE_RULES,
-  go: GO_PACKAGE_RULES
-};
-function perEcosystem(pick) {
-  return Object.fromEntries(
-    PACKAGE_ECOSYSTEMS.map((e) => [e, pick(PACKAGE_ECOSYSTEM_RULES[e])])
-  );
-}
-var PACKAGE_NAME_PATTERNS = perEcosystem((r) => r.name.pattern);
-var PACKAGE_NAME_MAX_LENGTH = perEcosystem((r) => r.name.maxLength);
-function isPackageEcosystem(value) {
-  return typeof value === "string" && PACKAGE_ECOSYSTEMS.includes(value);
-}
-function isPackageName(ecosystem, name) {
-  return typeof name === "string" && name.length <= PACKAGE_NAME_MAX_LENGTH[ecosystem] && PACKAGE_NAME_PATTERNS[ecosystem].test(name);
-}
-function packageNameNorm(ecosystem, name) {
-  return PACKAGE_ECOSYSTEM_RULES[ecosystem].name.norm(name);
-}
-var PACKAGE_FILE_TYPES = perEcosystem((r) => r.fileTypes);
-function maxPackageFiles(ecosystem) {
-  return PACKAGE_ECOSYSTEM_RULES[ecosystem].maxFiles;
-}
-var MAX_PACKAGE_METADATA_BYTES = 16 * 1024;
-var PACKAGE_METADATA_KEYS = perEcosystem((r) => r.metadataKeys);
 var PRODUCT_SLUG_PATTERN = "^[a-z0-9][a-z0-9-]{0,63}$";
 var PRODUCT_SLUG_RE = new RegExp(PRODUCT_SLUG_PATTERN);
 var RESERVED_PRODUCT_SLUGS = [
@@ -17489,649 +18143,6 @@ function validatePackageDescriptor(d, manifest, errors) {
     releaseId: `${desc.deliverable}@${desc.version}`
   };
 }
-var DEFAULT_REGISTRY_ORIGIN = "https://pkg.plrs.im";
-var ENV_NAME = /^[A-Za-z_][A-Za-z0-9_]{0,127}$/;
-var TOKEN_VALUE = /^[A-Za-z0-9_.~-]{8,512}$/;
-var OWNER = /^[a-z0-9-]{1,64}$/;
-var VERSION = /^[0-9A-Za-z][0-9A-Za-z.+_-]{0,127}$/;
-function isFeedTokenEnvName(v) {
-  return ENV_NAME.test(v);
-}
-function str(v) {
-  return typeof v === "string" && v !== "" ? v : void 0;
-}
-function list(v) {
-  return Array.isArray(v) ? v.filter((x) => typeof x === "string" && x !== "") : [];
-}
-function hostOf(origin) {
-  return new URL(origin).host;
-}
-function noSlash(url) {
-  return url.endsWith("/") ? url.slice(0, -1) : url;
-}
-function xml(s) {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-}
-function repoName(owner) {
-  return owner.replace(/[^A-Za-z0-9]/g, "_");
-}
-function uvEnvName(index) {
-  return index.toUpperCase().replace(/[^A-Z0-9]/g, "_");
-}
-function shSecret(c) {
-  if (c.kind === "env") return `"$${c.name}"`;
-  if (c.kind === "token") return c.value;
-  return null;
-}
-function fileSecret(c, env) {
-  if (c.kind === "env") return env(c.name);
-  if (c.kind === "token") return c.value;
-  return null;
-}
-function lines(...parts) {
-  return parts.filter((p) => typeof p === "string").join("\n");
-}
-var NPM_SETUP = {
-  clients: ["npm", "pnpm", "Yarn Berry", "Bun"],
-  inputs: ["baseUrl", "namespace.scope", "package.name", "package.version"],
-  feedPath: (owner) => `/npm/${owner}/`,
-  render(v) {
-    const baseUrl = v.get("baseUrl");
-    const name = str(v.get("package.name"));
-    const version = str(v.get("package.version"));
-    const scope = str(v.get("namespace.scope")) ?? /^(@[^/]+)\//.exec(name ?? "")?.[1];
-    const s = scope ?? "@scope";
-    const bare = s.slice(1);
-    const authPath = baseUrl.replace(/^https?:/, "");
-    const npmrcToken = fileSecret(v.credential, (n) => `\${${n}}`);
-    const yarnToken = fileSecret(v.credential, (n) => `\${${n}}`);
-    const bunToken = fileSecret(v.credential, (n) => `$${n}`);
-    return [
-      {
-        id: "npmrc",
-        clients: "npm, pnpm",
-        title: "npm and pnpm: route the scope to this feed",
-        description: `Only ${s} packages are looked up here; every other package stays on its usual registry.`,
-        filename: ".npmrc",
-        language: "text",
-        code: lines(
-          `${s}:registry=${baseUrl}`,
-          npmrcToken !== null && `${authPath}:_authToken=${npmrcToken}`
-        )
-      },
-      {
-        id: "yarn",
-        clients: "Yarn Berry",
-        title: "Yarn Berry",
-        filename: ".yarnrc.yml",
-        language: "yaml",
-        code: lines(
-          "npmScopes:",
-          `  ${bare}:`,
-          `    npmRegistryServer: ${JSON.stringify(baseUrl)}`,
-          yarnToken !== null && `    npmAuthToken: ${JSON.stringify(yarnToken)}
-    npmAlwaysAuth: true`
-        )
-      },
-      {
-        id: "bun",
-        clients: "Bun",
-        title: "Bun",
-        filename: "bunfig.toml",
-        language: "toml",
-        code: lines(
-          "[install.scopes]",
-          bunToken === null ? `${JSON.stringify(s)} = ${JSON.stringify(baseUrl)}` : `${JSON.stringify(s)} = { url = ${JSON.stringify(baseUrl)}, token = ${JSON.stringify(bunToken)} }`
-        )
-      },
-      {
-        id: "install",
-        clients: "npm",
-        title: "Install",
-        language: "sh",
-        code: `npm install ${name ? `${name}${version ? `@${version}` : ""}` : `${s}/<package>`}`
-      }
-    ];
-  }
-};
-var PYPI_SETUP = {
-  clients: ["pip", "uv", "Poetry"],
-  inputs: [
-    "baseUrl",
-    "owner",
-    "namespace.names",
-    "package.name",
-    "package.version"
-  ],
-  feedPath: (owner) => `/pypi/${owner}/simple/`,
-  render(v) {
-    const baseUrl = v.get("baseUrl");
-    const index = v.get("owner");
-    const names = list(v.get("namespace.names"));
-    const name = str(v.get("package.name")) ?? (names.length === 1 ? names[0] : void 0) ?? "<package>";
-    const version = str(v.get("package.version"));
-    const secret = shSecret(v.credential);
-    const uvVar = uvEnvName(index);
-    const authed = secret !== null;
-    const pipUrl = v.credential.kind === "env" ? baseUrl.replace(
-      /^(https?:\/\/)/,
-      `$1__token__:\${${v.credential.name}}@`
-    ) : v.credential.kind === "token" ? baseUrl.replace(
-      /^(https?:\/\/)/,
-      `$1__token__:${v.credential.value}@`
-    ) : baseUrl;
-    const snippets = [
-      {
-        id: "uv",
-        clients: "uv",
-        title: "uv: an explicit index for this project only",
-        description: "explicit = true keeps every other dependency on its usual index.",
-        filename: "pyproject.toml",
-        language: "toml",
-        code: lines(
-          "[[tool.uv.index]]",
-          `name = ${JSON.stringify(index)}`,
-          `url = ${JSON.stringify(baseUrl)}`,
-          "explicit = true",
-          authed && `authenticate = "always"`,
-          "",
-          "[tool.uv.sources]",
-          `${JSON.stringify(name)} = { index = ${JSON.stringify(index)} }`
-        )
-      }
-    ];
-    if (authed)
-      snippets.push({
-        id: "uv-credentials",
-        clients: "uv",
-        title: "uv: the index credentials",
-        language: "sh",
-        code: lines(
-          `export UV_INDEX_${uvVar}_USERNAME=__token__`,
-          `export UV_INDEX_${uvVar}_PASSWORD=${secret}`
-        )
-      });
-    snippets.push(
-      {
-        id: "poetry",
-        clients: "Poetry",
-        title: "Poetry 2: an explicit source",
-        language: "sh",
-        code: lines(
-          `poetry source add --priority=explicit ${index} ${baseUrl}`,
-          authed && `poetry config http-basic.${index} __token__ ${secret}`,
-          `poetry add --source ${index} ${name}${version ? `==${version}` : ""}`
-        )
-      },
-      {
-        id: "pip",
-        clients: "pip",
-        title: "pip: the package alone, without its dependencies",
-        description: "pip cannot route one project to one index: install the dependencies from your usual index first, then this package from the feed.",
-        warning: "Never add this feed with --extra-index-url. pip has no per-project routing: with two indexes it takes the highest version from either, so a public package with the same name could win.",
-        language: "sh",
-        code: `pip install --no-deps --index-url ${pipUrl} ${name}${version ? `==${version}` : ""}`
-      }
-    );
-    return snippets;
-  }
-};
-var SWIFT_SETUP = {
-  clients: ["SwiftPM"],
-  inputs: ["baseUrl", "namespace.scope", "package.name", "package.version"],
-  feedPath: (owner) => `/swift/${owner}/`,
-  render(v) {
-    const url = noSlash(v.get("baseUrl"));
-    const name = str(v.get("package.name"));
-    const version = str(v.get("package.version"));
-    const scope = str(v.get("namespace.scope")) ?? (name?.includes(".") ? name.split(".")[0] : void 0) ?? "<scope>";
-    const id = name ?? `${scope}.<Package>`;
-    const secret = shSecret(v.credential);
-    return [
-      {
-        id: "registries-json",
-        clients: "SwiftPM",
-        title: "Route the scope to this feed and refuse an unsigned release",
-        description: "The whole file, in place of swift package-registry set: SwiftPM needs version and registries beside security. For every project on the machine, ~/.swiftpm/configuration/registries.json. Unless the signer chains to a root SwiftPM already trusts, add trustedRootCertificatesPath under signing.",
-        filename: ".swiftpm/configuration/registries.json",
-        language: "json",
-        code: JSON.stringify(
-          {
-            version: 1,
-            registries: { [scope]: { url } },
-            security: {
-              default: {
-                signing: {
-                  onUnsigned: "error",
-                  onUntrustedCertificate: "error"
-                }
-              }
-            }
-          },
-          null,
-          2
-        )
-      },
-      ...secret !== null ? [
-        {
-          id: "registry-login",
-          clients: "SwiftPM",
-          title: "Sign in to the feed",
-          description: "After the file above: login adds its authentication entry to it.",
-          language: "sh",
-          code: `swift package-registry login ${url} --token ${secret} --no-confirm`
-        }
-      ] : [],
-      {
-        id: "package-swift",
-        clients: "SwiftPM",
-        title: "Depend on the package",
-        filename: "Package.swift",
-        language: "text",
-        code: `.package(id: ${JSON.stringify(id)}, from: ${JSON.stringify(version ?? "1.0.0")})`
-      }
-    ];
-  }
-};
-var MAVEN_SETUP = {
-  clients: ["Gradle", "Maven"],
-  inputs: [
-    "baseUrl",
-    "owner",
-    "namespace.groupPrefixes",
-    "package.name",
-    "package.version"
-  ],
-  feedPath: (owner) => `/maven/${owner}/`,
-  render(v) {
-    const baseUrl = v.get("baseUrl");
-    const owner = v.get("owner");
-    const repo = repoName(owner);
-    const name = str(v.get("package.name"));
-    const version = str(v.get("package.version"));
-    const groups = list(v.get("namespace.groupPrefixes"));
-    const fallback = name?.split(":")[0] ?? groups[0] ?? "<group.prefix>";
-    const filters = (groups.length ? groups : [fallback]).map(
-      (g) => `                includeGroupAndSubgroups(${JSON.stringify(g)})`
-    ).join("\n");
-    const coord = name ? `${name}:${version ?? "<version>"}` : `${fallback}:<artifact>:<version>`;
-    const authed = v.credential.kind === "env" || v.credential.kind === "token";
-    const snippets = [
-      {
-        id: "gradle",
-        clients: "Gradle",
-        title: "Gradle: this feed, for its groups only",
-        filename: "settings.gradle.kts",
-        language: "text",
-        code: lines(
-          "dependencyResolutionManagement {",
-          "    repositories {",
-          "        exclusiveContent {",
-          "            forRepository {",
-          authed ? lines(
-            "                maven {",
-            `                    name = ${JSON.stringify(repo)}`,
-            `                    url = uri(${JSON.stringify(baseUrl)})`,
-            "                    credentials(PasswordCredentials::class)",
-            "                }"
-          ) : `                maven { url = uri(${JSON.stringify(baseUrl)}) }`,
-          "            }",
-          "            filter {",
-          filters,
-          "            }",
-          "        }",
-          "        mavenCentral()",
-          "    }",
-          "}"
-        )
-      }
-    ];
-    if (v.credential.kind === "env")
-      snippets.push({
-        id: "gradle-credentials",
-        clients: "Gradle",
-        title: "Gradle: the repository credentials",
-        language: "sh",
-        code: lines(
-          `export ORG_GRADLE_PROJECT_${repo}Username=__token__`,
-          `export ORG_GRADLE_PROJECT_${repo}Password="$${v.credential.name}"`
-        )
-      });
-    else if (v.credential.kind === "token")
-      snippets.push({
-        id: "gradle-credentials",
-        clients: "Gradle",
-        title: "Gradle: the repository credentials",
-        filename: "~/.gradle/gradle.properties",
-        language: "text",
-        code: lines(
-          `${repo}Username=__token__`,
-          `${repo}Password=${v.credential.value}`
-        )
-      });
-    snippets.push(
-      {
-        id: "gradle-dependency",
-        clients: "Gradle",
-        title: "Depend on the artifact",
-        filename: "build.gradle.kts",
-        language: "text",
-        code: `implementation(${JSON.stringify(coord)})`
-      },
-      {
-        id: "maven",
-        clients: "Maven",
-        title: "Maven: the repository, with a fatal checksum policy",
-        warning: "Maven asks every repository for every artifact. Keep the feed's group prefixes ones you hold on Maven Central, so no one else can publish under them there.",
-        filename: "pom.xml",
-        language: "text",
-        code: lines(
-          "<repositories>",
-          "  <repository>",
-          `    <id>${xml(owner)}</id>`,
-          `    <url>${xml(baseUrl)}</url>`,
-          "    <releases><checksumPolicy>fail</checksumPolicy></releases>",
-          "    <snapshots><enabled>false</enabled></snapshots>",
-          "  </repository>",
-          "</repositories>"
-        )
-      }
-    );
-    const mavenSecret = fileSecret(v.credential, (n) => `\${env.${n}}`);
-    if (mavenSecret !== null)
-      snippets.push({
-        id: "maven-credentials",
-        clients: "Maven",
-        title: "Maven: the server credentials",
-        filename: "~/.m2/settings.xml",
-        language: "text",
-        code: lines(
-          "<servers>",
-          "  <server>",
-          `    <id>${xml(owner)}</id>`,
-          "    <username>__token__</username>",
-          `    <password>${xml(mavenSecret)}</password>`,
-          "  </server>",
-          "</servers>"
-        )
-      });
-    return snippets;
-  }
-};
-var OCI_SETUP = {
-  clients: ["docker", "podman", "crane"],
-  inputs: ["registryHost", "owner", "package.name", "package.version"],
-  feedPath: (owner) => `/v2/${owner}/`,
-  render(v) {
-    const host = v.get("registryHost");
-    const owner = v.get("owner");
-    const repo = str(v.get("package.name")) ?? "<repository>";
-    const tag2 = str(v.get("package.version")) ?? "latest";
-    const login = v.credential.kind === "env" ? `echo "$${v.credential.name}" | docker login ${host} -u __token__ --password-stdin` : v.credential.kind === "token" ? `echo ${v.credential.value} | docker login ${host} -u __token__ --password-stdin` : null;
-    return [
-      {
-        id: "pull",
-        clients: "docker, podman, crane",
-        title: "Pull by the fully qualified reference",
-        description: "podman pull and crane pull take the same reference; it never resolves on another registry.",
-        language: "sh",
-        code: lines(login, `docker pull ${host}/${owner}/${repo}:${tag2}`)
-      }
-    ];
-  }
-};
-var GODOT_SETUP = {
-  clients: ["The Godot editor's asset library", "GodotEnv"],
-  inputs: ["baseUrl"],
-  feedPath: (owner) => `/godot/${owner}/`,
-  render(v) {
-    const base = v.get("baseUrl");
-    const root = v.credential.kind === "godot-url" ? `${base}t/${v.credential.value}/` : base;
-    return [
-      {
-        id: "editor-4.6",
-        clients: "Godot 4.4 to 4.6",
-        title: "Godot 4.6 and earlier: Asset Library → Available URLs",
-        description: "Editor Settings, asset_library/available_urls.",
-        language: "text",
-        code: `${root}asset-library/api`
-      },
-      {
-        id: "editor-4.7",
-        clients: "Godot 4.7 and later",
-        title: "Godot 4.7 and later: asset_store/available_urls",
-        description: "Editor Settings, asset_store/available_urls.",
-        language: "text",
-        code: `${root}store/api/v1`
-      },
-      {
-        id: "godotenv",
-        clients: "GodotEnv",
-        title: "GodotEnv: copy a version's addons.json entry from the index",
-        language: "text",
-        code: `${root}index.json`
-      }
-    ];
-  }
-};
-function cargoEnvName(registry) {
-  return registry.toUpperCase().replace(/[^A-Z0-9]/g, "_");
-}
-var CARGO_SETUP = {
-  clients: ["Cargo"],
-  inputs: ["baseUrl", "owner", "package.name", "package.version"],
-  feedPath: (owner) => `/cargo/${owner}/`,
-  render(v) {
-    const baseUrl = v.get("baseUrl");
-    const registry = v.get("owner");
-    const name = str(v.get("package.name")) ?? "<crate>";
-    const version = str(v.get("package.version"));
-    const envVar = `CARGO_REGISTRIES_${cargoEnvName(registry)}_TOKEN`;
-    const authed = v.credential.kind === "env" || v.credential.kind === "token";
-    const snippets = [
-      {
-        id: "config",
-        clients: "Cargo",
-        title: "Cargo: name the feed as a registry",
-        description: authed ? "A sparse index; Cargo 1.74 and later for a private one, which needs a credential provider named. Nothing comes from it unless a dependency names it with registry =." : "A sparse index (Cargo 1.68 and later). Nothing comes from it unless a dependency names it with registry =.",
-        filename: ".cargo/config.toml",
-        language: "toml",
-        code: lines(
-          `[registries.${registry}]`,
-          `index = ${JSON.stringify(`sparse+${baseUrl}`)}`,
-          authed && `credential-provider = "cargo:token"`
-        )
-      }
-    ];
-    if (v.credential.kind === "env")
-      snippets.push({
-        id: "token",
-        clients: "Cargo",
-        title: "Cargo: the registry token",
-        description: "Cargo sends it on every request to a feed whose config.json says auth-required.",
-        language: "sh",
-        code: `export ${envVar}="$${v.credential.name}"`
-      });
-    else if (v.credential.kind === "token")
-      snippets.push({
-        id: "token",
-        clients: "Cargo",
-        title: "Cargo: the registry token",
-        description: "Stored in ~/.cargo/credentials.toml. Cargo sends it on every request to a feed whose config.json says auth-required.",
-        language: "sh",
-        code: `echo ${v.credential.value} | cargo login --registry ${registry}`
-      });
-    snippets.push({
-      id: "dependency",
-      clients: "Cargo",
-      title: "Depend on the crate from this registry",
-      filename: "Cargo.toml",
-      language: "toml",
-      code: lines(
-        "[dependencies]",
-        `${name} = { version = ${JSON.stringify(version ?? "*")}, registry = ${JSON.stringify(registry)} }`
-      )
-    });
-    return snippets;
-  }
-};
-var GO_SETUP = {
-  clients: ["the go command"],
-  inputs: [
-    "baseUrl",
-    "registryHost",
-    "namespace.modulePrefixes",
-    "package.name",
-    "package.version"
-  ],
-  feedPath: (owner) => `/go/${owner}/`,
-  render(v) {
-    const proxy = noSlash(v.get("baseUrl"));
-    const host = v.get("registryHost");
-    const name = str(v.get("package.name"));
-    const version = str(v.get("package.version"));
-    const prefixes = list(v.get("namespace.modulePrefixes"));
-    const private_ = prefixes.length ? prefixes.join(",") : name ?? "<module/prefix>";
-    const snippets = [
-      {
-        id: "goproxy",
-        clients: "the go command",
-        title: "Go: this feed first, then the public proxy",
-        description: `The feed answers only for its own modules (${private_}) and 404s every other path, so Go moves on to the public proxy for everything else. GONOSUMDB keeps these modules away from the public checksum database, which cannot see them; go.sum still pins every hash.`,
-        warning: "Do not list these modules in GOPRIVATE: it sets GONOPROXY too, so Go skips every proxy, this feed included, and goes to the module path's host directly.",
-        language: "sh",
-        code: lines(
-          `go env -w GOPROXY=${proxy},https://proxy.golang.org,direct`,
-          `go env -w GONOSUMDB=${private_}`
-        )
-      }
-    ];
-    if (v.credential.kind === "env")
-      snippets.push({
-        id: "netrc",
-        clients: "the go command",
-        title: "Go: the feed credentials",
-        description: "The go command sends a .netrc entry's login and password as HTTP Basic credentials to the proxy's host.",
-        language: "sh",
-        code: `printf 'machine %s login __token__ password %s\\n' ${host} "$${v.credential.name}" >> ~/.netrc`
-      });
-    else if (v.credential.kind === "token")
-      snippets.push({
-        id: "netrc",
-        clients: "the go command",
-        title: "Go: the feed credentials",
-        description: "The go command sends a .netrc entry's login and password as HTTP Basic credentials to the proxy's host.",
-        filename: "~/.netrc",
-        language: "text",
-        code: lines(
-          `machine ${host}`,
-          "login __token__",
-          `password ${v.credential.value}`
-        )
-      });
-    snippets.push({
-      id: "go-get",
-      clients: "the go command",
-      title: "Depend on the module",
-      language: "sh",
-      code: `go get ${name ?? `${prefixes[0] ?? "<module/prefix>"}/<module>`}@${version ? `v${version}` : "latest"}`
-    });
-    return snippets;
-  }
-};
-var FEED_SETUP = {
-  npm: NPM_SETUP,
-  pypi: PYPI_SETUP,
-  swift: SWIFT_SETUP,
-  maven: MAVEN_SETUP,
-  oci: OCI_SETUP,
-  godot: GODOT_SETUP,
-  cargo: CARGO_SETUP,
-  go: GO_SETUP
-};
-function feedSetupBaseUrl(ecosystem, origin, owner) {
-  return `${noSlash(origin)}${FEED_SETUP[ecosystem].feedPath(encodeURIComponent(owner))}`;
-}
-function feedSetupProblem(ecosystem, ctx) {
-  if (!isPackageEcosystem(ecosystem)) return `unknown ecosystem "${ecosystem}"`;
-  let url;
-  try {
-    url = new URL(ctx.origin);
-  } catch {
-    return `the registry origin "${ctx.origin}" is not a URL`;
-  }
-  if (url.protocol !== "https:" && url.protocol !== "http:")
-    return "the registry origin must be an http(s) URL";
-  if (url.pathname !== "/" || url.search || url.hash || url.username)
-    return "the registry origin is an origin only (no path, query or credentials)";
-  if (!OWNER.test(ctx.owner)) return `the owner "${ctx.owner}" is not a slug`;
-  const rules = PACKAGE_ECOSYSTEM_RULES[ecosystem];
-  for (const [key, value] of Object.entries(ctx.namespace ?? {})) {
-    const field = rules.namespace.fields[key];
-    if (!Object.hasOwn(rules.namespace.fields, key) || !field)
-      return `${ecosystem} has no namespace key "${key}"`;
-    if (value === void 0 || value === null || value === "") continue;
-    if (field.kind === "list" && !Array.isArray(value))
-      return `namespace.${key} is a list`;
-    if (field.kind === "string" && typeof value !== "string")
-      return `namespace.${key} is a string`;
-    const values = field.kind === "list" ? list(value) : [value];
-    for (const item of values)
-      if (!field.pattern.test(item))
-        return `namespace.${key} "${item}" is malformed`;
-  }
-  if (ctx.package) {
-    if (!rules.name.pattern.test(ctx.package.name))
-      return `"${ctx.package.name}" is not a ${ecosystem} package name`;
-    const version = ctx.package.version;
-    if (version !== void 0 && version !== null && !VERSION.test(version))
-      return `"${version}" is not a version`;
-  }
-  const c = ctx.credential;
-  if (c?.kind === "env" && !ENV_NAME.test(c.name))
-    return `"${c.name}" is not an environment variable name`;
-  if ((c?.kind === "token" || c?.kind === "godot-url") && !TOKEN_VALUE.test(c.value))
-    return "the token has characters a snippet cannot carry";
-  return null;
-}
-function renderFeedSetup(ecosystem, ctx) {
-  const problem = feedSetupProblem(ecosystem, ctx);
-  if (problem !== null) throw new Error(`renderFeedSetup: ${problem}`);
-  const decl = FEED_SETUP[ecosystem];
-  const declared = new Set(decl.inputs);
-  const origin = noSlash(ctx.origin);
-  const resolve2 = (input) => {
-    if (input === "baseUrl")
-      return feedSetupBaseUrl(ecosystem, origin, ctx.owner);
-    if (input === "registryHost") return hostOf(origin);
-    if (input === "owner") return ctx.owner;
-    if (input === "package.name") return ctx.package?.name;
-    if (input === "package.version") return ctx.package?.version ?? void 0;
-    return ctx.namespace?.[input.slice("namespace.".length)];
-  };
-  const credential = ctx.credential ?? { kind: "none" };
-  return decl.render({
-    get(input) {
-      if (!declared.has(input))
-        throw new Error(
-          `renderFeedSetup: ${ecosystem} reads "${input}", which its setup does not declare`
-        );
-      return resolve2(input);
-    },
-    // A Godot feed authenticates only through its URL; the others never through one.
-    credential: ecosystem === "godot" === (credential.kind === "godot-url") ? credential : { kind: "none" }
-  });
-}
-function formatFeedSetup(snippets) {
-  return snippets.map(
-    (s) => lines(
-      `# ${s.title}${s.filename ? ` (${s.filename})` : ""}`,
-      s.warning && `# Warning: ${s.warning}`,
-      s.description && `# ${s.description}`,
-      s.code
-    )
-  ).join("\n\n").concat("\n");
-}
 var PLATFORM_NAMES = {
   macos: "macOS",
   ios: "iOS / iPadOS",
@@ -19589,8 +19600,8 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
       "fingerprint must be an object."
     );
   }
-  const fingerprint2 = asRecord(productRoot.fingerprint);
-  if (fingerprint2.enabled !== void 0 && typeof fingerprint2.enabled !== "boolean") {
+  const fingerprint = asRecord(productRoot.fingerprint);
+  if (fingerprint.enabled !== void 0 && typeof fingerprint.enabled !== "boolean") {
     add4(
       errors,
       "product",
@@ -19599,7 +19610,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
       "fingerprint.enabled must be a boolean."
     );
   }
-  if (fingerprint2.defaultMode !== void 0 && !isOneOf2(fingerprint2.defaultMode, FINGERPRINT_MODE_VALUES)) {
+  if (fingerprint.defaultMode !== void 0 && !isOneOf2(fingerprint.defaultMode, FINGERPRINT_MODE_VALUES)) {
     add4(
       errors,
       "product",
@@ -19608,7 +19619,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
       `fingerprint.defaultMode must be one of ${FINGERPRINT_MODE_VALUES.join(", ")}.`
     );
   }
-  for (const [i, raw] of (arrayAt(fingerprint2, "probes") ?? []).entries()) {
+  for (const [i, raw] of (arrayAt(fingerprint, "probes") ?? []).entries()) {
     if (!isRecord6(raw)) continue;
     constrained(
       errors,
@@ -22809,49 +22820,49 @@ function show2(v, env) {
 }
 function formatImport(r, env = {}) {
   const u = (v) => untrusted(v, env);
-  const lines3 = [];
-  if (r.presets.length) lines3.push(`Presets read: ${r.presets.join(", ")}`);
-  for (const w of r.warnings) lines3.push(`warning: ${u(w)}`);
+  const lines4 = [];
+  if (r.presets.length) lines4.push(`Presets read: ${r.presets.join(", ")}`);
+  for (const w of r.warnings) lines4.push(`warning: ${u(w)}`);
   const imp = r.import;
   if (!imp) {
-    lines3.push(JSON.stringify(r.upload, null, 2));
-    return lines3.join("\n");
+    lines4.push(JSON.stringify(r.upload, null, 2));
+    return lines4.join("\n");
   }
   if (imp.createsListing)
-    lines3.push(
+    lines4.push(
       `The product has no listing yet: this creates it (default locale ${u(imp.defaultLocale)}).`
     );
   if (!imp.changes.length)
-    lines3.push("No changes: the listing already holds what the project has.");
+    lines4.push("No changes: the listing already holds what the project has.");
   const width = Math.max(0, ...imp.changes.map((c) => u(c.field).length));
   for (const c of imp.changes) {
     const value = c.action === "replace" ? `${show2(c.current, env)} -> ${show2(c.proposed, env)}` : c.action === "keep" ? `${show2(c.current, env)} (kept: ${u(c.reason ?? "kept")}; godot has ${show2(c.proposed, env)})` : show2(c.proposed, env);
-    lines3.push(
+    lines4.push(
       `  ${u(c.action).padEnd(7)}  ${u(c.field).padEnd(width)}  ${value}`
     );
   }
   for (const x of imp.refused)
-    lines3.push(`refused  ${u(x.field)}: ${u(x.message)}`);
+    lines4.push(`refused  ${u(x.field)}: ${u(x.message)}`);
   for (const i of imp.identifiers) {
     const where2 = i.outlets.length ? i.outlets.map(
       (o) => `${u(o.outlet)} ${o.matches ? "matches" : `has ${u(o.value)}`}`
     ).join(", ") : "no outlet declares one";
-    lines3.push(`${u(i.kind)} (${u(i.platform)}) ${u(i.value)}: ${where2}`);
+    lines4.push(`${u(i.kind)} (${u(i.platform)}) ${u(i.value)}: ${where2}`);
   }
   for (const a of imp.assets)
-    lines3.push(
+    lines4.push(
       `icon ${u(a.slot)}: ${u(a.ref)}${a.width && a.height ? ` (${u(a.width)}x${u(a.height)})` : ""}; upload it with pkey listing assets`
     );
   const applicable = imp.changes.filter((c) => c.action !== "keep").length;
   if (imp.applied)
-    lines3.push(
+    lines4.push(
       imp.written.length ? `Applied ${imp.written.length} change${imp.written.length === 1 ? "" : "s"}: ${imp.written.map(u).join(", ")}` : "Nothing to apply."
     );
   else if (applicable)
-    lines3.push(
+    lines4.push(
       `Nothing written. Re-run with --apply to write ${applicable} change${applicable === 1 ? "" : "s"}.`
     );
-  return lines3.join("\n");
+  return lines4.join("\n");
 }
 
 // src/oidc.ts
@@ -22996,24 +23007,24 @@ function renderRefusal(what, target, status, body, env = {}) {
   const reason = typeof body.reason === "string" ? body.reason : void 0;
   const code = typeof body.error === "string" ? body.error : void 0;
   const label = [String(status), reason ?? code].filter(Boolean).map(u).join(" ");
-  const lines3 = [`${what} failed (${label}) at ${target}`];
-  if (typeof body.message === "string") lines3.push(`  ${u(body.message)}`);
+  const lines4 = [`${what} failed (${label}) at ${target}`];
+  if (typeof body.message === "string") lines4.push(`  ${u(body.message)}`);
   if (typeof body.claim === "string")
-    lines3.push(`  failing claim: ${u(body.claim)}`);
-  if (typeof body.key === "string") lines3.push(`  object: ${u(body.key)}`);
+    lines4.push(`  failing claim: ${u(body.claim)}`);
+  if (typeof body.key === "string") lines4.push(`  object: ${u(body.key)}`);
   if (Array.isArray(body.fields) && body.fields.length)
-    lines3.push(`  fields: ${body.fields.map(u).join(", ")}`);
+    lines4.push(`  fields: ${body.fields.map(u).join(", ")}`);
   if (Array.isArray(body.errors)) {
     for (const e of body.errors.slice(0, 50)) {
       const rec = e ?? {};
-      lines3.push(
+      lines4.push(
         `  ${u(rec.path ?? "")} ${u(rec.code ?? "")}: ${u(rec.message ?? "")}`
       );
     }
   }
   const hint = refusalHint(status, reason);
-  if (hint) lines3.push(hint);
-  return lines3.join("\n");
+  if (hint) lines4.push(hint);
+  return lines4.join("\n");
 }
 function refusalHint(status, reason) {
   switch (reason) {
@@ -23330,12 +23341,13 @@ var COMMANDS = [
     rows: [["sdk", "Print an SDK snippet, or one SDK's config file"]],
     usage: [
       "pkey sdk --product slug [--base-url url] [--kid kid --public-key key]",
+      "pkey sdk add node|react|python|swift|kotlin|godot --expect kid@sha256:fingerprint[,...] [--product slug] [--base-url url] [--out path] [--force] [--release-key kid=key ...] [--package kotlin.package]",
       "pkey sdk --lang node|react|python|swift|kotlin|godot [--product slug] [--base-url url] [--write [--out path] [--force]] [--kid kid --public-key key] [--release-key kid=key ...] [--package kotlin.package] [--dev [--url origin]]"
     ],
     valueless: ["dev"],
     about: [
       {
-        text: "Without --lang, pkey sdk prints a Node example with the pins given. With --lang it reads the product's discovery (and, in the product's repo, .pkey/release's releaseKeys) and prints that SDK's config file; --write writes it to the SDK's default path or --out, and --force replaces a file pkey sdk did not write. --dev reads the product, origin and release keys from a running pkey dev (--url, else ./polaris-key.json) instead."
+        text: "pkey sdk add writes the SDK's config file and prints the install and the start. It refuses unless discovery serves exactly the pins --expect names, by fingerprint (copy them from the console's Integration page): it never trusts discovery first. Without --lang, pkey sdk prints a Node example with the pins given. With --lang it reads the product's discovery (and, in the product's repo, .pkey/release's releaseKeys) and prints that SDK's config file; --write writes it to the SDK's default path or --out, and --force replaces a file pkey sdk did not write. --dev reads the product, origin and release keys from a running pkey dev (--url, else ./polaris-key.json) instead."
       }
     ]
   },
@@ -23385,8 +23397,8 @@ var COMMANDS = [
     name: "trust",
     group: "sdk",
     json: false,
-    summary: "Format a signing key for every SDK's pinned keys",
-    rows: [["trust", "Format a signing key for every SDK's pinned keys"]],
+    summary: "Show a signing key pinned in every SDK's config file",
+    rows: [["trust", "Show a signing key pinned in every SDK's config file"]],
     usage: ["pkey trust --kid kid --public-key key"]
   },
   {
@@ -23892,7 +23904,7 @@ function twoColumns(term, rows, column, indent = 2) {
       Math.max(1, caps.columns - indent - 2)
     );
     const col = stacked && termLines.length > 1 ? indent + 4 : descCol;
-    const lines3 = wrapSpans(
+    const lines4 = wrapSpans(
       [{ text, style: ["muted"] }],
       Math.max(1, caps.columns - col)
     );
@@ -23901,7 +23913,7 @@ function twoColumns(term, rows, column, indent = 2) {
         `${" ".repeat(i === 0 ? indent : indent + 2)}${painter.line(l)}`
       )
     );
-    lines3.forEach((l, i) => {
+    lines4.forEach((l, i) => {
       const body = painter.line(l);
       out.push(
         i === 0 && fits ? `${" ".repeat(indent)}${name}${" ".repeat(column - cellWidth(t) + 2)}${body}` : `${" ".repeat(col)}${body}`
@@ -23940,15 +23952,15 @@ function hereLines(here, width, separator) {
   const product = here.product;
   const room = Math.max(1, width - LABEL_WIDTH);
   const text = product ? `${product.name ? `${product.name} (${product.slug})` : product.slug} from ${product.source === "manifest" ? ".pkey/product" : "--product"}` : "no product: no .pkey/product here or above; pass --product";
-  const lines3 = wrapSpans([{ text }], room);
+  const lines4 = wrapSpans([{ text }], room);
   const url = shortUrl(here.baseUrl);
-  const tail = lines3.at(-1) ?? [];
+  const tail = lines4.at(-1) ?? [];
   const used = cellWidth(tail.map((x) => x.text).join(""));
   const joined = ` ${separator} ${url}`;
   if (used + cellWidth(joined) <= room)
     tail.push({ text: joined, style: ["muted"] });
-  else lines3.push([{ text: url, style: ["muted"] }]);
-  return lines3.map(
+  else lines4.push([{ text: url, style: ["muted"] }]);
+  return lines4.map(
     (l, i) => [
       i === 0 ? { text: "Here".padEnd(LABEL_WIDTH), style: ["muted"] } : { text: " ".repeat(LABEL_WIDTH) },
       ...l
@@ -24059,20 +24071,20 @@ function usageLines(term, cmd, text, indent = 2) {
     const next = cmd.tree[units[2].split("|")[0]] ?? [];
     if (isIn(units[3], next)) lead = 4;
   }
-  const lines3 = [[]];
+  const lines4 = [[]];
   let w = indent;
   units.forEach((u, i) => {
-    const cur = lines3[lines3.length - 1];
+    const cur = lines4[lines4.length - 1];
     const uw = cellWidth(u);
     if (cur.length > 0 && w + 1 + uw > caps.columns) {
-      lines3.push([]);
+      lines4.push([]);
       w = cont;
     }
-    const target = lines3[lines3.length - 1];
+    const target = lines4[lines4.length - 1];
     w += (target.length > 0 ? 1 : 0) + uw;
     target.push(i < lead ? painter.style(u, ["strong"]) : u);
   });
-  return lines3.map(
+  return lines4.map(
     (l, i) => `${" ".repeat(i === 0 ? indent : cont)}${l.join(" ")}`
   );
 }
@@ -24280,7 +24292,7 @@ function completionScript(shell) {
       ""
     ].join("\n");
   }
-  const lines3 = [
+  const lines4 = [
     "# pkey completion for fish. Save as ~/.config/fish/completions/pkey.fish:",
     "#   pkey completion fish > ~/.config/fish/completions/pkey.fish",
     "# True when exactly these words follow pkey on the command line so far.",
@@ -24308,7 +24320,7 @@ function completionScript(shell) {
     "complete -c pkey -l ascii -d 'ASCII symbols only'",
     ""
   ];
-  return lines3.join("\n");
+  return lines4.join("\n");
 }
 
 // src/devCommand.ts
@@ -24466,44 +24478,6 @@ async function initManifest(opts) {
     files.push(releasePath);
   }
   return { files };
-}
-function trustSnippet(kid, publicKey) {
-  const trust = JSON.stringify({ [kid]: publicKey }, null, 2);
-  return [
-    "JSON trust set:",
-    trust,
-    "",
-    "Node/React:",
-    `trust: { pinnedKeys: ${trust} }`,
-    "",
-    "Python:",
-    `trusted_keys = ${trust}`,
-    "",
-    "Swift:",
-    // Swift dictionary literals use square brackets — emitting the JSON `{…}` form here
-    // produced a snippet that did not compile.
-    `let trustedKeys = [${JSON.stringify(kid)}: ${JSON.stringify(publicKey)}]`,
-    "",
-    "Godot (GDScript; assign to PKeyOptions.pinned_trust_keys):",
-    `const PINNED_TRUST_KEYS := {${JSON.stringify(kid)}: ${JSON.stringify(publicKey)}}`
-  ].join("\n");
-}
-function sdkSnippet(opts) {
-  const trust = opts.kid && opts.publicKey ? `,
-  trust: { pinnedKeys: ${JSON.stringify({ [opts.kid]: opts.publicKey })} }` : "";
-  return `import { PolarisKeyClient } from "@polaris-key/node";
-
-const client = await PolarisKeyClient.create({
-  productSlug: "${opts.product}",
-  baseUrl: "${opts.baseUrl}",
-  version: "1.0.0"${trust}
-});
-
-await client.sync();
-
-const enabled = client.isLicensed();
-const value = client.config.getConfig("your.config.key", "fallback");
-const secret = client.config.getSecret("your.secret.key");`;
 }
 function productYaml(opts, services) {
   const moduleLines = SERVICE_SLUGS.map(
@@ -24718,7 +24692,7 @@ function configFile(info) {
   };
 }
 function banner(info, wrote) {
-  const lines3 = [
+  const lines4 = [
     `Polaris Key dev  ${info.baseUrl}`,
     `Product   ${info.product} (${info.name}): ${info.services.join(", ")}`,
     "",
@@ -24742,7 +24716,7 @@ function banner(info, wrote) {
     "Control: pkey dev expire|disable|revoke|fill-seats <key>, config, release, offline.",
     "Ctrl-C stops it."
   ];
-  return `${lines3.join("\n")}
+  return `${lines4.join("\n")}
 `;
 }
 async function serveDev(args, io, bundlePath) {
@@ -25655,16 +25629,16 @@ var ZipReader = class _ZipReader {
           const id = cd.readUInt16LE(x);
           const len = cd.readUInt16LE(x + 2);
           if (id === 1) {
-            let q2 = x + 4;
+            let q3 = x + 4;
             if (uncompressed === 4294967295) {
-              uncompressed = u64(cd, q2);
-              q2 += 8;
+              uncompressed = u64(cd, q3);
+              q3 += 8;
             }
             if (compressedSize === 4294967295) {
-              compressedSize = u64(cd, q2);
-              q2 += 8;
+              compressedSize = u64(cd, q3);
+              q3 += 8;
             }
-            if (localOffset === 4294967295) localOffset = u64(cd, q2);
+            if (localOffset === 4294967295) localOffset = u64(cd, q3);
           }
           x += 4 + len;
         }
@@ -25982,8 +25956,8 @@ function parseAxml(buf) {
     else if (type === RES_XML_RESOURCE_MAP_TYPE) {
       const header = buf.readUInt16LE(p + 2);
       resIds = [];
-      for (let q2 = p + header; q2 + 4 <= p + size; q2 += 4)
-        resIds.push(buf.readUInt32LE(q2));
+      for (let q3 = p + header; q3 + 4 <= p + size; q3 += 4)
+        resIds.push(buf.readUInt32LE(q3));
     } else if (type === RES_XML_START_ELEMENT_TYPE) {
       const ext = p + buf.readUInt16LE(p + 2);
       const name = strings2[buf.readUInt32LE(ext + 4)] ?? "";
@@ -26245,7 +26219,7 @@ async function contentInterfaceFingerprint(cwd, file) {
   );
   return createHash4("sha256").update(canonicalJson(value)).digest("hex");
 }
-function judgeContentInterface(answer, fingerprint2, contentApi, strict) {
+function judgeContentInterface(answer, fingerprint, contentApi, strict) {
   const a = answer ?? {};
   if (a.sha256 === void 0)
     throw new Error(
@@ -26263,14 +26237,14 @@ function judgeContentInterface(answer, fingerprint2, contentApi, strict) {
       warning: null,
       note: `${name} was published without a fingerprint: nothing to compare`
     };
-  if (prev.sha256 === fingerprint2)
+  if (prev.sha256 === fingerprint)
     return { warning: null, note: `unchanged since ${name}` };
   if (prev.contentApi !== contentApi)
     return {
       warning: null,
       note: `changed since ${name}, with contentApi ${clean(String(prev.contentApi))} → ${String(contentApi)}`
     };
-  const warning = `the content interface changed since ${name} (${prev.sha256.slice(0, 12)}… → ${fingerprint2.slice(0, 12)}…), but contentApi is still ${String(contentApi)}: packs on that contentApi line may not have the content shape this build expects. Bump deliverables.app.content.contentApi${strict ? "" : ", or pass --strict to fail on this"}.`;
+  const warning = `the content interface changed since ${name} (${prev.sha256.slice(0, 12)}… → ${fingerprint.slice(0, 12)}…), but contentApi is still ${String(contentApi)}: packs on that contentApi line may not have the content shape this build expects. Bump deliverables.app.content.contentApi${strict ? "" : ", or pass --strict to fail on this"}.`;
   if (strict) throw new Error(`--strict: ${warning}`);
   return { warning, note: `changed since ${name}` };
 }
@@ -27681,9 +27655,9 @@ async function sha256Hex(bytes) {
   return hex3(new Uint8Array(digest));
 }
 async function treeDigest(files) {
-  const lines3 = [...files].sort((a, b) => compareBytes(a.path, b.path)).map((f) => `${f.sha256} ${String(f.size)} ${f.path}
+  const lines4 = [...files].sort((a, b) => compareBytes(a.path, b.path)).map((f) => `${f.sha256} ${String(f.size)} ${f.path}
 `).join("");
-  return sha256Hex(new TextEncoder().encode(lines3));
+  return sha256Hex(new TextEncoder().encode(lines4));
 }
 var invalid = {
   ok: false,
@@ -29876,8 +29850,8 @@ ${PUBLISH_USAGE}`);
 ${PUBLISH_USAGE}`);
   if (opts.strict && opts.contentInterface === void 0)
     throw new Error("--strict needs --content-interface <file>.");
-  const fingerprint2 = opts.contentInterface !== void 0 ? await contentInterfaceFingerprint(opts.cwd, opts.contentInterface) : null;
-  if (fingerprint2 !== null) out.write(`Content interface: ${fingerprint2}
+  const fingerprint = opts.contentInterface !== void 0 ? await contentInterfaceFingerprint(opts.cwd, opts.contentInterface) : null;
+  if (fingerprint !== null) out.write(`Content interface: ${fingerprint}
 `);
   const loaded2 = await loadManifest(opts.cwd);
   const validation = validateLoadedManifest(loaded2);
@@ -30049,13 +30023,13 @@ ${local.errors.map((e) => `  ${e.path} ${e.code}: ${e.message}`).join("\n")}`
     skipped: [],
     warnings: match.warnings,
     ...descriptor.content ? { content: descriptor.content } : {},
-    ...fingerprint2 !== null ? { contentInterface: fingerprint2 } : {}
+    ...fingerprint !== null ? { contentInterface: fingerprint } : {}
   };
   const judge = (answer) => {
-    if (fingerprint2 === null) return;
+    if (fingerprint === null) return;
     const verdict = judgeContentInterface(
       answer,
-      fingerprint2,
+      fingerprint,
       descriptor.content?.contentApi ?? null,
       opts.strict === true
     );
@@ -30207,7 +30181,7 @@ ${JSON.stringify(record, null, 2)}
       );
     }
   }
-  if (fingerprint2 !== null && !opts.dryRun)
+  if (fingerprint !== null && !opts.dryRun)
     judge(
       (await client.postJson("release/publish/submit", {
         what: "Comparing the content interface (dry run)",
@@ -30215,7 +30189,7 @@ ${JSON.stringify(record, null, 2)}
           ticket: ticket.ticket,
           descriptor,
           ...recordJws !== void 0 ? { record: recordJws } : {},
-          contentInterface: fingerprint2,
+          contentInterface: fingerprint,
           dryRun: true
         }
       })).contentInterface
@@ -30266,7 +30240,7 @@ ${JSON.stringify(record, null, 2)}
       ticket: ticket.ticket,
       descriptor,
       ...recordJws !== void 0 ? { record: recordJws } : {},
-      ...fingerprint2 !== null ? { contentInterface: fingerprint2 } : {},
+      ...fingerprint !== null ? { contentInterface: fingerprint } : {},
       ...opts.dryRun ? { dryRun: true } : {}
     }
   });
@@ -30288,9 +30262,8 @@ ${JSON.stringify(record, null, 2)}
   return result;
 }
 
-// src/sdkConfig.ts
+// ../shared-manifest/dist/integration/index.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { createHash as createHash8 } from "node:crypto";
 var SDK_LANGS = [
   "node",
   "react",
@@ -30299,7 +30272,6 @@ var SDK_LANGS = [
   "kotlin",
   "godot"
 ];
-var SDK_CONFIG_USAGE = "Usage: pkey sdk --lang node|react|python|swift|kotlin|godot --product <slug> [--base-url <url>]\n                [--write] [--out <path>] [--force] [--kid <kid> --public-key <key>]\n                [--release-key <kid>=<key> ...] [--package <kotlin package>]";
 var SDK_CONFIG_MARKER = "GENERATED by `pkey sdk";
 var SDK_CONFIG_DEFAULT_OUT = {
   node: "polaris.config.ts",
@@ -30309,167 +30281,7 @@ var SDK_CONFIG_DEFAULT_OUT = {
   kotlin: "PolarisConfig.kt",
   godot: "polaris_key_config.gd"
 };
-var shown = (v) => untrusted(v, {});
-var PRODUCT_RE = /^[a-z0-9][a-z0-9_-]*$/;
-var KID_RE2 = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
-var KEY_RE = /^[A-Za-z0-9_-]{43}$/;
-var URL_CHARS_RE = /^[A-Za-z0-9:/._~%-]+$/;
 var KOTLIN_PACKAGE_RE = /^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)*$/;
-function fingerprint(publicKey) {
-  return createHash8("sha256").update(Buffer.from(publicKey, "base64url")).digest("hex");
-}
-function normalizeBaseUrl3(raw) {
-  let url;
-  try {
-    url = new URL(raw);
-  } catch {
-    throw new Error(`--base-url ${raw} is not a URL.`);
-  }
-  const loopback = url.hostname === "localhost" || url.hostname === "127.0.0.1" || url.hostname === "[::1]";
-  if (url.protocol !== "https:" && !(url.protocol === "http:" && loopback))
-    throw new Error(
-      `--base-url must be https: (http: only for localhost); got ${raw}.`
-    );
-  if (url.search || url.hash || url.username || url.password)
-    throw new Error(
-      `--base-url must not carry credentials, a query or a fragment.`
-    );
-  const out = `${url.origin}${url.pathname}`.replace(/\/+$/, "");
-  if (!URL_CHARS_RE.test(out))
-    throw new Error(`--base-url ${raw} has characters pkey sdk cannot emit.`);
-  return out;
-}
-function parseReleaseKeyFlags(values) {
-  return values.map((v) => {
-    const eq = v.indexOf("=");
-    if (eq <= 0) throw new Error(`--release-key takes <kid>=<key>; got ${v}.`);
-    return { kid: v.slice(0, eq), publicKey: v.slice(eq + 1) };
-  });
-}
-function isRecord8(v) {
-  return typeof v === "object" && v !== null && !Array.isArray(v);
-}
-async function resolveSdkFacts(opts) {
-  if (!PRODUCT_RE.test(opts.product))
-    throw new Error(
-      `--product must be a lower-case slug; got ${opts.product}.`
-    );
-  const baseUrl = normalizeBaseUrl3(opts.baseUrl);
-  const discoveryUrl = `${baseUrl}/${opts.product}/.well-known/polaris.json`;
-  const doFetch = opts.fetchImpl ?? fetch;
-  let res;
-  try {
-    res = await doFetch(discoveryUrl, {
-      headers: { accept: "application/json" }
-    });
-  } catch (e) {
-    throw new Error(`Could not reach ${discoveryUrl}: ${e.message}`);
-  }
-  if (!res.ok)
-    throw new Error(
-      `${discoveryUrl} answered ${res.status}; is the product registered and the base URL right?`
-    );
-  let doc;
-  try {
-    doc = await res.json();
-  } catch {
-    throw new Error(`${discoveryUrl} did not answer JSON.`);
-  }
-  if (!isRecord8(doc)) throw new Error(`${discoveryUrl} is not an object.`);
-  if (doc.product !== opts.product)
-    throw new Error(
-      `Discovery names product ${shown(JSON.stringify(doc.product))}, not ${opts.product}.`
-    );
-  if (doc.protocolVersion !== PROTOCOL_VERSION)
-    throw new Error(
-      `Discovery speaks protocol ${shown(doc.protocolVersion)}; this pkey speaks ${PROTOCOL_VERSION}. Update pkey or the server.`
-    );
-  const trust = isRecord8(doc.trust) ? doc.trust : {};
-  const pins = isRecord8(trust.pinnedKeys) ? trust.pinnedKeys : {};
-  const pinnedKeys = {};
-  for (const kid of Object.keys(pins).sort()) {
-    const key = pins[kid];
-    if (!KID_RE2.test(kid) || typeof key !== "string" || !KEY_RE.test(key))
-      throw new Error(
-        `Discovery's trust.pinnedKeys has a malformed entry (${shown(kid)}).`
-      );
-    pinnedKeys[kid] = key;
-  }
-  if (Object.keys(pinnedKeys).length === 0)
-    throw new Error(`Discovery lists no trust.pinnedKeys.`);
-  if (opts.expectPin) {
-    const { kid, publicKey } = opts.expectPin;
-    if (pinnedKeys[kid] !== publicKey)
-      throw new Error(
-        `Discovery does not pin ${kid} with the key you gave (--kid/--public-key); nothing was written. Compare the console's signing keys with ${discoveryUrl}.`
-      );
-  }
-  const services = isRecord8(doc.services) ? doc.services : {};
-  const enabled = SERVICE_SLUGS.filter((slug) => {
-    const s = services[slug];
-    return isRecord8(s) && s.enabled === true;
-  });
-  const release = isRecord8(services.release) ? services.release : {};
-  const advertised = Array.isArray(release.releaseKeyFingerprints) ? release.releaseKeyFingerprints.filter(
-    (f) => typeof f === "string"
-  ) : [];
-  const pinnedReleaseKeys = {};
-  for (const k of opts.releaseKeys) {
-    if (!KID_RE2.test(k.kid) || !KEY_RE.test(k.publicKey))
-      throw new Error(`Release key ${k.kid} is malformed.`);
-    if (pinnedReleaseKeys[k.kid] !== void 0 && pinnedReleaseKeys[k.kid] !== k.publicKey)
-      throw new Error(
-        `Release key ${k.kid} is declared twice with different keys.`
-      );
-    if (Object.values(pinnedKeys).includes(k.publicKey))
-      throw new Error(
-        `Release key ${k.kid} is also a trust pin; a release key is never a product signing key.`
-      );
-    pinnedReleaseKeys[k.kid] = k.publicKey;
-  }
-  const declaredPrints = new Map(
-    Object.entries(pinnedReleaseKeys).map(([kid, key]) => [
-      fingerprint(key),
-      kid
-    ])
-  );
-  const notAdvertised = [...declaredPrints].filter(([fp]) => !advertised.includes(fp)).map(([, kid]) => kid);
-  if (notAdvertised.length > 0)
-    throw new Error(
-      `Discovery does not advertise release key${notAdvertised.length === 1 ? "" : "s"} ${notAdvertised.join(", ")} (release.releaseKeyFingerprints). Push .pkey/release and resync the product, then run pkey sdk again.`
-    );
-  const undeclared = advertised.filter((fp) => !declaredPrints.has(fp));
-  if (undeclared.length > 0)
-    throw new Error(
-      `Discovery advertises ${undeclared.length} release key${undeclared.length === 1 ? "" : "s"} you did not declare (fingerprint ${undeclared.map(shown).join(", ")}). Run pkey sdk in the product repo (it reads .pkey/release), or pass each key with --release-key <kid>=<key>.`
-    );
-  return {
-    product: opts.product,
-    baseUrl,
-    discoveryUrl,
-    pinnedKeys,
-    pinnedReleaseKeys: Object.fromEntries(
-      Object.entries(pinnedReleaseKeys).sort(([a], [b]) => a.localeCompare(b))
-    ),
-    services: enabled
-  };
-}
-function factsSummary(facts) {
-  const lines3 = [
-    `Product ${facts.product} at ${facts.baseUrl}`,
-    `Services: ${facts.services.join(", ") || "(none)"}`,
-    "Trust pins (compare each fingerprint with the console before you ship):",
-    ...Object.entries(facts.pinnedKeys).map(
-      ([kid, key]) => `  ${kid}  sha256:${fingerprint(key)}`
-    )
-  ];
-  const rk = Object.entries(facts.pinnedReleaseKeys);
-  lines3.push(
-    rk.length === 0 ? "Release keys: none" : "Release keys (matched against discovery's releaseKeyFingerprints):",
-    ...rk.map(([kid, key]) => `  ${kid}  sha256:${fingerprint(key)}`)
-  );
-  return lines3.join("\n");
-}
 function banner2(lang, facts, comment) {
   return [
     `${comment} ${SDK_CONFIG_MARKER} --lang ${lang} --write\` from`,
@@ -30748,6 +30560,961 @@ function renderSdkConfig(lang, facts, opts = {}) {
 }
 function isSdkLang(v) {
   return SDK_LANGS.includes(v);
+}
+var SDK_IDS = [
+  "node",
+  "react",
+  "python",
+  "swift",
+  "kotlin",
+  "godot"
+];
+var DEFAULT_USAGE_CONTEXT = {
+  entitlement: "pro",
+  configKey: "audio.musicVolume",
+  configFallback: 0.8,
+  secretKey: "api.token",
+  mintRecipe: "cdn",
+  packId: "hd-textures",
+  commerceFlag: "dlc.hd",
+  appName: "tidewater",
+  appVersion: "1.4.2"
+};
+var SDK_LIBRARY_DOCS = {
+  node: "/docs/build/sdks/node/your-own-ui/",
+  react: "/docs/build/sdks/react/your-own-ui/",
+  python: "/docs/build/sdks/python/your-own-ui/",
+  swift: "/docs/build/sdks/swift/your-own-ui/",
+  kotlin: "/docs/build/sdks/kotlin/your-own-ui/",
+  godot: "/docs/build/sdks/godot/your-own-ui/"
+};
+var SDK_KIT_DOCS = {
+  node: "/docs/build/ui/frameworks/terminal-node/",
+  react: "/docs/build/ui/frameworks/react/",
+  python: "/docs/build/ui/frameworks/terminal-python/",
+  swift: "/docs/build/ui/frameworks/swiftui/",
+  kotlin: "/docs/build/ui/frameworks/compose/",
+  godot: "/docs/build/ui/frameworks/godot/"
+};
+var SERVER_DOCS = "/docs/features/licensing/server-verification/";
+var q2 = (v) => JSON.stringify(v);
+var py = (v) => typeof v === "boolean" ? v ? "True" : "False" : JSON.stringify(v);
+var tsType = (v) => typeof v;
+var lines2 = (...l) => l.join("\n");
+var NODE_HEAD = (c, imports = "PolarisKeyClient") => lines2(
+  `import { ${imports} } from "@polaris-key/node";`,
+  `import { polarisConfig } from "./polaris.config.js";`,
+  ``,
+  `const client = await PolarisKeyClient.create({`,
+  `  ...polarisConfig,`,
+  `  version: ${q2(c.appVersion)}, // your app's version`,
+  `});`
+);
+var NODE_LIBRARY = {
+  licensing: (c) => ({
+    title: "Gate on the licence",
+    filename: "licence.ts",
+    language: "ts",
+    code: lines2(
+      NODE_HEAD(c, "copy, PolarisKeyClient"),
+      ``,
+      `export async function activate(key: string): Promise<string | null> {`,
+      `  const r = await client.license.activateWithKey(key);`,
+      `  return r.kind === "ok" ? null : copy.activation(r.kind, { code: r.code });`,
+      `}`,
+      ``,
+      `await client.sync();`,
+      `if (!client.isLicensed()) console.log(copy.message(client.status().status));`,
+      `const pro = client.license.isEntitled(${q2(c.entitlement)});`,
+      `console.log(pro);`
+    )
+  }),
+  config: (c) => ({
+    title: "Read managed config",
+    filename: "config.ts",
+    language: "ts",
+    code: lines2(
+      NODE_HEAD(c),
+      ``,
+      `await client.sync();`,
+      `const value = client.config.getConfig(${q2(c.configKey)}, ${q2(c.configFallback)});`,
+      `const secret = client.config.getSecret(${q2(c.secretKey)});`,
+      `const minted = await client.config.mintToken(${q2(c.mintRecipe)});`,
+      `client.events.on("config", () => console.log("settings changed"));`,
+      `console.log(value, secret, minted);`
+    )
+  }),
+  identity: (c) => ({
+    title: "Sign in in the browser",
+    filename: "sign-in.ts",
+    language: "ts",
+    code: lines2(
+      NODE_HEAD(c),
+      ``,
+      `const result = await client.identity.signInWithBrowser({`,
+      `  deviceName: ${q2(`${c.appName} on this computer`)},`,
+      `  onPrompt: (p) => console.log(p.userCode, p.verificationUri),`,
+      `});`,
+      `if (result.status === "ready") {`,
+      `  const profile = client.license.getProfile();`,
+      `  console.log(profile?.name, profile?.email);`,
+      `}`
+    )
+  }),
+  update: (c) => ({
+    title: "Ask for an update",
+    filename: "update.ts",
+    language: "ts",
+    code: lines2(
+      NODE_HEAD(c),
+      ``,
+      `const { decision } = await client.update.decide();`,
+      `switch (decision.action) {`,
+      `  case "binary":`,
+      `  case "store":`,
+      `  case "platform":`,
+      `  case "code-ready":`,
+      `    console.log(decision.release.version);`,
+      `    break;`,
+      `  case "blocked":`,
+      `    console.log(decision.reason);`,
+      `    break;`,
+      `  default:`,
+      `    break; // "none" or "packs"`,
+      `}`
+    )
+  }),
+  packs: (c) => ({
+    title: "Install a content pack",
+    filename: "packs.ts",
+    language: "ts",
+    code: lines2(
+      NODE_HEAD(c),
+      ``,
+      `client.update.packs.on((progress) => console.log(progress));`,
+      `await client.update.packs.ensure([${q2(c.packId)}]);`,
+      `const dir = await client.update.packs.path(${q2(c.packId)}); // null until it runs`,
+      `console.log(dir);`
+    )
+  }),
+  sync: (c) => ({
+    title: "Save a setting the person keeps across devices",
+    filename: "settings.ts",
+    language: "ts",
+    status: "planned",
+    code: lines2(
+      NODE_HEAD(c),
+      ``,
+      `// A catalog key with a \`user.sync\` block roams once the person signs in. The routes ship`,
+      `// later: today the value stays on this device.`,
+      `const volume = client.config.setting<${tsType(c.configFallback)}>(${q2(c.configKey)});`,
+      `await volume.set(${q2(c.configFallback)});`,
+      `console.log(volume.get(${q2(c.configFallback)}));`
+    )
+  }),
+  commerce: (c) => ({
+    title: "Claim a store purchase",
+    filename: "commerce.ts",
+    language: "ts",
+    code: lines2(
+      NODE_HEAD(c),
+      ``,
+      `// Steam shown; claimAppStore and claimPlay take their store's fields.`,
+      `export async function claim(ticketHex: string, dlcAppId: string) {`,
+      `  const r = await client.commerce.claimSteam(ticketHex, dlcAppId);`,
+      `  if (r.kind !== "ok") return r.message;`,
+      `  return client.license.isEntitled(r.flag) ? "unlocked" : "pending";`,
+      `}`,
+      `console.log(client.license.isEntitled(${q2(c.commerceFlag)}));`
+    )
+  })
+};
+var NODE_KIT = {
+  licensing: (c) => ({
+    title: "Mount the Polaris Key verbs in your CLI",
+    filename: "cli.ts",
+    language: "ts",
+    code: lines2(
+      `import { Command } from "commander";`,
+      `import { PolarisKeyClient } from "@polaris-key/node";`,
+      `import { registerPolarisCommands } from "@polaris-key/node/cli";`,
+      `import { polarisConfig } from "./polaris.config.js";`,
+      ``,
+      `const program = new Command(${q2(c.appName)});`,
+      `registerPolarisCommands(`,
+      `  program,`,
+      `  // Spread the generated config: a factory built from the slug and pins alone drops baseUrl`,
+      `  // and the release keys, and its writes go to production.`,
+      `  (o) => PolarisKeyClient.create({ ...polarisConfig, version: o.version }),`,
+      `  {`,
+      `    productSlug: polarisConfig.productSlug,`,
+      `    version: ${q2(c.appVersion)},`,
+      `    pinnedKeys: polarisConfig.trust.pinnedKeys,`,
+      `    expectedServices: polarisConfig.expectedServices,`,
+      `  },`,
+      `);`,
+      `await program.parseAsync();`
+    )
+  })
+};
+var NODE_ELECTRON = {
+  licensing: () => ({
+    title: "Own the client in the main process",
+    filename: "main.ts",
+    language: "ts",
+    code: lines2(
+      `import { app, ipcMain, safeStorage } from "electron";`,
+      `import { PolarisKeyClient } from "@polaris-key/node";`,
+      `import {`,
+      `  exposePolarisBridge,`,
+      `  SafeStorageStore,`,
+      `} from "@polaris-key/node/electron";`,
+      `import { polarisConfig } from "./polaris.config.js";`,
+      ``,
+      `// Do not await whenReady() at the top level: a CommonJS main has no top-level await.`,
+      `void app.whenReady().then(async () => {`,
+      `  const client = await PolarisKeyClient.create({`,
+      `    ...polarisConfig,`,
+      `    store: new SafeStorageStore(`,
+      `      polarisConfig.productSlug,`,
+      `      app.getPath("userData"),`,
+      `      { safeStorage },`,
+      `    ),`,
+      `  });`,
+      `  exposePolarisBridge(client, {`,
+      `    ipcMain,`,
+      `    allowSender: (e) => e.senderFrame?.url.startsWith("app://") === true,`,
+      `  });`,
+      `});`
+    )
+  })
+};
+var NODE_SERVER = {
+  licensing: (c) => ({
+    title: "Verify a licence your app sends",
+    filename: "verify.ts",
+    language: "ts",
+    code: lines2(
+      `import { verifyLicenseDocument } from "@polaris-key/node/server";`,
+      `import { polarisConfig } from "./polaris.config.js";`,
+      ``,
+      `// The app sends its cached licence document and its device id with the request.`,
+      `export async function allowed(jws: string, deviceId: string): Promise<boolean> {`,
+      `  const v = await verifyLicenseDocument(jws, {`,
+      `    trust: polarisConfig.trust.pinnedKeys,`,
+      `    product: polarisConfig.productSlug,`,
+      `    deviceId,`,
+      `  });`,
+      `  return v.ok && v.usable && v.isEntitled(${q2(c.entitlement)});`,
+      `}`
+    )
+  })
+};
+var REACT_KIT = {
+  licensing: () => ({
+    title: "Wrap the app in the gate",
+    filename: "App.tsx",
+    language: "tsx",
+    code: lines2(
+      `import type { ReactNode } from "react";`,
+      `import { PolarisKeyProvider } from "@polaris-key/react";`,
+      `import { PolarisKeyGate } from "@polaris-key/react/kit";`,
+      `import { polarisKey as productPolarisKey } from "./polaris.config";`,
+      ``,
+      `const polarisKey = { ...productPolarisKey, version: "1.4.2" }; // your app's version`,
+      ``,
+      `export function App({ children }: { children: ReactNode }) {`,
+      `  return (`,
+      `    <PolarisKeyProvider config={polarisKey}>`,
+      `      <PolarisKeyGate>{children}</PolarisKeyGate>`,
+      `    </PolarisKeyProvider>`,
+      `  );`,
+      `}`
+    )
+  })
+};
+var REACT_LIBRARY = {
+  licensing: (c) => ({
+    title: "Gate on the licence",
+    filename: "Gate.tsx",
+    language: "tsx",
+    code: lines2(
+      `import type { ReactNode } from "react";`,
+      `import { copyMessage, useEntitlement, useLicenseGate } from "@polaris-key/react";`,
+      ``,
+      `// Inside <PolarisKeyProvider config={polarisKey}>.`,
+      `export function Gate({ children }: { children: ReactNode }) {`,
+      `  const { screen, status } = useLicenseGate();`,
+      `  if (screen === "loading") return <p role="status">Loading…</p>;`,
+      `  if (screen === "ok" || screen === "not-applicable" || screen === "grace")`,
+      `    return <>{children}</>;`,
+      `  return <p role="alert">{copyMessage(status)}</p>;`,
+      `}`,
+      ``,
+      `export function ProOnly({ children }: { children: ReactNode }) {`,
+      `  return useEntitlement(${q2(c.entitlement)}) ? <>{children}</> : <p>Upgrade to use this.</p>;`,
+      `}`
+    )
+  }),
+  config: (c) => ({
+    title: "Read and set a managed setting",
+    filename: "Volume.tsx",
+    language: "tsx",
+    code: lines2(
+      `import { useConfigSetting } from "@polaris-key/react";`,
+      ``,
+      `export function Volume() {`,
+      `  const volume = useConfigSetting<${tsType(c.configFallback)}>(${q2(c.configKey)}, ${q2(c.configFallback)});`,
+      `  return (`,
+      `    <button disabled={volume.locked} onClick={() => void volume.set(${q2(c.configFallback)})}>`,
+      `      {String(volume.value)} ({volume.source})`,
+      `    </button>`,
+      `  );`,
+      `}`
+    )
+  }),
+  identity: () => ({
+    title: "Sign in",
+    filename: "SignIn.tsx",
+    language: "tsx",
+    code: lines2(
+      `import { describeError, usePolarisAuth } from "@polaris-key/react";`,
+      ``,
+      `export function SignIn() {`,
+      `  const auth = usePolarisAuth();`,
+      `  if (!auth.supportsOidcLogin) return null;`,
+      `  return (`,
+      `    <>`,
+      `      <button disabled={auth.busy} onClick={() => void auth.signInWithOidc()}>`,
+      `        Sign in`,
+      `      </button>`,
+      `      {auth.error && <p role="alert">{describeError(auth.error)}</p>}`,
+      `    </>`,
+      `  );`,
+      `}`
+    )
+  }),
+  update: () => ({
+    title: "Show an update offer",
+    filename: "UpdateBanner.tsx",
+    language: "tsx",
+    code: lines2(
+      `import { useUpdateDecision } from "@polaris-key/react";`,
+      ``,
+      `export function UpdateBanner() {`,
+      `  const { decision, undismissable } = useUpdateDecision();`,
+      `  if (!decision || decision.action === "none" || decision.action === "packs")`,
+      `    return null;`,
+      `  if (decision.action === "blocked")`,
+      `    return <p role="alert">{decision.reason}</p>;`,
+      `  return (`,
+      `    <p role={undismissable ? "alert" : "status"}>`,
+      `      Version {decision.release.version} is available.`,
+      `    </p>`,
+      `  );`,
+      `}`
+    )
+  })
+};
+var PY_HEAD = (c, imports = "PolarisKeyClient") => lines2(
+  `from polaris_key import ${imports}`,
+  ``,
+  `import polaris_config`,
+  ``,
+  `client = PolarisKeyClient.create(**polaris_config.CONFIG, version=${q2(c.appVersion)})  # your app's version`
+);
+var PY_LIBRARY = {
+  licensing: (c) => ({
+    title: "Gate on the licence",
+    filename: "licence.py",
+    language: "python",
+    code: lines2(
+      `from typing import Optional`,
+      ``,
+      `from polaris_key import ActivationOk, PolarisKeyClient`,
+      `from polaris_key.copy import activation_message`,
+      ``,
+      `import polaris_config`,
+      ``,
+      `client = PolarisKeyClient.create(**polaris_config.CONFIG, version=${q2(c.appVersion)})  # your app's version`,
+      ``,
+      ``,
+      `def activate(key: str) -> Optional[str]:`,
+      `    """None when activated, else what to show."""`,
+      `    r = client.license.activate_with_key(key)`,
+      `    return None if isinstance(r, ActivationOk) else activation_message(r.kind, code=r.code)`,
+      ``,
+      ``,
+      `client.sync()`,
+      `if not client.is_licensed():`,
+      `    print(client.status().status)`,
+      `pro = client.license.is_entitled(${q2(c.entitlement)})`
+    )
+  }),
+  config: (c) => ({
+    title: "Read managed config",
+    filename: "config.py",
+    language: "python",
+    code: lines2(
+      PY_HEAD(c),
+      ``,
+      `client.sync()`,
+      `value = client.config.get_config(${q2(c.configKey)}, ${py(c.configFallback)})`,
+      `secret = client.config.get_secret(${q2(c.secretKey)})`,
+      `minted = client.config.mint_token(${q2(c.mintRecipe)})`,
+      `client.config.on_change(${q2(c.configKey)}, lambda v: print("changed", v))`,
+      `print(value, secret, minted)`
+    )
+  }),
+  identity: (c) => ({
+    title: "Sign in in the browser",
+    filename: "sign_in.py",
+    language: "python",
+    code: lines2(
+      PY_HEAD(c),
+      ``,
+      `result = client.identity.sign_in_with_browser(device_name=${q2(`${c.appName} on this computer`)})`,
+      `if result.status == "ready":`,
+      `    profile = client.license.get_profile()`,
+      `    print(profile.name if profile else "Signed in")`
+    )
+  }),
+  update: (c) => ({
+    title: "Ask for an update",
+    filename: "update.py",
+    language: "python",
+    code: lines2(
+      PY_HEAD(c),
+      ``,
+      `d = client.update.decide().decision`,
+      `if d.action == "blocked":`,
+      `    print("Update required", d.reason)`,
+      `elif d.action not in ("none", "packs") and d.release:`,
+      `    print(d.release.version, "is available")`
+    )
+  }),
+  packs: (c) => ({
+    title: "Install a content pack",
+    filename: "packs.py",
+    language: "python",
+    code: lines2(
+      PY_HEAD(c),
+      ``,
+      `installs = client.update.packs.ensure([${q2(c.packId)}])`,
+      `print(installs)`
+    )
+  }),
+  sync: (c) => ({
+    title: "Save a setting the person keeps across devices",
+    filename: "settings.py",
+    language: "python",
+    status: "planned",
+    code: lines2(
+      PY_HEAD(c),
+      ``,
+      `# A catalog key with a \`user.sync\` block roams once the person signs in. The routes ship`,
+      `# later: today the value stays on this device.`,
+      `volume = client.config.setting(${q2(c.configKey)}, ${py(c.configFallback)})`,
+      `volume.set(${py(c.configFallback)})`,
+      `print(volume.value)`
+    )
+  }),
+  commerce: (c) => ({
+    title: "Claim a store purchase",
+    filename: "commerce.py",
+    language: "python",
+    code: lines2(
+      PY_HEAD(c),
+      ``,
+      `# Steam shown; claim_app_store and claim_play take their store's fields.`,
+      `def claim(ticket_hex: str, dlc_app_id: str) -> str:`,
+      `    r = client.commerce.claim_steam(ticket_hex, dlc_app_id)`,
+      `    return "unlocked" if client.license.is_entitled(${q2(c.commerceFlag)}) else str(r)`
+    )
+  })
+};
+var PY_KIT = {
+  licensing: (c) => ({
+    title: "Mount the Polaris Key verbs in your CLI",
+    filename: "cli.py",
+    language: "python",
+    code: lines2(
+      `import argparse`,
+      ``,
+      `from polaris_key import PolarisKeyClient`,
+      `from polaris_key.cli import ClientOptions, register_argparse`,
+      ``,
+      `import polaris_config`,
+      ``,
+      ``,
+      `def client_factory(opts: ClientOptions) -> PolarisKeyClient:`,
+      `    # Spread the generated config: a factory built from opts.trust alone drops the base URL`,
+      `    # and the release keys, and its writes go to production.`,
+      `    return PolarisKeyClient.create(**{**polaris_config.CONFIG, "version": opts.version})`,
+      ``,
+      ``,
+      `parser = argparse.ArgumentParser(prog=${q2(c.appName)})`,
+      `register_argparse(`,
+      `    parser.add_subparsers(dest="command", required=True), client_factory, prog=${q2(c.appName)}`,
+      `)`,
+      `args = parser.parse_args()`,
+      `raise SystemExit(args.func(args))`
+    )
+  })
+};
+var SWIFT_KIT = {
+  licensing: (c) => ({
+    title: "Gate the app",
+    filename: "MyApp.swift",
+    language: "swift",
+    code: lines2(
+      `import PolarisKey`,
+      `import PolarisKeyUI`,
+      `import SwiftUI`,
+      ``,
+      `@main`,
+      `struct MyApp: App {`,
+      `    @State private var client: PolarisKeyClient?`,
+      ``,
+      `    var body: some Scene {`,
+      `        WindowGroup {`,
+      `            if let client {`,
+      `                ContentView().polarisKeyGate(client)`,
+      `            } else {`,
+      `                ProgressView().task {`,
+      `                    client = try? await PolarisKeyClient.create(`,
+      `                        options: PolarisConfig.clientOptions(version: ${q2(c.appVersion)}))`,
+      `                }`,
+      `            }`,
+      `        }`,
+      `    }`,
+      `}`
+    )
+  })
+};
+var SWIFT_LIBRARY = {
+  licensing: (c) => ({
+    title: "Gate on the licence",
+    filename: "Licence.swift",
+    language: "swift",
+    code: lines2(
+      `import PolarisKey`,
+      ``,
+      `let client = try await PolarisKeyClient.create(`,
+      `    options: PolarisConfig.clientOptions(version: ${q2(c.appVersion)}))`,
+      `_ = await client.sync()`,
+      `if await !client.isLicensed() {`,
+      `    let result = await client.activate(key: userEnteredKey)`,
+      `    print(result)`,
+      `}`
+    )
+  })
+};
+var KOTLIN_KIT = {
+  licensing: () => ({
+    title: "Gate the app",
+    filename: "MainActivity.kt",
+    language: "kotlin",
+    code: lines2(
+      `import android.os.Bundle`,
+      `import androidx.activity.ComponentActivity`,
+      `import androidx.activity.compose.setContent`,
+      `import androidx.compose.material3.MaterialTheme`,
+      `import androidx.compose.material3.Text`,
+      `import im.plrs.key.ui.PolarisKeyApp`,
+      ``,
+      `class MainActivity : ComponentActivity() {`,
+      `    override fun onCreate(savedInstanceState: Bundle?) {`,
+      `        super.onCreate(savedInstanceState)`,
+      `        setContent {`,
+      `            MaterialTheme {`,
+      `                PolarisKeyApp(client, signIn = true) { Text("Licensed") }`,
+      `            }`,
+      `        }`,
+      `    }`,
+      `}`
+    )
+  })
+};
+var KOTLIN_LIBRARY = {
+  licensing: (c) => ({
+    title: "Gate on the licence",
+    filename: "Licence.kt",
+    language: "kotlin",
+    code: lines2(
+      `import com.acme.polaris.PolarisConfig`,
+      `import im.plrs.key.desktop.PolarisKeyDesktop`,
+      ``,
+      `suspend fun start() {`,
+      `    val client = PolarisKeyDesktop.create(PolarisConfig.clientOptions(${q2(c.appVersion)}))`,
+      `    println(client.status())`,
+      `    client.close() // ends the client's threads so a JVM main can exit`,
+      `}`
+    )
+  })
+};
+var GODOT_KIT = {
+  licensing: () => ({
+    title: "Boot Polaris Key before the first scene",
+    filename: "boot.gd",
+    language: "gdscript",
+    code: lines2(
+      `extends Node`,
+      ``,
+      `const PolarisConfig := preload("res://polaris_key_config.gd")`,
+      ``,
+      ``,
+      `func _ready() -> void:`,
+      `	await PolarisKey.boot({options = PolarisConfig.options()})`,
+      `	get_tree().change_scene_to_file("res://game/title.tscn")`
+    )
+  })
+};
+var GODOT_LIBRARY = {
+  licensing: () => ({
+    title: "React to the licence state",
+    filename: "gate.gd",
+    language: "gdscript",
+    code: lines2(
+      `extends Node`,
+      ``,
+      ``,
+      `func _ready() -> void:`,
+      `	PolarisKey.state_changed.connect(_on_state_changed)`,
+      ``,
+      ``,
+      `func _on_state_changed(state: Dictionary) -> void:`,
+      `	var screen := PKeyGateController.screen_for(String(state["status"]))`,
+      `	print(screen)  # usable, grace, activation, revoked, expired, ...`
+    )
+  })
+};
+var TABLE = {
+  node: {
+    kit: { _: NODE_KIT, commander: NODE_KIT, electron: NODE_ELECTRON },
+    library: { _: NODE_LIBRARY },
+    server: { _: NODE_SERVER }
+  },
+  react: { kit: { _: REACT_KIT }, library: { _: REACT_LIBRARY } },
+  python: {
+    kit: { _: PY_KIT, argparse: PY_KIT },
+    library: { _: PY_LIBRARY }
+  },
+  swift: { kit: { _: SWIFT_KIT }, library: { _: SWIFT_LIBRARY } },
+  kotlin: { kit: { _: KOTLIN_KIT }, library: { _: KOTLIN_LIBRARY } },
+  godot: { kit: { _: GODOT_KIT }, library: { _: GODOT_LIBRARY } }
+};
+var COMPILED_SDKS = /* @__PURE__ */ new Set(["node", "react", "python"]);
+function renderUsage(feature, sdk, lane, framework = null, ctx = {}) {
+  const group = TABLE[sdk]?.[lane];
+  if (!group) return null;
+  const features = group[framework ?? "_"];
+  const make = features?.[feature];
+  if (!make) return null;
+  const made = make({ ...DEFAULT_USAGE_CONTEXT, ...ctx });
+  const docs = lane === "server" ? SERVER_DOCS : lane === "kit" ? SDK_KIT_DOCS[sdk] : SDK_LIBRARY_DOCS[sdk];
+  return {
+    id: `${feature}.${sdk}.${lane}${framework ? `.${framework}` : ""}`,
+    feature,
+    sdk,
+    lane,
+    framework,
+    title: made.title,
+    filename: made.filename,
+    language: made.language,
+    code: `${made.code}
+`,
+    docs,
+    status: made.status ?? "available",
+    compiled: made.compiled ?? COMPILED_SDKS.has(sdk)
+  };
+}
+var SDK_REGISTRY_ORIGIN = "https://pkg.plrs.im";
+var DEFAULT_BASE_URL2 = "https://key.plrs.im";
+var FEED_OWNER = "polaris-key";
+var INSTALL = {
+  node: {
+    ecosystem: "npm",
+    namespace: { scope: "@polaris-key" },
+    name: "@polaris-key/node",
+    snippets: ["npmrc", "install"]
+  },
+  react: {
+    ecosystem: "npm",
+    namespace: { scope: "@polaris-key" },
+    name: "@polaris-key/react",
+    snippets: ["npmrc", "install"]
+  },
+  python: {
+    ecosystem: "pypi",
+    namespace: { names: ["polaris-key"], prefixes: [] },
+    name: "polaris-key",
+    snippets: ["uv", "pip"]
+  },
+  swift: {
+    ecosystem: "swift",
+    namespace: { scope: "polaris-key" },
+    name: "polaris-key.PolarisKey",
+    snippets: ["registries-json", "package-swift", "xcode"]
+  },
+  kotlin: {
+    ecosystem: "maven",
+    namespace: { groupPrefixes: ["im.plrs.key"] },
+    name: "im.plrs.key:polaris-key-sdk",
+    snippets: ["gradle", "gradle-dependency"]
+  },
+  godot: {
+    ecosystem: "godot",
+    namespace: { publisher: "polaris-key" },
+    name: "polaris_key",
+    snippets: ["editor-4.7", "editor-4.6"]
+  }
+};
+function sdkInstall(sdk) {
+  const spec = INSTALL[sdk];
+  const all = renderFeedSetup(spec.ecosystem, {
+    origin: SDK_REGISTRY_ORIGIN,
+    owner: FEED_OWNER,
+    namespace: spec.namespace,
+    package: { name: spec.name }
+  });
+  return spec.snippets.flatMap((id) => all.filter((s) => s.id === id));
+}
+function sdkInstallNote(sdk) {
+  if (sdk === "godot")
+    return "Then install the Polaris Key addon from the editor's asset library and enable it under Project Settings, Plugins.";
+  return null;
+}
+var CONFIG_LANGUAGE = {
+  node: "ts",
+  react: "ts",
+  python: "python",
+  swift: "swift",
+  kotlin: "kotlin",
+  godot: "gdscript"
+};
+var PLACEHOLDER_PIN = {
+  kid: "<kid>",
+  publicKey: "<public key>"
+};
+function startFor(sdk, fit, ctx) {
+  const framework = sdk === "node" && fit.target === "electron" ? "electron" : fit.framework ?? null;
+  const library = renderUsage("licensing", sdk, "library", null, ctx);
+  let start = null;
+  if (fit.host === "server") {
+    start = renderUsage("licensing", sdk, "server", null, ctx) ?? library;
+  } else {
+    start = renderUsage("licensing", sdk, "kit", framework, ctx) ?? renderUsage("licensing", sdk, "kit", null, ctx) ?? library;
+  }
+  if (!start) throw new Error(`renderSdkSetup: no start block for ${sdk}`);
+  return { start, headless: library && library !== start ? library : null };
+}
+function renderSdkSetup(sdk, o) {
+  if (!SDK_IDS.includes(sdk))
+    throw new Error(`renderSdkSetup: unknown SDK ${String(sdk)}`);
+  const origin = (o.origin ?? DEFAULT_BASE_URL2).replace(/\/+$/, "");
+  const pins = o.pins.length > 0 ? o.pins : [PLACEHOLDER_PIN];
+  const facts = {
+    product: o.slug,
+    baseUrl: origin,
+    discoveryUrl: `${origin}/${o.slug}/.well-known/polaris.json`,
+    pinnedKeys: Object.fromEntries(pins.map((p) => [p.kid, p.publicKey])),
+    pinnedReleaseKeys: Object.fromEntries(
+      (o.releaseKeys ?? []).map((p) => [p.kid, p.publicKey])
+    ),
+    services: [...o.services]
+  };
+  const lang = sdk;
+  const out = SDK_CONFIG_DEFAULT_OUT[lang];
+  const code = renderSdkConfig(lang, facts, {
+    out,
+    ...o.kotlinPackage ? { kotlinPackage: o.kotlinPackage } : {}
+  });
+  const fit = o.fit ?? { host: "app", target: null, framework: null };
+  const { start, headless } = startFor(sdk, fit, o.usage ?? {});
+  const warnings = [];
+  if (o.pins.length === 0)
+    warnings.push(
+      "This product has no signing key yet. Create one in the console, then copy the file again."
+    );
+  if (o.services.includes("update") && (o.releaseKeys ?? []).length === 0)
+    warnings.push(
+      "Update is on but no release key is pinned, so the app refuses every release. Run pkey sdk in the product repo: it reads the keys from .pkey/release."
+    );
+  return {
+    sdk,
+    install: sdkInstall(sdk),
+    installNote: sdkInstallNote(sdk),
+    config: { filename: out, language: CONFIG_LANGUAGE[sdk], code },
+    start,
+    headless,
+    warnings
+  };
+}
+
+// src/sdkConfig.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+import { createHash as createHash8 } from "node:crypto";
+var SDK_CONFIG_USAGE = "Usage: pkey sdk --lang node|react|python|swift|kotlin|godot --product <slug> [--base-url <url>]\n                [--write] [--out <path>] [--force] [--kid <kid> --public-key <key>]\n                [--release-key <kid>=<key> ...] [--package <kotlin package>]";
+var shown = (v) => untrusted(v, {});
+var PRODUCT_RE = /^[a-z0-9][a-z0-9_-]*$/;
+var KID_RE2 = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
+var KEY_RE = /^[A-Za-z0-9_-]{43}$/;
+var URL_CHARS_RE = /^[A-Za-z0-9:/._~%-]+$/;
+function fingerprintOf2(publicKey) {
+  return createHash8("sha256").update(Buffer.from(publicKey, "base64url")).digest("hex");
+}
+function normalizeBaseUrl3(raw) {
+  let url;
+  try {
+    url = new URL(raw);
+  } catch {
+    throw new Error(`--base-url ${raw} is not a URL.`);
+  }
+  const loopback = url.hostname === "localhost" || url.hostname === "127.0.0.1" || url.hostname === "[::1]";
+  if (url.protocol !== "https:" && !(url.protocol === "http:" && loopback))
+    throw new Error(
+      `--base-url must be https: (http: only for localhost); got ${raw}.`
+    );
+  if (url.search || url.hash || url.username || url.password)
+    throw new Error(
+      `--base-url must not carry credentials, a query or a fragment.`
+    );
+  const out = `${url.origin}${url.pathname}`.replace(/\/+$/, "");
+  if (!URL_CHARS_RE.test(out))
+    throw new Error(`--base-url ${raw} has characters pkey sdk cannot emit.`);
+  return out;
+}
+function parseReleaseKeyFlags(values) {
+  return values.map((v) => {
+    const eq = v.indexOf("=");
+    if (eq <= 0) throw new Error(`--release-key takes <kid>=<key>; got ${v}.`);
+    return { kid: v.slice(0, eq), publicKey: v.slice(eq + 1) };
+  });
+}
+function isRecord8(v) {
+  return typeof v === "object" && v !== null && !Array.isArray(v);
+}
+async function resolveSdkFacts(opts) {
+  if (!PRODUCT_RE.test(opts.product))
+    throw new Error(
+      `--product must be a lower-case slug; got ${opts.product}.`
+    );
+  const baseUrl = normalizeBaseUrl3(opts.baseUrl);
+  const discoveryUrl = `${baseUrl}/${opts.product}/.well-known/polaris.json`;
+  const doFetch = opts.fetchImpl ?? fetch;
+  let res;
+  try {
+    res = await doFetch(discoveryUrl, {
+      headers: { accept: "application/json" }
+    });
+  } catch (e) {
+    throw new Error(`Could not reach ${discoveryUrl}: ${e.message}`);
+  }
+  if (!res.ok)
+    throw new Error(
+      `${discoveryUrl} answered ${res.status}; is the product registered and the base URL right?`
+    );
+  let doc;
+  try {
+    doc = await res.json();
+  } catch {
+    throw new Error(`${discoveryUrl} did not answer JSON.`);
+  }
+  if (!isRecord8(doc)) throw new Error(`${discoveryUrl} is not an object.`);
+  if (doc.product !== opts.product)
+    throw new Error(
+      `Discovery names product ${shown(JSON.stringify(doc.product))}, not ${opts.product}.`
+    );
+  if (doc.protocolVersion !== PROTOCOL_VERSION)
+    throw new Error(
+      `Discovery speaks protocol ${shown(doc.protocolVersion)}; this pkey speaks ${PROTOCOL_VERSION}. Update pkey or the server.`
+    );
+  const trust = isRecord8(doc.trust) ? doc.trust : {};
+  const pins = isRecord8(trust.pinnedKeys) ? trust.pinnedKeys : {};
+  const pinnedKeys = {};
+  for (const kid of Object.keys(pins).sort()) {
+    const key = pins[kid];
+    if (!KID_RE2.test(kid) || typeof key !== "string" || !KEY_RE.test(key))
+      throw new Error(
+        `Discovery's trust.pinnedKeys has a malformed entry (${shown(kid)}).`
+      );
+    pinnedKeys[kid] = key;
+  }
+  if (Object.keys(pinnedKeys).length === 0)
+    throw new Error(`Discovery lists no trust.pinnedKeys.`);
+  if (opts.expectPin) {
+    const { kid, publicKey } = opts.expectPin;
+    if (pinnedKeys[kid] !== publicKey)
+      throw new Error(
+        `Discovery does not pin ${kid} with the key you gave (--kid/--public-key); nothing was written. Compare the console's signing keys with ${discoveryUrl}.`
+      );
+  }
+  const services = isRecord8(doc.services) ? doc.services : {};
+  const enabled = SERVICE_SLUGS.filter((slug) => {
+    const s = services[slug];
+    return isRecord8(s) && s.enabled === true;
+  });
+  const release = isRecord8(services.release) ? services.release : {};
+  const advertised = Array.isArray(release.releaseKeyFingerprints) ? release.releaseKeyFingerprints.filter(
+    (f) => typeof f === "string"
+  ) : [];
+  const pinnedReleaseKeys = {};
+  for (const k of opts.releaseKeys) {
+    if (!KID_RE2.test(k.kid) || !KEY_RE.test(k.publicKey))
+      throw new Error(`Release key ${k.kid} is malformed.`);
+    if (pinnedReleaseKeys[k.kid] !== void 0 && pinnedReleaseKeys[k.kid] !== k.publicKey)
+      throw new Error(
+        `Release key ${k.kid} is declared twice with different keys.`
+      );
+    if (Object.values(pinnedKeys).includes(k.publicKey))
+      throw new Error(
+        `Release key ${k.kid} is also a trust pin; a release key is never a product signing key.`
+      );
+    pinnedReleaseKeys[k.kid] = k.publicKey;
+  }
+  const declaredPrints = new Map(
+    Object.entries(pinnedReleaseKeys).map(([kid, key]) => [
+      fingerprintOf2(key),
+      kid
+    ])
+  );
+  const notAdvertised = [...declaredPrints].filter(([fp]) => !advertised.includes(fp)).map(([, kid]) => kid);
+  if (notAdvertised.length > 0)
+    throw new Error(
+      `Discovery does not advertise release key${notAdvertised.length === 1 ? "" : "s"} ${notAdvertised.join(", ")} (release.releaseKeyFingerprints). Push .pkey/release and resync the product, then run pkey sdk again.`
+    );
+  const undeclared = advertised.filter((fp) => !declaredPrints.has(fp));
+  if (undeclared.length > 0)
+    throw new Error(
+      `Discovery advertises ${undeclared.length} release key${undeclared.length === 1 ? "" : "s"} you did not declare (fingerprint ${undeclared.map(shown).join(", ")}). Run pkey sdk in the product repo (it reads .pkey/release), or pass each key with --release-key <kid>=<key>.`
+    );
+  return {
+    product: opts.product,
+    baseUrl,
+    discoveryUrl,
+    pinnedKeys,
+    pinnedReleaseKeys: Object.fromEntries(
+      Object.entries(pinnedReleaseKeys).sort(([a], [b]) => a.localeCompare(b))
+    ),
+    services: enabled
+  };
+}
+function factsSummary(facts) {
+  const lines4 = [
+    `Product ${facts.product} at ${facts.baseUrl}`,
+    `Services: ${facts.services.join(", ") || "(none)"}`,
+    "Trust pins (compare each fingerprint with the console before you ship):",
+    ...Object.entries(facts.pinnedKeys).map(
+      ([kid, key]) => `  ${kid}  sha256:${fingerprintOf2(key)}`
+    )
+  ];
+  const rk = Object.entries(facts.pinnedReleaseKeys);
+  lines4.push(
+    rk.length === 0 ? "Release keys: none" : "Release keys (matched against discovery's releaseKeyFingerprints):",
+    ...rk.map(([kid, key]) => `  ${kid}  sha256:${fingerprintOf2(key)}`)
+  );
+  return lines4.join("\n");
 }
 
 // src/mirrors.ts
@@ -31474,15 +32241,15 @@ init_define_PKEY_EMBEDDED_SCHEMAS();
 // ../../node_modules/.pnpm/smol-toml@1.9.1/node_modules/smol-toml/dist/error.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
 function getLineColFromPtr(string, ptr) {
-  let lines3 = string.slice(0, ptr).split(/\r?\n/);
-  return [lines3.length, lines3.pop().length + 1];
+  let lines4 = string.slice(0, ptr).split(/\r?\n/);
+  return [lines4.length, lines4.pop().length + 1];
 }
 function makeCodeBlock(string, line, column) {
-  let lines3 = string.split(/\r?\n/);
+  let lines4 = string.split(/\r?\n/);
   let codeblock = "";
   let numberLen = (Math.log10(line + 1) | 0) + 1;
   for (let i = line - 1; i <= line + 1; i++) {
-    let l = lines3[i - 1];
+    let l = lines4[i - 1];
     if (!l)
       continue;
     codeblock += i.toString().padEnd(numberLen, " ");
@@ -34092,7 +34859,7 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
     throw new Error(
       `--product ${opts.product} does not match .pkey/product's slug ${ctx.slug}.`
     );
-  const fingerprint2 = fingerprintOf(opts.publicKey);
+  const fingerprint = fingerprintOf(opts.publicKey);
   if (ctx.releaseKeys.some((k) => k.publicKey === opts.publicKey))
     throw new Error(
       "--public-key is a declared release key; a content key is a separate key (pkey release keys generate --content)."
@@ -34138,11 +34905,11 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
     await requireDelegationsDiscovery(client, opts.fetchImpl);
     const listed = await listDelegations(client, opts.prefix);
     const reused = listed.delegations.find(
-      (d) => d.keyFingerprint === fingerprint2
+      (d) => d.keyFingerprint === fingerprint
     );
     if (reused)
       throw new Error(
-        `The key ${fingerprint2.slice(0, 12)}… is already named by delegation ${untrusted(String(reused.sha256).slice(0, 12), opts.env)}… (${untrusted(reused.deliverable, opts.env)}, seq ${untrusted(reused.seq, opts.env)}${reused.revoked ? ", revoked" : ""}): one content key, one delegation. Generate a new key to rotate.`
+        `The key ${fingerprint.slice(0, 12)}… is already named by delegation ${untrusted(String(reused.sha256).slice(0, 12), opts.env)}… (${untrusted(reused.deliverable, opts.env)}, seq ${untrusted(reused.seq, opts.env)}${reused.revoked ? ", revoked" : ""}): one content key, one delegation. Generate a new key to rotate.`
       );
     if (listed.nextSeq === void 0)
       throw new Error(
@@ -34170,7 +34937,7 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
     throw new Error(
       "Self-check: the delegation fails the record claims or the delegation body (plans/P4-19.md §2.2); nothing was signed."
     );
-  const summary = `Delegation of ${opts.prefix} (seq ${seq}) for ${types.join(", ")} to key ${fingerprint2.slice(0, 12)}…
+  const summary = `Delegation of ${opts.prefix} (seq ${seq}) for ${types.join(", ")} to key ${fingerprint.slice(0, 12)}…
 Window: ${iso(record.issuedAt)} to ${iso(record.expiresAt)} (${days} days)
 `;
   out.write(summary);
@@ -34539,10 +35306,10 @@ function textRefs(text) {
   const t = text.replace(/\r/g, "\n");
   if (t.includes("resource_path") || t.replace(/\\/g, "").includes("resource_path"))
     return { why: RESOURCE_PATH_WHY };
-  const lines3 = t.split("\n");
+  const lines4 = t.split("\n");
   const refs = [];
-  for (let i = 0; i < lines3.length; i++) {
-    const l = lines3[i];
+  for (let i = 0; i < lines4.length; i++) {
+    const l = lines4[i];
     if (!l.includes("ext_resource")) continue;
     const bad = {
       why: `has an ext_resource tag on line ${i + 1} the engine could read differently${AMBIGUOUS}`
@@ -34940,19 +35707,19 @@ function remapTargets(text) {
 var PATH_ANY_RE = /(^|[^A-Za-z0-9_/.-])"?path(\.[A-Za-z0-9_-]+)*"?[ \t\f\x0B]*=/;
 var PATH_LINE_RE = /^[ \t\f\x0B]*path(?:\.[A-Za-z0-9_-]+)?[ \t\f\x0B]*=[ \t\f\x0B]*"([^"\\]*)"[ \t\f\x0B]*$/;
 var DEST_LINE_RE = /^[ \t\f\x0B]*dest_files[ \t\f\x0B]*=[ \t\f\x0B]*\[([^\]]*)\]/;
-function lines2(text) {
+function lines3(text) {
   return text.replace(/\r/g, "\n").split("\n");
 }
 function remapValues(text) {
   const out = /* @__PURE__ */ new Set();
-  const ls = lines2(text);
+  const ls = lines3(text);
   for (const l of ls) {
     const m = PATH_LINE_RE.exec(l);
     if (m) out.add(m[1]);
   }
   for (const l of ls) {
     const m = DEST_LINE_RE.exec(l);
-    if (m) for (const q2 of m[1].matchAll(/"([^"]*)"/g)) out.add(q2[1]);
+    if (m) for (const q3 of m[1].matchAll(/"([^"]*)"/g)) out.add(q3[1]);
   }
   return [...out];
 }
@@ -34966,7 +35733,7 @@ function remapProblem(data) {
   if (Buffer.from(data.buffer, data.byteOffset, data.byteLength).indexOf(BOM2) !== -1)
     return "a .remap or .import with a byte-order mark";
   const text = new TextDecoder("utf-8", { ignoreBOM: true }).decode(data);
-  for (const l of lines2(text))
+  for (const l of lines3(text))
     if (PATH_ANY_RE.test(l) && !PATH_LINE_RE.test(l))
       return `a path line the engine could read differently (${l})`;
   return null;
@@ -37910,9 +38677,9 @@ android {
 function patchSettingsGradle(text, name) {
   const line = `include ':${name}'`;
   if (text.split(/\r?\n/).some((l) => l.trim() === line)) return text;
-  const lines3 = text.split("\n");
+  const lines4 = text.split("\n");
   let at = -1;
-  lines3.forEach((l, i) => {
+  lines4.forEach((l, i) => {
     if (/^\s*include\s+['"]:/.test(l)) at = i;
   });
   if (at < 0) {
@@ -37920,8 +38687,8 @@ function patchSettingsGradle(text, name) {
     return `${text}${sep}${line}
 `;
   }
-  lines3.splice(at + 1, 0, line);
-  return lines3.join("\n");
+  lines4.splice(at + 1, 0, line);
+  return lines4.join("\n");
 }
 function patchAppGradle(text, name, textureSplit) {
   const re = /^(\s*assetPacks\s*=\s*\[)([^\]]*)(\])/m;
@@ -39132,10 +39899,10 @@ var import_yaml4 = __toESM(require_dist(), 1);
 // src/storefronts/prInputs.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
 async function fetchPrInputs(client, store, channel, outlet) {
-  const q2 = new URLSearchParams({ channel });
-  if (outlet) q2.set("outlet", outlet);
+  const q3 = new URLSearchParams({ channel });
+  if (outlet) q3.set("outlet", outlet);
   const body = await client.getJson(
-    `distribution/pr/${encodeURIComponent(store)}?${q2.toString()}`,
+    `distribution/pr/${encodeURIComponent(store)}?${q3.toString()}`,
     { what: `Reading the ${store} generator's inputs` }
   );
   return body.inputs;
@@ -39247,12 +40014,12 @@ function metainfoMarkup(text, indent) {
   const out = [];
   const isItem = (l) => /^[-*]\s+/.test(l);
   for (const block of text.replace(/\r\n/g, "\n").split(/\n\s*\n/)) {
-    const lines3 = block.split("\n").map((l) => l.trim()).filter(Boolean);
-    for (let n = 0; n < lines3.length; ) {
-      const list2 = isItem(lines3[n]);
+    const lines4 = block.split("\n").map((l) => l.trim()).filter(Boolean);
+    for (let n = 0; n < lines4.length; ) {
+      const list2 = isItem(lines4[n]);
       const run2 = [];
-      while (n < lines3.length && isItem(lines3[n]) === list2)
-        run2.push(lines3[n++]);
+      while (n < lines4.length && isItem(lines4[n]) === list2)
+        run2.push(lines4[n++]);
       if (list2) {
         out.push(`${indent}<ul>`);
         for (const l of run2)
@@ -39681,10 +40448,10 @@ function githubClient(o = {}) {
       return (r ?? []).map(toPull);
     },
     async pullsByTitle(repo, phrase) {
-      const q2 = `repo:${repo} is:pr in:title "${phrase.replace(/"/g, "")}"`;
+      const q3 = `repo:${repo} is:pr in:title "${phrase.replace(/"/g, "")}"`;
       const r = await call(
         "GET",
-        `/search/issues?per_page=20&q=${encodeURIComponent(q2)}`
+        `/search/issues?per_page=20&q=${encodeURIComponent(q3)}`
       );
       return (r?.items ?? []).map(toPull).filter((p) => p.title.includes(phrase));
     },
@@ -39804,15 +40571,15 @@ function generateCask(i, o = {}) {
   if (!/\.app$/.test(app) || app.includes("/") || app.includes(".."))
     throw new Error(`--app must name a .app bundle (got ${app}).`);
   const desc = (i.app.shortDescription ?? i.app.subtitle ?? i.app.name).trim().replace(/\.$/, "");
-  const lines3 = [
+  const lines4 = [
     `cask ${rubyString(cask)} do`,
     `  version ${rubyString(release.version)}`
   ];
   if (universal || !(arm && intel)) {
     const b = checkBuild(universal ?? arm ?? intel);
-    if (!universal && arm) lines3.push(`  depends_on arch: :arm64`);
-    if (!universal && intel) lines3.push(`  depends_on arch: :x86_64`);
-    lines3.push(
+    if (!universal && arm) lines4.push(`  depends_on arch: :arm64`);
+    if (!universal && intel) lines4.push(`  depends_on arch: :x86_64`);
+    lines4.push(
       `  sha256 ${rubyString(b.sha256)}`,
       "",
       `  url ${rubyString(b.url)}`
@@ -39820,7 +40587,7 @@ function generateCask(i, o = {}) {
   } else {
     const a = checkBuild(arm);
     const x = checkBuild(intel);
-    lines3.push(
+    lines4.push(
       "",
       "  on_arm do",
       `    sha256 ${rubyString(a.sha256)}`,
@@ -39833,11 +40600,11 @@ function generateCask(i, o = {}) {
       ""
     );
   }
-  lines3.push(`  name ${rubyString(i.app.name)}`, `  desc ${rubyString(desc)}`);
-  if (i.app.website) lines3.push(`  homepage ${rubyString(i.app.website)}`);
-  lines3.push("");
+  lines4.push(`  name ${rubyString(i.app.name)}`, `  desc ${rubyString(desc)}`);
+  if (i.app.website) lines4.push(`  homepage ${rubyString(i.app.website)}`);
+  lines4.push("");
   if (i.channel === "stable")
-    lines3.push(
+    lines4.push(
       "  livecheck do",
       `    url ${rubyString(i.links.downloadJson)}`,
       "    strategy :json do |json|",
@@ -39846,15 +40613,15 @@ function generateCask(i, o = {}) {
       "  end"
     );
   else
-    lines3.push(
+    lines4.push(
       "  livecheck do",
       `    skip ${rubyString(`follows the ${i.channel} channel through pkey storefront homebrew pr`)}`,
       "  end"
     );
-  lines3.push("");
-  if (i.selfUpdates) lines3.push("  auto_updates true", "");
-  lines3.push(`  app ${rubyString(app)}`, "end", "");
-  return { path: `Casks/${cask}.rb`, content: lines3.join("\n") };
+  lines4.push("");
+  if (i.selfUpdates) lines4.push("  auto_updates true", "");
+  lines4.push(`  app ${rubyString(app)}`, "end", "");
+  return { path: `Casks/${cask}.rb`, content: lines4.join("\n") };
 }
 
 // src/storefronts/run.ts
@@ -39864,8 +40631,8 @@ import { randomUUID } from "node:crypto";
 import { readFile as readFile20 } from "node:fs/promises";
 import path24 from "node:path";
 function commandLine(tool, argv2) {
-  const q2 = (s) => /^[A-Za-z0-9_@%+=:,./-]+$/.test(s) ? s : `'${s.replace(/'/g, `'\\''`)}'`;
-  return [tool, ...argv2].map(q2).join(" ");
+  const q3 = (s) => /^[A-Za-z0-9_@%+=:,./-]+$/.test(s) ? s : `'${s.replace(/'/g, `'\\''`)}'`;
+  return [tool, ...argv2].map(q3).join(" ");
 }
 function stepRunId(env) {
   const id = env.GITHUB_RUN_ID;
@@ -41942,44 +42709,44 @@ function formatBytes(bytes) {
 }
 function renderPruneReport(r, env = {}) {
   const u = (v) => untrusted(v, env);
-  const lines3 = [];
+  const lines4 = [];
   const verb = r.dryRun ? "Would prune" : "Pruned";
-  lines3.push(
+  lines4.push(
     `${r.dryRun ? "Dry run: nothing was deleted." : "Applied."} Product ${u(r.product)} (automatic cleanup ${r.prunePrereleases ? "on" : "off"}).`
   );
   const notice = r.retention?.notice;
   if (r.retention?.source === "default") {
     const day = notice ? new Date(notice.startsAt * 1e3).toISOString().slice(0, 10) : null;
-    lines3.push(
+    lines4.push(
       day ? `Automatic cleanup ${r.prunePrereleases ? "turned on" : "turns on"} ${day}: the first stable release after that deletes what is listed here. Nothing is deleted before then. Turn it off in the feed settings to keep these builds.` : "Automatic cleanup is on by default and starts a week after a first dry-run notice; nothing is deleted before then."
     );
   }
   for (const p of r.packages) {
-    lines3.push(
+    lines4.push(
       `${u(p.ecosystem)} ${u(p.name)}: newest stable ${u(p.stable)}; ${verb.toLowerCase()} ${p.prune.length} build${p.prune.length === 1 ? "" : "s"} of main, ${formatBytes(p.bytes)} (${formatBytes(p.freedBytes)} freed)`
     );
     for (const v of p.prune)
-      lines3.push(
+      lines4.push(
         `  - ${u(v.version)}  ${u(v.files)} file${v.files === 1 ? "" : "s"}, ${formatBytes(v.bytes)} (${formatBytes(v.freedBytes)} freed)`
       );
     for (const k of p.kept)
-      lines3.push(`  = ${u(k.version)}  kept (${u(k.reason)})`);
+      lines4.push(`  = ${u(k.version)}  kept (${u(k.reason)})`);
     for (const s of p.skipped ?? [])
-      lines3.push(
+      lines4.push(
         `  ~ ${u(s.version)}  skipped (${u(s.reason)} since the plan; kept)`
       );
     for (const f of p.failed ?? [])
-      lines3.push(`  ! ${u(f.version)}  failed: ${u(f.error)}`);
+      lines4.push(`  ! ${u(f.version)}  failed: ${u(f.error)}`);
   }
   for (const s of r.skipped)
-    lines3.push(`${u(s.deliverableId)}: skipped (no stable release yet)`);
+    lines4.push(`${u(s.deliverableId)}: skipped (no stable release yet)`);
   const skipped = r.totals.skipped ?? 0;
-  lines3.push(
+  lines4.push(
     `Total: ${verb.toLowerCase()} ${r.totals.versions} version${r.totals.versions === 1 ? "" : "s"}, ${formatBytes(r.totals.bytes)}, of which ${formatBytes(r.totals.freedBytes)} is referenced by nothing else.${skipped ? ` ${skipped} skipped: held since the plan, kept.` : ""}${r.totals.failed ? ` ${r.totals.failed} failed: run it again.` : ""}`
   );
   if (r.dryRun && r.totals.versions > 0)
-    lines3.push("Run again with --apply to delete them.");
-  return `${lines3.join("\n")}
+    lines4.push("Run again with --apply to delete them.");
+  return `${lines4.join("\n")}
 `;
 }
 async function feedsPrune(opts) {
@@ -42167,11 +42934,11 @@ function resize(src, width, height) {
         b += pre[p + 2] * w;
         a += pre[p + 3] * w;
       }
-      const q2 = rowOut + x * 4;
-      mid[q2] = Math.floor((r + HALF) / SCALE);
-      mid[q2 + 1] = Math.floor((g + HALF) / SCALE);
-      mid[q2 + 2] = Math.floor((b + HALF) / SCALE);
-      mid[q2 + 3] = Math.floor((a + HALF) / SCALE);
+      const q3 = rowOut + x * 4;
+      mid[q3] = Math.floor((r + HALF) / SCALE);
+      mid[q3 + 1] = Math.floor((g + HALF) / SCALE);
+      mid[q3 + 2] = Math.floor((b + HALF) / SCALE);
+      mid[q3 + 3] = Math.floor((a + HALF) / SCALE);
     }
   }
   const vy = taps(sh, height);
@@ -42199,15 +42966,15 @@ function resize(src, width, height) {
       g = Math.floor((g + HALF) / SCALE);
       b = Math.floor((b + HALF) / SCALE);
       a = Math.floor((a + HALF) / SCALE);
-      const q2 = (y * width + x) * 4;
+      const q3 = (y * width + x) * 4;
       if (a === 0) {
-        d[q2] = d[q2 + 1] = d[q2 + 2] = d[q2 + 3] = 0;
+        d[q3] = d[q3 + 1] = d[q3 + 2] = d[q3 + 3] = 0;
         continue;
       }
-      d[q2] = Math.min(255, Math.floor((r * 510 + a) / (2 * a)));
-      d[q2 + 1] = Math.min(255, Math.floor((g * 510 + a) / (2 * a)));
-      d[q2 + 2] = Math.min(255, Math.floor((b * 510 + a) / (2 * a)));
-      d[q2 + 3] = Math.min(255, Math.floor((2 * a + 255) / 510));
+      d[q3] = Math.min(255, Math.floor((r * 510 + a) / (2 * a)));
+      d[q3 + 1] = Math.min(255, Math.floor((g * 510 + a) / (2 * a)));
+      d[q3 + 2] = Math.min(255, Math.floor((b * 510 + a) / (2 * a)));
+      d[q3 + 3] = Math.min(255, Math.floor((2 * a + 255) / 510));
     }
   }
   return out;
@@ -42269,11 +43036,11 @@ function boxPass(src, radius, horizontal) {
   const out = makeRaster(width, height);
   const n = radius * 2 + 1;
   const len = horizontal ? width : height;
-  const lines3 = horizontal ? height : width;
+  const lines4 = horizontal ? height : width;
   const step = horizontal ? 4 : width * 4;
   const s = src.data;
   const d = out.data;
-  for (let line = 0; line < lines3; line++) {
+  for (let line = 0; line < lines4; line++) {
     const base = horizontal ? line * width * 4 : line * 4;
     for (let c = 0; c < 4; c++) {
       let sum = 0;
@@ -43978,10 +44745,10 @@ async function walk2(dir, rel = "") {
   }
   return out;
 }
-async function resolveAssetMap(base, lines3) {
+async function resolveAssetMap(base, lines4) {
   const files = (await walk2(base)).sort();
   const out = [];
-  for (const l of lines3) {
+  for (const l of lines4) {
     const re = globToRegExp(l.glob);
     const hits = files.filter((f) => re.test(f));
     const loc = l.locale !== void 0 ? { locale: l.locale } : {};
@@ -44106,8 +44873,8 @@ var HANDLERS = {
 function unknownCommand(name, term) {
   const { painter, symbols, caps } = term;
   const text = `Unknown command "${name}". Run pkey help to see every command.`;
-  const lines3 = wrapSpans([{ text }], Math.max(1, caps.columns - 3));
-  return `${lines3.map(
+  const lines4 = wrapSpans([{ text }], Math.max(1, caps.columns - 3));
+  return `${lines4.map(
     (l, i) => i === 0 ? `${painter.style(symbols.fail, ["danger"])}  ${painter.line(l)}` : `   ${painter.line(l)}`
   ).join("\n")}
 `;
@@ -44283,8 +45050,8 @@ async function validateText(dir, cwd, stdout, term) {
     );
   const gap = " ".repeat(2);
   for (const row2 of rows) {
-    const lines3 = caps.tty ? wrapSpans(row2.spans, Math.max(1, caps.columns - 3), symbols.ellipsis) : [row2.spans];
-    lines3.forEach(
+    const lines4 = caps.tty ? wrapSpans(row2.spans, Math.max(1, caps.columns - 3), symbols.ellipsis) : [row2.spans];
+    lines4.forEach(
       (l, i) => stdout.write(`${i === 0 ? row2.mark : " "}${gap}${painter.line(l)}
 `)
     );
@@ -44569,8 +45336,18 @@ function cmdTrust(parsed, stdout) {
   const publicKey = flagString(parsed, "public-key") ?? parsed.positional[1];
   if (!kid || !publicKey)
     throw new Error("Usage: pkey trust --kid <kid> --public-key <base64url>");
-  stdout.write(`${trustSnippet(kid, publicKey)}
-`);
+  for (const lang of SDK_LANGS) {
+    const setup = renderSdkSetup(lang, {
+      slug: "<slug>",
+      pins: [{ kid, publicKey }],
+      services: []
+    });
+    stdout.write(
+      `--- ${lang}: ${setup.config.filename}
+${setup.config.code}
+`
+    );
+  }
   return 0;
 }
 async function cmdDev(parsed, rt) {
@@ -44611,27 +45388,31 @@ async function cmdDev(parsed, rt) {
   }
 }
 async function cmdSdk(parsed, cwd, stdout, stderr, fetchImpl) {
-  const lang = flagString(parsed, "lang");
-  if (lang === void 0) {
+  const add5 = parsed.positional[0] === "add";
+  const lang = add5 ? parsed.positional[1] : flagString(parsed, "lang");
+  if (lang === void 0 && !add5) {
     const product2 = flagString(parsed, "product") ?? parsed.positional[0];
     const baseUrl = flagString(parsed, "base-url") ?? DEFAULT_BASE_URL;
     if (!product2) throw new Error(SDK_CONFIG_USAGE);
-    stdout.write(
-      `${sdkSnippet({
-        baseUrl,
-        product: product2,
-        kid: flagString(parsed, "kid"),
-        publicKey: flagString(parsed, "public-key")
-      })}
-`
-    );
+    const kid2 = flagString(parsed, "kid");
+    const publicKey2 = flagString(parsed, "public-key");
+    const setup = renderSdkSetup("node", {
+      slug: product2,
+      origin: baseUrl,
+      pins: kid2 && publicKey2 ? [{ kid: kid2, publicKey: publicKey2 }] : [],
+      services: []
+    });
+    stdout.write(`${setup.config.code}
+${setup.start.code}
+`);
     return 0;
   }
-  if (!isSdkLang(lang))
+  if (lang === void 0 || !isSdkLang(lang))
     throw new Error(
-      `--lang must be one of ${SDK_LANGS.join(", ")}.
+      add5 ? `pkey sdk add needs the SDK first: pkey sdk add ${SDK_LANGS.join("|")} --expect <kid>@sha256:<fingerprint>[,...]` : `--lang must be one of ${SDK_LANGS.join(", ")}.
 ${SDK_CONFIG_USAGE}`
     );
+  const expect = add5 ? parseExpect(flagString(parsed, "expect")) : null;
   let local = null;
   try {
     const m = descriptorManifestOf(await loadManifest(cwd));
@@ -44644,8 +45425,11 @@ ${SDK_CONFIG_USAGE}`
     const base = flagString(parsed, "url") ?? flagString(parsed, "base-url") ?? await devConfigUrl(cwd) ?? `http://127.0.0.1:${DEV_DEFAULT_PORT}`;
     devFacts = await devInfoFrom(base.replace(/\/+$/, ""), fetchImpl);
   }
-  const product = flagString(parsed, "product") ?? parsed.positional[0] ?? devFacts?.product ?? local?.slug;
-  if (!product) throw new Error(SDK_CONFIG_USAGE);
+  const product = flagString(parsed, "product") ?? (add5 ? void 0 : parsed.positional[0]) ?? devFacts?.product ?? local?.slug;
+  if (!product)
+    throw new Error(
+      add5 ? "pkey sdk add needs --product <slug> (or run it in the product repo, where .pkey/ names it)." : SDK_CONFIG_USAGE
+    );
   if (local && !devFacts && local.slug !== product)
     throw new Error(
       `The .pkey/ in ${cwd} is product ${local.slug}, not ${product}; run pkey sdk from ${product}'s repo or drop --product.`
@@ -44667,6 +45451,7 @@ ${SDK_CONFIG_USAGE}`
     ...kid !== void 0 && publicKey !== void 0 ? { expectPin: { kid, publicKey } } : {},
     ...fetchImpl ? { fetchImpl } : {}
   });
+  if (expect) checkExpected(expect, facts);
   if (!devFacts && Object.keys(facts.pinnedKeys).length === 1)
     stderr.write(
       "warning: discovery lists one signing key; stage a second key before you ship, so this one can be revoked.\n"
@@ -44677,7 +45462,7 @@ ${SDK_CONFIG_USAGE}`
     ...out !== void 0 ? { out } : {},
     ...pkg !== void 0 ? { kotlinPackage: pkg } : {}
   });
-  if (!flagBool(parsed, "write")) {
+  if (!add5 && !flagBool(parsed, "write")) {
     stdout.write(content);
     return 0;
   }
@@ -44692,7 +45477,65 @@ ${SDK_CONFIG_USAGE}`
   stdout.write(`${factsSummary(facts)}
 Wrote ${target}
 `);
+  if (add5) stdout.write(addNextSteps(lang, facts));
   return 0;
+}
+function parseExpect(raw) {
+  if (raw === void 0)
+    throw new Error(
+      "pkey sdk add needs --expect <kid>@sha256:<fingerprint>[,...]: the pin fingerprints on the console's Integration page. It never trusts what discovery says first."
+    );
+  const out = /* @__PURE__ */ new Map();
+  for (const part of raw.split(",").filter(Boolean)) {
+    const m = /^(.+)@sha256:([0-9a-f]{64})$/i.exec(part.trim());
+    if (!m)
+      throw new Error(
+        `--expect takes <kid>@sha256:<64 hex digits>; got ${part}.`
+      );
+    out.set(m[1], m[2].toLowerCase());
+  }
+  if (out.size === 0) throw new Error("--expect lists no pin.");
+  return out;
+}
+function checkExpected(expect, facts) {
+  const served = new Map(
+    Object.entries(facts.pinnedKeys).map(([kid, key]) => [
+      kid,
+      fingerprintOf2(key)
+    ])
+  );
+  const wrong = [...expect].filter(([kid, fp]) => served.get(kid) !== fp);
+  const extra = [...served.keys()].filter((kid) => !expect.has(kid));
+  if (wrong.length > 0 || extra.length > 0)
+    throw new Error(
+      `Discovery does not serve the pins you expected; nothing was written. ` + (wrong.length > 0 ? `Missing or different: ${wrong.map(([kid]) => kid).join(", ")}. ` : "") + (extra.length > 0 ? `Not in --expect: ${extra.join(", ")}. ` : "") + `Compare the console's signing keys with ${facts.discoveryUrl}.`
+    );
+}
+function addNextSteps(lang, facts) {
+  const setup = renderSdkSetup(lang, {
+    slug: facts.product,
+    origin: facts.baseUrl,
+    pins: Object.entries(facts.pinnedKeys).map(([kid, publicKey]) => ({
+      kid,
+      publicKey
+    })),
+    releaseKeys: Object.entries(facts.pinnedReleaseKeys).map(
+      ([kid, publicKey]) => ({ kid, publicKey })
+    ),
+    services: facts.services
+  });
+  const lines4 = ["", "Install from pkg.plrs.im, routing the name to it first:"];
+  for (const snip of setup.install)
+    lines4.push(
+      "",
+      `${snip.filename ? `# ${snip.filename}
+` : ""}${snip.code}`
+    );
+  if (setup.installNote) lines4.push("", setup.installNote);
+  lines4.push("", `Start (${setup.start.filename}):`, "", setup.start.code);
+  for (const w of setup.warnings) lines4.push(`warning: ${w}`);
+  return `${lines4.join("\n")}
+`;
 }
 async function cmdMirror(parsed, cwd, stdout, fetchImpl) {
   const langs = (flagString(parsed, "lang") ?? "").split(",").map((l) => l.trim()).filter(Boolean);

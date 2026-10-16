@@ -400,6 +400,15 @@ const SWIFT_SETUP: FeedSetupDeclaration = {
         language: "text",
         code: `.package(id: ${JSON.stringify(id)}, from: ${JSON.stringify(version ?? "1.0.0")})`,
       },
+      {
+        id: "xcode",
+        clients: "Xcode",
+        title: "Add it in an Xcode project",
+        description:
+          "With the registries file above in place: File, Add Package Dependencies, then search for the package by its identity. Choose the products you use.",
+        language: "text",
+        code: id,
+      },
     ];
   },
 };

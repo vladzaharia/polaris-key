@@ -251,6 +251,9 @@ export const COMMANDS: readonly PkeyCommand[] = [
     rows: [["sdk", "Print an SDK snippet, or one SDK's config file"]],
     usage: [
       "pkey sdk --product slug [--base-url url] [--kid kid --public-key key]",
+      "pkey sdk add node|react|python|swift|kotlin|godot --expect kid@sha256:fingerprint[,...] " +
+        "[--product slug] [--base-url url] [--out path] [--force] " +
+        "[--release-key kid=key ...] [--package kotlin.package]",
       "pkey sdk --lang node|react|python|swift|kotlin|godot [--product slug] [--base-url url] " +
         "[--write [--out path] [--force]] [--kid kid --public-key key] " +
         "[--release-key kid=key ...] [--package kotlin.package] [--dev [--url origin]]",
@@ -259,6 +262,9 @@ export const COMMANDS: readonly PkeyCommand[] = [
     about: [
       {
         text:
+          "pkey sdk add writes the SDK's config file and prints the install and the start. It " +
+          "refuses unless discovery serves exactly the pins --expect names, by fingerprint " +
+          "(copy them from the console's Integration page): it never trusts discovery first. " +
           "Without --lang, pkey sdk prints a Node example with the pins given. With --lang it " +
           "reads the product's discovery (and, in the product's repo, .pkey/release's " +
           "releaseKeys) and prints that SDK's config file; --write writes it to the SDK's " +
@@ -324,8 +330,8 @@ export const COMMANDS: readonly PkeyCommand[] = [
     name: "trust",
     group: "sdk",
     json: false,
-    summary: "Format a signing key for every SDK's pinned keys",
-    rows: [["trust", "Format a signing key for every SDK's pinned keys"]],
+    summary: "Show a signing key pinned in every SDK's config file",
+    rows: [["trust", "Show a signing key pinned in every SDK's config file"]],
     usage: ["pkey trust --kid kid --public-key key"],
   },
   {

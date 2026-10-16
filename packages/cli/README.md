@@ -234,11 +234,11 @@ harder failure than any local warning.
 
 ### `pkey trust`
 
-Formats one `kid`/public-key pair as ready-to-paste snippets for every SDK at once — JSON,
-the Node/React `trust: { pinnedKeys: {…} }` shape, Python's `trusted_keys = {…}`, Swift's
-`let trustedKeys = […]`, and Godot's `const PINNED_TRUST_KEYS := {…}` (for
-`PKeyOptions.pinned_trust_keys`, or the setup dock's pinned-keys field) — so wiring a newly-minted or rotated signing key into every codebase
-that consumes it is one copy per language, not one hand-transcription per language.
+Shows one `kid`/public-key pair as every SDK's config file holds it: the Node and React
+`trust.pinnedKeys`, Python's `PINNED_KEYS`, Swift's `pinnedKeys`, Kotlin's `pinnedKeys` and Godot's
+`PINNED_TRUST_KEYS`. These are the modules `pkey sdk` writes, from the same renderer
+(`@polaris-key/manifest/integration`), so wiring a newly minted or rotated signing key into every
+codebase is one copy per language.
 
 ```sh
 pkey trust --kid pkey-djdl-prod-2026-06 --public-key <base64url>
@@ -246,12 +246,17 @@ pkey trust --kid pkey-djdl-prod-2026-06 --public-key <base64url>
 
 ### `pkey sdk`
 
-Without `--lang`, prints a ready `@polaris-key/node` quick-start snippet
-(`PolarisKeyClient.create({...})`, `sync()`, a `getConfig`/`getSecret` example) for `--product`,
-including a `trust:` block when `--kid`/`--public-key` are also given. `--base-url` defaults to
+Without `--lang`, prints the Node setup for `--product`: the config module and the start,
+including the trust pin when `--kid`/`--public-key` are also given. `--base-url` defaults to
 `https://key.plrs.im`, the same production origin every other command uses (`DEFAULT_BASE_URL`),
 so the snippet works as pasted for a product hosted there. Pass `--base-url` for a self-hosted
 deployment.
+
+`pkey sdk add <lang> --expect <kid>@sha256:<fingerprint>[,...]` does the same as
+`--lang <lang> --write`, but refuses unless discovery serves exactly the pins `--expect` names, by
+fingerprint (copy them from the console's Integration page): there is no trust on first use. It
+then prints the install lines from `pkg.plrs.im`, routing the name to the feed first, and the
+start for the SDK. A missing flag is named in the error.
 
 With `--lang`, it writes a typed configuration module for one SDK from the product's live
 discovery document (`<base>/<product>/.well-known/polaris.json`, with the same `--base-url`

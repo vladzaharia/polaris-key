@@ -85,9 +85,9 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 ## Acceptance criteria
 
-- [ ] One snippet generator for the console and the CLI (grep)
-- [ ] React snippets carry trust pins
-- [ ] Goldens for the TypeScript and Python lanes compile
+- [x] One snippet generator for the console and the CLI (grep)
+- [x] React snippets carry trust pins
+- [x] Goldens for the TypeScript and Python lanes compile
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify
@@ -97,6 +97,33 @@ mise exec node@22 -- pnpm parity:check
 ```
 
 Then the full green gate in `AGENTS.md`.
+
+## Progress and continuation (2026-10-16)
+
+Built as scoped; the code differs from the brief in these places (the code is the fact):
+
+- `sdkQuickStart.ts` lives at `packages/admin/src/console/sections/core/model/`. It keeps the SDK
+  chooser, `trustPins` and a thin `sdkSetup` over `renderSdkSetup`; its install table, `sdkInit` and
+  the CLI's `sdkSnippet`/`trustSnippet` and six `sdkConfig.ts` renderers are gone (the renderers moved
+  to `@polaris-key/manifest/integration`; `pkey trust` now prints every SDK's config module).
+- Signature: `renderUsage(feature, sdk, lane, framework = null, ctx = {})`, `lane` = `kit | library |
+  server`, per the docs plan amendment 3 and the framework drop-ins plan §12.2. A combination with no
+  code today is `null`, never a guess.
+- Server lane: Node's framework-free `verifyLicenseDocument` only. Express, Hono, FastAPI and the other
+  framework goldens wait for the server adapter packages (SP-53 onward); `usageFrameworks("node",
+  "server")` is empty until they ship.
+- Swift, Kotlin and Godot render licensing (kit and library) only. Their goldens are written but not
+  compiled here: SP-33b owns their lanes and the rest of their features.
+- Cloud Sync renders as `status: "planned"` (its routes have not shipped); packs, commerce and the
+  rest render for Node and Python; React renders licensing, config, identity and update.
+- The docs' generated blocks are the goldens plus `index.json` under
+  `packages/shared-manifest/test/fixtures/integration/` (family `integration`). The `<Generated>`
+  component and the page rewrites are docs work (DOC-08a, SP-33b).
+- `renderFeedSetup` gained an `xcode` snippet for Swift; the three Swift feed snapshots changed.
+
+Follow-ups: ST-41 renders `start` and links `docs`; SP-33b ports the other lanes to
+`polaris-key.json` names and compiles Swift, Kotlin and Godot; the server packages add the framework
+goldens.
 
 ## Hand-off
 
