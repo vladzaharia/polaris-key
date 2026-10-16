@@ -150,3 +150,12 @@ Then the full green gate in `AGENTS.md`.
 
 What downstream work packages rely on from this one is named in their briefs (the Unblocks row). The role agent sets `--set P0-45 in-review` when it hands off. After review, the lead adds the last commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P0-45 done`.
+
+## Progress and continuation (2026-10-16)
+
+Reconciled against main in the 2026-10-16 audit. Remaining:
+
+- pkey doctor reports the same Verified facts as ST-40 (unmet until ST-40 merges)
+- Screen acceptance block (terminal help output)
+- pkey-ux-reviewer BUILT pass
+- Green gate item
