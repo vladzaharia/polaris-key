@@ -152,7 +152,11 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
       - run: pnpm typecheck
+      # As in ci.yml's JS/TS job: the Swift, Kotlin and GDScript snippet lanes run in CI's own
+      # docs-snippets jobs on their toolchains; a runner's preinstalled JDK must not start them here.
       - run: pnpm test
+        env:
+          PKEY_DOCS_SKIP_LANES: swift,kotlin,gdscript
       - run: pnpm lint
 
   deploy-worker:
