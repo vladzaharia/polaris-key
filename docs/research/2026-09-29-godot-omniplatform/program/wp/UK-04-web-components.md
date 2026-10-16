@@ -287,3 +287,13 @@ React (UK-05) imports `styles.css` and matches the DOM contract; the cross-rende
 
 The role agent sets `--set UK-04 in-review` when it hands off. After review, the lead adds the last
 commit of the PR: `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set UK-04 done`.
+
+## Progress and continuation (2026-10-16)
+
+Reconciled against main in the 2026-10-16 audit. Remaining:
+
+- Pixel baselines for every component x state (after UK-05 renders on styles.css; ui-qa React/elements diff not yet switched)
+- CDN module at key.plrs.im/elements/<major>/pk.js and release closure (package still private)
+- Framework recipes/docs pages, examples, parity rows, string lint
+- Catalog gaps: platform-name keys, Replace title key, provider/store inputs
+- BUILT-mode pkey-ux-reviewer pass and design review

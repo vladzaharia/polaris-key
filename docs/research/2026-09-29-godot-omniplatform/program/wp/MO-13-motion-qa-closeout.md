@@ -181,3 +181,15 @@ Marked done last; the phase is complete when it is. The role agent sets `--set M
   prefetch; finish the 30-second Operations polling QA and remaining-list audit; add
   `PK_MOTION_STRIPS` plus opt-in 4× frame measurements and real-app assertions; add
   the contributor page and component inventory rows; run the listed verification.
+
+## Progress and continuation (2026-10-16)
+
+Reconciled against main in the 2026-10-16 audit. Remaining:
+
+- Overflow-safe PageTabs indicator and licence prefetch
+- 30-second Operations polling QA and remaining-list audit
+- PK_MOTION_STRIPS plus opt-in 4x frame measurements and real-app assertions
+- Contributor page and component inventory rows
+- Real-app strips for surfaces blocked on todo packages A-24, U-31, P2-09, P2-11, ST-43, ST-48, LX-43
+- Firefox smoke on a runner where Playwright launches
+- Full TabPanel migration remains with P0-39

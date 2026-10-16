@@ -60,3 +60,11 @@ Each acceptance item's test in its SDK lane, then the full green gate in `AGENTS
 
 The role agent sets `--set SP-41 in-review` when it hands off. After review, the lead adds the last commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set SP-41 done`.
+
+## Progress and continuation (2026-10-16)
+
+Reconciled against main in the 2026-10-16 audit. Remaining:
+
+- Verify the 6 acceptance boxes: start under 10 s, never contacts key.plrs.im, dev routes absent from the production bundle, a dev run leaves production stores untouched, gate green
+- Confirm a final non-WIP commit state (some commits labelled WIP)
+- Then set done
