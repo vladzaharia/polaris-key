@@ -280,3 +280,13 @@ Electron (UK-06), React Native (UK-20) and the shadcn registry (UK-22) build on 
 
 The role agent sets `--set UK-05 in-review` when it hands off. After review, the lead adds the last
 commit of the PR: `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set UK-05 done`.
+
+## Progress and continuation (2026-10-16)
+
+Reconciled against main in the 2026-10-16 audit. Remaining:
+
+- Port the one sign-in form (SignIn presentation/replace, useSignIn) from elements signin.ts, then flip ui.signin
+- Re-point legacy components (LicenseGate, PolarisLogin, DeviceManager, UpdatePrompt, ConfigPanel, PolarisLogout) onto the kit; retire inline-style theme; DX provider changes
+- Theme and i18n families; flip ui.theme and ui.i18n
+- Baselines for every component x state at the 7.1 sizes
+- Docs/examples, UX BUILT review

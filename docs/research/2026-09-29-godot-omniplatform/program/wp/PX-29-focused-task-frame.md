@@ -101,3 +101,12 @@ mise exec node@22 -- pnpm <the package's own tests>
 ## Hand-off
 
 What downstream packages rely on from this one is listed in its Unblocks row. The role agent sets `--set PX-29 in-review` when it hands off; after review the lead adds the last commit `--set PX-29 done`.
+
+## Progress and continuation (2026-10-16)
+
+Reconciled against main in the 2026-10-16 audit. Remaining:
+
+- Return link only through safeReturnTo (none found under admin portal)
+- UX review in BUILT mode
+- distribution.download-page: restyle hosted dl.plrs.im page (worker page/render.ts) to the task frame, if still in scope
+- Gate acceptance line

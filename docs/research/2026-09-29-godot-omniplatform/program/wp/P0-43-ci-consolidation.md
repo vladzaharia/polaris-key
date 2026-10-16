@@ -77,3 +77,11 @@ Then the full green gate in `AGENTS.md`.
 
 What downstream work packages rely on from this one is named in their briefs (the Unblocks row). The role agent sets `--set P0-43 in-review` when it hands off. After review, the lead adds the last commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P0-43 done`.
+
+## Progress and continuation (2026-10-16)
+
+Reconciled against main in the 2026-10-16 audit. Remaining:
+
+- Lead's local gate.sh must read tools/ci-scope.json (AGENTS.md says it does not yet)
+- Owner step: branch protection should require 'CI OK' instead of per-job checks
+- Split Apple jobs not yet run on GitHub (per PR #67)
