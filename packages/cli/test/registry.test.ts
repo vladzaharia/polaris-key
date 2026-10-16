@@ -575,6 +575,21 @@ modules:
     expect(after.out).not.toContain("deprecated");
   });
 
+  it("drops a redundant secret: true from a secret entry, and leaves a config entry's alone (U-30)", async () => {
+    const entry = (key: string, kind: string) =>
+      `  - key: ${key}\n    kind: ${kind}\n    secret: true\n    category: A\n    label: L\n    description: D\n    schema:\n      type: string\n`;
+    const cwd = await product({
+      "schema.yaml": `schemaVersion: 1\nentries:\n${entry("a.token", "secret")}${entry("a.mode", "config")}`,
+    });
+    const out = await run(["validate", "--fix"], { cwd });
+    expect(out.out).toContain("Dropped /entries/0/secret (.pkey/schema.yaml)");
+    const text = await readFile(path.join(cwd, ".pkey/schema.yaml"), "utf8");
+    expect(text.match(/secret: true/g)).toHaveLength(1);
+    expect(text.indexOf("secret: true")).toBeGreaterThan(
+      text.indexOf("a.mode"),
+    );
+  });
+
   it("negative control: nothing to fix writes nothing and says so", async () => {
     const cwd = await product();
     const file = path.join(cwd, ".pkey/product.yaml");

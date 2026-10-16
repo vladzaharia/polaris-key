@@ -147,6 +147,33 @@ export async function fixManifest(
         to: s.canonicalPointer!.pointer,
       });
     }
+    // U-30: `secret: true` on a `kind: secret` entry says what the kind already says, and
+    // ingest drops it. A `config` entry's `secret: true` is left alone: moving it to
+    // `kind: secret` changes the SDK read (`getSecret`), which is the author's call.
+    if (name === "schema") {
+      for (const list of ["entries", "catalog"]) {
+        const entries = edit.get([list]);
+        // A plain array (JSON) or a YAML sequence node, whose `items` are its elements.
+        const n = Array.isArray(entries)
+          ? entries.length
+          : ((entries as { items?: unknown[] } | undefined)?.items?.length ??
+            0);
+        for (let i = 0; i < n; i++) {
+          if (
+            edit.get([list, String(i), "kind"]) !== "secret" ||
+            edit.get([list, String(i), "secret"]) !== true
+          )
+            continue;
+          edit.remove([list, String(i), "secret"]);
+          changed = true;
+          moves.push({
+            file: path.relative(cwd, file),
+            from: `/${list}/${i}/secret`,
+            to: "(dropped)",
+          });
+        }
+      }
+    }
     if (changed) await writeFile(file, edit.text());
   }
   return moves;

@@ -231,7 +231,6 @@ function base(): Docs {
         {
           key: "api.token",
           kind: "secret",
-          secret: true,
           category: "Secrets",
           label: "API token",
           description: "Delivered to the OS keyring.",
@@ -819,6 +818,34 @@ const MUTATIONS: Mutation[] = [
     file: "product",
     schema: "accepts",
     mutate: (d) => (p(d).licensing.tiers[0].maxOfflineDays = 14),
+  },
+  {
+    // U-30 (CFG-04): `secret: true` on a secret entry (entries[1]) is redundant and dropped. A
+    // warning; the schema keeps the boolean, so it accepts.
+    code: "catalog_secret_flag_retired",
+    file: "schema",
+    schema: "accepts",
+    mutate: (d) => ((d.schema as any).entries[1].secret = true),
+  },
+  {
+    // ...and on a config entry (entries[0]) it says to use kind secret.
+    code: "catalog_secret_flag_retired",
+    file: "schema",
+    schema: "accepts",
+    mutate: (d) => ((d.schema as any).entries[0].secret = true),
+  },
+  {
+    code: "catalog_delivery_server_only",
+    file: "schema",
+    schema: "accepts",
+    mutate: (d) => ((d.schema as any).entries[1].delivery = "serverOnly"),
+  },
+  {
+    // The recipe is named by the entry's key; the base manifest declares no recipe of that id.
+    code: "catalog_edge_mint_without_recipe",
+    file: "schema",
+    schema: "accepts",
+    mutate: (d) => ((d.schema as any).entries[1].delivery = "edgeMint"),
   },
   {
     // P0-04: a name `CHANNEL_RE` accepts but the canonical alphabet (WIRE-CONTRACT-V3 §5.1)
