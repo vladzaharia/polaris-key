@@ -80,6 +80,11 @@ A verb with the same name as one of your commands fails the registration with
 the verbs, or skip the ones that collide:
 
 ```ts
+import { Command } from "commander";
+import { registerPolarisCommands } from "@polaris-key/node/cli";
+import { polarisConfig } from "./polaris.config.js";
+
+const program = new Command("tidewater");
 registerPolarisCommands(program, {
   config: polarisConfig,
   version: "2.4.1",
@@ -89,8 +94,8 @@ registerPolarisCommands(program, {
 });
 ```
 
-Under a `namespace`, the help page lists one `license <command>` entry, and `tidewater license
---help` is the grouped page of its verbs. Your own commands are never renamed or changed.
+Under a `namespace`, the help page lists one `license <command>` entry, and
+`tidewater license --help` is the grouped page of its verbs. Your own commands are never renamed or changed.
 
 ### Gating your own commands
 

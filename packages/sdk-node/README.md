@@ -689,11 +689,14 @@ npm install @polaris-key/node commander   # or yargs
 ```ts
 import { Command } from "commander";
 import { registerPolarisCommands, requireLicense } from "@polaris-key/node/cli";
-import { polarisConfig } from "./polaris.config.js";
 
 const program = new Command("djdl");
-registerPolarisCommands(program, { config: polarisConfig, version: "1.4.2" });
-program.command("export").action(requireLicense(runExport));
+const config = {
+  productSlug: "djdl",
+  trust: { pinnedKeys: { "pkey-djdl-prod-2026-06": "…" } },
+};
+registerPolarisCommands(program, { config, version: "1.4.2" });
+program.command("export").action(requireLicense(() => undefined));
 await program.parseAsync();
 ```
 
