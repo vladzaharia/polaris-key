@@ -1,6 +1,6 @@
 ---
 name: adding-a-catalog-entry
-description: Use when adding or changing a key in a product's config catalog (.pkey/schema or products/<slug>/catalog.json) — choosing config vs secret vs flag, writing the Draft-07-subset schema fragment, picking managementDefault or delivery, deciding whether to bump schemaVersion, and publishing.
+description: Use when adding or changing a key in a product's config catalog (.pkey/schema or products/<slug>/catalog.json) — choosing a Setting, Secret or Minted token (or a flag), writing the Draft-07-subset schema fragment, picking managementDefault or delivery, deciding whether to bump schemaVersion, and publishing.
 ---
 
 # Adding a catalog entry
@@ -15,12 +15,19 @@ field table at `packages/docs/src/content/docs/reference/config-entry.mdx`.
 
 ## Checklist
 
-### 1. Pick the kind
+### 1. Pick the type
 
-- [ ] **`config`** — a plaintext client setting. Rides the config document, resolved through the
-      client precedence chain, overridable unless management says otherwise.
-- [ ] **`secret`** — redacted in admin UIs, delivered in the `secrets` map of the signed config
-      document (cached in the SDK's 0600 file; only the device token is in the OS keyring). Set `"secret": true` alongside.
+The console says Setting, Secret or Minted token; the catalog keeps `kind` and `delivery`.
+
+- [ ] **Setting** (`kind: "config"`) — a plaintext client setting. Rides the config document,
+      resolved through the client precedence chain, overridable unless management says otherwise.
+- [ ] **Secret** (`kind: "secret"`) — redacted in admin UIs, delivered in the `secrets` map of the
+      signed config document (cached in the SDK's 0600 file; only the device token is in the OS
+      keyring). Do not add `"secret": true`: the kind says it, the validator warns, and
+      `pkey validate --fix` removes it. A value people change themselves is a Setting with
+      `ui.widget: "password"`, not a Secret.
+- [ ] **Minted token** (`kind: "secret"`, `delivery: "edgeMint"`) — never stored or listed; the app
+      calls `mintToken(key)`. The key must equal an `edgeMint` recipe's `id`, or the validator warns.
 - [ ] **`flag`** — an entitlement. Flags ride the **license** document only and are read with
       `isEntitled` / `getEntitlements`; they are not "managed config". A config-only product has
       no flags in play.
@@ -68,17 +75,17 @@ field table at `packages/docs/src/content/docs/reference/config-entry.mdx`.
       A pattern it cannot compile is unsupported.
 - [ ] Structural limits: depth ≤ 12, ≤ 500 subschemas per fragment.
 
-### 4. Choose `managementDefault` (config kinds only)
+### 4. Choose `managementDefault`, "In the app" (Settings only)
 
 The management state a freshly-minted key gets when an admin has not overridden it per
 tier/license/device. The client precedence is
 `enforced|hidden (remote) > local override > environment > remote default > fallback`.
 
-| Value      | Client behavior                                                                           | Choose it when                                                                 |
-| ---------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| `default`  | user/local override wins, then env, then the remote value, then the SDK fallback          | the key is a user preference the server merely suggests                        |
-| `enforced` | the remote value always wins; local + env ignored; shown **read-only** in settings UIs    | policy the operator must be able to dictate (limits, endpoints, kill switches) |
-| `hidden`   | `enforced` **and** withheld from `listUserConfig` / enumeration; still applied internally | the user must not see or reason about the value at all                         |
+| Value                  | Client behavior                                                                           | Choose it when                                                                 |
+| ---------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `default` (Editable)   | user/local override wins, then env, then the remote value, then the SDK fallback          | the key is a user preference the server merely suggests                        |
+| `enforced` (Read-only) | the remote value always wins; local + env ignored; shown **read-only** in settings UIs    | policy the operator must be able to dictate (limits, endpoints, kill switches) |
+| `hidden` (Hidden)      | `enforced` **and** withheld from `listUserConfig` / enumeration; still applied internally | the user must not see or reason about the value at all                         |
 
 The env override for a key is `PKEY_CONFIG_` + the key with dots → `__`
 (`run.concurrency` → `PKEY_CONFIG_run__concurrency`), parsed only when it is one strict JSON
@@ -121,7 +128,7 @@ tuning; without one the key behaves as `{ "sync": "user", "conflict": "lastWrite
 
 ### 5. Choose `delivery` (secret kinds only)
 
-- [ ] `serverOnly` — never leaves the worker.
+- [ ] `serverOnly` — retired (the validator warns): keep a Worker-only secret in the product's secrets, not the catalog.
 - [ ] `clientScoped` — delivered to the device in the signed config document.
 - [ ] `edgeMint` — minted on demand at `/<product>/config/mint/<id>/{token,auth}`. Edge-minting
       is a Config **capability**, not a service; the recipe (alg, claims template, key, audience)

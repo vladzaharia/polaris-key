@@ -1796,13 +1796,17 @@ function validateDocuments(
 
   const profiles =
     arrayAt(productRoot, "profiles") ?? arrayAt(licensing, "profiles") ?? [];
+  // The root `profiles` is canonical (U-30); `licensing.profiles` is the alias.
+  const profilesAt = arrayAt(productRoot, "profiles")
+    ? "/profiles"
+    : "/licensing/profiles";
   const profileIds = new Set<string>();
   for (const [i, raw] of profiles.entries()) {
     if (!isRecord(raw) || typeof raw.id !== "string" || !ID_RE.test(raw.id)) {
       add(
         errors,
         "product",
-        `/licensing/profiles/${i}/id`,
+        `${profilesAt}/${i}/id`,
         "invalid_profile_id",
         "Profile ids must be non-empty simple identifiers.",
       );
@@ -1814,7 +1818,7 @@ function validateDocuments(
       add(
         errors,
         "product",
-        `/licensing/profiles/${i}/id`,
+        `${profilesAt}/${i}/id`,
         "duplicate_profile_id",
         "Profile ids must be unique.",
       );
@@ -1824,7 +1828,7 @@ function validateDocuments(
       errors,
       "product",
       record.name ?? record.label,
-      `/licensing/profiles/${i}/name`,
+      `${profilesAt}/${i}/name`,
       "invalid_profile_name",
       MAX_LABEL_LENGTH,
       "Profile name",
@@ -1833,7 +1837,7 @@ function validateDocuments(
       errors,
       "product",
       record.description,
-      `/licensing/profiles/${i}/description`,
+      `${profilesAt}/${i}/description`,
       "invalid_profile_description",
       MAX_TEXT_LENGTH,
       "Profile description",
@@ -1842,7 +1846,7 @@ function validateDocuments(
       add(
         errors,
         "product",
-        `/licensing/profiles/${i}/payload`,
+        `${profilesAt}/${i}/payload`,
         "invalid_payload",
         "Profile payload must be an object.",
       );

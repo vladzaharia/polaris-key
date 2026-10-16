@@ -1237,7 +1237,11 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
       "properties": {
         "defaultDeviceLimit": { "$ref": "#/$defs/deviceLimit" },
         "defaultMaxOfflineDays": { "$ref": "#/$defs/nonNegativeInteger" },
-        "profiles": { "$ref": "#/$defs/profiles" },
+        "profiles": {
+          "$ref": "#/$defs/profiles",
+          "description": "Deprecated: write profiles at the root. Still accepted; pkey validate warns with deprecated_spelling.",
+          "deprecated": true
+        },
         "tiers": { "$ref": "#/$defs/tiers" },
         "entitlementModel": {
           "description": "Whether devices see the combined entitlements of every grant their holder has (combined) or only their own licence's (legacy). Undeclared: legacy for products registered before 2026-10-06, combined for newer ones. A console edit claims it; Revert returns it to this value.",
@@ -1275,8 +1279,7 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
     },
     "profiles": {
       "$ref": "#/$defs/profiles",
-      "description": "Deprecated: write licensing.profiles. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
-      "deprecated": true
+      "description": "The reusable managed-payload baselines tiers point at (a tier names one with profileId)."
     },
     "tiers": {
       "$ref": "#/$defs/tiers",
@@ -14751,7 +14754,7 @@ var DEPRECATED_SPELLINGS = [
     "deprecated",
     { shadowedBy: "/product/defaultMaxOfflineDays" }
   ),
-  // 5–6. Tiers and profiles at the root.
+  // 5. Tiers at the root.
   row(
     5,
     P,
@@ -14761,13 +14764,15 @@ var DEPRECATED_SPELLINGS = [
     "deprecated",
     { present: "array" }
   ),
+  // 6. Profiles are not a licensing concept (U-30, CFG-04): the root `profiles` is canonical and
+  // `licensing.profiles` is the alias. The root one wins when both are set.
   row(
     6,
     P,
-    "/profiles",
-    "product:licensing.profiles",
-    { doc: P, pointer: "/licensing/profiles" },
-    "deprecated",
+    "/licensing/profiles",
+    "product:profiles",
+    { doc: P, pointer: "/profiles" },
+    "canonical",
     { present: "array" }
   ),
   // 7. Tier `profile` (Q2b: `profileId` is canonical), wherever the tiers are.
@@ -18856,13 +18861,14 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
     }
   }
   const profiles = arrayAt(productRoot, "profiles") ?? arrayAt(licensing, "profiles") ?? [];
+  const profilesAt = arrayAt(productRoot, "profiles") ? "/profiles" : "/licensing/profiles";
   const profileIds = /* @__PURE__ */ new Set();
   for (const [i, raw] of profiles.entries()) {
     if (!isRecord6(raw) || typeof raw.id !== "string" || !ID_RE.test(raw.id)) {
       add4(
         errors,
         "product",
-        `/licensing/profiles/${i}/id`,
+        `${profilesAt}/${i}/id`,
         "invalid_profile_id",
         "Profile ids must be non-empty simple identifiers."
       );
@@ -18874,7 +18880,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
       add4(
         errors,
         "product",
-        `/licensing/profiles/${i}/id`,
+        `${profilesAt}/${i}/id`,
         "duplicate_profile_id",
         "Profile ids must be unique."
       );
@@ -18884,7 +18890,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
       errors,
       "product",
       record.name ?? record.label,
-      `/licensing/profiles/${i}/name`,
+      `${profilesAt}/${i}/name`,
       "invalid_profile_name",
       MAX_LABEL_LENGTH,
       "Profile name"
@@ -18893,7 +18899,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
       errors,
       "product",
       record.description,
-      `/licensing/profiles/${i}/description`,
+      `${profilesAt}/${i}/description`,
       "invalid_profile_description",
       MAX_TEXT_LENGTH,
       "Profile description"
@@ -18902,7 +18908,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
       add4(
         errors,
         "product",
-        `/licensing/profiles/${i}/payload`,
+        `${profilesAt}/${i}/payload`,
         "invalid_payload",
         "Profile payload must be an object."
       );
@@ -19721,6 +19727,15 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
       catalogChecked: catalog !== null && modules.includes("config"),
       syncEnabled: modules.includes("sync")
     });
+  }
+  if (manifest.schema !== void 0 && modules.includes("config")) {
+    const catalog = normalizeCatalog(manifest.schema);
+    if (catalog) {
+      const recipeIds = new Set(
+        (arrayAt(productRoot, "edgeMint") ?? arrayAt(asRecord(manifest.release), "edgeMint") ?? []).map((r) => asRecord(r).id)
+      );
+      warnRetiredCatalogFields(catalog.entries, recipeIds, warnings);
+    }
   }
   {
     const mode = opts.reservedDisplayNames ?? DEFAULT_RESERVED_DISPLAY_NAMES_MODE;
@@ -21155,7 +21170,9 @@ function parseManifest(files, opts = {}) {
   const productRoot = docs.product;
   const prod = nestedProductDoc(productRoot);
   const licensing = asRecord(productRoot.licensing);
-  const catalog = normalizeCatalog(docs.schema);
+  const catalog = dropRedundantSecretFlags(
+    normalizeCatalog(docs.schema)
+  );
   const releaseDoc = releaseRoot(docs.release) ?? releaseRoot(productRoot.release);
   const oidcRoot = asRecord(productRoot.oidc);
   const rawProfiles = arrayAt(productRoot, "profiles") ?? arrayAt(licensing, "profiles") ?? [];
@@ -21692,6 +21709,57 @@ function normalizeCatalog(parsed) {
     };
   }
   return null;
+}
+function dropRedundantSecretFlags(catalog) {
+  return {
+    ...catalog,
+    entries: catalog.entries.map((e) => {
+      if (!isRecord6(e) || e.kind !== "secret" || !("secret" in e)) return e;
+      const { secret: _secret, ...rest } = e;
+      return rest;
+    })
+  };
+}
+function warnRetiredCatalogFields(entries, recipeIds, warnings) {
+  for (const [i, raw] of entries.entries()) {
+    if (!isRecord6(raw)) continue;
+    const at = `/entries/${i}`;
+    if (raw.secret === true && raw.kind === "secret") {
+      add4(
+        warnings,
+        "schema",
+        `${at}/secret`,
+        "catalog_secret_flag_retired",
+        "`secret: true` is redundant on a secret entry and is dropped: the kind already says it. Remove it (`pkey validate --fix`)."
+      );
+    } else if (raw.secret === true && raw.kind === "config") {
+      add4(
+        warnings,
+        "schema",
+        `${at}/secret`,
+        "catalog_secret_flag_retired",
+        'Use `kind: "secret"` instead of `secret: true` on a config entry. The app then reads it with `getSecret`.'
+      );
+    }
+    if (raw.delivery === "serverOnly") {
+      add4(
+        warnings,
+        "schema",
+        `${at}/delivery`,
+        "catalog_delivery_server_only",
+        "`delivery: serverOnly` has no consumer. Keep a secret only the Worker reads in the product's secrets (Keys and secrets), not the catalog."
+      );
+    }
+    if (raw.delivery === "edgeMint" && typeof raw.key === "string" && !recipeIds.has(raw.key)) {
+      add4(
+        warnings,
+        "schema",
+        `${at}/delivery`,
+        "catalog_edge_mint_without_recipe",
+        `\`delivery: edgeMint\` on ${raw.key} has no edgeMint recipe with id ${raw.key}, so nothing can be minted.`
+      );
+    }
+  }
 }
 function validateCatalogShape(catalog) {
   const issues = [];
@@ -24524,16 +24592,17 @@ ${opts.adminGroup ? `  adminGroup: ${quoteYaml(opts.adminGroup)}
 ` : ""}modules:
 ${moduleLines.join("\n")}
 
+profiles:
+  - id: standard-defaults
+    name: Standard defaults
+    payload:
+      config: {}
+      secrets: {}
+      entitlements: {}
+
 licensing:
   defaultDeviceLimit: 5
   defaultMaxOfflineDays: 14
-  profiles:
-    - id: standard-defaults
-      name: Standard defaults
-      payload:
-        config: {}
-        secrets: {}
-        entitlements: {}
   tiers:
     - id: standard
       label: Standard
@@ -24954,6 +25023,23 @@ async function fixManifest(manifest, cwd) {
         from: s.pointer,
         to: s.canonicalPointer.pointer
       });
+    }
+    if (name === "schema") {
+      for (const list2 of ["entries", "catalog"]) {
+        const entries = edit.get([list2]);
+        const n = Array.isArray(entries) ? entries.length : entries?.items?.length ?? 0;
+        for (let i = 0; i < n; i++) {
+          if (edit.get([list2, String(i), "kind"]) !== "secret" || edit.get([list2, String(i), "secret"]) !== true)
+            continue;
+          edit.remove([list2, String(i), "secret"]);
+          changed = true;
+          moves.push({
+            file: path5.relative(cwd, file),
+            from: `/${list2}/${i}/secret`,
+            to: "(dropped)"
+          });
+        }
+      }
     }
     if (changed) await writeFile3(file, edit.text());
   }
@@ -44223,7 +44309,7 @@ function writeFixed(moves, stdout, term) {
   }
   for (const m of moves)
     stdout.write(
-      `${painter.style(symbols.ok, ["success"])}  Moved ${m.from} to ${m.to} (${m.file})
+      `${painter.style(symbols.ok, ["success"])}  ${m.to === "(dropped)" ? `Dropped ${m.from}` : `Moved ${m.from} to ${m.to}`} (${m.file})
 `
     );
   stdout.write("\n");

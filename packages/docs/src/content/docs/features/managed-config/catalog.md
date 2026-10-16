@@ -15,13 +15,35 @@ This page is the authoring guide. For the exact shape of a `ConfigEntry`, see
 [ConfigEntry — the catalog item shape](/docs/reference/config-entry/), reproduced verbatim from
 source so these pages don't have to keep a second copy honest.
 
-## The three kinds
+## Three types, one vocabulary
 
-| Kind     | Holds                                     | Delivered via                                                                                           |
-| -------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `config` | A plaintext client setting.               | This service's config document, `config` map, addressed by `accessor`.                                  |
-| `secret` | A value the admin surface always redacts. | This document's `secrets` map, or a runtime token via edge-mint — never plaintext in an admin response. |
-| `flag`   | An entitlement.                           | Not this document at all.                                                                               |
+The console names an entry's **type**. The catalog JSON keeps `kind` and `delivery`, so the
+served documents and every SDK are unchanged.
+
+| Type (console)   | In the catalog                           | The app reads it with                | Visible in the app                                                                     | Syncs                     |
+| ---------------- | ---------------------------------------- | ------------------------------------ | -------------------------------------------------------------------------------------- | ------------------------- |
+| **Setting**      | `kind: "config"`                         | `config.get` / `config.setting(key)` | Editable, Read-only or Hidden ([In the app](/docs/services/config/management-states/)) | Editable ones, by default |
+| **Secret**       | `kind: "secret"`                         | `getSecret(key)`                     | Never listed; write-only here                                                          | No: the server holds it   |
+| **Minted token** | `kind: "secret"`, `delivery: "edgeMint"` | `mintToken(key)`                     | Never listed                                                                           | No                        |
+
+A `flag` is the odd one out: an entitlement, owned by Licensing. Config owns its _schema_ as it
+does for the other types, but a flag's resolved _value_ never appears in this service's document.
+It rides the license document's `entitlements` map, read client-side via
+`isEntitled`/`getEntitlements`. A product with Config enabled and License disabled can still
+declare `flag` entries; it simply has no document to deliver their values on.
+
+### Retired spellings
+
+Each is a validator warning that names its replacement. Nothing is refused.
+
+| Spelling                              | Instead                                                                                        |
+| ------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `secret: true` on a `secret` entry    | Remove it: the kind already says it. Ingest drops it; `pkey validate --fix` removes it.        |
+| `secret: true` on a `config` entry    | `kind: "secret"`. The app then reads it with `getSecret`, so `--fix` leaves the change to you. |
+| `delivery: "serverOnly"`              | Keep a secret only the Worker reads in the product's secrets (Keys and secrets).               |
+| `delivery: "edgeMint"` with no recipe | Declare an `edgeMint` recipe whose `id` is the entry's key.                                    |
+| `licensing.profiles`                  | `profiles` at the root (`pkey validate --fix` moves it).                                       |
+| A `user` block on a locked key        | Remove it: a Read-only or Hidden setting never syncs.                                          |
 
 `flag` is the odd one out. Config owns the _schema_ for a flag exactly as it does for the other
 two kinds, but a flag's resolved _value_ never appears in this service's document — it rides the
@@ -35,17 +57,17 @@ values on, since entitlements ride the one document Config doesn't own.
 The reference page has the exact TypeScript shape. These are the fields with authoring rules
 worth stating explicitly:
 
-| Field                              | Notes                                                                                                                                           |
-| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `key`                              | A dotted identifier, unique within the catalog — e.g. `run.concurrency`, `proxy.subscriptionUrl`, `polarisVpn`.                                 |
-| `category`, `label`, `description` | Grouping and copy for the admin surface and any generated settings UI.                                                                          |
-| `examples`                         | Sample values shown in a generated form. Never validated against `schema`.                                                                      |
-| `default`                          | The schema-level fallback. Also the value `managementDefault` seeding uses — see [Management states](/docs/services/config/management-states/). |
-| `secret`                           | `true` on a `config`-kind entry whose value should be redacted like a `secret`-kind one.                                                        |
-| `managementDefault`                | **`config` kind only.** The state a freshly-minted key gets until an admin overrides it.                                                        |
-| `userGrant` / `grantLabel`         | `flag`-only. Surfaces the entitlement to the user as an included capability, e.g. "Included with your license".                                 |
-| `appliesTo`                        | Optional `cli`/`app` narrowing, for a catalog one schema shares across client shapes.                                                           |
-| `deprecated`, `since`              | Optional metadata. Never affects validation.                                                                                                    |
+| Field                              | Notes                                                                                                                                                     |
+| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `key`                              | A dotted identifier, unique within the catalog — e.g. `run.concurrency`, `proxy.subscriptionUrl`, `polarisVpn`.                                           |
+| `category`, `label`, `description` | Grouping and copy for the admin surface and any generated settings UI.                                                                                    |
+| `examples`                         | Sample values shown in a generated form. Never validated against `schema`.                                                                                |
+| `default`                          | The schema-level fallback. Also the value `managementDefault` seeding uses — see [Management states](/docs/services/config/management-states/).           |
+| `secret`                           | Retired: see the table above.                                                                                                                             |
+| `managementDefault`                | **`config` kind only.** The in-app visibility a fresh key gets until an admin overrides it: `default` is Editable, `enforced` Read-only, `hidden` Hidden. |
+| `userGrant` / `grantLabel`         | `flag`-only. Surfaces the entitlement to the user as an included capability, e.g. "Included with your license".                                           |
+| `appliesTo`                        | Optional `cli`/`app` narrowing, for a catalog one schema shares across client shapes.                                                                     |
+| `deprecated`, `since`              | Optional metadata. Never affects validation.                                                                                                              |
 
 Two structural rules are checked when a catalog is published, whether from the console or from
 `.pkey/schema`, and a catalog that breaks either is refused:
@@ -101,7 +123,7 @@ three values — anything else, or a `delivery` on a `config`/`flag` entry, fail
   client-side. The SDK caches it with the rest of the document in its `0600` `managed.json`; only
   the device token lives in the OS keyring, so a host that wants the value in a vault copies it
   there itself.
-- **`serverOnly`** means the value exists for the Worker's own use and **never leaves it**: the
+- **`serverOnly`** (retired: the validator warns) means the value exists for the Worker's own use and **never leaves it**: the
   document-signing prune drops the entry from every device-facing document — the config
   document, and bundles, which reuse the same builder — however the value was populated.
 - **`edgeMint`** marks that the entry's _value_ is not the thing delivered at all. It is the
