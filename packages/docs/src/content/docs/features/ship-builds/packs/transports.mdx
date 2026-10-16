@@ -1,0 +1,115 @@
+---
+title: "Ship a pack through an app store"
+description: "Package a published pack for Apple Background Assets, Play Asset Delivery or Steam depots with pkey transport, and verify what the store delivered."
+type: "how-to"
+lastReviewed: "2026-10-16"
+sidebar:
+  order: 3.75
+---
+
+import Requires from "../../../../../components/docs/Requires.astro";
+
+A store build takes its content through the store's own transport. Polaris Key doesn't move those bytes. It keeps their identity: every payload a store receives carries the pack's `pkey-marker/1` marker, and the Godot SDK verifies that marker and the bytes against the signed pack record before it mounts anything. A store's own hashes are never trusted.
+
+<Requires
+  features={["ship-builds"]}
+  role="Product admin"
+  sdk={["Node 22.13 or later"]}
+/>
+
+Before you start:
+
+- A pack release already published with `--out`. See [Ship a pack](/docs/features/ship-builds/packs/ship-a-pack/).
+- The transport chosen per outlet in `.pkey/distribution`:
+
+```yaml title=".pkey/distribution"
+transports:
+  packs:
+    app-store: apple-ba
+    testflight: apple-ba
+    play: play-pad
+    steam: steam-depot
+```
+
+Each step re-reads the publish cache, checks every payload against the record it pins and runs the publish lint again, so a pack with scripts never reaches a store. It then writes the platform's files, puts the marker beside the payload and reports the transport's availability to Distribution (`distribution:report`, which the default CI grant includes). Pass `--no-report` to write files only.
+
+## Apple-hosted Background Assets
+
+A live asset-pack version switches every installed app version, so a pack gets one asset pack per content level: `<pack>-c<contentApi>`. App Store Connect accepts only letters, digits and single hyphens, so each `.` in the pack id becomes `-`: `tidewater.foes` at level 3 is `tidewater-foes-c3`. The mapping is lossy and App Store Connect never lets you reuse an archived id, so every `apple-ba` pack of the product is mapped at once, before anything is written. The step fails when two packs map to one asset pack (`asset-pack-id-collision`), when an id breaks the grammar (`asset-pack-id-invalid`) or when it passes 64 characters with its suffix (`asset-pack-id-too-long`).
+
+1. **CI** Package on a macOS runner with Xcode 26 or later. The content level defaults to the app's `contentApi` and must sit inside the pack's `requires.contentApi` range. A pack with several variants takes `--variant <key>`. Pass `--no-archive` to write the manifest and files without `xcrun ba-package`.
+
+   ```sh title="Terminal"
+   pkey transport apple-ba package --deliverable tidewater.foes --release <version> --from <cache>
+   ```
+
+   This writes, under `build/pkey-transport/apple-ba/`, the `Manifest.json` with the download policy (`essential` and `prefetch` on first install and updates, otherwise `onDemand`), the payload and marker, the `.aar` archive and an `.inputs.json` of what it was built from. The archive's bytes are never reproducible, because `ba-package` stamps the time. The inputs are.
+
+2. **CI** Upload with your CI's own App Store Connect API key (Developer role or higher), never the key Polaris Key's connector holds. Set `ASC_KEY_ID`, `ASC_ISSUER_ID` and `ASC_PRIVATE_KEY` (or `ASC_KEY_PATH`) from secrets. The app is the `appleId` of your `apple-ba` outlets, or `ASC_APP_ID`.
+
+   ```sh title="Terminal"
+   pkey transport apple-ba upload --deliverable tidewater.foes --release <version>
+   ```
+
+3. **Repo** Commit `.pkey/asset-packs.json`. The first upload records the asset pack's resource id there. Every later upload refuses when the asset pack found by id isn't the recorded one (`asset-pack-resource-mismatch`), when one exists that nothing recorded (`asset-pack-unrecorded`: confirm it is yours, then pass `--expect-resource <id>`) or when the recorded one has disappeared (`asset-pack-missing`).
+4. **App Store Connect** Some steps stay yours: submit the pack version for external TestFlight review, which has no API, and add it to an App Store review submission.
+
+The upload re-hashes the packaged files against the package step and, with `--from`, against the signed record. It reports `processing` on your TestFlight outlets and `pending` on the App Store, and the App Store Connect connector then follows the version's states. An app release that needs a new content level isn't ready on the App Store until that level's asset pack is approved. The console API lists asset packs whose level no channel uses as retire candidates, with Apple's 200-pack and 200 GB quotas. Archiving can't be undone, so archive them yourself.
+
+To test locally, serve the archive with `xcrun ba-serve` and point a device's Background Assets URL override at it.
+
+## Play Asset Delivery
+
+Run this after **Install Android Build Template** and before `godot --export-release` of the AAB.
+
+1. **CI** Write the modules into your Godot Android Gradle build.
+
+   ```sh title="Terminal"
+   pkey transport play-pad modules --deliverable tidewater.foes --release <version> --from <cache> --project android/build
+   ```
+
+The step writes a `com.android.asset-pack` module named after the pack (`.` and `-` become `_`) with delivery `fast-follow` for `essential` and `prefetch` packs, otherwise `on-demand` (override with `--delivery`). It puts the payload and marker in `src/main/assets/pkey/`. When the pack varies by texture, the default variant goes there (`etc2` when published, or `--default-texture`) and each other variant goes in a `pkey#tcf_<format>/` directory so Play delivers each device one. It adds the module to `settings.gradle` and the app's `assetPacks`, and runs again without change.
+
+Play asset packs change only with a new app bundle, so a pack delivered this way is `pinned` on Play. The step reports `pending`, and the bundle's availability moves it on. Test locally with `bundletool build-apks --local-testing`, where fast-follow behaves like on-demand.
+
+## Steam depots
+
+1. **CI** Write a content-only SteamPipe build, then run SteamCMD with it.
+
+   ```sh title="Terminal"
+   pkey transport steam-depot vdf --deliverable tidewater.foes --release <version> --from <cache> --depot <depot id> --channel beta --setlive
+   ```
+
+The step writes `app_build_<app>.vdf`, `depot_build_<depot>.vdf` and the depot's content root, which holds `pkey_packs/<packId>/` with the payload and marker. The app comes from your Steam outlet's `appId`. `SetLive` is written only for a named branch (`--branch`, or `--channel` through the outlet's `branches`). A person promotes Steam's default branch in Steamworks, never CI. A paid pack is a DLC depot under the base app, and the commerce bridge checks ownership. Your build account and Steam Guard stay in your CI.
+
+## Use the Action
+
+The `polaris-key/publish` Action runs the same steps with `transport` set to `apple-ba-package`, `apple-ba-upload`, `play-pad-modules` or `steam-depot-vdf`. `dir` is the publish cache, or for `apple-ba-upload` the package step's output. The other inputs are `content-api`, `variant`, `transport-out`, `gradle-project`, `pad-delivery`, `steam-depot`, `steam-branch`, `steam-setlive`, `asc-expect-resource` and `transport-report`. Inputs that apply only to a publish are refused with `transport`. See [CI publishing](/docs/features/ship-builds/ci/).
+
+## Verify in the game (Godot)
+
+Give each store build the transport its outlet uses, before `PolarisKey.update.packs` starts: `PKeyPackAppleBaTransport`, `PKeyPackPlayPadTransport` or `PKeyPackSteamTransport`, with `packs` set to the pack ids. Assign it to `PolarisKey.update.packs.platform_transport`.
+
+At every boot the transport reads the platform's copy fresh, because platform paths change between launches and are never stored. The engine verifies the marker and the bytes like an embedded baseline. On Apple and Steam, packs float: a copy that is a newer release than the build's pin counts as current, so `ensure` doesn't fail when Apple auto-updated an asset pack. On Play the copy must be exactly the pinned release.
+
+When a bound pack isn't current, `ensure` asks the platform for it (Apple's `ensureLocalAvailability`, Play's fetch, Steam's DLC install), then verifies what arrived. An older or different release than a decision's exact target is `record-mismatch`. A missing plugin makes the transport answer `unsupported`, and the pack fails with `plan-transport-unsupported`. There is never a silent fallback to the CDN.
+
+On Play, a large download over a cellular connection may need the player's confirmation. Set `confirm_hook` on the Play transport to show your own size disclosure first, and return `false` to cancel. Without a hook, Play's own dialog asks.
+
+## Check it works
+
+The step prints the files it wrote and reports availability. In the console, **Distribution** shows the pack's outlet as `pending` or `processing`, then live once the store approves it. On a device, `ensure` installs the pack and the verified marker matches the record.
+
+## If it isn't working
+
+- `asset-pack-id-collision`, `asset-pack-id-invalid` or `asset-pack-id-too-long`: rename a pack.
+- `asset-pack-resource-mismatch`, `asset-pack-unrecorded` or `asset-pack-missing`: check `.pkey/asset-packs.json`.
+- `record-mismatch`: the store holds a different release than the one decided.
+- `plan-transport-unsupported`: add the platform plugin to the export.
+- [Ship a pack](/docs/features/ship-builds/packs/ship-a-pack/): the publish that feeds this.
+
+## Next steps
+
+- [Packs](/docs/features/ship-builds/packs/): bindings and how pack sets resolve.
+- [Availability](/docs/features/ship-builds/channels/availability/): how outlet readiness is tracked.
+- [Godot SDK](/docs/build/sdks/godot/).

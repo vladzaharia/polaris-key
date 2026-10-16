@@ -342,7 +342,9 @@ export const DOOR_TREES: readonly DoorTree[] = [
             collapsed: true,
             items: leaves(
               "features/ship-builds/packages/index",
+              "features/ship-builds/packages/publish",
               "features/ship-builds/packs/index",
+              "features/ship-builds/packs/ship-a-pack",
               "features/ship-builds/packs/transports",
             ),
           },

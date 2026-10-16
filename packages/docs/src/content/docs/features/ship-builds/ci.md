@@ -301,7 +301,7 @@ What the step does, in order:
    release, never a failed publish. The step lists entries that look like re-import noise (a Godot
    cache rewritten in another order, a few changed bytes) as warnings.
 5. **Chunk indexes.** A PCK variant of 4 MiB or more also gets a chunk index and chunk bundles
-   ([Chunk indexes and shared bundles](/docs/services/release/packs/#chunk-indexes-and-shared-bundles))
+   ([Chunk indexes and shared bundles](/docs/features/ship-builds/packs/ship-a-pack/#chunk-indexes))
    when `patch.strategies` lists `chunk` (the default) and Polaris Key advertises
    `release.chunks`. `out` keeps each index (`<variant>/chunks.<sha256>`) and `bases` continues
    its chain, so an update uploads only the bundles of the chunks that changed; a bundle Polaris

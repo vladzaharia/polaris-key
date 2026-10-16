@@ -365,27 +365,6 @@
       "frontmatter-last-reviewed": 1,
       "http-path": 2
     },
-    "features/ship-builds/packages/index": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "http-path": 4,
-      "banned-word": 1,
-      "programme-id": 2
-    },
-    "features/ship-builds/packs/index": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "programme-id": 10,
-      "banned-word": 3,
-      "time-word": 1,
-      "future-tense": 1
-    },
-    "features/ship-builds/packs/transports": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "count": 1,
-      "programme-id": 1
-    },
     "features/ship-builds/releases/artifacts": {
       "frontmatter-type": 1,
       "frontmatter-last-reviewed": 1,
