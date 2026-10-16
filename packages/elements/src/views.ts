@@ -680,8 +680,9 @@ function licenseRows(c: RenderCtx): TemplateResult | typeof nothing {
         ? new Date(r.expiresAt * 1000).toLocaleDateString(c.copy.locale)
         : "";
       const metaArgs = {
+        // A store-origin row with no store name says nothing of its origin (never "From {store}").
         origin:
-          origin && keys.has(origin)
+          origin && keys.has(origin) && (r.origin !== "store" || r.store)
             ? plain(c, origin, r.store ? { store: r.store } : {})
             : "",
         term: keys.has(term) ? plain(c, term, { date }) : "",
