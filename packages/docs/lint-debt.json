@@ -469,11 +469,6 @@
       "time-word": 1,
       "http-path": 4
     },
-    "features/ship-builds/ci": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "time-word": 1
-    },
     "features/ship-builds/commerce": {
       "frontmatter-type": 1,
       "frontmatter-last-reviewed": 1,
@@ -499,82 +494,6 @@
       "frontmatter-last-reviewed": 1,
       "count": 1,
       "programme-id": 1
-    },
-    "features/ship-builds/releases/artifacts": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "future-tense": 2,
-      "banned-word": 4,
-      "time-word": 1,
-      "http-path": 1,
-      "programme-id": 1
-    },
-    "features/ship-builds/releases/channels": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "future-tense": 2,
-      "time-word": 3,
-      "http-path": 2
-    },
-    "features/ship-builds/releases/compatibility": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1
-    },
-    "features/ship-builds/releases/github-sync": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "http-path": 2,
-      "banned-word": 1,
-      "time-word": 1,
-      "future-tense": 1
-    },
-    "features/ship-builds/releases/index": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "count": 1,
-      "time-word": 1
-    },
-    "features/ship-builds/updates/appcast": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "time-word": 1,
-      "banned-word": 2
-    },
-    "features/ship-builds/updates/eligibility": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "time-word": 2,
-      "http-path": 3,
-      "banned-word": 2
-    },
-    "features/ship-builds/updates/godot-desktop": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "programme-id": 2
-    },
-    "features/ship-builds/updates/index": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "future-tense": 1,
-      "time-word": 1,
-      "banned-word": 1,
-      "count": 1
-    },
-    "features/ship-builds/updates/signed-feed": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "programme-id": 2,
-      "banned-word": 1
-    },
-    "features/ship-builds/updates/sparkle": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "banned-word": 4,
-      "future-tense": 1
-    },
-    "features/ship-builds/updates/updater-feeds": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1
     },
     "features/sign-in/customer-portal": {
       "frontmatter-type": 1,

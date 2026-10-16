@@ -826,7 +826,7 @@ publishing:
 - While the policy is manifest-owned, every resync re-applies it (and removing the block removes
   it). An operator who claims it in the console's admin API owns it from then on.
 
-The flow CI follows is on [Artifacts](/docs/services/release/artifacts/#trusted-publishing).
+The flow CI follows is on [Trusted publishing](/docs/features/ship-builds/releases/trusted-publishing/).
 
 ## Release keys: `releaseKeys`
 

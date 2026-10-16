@@ -1,6 +1,8 @@
 ---
 title: "Update"
 description: "The appcast feed, version checks, eligibility, and the entitled access mode."
+type: "concept"
+lastReviewed: "2026-10-16"
 sidebar:
   order: 1
 ---
@@ -17,8 +19,8 @@ per-license `entitled` access mode are all different framings of those same two 
 Before the split, one module did both jobs: it knew where a product's software lived and
 it rendered the auto-update feed over it, and the two concerns drifted into each other
 whenever one changed without the other. Splitting them means a product can enable Release
-alone — indexed artifacts, a changelog, a curl-pipe installer — for a CLI tool that will
-never auto-update, and it means the feed-rendering half can be reasoned about, tested, and
+alone — indexed artifacts, a changelog, a curl-pipe installer — for a CLI tool that
+never auto-updates, and it means the feed-rendering half can be reasoned about, tested, and
 changed without touching the GitHub-sync machinery underneath it. Sparkle is one
 consumer of that split, not the reason for it: any auto-update mechanism could sit where
 Update sits today.
@@ -86,7 +88,7 @@ Update through Core's descriptor hooks, never by import, and only while Distribu
 macOS apps: a host application polls an **appcast** — an RSS-shaped XML feed — for the
 newest available version, and downloads and verifies a signed update when one exists.
 Update's job is entirely on the server side of that exchange: generate a correct appcast on
-the fly from whatever Release currently knows about a product's GitHub releases, so a
+the fly from whatever Release knows about a product's GitHub releases, so a
 product gets a working feed the moment it links a repository, with no separate publishing
 step and no baked-at-build-time XML file to keep in sync by hand. Sparkle's own signature
 verification — the part that actually decides whether an update is safe to install — is
@@ -95,7 +97,7 @@ untouched by any of this; Update's server-side EdDSA check (covered on
 
 Sparkle itself has no opinion about channels — a host either points at one `SUFeedURL` or
 it doesn't. Update's channel model (`stable`, `beta`, `pr-<n>`, and any operator-defined
-manual channel) lives entirely on the server side: each channel is simply its own appcast
+manual channel) lives entirely on the server side: each channel is its own appcast
 URL, resolved against the identical selector vocabulary the download route and the version
 check use, so pointing a beta build at `/<product>/update/beta/appcast.xml` is all a host
 needs to do to follow a different release line.
@@ -122,7 +124,7 @@ for.
 
 ## Access, briefly
 
-Update's two surfaces are governed independently, and not the way the labels might
+Update's surfaces are governed independently, and not the way the labels might
 suggest: the version check is a **metadata** surface, but the appcast — both the default
 feed and any channel-specific one — is governed by **artifacts access**, the same ladder
 that gates a raw download. That is deliberate: an appcast item embeds a download URL, so

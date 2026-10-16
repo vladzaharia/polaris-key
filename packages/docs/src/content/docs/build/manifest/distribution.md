@@ -140,7 +140,7 @@ optional. A bad value is `invalid_outlet_identity`.
 - **`snap.channels`** maps a declared channel to the snap channel `snapcraft upload --release`
   releases to (`{ stable: "latest/stable", beta: "beta" }`). The publish action's allow-list
   admits no other channel, so a snap step for a channel without an entry is refused (see
-  [Storefront steps](/docs/build/ci/#storefront-steps-itchio-and-snap)).
+  [Storefront steps](/docs/features/ship-builds/ci-stores/#storefront-steps-itchio-and-snap)).
 - **`tracks`, `branches`, `flights` and `channels`** keys must be declared channels — `stable`,
   `beta`, a manual channel, or one of `deliverables.app.channels` — otherwise
   `unknown_channel_ref`.
@@ -156,7 +156,7 @@ for a command-line build whose executable resolves under `Cellar/<formula>/`).
 
 `direct.homebrewTap` and `direct.scoopBucket` (optional) are your **own** tap and bucket on
 GitHub, where `pkey storefront homebrew pr` and `pkey storefront scoop pr` open pull requests
-([Pull-request steps](/docs/build/ci/#pull-request-steps-winget-homebrew-scoop-and-flathub)): a
+([Pull-request steps](/docs/features/ship-builds/ci-stores/#pull-request-steps-winget-homebrew-scoop-and-flathub)): a
 tap is `<owner>/homebrew-<name>` and a bucket `<owner>/<repo>`, and neither may belong to the
 `Homebrew` or `ScoopInstaller` organisation.
 

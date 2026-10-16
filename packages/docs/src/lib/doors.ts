@@ -290,7 +290,9 @@ export const DOOR_TREES: readonly DoorTree[] = [
         label: "Ship builds",
         collapsed: true,
         items: [
+          leaf("features/ship-builds/index"),
           leaf("features/ship-builds/ci"),
+          leaf("features/ship-builds/ci-stores"),
           {
             label: "Releases",
             collapsed: true,
@@ -298,6 +300,7 @@ export const DOOR_TREES: readonly DoorTree[] = [
               "features/ship-builds/releases/index",
               "features/ship-builds/releases/github-sync",
               "features/ship-builds/releases/artifacts",
+              "features/ship-builds/releases/trusted-publishing",
               "features/ship-builds/releases/channels",
               "features/ship-builds/releases/compatibility",
             ),
@@ -343,6 +346,7 @@ export const DOOR_TREES: readonly DoorTree[] = [
             ),
           },
           leaf("features/ship-builds/commerce"),
+          leaf("features/ship-builds/troubleshooting"),
         ],
       },
       {

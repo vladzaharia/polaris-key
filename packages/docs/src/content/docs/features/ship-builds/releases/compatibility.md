@@ -3,6 +3,8 @@ sidebar:
   order: 7
 title: "Compatibility and the device simulator"
 description: "The console's Compatibility page: the matrix of app releases against pack releases with each cell's state, the live contentApi levels and per-outlet liveness, and the simulator that shows what a device running one app release on one outlet gets."
+type: "concept"
+lastReviewed: "2026-10-16"
 ---
 
 Floors, holds, pack channels, store lag and transports interact. Without a view of them an

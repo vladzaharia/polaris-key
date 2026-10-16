@@ -1,0 +1,89 @@
+---
+title: "Ship builds"
+description: "Publish a release, route it to the places that deliver it, and keep installed apps updated."
+type: "overview"
+lastReviewed: "2026-10-16"
+---
+
+import CardGrid from "../../../../components/docs/CardGrid.astro";
+import Requires from "../../../../components/docs/Requires.astro";
+import { LinkCard } from "@astrojs/starlight/components";
+
+Ship builds takes a build from your CI to your customers' devices. It records releases, delivers them through your channels, and answers each installed app's update check. Use it when you distribute an app, a content pack or a package.
+
+<Requires features={["ship-builds"]} />
+
+## Get started
+
+<CardGrid>
+  <LinkCard
+    title="Publishing from CI"
+    href="/docs/features/ship-builds/ci/"
+    description="Publish from a release job with no stored secret."
+  />
+  <LinkCard
+    title="Release"
+    href="/docs/features/ship-builds/releases/"
+    description="Link a repository and publish releases."
+  />
+</CardGrid>
+
+## Guides
+
+<CardGrid>
+  <LinkCard
+    title="GitHub sync"
+    href="/docs/features/ship-builds/releases/github-sync/"
+    description="Keep a product current from its repository."
+  />
+  <LinkCard
+    title="Publish to stores from CI"
+    href="/docs/features/ship-builds/ci-stores/"
+    description="Store feeds, listing assets and package-manager pull requests."
+  />
+  <LinkCard
+    title="Godot desktop updaters"
+    href="/docs/features/ship-builds/updates/godot-desktop/"
+    description="Update a Godot game on desktop."
+  />
+</CardGrid>
+
+## Concepts
+
+<CardGrid>
+  <LinkCard
+    title="Release channels and policy"
+    href="/docs/features/ship-builds/releases/channels/"
+    description="How a channel resolves, and how to pin, yank and set floors."
+  />
+  <LinkCard
+    title="Update"
+    href="/docs/features/ship-builds/updates/"
+    description="Feeds, version checks and who may update."
+  />
+  <LinkCard
+    title="Channels"
+    href="/docs/features/ship-builds/channels/"
+    description="The places builds reach customers."
+  />
+</CardGrid>
+
+## Reference
+
+<CardGrid>
+  <LinkCard
+    title="Artifacts"
+    href="/docs/features/ship-builds/releases/artifacts/"
+    description="Download routes, access modes and the installer."
+  />
+  <LinkCard
+    title="Signed feed"
+    href="/docs/features/ship-builds/updates/signed-feed/"
+    description="The signed channel feed and release records."
+  />
+  <LinkCard
+    title="Troubleshoot shipping builds"
+    href="/docs/features/ship-builds/troubleshooting/"
+    description="Find the cause from the error you see."
+  />
+</CardGrid>

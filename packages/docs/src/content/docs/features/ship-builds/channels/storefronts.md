@@ -96,7 +96,7 @@ object was removed on the store since.
 ## The slot board
 
 Every image slot of the listing, grouped by store, from what
-[`pkey listing assets`](/docs/build/ci/#listing-assets) registered:
+[`pkey listing assets`](/docs/features/ship-builds/ci-stores/#listing-assets) registered:
 
 - **Masters** a person makes (icon master, key art, wordmark, screenshots). A missing one is marked
   **Needed** with the store's exact specification, such as "1024×1024 PNG" or "16:9, at least
