@@ -15438,7 +15438,7 @@
         "docs/research/2026-10-08-docs/style-guide.md"
       ],
       "brief": "wp/DOC-08a-sdk-quickstarts.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "DOC-08b",
@@ -15459,7 +15459,7 @@
         "docs/research/2026-10-08-docs/style-guide.md"
       ],
       "brief": "wp/DOC-08b-ui-kits-and-web-apps.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "DOC-09a",

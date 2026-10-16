@@ -220,8 +220,6 @@ export const DOOR_TREES: readonly DoorTree[] = [
               "build/ui/components/account-and-license",
               "build/ui/components/activate",
               "build/ui/components/boot",
-              "build/ui/components/channel-picker",
-              "build/ui/components/cloud-sync-status",
               "build/ui/components/device-limit",
               "build/ui/components/devices",
               "build/ui/components/entitlement-gate",

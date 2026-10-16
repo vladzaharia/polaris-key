@@ -206,7 +206,7 @@ rewrites it; dropping the block clears it. There is no console override. Entries
 exactly as a browser sends `Origin`, and ingest refuses anything else (`invalid_web_origins`,
 `invalid_web_origin`). Credentials are never allowed, and the cookie-bearing identity routes,
 the console, the portal and the docs never answer CORS. The rules, headers and covered routes
-are at [Web clients and CORS](/docs/build/web-apps/).
+are at [Web apps and CORS](/docs/build/web-apps/).
 
 ```jsonc title=".pkey/product"
 {
