@@ -52,7 +52,7 @@ Each app release's row header carries the per-outlet liveness overlay. It comes 
 never reads Distribution. An outlet is listed when the app release is live there, marked **held**
 when outlet readiness holds the release because a pack it needs is not live on that outlet yet, and
 **not ready** on a store outlet Polaris Key cannot hold
-([Outlet readiness](/docs/services/distribution/availability/#outlet-readiness)). Distribution
+([Outlet readiness](/docs/services/distribution/availability/#channel-readiness)). Distribution
 tracks its newest 50 releases; an older row says it is not tracked there rather than unserved. When
 Distribution is off or does not answer, the overlay is left out and the matrix still renders.
 

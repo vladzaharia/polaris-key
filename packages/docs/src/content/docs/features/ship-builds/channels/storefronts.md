@@ -1,6 +1,8 @@
 ---
 title: "Storefronts: Add to storefronts"
 description: "Distribution → Storefronts: every store's capabilities from its adapter, and the Add to storefronts flow (prerequisites, listing, assets, plan, run, submit and release) that provisions a product onto them, resumably from the ledger."
+type: "reference"
+lastReviewed: "2026-10-16"
 sidebar:
   order: 15
 ---
@@ -12,7 +14,7 @@ admins.
 Each store's tile and each step is drawn from what the store's adapter declares: which operations
 Polaris Key performs through the store's API, which the release workflow performs in CI, which a
 pull request covers, and which you do yourself from a link. The console has no store-specific
-code, so a store added to the Worker appears here as soon as its adapter is registered.
+code, so a store added to the Worker appears here once its adapter is registered.
 
 ## The tiles
 
@@ -55,7 +57,7 @@ another, and it shows where each store stands.
    `pkey listing import --godot` in CI or a checkout.
 4. **Assets.** The slot board (below), for the chosen stores.
 5. **Plan.** Every step of every chosen store, in order, with its badge and whether it is typed,
-   and the list of every external write Polaris Key will make. Nothing runs from this step.
+   and the list of every external write Polaris Key makes. Nothing runs from this step.
 6. **Run.** One card per step:
    - **API** steps run from their button, after a confirmation that lists what the store receives.
      What the card shows afterwards is the store's own answer, read back after the write.

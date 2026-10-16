@@ -1,15 +1,17 @@
 ---
 sidebar:
   order: 6
-title: "Storefront feeds"
-description: "The per-channel feeds third-party storefronts read: AltStore and SideStore sources, an AltStore PAL source, Obtainium configs, an F-Droid repository signed by CI, a Scoop manifest and Flathub checker JSON."
+title: "Install sources"
+description: "The per-release track feeds third-party storefronts read: AltStore and SideStore sources, an AltStore PAL source, Obtainium configs, an F-Droid repository signed by CI, a Scoop manifest and Flathub checker JSON."
+type: "reference"
+lastReviewed: "2026-10-16"
 ---
 
 Sideload stores and package managers do not ask Polaris Key "what should I install?" — they read
-a document in their own format. Distribution renders one per channel from what Release knows and
+a document in their own format. Distribution renders one per release track from what Release knows and
 what Distribution tracks, so a product publishes a release once and every storefront follows.
 
-| Feed                        | URL (under `/<product>/distribution/`) | Outlet kind    | Client                                   |
+| Feed                        | URL (under `/<product>/distribution/`) | Channel kind   | Client                                   |
 | --------------------------- | -------------------------------------- | -------------- | ---------------------------------------- |
 | AltStore / SideStore source | `altstore/<channel>/source.json`       | `altstore`     | AltStore Classic, SideStore              |
 | AltStore PAL source         | `altstore-pal/<channel>/source.json`   | `altstore-pal` | AltStore PAL (EU, Japan, Brazil)         |
@@ -18,29 +20,29 @@ what Distribution tracks, so a product publishes a release once and every storef
 | Scoop manifest              | `scoop/<channel>.json`                 | `direct`       | Scoop                                    |
 | Flathub checker JSON        | `flathub/<channel>.json`               | `flathub`      | Flathub's External Data Checker          |
 
-A feed exists only when the product declares a live outlet of its kind in `.pkey/distribution`.
-With several outlets of one kind (`altstore` and `altstore-beta`, say), add `?outlet=<id>`; by
-default the outlet whose id is the kind is used, else the first by id. The feeds are served on
+A feed exists only when the product declares a live channel of its kind in `.pkey/distribution`.
+With several channels of one kind (`altstore` and `altstore-beta`, say), add `?outlet=<id>`; by
+default the channel whose id is the kind is used, else the first by id. The feeds are served on
 the console host, never on the bytes host. The bytes they point at are served from the bytes
 host.
 
 ## Which releases appear
 
-For outlet O and channel C, a feed lists the releases that pass all five checks:
+For channel O and release track C, a feed lists the releases that pass all five checks:
 
-1. **C serves them**, by Release's own rules: membership in C or a channel it includes (beta
+1. **C serves them**, by Release's own rules: membership in C or a release track it includes (beta
    includes stable), newest first. A yanked release is removed, except a pinned pointer, and a
-   pinned channel stops at its pointer.
+   pinned release track stops at its pointer.
 2. **They have a build for O.** That is O's artifact-map id when its identity names one
    (`artifact: ipa-sideload`), otherwise a build for the feed's platform: iOS, Android, Windows or
    Linux.
-3. **They are live on O.** A self-hosted outlet (`altstore`, `obtainium`, `fdroid-repo`,
-   the Polaris Key outlet `direct`) is live by derivation as soon as its bytes are stored. A store outlet (`altstore-pal`)
+3. **They are live on O.** A self-hosted channel (`altstore`, `obtainium`, `fdroid-repo`,
+   the Polaris Key channel `direct`) is live by derivation once its bytes are stored. A store channel (`altstore-pal`)
    is live only once it has been reported live — see
    [Availability](/docs/services/distribution/availability/). Flathub is the exception: its checker
    tells Flathub where Polaris Key's bytes are, so the test there is that the bytes are served.
 4. **They are not held back on O.** These clients cannot bucket installs, so a release whose
-   [outlet rollout](/docs/services/distribution/rollouts/) is paused, halted, or active below
+   [channel rollout](/docs/services/distribution/rollouts/) is paused, halted, or active below
    10000 bp is left out until the rollout completes. The previous release is listed instead.
 5. **Their payload has an immutable delivery URL**, `files/<releaseId>/<name>`, on the bytes host
    when there is one.
@@ -59,9 +61,9 @@ CORS only through the product's `web.origins` allowlist; no feed route answers w
 
 The Worker keeps each rendered feed in its cache for the same five minutes, so a new release can
 take up to five minutes to appear. A rollout change (a halt, a pause, a completion), a yank, an
-availability report, an outlet change or a new F-Droid registration takes effect on the next
+availability report, a channel change or a new F-Droid registration takes effect on the next
 request, and so does making the app non-public. A feed lists at most the 20 newest qualifying
-versions, and looks for them among the 100 newest releases of the channel.
+versions, and looks for them among the 100 newest releases of the release track.
 
 ## Build metadata
 
@@ -90,7 +92,7 @@ The **Classic** source, which SideStore also reads, follows the clients' documen
   `versionDescription`, `downloadURL` and `size`, which SideStore requires;
 - there is **no** `marketplaceID`, because SideStore refuses a source that has one.
 
-The **PAL** source is the same document **with** `marketplaceID`, taken from the outlet's
+The **PAL** source is the same document **with** `marketplaceID`, taken from the channel's
 `marketplaceId`. Its download URL is the build's payload as the release declares it. Polaris Key
 does not host alternative-distribution packages beyond that file.
 
@@ -103,40 +105,40 @@ Users add a source with `altstore://source?url=<encoded source URL>`, or
 carries. The key names were checked against Obtainium's own source. `additionalSettings` is a JSON
 **string**.
 
-- When the product has a live `fdroid-repo` outlet, the config tracks that repository
+- When the product has a live `fdroid-repo` channel, the config tracks that repository
   (`overrideSource: FDroidRepo`). This gives real version codes, ABI selection, and a stable
-  channel that prefers stable versions.
-- Otherwise it is a direct APK link (`overrideSource: DirectAPKLink`) to the channel's
+  release track that prefers stable versions.
+- Otherwise it is a direct APK link (`overrideSource: DirectAPKLink`) to the release track's
   `builds/<channel>/<buildId>` URL. Its strong ETag is the payload's SHA-256, so ETag
-  pseudo-versioning changes exactly when the bytes do. The builds route resolves the channel's
-  newest release itself, so outlet holds do not apply to this form. Prefer the F-Droid
+  pseudo-versioning changes exactly when the bytes do. The builds route resolves the release track's
+  newest release itself, so channel holds do not apply to this form. Prefer the F-Droid
   repository.
 
 ## The F-Droid repository
 
-There is one repository per channel, at `/<product>/distribution/fdroid/<channel>/repo`. The beta
+There is one repository per release track, at `/<product>/distribution/fdroid/<channel>/repo`. The beta
 repository includes stable. It is a **static repository signed by CI**: Polaris Key never holds
 the repo key.
 
 1. CI runs `pkey feeds fdroid --product <slug> --channel <c> --out <dir> --keystore … --alias …`.
    The CLI reads the generator's inputs from `GET …/distribution/feeds/fdroid/<channel>` (the APKs
-   the channel lists, with their metadata, and the files registered now). It writes
+   the release track lists, with their metadata, and the files registered now). It writes
    `index-v2.json`, `entry.json` and a diff against the current index, then signs `entry.jar` with
    `apksigner` (v1 scheme, minimum SDK 23) using the CI-held key.
-2. It uploads the files through an upload ticket. P2-02's uploads route accepts
-   `distribution:feeds`. Only a file that is already one of the channel's registered files skips
+2. It uploads the files through an upload ticket. The uploads route accepts
+   `distribution:feeds`. Only a file that is already one of the release track's registered files skips
    the upload. Any other object must come from the ticket, even one the product already stores
    for a release.
 3. It registers the set with `POST …/distribution/feeds/fdroid/<channel>`. The set must include
    `entry.jar`, `entry.json` and `index-v2.json`. Each path must pass the safe-path check and end
    in `.json`, `.jar`, `.png`, `.jpg`, `.jpeg`, `.webp` or `.asc`. No file may be an object that a
    non-public deliverable's release carries, such as a paid pack's payload (`not_public`). The
-   registration replaces the channel's previous set in one batch, so a client never reads a new
+   registration replaces the release track's previous set in one batch, so a client never reads a new
    `entry.jar` beside an old index.
 
 The relay then serves **only registered files**, using the content type the Worker chose for
 each extension, never a type sent by CI. Every answer carries `nosniff` and a sandbox CSP. An APK
-that the registered `index-v2.json` names, and that the channel's feed still selects, is a `302`
+that the registered `index-v2.json` names, and that the release track's feed still selects, is a `302`
 to its immutable delivery URL. The relay finds an APK by its file name, so each listed release's APK needs a distinct name (put the version in it, as in
 `Diceroll-1.2.0-android.apk`); `pkey feeds fdroid` refuses a set where two releases share one.
 Anything else, including a path that fails the safe-path check, is not-found. So is a registered
@@ -149,17 +151,17 @@ The repository URL users add needs the repo key's fingerprint. Record the key in
 [key inventory](/docs/services/distribution/availability/) under the `fdroid-repo` purpose. The
 CI read route returns it, and the download page shows
 `fdroidrepos://<host>/<product>/distribution/fdroid/<channel>/repo?fingerprint=<sha256>`. Keep
-`versionCode` strictly increasing across channels, and keep one repo key per product: rotating the
+`versionCode` strictly increasing across release tracks, and keep one repo key per product: rotating the
 key forces every user to add the repository again.
 
 ## Scoop
 
 `scoop/<channel>.json` is a Scoop app manifest for the newest Windows release on the Polaris
-Key outlet (`direct`). It contains:
+Key channel (`direct`). It contains:
 
 - `architecture.64bit` and `architecture.arm64`, each with an immutable `url` and a SHA-256
   `hash`;
-- `bin` and `shortcuts` from the outlet's optional `scoop` identity in `.pkey/distribution`;
+- `bin` and `shortcuts` from the channel's optional `scoop` identity in `.pkey/distribution`;
 - `checkver` and `autoupdate` pointing back at the manifest itself.
 
 A bucket can track it, or a user can run `scoop install <url>` directly.
@@ -173,7 +175,7 @@ outlets:
       shortcuts: [[Diceroll/diceroll.exe, Diceroll]]
 ```
 
-A `direct` outlet that declares `platforms` must include `windows` before it may carry `scoop`.
+A `direct` channel that declares `platforms` must include `windows` before it may carry `scoop`.
 
 ## Flathub
 

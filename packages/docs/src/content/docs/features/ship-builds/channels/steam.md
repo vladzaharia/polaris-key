@@ -3,6 +3,8 @@ sidebar:
   order: 8
 title: "Steam storefront"
 description: "What Polaris Key does for a product on Steam: reads the app's builds and branches, sets a build live on a named branch, and, for the store page Steam lets no API edit, a copy card, the generated asset pack and a per-app checklist."
+type: "reference"
+lastReviewed: "2026-10-16"
 ---
 
 Steam has no listing API. None of the Steamworks Web API's 33 interfaces edits a store page, so
@@ -22,11 +24,11 @@ deletion are never automated.
 
 ## The app and the key
 
-The app is the `appId` of the product's `steam` outlet in `.pkey/distribution` (the lowest outlet
-id when there are several). A product being set up for Steam, with no Steam outlet yet, uses the
+The app is the `appId` of the product's `steam` channel in `.pkey/distribution` (the lowest channel
+id when there are several). A product being set up for Steam, with no Steam channel yet, uses the
 app a platform admin assigned to it in [Store connections](/docs/admin/store-connections/).
 
-The key is the product's own `steam-publisher-key` outlet credential, pinned to that app id. With
+The key is the product's own `steam-publisher-key` channel credential, pinned to that app id. With
 no key of its own, the product uses the platform's Steam group key (`steam.publisher-key`), and only
 for the app assigned to it. A key pinned to another app is never used. Without an app and a key,
 the Steam page says what is missing and makes no Steam call.
@@ -34,7 +36,7 @@ the Steam page says what is missing and makes no Steam call.
 ## Builds and branches
 
 **Builds** lists the app's branches with the build live on each, the newest builds, and, for each
-channel the outlet's `branches` map declares, the build on its branch. The default branch is
+release track the channel's `branches` map declares, the build on its branch. The default branch is
 `public`.
 
 **Set live** puts a build on a named branch. The console sends one `Idempotency-Key` per action:
@@ -46,16 +48,15 @@ channel the outlet's `branches` map declares, the build on its branch. The defau
   (`distribution.steam.branch.set_live`), and the same key again replays it.
 
 **The public branch is set live in Steamworks App Admin,** from the link the page gives. Polaris
-Key does not set it live: it has not yet been verified that a group-scoped key may do so (the
-S-15 decision 5). The Builds read shows when the public branch has the build. Once the key is
-verified, this release will need the app's name typed to confirm, like a release on every other
+Key does not set it live: it has not yet been verified that a group-scoped key may do so. The Builds read shows when the public branch has the build. Once the key is
+verified, this release needs the app's name typed to confirm, like a release on every other
 store.
 
 ## The store page
 
 **The copy card** shows Steam's text fields for each locale of the shared listing: the name, the
 short description, the description and the tags. A Steam override in the shared listing replaces the model's value.
-Nothing is cut: the value is shown whole, as you will paste it. A missing name is red, and a short
+Nothing is cut: the value is shown whole, as you paste it. A missing name is red, and a short
 description over the 300 characters Steam recommends is amber.
 
 **The asset pack** is the ZIP `pkey listing assets` uploads as `pack:steam`: the header, main,
@@ -65,17 +66,17 @@ Steam page. Until CI has made one, the page says so.
 
 ## The checklist
 
-Five steps Steam neither lets an API do nor reports. You tick each when it is done. A tick is your
+These steps Steam neither lets an API do nor reports. You tick each when it is done. A tick is your
 word, never a verification: the page shows it as unverified. Ticks are kept per product and per app,
 and every tick and untick is audited (`distribution.steam.checklist.tick`, `…untick`).
 
-| Step             | Notes                                                                              |
-| ---------------- | ---------------------------------------------------------------------------------- |
-| App fee paid     | $100 per app, in Steamworks                                                        |
-| 30 days passed   | Steam's wait between paying and release; the page shows the date from the fee tick |
-| Coming Soon live | the page must be up at least two weeks; the page shows the earliest release        |
-| Store review     | typically 3 to 5 business days; submit at least 7 ahead                            |
-| Build review     | once approved, later builds need no review                                         |
+| Step              | Notes                                                                              |
+| ----------------- | ---------------------------------------------------------------------------------- |
+| App fee paid      | $100 per app, in Steamworks                                                        |
+| 30 days passed    | Steam's wait between paying and release; the page shows the date from the fee tick |
+| Store page public | the page must be up at least two weeks; the page shows the earliest release        |
+| Store review      | typically 3 to 5 business days; submit at least 7 ahead                            |
+| Build review      | once approved, later builds need no review                                         |
 
 ## Limits
 
@@ -93,7 +94,7 @@ Narrative-only (not in the wire spec), under
 | ------ | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `GET`  | (none)                   | the plan: what is API and what is a link, the app and key, links, checklist, copy card, asset pack, recent operations and the budget. No Steam call |
 | `GET`  | `apps`                   | the apps the key may act on, and whether the product's app is among them                                                                            |
-| `GET`  | `builds`                 | branches, builds, the declared channels' branches and the public branch's build                                                                     |
+| `GET`  | `builds`                 | branches, builds, the declared release tracks' branches and the public branch's build                                                               |
 | `POST` | `branches/<branch>/live` | `{ buildId, description? }` with an `Idempotency-Key`; `public` answers 409 with App Admin's link                                                   |
 | `GET`  | `pack`                   | the asset pack, as a download                                                                                                                       |
 | `PUT`  | `checklist`              | `{ item, done }`, where `item` is `fee_paid`, `release_wait`, `coming_soon`, `store_review` or `build_review`                                       |

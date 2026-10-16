@@ -99,7 +99,7 @@ The upload also re-hashes the packaged files against what the package step recor
 packaging is uploaded.
 
 It reports `processing` on your TestFlight outlets and `pending` on the App Store, with the asset
-pack's ids. The [App Store Connect connector](/docs/services/distribution/availability/#outlet-readiness)
+pack's ids. The [App Store Connect connector](/docs/services/distribution/availability/#channel-readiness)
 then follows the version's states. Two steps stay yours in App Store Connect: submitting the pack
 version for external TestFlight review (there is no API for it), and adding it to an App Store
 review submission.

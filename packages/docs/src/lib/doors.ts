@@ -314,6 +314,7 @@ export const DOOR_TREES: readonly DoorTree[] = [
               "features/ship-builds/channels/rollouts",
               "features/ship-builds/channels/availability",
               "features/ship-builds/channels/app-store",
+              "features/ship-builds/channels/app-store-distribute",
               "features/ship-builds/channels/google-play",
               "features/ship-builds/channels/microsoft-store",
               "features/ship-builds/channels/steam",

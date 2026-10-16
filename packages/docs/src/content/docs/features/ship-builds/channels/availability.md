@@ -2,11 +2,13 @@
 sidebar:
   order: 4
 title: "Availability, submissions and keys"
-description: "Whether a release is available on each outlet and where it stands in a store's review, reported from CI or written by a store connector; derived availability for self-hosted outlets; and the operator-owned signing-key inventory."
+description: "Whether a release is available on each channel and where it stands in a store's review, reported from CI or written by a store connector; derived availability for self-hosted channels; and the operator-owned signing-key inventory."
+type: "reference"
+lastReviewed: "2026-10-16"
 ---
 
-"Is it in the App Store yet?" is a question about one release on one outlet. Distribution keeps
-two answers per release and outlet — **availability** (is the build there?) and the
+"Is it in the App Store yet?" is a question about one release on one channel. Distribution keeps
+two answers per release and channel — **availability** (is the build there?) and the
 **submission** state (where is it in the store's review?) — and, per product, a **key inventory**
 of the signing keys a download is checked against.
 
@@ -15,22 +17,22 @@ it directly — the App Store and TestFlight through the
 [App Store Connect connector](/docs/services/distribution/app-store-connect/), Google Play
 tracks through the [Google Play connector](/docs/services/distribution/google-play/), and
 Microsoft Store submissions through the
-[Microsoft Store connector](/docs/services/distribution/microsoft-store/). Self-hosted outlets need no report: their availability follows from
+[Microsoft Store connector](/docs/services/distribution/microsoft-store/). Self-hosted channels need no report: their availability follows from
 what Release already knows.
 
 ## Availability
 
-One record per (release, build, outlet), in `dist_availability`. A record without a build
+One record per (release, build, channel), in `dist_availability`. A record without a build
 (`buildId` empty) is about the whole release: a store that ships one binary per release, or a
 report that does not know the build.
 
 | State        | Meaning                                                    |
 | ------------ | ---------------------------------------------------------- |
-| `pending`    | known to the outlet, nothing happening yet                 |
+| `pending`    | known to the channel, nothing happening yet                |
 | `processing` | the store is processing the upload                         |
 | `in-review`  | in the store's review                                      |
 | `approved`   | approved, not yet live                                     |
-| `live`       | players can get it from this outlet                        |
+| `live`       | players can get it from this channel                       |
 | `rejected`   | refused by the store                                       |
 | `removed`    | was available, no longer is (pulled, delisted, superseded) |
 
@@ -42,28 +44,28 @@ Store-assigned ids — an App Store Connect build id, a Play version code, a Ste
 arrive after signing, so they never live on the release. A report carries them in
 `platformRef`, stored on the availability record.
 
-### Derived availability for self-hosted outlets
+### Derived availability for self-hosted channels
 
-An outlet Polaris Key hosts itself shows `live` **without a report**. That is an outlet whose kind
-is `direct` (the Polaris Key outlet), `web`, `altstore`, `obtainium`, `fdroid-repo` or `app-installer`, and whose
+A channel Polaris Key hosts itself shows `live` **without a report**. That is a channel whose kind
+is `direct` (the Polaris Key channel), `web`, `altstore`, `obtainium`, `fdroid-repo` or `app-installer`, and whose
 transport for the release's deliverable is `pkey-cdn`, `embedded` or `web`. It shows `live` for
 every build of the release that:
 
-- the outlet carries — the build its identity names (`artifact`) when it names one; `web`
-  builds on a `web` outlet; the listed `platforms` on a `direct` outlet that lists them; any build
+- the channel carries — the build its identity names (`artifact`) when it names one; `web`
+  builds on a `web` channel; the listed `platforms` on a `direct` channel that lists them; any build
   otherwise, and a platform-independent pack variant everywhere;
 - has its payload stored by Polaris Key or located on GitHub.
 
 A yanked release derives nothing. Derived records carry `source: "derived"` and `derived: true`.
 
-A **pack release** derives by its own rule, per its transport on the outlet:
+A **pack release** derives by its own rule, per its transport on the channel:
 
 - `pkey-cdn` and `web`: `live` per variant once every object its signed record names (`full`,
   the files index and gaps, every delta) is stored with the recorded SHA-256 and length and held
   by a reference of this product. One object missing, or its reference gone, keeps that variant
   not live. The file blobs an index names were checked at ingest.
-- `embedded`: ready by construction, with no report: one record per (app release, outlet) for
-  each unyanked app release that pins the pack release and has a build the outlet carries that
+- `embedded`: ready by construction, with no report: one record per (app release, channel) for
+  each unyanked app release that pins the pack release and has a build the channel carries that
   embeds the pack (its `embeds`, or every `baseline: embedded` pack when it says nothing), with
   `detail: {appReleaseId, buildIds}`. The SDK still verifies the marker and hash on the device.
 - `apple-ba`, `play-pad`, `steam-depot`: nothing derived; the store moves the bytes, so only CI
@@ -72,35 +74,35 @@ A **pack release** derives by its own rule, per its transport on the outlet:
 - any other transport: nothing; it is stored and shown "not delivered by Polaris Key".
 
 Every other kind — `app-store`, `testflight`, `play`, `steam`, `itch`, … — shows **nothing until
-it is reported**, whatever its transport: every outlet's default transport is `pkey-cdn`, so the
+it is reported**, whatever its transport: every channel's default transport is `pkey-cdn`, so the
 transport alone cannot tell a store from our own CDN.
 
-A stored record wins. A report for (release, build, outlet) replaces the derived record for
-that build, and a per-release report replaces every derived record on that outlet — so a CI job
+A stored record wins. A report for (release, build, channel) replaces the derived record for
+that build, and a per-release report replaces every derived record on that channel — so a CI job
 can mark a self-hosted build `removed`.
 
-## Outlet readiness
+## Channel readiness
 
-An app release must not go live on an outlet before its **required pack set** is available
-through that outlet's transport (CONTENT §6.4). Distribution computes readiness per
-(app release, outlet): the app release's `required` pins and holds, plus the `required` compatible
-and standalone packs of the stored pack sets at its contentApi level on every channel it is live
-on, for the platforms the outlet serves. Then, per required pack release and its transport there:
+An app release must not go live on a channel before its **required pack set** is available
+through that channel's transport (CONTENT §6.4). Distribution computes readiness per
+(app release, channel): the app release's `required` pins and holds, plus the `required` compatible
+and standalone packs of the stored pack sets at its contentApi level on every release track it is live
+on, for the platforms the channel serves. Then, per required pack release and its transport there:
 
-| Transport                             | Ready when                                                                                                                |
-| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `embedded`, `play-pad`, `steam-depot` | always: the build carries it                                                                                              |
-| `pkey-cdn`, `web`                     | every object its record names is stored and held, and the pack is fetchable (an `entitled` pack with no gate is not)      |
-| `apple-ba`                            | a stored availability record on the outlet says `approved` or `live`, for the level's asset pack (`<pack>-c<contentApi>`) |
-| `msix-optional`, `flatpak-ext`        | a stored availability record says `approved` or `live`                                                                    |
-| anything else                         | never (fail closed)                                                                                                       |
+| Transport                             | Ready when                                                                                                                 |
+| ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `embedded`, `play-pad`, `steam-depot` | always: the build carries it                                                                                               |
+| `pkey-cdn`, `web`                     | every object its record names is stored and held, and the pack is fetchable (an `entitled` pack with no gate is not)       |
+| `apple-ba`                            | a stored availability record on the channel says `approved` or `live`, for the level's asset pack (`<pack>-c<contentApi>`) |
+| `msix-optional`, `flatpak-ext`        | a stored availability record says `approved` or `live`                                                                     |
+| anything else                         | never (fail closed)                                                                                                        |
 
 The state is `pending` (the set cannot be computed yet, for example while sets are unresolved),
-`blocked` (with the first blocking pack release), `ready` or `overridden`. On an outlet Polaris
+`blocked` (with the first blocking pack release), `ready` or `overridden`. On a channel Polaris
 Key controls (`direct`, `web`, `altstore`, `altstore-pal`, `obtainium`, `fdroid-repo`,
 `app-installer`, `flathub`) a `pending` or `blocked` release is **held**: its `live` records read
-`pending`, so the signed feed's per-outlet `live` stays on the previous release and the storefront
-feeds skip it. On a store outlet it cannot hold, readiness records the blocker and a **warning**;
+`pending`, so the signed feed's per-channel `live` stays on the previous release and the storefront
+feeds skip it. On a store channel it cannot hold, readiness records the blocker and a **warning**;
 hold the release in the store yourself (set the App Store version to a manual release; Polaris
 Key does not place that hold through the connector yet).
 
@@ -115,10 +117,10 @@ release's pack id), so an App Store release reaching `READY_FOR_DISTRIBUTION` be
 readiness turns `ready`, while `REJECTED` leaves it `blocked`. An event that arrives before the
 upload's report is linked by the report and applied on the connector's next read.
 Each asset pack keeps its own availability row (its `buildId` is the asset-pack id, from the CI
-report and the connector alike), so one pack release bound at two content levels on one outlet
+report and the connector alike), so one pack release bound at two content levels on one channel
 keeps a state per level.
 `GET …/asset-packs` lists the product's asset packs with their level, newest version and states,
-marks those whose level no app channel has live as **retire candidates**, and shows Apple's
+marks those whose level no app release track has live as **retire candidates**, and shows Apple's
 quotas (200 asset packs, 200 GB per app). Archiving is irreversible and an archived id can never
 be reused, so Polaris Key only lists candidates: archive them in App Store Connect.
 
@@ -134,7 +136,7 @@ and resync until it is cleared (`…/clear`).
 
 ## Submissions
 
-One record per (release, outlet), in `dist_submissions`:
+One record per (release, channel), in `dist_submissions`:
 
 | State                       | Meaning                                                |
 | --------------------------- | ------------------------------------------------------ |
@@ -172,7 +174,7 @@ default grant includes. `--since` (epoch seconds) backdates the state change; wi
 time is now, or unchanged while the state is. `--platform-ref` and `--detail` take a JSON object;
 omitting `--platform-ref` keeps the stored one.
 
-Every report is checked before anything is written: the outlet must be one the product declares
+Every report is checked before anything is written: the channel must be one the product declares
 (and has not removed), the release and build must exist, and the state must be in the type's
 vocabulary. A refused report writes nothing. The route underneath is
 `POST /<product>/distribution/report`; refusals use the platform's flat shape with a `reason`
@@ -184,17 +186,17 @@ Reports are **semi-trusted**. A wrong report can make the matrix and feeds show 
 it cannot ship code and cannot change a key. A store's connector writes these records too
 (`source` is then `asc`, later `play` or `ms-store`). Whichever wrote last wins, and every change
 is audited with its writer; a connector re-reads the store on its next poll, so a stale CI report
-on a connector-run outlet does not last.
+on a connector-run channel does not last.
 
 The same route takes the **store steps** `pkey storefront` runs (`type: "store-step"`): a
 CI-plane store command (`butler push`, `snapcraft upload`, …) reported before and after it runs.
-Polaris Key checks the command against the store's CI allow-list and the outlet's identity again
+Polaris Key checks the command against the store's CI allow-list and the channel's identity again
 and writes the step into the store's operation ledger with `plane = ci`, so CI steps show beside
 the console's; refusals add `command_not_allowed`, `worker_draft_staged` and `step_conflict`. A
 store step changes no availability record: report `live` as above once the store shows it. See
 [Storefront steps](/docs/features/ship-builds/ci-stores/#storefront-steps-itchio-and-snap).
 A pull-request step (`pkey storefront winget|homebrew|scoop|flathub pr` and `status`) is
-reported the same way with `plane = pr`: Polaris Key checks the repository against the outlet's
+reported the same way with `plane = pr`: Polaris Key checks the repository against the channel's
 identity and every file the pull request wrote against the store's paths, and records the files'
 SHA-256, the pull request and its verdict (`in-review`, `needs-author-feedback`,
 `validation-issue`, `merged`, `closed`). See
@@ -238,12 +240,12 @@ Narrative-only (not in the wire spec), under `/manage/api/products/<slug>/distri
 
 | Method   | Path                                           | Does                                                                                                                                             |
 | -------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `GET`    | `availability?release=<id>`                    | the release on every outlet: stored and derived records, records on removed outlets flagged `outletRemoved`                                      |
+| `GET`    | `availability?release=<id>`                    | the release on every channel: stored and derived records, records on removed channels flagged `outletRemoved`                                    |
 | `GET`    | `submissions[?release=<id>]`                   | submission records, newest first                                                                                                                 |
 | `GET`    | `keys`                                         | `{ purposes, keys, observations }` — the inventory and the CI observations outside it                                                            |
 | `PUT`    | `keys`                                         | `{ purpose, sha256, outlet?, notes?, registered? }` — add or update an entry by purpose and fingerprint (adopting an observation); `null` clears |
 | `DELETE` | `keys/<purpose>/<sha256>`                      | remove an entry, or dismiss an observation                                                                                                       |
-| `GET`    | `readiness[?release=<id>]`                     | the readiness snapshot, or one app release's readiness computed now, per outlet                                                                  |
+| `GET`    | `readiness[?release=<id>]`                     | the readiness snapshot, or one app release's readiness computed now, per channel                                                                 |
 | `POST`   | `readiness/refresh`                            | recompute the snapshot                                                                                                                           |
 | `POST`   | `readiness/<id>/<outlet>/override` · `…/clear` | `{ reason }` — release the hold (audited), or hand it back to the computation                                                                    |
 | `GET`    | `asset-packs`                                  | the product's Background Assets asset packs: level, pack, newest version and states, `live`, `retireCandidate`, and the 200-pack / 200 GB quotas |
@@ -254,12 +256,12 @@ write them (`source: asc` for App Store Connect).
 ## Reading it from another service
 
 Distribution's `delivery` descriptor hook answers `availability(releaseId)`,
-`submissions(releaseId)` and `keys({ purpose? })` — live outlets only, and the inventory without
+`submissions(releaseId)` and `keys({ purpose? })` — live channels only, and the inventory without
 observations. With Distribution off the hook is `null` and the report route is not found.
 
 ## See also
 
 - [Rollouts and halts](/docs/services/distribution/rollouts/) — the other CI control, with its own
   opt-in scope.
-- [Distribution: outlets, transports and listing](/docs/build/manifest/distribution/) — declaring
-  the outlets these records are about.
+- [Distribution: channels, transports and listing](/docs/build/manifest/distribution/) — declaring
+  the channels these records are about.
