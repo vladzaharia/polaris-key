@@ -190,3 +190,85 @@ def test_importing_the_core_loads_no_framework() -> None:
 def test_the_verdict_function_is_pure() -> None:
     v = backend_verdict(_headers(sign_license("dev_1")), NOW, ["djdl"], {"djdl": {KID: PUBKEY_RAW}})
     assert v.status == 200 and v.step == 0
+
+
+def test_concurrent_unknown_kids_cost_one_fetch() -> None:
+    """The once-a-minute slot is claimed under the lock before the fetch (V4 §14.4)."""
+    import threading
+    import time
+
+    calls: List[str] = []
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        calls.append(str(req.url))
+        time.sleep(0.05)
+        return httpx.Response(500)
+
+    polaris = _quiet(
+        PolarisKey(config=CFG, http_client=httpx.Client(transport=httpx.MockTransport(handler)), clock=lambda: NOW)
+    )
+    n = 32
+    barrier = threading.Barrier(n)
+    results: List[str] = []
+
+    def hit(i: int) -> None:
+        h = _headers(sign_license("dev_1", pem=ROTATED_PEM, kid=f"junk-{i}"))
+        barrier.wait()
+        results.append(polaris.authenticate(h).problem.code)  # type: ignore[union-attr]
+
+    threads = [threading.Thread(target=hit, args=(i,)) for i in range(n)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert len(calls) == 1
+    assert results == ["license_invalid"] * n
+
+
+def test_a_verification_under_an_older_trust_set_is_not_cached(monkeypatch: pytest.MonkeyPatch) -> None:
+    from polaris_key.server import _core
+
+    polaris = PolarisKey(config=CFG, trust_refresh=False, clock=lambda: NOW)
+    real = _core.parse_credential
+
+    def raced(*args: Any, **kwargs: Any) -> Any:
+        parsed = real(*args, **kwargs)
+        # A trust install lands between the verification and its cache insert.
+        with polaris._cache_lock:
+            polaris._generation += 1
+            polaris._cache.clear()
+        return parsed
+
+    monkeypatch.setattr(_core, "parse_credential", raced)
+    assert polaris.authenticate(_headers(sign_license("dev_1"))).problem is None
+    assert len(polaris._cache) == 0
+    monkeypatch.setattr(_core, "parse_credential", real)
+    assert polaris.authenticate(_headers(sign_license("dev_1"))).problem is None
+    assert len(polaris._cache) == 1
+
+
+def test_an_oversized_manifest_is_not_read_to_the_end() -> None:
+    sent = [0]
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        def body() -> Any:
+            for _ in range(1000):
+                sent[0] += 1024
+                yield b"A" * 1024
+
+        return httpx.Response(200, content=body())
+
+    polaris = _quiet(
+        PolarisKey(config=CFG, http_client=httpx.Client(transport=httpx.MockTransport(handler)), clock=lambda: NOW)
+    )
+    assert polaris.refresh_trust() is False
+    assert sent[0] < 1000 * 1024
+
+
+def test_an_oversized_header_value_is_refused_without_splitting() -> None:
+    from polaris_key.server._verdict import RAW_FIELD_MAX, header_elements
+
+    big = "," * (RAW_FIELD_MAX + 1)
+    assert header_elements([("X-PKey-License", big)], "X-PKey-License") == [big]
+    polaris = PolarisKey(config=CFG, trust_refresh=False, clock=lambda: NOW)
+    assert polaris.authenticate([("X-PKey-License", big)]).problem.code == "license_invalid"  # type: ignore[union-attr]

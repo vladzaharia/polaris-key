@@ -46,6 +46,8 @@ log = logging.getLogger("polaris_key.server")
 TRUST_REFRESH_SECONDS = 900
 UNKNOWN_KID_SECONDS = 60
 _FETCH_TIMEOUT = 5.0
+#: A signed trust manifest is a few KiB; the read stops here.
+MANIFEST_MAX_BYTES = 262_144
 
 
 class PolarisKeyError(Exception):
@@ -181,6 +183,10 @@ class PolarisKey:
         self._cache_size = cache_size
         self._cache_lock = threading.Lock()
         self._bg = threading.Event()
+        # Claims of the periodic and unknown-kid fetch slots are taken under this lock.
+        self._slots = threading.Lock()
+        # Bumped, with the cache cleared, whenever a trust set is installed.
+        self._generation = 0
 
     def __repr__(self) -> str:
         return f"PolarisKey(products={list(self.products)!r}, max_age_seconds={self.max_age_seconds!r})"
@@ -213,18 +219,24 @@ class PolarisKey:
             t.last_attempt = now
             try:
                 url = f"{t.base_url}/{t.slug}/{TRUST_MANIFEST_PATH}"
-                res = self._client().get(
+                with self._client().stream(
+                    "GET",
                     url,
                     headers={
                         "accept": "application/jose",
                         HEADER_SDK_NAME: "python-server",
                         HEADER_SDK_VERSION: _sdk_version(),
                     },
-                )
-                if res.status_code != 200:
-                    continue
+                ) as res:
+                    if res.status_code != 200:
+                        continue
+                    body = bytearray()
+                    for chunk in res.iter_bytes():
+                        body += chunk
+                        if len(body) > MANIFEST_MAX_BYTES:
+                            raise ValueError("trust manifest over the size bound")
                 result = verify_trust_manifest(
-                    res.text,
+                    body.decode("ascii"),
                     pinned=t.pins,
                     tombstones=t.tombstones,
                     expected_aud=t.slug,
@@ -238,12 +250,14 @@ class PolarisKey:
                 log.debug("trust manifest for %s was not accepted", t.slug)
                 continue
             issued = result.doc.get("issuedAt")
-            with t.lock:
-                t.install(result.discovered, result.revokedPins, issued if isinstance(issued, int) else None)
-            any_ok = True
-        if any_ok:
+            # Install and invalidate together: a verification that began under the older set
+            # must not put its result in the cache afterwards.
             with self._cache_lock:
+                with t.lock:
+                    t.install(result.discovered, result.revokedPins, issued if isinstance(issued, int) else None)
+                self._generation += 1
                 self._cache.clear()
+            any_ok = True
         return any_ok
 
     def _trust_version(self) -> int:
@@ -251,11 +265,14 @@ class PolarisKey:
 
     def _periodic(self, now: int) -> None:
         """Kick the 900 s refresh off the request path (a daemon thread, one at a time)."""
-        if not self.trust_refresh or self._bg.is_set():
+        if not self.trust_refresh:
             return
-        if all(now - t.last_attempt < TRUST_REFRESH_SECONDS for t in self._trust.values()):
-            return
-        self._bg.set()
+        with self._slots:
+            if self._bg.is_set() or all(
+                now - t.last_attempt < TRUST_REFRESH_SECONDS for t in self._trust.values()
+            ):
+                return
+            self._bg.set()
 
         def run() -> None:
             try:
@@ -275,10 +292,12 @@ class PolarisKey:
         kid = jws_header_kid(lic[0])
         if kid is None or any(kid in t.effective for t in self._trust.values()):
             return None
-        if all(now - t.last_unknown < UNKNOWN_KID_SECONDS for t in self._trust.values()):
-            return None
-        for t in self._trust.values():
-            t.last_unknown = now
+        # Claim the slot before fetching, under the lock, so N concurrent junk kids cost one fetch.
+        with self._slots:
+            if all(now - t.last_unknown < UNKNOWN_KID_SECONDS for t in self._trust.values()):
+                return None
+            for t in self._trust.values():
+                t.last_unknown = now
         return kid
 
     # -- the verdict -----------------------------------------------------------------------
@@ -287,18 +306,24 @@ class PolarisKey:
         lic = header_elements(headers, HEADER_LICENSE)
         dev = header_elements(headers, HEADER_DEVICE)
         key = None
+        generation = 0
         if len(lic) == 1 and len(dev) <= 1 and len(lic[0]) <= LICENSE_MAX_BYTES:
             key = hashlib.sha256((lic[0] + "\n" + (dev[0] if dev else "")).encode("utf-8", "replace")).hexdigest()
             with self._cache_lock:
+                generation = self._generation
                 hit = self._cache.get(key)
                 if hit is not None:
                     self._cache.move_to_end(key)
             # Step 3 holds for as long as the trust set does; the clock-dependent bound is rechecked.
             if hit is not None and hit[3] >= now and hit[1].issuedAt <= now + CLOCK_SKEW_SECONDS:
                 return hit[0], hit[1], hit[2]
+        with self._cache_lock:
+            generation = self._generation
         parsed = parse_credential(headers, now, self.products, self._trust_sets())
         if key is not None and not isinstance(parsed, Refusal):
             with self._cache_lock:
+                if generation != self._generation:
+                    return parsed  # verified under an older trust set: use it, never keep it
                 # Each entry lives until its own freshness deadline.
                 self._cache[key] = (parsed[0], parsed[1], parsed[2], parsed[1].graceUntil + CLOCK_SKEW_SECONDS)
                 while len(self._cache) > self._cache_size:

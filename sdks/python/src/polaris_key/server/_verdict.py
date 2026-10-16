@@ -47,6 +47,8 @@ __all__ = [
 HEADER_LICENSE = "X-PKey-License"
 AUTH_SCHEME = "PKey-License"
 LICENSE_MAX_BYTES = 16384
+#: A field value longer than this is never split (an element is at most LICENSE_MAX_BYTES).
+RAW_FIELD_MAX = LICENSE_MAX_BYTES + 4096
 #: The two request headers an app's CORS allow-list needs (§14.1).
 POLARIS_REQUEST_HEADERS: Tuple[str, str] = (HEADER_LICENSE, HEADER_DEVICE)
 
@@ -220,6 +222,11 @@ def header_elements(headers: Iterable[Tuple[str, str]], name: str) -> List[str]:
     out: List[str] = []
     for n, v in headers:
         if n.translate(_ASCII_UPPER) != want:
+            continue
+        if len(v) > RAW_FIELD_MAX:
+            # No element can be this long: keep it whole so the size check refuses it, rather
+            # than splitting and trimming an arbitrarily large value.
+            out.append(v)
             continue
         for element in v.split(","):
             e = element.strip(" \t")
