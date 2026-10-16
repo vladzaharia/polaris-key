@@ -143,6 +143,7 @@ export const GENERATORS: Generator[] = [
     outputs: [
       "packages/sdk-node/src/constants.generated.ts",
       "packages/sdk-node/src/copy.generated.ts",
+      "packages/server/src/copy.generated.ts",
       "packages/sdk-react/src/constants.generated.ts",
       "packages/sdk-react/src/copy.generated.ts",
       "sdks/python/src/polaris_key/constants_generated.py",

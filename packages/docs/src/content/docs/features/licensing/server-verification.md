@@ -48,9 +48,7 @@ refresh. Read entitlements from `doc.entitlements`, each a `{ state, value }` en
 
 ## Where the JWS comes from
 
-The device's own document is served by `GET /<product>/license/document` to the device's bearer
-token. Today the SDKs keep both the token and the raw document internal, so a backend that wants
-the JWS has to fetch it with a token the client forwards. A first-class path is planned: a
-server helper `verifyLicenseDocument(jws, trust)` in Node and Python, and a client getter for the
-current document (SDK parity pass §2.1). Until then, prefer gating on the server's own data where
-you can.
+The app sends its document to your backend in an `X-PKey-License` header. The
+`@polaris-key/server` package decides it for you, offline: the signature, the product, the
+freshness window and the trust manifest, with a `401` or `403` problem body when it refuses. It has
+drop-ins for Express, Hono and Next.js (framework docs follow with the drop-ins' own pages).
