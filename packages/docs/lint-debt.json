@@ -2,39 +2,11 @@
   "$comment": "Today's hits of scripts/lint-docs.ts, by page and rule. It only shrinks: a new hit fails the lint, and so does an entry nothing hits any more. A package that writes a page clears the page's entries in the same change; `tsx scripts/lint-docs.ts --update` rewrites the file.",
   "version": 1,
   "debt": {
-    "build/index": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "count": 4
-    },
     "build/manifest/distribution": {
       "frontmatter-type": 1,
       "frontmatter-last-reviewed": 1,
       "time-word": 1,
       "future-tense": 2
-    },
-    "build/manifest/index": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1
-    },
-    "build/manifest/json-schema": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "future-tense": 2,
-      "programme-id": 1
-    },
-    "build/manifest/product": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "count": 1,
-      "time-word": 1,
-      "banned-word": 1,
-      "programme-id": 3
-    },
-    "build/manifest/register": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "http-path": 1
     },
     "build/quickstart/godot": {
       "frontmatter-type": 1,

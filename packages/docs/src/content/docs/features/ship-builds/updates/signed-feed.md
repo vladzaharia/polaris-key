@@ -33,7 +33,7 @@ passes every check — `release_record_rejected` with the reason:
 
 Records are stored once and never rewritten, and served by their SHA-256 at
 `GET /<product>/release/records/<sha256>` under the release metadata access mode. Declare the
-keys in [`.pkey/release` `releaseKeys`](/docs/build/manifest/authoring/#release-keys-releasekeys).
+keys in [`.pkey/release` `releaseKeys`](/docs/build/manifest/release/#release-keys-releasekeys).
 A release published without a record is never a feed target.
 
 ## The channel feed

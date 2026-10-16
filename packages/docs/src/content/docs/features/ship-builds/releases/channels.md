@@ -99,7 +99,7 @@ further. A floor with no unyanked release below it holds nothing up.
 
 ### Package versions
 
-A [package](/docs/build/manifest/authoring/#package-deliverables) version's yank is also its
+A [package](/docs/build/manifest/release/#package-deliverables) version's yank is also its
 feed state: the version is marked yanked (with the reason, which PyPI shows as its PEP 592 yank
 reason) and its feeds re-render. Unyank returns it to live. A package version can also be
 **deprecated**, a warning the feeds show (npm's `deprecated`) while the version stays

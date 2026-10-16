@@ -1,19 +1,15 @@
 ---
+title: "Write the product manifest"
+description: "Declare the product, its services, origins, presentation, licensing and sign-in settings in .pkey/product."
+type: "reference"
+lastReviewed: "2026-10-16"
 sidebar:
   order: 2
-title: "Authoring the manifest"
-description: "The .pkey/ files and the ConfigEntry shape — schema, product, and release — using djdl as the worked example."
 ---
 
-A Polaris Key product is **data, not code**. Its catalog, metadata, and release coordinates
-live in a `.pkey/` directory in the product's own repo. The Worker, the admin SPA, and all
-six SDKs read that data;
-adding or changing a product never requires a Worker redeploy.
+A product is data. `.pkey/product` holds its identity, the services it runs, browser origins, presentation, device policy, licensing defaults and sign-in settings. The Worker, the console and every SDK read that data, so changing a product never needs a Worker deploy.
 
-This doc is the source of truth for the `.pkey/` files and the `ConfigEntry` shape, using
-**djdl** (the first product) as the worked example. The canonical terminology lives at
-[Concepts & terminology](/docs/start/concepts/); the byte-for-byte wire contract lives in
-`docs/security/WIRE-CONTRACT-V3.md`.
+This page covers `.pkey/product`. The catalog is on [Write the catalog](/docs/build/manifest/catalog/), releases and packages on [Write the release manifest](/docs/build/manifest/release/), and store listings on [Distribution](/docs/build/manifest/distribution/). The words are defined on [Concepts](/docs/start/concepts/).
 
 ## The `.pkey/` directory
 
@@ -54,7 +50,7 @@ are selected): ingest requires the schema even when Config is off, and `pkey val
 same rule as link/resync, reporting a missing one as `missing_schema`. Without the `config`
 module the scaffolded catalog is empty (`schemaVersion: 1`, `entries: []`). The scaffolded tier
 names its profile with `profileId` and sets `policyDeviceLimit: 5` and no expiry; a tier `deviceLimit` is ignored and a tier
-`maxOfflineDays` sets the licence expiry (`policyExpiryDays`), not offline grace, so `pkey
+`maxOfflineDays` sets the license expiry (`policyExpiryDays`), not offline grace, so `pkey
 validate` warns with `tier_ignored_field` for either. A tier's offline grace default is
 `policyOfflineGraceDays` (0 to 365 days; omitted, the product default applies).
 
@@ -66,7 +62,7 @@ settings API hold the same ceiling.
 
 A tier's `rank` (an integer from 0, default 0, not unique) says which tier is better. When an
 identity's groups map to several tiers, sign-in picks the highest-ranked one; equal ranks keep the
-first match. With `oidc.syncTierOnSignIn: upgradeOnly`, a sign-in moves an existing licence to a
+first match. With `oidc.syncTierOnSignIn: upgradeOnly`, a sign-in moves an existing license to a
 higher-ranked tier and never changes its expiry.
 
 ## Deprecated spellings
@@ -81,7 +77,7 @@ instead:
 - `conflicting_spelling`: the document sets both. The message names the value that is used.
 
 The canonical layout is the one `pkey init` writes: `product:` for identity and compatibility,
-`licensing:` for licence defaults, tiers and profiles, and `release:` in `.pkey/release`. The
+`licensing:` for license defaults, tiers and profiles, and `release:` in `.pkey/release`. The
 list is `DEPRECATED_SPELLINGS` in `@polaris-key/manifest` (`packages/shared-manifest/src/spellings.ts`),
 and it is what the validator, the schemas and the settings registry's parity test all read.
 
@@ -113,81 +109,10 @@ of `json`, `yaml`, `yml` is read, and `pkey validate` says so.
 Refusing the old spellings is a later, separate decision. Until then a manifest that validated
 before keeps validating, with warnings.
 
-## The catalog: `ConfigEntry`
-
-The schema file is a `ProductCatalog`: a `schemaVersion` (bumped on incompatible shape
-changes; it matches the signed doc's `schemaVersion`) and an `entries` array. Each entry is a
-`ConfigEntry` (`packages/shared-catalog/src/types.ts`) — a dotted `key`, a `kind`
-(`config` plaintext setting · `secret` redacted, delivered in the config document · `flag` entitlement),
-grouping/label/description for settings UIs, a Draft-07 JSON-Schema `schema` the value
-validates against, a `default`, and — on `config`/`secret` keys — a `managementDefault`
-(`default` · `enforced` · `hidden`) seeding the state a freshly-minted key gets:
-
-```jsonc
-// config — overridable by default
-{
-  "key": "run.concurrency",
-  "kind": "config",
-  "category": "Run",
-  "label": "Parallel downloads",
-  "schema": { "type": "integer", "minimum": 1, "maximum": 8 },
-  "default": 3,
-  "managementDefault": "default",
-  "ui": { "widget": "stepper" },
-}
-```
-
-On the **client**, a value resolves through one fixed precedence, honoring whichever
-management state the signed document carries for that key:
-
-```
-enforced | hidden (remote)  >  local override  >  environment  >  remote default  >  fallback
-```
-
-`enforced`/`hidden` lock the remote value — local and env overrides never apply, and `hidden`
-additionally withholds the key from `listUserConfig`/enumeration while `getConfig` still
-applies it internally. A `default` (or an absent entry) falls through the rest of the chain to
-the caller's `fallback`. The env override for a key is `PKEY_CONFIG_` + the key with dots →
-`__` (`run.concurrency` → `PKEY_CONFIG_run__concurrency`).
-
-The full field reference (`ui`/`dependsOn`/`accessor`/`appliesTo` and the rest), worked
-`secret`/`flag` examples, and how management states are set and overridden per
-tier/license/device live at [The config catalog](/docs/services/config/catalog/). The
-`ConfigEntry` type itself, reproduced verbatim, is at
-[ConfigEntry — the catalog item shape](/docs/reference/config-entry/).
-
-### Reserved entitlement names
-
-A `flag` is an entitlement, and the platform sets a few entitlements itself in every license
-document: `channels`, `deviceLimit`, `app.minVersion`, `app.maxVersion`, `license.tier` and
-`license.tierLabel`. Every name under `license.`, `app.` and `pkey.` is reserved for future system
-keys too. The platform's value always wins over a product's.
-
-A flag may still **declare** one of these names, to give it a label, a category, a narrower
-schema or a `userGrant` label (djdl declares `channels`, `deviceLimit` and both `app.*` keys).
-That declaration is valid as long as it is **compatible**:
-
-- its `schema.type` is the system key's type: `channels` an array of strings (`items` of type
-  `string`), `deviceLimit` an integer, the `app.*` and `license.*` keys strings;
-- the schema only narrows that type (`enum`, `const`, `pattern`, `minLength`/`maxLength`,
-  `minimum`/`maximum`, `uniqueItems`, `minItems`/`maxItems`, `format`, `multipleOf`) or annotates
-  it;
-- the entry carries only presentation fields besides `key`, `kind` and `schema`: `label`,
-  `category`, `description`, `default` (of the right type), `examples`, `ui`, `userGrant` and
-  `grantLabel`.
-
-Any other name under `license.` or `pkey.` has no compatible form. The validator reports an
-incompatible declaration as `incompatible_reserved_name`. It is a **warning** for now (`pkey
-validate` prints it and link and resync accept it); the platform setting
-[`LICENSING_RESERVED_NAMES`](/docs/admin/platform-settings/#the-runtime-settings) turns it into an
-error after a window of two minor releases or 60 days, whichever is later. Platform → Settings →
-Licensing lists every registered product with a reserved-name declaration and whether it is
-compatible.
-
 ## Display names
 
 The customer's sign-in card says "<App> wants you to sign in" and names the developer, so the
-names an app is shown by are checked (PX-W13): `product.name`, and the `.pkey/distribution`
+names an app is shown by are checked (): `product.name`, and the `.pkey/distribution`
 document's `listing.name` and `listing.developerName`.
 
 - **`invalid_display_text`** (always an error). The name holds a control character, a zero-width
@@ -199,9 +124,9 @@ document's `listing.name` and `listing.developerName`.
   Microsoft, Xbox, PlayStation, Nintendo or itch.io. Case, width, accents, look-alike letters
   (Cyrillic and Greek), `0` for `o`, `1` for `l`, `rn` for `m` and separators are folded first,
   so `P0laris-Key` and `ＳＴＥＡＭ` match, and a multi-word term written as one word (`GooglePlay`)
-  matches too. `Applesauce Games` and `Steamroller` do not. It is a **warning** today (`pkey
+  matches too. `Applesauce Games` and `Steamroller` do not. It is a **warning** by default (`pkey
 validate` prints it and link and resync accept it); the platform setting
-  [`IDENTITY_RESERVED_DISPLAY_NAMES`](/docs/admin/platform-settings/#the-runtime-settings) turns
+  [`IDENTITY_RESERVED_DISPLAY_NAMES`](/docs/operate/platform/settings/#the-runtime-settings) turns
   it into an error after a window of two minor releases or 60 days, whichever is later. Either
   way, the sign-in card shows such a product by its slug in a neutral frame.
 
@@ -212,7 +137,7 @@ Polaris Key's opt-in services — **license, config, release, distribution, upda
 and that declaration is persisted into `products.services_json`, the single authority every other
 surface projects from.
 
-```jsonc
+```jsonc title=".pkey/product"
 {
   // Every entry is `{ "enabled": <boolean> }`. Unknown module names are ignored so a manifest
   // can survive a newer service table; known services are validated as one set.
@@ -231,20 +156,7 @@ surface projects from.
 `license` + `config` enabled and the rest off, which is how every product behaved before the
 block was persisted.
 
-**Requirements.** The service table declares the following requirements:
-
-| Service      | Requires     | Refusal                         |
-| ------------ | ------------ | ------------------------------- |
-| Distribution | Release      | `distribution_requires_release` |
-| Update       | Distribution | `update_requires_distribution`  |
-| Cloud Sync   | Config       | `sync_requires_config`          |
-| Cloud Sync   | Identity     | `sync_requires_identity`        |
-
-A manifest with an enabled dependent and a disabled requirement is refused. The console follows
-the same rule: turning a requirement off cascades to enabled dependents in one audited change, but
-turning it back on does not restore them. Individual service controls do not pull requirements on;
-enable each one first, or use a feature action such as **Ship builds**, which explicitly writes
-Release, Distribution and Update together.
+**Requirements.** A manifest that enables a service without what it requires is refused. [How it works](/docs/start/how-it-works/#coherence-rules) has the one table of rules, codes and severities. The console follows the same rule: turning a requirement off cascades to its enabled dependents in one audited change, and turning it back on restores none of them. To enable a chain, enable each service first, or use a feature action such as **Ship builds**, which writes Release, Distribution and Update together.
 
 **Device registration is derived.** It is not a `product` manifest setting. The effective policy
 is `requires-license` when License is on; otherwise `requires-identity` when Identity is on;
@@ -266,71 +178,16 @@ column (`services_source` flips `manifest` → `admin`) so a later push cannot s
 service back on. **Revert to manifest** flips ownership back and changes nothing else; the
 manifest re-applies at the next resync.
 
-### Synced settings and Cloud Sync records
-
-With [Cloud Sync](/docs/features/cloud-sync/) on, every Editable `config` key is a **synced setting**:
-the value a signed-in person chooses follows them to their other devices. Editable means the
-catalog sets no `managementDefault` of `enforced` or `hidden`. A `user` block is optional tuning;
-without one, a key behaves as `{ "sync": "user", "conflict": "lastWrite", "listed": true }`:
-
-```jsonc
-{
-  "key": "stats.bestScore",
-  "kind": "config",
-  "schema": { "type": "integer", "minimum": 0 },
-  "default": 0,
-  // sync: user | platform | local; conflict: lastWrite | max | min | merge
-  "user": { "sync": "platform", "conflict": "max" },
-}
-```
-
-- `sync: "local"` keeps a key on the device; nothing else does. `device` is retired and refused:
-  use `local`.
-- The block is refused on a `secret` or `flag`, and with a conflict policy the value's schema
-  cannot support (`max` and `min` need a number, `merge` an object; a set is an object of
-  booleans). On an `enforced` or `hidden` key it has no effect, and `pkey validate` warns.
-- A key the catalog does not declare is an **open setting**: it syncs as `lastWrite`, without a
-  schema, up to 8 KiB. Declared and open settings share one budget of 256 keys and 64 KiB per
-  person. Any device of the person can write an open setting, so treat an undeclared key as
-  untrusted input; declare a key that matters with a schema, give it `sync: "local"`, or lock it.
-
-The catalog's top-level `cloudSync` block declares the product's **records**: `collections` and
-the catalog `migrations` the server applies to synced values. A `saves` collection is the
-save-slot template (16 slots per person, `revision`, one file per save and a small thumbnail):
-
-```jsonc
-"cloudSync": {
-  "collections": [
-    { "name": "saves", "template": "saves", "requires": "cloudSaves" },
-    {
-      "name": "scores",
-      "conflict": "max",
-      "conflictField": "best",
-      "schema": { "type": "object", "properties": { "best": { "type": "integer" } } },
-      "maxRecords": 100,
-    },
-  ],
-}
-```
-
-A collection's `conflict` is one of `lastWrite`, `max`, `min`, `merge`, `union` and `revision`
-(the default), and `max` and `min` name the number `conflictField` the server compares.
-`maxRecords` is at most 10,000 and not allowed on a `saves` collection; `files.maxBytes` is at
-most 1 GiB; `requires` names a catalog flag or a system entitlement. Retired with no warning
-period: `cloudSync.saves` (use `template: "saves"`), `cloudSync.open` and a collection's
-`onAttach` (the first sign-in is an ordinary sync). The full rules are on the
-[Cloud Sync](/docs/features/cloud-sync/#validation) page.
-
 ## Cloud Sync storage
 
 `.pkey/product` has no `cloudSync` block, and `pkey validate` refuses one. A person's storage is
-the `pkey.cloudSync.bytes` entitlement, read from the anchor licence: a tier, a licence override
+the `pkey.cloudSync.bytes` entitlement, read from the anchor license: a tier, a license override
 or an add-on sets it, and 256 MiB applies when nothing does. A signed-in person with no usable
-licence gets 1 MiB and no files. Declaring a `cloudSync` block, or a `user` block that syncs,
+license gets 1 MiB and no files. Declaring a `cloudSync` block, or a `user` block that syncs,
 while the `sync` service is off is a warning, not an error: settings stay on the device until it
 is on.
 
-```jsonc
+```jsonc title=".pkey/product"
 {
   "modules": {
     "config": { "enabled": true },
@@ -349,9 +206,9 @@ rewrites it; dropping the block clears it. There is no console override. Entries
 exactly as a browser sends `Origin`, and ingest refuses anything else (`invalid_web_origins`,
 `invalid_web_origin`). Credentials are never allowed, and the cookie-bearing identity routes,
 the console, the portal and the docs never answer CORS. The rules, headers and covered routes
-are at [Web clients and CORS](/docs/build/web-cors/).
+are at [Web clients and CORS](/docs/build/web-apps/).
 
-```jsonc
+```jsonc title=".pkey/product"
 {
   "web": {
     "origins": ["https://play.acme.example", "http://localhost:8060"],
@@ -361,10 +218,10 @@ are at [Web clients and CORS](/docs/build/web-cors/).
 
 ## Presentation: `presentation`
 
-`presentation` is how the product shows itself: its `icon`, its `accent` colour and its
-`accentDark` colour for a dark ground (each `#rrggbb`). It lives in `.pkey/product`, so a product
+`presentation` is how the product shows itself: its `icon`, its `accent` color and its
+`accentDark` color for a dark ground (each `#rrggbb`). It lives in `.pkey/product`, so a product
 without the Distribution service still has an icon. Every member is optional. A malformed block
-or colour is `invalid_presentation`.
+or color is `invalid_presentation`.
 
 The icon is an **asset ref**, the same grammar as the store listing's art:
 
@@ -378,7 +235,7 @@ Either form may be written as an object `{ src, sha256 }`, where `sha256` (64 lo
 digits) pins the bytes. A malformed ref is `invalid_asset_ref`. Validation never fetches the
 file.
 
-```yaml
+```yaml title=".pkey/product"
 presentation:
   icon: .pkey/art/icon.png
   accent: "#2ED6E6"
@@ -392,7 +249,7 @@ live from the admin panel; a live edit takes ownership of that block so a later 
 silently revert it (`fingerprint_policy_source` / `auto_issue_source`). "Revert to manifest"
 hands ownership back.
 
-```jsonc
+```jsonc title=".pkey/product"
 {
   "fingerprint": {
     // On by default. Set false to collect no hardware components at all.
@@ -428,35 +285,35 @@ hands ownership back.
 
 A tier can tighten fingerprint enforcement for itself:
 
-```jsonc
+```jsonc title=".pkey/product"
 { "tiers": [{ "id": "pro", "label": "Pro", "policyFingerprint": "strict" }] }
 ```
 
-See [Privacy](/docs/users/privacy/) for exactly what a fingerprint contains and how long it is kept.
+See [Privacy](/docs/help/your-data/) for exactly what a fingerprint contains and how long it is kept.
 
 ## Licensing settings: `licensing.*`
 
-How licences, grants and entitlements combine for the product. Each is optional, declared under
+How licenses, grants and entitlements combine for the product. Each is optional, declared under
 `licensing:` in `.pkey/product`, and applied on link and resync. Each can also be changed in the
 console (**License → Settings**): a console change claims that one setting, so later resyncs
 leave it alone until **Revert to manifest** hands it back and applies the manifest's value at
 once. Dropping a setting from the manifest returns it to its default.
 
-```jsonc
+```jsonc title=".pkey/product"
 {
   "licensing": {
-    // legacy: a device sees its own licence's entitlements (today's model).
-    // combined: a device sees the combined entitlements of every licence and grant its holder
+    // legacy: a device sees its own license's entitlements (today's model).
+    // combined: a device sees the combined entitlements of every license and grant its holder
     // has. Undeclared: legacy for products registered before 2026-10-06, combined after.
     "entitlementModel": "combined",
-    // device (default): the account signed in on the device. owner: the licence owner's whole
+    // device (default): the account signed in on the device. owner: the license owner's whole
     // set, so anyone with a shared key reaches everything the owner holds.
     "entitlementHolder": "device",
-    // End offline grace no later than the licence's expiry (default true).
+    // End offline grace no later than the license's expiry (default true).
     "clampGraceToExpiry": true,
-    // Which of a holder's licences a device runs on: rank-first (default), most-free-seats, oldest.
+    // Which of a holder's licenses a device runs on: rank-first (default), most-free-seats, oldest.
     "anchorPolicy": "rank-first",
-    // When a device may move to a better licence: never, or onActivation (default).
+    // When a device may move to a better license: never, or onActivation (default).
     "reanchor": "onActivation",
     // Hours a refunded grant keeps working before it is revoked, 0 to 168 (default 0).
     "refundGraceHours": 0,
@@ -468,427 +325,12 @@ once. Dropping a setting from the manifest returns it to its default.
 ```
 
 Each setting is checked by its own validation code (`invalid_licensing_<field>`, see
-[Manifest validation codes](/docs/reference/validation-codes/)). The behaviour behind each
+[Manifest validation codes](/docs/reference/validation-codes/)). The behavior behind each
 setting arrives in stages; until it does, a saved value changes nothing devices see. The
 [settings reference](/docs/reference/settings/) lists every setting with its default and the
 confirmation a console change needs.
 
-## Release deliverables: `deliverables.app` and the artifact map
-
-A `.pkey/release` document may declare the product's **app deliverable** and an **artifact
-map** that says what every file of a release is. Without the block the product keeps the
-implicit `app` deliverable and its release files are classified by filename, as before (a
-`.dmg` is macOS, `-arm64` is arm64, and an `.apk`, `.ipa`, `.exe` or `.pck` is just `other`;
-a platform-only extension or name token still names the platform, so `.app.zip` is macOS,
-`.apk` Android, `.ipa` iOS and `-win64` Windows).
-With it, files are classified **by declaration, not by sniffing**:
-
-```yaml
-# .pkey/release.yaml
-release:
-  provider: { type: github, owner: vladzaharia, repo: diceroll }
-  deliverables:
-    app:
-      kind: app
-      versioning:
-        scheme: semver # or semver+build, 4part
-        stableTagPattern: "v\\d+\\.\\d+\\.\\d+"
-        ignoreTags: [channels, packs]
-        buildNumber: descriptor # or none
-      channels:
-        beta: { includes: [stable] } # beta also offers every stable release
-      artifacts:
-        - {
-            id: macos,
-            platform: macos,
-            arch: universal,
-            format: dmg,
-            match: "Diceroll-*-macos.dmg",
-          }
-        - {
-            id: win-zip,
-            platform: windows,
-            arch: x86_64,
-            format: zip,
-            match: "Diceroll-*-windows-x86_64.zip",
-          }
-        - {
-            id: apk,
-            platform: android,
-            arch: any,
-            format: apk,
-            match: "Diceroll-*-android.apk",
-          }
-        - {
-            id: web,
-            platform: web,
-            arch: wasm32,
-            format: zip,
-            match: "Diceroll-*-web.zip",
-          }
-```
-
-- **`kind`** is required. `app` is the product's application; any other id must be
-  `kind: pack`, a content pack (below).
-- **`versioning.stableTagPattern`** and **`versioning.ignoreTags`** are the same two fields
-  the release root already accepts (same rules, same `release_config` columns). Spell them in
-  one place: declaring them both at the root and here is `conflicting_versioning`.
-- **`channels`** keys are canonical channel names (lower-case letters, digits, `-`; not the
-  aliases `staging` or `latest`). `includes` may name `stable`, `beta`, a manual channel or
-  another declared channel, by its canonical name, and may not loop
-  (`invalid_channel_includes`). A manual channel whose name is not canonical (`Nightly.2`)
-  cannot be included.
-- **`artifacts`**: each entry is one **build**. `id` is the build id; `platform` is one of
-  `macos`, `ios`, `android`, `windows`, `linux`, `web`; `arch` one of `arm64`, `x86_64`,
-  `universal`, `armv7`, `wasm32`, `any`; `format` is the file type. `role` defaults to
-  `payload`. Installer versus portable is a **format** (`zip` versus `exe`/`msi`), not a role.
-  `match` is an anchored, case-sensitive glob: `*` is any run of characters, `?` exactly one,
-  everything else literal, at most 128 characters.
-- A file named `<payload>.sig` or `<payload>.sha256` is that build's signature or checksum.
-  An entry that matches two files of one release classifies neither (it is ambiguous), and a
-  file no entry matches has no build.
-
-- **`embeds`** (optional, on an `artifacts` entry) lists the packs that build ships inside
-  it: declared pack ids, at most 64 (`invalid_build_embeds`). Omitted means every
-  `baseline: embedded` pack; `[]` means none, as for a lean web build.
-
-### How builds are labelled
-
-Every surface that shows a build or a release file to a person — the console's release
-detail, artifact lists and distribution matrix, release health, the customer portal's
-downloads, the public download page and `pkey release publish` — names it by **platform and
-architecture together**, through one formatter (`buildLabel` in `@polaris-key/manifest`). The
-stored and signed values (`platform: macos`, `arch: arm64`) never change; only the text a
-person reads does.
-
-| `platform` | `arch`      | Short label            | Long label (tooltips, logs)   |
-| ---------- | ----------- | ---------------------- | ----------------------------- |
-| `macos`    | `arm64`     | macOS Apple silicon    | macOS · Apple silicon (arm64) |
-| `macos`    | `x86_64`    | macOS Intel            | macOS · Intel (x86_64)        |
-| `macos`    | `universal` | macOS Universal        | macOS · Universal             |
-| `windows`  | `x86_64`    | Windows x64            | Windows · x64 (x86_64)        |
-| `windows`  | `arm64`     | Windows Arm64          | Windows · Arm64               |
-| `linux`    | `arm64`     | Linux ARM64            | Linux · ARM64                 |
-| `android`  | `armv7`     | Android armv7          | Android · armv7               |
-| `ios`      | `arm64`     | iOS / iPadOS           | iOS / iPadOS                  |
-| `web`      | `wasm32`    | Web                    | Web                           |
-| none       | `any`       | All platforms          | All platforms                 |
-| none       | `arm64`     | Unknown platform ARM64 | Unknown platform · ARM64      |
-
-- `any` on a named platform reads as **Universal**; an arch the platform implies (every iOS
-  build is arm64, every web build WebAssembly) is left out. The download page says "iPhone and
-  iPad" for iOS.
-- A value the formatter does not know passes through verbatim (`beos · riscv64`).
-- A file with no platform of its own takes its **build's** platform; a file tied to no build
-  takes the platform its name declares (`djdl-arm64.app.zip` is macOS). Only when nothing
-  determines one does a label read "Unknown platform".
-- `pkey release publish` prints each matched file with its build's long label:
-  `- macos  payload  Diceroll-1.2.0-macos.zip (macOS · Universal · zip; …)`.
-
-**Name builds and files by platform and arch.** A build's id is what the CLI, release health
-and the distribution matrix show first, so give it both halves: `macos-arm64`, `win-x64`,
-`linux-arm64`, not `arm64`. An id that is an architecture alone is the warning
-`bare_arch_artifact_id`. Name the files the same way — `djdl-macos-arm64.app.zip`, not
-`djdl-arm64.app.zip` — so a file reads correctly even where it is listed on its own, and a
-product without an artifact map still sniffs the right platform.
-
-### Pack deliverables
-
-Any deliverable other than `app` is a content pack (`kind: pack`) or a package (`kind:
-package`, [below](#package-deliverables)). A pack is data the app loads at run
-time, released on its own versions, and pinned by app releases or resolved per live contentApi
-level. See [Packs](/docs/services/release/packs/) for what Release does with them. The
-validator accepts this set of fields, so a manifest never declares behaviour that is not
-delivered:
-
-```yaml
-deliverables:
-  app:
-    kind: app
-    content:
-      contentApi: 3 # required once any pack is declared
-      packChannels: { "diceroll.events.*": events } # optional: route pack families
-      attachable: [res://scripts/die.gd, "uid://c3x1bp7twkd0f"] # optional: app scripts and UIDs packs may reference
-    artifacts:
-      - {
-          id: macos,
-          platform: macos,
-          arch: universal,
-          format: dmg,
-          match: "Diceroll-*-macos.dmg",
-          embeds: [diceroll.core3d],
-        }
-  diceroll.core3d:
-    kind: pack
-    type: godot.pck # or files.tree
-    binding: pinned # pinned (the default) | compatible | standalone
-    baseline: embedded # store builds ship it; default none
-    required: true # a required pack is essential and ungated
-    delivery: essential # essential | prefetch | on-demand (default)
-    handler: { mountOrder: 2, prefixes: ["res://assets/kaykit/"] }
-    variants: { texture: [s3tc, etc2, astc] }
-    requires: { engine: godot-4.7 }
-    patch: { strategies: [delta, file, chunk], deltaBases: 1 }
-  diceroll.supporter.skins:
-    kind: pack
-    type: godot.pck
-    delivery: on-demand
-    handler: { prefixes: ["res://skins/"] }
-    requires: { engine: godot-4.7 }
-    entitlement: extras.diceSkins # an assertion of the operator's gate (below)
-  diceroll.foes:
-    kind: pack
-    type: files.tree
-    binding: compatible # the newest release whose contentApi range holds each live level
-    requires:
-      contentApi: { app: ">=3 <5" } # required for compatible, refused for standalone
-      packs: { diceroll.l10n: ">=2.0.0" } # other compatible or standalone packs
-    conflicts: [diceroll.supporter.skins]
-  diceroll.l10n:
-    kind: pack
-    type: files.tree
-    binding: standalone # every level's newest release; no contentApi
-    variants: { locale: [en, fr] }
-  diceroll.events.halloween:
-    kind: pack
-    type: files.tree
-    binding: compatible
-    channels: [events] # where its releases may be published beyond stable and beta
-    requires: { contentApi: { app: ">=3" } }
-```
-
-- At most **64** packs (`too_many_pack_deliverables`).
-- **`type`** is required (`invalid_pack_type`): `godot.pck`, `godot.zip`, `files.tree`,
-  `l10n.table`, `data.json`, `audio.bank`, `ml.model`, or `custom.<name>` for a type whose
-  handler the game registers. What each one carries and what devices check is on
-  [Packs](/docs/services/release/packs/#pack-types). A `godot.pck` or `godot.zip` pack declares
-  `handler.prefixes` (the `res://` directories it mounts, each ending in `/`), activates on
-  `restart`, and declares `requires.engine` (`godot-<major>.<minor>`). Every other type takes no
-  `prefixes` or `mountOrder` and activates `hot` by default (`invalid_pack_handler`,
-  `invalid_pack_requires`).
-- **`formatVersion`** is the version of the type's own format, signed as the record's
-  `formatVersion`; a device installs only the versions its handler lists. A `data.json` pack
-  declares it (the JSON Schema version of its documents); `l10n.table`, `ml.model`, `audio.bank`
-  and `custom.<name>` may (default 1); `godot.pck` (the PCK header's), `godot.zip` and
-  `files.tree` never do (`invalid_pack_format_version`).
-- An **`l10n.table`** pack's `locale` variants are well-formed BCP-47 tags such as `fr`, `pt-BR`
-  or `zh-Hant-TW` (`invalid_pack_locale`): a device refuses a table whose locale is not its
-  variant's.
-- **`binding`** is `pinned`, `compatible` or `standalone` (`invalid_pack_binding`): `pinned`
-  means each app release pins the exact pack release it ships with; `compatible` means Release
-  resolves the newest release whose `requires.contentApi` range holds each live contentApi
-  level; `standalone` means the newest release for every level.
-- **`baseline`**, **`required`**, **`delivery`** and **`contentPolicy`** (`{ dataOnly: true }`,
-  the only v1 value) are `invalid_pack_policy` when malformed; a `required` pack must be
-  `delivery: essential` and carry no `entitlement`.
-- **`variants`** maps an axis (`texture`, `locale`, `quality`) to 1–16 values; the product of
-  the counts is at most 32 (`invalid_pack_variants`). CI publishes one variant per combination.
-- **`requires`** is `{ engine?, contentApi?, packs? }` (`invalid_pack_requires`; `features` has
-  no meaning yet). `contentApi` is keyed by the app deliverable, `app`
-  (`unknown_content_api_app`), each value one to four comparators such as `">=3 <5"`; a
-  `compatible` pack declares it (`missing_content_api_range`) and a `standalone` one never does
-  (`standalone_with_content_api`). `packs` names other declared compatible or standalone packs,
-  each with a version range under that pack's scheme. CI signs these into each variant of every
-  pack record.
-- **`conflicts`** lists 1–64 other declared packs this one never shares a resolved set with
-  (`invalid_pack_conflicts`).
-- **`channels`** lists 1–32 canonical channels the pack's releases may be published to beyond
-  `stable` and `beta` (`invalid_channel`).
-- **`entitlement`** asserts the licence flag that gates the pack; it must name a `flag` entry of
-  `.pkey/schema` (`unknown_entitlement_ref`). It is **not** the gate: an operator gates a pack
-  under Distribution → Access, and a publish whose gate differs from the assertion is refused.
-  No push can gate, un-gate or re-flag a pack.
-- **`patch`**: `strategies`, a non-empty subset of `delta`, `file` and `chunk` (default: all
-  three; `chunk` gives every container variant of 4 MiB or more a chunk index and shared chunk
-  bundles, and an explicit list without it opts out); `deltaBases`, 0–8 (default 1)
-  (`invalid_pack_patch`). List `chunk` explicitly only once your Worker and CLI support it: an
-  older Worker's resync and an older CLI's validation refuse it.
-- **`versioning.scheme`** as for the app (default `semver`).
-- **`provides`** is the pack's save-compatibility policy: `{required?: boolean, from?: path}`
-  and nothing else, so a misspelt member is refused (`invalid_pack_provides`). `from` is a repo-relative path to the JSON array of content ids each
-  release provides (default `.pkey/provides.json`; no `.` or `..` segment, at most 256
-  characters); `required: true` fails a publish without that file. See
-  [Save compatibility](/docs/services/release/packs/#save-compatibility).
-- **`removes`** is never declared (`pack_field_not_supported`): it belongs to one release, so
-  pass it to `pkey release publish --removes`.
-- **`deliverables.app.content.packChannels`** maps 1–64 pack ids or `prefix.*` patterns to a
-  channel (`invalid_pack_channels`); each key must match a declared pack that publishes to that
-  channel (`unknown_pack_channels_target`). `content.holds` is never declared: an app release
-  holds a pack at publish, in its content stamp (`invalid_app_content`).
-- **`deliverables.app.content.attachable`** lists what a `godot.pck` pack may reference outside
-  itself: app scripts (`res://scripts/die.gd`), directories of scripts (`res://scripts/dice/`)
-  and UIDs (`uid://…`, in Godot's canonical form, for any app resource a pack reaches by UID).
-  1–256 distinct entries, paths already normal (`invalid_app_attachable`). Absent, a pack
-  attaches no app script and reaches no UID outside its own uid cache: the publish lint refuses
-  such a pack, and so does the device. A reference Godot 4.4+ writes carries the path and the
-  UID (a script's is in its `.uid` file), so list both for a script, and list the UID of any app
-  resource a pack reaches by UID: the device resolves app UIDs itself and admits non-script
-  ones, but the publish lint cannot and refuses every unlisted UID. Keep the list equal to the Godot
-  SDK's `PKeyOptions.pack_attachable`; it is never stamped into a release.
-
-### Package deliverables
-
-A package (`kind: package`) is a library or image other software installs from a package feed:
-an npm package, a Python distribution, a Swift package, a Maven artifact, an OCI image or a
-Godot addon. Each version is published with `pkey release publish --deliverable <id>` and served
-only by the product's package feed for that ecosystem, never by a device-facing route. A product
-may declare packages and no `deliverables.app` (the platform's own product does).
-
-```yaml
-deliverables:
-  npm.node:
-    kind: package
-    ecosystem: npm # npm | pypi | swift | maven | oci | godot
-    name: "@polaris-key/node" # the ecosystem's grammar
-    artifacts:
-      tarball: { match: "dist-pkg/polaris-key-node-*.tgz" }
-  swift.polariskey:
-    kind: package
-    ecosystem: swift
-    name: polaris-key.PolarisKey
-    artifacts:
-      archive: { match: "*.zip" }
-```
-
-- **`ecosystem`** is one of `npm`, `pypi`, `swift`, `maven`, `oci` and `godot`
-  (`invalid_package_ecosystem`).
-- **`name`** follows the ecosystem's grammar (`invalid_package_name`): a scoped, lower-case npm
-  name (`@scope/name`, at most 214 characters); a PEP 508 name for PyPI; `scope.Name` for Swift
-  (SE-0292); `groupId:artifactId` for Maven; lower-case repository path components for OCI;
-  `[a-z0-9_]`, at most 64, for Godot (the addon's id under `addons/`).
-- No two packages share an ecosystem and a name (`package_name_collision`): names compare after
-  PEP 503 normalisation for PyPI (`Acme_SDK` is `acme-sdk`), and case-insensitively for npm,
-  Swift and Maven.
-- **`artifacts`** maps 1–16 entry ids to `{ match }` file-name globs over `--dir`; a package takes
-  none of the app's or a pack's fields (`platform`, `arch`, `format`, `content`, `binding`, `type`,
-  `packType`: `invalid_package_field`).
-- At most 64 package deliverables (`too_many_package_deliverables`).
-- A package never has a transport: `.pkey/distribution` refuses one that names it
-  (`invalid_transport_deliverable`).
-
-Declaring a package never turns a feed on. The feeds, their namespaces (the only names a feed
-takes) and their size ceilings are operator settings; a publish to an ecosystem whose feed is not
-configured, or of a name outside its namespace, is refused (`invalid_descriptor`, reason
-`package-namespace`).
-
-`pkey release publish --deliverable <id> --dir <path>` reads what each ecosystem's packer wrote,
-because the Worker never unpacks a package:
-
-| Ecosystem | `--dir` holds                                                                                                                | `--version`             |
-| --------- | ---------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
-| npm       | the `npm pack` / `pnpm pack` tarball (its `package/package.json`)                                                            | read from the tarball   |
-| pypi      | the wheels and the sdist (each wheel's `METADATA` becomes its PEP 658 `core-metadata` file)                                  | read from `METADATA`    |
-| swift     | the `swift package-registry publish --dry-run` scratch directory: the zip, its `.sig`, the signed `Package*.swift` manifests | required                |
-| maven     | one version's directory of a Maven publication (POM, jars, `.module`; checksum sidecars are ignored)                         | read from the POM       |
-| oci       | an OCI image layout (`oci-layout`, `index.json`, `blobs/sha256/`) of one image or image index                                | required (also the tag) |
-| godot     | the addon zip (`addons/<name>/plugin.cfg`) and an optional PNG icon                                                          | read from `plugin.cfg`  |
-
-A package version is unique forever: a version that was ever published — even one since yanked
-or deprecated — is never published again (`release_exists`, reason `package-version-taken`). A
-package release is never signed, so it carries no release record (`release_record_rejected`,
-reason `package-unsigned`), and `--release-key-file`, `--tag`, `--meta` and the pack flags do not
-apply. A Maven `-SNAPSHOT` version is refused (`maven-snapshot`), and so is an unsigned Swift
-release on a feed that requires signatures, which is the default (`swift-unsigned`).
-
-Resync writes the declaration to `release_deliverables.def_json` (and each channel's
-`includes` to its channel policy, unless an operator owns that channel). The map also defines
-what a **release descriptor** may say about a release: see
-[Artifacts](/docs/services/release/artifacts/#declared-artifacts-and-release-descriptors).
-Every rule above has a code on
-[Manifest validation codes](/docs/reference/validation-codes/).
-
-## Trusted publishing: `publishing.trustedPublisher`
-
-To let a GitHub Actions workflow publish releases without a stored secret, name it in
-`.pkey/release` (P2-02):
-
-```yaml
-publishing:
-  trustedPublisher:
-    workflow: .github/workflows/release.yml # as GitHub's job_workflow_ref spells it
-    environment: release # optional; the default
-```
-
-- `workflow` is required: a path under `.github/workflows/` ending in `.yml` or `.yaml`
-  (`invalid_trusted_publisher_workflow`).
-- `environment` is a GitHub environment name: letters, digits, space, `.`, `_`, `-`, at most
-  100 characters, no leading or trailing space (`invalid_trusted_publisher_environment`).
-- Nothing else is a field. Link and resync add the repository's numeric id and owner id from
-  GitHub; the checks that the ref is protected, the runner is GitHub-hosted and the event is
-  `push`, `release` or `workflow_dispatch` are fixed; the scopes (default `release:publish`,
-  `release:promote`, `distribution:report`; `release:yank`, `distribution:rollout`,
-  `distribution:feeds`, `distribution:listing` and `assets:write` are opt-in) are an operator
-  setting. A repository cannot
-  loosen its own policy.
-- The ref the workflow runs on must be covered by a branch or tag ruleset, or GitHub reports
-  `ref_protected: false` and the exchange is refused. Give the environment required reviewers
-  unless every writer may publish.
-- While the policy is manifest-owned, every resync re-applies it (and removing the block removes
-  it). An operator who claims it in the console's admin API owns it from then on.
-
-The flow CI follows is on [Artifacts](/docs/services/release/artifacts/#trusted-publishing).
-
-## Release keys: `releaseKeys`
-
-A release record (`pkey-release+jws`) is what CI signs to say a release exists: its version,
-`seq` and builds, with each payload's SHA-256 and size. The Worker never holds a release key, so
-it can point devices at a release but cannot invent one. Declare the public halves in
-`.pkey/release` (P3-03):
-
-```yaml
-releaseKeys:
-  - kid: ci-2026 # the JWS kid CI signs under
-    publicKey: 11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo # raw Ed25519, base64url
-```
-
-- `pkey release keys generate --kid ci-2026 --out release-key.pem` prints the entry to paste here
-  and writes the private key for a GitHub Environment secret (`PKEY_RELEASE_KEY`). The private
-  key never goes in the repository.
-- 1 to 4 entries; `kid` matches `^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$` and `publicKey` is the raw
-  32-byte key in unpadded base64url, 43 characters (`invalid_release_key`). Two keys at once is
-  a rotation: add the new one, publish with it, then remove the old one.
-- A non-canonical or small-order key is refused (`weak_release_key`), and so is a repeated
-  `kid` or key (`duplicate_release_key`) and a key equal to `sparkleEd25519Pub`
-  (`release_key_reused`: one key must never sign both archive bytes and JWS inputs).
-- The sync refuses a release key equal to any of the product's signing keys, current or
-  retired (`release_key_is_product_key`), and keeps the previous `releaseKeys`.
-- Apps pin the same keys in their binaries; a record verifies only against pinned release
-  keys, never against the product's trust set.
-- `contentKeys` is not used and draws a warning (`content_keys_not_supported`). The manifest is
-  unsigned, so it can never grant trust: delegate a content key with `pkey release delegate`,
-  which signs a `kind: delegation` record with the release key. That signed delegation is the
-  only grant (P4-19).
-
-Without `releaseKeys` a publish carries no record and the signed update feed offers none of that
-product's releases.
-
-## Registering + re-syncing a product
-
-There are three ways the catalog reaches D1. Repo-link is the normal product setup path;
-manual create is for early experiments; seed SQL is a fixture tool only.
-
-1. **Repo-link (preferred).** The product hosts a `.pkey/` directory. The admin links the
-   repo; the Worker fetches + `parseManifest`s the three files and registers the product.
-   Re-linking or a signed GitHub push webhook re-parses and updates the rows. Webhook sync
-   is pinned to the pushed commit SHA, records changed `.pkey/` paths, and surfaces applied
-   sections or validation errors in the admin Releases view.
-2. **Manual schema create.** The admin can create a product with metadata plus a schema
-   JSON/YAML document. Polaris Key still mints the sealed product signing key, but release,
-   OIDC, provisioning, profiles, tiers, and edge-mint rows are configured later in admin or
-   by linking a repo.
-3. **Seed SQL (fixture generation only).** Generate fixture SQL from the monorepo's
-   `products/<slug>` files:
-
-   ```sh
-   pnpm --filter @polaris-key/products gen-seed djdl > products/djdl/seed.sql
-   ```
-
-   Do not use this for live onboarding: it cannot mint sealed `product_keys` or store
-   product secret values. Normal product registration must use the admin portal so Polaris Key
-   can mint the sealed signing key, return the public trust key, and list missing product
-   secrets.
-
-### Product OIDC
+## Product OIDC
 
 `oidc.provider` selects the product's single OIDC login provider:
 
@@ -901,28 +343,28 @@ manual create is for early experiments; seed SQL is a fixture tool only.
 SDK discovery only reports whether OIDC is enabled and which generic auth URLs to call. It
 does not expose whether a product uses platform or custom OIDC.
 
-`oidc.syncTierOnSignIn` decides whether a sign-in may move a licence to the tier its
+`oidc.syncTierOnSignIn` decides whether a sign-in may move a license to the tier its
 `groupRoleMap` groups map to: `off` (the default) or `upgradeOnly`, which never lowers a tier. It
 is a claimable setting like the [licensing settings](#licensing-settings-licensing): a change on
 **Identity → Sign-in** claims it until you revert it.
 
-### Identity settings: `identity`
+## Identity settings: `identity`
 
 An Identity product no longer needs an `oidc` block. The optional `identity:` block declares the
 settings of signing in and of key entry through the product. It applies only while the `identity`
 service is on; declared with it off, `pkey validate` warns `identity_block_without_service`.
 
-```yaml
+```yaml title=".pkey/product"
 identity:
   keyEntry: { limit: 10, claimByKey: false }
   terms: { version: "2026-10", url: "https://example.com/terms" }
   redirectPaths: ["/auth/callback"]
 ```
 
-- `keyEntry.limit`: how many times the key of a licence in no account may be entered on new
+- `keyEntry.limit`: how many times the key of a license in no account may be entered on new
   devices (1 to 100, default 10).
-- `keyEntry.claimByKey`: whether a licence that carries a buyer email may join an account by its
-  key alone. Off by default. On, anyone holding a leaked key can add an email-bound licence to
+- `keyEntry.claimByKey`: whether a license that carries a buyer email may join an account by its
+  key alone. Off by default. On, anyone holding a leaked key can add an email-bound license to
   their own account.
 - `terms`: the product's terms, accepted once per version by a person signing in through the
   product. `version` is 1 to 32 characters of `A-Z a-z 0-9 . _ -`; `url` is an https URL.
@@ -931,65 +373,3 @@ identity:
 
 Each member is a claimable setting (`identity.keyEntry.limit`, `identity.keyEntry.claimByKey`,
 `identity.terms`, `identity.redirectPaths`): a console change claims it until you revert it.
-
-### Admin override vs re-sync
-
-Admins set **management state + values** (per license/device) and operational runtime
-overrides in the admin SPA. Those values live in D1 and are **not** overwritten by a re-sync. A
-re-sync updates the manifest baseline from `.pkey/`: product metadata, service enablement,
-fingerprint and auto-issue policy, catalog shape, OIDC baseline, release baseline, profiles,
-tiers, provisioning, and edge-mint recipes. The three operator-claimable blocks
-(`services_source`, `fingerprint_policy_source`, `auto_issue_source`) are skipped while an admin
-owns them, and so is the trusted-publisher policy once claimed. The licensing settings and
-`oidc.syncTierOnSignIn` are claimed one setting at a time, and the resync result lists each
-claimed one it left alone.
-
-Profiles are the manifest's, with one exception: **secret values**. You normally set a profile's
-secrets (a `secret` entry, or a `config` entry flagged `secret: true`) in the console, and a
-re-sync carries them forward, still sealed, onto every profile the manifest still lists — unless
-the manifest's own profile payload declares that key, or the catalog in the same push no longer
-declares it a secret. Only sealed values are carried; a plaintext one written before sealing
-existed is not.
-
-A manifest can also declare a secret value, but it is never stored as written: the Worker seals
-it under the platform key before it reaches the database, on link and on every re-sync, whether
-the key is a secret in the pushed catalog or in the one it replaces. Once a value is sealed, a
-push may not replace it with a different one: the whole push is refused, before anything is
-written, and says which key and profile. Pushing the same value again changes nothing. To rotate
-a secret, change it in the console, and remove the value from the manifest (or leave the stored
-one to win) rather than leaving the old value in the repo.
-
-A repo push also may not remove a `serverOnly` or `edgeMint` secret from the catalog, or change
-its `delivery`, while any profile, licence, device or account still stores a value for the key:
-the stored value would outlive the catalog entry and be signed into device documents the day a
-later catalog declares the key as a delivered secret. Clear the stored values in the console
-first.
-
-A profile's plain config values and flags follow the manifest, so declare those in
-`.pkey/product`; a console edit to one lasts only until the next push. A profile the manifest
-drops is removed with its secrets. So the flow is:
-
-1. Edit `.pkey/schema` in the product repo (add a key, tighten a schema, change a
-   `managementDefault`); bump `schemaVersion` only on an incompatible shape change.
-2. Re-link / push → the Worker re-parses and updates `product_schema`; SDKs pick up the new
-   catalog at `/<product>/config/schema` and the next signed config document at
-   `/<product>/config/document`.
-3. Existing admin value/state overrides persist; new keys take their `managementDefault`
-   until an admin overrides them. The admin UI should label whether a value came from the
-   manifest baseline, an admin override, a generated signing key, a configured secret, or a
-   provider-discovered runtime value.
-
-When you author a typed mirror for a product that wants compile-time config types, regenerate
-it from the catalog with
-`pnpm gen mirrors -- --catalog <catalog.json> --out-dir <mirror-dir>` (and add `--check`
-in product-specific CI) — see `CONTRIBUTING.md`. `--lang` picks the targets (`ts`, `python` and
-`swift` by default, plus `gdscript` for a Godot game's `catalog_generated.gd`).
-
-:::note[Upgrade: mirrors list every Editable key as a setting]
-Every Editable `config` key is a synced setting whether or not it has a `user` block, so a
-mirror's `USER_SETTINGS` lists each of them with its defaults applied (`sync` `user`,
-`conflict` `lastWrite`, `listed` true unless the block says otherwise), plus `local` keys; a key
-the catalog locks (`enforced` or `hidden`) is left out, and the `device` scope is gone. A
-repository that commits a mirror sees a one-time diff the first time it regenerates after
-upgrading; commit it and `--check` is clean again.
-:::

@@ -1,71 +1,83 @@
 ---
-title: "Registering a product"
-description: "Products are data: the .pkey/ manifest, its service declaration, and how a product reaches the registry."
+title: "Register a product from its repo"
+description: "Scaffold .pkey/ with pkey init, link the repository in the console, and resync after a change."
+type: "how-to"
+lastReviewed: "2026-10-16"
 sidebar:
-  order: 3.5
+  order: 1
 ---
 
-Each product that adopts Polaris Key is registered as **data**. The preferred shape is a
-`.pkey/` manifest in the product repo: `schema.{json,yaml,yml}` for config/secret/flag
-catalog entries, `product.{json,yaml,yml}` for metadata/licensing/OIDC/provisioning, and
-`release.{json,yaml,yml}` for release-provider settings. No Worker redeploy is needed to
-add a product.
+A product that keeps its manifest in its own repo is registered by linking that repo: the console reads `.pkey/` and creates the product from it.
 
-`.pkey/` is the only manifest directory — there is no second location and no per-file
-fallback, so there is never a question of which copy of a document won.
+**Requires:** the **Platform admin** role, Node 22.13 or later, a GitHub repository, and the `pkey` CLI. [Your first product](/docs/start/first-product/) installs the CLI.
 
-`product.{json,yaml,yml}` declares services in `modules.<service>.enabled`. The current services
-are `license`, `config`, `release`, `distribution`, `update`, `identity`, and `sync`; an omitted
-block defaults to License and Config. Requirements are validated as a set: Distribution requires
-Release, Update requires Distribution, and Cloud Sync requires Config and Identity. A manifest
-with an enabled dependent and disabled requirement is refused as
-`<service>_requires_<requirement>`.
+## Before you start
 
-The manifest declaration is persisted in `products.services_json`, manifest-owned until an
-operator changes services through `PATCH /manage/api/products/<slug>/services`. Device
-registration is derived from that service set, not declared in the manifest: License makes it
-license-required; otherwise Identity makes it identity-required; otherwise it is open.
+- The [product](/docs/build/manifest/product/), [catalog](/docs/build/manifest/catalog/) and [release](/docs/build/manifest/release/) manifests say what each file holds.
+- To create a product without a repo, use the **Nothing** path in [Your first product](/docs/start/first-product/).
 
-> **Identity is now flag-gated.** A product's `/<product>/identity/*` surface answers only when
-> `identity` is enabled — an `oidc_config` row no longer turns it on by itself. A product that
-> declares an `oidc:` block must therefore also enable the module (the legacy `modules.oidc`
-> spelling maps to `identity`, so an existing manifest that declares it is already correct).
->
-> **Re-register your IdP redirect URI.** The OIDC callback moved with the rest of the service:
-> `https://<host>/<product>/auth/callback` is now
-> `https://<host>/<product>/identity/auth/callback`. Update the registration at the identity
-> provider _and_ the `oidc.redirectUris` list in the manifest — the Worker refuses to start a
-> flow whose computed redirect URI is not in that list. Pre-launch, so there is no
-> dual-registration window: the old path is gone, not aliased.
+## Steps
 
-## Register a product
+1. **CLI** In the repo's root, scaffold the manifest. `--modules` takes the service slugs; without it you get `license,config`.
 
-1. Create the product manifest. Repo-link is preferred because the manifest stays with the
-   product source. Manual schema creation is useful before a repo exists.
-2. Register the product through the admin portal. Polaris Key validates the
-   manifest, discovers the release provider where possible, mints a sealed Ed25519 signing
-   key in `product_keys`, and returns the `kid -> publicKey` trust set for SDKs.
-3. Configure the GitHub App webhook so default-branch `.pkey/` changes auto-sync; the admin
-   Releases view shows last sync, changed paths, manifest errors, and release health.
-4. Set any required product secrets from the admin UI/API. Manifest secret names are stable
-   references; secret values are sealed into `product_secrets` and are never echoed back.
+   ```sh title="Terminal"
+   pkey init --product tidewater --name "Tidewater Studio" --modules license,config
+   ```
 
-The seed generator is only for local fixture regeneration. It does not mint sealed
-`product_keys`; live product onboarding goes through the admin GitHub-link flow:
+   You should see `.pkey/product.yaml` and `.pkey/schema.yaml` created. Existing files are never overwritten without `--force`.
 
-```sh
-pnpm --silent --filter @polaris-key/products gen-seed djdl > products/djdl/seed.sql
-```
+2. **CLI** Check the manifest with the rules the platform applies.
 
-`--silent` is load-bearing: without it pnpm's lifecycle banner lands on stdout and ends up as
-the first two lines of the generated SQL.
+   ```sh title="Terminal"
+   pkey validate
+   ```
 
-Do not create per-product Worker signing secrets. Product signing keys are sealed in D1, and
-the public key is exposed in the onboarding bundle and at `/<product>/.well-known/jwks.json`.
+   You should see the verdict, the services the manifest enables and any secret names it needs. Each error names its file and path. Fix every error before you push; warnings don't block a link.
 
-## djdl
+3. **CLI** Commit `.pkey/` and push it to the default branch. The console reads the default branch only.
 
-`djdl/` is the first product and the migration fixture. Its catalog has 28 entries (17
-config, 6 secret, 5 flag), and its manifest carries a provisioning hook and an edge-mint
-recipe as data. The in-tree copy uses placeholder values; the live product is registered from
-its own repository.
+4. **Console** Open **Products → New product**, set **Start from** to **A GitHub repository**, enter the repository as `owner/repo`, and select **Link repository**.
+
+   You should see the product's **Overview** with "Tidewater Studio is ready", its signing key id and a button that copies the public key.
+
+5. **Console** Open **Core → Keys & secrets** and set any secret the manifest names but has no value yet. **Overview** lists them under **remaining secrets**. A secret's value is never shown again.
+
+6. **CLI** Check the registered product.
+
+   ```sh title="Terminal"
+   pkey doctor --product tidewater
+   ```
+
+   You should see the manifest valid, discovery answering and the product's signing keys listed.
+
+## After the first link
+
+A push to the default branch re-reads `.pkey/` through the GitHub App's webhook. To apply it at once, open **Products**, open the row's menu and select **Resync from repo…**. The console shows what it re-applies before you confirm.
+
+A resync updates the manifest baseline: product metadata, services, catalog shape, tiers, profiles and release settings. It leaves alone what an operator set in the console:
+
+- secret values, which stay sealed and are carried onto every profile the manifest still lists;
+- a service, fingerprint, auto-issue or licensing setting an operator changed live. **Revert to manifest** hands it back, and the next resync applies the manifest's value;
+- per-license, per-device and management-state overrides.
+
+A manifest can't replace a secret value that is already sealed. The whole push is refused, naming the key and profile. To rotate a secret, change it in the console and remove the value from the repo.
+
+[What resync actually re-applies](/docs/operate/console/products/#what-resync-actually-re-applies) lists every row.
+
+## Services and sign-in
+
+`.pkey/product` declares services under `modules`. Sign-in routes answer only while `identity` is enabled; an `oidc` block alone does not turn them on. The sign-in callback is `https://<host>/<product>/identity/auth/callback`. Register it at the identity provider and list it in `oidc.redirectUris`, or the Worker refuses to start the flow.
+
+## If it isn't working
+
+- **The GitHub App isn't installed, or the repository is private.** The message sits on the Repository field. Select **Install the GitHub App**, then link again.
+- **The manifest has problems.** The callout lists each one with its file and path. Push the fix, then select **Check again**.
+- **The slug is taken.** Change `product.slug` in `.pkey/product`, push, then select **Check again**. If this repository is already registered, resync that product instead.
+- [Manifest validation codes](/docs/reference/validation-codes/): every error and warning `pkey validate` prints.
+- [Troubleshoot your integration](/docs/build/troubleshooting/): errors from the app.
+
+## Next steps
+
+- [Set up your editor](/docs/build/manifest/json-schema/): completion and inline errors for `.pkey/`.
+- [The .pkey/ manifest](/docs/build/manifest/): the four files and the size caps.
+- [Go live](/docs/build/go-live/): pins, signing and CI before you ship.

@@ -80,7 +80,7 @@ the only way to change it.
 | `manualChannels`  | Named channels beyond `stable` and `beta`, each `{ name, regex }`, matched anchored against release tags. See [Channels and policy](/docs/services/release/channels/).           | none                                             |
 
 The rest of the block is covered elsewhere: `deliverables`, with each channel's `includes`, under
-[Release deliverables](/docs/build/manifest/authoring/#release-deliverables-deliverablesapp-and-the-artifact-map);
+[Release deliverables](/docs/build/manifest/release/#release-deliverables-deliverablesapp-and-the-artifact-map);
 `publishing.trustedPublisher` under [Trusted publishing](/docs/services/release/artifacts/#trusted-publishing);
 `releaseKeys` under [Release records](/docs/services/update/signed-feed/#release-records); and
 `artifactPolicy` and `access` on [Artifacts, changelog & install](/docs/services/release/artifacts/).

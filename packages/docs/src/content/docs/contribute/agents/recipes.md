@@ -26,7 +26,7 @@ Deep page: [The `.pkey/` manifest](/docs/build/manifest/) · Skill: `authoring-p
 | 2   | Get editor help         | The scaffold's `# yaml-language-server: $schema=…` header points at a **path** into `node_modules/@polaris-key/manifest/schemas/v1/` — the canonical `$id` URLs name the schema; the path works offline                              |
 | 3   | Fill in the three roles | `schema` = the config catalog · `product` = metadata, `modules`, OIDC, tiers, profiles, provisioning · `release` = provider coordinates and edge-mint recipes                                                                        |
 | 4   | Avoid a reserved slug   | `docs`, `manage`, `api`, `assets`, `login`, `logout`, `callback`, `magic`, `download`, `webhooks`, `well-known`, `media`, `activate`, `avatar` are refused with `reserved_slug`                                                      |
-| 5   | Validate until clean    | Fix every `error`; read the `warning` lines rather than ignoring them. A `deprecated_spelling` names the canonical spelling to write ([Deprecated spellings](/docs/build/manifest/authoring/#deprecated-spellings))                  |
+| 5   | Validate until clean    | Fix every `error`; read the `warning` lines rather than ignoring them. A `deprecated_spelling` names the canonical spelling to write ([Deprecated spellings](/docs/build/manifest/product/#deprecated-spellings))                    |
 
 ```sh
 pkey validate          # exit 0, no error lines

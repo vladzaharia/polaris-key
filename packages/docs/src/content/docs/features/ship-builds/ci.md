@@ -22,7 +22,7 @@ rules the Worker applies, are on [Artifacts](/docs/services/release/artifacts/#t
 2. **`.pkey/release` declares an artifact map** (`deliverables.app.artifacts`): one entry per
    build, each with the `match` glob that names its file. Files are classified only by that map,
    never by sniffing names. See
-   [the release manifest](/docs/build/manifest/authoring/#trusted-publishing-publishingtrustedpublisher).
+   [the release manifest](/docs/build/manifest/release/#trusted-publishing-publishingtrustedpublisher).
 3. **`.pkey/release` names the publisher**, the workflow file and (optionally) the environment:
 
    ```yaml
@@ -157,7 +157,7 @@ variables through, since the OIDC exchange reads them.
 **The release key.** `pkey release keys generate --kid ci-2026 --out release-key.pem` writes a new
 key and prints the `releaseKeys` entry for `.pkey/release`; store the file's contents as the
 publishing environment's secret `PKEY_RELEASE_KEY` and delete the file. Apps pin the same public
-key. See [Release keys](/docs/build/manifest/authoring/#release-keys-releasekeys).
+key. See [Release keys](/docs/build/manifest/release/#release-keys-releasekeys).
 
 **Build metadata.** For an `ios` build whose format is `ipa`, and an `android` build whose
 format is `apk`, the step reads the facts the

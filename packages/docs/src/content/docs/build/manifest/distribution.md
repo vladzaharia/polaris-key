@@ -212,7 +212,7 @@ A malformed listing is `invalid_listing`.
 
 The art is `icon`, `header` and `screenshots` (up to 16). Each is an **asset ref**: an https URL
 or a path in the product's repository, optionally `{ src, sha256 }`, with the rules in
-[Presentation](/docs/build/manifest/authoring/#presentation-presentation). A malformed ref is
+[Presentation](/docs/build/manifest/product/#presentation-presentation). A malformed ref is
 `invalid_asset_ref`. When the listing declares no `icon`, the product's `presentation.icon` is
 used.
 

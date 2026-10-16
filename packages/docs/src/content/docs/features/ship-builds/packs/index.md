@@ -27,7 +27,7 @@ Packs carry data only, never code.
 ## Declaring packs
 
 Packs are declared in `.pkey/release` beside the app; the field reference is on
-[Authoring manifests](/docs/build/manifest/authoring/#pack-deliverables).
+[Authoring manifests](/docs/build/manifest/release/#pack-deliverables).
 
 ```yaml
 deliverables:

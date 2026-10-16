@@ -65,7 +65,7 @@ releases are candidates, and the highest semver wins rather than the newest by c
 below the highest version a sync has seen it serve. Beyond the built-ins, a
 product may declare **manual channels** — a name bound to an anchored regular expression
 over release tags — for anything project-specific, like a `nightly` or `canary` line:
-`release.manualChannels` in the [release manifest](/docs/build/manifest/authoring/) is the
+`release.manualChannels` in the [release manifest](/docs/build/manifest/release/) is the
 writer, linkRepo/resync persist it, and resolution honours the names everywhere a channel
 can appear. The same
 resolution logic backs the download route, the appcast, and the version check, so the
