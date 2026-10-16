@@ -1,30 +1,44 @@
 ---
-title: "Swift"
-description: "Integrate PolarisKey for Swift: install from the feed in Package.swift or Xcode, generate PolarisConfig.swift, then take the SwiftUI drop-in or draw your own UI."
+title: "Swift quickstart"
+description: "Add PolarisKey from the feed, generate PolarisConfig.swift, create the client and gate a SwiftUI app with the drop-in modifier or your own UI."
+type: "quickstart"
+sdks: ["swift"]
+lanes: ["kit", "library"]
+lastReviewed: "2026-10-16"
 sidebar:
   order: 4
 ---
 
-import { Tabs, TabItem } from "@astrojs/starlight/components";
+import { Tabs, TabItem, LinkCard } from "@astrojs/starlight/components";
+import Requires from "../../../../components/docs/Requires.astro";
+import InstallSteps from "../../../../components/docs/InstallSteps.astro";
+import Lanes from "../../../../components/docs/Lanes.astro";
+import CardGrid from "../../../../components/docs/CardGrid.astro";
 
-For iOS, iPadOS and macOS apps. Swift 6; the floors are iOS 18 and macOS 15.
+You end with a SwiftUI app that creates a client from your product's config and gates on the license.
 
-## Install
+<Requires
+  features={["licensing"]}
+  sdk={["Swift 6", "iOS 18 or later", "macOS 15 or later"]}
+/>
 
-Point SwiftPM at the feed first, so the package resolves from Polaris Key and nowhere else:
+## Before you start
 
-```sh
-swift package-registry set --global --scope polaris-key https://pkg.plrs.im/swift/polaris-key
-```
+1. A product with License on, and its slug. [Your first product](/docs/start/first-product/) creates one.
+2. An iOS, iPadOS or macOS app in Swift 6.
+
+## 1. Install
+
+**CLI** The first block points SwiftPM at the feed, so the package resolves from Polaris Key and nowhere else. Then add the dependency in `Package.swift` or Xcode.
+
+<InstallSteps sdk="swift" />
 
 <Tabs syncKey="swift-install">
   <TabItem label="Package.swift">
 
-Add the dependency. `platforms:` must be at least the floors above. `PolarisKeyUpdate` is for
-`client.update`; leave it out if the app offers no updates.
+Add the dependency. `platforms:` must be at least the floors above. `PolarisKeyUpdate` is for `client.update`: leave it out if the app offers no updates.
 
-```text
-// Package.swift
+```text title="Package.swift"
 // swift-tools-version: 6.0
 import PackageDescription
 
@@ -32,7 +46,7 @@ let package = Package(
     name: "MyApp",
     platforms: [.macOS(.v15), .iOS(.v18)],
     dependencies: [
-        .package(id: "polaris-key.PolarisKey", from: "0.9.3")
+        .package(id: "polaris-key.PolarisKey", from: "<version>")
     ],
     targets: [
         .executableTarget(name: "MyApp", dependencies: [
@@ -44,37 +58,48 @@ let package = Package(
 )
 ```
 
+Replace `<version>` with the version the feed lists.
+
   </TabItem>
   <TabItem label="Xcode">
 
-Xcode reads the global registry configuration, so the `--global` setting above is the one that
-matters. Choose File, Add Package Dependencies, enter `polaris-key.PolarisKey` in the search field,
-and add `PolarisKey` to the app target, plus `PolarisKeyUI` for the drop-in screens and
-`PolarisKeyUpdate` for update offers.
+Xcode reads the global registry configuration, not the package's. Set it once:
+
+```sh title="Terminal"
+swift package-registry set --global --scope polaris-key https://pkg.plrs.im/swift/polaris-key
+```
+
+Choose File, Add Package Dependencies, enter `polaris-key.PolarisKey` in the search field, and add `PolarisKey` to the app target. Add `PolarisKeyUI` for the drop-in screens and `PolarisKeyUpdate` for update offers.
 
   </TabItem>
 </Tabs>
 
-Other managers and the age gates that delay a new version:
-[Installing the SDKs from the feeds](/docs/build/install/).
+You should see the package resolve.
 
-## Config
+## 2. Generate the config
 
-Without Node, run the CLI from its image, in the project directory:
+**CLI** Write `PolarisConfig.swift` into your app target's folder.
 
-```sh
+```sh title="Terminal"
+pkey sdk --lang swift --product <slug> --write --out Sources/<Target>/PolarisConfig.swift
+```
+
+Without Node, run the image from the project directory:
+
+```sh title="Terminal"
 docker run --rm -v "$PWD:/work" pkg.plrs.im/polaris-key/pkey:latest \
   sdk --lang swift --product <slug> --write
 ```
 
-With Node, `pnpm exec pkey sdk --lang swift --product <slug> --write` does the same. It writes
-`PolarisConfig.swift`: the slug, base URL, trust pins, advertised services and, when the product has
-release keys, `pinnedReleaseKeys`. Add it to the app target and compare the printed pin fingerprints
-with the console before you ship. A local Polaris Key to run against is planned.
+The file holds the slug, base URL, trust pins, advertised services and, when the product has release keys, `pinnedReleaseKeys`. Add it to the app target. To try this without a registered product, [run Polaris Key locally](/docs/build/local/).
 
-## The client
+You should see the file written and each pin's key id and SHA-256 fingerprint. Compare the fingerprints with the console before you ship.
 
-```swift
+## 3. Create the client
+
+**App** `create` is offline-first: it loads the token and re-verifies the cached documents with no network. Every path starts here.
+
+```swift title="Client.swift"
 import PolarisKey
 
 let client = try await PolarisKeyClient.create(
@@ -82,21 +107,18 @@ let client = try await PolarisKeyClient.create(
 )
 ```
 
-`create` is offline-first: it loads the token and re-verifies the cached documents, with no network.
-Every path starts here.
+You should see the client create with no network request.
 
-## Pick a lane
+## 4. Gate the app
 
-| Host            | Drop-in screens                     | Your own UI                                                              |
-| --------------- | ----------------------------------- | ------------------------------------------------------------------------ |
-| SwiftUI         | [The SwiftUI kit](#drop-in-screens) | [Your own UI](/docs/build/sdks/swift/your-own-ui/)                       |
-| UIKit or AppKit | None: the kit is SwiftUI            | [UIKit and AppKit](/docs/build/sdks/swift/your-own-ui/#uikit-and-appkit) |
+**App** The kit is SwiftUI. A UIKit or AppKit app uses the library.
 
-### Drop-in screens
+<Lanes intro="The SwiftUI kit gates the app with one modifier and runs every screen the license needs. Your own UI calls the client and draws its own, in SwiftUI, UIKit or AppKit.">
+  <Fragment slot="kit">
 
-One modifier gates the app and runs every screen the license needs.
+One modifier gates the app.
 
-```swift
+```swift title="MyApp.swift"
 import PolarisKey
 import PolarisKeyUI
 import SwiftUI
@@ -124,22 +146,62 @@ struct ContentView: View {
 }
 ```
 
-Customise it, or take the parts one by one: [SwiftUI kit](/docs/build/ui/frameworks/swiftui/). The
-kit reads its words in nine locales, the device's or `PolarisKeyTheme.locale`, and falls back to
-English; the sentences `ErrorCopy` gives your own UI are English only.
+The kit reads its words in nine locales, the device's or `PolarisKeyTheme.locale`, and falls back to English. To customize it or take the parts one by one, see [SwiftUI kit](/docs/build/ui/frameworks/swiftui/).
 
-## The same eight checkpoints
+  </Fragment>
+  <Fragment slot="library">
 
-| #   | Checkpoint         | Drop-in                                                                                                                                                                            | Your own UI                                                                 |
-| --- | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| 1   | Install            | above                                                                                                                                                                              | above                                                                       |
-| 2   | Config             | above                                                                                                                                                                              | above                                                                       |
-| 3   | First activation   | The gate's key field                                                                                                                                                               | `client.activate(key:)`                                                     |
-| 4   | Each refusal       | Shown by the gate; a full device list gets Replace a device; an ended license gets Use a different key and Try again, with Renew in the earlier `.polarisKey` gate (`GateOptions`) | `ErrorCopy.activationMessage(result.kind)`, `ManageLink.read`               |
-| 5   | Sign-in            | The gate's sign-in form; its last step names who signed in                                                                                                                         | `client.signInWithBrowser()`, then `client.identity.current()`              |
-| 6   | Status and offline | The gate and its grace banner                                                                                                                                                      | `client.status()`, `client.isLicensed()`                                    |
-| 7   | An update offer    | `UpdatePromptView` placed over `PolarisKeyGateModel.updatePrompt`; the gate does not draw it                                                                                       | `client.update.decide(channel:)`                                            |
-| 8   | Tests              | `PolarisKeyPreview(.named(.welcome, "default")!)`                                                                                                                                  | `InMemoryStore`, a `PolarisTransport` of your own; test doubles are planned |
+Call the client and handle each state yourself. Activate with `client.activate(key:)`, read the state with `client.status()` and `client.isLicensed()`, and sign in with `client.signInWithBrowser()`. `ErrorCopy.activationMessage(result.kind)` gives the words for a refusal, in English only. [Your own UI](/docs/build/sdks/swift/your-own-ui/) gives each call with its states, including [UIKit and AppKit](/docs/build/sdks/swift/your-own-ui/#uikit-and-appkit).
 
-[Your own UI](/docs/build/sdks/swift/your-own-ui/) gives each call with its state and its words.
-The whole API is the [Swift SDK reference](/docs/build/sdks/swift/).
+  </Fragment>
+</Lanes>
+
+You should see the app locked behind the gate's key field.
+
+## 5. Activate a test license
+
+**CLI** Start a local server and copy its `ok` key. [Run Polaris Key locally](/docs/build/local/) lists the key for each state.
+
+```sh title="Terminal"
+pkey dev
+```
+
+**App** Enter the `ok` key in the gate.
+
+You should see the app unlock.
+
+## What you built
+
+A client that verifies signed documents against your pins, and an app that gates on the license.
+
+## If it isn't working
+
+- The package doesn't resolve: SwiftPM isn't pointed at the feed. Run the registry command from the install block.
+- The build fails on a platform floor: set `platforms:` to at least macOS 15 and iOS 18.
+- [Troubleshoot your integration](/docs/build/troubleshooting/): each status and error code.
+- [Install the SDKs and the CLI](/docs/build/install/): other managers and age gates.
+
+## Next steps
+
+<CardGrid>
+  <LinkCard
+    title="Your own UI"
+    href="/docs/build/sdks/swift/your-own-ui/"
+    description="Every call, its states and words."
+  />
+  <LinkCard
+    title="Swift SDK reference"
+    href="/docs/build/sdks/swift/"
+    description="The whole API."
+  />
+  <LinkCard
+    title="Test your integration"
+    href="/docs/build/test-your-integration/"
+    description="Every license state, offline and grace."
+  />
+  <LinkCard
+    title="Go live"
+    href="/docs/build/go-live/"
+    description="Pins, signing and CI."
+  />
+</CardGrid>

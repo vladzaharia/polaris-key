@@ -4,12 +4,14 @@ description: "Draw your own screens on PolarisKey for Swift: the state model, ea
 sidebar:
   order: 2
 type: "reference"
-lastReviewed: "2026-10-11"
+lastReviewed: "2026-10-16"
+sdks: ["swift"]
+lanes: ["library"]
 ---
 
 The library returns typed results and draws nothing. This page gives, for each screen you build, the
 call, the states it can answer and the words to show. To take the finished screens instead, see the
-[drop-in quickstart](/docs/build/quickstart/swift/#pick-a-lane). Create the `client` as the
+[drop-in quickstart](/docs/build/quickstart/swift/#4-gate-the-app). Create the `client` as the
 quickstart does; every snippet here takes it as a parameter.
 
 ## The state model
@@ -280,7 +282,7 @@ func updateOffer(_ client: PolarisKeyClient) async throws -> String? {
 `try client.configureUpdate(UpdateClientOptions(pinnedReleaseKeys: PolarisConfig.pinnedReleaseKeys))`
 once, before the first `client.update` call, or `decide()` throws `not-configured`.
 
-On macOS, `PolarisSparkle.start(client:)` follows licence and channel changes and keeps Sparkle's
+On macOS, `PolarisSparkle.start(client:)` follows license and channel changes and keeps Sparkle's
 feed in step; `SUPublicEDKey` in your `Info.plist` stays the anchor that verifies the payload.
 `isUndismissable(check.decision)` is true for a mandatory offer: show it as a persistent notice over
 a running app, not a sheet. An update check that fails reports its reason in `check.errors`; it
