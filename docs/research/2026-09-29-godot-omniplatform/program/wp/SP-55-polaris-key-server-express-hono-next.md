@@ -46,6 +46,21 @@ The owner asked for drop-ins that gate a server route or a CLI command with the 
 - `@polaris-key/node` needs Node ≥ 22.13; Hono, Bun and Deno users live in `@polaris-key/server`, not `@polaris-key/node` (§8).
 - Next.js is header-only in v1 (route handlers); a cookie mode can follow after SP-40 (decision 9).
 
+## Corrections found against the code (2026-10-16)
+
+- `client-core/backend` (SP-53) already holds the verdict, problem and locale logic; the package is
+  a shell around it: the trust fetch and schedule, the LRU, the context and the adapters.
+- Refusal copy for the eight locales is generated: `pnpm gen constants` now also writes
+  `packages/server/src/copy.generated.ts` from `conformance/parity/copy.<locale>.json`.
+- The package is `private: true` until the lead releases it, so it is not yet in `publish-sdks.yml`'s
+  npm tiers or the feed-closure set. Joining them is one change when it flips (tier 4 beside node,
+  the `npm.server` deliverable on the live product, `private` removed).
+- The "replaces row" has nowhere to live yet: `api.json` and the changelog are SP-35's. The removal
+  of `verifyLicenseDocument` from `@polaris-key/node/server` is recorded in the node README and the
+  server README; SP-35 adds the `replaces` row.
+- Node parity: `server.license` and `server.signin` are `implemented` in `packages/sdk-node/parity.json`
+  (`packages/server/test` joined its `testRoots`).
+
 ## Steps
 
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
@@ -53,11 +68,11 @@ The owner asked for drop-ins that gate a server route or a CLI command with the 
 
 ## Acceptance criteria
 
-- [ ] A gated Express, Hono and Next.js route answers each §5.2 verdict with the right status and `problem+json` body.
-- [ ] The trust manifest refreshes on the §5.1 schedule, an unknown `kid` fetches at most once per 60 s, and a Polaris Key outage never refuses a pinned-key document.
-- [ ] No secret (the header, the JWS, the holder's name or email) appears in a log line or `toJSON`.
+- [x] A gated Express, Hono and Next.js route answers each §5.2 verdict with the right status and `problem+json` body.
+- [x] The trust manifest refreshes on the §5.1 schedule, an unknown `kid` fetches at most once per 60 s, and a Polaris Key outage never refuses a pinned-key document.
+- [x] No secret (the header, the JWS, the holder's name or email) appears in a log line or `toJSON`.
 - [ ] `verifyLicenseDocument` is gone from `@polaris-key/node/server` with its `replaces` row (no alias).
-- [ ] The green gate passes (`AGENTS.md`), including every drift gate in the header.
+- [x] The green gate passes (`AGENTS.md`), including every drift gate in the header.
 
 ## Verify
 
