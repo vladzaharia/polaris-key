@@ -513,7 +513,7 @@ in `X-PKey-License`; the backend verifies it offline against the pinned keys and
 manifest. The core needs only `cryptography` and `httpx`; each adapter imports its framework when
 you import it. Extras: `starlette`, `fastapi`, `flask`, `django`, `drf`.
 
-```python
+```python no-compile
 from polaris_key.server.fastapi import PolarisKey
 
 polaris = PolarisKey(config=polaris_config)  # the module `pkey sdk` writes
