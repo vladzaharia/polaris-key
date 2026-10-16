@@ -352,10 +352,12 @@ export const DOOR_TREES: readonly DoorTree[] = [
         collapsed: true,
         items: leaves(
           "features/sign-in/index",
+          "features/sign-in/add-sign-in",
           "features/sign-in/oidc",
           "features/sign-in/device-flow",
           "features/sign-in/sessions",
           "features/sign-in/customer-portal",
+          "features/sign-in/troubleshooting",
         ),
       },
       {
@@ -377,6 +379,7 @@ export const DOOR_TREES: readonly DoorTree[] = [
             "reference/config-entry",
             "reference/parity",
             "reference/routes",
+            "reference/portal-api",
             "reference/generators",
             "reference/channels",
             "reference/what-apps-collect",

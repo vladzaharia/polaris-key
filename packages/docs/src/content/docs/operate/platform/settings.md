@@ -54,7 +54,7 @@ product slug in a neutral frame instead of a reserved name. The setting starts a
 minor releases or 60 days, whichever is later. It sits under Identity & access in the console.
 
 `KEYENTRY_REFUSALS` is `identity.keyEntryRefusals`, the rollout switch for
-[key entries](/docs/services/identity/#key-entries). Key entries are counted either way. On, a
+[key entries](/docs/features/licensing/activation/#key-entries). Key entries are counted either way. On, a
 product with Identity on refuses a new device a key whose licence is in no account and has used
 every key entry, with a link to add the key to an account; a device already using its key is never
 refused. Turn it on only once the SDKs that show the refusal are released. Turning it either way

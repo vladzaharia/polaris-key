@@ -504,32 +504,6 @@
       "frontmatter-type": 1,
       "frontmatter-last-reviewed": 1
     },
-    "features/sign-in/customer-portal": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "http-path": 20,
-      "programme-id": 4
-    },
-    "features/sign-in/device-flow": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "future-tense": 4,
-      "banned-word": 1,
-      "http-path": 4
-    },
-    "features/sign-in/index": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "count": 2,
-      "programme-id": 3,
-      "time-word": 1,
-      "banned-word": 1,
-      "http-path": 1
-    },
-    "features/sign-in/sessions": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1
-    },
     "help/sync": {
       "frontmatter-type": 1,
       "frontmatter-last-reviewed": 1,

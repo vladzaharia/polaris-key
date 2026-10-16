@@ -1,0 +1,61 @@
+---
+title: "Add sign-in to your app"
+description: "Sign people in with a Polaris Key account, with the drop-in kit or with your own screens."
+type: "how-to"
+lastReviewed: "2026-10-16"
+sidebar:
+  order: 2
+---
+
+import Requires from "../../../../components/docs/Requires.astro";
+
+Your app starts a sign-in, the person finishes it in a browser, and the app ends up with a device token or a browser session and a license.
+
+<Requires
+  features={["sign-in"]}
+  role="Product admin"
+  sdk={["Node 22.13 or later"]}
+/>
+
+Before you start:
+
+- A product with Identity on. See [Your first product](/docs/start/first-product/).
+- Your SDK installed. See [Install the SDKs and the CLI](/docs/build/install/).
+
+## Steps
+
+1. **Console** Open **Core → Services** and switch **Identity** on. Without License, this also makes keyless registration require sign-in.
+2. **Repo** Optional: link your own provider with the `oidc:` block of `.pkey/product`, then select **Resync from repo** on **Identity → Sign-in**. Without it the product uses the platform provider. Map groups to tiers with `groupRoleMap`, or set an `autoIssue` policy with mode `oidcDefault` so people in no group land on a default tier.
+3. **Console** Optional: open **Identity → Portal** and set what customers can do: sign-in methods, adding a license by key, release downloads and key reissue.
+4. **App** Start the sign-in from your SDK, per the table. A client with no browser shows the user code and a QR code, then polls. A browser app redirects.
+5. **App** On success, store the result the SDK hands back and refresh the license status. A device flow ends in a device token. A browser flow with a `return_to` ends in a session cookie.
+6. **Server** Optional: read the signed-in account from the license document on your backend. The document carries `profile.user` with the account's pairwise subject (`ps_…`) while an account is signed in on that device. Verify the document first, as in [Verify licenses on your server](/docs/features/licensing/server-verification/), then read `profile.user.subject`. In `@polaris-key/client-core/license`, `licenseUserOf(doc)` returns `{ subject }` or `null` and never throws.
+
+| SDK    | Sign-in                                                          | Where the code is                              |
+| ------ | ---------------------------------------------------------------- | ---------------------------------------------- |
+| Node   | Device flow: `beginSignIn()`, `waitForSignIn()`, `pollSignIn()`  | [Node](/docs/build/sdks/node/your-own-ui/)     |
+| Python | Device flow: `begin_sign_in`, `wait_for_sign_in`, `poll_sign_in` | [Python](/docs/build/sdks/python/your-own-ui/) |
+| React  | Browser sign-in and the sign-in form                             | [React](/docs/build/sdks/react/your-own-ui/)   |
+| Swift  | Device flow, with a sign-in view in the kit                      | [Swift](/docs/build/sdks/swift/your-own-ui/)   |
+| Kotlin | Device flow                                                      | [Kotlin](/docs/build/sdks/kotlin/your-own-ui/) |
+| Godot  | Device flow, with a sign-in dialog in the kit                    | [Godot](/docs/build/sdks/godot/your-own-ui/)   |
+
+The kit's form is [SignIn](/docs/build/ui/components/sign-in/). Which SDK has each part is listed in [Parity](/docs/reference/parity/). The drop-in server helpers for web frameworks aren't built yet, so a backend verifies the document itself.
+
+## Check it works
+
+Run `pkey dev`, which includes a fake provider that signs in one person and an **Approve** button ([Run Polaris Key locally](/docs/build/local/)). Start the sign-in from your app, approve it and see the license status leave `needs-activation`.
+
+On your product, a signed-in device shows under **Core → Devices**, and the person's license under **License → Licenses**.
+
+## If it isn't working
+
+- [Troubleshoot sign-in](/docs/features/sign-in/troubleshooting/): the code the app got.
+- [Product sign-in provider](/docs/features/sign-in/oidc/): provider and group mapping.
+- [Error codes](/docs/reference/error-codes/): every code.
+
+## Next steps
+
+- [Device flow](/docs/features/sign-in/device-flow/): the routes behind the SDK calls.
+- [Customer portal](/docs/features/sign-in/customer-portal/): what customers see.
+- [Licensing](/docs/features/licensing/): the license the sign-in mints.

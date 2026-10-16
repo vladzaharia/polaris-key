@@ -1,0 +1,38 @@
+---
+title: "Sign-in"
+description: "Let people sign in to your app with a Polaris Key account, a work provider or a code, and give them a customer portal for their licenses and devices."
+type: "overview"
+lastReviewed: "2026-10-16"
+sidebar:
+  order: 1
+---
+
+import Requires from "../../../../components/docs/Requires.astro";
+
+Sign-in proves who a person is to one product and turns that into a license, a browser session or a device token the rest of Polaris Key already understands. It also runs the customer portal, where people manage their licenses and devices across your products.
+
+<Requires features={["sign-in"]} role="Product admin" />
+
+## Get started
+
+| Page                                                           | What you get                                    |
+| -------------------------------------------------------------- | ----------------------------------------------- |
+| [Add sign-in to your app](/docs/features/sign-in/add-sign-in/) | A sign-in path for your SDK and for your server |
+
+## Concepts
+
+| Page                                                       | What you get                                         |
+| ---------------------------------------------------------- | ---------------------------------------------------- |
+| [Product sign-in provider](/docs/features/sign-in/oidc/)   | Platform or custom provider, groups to tiers, claims |
+| [Device flow](/docs/features/sign-in/device-flow/)         | Sign-in for a client with no browser redirect        |
+| [Browser sessions](/docs/features/sign-in/sessions/)       | The product cookie and the session document          |
+| [Customer portal](/docs/features/sign-in/customer-portal/) | The account surface customers use                    |
+
+## Reference and help
+
+| Page                                                            | What you get                     |
+| --------------------------------------------------------------- | -------------------------------- |
+| [Portal API](/docs/reference/portal-api/)                       | Every portal route and its gates |
+| [Troubleshoot sign-in](/docs/features/sign-in/troubleshooting/) | Causes and fixes by error code   |
+
+Related: [Licensing](/docs/features/licensing/) and [Managed config](/docs/features/managed-config/).
