@@ -3,13 +3,15 @@ title: "Task recipes"
 description: "Six common Polaris Key tasks as task, steps, and verify — each pointing at the deep page and ending in a real command."
 sidebar:
   order: 2
+type: "reference"
+lastReviewed: "2026-10-16"
 ---
 
 Six things people most often ask an agent to do. Each recipe is the **shortest correct path**,
 not the full explanation — the deep page beside each heading is the explanation, and the command
 at the end is what proves the work.
 
-Read [`AGENTS.md`](/docs/agents/) in the repo first. Everything below assumes its hard rules,
+Read [`AGENTS.md`](/docs/contribute/agents/) in the repo first. Everything below assumes its hard rules,
 especially: products are data, never code; the wire contract is the source of truth; and
 generated files are regenerated, never edited.
 

@@ -3,9 +3,11 @@ sidebar:
   order: 3
 title: "The truth store"
 description: "release_metadata, release_artifacts, release_channels, and release_health — populated by resync and GitHub release events, read by the portal and entitled gating."
+type: "reference"
+lastReviewed: "2026-10-16"
 ---
 
-What versions a product has published, what each one contains, what each channel currently
+What versions a product has published, what each one contains, what each channel
 points at, and whether any of it looks broken — Polaris Key's belief about all of it lives
 in four D1 tables collectively called the **truth store**. They are populated exclusively
 by [a sync](/docs/services/release/github-sync/); nothing in them is ever hand-edited. The
@@ -64,7 +66,7 @@ so the store can never claim an asset is available in a shape the download route
 then refuse to serve). The `content_type` recorded here is never the uploader's declared
 value; it is the same fixed choice the download gateway serves the bytes as, because this
 origin also hosts the admin console and the customer portal and a mislabelled artifact is a
-content-sniffing risk on that origin, not just a cosmetic one.
+content-sniffing risk on that origin, and not only a cosmetic one.
 
 Each artifact also carries a **role** (`payload`, `signature`, `checksum`, and the chunked and
 delta roles later packages use), filled from the kind on ingest: a `.sig` is a `signature`, a
@@ -97,9 +99,9 @@ plan never overwrites a described release.
 ### `release_channels`
 
 One row per channel name a product declares — the two built-ins, `stable` and `beta`, plus
-any operator-defined manual channels — recording which `release_id` that channel currently
+any operator-defined manual channels — recording which `release_id` that channel
 resolves to. This is a **moving pointer**: a channel's row is overwritten on every sync to
-reflect whatever the same resolution logic the live feed uses currently picks, so the
+reflect whatever the same resolution logic the live feed uses picks, so the
 console can show "what does `beta` ship today" without making a request to GitHub to find
 out. That logic is the candidate filter and version ordering described on Update's
 [Eligibility](/docs/services/update/eligibility/#which-tags-are-candidates-and-which-one-wins)
@@ -127,7 +129,7 @@ made it (a manual channel since removed, or a `beta` floor recorded before a cha
 was set). Such a stranded floor can still be cleared, but not lowered.
 
 This is the sync's anti-rollback **high-water mark**. It is not the channel policy's
-`min_supported`, the device floor the signed feed will carry: folding the one into the other
+`min_supported`, the device floor the signed feed carries: folding the one into the other
 would raise every channel's device floor to its newest version.
 This table is the one part of the store the device-facing routes read. It costs one D1 read
 per moving selector.
@@ -136,7 +138,7 @@ per moving selector.
 
 A status snapshot — `healthy`, `degraded`, `blocked`, or `unknown` — per health _subject_, where a
 subject is either a specific release (do its assets look complete) or a channel (does it
-currently resolve to anything at all). This is the coarse, always-on signal written on
+resolve to anything at all). This is the coarse, always-on signal written on
 every sync; the richer, on-demand checklist described in
 [Health checks](#health-checks) below is a separate, deeper read triggered from the
 console.
@@ -192,7 +194,7 @@ back.
 
 One row per yanked release, with a reason, a time and an actor. A yanked release resolves only
 through an explicit pin. Yanking never deletes the release, and unyanking deletes only this
-row. A release deleted on GitHub is not a yank; it simply stops being listed.
+row. A release deleted on GitHub is not a yank; it stops being listed.
 
 ### What a resync owns
 
@@ -216,7 +218,7 @@ webhook fires. Nothing is ever `DELETE`d. Two reasons, one structural and one de
   the moment a single live download token existed for that row.
 - **Deliberate.** A release withdrawn upstream leaves its row behind — stale, but inert.
   The portal still gates every download behind a live license check regardless of what the
-  row says, and the artifact URL the row holds is GitHub's own, which will 404 on its own
+  row says, and the artifact URL the row holds is GitHub's own, which 404s on its own
   once the asset is actually gone. A stale row costs nothing and simplifies the write path;
   a wrongly-deleted row would break a foreign key it doesn't need to.
 
@@ -309,7 +311,7 @@ latest release carries a `.dmg`. A missing policy is not evidence. For a product
 these — a Linux or Godot build, say — the Sparkle checks are skipped entirely rather than
 reported as missing, so it is not told it "needs setup" for artifacts it never builds. A stored
 `requireDmg: false` does not cancel the evidence: the manifest records `false` for any policy
-block that simply omits the field. When a product does ship DMGs, an operator's
+block that omits the field. When a product does ship DMGs, an operator's
 `requireSparkleSignature` still fails closed exactly as before.
 
 The console's setup state applies the same predicate without calling GitHub: it reads the
@@ -317,7 +319,7 @@ declared map, and for a product with no map it asks the truth store whether the 
 release carries a `.dmg`.
 
 The rolled-up status a product carries is `healthy` when every check passes, `needs-setup`
-when something expected is simply missing, and `error` when GitHub access itself failed or
+when something expected is missing, and `error` when GitHub access itself failed or
 a channel has regressed below its floor —
 distinct from `not-configured`, which means there is no release configuration at all yet
 to check.

@@ -4,6 +4,8 @@ description: "Contract before catalog before corpus before SDKs, a six-language 
 sidebar:
   order: 4
   label: "Waves"
+type: "concept"
+lastReviewed: "2026-10-16"
 ---
 
 Features land in **waves**, each a thin slice through the whole stack so that no language is
@@ -11,7 +13,7 @@ ever left behind. The wire format is **frozen** — changing the encoding is a d
 all-languages event, not a side effect of shipping a feature. Within a wave, the ordering is
 always the same: **contract → catalog → corpus → SDKs.**
 
-## The four steps
+## The steps
 
 1. **Protocol / wire** (`shared-protocol`, `shared-jws`, `client-core`). If the change touches
    the wire, update the types and encoding here first. Encoding changes are rare and must keep
@@ -48,7 +50,7 @@ detector the SDK must implement, and the SDK refuses to construct a client witho
 
 **A Worker change that alters a recorded conversation regenerates the transcripts.** The HTTP
 transcripts in `conformance/transcripts/` pin what the Worker answers to the requests a client
-must send (see [HTTP transcripts](/docs/contribute/corpus/#http-transcripts)). Changing a status,
+must send (see [HTTP transcripts](/docs/contribute/corpus-cases/#http-transcripts)). Changing a status,
 a response header a client reads or a response body fails the Worker suite until
 `pnpm gen transcripts` re-records them in the same change; each SDK's replayer then shows which
 SDKs must follow.
@@ -99,7 +101,7 @@ their own commands, which the CI `js` job runs as separate steps.
 
 The last two both read the built site's slug manifest (`packages/docs/dist/docs-slugs.json`,
 written at the end of `pnpm --filter @polaris-key/docs build`), so a docs-only checkout with no
-prior build sees them skip rather than fail — they are not silently disabled, just not yet
+prior build sees them skip rather than fail — they are not silently disabled, only not yet
 meaningful to run.
 
 A new error code — a Worker response code or one an SDK raises — needs an entry in

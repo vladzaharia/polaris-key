@@ -1,48 +1,50 @@
 ---
-title: "API reference"
-description: "Where the machine-readable OpenAPI spec lives, and where the admin and portal APIs are documented instead."
+title: "HTTP API"
+description: "Base URL, authentication, error shape, versioning and pagination of the public HTTP API, with the OpenAPI spec and route table."
+type: "reference"
+lastReviewed: "2026-10-16"
 sidebar:
   order: 7
 ---
 
-This is a pointer page, not a rendered reference — the machine-readable spec and the generated
-route table already exist and are kept honest by tests, so this page just tells you where to
-find each one rather than restating either.
+The public API is the product-scoped wire API: Core's routes, one namespace per service and four permanent aliases. The machine-readable description is [`/docs/openapi/polaris-key.v3.yaml`](/docs/openapi/polaris-key.v3.yaml), an OpenAPI 3.1 file. [Routes](/docs/reference/routes/) renders the same routes as one table, generated from the spec. Point any OpenAPI tool at the spec; it is a static file.
 
-## The OpenAPI spec
+## Base URL
 
-[`/docs/openapi/polaris-key.v3.yaml`](/docs/openapi/polaris-key.v3.yaml) is OpenAPI 3.1, and it
-covers exactly the **public, product-scoped wire API** — wire contract v3: Core's routes plus
-every service namespace that has routes (Cloud Sync's has none yet) and the four permanent
-pre-namespace aliases. Point any OpenAPI
-tool (Redoc, Swagger UI, an SDK generator for a language this repo doesn't ship) at that URL
-directly; it's a static file, not an authenticated endpoint.
+`https://key.plrs.im` on the hosted platform, or the origin of a self-hosted one. A product's routes are under `/<product>/`, such as `/<product>/license/document`. The issuer in every signed document is the literal `key.plrs.im`, whichever origin served it ([The protocol](/docs/reference/protocol/#identifiers-you-can-rely-on)).
 
-It's pinned against the actual router by `packages/worker/test/routeCoverage.test.ts` in three
-directions: every route kind is mapped in the spec or explicitly marked narrative-only, every
-canonical route and alias exists with the right method, and the spec contains no path outside
-what the router actually serves — so a route can't be added to the router without the spec
-following in the same change, and the spec can't claim a route the router doesn't actually
-serve either. A small number of operations still carry `x-polaris-status: skeleton`: correct
-paths, methods and auth, with full request/response schemas and examples still landing.
+## Authentication
 
-For the same routes rendered as one table instead of a spec file, see
-[Public route table](/docs/reference/routes/) — generated from the spec itself, so the two
-can't disagree.
+A route names the credential it takes. The spec's security schemes are:
 
-## The admin and portal APIs are narrative-only
+| Scheme           | Credential                                        | Presented as                                      |
+| ---------------- | ------------------------------------------------- | ------------------------------------------------- |
+| `deviceToken`    | The per-device token, `pkeyt_` plus 43 characters | `Authorization: Bearer`                           |
+| `licenseKey`     | The customer's license key, `pkey_<product>_…`    | `Authorization: Bearer`, on activation only       |
+| `ciToken`        | A CI token, `pkeyci_`, scoped to a product        | `Authorization: Bearer`                           |
+| `adminApiToken`  | An admin API token, `pkeya_`                      | `Authorization: Bearer`, for `pkey bundle` and CI |
+| `browserSession` | The per-product sign-in session cookie            | A cookie, on the sign-in routes only              |
+| `adminSession`   | The console session cookie                        | A cookie, with a CSRF token, on the console API   |
 
-`/manage/api/*` (the admin console) and `/api/*` (the customer portal) are **not** in the
-OpenAPI document, on purpose: both are session-authenticated browser surfaces for this
-platform's own UIs, not a wire contract any SDK speaks or any third party integrates against.
-They're documented as procedure instead of as a spec:
+A license key is redeemed once per device for a device token. Send it to no other route.
 
-- the admin API, throughout **[Administer](/docs/admin/)** — what each console screen actually
-  does on the wire, one page per feature area (products, licenses and devices, secrets and
-  keys, services and enablement, offline bundles, activity);
-- the customer portal API, throughout **[For users](/docs/users/)** — activation, the device
-  list, downloads, and what the platform collects.
+## Errors
 
-If you're integrating a product with Polaris Key, the OpenAPI spec and the route table above
-are what you want; reach for Administer or For users only when you're building against the
-console or the portal themselves, which is a different thing.
+An error is JSON with a stable `code`. Two shapes exist, and each operation in the spec names the one it answers with:
+
+- Nested: `{"error":{"code":"unauthorized"}}`.
+- Flat: `{"error":"unauthorized"}`.
+
+In both, extra fields such as `message`, `allowedRange` or `limit` sit at the top level, never inside `error`. An unknown product, a service that is off and an unknown route all answer the same `404`. [Errors and limits](/docs/reference/protocol/errors/) covers the shapes and rate limiting, and [Wire error codes](/docs/reference/error-codes/) lists every code.
+
+## Versioning
+
+The spec's file name, `v3`, versions the API description. The signed documents carry their own version, `PROTOCOL_VERSION` 4, in the protocol ([The protocol](/docs/reference/protocol/)). Neither appears in a path: a change that breaks a response shape bumps the protocol version and ships to every SDK together.
+
+## Pagination
+
+A list route that pages takes `limit` and `cursor`, and answers a page with a `nextCursor`. Pass the previous page's `nextCursor` as `cursor` to get the next page. A `nextCursor` of `null` is the last page. A `cursor` or `limit` outside its range is a `422`.
+
+## The console and portal APIs
+
+`/manage/api/*` and `/api/*` are session-authenticated browser surfaces for the platform's own screens. They are not in the OpenAPI spec, except the admin token roster, the create probes and the portal's library, product and media routes. They are documented by task: [Operate](/docs/operate/console/tour/) for the console, and the library and account tasks in [Help](/docs/help/) for the portal.
