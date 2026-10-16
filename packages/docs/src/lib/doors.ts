@@ -281,11 +281,13 @@ export const DOOR_TREES: readonly DoorTree[] = [
         collapsed: true,
         items: leaves(
           "features/managed-config/index",
+          "features/managed-config/add-config",
           "features/managed-config/catalog",
+          "features/managed-config/management-states",
           "features/managed-config/profiles",
           "features/managed-config/edge-mint",
-          "features/managed-config/management-states",
           "features/managed-config/crash-tags",
+          "features/managed-config/troubleshooting",
         ),
       },
       {

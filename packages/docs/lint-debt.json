@@ -286,48 +286,6 @@
       "count": 1,
       "banned-word": 1
     },
-    "features/cloud-sync/index": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1
-    },
-    "features/managed-config/catalog": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "banned-word": 3,
-      "future-tense": 2,
-      "http-path": 1
-    },
-    "features/managed-config/crash-tags": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1
-    },
-    "features/managed-config/edge-mint": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "http-path": 4,
-      "future-tense": 3
-    },
-    "features/managed-config/index": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "count": 2,
-      "programme-id": 3,
-      "http-path": 1,
-      "banned-word": 1
-    },
-    "features/managed-config/management-states": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "banned-word": 2,
-      "programme-id": 2,
-      "time-word": 1
-    },
-    "features/managed-config/profiles": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "banned-word": 2,
-      "time-word": 1
-    },
     "features/ship-builds/channels/app-store": {
       "frontmatter-type": 1,
       "frontmatter-last-reviewed": 1,

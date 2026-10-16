@@ -1,281 +1,124 @@
 ---
 title: "The catalog"
-description: "Authoring ConfigEntry items: kinds, the per-entry JSON-Schema fragment, categories and UI hints, dependsOn gating, accessor, and secret delivery."
+description: "Declare the keys a product delivers: kinds, the fields you author, presentation hints, secret delivery and the schema each value must match."
+type: "concept"
+lastReviewed: "2026-10-16"
 sidebar:
-  order: 2
+  order: 3
 ---
 
-A product's catalog is data, not code: one JSON document with a `schemaVersion` and an
-`entries` array of `ConfigEntry` items, authored in the product's own repo (`.pkey/schema`) or
-edited directly in the admin catalog editor. Everything else in this service reads it: the admin
-SPA renders a form from it, every SDK validates against it, and the config document is pruned
-against it before it is ever signed.
-
-This page is the authoring guide. For the exact shape of a `ConfigEntry`, see
-[ConfigEntry — the catalog item shape](/docs/reference/config-entry/), reproduced verbatim from
-source so these pages don't have to keep a second copy honest.
+A product's catalog is data: one JSON document with a `schemaVersion` and an `entries` array of `ConfigEntry` items. You author it in `.pkey/schema` in your repo or edit it in the console. Everything reads it: the console renders forms from it, every SDK validates against it, and the Worker prunes the config document against it before signing. The exact type is in [Config entry](/docs/reference/config-entry/).
 
 ## The three kinds
 
-| Kind     | Holds                                     | Delivered via                                                                                           |
-| -------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `config` | A plaintext client setting.               | This service's config document, `config` map, addressed by `accessor`.                                  |
-| `secret` | A value the admin surface always redacts. | This document's `secrets` map, or a runtime token via edge-mint — never plaintext in an admin response. |
-| `flag`   | An entitlement.                           | Not this document at all.                                                                               |
+| Kind     | Holds                                    | Delivered through                                           |
+| -------- | ---------------------------------------- | ----------------------------------------------------------- |
+| `config` | A plaintext client setting (a Setting)   | The config document's `config` map, addressed by `accessor` |
+| `secret` | A value the admin surface always redacts | The `secrets` map, or a runtime token through edge mint     |
+| `flag`   | An entitlement                           | The license document, never the config document             |
 
-`flag` is the odd one out. Config owns the _schema_ for a flag exactly as it does for the other
-two kinds, but a flag's resolved _value_ never appears in this service's document — it rides the
-license document's `entitlements` map instead, read client-side via `isEntitled`/`getEntitlements`
-rather than through the config accessor. A product with Config enabled and License disabled can
-still declare `flag` entries in its catalog; it simply has no document to deliver their resolved
-values on, since entitlements ride the one document Config doesn't own.
+A `flag` has a schema in the catalog like the others, but its resolved value rides the license document's `entitlements` map, so a config-only product can declare flags yet has no document to deliver them on.
 
 ## Fields you author
 
-The reference page has the exact TypeScript shape. These are the fields with authoring rules
-worth stating explicitly:
+| Field                              | Notes                                                                      |
+| ---------------------------------- | -------------------------------------------------------------------------- |
+| `key`                              | A dotted identifier, unique in the catalog, such as `run.concurrency`      |
+| `category`, `label`, `description` | Grouping and copy for the console and generated settings screens           |
+| `examples`                         | Sample values for a generated form. Never validated against `schema`       |
+| `default`                          | The schema-level fallback, and the value Default seeding uses              |
+| `secret`                           | `true` on a `config` entry whose value is redacted like a secret           |
+| `managementDefault`                | `config` kind only. The state a fresh key gets until an admin overrides it |
+| `userGrant`, `grantLabel`          | `flag` only. Shows the entitlement to the user as an included capability   |
+| `appliesTo`                        | Optional `cli` or `app` narrowing                                          |
+| `deprecated`, `since`              | Metadata. Never affects validation                                         |
 
-| Field                              | Notes                                                                                                                                           |
-| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `key`                              | A dotted identifier, unique within the catalog — e.g. `run.concurrency`, `proxy.subscriptionUrl`, `polarisVpn`.                                 |
-| `category`, `label`, `description` | Grouping and copy for the admin surface and any generated settings UI.                                                                          |
-| `examples`                         | Sample values shown in a generated form. Never validated against `schema`.                                                                      |
-| `default`                          | The schema-level fallback. Also the value `managementDefault` seeding uses — see [Management states](/docs/services/config/management-states/). |
-| `secret`                           | `true` on a `config`-kind entry whose value should be redacted like a `secret`-kind one.                                                        |
-| `managementDefault`                | **`config` kind only.** The state a freshly-minted key gets until an admin overrides it.                                                        |
-| `userGrant` / `grantLabel`         | `flag`-only. Surfaces the entitlement to the user as an included capability, e.g. "Included with your license".                                 |
-| `appliesTo`                        | Optional `cli`/`app` narrowing, for a catalog one schema shares across client shapes.                                                           |
-| `deprecated`, `since`              | Optional metadata. Never affects validation.                                                                                                    |
+Publishing refuses two mistakes. A key declared twice would shadow itself, so a value could be screened against one entry and delivered under the other. A `flag` with `secret: true` is refused, because entitlements are read in the clear and never sealed.
 
-Two structural rules are checked when a catalog is published, whether from the console or from
-`.pkey/schema`, and a catalog that breaks either is refused:
+## Presentation hints
 
-- **A key is declared once.** A second declaration of the same `key` would shadow the first for
-  every lookup while the entries list kept both, so a value could be screened against one and
-  delivered under the other (a `delivery: "serverOnly"` secret shadowed by a plain one, say).
-- **A `flag` is never `secret`.** A flag's value is an entitlement, read in the clear by the
-  gates that enforce it, and entitlements are never sealed. `secret: true` on a `flag` entry is
-  refused; `secret: false` is fine, and `config` and `secret` entries keep the flag as before.
+`ui` shapes a generated form and never changes what validates.
 
-## `ui`: presentation hints that never validate
+| Field                                  | Meaning                                                                        |
+| -------------------------------------- | ------------------------------------------------------------------------------ |
+| `widget`                               | `password`, `select`, `textarea`, `switch` or `stepper`                        |
+| `help`, `placeholder`                  | Copy for the field                                                             |
+| `order`                                | Sort position inside the category                                              |
+| `scopes`                               | Where the key matters: `profile`, `license`, `device`. Omitted means all three |
+| `advanced`                             | Collapse the field behind an advanced toggle                                   |
+| `unit`, `optionLabels`, `adminSection` | A unit label, human labels for enum values, a grouping in a larger form        |
 
-`ui` (`UiHints`) shapes a generated form. None of it changes what `validateKeyValue` accepts — a
-`select` widget with the wrong `optionLabels` still takes whatever `schema` allows; the hint only
-changes how the value is rendered and edited.
+`dependsOn: { key, equals }` hides an entry until another key's current value matches. Neither validation nor the signing prune consults it, so an admin can set a hidden key.
 
-| Field                 | Meaning                                                                                            |
-| --------------------- | -------------------------------------------------------------------------------------------------- |
-| `widget`              | `password` \| `select` \| `textarea` \| `switch` \| `stepper`.                                     |
-| `help`, `placeholder` | Copy for the generated field.                                                                      |
-| `order`               | Sort position within the entry's `category`.                                                       |
-| `scopes`              | Which admin surfaces the key is meaningful at: `profile`, `license`, `device` — omitted means all. |
-| `advanced`            | Hint to collapse the field behind an "advanced" toggle.                                            |
-| `unit`                | A unit label, e.g. `"seconds"`, rendered beside the value.                                         |
-| `optionLabels`        | Human labels for an `enum`'s raw values.                                                           |
-| `adminSection`        | Groups the field within a larger admin form independently of `category`.                           |
+`accessor` is a dotted path into the client's own config object for `config` and `secret` kinds. A `flag` is addressed by `key` alone.
 
-## `dependsOn`: presentation gating, not validation gating
+## Secret delivery
 
-`dependsOn: { key, equals }` hides an entry in a rendered form until another key's _current_
-value equals a given one — e.g. show `proxy.select` only once `proxy.enabled` is `true`. It is
-read by the admin SPA and by SDK-side settings UIs; `validateKeyValue` and the document-signing
-prune never consult it. An admin can set and enforce `proxy.select` even while `proxy.enabled` is
-`false` and the field is hidden — the value is simply not shown to a user who can't act on it yet.
+A `secret` may declare `delivery`: `clientScoped`, `serverOnly` or `edgeMint`. Any other value, or `delivery` on another kind, fails validation.
 
-## `accessor`: where a value lands on the client
+- `clientScoped` is the default: the value travels in the document's `secrets` map, redacted everywhere in the admin surface. The SDK caches it with the document. Only the device token lives in the OS keyring, so a host that wants the value in a vault copies it itself.
+- `serverOnly` never leaves the Worker. The signing prune drops it from every device-facing document, bundles included.
+- `edgeMint` marks that the entry isn't read from the document at all: the client calls the paired recipe instead ([Edge mint](/docs/features/managed-config/edge-mint/)).
 
-For `config` and `secret` kinds, `accessor` is a dotted path into the client's own config object —
-the mirror or struct an SDK exposes to application code. `flag` kinds have no `accessor`: their
-value lives in the entitlements map, addressed by `key` alone.
+## The schema fragment
 
-## `delivery`: how a secret reaches a runtime
+`schema` is a Draft-07 JSON Schema subset, and `@polaris-key/catalog` interprets it by walking the tree. Nothing is compiled, because workerd forbids code generation from strings outside startup.
 
-A `secret`-kind entry may declare `delivery`, one of `serverOnly` \| `clientScoped` \| `edgeMint`
-(the protocol's `SecretDelivery` union, carried on `ConfigEntry` and re-exported by
-`@polaris-key/manifest` as `ManifestSecretDelivery`). The manifest validator enforces two things
-about it at ingest: it is only meaningful on a `kind: "secret"` entry, and it must be one of the
-three values — anything else, or a `delivery` on a `config`/`flag` entry, fails validation.
+- Annotations such as `title`, `description`, `default` and `examples` are carried and never checked.
+- Assertions are fully implemented: `type`, `enum`, `const`, numeric and string bounds, `pattern`, `format`, the array and object keywords, and `allOf`, `anyOf`, `oneOf`, `not`, `if`, `then`, `else`.
+- Supported `format` values: `uri`, `url`, `uri-reference`, `iri`, `email`, `hostname`, `ipv4`, `ipv6`, `date`, `time`, `date-time`, `uuid`, `json-pointer`, `regex`.
+- Any other keyword makes the fragment unsupported. Publishing refuses it with `422`, and at request time the value is marked invalid rather than unconstrained.
 
-- **`clientScoped`** is the shape every catalog secret has by default: the value travels in the
-  config document's `secrets` map, redacted everywhere in the admin surface, decrypted
-  client-side. The SDK caches it with the rest of the document in its `0600` `managed.json`; only
-  the device token lives in the OS keyring, so a host that wants the value in a vault copies it
-  there itself.
-- **`serverOnly`** means the value exists for the Worker's own use and **never leaves it**: the
-  document-signing prune drops the entry from every device-facing document — the config
-  document, and bundles, which reuse the same builder — however the value was populated.
-- **`edgeMint`** marks that the entry's _value_ is not the thing delivered at all. It is the
-  client's cue to call the paired [edge-mint recipe](/docs/services/config/edge-mint/) — via
-  `/<product>/config/mint/<id>/token` — instead of reading a value from this document.
+`pattern` runs on a linear-time engine, because a backtracking pattern such as `(x+x+)+y` can burn tens of seconds of Worker CPU on a short string. It refuses backreferences, lookahead, lookbehind and word boundaries.
 
-## The per-entry `schema` fragment
+| Limit                  | Value           | Bounds                                               |
+| ---------------------- | --------------- | ---------------------------------------------------- |
+| `MAX_PATTERN_SOURCE`   | 300 characters  | The `pattern` string                                 |
+| `MAX_PATTERN_PROGRAM`  | 2000 steps      | Compile budget, including `{n,m}` expansion          |
+| `MAX_PATTERN_REPEAT`   | 100             | The largest `{n,m}` bound                            |
+| `MAX_PATTERN_INPUT`    | 4096 characters | The longest value matched. Longer values fail closed |
+| `MAX_SCHEMA_DEPTH`     | 12              | Deepest nesting in a fragment                        |
+| `MAX_SCHEMA_NODES`     | 500             | Subschemas in one fragment                           |
+| `MAX_VALIDATION_STEPS` | 100,000         | Work for one value. Over it, the value is invalid    |
+| `MAX_UNIQUE_ITEMS`     | 1,000           | The largest array `uniqueItems` scans                |
 
-### An interpreter, not a compiler
+## Publish
 
-`schema` is a Draft-07 JSON-Schema fragment, but Ajv — the usual interpreter — validates by
-generating JavaScript source and handing it to `Function()`, and workerd only allows code
-generation from strings during the startup window. Catalogs load from D1 mid-request, so
-`@polaris-key/catalog` walks the schema tree instead of compiling it: nothing is ever evaluated,
-at publish time or at request time.
+Publishing analyzes every entry's fragment once, so a malformed or oversized fragment is found by the publisher with the key named, not by the next device to poll. A failure is `422` with `fields`, and nothing is written. Success bumps `schemaVersion`, deactivates the old row and audits `schema.publish`. Every version is kept.
 
-### The supported subset
-
-Annotations are carried but never checked: `$schema`, `$id`, `$comment`, `title`, `description`,
-`default`, `examples`, `deprecated`, `readOnly`, `writeOnly`, `definitions`, `$defs`,
-`contentMediaType`, `contentEncoding`.
-
-Assertions are fully implemented: `type`, `enum`, `const`, the numeric bounds
-(`minimum`/`maximum`/`exclusiveMinimum`/`exclusiveMaximum`/`multipleOf`), the string bounds
-(`minLength`/`maxLength`/`pattern`/`format`), the array keywords
-(`items`/`additionalItems`/`minItems`/`maxItems`/`uniqueItems`/`contains`), the object keywords
-(`properties`/`required`/`additionalProperties`/`patternProperties`/`propertyNames`/`minProperties`/`maxProperties`),
-and the applicators `allOf`/`anyOf`/`oneOf`/`not`/`if`/`then`/`else`.
-
-Supported `format` values — hand-implemented rather than delegated to `ajv-formats`, whose own
-URI regex is itself backtracking-prone: `uri`, `url`, `uri-reference`, `iri`, `email`, `hostname`,
-`ipv4`, `ipv6`, `date`, `time`, `date-time`, `uuid`, `json-pointer`, `regex`.
-
-### Fail-closed on anything else
-
-A keyword outside those two lists does not get ignored — it makes the whole fragment
-**unsupported**. `prepareSchema` throws immediately, `Catalog#compileAll()` surfaces that as a
-publish-time `422` (below), and if an unsupported fragment somehow reached request time anyway,
-the key's value would be marked invalid rather than unconstrained. `format` follows the same rule:
-an unrecognised value is a rejected schema, never a skipped check.
-
-### `pattern` runs on a linear-time engine
-
-`pattern` and `patternProperties` never touch the host `RegExp`. A catalog `pattern` is
-operator-supplied — an admin publish, or a linked repo's `.pkey/schema` — and V8's backtracking
-engine turns some eight-character patterns into tens of seconds of Worker CPU against a few dozen
-bytes of input: `(x+x+)+y` measured at roughly 57 seconds against a 34-character string (finding
-R10-09). A source-length cap alone does not help — the pathological patterns are short — and
-star-height analysis both under- and over-rejects: `(a|a)*` has star height 1 and is still
-exponential, while `a*a*a*a*b` is merely polynomial and still worth capping.
-
-`@polaris-key/catalog` compiles `pattern` into a Thompson/Pike NFA instead: every reachable state
-advances one input code point at a time, so a match costs `O(instructions × input)` with **no
-backtracking**, for every pattern including adversarial ones. What that engine cannot express
-without backtracking is refused at compile time rather than run anyway: backreferences,
-lookahead and lookbehind, and `\b`/`\B` word boundaries. Budgets bound the rest:
-
-| Limit                 | Value           | Bounds                                                                                                |
-| --------------------- | --------------- | ----------------------------------------------------------------------------------------------------- |
-| `MAX_PATTERN_SOURCE`  | 300 characters  | The `pattern` string itself.                                                                          |
-| `MAX_PATTERN_PROGRAM` | 2000 steps      | Compile budget: instructions emitted plus nodes visited. Bounds `{n,m}` expansion in time too.        |
-| `MAX_PATTERN_REPEAT`  | 100             | The largest `{n,m}` bound a pattern may declare.                                                      |
-| `MAX_PATTERN_INPUT`   | 4096 characters | The longest value ever matched; longer values fail closed — `test()` returns `false`, never an error. |
-
-### Budgets around the fragment, and around a value
-
-Two more sets of numbers matter to an author: shape budgets, checked once at analysis time, and
-value budgets, spent on every validation call.
-
-- `MAX_SCHEMA_DEPTH` = 12 — deepest nesting a fragment may declare.
-- `MAX_SCHEMA_NODES` = 500 — total subschemas (properties, items, `allOf` branches, …) in one
-  fragment.
-- `MAX_VALIDATION_STEPS` = 100,000 — the work budget for validating one _value_. A value that
-  blows it comes back as an ordinary failure, never a throw, so a hostile value gets pruned rather
-  than 500-ing the document route.
-- `MAX_UNIQUE_ITEMS` = 1,000 — the largest array `uniqueItems` will scan; past it, `uniqueItems`
-  fails closed too.
-
-### Publish-time compilation
-
-`PUT /manage/api/products/<slug>/config/catalog` is the admin path this service owns directly:
-
-```
-PUT .../config/catalog
-  new Catalog(body).compileAll()   // analyse every entry's schema fragment, once
-    ok      -> bump schemaVersion, deactivate the old row, insert the new one, audit "schema.publish"
-    throws  -> 422 { fields: ["<key>: <reason>"] }, nothing written
-```
-
-`compileAll()` turns "a malformed, oversized, or ReDoS-shaped fragment" from a problem the _next
-device to poll_ discovers into a problem the _publishing operator_ discovers, with the offending
-key named. Request-time validation (`validateKeyValue`, used by every override write and by the
-document-signing prune) never throws for the same reason in reverse: an uninterpretable fragment
-there just marks the value invalid, so a stale or corrupt catalog can't turn a routine config
-fetch into a `500`.
-
-### History, concurrent publishes and usage
-
-Every publish keeps the previous version: a version is deactivated, never deleted. The admin API
-reads them back, and guards a publish against one that landed in between:
-
-| Route                                      | Behaviour                                                                                                                                                                                                                                                                   |
-| ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GET .../config/catalog`                   | The active catalog. `404` before the first publish.                                                                                                                                                                                                                         |
-| `PUT .../config/catalog`                   | Publish `{ catalog, expectedVersion? }`. With `expectedVersion` (the version the draft started from, `0` for the first), a different active version answers `409 catalog_version_conflict` with `currentVersion`, and nothing is written. Without it, the last writer wins. |
-| `GET .../config/catalog/versions`          | Every version, newest first: `version`, `active`, `createdAt`, `entryCount`, `source` (`admin` for a console publish, `manifest` for one `.pkey/schema` wrote) and `publishedBy`.                                                                                           |
-| `GET .../config/catalog/versions/<n>`      | One version's catalog, active or not.                                                                                                                                                                                                                                       |
-| `GET .../config/catalog/usage?key=a&key=b` | Per key, the profiles whose payload sets it, the tiers that inherit one of those profiles, and the licenses whose own overrides set it. Ids and names only, never a value. Up to 100 keys.                                                                                  |
+The admin routes under `/manage/api/products/<slug>/config/catalog` are `GET` (active, `404` before the first publish), `PUT` (publish `{ catalog, expectedVersion? }`), `versions`, `versions/<n>` and `usage?key=…`. With `expectedVersion`, a different active version answers `409 catalog_version_conflict` with `currentVersion` and writes nothing. Without it the last writer wins. `usage` names, per key, the profiles, tiers and licenses that set it (ids and names, never values).
 
 ## In the console
 
-**Config → Catalog** shows the active catalog as one table: key and label, kind, default,
-management default, category and user grant, with search and kind, category and management
-filters that stay in the URL. The header shows the version, the key count and who owns the
-catalog: a product linked to a repository shows **From manifest**, because the next resync
-re-applies `.pkey/schema` over a console publish. Opening a key shows its schema, hints and
-**Overridden by**: the profiles, tiers and licenses that set it. **Version history** lists every
-version and compares an earlier one with the active one. With no catalog yet, **Create catalog**
-opens the editor on an empty draft.
+**Config → Catalog** shows the active catalog with search and filters that stay in the URL. The header shows the version, key count and owner: a product linked to a repo shows **From manifest**, because the next resync reapplies `.pkey/schema` over a console publish. **Version history** compares an earlier version with the active one. **Edit catalog** opens the editor:
 
-**Edit catalog** opens the editor:
+- **Form** edits one entry at a time. **JSON** edits the whole document with line-level problems. Both edit the same draft, which stays in the tab until you publish or discard it.
+- **Review changes** shows the draft against the version it started from. Removing a key that a profile or license still sets is marked breaking and needs your acknowledgement, because its values are dropped.
+- If someone published in the meantime, you can review your draft against the newer version or discard it.
 
-- **Form** edits one entry at a time: key, kind, label, category, description, the schema's
-  common keywords for its type (or the whole fragment as JSON, checked by the same validator the
-  server runs), default, management default, user grant and form hints. The list beside it marks
-  added, changed and invalid entries.
-- **JSON** edits the whole document, with the catalog validator marking problems by line and a
-  Format button. Both modes edit the same draft.
-- The draft stays in the browser tab until you publish or discard it, so leaving the page or
-  reloading does not lose it. The title shows the version it will become.
-- **Review changes** shows the draft against the version it started from. A removed key that a
-  profile or license still sets is marked breaking, and publishing it needs your acknowledgement
-  (its values are dropped from those payloads). A manifest-owned catalog warns that the next
-  resync re-applies `.pkey/schema`.
-- If someone published in the meantime, publishing answers with what changed on the server; you
-  can review your draft against the newer version, or discard it.
+## Example
 
-## Worked examples
-
-```jsonc
-// config — overridable by default
+```json title=".pkey/schema"
 {
-  "key": "run.concurrency", "kind": "config", "category": "Run",
-  "label": "Parallel downloads",
-  "schema": { "type": "integer", "minimum": 1, "maximum": 8 },
-  "default": 3, "managementDefault": "default", "ui": { "widget": "stepper" }
-}
-
-// secret — withheld from enumeration, delivered in the signed config document
-{
-  "key": "proxy.subscriptionUrl", "kind": "secret", "secret": true, "category": "VPN",
-  "label": "VPN subscription URL",
-  "schema": { "type": "string", "format": "uri" },
-  "managementDefault": "hidden", "ui": { "widget": "password" },
-  "dependsOn": { "key": "polarisVpn", "equals": true }
-}
-
-// flag — an entitlement, delivered on the LICENSE document, not this one
-{
-  "key": "polarisVpn", "kind": "flag", "category": "VPN", "label": "Polaris VPN",
-  "schema": { "type": "boolean" }, "default": false,
-  "userGrant": true, "grantLabel": "Polaris VPN", "ui": { "widget": "switch" }
+  "schemaVersion": 1,
+  "entries": [
+    {
+      "key": "run.concurrency",
+      "kind": "config",
+      "category": "Run",
+      "label": "Parallel downloads",
+      "description": "How many downloads run at once.",
+      "schema": { "type": "integer", "minimum": 1, "maximum": 8 },
+      "default": 3,
+      "managementDefault": "default",
+      "ui": { "widget": "stepper" }
+    }
+  ]
 }
 ```
 
-## See also
+## Next steps
 
-- [ConfigEntry — the catalog item shape](/docs/reference/config-entry/) — the verbatim type.
-- [Manifest validation codes](/docs/reference/validation-codes/) — every coded error a `.pkey/`
-  ingest can raise, including `missing_schema` and `invalid_schema` for the catalog document
-  itself.
-- [Management states](/docs/services/config/management-states/) — what `managementDefault`
-  actually seeds.
-- [Edge-mint](/docs/services/config/edge-mint/) — the recipe a `delivery: "edgeMint"` secret
-  pairs with.
-- `packages/shared-catalog/src/{catalog,validate,regex}.test.ts` — pin the keyword table, the
-  format table, and the ReDoS refusal list (including the `(x+x+)+y` and `(a|a)*` cases above).
+- [Management states](/docs/features/managed-config/management-states/): what `managementDefault` seeds.
+- [Edge mint](/docs/features/managed-config/edge-mint/): the recipe an `edgeMint` secret pairs with.
+- [Validation codes](/docs/reference/validation-codes/): `missing_schema`, `invalid_schema` and the rest.

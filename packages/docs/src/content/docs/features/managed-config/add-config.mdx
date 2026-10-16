@@ -2,15 +2,71 @@
 title: "Add managed config to your app"
 description: "Read settings and secrets from Polaris Key, with the drop-in kit or with your own screens."
 type: "how-to"
-status: "stub"
+lastReviewed: "2026-10-16"
 sidebar:
-  hidden: true
-pagefind: false
-head:
-  - tag: meta
-    attrs:
-      name: robots
-      content: noindex
+  order: 2
 ---
 
-Placeholder page. See [Config](/docs/features/managed-config/) for the nearest live page.
+import Requires from "../../../../components/docs/Requires.astro";
+
+You declare keys in a catalog, set values on a profile, and your app reads the signed config document. The app keeps working offline from the cached document.
+
+<Requires
+  features={["managed-config"]}
+  role="Product admin"
+  sdk={["Node 22.13 or later"]}
+/>
+
+Before you start:
+
+- A product with a signing key. See [Your first product](/docs/start/first-product/).
+- Your SDK installed. See [Install the SDKs and the CLI](/docs/build/install/).
+
+## Steps
+
+1. **Console** Open **Core → Services** and check that **Config** is on.
+2. **Console** Open **Config → Catalog** and select **Create catalog**. Add a key with a kind, a label and a schema, for example a `config` key `run.concurrency` with an integer schema from 1 to 8 and a default of 3. Select **Review changes**, then publish. To keep the catalog in your repo instead, author it in `.pkey/schema` ([The catalog](/docs/features/managed-config/catalog/)).
+3. **CLI** Check the catalog before you push it.
+
+   ```sh title="Terminal"
+   pkey validate
+   ```
+
+4. **Console** Optional: open **Config → Profiles**, select **New profile**, and set values on its **Payload** tab. Attach the profile to a tier on **License → Tiers**. To lock a value, set its state to Enforced.
+5. **CLI** Optional: write a typed mirror of the catalog so your code gets compile-time keys.
+
+   ```sh title="Terminal"
+   pkey mirror --lang ts --product <slug>
+   ```
+
+6. **App** Create the client and sync. Read a value with the client's config reader, with your own default as the fallback. List the user-visible settings for a settings screen. The SDK page has the code for each runtime.
+7. **App** Optional: read a secret through the client's secret reader. Secrets arrive in the signed document and are cached with it, not in the keyring.
+
+| SDK    | Where the code is                                   |
+| ------ | --------------------------------------------------- |
+| Node   | [Your own UI](/docs/build/sdks/node/your-own-ui/)   |
+| React  | [Your own UI](/docs/build/sdks/react/your-own-ui/)  |
+| Python | [Your own UI](/docs/build/sdks/python/your-own-ui/) |
+| Swift  | [Your own UI](/docs/build/sdks/swift/your-own-ui/)  |
+| Kotlin | [Your own UI](/docs/build/sdks/kotlin/your-own-ui/) |
+| Godot  | [Your own UI](/docs/build/sdks/godot/your-own-ui/)  |
+
+The drop-in [Settings component](/docs/build/ui/components/settings/) renders the user-visible keys. A config-only product needs no license: every route authenticates with a device token. Server-side helpers for web frameworks aren't built yet; a backend reads the document with the plain client.
+
+## Check it works
+
+Run the app against `pkey dev` and change a value: `pkey dev config run.concurrency 6` ([Run Polaris Key locally](/docs/build/local/)). The change reaches the app on its next sync. Signed documents carry whole-second times, so a change in the same second as the last sync shows on the one after.
+
+Against your product, publish a profile value and check the app reads it after a sync. The catalog version shows on **Config → Catalog**.
+
+## If it isn't working
+
+- [Troubleshoot managed config](/docs/features/managed-config/troubleshooting/): the code or symptom you see.
+- [Management states](/docs/features/managed-config/management-states/): why a value didn't win.
+- [Error codes](/docs/reference/error-codes/).
+
+## Next steps
+
+- [The catalog](/docs/features/managed-config/catalog/): kinds, schemas and delivery.
+- [Profiles](/docs/features/managed-config/profiles/): one set of values for many licenses.
+- [Edge mint](/docs/features/managed-config/edge-mint/): tokens instead of secrets.
