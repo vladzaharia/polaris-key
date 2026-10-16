@@ -1,166 +1,80 @@
 ---
 title: "Re-licensing"
-description: "Changing a license's tier and having running clients pick it up — no push channel, the ETag as the change signal, grandfathered downgrades, re-derived expiry."
+description: "Change a license's tier and running apps pick it up: the ETag as the change signal, grandfathered downgrades and re-derived expiry."
+type: "concept"
+lastReviewed: "2026-10-16"
 sidebar:
   order: 7
 ---
 
-**Re-licensing** is changing a license's `tier_id`: a trial converts to paid, a customer upgrades
-to a tier with more seats, a lapsed subscription drops back to free.
+Re-licensing is changing a license's tier: a trial converts to paid, a customer upgrades to more seats, a lapsed subscription drops to free. There is no push channel, websocket or invalidation broadcast. The Worker re-merges entitlements on every document request, so a change lands the next time a running client refreshes.
 
-The mechanism is deliberately boring. There is **no push channel**, no websocket, no
-invalidation broadcast. Entitlements are re-merged from scratch on every document request, so a
-tier change lands the next time a running client refreshes.
+## Make the change
 
-## Making the change
+Change the tier on the license's **Overview** tab ([Manage licenses](/docs/features/licensing/manage-licenses/)), or through the admin API.
 
-```http
-PATCH /manage/api/products/<slug>/license/licenses/<id>
-Content-Type: application/json
-
+```json title="PATCH body"
 { "tier": "pro" }
 ```
 
-The same `PATCH` also moves `name`, `email`, `expiresAt`, `maxOfflineDays`, `channels`,
-`minVersion`, `maxVersion`, and the license's attached profiles. Every one of those reaches
-clients by the same route as a tier change; the tier is simply the change that has a name.
+The same `PATCH` moves `name`, `email`, `expiresAt`, `maxOfflineDays`, `channels`, `minVersion`, `maxVersion` and the license's profiles. All reach clients by the same route. A tier counts as changed when `tier` is present and differs from the stored value. `"tier": null` clears it.
 
-A tier is considered changed when `tier` is present in the body **and** its value differs from
-the stored one. `"tier": null` clears it.
-
-Two audit entries are written when it moves — `license.tier.change` recording old to new, and the
-generic `license.update`. When the tier did not move, only the generic entry appears.
-`test/relicense.test.ts` pins both: the tier-change summary contains both tier ids, and a patch
-that renames the license writes no tier-change entry at all.
-
-Tiers cannot be deleted out from under licenses: `DELETE` on a referenced tier is `409` with the
-reference count.
+A tier move writes two audit entries, `license.tier.change` with old and new, and the generic `license.update`. A tier can't be deleted while a license uses it: `409` with the count.
 
 ## How a running client finds out
 
-1. The admin `PATCH` writes `licenses.tier_id` and bumps `licenses.modified_at`.
-2. On the client's next `GET /<product>/license/document`, the server re-merges every payload
-   layer for the license and stamps tier policy on top as enforced entitlements. Nothing is
-   cached across requests.
-3. The injected entries carry `updatedAt = licenses.modified_at`, so their values **and** their
-   timestamps have changed.
-4. The document's ETag is computed over content — including `entitlements` — so the tag changes.
-5. The client's `If-None-Match` no longer matches, it receives a fresh document, and its change
-   callback fires.
+1. The `PATCH` writes the tier and bumps the license's modified time.
+2. On the next license document request, the Worker re-merges every layer and stamps the tier's policy on top. Nothing is cached across requests.
+3. The injected entries carry the modified time as `updatedAt`, so both their values and their timestamps change.
+4. The document's ETag covers content, including `entitlements`, so it changes.
+5. The client's `If-None-Match` no longer matches. It receives a fresh document and fires its change callback.
 
-`test/relicense.test.ts` walks exactly this: a license on a five-seat `free` tier reports
-`deviceLimit: 5`; after `{"tier": "pro"}` the very next document fetch reports
-`license.tier: "pro"` and `deviceLimit: 10`, with no client action in between.
+The ETag excludes `issuedAt`, `expiresAt` and `graceUntil`, so two fetches of an unchanged license return the same tag. An SDK can treat a changed tag as a real change. See [License document](/docs/reference/protocol/license-document/).
 
-### The ETag is the change signal
+How quickly depends on the client's refresh, not the server. A document is valid for one hour, and a client refetches unconditionally within 30 minutes of expiry, so an online client converges within the document's lifetime. An offline client sees nothing until it reconnects.
 
-The tag deliberately excludes `issuedAt`, `expiresAt` and `graceUntil`, so it is stable across
-refreshes of an unchanged license and differs only when the **content** differs. That is the
-whole reason an SDK can treat "tag changed" as "something real changed" rather than as noise.
-
-Two cases the tests pin:
-
-- After a tier change, the tag differs from the tag before it.
-- Two consecutive fetches with nothing changed in between return the **same** tag.
-
-See [The license document](/docs/services/license/document/#the-etag) for how the tag is derived.
-
-### How quickly
-
-That depends on the client's refresh cadence, not on the server. A license document is valid for
-one hour, and the wire contract's refresh rule has a client refetch unconditionally once it is
-within half an hour of expiry — so a client that is running and online converges within the
-document's own lifetime. A client that is offline sees nothing until it reconnects, which is the
-same property that makes grace bounds the only offline revocation lever.
-
-:::note[Immediate revocation is a different action]
-If a change must take effect **now**, disabling the license is the action that does it:
-`POST …/licenses/<id>/disable` purges the cached token record of every device on the license, so
-the next request falls through to a database read that fails the usability check. A tier change
-does not do this, and is not meant to.
+:::note[Disabling is the immediate action]
+A tier change doesn't take effect now. **Disable license…** does: it purges the cached token of every device on the license, so the next request fails the usability check.
 :::
 
 ## Downgrades grandfather
 
-Lowering a tier's seat count does **not** evict anyone. The seat check runs only on a _new_
-authorization, so:
+Lowering a tier's seat count evicts nobody. The seat check runs only on a new authorization, so existing devices keep their seats and documents. New activations answer `403 device_limit` until the count drops below the new limit.
 
-- Existing authorized devices keep their seats and keep being served documents.
-- New activations are refused with `403 device_limit` until the count drops below the new limit.
+Because that is silent, the `PATCH` response says so:
 
-`test/relicense.test.ts` pins both halves. Two devices are activated, the license is moved to a
-one-seat tier, and afterwards both devices are still `authorized` in the database and the license
-document still answers `200` — while a third activation attempt is `403 device_limit`.
-
-### The `overLimit` report
-
-Because grandfathering is silent, the `PATCH` response says so explicitly:
-
-```json
+```json title="Output"
 {
   "ok": true,
-  "id": "lic_…",
+  "id": "<license id>",
   "overLimit": { "deviceCount": 2, "deviceLimit": 1 }
 }
 ```
 
-`overLimit` appears only when all of these hold: the tier actually changed, the new tier declares
-a positive `policy_device_limit`, and the license's active device count exceeds it. Otherwise the
-field is absent. It exists so the console can tell the operator what they have just done rather
-than leaving them to discover it from a support ticket.
+`overLimit` appears only when the tier changed, the new tier sets a positive device limit and the active device count exceeds it. The count uses the same 90-day dormancy floor as activation, so it predicts what activation does: a license whose extra devices went dark reports no `overLimit`.
 
-The `deviceCount` reported here is computed with the **same 90-day dormancy floor** the seat
-check applies when it refuses an activation, so the warning predicts exactly what activation
-will do: a license whose extra devices have gone dark reports no `overLimit`, because the next
-activation will reclaim those dormant seats anyway.
+The next document carries the new `deviceLimit` even while more devices remain authorized. A client that shows "2 of 1 devices" is reading the situation correctly.
 
-The client is told about the new limit immediately, too: `deviceLimit` in the license document is
-the new tier's number from the next fetch onward, even while more devices than that remain
-authorized. A client that renders "2 of 1 devices" is reading the situation correctly.
+## Expiry follows the tier
 
-## Expiry is re-derived from the new tier
+A tier's expiry is a property of the tier, so the Worker re-derives it whenever a tier is assigned.
 
-A tier's `policy_expiry_days` is a property of the **tier**, so it is re-derived whenever a tier
-is assigned — not copied once at creation.
+| Situation                              | Result                                       |
+| -------------------------------------- | -------------------------------------------- |
+| Tier moves, no `expiresAt` in the body | `expires_at` is re-derived from the new tier |
+| Tier moves to a tier with no expiry    | `expires_at` becomes `null`: no expiry       |
+| Body states `expiresAt` as a number    | That number wins                             |
+| Body states `expiresAt` as `null`      | Never expires                                |
+| Body doesn't move the tier             | `expires_at` is left as it was               |
 
-| Situation                                  | Result                                                 |
-| ------------------------------------------ | ------------------------------------------------------ |
-| Tier moves, no `expiresAt` in the body     | `expires_at` is re-derived from the new tier's policy. |
-| Tier moves to a tier with no expiry policy | `expires_at` becomes `null` — no expiry.               |
-| Body states `expiresAt` as a number        | That number wins.                                      |
-| Body states `expiresAt` as `null`          | "Never" wins.                                          |
-| Body does not move the tier                | `expires_at` is left exactly as it was.                |
+Both directions were costly before. Trial to paid kept the trial's expiry and ended the license days after the customer paid. Paid to trial left a time-boxed tier perpetual. Creation, keyless enrollment and sign-in apply the same derivation, so all four paths that assign a tier agree.
 
-This exists because both directions were expensive:
+## Remove a tier
 
-- **trial to paid** kept the trial's `expires_at` and killed the license days _after_ the
-  customer paid.
-- **paid to trial** left a time-boxed tier perpetual.
+`"tier": null` drops the tier. `license.tier` and `license.tierLabel` are absent from the next document. The license keeps its own channels, version window, overrides and profiles. Its device limit falls back to the product default, because `deviceLimit` is injected only from a tier.
 
-`test/relicense.test.ts` pins each row of that table against a 14-day `trial` tier and a
-no-expiry `paid` tier, including that a patch which does not move the tier leaves an
-operator-set expiry untouched.
+## Next steps
 
-The same derivation applies on **creation**: an admin creating a license on a trial tier without
-stating an expiry gets the tier's time box, and an explicit `expiresAt: null` still means never.
-It also applies on the keyless [enrollment](/docs/services/license/enrollment/) path and on OIDC
-sign-in, so all four paths that assign a tier agree.
-
-## Removing a tier
-
-Setting `"tier": null` drops the license's tier. The injected entitlements go with it —
-`license.tier` and `license.tierLabel` are simply **absent** from the next document rather than
-present-and-empty, which the test asserts directly.
-
-What the license keeps: its own `channels_json`, `min_version`, `max_version`, overrides, and
-attached profiles. Those are per-license fields, not tier policy. Its device limit falls back to
-the product default, because `deviceLimit` is injected only from a tier.
-
-## Reference
-
-- [The license document](/docs/services/license/document/) — the entitlement map and the ETag.
-- [The license model](/docs/services/license/model/) — seat pools, dormancy, and the tier's
-  policy columns.
-- [Activation](/docs/services/license/activation/) — where the seat limit is enforced, and why
-  only on new authorizations.
-- `test/relicense.test.ts` — the behaviour pins cited throughout this page.
+- [The license model](/docs/features/licensing/model/): the layers and the injected entitlements.
+- [Activation](/docs/features/licensing/activation/): where the seat limit applies.
+- [Manage licenses](/docs/features/licensing/manage-licenses/): the console edit.

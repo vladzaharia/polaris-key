@@ -88,7 +88,7 @@ holds that capability today, so every link keeps working. Those pages are noted 
 | ------------------ | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **Overview**       | (root)         | Setup health at a glance: a "needs attention" strip, a guided checklist, the SDK trust key and trust set, and a starter snippet. See [Products](/docs/admin/products/#setup-health). |
 | **Services**       | `services`     | Which services the product runs. Its device-registration policy is derived from them and read-only. See [Services & enablement](/docs/admin/services-enablement/).                   |
-| **Devices**        | `devices`      | Every device of the product, including those that hold no license. See [Licenses & devices](/docs/admin/licenses-and-devices/#devices-product-wide).                                 |
+| **Devices**        | `devices`      | Every device of the product, including those that hold no license. See [Manage licenses](/docs/features/licensing/manage-licenses/#devices).                                         |
 | **Presentation**   | `presentation` | The images Polaris Key hosts for the product: icon, listing art and store slots, with Upload, Revert and Delete copy. See [Presentation](/docs/admin/presentation/).                 |
 | **Keys & secrets** | `keys`         | Write-only product secrets and the required-secrets checklist. Outlet credentials are here too until they move to Distribution. See [Secrets & keys](/docs/admin/secrets-and-keys/). |
 | **Activity**       | `activity`     | The product's audit log. See [Activity](/docs/admin/activity/).                                                                                                                      |
@@ -98,11 +98,11 @@ holds that capability today, so every link keeps working. Those pages are noted 
 
 Shown when the product runs **License**.
 
-| Page           | URL                                   | What it's for                                                                                                                                                                                                                                       |
-| -------------- | ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Licenses**   | `license/licenses`, `…/licenses/<id>` | License holders, each with a record page for policy, keys, devices and overrides. See [Licenses & devices](/docs/admin/licenses-and-devices/).                                                                                                      |
-| **Tiers**      | `license/tiers`, `…/tiers/<id>`       | Reusable templates a license can be assigned, each with a record page for its policy and the licenses using it. A tier cannot be deleted while a license uses it.                                                                                   |
-| **Enrollment** | `license/enrollment`                  | The effective device-registration policy (read-only; it follows enabled services) and the fingerprint policy. See [Licenses & devices](/docs/admin/licenses-and-devices/#fingerprint-policy) and [Fingerprints](/docs/services/core/fingerprints/). |
+| Page           | URL                                   | What it's for                                                                                                                                                                                                                                                 |
+| -------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Licenses**   | `license/licenses`, `…/licenses/<id>` | License holders, each with a record page for policy, keys, devices and overrides. See [Licenses & devices](/docs/admin/licenses-and-devices/).                                                                                                                |
+| **Tiers**      | `license/tiers`, `…/tiers/<id>`       | Reusable templates a license can be assigned, each with a record page for its policy and the licenses using it. A tier cannot be deleted while a license uses it.                                                                                             |
+| **Enrollment** | `license/enrollment`                  | The effective device-registration policy (read-only; it follows enabled services) and the fingerprint policy. See [Enrollment and policy](/docs/features/licensing/access/#the-policy-and-who-owns-it) and [Fingerprints](/docs/services/core/fingerprints/). |
 
 ### Config
 

@@ -1,0 +1,132 @@
+---
+title: "Manage licenses"
+description: "Create, change, disable and delete licenses, mint keys, and manage devices, tiers and the offline files from the License pages."
+type: "how-to"
+lastReviewed: "2026-10-16"
+sidebar:
+  order: 13
+---
+
+import Requires from "../../../../components/docs/Requires.astro";
+
+The **License** section has **Licenses**, **Tiers**, **Enrollment** and **Settings**. Each license and tier opens as a record.
+
+<Requires features={["licensing"]} role="Product admin" />
+
+## The list
+
+Each row shows the holder, the **state**, the tier, the expiry, the seats and the active keys.
+
+| State                   | Meaning                                                |
+| ----------------------- | ------------------------------------------------------ |
+| **Active**              | Enabled, and not expiring within 14 days               |
+| **Expires in _N_ days** | Enabled, and the expiry is 14 days away or less        |
+| **Expired**             | The expiry has passed. Devices are refused at check-in |
+| **Disabled**            | An operator disabled it                                |
+
+The four tiles count each state and filter the table. Search matches the name, email and license id. Filters and sort are in the URL, so a filtered list can be shared. **Seats** is the device count against the effective limit, with its source under the meter. **Columns** shows the hidden columns and **Export CSV** downloads what the filters show.
+
+Select rows to **Disable**, **Enable**, **Export** or **Delete** them together. Each asks first and lists the effect.
+
+**Clean up duplicates…** lists sign-in licenses whose account also holds another usable license for the product. The account keeps one: a license that didn't come from sign-in if it has one, else its oldest. A license that can't be deleted, for example one with a store purchase, is listed with the reason.
+
+## Create a license
+
+1. **Console** Open **License → Licenses** and select **Create license**.
+2. Enter the holder's **Name** and **Email**, then select **Continue to terms**.
+3. Set the terms. **Tier** applies that tier's profile, device limit and term. **Expiry** is the tier's term, **No expiry** or **On a date**, which means the end of that day in your time zone. **Max offline days** is 1 to 365, or blank for the product default. Add **Release channels**, a minimum and maximum version, and **Profiles**, which apply after the tier's profile in the order shown. The **Effective policy** panel shows what a device receives and where each value comes from.
+4. Select **Create license**. The server creates the license and its first key in one request. Copy the **License key**, or confirm you stored it: the console shows it once, and the dialog stays open until you do.
+
+A new license inherits its device limit. Set its own afterwards with **Device limit…**.
+
+The channel picker offers `stable`, `beta`, `pr` (every PR build) and the product's declared manual channels. It offers `staging` or `dev` only when already held. A `dev` grant lets every `0.0.0-dev*` build skip the version window and channel checks, so set one through the admin API or a manifest tier.
+
+## Change a license
+
+The header shows the holder, state, expiry, id and who changed it last. **Mint key** (or **Enable license**) is the primary action. **More actions** holds **Edit holder…**, **Mint offline bundle…**, **View in activity**, **Device limit…**, **Disable license…** and **Delete license…**. The tabs are **Overview**, **Keys**, **Devices** and **Config overrides**.
+
+1. **Console** On **Overview**, edit the **Terms** form. A save bar saves only the fields you changed. Clearing **Max offline days** sends `null`, so the product default applies.
+2. Select the save button.
+
+A tier change reaches running apps at their next document fetch, not instantly ([Re-licensing](/docs/features/licensing/relicensing/)). Unless you also set an expiry, the server re-derives it from the new tier. Moving to a tier with a lower device limit evicts nobody: the form warns first, the response carries `overLimit`, and new devices are refused until the count drops.
+
+### Set the device limit
+
+The limit resolves most specific first: set on the license, the tier's, a `deviceLimit` entitlement, then the product default. The same number is enforced at activation and signed into the document.
+
+1. **Console** Select **More actions → Device limit…**.
+2. Enter a whole number from 1 to 1000, then **Save**. Select **Use inherited limit** to clear it.
+
+A limit set here beats any tier. Lowering it below the signed-in devices warns first and signs nobody out.
+
+### Disable or delete
+
+**Disable license…** purges the cached token of every device at once, so the license stops authenticating immediately. Keys, devices and terms stay, and **Enable license** restores access.
+
+**Delete license…** is permanent. You can delete a disabled license, or one that sign-in or auto-issue created. A license with store purchases can't be deleted: disable it. Neither can a disabled auto-issued license still bound to its machine, because it stops that machine enrolling for another free license. Deleting a disabled sign-in license lifts the refusal, so its holder gets a new license on the next sign-in.
+
+Type `delete <license id>` to confirm. Deletion removes the keys, devices, bindings and portal links in one step. The activity log keeps the history and records **license deleted**.
+
+## Keys
+
+The **Keys** tab lists active keys with a label, the hash (first 6 and last 4 characters), status, creator and last use. **Mint key** takes an optional label and shows the new key once. **Revoke** takes effect immediately and can't be undone: devices using that key must activate again with another key. Revoked keys sit under **Show _N_ revoked**.
+
+## Devices
+
+The **Devices** tab shows a **Seats** meter and the device table for this license. **Core → Devices** lists every device of the product, including license-free ones, which appear in no license tab. Rows show status, platform, versions and **last seen**, the time of the last check-in, not an online indicator. Open a device for its fingerprint and facts. Hardware ids and component hashes are truncated on screen.
+
+| Action            | Effect                                                                                      | Use it when                                                        |
+| ----------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| **Deauthorize**   | Marks the device deauthorized and evicts its token. It must activate again. Frees the seat. | The device is lost, decommissioned or offboarded                   |
+| **Reset binding** | Clears the stored hardware fingerprint. The device stays authorized and keeps its seat.     | A hardware change caused `hardware_mismatch` and locked a user out |
+
+**Unverified** means the device sent no fingerprint. **Drifted** means its last check-in changed components within tolerance. The full history is in the activity log as `device.fingerprint.drift` entries.
+
+## Refused activations
+
+The Worker records each activation it refuses: the license, the time, the reason (`device_limit`, `hardware_mismatch`, `fingerprint_required` or `license_unusable`), a device label and a hash of the device id. Repeats from one device for one reason within a minute count once. Records are kept 30 days.
+
+## Tiers
+
+A tier is a template: a profile, a term, a device limit, release channels and a version window. The id is permanent: lowercase letters, digits, `-` and `_`.
+
+1. **Console** Open **License → Tiers** and select **New tier**.
+2. Fill in the fields. A blank term means no expiry and a blank device limit means the product default. The form checks that the minimum version isn't above the maximum.
+3. Save.
+
+The server refuses a device limit of zero or less, because a non-positive limit denies every activation. **Delete** is unavailable while any license uses the tier. **Used by** lists them.
+
+## Config overrides
+
+The **Config overrides** tab edits the license's own values over everything it inherits. Each inherited value names its source: the catalog default, the tier's profile or one of the license's profiles.
+
+## Mint an offline file
+
+See [Going offline](/docs/features/licensing/offline/).
+
+## Admin API
+
+The admin API takes the session cookie plus CSRF on mutations. It is documented here, not in the public OpenAPI spec, which covers only the client wire.
+
+| Method   | Path                                                               | Purpose                                                              |
+| -------- | ------------------------------------------------------------------ | -------------------------------------------------------------------- |
+| `PATCH`  | `/manage/api/products/<slug>/license/licenses/<id>`                | Update. An absent field keeps its value, `null` clears it            |
+| `DELETE` | `/manage/api/products/<slug>/license/licenses/<id>`                | Delete with `{ "confirm": "delete <id>" }`                           |
+| `POST`   | `/manage/api/products/<slug>/license/deletions`                    | Delete up to 100 licenses                                            |
+| `GET`    | `/manage/api/products/<slug>/devices`                              | Paged list: `status`, `platform`, `licensed`, `q`, `limit`, `cursor` |
+| `GET`    | `/manage/api/products/<slug>/devices/summary`                      | Counts by status, platform, architecture and SDK                     |
+| `POST`   | `/manage/api/products/<slug>/devices/<deviceId>/deauthorize`       | Deauthorize                                                          |
+| `POST`   | `/manage/api/products/<slug>/devices/<deviceId>/fingerprint/reset` | Clear the binding                                                    |
+| `GET`    | `/manage/api/products/<slug>/refusals`                             | Recent refusals and the licenses refusing devices                    |
+
+A refused delete is `409 license_not_deletable` with every reason. A `deviceLimit` outside 1 to 1000 is `422`, and so is creating a license with one.
+
+## Check it works
+
+Create a license, activate its key from `pkey dev` or your app, and open its **Devices** tab. The device appears and the **Seats** meter moves.
+
+## If it isn't working
+
+- [Troubleshoot licensing](/docs/features/licensing/troubleshooting/): the code a device got.
+- [The license model](/docs/features/licensing/model/): why a seat is or isn't free.
+- [Enrollment and policy](/docs/features/licensing/access/): the fingerprint policy on **License → Enrollment**.

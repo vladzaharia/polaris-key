@@ -1,56 +1,41 @@
 ---
-title: "Server-side licence checks"
-description: "Verify a device's signed licence document on your own backend with the same verifier the SDKs use."
+title: "Verify licenses on your server"
+description: "Check a device's signed license document on your own backend, with the verifier the SDKs use."
+type: "how-to"
+lastReviewed: "2026-10-16"
 sidebar:
-  order: 2
+  order: 12
 ---
 
-A backend that grants something to a device (a cloud save, a multiplayer seat, a download of its
-own) should not trust a "licensed: true" flag sent by the client. It should verify the device's
-signed licence document, a `pkey-license+jws`, exactly as the SDKs do.
+A backend that grants something to a device, such as a cloud save, a multiplayer seat or a download, shouldn't trust a "licensed" flag the client sends. It verifies the device's signed license document, a `pkey-license+jws`, as the SDKs do.
 
-## Verify the document
+Requires the License feature, your product's trust pins and a backend on Node or Python.
 
-The verifier needs the JWS, the product's trust pins (the same `pinnedKeys` that
-`pkey sdk` writes), the product slug (the audience) and the device id the document must name.
+## Steps
 
-```ts
-import { verifyLicenseDoc } from "@polaris-key/client-core/verify";
+1. **App** Send the device's cached license document (the JWS) and its device id with the request. Polaris Key doesn't prescribe the transport. The device's own copy comes from the license document route with its device token.
+2. **Server** Load the product's pinned keys, the same ones `pkey sdk` writes into the config file, and the product slug, which is the document's audience.
+3. **Server** Verify the document. A document that verifies has a valid signature from a pinned key, names this product and this device, and its issue time isn't ahead of the clock. A backend keeps no per-device history, so it doesn't apply the replay floor.
+4. **Server** Read entitlements from the verified document, and deny when verification fails.
 
-const doc = await verifyLicenseDoc(jws, {
-  trust: polarisConfig.trust.pinnedKeys,
-  expectedAud: polarisConfig.productSlug,
-  deviceId, // the device this request claims to be
-});
-if (!doc) return deny(); // bad signature, wrong product or device, expired, malformed
-const entitled = doc.entitlements["cloudSaves"]?.value === true;
-```
+| SDK    | Verifier                                                | Arguments you pass                                                                                    |
+| ------ | ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Node   | `verifyLicenseDocument` from `@polaris-key/node/server` | `trust`, `product`, `deviceId`, and optionally `now`                                                  |
+| Python | `verify_license_doc` from `polaris_key`                 | The pinned keys, `expected_aud`, `device_id`, `last_accepted_issued_at=None`, `check_freshness=False` |
 
-```python
-from polaris_key import verify_license_doc
+The Node helper returns `ok: false` for any invalid document. For a valid one it returns the document, the gate `state`, `usable`, `ageSeconds`, `isEntitled(name)` and `entitlementValue(name)`. Both entitlement getters answer as unentitled when the gate isn't usable. The Python function returns the document or `None`, and you read `doc.entitlements`.
 
-import polaris_config
+Offline, a document is expected to be past its short `expiresAt`, so the helper applies the gate: `ok` and `grace` are usable and `expired` isn't. Revocation shows up as the server no longer issuing fresh documents. A backend that needs revocation bounds the document's age with `ageSeconds` and asks the app to sync first.
 
-doc = verify_license_doc(
-    jws,
-    polaris_config.PINNED_KEYS,
-    expected_aud=polaris_config.PRODUCT_SLUG,
-    device_id=device_id,
-)
-entry = doc.entitlements.get("cloudSaves") if doc is not None else None
-entitled = entry is not None and entry.value is True
-```
+The SDK pages carry the compiled code for each runtime. See [Node](/docs/build/sdks/node/) and [Python](/docs/build/sdks/python/).
 
-A document that verifies has a valid signature from a pinned key, names this product and this
-device, and is inside its freshness window (`expiresAt`). Revocation shows up as the server no
-longer issuing a fresh document, so keep the window short and refuse a document you cannot
-refresh. Read entitlements from `doc.entitlements`, each a `{ state, value }` entry.
+## Check it works
 
-## Where the JWS comes from
+Verify a document from `pkey dev` ([Run Polaris Key locally](/docs/build/local/)) with the dev run's pins, then change the device id and see the verification fail.
 
-The device's own document is served by `GET /<product>/license/document` to the device's bearer
-token. Today the SDKs keep both the token and the raw document internal, so a backend that wants
-the JWS has to fetch it with a token the client forwards. A first-class path is planned: a
-server helper `verifyLicenseDocument(jws, trust)` in Node and Python, and a client getter for the
-current document (SDK parity pass §2.1). Until then, prefer gating on the server's own data where
-you can.
+## If it isn't working
+
+- A document for another device or product fails: check the device id and the slug.
+- A pin mismatch fails: use the keys from the product's config file, not another environment's.
+- [License document](/docs/reference/protocol/license-document/): the envelope you are verifying.
+- [Troubleshoot licensing](/docs/features/licensing/troubleshooting/).

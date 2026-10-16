@@ -290,78 +290,6 @@
       "frontmatter-type": 1,
       "frontmatter-last-reviewed": 1
     },
-    "features/licensing/access": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "count": 1,
-      "future-tense": 1,
-      "time-word": 1,
-      "banned-word": 2,
-      "http-path": 5
-    },
-    "features/licensing/activation": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "future-tense": 2,
-      "http-path": 1,
-      "time-word": 1,
-      "banned-word": 1
-    },
-    "features/licensing/attestation": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1
-    },
-    "features/licensing/device-limit": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "time-word": 1
-    },
-    "features/licensing/device-trust": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "http-path": 1
-    },
-    "features/licensing/fingerprints": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "banned-word": 2
-    },
-    "features/licensing/index": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "count": 2
-    },
-    "features/licensing/manage-licenses": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "count": 2,
-      "future-tense": 2,
-      "programme-id": 1,
-      "http-path": 7
-    },
-    "features/licensing/model": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "programme-id": 1,
-      "banned-word": 1
-    },
-    "features/licensing/offline": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "future-tense": 1,
-      "http-path": 3,
-      "banned-word": 2
-    },
-    "features/licensing/relicensing": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "banned-word": 3,
-      "future-tense": 2
-    },
-    "features/licensing/server-verification": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1
-    },
     "features/managed-config/catalog": {
       "frontmatter-type": 1,
       "frontmatter-last-reviewed": 1,
@@ -597,11 +525,6 @@
       "time-word": 1,
       "banned-word": 1,
       "http-path": 1
-    },
-    "features/sign-in/oidc": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "banned-word": 1
     },
     "features/sign-in/sessions": {
       "frontmatter-type": 1,
