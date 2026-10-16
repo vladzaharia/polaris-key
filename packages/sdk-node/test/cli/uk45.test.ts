@@ -36,10 +36,8 @@ import {
 import { Screen } from "./screen.js";
 import { Command } from "commander";
 import yargs from "yargs";
-import {
-  registerPolarisCommands,
-  registerYargsCommands,
-} from "../../src/cli/index.js";
+import { registerPolarisCommands } from "../../src/cli/index.js";
+import { registerPolarisCommands as registerYargsCommands } from "../../src/cli/yargs.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const DAY = 86_400;
@@ -696,6 +694,7 @@ describe("the pre-kit output (kit: false) prints a value only with --reveal", ()
     });
   const options = (lines: string[], codes: number[]) => ({
     pinnedKeys: {},
+    verbs: "all" as const,
     productSlug: "tidewater",
     kit: false,
     print: (l: string) => lines.push(l),
@@ -729,7 +728,7 @@ describe("the pre-kit output (kit: false) prints a value only with --reveal", ()
       } else {
         const y = yargs([]).exitProcess(false);
         registerYargsCommands(y, factory, options(lines, codes));
-        await y.parseAsync(["polaris-key", ...argv]);
+        await y.parseAsync([...argv]);
       }
       return { out: lines.join("\n"), codes };
     };
