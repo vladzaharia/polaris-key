@@ -3,6 +3,7 @@
 // commands. Pure: the commander and yargs adapters call `planMount` and then register what it
 // returns, so both mount the same commands and fail the same way.
 
+import { PolarisError } from "@polaris-key/client-core";
 import { PolarisKeyClient, type PolarisKeyClientOptions } from "../client.js";
 import type { ClientFactory } from "./commands.js";
 import { CLI_VERBS, type CliVerb } from "./kit.js";
@@ -56,8 +57,7 @@ export interface MountOptions {
 }
 
 /** The registration failed: a host command equals a verb the mount adds. */
-export class VerbCollisionError extends Error {
-  readonly code = COLLISION_CODE;
+export class VerbCollisionError extends PolarisError {
   /** Every colliding word, sorted. */
   readonly words: string[];
   /** The two options that resolve it. */
@@ -65,6 +65,7 @@ export class VerbCollisionError extends Error {
   constructor(words: string[], bin: string) {
     const list = words.map((w) => `"${w}"`).join(", ");
     super(
+      COLLISION_CODE,
       `${COLLISION_CODE}: ${list} ${words.length > 1 ? "are" : "is"} already a command. ` +
         `Set namespace: "license" (${bin} license ${words[0]}), or leave ${list} out of verbs.`,
     );
