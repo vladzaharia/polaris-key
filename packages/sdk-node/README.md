@@ -174,7 +174,8 @@ decrypts.
 | `client.update`       | `@polaris-key/node/update`       | `decide` / `feed` / `releaseRecord` (wire v4) / `buildUrl` / `check` (version) / `appcastUrl` (from discovery)              |
 | `…update.packs`       | `@polaris-key/node/packs`        | `ensure` / `state` / `path` / `registerHandler` / `on` / `packSetId` / `confirm` / `rollback` / `bootFetch`; the zstd probe |
 | —                     | `@polaris-key/node/local`        | The transportless profile: every network-requiring call refuses                                                             |
-| —                     | `@polaris-key/node/cli`          | Framework-agnostic commands + commander/yargs adapters                                                                      |
+| —                     | `@polaris-key/node/cli`          | Framework-agnostic commands + the commander adapter, `requireLicense`                                                       |
+| —                     | `@polaris-key/node/cli/yargs`    | The yargs adapter (`polarisCommands`)                                                                                       |
 | `client.commerce`     | `@polaris-key/node/commerce`     | `binding` / `claim` / `claimSteam` / `claimAppStore` / `claimPlay`                                                          |
 | `client.distribution` | `@polaris-key/node/distribution` | `downloadModel` / `thisPlatform`                                                                                            |
 | —                     | `@polaris-key/node/electron`     | `exposePolarisBridge`, `SafeStorageStore`; `/electron/preload` for the renderer side                                        |
@@ -687,21 +688,18 @@ npm install @polaris-key/node commander   # or yargs
 
 ```ts
 import { Command } from "commander";
-import { PolarisKeyClient } from "@polaris-key/node";
-import { registerPolarisCommands } from "@polaris-key/node/cli";
+import { registerPolarisCommands, requireLicense } from "@polaris-key/node/cli";
+import { polarisConfig } from "./polaris.config.js";
 
 const program = new Command("djdl");
-registerPolarisCommands(
-  program,
-  (o) =>
-    PolarisKeyClient.create({
-      productSlug: o.productSlug,
-      trust: { pinnedKeys: o.pinnedKeys },
-    }),
-  { productSlug: "djdl", pinnedKeys: { "pkey-djdl-prod-2026-06": "…" } },
-);
+registerPolarisCommands(program, { config: polarisConfig, version: "1.4.2" });
+program.command("export").action(requireLicense(runExport));
 await program.parseAsync();
 ```
+
+The end-user verbs mount at the top level; `namespace`, `verbs` and `onCollision` shape the mount, and
+`requireLicense` (or `polarisGate(program)`) gates your own commands: a refused command prints
+the fix and exits 4. yargs is at `@polaris-key/node/cli/yargs` (`polarisCommands`).
 
 The verbs, the styled parts and the `@polaris-key/node/terminal` primitives, the headless views,
 theming, localisation, the `--json` contract and the fallbacks (`NO_COLOR`, `TERM=dumb`,

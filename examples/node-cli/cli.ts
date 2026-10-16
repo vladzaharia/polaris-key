@@ -22,6 +22,7 @@ registerPolarisCommands(
       ...(opts.baseUrl ? { baseUrl: opts.baseUrl } : {}),
     }),
   {
+    verbs: "all",
     pinnedKeys: pkey.trust.pinnedKeys,
     productSlug: pkey.productSlug,
   },

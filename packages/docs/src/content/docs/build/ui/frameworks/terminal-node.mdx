@@ -8,7 +8,7 @@ sidebar:
 import KitCoverage from "../../../../../components/ui/KitCoverage.astro";
 import KitFacts from "../../../../../components/ui/KitFacts.astro";
 
-The Node SDK's terminal kit. One call adds every Polaris Key verb to a commander or yargs program
+The Node SDK's terminal kit. One call adds the Polaris Key verbs to a commander or yargs program
 and draws each one on a rail: the product chip in the product's accent, clack-style prompts with
 masked key entry, sign-in in the browser or with a code, the device limit's hand-off to the
 customer portal, spinners and a progress bar, grouped help and shell completion, and `--json` on
@@ -38,38 +38,88 @@ stylesheet and no font: the terminal's own face and palette draw everything.
 
 ```ts
 import { Command } from "commander";
-import { PolarisKeyClient } from "@polaris-key/node";
 import { registerPolarisCommands } from "@polaris-key/node/cli";
 import { polarisConfig } from "./polaris.config.js";
 
 const program = new Command("tidewater");
-registerPolarisCommands(
-  program,
-  // Spread the generated config. A factory that builds from the slug and pins alone drops
-  // baseUrl and the release keys, and its writes go to production.
-  (o) => PolarisKeyClient.create({ ...polarisConfig, version: o.version }),
-  {
-    productSlug: polarisConfig.productSlug,
-    version: "2.4.1",
-    pinnedKeys: polarisConfig.trust.pinnedKeys,
-    expectedServices: polarisConfig.expectedServices,
-  },
-);
+registerPolarisCommands(program, { config: polarisConfig, version: "2.4.1" });
 await program.parseAsync();
 ```
 
-The slug and the pinned keys come from the file `pkey sdk --lang node --write` generates. The
-program now has every verb, grouped on its help page by the service that owns it:
+`polarisConfig` is the file `pkey sdk --lang node --write` generates; it carries the slug, the
+pinned keys, the base URL and the services, so no client factory and no `--product`, `--trust` or
+`--base-url` flag is needed (a host that declared those flags sees them hidden). To build the
+client yourself, pass a factory before the options:
+`registerPolarisCommands(program, (o) => PolarisKeyClient.create({ ...polarisConfig, version: o.version }), options)`.
+
+The program mounts the end-user verbs at the top level. `--help` lists the program's own commands
+first, under its own headings, then the verbs under one **License** heading:
+
+| Verb                                                                                     | What it does               |
+| ---------------------------------------------------------------------------------------- | -------------------------- |
+| `activate`, `deactivate`, `status`                                                       | The license on this device |
+| `login` (also `sign-in`), `logout` (also `sign-out`)                                     | The account                |
+| `devices list`, `devices rename <deviceId> [label...]`, `devices deauthorize <deviceId>` | The devices on the license |
+| `update check`, `update apply`                                                           | The program's updates      |
+
+The developer verbs mount only when `verbs` names them, or `verbs: "all"` mounts every one:
 
 | Group    | Verbs                                                                                                                  |
 | -------- | ---------------------------------------------------------------------------------------------------------------------- |
-| License  | `activate`, `status`, `enroll`, `deactivate`                                                                           |
-| Account  | `login` (also `sign-in`), `logout` (also `sign-out`)                                                                   |
-| Devices  | `register`, `devices list`, `devices rename <deviceId> [label...]`, `devices deauthorize <deviceId>`                   |
+| License  | `enroll`                                                                                                               |
+| Devices  | `register`                                                                                                             |
 | Settings | `config get <key>`, `config list`, `config set <key> <value>`, `config reset <key>`, `secret <key>`, `mint <recipeId>` |
-| Updates  | `update check`, `update apply`, `changelog`                                                                            |
+| Updates  | `changelog`                                                                                                            |
 | Content  | `packs status`, `packs ensure <packIds...>`                                                                            |
 | Support  | `offline-request`, `import-bundle <file>`, `doctor`, `completion <shell>`                                              |
+
+### Name collisions and namespaces
+
+A verb with the same name as one of your commands fails the registration with
+`polaris-verb-collision`, naming each word and both fixes. Nest the verbs under one word, pick
+the verbs, or skip the ones that collide:
+
+```ts
+registerPolarisCommands(program, {
+  config: polarisConfig,
+  version: "2.4.1",
+  namespace: "license", // tidewater license activate
+  verbs: ["activate", "status", "login", "logout"], // a verb id, or a group such as "devices"
+  onCollision: "skip", // drop a colliding verb and warn once, instead of failing
+});
+```
+
+Under a `namespace`, the help page lists one `license <command>` entry, and `tidewater license
+--help` is the grouped page of its verbs. Your own commands are never renamed or changed.
+
+### Gating your own commands
+
+`requireLicense(handler, { entitlement? })` runs your command only on a usable license that holds
+the entitlement. A person at a terminal is taken through the activate flow first, then the
+command runs. Anything else prints the command that fixes it on stderr and exits **4**; with
+`--json`, stdout carries the result line with `error` set to `license_required` or `not_entitled`.
+
+```ts
+import { Command } from "commander";
+import { registerPolarisCommands, requireLicense } from "@polaris-key/node/cli";
+import { polarisConfig } from "./polaris.config.js";
+
+const program = new Command("tidewater");
+registerPolarisCommands(program, { config: polarisConfig, version: "2.4.1" });
+program
+  .command("export")
+  .action(requireLicense(runExport, { entitlement: "export.pdf" }));
+await program.parseAsync();
+
+async function runExport() {
+  /* the program's own work */
+}
+```
+
+`polarisGate(program, { except: ["version"] })` gates every command of the program in one line (a
+refusal ends the process with 4; `exit` replaces `process.exit`). The kit's own verbs are never
+gated. `frame: false` leaves your frame alone: a kit flow then draws no product chip and no
+closing row, so it sits inside your own intro and outro.
 
 `activate` asks for the key with masked entry. A key piped on stdin works too
 (`echo "$KEY" | tidewater activate`); a key typed on the command line still works, and warns that
@@ -86,24 +136,33 @@ names your package), a download link when no install driver is configured, and `
 when the build has no signed update feed. A finished download reads "Verifying…", then "2.5.0 is
 ready · Restart to finish". `secret` and `mint` print their value only with `--reveal`.
 
-The options, beside `productSlug`, `version`, `pinnedKeys` and `expectedServices` (handed to the
-client factory):
+The options, beside `config`, or `productSlug`, `version`, `pinnedKeys` and `expectedServices`
+(handed to the client factory):
 
-| Option         | What it does                                                                                                                                                        |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `theme`        | The terminal theme ([Theming](#theming))                                                                                                                            |
-| `bin`          | The command name help, completion and "Run … again" lines use. Default: the program's name                                                                          |
-| `presentation` | The SDK's presentation accessor, for the product's name, developer and accent. Default: `client.presentation()` when the client has one                             |
-| `io`           | The streams, environment, clock and browser opener. Default: the process's own                                                                                      |
-| `help`         | `"kit"` (default) draws the grouped help page while every subcommand is a Polaris Key verb; `"host"` keeps the program's own. A verb's `--help` is always the kit's |
-| `kit`          | `false` keeps the pre-kit output: each verb's plain message, with no rail, no prompts and no `--json`                                                               |
-| `print`        | A sink for each printed line instead of stdout                                                                                                                      |
+| Option         | What it does                                                                                                                              |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `config`       | Your generated `polarisConfig`. Builds the client and hides `--product`, `--trust` and `--base-url`                                       |
+| `namespace`    | Nest every verb under one word                                                                                                            |
+| `verbs`        | Ids or groups to mount; `"all"` mounts every verb. Default: the end-user set                                                              |
+| `onCollision`  | `"error"` (default) or `"skip"`                                                                                                           |
+| `frame`        | `false` draws no product chip and no closing row                                                                                          |
+| `theme`        | The terminal theme ([Theming](#theming))                                                                                                  |
+| `bin`          | The command name help, completion and "Run … again" lines use. Default: the program's name                                                |
+| `presentation` | The SDK's presentation accessor, for the product's name, developer and accent. Default: `client.presentation()` when the client has one   |
+| `io`           | The streams, environment, clock and browser opener. Default: the process's own                                                            |
+| `help`         | `"kit"` (default) adds the License section to the program's help; `"host"` keeps the program's own. A verb's `--help` is always the kit's |
+| `kit`          | `false` keeps the pre-kit output: each verb's plain message, with no rail, no prompts and no `--json`                                     |
+| `print`        | A sink for each printed line instead of stdout                                                                                            |
 
-With yargs, `registerYargsCommands(yargs(hideBin(process.argv)), factory, options)` takes the same
-options and mounts the verbs under a `polaris-key` command (`tidewater polaris-key activate`);
-`polarisCommandModule(factory, options)` returns that command module to mount elsewhere. Both
-adapters build from one verb table and run each verb through `runKitVerb`, so they draw the same
-screens and print the same JSON.
+With yargs, import from its own entry so a commander-only project never loads yargs' types:
+`import { polarisCommands } from "@polaris-key/node/cli/yargs"` and
+`yargs(hideBin(process.argv)).command(polarisCommands({ config: polarisConfig, version }))`
+(`registerPolarisCommands(yargs, options)` is the same on an existing `Argv`). It takes the same
+options, mounts the same verbs, collides the same way (give `hostCommands` when mounting without an
+`Argv`) and gates a handler with `requireLicense`. yargs prints its commands in registration order
+with no headings, so register the kit after your own to list yours first. Both adapters build from
+one verb table and run each verb through `runKitVerb`, so they draw the same screens and print the
+same JSON.
 
 ### A product's own gate check
 
