@@ -506,6 +506,38 @@ token or a different sign-in drops it. A 401 gets the usual single re-acquire, o
 request, `unauthorized` (no token, or still 401), `network-error`, `server-error`, or the
 Worker's `not_found` / `rate_limited` / `misconfigured`.
 
+## Server drop-ins
+
+`polaris_key.server` gates a server route with the app's signed licence document. The app sends it
+in `X-PKey-License`; the backend verifies it offline against the pinned keys and the signed trust
+manifest. The core needs only `cryptography` and `httpx`; each adapter imports its framework when
+you import it. Extras: `starlette`, `fastapi`, `flask`, `django`, `drf`.
+
+```python
+from polaris_key.server.fastapi import PolarisKey
+
+polaris = PolarisKey(config=polaris_config)  # the module `pkey sdk` writes
+polaris.install(app)
+
+@app.get("/api/export")
+def export(auth: Annotated[PolarisAuth, Depends(polaris.require_entitlement("export.pdf"))]):
+    return {"tier": auth.license.tier}
+```
+
+| Framework | Module                         | Gate                                                                                                 |
+| --------- | ------------------------------ | ---------------------------------------------------------------------------------------------------- |
+| FastAPI   | `polaris_key.server.fastapi`   | `Depends(polaris.require_license()` / `require_entitlement(n)` / `require_sign_in())`                |
+| Starlette | `polaris_key.server.starlette` | `@polaris.require_entitlement(n)` on an endpoint, `PolarisKeyMiddleware`                             |
+| Flask     | `polaris_key.server.flask`     | `polaris.init_app(app)`, `@polaris.require_entitlement(n)`                                           |
+| Django    | `polaris_key.server.django`    | `PolarisKeyMiddleware`, `@require_entitlement(n)`, `settings.POLARIS_KEY`                            |
+| DRF       | `polaris_key.server.drf`       | `PolarisKeyAuthentication`, `has_entitlement(n)`; raises `AuthenticationFailed` / `PermissionDenied` |
+
+A refusal is `application/problem+json` with a `code` of `license_required`, `license_invalid`,
+`license_stale` (401), `not_entitled` or `sign_in_required` (403), localised from `Accept-Language`.
+`max_age_seconds` tightens freshness, `on_refusal` returns your own response, and `errors="raise"`
+raises `PolarisKeyError` into the framework's handler. The header, the document and the holder's name
+and email never reach a log line or a `repr`; add `X-PKey-License` to your APM's header scrubbing.
+
 ## Layered config
 
 `client.config.get_config(key, fallback)` resolves a value through the **same precedence**
