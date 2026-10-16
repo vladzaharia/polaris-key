@@ -85,3 +85,10 @@ mise exec node@22 -- pnpm --filter @polaris-key/docs gen -- --check
 The role agent sets `--set SP-15 in-review` when it hands off. After review, the lead adds the last
 commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set SP-15 done`.
+
+## Progress and continuation (2026-10-16)
+
+Reconciled against main in the 2026-10-16 audit. Remaining:
+
+- Device proof (recorded browser and Electron-sample run) not recorded; the update.driver criterion is unticked
+- Electron half was blocked on SP-31, which has since merged with v4 verbs, so the run can now happen
