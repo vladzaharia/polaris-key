@@ -2,11 +2,7 @@ import * as React from "react";
 import { Check, History, Pencil, Plus } from "lucide-react";
 import type { ConfigEntry, ProductCatalog } from "../../../../api.js";
 import { fromSeconds } from "../../../../lib/format.js";
-import {
-  IN_APP_LABELS,
-  KIND_LABELS,
-  typeLabel,
-} from "../../../../lib/labels.js";
+import { inAppLabel, typeLabel } from "../../../../lib/labels.js";
 import {
   KIND_TONE,
   STATE_TONE,
@@ -153,20 +149,15 @@ export function CatalogPage({ slug }: { slug: string }): React.ReactElement {
         header: "In the app",
         accessorFn: stateOf,
         meta: { priority: 1 },
-        cell: ({ row }) =>
-          row.original.kind === "config" ? (
-            <StatusPill
-              tone={
-                STATE_TONE[stateOf(row.original) as keyof typeof STATE_TONE]
-              }
-              icon={null}
-              size="sm"
-            >
-              {IN_APP_LABELS[stateOf(row.original)]}
-            </StatusPill>
-          ) : (
-            <span className="text-fg-muted">Code only</span>
-          ),
+        cell: ({ row }) => (
+          <StatusPill
+            tone={STATE_TONE[stateOf(row.original) as keyof typeof STATE_TONE]}
+            icon={null}
+            size="sm"
+          >
+            {inAppLabel(row.original)}
+          </StatusPill>
+        ),
       },
       {
         id: "category",
@@ -206,7 +197,7 @@ export function CatalogPage({ slug }: { slug: string }): React.ReactElement {
         label: "Type",
         options: (["config", "secret", "flag"] as const).map((k) => ({
           value: k,
-          label: KIND_LABELS[k]!,
+          label: typeLabel({ kind: k }),
         })),
       },
       {
@@ -219,7 +210,7 @@ export function CatalogPage({ slug }: { slug: string }): React.ReactElement {
         label: "In the app",
         options: (["default", "enforced", "hidden"] as const).map((s) => ({
           value: s,
-          label: IN_APP_LABELS[s]!,
+          label: inAppLabel({ kind: "config", managementDefault: s }),
         })),
       },
     ];
@@ -414,7 +405,7 @@ function KeyDrawer({
                   ? [
                       {
                         term: "In the app",
-                        detail: IN_APP_LABELS[stateOf(entry)],
+                        detail: inAppLabel(entry),
                       },
                     ]
                   : []),

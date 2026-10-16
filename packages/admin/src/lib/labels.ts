@@ -161,3 +161,12 @@ export function label(
   if (value === null || value === undefined || value === "") return "None";
   return table[value] ?? humanize(value);
 }
+
+/** The In the app cell: a setting's visibility, or "Code only" for a secret and a minted token. */
+export function inAppLabel(entry: {
+  kind: string;
+  managementDefault?: string;
+}): string {
+  if (entry.kind !== "config") return "Code only";
+  return IN_APP_LABELS[entry.managementDefault ?? "default"] ?? "Editable";
+}
