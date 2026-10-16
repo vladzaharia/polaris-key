@@ -108,3 +108,14 @@ mise exec node@22 -- pnpm --filter @polaris-key/worker test
 The role agent sets `--set PX-W13b in-review` when it hands off. After review, the lead adds the
 last commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set PX-W13b done`.
+
+## Progress and continuation (2026-10-16)
+
+Reconciled against main in the 2026-10-16 audit. Remaining:
+
+- Validator options for platform terms and approved products, with rule-9 mutation-table entries and JSON schema
+- Wire reservedDisplayNames.ts through resolvePlatformSetting/resolveProductSetting at ingest, listing claims and card render-time check
+- Remove both pending markers and name readers; settings-coverage, settings-registry, schema-parity pass
+- Console fields from the registry (terms list under Identity & access; operator-only approval on product sign-in settings)
+- Tests: extra term reserved in all three places; approved product passes; THREAT-MODEL spoofed-app-name row amended
+- Rerun gate
