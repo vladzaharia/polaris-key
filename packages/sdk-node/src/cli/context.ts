@@ -108,6 +108,11 @@ export interface CreateContextOptions {
   bundle?: Partial<ProductIdentity>;
   /** Ask the terminal for its background over OSC 11 when it matters (default true). */
   queryScheme?: boolean;
+  /**
+   * `false` leaves the host's own frame alone: no product chip heads a flow and no closing row
+   * ends it, so a flow sits inside the host's intro and outro (@clack/prompts). Default true.
+   */
+  frame?: boolean;
 }
 
 export async function createKitContext(
@@ -138,6 +143,22 @@ export function createKitContextSync(
   o: CreateContextOptions & { presentationValue?: ProductPresentation | null },
 ): KitContext {
   return buildContext(o, { presentation: o.presentationValue ?? null });
+}
+
+/**
+ * A flow without the kit's frame: the header (the chip and the gap under it) and an empty closing
+ * row go; a closing row with text stays, as a rail row, so its words are not lost.
+ */
+function unframed(rows: readonly RailRow[]): RailRow[] {
+  return rows
+    .filter((r) => r.role !== "header")
+    .flatMap((r) =>
+      r.mark !== "end"
+        ? [r]
+        : r.spans.length
+          ? [{ ...r, mark: "rail" as const }]
+          : [],
+    );
 }
 
 function detectOptions(o: CreateContextOptions): DetectOptions {
@@ -199,7 +220,13 @@ function buildContext(
       ? new KeyReader(stdin)
       : null;
   const render = (rows: readonly RailRow[], meta?: LineMeta) =>
-    railLines(rows, painter, symbols, caps.columns, meta);
+    railLines(
+      o.frame === false ? unframed(rows) : rows,
+      painter,
+      symbols,
+      caps.columns,
+      meta,
+    );
   const fit = (rows: readonly RailRow[]) =>
     fitScreen(rows, {
       maxRows: caps.rows - 1,

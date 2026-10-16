@@ -73,6 +73,10 @@
       "types": "./dist/cli/index.d.ts",
       "default": "./dist/cli/index.js"
     },
+    "./cli/yargs": {
+      "types": "./dist/cli/yargs.d.ts",
+      "default": "./dist/cli/yargs.js"
+    },
     "./terminal": {
       "types": "./dist/cli/term/index.d.ts",
       "default": "./dist/cli/term/index.js"
