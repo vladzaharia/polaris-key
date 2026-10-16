@@ -131,3 +131,13 @@ Then the full green gate in `AGENTS.md`.
 
 What downstream work packages rely on from this one is named in their briefs (the Unblocks row). The role agent sets `--set P0-36 in-review` when it hands off. After review, the lead adds the last commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P0-36 done`.
+
+## Progress and continuation (2026-10-16)
+
+Reconciled against main in the 2026-10-16 audit. Remaining:
+
+- 'Automatic grant' from the catalog: edit signin.choice.origin.signIn plus kit-copy.ts validator exception for 'grant', then pnpm gen (rewrites every SDK table)
+- ~35 signin._ placeholders and profile._/getIt.\* lack a catalog key
+- ui-qa portal board over e2e/portalStates.ts
+- Owner call: portal browser-error wording vs core.codes.\* catalog text
+- Record pkey-ux-reviewer BUILT pass

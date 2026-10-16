@@ -111,3 +111,13 @@ Each acceptance item's test in its SDK lane, then the full green gate in `AGENTS
 
 The role agent sets `--set SP-45b in-review` when it hands off. After review, the lead adds the last commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set SP-45b done`.
+
+## Progress and continuation (2026-10-16)
+
+Reconciled against main in the 2026-10-16 audit. Remaining:
+
+- Newcomer dry run per SDK (unblocked: pkey dev landed with SP-41)
+- Full green gate
+- build/ui/theming.mdx Compose and Godot tabs still say Planned for APIs that ship
+- build/install.md Kotlin and Swift sections show 0.8.33 and the old Android coordinate
+- Operator step: set License MIT and Oldest editor 4.4 on the Godot feed in the console

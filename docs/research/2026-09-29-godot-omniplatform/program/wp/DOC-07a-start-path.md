@@ -246,3 +246,12 @@ Not re-verified in this pass (code claims carried over from the earlier glossary
 - The `pkey-ux-reviewer` pass of the rendered pages in built mode, both themes and phone (§6.3): **not run**. No agent of that type exists in this harness (the role text is `.claude/agents/pkey-ux-reviewer.md`). Built-mode capture works: a Playwright script against the worker serving the built docs took all seven pages at 1440 and 390 px, light and dark. On that capture, before the last text edits, no page scrolled sideways, each had one `h1`, and the theme key applied. Seen without a review: the `Requires` chips are unstyled (`pk-chip` and `pk-requires` have no CSS until DOC-02a), and `first-product` is about 10,050 px tall at 1440 px because every SDK block shows until DOC-02a's picker script ships. Schedule the reviewer once DOC-02a lands.
 - The age-gate settings for Yarn, npm and Bun are not repo-verifiable; confirm against those clients' documentation before the PR merges.
 - ST-38 owns the services prose in `how-it-works` and the concepts coherence section: `registration` wording there may change when ST-38 lands.
+
+## Progress and continuation (2026-10-16)
+
+Reconciled against main in the 2026-10-16 audit. Remaining:
+
+- Fresh-reader run on Node and Swift: needs DOC-08a compiled quickstart snippets, then one clean run; no duration on the landing card until then
+- pkey-ux-reviewer pass of rendered pages (built mode, both themes, phone), after DOC-02a (Requires chips unstyled; first-product ~10,050 px tall until the picker script ships)
+- Verify Yarn, npm and Bun age-gate settings against those clients' docs
+- pkey-wp-reviewer pass; ST-38 may change the services prose in how-it-works and concepts

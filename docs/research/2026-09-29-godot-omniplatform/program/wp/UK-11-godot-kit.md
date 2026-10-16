@@ -258,3 +258,15 @@ Branch `wp/UK-11-godot-kit`. Three slices landed; the package continues from her
    `sdks/godot/tests/ui/snapshots/` (promote `tools/ui_screenshots.gd` to a compared suite), and the
    kit in ui-qa's `BASELINE_DIRS`.
 7. The design review against `godot.html` and the `pkey-ux-reviewer` BUILT review, recorded in the PR.
+
+## Progress and continuation (2026-10-16)
+
+Reconciled against main in the 2026-10-16 audit. Remaining:
+
+- Landscape phone gate fit (empty HELD_BACK)
+- Large game font at 390 pt (18 screens fail)
+- Move drop-in scenes onto view models with catalog keys (UK-15 string lint)
+- New scenes: DeviceLimit, Devices, Paywall, AccountTab, CloudSyncStatus, About, Toast, UpdateProgress, ReleaseNotes
+- Modern-game look (glass sheet, glyphs, motion, colorScheme system, sound/haptics, TV 60 px)
+- Snapshot baselines under tests/ui/snapshots and ui-qa BASELINE_DIRS
+- Design review vs godot.html and BUILT UX review
