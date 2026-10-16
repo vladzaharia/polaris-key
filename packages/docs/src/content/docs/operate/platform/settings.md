@@ -1,6 +1,8 @@
 ---
 title: "Platform settings"
 description: "The instance-wide settings: the eight that can change at runtime, how precedence works, and what the read-only inventory shows."
+type: "reference"
+lastReviewed: "2026-10-16"
 sidebar:
   order: 13
 ---
@@ -19,7 +21,7 @@ In the console this is **Platform → Settings** (`#/platform/settings`; `#/plat
 | Setting                           | What it does                                                                                        | Values                                     |
 | --------------------------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------ |
 | `LAZY_DELTAS`                     | Turns lazy hot-pair deltas on or off, in both Worker scripts.                                       | `on` or `off` (default `off`)              |
-| `LAZY_DELTA_MAX_BYTES`            | The largest payload, on either side of a pair, the delta consumer will encode.                      | 1 MiB to 32 MiB, in bytes (default 32 MiB) |
+| `LAZY_DELTA_MAX_BYTES`            | The largest payload, on either side of a pair, the delta consumer encodes.                          | 1 MiB to 32 MiB, in bytes (default 32 MiB) |
 | `BLOB_GC_MODE`                    | Turns the nightly blob collector on or off.                                                         | `on` or `off` (default `on`)               |
 | `BLOB_GC_GRACE_DAYS`              | How long an object stays unreferenced before the collector may delete it.                           | 1 to 365 days (default 30)                 |
 | `LICENSING_RESERVED_NAMES`        | What happens to a catalog flag that declares a reserved entitlement name with an incompatible type. | `warn` or `error` (default `warn`)         |
@@ -165,8 +167,8 @@ Discard to keep the current one.
 All four routes are for platform admins only (403 otherwise), and the two writes need the CSRF
 header like every console mutation.
 
-```http
-GET /manage/api/platform/settings
+```
+/manage/api/platform/settings (GET)
 ```
 
 Returns:
@@ -193,8 +195,8 @@ Returns:
   flagged); or `PORTAL_SESSION_SECRET` is unset, so the portal signs its sessions with the admin
   secret.
 
-```http
-PATCH /manage/api/platform/settings/<key>
+```
+/manage/api/platform/settings/<key> (PATCH)
 { "value": 14, "expectedVersion": 3 }
 ```
 
@@ -209,8 +211,8 @@ runtime value yet). The answer is the updated setting, or:
 A runtime `on` stored under a deploy-time hard off is accepted, but the answer shows
 `forcedOff: true` and the effective value stays `off`.
 
-```http
-DELETE /manage/api/platform/settings/<key>?expectedVersion=3
+```
+/manage/api/platform/settings/<key> (DELETE)?expectedVersion=3
 ```
 
 Removes the runtime value, so the setting reverts to the deploy-time value or the code default.
@@ -218,8 +220,8 @@ It is version-guarded in the same way, and answers `404` when there is no runtim
 is kept as a tombstone and its version keeps counting up, so a version you loaded before the
 delete can never be accepted afterwards; the next write carries the version the list reports.
 
-```http
-GET /manage/api/platform/reserved-names
+```
+/manage/api/platform/reserved-names (GET)
 ```
 
 Read-only. Returns the `mode` the reserved-names setting resolves to (`warn` or `error`), the

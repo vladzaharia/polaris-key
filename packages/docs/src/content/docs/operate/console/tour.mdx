@@ -1,208 +1,150 @@
 ---
 title: "Console tour"
-description: "The console shell: the top bar, the sidebar sections and their pages, the URL scheme, the old URLs that still work, and the pages a bad link lands on."
-sidebar:
-  order: 2
+description: "Every console page by section: its address, whether the sidebar lists it, and the docs page it opens."
 ---
 
-The console at `/manage` is a single-page app. Navigation has two tiers: a **top bar** for things
-that do not depend on a product, and a **sidebar** with one section per service the current
-product runs. Every page, its URL, its icon and its docs link come from one table (`SECTIONS` in
-`packages/admin/src/console/nav.ts`), and this page walks that table. It describes the shell; the
-mechanics behind each page have their own pages, linked as they come up.
+{/* GENERATED PAGE — do not edit. Regenerate with `pnpm --filter @polaris-key/docs gen`.
+    Source of truth and emitter: packages/docs/scripts/gen-reference.mjs. */}
 
-## Who can open what
+The console at `/manage` has a sidebar with one section per service the product runs, after Core. A section's page list below is `SECTIONS` in `packages/admin/src/console/nav.ts`. A product page's address is `#/p/<slug>/<path>`, with a record id and tab after it where the page has one. The session lasts 8 hours, and the account menu shows when it ends.
 
-Every console route belongs to one **area** (Core, Licensing, Managed config, Ship builds,
-Sign-in, Cloud Sync, Commerce, Keys & secrets, Settings, Members, Platform, Docs, and Console for
-what every member uses), and a member's **roles** say which areas they hold: Superadmin (all of
-them), Platform admin (Platform, Members and Docs), Product admin (one product's areas, or a few
-of them) and Console access (the console itself, no product). The worker checks the area on every
-request; the console only hides what you cannot open.
+## Home, Products and API tokens
 
-Today one role exists in practice: membership of the platform's admin group at the console's
-identity provider makes you a Superadmin, so every operator sees everything. `/manage/api/me`
-returns the products you hold and your `permissions`. A product's manifest `adminGroup` field
-authorizes nothing (see [Products](/docs/admin/products/)).
+These pages belong to no product.
 
-The session is a hard 8 hours. The account menu shows when it ends ("Session ends 18:40"), so
-you know before you start a long edit.
+| Page | URL | Where | Docs |
+| --- | --- | --- | --- |
+| **Home** | `#/` | Sidebar | [Operate](/docs/operate/) |
+| **Products** | `#/products` | Sidebar | [Products](/docs/operate/console/products/) |
+| **New product** | `#/products/new` | Tab or sub-page | [Products](/docs/operate/console/products/) |
+| **API tokens** | `#/tokens` | Sidebar | [Going offline](/docs/features/licensing/offline/) |
 
-## The top bar
+## Platform
 
-From left to right:
+Instance-wide pages. The group shows only off a product. Its Docs section is [Deploying to production](/docs/operate/platform/deploy/).
 
-| Element                | What it does                                                                                                                                                                                                                                           |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Polaris Key**        | The mark and name. It links to **Home**. In a service section, the K's terminal bit takes that section's colour.                                                                                                                                       |
-| **Product switcher**   | Shown when a product is in scope. Type to filter by name or slug; your last five products are listed first. Choosing a product keeps the page you are on when that product runs the page's service, and otherwise opens its Overview. Shortcut: `g p`. |
-| **Environment badge**  | "Staging" or "Dev" on those deployments; nothing in production. The Worker's `PKEY_ENVIRONMENT` setting decides it, never the hostname.                                                                                                                |
-| **Search or jump to…** | The command palette (`⌘K` or `Ctrl+K`, or `/` outside a text field): every page of the current product's sections, plus every product. Recent choices come first.                                                                                      |
-| **Docs**               | Opens the docs page for the page you are on, in a new tab.                                                                                                                                                                                             |
-| **Theme**              | System (the default, which follows your OS live), Dark or Light. The choice is remembered in this browser.                                                                                                                                             |
-| **Account menu**       | Your name and email, when the session ends, the running version (a link to Platform → Deployment), the keyboard shortcut sheet (`?`), the docs home, and **Sign out**.                                                                                 |
+| Page | URL | Where | Docs |
+| --- | --- | --- | --- |
+| **Settings** | `#/platform/settings` | Sidebar | [Platform settings](/docs/operate/platform/settings/) |
+| **Deployment** | `#/platform/deployment` | Sidebar | [Deploying to production](/docs/operate/platform/deploy/) |
+| **Operations** | `#/platform/operations` | Sidebar | [Operations](/docs/operate/platform/jobs/) |
+| **Store connections** | `#/platform/store-connections` | Sidebar | [Connections](/docs/operate/platform/connections/) |
+| **Package feeds** | `#/platform/feeds` | Sidebar | [Package feeds](/docs/features/ship-builds/packages/) |
+| **Override migration** | `#/platform/override-migration` | Tab or sub-page | [Config](/docs/features/managed-config/) |
 
-## The sidebar
+## Core
 
-**Home** and **Products** always come first, then the **Platform** section: pages about this
-instance as a whole rather than any product, such as **Deployment** (the build it runs, its deploy
-history, database migrations, bindings and the platform activity log) and **Operations** (cron runs,
-queue backlog, storage and store connectors; see [Operations](/docs/admin/operations/)) and
-**Package feeds** (the platform's own packages and the feed policy; see
-[Package feeds](/docs/admin/feeds/)). On Home, Products and the
-Platform pages no product is in scope, so nothing else is shown. Inside a product, one section
-follows per service:
+Always shown. It has no owning service.
 
-- **Core** first. It has no owning service and is never hidden: you must always be able to reach
-  **Services** to turn something back on.
-- Then one section for each service the product runs, in the service table's order.
+| Page | URL | Where | Docs |
+| --- | --- | --- | --- |
+| **Overview** | `#/p/<slug>` | Sidebar | [Products](/docs/operate/console/products/) |
+| **Services** | `#/p/<slug>/settings/features` | Tab or sub-page | [Products](/docs/operate/console/products/) |
+| **Devices** | `#/p/<slug>/devices` | Sidebar | [Licenses & devices](/docs/features/licensing/manage-licenses/) |
+| **Users** | `#/p/<slug>/users` | Sidebar | [Users](/docs/operate/console/users/) |
+| **Presentation** | `#/p/<slug>/settings/presentation` | Tab or sub-page | [Presentation](/docs/operate/console/presentation/) |
+| **Keys & secrets** | `#/p/<slug>/settings/keys` | Tab or sub-page | [Keys & secrets](/docs/operate/console/keys-and-secrets/) |
+| **Activity** | `#/p/<slug>/activity` | Sidebar | [Activity](/docs/operate/console/activity/) |
+| **Settings** | `#/p/<slug>/settings` | Sidebar | [Products](/docs/operate/console/products/) |
+| **Members** | `#/p/<slug>/settings/members` | Tab or sub-page | [Products](/docs/operate/console/products/) |
+| **All settings** | `#/p/<slug>/settings/all` | Tab or sub-page | [Products](/docs/operate/console/products/) |
 
-A service the product does not run has no section at all. The console does not grey it out: a
-dimmed row invites a click that can only fail.
+## License
 
-**Collapsing sections.** Only the section holding the page you are on is open; every other
-section shows just its header. To look inside a collapsed section, click its header or press Enter
-or Space on it. That peek is temporary: when you open a page in another section, that section
-opens and the rest collapse again. The section holding the current page cannot be collapsed, and
-nothing about this is remembered between visits.
+Shown when the product runs License.
 
-**The rail.** `⌘\` (or `Ctrl+\`), or **Collapse** at the bottom, shrinks the sidebar to icons.
-Narrower than 1280 px it starts that way. Narrower than 1024 px the sidebar is hidden and the menu
-button in the top bar opens it as a drawer; Escape closes it.
+| Page | URL | Where | Docs |
+| --- | --- | --- | --- |
+| **Licenses** | `#/p/<slug>/license/licenses` | Sidebar | [Licenses & devices](/docs/features/licensing/manage-licenses/) |
+| **Tiers** | `#/p/<slug>/license/tiers` | Sidebar | [Licenses & devices](/docs/features/licensing/manage-licenses/#tiers) |
+| **Enrollment** | `#/p/<slug>/license/enrollment` | Sidebar | [Enrollment](/docs/features/licensing/access/) |
+| **Batches** | `#/p/<slug>/license/batches` | Tab or sub-page | [Licenses & devices](/docs/features/licensing/manage-licenses/) |
+| **Settings** | `#/p/<slug>/license/settings` | Sidebar | [The license model](/docs/features/licensing/model/) |
 
-While a product's enablement is still loading, every section is shown rather than hidden: hiding
-first and revealing a beat later would make the nav jump under your cursor.
+## Config
 
-## Sections and pages
+Shown when the product runs Config.
 
-URLs follow `#/p/<slug>/<section>/<page>`, with a record id and tab after the page where there is
-one (`#/p/djdl/license/licenses/lic_123/keys`). Filters and other page state go in the query
-string, so a URL you share opens the same view.
+| Page | URL | Where | Docs |
+| --- | --- | --- | --- |
+| **Catalog** | `#/p/<slug>/config/catalog` | Sidebar | [The catalog](/docs/features/managed-config/catalog/) |
+| **Edit catalog** | `#/p/<slug>/config/catalog/edit` | Tab or sub-page | [The catalog](/docs/features/managed-config/catalog/) |
+| **Profiles** | `#/p/<slug>/config/profiles` | Sidebar | [Profiles](/docs/features/managed-config/profiles/) |
+| **Edge mint** | `#/p/<slug>/config/edge-mint` | Sidebar | [Edge-mint](/docs/features/managed-config/edge-mint/) |
 
-Some pages of the redesign are still being built. Until they are, their URLs open the page that
-holds that capability today, so every link keeps working. Those pages are noted below.
+## Release
 
-### Core
+Shown when the product runs Release.
 
-| Page               | URL            | What it's for                                                                                                                                                                        |
-| ------------------ | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Overview**       | (root)         | Setup health at a glance: a "needs attention" strip, a guided checklist, the SDK trust key and trust set, and a starter snippet. See [Products](/docs/admin/products/#setup-health). |
-| **Services**       | `services`     | Which services the product runs. Its device-registration policy is derived from them and read-only. See [Services & enablement](/docs/admin/services-enablement/).                   |
-| **Devices**        | `devices`      | Every device of the product, including those that hold no license. See [Licenses & devices](/docs/admin/licenses-and-devices/#devices-product-wide).                                 |
-| **Presentation**   | `presentation` | The images Polaris Key hosts for the product: icon, listing art and store slots, with Upload, Revert and Delete copy. See [Presentation](/docs/admin/presentation/).                 |
-| **Keys & secrets** | `keys`         | Write-only product secrets and the required-secrets checklist. Outlet credentials are here too until they move to Distribution. See [Secrets & keys](/docs/admin/secrets-and-keys/). |
-| **Activity**       | `activity`     | The product's audit log. See [Activity](/docs/admin/activity/).                                                                                                                      |
-| **Settings**       | `settings`     | Registry fields, per-license defaults, signing-key preparation, and deleting the product. See [Products](/docs/admin/products/).                                                     |
+| Page | URL | Where | Docs |
+| --- | --- | --- | --- |
+| **Releases** | `#/p/<slug>/release/releases` | Sidebar | [Release](/docs/features/ship-builds/releases/) |
+| **Channels** | `#/p/<slug>/release/channels` | Sidebar | [Channels and policy](/docs/features/ship-builds/releases/channels/) |
+| **Deliverables** | `#/p/<slug>/release/deliverables` | Sidebar | [Packs](/docs/features/ship-builds/packs/) |
+| **Compatibility** | `#/p/<slug>/release/compatibility` | Sidebar | [Compatibility and the device simulator](/docs/features/ship-builds/releases/compatibility/) |
+| **Update simulator** | `#/p/<slug>/release/compatibility/simulator` | Tab or sub-page | [Compatibility and the device simulator](/docs/features/ship-builds/releases/compatibility/) |
+| **Content keys** | `#/p/<slug>/release/content-keys` | Sidebar | [Packs](/docs/features/ship-builds/packs/) |
 
-### License
+## Distribution
 
-Shown when the product runs **License**.
+Shown when the product runs Distribution.
 
-| Page           | URL                                   | What it's for                                                                                                                                                                                                                                       |
-| -------------- | ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Licenses**   | `license/licenses`, `…/licenses/<id>` | License holders, each with a record page for policy, keys, devices and overrides. See [Licenses & devices](/docs/admin/licenses-and-devices/).                                                                                                      |
-| **Tiers**      | `license/tiers`, `…/tiers/<id>`       | Reusable templates a license can be assigned, each with a record page for its policy and the licenses using it. A tier cannot be deleted while a license uses it.                                                                                   |
-| **Enrollment** | `license/enrollment`                  | The effective device-registration policy (read-only; it follows enabled services) and the fingerprint policy. See [Licenses & devices](/docs/admin/licenses-and-devices/#fingerprint-policy) and [Fingerprints](/docs/services/core/fingerprints/). |
+| Page | URL | Where | Docs |
+| --- | --- | --- | --- |
+| **Matrix** | `#/p/<slug>/distribution/matrix` | Tab or sub-page | [Distribution](/docs/features/ship-builds/channels/) |
+| **Rollouts** | `#/p/<slug>/distribution/rollouts` | Sidebar | [Rollouts and halts](/docs/features/ship-builds/channels/rollouts/) |
+| **Outlets & feeds** | `#/p/<slug>/distribution/outlets` | Sidebar | [Install sources](/docs/features/ship-builds/channels/feeds/) |
+| **Storefronts** | `#/p/<slug>/distribution/storefronts` | Sidebar | [Storefronts: Add to storefronts](/docs/features/ship-builds/channels/storefronts/) |
+| **Listing** | `#/p/<slug>/distribution/listing` | Sidebar | [Polaris Key: the built-in storefront](/docs/features/ship-builds/channels/polaris-key/) |
+| **App Store** | `#/p/<slug>/distribution/app-store` | Sidebar | [App Store Connect connector](/docs/features/ship-builds/channels/app-store/) |
+| **Commerce** | `#/p/<slug>/distribution/commerce` | Sidebar | [Commerce bridge](/docs/features/ship-builds/commerce/) |
+| **Access** | `#/p/<slug>/distribution/access` | Sidebar | [Byte delivery and delivery access](/docs/features/ship-builds/channels/delivery/) |
+| **Package feeds** | `#/p/<slug>/distribution/feeds` | Sidebar | [Package feeds](/docs/features/ship-builds/packages/) |
+| **Health** | `#/p/<slug>/distribution/health` | Sidebar | [Update health](/docs/features/ship-builds/channels/update-health/) |
+| **Outlet credentials** | `#/p/<slug>/distribution/credentials` | Sidebar | [Distribution](/docs/features/ship-builds/channels/) |
 
-### Config
+## Update
 
-Shown when the product runs **Config**.
+Shown when the product runs Update.
 
-| Page          | URL                                     | What it's for                                                                                                                                            |
-| ------------- | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Catalog**   | `config/catalog`, `config/catalog/edit` | The product's config keys, their history, and the editor that publishes a new version. See [The catalog](/docs/services/config/catalog/#in-the-console). |
-| **Profiles**  | `config/profiles`, `…/profiles/<id>`    | Named managed payloads a tier or license inherits, each edited on its own page. See [Profiles](/docs/services/config/profiles/#in-the-console).          |
-| **Edge mint** | `config/edge-mint`                      | Edge-mint recipe approval. See [Edge mint](/docs/services/config/edge-mint/#approving-a-recipe).                                                         |
+| Page | URL | Where | Docs |
+| --- | --- | --- | --- |
+| **Feed** | `#/p/<slug>/update/feed` | Sidebar | [Eligibility](/docs/features/ship-builds/updates/eligibility/) |
 
-### Release
+## Identity
 
-Shown when the product runs **Release**.
+Shown when the product runs Identity.
 
-| Page              | URL                                                                                 | What it's for                                                                                                                                                                                                                                                                |
-| ----------------- | ----------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Releases**      | `release/releases`, `…/releases/<id>/[builds\|packs\|channels\|distribution]`       | The app's releases, with promote, pin, yank and unyank in each row's menu. **Repo sync** opens release health, the last sync and **Resync from repo**. A release's record shows its builds and files, the packs it pins, where each channel serves it, and its distribution. |
-| **Channels**      | `release/channels?deliverable=<id>`                                                 | One lane per channel, for the app or a pack: pointer, what it serves per platform, minimum supported, critical, the rollback floor and pack floors, revert to manifest. See [Channels](/docs/services/release/channels/).                                                    |
-| **Deliverables**  | `release/deliverables`, `…/deliverables/<id>/[releases\|channels\|delivery\|files]` | The app and its packs. A pack's record has its releases (yank and unyank), channels, delivery gate and files. See [Packs](/docs/services/release/packs/#in-the-console).                                                                                                     |
-| **Compatibility** | `release/compatibility`, `…/compatibility/simulator`                                | Which pack release each app release runs with, and the update simulator. See [Compatibility](/docs/services/release/compatibility/).                                                                                                                                         |
-| **Content keys**  | `release/content-keys`                                                              | The keys CI delegated to publish data-only packs, read-only.                                                                                                                                                                                                                 |
+| Page | URL | Where | Docs |
+| --- | --- | --- | --- |
+| **Portal** | `#/p/<slug>/identity/portal` | Sidebar | [Customer portal](/docs/features/sign-in/customer-portal/) |
+| **Sign-in** | `#/p/<slug>/identity/sign-in` | Sidebar | [Product OIDC](/docs/features/sign-in/oidc/) |
 
-### Distribution
+## Cloud Sync
 
-Shown when the product runs **Distribution**, which requires Release (see
-[Services & enablement](/docs/operate/console/products/#coherence-rule)).
+Shown when the product runs Cloud Sync.
 
-| Page                   | URL                        | What it's for                                                                                                                       |
-| ---------------------- | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| **Matrix**             | `distribution/matrix`      | Releases against outlets: availability, submissions, rollouts and their controls. See [Distribution](/docs/services/distribution/). |
-| **Rollouts**           | `distribution/rollouts`    | The recorded outlet rollouts, with the release-to-update chain this product runs.                                                   |
-| **Outlets & feeds**    | `distribution/outlets`     | Until it is built, this URL opens the Matrix.                                                                                       |
-| **Access**             | `distribution/access`      | Who may download each deliverable. Until it moves here, this URL opens Update → Feed, where delivery access is set.                 |
-| **Package feeds**      | `distribution/feeds`       | The product's package feeds on the registry host, while package feeds are on in Services. See [Package feeds](/docs/admin/feeds/).  |
-| **Health**             | `distribution/health`      | Update health: funnels, auto-halt and Sentry candidates.                                                                            |
-| **Outlet credentials** | `distribution/credentials` | Until it moves here, this URL opens Keys & secrets.                                                                                 |
-
-### Update
-
-Shown when the product runs **Update**, which requires Distribution.
-
-| Page     | URL           | What it's for                                                                                                                                                                   |
-| -------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Feed** | `update/feed` | Who may read the update feed and download the binaries it points at, the compatibility window, and the artifact policy. Delivery access is here until it moves to Distribution. |
-
-### Identity
-
-Shown when the product runs **Identity**.
-
-| Page        | URL                | What it's for                                                                                                                                              |
-| ----------- | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Portal**  | `identity/portal`  | What the customer portal offers: the portal switch, the sign-in methods, automatic license linking, release downloads, and the branding read-out.          |
-| **Sign-in** | `identity/sign-in` | The OIDC provider, issuer and client this product trusts, and its group → tier map, read from `.pkey/product`. Resync from repo applies a manifest change. |
-
-## Section URLs
-
-A section's address on its own (`#/p/<slug>/license`, `#/platform`) opens the section's first
-page. The console replaces the address with that page's, so Back does not loop through it.
-
-The addresses from before the console redesign (`#/p/<slug>/licenses`, `…/secrets`,
-`…/fingerprints` and the like) no longer redirect. They open a **Page moved** page that names the
-page's new home ("This page moved to License → Licenses") with a button to its new address, which
-keeps the record id and any filters in the old one. Update the bookmark from there.
-
-## When a link goes nowhere
-
-The console never quietly shows a different page than the one you asked for.
-
-- **A service the product does not run.** A bookmark, a shared URL, or a service someone turned
-  off in another tab can point at a section the product no longer has. The page says so ("The
-  License service isn't enabled for DJDL.") and offers **Enable License**, which opens Services.
-  This explains a 404 you would otherwise have to guess at; it is not a security boundary, since
-  every endpoint gates itself the same way regardless of what the nav shows.
-- **A page that does not exist.** "Page not found" names the path it could not match, with links
-  to the product's Overview and to the command palette, which opens already searching for the
-  part of the path it could not match.
-- **A product that does not exist.** "Unknown product" lists the slugs that are one or two edits
-  away, and links to Products.
-- **An area your role does not include.** "You don't have access to DJDL → Licensing" names your
-  role, lists up to three people who can give you access, each with an address to copy, and
-  offers the pages you can open. A member with no product yet sees the same on Home. Nothing from
-  the refused page is loaded.
+| Page | URL | Where | Docs |
+| --- | --- | --- | --- |
+| **Data** | `#/p/<slug>/sync/data` | Sidebar | [Cloud Sync](/docs/features/cloud-sync/) |
 
 ## Keyboard
 
-Shortcuts never fire while you type in a field. Press `?` for the full sheet.
+Shortcuts never fire while you type in a field. Press `?` for the sheet in the console.
 
-| Keys                                      | Action                                                                                                    |
-| ----------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| `⌘K` / `Ctrl+K`, `/`                      | Command palette                                                                                           |
-| `?`                                       | Keyboard shortcut sheet                                                                                   |
-| `g h`, `g p`                              | Home; change product                                                                                      |
-| `g o` `g l` `g c` `g r` `g m` `g a` `g s` | Overview, Licenses, Catalog, Releases, Rollouts (matrix), Activity, Settings, when the section is enabled |
-| `⌘\` / `Ctrl+\`                           | Collapse or expand the sidebar                                                                            |
-| `Esc`                                     | Close the topmost overlay                                                                                 |
-
-## Where the model lives
-
-The nav table itself (which page belongs to which section, which service gates it, its URL, its
-icon and its docs link) is `SECTIONS` in `packages/admin/src/console/nav.ts`. For the enablement
-mechanics behind "shown when", see [The service model](/docs/start/service-model/) and
-[Services & enablement](/docs/admin/services-enablement/).
+| Keys | Action |
+| --- | --- |
+| `⌘K` | Open the command palette |
+| `/` | Open the command palette |
+| `?` | Show keyboard shortcuts |
+| `g h` | Go to Home |
+| `g p` | Change product |
+| `⌘\` | Collapse or expand the sidebar |
+| `Esc` | Close the topmost overlay |
+| `g o` | Go to Overview |
+| `g a` | Go to Activity |
+| `g s` | Go to Settings |
+| `g l` | Go to Licenses |
+| `g c` | Go to Catalog |
+| `g r` | Go to Releases |
+| `g m` | Go to Rollouts (matrix) |

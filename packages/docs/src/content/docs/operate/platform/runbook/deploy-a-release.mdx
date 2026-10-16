@@ -1,0 +1,37 @@
+---
+title: "Deploy a release"
+description: "Apply migrations, deploy the Worker and check that the platform answers, by hand or from a release tag."
+type: "runbook"
+lastReviewed: "2026-10-16"
+sidebar:
+  order: 1
+---
+
+import RunbookSection from "../../../../../components/docs/RunbookSection.astro";
+
+**Role required:** Platform admin with Cloudflare access and write access to the repository.
+
+**Impact:** A deploy replaces the live Worker and applies D1 migrations to production. A migration cannot be undone by deploying older code.
+
+Use this when you ship a new version, or you check what CI deploys and what gates it.
+
+<RunbookSection file="RUNBOOK" heading="Deploy" />
+
+<RunbookSection file="RUNBOOK" heading="CI gates" />
+
+## Verify
+
+- Before the deploy, `pnpm check:representable` exits 0. Do not deploy while it flags a value.
+- After the deploy, the smoke checks in **Deploy** answer: `/manage` loads and `/api/capabilities` returns JSON.
+- After a CI deploy, the workflow's own smoke check has read `/djdl/.well-known/jwks.json` and found a non-empty key set. That route needs D1, KV and the signing path, which `/manage` does not.
+- Run the acceptance checklist in [Deploying to production](/docs/operate/platform/deploy/) after the first deploy of a new environment.
+
+## Roll back
+
+- Deploy known-good code as a new version. A forward deploy keeps the secrets that are set now.
+- `wrangler rollback` restores the secrets that version held, because a Worker version captures its bindings. Re-apply every secret rotated after the target version and check again, as [Respond to a key compromise](/docs/operate/platform/runbook/respond-to-a-key-compromise/) describes.
+- Never roll the code back past a migration that the runbook marks as one not to roll back past. They are listed in [Run product operations](/docs/operate/platform/runbook/run-product-operations/).
+
+## Escalate
+
+If `/api/capabilities` or the JWKS check fails after a deploy, start at [Troubleshoot the platform](/docs/operate/platform/runbook/troubleshooting/). If every product answers 404 at once, the KEK is the first suspect: see [Rotate the KEK](/docs/operate/platform/runbook/rotate-the-kek/).

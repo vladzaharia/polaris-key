@@ -26,7 +26,7 @@ pointer, not a release: in F-Droid repository mode it follows the `fdroid-repo` 
 and in direct-link mode it follows the moving `builds/<channel>/<buildId>` download, which
 applies yanks and pins but not holds. To take a release off every surface, moving downloads
 included, **yank it** or **pin the release track** to an earlier release
-([Release tracks and policy](/docs/services/release/channels/)).
+([Channels and policy](/docs/services/release/channels/)).
 :::
 
 ## The rollout record
@@ -161,5 +161,5 @@ it raises an alert for you to act on with the connector's own control.
 - [Byte delivery and delivery access](/docs/services/distribution/delivery/)
 - [Update health](/docs/services/distribution/update-health/) — the funnel, the auto-halt and
   Sentry halt candidates.
-- [Release tracks and policy](/docs/services/release/channels/) — yanks and pins, today's
+- [Channels and policy](/docs/services/release/channels/) — yanks and pins, today's
   emergency stop.

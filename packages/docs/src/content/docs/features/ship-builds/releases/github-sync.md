@@ -256,7 +256,7 @@ changes that field. Tiers, profiles, services and the fingerprint and auto-issue
 covered yet: a console edit still claims them. The system product is always manifest-authoritative,
 and its only writer is the deploy hook: a push webhook for the platform repository and a console
 Resync of it are refused ("the system product is applied by the deploy hook"). See
-[Manifest-authoritative mode](/docs/admin/products/#manifest-authoritative-mode).
+[Manifest-authoritative mode](/docs/operate/console/product-actions/#manifest-authoritative-mode).
 
 Every check runs before the first write, and the apply is one atomic batch: a refused resync
 changes nothing. Each setting, tier or profile a resync changes gets its own audit row.
@@ -285,7 +285,7 @@ manually created product has nothing to resync from (the endpoint answers `422`)
 Settings page offers **Link repository…** instead: it checks the repository, shows what the
 manifest applies, keeps and removes, then links the product and applies the manifest through
 this same path (see
-[Linking a repository to an existing product](/docs/admin/products/#linking-a-repository-to-an-existing-product)). When the resync finishes, the **Repo sync** drawer lists what it updated,
+[Linking a repository to an existing product](/docs/operate/console/product-actions/#linking-a-repository-to-an-existing-product)). When the resync finishes, the **Repo sync** drawer lists what it updated,
 any part of the manifest it refused (with the manifest path), and the pack-set
 re-resolution it triggered. Use it after linking a repo whose
 `.pkey/` predates the App installation, or any time an operator wants to confirm a change

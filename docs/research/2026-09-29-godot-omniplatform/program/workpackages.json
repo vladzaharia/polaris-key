@@ -15606,7 +15606,7 @@
         "docs/research/2026-10-08-docs/style-guide.md"
       ],
       "brief": "wp/DOC-11a-operate-console.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "DOC-11b",
@@ -15627,7 +15627,7 @@
         "docs/research/2026-10-08-docs/style-guide.md"
       ],
       "brief": "wp/DOC-11b-operate-platform.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "DOC-12a",
