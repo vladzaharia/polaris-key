@@ -123,15 +123,40 @@ export class PolarisKeyError extends Error {
 const SEGMENTS = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
 const utf8 = new TextEncoder();
 
+/**
+ * A raw value of the two credential headers longer than this is bounded before anything splits
+ * it at commas (§14.1 reads elements, and a value this long can only be a probe): it becomes one
+ * element over the cap, which the verdict refuses as `license_invalid`. Four times the cap leaves
+ * room for every legitimate proxy-joined form.
+ */
+const MAX_RAW_FIELD = 4 * BACKEND_LICENSE_MAX_BYTES;
+/** The longest `Accept-Language` read; a longer one is cut (the language falls back to English). */
+const MAX_LANGUAGE_FIELD = 2048;
+
+function bounded(fields: [string, string][]): [string, string][] {
+  for (const field of fields) {
+    if (field[1].length <= MAX_RAW_FIELD) continue;
+    const name = field[0].toLowerCase();
+    if (
+      name === HEADER_LICENSE.toLowerCase() ||
+      name === HEADER_DEVICE.toLowerCase()
+    )
+      field[1] = "x".repeat(BACKEND_LICENSE_MAX_BYTES + 1);
+  }
+  return fields;
+}
+
 /** Every header field of `input` as `[name, value]`. */
 export function headerFields(input: HeadersInput): [string, string][] {
   if (typeof Request !== "undefined" && input instanceof Request)
-    return [...input.headers];
+    return bounded([...input.headers]);
   if (typeof (input as Iterable<unknown>)[Symbol.iterator] === "function")
-    return [...(input as Iterable<readonly [string, string]>)].map(([n, v]) => [
-      n,
-      v,
-    ]);
+    return bounded(
+      [...(input as Iterable<readonly [string, string]>)].map(([n, v]) => [
+        n,
+        v,
+      ]),
+    );
   const out: [string, string][] = [];
   for (const [name, value] of Object.entries(
     input as Record<string, string | readonly string[] | undefined>,
@@ -140,7 +165,7 @@ export function headerFields(input: HeadersInput): [string, string][] {
     if (typeof value === "string") out.push([name, value]);
     else for (const v of value) out.push([name, v]);
   }
-  return out;
+  return bounded(out);
 }
 
 function checkConfig(configs: readonly PolarisServerConfig[]): void {
@@ -221,9 +246,18 @@ export function createPolarisKey(options: PolarisKeyOptions): PolarisKey {
     input: HeadersInput | undefined,
   ): Problem => {
     const fields = input ? headerFields(input) : [];
-    const languages = backendHeaderElements(fields, "Accept-Language");
+    const languages = backendHeaderElements(
+      fields.filter(
+        ([n, v]) =>
+          v.length <= MAX_RAW_FIELD || n.toLowerCase() !== "accept-language",
+      ),
+      "Accept-Language",
+    );
     const problem = backendProblem(code, {
-      acceptLanguage: languages.length > 0 ? languages.join(", ") : null,
+      acceptLanguage:
+        languages.length > 0
+          ? languages.join(", ").slice(0, MAX_LANGUAGE_FIELD)
+          : null,
       realm: products[0]!,
       copy: BACKEND_COPY,
     });
@@ -292,13 +326,22 @@ export function createPolarisKey(options: PolarisKeyOptions): PolarisKey {
           );
       }
     }
+    // The trust set this verification runs under. A cache insert from a verification that began
+    // under an older set is refused below: the key that verified the document may be gone.
+    const startedUnder = generation;
     const verdict = await backendVerdict({
       headers: fields,
       now: at,
       options: { products, maxAgeSeconds: maxAge },
       trust: trustSets(),
     });
-    if (verdict.status === 200 && verdict.document && key !== null) {
+    if (
+      verdict.status === 200 &&
+      verdict.document &&
+      key !== null &&
+      // The trust set did not change while this document verified.
+      startedUnder === generation
+    ) {
       const doc = verdict.document;
       const deadline =
         maxAge === null
@@ -307,7 +350,7 @@ export function createPolarisKey(options: PolarisKeyOptions): PolarisKey {
               doc.issuedAt + maxAge + CLOCK_SKEW_SECONDS,
               doc.graceUntil,
             );
-      cache.set(key, { verdict, deadline, generation });
+      cache.set(key, { verdict, deadline, generation: startedUnder });
       if (cache.size > cacheSize) cache.delete(cache.keys().next().value!);
     }
     return verdict;

@@ -25,6 +25,47 @@ export const UNKNOWN_KID_FETCH_SECONDS = 60;
 /** The trust fetch's `X-PKey-SDK` (§14.4, §8): a server sighting on the Integration page. */
 export const SERVER_SDK_ID = "node-server";
 const FETCH_TIMEOUT_MS = 5000;
+/** The largest trust manifest read, in bytes. A signed document is capped at 64 KiB before
+ *  encoding (§3), so 128 KiB of compact JWS is generous; a larger body is dropped unread. */
+export const MAX_MANIFEST_BYTES = 131072;
+
+/** The body of `res` as text, or null when it is longer than `limit` bytes. */
+async function readBounded(
+  res: Response,
+  limit: number,
+): Promise<string | null> {
+  const declared = Number(res.headers.get("content-length"));
+  if (Number.isFinite(declared) && declared > limit) {
+    await res.body?.cancel().catch(() => {});
+    return null;
+  }
+  if (!res.body) {
+    const text = await res.text();
+    return utf8Length(text) > limit ? null : text;
+  }
+  const reader = res.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > limit) {
+      await reader.cancel().catch(() => {});
+      return null;
+    }
+    chunks.push(value);
+  }
+  const all = new Uint8Array(total);
+  let at = 0;
+  for (const c of chunks) {
+    all.set(c, at);
+    at += c.byteLength;
+  }
+  return new TextDecoder().decode(all);
+}
+
+const utf8Length = (s: string): number => new TextEncoder().encode(s).length;
 
 export interface ProductTrustOptions {
   product: string;
@@ -129,7 +170,7 @@ export class ProductTrust {
         redirect: "error",
       },
     );
-    return res.ok ? res.text() : null;
+    return res.ok ? readBounded(res, MAX_MANIFEST_BYTES) : null;
   }
 
   private async fetchAndInstall(): Promise<void> {

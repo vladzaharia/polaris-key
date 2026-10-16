@@ -24,6 +24,8 @@ app.get("/api/export", requireEntitlement("export.pdf"), handler);
   `src/copy.generated.ts`.
 - The trust manifest refreshes every 900 s on a request, and an unknown `kid` fetches at most once a
   minute. A failed fetch keeps the last verified set and the pinned keys always verify.
+- The trust fetch is claimed before it is awaited, so concurrent junk kids cost one request; the
+  body read stops at 128 KiB and a credential header over 64 KiB is refused unsplit.
 - Verified documents sit in an LRU of 1 000, keyed by the header's SHA-256, until their freshness
   deadline.
 - `verifyLicenseDocument` lives here; it moved from `@polaris-key/node/server` in 0.9 with no alias.
@@ -44,6 +46,7 @@ src/
 test/
   matrix.test.ts   every verdict and problem row of backend-matrix.json
   adapters.test.ts the §5.2 verdicts through Express, Hono and Next
+  hardening.test.ts concurrency and resource bounds
   examples.test.ts boots examples/server-* against a test kit
 ```
 
