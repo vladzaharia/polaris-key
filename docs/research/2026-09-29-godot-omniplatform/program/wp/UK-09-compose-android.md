@@ -256,3 +256,14 @@ commit of the PR: `node docs/research/2026-09-29-godot-omniplatform/program/chec
   the Compose lint, `examples/ui/compose-android/`, the docs pages and kit README, the `ui.*` parity
   rows (they stay `planned`) and the design and UX reviews. Every acceptance criterion above is still
   open.
+
+## Progress and continuation (2026-10-16)
+
+Reconciled against main in the 2026-10-16 audit. Remaining:
+
+- KMP source-set cutover (:ui to commonMain + androidMain, Compose Multiplatform resources)
+- SignIn(state, presentation) and all screens from KitStates (Material 3 Expressive, PolarisKeyGate one-liner, nav/deep links, Credential Manager)
+- Roborazzi baselines in both themes, Compose lint
+- examples/ui/compose-android, docs pages, kit README
+- ui.\* parity rows (still planned)
+- Design and UX reviews

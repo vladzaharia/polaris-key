@@ -202,3 +202,14 @@ UK-38 and UK-39 build on `polaris_key.ui.core`; `ui.kit` for Python is proven by
 
 The role agent sets `--set UK-12 in-review` when it hands off. After review, the lead adds the last
 commit of the PR: `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set UK-12 done`.
+
+## Progress and continuation (2026-10-16)
+
+Reconciled against main in the 2026-10-16 audit. Remaining:
+
+- Qt Quick screens/QML components beyond Theme.qml and the glue (Qt glue does not exist yet, see HA-13)
+- Presentation source wired into Theme.qml with zero integrator code
+- Snapshot baselines dark/light under sdks/python/tests/ui/snapshots
+- examples/ui/qt with fixtures and --live
+- Docs kit page/tabs, ui.\* parity rows with proofs
+- Design review vs Qt boards and BUILT UX review

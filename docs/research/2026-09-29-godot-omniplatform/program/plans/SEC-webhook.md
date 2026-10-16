@@ -3,11 +3,32 @@
 | Field            | Value                                                                                                                                                                                                                                                                                                                                                 |
 | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Brief            | None yet. This is an unowned security finding; approval creates the implementation work package(s).                                                                                                                                                                                                                                                   |
-| Status           | awaiting approval: merging this plan is the approval                                                                                                                                                                                                                                                                                                  |
+| Status           | Approved 2026-10-16 as design of record (lead, delegated); Appendix A now; per-link hooks deferred until the sandbox spike passes and a third-party tenant is near                                                                                                                                                                                    |
 | Basis            | `main` at `d27467ef8`; receiver is `packages/worker/src/githubWebhook.ts` (not the stale `services/release/githubWebhook.ts` path in the finding), token code is `services/release/githubApp.ts`, and vault code is `platform/keyvault.ts`.                                                                                                           |
 | Wire change      | **None.** This changes an inbound GitHub control-plane receiver only. No device route, signed document, claim, SDK API, `PROTOCOL_VERSION`, `corpusVersion`, `shared-protocol`, or `shared-jws` change.                                                                                                                                               |
 | Corpus / SDKs    | None. Existing device transcripts and all SDK behavior remain byte-identical.                                                                                                                                                                                                                                                                         |
 | Human dependency | A GitHub App registration has one App-level webhook URL/secret, not per-installation secrets. True per-tenant isolation requires repository webhooks and a human-approved `repository_hooks: write` App permission. Contract, and any post-contract rollback, also need human-run App registration changes (event subscriptions, App webhook secret). |
+
+## Decisions (lead, 2026-10-16)
+
+Delegated by the owner; rulings on §8. This plan is the **design of record**: Appendix A (remove the unscoped installation-token fallback) is implemented now; the per-link hook work is deferred until the sandbox spike passes and a third-party tenant is near.
+
+1. **`repository_hooks: write`:** only after the sandbox proof and before any external tenant.
+2. **Manual secret display:** no.
+3. **Timing:** gated on the first third-party repository link.
+4. **Previous-secret grace:** 24 hours.
+5. **Sandbox facts are required inputs.** If the delivery GUID is not shared between App-level and repository-hook deliveries, the plan returns for review.
+6. **Legacy retirement:** C1, then C2 only after every link, the system product included, is active.
+7. **Recovery:** replacement-secret restore, not escrow.
+
+Amendments: the `SEALED_TABLES` cite is `console/handlers/products.ts:~745`. `/webhooks/github` is not in `openapi/polaris-key.v3.yaml`; the new route follows the existing route's classification (see §2, hard rule 10).
+
+Owner preconditions (also in the owner-steps checklist):
+
+1. Approve the `repository_hooks: write` permission upgrade on the GitHub App, and run the sandbox spike (decision 5), before any external tenant.
+2. Install the App on the platform repository, so the system product can become active before C2.
+3. Decide per-link handling for any installation owner who declines the permission.
+4. Choose the C1/C2 soak length (14 days recommended).
 
 ## 1. Summary and scope
 
@@ -56,10 +77,10 @@ console routes, not public ones.
 - **Hard rule 5:** secrets and links are data rows, never `if (product === ...)` code.
 - **Hard rule 6:** sealed-secret access belongs behind a release-owned store; root receiver code
   may compose it but no console handler reads sealed columns directly. The one existing exception
-  is the key-vault reseal/status sweep (`SEALED_TABLES` in `console/handlers/products.ts`): it is
+  is the key-vault reseal/status sweep (`SEALED_TABLES`, `console/handlers/products.ts:~745`): it is
   the KEK rotation itself, it is extended to the three webhook slots (§6.1), and a reach test, like
   `outletCredentialReach.test.ts`, keeps it the only one.
-- **Hard rule 10:** add the path to OpenAPI and `routeCoverage` in the same change.
+- **Hard rule 10:** the existing `/webhooks/github` route is not in `openapi/polaris-key.v3.yaml`; `routeCoverage.test.ts` lists `githubWebhook` as narrative-only (`:69`) and as a non-CORS surface (`:825`). The new `/webhooks/github/<hook_ref>` route follows that classification: check `routeCoverage.test.ts` and do not assume an OpenAPI entry is required.
 - New migration files use `00XX_` placeholders; `TABLE_OWNERS`, docs-reference generation,
   platform inventory, and config/deployment docs are updated through their generators.
 

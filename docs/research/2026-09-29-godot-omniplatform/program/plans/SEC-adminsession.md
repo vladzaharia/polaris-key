@@ -3,11 +3,36 @@
 | Field                     | Value                                                                                                                                                                                                                                                             |
 | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Brief                     | None yet. This is an unowned security finding; approval creates the implementation work package(s).                                                                                                                                                               |
-| Status                    | awaiting approval: merging this plan is the approval                                                                                                                                                                                                              |
+| Status                    | Approved 2026-10-16 (lead, delegated). Lands before SEC-pepper.                                                                                                                                                                                                   |
 | Basis                     | `main` at `d27467ef8`; current code is `packages/worker/src/core/console/session.ts`, `sessionRevocation.ts`, `console/api.ts`, `console/auth.ts`, and `core/rbac/principal.ts`. The assignment's `src/console/session.ts` path is stale after the layering move. |
 | Wire change               | **None.** No device route, signed document, `typ`, claim, SDK API, `PROTOCOL_VERSION`, `corpusVersion`, `shared-protocol`, or `shared-jws` change.                                                                                                                |
 | Corpus / SDKs             | None. This is an operator-cookie and console-RBAC change only.                                                                                                                                                                                                    |
 | Existing decision amended | `plans/ST-28.md` Q3 accepts an 8-hour IdP-group assertion. This plan proposes a one-hour bound plus an immediate targeted revoke control; the owner must explicitly approve that amendment.                                                                       |
+
+## Decisions (lead, 2026-10-16)
+
+Delegated by the owner; the lead rules on the §8 items as recommended.
+
+| §8                              | Ruling                                                                                    |
+| ------------------------------- | ----------------------------------------------------------------------------------------- |
+| 8.1 Assertion window            | **1 hour.**                                                                               |
+| 8.3 Targeted revoke route       | **Yes.** The keep-max option in the single-use store is new work, in scope.               |
+| 8.4 ST-28 Q3                    | **Amended to 1 h.** Dated note added to `plans/ST-28.md` Q3 (2026-10-16); ST-30 inherits. |
+| 8.5 Availability                | **1 h accepted.** No fail-open grace.                                                     |
+| 8.6 / §6.7 Break-glass recovery | **Yes.** No route, no standing credential.                                                |
+
+Amendments to the text above:
+
+- **Offboarding runbook step** is "remove group, revoke sessions, revoke that operator's `pkeya_` admin API tokens". Tokens resolve to a synthetic `token:<id>` principal (`console/apiTokens.ts:287-302`, migration 0119) and survive group removal.
+- **Drift gate:** `ADMIN_SESSION_TTL_SECONDS` appears in `core/settings/rules.ts:88` and `console/handlers/platformSettings.ts:202`; run `pnpm gen settings` (then `pnpm gen --check`).
+- **Stale cite fixed:** the SPA 401 redirect is `packages/admin/src/api.ts:4293,4300` (the `res.status === 401` branch at `:4362`), not `:4215-4224`.
+- **Sequencing:** this plan lands before SEC-pepper (both touch `core/console/sessionRevocation.ts`).
+
+Owner preconditions (also in the owner-steps checklist):
+
+1. Confirm Pocket ID re-emits current `groups` on an ordinary login and allows silent renewal at 1 h.
+2. Staging rehearsal of §6.7 recovery before the one-hour cookie ships.
+3. Decide who may run recovery and whether a second approver is required.
 
 ## 1. Summary and scope
 
@@ -185,7 +210,7 @@ No second group-check implementation is permitted. A one-hour expiry therefore p
 gate too.
 
 `packages/admin/src/api.ts` currently sends ordinary 401s to `/manage/login` without `returnTo`
-(`:4215-4224`), while step-up preserves the hash route. The implementation changes ordinary-login
+(`packages/admin/src/api.ts:4293,4300`, and the 401 branch at `:4362`), while step-up preserves the hash route. The implementation changes ordinary-login
 redirects to preserve `/manage/<hash>` through the existing allowlisted `returnTo` mechanism. It
 does not promise to retain unsaved form state; the UI must show the effective expiry returned by
 `/api/me` so users can finish a form before a re-login. `handleMe` continues returning
@@ -236,8 +261,8 @@ This plan amends the future implementation, not its account model:
   assertion returns reauthentication-required rather than a root grant.
 - **ST-31:** calls the stable revoke endpoint from Members “Sign out everywhere”; it must not add a
   second session store or revocation format.
-- **ST-35/RUNBOOK:** state that group removal is “remove group, revoke sessions, verify 401; the
-  automatic maximum is one hour,” replacing the stale statement that rotating the secret is the
+- **ST-35/RUNBOOK:** state that group removal is “remove group, revoke sessions, revoke that operator’s `pkeya_` admin API tokens, verify 401; the
+  automatic maximum is one hour,” (the tokens resolve to a synthetic `token:<id>` principal, `console/apiTokens.ts:287-302`, migration `0119_admin_api_tokens.sql`, and outlive both group removal and session revocation) replacing the stale statement that rotating the secret is the
   only containment, that the revoked operator cannot sign back in for one minute after the revoke
   (§6.2), and that during a single-use store outage the revoke does not take effect and
   `ADMIN_SESSION_SECRET` rotation is the fallback.
@@ -439,6 +464,7 @@ mise exec node@22 -- pnpm --filter @polaris-key/admin test
 mise exec node@22 -- pnpm --filter @polaris-key/admin build
 mise exec node@22 -- pnpm --filter @polaris-key/worker test adminCspParity
 mise exec node@22 -- pnpm --filter @polaris-key/docs check:links
+mise exec node@22 -- pnpm gen settings   # ADMIN_SESSION_TTL_SECONDS is listed in core/settings/rules.ts:88 and handlers/platformSettings.ts:202; regenerate the settings reference page and console search index
 mise exec node@22 -- pnpm gen --check
 mise exec node@22 -- pnpm format
 ```
