@@ -11,6 +11,7 @@ import im.plrs.key.core.testing.ScriptedTransport
 import im.plrs.key.core.testing.TestSigner
 import im.plrs.key.core.testing.path
 import java.util.concurrent.atomic.AtomicLong
+import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -72,6 +73,42 @@ class PolarisServerTest {
         assertEquals("license_invalid", s.verdict(header(junk)).code)
         assertEquals(2, transport.requests().size)
         s.close()
+    }
+
+    @Test
+    fun concurrentUnknownKidsMakeOneFetchPerMinute() = runBlocking {
+        val body = manifest(pinned, pinned)
+        val transport = ScriptedTransport { ScriptedTransport.respond(200, body) }
+        val s = server(transport)
+        val junk = TestSigner("unknown").licenseDoc("acme", "dev_1", clockNow.get())
+        val results = (1..40).map { this.async(kotlinx.coroutines.Dispatchers.Default) { s.verdict(header(junk)).code } }.map { it.await() }
+        assertTrue(results.all { it == "license_invalid" })
+        assertEquals(1, transport.requests().size)
+        s.close()
+    }
+
+    @Test
+    fun aTrustChangeBetweenSnapshotAndInsertLeavesNothingCached() = runBlocking {
+        val body = manifest(pinned, pinned, rotated)
+        val transport = ScriptedTransport { ScriptedTransport.respond(200, body) }
+        val s = server(transport, refresh = false)
+        s.beforeCacheInsert = {
+            s.beforeCacheInsert = null
+            // A trust change (a revocation or rotation) lands after the snapshot was taken.
+            runBlocking { s.refreshAll() }
+        }
+        val doc = pinned.licenseDoc("acme", "dev_1", clockNow.get())
+        assertEquals(200, s.verdict(header(doc)).status)
+        assertEquals(0, s.cacheSize())
+        assertEquals(200, s.verdict(header(doc)).status)
+        assertEquals(1, s.cacheSize())
+        s.close()
+    }
+
+    @Test
+    fun anOversizeHeaderFieldIsInvalidWithoutSplitting() {
+        val v = backendVerdict(listOf("X-PKey-License" to "a,".repeat(100_000)), clockNow.get(), BackendOptions(listOf("acme")), mapOf("acme" to pinned.trust))
+        assertEquals("license_invalid", v.code)
     }
 
     @Test

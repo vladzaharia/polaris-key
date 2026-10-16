@@ -132,7 +132,15 @@ public class PolarisServer(public val options: PolarisServerOptions) : AutoClose
         if (!options.trustRefresh || !started.compareAndSet(false, true)) return
         refreshJob = scope.launch {
             while (true) {
-                for (t in trusts.values) refresh(t)
+                for (t in trusts.values) {
+                    try {
+                        refresh(t, unknownKid = false)
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        // A failed refresh keeps the last verified set; the loop must not die.
+                    }
+                }
                 delay(BackendWire.TRUST_REFRESH_SECONDS * 1000)
             }
         }
@@ -198,28 +206,42 @@ public class PolarisServer(public val options: PolarisServerOptions) : AutoClose
         )
     }
 
+    /** Bumped, with the cache clear, whenever a trust set changes. Guarded by `synchronized(cache)`. */
+    private var trustGeneration: Long = 0
+
+    /** Test seams. */
+    internal var beforeCacheInsert: (() -> Unit)? = null
+    internal fun cacheSize(): Int = synchronized(cache) { cache.size }
+    internal suspend fun refreshAll() {
+        for (t in trusts.values) refresh(t, unknownKid = false)
+    }
+
     private fun key(jws: String): String = Base64Url.encode(MessageDigest.getInstance("SHA-256").digest(jws.toByteArray(Charsets.UTF_8)))
 
     private fun verify(jws: String): VerifiedDocument? {
         val k = key(jws)
         synchronized(cache) { cache[k] }?.let { return it }
+        // Read the generation before the snapshot: a trust change in between leaves the result uncached.
+        val generation = synchronized(cache) { trustGeneration }
         val trust = trusts.mapValues { it.value.effective }
         val verified = verifyBackendDocument(jws, slugs, trust) ?: return null
-        synchronized(cache) { cache[k] = verified }
+        beforeCacheInsert?.invoke()
+        synchronized(cache) { if (trustGeneration == generation) cache[k] = verified }
         return verified
     }
 
     private suspend fun refreshForUnknownKid(): Boolean {
         var changed = false
         for (t in trusts.values) {
-            if (clock() - t.lastFetchAt < 60) continue
-            if (refresh(t)) changed = true
+            if (refresh(t, unknownKid = true)) changed = true
         }
         return changed
     }
 
     /** One fetch and verify of [t]'s manifest. True when it changed the trust set. */
-    private suspend fun refresh(t: ProductTrust): Boolean = t.lock.withLock {
+    private suspend fun refresh(t: ProductTrust, unknownKid: Boolean): Boolean = t.lock.withLock {
+        // The unknown-kid gate lives under the lock: concurrent junk makes one fetch a minute.
+        if (unknownKid && clock() - t.lastFetchAt < 60) return@withLock false
         t.lastFetchAt = clock()
         val endpoints = Endpoints(t.product.baseUrl, t.product.slug)
         val first = fetch(endpoints.trustManifest) ?: return@withLock false
@@ -252,13 +274,16 @@ public class PolarisServer(public val options: PolarisServerOptions) : AutoClose
         val next = mergeTrust(usablePins(t.product.pinnedKeys, t.tombstones), t.discovered)
         val changed = next != t.effective
         t.effective = next
-        if (changed) synchronized(cache) { cache.clear() }
+        if (changed) synchronized(cache) {
+            trustGeneration++
+            cache.clear()
+        }
         return true
     }
 
     private suspend fun fetch(url: String): String? {
         val response = try {
-            transport.send(PolarisRequest(url = url, headers = mapOf("accept" to "application/jose", HeaderName.sdkName to SdkId.kotlinServer)))
+            transport.send(PolarisRequest(url = url, headers = mapOf("accept" to "application/jose", HeaderName.sdkName to SdkId.kotlinServer), maxBodyBytes = MAX_MANIFEST_BYTES + 1))
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {

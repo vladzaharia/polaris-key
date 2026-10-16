@@ -181,6 +181,7 @@ private suspend fun check(call: ApplicationCall, pluginName: String, required: B
         is BackendRequirement.Entitlement -> if (license.isEntitled(required.name)) null else BackendRefusal.NotEntitled
         BackendRequirement.SignIn -> if (license.user != null) null else BackendRefusal.SignInRequired
     }
+    if (missing != null) gate.server.options.onVerdict?.invoke(missing.code, 6)
     if (missing != null) refuse(call, gate, gate.server.problem(missing.code, call.request.headers[HttpHeaders.AcceptLanguage]))
 }
 

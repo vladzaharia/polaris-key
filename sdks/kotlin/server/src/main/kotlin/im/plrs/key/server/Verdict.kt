@@ -141,6 +141,11 @@ public fun backendHeaderElements(headers: Iterable<Pair<String, String>>, name: 
     val out = ArrayList<String>()
     for ((n, v) in headers) {
         if (asciiLower(n) != want) continue
+        // A field this long is invalid whatever it holds: keep one oversize element, split nothing.
+        if (v.length > 4 * BackendWire.LICENSE_MAX_BYTES) {
+            out += v.take(BackendWire.LICENSE_MAX_BYTES + 1)
+            continue
+        }
         for (element in v.split(',')) {
             val e = trimOws(element)
             if (e.isNotEmpty()) out += e
