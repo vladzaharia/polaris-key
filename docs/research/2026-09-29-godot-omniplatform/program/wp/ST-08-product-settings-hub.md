@@ -218,3 +218,11 @@ No dependency edge is added to ST-08. ST-12, ST-14 and ST-45 depend on ST-08, an
 an edge from ST-08 to any of them is a cycle; that is also why ST-08 cannot wait for the ledger and
 uses P0-31's `MOVED_TABS`. ST-38, I-29, P2-10, P2-11, LX-34, LX-40 and LX-44 do not depend on ST-08,
 but making ST-08 wait for them (all are todo) would hold the three finished tabs behind them.
+
+## Progress and continuation (2026-10-16)
+
+Reconciled against main in the 2026-10-16 audit. Remaining:
+
+- Criterion 2 blocked: Page moved for license/settings, license/enrollment, identity/portal, update/feed (replacement homes unbuilt; owners LX-40, ST-38/LX-34/ST-12/P2-10, I-29, update feed owner); lead must carve out or wait
+- Confirm settings-coverage PENDING entries removed and PENDING_CEILING lowered by 5
+- Record pkey-ux-reviewer BUILT pass
