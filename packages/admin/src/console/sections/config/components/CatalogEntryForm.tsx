@@ -10,7 +10,7 @@ import type {
   ConfigKind,
   ManagementState,
 } from "../../../../api.js";
-import { KIND_LABELS } from "../../../../lib/labels.js";
+import { IN_APP_LABELS, typeLabel } from "../../../../lib/labels.js";
 import {
   MANAGEMENT_STATES,
   SchemaField,
@@ -38,6 +38,30 @@ const TYPES = [
   "object",
 ] as const;
 type SchemaType = (typeof TYPES)[number];
+
+/** The console's type, over the stored `kind` and `delivery` (U-30). */
+type EntryType = "setting" | "secret" | "minted" | "flag";
+
+const ENTRY_TYPE_LABELS: Record<EntryType, string> = {
+  setting: "Setting",
+  secret: "Secret",
+  minted: typeLabel({ kind: "secret", delivery: "edgeMint" }),
+  flag: "Flag",
+};
+
+function entryType(entry: ConfigEntry): EntryType {
+  if (entry.kind === "config") return "setting";
+  if (entry.kind === "flag") return "flag";
+  return entry.delivery === "edgeMint" ? "minted" : "secret";
+}
+
+/** What each in-app visibility means to the person using the app. */
+const IN_APP_HELP: Record<string, string> = {
+  default:
+    "Listed in the app's settings. People can change it, and their choice syncs.",
+  enforced: "Listed, but only you can change it, here or in a profile.",
+  hidden: "Not listed in the app. The app still reads the value.",
+};
 
 const TYPE_LABELS: Record<SchemaType, string> = {
   string: "Text",
@@ -302,18 +326,30 @@ export function CatalogEntryForm({
         </FormField>
         <FormField
           name="kind"
-          label="Kind"
+          label="Type"
           group
           value={entry.kind}
           error={issue("kind")}
         >
           {(f) => (
-            <SegmentedControl<ConfigKind>
+            <SegmentedControl<EntryType>
               className="w-fit self-start"
               aria-labelledby={f["aria-labelledby"]}
-              value={entry.kind}
-              onChange={(kind) => {
-                let next: ConfigEntry = { ...entry, kind };
+              value={entryType(entry)}
+              onChange={(picked) => {
+                const kind: ConfigKind =
+                  picked === "setting"
+                    ? "config"
+                    : picked === "flag"
+                      ? "flag"
+                      : "secret";
+                // A minted token is a secret delivered as edgeMint; the other types carry no
+                // delivery of their own (a secret then means clientScoped).
+                let next: ConfigEntry = withField(
+                  { ...entry, kind },
+                  "delivery",
+                  picked === "minted" ? "edgeMint" : undefined,
+                );
                 // A secret has no plaintext default; a management default is config-only.
                 if (kind === "secret") {
                   next = withField(next, "default", undefined);
@@ -330,16 +366,23 @@ export function CatalogEntryForm({
                 }
                 onChange(next);
               }}
-              options={(["config", "secret", "flag"] as const).map((k) => ({
+              options={(
+                [
+                  "setting",
+                  "secret",
+                  "minted",
+                  ...(entry.kind === "flag" ? (["flag"] as const) : []),
+                ] as const
+              ).map((k) => ({
                 value: k,
-                label: KIND_LABELS[k],
+                label: ENTRY_TYPE_LABELS[k],
               }))}
             />
           )}
         </FormField>
         <FormField
           name="type"
-          label="Type"
+          label="Value type"
           help={
             guessing && entry.default !== undefined
               ? "Guessed from the default."
@@ -370,8 +413,9 @@ export function CatalogEntryForm({
         </FormField>
         {secret ? (
           <p className="self-end text-sm text-fg-muted sm:pb-2">
-            A secret has no default: its value is write-only and set per profile
-            or license.
+            {entry.delivery === "edgeMint"
+              ? "A minted token is signed on request from a recipe. It is never stored or listed."
+              : "A secret has no default: its value is write-only and set per profile or license. The app reads it in code; it is never listed."}
           </p>
         ) : guessing ? (
           <FormField
@@ -480,13 +524,9 @@ export function CatalogEntryForm({
       {entry.kind === "config" ? (
         <FormField
           name="managementDefault"
-          label="Management default"
+          label="In the app"
           group
-          help={
-            MANAGEMENT_STATES.find(
-              (s) => s.value === (entry.managementDefault ?? "default"),
-            )?.help
-          }
+          help={IN_APP_HELP[entry.managementDefault ?? "default"]}
           value={entry.managementDefault ?? "default"}
         >
           {(f) => (
@@ -499,7 +539,7 @@ export function CatalogEntryForm({
               }
               options={MANAGEMENT_STATES.map((s) => ({
                 value: s.value,
-                label: s.label,
+                label: IN_APP_LABELS[s.value] ?? s.label,
               }))}
             />
           )}

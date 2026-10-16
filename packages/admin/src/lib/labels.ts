@@ -47,11 +47,32 @@ export const PROVIDER_LABELS: Record<string, string> = {
   manual: "Manual",
 };
 
-/** Config catalog kinds ("kind", never "type", per the glossary). */
+/**
+ * The catalog's types in the console's one vocabulary (U-30): a Setting, a Secret or a Minted
+ * token. The wire keeps `kind` and `delivery` (a minted token is `kind: "secret"` with
+ * `delivery: "edgeMint"`); only the words change.
+ */
 export const KIND_LABELS: Record<string, string> = {
-  config: "Config",
+  config: "Setting",
   secret: "Secret",
   flag: "Flag",
+};
+
+/** An entry's type label: a secret delivered as `edgeMint` is a Minted token. */
+export function typeLabel(entry: { kind: string; delivery?: string }): string {
+  if (entry.kind === "secret" && entry.delivery === "edgeMint")
+    return "Minted token";
+  return KIND_LABELS[entry.kind] ?? entry.kind;
+}
+
+/**
+ * A setting's in-app visibility over the stored `managementDefault` (default, enforced, hidden):
+ * Editable people can change it, Read-only they see but cannot, Hidden they never see.
+ */
+export const IN_APP_LABELS: Record<string, string> = {
+  default: "Editable",
+  enforced: "Read-only",
+  hidden: "Hidden",
 };
 
 /** Catalog management states. */
