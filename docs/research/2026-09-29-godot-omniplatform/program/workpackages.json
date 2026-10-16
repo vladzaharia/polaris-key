@@ -12047,7 +12047,7 @@
         "docs/research/2026-10-08-framework-drop-ins/README.md §12 (SP-57)"
       ],
       "brief": "wp/SP-57-kotlin-server-drop-ins-ktor.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "SP-58",
