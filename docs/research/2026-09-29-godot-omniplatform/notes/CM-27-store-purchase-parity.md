@@ -1,335 +1,433 @@
-> Research note for [Godot on Polaris Key](../README.md), 2026-10-09.
-> A working paper kept for its evidence and sources; the README synthesis is the cross-checked position.
+> Research note for [Godot on Polaris Key](../README.md), 2026-10-09, revised 2026-10-16. Spike
+> CM-27 ([brief](../program/wp/CM-27-spike-store-purchase-parity-microsoft.md)), filed by the DX
+> consolidation plan in Track H. A working paper kept for its evidence and sources; the README
+> synthesis is the cross-checked position.
 
 # CM-27: Store purchase parity (Microsoft Store, itch.io, consumables)
 
-Run 2026-10-09 (all fetch dates below are that day). Desk research only: public documentation read, no
-purchases, no accounts, no credentials, no product code changed. Nothing here was called against a live
-service. Tags: [V] primary source read raw, [M] measured, [S] summary or search-engine digest, [I] inference,
-[U] unknown, needs a live check.
+Desk research only. Vendor documentation was read raw and the repository was read at `origin/main`
+`e5ec19e53`. No accounts, no purchases, no credentials, and no call to a vendor API that needs one.
+Tags: [V] primary source read raw, [M] measured, [S] summary or search-engine digest, [I] inference,
+[U] unknown, needs a live check by someone with an account.
+
+This revision replaces the 2026-10-09 draft. Every vendor page was fetched again on 2026-10-16 (local
+time; the fetch log reads 2026-10-17 UTC), and the repository's store adapters and native bridges
+were read. Six of the draft's claims were wrong against the code or the current documentation; they
+are listed under "Corrections".
 
 ## Question
 
-How do the Microsoft Store (desktop and Xbox), itch.io and the consumable / durable split on Steam, Apple,
-Google Play, the Microsoft Store and itch.io map onto Polaris Key's offers, tiers, add-ons and one purchase
-ledger, including refund and revocation, and what must CM-28 and the follow-ups build?
+How do the Microsoft Store (desktop, with Xbox noted), itch.io and the consumable/durable split on the
+App Store, Google Play, Steam, the Microsoft Store, itch.io and Epic map onto Polaris Key's offers,
+SKUs, add-ons and single purchase ledger (CM-20), including refunds and revocation? What should CM-28
+build, and which Microsoft Store and itch.io follow-ups does the graph need?
 
 ## Short answer
 
-1. **Microsoft Store can reach parity, with two human gates.** A server can verify base-app, durable and
-   consumable purchases (Entra ID app + Partner Center link + a per-user Store ID key minted by the client). It
-   can detect refunds only reliably through the **Clawback queue, which Microsoft must set up for the
-   publisher** [V]. Polling the collection API on a schedule is explicitly discouraged [V]. The Windows client
-   needs MSIX package identity and a native bridge from Godot [V for MSIX, I for the bridge].
-2. **itch.io can verify ownership of a game, never an in-app purchase.** It has no in-app purchases and no
-   consumables [V, by absence in the docs read]. A server lookup by download key, user id or email works with the
-   developer's account-wide API key [V]. Refunds have no documented API signal [V: docs silent]; revocation
-   shows only as an invalid key on re-lookup [S]. Rate limits are undocumented [V].
-3. **Consumables are one shape on every store that has them, and PK's own ledger should be the balance.**
-   Apple, Play and Microsoft all let the server drain the store-side balance to zero and credit the PK ledger.
-   That fits CM-20's `offer.quantity x store quantity` rule and LX-42's counted entitlement. Steam has no
-   consumable DLC; its consumables are a different product (MicroTxn or Inventory Service) that needs a game
-   server in the loop.
-4. **Refund vocabularies disagree.** Microsoft's `Refunded` event means the payment went back **and the
-   customer kept the item**; that must not map to PK's `refunded` state [V]. Reconcile consumables by order key,
-   not by event name.
-5. **Recommendation:** CM-28 stays Apple + Play consumables on the shared ledger path. Microsoft Store becomes
-   its own follow-up package (verification, Clawback consumer, then consumables), itch.io a smaller one (base
-   app and separate-project add-ons, no consumables), Steam consumables and EOS later. Details and proposed
-   brief edits are in "Recommendation".
+1. **Microsoft Store: parity is reachable on the server, behind four human gates.** Purchases of the
+   app, durables and store-managed consumables can be verified with the Collections API. That needs an
+   Entra app, a Store ID key minted on the client and `publisherQuery` (v9) [V]. Refunds arrive as push
+   events only through a **Clawback queue that Microsoft sets up on request (1–2 weeks)** [V]. The other
+   refund APIs are deprecated for refund detection or must not be polled on a schedule [V]. Store
+   policy 10.8.1(a) requires a game to sell digital goods through Microsoft's in-app purchase API [V].
+   Microsoft names "commerce" as an MSIX capability, so a Godot game needs an MSIX build [V]. The Godot
+   SDK already ships a Windows `StoreContext` bridge (P5-07). It covers updates only today, so purchase
+   is an additive set of operations on it [V: repo].
+2. **itch.io: ownership of the game, verified with the player's own itch.io sign-in, with no developer
+   secret in the Worker.** The current API documents an OAuth authorization-code flow with PKCE and no
+   client secret. `GET /games/{id}/ownership` accepts only an OAuth-application token, and `profile:owned`
+   lists the player's keys with a `purchase_id` [V]. This keeps S-15's rule that the unscoped itch.io key
+   lives only in CI. itch.io has no in-app purchases or consumables, and documents no refund signal or
+   rate limit [V by absence]. The signed outlet capabilities already give `itch` builds
+   `commerce: "own"`. Add-ons and consumables on itch.io builds therefore belong to Polaris Key checkout
+   when it ships, not to itch.io projects [V: repo, I].
+3. **Consumables work the same way on every store that has them: Polaris Key's ledger holds the balance.**
+   The App Store, Google Play and the Microsoft Store all let the server confirm a consumable, credit it
+   once per store transaction and drain the store side. That fits CM-20 D1
+   (`offer.quantity × store quantity`) and LX-42's `grants.quantity` [V, I]. Steam consumables are a
+   separate product
+   (`ISteamMicroTxn`, or the Inventory Service) that CM-20 §11 already rules out. Epic has consumable
+   entitlements with a redeem call and a clawback query, but there is no Epic channel yet [V].
+4. **Partial-refund fields are now documented for both mobile stores.** On the App Store, `revocationType`
+   is `REFUND_FULL` or `REFUND_PRORATED`, with `revocationPercentage` in milliunits. On Google Play,
+   `refundableQuantity` and the voided list's `voidedQuantity` cover the same case. This closes CM-20 §12's
+   unverified item [V].
+5. **Recommendation.** Keep CM-28 to App Store and Google Play consumables, with four extra acceptance
+   criteria. Register three follow-ups: Microsoft Store commerce in the Worker, the Godot `StoreContext`
+   purchase operations, and itch.io ownership through a player sign-in. Defer Steam microtransactions
+   and Epic. Details are under "Recommendation"; the proposed graph rows are under "Work-package briefs
+   that change".
+
+## Corrections to the 2026-10-09 draft
+
+| Draft said                                                        | Fact                                                                                                                                                                                                                                                                                                                              | Evidence        |
+| ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- |
+| `ms-store` and `itch` need no table rebuild, because of CM-20 D2  | D2 covers only the new `dist_offer_skus`. `dist_purchases.store` (`0052_commerce.sql:52`) and `license_store_grants.store` (`:71`) are table CHECKs, so widening them means a table rebuild; CM-20 §11 already says so. `grants.source` is a trigger and costs nothing to widen (`0105_a_licensing_core.sql:72-80`)               | [V: repo]       |
+| itch.io: store the developer's account-wide API key in the Worker | S-15 decided that the unscoped itch.io key lives only in CI (`notes/S-15-storefront-provisioning.md:147-148`), and the adapter says so (`core/storefront/stores/itch.ts:19-20`). The player-OAuth path below needs no developer secret                                                                                            | [V: repo, docs] |
+| itch.io: a player JWT cannot read ownership (2020 GitHub issue)   | The current docs add `game:view:ownership` (`GET /games/{id}/ownership`, OAuth-application tokens only) and `profile:owned` (`/profile/owned-keys` with `purchase_id`). OAuth now uses an authorization-code flow with PKCE, no client secret and non-expiring tokens. A key handed over by the itch.io app has only `profile:me` | [V]             |
+| Microsoft add-on SKUs can be created by API ("declared (A-18f)")  | The adapter declares `iap` **unsupported**: "add-ons wait for a commerce extension" (`core/storefront/stores/microsoftStore.ts:81-85`). An add-on is a copy-card step                                                                                                                                                             | [V: repo]       |
+| No Godot native bridge for Store commerce exists                  | `sdks/godot/native/windows/storecontext/pkey_storecontext.cpp` (P5-07) already runs `StoreContext` on an MTA worker thread with `IInitializeWithWindow`, and reads package identity. It does updates only, so purchase operations are additive                                                                                    | [V: repo]       |
+| Microsoft consume needs a **deterministic** `trackingId`          | Microsoft requires a retry with the **same** `trackingId`, user, product and quantity. A random id written to the pending row before the call is enough; determinism is not required                                                                                                                                              | [V]             |
 
 ## Method
 
-- Read the DX-consolidation audit (`docs/research/2026-10-07-dx-consolidation/audits/commerce.md` §2.1, §2.3,
-  §5.7, §5.9), the CM-20 plan (`program/plans/CM-20.md` D1, D2, D9, §7) and the commerce mockups
-  (`docs/design/mockups/screens/commerce/commerce.{purchase,purchases,offer,storefronts,restore}.json`).
-- Fetched the Microsoft, Apple, Google, Steam, itch.io and Epic documentation named in "Sources". Apple's
-  documentation pages render client-side, so the DocC JSON behind them was fetched with
-  `curl https://developer.apple.com/tutorials/data/documentation/<path>.json` and its text extracted [V].
-  Microsoft, Google, Steam and itch.io pages were read through a page-to-markdown fetch whose extractor
-  answered a prompt [V for the quoted page text, S where a digest is marked].
-- Reused no experiment code; nothing in `prototype/` applies.
+Environment: macOS (Darwin 27.0, arm64), `curl` 8.x, `python3 -I` for HTML-to-text, Node 26 for the
+graph script. No credentials and no account. Commands (outputs went to a scratch directory and were
+not committed):
+
+```sh
+# Apple: the DocC JSON behind the client-rendered pages
+curl -sS -o <out>.json "https://developer.apple.com/tutorials/data/documentation/appstoreserverapi/get-transaction-history.json"
+#   ... also send-consumption-information, consumptionrequest, jwstransactiondecodedpayload,
+#   revocationtype, revocationpercentage, type, and appstoreservernotifications/notificationtype
+# Google Play: the Developer API discovery document (revision 20261015)
+curl -sS -o disc.json "https://androidpublisher.googleapis.com/\$discovery/rest?version=v3"
+# itch.io: the raw pages
+curl -sS -L -o <out>.html "https://itch.io/docs/api/serverside"   # and api/oauth,
+#   itch/integrating/manifest-actions.html, creators/payments
+# Epic: the Next.js page data (the text sits in __NEXT_DATA__ compiledSource)
+curl -sS -L -o <out>.html "https://dev.epicgames.com/docs/web-api-ref/ecom-web-apis"
+```
+
+Microsoft Learn pages were read through a page fetch that returned each page's own Markdown and front
+matter, including `ms.date` and `updated_at`, so they are tagged [V]. The repository was read at the file
+and line references given. No experiment code applies; nothing in `prototype/` touches store commerce.
 
 ## Results
 
-### 1. Microsoft Store: desktop
+### 1. What the repository has today (the code is the fact)
 
-**Client side [V]**
+| Area                          | Where                                                                                                                        | Fact                                                                                                                                                                                                                                                                                              |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Store vocabulary              | `packages/worker/src/core/licensing/storeGrants.ts:37`                                                                       | `STORES = ["app-store", "play", "steam"]`                                                                                                                                                                                                                                                         |
+| Ledger CHECKs                 | `migrations/0052_commerce.sql:31,52,71`; `0105_l_licensing_commerce.sql:14`; `0105_a_licensing_core.sql:114`                 | `dist_store_products`, `dist_purchases`, `license_store_grants` and `dist_store_product_entitlements` each CHECK the same three stores. `device_store_identities` CHECKs `store = 'steam'`. `grants.source` is a replaceable trigger (`0105_a:72-80`)                                             |
+| Apple                         | `services/distribution/commerce/apple.ts:254`                                                                                | `if (tx.type !== "Non-Consumable") reject("unsupported_type")`. The host is already `api.storekit.apple.com` (`:60`)                                                                                                                                                                              |
+| Play                          | `commerce/play.ts:1-25, 401-470`                                                                                             | `purchases.products.get` (v3) and `:acknowledge`. Only `purchaseState` 0 grants, and `obfuscatedExternalAccountId` must be a licence binding. No `:consume` call yet                                                                                                                              |
+| Periodic work                 | `commerce/recheck.ts:1-17, 46-50`                                                                                            | Play acknowledgement retries inside 3 days, a daily Play voided poll (30-day lookback), a weekly App Store re-read and a weekly Steam ownership re-check                                                                                                                                          |
+| Outlet capability on the wire | `packages/shared-protocol/src/distribution.ts:86-90`                                                                         | `"ms-store": STORE` (`commerce: "store-iap"`), `steam` → `commerce: "steam"`, `itch: PLATFORM_OWN` (`commerce: "own"`)                                                                                                                                                                            |
+| Microsoft Store adapter       | `core/storefront/stores/microsoftStore.ts:81-85`                                                                             | `iap` unsupported: the gate denies creating or submitting an add-on                                                                                                                                                                                                                               |
+| Microsoft Entra token client  | `services/distribution/connectors/msstore/token.ts:1-35, 68-80, 251-257`                                                     | Client-credentials tokens from one Entra application for two audiences (`manage.devcenter.microsoft.com`, `api.store.microsoft.com/.default`), each in its own sealed cache slot, with the host fixed to `login.microsoftonline.com`. A third audience (`onestore.microsoft.com`) fits this shape |
+| itch.io adapter               | `core/storefront/stores/itch.ts:19-20, 36-38, 53-55`                                                                         | No Worker credential ("the unscoped butler key, which lives in CI"); `iap` unsupported; `status` is read in CI                                                                                                                                                                                    |
+| Godot Windows bridge          | `sdks/godot/native/windows/storecontext/pkey_storecontext.cpp:1-22, 76-79`; `addons/polaris_key/native/pkey_storecontext.gd` | `package_identity()` and `request_async(op, hwnd, silent)`, where `op` is `updates`, `can_silently_download` or `download_and_install`. HRESULTs `0x803F6101`/`0x803F6107` map to "not a Store install"                                                                                           |
+| Godot commerce service        | `sdks/godot/addons/polaris_key/services/commerce.gd:1-80`                                                                    | `purchase(flag)` routes App Store outlets through `PKeyApple`, Steam through GodotSteam; Play answers "unsupported" until a billing helper ships (`claim_play()` meanwhile). No `ms-store` or `itch` route. `hidden_here()` applies App Store 3.1.3(b) only                                       |
+| Commerce mockup               | `docs/design/mockups/screens/commerce/commerce.storefronts.json`                                                             | itch.io's Purchases and Refunds read "Not checked". The Microsoft Store row exists                                                                                                                                                                                                                |
 
-- Add-on types: durable, developer-managed consumable, store-managed consumable, subscription. Store-managed
-  consumables need `Windows.Services.Store`, not the older `Windows.ApplicationModel.Store`.
+### 2. Microsoft Store
+
+**2.1 Client (Windows) [V]**
+
+- `Windows.Services.Store.StoreContext` is the API to use. The older `Windows.ApplicationModel.Store`
+  "is not supported in Windows desktop applications that use the Desktop Bridge". Store-managed
+  consumables and subscriptions need the newer namespace.
 - "In-app purchase functionality is not currently supported in elevated applications."
-- Desktop apps must hand `StoreContext` a window handle (`InitializeWithWindow`) or it "will return inaccurate
-  data or errors".
-- Testing needs the app published to the Store (can be hidden) and installed once; there is no simulator for
-  `Windows.Services.Store`.
-- Unpackaged EXE/MSI apps cannot use Store in-app purchases or add-ons [S: Microsoft's distribution-path
-  comparison; sparse-package behaviour [U]]. Godot's Windows export is a plain `.exe`, so a Store build means
-  an MSIX wrapper, and a native bridge (WinRT or GDK) because Godot has no built-in Store commerce API [I].
+- A desktop app must call `IInitializeWithWindow::Initialize(hwnd)` on the `StoreContext`, or it "will
+  return inaccurate data or errors". The P5-07 bridge already does this.
+- "The Windows.Services.Store namespace does not provide an API you can use to obtain a transaction
+  receipt". Verification is therefore server-side, through the Collections API.
+- There is no simulator. The app must be published (it can be hidden) and installed from the Store once;
+  without that association, calls fail with `0x803F6107`.
+- The MSI/EXE package FAQ lists "Support for advanced capabilities like flighting and commerce" as MSIX
+  benefits (page updated 2026-08-24). An MSI/EXE submission has no Store commerce path. [S: Microsoft Q&A
+  answers (2023) say the same; no official page says it outright.]
+- **Policy 10.8.1 (Store Policies 7.20, 2026-09-14):** games "are required to use the Microsoft Store
+  in-product purchase APIs for the purchase of digital goods and services". Non-game PC products "may
+  either use a secure third-party purchase API or the Microsoft Store in-product purchase API". The wire's
+  `ms-store → commerce: "store-iap"` is therefore right for games, and stricter than necessary for
+  non-game apps, which is acceptable because "nothing widens them". A product bound to the Microsoft API
+  "must not direct users to a purchase mechanism other than" it, "but may enable users to consume
+  previously purchased digital content". So, unlike App Store 3.1.3(b), a flag bought on another store
+  may unlock on an `ms-store` build: the Godot SDK's `hidden_here()` stays Apple-only, and a Store build
+  shows no Polaris Key checkout link [I].
 
-**Server side [V]** (`https://learn.microsoft.com/en-us/windows/uwp/monetize/view-and-grant-products-from-a-service`,
-`.../query-for-products`, `.../report-consumable-products-as-fulfilled`)
+**2.2 Server [V]** (Collections v8 and v9, consume, purchase; GDK pages dated 2026-03-31 to 2026-07-15)
 
-| Step          | Fact                                                                                                                                                                                                                                                                                                                                                                                      |
-| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Identity      | An Entra ID tenant, a "Web app / API" registration with a client secret, and the application id entered in Partner Center under Services > Product collections and purchases. Global administrator on the tenant is required                                                                                                                                                              |
-| Tokens        | Client-credentials tokens, 60 min life. Audience `https://onestore.microsoft.com` for every call; plus `https://onestore.microsoft.com/b2b/keys/create/collections` for collection calls (and `.../create/purchase` for grant/subscription calls)                                                                                                                                         |
-| User key      | The client calls `StoreContext.GetCustomerCollectionsIdAsync(serviceTicket, publisherUserId)`; returns a "Microsoft Store ID key" JWT, valid 30 days, renewable. It is the only way to make one. `publisherUserId` is embedded as the `userId` claim, so PK can bind it to its own account id                                                                                             |
-| Query (v6)    | `POST https://collections.mp.microsoft.com/v6.0/collections/query`. `productTypes`: `Application`, `Durable`, `Game`, `UnmanagedConsumable`. Page max 100. Item `quantity` "will always be 1" in v6. `status`: `Active`, `Expired`, `Revoked`, `Banned`. "Your service should not regularly poll for all users on a schedule."                                                            |
-| Query (v8/v9) | `POST .../v8.0/collections/b2bLicensePreview` adds `Consumable` (store-managed) and `Pass`; there `quantity` for a consumable is the **remaining balance**; `Revoked` "most commonly indicates that the user requested a refund". Limit **100 query requests per 5-minute window per user**, then HTTP 429. v9 `publisherQuery` is the newer API (Game Pass status) [S, not read in full] |
-| Consume       | `POST .../collections/consume` (v6 and v8). Idempotent on `trackingId`: a retry with the same tracking id, user, product and quantity "doesn't consume a second time" and returns success with the current balance. `includeOrderIds: true` (v8) returns `orderTransactions` with `orderId`, `orderLineItemId`, `quantityConsumed`                                                        |
-| Sandbox       | Developer-managed consumes in a dev sandbox work only with XSTS-token auth, not Entra / Store ID [V]                                                                                                                                                                                                                                                                                      |
+| Step                | Fact                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Identity            | An Entra "Web app / API" registration with a client secret. The tenant needs a Global administrator. The application id goes into Partner Center → the app (and each bundle) → Services → **Product collections and purchases**. If that configuration is not published, "calls can succeed but return no results"                                                                                                                                                            |
+| Tokens              | Client credentials, valid 60 minutes. `https://onestore.microsoft.com` is used on every call and must stay inside the service ("could make your service vulnerable to replay attacks"). `…/b2b/keys/create/collections` and `…/b2b/keys/create/purchase` are **sent to the client** as the `serviceTicket`                                                                                                                                                                    |
+| User key            | `StoreContext.GetCustomerCollectionsIdAsync(serviceTicket, publisherUserId)` (or `GetCustomerPurchaseIdAsync`) returns a Store ID key: an RS256 JWT, valid 30 days, renewable. It is "the only way to create" one, and it carries `publisherUserId` as the `…/claims/key/userId` claim                                                                                                                                                                                        |
+| Query               | **`publisherQuery` (v9) is recommended** ("In most cases, use publisherQuery"). `b2bLicensePreview` (v8) remains for LegacyProductIds. v8 limit: "100 query requests within a five-minute window for the same user", then 429. "Your service shouldn't regularly poll". Results cover direct ownership only, never shared entitlements. `quantity` for `Consumable` is "the remaining balance". `status` `Revoked` "most commonly indicates that the user requested a refund" |
+| Product types       | `Game`, `Application`, `Durable`, `Consumable` (store-managed, balance kept by Microsoft, repurchasable), `UnmanagedConsumable` (developer-managed, must be fulfilled before repurchase), `Pass` (store-managed subscription)                                                                                                                                                                                                                                                 |
+| Consume             | `POST collections.mp.microsoft.com/v8.0/collections/consume`; "there's no v9 URI equivalent", and v9 query plus v8 consume work together. A retry with the same `TrackingId`, user, `productId` and quantity "doesn't consume a second time" and returns the balance. `includeOrderIds: true` returns `orderTransactions` (`orderId`, `orderLineItemId`, `quantityConsumed`)                                                                                                  |
+| Recommended ledger  | Key `[OrderID]:[LineItemID]:[ProductID]:[TrackingId]`, plus your own user id ("Clawback events don't provide userIds") and a status that can be reversed. Set it up "before Clawback queue onboarding"                                                                                                                                                                                                                                                                        |
+| Recommended economy | Each currency tier is "a separate store-managed consumable that grants quantity `1` per purchase", and the service credits the in-game value. That is exactly an offer with `quantity` = the value and a store quantity of 1                                                                                                                                                                                                                                                  |
+| Sandbox             | Developer-managed consumes in a development sandbox work only with XSTS tokens. Store-managed consumables have no such limit. Use `Consumable`, not `UnmanagedConsumable`                                                                                                                                                                                                                                                                                                     |
 
-**Refund and revocation [V]** (GDK page "Managing refunds and chargebacks from your service", edited 2026-06-15)
+**2.3 Refunds [V]** ("Managing refunds and chargebacks from your service", edited 2026-06-15)
 
-- The **Clawback event service** puts a message in an Azure Storage Queue "within seconds" of a refund, return
-  or chargeback. Microsoft "covers the hosting costs" but **the publisher must ask their Developer Partner
-  Manager or Microsoft contact to have the queue set up**, giving the Entra application id and optionally a
-  region. Consumables and store-managed subscriptions are on by default; durables, games and bundles must be
-  requested (October 2025 update).
-- Access: `GET https://purchase.mp.microsoft.com/v8.0/b2b/clawback/sastoken` with Entra credentials returns an
-  SAS URI; then plain Azure Queue REST (peek, get, delete). A `get` hides a message for 30 seconds. A Worker
-  `fetch` can do this on a cron [I].
-- Event: `id`, `time`, and `data` (ClawbackEventContractV2) with `orderId`, `lineItemId`, `productId`,
-  `productType`, `skuId`, `purchasedDate`, `eventDate`, `sandboxId`, `eventState`, optional `recurrenceData`.
-  Source is `/Purchase/Refund` or `/Purchase/Chargeback`. **There is no user id in the event**, so the ledger
-  must keep the order key against the account.
-- `eventState` meanings (the trap):
+- The **Clawback event service** writes to an Azure Storage Queue "within seconds". "Microsoft covers the
+  hosting costs". To get one, "contact your Developer Partner Manager or Microsoft contact" with the Entra
+  client id, an optional region and the product types. "It can take 1-2 weeks for your queue setup to be
+  deployed." Consumables and store-managed subscriptions are on by default; games, durables and bundles
+  "you must specifically request" (an October 2025 update).
+- Access: `purchase.mp.microsoft.com/v8.0/b2b/clawback/sastoken` with Entra credentials returns a SAS
+  URI, then the Azure Queue REST calls Peek, Get (which hides a message for 30 seconds) and Delete (with
+  `popreceipt`). The responses are **XML** `QueueMessagesList`. A Worker cron can do this with `fetch`
+  [I].
+- Event states, and the trap: `Returned` means money back and the entitlement removed (for a consumable,
+  it was not yet fulfilled). `Revoked` means money back and the removal **failed** (for a consumable, it
+  was already fulfilled), so the service must reconcile. `Refunded` means money back and **the customer
+  keeps the item**: "No reconciliation", but "keep track … to flag possible fraudulent behavior".
+  `ChargebackReversal` means the item is restored, so reverse the earlier action. A `/Purchase/Chargeback`
+  source reports `Revoked` or `Returned`.
+- Bundles generate one event per consumable they contain. A bundle's line item is not exposed by the
+  query APIs, so match it on `OrderID` + bundle `ProductID`.
+- Testing a return in a development sandbox means emailing the Developer Partner Manager a return
+  request; the Xbox support team confirms "within three business days".
+- `purchase.mp.microsoft.com/v8.0/b2b/orders/query` "is deprecated for refund detection". It still lists a
+  user's **consumable** orders for 90 days, with `Purchased`, `Revoked` and `Refunded` line states and
+  the `shortOrderId` support uses. It needs a **purchase**-audience Store ID key.
+- [U] Whether a Windows-only publisher outside ID@Xbox has a "Developer Partner Manager or Microsoft
+  contact" who will set up a queue. The pages are in the GDK docs (public, but grouped under Xbox game
+  development). This is the decisive human question for refund parity.
 
-| `eventState`         | Meaning                                                                                        | PK action                                                                                |
-| -------------------- | ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| `Returned`           | Money back, entitlement removed. For a consumable: it had not been fulfilled from your service | Reverse any grant PK recorded for this order key (normally none)                         |
-| `Revoked`            | Money back, removal **failed**. For a consumable: it was already consumed                      | Find the grant by `orderId + lineItemId + productId`, take the value back, floor at zero |
-| `Refunded`           | Money back, **customer keeps the item** (goodwill or pre-empting a chargeback)                 | No revocation. Log and watch the account for repeats                                     |
-| `ChargebackReversal` | Earlier chargeback appealed and won; item restored                                             | Undo the earlier revocation                                                              |
+**2.4 Credentials and threat notes [I]**
 
-- Store-managed vs developer-managed behave the same in the reconcile table. Bundles generate one event per
-  consumable inside them. The ledger key Microsoft recommends is `OrderID:LineItemID:ProductID:TrackingId`.
-- `purchase.mp.microsoft.com/v8.0/b2b/orders/query` remains for purchases in the last 90 days (adds a
-  ShortOrderID useful for support) [V].
-- Customers refund through account.microsoft.com orders; automatic approval "depends on criteria such as
-  elapsed time since purchase and play time" [V].
+- The Collections API needs no Partner Center role, only the client id on the product's page. The platform
+  `microsoft-store.partner-center` application is a Manager that can rewrite every product's listings
+  (S-15 rates it A11). **Use a separate Entra application for commerce**, so that a leak of the commerce
+  secret cannot touch listings. One application per seller account can serve every product (the client
+  id is entered per product). The Clawback queue is keyed on that same client id.
+- A new device route mints the `serviceTicket` (the `b2b/keys/create/collections` token) for a device
+  that holds a licence binding. The token is meant for the client and lets its holder create Store ID
+  keys for its own Microsoft account under our client id. It does not unlock the `onestore` audience.
+  Give it its own THREAT-MODEL row, a rate limit and a short cache.
+- PK reads the `userId` claim from a Store ID key only after Microsoft has accepted the key in a query.
+  Microsoft publishes no key for verifying Store ID keys locally.
 
-### 2. Microsoft Store: Xbox (GDK)
+**2.5 Xbox (GDK)**
 
-- Console and PC GDK titles use `XStore*` APIs (`XStoreQueryAddOnLicensesAsync`,
-  `XStoreReportConsumableFulfillmentAsync(storeProductId, quantity, trackingId)`, `XStoreProductKind`:
-  `Consumable` store-managed, `UnmanagedConsumable` developer-managed) [S: search digest of the GDK reference;
-  consumable and refund pages read raw [V]].
-- The **server APIs are the same** collections/purchase/clawback services. Xbox adds X-token (XSTS) auth beside
-  Entra + Store ID key, and the product-sharing model: consumables are single-user and never shared; durables
-  must follow the content-sharing policy and a service query returns only directly owned items [V].
-- Microsoft's recommended consumable design [V]: "3 to 6 or more" tiers, **each tier its own store-managed
-  product granting quantity 1**, the service translating to in-game currency, balance kept on the publisher's
-  service. This matches PK's offer model exactly (`offer.quantity` supplies the amount).
-- Godot has no first-party Xbox export, so an Xbox store build is a third-party port plus ID@Xbox onboarding
-  [I; not verified in this spike]. Treat Xbox as the same server path as desktop and out of scope for any
-  near-term package.
+The server APIs are the same; Xbox adds XSTS (X-token) authentication and the content-sharing rules
+[V]. Godot has no first-party Xbox export, so an Xbox build means a licensed console port and ID@Xbox
+onboarding [I, not researched]. Out of scope for every near-term package.
 
 ### 3. itch.io
 
-**What exists [V]** (`https://itch.io/docs/api/serverside`, `.../oauth`, `.../creators/payments`,
-`.../creators/access-control`)
+**What exists [V]** (`itch.io/docs/api/serverside`, `/docs/api/oauth`,
+`/docs/itch/integrating/manifest-actions.html`, `/docs/creators/payments`, fetched 2026-10-16)
 
-- Server API at `https://api.itch.io`, bearer token. **API keys are long-lived and, for your own account,
-  unscoped: "can access all endpoints"**. JWTs are short-lived and scoped.
-- `GET /games/GAME_ID/download_keys` takes one of `download_key`, `user_id`, `email`; returns key id, created_at,
-  downloads count and owner. Invalid or revoked keys: "invalid download key". Email must be verified by you
-  first; `user_id` is harder to spoof.
-- `GET /games/GAME_ID/purchases` takes `email` or `user_id`; fields `id, email, created_at, source, currency,
-price, sale_rate, quantity, status, purchase_type, game_id, donation`. Only completed purchases; claimed keys
-  have no purchase record; bundles return an array of `game_id`. The docs do not define `status` values.
-- OAuth scopes: `profile:me`, `profile:owned` (lists games the user purchased or claimed), `game:view:ownership`
-  (does the user own a game, **only for games owned by the OAuth application's creator**), others. A 2020
-  GitHub issue records that a player's JWT cannot read purchases (`game:view:purchases` invalid) and the key
-  route needs the developer's own key; no staff answer on that page [V, dated, may be stale].
-- A game launched from the itch app can request a short-lived JWT through its manifest [V from the OAuth/API
-  page; exact environment variable names not read, [U]].
-- **No rate limits, throttling or abuse policy in the docs read.** No webhook or event feed for purchases or
-  refunds appears in the API reference read [V by absence].
-- Refunds: itch refunds "on the seller's behalf when necessary". Collected-by-itch mode: itch is merchant of
-  record, refunds deduct from payouts, itch bears chargebacks. Direct mode: the seller refunds through their
-  PayPal/Stripe account and carries chargebacks. Revenue is payable 7 days after purchase to let refunds settle
-  [V]. Creators can issue refunds from the dashboard, staff-approved [S: forum posts, may be outdated].
-- Everything on itch is **project access**, not in-app items. There is no consumable and no purchase API for
-  in-game items; an "add-on" is a separate project (own `game_id`) the buyer owns, or a bundle [I].
+- **OAuth.** The authorization endpoint is `https://itch.io/user/oauth` and the token endpoint
+  `https://api.itch.io/oauth/token`. "There is no client secret. PKCE is required for every client,
+  including server-side web applications." "The token doesn't expire and there is no refresh token"; it
+  can be revoked with `POST https://api.itch.io/oauth/revoke`. Native games should open "the user's
+  system browser", not an embedded web view.
+- **Ownership.** `GET /games/GAME_ID/ownership` (scope `game:view:ownership`) returns `{owns, game_id}`.
+  "The endpoint only works with tokens issued to an OAuth application, and only for games that the
+  application's creator can edit. API keys from your user settings are rejected." `owns` is true for a
+  download key or a bundle that includes the game.
+- **Owned keys.** `GET /profile/owned-keys` (scope `profile:owned`) takes `game_ids` (up to 50) and
+  returns keys with `id`, `game_id` and `purchase_id`, newest first. "A user can own more than one key
+  for the same game."
+- **The developer-key routes.** `/games/{id}/download_keys` and `/games/{id}/purchases` need
+  `game:view:purchases`. That scope is **not in the OAuth scope list**, so it means the unscoped key from
+  the developer's settings ("unscoped — they have access to all endpoints"). PK excludes that key by
+  S-15's decision. `purchase_type` is `game`, `bundle` or `sub_product`; only `complete` purchases appear.
+- **The itch.io app.** The manifest `scope` value "profile:me" is "the only valid scope for now". The
+  app sets `ITCHIO_API_KEY` and `ITCHIO_API_KEY_EXPIRES_AT`. That gives the player's user id only, which
+  is not enough to check ownership without the developer key.
+- **No in-app purchases and no consumables.** An "add-on" is another project or a page reward
+  (`claimed-rewards`, physical-style questions). [V by absence: no webhook, no refund event and no rate
+  limit appear in the pages read.]
+- **Refunds.** "itch.io will refund payments on your behalf when necessary". Payouts wait at least 7
+  days "for … refunds, chargebacks" to settle. In collected-by-itch mode, itch.io is liable for
+  chargebacks.
+- [U] Whether `owns` turns false and the key disappears from `owned-keys` after a refund. Only a live
+  refund on a test project answers this.
 
-### 4. Consumable vs durable, store by store
+**What this means [I].** Each product registers one itch.io OAuth application under the developer's
+itch.io account, with Polaris Key's callback (or I-15's loopback) as the redirect. PK stores only the
+public client id. A player signs in once (code + PKCE); PK checks `ownership` and reads `owned-keys`
+for the `purchase_id` (the ledger key), then grants the tier through the app-purchase path (CM-25). The
+token does not expire, so PK can store it sealed and run a weekly re-check on CM-24's ownership engine,
+like Steam. This fits I-14's exchange kinds (Steam ticket, Game Center, Play Games, EOS Connect), so it
+adds no new mechanism.
 
-| Store           | Durable                                         | Consumable                                                                                                                                                                                                                                                        | Server fact for consumables                                                                                                                                                                                                                                                                 | Refund signal                                                                                                                                                                                                                         |
-| --------------- | ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Apple           | Non-Consumable (verified today, `apple.ts:239`) | Consumable; `quantity` field "number of products or seats purchased" [V]                                                                                                                                                                                          | History endpoint returns "all in-app purchase product types ... in any state, including refunded or revoked, and that the app has or hasn't marked as finished", 20 per page, filterable by product type and `revoked` [V]. No server consume call: the client finishes the transaction [I] | `ONE_TIME_CHARGE` (consumable, non-consumable, non-renewing); `REFUND` (consumable too); `REFUND_REVERSED`; `REVOKE` is Family Sharing; `CONSUMPTION_REQUEST` = customer asked to refund a consumable, send consumption data back [V] |
-| Google Play     | One-time, acknowledge                           | One-time, consume; **multi-quantity** from Billing Library 4.0, consumables only, read `quantity` [V]                                                                                                                                                             | `consume` and `acknowledge` on the server; do it within **3 days** or the purchase is refunded automatically [V]; `consumptionState`, `refundableQuantity` [V]                                                                                                                              | Voided Purchases: `startTime` no older than 30 days; `includeQuantityBasedPartialRefund=true` adds `voidedQuantity`; `voidedReason` and `voidedSource` codes are not defined on the page read [V/U]                                   |
-| Steam           | DLC ownership (`CheckAppOwnership`)             | **No consumable DLC.** Separate products: `ISteamMicroTxn` (`InitTxn`, `FinalizeTxn`, `QueryTxn`, `RefundTxn` full-amount only, `GetReport` at least daily, max 50,000 rows, publisher key) or the Inventory Service (item definitions, server-granted items) [V] | Game server must start the transaction; PK would act as the game's server [I]                                                                                                                                                                                                               | MicroTxn `GetReport`; refunds trigger automatic claw-back of funds and items on fraud [V]                                                                                                                                             |
-| Microsoft       | `Durable`, `Game`, `Application`                | `Consumable` (store-managed, balance) or `UnmanagedConsumable` (must be fulfilled before repurchase)                                                                                                                                                              | Section 1                                                                                                                                                                                                                                                                                   | Query `Revoked`; Clawback queue                                                                                                                                                                                                       |
-| itch.io         | Project ownership by download key / purchase    | none                                                                                                                                                                                                                                                              | n/a                                                                                                                                                                                                                                                                                         | none documented                                                                                                                                                                                                                       |
-| Epic (EOS Ecom) | `QueryOwnership` / ownership token              | `QueryEntitlements` + `RedeemEntitlements`; durables through the entitlements call now return `EOS_InvalidRequest` (SDK 1.17.1.3, Aug 2025)                                                                                                                       | Server REST for ownership and entitlements; token-based client verification                                                                                                                                                                                                                 | `findEntitlementClawbacks` client-policy action exists [S]                                                                                                                                                                            |
+### 4. Consumables, store by store
 
-### 5. How it maps onto PK's model
+| Store           | Consumable type                                        | Quantity                                                                                            | Server confirm and drain                                                                                                                                                                                   | Refund signal                                                                                                                                                                                                             | Partial refund                                                                       |
+| --------------- | ------------------------------------------------------ | --------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| App Store [V]   | `type: "Consumable"`                                   | `quantity` ("number of products or seats")                                                          | No server consume; the client calls `finish()`. Get Transaction History returns "all … product types … in any state, including … refunded or revoked, and … that the app has or hasn't marked as finished" | `REFUND` (consumables included), `REFUND_REVERSED`, `REFUND_DECLINED`. `CONSUMPTION_REQUEST` for any type; answer within **12 hours** with `PUT /inApps/v2/transactions/consumption/{id}`, and only with customer consent | `revocationType` `REFUND_PRORATED` + `revocationPercentage` (milliunits)             |
+| Google Play [V] | one-time product, consumed                             | `quantity` (multi-quantity, consumables only); v2: `productLineItem[].productOfferDetails.quantity` | `POST …/purchases/products/{id}/tokens/{t}:consume`; consume "fulfill[s] the acknowledgement requirement". Not consumed or acknowledged within 3 days → refunded and revoked. No v2 consume                | RTDN `voidedPurchaseNotification`; `voidedpurchases.list` (30 days). `voidedReason` 0 Other … 5 Fraud, 6 Friendly_fraud, 7 Chargeback, 8 Unacknowledged_purchase; `voidedSource` 0 User, 1 Developer, 2 Google            | `refundableQuantity`; `voidedQuantity` with `includeQuantityBasedPartialRefund=true` |
+| Microsoft [V]   | `Consumable` (store-managed) or `UnmanagedConsumable`  | balance; advice: 1 per purchase                                                                     | v8 `consume` with `trackingId`, `includeOrderIds`                                                                                                                                                          | Clawback queue (on request); `orders/query` for consumables (deprecated for refunds)                                                                                                                                      | n/a (one line item = one quantity under the advised setup)                           |
+| Steam [V]       | none as DLC; `ISteamMicroTxn` or the Inventory Service | n/a                                                                                                 | The game's server runs `InitTxn` / `FinalizeTxn`                                                                                                                                                           | MicroTxn `GetReport`                                                                                                                                                                                                      | full refunds only                                                                    |
+| itch.io [V]     | none                                                   | n/a                                                                                                 | n/a                                                                                                                                                                                                        | none documented                                                                                                                                                                                                           | n/a                                                                                  |
+| Epic (EOS) [V]  | entitlement with `consumable: true`, `useCount`        | `useCount` / `originalUseCount`                                                                     | `PUT /epic/ecom/v3/identities/{id}/entitlements/redeem`                                                                                                                                                    | `GET /epic/ecom/v3/namespace/{ns}/entitlements/clawbacks?clawbackDate=…`: `REFUND`, `CHARGEBACK`, `FRAUD`, **with** `accountId`                                                                                           | not documented                                                                       |
 
-PK facts used: offers defined once as `{id, label, target (tier|addon), billing, quantity, state}`; SKUs in
-`dist_offer_skus` with a trigger-checked store vocabulary and `@app` for the app purchase; one ledger
-`dist_purchases` with states `pending active refunded revoked charged_back`; one `revokePurchase(ctx, ref,
-cause)`; a refunded base purchase ends the licence; partial refunds never revoke (CM-20 D1, D2, D3, D9; audit
-§5.9).
+**The ledger rule [I, on the facts above].** Polaris Key holds the balance. The store-side balance is
+drained as soon as PK has recorded the purchase, and the credit happens once per store transaction:
 
-| PK concept                      | Microsoft Store                                                                                | itch.io                                                                   | Consumable on Apple / Play                                             |
-| ------------------------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| `store` value                   | `ms-store` (trigger vocabulary, no table rebuild thanks to D2)                                 | `itch`                                                                    | `app-store`, `play`                                                    |
-| SKU `store_product_id`          | Store ID (12 chars, e.g. `9NBLGGH42CFD`) of the add-on; `@app` = the app's own Store ID        | the project's `game_id`; `@app` = the product's own page                  | product id                                                             |
-| Offer `target`                  | `tier:` via the app/`Game`, `addon:` via a `Durable` or `Consumable`                           | `tier:` via the app project; an add-on is another project                 | `addon:` whose entitlement kind is consumable (LX-42)                  |
-| `quantity`                      | offer.quantity x store quantity; Microsoft advises store quantity 1                            | 1                                                                         | offer.quantity x `quantity` field (Apple) / `Purchase.quantity` (Play) |
-| Purchase identity (idempotency) | `orderId:lineItemId:productId` (+ our `trackingId`)                                            | download-key id, or purchase id                                           | Apple `transactionId`; Play `purchaseToken` / `orderId`                |
-| Account binding                 | `publisherUserId` claim in the Store ID key (PK's account id)                                  | `user_id` from the itch app JWT or OAuth; email only after PK verifies it | Apple `appAccountToken`; Play `obfuscatedExternalAccountId`            |
-| `pending`                       | consume with our deterministic `trackingId` is in flight                                       | n/a                                                                       | verified, not yet consumed                                             |
-| `refunded`                      | Clawback `Returned`, `Revoked`; query `Revoked`                                                | key no longer valid on re-lookup [U]                                      | Apple `REFUND`; Play voided                                            |
-| `charged_back`                  | Clawback source `/Purchase/Chargeback`                                                         | none observable                                                           | Apple/Play per their feed                                              |
-| Active again                    | Clawback `ChargebackReversal`                                                                  | n/a                                                                       | Apple `REFUND_REVERSED`                                                |
-| No state change, timeline note  | Clawback `Refunded` (customer keeps the item)                                                  | n/a                                                                       | Apple `REFUND_DECLINED`                                                |
-| Restore                         | `GetCustomerCollectionsIdAsync` again, then query (works on any device with the Store account) | re-lookup with the itch identity                                          | Apple/Play: device once, not by account (audit §5.7)                   |
+- **App Store and Google Play (CM-28).** Verify, record `pending`, credit (LX-42 `grants.quantity` =
+  `offer.quantity × store quantity`), then drain: the SDK calls `finish()` on Apple; on Play the Worker
+  calls `:consume`, retried by the existing acknowledgement tick (`recheck.ts`), which already enforces
+  the 3-day window. Then mark the row `active`. A Play consume that fails for 3 days is refunded by
+  Google, and the voided poll reverses the credit.
+- **Microsoft (CM-30).** The order key only arrives in the consume response, so the order of steps is
+  reversed. Write a `pending` row with a fresh `trackingId`, call consume with `includeOrderIds`, write
+  one ledger row per `orderTransactions` entry with the key
+  `orderId:orderLineItemId:productId:trackingId`, credit, then mark them `active`. A crash between the
+  steps retries with the stored `trackingId`.
+- **Refunds.** `revokePurchase` takes back what that purchase granted, never taking the balance below
+  zero (CM-20 §2.3), and records the uncollectable remainder ("refunded; 14 of 20 already spent") in
+  `detail_json`. A partial refund takes back `refunded quantity × offer.quantity`, or
+  `revocationPercentage` of the grant on the App Store.
+- **Reconcile by key and ledger state, never by event name.** Microsoft's `Refunded` keeps the item.
 
-**Consumable ledger rule (recommended).** PK is the balance. Every store-side consumable is drained to zero as
-soon as PK has recorded it, and the credit to the counted entitlement happens once per purchase key:
+### 5. Epic Online Services, as an outline only [V]
 
-- Apple / Play: verify, record `pending`, credit (LX-42 `grantAddOn` with quantity), then finish / consume
-  (Play must be done inside 3 days, so the Worker retry queue is a correctness requirement, not a nicety),
-  then `active`.
-- Microsoft: record `pending` with a **deterministic** `trackingId` derived from the purchase (a retry then
-  returns success with the balance rather than consuming twice), call consume with `includeOrderIds`, read
-  `orderTransactions`, credit, then `active`. The order differs from Apple/Play because the order key only
-  arrives in the consume response [V]; the pending row is what makes it safe.
-- A refund calls `revokePurchase` with the quantity granted by that purchase. The balance never drops below
-  zero (CM-20 §2.3). Record the **uncollectable remainder** on the ledger row so support can see "refunded,
-  14 of 20 coins already spent" [I]. This needs one ledger column or `detail_json` field, decided in CM-28's
-  plan.
-- Reconcile by order key and ledger state, not by Microsoft's event names: act whenever the ledger holds an
-  active grant for that key and the event is `Returned` or `Revoked`. Because PK drains immediately, the
-  normal event for a spent consumable is `Revoked`; `Returned` only occurs if PK granted but the consume had
-  not yet happened [I].
+Ecom Web API v3 and v4 at `api.epicgames.dev`, with the Ecom feature enabled on a client policy (needed
+for EOS SDK 1.16.4 and later). Ownership is `GET /epic/ecom/v3/platforms/EPIC/identities/{id}/ownership`
+or an **ownership verification token**: a JWT whose public keys are at
+`ecommerceintegration-public-service-ecomprod02.ol.epicgames.com/…/publickeys/{kid}`. Epic recommends
+the token for third-party services "to avoid granting them access to a user's data". Entitlements are at
+`/epic/ecom/v4/identities/{id}/entitlements`, with `consumable` and `useCount`. The clawback query takes
+a namespace and a date and returns the account id, unlike Microsoft. There is no Epic outlet kind (S-15
+Q8: "wait"), so there is no package now. The draft's claim that querying durables through the
+entitlements call returns `EOS_InvalidRequest` (SDK 1.17.1.3) stays [S].
 
-**Refund detection cost per store.** Apple and Play and Microsoft all push (notifications, RTDN, Clawback
-queue); Play and Steam keep a poll as a backstop. Microsoft's query API must not be polled on a schedule, so
-without the Clawback queue only on-demand re-verification (at claim or app launch) is available, which is
-weaker than the Steam weekly re-check the audit already flags (P12). The queue is therefore a prerequisite for
-claiming refund parity.
+### 6. How it maps onto Polaris Key's model (CM-20)
 
-### 6. Console surfaces affected
-
-- **Storefronts** (`commerce.storefronts`): Microsoft Store and itch.io rows already exist. Microsoft's state
-  needs "Clawback queue: not set up" as a visible degraded state (a human step), separate from "connected".
-- **Offers** (`commerce.offer`): SKU chips per store. Microsoft: create-by-API is declared (A-18f) but the Store
-  ID is only known after Partner Center review, so a copy card is needed for the first SKU [I]. itch: copy
-  card only.
-- **Purchases / drawer** (`commerce.purchases`, `commerce.purchase`): needs the order key shown for Microsoft
-  (support uses ShortOrderID from `orders/query`), the "Refunded, access kept" timeline entry, and the
-  remainder-on-refund line for consumables. Open in Partner Center for refunds (stores keep their own refund
-  UI, as for Apple and Play).
-- **Restore** (`commerce.restore`): Microsoft restore works by account (no device-once limit), itch restore
-  needs the itch identity.
+| PK concept                     | Microsoft Store                                                                                                                  | itch.io                                                                                                      |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `store` value                  | `ms-store` (the outlet kind already exists)                                                                                      | `itch`                                                                                                       |
+| SKU `store_product_id`         | add-on Store ID (12 characters, e.g. `9NBLGGH42CFD`); `@app` = the app's own Store ID, taken from the pin                        | `@app` only = the project's `game_id`, taken from the outlet identity                                        |
+| Offer target                   | `tier:` through `@app` or `Durable`; `addon:` through `Durable` or `Consumable`                                                  | `tier:` through `@app`. Add-ons and consumables: Polaris Key checkout on `commerce: "own"` builds (deferred) |
+| `quantity`                     | `offer.quantity × 1` (store quantity 1 as advised)                                                                               | 1                                                                                                            |
+| Purchase key (idempotency)     | durable or app: `transactionId:productId` [I: bundles share an `orderId`]; consumable: `orderId:lineItemId:productId:trackingId` | the `purchase_id` from `owned-keys`, else the key `id` (claimed keys have no purchase)                       |
+| Binding                        | `publisherUserId` = the licence binding, read back from the key's `userId` claim                                                 | the itch.io user id from `/profile` on the player's token                                                    |
+| `refunded`                     | Clawback `Returned` or `Revoked`; query `status: Revoked`                                                                        | [U] `owns: false` on re-check                                                                                |
+| Chargeback                     | Clawback source `/Purchase/Chargeback`                                                                                           | none observable                                                                                              |
+| Reversal (back to `active`)    | `ChargebackReversal`                                                                                                             | `owns: true` again                                                                                           |
+| No state change, timeline note | `Refunded` ("customer keeps the item")                                                                                           | n/a                                                                                                          |
+| Restore                        | by Microsoft account on any device: mint a key again and query                                                                   | by itch.io sign-in on any device                                                                             |
+| Console SKU creation           | copy card (adapter `iap` unsupported)                                                                                            | n/a                                                                                                          |
 
 ## Recommendation
 
-**Split by store, share the consumable core.**
+**Split by store and share the consumable core. Microsoft and itch.io build on the mechanisms the graph
+already names (P0-27's commerce facet, P0-28's credential store, CM-24's ownership engine, I-14's
+exchange kinds and CM-25's app-purchase source), never beside them.**
 
-1. **CM-28 (keep, narrow):** Apple and Play consumables on the shared ledger path: type `Consumable`,
-   quantity multiplier, grant-then-consume with the Play 3-day deadline, `voidedQuantity` partial refunds
-   (closes the `[I]` in CM-20 §Unverified partial-refund fields for Play), Apple `CONSUMPTION_REQUEST` answer
-   from the ledger (optional), remainder-on-refund. Microsoft consumables are **not** in CM-28; CM-28 builds
-   the store-neutral interface so the Microsoft package plugs in.
-2. **New follow-up, Microsoft Store commerce (proposed id `CM-30`, to be registered by the lead):** Entra
-   credential kind and its console field (blocked on a human), Store ID key endpoint (`serviceTicket` mint +
-   key bind to `publisherUserId`), verification for `@app`, `Durable`, then `Consumable`; Clawback queue
-   consumer on the Worker cron, with the event table above; `ms-store` in the store vocabulary; on-demand
-   re-verification fallback. Depends on CM-28 and CM-22. Native client bridge belongs to the Godot SDK
-   packages, not here.
-3. **New follow-up, itch.io (proposed id `CM-31`):** `itch` in the vocabulary; verify base app and
-   separate-project add-ons by `user_id`; developer API key stored as a product secret with an explicit
-   warning that it is account-wide; re-lookup recheck on the Steam model. No consumables, no refund promise
-   beyond "detected on next re-check". Parity row reads "Refund sync: re-check, not push".
-4. **Steam consumables and EOS:** defer. Steam needs PK to run `InitTxn` as the game's server, which is a
-   different product (CM-24's Steam ownership engine is read-only). EOS needs its own spike if an Epic
-   channel is chosen; the facts above are only an outline.
-5. **Do not claim Microsoft refund parity until a Clawback queue exists** for a real publisher. Until then the
-   parity table cell reads "on-demand only".
+1. **CM-28: keep the scope (App Store and Google Play consumables) and sharpen the acceptance criteria.**
+   - Play's server `:consume` is retried on the existing acknowledgement tick inside the 3-day window.
+   - Partial refunds: Play's `refundableQuantity` and `voidedQuantity`, and the App Store's
+     `REFUND_PRORATED` with `revocationPercentage`.
+   - The uncollectable remainder is recorded when a refund exceeds the balance.
+   - A store-neutral consume interface (`drain(purchase)`) on P0-27's commerce facet, so CM-30 plugs in.
+   - Answering Apple's `CONSUMPTION_REQUEST` stays **out**: it needs the customer's consent and a
+     12-hour responder.
+2. **CM-30 (new), Microsoft Store commerce in the Worker** (plan mode, `sec`, `mig`). It covers:
+   - a commerce Entra credential, separate from the Partner Center Manager application;
+   - the `serviceTicket` device route;
+   - `publisherQuery` verification of `@app`, `Durable` and `Consumable`;
+   - v8 consume as in §4;
+   - the Clawback queue consumer on the connector cron, with the event table in §2.3;
+   - `ms-store` in the vocabularies.
 
-### Parity table (target after CM-28 and the two follow-ups)
+   It needs one rebuild that turns the `store` CHECKs on `dist_purchases` and `license_store_grants`
+   into triggers (the `0105_a` precedent), so that `itch` (and `epic`, later) never rebuild again. Until
+   a queue exists, refund parity reads "on-demand only": a re-query at claim and at launch, and
+   `orders/query` for consumables.
 
-| Capability              | App Store         | Google Play                     | Steam                    | Microsoft Store                    | itch.io                      | Epic (EOS)           |
-| ----------------------- | ----------------- | ------------------------------- | ------------------------ | ---------------------------------- | ---------------------------- | -------------------- |
-| Verify base app         | CM-25             | CM-25                           | CM-25                    | CM-30                              | CM-31                        | later                |
-| Verify durable / add-on | done              | done                            | DLC                      | CM-30                              | CM-31 (separate project)     | later                |
-| Verify consumable       | CM-28             | CM-28                           | n/a (MicroTxn, deferred) | CM-30                              | n/a (none exist)             | later                |
-| Quantity in purchase    | `quantity`        | `quantity` (multi-quantity)     | n/a                      | 1 per product (advised)            | 1                            | n/a                  |
-| Idempotency key         | `transactionId`   | `purchaseToken`                 | order id                 | `orderId:lineItemId:productId`     | key / purchase id            | entitlement id       |
-| Store-side consume      | client `finish`   | server `consume`, within 3 days | n/a                      | server `consume` + `trackingId`    | n/a                          | `RedeemEntitlements` |
-| Refund push             | notifications     | RTDN                            | none                     | Clawback queue (Microsoft sets up) | none                         | clawback action [S]  |
-| Refund poll backstop    | history endpoint  | Voided list (30 days)           | ownership re-check       | on-demand only                     | key re-lookup                | n/a                  |
-| Partial refund          | fields unverified | `voidedQuantity`                | full only                | n/a                                | n/a                          | n/a                  |
-| "Paid, keeps item"      | n/a               | n/a                             | n/a                      | `Refunded` event                   | n/a                          | n/a                  |
-| Account lookup          | device once       | device once                     | linked Steam             | Store ID key (account)             | itch `user_id` (JWT / OAuth) | EOS account          |
-| Console SKU creation    | API               | API                             | copy card                | declared (A-18f) / copy card       | copy card                    | later                |
+3. **CM-31 (new), the Godot Windows Store purchase operations** (`native` lane). Add `collections_id`
+   (with the `serviceTicket` and the binding), `purchase` (`RequestPurchaseAsync`) and `app_license` to
+   the existing `PKeyStoreContextNative.request_async`, and the matching calls to the GDScript facade.
+   Add an `ms-store` route to `PKeyCommerce.purchase()` and `restore()`, with
+   `claim("ms-store", {storeIdKey, productId})`, and an MSIX build path to the export docs. Electron,
+   under the React SDK, is later.
+4. **CM-32 (new), itch.io ownership through a player sign-in.** Add an `itch` exchange kind (OAuth code +
+   PKCE) on I-14's framework, an itch backend for CM-24's ownership engine with a sealed token and a
+   weekly re-check, and an `@app` SKU for itch through CM-25. It stores no developer secret. Its parity
+   row reads "Refund sync: re-check, not push". Add-ons and consumables on itch builds wait for Polaris
+   Key checkout.
+5. **No package for Steam consumables or Epic.** CM-20 §11 already rules out Steam microtransactions, and
+   S-15 Q8 says wait on Epic. The §5 outline is the starting point when an Epic channel is chosen.
+6. **Do not claim Microsoft refund parity until a real seller account has a Clawback queue.** If
+   Microsoft will not set one up for a Windows-only publisher, the parity cell stays "on-demand only".
+
+### Parity table (target after CM-28, CM-30, CM-31 and CM-32)
+
+| Capability              | App Store                   | Google Play                                                    | Steam                               | Microsoft Store                           | itch.io                    | Epic                   |
+| ----------------------- | --------------------------- | -------------------------------------------------------------- | ----------------------------------- | ----------------------------------------- | -------------------------- | ---------------------- |
+| Verify base app         | CM-25                       | CM-25                                                          | CM-25                               | CM-30                                     | CM-32                      | later                  |
+| Verify durable / add-on | done                        | done                                                           | DLC (done)                          | CM-30                                     | n/a (Polaris Key checkout) | later                  |
+| Verify consumable       | CM-28                       | CM-28                                                          | n/a (ruled out)                     | CM-30                                     | n/a                        | later                  |
+| Client purchase (Godot) | `PKeyApple.purchase` (done) | `claim_play()` from the game's billing plugin (helper pending) | GodotSteam overlay (done)           | CM-31                                     | the itch.io page           | later                  |
+| Quantity                | `quantity`                  | `quantity`, multi-quantity                                     | n/a                                 | 1 per purchase (advised)                  | 1                          | `useCount`             |
+| Idempotency key         | `transactionId`             | `purchaseToken`                                                | `steamId:dlcAppId` (`steam.ts:272`) | `orderId:lineItemId:productId:trackingId` | `purchase_id`              | entitlement id         |
+| Store-side drain        | client `finish()`           | server `:consume` within 3 days                                | n/a                                 | server `consume` + `trackingId`           | n/a                        | `entitlements/redeem`  |
+| Refund push             | notifications               | RTDN                                                           | none                                | Clawback queue (Microsoft sets it up)     | none                       | none (clawback query)  |
+| Refund backstop         | weekly re-read (done)       | daily voided list (done)                                       | weekly re-check (done)              | on-demand re-query                        | weekly re-check            | clawback query by date |
+| Partial refund          | `revocationPercentage`      | `voidedQuantity`                                               | full only                           | n/a                                       | n/a                        | n/a                    |
+| "Refunded, keeps item"  | n/a                         | n/a                                                            | n/a                                 | `Refunded` event                          | n/a                        | n/a                    |
+| Restore by account      | device once                 | device once                                                    | linked Steam (CM-24)                | Microsoft account                         | itch.io sign-in            | Epic account           |
+| Console SKU creation    | API                         | API                                                            | copy card                           | copy card                                 | n/a                        | later                  |
 
 ## Work-package briefs that change
 
-Proposed edits (not applied; the briefs and decision records are the lead's):
+**Applied in this branch:**
 
-- **CM-28** (`program/wp/CM-28-consumables-quantity-grants-from-store.md`): scope text to "Apple and Play
-  consumables on the shared ledger path plus a store-neutral consume interface". Add acceptance: Play consume
-  inside the 3-day window with retry, `voidedQuantity` reversal, remainder recorded on refund. Move Microsoft
-  out.
-- **Register CM-30 (Microsoft Store commerce) and CM-31 (itch.io commerce)** in Track H of `tracks.md`, both
-  after CM-28 and CM-22, with the human inputs listed below.
-- **CM-20 plan**: no change to D1 to D3 or D9; note that `ms-store` and `itch` need no table rebuild
-  (confirms D2). Resolve the Play `voidedQuantity` unverified item once CM-28 lands.
-- **Audit §5.7 parity table**: replace `[U]` cells with the values in the table above; add the row
-  "Paid, keeps item".
-- **A-18f** (Microsoft Store storefront connector): note the Store ID only exists after Partner Center
-  review, so SKU creation is a copy-card step at first.
-- **Godot SDK / native bridge packages**: Microsoft Store commerce on the client needs a native bridge from
-  Godot (WinRT `StoreContext`, or GDK `XStore`) and an MSIX build path. No such package is evidenced; flag to
-  the lead.
+- [CM-27](../program/wp/CM-27-spike-store-purchase-parity-microsoft.md): outcome and the brief's scope
+  correction (the download-key lookup needs the unscoped key, which S-15 excludes).
+- [CM-28](../program/wp/CM-28-consumables-quantity-grants-from-store.md): a "CM-27 spike findings"
+  section with the four acceptance criteria above, and `CONSUMPTION_REQUEST` out of scope.
+
+**Proposed for the lead (graph and decision records):**
+
+| Change                                                                                    | Proposed row                                                                                                                                                                                                                                                                                                                          |
+| ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Register **CM-30** Microsoft Store commerce: verification, consume and the Clawback queue | phase CM, Track H, lane `worker`, `pkey-implementer`, 1.2–1.8 weeks, deps `CM-28`, `CM-22`, `CM-29`, `P0-27`, `P0-28`; plan mode yes; gates `plan-mode`, `threat-model`; human inputs: a Partner Center app with add-ons, a commerce Entra application, a Clawback queue request to Microsoft, sandbox return tests through Microsoft |
+| Register **CM-31** Godot Windows Store purchase operations                                | phase CM, lane `native`, 0.6–0.9 weeks, deps `CM-30`, `LX-20`; plan mode no; human input: a hidden Store listing and a Windows test machine (`sdks/godot/native/README.md` owner step 6)                                                                                                                                              |
+| Register **CM-32** itch.io ownership through a player sign-in                             | phase CM, lane `worker`, 0.6–1.0 weeks, deps `I-14`, `CM-24`, `CM-25`, `P0-28`; plan mode yes (new exchange kind and route); gate `threat-model`; human input: an itch.io test project with a paid page, one buyer account, and one refund to settle the [U]                                                                          |
+| P0-51                                                                                     | add CM-30, CM-31 and CM-32 only if Microsoft Store and itch.io sales are 1.0 scope; otherwise list them as post-1.0 in the readiness review                                                                                                                                                                                           |
+| CM-20 plan D9 table                                                                       | add the Microsoft rows: `Returned`/`Revoked` → full refund; `/Purchase/Chargeback` → chargeback; `ChargebackReversal` → reversal; `Refunded` → unchanged with `detail.refundKept`; itch `owns: false` → revocation                                                                                                                    |
+| CM-20 plan §11 and §12                                                                    | §11: the store CHECK rebuild belongs to CM-30, converting to triggers. §12: the App Store and Play partial-refund fields are verified (this note §4)                                                                                                                                                                                  |
+| Commerce audit §5.7                                                                       | replace the `[U]` cells with the target table above; Microsoft "Create SKU by API" is a copy card, not "declared"                                                                                                                                                                                                                     |
+| P0-27 brief                                                                               | name the commerce facet's `drain()` and the `ms-store` / `itch` commerce rows as its consumers                                                                                                                                                                                                                                        |
+| P0-28 brief                                                                               | add the credential kind `microsoft-store.commerce` (tenant, client id, secret), separate from `microsoft-store.partner-center`                                                                                                                                                                                                        |
+| I-14 brief                                                                                | add the `itch` exchange kind (OAuth code + PKCE, client id only) as a CM-32 dependency                                                                                                                                                                                                                                                |
 
 ## What needs human accounts or keys
 
-| Item                                                                                                                                                                | Needed for                                                                                          | Who                                        |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------ |
-| Microsoft Partner Center developer account, a published app (can be hidden) with at least one add-on                                                                | Any live Microsoft check; Store IDs                                                                 | Owner                                      |
-| Entra ID tenant, Web app / API registration, client secret, Global Administrator consent; application id entered under Services > Product collections and purchases | Collection API calls                                                                                | Owner                                      |
-| Request to the Microsoft Developer Partner Manager or contact for a **Clawback queue** (and for durables/games/bundles events)                                      | Refund push                                                                                         | Owner (Microsoft decides)                  |
-| Windows machine with the Store-installed test build and a test Microsoft account                                                                                    | Store ID key, consume, refund path                                                                  | Owner                                      |
-| itch.io creator account, a project with a paid or pay-what-you-want page, a second buyer account, the account API key                                               | Live download-key and purchases lookups; what `status` reads after a refund; rate-limit observation | Owner                                      |
-| Apple and Google consumable products and sandbox testers                                                                                                            | CM-28 live checks                                                                                   | Owner (existing A-17k / A-18k style steps) |
-| Steam publisher key with Microtransaction permission                                                                                                                | Only if Steam consumables are pursued                                                               | Owner                                      |
+| Item                                                                                                                               | Needed for                                          | Who                       |
+| ---------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- | ------------------------- |
+| A Partner Center account and an MSIX app (hidden is fine) with one durable and one store-managed consumable add-on                 | Store IDs; any live Microsoft check                 | Owner                     |
+| An Entra tenant (Global administrator), a commerce application with a client secret, its id on "Product collections and purchases" | Collections, consume, the SAS token                 | Owner                     |
+| A request to Microsoft for a Clawback queue, including durables and games (1–2 weeks)                                              | Refund push                                         | Owner; Microsoft decides  |
+| A Windows test machine with the Store-installed build and a test Microsoft account; sandbox returns through Microsoft              | Store ID key, purchase, consume and the refund path | Owner                     |
+| An itch.io project with a paid page, an OAuth application on the developer account, a second buyer account, one refund             | `ownership` / `owned-keys` behaviour after a refund | Owner                     |
+| App Store and Google Play consumable products and sandbox or licence testers                                                       | CM-28 live checks                                   | Owner (A-18k-style steps) |
 
 ## Open items [U]
 
-- itch.io: `status` values after a refund; whether a refunded purchase's key stops resolving; the real rate
-  limit; whether the itch app injects a JWT with the scopes PK needs.
-- Microsoft: exact Clawback queue retention; v9 `publisherQuery` field list; whether a sparse package with
-  external location gets Store commerce.
-- Play: `voidedReason` / `voidedSource` code tables; `productsv2` field differences (not read).
-- Apple: the response time window for `CONSUMPTION_REQUEST`; rate limits of the history endpoint.
-- Xbox: Godot console path (not researched).
+- Microsoft: whether a Windows-only publisher gets a Clawback queue; the Clawback queue's retention; the
+  v9 `publisherQuery` field list (not read in full); whether a Godot MSIX built by the export pipeline
+  passes Store commerce certification.
+- itch.io: `owns` and `owned-keys` after a refund; rate limits; whether a revoked key disappears from
+  `owned-keys`.
+- Epic: the `EOS_InvalidRequest` durable change (still [S]).
+- Xbox: the Godot console path (not researched).
 
 ## Sources
 
-All fetched 2026-10-09. Microsoft pages carry their own `updated_at` (GDK pages 2026-06/07).
+All fetched 2026-10-16 (local time). Each Microsoft page's own `ms.date` or edit date is given.
 
-- [V] Manage product entitlements from a service: https://learn.microsoft.com/en-us/windows/uwp/monetize/view-and-grant-products-from-a-service
-- [V] Query for products (v6): https://learn.microsoft.com/en-us/windows/uwp/monetize/query-for-products
-- [V] Report consumable products as fulfilled: https://learn.microsoft.com/en-us/windows/uwp/monetize/report-consumable-products-as-fulfilled
-- [V] Enable consumable add-on purchases: https://learn.microsoft.com/en-us/windows/uwp/monetize/enable-consumable-add-on-purchases
-- [V] In-app purchases and trials: https://learn.microsoft.com/en-us/windows/uwp/monetize/in-app-purchases-and-trials
-- [V] b2bLicensePreview (Collections v8): https://learn.microsoft.com/en-us/gaming/gdk/docs/store/commerce/service-to-service/microsoft-store-apis/xstore-v8-query-for-products
-- [V] Managing consumable products from your service: https://learn.microsoft.com/en-us/gaming/gdk/docs/store/commerce/service-to-service/xstore-managing-consumables-and-refunds
-- [V] Managing refunds and chargebacks from your service (Clawback): https://learn.microsoft.com/en-us/gaming/gdk/docs/store/commerce/service-to-service/xstore-managing-refunds-and-chargebacks
-- [V] Consumable-based ecosystems: https://learn.microsoft.com/en-us/gaming/gdk/docs/store/commerce/fundamentals/xstore-consumable-based-ecosystems
-- [S] GDK XStore reference, choosing a product type, EXE/MSI vs MSIX comparison: https://learn.microsoft.com/en-us/gaming/gdk/docs/reference/system/xstore/functions/xstorereportconsumablefulfillmentasync , https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/choose-distribution-path
-- [V] itch.io server-side API: https://itch.io/docs/api/serverside ; OAuth: https://itch.io/docs/api/oauth ; payments: https://itch.io/docs/creators/payments ; access control: https://itch.io/docs/creators/access-control ; overview: https://itch.io/docs/api/overview
-- [V] itch.io ownership-check issue (2020): https://github.com/itchio/itch.io/issues/1121
-- [S] itch.io refund forum threads (search digest): https://itch.io/t/129454/refunds
-- [V] Apple, via DocC JSON: App Store Server API Get Transaction History (`/documentation/appstoreserverapi/get-transaction-history`), notificationType (`/documentation/appstoreservernotifications/notificationtype`), JWSTransactionDecodedPayload, Send Consumption Information
-- [V] Google Play Billing integrate: https://developer.android.com/google/play/billing/integrate ; voided purchases: https://developers.google.com/android-publisher/api-ref/rest/v3/purchases.voidedpurchases/list ; products resource: https://developers.google.com/android-publisher/api-ref/rest/v3/purchases.products
-- [V] Steam microtransactions: https://partner.steamgames.com/doc/features/microtransactions ; ISteamMicroTxn: https://partner.steamgames.com/doc/webapi/ISteamMicroTxn ; inventory: https://partner.steamgames.com/doc/features/inventory
-- [S] Epic Online Services Ecom (search digest): https://dev.epicgames.com/docs/epic-games-store/services/ecom/ecom-quick-start , https://dev.epicgames.com/docs/web-api-ref/ecom-web-apis
-- Repo: `docs/research/2026-10-07-dx-consolidation/audits/commerce.md`, `docs/research/2026-09-29-godot-omniplatform/program/plans/CM-20.md`, `docs/design/mockups/screens/commerce/`
+- [V] Microsoft, Manage product entitlements from a service (updated 2025-07-24): https://learn.microsoft.com/en-us/windows/uwp/monetize/view-and-grant-products-from-a-service
+- [V] Microsoft, In-app purchases and trials (updated 2025-11-27): https://learn.microsoft.com/en-us/windows/uwp/monetize/in-app-purchases-and-trials
+- [V] Microsoft, b2bLicensePreview (Collections v8) (edited 2026-07-15): https://learn.microsoft.com/en-us/gaming/gdk/docs/store/commerce/service-to-service/microsoft-store-apis/xstore-v8-query-for-products
+- [V] Microsoft, Query user entitlements from your services (v8 vs v9) (edited 2026-07-15): https://learn.microsoft.com/en-us/gaming/gdk/docs/store/commerce/service-to-service/xstore-query-user-entitlements
+- [V] Microsoft, Manage products from your services (edited 2026-06-15): https://learn.microsoft.com/en-us/gaming/gdk/docs/store/commerce/service-to-service/service-to-service-nav
+- [V] Microsoft, Managing consumable products from your service (edited 2026-06-15): https://learn.microsoft.com/en-us/gaming/gdk/docs/store/commerce/service-to-service/xstore-managing-consumables-and-refunds
+- [V] Microsoft, Managing refunds and chargebacks from your service (edited 2026-06-15): https://learn.microsoft.com/en-us/gaming/gdk/docs/store/commerce/service-to-service/xstore-managing-refunds-and-chargebacks
+- [V] Microsoft, orders/query (Clawback v1, deprecated for refunds) (edited 2026-03-23): https://learn.microsoft.com/en-us/gaming/gdk/docs/store/commerce/service-to-service/microsoft-store-apis/xstore-v8-clawbackv1
+- [V] Microsoft Store Policies 7.20, §10.8 (2026-09-14): https://learn.microsoft.com/en-us/windows/apps/publish/store-policies
+- [V] Microsoft, App package requirements for MSI/EXE app (updated 2026-08-24): https://learn.microsoft.com/en-us/windows/apps/publish/publish-your-app/msi/app-package-requirements
+- [V] Microsoft, Choose a distribution path (2026-10-07): https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/choose-distribution-path
+- [S] Microsoft Q&A on MSI/EXE commerce (2023), via search digest: https://learn.microsoft.com/en-us/answers/questions/1071450/how-do-i-create-an-add-on-to-allow-an-in-app-purch
+- [V] itch.io server-side API: https://itch.io/docs/api/serverside ; OAuth: https://itch.io/docs/api/oauth ; manifest actions: https://itch.io/docs/itch/integrating/manifest-actions.html ; payments: https://itch.io/docs/creators/payments
+- [V] Apple, DocC JSON under `https://developer.apple.com/tutorials/data/documentation/`: `appstoreserverapi/get-transaction-history`, `send-consumption-information` (API 1.19), `consumptionrequest`, `jwstransactiondecodedpayload`, `revocationtype`, `revocationpercentage`, `type`, `appstoreservernotifications/notificationtype`
+- [V] Google Play Developer API discovery document, revision 20261015: https://androidpublisher.googleapis.com/$discovery/rest?version=v3 ; Play Billing integration guide (updated 2026-10-15): https://developer.android.com/google/play/billing/integrate
+- [V] Epic, Ecom Web APIs: https://dev.epicgames.com/docs/web-api-ref/ecom-web-apis ; Ecom interface: https://dev.epicgames.com/docs/epic-games-store/services/ecom/ecom-overview
+- [V] Steam (from the 2026-10-09 run, not refetched): https://partner.steamgames.com/doc/features/microtransactions , https://partner.steamgames.com/doc/webapi/ISteamMicroTxn
+- Repo: `docs/research/2026-10-07-dx-consolidation/audits/commerce.md` §2, §5.7, §5.9;
+  `program/plans/CM-20.md` D1–D3, D9, §11, §12; `notes/S-15-storefront-provisioning.md` §2, §4.4; the
+  files named in Results §1.
