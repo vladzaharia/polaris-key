@@ -36,12 +36,12 @@ tink = "1.23.0"
 # aligned, tools/check_16k_alignment.py), and at 1.5.7-12: every AAR from 1.5.7-13 on declares
 # minCompileSdk 37, which compileSdk 36 under AGP 8.6.1 (Godot 4.7.2's template) cannot consume
 # (P6-12). The zstd-jni API :packs calls is the same in both builds.
-zstdJni = "1.5.7-21"
+zstdJni = "1.5.7-23"
 # The JVM desktop OS keyring (UK-40, SP-K12): java-keyring over JNA (macOS Keychain, Windows
 # Credential Manager, Secret Service or KWallet on Linux). compileOnly in :core, so Android and
 # headless JVM builds never carry JNA; a desktop app adds it at runtime.
 javaKeyring = "1.0.4"
-zstdJniAndroid = "1.5.7-12"
+zstdJniAndroid = "1.5.7-23"
 # The Compose UI kit (:ui, P6-11): the Compose BOM whose libraries build under Godot's template (AGP 8.6.1,
 # compile SDK 36, Kotlin 2.1): the newest BOM is 2026.06.01 (Compose 1.11.4, Material 3 1.4.0: AAR
 # metadata minCompileSdk 35, minAndroidGradlePluginVersion 8.6.0). From 2026.08.00 (Compose 1.12) every
