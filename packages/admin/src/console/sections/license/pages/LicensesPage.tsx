@@ -23,7 +23,6 @@ import { fromSeconds } from "../../../../lib/format.js";
 import { SIGN_IN_LABELS } from "../../../../lib/labels.js";
 import { cn } from "../../../../lib/cn.js";
 import { Button } from "../../../../ui/Button.js";
-import { EmptyState } from "../../../../ui/EmptyState.js";
 import { Meter } from "../../../../ui/charts/Meter.js";
 import { Timestamp } from "../../../../ui/Timestamp.js";
 import { announce } from "../../../../ui/LiveRegion.js";
@@ -41,6 +40,7 @@ import {
   isForbidden,
   NO_BATCH,
   NO_TIER,
+  LicensesFirstRun,
   LicensesForbidden,
   useServerFilter,
 } from "../components/LicenseListParts.js";
@@ -531,25 +531,7 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
         }}
         onRetry={() => void licensesQ.refetch()}
         empty={
-          <EmptyState
-            kind="first-run"
-            headingLevel={2}
-            title="No licenses yet"
-            description="Licenses appear when someone signs in under your Access rules, or when you create one."
-            primaryAction={
-              <Button iconStart={<Plus />} onClick={() => setCreateOpen(true)}>
-                Create license
-              </Button>
-            }
-            secondaryAction={
-              <Button
-                variant="outline"
-                onClick={() => navigate(r.access(slug))}
-              >
-                Open Access
-              </Button>
-            }
-          />
+          <LicensesFirstRun slug={slug} onCreate={() => setCreateOpen(true)} />
         }
         mobile="cards"
       />

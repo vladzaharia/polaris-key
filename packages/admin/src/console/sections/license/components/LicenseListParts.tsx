@@ -1,6 +1,10 @@
 /** The Licenses page's smaller parts: the server-side filter, the bulk confirm and the 403 state. */
 
 import * as React from "react";
+import { Plus } from "lucide-react";
+import { r } from "../../../routes.js";
+import { navigate } from "../../../router.js";
+import { Button } from "../../../../ui/Button.js";
 import { ApiError, type LicenseSummary } from "../../../../api.js";
 import { mutateEach } from "../../../data/mutations.js";
 import { PageHeader } from "../../../../ui/PageHeader.js";
@@ -119,6 +123,34 @@ export function BulkEnableDialog({
       }
       confirmLabel={bulk ? `${verb} ${what}` : ""}
       onConfirm={run}
+    />
+  );
+}
+
+/** Nothing yet: one primary, and the way to the rules that create licenses without a person. */
+export function LicensesFirstRun({
+  slug,
+  onCreate,
+}: {
+  slug: string;
+  onCreate: () => void;
+}): React.ReactElement {
+  return (
+    <EmptyState
+      kind="first-run"
+      headingLevel={2}
+      title="No licenses yet"
+      description="Licenses appear when someone signs in under your Access rules, or when you create one."
+      primaryAction={
+        <Button iconStart={<Plus />} onClick={onCreate}>
+          Create license
+        </Button>
+      }
+      secondaryAction={
+        <Button variant="outline" onClick={() => navigate(r.access(slug))}>
+          Open Access
+        </Button>
+      }
     />
   );
 }
