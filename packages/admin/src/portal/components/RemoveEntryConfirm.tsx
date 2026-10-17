@@ -106,7 +106,7 @@ export function RemoveEntryConfirm({
         Remove {name} from your library?
       </p>
       <p id={`${id}-d`} className="text-sm text-fg-muted">
-        You can add it again from Discover while its developer offers it.
+        You can add it again from Discover while it is free to add.
       </p>
       {error ? (
         <p role="alert" className="flex gap-2 text-sm text-danger">

@@ -511,7 +511,7 @@ function addError(product: PortalStorefrontProduct, err: unknown): AddError {
     err.code === "not_eligible"
   )
     return {
-      text: `${product.developerName ?? "The developer"} stopped this offer.`,
+      text: `${product.developerName ?? "The developer"} no longer gives ${product.name} to your account.`,
       ended: true,
     };
   const copy = portalErrorCopy(err);

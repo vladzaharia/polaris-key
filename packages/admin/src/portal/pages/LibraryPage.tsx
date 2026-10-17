@@ -71,17 +71,20 @@ export function LibraryPage({
           Your library
         </h1>
         <p className="text-fg-muted">
-          {count > 1 ? `${count} products · ` : ""}
-          {count > 1 ? "signed in as " : "Signed in as "}
-          <span className="text-fg-strong">{account.email}</span>
+          Signed in as <span className="text-fg-strong">{account.email}</span>
         </p>
       </div>
       {lib.isPending ? (
         // The large-tile grid's columns, so the page holds still when the library loads.
+        // A tile is its 16:9 art and about 150 px of text; the key tile is dashed.
         <div className="grid gap-6 desk:grid-cols-2 wide:grid-cols-3" aria-busy>
-          <Skeleton className="h-80 rounded-xl" />
-          <Skeleton className="h-80 rounded-xl" />
-          <Skeleton className="h-80 rounded-xl" />
+          <SkeletonTile />
+          <SkeletonTile />
+          <SkeletonTile />
+          <div
+            aria-hidden
+            className="hidden min-h-40 rounded-xl border border-dashed border-border-strong wide:block"
+          />
         </div>
       ) : lib.error ? (
         <ErrorPanel error={lib.error} onRetry={lib.retry} />
@@ -89,7 +92,6 @@ export function LibraryPage({
         <>
           <LibraryEmpty discoverCount={lib.discoverCount} />
           <DiscoverTeaser discoverCount={lib.discoverCount} />
-          <MissingLicense />
         </>
       ) : (
         <>
@@ -101,10 +103,20 @@ export function LibraryPage({
             params={params}
             firstLoad={firstLoad}
           />
-          <MissingLicense />
         </>
       )}
+      {/* Static help: every state has it, so the page keeps its end while data loads or fails. */}
+      <MissingLicense />
     </section>
+  );
+}
+
+function SkeletonTile(): React.ReactElement {
+  return (
+    <div aria-hidden className="space-y-3 rounded-xl">
+      <Skeleton className="aspect-video w-full rounded-xl" />
+      <Skeleton className="h-36 w-full rounded-xl" />
+    </div>
   );
 }
 
@@ -141,7 +153,7 @@ function LibraryBody({
                 {discoverCount === 1 ? "There is " : "There are "}
                 <a
                   href={href.discover()}
-                  className="font-medium text-accent-fg hover:underline"
+                  className="font-medium text-accent-fg underline underline-offset-2"
                 >
                   {discoverCount} more you can add in Discover
                 </a>

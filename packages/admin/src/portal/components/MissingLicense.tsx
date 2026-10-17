@@ -8,6 +8,9 @@ import { href } from "../router.js";
  * a store purchase (Steam through a sign-in method, the App Store and Google Play through the
  * product's own sign-in).
  */
+/** Colour alone does not tell a link from the muted text around it (WCAG 1.4.1). */
+const LINK = "font-medium text-accent-fg underline underline-offset-2";
+
 export function MissingLicense(): React.ReactElement {
   return (
     <section
@@ -27,10 +30,7 @@ export function MissingLicense(): React.ReactElement {
               Sent to another email?
             </strong>
             Add that email under{" "}
-            <a
-              href={href.account("methods")}
-              className="font-medium text-accent-fg hover:underline"
-            >
+            <a href={href.account("methods")} className={LINK}>
               Sign-in methods
             </a>
             .
@@ -44,8 +44,11 @@ export function MissingLicense(): React.ReactElement {
             <strong className="block font-medium text-fg-strong">
               Bought in a store?
             </strong>
-            Add Steam under Sign-in methods. For the App Store or Google Play,
-            sign in to the game once.
+            Add Steam under{" "}
+            <a href={href.account("methods")} className={LINK}>
+              Sign-in methods
+            </a>
+            . For the App Store or Google Play, sign in to the app once.
           </p>
         </li>
       </ul>

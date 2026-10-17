@@ -567,7 +567,7 @@ describe("the storefront product page, #/discover/:product (PS-05)", () => {
       await screen.findByRole("button", { name: "Add to library" }),
     );
     expect((await screen.findByRole("alert")).textContent).toBe(
-      "Aperture Seven stopped this offer.",
+      "Aperture Seven no longer gives Lumen RAW to your account.",
     );
     expect(screen.queryByRole("button", { name: "Add to library" })).toBeNull();
     expect(window.location.hash).toBe("#/discover/lumen-raw");

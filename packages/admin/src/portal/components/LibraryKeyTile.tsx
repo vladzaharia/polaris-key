@@ -38,40 +38,43 @@ export function LibraryKeyTile({
   const activate = useActivate();
   return (
     <li
+      aria-labelledby="key-tile-h"
       className={cn(
         "grid @container",
         SPAN[2][keyTileSpan(count, 2) as 1 | 2],
         SPAN[3][keyTileSpan(count, 3)],
       )}
     >
-      <aside
-        aria-labelledby="key-tile-h"
-        className="flex flex-col items-center justify-center gap-4 rounded-xl border border-dashed border-border-strong bg-transparent p-6 text-center @2xl:flex-row @2xl:gap-6 @2xl:text-left"
-      >
-        <span
-          aria-hidden
-          className="inline-flex size-14 shrink-0 items-center justify-center rounded-2xl bg-accent-subtle text-accent-fg"
-        >
-          <KeyRound className="size-7" />
-        </span>
-        <div className="min-w-0 space-y-1 @2xl:flex-1">
-          <h2 id="key-tile-h" className="text-lg font-medium text-fg-strong">
-            {t("signin.link.key")}
-          </h2>
-          <p className="text-sm text-fg-muted">
-            Activate it to add its product here.
-          </p>
+      {/* A phone: the key beside the text, the button full width under them. From 900 px the tile
+          is a cell in the grid: centred in its space, the button at its foot, level with the
+          tiles' actions; beside a wide span it lays out as a row. */}
+      <div className="flex flex-col gap-4 rounded-xl border border-dashed border-border-strong bg-transparent p-4 desk:items-center desk:p-6 @2xl:flex-row @2xl:gap-6">
+        <div className="flex min-w-0 items-center gap-3 desk:my-auto desk:flex-col desk:gap-4 desk:text-center @2xl:my-0 @2xl:flex-1 @2xl:flex-row @2xl:text-left">
+          <span
+            aria-hidden
+            className="inline-flex size-10 shrink-0 items-center justify-center rounded-xl bg-accent-subtle text-accent-fg desk:size-14 desk:rounded-2xl"
+          >
+            <KeyRound className="size-5 desk:size-7" />
+          </span>
+          <div className="min-w-0 space-y-1">
+            <h3 id="key-tile-h" className="text-lg font-medium text-fg-strong">
+              {t("signin.link.key")}
+            </h3>
+            <p className="text-sm text-fg-muted">
+              Activate it to add its product here.
+            </p>
+          </div>
         </div>
         <Button
           variant="quiet"
           size="lg"
-          className="h-11 shrink-0"
+          className="h-11 w-full shrink-0 desk:mt-auto desk:w-auto @2xl:mt-0"
           iconStart={<KeyRound aria-hidden />}
           onClick={() => activate.open()}
         >
           {t("activate.submit")}
         </Button>
-      </aside>
+      </div>
     </li>
   );
 }

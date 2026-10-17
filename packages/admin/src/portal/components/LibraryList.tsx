@@ -122,6 +122,7 @@ function LibraryRow({
       <td className="px-2 py-3">
         <a
           href={href.product(p.slug)}
+          dir="auto"
           className="font-medium text-fg-strong after:absolute after:inset-0 after:content-[''] focus-visible:outline-none"
         >
           {p.name}

@@ -3,18 +3,16 @@ import { ExternalLink } from "lucide-react";
 import { Button } from "../../ui/Button.js";
 import type { AttentionItem } from "../model/library.js";
 import { href } from "../router.js";
-import { ProductArt } from "./ProductArt.js";
+import { ProductIcon } from "./ProductIcon.js";
 
 /**
- * Needs attention (§4.15): only items the person can act on, each with its action: only the single most urgent
- * item is solid, the others are outlined (B12). Hidden when empty.
+ * Needs attention (§4.15, mockup `portal.library-12`): one bordered card with a row per item the
+ * person can act on, each with its action: only the single most urgent item is solid, the others
+ * are outlined (B12). Hidden when empty.
  *
- * Three columns from 900 px; two at 761–899 px, where an odd last card spans both; one on phones
- * (§8). Each card is a size container: the thumbnail shows only when the card has 22rem for it
- * beside the title and reason. The action has its own row at the card's foot, full width and on
- * one line (a long developer's name truncates; the accessible name keeps it whole), so the actions
- * in a row line up. A truncated label shows in full on hover (`title`), and the reason names the
- * developer too.
+ * A row is the product's icon, its name and reason, and the action right-aligned (under the text
+ * on a phone, full width). The action is on one line (a long developer's name truncates; the
+ * accessible name keeps it whole), and a truncated label shows in full on hover (`title`).
  */
 export function AttentionShelf({
   items,
@@ -23,48 +21,50 @@ export function AttentionShelf({
 }): React.ReactElement | null {
   if (items.length === 0) return null;
   return (
-    <section aria-labelledby="attention-h" className="space-y-4">
+    <section
+      aria-labelledby="attention-h"
+      className="overflow-hidden rounded-xl border border-border bg-surface-raised shadow-elevation-1"
+    >
       <h2
         id="attention-h"
-        className="flex items-baseline gap-2 text-lg font-semibold text-fg-strong"
+        className="flex items-baseline gap-2 px-4 py-3 text-md font-semibold text-fg-strong"
       >
         Needs attention
         <span className="text-xs font-normal text-fg-muted">
           {items.length}
         </span>
       </h2>
-      <ul className="grid gap-4 desk:grid-cols-2 desk:[&>li:last-child:nth-child(odd)]:col-span-2 mid:grid-cols-3 mid:[&>li:last-child:nth-child(odd)]:col-span-1">
+      <ul className="divide-y divide-border border-t border-border">
         {items.map(({ product, text, action, urgent }) => (
           <li
             key={product.slug}
-            className="flex min-w-0 flex-col gap-4 rounded-xl border border-border bg-surface-raised p-4 shadow-elevation-1 @container"
+            className="flex min-w-0 flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:gap-4"
           >
-            <div className="flex min-w-0 gap-4">
-              <ProductArt
+            <div className="flex min-w-0 flex-1 items-center gap-3">
+              <ProductIcon
                 slug={product.slug}
                 name={product.name}
                 tint={product.presentation.tint}
-                src={product.presentation.headerUrl}
-                variant="thumb"
-                className="hidden h-[4.625rem] w-[8.25rem] shrink-0 rounded-lg @[22rem]:block"
+                src={product.presentation.iconUrl}
+                size={40}
+                className="shrink-0"
               />
-              <div className="min-w-0 flex-1 space-y-2">
-                <h3 dir="auto" className="font-semibold text-fg-strong">
-                  <a
-                    href={href.product(product.slug)}
-                    className="hover:underline"
-                  >
-                    {product.name}
-                  </a>
-                </h3>
-                <p className="text-sm text-fg-muted">{text}</p>
-              </div>
+              <p className="min-w-0 text-sm text-fg-muted">
+                <a
+                  href={href.product(product.slug)}
+                  dir="auto"
+                  className="font-semibold text-fg-strong hover:underline"
+                >
+                  {product.name}
+                </a>{" "}
+                {text}
+              </p>
             </div>
             <Button
               asChild
               size="md"
               variant={urgent ? "primary" : "quiet"}
-              className="mt-auto w-full min-w-0"
+              className="w-full min-w-0 sm:w-auto sm:max-w-[16rem] sm:shrink-0"
             >
               {action.external ? (
                 <a

@@ -94,6 +94,20 @@ export function DiscoverPage({
     document.getElementById(`offer-${focusOpen}-open`)?.focus();
     setFocusOpen(null);
   }, [focusOpen]);
+  // After a failed add the button was disabled while it ran: focus goes back to it (to Try
+  // again), or to the error where the offer is gone and the button with it.
+  const [focusFailed, setFocusFailed] = React.useState<{
+    slug: string;
+    ended: boolean;
+  } | null>(null);
+  React.useEffect(() => {
+    if (!focusFailed) return;
+    const base = `offer-${focusFailed.slug}`;
+    document
+      .getElementById(focusFailed.ended ? `${base}-error` : `${base}-add`)
+      ?.focus();
+    setFocusFailed(null);
+  }, [focusFailed]);
 
   // `?added=` after a reload: each product is in the library now, so its tile comes from there.
   const fromReload = React.useMemo(
@@ -143,7 +157,9 @@ export function DiscoverPage({
         },
       });
     } catch (err) {
-      setErrors((m) => new Map(m).set(slug, tileError(offer, err)));
+      const failed = tileError(offer, err);
+      setErrors((m) => new Map(m).set(slug, failed));
+      setFocusFailed({ slug, ended: failed.ended });
     } finally {
       inFlight.current.delete(slug);
       setAdding((m) => {
@@ -164,11 +180,7 @@ export function DiscoverPage({
         <h1 className="text-page-title-sm font-semibold text-fg-strong desk:text-page-title">
           Discover
         </h1>
-        <p className="text-fg-muted">
-          {empty
-            ? "Products their developers offer to your account, free to add."
-            : "Products their developers offer to your account. Adding one puts it in your library straight away, at no cost."}
-        </p>
+        <p className="text-fg-muted">Products you can add for free</p>
       </div>
       {pending ? (
         // Two columns on tablets, three from 1180 px (§4.16), as the loaded grid.
@@ -195,8 +207,8 @@ export function DiscoverPage({
             Nothing to add right now
           </h2>
           <p className="max-w-prose text-fg-muted">
-            When a developer offers something to your account, like a free game,
-            a beta or an app your team gets, it appears here.
+            When a developer makes something free for you to add, like a free
+            game, a beta or an app your team gets, it appears here.
           </p>
           <Button asChild variant="action" size="lg" className="h-12">
             <a href={href.library()}>
@@ -214,7 +226,9 @@ export function DiscoverPage({
             <ul
               ref={stagger.ref}
               className={cn(
-                "grid gap-5 desk:grid-cols-2 wide:grid-cols-3",
+                "grid gap-5 desk:grid-cols-2",
+                // Two or four tiles at three columns leave a row mostly empty (3 + 1).
+                tiles.length !== 2 && tiles.length !== 4 && "wide:grid-cols-3",
                 stagger.className,
               )}
             >
@@ -242,8 +256,7 @@ export function DiscoverPage({
           </section>
           <p className="flex gap-2 text-sm text-fg-muted">
             <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
-            Only products you can add for free appear here. Anything you buy
-            shows up in your library by itself.
+            Purchases appear in your library automatically.
           </p>
         </>
       )}
@@ -259,7 +272,7 @@ function tileError(offer: PortalDiscoverOffer, err: unknown): TileError {
     err.code === "not_eligible"
   ) {
     return {
-      text: `${offer.developerName ?? "The developer"} stopped this offer.`,
+      text: `${offer.developerName ?? "The developer"} no longer gives ${offer.name} to your account.`,
       ended: true,
     };
   }

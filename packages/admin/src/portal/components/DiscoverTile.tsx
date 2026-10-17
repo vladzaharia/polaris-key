@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { Button } from "../../ui/Button.js";
 import { cn } from "../../lib/cn.js";
+import { t } from "../../lib/copy.js";
 import type { PortalDiscoverOffer } from "../api.js";
 import {
   moreWaysText,
@@ -78,7 +79,7 @@ export function DiscoverTile({
 }: {
   offer: PortalDiscoverOffer;
   state: DiscoverTileState;
-  /** An inline error from the last Add ("Aperture Seven stopped this offer."). */
+  /** An inline error from the last Add ("Aperture Seven no longer gives Lumen RAW to your account."). */
   error?: string | null;
   /** The offer is gone (409 `not_eligible`): no Add button any more. */
   ended?: boolean;
@@ -207,7 +208,9 @@ export function DiscoverTile({
             <p
               id={errorId}
               role="alert"
-              className="mt-3 flex gap-2 text-sm text-danger"
+              // Focusable so a keyboard user lands on it when the button has gone (an ended offer).
+              tabIndex={-1}
+              className="mt-3 flex gap-2 text-sm text-danger outline-none"
             >
               <AlertCircle aria-hidden className="mt-0.5 size-4 shrink-0" />
               {error}
@@ -231,16 +234,17 @@ export function DiscoverTile({
                 </Button>
               ) : (
                 <Button
+                  id={`${id}-add`}
                   variant="quiet"
                   size="lg"
                   className="h-11 w-full"
                   iconStart={<Plus aria-hidden />}
                   loading={state === "adding"}
                   aria-describedby={error ? errorId : undefined}
-                  aria-label={`Add to library: ${offer.name}`}
+                  aria-label={`${error ? t("common.tryAgain") : "Add to library"}: ${offer.name}`}
                   onClick={onAdd}
                 >
-                  Add to library
+                  {error ? t("common.tryAgain") : "Add to library"}
                 </Button>
               )}
             </div>

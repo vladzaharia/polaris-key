@@ -254,7 +254,7 @@ describe("Discover count (P6, FLOWS P-13): counts only what the page lists", () 
       const discover = nav.getByRole("link", { name: /Discover/ });
       await discover.waitFor();
       expect(await discover.count()).toBe(1);
-      // The desktop count is visible; the phone bar's dot carries ", 4 offers" for readers.
+      // The desktop count is visible; the phone bar's dot carries ", 4 to add" for readers.
       expect(await discover.textContent()).toContain("4");
       expect(await o.violations()).toEqual([]);
       await o.close();
@@ -1263,7 +1263,7 @@ describe("main flows", () => {
     const o = await open("twelve", "/");
     await h1(o.page, "Your library");
     await o.page
-      .getByRole("searchbox", { name: /Search 12 products/ })
+      .getByRole("searchbox", { name: "Search your library" })
       .fill("orbit");
     await o.page.getByText("Showing 1 of 12 ·").waitFor();
     expect(await o.page.evaluate(() => location.hash)).toContain("q=orbit");

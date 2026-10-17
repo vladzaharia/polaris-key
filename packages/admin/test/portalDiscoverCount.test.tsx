@@ -141,7 +141,7 @@ describe("the nav with nothing to discover", () => {
     const phone = screen.getByRole("navigation", { name: "Phone" });
     expect(
       within(phone)
-        .getByRole("link", { name: /^Discover\W+1 offer$/ })
+        .getByRole("link", { name: /^Discover\W+1 to add$/ })
         .querySelector(".rounded-full"),
     ).not.toBeNull();
   });
@@ -157,7 +157,7 @@ describe("the nav with nothing to discover", () => {
     expect(link.textContent).toBe("Discover4");
     const phone = screen.getByRole("navigation", { name: "Phone" });
     expect(
-      within(phone).getByRole("link", { name: /^Discover\W+4 offers$/ }),
+      within(phone).getByRole("link", { name: /^Discover\W+4 to add$/ }),
     ).toBeTruthy();
     expect(
       await screen.findByRole("link", {

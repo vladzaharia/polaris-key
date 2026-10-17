@@ -86,7 +86,7 @@ function items(): HTMLElement {
 }
 
 async function twelve(): Promise<void> {
-  await screen.findByRole("searchbox", { name: "Search 12 products" });
+  await screen.findByRole("searchbox", { name: "Search your library" });
 }
 
 // ── The first-load stagger ─────────────────────────────────────────────────────────────────────
@@ -377,7 +377,7 @@ describe("a refetch that changes the Library's layout never staggers its new lis
       to: 8,
       ready: () => screen.findAllByRole("article"),
       after: () =>
-        screen.findByRole("searchbox", { name: "Search 8 products" }),
+        screen.findByRole("searchbox", { name: "Search your library" }),
       first: "UL",
       tag: "UL",
     },
@@ -395,7 +395,7 @@ describe("a refetch that changes the Library's layout never staggers its new lis
       from: 8,
       to: 7,
       ready: () =>
-        screen.findByRole("searchbox", { name: "Search 8 products" }),
+        screen.findByRole("searchbox", { name: "Search your library" }),
       after: async () =>
         waitFor(() => expect(screen.queryByRole("searchbox")).toBeNull()),
       first: "UL",
@@ -406,7 +406,7 @@ describe("a refetch that changes the Library's layout never staggers its new lis
       from: 0,
       to: 2,
       // The empty state itself (the h1 also shows while the library is pending).
-      ready: () => screen.findByText(/Products bought with this email/),
+      ready: () => screen.findByRole("heading", { name: "Nothing here yet" }),
       after: () => screen.findByRole("article", { name: "Tidewater Studio" }),
       first: null,
       tag: "UL",

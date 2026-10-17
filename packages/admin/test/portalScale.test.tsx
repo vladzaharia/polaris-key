@@ -47,7 +47,7 @@ afterEach(() => {
 });
 
 async function ready(): Promise<void> {
-  await screen.findByRole("searchbox", { name: "Search 12 products" });
+  await screen.findByRole("searchbox", { name: "Search your library" });
 }
 
 describe("scale features from 8 products (PX-03)", () => {

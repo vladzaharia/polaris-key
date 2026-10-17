@@ -1,5 +1,5 @@
 import * as React from "react";
-import { ArrowRight, ChevronRight } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { useDiscover } from "../data.js";
 import { offerReason } from "../model/discover.js";
 import { href } from "../router.js";
@@ -10,7 +10,7 @@ export const TEASER_LIMIT = 3;
 
 /**
  * "Ready to add" on the empty Library (PORTAL.md §4.12): up to three Discover offers as rows
- * (thumb, name, why), each opening its storefront page (PS-05), with **See all**. Only offers with
+ * (thumb, name, why), each opening its storefront page (PS-05). The empty Library's "See N in Discover" is the one link to the page. Only offers with
  * something to add: a link-only listing is not "ready to add". Renders nothing while Discover is
  * empty, still loading, or failed: the empty Library never waits on it or shows its error.
  */
@@ -36,13 +36,6 @@ export function DiscoverTeaser({
             From Discover · no key needed
           </span>
         </h2>
-        <a
-          href={href.discover()}
-          className="inline-flex items-center gap-1 text-sm font-medium text-accent-fg hover:underline"
-        >
-          See all
-          <ArrowRight aria-hidden className="size-4" />
-        </a>
       </div>
       {/* Three columns from 1180 px, two on tablets, where an odd last offer spans both (§8). */}
       <ul className="grid gap-4 desk:grid-cols-2 desk:[&>li:last-child:nth-child(odd)]:col-span-2 wide:grid-cols-3 wide:[&>li:last-child:nth-child(odd)]:col-span-1">

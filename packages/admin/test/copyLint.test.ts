@@ -719,6 +719,15 @@ describe("the portal copy lint", () => {
     expect(found).toEqual([]);
   });
 
+  it("never says offer for what Discover lists (the glossary's Offer is what is sold)", () => {
+    const found = portal.flatMap((f) =>
+      copyStrings(f.source, f.rel)
+        .filter((c) => /\boffers?\b/i.test(proseOf(c.text)))
+        .map((c) => `${f.rel}:${c.line} "${c.text}"`),
+    );
+    expect(found).toEqual([]);
+  });
+
   it("flags a hard-coded catalog string, whatever carries it (negative control)", () => {
     const hard = [
       `export const A = () => <button>Try again</button>;`,

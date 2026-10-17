@@ -242,7 +242,7 @@ describe("Discover (PX-16)", () => {
       within(await tile("Quill")).getByText("Personal · Lifetime"),
     ).toBeTruthy();
     expect(
-      screen.getByText(/Only products you can add for free appear here/),
+      screen.getByText("Purchases appear in your library automatically."),
     ).toBeTruthy();
     // In name order, every tile with its own Add.
     expect(
@@ -462,7 +462,7 @@ describe("Discover (PX-16)", () => {
       within(lumen).getByRole("button", { name: "Add to library: Lumen RAW" }),
     );
     expect((await within(lumen).findByRole("alert")).textContent).toBe(
-      "Aperture Seven stopped this offer.",
+      "Aperture Seven no longer gives Lumen RAW to your account.",
     );
     expect(
       within(lumen).queryByRole("button", { name: /Add to library/ }),
@@ -485,9 +485,14 @@ describe("Discover (PX-16)", () => {
     expect((await within(moss).findByRole("alert")).textContent).toBe(
       "Too many tries. Wait a minute, then try again.",
     );
-    expect(
-      within(moss).getByRole("button", { name: "Add to library: Mossgarden" }),
-    ).toBeTruthy();
+    // Back on the button, relabelled, with the error tied to it and focus returned to it.
+    const retry = within(moss).getByRole("button", {
+      name: "Try again: Mossgarden",
+    });
+    expect(retry.getAttribute("aria-describedby")).toBe(
+      within(moss).getByRole("alert").id,
+    );
+    await waitFor(() => expect(document.activeElement).toBe(retry));
   });
 
   it("empty: the star, one h1 and Back to your library", async () => {
@@ -525,7 +530,7 @@ describe("the empty Library's Discover teaser (PX-16, §4.12)", () => {
     window.history.replaceState(null, "", "/");
   });
 
-  it("shows up to three offers with See all", async () => {
+  it("shows up to three offers; the one link to Discover is the empty state's", async () => {
     mockFetch(discoverWorker([QUILL, MOSSGARDEN, LUMEN, PIXEL]));
     renderPortal();
     const ready = await screen.findByRole("region", { name: /Ready to add/ });
@@ -536,7 +541,7 @@ describe("the empty Library's Discover teaser (PX-16, §4.12)", () => {
       "MMossgardenFree with a Polaris Key account",
       "LLumen RAWFor members of aperture-seven-customers",
     ]);
-    // Each row opens its storefront page (PS-05); See all opens Discover.
+    // Each row opens its storefront page (PS-05); Discover is linked once, from the empty state.
     expect(
       within(ready)
         .getAllByRole("listitem")
@@ -546,9 +551,7 @@ describe("the empty Library's Discover teaser (PX-16, §4.12)", () => {
       "#/discover/mossgarden",
       "#/discover/lumen-raw",
     ]);
-    expect(
-      within(ready).getByRole("link", { name: "See all" }).getAttribute("href"),
-    ).toBe("#/discover");
+    expect(within(ready).queryByRole("link", { name: "See all" })).toBeNull();
     expect(
       screen.getByRole("link", { name: "See 4 in Discover" }),
     ).toBeTruthy();
