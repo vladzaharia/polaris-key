@@ -109,7 +109,12 @@ function withDefaults(input: UiInput, defaults: Obj): UiInput {
 
 /** Keys the kit leaves out on purpose: no "or" divider over the sign-in methods (DL4) and no
  *  "Sign in…" link on the sign-in step. */
-const LEFT_OUT = new Set(["signin.provider.group", "signin.menu.signIn"]);
+const LEFT_OUT = new Set([
+  "signin.provider.group",
+  "signin.menu.signIn",
+  // The pane's title says what the list is; the lede repeats it (the elements leave it out too).
+  "devices.lede",
+]);
 
 /** The literal text of a message (its longest run outside `{…}`), to find it with any args. */
 function literal(message: string): string {
@@ -211,7 +216,9 @@ for (const family of FAMILIES) {
             `${key} is on screen`,
           ).toBe(true);
         const role = ROLE[key];
-        if (role === "button" || role === "menu")
+        // A choice drawn as a radio row (keep, create) is not a button.
+        const asRow = root!.querySelector(`[role="radio"] [data-key="${key}"]`);
+        if ((role === "button" || role === "menu") && !asRow)
           expect(
             root!.querySelector(`button[data-key="${key}"]`),
             `${key} is a control`,
@@ -242,9 +249,12 @@ for (const family of FAMILIES) {
             ? [formStep(input).body.decisions.primary]
             : [];
       if (filled.length === 1)
-        expect([view.decisions.primary, ...drawn]).toContain(
-          filled[0]!.getAttribute("data-key"),
-        );
+        expect([
+          view.decisions.primary,
+          ...drawn,
+          // The form's Done step always offers Start.
+          ...(component === "SignIn" ? ["signin.done.start"] : []),
+        ]).toContain(filled[0]!.getAttribute("data-key"));
       // DL4/DL6: a view with a primary draws it as the one filled control.
       if (
         view.decisions.primary !== null &&
