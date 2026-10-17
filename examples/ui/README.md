@@ -28,7 +28,7 @@ Every sample:
 | Compose           | An Android app (gate, settings, adaptive layouts) and a Compose Desktop app                               | `compose/`                             | Not yet                                      |
 | Android Views     | An XML app using `PolarisKeyActivity`                                                                     | `android-views/`                       | Not yet                                      |
 | Godot             | A demo project: a title screen, a settings menu with the Account tab, a pack download; and its C# twin    | `godot/`, `godot-dotnet/`              | Not yet                                      |
-| Qt                | A PySide6 app                                                                                             | `qt/`                                  | Not yet                                      |
+| Qt                | A PySide6 app                                                                                             | `qt/`                                  | Gate ships; the other flows: not yet         |
 | Terminal (Node)   | The `tidewater` demo CLI: a commander program with the kit's verbs, on fixtures or `--live`               | [`terminal-node/`](terminal-node/)     | Ready                                        |
 | Terminal (Python) | The `tidewater` demo CLI in Python: the kit's verbs under the product's name, on fixtures                 | [`terminal-python/`](terminal-python/) | Ready                                        |
 

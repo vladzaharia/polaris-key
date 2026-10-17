@@ -80,6 +80,7 @@
         "examples/python-cli/",
         "examples/python-renpy/",
         "examples/ui/terminal-python/",
+        "examples/ui/qt/",
         "sdks/godot/tests/qr/fixtures.json",
         "docs/design/ui-kits/terminal-parity.json"
       ]

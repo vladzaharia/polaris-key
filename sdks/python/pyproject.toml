@@ -35,6 +35,8 @@ typer = ["typer>=0.9"]
 # ANSI itself. Textual is only for the optional full-screen app (polaris_key.ui.terminal.textual_app).
 cli = ["rich>=13"]
 tui = ["rich>=13", "textual>=0.80"]
+# The Qt Quick kit (UK-12): PySide6 is primary; PyQt6 works through qtpy (pip install PyQt6 qtpy).
+qt = ["PySide6-Essentials>=6.7"]
 # Server drop-ins (SP-56): polaris_key.server needs only cryptography and httpx; each adapter
 # imports its framework lazily, and these extras pin the floor versions it is tested against.
 starlette = ["starlette>=0.27"]
