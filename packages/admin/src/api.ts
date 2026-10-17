@@ -310,6 +310,8 @@ interface PlatformSettingBase {
   description: string;
   /** The Worker scripts that read it (`main`, `deltas`). */
   scripts: string[];
+  /** ST-16: `default`: products that set none inherit it; `bound`: it clamps products. */
+  link?: "default" | "bound" | null;
   /** `ceiling`: a deploy-time `off` is a hard off no runtime value can override. */
   precedence: "runtime" | "ceiling";
   /** The raw `[vars]` string, `null` when unset. */
@@ -337,7 +339,7 @@ export interface PlatformSwitchSetting extends PlatformSettingBase {
 
 export interface PlatformIntegerSetting extends PlatformSettingBase {
   kind: "integer";
-  unit: "bytes" | "days";
+  unit: "bytes" | "days" | "count";
   /** Inclusive bounds on a runtime value. */
   min: number;
   max: number;
@@ -391,6 +393,18 @@ export interface PlatformDeployValue {
   name: string;
   area: string;
   value: string | string[] | null;
+}
+
+/**
+ * `GET /manage/api/platform/settings/:key/reach` (ST-16, worker `console/handlers/platformReach.ts`):
+ * how many products a change to a product default or bound reaches. A `bound` also lists the
+ * products it clamps, each with the value it set and the one in effect.
+ */
+export interface PlatformReach {
+  kind: "default" | "bound";
+  total: number;
+  reaches: number;
+  clamped: { product: string; set: unknown; effective: unknown }[];
 }
 
 /** `GET /manage/api/platform/settings` (worker `console/handlers/platformSettings.ts`). */
@@ -4635,6 +4649,11 @@ const rawApi = {
   /** The runtime settings, the read-only inventory, secrets presence and the warnings (A-13). */
   platformSettings: () =>
     call<PlatformSettingsView>("/manage/api/platform/settings"),
+  /** How many products a change to this default or bound reaches (`value`: the proposed one). */
+  platformSettingReach: (key: string, value?: number) =>
+    call<PlatformReach>(
+      `/manage/api/platform/settings/${enc(key)}/reach${value === undefined ? "" : `?value=${value}`}`,
+    ),
   /** The reserved entitlement names and the products that declare one (LX-05). */
   platformReservedNames: () =>
     call<PlatformReservedNames>("/manage/api/platform/reserved-names"),

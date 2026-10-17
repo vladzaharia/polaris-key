@@ -50,7 +50,10 @@ async function call(
     path.split("?")[0]!,
     { now: NOW },
   );
-  return { status: res.status, body: (await res.json()) as Record<string, any> };
+  return {
+    status: res.status,
+    body: (await res.json()) as Record<string, any>,
+  };
 }
 
 async function own(db: Db, product: string, key: string, value: unknown) {
@@ -126,7 +129,10 @@ describe("GET /manage/api/platform/settings/:key/reach", () => {
     await own(db, "alpha", KEY_LIMIT, 50);
     await own(db, "beta", KEY_LIMIT, 8);
     // gamma sets none: it takes the default of 10.
-    const r = await call(db, `/api/platform/settings/${KEY_LIMIT}/reach?value=9`);
+    const r = await call(
+      db,
+      `/api/platform/settings/${KEY_LIMIT}/reach?value=9`,
+    );
     expect(r.body).toEqual({
       kind: "bound",
       total: 3,

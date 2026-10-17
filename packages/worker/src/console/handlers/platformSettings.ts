@@ -266,6 +266,13 @@ function settingView(def: SettingDef, r: ResolvedSetting, env: Env) {
     )
       ? ["main", "deltas"]
       : ["main"],
+    // ST-16: what a change reaches. `default`: products that set none inherit it; `bound`: it
+    // clamps products on the permissive side. `null`: it reaches no product.
+    link: def.productLink?.bound
+      ? "bound"
+      : def.productLink?.default
+        ? "default"
+        : null,
     precedence: def.precedence ?? "runtime",
     default: def.defaultValue,
     deployValue: typeof raw === "string" ? raw : null,

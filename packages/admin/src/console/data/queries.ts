@@ -45,6 +45,14 @@ export const qk = {
   platformDeployment: (): QueryKey => ["platform", "deployment"],
   platformActivity: (): QueryKey => ["platform", "activity"],
   platformSettings: (): QueryKey => ["platform", "settings"],
+  /** ST-16: the reach of a product default or bound, per proposed value. */
+  platformReach: (key: string, value?: number): QueryKey => [
+    "platform",
+    "settings",
+    "reach",
+    key,
+    value ?? null,
+  ],
   /** Settings → Licensing: the reserved entitlement-name report (LX-05). */
   platformReservedNames: (): QueryKey => ["platform", "reserved-names"],
   /** The KEK keyring status (`GET /products/kek`): instance-wide, so under `platform`. */

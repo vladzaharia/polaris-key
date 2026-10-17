@@ -1689,3 +1689,153 @@ describe("Advanced is folded (ST-09)", () => {
     );
   });
 });
+
+describe("Product defaults (ST-16)", () => {
+  const keyLimit = (over: Setting = {}): Setting => ({
+    key: "identity.keyEntry.limit",
+    area: "product-defaults",
+    label: "Key-entry limit ceiling",
+    description: "The most key entries any product may allow.",
+    kind: "integer",
+    unit: "count",
+    min: 1,
+    max: 100,
+    scripts: ["main"],
+    precedence: "runtime",
+    default: 100,
+    deployValue: null,
+    value: 100,
+    source: "default",
+    forcedOff: false,
+    stored: null,
+    version: 0,
+    link: "bound",
+    confirm: { raise: "L2", lower: "L2" },
+    ...over,
+  });
+  const quota = (over: Setting = {}): Setting => ({
+    key: "assets.quota.mediaBytes",
+    area: "product-defaults",
+    label: "Default media quota",
+    description: "How many bytes of hosted images a product may hold.",
+    kind: "integer",
+    unit: "bytes",
+    min: 0,
+    max: 1_099_511_627_776,
+    scripts: ["main"],
+    precedence: "runtime",
+    default: 536_870_912,
+    deployValue: null,
+    value: 536_870_912,
+    source: "default",
+    forcedOff: false,
+    stored: null,
+    version: 0,
+    link: "default",
+    confirm: { raise: "L2", lower: "L2" },
+    ...over,
+  });
+  const withDefaults = () =>
+    view({ settings: [lazyDeltas(), keyLimit(), quota()] });
+  const REACH = "/manage/api/platform/settings/identity.keyEntry.limit/reach";
+
+  it("is a section with its rows, in the pills, and the other sections stay", async () => {
+    boot("#/platform/settings", {
+      extra: routes({
+        "/manage/api/platform/settings": withDefaults(),
+        [REACH]: { kind: "bound", total: 3, reaches: 0, clamped: [] },
+      }),
+    });
+    const defaults = await section("Product defaults");
+    expect(within(defaults).getByText("Key-entry limit ceiling")).toBeTruthy();
+    expect(within(defaults).getByText("Default media quota")).toBeTruthy();
+    const pills = screen.getByRole("navigation", { name: "Jump to section" });
+    expect(
+      within(pills)
+        .getAllByRole("link")
+        .map((a) => a.textContent),
+    ).toEqual(expect.arrayContaining(["Product defaults", "Jobs"]));
+  });
+
+  it("a changed default says how many products it reaches and needs L2 before it saves", async () => {
+    const log = boot("#/platform/settings", {
+      extra: routes({
+        "/manage/api/platform/settings": writable(
+          () => quota({ value: 1_073_741_824, version: 1 }),
+          withDefaults,
+        ),
+        "/manage/api/platform/settings/assets.quota.mediaBytes/reach": {
+          kind: "default",
+          total: 14,
+          reaches: 12,
+          clamped: [],
+        },
+      }),
+    });
+    const defaults = await section("Product defaults");
+    const input = within(defaults).getByLabelText(/Default media quota.*MiB/);
+    await userEvent.clear(input);
+    await userEvent.type(input, "1024");
+    const bar = await within(defaults).findByRole("region", {
+      name: "Unsaved changes in Default media quota",
+    });
+    await userEvent.click(within(bar).getByRole("button", { name: "Save…" }));
+    const dialog = await screen.findByRole("alertdialog");
+    expect(
+      await within(dialog).findByText(/Reaches 12 of 14 products/),
+    ).toBeTruthy();
+    expect(writes(log, "PATCH")).toHaveLength(0);
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: /^Save/ }),
+    );
+    await waitFor(() => expect(writes(log, "PATCH")).toHaveLength(1));
+    // L2: the write names the key.
+    expect(JSON.parse(writes(log, "PATCH")[0]!.body!)).toEqual({
+      value: 1_073_741_824,
+      expectedVersion: 0,
+      confirm: "assets.quota.mediaBytes",
+    });
+  });
+
+  it("a clamped product shows what it set and what is in effect", async () => {
+    boot("#/platform/settings", {
+      extra: routes({
+        "/manage/api/platform/settings": withDefaults(),
+        [REACH]: {
+          kind: "bound",
+          total: 3,
+          reaches: 2,
+          clamped: [
+            { product: "alpha", set: 50, effective: 20 },
+            { product: "gamma", set: 10, effective: 20 },
+          ],
+        },
+      }),
+    });
+    const defaults = await section("Product defaults");
+    expect(
+      await within(defaults).findByText(/Clamped by Platform: 2 of 3 products/),
+    ).toBeTruthy();
+    expect(within(defaults).getByText(/set 50, in effect 20/)).toBeTruthy();
+  });
+
+  it("a viewer sees the values and no editing", async () => {
+    boot("#/platform/settings", {
+      extra: routes({
+        "/manage/api/platform/settings": withDefaults(),
+        [REACH]: { kind: "bound", total: 3, reaches: 0, clamped: [] },
+      }),
+      me: {
+        platformAdmin: false,
+        permissions: {
+          roles: [],
+          platform: { view: ["console", "platform"], edit: ["console"] },
+          products: {},
+        },
+      },
+    });
+    const defaults = await section("Product defaults");
+    expect(within(defaults).queryByRole("spinbutton")).toBeNull();
+    expect(within(defaults).queryByRole("textbox")).toBeNull();
+  });
+});
