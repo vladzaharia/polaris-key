@@ -61,32 +61,26 @@ production.
 
 ### Drop-in: CLI
 
-One call adds every Polaris Key verb to a commander program.
+One call adds the Polaris Key verbs to a commander program, and one line gates your own command.
 
 ```ts
 import { Command } from "commander";
-import { PolarisKeyClient } from "@polaris-key/node";
-import { registerPolarisCommands } from "@polaris-key/node/cli";
+import { registerPolarisCommands, requireLicense } from "@polaris-key/node/cli";
 import { polarisConfig } from "./polaris.config.js";
 
 const program = new Command("tidewater");
-registerPolarisCommands(
-  program,
-  // Spread the generated config. A factory that builds from the slug and pins alone drops
-  // baseUrl and the release keys, and its writes go to production.
-  (o) => PolarisKeyClient.create({ ...polarisConfig, version: o.version }),
-  {
-    productSlug: polarisConfig.productSlug,
-    version: "1.4.2",
-    pinnedKeys: polarisConfig.trust.pinnedKeys,
-    expectedServices: polarisConfig.expectedServices,
-  },
-);
+registerPolarisCommands(program, { config: polarisConfig, version: "1.4.2" });
+program
+  .command("export")
+  .action(requireLicense(runExport, { entitlement: "export.pdf" }));
 await program.parseAsync();
+
+async function runExport() {
+  /* the program's own work */
+}
 ```
 
-Verbs, styling and `--json`: [Terminal (Node)](/docs/build/ui/frameworks/terminal-node/). Mounting
-only some verbs and gating your own commands (`verbs`, `polarisGate`) are planned.
+Verbs, namespaces, styling and `--json`: [Terminal (Node)](/docs/build/ui/frameworks/terminal-node/).
 
 ### Drop-in: Electron
 

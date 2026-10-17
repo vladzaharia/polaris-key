@@ -4,6 +4,13 @@
 // that are data, not copy (names, versions, ids, commands, URLs); the string lint allows only
 // those and catalog text.
 
+import { Command } from "commander";
+import {
+  registerPolarisCommands,
+  type CommanderAdapterOptions,
+} from "../../src/cli/commander.js";
+import { runGate } from "../../src/cli/gate.js";
+import { END_USER } from "../../src/cli/mount.js";
 import {
   activateFlow,
   changelogFlow,
@@ -86,7 +93,120 @@ const decision = (d: unknown) =>
   stubClient({ update: { decide: async () => ({ decision: d }) } });
 const release = { version: "2.5.0", seq: 7 };
 
+/** A host CLI with its own commands and the kit mounted beside them; the golden is its `--help`. */
+const HOST_HELP_DATA = [
+  ...COMMON,
+  "Usage",
+  "[options]",
+  "[command]",
+  "Options",
+  "Commands",
+  "Build",
+  "help",
+  "-h, --help",
+  "display help for command",
+  "build",
+  "export",
+  "import",
+  "Build the project",
+  "Export the project",
+  "Import a project",
+  "update apply",
+  "devices list",
+  "devices rename",
+  "devices deauthorize",
+  "<deviceId>",
+  "[label...]",
+  "update check",
+  "<command>",
+  "[key]",
+  "license",
+  "activate",
+  "status",
+  "login",
+  "logout",
+  "deactivate",
+];
+const hostHelp = (
+  name: string,
+  mount: Partial<CommanderAdapterOptions> = {},
+): Scenario => ({
+  name,
+  data: HOST_HELP_DATA,
+  run: async (h) => {
+    const program = new Command("tidewater");
+    program.configureHelp({ helpWidth: h.ctx.caps.columns });
+    program
+      .command("build")
+      .description("Build the project")
+      .helpGroup("Build")
+      .action(() => undefined);
+    program
+      .command("export")
+      .description("Export the project")
+      .action(() => undefined);
+    program
+      .command("import")
+      .description("Import a project")
+      .action(() => undefined);
+    registerPolarisCommands(program, async () => stubClient(), {
+      pinnedKeys: {},
+      productSlug: "tidewater",
+      version: "2.4.1",
+      theme: h.ctx.theme,
+      io: { stdout: h.screen, env: h.env },
+      ...mount,
+    });
+    h.ctx.stdout.write(program.helpInformation());
+  },
+});
+
+/** A gated host command that refuses: the golden is the refusal on stderr. */
+const gateRefusal = (
+  name: string,
+  status: string,
+  entitled: boolean,
+  data: string[],
+): Scenario => ({
+  name,
+  opts: { capture: "stderr" },
+  data: [...COMMON, ...data],
+  run: async (h) => {
+    await runGate({
+      client: stubClient({
+        status: () => ({ status }),
+        license: { isEntitled: () => entitled },
+      }),
+      command: "export",
+      entitlement: "export.pdf",
+      slug: "tidewater",
+      bin: "tidewater",
+      mounted: END_USER,
+      flags: { ascii: h.variant.ascii },
+      theme: h.ctx.theme,
+      io: {
+        stdout: h.screen,
+        stderr: h.err,
+        stdin: h.stdin,
+        env: h.env,
+        platform: "linux",
+        now: () => NOW,
+      },
+    });
+  },
+});
+
 export const SCENARIOS: Scenario[] = [
+  hostHelp("help-host"),
+  hostHelp("help-host-namespace", { namespace: "license" }),
+  gateRefusal("gate-refused-needs-activation", "needs-activation", true, [
+    "tidewater activate",
+    "tidewater login",
+  ]),
+  gateRefusal("gate-refused-version-too-old", "version-too-old", true, [
+    "tidewater update apply",
+  ]),
+  gateRefusal("gate-refused-not-entitled", "ok", false, ["tidewater status"]),
   // ── Activate ──────────────────────────────────────────────────────────────────────────
   {
     name: "activate-empty",

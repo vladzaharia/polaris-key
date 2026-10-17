@@ -90,6 +90,7 @@ const io = { openUrl: (url: string) => (live() ? openInBrowser(url) : true) };
 // Every Polaris Key verb, grouped under the kit's help page: activate, status, login, logout,
 // devices, config, update, changelog, packs, doctor, completion, …
 registerPolarisCommands(program, client, {
+  verbs: "all",
   productSlug: "tidewater",
   pinnedKeys: pkey.trust.pinnedKeys,
   bin: "tidewater",

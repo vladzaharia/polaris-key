@@ -81,9 +81,11 @@ UNICODE_ONLY.add("▌");
 for (const f of "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏") UNICODE_ONLY.add(f);
 
 describe("the terminal kit's baselines", () => {
-  it("names every scenario after a components.json state (or help)", () => {
+  it("names every scenario after a components.json state (or help, or a gated host command)", () => {
     for (const s of SCENARIOS) {
-      if (s.name.startsWith("help")) continue;
+      // help and gate-* are the cli family's (mount, help, gate rows): a host CLI's screens, not a
+      // component's states.
+      if (s.name.startsWith("help") || s.name.startsWith("gate-")) continue;
       const comp = Object.keys(COMPONENTS.components)
         .filter((c) => s.name === kebab(c) || s.name.startsWith(`${kebab(c)}-`))
         .sort((a, b) => kebab(b).length - kebab(a).length)[0];
