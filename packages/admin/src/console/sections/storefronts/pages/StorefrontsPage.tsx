@@ -308,7 +308,10 @@ function Catalogue({ slug }: { slug: string }): React.ReactElement {
   const q = useStorefronts(slug);
   const [flow] = useSearchParam("flow", flowCodec);
   return (
-    <div className="space-y-6" data-template={flow ? "flow" : "collection"}>
+    <div
+      className={`space-y-6${flow ? " mx-auto w-full max-w-[60rem]" : ""}`}
+      data-template={flow ? "flow" : "collection"}
+    >
       <PageHeader
         title={flow ? "Add to storefronts" : "Storefronts"}
         primaryAction={
@@ -410,6 +413,7 @@ function AddFlow({
   return (
     <>
       <Wizard
+        centered={false}
         label="Add to storefronts"
         steps={steps}
         current={current}

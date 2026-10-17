@@ -130,6 +130,9 @@ describe("writing core.setup", () => {
       ROOT_PRINCIPAL,
     );
     expect(back).toMatchObject({ ok: true, applied: true });
-    expect(await read()).toMatchObject({ value: EMPTY_SETUP, source: "default" });
+    expect(await read()).toMatchObject({
+      value: EMPTY_SETUP,
+      source: "default",
+    });
   });
 });

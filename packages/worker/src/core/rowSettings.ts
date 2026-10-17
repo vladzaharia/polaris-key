@@ -479,9 +479,10 @@ export async function revertRowSetting(
       ok: false,
       status: 409,
       reason: "not_claimed",
-      message: claimsApply(product) && isRowBacked(def)
-        ? `${def.key} is not claimed: it already follows the manifest`
-        : `${def.key} is not set in the console: it already has its default`,
+      message:
+        claimsApply(product) && isRowBacked(def)
+          ? `${def.key} is not claimed: it already follows the manifest`
+          : `${def.key} is not set in the console: it already has its default`,
     };
 
   let restore: { value: unknown } | null = null;
@@ -524,9 +525,10 @@ export async function revertRowSetting(
       ...(restore ? { restore: restore.value } : {}),
       audit: {
         action: "setting.revert",
-        summary: claimsApply(product) && isRowBacked(def)
-          ? `Reverted ${def.key} to the manifest: ${auditValue(view.value)} → ${after}`
-          : `Reset ${def.key} to its default: ${auditValue(view.value)} → ${after}`,
+        summary:
+          claimsApply(product) && isRowBacked(def)
+            ? `Reverted ${def.key} to the manifest: ${auditValue(view.value)} → ${after}`
+            : `Reset ${def.key} to its default: ${auditValue(view.value)} → ${after}`,
       },
     },
     {

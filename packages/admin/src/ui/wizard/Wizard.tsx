@@ -182,7 +182,7 @@ export function Wizard({
       <header className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="min-w-0">{eyebrow}</div>
-          <p className="text-sm text-fg-muted">
+          <p className="text-sm text-fg-muted max-sm:hidden">
             Step {index + 1} of {steps.length}
           </p>
         </div>
