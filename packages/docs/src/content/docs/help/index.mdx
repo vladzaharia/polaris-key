@@ -1,0 +1,170 @@
+---
+title: "Help with an app"
+description: "Find help for activation, your library, devices, downloads and your account."
+type: "help"
+status: "shipped"
+lastReviewed: "2026-10-16"
+sidebar:
+  order: 1
+---
+
+import HelpTasks from "../../../components/help/HelpTasks.astro";
+import HelpTopics from "../../../components/help/HelpTopics.astro";
+
+Use this Help site when an app uses Polaris Key for access, its library, or downloads. An app shows
+only the options its developer has chosen for it.
+
+## Popular tasks
+
+<HelpTasks
+  tasks={[
+    {
+      title: "Activate your app",
+      description: "Start using an app with a key, sign-in or purchase.",
+      href: "/docs/help/activate/",
+    },
+    {
+      title: "Device limit reached",
+      description: "Make room for the device you want to use.",
+      href: "/docs/help/device-limit/",
+    },
+    {
+      title: "Move your license to a new computer",
+      description: "Use an app on another device.",
+      href: "/docs/help/new-computer/",
+    },
+    {
+      title: "Download your app",
+      description: "Find the download for an app in your library.",
+      href: "/docs/help/download/",
+    },
+    {
+      title: "Your sign-in code didn't arrive",
+      description: "What to check when the email is missing.",
+      href: "/docs/help/code-didnt-arrive/",
+    },
+    {
+      title: "Refunds, billing and cancellations",
+      description: "Whether to ask the developer or the store.",
+      href: "/docs/help/refunds/",
+    },
+  ]}
+/>
+
+## Browse by topic
+
+<HelpTopics
+  topics={[
+    {
+      title: "Get started",
+      links: [
+        {
+          title: "What is Polaris Key?",
+          href: "/docs/help/what-is-polaris-key/",
+        },
+        { title: "Activate your app", href: "/docs/help/activate/" },
+        { title: "Emails from Polaris Key", href: "/docs/help/emails/" },
+      ],
+    },
+    {
+      title: "Sign in",
+      links: [
+        { title: "Sign in to Polaris Key", href: "/docs/help/sign-in/" },
+        {
+          title: "Your sign-in code didn't arrive",
+          href: "/docs/help/code-didnt-arrive/",
+        },
+        { title: "Use a passkey", href: "/docs/help/passkeys/" },
+        {
+          title: "Approve a sign-in on another device",
+          href: "/docs/help/approve-a-sign-in/",
+        },
+        {
+          title: "Secure your account",
+          href: "/docs/help/secure-your-account/",
+        },
+      ],
+    },
+    {
+      title: "Your account and data",
+      links: [
+        {
+          title: "Your account and sign-in methods",
+          href: "/docs/help/account/",
+        },
+        {
+          title: "Bought with a different email or on Steam?",
+          href: "/docs/help/join-accounts/",
+        },
+        { title: "Delete your account", href: "/docs/help/delete-account/" },
+        { title: "Your data and privacy", href: "/docs/help/your-data/" },
+      ],
+    },
+    {
+      title: "Your library",
+      links: [
+        { title: "Your library", href: "/docs/help/library/" },
+        {
+          title: "Add a license with a key",
+          href: "/docs/help/add-a-license/",
+        },
+        { title: "Get free apps from Discover", href: "/docs/help/discover/" },
+        { title: "Find a lost license key", href: "/docs/help/lost-key/" },
+        {
+          title: "What your license status means",
+          href: "/docs/help/license-status/",
+        },
+        {
+          title: "Remove an app from your library",
+          href: "/docs/help/remove-from-library/",
+        },
+      ],
+    },
+    {
+      title: "Devices",
+      links: [
+        { title: "Manage your devices", href: "/docs/help/devices/" },
+        {
+          title: "Move your license to a new computer",
+          href: "/docs/help/new-computer/",
+        },
+        { title: "Device limit reached", href: "/docs/help/device-limit/" },
+        {
+          title: "Activate a computer without internet",
+          href: "/docs/help/offline-activation/",
+        },
+      ],
+    },
+    {
+      title: "Downloads and updates",
+      links: [
+        { title: "Download your app", href: "/docs/help/download/" },
+        {
+          title: "Check a download is genuine",
+          href: "/docs/help/check-a-download/",
+        },
+        {
+          title: "Install from AltStore, F-Droid, Obtainium or Scoop",
+          href: "/docs/help/install-sources/",
+        },
+        { title: "Update your app", href: "/docs/help/update/" },
+      ],
+    },
+    {
+      title: "Purchases",
+      links: [
+        { title: "Restore a purchase", href: "/docs/help/restore-purchase/" },
+        {
+          title: "Refunds, billing and cancellations",
+          href: "/docs/help/refunds/",
+        },
+      ],
+    },
+    {
+      title: "Messages",
+      links: [{ title: "All messages", href: "/docs/help/messages/" }],
+    },
+  ]}
+/>
+
+Not sure who to ask? [Get help with an app](/docs/help/contact/).

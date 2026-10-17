@@ -110,11 +110,13 @@
     },
     "email_unavailable": {
       "page": "signing-in",
+      "article": "code-didnt-arrive",
       "why": "Email can't be sent right now, so no sign-in code was sent.",
       "fix": "Choose another sign-in method on the sign-in screen, or try again later."
     },
     "turnstile_failed": {
       "page": "signing-in",
+      "article": "code-didnt-arrive",
       "why": "The security check on the sign-in page didn't pass or couldn't be confirmed, so no email was sent.",
       "fix": "Reload the page and ask for the code again. If it fails again, choose another sign-in method."
     },
@@ -126,6 +128,7 @@
     "rate_limited": {
       "page": "signing-in",
       "entry": "rate_limited",
+      "article": "code-didnt-arrive",
       "why": "The service received too many tries from your device or network in a short time, so it paused them.",
       "fix": "Wait a few minutes, then try again. Some limits last an hour, so wait longer if it still happens."
     },
@@ -193,13 +196,13 @@
     "step_up_required": {
       "page": "signing-in",
       "article": "sign-in",
-      "why": "Changes to how you sign in need a sign-in from the last 5 minutes: adding or removing a passkey (a sign-in saved on your device) or another sign-in method.",
-      "fix": "Sign in again, then repeat what you were doing."
+      "why": "Changes to how you sign in, and deleting your account, need a sign-in from the last 5 minutes: adding or removing a passkey (a sign-in saved on your device) or another sign-in method.",
+      "fix": "Confirm it's you with your passkey or an emailed code, then repeat what you were doing."
     },
     "portal.step_up_required": {
       "page": "signing-in",
       "article": "sign-in",
-      "why": "Deleting your account, removing a license from your library and setting up **Package access** on an app's page need a sign-in from the last 5 minutes.",
+      "why": "Removing a license from your library and setting up **Package access** on an app's page need a sign-in from the last 5 minutes.",
       "fix": "Sign out, sign in again, then repeat the change."
     },
     "portal.status-401": {
@@ -305,12 +308,14 @@
     },
     "gate.grace": {
       "page": "license-status",
+      "article": "license-status",
       "why": "The app couldn't reach the licensing service to renew its last license check, so it is running on that check for a limited time.",
       "fix": "Connect to the internet before that time runs out. The app can show how many days are left, and offers **Reconnect**. If you activated this device with an activation file, ask the app's developer for a new file instead."
     },
     "gate.expired": {
       "page": "license-status",
       "entry": "gate.expired",
+      "article": "license-status",
       "why": "The app's last license check is too old, and the time it may run without a new one is over. The license may have ended, or the app stayed offline too long.",
       "fix": "Connect to the internet so the app can check again. If the license has ended, renew it, for example with **Renew** when the app offers it. If you activated with an activation file, ask the app's developer for a new file."
     },
@@ -414,7 +419,7 @@
     "device_limit": {
       "page": "devices",
       "entry": "device_limit",
-      "article": "devices",
+      "article": "device-limit",
       "why": "A license allows a set number of devices at once, and all of them are in use.",
       "fix": "Free one of them. Select **Replace a device** in the app when it offers it. Or remove a device you no longer use from the app's page in your library at key.plrs.im, if the app has one. Or select **Sign out** in the app on a device you no longer use, while it is online. The device you free signs out of the app. If you can't do any of these, ask the app's developer.",
       "cta": "library"
@@ -426,6 +431,7 @@
     "hardware_mismatch": {
       "page": "devices",
       "entry": "hardware_mismatch",
+      "article": "new-computer",
       "why": "The app compared this device with the one the license was activated on, and too much has changed. The earlier activation was ended.",
       "fix": "Activate again in the app. That registers this device again."
     },
@@ -488,6 +494,7 @@
     "bundle-jws-rejected": {
       "page": "devices",
       "entry": "bundle-jws-rejected",
+      "article": "offline-activation",
       "why": "It was changed, damaged, or isn't for this app.",
       "fix": "Ask the app's developer for a new file."
     },
@@ -517,6 +524,7 @@
     },
     "bundle-trust-rejected": {
       "page": "devices",
+      "article": "offline-activation",
       "why": "The file was signed by someone this app doesn't trust, so it may be for another app or may not come from the app's developer.",
       "fix": "Use only an activation file the app's developer made for this app. If you did, ask the app's developer for a new one."
     },
@@ -811,12 +819,14 @@
     },
     "license_owned": {
       "page": "accounts",
+      "article": "add-a-license",
       "why": "This license was added to a Polaris Key account earlier. A license in an account is used by signing in to that account, never by entering its key.",
       "fix": "Sign in with the account that holds the license. In your library, you can also select **Use a different key** to try another key. If you don't recognize that account, or have no other key, ask the app's developer."
     },
     "email_mismatch": {
       "page": "accounts",
       "entry": "email_mismatch",
+      "article": "add-a-license",
       "why": "A license joins only an account that has verified the email address it was bought with.",
       "fix": "Select **Add and verify that email**, enter that address, and verify it with the emailed code. Not sure which address? Check your receipt, or ask the app's developer."
     },
@@ -829,6 +839,7 @@
     "key_entry_limit": {
       "page": "accounts",
       "entry": "key_entry_limit",
+      "article": "add-a-license",
       "why": "A license key that isn't in an account can be entered on a limited number of new devices, and this key has used them all.",
       "fix": "Add the license to your Polaris Key account, then sign in to the app with that account. After that, a new device can't use the key and signs in instead. Add the license only if it is yours. If you can't add it, ask the app's developer."
     },
@@ -838,23 +849,27 @@
     },
     "email_in_use": {
       "page": "accounts",
+      "article": "join-accounts",
       "why": "That email address already belongs to another Polaris Key account, but not as a way to sign in. Nothing was changed.",
       "fix": "Sign in to that account with the method you used before. Then add this email under **Sign-in methods**, or use a different email."
     },
     "link_conflict": {
       "page": "accounts",
+      "article": "join-accounts",
       "why": "That sign-in method, such as an email address or an account with another service, is already connected to a different Polaris Key account.",
       "fix": "Sign in to that account, or connect a different sign-in method."
     },
     "last_link": {
       "page": "accounts",
       "entry": "last_link",
+      "article": "passkeys",
       "why": "Every account needs at least one way to sign in, so its last sign-in method can't be removed.",
       "fix": "Add another sign-in method first, then remove this one."
     },
     "not_removable": {
       "page": "accounts",
       "entry": "last_link",
+      "article": "remove-from-library",
       "why": "You can remove a license only if you could add it back by entering its key. This one has no key, or the app doesn't allow that.",
       "fix": "It stays in your library. To stop using it on a device, remove that device from the app's page. That signs the app out there. Otherwise ask the app's developer.",
       "cta": "library"

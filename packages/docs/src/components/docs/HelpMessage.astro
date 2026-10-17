@@ -9,6 +9,9 @@
  * message in every translated catalog follow as hidden text, so
  * search finds the entry from a title in another language.
  *
+ * `brief` leaves out Why, What to do, More help and the pointers: the title, the message and the
+ * codes, for an article whose own steps say what to do.
+ *
  * `<HelpMessage id>` shows that one id, as an article does for the anchors it carries. On a
  * messages page, `<HelpMessage id entry>` shows the whole entry the id owns: one heading, and one
  * branch for each distinct message of the title, each id keeping its own anchor. A copy change
@@ -40,9 +43,11 @@ export interface Props {
   id: string;
   /** Show the whole entry this id owns: one heading and a branch per distinct message. */
   entry?: boolean;
+  /** Title, message and codes only: the article's own steps say what to do. */
+  brief?: boolean;
 }
 
-const { id, entry: wholeEntry = false } = Astro.props;
+const { id, entry: wholeEntry = false, brief = false } = Astro.props;
 if (!KNOWN_ENTRIES.has(id))
   throw new Error(
     `<HelpMessage id="${id}">: no such key in conformance/parity/copy.en.json or the portal copy of help-messages.json`,
@@ -86,10 +91,10 @@ async function helpLink(
 }
 /** The article link of each branch. */
 const more = await Promise.all(
-  branches.map((branch) => (branch.article === undefined ? undefined : helpLink(branch.article))),
+  branches.map((branch) => (brief || branch.article === undefined ? undefined : helpLink(branch.article))),
 );
 /** Who to ask, for the branches that end with it. */
-const contact = branches.some((branch) => branch.cta === "contact")
+const contact = !brief && branches.some((branch) => branch.cta === "contact")
   ? await helpLink(CONTACT_ARTICLE)
   : undefined;
 
@@ -111,6 +116,8 @@ const codes = (branch: EntryBranch): string[] =>
       and escapes that text again, so an escaped title (Can&#39;t) would be read out as is. Titles hold
       no `&`, `<` or `>` (helpMessages.test.ts). */}
   <AnchorHeading level={2} id={ids[0]!}><Fragment set:html={title} /></AnchorHeading>
+  {/* The title again, hidden and weighted, so searching a message's exact title ranks its entry first. */}
+  <span hidden data-pagefind-weight="10">{title}</span>
   {
     branches.map((branch, i) => (
       <div class="pk-help-message__branch">
@@ -122,7 +129,7 @@ const codes = (branch: EntryBranch): string[] =>
             )}
           </p>
         </blockquote>
-        {branch.why && (
+        {!brief && branch.why && (
           <p>
             <strong>Why you see this.</strong>{" "}
             {textParts(branch.why).map((part) =>
@@ -130,7 +137,7 @@ const codes = (branch: EntryBranch): string[] =>
             )}
           </p>
         )}
-        {branch.fix && (
+        {!brief && branch.fix && (
           <p>
             <strong>What to do.</strong>{" "}
             {textParts(branch.fix).map((part) =>
@@ -138,7 +145,7 @@ const codes = (branch: EntryBranch): string[] =>
             )}
           </p>
         )}
-        {branch.cta === "library" && (
+        {!brief && branch.cta === "library" && (
           <p class="pk-help-message__cta">
             <PortalLink to="library">Open your library</PortalLink>
           </p>

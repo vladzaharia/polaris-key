@@ -34,8 +34,7 @@ enter a different key, select **Use another license** or **Use a different key**
 
 ## Suspended
 
-The app's developer turned the license off. Your library shows **Suspended**, and your devices can
-show **Signed out**. Contact the developer to find out why.
+The app's developer turned the license off. Your library shows **Suspended**, and a running app can show **Signed out**. Activating it again can show **License disabled**. Contact the developer to find out why.
 
 ## Signed out
 
@@ -52,7 +51,7 @@ app was online. The app asks you to sign in or activate again.
 This version of the app is no longer supported for your license. Update the app, then open it again.
 If the app still says **Update required**, ask the app's developer which version to use. **Covers
 versions** on the license in your library shows which versions your license covers. See
-[Updates](/docs/help/update/).
+[Update your app](/docs/help/update/).
 
 ## Device limit reached
 

@@ -8,7 +8,7 @@ sidebar:
   order: 6
 ---
 
-Download an app from your library at [key.plrs.im](https://key.plrs.im), which lists your apps, or from its public download page. Polaris Key is the service the app uses for licenses, sign-in and downloads.
+Download an app from your library at [key.plrs.im](https://key.plrs.im), which lists your apps, or from its public download page.
 
 ## Before you start
 
@@ -41,7 +41,9 @@ A developer can share a page that anyone can open. Its address is exactly `dl.pl
 
 ## If a download doesn't work
 
-A file your license doesn't cover shows **Not included** and a reason. A download that can't start shows **The download didn't start** and a line saying why. The last two rows appear inside an app.
+A file your license doesn't cover shows **Not included** and a reason. A download that can't start shows **The download didn't start** and a line saying why.
+
+### In your library
 
 | You see                                                                      | What it means and what to do                                                                                                                                                                         |
 | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -50,8 +52,13 @@ A file your license doesn't cover shows **Not included** and a reason. A downloa
 | **Not available here yet**                                                   | Ask the developer for another way to get it.                                                                                                                                                         |
 | **The download didn't start** with **A newer release may have replaced it.** | Reload the page to see the current downloads.                                                                                                                                                        |
 | Any other line, or no message                                                | Try the button again. If it still fails, see [Get help with an app](/docs/help/contact/).                                                                                                            |
-| **Sign in to download**                                                      | Sign in or activate a license, then try again. See [Activate your app](/docs/help/activate/).                                                                                                        |
-| **Download unavailable**                                                     | The developer hasn't set up this download. Ask the developer.                                                                                                                                        |
+
+### In the app
+
+| You see                  | What it means and what to do                                                                  |
+| ------------------------ | --------------------------------------------------------------------------------------------- |
+| **Sign in to download**  | Sign in or activate a license, then try again. See [Activate your app](/docs/help/activate/). |
+| **Download unavailable** | The developer hasn't set up this download. Ask the developer.                                 |
 
 ## Check it worked
 

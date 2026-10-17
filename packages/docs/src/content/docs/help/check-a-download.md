@@ -29,11 +29,11 @@ A terminal is a window where you type commands. It usually opens in your home fo
 
 Type `cd Downloads` and press Enter to go there (macOS, Linux and PowerShell). If you saved the file somewhere else, use that folder instead.
 
-Replace `<file>` with the file's name, in quotes if it has spaces.
-
 - **macOS:** `shasum -a 256 <file>` in Terminal
 - **Linux:** `sha256sum <file>` in a terminal
 - **Windows:** `Get-FileHash <file>` in PowerShell
+
+Replace `<file>` with the file's name, in quotes if it has spaces.
 
 The two values must match exactly. Capital and small letters count as the same.
 

@@ -73,15 +73,4 @@ rename option. Your app may look different.
 
 ## If a device cannot be loaded, removed or renamed
 
-Check your connection and try again. A device can be renamed only in the app on that device. See
-[All messages](/docs/help/messages/) for what each message means.
-
-## More about devices
-
-- [Move your license to a new computer](/docs/help/new-computer/)
-- [Device limit reached](/docs/help/device-limit/)
-- [Activate a computer without internet](/docs/help/offline-activation/)
-
-## Still need help?
-
-For help with an app, read [Get help with an app](/docs/help/contact/).
+Check your connection and try again. A device can be renamed only in the app on that device. See the messages about [loading the device list](/docs/help/messages/devices/#device_list_failed), [removing a device](/docs/help/messages/devices/#device_deauthorize_failed) and [renaming a device](/docs/help/messages/devices/#device_rename_failed).

@@ -119,10 +119,10 @@ export const DOOR_TREES: readonly DoorTree[] = [
           "help/add-a-license",
           "help/discover",
           "help/lost-key",
-          "help/messages/license-key",
           "help/license-status",
           "help/messages/license-status",
           "help/remove-from-library",
+          "help/messages/license-key",
         ),
       },
       {
@@ -135,7 +135,6 @@ export const DOOR_TREES: readonly DoorTree[] = [
           "help/messages/devices",
         ),
       },
-      { label: "Cloud Sync", items: leaves("help/sync") },
       {
         label: "Downloads and updates",
         items: leaves(
@@ -151,6 +150,7 @@ export const DOOR_TREES: readonly DoorTree[] = [
         label: "Purchases",
         items: leaves("help/restore-purchase", "help/refunds"),
       },
+      { label: "Cloud Sync", items: leaves("help/sync") },
       {
         label: "Account and privacy",
         items: leaves(

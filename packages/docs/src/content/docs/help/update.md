@@ -16,8 +16,8 @@ An update restarts the app, so save your work first.
 
 ## Update from the app
 
-1. Open the app. When it starts it can look for a newer version and show **Looking for a newer version…**.
-2. To look right away, choose **Check for updates** in the app's menu or settings. On macOS it reads **Check for Updates…**.
+1. Open the app. When it starts it can look for a newer version and show **Looking for a newer version…**
+2. To look right away, choose **Check for updates** in the app's menu or settings. On macOS it reads **Check for Updates…**
 3. When a newer version is available, select **Update now**.
 4. When the app says the update is ready, select **Restart now**.
 
@@ -35,7 +35,7 @@ The app keeps working if it says **This version is no longer supported** and **N
 
 ## Apps from a store or package manager
 
-A store or package manager updates the apps you got from it. Don't remember how you installed it? See [Download a newer version yourself](#the-download-page), or ask the app's developer.
+A store or package manager updates the apps you got from it. Don't remember how you installed it? See <a id="the-download-page"></a>[Download your app](/docs/help/download/), or ask the app's developer.
 
 If the app shows one of these, update it in that store or app:
 
@@ -49,13 +49,13 @@ If the app shows one of these, update it in that store or app:
 If it shows one of these, do what the line says, or update the way you installed the app:
 
 - **Steam installs it. Restart Steam if it hasn't arrived.**
-- **Windows installs it the next time** the app **starts.**
+- **Windows installs it the next time <app> starts.**
 - **Reload the page to get it.**
 - Any other line saying where it installs
 
 If it shows this line:
 
-- **Run** a command **to install it.**
+- **Run <command> to install it.**
 
 Run the command in a terminal (a window for typing commands) only if you installed the app with that tool and recognize the command. If not, update the way you installed the app.
 
@@ -67,16 +67,12 @@ A developer can release an update to some people first, and a store can release 
 
 When an update doesn't start, some apps restore the previous version and say **The last update didn't start, so the previous version was restored.**
 
-| You see                        | What it means and what to do                                                                        |
-| ------------------------------ | --------------------------------------------------------------------------------------------------- |
-| **Can't update here**          | Update it the way you installed it, or see [Download a newer version yourself](#the-download-page). |
-| **Update not finished**        | Close the app and open it again. It tries again when it starts.                                     |
-| **Paused · waiting for Wi-Fi** | Connect to Wi-Fi, or select **Download now**.                                                       |
-| **Couldn't download**          | Select **Try again**.                                                                               |
-
-## <a id="the-download-page"></a>Download a newer version yourself
-
-Download the app again from your library or its download page. See [Download your app](/docs/help/download/).
+| You see                        | What it means and what to do                                                          |
+| ------------------------------ | ------------------------------------------------------------------------------------- |
+| **Can't update here**          | Update it the way you installed it, or see [Download your app](/docs/help/download/). |
+| **Update not finished**        | Close the app and open it again. It tries again when it starts.                       |
+| **Paused · waiting for Wi-Fi** | Connect to Wi-Fi, or select **Download now**.                                         |
+| **Couldn't download**          | Select **Try again**.                                                                 |
 
 ## Check it worked
 
