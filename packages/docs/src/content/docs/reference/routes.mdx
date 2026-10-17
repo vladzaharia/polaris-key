@@ -176,6 +176,9 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | POST | `/api/me/profile/picture` | portal | Upload a picture |
 | GET | `/api/me/profile` | portal | The account's profile, with sources and explicit flags |
 | PATCH | `/api/me/profile` | portal | Make an explicit profile choice |
+| DELETE | `/api/me/tokens/{tokenId}` | portal | Revoke one of the account's personal tokens |
+| GET | `/api/me/tokens` | portal | The account's personal tokens, and the limits a new one is held to |
+| POST | `/api/me/tokens` | portal | Mint a personal token (shown once) |
 | GET | `/api/me` | portal | The signed-in account and a CSRF token |
 | DELETE | `/api/me` | portal | Schedule the signed-in account for deletion |
 | DELETE | `/api/products/{product}/data` | portal | Remove the signed-in account's data from one product |

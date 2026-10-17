@@ -120,6 +120,15 @@ export type FeedPrincipal =
       readonly product: string;
       readonly tokenId: string;
     }
+  /**
+   * F-33: a person's `pkeyp_` token (`packages:read`). It names no product: the ladder works out,
+   * per owner, what the account may read (`services/distribution/registry/authorize.ts`).
+   */
+  | {
+      readonly kind: "person";
+      readonly accountId: string;
+      readonly tokenId: string;
+    }
   | {
       readonly kind: "license";
       readonly product: string;

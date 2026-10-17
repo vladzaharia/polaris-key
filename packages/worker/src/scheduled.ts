@@ -45,6 +45,7 @@
 // record written to KV on every nightly tick.
 
 import { reconcilePackageFileRefs } from "./services/release/packages/refReconcile.js";
+import { purgeAccountTokens } from "./core/accounts/personalTokens.js";
 import { purgeRegistryTokens } from "./core/registry/registryTokens.js";
 import { pruneCiCredentials } from "./core/publisher.js";
 import { loadProductPublic } from "./core/products.js";
@@ -540,6 +541,8 @@ export async function runScheduledMaintenance(
 
   // F-21: registry tokens 90 days past their expiry or revocation (`core/registry/registryTokens.ts`).
   await step(report, "registryTokens", () => purgeRegistryTokens(db, now));
+  // F-33: personal tokens, the same retention.
+  await step(report, "accountTokens", () => purgeAccountTokens(db, now));
 
   // I-11: the erasure ledger (R2, outside the D1 a restore rewinds) is replayed BEFORE the legacy
   // catch-up below: the D1 tombstone of every erased account is recreated (the catch-up copies no

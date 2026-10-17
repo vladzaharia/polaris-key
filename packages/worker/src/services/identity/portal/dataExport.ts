@@ -38,6 +38,10 @@
  * secret and says whether it is set, never its value (`config.accountOverrides`).
  */
 
+import {
+  listAccountTokens,
+  type PersonalTokenView,
+} from "../../../core/accounts/personalTokens.js";
 import type { Db } from "../../../db/types.js";
 import type { Env } from "../../../platform/env.js";
 import { jsonList, jsonListArg } from "../../../core/sqlIn.js";
@@ -309,6 +313,8 @@ export interface AccountExport {
     removedLicenses: ExportedRemovedLicense[];
   };
   packageTokens: ExportedPackageToken[];
+  /** F-33: the account's personal tokens (metadata only: never the plaintext, never the hash). */
+  personalTokens: PersonalTokenView[];
   joins: Array<{
     joinedAt: number;
     undoableUntil: number;
@@ -943,6 +949,7 @@ export async function exportAccountData(
       removedLicenses: await removedLicenses(db, accountId),
     },
     packageTokens: await packageTokens(db, accountId, now),
+    personalTokens: await listAccountTokens(db, accountId, now),
     joins,
     activity: log.rows,
     activityTruncated: log.truncated,

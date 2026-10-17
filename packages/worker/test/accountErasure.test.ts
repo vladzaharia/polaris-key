@@ -29,6 +29,10 @@ import {
   mintRegistryToken,
 } from "../src/core/registry/registryTokens.js";
 import {
+  PACKAGES_READ_SCOPE,
+  mintAccountToken,
+} from "../src/core/accounts/personalTokens.js";
+import {
   registerSubjectStore,
   unregisterSubjectStore,
 } from "../src/core/accounts/subjectHooks.js";
@@ -401,6 +405,62 @@ describe("closing the account closes its credentials", () => {
       nowMs: NOW * 1000 + 1000,
     });
     expect(after.resolved).toBeNull();
+  });
+
+  it("F-33: a personal token stops at once while erasing, and its row is gone once the erasure completes", async () => {
+    const w = await world();
+    const res = await mintAccountToken(
+      w.env,
+      w.db,
+      {
+        accountId: w.id,
+        label: "Ada's laptop",
+        scope: PACKAGES_READ_SCOPE,
+        createdBy: `portal:${w.id}`,
+      },
+      NOW,
+    );
+    if (!res.ok) throw new Error(JSON.stringify(res));
+    forgetRegistryTokens();
+    expect(
+      (
+        await lookupRegistryCredential(w.env, w.db, res.token, {
+          nowMs: NOW * 1000,
+        })
+      ).resolved,
+    ).not.toBeNull();
+    registerSubjectStore("flaky", {
+      merge: async () => {},
+      delete: async () => {
+        throw new Error("down");
+      },
+    });
+    await deletion.deleteAccount(w.ctx(), w.id);
+    forgetRegistryTokens();
+    // Erasing: revoked, not yet deleted.
+    expect(
+      (
+        await lookupRegistryCredential(w.env, w.db, res.token, {
+          nowMs: NOW * 1000,
+        })
+      ).resolved,
+    ).toBeNull();
+    expect(
+      await count(
+        w.db,
+        "SELECT COUNT(*) AS n FROM account_tokens WHERE account_id = ?",
+        w.id,
+      ),
+    ).toBe(1);
+    unregisterSubjectStore("flaky");
+    await deletion.deleteAccount(w.ctx(NOW + 100), w.id);
+    expect(
+      await count(
+        w.db,
+        "SELECT COUNT(*) AS n FROM account_tokens WHERE account_id = ?",
+        w.id,
+      ),
+    ).toBe(0);
   });
 
   it("subjectFor mints nothing for an account being erased", async () => {

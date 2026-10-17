@@ -13596,6 +13596,134 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
+  # ── Account → Packages: the person's own `pkeyp_` tokens (F-33, plans/I-27.md §2.5).
+  # Session-authenticated by the portal cookie; the mutations need the `X-PKey-Portal-CSRF`
+  # header. No answer carries the token hash or an account id.
+  /api/me/tokens:
+    get:
+      operationId: listAccountTokens
+      tags: [portal]
+      summary: The account's personal tokens, and the limits a new one is held to
+      description: >
+        Newest first, revoked and expired tokens included until the nightly purge (90 days after
+        they ended). Each carries its label, the last four characters, its one scope, its times
+        and its status; never the token or its hash. `registryOrigin` and `username` are what the
+        package-manager setup needs beside a token.
+      responses:
+        "200":
+          description: The tokens.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [registryOrigin, username, tokens, limits]
+                properties:
+                  registryOrigin: { type: [string, "null"] }
+                  username: { type: string, enum: ["__token__"] }
+                  tokens:
+                    type: array
+                    items: { $ref: "#/components/schemas/AccountToken" }
+                  limits:
+                    type: object
+                    required:
+                      [minDays, maxDays, defaultDays, labelMax, perAccount]
+                    properties:
+                      minDays: { type: integer }
+                      maxDays: { type: integer }
+                      defaultDays: { type: integer }
+                      labelMax: { type: integer }
+                      perAccount: { type: integer }
+        "401":
+          description: No portal session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+    post:
+      operationId: createAccountToken
+      tags: [portal]
+      summary: Mint a personal token (shown once)
+      description: >
+        Needs a sign-in in the last 5 minutes (`step_up_required`). One token holds exactly one
+        scope; the portal mints `packages:read` only (a different `scope` is refused 422), for 1
+        to 365 days (default 90), at most 25 live per account (409 `token_limit`), 20 mints an
+        hour. The plaintext `token` is in this answer only; only its HMAC under the key-hash
+        pepper is stored. The registry host accepts it for every package the account may read,
+        across products. Audited `portal.personal_token.create`, without the token.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [label]
+              properties:
+                label: { type: string, minLength: 1, maxLength: 64 }
+                scope: { type: string, enum: ["packages:read"] }
+                expiresInDays: { type: integer, minimum: 1, maximum: 365 }
+      responses:
+        "201":
+          description: Minted.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, token, view]
+                properties:
+                  ok: { type: boolean, enum: [true] }
+                  token: { type: string, description: "`pkeyp_…`, shown once." }
+                  view: { $ref: "#/components/schemas/AccountToken" }
+        "401":
+          description: No portal session, or `step_up_required`.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "409":
+          description: "`token_limit`: revoke one first."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "422":
+          description: "`invalid_token`, with the offending `fields`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "429":
+          description: Too many mints.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+  /api/me/tokens/{tokenId}:
+    delete:
+      operationId: revokeAccountToken
+      tags: [portal]
+      summary: Revoke one of the account's personal tokens
+      description: >
+        Takes effect within 30 seconds on every isolate (at once on the one that served this).
+        Revoking a revoked token answers it as it stands. Another account's token and an unknown
+        id answer the same 404. Audited `portal.personal_token.revoke`.
+      parameters:
+        - { name: tokenId, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Revoked.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, view]
+                properties:
+                  ok: { type: boolean, enum: [true] }
+                  view: { $ref: "#/components/schemas/AccountToken" }
+        "401":
+          description: No portal session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "404":
+          description: No such token on this account.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
   # ── Account → Sign-in methods and Link an existing account (PX-W12, PORTAL.md §4.11, §4.26,
   # G27). Session-authenticated by the portal cookie; the mutations need the
   # `X-PKey-Portal-CSRF` header. No answer carries an account id or a provider subject.
@@ -16438,7 +16566,12 @@ paths:
                     future second scope cannot silently widen tokens minted by an older console.
             examples:
               ci:
-                value: { label: CI bundle minter, expiresInDays: 90, scopes: [bundles:mint] }
+                value:
+                  {
+                    label: CI bundle minter,
+                    expiresInDays: 90,
+                    scopes: [bundles:mint],
+                  }
       responses:
         "201":
           description: Minted. `secret` appears here and in no other response.
@@ -16487,7 +16620,12 @@ paths:
               examples:
                 badExpiry:
                   value:
-                    error: { code: bad_request, message: invalid token request, fields: [expiresInDays] }
+                    error:
+                      {
+                        code: bad_request,
+                        message: invalid token request,
+                        fields: [expiresInDays],
+                      }
                     code: bad_request
                     message: invalid token request
                     fields: [expiresInDays]
@@ -18171,7 +18309,11 @@ components:
           examples:
             outOfScope:
               value:
-                error: { code: forbidden, message: token is not scoped for this route }
+                error:
+                  {
+                    code: forbidden,
+                    message: token is not scoped for this route,
+                  }
                 code: forbidden
                 message: token is not scoped for this route
     AdminRateLimited:
@@ -18185,7 +18327,8 @@ components:
           examples:
             limited:
               value:
-                error: { code: rate_limited, message: too many admin API requests }
+                error:
+                  { code: rate_limited, message: too many admin API requests }
                 code: rate_limited
                 message: too many admin API requests
     IdentityDisabledRedirect:
@@ -18711,7 +18854,8 @@ components:
         A token as the console sees it. Note what is ABSENT: the plaintext (returned once, at
         mint) and `token_hash` (not a secret, but it is the lookup key, and echoing it invites
         somebody to treat it as an id).
-      required: [id, label, scopes, createdAt, expiresAt, lastUsedAt, revokedAt, status]
+      required:
+        [id, label, scopes, createdAt, expiresAt, lastUsedAt, revokedAt, status]
       properties:
         id: { type: string, pattern: "^apitok_[A-Za-z0-9_-]+$" }
         label: { type: string }
@@ -18719,7 +18863,11 @@ components:
           type: array
           items: { $ref: "#/components/schemas/AdminApiScope" }
         createdAt: { type: integer, description: Epoch seconds. }
-        expiresAt: { type: integer, description: "Epoch seconds. Never null: expiry is mandatory." }
+        expiresAt:
+          {
+            type: integer,
+            description: "Epoch seconds. Never null: expiry is mandatory.",
+          }
         lastUsedAt:
           type: [integer, "null"]
           description: >
@@ -20757,6 +20905,7 @@ components:
           termsAcceptances,
           library,
           packageTokens,
+          personalTokens,
           joins,
           activity,
           activityTruncated,
@@ -20834,6 +20983,10 @@ components:
         packageTokens:
           type: array
           items: { $ref: "#/components/schemas/PortalExportPackageToken" }
+        personalTokens:
+          type: array
+          description: The account's personal tokens (F-33), metadata only.
+          items: { $ref: "#/components/schemas/AccountToken" }
         joins:
           type: array
           description: Account joins (`/api/me/link`) still inside, or undone within, their 72-hour window.
@@ -21172,6 +21325,38 @@ components:
                 oneOf:
                   - { $ref: "#/components/schemas/AvatarView" }
                   - { type: "null" }
+    AccountToken:
+      type: object
+      description: >
+        A personal token as the portal lists it (F-33). Never the token or its hash.
+      required:
+        [
+          id,
+          label,
+          hint,
+          scope,
+          createdAt,
+          expiresAt,
+          lastUsedAt,
+          revokedAt,
+          revokedBy,
+          revokeReason,
+          status,
+        ]
+      properties:
+        id: { type: string }
+        label: { type: string }
+        hint: { type: string, description: "The token's last four characters." }
+        scope: { type: string, enum: ["packages:read"] }
+        createdAt: { type: integer }
+        expiresAt: { type: integer }
+        lastUsedAt: { type: [integer, "null"] }
+        revokedAt: { type: [integer, "null"] }
+        revokedBy: { type: [string, "null"] }
+        revokeReason:
+          type: [string, "null"]
+          enum: [manual, admin, account_deleted, access_removed, null]
+        status: { type: string, enum: [active, expired, revoked] }
     FlatError:
       type: object
       description: >

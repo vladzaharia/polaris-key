@@ -70,6 +70,24 @@ export function isAdminApiToken(token: string): boolean {
 }
 
 /**
+ * The personal-token prefix: `p` for person (F-33, plans/I-27.md §2.5). A `pkeyp_` token belongs to
+ * an ACCOUNT and carries exactly one scope; the registry host takes the `packages:read` ones, the
+ * admin API (ST-34) will take only `admin` ones, and neither takes the other's. It is not a wire
+ * credential and no signed document names it.
+ */
+export const PERSONAL_TOKEN_PREFIX = "pkeyp_";
+
+/** A personal token: `pkeyp_` + 43 base64url chars (256 bits), shown once at mint. */
+export function mintPersonalToken(): string {
+  return `${PERSONAL_TOKEN_PREFIX}${randomToken(32)}`;
+}
+
+/** Shape gate for a presented personal token, ahead of any hash or lookup (see `isAdminApiToken`). */
+export function isPersonalToken(token: string): boolean {
+  return /^pkeyp_[A-Za-z0-9_-]{43,}$/.test(token);
+}
+
+/**
  * An opaque, unguessable 256-bit token with NO prefix: the browser-session cookie value and the
  * portal's single-use download token.
  *

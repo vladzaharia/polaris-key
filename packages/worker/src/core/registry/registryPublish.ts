@@ -121,7 +121,12 @@ export async function authorizeRegistryPublish(
     if (!ok) return { ok: false, refusal: "rate-limited" };
   }
   // Another owner's credential is no credential here (no oracle on which owner it belongs to).
-  if (!resolved || resolved.product !== input.owner)
+  // A personal token (F-33) is read-only by scope and never publishes.
+  if (
+    !resolved ||
+    resolved.kind === "person" ||
+    resolved.product !== input.owner
+  )
     return { ok: false, refusal: "challenge" };
   if (resolved.kind === "ci") {
     if (!resolved.scopes.includes(CI_PUBLISH_SCOPE))

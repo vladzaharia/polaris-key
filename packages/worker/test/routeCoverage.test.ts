@@ -166,6 +166,9 @@ const PORTAL_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     ["/api/me/link/confirm", ["post"]],
     ["/api/me/link/cancel", ["post"]],
     ["/api/me/link/undo", ["post"]],
+    // F-33: Account → Packages, the person's own `pkeyp_` tokens.
+    ["/api/me/tokens", ["get", "post"]],
+    ["/api/me/tokens/{tokenId}", ["delete"]],
   ],
 };
 

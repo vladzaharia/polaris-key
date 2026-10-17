@@ -41,7 +41,12 @@ import { PACKAGE_ECOSYSTEMS, SYSTEM_PRODUCT_SLUG } from "@polaris-key/manifest";
 import type { Env } from "../../platform/env.js";
 import { secret } from "../../platform/env.js";
 import type { Db, DbStatement } from "../../db/types.js";
-import { hashKey, mintOpaqueToken, randomId } from "../../platform/crypto.js";
+import {
+  hashKey,
+  isPersonalToken,
+  mintOpaqueToken,
+  randomId,
+} from "../../platform/crypto.js";
 import {
   b64urlDecodeStrict,
   b64urlEncode,
@@ -56,6 +61,11 @@ import { getLicense } from "../licensing/store.js";
 import { CI_TOKEN_PREFIX } from "../ciVocabulary.js";
 import { lookupCiToken } from "../publisher.js";
 import { erasureVerdict } from "../accounts/erasureFence.js";
+import {
+  PACKAGES_READ_SCOPE,
+  resolvePersonalToken,
+  resolvePersonalTokenById,
+} from "../accounts/personalTokens.js";
 import {
   ANONYMOUS,
   MAX_LIVE_TOKENS_PER_LICENSE,
@@ -572,6 +582,13 @@ export type ResolvedRegistryToken =
       readonly ciKind: "oidc" | "static";
       /** The CI token's subject, audited as `ci:<subject>` (`ciActor`). */
       readonly subject: string;
+    }
+  | {
+      /** F-33: a `pkeyp_` token of an account, holding `packages:read`. Read-only by scope. */
+      readonly kind: "person";
+      readonly accountId: string;
+      readonly tokenId: string;
+      readonly scopes: readonly string[];
     };
 
 interface CacheEntry {
@@ -679,11 +696,32 @@ export async function lookupRegistryCredential(
   const now = Math.floor(nowMs / 1000);
   const isRegistry = isRegistryToken(token);
   const isCi = !isRegistry && token.startsWith(CI_TOKEN_PREFIX);
-  if (!isRegistry && !isCi) return { resolved: null, miss: false };
+  const isPerson = !isRegistry && !isCi && isPersonalToken(token);
+  if (!isRegistry && !isCi && !isPerson) return { resolved: null, miss: false };
   const hash = await hashRegistryToken(env, token);
   const key = `h:${hash}`;
   const hit = cached(key, nowMs);
   if (hit) return { resolved: hit.value, miss: false };
+  if (isPerson) {
+    // F-33: the registry host accepts `packages:read` only; an `admin` token resolves to nothing.
+    const person = await resolvePersonalToken(
+      env,
+      db,
+      token,
+      PACKAGES_READ_SCOPE,
+      now,
+      opts.waitUntil ? { waitUntil: opts.waitUntil } : {},
+    );
+    const value: ResolvedRegistryToken | null = person
+      ? {
+          kind: "person",
+          accountId: person.accountId,
+          tokenId: person.tokenId,
+          scopes: [person.scope],
+        }
+      : null;
+    return { resolved: remember(key, value, nowMs), miss: value === null };
+  }
   if (isCi) {
     const ci = await lookupCiToken(env, db, token, now);
     const value: ResolvedRegistryToken | null = ci
@@ -742,6 +780,30 @@ export async function lookupRegistrySubject(
   const key = `s:${product}\u0000${subject}`;
   const hit = cached(key, nowMs);
   if (hit) return hit.value;
+  if (subject.startsWith("p:")) {
+    // F-33: an OCI pull token minted for a personal token (`own` is `*`, so `product` is the
+    // owner being read, not the token's).
+    const person = await resolvePersonalTokenById(
+      env,
+      db,
+      subject.slice(2),
+      PACKAGES_READ_SCOPE,
+      now,
+      opts.waitUntil ? { waitUntil: opts.waitUntil } : {},
+    );
+    return remember(
+      key,
+      person
+        ? {
+            kind: "person",
+            accountId: person.accountId,
+            tokenId: person.tokenId,
+            scopes: [person.scope],
+          }
+        : null,
+      nowMs,
+    );
+  }
   if (subject.startsWith("ci:")) {
     const row = await db.first<{
       token_id: string;
@@ -811,6 +873,12 @@ export function principalOf(
     if (!resolved.scopes.includes(CI_FEED_READ_SCOPE)) return ANONYMOUS;
     return { kind: "ci", product: resolved.product, tokenId: resolved.tokenId };
   }
+  if (resolved.kind === "person")
+    return {
+      kind: "person",
+      accountId: resolved.accountId,
+      tokenId: resolved.tokenId,
+    };
   if (resolved.kind === "owner")
     return {
       kind: "owner",
@@ -980,7 +1048,8 @@ export function registryPublisher(
   owner: string,
   ecosystem: string,
 ): RegistryPublisher | null {
-  if (resolved === null || resolved.product !== owner) return null;
+  if (resolved === null || resolved.kind === "person") return null;
+  if (resolved.product !== owner) return null;
   if (owner === SYSTEM_PRODUCT_SLUG) return null;
   if (resolved.kind === "ci")
     return resolved.scopes.includes(OCI_PUSH_CI_SCOPE)

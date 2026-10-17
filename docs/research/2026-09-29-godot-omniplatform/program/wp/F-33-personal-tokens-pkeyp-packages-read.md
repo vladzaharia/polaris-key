@@ -97,6 +97,27 @@ Applied from the brand and transition integration ([Brand transition decisions](
 
 - Tokens and setup live only in Account → Packages: `pkeyp_` tokens are account-wide, one per machine, and revoking from a product page would break every product's installs. Each product page with packages replaces the per-product token list with one pointer row: '<n> packages from <Product> · Set up in Account → Packages'. Account nav: Profile · Sign-in methods · Connected apps · Packages · Where you're signed in · Appearance · Your data. Sign out aligns with the h1. (portal-11)
 
+## Progress and continuation (2026-10-17)
+
+**Slice 1 (backend), done on branch `wp/F-33-personal-tokens`.** Corrections to the brief, from the code:
+
+- The audit for a portal account is `portal_audit` (`portalAudit`), not the product `audit` table: `audit.product` is `NOT NULL REFERENCES products`, and a personal token has no product. Console-side events (Superadmin revoke, still to build) go to `platform_audit` through `core/audit.ts`.
+- `registry_tokens` is product-keyed, so the person-wide credential is its own Core table, `account_tokens` (migration `0120_account_tokens.sql`, named for the next free number; the lead renumbers and bumps `LATEST_MIGRATION`). One `scope` column (exclusive by shape, no CHECK so ST-34 can add `admin`), plain `token_hash` (SEC-pepper stamps it later), `TABLE_OWNERS.core`, rollback script in `scripts/rollback/`.
+- Role-granted products and the system product's SDK listing for console members have no source yet: console role bindings (ST-30/ST-31) do not exist, and no account-level groups are stored. `personMayRead` (`services/distribution/registry/authorize.ts`) is the one seam; until a binding exists it answers no for the system product, which also satisfies "customers never see the system product".
+
+Built: `core/accounts/personalTokens.ts` (mint, list, revoke, resolve with the erasure fence, cascades, purge); `/api/me/tokens` (GET, POST, DELETE; OpenAPI and `routeCoverage`); the registry host accepts `pkeyp_` with `packages:read` (Bearer and Basic, OCI pull token with `own: "*"`, SwiftPM login; never publish, never Godot URL); per-owner resolution through the account's usable licences under each feed's mode; erasure revokes then deletes, merge moves and undo moves back; account export lists them; nightly purge; THREAT-MODEL A17 and "Personal tokens (F-33)"; PRIVACY row; AGENTS.md rule 8; `test/personalTokens.test.ts` and an erasure test.
+
+**Still to build (next slice):**
+
+- [ ] Portal Account -> Packages page (one combined setup across products; nav order Profile · Sign-in methods · Connected apps · Packages · Where you're signed in · Appearance · Your data; per-product pointer row replaces the per-product token list), with the screen-acceptance rows and the UX review.
+- [ ] Console account menu -> Personal tokens, and Superadmin list/revoke (`platform_audit`, reason `admin`; `revokeAllAccountTokens` is the store half).
+- [ ] The portal stops minting licence-bound `pkeyr_` (`handleRegistryTokens` POST) once the page replaces the licence card; existing tokens stay honoured.
+- [ ] New product service tokens minted as `pkeyci_` with `packages:read`; `registry_tokens` keeps only licence-bound tokens (console feeds handler and `ciPublishing`).
+- [ ] Serve-time filtering of list documents (entitled packages the person does not hold), per ecosystem adapter.
+- [ ] The authenticated `registry-clients.yml` row over two owners.
+- [ ] Docs: `features/ship-builds/packages/*`, `build/install` (private feeds), `help/packages`.
+- [ ] Role-granted and console-member access in `personMayRead` (waits on ST-30/ST-31).
+
 ## Steps
 
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
