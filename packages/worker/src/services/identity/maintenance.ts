@@ -14,10 +14,8 @@ import type {
   PlatformMaintenanceContext,
 } from "../../core/contributions.js";
 import type { Env } from "../../platform/env.js";
-import {
-  prunePortalAudit,
-  purgeDownloadTokensForProduct,
-} from "./portal/repo.js";
+import { prunePortalAudit } from "./portal/repo.js";
+import { purgeDownloadTokens } from "../../core/assets/downloadTokens.js";
 import {
   catchUpLegacyAccounts,
   settleOwnershipConflicts,
@@ -122,7 +120,7 @@ export const identityMaintenance: MaintenanceContribution = {
     // so a product minting download tokens faster than that would accumulate them for ever while
     // the report showed a healthy-looking count.
     await rec.drain(`downloadTokens:${product}`, (limit) =>
-      purgeDownloadTokensForProduct(db, product, now, limit),
+      purgeDownloadTokens(db, product, now, limit),
     );
     // PS-04: the storefront's impression dedupe keys older than yesterday (notes/S-21 §6.6:
     // nothing per person is kept past two days).

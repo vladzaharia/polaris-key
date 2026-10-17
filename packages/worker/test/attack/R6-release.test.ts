@@ -12,6 +12,7 @@ import { ingestFor } from "../../src/core/ingest/pipeline.js";
  * now a regression test.
  */
 
+import { mintDownloadToken } from "../../src/core/assets/downloadTokens.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { makeTestDb } from "../helpers.js";
 import { KvMock } from "../kvMock.js";
@@ -73,7 +74,6 @@ import {
   seedRepositoryVisibility,
 } from "../portalHarness.js";
 import {
-  createPortalDownloadToken,
   getOrCreateAccountByEmail,
   syncAccountLicenseLinks,
 } from "../../src/services/identity/portal/repo.js";
@@ -1858,11 +1858,12 @@ describe("R6-11 portal download redirect host allowlist", () => {
       NOW,
     );
 
-    const token = await createPortalDownloadToken(env, db, {
-      accountId: account.id,
+    const token = await mintDownloadToken(env, db, {
       product: SLUG,
       releaseId: "rel_1",
       artifactId: "art_1",
+      scope: { portalAccountId: account.id },
+
       now: NOW,
     });
 
@@ -1936,11 +1937,12 @@ describe("R6-11 portal download redirect host allowlist", () => {
     );
     // A public repository, so the allowlisted GitHub URL is servable and the race is what is tested.
     await seedRepositoryVisibility(env, db, SLUG, "public");
-    const token = await createPortalDownloadToken(env, db, {
-      accountId: account.id,
+    const token = await mintDownloadToken(env, db, {
       product: SLUG,
       releaseId: "rel_1",
       artifactId: "art_1",
+      scope: { portalAccountId: account.id },
+
       now: NOW,
     });
     // better-sqlite3 is synchronous, so model D1's real async round-trips: every DB call

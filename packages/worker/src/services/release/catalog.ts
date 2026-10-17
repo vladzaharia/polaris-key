@@ -84,7 +84,12 @@ function buildRecord(b: ReleaseBuildRow): CatalogBuild {
 }
 
 function sourceRecord(a: ReleaseArtifactRow): CatalogSourceArtifact {
-  return { ...artifactRecord(a), locations: parseLocations(a) };
+  return {
+    ...artifactRecord(a),
+    locations: parseLocations(a),
+    sourceUrl: a.source_url,
+    kind: a.kind,
+  };
 }
 
 function artifactRecord(a: ReleaseArtifactRow): CatalogArtifact {
@@ -202,8 +207,10 @@ export function releaseCatalog(ctx: HookContext): ReleaseCatalog {
         version: string;
         title: string | null;
         notes: string | null;
+        source_url: string | null;
+        metadata_access: string;
       }>(
-        `SELECT m.release_id, m.version, m.title, m.notes
+        `SELECT m.release_id, m.version, m.title, m.notes, m.source_url, m.metadata_access
            FROM release_metadata m
           WHERE m.product = ? AND m.release_id = ? AND ${notPackageReleaseSql("m")}`,
         slug,
@@ -215,6 +222,8 @@ export function releaseCatalog(ctx: HookContext): ReleaseCatalog {
             version: r.version,
             title: r.title,
             notes: r.notes,
+            sourceUrl: r.source_url,
+            metadataAccess: r.metadata_access,
           }
         : null;
     },

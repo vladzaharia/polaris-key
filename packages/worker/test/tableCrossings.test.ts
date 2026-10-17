@@ -38,11 +38,6 @@ const SEAMS: readonly (readonly [string, string, RemovedBy])[] = [
   // Identity issues, links and merges licences; the writes go through core/licensing.
   ["identity", "licenses", "permanent"],
   ["identity", "keys_index", "P0-20"],
-  // The portal's listings and download tokens (portal/repo.ts).
-  ["identity", "release_metadata", "P0-23"],
-  ["identity", "release_artifacts", "P0-23"],
-  ["identity", "release_builds", "P0-23"],
-  ["identity", "release_download_tokens", "P0-23"],
   // Commerce reads License's store grants (it moved out of Distribution in CM-29).
   ["commerce", "license_store_grants", "P0-27"],
   // The Play storefront's one-time-product upsert checks the product is in Commerce's map.

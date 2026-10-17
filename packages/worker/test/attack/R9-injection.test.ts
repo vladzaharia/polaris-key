@@ -1252,7 +1252,7 @@ describe("R9-05 /download/<token> open redirect + single-use race", () => {
     );
   });
 
-  // FIXED (R9-05b / R11-05): `markPortalDownloadUsed` is now a conditional UPDATE carrying
+  // FIXED (R9-05b / R11-05): `spendDownloadToken` is now a conditional UPDATE carrying
   // `AND used_at IS NULL`, and the handler treats `changes === 0` as "someone else spent it".
   // The decision moved into the statement, so exactly one of N concurrent redemptions wins no
   // matter how the awaits interleave.
@@ -1304,16 +1304,7 @@ describe("R9-05 /download/<token> open redirect + single-use race", () => {
 
     // The UPDATE now carries the precondition that makes it a CAS.
     const repoSrc = readFileSync(
-      join(
-        HERE,
-        "..",
-        "..",
-        "src",
-        "services",
-        "identity",
-        "portal",
-        "repo.ts",
-      ),
+      join(HERE, "..", "..", "src", "core", "assets", "downloadTokens.ts"),
       "utf8",
     );
     expect(repoSrc).toContain("used_at IS NULL");

@@ -9,6 +9,7 @@ import {
 import {
   RELEASE_PLATFORMS,
   SYSTEM_PRODUCT_SLUG,
+  APP_DELIVERABLE_ID,
   platformFromFileName,
 } from "@polaris-key/manifest";
 import { licenseAccess } from "../../../core/licensing/anchor.js";
@@ -22,7 +23,12 @@ import { parseJsonOr } from "../../../platform/json.js";
 import { platformOidcConfig } from "../../../platform/platformOidc.js";
 import type { Db } from "../../../db/types.js";
 import type { Env } from "../../../platform/env.js";
-import type { Delivery, ServiceHooks } from "../../../core/hooks.js";
+import type {
+  CatalogSourceArtifact,
+  Delivery,
+  ReleaseCatalog,
+  ServiceHooks,
+} from "../../../core/hooks.js";
 import {
   loadProductPublic,
   type ProductPublic,
@@ -38,6 +44,11 @@ import { ErrorCode } from "../../../core/errors.js";
 import { getProduct } from "../../../core/products/store.js";
 import { licenseUsable } from "../../../core/devices.js";
 import { rateLimitOk } from "../../../core/rateLimit.js";
+import {
+  mintDownloadToken,
+  readDownloadToken,
+  spendDownloadToken,
+} from "../../../core/assets/downloadTokens.js";
 import { registryOrigin } from "../../../core/hosts.js";
 import {
   MAX_LIVE_TOKENS_PER_LICENSE,
@@ -53,26 +64,17 @@ import {
 import { PACKAGE_ECOSYSTEMS } from "@polaris-key/manifest";
 import {
   getPortalAccount,
-  getPortalArtifact,
-  getPortalDownloadToken,
   getPortalLicense,
   getPortalProductSettings,
-  getPortalReleaseFacts,
   listLinkedProducts,
-  listPortalArtifacts,
   listPortalLicenses,
-  listPortalReleases,
   listVisibleDevices,
   listVisibleKeys,
-  markPortalDownloadUsed,
   portalAuthCapabilities,
   portalAudit,
   releaseServiceEnabled,
   syncAccountLicenseLinks,
-  createPortalDownloadToken,
-  type PortalArtifactRow,
   type PortalLicenseRow,
-  type PortalReleaseRow,
 } from "./repo.js";
 import {
   PORTAL_CSRF_HEADER,
@@ -371,6 +373,8 @@ export type PortalHooksFor = (
 export interface DeliveryGate {
   product: ProductPublic;
   delivery: Delivery;
+  /** Release's catalog hook (`null` when Release is off): the files and release facts. */
+  catalog: ReleaseCatalog | null;
   /**
    * Is the product's GitHub repository public (Release's `repositoryPublic`, read at most once
    * per gate)? `false` when Release is off or the answer could not be read. Only a public
@@ -390,25 +394,189 @@ export async function deliveryGate(
   product: string,
   now: number,
 ): Promise<DeliveryGate | null> {
+  const loaded = await portalHooks(db, hooksFor, product, now);
+  if (!loaded) return null;
+  const delivery = loaded.hooks.delivery();
+  if (!delivery) return null;
+  const catalog = loaded.hooks.releaseCatalog();
+  let visibility: Promise<boolean> | undefined;
+  const repositoryPublic = (): Promise<boolean> =>
+    (visibility ??= catalog
+      ? catalog.repositoryPublic()
+      : Promise.resolve(false));
+  return { product: loaded.product, delivery, catalog, repositoryPublic };
+}
+
+/** One product's hooks, or `null` when no hooks were provided or the product is gone. */
+export async function portalHooks(
+  db: Db,
+  hooksFor: PortalHooksFor | undefined,
+  product: string,
+  now: number,
+): Promise<{ product: ProductPublic; hooks: ServiceHooks } | null> {
   if (!hooksFor) return null;
   const loaded = await loadProductPublic(db, product);
   if (!loaded) return null;
-  const hooks = hooksFor(loaded, now);
-  const delivery = hooks.delivery();
-  if (!delivery) return null;
-  let visibility: Promise<boolean> | undefined;
-  const repositoryPublic = (): Promise<boolean> =>
-    (visibility ??= (async () => {
-      const catalog = hooks.releaseCatalog();
-      return catalog ? catalog.repositoryPublic() : false;
-    })());
-  return { product: loaded, delivery, repositoryPublic };
+  return { product: loaded, hooks: hooksFor(loaded, now) };
 }
 
-export type ReleaseFacts = Pick<
-  PortalReleaseRow,
-  "deliverable_id" | "version" | "channel"
->;
+/** The facts the delivery-access decision needs about one release. */
+export interface ReleaseFacts {
+  deliverable_id: string;
+  version: string;
+  /** The channel it was published to; `null` = derived from GitHub (read as stable). */
+  channel: string | null;
+}
+
+/** One file the portal may hand out, from Release's catalog (never its tables). */
+export interface ServedFile {
+  releaseId: string;
+  artifactId: string;
+  name: string;
+  sha256: string | null;
+  /** GitHub's own download URL for it, when a sync stored one. */
+  sourceUrl: string | null;
+}
+
+export function servedFile(a: CatalogSourceArtifact): ServedFile {
+  return {
+    releaseId: a.releaseId,
+    artifactId: a.artifactId,
+    name: a.name,
+    sha256: a.sha256,
+    sourceUrl: a.sourceUrl,
+  };
+}
+
+/** One file of a release and the release's facts, or `null` when either is gone (or Release is off). */
+export async function servedFileOf(
+  gate: DeliveryGate,
+  releaseId: string,
+  artifactId: string,
+): Promise<{ file: ServedFile; facts: ReleaseFacts } | null> {
+  if (!gate.catalog) return null;
+  const release = await gate.catalog.release(releaseId);
+  if (!release) return null;
+  const artifact = (await gate.catalog.artifacts(releaseId)).find(
+    (a) => a.artifactId === artifactId,
+  );
+  if (!artifact) return null;
+  return {
+    file: servedFile(artifact),
+    facts: {
+      deliverable_id: release.deliverableId,
+      version: release.version,
+      channel: release.channel,
+    },
+  };
+}
+
+/** Ascending, NULL first (SQLite's order, which the listing used to get from `ORDER BY`). */
+function nullsFirst(a: string | null, b: string | null): number {
+  if (a === b) return 0;
+  if (a === null) return -1;
+  if (b === null) return 1;
+  return a < b ? -1 : 1;
+}
+
+/** One app release as the listing shows it, read through Release's catalog hook. */
+interface ListedRelease {
+  product: string;
+  productName: string;
+  releaseId: string;
+  deliverableId: string;
+  channel: string | null;
+  version: string;
+  title: string | null;
+  notes: string | null;
+  sourceUrl: string | null;
+  metadataAccess: string;
+  publishedAt: number | null;
+  artifacts: {
+    artifactId: string;
+    name: string;
+    kind: string | null;
+    platform: string | null;
+    arch: string | null;
+    sizeBytes: number | null;
+    sha256: string | null;
+    buildId: string | null;
+    source: CatalogSourceArtifact;
+  }[];
+  /** Each build's platform, for the read-time label inference. */
+  buildPlatforms: Map<string, string | null>;
+}
+
+/**
+ * The releases the customer portal lists: the `app` deliverable's only, newest first across the
+ * products. A pack release (P4-02) and its content objects are game content a client fetches
+ * through its pin, never a download a customer picks from the portal. Read through each
+ * product's `releaseCatalog` hook, which answers nothing while Release is off.
+ */
+async function listPortalReleases(
+  db: Db,
+  hooksFor: PortalHooksFor | undefined,
+  products: string[],
+  now: number,
+): Promise<ListedRelease[]> {
+  const out: ListedRelease[] = [];
+  for (const slug of products) {
+    const loaded = await portalHooks(db, hooksFor, slug, now);
+    const catalog = loaded?.hooks.releaseCatalog();
+    if (!loaded || !catalog) continue;
+    for (const release of await catalog.releases(APP_DELIVERABLE_ID)) {
+      const meta = await catalog.releaseNotes(release.releaseId);
+      if (!meta) continue;
+      const builds = await catalog.builds(release.releaseId);
+      out.push({
+        product: slug,
+        productName: loaded.product.name,
+        releaseId: release.releaseId,
+        deliverableId: release.deliverableId,
+        channel: release.channel,
+        version: release.version,
+        title: meta.title,
+        notes: meta.notes,
+        sourceUrl: meta.sourceUrl,
+        metadataAccess: meta.metadataAccess,
+        publishedAt: release.publishedAt,
+        artifacts: (await catalog.artifacts(release.releaseId))
+          // Verification material is not a download.
+          .filter(
+            (a) =>
+              a.role !== "signature" &&
+              a.role !== "checksum" &&
+              a.kind !== "signature" &&
+              a.kind !== "checksum",
+          )
+          .sort(
+            (x, y) =>
+              nullsFirst(x.kind, y.kind) ||
+              nullsFirst(x.platform, y.platform) ||
+              nullsFirst(x.arch, y.arch) ||
+              nullsFirst(x.name, y.name),
+          )
+          .map((a) => ({
+            artifactId: a.artifactId,
+            name: a.name,
+            kind: a.kind,
+            platform: a.platform,
+            arch: a.arch,
+            sizeBytes: a.sizeBytes,
+            sha256: a.sha256,
+            buildId: a.buildId,
+            source: a,
+          })),
+        buildPlatforms: new Map(builds.map((b) => [b.buildId, b.platform])),
+      });
+    }
+  }
+  return out.sort(
+    (a, b) =>
+      (b.publishedAt ?? 0) - (a.publishedAt ?? 0) ||
+      (a.version < b.version ? 1 : a.version > b.version ? -1 : 0),
+  );
+}
 
 /** May this account download a release under `mode`? (A linked licence is checked by callers.) */
 export async function accountMayDownload(
@@ -470,7 +638,7 @@ export type DownloadTarget =
 
 export async function downloadTarget(
   env: Env,
-  artifact: PortalArtifactRow,
+  artifact: ServedFile,
   gate: DeliveryGate,
   mode: ReleaseAccess,
 ): Promise<DownloadTarget | null> {
@@ -495,7 +663,7 @@ export async function downloadTarget(
  *  no recorded SHA-256, or no bytes-host URL for it). */
 async function ticketTarget(
   env: Env,
-  artifact: PortalArtifactRow,
+  artifact: ServedFile,
   gate: DeliveryGate,
 ): Promise<DownloadTarget | null> {
   if (!artifact.sha256 || !downloadTicketsEnabled(env)) return null;
@@ -510,11 +678,11 @@ async function ticketTarget(
 /** Distribution's bytes-host URL for a file, when it is `https` on the configured bytes host. */
 async function bytesHostTarget(
   env: Env,
-  artifact: PortalArtifactRow,
+  artifact: ServedFile,
   gate: DeliveryGate,
 ): Promise<URL | null> {
   const minted = await gate.delivery.deliveryUrl({
-    releaseId: artifact.release_id,
+    releaseId: artifact.releaseId,
     name: artifact.name,
   });
   if (!minted) return null;
@@ -551,11 +719,11 @@ async function bytesHostTarget(
  * the reader refuses anything else. Either alone would be enough today; together they mean a
  * future writer (an R2 mirror, an operator import) cannot silently re-open this by forgetting.
  */
-function redirectableSourceUrl(artifact: PortalArtifactRow): string | null {
-  if (!artifact.source_url) return null;
+function redirectableSourceUrl(artifact: ServedFile): string | null {
+  if (!artifact.sourceUrl) return null;
   let url: URL;
   try {
-    url = new URL(artifact.source_url);
+    url = new URL(artifact.sourceUrl);
   } catch {
     return null;
   }
@@ -1173,7 +1341,12 @@ async function handleReleases(
         enabledProducts.push(row.slug);
       }
     }
-    const releases = await listPortalReleases(db, enabledProducts);
+    const releases = await listPortalReleases(
+      db,
+      hooksFor,
+      enabledProducts,
+      now,
+    );
     const gates = new Map<string, DeliveryGate | null>();
     // Whether the account holds a USABLE licence for each product: read once for the whole
     // listing, and only when some release's metadata is gated on one.
@@ -1181,13 +1354,13 @@ async function handleReleases(
     const usableByProduct = new Map<string, boolean>();
     const out = [];
     for (const release of releases) {
-      // `release_metadata.metadata_access` is the product's METADATA mode as of the last sync
-      // (`storeAccess`: `entitled` is stored as `licensed`, the strictest thing an account with
-      // no device can be asked for). The whole entry IS the metadata (version, title, notes and
-      // the upstream URL), so a `licensed` gate the account does not satisfy withholds the ROW:
-      // blanking the fields would still disclose that the release exists and which version it
-      // is. `authenticated` and `public` need nothing more than the session already proves.
-      if (release.metadata_access === "licensed") {
+      // `metadataAccess` is the product's METADATA mode as of the last sync (`storeAccess`:
+      // `entitled` is stored as `licensed`, the strictest thing an account with no device can be
+      // asked for). The whole entry IS the metadata (version, title, notes and the upstream
+      // URL), so a `licensed` gate the account does not satisfy withholds the ROW: blanking the
+      // fields would still disclose that the release exists and which version it is.
+      // `authenticated` and `public` need nothing more than the session already proves.
+      if (release.metadataAccess === "licensed") {
         let usable = usableByProduct.get(release.product);
         if (usable === undefined) {
           linked ??= await listPortalLicenses(db, session.accountId);
@@ -1205,7 +1378,7 @@ async function handleReleases(
       }
       // Distribution off: nothing is downloadable, and the listing says so.
       const mode: ReleaseAccess | null = gate
-        ? await gate.delivery.accessMode(release.deliverable_id)
+        ? await gate.delivery.accessMode(release.deliverableId)
         : null;
       const allowed =
         gate !== null &&
@@ -1215,29 +1388,28 @@ async function handleReleases(
           session.accountId,
           gate,
           mode,
-          release,
+          {
+            deliverable_id: release.deliverableId,
+            version: release.version,
+            channel: release.channel,
+          },
           now,
         ));
-      const artifacts = await listPortalArtifacts(
-        db,
-        release.product,
-        release.release_id,
-      );
       const rows = [];
-      for (const artifact of artifacts) {
+      for (const artifact of release.artifacts) {
         rows.push({
-          artifactId: artifact.artifact_id,
+          artifactId: artifact.artifactId,
           name: artifact.name,
           kind: artifact.kind,
           // Read-time inference, display only: a file with no platform of its own takes its
           // build's, and a file tied to no build the one its name declares.
           platform:
             artifact.platform ??
-            (artifact.build_id
-              ? (artifact.build_platform ?? null)
+            (artifact.buildId
+              ? (release.buildPlatforms.get(artifact.buildId) ?? null)
               : platformFromFileName(artifact.name)),
           arch: artifact.arch,
-          sizeBytes: artifact.size_bytes,
+          sizeBytes: artifact.sizeBytes,
           sha256: artifact.sha256,
           access: mode ?? "public",
           // Same predicates the mint and the redirect apply (R6-12, P2b-04), so the portal
@@ -1248,18 +1420,23 @@ async function handleReleases(
             allowed &&
             gate !== null &&
             mode !== null &&
-            (await downloadTarget(env, artifact, gate, mode)) !== null,
+            (await downloadTarget(
+              env,
+              servedFile(artifact.source),
+              gate,
+              mode,
+            )) !== null,
         });
       }
       out.push({
         product: release.product,
-        productName: release.product_name,
-        releaseId: release.release_id,
+        productName: release.productName,
+        releaseId: release.releaseId,
         version: release.version,
         title: release.title,
         notes: release.notes,
-        publishedAt: release.published_at,
-        sourceUrl: release.source_url,
+        publishedAt: release.publishedAt,
+        sourceUrl: release.sourceUrl,
         artifacts: rows,
       });
     }
@@ -1313,22 +1490,24 @@ async function handleReleases(
   // own reason codes (`downloads.ts`), and the portal turns the code into words. Refused at MINT
   // time as well as at redemption: a token that could only ever be rejected is a row written
   // and a URL handed to the user for nothing.
-  const artifact = await getPortalArtifact(db, product, releaseId, artifactId);
-  const facts = artifact
-    ? await getPortalReleaseFacts(db, product, releaseId)
-    : null;
-  if (!artifact || !facts)
+  // Byte delivery is Distribution's: with it off (or no hooks to ask), nothing is minted.
+  const gate = await deliveryGate(db, hooksFor, product, now);
+  if (!gate)
+    return err(
+      409,
+      MINT_REFUSAL.notHosted,
+      "downloads are not served for this product",
+    );
+  const found = await servedFileOf(gate, releaseId, artifactId);
+  if (!found)
     return err(
       404,
       MINT_REFUSAL.fileNotFound,
       "this release or file is no longer offered",
     );
-  // Byte delivery is Distribution's: with it off (or no hooks to ask), nothing is minted.
-  const gate = await deliveryGate(db, hooksFor, product, now);
-  const mode = gate
-    ? await gate.delivery.accessMode(facts.deliverable_id)
-    : null;
-  if (!gate || !mode)
+  const { file: artifact, facts } = found;
+  const mode = await gate.delivery.accessMode(facts.deliverable_id);
+  if (!mode)
     return err(
       409,
       MINT_REFUSAL.notHosted,
@@ -1352,11 +1531,11 @@ async function handleReleases(
       MINT_REFUSAL.notHosted,
       "this file cannot be downloaded from the portal yet",
     );
-  const token = await createPortalDownloadToken(env, db, {
-    accountId: session.accountId,
+  const token = await mintDownloadToken(env, db, {
     product,
     releaseId,
     artifactId,
+    scope: { portalAccountId: session.accountId },
     now,
   });
   return portalJson({ url: `/download/${encodeURIComponent(token)}` }, 201);
@@ -1980,20 +2159,18 @@ export async function handlePortalDownload(
   // No retention work here. This route has no session, no rate limit and a path anyone can
   // type, so a delete issued before the presented token is even looked up would be a
   // stranger-triggered write across every tenant's expired rows. Retention is the nightly
-  // sweep's job (`scheduled.ts`, `purgeDownloadTokensForProduct`, per product); this route only
+  // sweep's job (`purgeDownloadTokens`, per product); this route only
   // reads.
   // Expiry and single-use are now SQL predicates (R9-05b), so an unusable token never returns.
-  const row = await getPortalDownloadToken(env, db, token, now);
+  const row = await readDownloadToken(env, db, token, now);
   if (!row) return notFound();
-  const artifact = row.artifact_id
-    ? await getPortalArtifact(db, row.product, row.release_id, row.artifact_id)
-    : null;
-  const facts = artifact
-    ? await getPortalReleaseFacts(db, row.product, row.release_id)
-    : null;
-  const gate = facts
-    ? await deliveryGate(db, hooksFor, row.product, now)
-    : null;
+  const gate = await deliveryGate(db, hooksFor, row.product, now);
+  const found =
+    gate && row.artifact_id
+      ? await servedFileOf(gate, row.release_id, row.artifact_id)
+      : null;
+  const artifact = found?.file ?? null;
+  const facts = found?.facts ?? null;
   const mode =
     gate && facts ? await gate.delivery.accessMode(facts.deliverable_id) : null;
   // R6-12: the ONLY value that may become a `Location` header. `null` here means the stored URL
@@ -2046,7 +2223,7 @@ export async function handlePortalDownload(
           env,
           {
             product: row.product,
-            releaseId: artifact.release_id,
+            releaseId: artifact.releaseId,
             name: artifact.name,
             sha256: artifact.sha256,
           },
@@ -2060,7 +2237,7 @@ export async function handlePortalDownload(
   }
   // R9-05b: the conditional UPDATE IS the single-use gate. A concurrent redemption of the same
   // token loses here (changes === 0) and gets a 404 instead of a second redirect.
-  if (!(await markPortalDownloadUsed(db, row.product, row.token_hash, now))) {
+  if (!(await spendDownloadToken(db, row.product, row.token_hash, now))) {
     return notFound();
   }
   return new Response(null, {
