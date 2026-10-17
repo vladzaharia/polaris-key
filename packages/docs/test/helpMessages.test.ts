@@ -208,6 +208,34 @@ describe("the data", () => {
   });
 });
 
+describe("an article that shows a message links back from it", () => {
+  it("every message an article embeds names that article", () => {
+    const helpDir = join(docsRoot, "src", "content", "docs", "help");
+    const problems: string[] = [];
+    for (const file of readdirSync(helpDir).filter((f) => /\.mdx$/.test(f))) {
+      const article = file.replace(/\.mdx$/, "");
+      for (const m of read(join(helpDir, file)).matchAll(
+        /<HelpMessage id="([^"]+)"/g,
+      )) {
+        const id = m[1]!;
+        const owner = HELP_MESSAGES.messages[id];
+        const entry = entryOf(HELP_MESSAGES, KNOWN_ENTRIES, id);
+        // A portal copy and the activation result have no per-message article of their own.
+        if (owner === undefined || id.startsWith("portal.")) continue;
+        if (id === "activation.ok") continue;
+        const linked = entry?.branches
+          .filter((b) => b.ids.includes(id))
+          .some((b) => b.article === article);
+        if (!linked)
+          problems.push(
+            `help/${article} embeds ${id}, which does not link back`,
+          );
+      }
+    }
+    expect(problems).toEqual([]);
+  });
+});
+
 describe("every message has a home", () => {
   it("every catalog key is in exactly one entry or the developer-only list", () => {
     const developer = new Set(HELP_MESSAGES.developerOnly);

@@ -36,7 +36,6 @@ const sections = indexSections(indexRows(HELP_MESSAGES, KNOWN_ENTRIES));
         {rows.map((row) => (
           <li>
             <a href={helpMessageUrl(HELP_MESSAGES, row.id)}>{row.title}</a>
-            <small>{row.pageTitle}</small>
           </li>
         ))}
       </ul>
@@ -45,10 +44,6 @@ const sections = indexSections(indexRows(HELP_MESSAGES, KNOWN_ENTRIES));
 }
 
 <style is:global>
-  .pk-help-index small {
-    display: block;
-    color: var(--sl-color-gray-3);
-  }
   /* Touch-sized, wrapping onto as many rows as the width needs. */
   .pk-help-letters ul {
     display: flex;
