@@ -511,23 +511,17 @@ describe("portal flow conformance (UX-79)", () => {
   });
 });
 
-describe("package access (PX-11)", () => {
-  it("creates a token and shows it once in a dialog that Escape doesn't close", async () => {
+describe("packages on a product page (F-33, portal-11)", () => {
+  it("is one pointer row to Account → Packages, with no token controls", async () => {
     const o = await open("three", "/#/p/tidewater/package");
     await h1(o.page, "Tidewater Studio");
-    await o.page.getByRole("button", { name: "Create token" }).click();
-    const form = o.page.getByRole("dialog", { name: "Create a token" });
-    await form.getByLabel("Name").fill("Laptop 2");
-    await form.getByRole("button", { name: "Create token" }).click();
-    const shown = o.page.getByRole("dialog", { name: "Copy your token now" });
-    await shown.waitFor();
-    await shoot(o.page, "product-token-desktop-dark");
-    await o.page.keyboard.press("Escape");
-    await shown.getByText(/Close without copying\?/).waitFor();
-    expect(await shown.isVisible()).toBe(true);
-    expect(o.requests).toContain(
-      "POST /api/licenses/tidewater/lic_tidewater/registry-tokens",
-    );
+    const card = o.page.getByRole("region", { name: /^Packages$/ });
+    await card.getByText(/Tidewater Studio packages from/).waitFor();
+    expect(await card.getByRole("button").count()).toBe(0);
+    await card
+      .getByRole("link", { name: /Set up in Account → Packages/ })
+      .click();
+    await h1(o.page, "Account");
     expect(await o.violations()).toEqual([]);
     await o.close();
   });

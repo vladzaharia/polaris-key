@@ -518,6 +518,7 @@ function Choice({
           options={options}
           value={value}
           onChange={onChange}
+          className="[&_button]:min-h-11 [&_button]:min-w-11"
         />
       ) : (
         <select

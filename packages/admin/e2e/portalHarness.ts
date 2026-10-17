@@ -176,6 +176,24 @@ export async function startPortal(): Promise<PortalHarness> {
       );
     }, theme);
     const routes: Record<string, Override> = {
+      // Account → Packages (F-33): an account with no private feed, token or per-app token has no
+      // such section, so every other Account state renders as it did.
+      "GET /api/me/tokens": {
+        body: {
+          registryOrigin: "https://pkg.plrs.im",
+          username: "__token__",
+          tokens: [],
+          feeds: [],
+          legacy: [],
+          limits: {
+            minDays: 1,
+            maxDays: 365,
+            defaultDays: 90,
+            labelMax: 64,
+            perAccount: 25,
+          },
+        },
+      },
       ...portalRoutes(scenario),
       ...opts.routes,
     };
