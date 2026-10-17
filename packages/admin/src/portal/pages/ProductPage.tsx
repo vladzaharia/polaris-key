@@ -380,6 +380,15 @@ function ProductBody({
                 <HelpCard product={product} />
               </div>
             ) : null}
+            {/* Your data in this product (I-11): last in every layout, after Help in the main column so the
+                nav's order is the page's order on desktop too. A removal that also took the licenses leaves
+                nothing here, so the page goes back to the Library. */}
+            <div className="order-7">
+              <ProductDataCard
+                product={product}
+                onLeftLibrary={() => navigate(href.library())}
+              />
+            </div>
           </div>
           <div className={column}>
             <div className="order-2">
@@ -418,15 +427,6 @@ function ProductBody({
                 <ProductIdentityCard productName={product.name} />
               </div>
             ) : null}
-            {/* Your data in this product (I-11): last in every layout and in no section of the
-                nav, like the product sign-in card. A removal that also took the licenses leaves
-                nothing here, so the page goes back to the Library. */}
-            <div className="order-7">
-              <ProductDataCard
-                product={product}
-                onLeftLibrary={() => navigate(href.library())}
-              />
-            </div>
           </div>
         </div>
       </div>

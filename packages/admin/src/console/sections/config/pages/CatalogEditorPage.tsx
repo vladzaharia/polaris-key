@@ -411,7 +411,7 @@ function Editor({
         <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[18rem_minmax(0,1fr)]">
           <nav
             aria-label="Catalog entries"
-            className="min-w-0 max-h-64 space-y-4 overflow-y-auto rounded-lg border border-border p-2 pk-scroll lg:max-h-none lg:overflow-visible lg:rounded-none lg:border-0 lg:p-0"
+            className="relative min-w-0 max-h-64 space-y-4 overflow-y-auto rounded-lg border border-border p-2 pk-scroll lg:max-h-none lg:overflow-visible lg:rounded-none lg:border-0 lg:p-0"
           >
             {visible.length === 0 ? (
               <EmptyState
