@@ -62,9 +62,8 @@
       "note": "English is src/copy.generated.ts (pnpm gen constants, from conformance/parity/copy.en.json): copyMessage/copyTitle read the error-code, gate and activation tables, describeError reads a typed activation result from the activation table only. French is the hand-written proof locale until SP-03."
     },
     "core.backend": {
-      "status": "planned",
-      "wp": "SP-58",
-      "note": "usePolarisFetch(); in Electron through the bridge (SP-31)."
+      "status": "implemented",
+      "note": "A cookie-session page holds no signed licence document (the Worker answers it plain JSON), so its supports() says runtime, with the reason in detail; bearer mode serves it. usePolarisFetch() over adapter.backendHeaders(): same origin by default (HTTPS or loopback) plus config.backend.origins; the freshness pre-sync, one retry on license_stale/license_invalid, typed not_entitled/sign_in_required; redirects refused unless asked for. Desktop: the host's client.backend.headers() through bridge v4 invoke core.backendHeaders. test/backend.test.ts replays backend-matrix.json's client rows."
     },
     "license.gate": {
       "status": "implemented"

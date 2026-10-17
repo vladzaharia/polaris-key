@@ -261,6 +261,10 @@
       "title": "오프라인 모드",
       "message": "이 앱은 오프라인으로 실행 중이라 연결하지 않았어요."
     },
+    "backend-origin-not-allowed": {
+      "title": "요청을 보내지 않았습니다",
+      "message": "앱은 자체 서버로만 라이선스를 보낼 수 있습니다."
+    },
     "insecure-base-url": {
       "title": "안전하지 않은 연결",
       "message": "앱이 안전하지 않은 연결을 거부했어요. 개발자에게 문의하세요."

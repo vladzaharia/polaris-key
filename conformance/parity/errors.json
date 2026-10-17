@@ -382,6 +382,12 @@
       "description": "This client is local-only; the call would have opened a network connection."
     },
     {
+      "code": "backend-origin-not-allowed",
+      "kind": "client",
+      "service": "core",
+      "description": "A client.backend fetch helper refused a URL whose origin is not in backend.origins; nothing was sent (framework drop-ins §6)."
+    },
+    {
       "code": "insecure-base-url",
       "kind": "client",
       "service": "core",

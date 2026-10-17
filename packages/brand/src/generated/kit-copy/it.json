@@ -757,6 +757,8 @@
   "core.codes.service-disabled.message": "Questo servizio è disattivato per questa app.",
   "core.codes.local-only.title": "Modalità offline",
   "core.codes.local-only.message": "Questa app è in modalità offline, quindi non si è connessa.",
+  "core.codes.backend-origin-not-allowed.title": "Richiesta non inviata",
+  "core.codes.backend-origin-not-allowed.message": "L'app può inviare la tua licenza solo ai propri server.",
   "core.codes.insecure-base-url.title": "Connessione non sicura",
   "core.codes.insecure-base-url.message": "L'app ha rifiutato una connessione non sicura. Contatta lo sviluppatore.",
   "core.codes.bundle-jws-rejected.title": "File di attivazione non valido",

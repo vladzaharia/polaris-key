@@ -215,6 +215,7 @@ class ErrorCode:
     SERVICE_UNAVAILABLE: Final = "service-unavailable"
     SERVICE_DISABLED: Final = "service-disabled"
     LOCAL_ONLY: Final = "local-only"
+    BACKEND_ORIGIN_NOT_ALLOWED: Final = "backend-origin-not-allowed"
     INSECURE_BASE_URL: Final = "insecure-base-url"
     BUNDLE_JWS_REJECTED: Final = "bundle-jws-rejected"
     BUNDLE_CLAIMS_REJECTED: Final = "bundle-claims-rejected"
@@ -381,6 +382,7 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "service-unavailable",
     "service-disabled",
     "local-only",
+    "backend-origin-not-allowed",
     "insecure-base-url",
     "bundle-jws-rejected",
     "bundle-claims-rejected",
@@ -549,6 +551,7 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "service-unavailable": "client",
         "service-disabled": "client",
         "local-only": "client",
+        "backend-origin-not-allowed": "client",
         "insecure-base-url": "client",
         "bundle-jws-rejected": "client",
         "bundle-claims-rejected": "client",
@@ -1861,7 +1864,7 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "core.caps": CapabilityRow("implemented", "core", ()),
         "core.store": CapabilityRow("implemented", "core", (CapabilityNa("python", "dependency"),)),
         "core.copy": CapabilityRow("implemented", "sdk", ()),
-        "core.backend": CapabilityRow("planned", "license", ()),
+        "core.backend": CapabilityRow("implemented", "license", ()),
         "license.gate": CapabilityRow("implemented", "license", ()),
         "license.signedinuser": CapabilityRow("implemented", "license", ()),
         "license.activate": CapabilityRow("implemented", "license", ()),
@@ -1964,4 +1967,4 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "08e88caa160e845924e34904b5a2c16113582583815b66b5b4ae6d90b2c708b3"
+CAPABILITY_DIGEST: Final[str] = "d108981bdac8dbf9eb2df22996f75c724c07fcb5183cd6b010fe47a2b9e57631"

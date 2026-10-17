@@ -757,6 +757,8 @@
   "core.codes.service-disabled.message": "此应用已关闭此服务。",
   "core.codes.local-only.title": "离线模式",
   "core.codes.local-only.message": "此应用正以离线模式运行，因此未连接。",
+  "core.codes.backend-origin-not-allowed.title": "请求未发送",
+  "core.codes.backend-origin-not-allowed.message": "应用只能将你的许可证发送到它自己的服务器。",
   "core.codes.insecure-base-url.title": "连接不安全",
   "core.codes.insecure-base-url.message": "应用拒绝了不安全的连接。请联系开发者。",
   "core.codes.bundle-jws-rejected.title": "激活文件无效",

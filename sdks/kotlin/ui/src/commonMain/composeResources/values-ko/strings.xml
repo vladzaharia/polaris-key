@@ -1663,6 +1663,10 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_local_only_message">이 앱은 오프라인으로 실행 중이라 연결하지 않았어요.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_backend_origin_not_allowed_title">요청을 보내지 않았습니다</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_backend_origin_not_allowed_message">앱은 자체 서버로만 라이선스를 보낼 수 있습니다.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_insecure_base_url_title">안전하지 않은 연결</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_insecure_base_url_message">앱이 안전하지 않은 연결을 거부했어요. 개발자에게 문의하세요.</string>

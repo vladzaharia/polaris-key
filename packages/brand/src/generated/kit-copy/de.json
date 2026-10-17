@@ -757,6 +757,8 @@
   "core.codes.service-disabled.message": "Dieser Dienst ist für diese App deaktiviert.",
   "core.codes.local-only.title": "Offline-Modus",
   "core.codes.local-only.message": "Diese App läuft offline und hat daher keine Verbindung hergestellt.",
+  "core.codes.backend-origin-not-allowed.title": "Anfrage nicht gesendet",
+  "core.codes.backend-origin-not-allowed.message": "Die App darf Ihre Lizenz nur an ihre eigenen Server senden.",
   "core.codes.insecure-base-url.title": "Unsichere Verbindung",
   "core.codes.insecure-base-url.message": "Die App hat eine unsichere Verbindung abgelehnt. Wenden Sie sich an den Entwickler.",
   "core.codes.bundle-jws-rejected.title": "Aktivierungsdatei ungültig",

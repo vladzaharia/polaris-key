@@ -757,6 +757,8 @@
   "core.codes.service-disabled.message": "Este servicio está desactivado para esta app.",
   "core.codes.local-only.title": "Modo sin conexión",
   "core.codes.local-only.message": "Esta app funciona sin conexión, así que no se conectó.",
+  "core.codes.backend-origin-not-allowed.title": "Solicitud no enviada",
+  "core.codes.backend-origin-not-allowed.message": "La app solo puede enviar tu licencia a sus propios servidores.",
   "core.codes.insecure-base-url.title": "Conexión no segura",
   "core.codes.insecure-base-url.message": "La app rechazó una conexión no segura. Contacta con el desarrollador.",
   "core.codes.bundle-jws-rejected.title": "Archivo de activación no válido",

@@ -261,6 +261,10 @@
       "title": "Offline-Modus",
       "message": "Diese App läuft offline und hat daher keine Verbindung hergestellt."
     },
+    "backend-origin-not-allowed": {
+      "title": "Anfrage nicht gesendet",
+      "message": "Die App darf Ihre Lizenz nur an ihre eigenen Server senden."
+    },
     "insecure-base-url": {
       "title": "Unsichere Verbindung",
       "message": "Die App hat eine unsichere Verbindung abgelehnt. Wenden Sie sich an den Entwickler."

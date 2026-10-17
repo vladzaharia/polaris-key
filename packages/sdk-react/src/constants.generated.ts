@@ -70,6 +70,7 @@ export const ErrorCode = {
   serviceUnavailable: "service-unavailable",
   serviceDisabled: "service-disabled",
   localOnly: "local-only",
+  backendOriginNotAllowed: "backend-origin-not-allowed",
   insecureBaseUrl: "insecure-base-url",
   bundleJwsRejected: "bundle-jws-rejected",
   bundleClaimsRejected: "bundle-claims-rejected",
@@ -237,6 +238,7 @@ export const ERROR_CODE_VALUES: readonly ErrorCode[] = [
   "service-unavailable",
   "service-disabled",
   "local-only",
+  "backend-origin-not-allowed",
   "insecure-base-url",
   "bundle-jws-rejected",
   "bundle-claims-rejected",
@@ -406,6 +408,7 @@ export const ERROR_CODE_KINDS: Readonly<Record<ErrorCode, ErrorCodeKind>> = {
   "service-unavailable": "client",
   "service-disabled": "client",
   "local-only": "client",
+  "backend-origin-not-allowed": "client",
   "insecure-base-url": "client",
   "bundle-jws-rejected": "client",
   "bundle-claims-rejected": "client",
@@ -1613,7 +1616,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
     na: [{ runtime: "desktop-bridge", reason: "runtime" }],
   },
   "core.copy": { status: "implemented", service: "sdk", na: [] },
-  "core.backend": { status: "planned", service: "license", na: [] },
+  "core.backend": { status: "implemented", service: "license", na: [] },
   "license.gate": { status: "implemented", service: "license", na: [] },
   "license.signedinuser": { status: "implemented", service: "license", na: [] },
   "license.activate": { status: "implemented", service: "license", na: [] },
@@ -1870,4 +1873,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "183b313746bfab95c3cdb2f29199d7695051dda40b2fd628e0de9aaeb62a7a49";
+  "441f10a8e3d2065c0a6a41b70bf3c3c9c2b0f3b14d069502735796d0304012b9";

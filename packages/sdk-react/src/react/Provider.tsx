@@ -25,6 +25,7 @@ import {
   type ServiceSlug,
   type ServicesMap,
 } from "../core/services.js";
+import { normalizeBackendOrigin } from "../core/backend.js";
 import { PolarisContext } from "./context.js";
 
 /** Disposals waiting out a possible immediate re-run of the Provider's effect. */
@@ -65,6 +66,9 @@ export interface PolarisKeyConfig {
   trust?: { pinnedKeys: TrustSet };
   /** Bearer mode's token/document store. */
   store?: BrowserAdapterOptions["store"];
+  /** `usePolarisFetch()`: the origins besides the page's own that may receive the licence
+   *  document. Exact, HTTPS only except loopback; a bad one throws `invalid-options`. */
+  backend?: { origins?: readonly string[] };
   /** Test seams forwarded to the constructed adapter. */
   fetchImpl?: typeof fetch;
   navigate?: (url: string) => void;
@@ -135,6 +139,7 @@ export function PolarisKeyProvider(
     fetchImpl,
     navigate,
     now,
+    backend,
   } = config;
 
   // Serialize the expectation list so an inline array literal does not rebuild the adapter.
@@ -274,7 +279,13 @@ export function PolarisKeyProvider(
     return () => clearInterval(id);
   }, [adapter, refreshIntervalSeconds]);
 
-  const value = useMemo(() => ({ adapter }), [adapter]);
+  const originsKey = JSON.stringify(backend?.origins ?? []);
+  const value = useMemo(() => {
+    const origins = (JSON.parse(originsKey) as string[]).map(
+      normalizeBackendOrigin,
+    );
+    return origins.length > 0 ? { adapter, backend: { origins } } : { adapter };
+  }, [adapter, originsKey]);
   return (
     <PolarisContext.Provider value={value}>{children}</PolarisContext.Provider>
   );

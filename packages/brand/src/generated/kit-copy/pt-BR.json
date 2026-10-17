@@ -757,6 +757,8 @@
   "core.codes.service-disabled.message": "Este serviço está desativado para este app.",
   "core.codes.local-only.title": "Modo offline",
   "core.codes.local-only.message": "Este app está funcionando offline, então não se conectou.",
+  "core.codes.backend-origin-not-allowed.title": "Solicitação não enviada",
+  "core.codes.backend-origin-not-allowed.message": "O app só pode enviar sua licença aos próprios servidores.",
   "core.codes.insecure-base-url.title": "Conexão insegura",
   "core.codes.insecure-base-url.message": "O app recusou uma conexão insegura. Contate o desenvolvedor.",
   "core.codes.bundle-jws-rejected.title": "Arquivo de ativação inválido",

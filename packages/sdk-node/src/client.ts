@@ -70,6 +70,7 @@ import { ReleaseClient } from "./release/client.js";
 import { CommerceClient } from "./commerce/client.js";
 import { DistributionClient } from "./distribution/client.js";
 import { PolarisEventEmitter } from "./core/events.js";
+import { BackendClient, type BackendClientOptions } from "./backend/client.js";
 import { crashTagsFor, type CrashTags } from "./server.js";
 import { UpdateClient, type UpdateClientOptions } from "./update/client.js";
 import {
@@ -119,6 +120,9 @@ export interface PolarisKeyClientOptions extends CoreOptions {
   refreshIntervalSeconds?: number;
   /** Fired after a sync that actually changed a document. */
   onChange?: (state: LicenseState) => void;
+  /** `client.backend`: the origins `backend.fetch()` may send the licence to (framework
+   *  drop-ins §6). Validated here: a bad origin throws `invalid-options` from the constructor. */
+  backend?: BackendClientOptions;
 }
 
 /**
@@ -174,6 +178,9 @@ export class PolarisKeyClient {
   readonly distribution: DistributionClient;
   /** Store purchases to license flags (§3.9). */
   readonly commerce: CommerceClient;
+  /** The client half of a product backend: `fetch()` and `headers()` with the signed licence
+   *  document (WIRE-CONTRACT-V4 §14.5). */
+  readonly backend: BackendClient;
 
   private readonly cache: CacheManager;
   private readonly tokens: TokenManager;
@@ -260,6 +267,25 @@ export class PolarisKeyClient {
     this.distribution = new DistributionClient(this.core);
     this.commerce = new CommerceClient(this.core, this.tokens, () =>
       this.sync({ force: true }).then(() => undefined),
+    );
+    this.backend = new BackendClient(
+      {
+        held: () => {
+          const l = this.cache.state.license;
+          return l
+            ? {
+                jws: l.jws,
+                issuedAt: l.doc.issuedAt,
+                expiresAt: l.doc.expiresAt,
+              }
+            : null;
+        },
+        deviceId: () => this.core.deviceId,
+        now: () => this.core.now(),
+        sync: (o) => this.sync(o),
+        fetcher: () => this.core.plainFetcher(),
+      },
+      opts.backend,
     );
     this.update = new UpdateClient(
       this.core,

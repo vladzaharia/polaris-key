@@ -89,6 +89,7 @@ public let COPY_CODES: [String: CopyEntry] = [
     "service-unavailable": CopyEntry(title: "Not available", message: "This app doesn't use this service."),
     "service-disabled": CopyEntry(title: "Not available", message: "This service is turned off for this app."),
     "local-only": CopyEntry(title: "Offline mode", message: "This app is running offline, so it didn't connect."),
+    "backend-origin-not-allowed": CopyEntry(title: "Request not sent", message: "The app can send your license only to its own servers."),
     "insecure-base-url": CopyEntry(title: "Insecure connection", message: "The app refused an insecure connection. Contact the developer."),
     "bundle-jws-rejected": CopyEntry(title: "Activation file not valid", message: "The activation file's signature isn't valid."),
     "bundle-claims-rejected": CopyEntry(title: "Activation file not valid", message: "The activation file is for another product or device, or it has expired."),

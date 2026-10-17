@@ -11,7 +11,7 @@ shape for "no such product", "service not enabled", and "no such route" (hide-do
 16 protocol codes; the worker enum maps each to its response site.
 
 Every code, wire, client and backend, is registered in `conformance/parity/errors.json`
-(162 codes), and `pnpm gen constants` generates each SDK's `ErrorCode` constants
+(163 codes), and `pnpm gen constants` generates each SDK's `ErrorCode` constants
 from it. A new code needs an entry there first.
 
 ## Protocol codes (`@polaris-key/protocol/core`)
@@ -67,6 +67,7 @@ Raised by an SDK, never sent by the Worker. Hosts match on the exact string.
 | `service-unavailable` | `core` | The product does not run the service this sub-client speaks to. |
 | `service-disabled` | `core` | React: the product's discovery document has this service turned off. |
 | `local-only` | `core` | This client is local-only; the call would have opened a network connection. |
+| `backend-origin-not-allowed` | `core` | A client.backend fetch helper refused a URL whose origin is not in backend.origins; nothing was sent (framework drop-ins §6). |
 | `insecure-base-url` | `core` | The base URL would carry the device bearer token in the clear (plain http to a non-loopback host). |
 | `bundle-jws-rejected` | `core` | Offline bundle import, step 1: the bundle's signature, `typ` or size cap failed. |
 | `bundle-claims-rejected` | `core` | Offline bundle import, step 2: `aud`, `deviceId`, the import window or the carried documents failed. |

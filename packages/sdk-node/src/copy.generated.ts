@@ -311,6 +311,10 @@ export const COPY_CODES: Readonly<Record<string, CopyEntry>> = {
     title: "Offline mode",
     message: "This app is running offline, so it didn't connect.",
   },
+  "backend-origin-not-allowed": {
+    title: "Request not sent",
+    message: "The app can send your license only to its own servers.",
+  },
   "insecure-base-url": {
     title: "Insecure connection",
     message: "The app refused an insecure connection. Contact the developer.",

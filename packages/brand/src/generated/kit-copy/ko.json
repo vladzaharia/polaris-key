@@ -757,6 +757,8 @@
   "core.codes.service-disabled.message": "이 앱에서는 이 서비스가 꺼져 있어요.",
   "core.codes.local-only.title": "오프라인 모드",
   "core.codes.local-only.message": "이 앱은 오프라인으로 실행 중이라 연결하지 않았어요.",
+  "core.codes.backend-origin-not-allowed.title": "요청을 보내지 않았습니다",
+  "core.codes.backend-origin-not-allowed.message": "앱은 자체 서버로만 라이선스를 보낼 수 있습니다.",
   "core.codes.insecure-base-url.title": "안전하지 않은 연결",
   "core.codes.insecure-base-url.message": "앱이 안전하지 않은 연결을 거부했어요. 개발자에게 문의하세요.",
   "core.codes.bundle-jws-rejected.title": "유효하지 않은 활성화 파일",

@@ -50,13 +50,32 @@ The owner asked for drop-ins that gate a server route or a CLI command with the 
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
 2. Implement the scope; run the green gate; hand off.
 
+## Corrections found against the code (2026-10-16)
+
+- `backend-origin-not-allowed` was in no registry. Added to `conformance/parity/errors.json`
+  (kind `client`) and to all eight `copy.<locale>.json`; `pnpm gen constants brand` carried it to
+  every SDK. No corpus row: the `client` section pins the retry rule, not the origin list.
+- `polaris-key.json`'s `backend.origins` is SP-32a's (it owns that schema). Here the origins come
+  from the client options only: Node `backend: {origins}`, Python `backend={"origins": [...]}`,
+  React `config.backend.origins` and `usePolarisFetch({origins})`.
+- React: a cookie-session page holds no signed licence document (the Worker answers it plain
+  JSON), so `core.backend` is bearer-mode only on the web (`BEARER_ONLY`, `supports()` says
+  `runtime` with the reason in `detail`). No registry change: it follows `identity.devicecode`.
+- React redirects: `usePolarisFetch()` sets `redirect: "error"` unless the caller passes one,
+  because a browser hides an opaque redirect's target.
+- Python httpx: an `httpx.Auth` runs once per request and httpx follows redirects inside it, so
+  a followed redirect to another origin cannot be stopped before it is sent (the response is
+  refused afterwards). `follow_redirects` stays off by default; `requests` is checked per hop.
+- Bridge v4 gains the invoke verb `core.backendHeaders` (`DEFAULT_INVOKE_VERBS`), answered by
+  `client.backend.headers()`. In the renderer, a forced refresh is `bridge.refresh()` then the verb.
+
 ## Acceptance criteria
 
-- [ ] `client.backend` sends `X-PKey-License` and `X-PKey-Device`, never the token or the config document.
-- [ ] A non-allowed origin is refused with `backend-origin-not-allowed`.
-- [ ] `license_stale`/`license_invalid` force-sync and retry once; `not_entitled`/`sign_in_required` never retry.
-- [ ] The `client` section replays green in Node, React and Python.
-- [ ] The green gate passes (`AGENTS.md`), including every drift gate in the header.
+- [x] `client.backend` sends `X-PKey-License` and `X-PKey-Device`, never the token or the config document.
+- [x] A non-allowed origin is refused with `backend-origin-not-allowed`.
+- [x] `license_stale`/`license_invalid` force-sync and retry once; `not_entitled`/`sign_in_required` never retry.
+- [x] The `client` section replays green in Node, React and Python.
+- [x] The green gate passes (`AGENTS.md`), including every drift gate in the header.
 
 ## Verify
 

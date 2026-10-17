@@ -17,7 +17,7 @@ import { isAbsolute, posix, relative, resolve, sep, win32 } from "node:path";
 import type { PolarisKeyClient } from "../client.js";
 import type { ClientBootOptions } from "../boot.js";
 import type { ClaimResult, CommerceStore } from "../commerce/client.js";
-import type { UpdateEvent } from "../constants.generated.js";
+import { ErrorCode, type UpdateEvent } from "../constants.generated.js";
 import { copy } from "../core/copy.js";
 import type { SignInPrompt } from "../identity/client.js";
 import type { ActivationResult } from "../license/endpoints.js";
@@ -615,6 +615,28 @@ export function exposePolarisBridge(
           ? { build: b.build }
           : {}),
       });
+    },
+    // SP-58: the pre-synced X-PKey-License and X-PKey-Device. The renderer decides which
+    // origins get them; the host only hands them over.
+    // With backend.origins configured, the renderer must name the origin it will send them to,
+    // and it must be one of those: the licence document never goes to a page's choice of host.
+    "core.backendHeaders": async (a) => {
+      const allowed = client.backend.origins;
+      if (allowed.length > 0) {
+        const origin = optStr(bag(a).origin);
+        let ok = false;
+        try {
+          ok = origin !== undefined && allowed.includes(new URL(origin).origin);
+        } catch {
+          ok = false;
+        }
+        if (!ok)
+          throw new BridgeRefusal(
+            ErrorCode.backendOriginNotAllowed,
+            "That origin is not in the host's backend.origins.",
+          );
+      }
+      return client.backend.headers();
     },
     "release.fetch": async (a) => {
       const b = bag(a);

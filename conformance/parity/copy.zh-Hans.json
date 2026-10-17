@@ -261,6 +261,10 @@
       "title": "离线模式",
       "message": "此应用正以离线模式运行，因此未连接。"
     },
+    "backend-origin-not-allowed": {
+      "title": "请求未发送",
+      "message": "应用只能将你的许可证发送到它自己的服务器。"
+    },
     "insecure-base-url": {
       "title": "连接不安全",
       "message": "应用拒绝了不安全的连接。请联系开发者。"

@@ -69,6 +69,8 @@ import {
 } from "../core/presentation.js";
 import { DELEGATED_KID_PATTERN } from "@polaris-key/protocol/release";
 import {
+  HEADER_DEVICE,
+  HEADER_LICENSE,
   HEADER_PLATFORM,
   HEADER_SDK_NAME,
   HEADER_SDK_VERSION,
@@ -99,6 +101,7 @@ import {
   type VerifiedRevocation,
 } from "@polaris-key/client-core";
 import type { CapabilityContext } from "@polaris-key/client-core";
+import { clientBackendAction } from "@polaris-key/client-core/backend";
 import type {
   BinaryMethod,
   FeedDeltas,
@@ -559,6 +562,9 @@ export class BrowserAdapter implements PolarisAdapter {
   readonly authMode: BrowserAuthMode;
   /** Bearer mode's engine; null in cookie mode. */
   private readonly bearer: BearerSession | null = null;
+  /** The sync every concurrent `backendHeaders()` shares (SP-58). */
+  private backendSync: { force: boolean; promise: Promise<boolean> } | null =
+    null;
   /** The releases an update_offered was journalled for this page (§3.13). */
   private readonly offered = new Set<string>();
   private readonly bearerStore: BrowserStore | null = null;
@@ -1773,6 +1779,63 @@ export class BrowserAdapter implements PolarisAdapter {
     return b.report();
   }
 
+  /**
+   * `client.backend.headers()` (SP-58): the held licence document and the device id, for the
+   * app's own backend. A document within the refresh margin of its expiry is synced first;
+   * concurrent callers share one sync. `force` always syncs and throws `refresh-failed` when the
+   * licence document did not come back. A cookie page holds no signed document and refuses typed.
+   */
+  async backendHeaders(
+    opts: { force?: boolean } = {},
+  ): Promise<Record<string, string>> {
+    const b = this.requireBearer(Feature.coreBackend, COOKIE_DETAIL);
+    const held = () => b.backendLicense();
+    const action = clientBackendAction({
+      document: held(),
+      now: b.effectiveTime(),
+      response: null,
+    });
+    if (opts.force === true || action === "refresh-then-send") {
+      const ok = await this.sharedBackendSync(opts.force === true);
+      if (opts.force === true && !ok)
+        throw new PolarisError(
+          "refresh-failed",
+          "The licence document could not be refreshed.",
+        );
+    }
+    const doc = held();
+    return {
+      ...(doc ? { [HEADER_LICENSE]: doc.jws } : {}),
+      [HEADER_DEVICE]: b.deviceId,
+    };
+  }
+
+  /** One sync for every concurrent `backendHeaders()`; a forced caller joins only a forced one.
+   *  True when the licence document is current (applied or unchanged). */
+  private sharedBackendSync(force: boolean): Promise<boolean> {
+    const live = this.backendSync;
+    if (live && (live.force || !force)) return live.promise;
+    const promise = this.bearer!.sync({ force })
+      .then(
+        (r) => {
+          this.applyBearer({
+            busy: this.store.get().busy,
+            error: this.store.get().error,
+          });
+          return (
+            r.documents.license?.kind === "applied" ||
+            r.documents.license?.kind === "unchanged"
+          );
+        },
+        () => false,
+      )
+      .finally(() => {
+        if (this.backendSync?.promise === promise) this.backendSync = null;
+      });
+    this.backendSync = { force, promise };
+    return promise;
+  }
+
   /** Bearer mode's in-page journal (telemetry.updates); a cookie page refuses typed. */
   async recordUpdateEvent(
     event: UpdateEvent,
@@ -2286,6 +2349,8 @@ const BEARER_ONLY = new Set<string>([
   Feature.identityDevicecode,
   Feature.configMint,
   Feature.commerceReceipt,
+  // SP-58: a cookie page holds no signed licence document to send.
+  Feature.coreBackend,
 ]);
 
 /** True when the page runs inside a Tauri webview: Tauri's injected globals, or its custom
