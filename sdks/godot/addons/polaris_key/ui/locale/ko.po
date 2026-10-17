@@ -4137,10 +4137,10 @@ msgstr "앱을 인식할 수 없습니다"
 msgid "core.codes.invalid_client.message"
 msgstr "이 앱은 로그인용으로 설정되지 않았습니다. 개발자에게 문의하세요."
 
-#. Sign-in expired
+#. Sign-in no longer valid
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_grant.title"
-msgstr "로그인이 만료되었습니다"
+msgstr "로그인이 더 이상 유효하지 않습니다"
 
 #. That sign-in has expired or was already used. Sign in again.
 #. Core copy (conformance/parity/copy.en.json, codes).

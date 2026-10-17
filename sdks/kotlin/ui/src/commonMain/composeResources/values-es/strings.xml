@@ -1579,7 +1579,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_client_message">Esta app no está configurada para iniciar sesión. Contacta con su desarrollador.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_invalid_grant_title">Inicio de sesión caducado</string>
+    <string name="core_codes_invalid_grant_title">Inicio de sesión ya no válido</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_grant_message">Este inicio de sesión caducó o ya se usó. Inicia sesión de nuevo.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

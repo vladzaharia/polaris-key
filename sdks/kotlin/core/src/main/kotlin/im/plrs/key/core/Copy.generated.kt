@@ -61,7 +61,7 @@ public val COPY_CODES: Map<String, CopyEntry> = mapOf(
     "identity_disabled" to CopyEntry("Sign-in unavailable", "Sign-in through this app is turned off. Your installs and licenses keep working."),
     "invalid_request" to CopyEntry("Sign-in request invalid", "The app sent a sign-in request we can't read. Try again."),
     "invalid_client" to CopyEntry("App not recognised", "This app isn't set up for sign-in. Contact its developer."),
-    "invalid_grant" to CopyEntry("Sign-in expired", "That sign-in has expired or was already used. Sign in again."),
+    "invalid_grant" to CopyEntry("Sign-in no longer valid", "That sign-in has expired or was already used. Sign in again."),
     "unsupported_grant_type" to CopyEntry("Sign-in request invalid", "The app asked for a sign-in type we don't support. Contact its developer."),
     "invalid_scope" to CopyEntry("Access not available", "The app asked for access this sign-in doesn't offer. Contact its developer."),
     "redirect_uri_mismatch" to CopyEntry("Return address not allowed", "This app's return address isn't registered, so we didn't send you back. Contact its developer."),

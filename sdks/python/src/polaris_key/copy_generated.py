@@ -77,7 +77,7 @@ COPY_CODES: Mapping[str, CopyEntry] = MappingProxyType(
         "identity_disabled": CopyEntry("Sign-in unavailable", "Sign-in through this app is turned off. Your installs and licenses keep working."),
         "invalid_request": CopyEntry("Sign-in request invalid", "The app sent a sign-in request we can't read. Try again."),
         "invalid_client": CopyEntry("App not recognised", "This app isn't set up for sign-in. Contact its developer."),
-        "invalid_grant": CopyEntry("Sign-in expired", "That sign-in has expired or was already used. Sign in again."),
+        "invalid_grant": CopyEntry("Sign-in no longer valid", "That sign-in has expired or was already used. Sign in again."),
         "unsupported_grant_type": CopyEntry("Sign-in request invalid", "The app asked for a sign-in type we don't support. Contact its developer."),
         "invalid_scope": CopyEntry("Access not available", "The app asked for access this sign-in doesn't offer. Contact its developer."),
         "redirect_uri_mismatch": CopyEntry("Return address not allowed", "This app's return address isn't registered, so we didn't send you back. Contact its developer."),

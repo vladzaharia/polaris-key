@@ -24758,55 +24758,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sign-in expired"
+            "value": "Sign-in no longer valid"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Anmeldung abgelaufen"
+            "value": "Anmeldung nicht mehr gültig"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sign-in expired"
+            "value": "Sign-in no longer valid"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Inicio de sesión caducado"
+            "value": "Inicio de sesión ya no válido"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Login expirado"
+            "value": "Login não é mais válido"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Accesso scaduto"
+            "value": "Accesso non più valido"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "サインインの有効期限切れ"
+            "value": "サインインは無効です"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "로그인이 만료되었습니다"
+            "value": "로그인이 더 이상 유효하지 않습니다"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "登录已过期"
+            "value": "登录已失效"
           }
         }
       }

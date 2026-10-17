@@ -705,7 +705,7 @@
   "core.codes.invalid_request.message": "アプリから読み取れないリクエストが届きました。もう一度お試しください。",
   "core.codes.invalid_client.title": "アプリを認識できません",
   "core.codes.invalid_client.message": "このアプリはサインインに対応していません。開発元にお問い合わせください。",
-  "core.codes.invalid_grant.title": "サインインの有効期限切れ",
+  "core.codes.invalid_grant.title": "サインインは無効です",
   "core.codes.invalid_grant.message": "このサインインは期限切れか、すでに使用されています。もう一度サインインしてください。",
   "core.codes.unsupported_grant_type.title": "サインインリクエストが無効です",
   "core.codes.unsupported_grant_type.message": "アプリが対応していないサインイン方式を要求しました。開発元にお問い合わせください。",

@@ -158,7 +158,7 @@
       "message": "Esta app no está configurada para iniciar sesión. Contacta con su desarrollador."
     },
     "invalid_grant": {
-      "title": "Inicio de sesión caducado",
+      "title": "Inicio de sesión ya no válido",
       "message": "Este inicio de sesión caducó o ya se usó. Inicia sesión de nuevo."
     },
     "unsupported_grant_type": {

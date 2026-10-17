@@ -63,7 +63,7 @@ public let COPY_CODES: [String: CopyEntry] = [
     "identity_disabled": CopyEntry(title: "Sign-in unavailable", message: "Sign-in through this app is turned off. Your installs and licenses keep working."),
     "invalid_request": CopyEntry(title: "Sign-in request invalid", message: "The app sent a sign-in request we can't read. Try again."),
     "invalid_client": CopyEntry(title: "App not recognised", message: "This app isn't set up for sign-in. Contact its developer."),
-    "invalid_grant": CopyEntry(title: "Sign-in expired", message: "That sign-in has expired or was already used. Sign in again."),
+    "invalid_grant": CopyEntry(title: "Sign-in no longer valid", message: "That sign-in has expired or was already used. Sign in again."),
     "unsupported_grant_type": CopyEntry(title: "Sign-in request invalid", message: "The app asked for a sign-in type we don't support. Contact its developer."),
     "invalid_scope": CopyEntry(title: "Access not available", message: "The app asked for access this sign-in doesn't offer. Contact its developer."),
     "redirect_uri_mismatch": CopyEntry(title: "Return address not allowed", message: "This app's return address isn't registered, so we didn't send you back. Contact its developer."),

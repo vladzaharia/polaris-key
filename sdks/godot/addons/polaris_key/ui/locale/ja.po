@@ -4137,10 +4137,10 @@ msgstr "アプリを認識できません"
 msgid "core.codes.invalid_client.message"
 msgstr "このアプリはサインインに対応していません。開発元にお問い合わせください。"
 
-#. Sign-in expired
+#. Sign-in no longer valid
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_grant.title"
-msgstr "サインインの有効期限切れ"
+msgstr "サインインは無効です"
 
 #. That sign-in has expired or was already used. Sign in again.
 #. Core copy (conformance/parity/copy.en.json, codes).

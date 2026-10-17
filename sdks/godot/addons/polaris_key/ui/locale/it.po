@@ -4157,10 +4157,10 @@ msgstr "App non riconosciuta"
 msgid "core.codes.invalid_client.message"
 msgstr "Questa app non è configurata per l'accesso. Contatta il suo sviluppatore."
 
-#. Sign-in expired
+#. Sign-in no longer valid
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_grant.title"
-msgstr "Accesso scaduto"
+msgstr "Accesso non più valido"
 
 #. That sign-in has expired or was already used. Sign in again.
 #. Core copy (conformance/parity/copy.en.json, codes).

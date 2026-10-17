@@ -1579,7 +1579,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_client_message">Este app não está configurado para login. Fale com o desenvolvedor.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_invalid_grant_title">Login expirado</string>
+    <string name="core_codes_invalid_grant_title">Login não é mais válido</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_grant_message">Este login expirou ou já foi usado. Entre de novo.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

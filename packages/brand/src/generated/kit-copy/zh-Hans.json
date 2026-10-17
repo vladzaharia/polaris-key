@@ -705,7 +705,7 @@
   "core.codes.invalid_request.message": "应用发送了我们无法读取的请求。请重试。",
   "core.codes.invalid_client.title": "无法识别该应用",
   "core.codes.invalid_client.message": "该应用尚未设置登录。请联系其开发者。",
-  "core.codes.invalid_grant.title": "登录已过期",
+  "core.codes.invalid_grant.title": "登录已失效",
   "core.codes.invalid_grant.message": "此次登录已过期或已被使用。请重新登录。",
   "core.codes.unsupported_grant_type.title": "登录请求无效",
   "core.codes.unsupported_grant_type.message": "应用请求了我们不支持的登录方式。请联系其开发者。",

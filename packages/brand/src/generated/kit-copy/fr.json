@@ -705,7 +705,7 @@
   "core.codes.invalid_request.message": "The app sent a sign-in request we can't read. Try again.",
   "core.codes.invalid_client.title": "App not recognised",
   "core.codes.invalid_client.message": "This app isn't set up for sign-in. Contact its developer.",
-  "core.codes.invalid_grant.title": "Sign-in expired",
+  "core.codes.invalid_grant.title": "Sign-in no longer valid",
   "core.codes.invalid_grant.message": "That sign-in has expired or was already used. Sign in again.",
   "core.codes.unsupported_grant_type.title": "Sign-in request invalid",
   "core.codes.unsupported_grant_type.message": "The app asked for a sign-in type we don't support. Contact its developer.",

@@ -1559,7 +1559,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_client_message">该应用尚未设置登录。请联系其开发者。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_invalid_grant_title">登录已过期</string>
+    <string name="core_codes_invalid_grant_title">登录已失效</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_grant_message">此次登录已过期或已被使用。请重新登录。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

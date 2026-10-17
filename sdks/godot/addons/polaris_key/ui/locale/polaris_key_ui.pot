@@ -4146,7 +4146,7 @@ msgstr ""
 msgid "core.codes.invalid_client.message"
 msgstr ""
 
-#. Sign-in expired
+#. Sign-in no longer valid
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_grant.title"
 msgstr ""

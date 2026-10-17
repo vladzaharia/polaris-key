@@ -1579,7 +1579,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_client_message">Questa app non è configurata per l'accesso. Contatta il suo sviluppatore.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_invalid_grant_title">Accesso scaduto</string>
+    <string name="core_codes_invalid_grant_title">Accesso non più valido</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_grant_message">Questo accesso è scaduto o è già stato usato. Accedi di nuovo.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

@@ -158,7 +158,7 @@
       "message": "Questa app non è configurata per l'accesso. Contatta il suo sviluppatore."
     },
     "invalid_grant": {
-      "title": "Accesso scaduto",
+      "title": "Accesso non più valido",
       "message": "Questo accesso è scaduto o è già stato usato. Accedi di nuovo."
     },
     "unsupported_grant_type": {

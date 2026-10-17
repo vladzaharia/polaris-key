@@ -705,7 +705,7 @@
   "core.codes.invalid_request.message": "L'app ha inviato una richiesta che non riusciamo a leggere. Riprova.",
   "core.codes.invalid_client.title": "App non riconosciuta",
   "core.codes.invalid_client.message": "Questa app non è configurata per l'accesso. Contatta il suo sviluppatore.",
-  "core.codes.invalid_grant.title": "Accesso scaduto",
+  "core.codes.invalid_grant.title": "Accesso non più valido",
   "core.codes.invalid_grant.message": "Questo accesso è scaduto o è già stato usato. Accedi di nuovo.",
   "core.codes.unsupported_grant_type.title": "Richiesta di accesso non valida",
   "core.codes.unsupported_grant_type.message": "L'app ha chiesto un tipo di accesso che non supportiamo. Contatta il suo sviluppatore.",

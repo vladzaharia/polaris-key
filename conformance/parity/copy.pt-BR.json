@@ -158,7 +158,7 @@
       "message": "Este app não está configurado para login. Fale com o desenvolvedor."
     },
     "invalid_grant": {
-      "title": "Login expirado",
+      "title": "Login não é mais válido",
       "message": "Este login expirou ou já foi usado. Entre de novo."
     },
     "unsupported_grant_type": {

@@ -705,7 +705,7 @@
   "core.codes.invalid_request.message": "O app enviou uma solicitação que não conseguimos ler. Tente de novo.",
   "core.codes.invalid_client.title": "App não reconhecido",
   "core.codes.invalid_client.message": "Este app não está configurado para login. Fale com o desenvolvedor.",
-  "core.codes.invalid_grant.title": "Login expirado",
+  "core.codes.invalid_grant.title": "Login não é mais válido",
   "core.codes.invalid_grant.message": "Este login expirou ou já foi usado. Entre de novo.",
   "core.codes.unsupported_grant_type.title": "Solicitação de login inválida",
   "core.codes.unsupported_grant_type.message": "O app pediu um tipo de login que não aceitamos. Fale com o desenvolvedor.",

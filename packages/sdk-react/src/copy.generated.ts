@@ -195,7 +195,7 @@ export const COPY_CODES: Readonly<Record<string, CopyEntry>> = {
     message: "This app isn't set up for sign-in. Contact its developer.",
   },
   invalid_grant: {
-    title: "Sign-in expired",
+    title: "Sign-in no longer valid",
     message: "That sign-in has expired or was already used. Sign in again.",
   },
   unsupported_grant_type: {

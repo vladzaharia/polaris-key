@@ -158,7 +158,7 @@
       "message": "该应用尚未设置登录。请联系其开发者。"
     },
     "invalid_grant": {
-      "title": "登录已过期",
+      "title": "登录已失效",
       "message": "此次登录已过期或已被使用。请重新登录。"
     },
     "unsupported_grant_type": {

@@ -857,7 +857,7 @@ export const KIT_COPY: Readonly<
     "core.codes.invalid_client.title": "App not recognised",
     "core.codes.invalid_client.message":
       "This app isn't set up for sign-in. Contact its developer.",
-    "core.codes.invalid_grant.title": "Sign-in expired",
+    "core.codes.invalid_grant.title": "Sign-in no longer valid",
     "core.codes.invalid_grant.message":
       "That sign-in has expired or was already used. Sign in again.",
     "core.codes.unsupported_grant_type.title": "Sign-in request invalid",
@@ -2210,7 +2210,7 @@ export const KIT_COPY: Readonly<
     "core.codes.invalid_client.title": "App nicht erkannt",
     "core.codes.invalid_client.message":
       "Diese App ist nicht für die Anmeldung eingerichtet. Wende dich an den Entwickler.",
-    "core.codes.invalid_grant.title": "Anmeldung abgelaufen",
+    "core.codes.invalid_grant.title": "Anmeldung nicht mehr gültig",
     "core.codes.invalid_grant.message":
       "Diese Anmeldung ist abgelaufen oder wurde bereits verwendet. Melde dich erneut an.",
     "core.codes.unsupported_grant_type.title": "Anmeldeanfrage ungültig",
@@ -3560,7 +3560,7 @@ export const KIT_COPY: Readonly<
     "core.codes.invalid_client.title": "App not recognised",
     "core.codes.invalid_client.message":
       "This app isn't set up for sign-in. Contact its developer.",
-    "core.codes.invalid_grant.title": "Sign-in expired",
+    "core.codes.invalid_grant.title": "Sign-in no longer valid",
     "core.codes.invalid_grant.message":
       "That sign-in has expired or was already used. Sign in again.",
     "core.codes.unsupported_grant_type.title": "Sign-in request invalid",
@@ -4892,7 +4892,7 @@ export const KIT_COPY: Readonly<
     "core.codes.invalid_client.title": "App no reconocida",
     "core.codes.invalid_client.message":
       "Esta app no está configurada para iniciar sesión. Contacta con su desarrollador.",
-    "core.codes.invalid_grant.title": "Inicio de sesión caducado",
+    "core.codes.invalid_grant.title": "Inicio de sesión ya no válido",
     "core.codes.invalid_grant.message":
       "Este inicio de sesión caducó o ya se usó. Inicia sesión de nuevo.",
     "core.codes.unsupported_grant_type.title":
@@ -6232,7 +6232,7 @@ export const KIT_COPY: Readonly<
     "core.codes.invalid_client.title": "App não reconhecido",
     "core.codes.invalid_client.message":
       "Este app não está configurado para login. Fale com o desenvolvedor.",
-    "core.codes.invalid_grant.title": "Login expirado",
+    "core.codes.invalid_grant.title": "Login não é mais válido",
     "core.codes.invalid_grant.message":
       "Este login expirou ou já foi usado. Entre de novo.",
     "core.codes.unsupported_grant_type.title": "Solicitação de login inválida",
@@ -7562,7 +7562,7 @@ export const KIT_COPY: Readonly<
     "core.codes.invalid_client.title": "App non riconosciuta",
     "core.codes.invalid_client.message":
       "Questa app non è configurata per l'accesso. Contatta il suo sviluppatore.",
-    "core.codes.invalid_grant.title": "Accesso scaduto",
+    "core.codes.invalid_grant.title": "Accesso non più valido",
     "core.codes.invalid_grant.message":
       "Questo accesso è scaduto o è già stato usato. Accedi di nuovo.",
     "core.codes.unsupported_grant_type.title":
@@ -8907,7 +8907,7 @@ export const KIT_COPY: Readonly<
     "core.codes.invalid_client.title": "アプリを認識できません",
     "core.codes.invalid_client.message":
       "このアプリはサインインに対応していません。開発元にお問い合わせください。",
-    "core.codes.invalid_grant.title": "サインインの有効期限切れ",
+    "core.codes.invalid_grant.title": "サインインは無効です",
     "core.codes.invalid_grant.message":
       "このサインインは期限切れか、すでに使用されています。もう一度サインインしてください。",
     "core.codes.unsupported_grant_type.title": "サインインリクエストが無効です",
@@ -10216,7 +10216,7 @@ export const KIT_COPY: Readonly<
     "core.codes.invalid_client.title": "앱을 인식할 수 없습니다",
     "core.codes.invalid_client.message":
       "이 앱은 로그인용으로 설정되지 않았습니다. 개발자에게 문의하세요.",
-    "core.codes.invalid_grant.title": "로그인이 만료되었습니다",
+    "core.codes.invalid_grant.title": "로그인이 더 이상 유효하지 않습니다",
     "core.codes.invalid_grant.message":
       "이 로그인은 만료되었거나 이미 사용되었습니다. 다시 로그인하세요.",
     "core.codes.unsupported_grant_type.title":
@@ -11449,7 +11449,7 @@ export const KIT_COPY: Readonly<
       "应用发送了我们无法读取的请求。请重试。",
     "core.codes.invalid_client.title": "无法识别该应用",
     "core.codes.invalid_client.message": "该应用尚未设置登录。请联系其开发者。",
-    "core.codes.invalid_grant.title": "登录已过期",
+    "core.codes.invalid_grant.title": "登录已失效",
     "core.codes.invalid_grant.message":
       "此次登录已过期或已被使用。请重新登录。",
     "core.codes.unsupported_grant_type.title": "登录请求无效",

@@ -4137,10 +4137,10 @@ msgstr "无法识别该应用"
 msgid "core.codes.invalid_client.message"
 msgstr "该应用尚未设置登录。请联系其开发者。"
 
-#. Sign-in expired
+#. Sign-in no longer valid
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_grant.title"
-msgstr "登录已过期"
+msgstr "登录已失效"
 
 #. That sign-in has expired or was already used. Sign in again.
 #. Core copy (conformance/parity/copy.en.json, codes).

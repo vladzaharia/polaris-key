@@ -4147,10 +4147,10 @@ msgstr "App not recognised"
 msgid "core.codes.invalid_client.message"
 msgstr "This app isn't set up for sign-in. Contact its developer."
 
-#. Sign-in expired
+#. Sign-in no longer valid
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_grant.title"
-msgstr "Sign-in expired"
+msgstr "Sign-in no longer valid"
 
 #. That sign-in has expired or was already used. Sign in again.
 #. Core copy (conformance/parity/copy.en.json, codes).

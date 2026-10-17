@@ -1579,7 +1579,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_client_message">This app isn't set up for sign-in. Contact its developer.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_invalid_grant_title">Sign-in expired</string>
+    <string name="core_codes_invalid_grant_title">Sign-in no longer valid</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_grant_message">That sign-in has expired or was already used. Sign in again.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

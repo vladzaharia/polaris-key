@@ -705,7 +705,7 @@
   "core.codes.invalid_request.message": "Die App hat eine Anmeldeanfrage gesendet, die wir nicht lesen können. Versuche es erneut.",
   "core.codes.invalid_client.title": "App nicht erkannt",
   "core.codes.invalid_client.message": "Diese App ist nicht für die Anmeldung eingerichtet. Wende dich an den Entwickler.",
-  "core.codes.invalid_grant.title": "Anmeldung abgelaufen",
+  "core.codes.invalid_grant.title": "Anmeldung nicht mehr gültig",
   "core.codes.invalid_grant.message": "Diese Anmeldung ist abgelaufen oder wurde bereits verwendet. Melde dich erneut an.",
   "core.codes.unsupported_grant_type.title": "Anmeldeanfrage ungültig",
   "core.codes.unsupported_grant_type.message": "Die App hat eine Anmeldeart angefragt, die wir nicht unterstützen. Wende dich an den Entwickler.",

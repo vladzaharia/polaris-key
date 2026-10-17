@@ -705,7 +705,7 @@
   "core.codes.invalid_request.message": "La app envió una solicitud que no podemos leer. Inténtalo de nuevo.",
   "core.codes.invalid_client.title": "App no reconocida",
   "core.codes.invalid_client.message": "Esta app no está configurada para iniciar sesión. Contacta con su desarrollador.",
-  "core.codes.invalid_grant.title": "Inicio de sesión caducado",
+  "core.codes.invalid_grant.title": "Inicio de sesión ya no válido",
   "core.codes.invalid_grant.message": "Este inicio de sesión caducó o ya se usó. Inicia sesión de nuevo.",
   "core.codes.unsupported_grant_type.title": "Solicitud de inicio de sesión no válida",
   "core.codes.unsupported_grant_type.message": "La app pidió un tipo de inicio de sesión que no admitimos. Contacta con su desarrollador.",

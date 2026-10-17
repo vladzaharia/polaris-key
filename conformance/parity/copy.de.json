@@ -158,7 +158,7 @@
       "message": "Diese App ist nicht für die Anmeldung eingerichtet. Wende dich an den Entwickler."
     },
     "invalid_grant": {
-      "title": "Anmeldung abgelaufen",
+      "title": "Anmeldung nicht mehr gültig",
       "message": "Diese Anmeldung ist abgelaufen oder wurde bereits verwendet. Melde dich erneut an."
     },
     "unsupported_grant_type": {
