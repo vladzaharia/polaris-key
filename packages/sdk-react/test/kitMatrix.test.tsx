@@ -107,6 +107,10 @@ function withDefaults(input: UiInput, defaults: Obj): UiInput {
   return out as UiInput;
 }
 
+/** Keys the kit leaves out on purpose: no "or" divider over the sign-in methods (DL4) and no
+ *  "Sign in…" link on the sign-in step. */
+const LEFT_OUT = new Set(["signin.provider.group", "signin.menu.signIn"]);
+
 /** The literal text of a message (its longest run outside `{…}`), to find it with any args. */
 function literal(message: string): string {
   const runs = message
@@ -185,6 +189,13 @@ for (const family of FAMILIES) {
         )
         .join(" ");
       for (const key of view.copy) {
+        if (LEFT_OUT.has(key)) continue;
+        // The Replace step confirms on its own button: no openers.
+        if (
+          (view.state === "replace" || view.state === "replace-open") &&
+          /^signin\.replace\.open/.test(key)
+        )
+          continue;
         const lit = literal(en.raw(key) ?? "");
         const keyed = root!.querySelector(`[data-key="${key}"]`);
         if (key.startsWith("a11y.")) {

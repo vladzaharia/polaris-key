@@ -369,3 +369,32 @@ the end, the Copy baseline) are fixed in `packages/elements`; this package picks
 next build. The code step's countdown, the methods step's divider and "Sign in..." (the elements'
 renderer drops both; React's `signin.tsx` still draws them) and the copy items stay with this
 package and the catalog.
+
+## Progress and continuation (2026-10-17, `wp/UK-05-next`, on `wp/UK-04-next`)
+
+UK-04's controls reach React's own parts (`kit/views.tsx`, `kit/parts.tsx`) and the sign-in form
+(`kit/signin.tsx`, `kit/adapt.ts`). The stylesheet items came with the build.
+
+- Panes: the device list scrolls in its own box past six rows and opens on the checked row
+  (`data-scroll`, `openOnChecked`); the Replace primary names the device
+  (`signin.replace.confirmNamed`, also Activate's device-limit primary); the count is stated once
+  (the subhead, not the meter caption too); setting labels spell UI, URL, ID; the no-browser hand-off
+  shows its address; the Replace step has no "Replace a device" openers over its own button.
+- SignIn: the code step has "Code expires in 4:12" (a local one-second tick over the model's
+  `secondsLeft`, not a live region; at 0:00 the model's view goes to expired), a polite status
+  "Waiting for you to sign in…" and a full-width Cancel (also in the gate's own hand-off step); the
+  methods and error steps have no "Or continue with" divider and no "Sign in…" link; a failed
+  sign-in keeps the other methods (the shared `formStep`).
+- Tests: `test/kitNext.test.tsx`; `kitMatrix.test.tsx` lists the keys left out on purpose; browser
+  scenes `SignIn.methods-web`, `SignIn.error-kept`, `SignIn.code-live` (the old `SignIn.code`
+  scene used a row with no code, so it drew "Getting a sign-in code…"; its id also collided with a
+  baseline fixture's shots).
+- Size: React gate +70.8 KB against the unchanged 71.5 KB budget; not ratcheted (no headroom to
+  give back). Lazy-loading the offline and offer steps stays the follow-up if the next slice grows it.
+
+Decided, not done: the waiting status reuses the terminal's `cli.signin.waitingCode` ("Waiting for
+you to sign in…"; nine locales) rather than a new kit key; a kit key with the same words is the
+tidy fix and needs `pnpm gen brand`. Method order: the first method is ui-core's primary (corpus
+rows pin it), so the order is not changed here; "Polaris Key" ahead of the product is the lead's
+call. Still open: the revoked and expired ledes, the four-sentence Replace callout and the grace
+banner's wording (catalog), the versus-mockup items, pixel baselines.
