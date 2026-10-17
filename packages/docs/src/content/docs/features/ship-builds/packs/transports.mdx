@@ -23,6 +23,11 @@ Before you start:
 - The transport chosen per outlet in `.pkey/distribution`:
 
 ```yaml title=".pkey/distribution"
+outlets:
+  app-store: { appleId: "1234567890", bundleId: gg.vlad.tidewater }
+  testflight: { bundleId: gg.vlad.tidewater }
+  play: { packageName: gg.vlad.tidewater }
+  steam: { appId: 480 }
 transports:
   packs:
     app-store: apple-ba
