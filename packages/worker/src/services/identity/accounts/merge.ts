@@ -34,6 +34,7 @@
 
 import type { DbStatement } from "../../../db/types.js";
 import { stmtMoveAccountLicenses } from "../../../core/accounts/accountSubjects.js";
+import { stmtMoveAccountTokens } from "../../../core/accounts/personalTokens.js";
 import { erasureVerdict } from "../../../core/accounts/erasureFence.js";
 import { stmtsMoveAccountAutoAttachBlocks } from "../../../core/licensing/licenseHolders.js";
 import { runSubjectMerge } from "../../../core/accounts/subjectHooks.js";
@@ -269,6 +270,8 @@ export async function mergeAccounts(
       sql: "UPDATE registry_tokens SET portal_account_id = ? WHERE portal_account_id = ?",
       params: [S, A],
     },
+    // F-33: the absorbed account's personal tokens become the survivor's.
+    stmtMoveAccountTokens(A, S),
     // I-12: a relink's undo moves the licence back to the account it came from, which is now S.
     {
       sql: "UPDATE license_relinks SET from_account_id = ? WHERE from_account_id = ?",

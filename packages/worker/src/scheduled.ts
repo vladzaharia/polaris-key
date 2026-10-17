@@ -44,6 +44,7 @@
 // throws, by the rows `recordTick` persists for the Operations page, and by the `SweepState`
 // record written to KV on every nightly tick.
 
+import { purgeAccountTokens } from "./core/accounts/personalTokens.js";
 import { purgeRegistryTokens } from "./core/registry/registryTokens.js";
 import { pruneCiCredentials } from "./core/publisher.js";
 import { loadProductPublic } from "./core/products.js";
@@ -535,6 +536,8 @@ export async function runScheduledMaintenance(
 
   // F-21: registry tokens 90 days past their expiry or revocation (`core/registry/registryTokens.ts`).
   await step(report, "registryTokens", () => purgeRegistryTokens(db, now));
+  // F-33: personal tokens, the same retention.
+  await step(report, "accountTokens", () => purgeAccountTokens(db, now));
 
   // The services' early nightly work (`contributes.maintenance.early`): Identity's erasure
   // ledger replay BEFORE its legacy catch-up (a restored account is re-erased before the

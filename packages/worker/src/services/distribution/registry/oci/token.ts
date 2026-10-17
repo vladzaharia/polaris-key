@@ -187,7 +187,9 @@ export const OCI_TOKEN_ROUTE: OwnerlessRegistryRoute = {
       // A URL token (Godot's) is never an OCI credential.
       if (
         resolved === null ||
-        (resolved.kind !== "ci" && resolved.presentation !== "header")
+        (resolved.kind !== "ci" &&
+          resolved.kind !== "person" &&
+          resolved.presentation !== "header")
       )
         return unauthorized();
       principal = principalOf(resolved);
@@ -249,8 +251,15 @@ export const OCI_TOKEN_ROUTE: OwnerlessRegistryRoute = {
             ? "anonymous"
             : principal.kind === "ci"
               ? `ci:${principal.tokenId}`
-              : principal.tokenId,
-        own: principal.kind === "anonymous" ? null : principal.product,
+              : principal.kind === "person"
+                ? `p:${principal.tokenId}`
+                : principal.tokenId,
+        own:
+          principal.kind === "anonymous"
+            ? null
+            : principal.kind === "person"
+              ? "*"
+              : principal.product,
         repos,
         ...(push.length ? { push } : {}),
       },

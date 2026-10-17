@@ -744,6 +744,11 @@ describe("R11-05 product scoping", () => {
       // layer up: `console/api.ts` runs a token through `can()` for the row's area exactly as it
       // does a session, and every per-product query the handler then reaches carries the slug.
       "admin_api_tokens",
+      // 0120 (F-33) — a PERSON's credential: it belongs to an account, and an account has no
+      // product. `pkeyp_` reads whatever the account may read; the registry host works out, per
+      // owner and per request, which products that is (`personMayRead`), so the tenant boundary is
+      // enforced there, by the account's licences, and not by a column here.
+      "account_tokens",
     ]);
     const offenders: string[] = [];
     for (const t of tables.map((r) => r.name)) {

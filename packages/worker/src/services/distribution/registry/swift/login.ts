@@ -64,14 +64,16 @@ export const SWIFT_LOGIN_ROUTE: RegistryRoute = feedAuthRoute({
     );
     if (principal === "rate-limited")
       return feedRefusal("rate-limited", target);
+    // A personal token (F-33) logs in anywhere; what it may read is judged per request.
     const valid =
-      principal.kind !== "anonymous" &&
-      principal.product === owner &&
-      (principal.kind === "ci" ||
-        principal.ecosystems === null ||
-        principal.ecosystems.includes("swift")) &&
-      (principal.kind !== "license" ||
-        licenseUsable(principal.license, ctx.now));
+      principal.kind === "person" ||
+      (principal.kind !== "anonymous" &&
+        principal.product === owner &&
+        (principal.kind === "ci" ||
+          principal.ecosystems === null ||
+          principal.ecosystems.includes("swift")) &&
+        (principal.kind !== "license" ||
+          licenseUsable(principal.license, ctx.now)));
     if (!valid) return feedRefusal("basic", target);
     return new Response(null, {
       status: 200,

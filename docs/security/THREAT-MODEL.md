@@ -44,6 +44,7 @@ and what binary it installs next.
 | A13  | **The R2 parent token** and the temporary credentials it mints                                                                               | Worker secrets `R2_PARENT_*`; temp credentials held by CI for ≤ 1 h                                   | The parent can write the whole bucket, locked prefixes included (subject to the age lock). A temp credential: one staging prefix.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | A14  | **Delegated content keys** (P4-19)                                                                                                           | CI: a GitHub Environment secret (`PKEY_CONTENT_KEY`) per content team                                 | Publish data-only pack releases in one scope (pack-id prefix and types) until the window closes or a CI revocation of the delegation lands.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | A16  | **`pkeya_` admin API tokens**                                                                                                                | `admin_api_tokens`, stored only as `hashKey(token, pepper)`                                           | A bearer credential for the admin API. Narrower than A4 by construction, and the reason it exists is that the alternative was worse: see below.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| A17  | **`pkeyp_` personal tokens**                                                                                                                 | `account_tokens`, stored only as `hashKey(token, pepper)`                                             | A person's bearer credential, one scope per token. `packages:read` reads every package the account may read across products (the registry host); ST-34 adds `admin`. Shown once, expiring, individually revocable. See "Personal tokens" below.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 
 **A16 is deliberately narrow, and it replaced something broader.** Before it, the one non-browser
 caller of the admin API, `pkey bundle`, run from terminals and CI, authenticated by having an
@@ -1715,6 +1716,58 @@ reads that bypass the Cache API) fails open. A refusal is a native 429.
 **One credential per host.** docker, SwiftPM and netrc hold one credential per registry host, so
 one machine can hold a token for only one owner on `pkg.plrs.im` (Q2, accepted and documented).
 Platform feeds stay public, so they never take the slot.
+
+### Personal tokens (F-33)
+
+**What it is.** A `pkeyp_` token (`core/accounts/personalTokens.ts`, table `account_tokens`, migration 0120) is the credential a PERSON holds, not a product: one token installs every package the account
+may read, across products (plans/I-27.md §2.5). The portal mints it at Account → Packages
+(`/api/me/tokens`); the registry host takes it as a Bearer or Basic (`__token__`) credential on
+every ecosystem except Godot's URL form. Tests: `test/personalTokens.test.ts`.
+
+**A new bearer asset, held like `pkeya_`.** 256 random bits, stored only as an HMAC under
+`KEY_HASH_PEPPER` (a global unique index; the column is a plain hash, so SEC-pepper stamps it later
+like the other credential tables), shown once and never logged, echoed or audited (the audit row
+keeps the label and the last four characters). Every token expires: one day to 365, default 90.
+At most 25 live tokens per account; the mint is step-up gated (a sign-in in the last five
+minutes), CSRF-protected, and spends `portalPersonalToken` (20 an hour, fail closed).
+
+**Exclusive scope, enforced at both ends.** A token holds exactly one scope (a column, not a list).
+The portal mints `packages:read` and refuses anything else with a 422, so a client that asks for
+`admin` learns it did not get it. The registry host resolves a personal token for
+`packages:read` only: a row of any other scope (ST-34's `admin`) resolves to nothing there, and the
+admin API will take `admin` tokens only. A package token therefore cannot reach the admin API, and
+an admin token cannot read a feed, whatever a row says. A personal token never publishes: the
+publish and OCI push paths do not accept the prefix, and a pull token for one grants no `push`.
+
+**The registry host works out the person per owner, and a customer never reaches the system
+product.** A personal token names no owner. For each request the ladder asks what the account may
+read there: a product admits the token only through a usable licence in the account's library
+(`licenses.account_id`), judged exactly as a licence-bound `pkeyr_` is (`authenticated` and
+`licensed`: usable; `entitled`: the deliverable's entitlement flag held by one of the licences; no
+flag fails closed). No licence in that product is a 403. The platform's own product
+(`SYSTEM_PRODUCT_SLUG`) admits no licence-based access at all: its SDK feeds are for console
+members, whose role-granted access (ST-30/ST-31) is the single seam in `personMayRead` and
+answers no until a binding exists. An OCI pull token for a personal token carries `own: "*"` and
+subject `p:<tokenId>`, so each repository's owner is judged on its own request; the other owners'
+pull tokens still need `own` to equal the owner, so a personal pull token cannot push or be
+replayed against a publisher check.
+
+**Revocation.** By the person, individually (Account → Packages); by a Superadmin
+(`revokeAllAccountTokens`, reason `admin`); by erasure (the erasure stops the account's
+tokens first, reason `account_deleted`, then deletes them in its closing batch, labels included; and the request-time erasure fence refuses a restored token of an
+erased account: a ledger that cannot be read resolves to nothing for that request). A merge moves
+the tokens to the surviving account and its undo moves exactly those back. A revoke takes effect
+within the registry's 30-second per-isolate window, at once on the isolate that served it. Rows are
+purged 90 days after they ended. Personal tokens appear in the account export (metadata only).
+
+**Residual.** A token pasted into a shared CI is as shareable as the licence behind it; the bound
+is expiry, the per-account cap, the licence's status and revocation. `last_used_at` is written at
+most hourly, so "last used" lags by up to an hour. A USE is not audited per request.
+
+**Review triggers.** A second scope on `packages:read`'s path; the registry host accepting any
+scope but `packages:read`; a personal token accepted by a publish path; a licence-free grant in
+`personMayRead`; `personMayRead` admitting `SYSTEM_PRODUCT_SLUG` without a console role; the mint
+losing its step-up or its budget; a token or its hash reaching an audit row, a log or the export.
 
 ### Native-client publish (F-22)
 

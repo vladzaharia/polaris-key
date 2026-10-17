@@ -69,6 +69,10 @@
 import { stmtRestoreLicenseAccount } from "../../../core/licensing/store.js";
 import { randomId } from "../../../platform/crypto.js";
 import type { Db, DbParam, DbStatement } from "../../../db/types.js";
+import {
+  accountTokenIds,
+  stmtRestoreAccountTokens,
+} from "../../../core/accounts/personalTokens.js";
 import { erasureVerdict } from "../../../core/accounts/erasureFence.js";
 import {
   clearDeviceSubjects,
@@ -143,6 +147,8 @@ export interface MergeSnapshot {
   sessions: string[];
   avatars: string[];
   registryTokens: Array<[string, string]>;
+  /** F-33: the personal token ids that moved (absent from a snapshot taken before). */
+  accountTokens?: string[];
   relinksFrom: Array<[string, string]>;
   relinksTo: Array<[string, string]>;
   grants: Row[];
@@ -286,6 +292,7 @@ export async function captureMergeSnapshot(
       "SELECT product AS a, token_id AS b FROM registry_tokens WHERE portal_account_id = ?",
       A,
     ),
+    accountTokens: await accountTokenIds(db, A),
     relinksFrom: await pairs(
       "SELECT product AS a, id AS b FROM license_relinks WHERE from_account_id = ?",
       A,
@@ -591,6 +598,8 @@ export async function undoMerge(
       params: [A, S, JSON.stringify(snap.avatars)],
     },
   );
+  if (snap.accountTokens?.length)
+    stmts.push(stmtRestoreAccountTokens(snap.accountTokens, S, A));
   for (const [product, tokenId] of snap.registryTokens) {
     stmts.push({
       sql: `UPDATE registry_tokens SET portal_account_id = ?

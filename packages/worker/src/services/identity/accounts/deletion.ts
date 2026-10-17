@@ -22,6 +22,10 @@ import { stmtDeleteAccountAutoAttachBlocks } from "../../../core/licensing/licen
 import { randomId } from "../../../platform/crypto.js";
 import type { Db, DbStatement } from "../../../db/types.js";
 import {
+  stmtDeleteAccountTokens,
+  stmtRevokeAccountTokens,
+} from "../../../core/accounts/personalTokens.js";
+import {
   forgetRegistryTokens,
   stmtRevokeAccountRegistryTokens,
 } from "../../../core/registry/registryTokens.js";
@@ -262,6 +266,8 @@ async function beginErasure(
     // The account's package-registry tokens stop authenticating now, not at the commit: the
     // lookup never reads the account. Idempotent; the commit batch repeats it.
     stmtRevokeAccountRegistryTokens(accountId, now),
+    // F-33: and its personal tokens.
+    stmtRevokeAccountTokens(accountId, now),
     {
       sql: `INSERT OR IGNORE INTO account_erasures (account_id, requested_at, next_attempt_at)
             VALUES (?, ?, ?)`,
@@ -562,6 +568,8 @@ function commitStatements(
     { sql: "DELETE FROM portal_accounts WHERE id = ?", params: [accountId] },
     // F-21: every registry token this account minted, on every product, stops now.
     stmtRevokeAccountRegistryTokens(accountId, now),
+    // F-33: and its personal tokens go, labels included.
+    stmtDeleteAccountTokens(accountId),
     {
       sql: `INSERT INTO portal_audit
               (id, account_id, at, action, product, target_kind, target_id, summary)

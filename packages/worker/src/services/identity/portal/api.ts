@@ -83,6 +83,7 @@ import {
   scheduleAccountDeletion,
 } from "../accounts/lifecycle.js";
 import { handleMagicStart } from "./auth.js";
+import { handlePersonalTokens } from "./personalTokens.js";
 import { portalStepUpGate } from "./stepUpGate.js";
 import { licenseGrants } from "./entitlements.js";
 import {
@@ -1611,6 +1612,9 @@ async function dispatchPortalApi(
       ? handleAccountMethods(req, env, db, caller, segments.slice(2), now)
       : handleAccountLink(req, env, db, caller, segments.slice(2), now);
   }
+  // F-33: Account → Packages, the person's own `pkeyp_` tokens (`personalTokens.ts`).
+  if (segments[0] === "me" && segments[1] === "tokens")
+    return handlePersonalTokens(req, env, db, session, segments.slice(2), now);
   await syncAccountLicenseLinks(db, session.accountId, now);
 
   const [head, ...rest] = segments;

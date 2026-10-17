@@ -474,6 +474,23 @@ export async function listLicenses(
   );
 }
 
+/**
+ * The licences an ACCOUNT holds in one product (F-33): the library's entries for it, as the
+ * portal reads them (`licenses.account_id`). Newest activation first.
+ */
+export async function listAccountLicenses(
+  db: Db,
+  accountId: string,
+  product: string,
+): Promise<LicenseRow[]> {
+  return db.all<LicenseRow>(
+    `SELECT * FROM licenses WHERE account_id = ? AND product = ?
+      ORDER BY activated_at DESC, id DESC LIMIT 50`,
+    accountId,
+    product,
+  );
+}
+
 // A licence's status changes only through the lifecycle (LX-12): `transitionLicense` in
 // `core/licensing/lifecycleWrites.ts`, which writes `ended_reason` with it.
 

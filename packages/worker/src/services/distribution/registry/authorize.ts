@@ -47,6 +47,9 @@ import {
   type RegistryEcosystem,
 } from "../../../core/registry/registryHost.js";
 import { licenseUsable } from "../../../core/devices.js";
+import { SYSTEM_PRODUCT_SLUG } from "@polaris-key/manifest";
+import type { LicenseRow } from "../../../core/repo.js";
+import { listAccountLicenses } from "../../../core/licensing/store.js";
 import { licenseHoldsFlags } from "../../../core/licensing/entitledAccess.js";
 import { rateLimitOk } from "../../../core/rateLimit.js";
 import {
@@ -165,7 +168,14 @@ async function resolveUncached(
       credential.token,
       Math.floor(nowMs / 1000),
     );
-    if (!claims || claims.sub === "anonymous" || claims.own !== owner)
+    // A personal token's pull token names no single owner (`own` is `*`, F-33): the ladder judges
+    // each repository's owner on its own request.
+    const personal = claims?.sub.startsWith("p:") === true;
+    if (
+      !claims ||
+      claims.sub === "anonymous" ||
+      (personal ? claims.own !== "*" : claims.own !== owner)
+    )
       return ANONYMOUS;
     if (!claims.repos.includes(`${owner}/${ctx.repository}`)) return ANONYMOUS;
     const resolved = await lookupRegistrySubject(
@@ -204,13 +214,19 @@ async function resolveUncached(
   if (!resolved) return ANONYMOUS;
   const presented =
     credential.scheme === "path"
-      ? resolved.kind !== "ci" && resolved.presentation === "url"
+      ? resolved.kind !== "ci" &&
+        resolved.kind !== "person" &&
+        resolved.presentation === "url"
       : headerPresented(resolved);
   return presented ? principalOf(resolved) : ANONYMOUS;
 }
 
 function headerPresented(resolved: ResolvedRegistryToken): boolean {
-  return resolved.kind === "ci" || resolved.presentation === "header";
+  return (
+    resolved.kind === "ci" ||
+    resolved.kind === "person" ||
+    resolved.presentation === "header"
+  );
 }
 
 /** Who `credential` is for `owner`'s `ecosystem` feed (anonymous when it is nobody). */
@@ -241,7 +257,7 @@ const holds = new Map<string, { held: boolean; until: number }>();
 async function licenceHolds(
   db: Db,
   owner: string,
-  principal: Extract<FeedPrincipal, { kind: "license" }>,
+  principal: { readonly license: LicenseRow },
   flag: string,
   nowMs: number,
 ): Promise<boolean> {
@@ -325,6 +341,19 @@ export async function authorizeFeedRead(
   if (principal === "rate-limited")
     return { ok: false, challenge: "rate-limited" };
   if (principal.kind === "anonymous") return challenge;
+  // F-33: a person's token names no owner; what the account may read here is worked out per owner.
+  if (principal.kind === "person") {
+    const forbidden: FeedReadDecision = { ok: false, challenge: "forbidden" };
+    const admitted = await personMayRead(
+      ctx,
+      principal.accountId,
+      owner,
+      mode,
+      deliverableId,
+      nowMs,
+    );
+    return admitted ? { ok: true, cache: "private", principal } : forbidden;
+  }
   // Another owner's token, or one narrowed away from this ecosystem, is no credential here.
   if (principal.product !== owner) return challenge;
   if (
@@ -346,6 +375,45 @@ export async function authorizeFeedRead(
       return forbidden;
   }
   return { ok: true, cache: "private", principal };
+}
+
+/**
+ * May the account behind a personal token read `owner`'s feed under `mode` (F-33)?
+ *
+ *  - The platform's own product admits no customer: its SDK feeds are for console members, who
+ *    are resolved from their roles (ST-30/ST-31 add that source here; until a role binding exists
+ *    nothing grants it, so the answer is no). A licence in the system product never counts.
+ *  - Otherwise the account's licences in the owner's product are judged exactly as a licence-bound
+ *    `pkeyr_` is, for each: usable (`authenticated`, `licensed`), and for `entitled` also holding
+ *    the deliverable's entitlement flag. One licence that passes is enough. A list document
+ *    (`deliverableId` null) needs only a usable licence.
+ *
+ * A token of a person with no licence in the owner's product reads nothing of it, public feeds
+ * excepted (those never get here).
+ */
+async function personMayRead(
+  ctx: FeedReadContext,
+  accountId: string,
+  owner: string,
+  mode: ReleaseAccess,
+  deliverableId: string | null,
+  nowMs: number,
+): Promise<boolean> {
+  if (owner === SYSTEM_PRODUCT_SLUG) return false;
+  const now = Math.floor(nowMs / 1000);
+  const usable = (await listAccountLicenses(ctx.db, accountId, owner)).filter(
+    (l) => licenseUsable(l, now),
+  );
+  if (usable.length === 0) return false;
+  if (mode !== "entitled" || deliverableId === null) return true;
+  const source = ctx.settings ?? d1RegistrySettings(ctx.db);
+  const flag = await cachedEntitlement(source, owner, deliverableId, nowMs);
+  // No gate fails closed, as packs do: an entitled package with no flag admits no licence.
+  if (flag === null) return false;
+  for (const license of usable)
+    if (await licenceHolds(ctx.db, owner, { license }, flag, nowMs))
+      return true;
+  return false;
 }
 
 /** Drop this isolate's licence-hold cache (tests). */
