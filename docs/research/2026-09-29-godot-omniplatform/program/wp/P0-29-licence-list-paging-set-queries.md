@@ -152,3 +152,17 @@ copy, Open Access), F13 (permission state), F15 (keyring copy keyed on its code)
 Not built: F14 (the single workbench band, 56 px rows, sticky License column, avatar/Duration/
 Origin columns, row menus) and F16 (row-shaped skeleton, mockup error titles) need DataTable
 density and column work shared by every table; they need their own slice.
+
+## Polish round (2026-10-17)
+
+Re-review findings N1-N10, V-a, V-b (`_mockups/review/P0-29/ux-review-2.md`), on `wp/P0-29-polish`.
+Server: `?state=active|expiring|expired|disabled` on the list route (OpenAPI, `licenseListPaging`
+test); `total` follows the state, `counts` still covers every state so the tiles stay whole. Console:
+the Status facet with one value goes to the Worker (no "Searched" banner; sort still shows it);
+footer uses the server total on deep links (N1); a failed Search all shows the alert and Try again in
+the no-match state and the banner (N2); one focus move when the walk ends, first row link or the
+no-match heading (N3); the filter announcement names the partial search (N4) and fires on a filter
+change only (N6); the scroller is a named region only while it overflows (N5); the 403 state is
+`NoAccessPage` (N7); Stop, and Load more disabled while the walk runs (N8); "Export all N" walks the
+pages then saves (N9); the first new row scrolls into view after Load more (V-a); first run hides
+Clean up duplicates and Batches (V-b). Left to ST-48: F14, F16, the long-tier column overflow.

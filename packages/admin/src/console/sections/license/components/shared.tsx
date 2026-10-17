@@ -8,7 +8,11 @@
 
 import * as React from "react";
 import { Clock } from "lucide-react";
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useInfiniteQuery,
+  useQuery,
+} from "@tanstack/react-query";
 import {
   api,
   type DeviceLimitSource,
@@ -74,26 +78,42 @@ export function useLicensePages(slug: string, filter: LicenseListFilter = {}) {
       }),
     initialPageParam: null as string | null,
     getNextPageParam: (last: LicensePage) => last.nextCursor ?? undefined,
+    // A tile or chip changes the filter: the rows stay until the new first page lands.
+    placeholderData: keepPreviousData,
   });
   const licenses = React.useMemo(
     () => query.data?.pages.flatMap((p) => p.licenses) ?? [],
     [query.data],
   );
   const first = query.data?.pages[0];
-  /** Load every page still waiting; `onProgress` gets the count loaded so far. */
-  const loadAll = async (): Promise<boolean> => {
+  /**
+   * Load every page still waiting. `stop` is asked before each page; a page already on its way
+   * still lands.
+   */
+  const walk = async (
+    stop: () => boolean = () => false,
+  ): Promise<"done" | "stopped" | "failed"> => {
     big.current = true;
     try {
       let more = query.hasNextPage;
       while (more) {
+        if (stop()) return "stopped";
         const res = await query.fetchNextPage();
-        if (res.isError) return false;
+        if (res.isError) return "failed";
         more = res.hasNextPage;
       }
-      return true;
+      return "done";
     } finally {
       big.current = false;
     }
+  };
+  const loadAll = async (
+    stop?: () => boolean,
+  ): Promise<"done" | "stopped" | "failed"> => {
+    const outcome = await walk(stop);
+    // Let the last page reach the table before the caller reads it.
+    await new Promise((resolve) => setTimeout(resolve));
+    return outcome;
   };
   return {
     query,

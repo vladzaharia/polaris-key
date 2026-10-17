@@ -3502,6 +3502,8 @@ export interface LicenseListFilter {
   holder?: string;
   batch?: string;
   tier?: string;
+  /** One computed state: active, expiring, expired or disabled. */
+  state?: string;
 }
 
 export interface LicenseSummary {
@@ -5435,7 +5437,7 @@ const rawApi = {
     page: { cursor?: string | null; limit?: number } & LicenseListFilter = {},
   ) => {
     const search = new URLSearchParams();
-    for (const k of ["holder", "batch", "tier"] as const)
+    for (const k of ["holder", "batch", "tier", "state"] as const)
       if (page[k]) search.set(k, page[k]);
     if (page.limit) search.set("limit", String(page.limit));
     if (page.cursor) search.set("cursor", page.cursor);

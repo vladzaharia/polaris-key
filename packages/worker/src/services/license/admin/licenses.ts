@@ -62,6 +62,8 @@ import {
   LICENSE_PAGE_DEFAULT,
   LICENSE_PAGE_MAX,
   countLicenses,
+  LICENSE_LIST_STATES,
+  type LicenseListState,
   listLicensePage,
   type LicenseCursor,
   listProfiles,
@@ -346,6 +348,19 @@ export async function handleLicenses(
       const batch = new URL(req.url).searchParams.get("batch");
       const params = new URL(req.url).searchParams;
       const tier = params.get("tier");
+      const rawState = params.get("state");
+      if (
+        rawState !== null &&
+        rawState !== "" &&
+        !(LICENSE_LIST_STATES as readonly string[]).includes(rawState)
+      )
+        return err(
+          400,
+          ErrorCode.BadRequest,
+          `state must be one of ${LICENSE_LIST_STATES.join(", ")}`,
+          { fields: ["state"] },
+        );
+      const state = (rawState || undefined) as LicenseListState | undefined;
       const rawLimit = params.get("limit");
       const rawCursor = params.get("cursor");
       let limit = LICENSE_PAGE_DEFAULT;
@@ -376,6 +391,7 @@ export async function handleLicenses(
           ...(holder ? { holder } : {}),
           ...(batch ? { batch } : {}),
           ...(tier ? { tier } : {}),
+          ...(state ? { state, now } : {}),
         },
         { limit, ...(after ? { after } : {}) },
       );
@@ -402,6 +418,7 @@ export async function handleLicenses(
               ...(holder ? { holder } : {}),
               ...(batch ? { batch } : {}),
               ...(tier ? { tier } : {}),
+              ...(state ? { state, now } : {}),
             },
             now,
           );
