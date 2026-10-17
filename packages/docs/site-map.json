@@ -1632,7 +1632,7 @@
     {
       "path": "help/packages",
       "type": "help",
-      "title": "Install an app's packages",
+      "title": "Install packages with a personal token",
       "description": "Find where an app's packages are set up, and what to do when a development build is gone.",
       "nearest": "/docs/help/download/",
       "package": "F-36",

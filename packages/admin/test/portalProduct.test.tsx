@@ -142,7 +142,7 @@ describe("product page on today's data (PX-04)", () => {
         .getAllByRole("link")
         .map((a) => a.textContent);
       expect(items).not.toContain("Cloud Sync");
-      expect(items).not.toContain("Package access");
+      expect(items).not.toContain("Packages");
       expect(items).not.toContain("Help");
     }
     // One order for both navs, the page's own (owner polish 2026-10-07): the side column's

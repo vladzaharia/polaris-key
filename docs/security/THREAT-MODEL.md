@@ -1762,9 +1762,16 @@ audited in `platform_audit` as `account_token.revoke` (label and last four chara
 `revoked_by = admin`, with no operator subject, because the portal shows `revokedBy` to the
 account's owner. Tests: `test/accountTokensAdmin.test.ts`.
 
-**The portal stopped minting licence-bound `pkeyr_` tokens.** `POST` on a licence's
-`registry-tokens` answers 410; the ones already minted are listed, honoured and revocable until
-they expire, so no installed machine breaks at the deploy.
+**The portal mints one licence-bound token only: the Godot editor URL.** The editor sends no
+credentials, so its feed is reached through a URL holding a token, and a `pkeyp_` token (a year,
+every product) must never be put in a URL: a path credential of kind person grants nothing
+(`authorize.ts`), and the setup never renders one into a URL. `POST` on a licence's
+`registry-tokens` mints `pkeyr_`, licence-bound, read-only, Godot-narrowed, `presentation: url`,
+30 days from the screen, and refuses any other ecosystem with a 422. Step-up, CSRF and the
+`portalRegistryToken` budget still apply. Older licence-bound tokens are listed to their owner in
+Account → Packages ("Per-app tokens", `legacy` in `GET /api/me/tokens`) and revocable there
+(`DELETE .../registry-tokens/:id`), so none outlives its owner's wish. The Superadmin roster
+leaves out `revokedBy`, which names the revoking account.
 
 **Revocation.** By the person, individually (Account → Packages); by a Superadmin
 (`revokeAccountTokenAsAdmin`, reason `admin`, one token at a time from the console;

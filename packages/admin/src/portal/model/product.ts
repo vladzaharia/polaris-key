@@ -61,7 +61,7 @@ export const SECTION_LABEL: Record<ProductSection, string> = {
   new: t("update.whatsNew"),
   license: "License",
   devices: t("account.devices"),
-  package: "Package access",
+  package: "Packages",
   help: "Help",
   data: "Your data",
 };
