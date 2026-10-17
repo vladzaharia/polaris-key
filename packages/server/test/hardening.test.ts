@@ -138,12 +138,14 @@ describe("a stale verification never fills the cache", () => {
     let keys: TestKey[] = [pin, rotated];
     const fetcher: typeof fetch = async () =>
       new Response(await manifest(PRODUCT, pin, keys, now), { status: 200 });
+    const refreshes: Promise<unknown>[] = [];
     const core = createPolarisKey({
       config: cfg(),
       fetch: fetcher,
       now: () => now,
+      waitUntil: (p) => void refreshes.push(p),
     });
-    await tick();
+    await Promise.all(refreshes); // the start fetch has settled
     const jws = await sign(rotated);
     const headers = [["X-PKey-License", jws]] as [string, string][];
 
@@ -163,8 +165,11 @@ describe("a stale verification never fills the cache", () => {
 
     now += 900;
     keys = [pin]; // the next manifest no longer lists the rotated key
+    const before = refreshes.length;
     const inFlight = core.authenticate(headers); // verifying, held at the signature
-    await tick(50); // the refresh (started by that request) installs the new set
+    // The refresh (started by that request) installs the new set: await it, not a sleep.
+    while (refreshes.length === before) await tick(1);
+    await Promise.all(refreshes);
     held();
     expect((await inFlight).problem).toBeNull(); // it began under the old set
     vi.restoreAllMocks();
