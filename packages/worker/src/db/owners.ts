@@ -49,6 +49,7 @@ export const TABLE_OWNERS: Readonly<Record<string, readonly string[]>> = {
     "registry_tokens",
     "admin_api_tokens",
     "account_tokens",
+    "sdk_sightings",
     "platform_settings",
     "platform_job_runs",
     "platform_heartbeats",

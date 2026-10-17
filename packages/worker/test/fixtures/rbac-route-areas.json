@@ -51,6 +51,7 @@
   "GET /products/:slug/distribution/commerce/**": "commerce",
   "GET /products/:slug/distribution/feeds/**": "ship",
   "GET /products/:slug/identity/**": "signin",
+  "GET /products/:slug/integration": "core",
   "GET /products/:slug/keys": "keys",
   "GET /products/:slug/license/**": "license",
   "GET /products/:slug/outlet-credentials": "keys",

@@ -15181,6 +15181,36 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
+  /manage/api/products/{product}/integration:
+    get:
+      operationId: getAdminIntegration
+      tags: [admin]
+      summary: What the product needs wired, and where an SDK has answered it
+      description: >
+        ST-40. Per enabled feature (`licensing`, `config`, `identity`, `update`, `packs`, `sync`,
+        `commerce`): the console `prerequisites` from the service's integration contributor, its
+        domain `facts` and `verifiedOn`, the SDKs and platforms that have had a 2xx from the
+        feature's routes. `status` is `verified`, `not_seen` or `blocked` (a prerequisite is
+        unmet; `verifiedOn` is empty until it is met). `server` lists `*-server` SDKs that fetched
+        the trust manifest. `snippet` is the context `renderSdkSetup` takes: the slug, the enabled
+        services and the keys an app pins. Sightings come from the `X-PKey-SDK` headers every SDK
+        already sends and hold no IP, device or licence data; they are kept 90 days. Read-only;
+        admin session cookie.
+      parameters:
+        - { name: product, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: The integration view.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminIntegration" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such product.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
   /manage/api/products/{product}/assets/settings/{key}:
     patch:
       operationId: setAdminAssetSetting
@@ -19072,6 +19102,100 @@ components:
           type: integer
           description: Repositories matching `q`, across every page.
         nextCursor: { type: [string, "null"] }
+    AdminIntegration:
+      type: object
+      required: [product, now, snippet, features, server, sightings, verified]
+      properties:
+        product: { type: string }
+        now: { type: integer, description: Epoch seconds. }
+        snippet:
+          type: object
+          required: [slug, services, pins]
+          properties:
+            slug: { type: string }
+            services: { type: array, items: { type: string } }
+            pins:
+              type: array
+              items:
+                type: object
+                required: [kid, publicKey]
+                properties:
+                  kid: { type: string }
+                  publicKey: { type: string }
+        features:
+          type: array
+          items:
+            type: object
+            required:
+              [
+                id,
+                service,
+                prerequisites,
+                unavailable,
+                facts,
+                status,
+                verifiedOn,
+              ]
+            properties:
+              id:
+                {
+                  type: string,
+                  enum:
+                    [
+                      licensing,
+                      config,
+                      identity,
+                      update,
+                      packs,
+                      sync,
+                      commerce,
+                    ],
+                }
+              service: { type: string }
+              prerequisites:
+                type: array
+                items:
+                  type: object
+                  required: [id, met]
+                  properties:
+                    id: { type: string }
+                    met: { type: boolean }
+              unavailable: { type: boolean }
+              facts:
+                type: object
+                additionalProperties:
+                  type: [number, boolean, string, "null"]
+              status: { type: string, enum: [verified, not_seen, blocked] }
+              verifiedOn:
+                type: array
+                items:
+                  { $ref: "#/components/schemas/AdminIntegrationVerifiedOn" }
+        server:
+          type: array
+          items: { $ref: "#/components/schemas/AdminIntegrationVerifiedOn" }
+        sightings:
+          type: array
+          items:
+            type: object
+            required: [sdk, platform, arch, sdkVersion, firstSeenAt, lastSeenAt]
+            properties:
+              sdk: { type: string }
+              platform:
+                { type: string, description: Empty when the SDK sent none. }
+              arch: { type: string }
+              sdkVersion: { type: [string, "null"] }
+              firstSeenAt: { type: integer }
+              lastSeenAt: { type: integer }
+        verified: { type: boolean }
+    AdminIntegrationVerifiedOn:
+      type: object
+      required: [sdk, platform, arch, sdkVersion, lastOkAt]
+      properties:
+        sdk: { type: string }
+        platform: { type: string }
+        arch: { type: string }
+        sdkVersion: { type: [string, "null"] }
+        lastOkAt: { type: [integer, "null"] }
     AdminSummary:
       type: object
       required: [products]

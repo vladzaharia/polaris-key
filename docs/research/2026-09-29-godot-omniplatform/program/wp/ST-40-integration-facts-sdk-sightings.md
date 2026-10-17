@@ -22,6 +22,24 @@ The [framework drop-ins plan](../../../2026-10-08-framework-drop-ins/README.md) 
 
 - A trust-manifest fetch with a `*-server` `sdkId` records a server sighting, which is the server lane's Verified.
 
+## Corrections to the brief (2026-10-17)
+
+- Code is the fact: the endpoint is `GET /manage/api/products/<slug>/integration` (admin route, area
+  `core`; `rbac-route-areas.json`, OpenAPI and the `routeCoverage` admin table updated), not a public
+  route.
+- Bits are a fixed table in `core/integration/sightings.ts` (license 1, config 2, release 4,
+  distribution 8, update 16, identity 32, sync 64, commerce 128, packs 256, trust 512): stored
+  numbers must not follow the service table's order. `packs` (`/distribution/packs/*`) and `trust`
+  (the trust-manifest fetch, the server lane's Verified) are extra namespaces.
+- The throttle key includes the namespace, so one SDK reaching two features in five minutes records both.
+- Only SDK ids, platforms and architectures the wire registry lists are recorded; that bounds the table.
+- Domain facts: Release's contributor gains `packages` and `firstPackageAt` (the CI package publish).
+  The updater's feed fetch has no source until P2-11 (Wired); not added here.
+- No console page: the Integration page and Overview card are ST-41. `build/integration` does not exist
+  yet; its part here is the Verified line in each Check it works and the "Not seen yet" entry in
+  `build/troubleshooting`.
+- Migration `0121_sdk_sightings.sql` (the lead renumbers; `LATEST_MIGRATION` is set to it).
+
 ## Goal
 
 Integration facts and SDK sightings, as scoped below. Done when every acceptance criterion holds and the green gate passes.
@@ -67,11 +85,11 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 ## Acceptance criteria
 
-- [ ] No wire field added (transcripts unchanged)
-- [ ] Writes at most once per key per isolate per 5 minutes (test)
-- [ ] Verified flips per feature and platform in a fixture
-- [ ] No product is hidden without an operator setup choice (test over the backfill)
-- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `build/integration`; Verified in every **Check it works**; "Not seen yet" links `build/troubleshooting`.
+- [x] No wire field added (transcripts unchanged)
+- [x] Writes at most once per key per isolate per 5 minutes (test)
+- [x] Verified flips per feature and platform in a fixture
+- [x] No product is hidden without an operator setup choice (test over the backfill)
+- [x] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `build/integration`; Verified in every **Check it works**; "Not seen yet" links `build/troubleshooting`.
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

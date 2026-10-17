@@ -925,6 +925,8 @@ export async function deleteProduct(
       sql: "DELETE FROM outlet_credentials WHERE product = ?",
       params: [slug],
     },
+    // ST-40: SDK sightings hold no personal data; a deleted product keeps none of them.
+    { sql: "DELETE FROM sdk_sightings WHERE product = ?", params: [slug] },
     // A-16: a deleted product holds no platform store app: its pins on the team credentials go,
     // which frees the app for another product.
     {
