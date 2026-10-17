@@ -91,6 +91,8 @@ pkey doctor --product <slug>
 
 You should see the manifest valid and discovery answering, and the product's services and signing keys listed.
 
+On **Integration**, each feature you use shows **Verified** for the platform you ran. If it says Not seen yet, see [Not seen yet](/docs/build/troubleshooting/#not-seen-yet).
+
 ## If it isn't working
 
 - The app talks to production, not the dev server: regenerate the config with `--dev`. A dev run keeps its own state, so it never touches a production token.

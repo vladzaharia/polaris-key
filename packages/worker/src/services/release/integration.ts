@@ -17,11 +17,18 @@ export const releaseIntegration: IntegrationContributor = async ({
     "SELECT COUNT(*) AS n, MAX(published_at) AS latest FROM release_metadata WHERE product = ? AND published_at IS NOT NULL",
     product.slug,
   );
+  // A package published from CI is a fact no SDK request stands for (ST-40).
+  const packages = await db.first<{ n: number; first: number | null }>(
+    "SELECT COUNT(*) AS n, MIN(published_at) AS first FROM release_packages WHERE product = ?",
+    product.slug,
+  );
   return {
     prerequisites: [{ id: "repository", met: Number(linked?.n ?? 0) > 0 }],
     facts: {
       releases: Number(releases?.n ?? 0),
       latestPublishedAt: releases?.latest ?? null,
+      packages: Number(packages?.n ?? 0),
+      firstPackageAt: packages?.first ?? null,
     },
   };
 };

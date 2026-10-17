@@ -43,6 +43,7 @@ import { handleGithub } from "./handlers/github.js";
 import { handlePlatformStoreConnections } from "./handlers/platformStoreConnections.js";
 import { handlePlatform } from "./handlers/platform.js";
 import { handleProducts } from "./handlers/products.js";
+import { handleIntegration } from "./handlers/integration.js";
 import { handleProductScoped } from "./productScoped.js";
 import {
   handleApiTokenList,
@@ -244,6 +245,7 @@ export const ADMIN_ROUTES: readonly AdminRoute[] = [
   ...rows(["GET", "PATCH"], `${P}/services`, "core", product),
   ...rows(["POST"], `${P}/services/revert`, "core", product),
   ...rows(["GET"], `${P}/activity`, "core", product),
+  ...rows(["GET"], `${P}/integration`, "core", handleIntegration),
   ...rows(["GET"], `${P}/refusals`, "core", product),
   ...rows(["GET"], `${P}/blob-gc`, "core", product),
   ...rows(["GET"], `${P}/blob-gc/bundles`, "core", product),
