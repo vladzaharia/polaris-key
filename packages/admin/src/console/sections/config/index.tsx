@@ -1,5 +1,6 @@
 import * as React from "react";
 import { ApproveRecipeFromUrl } from "./components/ApproveRecipeDrawer.js";
+import { ReviewJump } from "./components/RecipeState.js";
 import { CatalogEditorPage } from "./pages/CatalogEditorPage.js";
 import { CatalogPage } from "./pages/CatalogPage.js";
 import { ProfilePage } from "./pages/ProfilePage.js";
@@ -13,7 +14,12 @@ export default function ConfigPages({
   const { slug } = route;
   switch (route.page) {
     case "catalog":
-      return <CatalogPage slug={slug} />;
+      return (
+        <>
+          <ReviewJump slug={slug} />
+          <CatalogPage slug={slug} />
+        </>
+      );
     case "catalog-edit":
       return (
         <>

@@ -189,7 +189,10 @@ describe("Approve a minted token's recipe", () => {
     open(recipes([recipe()], "requires-license", true));
     const drawer = await openApprove();
     expect(
-      within(drawer).getByText(/I understand anonymous enrollment is on/),
+      within(drawer).getByText(/Because anonymous enrollment is on/),
+    ).toBeTruthy();
+    expect(
+      within(drawer).getByRole("link", { name: "Change in Enrollment" }),
     ).toBeTruthy();
   });
 
@@ -219,9 +222,9 @@ describe("Approve a minted token's recipe", () => {
     );
     const drawer = await openApprove();
     expect(within(drawer).getByTestId("was-ttlSeconds").textContent).toContain(
-      "3600",
+      "1 hour",
     );
-    expect(within(drawer).getByText("86400")).toBeTruthy();
+    expect(within(drawer).getAllByText("24 hours").length).toBeTruthy();
     expect(
       within(drawer).getByText(
         /A leaked token works for 24 hours instead of 1 hour/,
@@ -304,9 +307,10 @@ describe("Approve a minted token's recipe", () => {
     expect(
       within(drawer).getByText(/License was turned off after this recipe/),
     ).toBeTruthy();
+    // One fact once: the change reason, not also the generic License-off line.
     expect(
-      within(drawer).getByTestId("edge-mint-approve-license-off"),
-    ).toBeTruthy();
+      within(drawer).queryByTestId("edge-mint-approve-license-off"),
+    ).toBeNull();
   });
 
   it("links an unmarked signing secret to Keys & secrets", async () => {
@@ -337,7 +341,7 @@ describe("Approve a minted token's recipe", () => {
     expect(callout.closest("[data-tone]")!.getAttribute("data-tone")).toBe(
       "info",
     );
-    expect(await within(drawer).findByText("7200")).toBeTruthy();
+    expect(await within(drawer).findByText("2 hours")).toBeTruthy();
     expect(screen.getByRole("dialog")).toBe(drawer);
     expect(backend.reads(`${P}/config/mint`)).toBeGreaterThan(1);
     // It never auto-dismisses and Approve stays, for the new recipe.
@@ -372,7 +376,7 @@ describe("Approve a minted token's recipe", () => {
         "The recipe changed while you were reviewing",
       ),
     ).toBeTruthy();
-    expect(within(drawer).getByText("7200")).toBeTruthy();
+    expect(within(drawer).getAllByText("2 hours").length).toBeTruthy();
     expect(backend.writes()).toEqual([]);
   });
 
@@ -408,7 +412,7 @@ describe("Approve a minted token's recipe", () => {
     const strip = await within(drawer).findByRole("alert");
     expect(strip.textContent).toMatch(/Nothing was approved/);
     expect(
-      within(drawer).getByRole("link", { name: "Try again" }),
+      within(drawer).getByRole("link", { name: "Sign in again" }),
     ).toBeTruthy();
     // The comparison is still there.
     expect(
@@ -437,6 +441,143 @@ describe("Approve a minted token's recipe", () => {
         expect.objectContaining({ path: `${P}/config/mint/applemusic/revoke` }),
       ]),
     );
+  });
+
+  it("closes the drawer after a revoke, with no false 'changed' callout (B1)", async () => {
+    let state: "approved" | "pending" = "approved";
+    const backend = open(
+      () =>
+        recipes([
+          state === "approved"
+            ? recipe({ status: "approved", approval: APPROVAL })
+            : recipe(),
+        ]),
+      {
+        [`POST ${P}/config/mint/applemusic/revoke`]: () => {
+          state = "pending";
+          return { ok: true, id: "applemusic", status: "pending" };
+        },
+      },
+    );
+    const drawer = await openApprove();
+    await userEvent.click(
+      within(drawer).getByRole("button", { name: /Revoke approval/ }),
+    );
+    const confirm = await screen.findByRole("alertdialog");
+    await userEvent.click(
+      within(confirm).getByRole("button", { name: "Revoke approval" }),
+    );
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(screen.queryByText(/changed while you were reviewing/)).toBeNull();
+    expect(backend.writes()).toHaveLength(1);
+    await waitFor(() => expect(document.activeElement).not.toBe(document.body));
+  });
+
+  it("says a failed load failed, with Retry, not 'not found' (B2)", async () => {
+    let fail = true;
+    open(
+      () => (fail ? apiError(500) : recipes([recipe()])),
+      {},
+      "#/p/djdl/config/catalog/edit?entry=applemusic&recipe=applemusic",
+    );
+    const drawer = await screen.findByRole("dialog", {
+      name: "Couldn't load the recipe",
+    });
+    expect(within(drawer).queryByText(/not found/i)).toBeNull();
+    fail = false;
+    await userEvent.click(
+      await within(drawer).findByRole("button", { name: /Retry/ }),
+    );
+    expect(
+      await screen.findByRole("dialog", { name: /Approve applemusic/ }),
+    ).toBeTruthy();
+  });
+
+  it("shows a read-only form and a Retry on the entry when the load fails (M15)", async () => {
+    let fail = true;
+    open(() => (fail ? apiError(500) : recipes([recipe()])));
+    const secret = (await screen.findByRole("textbox", {
+      name: /^Signing secret/,
+    })) as HTMLInputElement;
+    expect(secret.matches(":disabled")).toBe(true);
+    const retry = await screen.findByRole("button", { name: /Retry/ });
+    fail = false;
+    await userEvent.click(retry);
+    await waitFor(() => expect(secret.matches(":disabled")).toBe(false));
+  });
+
+  it("puts the call to approve in a warning callout on the entry (M14)", async () => {
+    open(recipes([recipe()]));
+    expect(
+      await screen.findByText("Minting is stopped until you approve"),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "Review and approve…" }),
+    ).toBeTruthy();
+  });
+
+  it("without edit access hides Revoke and disables Approve with a visible reason (M3)", async () => {
+    open(recipes([recipe()]), {}, undefined, {
+      ...FRESH,
+      platformAdmin: false,
+      permissions: {
+        roles: [],
+        platform: { view: ["console"], edit: ["console"] },
+        products: { djdl: { view: ["config"], edit: [] } },
+      },
+    });
+    const drawer = await openApprove();
+    expect(
+      within(drawer)
+        .getByRole("button", { name: "Approve" })
+        .getAttribute("aria-disabled"),
+    ).toBe("true");
+    expect(
+      within(drawer).getAllByText(/Only members who can edit Managed config/)
+        .length,
+    ).toBeGreaterThan(0);
+    expect(within(drawer).queryByRole("button", { name: /Revoke/ })).toBeNull();
+  });
+
+  it("diffs a changed claims template line by line (M12)", async () => {
+    open(
+      recipes([
+        recipe({
+          status: "changed",
+          claimsTemplateJson: '{"iss":"TEAM","aud":"x"}',
+          approval: APPROVAL,
+          changedFields: ["claimsTemplateJson"],
+        }),
+      ]),
+    );
+    const drawer = await openApprove();
+    const block = within(drawer).getByRole("region", {
+      name: "Claims template changes",
+    });
+    expect(block.textContent).toMatch(/"aud": "x"/);
+    expect(within(block).getAllByText(/Added/).length).toBeGreaterThan(0);
+  });
+
+  it("heads an approved view Approved, with who and when, and the fields open (M11)", async () => {
+    open(recipes([recipe({ status: "approved", approval: APPROVAL })]));
+    const drawer = await openApprove();
+    expect(
+      within(drawer).getByRole("heading", { name: "Approved" }),
+    ).toBeTruthy();
+    expect(within(drawer).getByText("op-1")).toBeTruthy();
+    expect(within(drawer).getByText("ES256")).toBeTruthy();
+  });
+
+  it("names the licence rule in words, not the machine value (M8, M9)", async () => {
+    open(recipes([recipe()]));
+    const drawer = await openApprove();
+    expect(
+      within(drawer).getByText(
+        /Devices of DJDL with a usable license can then mint/,
+      ),
+    ).toBeTruthy();
+    expect(within(drawer).getByText("1 hour")).toBeTruthy();
+    expect(within(drawer).getAllByText("Not set").length).toBeGreaterThan(0);
   });
 
   it("redirects the old Edge mint URL to the entry's drawer", async () => {

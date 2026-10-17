@@ -10,7 +10,7 @@ export const FIELD_LABELS: Record<keyof EdgeMintRecipeFields, string> = {
   signingKeySecret: "Signing secret",
   kid: "Key id (kid)",
   claimsTemplateJson: "Claims template",
-  ttlSeconds: "Token lifetime (seconds)",
+  ttlSeconds: "Token lifetime",
   audience: "Audience",
   requires: "Who may mint",
   requiredEntitlement: "Required entitlement",
@@ -71,11 +71,18 @@ export function changedLabel(
   );
 }
 
+/** Who may mint, as the editor words it. */
+export const REQUIRES_LABELS: Record<EdgeMintRecipe["requires"], string> = {
+  licensed: "A device with a usable license",
+  registered: "Any device of this product",
+  none: "Anyone",
+};
+
 const REQUIRES_RANK = { licensed: 0, registered: 1, none: 2 } as const;
 
 /** A lifetime in words: "1 hour", "90 minutes", "45 seconds". */
 export function lifetime(seconds: number | null): string {
-  if (seconds === null) return "the default lifetime";
+  if (seconds === null) return "Not set";
   const unit = (n: number, one: string): string =>
     `${n} ${one}${n === 1 ? "" : "s"}`;
   if (seconds % 3600 === 0) return unit(seconds / 3600, "hour");
@@ -92,8 +99,9 @@ export function widening(recipe: EdgeMintRecipe): string | null {
   if (!was) return null;
   const lines: string[] = [];
   if (
-    recipe.ttlSeconds !== null &&
-    (was.ttlSeconds === null || recipe.ttlSeconds > was.ttlSeconds)
+    typeof recipe.ttlSeconds === "number" &&
+    typeof was.ttlSeconds === "number" &&
+    recipe.ttlSeconds > was.ttlSeconds
   )
     lines.push(
       `A leaked token works for ${lifetime(recipe.ttlSeconds)} instead of ${lifetime(was.ttlSeconds)}.`,
@@ -105,4 +113,61 @@ export function widening(recipe: EdgeMintRecipe): string | null {
         : "Any device of this product can now mint it, licensed or not.",
     );
   return lines.length ? lines.join(" ") : null;
+}
+
+/** A field value as the operator reads it: a lifetime in units, who may mint in words, "Not set". */
+export function readable(
+  field: keyof EdgeMintRecipeFields,
+  value: string | number | null | undefined,
+): string {
+  if (value === null || value === undefined || value === "") return "Not set";
+  if (field === "ttlSeconds") return lifetime(Number(value));
+  if (field === "requires")
+    return (
+      REQUIRES_LABELS[value as EdgeMintRecipe["requires"]] ?? String(value)
+    );
+  return String(value);
+}
+
+/** A claims template as pretty JSON lines (the raw text when it does not parse). */
+export function claimLines(json: string | null | undefined): string[] {
+  if (json === null || json === undefined || json === "") return [];
+  try {
+    return JSON.stringify(JSON.parse(json), null, 2).split("\n");
+  } catch {
+    return json.split("\n");
+  }
+}
+
+export interface DiffLine {
+  kind: "same" | "add" | "del";
+  text: string;
+}
+
+/** A line diff of two line lists (longest common subsequence). */
+export function lineDiff(a: string[], b: string[]): DiffLine[] {
+  const t = Array.from({ length: a.length + 1 }, () =>
+    new Array<number>(b.length + 1).fill(0),
+  );
+  for (let i = a.length - 1; i >= 0; i--)
+    for (let j = b.length - 1; j >= 0; j--)
+      t[i]![j] =
+        a[i] === b[j]
+          ? t[i + 1]![j + 1]! + 1
+          : Math.max(t[i + 1]![j]!, t[i]![j + 1]!);
+  const out: DiffLine[] = [];
+  let i = 0;
+  let j = 0;
+  while (i < a.length && j < b.length) {
+    if (a[i] === b[j]) {
+      out.push({ kind: "same", text: a[i]! });
+      i++;
+      j++;
+    } else if (t[i + 1]![j]! >= t[i]![j + 1]!)
+      out.push({ kind: "del", text: a[i++]! });
+    else out.push({ kind: "add", text: b[j++]! });
+  }
+  while (i < a.length) out.push({ kind: "del", text: a[i++]! });
+  while (j < b.length) out.push({ kind: "add", text: b[j++]! });
+  return out;
 }

@@ -71,6 +71,7 @@ import { PageHeader } from "../../../../ui/PageHeader.js";
 import { useProduct } from "../../../data/hooks.js";
 import { qk } from "../../../data/queries.js";
 import { Link, navigate } from "../../../router.js";
+import { pendingRecipes, reviewAction } from "../../config/model/pending.js";
 import { r } from "../../../routes.js";
 import {
   AttentionList,
@@ -311,8 +312,7 @@ function useAttention(
       action: { label: "Repository", href: `${r.settings(slug)}` },
     });
   }
-  const edge = moduleOf(p, "edgeMint");
-  for (const id of (edge?.pendingApproval as string[] | undefined) ?? []) {
+  for (const id of pendingRecipes(p)) {
     items.push({
       id: `edge-${id}`,
       tone: "warning",
@@ -696,7 +696,7 @@ function useChecklist(
       id: "edge",
       label: ok ? "Edge-mint recipes approved" : "Approve edge-mint recipes",
       state: ok ? "done" : "todo",
-      action: ok ? undefined : { label: "Catalog", href: r.catalog(slug) },
+      action: ok ? undefined : reviewAction(slug, p),
     });
   }
   const settled =

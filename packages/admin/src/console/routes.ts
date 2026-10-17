@@ -252,7 +252,7 @@ export function parseLocation(hash: string): ParsedLocation {
       return redirectTo(
         recipe
           ? r.catalogEntry(slug, recipe, true)
-          : productPage(slug, "catalog"),
+          : productPage(slug, "catalog", { query: { review: "1" } }),
       );
     }
     const target = sectionDefault(rest);

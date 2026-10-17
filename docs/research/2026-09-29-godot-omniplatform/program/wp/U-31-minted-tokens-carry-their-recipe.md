@@ -90,6 +90,10 @@ Corrections from the code:
 
 Left: the UX reviewer pass (BUILT mode) on the drawer states; `worker/src/console/lib/shape.ts` still emits the old `config/edge-mint` route in setup actions (the redirect covers it); an in-drawer passkey step-up and the commit link (above).
 
+### Fix round after the BUILT UX review (2026-10-17)
+
+B1 to B2, M1 to M15 and m1 to m9 fixed; the review is `_mockups/review/U-31/ux-review.md`. Notes: the step-up button now reads **Sign in again** in the refused state (m5, replacing "Try again"); "Access" in the open-mint callout links to Enrollment, where registration is set; unpublished edits are handled on the entry (no review button while the draft differs, with the reason in the callout), not in the drawer; pending recipes are counted from the product's setup state, on the Catalog nav item, on the catalog row and key drawer, and the old Edge mint URL, the Overview checklist and the Services link go straight to the recipe when exactly one is pending. Left out as console-wide: accent/contrast, the drawer head rule, the heading focus ring (m3's last bullet).
+
 ## Screen acceptance (brand transition, 2026-10-09)
 
 Done when every row holds for each screen and state this package ships, checked in the real runtime

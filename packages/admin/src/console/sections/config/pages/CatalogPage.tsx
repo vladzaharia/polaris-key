@@ -1,13 +1,5 @@
 import * as React from "react";
-import {
-  Check,
-  EyeOff,
-  History,
-  Lock,
-  Pencil,
-  Plus,
-  TriangleAlert,
-} from "lucide-react";
+import { Check, EyeOff, History, Lock, Pencil, Plus } from "lucide-react";
 import type { ConfigEntry } from "../../../../api.js";
 import { inAppLabel, inAppState, typeLabel } from "../../../../lib/labels.js";
 import {
@@ -49,8 +41,10 @@ import {
   entryType,
   type EntryType,
 } from "../components/entryType.js";
+import { RetiredMark } from "../components/EntryMarks.js";
 import { defaultText, retiredNotes } from "../model/entryNotes.js";
 import { HistoryDrawer } from "../components/HistoryDrawer.js";
+import { RecipeApproval, RecipePill } from "../components/RecipeState.js";
 import { CollectionTemplate } from "../../../templates/Collection.js";
 import { useTableUrlState } from "../../../useTableUrlState.js";
 import {
@@ -122,18 +116,11 @@ export function CatalogPage({ slug }: { slug: string }): React.ReactElement {
           >
             <span className="flex items-center gap-1 truncate font-mono text-xs text-fg-strong">
               {row.original.key}
-              {retiredNotes(row.original).length ? (
-                <span title={retiredNotes(row.original).join(" ")}>
-                  <TriangleAlert
-                    aria-hidden
-                    className="size-3.5 shrink-0 text-warning"
-                  />
-                  <span className="sr-only">Uses a retired spelling</span>
-                </span>
-              ) : null}
+              <RetiredMark entry={row.original} />
             </span>
-            <span className="truncate text-xs font-normal text-fg-muted">
-              {row.original.label}
+            <span className="flex items-center gap-2 text-xs font-normal text-fg-muted">
+              <span className="truncate">{row.original.label}</span>
+              <RecipePill slug={slug} entry={row.original} />
             </span>
           </span>
         ),
@@ -418,6 +405,7 @@ function KeyDrawer({
             {entry.description ? (
               <p className="text-sm text-fg">{entry.description}</p>
             ) : null}
+            <RecipeApproval slug={slug} entry={entry} />
             <DescriptionList
               columns={2}
               items={[

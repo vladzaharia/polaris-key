@@ -1,5 +1,6 @@
 import * as React from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { AlertTriangle, XCircle } from "lucide-react";
 import {
   ApiError,
   type EdgeMintIdentity,
@@ -8,15 +9,19 @@ import {
 } from "../../../../api.js";
 import { confirmFor } from "../../../../lib/actions.js";
 import { errorCopy } from "../../../../lib/errorCopy.js";
+import { fromSeconds } from "../../../../lib/format.js";
 import { Button } from "../../../../ui/Button.js";
 import { Callout } from "../../../../ui/Callout.js";
 import { Checkbox } from "../../../../ui/Checkbox.js";
-import { CodeBlock } from "../../../../ui/CodeBlock.js";
 import { ConfirmDialog } from "../../../../ui/ConfirmDialog.js";
 import { DescriptionList } from "../../../../ui/DescriptionList.js";
 import { Drawer, DrawerBody, DrawerFooter } from "../../../../ui/Drawer.js";
-import { StatusPill } from "../../../../ui/StatusPill.js";
+import { ErrorState } from "../../../../ui/ErrorState.js";
+import { Skeleton } from "../../../../ui/Skeleton.js";
+import { Timestamp } from "../../../../ui/Timestamp.js";
 import { toast } from "../../../../ui/toast.js";
+import { canIn } from "../../../access/can.js";
+import { useMe, useProduct } from "../../../data/hooks.js";
 import { mutate } from "../../../data/mutations.js";
 import { qk } from "../../../data/queries.js";
 import { codecs, Link, useSearchParam } from "../../../router.js";
@@ -24,8 +29,12 @@ import { r } from "../../../routes.js";
 import { stepUpHref, useStepUp } from "../../core/pages/UserRelink.js";
 import { useEdgeMint } from "../data.js";
 import {
-  changedLabel,
-  FIELD_LABELS,
+  FieldGrid,
+  publicReasons,
+  SecretUsage,
+  type Field,
+} from "./RecipeFields.js";
+import {
   FIELD_ORDER,
   fieldsOf,
   IDENTITY_ROWS,
@@ -33,74 +42,28 @@ import {
   widening,
 } from "../model/edgeMintFields.js";
 
-/** Why the mint is public, in words, from the response's three flags. */
-export function publicReasons(data: EdgeMintRecipesResponse): string {
-  const reasons = [
-    ...(data.registration === "open" ? ["registration is open"] : []),
-    ...(data.anonymousEnroll ? ["anonymous enrollment is on"] : []),
-    ...(data.oidcDefault
-      ? ["every account that can sign in gets a default tier"]
-      : []),
-  ];
-  if (reasons.length > 1)
-    return `${reasons.slice(0, -1).join(", ")} and ${reasons[reasons.length - 1]}`;
-  return reasons[0] ?? "registration is open";
-}
-
-export function SecretUsage({
-  usage,
-}: {
-  usage: EdgeMintRecipe["secretUsage"];
-}): React.ReactElement {
-  if (usage === "edge-mint")
-    return (
-      <StatusPill tone="success" size="sm">
-        Marked edge-mint
-      </StatusPill>
-    );
-  if (usage === "missing")
-    return (
-      <StatusPill tone="danger" size="sm">
-        Not set
-      </StatusPill>
-    );
-  if (usage === "unrecognised")
-    return (
-      <StatusPill tone="danger" size="sm">
-        Unrecognised usage
-      </StatusPill>
-    );
-  return (
-    <StatusPill tone="warning" size="sm">
-      General: cannot sign
-    </StatusPill>
-  );
-}
-
-/** A field's value; the claims template as a code block. */
-function Value({
-  field,
-  value,
-}: {
-  field: string;
-  value: string | number | null | undefined;
-}): React.ReactElement {
-  if (field === "claimsTemplateJson" && value !== null && value !== undefined)
-    return <CodeBlock code={String(value)} language="json" copy={false} wrap />;
-  return <span className="break-all font-mono text-xs">{show(value)}</span>;
-}
-
 /** The recipe as the operator saw it: any change under it means they have not seen the new one. */
 const snapshot = (recipe: EdgeMintRecipe): string =>
   JSON.stringify([fieldsOf(recipe), recipe.changedFields, recipe.status]);
+
+/** "Devices of DJDL with a usable license can then mint…", from who may mint. */
+function whoCanMint(
+  requires: EdgeMintRecipe["requires"],
+  name: string,
+): string {
+  if (requires === "none") return "Anyone";
+  if (requires === "registered") return `Any device of ${name}`;
+  return `Devices of ${name} with a usable license`;
+}
 
 /**
  * The approve drawer of a minted token (admin-2-16; P0-12), opened by `?recipe=<key>` on the
  * catalog editor. It compares every security-relevant field with the last approval, changed fields
  * first. The approve route is a step-up: with a sign-in older than five minutes the primary is
- * "Sign in to approve", and a refused or abandoned check leaves a danger strip, the comparison and
- * "Try again". A recipe that changes while the drawer is open (a new commit, or a 409 on approve)
- * swaps the comparison under an info callout and approves nothing.
+ * "Sign in to approve", and a refused check leaves a danger strip in a fixed slot above the foot,
+ * the comparison and "Sign in again". A recipe that changes while the drawer is open (a new commit,
+ * or a 409 on approve) swaps the comparison under an info callout and approves nothing. Revoking
+ * closes the drawer: the operator's own change is not a concurrent one.
  */
 export function ApproveRecipeDrawer({
   slug,
@@ -116,6 +79,9 @@ export function ApproveRecipeDrawer({
   const open = recipeId !== "";
   const mint = useEdgeMint(slug, open);
   const data = mint.data;
+  const me = useMe().data;
+  const productName = useProduct(slug).data?.name ?? slug;
+  const canEdit = canIn(me, "config", slug, "edit");
   const recipe = data?.recipes?.find((x) => x.id === recipeId) ?? null;
   const { fresh, markStale } = useStepUp(open);
   const [ack, setAck] = React.useState(false);
@@ -125,6 +91,8 @@ export function ApproveRecipeDrawer({
   const [error, setError] = React.useState<unknown>(null);
   const [revoking, setRevoking] = React.useState(false);
   const seen = React.useRef<{ id: string; snap: string } | null>(null);
+  // Who opened the drawer, read in the first render, before the drawer moves focus.
+  const opener = React.useRef<Element | null>(document.activeElement);
 
   // What the operator has read. A different recipe resets the drawer; the same one with other
   // fields is "changed while you were reviewing".
@@ -141,6 +109,7 @@ export function ApproveRecipeDrawer({
       setError(null);
     } else if (seen.current.snap !== snap) {
       setStale(true);
+      setRefused(false);
       setAck(false);
       setError(null);
     }
@@ -157,6 +126,8 @@ export function ApproveRecipeDrawer({
   const wider = recipe ? widening(recipe) : null;
   const returnTo = `${r.catalogEdit(slug)}?entry=${encodeURIComponent(recipeId)}&recipe=${encodeURIComponent(recipeId)}`;
   const needsSignIn = !fresh;
+  const loadFailed = mint.isError && !data;
+  const needsAck = publicMint && !ack;
 
   const approve = async (): Promise<void> => {
     if (!recipe || !data || busy) return;
@@ -174,7 +145,7 @@ export function ApproveRecipeDrawer({
         publicMint && ack,
       );
       toast.success(`Approved ${recipe.id}`, {
-        description: `It mints for ${slug} exactly as shown.`,
+        description: `It mints for ${productName} exactly as shown.`,
       });
       onClose();
     } catch (err) {
@@ -199,18 +170,61 @@ export function ApproveRecipeDrawer({
     }
   };
 
-  const copy = error ? errorCopy(error, { thing: "Recipe" }) : null;
-  const fields = recipe
-    ? FIELD_ORDER.map((field) => ({
-        field,
-        now: recipe[field],
-        was: recipe.approval?.[field],
-        moved: changed.has(field),
-      }))
-    : [];
+  const closeAfterRevoke = (): void => {
+    // The operator's own change must not read as a concurrent one: leave, and put focus back.
+    // The opener's label changes with the status, so it may be a new element by then.
+    const back = opener.current;
+    setRevoking(false);
+    onClose();
+    window.setTimeout(() => {
+      const target =
+        back instanceof HTMLElement && back.isConnected
+          ? back
+          : document.querySelector<HTMLElement>("[data-recipe-opener]");
+      target?.focus();
+    }, 60);
+  };
+
+  const fields: { field: Field; moved: boolean }[] = FIELD_ORDER.map(
+    (field) => ({ field, moved: changed.has(field) }),
+  );
+  const hasApproval = recipe?.approval != null;
   const movedRows = fields.filter((f) => f.moved);
-  const keptRows = recipe?.approval ? fields.filter((f) => !f.moved) : [];
-  const shownRows = recipe?.approval ? movedRows : fields;
+  const keptRows = hasApproval ? fields.filter((f) => !f.moved) : [];
+  const shownRows = approved ? fields : hasApproval ? movedRows : fields;
+  const approver = recipe?.approval?.approvedBy;
+
+  const title = loadFailed
+    ? "Couldn't load the recipe"
+    : recipe
+      ? approved
+        ? `Recipe ${recipe.id}`
+        : `Approve ${recipe.id}?`
+      : mint.isPending
+        ? "Recipe"
+        : "Recipe not found";
+  const description = loadFailed
+    ? "Nothing was approved."
+    : recipe
+      ? approved
+        ? "Approved: it mints exactly as shown."
+        : `${whoCanMint(recipe.requires, productName)} can then mint tokens signed by ${recipe.signingKeySecret}, with exactly these fields.`
+      : mint.isPending
+        ? "Loading the recipe."
+        : "This product has no recipe by that name.";
+  const copy = error ? errorCopy(error, { thing: "Recipe" }) : null;
+  const reason =
+    !recipe || approved
+      ? null
+      : !canEdit
+        ? "Only members who can edit Managed config can approve."
+        : needsSignIn
+          ? refused
+            ? null
+            : "Approving needs a sign-in from the last five minutes. You come back to this recipe."
+          : needsAck
+            ? "Tick the box to approve."
+            : null;
 
   return (
     <>
@@ -221,37 +235,24 @@ export function ApproveRecipeDrawer({
         }}
         dismissible={!busy}
         size="lg"
-        title={
-          recipe
-            ? approved
-              ? `Recipe ${recipe.id}`
-              : `Approve ${recipe.id}?`
-            : mint.isPending
-              ? "Recipe"
-              : "Recipe not found"
-        }
-        description={
-          recipe ? (
-            approved ? (
-              "Approved: it mints exactly as shown."
-            ) : (
-              <>
-                Every device of {slug} will be able to mint tokens signed by{" "}
-                <code className="font-mono text-xs">
-                  {recipe.signingKeySecret}
-                </code>{" "}
-                with exactly these fields.
-              </>
-            )
-          ) : mint.isPending ? (
-            "Loading."
-          ) : (
-            "This product has no recipe by that name."
-          )
-        }
+        title={title}
+        description={description}
       >
-        {recipe ? (
-          <DrawerBody>
+        <DrawerBody>
+          {loadFailed ? (
+            <ErrorState
+              error={mint.error}
+              onRetry={() => void mint.refetch()}
+              context={{ thing: "The recipe" }}
+            />
+          ) : mint.isPending ? (
+            <div className="space-y-3" aria-busy="true">
+              <Skeleton className="h-5 w-40" />
+              <Skeleton className="h-5 w-full" />
+              <Skeleton className="h-5 w-full" />
+              <Skeleton className="h-5 w-2/3" />
+            </div>
+          ) : recipe ? (
             <div className="space-y-6">
               {stale ? (
                 <Callout
@@ -267,97 +268,31 @@ export function ApproveRecipeDrawer({
                   id="recipe-fields"
                   className="text-sm font-medium text-fg-strong"
                 >
-                  {recipe.approval ? "What changed" : "Fields"}
+                  {approved
+                    ? "Approved"
+                    : hasApproval
+                      ? "What changed"
+                      : "Fields"}
                 </h3>
                 {recipe.approval ? (
                   <p className="text-xs text-fg-muted">
-                    Compared with the approval of{" "}
-                    <span className="break-all">
-                      {recipe.approval.approvedBy}
-                    </span>
-                    .
+                    <bdi>{approver}</bdi> approved{" "}
+                    <Timestamp at={fromSeconds(recipe.approval.approvedAt)} />
+                    {approved ? "" : ". Compared with that approval."}
                   </p>
                 ) : null}
-                {recipe.approval && movedRows.length === 0 ? (
-                  <p className="text-sm text-fg-muted">
-                    No field changed. {changedLabelList(recipe)}
-                  </p>
+                {shownRows.length > 0 ? (
+                  <FieldGrid recipe={recipe} rows={shownRows} />
                 ) : null}
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-sm">
-                    <thead className="sr-only">
-                      <tr>
-                        <th scope="col">Field</th>
-                        <th scope="col">Value</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
-                      {shownRows.map(({ field, now, was, moved }) => (
-                        <tr key={field}>
-                          <th
-                            scope="row"
-                            className="py-1.5 pr-3 font-normal text-fg-muted"
-                          >
-                            {FIELD_LABELS[field]}
-                            {moved ? (
-                              <span className="sr-only"> (changed)</span>
-                            ) : null}
-                          </th>
-                          <td className="space-y-1 py-1.5">
-                            {moved ? (
-                              <div
-                                data-testid={`was-${field}`}
-                                className="rounded bg-danger-subtle px-1.5 py-0.5 text-danger line-through"
-                              >
-                                <span aria-hidden="true">− </span>
-                                <span className="sr-only">Approved as </span>
-                                <Value field={field} value={was} />
-                              </div>
-                            ) : null}
-                            <div
-                              className={
-                                moved
-                                  ? "rounded bg-success-subtle px-1.5 py-0.5 font-semibold text-success"
-                                  : undefined
-                              }
-                            >
-                              {moved ? (
-                                <>
-                                  <span aria-hidden="true">+ </span>
-                                  <span className="sr-only">Now </span>
-                                </>
-                              ) : null}
-                              <Value field={field} value={now} />
-                            </div>
-                            {field === "signingKeySecret" ? (
-                              <span className="mt-1 flex">
-                                <SecretUsage usage={recipe.secretUsage} />
-                              </span>
-                            ) : null}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                {keptRows.length > 0 ? (
+                {keptRows.length > 0 && !approved ? (
                   <details className="text-sm">
-                    <summary className="cursor-pointer text-fg-muted">
+                    <summary className="flex min-h-6 cursor-pointer items-center text-fg-muted">
                       {keptRows.length}{" "}
                       {keptRows.length === 1 ? "field" : "fields"} unchanged
                     </summary>
-                    <dl className="mt-2 divide-y divide-border">
-                      {keptRows.map(({ field, now }) => (
-                        <div key={field} className="flex gap-3 py-1.5">
-                          <dt className="w-40 shrink-0 text-fg-muted">
-                            {FIELD_LABELS[field]}
-                          </dt>
-                          <dd>
-                            <Value field={field} value={now} />
-                          </dd>
-                        </div>
-                      ))}
-                    </dl>
+                    <div className="mt-1">
+                      <FieldGrid recipe={recipe} rows={keptRows} />
+                    </div>
                   </details>
                 ) : null}
                 {recipe.secretUsage !== "edge-mint" ? (
@@ -369,7 +304,7 @@ export function ApproveRecipeDrawer({
                     as an edge-mint signing key in{" "}
                     <Link
                       to={r.keys(slug)}
-                      className="text-accent-fg underline-offset-4 hover:underline"
+                      className="text-accent-fg underline underline-offset-2"
                     >
                       Keys &amp; secrets
                     </Link>
@@ -431,7 +366,7 @@ export function ApproveRecipeDrawer({
                   below.
                 </p>
               ) : null}
-              {!approved && !licenseEnabled ? (
+              {!approved && !licenseEnabled && !changed.has("license") ? (
                 <p
                   data-testid="edge-mint-approve-license-off"
                   className="text-sm text-warning"
@@ -441,71 +376,99 @@ export function ApproveRecipeDrawer({
                 </p>
               ) : null}
               {!approved && publicMint && data ? (
-                <Checkbox
-                  label={`I understand ${publicReasons(data)}, so anyone who installs this product can mint this token`}
-                  checked={ack}
-                  onCheckedChange={setAck}
-                />
-              ) : null}
-              {!approved && needsSignIn && !refused ? (
-                <p className="text-sm text-fg-muted">
-                  Approving needs a sign-in from the last five minutes. You come
-                  back to this recipe.
-                </p>
-              ) : null}
-              {refused || copy ? (
-                <div
-                  role="alert"
-                  className="rounded-md border border-danger-border bg-danger-subtle p-3 text-sm"
+                <Callout
+                  tone="warning"
+                  title={`Anyone who installs ${productName} can get one`}
                 >
-                  {refused ? (
-                    <>
-                      <p className="font-semibold text-danger">
-                        Nothing was approved: the sign-in check didn&apos;t
-                        finish.
-                      </p>
-                      <p className="text-fg">Sign in again, then approve.</p>
-                    </>
-                  ) : (
-                    <>
-                      <p className="font-semibold text-danger">{copy!.title}</p>
-                      <p className="text-fg">{copy!.description}</p>
-                    </>
-                  )}
-                </div>
+                  <div className="space-y-2">
+                    <p>
+                      Because {publicReasons(data)}.{" "}
+                      <Link
+                        to={r.enrollment(slug)}
+                        className="text-accent-fg underline underline-offset-2"
+                      >
+                        Change in Enrollment
+                      </Link>
+                    </p>
+                    <Checkbox
+                      label="I understand, and want this token minted for anyone who installs the app"
+                      checked={ack}
+                      onCheckedChange={setAck}
+                    />
+                  </div>
+                </Callout>
               ) : null}
             </div>
-          </DrawerBody>
+          ) : null}
+        </DrawerBody>
+        {refused || copy || reason ? (
+          <div
+            className="max-h-[40vh] shrink-0 space-y-2 overflow-y-auto px-4 pb-3 lg:px-6"
+            data-testid="approve-notices"
+          >
+            {refused ? (
+              <div
+                role="alert"
+                className="flex items-start gap-2 rounded-md border border-danger-border bg-danger-subtle p-3 text-sm"
+              >
+                <XCircle
+                  aria-hidden
+                  className="mt-0.5 size-4 shrink-0 text-danger"
+                />
+                <div>
+                  <p className="font-semibold text-danger">
+                    Nothing was approved: the sign-in check didn&apos;t finish.
+                  </p>
+                  <p className="text-fg">Sign in again, then approve.</p>
+                </div>
+              </div>
+            ) : null}
+            {copy ? (
+              <ErrorState
+                error={error}
+                context={{ thing: "Recipe" }}
+                className="items-start px-3 py-3 text-left"
+              />
+            ) : null}
+            {reason ? (
+              <p className="flex items-center gap-2 text-sm text-fg-muted">
+                <AlertTriangle aria-hidden className="size-4 shrink-0" />
+                {reason}
+              </p>
+            ) : null}
+          </div>
         ) : null}
         <DrawerFooter>
-          <Button variant="ghost" disabled={busy} onClick={onClose}>
-            {approved || !recipe ? "Close" : "Cancel"}
-          </Button>
-          {recipe?.approval ? (
+          {recipe?.approval && canEdit ? (
             // The escape hatch sits apart from the primary action, on the far side.
             <Button
               variant="ghost"
-              className="text-danger sm:mr-auto sm:order-first"
+              className="text-danger sm:mr-auto"
               disabled={busy}
               onClick={() => setRevoking(true)}
             >
               Revoke approval…
             </Button>
           ) : null}
+          <Button variant="ghost" disabled={busy} onClick={onClose}>
+            {approved || !recipe ? "Close" : "Cancel"}
+          </Button>
           {recipe && !approved ? (
-            needsSignIn ? (
+            canEdit && needsSignIn ? (
               <Button asChild>
                 <a href={stepUpHref(returnTo)}>
-                  {refused ? "Try again" : "Sign in to approve"}
+                  {refused ? "Sign in again" : "Sign in to approve"}
                 </a>
               </Button>
             ) : (
               <Button
                 loading={busy}
                 disabledReason={
-                  publicMint && !ack
-                    ? "Tick the acknowledgement above first."
-                    : undefined
+                  !canEdit
+                    ? "Only members who can edit Managed config can approve."
+                    : needsAck
+                      ? "Tick the acknowledgement above first."
+                      : undefined
                 }
                 onClick={() => void approve()}
               >
@@ -545,16 +508,11 @@ export function ApproveRecipeDrawer({
           toast.success(`Revoked the approval of ${id}`, {
             description: "It no longer mints until it is approved again.",
           });
+          closeAfterRevoke();
         }}
       />
     </>
   );
-}
-
-/** The reasons a recipe's approval no longer applies when no field moved (License, sign-in trust). */
-function changedLabelList(recipe: EdgeMintRecipe): string {
-  const reasons = recipe.changedFields.map(changedLabel);
-  return reasons.length ? `${reasons.join(", ")}.` : "";
 }
 
 /** The drawer wherever `?recipe=<key>` is in the URL: one mount for the catalog editor. */
