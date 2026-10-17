@@ -35,6 +35,7 @@
   "GET /platform/override-migration/report": "platform",
   "GET /platform/reserved-names": "platform",
   "GET /platform/settings": "platform",
+  "GET /platform/settings/:key/reach": "platform",
   "GET /platform/settings/backfill": "platform",
   "GET /platform/store-connections/**": "platform",
   "GET /platform/version": "platform",

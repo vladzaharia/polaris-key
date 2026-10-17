@@ -11,6 +11,7 @@
  */
 
 import type { Db } from "../../db/types.js";
+import { parseJsonColumn } from "../../platform/json.js";
 import { adminJson } from "../../core/console/respond.js";
 import { isSettingValue } from "../../core/settings/resolve.js";
 import type { SettingDef } from "../../core/settings/types.js";
@@ -34,15 +35,6 @@ interface Own {
   value_json: string | null;
 }
 
-function parse(json: string | null): unknown {
-  if (json === null) return undefined;
-  try {
-    return JSON.parse(json) as unknown;
-  } catch {
-    return undefined;
-  }
-}
-
 export async function reachOf(
   db: Db,
   def: SettingDef,
@@ -61,7 +53,7 @@ export async function reachOf(
     def.key,
     now,
   )) {
-    const v = parse(r.value_json);
+    const v = parseJsonColumn(r.value_json) ?? undefined;
     // A value that is no value of the product entry is ignored by the resolver too.
     if (productDef && v !== undefined && isSettingValue(productDef, v))
       own.set(r.product, v);
