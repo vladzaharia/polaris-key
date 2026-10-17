@@ -67,6 +67,8 @@ const WRITE_SEAMS: readonly (readonly [string, string, RemovedBy])[] = [
   ["core/accounts/accountOverrides.ts", "account_overrides", "permanent"],
   ["core/accounts/accountSubjects.ts", "account_product_subjects", "permanent"],
   ["core/accounts/accountSubjects.ts", "licenses", "P0-20"],
+  // The audit row core/notify leaves when a security notice reaches nobody (P0-21).
+  ["core/accounts/portalAudit.ts", "portal_audit", "permanent"],
   ["core/edgeMintApproval.ts", "edge_mint_approvals", "P0-26"],
   // core/licensing is the licences' home.
   ["core/licensing/grants.ts", "licenses", "permanent"],
