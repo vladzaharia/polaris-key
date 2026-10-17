@@ -125,6 +125,7 @@ async function withCloudSync(db: Db, on: boolean): Promise<void> {
         update: { enabled: false },
         identity: { enabled: true },
         sync: { enabled: on },
+        commerce: { enabled: false },
       },
     }),
     "manifest",

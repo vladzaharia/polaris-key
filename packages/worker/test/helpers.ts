@@ -33,4 +33,5 @@ export const NO_HOOKS: ServiceHooks = {
   delivery: () => null,
   outletCapabilities: async () => null,
   licenseProvenance: () => null,
+  storeProducts: () => null,
 };

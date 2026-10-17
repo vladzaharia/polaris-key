@@ -17,7 +17,7 @@ from helpers import PRODUCT, TOKEN, make_client
 
 BINDING = "F8606AE6-C6AF-419A-A7CA-125107444036"
 PRODUCTS = [{"store": "steam", "productId": "1234560", "flag": "extras.diceSkins", "deliverable": "app"}]
-SERVICES = ["license", "config", "release", "distribution"]
+SERVICES = ["license", "config", "release", "distribution", "commerce"]
 
 
 def _client(handler, **kw):
@@ -37,7 +37,7 @@ def test_binding_is_lowercased_and_kept() -> None:
     b = c.commerce.binding()
     assert b.bindingId == BINDING.lower() == c.commerce.binding_id
     assert len(b.products) == 1 and b.products[0].flag == "extras.diceSkins"
-    assert seen[0].url.path == f"/{PRODUCT}/distribution/commerce/binding"
+    assert seen[0].url.path == f"/{PRODUCT}/commerce/binding"
     assert seen[0].headers["authorization"] == f"Bearer {TOKEN}"
     c.close()
 
@@ -54,7 +54,7 @@ def test_claim_steam_posts_the_ticket_and_syncs() -> None:
     bodies = []
 
     def h(r):
-        if r.url.path.endswith("/distribution/commerce/claim"):
+        if r.url.path.endswith("/commerce/claim"):
             bodies.append(json.loads(r.content))
             return httpx.Response(200, json={"ok": True, "store": "steam", "productId": "1234560", "flag": "extras.diceSkins", "deliverable": "app", "state": "active", "granted": True, "changed": True})
         return httpx.Response(404)
@@ -97,7 +97,7 @@ def test_bad_payloads_are_refused_before_any_request() -> None:
     c.close()
 
 
-def test_needs_license_and_distribution_and_a_token() -> None:
+def test_needs_commerce_and_a_token() -> None:
     c = _client(lambda r: httpx.Response(404), services=["license"])
     with pytest.raises(PolarisError) as e:
         c.commerce.binding()

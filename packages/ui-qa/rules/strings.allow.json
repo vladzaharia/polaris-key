@@ -65,7 +65,7 @@
       "reason": "A device id the kit prints for the person to copy (a value, not copy)."
     },
     {
-      "pattern": "Render quality|Audio volume|Net proxy|Net lockdown|Ui compact|Ui sounds|Debug logging|Extra [a-g]|\\d+",
+      "pattern": "Render quality|Audio volume|Net proxy|Net lockdown|UI compact|UI sounds|Debug logging|Extra [a-g]|\\d+",
       "boards": ["elements"],
       "reason": "Fixture settings: the entry's label (else its key read as words) and a numeric value, product data the kit displays."
     },

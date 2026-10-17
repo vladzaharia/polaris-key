@@ -12,7 +12,11 @@ import { run, svgTree } from "../scripts/gen.js";
 import { SERVICE_ACCENTS, THEME_TOKENS } from "../src/generated/tokens.js";
 import { KIT_MOTION, KIT_MOTION_MEASURES } from "../src/tokens/kit.js";
 import { MOTION } from "../src/tokens/scales.js";
-import { SERVICE_IDS, STATUS_IDS } from "../src/tokens/source.js";
+import {
+  SERVICE_ALIAS,
+  SERVICE_IDS,
+  STATUS_IDS,
+} from "../src/tokens/source.js";
 
 const PKG = join(import.meta.dirname, "..");
 const css = readFileSync(join(PKG, "css", "tokens.css"), "utf8");
@@ -255,8 +259,10 @@ describe("tokens.css", () => {
   it("re-points the accent and section bit per data-service", () => {
     for (const id of SERVICE_IDS.filter((s) => s !== "core")) {
       const b = block(`[data-service="${id}"]`);
-      expect(b).toContain(`--pk-accent: var(--pk-service-${id});`);
-      expect(b).toContain(`--pk-section-bit: var(--pk-service-${id}-bit);`);
+      // Commerce points at Distribution's variables (B1); the next test pins that.
+      const own = SERVICE_ALIAS[id] ?? id;
+      expect(b).toContain(`--pk-accent: var(--pk-service-${own});`);
+      expect(b).toContain(`--pk-section-bit: var(--pk-service-${own}-bit);`);
       expect(b).toContain(`--pk-section-bit-display: inline;`);
     }
   });

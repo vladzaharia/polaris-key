@@ -25,6 +25,7 @@ import {
   qrCode,
   radioKeys,
   seatMeter,
+  openOnChecked,
   shimmer,
   statusLine,
   successMark,
@@ -101,14 +102,16 @@ function contentFor(c: KitCtx): ReactNode {
     case "SignIn":
     case "SignInHandoff": {
       const url = c.view.decisions.link;
-      const showUrl = keys.has("signin.handoff.url") && url?.display;
+      // The address is shown as text whenever there is one (a no-browser device has only it).
+      const shown = url?.display ?? url?.url?.replace(/^https?:\/\//, "");
+      const showUrl = keys.has("signin.handoff.url") && shown;
       return (
         <>
           {codeDisplay(c)}
           {qrCode(c, url?.qr ? url.url : null)}
           {showUrl ? (
             <p className="body" data-key="signin.handoff.url">
-              {text(c, "signin.handoff.url", { url: url!.display! })}
+              {text(c, "signin.handoff.url", { url: shown as string })}
               {copyAddress(c)}
             </p>
           ) : keys.has("signin.handoff.url") ? (
@@ -229,6 +232,7 @@ function place(c: KitCtx, layout: Layout) {
   };
   const x = c.chrome;
   if (!x) return p;
+  if (x.meta?.length) p.meta = [...p.meta, ...x.meta];
   const drop = new Set(x.drop ?? []);
   return {
     ...p,
@@ -521,7 +525,7 @@ function deviceLimitContent(c: KitCtx): ReactNode {
     <>
       {qr}
       {keys.has("part.seatMeter.caption") && used !== undefined && limit != null
-        ? seatMeter(c, used, limit)
+        ? seatMeter(c, used, limit, !keys.has("deviceLimit.heading"))
         : null}
       {keys.has("signin.replace.meta") ? (
         <div
@@ -529,6 +533,8 @@ function deviceLimitContent(c: KitCtx): ReactNode {
           role="radiogroup"
           aria-labelledby="pk-title"
           data-part="device-list"
+          data-scroll={devices.length > 6 ? "" : undefined}
+          ref={devices.length > 6 ? openOnChecked : undefined}
         >
           {devices.map((d, i) => (
             <div
@@ -817,6 +823,8 @@ function replaceRows(c: KitCtx): ReactNode {
         role="radiogroup"
         aria-labelledby="pk-title"
         data-part="device-list"
+        data-scroll={devices.length > 6 ? "" : undefined}
+        ref={devices.length > 6 ? openOnChecked : undefined}
       >
         {devices.map((d, i) => (
           <div
@@ -1119,6 +1127,34 @@ function settingControl(c: KitCtx, r: SettingsRow, name: string): ReactNode {
   );
 }
 
+/** Words a key spells in capitals when it is read as a label (ui.compact reads "UI compact"). */
+const ACRONYMS: Readonly<Record<string, string>> = {
+  ui: "UI",
+  url: "URL",
+  uri: "URI",
+  id: "ID",
+  api: "API",
+  cpu: "CPU",
+  gpu: "GPU",
+  fps: "FPS",
+  hdr: "HDR",
+  vr: "VR",
+  ar: "AR",
+  ip: "IP",
+  dns: "DNS",
+  vpn: "VPN",
+  usb: "USB",
+  tls: "TLS",
+  ssl: "SSL",
+  sdk: "SDK",
+  os: "OS",
+  pc: "PC",
+  tv: "TV",
+  hdmi: "HDMI",
+  pin: "PIN",
+  qr: "QR",
+};
+
 /** A setting's name: the catalog entry's label, else its key read as words (`audio.volume` →
  *  "Audio volume"), never the raw key (DL8). */
 export function settingLabel(row: SettingsRow): string {
@@ -1127,7 +1163,11 @@ export function settingLabel(row: SettingsRow): string {
     .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
     .split(/[._\-\s/:]+/)
     .filter(Boolean)
-    .map((w) => w.toLocaleLowerCase())
+    .map((w) =>
+      Object.hasOwn(ACRONYMS, w.toLowerCase())
+        ? ACRONYMS[w.toLowerCase()]!
+        : w.toLocaleLowerCase(),
+    )
     .join(" ");
   return phrase ? phrase[0]!.toLocaleUpperCase() + phrase.slice(1) : row.key;
 }

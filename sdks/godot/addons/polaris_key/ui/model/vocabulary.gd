@@ -40,6 +40,7 @@ const SERVICES := [
 	{"slug": "update", "requires": ["distribution"]},
 	{"slug": "identity", "requires": []},
 	{"slug": "sync", "requires": ["config", "identity"]},
+	{"slug": "commerce", "requires": ["license"]},
 ]
 
 const OS_NAMES := ["macos", "ios", "android", "windows", "linux", "web", "tvos", "visionos", "watchos"]

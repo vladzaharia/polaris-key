@@ -75,6 +75,7 @@ const CONFIG_ONLY: ServicesMap = {
   update: { enabled: false },
   identity: { enabled: false },
   sync: { enabled: false },
+  commerce: { enabled: false },
 };
 
 const LICENSE_ONLY: ServicesMap = {
@@ -85,6 +86,7 @@ const LICENSE_ONLY: ServicesMap = {
   update: { enabled: false },
   identity: { enabled: false },
   sync: { enabled: false },
+  commerce: { enabled: false },
 };
 
 const NEITHER: ServicesMap = {
@@ -95,6 +97,7 @@ const NEITHER: ServicesMap = {
   update: { enabled: false },
   identity: { enabled: false },
   sync: { enabled: false },
+  commerce: { enabled: false },
 };
 
 function adminEnv(): Env {

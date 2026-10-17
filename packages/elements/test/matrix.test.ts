@@ -37,6 +37,9 @@ beforeAll(() => {
 // Keys the kit leaves out on purpose (the review's terse-copy fixes): the lede that repeats the
 // title, the product line under the header, a heading with nothing under it.
 const LEFT_OUT = new Set([
+  // No "or" divider over the sign-in methods (DL4) and no "Sign in…" link on the sign-in step.
+  "signin.provider.group",
+  "signin.menu.signIn",
   "devices.lede",
   "offlineActivation.product",
   "update.whatsNew",

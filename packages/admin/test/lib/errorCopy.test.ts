@@ -102,9 +102,15 @@ const TABLE: [
   ],
   [
     "503 KEK",
-    api(503),
+    api(503, { code: "kek_unavailable" }),
     {},
     { title: "The platform keyring is unavailable", action: "platform" },
+  ],
+  [
+    "503 without a keyring code",
+    api(503),
+    {},
+    { title: "The service is unavailable", action: "retry" },
   ],
   [
     "500 catalog_unavailable",

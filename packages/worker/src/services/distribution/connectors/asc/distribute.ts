@@ -59,7 +59,7 @@
  *     Cancelling a submission is a plain confirm.
  *
  * A-17e: `distribute/submit` also adds the IAP and Background Asset versions it is given (listed by
- * `GET distribute/submission-items`), each proven the pinned app's by `commerce/appleCatalog.ts`
+ * `GET distribute/submission-items`), each proven the pinned app's by `iapCatalog.ts`
  * before the submission is opened, and the preflight carries the first-IAP portal note. The shared
  * plumbing (`distributeControl`, `step`, `proveOwned`) lives in `flow.ts`.
  *
@@ -105,7 +105,7 @@ import {
   firstIapCheck,
   proveSubmissionExtras,
   submissionExtras,
-} from "../../commerce/appleCatalog.js";
+} from "./iapCatalog.js";
 
 // ── Validation ───────────────────────────────────────────────────────────────────────────────
 

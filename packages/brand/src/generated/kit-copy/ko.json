@@ -384,6 +384,7 @@
   "signin.replace.consequence": "{device}은(는) {product}에서 로그아웃되고 {thisDevice}이(가) 그 자리를 사용해요. 자리가 비면 {device}에서 나중에 다시 로그인할 수 있어요. 이 내용은 이메일로 알려 드려요.",
   "signin.replace.inUse": "{device}에서 지금 사용 중이에요.",
   "signin.replace.confirm": "교체하고 계속",
+  "signin.replace.confirmNamed": "{device} 교체하고 계속",
   "signin.replace.back": "뒤로",
   "signin.replace.gone": "이미 제거된 기기예요. 다시 선택하세요.",
   "signin.replace.rateLimited": "기기 변경이 너무 많아요. {seconds, plural, other {#초}} 후에 다시 시도하세요.",

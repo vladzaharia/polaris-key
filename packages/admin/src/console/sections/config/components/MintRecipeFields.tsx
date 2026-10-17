@@ -1,25 +1,26 @@
 import * as React from "react";
 import type { MintBlock } from "@polaris-key/catalog";
 import type { ConfigEntry } from "../../../../api.js";
+import { Button } from "../../../../ui/Button.js";
+import { Callout } from "../../../../ui/Callout.js";
+import { ErrorState } from "../../../../ui/ErrorState.js";
 import { Select } from "../../../../ui/Select.js";
 import { FormField } from "../../../../ui/form.js";
 import { Input } from "../../../../ui/Input.js";
 import { StatusPill } from "../../../../ui/StatusPill.js";
 import { Textarea } from "../../../../ui/Textarea.js";
-import { Link } from "../../../router.js";
-import { r } from "../../../routes.js";
-import { changedLabel } from "../model/edgeMintFields.js";
+import { codecs, useSearchParam } from "../../../router.js";
+import { changedLabel, REQUIRES_LABELS } from "../model/edgeMintFields.js";
 import { useEdgeMint } from "../data.js";
 import { blockOf, withMint, MINT_TTL_MAX } from "../model/mintBlock.js";
 
 /** Select values cannot be empty, so "no flag" has one of its own. */
 const NO_FLAG = "~none";
 const ALGS = ["ES256", "RS256", "EdDSA"] as const;
-const REQUIRES = [
-  { value: "licensed", label: "A device with a usable license" },
-  { value: "registered", label: "Any device of this product" },
-  { value: "none", label: "Anyone" },
-];
+const REQUIRES = (["licensed", "registered", "none"] as const).map((value) => ({
+  value,
+  label: REQUIRES_LABELS[value],
+}));
 
 /**
  * A minted token's recipe, on its entry (U-31): what the Worker signs when the app calls
@@ -43,7 +44,13 @@ export function MintRecipeFields({
   onChange: (next: ConfigEntry) => void;
 }): React.ReactElement {
   // The stored recipe for this key: `null` when there is none, `undefined` while loading.
-  const stored = useEdgeMint(slug).data?.recipes;
+  const [, setRecipeId] = useSearchParam("recipe", codecs.string());
+  const mint = useEdgeMint(slug);
+  const stored = mint.data?.recipes;
+  // Until the stored recipe loads the fields stay read-only: a blank form must never be published
+  // over it.
+  const loadFailed = mint.isError && stored === undefined;
+  const locked = mint.isPending || loadFailed;
   const recipe =
     stored === undefined
       ? undefined
@@ -86,186 +93,223 @@ export function MintRecipeFields({
         ) : recipe === null ? (
           <span className="text-sm text-fg-muted">Not saved yet</span>
         ) : null}
-        {recipe ? (
-          <Link
-            to={`${r.edgeMint(slug)}?recipe=${encodeURIComponent(entry.key)}`}
-            className="text-sm text-accent-fg underline underline-offset-2"
+        {recipe?.status === "approved" ? (
+          <button
+            type="button"
+            data-recipe-opener=""
+            onClick={() => setRecipeId(entry.key)}
+            className="inline-flex min-h-6 items-center text-sm text-accent-fg underline underline-offset-2"
           >
-            {recipe.status === "approved"
-              ? "View approval"
-              : "Review and approve"}
-          </Link>
+            View approval
+          </button>
         ) : null}
       </div>
-      <p className="text-sm text-fg-muted">
-        {edited
-          ? "Publishing saves this recipe. It signs nothing until you approve it."
-          : "Edits publish with the catalog. A changed recipe needs approval again."}
-      </p>
-      {recipe &&
-      recipe.status === "changed" &&
-      recipe.changedFields.length > 0 ? (
-        <p role="status" className="text-sm text-warning">
-          Changed since approval:{" "}
-          {recipe.changedFields.map(changedLabel).join(", ")}.
+      {loadFailed ? (
+        <ErrorState
+          compact
+          error={mint.error}
+          onRetry={() => void mint.refetch()}
+          context={{ thing: "The stored recipe" }}
+        />
+      ) : null}
+      {recipe && recipe.status !== "approved" ? (
+        <Callout
+          tone="warning"
+          title="Minting is stopped until you approve"
+          action={
+            edited ? undefined : (
+              <Button
+                size="sm"
+                variant="outline"
+                data-recipe-opener=""
+                onClick={() => setRecipeId(entry.key)}
+              >
+                Review and approve…
+              </Button>
+            )
+          }
+        >
+          {edited
+            ? "Your unpublished edits aren't part of the saved recipe. Publish the catalog, then approve it."
+            : recipe.status === "changed" && recipe.changedFields.length > 0
+              ? `Changed since approval: ${recipe.changedFields.map(changedLabel).join(", ")}.`
+              : "It signs nothing until an operator approves it as it stands."}
+        </Callout>
+      ) : null}
+      {recipe?.status === "approved" || recipe === null ? (
+        <p className="text-sm text-fg-muted">
+          {edited
+            ? "Publishing saves this recipe. It signs nothing until you approve it."
+            : "Edits publish with the catalog. A changed recipe needs approval again."}
         </p>
       ) : null}
-      <div className="grid gap-4 sm:grid-cols-2">
-        <FormField name="mint-alg" label="Algorithm" value={block.alg}>
-          {(f) => (
-            <Select
-              {...f}
-              value={block.alg}
-              options={ALGS.map((a) => ({ value: a, label: a }))}
-              onChange={(alg) => alg && set({ alg })}
-            />
-          )}
-        </FormField>
+      <fieldset
+        disabled={locked}
+        className="contents"
+        aria-busy={mint.isPending || undefined}
+      >
+        <div className="grid gap-4 sm:grid-cols-2">
+          <FormField name="mint-alg" label="Algorithm" value={block.alg}>
+            {(f) => (
+              <Select
+                {...f}
+                value={block.alg}
+                options={ALGS.map((a) => ({ value: a, label: a }))}
+                onChange={(alg) => alg && set({ alg })}
+              />
+            )}
+          </FormField>
+          <FormField
+            name="mint-secret"
+            label="Signing secret"
+            help="The product secret that holds the key. Set it in Keys and secrets."
+            value={block.signingKeySecret}
+            required
+          >
+            {(f) => (
+              <Input
+                {...f}
+                value={block.signingKeySecret}
+                placeholder="APPLE_MUSIC_KEY"
+                onChange={(e) =>
+                  set({ signingKeySecret: e.target.value.trim() })
+                }
+              />
+            )}
+          </FormField>
+          <FormField
+            name="mint-kid"
+            label="Key id"
+            optional
+            value={block.kid ?? ""}
+          >
+            {(f) => (
+              <Input
+                {...f}
+                value={block.kid ?? ""}
+                onChange={(e) =>
+                  set({ kid: e.target.value.trim() || undefined })
+                }
+              />
+            )}
+          </FormField>
+          <FormField
+            name="mint-audience"
+            label="Audience"
+            optional
+            value={block.audience ?? ""}
+          >
+            {(f) => (
+              <Input
+                {...f}
+                value={block.audience ?? ""}
+                onChange={(e) => set({ audience: e.target.value || null })}
+              />
+            )}
+          </FormField>
+          <FormField
+            name="mint-ttl"
+            label="Lifetime (seconds)"
+            help={`Up to ${MINT_TTL_MAX}.`}
+            optional
+            value={String(block.ttlSeconds ?? "")}
+          >
+            {(f) => (
+              <Input
+                {...f}
+                inputMode="numeric"
+                value={
+                  block.ttlSeconds === undefined ? "" : String(block.ttlSeconds)
+                }
+                onChange={(e) => {
+                  const n = Number(e.target.value);
+                  set({
+                    ttlSeconds:
+                      e.target.value.trim() === "" || !Number.isFinite(n)
+                        ? undefined
+                        : n,
+                  });
+                }}
+              />
+            )}
+          </FormField>
+          <FormField
+            name="mint-requires"
+            label="Who may mint"
+            value={block.requires ?? "licensed"}
+          >
+            {(f) => (
+              <Select
+                {...f}
+                value={block.requires ?? "licensed"}
+                options={REQUIRES}
+                onChange={(v) =>
+                  set({
+                    requires:
+                      v === "none" || v === "registered" ? v : "licensed",
+                  })
+                }
+              />
+            )}
+          </FormField>
+          <FormField
+            name="mint-entitlement"
+            label="Required flag"
+            optional
+            help="A flag the person's license must include."
+            value={block.requiredEntitlement ?? ""}
+          >
+            {(f) => (
+              <Select
+                {...f}
+                value={block.requiredEntitlement ?? NO_FLAG}
+                options={[
+                  { value: NO_FLAG, label: "None" },
+                  ...entitlements.map((k) => ({ value: k, label: k })),
+                ]}
+                onChange={(v) =>
+                  set({ requiredEntitlement: v && v !== NO_FLAG ? v : null })
+                }
+              />
+            )}
+          </FormField>
+        </div>
         <FormField
-          name="mint-secret"
-          label="Signing secret"
-          help="The product secret that holds the key. Set it in Keys and secrets."
-          value={block.signingKeySecret}
-          required
-        >
-          {(f) => (
-            <Input
-              {...f}
-              value={block.signingKeySecret}
-              placeholder="APPLE_MUSIC_KEY"
-              onChange={(e) => set({ signingKeySecret: e.target.value.trim() })}
-            />
-          )}
-        </FormField>
-        <FormField
-          name="mint-kid"
-          label="Key id"
+          name="mint-claims"
+          label="Claims template (JSON)"
           optional
-          value={block.kid ?? ""}
+          error={claimsError ?? undefined}
+          announceError
+          value={claimsText}
         >
           {(f) => (
-            <Input
+            <Textarea
               {...f}
-              value={block.kid ?? ""}
-              onChange={(e) => set({ kid: e.target.value.trim() || undefined })}
-            />
-          )}
-        </FormField>
-        <FormField
-          name="mint-audience"
-          label="Audience"
-          optional
-          value={block.audience ?? ""}
-        >
-          {(f) => (
-            <Input
-              {...f}
-              value={block.audience ?? ""}
-              onChange={(e) => set({ audience: e.target.value || null })}
-            />
-          )}
-        </FormField>
-        <FormField
-          name="mint-ttl"
-          label="Lifetime (seconds)"
-          help={`Up to ${MINT_TTL_MAX}.`}
-          optional
-          value={String(block.ttlSeconds ?? "")}
-        >
-          {(f) => (
-            <Input
-              {...f}
-              inputMode="numeric"
-              value={
-                block.ttlSeconds === undefined ? "" : String(block.ttlSeconds)
-              }
+              rows={4}
+              className="font-mono text-xs"
+              value={claimsText}
               onChange={(e) => {
-                const n = Number(e.target.value);
-                set({
-                  ttlSeconds:
-                    e.target.value.trim() === "" || !Number.isFinite(n)
-                      ? undefined
-                      : n,
-                });
+                const text = e.target.value;
+                setClaimsText(text);
+                try {
+                  const parsed: unknown =
+                    text.trim() === "" ? {} : JSON.parse(text);
+                  if (
+                    parsed === null ||
+                    typeof parsed !== "object" ||
+                    Array.isArray(parsed)
+                  )
+                    throw new Error("object");
+                  setClaimsError(null);
+                  set({ claimsTemplate: parsed as Record<string, unknown> });
+                } catch {
+                  setClaimsError("Enter a JSON object.");
+                }
               }}
             />
           )}
         </FormField>
-        <FormField
-          name="mint-requires"
-          label="Who may mint"
-          value={block.requires ?? "licensed"}
-        >
-          {(f) => (
-            <Select
-              {...f}
-              value={block.requires ?? "licensed"}
-              options={REQUIRES}
-              onChange={(v) =>
-                set({
-                  requires: v === "none" || v === "registered" ? v : "licensed",
-                })
-              }
-            />
-          )}
-        </FormField>
-        <FormField
-          name="mint-entitlement"
-          label="Required flag"
-          optional
-          help="A flag the person's license must include."
-          value={block.requiredEntitlement ?? ""}
-        >
-          {(f) => (
-            <Select
-              {...f}
-              value={block.requiredEntitlement ?? NO_FLAG}
-              options={[
-                { value: NO_FLAG, label: "None" },
-                ...entitlements.map((k) => ({ value: k, label: k })),
-              ]}
-              onChange={(v) =>
-                set({ requiredEntitlement: v && v !== NO_FLAG ? v : null })
-              }
-            />
-          )}
-        </FormField>
-      </div>
-      <FormField
-        name="mint-claims"
-        label="Claims template (JSON)"
-        optional
-        error={claimsError ?? undefined}
-        announceError
-        value={claimsText}
-      >
-        {(f) => (
-          <Textarea
-            {...f}
-            rows={4}
-            className="font-mono text-xs"
-            value={claimsText}
-            onChange={(e) => {
-              const text = e.target.value;
-              setClaimsText(text);
-              try {
-                const parsed: unknown =
-                  text.trim() === "" ? {} : JSON.parse(text);
-                if (
-                  parsed === null ||
-                  typeof parsed !== "object" ||
-                  Array.isArray(parsed)
-                )
-                  throw new Error("object");
-                setClaimsError(null);
-                set({ claimsTemplate: parsed as Record<string, unknown> });
-              } catch {
-                setClaimsError("Enter a JSON object.");
-              }
-            }}
-          />
-        )}
-      </FormField>
+      </fieldset>
     </div>
   );
 }

@@ -100,6 +100,20 @@ export type PaginationConfig =
       loadingMore?: boolean;
       /** The server's total, when known: enables "Select all N matching". */
       total?: number;
+      /**
+       * Search, facets, sort and Export run over the rows loaded so far (the server only pages).
+       * Without it the server does all of them and the table only draws `data`.
+       */
+      local?: boolean;
+      /** The last Load more failed: the rows stay and the footer offers Try again. */
+      loadError?: boolean;
+      /** Load every page still waiting; the filtered-empty state offers it. */
+      onSearchAll?: () => void;
+      searchingAll?: boolean;
+      /** Stop the walk after the page in flight; offered while `searchingAll`. */
+      onStopSearchAll?: () => void;
+      /** Facet ids the server already applied before paging (they are not "searching the loaded"). */
+      serverFacets?: string[];
     }
   | {
       mode: "offset";

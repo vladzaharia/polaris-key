@@ -86,6 +86,11 @@ tags:
     description: The catalog, the signed config document, and edge-mint secret delivery.
   - name: release
     description: Release truth — changelog, channel policy, trusted publishing.
+  - name: commerce
+    description: >
+      Commerce — store purchases that grant licences and add-ons (CM-29): the device binding and
+      claim routes (`/{product}/commerce/…`) and the two store notification hooks, which keep
+      their canonical `/{product}/distribution/hooks/…` URLs.
   - name: distribution
     description: >
       Distribution — every byte delivered (install script, downloads, builds, files, blobs; on
@@ -299,6 +304,7 @@ paths:
                       update: { enabled: false }
                       identity: { enabled: false }
                       sync: { enabled: false }
+                      commerce: { enabled: false }
         "404": { $ref: "#/components/responses/LegacyNotFound" }
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
     options:
@@ -4075,10 +4081,10 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
 
-  /{product}/distribution/commerce/binding:
+  /{product}/commerce/binding:
     get:
       operationId: commerceBinding
-      tags: [distribution]
+      tags: [commerce]
       summary: The licence's purchase binding and the store products on sale (device token)
       description: >
         P6-01. The opaque binding UUID of the caller's licence — created on first use, never the
@@ -4089,8 +4095,8 @@ paths:
         up for, so a client knows what to sell; on an Apple outlet the SDK hides a flag that is
         not also an App Store product (App Store 3.1.3(b); the licence document stays
         outlet-agnostic). A device with no licence is 403 `not_entitled` with `reason:
-        no_license` — enrol first; the bridge never creates a licence. With License off for the
-        product the route is the service not-found. No CORS. Errors are NESTED.
+        no_license` — enrol first; the bridge never creates a licence. With Commerce or License off for
+        the product the route is the service not-found. No CORS. Errors are NESTED.
       security: [{ deviceToken: [] }]
       parameters:
         - { $ref: "#/components/parameters/Product" }
@@ -4146,7 +4152,7 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
     options:
       operationId: preflightCommerceBinding
-      tags: [distribution]
+      tags: [commerce]
       summary: CORS preflight
       description: Browser preflight for a page on one of the product's `web.origins` (a bearer-mode page reading its licence's purchase binding; SP-16). See `CorsPreflight`.
       parameters:
@@ -4154,10 +4160,10 @@ paths:
       responses:
         "204": { $ref: "#/components/responses/CorsPreflight" }
 
-  /{product}/distribution/commerce/claim:
+  /{product}/commerce/claim:
     post:
       operationId: commerceClaim
-      tags: [distribution]
+      tags: [commerce]
       summary: Claim a store purchase as a licence flag (device token)
       description: >
         P6-01. The device forwards what its store handed it; the Worker verifies it with the
@@ -4175,7 +4181,7 @@ paths:
         timed trial). In every case the store's record must name the CALLER's binding: a
         transaction bound to another licence is 403 `binding_mismatch`, one already recorded for
         another licence 403 `bound_elsewhere`, one with no binding 403 `unbound`. A replay
-        answers 200 with `changed: false`. Rate-limited per licence. With License off, or the
+        answers 200 with `changed: false`. Rate-limited per licence. With Commerce or License off, or the
         store not set up (no settings, or no credential pinned to the configured app), the route
         is the service not-found. No CORS. Errors are NESTED; `reason` rides beside `error`.
       security: [{ deviceToken: [] }]
@@ -4301,7 +4307,7 @@ paths:
               schema: { $ref: "#/components/schemas/WireError" }
     options:
       operationId: preflightCommerceClaim
-      tags: [distribution]
+      tags: [commerce]
       summary: CORS preflight
       description: Browser preflight for a page on one of the product's `web.origins` (a bearer-mode page claiming a store purchase with its device token; SP-16). See `CorsPreflight`.
       parameters:
@@ -4312,7 +4318,7 @@ paths:
   /{product}/distribution/hooks/app-store:
     post:
       operationId: appStoreNotifications
-      tags: [distribution]
+      tags: [commerce]
       summary: App Store Server Notifications V2 (Apple → Worker)
       description: >
         P6-01. The URL an operator sets in App Store Connect (App Information → App Store Server
@@ -4380,7 +4386,7 @@ paths:
   /{product}/distribution/hooks/play-rtdn:
     post:
       operationId: playRtdn
-      tags: [distribution]
+      tags: [commerce]
       summary: Google Play real-time developer notifications over Pub/Sub push (Google → Worker)
       description: >
         P6-01. The endpoint of an authenticated Pub/Sub push subscription on the app's RTDN
@@ -15660,7 +15666,8 @@ paths:
         holder's `email` is the licence's own, never the account's. `?holder=` filters: `floating`,
         `assigned` (in an account or waiting), `waiting`, `inAccount`. LX-28: each also carries
         `batchId` (the batch it was created in, or `null`), and `?batch=` lists one batch's
-        licences. Platform admins only; admin session cookie.
+        licences; `?tier=` lists one tier's; `?state=` lists one computed state's. The first page (no `cursor`) also carries `total` and
+        `counts`, one grouped read. Platform admins only; admin session cookie.
       parameters:
         - { name: product, in: path, required: true, schema: { type: string } }
         - {
@@ -15677,6 +15684,20 @@ paths:
             required: false,
             schema: { type: string },
             description: "Only the licences of this batch (LX-28). An unknown id lists none.",
+          }
+        - {
+            name: tier,
+            in: query,
+            required: false,
+            schema: { type: string },
+            description: "Only the licences on this tier id. An unknown id lists none.",
+          }
+        - {
+            name: state,
+            in: query,
+            required: false,
+            schema: { type: string, enum: [active, expiring, expired, disabled] },
+            description: "Only licences in this computed state. `total` is that state's count; `counts` still covers every state.",
           }
         - {
             name: limit,
@@ -15707,8 +15728,20 @@ paths:
                   nextCursor:
                     type: [string, "null"]
                     description: "Pass as `cursor` for the next page; `null` on the last."
+                  total:
+                    type: integer
+                    description: "How many licences the filters match. First page only (no `cursor`)."
+                  counts:
+                    type: object
+                    required: [active, expiring, expired, disabled]
+                    description: "The matches by computed state (disabled; expired; expiring within 14 days; active). First page only."
+                    properties:
+                      active: { type: integer }
+                      expiring: { type: integer }
+                      expired: { type: integer }
+                      disabled: { type: integer }
         "400":
-          description: "`holder` is not one of the four values, `limit` is out of range, or `cursor` is not one this list wrote (`bad_request`, `fields` names it)."
+          description: "`holder` or `state` is not one of its values, `limit` is out of range, or `cursor` is not one this list wrote (`bad_request`, `fields` names it)."
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
@@ -15730,8 +15763,12 @@ paths:
         and the product's auto-link resolves on (custom issuers default off), the licence joins
         that account in the same request (`account.license.attach`, the pairwise subject created).
         The answer has the same shape either way: `license.holder` says what a read would. The
-        account lookup runs on every create with an email, whatever the outcome. `deviceLimit` is
-        refused here (set it afterwards with PATCH). Audited `license.create` with the holder.
+        account lookup runs on every create with an email, whatever the outcome. LX-27: `deviceLimit`
+        sets the licence's own limit; `delivery: {email: true}` (needs an email) mails the key as
+        "Your <product> license", from "<product> via Polaris Key", in this request, and the answer
+        gains `delivered: {email: sent | queued | failed}`. A failed send never undoes the licence:
+        send a new key with `POST …/licenses/{licenseId}/send-key`. The key is in the email body
+        and this answer only, never in the audit row. Audited `license.create` with the holder.
         Platform admins only; admin session cookie and CSRF header.
       parameters:
         - { name: product, in: path, required: true, schema: { type: string } }
@@ -15757,6 +15794,16 @@ paths:
                 required: [licenseId, key, license]
                 properties:
                   licenseId: { type: string }
+                  delivered:
+                    type: object
+                    description: "Present when the request asked for `delivery.email`."
+                    required: [email]
+                    properties:
+                      email: { type: string, enum: [sent, queued, failed] }
+                      reason:
+                        type: string
+                        enum: [no_mail_binding, address_unusable, suppressed, daily_cap, provider_refused]
+                        description: "Present when `email` is `failed`."
                   key:
                     {
                       type: string,
@@ -15789,7 +15836,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
         "422":
-          description: "An unknown tier or profile, `deviceLimit` on create, or a value a signed document cannot carry."
+          description: "An unknown tier or profile, a bad `deviceLimit` or `delivery`, `delivery.email` without an email, or a value a signed document cannot carry."
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
@@ -16315,6 +16362,88 @@ paths:
               schema: { $ref: "#/components/schemas/AdminError" }
         "422":
           description: "A value the catalog refuses (`bad_request` or `value_not_representable`, with `fields`)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+  /manage/api/products/{product}/license/licenses/{licenseId}/send-key:
+    post:
+      operationId: sendAdminLicenseKey
+      tags: [admin]
+      summary: Mint a new key and email it to the licence's address
+      description: >
+        LX-27 (notes/S-24 §8.4, D11, D12): mints a key labelled "Sent by email", mails it to the
+        licence's email as "Your <product> license" and, with `revokeOthers`, revokes the licence's
+        other active keys in the same batch as the insert. The key is in the email and this answer
+        only. A failed send keeps the new key valid (`delivered.email` is `failed`); call again to
+        retry, which a failed send does not count against. One send per licence per 10
+        minutes (a failed one frees it). A floating licence is refused (400). Audited `license.key.send` with the key's
+        label and whether others were revoked, never the key or the address. Platform admins
+        only; admin session cookie and CSRF header.
+      parameters:
+        - { name: product, in: path, required: true, schema: { type: string } }
+        - {
+            name: licenseId,
+            in: path,
+            required: true,
+            schema: { type: string },
+          }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                revokeOthers: { type: boolean }
+                context:
+                  type: string
+                  enum: [assigned]
+                  description: "Worded into the email's footer: the licence was just assigned."
+      responses:
+        "201":
+          description: Minted. The key is in this answer only.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [key, hash, delivered, revoked]
+                properties:
+                  key: { type: string }
+                  hash: { type: string }
+                  delivered:
+                    type: object
+                    required: [email]
+                    properties:
+                      email: { type: string, enum: [sent, queued, failed] }
+                      reason:
+                        type: string
+                        enum: [no_mail_binding, address_unusable, suppressed, daily_cap, provider_refused]
+                        description: "Present when `email` is `failed`."
+                  revoked: { type: integer, description: "Other keys revoked." }
+        "400":
+          description: The licence is floating, so it has no email (`bad_request`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "409":
+          description: "Refused before a key is minted: the licence is disabled (`reason: license_not_active`) or expired (`license_expired`, with `expiresAt`), mail is not set up (`no_mail_binding`), the address is unusable (`address_unusable`) or cannot receive our mail (`suppressed`), or the product's daily email cap is spent (`daily_cap`)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such product or licence.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "422":
+          description: "`revokeOthers` is not a boolean."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "429":
+          description: A key was sent for this licence in the last 10 minutes (`rate_limited`, `retryAfter` in seconds, also the `retry-after` header).
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
@@ -16943,7 +17072,7 @@ paths:
       description: >
         Every job a mounted service contributes, each with its five newest runs (without units).
         Nothing runs by itself: a job runs only when an operator calls dry-run, apply or down.
-        Platform admins only; admin session cookie.
+        Platform admins only; admin session cookie, or a `migrations:report` admin API token.
       responses:
         "200":
           description: The jobs.
@@ -16972,7 +17101,7 @@ paths:
       operationId: getAdminMigrationRun
       tags: [admin]
       summary: One run with its units (the report)
-      description: Platform admins only; admin session cookie.
+      description: Platform admins only; admin session cookie, or a `migrations:report` admin API token.
       parameters:
         - { name: runId, in: path, required: true, schema: { type: string } }
       responses:
@@ -17000,7 +17129,7 @@ paths:
       description: >
         Plans every unit of the job and stores the report (`changes` is the diff count; zero means
         the data is already migrated). Audited. Platform admins only; admin session cookie and
-        CSRF header.
+        CSRF header, or a `migrations:report` admin API token.
       requestBody:
         required: true
         content:
@@ -17073,7 +17202,7 @@ paths:
               schema: { $ref: "#/components/schemas/AdminError" }
         "409":
           description: >
-            `busy`, `lease_lost`, `reverting` (a down exists for this apply), `report_incomplete` (a unit could not be planned), `report_stale` (the report is over 24 hours old; dry-run again) or `reverted` (dry-run again).
+            `busy`, `lease_lost`, `reverting` (a down exists for this apply), `report_incomplete` (a unit could not be planned), `report_stale` (the report is over 24 hours old; dry-run again) `reverted` (dry-run again) or `delegated` (the job has its own console flow; the runner only reports it).
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
@@ -18660,7 +18789,10 @@ components:
         that is presented and bad is one 401, never a fall-through to a cookie. `pkeya_` + 43
         base64url characters (256-bit), hash-stored server-side under `KEY_HASH_PEPPER`, with a
         mandatory expiry and an operator kill switch. It reaches `POST
-        /manage/api/products/{product}/bundles` (scope `bundles:mint`) and nothing else.
+        /manage/api/products/{product}/bundles` (scope `bundles:mint`) and, with scope
+        `migrations:report`, the data-migration runner's job list, run report and dry run
+        (`/manage/api/platform/migrations`, `.../runs/{runId}`, `.../dry-run`); apply and down need
+        a step-up and refuse every token.
   parameters:
     TokenId:
       name: tokenId
@@ -19483,10 +19615,10 @@ components:
     AdminApiScope:
       type: string
       description: >
-        A coarse admin API-token scope. One value exists, because one machine caller exists. A
+        A coarse admin API-token scope. Two values exist, because two machine callers exist. A
         scope the dispatcher does not consult would be a claim about authority that nothing
         enforces, so a scope is added alongside the route that needs it, never ahead of it.
-      enum: [bundles:mint]
+      enum: [bundles:mint, migrations:report]
     AdminApiToken:
       type: object
       description: >
@@ -20183,6 +20315,16 @@ components:
         minVersion: { type: string }
         maxVersion: { type: string }
         profiles: { type: array, items: { type: string } }
+        deviceLimit:
+          type: [integer, "null"]
+          minimum: 1
+          maximum: 1000
+          description: "The licence's own device limit (LX-14a precedence); absent or `null` inherits."
+        delivery:
+          type: object
+          description: "LX-27: how the key reaches the holder. `email: true` mails the first key to the licence's `email` in this request; refused (422) without an email."
+          properties:
+            email: { type: boolean }
     AdminLicensePatch:
       type: object
       properties:
@@ -22504,10 +22646,20 @@ components:
             shape of no service: an enabled one contributes its own fragment verbatim, a
             disabled one is exactly `{"enabled": false}` and nothing else.
           required:
-            [license, config, release, distribution, update, identity, sync]
+            [
+              license,
+              config,
+              release,
+              distribution,
+              update,
+              identity,
+              sync,
+              commerce,
+            ]
           properties:
             distribution: { $ref: "#/components/schemas/DistributionFragment" }
             sync: { $ref: "#/components/schemas/SyncFragment" }
+            commerce: { $ref: "#/components/schemas/CommerceFragment" }
           additionalProperties: { $ref: "#/components/schemas/ServiceFragment" }
     ServiceFragment:
       type: object
@@ -22570,6 +22722,28 @@ components:
             install: https://key.plrs.im/acme/distribution/install.sh
             builds: https://key.plrs.im/acme/distribution/builds/{selector}/{buildId}
             blobs: https://key.plrs.im/acme/distribution/blobs/sha256/{sha256}
+    CommerceFragment:
+      description: >
+        Commerce's fragment (CM-29). `{"enabled": false}` when off. When on, the two device
+        endpoints. It never names a store, a product id or a count; a client that does not know
+        the slug ignores it.
+      oneOf:
+        - type: object
+          required: [enabled]
+          additionalProperties: false
+          properties:
+            enabled: { type: boolean, const: false }
+        - type: object
+          required: [enabled, endpoints]
+          additionalProperties: true
+          properties:
+            enabled: { type: boolean, const: true }
+            endpoints:
+              type: object
+              required: [binding, claim]
+              properties:
+                binding: { type: string, format: uri }
+                claim: { type: string, format: uri }
     SyncFragment:
       description: >
         Cloud Sync's fragment (U-04; plans/U-01b.md D9, WIRE-CONTRACT-V4 §13.5). `{"enabled":

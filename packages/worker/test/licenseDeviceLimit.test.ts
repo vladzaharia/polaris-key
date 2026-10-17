@@ -323,10 +323,15 @@ describe("per-licence device limit (LX-14a)", () => {
     });
   });
 
-  it("refuses deviceLimit on create; a new licence inherits", async () => {
-    const res = await admin("POST", "", { name: "New", deviceLimit: 2 });
-    expect(res.status).toBe(422);
-    expect(await res.json()).toMatchObject({ fields: ["deviceLimit"] });
+  it("LX-27: create takes a deviceLimit (a bad one is refused); without one a new licence inherits", async () => {
+    const bad = await admin("POST", "", { name: "New", deviceLimit: 0 });
+    expect(bad.status).toBe(422);
+    expect(await bad.json()).toMatchObject({ fields: ["deviceLimit"] });
+    const own = await admin("POST", "", { name: "New", deviceLimit: 2 });
+    expect(own.status).toBe(201);
+    expect(
+      ((await own.json()) as { license: Record<string, unknown> }).license,
+    ).toMatchObject({ deviceLimit: 2, deviceLimitSource: "license" });
     const created = await admin("POST", "", { name: "New" });
     expect(created.status).toBe(201);
     expect(

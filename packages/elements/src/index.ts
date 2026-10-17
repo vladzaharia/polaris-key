@@ -11,7 +11,13 @@ import { defineElements } from "./components.js";
 import { setFontBase } from "./fonts.js";
 import { setTheme, type ElementsTheme } from "./theme.js";
 
-export { defineElements, ELEMENTS, PkGate, PkProvider } from "./components.js";
+export {
+  defineElements,
+  ELEMENTS,
+  PkGate,
+  PkProvider,
+  PkUpdatePrompt,
+} from "./components.js";
 export { PkElement, type PkActionDetail } from "./element.js";
 export {
   PkSignIn,
@@ -20,6 +26,7 @@ export {
   type FormInput,
   type FormStep,
 } from "./signin.js";
+export { settingLabel } from "./views.js";
 export { LAYOUTS, TAGS, type Kind, type Layout } from "./layout.js";
 export { stylesCss, sharedSheet } from "./styles.js";
 export { tokenCss } from "./tokens.js";

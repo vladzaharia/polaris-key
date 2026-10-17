@@ -354,8 +354,10 @@ jobs:
             echo "$BODY" | head -c 400 >&2
             exit 1
           }
-          # The gated docs site: unauthenticated must be a redirect INTO sign-in — a 200
-          # would mean the gate is off, a 5xx that the assembled assets are broken.
+          # The docs site is tiered (packages/worker/src/docs.ts, DOCS_TIERS): the landing page
+          # and the developer sections are public, Operate and Contribute are gated. A gated
+          # page must redirect INTO sign-in with no session — a 200 would mean the gate is off,
+          # a 5xx that the assembled assets are broken.
           #
           # Poll, do not ask once. `wrangler deploy` returns as soon as the triggers are
           # updated, and the new version needs a few seconds to reach every edge. v0.2.2
@@ -365,27 +367,35 @@ jobs:
           # error, so curl never retries it. Hence an explicit poll, ~60s total.
           ORIGIN=$(echo "$SMOKE_URL" | sed -E 's#^(https://[^/]+).*#\1#')
           for attempt in $(seq 1 12); do
-            DOCS_LOCATION=$(curl --silent --output /dev/null --write-out '%{http_code} %{redirect_url}' "$ORIGIN/docs/")
+            DOCS_LOCATION=$(curl --silent --output /dev/null --write-out '%{http_code} %{redirect_url}' "$ORIGIN/docs/contribute/")
             case "$DOCS_LOCATION" in
               302\ */manage/login*) echo "Docs gate OK: $DOCS_LOCATION"; break ;;
             esac
             if [ "$attempt" -eq 12 ]; then
-              echo "Smoke check failed: /docs/ unauthenticated returned: $DOCS_LOCATION" >&2
+              echo "Smoke check failed: /docs/contribute/ unauthenticated returned: $DOCS_LOCATION" >&2
               exit 1
             fi
             echo "Docs gate not ready (attempt $attempt/12): $DOCS_LOCATION — retrying in 5s"
             sleep 5
           done
-          # /docs/ alone is false assurance. The /manage asset proxy is a second door into the
-          # same assets root, and the docs bundle sits in docs/ of it: a request for
-          # /manage/docs/index.html with no session must never be served the gated site. The
-          # new version is already answering (the poll above), so a 200 here is a real bypass.
-          BYPASS_CODE=$(curl --silent --output /dev/null --write-out '%{http_code}' "$ORIGIN/manage/docs/index.html")
-          if [ "$BYPASS_CODE" = "200" ]; then
-            echo "Smoke check failed: /manage/docs/index.html returned 200 — the docs gate is bypassable." >&2
+          # The public landing page answers with the built site, not a redirect.
+          LANDING=$(curl --silent "$ORIGIN/docs/")
+          if ! printf '%s' "$LANDING" | grep -q 'name="generator" content="Starlight'; then
+            echo "Smoke check failed: /docs/ is not the built docs landing page." >&2
             exit 1
           fi
-          echo "Docs gate OK via /manage proxy: $BYPASS_CODE"
+          echo "Docs landing OK (public)."
+          # The gate alone is false assurance. The /manage asset proxy is a second door into the
+          # same assets root, and the docs bundle sits in docs/ of it: a request for a gated page
+          # through /manage with no session must never be served the docs site. /manage answers
+          # unknown paths with the console's own shell (a 200), so the test is the body: a
+          # Starlight page there is a real bypass.
+          BYPASS_BODY=$(curl --silent "$ORIGIN/manage/docs/contribute/index.html")
+          if printf '%s' "$BYPASS_BODY" | grep -q 'name="generator" content="Starlight'; then
+            echo "Smoke check failed: /manage/docs/contribute/index.html served the gated docs page." >&2
+            exit 1
+          fi
+          echo "Docs gate OK via /manage proxy."
           echo "Smoke check OK: data plane is serving a non-empty JWKS."
       # F-10 automation (owner decision 2026-10-04): keep the platform's own SDKs registered on
       # its package feeds, on every deploy and safe to rerun. The deploy hook bootstraps the system

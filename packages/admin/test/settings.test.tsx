@@ -56,6 +56,7 @@ function product(over: Partial<ProductDetail> = {}): ProductDetail {
       update: { enabled: true },
       identity: { enabled: false },
       sync: { enabled: false },
+      commerce: { enabled: false },
     },
     setup: { sync: { status: "ok", lastSyncedAt: 1_700_000_000 } },
     ...over,

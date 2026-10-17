@@ -810,7 +810,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/cq-worker-services.md"
       ],
       "brief": "wp/P0-29-licence-list-paging-set-queries.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "P0-30",
@@ -1292,7 +1292,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/cq-worker-services.md"
       ],
       "brief": "wp/P0-49-data-migration-runner-dry-run-report.md",
-      "status": "todo"
+      "status": "in-progress"
     },
     {
       "id": "P0-50",
@@ -4095,7 +4095,7 @@
         "plans/I-08.md (approved, lead 2026-10-17)"
       ],
       "brief": "wp/I-08-app-passthrough.md",
-      "status": "in-review",
+      "status": "done",
       "planRef": "I-04"
     },
     {
@@ -6170,7 +6170,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/config-cloudsync.md"
       ],
       "brief": "wp/U-31-minted-tokens-carry-their-recipe.md",
-      "status": "in-progress"
+      "status": "in-review"
     },
     {
       "id": "U-32",
@@ -12140,7 +12140,7 @@
         "docs/research/2026-10-08-framework-drop-ins/README.md §12 (SP-59)"
       ],
       "brief": "wp/SP-59-client-backend-swift-kotlin-godot.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "SP-60",
@@ -12268,7 +12268,7 @@
         "docs/research/2026-10-08-framework-drop-ins/README.md §12 (SP-65)"
       ],
       "brief": "wp/SP-65-end-to-end-ci-client-backend-pkey-dev.md",
-      "status": "todo"
+      "status": "in-progress"
     },
     {
       "id": "SP-66",
@@ -15081,7 +15081,7 @@
         "consolidation alias CQW-14"
       ],
       "brief": "wp/CM-29-commerce-service.md",
-      "status": "todo"
+      "status": "in-progress"
     },
     {
       "id": "CM-29b",
@@ -15813,7 +15813,7 @@
         "DX consolidation 2026-10-07: edit (docs/research/2026-10-07-dx-consolidation/backlog-changes.json)"
       ],
       "brief": "wp/LX-27-create-limit-delivery.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "LX-28",

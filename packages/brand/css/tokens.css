@@ -709,7 +709,6 @@
   --pk-section-bit-display: inline;
 }
 
-/* Commerce shares the Distribution family (B1): same declarations, its own selector. */
 [data-service="commerce"] {
   --pk-accent: var(--pk-service-distribution);
   --pk-accent-fg: var(--pk-service-distribution-fg);

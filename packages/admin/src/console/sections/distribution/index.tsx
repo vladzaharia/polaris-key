@@ -1,7 +1,6 @@
 import * as React from "react";
 import { AccessPage } from "./pages/AccessPage.js";
 import { AppStorePage } from "./pages/AppStorePage.js";
-import { CommercePage } from "./pages/CommercePage.js";
 import { CredentialsPage } from "./pages/CredentialsPage.js";
 import { HealthPage } from "./pages/HealthPage.js";
 import { MatrixPage } from "./pages/MatrixPage.js";
@@ -30,8 +29,6 @@ export default function DistributionPages({
       return <ListingPage slug={slug} />;
     case "app-store":
       return <AppStorePage slug={slug} />;
-    case "commerce":
-      return <CommercePage slug={slug} />;
     case "access":
       return <AccessPage slug={slug} />;
     case "health":

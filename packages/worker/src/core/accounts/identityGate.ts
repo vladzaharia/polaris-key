@@ -28,6 +28,7 @@
  */
 
 import { ErrorCode, wireError } from "../errors.js";
+import { codeRefusalPage } from "../brandPage.js";
 import type { Db } from "../../db/types.js";
 import { parseServices, type ServicesMap } from "../services.js";
 
@@ -130,6 +131,20 @@ export function identityNavigationRedirect(
       "cache-control": "no-store",
     },
   });
+}
+
+/**
+ * A person who follows an app's sign-in link (`authorize`) for a product that does not exist gets
+ * the Identity-off card's words on a 404 page, not raw JSON. The page is the same for every slug
+ * and names nothing, so it tells a prober no more than the 404 did. `null` for any other path or
+ * for a caller that is not a browser navigation: they keep `404 not_found`.
+ */
+export function unknownProductNavigationPage(
+  req: Request,
+  rest: readonly string[],
+): Response | null {
+  if (rest.join("/") !== "authorize" || !isNavigation(req)) return null;
+  return codeRefusalPage(404, IDENTITY_DISABLED);
 }
 
 /**

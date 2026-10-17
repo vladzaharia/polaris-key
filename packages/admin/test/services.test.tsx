@@ -78,6 +78,7 @@ const state = (over: Partial<ServicesResponse> = {}): ServicesResponse => ({
     update: { enabled: false },
     identity: { enabled: false },
     sync: { enabled: false },
+    commerce: { enabled: false },
   },
   effectiveRegistration: "requires-license",
   source: "manifest",
@@ -422,13 +423,13 @@ describe("Services feature groups", () => {
 
   it("shows the Edge mint recipe approval path for minted tokens", async () => {
     mount();
-    const copy = await screen.findByText(/Recipes are declared in/i);
-    expect(copy.textContent).toMatch(/\.pkey\/release/);
+    const copy = await screen.findByText(/A recipe is the/i);
+    expect(copy.textContent).toMatch(/mint block of a minted-token entry/);
     expect(copy.textContent).toMatch(
       /signing secret is marked Edge mint and an operator approves/i,
     );
     const review = screen.getByRole("link", { name: "Review recipe" });
-    expect(review.getAttribute("href")).toBe("#/p/djdl/config/edge-mint");
+    expect(review.getAttribute("href")).toBe("#/p/djdl/config/catalog");
     expect(screen.getAllByText(/Catalog v4/)).toHaveLength(1);
   });
 

@@ -43,8 +43,10 @@ const SEAMS: readonly (readonly [string, string, RemovedBy])[] = [
   ["identity", "release_artifacts", "P0-23"],
   ["identity", "release_builds", "P0-23"],
   ["identity", "release_download_tokens", "P0-23"],
-  // Distribution's commerce reads License's store grants.
-  ["distribution", "license_store_grants", "P0-27"],
+  // Commerce reads License's store grants (it moved out of Distribution in CM-29).
+  ["commerce", "license_store_grants", "P0-27"],
+  // The Play storefront's one-time-product upsert checks the product is in Commerce's map.
+  ["distribution", "dist_store_products", "P0-27"],
   // Update reads Release's pack tables inside the sanctioned update → release edge (packParts.ts).
   ["update", "release_pins", "permanent"],
   ["update", "release_holds", "permanent"],

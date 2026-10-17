@@ -357,7 +357,6 @@ export const DOOR_TREES: readonly DoorTree[] = [
               "features/ship-builds/packs/transports",
             ),
           },
-          leaf("features/ship-builds/commerce"),
           leaf("features/ship-builds/troubleshooting"),
         ],
       },
@@ -379,6 +378,11 @@ export const DOOR_TREES: readonly DoorTree[] = [
         label: "Cloud Sync",
         collapsed: true,
         items: leaves("features/cloud-sync/index"),
+      },
+      {
+        label: "Commerce",
+        collapsed: true,
+        items: leaves("features/commerce/index"),
       },
       {
         label: "Reference",

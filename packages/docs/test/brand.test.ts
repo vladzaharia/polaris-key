@@ -11,6 +11,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { SERVICE_ALIAS } from "@polaris-key/brand";
 import { FEATURES } from "../src/lib/features.generated";
 import { sectionFor } from "../src/lib/section";
 
@@ -58,6 +59,8 @@ describe("docs sections", () => {
       ["ship-builds/updates", "update"],
       ["sign-in", "identity"],
       ["cloud-sync", "sync"],
+      // Commerce takes the Distribution green family (B1): the brand CSS has no variables of its own.
+      ["commerce", "distribution"],
     ];
     for (const [dir, slug] of markers) {
       expect(css).toContain(`a[href*="/docs/features/${dir}/"]`);
@@ -65,7 +68,9 @@ describe("docs sections", () => {
     }
     // Every service has a marker.
     for (const { slug } of table.services)
-      expect(css).toContain(`var(--pk-service-${slug})`);
+      expect(css).toContain(
+        `var(--pk-service-${SERVICE_ALIAS[slug as keyof typeof SERVICE_ALIAS] ?? slug})`,
+      );
   });
 });
 

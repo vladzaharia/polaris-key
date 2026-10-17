@@ -56,7 +56,7 @@ holds, and is indistinguishable in the audit log from the human clicking in the 
 365 days at mint. Its blast radius is bounded by **default deny**: a row of the admin route table
 (`console/routes.ts`) reaches a token only through its `tokenScope`, and every other row, path
 and method refuses with one 403, so adding an admin route does not silently widen every existing
-token. The scope vocabulary is exactly one entry (`bundles:mint`), and the token routes
+token. The scope vocabulary is two entries (`bundles:mint`; `migrations:report`, which reaches the data-migration runner's job list, run report and dry run, never apply or down: those need a step-up a token cannot have), and the token routes
 themselves name no scope, so a token cannot mint, list or revoke a token, including itself.
 Minting needs a console step-up, so a stolen session cannot leave a year-long credential behind
 it. The token is stored only as `hashKey(token, KEY_HASH_PEPPER)` and shown once. It is exempt
@@ -3312,10 +3312,26 @@ operator mapped (`dist_store_products`) puts a licence flag on the buyer's licen
 (`license_store_grants`), which `core/licensing/payload.ts` merges into every licence document after the
 licence profiles and before the licence's own overrides. The asset is therefore the same as
 AT-1's: a flag that unlocks paid content. The new inputs are a device's claim
-(`POST /<p>/distribution/commerce/claim`, device token), the binding read
-(`GET …/commerce/binding`), and two store notification hooks (`POST …/hooks/app-store`,
-`POST …/hooks/play-rtdn`). The licence document's shape and `PROTOCOL_VERSION` do not change: a
+(`POST /<p>/commerce/claim`, device token), the binding read
+(`GET /<p>/commerce/binding`), and two store notification hooks (`POST /<p>/distribution/hooks/app-store`,
+`POST /<p>/distribution/hooks/play-rtdn`; canonical, not aliases, CM-29). The licence document's shape and `PROTOCOL_VERSION` do not change: a
 flag was always a licence entitlement.
+
+**Commerce is a service (CM-29).** The bridge moved out of Distribution into the `commerce`
+service, which requires License (`commerce_requires_license`, the generic requirement rule: turning
+License off turns Commerce off in the same audited batch). Commerce gates its routes; License is
+structural and the admin 409 stays, because admin routes are dispatched without an enablement
+check. The hooks stay at the stores' URLs (`core/stores/hooks.ts`, one spelling the router, the URL
+builder and the ASC write gate share), and the ASC write gate admits only that path. Discovery
+discloses only whether Commerce runs.
+
+**Commerce off.** The hooks answer the not-found, so the stores retry and then drop the
+notification: Apple retries five times at 1, 12, 24, 48 and 72 hours (about 6.5 days) in
+production only, Pub/Sub keeps an unacknowledged message for 7 days by default and deletes a
+subscription after 31 days without a successful push (verified 2026-10-08). The console shows
+Attention on the Commerce row meanwhile. On re-enable, CM-22's catch-up polls Play's voided
+purchases and re-verifies App Store purchases, so a refund made while Commerce was off still
+revokes; before CM-22 lands nothing catches up, but production holds no store purchase.
 
 **Who writes a grant.** Only License, through Core's `applyStoreGrant` descriptor method
 (`core/licensing/storeGrants.ts`, `core/registry.ts`), and only on a purchase Distribution has verified
@@ -7599,6 +7615,30 @@ Account-wide alike, through `PATCH /manage/api/products/<slug>/license/licenses/
 - **No wire change.** The signed licence document carries the resolved number in its existing
   `deviceLimit` entitlement, so a client cannot tell (or forge) where the number came from.
 
+### Licence administration: emailing a key (LX-27)
+
+An operator can email a key to the licence's address: `delivery: {email: true}` on create, or
+`POST …/licenses/<id>/send-key` (a new key labelled "Sent by email", optionally revoking the
+licence's other active keys in the same batch). Same product-admin session and CSRF as any licence
+write.
+
+- **Rate-limited and audited.** One send-key per licence per 10 minutes (`429
+rate_limited`, `retryAfter`), read from the audit trail (the attempt row is written before the send, and a
+  `license.key.send.failed` row with the attempt as its `parent_id` frees it), so it holds across
+  isolates and a crash mid-send. What no retry can fix (no mail binding, a suppressed recipient, a
+  disabled licence) is refused with 409 before a key is minted, so failures do not pile up valid keys. Audited `license.create` (with the delivery outcome)
+  and `license.key.send` (key label, outcome, revoked count).
+- **The key appears only in the email body and the one response that minted it.** Never in the
+  subject, the audit summary, a log, or the audit row's address (the recipient is not recorded).
+- **Only to the licence's own address.** There is no recipient field; a floating licence is
+  refused, so a key is never emailed to nobody (S-24 D11). The mail is "<App> via Polaris Key"
+  through Core's one send choke point, so suppression, the relay gate and the per-product daily
+  cap apply (I-18). The "Open in Polaris Key" link is a plain sign-in page that carries no token,
+  so a forwarded email signs nobody in.
+- **Residual, accepted.** An operator can still mint keys with `POST …/keys` as before; emailing
+  adds a delivery channel, not a capability. Two concurrent send-keys can both pass the 10-minute
+  check; each mints its own key and both are audited.
+
 ### Licence holders: association by email and the auto-attach block (LX-26)
 
 A licence is floating (no account, no email) or assigned (in an account, or waiting for an account
@@ -8464,6 +8504,12 @@ core (SP-55 to SP-57, SP-62).
   `follow_redirects=False`; the browser fetch never follows a redirect. A backend that answers
   `license_stale` to everything cannot make the client ask the Worker per request: forced syncs
   are at least 10 s apart in every SDK.
+- **The native client halves check every hop too (SP-59).** Swift's `data(for:)` refuses a redirect
+  to another origin in the task delegate before the hop is sent; Kotlin's network interceptor
+  checks each hop and attaches the headers there, because OkHttp keeps custom headers across a
+  redirect (an application interceptor alone sends no licence and fails with `not-configured`);
+  Godot's `request()` follows redirects by hand and checks each hop, while the raw `headers()` is
+  safe only with `max_redirects = 0` (`headers_for(url)` checks the origin).
 - **The JWS reaches the Electron renderer (SP-58).** The bridge verb `core.backendHeaders` hands the
   licence document to the renderer, so a compromised renderer holds a bearer credential for the
   freshness window (the replay row above). It never gets the device token or the config document.

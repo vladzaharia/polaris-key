@@ -170,6 +170,7 @@ export const discoveryIdentity: Scenario = {
             update: false,
             identity: true,
             sync: false,
+            commerce: false,
           },
         },
       );

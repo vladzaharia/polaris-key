@@ -85,6 +85,7 @@ export async function handleIdentityRoutes(
           db,
           product,
           now,
+          hooks: ctx.hooks,
           ...(settings ? { settings } : {}),
         });
       case "token":

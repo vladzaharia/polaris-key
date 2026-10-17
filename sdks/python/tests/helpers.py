@@ -298,7 +298,7 @@ def client_dirs(
 def discovery_doc(**enabled: bool) -> Dict[str, Any]:
     """A minimal ``/.well-known/polaris.json`` naming which services are on."""
     services: Dict[str, Any] = {}
-    for slug in ("license", "config", "release", "distribution", "update", "identity"):
+    for slug in ("license", "config", "release", "distribution", "update", "identity", "commerce"):
         if slug in enabled:
             fragment: Dict[str, Any] = {"enabled": enabled[slug]}
             if slug == "update" and enabled[slug]:

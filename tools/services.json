@@ -49,6 +49,11 @@
       "id": "cloud-sync",
       "label": "Cloud Sync",
       "switches": []
+    },
+    {
+      "id": "commerce",
+      "label": "Commerce",
+      "switches": []
     }
   ],
   "services": [
@@ -149,6 +154,20 @@
         "group": "cloud-sync"
       },
       "docs": "/docs/services/sync/"
+    },
+    {
+      "slug": "commerce",
+      "label": "Commerce",
+      "summary": "Storefronts, offers and store purchases that give licenses and add-ons.",
+      "defaultEnabled": false,
+      "requires": ["license"],
+      "legacyModules": [],
+      "console": {
+        "accent": "commerce",
+        "icon": "ShoppingBag",
+        "group": "commerce"
+      },
+      "docs": "/docs/services/commerce/"
     }
   ]
 }

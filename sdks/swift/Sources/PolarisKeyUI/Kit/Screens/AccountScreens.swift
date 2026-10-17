@@ -83,6 +83,16 @@ struct ServiceCue: View {
                     "icloud", PolarisBrand.Light.stateSyncRing,
                     PolarisBrand.Light.stateSyncSelectedFill
                 )
+        case .commerce:
+            return dark
+                ? (
+                    "bag", PolarisBrand.Dark.stateDistributionRing,
+                    PolarisBrand.Dark.stateDistributionSelectedFill
+                )
+                : (
+                    "bag", PolarisBrand.Light.stateDistributionRing,
+                    PolarisBrand.Light.stateDistributionSelectedFill
+                )
         case .config:
             return dark
                 ? (

@@ -66,7 +66,6 @@ import {
   ShoppingBag,
   SquarePen,
   SlidersHorizontal,
-  Stamp,
   Store,
   TrendingUp,
   UserRound,
@@ -124,7 +123,6 @@ export type ProductPageId =
   | "catalog"
   | "catalog-edit"
   | "profiles"
-  | "edge-mint"
   // release
   | "releases"
   | "channels"
@@ -456,14 +454,6 @@ export const SECTIONS: NavSection[] = [
           tabs: ["payload", "used-by"],
         },
       },
-      {
-        page: "edge-mint",
-        label: "Edge mint",
-        path: "config/edge-mint",
-        icon: Stamp,
-        docs: "/docs/features/managed-config/edge-mint/",
-        inNav: true,
-      },
     ],
   },
   {
@@ -605,15 +595,6 @@ export const SECTIONS: NavSection[] = [
         inNav: true,
       },
       {
-        // A-17g: the commerce mappings beside the store's own products (App Store products, T2).
-        page: "commerce",
-        label: "Commerce",
-        path: "distribution/commerce",
-        icon: ShoppingBag,
-        docs: "/docs/features/ship-builds/commerce/",
-        inNav: true,
-      },
-      {
         page: "access",
         label: "Access",
         path: "distribution/access",
@@ -718,6 +699,26 @@ export const SECTIONS: NavSection[] = [
         path: "sync/data",
         icon: Database,
         docs: "/docs/features/cloud-sync/",
+        inNav: true,
+      },
+    ],
+  },
+  {
+    key: "commerce",
+    label: "Commerce",
+    service: "commerce",
+    accent: "commerce",
+    glyph: ShoppingBag,
+    docs: "/docs/features/commerce/",
+    items: [
+      {
+        // A-17g: the commerce mappings beside the store's own products (App Store products, T2),
+        // moved from Distribution by CM-29. CM-23 adds the offers, purchases and sales pages.
+        page: "commerce",
+        label: "In-app purchases",
+        path: "commerce/in-app-purchases",
+        icon: ShoppingBag,
+        docs: "/docs/features/commerce/",
         inNav: true,
       },
     ],

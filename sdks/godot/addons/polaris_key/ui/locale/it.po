@@ -2430,6 +2430,16 @@ msgctxt "macos"
 msgid "signin.replace.confirm"
 msgstr "Sostituisci e continua"
 
+#. Replace {device} and continue
+#. Replace a device, inline in the license choice (SIGN-IN.md §3.7). The primary once a device is picked, in place of the generic one. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”.
+msgid "signin.replace.confirmNamed"
+msgstr "Sostituisci {device} e continua"
+
+#. macos: Replace {device} and Continue
+msgctxt "macos"
+msgid "signin.replace.confirmNamed"
+msgstr "Sostituisci {device} e continua"
+
 #. Back
 #. Replace a device, inline in the license choice (SIGN-IN.md §3.7).
 msgid "signin.replace.back"
@@ -4147,12 +4157,12 @@ msgstr "Richiesta di accesso non valida"
 msgid "core.codes.invalid_request.message"
 msgstr "L'app ha inviato una richiesta che non riusciamo a leggere. Riprova."
 
-#. App not recognised
+#. Sign-in can't finish
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_client.title"
 msgstr "App non riconosciuta"
 
-#. This app isn't set up for sign-in. Contact its developer.
+#. This app's sign-in isn't set up correctly, so it stopped here to keep your account safe. Let its developer know.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_client.message"
 msgstr "Questa app non è configurata per l'accesso. Contatta il suo sviluppatore."
@@ -4187,12 +4197,12 @@ msgstr "Accesso non disponibile"
 msgid "core.codes.invalid_scope.message"
 msgstr "L'app ha chiesto un accesso che questo accesso non offre. Contatta il suo sviluppatore."
 
-#. Return address not allowed
+#. Sign-in can't return to the app
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.redirect_uri_mismatch.title"
 msgstr "Indirizzo di ritorno non consentito"
 
-#. This app's return address isn't registered, so we didn't send you back. Contact its developer.
+#. This app's sign-in isn't set up correctly, so it stopped here to keep your account safe. Let its developer know.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.redirect_uri_mismatch.message"
 msgstr "L'indirizzo di ritorno di questa app non è registrato, quindi non ti abbiamo reindirizzato. Contatta il suo sviluppatore."

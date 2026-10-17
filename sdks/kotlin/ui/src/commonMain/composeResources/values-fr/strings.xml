@@ -902,6 +902,9 @@
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). -->
     <string name="signin_replace_confirm">Remplacer et continuer</string>
     <string name="signin_replace_confirm__macos">Remplacer et continuer</string>
+    <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). The primary once a device is picked, in place of the generic one. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
+    <string name="signin_replace_confirmNamed">Remplacer %1$s et continuer</string>
+    <string name="signin_replace_confirmNamed__macos">Remplacer %1$s et continuer</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). -->
     <string name="signin_replace_back">Retour</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). -->
@@ -1575,9 +1578,9 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_request_message">The app sent a sign-in request we can't read. Try again.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_invalid_client_title">App not recognised</string>
+    <string name="core_codes_invalid_client_title">Sign-in can't finish</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_invalid_client_message">This app isn't set up for sign-in. Contact its developer.</string>
+    <string name="core_codes_invalid_client_message">This app's sign-in isn't set up correctly, so it stopped here to keep your account safe. Let its developer know.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_grant_title">Sign-in no longer valid</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -1591,9 +1594,9 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_scope_message">The app asked for access this sign-in doesn't offer. Contact its developer.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_redirect_uri_mismatch_title">Return address not allowed</string>
+    <string name="core_codes_redirect_uri_mismatch_title">Sign-in can't return to the app</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_redirect_uri_mismatch_message">This app's return address isn't registered, so we didn't send you back. Contact its developer.</string>
+    <string name="core_codes_redirect_uri_mismatch_message">This app's sign-in isn't set up correctly, so it stopped here to keep your account safe. Let its developer know.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_choice_required_title">Choose a license</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

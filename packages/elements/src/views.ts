@@ -96,11 +96,13 @@ function contentFor(c: RenderCtx): TemplateResult | typeof nothing {
     case "SignInHandoff": {
       const code = codeDisplay(c);
       const url = c.view.decisions.link;
-      const showUrl = keys.has("signin.handoff.url") && url?.display;
+      // The address is shown as text whenever there is one (a no-browser device has only it).
+      const shown = url?.display ?? url?.url?.replace(/^https?:\/\//, "");
+      const showUrl = keys.has("signin.handoff.url") && shown;
       return html`${code} ${qrCode(c, url?.qr ? url.url : null)}
       ${showUrl
         ? html`<p class="body" data-key="signin.handoff.url">
-            ${text(c, "signin.handoff.url", { url: url!.display! })}
+            ${text(c, "signin.handoff.url", { url: shown as string })}
             ${copyAddress(c)}
           </p>`
         : keys.has("signin.handoff.url")
@@ -200,6 +202,8 @@ function isLoading(view: View): boolean {
 /** A blocking step: the card on the product ambient (DL1, DL2, DL5). */
 function screen(c: RenderCtx, layout: Layout): TemplateResult {
   const { view } = c;
+  // One form, one card width: a step of the sign-in form splits like its first step does.
+  const split = layout.split === true || c.form === true;
   const placed = placeKeys(view, layout);
   // Keys a component draws inside its own steps are not repeated as text or controls.
   const own: readonly string[] =
@@ -237,7 +241,7 @@ function screen(c: RenderCtx, layout: Layout): TemplateResult {
     data-part="stage"
     role=${ifDefined(c.fill ? "main" : undefined)}
     data-kind="screen"
-    ?data-split=${layout.split === true}
+    ?data-split=${split}
   >
     ${ambient
       ? html`<div class="ambient" aria-hidden="true">
@@ -255,7 +259,7 @@ function screen(c: RenderCtx, layout: Layout): TemplateResult {
     >
       ${loading ? shimmer() : nothing}
       <div class="split passport">
-        ${layout.split && c.resolved.iconUrl
+        ${split && c.resolved.iconUrl
           ? html`<div class="passport-ambient" aria-hidden="true">
               <img src=${c.resolved.iconUrl} alt="" />
             </div>`
@@ -303,12 +307,7 @@ function screen(c: RenderCtx, layout: Layout): TemplateResult {
           : nothing}
       </div>
       ${contentFor(c)} ${progressFor(c)} ${callout(c, errorKeys)}
-      ${actions(
-        c,
-        p.controls,
-        view.component === "UpdatePrompt",
-        view.component === "UpdatePrompt",
-      )}
+      ${actions(c, p.controls, view.component === "UpdatePrompt")}
       ${links(c, p.links)} ${a11yOnly(c)}
       ${p.footnote.length ? paragraphs(c, p.footnote, "footnote") : nothing}
     </div>
@@ -512,8 +511,13 @@ function withBase(c: RenderCtx): View {
         "common.cancel",
         ...(keyInstead ? ["signin.choice.keyInstead"] : []),
       );
+      // One lede: the browser's, where the form runs in one (the model's own names the desktop).
+      const one = (v: View): View =>
+        v.copy.includes("signin.choice.ledeBrowser")
+          ? { ...v, copy: v.copy.filter((k) => k !== "signin.choice.lede") }
+          : v;
       if (rowReplace)
-        return {
+        return one({
           ...base,
           copy: base.copy.filter((k) => k !== "signin.replace.open"),
           decisions: {
@@ -523,16 +527,16 @@ function withBase(c: RenderCtx): View {
                 ? null
                 : base.decisions.primary,
           },
-        };
+        });
       // Keep and Create are rows of the list, not buttons, wherever the list can be chosen from.
       return view.state === "all-full"
-        ? base
-        : {
+        ? one(base)
+        : one({
             ...base,
             copy: base.copy.filter(
               (k) => k !== "signin.choice.keep" && k !== "signin.choice.create",
             ),
-          };
+          });
     }
     case "SignIn": {
       // The form ends on a heading and one Start; every other step can be backed out of (DL2).
@@ -546,7 +550,18 @@ function withBase(c: RenderCtx): View {
         };
       }
       const sheet = input.signIn?.presentation === "sheet";
-      return view.state === "methods" && !sheet ? view : add("common.cancel");
+      const step =
+        view.state === "methods" && !sheet ? view : add("common.cancel");
+      // No "or" divider over the providers (DL4), and no "Sign in…" link on the sign-in step.
+      return step.state === "methods" || step.state === "error"
+        ? {
+            ...step,
+            copy: step.copy.filter(
+              (k) =>
+                k !== "signin.provider.group" && k !== "signin.menu.signIn",
+            ),
+          }
+        : step;
     }
     case "Activate": {
       if (
@@ -829,10 +844,12 @@ function deviceLimitContent(c: RenderCtx): TemplateResult | typeof nothing {
   const selected =
     c.input.selected !== undefined ? Number(c.input.selected) : leastRecent;
   const pick = selected !== undefined ? devices[selected] : undefined;
+  // The subhead states the count ("Your license is on 3 of 3 devices"): the meter is the picture.
+  const captioned = !keys.has("deviceLimit.heading");
   return html`${qr}${keys.has("part.seatMeter.caption") &&
   used !== undefined &&
   limit != null
-    ? seatMeter(c, used, limit)
+    ? seatMeter(c, used, limit, captioned)
     : nothing}
   ${keys.has("signin.replace.meta")
     ? html`<div
@@ -840,6 +857,7 @@ function deviceLimitContent(c: RenderCtx): TemplateResult | typeof nothing {
         role="radiogroup"
         aria-labelledby="pk-title"
         data-part="device-list"
+        ?data-scroll=${devices.length > 6}
       >
         ${devices.map(
           (d, i) =>
@@ -1161,6 +1179,7 @@ function replaceRows(c: RenderCtx): TemplateResult | typeof nothing {
       role="radiogroup"
       aria-labelledby="pk-title"
       data-part="device-list"
+      ?data-scroll=${devices.length > 6}
     >
       ${devices.map(
         (d, i) =>
@@ -1379,13 +1398,43 @@ type SettingsRow = NonNullable<RenderCtx["input"]["config"]>[number] & {
 
 /** A setting's name: the catalog entry's label, else its key read as words (`audio.volume` →
  *  "Audio volume"), never the raw key (DL8). */
+/** Words a key spells in capitals when it is read as a label (ui.compact reads "UI compact"). */
+const ACRONYMS: ReadonlySet<string> = new Set([
+  "ui",
+  "url",
+  "uri",
+  "id",
+  "api",
+  "cpu",
+  "gpu",
+  "fps",
+  "hdr",
+  "vr",
+  "ar",
+  "ip",
+  "dns",
+  "vpn",
+  "usb",
+  "tls",
+  "ssl",
+  "sdk",
+  "os",
+  "pc",
+  "tv",
+  "hdmi",
+  "pin",
+  "qr",
+]);
+
 export function settingLabel(row: SettingsRow): string {
   if (row.label?.trim()) return row.label.trim();
   const phrase = row.key
     .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
     .split(/[._\-\s/:]+/)
     .filter(Boolean)
-    .map((w) => w.toLocaleLowerCase())
+    .map((w) =>
+      ACRONYMS.has(w.toLowerCase()) ? w.toUpperCase() : w.toLocaleLowerCase(),
+    )
     .join(" ");
   return phrase ? phrase[0]!.toLocaleUpperCase() + phrase.slice(1) : row.key;
 }

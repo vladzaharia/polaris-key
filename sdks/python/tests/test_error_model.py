@@ -44,7 +44,7 @@ UUID = "0f1e2d3c-4b5a-4968-8776-a5b4c3d2e1f0"
 
 def _discovery() -> Dict[str, Any]:
     doc = discovery_doc(
-        license=True, config=True, release=True, distribution=True, update=True, identity=True
+        license=True, config=True, release=True, distribution=True, update=True, identity=True, commerce=True
     )
     base = f"{BASE_URL}{P}"
     doc["services"]["update"]["endpoints"]["feed"] = f"{base}/update/{{channel}}/feed.jws"

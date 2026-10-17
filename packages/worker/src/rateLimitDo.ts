@@ -28,6 +28,8 @@ interface CheckRequest {
   limit: number;
   windowSec: number;
   now: number;
+  /** Read the counter without counting this call. */
+  peek?: boolean;
 }
 
 interface Counter {
@@ -56,7 +58,7 @@ export class RateLimitDO implements DurableObject {
   ) {}
 
   async fetch(request: Request): Promise<Response> {
-    const { bucket, id, limit, windowSec, now } =
+    const { bucket, id, limit, windowSec, now, peek } =
       (await request.json()) as CheckRequest;
     // A `windowSec` of 0 would divide by zero (a permanent lockout, an uncollectable key).
     if (
@@ -84,6 +86,8 @@ export class RateLimitDO implements DurableObject {
     let ok: boolean;
     if (counter.count >= limit) {
       ok = false;
+    } else if (peek === true) {
+      ok = true;
     } else {
       counter.count += 1;
       counter.expiresAt = (window + 1) * windowSec;

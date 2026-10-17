@@ -77,6 +77,23 @@ Left for the next slice (UX fold, all in the console):
 - The review step's per-entry changed-since-open merge and Copy the diff (U-29 overlap).
 - The UX reviewer pass on the built screens.
 
+## Progress and continuation, slice 2 (2026-10-17)
+
+Done: the approve drawer lives on the catalog editor (`?recipe=<key>`, opened by **Review and approve** on the minted-token entry): fields compared with the last approval (changed first, old struck, new marked, "N fields unchanged" disclosure), a widening warning (longer lifetime, wider "who may mint"), the public-mint acknowledgement, Revoke approval, the step-up, and the admin-2-16 callout ("The recipe changed while you were reviewing", info tone, no auto-dismiss; the drawer re-reads every 15 s and on focus, and a 409 on approve does the same). `EdgeMintPage.tsx`, its test and the `edge-mint` nav entry are deleted; `#/p/<slug>/config/edge-mint[?recipe=k]` redirects to the entry's drawer; attention items, Overview and the settings row link to the entry.
+
+Corrections from the code:
+
+- **The console's step-up is the IdP sign-in redirect, not an in-drawer passkey ceremony** (`useStepUp`, `stepUpHref`; the passkey prompt is the IdP's). With a stale sign-in the primary is **Sign in to approve** (back to the drawer afterwards); a 403 `step_up_required` shows the danger strip "Nothing was approved: the sign-in check didn't finish." and the primary becomes **Try again**. An in-drawer WebAuthn step-up needs a console step-up endpoint (follow-up, with I-30).
+- The mockups' commit link and "who pushed again" line need the recipe's last commit; the API does not carry it. The callout says what happened without it.
+- A legacy recipe with no catalog entry still opens: `?recipe=<id>` on the editor does not need an entry.
+- U-29's diff is not on main, so the per-entry merge is the minimum: the drawer's fields-versus-approval comparison and the swap on change. The catalog-level review step's "Copy the diff" and per-entry changed-since-open merge stay with U-29.
+
+Left: the UX reviewer pass (BUILT mode) on the drawer states; `worker/src/console/lib/shape.ts` still emits the old `config/edge-mint` route in setup actions (the redirect covers it); an in-drawer passkey step-up and the commit link (above).
+
+### Fix round after the BUILT UX review (2026-10-17)
+
+B1 to B2, M1 to M15 and m1 to m9 fixed; the review is `_mockups/review/U-31/ux-review.md`. Notes: the step-up button now reads **Sign in again** in the refused state (m5, replacing "Try again"); "Access" in the open-mint callout links to Enrollment, where registration is set; unpublished edits are handled on the entry (no review button while the draft differs, with the reason in the callout), not in the drawer; pending recipes are counted from the product's setup state, on the Catalog nav item, on the catalog row and key drawer, and the old Edge mint URL, the Overview checklist and the Services link go straight to the recipe when exactly one is pending. Left out as console-wide: accent/contrast, the drawer head rule, the heading focus ring (m3's last bullet).
+
 ## Screen acceptance (brand transition, 2026-10-09)
 
 Done when every row holds for each screen and state this package ships, checked in the real runtime

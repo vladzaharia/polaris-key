@@ -69,8 +69,8 @@ export function areaName(id: AreaId): string {
 /**
  * The area of each opt-in service's admin surface (`/products/:slug/<service>/**`) and the
  * default `rbacArea` of the settings it owns (§2.7). Release, Distribution and Update are one
- * area, Ship builds. `commerce` is not a service yet: CM-29 moves `distribution/commerce/**`
- * under its own prefix and keeps the area.
+ * area, Ship builds. Commerce (CM-29) has its own prefix and the `commerce` area, which is a
+ * permission scope wider than the service: it also covers Core's PS-06 panel (`…/storefronts/*`).
  */
 export const SERVICE_AREA: Readonly<Record<ServiceSlug, AreaId>> = {
   license: "license",
@@ -80,6 +80,7 @@ export const SERVICE_AREA: Readonly<Record<ServiceSlug, AreaId>> = {
   update: "ship",
   identity: "signin",
   sync: "sync",
+  commerce: "commerce",
 };
 
 /**

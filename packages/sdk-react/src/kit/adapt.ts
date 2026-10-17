@@ -105,3 +105,38 @@ export function adaptPane(view: View, input: UiInput): View {
     });
   return view;
 }
+
+/** The sign-in form's methods step: no "or" divider over the providers (DL4), no "Sign in…" link
+ *  on the sign-in step itself. Drawing only; the model's copy list is the corpus's. */
+export function adaptMethods(view: View): View {
+  if (view.component !== "SignIn") return view;
+  if (view.state !== "methods" && view.state !== "error") return view;
+  return patched(view, {
+    copy: view.copy.filter(
+      (k) => k !== "signin.provider.group" && k !== "signin.menu.signIn",
+    ),
+  });
+}
+
+/** The Replace step confirms on its own button: its "Replace a device" openers are gone. */
+export function adaptReplace(view: View): View {
+  if (view.component !== "LicenseChoice" || view.state !== "replace-open")
+    return view;
+  return patched(view, {
+    copy: view.copy.filter(
+      (k) => k !== "signin.replace.open" && k !== "signin.replace.openSystem",
+    ),
+  });
+}
+
+/** The code step: how long the code lasts and a Cancel to leave by. */
+export function adaptHandoff(view: View): View {
+  if (view.component !== "SignInHandoff" || view.state !== "code") return view;
+  const add: string[] = [];
+  if (view.args.time !== undefined) add.push("signin.handoff.expires");
+  add.push("common.cancel");
+  return patched(view, { copy: union(view.copy, add) });
+}
+
+/** What the code step says while it waits (a status, not the ticking countdown). */
+export const HANDOFF_WAITING = "cli.signin.waitingCode";

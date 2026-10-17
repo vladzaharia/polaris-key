@@ -2639,6 +2639,7 @@ describe("the per-product upstream budget", () => {
       update: { enabled: true },
       identity: { enabled: false },
       sync: { enabled: false },
+      commerce: { enabled: false },
     };
 
     /** `releaseCatalog.repositoryPublic` — the portal's gate — with `fetchImpl` as the platform `fetch`. */

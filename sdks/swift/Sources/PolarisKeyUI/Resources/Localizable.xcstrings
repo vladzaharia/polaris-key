@@ -24458,7 +24458,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "This app isn't set up for sign-in. Contact its developer."
+            "value": "This app's sign-in isn't set up correctly, so it stopped here to keep your account safe. Let its developer know."
           }
         },
         "de": {
@@ -24470,7 +24470,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "This app isn't set up for sign-in. Contact its developer."
+            "value": "This app's sign-in isn't set up correctly, so it stopped here to keep your account safe. Let its developer know."
           }
         },
         "es": {
@@ -24518,7 +24518,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "App not recognised"
+            "value": "Sign-in can't finish"
           }
         },
         "de": {
@@ -24530,7 +24530,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "App not recognised"
+            "value": "Sign-in can't finish"
           }
         },
         "es": {
@@ -30818,7 +30818,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "This app's return address isn't registered, so we didn't send you back. Contact its developer."
+            "value": "This app's sign-in isn't set up correctly, so it stopped here to keep your account safe. Let its developer know."
           }
         },
         "de": {
@@ -30830,7 +30830,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "This app's return address isn't registered, so we didn't send you back. Contact its developer."
+            "value": "This app's sign-in isn't set up correctly, so it stopped here to keep your account safe. Let its developer know."
           }
         },
         "es": {
@@ -30878,7 +30878,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Return address not allowed"
+            "value": "Sign-in can't return to the app"
           }
         },
         "de": {
@@ -30890,7 +30890,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Return address not allowed"
+            "value": "Sign-in can't return to the app"
           }
         },
         "es": {
@@ -58425,6 +58425,78 @@
           "stringUnit": {
             "state": "translated",
             "value": "替换并继续"
+          }
+        }
+      }
+    },
+    "signin.replace.confirmNamed": {
+      "comment": "Replace a device, inline in the license choice (SIGN-IN.md §3.7). The primary once a device is picked, in place of the generic one. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "variations": {
+            "device": {
+              "mac": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Replace %1$@ and Continue"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Replace %1$@ and continue"
+                }
+              }
+            }
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ ersetzen und fortfahren"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remplacer %1$@ et continuer"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reemplazar %1$@ y continuar"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Substituir %1$@ e continuar"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sostituisci %1$@ e continua"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@を置き換えて続ける"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ 교체하고 계속"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "替换%1$@并继续"
           }
         }
       }

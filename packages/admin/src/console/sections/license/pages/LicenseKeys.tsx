@@ -6,7 +6,7 @@
 
 import * as React from "react";
 import { KeyRound } from "lucide-react";
-import type { KeyDto, LicenseDetail } from "../../../../api.js";
+import { type KeyDto, type LicenseDetail } from "../../../../api.js";
 import { useMe } from "../../../data/hooks.js";
 import { mutate } from "../../../data/mutations.js";
 import { useTableUrlState } from "../../../useTableUrlState.js";

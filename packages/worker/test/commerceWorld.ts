@@ -7,6 +7,8 @@
  * (`setAppleRootsForTesting`), restored by `close()`.
  */
 
+import { parseServices, serializeServices } from "../src/core/services.js";
+import { setServices } from "../src/core/products/store.js";
 import { generateKeyPairSync } from "node:crypto";
 import type { Db } from "../src/db/types.js";
 import type { Env } from "../src/platform/env.js";
@@ -14,7 +16,7 @@ import { dispatchWith } from "../src/dispatch.js";
 import { putOutletCredential } from "../src/core/outletCredentials.js";
 import { loadProduct } from "../src/core/products.js";
 import { registerDeviceBinding } from "../src/core/devices.js";
-import { setAppleRootsForTesting } from "../src/services/distribution/commerce/apple.js";
+import { setAppleRootsForTesting } from "../src/services/commerce/apple.js";
 import { handleAdmin } from "../src/console/index.js";
 import {
   ADMIN_COOKIE,
@@ -165,7 +167,7 @@ export async function admin(
     { sub: "u1", name: "Ada", email: "ada@x.io", groups: ["platform-admins"] },
     NOW,
   );
-  const full = `/api/products/${SLUG}/distribution${path}`;
+  const full = `/api/products/${SLUG}${path}`;
   return handleAdmin(
     new Request(`${CONSOLE}/manage${full}`, {
       method,
@@ -222,6 +224,21 @@ export async function commerceWorld(
 ): Promise<CommerceWorld> {
   const db = makeTestDb();
   await seedReleaseProduct(db);
+  // CM-29: Commerce is its own service (off by default); the world runs it on.
+  const row = await db.first<{ services_json: string | null }>(
+    "SELECT services_json FROM products WHERE slug = ?",
+    SLUG,
+  );
+  const base = parseServices(row?.services_json ?? null).services;
+  await setServices(
+    db,
+    SLUG,
+    serializeServices({
+      services: { ...base, commerce: { enabled: true } },
+    }),
+    "admin",
+    NOW,
+  );
   await db.run(
     "UPDATE product_schema SET catalog_json = ? WHERE product = ? AND active = 1",
     JSON.stringify(COMMERCE_CATALOG),
@@ -345,7 +362,7 @@ export async function bindingOf(
   w: CommerceWorld,
   token: string,
 ): Promise<string> {
-  const res = await route(w, "GET", "/distribution/commerce/binding", {
+  const res = await route(w, "GET", "/commerce/binding", {
     token,
   });
   if (res.status !== 200) throw new Error(`binding: ${res.status}`);

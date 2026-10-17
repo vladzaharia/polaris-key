@@ -38,6 +38,7 @@ import im.plrs.key.core.CoreContext
 import im.plrs.key.core.CoreOptions
 import im.plrs.key.core.DeviceFactsSource
 import im.plrs.key.core.DiscoveryResult
+import im.plrs.key.core.DocOutcome
 import im.plrs.key.core.DocProfile
 import im.plrs.key.core.DocumentSlice
 import im.plrs.key.core.FingerprintSource
@@ -127,6 +128,11 @@ public data class PolarisKeyClientOptions @JvmOverloads constructor(
      * provider, else the typed `runtime` N/A ([im.plrs.key.core.NoAttestation]).
      */
     val attestation: AttestationProvider? = null,
+    /**
+     * `backend.origins`: the exact origins `client.backend` may send the licence to (https, or http
+     * on loopback). Empty refuses every URL. A malformed one throws `invalid-options`.
+     */
+    val backendOrigins: List<String> = emptyList(),
 )
 
 /**
@@ -216,6 +222,22 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
         },
     )
     private val attestationProvider: AttestationProvider? = options.attestation
+
+    /**
+     * The licence document to the app's own backend: [BackendClient.install] (OkHttp) and
+     * [BackendClient.headers]. Sends `X-PKey-License` and `X-PKey-Device` only.
+     */
+    public val backend: BackendClient = BackendClient(
+        options.backendOrigins,
+        held = { core.cache().license?.let { BackendClient.Held(it.jws, it.doc.issuedAt, it.doc.expiresAt) } },
+        deviceId = { core.deviceId() },
+        now = { core.now() },
+        sync = { force ->
+            val r = sync(force)
+            val outcome = r.documents[DocumentSlice.license]
+            !r.unauthorized && (outcome == DocOutcome.Applied || outcome == DocOutcome.Unchanged)
+        },
+    )
 
     /** The provider attest() uses now (the option, the process's installed one, or none). */
     private fun attestation(): AttestationProvider = attestationProvider ?: AttestationProviders.installed ?: NoAttestation

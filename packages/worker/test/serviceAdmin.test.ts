@@ -680,8 +680,17 @@ describe("the admin regroup (§R1)", () => {
   it("lists licences and tiers through License's descriptor", async () => {
     const { db, env, auth } = await fixture(false);
     for (const [resource, key, extra] of [
-      // P0-29: the licence list answers a page, `nextCursor` null on the last.
-      ["license/licenses", "licenses", { nextCursor: null }],
+      // P0-29: the licence list answers a page, `nextCursor` null on the last, and the first page
+      // carries the total and the four state counts.
+      [
+        "license/licenses",
+        "licenses",
+        {
+          nextCursor: null,
+          total: 0,
+          counts: { active: 0, expiring: 0, expired: 0, disabled: 0 },
+        },
+      ],
       ["license/tiers", "tiers", {}],
     ] as const) {
       const path = `/api/products/${SLUG}/${resource}`;

@@ -29,6 +29,11 @@
  *     behaviour had no scenario.
  *   - 11a/11b: the deploy hook's snapshot scrub reads the active schema, one more D1 round trip
  *     (sec/manifest-snapshot-redact); only the trip count moved.
+ *   - CM-29 (integration, 2026-10-17): the service table gained `commerce` (off by default), so
+ *     every captured services JSON carries `"commerce":{"enabled":false}`, and the 9-* service
+ *     switch audit summaries cut off at the same length one key later. 1-6, 8-10 and 11-12 were
+ *     re-captured for that alone (checked: with the commerce member removed the entries are
+ *     unchanged, except the 9-* summaries' truncation point).
  *   - 13-link-secret-default (plans/P0-26.md D5, delta 1): link screens the catalog for delivery
  *     issues, as resync and the console do. Captured from the pre-pipeline code (the link
  *     succeeded), then re-captured from the pipeline when the delta landed (the link refuses).

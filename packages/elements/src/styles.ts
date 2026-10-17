@@ -144,12 +144,14 @@ const KIT_CSS = String.raw`
   outline: none;
 }
 /* DL3: on a card taller than its window the primary stays in reach, on the card's own surface
-   (a halo, so nothing moves while everything fits). */
+   (its own padding, drawn into the gap, so nothing moves while everything fits). */
 .stage[data-kind="screen"] .card > .actions {
   position: sticky;
   inset-block-end: 0;
   z-index: 1;
-  box-shadow: 0 0 0 var(--pk-space-3) var(--pk-surface-raised);
+  padding-block: var(--pk-space-2);
+  margin-block: calc(-1 * var(--pk-space-2));
+  background: var(--pk-surface-raised);
 }
 @container pk (max-width: 34.99rem) {
   .stage {
@@ -186,14 +188,27 @@ const KIT_CSS = String.raw`
   }
 }
 
+/* A window under 34rem tall (large text): the bar scrolls with the content, never over it. */
+.pk-root[data-tight] .stage[data-kind="screen"] .card > .actions {
+  position: static;
+  margin-block: 0;
+  padding-block: 0;
+}
+
 /* DL1: two panes in a landscape box from 52.5rem, the identity panel at the start. */
 .split {
   display: contents;
 }
+/* A window-filling screen centres its card with an upper-third bias (DL1): the free space
+   under the card is a little more than the space over it. */
+.pk-root[data-shape="landscape"][data-fill] .stage {
+  align-content: center;
+  padding-block: var(--pk-space-8) clamp(var(--pk-space-8), 18dvh, 14rem);
+}
 .pk-root[data-shape="landscape"] .stage[data-split] .card {
-  inline-size: min(65rem, 100%);
-  grid-template-columns: minmax(0, 1fr) minmax(28rem, 1fr);
-  column-gap: var(--pk-space-12);
+  inline-size: min(55rem, 100%);
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  column-gap: var(--pk-space-10);
   align-items: start;
   text-align: start;
 }
@@ -204,10 +219,18 @@ const KIT_CSS = String.raw`
   place-items: center;
   min-block-size: 18rem;
   border-radius: var(--pk-kit-radius-group);
-  background: var(--pk-accent-subtle, var(--pk-surface-sunken));
+  background: linear-gradient(
+    155deg,
+    var(--pk-accent-subtle, var(--pk-surface-sunken)),
+    color-mix(in srgb, var(--pk-accent-subtle, var(--pk-surface-sunken)) 45%, var(--pk-surface-raised))
+  );
 }
 .pk-root[data-shape="landscape"][data-theme="dark"] .stage[data-split] .passport {
-  background: radial-gradient(closest-side, var(--pk-accent-subtle, var(--pk-surface-sunken)), var(--pk-surface-sunken));
+  background: radial-gradient(
+      90% 80% at 50% 38%,
+      color-mix(in srgb, var(--pk-accent, var(--pk-accent-subtle, transparent)) 22%, var(--pk-surface-sunken)),
+      var(--pk-surface-sunken)
+    );
 }
 /* DL1 dark: the icon ambient fills the identity panel (the icon blurred under the icon). */
 .passport-ambient {
@@ -243,9 +266,11 @@ const KIT_CSS = String.raw`
 .pk-root[data-shape="landscape"] .stage[data-split] .passport .identity {
   display: grid;
 }
-.pk-root[data-shape="landscape"] .stage[data-split] .passport .name,
-.pk-root[data-shape="landscape"] .stage[data-split] .passport .by {
-  display: none;
+/* The name and the developer sit under the icon in the identity panel (the title names the
+   product once, so a header that is drawn at all is not a repeat). */
+.pk-root[data-shape="landscape"] .stage[data-split] .passport .identity {
+  justify-items: center;
+  text-align: center;
 }
 .pk-root[data-shape="landscape"] .stage[data-split] .actions,
 .pk-root[data-shape="landscape"] .stage[data-split] .links {
@@ -293,6 +318,42 @@ const KIT_CSS = String.raw`
 .pk-root[data-shape="short"] .stage[data-split] .actions {
   justify-content: start;
 }
+/* The docked bar of a short window is one row (two buttons side by side), on the card's own
+   opaque ground, so the screen above it keeps most of the 390 px (DL1, DL3). */
+.pk-root[data-shape="short"] .stage[data-kind="screen"] .card > .actions {
+  position: sticky;
+  inset-block-end: 0;
+  z-index: 1;
+  flex-direction: row-reverse;
+  flex-wrap: wrap;
+  justify-content: start;
+  padding-block: var(--pk-space-2);
+  margin-block: calc(-1 * var(--pk-space-2));
+  background: var(--pk-surface-raised);
+}
+/* Height is what a short window lacks: a group of links is two columns, not a column. */
+.pk-root[data-shape="short"] .links:has(> :nth-child(3)) {
+  display: grid;
+  grid-template-columns: repeat(2, max-content);
+  justify-content: start;
+  justify-items: start;
+  gap: 0 var(--pk-space-6);
+}
+.pk-root[data-shape="short"] .stage[data-kind="screen"] .card > .actions .btn {
+  inline-size: auto;
+  flex: 1 1 10rem;
+}
+
+/* UpdatePrompt: the primary takes the first line, Later and Restart when ready share the next. */
+.pk-root[data-component="UpdatePrompt"] .card .actions[data-layout="row"] {
+  justify-content: stretch;
+}
+.pk-root[data-component="UpdatePrompt"] .card .actions .btn {
+  flex: 1 1 8rem;
+}
+.pk-root[data-component="UpdatePrompt"] .card .actions .btn[data-variant="primary"] {
+  flex-basis: 100%;
+}
 
 /* ── Product header (DL5) ─────────────────────────────────────────────────────────────────── */
 .identity {
@@ -318,6 +379,10 @@ const KIT_CSS = String.raw`
 }
 .identity[data-size="compact"] .icon {
   --pk-icon-size: 2rem;
+}
+/* A hero icon never takes more than a fifth of the window, so large text still shows the lede. */
+.identity[data-size="hero"] .icon {
+  --pk-icon-size: min(6rem, 18dvh);
 }
 .identity[data-size="medium"] .icon {
   --pk-icon-size: 3.5rem;
@@ -459,6 +524,17 @@ bdi {
 }
 .card[data-align="start"] .links {
   justify-content: start;
+}
+/* DL4: a group of three or more stacks whole, never a row that wraps 3 + 1. */
+.links:has(> :nth-child(3)) {
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+}
+.card[data-align="start"] .links:has(> :nth-child(3)),
+.pk-root[data-shape="landscape"] .stage[data-split] .links:has(> :nth-child(3)),
+.pane .links:has(> :nth-child(3)) {
+  align-items: start;
 }
 .btn {
   appearance: none;
@@ -611,10 +687,28 @@ bdi {
   align-items: center;
   gap: var(--pk-space-3);
 }
+/* A Copy button beside text sits on the text's own centre line, not on its baseline. */
+.body:has(> .btn) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: var(--pk-space-2);
+}
 .code-row .btn,
 .body .btn {
   min-inline-size: var(--pk-kit-control-height);
   padding-inline: var(--pk-space-3);
+}
+/* QR (DL14): black on a white tile with its quiet zone, a size a phone camera reads across a desk. */
+.qr {
+  margin: 0;
+  inline-size: fit-content;
+}
+.qr svg {
+  display: block;
+  inline-size: clamp(8.5rem, 28cqi, 11rem);
+  aspect-ratio: 1;
+  border-radius: var(--pk-kit-radius-control);
 }
 .url {
   color: var(--pk-accent-fg, var(--pk-text-strong));
@@ -633,6 +727,13 @@ bdi {
   box-shadow: inset 0 0 0 1px var(--pk-border-subtle);
   overflow: clip;
   text-align: start;
+}
+/* Past six rows the list scrolls in its own box, so the callout and the primary stay in view
+   (its focusable rows make the box keyboard-reachable). */
+.list[data-scroll] {
+  max-block-size: min(24rem, 55dvh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 .row {
   display: grid;
@@ -823,9 +924,12 @@ bdi {
 .pane > * {
   min-inline-size: 0;
 }
+/* A form's actions sit at the pane's end, the primary last (row-reverse puts the first in the
+   DOM, the primary, at the end edge). */
 .pane .actions {
-  flex-direction: row;
+  flex-direction: row-reverse;
   flex-wrap: wrap;
+  justify-content: flex-start;
 }
 /* A narrow box (or large text) puts a row's actions under its text, never squeezing it. */
 @container pk (max-width: 30rem) {
@@ -971,12 +1075,21 @@ dialog.sheet .card,
   grid-template-columns: none;
   border-radius: var(--pk-kit-radius-card);
   padding: var(--pk-kit-card-pad);
-  box-shadow:
-    inset 0 0 0 1px var(--pk-border-subtle),
-    var(--pk-elevation-3);
+  /* The dialog box clips an outer shadow into a lighter square at the corners; the scrim already
+     lifts the card. */
+  box-shadow: inset 0 0 0 1px var(--pk-border-subtle);
 }
-dialog.sheet .passport {
+.pk-root[data-shape] dialog.sheet .stage[data-split] .passport {
   display: contents;
+}
+/* In the sheet the identity is the compact header over the title, never the wide panel. */
+.pk-root[data-shape] dialog.sheet .stage[data-split] .passport .identity {
+  display: flex;
+  justify-content: start;
+  text-align: start;
+}
+.pk-root[data-shape] dialog.sheet .stage[data-split] .passport .icon {
+  --pk-icon-size: 2rem;
 }
 /* Under 35rem the sheet docks to the bottom edge, past the home indicator (DL2, DL17). */
 @media (max-width: 35rem) {

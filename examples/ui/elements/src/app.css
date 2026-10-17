@@ -8,3 +8,8 @@ body {
 main {
   padding: 2rem;
 }
+.panes {
+  display: grid;
+  gap: 1.5rem;
+  max-inline-size: 40rem;
+}

@@ -53,6 +53,7 @@ export const SERVICE_IDS = [
   "update",
   "identity",
   "sync",
+  "commerce",
 ] as const;
 
 export type ServiceId = (typeof SERVICE_IDS)[number];
@@ -84,6 +85,18 @@ export const SERVICE_FAMILY: Record<ServiceId, AccentFamily> = {
   update: "tangerine",
   identity: "orchid",
   sync: "teal",
+  // B1 (2026-10-09, CM-29b): Commerce shares the Distribution green family; no ninth family.
+  commerce: "green",
+};
+
+/**
+ * A section that takes another's accent family and state tokens instead of defining its own (B1,
+ * 2026-10-09): Commerce draws in the Distribution green. The CSS emits no `--pk-service-<id>`
+ * variables for it; its `[data-service]` block is the target's declarations. Every other
+ * output lists it with the target's values.
+ */
+export const SERVICE_ALIAS: Partial<Record<ServiceId, ServiceId>> = {
+  commerce: "distribution",
 };
 
 /** The mark each section uses: the Pinned K for the platform, the Star Cut for delivery. */
@@ -96,6 +109,7 @@ export const SERVICE_MARK: Record<ServiceId, "key" | "update"> = {
   update: "update",
   identity: "key",
   sync: "key",
+  commerce: "key",
 };
 
 /** Human labels (tools/services.json `label`; Core is the platform). */
@@ -108,6 +122,7 @@ export const SERVICE_LABEL: Record<ServiceId, string> = {
   update: "Update",
   identity: "Identity",
   sync: "Cloud Sync",
+  commerce: "Commerce",
 };
 
 /**

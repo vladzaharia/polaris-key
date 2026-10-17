@@ -12,21 +12,17 @@
 
 import * as React from "react";
 import { Plus } from "lucide-react";
-import type { LicenseSummary } from "../../../../api.js";
+import { type LicenseSummary } from "../../../../api.js";
 import { useProduct } from "../../../data/hooks.js";
-import { mutate } from "../../../data/mutations.js";
 import { r } from "../../../routes.js";
 import { Link, navigate } from "../../../router.js";
 import { useTableUrlState } from "../../../useTableUrlState.js";
 import { PageHeader } from "../../../../ui/PageHeader.js";
 import { CollectionTemplate } from "../../../templates/Collection.js";
-import { docsUrl } from "../../../../lib/docsLinks.js";
 import { fromSeconds } from "../../../../lib/format.js";
 import { SIGN_IN_LABELS } from "../../../../lib/labels.js";
 import { cn } from "../../../../lib/cn.js";
 import { Button } from "../../../../ui/Button.js";
-import { ConfirmDialog } from "../../../../ui/ConfirmDialog.js";
-import { EmptyState } from "../../../../ui/EmptyState.js";
 import { Meter } from "../../../../ui/charts/Meter.js";
 import { Timestamp } from "../../../../ui/Timestamp.js";
 import { toast } from "../../../../ui/toast.js";
@@ -38,7 +34,16 @@ import {
   type Facet,
 } from "../../../../ui/data-table/index.js";
 import { CreateLicenseDialog } from "../components/CreateLicenseDialog.js";
-import { LoadMoreLicenses } from "../components/LoadMoreLicenses.js";
+import {
+  BulkEnableDialog,
+  isForbidden,
+  NO_BATCH,
+  NO_TIER,
+  LicensesFirstRun,
+  LicensesForbidden,
+  serverFacetIds,
+  useServerFilter,
+} from "../components/LicenseListParts.js";
 import { OverrideMigrationNotice } from "../components/OverrideMigrationNotice.js";
 import {
   BulkDeleteDialog,
@@ -49,6 +54,7 @@ import {
 import {
   HOLDER_STATES,
   HOLDER_STATE_LABELS,
+  type HolderState,
   HolderCell,
   holderOf,
   holderState,
@@ -74,15 +80,23 @@ const FACETS = [
   "channel",
   "signin",
 ] as const;
-const NO_TIER = "__none__";
-const NO_BATCH = "__none__";
 
 export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
-  const { query: licensesQ, licenses } = useLicensePages(slug);
+  const [state, setState] = useTableUrlState("licenses", { facets: FACETS });
+  // A deep link (?batch= ?holder= ?tier=) is answered by the Worker, which filters before it
+  // pages; every other narrowing runs over the loaded rows.
+  const serverFilter = useServerFilter(state.filters);
+  const {
+    query: licensesQ,
+    licenses,
+    total: serverTotal,
+    counts: serverCounts,
+    loadAll,
+  } = useLicensePages(slug, serverFilter);
+  const [searchingAll, setSearchingAll] = React.useState(false);
   const tiersQ = useTiers(slug);
   const batchesQ = useLicenseBatches(slug);
   const product = useProduct(slug).data;
-  const [state, setState] = useTableUrlState("licenses", { facets: FACETS });
   const [createOpen, setCreateOpen] = React.useState(false);
   const [cleanupOpen, setCleanupOpen] = React.useState(false);
   const [bulkDelete, setBulkDelete] = React.useState<LicenseSummary[] | null>(
@@ -110,6 +124,7 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
   const now = React.useMemo(() => Date.now(), [licensesQ.dataUpdatedAt]);
 
   const counts = React.useMemo(() => {
+    if (serverCounts) return serverCounts;
     const c: Record<LicenseState, number> = {
       active: 0,
       expiring: 0,
@@ -118,7 +133,7 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
     };
     for (const l of licenses) c[licenseState(l, now)] += 1;
     return c;
-  }, [licenses, now]);
+  }, [licenses, now, serverCounts]);
 
   const tierLabel = React.useCallback(
     (id: string | null) =>
@@ -374,66 +389,62 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
     if (!ok) toast.error("This browser can't save files from the page.");
   };
 
-  const runBulk = async (): Promise<void> => {
-    if (!bulk) return;
-    const failed: string[] = [];
-    for (const l of bulk.rows) {
-      try {
-        await mutate("setLicenseEnabled", slug, l.id, bulk.enable);
-      } catch {
-        failed.push(l.name || l.id);
-      }
-    }
-    const done = bulk.rows.length - failed.length;
-    if (failed.length) {
-      throw new Error(
-        `${done} of ${bulk.rows.length} changed. Failed: ${failed.join(", ")}.`,
-      );
-    }
-    toast.success(
-      `${done} ${done === 1 ? "license" : "licenses"} ${bulk.enable ? "enabled" : "disabled"}`,
-    );
+  const stopWalk = React.useRef(false);
+  const searchAll = async (): Promise<void> => {
+    stopWalk.current = false;
+    setSearchingAll(true);
+    await loadAll(() => stopWalk.current);
+    setSearchingAll(false);
   };
 
-  const total = licenses.length;
+  const forbidden = !licensesQ.data && isForbidden(licensesQ.error);
+
+  const firstRun =
+    licensesQ.data !== undefined &&
+    licenses.length === 0 &&
+    !licensesQ.hasNextPage &&
+    state.q === "" &&
+    Object.values(state.filters).every((v) => v.length === 0);
+
+  if (forbidden) return <LicensesForbidden slug={slug} />;
 
   return (
     <CollectionTemplate
       header={
         <PageHeader
           title="Licenses"
-          titleAside={
-            licensesQ.data ? (
-              <span className="text-sm tabular-nums text-fg-muted">
-                {total.toLocaleString()}
-                {licensesQ.hasNextPage ? "+" : ""}
-              </span>
-            ) : null
-          }
+          // First run keeps one primary: the empty state's.
           primaryAction={
-            <Button iconStart={<Plus />} onClick={() => setCreateOpen(true)}>
-              Create license
-            </Button>
+            firstRun ? undefined : (
+              <Button iconStart={<Plus />} onClick={() => setCreateOpen(true)}>
+                Create license
+              </Button>
+            )
           }
-          secondaryActions={[
-            {
-              label: "Clean up duplicates…",
-              onSelect: () => setCleanupOpen(true),
-            },
-            ...(hasBatches
-              ? [
+          secondaryActions={
+            firstRun
+              ? []
+              : [
                   {
-                    label: "Batches",
-                    onSelect: () => navigate(r.licenseBatches(slug)),
+                    label: "Clean up duplicates…",
+                    onSelect: () => setCleanupOpen(true),
                   },
+                  ...(hasBatches
+                    ? [
+                        {
+                          label: "Batches",
+                          onSelect: () => navigate(r.licenseBatches(slug)),
+                        },
+                      ]
+                    : []),
                 ]
-              : []),
-          ]}
+          }
           refetching={licensesQ.isFetching && !licensesQ.isPending}
         />
       }
       summary={
-        licensesQ.data && total > 0 ? (
+        licensesQ.data &&
+        (licenses.length > 0 || Object.values(counts).some((n) => n > 0)) ? (
           <>
             {STATES.map((s) => (
               <FacetTile
@@ -510,25 +521,29 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
           ],
         }}
         loading={licensesQ.isPending}
-        error={licensesQ.error ?? undefined}
+        // Rows already loaded stay on screen when a later page fails (the footer says so).
+        error={licensesQ.data ? undefined : (licensesQ.error ?? undefined)}
+        pagination={{
+          mode: "cursor",
+          local: true,
+          total: serverTotal,
+          hasMore: Boolean(licensesQ.hasNextPage),
+          loadingMore: licensesQ.isFetchingNextPage && !searchingAll,
+          loadError: licensesQ.isFetchNextPageError,
+          onLoadMore: () => void licensesQ.fetchNextPage(),
+          onSearchAll: () => void searchAll(),
+          searchingAll,
+          onStopSearchAll: () => {
+            stopWalk.current = true;
+          },
+          serverFacets: serverFacetIds(serverFilter),
+        }}
         onRetry={() => void licensesQ.refetch()}
         empty={
-          <EmptyState
-            kind="first-run"
-            headingLevel={2}
-            title="No licenses yet"
-            description="Create the first license to mint a key and authorize devices."
-            primaryAction={
-              <Button iconStart={<Plus />} onClick={() => setCreateOpen(true)}>
-                Create license
-              </Button>
-            }
-            docs={docsUrl("createLicense")}
-          />
+          <LicensesFirstRun slug={slug} onCreate={() => setCreateOpen(true)} />
         }
         mobile="cards"
       />
-      <LoadMoreLicenses query={licensesQ} />
 
       <CreateLicenseDialog
         slug={slug}
@@ -547,35 +562,7 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
         onOpenChange={setCleanupOpen}
       />
 
-      <ConfirmDialog
-        open={bulk !== null}
-        onOpenChange={(o) => !o && setBulk(null)}
-        intent="caution"
-        title={
-          bulk
-            ? `${bulk.enable ? "Enable" : "Disable"} ${bulk.rows.length} ${bulk.rows.length === 1 ? "license" : "licenses"}?`
-            : ""
-        }
-        consequences={
-          bulk
-            ? bulk.enable
-              ? [
-                  "Devices on these licenses regain access at their next check-in.",
-                  "Keys and devices are unchanged.",
-                ]
-              : [
-                  "Devices on these licenses stop authenticating right away: their cached tokens are purged.",
-                  "Keys and devices are kept; enabling a license restores access.",
-                ]
-            : []
-        }
-        confirmLabel={
-          bulk
-            ? `${bulk.enable ? "Enable" : "Disable"} ${bulk.rows.length} ${bulk.rows.length === 1 ? "license" : "licenses"}`
-            : ""
-        }
-        onConfirm={runBulk}
-      />
+      <BulkEnableDialog slug={slug} bulk={bulk} onClose={() => setBulk(null)} />
     </CollectionTemplate>
   );
 }

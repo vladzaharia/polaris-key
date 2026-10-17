@@ -11,6 +11,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { SERVICE_ALIAS, type ServiceId } from "@polaris-key/brand";
 import { SERVICE_ERROR_MESSAGES } from "../src/api.js";
 import { SECTIONS } from "../src/console/nav.js";
 import {
@@ -67,9 +68,11 @@ describe("the service table, as the console sees it", () => {
         `@polaris-key/brand tokens.css has no [data-service="${row.accent}"] section rule (service "${row.slug}")`,
       ).toBe(true);
       // One declaration per theme block: dark (:root), light (media query) and data-theme="light".
+      // Commerce draws in the Distribution family (B1): it defines no variables of its own.
+      const owner = SERVICE_ALIAS[row.accent as ServiceId] ?? row.accent;
       expect(
-        brandTokens.split(`--pk-service-${row.accent}:`).length - 1,
-        `@polaris-key/brand tokens.css lacks a dark or light --pk-service-${row.accent} (service "${row.slug}")`,
+        brandTokens.split(`--pk-service-${owner}:`).length - 1,
+        `@polaris-key/brand tokens.css lacks a dark or light --pk-service-${owner} (service "${row.slug}")`,
       ).toBe(3);
     }
   });

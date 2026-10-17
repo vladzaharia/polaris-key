@@ -96,7 +96,7 @@ and none of the app's in-app purchases has passed review yet, it adds a `firstIn
 
 ## In-app purchases
 
-The App Store rows of the [commerce bridge](/docs/features/ship-builds/commerce/)'s product map
+The App Store rows of the [commerce bridge](/docs/features/commerce/)'s product map
 can be created in App Store Connect from the console (**Distribution → Commerce**,
 [App Store products](/docs/features/ship-builds/channels/app-store/#app-store-products-in-commerce)) or its API, under the
 same prefix, as
@@ -146,7 +146,7 @@ refuses them (409 `first_iap_portal`). The review screenshot is added in App Sto
 Two console pages drive a product's App Store app through the
 [App Store Connect connector](/docs/features/ship-builds/channels/app-store/): **Distribution →
 App Store** takes a build to TestFlight and the App Store, and **Distribution → Commerce** creates
-the In-App Purchases the [commerce bridge](/docs/features/ship-builds/commerce/) maps to license
+the In-App Purchases the [commerce bridge](/docs/features/commerce/) maps to license
 flags. Both act only on the app the product is pinned to, and both are for platform admins.
 
 Every change is one named request to App Store Connect, confirmed before it is sent, and what the

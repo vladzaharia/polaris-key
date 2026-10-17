@@ -30,6 +30,8 @@ import {
 } from "../src/services/identity/portal/session.js";
 import { issuePortalSessionRow } from "./portalSessionRow.js";
 import { handlePortalApi as portalApi } from "../src/services/identity/portal/api.js";
+import { codeCopy, CLOSE_PAGE } from "../src/core/brandPage.js";
+import { escapeHtml } from "../src/platform/html.js";
 import { SETTINGS } from "../src/mount.js";
 import { portalHooksFor } from "./portalHarness.js";
 import { validateRedirectUri } from "../src/services/identity/passthrough/redirectUri.js";
@@ -320,7 +322,14 @@ describe("GET /<p>/identity/authorize (§12.4)", () => {
     const res = await authorize(over);
     expect(res.status).toBe(401);
     expect(res.headers.get("location")).toBeNull();
-    expect(await res.text()).toContain("App not recognised");
+    const html = await res.text();
+    const copy = codeCopy("invalid_client");
+    expect(html).toContain(escapeHtml(copy.title));
+    expect(html).toContain(escapeHtml(copy.message));
+    expect(html).toContain(escapeHtml(CLOSE_PAGE));
+    // The app is named above the card, from the product's path, whatever client_id said.
+    expect(html).toContain(`<div class="app"><span>${SLUG}</span></div>`);
+    expect(html).not.toContain("<script");
   });
 
   it.each([
@@ -337,9 +346,37 @@ describe("GET /<p>/identity/authorize (§12.4)", () => {
       const res = await authorize(over);
       expect(res.status).toBe(400);
       expect(res.headers.get("location")).toBeNull();
-      expect(await res.text()).toContain("Return address not allowed");
+      const html = await res.text();
+      const copy = codeCopy("redirect_uri_mismatch");
+      expect(html).toContain(escapeHtml(copy.message));
+      expect(html).toContain(escapeHtml(CLOSE_PAGE));
+      expect(html).toContain(`<div class="app"><span>${SLUG}</span></div>`);
     },
   );
+
+  it("renders a card, not JSON, for a browser at an unknown product; a script keeps 404 JSON", async () => {
+    const url = "/nope/identity/authorize?client_id=nope";
+    const page = await route("GET", url, {
+      headers: { "sec-fetch-mode": "navigate", accept: "text/html" },
+    });
+    expect(page.status).toBe(404);
+    expect(page.headers.get("content-type")).toContain("text/html");
+    const html = await page.text();
+    expect(html).toContain(escapeHtml(codeCopy("identity_disabled").title));
+    expect(html).not.toContain("nope");
+    const json = await route("GET", url);
+    expect(json.status).toBe(404);
+    expect(json.headers.get("content-type")).toContain("json");
+  });
+
+  it("sends a browser at an Identity-off product to the friendly card", async () => {
+    await services({ identity: false });
+    const res = await route("GET", authorizeUrl(), {
+      headers: { "sec-fetch-mode": "navigate" },
+    });
+    expect(res.status).toBe(303);
+    expect(res.headers.get("location")).toContain("error=identity_disabled");
+  });
 
   it("checks client_id and redirect_uri before anything else, even with every other parameter wrong", async () => {
     const res = await authorize({

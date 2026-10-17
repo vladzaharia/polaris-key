@@ -47,7 +47,7 @@ async function ready(adapter: {
 }
 
 describe("service map shape mirrors @polaris-key/node's discovery.ts", () => {
-  it("carries exactly the seven slugs, in the canonical order", () => {
+  it("carries exactly the eight slugs, in the canonical order", () => {
     // The order is load-bearing: every SDK iterates it rather than a language-native map
     // ordering, so a reorder here silently reorders output everywhere else.
     expect(SERVICE_SLUGS).toEqual([
@@ -58,6 +58,7 @@ describe("service map shape mirrors @polaris-key/node's discovery.ts", () => {
       "update",
       "identity",
       "sync",
+      "commerce",
     ]);
     expect(Object.keys(noServices()).sort()).toEqual([...SERVICE_SLUGS].sort());
   });
@@ -71,6 +72,7 @@ describe("service map shape mirrors @polaris-key/node's discovery.ts", () => {
       update: { enabled: false },
       identity: { enabled: false },
       sync: { enabled: false },
+      commerce: { enabled: false },
     });
   });
 
@@ -83,6 +85,7 @@ describe("service map shape mirrors @polaris-key/node's discovery.ts", () => {
       update: { enabled: true },
       identity: { enabled: false },
       sync: { enabled: false },
+      commerce: { enabled: false },
     });
     expect(servicesFromList([])).toEqual(noServices());
   });

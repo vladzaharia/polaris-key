@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Tidewater Studio: every state</title>
+    <link rel="stylesheet" href="./src/app.css" />
+    <script type="module" src="./src/states.ts"></script>
+  </head>
+  <body>
+    <main>
+      <h1>Every state</h1>
+      <p>
+        Tidewater Studio on fixtures. The gate screens pin one state per load;
+        the panes below run themselves on fixture data.
+      </p>
+      <h2>The gate</h2>
+      <ul id="gate-states"></ul>
+      <h2>The sign-in form</h2>
+      <p>
+        <button type="button" id="open-sign-in">Open the sign-in sheet</button>
+        Click through methods, the browser handoff, the license choice, Replace
+        a device and Done.
+      </p>
+      <h2>Panes</h2>
+      <div class="panes">
+        <pk-devices id="devices"></pk-devices>
+        <pk-settings id="settings"></pk-settings>
+      </div>
+      <h2>An update</h2>
+      <p>
+        <button type="button" id="open-update">An update is available</button>
+        An optional update is a dialog over the page; a mandatory one owns the
+        window.
+      </p>
+      <pk-update-prompt id="update"></pk-update-prompt>
+    </main>
+  </body>
+</html>

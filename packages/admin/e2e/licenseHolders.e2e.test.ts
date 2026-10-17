@@ -199,9 +199,15 @@ afterAll(async () => {
   await new Promise<void>((r) => server?.httpServer.close(() => r()));
 });
 
-async function open(theme: "dark" | "light", hash: string): Promise<Page> {
+let sendOutcome: "sent" | "failed" | "429" | "suppressed" = "sent";
+
+async function open(
+  theme: "dark" | "light",
+  hash: string,
+  width = 1440,
+): Promise<Page> {
   const ctx = await browser.newContext({
-    viewport: { width: 1440, height: 900 },
+    viewport: { width, height: width >= 1000 ? 900 : 780 },
     colorScheme: theme,
     reducedMotion: "reduce",
   });
@@ -217,6 +223,30 @@ async function open(theme: "dark" | "light", hash: string): Promise<Page> {
   await ctx.route("**/*", async (route) => {
     const url = new URL(route.request().url());
     if (url.pathname.startsWith("/manage/api/")) {
+      if (url.pathname.endsWith("/send-key")) {
+        if (sendOutcome === "429")
+          return route.fulfill({
+            status: 429,
+            json: { code: "rate_limited", message: "limited", retryAfter: 420 },
+          });
+        if (sendOutcome === "suppressed")
+          return route.fulfill({
+            status: 409,
+            json: { code: "bad_request", reason: "suppressed" },
+          });
+        return route.fulfill({
+          status: 201,
+          json: {
+            key: "pkey_djdl_3WPLDA7Q2M8K5NHV",
+            hash: "h1",
+            delivered:
+              sendOutcome === "sent"
+                ? { email: "sent" }
+                : { email: "failed", reason: "provider_refused" },
+            revoked: 0,
+          },
+        });
+      }
       const body = ROUTES[url.pathname];
       return body
         ? route.fulfill({ json: body })
@@ -269,7 +299,9 @@ describe("Licence holder surfaces under the Worker's CSP", () => {
       await shot(page, `license-holders-floating-record-${theme}`);
       await page.getByRole("button", { name: "Assign…" }).first().click();
       await page.getByRole("dialog", { name: "Assign license" }).waitFor();
-      await page.getByLabel(/^Email/).fill("ada@example.com");
+      await page
+        .getByRole("textbox", { name: /^Email/ })
+        .fill("ada@example.com");
       await shot(page, `license-holders-assign-${theme}`);
       expect(await violations(page)).toEqual([]);
       await page.context().close();
@@ -317,5 +349,120 @@ describe("Licence holder surfaces under the Worker's CSP", () => {
       await page.keyboard.press("Escape");
       await page.context().close();
     });
+  }
+
+  // LX-27: Send a new key… and the Assign… dialog's Email them the key, at the phone and
+  // desktop widths in both themes (no page-level sideways scroll, zero CSP violations).
+  for (const theme of ["dark", "light"] as const) {
+    for (const width of [360, 390, 1440]) {
+      it(`Send a new key… and the key-email box (${theme}, ${width}px)`, async () => {
+        sendOutcome = "sent";
+        const page = await open(
+          theme,
+          "#/p/djdl/license/licenses/lic_lena",
+          width,
+        );
+        await page
+          .locator("[data-page-title]", { hasText: "Lena Ortiz" })
+          .first()
+          .waitFor();
+        await page
+          .getByRole("button", { name: "More actions" })
+          .first()
+          .click();
+        await page.getByRole("menuitem", { name: "Send a new key…" }).click();
+        const dialog = page.getByRole("dialog", { name: "Send a new key" });
+        await dialog.waitFor();
+        await dialog.getByLabel(/Also revoke its other keys/).check();
+        await shot(page, `lx27-send-key-${theme}-${width}`);
+        const overflow = await page.evaluate(
+          () =>
+            document.documentElement.scrollWidth >
+            document.documentElement.clientWidth,
+        );
+        expect(overflow).toBe(false);
+        // The failed send keeps the new key: shown once, with Try again.
+        sendOutcome = "failed";
+        await dialog.getByRole("button", { name: "Send key" }).click();
+        await page.getByRole("dialog", { name: "Key not emailed" }).waitFor();
+        await shot(page, `lx27-send-key-failed-${theme}-${width}`);
+        await page.keyboard.press("Escape");
+        await page.getByText(/Close without copying\?/).waitFor();
+        await shot(page, `lx27-send-key-guard-${theme}-${width}`);
+        await page.getByRole("button", { name: "Keep it open" }).click();
+        await page.getByRole("button", { name: "Try again" }).waitFor();
+        expect(await violations(page)).toEqual([]);
+        await page.context().close();
+      });
+
+      it(`Send a new key… refusals: 429 wait, suppressed (${theme}, ${width}px)`, async () => {
+        const page = await open(
+          theme,
+          "#/p/djdl/license/licenses/lic_lena",
+          width,
+        );
+        await page
+          .locator("[data-page-title]", { hasText: "Lena Ortiz" })
+          .first()
+          .waitFor();
+        for (const mode of ["429", "suppressed"] as const) {
+          sendOutcome = mode;
+          await page
+            .getByRole("button", { name: "More actions" })
+            .first()
+            .click();
+          await page.getByRole("menuitem", { name: "Send a new key…" }).click();
+          const dialog = page.getByRole("dialog", { name: "Send a new key" });
+          await dialog.getByRole("button", { name: "Send key" }).click();
+          await dialog
+            .getByText(mode === "429" ? "Sent a moment ago" : "No key was made")
+            .waitFor();
+          if (mode === "suppressed") {
+            // A refusal no retry changes: Send key stays off and Mint key is the way out.
+            expect(
+              await dialog
+                .getByRole("button", { name: "Send key" })
+                .getAttribute("aria-disabled"),
+            ).toBe("true");
+            await dialog.getByRole("button", { name: "Mint key…" }).waitFor();
+          }
+          await shot(page, `lx27-send-key-${mode}-${theme}-${width}`);
+          await page.keyboard.press("Escape");
+          await dialog.waitFor({ state: "hidden" });
+        }
+        expect(await violations(page)).toEqual([]);
+        await page.context().close();
+      });
+
+      it(`Assign… with Email them the key (${theme}, ${width}px)`, async () => {
+        const page = await open(
+          theme,
+          "#/p/djdl/license/licenses/lic_float_a",
+          width,
+        );
+        await page
+          .locator("[data-page-title]", { hasText: "Floating license" })
+          .first()
+          .waitFor();
+        await page.getByRole("button", { name: "Assign…" }).first().click();
+        const dialog = page.getByRole("dialog", { name: "Assign license" });
+        await dialog.waitFor();
+        await dialog
+          .getByRole("textbox", { name: /^Email/ })
+          .fill("ada@example.com");
+        await dialog.getByLabel(/Email them the key/).check();
+        await shot(page, `lx27-assign-key-${theme}-${width}`);
+        expect(
+          await page.evaluate(
+            () =>
+              document.documentElement.scrollWidth >
+              document.documentElement.clientWidth,
+          ),
+        ).toBe(false);
+        expect(await violations(page)).toEqual([]);
+        await page.keyboard.press("Escape");
+        await page.context().close();
+      });
+    }
   }
 });

@@ -54,7 +54,7 @@ class CommerceAttestTest {
                 core = CoreOptions(
                     productSlug = "djdl", version = "1.0.0", pinnedKeys = signer.trust, trustRefresh = false,
                     store = InMemoryStore("djdl", "dev1").also { it.setToken("pkeyt_held") }, transport = transport, clock = { 1_700_000_000L },
-                    expectedServices = listOf(ServiceSlug.license, ServiceSlug.config, ServiceSlug.distribution),
+                    expectedServices = listOf(ServiceSlug.license, ServiceSlug.config, ServiceSlug.commerce),
                 ),
                 license = LicenseClientOptions(fingerprint = false),
                 attestation = provider,
@@ -124,7 +124,7 @@ class CommerceAttestTest {
         var claims = 0
         val (client, transport) = client(FakeIntegrity()) { r ->
             attestRoutes(r) ?: when (r.path) {
-                "/djdl/distribution/commerce/claim" -> {
+                "/djdl/commerce/claim" -> {
                     claims++
                     if (claims == 1) respond(403, """{"error":{"code":"attestation_required"}}""")
                     else respond(200, """{"ok":true,"store":"play","productId":"skins","flag":"extras.skins","state":"active","granted":true,"changed":true}""")
@@ -174,7 +174,7 @@ class CommerceAttestTest {
     fun claimRefusalsAreTyped() = runBlocking {
         val (client, _) = client(null) { r ->
             when (r.path) {
-                "/djdl/distribution/commerce/binding" -> respond(200, """{"bindingId":"F8606AE6-C6AF-419A-A7CA-125107444036","products":[{"store":"steam","productId":"1","flag":"extras.dice"},{"store":"app-store","productId":"2","flag":"extras.music"}]}""")
+                "/djdl/commerce/binding" -> respond(200, """{"bindingId":"F8606AE6-C6AF-419A-A7CA-125107444036","products":[{"store":"steam","productId":"1","flag":"extras.dice"},{"store":"app-store","productId":"2","flag":"extras.music"}]}""")
                 else -> respond(403, """{"error":"not_entitled","reason":"no_license"}""")
             }
         }

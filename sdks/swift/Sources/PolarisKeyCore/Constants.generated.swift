@@ -1553,7 +1553,7 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "core.caps": CapabilityRow(status: "implemented", service: "core", na: []),
     "core.store": CapabilityRow(status: "implemented", service: "core", na: []),
     "core.copy": CapabilityRow(status: "implemented", service: "sdk", na: []),
-    "core.backend": CapabilityRow(status: "planned", service: "license", na: []),
+    "core.backend": CapabilityRow(status: "implemented", service: "license", na: []),
     "license.gate": CapabilityRow(status: "implemented", service: "license", na: []),
     "license.signedinuser": CapabilityRow(status: "implemented", service: "license", na: []),
     "license.activate": CapabilityRow(status: "implemented", service: "license", na: []),
@@ -1649,7 +1649,7 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "ui.paywall": CapabilityRow(status: "implemented", service: "sdk", na: []),
     "ui.theme": CapabilityRow(status: "implemented", service: "sdk", na: []),
     "ui.i18n": CapabilityRow(status: "implemented", service: "sdk", na: []),
-    "commerce.receipt": CapabilityRow(status: "implemented", service: "license", na: []),
+    "commerce.receipt": CapabilityRow(status: "implemented", service: "commerce", na: []),
     "server.license": CapabilityRow(status: "planned", service: "license", na: [CapabilityNa(runtime: "ios", reason: "runtime")]),
     "server.signin": CapabilityRow(status: "planned", service: "identity", na: [CapabilityNa(runtime: "ios", reason: "runtime")]),
     "server.config": CapabilityRow(status: "planned", service: "config", na: [CapabilityNa(runtime: "ios", reason: "runtime")]),
@@ -1657,4 +1657,4 @@ public let CAPABILITIES: [String: CapabilityRow] = [
 ]
 
 /// SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-public let CAPABILITY_DIGEST = "35b8d5342320377cba501b43aadc42405f82ce1cf5f45c96e16973951f49126a"
+public let CAPABILITY_DIGEST = "135b4855b159c37aafc84dc830c9ee4ddb6e7f544198bc0aa5088c857f0c044a"
