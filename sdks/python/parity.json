@@ -51,8 +51,8 @@
       "note": "polaris_key.copy serves copy_generated.py (from copy.en.json): message()/title() read the error-code, then gate, then activation table; activation_message()/activation_title() and describe_error() read typed activation results from the activation table only; unknown codes read COPY_FALLBACK naming the code; {name} placeholders fill or drop; register_locale('en', ...) is the host override layer. The hand-kept EN table is gone. tests/test_copy.py checks every table against copy.en.json."
     },
     "core.backend": {
-      "status": "planned",
-      "wp": "SP-58"
+      "status": "implemented",
+      "note": "client.backend (polaris_key.backend): headers(), httpx_auth() (sync and async) and requests_auth() send X-PKey-License and X-PKey-Device only; backend.origins (exact, HTTPS except loopback) is checked on the request and, for requests, on every redirect hop; the freshness pre-sync, one shared concurrent sync, one retry on license_stale/license_invalid, and not_entitled/sign_in_required raised typed. tests/test_backend.py replays backend-matrix.json's client rows."
     },
     "license.gate": {
       "status": "implemented"

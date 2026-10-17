@@ -31,6 +31,7 @@ from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional
 
 import httpx
 
+from .backend import BackendClient
 from .commerce import CommerceClient
 from .config.client import DEFAULT_ENV_PREFIX, ConfigClient
 from .core.bundle import ImportBundleResult, import_bundle
@@ -169,6 +170,10 @@ class PolarisKeyClient:
         # ── lifecycle ────────────────────────────────────────────────────────────────
         refresh_interval_seconds: Optional[float] = None,
         on_change: Optional[Callable[[LicenseState], None]] = None,
+        # ── client.backend (framework drop-ins §6) ───────────────────────────────────
+        # {"origins": [...]}: the origins `client.backend` may send the licence to. Exact,
+        # HTTPS only except loopback; a bad one raises `invalid-options` here.
+        backend: Optional[Mapping[str, Any]] = None,
     ) -> None:
         self.product = product_slug
         self.core = CoreContext(
@@ -266,6 +271,16 @@ class PolarisKeyClient:
             trust=self._trust,
             discover=self.discover,
             options=update,
+        )
+
+        #: The client half of a product backend: ``headers()``, ``httpx_auth()`` and
+        #: ``requests_auth()`` carry the signed licence document (WIRE-CONTRACT-V4 §14.5).
+        self.backend = BackendClient(
+            held=self._held_license,
+            device_id=lambda: self.core.device_id,
+            now=lambda: self.core.now(),
+            sync=self._backend_sync,
+            origins=(backend or {}).get("origins", ()),
         )
 
         # Store purchases → licence flags (P6-01). The one-call claim helpers sync on success.
@@ -628,6 +643,17 @@ class PolarisKeyClient:
             "channel": self.core.channel,
             "release": self.core.version,
         }
+
+    def _held_license(self) -> Optional[Any]:
+        held = self._cache.state.license
+        if held is None:
+            return None
+        return (held.jws, held.doc.issuedAt, held.doc.expiresAt)
+
+    def _backend_sync(self, force: bool) -> bool:
+        """A sync for `client.backend`: True when the licence document came back current."""
+        outcome = self.sync(force=force).documents.get("license")
+        return outcome is not None and outcome.kind in ("applied", "unchanged")
 
     def _on_license_acquired(self) -> None:
         self.sync(force=True)

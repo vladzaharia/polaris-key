@@ -64,6 +64,10 @@ _SYNC = frozenset(
         "url",
         "set_driver",
         "register_handler",
+        # client.backend: the auth objects are built synchronously and run on the host's loop.
+        "httpx_auth",
+        "requests_auth",
+        "origins",
     }
 )
 
@@ -265,6 +269,7 @@ class AsyncPolarisKeyClient:
         self.update = _AsyncUpdate(sync_client.update)
         self.commerce = _AsyncFacet(sync_client.commerce)
         self.distribution = _AsyncFacet(sync_client.distribution)
+        self.backend = _AsyncFacet(sync_client.backend)
         self.events = _AsyncEvents(sync_client.events)
 
     @classmethod
