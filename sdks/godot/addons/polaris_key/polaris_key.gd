@@ -26,7 +26,8 @@ extends Node
 ## URL), `release` (PKeyRelease: the changelog, the install and download URLs) and `commerce`
 ## (PKeyCommerce, P6-01: the purchase binding, claiming a store purchase as a licence flag, and
 ## the App Store 3.1.3(b) outlet rule), `distribution` (PKeyDistribution: the public download
-## model). `crash_tags()` returns the release/environment/outlet tags for a crash reporter.
+## model), `backend` (PKeyBackend: the licence document to the app's own backend, `headers()`,
+## `headers_for(url)` and `request()`, only to `backend_origins`). `crash_tags()` returns the release/environment/outlet tags for a crash reporter.
 ## `presentation()` is the product's presentation from discovery (`core.presentation`: name,
 ## developerName, accent, accentDark, icon) as a Dictionary, {} for none; `presentation_icon(px,
 ## scale)` its verified icon as a texture; `presentation_source` (PKeyPresentationSource) the seam
@@ -72,6 +73,9 @@ var commerce := PKeyCommerce.new()
 ## Where the product can be got: the public download model (services/distribution.gd, SDK parity
 ## §3.8). Refuses until configure().
 var distribution := PKeyDistribution.new()
+## The licence document to the app's own backend (services/backend.gd): headers(),
+## headers_for(url) and request(). Refuses every URL until configure() and `backend_origins`.
+var backend := PKeyBackend.new()
 ## The product's presentation from discovery (core/presentation.gd): current(), icon(px, scale),
 ## `changed`. The UI kit's default name, icon and accent.
 var presentation_source := PKeyPresentationSource.new()
@@ -111,6 +115,9 @@ var _last_state: Dictionary = {}
 ## `insecure-base-url` (http to a non-loopback host) or `invalid-options` (a bad product slug,
 ## a non-semver version, malformed pins, an unknown expected service).
 func configure(opts: PKeyOptions) -> PKeyResult:
+	for origin in opts.backend_origins:
+		if PKeyBackend.normalize_origin(origin) == "":
+			return PKeyResult.failure(PKeyConstants.ErrorCode.INVALID_OPTIONS, "backend_origins: \"%s\" is not an exact origin (https://host[:port]; http only on loopback)." % origin)
 	var r := PKeyCore.create(opts, self, SDK_VERSION)
 	if not r.ok:
 		return r
@@ -132,6 +139,7 @@ func configure(opts: PKeyOptions) -> PKeyResult:
 	commerce.attach(core, license)
 	commerce.on_claimed = func() -> void: await sync(true)
 	distribution.attach(core)
+	backend.attach(core, func(force: bool) -> PKeySyncResult: return await sync(force), opts.backend_origins)
 	identity.attach(core, self)
 	identity.on_acquired = func() -> PKeySyncResult: return await sync(true)
 	presentation_source.attach(core, self)

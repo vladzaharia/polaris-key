@@ -123,7 +123,8 @@ static func resolve(base_url: String, location: String) -> String:
 
 
 ## One request, redirects followed by hand. `headers` is name -> value. `body` is sent as is.
-## Options: range (bool: send no Accept-Encoding gzip); body_limit (int > 0: this request's own
+## Options: follow_redirects (false: a 3xx is the answer, for this request; PKeyBackend checks
+## every hop's origin itself); range (bool: send no Accept-Encoding gzip); body_limit (int > 0: this request's own
 ## response cap in bytes, below `body_limit`; a release record stops at 88 844, plans/P3-01.md
 ## §2.5 step 11).
 func request(method: String, url: String, headers: Dictionary = {}, body: PackedByteArray = PackedByteArray(), opts: Dictionary = {}) -> PKeyResult:
@@ -157,7 +158,7 @@ func request(method: String, url: String, headers: Dictionary = {}, body: Packed
 		var r := await _once(m, current, h, b, PKeyClaims.is_true(opts.get("range", false)), deadline, int(opts.get("body_limit", 0)) if PKeyClaims.is_number(opts.get("body_limit")) else 0)
 		if not r.ok or r.detail.get("redirect", "") == "":
 			return r
-		if not follow_redirects:
+		if not follow_redirects or opts.get("follow_redirects", true) == false:
 			r.detail.erase("redirect")
 			return r
 		var status: int = r.detail["status"]

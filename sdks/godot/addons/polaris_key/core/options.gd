@@ -107,6 +107,10 @@ const DEFAULT_SETTINGS_PATH := "user://pkey_settings.cfg"
 ## (PolarisKey.devices.attest() on a Play install). Empty: the one the Worker's attestation
 ## challenge carries (`play.cloudProjectNumber`, set by the operator). Digits only.
 @export var play_cloud_project_number := ""
+## `PolarisKey.backend`: the exact origins the licence document may be sent to (scheme, host and
+## port; https, or http on loopback), e.g. ["https://api.example.com"]. Empty refuses every URL.
+## A malformed one fails configure() with `invalid-options`.
+@export var backend_origins := PackedStringArray()
 ## Attest and retry (SDK parity §3.10): when an edge-mint, a gated download or a commerce claim
 ## answers 403 `attestation_required`, run PolarisKey.devices.attest() once and retry once. Only
 ## iOS and Android store installs can attest; elsewhere the refusal comes back unchanged. Off: the
