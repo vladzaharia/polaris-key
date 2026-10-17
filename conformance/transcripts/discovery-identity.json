@@ -136,7 +136,8 @@
           "distribution": false,
           "update": false,
           "identity": true,
-          "sync": false
+          "sync": false,
+          "commerce": false
         }
       }
     }

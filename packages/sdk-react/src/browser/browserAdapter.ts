@@ -1941,16 +1941,13 @@ export class BrowserAdapter implements PolarisAdapter {
   }
 
   private requireCommerce(): BearerSession {
-    if (
-      !this.capabilities.license.enabled ||
-      !this.capabilities.distribution.enabled
-    )
+    if (!this.capabilities.commerce.enabled)
       throw new UnsupportedError(
         {
           supported: false,
           feature: Feature.commerceReceipt,
           reason: "product",
-          detail: "commerce needs the license and distribution services",
+          detail: "commerce needs the commerce service",
         },
         "service-unavailable",
       );

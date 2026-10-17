@@ -944,7 +944,11 @@ async function replayThroughBridge(t: Transcript): Promise<void> {
   });
   const invoked: string[] = [];
   let stateReads = 0;
-  const base = makeFakeBridge(okBridgeState());
+  const base = makeFakeBridge(
+    okBridgeState({
+      capabilities: servicesFromList([...(t.initial.services ?? [])] as never),
+    }),
+  );
   const bridge: PolarisBridge = {
     ...base,
     version: 4,

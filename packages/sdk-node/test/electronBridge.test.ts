@@ -479,6 +479,7 @@ const DISCOVERY = {
     release: { enabled: true },
     distribution: { enabled: true },
     update: { enabled: true, endpoints: FEEDS },
+    commerce: { enabled: true },
   },
 };
 
@@ -560,6 +561,7 @@ const SERVICES_ALL = [
   "release",
   "distribution",
   "update",
+  "commerce",
 ];
 
 interface V4Row {
@@ -605,7 +607,7 @@ const ROWS: V4Row[] = [
     verb: "commerce.binding",
     what: "{bindingId, products: [{store, productId, flag, deliverable}]}",
     routes: () => ({
-      "GET /djdl/distribution/commerce/binding": () =>
+      "GET /djdl/commerce/binding": () =>
         json({
           bindingId: "bind-1",
           products: [
@@ -642,7 +644,7 @@ const ROWS: V4Row[] = [
     verb: "commerce.binding",
     what: "a refusal rejects with its code",
     routes: () => ({
-      "GET /djdl/distribution/commerce/binding": () =>
+      "GET /djdl/commerce/binding": () =>
         json({ error: { code: "forbidden" } }, 403),
     }),
     options: { services: [...SERVICES_ALL] },
@@ -654,7 +656,7 @@ const ROWS: V4Row[] = [
     args: { store: "play", payload: { productId: "p1", purchaseToken: "t" } },
     routes: (license) => ({
       ...docRoutes(license),
-      "POST /djdl/distribution/commerce/claim": () =>
+      "POST /djdl/commerce/claim": () =>
         json({
           ok: true,
           store: "play",
@@ -683,7 +685,7 @@ const ROWS: V4Row[] = [
     what: "a not-owned claim answers notOwned{code, reason, status}",
     args: { store: "steam", payload: { ticket: "abcd", dlcAppId: 1 } },
     routes: () => ({
-      "POST /djdl/distribution/commerce/claim": () =>
+      "POST /djdl/commerce/claim": () =>
         json({ error: { code: "forbidden" }, reason: "not_owned" }, 403),
     }),
     options: { services: [...SERVICES_ALL] },
@@ -702,7 +704,7 @@ const ROWS: V4Row[] = [
       payload: { signedTransaction: "jws.jws.jws" },
     },
     routes: () => ({
-      "POST /djdl/distribution/commerce/claim": () =>
+      "POST /djdl/commerce/claim": () =>
         json({ error: { code: "attestation_required" } }, 403),
     }),
     options: { services: [...SERVICES_ALL] },
@@ -723,7 +725,7 @@ const ROWS: V4Row[] = [
     what: "a 5xx rejects with the Node code",
     args: { store: "play", payload: { productId: "p1", purchaseToken: "t" } },
     routes: () => ({
-      "POST /djdl/distribution/commerce/claim": () =>
+      "POST /djdl/commerce/claim": () =>
         json(
           { error: { code: "unavailable" }, reason: "store_unavailable" },
           503,

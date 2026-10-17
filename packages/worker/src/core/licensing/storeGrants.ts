@@ -4,7 +4,7 @@
  * Store grants — how a verified store purchase becomes a licence flag (P6-01, README §3.10).
  *
  * Two services meet here. Distribution owns the store side (credentials, connectors, the
- * purchase records and their verification, `services/distribution/commerce/`); License owns the
+ * purchase records and their verification, `services/commerce/`); License owns the
  * licence and therefore the effect on it (`license_store_grants`). A service may not import
  * another (AGENTS.md rule 6), and Core's read-only descriptor hooks (`core/hooks.ts`) may not
  * write, so the write goes through a descriptor method Core declares and License implements —
@@ -21,7 +21,7 @@
  *
  * This is the coherence rule "commerce needs License enabled" made structural: with License off
  * no grant can land, and the commerce routes say so instead of recording a purchase they cannot
- * honour (`services/distribution/commerce/`). The admin API refuses store-product mappings for a
+ * honour (`services/commerce/`). The admin API refuses store-product mappings for a
  * product without License on for the same reason.
  *
  * The grant is per DELIVERABLE, not per version: the flag rides every licence document the buyer

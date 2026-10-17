@@ -210,7 +210,8 @@ pkey init --product <slug> --name "<Name>" --modules license,config
 
 - [ ] Canonical service slugs: `license`, `config`, `release`, `distribution`, `update`,
       `identity`, `sync` (Cloud Sync, which needs `config` and `identity` on:
-      `sync_requires_config`, `sync_requires_identity`). Every entry
+      `sync_requires_config`, `sync_requires_identity`), `commerce` (store purchases; needs
+      `license` on: `commerce_requires_license`). Every entry
       is `{ "enabled": <boolean> }`; anything other than literal `true` counts as off.
 - [ ] The pre-suite vocabulary is still accepted and translated at ingest — only slugs are
       stored, and one block may mix both spellings (table below).

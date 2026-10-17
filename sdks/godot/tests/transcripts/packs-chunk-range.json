@@ -130,7 +130,8 @@
           "distribution": true,
           "update": false,
           "identity": false,
-          "sync": false
+          "sync": false,
+          "commerce": false
         }
       }
     },

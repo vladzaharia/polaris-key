@@ -2,13 +2,13 @@
 // purchases become licence flags. The store sells; the Worker verifies the purchase with the store and
 // puts the mapped flag on the player's licence. The device only forwards what its store handed it.
 //
-//   binding()            `GET /<p>/distribution/commerce/binding` → {bindingId, products}. Call it
+//   binding()            `GET /<p>/commerce/binding` → {bindingId, products}. Call it
 //                        BEFORE buying and hand `bindingId` to the store:
 //                          Play         BillingFlowParams.setObfuscatedAccountId(bindingId)
 //                                       (`:billing`'s PolarisPlayBilling does it for you)
 //                          App Store    purchase(product, appAccountToken = bindingId)
 //                          Steam        ISteamUser::GetAuthTicketForWebApi(bindingId)
-//   claim(store, …)      `POST /<p>/distribution/commerce/claim` → [ClaimResult]. It does not sync
+//   claim(store, …)      `POST /<p>/commerce/claim` → [ClaimResult]. It does not sync
 //                        (the commerce-claim transcript pins exactly the claim): on `Ok`, call
 //                        `client.sync(force = true)` so the licence document carries the flag. The
 //                        one-call helpers (`:billing`'s PolarisPlayBilling) do that for you.
@@ -92,8 +92,7 @@ public class CommerceClient internal constructor(
         private set
 
     private suspend fun require() {
-        core.requireService(ServiceSlug.license, Feature.commerceReceipt)
-        core.requireService(ServiceSlug.distribution, Feature.commerceReceipt)
+        core.requireService(ServiceSlug.commerce, Feature.commerceReceipt)
     }
 
     private suspend fun bearer(): String = core.token()
@@ -103,7 +102,7 @@ public class CommerceClient internal constructor(
     public suspend fun binding(): CommerceBinding {
         require()
         val token = bearer()
-        val r = core.request(core.endpoints.url("distribution/commerce/binding"), headers = mapOf("authorization" to "Bearer $token"))
+        val r = core.request(core.endpoints.url("commerce/binding"), headers = mapOf("authorization" to "Bearer $token"))
         val o = JsonText.parseOrNull(r.text).objectValue
         if (!r.isOk) throw PolarisException(code(o) ?: "http_${r.status}", o?.get("message").stringValue ?: "commerce/binding answered HTTP ${r.status}.")
         val id = o?.get("bindingId").stringValue?.takeIf { UUID.matches(it) }
@@ -178,7 +177,7 @@ public class CommerceClient internal constructor(
         val token = bearer()
         val r = try {
             core.request(
-                core.endpoints.url("distribution/commerce/claim"), method = "POST",
+                core.endpoints.url("commerce/claim"), method = "POST",
                 headers = mapOf("authorization" to "Bearer $token", "content-type" to "application/json"),
                 body = JsonObject(body.mapValues { JsonPrimitive(it.value) }).toString().toByteArray(Charsets.UTF_8),
             )

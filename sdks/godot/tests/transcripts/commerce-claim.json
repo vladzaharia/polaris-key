@@ -14,7 +14,7 @@
     "deviceId": "TRANSCRIPTDEVICE0000000000000001",
     "version": "1.0.0",
     "token": "pkeyt_B3kHoYJO3e3VmK4uCIWErDhY9eRSBMLOziv5GjWQE5A",
-    "services": ["license", "config", "release", "distribution"]
+    "services": ["license", "config", "release", "distribution", "commerce"]
   },
   "steps": [
     {

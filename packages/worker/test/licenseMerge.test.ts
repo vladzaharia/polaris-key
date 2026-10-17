@@ -10,6 +10,8 @@
  *     commerce bridge's real routes (`commerceWorld.ts`).
  */
 
+import { parseServices, serializeServices } from "../src/core/services.js";
+import { setServices } from "../src/core/products/store.js";
 import { storeGrantDrift } from "../src/core/licensing/grants.js";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";
@@ -170,6 +172,34 @@ describe("a licence merge carries store grants, purchases and the binding (LX-03
       ),
     ).toBe("merged");
   }
+
+  it("a merge with Commerce off still moves the purchases (CM-29: the contributions are enablement-independent)", async () => {
+    const cw = (w = await commerceWorld());
+    const binding = await bindingOf(cw, cw.tokenA);
+    const jws = await boughtWith(cw, binding, "2000000401");
+    expect((await claim(cw, cw.tokenA, jws)).status).toBe(200);
+    const row = await cw.db.first<{ services_json: string | null }>(
+      "SELECT services_json FROM products WHERE slug = ?",
+      SLUG,
+    );
+    const services = { ...parseServices(row?.services_json ?? null).services };
+    services.commerce = { enabled: false };
+    await setServices(
+      cw.db,
+      SLUG,
+      serializeServices({ services }),
+      "admin",
+      NOW,
+    );
+    await merge(cw);
+    expect(await grants(cw, cw.licenseA)).toEqual([]);
+    expect(await grants(cw, cw.licenseB)).toEqual([`app-store:${FLAG}`]);
+    const purchase = await cw.db.first<{ license_id: string }>(
+      "SELECT license_id FROM dist_purchases WHERE product = ?",
+      SLUG,
+    );
+    expect(purchase?.license_id).toBe(cw.licenseB);
+  });
 
   it("after migrate, a restore on the old binding reaches the target licence", async () => {
     const cw = (w = await commerceWorld());

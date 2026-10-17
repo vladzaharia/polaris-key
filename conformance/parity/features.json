@@ -2417,7 +2417,7 @@
       "id": "commerce.receipt",
       "family": "ui",
       "title": "Store purchase to licence entitlement",
-      "service": "license",
+      "service": "commerce",
       "proof": [
         {
           "kind": "transcript",

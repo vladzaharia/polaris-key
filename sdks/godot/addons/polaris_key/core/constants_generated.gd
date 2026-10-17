@@ -1204,7 +1204,7 @@ static func capabilities() -> Dictionary:
 		"ui.paywall": {"status": "implemented", "service": "sdk", "na": []},
 		"ui.theme": {"status": "implemented", "service": "sdk", "na": []},
 		"ui.i18n": {"status": "implemented", "service": "sdk", "na": []},
-		"commerce.receipt": {"status": "implemented", "service": "license", "na": []},
+		"commerce.receipt": {"status": "implemented", "service": "commerce", "na": []},
 		"server.license": {"status": "na", "service": "license", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "macos", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}, {"runtime": "android", "reason": "runtime"}, {"runtime": "ios", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
 		"server.signin": {"status": "na", "service": "identity", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "macos", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}, {"runtime": "android", "reason": "runtime"}, {"runtime": "ios", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
 		"server.config": {"status": "na", "service": "config", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "macos", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}, {"runtime": "android", "reason": "runtime"}, {"runtime": "ios", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
@@ -1212,4 +1212,4 @@ static func capabilities() -> Dictionary:
 	}
 
 ## SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-const CAPABILITY_DIGEST := "94887d62e9331d40dbc4fa4ebcc8b0b43e3984414eadc8158ad4847af5241ebf"
+const CAPABILITY_DIGEST := "84b16b24e36eab3d8528b4a8c6f4c552662ed016650f38c168ca18f79f75f113"

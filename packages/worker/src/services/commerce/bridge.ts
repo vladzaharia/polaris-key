@@ -3,9 +3,9 @@
 /**
  * The commerce bridge's routes (P6-01): store purchases become licence flags, per deliverable.
  *
- *     GET  /<p>/distribution/commerce/binding     device token: the licence's opaque binding
+ *     GET  /<p>/commerce/binding     device token: the licence's opaque binding
  *                                                 UUID and the store products on sale
- *     POST /<p>/distribution/commerce/claim       device token: claim one store purchase
+ *     POST /<p>/commerce/claim       device token: claim one store purchase
  *     POST /<p>/distribution/hooks/app-store      App Store Server Notifications V2 (Apple-signed)
  *     POST /<p>/distribution/hooks/play-rtdn      Play RTDN over Pub/Sub push (Google OIDC JWT)
  *

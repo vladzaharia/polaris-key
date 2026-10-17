@@ -39,6 +39,7 @@ const ALL = [
   "distribution",
   "update",
   "identity",
+  "commerce",
 ] as const;
 
 const json = (
@@ -66,6 +67,7 @@ const DISCOVERY = {
     },
     update: { enabled: true },
     identity: { enabled: true },
+    commerce: { enabled: true },
   },
 };
 
@@ -250,7 +252,7 @@ const CALLS: {
   },
   {
     name: "commerce.binding",
-    path: "/distribution/commerce/binding",
+    path: "/commerce/binding",
     run: async (c) => {
       const r = await c.commerce.binding();
       if (r.kind === "ok") return { thrown: false, code: "ok" };

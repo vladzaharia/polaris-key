@@ -119,6 +119,8 @@ whose operator opted in.
 
 ### Store purchases — the commerce bridge (products that sell through a store)
 
+This is the Commerce service (`commerce`, CM-29); it adds no new data.
+
 When a player claims a store purchase, the Worker keeps what it needs to keep the license flag
 honest: the SHA-256 of the store's purchase key (never the key itself), the store product id, the
 license it was bound to, its state and environment, and the store ids a later re-check needs — an

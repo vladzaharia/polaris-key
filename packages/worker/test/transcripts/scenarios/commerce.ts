@@ -101,7 +101,13 @@ export const commerceClaim: Scenario = {
             deviceId: DEVICE,
             version: VERSION,
             token,
-            services: ["license", "config", "release", "distribution"],
+            services: [
+              "license",
+              "config",
+              "release",
+              "distribution",
+              "commerce",
+            ],
           },
         });
 

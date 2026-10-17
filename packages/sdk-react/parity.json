@@ -467,7 +467,7 @@
     },
     "commerce.receipt": {
       "status": "implemented",
-      "note": "SP-16: bearer mode's GET /<p>/distribution/commerce/binding and POST .../claim (browserAdapter's commerceBinding() and commerceClaim(store, payload), synced after an ok claim), cross-origin under the product's web.origins now that the Worker's CORS_SERVICE_PATHS covers both routes; commerce-claim replays through the bearer engine. Desktop: the Node Electron v4 host answers invoke(\"commerce\", \"binding\" | \"claim\") over client.commerce, synchronising and pushing fresh state after an ok claim. A v3 host receives the typed version N/A. Store purchase UI and restore are the UI kits' (UK-*)."
+      "note": "SP-16: bearer mode's GET /<p>/commerce/binding and POST .../claim (browserAdapter's commerceBinding() and commerceClaim(store, payload), synced after an ok claim), cross-origin under the product's web.origins now that the Worker's CORS_SERVICE_PATHS covers both routes; commerce-claim replays through the bearer engine. Desktop: the Node Electron v4 host answers invoke(\"commerce\", \"binding\" | \"claim\") over client.commerce, synchronising and pushing fresh state after an ok claim. A v3 host receives the typed version N/A. Store purchase UI and restore are the UI kits' (UK-*)."
     },
     "sync.scenarios": {
       "status": "planned",

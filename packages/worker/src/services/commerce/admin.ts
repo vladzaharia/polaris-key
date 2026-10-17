@@ -1,16 +1,16 @@
 /// <reference types="@cloudflare/workers-types" />
 
 /**
- * The commerce bridge's admin surface (P6-01) — `/manage/api/products/<slug>/distribution/commerce…`:
+ * The commerce bridge's admin surface (P6-01) — `/manage/api/products/<slug>/commerce…`:
  *
- *     GET    …/distribution/commerce                         settings, store products, setup per
+ *     GET    …/commerce                         settings, store products, setup per
  *                                                            store, recent purchases and events
- *     PUT    …/distribution/commerce/settings                replace the settings (`settings.ts`)
- *     PUT    …/distribution/commerce/products                map one store product to a flag (one
+ *     PUT    …/commerce/settings                replace the settings (`settings.ts`)
+ *     PUT    …/commerce/products                map one store product to a flag (one
  *                                                            the catalog declares, or the
  *                                                            deliverable's delivery gate) and a
  *                                                            deliverable
- *     DELETE …/distribution/commerce/products/<store>/<id>   remove a mapping: no new grant for
+ *     DELETE …/commerce/products/<store>/<id>   remove a mapping: no new grant for
  *                                                            the product; grants already made
  *                                                            stay, and a later refund or
  *                                                            revocation still revokes every

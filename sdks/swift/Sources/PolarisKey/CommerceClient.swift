@@ -3,10 +3,10 @@
 // The store sells; the Worker verifies the purchase with the store and puts the mapped flag on
 // the player's licence. The device only forwards what its store handed it.
 //
-//   binding()                       GET  /<p>/distribution/commerce/binding → the licence's opaque
+//   binding()                       GET  /<p>/commerce/binding → the licence's opaque
 //                                   purchase binding and the products on sale. Hand `bindingId`
 //                                   to the store BEFORE buying (StoreKit's appAccountToken).
-//   claim(store:payload:)           POST /<p>/distribution/commerce/claim. The primitive does not
+//   claim(store:payload:)           POST /<p>/commerce/claim. The primitive does not
 //                                   sync (the commerce-claim transcript pins its traffic); call
 //                                   client.sync() so the next licence document carries the flag.
 //                                   The one-calls below sync for you.
@@ -151,7 +151,7 @@ public actor CommerceClient {
     public var products: [CommerceProduct] { lastBinding?.products ?? [] }
 
     private func refusedByServices() async -> String? {
-        for slug in [ServiceSlug.license, ServiceSlug.distribution] {
+        for slug in [ServiceSlug.commerce] {
             do {
                 try await core.requireService(slug, feature: Feature.commerceReceipt)
             } catch let e as PolarisError {
@@ -164,18 +164,17 @@ public actor CommerceClient {
     }
 
     // ── The two routes ───────────────────────────────────────────────────────────────────
-    /// `GET /<p>/distribution/commerce/binding`. Throws `PolarisError`: `service-unavailable`
-    /// (no License or Distribution), `no-token`, the server's code, or `network`.
+    /// `GET /<p>/commerce/binding`. Throws `PolarisError`: `service-unavailable`
+    /// (no Commerce), `no-token`, the server's code, or `network`.
     public func binding() async throws -> CommerceBinding {
-        try await core.requireService(.license, feature: Feature.commerceReceipt)
-        try await core.requireService(.distribution, feature: Feature.commerceReceipt)
+        try await core.requireService(.commerce, feature: Feature.commerceReceipt)
         guard let token = await core.token else {
             throw PolarisError(code: ErrorCode.noToken, message: "Activate or enrol before buying.")
         }
         let response: PolarisResponse
         do {
             response = try await core.request(
-                core.endpoints.url("distribution/commerce/binding"),
+                core.endpoints.url("commerce/binding"),
                 headers: ["authorization": "Bearer \(token)"])
         } catch let e as PolarisError where e.code == PolarisError.localOnly {
             throw e
@@ -200,7 +199,7 @@ public actor CommerceClient {
         return binding
     }
 
-    /// `POST /<p>/distribution/commerce/claim` with `{store, …payload}`. Never throws. Does not
+    /// `POST /<p>/commerce/claim` with `{store, …payload}`. Never throws. Does not
     /// sync: call `client.sync()` afterwards (the one-calls do).
     public func claim(store: String, payload: [String: JSONValue]) async -> ClaimResult {
         if let why = await refusedByServices() {
@@ -243,7 +242,7 @@ public actor CommerceClient {
         let response: PolarisResponse
         do {
             response = try await core.request(
-                core.endpoints.url("distribution/commerce/claim"), method: "POST",
+                core.endpoints.url("commerce/claim"), method: "POST",
                 headers: ["authorization": "Bearer \(token)", "content-type": "application/json"],
                 body: data)
         } catch let e as PolarisError where e.code == PolarisError.localOnly {

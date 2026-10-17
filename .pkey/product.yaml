@@ -21,3 +21,5 @@ modules:
     enabled: false
   identity:
     enabled: false
+  commerce:
+    enabled: false

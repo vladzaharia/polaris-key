@@ -24,14 +24,6 @@
  *     /distribution/hooks/:connector                         POST, a store webhook, signed by
  *                                                            the store (P5-02, `connectors/`;
  *                                                            `asc` today)
- *     /distribution/commerce/binding                         GET, device token: the licence's
- *                                                            purchase binding (P6-01, `commerce/`)
- *     /distribution/commerce/claim                           POST, device token: claim a store
- *                                                            purchase as a licence flag
- *     /distribution/hooks/app-store                          POST, App Store Server Notifications
- *                                                            V2, signed by Apple (P6-01)
- *     /distribution/hooks/play-rtdn                          POST, Play RTDN over Pub/Sub push,
- *                                                            Google OIDC (P6-01)
  *     /distribution/hooks/sentry                             POST, a Sentry alert, signed with
  *                                                            the integration's client secret;
  *                                                            opens halt candidates (P6-03,

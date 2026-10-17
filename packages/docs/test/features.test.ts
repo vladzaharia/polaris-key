@@ -66,13 +66,11 @@ describe("features", () => {
       expect(known.has(id.split("/")[1]!), id).toBe(true);
   });
 
-  it("Commerce has no directory until its service row lands (CM-29)", () => {
-    expect(allIds().some((id) => id.startsWith("features/commerce/"))).toBe(
-      false,
-    );
+  it("Commerce has its own feature directory since its service row landed (CM-29)", () => {
+    expect(allIds()).toContain("features/commerce/index");
     expect(
       existsSync(join(docsRoot, "src/content/docs/features/commerce")),
-    ).toBe(false);
+    ).toBe(true);
   });
 });
 
@@ -87,6 +85,11 @@ describe("sections", () => {
     expect(sectionFor("features/managed-config/catalog").slug).toBe("config");
   });
 
+  it("Commerce is its own feature, with the Commerce section accent", () => {
+    expect(sectionFor("features/commerce/index").slug).toBe("commerce");
+    expect(sectionFor("features/commerce/index").label).toBe("Commerce");
+  });
+
   it("Ship builds names one accent per sub-area", () => {
     const accent = (id: string): string => sectionFor(id).slug;
     expect(accent("features/ship-builds/ci")).toBe("release");
@@ -95,7 +98,6 @@ describe("sections", () => {
     expect(accent("features/ship-builds/updates/sparkle")).toBe("update");
     expect(accent("features/ship-builds/packages/index")).toBe("distribution");
     expect(accent("features/ship-builds/packs/index")).toBe("release");
-    expect(accent("features/ship-builds/commerce")).toBe("distribution");
     expect(sectionFor("features/ship-builds/channels/steam").label).toBe(
       "Ship builds",
     );

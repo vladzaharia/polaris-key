@@ -1622,7 +1622,7 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "ui.paywall": CapabilityRow(status: "implemented", service: "sdk", na: []),
     "ui.theme": CapabilityRow(status: "implemented", service: "sdk", na: []),
     "ui.i18n": CapabilityRow(status: "implemented", service: "sdk", na: []),
-    "commerce.receipt": CapabilityRow(status: "implemented", service: "license", na: []),
+    "commerce.receipt": CapabilityRow(status: "implemented", service: "commerce", na: []),
     "server.license": CapabilityRow(status: "planned", service: "license", na: [CapabilityNa(runtime: "ios", reason: "runtime")]),
     "server.signin": CapabilityRow(status: "planned", service: "identity", na: [CapabilityNa(runtime: "ios", reason: "runtime")]),
     "server.config": CapabilityRow(status: "planned", service: "config", na: [CapabilityNa(runtime: "ios", reason: "runtime")]),
@@ -1630,4 +1630,4 @@ public let CAPABILITIES: [String: CapabilityRow] = [
 ]
 
 /// SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-public let CAPABILITY_DIGEST = "1d3e59237b393c0b6fd39a45042bb4ef0b09477ce9ab5b070efbf0a4ca765c66"
+public let CAPABILITY_DIGEST = "8fe17943534af84c406a7e1adeb8aa07dff46262deef1242945fabf8ec18e1de"

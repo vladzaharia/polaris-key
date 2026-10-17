@@ -53,10 +53,6 @@
  *     POST …/distribution/update-health/settings               the auto-halt settings (audited)
  *     POST …/distribution/update-health/candidates/<id>/{confirm,dismiss}
  *                                                              (`updateHealthAdmin.ts`)
- *     GET  …/distribution/commerce                             the commerce bridge (P6-01): settings,
- *                                                              store products, purchases, events
- *     PUT  …/distribution/commerce/{settings,products}         (`commerce/admin.ts`)
- *     DELETE …/distribution/commerce/products/<store>/<id>
  *     GET  …/distribution/package-feeds                        the owner's packageFeeds switch
  *     PUT  …/distribution/package-feeds                        {enabled, expectedVersion} (F-03;
  *                                                              409 on a stale version)
