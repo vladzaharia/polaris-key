@@ -391,3 +391,87 @@ describe("requireLicense", () => {
     expect(CLI_VERBS.map(verbId)).toContain("status");
   });
 });
+
+describe("what the people using the host's program see", () => {
+  it("a skipped verb is silent unless the developer asks (onSkip, warn or DEBUG=polaris)", () => {
+    const stderr: string[] = [];
+    const write = process.stderr.write.bind(process.stderr);
+    const seen: string[][] = [];
+    const saved = process.env.DEBUG;
+    delete process.env.DEBUG;
+    process.stderr.write = ((m: string) => void stderr.push(m)) as never;
+    try {
+      registerPolarisCommands(
+        hostProgram(["status"]),
+        async () => stubClient(),
+        mountOptions({ onCollision: "skip" }) as never,
+      );
+      expect(stderr).toEqual([]);
+      registerPolarisCommands(
+        hostProgram(["status"]),
+        async () => stubClient(),
+        {
+          ...mountOptions({ onCollision: "skip" }),
+          onSkip: (s: readonly string[]) => void seen.push([...s]),
+        } as never,
+      );
+      expect(seen).toEqual([["status"]]);
+      process.env.DEBUG = "polaris";
+      registerPolarisCommands(
+        hostProgram(["status"]),
+        async () => stubClient(),
+        mountOptions({ onCollision: "skip" }) as never,
+      );
+      expect(stderr.join("")).toContain("skipped status");
+    } finally {
+      process.stderr.write = write;
+      if (saved === undefined) delete process.env.DEBUG;
+      else process.env.DEBUG = saved;
+    }
+  });
+
+  it("the collision error names every way out", () => {
+    expect(() =>
+      registerPolarisCommands(
+        hostProgram(["status", "update"]),
+        async () => stubClient(),
+        mountOptions({}) as never,
+      ),
+    ).toThrow(
+      /"status" and "update" are already commands\. Set namespace: "license" \(mytool license status\), leave them out of verbs, or set onCollision: "skip"\./,
+    );
+  });
+
+  it("commander and yargs describe the verbs in the catalog's words, with no group tag", async () => {
+    const program = hostProgram([]);
+    registerPolarisCommands(
+      program,
+      async () => stubClient(),
+      mountOptions({}) as never,
+    );
+    const desc = (n: string) =>
+      program.commands.find((c) => c.name() === n)!.description();
+    expect(desc("status")).toBe(EN["cli.verb.status"]);
+    expect(desc("devices")).toBe(EN["cli.group.devices"]);
+    expect(desc("update")).toBe(EN["cli.group.updates"]);
+    const ns = hostProgram([]);
+    registerPolarisCommands(
+      ns,
+      async () => stubClient(),
+      mountOptions({ namespace: "license" }) as never,
+    );
+    expect(ns.commands.find((c) => c.name() === "license")!.description()).toBe(
+      EN["cli.help.namespace"],
+    );
+    for (const c of program.commands)
+      expect(c.description()).not.toMatch(/^\[/);
+    const y = yargs([]).exitProcess(false);
+    registerYargs(y, async () => stubClient(), {
+      ...mountOptions({}),
+      bin: "tidewater",
+    } as never);
+    const help = await y.getHelp();
+    expect(help).toContain(EN["cli.verb.status"]);
+    expect(help).not.toMatch(/\[license\]/);
+  });
+});

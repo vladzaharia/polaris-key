@@ -5,7 +5,7 @@
 
 [1mLicense[22m
   [1mactivate [key][22m            Add a license key (prompted, or piped on stdin)
-  [1mstatus[22m                    License, devices and offline time
+  [1mstatus[22m                    Show your license, devices and offline time
   [1menroll[22m                    Get the free license, when Tidewater Studio
                             offers one
   [1mdeactivate[22m                Stop using your license on this device and free
@@ -62,7 +62,7 @@
 
 [1mLicense[22m
   [1mactivate [key][22m            Add a license key (prompted, or piped on stdin)
-  [1mstatus[22m                    License, devices and offline time
+  [1mstatus[22m                    Show your license, devices and offline time
   [1menroll[22m                    Get the free license, when Tidewater Studio
                             offers one
   [1mdeactivate[22m                Stop using your license on this device and free
@@ -119,7 +119,7 @@
 
 [1mLicense[22m
   [1mactivate [key][22m            Add a license key (prompted, or piped on stdin)
-  [1mstatus[22m                    License, devices and offline time
+  [1mstatus[22m                    Show your license, devices and offline time
   [1menroll[22m                    Get the free license, when Tidewater Studio
                             offers one
   [1mdeactivate[22m                Stop using your license on this device and free
@@ -176,7 +176,7 @@ Usage  tidewater <command> [options]
 
 [1mLicense[22m
   [1mactivate [key][22m            Add a license key (prompted, or piped on stdin)
-  [1mstatus[22m                    License, devices and offline time
+  [1mstatus[22m                    Show your license, devices and offline time
   [1menroll[22m                    Get the free license, when Tidewater Studio
                             offers one
   [1mdeactivate[22m                Stop using your license on this device and free
@@ -233,7 +233,7 @@ Run tidewater <command> --help for one command's options.
 
 [1mLicense[22m
   [1mactivate [key][22m            Add a license key (prompted, or piped on stdin)
-  [1mstatus[22m                    License, devices and offline time
+  [1mstatus[22m                    Show your license, devices and offline time
   [1menroll[22m                    Get the free license, when Tidewater Studio
                             offers one
   [1mdeactivate[22m                Stop using your license on this device and free
@@ -291,7 +291,8 @@ Run tidewater <command> --help for one command's options.
 [1mLicense[22m
   [1mactivate [key][22m    Add a license key (prompted, or piped
                     on stdin)
-  [1mstatus[22m            License, devices and offline time
+  [1mstatus[22m            Show your license, devices and
+                    offline time
   [1menroll[22m            Get the free license, when Tidewater
                     Studio offers one
   [1mdeactivate[22m        Stop using your license on this device
@@ -360,7 +361,8 @@ Run tidewater <command> --help for one command's options.
 [1mLicense[22m
   [1mactivate [key][22m    Add a license key (prompted, or piped
                     on stdin)
-  [1mstatus[22m            License, devices and offline time
+  [1mstatus[22m            Show your license, devices and
+                    offline time
   [1menroll[22m            Get the free license, when Tidewater
                     Studio offers one
   [1mdeactivate[22m        Stop using your license on this device
@@ -429,7 +431,8 @@ Run tidewater <command> --help for one command's options.
 [1mLicense[22m
   [1mactivate [key][22m    Add a license key (prompted, or piped
                     on stdin)
-  [1mstatus[22m            License, devices and offline time
+  [1mstatus[22m            Show your license, devices and
+                    offline time
   [1menroll[22m            Get the free license, when Tidewater
                     Studio offers one
   [1mdeactivate[22m        Stop using your license on this device
@@ -498,7 +501,8 @@ Usage  tidewater <command> [options]
 [1mLicense[22m
   [1mactivate [key][22m    Add a license key (prompted, or piped
                     on stdin)
-  [1mstatus[22m            License, devices and offline time
+  [1mstatus[22m            Show your license, devices and
+                    offline time
   [1menroll[22m            Get the free license, when Tidewater
                     Studio offers one
   [1mdeactivate[22m        Stop using your license on this device
@@ -567,7 +571,8 @@ Run tidewater <command> --help for one command's options.
 [1mLicense[22m
   [1mactivate [key][22m    Add a license key (prompted, or piped
                     on stdin)
-  [1mstatus[22m            License, devices and offline time
+  [1mstatus[22m            Show your license, devices and
+                    offline time
   [1menroll[22m            Get the free license, when Tidewater
                     Studio offers one
   [1mdeactivate[22m        Stop using your license on this device

@@ -22,17 +22,20 @@ import type { ClientFactory } from "./commands.js";
 import { createKitContextSync } from "./context.js";
 import { bindGate } from "./gate.js";
 import {
+  describeVerb,
+  GROUP_HEADINGS,
   renderHelp,
   renderMountSection,
   renderVerbHelp,
   VERB_OPTIONS,
 } from "./help.js";
 import type { CliIO, CliVerb } from "./kit.js";
-import { cellWidth } from "./term/width.js";
+import { cellWidth, wrapSpans } from "./term/width.js";
 import {
   clientFactoryFor,
+  END_USER,
   planMount,
-  skipWarning,
+  reportSkipped,
   verbId,
   type MountOptions,
 } from "./mount.js";
@@ -81,6 +84,9 @@ function rootOf(cmd: Command): Command {
 export function ttyProgress(line: string): void {
   if (process.stderr.isTTY) process.stderr.write(`\r\x1b[2K${line}`); // ui-lint: allow terminal-raw-escape the pre-kit progress line (kit: false)
 }
+
+/** Below this many columns the host's help rows stack, as the kit's do (help.ts). */
+const HELP_STACK_COLUMNS = 50;
 
 /** Commander's own formatter, for commands the kit does not own. */
 function defaultHelp(cmd: Command, helper: Help): string {
@@ -174,10 +180,7 @@ export function registerPolarisCommands(
     options,
     baseBin(program),
   );
-  if (plan.skipped.length)
-    (options.warn ?? ((m) => process.stderr.write(`${m}\n`)))(
-      skipWarning(plan.skipped, baseBin(program)),
-    );
+  reportSkipped(plan, options, baseBin(program));
   hideOptions(program, plan.hidden);
   const verbs = plan.verbs;
 
@@ -244,7 +247,12 @@ export function registerPolarisCommands(
     if (cmd !== program) return base;
     const ctx = helpContext(cmd, true);
     const host = fitLines(base.replace(/\n+$/, ""), ctx.caps.columns);
-    const section = renderMountSection(ctx, verbs, namespace);
+    const section = renderMountSection(ctx, verbs, namespace, {
+      column: helper.padWidth(cmd, helper),
+      title: (x) => helper.styleTitle(x),
+      term: (x) => helper.styleSubcommandTerm(x),
+      grouped: verbs.some((v) => !END_USER.includes(verbId(v))),
+    });
     return section.length ? `${host}\n\n${section.join("\n")}\n` : host;
   };
   if (kit && options.help !== "host")
@@ -260,13 +268,53 @@ export function registerPolarisCommands(
             );
         return cmd === program ? all.filter((c) => !topOwned.has(c)) : all;
       },
+      // Below the stack width the host's rows stack as the kit's do: the term, then its
+      // description under it, instead of a word-wrapped second column.
+      formatItem(
+        this: Help,
+        term: string,
+        termWidth: number,
+        description: string,
+        helper: Help,
+      ) {
+        const base = prior.formatItem
+          ? prior.formatItem.call(this, term, termWidth, description, helper)
+          : (Object.getPrototypeOf(this) as Help).formatItem.call(
+              this,
+              term,
+              termWidth,
+              description,
+              helper,
+            );
+        const columns = helper.helpWidth ?? 80;
+        if (
+          !description ||
+          helper.preformatted(description) ||
+          (columns >= HELP_STACK_COLUMNS && columns - (termWidth + 4) >= 16)
+        )
+          return base;
+        const lines = wrapSpans(
+          [{ text: description }],
+          Math.max(1, columns - 4),
+        );
+        return [
+          `  ${term}`,
+          ...lines.map((l) => `    ${l.map((x) => x.text).join("")}`),
+        ].join("\n");
+      },
       formatHelp,
     });
 
   // The verbs' parent: the program, or the namespace's command.
   let root = program;
   if (namespace) {
-    root = program.command(namespace).description("License commands");
+    root = program
+      .command(namespace)
+      .description(
+        kit
+          ? helpContext(program, true).copy.t("cli.help.namespace")
+          : "License commands",
+      );
     groupsOwned.set(root, verbs);
     topOwned.add(root);
     if (kit) root.configureHelp({ formatHelp });
@@ -277,7 +325,13 @@ export function registerPolarisCommands(
     for (const word of verb.path.slice(0, -1)) {
       let g = groups.get(word);
       if (!g) {
-        g = root.command(word).description(`[${verb.group}] ${word} commands`);
+        const gctx = helpContext(program, true);
+        const heading = GROUP_HEADINGS.find(([g]) => g === verb.group)![1];
+        g = root
+          .command(word)
+          .description(
+            kit ? gctx.copy.t(heading) : `[${verb.group}] ${word} commands`,
+          );
         groups.set(word, g);
         groupsOwned.set(
           g,
@@ -296,7 +350,11 @@ export function registerPolarisCommands(
     ].join(" ");
     const cmd = parent
       .command(name)
-      .description(`[${verb.group}] ${verb.describe}`);
+      .description(
+        kit
+          ? describeVerb(helpContext(program, true), verb)
+          : `[${verb.group}] ${verb.describe}`,
+      );
     for (const a of verb.aliases ?? []) cmd.alias(a);
     owned.set(cmd, verb);
     if (root === program && verb.path.length === 1) topOwned.add(cmd);

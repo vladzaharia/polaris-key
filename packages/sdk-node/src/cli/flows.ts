@@ -183,6 +183,32 @@ async function busy<T>(
   }
 }
 
+/**
+ * `busy`, after a grace period: a wait that ends within `delayMs` draws nothing, a longer one
+ * shows the spinner row until it ends.
+ */
+export async function busyAfter<T>(
+  ctx: KitContext,
+  label: string,
+  work: () => Promise<T>,
+  delayMs: number,
+): Promise<T> {
+  if (quiet(ctx) || !ctx.caps.animate) return work();
+  const p = work();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const slow = await Promise.race([
+    p.then(
+      () => false,
+      () => false,
+    ),
+    new Promise<boolean>((r) => {
+      timer = setTimeout(() => r(true), delayMs);
+    }),
+  ]);
+  clearTimeout(timer);
+  return slow ? busy(ctx, label, () => p) : p;
+}
+
 /** How long `activate` waits for a piped key before it gives up (a headless server must never
  *  sit on a hidden prompt). */
 export const PIPED_KEY_WAIT_MS = 2000;
@@ -353,7 +379,10 @@ export async function statusFlow(
   const store = await client.storeStatus().catch(() => null);
   const services = client.capabilities();
   // Signed in is a fact of the account on this device, not of the license profile.
-  const identity = await client.identity.current().catch(() => null);
+  // A client without `identity.current` (a fixture, an older build) throws before a promise exists.
+  const identity = await Promise.resolve()
+    .then(() => client.identity.current())
+    .catch(() => null);
   const view = statusView({
     status: st.status,
     ...(st.graceUntil !== undefined ? { graceUntil: st.graceUntil } : {}),
@@ -691,6 +720,8 @@ function outcomeResult(
 export interface ActivateArgs {
   /** A key given on the command line (kept for compatibility; it warns). */
   key?: string;
+  /** Why the person is here, as the first line under the header (`export needs a license`). */
+  reason?: string;
 }
 
 /** Where the key comes from: the prompt, a pipe, or (with a warning) the command line. */
@@ -813,7 +844,12 @@ export async function activateFlow(
   const t = ctx.copy.t.bind(ctx.copy);
   // The flow's screen so far (header, then the answered key row): every later screen starts with
   // it, so a resize lays the whole flow out again.
-  const hist: RailRow[] = [...productHeader(ctx, "activate")];
+  const hist: RailRow[] = [
+    ...productHeader(ctx, "activate"),
+    ...(args.reason
+      ? [{ mark: "rail" as const, spans: [{ text: args.reason }] }, ...gap(ctx)]
+      : []),
+  ];
   const lead = () => hist;
   const key = await obtainKey(ctx, args, lead);
   if (key === CANCEL)
@@ -1311,7 +1347,9 @@ export async function loginFlow(
     const who =
       r.identity && (present(r.identity.name) || present(r.identity.email))
         ? r.identity
-        : ((await client.identity.current().catch(() => null)) ?? {});
+        : ((await Promise.resolve()
+            .then(() => client.identity.current())
+            .catch(() => null)) ?? {});
     const line = signedInLine(ctx, who);
     const result = {
       state: "signedIn",

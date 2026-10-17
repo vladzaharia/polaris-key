@@ -3162,6 +3162,16 @@ msgstr "运行{command}查看单个命令的选项。"
 msgid "cli.help.group"
 msgstr "许可证"
 
+#. Activate, sign in, devices and updates
+#. Terminal help of a host's own command-line tool: what the one namespace command (license) holds, when the license commands are nested under it.
+msgid "cli.help.namespace"
+msgstr "激活、登录、设备和更新"
+
+#. {command} needs a license
+#. Terminal: the first line when a host command that needs a license sends the person to activate. {command} is the command they ran, such as 'export'.
+msgid "cli.gate.needs"
+msgstr "{command}需要许可证"
+
 #. Add a license key (prompted, or piped on stdin)
 #. Terminal help: what the activate command does. The key is typed at a prompt or piped in, never written on the command line.
 msgid "cli.verb.activate"
@@ -3177,7 +3187,7 @@ msgstr "获取免费许可证（如果{product}提供）"
 msgid "cli.verb.deactivate"
 msgstr "停止在此设备上使用你的许可证并释放席位"
 
-#. License, devices and offline time
+#. Show your license, devices and offline time
 #. Terminal help: what the status command shows.
 msgid "cli.verb.status"
 msgstr "许可证、设备和离线时间"

@@ -263,6 +263,9 @@ export function createFixtureClient(o: FixtureOptions = {}): PolarisKeyClient {
     },
 
     identity: {
+      async current() {
+        return saved.signedIn ? ACCOUNT : null;
+      },
       async beginSignIn(): Promise<SignInPrompt> {
         await sleep(500);
         return {

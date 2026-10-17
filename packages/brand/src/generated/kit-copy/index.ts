@@ -524,6 +524,8 @@ export type KitCopyKey =
   | "cli.help.lede"
   | "cli.help.more"
   | "cli.help.group"
+  | "cli.help.namespace"
+  | "cli.gate.needs"
   | "cli.verb.activate"
   | "cli.verb.enroll"
   | "cli.verb.deactivate"
