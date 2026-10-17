@@ -525,12 +525,20 @@ export function errorCopy(
       details,
     };
   }
-  if (status === 503) {
+  if (status === 503 && code !== undefined && /kek|keyring/.test(code)) {
     return {
       title: "The platform keyring is unavailable",
       description:
         "Polaris Key can't unseal product keys right now. Check the keyring on the Platform page.",
       action: "platform",
+      details,
+    };
+  }
+  if (status === 503) {
+    return {
+      title: "The service is unavailable",
+      description: "Wait a moment and try again.",
+      action: "retry",
       details,
     };
   }

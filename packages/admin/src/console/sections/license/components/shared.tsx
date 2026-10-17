@@ -12,6 +12,8 @@ import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import {
   api,
   type DeviceLimitSource,
+  LICENSE_PAGE_MAX,
+  type LicenseListFilter,
   type LicensePage,
   type LicenseSummary,
   type ProductDetail,
@@ -42,13 +44,34 @@ export function useLicenses(slug: string) {
 }
 
 /**
- * The Licenses page's rows, one page at a time (P0-29). Pages append in the Worker's order; a
- * licence write refreshes every loaded page (the key sits under `qk.licenses`).
+ * Whether the product has any licence, from a one-row page (never the whole set): `null` while
+ * unknown. The key sits under `qk.licenses`, so a licence write refreshes it.
  */
-export function useLicensePages(slug: string) {
+export function useHasLicenses(slug: string): boolean | null {
+  const q = useQuery({
+    queryKey: qk.licensesFirst(slug),
+    queryFn: () => api.licensesPage(slug, { limit: 1 }),
+  });
+  if (!q.data) return null;
+  return (q.data.total ?? (q.data.nextCursor ? 1 : q.data.licenses.length)) > 0;
+}
+
+/**
+ * The Licenses page's rows, one page at a time (P0-29). Pages append in the Worker's order; a
+ * licence write refreshes every loaded page (the key sits under `qk.licenses`). `filter` goes to
+ * the Worker, which narrows before it pages; `total` and `counts` come with page 1.
+ */
+export function useLicensePages(slug: string, filter: LicenseListFilter = {}) {
+  /** Search all reads 90 a page instead of 50. */
+  const big = React.useRef(false);
   const query = useInfiniteQuery({
-    queryKey: qk.licensesPages(slug),
-    queryFn: ({ pageParam }) => api.licensesPage(slug, { cursor: pageParam }),
+    queryKey: [...qk.licensesPages(slug), filter],
+    queryFn: ({ pageParam }) =>
+      api.licensesPage(slug, {
+        cursor: pageParam,
+        ...(big.current ? { limit: LICENSE_PAGE_MAX } : {}),
+        ...filter,
+      }),
     initialPageParam: null as string | null,
     getNextPageParam: (last: LicensePage) => last.nextCursor ?? undefined,
   });
@@ -56,7 +79,29 @@ export function useLicensePages(slug: string) {
     () => query.data?.pages.flatMap((p) => p.licenses) ?? [],
     [query.data],
   );
-  return { query, licenses };
+  const first = query.data?.pages[0];
+  /** Load every page still waiting; `onProgress` gets the count loaded so far. */
+  const loadAll = async (): Promise<boolean> => {
+    big.current = true;
+    try {
+      let more = query.hasNextPage;
+      while (more) {
+        const res = await query.fetchNextPage();
+        if (res.isError) return false;
+        more = res.hasNextPage;
+      }
+      return true;
+    } finally {
+      big.current = false;
+    }
+  };
+  return {
+    query,
+    licenses,
+    total: first?.total,
+    counts: first?.counts,
+    loadAll,
+  };
 }
 
 export function useTiers(slug: string) {

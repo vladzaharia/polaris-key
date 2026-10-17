@@ -89,6 +89,11 @@ export interface ButtonProps
     VariantProps<typeof buttonVariants> {
   /** Shows a spinner and disables the button; never overridable. */
   loading?: boolean;
+  /**
+   * While `loading`, stay focusable (`aria-disabled` and a click guard instead of `disabled`),
+   * for a button the operator just pressed and may keep pressing or tabbing past.
+   */
+  busyFocusable?: boolean;
   /** Why the button cannot be used right now: shown as a tooltip, linked for assistive tech. */
   disabledReason?: string;
   iconStart?: React.ReactNode;
@@ -104,6 +109,7 @@ export function Button({
   size,
   asChild = false,
   loading = false,
+  busyFocusable = false,
   disabled,
   disabledReason,
   iconStart,
@@ -116,7 +122,9 @@ export function Button({
 }: ButtonProps): React.ReactElement {
   const reasonId = React.useId();
   const softDisabled = Boolean(disabledReason) && !loading;
-  const hardDisabled = loading || (Boolean(disabled) && !disabledReason);
+  const busySoft = loading && busyFocusable;
+  const hardDisabled =
+    (loading && !busyFocusable) || (Boolean(disabled) && !disabledReason);
   const classes = cn(buttonVariants({ variant, size }), className);
   const describedBy =
     [props["aria-describedby"], softDisabled ? reasonId : undefined]
@@ -124,7 +132,7 @@ export function Button({
       .join(" ") || undefined;
 
   const guardedClick = (e: React.MouseEvent<HTMLButtonElement>): void => {
-    if (softDisabled || hardDisabled) {
+    if (softDisabled || hardDisabled || busySoft) {
       e.preventDefault();
       e.stopPropagation();
       return;
@@ -165,7 +173,7 @@ export function Button({
       data-variant={variant ?? "primary"}
       data-size={size ?? "md"}
       disabled={hardDisabled}
-      aria-disabled={softDisabled || undefined}
+      aria-disabled={softDisabled || busySoft || undefined}
       aria-busy={loading || undefined}
       onClick={guardedClick}
       {...props}

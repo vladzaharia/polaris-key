@@ -90,6 +90,64 @@ describe("Licenses list", () => {
     expect(cursors).toContain("c1");
   });
 
+  it("keeps the loaded rows when Load more fails, and retries from the footer (P0-29 F1)", async () => {
+    const [first, second] = LICENSES;
+    let fail = true;
+    bootLicense("#/p/djdl/license/licenses", {
+      routes: {
+        [`${API}/license/licenses`]: (q: URLSearchParams) =>
+          q.get("cursor") === "c1"
+            ? fail
+              ? failing(500)
+              : { licenses: [LICENSES[2]], nextCursor: null }
+            : {
+                licenses: [first, second],
+                nextCursor: "c1",
+                total: 3,
+                counts: { active: 2, expiring: 0, expired: 1, disabled: 0 },
+              },
+      },
+    });
+    const t = await table();
+    await within(t).findByText("Ada Lovelace");
+    await userEvent.click(screen.getByRole("button", { name: "Load more" }));
+    await screen.findByText("Couldn't load more licenses.");
+    expect(within(t).getByText("Ada Lovelace")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Retry/ })).toBeNull();
+    // The footer states the total and the tiles read the server's counts.
+    expect(screen.getByText("Showing 2 of 3")).toBeTruthy();
+    fail = false;
+    await userEvent.click(screen.getByRole("button", { name: "Try again" }));
+    await waitFor(() =>
+      expect(screen.queryByText("Couldn't load more licenses.")).toBeNull(),
+    );
+  });
+
+  it("says a search covers only the loaded rows and offers Search all (P0-29 F2)", async () => {
+    const [first, second, ...rest] = LICENSES;
+    bootLicense("#/p/djdl/license/licenses?q=Old%20seat", {
+      routes: {
+        [`${API}/license/licenses`]: (q: URLSearchParams) =>
+          q.get("cursor") === "c1"
+            ? { licenses: rest, nextCursor: null }
+            : { licenses: [first, second], nextCursor: "c1", total: 5 },
+      },
+    });
+    await screen.findByText("No match in the 2 newest");
+    await userEvent.click(screen.getByRole("button", { name: "Search all 5" }));
+    const t = await table();
+    await within(t).findByText("Old seat");
+  });
+
+  it("shows a permission state, with no toolbar or write actions, on a 403 (P0-29 F13)", async () => {
+    bootLicense("#/p/djdl/license/licenses", {
+      routes: { [`${API}/license/licenses`]: failing(403, "forbidden") },
+    });
+    await screen.findByText(/You don't have access to licenses/);
+    expect(screen.queryByRole("button", { name: /Create license/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Retry/ })).toBeNull();
+  });
+
   it("counts each state on a facet tile, and a tile filters the table through the URL", async () => {
     bootLicense("#/p/djdl/license/licenses");
     const t = await table();
