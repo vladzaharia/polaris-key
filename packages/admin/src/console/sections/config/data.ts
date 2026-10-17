@@ -85,12 +85,20 @@ export function useProfile(
   });
 }
 
+/**
+ * `watch` keeps the recipe fresh while an approve drawer is open, so a recipe that changes under it
+ * is noticed before the operator approves it (admin-2-16).
+ */
 export function useEdgeMint(
   slug: string,
+  watch = false,
 ): UseQueryResult<EdgeMintRecipesResponse> {
   return useQuery({
     queryKey: qk.mint(slug),
     queryFn: () => api.edgeMintRecipes(slug),
+    ...(watch
+      ? { refetchInterval: 15_000, refetchOnWindowFocus: "always" as const }
+      : {}),
   });
 }
 

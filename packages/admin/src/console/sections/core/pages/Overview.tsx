@@ -73,6 +73,7 @@ import { qk } from "../../../data/queries.js";
 import { Link, navigate } from "../../../router.js";
 import { Big, Line, TileFrame } from "../components/TileFrame.js";
 import { CommerceTile } from "../../commerce/CommerceTile.js";
+import { pendingRecipes, reviewAction } from "../../config/model/pending.js";
 import { r } from "../../../routes.js";
 import {
   AttentionList,
@@ -313,14 +314,13 @@ function useAttention(
       action: { label: "Repository", href: `${r.settings(slug)}` },
     });
   }
-  const edge = moduleOf(p, "edgeMint");
-  for (const id of (edge?.pendingApproval as string[] | undefined) ?? []) {
+  for (const id of pendingRecipes(p)) {
     items.push({
       id: `edge-${id}`,
       tone: "warning",
       object: `Edge-mint recipe ${id}`,
       reason: "Mints nothing until it is approved as it stands.",
-      action: { label: "Review", href: r.edgeMint(slug) },
+      action: { label: "Review", href: r.catalogEntry(slug, id, true) },
     });
   }
   for (const w of setup?.warnings ?? []) {
@@ -698,7 +698,7 @@ function useChecklist(
       id: "edge",
       label: ok ? "Edge-mint recipes approved" : "Approve edge-mint recipes",
       state: ok ? "done" : "todo",
-      action: ok ? undefined : { label: "Edge mint", href: r.edgeMint(slug) },
+      action: ok ? undefined : reviewAction(slug, p),
     });
   }
   const settled =

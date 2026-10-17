@@ -246,6 +246,15 @@ export function parseLocation(hash: string): ParsedLocation {
         },
       };
     }
+    // U-31: the Edge mint page is gone; its recipe is a minted token on the catalog entry.
+    if (rest.length === 2 && rest[0] === "config" && rest[1] === "edge-mint") {
+      const recipe = query.get("recipe");
+      return redirectTo(
+        recipe
+          ? r.catalogEntry(slug, recipe, true)
+          : productPage(slug, "catalog", { query: { review: "1" } }),
+      );
+    }
     const target = sectionDefault(rest);
     if (target !== null) {
       return redirectTo(
@@ -488,7 +497,11 @@ export const r = {
   profiles: (slug: string) => productPage(slug, "profiles"),
   profile: (slug: string, id: string, tab?: string) =>
     productPage(slug, "profiles", { id, tab }),
-  edgeMint: (slug: string) => productPage(slug, "edge-mint"),
+  /** A minted token's entry in the catalog editor; `review` opens its approve drawer. */
+  catalogEntry: (slug: string, key: string, review = false) =>
+    productPage(slug, "catalog-edit", {
+      query: review ? { entry: key, recipe: key } : { entry: key },
+    }),
   releases: (slug: string) => productPage(slug, "releases"),
   release: (slug: string, releaseId: string, tab?: string) =>
     productPage(slug, "releases", { id: releaseId, tab }),

@@ -390,7 +390,7 @@ describe("Home", () => {
       within(list)
         .getByRole("link", { name: /Review recipe/ })
         .getAttribute("href"),
-    ).toBe("#/p/djdl/config/edge-mint");
+    ).toBe("#/p/djdl/config/catalog/edit?entry=studio&recipe=studio");
   });
 
   it("retires the Setup complete figure: healthy is silence (EXPERIENCE C2)", async () => {

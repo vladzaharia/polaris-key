@@ -113,7 +113,10 @@ export function attentionFor(p: ProductDetail): ProductAttention[] {
         reason: `Edge-mint recipe ${recipe} awaits approval`,
         service: "config",
         short: "Needs approval",
-        action: { label: "Review recipe", href: r.edgeMint(p.slug) },
+        action: {
+          label: "Review recipe",
+          href: r.catalogEntry(p.slug, recipe, true),
+        },
       });
     }
   }
@@ -185,7 +188,10 @@ function fromActions(
           reason: `Edge-mint recipe ${subject} awaits approval`,
           service: "config",
           short: "Needs approval",
-          action: { label: "Review recipe", href: r.edgeMint(p.slug) },
+          action: {
+            label: "Review recipe",
+            href: r.catalogEntry(p.slug, subject, true),
+          },
         };
       case "release":
         return {
