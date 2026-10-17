@@ -1,10 +1,9 @@
 # @pkey-feature ui.cli.contract
 """The Python terminal kit against the ``cli`` family of conformance/corpus/v2/ui-matrix.json
 (plans/UK-51.md): every row of its ``exit``, ``capabilities``, ``stdin`` and ``outcomes`` sections.
-The ``mount``, ``help`` and ``gate`` rows are the adapters' (UK-48 runs them when it mounts the
-verbs into a host CLI and gates its commands).
+The ``mount``, ``help`` and ``gate`` rows run in test_cli_mount.py and test_cli_gate.py.
 
-A row the kit does not pass yet is listed in :data:`PENDING` with the work package that brings the
+A row the kit does not pass yet is listed in :data:`PENDING` (empty since UK-48) with the work package that brings the
 kit to it, and runs as a strict xfail: it still runs, and the day it passes the test fails until
 the entry goes. Nothing is skipped (AGENTS.md rule 1)."""
 
@@ -48,31 +47,7 @@ _ESC = re.compile(r"\x1b\[[0-9;]*m|\x1b\]8;[^\x07\x1b]*(?:\x07|\x1b\\)")
 
 #: Rows of the ``cli`` family the Python kit does not pass yet, by section and row name, each with
 #: what is missing. UK-48 (the Python terminal kit as a mountable drop-in) owns every one.
-PENDING: Dict[str, Dict[str, str]] = {
-    "capabilities": {
-        "CI=0 is not CI": "CI is truthy only for a value other than 0 and false (UK-48).",
-        "CI=false is not CI": "CI is truthy only for a value other than 0 and false (UK-48).",
-        "GITHUB_ACTIONS": "GITHUB_ACTIONS counts as CI (UK-48).",
-        "BUILDKITE": "BUILDKITE counts as CI (UK-48).",
-        "FORCE_COLOR on a pipe: colour, never links": "OSC 8 links only on a TTY stdout (UK-48).",
-        "animation follows stdout, not stdin": "animation follows a TTY stdout, not stdin (UK-48).",
-    },
-    "stdin": {
-        "a terminal that cannot prompt: no key": "activate says cli.activate.noKey, not a usage line (UK-48).",
-        "a file: its first line": "activate reads a piped key without --key-stdin (UK-48).",
-        "a file: the first non-empty line": "activate reads a piped key without --key-stdin (UK-48).",
-        "an empty file: no key": "activate says cli.activate.noKeyPiped (UK-48).",
-        "a shell pipe left open: the line, without waiting for the writer": "activate reads a piped key without --key-stdin (UK-48).",
-        "a socket left open: the line, without waiting for the writer": "activate reads a piped key without --key-stdin (UK-48).",
-        "a silent open pipe: no key within the bound, and the process exits": "activate says cli.activate.noKeyPiped (UK-48).",
-        "a silent open socket: no key within the bound, and the process exits": "activate says cli.activate.noKeyPiped (UK-48).",
-        "/dev/null: never read": "activate says cli.activate.noKeyPiped (UK-48).",
-    },
-    "outcomes": {
-        "secret-hidden": "secret and mint take --reveal; without it they print nothing on stdout and exit 2 (UK-48).",
-        "mint-hidden": "secret and mint take --reveal; without it they print nothing on stdout and exit 2 (UK-48).",
-    },
-}
+PENDING: Dict[str, Dict[str, str]] = {}
 
 
 def _rows(section: str) -> List[Any]:
@@ -279,6 +254,7 @@ def test_stdin(row: Dict[str, Any]) -> None:
         tty = _Stream(True)
         term = detect(env={"TERM": "xterm-256color", **({"CI": "true"} if kind == "tty-noninteractive" else {})}, stdout=tty, stdin=tty, size=lambda: os.terminal_size((80, 30)), osc11=lambda: None)
         t = _terminal("activate", interactive=term.interactive, keys=_Keys(["esc"]))
+        t.device.inp = tty
         verb = next(v for v in verbs.VERBS if v.name == "activate")
         ns = dict(verbs.namespace(verb, [], {}), _term=t)
         result = verb.run(_ActivateClient(), ns)
@@ -397,9 +373,11 @@ def test_outcomes(row: Dict[str, Any]) -> None:
     keys = KEYS[situation]() if situation in KEYS else None
     t = _terminal(i["verb"], json_mode=i["json"], interactive=keys is not None, keys=keys)
     out = SITUATIONS[situation](t)
+    t.err = io.StringIO()
     t.finish(out)
     stdout = t.device.out.getvalue()
-    shown = plain(stdout)
+    # A refusal that leaves stdout empty draws its mark on stderr.
+    shown = plain(stdout + t.err.getvalue())
     assert out.code == e["exit"]
     if e.get("mark"):
         assert GLYPH[e["mark"]] in shown

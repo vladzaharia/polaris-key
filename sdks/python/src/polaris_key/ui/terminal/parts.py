@@ -317,13 +317,13 @@ class Kit:
             out += [Span(k, ("strong",), None, "key:" + key), Span(" "), Span(action, ("muted",), None, "key:" + key)]
         return out
 
-    def command(self, words: str, label_key: Optional[str] = None, width: int = 0, **args: Any) -> List[Span]:
+    def command(self, words: str, label_key: Optional[str] = None, width: int = 0, dim: bool = True, **args: Any) -> List[Span]:
         """A fix as a command (``polaris-key activate   Use a different key``), §4.1 StatusScreen."""
         cmd = f"{self.prog} {words}".rstrip()
         # A command moves whole when it fits and wraps at its own spaces when it does not.
         out = [Span(cmd, ("strong",), None, "data:command", False, True)]
         if label_key:
-            out += [Span(" " * max(3, width - cell_len(cmd) + 3)), self.t(label_key, "muted", **args)]
+            out += [Span(" " * max(3, width - cell_len(cmd) + 3)), self.t(label_key, *(("muted",) if dim else ()), **args)]
         return out
 
     def radio(self, on: bool, spans: Sequence[Span]) -> List[Span]:

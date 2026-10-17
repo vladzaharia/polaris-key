@@ -408,7 +408,7 @@ def test_a_resize_redraws_the_progress_bar_in_place() -> None:
         on_progress(61_000_000, 61_000_000)
         return SimpleNamespace(kind="restartRequired", version="2.5.0")
 
-    update = SimpleNamespace(_configured=object(), driver=object(), decide=lambda channel=None: SimpleNamespace(decision=decision, channel="stable"), install=install)
+    update = SimpleNamespace(configured=True, driver=object(), decide=lambda channel=None: SimpleNamespace(decision=decision, channel="stable"), install=install)
     client = SimpleNamespace(product=PRODUCT, update=update, core=SimpleNamespace(version="2.4.1"))
     t = terminal(term, SHORT, verb="update", keys=[])
     t.finish(flows.update(client, t, ["apply"]))
@@ -638,7 +638,7 @@ def test_an_update_cancelled_with_esc_says_so_in_a_title_and_a_body_line() -> No
         on_progress(10_000_000, 61_000_000)
         raise PolarisError("cancelled", "cancelled")
 
-    update = SimpleNamespace(_configured=object(), driver=object(), decide=lambda channel=None: SimpleNamespace(decision=decision, channel="stable"), install=install)
+    update = SimpleNamespace(configured=True, driver=object(), decide=lambda channel=None: SimpleNamespace(decision=decision, channel="stable"), install=install)
     client = SimpleNamespace(product=PRODUCT, update=update, core=SimpleNamespace(version="2.4.1"))
     t = terminal(term, SHORT, verb="update", keys=[])
     t.finish(flows.update(client, t, ["apply"]))
@@ -772,7 +772,7 @@ def test_an_update_check_reads_the_same_in_both_kits() -> None:
     d = SimpleNamespace(action="binary", release=release, mandatory=False, critical=False, contentBlock=None, to_dict=lambda: {})
     client = SimpleNamespace(
         core=SimpleNamespace(version="2.4.1"),
-        update=SimpleNamespace(_configured=object(), decide=lambda channel=None: SimpleNamespace(decision=d, channel="stable")),
+        update=SimpleNamespace(configured=True, decide=lambda channel=None: SimpleNamespace(decision=d, channel="stable")),
     )
     t.finish(flows.update(client, t, ["check"]))
     assert _drawn(term) == PARITY["update-check"]

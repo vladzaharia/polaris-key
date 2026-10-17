@@ -26,21 +26,25 @@ if HERE not in sys.path:
     sys.path.insert(0, HERE)
 
 from polaris_key.cli import core  # noqa: E402
+from polaris_key.cli import END_USER  # noqa: E402
 from polaris_key.cli.argparse_cli import GroupedHelpParser, register_argparse  # noqa: E402
 
 import tidewater_fixtures  # noqa: E402
 
 
-def factory(live: bool) -> core.ClientFactory:
-    if live:
-        return core.default_client_factory
-    return lambda opts: tidewater_fixtures.FixtureClient()
+#: The end-user verbs, and the changelog besides.
+VERBS = [*END_USER, "changelog"]
 
 
 def build_parser(live: bool = False) -> argparse.ArgumentParser:
     parser = GroupedHelpParser(prog="tidewater", description="Tidewater Studio license and updates")
     sub = parser.add_subparsers(dest="command", required=True)
-    register_argparse(sub, client_factory=factory(live), prog="tidewater")
+    if live:
+        # A real Worker: the product and its keys come from --product and --trust.
+        register_argparse(sub, client_factory=core.default_client_factory, prog="tidewater", verbs=VERBS)
+    else:
+        # The fixture client stands for the app's own: nothing else to pass.
+        register_argparse(sub, client=tidewater_fixtures.FixtureClient(), prog="tidewater", verbs=VERBS)
     return parser
 
 
@@ -53,9 +57,6 @@ def main(argv: Optional[List[str]] = None) -> int:
 
         run_app(tidewater_fixtures.FixtureClient(), manage_url=tidewater_fixtures.MANAGE_URL)
         return 0
-    # The demo's product is Tidewater; a real CLI bakes its slug and trust keys into its factory.
-    if args and not args[0].startswith("-") and "--product" not in args:
-        args += ["--product", "tidewater"]
     parsed = build_parser(live).parse_args(args)
     try:
         return int(parsed.func(parsed))

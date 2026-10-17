@@ -205,7 +205,7 @@ class _Packs:
 
 
 class _Update:
-    _configured = None
+    configured = False
     driver = None
     packs = _Packs()
 

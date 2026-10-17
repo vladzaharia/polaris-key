@@ -1,0 +1,15 @@
+usage: tidewater [-h] <command> ...
+
+positional arguments:
+  <command>
+    export      Export a mix
+    activate    Add a license key (prompted, or piped on stdin)
+    deactivate  Stop using your license on this device and free its seat
+    status      Show your license, devices and offline time
+    login       Sign in with your account in the browser
+    logout      Sign out on this device
+    devices     List the devices using your license
+    update      Check for a newer version
+
+options:
+  -h, --help    show this help message and exit

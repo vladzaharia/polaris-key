@@ -443,6 +443,12 @@ class UpdateClient:
         )
 
     @property
+    def configured(self) -> bool:
+        """Whether this build configured signed updates (``UpdateClientOptions``): ``decide()`` and
+        ``install()`` need it; ``check()`` (the unsigned version check) does not."""
+        return self._configured is not None
+
+    @property
     def outlet(self) -> Optional[ResolvedOutlet]:
         """The outlet ``decide()`` uses (``resolve_update_outlet``'s answer), or ``None``
         without update options. For support diagnostics and UI."""

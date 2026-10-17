@@ -1,0 +1,90 @@
+── truecolor · 80 ──
+[33m▲[0m  [1mActivate[0m
+[2m│[0m  Enter a license key or sign in to continue.
+[2m│[0m
+[2m│[0m  [1mtidewater activate[0m   Use a license key
+[2m└[0m  [1mtidewater login[0m      Sign in
+── ansi16 · 80 ──
+[33m▲[0m  [1mActivate[0m
+[2m│[0m  Enter a license key or sign in to continue.
+[2m│[0m
+[2m│[0m  [1mtidewater activate[0m   Use a license key
+[2m└[0m  [1mtidewater login[0m      Sign in
+── no-color · 80 ──
+▲  [1mActivate[0m
+│  Enter a license key or sign in to continue.
+│
+│  [1mtidewater activate[0m   Use a license key
+└  [1mtidewater login[0m      Sign in
+── ascii · 80 ──
+[33m![0m  [1mActivate[0m
+[2m|[0m  Enter a license key or sign in to continue.
+[2m|[0m
+[2m|[0m  [1mtidewater activate[0m   Use a license key
+[2m`[0m  [1mtidewater login[0m      Sign in
+── truecolor · 60 ──
+[33m▲[0m  [1mActivate[0m
+[2m│[0m  Enter a license key or sign in to continue.
+[2m│[0m
+[2m│[0m  [1mtidewater activate[0m   Use a license key
+[2m└[0m  [1mtidewater login[0m      Sign in
+── ansi16 · 60 ──
+[33m▲[0m  [1mActivate[0m
+[2m│[0m  Enter a license key or sign in to continue.
+[2m│[0m
+[2m│[0m  [1mtidewater activate[0m   Use a license key
+[2m└[0m  [1mtidewater login[0m      Sign in
+── no-color · 60 ──
+▲  [1mActivate[0m
+│  Enter a license key or sign in to continue.
+│
+│  [1mtidewater activate[0m   Use a license key
+└  [1mtidewater login[0m      Sign in
+── ascii · 60 ──
+[33m![0m  [1mActivate[0m
+[2m|[0m  Enter a license key or sign in to continue.
+[2m|[0m
+[2m|[0m  [1mtidewater activate[0m   Use a license key
+[2m`[0m  [1mtidewater login[0m      Sign in
+── pipe · 80 ──
+Activate
+Enter a license key or sign in to continue.
+
+tidewater activate   Use a license key
+tidewater login      Sign in
+── truecolor · 40 ──
+[33m▲[0m  [1mActivate[0m
+[2m│[0m  Enter a license key or sign in
+[2m│[0m  to continue.
+[2m│[0m
+[2m│[0m  [1mtidewater activate[0m
+[2m│[0m    Use a license key
+[2m│[0m  [1mtidewater login[0m
+[2m└[0m    Sign in
+── no-color · 40 ──
+▲  [1mActivate[0m
+│  Enter a license key or sign in
+│  to continue.
+│
+│  [1mtidewater activate[0m
+│    Use a license key
+│  [1mtidewater login[0m
+└    Sign in
+── truecolor · 32 ──
+[33m▲[0m  [1mActivate[0m
+[2m│[0m  Enter a license key or sign
+[2m│[0m  in to continue.
+[2m│[0m
+[2m│[0m  [1mtidewater activate[0m
+[2m│[0m    Use a license key
+[2m│[0m  [1mtidewater login[0m
+[2m└[0m    Sign in
+── no-color · 32 ──
+▲  [1mActivate[0m
+│  Enter a license key or sign
+│  in to continue.
+│
+│  [1mtidewater activate[0m
+│    Use a license key
+│  [1mtidewater login[0m
+└    Sign in

@@ -247,7 +247,7 @@ def test_json_always_ends_with_a_result_line(capsys) -> None:
         raise RuntimeError("discovery blew up")
 
     parser = argparse_cli.GroupedHelpParser(prog="polaris-key")
-    argparse_cli.register_argparse(parser.add_subparsers(dest="command", required=True), broken)
+    argparse_cli.register_argparse(parser.add_subparsers(dest="command", required=True), broken, verbs="all")
     args = parser.parse_args(["status", "--product", "tidewater", "--json"])
     assert args.func(args) == 1
     last = json.loads(capsys.readouterr().out.strip().splitlines()[-1])

@@ -19,8 +19,8 @@ state, the last one ``"event": "result"``; never prompts), ``--no-color`` and ``
 ``devices``         ``list`` (default) · ``rename <id> <label>`` · ``deauthorize <id>``
 ``config``          ``list`` · ``get <key>`` · ``set <key> <value>`` · ``reset <key>`` (and the
                     v3 shorthand ``config <key>``)
-``secret``          ``secret <key>``: whether a managed secret is present (never printed)
-``mint``            ``mint <recipe>``: an edge-minted token's expiry (never printed)
+``secret``          ``secret <key>``: whether a managed secret is present; ``--reveal`` prints it
+``mint``            ``mint <recipe>``: an edge-minted token; ``--reveal`` prints it
 ``update``          ``check`` (default) · ``download --to <path>`` · ``apply``, with progress
 ``changelog``       the published releases, newest first
 ``packs``           ``status`` (default) · ``ensure <pack…>`` with progress
@@ -96,8 +96,13 @@ class _NoPrompt:
     """A stdin that is no terminal, so ``resolve_activation_key`` never prompts with getpass: the
     kit's masked entry asks instead."""
 
-    def readline(self) -> str:
-        return sys.stdin.readline()
+    def readline(self, size: int = -1) -> str:
+        # The same bounded reader as a piped key (4096 bytes, a deadline); a stream with no
+        # descriptor (a test double) is read as a line.
+        if core.stdin_kind(sys.stdin) in ("file", "fifo", "socket"):
+            key = core.read_piped_key(sys.stdin)
+            return key + "\n" if key else ""
+        return sys.stdin.readline(size)
 
     def isatty(self) -> bool:
         return False
@@ -116,11 +121,24 @@ def activate(client: Any, ns: Dict[str, Any]) -> CommandResult:
             stdin=_NoPrompt(),
         )
     except ValueError as e:
-        if not t.env.interactive:
+        if ns.get("key_file"):
+            return _done(_flows().key_file_problem(t, str(ns["key_file"]), empty=True), ns)
+        if ns.get("key_stdin"):
             return _done(_flows().usage(t, f"activate --key-stdin  ({e})"), ns)
-        key = None  # masked entry (UI-KITS §4.3)
+        # No source named: a piped stdin is read without --key-stdin, within a bound; a terminal
+        # prompts; anything else says there is no key.
+        stdin = t.device.inp
+        kind = core.stdin_kind(stdin)
+        if kind in ("file", "fifo", "socket"):
+            key = core.read_piped_key(stdin)
+            if key is None:
+                return _done(_flows().no_key(t, piped=True), ns)
+        elif t.env.interactive:
+            key = None  # masked entry (UI-KITS §4.3)
+        else:
+            return _done(_flows().no_key(t, piped=kind != "tty"), ns)
     except OSError as e:
-        return _done(_flows().usage(t, f"activate --key-file <path>  ({e})"), ns)
+        return _done(_flows().key_file_problem(t, str(ns.get("key_file") or ""), empty=False), ns)
     return _done(_flows().activate(client, t, key), ns)
 
 
@@ -168,12 +186,18 @@ def config(client: Any, ns: Dict[str, Any]) -> CommandResult:
 
 def secret(client: Any, ns: Dict[str, Any]) -> CommandResult:
     t = _term(client, ns, "secret")
-    return _done(_flows().secret(client, t, list(ns.get("words") or [])), ns)
+    out = _flows().secret(
+        client, t, list(ns.get("words") or []), reveal=bool(ns.get("reveal")), allow_workflow_commands=bool(ns.get("allow_workflow_commands"))
+    )
+    return _done(out, ns)
 
 
 def mint(client: Any, ns: Dict[str, Any]) -> CommandResult:
     t = _term(client, ns, "mint")
-    return _done(_flows().mint(client, t, list(ns.get("words") or [])), ns)
+    out = _flows().mint(
+        client, t, list(ns.get("words") or []), reveal=bool(ns.get("reveal")), allow_workflow_commands=bool(ns.get("allow_workflow_commands"))
+    )
+    return _done(out, ns)
 
 
 # ── release / update ─────────────────────────────────────────────────────────────────
@@ -277,6 +301,10 @@ _SIGN_IN = (
     Opt("attach", "flag", "Offer to attach this device's free license to the account."),
     Opt("no-qr", "flag", "Accepted for compatibility; sign-in shows no QR in a terminal."),
 )
+_REVEAL = (
+    Opt("reveal", "flag", "Print the value."),
+    Opt("allow-workflow-commands", "flag", "Print the value even if a CI log would run a line of it as a command."),
+)
 _YES = (Opt("yes", "flag", "Do not ask for confirmation."),)
 
 #: Every verb. ``login`` and ``logout`` are ``sign-in`` and ``sign-out`` (SIGN-IN.md §4.15).
@@ -294,8 +322,8 @@ VERBS: Tuple[Verb, ...] = (
     Verb("devices", "devices", "list | rename <id> <label> | deauthorize <id>", devices, words=True, opts=_YES),
     Verb("config", "config", "list | get <key> | set <key> <value> | reset <key>", config, words=True,
          opts=(Opt("fallback", "str", "Value if the key is unset (get)."),)),
-    Verb("secret", "config", "Whether a managed secret is present (never printed).", secret, words=True),
-    Verb("mint", "config", "Mint an edge token through a recipe (never printed).", mint, words=True),
+    Verb("secret", "config", "A managed secret; --reveal prints it.", secret, words=True, opts=_REVEAL),
+    Verb("mint", "config", "Mint an edge token through a recipe; --reveal prints it.", mint, words=True, opts=_REVEAL),
     Verb("update", "update", "check | download --to <path> | apply", update, words=True,
          opts=(Opt("channel", "str", "The channel to check."), Opt("to", "str", "Where to download the build."))),
     Verb("changelog", "release", "The published releases, newest first.", changelog,
@@ -311,6 +339,9 @@ VERBS: Tuple[Verb, ...] = (
 )
 
 VERB_NAMES = tuple(v.name for v in VERBS)
+
+#: A verb's other words: ``sign-in`` is ``login``, ``sign-out`` is ``logout``.
+ALIASES_OF = {"sign-in": "login", "sign-out": "logout"}
 
 
 def option_dest(name: str) -> str:
@@ -332,9 +363,13 @@ def run(
     *,
     theme: Any = None,
     prog: str = "polaris-key",
+    close: bool = True,
+    actions: Optional[Any] = None,
 ) -> CommandResult:
     """Build a client, run ``verb`` through the terminal kit with the flags in ``ns``, close the
-    client. The result's :meth:`~CommandResult.emit` draws it, or prints its JSON."""
+    client (unless the host keeps it: ``close=False``). ``actions`` is a mount's partial verbs
+    (``update`` mounted with ``apply`` and ``check`` only). The result's :meth:`~CommandResult.emit`
+    draws it, or prints its JSON."""
     from ..ui.terminal.exit import EXIT
     from ..ui.terminal.flows import Terminal
 
@@ -360,6 +395,13 @@ def run(
         ns = dict(ns)
         ns["_term"] = term
         try:
+            if actions is not None:
+                from .mount import allowed_actions
+
+                if not allowed_actions(actions, ALIASES_OF.get(verb.name, verb.name), ns.get("words") or []):
+                    mounted = " | ".join(actions[ALIASES_OF.get(verb.name, verb.name)])
+                    term.verb = verb.name
+                    return _done(_flows().usage(term, f"{verb.name} [{mounted}]"), ns)
             result = verb.run(client, ns)
         except KeyboardInterrupt:
             return CommandResult(EXIT.interrupted, [], terminal=term if term.env.json else None, data={"error": "interrupted"})
@@ -372,4 +414,5 @@ def run(
             result.terminal = term
         return result
     finally:
-        client.close()
+        if close:
+            client.close()

@@ -1,0 +1,70 @@
+── truecolor · 80 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · update apply[0m
+[2m│[0m
+[33m▲[0m  [1mUpdates aren't set up[0m
+[2m└[0m  Get the new version from where you got Tidewater Studio.
+── ansi16 · 80 ──
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · update apply[0m
+[2m│[0m
+[33m▲[0m  [1mUpdates aren't set up[0m
+[2m└[0m  Get the new version from where you got Tidewater Studio.
+── no-color · 80 ──
+┌  [7m Tidewater Studio [0m · update apply
+│
+▲  [1mUpdates aren't set up[0m
+└  Get the new version from where you got Tidewater Studio.
+── ascii · 80 ──
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - update apply[0m
+[2m|[0m
+[33m![0m  [1mUpdates aren't set up[0m
+[2m`[0m  Get the new version from where you got Tidewater Studio.
+── truecolor · 60 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · update apply[0m
+[2m│[0m
+[33m▲[0m  [1mUpdates aren't set up[0m
+[2m└[0m  Get the new version from where you got Tidewater Studio.
+── ansi16 · 60 ──
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · update apply[0m
+[2m│[0m
+[33m▲[0m  [1mUpdates aren't set up[0m
+[2m└[0m  Get the new version from where you got Tidewater Studio.
+── no-color · 60 ──
+┌  [7m Tidewater Studio [0m · update apply
+│
+▲  [1mUpdates aren't set up[0m
+└  Get the new version from where you got Tidewater Studio.
+── ascii · 60 ──
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - update apply[0m
+[2m|[0m
+[33m![0m  [1mUpdates aren't set up[0m
+[2m`[0m  Get the new version from where you got Tidewater Studio.
+── pipe · 80 ──
+Tidewater Studio · update apply
+Updates aren't set up
+Get the new version from where you got Tidewater Studio.
+── truecolor · 40 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · update apply[0m
+[2m│[0m
+[33m▲[0m  [1mUpdates aren't set up[0m
+[2m│[0m  Get the new version from where you
+[2m└[0m  got Tidewater Studio.
+── no-color · 40 ──
+┌  [7m Tidewater Studio [0m · update apply
+│
+▲  [1mUpdates aren't set up[0m
+│  Get the new version from where you
+└  got Tidewater Studio.
+── truecolor · 32 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m
+[2m│[0m
+[33m▲[0m  [1mUpdates aren't set up[0m
+[2m│[0m  Get the new version from
+[2m│[0m  where you got
+[2m└[0m  Tidewater Studio.
+── no-color · 32 ──
+┌  [7m Tidewater Studio [0m
+│
+▲  [1mUpdates aren't set up[0m
+│  Get the new version from
+│  where you got
+└  Tidewater Studio.

@@ -113,12 +113,14 @@ class CommandResult:
     styled: Optional[List[Any]] = field(default=None, repr=False, compare=False)
     data: Dict[str, Any] = field(default_factory=dict, repr=False, compare=False)
     terminal: Optional[Any] = field(default=None, repr=False, compare=False)
+    #: ``"stderr"`` for a refusal that leaves stdout empty (see ``Outcome.stream``).
+    stream: str = field(default="stdout", repr=False, compare=False)
 
     def emit(self) -> None:
         if self.terminal is not None:
             from ..ui.terminal.flows import Outcome
 
-            self.terminal.finish(Outcome(self.code, list(self.styled or []), dict(self.data)))
+            self.terminal.finish(Outcome(self.code, list(self.styled or []), dict(self.data), stream=self.stream))
             return
         for line in self.lines:
             print(line)
@@ -219,7 +221,9 @@ def resolve_activation_key(
         return key
 
     if key_stdin:
-        key = (stream.readline() or "").strip()
+        key = (stream.readline(PIPED_KEY_BYTES + 1) or "").strip()
+        if len(key) > PIPED_KEY_BYTES:
+            raise ValueError("--key-stdin: more than 4096 bytes is not a key")
         if not key:
             raise ValueError("--key-stdin was given but stdin held no key")
         return key
@@ -247,6 +251,106 @@ def resolve_activation_key(
         "no license key supplied — use --key-stdin, --key-file <path>, "
         f"${KEY_ENV_VAR}, or run interactively"
     )
+
+
+#: How long ``activate`` waits for a piped key before it gives up (the ``cli`` family's ``withinMs``).
+PIPED_KEY_SECONDS = 1.5
+
+
+def stdin_kind(stream: Any) -> str:
+    """What ``stream`` is: ``tty``, ``file``, ``fifo``, ``socket``, ``char`` (``/dev/null``) or ``none``
+    (no descriptor)."""
+    import stat
+
+    try:
+        if stream.isatty():
+            return "tty"
+    except Exception:
+        pass
+    try:
+        mode = os.fstat(stream.fileno()).st_mode
+    except Exception:
+        return "none"
+    if stat.S_ISREG(mode):
+        return "file"
+    if stat.S_ISFIFO(mode):
+        return "fifo"
+    if stat.S_ISSOCK(mode):
+        return "socket"
+    return "char" if stat.S_ISCHR(mode) else "none"
+
+
+#: The most a piped key may take: a key is far shorter; more is not a key.
+PIPED_KEY_BYTES = 4096
+
+
+def _first_key_line(buf: bytes) -> Optional[str]:
+    """The first non-empty complete line of ``buf``."""
+    for line in buf.split(b"\n")[:-1]:
+        text = line.decode("utf-8", "replace").strip()
+        if text:
+            return text
+    return None
+
+
+def read_piped_key(stream: Any, timeout: float = PIPED_KEY_SECONDS) -> Optional[str]:
+    """The first non-empty line of a piped stdin: a file, a FIFO or a socket. Stops at that line, at
+    the end of input, after ``timeout`` seconds or after 4096 bytes without a key line, so neither a
+    writer that keeps its end open nor endless input can hold the process or its memory; a character
+    device and a terminal are never read. ``None`` when no key arrived."""
+    kind = stdin_kind(stream)
+    if kind not in ("file", "fifo", "socket"):
+        return None
+    fd = stream.fileno()
+    if kind == "file":
+        left = PIPED_KEY_BYTES
+        with os.fdopen(os.dup(fd), "rb") as f:
+            while left > 0:
+                raw = f.readline(left + 1)
+                if not raw:
+                    return None
+                left -= len(raw)
+                if len(raw) > PIPED_KEY_BYTES or (not raw.endswith(b"\n") and left <= 0):
+                    return None
+                text = raw.decode("utf-8", "replace").strip()
+                if text:
+                    return text
+        return None
+    import time
+
+    deadline = time.monotonic() + timeout
+    if os.name != "posix":  # pragma: no cover - select() takes no pipe on Windows
+        import threading
+
+        box: List[str] = []
+        th = threading.Thread(target=lambda: box.append(stream.readline(PIPED_KEY_BYTES + 1)), daemon=True)
+        th.start()
+        th.join(timeout)
+        return (box[0].strip() or None) if box and len(box[0]) <= PIPED_KEY_BYTES else None
+    import select
+
+    buf = b""
+    while True:
+        left = deadline - time.monotonic()
+        if left <= 0:
+            return None
+        ready, _, _ = select.select([fd], [], [], left)
+        if not ready:
+            return None
+        chunk = os.read(fd, 1024)
+        if not chunk:
+            break
+        buf += chunk
+        if len(buf) > PIPED_KEY_BYTES and b"\n" not in buf:
+            return None
+        found = _first_key_line(buf) if b"\n" in chunk else None
+        if found:
+            return found
+        if len(buf) > PIPED_KEY_BYTES:
+            return None
+    # End of input: the last line needs no newline.
+    found = _first_key_line(buf + b"\n")
+    return found if len(buf) <= PIPED_KEY_BYTES else None
 
 
 def build_client(opts: ClientOptions) -> "PolarisKeyClient":
@@ -307,6 +411,7 @@ def result_of(outcome: Any, terminal: Any = None) -> CommandResult:
         styled=list(outcome.lines),
         data=dict(outcome.data),
         terminal=terminal,
+        stream=getattr(outcome, "stream", "stdout"),
     )
 
 
@@ -353,8 +458,9 @@ def status(client: PolarisKeyClient, *, terminal: Any = None) -> CommandResult:
     grace line offline, the blocked state with its fix, or the activation prompt.
 
     The exit code reflects whether the gate currently permits running — which for a
-    product with License disabled is 0 on ``not-applicable``, not a failure. A degraded token
-    store is named under the summary (and in ``--json`` as ``tokenStore``).
+    product with License disabled is 0 on ``not-applicable``, not a failure. The token store is a
+    developer's concern: ``doctor`` names a degraded one and ``--json`` carries ``tokenStore``, but an
+    end user's summary never does.
     """
     from ..core.store import StoreStatus
     from ..ui.terminal import flows
@@ -363,8 +469,7 @@ def status(client: PolarisKeyClient, *, terminal: Any = None) -> CommandResult:
     # `getattr`: a host's test double need not implement it.
     store_status = getattr(client, "store_status", None)
     store = store_status() if callable(store_status) else None
-    line = format_store_status(store) if isinstance(store, StoreStatus) and store.degraded is not None else None
-    out = flows.status(client, t, store_line=line)
+    out = flows.status(client, t)
     if isinstance(store, StoreStatus):
         out.data["tokenStore"] = {
             "backend": store.backend,

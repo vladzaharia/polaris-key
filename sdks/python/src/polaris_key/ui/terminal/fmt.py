@@ -123,3 +123,28 @@ def size_pair(done: int, total: int, locale: str = "en") -> "tuple[str, str]":
         return text.replace(".", ",") if locale in _DECIMAL_COMMA else text
 
     return num(done / div), f"{num(total / div)} {unit}"
+
+
+#: Platform words as the platforms spell themselves.
+_PLATFORMS = {
+    "macos": "macOS",
+    "darwin": "macOS",
+    "mac": "macOS",
+    "windows": "Windows",
+    "win32": "Windows",
+    "linux": "Linux",
+    "ios": "iOS",
+    "ipados": "iPadOS",
+    "tvos": "tvOS",
+    "android": "Android",
+    "chromeos": "ChromeOS",
+    "freebsd": "FreeBSD",
+}
+
+
+def platform_name(platform: Optional[str]) -> Optional[str]:
+    """``macos`` as ``macOS``: a device's platform as its vendor writes it. A name this does not know
+    (``Windows 11``, ``iPadOS 26``) is already written out and stays as it is."""
+    if not platform:
+        return platform
+    return _PLATFORMS.get(platform.strip().lower(), platform)
