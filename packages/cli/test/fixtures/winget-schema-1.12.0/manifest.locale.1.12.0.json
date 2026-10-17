@@ -4,13 +4,13 @@
   "description": "A representation of a multiple-file manifest representing app metadata in other locale in the OWC. v1.12.0",
   "definitions": {
     "Url": {
-      "type": ["string", "null"],
+      "type": [ "string", "null" ],
       "pattern": "^([Hh][Tt][Tt][Pp][Ss]?)://.+$",
       "maxLength": 2048,
       "description": "Optional Url type"
     },
     "Tag": {
-      "type": ["string", "null"],
+      "type": [ "string", "null" ],
       "minLength": 1,
       "maxLength": 40,
       "description": "Package tag"
@@ -19,13 +19,13 @@
       "type": "object",
       "properties": {
         "AgreementLabel": {
-          "type": ["string", "null"],
+          "type": [ "string", "null" ],
           "minLength": 1,
           "maxLength": 100,
           "description": "The label of the Agreement. i.e. EULA, AgeRating, etc. This field should be localized. Either Agreement or AgreementUrl is required. When we show the agreements, we would Bold the AgreementLabel"
         },
         "Agreement": {
-          "type": ["string", "null"],
+          "type": [ "string", "null" ],
           "minLength": 1,
           "maxLength": 10000,
           "description": "The agreement text content."
@@ -40,7 +40,7 @@
       "type": "object",
       "properties": {
         "DocumentLabel": {
-          "type": ["string", "null"],
+          "type": [ "string", "null" ],
           "minLength": 1,
           "maxLength": 100,
           "description": "The label of the documentation for providing software guides such as manuals and troubleshooting URLs."
@@ -62,11 +62,15 @@
         },
         "IconFileType": {
           "type": "string",
-          "enum": ["png", "jpeg", "ico"],
+          "enum": [
+            "png",
+            "jpeg",
+            "ico"
+          ],
           "description": "The icon file type"
         },
         "IconResolution": {
-          "type": ["string", "null"],
+          "type": [ "string", "null" ],
           "enum": [
             "custom",
             "16x16",
@@ -87,17 +91,25 @@
           "description": "Optional icon resolution"
         },
         "IconTheme": {
-          "type": ["string", "null"],
-          "enum": ["default", "light", "dark", "highContrast"],
+          "type": [ "string", "null" ],
+          "enum": [
+            "default",
+            "light",
+            "dark",
+            "highContrast"
+          ],
           "description": "Optional icon theme"
         },
         "IconSha256": {
-          "type": ["string", "null"],
+          "type": [ "string", "null" ],
           "pattern": "^[A-Fa-f0-9]{64}$",
           "description": "Optional Sha256 of the icon file"
         }
       },
-      "required": ["IconUrl", "IconFileType"]
+      "required": [
+        "IconUrl",
+        "IconFileType"
+      ]
     }
   },
   "type": "object",
@@ -121,7 +133,7 @@
       "description": "The package meta-data locale"
     },
     "Publisher": {
-      "type": ["string", "null"],
+      "type": [ "string", "null" ],
       "minLength": 2,
       "maxLength": 256,
       "description": "The publisher name"
@@ -139,13 +151,13 @@
       "description": "The publisher privacy page or the package privacy page"
     },
     "Author": {
-      "type": ["string", "null"],
+      "type": [ "string", "null" ],
       "minLength": 2,
       "maxLength": 256,
       "description": "The package author"
     },
     "PackageName": {
-      "type": ["string", "null"],
+      "type": [ "string", "null" ],
       "minLength": 2,
       "maxLength": 256,
       "description": "The package name"
@@ -155,7 +167,7 @@
       "description": "The package home page"
     },
     "License": {
-      "type": ["string", "null"],
+      "type": [ "string", "null" ],
       "minLength": 3,
       "maxLength": 512,
       "description": "The package license"
@@ -165,7 +177,7 @@
       "description": "The license page"
     },
     "Copyright": {
-      "type": ["string", "null"],
+      "type": [ "string", "null" ],
       "minLength": 3,
       "maxLength": 512,
       "description": "The package copyright"
@@ -175,19 +187,19 @@
       "description": "The package copyright page"
     },
     "ShortDescription": {
-      "type": ["string", "null"],
+      "type": [ "string", "null" ],
       "minLength": 3,
       "maxLength": 256,
       "description": "The short package description"
     },
     "Description": {
-      "type": ["string", "null"],
+      "type": [ "string", "null" ],
       "minLength": 3,
       "maxLength": 10000,
       "description": "The full package description"
     },
     "Tags": {
-      "type": ["array", "null"],
+      "type": [ "array", "null" ],
       "items": {
         "$ref": "#/definitions/Tag"
       },
@@ -196,14 +208,14 @@
       "description": "List of additional package search terms"
     },
     "Agreements": {
-      "type": ["array", "null"],
+      "type": [ "array", "null" ],
       "items": {
         "$ref": "#/definitions/Agreement"
       },
       "maxItems": 128
     },
     "ReleaseNotes": {
-      "type": ["string", "null"],
+      "type": [ "string", "null" ],
       "minLength": 1,
       "maxLength": 10000,
       "description": "The package release notes"
@@ -217,20 +229,20 @@
       "description": "The purchase url for acquiring entitlement for the package."
     },
     "InstallationNotes": {
-      "type": ["string", "null"],
+      "type": [ "string", "null" ],
       "minLength": 1,
       "maxLength": 10000,
       "description": "The notes displayed to the user upon completion of a package installation."
     },
     "Documentations": {
-      "type": ["array", "null"],
+      "type": [ "array", "null" ],
       "items": {
         "$ref": "#/definitions/Documentation"
       },
       "maxItems": 256
     },
     "Icons": {
-      "type": ["array", "null"],
+      "type": [ "array", "null" ],
       "items": {
         "$ref": "#/definitions/Icon"
       },
