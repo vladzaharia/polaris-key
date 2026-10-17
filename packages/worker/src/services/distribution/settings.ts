@@ -145,5 +145,34 @@ export const DISTRIBUTION_SETTINGS_SLICE: ServiceSettingsSlice = {
       storage: { kind: "rich", adapter: "dist_transports" },
       since: "ST-19b",
     }),
+    // F-02/F-11: one `dist_registry_feeds` row per owner and ecosystem (enabled, access mode,
+    // namespace, size cap). Console-owned: a feed is switched on from the Feeds page.
+    setting({
+      key: "distribution.feeds",
+      scope: "product",
+      service: "distribution",
+      area: "distribution.feeds",
+      label: "Package feeds",
+      description:
+        "Per ecosystem: whether the product's feed answers, who may read it, its namespace and the largest package it accepts. The platform's feeds policy bounds it.",
+      keywords: ["npm", "pypi", "registry", "packages"],
+      docs: "/docs/features/ship-builds/channels/",
+      value: {
+        kind: "json",
+        schema: "dist_registry_feeds rows (registry/settings.ts)",
+      },
+      defaultValue: null,
+      allowUnset: true,
+      merge: "cascade",
+      ownership: "operator",
+      confirm: { change: "L1" },
+      visibleWhen: VISIBLE,
+      readers: [
+        "services/distribution/registry/settings.ts",
+        "services/distribution/registry/authorize.ts",
+      ],
+      storage: { kind: "rich", adapter: "dist_registry_feeds" },
+      since: "ST-09",
+    }),
   ],
 };

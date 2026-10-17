@@ -258,6 +258,7 @@ paths:
                       identity:
                         enabled: true
                         configured: true
+                        issuer: https://key.plrs.im/djdl/identity
                         account: true
                         keyEntryLimit: 10
                         endpoints:
@@ -270,6 +271,8 @@ paths:
                           authDeviceEntry: https://key.plrs.im/djdl/identity/auth/device
                           authDeviceVerify: https://key.plrs.im/djdl/identity/auth/device/verify
                           authDevicePoll: https://key.plrs.im/djdl/identity/auth/device/poll
+                          authorize: https://key.plrs.im/djdl/identity/authorize
+                          token: https://key.plrs.im/djdl/identity/token
                           attach: https://key.plrs.im/djdl/identity/attach
                           subject: https://key.plrs.im/djdl/identity/subject
                           signout: https://key.plrs.im/djdl/identity/signout
@@ -8140,6 +8143,241 @@ paths:
         - { $ref: "#/components/parameters/Product" }
       responses:
         "204": { $ref: "#/components/responses/CorsPreflight" }
+  # ── the app passthrough (I-08, WIRE-CONTRACT-V4 §12.4, §12.5) ──────────────────
+  /{product}/identity/authorize:
+    get:
+      operationId: identityAuthorize
+      tags: [identity]
+      summary: Send a person to the sign-in card for an app (OAuth-shaped authorize)
+      description: >
+        I-08 (WIRE-CONTRACT-V4 §12.4). A navigation, never a `fetch`: the app sends the person's
+        browser here and the card asks them. The issuer is `<origin>/<p>/identity`; the one client
+        is the product itself (`client_id` is the product slug, a public client with PKCE S256).
+        `client_id` and `redirect_uri` are checked first and nothing redirects until both are
+        valid: a bad `client_id` renders `invalid_client` and a bad `redirect_uri` renders
+        `redirect_uri_mismatch` on a branded page. A redirect URI is one of the product's
+        `web.origins` plus one of its `identity.redirectPaths`, both matched exactly (no query,
+        fragment, wildcard, prefix or dot segment). Every later error is `302 <redirect_uri>?error=…
+        &state=…&iss=<issuer>` with `invalid_request` or `invalid_scope` (RFC 9207's `iss`). On
+        success the request is stored under a handle bound to this browser (`__Host-pk_req`) and
+        the answer is `303` to the card at `<origin>/signin?request=rq_…`; the code is delivered
+        only by the response to the card's Continue, as `302`-equivalent `{redirect}` JSON, with
+        `code`, `state` and `iss`. `scope` is any of `profile`, `email`, `cloudSync`; absent means
+        every claim the product grants, unknown values are ignored and `openid` is `invalid_scope`
+        until I-21. `login_hint`, `name_hint` and `purpose` prefill the card and verify nothing.
+        60 calls a minute per client network. With Identity off a browser navigation lands on
+        the friendly card (`identity_disabled`) and a JSON caller gets `404 not_found`.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - {
+            name: response_type,
+            in: query,
+            required: true,
+            schema: { type: string, const: code },
+          }
+        - {
+            name: client_id,
+            in: query,
+            required: true,
+            description: "The product slug.",
+            schema: { type: string },
+          }
+        - {
+            name: redirect_uri,
+            in: query,
+            required: true,
+            schema: { type: string, format: uri },
+          }
+        - {
+            name: state,
+            in: query,
+            required: true,
+            description: "16 to 512 characters.",
+            schema: { type: string, minLength: 16, maxLength: 512 },
+          }
+        - {
+            name: code_challenge,
+            in: query,
+            required: true,
+            description: "S256 of the verifier: 43 base64url characters.",
+            schema: { type: string, pattern: "^[A-Za-z0-9_-]{43}$" },
+          }
+        - {
+            name: code_challenge_method,
+            in: query,
+            required: true,
+            schema: { type: string, const: S256 },
+          }
+        - {
+            name: scope,
+            in: query,
+            required: false,
+            schema:
+              {
+                type: string,
+                description: "Space-delimited: profile, email, cloudSync.",
+              },
+          }
+        - {
+            name: nonce,
+            in: query,
+            required: false,
+            description: "At most 255 characters; kept for I-21.",
+            schema: { type: string, maxLength: 255 },
+          }
+        - {
+            name: login_hint,
+            in: query,
+            required: false,
+            description: "An email; prefills the card, verifies nothing.",
+            schema: { type: string },
+          }
+        - {
+            name: name_hint,
+            in: query,
+            required: false,
+            description: "A display name; prefills the card, verifies nothing.",
+            schema: { type: string },
+          }
+        - {
+            name: purpose,
+            in: query,
+            required: false,
+            schema: { type: string, enum: [signin, attach] },
+          }
+        - {
+            name: license_choice,
+            in: query,
+            required: false,
+            description: "Who shows the licence choice (I-08b).",
+            schema: { type: string, enum: [card, app] },
+          }
+      responses:
+        "303":
+          description: >
+            To the card, `Location: <origin>/signin?request=rq_…`, with the `__Host-pk_req`
+            binder cookie when the browser had none. `cache-control: no-store`.
+        "302":
+          description: >
+            An error back to the app: `<redirect_uri>?error=invalid_request|invalid_scope|server_error
+            &state=…&iss=<issuer>`. Only after `client_id` and `redirect_uri` validated.
+        "400":
+          description: "`redirect_uri_mismatch`: a branded page, never a redirect."
+          content:
+            text/html: { schema: { type: string } }
+        "401":
+          description: "`invalid_client`: a branded page, never a redirect."
+          content:
+            text/html: { schema: { type: string } }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "429":
+          description: 60 calls per 60 s per client network. Fails closed.
+          content:
+            text/html: { schema: { type: string } }
+  /{product}/identity/token:
+    post:
+      operationId: identityToken
+      tags: [identity]
+      summary: Redeem an authorization code for a device token (OAuth-shaped token)
+      description: >
+        I-08 (WIRE-CONTRACT-V4 §12.5), grant `authorization_code`. A form-encoded body
+        (`application/x-www-form-urlencoded`; a JSON body is `invalid_request`) with `client_id`,
+        `code`, `code_verifier` and, optionally, `redirect_uri` (compared exactly when sent) and
+        `device_name`. Needs `X-PKey-Device`; the device metadata headers are read when present.
+        The code is single use and lives 60 s: it is redeemed against the challenge derived from
+        the verifier, and a wrong verifier ends it. The device binds here with the licence the
+        person chose at Continue, or licence-less. Errors are FLAT (RFC 6749 §5.2) and so are the
+        Polaris refusals beside them. CORS answers the product's `web.origins` only, never with
+        credentials. No `expires_in` and no `refresh_token` before I-21. 30 calls a minute per
+        client network and 10 per device id.
+      security: []
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { $ref: "#/components/parameters/DeviceHeader" }
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema: { $ref: "#/components/schemas/TokenRequest" }
+      responses:
+        "200":
+          description: "The token response. `cache-control: no-store`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TokenResponse" }
+              examples:
+                licenceLess:
+                  summary: test/identityAuthorize.test.ts
+                  value:
+                    access_token: pkeyt_Zk8LqR8nT0sYp2vcEgHj6Bf3QdNwXr7uKmA1sVe9tYo
+                    token_type: Bearer
+                    scope: profile email
+                    schemaVersion: 1
+                    device:
+                      id: dev-1
+                      licenseId: ""
+                      label: null
+                      status: authorized
+                      current: true
+                      firstSeen: 1700000000
+                      lastSeen: 1700000000
+                      userAgent: null
+                      platform: null
+                      arch: null
+                      appVersion: null
+                      sdkName: null
+                      sdkVersion: null
+                    license: null
+                    subject: ps_AAAAAAAAAAAAAAAAAAAAAA
+        "400":
+          description: >
+            `invalid_request` (not a form, a missing or repeated parameter, no device id),
+            `unsupported_grant_type`, `invalid_grant` (unknown, used, expired, or a mismatching
+            verifier, `client_id` or `redirect_uri`) or `invalid_scope` — FLAT.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+              examples:
+                invalidGrant: { value: { error: invalid_grant } }
+        "401":
+          description: "`invalid_client`: `client_id` is not the product slug — FLAT."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "403":
+          description: >
+            `not_entitled`, `device_limit` (with `limit`, `deviceCount`, `manageUrl`) or
+            `fingerprint_required` — FLAT, the shape `license/activate` answers.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "409":
+          description: >
+            `license_choice_required`: the account holds licences for the product and none was
+            chosen, or the device id already runs on one; `hardware_mismatch`. FLAT.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "429":
+          description: >
+            `rate_limited` with `retryAfter` — FLAT. 30 per 60 s per client network, 10 per 60 s
+            per device id. Fails closed.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+    options:
+      operationId: preflightIdentityToken
+      tags: [identity]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. Answered
+        before service dispatch, so the result never depends on whether the service
+        behind this path is enabled. See `CorsPreflight`. No credentials are allowed.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
   /{product}/identity/subject:
     get:
       operationId: identitySubject
@@ -12105,6 +12343,101 @@ paths:
               schema: { $ref: "#/components/schemas/FlatError" }
         "404": { $ref: "#/components/responses/NotFound" }
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
+  /api/signin/requests/{request}/continue:
+    post:
+      operationId: continueSignInRequest
+      tags: [portal]
+      summary: Continue to the app (issues the authorization code)
+      description: >
+        I-08 (WIRE-CONTRACT-V4 §12.4). "Continue to <App>" is always shown (plan D3). Needs the
+        portal session, the CSRF header AND the request's binder cookie (the R1-07 binding: the
+        code is delivered only to the browser that started the request, to a URI the product
+        registered). Records app consent (the claims granted, and the hash of what the product
+        asked), checks the product's terms (`terms_required` unless `terms` names the version
+        shown) and the licence choice (`license_choice_required` when the account holds licences
+        for the product and `choice` does not name one), then takes the request in one atomic
+        consume and answers `{redirect}`: `<redirect_uri>?code=…&state=…&iss=…`. A refusal
+        consumes nothing. The device binds at `token`. 30 a minute per account.
+      parameters:
+        - name: request
+          in: path
+          required: true
+          schema: { type: string, pattern: "^rq_[A-Za-z0-9_-]{22}$" }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SignInContinueRequest" }
+      responses:
+        "200":
+          description: Where the card sends the person next.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SignInRedirect" }
+        "400":
+          description: "`invalid_request`: a consent that names a claim the request did not ask for."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "401":
+          description: No portal session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "403":
+          description: The CSRF header is missing or wrong.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "409":
+          description: "`terms_required` or `license_choice_required`. Nothing was consumed."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "429":
+          description: "`rate_limited`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+  /api/signin/requests/{request}/cancel:
+    post:
+      operationId: cancelSignInRequest
+      tags: [portal]
+      summary: Cancel the app's sign-in request
+      description: >
+        I-08 (WIRE-CONTRACT-V4 §12.4). Takes the request and answers `{redirect}`:
+        `<redirect_uri>?error=access_denied&state=…&iss=…`. Needs the portal session, the CSRF
+        header and the request's binder cookie, so a page elsewhere cannot burn someone's request.
+      parameters:
+        - name: request
+          in: path
+          required: true
+          schema: { type: string, pattern: "^rq_[A-Za-z0-9_-]{22}$" }
+      responses:
+        "200":
+          description: Where the card sends the person next.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SignInRedirect" }
+        "401":
+          description: No portal session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "403":
+          description: The CSRF header is missing or wrong.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "429":
+          description: "`rate_limited`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
   /api/discover:
     get:
       operationId: getPortalDiscover
@@ -15187,6 +15520,36 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
+  /manage/api/products/{product}/integration:
+    get:
+      operationId: getAdminIntegration
+      tags: [admin]
+      summary: What the product needs wired, and where an SDK has answered it
+      description: >
+        ST-40. Per enabled feature (`licensing`, `config`, `identity`, `update`, `packs`, `sync`,
+        `commerce`): the console `prerequisites` from the service's integration contributor, its
+        domain `facts` and `verifiedOn`, the SDKs and platforms that have had a 2xx from the
+        feature's routes. `status` is `verified`, `not_seen` or `blocked` (a prerequisite is
+        unmet; `verifiedOn` is empty until it is met). `server` lists `*-server` SDKs that fetched
+        the trust manifest. `snippet` is the context `renderSdkSetup` takes: the slug, the enabled
+        services and the keys an app pins. Sightings come from the `X-PKey-SDK` headers every SDK
+        already sends and hold no IP, device or licence data; they are kept 90 days. Read-only;
+        admin session cookie.
+      parameters:
+        - { name: product, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: The integration view.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminIntegration" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such product.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
   /manage/api/products/{product}/assets/settings/{key}:
     patch:
       operationId: setAdminAssetSetting
@@ -16575,6 +16938,196 @@ paths:
         "403": { $ref: "#/components/responses/AdminForbidden" }
         "404":
           description: No such product.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+  /manage/api/platform/migrations:
+    get:
+      operationId: listAdminMigrations
+      tags: [admin]
+      summary: The data-migration jobs and their latest runs
+      description: >
+        Every job a mounted service contributes, each with its five newest runs (without units).
+        Nothing runs by itself: a job runs only when an operator calls dry-run, apply or down.
+        Platform admins only; admin session cookie.
+      responses:
+        "200":
+          description: The jobs.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [jobs]
+                properties:
+                  jobs:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, summary, runs]
+                      properties:
+                        id: { type: string }
+                        summary: { type: string }
+                        runs:
+                          type: array
+                          items:
+                            { $ref: "#/components/schemas/AdminMigrationRun" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+  /manage/api/platform/migrations/runs/{runId}:
+    get:
+      operationId: getAdminMigrationRun
+      tags: [admin]
+      summary: One run with its units (the report)
+      description: Platform admins only; admin session cookie.
+      parameters:
+        - { name: runId, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: The run.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [run]
+                properties:
+                  run: { $ref: "#/components/schemas/AdminMigrationRun" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such run.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+  /manage/api/platform/migrations/dry-run:
+    post:
+      operationId: dryRunAdminMigration
+      tags: [admin]
+      summary: Plan a job and store the report, changing no data
+      description: >
+        Plans every unit of the job and stores the report (`changes` is the diff count; zero means
+        the data is already migrated). Audited. Platform admins only; admin session cookie and
+        CSRF header.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [job]
+              properties:
+                job: { type: string }
+      responses:
+        "200":
+          description: The report.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [run]
+                properties:
+                  run: { $ref: "#/components/schemas/AdminMigrationRun" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such job.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+  /manage/api/platform/migrations/apply:
+    post:
+      operationId: applyAdminMigration
+      tags: [admin]
+      summary: Apply a job against a report, resumably
+      description: >
+        Applies the units of a dry run's report, one by one, up to `limit`. Call again with the
+        same report until `remaining` is 0: finished units are skipped and a finished apply
+        answers `noop`. A running call holds a lease (409 `busy` while it lasts). Audited. Needs
+        a fresh sign-in (step-up). Platform admins only; admin session cookie and CSRF header.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [job, report]
+              properties:
+                job: { type: string }
+                report: { type: string }
+                limit: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: The apply run so far.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [run, noop]
+                properties:
+                  run: { $ref: "#/components/schemas/AdminMigrationRun" }
+                  noop: { type: boolean }
+        "400":
+          description: A missing or invalid field.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such job or report.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "409":
+          description: >
+            `busy`, `lease_lost`, `reverting` (a down exists for this apply), `report_incomplete` (a unit could not be planned), `report_stale` (the report is over 24 hours old; dry-run again) or `reverted` (dry-run again).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+  /manage/api/platform/migrations/down:
+    post:
+      operationId: downAdminMigration
+      tags: [admin]
+      summary: Undo an apply, resumably
+      description: >
+        Runs the job's down path over the units the apply finished, up to `limit`; call again
+        until `remaining` is 0. Audited. Needs a fresh sign-in (step-up). Platform admins only;
+        admin session cookie and CSRF header.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [job, run]
+              properties:
+                job: { type: string }
+                run: { type: string, description: The apply run's id. }
+                limit: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: The down run so far.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [run, noop]
+                properties:
+                  run: { $ref: "#/components/schemas/AdminMigrationRun" }
+                  noop: { type: boolean }
+        "400":
+          description: A missing or invalid field.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such job or apply.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "409":
+          description: "`busy`, `lease_lost` or `nothing_applied` (the apply changed nothing)."
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
@@ -19078,6 +19631,100 @@ components:
           type: integer
           description: Repositories matching `q`, across every page.
         nextCursor: { type: [string, "null"] }
+    AdminIntegration:
+      type: object
+      required: [product, now, snippet, features, server, sightings, verified]
+      properties:
+        product: { type: string }
+        now: { type: integer, description: Epoch seconds. }
+        snippet:
+          type: object
+          required: [slug, services, pins]
+          properties:
+            slug: { type: string }
+            services: { type: array, items: { type: string } }
+            pins:
+              type: array
+              items:
+                type: object
+                required: [kid, publicKey]
+                properties:
+                  kid: { type: string }
+                  publicKey: { type: string }
+        features:
+          type: array
+          items:
+            type: object
+            required:
+              [
+                id,
+                service,
+                prerequisites,
+                unavailable,
+                facts,
+                status,
+                verifiedOn,
+              ]
+            properties:
+              id:
+                {
+                  type: string,
+                  enum:
+                    [
+                      licensing,
+                      config,
+                      identity,
+                      update,
+                      packs,
+                      sync,
+                      commerce,
+                    ],
+                }
+              service: { type: string }
+              prerequisites:
+                type: array
+                items:
+                  type: object
+                  required: [id, met]
+                  properties:
+                    id: { type: string }
+                    met: { type: boolean }
+              unavailable: { type: boolean }
+              facts:
+                type: object
+                additionalProperties:
+                  type: [number, boolean, string, "null"]
+              status: { type: string, enum: [verified, not_seen, blocked] }
+              verifiedOn:
+                type: array
+                items:
+                  { $ref: "#/components/schemas/AdminIntegrationVerifiedOn" }
+        server:
+          type: array
+          items: { $ref: "#/components/schemas/AdminIntegrationVerifiedOn" }
+        sightings:
+          type: array
+          items:
+            type: object
+            required: [sdk, platform, arch, sdkVersion, firstSeenAt, lastSeenAt]
+            properties:
+              sdk: { type: string }
+              platform:
+                { type: string, description: Empty when the SDK sent none. }
+              arch: { type: string }
+              sdkVersion: { type: [string, "null"] }
+              firstSeenAt: { type: integer }
+              lastSeenAt: { type: integer }
+        verified: { type: boolean }
+    AdminIntegrationVerifiedOn:
+      type: object
+      required: [sdk, platform, arch, sdkVersion, lastOkAt]
+      properties:
+        sdk: { type: string }
+        platform: { type: string }
+        arch: { type: string }
+        sdkVersion: { type: [string, "null"] }
+        lastOkAt: { type: [integer, "null"] }
     AdminSummary:
       type: object
       required: [products]
@@ -19662,6 +20309,34 @@ components:
           oneOf:
             - { type: "null" }
             - { $ref: "#/components/schemas/AdminOverrideInventory" }
+    AdminMigrationRun:
+      type: object
+      required: [id, job, mode, status, startedAt, changes, units, remaining]
+      properties:
+        id: { type: string }
+        job: { type: string }
+        mode: { type: string, enum: [dry-run, apply, down] }
+        status:
+          type: string
+          enum: [reported, running, failed, applied, reverted]
+        sourceId: { type: [string, "null"] }
+        requestedBy: { type: [string, "null"] }
+        startedAt: { type: integer }
+        finishedAt: { type: [integer, "null"] }
+        changes: { type: integer }
+        remaining: { type: integer }
+        units:
+          type: array
+          items:
+            type: object
+            required: [unit, status, planned, changes]
+            properties:
+              unit: { type: string }
+              status: { type: string, enum: [pending, done, failed] }
+              planned: { type: integer }
+              changes: { type: integer }
+              detail: {}
+              error: { type: [string, "null"] }
     AdminOverrideReportRow:
       type: object
       description: >
@@ -20278,6 +20953,21 @@ components:
           description: The device's normalised label (§12.7.1), as reported by the device.
         userCode: { type: [string, "null"] }
         expiresAt: { type: integer, description: Epoch seconds. }
+        purpose:
+          type: string
+          enum: [signin, attach]
+          description: On a request that came through `authorize` (§12.4).
+        licenseChoice: { type: string, enum: [card, app] }
+        scope:
+          type: array
+          items: { type: string, enum: [profile, email, cloudSync] }
+          description: The scope the app asked for, as resolved against what the product grants.
+        loginHint:
+          type: [string, "null"]
+          description: A normalised email that prefills the card and verifies nothing.
+        nameHint:
+          type: [string, "null"]
+          description: A display name that prefills the card and verifies nothing.
     AppConsentView:
       type: object
       required: [request, person, items, scopeHash, firstTime, changed]
@@ -22571,6 +23261,81 @@ components:
           minimum: 1
           maximum: 100
           description: The product's effective `identity.keyEntry.limit` (default 10).
+    TokenRequest:
+      type: object
+      description: "`POST /{product}/identity/token` (I-08, §12.5): the form body of the `authorization_code` grant."
+      required: [grant_type, client_id, code, code_verifier]
+      additionalProperties: false
+      properties:
+        grant_type: { type: string, const: authorization_code }
+        client_id: { type: string, description: The product slug. }
+        code: { type: string, pattern: "^[A-Za-z0-9_-]{43}$" }
+        code_verifier: { type: string, pattern: "^[A-Za-z0-9._~-]{43,128}$" }
+        redirect_uri:
+          {
+            type: string,
+            format: uri,
+            description: Compared exactly when sent.,
+          }
+        device_name:
+          {
+            type: string,
+            description: The device's label; normalised as in §12.7.1.,
+          }
+    TokenResponse:
+      type: object
+      description: >
+        The activation response under its OAuth names (I-08, §12.5): exactly these members. No
+        `expires_in` and no `refresh_token` before I-21.
+      required:
+        [
+          access_token,
+          token_type,
+          scope,
+          schemaVersion,
+          device,
+          license,
+          subject,
+        ]
+      additionalProperties: false
+      properties:
+        access_token: { type: string, description: The `pkeyt_` device token. }
+        token_type: { type: string, const: Bearer }
+        scope:
+          { type: string, description: The granted subset, space-delimited. }
+        schemaVersion: { type: integer }
+        device: { type: object, additionalProperties: true }
+        license:
+          type: [object, "null"]
+          additionalProperties: true
+          description: "`null` on a device with no licence."
+        subject: { type: string, pattern: "^ps_[A-Za-z0-9_-]{22}$" }
+    SignInContinueRequest:
+      type: object
+      description: "`POST /api/signin/requests/{request}/continue` (I-08, §12.4). Every member is optional."
+      additionalProperties: false
+      properties:
+        consent:
+          type: object
+          required: [claims]
+          properties:
+            claims:
+              type: array
+              items: { type: string, enum: [profile, email, cloudSync] }
+        choice:
+          type: object
+          required: [licenseId]
+          properties:
+            licenseId: { type: string }
+        terms:
+          type: string
+          description: The terms version the person accepted, when the product requires them.
+    SignInRedirect:
+      type: object
+      required: [redirect]
+      additionalProperties: false
+      properties:
+        redirect: { type: string, format: uri }
     AttachRequest:
       type: object
       description: "`POST /{product}/identity/attach` (I-09, §12.3): `false` previews, `true` attaches."

@@ -2,6 +2,7 @@ import {
   compileLinearPattern,
   representabilityIssue,
   type LinearPattern,
+  type MintBlock,
   type ProductCatalog,
 } from "@polaris-key/catalog";
 import { type SecretDelivery } from "@polaris-key/protocol/config";
@@ -631,6 +632,9 @@ export type ManifestSecretDelivery = SecretDelivery;
 export type ManifestCatalogEntry = ProductCatalog["entries"][number] & {
   delivery?: ManifestSecretDelivery;
 };
+
+/** A catalog entry's `mint` block: the legacy `edgeMint[]` recipe minus its `id`. */
+export type CatalogMintBlock = MintBlock;
 
 export type ManifestCatalog = Omit<ProductCatalog, "entries"> & {
   entries: ManifestCatalogEntry[];
@@ -2552,82 +2556,13 @@ function validateDocuments(
       MINT_ID_RE,
       "Edge mint ids must match ^[a-z0-9-]{1,64}$ (the mint route's own alphabet).",
     );
-    // `kid` is emitted verbatim in the JWS protected header; `audience` becomes `aud`.
-    constrained(
-      errors,
-      "release",
-      raw.kid,
-      `/edgeMint/${i}/kid`,
-      "invalid_edge_mint_kid",
-      KID_RE,
-      "Edge mint kid must match ^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$.",
-    );
-    boundedText(
-      errors,
-      "release",
-      raw.audience,
-      `/edgeMint/${i}/audience`,
-      "invalid_edge_mint_audience",
-      MAX_LABEL_LENGTH,
-      "Edge mint audience",
-    );
-    if (!["ES256", "RS256", "EdDSA"].includes(String(raw.alg ?? ""))) {
-      add(
-        errors,
-        "release",
-        `/edgeMint/${i}/alg`,
-        "invalid_edge_mint_alg",
-        "Edge mint alg must be ES256, RS256, or EdDSA.",
-      );
+    validateEdgeMintFields(errors, "release", raw, `/edgeMint/${i}`);
+  }
+  if (manifest.schema !== undefined && modules.includes("config")) {
+    const catalog = normalizeCatalog(manifest.schema);
+    if (catalog) {
+      validateCatalogMintBlocks(catalog.entries, edgeMint, errors);
     }
-    const ref = raw.signingKeySecret;
-    if (typeof ref !== "string" || !SECRET_RE.test(ref)) {
-      add(
-        errors,
-        "release",
-        `/edgeMint/${i}/signingKeySecret`,
-        "invalid_secret_ref",
-        "Edge mint signing key refs must be stable uppercase names.",
-      );
-    }
-    const ttl: unknown = raw.ttlSeconds;
-    if (
-      ttl !== undefined &&
-      (!positiveInteger(ttl) ||
-        (typeof ttl === "number" && ttl > MAX_EDGE_MINT_TTL_SECONDS))
-    ) {
-      add(
-        errors,
-        "release",
-        `/edgeMint/${i}/ttlSeconds`,
-        "invalid_ttl",
-        `Edge mint TTL must be a positive integer of at most ${MAX_EDGE_MINT_TTL_SECONDS} seconds.`,
-      );
-    }
-    // Both are ENFORCEMENT: an unrecognised value is refused, never coerced, or a typo'd
-    // `requires: "licenced"` would decide who may mint with the product's signing key.
-    if (
-      raw.requires !== undefined &&
-      !isOneOf(raw.requires, EDGE_MINT_REQUIRES_VALUES)
-    ) {
-      add(
-        errors,
-        "release",
-        `/edgeMint/${i}/requires`,
-        "invalid_edge_mint_requires",
-        "Edge mint requires must be none, registered, or licensed.",
-      );
-    }
-    // Names a catalog entry, so it is held to the key alphabet catalog entries are.
-    constrained(
-      errors,
-      "release",
-      raw.requiredEntitlement,
-      `/edgeMint/${i}/requiredEntitlement`,
-      "invalid_edge_mint_entitlement",
-      ID_RE,
-      "Edge mint requiredEntitlement must be a catalog key matching ^[A-Za-z0-9._:-]{1,64}$.",
-    );
   }
 
   // ── Fingerprint + auto-issue policy blocks ──────────────────────────────────────────────
@@ -2835,14 +2770,11 @@ function validateDocuments(
   if (manifest.schema !== undefined && modules.includes("config")) {
     const catalog = normalizeCatalog(manifest.schema);
     if (catalog) {
-      const recipeIds = new Set(
-        (
-          arrayAt(productRoot, "edgeMint") ??
-          arrayAt(asRecord(manifest.release), "edgeMint") ??
-          []
-        ).map((r) => asRecord(r).id),
-      );
-      warnRetiredCatalogFields(catalog.entries, recipeIds, warnings);
+      const legacy =
+        arrayAt(productRoot, "edgeMint") ??
+        arrayAt(asRecord(manifest.release), "edgeMint") ??
+        [];
+      warnRetiredCatalogFields(catalog.entries, legacy, warnings);
     }
   }
 
@@ -2984,6 +2916,9 @@ function validateDocuments(
     secrets,
     productRoot,
     manifest.release,
+    modules.includes("config") && manifest.schema !== undefined
+      ? (normalizeCatalog(manifest.schema)?.entries ?? [])
+      : [],
   );
   if (
     modules.includes("config") &&
@@ -4702,9 +4637,13 @@ export function parseManifest(
   const productRoot = docs.product;
   const prod = nestedProductDoc(productRoot);
   const licensing = asRecord(productRoot.licensing);
-  const catalog = dropRedundantSecretFlags(
+  const rawCatalog = dropRedundantSecretFlags(
     normalizeCatalog(docs.schema) as ManifestCatalog,
   );
+  // U-31: a catalog entry's `mint` block is a recipe. It is lifted out of the catalog (which is
+  // public) into `edgeMint`, so approval, storage and the mint route see one list.
+  const split = splitCatalogMint(rawCatalog.entries);
+  const catalog = { ...rawCatalog, entries: split.entries } as ManifestCatalog;
   const releaseDoc =
     releaseRoot(docs.release) ?? releaseRoot(productRoot.release);
   const oidcRoot = asRecord(productRoot.oidc);
@@ -4742,7 +4681,10 @@ export function parseManifest(
     profiles: rawProfiles.map(normalizeProfile).filter(notNull),
     tiers: rawTiers.map(normalizeTier).filter(notNull),
     provisioning: rawProvisioning.map(normalizeProvisioning).filter(notNull),
-    edgeMint: rawEdgeMint.map(normalizeEdgeMint).filter(notNull),
+    edgeMint: [
+      ...rawEdgeMint.map(normalizeEdgeMint).filter(notNull),
+      ...(validation.enabledModules.includes("config") ? split.recipes : []),
+    ],
     // The enablement set finally survives parsing. `validation` above already ran the
     // coherence rules over the same list, so this cannot carry an inapplicable combination.
     services: servicesFromModules(validation.enabledModules),
@@ -5410,6 +5352,97 @@ function normalizeProvisioning(raw: unknown): ManifestProvisioning | null {
   };
 }
 
+/**
+ * The fields of an edge-mint recipe, wherever it is declared: a legacy `edgeMint[]` item
+ * (`at` = `/edgeMint/<i>`, section `release`) or a catalog entry's `mint` block (U-31, `at` =
+ * `/entries/<i>/mint`, section `schema`). One rule set, so the two spellings cannot drift. The
+ * id is checked by the caller: it is the item's `id` for a legacy recipe, the entry's key for a
+ * `mint` block.
+ */
+function validateEdgeMintFields(
+  errors: ValidationMessage[],
+  section: ValidationMessage["file"],
+  raw: Record<string, unknown>,
+  at: string,
+): void {
+  // `kid` is emitted verbatim in the JWS protected header; `audience` becomes `aud`.
+  constrained(
+    errors,
+    section,
+    raw.kid,
+    `${at}/kid`,
+    "invalid_edge_mint_kid",
+    KID_RE,
+    "Edge mint kid must match ^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$.",
+  );
+  boundedText(
+    errors,
+    section,
+    raw.audience,
+    `${at}/audience`,
+    "invalid_edge_mint_audience",
+    MAX_LABEL_LENGTH,
+    "Edge mint audience",
+  );
+  if (!["ES256", "RS256", "EdDSA"].includes(String(raw.alg ?? ""))) {
+    add(
+      errors,
+      section,
+      `${at}/alg`,
+      "invalid_edge_mint_alg",
+      "Edge mint alg must be ES256, RS256, or EdDSA.",
+    );
+  }
+  const ref = raw.signingKeySecret;
+  if (typeof ref !== "string" || !SECRET_RE.test(ref)) {
+    add(
+      errors,
+      section,
+      `${at}/signingKeySecret`,
+      "invalid_secret_ref",
+      "Edge mint signing key refs must be stable uppercase names.",
+    );
+  }
+  const ttl: unknown = raw.ttlSeconds;
+  if (
+    ttl !== undefined &&
+    (!positiveInteger(ttl) ||
+      (typeof ttl === "number" && ttl > MAX_EDGE_MINT_TTL_SECONDS))
+  ) {
+    add(
+      errors,
+      section,
+      `${at}/ttlSeconds`,
+      "invalid_ttl",
+      `Edge mint TTL must be a positive integer of at most ${MAX_EDGE_MINT_TTL_SECONDS} seconds.`,
+    );
+  }
+  // Both are ENFORCEMENT: an unrecognised value is refused, never coerced, or a typo'd
+  // `requires: "licenced"` would decide who may mint with the product's signing key.
+  if (
+    raw.requires !== undefined &&
+    !isOneOf(raw.requires, EDGE_MINT_REQUIRES_VALUES)
+  ) {
+    add(
+      errors,
+      section,
+      `${at}/requires`,
+      "invalid_edge_mint_requires",
+      "Edge mint requires must be none, registered, or licensed.",
+    );
+  }
+  // Names a catalog entry, so it is held to the key alphabet catalog entries are.
+  constrained(
+    errors,
+    section,
+    raw.requiredEntitlement,
+    `${at}/requiredEntitlement`,
+    "invalid_edge_mint_entitlement",
+    ID_RE,
+    "Edge mint requiredEntitlement must be a catalog key matching ^[A-Za-z0-9._:-]{1,64}$.",
+  );
+}
+
 function normalizeEdgeMint(raw: unknown): ManifestEdgeMint | null {
   if (!isRecord(raw) || typeof raw.id !== "string" || raw.id.length === 0)
     return null;
@@ -5446,8 +5479,14 @@ function collectRequiredSecrets(
   secrets: Record<string, unknown>,
   product: Record<string, unknown>,
   release: unknown,
+  catalogEntries: readonly unknown[] = [],
 ): string[] {
   const names = new Set<string>();
+  // A catalog entry's `mint` block signs with a secret too (U-31).
+  for (const entry of catalogEntries) {
+    const ref = asRecord(asRecord(entry).mint).signingKeySecret;
+    if (typeof ref === "string" && ref) names.add(ref);
+  }
   const required = arrayAt(secrets, "required") ?? [];
   for (const item of required) {
     if (isRecord(item) && typeof item.name === "string" && item.name) {
@@ -5575,6 +5614,106 @@ function normalizeCatalog(parsed: unknown): ProductCatalog | null {
   return null;
 }
 
+/** A catalog entry's `mint` block: the recipe a Minted token carries (U-31). */
+function isMintingEntry(entry: Record<string, unknown>): boolean {
+  return entry.kind === "secret" && entry.delivery === "edgeMint";
+}
+
+/**
+ * U-31: a Minted token carries its recipe in the entry's `mint` block, and the entry's key is
+ * the recipe id (`mintToken(key)`). The block takes the legacy recipe's fields, minus `id`, and
+ * the same rules; a block and a legacy `edgeMint[]` recipe of one id are ambiguous and refused.
+ */
+function validateCatalogMintBlocks(
+  entries: readonly unknown[],
+  legacyRecipes: readonly unknown[],
+  errors: ValidationMessage[],
+): void {
+  const legacyIds = new Set(legacyRecipes.map((r) => asRecord(r).id));
+  for (const [i, raw] of entries.entries()) {
+    if (!isRecord(raw) || raw.mint === undefined) continue;
+    const at = `/entries/${i}`;
+    if (!isRecord(raw.mint)) {
+      add(
+        errors,
+        "schema",
+        `${at}/mint`,
+        "invalid_catalog_mint",
+        "`mint` must be an object: alg, signingKeySecret and, optionally, kid, audience, ttlSeconds, claimsTemplate, requires, requiredEntitlement.",
+      );
+      continue;
+    }
+    if (!isMintingEntry(raw)) {
+      add(
+        errors,
+        "schema",
+        `${at}/mint`,
+        "catalog_mint_not_minted",
+        "`mint` belongs on a secret entry with `delivery: edgeMint`.",
+      );
+      continue;
+    }
+    // The key is the recipe id, so it is held to the mint route's alphabet.
+    constrained(
+      errors,
+      "schema",
+      raw.key,
+      `${at}/key`,
+      "invalid_edge_mint_id",
+      MINT_ID_RE,
+      "A minted token's key is its recipe id and must match ^[a-z0-9-]{1,64}$ (the mint route's own alphabet).",
+    );
+    if (legacyIds.has(raw.key)) {
+      add(
+        errors,
+        "schema",
+        `${at}/mint`,
+        "edge_mint_recipe_duplicate",
+        `${String(raw.key)} has a \`mint\` block and an edgeMint[] recipe. Keep the \`mint\` block and delete the recipe.`,
+      );
+    }
+    validateEdgeMintFields(errors, "schema", raw.mint, `${at}/mint`);
+  }
+}
+
+/**
+ * The catalog as stored and served, and the recipes its `mint` blocks declare. The block is
+ * recipe data (a secret's name, the claims it signs): it lives in `edge_mint_config`, behind the
+ * operator's approval, and never in the public catalog document.
+ */
+export function splitCatalogMint(entries: readonly unknown[]): {
+  entries: unknown[];
+  recipes: ManifestEdgeMint[];
+} {
+  const recipes: ManifestEdgeMint[] = [];
+  const kept = entries.map((e) => {
+    if (!isRecord(e) || !("mint" in e)) return e;
+    const { mint, ...rest } = e;
+    if (
+      isMintingEntry(rest) &&
+      isRecord(mint) &&
+      typeof rest.key === "string"
+    ) {
+      const recipe = normalizeEdgeMint({ ...mint, id: rest.key });
+      if (recipe) recipes.push(recipe);
+    }
+    return rest;
+  });
+  return { entries: kept, recipes };
+}
+
+/**
+ * Validates the `mint` blocks of a catalog the console publishes (U-31) with the manifest's own
+ * rules. Returns one message per problem; empty when every block is valid.
+ */
+export function validateConsoleMintBlocks(
+  entries: readonly unknown[],
+): string[] {
+  const errors: ValidationMessage[] = [];
+  validateCatalogMintBlocks(entries, [], errors);
+  return errors.map((e) => `${e.path}: ${e.message}`);
+}
+
 /** U-30: `secret: true` on a `secret` entry says what `kind` already says. Dropped at ingest. */
 function dropRedundantSecretFlags(catalog: ManifestCatalog): ManifestCatalog {
   return {
@@ -5596,14 +5735,36 @@ function dropRedundantSecretFlags(catalog: ManifestCatalog): ManifestCatalog {
  *     `kind: "secret"` (the SDK read changes to `getSecret`, so `--fix` leaves it to the author).
  *   - `delivery: "serverOnly"` has no consumer: a secret only the Worker reads belongs in the
  *     product's secrets (Keys and secrets).
- *   - `delivery: "edgeMint"` with no recipe: `mintToken(key)` names the recipe by the entry's
- *     key, so an entry with no `edgeMint` recipe of that id mints nothing.
+ *   - `delivery: "edgeMint"` with no `mint` block (U-31): `mintToken(key)` names the recipe by
+ *     the entry's key, so an entry with neither a `mint` block nor a legacy `edgeMint[]` recipe
+ *     of that id mints nothing. A legacy `edgeMint[]` recipe warns too: it moves into its entry.
  */
 function warnRetiredCatalogFields(
   entries: unknown[],
-  recipeIds: ReadonlySet<unknown>,
+  legacyRecipes: readonly unknown[],
   warnings: ValidationMessage[],
 ): void {
+  const legacyIds = new Set(legacyRecipes.map((r) => asRecord(r).id));
+  // A legacy recipe warns once it has a catalog entry to move into; a recipe with no entry
+  // still mints and is left alone (nothing to move it to without inventing the entry).
+  const mintingKeys = new Set(
+    entries
+      .map(asRecord)
+      .filter((e) => e.kind === "secret" && e.delivery === "edgeMint")
+      .map((e) => e.key),
+  );
+  for (const [i, recipe] of legacyRecipes.entries()) {
+    const id = asRecord(recipe).id;
+    if (!mintingKeys.has(id)) continue;
+    add(
+      warnings,
+      "release",
+      `/edgeMint/${i}`,
+      "catalog_edge_mint_legacy",
+      `The edgeMint[] recipe ${String(id)} moves into the \`mint\` block of the catalog entry ${String(id)} (\`pkey validate --fix\`).`,
+    );
+  }
+
   for (const [i, raw] of entries.entries()) {
     if (!isRecord(raw)) continue;
     const at = `/entries/${i}`;
@@ -5636,14 +5797,15 @@ function warnRetiredCatalogFields(
     if (
       raw.delivery === "edgeMint" &&
       typeof raw.key === "string" &&
-      !recipeIds.has(raw.key)
+      raw.mint === undefined &&
+      !legacyIds.has(raw.key)
     ) {
       add(
         warnings,
         "schema",
         `${at}/delivery`,
         "catalog_edge_mint_without_recipe",
-        `\`delivery: edgeMint\` on ${raw.key} has no edgeMint recipe with id ${raw.key}, so nothing can be minted.`,
+        `\`delivery: edgeMint\` on ${raw.key} has no \`mint\` block, so nothing can be minted. Add one: alg, signingKeySecret and, optionally, kid, audience, ttlSeconds, claimsTemplate, requires, requiredEntitlement.`,
       );
     }
   }

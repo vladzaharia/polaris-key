@@ -198,6 +198,7 @@
       "identity": {
         "enabled": true,
         "configured": true,
+        "issuer": "https://key.plrs.im/full/identity",
         "account": true,
         "keyEntryLimit": 10,
         "endpoints": {
@@ -210,6 +211,8 @@
           "authDeviceEntry": "https://key.plrs.im/full/identity/auth/device",
           "authDeviceVerify": "https://key.plrs.im/full/identity/auth/device/verify",
           "authDevicePoll": "https://key.plrs.im/full/identity/auth/device/poll",
+          "authorize": "https://key.plrs.im/full/identity/authorize",
+          "token": "https://key.plrs.im/full/identity/token",
           "attach": "https://key.plrs.im/full/identity/attach",
           "subject": "https://key.plrs.im/full/identity/subject",
           "signout": "https://key.plrs.im/full/identity/signout",

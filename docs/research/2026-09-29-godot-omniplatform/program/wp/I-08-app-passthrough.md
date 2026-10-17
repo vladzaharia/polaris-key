@@ -114,13 +114,43 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 - **Builds or backs 11 mockup item(s):** `identity.consent`, `identity.key-step`, `identity.refusals`, `identity.sign-in`, `portal.signin`, `hosted:signin-card`, `hosted:consent`, `hosted:license-choice`, `hosted:key-on-ramp`, `hosted:refusals`, `hosted:oauth-authorize-token`.
 
+## Progress and corrections (2026-10-17)
+
+Built on `wp/I-08-passthrough` from `integ/post-096`. Corrections to this brief found in the code:
+
+- **`token` reads the metadata headers when present**, as `license/activate` does; only
+  `X-PKey-Device` is required (a browser `fetch` need not send the rest).
+- **`configured` is always `true`** in discovery's identity fragment (the platform sign-in needs no
+  `oidc_config` row); the legacy `auth/*` routes still need one.
+- **Keeping a licence the device runs on** is allowed at `token` with the device's own bearer token
+  (proof of possession); without it a device id that already runs on a licence is
+  `license_choice_required`. That is what lets `identity-attach.json` be re-recorded through
+  `authorize` and `token` with its SDK-made requests unchanged.
+- **Licence choice at Continue** is the single `choice: {licenseId}` of an account that holds
+  licences (never silent). The choice API, grants, Replace, key-in-card and the first automatic
+  licence are I-08b's (plan D2, D5).
+- **Terms** need no change in `beginProviderSignIn` (it already takes `?product=<slug>` and
+  `productTerms`); Continue enforces the version too, for a session that skipped the gate. I-08 adds
+  no verification point, so `onAccountEmailVerified` is not called and the per-request sweep in
+  `portal/api.ts` stays (it is I-09's and the card's, and is why `identity-attach` verifies the
+  buyer email after the sign-in).
+- **The Continue card (SPA) is PX-14's.** I-08 ships the API and the two Worker-rendered refusal
+  pages (`invalid_client`, `redirect_uri_mismatch`); no new SPA screen, so the screen-acceptance
+  rows above are PX-14's to tick.
+- `errors.json` also registers `license_choice_required` (plan §3); every `copy.*.json` gained the
+  seven codes (the constants generator refuses a registry entry without copy).
+- Transcript format: `browser` and `redirectComplete` actions, a `form` request body (recorded as
+  `body.json` with `content-type` asserted) and `location` in the recorded response headers.
+  Existing replayers decode the new files unchanged; the React replayer's planned list gained the
+  two features.
+
 ## Acceptance criteria
 
-- [ ] Every error row of I-27 §2.1, including that no redirect happens before `client_id` and `redirect_uri` are valid (tests).
-- [ ] A code redeemed twice, or with another verifier, `client_id` or `redirect_uri`, is refused; `iss` is present on success and error; `token` accepts a form body only, and its `200` has exactly the listed members (tests).
-- [ ] With the product's Identity toggle off, every passthrough route is refused and discovery lists none (test).
-- [ ] Transcripts and mirrors recorded; `errors.json`, parity rows, OpenAPI and `routeCoverage` updated; THREAT-MODEL rows for R1-07, the choice grant and Replace; `PROTOCOL_VERSION` unchanged.
-- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/sign-in/*`, `operate/platform/connections`, `help/work-account`, `help/account` and `help/connected-apps`.
+- [x] Every error row of I-27 §2.1, including that no redirect happens before `client_id` and `redirect_uri` are valid (tests).
+- [x] A code redeemed twice, or with another verifier, `client_id` or `redirect_uri`, is refused; `iss` is present on success and error; `token` accepts a form body only, and its `200` has exactly the listed members (tests).
+- [x] With the product's Identity toggle off, every passthrough route is refused and discovery lists none (test).
+- [x] Transcripts and mirrors recorded; `errors.json`, parity rows, OpenAPI and `routeCoverage` updated; THREAT-MODEL rows for R1-07, the choice grant and Replace; `PROTOCOL_VERSION` unchanged.
+- [ ] Docs (partly: `features/sign-in/web-redirect` is written; the help pages and `operate/platform/connections` describe a card that PX-14 builds and are left to it), in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/sign-in/*`, `operate/platform/connections`, `help/work-account`, `help/account` and `help/connected-apps`.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
 ## Verify

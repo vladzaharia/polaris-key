@@ -79,3 +79,31 @@ Then the full green gate in `AGENTS.md`.
 
 What downstream work packages rely on from this one is named in their briefs (the Unblocks row). The role agent sets `--set P0-49 in-review` when it hands off. After review, the lead adds the last commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P0-49 done`.
+
+## Verification against the code (2026-10-17)
+
+- P0-24 (the ledger) is not built, so the runner keeps its own record: `data_migration_runs` and
+  `data_migration_units` (migration `0122_data_migration_runs.sql`, Core-owned). When P0-24 lands
+  it takes these report rows.
+- The Core job kind lives in `packages/worker/src/core/migrate/` (`job.ts`, `runner.ts`). A
+  service contributes jobs through `ServiceDescriptor.contributes.migrations`
+  (`core/contributions.ts`, `migrationJobs()`), so Core never imports a service (rule 6).
+- The admin route is `/manage/api/platform/migrations/{,runs/:id,dry-run,apply,down}`
+  (`console/handlers/migrations.ts`; apply and down are step-up; in the OpenAPI spec and
+  `routeCoverage`). No page, no notices.
+
+## Progress and continuation (2026-10-17, slice 1)
+
+Done: the runner (dry run, stored report, apply pinned to a report, lease, resume, no-op
+re-apply, down), the audit row per call, the admin route, and I-30's connections seed folded in
+as `identity.seed-platform-connection`. Tests: `test/migrationRunner.test.ts`.
+
+Not done, for the next slice:
+
+- The `pkey` CLI command (lead-run from the CLI). It needs an admin-API-token scope for the
+  migration routes; today no token reaches them.
+- U-03's override migration (`core/ops/overrideMigration.ts`) and the settings backfill
+  (`core/ops/settingsBackfill.ts`) keep their own state machines and reports. Folding them in
+  needs their notice, prerequisite and step-up flows mapped onto jobs; until then the "no
+  consumer ships its own one-off runner" criterion holds for new consumers only.
+- Recording each report in P0-24's ledger (blocked on P0-24).

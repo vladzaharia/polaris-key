@@ -147,6 +147,8 @@ const PORTAL_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     // PX-W13 (G28): the sign-in request the card renders, and its app-consent view.
     ["/api/signin/requests/{request}", ["get"]],
     ["/api/signin/requests/{request}/consent", ["get"]],
+    ["/api/signin/requests/{request}/continue", ["post"]],
+    ["/api/signin/requests/{request}/cancel", ["post"]],
     // I-16: passkeys on the login card, and the account's passkeys.
     ["/api/signin/passkey/options", ["post"]],
     ["/api/signin/passkey/verify", ["post"]],
@@ -186,6 +188,12 @@ const ADMIN_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     // Home's product cards: one fact per service for every product (A-8, sliced).
     ["/manage/api/summary", ["get"]],
     // U-03: the licence-override migration (notes/S-17 §5.12, decision 21).
+    // P0-49: the data-migration runner.
+    ["/manage/api/platform/migrations", ["get"]],
+    ["/manage/api/platform/migrations/runs/{runId}", ["get"]],
+    ["/manage/api/platform/migrations/dry-run", ["post"]],
+    ["/manage/api/platform/migrations/apply", ["post"]],
+    ["/manage/api/platform/migrations/down", ["post"]],
     ["/manage/api/platform/override-migration", ["get"]],
     ["/manage/api/platform/override-migration/prerequisites", ["put"]],
     ["/manage/api/platform/override-migration/notice", ["post", "delete"]],
@@ -205,6 +213,8 @@ const ADMIN_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     ["/manage/api/products", ["get", "post"]],
     ["/manage/api/products/link-repo", ["post"]],
     ["/manage/api/products/slug-check", ["get"]],
+    // ST-40: the Integration read model (prerequisites, facts, Verified per platform).
+    ["/manage/api/products/{product}/integration", ["get"]],
     // HA-05: the hosted-asset status read the console's Presentation page uses.
     ["/manage/api/products/{product}/assets", ["get"]],
     // HA-06: the Presentation page's upload (claims the slot), Revert and delete-a-copy.
@@ -671,6 +681,8 @@ const CORS_EXCLUDED = new Set([
   "/{product}/identity/auth/device",
   "/{product}/identity/auth/device/verify",
   "/{product}/identity/auth/choose",
+  // I-08: `authorize` is a browser navigation to the card; only `token` is a page's `fetch`.
+  "/{product}/identity/authorize",
   "/{product}/config/mint/{mintId}/auth",
   // P2-05: CI routes, authenticated by a `pkeyci_` bearer — never called from a browser page.
   "/{product}/release/channels/{channel}/promote",
@@ -767,6 +779,7 @@ function concrete(template: string): string {
     methodId: "lnk_AAAAAAAAAAAA",
     subject: `ps_${"A".repeat(22)}`,
     tokenId: "apitok_AAAAAAAAAAAA",
+    runId: "mig_AAAAAAAAAAAA",
   };
   return template.replace(/\{(\w+)\}/g, (_, name: string) => {
     const value = samples[name];

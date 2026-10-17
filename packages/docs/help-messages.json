@@ -171,6 +171,26 @@
       "why": "The app asks you to agree to its terms before you continue, and this version of the terms wasn't accepted.",
       "fix": "Ask the app's developer."
     },
+    "invalid_client": {
+      "page": "signing-in",
+      "why": "The app isn't set up to sign people in through Polaris Key, so we couldn't continue.",
+      "fix": "Ask the app's developer."
+    },
+    "redirect_uri_mismatch": {
+      "page": "signing-in",
+      "why": "The app asked us to send you back to an address it hasn't registered, so we didn't send you anywhere.",
+      "fix": "Ask the app's developer."
+    },
+    "invalid_grant": {
+      "page": "signing-in",
+      "why": "This sign-in was already used or took too long to finish.",
+      "fix": "Go back to the app and sign in again."
+    },
+    "license_choice_required": {
+      "page": "signing-in",
+      "why": "Your account has licenses for this app, and none was chosen for this device.",
+      "fix": "Choose a license on the sign-in page, then continue."
+    },
     "enroll_claimed": {
       "page": "signing-in",
       "entry": "enroll_claimed",
@@ -1095,6 +1115,9 @@
     "marker-rejected",
     "release_record_rejected",
     "release_tag_is_pack_release",
-    "asset_unreachable"
+    "asset_unreachable",
+    "invalid_request",
+    "unsupported_grant_type",
+    "invalid_scope"
   ]
 }

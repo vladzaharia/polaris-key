@@ -749,6 +749,11 @@ describe("R11-05 product scoping", () => {
       // owner and per request, which products that is (`personMayRead`), so the tenant boundary is
       // enforced there, by the account's licences, and not by a column here.
       "account_tokens",
+      // 0122 (P0-49) — the data-migration runner's record: a run is of a JOB (a platform-wide
+      // operator act), its units are product slugs or `platform`; read only by the platform-admin
+      // route, never by a tenant route.
+      "data_migration_runs",
+      "data_migration_units",
     ]);
     const offenders: string[] = [];
     for (const t of tables.map((r) => r.name)) {
@@ -1110,6 +1115,9 @@ describe("R11-08 migration safety", () => {
     const dataMigrationTables = new Set([
       "override_migration",
       "override_migration_report",
+      // P0-49: the runner's runs and units, likewise data (a job's report), not bookkeeping.
+      "data_migration_runs",
+      "data_migration_units",
     ]);
     expect(rows.filter((r) => !dataMigrationTables.has(r.name))).toHaveLength(
       0,

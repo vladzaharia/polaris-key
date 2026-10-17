@@ -590,6 +590,52 @@ modules:
     );
   });
 
+  it("moves a legacy edgeMint[] recipe into its entry's mint block, and validates clean after (U-31)", async () => {
+    const cwd = await product({
+      "product.yaml": `apiVersion: pkey.dev/v1
+product:
+  slug: djdl
+  name: DJDL
+modules:
+  config:
+    enabled: true
+edgeMint:
+  - id: musickit
+    alg: ES256
+    signingKeySecret: MINT_KEY
+    ttlSeconds: 600
+  - id: orphan
+    alg: ES256
+    signingKeySecret: OTHER_KEY
+`,
+      "schema.yaml": `schemaVersion: 1
+entries:
+  - key: musickit
+    kind: secret
+    delivery: edgeMint
+    category: A
+    label: L
+    description: D
+    schema:
+      type: string
+`,
+    });
+    const before = await run(["validate"], { cwd });
+    expect(before.out).toContain("moves into the `mint` block");
+    const out = await run(["validate", "--fix"], { cwd });
+    expect(out.code).toBe(0);
+    expect(out.out).toContain("Moved /edgeMint/0 to");
+    expect(out.out).not.toContain("moves into the `mint` block");
+    const schema = await readFile(path.join(cwd, ".pkey/schema.yaml"), "utf8");
+    expect(schema).toMatch(/mint:\n\s+alg: ES256/);
+    expect(schema).toContain("ttlSeconds: 600");
+    expect(schema).not.toMatch(/\bid: musickit/);
+    const prod = await readFile(path.join(cwd, ".pkey/product.yaml"), "utf8");
+    // The recipe with no entry stays: there is nothing to move it into.
+    expect(prod).toContain("id: orphan");
+    expect(prod).not.toContain("musickit");
+  });
+
   it("negative control: nothing to fix writes nothing and says so", async () => {
     const cwd = await product();
     const file = path.join(cwd, ".pkey/product.yaml");

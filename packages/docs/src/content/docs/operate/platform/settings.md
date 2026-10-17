@@ -53,14 +53,14 @@ itch.io (see [display names](/docs/build/manifest/product/#display-names)). With
 `product.name`, `listing.name` or `listing.developerName` is accepted and reported; with `error`,
 link, resync and the console's listing edits refuse it. Either way the sign-in card shows the
 product slug in a neutral frame instead of a reserved name. The setting starts at `warn` for two
-minor releases or 60 days, whichever is later. It sits under Identity & access in the console.
+minor releases or 60 days, whichever is later. It sits under Sign-in in the console.
 
 `KEYENTRY_REFUSALS` is `identity.keyEntryRefusals`, the rollout switch for
 [key entries](/docs/features/licensing/activation/#key-entries). Key entries are counted either way. On, a
 product with Identity on refuses a new device a key whose licence is in no account and has used
 every key entry, with a link to add the key to an account; a device already using its key is never
 refused. Turn it on only once the SDKs that show the refusal are released. Turning it either way
-asks first. It sits under Identity & access in the console.
+asks first. It sits under Sign-in in the console.
 
 `ASSET_HOSTING` is `assets.hosting.enabled`, the hosted-assets rollback switch. Off, every
 surface goes back to the developer's own image URLs and the portal's media proxy, release-file
@@ -107,12 +107,31 @@ read the settings fresh at the start of each run.
 
 ## In the console
 
-Platform → Settings has these sections, top to bottom.
+Platform → Settings has these sections, ordered by use. A section this deployment has nothing to
+show in is left out, and a setting whose area no section names appears under Advanced, so none is
+dropped. The header's **History** button jumps to the trail at the foot.
 
-- **Warnings.** Each warning the API returns (the console still shares the customer sign-in
-  client, `PLATFORM_KEK_ID` set, `PLATFORM_KEK` kept as a legacy key beside
-  `PLATFORM_KEK_KEYS`, `PORTAL_SESSION_SECRET` unset) is shown first.
-- **Background jobs.** The background-job settings. Each row shows the effective value and a source
+- **Platform ready.** What still needs doing: an unreadable settings store, each warning the API
+  returns (the console still shares the customer sign-in client, `PLATFORM_KEK_ID` set,
+  `PLATFORM_KEK` kept as a legacy key beside `PLATFORM_KEK_KEYS`, `PORTAL_SESSION_SECRET` unset),
+  no admin group and no GitHub App. Each item links to the section that fixes it. With nothing
+  to fix the section reads _Ready_.
+- **Product defaults.** The values a product starts from when it sets none of its own. Shown once
+  a default is editable.
+- **Sign-in.** The reserved display-name setting and the key-entry refusal switch, then the
+  deploy-time values, read-only: the console's own client (`ADMIN_OIDC_ISSUER`,
+  `ADMIN_OIDC_CLIENT_ID`) above the platform client the portal and products use
+  (`PLATFORM_OIDC_*`), and the console session length.
+- **Storefront and hosting.** The storefront and hosted-assets switches (`ASSET_HOSTING`; turning
+  either asks first), then the deploy-time hosts and accounts, read-only.
+- **Email and alerts.** The sender address, the legacy sender, the daily cap per product and the
+  Apple private relay. All deploy-time, read-only.
+- **Licensing.** The reserved-names setting as a Warn / Refuse choice (switching to Refuse asks
+  first), the reserved keys with the rule the platform applies to each, and every registered
+  product whose catalog declares a reserved name, each declaration marked compatible or not with
+  the reason. Check this list before switching to Refuse: a product marked incompatible would
+  fail its next resync.
+- **Jobs.** The background-job settings. Each row shows the effective value and a source
   badge: _Code default_, _Deploy var_ or _Set in console_ (with who set it and when). Each row
   saves on its own:
   - The switches apply when you flip them. Turning a job **on** asks first and lists what
@@ -128,32 +147,21 @@ Platform → Settings has these sections, top to bottom.
   - A stored value outside the bounds is flagged as not applied.
   - If the settings store cannot be read, the switches show _Off: store unreadable_ and nothing
     can be saved.
-- **Licensing.** The reserved-names setting as a Warn / Refuse choice (switching to Refuse asks
-  first), the reserved keys with the rule the platform applies to each, and every registered
-  product whose catalog declares a reserved name, each declaration marked compatible or not with
-  the reason. Check this list before switching to Refuse: a product marked incompatible would
-  fail its next resync.
-- **Identity & access.** The reserved display-name setting and the key-entry refusal switch, then
-  the deploy-time values, read-only.
-- **Delivery.** The hosted-assets switch (`ASSET_HOSTING`; turning it either way asks first),
-  then the deploy-time delivery values, read-only.
-- **Email.** The deploy-time values, read-only. Identity
-  shows the console's own client (`ADMIN_OIDC_ISSUER`, `ADMIN_OIDC_CLIENT_ID`) above the platform
-  client the portal and products use (`PLATFORM_OIDC_*`).
-- **Limits.** The code constants: retention, the bucket's age lock, the collector's shortest
-  grace and the delta size ceiling. Collapsed until you open it.
-- **Keyring.** The KEK keyring, read-only: which KEK secrets are set, the `PLATFORM_KEK_ACTIVE`
-  and `PLATFORM_KEK_ID` kid names, the active key, every key in the ring with how many values it
-  seals, and the re-seal progress. Values under a key that has left the ring are flagged as
-  unopenable. While `PLATFORM_KEK` is set beside `PLATFORM_KEK_KEYS`, its kid is marked
-  _Legacy, open only_, and a **Legacy key** row says how many values (and which sealed Worker
-  secrets) are still under it, or _Safe to delete PLATFORM_KEK_ once none are. When the ring does
-  not parse, the section says the keyring is unusable. Rotation and the re-seal sweep follow the
-  [KEK runbook](/docs/operate/platform/runbook/rotate-the-kek/).
-- **Secrets.** Each platform secret as _Set_ or _Not set_, with what it is for and what being
-  unset means.
-- **History.** Each settings change from the platform trail, with who made it and the value
-  before and after, newest first.
+- **Advanced.**
+  - **Limits.** The code constants: retention, the bucket's age lock, the collector's shortest
+    grace and the delta size ceiling. Collapsed until you open it.
+  - **Keyring.** The KEK keyring, read-only: which KEK secrets are set, the `PLATFORM_KEK_ACTIVE`
+    and `PLATFORM_KEK_ID` kid names, the active key, every key in the ring with how many values
+    it seals, and the re-seal progress. Values under a key that has left the ring are flagged as
+    unopenable. While `PLATFORM_KEK` is set beside `PLATFORM_KEK_KEYS`, its kid is marked
+    _Legacy, open only_, and a **Legacy key** row says how many values (and which sealed Worker
+    secrets) are still under it, or _Safe to delete PLATFORM_KEK_ once none are. When the ring
+    does not parse, the section says the keyring is unusable. Rotation and the re-seal sweep
+    follow the [KEK runbook](/docs/operate/platform/runbook/rotate-the-kek/).
+  - **Secrets.** Each platform secret as _Set_ or _Not set_, with what it is for and what being
+    unset means.
+- `Recently changed`. Each settings change from the platform trail, with who made it and the
+  value before and after, newest first.
 
 ### When someone else saved first
 

@@ -387,6 +387,86 @@ describe("Catalog editor", () => {
     expect(sent.managementDefault).toBeUndefined();
   });
 
+  it("edits a minted token's recipe on its entry and publishes it as a mint block (U-31)", async () => {
+    const minted = E("musickit", "secret", "Tokens", {
+      label: "MusicKit",
+      delivery: "edgeMint",
+    });
+    const recipe = {
+      id: "musickit",
+      alg: "ES256",
+      signingKeySecret: "APPLE_MUSIC_KEY",
+      kid: "KEYID00000",
+      claimsTemplateJson: '{"iss":"TEAM"}',
+      claimsTemplate: { iss: "TEAM" },
+      ttlSeconds: 3600,
+      audience: null,
+      requires: "licensed",
+      requiredEntitlement: null,
+      status: "approved",
+      secretUsage: "edge-mint",
+      approval: null,
+      changedFields: [],
+    };
+    const backend = await openEditor(
+      {
+        [`${P}/config/catalog`]: {
+          schemaVersion: 8,
+          entries: [...ENTRIES, minted],
+        },
+        [`${P}/config/mint`]: {
+          registration: "requires-license",
+          anonymousEnroll: false,
+          oidcDefault: false,
+          publicMint: false,
+          licenseEnabled: true,
+          identity: null,
+          recipes: [recipe],
+        },
+      },
+      "#/p/djdl/config/catalog/edit?entry=musickit",
+    );
+    // The stored recipe fills the fields; an untouched one is not sent.
+    const secret = (await screen.findByRole("textbox", {
+      name: /^Signing secret/,
+    })) as HTMLInputElement;
+    await waitFor(() => expect(secret.value).toBe("APPLE_MUSIC_KEY"));
+    expect(screen.getByText("Approved")).toBeTruthy();
+    // A bad secret name is named before publish.
+    await userEvent.clear(secret);
+    await userEvent.type(secret, "lower");
+    expect(await screen.findByText(/stable uppercase name/)).toBeTruthy();
+    await userEvent.clear(secret);
+    await userEvent.type(secret, "OTHER_KEY");
+    await userEvent.click(
+      screen.getByRole("button", { name: "Review changes" }),
+    );
+    const drawer = await screen.findByRole("dialog", {
+      name: "Publish version 9",
+    });
+    await userEvent.click(
+      within(drawer).getByRole("button", { name: "Publish version 9" }),
+    );
+    await waitFor(() =>
+      expect(window.location.hash).toBe("#/p/djdl/config/catalog"),
+    );
+    const put = backend.writes().find((c) => c.method === "PUT")!;
+    const sent = (put.body as { catalog: ProductCatalog }).catalog;
+    expect(sent.entries.find((e) => e.key === "musickit")!.mint).toMatchObject({
+      alg: "ES256",
+      signingKeySecret: "OTHER_KEY",
+      kid: "KEYID00000",
+      claimsTemplate: { iss: "TEAM" },
+      ttlSeconds: 3600,
+    });
+    // Entries nobody edited carry no block.
+    expect(
+      sent.entries
+        .filter((e) => e.key !== "musickit")
+        .every((e) => !("mint" in e)),
+    ).toBe(true);
+  });
+
   it("keeps the draft in this tab across leaving and coming back (CAT-6)", async () => {
     await openEditor();
     const label = await labelBox();

@@ -588,6 +588,49 @@ export function stmtInsertEdgeMint(e: EdgeMintInput): DbStatement {
 }
 
 /**
+ * Save a recipe the console published in a catalog entry's `mint` block (U-31), inside the
+ * publish's batch: `guard` is the publish's all-or-nothing condition, so a lost claim or a
+ * refused publish writes no recipe. It replaces the recipe's fields and leaves the approval
+ * alone: an approval written for other fields stops matching, and the recipe answers 404 until
+ * an operator approves it as it now stands (P0-12).
+ */
+export function stmtSaveEdgeMintGuarded(
+  e: EdgeMintInput,
+  guard: { sql: string; params: DbParam[] },
+): DbStatement {
+  const insert = stmtInsertEdgeMint(e);
+  return {
+    // The page-template column is not named here: no second statement may bind it (R9-injection).
+    sql: `INSERT INTO edge_mint_config (product, id, alg, signing_key_secret, kid, claims_template_json, ttl_seconds, audience, requires, required_entitlement)
+          SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE (${guard.sql})
+          ON CONFLICT (product, id) DO UPDATE SET
+            alg = excluded.alg, signing_key_secret = excluded.signing_key_secret,
+            kid = excluded.kid, claims_template_json = excluded.claims_template_json,
+            ttl_seconds = excluded.ttl_seconds, audience = excluded.audience,
+            requires = excluded.requires, required_entitlement = excluded.required_entitlement`,
+    params: [...insert.params, ...guard.params],
+  };
+}
+
+/** Remove recipes (and their approvals) whose catalog entry the console publish dropped (U-31). */
+export function stmtRemoveEdgeMintGuarded(
+  product: string,
+  id: string,
+  guard: { sql: string; params: DbParam[] },
+): DbStatement[] {
+  return [
+    {
+      sql: `DELETE FROM edge_mint_approvals WHERE product = ? AND id = ? AND (${guard.sql})`,
+      params: [product, id, ...guard.params],
+    },
+    {
+      sql: `DELETE FROM edge_mint_config WHERE product = ? AND id = ? AND (${guard.sql})`,
+      params: [product, id, ...guard.params],
+    },
+  ];
+}
+
+/**
  * Drop the edge-mint approvals whose recipe id the product no longer declares (P0-12). Pushed
  * into the link/resync batch AFTER the `edge_mint_config` re-insert, so the sub-select sees the
  * manifest's new recipe set. The ingest path only ever DELETES approvals: an approval is an
@@ -925,6 +968,8 @@ export async function deleteProduct(
       sql: "DELETE FROM outlet_credentials WHERE product = ?",
       params: [slug],
     },
+    // ST-40: SDK sightings hold no personal data; a deleted product keeps none of them.
+    { sql: "DELETE FROM sdk_sightings WHERE product = ?", params: [slug] },
     // A-16: a deleted product holds no platform store app: its pins on the team credentials go,
     // which frees the app for another product.
     {

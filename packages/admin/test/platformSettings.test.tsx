@@ -453,10 +453,86 @@ describe("the Settings page in the Platform section", () => {
   });
 });
 
-describe("Reserved display names (PX-W13)", () => {
-  it("is an editable row in Identity & access, not in Background jobs", async () => {
+describe("the sections, ordered by use (ST-09)", () => {
+  it("lists them in order, Platform ready first and Recently changed last", async () => {
     boot("#/platform/settings", { extra: routes() });
-    const identity = await section("Identity & access");
+    const page = await settingsPage();
+    await within(page).findByRole("region", { name: "Recently changed" });
+    const titles = within(page)
+      .getAllByRole("heading", { level: 2 })
+      .map((h) => h.textContent);
+    const order = [
+      "Platform ready",
+      "Sign-in",
+      "Storefront and hosting",
+      "Email and alerts",
+      "Licensing",
+      "Jobs",
+      "Advanced",
+      "Recently changed",
+    ];
+    expect(titles.filter((t) => order.includes(t ?? ""))).toEqual(order);
+  });
+
+  it("shows no area dropped: an unknown area falls to Advanced", async () => {
+    boot("#/platform/settings", {
+      extra: routes({
+        "/manage/api/platform/settings": view({
+          settings: [
+            lazyDeltas(),
+            lazyDeltas({
+              key: "FUTURE_SWITCH",
+              area: "somewhere-new",
+              label: "Future switch",
+            }),
+          ],
+        }),
+      }),
+    });
+    const page = await settingsPage();
+    const advanced = await within(page).findByText("Future switch");
+    expect(advanced.closest("#platform-advanced")).not.toBeNull();
+  });
+
+  it("says the platform is ready, or lists what is left to fix", async () => {
+    boot("#/platform/settings", {
+      extra: routes({
+        "/manage/api/platform/settings": view({ warnings: [] }),
+      }),
+    });
+    const ready = await section("Platform ready");
+    expect(within(ready).getByText("Ready")).toBeTruthy();
+    expect(within(ready).queryByRole("region", { name: "To fix" })).toBeNull();
+  });
+
+  it("the header's History button jumps to the trail", async () => {
+    boot("#/platform/settings", { extra: routes() });
+    const page = await settingsPage();
+    await within(page).findByRole("region", { name: "Recently changed" });
+    const scroll = vi.fn();
+    HTMLElement.prototype.scrollIntoView = scroll;
+    fireEvent.click(
+      await within(page).findByRole("button", { name: "History" }),
+    );
+    expect(scroll).toHaveBeenCalled();
+  });
+
+  it("lists every code limit the Worker reports", async () => {
+    boot("#/platform/settings", { extra: routes() });
+    const limits = await section("Limits");
+    await userEvent.click(within(limits).getByRole("button", { name: /Show/ }));
+    const reported = (view().constants as { name: string }[]).filter(
+      (c) => c.name !== "ADMIN_SESSION_TTL_SECONDS",
+    );
+    for (const c of reported)
+      expect(within(limits).getByText(c.name)).toBeTruthy();
+  });
+});
+
+describe("Reserved display names (PX-W13)", () => {
+  it("is an editable row in Sign-in, not in Jobs", async () => {
+    boot("#/platform/settings", { extra: routes() });
+    const identity = await section("Sign-in");
     const group = within(identity).getByRole("radiogroup", {
       name: "Reserved display names",
     });
@@ -465,7 +541,7 @@ describe("Reserved display names (PX-W13)", () => {
         .getByRole("radio", { name: "Warn" })
         .getAttribute("aria-checked"),
     ).toBe("true");
-    const jobs = await section("Background jobs");
+    const jobs = await section("Jobs");
     expect(within(jobs).queryByText("Reserved display names")).toBeNull();
   });
 });
@@ -495,7 +571,7 @@ describe("Hosted assets (HA-10)", () => {
       ],
     });
 
-  it("the switch is an editable row in Delivery, and turning it off asks first (L1)", async () => {
+  it("the switch is an editable row in Storefront and hosting, and turning it off asks first (L1)", async () => {
     const log = boot("#/platform/settings", {
       extra: routes({
         "/manage/api/platform/settings": writable(
@@ -504,12 +580,12 @@ describe("Hosted assets (HA-10)", () => {
         ),
       }),
     });
-    const delivery = await section("Delivery");
+    const delivery = await section("Storefront and hosting");
     const toggle = within(delivery).getByRole("switch", {
       name: "Hosted assets",
     });
     expect(toggle.getAttribute("aria-checked")).toBe("true");
-    const jobs = await section("Background jobs");
+    const jobs = await section("Jobs");
     expect(within(jobs).queryByText("Hosted assets")).toBeNull();
     await userEvent.click(toggle);
     const dialog = await screen.findByRole("alertdialog");
@@ -555,7 +631,7 @@ describe("Licensing (LX-05)", () => {
       within(licensing).getByText(/schema.type must be "array"/),
     ).toBeTruthy();
     // The background-jobs section does not carry the licensing setting.
-    const jobs = await section("Background jobs");
+    const jobs = await section("Jobs");
     expect(within(jobs).queryByText("Reserved entitlement names")).toBeNull();
   });
 
@@ -607,7 +683,7 @@ describe("Licensing (LX-05)", () => {
 describe("Background jobs", () => {
   it("shows each setting's effective value and where it comes from", async () => {
     boot("#/platform/settings", { extra: routes() });
-    const jobs = await section("Background jobs");
+    const jobs = await section("Jobs");
     expect(
       within(jobs).getByRole("switch", { name: "Lazy deltas" }),
     ).toHaveProperty("ariaChecked", "false");
@@ -651,7 +727,7 @@ describe("Background jobs", () => {
         }),
       }),
     });
-    const jobs = await section("Background jobs");
+    const jobs = await section("Jobs");
     const toggle = within(jobs).getByRole("switch", { name: "Lazy deltas" });
     expect(toggle).toHaveProperty("disabled", true);
     expect(within(jobs).getByText("Locked off by deploy var")).toBeTruthy();
@@ -686,7 +762,7 @@ describe("Background jobs", () => {
         ),
       }),
     });
-    const jobs = await section("Background jobs");
+    const jobs = await section("Jobs");
     const settingsReads = () =>
       log.calls.filter(
         (c) => c.method === "GET" && c.path === "/manage/api/platform/settings",
@@ -721,7 +797,7 @@ describe("Background jobs", () => {
         ),
       }),
     });
-    const jobs = await section("Background jobs");
+    const jobs = await section("Jobs");
     const sw = within(jobs).getByRole("switch", { name: "Blob collector" });
     expect(sw.getAttribute("aria-checked")).toBe("true");
     await userEvent.click(sw);
@@ -745,7 +821,7 @@ describe("Background jobs", () => {
         ),
       }),
     });
-    const jobs = await section("Background jobs");
+    const jobs = await section("Jobs");
     await userEvent.click(
       within(jobs).getByRole("switch", { name: "Blob collector" }),
     );
@@ -768,7 +844,7 @@ describe("Background jobs", () => {
         ),
       }),
     });
-    const jobs = await section("Background jobs");
+    const jobs = await section("Jobs");
     await userEvent.click(
       within(jobs).getByRole("switch", { name: "Lazy deltas" }),
     );
@@ -804,7 +880,7 @@ describe("Background jobs", () => {
         ),
       }),
     });
-    const jobs = await section("Background jobs");
+    const jobs = await section("Jobs");
     const input = within(jobs).getByLabelText(/\(MiB\)$/);
     await userEvent.clear(input);
     await userEvent.type(input, "40");
@@ -834,7 +910,7 @@ describe("Background jobs", () => {
         ),
       }),
     });
-    const jobs = await section("Background jobs");
+    const jobs = await section("Jobs");
     const input = within(jobs).getByLabelText(/\(days\)$/);
     await userEvent.clear(input);
     await userEvent.type(input, "14");
@@ -869,7 +945,7 @@ describe("Background jobs", () => {
         ),
       }),
     });
-    const jobs = await section("Background jobs");
+    const jobs = await section("Jobs");
     const input = within(jobs).getByLabelText(/\(days\)$/);
     await userEvent.clear(input);
     await userEvent.type(input, "60");
@@ -923,7 +999,7 @@ describe("Background jobs", () => {
         ),
       }),
     });
-    const jobs = await section("Background jobs");
+    const jobs = await section("Jobs");
     await userEvent.click(
       within(jobs).getByRole("button", {
         name: "Revert blob collector grace period…",
@@ -956,7 +1032,7 @@ describe("Background jobs", () => {
         }),
       }),
     });
-    const jobs = await section("Background jobs");
+    const jobs = await section("Jobs");
     expect(
       within(jobs).getByText("The settings store cannot be read"),
     ).toBeTruthy();
@@ -987,7 +1063,7 @@ describe("Background jobs", () => {
         }),
       }),
     });
-    const jobs = await section("Background jobs");
+    const jobs = await section("Jobs");
     expect(within(jobs).getByText("Stored value not applied")).toBeTruthy();
     expect(
       within(jobs).getByText(/uses the deploy var \(32 MiB\)/),
@@ -998,7 +1074,7 @@ describe("Background jobs", () => {
 describe("the read-only inventory", () => {
   it("shows deploy-time values, the console-client fallback and the warnings", async () => {
     boot("#/platform/settings", { extra: routes() });
-    const identity = await section("Identity & access");
+    const identity = await section("Sign-in");
     expect(within(identity).getByText("pk-admins")).toBeTruthy();
     expect(
       within(identity).getAllByText(
@@ -1010,16 +1086,16 @@ describe("the read-only inventory", () => {
     ).toBeTruthy();
     expect(within(identity).getByText("auth.acme.dev")).toBeTruthy();
     expect(within(identity).getByText("8 hours")).toBeTruthy();
-    const delivery = await section("Delivery");
+    const delivery = await section("Storefront and hosting");
     expect(within(delivery).getByText("Production")).toBeTruthy();
     expect(within(delivery).getByText("https://dl.example.com")).toBeTruthy();
     // ST-02: the deploy vars the inventory added are read out too.
     expect(within(delivery).getByText("https://pkg.example.com")).toBeTruthy();
-    const email = await section("Email");
+    const email = await section("Email and alerts");
     expect(within(email).getByText("noreply@auth.example.com")).toBeTruthy();
     expect(within(email).getByText("Not set: 500")).toBeTruthy();
     expect(within(email).getByText("Not registered")).toBeTruthy();
-    const warnings = within(main()).getByRole("region", { name: "Warnings" });
+    const warnings = within(main()).getByRole("region", { name: "To fix" });
     expect(
       within(warnings).getByText("Portal sessions share the admin secret"),
     ).toBeTruthy();
@@ -1213,7 +1289,7 @@ describe("Keyring", () => {
 describe("History", () => {
   it("lists only setting changes from the platform trail, with before and after", async () => {
     boot("#/platform/settings", { extra: routes() });
-    const history = await section("History");
+    const history = await section("Recently changed");
     expect(await within(history).findByText("Ada Lovelace")).toBeTruthy();
     expect(within(history).getByText(/\(30 days → 21 days\)/)).toBeTruthy();
     expect(within(history).queryByText(/Re-sealed/)).toBeNull();
@@ -1225,7 +1301,7 @@ describe("History", () => {
         "/manage/api/platform/activity": { items: [], nextCursor: null },
       }),
     });
-    const history = await section("History");
+    const history = await section("Recently changed");
     expect(
       await within(history).findByText("No setting changes yet"),
     ).toBeTruthy();

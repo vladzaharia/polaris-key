@@ -70,6 +70,10 @@ import {
   REFUSAL_RETENTION_SECONDS,
   pruneRefusals,
 } from "./core/licensing/refusals.js";
+import {
+  SIGHTING_RETENTION_SECONDS,
+  pruneSightings,
+} from "./core/integration/sightings.js";
 import { refreshPlatformSettings } from "./core/platformSettings.js";
 import { recheckHostedAssets } from "./core/assets/hostedAssetPulls.js";
 import {
@@ -505,6 +509,10 @@ export async function runScheduledMaintenance(
     // UX-15: the refusal log past `REFUSAL_RETENTION_SECONDS` (30 days, `core/licensing/refusals.ts`).
     await drainStep(report, `refusals:${product}`, (limit) =>
       pruneRefusals(db, product, now - REFUSAL_RETENTION_SECONDS, limit),
+    );
+    // ST-40: SDK sightings last seen more than 90 days ago.
+    await drainStep(report, `sightings:${product}`, (limit) =>
+      pruneSightings(db, product, now - SIGHTING_RETENTION_SECONDS, limit),
     );
     // Each mounted service's own per-product steps (`contributes.maintenance.product`).
     const rec = recorderFor(report);

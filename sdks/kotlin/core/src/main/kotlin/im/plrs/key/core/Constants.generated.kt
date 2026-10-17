@@ -48,6 +48,13 @@ public object ErrorCode {
     public const val unavailable: String = "unavailable"
     public const val erasureLedgerUnavailable: String = "erasure_ledger_unavailable"
     public const val identityDisabled: String = "identity_disabled"
+    public const val invalidRequest: String = "invalid_request"
+    public const val invalidClient: String = "invalid_client"
+    public const val invalidGrant: String = "invalid_grant"
+    public const val unsupportedGrantType: String = "unsupported_grant_type"
+    public const val invalidScope: String = "invalid_scope"
+    public const val redirectUriMismatch: String = "redirect_uri_mismatch"
+    public const val licenseChoiceRequired: String = "license_choice_required"
     public const val authMethodDisabled: String = "auth_method_disabled"
     public const val emailUnavailable: String = "email_unavailable"
     public const val turnstileFailed: String = "turnstile_failed"
@@ -215,6 +222,13 @@ public val ERROR_CODE_VALUES: List<String> = listOf(
     "unavailable",
     "erasure_ledger_unavailable",
     "identity_disabled",
+    "invalid_request",
+    "invalid_client",
+    "invalid_grant",
+    "unsupported_grant_type",
+    "invalid_scope",
+    "redirect_uri_mismatch",
+    "license_choice_required",
     "auth_method_disabled",
     "email_unavailable",
     "turnstile_failed",
@@ -382,6 +396,13 @@ public val ERROR_CODE_KINDS: Map<String, String> = mapOf(
     "unavailable" to "wire",
     "erasure_ledger_unavailable" to "wire",
     "identity_disabled" to "wire",
+    "invalid_request" to "wire",
+    "invalid_client" to "wire",
+    "invalid_grant" to "wire",
+    "unsupported_grant_type" to "wire",
+    "invalid_scope" to "wire",
+    "redirect_uri_mismatch" to "wire",
+    "license_choice_required" to "wire",
     "auth_method_disabled" to "wire",
     "email_unavailable" to "wire",
     "turnstile_failed" to "wire",
@@ -563,6 +584,8 @@ public object Feature {
     public const val identityKeyentry: String = "identity.keyentry"
     public const val identityAttach: String = "identity.attach"
     public const val identityAccount: String = "identity.account"
+    public const val identityRedirectWeb: String = "identity.redirect.web"
+    public const val identitySigninHints: String = "identity.signin.hints"
     public const val releaseChangelog: String = "release.changelog"
     public const val releaseDownload: String = "release.download"
     public const val releaseRecord: String = "release.record"
@@ -678,6 +701,8 @@ public val FEATURE_VALUES: List<String> = listOf(
     "identity.keyentry",
     "identity.attach",
     "identity.account",
+    "identity.redirect.web",
+    "identity.signin.hints",
     "release.changelog",
     "release.download",
     "release.record",
@@ -1587,6 +1612,8 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "identity.keyentry" to CapabilityRow("planned", "identity", listOf()),
     "identity.attach" to CapabilityRow("planned", "identity", listOf()),
     "identity.account" to CapabilityRow("planned", "identity", listOf()),
+    "identity.redirect.web" to CapabilityRow("planned", "identity", listOf()),
+    "identity.signin.hints" to CapabilityRow("planned", "identity", listOf()),
     "release.changelog" to CapabilityRow("implemented", "release", listOf()),
     "release.download" to CapabilityRow("implemented", "release", listOf()),
     "release.record" to CapabilityRow("implemented", "release", listOf()),
@@ -1652,4 +1679,4 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
 )
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
-public const val CAPABILITY_DIGEST: String = "a84bfd0b8f6c671f595820f9ebee77300d490cfa1066e74ad39f8f3b28a5b234"
+public const val CAPABILITY_DIGEST: String = "e21898b783b775c2fb07206ab5570c9b08548623ac3e1f38bb56f1ebeed4414d"

@@ -8,7 +8,7 @@ description: "Every error and warning validateManifestDocuments and validateInge
 
 The `.pkey/` validator (`@polaris-key/manifest`) aggregates ALL problems instead of
 stopping at the first; `pkey validate` and the console's link/resync surfaces show these
-codes with their JSON-pointer paths. 255 distinct emit sites.
+codes with their JSON-pointer paths. 253 distinct emit sites.
 
 Interpolated segments (`${…}`) in paths/messages are per-instance values — an array index,
 the offending value, or the allowed set.
@@ -17,7 +17,9 @@ the offending value, or the allowed set.
 | --- | --- | --- | --- | --- |
 | `bare_arch_artifact_id` | warning | release | `/release/deliverables/app/artifacts/${i}/id` | artifact id $\{entry.id\} names an architecture but no platform; name the build by platform and arch (macos-$\{entry.id\}, windows-$\{entry.id\}, …), and its files likewise (app-macos-$\{entry.id\}.zip). |
 | `catalog_delivery_server_only` | warning | schema | `${at}/delivery` | `delivery: serverOnly` has no consumer. Keep a secret only the Worker reads in the product's secrets (Keys and secrets), not the catalog. |
+| `catalog_edge_mint_legacy` | warning | release | `/edgeMint/${i}` | The edgeMint[] recipe $\{String(id)\} moves into the \ |
 | `catalog_edge_mint_without_recipe` | warning | schema | `${at}/delivery` | \ |
+| `catalog_mint_not_minted` | error | schema | `${at}/mint` | `mint` belongs on a secret entry with `delivery: edgeMint`. |
 | `catalog_secret_flag_retired` | warning | schema | `${at}/secret` | `secret: true` is redundant on a secret entry and is dropped: the kind already says it. Remove it (`pkey validate --fix`). |
 | `commerce_requires_license` | error | product | `/modules/commerce` | The commerce service turns store purchases into licence flags, so license must be enabled too. |
 | `config_without_activation` | warning | product | `/modules/config` | Config is enabled without an activation method. |
@@ -33,6 +35,7 @@ the offending value, or the allowed set.
 | `duplicate_artifact_id` | error | release | `/release/deliverables/app/artifacts/${i}/id` | artifact id $\{entry.id\} is declared twice; each entry declares one build. |
 | `duplicate_profile_id` | error | product | `${profilesAt}/${i}/id` | Profile ids must be unique. |
 | `duplicate_tier_id` | error | product | `/licensing/tiers/${i}/id` | Tier ids must be unique. |
+| `edge_mint_recipe_duplicate` | error | schema | `${at}/mint` | $\{String(raw.key)\} has a \ |
 | `identity_block_without_service` | warning | product | `/identity` | identity is declared but the identity service is off, so none of it applies. |
 | `identity_redirect_paths_without_origins` | warning | product | `/identity/redirectPaths` | identity.redirectPaths needs at least one web.origins entry: a redirect URI is an origin from web.origins and one of these paths. |
 | `incompatible_reserved_name` | error | schema | `/entries/${decl.index}` | $\{decl.key\} is a reserved entitlement name the platform sets itself: $\{decl.problem\}. Incompatible reserved-name declarations are refused on this platform. |
@@ -61,6 +64,7 @@ the offending value, or the allowed set.
 | `invalid_auto_issue` | error | product | `/autoIssue` | autoIssue must be an object. |
 | `invalid_build_embeds` | error | release | `/release/deliverables/app/artifacts/${i}/embeds/${j}` | $\{e\} is not a pack deliverable this release document declares. |
 | `invalid_build_embeds` | error | release | `/release/deliverables/app/artifacts/${i}/embeds` | artifacts[].embeds must be at most $\{MAX_BUILD_EMBEDS\} distinct pack ids (deliverable ids other than app). |
+| `invalid_catalog_mint` | error | schema | `${at}/mint` | `mint` must be an object: alg, signingKeySecret and, optionally, kid, audience, ttlSeconds, claimsTemplate, requires, requiredEntitlement. |
 | `invalid_channel_includes` | error | release | `/release/deliverables/app/channels/${cycle}` | channel $\{cycle\} includes itself through its includes chain. |
 | `invalid_channel_includes` | error | release | `/release/deliverables/app/channels/${name}/includes/${i}` | includes may only name stable, beta, dev, a manual channel or another declared channel. |
 | `invalid_channel_includes` | error | release | `/release/deliverables/app/channels/${name}/includes/${i}` | includes names must be canonical ($\{CANONICAL_CHANNEL_PATTERN.source\}, and not an alias such as $\{CHANNEL_ALIAS_NAMES.join(" or ")\}). |
@@ -85,13 +89,9 @@ the offending value, or the allowed set.
 | `invalid_display_text` | error | distribution | `/outlets/${id}/listing/name` | outlets.$\{id\}.listing.name must not hold control, zero-width or bidirectional-formatting characters, or start or end with whitespace. |
 | `invalid_display_text` | error | product | `/product/name` | product.name must not hold control, zero-width or bidirectional-formatting characters, or start or end with whitespace. |
 | `invalid_distribution` | error | distribution | `/` | the distribution document must be an object with outlets, transports and listing. |
-| `invalid_edge_mint_alg` | error | release | `/edgeMint/${i}/alg` | Edge mint alg must be ES256, RS256, or EdDSA. |
-| `invalid_edge_mint_audience` | error | release | `/edgeMint/${i}/audience` | Edge mint audience |
-| `invalid_edge_mint_entitlement` | error | release | `/edgeMint/${i}/requiredEntitlement` | Edge mint requiredEntitlement must be a catalog key matching ^[A-Za-z0-9._:-]\{1,64\}$. |
 | `invalid_edge_mint_id` | error | release | `/edgeMint/${i}/id` | Edge mint recipes require id. |
 | `invalid_edge_mint_id` | error | release | `/edgeMint/${i}/id` | Edge mint ids must match ^[a-z0-9-]\{1,64\}$ (the mint route's own alphabet). |
-| `invalid_edge_mint_kid` | error | release | `/edgeMint/${i}/kid` | Edge mint kid must match ^[A-Za-z0-9][A-Za-z0-9._:-]\{0,127\}$. |
-| `invalid_edge_mint_requires` | error | release | `/edgeMint/${i}/requires` | Edge mint requires must be none, registered, or licensed. |
+| `invalid_edge_mint_id` | error | schema | `${at}/key` | A minted token's key is its recipe id and must match ^[a-z0-9-]\{1,64\}$ (the mint route's own alphabet). |
 | `invalid_entitlement_key` | error | product | `/provisioning/${i}/entitlementKey` | Provisioned entitlement keys must be catalog identifiers. |
 | `invalid_fingerprint_enabled` | error | product | `/fingerprint/enabled` | fingerprint.enabled must be a boolean. |
 | `invalid_fingerprint_mode` | error | product | `/fingerprint/defaultMode` | fingerprint.defaultMode must be one of $\{FINGERPRINT_MODE_VALUES.join(", ")\}. |
@@ -185,7 +185,6 @@ the offending value, or the allowed set.
 | `invalid_release_key` | error | release | `${at}/publicKey` | releaseKeys[].publicKey must be a raw 32-byte Ed25519 public key in unpadded base64url (43 characters), as `pkey release keys generate` prints it. |
 | `invalid_schema` | error | schema | `/` | Schema must be a ProductCatalog object with entries[]. |
 | `invalid_secret_key` | error | product | `/provisioning/${i}/secretKey` | Provisioned secret keys must be catalog identifiers. |
-| `invalid_secret_ref` | error | release | `/edgeMint/${i}/signingKeySecret` | Edge mint signing key refs must be stable uppercase names. |
 | `invalid_secret_ref` | error | product | `/oidc/clientSecretRef` | Secret refs must be stable uppercase names. |
 | `invalid_secret_ref` | error | product | `/secrets/required/${i}` | Secret refs must be stable uppercase names. |
 | `invalid_secret_url_template` | error | product | `/provisioning/${i}/secretUrlTemplate` | provisioning.secretUrlTemplate $\{problem\}. |
@@ -207,7 +206,6 @@ the offending value, or the allowed set.
 | `invalid_trusted_publisher_environment` | error | release | `/release/publishing/trustedPublisher/environment` | publishing.trustedPublisher.environment must be a GitHub environment name of at most 100 characters (letters, digits, space, . _ -). |
 | `invalid_trusted_publisher_workflow` | error | release | `/release/publishing/trustedPublisher/workflow` | publishing.trustedPublisher.workflow must be a workflow path like .github/workflows/release.yml. |
 | `invalid_trusted_publisher_workflow` | error | release | `/release/publishing/trustedPublisher` | publishing.trustedPublisher must be an object with a workflow (.github/workflows/\<file>.yml). |
-| `invalid_ttl` | error | release | `/edgeMint/${i}/ttlSeconds` | Edge mint TTL must be a positive integer of at most $\{MAX_EDGE_MINT_TTL_SECONDS\} seconds. |
 | `invalid_version_scheme` | error | release | `/release/deliverables/app/versioning/buildNumber` | versioning.buildNumber must be one of $\{BUILD_NUMBER_SOURCES.join(", ")\}. |
 | `invalid_version_scheme` | error | release | `/release/deliverables/app/versioning/scheme` | versioning.scheme must be one of $\{VERSION_SCHEMES.join(", ")\}. |
 | `invalid_version_scheme` | error | release | `/release/deliverables/app/versioning` | deliverables.app.versioning must be an object. |

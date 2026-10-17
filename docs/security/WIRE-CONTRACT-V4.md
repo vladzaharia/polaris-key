@@ -1300,9 +1300,9 @@ document: `PROTOCOL_VERSION` stays 4. The licence document's claims and members 
 of `licenses.account_id` and `devices.subject` until LX-09: attaching a licence, a sign-in binding,
 a sign-out and a counted key entry leave every document a device verifies unchanged. §12.2 is
 PX-W9's key entry with I-09's step 3 (`license_owned`). §12.3 (attach, subject and sign-out) and
-the account members of §12.6 are I-09's; §12.4, §12.5 and the rest of §12.6 are reserved for I-08
-(the passthrough sign-in, Continue, callback binding and `authorize`) and are written when it
-lands. §12.7 is PX-W13's passthrough request metadata and §12.8 is PX-W17's Identity-off
+the account members of §12.6 are I-09's; §12.4 (`authorize`, Continue and Cancel), §12.5
+(`token`) and the issuer and endpoints of §12.6 are I-08's, with the licence choice's answer
+reserved for I-08b. §12.7 is PX-W13's passthrough request metadata and §12.8 is PX-W17's Identity-off
 behaviour. The plan is `plans/I-09.md`.
 
 ### 12.1 What the toggle scopes
@@ -1448,6 +1448,91 @@ Pinned by `identity-attach.json`, `identity-attach-errors.json` and
 6. **Not auth failures.** `account_required`, `license_owned` and `license_email_bound` keep the
    client's token and state.
 
+### 12.4 Authorize, Continue and Cancel [C]
+
+Pinned by `redirect-web-happy.json`, `redirect-web-errors.json` and `identity-request-hints.json`
+(transcripts; their `browser` steps are the requests no SDK makes). The authorization server of
+layer 1 is one per product: the issuer is `<origin>/<p>/identity`, discovery's `issuer`. Its one
+client is the product's own public client: `client_id` is the product slug and PKCE `S256` is
+mandatory; any other `client_id` is `invalid_client`. Only while the product's Identity service is
+on (§12.8).
+
+`GET /<p>/identity/authorize` is a browser navigation, never a `fetch`:
+
+| Parameter                                              | Rule                                                                                                                                                                                                   |
+| ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `response_type`                                        | Required, `code`                                                                                                                                                                                       |
+| `client_id`                                            | Required, the product slug                                                                                                                                                                             |
+| `redirect_uri`                                         | Required. Its origin is in the product's `web.origins` and its path in `identity.redirectPaths`, both matched exactly: no query, fragment, userinfo, wildcard, prefix, suffix or dot segment           |
+| `state`                                                | Required, 16 to 512 characters                                                                                                                                                                         |
+| `code_challenge`, `code_challenge_method`              | Required, 43 base64url characters and `S256`. `plain` and an absent method are refused                                                                                                                 |
+| `scope`                                                | Optional, space-delimited `profile`, `email`, `cloudSync`. Absent: every one the product grants. Unknown values are ignored. `openid` is `invalid_scope` until I-21                                    |
+| `nonce`                                                | Optional, at most 255 characters, kept for I-21                                                                                                                                                        |
+| `login_hint`, `name_hint`, `purpose`, `license_choice` | Optional Polaris extensions. A hint prefills the card and verifies nothing, and one that does not normalise is dropped. `purpose` is `signin` or `attach`; `license_choice` is `card` or `app` (I-08b) |
+
+1. **No redirect before both are valid.** `client_id` and `redirect_uri` are checked first. A bad
+   `client_id` renders `invalid_client` (401) and a bad `redirect_uri` renders
+   `redirect_uri_mismatch` (400) on a branded page; neither redirects, whatever else is wrong.
+2. **Later errors** are `302 <redirect_uri>?error=…&state=…&iss=<issuer>` (RFC 6749 §4.1.2.1,
+   RFC 9207): `invalid_request`, `invalid_scope`, `access_denied` (Cancel) or `server_error`.
+   `state` is echoed only when it was sent.
+3. **Success** stores the validated request under an opaque handle (§12.7.2) bound to this
+   browser by the `__Host-pk_req` cookie, and answers `303 <origin>/signin?request=rq_…`. Neither
+   the app's `state`, its challenge nor its redirect URI is in that URL. 60 calls a minute per
+   client network.
+4. **Continue** is `POST /api/signin/requests/<handle>/continue` (same-origin portal JSON) with
+   the account session, the portal CSRF header and the binder cookie of the browser that started
+   the request: this is the callback binding of R1-07 for the web redirect. The body is
+   `{consent?: {claims}, choice?: {licenseId}, terms?}`; `consent.claims` is a subset of the
+   request's scope. Continue is always shown (there is no skip). It refuses without consuming
+   anything with `409 terms_required` (the product's terms version was not accepted; `terms` names
+   the version shown) and `409 license_choice_required` (the account holds licences for the
+   product and `choice` names none of them). It then takes the request in one atomic consume,
+   records app consent (`account_product_grants`: the claims granted and the hash of what the
+   product asked) and answers `{"redirect": "<redirect_uri>?code=…&state=…&iss=<issuer>"}`.
+   The code lives 60 seconds and is single use, bound to the product, `client_id`,
+   `redirect_uri`, the PKCE challenge, the account and the granted scope. The device is not known
+   here and binds at `token`.
+5. **Cancel** is `POST …/cancel` under the same three credentials and answers
+   `{"redirect": "<redirect_uri>?error=access_denied&state=…&iss=…"}`.
+6. A handle that is unknown, expired, bound to another browser, already taken, or for a product
+   whose Identity is off answers `404 not_found`, always in the same shape.
+
+### 12.5 Token [C]
+
+`POST /<p>/identity/token` redeems the code (`grant_type=authorization_code`). Pinned by
+`redirect-web-happy.json` and `redirect-web-errors.json`.
+
+1. **Request.** `application/x-www-form-urlencoded` with `grant_type`, `client_id`, `code`,
+   `code_verifier` and optionally `redirect_uri` (compared exactly when sent) and `device_name`.
+   A JSON body, a missing or repeated parameter is `invalid_request`. It needs `X-PKey-Device`;
+   the metadata headers are read when present. The answer is `no-store`, and CORS answers the
+   product's `web.origins` only, never with credentials. 30 a minute per client network and 10 a
+   minute per device id, failing closed (`429 rate_limited` with `retryAfter`).
+2. **The code.** It is redeemed against the challenge derived from the verifier in one atomic
+   operation. Match or mismatch, the code ends, so a wrong verifier cannot be guessed at and a
+   second redemption finds nothing. An unknown, expired, used or mismatching code, another
+   `client_id`-bound code or another `redirect_uri` is `invalid_grant`. A `client_id` that is not
+   the product's is `invalid_client` (401) and touches no code.
+3. **A `200`** carries exactly `access_token` (the `pkeyt_` device token, not repeated as
+   `token`), `token_type: "Bearer"`, `scope` (the granted subset), `schemaVersion`, `device`,
+   `license` (`null` on a licence-less device) and `subject`. There is no `expires_in` and no
+   `refresh_token` before I-21, and no `keyEntries` before I-08b.
+4. **The device binds here.** With the licence chosen at Continue, the device claims a seat
+   (seat-checked, `bound_by = 'signin'`, the pairwise subject written). With none to choose, it is
+   bound licence-less. A device that presents its own live token in `Authorization: Bearer`
+   keeps the licence it runs on: the account is bound to it where it stands and the answer is
+   that token. A device id that already runs on a licence, without that proof, is never taken
+   over: `409 license_choice_required`.
+5. **Errors** are flat (RFC 6749 §5.2): `400 invalid_request`, `401 invalid_client`,
+   `400 invalid_grant`, `400 unsupported_grant_type`, `400 invalid_scope`; and the Polaris refusals
+   beside them, as on `license/activate`: `403 not_entitled`, `403 device_limit` (with `limit`,
+   `deviceCount`, `manageUrl`), `409 license_choice_required`, `429 rate_limited`.
+   `interstitial_required` is reserved for I-13; the other grants (token exchange I-13, refresh
+   I-21) answer `unsupported_grant_type` until then.
+6. **Never a token in a URL.** The device token is in the body of this response only, and the
+   redirect carries a code that is useless without the verifier.
+
 ### 12.6 Discovery
 
 Pinned by `discovery-identity.json`. With Identity on, the identity fragment carries, beside its
@@ -1463,7 +1548,9 @@ sign-in endpoints:
 
 A client uses an account feature only when its endpoint is present and never builds one; a
 client that predates them ignores them. With Identity off the fragment stays `{"enabled":false}`
-(`discovery-capabilities.json` is unchanged). I-08 adds its members beside these.
+(`discovery-capabilities.json` is unchanged). I-08 adds `"issuer"` (§12.4), the `authorize`
+and `token` endpoints (§12.4, §12.5) and makes `"configured"` always `true`: the platform sign-in
+needs no per-product identity-provider row.
 
 ### 12.7 Passthrough request metadata
 
@@ -1553,7 +1640,8 @@ expiresAt}` to the binding browser, with `cache-control: no-store`. An unknown, 
    (`IDENTITY_NAVIGATION_ENTRIES`), answers
    `303 Location: <origin>/signin?product=<slug>&error=identity_disabled` with
    `Cache-Control: no-store`. A `*/*` or JSON `Accept` is never a navigation. The redirect runs
-   in Core before dispatch, so no Identity code runs; I-21 appends `oauth/authorize`.
+   in Core before dispatch, so no Identity code runs. `token` is a JSON route and answers the
+   registry's `404`.
 4. The portal's passthrough context answers `403 {"error":{"code":"identity_disabled"}}`
    (`IDENTITY_DISABLED_ERROR_PARAM` in `@polaris-key/protocol/identity`).
 5. Licences still attach to accounts (Activate License, Discover, verified email), and an owned

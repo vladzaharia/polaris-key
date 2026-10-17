@@ -13,12 +13,13 @@
  *
  * The row: id `platform-sso`, label "Single sign-on" (the card's word for the platform IdP),
  * audience `both` (owner Q3, 2026-10-08; see `seededAudience`), the `groups` claim mapped, no
- * domains. P0-49's runner (not built yet) will run these three steps and record the report in
- * P0-24's ledger; until it lands the maintenance cron applies the seed, and the sign-in paths
- * apply it on first need, both through the same idempotent apply.
+ * domains. P0-49's runner (`core/migrate/`) runs these three steps as `platformConnectionSeedJob`
+ * (below) and stores the report; the sign-in paths still apply the seed on first need, through
+ * the same idempotent apply. (P0-24's ledger will take the runner's report rows.)
  */
 
 import type { Db } from "../../../db/types.js";
+import { PLATFORM_UNIT, type MigrationJob } from "../../../core/migrate/job.js";
 import type { Env } from "../../../platform/env.js";
 import { seal } from "../../../platform/keyvault.js";
 import { platformOidcConfig } from "../../../platform/platformOidc.js";
@@ -160,16 +161,26 @@ export async function applyPlatformConnectionSeed(
   };
 }
 
-/** The down path: delete the seeded row (its domains go by cascade). */
+/**
+ * The down path: delete the seeded row (its domains with it). One guarded batch: the domains go
+ * only while the row is still the env seed (`source = 'env'`), so an operator-owned connection
+ * under the same id, and its domains, are never touched.
+ */
 export async function downPlatformConnectionSeed(db: Db): Promise<number> {
-  await db.run(
-    "DELETE FROM identity_connection_domains WHERE connection_id = ?",
-    PLATFORM_ENV_CONNECTION_ID,
-  );
-  return db.runChanges(
-    "DELETE FROM identity_connections WHERE id = ? AND source = 'env'",
-    PLATFORM_ENV_CONNECTION_ID,
-  );
+  const stmts = [
+    {
+      sql: `DELETE FROM identity_connection_domains WHERE connection_id = ?
+              AND EXISTS (SELECT 1 FROM identity_connections WHERE id = ? AND source = 'env')`,
+      params: [PLATFORM_ENV_CONNECTION_ID, PLATFORM_ENV_CONNECTION_ID],
+    },
+    {
+      sql: "DELETE FROM identity_connections WHERE id = ? AND source = 'env'",
+      params: [PLATFORM_ENV_CONNECTION_ID],
+    },
+  ];
+  if (db.batchChanges) return (await db.batchChanges(stmts))[1] ?? 0;
+  await db.batch(stmts);
+  return 0;
 }
 
 /** The seeded connection, applying the seed first when it is missing (the sign-in paths). */
@@ -180,3 +191,21 @@ export async function platformEnvConnection(
 ): Promise<Connection | null> {
   return (await applyPlatformConnectionSeed(env, db, now)).connection;
 }
+
+/**
+ * The seed as a runner job (P0-49): one platform unit. `contributes.migrations` hands it to
+ * `core/migrate/runner.ts`, which owns the dry run, the stored report, the audit row and the
+ * resume; the three functions above stay the job's steps (and the sign-in paths' lazy apply).
+ */
+export const platformConnectionSeedJob: MigrationJob = {
+  id: "identity.seed-platform-connection",
+  summary: "Turn the PLATFORM_OIDC_* env trio into the platform connection row",
+  units: async () => [PLATFORM_UNIT],
+  plan: async ({ env, db, now }) => {
+    const plan = await planPlatformConnectionSeed(env, db, now);
+    return { changes: plan.action === "insert" ? 1 : 0, detail: plan };
+  },
+  apply: async ({ env, db, now }) =>
+    (await applyPlatformConnectionSeed(env, db, now)).inserted ? 1 : 0,
+  down: async ({ db }) => downPlatformConnectionSeed(db),
+};

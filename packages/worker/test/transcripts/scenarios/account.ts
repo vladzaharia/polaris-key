@@ -13,9 +13,10 @@
 //                              stops); the key is entered again, and a key-bound device signs out
 //                              keeping its licence.
 //
-// The sign-in itself is SEEDED (the account, its verified email and the device binding are rows
-// written before the step, as a completed sign-in leaves them): I-08 re-records these with its
-// real device-code sign-in. Nothing here changes a signed document.
+// identity-attach's sign-in is made through authorize, Continue and token (I-08; `webSignIn.ts`,
+// setup that is not recorded). The sign-in in the other scenarios is still SEEDED (the account,
+// its verified email and the device binding are rows written before the step, as a completed
+// sign-in leaves them). Nothing here changes a signed document.
 
 import { expect } from "vitest";
 import {
@@ -41,6 +42,7 @@ import {
   subjectFor,
 } from "../../../src/core/accounts/accountSubjects.js";
 import { bindSignedInDevice } from "../../../src/core/licensing/anchor.js";
+import { registerWebApp, webSignIn } from "./webSignIn.js";
 import { getOrCreateAccountByEmail } from "../../../src/services/identity/portal/repo.js";
 
 /** The product's services: License, Config and Identity. */
@@ -188,7 +190,7 @@ export const identityAttach: Scenario = {
       const r = new TranscriptRecorder({
         id: "identity-attach",
         description:
-          "Attach (I-09, WIRE-CONTRACT-V4 §12.3). The device activates by key, then the person signs in on it (seeded here: the account, its verified email and the device's sign-in binding; I-08 re-records this with its device-code sign-in). attach({confirm:false}) previews the device's own licence and writes nothing; attach({confirm:true}) adds it to the signed-in account, rotates the device token and answers the activation result with subject and attached: claimed; the licence and its document are unchanged. Repeating it is idempotent: the same answer without attached.",
+          "Attach (I-09, WIRE-CONTRACT-V4 §12.3). The device activates by key, then the person signs in on it (through authorize and token, I-08: the account, its verified email and the sign-in the device made, presenting its own token). attach({confirm:false}) previews the device's own licence and writes nothing; attach({confirm:true}) adds it to the signed-in account, rotates the device token and answers the activation result with subject and attached: claimed; the licence and its document are unchanged. Repeating it is idempotent: the same answer without attached.",
         features: ATTACH,
         requires: ["license.activate"],
         product: PRODUCT,
@@ -213,7 +215,37 @@ export const identityAttach: Scenario = {
         },
       );
 
-      await signedIn(world, ada.subject);
+      // The person signs in on the device through authorize and token, presenting the device's
+      // own token: the binding is written on the licence the device runs on (setup, not recorded).
+      await registerWebApp(world);
+      // The portal's per-request link sweep would join a licence to an account that verified the
+      // buyer email the moment the card is used, which is not the story attach tells (the device
+      // adds the licence). So the address is verified after the sign-in, as it is for a person
+      // who verifies it in the portal later.
+      await world.db.run(
+        "UPDATE accounts SET primary_email_verified_at = NULL WHERE id = ?",
+        ada.id,
+      );
+      await world.db.run(
+        "UPDATE account_links SET email_verified = 0 WHERE account_id = ?",
+        ada.id,
+      );
+      const signedInOn = await webSignIn(
+        world,
+        { id: ada.id, email: "ada@example.com" },
+        r.bindings.token!,
+      );
+      expect(signedInOn.subject).toBe(ada.subject);
+      expect(signedInOn.access_token).toBe(r.bindings.token);
+      await world.db.run(
+        "UPDATE accounts SET primary_email_verified_at = ? WHERE id = ?",
+        T0,
+        ada.id,
+      );
+      await world.db.run(
+        "UPDATE account_links SET email_verified = 1 WHERE account_id = ? AND email IS NOT NULL",
+        ada.id,
+      );
       await r.step(
         {
           action: "attach",

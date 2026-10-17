@@ -81,6 +81,14 @@ Each entry starts from a license status or an error code your app reports. For t
 
 **Check it works:** `pkey doctor` lists the service, and the request answers.
 
+## Not seen yet
+
+**Cause:** The console's **Integration** page marks a feature **Verified** once an SDK has made a successful request to it and the feature's setup steps are done. "Not seen yet" means no SDK has, or the setup steps are not done, or the SDK sends no `X-PKey-SDK` header (a web server, an updater's feed fetch).
+
+**Fix:** Run the app once against the product, on each platform you ship. Check that its base URL and slug match the product, and that the feature's steps on **Integration** are done: a feature stays unverified until they are. A sighting is kept for 90 days, so a product no app has called since then starts again.
+
+**Check it works:** The feature shows **Verified** for that platform within a few minutes of the app's next request.
+
 ## The app can't verify a document
 
 **Cause:** The pins in the app's config file don't match the key that signed the document: the app points at another product or base URL, or the product's signing key changed since the file was generated. The app trusts only keys it pinned at build time, so it refuses a document with an unknown key id or a bad signature, and it never falls back to trusting the network.

@@ -26,7 +26,10 @@ import type {
 import { hashKey } from "../../../platform/crypto.js";
 import type { Db } from "../../../db/types.js";
 import type { Env } from "../../../platform/env.js";
-import { loadProductPublic } from "../../../core/products.js";
+import {
+  loadProductPublic,
+  type ProductPublic,
+} from "../../../core/products.js";
 import type { PortalHooksFor } from "../portal/api.js";
 import { getPortalAccount } from "../portal/repo.js";
 import { avatarUrl } from "../card/avatars.js";
@@ -39,7 +42,7 @@ export const CONSENT_PROFILE_CLAIMS = ["name", "picture", "email"] as const;
 
 type Reply = { status: 200; body: unknown } | { status: 404 };
 
-async function liveRequest(
+export async function liveRequest(
   env: Env,
   db: Db,
   req: Request,
@@ -72,6 +75,16 @@ export async function signInRequestView(
     deviceLabel: record.deviceLabel,
     userCode: record.userCode,
     expiresAt: record.expiresAt,
+    // I-08 (§12.4): what `authorize` carried. Hints prefill the card and verify nothing.
+    ...(record.authz
+      ? {
+          purpose: record.authz.purpose,
+          licenseChoice: record.authz.licenseChoice,
+          scope: record.authz.scope,
+          loginHint: record.authz.loginHint,
+          nameHint: record.authz.nameHint,
+        }
+      : {}),
   };
   return { status: 200, body: view };
 }
@@ -92,6 +105,14 @@ export async function consentScope(
 
 function consentServices(license: boolean, cloudSync: boolean): string[] {
   return [...(license ? ["license"] : []), ...(cloudSync ? ["cloudSync"] : [])];
+}
+
+/** The hash of what the product asks an app consent to cover (what the consent view shows). */
+export function askedScopeHash(product: ProductPublic): Promise<string> {
+  return consentScope(
+    CONSENT_PROFILE_CLAIMS,
+    consentServices(product.services.license.enabled, cloudSyncOn(product)),
+  );
 }
 
 /** `GET /api/signin/requests/:handle/consent`, for the signed-in `accountId`. */
