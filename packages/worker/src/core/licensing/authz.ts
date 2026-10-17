@@ -504,6 +504,8 @@ export async function authorizeDevice(
           status: reconciled.existing.status,
         }
       : undefined;
+  let freedByUs = false;
+  let freeingRef: { performed?: boolean } | null = null;
   if (isNewAuthorization) {
     // The seat limit is an ENTITLEMENT, resolved through the same pipeline the license
     // document is built from — so the number enforced here and the `deviceLimit` the client
@@ -549,6 +551,18 @@ export async function authorizeDevice(
         deviceCount: count,
       });
     }
+    // Filled in by the claim: whether THIS request's batch removed the departing device.
+    const freeing: {
+      deviceId: string;
+      statements: DbStatement[];
+      performed?: boolean;
+    } | null = opts.replace
+      ? {
+          deviceId: opts.replace.freedDeviceId,
+          statements: opts.replace.statements,
+        }
+      : null;
+    freeingRef = freeing;
     const keyEntry = opts.keyEntry;
     if (
       !(await claimDeviceSeat(
@@ -560,14 +574,7 @@ export async function authorizeDevice(
         now,
         {
           ...(adoptFrom !== undefined ? { adoptFrom } : {}),
-          ...(opts.replace
-            ? {
-                freeing: {
-                  deviceId: opts.replace.freedDeviceId,
-                  statements: opts.replace.statements,
-                },
-              }
-            : {}),
+          ...(freeing ? { freeing } : {}),
           ...(keyEntry
             ? {
                 withClaim: () =>
@@ -592,10 +599,7 @@ export async function authorizeDevice(
         current.status === "authorized"
       )
         return { error: "unauthorized" };
-      const freedNow =
-        opts.replace !== undefined &&
-        (await getDevice(db, product.slug, opts.replace.freedDeviceId))
-          ?.status !== "authorized";
+      const freedNow = freeing?.performed === true;
       return refuse("device_limit", {
         error: "device_limit",
         limit,
@@ -609,6 +613,8 @@ export async function authorizeDevice(
       });
     }
   }
+
+  if (freeingRef) freedByUs = freeingRef.performed === true;
 
   // Core mints the token and writes every row the binding consists of.
   const bound = await bindDevice(env, db, product, license, deviceId, now, {
@@ -640,9 +646,7 @@ export async function authorizeDevice(
       opts.waitUntil,
     );
   }
-  return opts.replace && isNewAuthorization
-    ? { ...bound, replaced: true }
-    : bound;
+  return freedByUs ? { ...bound, replaced: true } : bound;
 }
 
 /** Does any device other than `deviceId` name this licence, in any status (`idx_devices_license`)? */

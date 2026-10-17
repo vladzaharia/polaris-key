@@ -181,7 +181,12 @@ export async function claimDeviceSeat(
      * claim, so a lost race rolls the removal back with it. Its ordinal is not counted as taken
      * and `statements` (its deauthorisation) run first in the batch.
      */
-    freeing?: { deviceId: string; statements: DbStatement[] };
+    freeing?: {
+      deviceId: string;
+      statements: DbStatement[];
+      /** Set when the batch ran AND its first statement (the deauthorisation) changed a row. */
+      performed?: boolean;
+    };
   } = {},
 ): Promise<boolean> {
   await releaseDormantSeats(db, product, now, licenseId);
@@ -271,10 +276,19 @@ export async function claimDeviceSeat(
       // Applied, or a no-op because the row already holds a seat: either way nothing is left to
       // claim. Only a UNIQUE loss on `idx_devices_seat` (below) tries again.
       const freeing = opts.freeing?.statements ?? [];
+      const run = async (statements: DbStatement[]): Promise<void> => {
+        if (opts.freeing && db.batchChanges) {
+          const changes = await db.batchChanges(statements);
+          opts.freeing.performed = (changes[0] ?? 0) > 0;
+        } else {
+          await db.batch(statements);
+          if (opts.freeing) opts.freeing.performed = true;
+        }
+      };
       if (opts.withClaim)
-        await db.batch([...freeing, opts.withClaim(), ...clear, seat]);
+        await run([...freeing, opts.withClaim(), ...clear, seat]);
       else if (freeing.length > 0 || clear.length > 0)
-        await db.batch([...freeing, ...clear, seat]);
+        await run([...freeing, ...clear, seat]);
       else await db.runChanges(seat.sql, ...seat.params);
       // A no-op upsert is success only when the row is ours: a row held by another licence is
       // never reported as claimed (the caller turns this into a refusal, not a seat).
@@ -464,19 +478,24 @@ export async function setDeviceStatus(
 export function stmtsDeauthorizeDevice(
   product: string,
   deviceId: string,
+  licenseId: string,
 ): DbStatement[] {
+  // Guarded by the licence the caller proved: a device rebound to another licence between the
+  // check and the batch is left alone, and so are its fingerprint and facts.
+  const removed = `EXISTS (SELECT 1 FROM devices WHERE product = ? AND device_id = ?
+                      AND license_id = ? AND status = 'deauthorized')`;
   return [
     {
-      sql: "UPDATE devices SET status = 'deauthorized', seat_no = NULL WHERE product = ? AND device_id = ?",
-      params: [product, deviceId],
+      sql: "UPDATE devices SET status = 'deauthorized', seat_no = NULL WHERE product = ? AND device_id = ? AND license_id = ?",
+      params: [product, deviceId, licenseId],
     },
     {
-      sql: "DELETE FROM device_fingerprints WHERE product = ? AND device_id = ?",
-      params: [product, deviceId],
+      sql: `DELETE FROM device_fingerprints WHERE product = ? AND device_id = ? AND ${removed}`,
+      params: [product, deviceId, product, deviceId, licenseId],
     },
     {
-      sql: "DELETE FROM device_facts WHERE product = ? AND device_id = ?",
-      params: [product, deviceId],
+      sql: `DELETE FROM device_facts WHERE product = ? AND device_id = ? AND ${removed}`,
+      params: [product, deviceId, product, deviceId, licenseId],
     },
   ];
 }

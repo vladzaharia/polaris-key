@@ -85,6 +85,8 @@ export type BindRefusal =
   | { reason: "not_found" }
   | { reason: "not_entitled" }
   | { reason: "unauthorized" }
+  /** A store or write the bind needs is unavailable; nothing the person did is wrong. Retry. */
+  | { reason: "unavailable" }
   | { reason: "rate_limited"; retryAfter: number }
   | {
       reason: "device_limit";
@@ -193,6 +195,7 @@ export async function bindChoice(
     const grant = await grantFor(cx, who.accountId);
     if (!grant) return refuse({ reason: "license_choice_required" });
     let mintRefused = false;
+    let mintDown = false;
     bound = await bindSignedInDevice(env, db, product, {
       accountId: who.accountId,
       subject: who.subject,
@@ -202,12 +205,19 @@ export async function bindChoice(
       rank: { grantTierId: grant.tierId ?? "" },
       authorize,
       mint: async () => {
-        const out = await mintAccountLicense(
-          cx,
-          who.accountId,
-          "create",
-          device.id,
-        );
+        let out: Awaited<ReturnType<typeof mintAccountLicense>>;
+        try {
+          out = await mintAccountLicense(
+            cx,
+            who.accountId,
+            "create",
+            device.id,
+          );
+        } catch {
+          // The claim store is unreachable: fail closed, mint nothing, let the person retry.
+          mintDown = true;
+          return null;
+        }
         if (out.kind !== "minted") {
           mintRefused = true;
           return null;
@@ -216,6 +226,7 @@ export async function bindChoice(
         return out.license;
       },
     });
+    if (!bound.ok && mintDown) return refuse({ reason: "unavailable" });
     if (!bound.ok && mintRefused)
       return refuse({ reason: "license_choice_required" });
   } else {
@@ -366,8 +377,11 @@ async function bindKey(
   if ("error" in authorized)
     return refuse(await authzRefusal(cx, license, authorized));
   await touchKey(db, product.slug, keyHash, now);
+  // The seat and its counted entry are committed. If the account cannot be written onto the
+  // device now, answer a retryable 503 and let the caller put the grant back: the retry finds the
+  // device enrolled (never counted twice) and writes the subject.
   if (!(await setDeviceSubject(env, db, product.slug, device.id, who.subject)))
-    return refuse({ reason: "not_entitled" });
+    return refuse({ reason: "unavailable" });
   const row =
     (await getDevice(db, product.slug, device.id)) ?? authorized.device;
   return {

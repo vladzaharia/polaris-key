@@ -21,6 +21,7 @@ import {
   seedProduct,
   seedTier,
 } from "./seed.js";
+import { stmtsDeauthorizeDevice } from "../src/core/devices/store.js";
 import { withMintClaim } from "../src/services/identity/passthrough/mint.js";
 import { dispatchWith } from "../src/dispatch.js";
 import { loadProduct } from "../src/core/products.js";
@@ -369,6 +370,33 @@ async function setPolicy() {
   );
 }
 
+/** Make writes to the `license-mint` claim throw; returns the function that heals the store. */
+function breakMintStore(): () => void {
+  const original = env.SINGLE_USE;
+  const ns = original!;
+  const real = ns.get.bind(ns);
+  (env as { SINGLE_USE: unknown }).SINGLE_USE = {
+    ...ns,
+    idFromName: ns.idFromName.bind(ns),
+    get: (id: unknown) => {
+      const stub = real(id as never);
+      return {
+        fetch: async (url: string, init?: RequestInit) => {
+          const body = init?.body
+            ? (JSON.parse(String(init.body)) as { key?: string })
+            : {};
+          if (body.key?.startsWith("license-mint:"))
+            throw new Error("store down");
+          return stub.fetch(url, init);
+        },
+      };
+    },
+  };
+  return () => {
+    (env as { SINGLE_USE: unknown }).SINGLE_USE = original;
+  };
+}
+
 const licenseCount = async (accountId: string) =>
   (
     await db.first<{ n: number }>(
@@ -675,26 +703,7 @@ describe("the first automatic licence (D4, D5)", () => {
     await setPolicy();
     const { handle, binder } = await begin();
     const s = await signedIn();
-    const ns = env.SINGLE_USE;
-    // The Continue's other single-use reads fail closed too; make only writes to the claim throw.
-    const real = ns!.get.bind(ns);
-    (env as { SINGLE_USE: unknown }).SINGLE_USE = {
-      ...ns,
-      idFromName: ns!.idFromName.bind(ns),
-      get: (id: unknown) => {
-        const stub = real(id as never);
-        return {
-          fetch: async (url: string, init?: RequestInit) => {
-            const body = init?.body
-              ? (JSON.parse(String(init.body)) as { key?: string })
-              : {};
-            if (body.key?.startsWith("license-mint:"))
-              throw new Error("store down");
-            return stub.fetch(url, init);
-          },
-        };
-      },
-    };
+    breakMintStore();
     const out = await proceed(handle, s, binder);
     expect(out.res.status).toBe(503);
     expect(await licenseCount(s.id)).toBe(0);
@@ -734,6 +743,46 @@ describe("the first automatic licence (D4, D5)", () => {
         })
       ).res.status,
     ).toBe(409);
+  });
+});
+
+describe("stmtsDeauthorizeDevice (Replace's removal)", () => {
+  it("leaves a device that was rebound to another licence alone", async () => {
+    const s = await signedIn();
+    const a = await ownLicense(s.id, "lic_a", { limit: 2 });
+    const b = await ownLicense(s.id, "lic_b", { limit: 2 });
+    await activateWithKey(a.key, DEVICE_B);
+    // The device moves to licence B after the removal was planned against A.
+    await activateWithKey(b.key, DEVICE_C);
+    await db.run(
+      "UPDATE devices SET license_id = 'lic_b', seat_no = 9 WHERE product = ? AND device_id = ?",
+      SLUG,
+      DEVICE_B,
+    );
+    await db.run(
+      "INSERT INTO device_facts (product, device_id, updated_at) VALUES (?, ?, ?)",
+      SLUG,
+      DEVICE_B,
+      NOW,
+    );
+    await db.batch(stmtsDeauthorizeDevice(SLUG, DEVICE_B, "lic_a"));
+    expect((await device(DEVICE_B))?.status).toBe("authorized");
+    expect(
+      await db.first(
+        "SELECT 1 FROM device_facts WHERE product = ? AND device_id = ?",
+        SLUG,
+        DEVICE_B,
+      ),
+    ).not.toBeNull();
+    await db.batch(stmtsDeauthorizeDevice(SLUG, DEVICE_B, "lic_b"));
+    expect((await device(DEVICE_B))?.status).toBe("deauthorized");
+    expect(
+      await db.first(
+        "SELECT 1 FROM device_facts WHERE product = ? AND device_id = ?",
+        SLUG,
+        DEVICE_B,
+      ),
+    ).toBeNull();
   });
 });
 
@@ -937,6 +986,31 @@ describe("the pending sign-in grant (app mode, §12.5.1)", () => {
     );
     expect(row?.subject).toBe(body.subject);
     expect(row?.bound_by).toBe("key");
+  });
+
+  it("create with the claim store down answers 503, mints nothing and keeps the grant", async () => {
+    await setPolicy();
+    const s0 = await signedIn();
+    const lic = await ownLicense(s0.id, "lic_a", { limit: 1 });
+    await activateWithKey(lic.key, DEVICE_B);
+    const before = await licenseCount(s0.id);
+    const { res } = await chooseGrant();
+    const { grant } = (await res.json()) as { grant: string };
+    const heal = breakMintStore();
+    const down = await grantReq("complete", {
+      grant,
+      choice: { kind: "create" },
+    });
+    expect(down.status).toBe(503);
+    expect(await down.json()).toMatchObject({ error: { code: "unavailable" } });
+    expect(await licenseCount(s0.id)).toBe(before);
+    heal();
+    const ok = await grantReq("complete", {
+      grant,
+      choice: { kind: "create" },
+    });
+    expect(ok.status).toBe(200);
+    expect(await licenseCount(s0.id)).toBe(before + 1);
   });
 
   it("cancel ends the grant and binds nothing", async () => {

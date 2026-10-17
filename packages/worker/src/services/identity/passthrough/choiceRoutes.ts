@@ -115,6 +115,8 @@ function nestedRefusal(
       });
     case "not_entitled":
       return fail(403, "not_entitled");
+    case "unavailable":
+      return fail(503, "unavailable");
   }
 }
 
@@ -127,6 +129,7 @@ const RETRYABLE: ReadonlySet<BindRefusal["reason"]> = new Set([
   "unauthorized",
   "license_owned",
   "key_entry_limit",
+  "unavailable",
 ]);
 
 function parseChoice(raw: unknown): LicenseChoiceInput | null {

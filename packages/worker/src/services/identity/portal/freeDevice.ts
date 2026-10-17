@@ -149,7 +149,7 @@ export async function planFreeAccountDevice(
   return {
     ok: true,
     device,
-    statements: stmtsDeauthorizeDevice(product, deviceId),
+    statements: stmtsDeauthorizeDevice(product, deviceId, licenseId),
     async finish() {
       if (device.token_hash)
         await deleteTokenRecord(env, product, device.token_hash);

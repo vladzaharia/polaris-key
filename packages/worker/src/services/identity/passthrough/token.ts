@@ -451,6 +451,8 @@ function flatRefusal(r: BindRefusal): Response {
     case "unauthorized":
     case "not_entitled":
       return oauth(403, "not_entitled");
+    case "unavailable":
+      return oauth(503, "unavailable");
     case "not_found":
     case "license_choice_required":
       return oauth(409, ErrorCode.LicenseChoiceRequired);
