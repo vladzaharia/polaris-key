@@ -65,6 +65,16 @@ export const STEP_UP_ROUTES: readonly StepUpRoute[] = [
   },
   {
     method: "POST",
+    path: "/platform/migrations/apply",
+    why: "changes stored data through a data-migration job",
+  },
+  {
+    method: "POST",
+    path: "/platform/migrations/down",
+    why: "undoes a data-migration job's changes",
+  },
+  {
+    method: "POST",
     path: "/platform/override-migration/run",
     why: "rewrites every product's licence overrides",
   },
