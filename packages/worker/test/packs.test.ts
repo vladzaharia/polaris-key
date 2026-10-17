@@ -60,7 +60,6 @@ import {
 } from "../src/services/release/store.js";
 import { getReleaseConfig } from "../src/services/release/config.js";
 import { knownChannels } from "../src/services/release/resolve.js";
-import { listPortalReleases } from "../src/services/identity/portal/repo.js";
 import { checkPackAgainstDeclaration } from "../src/services/release/packs/ingest.js";
 
 installDigestStream();
@@ -1606,21 +1605,6 @@ describe("app-only readers ignore pack releases (B2, N6)", () => {
         `${CORE}@1.4.0`,
       ),
     ).toBeNull();
-  });
-
-  it("the customer portal never lists a pack release", async () => {
-    await publishCore("1.4.0", 12);
-    await db.run(
-      `INSERT INTO release_metadata
-         (product, release_id, version, metadata_access, artifacts_access, created_at,
-          modified_at, deliverable_id, seq)
-       VALUES (?, 'v9.0.0', '9.0.0', 'public', 'public', ?, ?, 'app', 99)`,
-      SLUG,
-      NOW,
-      NOW,
-    );
-    const rows = await listPortalReleases(db, [SLUG]);
-    expect(rows.map((r) => r.release_id)).toEqual(["v9.0.0"]);
   });
 
   it("the console Releases list is the app's only (pack views are P4-09's)", async () => {

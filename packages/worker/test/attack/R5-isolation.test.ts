@@ -9,6 +9,10 @@
  * controls) reaching another tenant's data, or a portal account reaching another account's.
  */
 
+import {
+  mintDownloadToken,
+  readDownloadToken,
+} from "../../src/core/assets/downloadTokens.js";
 import { issuePortalSessionRow } from "../portalSessionRow.js";
 import { describe, expect, it } from "vitest";
 import { makeTestDb } from "../helpers.js";
@@ -51,10 +55,8 @@ import {
 } from "../../src/services/identity/portal/session.js";
 import {
   attachWaitingLicensesByEmail,
-  createPortalDownloadToken,
   getOrCreateAccountByEmail,
   getOrCreateAccountByIdentity,
-  getPortalDownloadToken,
   getPortalLicense,
   linkEmail,
   linkLicense,
@@ -888,11 +890,12 @@ describe("R5-07 download-token lookup is not product-scoped", () => {
     await seedRelease(db, EVILCO);
 
     const account = await getOrCreateAccountByEmail(db, "u@example.com", NOW);
-    const token = await createPortalDownloadToken(e, db, {
-      accountId: account.id,
+    const token = await mintDownloadToken(e, db, {
       product: ACME,
       releaseId: "rel-1",
       artifactId: null as unknown as string,
+      scope: { portalAccountId: account.id },
+
       now: NOW,
     });
     const hash = await hashKey(token, e.KEY_HASH_PEPPER);
@@ -922,7 +925,7 @@ describe("R5-07 download-token lookup is not product-scoped", () => {
 
     // So the unscoped lookup is unambiguous: `row.product` is the minting tenant, and it is
     // safe for handlePortalDownload to use it as the authorization scope.
-    const row = await getPortalDownloadToken(e, db, token, NOW);
+    const row = await readDownloadToken(e, db, token, NOW);
     expect(row).not.toBeNull();
     expect(row!.product).toBe(ACME);
 

@@ -2,6 +2,7 @@
 // These tests are ADVERSARIAL: most of them assert the CURRENT (broken/weak) behaviour so a
 // future fix makes them fail loudly. Nothing here modifies src/ or migrations/.
 
+import { purgeDownloadTokens } from "../../src/core/assets/downloadTokens.js";
 import { describe, expect, it } from "vitest";
 import Database from "better-sqlite3";
 import { readFileSync, readdirSync } from "node:fs";
@@ -34,7 +35,6 @@ import {
   getOrCreateAccountByEmail,
   linkLicense,
   listPortalLicenses,
-  purgeDownloadTokensForProduct,
   syncAccountLicenseLinks,
 } from "../../src/services/identity/portal/repo.js";
 
@@ -772,7 +772,7 @@ describe("R11-05 product scoping", () => {
   // cannot be product-scoped. `idx_release_download_tokens_hash` (0015) instead makes the hash
   // GLOBALLY unique — the real invariant for a 256-bit secret — which removes both the
   // ambiguity and the full scan on an unauthenticated, unrate-limited endpoint.
-  it("getPortalDownloadToken() is now a unique-index SEARCH, not a full scan", async () => {
+  it("readDownloadToken() is now a unique-index SEARCH, not a full scan", async () => {
     const db = makeTestDb();
     const plan = await db.all<{ detail: string }>(
       "EXPLAIN QUERY PLAN SELECT * FROM release_download_tokens WHERE token_hash = ?",
@@ -812,7 +812,7 @@ describe("R11-05 product scoping", () => {
         NOW - 1,
         NOW - 301,
       );
-    expect(await purgeDownloadTokensForProduct(db, "acme", NOW)).toBe(1);
+    expect(await purgeDownloadTokens(db, "acme", NOW)).toBe(1);
     expect(
       (
         await db.all<{ token_hash: string }>(

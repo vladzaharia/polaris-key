@@ -1,4 +1,8 @@
 import { ingestFor } from "../src/core/ingest/pipeline.js";
+import {
+  mintDownloadToken,
+  spendDownloadToken,
+} from "../src/core/assets/downloadTokens.js";
 import { SERVICES } from "../src/mount.js";
 /**
  * The release truth store, from the writer that finally exists (P2.T2) — and the finding that
@@ -44,10 +48,7 @@ import {
   upsertBuild,
   yankRelease,
 } from "../src/services/release/model.js";
-import {
-  createPortalDownloadToken,
-  markPortalDownloadUsed,
-} from "../src/services/identity/portal/repo.js";
+import {} from "../src/services/identity/portal/repo.js";
 import {
   enableDownloads,
   handlePortalDownload,
@@ -909,11 +910,12 @@ describe("R6-12 /download/<token>", () => {
     // A public repository: a stored GitHub URL is handed to a browser only then, so what each
     // case below exercises is the host allowlist and the single-use claim.
     await seedRepositoryVisibility(env, db, SLUG, "public");
-    const token = await createPortalDownloadToken(env, db, {
-      accountId,
+    const token = await mintDownloadToken(env, db, {
       product: SLUG,
       releaseId: "v1.2.3",
       artifactId: "21",
+      scope: { portalAccountId: accountId },
+
       now: NOW,
     });
     return { db, env, token };
@@ -990,7 +992,7 @@ describe("R6-12 /download/<token>", () => {
     void env;
     const claims = await Promise.all(
       Array.from({ length: 5 }, () =>
-        markPortalDownloadUsed(yieldingDb(db), SLUG, hash, NOW),
+        spendDownloadToken(yieldingDb(db), SLUG, hash, NOW),
       ),
     );
     expect(claims.filter(Boolean)).toHaveLength(1);

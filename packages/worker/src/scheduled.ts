@@ -9,7 +9,7 @@
 // to activate a new one; and the indexes the security invariants rest on were asserted by no
 // running code, so a half-applied migration was invisible until the invariant it enforced was
 // needed. Every helper those jobs need already existed — `idx_audit_time`, `idx_portal_audit_at`,
-// `purgeDownloadTokensForProduct`, `releaseDormantSeats` — waiting for a caller. This is the caller.
+// `purgeDownloadTokens`, `releaseDormantSeats` — waiting for a caller. This is the caller.
 //
 // FOUR PROPERTIES THIS FILE IS RESPONSIBLE FOR
 //

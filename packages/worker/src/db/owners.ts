@@ -19,6 +19,8 @@ export const TABLE_OWNERS: Readonly<Record<string, readonly string[]>> = {
     "dist_connector_events",
     "dist_connector_settings",
     "devices",
+    // P0-23: the portal's single-use download tokens (core/assets/downloadTokens.ts).
+    "release_download_tokens",
     "license_refusals",
     "license_auto_attach_blocks",
     "license_key_entries",
@@ -94,7 +96,6 @@ export const TABLE_OWNERS: Readonly<Record<string, readonly string[]>> = {
     "release_channels",
     "release_channel_floors",
     "release_health",
-    "release_download_tokens",
     "release_deliverables",
     "release_builds",
     "release_channel_policy",

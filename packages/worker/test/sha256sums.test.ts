@@ -71,6 +71,8 @@ const art = (
   sha256,
   metadata: null,
   locations,
+  sourceUrl: null,
+  kind: null,
 });
 
 const H = (c: string) => c.repeat(64);

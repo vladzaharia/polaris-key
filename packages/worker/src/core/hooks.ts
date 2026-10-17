@@ -183,6 +183,15 @@ export interface CatalogLocation {
 export interface CatalogSourceArtifact extends CatalogArtifact {
   /** Parsed `locations_json`; a legacy row with no locations reads as its GitHub asset. */
   locations: CatalogLocation[];
+  /**
+   * The upstream URL a GitHub sync stored for the file (`release_artifacts.source_url`: GitHub's
+   * own `browser_download_url`, never client input), or `null`. The customer portal redirects to
+   * it only after its own host and repository-visibility checks (P0-23).
+   */
+  sourceUrl: string | null;
+  /** The file's stored kind (`archive`, `signature`, `checksum`, …): what a row with no `role` yet
+   *  is told apart by. */
+  kind: string | null;
 }
 
 /** What a byte route asks Release to resolve (P2-05's `resolveBuild`, generalised). */
@@ -510,13 +519,18 @@ export interface ReleaseCatalog {
   /**
    * One release's title and notes as stored (Markdown or plain text), or null (one read). A-18b's
    * store notes default from them (Distribution's listing model). The notes are answered whatever
-   * the metadata access mode: the only caller is the platform-admin console API.
+   * the metadata access mode: the caller applies `metadataAccess` (the mode stored with the row
+   * at the last sync; `entitled` is stored as `licensed`) itself. The platform-admin console API
+   * and the customer portal's release listing (P0-23) call it. `sourceUrl` is the release's
+   * upstream page (GitHub's `html_url`), or null.
    */
   releaseNotes(releaseId: string): Promise<{
     releaseId: string;
     version: string;
     title: string | null;
     notes: string | null;
+    sourceUrl: string | null;
+    metadataAccess: string;
   } | null>;
   /** A release's builds, by build id. */
   builds(releaseId: string): Promise<CatalogBuild[]>;
