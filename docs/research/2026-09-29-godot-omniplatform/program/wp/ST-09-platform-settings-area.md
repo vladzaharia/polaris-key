@@ -180,3 +180,10 @@ address); loading shape; ceiling checked as you type; history strikes the old va
 refusals under Licensing. Not done: Advanced folded into one card, Jobs last-run line, source chip
 out of the tab order, phone switch placement, the rail on a container query at 200 % text, the
 feed pointer focusing the Package feeds group itself (it opens Storefront and hosting).
+
+Re-review fixes (2026-10-17): section jumps are opt-in (`SettingsTemplate jump`, Platform settings
+only) and write `?section=` without asking the unsaved-changes guard (`navigate(..., {force})`); the
+current section follows the scroll (last section whose top is above the line; the last at the foot)
+and a chosen one is marked at once; sticky pills with a fade; feed rows lay out on phone with the
+switch on the name line; view-only switches read as On/Off text; the stop dialog no longer counts
+products; Advanced is folded by default (it opens from a Go to link, and when it holds editable rows).
