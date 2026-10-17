@@ -231,7 +231,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     ownership: "operator",
     critical: false,
     secret: false,
-    pending: "ST-16",
+    pending: null,
     deprecated: null,
   },
   {
