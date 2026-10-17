@@ -15,13 +15,17 @@ import { useQuery } from "@tanstack/react-query";
 import { ExternalLink } from "lucide-react";
 import {
   SDK_LABELS,
+  pinFingerprint,
   renderSdkSetup,
+  sdkAddCommand,
+  type PinFingerprint,
   renderUsage,
 } from "@polaris-key/manifest/integration";
 import { api } from "../../../../api.js";
 import { docsUrl } from "../../../../lib/docsLinks.js";
 import { Button } from "../../../../ui/Button.js";
 import { CodeBlock } from "../../../../ui/CodeBlock.js";
+import { CopyButton } from "../../../../ui/CopyButton.js";
 import { EmptyState } from "../../../../ui/EmptyState.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
 import { useLoadingAnnouncement } from "../../../../ui/loading.js";
@@ -29,6 +33,7 @@ import { PageHeader } from "../../../../ui/PageHeader.js";
 import { SegmentedControl } from "../../../../ui/SegmentedControl.js";
 import { Skeleton } from "../../../../ui/Skeleton.js";
 import { useWriteGate } from "../../../access/useCan.js";
+import { useProduct } from "../../../data/hooks.js";
 import { qk } from "../../../data/queries.js";
 import { Link } from "../../../router.js";
 import { r } from "../../../routes.js";
@@ -78,6 +83,24 @@ export function IntegrationPage({
     enabled: services.includes("release"),
     retry: false,
   });
+  const product = useProduct(slug);
+  const signingKey = product.data?.signing?.publicKey;
+  const pins = data?.snippet.pins;
+  const [prints, setPrints] = React.useState<PinFingerprint[]>([]);
+  React.useEffect(() => {
+    let live = true;
+    void Promise.all(
+      (pins ?? []).map(async (p) => ({
+        kid: p.kid,
+        fingerprint: await pinFingerprint(p.publicKey),
+      })),
+    )
+      .then((l) => live && setPrints(l))
+      .catch(() => live && setPrints([]));
+    return () => {
+      live = false;
+    };
+  }, [pins]);
   const setup = useSetup(slug);
   const licenseGate = useWriteGate("license", slug);
   const [q, setQ] = useQueryParams(PARAMS);
@@ -138,6 +161,7 @@ export function IntegrationPage({
     slug,
     origin,
     pins: data.snippet.pins,
+    releaseKeys: data.snippet.releaseKeys,
     services: data.snippet.services,
     usage: ctx,
   });
@@ -175,8 +199,99 @@ export function IntegrationPage({
           }
         />
       ) : (
-        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_25rem]">
-          <div className="min-w-0 space-y-6">
+        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,56rem)_25rem]">
+          <aside
+            aria-labelledby="integration-app"
+            className="space-y-4 rounded-xl border border-border bg-surface-raised p-4 sm:p-5 lg:sticky lg:top-4 lg:col-start-2 lg:row-start-1 lg:max-h-[calc(100dvh-2rem)] lg:overflow-y-auto"
+          >
+            <h2
+              id="integration-app"
+              className="text-base font-semibold text-fg-strong"
+            >
+              Your app
+            </h2>
+            {!signingKey ? (
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-warning-border bg-warning-subtle p-3 text-sm">
+                <span className="text-fg">No signing key is active.</span>
+                <Button asChild variant="outline" size="sm">
+                  <Link to={r.keys(slug)}>Activate a signing key</Link>
+                </Button>
+              </div>
+            ) : null}
+            <SdkTabs
+              idPrefix={SDK_QUICK_START_ID}
+              value={sdk}
+              onChange={pick}
+              order={order}
+            >
+              <SegmentedControl
+                aria-label="Add the SDK"
+                value={how}
+                onChange={setHow}
+                options={[
+                  { value: "command", label: "One command" },
+                  { value: "hand", label: "By hand" },
+                ]}
+              />
+              {how === "command" ? (
+                <>
+                  {prints.length > 0 ? (
+                    <CodeBlock
+                      code={sdkAddCommand(
+                        sdk,
+                        slug,
+                        prints,
+                        data.snippet.releaseKeys,
+                      )}
+                      language="sh"
+                      filename="Terminal"
+                      wrap
+                    />
+                  ) : (
+                    <p className="text-sm text-fg-muted">
+                      The command needs this product's pins, from an active
+                      signing key.
+                    </p>
+                  )}
+                  <p className="text-sm text-fg-muted">
+                    Run it in your app's folder. It checks these pins before it
+                    writes the config file.
+                  </p>
+                </>
+              ) : (
+                <SdkSetupBlocks
+                  setup={sdkSetup}
+                  staged={data.snippet.pins.length > 1}
+                  showStart={false}
+                />
+              )}
+            </SdkTabs>
+            {prints.length > 0 ? (
+              <div className="space-y-1.5">
+                <h3 className="text-sm font-medium text-fg-strong">
+                  Trust pins
+                </h3>
+                <ul className="space-y-1.5">
+                  {prints.map((p) => (
+                    <li key={p.kid} className="space-y-0.5">
+                      <p className="text-xs text-fg-muted">{p.kid}</p>
+                      <p className="flex items-center gap-1">
+                        <code className="min-w-0 flex-1 font-mono text-xs text-fg [overflow-wrap:anywhere]">
+                          sha256:{p.fingerprint}
+                        </code>
+                        <CopyButton
+                          value={`${p.kid}@sha256:${p.fingerprint}`}
+                          label={`Copy the ${p.kid} pin`}
+                        />
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+            <PlatformMeters view={data} label="Progress by platform" />
+          </aside>
+          <div className="min-w-0 space-y-6 lg:col-start-1 lg:row-start-1">
             {data.features.map((f) => (
               <FeatureCard
                 key={f.id}
@@ -262,69 +377,23 @@ export function IntegrationPage({
               </section>
             ) : null}
           </div>
-          <aside
-            aria-labelledby="integration-app"
-            className="space-y-4 rounded-xl border border-border bg-surface-raised p-4 sm:p-5 lg:sticky lg:top-4"
-          >
-            <h2
-              id="integration-app"
-              className="text-base font-semibold text-fg-strong"
-            >
-              Your app
-            </h2>
-            <SdkTabs
-              idPrefix={SDK_QUICK_START_ID}
-              value={sdk}
-              onChange={pick}
-              order={order}
-            >
-              <SegmentedControl
-                aria-label="Add the SDK"
-                value={how}
-                onChange={setHow}
-                options={[
-                  { value: "command", label: "One command" },
-                  { value: "hand", label: "By hand" },
-                ]}
-              />
-              {how === "command" ? (
-                <>
-                  <CodeBlock
-                    code={`pkey sdk --lang ${sdk} --write`}
-                    language="sh"
-                    filename="Terminal"
-                  />
-                  <p className="text-sm text-fg-muted">
-                    Run it in your app's repository. It writes the config file
-                    with this product's pins.
-                  </p>
-                </>
-              ) : (
-                <SdkSetupBlocks
-                  setup={sdkSetup}
-                  staged={data.snippet.pins.length > 1}
-                  showStart={false}
-                />
-              )}
-            </SdkTabs>
-            <PlatformMeters view={data} label="Progress by platform" />
-          </aside>
         </div>
       )}
       {data.verified || hidden ? (
-        <p className="flex flex-wrap items-center gap-x-2 text-sm text-fg-muted">
+        <p className="text-sm text-fg-muted">
           <Button
             ref={foot}
-            variant="ghost"
+            variant="link"
             size="sm"
+            className="h-auto p-0 text-sm"
             disabledReason={setup.allowed ? undefined : setup.disabledReason}
             onClick={() => void toggleHidden()}
           >
             {hidden ? "Show Integration" : "Hide Integration"}
-          </Button>
+          </Button>{" "}
           {hidden
             ? "Hidden from Overview."
-            : "Hides the Overview card; still in ⌘K."}
+            : "Hides the Overview card. Search still finds this page."}
         </p>
       ) : null}
       <CreateLicenseDialog

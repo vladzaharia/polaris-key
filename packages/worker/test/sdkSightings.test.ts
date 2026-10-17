@@ -291,6 +291,32 @@ describe("the Integration read model", () => {
     expect(v.snippet.pins).toHaveLength(1);
   });
 
+  it("carries the declared release keys in the snippet context, and none while Release is off", async () => {
+    const db = makeTestDb();
+    await seedProduct(db, "p1");
+    const key = "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI";
+    await db.run(
+      "INSERT INTO release_config (product, release_keys_json) VALUES (?, ?)",
+      "p1",
+      JSON.stringify([{ kid: "p1-ci-2026", publicKey: key }]),
+    );
+    const on = (release: boolean) =>
+      db.run(
+        "UPDATE products SET services_json = ? WHERE slug = ?",
+        JSON.stringify({
+          license: { enabled: true },
+          release: { enabled: release },
+        }),
+        "p1",
+      );
+    await on(true);
+    expect((await view(db, "p1")).snippet.releaseKeys).toEqual([
+      { kid: "p1-ci-2026", publicKey: key },
+    ]);
+    await on(false);
+    expect((await view(db, "p1")).snippet.releaseKeys).toEqual([]);
+  });
+
   it("lists a server sighting under the server lane", async () => {
     const db = makeTestDb();
     await seedProduct(db, "p1");

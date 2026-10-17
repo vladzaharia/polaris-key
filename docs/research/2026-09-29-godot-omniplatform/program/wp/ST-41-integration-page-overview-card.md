@@ -159,3 +159,12 @@ names. F1-F13, V1-V8 and C1-C3 are addressed.
 steps rail (per-platform, per-step timeline). Until it lands, the card lists the features and the
 service tiles stay. The sdkFit input is the platforms an SDK was seen on; the product's declared
 platforms (deliverables) are not read, so a product nothing has called opens on Node.
+
+## Polish (2026-10-17, re-review N1-N11)
+
+"One command" is now `pkey sdk add <sdk> --product <slug> --expect <kid>@sha256:<hex>` from the
+product's pins (`sdkAddCommand` and `pinFingerprint` in `@polaris-key/manifest/integration`; the
+CLI test runs the rendered command through `runPkey` and checks the fingerprint against
+`fingerprintOf`). The pin fingerprints show under "Trust pins". Your app is first in the DOM
+(column 2 from 1024 px) and scrolls inside its own height; no active signing key shows a step in
+it.

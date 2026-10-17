@@ -1944,6 +1944,8 @@ export interface IntegrationView {
     slug: string;
     services: ServiceSlug[];
     pins: Array<{ kid: string; publicKey: string }>;
+    /** Declared release keys (public); none while Release is off. */
+    releaseKeys: Array<{ kid: string; publicKey: string }>;
   };
   features: IntegrationFeature[];
   server: IntegrationVerifiedOn[];

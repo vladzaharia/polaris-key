@@ -19883,12 +19883,23 @@ components:
         now: { type: integer, description: Epoch seconds. }
         snippet:
           type: object
-          required: [slug, services, pins]
+          required: [slug, services, pins, releaseKeys]
           properties:
             slug: { type: string }
             services: { type: array, items: { type: string } }
             pins:
               type: array
+              items:
+                type: object
+                required: [kid, publicKey]
+                properties:
+                  kid: { type: string }
+                  publicKey: { type: string }
+            releaseKeys:
+              type: array
+              description: >
+                The declared release keys (public material); empty while Release is off. The
+                console passes each as `--release-key <kid>=<publicKey>` to `pkey sdk add`.
               items:
                 type: object
                 required: [kid, publicKey]

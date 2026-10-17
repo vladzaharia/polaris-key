@@ -79,6 +79,8 @@ export interface IntegrationView {
     slug: string;
     services: ServiceSlug[];
     pins: Array<{ kid: string; publicKey: string }>;
+    /** Declared release keys (public), for `pkey sdk add --release-key`; none while Release is off. */
+    releaseKeys: Array<{ kid: string; publicKey: string }>;
   };
   features: IntegrationFeatureView[];
   /** The server lane: `*-server` sightings that fetched the trust manifest. */
@@ -165,6 +167,7 @@ export async function buildIntegrationView(o: {
       pins: keys
         .filter((k) => k.status === "active" || k.status === "staged")
         .map((k) => ({ kid: k.kid, publicKey: k.public_b64url })),
+      releaseKeys: contributions.release?.releaseKeys ?? [],
     },
     features,
     server: sightings

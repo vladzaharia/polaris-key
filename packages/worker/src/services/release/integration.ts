@@ -4,6 +4,7 @@
  */
 
 import type { IntegrationContributor } from "../../core/contributions.js";
+import { parseReleaseKeysJson } from "./records.js";
 
 export const releaseIntegration: IntegrationContributor = async ({
   db,
@@ -22,7 +23,15 @@ export const releaseIntegration: IntegrationContributor = async ({
     "SELECT COUNT(*) AS n, MIN(published_at) AS first FROM release_packages WHERE product = ?",
     product.slug,
   );
+  const cfg = await db.first<{ release_keys_json: string | null }>(
+    "SELECT release_keys_json FROM release_config WHERE product = ?",
+    product.slug,
+  );
   return {
+    releaseKeys: parseReleaseKeysJson(cfg?.release_keys_json).map((k) => ({
+      kid: k.kid,
+      publicKey: k.publicKey,
+    })),
     prerequisites: [{ id: "repository", met: Number(linked?.n ?? 0) > 0 }],
     facts: {
       releases: Number(releases?.n ?? 0),

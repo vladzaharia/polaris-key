@@ -239,7 +239,12 @@ export function boot(hash: string, opts: BootOptions = {}): FetchLog {
     "/manage/api/products/djdl/integration": {
       product: "djdl",
       now: 0,
-      snippet: { slug: "djdl", services: ["license"], pins: [] },
+      snippet: {
+        slug: "djdl",
+        services: ["license"],
+        pins: [],
+        releaseKeys: [],
+      },
       features: [
         {
           id: "licensing",
