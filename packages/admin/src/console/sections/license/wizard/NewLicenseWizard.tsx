@@ -405,7 +405,6 @@ export function NewLicenseWizard({
         onTryIt={() => {
           finished();
           if (window.location.hash.startsWith(r.integration(slug))) {
-            // Already there: show the Licensing snippet.
             focusWhenReady("integration-licensing");
             return;
           }
