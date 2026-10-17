@@ -349,24 +349,14 @@ export function CatalogEntryForm({
         </div>
       ) : null}
       {minted ? (
-        <>
-          <MintRecipeFields
-            entry={entry}
-            recipe={
-              recipes === null
-                ? undefined
-                : (recipes.find((x) => x.id === entry.key) ?? null)
-            }
-            flagKeys={flagKeys}
-            slug={slug}
-            onChange={onChange}
-          />
-          {issue("mint") ? (
-            <p role="alert" className="text-sm text-danger">
-              {issue("mint")}
-            </p>
-          ) : null}
-        </>
+        <MintRecipeFields
+          entry={entry}
+          recipes={recipes}
+          flagKeys={flagKeys}
+          slug={slug}
+          error={issue("mint")}
+          onChange={onChange}
+        />
       ) : null}
       {retiredNotes(entry).map((note) => (
         <p

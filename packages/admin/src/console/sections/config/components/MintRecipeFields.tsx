@@ -28,19 +28,27 @@ const REQUIRES = [
  */
 export function MintRecipeFields({
   entry,
-  recipe,
+  recipes,
   flagKeys,
   slug,
+  error,
   onChange,
 }: {
   entry: ConfigEntry;
-  /** The product's stored recipe for this key; `null` when there is none, `undefined` while loading. */
-  recipe: EdgeMintRecipe | null | undefined;
+  /** The product's stored recipes, or `null` while they load. */
+  recipes: EdgeMintRecipe[] | null;
+  /** The draft's problem with the recipe, if any. */
+  error?: string;
   /** The catalog's flag keys, offered for Required entitlement. */
   flagKeys: string[];
   slug?: string;
   onChange: (next: ConfigEntry) => void;
 }): React.ReactElement {
+  // The stored recipe for this key: `null` when there is none, `undefined` while loading.
+  const recipe =
+    recipes === null
+      ? undefined
+      : (recipes.find((x) => x.id === entry.key) ?? null);
   const block = blockOf(entry, recipe);
   const set = (patch: Partial<MintBlock>): void =>
     onChange(withMint(entry, { ...block, ...patch }));
@@ -67,6 +75,11 @@ export function MintRecipeFields({
   );
   return (
     <div className="space-y-4" data-testid="mint-recipe">
+      {error ? (
+        <p role="alert" className="text-sm text-danger">
+          {error}
+        </p>
+      ) : null}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
         <p className="text-sm font-medium text-fg-strong">Recipe</p>
         {recipe ? (

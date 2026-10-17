@@ -557,8 +557,9 @@ export function stmtSaveEdgeMintGuarded(
 ): DbStatement {
   const insert = stmtInsertEdgeMint(e);
   return {
-    sql: `INSERT INTO edge_mint_config (product, id, alg, signing_key_secret, kid, claims_template_json, ttl_seconds, audience, auth_page_template, requires, required_entitlement)
-          SELECT ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ? WHERE (${guard.sql})
+    // The page-template column is not named here: no second statement may bind it (R9-injection).
+    sql: `INSERT INTO edge_mint_config (product, id, alg, signing_key_secret, kid, claims_template_json, ttl_seconds, audience, requires, required_entitlement)
+          SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE (${guard.sql})
           ON CONFLICT (product, id) DO UPDATE SET
             alg = excluded.alg, signing_key_secret = excluded.signing_key_secret,
             kid = excluded.kid, claims_template_json = excluded.claims_template_json,
