@@ -7,7 +7,7 @@ sidebar:
   order: 1
 ---
 
-Package feeds let a product publish libraries and tools to the package managers its users already run. They answer on their own host, `pkg.plrs.im` (`pkg-staging.plrs.im` and `pkg-dev.plrs.im` in the other environments): the same Worker as the console, on a third custom domain beside `key.plrs.im` and the bytes host `dl.plrs.im`. In the console: **Distribution → Package feeds**. To publish, see [Publish a package](/docs/features/ship-builds/packages/publish/). To install, see [Install the SDKs and the CLI](/docs/build/install/).
+Package feeds let a product publish libraries and tools to the package managers its users already run. They answer on `pkg.plrs.im` (`pkg-staging.plrs.im` and `pkg-dev.plrs.im` in the other environments), served by the console's Worker beside `key.plrs.im` and the bytes host `dl.plrs.im`. In the console: **Distribution → Package feeds**. To publish, see [Publish a package](/docs/features/ship-builds/packages/publish/). To install, see [Install the SDKs and the CLI](/docs/build/install/).
 
 ## URL layout
 
