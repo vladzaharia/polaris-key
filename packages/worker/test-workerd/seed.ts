@@ -9,10 +9,7 @@
 import type { Db } from "../src/db/types.js";
 import type { Env } from "../src/platform/env.js";
 import { insertKey, insertLicense } from "../src/core/licensing/store.js";
-import {
-  insertProduct,
-  insertProductKey,
-} from "../src/core/products/store.js";
+import { insertProduct, insertProductKey } from "../src/core/products/store.js";
 import { insertSchema } from "../src/services/config/schemaStore.js";
 import { hashKey, mintLicenseKey } from "../src/platform/crypto.js";
 import { seal } from "../src/platform/keyvault.js";
