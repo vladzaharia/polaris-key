@@ -594,7 +594,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/cq-worker-core.md"
       ],
       "brief": "wp/P0-22-request-scoped-product-context-lazy.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "P0-23",
@@ -737,7 +737,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/cq-worker-services.md §5.7"
       ],
       "brief": "wp/P0-27a-store-clients-core-stores.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "P0-28",
@@ -9952,7 +9952,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/products-onboarding.md"
       ],
       "brief": "wp/ST-42-create-defaults.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "ST-43",
