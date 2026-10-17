@@ -66,6 +66,15 @@ function view(over: Record<string, unknown> = {}) {
   };
 }
 
+/** A Verified feature with nothing left to do is one row; open it. */
+const openFeature = async (name: string) => {
+  const card = (await screen.findByRole("heading", { level: 2, name })).closest(
+    "section",
+  )!;
+  await userEvent.click(within(card).getByRole("button", { name: "Show" }));
+  return card;
+};
+
 const page = () =>
   screen.findByRole("heading", { level: 1, name: "Integration" });
 
@@ -76,9 +85,7 @@ describe("Core → Integration", () => {
     boot("#/p/djdl/integration", { extra: { [`${API}/integration`]: view() } });
     await page();
     expect(await screen.findByText("1 of 2 features Verified")).toBeTruthy();
-    const licensing = (
-      await screen.findByRole("heading", { level: 2, name: "Licensing" })
-    ).closest("section")!;
+    const licensing = await openFeature("Licensing");
     expect(licensing.getAttribute("data-service")).toBe("license");
     const seen = within(licensing).getByRole("list", { name: "Verified on" });
     expect(within(seen).getByText("macOS")).toBeTruthy();
@@ -101,6 +108,7 @@ describe("Core → Integration", () => {
       ).getByText("macOS"),
     ).toBeTruthy();
     // The install routes to pkg.plrs.im first, with the pins in the config.
+    await userEvent.click(screen.getByRole("radio", { name: "By hand" }));
     const text = document.body.textContent ?? "";
     expect(text).toContain("pkg.plrs.im");
     expect(text).toContain("PUBKEY-A");
@@ -121,6 +129,7 @@ describe("Core → Integration", () => {
       },
     });
     await page();
+    await openFeature("Licensing");
     const seen = await screen.findByRole("list", { name: "Verified on" });
     expect(seen.textContent).toContain(evil);
     expect(document.querySelector("img[src='x']")).toBeNull();
@@ -138,9 +147,11 @@ describe("Core → Integration", () => {
       },
     });
     await page();
-    const link = await screen.findByRole("link", {
-      name: "Not seen after running it?",
-    });
+    const link = (
+      await screen.findAllByRole("link", {
+        name: "Not seen after running it?",
+      })
+    )[0]!;
     expect(link.getAttribute("href")).toBe(
       "/docs/build/troubleshooting/#not-seen-yet",
     );
@@ -166,11 +177,18 @@ describe("Core → Integration", () => {
       .find((t) => t.getAttribute("aria-selected") === "true")!;
     expect(after).not.toBe(selected);
     expect(document.activeElement).toBe(after);
+    // The first three SDKs and the pick show; More reveals the rest, and End reaches the last.
+    await userEvent.click(
+      within(list.parentElement!).getByRole("button", { name: "More" }),
+    );
+    within(list)
+      .getAllByRole("tab")
+      .find((t) => t.getAttribute("aria-selected") === "true")!
+      .focus();
     await userEvent.keyboard("{End}");
     await waitFor(() => expect(window.location.hash).toContain("sdk=godot"));
-    expect(document.body.textContent).toContain("polaris_key");
     await userEvent.keyboard("{Home}");
-    await waitFor(() => expect(window.location.hash).toContain("sdk=node"));
+    await waitFor(() => expect(window.location.hash).toContain("sdk=swift"));
     // Tab leaves the list for the panel's content.
     await userEvent.tab();
     expect(list.contains(document.activeElement)).toBe(false);
@@ -225,6 +243,102 @@ describe("Core → Integration", () => {
       (patch.json as { value: { integrationHidden: unknown } }).value
         .integrationHidden,
     ).toMatchObject({ by: "ada@x.io" });
+  });
+
+  it("uses this product's names in the snippets, a visible placeholder where it has none (F6)", async () => {
+    boot("#/p/djdl/integration?sdk=node&feature=config", {
+      extra: {
+        [`${API}/integration`]: view(),
+        [`${API}/config/catalog`]: {
+          schemaVersion: 1,
+          entries: [
+            { key: "audio.gain", kind: "config", default: 3 },
+            { key: "pro-mode", kind: "flag" },
+          ],
+        },
+      },
+    });
+    await page();
+    await waitFor(() =>
+      expect(document.body.textContent).toContain("audio.gain"),
+    );
+    const text = document.body.textContent ?? "";
+    expect(text).toContain("<your-secret>");
+    expect(text).not.toContain("tidewater");
+    expect(text).not.toContain("audio.musicVolume");
+  });
+
+  it("shows the server card whatever SDK is picked, with its own Verified (F5)", async () => {
+    boot("#/p/djdl/integration?sdk=swift", {
+      extra: {
+        [`${API}/integration`]: view({
+          server: [seenOn("node-server", "linux")],
+        }),
+      },
+    });
+    await page();
+    const card = (
+      await screen.findByRole("heading", { level: 2, name: "Your server" })
+    ).closest("section")!;
+    expect(within(card).getByText("Verified")).toBeTruthy();
+    expect(card.textContent).toContain("Swift has no server snippet");
+  });
+
+  it("leads with the SDK last seen and folds the rest under More (F7)", async () => {
+    boot("#/p/djdl/integration", { extra: { [`${API}/integration`]: view() } });
+    await page();
+    const list = (await screen.findAllByRole("tablist", { name: "SDK" }))[0]!;
+    const tabs = within(list).getAllByRole("tab");
+    expect(tabs[0]!.textContent).toBe("Swift");
+    expect(tabs).toHaveLength(3);
+    expect(
+      within(list.parentElement!).getByRole("button", { name: "More" }),
+    ).toBeTruthy();
+  });
+
+  it("counts a platform Verified on a feature even when no sighting names it (F11)", async () => {
+    boot("#/p/djdl/integration", {
+      extra: {
+        [`${API}/integration`]: view({
+          sightings: [],
+          features: [
+            {
+              ...view().features[0],
+              verifiedOn: [seenOn("android", "kotlin")],
+            },
+          ],
+        }),
+      },
+    });
+    await page();
+    const meters = await screen.findByRole("list", {
+      name: "Progress by platform",
+    });
+    expect(within(meters).getByText("Android")).toBeTruthy();
+  });
+
+  it("a failed Hide says why in a toast and leaves the page as it was (F1)", async () => {
+    const user = userEvent.setup();
+    boot("#/p/djdl/integration", {
+      extra: {
+        [`${API}/integration`]: view(),
+        [`${API}/settings/effective`]: { settings: [] },
+        [`PATCH ${API}/settings/core.setup`]: new Response(
+          JSON.stringify({ error: "forbidden" }),
+          { status: 403, headers: { "content-type": "application/json" } },
+        ),
+      },
+    });
+    await page();
+    await user.click(
+      await screen.findByRole("button", { name: "Hide Integration" }),
+    );
+    await waitFor(() =>
+      expect(document.body.textContent).toMatch(/permission|allowed|couldn/i),
+    );
+    expect(
+      screen.getByRole("button", { name: "Hide Integration" }),
+    ).toBeTruthy();
   });
 
   it("passes axe", async () => {

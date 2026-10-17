@@ -360,7 +360,7 @@ describe("the palette in the console", () => {
       expect(window.location.hash).toBe("#/p/djdl/integration"),
     );
     await waitFor(() =>
-      expect(document.activeElement?.id).toBe("sdk-quick-start-tab-node"),
+      expect(document.activeElement?.id).toBe("sdk-quick-start-tab"),
     );
   });
 

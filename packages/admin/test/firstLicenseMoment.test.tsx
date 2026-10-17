@@ -79,11 +79,13 @@ describe("the first license (EXPERIENCE §0.7)", () => {
       within(dialog).getByRole("button", { name: "Try it" }),
     );
     await waitFor(() =>
-      expect(window.location.hash).toBe("#/p/djdl/integration"),
+      expect(window.location.hash).toBe(
+        "#/p/djdl/integration?feature=licensing",
+      ),
     );
-    // …and lands on the SDK picker, as the palette's "SDK quick start" does.
+    // …and lands on the Licensing snippet.
     await waitFor(() =>
-      expect(document.activeElement?.id).toBe("sdk-quick-start-tab-node"),
+      expect(document.activeElement?.id).toBe("integration-licensing"),
     );
   });
 

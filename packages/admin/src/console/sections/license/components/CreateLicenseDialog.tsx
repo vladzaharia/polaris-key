@@ -40,7 +40,6 @@ import { errorCopy } from "../../../../lib/errorCopy.js";
 import { momentSeen } from "../../../../ui/motion/index.js";
 import { MomentLine, momentKey } from "../../../components/Moment.js";
 import { focusWhenReady } from "../../../shell/palette/focus.js";
-import { SDK_QUICK_START_ID } from "../../core/model/sdkQuickStart.js";
 import {
   EMAIL_RE,
   EffectivePolicy,
@@ -635,8 +634,8 @@ export function CreateLicenseDialog({
                 title={`${product?.name ?? slug}'s first license`}
                 className="rounded-md border border-border bg-surface-raised p-3"
               >
-                Try it in your app: Integration installs the SDK and pins your
-                signing key.
+                Try it in your app: Integration has the code to install the SDK
+                and pin your signing key.
               </MomentLine>
             ) : undefined
           }
@@ -650,9 +649,12 @@ export function CreateLicenseDialog({
                   }
                   onClick={() => {
                     close();
-                    navigate(r.integration(slug));
-                    // Lands on the SDK picker, as the palette's "SDK quick start" does.
-                    focusWhenReady(`${SDK_QUICK_START_ID}-tab-node`);
+                    if (window.location.hash.startsWith(r.integration(slug))) {
+                      // Already there: show the Licensing snippet.
+                      focusWhenReady("integration-licensing");
+                      return;
+                    }
+                    navigate(r.integration(slug, { feature: "licensing" }));
                   }}
                 >
                   Try it

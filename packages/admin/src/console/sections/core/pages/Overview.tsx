@@ -20,7 +20,7 @@
 
 import * as React from "react";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
-import { ArrowRight, Settings as SettingsIcon } from "lucide-react";
+import { ArrowRight, Eye, Settings as SettingsIcon } from "lucide-react";
 import {
   ApiError,
   api,
@@ -61,14 +61,15 @@ import {
   DashboardTemplate,
   Panel,
   useFirstLoad,
-  type AttentionItem,
 } from "../../../templates/Dashboard.js";
+import { useAttention } from "./overviewAttention.js";
 import { ActivityTarget, actorName, useActivityFeed } from "./Activity.js";
 import { verbFor } from "../model/activityVerbs.js";
 import { fetchDeviceSummary } from "./Devices.js";
 import { declaresSaves, noCatalog, userSettings } from "../../sync/data.js";
 import { IntegrationCard } from "../components/IntegrationCard.js";
 import { nextStep } from "../model/integration.js";
+import { useSetup } from "../../../wizard/useSetup.js";
 
 const DAY = 86_400;
 const SERVICE_ORDER: ServiceSlug[] = [
@@ -156,17 +157,24 @@ function OverviewBody({
             : "before",
         }
       : UNKNOWN;
-  const attention = useAttention(slug, p, licenses.data?.licenses);
   const sync = p.setup?.sync;
   const next = view
     ? nextStep(slug, view, Boolean(p.signing?.publicKey))
     : null;
+  const setup = useSetup(slug);
+  const hidden = setup.choices.integrationHidden !== null;
+  // Show Integration puts the card back and the card takes focus; nothing else moves it.
+  const [justShown, setJustShown] = React.useState(false);
+  const cardShown = enabled.length > 0 && !hidden;
+  const attention = useAttention(
+    slug,
+    p,
+    licenses.data?.licenses,
+    // The next step already says it.
+    next?.to === r.keys(slug) && cardShown,
+  );
 
-  const primary = next ? (
-    <Button asChild>
-      <Link to={next.to}>{next.text}</Link>
-    </Button>
-  ) : on(p, "license") ? (
+  const fallback = on(p, "license") ? (
     <Button asChild>
       <Link to={r.licenses(slug)}>Create license</Link>
     </Button>
@@ -179,6 +187,18 @@ function OverviewBody({
       <Link to={r.services(slug)}>Enable services</Link>
     </Button>
   );
+  // The card's hero carries the next step while it shows; otherwise the header does. Nothing is
+  // decided until the read model answers, so the primary never changes after it appears.
+  const primary =
+    enabled.length > 0 && integration.isPending ? (
+      <Skeleton className="h-9 w-36" />
+    ) : cardShown && next && integration.isSuccess ? undefined : next ? (
+      <Button asChild>
+        <Link to={next.to}>{next.text}</Link>
+      </Button>
+    ) : (
+      fallback
+    );
 
   return (
     <DashboardTemplate
@@ -204,6 +224,21 @@ function OverviewBody({
               icon: <SettingsIcon aria-hidden />,
               onSelect: () => navigate(r.settings(slug)),
             },
+            ...(hidden && enabled.length > 0
+              ? [
+                  {
+                    label: "Show Integration",
+                    icon: <Eye aria-hidden />,
+                    disabledReason: setup.allowed
+                      ? undefined
+                      : setup.disabledReason,
+                    onSelect: () =>
+                      void setup.setIntegrationHidden(false).then((ok) => {
+                        if (ok) setJustShown(true);
+                      }),
+                  },
+                ]
+              : []),
           ]}
         />
       }
@@ -228,109 +263,30 @@ function OverviewBody({
         ) : undefined
       }
       tiles={
-        <div className="col-span-full grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {enabled.map((s) => (
-            <ServiceTile
-              key={s}
+        <>
+          {cardShown ? (
+            <IntegrationCard
               slug={slug}
-              service={s}
-              licenses={s === "license" ? licenses : undefined}
+              query={integration}
+              next={next}
+              focusHeading={justShown}
             />
-          ))}
-        </div>
+          ) : null}
+          <div className="col-span-full grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {enabled.map((s) => (
+              <ServiceTile
+                key={s}
+                slug={slug}
+                service={s}
+                licenses={s === "license" ? licenses : undefined}
+              />
+            ))}
+          </div>
+        </>
       }
-      primary={
-        enabled.length > 0 ? (
-          <IntegrationCard slug={slug} query={integration} next={next} />
-        ) : (
-          <RecentActivity slug={slug} />
-        )
-      }
-    >
-      {enabled.length > 0 ? <RecentActivity slug={slug} /> : null}
-    </DashboardTemplate>
+      primary={<RecentActivity slug={slug} />}
+    ></DashboardTemplate>
   );
-}
-
-// ── Attention ──────────────────────────────────────────────────────────────────────────────────
-
-function useAttention(
-  slug: string,
-  p: ProductDetail,
-  licenses: { status: string; expiresAt: number | null }[] | undefined,
-): AttentionItem[] {
-  const items: AttentionItem[] = [];
-  const setup = p.setup;
-  if (!p.signing?.publicKey) {
-    items.push({
-      id: "signing",
-      tone: "warning",
-      object: "Signing key",
-      reason: "Nothing can be signed until one is activated.",
-      action: { label: "Keys & secrets", href: r.keys(slug) },
-    });
-  }
-  for (const sec of setup?.secrets ?? []) {
-    if (sec.configured) continue;
-    items.push({
-      id: `secret-${sec.name}`,
-      tone: "warning",
-      object: `Secret ${sec.name}`,
-      reason: "Not set.",
-      action: { label: "Set", href: r.keys(slug) },
-    });
-  }
-  if (setup?.sync?.status === "error") {
-    items.push({
-      id: "sync",
-      tone: "danger",
-      object: "Manifest sync",
-      reason:
-        setup.sync.message ?? "The last resync from the repository failed.",
-      action: { label: "Repository", href: `${r.settings(slug)}` },
-    });
-  }
-  const edge = moduleOf(p, "edgeMint");
-  for (const id of (edge?.pendingApproval as string[] | undefined) ?? []) {
-    items.push({
-      id: `edge-${id}`,
-      tone: "warning",
-      object: `Edge-mint recipe ${id}`,
-      reason: "Mints nothing until it is approved as it stands.",
-      action: { label: "Review", href: r.edgeMint(slug) },
-    });
-  }
-  for (const w of setup?.warnings ?? []) {
-    items.push({
-      id: `warn-${w}`,
-      tone: "warning",
-      object: w.startsWith("release:") ? "Release" : "Setup",
-      reason: w.replace(/^release:\s*/, ""),
-      action: w.startsWith("release:")
-        ? { label: "Releases", href: r.releases(slug) }
-        : undefined,
-    });
-  }
-  if (licenses) {
-    const now = Date.now() / 1000;
-    const expiring = licenses.filter(
-      (l) =>
-        l.status === "active" &&
-        l.expiresAt !== null &&
-        l.expiresAt > now &&
-        l.expiresAt - now <= 14 * DAY,
-    ).length;
-    if (expiring > 0) {
-      items.push({
-        id: "expiring",
-        tone: "warning",
-        object: "Licenses",
-        reason: `${formatCount(expiring)} ${expiring === 1 ? "license expires" : "licenses expire"} within 14 days.`,
-        action: { label: "View", href: r.licenses(slug) },
-      });
-    }
-  }
-  return items;
 }
 
 // ── Moments (EXPERIENCE.md §0.7; MO-11) ────────────────────────────────────────────────────────
@@ -569,17 +525,6 @@ function OverviewMoments({
       ) : null}
     </>
   );
-}
-
-function moduleOf(
-  p: ProductDetail,
-  id: string,
-): Record<string, unknown> | undefined {
-  const modules = p.setup?.modules;
-  if (!Array.isArray(modules)) return undefined;
-  return modules.find((m) => m.id === id) as
-    | Record<string, unknown>
-    | undefined;
 }
 
 // ── Service tiles ──────────────────────────────────────────────────────────────────────────────

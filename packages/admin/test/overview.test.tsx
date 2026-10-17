@@ -216,16 +216,25 @@ afterEach(cleanup);
 
 describe("Core → Overview", () => {
   it("titles the page with the product and offers Create license when License is on (OVR-1)", async () => {
+    // Nothing left to do on Integration: the header's primary follows enablement.
+    fns.integration.mockResolvedValue(
+      integrationView({ features: [], verified: false }),
+    );
     mount();
     expect(
       await screen.findByRole("heading", { level: 1, name: "DJDL" }),
     ).toBeTruthy();
     expect(
-      screen.getByRole("link", { name: "Create license" }).getAttribute("href"),
+      (
+        await screen.findByRole("link", { name: "Create license" })
+      ).getAttribute("href"),
     ).toBe("#/p/djdl/license/licenses");
   });
 
   it("offers Publish catalog with only Config on, else Enable services", async () => {
+    fns.integration.mockResolvedValue(
+      integrationView({ features: [], verified: false }),
+    );
     fns.product.mockResolvedValue({
       product: product({ services: enablement(["config"]) }),
     });
@@ -288,6 +297,14 @@ describe("Core → Overview", () => {
       ).getAttribute("href"),
     ).toBe("#/p/djdl/config/catalog");
     expect(screen.queryByRole("link", { name: "Create license" })).toBeNull();
+    // It lives in the card, with its reason, and the header carries no second primary.
+    const card = screen.getByTestId("integration-card");
+    expect(
+      within(card).getByText(/cannot be verified until you do/),
+    ).toBeTruthy();
+    expect(
+      screen.getAllByRole("link", { name: "Publish a catalog" }),
+    ).toHaveLength(1);
   });
 
   it("names an unset secret and a missing signing key under Needs attention", async () => {

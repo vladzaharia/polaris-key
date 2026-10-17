@@ -200,6 +200,48 @@ describe("Core pages under the Worker's CSP", () => {
 
   // The shell owns scrolling: the document itself never scrolls, so nothing (an sr-only span, a
   // Radix bubble input) can push a blank band under the page or a sideways scroll at the window.
+  // ST-41 F4: a link that names a feature lands on its card, after the shell's own scroll reset.
+  it("an Overview feature link scrolls to its card and focuses its heading", async () => {
+    const page = await open("dark", "#/p/djdl", { width: 1440, height: 700 });
+    await page.getByTestId("integration-card").waitFor();
+    await page
+      .getByTestId("integration-card")
+      .getByRole("link", { name: /Updates/ })
+      .click();
+    const heading = page.getByRole("heading", { level: 2, name: "Updates" });
+    await heading.waitFor();
+    await page.waitForFunction(
+      () => document.activeElement?.id === "integration-update",
+    );
+    const box = await heading.boundingBox();
+    expect(box!.y).toBeGreaterThanOrEqual(0);
+    expect(box!.y).toBeLessThan(700);
+    await page.context().close();
+  });
+
+  // ST-41 F8: picking an SDK keeps the clicked tab where it was on screen.
+  it("picking an SDK does not move the clicked tab", async () => {
+    const page = await open("dark", "#/p/djdl/integration", {
+      width: 1440,
+      height: 700,
+    });
+    const tab = page
+      .locator("#integration-config-sdk-panel")
+      .locator("xpath=..")
+      .getByRole("tab", { name: "React and web" });
+    await tab.waitFor();
+    const before = (await tab.boundingBox())!.y;
+    await tab.click();
+    await page.waitForTimeout(300);
+    const after = (await page
+      .locator("#integration-config-sdk-panel")
+      .locator("xpath=..")
+      .getByRole("tab", { name: "React and web" })
+      .boundingBox())!.y;
+    expect(Math.abs(after - before)).toBeLessThan(2);
+    await page.context().close();
+  });
+
   it("the document never scrolls past the viewport, desktop or phone", async () => {
     const cases: [string, string, { width: number; height: number }][] = [
       ["#/p/djdl", "DJDL", { width: 1440, height: 900 }],

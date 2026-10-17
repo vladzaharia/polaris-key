@@ -164,7 +164,7 @@ export function sdkActions(slug: string | null): PaletteItem[] {
   if (!slug) return [];
   const toQuickStart = (api: PaletteRunApi): void => {
     api.navigate(r.integration(slug));
-    focusWhenReady(`${SDK_QUICK_START_ID}-tab-node`);
+    focusWhenReady(`${SDK_QUICK_START_ID}-tab`);
   };
   return [
     {

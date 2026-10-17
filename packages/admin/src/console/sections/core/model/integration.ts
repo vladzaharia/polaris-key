@@ -4,7 +4,14 @@
  * into anything but text, and nothing treats it as more than "seen".
  */
 
-import { SDK_IDS, type SdkId } from "@polaris-key/manifest/integration";
+import {
+  SDK_IDS,
+  sdkFit,
+  type FitPlatform,
+  type SdkId,
+  type UsageContext,
+} from "@polaris-key/manifest/integration";
+import type { ProductCatalog } from "@polaris-key/catalog";
 import type {
   IntegrationFeature,
   IntegrationFeatureId,
@@ -81,13 +88,83 @@ export const SDK_DOC_KEYS: Record<
 export const isSdkId = (v: string | null | undefined): v is SdkId =>
   (SDK_IDS as readonly string[]).includes(v ?? "");
 
-/** The SDK to open on: the `sdk=` query, else the one seen most recently, else Node. */
-export function defaultSdk(view: IntegrationView | undefined): SdkId {
+const FIT_PLATFORMS: readonly string[] = [
+  "web",
+  "windows",
+  "macos",
+  "linux",
+  "ios",
+  "android",
+  "godot",
+  "server",
+];
+
+/** The platforms this product is known to run on: every one an SDK was seen or Verified on. */
+export function knownPlatforms(view: IntegrationView | undefined): string[] {
+  const set = new Set<string>();
+  for (const s of view?.sightings ?? []) set.add(s.platform);
+  for (const f of view?.features ?? [])
+    for (const v of f.verifiedOn) set.add(v.platform);
+  return [...set];
+}
+
+/**
+ * The SDK to lead with, from `sdkFit` over the platforms the product was seen on, else the SDK
+ * most recently seen, else none (the developer picks).
+ */
+export function fitSdk(view: IntegrationView | undefined): SdkId | null {
+  const platforms = knownPlatforms(view).filter((p): p is FitPlatform =>
+    FIT_PLATFORMS.includes(p),
+  );
   for (const s of view?.sightings ?? []) {
     const id = s.sdk.replace(/-server$/, "");
     if (isSdkId(id)) return id;
   }
-  return "node";
+  return sdkFit(platforms).sdk;
+}
+
+export const defaultSdk = (view: IntegrationView | undefined): SdkId =>
+  fitSdk(view) ?? "node";
+
+/** The SDK tabs in order: the fit first, then the rest as the registry lists them. */
+export function sdkOrder(view: IntegrationView | undefined): SdkId[] {
+  const first = fitSdk(view);
+  return first ? [first, ...SDK_IDS.filter((s) => s !== first)] : [...SDK_IDS];
+}
+
+/** What the catalog and release say about this product, for the snippets. */
+export interface ProductNames {
+  catalog: ProductCatalog | undefined;
+  packIds: readonly string[];
+}
+
+/**
+ * The snippets' names, from this product: its first flag, setting, secret, minted token and pack.
+ * A name the product does not have yet is a visible placeholder, never another product's.
+ */
+export function usageContext(slug: string, n: ProductNames): UsageContext {
+  const entries = n.catalog?.entries ?? [];
+  const first = (pred: (e: (typeof entries)[number]) => boolean) =>
+    entries.find(pred);
+  const flags = entries.filter((e) => e.kind === "flag");
+  const config = first((e) => e.kind === "config");
+  const secret = first((e) => e.kind === "secret" && e.delivery !== "edgeMint");
+  const mint = first((e) => e.kind === "secret" && e.delivery === "edgeMint");
+  const d = config?.default;
+  return {
+    entitlement: flags[0]?.key ?? "<your-entitlement>",
+    configKey: config?.key ?? "<your-setting>",
+    configFallback:
+      typeof d === "string" || typeof d === "number" || typeof d === "boolean"
+        ? d
+        : "<fallback>",
+    secretKey: secret?.key ?? "<your-secret>",
+    mintRecipe: mint?.key ?? "<your-recipe>",
+    packId: n.packIds[0] ?? "<your-pack>",
+    commerceFlag: flags[1]?.key ?? flags[0]?.key ?? "<your-flag>",
+    appName: slug,
+    appVersion: "<your-app-version>",
+  };
 }
 
 export const platformLabel = (p: string): string => platformName(p);
@@ -114,11 +191,9 @@ export function byPlatform(
     .sort((a, b) => a.label.localeCompare(b.label));
 }
 
-/** Platforms the product has been seen on (any feature), for per-platform progress. */
+/** Platforms the product has been seen on or Verified on, by name. */
 export function seenPlatforms(view: IntegrationView): string[] {
-  const set = new Set<string>();
-  for (const s of view.sightings) set.add(s.platform);
-  return [...set].sort((a, b) =>
+  return knownPlatforms(view).sort((a, b) =>
     platformLabel(a).localeCompare(platformLabel(b)),
   );
 }
@@ -151,6 +226,8 @@ export function platformProgress(
 
 export interface NextStep {
   text: string;
+  /** Why this is next, in a sentence. */
+  reason: string;
   to: string;
 }
 
@@ -164,17 +241,26 @@ export function nextStep(
   hasSigningKey: boolean,
 ): NextStep | null {
   if (!hasSigningKey)
-    return { text: "Activate a signing key", to: r.keys(slug) };
+    return {
+      text: "Activate a signing key",
+      reason: "Nothing can be signed until one is active.",
+      to: r.keys(slug),
+    };
   const blocked = view.features.find((f) => f.status === "blocked");
   if (blocked) {
     const missing = blocked.prerequisites.find((p) => !p.met);
     const info = prerequisiteInfo(missing?.id ?? "", slug);
-    return { text: info.action, to: info.href };
+    return {
+      text: info.action,
+      reason: `${FEATURE_LABEL[blocked.id]} cannot be verified until you do. ${info.label} is missing.`,
+      to: info.href,
+    };
   }
   const waiting = view.features.find((f) => f.status === "not_seen");
   if (waiting)
     return {
       text: `Add ${FEATURE_LABEL[waiting.id]} to your app`,
+      reason: `No app has called ${FEATURE_LABEL[waiting.id]} yet.`,
       to: r.integration(slug, { feature: waiting.id }),
     };
   return null;

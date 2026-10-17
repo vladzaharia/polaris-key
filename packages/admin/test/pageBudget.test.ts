@@ -27,7 +27,7 @@ const OVER_BUDGET: Record<string, number> = {
   "sections/config/pages/EdgeMintPage.tsx": 752,
   "sections/core/pages/Keys.tsx": 870,
   "sections/core/pages/KeysCi.tsx": 714,
-  "sections/core/pages/Overview.tsx": 1021,
+  "sections/core/pages/Overview.tsx": 960,
   "sections/core/pages/Presentation.tsx": 814,
   "sections/core/pages/Settings.tsx": 671,
   "sections/core/pages/UserRecord.tsx": 686,
