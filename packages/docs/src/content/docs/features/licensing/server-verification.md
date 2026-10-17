@@ -40,7 +40,7 @@ if (!result.ok || !result.isEntitled("export.pdf")) {
 }
 ```
 
-```python title="Python: server.py"
+```python title="Python: server.py" no-compile
 from polaris_key.server.fastapi import PolarisKey
 
 polaris = PolarisKey(config=polaris_config)
@@ -51,7 +51,7 @@ def export(auth=Depends(polaris.require_entitlement("export.pdf"))):
     return {"tier": auth.license.tier}
 ```
 
-```kotlin title="Kotlin: Application.kt"
+```kotlin title="Kotlin: Application.kt" no-compile
 install(Authentication) {
     polarisKey { products = listOf(PolarisProduct("acme", PolarisConfig.pinnedKeys)) }
 }
