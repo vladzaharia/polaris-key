@@ -347,7 +347,7 @@ describe("publishing is automatic and in lockstep (owner decision 2026-10-04)", 
     // Tiers 4 and 5 (node, react, cli) pin ui-core and so skip with tier 3; the drift check
     // skips exactly those and the ui-core deliverables.
     expect(String(check?.env?.SKIP)).toBe(
-      "${{ !startsWith(github.ref, 'refs/tags/') && 'npm.ui-core,npm.node,npm.react,npm.cli,maven.ui-core,maven.server,maven.server-ktor' || '' }}",
+      "${{ !startsWith(github.ref, 'refs/tags/') && 'npm.ui-core,npm.server,npm.node,npm.react,npm.cli,maven.ui-core,maven.server,maven.server-ktor' || '' }}",
     );
   });
 
@@ -658,7 +658,7 @@ describe("the npm packages publish in dependency order (P0-52, feed coherence)",
     for (const c of npmCalls) {
       // GitHub ANDs success() into a job with no status function: a failed, cancelled or stuck
       // tier below skips this one. An `if:` (always(), !cancelled()) would undo that.
-      // The one exception: ui-core is published on v* tag builds only, until a tag deploy has
+      // The one exception: ui-core and server are published on v* tag builds only, until a tag deploy has
       // registered its deliverables (the live product answers unknown_deliverable before that).
       // Its dependents skip with it, which is the point of the tier chain.
       expect(c.job.if, c.id).toBe(
