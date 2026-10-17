@@ -5,11 +5,11 @@
   "surface": "code",
   "packages": ["DOC-02a", "DOC-11a"],
   "uxRows": [],
-  "summary": "Member-facing device-limit walkthrough with role requirement, impact and public customer Help article.",
+  "summary": "Member-facing walkthrough of export, delete and relink, with the access requirement, impact and public customer Help articles.",
   "compare": [
-    "Role and impact appear before the task.",
-    "Console labels are bold and Open Licenses is an outline deep link.",
-    "The public Help article names the customer path."
+    "The access requirement and impact appear before the task.",
+    "Console labels are bold and exact: Export JSON, Delete data for this product…, Relink…, Relink license.",
+    "The customer's Help articles are linked."
   ],
   "status": "mockup",
   "designReview": {
