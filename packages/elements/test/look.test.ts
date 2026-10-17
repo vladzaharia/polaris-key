@@ -121,11 +121,16 @@ describe("Settings rows", () => {
     expect(titles).toContain("Audio volume");
     for (const t of titles) expect(t).not.toMatch(/^[a-z]+\.[a-z]/);
     // Booleans read On or Off; the source sits under the name.
-    const values = [...root.querySelectorAll(".row-value")].map((n) =>
-      n.textContent?.trim(),
-    );
+    const values = [
+      ...root.querySelectorAll(
+        '[data-key="settings.on"],[data-key="settings.off"]',
+      ),
+    ].map((n) => n.textContent?.trim());
     expect(values).toContain("On");
     expect(values).toContain("Off");
+    // A boolean is a switch, a number a number field: the controls the pane edits with.
+    expect(root.querySelector('[role="switch"]')).not.toBeNull();
+    expect(root.querySelector('input[type="number"]')).not.toBeNull();
   });
 
   it("reads a key as words when the catalog gives no label", () => {

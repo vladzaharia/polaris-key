@@ -997,6 +997,147 @@ dialog.sheet .passport {
   transition: none;
 }
 
+/* ── Controls of the panes: switch, segmented choice, steps, notes ───────────────────────── */
+.switch-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pk-space-2);
+}
+.switch {
+  position: relative;
+  inline-size: 2.75rem;
+  block-size: 1.5rem;
+  min-block-size: 1.5rem;
+  padding: 0;
+  border: 0;
+  border-radius: var(--pk-radius-full);
+  background: var(--pk-border-strong, var(--pk-text-muted));
+  cursor: pointer;
+  /* A 24 px target in a row that is itself 56 px tall. */
+}
+.switch[aria-checked="true"] {
+  background: var(--pk-primary);
+}
+.switch[aria-disabled="true"] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.switch-thumb {
+  position: absolute;
+  inset-block-start: 0.125rem;
+  inset-inline-start: 0.125rem;
+  inline-size: 1.25rem;
+  block-size: 1.25rem;
+  border-radius: var(--pk-radius-full);
+  background: var(--pk-primary-on, var(--pk-surface-page));
+  transition: translate var(--pk-duration-base) var(--pk-ease-standard);
+}
+.switch[aria-checked="true"] .switch-thumb {
+  translate: 1.25rem 0;
+}
+:dir(rtl) .switch[aria-checked="true"] .switch-thumb {
+  translate: -1.25rem 0;
+}
+.pk-root[data-motion="reduced"] .switch-thumb {
+  transition: none;
+}
+.segmented {
+  display: inline-flex;
+  padding: var(--pk-space-0_5);
+  border-radius: var(--pk-kit-radius-control);
+  background: var(--pk-surface-sunken);
+  box-shadow: inset 0 0 0 1px var(--pk-border-subtle);
+}
+.segmented button {
+  min-block-size: 2rem;
+  padding-inline: var(--pk-space-3);
+  border: 0;
+  border-radius: var(--pk-kit-radius-control);
+  background: none;
+  color: var(--pk-text-default);
+  font: inherit;
+  cursor: pointer;
+}
+.segmented button[aria-checked="true"] {
+  background: var(--pk-surface-page);
+  color: var(--pk-text-strong);
+  box-shadow: 0 0 0 1px var(--pk-border-subtle);
+}
+.segmented button[aria-disabled="true"] {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.steps {
+  display: grid;
+  gap: var(--pk-space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: pk-step;
+  text-align: start;
+}
+.step-item {
+  display: grid;
+  gap: var(--pk-space-2);
+  counter-increment: pk-step;
+  padding-inline-start: var(--pk-space-8, 2rem);
+  position: relative;
+}
+.step-item::before {
+  content: counter(pk-step);
+  position: absolute;
+  inset-inline-start: 0;
+  inset-block-start: 0;
+  display: grid;
+  place-items: center;
+  inline-size: 1.5rem;
+  block-size: 1.5rem;
+  border-radius: var(--pk-radius-full);
+  background: var(--pk-surface-sunken);
+  color: var(--pk-text-strong);
+  font-size: var(--pk-kit-type-meta-size);
+  font-weight: 600;
+}
+.step-item .body {
+  margin: 0;
+}
+.notes {
+  margin: 0;
+  padding-inline-start: var(--pk-space-5, 1.25rem);
+  text-align: start;
+  color: var(--pk-text-default);
+}
+.row .field {
+  min-inline-size: 0;
+}
+.row-value .field input {
+  inline-size: 7rem;
+}
+.row-value .field input[type="text"] {
+  inline-size: 12rem;
+}
+.btn[data-key="common.signOut"] {
+  color: var(--pk-danger);
+}
+.sheet-close {
+  position: absolute;
+  inset-block-start: var(--pk-space-3);
+  inset-inline-end: var(--pk-space-3);
+  display: grid;
+  place-items: center;
+  inline-size: var(--pk-kit-control-height);
+  block-size: var(--pk-kit-control-height);
+  border: 0;
+  border-radius: var(--pk-radius-full);
+  background: var(--pk-surface-sunken);
+  color: var(--pk-text-strong);
+  cursor: pointer;
+}
+.sheet-close .glyph {
+  inline-size: 1.25rem;
+  block-size: 1.25rem;
+}
+
 /* ── Motion: the step morph (View Transitions, §4.8) ─────────────────────────────────────── */
 @keyframes pk-sweep {
   from {

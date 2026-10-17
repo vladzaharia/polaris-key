@@ -4,7 +4,11 @@
 
 import { html, nothing, type TemplateResult } from "lit";
 import { ifDefined } from "lit/directives/if-defined.js";
-import { countdown, type View } from "@polaris-key/ui-core";
+import {
+  countdown,
+  type LicenseChoiceRow,
+  type View,
+} from "@polaris-key/ui-core";
 
 import { LAYOUTS, type Layout } from "./layout.js";
 import { platformLabel } from "./platforms.js";
@@ -19,6 +23,9 @@ import {
   qrCode,
   keyField,
   links,
+  missingArgs,
+  warnMissing,
+  usable,
   paragraphs,
   placeKeys,
   plain,
@@ -49,7 +56,7 @@ function contentFor(c: RenderCtx): TemplateResult | typeof nothing {
         "part.keyField.malformed",
         "part.keyField.empty",
         "part.keyField.forProduct",
-      ].filter((k) => keys.has(k));
+      ].filter((k) => keys.has(k) && usable(c, k));
       const invalid = verdict.some(
         (k) =>
           k !== "part.keyField.verdict" && k !== "part.keyField.forProduct",
@@ -114,24 +121,13 @@ function contentFor(c: RenderCtx): TemplateResult | typeof nothing {
     case "Settings":
       return settingsRows(c);
     case "OfflineActivation":
-      return keys.has("offlineActivation.paste")
-        ? html`<div class="field" data-part="response">
-            <label class="label" for="pk-response"
-              >${text(c, "offlineActivation.paste")}</label
-            >
-            <textarea
-              id="pk-response"
-              rows="3"
-              spellcheck="false"
-              data-mono
-            ></textarea>
-            ${keys.has("offlineActivation.dropHint")
-              ? html`<span class="meta" data-key="offlineActivation.dropHint"
-                  >${text(c, "offlineActivation.dropHint")}</span
-                >`
-              : nothing}
-          </div>`
-        : nothing;
+      return offlineSteps(c);
+    case "UpdatePrompt":
+      return updateNotes(c);
+    case "ChannelPicker":
+      return channelRows(c);
+    case "Paywall":
+      return offerRows(c);
     case "AccountAndLicense":
       return accountRows(c);
     default:
@@ -160,6 +156,12 @@ function progressFor(c: RenderCtx): TemplateResult | typeof nothing {
     return progressBar(c, p?.fraction ?? 0);
   if (view.copy.includes("a11y.progress"))
     return progressBar(c, p?.fraction ?? 0);
+  // A counted download draws its bar wherever its line shows (a toast, the inline progress).
+  if (
+    p?.fraction !== undefined &&
+    (view.component === "Toast" || view.component === "UpdateProgress")
+  )
+    return progressBar(c, p.fraction);
   return nothing;
 }
 
@@ -198,7 +200,26 @@ function isLoading(view: View): boolean {
 /** A blocking step: the card on the product ambient (DL1, DL2, DL5). */
 function screen(c: RenderCtx, layout: Layout): TemplateResult {
   const { view } = c;
-  const p = placeKeys(view, layout);
+  const placed = placeKeys(view, layout);
+  // Keys a component draws inside its own steps are not repeated as text or controls.
+  const own: readonly string[] =
+    view.component === "OfflineActivation" && view.state !== "done"
+      ? [
+          "offlineActivation.request",
+          "offlineActivation.loadHint",
+          "offlineActivation.copyCode",
+          "offlineActivation.loadFile",
+          "offlineActivation.codeCopied",
+          "offlineActivation.paste",
+          "offlineActivation.dropHint",
+        ]
+      : [];
+  const p = {
+    ...placed,
+    body: placed.body.filter((k) => !own.includes(k)),
+    meta: placed.meta.filter((k) => !own.includes(k)),
+    controls: placed.controls.filter((k) => !own.includes(k)),
+  };
   const errorKeys = p.body.filter(isErrorKey);
   const body = p.body.filter((k) => !isErrorKey(k));
   const heroTitle = layout.header === "hero";
@@ -271,7 +292,13 @@ function screen(c: RenderCtx, layout: Layout): TemplateResult {
           : nothing}
       </div>
       ${contentFor(c)} ${progressFor(c)} ${callout(c, errorKeys)}
-      ${actions(c, p.controls)} ${links(c, p.links)} ${a11yOnly(c)}
+      ${actions(
+        c,
+        p.controls,
+        view.component === "UpdatePrompt",
+        view.component === "UpdatePrompt",
+      )}
+      ${links(c, p.links)} ${a11yOnly(c)}
       ${p.footnote.length ? paragraphs(c, p.footnote, "footnote") : nothing}
     </div>
   </section>`;
@@ -292,7 +319,7 @@ function pane(c: RenderCtx, layout: Layout): TemplateResult {
     ${loading ? shimmer() : nothing}
     ${productHeader(c, layout.header === "none" ? "none" : "compact")}
     <div class="texts" data-part="texts">
-      ${titles(c, p.titles, "section")} ${paragraphs(c, body)}
+      ${titles(c, p.titles, "section", [], 2)} ${paragraphs(c, body)}
       ${p.meta.length
         ? html`<p class="status-line" data-part="status" role="status">
             ${p.meta.map(
@@ -422,11 +449,203 @@ function inline(c: RenderCtx, layout: Layout): TemplateResult {
   </div>`;
 }
 
+/** The keys a component's base layout always shows, whatever the state adds on top (the review's
+ *  "additive" rule). ui-core's per-state views carry only a state's own keys, and the corpus pins
+ *  them, so the elements add the base here, for drawing only. */
+function withBase(c: RenderCtx): View {
+  const { view, input } = c;
+  const add = (...keys: string[]): View => {
+    const copy = [...view.copy];
+    for (const k of keys) if (c.copy.has(k) && !copy.includes(k)) copy.push(k);
+    return { ...view, copy };
+  };
+  switch (view.component) {
+    case "LicenseChoice": {
+      const ch = input.choices;
+      if (!ch || !CHOICE_STATES.has(view.state)) return view;
+      const web = input.platform?.os === "web";
+      const rowKeys: string[] = [];
+      for (const r of ch.choices) {
+        const o = ORIGIN_KEY[r.origin];
+        if (o) rowKeys.push(o);
+        rowKeys.push(
+          r.expiresAt === null ? "signin.term.lifetime" : "signin.term.until",
+        );
+      }
+      const keyInstead =
+        input.capabilities?.keyEntry !== false &&
+        ch.getLicense?.keyEntry !== false;
+      const lede =
+        view.state === "all-full" || view.state === "raced"
+          ? []
+          : [
+              view.state === "new"
+                ? "signin.choice.ledeNew"
+                : web
+                  ? "signin.choice.ledeBrowser"
+                  : "signin.choice.lede",
+            ];
+      // Each full license draws its own Replace a device, carrying the license.
+      const rowReplace =
+        view.state === "all-full" &&
+        ch.choices.some((r) => r.state !== "free" && r.replace?.allowed);
+      const base = add(
+        "signin.choice.title",
+        ...lede,
+        "signin.choice.group",
+        "signin.choice.meta",
+        "signin.choice.devices",
+        "signin.choice.tag.current",
+        "signin.choice.tag.full",
+        ...rowKeys,
+        "common.cancel",
+        ...(keyInstead ? ["signin.choice.keyInstead"] : []),
+      );
+      if (rowReplace)
+        return {
+          ...base,
+          copy: base.copy.filter((k) => k !== "signin.replace.open"),
+          decisions: {
+            ...base.decisions,
+            primary:
+              base.decisions.primary === "signin.replace.open"
+                ? null
+                : base.decisions.primary,
+          },
+        };
+      // Keep and Create are rows of the list, not buttons, wherever the list can be chosen from.
+      return view.state === "all-full"
+        ? base
+        : {
+            ...base,
+            copy: base.copy.filter(
+              (k) => k !== "signin.choice.keep" && k !== "signin.choice.create",
+            ),
+          };
+    }
+    case "SignIn":
+      // The form ends on a heading and one Start, or hands the completion to the host.
+      return view.state === "done"
+        ? add("signin.return.signedInShort", "signin.done.start")
+        : view;
+    case "Devices": {
+      if (
+        !input.devices?.length ||
+        !["renaming", "confirming"].includes(view.state)
+      )
+        return {
+          ...view,
+          copy: view.copy.filter((k) => k !== "devices.lede"),
+        };
+      return add(
+        "devices.title",
+        "devices.meta",
+        "a11y.formFactor",
+        "devices.rename",
+        "devices.remove",
+        "a11y.renameDevice",
+        "a11y.removeDevice",
+      );
+    }
+    case "Settings":
+      return ["dirty", "locked", "saving"].includes(view.state)
+        ? add("settings.title")
+        : view;
+    case "Paywall": {
+      if (view.state === "not-available" && input.offers?.url)
+        return {
+          ...add("paywall.title", "paywall.portal"),
+          decisions: { ...view.decisions, primary: "paywall.portal" },
+        };
+      return view.state === "not-available" ? add("paywall.title") : view;
+    }
+    case "UpdatePrompt": {
+      const notes = input.releaseNotes ?? [];
+      return view.state === "available" || view.state === "ready"
+        ? notes.length === 0
+          ? { ...view, copy: view.copy.filter((k) => k !== "update.whatsNew") }
+          : view
+        : view;
+    }
+    case "OfflineActivation": {
+      if (view.state === "default")
+        return {
+          ...view,
+          copy: [
+            ...view.copy.filter((k) => k !== "offlineActivation.product"),
+            ...(input.offline?.requestCode && c.copy.has("a11y.qr")
+              ? ["a11y.qr"]
+              : []),
+          ],
+          decisions: { ...view.decisions, primary: "offlineActivation.submit" },
+        };
+      const base = add(
+        "offlineActivation.title",
+        ...(view.state === "done"
+          ? ["common.done"]
+          : [
+              "offlineActivation.request",
+              "offlineActivation.copyCode",
+              "offlineActivation.loadHint",
+              "offlineActivation.loadFile",
+              "offlineActivation.paste",
+              "offlineActivation.dropHint",
+              "offlineActivation.submit",
+              ...(input.offline?.requestCode ? ["a11y.qr"] : []),
+            ]),
+      );
+      return view.state === "done"
+        ? { ...base, decisions: { ...base.decisions, primary: "common.done" } }
+        : base;
+    }
+    default:
+      return view;
+  }
+}
+
+const CHOICE_STATES: ReadonlySet<string> = new Set([
+  "mixed",
+  "current",
+  "keep",
+  "new",
+  "create",
+  "raced",
+  "one",
+  "many",
+  "all-full",
+]);
+
+/** Drop every key whose own arguments the input leaves unfilled: a missing fact is never drawn
+ *  as `{name}`. */
+function fillable(c: RenderCtx): View {
+  const view = withBase(c);
+  if (view.component === "ReleaseNotes") return view;
+  // A content key is drawn by the component's own rows, which pass its arguments at the call.
+  const content = new Set(LAYOUTS[view.component].content ?? []);
+  const copy = view.copy.filter((k) => {
+    if (k.startsWith("a11y.") || content.has(k)) return true;
+    const lost = missingArgs({ ...c, view }, k);
+    if (lost.length) warnMissing(k, lost);
+    return lost.length === 0;
+  });
+  if (copy.length === view.copy.length) return view;
+  const primary = view.decisions.primary;
+  return {
+    ...view,
+    copy,
+    decisions: {
+      ...view.decisions,
+      primary: primary !== null && !copy.includes(primary) ? null : primary,
+    },
+  };
+}
+
 /** Draw one view in its component's form; `hidden` draws nothing. */
-export function renderView(c: RenderCtx): TemplateResult | typeof nothing {
-  if (c.view.state === "hidden") return nothing;
+export function renderView(ctx: RenderCtx): TemplateResult | typeof nothing {
+  if (ctx.view.state === "hidden") return nothing;
   // DL7: a loading state inside its delay shows nothing at all (its view carries no copy yet).
-  if (isLoading(c.view) && c.view.copy.length === 0) return nothing;
+  if (isLoading(ctx.view) && ctx.view.copy.length === 0) return nothing;
+  const c: RenderCtx = { ...ctx, view: fillable(ctx) };
   const layout = LAYOUTS[c.view.component];
   switch (layout.kind) {
     case "screen":
@@ -441,6 +660,104 @@ export function renderView(c: RenderCtx): TemplateResult | typeof nothing {
       return inline(c, layout);
   }
 }
+
+// ── Controls the panes share ─────────────────────────────────────────────────────────────────
+
+type Drafts = { drafts?: Record<string, unknown> };
+const draftsOf = (c: RenderCtx): Record<string, unknown> =>
+  (c.input as Drafts).drafts ?? {};
+
+let uid = 0;
+/** A switch: a button with role=switch, named by its label, flipping on Space or Enter. */
+function switchControl(
+  c: RenderCtx,
+  label: TemplateResult | string,
+  on: boolean,
+  change: (next: boolean) => void,
+  options: { disabled?: boolean; name?: string } = {},
+): TemplateResult {
+  const id = `pk-sw-${++uid}`;
+  return html`<span class="switch-wrap">
+    <span id=${id} class="visually-hidden">${label}</span>
+    <button
+      type="button"
+      class="switch"
+      role="switch"
+      part="switch"
+      data-part="switch"
+      aria-checked=${on ? "true" : "false"}
+      aria-labelledby=${id}
+      aria-disabled=${ifDefined(options.disabled ? "true" : undefined)}
+      @click=${() => {
+        if (!options.disabled) change(!on);
+      }}
+    >
+      <span class="switch-thumb"></span>
+    </button>
+  </span>`;
+}
+
+/** A segmented choice: a radiogroup of buttons, arrows move the choice. */
+function segmented(
+  c: RenderCtx,
+  name: string,
+  options: { id: string; label: string }[],
+  current: string | undefined,
+  pick: (id: string) => void,
+  disabled = false,
+): TemplateResult {
+  const at = Math.max(
+    0,
+    options.findIndex((o) => o.id === current),
+  );
+  return html`<div
+    class="segmented"
+    role="radiogroup"
+    part="segmented"
+    data-part="segmented"
+    aria-label=${name}
+  >
+    ${options.map(
+      (o, i) =>
+        html`<button
+          type="button"
+          role="radio"
+          data-id=${o.id}
+          aria-checked=${i === at ? "true" : "false"}
+          aria-disabled=${ifDefined(disabled ? "true" : undefined)}
+          tabindex=${i === at ? "0" : "-1"}
+          @click=${() => {
+            if (!disabled) pick(o.id);
+          }}
+          @keydown=${(e: KeyboardEvent) => {
+            if (disabled) return;
+            const step =
+              e.key === "ArrowRight" || e.key === "ArrowDown"
+                ? 1
+                : e.key === "ArrowLeft" || e.key === "ArrowUp"
+                  ? -1
+                  : 0;
+            if (!step) return;
+            e.preventDefault();
+            const next = options[(i + step + options.length) % options.length]!;
+            pick(next.id);
+            const group = (e.currentTarget as HTMLElement).parentElement;
+            queueMicrotask(() =>
+              group
+                ?.querySelector<HTMLElement>(`[data-id="${next.id}"]`)
+                ?.focus(),
+            );
+          }}
+        >
+          ${o.label}
+        </button>`,
+    )}
+  </div>`;
+}
+
+/** "Stable" from a channel id: the kit has no channel names, the host's ids read as words. */
+const channelLabel = (id: string): string =>
+  id ? id[0]!.toLocaleUpperCase() + id.slice(1) : id;
 
 // ── Rows ─────────────────────────────────────────────────────────────────────────────────────
 
@@ -482,11 +799,11 @@ function deviceLimitContent(c: RenderCtx): TemplateResult | typeof nothing {
               role="radio"
               part="device-row"
               data-part="device-row"
+              data-id=${String(i)}
               tabindex=${i === selected ? "0" : "-1"}
               aria-checked=${i === selected ? "true" : "false"}
               @click=${() => c.pick(String(i))}
-              @keydown=${(e: KeyboardEvent) =>
-                radioKeys(e, c, i, devices.length)}
+              @keydown=${(e: KeyboardEvent) => radioKeys(e, c)}
             >
               <span
                 aria-label=${keys.has("a11y.formFactor")
@@ -537,29 +854,34 @@ function deviceLimitContent(c: RenderCtx): TemplateResult | typeof nothing {
     : nothing}`;
 }
 
-function radioKeys(
-  e: KeyboardEvent,
-  c: RenderCtx,
-  i: number,
-  n: number,
-  idOf: (index: number) => string = String,
-): void {
+/** Arrow keys move the choice among the group's radios (and the roving focus with it); Space
+ *  and Enter choose the focused one. Each radio names its id in `data-id`. */
+function radioKeys(e: KeyboardEvent, c: RenderCtx): void {
+  const row = e.currentTarget as HTMLElement;
+  const radios = [
+    ...(row.parentElement?.querySelectorAll<HTMLElement>('[role="radio"]') ??
+      []),
+  ];
+  const i = radios.indexOf(row);
+  const n = radios.length;
   const next =
     e.key === "ArrowDown" || e.key === "ArrowRight"
       ? (i + 1) % n
       : e.key === "ArrowUp" || e.key === "ArrowLeft"
         ? (i - 1 + n) % n
-        : null;
+        : e.key === "Home"
+          ? 0
+          : e.key === "End"
+            ? n - 1
+            : null;
   if (e.key === " " || e.key === "Enter") {
     e.preventDefault();
-    c.pick(idOf(i));
-  } else if (next !== null) {
+    c.pick(row.dataset.id ?? "");
+  } else if (next !== null && i >= 0) {
     e.preventDefault();
-    c.pick(idOf(next));
-    const host = (e.currentTarget as HTMLElement).parentElement;
-    queueMicrotask(() =>
-      (host?.children[next] as HTMLElement | undefined)?.focus(),
-    );
+    const target = radios[next]!;
+    c.pick(target.dataset.id ?? "");
+    queueMicrotask(() => target.focus());
   }
 }
 
@@ -578,154 +900,158 @@ const ORIGIN_KEY: Readonly<Record<string, string>> = {
   signin: "signin.choice.origin.signIn",
 };
 
+type Entry =
+  | { kind: "license"; id: string; row: LicenseChoiceRow }
+  | { kind: "keep" | "create" | "new"; id: string; tier?: string };
+
+/** The base anatomy of the license step in every state: the radiogroup of every license (and the
+ *  keep, create and first-license rows), drawn from `input.choices` whatever the state adds. */
 function licenseRows(c: RenderCtx): TemplateResult | typeof nothing {
-  const keys = new Set(c.view.copy);
-  const view = c.input.choices;
-  const rows = view?.choices ?? [];
-  const selected = c.input.selected ?? view?.preselected ?? null;
-  // A row of its own for keep, create and a first automatic license (never blurred, Must not).
-  const special = (
-    key: string,
-    meta: string | null,
-    tag: string | null,
-    id: string,
-  ) =>
-    html`<div
-      class="row"
-      role="radio"
-      data-part="license-row"
-      tabindex="0"
-      aria-checked=${selected === id || c.view.state === "new"
-        ? "true"
-        : "false"}
-      @click=${() => c.pick(id)}
-    >
-      <span></span>
-      <span>
-        <span class="row-title" data-key=${key}>${text(c, key)}</span>
-        ${tag && keys.has(tag)
-          ? html` <span class="pill" data-key=${tag}>${text(c, tag)}</span>`
-          : nothing}
-        ${meta && keys.has(meta)
-          ? html`<br /><span class="meta" data-key=${meta}
-                >${text(c, meta)}</span
-              >`
-          : nothing}
-      </span>
-      ${GLYPHS.check()}
-    </div>`;
-  if (c.view.state === "keep")
-    return html`<div class="list" role="radiogroup">
-      ${special("signin.choice.keep", "signin.choice.keepMeta", null, "keep")}
-    </div>`;
-  if (c.view.state === "create")
-    return html`<div class="list" role="radiogroup">
-      ${special(
-        "signin.choice.create",
-        "signin.choice.createMeta",
-        null,
-        "create",
-      )}
-    </div>`;
-  if (c.view.state === "new")
-    return html`<div class="list" role="radiogroup">
-      <div
+  const ch = c.input.choices;
+  if (!ch) return nothing;
+  const has = (k: string) => c.copy.has(k);
+  const entries: Entry[] = [
+    ...(ch.state === "autoIssue" && ch.create
+      ? [{ kind: "new" as const, id: "new", tier: ch.create.tierName }]
+      : []),
+    ...(ch.keep ? [{ kind: "keep" as const, id: "keep" }] : []),
+    ...ch.choices.map((row) => ({
+      kind: "license" as const,
+      id: row.id,
+      row,
+    })),
+    ...(ch.create && ch.state !== "autoIssue" && c.view.state !== "all-full"
+      ? [{ kind: "create" as const, id: "create", tier: ch.create.tierName }]
+      : []),
+  ];
+  if (entries.length === 0) return nothing;
+  const selectable = (e: Entry) =>
+    e.kind !== "license" || e.row.state === "free";
+  const first = entries.find(selectable);
+  const wanted = c.input.selected ?? ch.preselected ?? null;
+  const selected = entries.some((e) => e.id === wanted && selectable(e))
+    ? wanted
+    : (first?.id ?? null);
+  const allFull = !entries.some(selectable);
+  const fullRows = entries.filter((e) => !selectable(e));
+  const lone = allFull && fullRows.length === 1;
+  const tag = (k: string) =>
+    has(k)
+      ? html` <span class="pill" data-key=${k}>${text(c, k)}</span>`
+      : nothing;
+  const check = (on: boolean) => (on ? GLYPHS.check() : html`<span></span>`);
+  const rowFor = (e: Entry): TemplateResult => {
+    const on = e.id === selected;
+    if (e.kind !== "license") {
+      const [titleKey, metaKey, tagKey, pill] =
+        e.kind === "keep"
+          ? ["signin.choice.keep", "signin.choice.keepMeta", null, null]
+          : e.kind === "create"
+            ? ["signin.choice.create", "signin.choice.createMeta", null, e.tier]
+            : ["signin.choice.metaNew", null, "signin.choice.tag.new", e.tier];
+      return html`<div
         class="row"
         role="radio"
-        aria-checked="true"
+        part="license-row"
         data-part="license-row"
-        tabindex="0"
+        data-id=${e.id}
+        tabindex=${on ? "0" : "-1"}
+        aria-checked=${on ? "true" : "false"}
+        @click=${() => c.pick(e.id)}
+        @keydown=${(ev: KeyboardEvent) => radioKeys(ev, c)}
       >
-        <span class="pill">${String(c.view.args.tier ?? "")}</span>
+        ${pill ? html`<span class="pill">${pill}</span>` : html`<span></span>`}
         <span>
-          <span class="row-title" data-key="signin.choice.metaNew"
-            >${text(c, "signin.choice.metaNew")}</span
-          >
-          <span class="pill" data-key="signin.choice.tag.new"
-            >${text(c, "signin.choice.tag.new")}</span
-          >
+          <span class="row-title" data-key=${titleKey!}
+            >${text(c, titleKey!)}</span
+          >${tagKey ? tag(tagKey) : nothing}
+          ${metaKey && has(metaKey)
+            ? html`<br /><span class="meta" data-key=${metaKey}
+                  >${text(c, metaKey)}</span
+                >`
+            : nothing}
         </span>
-        ${GLYPHS.check()}
-      </div>
+        ${check(on)}
+      </div>`;
+    }
+    const r = e.row;
+    const full = r.state !== "free";
+    const origin = ORIGIN_KEY[r.origin];
+    const term =
+      r.expiresAt === null ? "signin.term.lifetime" : "signin.term.until";
+    const date = r.expiresAt
+      ? new Date(r.expiresAt * 1000).toLocaleDateString(c.copy.locale)
+      : "";
+    const metaArgs = {
+      // A store-origin row with no store name says nothing of its origin (never "From {store}").
+      origin:
+        origin && has(origin) && (r.origin !== "store" || r.store)
+          ? plain(c, origin, r.store ? { store: r.store } : {})
+          : "",
+      term: has(term) ? plain(c, term, { date }) : "",
+    };
+    const meta = metaArgs.origin
+      ? has("signin.choice.meta")
+        ? text(c, "signin.choice.meta", metaArgs)
+        : metaArgs.origin
+      : metaArgs.term;
+    const body = html`<span class="pill">${r.tierName}</span>
+      <span>
+        ${r.seats.limit !== null && has("signin.choice.devices")
+          ? html`<span class="row-title num"
+                >${text(c, "signin.choice.devices", {
+                  used: r.seats.used,
+                  limit: r.seats.limit,
+                })}</span
+              ><br />`
+          : nothing}
+        <span class="meta">${meta}</span>
+        ${full ? tag("signin.choice.tag.full") : nothing}
+        ${r.current ? tag("signin.choice.tag.current") : nothing}
+      </span>`;
+    if (!full)
+      return html`<div
+        class="row"
+        role="radio"
+        part="license-row"
+        data-part="license-row"
+        data-id=${r.id}
+        tabindex=${on ? "0" : "-1"}
+        aria-checked=${on ? "true" : "false"}
+        @click=${() => c.pick(r.id)}
+        @keydown=${(ev: KeyboardEvent) => radioKeys(ev, c)}
+      >
+        ${body} ${check(on)}
+      </div>`;
+    // A full license cannot be chosen; Replace a device is its action, carrying its license.
+    return html`<div
+      class="row"
+      role="group"
+      part="license-row"
+      data-part="license-row"
+      data-id=${r.id}
+      aria-label=${r.tierName}
+    >
+      ${body}
+      ${r.replace?.allowed && has("signin.replace.open")
+        ? button(c, "signin.replace.open", lone ? "primary" : "secondary", {
+            detail: { licenseId: r.id },
+          })
+        : html`<span></span>`}
     </div>`;
-  const tagged = ["signin.choice.tag.current", "signin.choice.tag.full"].filter(
-    (k) => keys.has(k),
-  );
-  if (!keys.has("signin.choice.group") && tagged.length === 0) return nothing;
-  const shownRows = keys.has("signin.choice.group")
-    ? rows
-    : rows.filter(
-        (r) =>
-          (keys.has("signin.choice.tag.current") && r.current) ||
-          (keys.has("signin.choice.tag.full") && r.state !== "free"),
-      );
+  };
   return html`<div
     class="list pk-stagger"
-    role="radiogroup"
-    aria-label=${keys.has("signin.choice.group")
+    role=${allFull ? "list" : "radiogroup"}
+    aria-label=${has("signin.choice.group")
       ? plain(c, "signin.choice.group")
       : ""}
     data-part="license-list"
     data-key=${ifDefined(
-      keys.has("signin.choice.group") ? "signin.choice.group" : undefined,
+      has("signin.choice.group") ? "signin.choice.group" : undefined,
     )}
   >
-    ${shownRows.map((r, i) => {
-      const full = r.state !== "free";
-      const on = r.id === selected || (selected === null && i === 0 && !full);
-      const origin = ORIGIN_KEY[r.origin];
-      const term =
-        r.expiresAt === null ? "signin.term.lifetime" : "signin.term.until";
-      const date = r.expiresAt
-        ? new Date(r.expiresAt * 1000).toLocaleDateString(c.copy.locale)
-        : "";
-      const metaArgs = {
-        // A store-origin row with no store name says nothing of its origin (never "From {store}").
-        origin:
-          origin && keys.has(origin) && (r.origin !== "store" || r.store)
-            ? plain(c, origin, r.store ? { store: r.store } : {})
-            : "",
-        term: keys.has(term) ? plain(c, term, { date }) : "",
-      };
-      return html`<div
-        class="row"
-        role=${full ? "group" : "radio"}
-        data-part="license-row"
-        tabindex=${full ? "-1" : on ? "0" : "-1"}
-        aria-checked=${ifDefined(full ? undefined : on ? "true" : "false")}
-        @click=${() => (full ? undefined : c.pick(r.id))}
-      >
-        <span class="pill">${r.tierName}</span>
-        <span>
-          ${keys.has("signin.choice.devices") && r.seats.limit !== null
-            ? html`<span class="row-title num"
-                  >${text(c, "signin.choice.devices", {
-                    used: r.seats.used,
-                    limit: r.seats.limit,
-                  })}</span
-                ><br />`
-            : nothing}
-          ${keys.has("signin.choice.meta")
-            ? html`<span class="meta"
-                >${metaArgs.origin
-                  ? text(c, "signin.choice.meta", metaArgs)
-                  : metaArgs.term}</span
-              >`
-            : nothing}
-          ${full && keys.has("signin.choice.tag.full")
-            ? html` <span class="pill" data-key="signin.choice.tag.full"
-                >${text(c, "signin.choice.tag.full")}</span
-              >`
-            : nothing}
-          ${r.current && keys.has("signin.choice.tag.current")
-            ? html` <span class="pill" data-key="signin.choice.tag.current"
-                >${text(c, "signin.choice.tag.current")}</span
-              >`
-            : nothing}
-        </span>
-        ${on ? GLYPHS.check() : html`<span></span>`}
-      </div>`;
-    })}
+    ${entries.map(rowFor)}
   </div>`;
 }
 
@@ -773,11 +1099,11 @@ function replaceRows(c: RenderCtx): TemplateResult | typeof nothing {
             role="radio"
             part="device-row"
             data-part="device-row"
+            data-id=${d.id}
             tabindex=${d === pick ? "0" : "-1"}
             aria-checked=${d === pick ? "true" : "false"}
             @click=${() => c.pick(d.id)}
-            @keydown=${(e: KeyboardEvent) =>
-              radioKeys(e, c, i, devices.length, (n) => devices[n]!.id)}
+            @keydown=${(e: KeyboardEvent) => radioKeys(e, c)}
           >
             <span
               role="img"
@@ -832,88 +1158,123 @@ function replaceRows(c: RenderCtx): TemplateResult | typeof nothing {
 
 function deviceRows(c: RenderCtx): TemplateResult | typeof nothing {
   const keys = new Set(c.view.copy);
-  if (keys.has("devices.renameLabel")) {
-    const device = String(c.view.args.device ?? "");
-    return html`<div class="field" data-part="rename">
-      <label class="label" for="pk-rename"
-        >${text(c, "devices.renameLabel")}</label
-      >
-      <div class="field-row">
-        <input
-          id="pk-rename"
-          .value=${device}
-          data-key="devices.renameLabel"
-          autocomplete="off"
-        />
-        ${keys.has("common.save")
-          ? button(
-              c,
-              "common.save",
-              c.view.decisions.primary === "common.save"
-                ? "primary"
-                : "secondary",
-            )
-          : nothing}
-        ${keys.has("common.cancel")
-          ? button(c, "common.cancel", "secondary")
-          : nothing}
-      </div>
-    </div>`;
-  }
-  if (keys.has("devices.removeConfirm"))
-    return html`<div class="callout" data-part="confirm">
-      <span>${text(c, "devices.removeConfirm")}</span>
-      <div class="actions" data-layout="row">
-        ${button(c, "devices.remove", "danger")}
-        ${button(c, "common.cancel", "secondary")}
-      </div>
-    </div>`;
-  if (!keys.has("devices.meta")) return nothing;
   const list = c.input.devices ?? [];
-  return html`<ul class="list" data-part="device-list">
-    ${list.map(
-      (d) =>
-        html`<li class="row" part="device-row" data-part="device-row">
-          <span
-            role="img"
-            aria-label=${plain(c, "a11y.formFactor", {
-              formFactor: d.formFactor ?? "other",
-            })}
-            >${GLYPHS.device(d.formFactor)}</span
+  if (!keys.has("devices.meta") || list.length === 0) return nothing;
+  const drafts = draftsOf(c);
+  const edit = c.input.edit;
+  const editing = edit
+    ? (list.find((d) => d.id !== undefined && d.id === drafts.deviceId) ??
+      list.find((d) => d.name === edit.device))
+    : undefined;
+  const row = (d: (typeof list)[number]) => {
+    const id = d.id;
+    const label = d.name ?? plain(c, "devices.unnamed");
+    const glyph = html`<span
+      role="img"
+      aria-label=${plain(c, "a11y.formFactor", {
+        formFactor: d.formFactor ?? "other",
+      })}
+      >${GLYPHS.device(d.formFactor)}</span
+    >`;
+    if (d === editing && edit?.kind === "rename")
+      return html`<li
+        class="row"
+        part="device-row"
+        data-part="device-row"
+        data-editing="rename"
+      >
+        ${glyph}
+        <div class="field" data-part="rename">
+          <label class="label" for="pk-rename"
+            >${text(c, "devices.renameLabel")}</label
           >
-          <span>
-            <span class="row-title"
-              >${d.name
-                ? html`<bdi>${d.name}</bdi>`
-                : text(c, "devices.unnamed")}</span
-            ><br />
-            <span class="meta">
-              ${d.current && keys.has("part.thisDeviceTitle")
-                ? html`${text(c, "part.thisDeviceTitle", {
-                    formFactor: d.formFactor ?? "other",
-                  })}
-                  · `
-                : nothing}
-              ${text(c, "devices.meta", {
-                platform: platformLabel(d.platform, c.copy),
-                when: days(d.lastSeenDays),
+          <input
+            id="pk-rename"
+            data-key="devices.renameLabel"
+            autocomplete="off"
+            .value=${String(drafts.deviceName ?? d.name ?? "")}
+            @input=${(e: Event) =>
+              c.edit("deviceName", (e.target as HTMLInputElement).value, {
+                deviceId: id,
               })}
-            </span>
-          </span>
-          <span class="row-actions">
-            ${button(c, "devices.rename", "link", {
-              label: plain(c, "a11y.renameDevice", { device: d.name ?? "" }),
+            @keydown=${(e: KeyboardEvent) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                c.act("common.save", { deviceId: id });
+              } else if (e.key === "Escape") {
+                e.stopPropagation();
+                c.act("common.cancel");
+              }
+            }}
+          />
+        </div>
+        <span class="row-actions">
+          ${button(c, "common.save", "primary", { detail: { deviceId: id } })}
+          ${button(c, "common.cancel", "secondary")}
+        </span>
+      </li>`;
+    if (d === editing && edit?.kind === "remove")
+      return html`<li
+        class="row"
+        part="device-row"
+        data-part="device-row"
+        data-editing="remove"
+      >
+        ${glyph}
+        <div class="callout" data-part="confirm" role="group">
+          <span data-key="devices.removeConfirm"
+            >${text(c, "devices.removeConfirm", { device: label })}</span
+          >
+          <div class="actions" data-layout="row">
+            ${button(c, "devices.remove", "danger", {
+              detail: { deviceId: id },
             })}
-            ${d.current
-              ? nothing
-              : button(c, "devices.remove", "link", {
-                  label: plain(c, "a11y.removeDevice", {
-                    device: d.name ?? "",
-                  }),
-                })}
-          </span>
-        </li>`,
-    )}
+            ${button(c, "common.cancel", "secondary")}
+          </div>
+        </div>
+      </li>`;
+    return html`<li
+      class="row"
+      part="device-row"
+      data-part="device-row"
+      data-id=${ifDefined(id)}
+    >
+      ${glyph}
+      <span>
+        <span class="row-title"
+          >${d.name
+            ? html`<bdi>${d.name}</bdi>`
+            : text(c, "devices.unnamed")}</span
+        ><br />
+        <span class="meta">
+          ${d.current && keys.has("part.thisDeviceTitle")
+            ? html`${text(c, "part.thisDeviceTitle", {
+                formFactor: d.formFactor ?? "other",
+              })}
+              · `
+            : nothing}
+          ${text(c, "devices.meta", {
+            platform: platformLabel(d.platform, c.copy),
+            when: days(d.lastSeenDays),
+          })}
+        </span>
+      </span>
+      <span class="row-actions">
+        ${button(c, "devices.rename", "link", {
+          label: plain(c, "a11y.renameDevice", { device: label }),
+          detail: { deviceId: id },
+        })}
+        ${d.current
+          ? nothing
+          : button(c, "devices.remove", "link", {
+              label: plain(c, "a11y.removeDevice", { device: label }),
+              detail: { deviceId: id },
+            })}
+      </span>
+    </li>`;
+  };
+  return html`<ul class="list" data-part="device-list">
+    ${list.map(row)}
   </ul>`;
 }
 
@@ -960,19 +1321,19 @@ export function settingLabel(row: SettingsRow): string {
 }
 
 function settingsRows(c: RenderCtx): TemplateResult | typeof nothing {
-  const keys = new Set(c.view.copy);
+  const has = (k: string) => c.copy.has(k);
   const rows = (c.input.config ?? []) as SettingsRow[];
-  const used = new Set<string>();
-  const use = (k: string) => (keys.has(k) ? (used.add(k), true) : false);
-  // Each row: its name, where its value comes from (or who set it), and the value at the end.
-  const drawn = rows.map((r) => {
-    const meta: TemplateResult[] = [];
+  const advanced = draftsOf(c).advanced === true;
+  const visible = rows.filter((r) => !r.advanced || advanced);
+  const drawn = visible.map((r) => {
+    const label = settingLabel(r);
     const from = r.locked
       ? r.org
         ? "settings.setBy"
         : "settings.setByGuardian"
       : `settings.source.${r.source}`;
-    if (use(from))
+    const meta: TemplateResult[] = [];
+    if (has(from))
       meta.push(
         html`<span data-key=${from}
           >${text(c, from, { org: r.org ?? "" })}</span
@@ -982,23 +1343,57 @@ function settingsRows(c: RenderCtx): TemplateResult | typeof nothing {
       r.type === "number" &&
       typeof r.min === "number" &&
       typeof r.max === "number" &&
-      use("settings.range")
+      has("settings.range")
     )
       meta.push(
         html`<span data-key="settings.range"
           >${text(c, "settings.range", { min: r.min, max: r.max })}</span
         >`,
       );
-    let value: unknown = nothing;
-    if (typeof r.value === "boolean") {
-      const k = r.value ? "settings.on" : "settings.off";
-      use(k);
-      value = html`<span data-key=${k}>${text(c, k)}</span>`;
-    } else if (r.value !== undefined && r.value !== null)
-      value = html`<bdi>${String(r.value)}</bdi>`;
+    const change = (value: string | number | boolean) =>
+      c.edit("setting", value, { key: r.key });
+    let control: TemplateResult | typeof nothing;
+    if (typeof r.value === "boolean" || r.type === "boolean") {
+      const on = r.value === true;
+      const word = on ? "settings.on" : "settings.off";
+      control = html`${has(word)
+        ? html`<span class="meta" data-key=${word}>${text(c, word)}</span>`
+        : nothing}${switchControl(c, label, on, change, {
+        disabled: r.locked,
+      })}`;
+    } else if (r.type === "number" || typeof r.value === "number") {
+      control = html`<span class="field"
+        ><input
+          type="number"
+          inputmode="decimal"
+          aria-label=${label}
+          min=${ifDefined(r.min)}
+          max=${ifDefined(r.max)}
+          ?disabled=${r.locked}
+          .value=${r.value === undefined || r.value === null
+            ? ""
+            : String(r.value)}
+          @input=${(e: Event) => {
+            const v = (e.target as HTMLInputElement).value;
+            if (v !== "") change(Number(v));
+          }}
+      /></span>`;
+    } else {
+      control = html`<span class="field"
+        ><input
+          type="text"
+          aria-label=${label}
+          autocomplete="off"
+          ?disabled=${r.locked}
+          .value=${r.value === undefined || r.value === null
+            ? ""
+            : String(r.value)}
+          @input=${(e: Event) => change((e.target as HTMLInputElement).value)}
+      /></span>`;
+    }
     return html`<li class="row" part="settings-row" data-part="settings-row">
       <span class="row-text">
-        <span class="row-title"><bdi>${settingLabel(r)}</bdi></span>
+        <span class="row-title"><bdi>${label}</bdi></span>
         ${meta.length
           ? html`<span class="meta"
               >${meta.map((m, i) => html`${i ? " · " : ""}${m}`)}</span
@@ -1006,24 +1401,23 @@ function settingsRows(c: RenderCtx): TemplateResult | typeof nothing {
           : nothing}
       </span>
       <span class="row-value"
-        >${r.locked && keys.has("a11y.locked")
+        >${r.locked && has("a11y.locked")
           ? html`<span
               role="img"
               data-key="a11y.locked"
               aria-label=${plain(c, "a11y.locked")}
               >${GLYPHS.lock()}</span
             >`
-          : nothing}${value}</span
+          : nothing}${control}</span
       >
     </li>`;
   });
-  // The provenance group's heading (B10: "From <Developer>" for what the person can change).
-  const group = use("settings.fromDeveloper")
+  const group = has("settings.fromDeveloper")
     ? html`<h2 class="label group-label" data-key="settings.fromDeveloper">
         ${text(c, "settings.fromDeveloper")}
       </h2>`
     : nothing;
-  const search = use("settings.search")
+  const search = c.view.copy.includes("settings.search")
     ? html`<div class="field" data-part="search">
         <input
           type="search"
@@ -1036,10 +1430,24 @@ function settingsRows(c: RenderCtx): TemplateResult | typeof nothing {
         />
       </div>`
     : nothing;
-  // A key of the state no row carried (an "On" with no boolean row) still shows, once.
-  const rest = [...keys].filter(
+  // The view's own source and state words that no row carried still show, once.
+  const shownKeys = new Set<string>();
+  for (const r of visible) {
+    shownKeys.add(
+      r.locked
+        ? r.org
+          ? "settings.setBy"
+          : "settings.setByGuardian"
+        : `settings.source.${r.source}`,
+    );
+    if (typeof r.value === "boolean") {
+      shownKeys.add(r.value ? "settings.on" : "settings.off");
+    }
+    if (r.type === "number") shownKeys.add("settings.range");
+  }
+  const rest = c.view.copy.filter(
     (k) =>
-      !used.has(k) &&
+      !shownKeys.has(k) &&
       (k.startsWith("settings.source.") ||
         k === "settings.on" ||
         k === "settings.off" ||
@@ -1047,7 +1455,7 @@ function settingsRows(c: RenderCtx): TemplateResult | typeof nothing {
         k === "settings.setByGuardian" ||
         k === "settings.range"),
   );
-  if (rows.length === 0 && rest.length === 0)
+  if (visible.length === 0 && rest.length === 0)
     return group === nothing && search === nothing
       ? nothing
       : html`${search}${group}`;
@@ -1068,26 +1476,263 @@ function settingsRows(c: RenderCtx): TemplateResult | typeof nothing {
     </div>`;
 }
 
+/** A label-and-value row of the account pane. */
+function accountRow(
+  key: string,
+  label: TemplateResult | typeof nothing,
+  value: TemplateResult | typeof nothing = nothing,
+): TemplateResult {
+  return html`<li class="row" part="settings-row" data-part="settings-row">
+    <span class="row-title" data-key=${key}>${label}</span>
+    <span class="row-value">${value}</span>
+  </li>`;
+}
+
 function accountRows(c: RenderCtx): TemplateResult | typeof nothing {
-  const keys = [
-    "account.tier",
-    "account.devices",
-    "account.cloudSync",
-    "account.updates",
-    "account.autoUpdate",
-    "account.channel",
-    "account.version",
-    "account.managedSettings",
-  ].filter((k) => c.view.copy.includes(k));
-  if (keys.length === 0) return nothing;
-  return html`<ul class="list" data-part="account-list">
-    ${keys.map(
-      (k) =>
-        html`<li class="row" data-part="settings-row">
-          <span></span><span class="row-title" data-key=${k}>${text(c, k)}</span
-          ><span></span>
-        </li>`,
+  const keys = new Set(c.view.copy);
+  const i = c.input;
+  const rows: TemplateResult[] = [];
+  const t = (k: string, x: Record<string, string | number> = {}) =>
+    text(c, k, x);
+  // A row whose label names a fact the input lacks ("{tier} license") is left out.
+  const ok = (k: string) => usable(c, k);
+  if (keys.has("account.tier") && ok("account.tier"))
+    rows.push(accountRow("account.tier", t("account.tier")));
+  if (keys.has("account.devices")) {
+    const d = i.account?.devices;
+    rows.push(
+      accountRow(
+        "account.devices",
+        t("account.devices"),
+        d && c.copy.has("part.seatMeter.caption")
+          ? html`<span class="num"
+              >${d.limit === null
+                ? String(d.used)
+                : t("part.seatMeter.caption", {
+                    used: d.used,
+                    limit: d.limit,
+                  })}</span
+            >`
+          : nothing,
+      ),
+    );
+  }
+  if (keys.has("account.cloudSync")) {
+    const state = i.cloudSync?.state;
+    const k = state ? `cloudSync.${state}` : "";
+    rows.push(
+      accountRow(
+        "account.cloudSync",
+        t("account.cloudSync"),
+        k && c.copy.has(k) ? t(k) : nothing,
+      ),
+    );
+  }
+  const pre = rows;
+  const updateRows: TemplateResult[] = [];
+  if (keys.has("account.autoUpdate"))
+    updateRows.push(
+      accountRow(
+        "account.autoUpdate",
+        t("account.autoUpdate"),
+        switchControl(
+          c,
+          t("account.autoUpdate"),
+          i.account?.autoUpdate === true,
+          (v) => c.edit("autoUpdate", v),
+        ),
+      ),
+    );
+  if (keys.has("account.channel")) {
+    const options = (i.channel?.options ?? ["stable", "beta"]).map((id) => ({
+      id,
+      label: channelLabel(id),
+    }));
+    updateRows.push(
+      accountRow(
+        "account.channel",
+        t("account.channel"),
+        segmented(
+          c,
+          plain(c, "account.channel"),
+          options,
+          i.channel?.current,
+          (id) => c.edit("channel", id),
+          i.channel?.locked === true,
+        ),
+      ),
+    );
+  }
+  if (keys.has("account.version") && ok("account.version"))
+    updateRows.push(accountRow("account.version", t("account.version")));
+  const tail: TemplateResult[] = [];
+  if (keys.has("account.managedSettings"))
+    tail.push(
+      accountRow("account.managedSettings", t("account.managedSettings")),
+    );
+  if (
+    pre.length + updateRows.length + tail.length === 0 &&
+    !keys.has("account.updates")
+  )
+    return nothing;
+  return html`${pre.length
+    ? html`<ul class="list" data-part="account-list">
+        ${pre}
+      </ul>`
+    : nothing}
+  ${keys.has("account.updates")
+    ? html`<h2 class="label group-label" data-key="account.updates">
+        ${t("account.updates")}
+      </h2>`
+    : nothing}
+  ${updateRows.length
+    ? html`<ul class="list" data-part="account-list">
+        ${updateRows}
+      </ul>`
+    : nothing}
+  ${tail.length
+    ? html`<ul class="list" data-part="account-list">
+        ${tail}
+      </ul>`
+    : nothing}`;
+}
+
+/** ChannelPicker: Stable or Beta as one segmented choice, or the lock and its reason. */
+function channelRows(c: RenderCtx): TemplateResult | typeof nothing {
+  if (c.view.state !== "default") return nothing;
+  const options = (c.input.channel?.options ?? ["stable", "beta"]).map(
+    (id) => ({
+      id,
+      label: channelLabel(id),
+    }),
+  );
+  return segmented(
+    c,
+    plain(c, "channel.title"),
+    options,
+    c.input.channel?.current,
+    (id) => c.edit("channel", id),
+  );
+}
+
+/** Paywall: what can be bought, one radio row each with its price and term. */
+function offerRows(c: RenderCtx): TemplateResult | typeof nothing {
+  const items = c.input.offers?.items ?? [];
+  if (c.view.state !== "offers" || items.length === 0) return nothing;
+  const selected = items.some((o) => o.id === c.input.selected)
+    ? c.input.selected
+    : items[0]!.id;
+  return html`<div
+    class="list"
+    role="radiogroup"
+    aria-labelledby="pk-title"
+    data-part="offer-list"
+  >
+    ${items.map(
+      (o) =>
+        html`<div
+          class="row"
+          role="radio"
+          part="offer-row"
+          data-part="offer-row"
+          data-id=${o.id}
+          tabindex=${o.id === selected ? "0" : "-1"}
+          aria-checked=${o.id === selected ? "true" : "false"}
+          @click=${() => c.pick(o.id)}
+          @keydown=${(e: KeyboardEvent) => radioKeys(e, c)}
+        >
+          <span class="pill">${o.name}</span>
+          <span>
+            <span class="row-title num">${o.price}</span>${o.term
+              ? html`<br /><span class="meta">${o.term}</span>`
+              : nothing}
+          </span>
+          ${o.id === selected ? GLYPHS.check() : html`<span></span>`}
+        </div>`,
     )}
+  </div>`;
+}
+
+/** OfflineActivation as two numbered steps: the request code, then the response. */
+function offlineSteps(c: RenderCtx): TemplateResult {
+  const has = (k: string) => c.copy.has(k);
+  const code = c.input.offline?.requestCode;
+  const loaded = c.input.offline?.response ?? "";
+  const done = c.view.state === "done";
+  if (done) return html`${nothing}`;
+  return html`<ol class="steps" data-part="steps">
+    <li class="step-item" data-part="step">
+      <p class="body" data-key="offlineActivation.request">
+        ${text(c, "offlineActivation.request")}
+      </p>
+      ${code
+        ? html`<span class="code-row"
+              ><span class="code" data-mono data-part="request-code"
+                >${code}</span
+              >
+              ${button(c, "offlineActivation.copyCode", "secondary", {
+                detail: { value: code },
+              })}</span
+            >${qrCode(c, code)}`
+        : button(c, "offlineActivation.copyCode", "secondary")}
+      ${c.view.copy.includes("offlineActivation.codeCopied")
+        ? html`<span
+            class="meta"
+            role="status"
+            data-key="offlineActivation.codeCopied"
+            >${text(c, "offlineActivation.codeCopied")}</span
+          >`
+        : nothing}
+    </li>
+    <li class="step-item" data-part="step">
+      <p class="body" data-key="offlineActivation.loadHint">
+        ${text(c, "offlineActivation.loadHint")}
+      </p>
+      <div class="field" data-part="response">
+        <label class="label" for="pk-response"
+          >${text(c, "offlineActivation.paste")}</label
+        >
+        <textarea
+          id="pk-response"
+          rows="3"
+          spellcheck="false"
+          data-mono
+          data-key="offlineActivation.paste"
+          .value=${loaded}
+          @input=${(e: Event) =>
+            c.edit("response", (e.target as HTMLTextAreaElement).value)}
+        ></textarea>
+        ${has("offlineActivation.dropHint")
+          ? html`<span class="meta" data-key="offlineActivation.dropHint"
+              >${text(c, "offlineActivation.dropHint")}</span
+            >`
+          : nothing}
+      </div>
+      ${button(
+        c,
+        "offlineActivation.loadFile",
+        c.view.decisions.primary === "offlineActivation.loadFile"
+          ? "primary"
+          : "secondary",
+      )}
+    </li>
+  </ol>`;
+}
+
+/** What's new on the update prompt: the first lines of this version's notes. */
+function updateNotes(c: RenderCtx): TemplateResult | typeof nothing {
+  if (!c.view.copy.includes("update.whatsNew")) return nothing;
+  const notes = c.input.releaseNotes ?? [];
+  const note =
+    notes.find((n) => n.version === c.input.update?.version) ?? notes[0];
+  const lines = (note?.notes ?? "")
+    .split(/\n+/)
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .slice(0, 3);
+  if (lines.length === 0) return nothing;
+  return html`<ul class="notes" data-part="notes">
+    ${lines.map((l) => html`<li>${l}</li>`)}
   </ul>`;
 }
 

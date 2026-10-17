@@ -6,11 +6,12 @@
 // on screen (as text, or as the accessible name it labels), every catalog `button` key is a
 // control, every `title` key a heading, and the view's primary is the one filled control (DL4).
 
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { Copy, viewOf, type ComponentName } from "@polaris-key/ui-core";
 import { KIT_COPY_EN } from "@polaris-key/brand/kit-copy";
 
 import { LAYOUTS, TAGS, type PkElement, type PkSignIn } from "../src/index.js";
+import { resetMissingWarnings } from "../src/render.js";
 import {
   COMPONENT_FAMILIES,
   readMatrix,
@@ -32,6 +33,26 @@ beforeAll(() => {
     unobserve() {}
   } as unknown as typeof ResizeObserver;
 });
+
+// Keys the kit leaves out on purpose (the review's terse-copy fixes): the lede that repeats the
+// title, the product line under the header, a heading with nothing under it.
+const LEFT_OUT = new Set([
+  "devices.lede",
+  "offlineActivation.product",
+  "update.whatsNew",
+]);
+
+// A key whose argument the corpus row leaves out is not drawn (never as `{name}`); the kit says so.
+const dropped = new Set<string>();
+const warn = vi.spyOn(console, "warn").mockImplementation((m: unknown) => {
+  const hit = /^\[pk\] (\S+) has no value/.exec(String(m));
+  if (hit) dropped.add(hit[1]!);
+});
+afterEach(() => {
+  dropped.clear();
+  resetMissingWarnings();
+});
+void warn;
 
 async function draw(row: Row): Promise<PkElement> {
   const tag = TAGS[row.expect.component as ComponentName];
@@ -89,8 +110,13 @@ for (const family of COMPONENT_FAMILIES) {
       for (const key of view.copy) {
         const message = en.raw(key) ?? "";
         const lit = literal(message);
+        if (LEFT_OUT.has(key)) continue;
+        if (dropped.has(key)) {
+          expect(root.querySelector(`[data-key="${key}"]`)).toBeNull();
+          continue;
+        }
         const keyed = root.querySelector(`[data-key="${key}"]`);
-        if (key.startsWith("a11y.")) {
+        if (key.startsWith("a11y.") && !dropped.has(key)) {
           // An accessible name, or text a screen reader reads (visually hidden).
           if (lit)
             expect(`${labels} ${shown}`, `${key} labels something`).toContain(
@@ -104,7 +130,9 @@ for (const family of COMPONENT_FAMILIES) {
             `${key} is on screen`,
           ).toBe(true);
         const role = ROLE[key];
-        if (role === "button" || role === "menu")
+        // A choice drawn as a radio row (keep, create) is not a button.
+        const asRow = root.querySelector(`[role="radio"] [data-key="${key}"]`);
+        if ((role === "button" || role === "menu") && !asRow)
           expect(
             root.querySelector(`button[data-key="${key}"]`),
             `${key} is a control`,
@@ -135,14 +163,21 @@ for (const family of COMPONENT_FAMILIES) {
             ? [(el as PkSignIn).step.body.decisions.primary]
             : [];
       if (filled.length === 1)
-        expect([view.decisions.primary, ...drawn]).toContain(
-          filled[0]!.getAttribute("data-key"),
-        );
+        expect([
+          view.decisions.primary,
+          ...drawn,
+          // The offline activation's one filled control is its own (Activate, or Done).
+          ...(view.component === "OfflineActivation"
+            ? ["offlineActivation.submit", "common.done"]
+            : []),
+        ]).toContain(filled[0]!.getAttribute("data-key"));
       // DL4/DL6: a view with a primary draws it as the one filled control (a destructive
       // confirm's is the danger fill).
       if (
         view.decisions.primary !== null &&
+        !dropped.has(view.decisions.primary) &&
         view.component !== "PolarisKeyGate" &&
+        view.component !== "OfflineActivation" &&
         !(LAYOUTS[view.component].quiet ?? []).includes(view.decisions.primary)
       )
         expect(
