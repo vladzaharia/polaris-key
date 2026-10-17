@@ -85,7 +85,7 @@ inside Release. Release is the GitHub source adapter: it reads the repository an
 pipeline a parsed manifest. Core runs every contributor's `checks` in a fixed order and stops at
 the first refusal, so nothing is written for a refused push. It then calls `prepare` on Core's own
 contributor first and on each mounted service in canonical order, and writes everything in **one
-batch**: the statements, ST-42's defaults, the audit rows and the manifest snapshot. A service's
+batch**: the statements, the create defaults, the audit rows and the manifest snapshot. A service's
 rows therefore land atomically with the rest, without Release importing the service. After the
 batch, service steps run (the release store sync, pack sets, mirrors) and then Core's (service
 transitions, hosted assets); they never throw. The dry runs call the same checks through
