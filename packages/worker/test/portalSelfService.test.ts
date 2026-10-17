@@ -21,7 +21,8 @@ import { handleActivate } from "../src/services/license/activation.js";
 import { loadProduct } from "../src/core/products.js";
 import { hashKey, mintLicenseKey } from "../src/platform/crypto.js";
 import { getTokenRecord } from "../src/platform/kv.js";
-import { getDevice, getKey } from "../src/core/repo.js";
+import { getDevice } from "../src/core/devices/store.js";
+import { getKey } from "../src/core/licensing/store.js";
 import {
   getOrCreateAccountByEmail,
   upsertPortalProductSettings,

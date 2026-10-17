@@ -71,12 +71,12 @@ import { randomId } from "../../../platform/crypto.js";
 import type { Db } from "../../../db/types.js";
 import type { Env } from "../../../platform/env.js";
 import type { ProductPublic } from "../../../core/products.js";
+import { type LicenseRow } from "../../../core/repo.js";
 import {
   getLicense,
   getLicenseBySub,
   getTier,
-  type LicenseRow,
-} from "../../../core/repo.js";
+} from "../../../core/licensing/store.js";
 import { appendAudit } from "../../../core/audit.js";
 import { licenseDeviceLimit } from "../../../core/licensing/authz.js";
 import { licenseUsable } from "../../../core/devices.js";

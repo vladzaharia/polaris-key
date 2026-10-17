@@ -18,7 +18,7 @@ import type { Db } from "../src/db/types.js";
 import { loadProduct } from "../src/core/products.js";
 import { handleTrustManifest } from "../src/core/trust/trust.js";
 import { REVOKED_KEY_LISTING_SECONDS } from "@polaris-key/protocol/trust";
-import { insertProductKey } from "../src/core/repo.js";
+import { insertProductKey } from "../src/core/products/store.js";
 import { seal } from "../src/platform/keyvault.js";
 import { b64urlDecodeStrict, b64urlEncode } from "../src/platform/bytes.js";
 import {

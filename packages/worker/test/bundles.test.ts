@@ -47,7 +47,7 @@ import {
   CSRF_HEADER,
   issueSession,
 } from "../src/core/console/session.js";
-import { setServices } from "../src/core/repo.js";
+import { setServices } from "../src/core/products/store.js";
 import { listAudit } from "../src/core/audit.js";
 import { transitionLicense } from "../src/core/licensing/lifecycleWrites.js";
 import { serializeServices, type ServicesMap } from "../src/core/services.js";

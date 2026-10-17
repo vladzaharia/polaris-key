@@ -8,7 +8,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { dispatchRegistryHost } from "../src/core/registry/registryHost.js";
 import { serializeServices, type ServicesMap } from "../src/core/services.js";
-import { setServices } from "../src/core/repo.js";
+import { setServices } from "../src/core/products/store.js";
 import { deleteProduct } from "../src/core/console/repo.js";
 import {
   REGISTRY_OWNERLESS_ROUTES,

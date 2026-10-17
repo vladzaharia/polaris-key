@@ -48,7 +48,9 @@ import {
   validateServices,
   type ServicesMap,
 } from "../src/core/services.js";
-import { getDevice, getLicense, setServices } from "../src/core/repo.js";
+import { getDevice } from "../src/core/devices/store.js";
+import { getLicense } from "../src/core/licensing/store.js";
+import { setServices } from "../src/core/products/store.js";
 import type { Env } from "../src/platform/env.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
 

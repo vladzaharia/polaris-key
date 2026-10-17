@@ -2,27 +2,28 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { NOW, seedProduct } from "./seed.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
+import { type LicenseRow, type DeviceRow } from "../src/core/repo.js";
 import {
   countActiveDevices,
+  getDevice,
+  listDevicesByLicense,
+  setDeviceReported,
+  setDeviceStatus,
+  upsertDevice,
+} from "../src/core/devices/store.js";
+import {
   getKey,
   getLicense,
   getLicenseBySub,
-  getDevice,
   getProfile,
   getTier,
   insertKey,
   insertLicense,
   listKeysByLicense,
-  listDevicesByLicense,
-  listProducts,
   setKeyStatus,
-  setDeviceReported,
-  setDeviceStatus,
   touchKey,
-  upsertDevice,
-  type LicenseRow,
-  type DeviceRow,
-} from "../src/core/repo.js";
+} from "../src/core/licensing/store.js";
+import { listProducts } from "../src/core/products/store.js";
 import { appendAudit, listAudit, type AuditRow } from "../src/core/audit.js";
 
 const lic = (

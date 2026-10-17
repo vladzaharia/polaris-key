@@ -50,12 +50,8 @@ import {
 } from "../src/services/license/activation.js";
 import { SERVICES } from "../src/mount.js";
 import { serializeServices, type ServicesMap } from "../src/core/services.js";
-import {
-  getDevice,
-  setServices,
-  setTrustPolicy,
-  upsertDevice,
-} from "../src/core/repo.js";
+import { getDevice, upsertDevice } from "../src/core/devices/store.js";
+import { setServices, setTrustPolicy } from "../src/core/products/store.js";
 import { hashKey } from "../src/platform/crypto.js";
 import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";

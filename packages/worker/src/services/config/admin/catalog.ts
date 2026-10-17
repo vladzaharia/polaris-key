@@ -36,7 +36,7 @@ import {
 } from "../../../core/configDelivery.js";
 import { validateCatalogCloudSync } from "@polaris-key/manifest";
 import { ErrorCode } from "../../../core/errors.js";
-import { getActiveSchema } from "../../../core/repo.js";
+import { getActiveSchema } from "../../../core/products/store.js";
 import { writeSetting } from "../../../core/settings/write.js";
 import {
   catalogRepresentabilityResponse,

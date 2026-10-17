@@ -22,7 +22,9 @@ import {
 } from "./seed.js";
 import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
-import { getDevice, insertLicense, setServices } from "../src/core/repo.js";
+import { getDevice } from "../src/core/devices/store.js";
+import { insertLicense } from "../src/core/licensing/store.js";
+import { setServices } from "../src/core/products/store.js";
 import { MERGE_UNDO_SECONDS } from "../src/services/identity/accounts/mergeUndo.js";
 import { serializeServices } from "../src/core/services.js";
 import { loadProduct } from "../src/core/products.js";

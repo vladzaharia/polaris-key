@@ -35,7 +35,7 @@
 import type { DbStatement } from "../../db/types.js";
 import type { Db } from "../../db/types.js";
 import { SERVICE_SLUGS } from "../services.js";
-import { planDeviceMove } from "../repo.js";
+import { planDeviceMove } from "./store.js";
 
 /** One merge, as each service's `licenseMerge` is asked about it. */
 export interface LicenseMergeChange {

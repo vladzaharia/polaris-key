@@ -28,7 +28,7 @@ import {
   serializeServices,
   type ServicesMap,
 } from "../../src/core/services.js";
-import { setServices } from "../../src/core/repo.js";
+import { setServices } from "../../src/core/products/store.js";
 import { stmtUpsertDeliverable } from "../../src/services/release/model.js";
 import { ingestPackageDescriptor } from "../../src/services/release/packages/ingest.js";
 import {

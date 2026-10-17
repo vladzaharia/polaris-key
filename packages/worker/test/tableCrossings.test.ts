@@ -98,24 +98,38 @@ const WRITE_SEAMS: readonly (readonly [string, string, RemovedBy])[] = [
   ["core/ops/settingsBackfill.ts", "product_schema", "P0-26"],
   ["core/ops/settingsBackfill.ts", "profiles", "P0-26"],
   ["core/ops/settingsBackfill.ts", "tiers", "P0-26"],
-  // The product registration and the licence tables' first writer.
-  ["core/repo.ts", "edge_mint_approvals", "P0-26"],
-  ["core/repo.ts", "edge_mint_config", "P0-26"],
-  ["core/repo.ts", "keys_index", "P0-20"],
-  ["core/repo.ts", "license_profiles", "P0-20"],
-  ["core/repo.ts", "licenses", "P0-20"],
-  ["core/repo.ts", "oidc_config", "P0-26"],
-  ["core/repo.ts", "product_schema", "P0-26"],
-  ["core/repo.ts", "profiles", "P0-26"],
-  ["core/repo.ts", "provisioning_config", "P0-26"],
-  ["core/repo.ts", "release_config", "P0-26"],
-  ["core/repo.ts", "tiers", "P0-20"],
+  // The licences' owner store: core/licensing/store.ts is where licence rows are written.
+  ["core/licensing/store.ts", "keys_index", "permanent"],
+  ["core/licensing/store.ts", "license_profiles", "permanent"],
+  ["core/licensing/store.ts", "licenses", "permanent"],
+  // Product registration's statement-builders write rows other owners hold.
+  ["core/products/store.ts", "edge_mint_approvals", "P0-26"],
+  ["core/products/store.ts", "edge_mint_config", "P0-26"],
+  ["core/products/store.ts", "oidc_config", "P0-26"],
+  ["core/products/store.ts", "product_schema", "P0-26"],
+  ["core/products/store.ts", "profiles", "P0-26"],
+  ["core/products/store.ts", "provisioning_config", "P0-26"],
+  ["core/products/store.ts", "release_config", "P0-26"],
+  ["core/products/store.ts", "tiers", "P0-26"],
   ["core/settings/columns.ts", "portal_product_settings", "P0-19"],
   ["core/settingsClaims.ts", "product_schema", "P0-26"],
   // The erasure sweeps (SEC-WP-04).
   ["privacyResidue.ts", "account_tombstones", "permanent"],
   ["privacyResidue.ts", "license_relinks", "permanent"],
   ["privacyResidue.ts", "subject_events", "permanent"],
+];
+
+/**
+ * Files outside `services/license/` and `core/licensing/` that write `licenses`, anywhere in
+ * `src/` (Identity included): [file, removedBy]. The licences' writes live in
+ * `core/licensing/store.ts`; Identity's holder moves and merge undo already call it.
+ */
+const LICENSE_WRITE_SEAMS: readonly (readonly [string, RemovedBy])[] = [
+  ["core/accounts/accountSubjects.ts", "P0-20"],
+  ["core/console/repo.ts", "P0-20"],
+  ["core/ops/overrideMigration.ts", "P0-49"],
+  ["services/identity/accounts/legacy.ts", "P0-24"],
+  ["services/identity/oidc.ts", "P0-20"],
 ];
 
 const OWNER = new Map<string, string>();
@@ -223,8 +237,32 @@ describe("table ownership", () => {
     ).toEqual([]);
   });
 
+  it("licences are written only by the License service, core/licensing and the declared files", () => {
+    const writers = new Set<string>();
+    for (const { file, sql } of ALL) {
+      if (
+        file.startsWith("services/license/") ||
+        file.startsWith("core/licensing/")
+      )
+        continue;
+      for (const m of sql.matchAll(WRITE_RE))
+        if (m[1] === "licenses") writers.add(file);
+    }
+    const declared = new Set(LICENSE_WRITE_SEAMS.map(([f]) => f));
+    expect(
+      [...writers].filter((f) => !declared.has(f)),
+      "a file writes licenses: call core/licensing/store.ts, or add a LICENSE_WRITE_SEAMS row",
+    ).toEqual([]);
+    expect(
+      [...declared].filter((f) => !writers.has(f)),
+      "no longer writes licenses: delete these LICENSE_WRITE_SEAMS rows",
+    ).toEqual([]);
+  });
+
   it("each allow-list row names a package that removes it, or is permanent", () => {
     for (const [, , removedBy] of [...SEAMS, ...WRITE_SEAMS])
+      expect(removedBy).toMatch(/^(permanent|P\d+-\d+)$/);
+    for (const [, removedBy] of LICENSE_WRITE_SEAMS)
       expect(removedBy).toMatch(/^(permanent|P\d+-\d+)$/);
     for (const [, table] of [...SEAMS, ...WRITE_SEAMS])
       expect(OWNER.has(table), `${table} is in TABLE_OWNERS`).toBe(true);

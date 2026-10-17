@@ -29,7 +29,11 @@ import {
 import { parseManifest } from "@polaris-key/manifest";
 import { resyncRepo } from "../src/services/release/resync.js";
 import { getReleaseConfig } from "../src/services/release/index.js";
-import { getActiveSchema, getProduct, setServices } from "../src/core/repo.js";
+import {
+  getActiveSchema,
+  getProduct,
+  setServices,
+} from "../src/core/products/store.js";
 import { handleAdmin } from "../src/console/index.js";
 import {
   ADMIN_COOKIE,

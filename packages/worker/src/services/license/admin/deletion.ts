@@ -30,11 +30,9 @@
 
 import { ErrorCode } from "../../../core/errors.js";
 import { deleteTokenRecord } from "../../../platform/kv.js";
-import {
-  getLicense,
-  listDevicesByLicense,
-  type LicenseRow,
-} from "../../../core/repo.js";
+import { type LicenseRow } from "../../../core/repo.js";
+import { getLicense } from "../../../core/licensing/store.js";
+import { listDevicesByLicense } from "../../../core/devices/store.js";
 import { licenseUsable } from "../../../core/devices.js";
 import {
   existingSubjectFor,

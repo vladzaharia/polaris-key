@@ -11,7 +11,7 @@ import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
 import { buildHooks } from "../src/core/hooks.js";
 import { serializeServices } from "../src/core/services.js";
-import { setServices } from "../src/core/repo.js";
+import { setServices } from "../src/core/products/store.js";
 import { SERVICES } from "../src/mount.js";
 import { pk as kvKey } from "../src/platform/kv.js";
 import {

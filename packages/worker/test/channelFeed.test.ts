@@ -25,7 +25,7 @@ import { stmtSetChannelPolicy } from "../src/services/release/model.js";
 import { RESIGN_AFTER_SECONDS } from "../src/services/update/feedDoc.js";
 import { composeChannelFeed } from "../src/services/update/compose.js";
 import { getReleaseConfig } from "../src/services/release/config.js";
-import { upsertDevice } from "../src/core/repo.js";
+import { upsertDevice } from "../src/core/devices/store.js";
 import { hashKey } from "../src/platform/crypto.js";
 
 installDigestStream();

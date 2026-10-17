@@ -52,9 +52,9 @@ import {
   countActiveDevices,
   findFingerprintByHwid,
   getFingerprint,
-  getLicense,
   listDevicesByLicense,
-} from "../../src/core/repo.js";
+} from "../../src/core/devices/store.js";
+import { getLicense } from "../../src/core/licensing/store.js";
 import type { Env } from "../../src/platform/env.js";
 import type { SqliteDb } from "../../src/db/sqlite.js";
 

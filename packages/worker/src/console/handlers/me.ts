@@ -10,7 +10,7 @@
 
 import type { Env } from "../../platform/env.js";
 import type { Db } from "../../db/types.js";
-import { listProducts, getActiveSchema } from "../../core/repo.js";
+import { listProducts, getActiveSchema } from "../../core/products/store.js";
 import {
   AREAS,
   can,

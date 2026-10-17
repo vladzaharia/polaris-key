@@ -47,6 +47,7 @@ import {
   listTiers,
   nextSchemaVersion,
 } from "../../core/console/repo.js";
+import { type ProductRow, type TierRow } from "../../core/repo.js";
 import {
   getActiveSchema,
   getProduct,
@@ -64,9 +65,7 @@ import {
   stmtSetServices,
   stmtUpsertManifestProfile,
   stmtUpsertManifestTier,
-  type ProductRow,
-  type TierRow,
-} from "../../core/repo.js";
+} from "../../core/products/store.js";
 import { getManifestSnapshot } from "../../core/manifestSnapshot.js";
 import { invalidateWidenedEdgeMintApprovals } from "../../core/edgeMintApproval.js";
 import {

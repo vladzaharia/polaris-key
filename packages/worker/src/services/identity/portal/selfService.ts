@@ -52,16 +52,15 @@ import { normalizeEmail } from "../../../platform/email.js";
 import { parseJsonColumn } from "../../../platform/json.js";
 import type { Db } from "../../../db/types.js";
 import type { Env } from "../../../platform/env.js";
+import { type LicenseRow } from "../../../core/repo.js";
 import {
   getKey,
   getLicense,
-  getProduct,
   getTier,
   replaceLicenseKeys,
-  setDeviceLabel,
-  getDevice,
-  type LicenseRow,
-} from "../../../core/repo.js";
+} from "../../../core/licensing/store.js";
+import { getProduct } from "../../../core/products/store.js";
+import { setDeviceLabel, getDevice } from "../../../core/devices/store.js";
 import { licenseDeviceLimit } from "../../../core/licensing/authz.js";
 import { licenseUsable } from "../../../core/devices.js";
 import {

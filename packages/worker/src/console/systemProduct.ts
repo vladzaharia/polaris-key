@@ -40,7 +40,7 @@ import {
   stmtInsertProduct,
   stmtInsertProductKey,
   stmtInsertSchema,
-} from "../core/repo.js";
+} from "../core/products/store.js";
 import { parseServices, serializeServices } from "../core/services.js";
 import { serializePresentation } from "../core/products.js";
 import type { ManifestIngest } from "../core/registry.js";
@@ -50,7 +50,7 @@ import {
   stmtDeleteManifestPublisher,
   stmtUpsertManifestPublisher,
 } from "../core/publisher.js";
-import { stmtInsertReleaseConfig } from "../core/repo.js";
+import { stmtInsertReleaseConfig } from "../core/products/store.js";
 import { manifestDeliverableStatements } from "../services/release/public.js";
 import { manifestSnapshotStatement } from "../core/manifestSnapshot.js";
 import {

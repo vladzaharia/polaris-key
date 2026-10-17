@@ -10,7 +10,7 @@
  * path.
  */
 
-import { getProduct } from "../core/repo.js";
+import { getProduct } from "../core/products/store.js";
 import { notFound } from "../core/console/respond.js";
 import { handleFeedsAdmin } from "./handlers/feeds.js";
 import { handleProductScopedResource } from "./handlers/products.js";

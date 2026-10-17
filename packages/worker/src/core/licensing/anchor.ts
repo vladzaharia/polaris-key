@@ -49,13 +49,9 @@ import {
   tierFingerprintMode,
   type AuthzError,
 } from "./authz.js";
-import {
-  countActiveDevices,
-  getLicense,
-  seatActiveSince,
-  type DeviceRow,
-  type LicenseRow,
-} from "../repo.js";
+import { type DeviceRow, type LicenseRow } from "../repo.js";
+import { countActiveDevices, seatActiveSince } from "../devices/store.js";
+import { getLicense } from "./store.js";
 import { licenseUsable } from "../devices.js";
 import { identityEnabled } from "../accounts/identityGate.js";
 import type { Product, ProductPublic } from "../products.js";

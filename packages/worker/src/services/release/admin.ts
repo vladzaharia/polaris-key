@@ -61,7 +61,10 @@ import {
   compareSemver,
   parseSemver,
 } from "../../core/licensing/entitlements.js";
-import { getProduct, upsertProductSyncState } from "../../core/repo.js";
+import {
+  getProduct,
+  upsertProductSyncState,
+} from "../../core/products/store.js";
 import { systemResyncRefusal } from "../../core/settingsClaims.js";
 import {
   classifyChannel,

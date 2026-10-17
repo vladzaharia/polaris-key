@@ -17,7 +17,7 @@ import type { Db } from "../../db/types.js";
 import type { DeviceRow } from "../repo.js";
 import { audit } from "../audit.js";
 import type { AdminSession } from "./session.js";
-import { clearFingerprint } from "../repo.js";
+import { clearFingerprint } from "../devices/store.js";
 import { retireDeviceBinding } from "../devices.js";
 
 interface DeviceAdminCtx {

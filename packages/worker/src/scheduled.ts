@@ -57,11 +57,8 @@ import { SERVICES } from "./mount.js";
 import type { Env } from "./platform/env.js";
 import type { Db } from "./db/types.js";
 import { D1Db } from "./db/d1.js";
-import {
-  listAllProductSlugs,
-  listProducts,
-  releaseDormantSeats,
-} from "./core/repo.js";
+import { listAllProductSlugs, listProducts } from "./core/products/store.js";
+import { releaseDormantSeats } from "./core/devices/store.js";
 import { pruneAudit, prunePlatformAudit } from "./core/audit.js";
 import {
   prunePortalAudit,

@@ -25,11 +25,11 @@ import {
   CSRF_HEADER,
   issueSession,
 } from "../src/core/console/session.js";
+import { getFingerprint } from "../src/core/devices/store.js";
 import {
-  getFingerprint,
   getProduct,
   setFingerprintPolicy,
-} from "../src/core/repo.js";
+} from "../src/core/products/store.js";
 import { parseFingerprintPolicy } from "../src/core/fingerprint.js";
 import { SETTINGS } from "../src/mount.js";
 import { writeSetting } from "../src/core/settings/write.js";

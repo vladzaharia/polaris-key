@@ -39,7 +39,7 @@ import { buildHooks } from "../src/core/hooks.js";
 import { manifestIngestFor } from "../src/core/registry.js";
 import { loadProduct } from "../src/core/products.js";
 import { serializeServices } from "../src/core/services.js";
-import { setServices } from "../src/core/repo.js";
+import { setServices } from "../src/core/products/store.js";
 import { SERVICES } from "../src/mount.js";
 import { handleActivate } from "../src/services/license/activation.js";
 import {

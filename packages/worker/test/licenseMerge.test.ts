@@ -15,11 +15,11 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { NOW, seedLicenseWithKey, seedProduct, seedTier } from "./seed.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
+import { moveDevices } from "../src/core/licensing/store.js";
 import {
-  moveDevices,
   SEAT_DORMANCY_SECONDS,
   setDeviceStatus,
-} from "../src/core/repo.js";
+} from "../src/core/devices/store.js";
 import {
   licenseMergeFor,
   licenseMergeStatements,

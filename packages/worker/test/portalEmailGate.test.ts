@@ -51,7 +51,7 @@ import {
 import { PORTAL_COOKIE } from "../src/services/identity/portal/session.js";
 import { createSignInRequest } from "../src/services/identity/passthrough/request.js";
 import { serializeServices } from "../src/core/services.js";
-import { setServices } from "../src/core/repo.js";
+import { setServices } from "../src/core/products/store.js";
 import {
   EMAIL_ISSUER,
   insertAccount,

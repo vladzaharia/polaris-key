@@ -28,7 +28,7 @@ import {
   claimDeviceSeat,
   getDevice,
   setDeviceStatus,
-} from "../src/core/repo.js";
+} from "../src/core/devices/store.js";
 import { listAudit } from "../src/core/audit.js";
 
 function hash(seed: string): string {

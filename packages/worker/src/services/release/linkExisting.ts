@@ -50,7 +50,7 @@ import {
   getActiveSchema,
   getProduct,
   stmtInsertReleaseConfig,
-} from "../../core/repo.js";
+} from "../../core/products/store.js";
 import { getManifestSnapshot } from "../../core/manifestSnapshot.js";
 import { liveRowClaimKeys } from "../../core/rowSettings.js";
 import { parseServices } from "../../core/services.js";

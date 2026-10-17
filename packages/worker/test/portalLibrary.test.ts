@@ -20,8 +20,8 @@ import { makeEnv, NOW, seedLicenseWithKey, seedProduct } from "./seed.js";
 import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
 import { serializeServices, type ServicesMap } from "../src/core/services.js";
-import { setServices } from "../src/core/repo.js";
-import { SEAT_DORMANCY_SECONDS } from "../src/core/repo.js";
+import { setServices } from "../src/core/products/store.js";
+import { SEAT_DORMANCY_SECONDS } from "../src/core/devices/store.js";
 import {
   getOrCreateAccountByEmail,
   linkLicense,

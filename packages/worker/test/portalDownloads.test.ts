@@ -19,7 +19,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { buildHooks } from "../src/core/hooks.js";
 import { loadProductPublic } from "../src/core/products.js";
 import { SERVICES } from "../src/mount.js";
-import { setServices } from "../src/core/repo.js";
+import { setServices } from "../src/core/products/store.js";
 import { serializeServices } from "../src/core/services.js";
 import {
   getOrCreateAccountByEmail,

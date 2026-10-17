@@ -30,15 +30,17 @@ import {
   seatActiveSince,
   getDeviceFacts,
   getFingerprint,
+  listDevicesByLicense,
+} from "../../../core/devices/store.js";
+import {
   getLicense,
   getTier,
   insertKey,
   insertLicense,
-  listDevicesByLicense,
   listKeysByLicense,
   listLicenseProfiles,
   setLicenseProfiles,
-} from "../../../core/repo.js";
+} from "../../../core/licensing/store.js";
 import {
   adminJson,
   notFound as adminNotFound,

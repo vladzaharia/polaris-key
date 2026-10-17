@@ -20,11 +20,8 @@ import { handleActivate } from "../src/services/license/activation.js";
 import { handleDevices, handleReport } from "../src/core/devices.js";
 import type { Env } from "../src/platform/env.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
-import {
-  getDeviceFacts,
-  getFingerprint,
-  type FingerprintRow,
-} from "../src/core/repo.js";
+import { type FingerprintRow } from "../src/core/repo.js";
+import { getDeviceFacts, getFingerprint } from "../src/core/devices/store.js";
 import { listAudit } from "../src/core/audit.js";
 
 const DEVICE = "device-fixture-01";

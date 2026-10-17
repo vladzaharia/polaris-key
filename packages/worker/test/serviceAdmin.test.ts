@@ -33,7 +33,7 @@ import {
   CSRF_HEADER,
   issueSession,
 } from "../src/core/console/session.js";
-import { getProduct } from "../src/core/repo.js";
+import { getProduct } from "../src/core/products/store.js";
 import { listAudit } from "../src/core/audit.js";
 import { listTiers } from "../src/core/console/repo.js";
 import { MAX_DEVICE_LIMIT } from "@polaris-key/manifest";

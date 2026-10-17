@@ -61,7 +61,7 @@ import {
   type PagePlatform,
 } from "../../../core/platformDetect.js";
 import { ErrorCode } from "../../../core/errors.js";
-import { getProduct } from "../../../core/repo.js";
+import { getProduct } from "../../../core/products/store.js";
 import {
   getPortalProductSettings,
   listPortalArtifacts,

@@ -34,13 +34,13 @@ import { Catalog } from "@polaris-key/catalog";
 import { MAX_DEVICE_LIMIT, type ParsedManifest } from "@polaris-key/manifest";
 import type { Env } from "../platform/env.js";
 import type { Db, DbStatement } from "../db/types.js";
+import { type ProductRow } from "../core/repo.js";
 import {
   getActiveSchema,
   getProduct,
   getProductSyncState,
   listProducts,
-  type ProductRow,
-} from "../core/repo.js";
+} from "../core/products/store.js";
 import { listProfiles, listTiers } from "../core/console/repo.js";
 import {
   getManifestSnapshot,

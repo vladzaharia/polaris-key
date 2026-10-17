@@ -28,7 +28,7 @@ import {
 import { makeEnv, NOW, seedProduct } from "./seed.js";
 import type { Db } from "../src/db/types.js";
 import type { Env } from "../src/platform/env.js";
-import { insertLicense } from "../src/core/repo.js";
+import { insertLicense } from "../src/core/licensing/store.js";
 import { subjectFor } from "../src/core/accounts/accountSubjects.js";
 import { erasureKey } from "../src/core/accounts/erasureFence.js";
 import {

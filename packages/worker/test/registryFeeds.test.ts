@@ -61,7 +61,7 @@ import {
   type RegistryRoute,
 } from "../src/core/registry/registryHost.js";
 import { serializeServices, type ServicesMap } from "../src/core/services.js";
-import { setServices } from "../src/core/repo.js";
+import { setServices } from "../src/core/products/store.js";
 import type { Db } from "../src/db/types.js";
 import type { Env } from "../src/platform/env.js";
 import { makeTestDb } from "./helpers.js";

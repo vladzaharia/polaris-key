@@ -27,7 +27,7 @@
 
 import { auditStatement } from "./audit.js";
 import type { Db, DbStatement } from "../db/types.js";
-import { getProduct } from "./repo.js";
+import { getProduct } from "./products/store.js";
 import {
   allowsAnonymousEnroll,
   allowsOidcDefault,

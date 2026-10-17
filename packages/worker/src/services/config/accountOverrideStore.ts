@@ -38,7 +38,7 @@ import {
 } from "../../core/accounts/subjectHooks.js";
 import { isSealedEnvelope } from "../../core/managedSecrets.js";
 import { randomId } from "../../platform/crypto.js";
-import { getActiveSchema } from "../../core/repo.js";
+import { getActiveSchema } from "../../core/products/store.js";
 import { auditStatement } from "../../core/audit.js";
 
 /** The registry name (stable: the export document is keyed by it). */

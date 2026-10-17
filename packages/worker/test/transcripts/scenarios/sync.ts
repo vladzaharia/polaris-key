@@ -25,7 +25,7 @@ import {
   seedLicense,
   type Scenario,
 } from "../world.js";
-import { insertProductKey } from "../../../src/core/repo.js";
+import { insertProductKey } from "../../../src/core/products/store.js";
 import { seal } from "../../../src/platform/keyvault.js";
 import { TEST_KID, TEST_PUB } from "../../seed.js";
 

@@ -72,7 +72,8 @@ import {
 } from "../../core/console/respond.js";
 import { SETTINGS } from "../../mount.js";
 import { audit, platformAudit } from "../../core/audit.js";
-import { getProduct, type ProductRow } from "../../core/repo.js";
+import { type ProductRow } from "../../core/repo.js";
+import { getProduct } from "../../core/products/store.js";
 import { parseServices } from "../../core/services.js";
 import { registryOrigin } from "../../core/registry/registryHostname.js";
 import {

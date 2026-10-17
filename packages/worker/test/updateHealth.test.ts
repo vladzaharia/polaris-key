@@ -26,7 +26,7 @@ import { handleRegister } from "../src/core/register.js";
 import { handleReport } from "../src/core/devices.js";
 import { SERVICES } from "../src/mount.js";
 import { serializeServices } from "../src/core/services.js";
-import { setServices } from "../src/core/repo.js";
+import { setServices } from "../src/core/products/store.js";
 import {
   boundedUpdates,
   countsFor,

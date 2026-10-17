@@ -14,7 +14,7 @@ import { TEST_RSA_PKCS8 } from "./releaseFixtures.js";
 import { dispatch } from "../src/dispatch.js";
 import { secureResponse } from "../src/core/securityHeaders.js";
 import { serializeServices } from "../src/core/services.js";
-import { setServices } from "../src/core/repo.js";
+import { setServices } from "../src/core/products/store.js";
 import {
   CORS_ALLOW_HEADERS,
   CORS_ALLOW_METHODS,

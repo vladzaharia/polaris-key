@@ -14,7 +14,7 @@ import { R2Mock, asR2, installDigestStream } from "./r2Mock.js";
 import type { Env } from "../src/platform/env.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
 import { serializeServices } from "../src/core/services.js";
-import { setServices } from "../src/core/repo.js";
+import { setServices } from "../src/core/products/store.js";
 import {
   screenshotClass,
   syncManifestListingAssets,

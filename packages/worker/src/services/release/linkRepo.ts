@@ -42,7 +42,7 @@ import {
   stmtInsertReleaseConfig,
   stmtInsertSchema,
   stmtInsertTier,
-} from "../../core/repo.js";
+} from "../../core/products/store.js";
 import {
   GH_SLUG_RE,
   parseManifest,

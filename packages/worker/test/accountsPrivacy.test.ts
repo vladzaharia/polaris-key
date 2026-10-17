@@ -23,7 +23,7 @@ import {
   issueSession,
 } from "../src/core/console/session.js";
 import { loadProduct } from "../src/core/products.js";
-import { setServices } from "../src/core/repo.js";
+import { setServices } from "../src/core/products/store.js";
 import { DEFAULT_SERVICES, serializeServices } from "../src/core/services.js";
 import { handleDevices } from "../src/core/devices.js";
 import { setDeviceSubject } from "../src/core/accounts/accountSubjects.js";

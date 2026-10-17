@@ -10,7 +10,7 @@ import {
   insertKey,
   listKeysByLicense,
   setKeyStatus,
-} from "../../../core/repo.js";
+} from "../../../core/licensing/store.js";
 import {
   adminJson,
   notFound as adminNotFound,

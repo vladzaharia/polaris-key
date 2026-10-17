@@ -11,7 +11,7 @@ import { SELF, env } from "cloudflare:test";
 import { beforeAll, describe, expect, it } from "vitest";
 import { D1Db } from "../src/db/d1.js";
 import { serializeServices } from "../src/core/services.js";
-import { setServices } from "../src/core/repo.js";
+import { setServices } from "../src/core/products/store.js";
 import type { Env } from "../src/platform/env.js";
 import { dispatchRegistryHost } from "../src/core/registry/registryHost.js";
 import {

@@ -12,7 +12,7 @@ import { hmacSha256, importHmacKey, sha256Hex } from "./platform/hash.js";
 import {
   listProductsByGithubRepo,
   upsertProductSyncState,
-} from "./core/repo.js";
+} from "./core/products/store.js";
 import { manifestIngestFor } from "./core/registry.js";
 import { systemResyncRefusal } from "./core/settingsClaims.js";
 import { SERVICES } from "./mount.js";

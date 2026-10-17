@@ -49,7 +49,7 @@ import { handleConfigDocument } from "../src/services/config/document.js";
 import { handleTrustManifest } from "../src/core/trust/trust.js";
 import { handleMintToken } from "../src/services/config/mint.js";
 import { flowKey, handleAuthCallback } from "../src/services/identity/oidc.js";
-import { getLicenseBySub } from "../src/core/repo.js";
+import { getLicenseBySub } from "../src/core/licensing/store.js";
 import { artefacts } from "./singleUseMock.js";
 
 // The OIDC suite swaps only the IdP's remote key getter, as `oidcEdge` and `R8-oidc` do, so the

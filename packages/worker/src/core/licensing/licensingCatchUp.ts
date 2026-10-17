@@ -25,7 +25,7 @@
 
 import type { Db, DbStatement } from "../../db/types.js";
 import { SERVICE_SLUGS } from "../services.js";
-import { listAllProductSlugs } from "../repo.js";
+import { listAllProductSlugs } from "../products/store.js";
 import {
   moveProvisionedKeys,
   storeGrantProjection,

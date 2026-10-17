@@ -20,7 +20,7 @@
 import { ErrorCode } from "../../../core/errors.js";
 import { deleteTokenRecord } from "../../../platform/kv.js";
 import { hashKey, mintLicenseKey, randomId } from "../../../platform/crypto.js";
-import { getTier } from "../../../core/repo.js";
+import { getTier } from "../../../core/licensing/store.js";
 import {
   adminJson,
   notFound as adminNotFound,

@@ -29,7 +29,7 @@ import { writeSetting } from "../src/core/settings/write.js";
 import { resolveProductSetting } from "../src/core/settings/resolve.js";
 import { getReleaseConfig } from "../src/services/release/config.js";
 import { parseManualChannels } from "../src/services/release/channels.js";
-import { setServices } from "../src/core/repo.js";
+import { setServices } from "../src/core/products/store.js";
 import { keyEntryLimit } from "../src/core/licensing/keyEntries.js";
 import { ROOT_PRINCIPAL } from "./rbacFixtures.js";
 

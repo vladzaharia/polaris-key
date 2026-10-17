@@ -608,7 +608,8 @@ describe("R1-05 /<product>/mint/<id>/auth renders stored HTML with no CSP and no
     await seedProduct(db, "djdl");
     // `stmtInsertEdgeMint` (the only writer, used by link-repo, resync and the webhook)
     // hard-codes NULL, and there is no admin API route for the column.
-    const { stmtInsertEdgeMint } = await import("../../src/core/repo.js");
+    const { stmtInsertEdgeMint } =
+      await import("../../src/core/products/store.js");
     const stmt = stmtInsertEdgeMint({
       product: "djdl",
       id: "music",

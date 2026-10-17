@@ -76,18 +76,19 @@ import {
   rateLimitOk,
   type RateLimit,
 } from "../../core/rateLimit.js";
+import { type LicenseRow, type TierRow } from "../../core/repo.js";
 import {
   claimEnrolledLicense,
   getLicense,
-  countActiveDevices,
   getLicenseBySub,
-  getProduct,
   getTier,
-  seatActiveSince,
   stmtInsertLicense,
-  type LicenseRow,
-  type TierRow,
-} from "../../core/repo.js";
+} from "../../core/licensing/store.js";
+import {
+  countActiveDevices,
+  seatActiveSince,
+} from "../../core/devices/store.js";
+import { getProduct } from "../../core/products/store.js";
 import { appendAudit, auditStatement } from "../../core/audit.js";
 import {
   guardedInsert,

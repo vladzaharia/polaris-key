@@ -21,8 +21,8 @@ import { makeEnv, NOW, seedProduct, seedTier } from "./seed.js";
 import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
 import { serializeServices, type ServicesMap } from "../src/core/services.js";
-import { setServices } from "../src/core/repo.js";
-import { getLicense, getLicenseBySub } from "../src/core/repo.js";
+import { setServices } from "../src/core/products/store.js";
+import { getLicense, getLicenseBySub } from "../src/core/licensing/store.js";
 import { appendAudit, type AuditRow } from "../src/core/audit.js";
 import {
   licenseDeviceLimit,

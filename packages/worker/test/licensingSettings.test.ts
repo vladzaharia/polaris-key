@@ -39,7 +39,7 @@ import {
   readLicensingSettings,
 } from "../src/services/license/licensingSettings.js";
 import { readSyncTierOnSignIn } from "../src/services/identity/settings.js";
-import { getProduct } from "../src/core/repo.js";
+import { getProduct } from "../src/core/products/store.js";
 import { revertRowSetting, writeRowSetting } from "../src/core/rowSettings.js";
 import { BREAK_GLASS_MAX_SECONDS } from "../src/core/settingsClaims.js";
 import type { Db, DbParam } from "../src/db/types.js";

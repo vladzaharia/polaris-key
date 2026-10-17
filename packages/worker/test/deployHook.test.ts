@@ -40,7 +40,7 @@ import {
   getPublisherPolicy,
   GITHUB_OIDC_ISSUER,
 } from "../src/core/publisher.js";
-import { getProduct } from "../src/core/repo.js";
+import { getProduct } from "../src/core/products/store.js";
 import { parseServices, serializeServices } from "../src/core/services.js";
 import {
   DEPLOY_HOOK_PATH,

@@ -39,7 +39,7 @@ import {
   stagePackObjects,
 } from "../../seed.js";
 import { asR2, installDigestStream, R2Mock } from "../../r2Mock.js";
-import { setServices } from "../../../src/core/repo.js";
+import { setServices } from "../../../src/core/products/store.js";
 import { serializeServices } from "../../../src/core/services.js";
 import { issueStaticCiToken } from "../../../src/core/publisher.js";
 import { manifestDeliverableStatements } from "../../../src/services/release/deliverables.js";

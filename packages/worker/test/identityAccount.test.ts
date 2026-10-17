@@ -26,7 +26,7 @@ import {
   SERVICE_SLUGS,
   type ServicesMap,
 } from "../src/core/services.js";
-import { setServices } from "../src/core/repo.js";
+import { setServices } from "../src/core/products/store.js";
 import { invalidatePlatformSettings } from "../src/core/platformSettings.js";
 import { countKeyEntries } from "../src/core/licensing/keyEntries.js";
 import {
@@ -41,7 +41,7 @@ import {
 } from "../src/core/licensing/anchor.js";
 import { enrollFate } from "../src/services/license/enroll.js";
 import { getOrCreateAccountByEmail } from "../src/services/identity/portal/repo.js";
-import { getLicense } from "../src/core/repo.js";
+import { getLicense } from "../src/core/licensing/store.js";
 import type { Env } from "../src/platform/env.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
 import type { LicenseRow } from "../src/core/repo.js";

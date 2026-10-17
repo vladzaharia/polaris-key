@@ -11,7 +11,7 @@
 
 import type { Env } from "../../platform/env.js";
 import type { Db } from "../../db/types.js";
-import { listProducts } from "../../core/repo.js";
+import { listProducts } from "../../core/products/store.js";
 import { canSeeProduct } from "../authz.js";
 import type { AdminSession } from "../../core/console/session.js";
 import { productSummaries } from "../lib/summary.js";

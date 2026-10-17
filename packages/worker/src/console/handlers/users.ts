@@ -43,7 +43,8 @@
 import type { Env } from "../../platform/env.js";
 import type { Db } from "../../db/types.js";
 import { ErrorCode } from "../../core/errors.js";
-import { getLicense, listDevicesByLicense } from "../../core/repo.js";
+import { getLicense } from "../../core/licensing/store.js";
+import { listDevicesByLicense } from "../../core/devices/store.js";
 import { deauthorizeDeviceAsAdmin } from "../../core/console/deviceAdmin.js";
 import { loadProduct } from "../../core/products.js";
 import { appendPlatformEvent } from "../../core/ops/platformEvents.js";

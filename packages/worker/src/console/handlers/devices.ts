@@ -23,7 +23,11 @@ import type { Env } from "../../platform/env.js";
 import type { Db } from "../../db/types.js";
 import type { DeviceRow } from "../../core/repo.js";
 import { ErrorCode } from "../../core/errors.js";
-import { getDevice, getDeviceFacts, getFingerprint } from "../../core/repo.js";
+import {
+  getDevice,
+  getDeviceFacts,
+  getFingerprint,
+} from "../../core/devices/store.js";
 import {
   deauthorizeDeviceAsAdmin,
   resetDeviceFingerprintAsAdmin,

@@ -68,7 +68,7 @@ import {
 } from "../../src/services/release/github.js";
 import type { FetchImpl } from "../../src/services/release/githubApp.js";
 import type { AdminSession } from "../../src/core/console/session.js";
-import { getDevice, upsertDevice } from "../../src/core/repo.js";
+import { getDevice, upsertDevice } from "../../src/core/devices/store.js";
 import { hashKey } from "../../src/platform/crypto.js";
 import {
   getTokenRecord,

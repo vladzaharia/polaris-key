@@ -32,14 +32,15 @@ import {
   stmtBlockAutoAttach,
   stmtUnblockAutoAttach,
 } from "../../../core/licensing/licenseHolders.js";
-import { getLicense, type LicenseRow } from "../../../core/repo.js";
+import { type LicenseRow } from "../../../core/repo.js";
+import { getLicense } from "../../../core/licensing/store.js";
 import { normalizeEmail } from "../../../platform/email.js";
 import type { Db } from "../../../db/types.js";
 import {
   clearDeviceSubjects,
   onLicenseOwnershipEnded,
 } from "../../../core/accounts/subjectHooks.js";
-import { getProduct } from "../../../core/repo.js";
+import { getProduct } from "../../../core/products/store.js";
 import { sendNotice } from "../portal/email.js";
 import { licenseAttachedNotice } from "../portal/notices.js";
 import {

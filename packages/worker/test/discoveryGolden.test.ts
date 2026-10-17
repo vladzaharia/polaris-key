@@ -47,7 +47,7 @@ import { makeEnv, NOW, seedProduct } from "./seed.js";
 import { loadProduct } from "../src/core/products.js";
 import { handleDiscovery } from "../src/core/discovery.js";
 import { SERVICES } from "../src/mount.js";
-import { setServices } from "../src/core/repo.js";
+import { setServices } from "../src/core/products/store.js";
 import type { Db } from "../src/db/types.js";
 import type { Env } from "../src/platform/env.js";
 

@@ -36,14 +36,12 @@
  * callback's hand-off) live in `oidc.ts`, beside the flow record they change.
  */
 
+import { type DeviceRow, type LicenseRow } from "../../core/repo.js";
 import {
   countActiveDevices,
-  getLicenseBySub,
-  getTier,
   seatActiveSince,
-  type DeviceRow,
-  type LicenseRow,
-} from "../../core/repo.js";
+} from "../../core/devices/store.js";
+import { getLicenseBySub, getTier } from "../../core/licensing/store.js";
 import { licenseUsable } from "../../core/devices.js";
 import { compareCandidates } from "../../core/licensing/anchor.js";
 import {

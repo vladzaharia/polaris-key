@@ -34,7 +34,7 @@ import {
 } from "../src/core/registry.js";
 import { buildHooks } from "../src/core/hooks.js";
 import { loadProduct } from "../src/core/products.js";
-import { setServices } from "../src/core/repo.js";
+import { setServices } from "../src/core/products/store.js";
 import { distributionService } from "../src/services/distribution/index.js";
 import {
   CAPABILITY_KEYS,

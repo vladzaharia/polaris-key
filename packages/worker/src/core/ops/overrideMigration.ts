@@ -51,7 +51,7 @@ import type { ManagedEntry } from "@polaris-key/protocol";
 import type { Db, DbParam, DbStatement } from "../../db/types.js";
 import type { Env } from "../../platform/env.js";
 import { randomId } from "../../platform/crypto.js";
-import { getActiveSchema, listAllProductSlugs } from "../repo.js";
+import { getActiveSchema, listAllProductSlugs } from "../products/store.js";
 import { auditStatement, sql } from "../audit.js";
 import { isSealedEnvelope, sealManagedValue } from "../managedSecrets.js";
 import {

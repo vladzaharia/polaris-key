@@ -61,11 +61,17 @@ import {
   randomId,
 } from "../platform/crypto.js";
 import {
+  type DeviceBoundBy,
+  type DeviceFactsRow,
+  type DeviceRow,
+  type FingerprintRow,
+  type LicenseRow,
+} from "./repo.js";
+import {
   findFingerprintByHwid,
   getDevice,
   getDeviceByTokenHash,
   getFingerprint,
-  getLicense,
   listDevicesByLicense,
   setDeviceLabel,
   setDeviceReported,
@@ -75,12 +81,8 @@ import {
   upsertFingerprint,
   resetDeviceTrust,
   clearDeviceInheritance,
-  type DeviceBoundBy,
-  type DeviceFactsRow,
-  type DeviceRow,
-  type FingerprintRow,
-  type LicenseRow,
-} from "./repo.js";
+} from "./devices/store.js";
+import { getLicense } from "./licensing/store.js";
 import { appendAudit } from "./audit.js";
 import {
   computeHwid,

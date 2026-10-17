@@ -37,7 +37,7 @@
 
 import type { Env } from "../../platform/env.js";
 import type { Db } from "../../db/types.js";
-import { getProduct } from "../../core/repo.js";
+import { getProduct } from "../../core/products/store.js";
 import {
   AscError,
   AscWriteDenied,

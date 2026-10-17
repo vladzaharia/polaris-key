@@ -11,7 +11,7 @@ import {
   CSRF_HEADER,
   issueSession,
 } from "../src/core/console/session.js";
-import { getProduct } from "../src/core/repo.js";
+import { getProduct } from "../src/core/products/store.js";
 import { appendAudit, listAudit } from "../src/core/audit.js";
 
 const PLATFORM_GROUP = "platform-admins";

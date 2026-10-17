@@ -25,14 +25,13 @@ import {
   allowsAnonymousEnroll,
   computeEnrollHwid,
 } from "../../core/fingerprint.js";
+import { type LicenseRow, type TierRow } from "../../core/repo.js";
 import {
   getLicense,
   getLicenseByEnrollHwid,
   getTier,
   insertLicense,
-  type LicenseRow,
-  type TierRow,
-} from "../../core/repo.js";
+} from "../../core/licensing/store.js";
 import { appendAudit } from "../../core/audit.js";
 import {
   authorizationError,

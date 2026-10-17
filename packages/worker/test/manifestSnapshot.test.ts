@@ -34,7 +34,7 @@ import {
   manifestFilesSha256,
   manifestSnapshotStatement,
 } from "../src/core/manifestSnapshot.js";
-import { getProduct } from "../src/core/repo.js";
+import { getProduct } from "../src/core/products/store.js";
 
 const SLUG = "snap";
 const SNAPSHOT_INSERT = /INSERT INTO product_manifest_snapshot/;

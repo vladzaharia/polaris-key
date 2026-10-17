@@ -39,7 +39,7 @@ import {
   type PublisherClaim,
 } from "../../core/publisher.js";
 import { SYSTEM_PRODUCT_SLUG } from "@polaris-key/manifest";
-import { getProduct } from "../../core/repo.js";
+import { getProduct } from "../../core/products/store.js";
 import { audit } from "../../core/audit.js";
 import { forgetRegistryTokens } from "../../core/registry/registryTokens.js";
 import type { AdminSession } from "../../core/console/session.js";

@@ -66,6 +66,7 @@
  *     and deleting the survivor deletes its rows (docs/PRIVACY.md).
  */
 
+import { stmtRestoreLicenseAccount } from "../../../core/licensing/store.js";
 import { randomId } from "../../../platform/crypto.js";
 import type { Db, DbParam, DbStatement } from "../../../db/types.js";
 import { erasureVerdict } from "../../../core/accounts/erasureFence.js";
@@ -575,10 +576,7 @@ export async function undoMerge(
     params: [A, S, JSON.stringify(snap.passkeys)],
   });
   for (const [product, id] of snap.licenses) {
-    stmts.push({
-      sql: "UPDATE licenses SET account_id = ? WHERE product = ? AND id = ? AND account_id = ?",
-      params: [A, product, id, S],
-    });
+    stmts.push(stmtRestoreLicenseAccount(product, id, A, S));
   }
   stmts.push(
     {

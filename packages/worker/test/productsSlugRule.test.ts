@@ -15,7 +15,7 @@ import { makeEnv, NOW } from "./seed.js";
 import type { Db } from "../src/db/types.js";
 import type { Env } from "../src/platform/env.js";
 import { checkSlug } from "../src/services/release/linkRepo.js";
-import { getProduct } from "../src/core/repo.js";
+import { getProduct } from "../src/core/products/store.js";
 import { handleAdmin } from "../src/console/index.js";
 import {
   ADMIN_COOKIE,

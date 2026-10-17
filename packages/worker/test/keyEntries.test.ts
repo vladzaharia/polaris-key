@@ -34,7 +34,9 @@ import {
 import { serializeServices } from "../src/core/services.js";
 import { SETTINGS } from "../src/mount.js";
 import { invalidatePlatformSettings } from "../src/core/platformSettings.js";
-import { claimDeviceSeat, getLicense, setServices } from "../src/core/repo.js";
+import { claimDeviceSeat } from "../src/core/devices/store.js";
+import { getLicense } from "../src/core/licensing/store.js";
+import { setServices } from "../src/core/products/store.js";
 import { authorizeDevice } from "../src/core/licensing/authz.js";
 import {
   handleActivate,

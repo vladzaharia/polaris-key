@@ -24,7 +24,8 @@
 
 import { ErrorCode } from "../../../core/errors.js";
 import type { ProductRow } from "../../../core/repo.js";
-import { getProduct, getTier } from "../../../core/repo.js";
+import { getProduct } from "../../../core/products/store.js";
+import { getTier } from "../../../core/licensing/store.js";
 import { writeSettings } from "../../../core/settings/write.js";
 import {
   isAutoIssueMode,

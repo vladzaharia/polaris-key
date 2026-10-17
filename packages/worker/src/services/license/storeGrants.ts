@@ -27,7 +27,7 @@ import type {
 } from "../../core/licensing/storeGrants.js";
 import type { LicenseMergeChange } from "../../core/licensing/licenseMerge.js";
 import type { DbStatement } from "../../db/types.js";
-import { getLicense } from "../../core/repo.js";
+import { getLicense } from "../../core/licensing/store.js";
 import { appendAudit } from "../../core/audit.js";
 import { randomId } from "../../platform/crypto.js";
 import {

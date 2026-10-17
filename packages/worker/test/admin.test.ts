@@ -27,7 +27,7 @@ import {
   getProduct,
   getProductSecret,
   setServices,
-} from "../src/core/repo.js";
+} from "../src/core/products/store.js";
 import { listAudit } from "../src/core/audit.js";
 import { SETTINGS } from "../src/mount.js";
 import { loadProduct } from "../src/core/products.js";

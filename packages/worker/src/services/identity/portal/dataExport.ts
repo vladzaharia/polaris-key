@@ -41,7 +41,7 @@
 import type { Db } from "../../../db/types.js";
 import type { Env } from "../../../platform/env.js";
 import { jsonList, jsonListArg } from "../../../core/sqlIn.js";
-import { getProduct } from "../../../core/repo.js";
+import { getProduct } from "../../../core/products/store.js";
 import {
   accountLicenses,
   existingSubjectFor,

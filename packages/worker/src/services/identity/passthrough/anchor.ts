@@ -25,7 +25,7 @@ import type { Env } from "../../../platform/env.js";
 import type { SettingsRegistry } from "../../../core/settings/registry.js";
 import { resolveProductSetting } from "../../../core/settings/resolve.js";
 import type { ProductPublic } from "../../../core/products.js";
-import { getTier } from "../../../core/repo.js";
+import { getTier } from "../../../core/licensing/store.js";
 import { rankAnchorCandidates } from "../../../core/licensing/anchor.js";
 
 /** S-19's `licensing.entitlementModel`. `legacy` reproduces today's documents byte for byte. */

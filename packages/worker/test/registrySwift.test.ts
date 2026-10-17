@@ -35,7 +35,7 @@ import type { FetchImpl } from "../src/services/release/githubApp.js";
 import { issueStaticCiToken } from "../src/core/publisher.js";
 import { manifestDeliverableStatements } from "../src/services/release/deliverables.js";
 import { releaseCatalog } from "../src/services/release/catalog.js";
-import { getProduct } from "../src/core/repo.js";
+import { getProduct } from "../src/core/products/store.js";
 import { REGISTRY_ROUTES } from "../src/mount.js";
 import { REGISTRY_CSP } from "../src/core/registry/registryHost.js";
 import { blobKey } from "../src/core/assets/blobs.js";

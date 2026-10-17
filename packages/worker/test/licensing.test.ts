@@ -28,7 +28,7 @@ import type { Env } from "../src/platform/env.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
 import { hashKey } from "../src/platform/crypto.js";
 import { getTokenRecord } from "../src/platform/kv.js";
-import { setLicenseProfiles } from "../src/core/repo.js";
+import { setLicenseProfiles } from "../src/core/licensing/store.js";
 
 const TRUST = { [TEST_KID]: TEST_PUB };
 

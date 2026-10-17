@@ -21,7 +21,7 @@ import { handleDiscovery } from "../src/core/discovery.js";
 import { handleMintToken } from "../src/services/config/mint.js";
 import { SERVICES } from "../src/mount.js";
 import { SERVICE_SLUGS, serializeServices } from "../src/core/services.js";
-import { setServices } from "../src/core/repo.js";
+import { setServices } from "../src/core/products/store.js";
 import type { Db } from "../src/db/types.js";
 import type { Env } from "../src/platform/env.js";
 

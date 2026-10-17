@@ -49,7 +49,7 @@ import type {
 import type { Db, DbStatement } from "../../db/types.js";
 import type { ProductRow, ProfileRow, SchemaRow, TierRow } from "../repo.js";
 import type { AuditRow } from "../audit.js";
-import { stmtInsertTier, TIER_COMPARED_PARAMS } from "../repo.js";
+import { stmtInsertTier, TIER_COMPARED_PARAMS } from "../products/store.js";
 import { randomId } from "../../platform/crypto.js";
 import { parseWebOrigins, serializeWebOrigins } from "../cors.js";
 import { parseServices } from "../services.js";

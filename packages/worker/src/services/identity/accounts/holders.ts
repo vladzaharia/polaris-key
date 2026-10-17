@@ -16,7 +16,7 @@
  * leaves the licence waiting.
  */
 
-import { getLicense } from "../../../core/repo.js";
+import { getLicense } from "../../../core/licensing/store.js";
 import { licenseEmail } from "../../../core/accounts/accountSubjects.js";
 import {
   autoAttachBlockedAccounts,

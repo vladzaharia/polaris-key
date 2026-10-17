@@ -69,11 +69,10 @@ import { authorizeDevice } from "../../src/core/licensing/authz.js";
 import {
   countActiveDevices,
   getDevice,
-  getLicense,
-  getLicenseBySub,
   SEAT_DORMANCY_SECONDS,
   seatActiveSince,
-} from "../../src/core/repo.js";
+} from "../../src/core/devices/store.js";
+import { getLicense, getLicenseBySub } from "../../src/core/licensing/store.js";
 import { handleEnroll } from "../../src/services/license/enroll.js";
 import {
   handleMagicStart,
