@@ -29,7 +29,7 @@ This empties the product's data for the person. Their license and Polaris Key ac
 
 ## Move a license to another person
 
-The person who will hold the license opens your product's page in their library at key.plrs.im and selects **Get a support code**. The code is their user id for your product.
+The person who is to hold the license opens your product's page in their library at key.plrs.im and selects **Get a support code**. The code is their user id for your product.
 
 1. Open **Users**, then the record of the person who holds the license.
 2. On the **Licenses** tab, select **Relink…** on the license.

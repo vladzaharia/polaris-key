@@ -1,6 +1,5 @@
 import { defineRouteMiddleware } from "@astrojs/starlight/route-data";
 import { pathToFileURL } from "node:url";
-import { getEntry } from "astro:content";
 import { importedHeadings, type ImportedHeading } from "./lib/importedMarkdown";
 import { slugifyHeading } from "./lib/runbook";
 import {
@@ -51,8 +50,12 @@ async function importedItems(
   const sections = [
     ...body.matchAll(/<RunbookSection\s+file="([^"]+)"\s+heading="([^"]+)"/g),
   ];
+  // Loaded only when a page needs it, so a unit test can import this module without the Astro
+  // runtime.
+  const getEntry =
+    sections.length > 0 ? (await import("astro:content")).getEntry : undefined;
   for (const [, file, heading] of sections) {
-    const entry = await getEntry(
+    const entry = await getEntry!(
       "runbook",
       `${file}/${slugifyHeading(heading!)}`,
     );
@@ -78,7 +81,7 @@ export const onRequest = defineRouteMiddleware(async (context) => {
   // The list is off for the page, or does not show level 2.
   if (toc === undefined || toc.minHeadingLevel > 2 || toc.maxHeadingLevel < 2)
     return;
-  const body = (entry as { body?: string }).body ?? "";
+  const body = (entry as { body?: string } | undefined)?.body ?? "";
   toc.items.splice(
     1,
     0,

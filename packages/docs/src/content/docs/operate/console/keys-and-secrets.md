@@ -81,7 +81,7 @@ value: the sealed column is not even selected.
 
 Store keys and the Sentry integration secret are not product secrets. They live on
 **Distribution → Outlet credentials**, in their own table, and no edge-mint recipe can name one. A
-platform admin sets them: see Store connections (platform admins).
+platform admin sets them: see Outlet credentials (platform admins).
 
 ## Signing keys
 
