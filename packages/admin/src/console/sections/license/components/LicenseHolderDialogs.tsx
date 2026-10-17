@@ -87,6 +87,7 @@ interface AssignValues {
   [key: string]: unknown;
   email: string;
   name: string;
+  sendKey: boolean;
 }
 
 export function AssignDialog({
@@ -128,7 +129,7 @@ function AssignForm({
   onDone: () => void;
 }): React.ReactElement {
   const form = useAdminForm<AssignValues>({
-    values: { email: "", name: license.name ?? "" },
+    values: { email: "", name: license.name ?? "", sendKey: false },
     validate: (v) => {
       const e: Record<string, string> = {};
       if (!v.email.trim()) e.email = "Enter their email.";
@@ -142,7 +143,22 @@ function AssignForm({
         email: draft.email.trim(),
         ...(name && name !== license.name ? { name } : {}),
       });
-      toast.success("License assigned");
+      // LX-27 (D12): a ticked box mails a NEW key once the assignment has landed. The licence
+      // stays assigned whatever the mail does; the toast says which.
+      if (draft.sendKey) {
+        try {
+          const res = await mutate("sendLicenseKey", slug, license.id, false);
+          toast.success(
+            res.delivered.email === "sent"
+              ? "License assigned. Key sent."
+              : "License assigned. The key email didn't go out: send a new key from the record.",
+          );
+        } catch {
+          toast.success(
+            "License assigned. The key email didn't go out: send a new key from the record.",
+          );
+        }
+      } else toast.success("License assigned");
       onDone();
     },
   });
@@ -162,6 +178,12 @@ function AssignForm({
         <FormField name="name" label="Name" help="Optional.">
           {(f) => <Input {...f} />}
         </FormField>
+        <Checkbox
+          checked={Boolean(form.rhf.watch("sendKey"))}
+          onCheckedChange={(v) => form.rhf.setValue("sendKey", v)}
+          label="Email them the key"
+          description="Sends a new key to this address. Its other keys keep working."
+        />
         {form.submitError && !Object.keys(form.errors).length ? (
           <Callout tone="danger" title="The license wasn't assigned" live>
             {errorCopy(form.submitError, { thing: "License" }).description}

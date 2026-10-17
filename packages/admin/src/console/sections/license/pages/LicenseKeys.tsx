@@ -6,7 +6,8 @@
 
 import * as React from "react";
 import { KeyRound } from "lucide-react";
-import type { KeyDto, LicenseDetail } from "../../../../api.js";
+import { ApiError, type KeyDto, type LicenseDetail } from "../../../../api.js";
+import { Checkbox } from "../../../../ui/Checkbox.js";
 import { useMe } from "../../../data/hooks.js";
 import { mutate } from "../../../data/mutations.js";
 import { useTableUrlState } from "../../../useTableUrlState.js";
@@ -295,6 +296,137 @@ export function MintKeyDialog({
             </Button>
             <Button type="submit" loading={busy}>
               Mint key
+            </Button>
+          </DialogFooter>
+        </form>
+      )}
+    </Dialog>
+  );
+}
+
+/**
+ * **Send a new key…** (LX-27; notes/S-24 §8.4, D12): mints a key labelled "Sent by email" and
+ * mails it to the license's address; the old keys keep working unless **Also revoke its other
+ * keys** is ticked. One send per license per 10 minutes (the refusal shows inline). When the
+ * email does not go out the new key is already valid, so it is shown once here to copy, with
+ * **Try again** (which mints another).
+ */
+export function SendKeyDialog({
+  slug,
+  licenseId,
+  email,
+  open,
+  onOpenChange,
+}: {
+  slug: string;
+  licenseId: string;
+  email: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}): React.ReactElement {
+  const [revokeOthers, setRevokeOthers] = React.useState(false);
+  const [busy, setBusy] = React.useState(false);
+  const [error, setError] = React.useState<unknown>(null);
+  const [unsent, setUnsent] = React.useState<string | null>(null);
+  const [ack, setAck] = React.useState(false);
+
+  React.useEffect(() => {
+    if (open) {
+      setRevokeOthers(false);
+      setBusy(false);
+      setError(null);
+      setUnsent(null);
+      setAck(false);
+    }
+  }, [open]);
+
+  const send = async (): Promise<void> => {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await mutate("sendLicenseKey", slug, licenseId, revokeOthers);
+      if (res.delivered.email === "sent") {
+        toast.success(`Key sent to ${email}`);
+        onOpenChange(false);
+      } else {
+        setUnsent(res.key);
+        setAck(false);
+      }
+    } catch (err) {
+      setError(err);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const limited = error instanceof ApiError && error.status === 429;
+  return (
+    <Dialog
+      open={open}
+      title={unsent ? "The email didn't go out" : "Send a new key"}
+      description={
+        unsent
+          ? "The new key works. Copy it now, it is shown only once."
+          : `Emails a new key to ${email}.`
+      }
+      dismissible={!busy}
+      onOpenChange={(o) => onOpenChange(o)}
+    >
+      {unsent ? (
+        <OneTimeSecretPanel
+          label="License key"
+          value={unsent}
+          acknowledged={ack}
+          onAcknowledgedChange={setAck}
+          onDone={() => onOpenChange(false)}
+          actions={
+            <Button
+              variant="secondary"
+              loading={busy}
+              onClick={() => void send()}
+            >
+              Try again
+            </Button>
+          }
+        />
+      ) : (
+        <form
+          noValidate
+          className="contents"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void send();
+          }}
+        >
+          <DialogBody className="space-y-4">
+            <Checkbox
+              checked={revokeOthers}
+              onCheckedChange={setRevokeOthers}
+              label="Also revoke its other keys"
+              description="Devices already activated keep working. Anyone with an old key can't activate a new one."
+            />
+            {error ? (
+              <Callout
+                tone={limited ? "warning" : "danger"}
+                title={limited ? "Sent a moment ago" : "The key wasn't sent"}
+                live
+              >
+                {limited
+                  ? "A key was emailed for this license in the last 10 minutes. Try again later."
+                  : errorCopy(error, { thing: "License" }).description}
+              </Callout>
+            ) : null}
+          </DialogBody>
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              disabled={busy}
+              onClick={() => onOpenChange(false)}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" loading={busy}>
+              Send key
             </Button>
           </DialogFooter>
         </form>

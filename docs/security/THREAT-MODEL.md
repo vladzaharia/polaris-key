@@ -7607,7 +7607,7 @@ licence's other active keys in the same batch). Same product-admin session and C
 write.
 
 - **Rate-limited and audited.** One delivered send-key per licence per 10 minutes (`429
-  rate_limited`, `retryAfter`), read from the audit trail so it holds across isolates; a failed
+rate_limited`, `retryAfter`), read from the audit trail so it holds across isolates; a failed
   send does not count, so it stays retryable. Audited `license.create` (with the delivery outcome)
   and `license.key.send` (key label, outcome, revoked count).
 - **The key appears only in the email body and the one response that minted it.** Never in the

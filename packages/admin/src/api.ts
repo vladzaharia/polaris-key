@@ -3848,7 +3848,14 @@ export interface CreateLicenseBody {
   channels?: string[];
   minVersion?: string;
   maxVersion?: string;
+  /** LX-27: the licence's own device limit; omitted inherits. */
+  deviceLimit?: number;
+  /** LX-27: `email: true` mails the first key to `email` in the same request. */
+  delivery?: { email: boolean };
 }
+
+/** LX-27: how the key email went. */
+export type KeyEmailOutcome = "sent" | "queued" | "failed";
 
 export interface PatchLicenseBody {
   name?: string;
@@ -5424,13 +5431,15 @@ const rawApi = {
   license: (slug: string, id: string) =>
     call<LicenseDetail>(`${p(slug)}/license/licenses/${enc(id)}`),
   createLicense: (slug: string, body: CreateLicenseBody) =>
-    call<{ licenseId: string; key: string; license: LicenseSummary }>(
-      `${p(slug)}/license/licenses`,
-      {
-        method: "POST",
-        body: JSON.stringify(body),
-      },
-    ),
+    call<{
+      licenseId: string;
+      key: string;
+      delivered?: { email: KeyEmailOutcome };
+      license: LicenseSummary;
+    }>(`${p(slug)}/license/licenses`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
   patchLicense: (slug: string, id: string, body: PatchLicenseBody) =>
     call<{
       ok: true;
@@ -5507,6 +5516,17 @@ const rawApi = {
         body: JSON.stringify({ label }),
       },
     ),
+  /** LX-27: mint a key labelled "Sent by email", mail it to the licence's address. */
+  sendLicenseKey: (slug: string, id: string, revokeOthers = false) =>
+    call<{
+      key: string;
+      hash: string;
+      delivered: { email: KeyEmailOutcome };
+      revoked: number;
+    }>(`${p(slug)}/license/licenses/${enc(id)}/send-key`, {
+      method: "POST",
+      body: JSON.stringify({ revokeOthers }),
+    }),
   revokeKey: (slug: string, id: string, keyHash: string) =>
     call<{ ok: true; hash: string; status: KeyStatus }>(
       `${p(slug)}/license/licenses/${enc(id)}/keys/${enc(keyHash)}/revoke`,

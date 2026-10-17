@@ -58,7 +58,7 @@ import {
   useLicenseHolderMoves,
 } from "../components/holders.js";
 import { DeleteLicenseDialog, deletionBlockedReason } from "./LicenseDelete.js";
-import { LicenseKeys, MintKeyDialog } from "./LicenseKeys.js";
+import { LicenseKeys, MintKeyDialog, SendKeyDialog } from "./LicenseKeys.js";
 import { LicenseTerms } from "./LicenseTerms.js";
 import {
   actorName,
@@ -172,6 +172,7 @@ function LicenseRecordBody({
     | "bundle"
     | "mint"
     | "deviceLimit"
+    | "send"
     | "disable"
     | "enable"
     | "delete"
@@ -325,6 +326,12 @@ function LicenseRecordBody({
             onSelect: () => setDialog("bundle"),
           },
           { label: "Device limit…", onSelect: () => setDialog("deviceLimit") },
+          // LX-27: an assigned licence's key can be emailed anew (a floating one has no address).
+          ...(floating || !license.email?.trim()
+            ? []
+            : [
+                { label: "Send a new key…", onSelect: () => setDialog("send") },
+              ]),
           // S-24 §8.8: Reassign lives in the overflow, beside Make floating in its danger part.
           ...(floating
             ? []
@@ -492,6 +499,13 @@ function LicenseRecordBody({
         licenseId={id}
         open={dialog === "mint"}
         onOpenChange={(o) => setDialog(o ? "mint" : null)}
+      />
+      <SendKeyDialog
+        slug={slug}
+        licenseId={id}
+        email={license.email?.trim() ?? ""}
+        open={dialog === "send"}
+        onOpenChange={(o) => setDialog(o ? "send" : null)}
       />
       <ConfirmDialog
         open={dialog === "disable"}

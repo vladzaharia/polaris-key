@@ -199,9 +199,15 @@ afterAll(async () => {
   await new Promise<void>((r) => server?.httpServer.close(() => r()));
 });
 
-async function open(theme: "dark" | "light", hash: string): Promise<Page> {
+let sendOutcome: "sent" | "failed" = "sent";
+
+async function open(
+  theme: "dark" | "light",
+  hash: string,
+  width = 1440,
+): Promise<Page> {
   const ctx = await browser.newContext({
-    viewport: { width: 1440, height: 900 },
+    viewport: { width, height: width >= 1000 ? 900 : 780 },
     colorScheme: theme,
     reducedMotion: "reduce",
   });
@@ -217,6 +223,16 @@ async function open(theme: "dark" | "light", hash: string): Promise<Page> {
   await ctx.route("**/*", async (route) => {
     const url = new URL(route.request().url());
     if (url.pathname.startsWith("/manage/api/")) {
+      if (url.pathname.endsWith("/send-key"))
+        return route.fulfill({
+          status: 201,
+          json: {
+            key: "pkey_djdl_3WPLDA7Q2M8K5NHV",
+            hash: "h1",
+            delivered: { email: sendOutcome },
+            revoked: 0,
+          },
+        });
       const body = ROUTES[url.pathname];
       return body
         ? route.fulfill({ json: body })
@@ -269,7 +285,9 @@ describe("Licence holder surfaces under the Worker's CSP", () => {
       await shot(page, `license-holders-floating-record-${theme}`);
       await page.getByRole("button", { name: "Assign…" }).first().click();
       await page.getByRole("dialog", { name: "Assign license" }).waitFor();
-      await page.getByLabel(/^Email/).fill("ada@example.com");
+      await page
+        .getByRole("textbox", { name: /^Email/ })
+        .fill("ada@example.com");
       await shot(page, `license-holders-assign-${theme}`);
       expect(await violations(page)).toEqual([]);
       await page.context().close();
@@ -317,5 +335,78 @@ describe("Licence holder surfaces under the Worker's CSP", () => {
       await page.keyboard.press("Escape");
       await page.context().close();
     });
+  }
+
+  // LX-27: Send a new key… and the Assign… dialog's Email them the key, at the phone and
+  // desktop widths in both themes (no page-level sideways scroll, zero CSP violations).
+  for (const theme of ["dark", "light"] as const) {
+    for (const width of [360, 390, 1440]) {
+      it(`Send a new key… and the key-email box (${theme}, ${width}px)`, async () => {
+        sendOutcome = "sent";
+        const page = await open(
+          theme,
+          "#/p/djdl/license/licenses/lic_lena",
+          width,
+        );
+        await page
+          .locator("[data-page-title]", { hasText: "Lena Ortiz" })
+          .first()
+          .waitFor();
+        await page
+          .getByRole("button", { name: "More actions" })
+          .first()
+          .click();
+        await page.getByRole("menuitem", { name: "Send a new key…" }).click();
+        const dialog = page.getByRole("dialog", { name: "Send a new key" });
+        await dialog.waitFor();
+        await dialog.getByLabel(/Also revoke its other keys/).check();
+        await shot(page, `lx27-send-key-${theme}-${width}`);
+        const overflow = await page.evaluate(
+          () =>
+            document.documentElement.scrollWidth >
+            document.documentElement.clientWidth,
+        );
+        expect(overflow).toBe(false);
+        // The failed send keeps the new key: shown once, with Try again.
+        sendOutcome = "failed";
+        await dialog.getByRole("button", { name: "Send key" }).click();
+        await page.getByText("The email didn't go out").first().waitFor();
+        await page.getByRole("button", { name: "Try again" }).waitFor();
+        await shot(page, `lx27-send-key-failed-${theme}-${width}`);
+        expect(await violations(page)).toEqual([]);
+        await page.keyboard.press("Escape");
+        await page.context().close();
+      });
+
+      it(`Assign… with Email them the key (${theme}, ${width}px)`, async () => {
+        const page = await open(
+          theme,
+          "#/p/djdl/license/licenses/lic_float_a",
+          width,
+        );
+        await page
+          .locator("[data-page-title]", { hasText: "Floating license" })
+          .first()
+          .waitFor();
+        await page.getByRole("button", { name: "Assign…" }).first().click();
+        const dialog = page.getByRole("dialog", { name: "Assign license" });
+        await dialog.waitFor();
+        await dialog
+          .getByRole("textbox", { name: /^Email/ })
+          .fill("ada@example.com");
+        await dialog.getByLabel(/Email them the key/).check();
+        await shot(page, `lx27-assign-key-${theme}-${width}`);
+        expect(
+          await page.evaluate(
+            () =>
+              document.documentElement.scrollWidth >
+              document.documentElement.clientWidth,
+          ),
+        ).toBe(false);
+        expect(await violations(page)).toEqual([]);
+        await page.keyboard.press("Escape");
+        await page.context().close();
+      });
+    }
   }
 });

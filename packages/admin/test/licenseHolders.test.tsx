@@ -248,7 +248,7 @@ describe("Assign… and Edit holder", () => {
       name: "Assign license",
     });
     await userEvent.type(
-      within(dialog).getByLabelText(/^Email/),
+      within(dialog).getByRole("textbox", { name: /^Email/ }),
       "ada@example.com",
     );
     // D4: the line never says whether the address has an account.
@@ -267,6 +267,77 @@ describe("Assign… and Edit holder", () => {
           path: `${API}/license/licenses/lic_float`,
           method: "PATCH",
           body: { email: "ada@example.com", name: "Ada" },
+        },
+      ]),
+    );
+  });
+
+  it("LX-27: Email them the key patches, then sends a new key once", async () => {
+    const log = bootLicense("#/p/djdl/license/licenses/lic_float", {
+      routes: {
+        ...ROUTES,
+        [`PATCH ${API}/license/licenses/lic_float`]: {
+          ok: true,
+          id: "lic_float",
+        },
+        [`POST ${API}/license/licenses/lic_float/send-key`]: {
+          key: "pkey_djdl_X",
+          hash: "h",
+          delivered: { email: "sent" },
+          revoked: 0,
+        },
+      },
+    });
+    await screen.findByRole("heading", { level: 1, name: "Floating license" });
+    await userEvent.click(screen.getByRole("button", { name: "Assign…" }));
+    const dialog = await screen.findByRole("dialog", {
+      name: "Assign license",
+    });
+    await userEvent.type(
+      within(dialog).getByRole("textbox", { name: /^Email/ }),
+      "ada@example.com",
+    );
+    await userEvent.click(within(dialog).getByLabelText(/Email them the key/));
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Assign license" }),
+    );
+    await waitFor(() =>
+      expect(writes(log).map((w) => `${w.method} ${w.path}`)).toEqual([
+        `PATCH ${API}/license/licenses/lic_float`,
+        `POST ${API}/license/licenses/lic_float/send-key`,
+      ]),
+    );
+  });
+
+  it("LX-27: Send a new key… on an assigned licence posts revokeOthers", async () => {
+    const log = bootLicense("#/p/djdl/license/licenses/lic_in", {
+      routes: {
+        ...ROUTES,
+        [`POST ${API}/license/licenses/lic_in/send-key`]: {
+          key: "pkey_djdl_X",
+          hash: "h",
+          delivered: { email: "sent" },
+          revoked: 2,
+        },
+      },
+    });
+    await screen.findByRole("heading", { level: 1, name: "Lena Ortiz" });
+    await more("Send a new key…");
+    const dialog = await screen.findByRole("dialog", {
+      name: "Send a new key",
+    });
+    await userEvent.click(
+      within(dialog).getByLabelText(/Also revoke its other keys/),
+    );
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Send key" }),
+    );
+    await waitFor(() =>
+      expect(writes(log)).toEqual([
+        {
+          path: `${API}/license/licenses/lic_in/send-key`,
+          method: "POST",
+          body: { revokeOthers: true },
         },
       ]),
     );
