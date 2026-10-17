@@ -43,7 +43,7 @@ and **List** switch. A **Needs attention** filter appears while an app needs att
 ## If an app is missing
 
 - A license sent to another email: add that email under **Sign-in methods** in your account menu.
-- A Steam purchase: add Steam under **Sign-in methods**.
+- A Steam purchase: open the app from Steam and select **Restore purchase**.
 - An App Store or Google Play purchase: sign in once in the app itself.
 - A license key: select **Activate license** and add it.
 
