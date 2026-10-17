@@ -46,12 +46,14 @@ import { bound } from "../contributions.js";
 import { resolveServices } from "../products/createDefaults.js";
 import { coreContributor } from "./core.js";
 import { planRows } from "./rows.js";
+import { planManifest } from "./plan.js";
 import type {
   Ingest,
   IngestCheck,
   IngestContext,
   IngestInput,
   IngestOk,
+  IngestPlan,
   IngestProblem,
   IngestResult,
   ManifestContribution,
@@ -129,6 +131,7 @@ function contributorsOf(
 export function ingestFor(registry: ServiceRegistry): Ingest {
   return {
     run: (env, db, input) => run(registry, env, db, input),
+    plan: (env, db, input, opts) => plan(registry, env, db, input, opts),
   };
 }
 
@@ -139,14 +142,16 @@ export function ingestFor(registry: ServiceRegistry): Ingest {
  */
 export const BOUND_INGEST: Ingest = {
   run: (env, db, input) => run(bound(), env, db, input),
+  plan: (env, db, input, opts) => plan(bound(), env, db, input, opts),
 };
 
-async function run(
+/** Phase 1: the product row, the effective service set and the contributors' contexts. */
+async function setup(
   registry: ServiceRegistry,
   env: Env,
   db: Db,
   input: IngestInput,
-): Promise<IngestResult> {
+) {
   const { mode, manifest, now, source } = input;
   const scope = input.scope ?? "full";
   const slug = input.product;
@@ -157,7 +162,7 @@ async function run(
       ? (input.seed?.product ?? (await getProduct(db, slug)))
       : null;
   if (mode === "apply" && !before)
-    return { ok: false, error: "unknown product" };
+    return { fail: { ok: false as const, error: "unknown product" } };
 
   let services: ServicesMap = manifest.services;
   let servicesSource: "manifest" | "admin" = "manifest";
@@ -260,13 +265,102 @@ async function run(
     } as IngestContext,
   }));
 
+  return {
+    fail: null,
+    mode,
+    scope,
+    slug,
+    manifest,
+    now,
+    source,
+    services,
+    base,
+    active,
+    emptyClaims,
+    lazy,
+  };
+}
+
+/** The order the dry run lists refusals in (the old policy order, then the publisher lookup). */
+const PLAN_ORDER = {
+  apply: [
+    "binary",
+    "issuer",
+    "catalog",
+    "declassify",
+    "sparkle",
+    "seal",
+    "publisher",
+  ],
+  create: ["binary", "issuer", "catalog", "publisher"],
+} as const;
+
+/**
+ * The dry run (`plan`): every refusal that applies (unlike `run`, which stops at the first), and
+ * in apply mode what the apply would write, keep and delete. Writes nothing.
+ */
+async function plan(
+  registry: ServiceRegistry,
+  env: Env,
+  db: Db,
+  input: IngestInput,
+  opts: { skip?: readonly string[] } = {},
+): Promise<IngestPlan> {
+  const s = await setup(registry, env, db, input);
+  if (s.fail)
+    return {
+      problems: [{ check: "product", message: s.fail.error }],
+      plan: null,
+      breakGlass: [],
+    };
+  const order: readonly string[] = PLAN_ORDER[s.mode];
+  const checks = s.active
+    .flatMap(({ contributor, ctx }) =>
+      contributor.checks ? contributor.checks(ctx) : [],
+    )
+    .filter(
+      (c) =>
+        !c.applyOnly &&
+        order.includes(c.check) &&
+        !opts.skip?.includes(c.check),
+    )
+    .map((c, i) => ({ c, i, r: order.indexOf(c.check) }))
+    .sort((a, b) => a.r - b.r || a.i - b.i);
+  const problems: IngestProblem[] = [];
+  for (const { c } of checks) {
+    const p = await c.run();
+    if (p) problems.push(p);
+  }
+  if (s.mode !== "apply") return { problems, plan: null, breakGlass: [] };
+  return {
+    problems,
+    plan: await planManifest(db, s.slug, s.manifest, s.now),
+    breakGlass: (await s.base.claims()).live,
+  };
+}
+
+async function run(
+  registry: ServiceRegistry,
+  env: Env,
+  db: Db,
+  input: IngestInput,
+): Promise<IngestResult> {
+  const s = await setup(registry, env, db, input);
+  if (s.fail) return s.fail;
+  const { mode, scope, slug, manifest, now, source, services, base, active } =
+    s;
+  const { emptyClaims, lazy } = s;
+  void services;
+
   // ── 2. Refuse ────────────────────────────────────────────────────────────────
   // The deploy hook's subset runs no checks: its caller refused a wrong manifest already.
   const checks: IngestCheck[] =
     scope === "system"
       ? []
       : active.flatMap(({ contributor, ctx }) =>
-          contributor.checks ? contributor.checks(ctx) : [],
+          (contributor.checks ? contributor.checks(ctx) : []).filter(
+            (c) => !c.planOnly,
+          ),
         );
   const order: readonly string[] = REFUSAL_ORDER[mode];
   const ranked = checks

@@ -45,7 +45,7 @@ import { parse as parseYaml } from "yaml";
 import type { Env } from "../../platform/env.js";
 import type { Db, DbStatement } from "../../db/types.js";
 import { ErrorCode } from "../../core/errors.js";
-import { type ProductRow } from "../../core/repo.js";
+import {} from "../../core/repo.js";
 import {
   getProduct,
   getProductSecret,
@@ -56,7 +56,7 @@ import {
   stmtInsertSchema,
   upsertProductSecret,
 } from "../../core/products/store.js";
-import { getTier } from "../../core/licensing/store.js";
+import {} from "../../core/licensing/store.js";
 import { mintKid } from "../../core/keys.js";
 import {
   parseCreateChoices,
@@ -91,12 +91,6 @@ import { SIGNIN_ENV } from "../../services/identity/public.js";
 import { checkSlug, prepareCreate } from "../../services/release/public.js";
 import { ingestFor } from "../../core/ingest/pipeline.js";
 import { SERVICES, SETTINGS } from "../../mount.js";
-import {
-  isAutoIssueMode,
-  isFingerprintMode,
-  parseAutoIssue,
-  parseFingerprintPolicy,
-} from "../../core/fingerprint.js";
 import { audit, platformAudit } from "../../core/audit.js";
 import {
   deviceLimitMessage,
@@ -213,7 +207,14 @@ export async function handleProducts(
     // every problem with its file and path; nothing is written. A refusal before the manifest
     // could be read (the URL, the App, the fetch) is a 422 naming that check.
     if (new URL(req.url).searchParams.get("dryRun") === "1") {
-      const dry = await prepareCreate(env, db, repoUrl, now, fetch);
+      const dry = await prepareCreate(
+        env,
+        db,
+        repoUrl,
+        now,
+        fetch,
+        ingestFor(SERVICES),
+      );
       if (!dry.ok)
         return err(dry.status, ErrorCode.BadRequest, dry.error, {
           reason: dry.check,

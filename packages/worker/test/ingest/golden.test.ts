@@ -23,6 +23,10 @@
  *     4, 5, 8, 9-*), and a resync's edge-mint DELETE and INSERT carry U-31's
  *     `config.catalog` claim guard (3, 4, 5, 6a, 8, 9-*, 10a; 5's end state
  *     keeps the console's recipe).
+ *   - 14a/14b/14c (plans/P0-26.md D5, deltas 2 and 3): the create dry run parses with
+ *     reservedDisplayNames, and the resync and link dry runs list every policy refusal, not
+ *     only the first. Captured from the pipeline's plan when the deltas landed; the pre-delta
+ *     behaviour had no scenario.
  *   - 11a/11b: the deploy hook's snapshot scrub reads the active schema, one more D1 round trip
  *     (sec/manifest-snapshot-redact); only the trip count moved.
  *   - 13-link-secret-default (plans/P0-26.md D5, delta 1): link screens the catalog for delivery
@@ -643,5 +647,64 @@ describe("ingest golden: the dry runs", () => {
       release: { sparkleEd25519Pub: "SWAPPED22" },
     });
     check("12e-plan-refused", await record(refused, plan(refused)));
+  });
+});
+
+describe("ingest golden: the dry runs, D5 deltas 2 and 3 (plans/P0-26.md)", () => {
+  it("14a. the create dry run parses with reservedDisplayNames", async () => {
+    const c = fresh(full({ product: { name: "Steam Companion" } }));
+    c.env.IDENTITY_RESERVED_DISPLAY_NAMES = "error";
+    check(
+      "14a-dry-create-reserved-name",
+      await record(c, (db) =>
+        prepareCreate(c.env, db, URL_, NOW, c.remote.fetch, ingest),
+      ),
+    );
+  });
+
+  it("14b. the resync dry run lists every policy refusal", async () => {
+    const w = await linked(full());
+    w.remote.files = full({
+      release: { sparkleEd25519Pub: "SWAPPED22" },
+      product: {
+        oidc: {
+          provider: "custom",
+          issuer: "https://evil.example",
+          clientId: "acme-client",
+          clientSecretSecret: "OIDC_SECRET__ACME",
+          redirectUris: ["https://acme.example/cb"],
+        },
+      },
+    });
+    check(
+      "14b-plan-every-refusal",
+      await record(w, (db) =>
+        planResync(w.env, db, SLUG, NOW + 60, w.remote.fetch, ingest),
+      ),
+    );
+  });
+
+  it("14c. the link dry run lists every policy refusal", async () => {
+    const m = fresh(
+      full({
+        entries: [ENTRIES[0]!, { ...ENTRIES[1]!, default: "hunter22hunter22" }],
+        product: {
+          oidc: {
+            provider: "custom",
+            issuer: "https://evil.example",
+            clientId: "acme-client",
+            clientSecretSecret: "OIDC_SECRET__ACME",
+            redirectUris: ["https://acme.example/cb"],
+          },
+        },
+      }),
+    );
+    await seedProduct(m.db, SLUG);
+    check(
+      "14c-dry-link-every-refusal",
+      await record(m, (db) =>
+        prepareLink(m.env, db, SLUG, URL_, NOW, m.remote.fetch, ingest),
+      ),
+    );
   });
 });

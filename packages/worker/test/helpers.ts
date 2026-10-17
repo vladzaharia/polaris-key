@@ -40,4 +40,5 @@ export const NO_HOOKS: ServiceHooks = {
  *  context by hand (Core builds the real one from the registry, `manifestIngestFor`). */
 export const NO_INGEST: Ingest = {
   run: async () => ({ ok: false, error: "no ingest in this test" }),
+  plan: async () => ({ problems: [], plan: null, breakGlass: [] }),
 };

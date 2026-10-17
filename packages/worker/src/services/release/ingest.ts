@@ -445,26 +445,44 @@ export const releaseManifest: ManifestContributor = {
         const name = rel?.binaryName || ctx.source.repo?.name;
         if (!name || (ctx.mode === "apply" && !rel)) return null;
         const message = binaryNameRefusal(name);
-        return message ? { check: "binary", message } : null;
+        return message
+          ? {
+              check: "binary",
+              message,
+              area: "release",
+              file: "release",
+              path: "/release/binaryName",
+            }
+          : null;
       },
     },
     ...(ctx.mode === "apply"
       ? [
           {
+            // An apply needs the release config the coordinates came from (the dry run of a
+            // product that is not linked yet has none, and asks nothing of it).
+            check: "release-config",
+            applyOnly: true,
+            run: async () =>
+              (await releaseConfig(ctx))
+                ? null
+                : {
+                    check: "release-config",
+                    message: "product has no linked repo coordinates",
+                  },
+          },
+          {
             check: "sparkle",
             run: async () => {
               const cfg = await releaseConfig(ctx);
-              if (!cfg)
-                return {
-                  check: "sparkle",
-                  message: "product has no linked repo coordinates",
-                };
               const message = sparkleKeyRefusal(
                 ctx.manifest,
                 cfg?.sparkle_ed25519_pub,
                 ctx.slug,
               );
-              return message ? { check: "sparkle", message } : null;
+              return message
+                ? { check: "sparkle", message, area: "release" }
+                : null;
             },
           },
         ]

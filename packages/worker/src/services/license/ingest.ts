@@ -90,6 +90,8 @@ export const licenseManifest: ManifestContributor = {
     ctx.mode === "apply"
       ? [
           {
+            // The dry run words this conflict from its own plan (`core/ingest/plan.ts`).
+            applyOnly: true,
             check: "tier-drop",
             run: async () => {
               const { plan } = await ctx.rows();

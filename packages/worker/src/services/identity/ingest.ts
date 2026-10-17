@@ -235,7 +235,15 @@ export const identityManifest: ManifestContributor = {
                 ctx.slug,
                 ctx.manifest,
               );
-        return message ? { check: "issuer", message } : null;
+        return message
+          ? {
+              check: "issuer",
+              message,
+              area: "oidc",
+              file: "product",
+              path: "/oidc/issuer",
+            }
+          : null;
       },
     },
   ],

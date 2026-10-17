@@ -174,7 +174,15 @@ function checks(ctx: IngestContext): IngestCheck[] {
       check: "publisher",
       run: async () => {
         const r = await publisher(ctx);
-        return r.ok ? null : { check: "publisher", message: r.error };
+        return r.ok
+          ? null
+          : {
+              check: "publisher",
+              message: r.error,
+              area: "publisher",
+              file: "release",
+              path: "/release/publishing/trustedPublisher",
+            };
       },
     },
   ];

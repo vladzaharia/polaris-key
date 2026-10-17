@@ -23,6 +23,7 @@ import {
 } from "../../core/settingsClaims.js";
 import {
   countLicensesListingProfile,
+  profileSecretsRefusal,
   rowAudit,
   screenCatalog,
   withStoredSecrets,
@@ -33,12 +34,16 @@ import {
   sealedProfilePayload,
 } from "../../core/ingest/manifestSecrets.js";
 import type {
+  IngestCheck,
   IngestContext,
   IngestProblem,
   ManifestContribution,
   ManifestContributor,
 } from "../../core/ingest/types.js";
 import type { ManifestProfile } from "@polaris-key/manifest";
+
+/** Where a catalog refusal sits in the dry run. */
+const CATALOG_AT = { area: "catalog", file: "schema", path: "/" } as const;
 
 interface CatalogState {
   /** The refusal, when the catalog cannot be installed. */
@@ -60,7 +65,7 @@ function catalogState(ctx: IngestContext): Promise<CatalogState> {
       return {
         problem: screened.ok
           ? null
-          : { check: "catalog", message: screened.error },
+          : { ...CATALOG_AT, check: "catalog", message: screened.error },
         catalogChanged: true,
         catalogClaimed: false,
         activeJson: null,
@@ -80,7 +85,7 @@ function catalogState(ctx: IngestContext): Promise<CatalogState> {
     return {
       problem: screened.ok
         ? null
-        : { check: "catalog", message: screened.error },
+        : { ...CATALOG_AT, check: "catalog", message: screened.error },
       catalogChanged,
       catalogClaimed,
       activeJson: active?.catalog_json,
@@ -126,10 +131,7 @@ function createdProfiles(ctx: IngestContext): Promise<
 }
 
 function checks(ctx: IngestContext) {
-  const out: {
-    check: string;
-    run: () => Promise<IngestProblem | null>;
-  }[] = [
+  const out: IngestCheck[] = [
     {
       check: "catalog",
       run: async () => (await catalogState(ctx)).problem,
@@ -146,6 +148,31 @@ function checks(ctx: IngestContext) {
   else
     out.push(
       {
+        // The apply seals late, in `finalize`; the dry run asks up front for the same refusal.
+        planOnly: true,
+        check: "seal",
+        run: async () => {
+          const s = await catalogState(ctx);
+          if (!s.incoming) return null;
+          const r = await profileSecretsRefusal(
+            ctx.env,
+            ctx.db,
+            ctx.slug,
+            ctx.manifest,
+            s.incoming,
+            s.activeJson,
+          );
+          return r
+            ? {
+                check: "seal",
+                message: r.error,
+                area: "profiles",
+                id: r.profile,
+              }
+            : null;
+        },
+      },
+      {
         check: "declassify",
         run: async () => {
           const s = await catalogState(ctx);
@@ -159,6 +186,7 @@ function checks(ctx: IngestContext) {
           );
           return refusal
             ? {
+                ...CATALOG_AT,
                 check: "declassify",
                 message: `invalid catalog in manifest: ${refusal}`,
               }
@@ -166,6 +194,8 @@ function checks(ctx: IngestContext) {
         },
       },
       {
+        // The dry run words this conflict from its own plan (`core/ingest/plan.ts`).
+        applyOnly: true,
         check: "profile-drop",
         run: async () => {
           const { plan } = await ctx.rows();
