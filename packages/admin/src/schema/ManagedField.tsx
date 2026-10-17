@@ -4,7 +4,7 @@ import type { Catalog } from "@polaris-key/catalog";
 import type { ConfigEntry, ManagementState } from "../api.js";
 import { cn } from "../lib/cn.js";
 import { fromSeconds } from "../lib/format.js";
-import { KIND_LABELS } from "../lib/labels.js";
+import { typeLabel } from "../lib/labels.js";
 import { Button } from "../ui/Button.js";
 import { IconButton } from "../ui/IconButton.js";
 import { StatusPill } from "../ui/StatusPill.js";
@@ -74,10 +74,11 @@ export function ManagedField({
   domId,
 }: ManagedFieldProps): React.ReactElement {
   const secret = isSecretEntry(entry);
+  const minted = entry.kind === "secret" && entry.delivery === "edgeMint";
   const managed = set !== false;
   const kind = (
     <StatusPill tone={KIND_TONE[entry.kind]} icon={null} size="sm">
-      {KIND_LABELS[entry.kind] ?? entry.kind}
+      {typeLabel(entry)}
     </StatusPill>
   );
   const header = (
@@ -132,16 +133,20 @@ export function ManagedField({
           </div>
           <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
             {kind}
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              disabled={disabled}
-              aria-label={`Set a value for ${entry.label}`}
-              onClick={() => onSetChange?.(true)}
-            >
-              Set value
-            </Button>
+            {minted ? (
+              <span className="text-xs text-fg-muted">Minted on request</span>
+            ) : (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={disabled}
+                aria-label={`Set a value for ${entry.label}`}
+                onClick={() => onSetChange?.(true)}
+              >
+                Set value
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -195,18 +200,22 @@ export function ManagedField({
       />
 
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 border-t border-border pt-2.5">
-        <ManagementStateControl
-          value={state}
-          disabled={disabled}
-          label={`Management state for ${entry.label}`}
-          onChange={onStateChange}
-        />
+        {entry.kind === "secret" ? (
+          <span className="text-xs text-fg-muted">Code only</span>
+        ) : (
+          <ManagementStateControl
+            value={state}
+            disabled={disabled}
+            label={`In the app for ${entry.label}`}
+            onChange={onStateChange}
+          />
+        )}
         <div className="flex flex-col items-end gap-0.5 text-xs text-fg-muted">
           {inherited && overrideIgnored ? (
             <span className="text-right font-medium text-warning">
               {capitalize(inherited.source)} enforces{" "}
               {formatValue(inherited.value)}; this value is ignored. Choose
-              Enforced to override it.
+              Read-only to override it.
             </span>
           ) : inherited ? (
             <span>
@@ -220,16 +229,6 @@ export function ManagedField({
           ) : null}
         </div>
       </div>
-
-      {/* `applyOverrides` deletes a key whose update carries no value and state `default`. For a
-          secret the console has no value to resend, so choosing Default really does clear it:
-          say so rather than letting the stored secret vanish on save. */}
-      {secret && secretConfigured && state === "default" && !value ? (
-        <p className="text-xs font-medium text-warning">
-          Saving with Default removes the stored secret: the server keeps no
-          value for an unmanaged key.
-        </p>
-      ) : null}
     </div>
   );
 }

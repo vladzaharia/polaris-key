@@ -262,15 +262,11 @@ describe("the catalog editor's Synced setting fields", () => {
     expect(onChange.mock.lastCall![0].user).toBeUndefined();
   });
 
-  it("hides a key from settings panels with listed: false", async () => {
-    const user = userEvent.setup();
-    const { onChange } = renderForm(entry({ key: "audio.volume" }));
-    await user.click(
-      screen.getByRole("checkbox", { name: "Show in settings panels" }),
-    );
-    expect(onChange).toHaveBeenLastCalledWith(
-      expect.objectContaining({ user: { listed: false } }),
-    );
+  it("has no Show in settings panels switch: In the app Hidden unlists a setting", () => {
+    renderForm(entry({ key: "audio.volume" }));
+    expect(
+      screen.queryByRole("checkbox", { name: "Show in settings panels" }),
+    ).toBeNull();
   });
 
   it("offers merge for an object and only last write for a list (combine is object-only)", () => {

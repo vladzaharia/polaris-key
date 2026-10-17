@@ -263,14 +263,14 @@ describe("ManagedPayloadEditor — dirty state and saving", () => {
     );
     expect(
       screen
-        .getByRole("radio", { name: "Enforced" })
+        .getByRole("radio", { name: "Read-only" })
         .getAttribute("aria-checked"),
     ).toBe("true");
   });
 
   it("a state-only change still carries the value, so Default cannot silently delete it", async () => {
     const { onSubmit } = renderEditor();
-    await userEvent.click(screen.getByRole("radio", { name: "Default" }));
+    await userEvent.click(screen.getByRole("radio", { name: "Editable" }));
     await userEvent.click(screen.getByRole("button", { name: /Save changes/ }));
     await waitFor(() => expect(onSubmit).toHaveBeenCalled());
     expect(onSubmit.mock.calls.at(-1)![0]).toEqual([
@@ -544,7 +544,7 @@ describe("ManagedPayloadEditor — a refetch never wipes the draft (MPE-1)", () 
     await waitFor(() =>
       expect(
         screen
-          .getByRole("radio", { name: "Default" })
+          .getByRole("radio", { name: "Editable" })
           .getAttribute("aria-checked"),
       ).toBe("true"),
     );
@@ -609,7 +609,7 @@ describe("ManagedPayloadEditor — only changed rows block a save (MPE-2)", () =
     );
     await userEvent.click(
       within(
-        screen.getByRole("radiogroup", { name: "Management state for Theme" }),
+        screen.getByRole("radiogroup", { name: "In the app for Theme" }),
       ).getByRole("radio", { name: "Hidden" }),
     );
     expect(screen.queryByText(/to save/)).toBeNull();
@@ -666,7 +666,7 @@ describe("ManagedPayloadEditor — review before saving (MPE-3)", () => {
       name: "Review changes",
     });
     const item = within(drawer).getByText("ui.theme").closest("li")!;
-    expect(item.textContent).toMatch(/Beforelight · Enforced/);
+    expect(item.textContent).toMatch(/Beforelight · Read-only/);
     expect(item.textContent).toMatch(/AfterNot set/);
     expect(item.textContent).toMatch(/Effectivedark \(from profile “base”\)/);
     await userEvent.click(

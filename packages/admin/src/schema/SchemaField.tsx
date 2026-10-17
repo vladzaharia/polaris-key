@@ -1,7 +1,7 @@
 import * as React from "react";
 import type { Catalog } from "@polaris-key/catalog";
 import type { ConfigEntry } from "../api.js";
-import { KIND_LABELS } from "../lib/labels.js";
+import { typeLabel } from "../lib/labels.js";
 import { Button } from "../ui/Button.js";
 import { formatJson } from "../ui/CodeEditor.js";
 import { FormField } from "../ui/form.js";
@@ -108,7 +108,7 @@ export function SchemaField({
       labelAside={
         labelAside === undefined ? (
           <StatusPill tone={KIND_TONE[entry.kind]} icon={null} size="sm">
-            {KIND_LABELS[entry.kind] ?? entry.kind}
+            {typeLabel(entry)}
           </StatusPill>
         ) : (
           labelAside

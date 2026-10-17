@@ -1,15 +1,20 @@
 import * as React from "react";
-import { Check, History, Pencil, Plus } from "lucide-react";
-import type { ConfigEntry, ProductCatalog } from "../../../../api.js";
-import { fromSeconds } from "../../../../lib/format.js";
-import { inAppLabel, typeLabel } from "../../../../lib/labels.js";
+import {
+  Check,
+  EyeOff,
+  History,
+  Lock,
+  Pencil,
+  Plus,
+  TriangleAlert,
+} from "lucide-react";
+import type { ConfigEntry } from "../../../../api.js";
+import { inAppLabel, inAppState, typeLabel } from "../../../../lib/labels.js";
 import {
   KIND_TONE,
-  STATE_TONE,
   UNCATEGORISED,
   categoryLabel,
   formatValue,
-  isSecretEntry,
   schemaSummary,
 } from "../../../../schema/index.js";
 import { Button } from "../../../../ui/Button.js";
@@ -27,7 +32,6 @@ import { ErrorState } from "../../../../ui/ErrorState.js";
 import { PageSkeleton } from "../../../../ui/Skeleton.js";
 import { SourceBadge } from "../../../../ui/SourceBadge.js";
 import { StatusPill } from "../../../../ui/StatusPill.js";
-import { Timestamp } from "../../../../ui/Timestamp.js";
 import { EntityLink } from "../../../components/EntityLink.js";
 import { RevertClaimDialog } from "../../../components/RevertClaimDialog.js";
 import { PageHeader } from "../../../../ui/PageHeader.js";
@@ -40,6 +44,13 @@ import {
   useSearchParam,
 } from "../../../router.js";
 import { r, withParam } from "../../../routes.js";
+import {
+  ENTRY_TYPE_LABELS,
+  entryType,
+  type EntryType,
+} from "../components/entryType.js";
+import { defaultText, retiredNotes } from "../model/entryNotes.js";
+import { HistoryDrawer } from "../components/HistoryDrawer.js";
 import { CollectionTemplate } from "../../../templates/Collection.js";
 import { useTableUrlState } from "../../../useTableUrlState.js";
 import {
@@ -48,15 +59,15 @@ import {
   isNotFound,
   useCatalog,
   useCatalogUsage,
-  useCatalogVersion,
-  useCatalogVersions,
 } from "../data.js";
 
 const KEY = codecs.string();
 const VERSION = codecs.int(0);
 
-/** The facet values a row carries (kind, category, management). */
-const stateOf = (e: ConfigEntry): string => e.managementDefault ?? "default";
+/** The facet value of the In the app column: a setting's visibility, else `code`. */
+const stateOf = (e: ConfigEntry): string => inAppState(e);
+
+const STATE_ICON = { enforced: Lock, hidden: EyeOff, default: Pencil } as const;
 
 /**
  * Config → Catalog (docs/design/ADMIN.md §6.6.1, T2): the active catalog as a dense table with
@@ -109,8 +120,17 @@ export function CatalogPage({ slug }: { slug: string }): React.ReactElement {
             className="flex min-w-0 max-w-[22rem] flex-col"
             title={row.original.key}
           >
-            <span className="truncate font-mono text-xs text-fg-strong">
+            <span className="flex items-center gap-1 truncate font-mono text-xs text-fg-strong">
               {row.original.key}
+              {retiredNotes(row.original).length ? (
+                <span title={retiredNotes(row.original).join(" ")}>
+                  <TriangleAlert
+                    aria-hidden
+                    className="size-3.5 shrink-0 text-warning"
+                  />
+                  <span className="sr-only">Uses a retired spelling</span>
+                </span>
+              ) : null}
             </span>
             <span className="truncate text-xs font-normal text-fg-muted">
               {row.original.label}
@@ -121,8 +141,8 @@ export function CatalogPage({ slug }: { slug: string }): React.ReactElement {
       {
         id: "kind",
         header: "Type",
-        accessorFn: (e) => e.kind,
-        meta: { priority: 1 },
+        accessorFn: (e) => entryType(e),
+        meta: { priority: 1, csv: (e) => typeLabel(e) },
         cell: ({ row }) => (
           <StatusPill tone={KIND_TONE[row.original.kind]} icon={null} size="sm">
             {typeLabel(row.original)}
@@ -132,12 +152,11 @@ export function CatalogPage({ slug }: { slug: string }): React.ReactElement {
       {
         id: "default",
         header: "Default",
-        accessorFn: (e) =>
-          isSecretEntry(e) ? "(write-only)" : formatValue(e.default),
+        accessorFn: (e) => defaultText(e) ?? formatValue(e.default),
         meta: { priority: 2, mono: true },
         cell: ({ row }) =>
-          isSecretEntry(row.original) ? (
-            <span className="text-fg-muted">(write-only)</span>
+          defaultText(row.original) ? (
+            <span className="text-fg-muted">{defaultText(row.original)}</span>
           ) : (
             <span className="block max-w-56 truncate font-mono text-xs">
               {formatValue(row.original.default)}
@@ -148,16 +167,24 @@ export function CatalogPage({ slug }: { slug: string }): React.ReactElement {
         id: "state",
         header: "In the app",
         accessorFn: stateOf,
-        meta: { priority: 1 },
-        cell: ({ row }) => (
-          <StatusPill
-            tone={STATE_TONE[stateOf(row.original) as keyof typeof STATE_TONE]}
-            icon={null}
-            size="sm"
-          >
-            {inAppLabel(row.original)}
-          </StatusPill>
-        ),
+        meta: { priority: 1, csv: (e) => inAppLabel(e) },
+        cell: ({ row }) => {
+          const state = stateOf(row.original);
+          if (state === "code")
+            return (
+              <span className="text-fg-muted" title={inAppLabel(row.original)}>
+                <span aria-hidden>—</span>
+                <span className="sr-only">{inAppLabel(row.original)}</span>
+              </span>
+            );
+          const Icon = STATE_ICON[state as keyof typeof STATE_ICON];
+          return (
+            <span className="inline-flex items-center gap-1.5 text-fg">
+              <Icon aria-hidden className="size-3.5 text-fg-muted" />
+              {inAppLabel(row.original)}
+            </span>
+          );
+        },
       },
       {
         id: "category",
@@ -195,10 +222,14 @@ export function CatalogPage({ slug }: { slug: string }): React.ReactElement {
       {
         id: "kind",
         label: "Type",
-        options: (["config", "secret", "flag"] as const).map((k) => ({
-          value: k,
-          label: typeLabel({ kind: k }),
-        })),
+        options: (
+          [
+            "setting",
+            "secret",
+            "minted",
+            ...(entries.some((e) => e.kind === "flag") ? ["flag"] : []),
+          ] as EntryType[]
+        ).map((k) => ({ value: k, label: ENTRY_TYPE_LABELS[k] })),
       },
       {
         id: "category",
@@ -208,10 +239,15 @@ export function CatalogPage({ slug }: { slug: string }): React.ReactElement {
       {
         id: "state",
         label: "In the app",
-        options: (["default", "enforced", "hidden"] as const).map((s) => ({
-          value: s,
-          label: inAppLabel({ kind: "config", managementDefault: s }),
-        })),
+        options: (["default", "enforced", "hidden", "code"] as const).map(
+          (s) => ({
+            value: s,
+            label:
+              s === "code"
+                ? "Code only"
+                : inAppLabel({ kind: "config", managementDefault: s }),
+          }),
+        ),
       },
     ];
   }, [entries]);
@@ -290,7 +326,7 @@ export function CatalogPage({ slug }: { slug: string }): React.ReactElement {
           kind="first-run"
           headingLevel={2}
           title="No catalog yet"
-          description="A catalog declares the config, secret and flag keys this product exposes. Create the first version here, or add .pkey/schema to the product's repository."
+          description="A catalog declares the settings, secrets and minted tokens this product exposes. Create the first version here, or add .pkey/schema to the product's repository."
           docs="/docs/services/config/catalog/"
           primaryAction={
             <Button
@@ -330,7 +366,7 @@ export function CatalogPage({ slug }: { slug: string }): React.ReactElement {
           <EmptyState
             kind="first-run"
             title="This catalog has no keys"
-            description="Edit the catalog to add the first config, secret or flag entry."
+            description="Edit the catalog to add the first setting, secret or minted token."
             primaryAction={
               <Button asChild>
                 <Link to={r.catalogEdit(slug)}>Edit catalog</Link>
@@ -396,18 +432,13 @@ function KeyDrawer({
                 { term: "Schema", detail: schemaSummary(entry.schema) },
                 {
                   term: "Default",
-                  detail: isSecretEntry(entry)
-                    ? "(write-only)"
-                    : `${formatValue(entry.default)}${ui?.unit && entry.default !== undefined ? ` ${ui.unit}` : ""}`,
+                  detail:
+                    defaultText(entry) ??
+                    `${formatValue(entry.default)}${ui?.unit && entry.default !== undefined ? ` ${ui.unit}` : ""}`,
                 },
                 // Only the fields that apply to this kind of key.
-                ...(entry.kind === "config"
-                  ? [
-                      {
-                        term: "In the app",
-                        detail: inAppLabel(entry),
-                      },
-                    ]
+                ...(entry.kind !== "flag"
+                  ? [{ term: "In the app", detail: inAppLabel(entry) }]
                   : []),
                 ...(entry.kind === "flag"
                   ? [
@@ -422,8 +453,19 @@ function KeyDrawer({
                 ...(entry.accessor
                   ? [{ term: "Accessor", detail: entry.accessor }]
                   : []),
-                ...(entry.delivery
-                  ? [{ term: "Delivery", detail: entry.delivery }]
+                ...(retiredNotes(entry).length
+                  ? [
+                      {
+                        term: "Retired",
+                        detail: (
+                          <ul className="space-y-1 text-warning">
+                            {retiredNotes(entry).map((n) => (
+                              <li key={n}>{n}</li>
+                            ))}
+                          </ul>
+                        ),
+                      },
+                    ]
                   : []),
                 ...(entry.dependsOn
                   ? [
@@ -576,123 +618,5 @@ function LinkList({
         <li>{c}</li>
       ))}
     </ul>
-  );
-}
-
-// ── version history (A-6) ──────────────────────────────────────────────────────────────────────
-
-function HistoryDrawer({
-  slug,
-  open,
-  active,
-  onClose,
-}: {
-  slug: string;
-  open: boolean;
-  active: ProductCatalog;
-  onClose: () => void;
-}): React.ReactElement {
-  const versions = useCatalogVersions(slug, open);
-  const [compare, setCompare] = useSearchParam("version", VERSION);
-  const selected =
-    compare > 0 && compare !== active.schemaVersion ? compare : null;
-  const other = useCatalogVersion(slug, selected);
-  return (
-    <Drawer
-      open={open}
-      onOpenChange={(o) => {
-        if (!o) {
-          setCompare(0);
-          onClose();
-        }
-      }}
-      size="lg"
-      title="Version history"
-    >
-      <DrawerBody>
-        <div className="space-y-6">
-          {versions.isPending ? (
-            <p className="text-sm text-fg-muted">Loading versions…</p>
-          ) : versions.error ? (
-            <ErrorState
-              compact
-              error={versions.error}
-              onRetry={() => void versions.refetch()}
-            />
-          ) : (
-            <ol className="divide-y divide-border rounded-md border border-border">
-              {versions.data!.versions.map((v) => (
-                <li
-                  key={v.version}
-                  className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 px-3 py-2 text-sm"
-                >
-                  <span className="min-w-0 space-y-0.5">
-                    <span className="flex flex-wrap items-center gap-2">
-                      <span className="font-mono font-medium text-fg-strong">
-                        v{v.version}
-                      </span>
-                      {v.active ? (
-                        <StatusPill tone="success" size="sm">
-                          Active
-                        </StatusPill>
-                      ) : null}
-                      <SourceBadge source={v.source} path={CATALOG_PATH} />
-                    </span>
-                    <span
-                      className="block truncate text-xs text-fg-muted"
-                      title={v.publishedBy ?? undefined}
-                    >
-                      {v.entryCount} {v.entryCount === 1 ? "key" : "keys"} ·{" "}
-                      <Timestamp at={fromSeconds(v.createdAt)} />
-                      {v.publishedBy ? ` · ${v.publishedBy}` : ""}
-                    </span>
-                  </span>
-                  {v.active ? null : (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      aria-pressed={selected === v.version}
-                      className="aria-pressed:border-accent aria-pressed:bg-accent-subtle"
-                      onClick={() => setCompare(v.version)}
-                    >
-                      {selected === v.version
-                        ? "Comparing"
-                        : "Compare with active"}
-                    </Button>
-                  )}
-                </li>
-              ))}
-            </ol>
-          )}
-          {selected !== null ? (
-            <section
-              className="space-y-2"
-              aria-label={`Changes from v${selected} to v${active.schemaVersion}`}
-            >
-              <h3 className="text-sm font-semibold text-fg-strong">
-                v{selected} → v{active.schemaVersion}
-              </h3>
-              {other.isPending ? (
-                <p className="text-sm text-fg-muted">Loading v{selected}…</p>
-              ) : other.error ? (
-                <ErrorState
-                  compact
-                  error={other.error}
-                  onRetry={() => void other.refetch()}
-                  context={{ thing: `Version ${selected}` }}
-                />
-              ) : (
-                <DiffViewer<ConfigEntry>
-                  mode="structured"
-                  before={other.data!.entries}
-                  after={active.entries}
-                  entryKey="key"
-                />
-              )}
-            </section>
-          ) : null}
-        </div>
-      </DrawerBody>
-    </Drawer>
   );
 }
