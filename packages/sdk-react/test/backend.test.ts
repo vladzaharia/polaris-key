@@ -91,11 +91,11 @@ describe("backend-matrix client rows (the response phase), through usePolarisFet
       );
       const out = await r.fetch(`${ORIGIN}/export`).catch((e: unknown) => e);
       if (row.expect.action === "refresh-and-retry") {
-        expect(r.calls.map((c) => c.force)).toEqual([false, true, true]);
+        expect(r.calls.map((c) => c.force)).toEqual([undefined, true]);
         expect(r.sent).toHaveLength(2);
         expect((out as Response).status).toBe(200);
       } else {
-        expect(r.calls.map((c) => c.force)).toEqual([false]);
+        expect(r.calls.map((c) => c.force)).toEqual([undefined]);
         expect(r.sent).toHaveLength(1);
         if (
           status === 403 &&
@@ -185,11 +185,50 @@ describe("usePolarisFetch's engine", () => {
     expect(r.sent).toHaveLength(1);
   });
 
-  it("does not follow a redirect unless asked", async () => {
+  it("never follows a redirect: error by default, manual if asked, follow refused", async () => {
     const r = rig([new Response("ok")]);
     await r.fetch(`${ORIGIN}/export`);
-    await r.fetch(`${ORIGIN}/export`, { redirect: "follow" });
-    expect(r.sent.map((s) => s.init.redirect)).toEqual(["error", "follow"]);
+    await r.fetch(`${ORIGIN}/export`, { redirect: "manual" });
+    await expect(
+      r.fetch(`${ORIGIN}/export`, { redirect: "follow" }),
+    ).rejects.toMatchObject({ code: "invalid-options" });
+    expect(r.sent.map((s) => s.init.redirect)).toEqual(["error", "manual"]);
+  });
+
+  it("names only the origin when it refuses, never a path or query", async () => {
+    const r = rig([new Response("ok")]);
+    const e = (await r
+      .fetch("https://evil.test/steal?token=s3cret")
+      .catch((x: unknown) => x)) as PolarisError;
+    expect(e.message).toContain("https://evil.test");
+    expect(e.message).not.toMatch(/s3cret|steal/);
+  });
+
+  it("passes the origin to the adapter, and syncs once per stale answer", async () => {
+    const seen: unknown[] = [];
+    const adapter = {
+      async backendHeaders(o?: unknown) {
+        seen.push(o);
+        return HEADERS;
+      },
+    };
+    let clock = 0;
+    const answers = [problem(401, "license_stale")];
+    const f = createPolarisFetch(
+      adapter,
+      { origins: [ORIGIN] },
+      () => (async () => answers[0]!.clone()) as unknown as typeof fetch,
+      () => clock,
+    );
+    await f(`${ORIGIN}/a`);
+    expect(seen).toEqual([{ origin: ORIGIN }, { force: true, origin: ORIGIN }]);
+    // Inside the interval the next stale answer is handed back without a forced sync.
+    clock += 5000;
+    await f(`${ORIGIN}/b`);
+    expect(seen).toHaveLength(3);
+    clock += 6000;
+    await f(`${ORIGIN}/c`);
+    expect(seen).toHaveLength(5);
   });
 
   it("validates backend.origins", () => {
@@ -215,6 +254,7 @@ describe("usePolarisFetch's engine", () => {
 describe("desktop: bridge v4 backendHeaders", () => {
   it("asks the host, and a force first refreshes it", async () => {
     const calls: string[] = [];
+    const args_: unknown[] = [];
     const bridge = {
       ...makeFakeBridge(emptyBridgeState()),
       version: 4,
@@ -222,8 +262,9 @@ describe("desktop: bridge v4 backendHeaders", () => {
         calls.push("refresh");
         return emptyBridgeState();
       },
-      async invoke(service: string, method: string) {
+      async invoke(service: string, method: string, args?: unknown) {
         calls.push(`${service}.${method}`);
+        args_.push(args);
         return HEADERS;
       },
     };
@@ -231,7 +272,8 @@ describe("desktop: bridge v4 backendHeaders", () => {
     expect(adapter.supports(Feature.coreBackend)).toMatchObject({
       supported: true,
     });
-    expect(await adapter.backendHeaders()).toEqual(HEADERS);
+    expect(await adapter.backendHeaders({ origin: ORIGIN })).toEqual(HEADERS);
+    expect(args_[0]).toEqual({ origin: ORIGIN });
     await adapter.backendHeaders({ force: true });
     expect(calls).toEqual([
       "core.backendHeaders",

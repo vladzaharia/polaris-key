@@ -612,7 +612,12 @@ export interface PolarisAdapter {
    * `UnsupportedError`). Desktop: the host's `client.backend.headers()` over bridge v4
    * (`invoke("core", "backendHeaders")`).
    */
-  backendHeaders(opts?: { force?: boolean }): Promise<Record<string, string>>;
+  backendHeaders(opts?: {
+    force?: boolean;
+    /** The origin the headers are for. Desktop passes it to the host, which refuses one outside its
+     *  `backend.origins`. */
+    origin?: string;
+  }): Promise<Record<string, string>>;
   /**
    * Install what a decision offers (update.driver, SDK-PARITY-PASS §3.16): answers an
    * `InstallOutcome` and never throws for something that cannot be installed (it answers

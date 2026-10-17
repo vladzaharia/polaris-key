@@ -1076,7 +1076,7 @@ export class DesktopAdapter implements PolarisAdapter {
    *  document near its expiry first. `force` has the host sync unconditionally (`refresh()`)
    *  before it answers. A v3 host answers the typed `version` N/A. */
   async backendHeaders(
-    opts: { force?: boolean } = {},
+    opts: { force?: boolean; origin?: string } = {},
   ): Promise<Record<string, string>> {
     if (opts.force) await this.refresh();
     return this.invokeV4<Record<string, string>>(
@@ -1084,6 +1084,7 @@ export class DesktopAdapter implements PolarisAdapter {
       "the backend headers",
       "core",
       "backendHeaders",
+      opts.origin !== undefined ? { origin: opts.origin } : {},
     );
   }
 

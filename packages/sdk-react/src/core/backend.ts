@@ -28,6 +28,10 @@ export type PolarisFetch = (
   init?: RequestInit,
 ) => Promise<Response>;
 
+/** The least time between two forced syncs: a backend that answers `license_stale` to every
+ *  request cannot make the page ask the Worker for a document per request. */
+export const FORCED_SYNC_MIN_INTERVAL_MS = 10_000;
+
 const LOOPBACK = new Set(["localhost", "127.0.0.1", "[::1]"]);
 
 /** One exact origin, or a thrown `invalid-options`. */
@@ -100,7 +104,9 @@ export function createPolarisFetch(
   adapter: Pick<PolarisAdapter, "backendHeaders">,
   options: BackendOptions = {},
   transport: () => typeof fetch = () => globalThis.fetch.bind(globalThis),
+  monotonic: () => number = () => performance.now(),
 ): PolarisFetch {
+  let lastForced: number | null = null;
   const configured = (options.origins ?? []).map(normalizeBackendOrigin);
   return async (input, init) => {
     // A relative URL is the page's own.
@@ -116,25 +122,35 @@ export function createPolarisFetch(
     const own = pageOrigin();
     if (own) allowed.add(own);
     const origin = originOf(request.url);
+    // The origin only: a URL's path and query can hold a secret.
     if (origin === null || !allowed.has(origin))
       throw new PolarisError(
         ErrorCode.backendOriginNotAllowed,
         copyMessage(ErrorCode.backendOriginNotAllowed, {
-          detail: origin ?? request.url,
+          detail: origin ?? "an unreadable URL",
         }),
       );
+    // A browser hides a redirect's target, so a followed one could carry the licence anywhere.
+    if (init?.redirect === "follow")
+      throw new PolarisError(
+        ErrorCode.invalidOptions,
+        'usePolarisFetch() does not follow redirects: pass redirect: "manual" or "error", or request the final URL.',
+      );
+    const redirect = init?.redirect ?? "error";
     let retried = false;
-    let force = false;
+    let fresh: BackendHeaders | null = null;
     for (;;) {
+      const own: BackendHeaders =
+        fresh ?? (await adapter.backendHeaders({ origin }));
+      fresh = null;
       const headers = new Headers(request.headers);
-      const own = await adapter.backendHeaders({ force });
       headers.delete(HEADER_LICENSE);
       for (const [name, value] of Object.entries(own)) headers.set(name, value);
       headers.set(HEADER_DEVICE, own[HEADER_DEVICE] ?? "");
       const send: RequestInit = {
         method: request.method,
         headers,
-        redirect: init?.redirect ?? "error",
+        redirect,
         signal: request.signal,
         credentials: request.credentials,
         cache: request.cache,
@@ -151,12 +167,19 @@ export function createPolarisFetch(
         retried,
       });
       if (action === "refresh-and-retry") {
+        const at = monotonic();
+        // Inside the interval, or a failed sync (offline, a 401 from the Worker): the backend's
+        // answer stands.
+        if (
+          lastForced !== null &&
+          at - lastForced < FORCED_SYNC_MIN_INTERVAL_MS
+        )
+          return res;
+        lastForced = at;
         retried = true;
-        force = true;
         try {
-          await adapter.backendHeaders({ force: true });
+          fresh = await adapter.backendHeaders({ force: true, origin });
         } catch {
-          // The sync failed (offline, or a 401 from the Worker): the backend's answer stands.
           return res;
         }
         await res.body?.cancel().catch(() => undefined);
