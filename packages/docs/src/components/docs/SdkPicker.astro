@@ -11,9 +11,11 @@ export interface Props {
   sdks?: readonly SdkId[];
   /** The SDK shown first. Default: the first of `sdks`. */
   initial?: SdkId;
+  /** Link to `#install-<sdk>` (an `<InstallSteps heading>` on the page) instead of `?sdk=`. */
+  anchors?: boolean;
 }
 
-const { sdks = SDK_IDS, initial = sdks[0] } = Astro.props;
+const { sdks = SDK_IDS, initial = sdks[0], anchors = false } = Astro.props;
 ---
 
 <nav
@@ -26,7 +28,7 @@ const { sdks = SDK_IDS, initial = sdks[0] } = Astro.props;
     {
       sdks.map((sdk) => (
         <li>
-          <a href={`?sdk=${sdk}`} data-sdk={sdk}>
+          <a href={anchors ? `#install-${sdk}` : `?sdk=${sdk}`} data-sdk={sdk}>
             {SDK_LABELS[sdk]}
           </a>
         </li>

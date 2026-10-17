@@ -46,20 +46,20 @@ You should see the **License** switch on.
 
 In a Node project, put the routing line in the project's `.npmrc`, install the CLI there and run it through your package manager: `npx pkey` with npm, `pnpm exec pkey`, `yarn pkey` or `bunx pkey`. For any other app, put the routing line in `~/.npmrc`, add `--global` to the install and run `pkey` directly. Never run `npx pkey` before the CLI is installed: that name resolves from npmjs.
 
-<SdkPicker />
+<SdkPicker anchors />
 
-<InstallSteps sdk="node" />
-<InstallSteps sdk="react" />
-<InstallSteps sdk="python" />
-<InstallSteps sdk="swift" />
-<InstallSteps sdk="kotlin" />
-<InstallSteps sdk="godot" />
+<InstallSteps sdk="node" heading />
+<InstallSteps sdk="react" heading />
+<InstallSteps sdk="python" heading />
+<InstallSteps sdk="swift" heading />
+<InstallSteps sdk="kotlin" heading />
+<InstallSteps sdk="godot" heading />
 
 For Python, the pip block installs the package alone, so install its dependencies from your usual index first: `pip install "cryptography>=41" "httpx>=0.24" "zstandard>=0.22; python_version < '3.14'"`. The uv and Poetry blocks resolve them for you.
 
 For Swift, save the routing block as `.swiftpm/configuration/registries.json` in the package's root, creating the folders. In `Package.swift`, add the package line to the package's `dependencies`, give the package `platforms: [.macOS(.v15)]`, and add `.product(name: "PolarisKey", package: "polaris-key.PolarisKey")` to your target's dependencies. SwiftPM also fetches the SDK's one dependency, `Sparkle`, from GitHub.
 
-Other package managers and age gates are on **Install the SDKs and the CLI**. The product's **Overview** shows the same lines for the SDK you pick under **SDK quick start**.
+Other package managers and age gates are on [Install the SDKs and the CLI](/docs/build/install/). The product's **Overview** shows the same lines for the SDK you pick under **SDK quick start**.
 
 You should see the commands listed by `pkey help`. In a Node project, run it as `npx pkey help` or the form for your package manager:
 
@@ -100,7 +100,7 @@ Release keys: none
 Wrote /path/to/polaris.config.ts
 ```
 
-The pins are the product's public signing keys. The console shows the key itself, not its fingerprint, so open the generated file and compare each key with the **Public key** under **Signing keys** on **Core → Keys & secrets**. The warning appears because a new product has one signing key: stage a second before you ship, so the first can be revoked.
+The pins are the product's public signing keys. Compare each key in the file with **Public key** under **Core → Keys & secrets**. The warning appears because a new product has one signing key: stage a second before you ship, so the first can be revoked.
 
 ## 5. Gate the app
 
@@ -113,7 +113,7 @@ The pins are the product's public signing keys. The console shows the key itself
 - [Kotlin](/docs/build/quickstart/kotlin/)
 - [Godot](/docs/build/quickstart/godot/)
 
-**Choose your integration** compares the two lanes.
+[Choose your integration](/docs/start/choose-your-integration/) compares the two lanes.
 
 You should see the app stay locked: the client's license status is `needs-activation`, and a drop-in kit shows its activation prompt.
 
@@ -131,10 +131,9 @@ A product with a signing key and License on. A config file that pins that key. A
 
 ## If it isn't working
 
+- [Troubleshoot your integration](/docs/build/troubleshooting/): the code in the app's error, and web apps and CORS.
 - `pkey: command not found`: the CLI is installed in a project, so run it through your package manager (step 3).
 - `pkey sdk` reports a 404: check the slug, and add `--base-url <console origin>` if your platform isn't at `key.plrs.im`.
-- [Wire error codes](/docs/reference/error-codes/): the code in the app's error.
-- [Web apps and CORS](/docs/build/web-apps/): browser apps.
 - [pkey CLI](/docs/reference/cli/): every flag of `pkey sdk`.
 - [Install the SDKs and the CLI](/docs/build/install/): feeds and package managers.
 

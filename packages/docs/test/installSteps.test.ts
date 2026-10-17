@@ -71,7 +71,11 @@ describe("InstallSteps FEEDS mapping", () => {
       /from "\.\.\/\.\.\/\.\.\/\.\.\/cli\/src\/feedSetup"/,
     );
     const registered = DOCS_COMPONENTS.find((c) => c.name === "InstallSteps");
-    expect(registered?.props).toEqual(['sdk: SdkId | "cli"']);
+    expect(registered?.props).toEqual([
+      'sdk: SdkId | "cli"',
+      "heading?: boolean",
+      'dev?: SdkId | "cli"',
+    ]);
   });
 
   it("the cli target installs @polaris-key/cli, the package the CLI is published as", () => {

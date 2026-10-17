@@ -23,7 +23,7 @@ export const DOCS_COMPONENTS: readonly DocsComponent[] = [
     name: "SdkPicker",
     file: "SdkPicker.astro",
     summary: "The page-level SDK choice, kept in ?sdk= and in the browser.",
-    props: ["sdks?: SdkId[]", "initial?: SdkId"],
+    props: ["sdks?: SdkId[]", "initial?: SdkId", "anchors?: boolean"],
   },
   {
     name: "Lanes",
@@ -58,7 +58,7 @@ export const DOCS_COMPONENTS: readonly DocsComponent[] = [
     name: "InstallSteps",
     file: "InstallSteps.astro",
     summary: "Registry routing, then the install, from the CLI's feedsSetup().",
-    props: ['sdk: SdkId | "cli"'],
+    props: ['sdk: SdkId | "cli"', "heading?: boolean", 'dev?: SdkId | "cli"'],
   },
   {
     name: "StatesToHandle",

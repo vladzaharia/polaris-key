@@ -12,9 +12,13 @@ import { FEEDS, INSTALL_LABELS, type InstallTarget } from "../../lib/feeds";
 export interface Props {
   /** An SDK, or "cli" for the `pkey` command-line tool (npm feed). */
   sdk: InstallTarget;
+  /** Render an `<h3 id="install-<sdk>">` over the block, so the SDK picker can jump to it. */
+  heading?: boolean;
+  /** A second package for the same feed, installed as a dev dependency (the CLI beside an SDK). */
+  dev?: InstallTarget;
 }
 
-const { sdk } = Astro.props;
+const { sdk, heading = false, dev } = Astro.props;
 const feed = FEEDS[sdk];
 const { snippets } = JSON.parse(
   feedsSetup({
@@ -36,16 +40,51 @@ const { snippets } = JSON.parse(
     code: string;
   }[];
 };
+
+/** The title of a block with no file name: a shell line, an editor setting or a bare value. */
+const titleOf = (s: { id: string; language: string; filename?: string }): string => {
+  if (s.filename) return s.filename;
+  if (s.id.startsWith("editor") || s.id === "godotenv") return "Editor setting";
+  if (s.id === "xcode") return "Package id";
+  return "Terminal";
+};
+
+/** One install line per npm-compatible manager; you run the one you use. */
+const npmLines = (pkg: string, devDep: boolean): string[] => [
+  `# npm`,
+  `npm install ${devDep ? "-D " : ""}${pkg}`,
+  `# pnpm`,
+  `pnpm add ${devDep ? "-D " : ""}${pkg}`,
+  `# Yarn`,
+  `yarn add ${devDep ? "-D " : ""}${pkg}`,
+  `# Bun`,
+  `bun add ${devDep ? "-d " : ""}${pkg}`,
+];
+
+/** The CLI's Maven warning advises publishers; an app developer needs the consumer's half. */
+const warningOf = (s: { id: string; warning?: string }): string | undefined =>
+  s.id === "maven"
+    ? "Maven asks every repository for every artifact. Keep the checksum policy at fail."
+    : s.warning;
+
+const codeOf = (s: { id: string; code: string }): string => {
+  if (feed.ecosystem !== "npm" || s.id !== "install") return s.code;
+  return [
+    ...npmLines(feed.package, false),
+    ...(dev ? ["", ...npmLines(FEEDS[dev].package, true)] : []),
+  ].join("\n");
+};
 ---
 
 <div class="pk-install-steps" data-sdk={sdk}>
-  <p>Route the package scope to the Polaris Key feed, then install {INSTALL_LABELS[sdk]}.</p>
+  {heading && <h3 id={`install-${sdk}`}>{INSTALL_LABELS[sdk].replace(/^the /, "")}</h3>}
+  <p>Route the package scope to the Polaris Key feed, then install {INSTALL_LABELS[sdk]}{dev ? ` and ${INSTALL_LABELS[dev]}` : ""}.</p>
   {
     snippets.map((s) => (
       <section data-snippet={s.id}>
         <p>{s.title}</p>
-        {s.warning && <p>{s.warning}</p>}
-        <Code code={s.code} lang={s.language} title={s.filename ?? "Terminal"} />
+        {warningOf(s) && <p>{warningOf(s)}</p>}
+        <Code code={codeOf(s)} lang={s.language} title={titleOf(s)} />
       </section>
     ))
   }

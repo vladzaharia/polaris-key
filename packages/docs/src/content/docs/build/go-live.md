@@ -38,7 +38,7 @@ An app that ships pins the keys that sign its documents, so the pins you build w
 
    You should see both key ids with their SHA-256 fingerprints, and the release keys instead of `Release keys: none`. Build the app from this file.
 
-4. **Console** Compare each pin in the generated file with the **Public key** of the same key id under **Signing keys**. A pin that doesn't match is a key someone else could sign for.
+4. **Console** Compare each key in the file with **Public key** under **Core → Keys & secrets**. A pin that doesn't match is a key someone else could sign for.
 
    You should see each pin match a listed key.
 

@@ -9,8 +9,6 @@ lastReviewed: "2026-10-10"
 
 Every SDK has a drop-in lane and an own-UI lane. The drop-in lane gives you the SDK's UI kit, whole or one screen at a time. The own-UI lane gives you the SDK's headless layer, and you draw the screens. Both lanes share the SDK's setup and the generated config file.
 
-Node, React and Python have an own-UI guide as deep as their kit. For Swift, Kotlin and Godot, the own-UI lane is the SDK reference: the guide that walks each screen is not built yet.
-
 ## Compare the lanes
 
 | Criterion        | Drop-in UI kit                                                       | Your own UI                                                          |
@@ -29,9 +27,16 @@ Node, React and Python have an own-UI guide as deep as their kit. For Swift, Kot
 | Node   | CLIs, Electron, servers | [Terminal kit](/docs/build/ui/frameworks/terminal-node/)   | [Node, your own UI](/docs/build/sdks/node/your-own-ui/)     | [Node quickstart](/docs/build/quickstart/node/)     |
 | React  | Web apps                | [React kit](/docs/build/ui/frameworks/react/)              | [React, your own UI](/docs/build/sdks/react/your-own-ui/)   | [React quickstart](/docs/build/quickstart/react/)   |
 | Python | CLIs, servers, tools    | [Terminal kit](/docs/build/ui/frameworks/terminal-python/) | [Python, your own UI](/docs/build/sdks/python/your-own-ui/) | [Python quickstart](/docs/build/quickstart/python/) |
-| Swift  | macOS, iOS, iPadOS      | [SwiftUI kit](/docs/build/ui/frameworks/swiftui/)          | [Swift reference](/docs/build/sdks/swift/)                  | [Swift quickstart](/docs/build/quickstart/swift/)   |
-| Kotlin | Android, JVM            | [Compose kit](/docs/build/ui/frameworks/compose/)          | [Kotlin reference](/docs/build/sdks/kotlin/)                | [Kotlin quickstart](/docs/build/quickstart/kotlin/) |
-| Godot  | Games                   | [Godot kit](/docs/build/ui/frameworks/godot/)              | [Godot reference](/docs/build/sdks/godot/)                  | [Godot quickstart](/docs/build/quickstart/godot/)   |
+| Swift  | macOS, iOS, iPadOS      | [SwiftUI kit](/docs/build/ui/frameworks/swiftui/)          | [Swift, your own UI](/docs/build/sdks/swift/your-own-ui/)                  | [Swift quickstart](/docs/build/quickstart/swift/)   |
+| Kotlin | Android, JVM            | [Compose kit](/docs/build/ui/frameworks/compose/)          | [Kotlin, your own UI](/docs/build/sdks/kotlin/your-own-ui/)                | [Kotlin quickstart](/docs/build/quickstart/kotlin/) |
+| Godot  | Games                   | [Godot kit](/docs/build/ui/frameworks/godot/)              | [Godot, your own UI](/docs/build/sdks/godot/your-own-ui/)                  | [Godot quickstart](/docs/build/quickstart/godot/)   |
+
+## Other ways in
+
+- [Customer portal](/docs/reference/portal-api/): your customers manage their own licenses and devices, with no code from you.
+- [Server verification](/docs/features/licensing/server-verification/): check a license from your backend.
+- [HTTP API](/docs/reference/http-api/): call Polaris Key from any language.
+- [The pkey CLI](/docs/reference/cli/) and [GitHub Action](/docs/reference/github-action/): manifests, releases and CI.
 
 ## Related
 
