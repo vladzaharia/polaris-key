@@ -279,6 +279,13 @@ is `update → release`. The same suite walks the runtime import graph, so a ser
 through a chain of imports fails too. Everything else goes through a core-mediated interface
 — for one service reading another's state, the descriptor hooks in `src/core/hooks.ts`.
 (It is a test and not a lint rule because this repo has no ESLint — `pnpm lint` is Prettier.)
+**Tables are owned too.** `packages/worker/src/db/owners.ts` (`TABLE_OWNERS`) names the owner of
+every D1 table (`core` or a service slug); a new table needs a row there (the data-model page is
+generated from it). `test/tableCrossings.test.ts` scans the SQL in `src/` and fails on a service
+touching another service's table, or Core or the console writing a service's table, unless a
+`SEAMS` / `WRITE_SEAMS` row names it with the package that removes it (or `permanent`). The lists
+only shrink: a row that no longer matches fails too. Core's tables are shared substrate, except
+`audit`: one writer, `core/audit.ts` (`test/auditWriter.test.ts`).
 
 **7. Raw hardware values are hashed on-device and never transmitted.** A fingerprint is a set of
 per-component hashes; the server recomputes the composite `hwid` and never trusts the client's

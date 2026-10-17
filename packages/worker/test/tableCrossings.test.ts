@@ -1,24 +1,25 @@
 /**
- * P0-48 — table crossings, REPORT-ONLY.
+ * Table ownership, enforced (P0-18; P0-48 wrote the report this replaced).
  *
- * Rule 6's test (`boundaries.test.ts`) polices imports, not SQL: a service that never imports
- * another can still read and write the other's tables. This file scans the SQL in every file
- * under `src/services/<slug>/` (comments stripped; the upper-case `FROM`, `JOIN`, `INTO`, `UPDATE`
- * and `TABLE` keywords) against the logical ownership map, `TABLE_OWNERS` in the docs
- * generator (`packages/docs/scripts/gen-reference.mjs`, the data-model page's source), and
- * prints every table a service touches that another service owns. Core's tables are shared
- * substrate and not a crossing.
+ * Rule 6's import test (`boundaries.test.ts`) polices imports, not SQL: a service that never
+ * imports another can still read and write the other's tables. `TABLE_OWNERS` (`src/db/owners.ts`)
+ * says who owns each table; this file scans the SQL in `src/` (comments stripped; the upper-case
+ * `FROM`, `JOIN`, `INTO`, `UPDATE`, `DELETE FROM` and `TABLE` keywords) and fails on any use the
+ * allow-lists below do not name.
  *
- * `BASELINE` is the audit's list of the 17 crossings on 2026-10-07 (cq-worker-services §2.6).
- * Two of them are permanent seams: Identity writing `licenses` (through `core/repo.ts`) and
- * Update reading Release's pack tables inside the sanctioned `update → release` edge. The report
- * marks any crossing outside the baseline as NEW and any baseline entry no longer found as GONE.
- * It does not fail on either: P0-18 moves the ownership map into the worker, adds the declared
- * seams and turns this into an enforced test whose allow-list must shrink to those two. On the
- * day it landed the report found 18: the 17, plus Identity reading `tiers` for the sign-in's
- * upgrade-only rank (`identity/oidc.ts`, LX-08, merged after the audit), shown as NEW.
+ *  1. Table crossings: a service touches (reads or writes) a table another service owns.
+ *     Allow-list `SEAMS`. Core's tables are shared substrate and not a crossing.
+ *  2. Writer location: Core or the console writes (INSERT, UPDATE, DELETE) a table a service
+ *     owns. Allow-list `WRITE_SEAMS`, by file. A service writing Core's tables is not scanned here
+ *     (the audit table has its own grep test, `auditWriter.test.ts`).
  *
- * The default reporter hides a passing test's output; to read the report:
+ * Both lists only shrink. An entry that no longer matches fails the test ("delete it"), so a
+ * package that removes a crossing also removes its row. Every row names `removedBy`: the package
+ * that removes it, or `permanent` for a declared seam. Seeded 2026-10-16 from the audit's 17
+ * crossings (cq-worker-services §2.6), Identity reading `tiers` (LX-08, merged after the audit)
+ * and the write scan.
+ *
+ * To read what the scan sees:
  *
  *   pnpm --filter @polaris-key/worker exec vitest run test/tableCrossings.test.ts --reporter=verbose
  */
@@ -27,42 +28,96 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-// @ts-expect-error — a plain ESM script with no type declarations.
-import { TABLE_OWNERS as OWNERS_UNTYPED } from "../../docs/scripts/gen-reference.mjs";
 import { SERVICE_SLUGS } from "../src/core/services.js";
+import { TABLE_OWNERS } from "../src/db/owners.js";
 
-const TABLE_OWNERS = OWNERS_UNTYPED as Record<string, readonly string[]>;
-const SERVICES_ROOT = join(
-  dirname(fileURLToPath(import.meta.url)),
-  "..",
-  "src",
-  "services",
-);
+const SRC = join(dirname(fileURLToPath(import.meta.url)), "..", "src");
 
-/** The 17 crossings of cq-worker-services §2.6 (2026-10-07): the service, and the table it uses. */
-const BASELINE: readonly (readonly [from: string, table: string])[] = [
-  // Identity → License (the first is the declared seam).
-  ["identity", "licenses"],
-  ["identity", "keys_index"],
-  // Identity → Release: the portal's listings and download tokens (portal/repo.ts).
-  ["identity", "release_metadata"],
-  ["identity", "release_artifacts"],
-  ["identity", "release_builds"],
-  ["identity", "release_download_tokens"],
-  // Release's link and resync → Identity, Config and License.
-  ["release", "oidc_config"],
-  ["release", "provisioning_config"],
-  ["release", "edge_mint_config"],
-  ["release", "edge_mint_approvals"],
-  ["release", "product_schema"],
-  ["release", "license_profiles"],
-  // Distribution's commerce → License.
-  ["distribution", "license_store_grants"],
-  // Update → Release, inside the sanctioned edge but raw SQL (packParts.ts).
-  ["update", "release_pins"],
-  ["update", "release_holds"],
-  ["update", "release_pack_floors"],
-  ["update", "release_channel_policy"],
+type RemovedBy = "permanent" | `P${number}-${number}`;
+
+/** A service's use of a table another service owns: [service, table, removedBy]. */
+const SEAMS: readonly (readonly [string, string, RemovedBy])[] = [
+  // Identity issues, links and merges licences; the writes go through core/licensing.
+  ["identity", "licenses", "permanent"],
+  ["identity", "keys_index", "P0-20"],
+  // LX-08: the sign-in's upgrade-only rank reads the tier.
+  ["identity", "tiers", "P0-20"],
+  // The portal's listings and download tokens (portal/repo.ts).
+  ["identity", "release_metadata", "P0-23"],
+  ["identity", "release_artifacts", "P0-23"],
+  ["identity", "release_builds", "P0-23"],
+  ["identity", "release_download_tokens", "P0-23"],
+  // Release's link and resync write other owners' manifest-derived rows.
+  ["release", "oidc_config", "P0-26"],
+  ["release", "provisioning_config", "P0-26"],
+  ["release", "edge_mint_config", "P0-26"],
+  ["release", "edge_mint_approvals", "P0-26"],
+  ["release", "product_schema", "P0-26"],
+  ["release", "license_profiles", "P0-26"],
+  // Distribution's commerce reads License's store grants.
+  ["distribution", "license_store_grants", "P0-27"],
+  // Update reads Release's pack tables inside the sanctioned update → release edge (packParts.ts).
+  ["update", "release_pins", "permanent"],
+  ["update", "release_holds", "permanent"],
+  ["update", "release_pack_floors", "permanent"],
+  ["update", "release_channel_policy", "permanent"],
+];
+
+/** Core or the console writing a table a service owns, by file under `src/`: [file, table, removedBy]. */
+const WRITE_SEAMS: readonly (readonly [string, string, RemovedBy])[] = [
+  ["console/handlers/feeds.ts", "dist_registry_feeds", "P0-19"],
+  ["console/handlers/feeds.ts", "dist_registry_policy", "P0-19"],
+  // Core's merge reads the override layer; Core's subject rows are the documented seam.
+  ["core/accounts/accountOverrides.ts", "account_overrides", "permanent"],
+  ["core/accounts/accountSubjects.ts", "account_product_subjects", "permanent"],
+  ["core/accounts/accountSubjects.ts", "licenses", "P0-20"],
+  // The product-delete and erase cascades.
+  ["core/console/repo.ts", "account_overrides", "P0-19"],
+  ["core/console/repo.ts", "account_product_grants", "P0-19"],
+  ["core/console/repo.ts", "account_product_subject_aliases", "P0-19"],
+  ["core/console/repo.ts", "account_product_subjects", "P0-19"],
+  ["core/console/repo.ts", "account_terms_acceptances", "P0-19"],
+  ["core/console/repo.ts", "dist_registry_owners", "P0-19"],
+  ["core/console/repo.ts", "keys_index", "P0-20"],
+  ["core/console/repo.ts", "library_entries", "P0-19"],
+  ["core/console/repo.ts", "license_relinks", "P0-19"],
+  ["core/console/repo.ts", "licenses", "P0-20"],
+  ["core/console/repo.ts", "override_migration_report", "P0-19"],
+  ["core/console/repo.ts", "portal_license_links", "P0-19"],
+  ["core/console/repo.ts", "product_schema", "P0-26"],
+  ["core/console/repo.ts", "profiles", "P0-26"],
+  ["core/console/repo.ts", "storefront_daily", "P0-19"],
+  ["core/console/repo.ts", "storefront_seen", "P0-19"],
+  ["core/console/repo.ts", "tiers", "P0-20"],
+  ["core/edgeMintApproval.ts", "edge_mint_approvals", "P0-26"],
+  // core/licensing is the licences' home.
+  ["core/licensing/grants.ts", "licenses", "permanent"],
+  ["core/licensing/lifecycleWrites.ts", "licenses", "permanent"],
+  ["core/ops/overrideMigration.ts", "account_overrides", "P0-49"],
+  ["core/ops/overrideMigration.ts", "licenses", "P0-49"],
+  ["core/ops/overrideMigration.ts", "override_migration", "P0-49"],
+  ["core/ops/overrideMigration.ts", "override_migration_report", "P0-49"],
+  ["core/ops/settingsBackfill.ts", "product_schema", "P0-26"],
+  ["core/ops/settingsBackfill.ts", "profiles", "P0-26"],
+  ["core/ops/settingsBackfill.ts", "tiers", "P0-26"],
+  // The product registration and the licence tables' first writer.
+  ["core/repo.ts", "edge_mint_approvals", "P0-26"],
+  ["core/repo.ts", "edge_mint_config", "P0-26"],
+  ["core/repo.ts", "keys_index", "P0-20"],
+  ["core/repo.ts", "license_profiles", "P0-20"],
+  ["core/repo.ts", "licenses", "P0-20"],
+  ["core/repo.ts", "oidc_config", "P0-26"],
+  ["core/repo.ts", "product_schema", "P0-26"],
+  ["core/repo.ts", "profiles", "P0-26"],
+  ["core/repo.ts", "provisioning_config", "P0-26"],
+  ["core/repo.ts", "release_config", "P0-26"],
+  ["core/repo.ts", "tiers", "P0-20"],
+  ["core/settings/columns.ts", "portal_product_settings", "P0-19"],
+  ["core/settingsClaims.ts", "product_schema", "P0-26"],
+  // The erasure sweeps (SEC-WP-04).
+  ["privacyResidue.ts", "account_tombstones", "permanent"],
+  ["privacyResidue.ts", "license_relinks", "permanent"],
+  ["privacyResidue.ts", "subject_events", "permanent"],
 ];
 
 const OWNER = new Map<string, string>();
@@ -111,70 +166,111 @@ function stripComments(source: string): string {
 }
 
 const TABLE_RE = /\b(?:FROM|JOIN|INTO|UPDATE|TABLE)\s+([a-z_][a-z0-9_]*)\b/g;
+const WRITE_RE =
+  /\b(?:INSERT\s+(?:OR\s+\w+\s+)?INTO|REPLACE\s+INTO|UPDATE|DELETE\s+FROM)\s+([a-z_][a-z0-9_]*)\b/g;
 
-interface Crossing {
-  from: string;
-  owner: string;
-  table: string;
-  files: string[];
+interface Source {
+  /** Path under `src/`. */
+  file: string;
+  /** `core`, `console` or a service slug. */
+  area: string;
+  sql: string;
 }
 
-function crossings(): Crossing[] {
-  const found = new Map<string, Crossing>();
-  for (const from of readdirSync(SERVICES_ROOT)) {
-    const dir = join(SERVICES_ROOT, from);
-    if (!statSync(dir).isDirectory()) continue;
-    for (const file of walkTs(dir)) {
-      const sql = stripComments(readFileSync(file, "utf8"));
-      for (const m of sql.matchAll(TABLE_RE)) {
-        const table = m[1]!;
-        const owner = OWNER.get(table);
-        if (!owner || owner === from || owner === "core") continue;
-        const key = `${from}|${table}`;
-        const c = found.get(key) ?? { from, owner, table, files: [] };
-        const at = relative(SERVICES_ROOT, file).split("\\").join("/");
-        if (!c.files.includes(at)) c.files.push(at);
-        found.set(key, c);
-      }
+function sources(): Source[] {
+  return walkTs(SRC).map((full) => {
+    const file = relative(SRC, full).split("\\").join("/");
+    const area = file.startsWith("services/")
+      ? file.split("/")[1]!
+      : file.startsWith("console/")
+        ? "console"
+        : "core";
+    return { file, area, sql: stripComments(readFileSync(full, "utf8")) };
+  });
+}
+
+/** `service|table` → the files that touch another service's table. */
+function crossings(all: Source[]): Map<string, string[]> {
+  const found = new Map<string, string[]>();
+  for (const { file, area, sql } of all) {
+    if (!(SERVICE_SLUGS as readonly string[]).includes(area)) continue;
+    for (const m of sql.matchAll(TABLE_RE)) {
+      const table = m[1]!;
+      const owner = OWNER.get(table);
+      if (!owner || owner === area || owner === "core") continue;
+      const key = `${area}|${table}`;
+      const files = found.get(key) ?? [];
+      if (!files.includes(file)) files.push(file);
+      found.set(key, files);
     }
   }
-  return [...found.values()].sort(
-    (a, b) =>
-      a.from.localeCompare(b.from) ||
-      a.owner.localeCompare(b.owner) ||
-      a.table.localeCompare(b.table),
-  );
+  return found;
 }
 
-describe("table crossings (report-only, P0-48)", () => {
-  it("reports every table a service uses that another service owns, against the audit's 17", () => {
-    const now = crossings();
-    const inBaseline = (c: Crossing) =>
-      BASELINE.some(([from, table]) => from === c.from && table === c.table);
-    const gone = BASELINE.filter(
-      ([from, table]) => !now.some((c) => c.from === from && c.table === table),
-    );
-    const lines = [
-      `Table crossings: ${now.length} found; the baseline (2026-10-07) lists ${BASELINE.length}.`,
-      ...now.map(
-        (c) =>
-          `  ${inBaseline(c) ? "   " : "NEW"} ${c.from} → ${c.owner}.${c.table}  (${c.files.join(", ")})`,
-      ),
-      ...gone.map(([from, table]) => `  GONE ${from} → ${table}`),
-    ];
-    console.info(lines.join("\n"));
+/** `file|table`: Core or the console writing a table a service owns. */
+function writeCrossings(all: Source[]): Set<string> {
+  const found = new Set<string>();
+  for (const { file, area, sql } of all) {
+    if (area !== "core" && area !== "console") continue;
+    for (const m of sql.matchAll(WRITE_RE)) {
+      const owner = OWNER.get(m[1]!);
+      if (owner && owner !== "core") found.add(`${file}|${m[1]}`);
+    }
+  }
+  return found;
+}
 
-    // Report-only: crossings never fail this test, but the scan must be real.
-    expect(BASELINE).toHaveLength(17);
-    for (const [, table] of BASELINE)
-      expect(OWNER.has(table), `${table} is in TABLE_OWNERS`).toBe(true);
-    // Every service that owns a table is in the map under its slug.
+const ALL = sources();
+
+describe("table ownership", () => {
+  it("every owner is core or a service, and every table has one owner", () => {
     for (const owner of Object.keys(TABLE_OWNERS))
       expect(["core", ...SERVICE_SLUGS]).toContain(owner);
-    // The declared seam is found, so the scanner sees SQL at all.
+    const seen = new Set<string>();
+    for (const tables of Object.values(TABLE_OWNERS))
+      for (const t of tables) {
+        expect(seen.has(t), `${t} has two owners`).toBe(false);
+        seen.add(t);
+      }
+  });
+
+  it("table crossings are only the declared seams, and every seam is still needed", () => {
+    const now = crossings(ALL);
+    const declared = new Set(SEAMS.map(([from, table]) => `${from}|${table}`));
     expect(
-      now.some((c) => c.from === "identity" && c.table === "licenses"),
-    ).toBe(true);
+      [...now.keys()]
+        .filter((k) => !declared.has(k))
+        .map((k) => `${k} (${now.get(k)!.join(", ")})`),
+      "a service uses another service's table: go through Core's hooks, or add a SEAMS row with the package that removes it",
+    ).toEqual([]);
+    expect(
+      SEAMS.filter(([f, t]) => !now.has(`${f}|${t}`)).map(
+        ([f, t]) => `${f}|${t}`,
+      ),
+      "no longer found: delete these SEAMS rows",
+    ).toEqual([]);
+    // The scan sees SQL at all.
+    expect(now.has("identity|licenses")).toBe(true);
+  });
+
+  it("Core and the console write a service's table only from a declared file", () => {
+    const now = writeCrossings(ALL);
+    const declared = new Set(WRITE_SEAMS.map(([f, t]) => `${f}|${t}`));
+    expect(
+      [...now].filter((k) => !declared.has(k)),
+      "Core or the console writes a service's table: move the write into the owner's directory, or add a WRITE_SEAMS row with the package that removes it",
+    ).toEqual([]);
+    expect(
+      [...declared].filter((k) => !now.has(k)),
+      "no longer found: delete these WRITE_SEAMS rows",
+    ).toEqual([]);
+  });
+
+  it("each allow-list row names a package that removes it, or is permanent", () => {
+    for (const [, , removedBy] of [...SEAMS, ...WRITE_SEAMS])
+      expect(removedBy).toMatch(/^(permanent|P\d+-\d+)$/);
+    for (const [, table] of [...SEAMS, ...WRITE_SEAMS])
+      expect(OWNER.has(table), `${table} is in TABLE_OWNERS`).toBe(true);
   });
 
   it("reads SQL in strings, not in comments", () => {
