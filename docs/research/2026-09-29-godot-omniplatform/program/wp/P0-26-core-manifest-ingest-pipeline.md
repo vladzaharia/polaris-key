@@ -55,10 +55,39 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 
 ## Acceptance criteria
 
-- [ ] Golden 'statements produced' tests identical before and after
+- [ ] Golden 'statements produced' tests identical before and after (harness and fixtures committed, 2026-10-17; the pipeline is not yet moved onto them)
 - [ ] Resync, link and the deploy hook call one pipeline
 - [ ] Plan approved (cross-cutting ingest semantics)
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
+
+## Progress and continuation (2026-10-17)
+
+Done on `wp/P0-26-ingest` (plan commit order):
+
+1. **Commit 1, the golden harness.** `packages/worker/test/ingest/{recordingDb,world,golden.test}.ts` and
+   `test/fixtures/ingest/golden.json`, captured from the pre-pipeline code. 12 scenarios
+   (35 captures, stable over repeated runs): link (full with ST-42 choices, minimal), resync
+   (unchanged, changed, console claims, drops, every refusal, break-glass, each service off),
+   link-existing (applied, refused after the write), the deploy hook (first link, re-link over a
+   claim, static tokens and an expired break-glass) and the dry runs. It compares per-table writes
+   in order (audit as a multiset), the end state, the masked result and D1 round trips (may not
+   grow). A first run with `INGEST_GOLDEN_CAPTURE=1` only adds a missing key.
+2. **D6.** `parseManifest` returns `warnings` on the ok arm; Action bundle regenerated.
+3. **D7.** `RemovedBy` accepts `ST-` ids; the six rows are retagged (`edgeMintApproval` permanent,
+   `settingsBackfill` P0-49, `settingsClaims` ST-17, `core/products/store.ts` profiles ST-43). 14
+   `P0-26` rows remain (6 `SEAMS`, 8 `WRITE_SEAMS`), exactly the ones the pipeline deletes.
+
+Not done (the plan's commits 2 and 3 are 1 to 1.5 weeks of work, not a 2.5 h slice): `core/ingest/`
+(types, pipeline, core contributor), the `contributes.manifest` facet, the four service
+`ingest.ts` modules, the builder moves, link/resync/link-existing/deploy hook/dry runs on the
+pipeline, D2 (`ingest` required), the deletions, `settings-writes` and `settings-registry` edits,
+and the architecture docs rewrite. Golden notes for whoever continues: the harness already calls
+`manifestIngestFor(SERVICES)`; when D2 lands, swap those three call sites for `ingestFor(SERVICES)`
+(an import edit only). D5's three deltas change goldens `12b` and `12d/12e` (every policy refusal
+listed), `12a` (reservedDisplayNames) and add a link scenario for a secret with a default; list
+each in the golden test header when taken. Suggested split if the lead wants smaller PRs: P0-26a =
+pipeline + Core + License/Identity/Config/Release/Distribution contributors with link and resync;
+P0-26b = deploy hook + dry runs + deletions + docs.
 
 ## Verify
 
