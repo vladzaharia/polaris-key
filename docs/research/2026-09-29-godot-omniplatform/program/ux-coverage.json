@@ -267,9 +267,9 @@
       "source": "_brand/sections/admin-1/changes.json [LX-30]",
       "area": "admin-1",
       "resolution": "applied-to-WP",
-      "owners": ["P0-29", "LX-30"],
+      "owners": ["ST-48", "LX-30"],
       "built": "partial",
-      "evidence": "LX-30 (done) built Holder column/filters; searched packages/admin/src for 'workbench': nothing; 56px band is P0-29/ST-48 (todo)"
+      "evidence": "LX-30 (done) built Holder column/filters; searched packages/admin/src for 'workbench': nothing; 56px band is P0-29/ST-48 (todo); 2026-10-17: P0-29 built paging; workbench band, 56px rows, tablet sticky moved to ST-48 (lead)"
     },
     {
       "id": "admin-1-23",

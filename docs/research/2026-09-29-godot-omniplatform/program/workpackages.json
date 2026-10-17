@@ -810,7 +810,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/cq-worker-services.md"
       ],
       "brief": "wp/P0-29-licence-list-paging-set-queries.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "P0-30",
