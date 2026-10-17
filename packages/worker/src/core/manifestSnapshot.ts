@@ -118,6 +118,39 @@ export function scrubManifestSecrets(
   return { ...manifest, profiles };
 }
 
+/**
+ * The inverse guard, for a payload read BACK from a snapshot: an entry holding `SNAPSHOT_REDACTED`
+ * carries no value from the manifest, so it takes the stored profile's entry (a sealed secret is
+ * carried exactly as stored) or, with none stored, is dropped. The marker is never sealed or
+ * written. Everything else is returned as it is.
+ */
+export function unredactPayload(
+  payload: Record<string, unknown>,
+  storedPayloadJson: string | null | undefined,
+): Record<string, unknown> {
+  let stored: Record<string, unknown> = {};
+  try {
+    const parsed: unknown = JSON.parse(storedPayloadJson ?? "null");
+    if (isObj(parsed)) stored = parsed;
+  } catch {
+    /* nothing stored to carry */
+  }
+  const next = { ...payload };
+  for (const bucket of ["secrets", "config"]) {
+    const entries = payload[bucket];
+    if (!isObj(entries)) continue;
+    const storedBucket = isObj(stored[bucket]) ? stored[bucket] : {};
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(entries)) {
+      const value = isObj(v) && "value" in v ? v.value : v;
+      if (value !== SNAPSHOT_REDACTED) out[k] = v;
+      else if (k in storedBucket) out[k] = storedBucket[k];
+    }
+    next[bucket] = out;
+  }
+  return next;
+}
+
 /** What an apply path hands to `stmtUpsertManifestSnapshot`. */
 export interface ManifestSnapshotInput {
   product: string;
