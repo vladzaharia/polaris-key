@@ -8,7 +8,7 @@ sidebar:
   order: 7
 ---
 
-Some apps publish packages for people whose license includes them: a library, a command-line tool, a container image or an add-on. You install one with a package manager such as npm or pip. A personal token is a read-only credential from your account that installs every package your licenses include.
+Some apps publish packages for people whose license includes them: a library, a command-line tool, a container image or an add-on. A personal token is a read-only credential from your account that installs every package your licenses include.
 
 ## Find the setup
 
@@ -29,11 +29,11 @@ It only reads, and works while the license is active.
 
 ## Use Godot
 
-The Godot editor can't use a personal token. **Account → Packages** makes a 30-day URL for the app instead, shown once.
+The Godot editor can't use a personal token. Under **Package type**, choose Godot, then **Create Godot editor URL**. The 30-day URL is shown once. Paste it into Editor Settings, as the page says.
 
 ## Revoke a personal token
 
-Choose **Revoke** next to it, then confirm. Anything using it stops at once. Older per-app ones work until they expire; revoke them in the same list.
+Choose **Revoke** next to it, then confirm. Anything using it stops within 30 seconds. Older single-app ones and Godot URLs work until they expire; revoke them in the page's per-app group.
 
 ## Which versions stay available
 

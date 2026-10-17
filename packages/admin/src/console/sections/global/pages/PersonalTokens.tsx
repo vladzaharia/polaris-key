@@ -77,7 +77,10 @@ const COLUMNS: DataColumn<AdminPersonalToken>[] = [
     meta: { priority: 1, primary: true, alwaysVisible: true, label: "Token" },
     cell: ({ row }) => (
       <span className="inline-flex min-w-0 max-w-[16rem] flex-col">
-        <span className="truncate" title={row.original.label}>
+        <span
+          className="truncate max-sm:whitespace-normal max-sm:break-words"
+          title={row.original.label}
+        >
           {row.original.label}
         </span>
         <span className="font-mono text-xs text-fg-muted">
@@ -94,7 +97,7 @@ const COLUMNS: DataColumn<AdminPersonalToken>[] = [
     cell: ({ row }) =>
       row.original.email ? (
         <span
-          className="inline-block max-w-[16rem] truncate align-bottom"
+          className="inline-block max-w-[16rem] truncate align-bottom max-sm:max-w-none max-sm:whitespace-normal max-sm:break-all"
           title={row.original.email}
         >
           {row.original.email}
@@ -122,10 +125,12 @@ const COLUMNS: DataColumn<AdminPersonalToken>[] = [
     // A revoked token's own expiry no longer matters: say when and by whom it ended.
     cell: ({ row }) =>
       row.original.status === "revoked" && row.original.revokedAt !== null ? (
-        <span className="inline-flex flex-wrap items-baseline gap-x-1">
-          Revoked <Timestamp at={fromSeconds(row.original.revokedAt)} />
-          <span className="text-fg-muted">
-            · by {REVOKED_BY[row.original.revokeReason ?? ""] ?? "owner"}
+        <span className="inline-flex flex-col items-end text-right">
+          <span>
+            Revoked <Timestamp at={fromSeconds(row.original.revokedAt)} />
+          </span>
+          <span className="text-xs text-fg-muted">
+            by {REVOKED_BY[row.original.revokeReason ?? ""] ?? "owner"}
           </span>
         </span>
       ) : (

@@ -44,7 +44,12 @@ export function StepUpInline({
         </p>
       )}
       {onCancel ? (
-        <Button variant="outline" size="sm" onClick={onCancel}>
+        <Button
+          variant="outline"
+          size="sm"
+          className="max-sm:min-h-11"
+          onClick={onCancel}
+        >
           {t("common.cancel")}
         </Button>
       ) : null}

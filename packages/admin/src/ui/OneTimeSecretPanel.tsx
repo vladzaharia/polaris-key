@@ -36,6 +36,8 @@ export interface OneTimeSecretPanelProps {
   actions?: React.ReactNode;
   /** Content shown under the value while it is on screen (a registry token's setup snippets). */
   details?: React.ReactNode;
+  /** The copy button's accessible name; default "Copy <label>". */
+  copyLabel?: string;
   /** Put "I've stored it" after `details`, so the box follows what it confirms. */
   acknowledgeLast?: boolean;
 }
@@ -86,6 +88,7 @@ export function OneTimeSecretPanel({
   actions,
   details,
   acknowledgeLast = false,
+  copyLabel,
 }: OneTimeSecretPanelProps): React.ReactElement {
   const [ackState, setAckState] = React.useState(false);
   const acknowledged = ackProp ?? ackState;
@@ -97,13 +100,16 @@ export function OneTimeSecretPanel({
   const valueId = React.useId();
   const ackId = React.useId();
   const ack = (
-    <label htmlFor={ackId} className="flex items-center gap-2 text-sm text-fg">
+    <label
+      htmlFor={ackId}
+      className="flex items-center gap-2 text-sm text-fg max-sm:min-h-11"
+    >
       <input
         id={ackId}
         type="checkbox"
         checked={acknowledged}
         onChange={(e) => setAck(e.target.checked)}
-        className="size-4 accent-(--pk-accent)"
+        className="size-4 accent-(--pk-accent) max-sm:size-5"
       />
       I&apos;ve stored it
     </label>
@@ -125,7 +131,8 @@ export function OneTimeSecretPanel({
             </code>
             <CopyButton
               value={value}
-              label={`Copy ${label.toLowerCase()}`}
+              className="max-sm:[&_button]:min-h-11 max-sm:[&_button]:min-w-11"
+              label={copyLabel ?? `Copy ${label.toLowerCase()}`}
               onCopy={(ok) => {
                 if (ok) setAck(true);
               }}
@@ -189,7 +196,13 @@ export function OneTimeSecretPanel({
       </DialogBody>
       <DialogFooter>
         {actions}
+        {acknowledged ? null : (
+          <p className="text-sm text-fg-muted sm:mr-auto">
+            Copy it or tick “I&apos;ve stored it” first.
+          </p>
+        )}
         <Button
+          className="max-sm:min-h-11"
           disabledReason={
             acknowledged ? undefined : "Copy it or tick “I've stored it” first"
           }

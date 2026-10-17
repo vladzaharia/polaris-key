@@ -35,7 +35,7 @@ import {
   tokenExpiry,
 } from "../../model/packageAccess.js";
 import { SectionCard } from "../product/Card.js";
-import { SetupTabs } from "../product/SetupTabs.js";
+import { SetupTabs, type TabSnippet } from "../product/SetupTabs.js";
 import { ErrorPanel } from "../States.js";
 import { StepUpInline } from "./StepUpInline.js";
 
@@ -92,10 +92,18 @@ export function PackagesCard(): React.ReactElement | null {
   const listed = (data?.tokens ?? []).filter((x) => x.status !== "revoked");
   const live = listed.filter((x) => x.status === "active").length;
   const atLimit = data ? live >= data.limits.perAccount : false;
-  const hasFeeds = (data?.feeds.length ?? 0) > 0;
+  // Personal tokens read every feed but Godot's: the editor sends no credentials, so a Godot feed
+  // has its own per-app URL (`GodotUrl`).
+  const personalFeeds = (data?.feeds ?? []).filter(
+    (f) => f.ecosystem !== "godot",
+  );
+  const hasPersonal = personalFeeds.length > 0;
+  const godotOnly = (data?.feeds.length ?? 0) > 0 && !hasPersonal;
   const shown = showAll ? listed : listed.slice(0, ROWS_SHOWN);
   const legacy = (data?.legacy ?? []).filter((x) => x.status !== "revoked");
   const ids = listed.map((x) => x.id).join(",");
+  const legacyIds = legacy.map((x) => x.tokenId).join(",");
+  const pendingLegacyFocus = React.useRef<number | null>(null);
 
   // After a revoke, the next row's Revoke (or the one before it, or the heading) takes focus.
   React.useEffect(() => {
@@ -107,6 +115,21 @@ export function PackagesCard(): React.ReactElement | null {
     );
     (buttons[Math.min(at, buttons.length - 1)] ?? headingRef.current)?.focus();
   }, [ids]);
+  // The same for a per-app revoke: the next per-app Revoke, else the group's heading, else the
+  // personal group's (the group goes away with its last token).
+  React.useEffect(() => {
+    const at = pendingLegacyFocus.current;
+    if (at === null) return;
+    pendingLegacyFocus.current = null;
+    const buttons = document.querySelectorAll<HTMLElement>(
+      "#section-packages [data-perapp-revoke]",
+    );
+    (
+      buttons[Math.min(at, buttons.length - 1)] ??
+      document.getElementById("per-app-heading") ??
+      headingRef.current
+    )?.focus();
+  }, [legacyIds]);
 
   if (q.isSuccess && !packagesVisible(data)) return null;
   return (
@@ -136,80 +159,102 @@ export function PackagesCard(): React.ReactElement | null {
         />
       ) : (
         <div className="space-y-6">
-          <div className="space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <h3
-                ref={headingRef}
-                tabIndex={-1}
-                className="font-semibold text-fg-strong outline-none"
-              >
-                Your personal tokens
-              </h3>
-              {hasFeeds ? (
-                <Button
-                  ref={createRef}
-                  className="min-h-11 min-w-11"
-                  iconStart={<Plus aria-hidden />}
-                  onClick={() => setCreating(true)}
-                  disabledReason={
-                    atLimit
-                      ? `At most ${data.limits.perAccount} personal tokens. Revoke one first`
-                      : undefined
-                  }
+          {hasPersonal || listed.length > 0 ? (
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <h3
+                  ref={headingRef}
+                  tabIndex={-1}
+                  className="font-semibold text-fg-strong outline-none"
                 >
-                  Create personal token
+                  Your personal tokens
+                </h3>
+                {hasPersonal ? (
+                  <Button
+                    ref={createRef}
+                    className="min-h-11 min-w-11"
+                    iconStart={<Plus aria-hidden />}
+                    onClick={() => setCreating(true)}
+                    disabledReason={
+                      atLimit
+                        ? `At most ${data.limits.perAccount} personal tokens. Revoke one first`
+                        : undefined
+                    }
+                  >
+                    Create personal token
+                  </Button>
+                ) : null}
+              </div>
+              {listed.length === 0 ? (
+                <p className="text-sm text-fg-muted">
+                  No personal tokens yet. Create one for each computer or build
+                  server.
+                </p>
+              ) : (
+                <ul className="divide-y divide-border border-y border-border">
+                  {shown.map((tok, i) => (
+                    <TokenRow
+                      key={tok.id}
+                      id={tok.id}
+                      label={tok.label}
+                      mark={`pkeyp_…${tok.hint}`}
+                      lastUsedAt={tok.lastUsedAt}
+                      expiresAt={tok.expiresAt}
+                      now={now}
+                      active={tok.status === "active"}
+                      group="personal"
+                      reconnect="Create a new one and set it again to reconnect."
+                      useRevoke={() => {
+                        const r = useRevokePersonalToken();
+                        return {
+                          pending: r.isPending,
+                          error: r.error,
+                          reset: r.reset,
+                          run: (done) => r.mutate(tok.id, { onSuccess: done }),
+                        };
+                      }}
+                      onRevoked={() => {
+                        pendingFocus.current = i;
+                      }}
+                    />
+                  ))}
+                </ul>
+              )}
+              {listed.length > ROWS_SHOWN && !showAll ? (
+                <Button
+                  variant="outline"
+                  className="min-h-11"
+                  onClick={() => {
+                    setShowAll(true);
+                    // The first row that was hidden takes focus: Show all itself goes away.
+                    focusLater(
+                      () =>
+                        document.querySelectorAll<HTMLElement>(
+                          "#section-packages [data-personal-revoke]",
+                        )[ROWS_SHOWN],
+                    );
+                  }}
+                >
+                  Show all {listed.length}
                 </Button>
               ) : null}
             </div>
-            {listed.length === 0 ? (
-              <p className="text-sm text-fg-muted">
-                No personal tokens yet. Create one for each computer or build
-                server.
-              </p>
-            ) : (
-              <ul className="divide-y divide-border border-y border-border">
-                {shown.map((tok, i) => (
-                  <TokenRow
-                    key={tok.id}
-                    id={tok.id}
-                    label={tok.label}
-                    mark={`pkeyp_…${tok.hint}`}
-                    lastUsedAt={tok.lastUsedAt}
-                    expiresAt={tok.expiresAt}
-                    now={now}
-                    active={tok.status === "active"}
-                    personalRevoke
-                    useRevoke={() => {
-                      const r = useRevokePersonalToken();
-                      return {
-                        pending: r.isPending,
-                        error: r.error,
-                        reset: r.reset,
-                        run: (done) => r.mutate(tok.id, { onSuccess: done }),
-                      };
-                    }}
-                    onRevoked={() => {
-                      pendingFocus.current = i;
-                    }}
-                  />
-                ))}
-              </ul>
-            )}
-            {listed.length > ROWS_SHOWN && !showAll ? (
-              <Button
-                variant="outline"
-                className="min-h-11"
-                onClick={() => setShowAll(true)}
-              >
-                Show all {listed.length}
-              </Button>
-            ) : null}
-          </div>
-          {legacy.length > 0 ? (
-            <PerAppTokens tokens={legacy} now={now} />
           ) : null}
-          {hasFeeds ? (
-            <Setup feeds={data.feeds} registryOrigin={data.registryOrigin} />
+          {legacy.length > 0 ? (
+            <PerAppTokens
+              tokens={legacy}
+              now={now}
+              onRevoked={(i) => {
+                pendingLegacyFocus.current = i;
+              }}
+            />
+          ) : null}
+          {data.feeds.length > 0 ? (
+            <Setup
+              feeds={data.feeds}
+              registryOrigin={data.registryOrigin}
+              godotOnly={godotOnly}
+            />
           ) : null}
         </div>
       )}
@@ -223,6 +268,11 @@ export function PackagesCard(): React.ReactElement | null {
           title="Create a personal token"
           description="Reads every package your licenses include, now and for apps you license later. Read-only."
           limits={data.limits}
+          describeError={(err) =>
+            (err as { status?: number }).status === 409
+              ? `You already have the most personal tokens (${data.limits.perAccount}). Revoke one first.`
+              : null
+          }
           useMint={() => {
             const m = useMintPersonalToken();
             return {
@@ -257,7 +307,7 @@ export function PackagesCard(): React.ReactElement | null {
             focusLater(
               () =>
                 document.querySelector<HTMLElement>(
-                  `[data-token-id="${id}"] button`,
+                  `[data-token-id="${id}"]`,
                 ) ?? createRef.current,
             );
           }}
@@ -285,11 +335,13 @@ export function PackagesCard(): React.ReactElement | null {
                   className="[&_button]:min-h-11 [&_button]:min-w-11"
                 />
               </div>
-              <Setup
-                feeds={data.feeds}
-                registryOrigin={data.registryOrigin}
-                bare
-              />
+              {hasPersonal ? (
+                <Setup
+                  feeds={personalFeeds}
+                  registryOrigin={data.registryOrigin}
+                  bare
+                />
+              ) : null}
             </div>
           }
         />
@@ -315,7 +367,8 @@ function TokenRow({
   expiresAt,
   now,
   active,
-  personalRevoke,
+  group,
+  reconnect,
   useRevoke,
   onRevoked,
 }: {
@@ -327,7 +380,10 @@ function TokenRow({
   expiresAt: number;
   now: number;
   active: boolean;
-  personalRevoke?: boolean;
+  /** Which list the row is in: the focus after a revoke finds its Revoke buttons by it. */
+  group: "personal" | "perapp";
+  /** The one line that says how to get back, after the revoke. */
+  reconnect: string;
   useRevoke: () => Runner<[() => void]>;
   onRevoked?: () => void;
 }): React.ReactElement {
@@ -345,7 +401,7 @@ function TokenRow({
     focusLater(() => openerRef.current);
   };
   return (
-    <li className="py-3" data-token-id={id}>
+    <li className="py-3 outline-none" data-token-id={id} tabIndex={-1}>
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
         <div className="min-w-0 space-y-0.5">
           <p className="break-words font-medium text-fg-strong">{label}</p>
@@ -384,7 +440,9 @@ function TokenRow({
             className="min-h-11 min-w-11"
             onClick={() => setConfirming(true)}
             aria-label={`Revoke ${label}`}
-            {...(personalRevoke ? { "data-personal-revoke": "" } : {})}
+            {...(group === "personal"
+              ? { "data-personal-revoke": "" }
+              : { "data-perapp-revoke": "" })}
           >
             Revoke
           </Button>
@@ -408,8 +466,7 @@ function TokenRow({
             Revoke {label}?
           </p>
           <p className="text-sm text-fg">
-            Anything installing with it stops at once. Create a new one and set
-            it again to reconnect.
+            Anything installing with it stops within 30 seconds. {reconnect}
           </p>
           {revoke.error ? (
             <p role="alert" className="text-sm text-danger">
@@ -445,21 +502,29 @@ function TokenRow({
 function PerAppTokens({
   tokens,
   now,
+  onRevoked,
 }: {
   tokens: readonly PortalLegacyToken[];
   now: number;
+  onRevoked: (index: number) => void;
 }): React.ReactElement {
   return (
-    <div className="space-y-3 border-t border-border pt-5">
+    <div className="space-y-3">
       <div className="space-y-1">
-        <h3 className="font-semibold text-fg-strong">Per-app tokens</h3>
+        <h3
+          id="per-app-heading"
+          tabIndex={-1}
+          className="font-semibold text-fg-strong outline-none"
+        >
+          Per-app tokens
+        </h3>
         <p className="text-sm text-fg-muted">
           Made for one app before personal tokens, or as a Godot editor URL.
           They work until they expire.
         </p>
       </div>
       <ul className="divide-y divide-border border-y border-border">
-        {tokens.map((tok) => (
+        {tokens.map((tok, i) => (
           <TokenRow
             key={`${tok.licenseId}-${tok.tokenId}`}
             id={tok.tokenId}
@@ -470,6 +535,13 @@ function PerAppTokens({
             expiresAt={tok.expiresAt}
             now={now}
             active={tok.status === "active"}
+            group="perapp"
+            reconnect={
+              tok.presentation === "url"
+                ? "Create a new Godot editor URL to reconnect."
+                : "Use a personal token to reconnect."
+            }
+            onRevoked={() => onRevoked(i)}
             useRevoke={() => {
               const r = useRevokeRegistryToken();
               return {
@@ -547,11 +619,14 @@ function Setup({
   feeds,
   registryOrigin,
   bare = false,
+  godotOnly = false,
 }: {
   feeds: readonly PortalReadableFeed[];
   registryOrigin: string | null;
   /** Inside the shown-once dialog: no heading or footnote. */
   bare?: boolean;
+  /** Every feed is Godot's: its URL button is the section's primary action. */
+  godotOnly?: boolean;
 }): React.ReactElement | null {
   const apps = [...new Map(feeds.map((f) => [f.product, f.productName]))];
   const [app, setApp] = React.useState(apps[0]?.[0] ?? "");
@@ -563,7 +638,7 @@ function Setup({
   const feed = mine.find((f) => f.ecosystem === eco) ?? mine[0];
   if (!feed) return null;
   return (
-    <div className={cn("space-y-4", bare ? "" : "border-t border-border pt-5")}>
+    <div className="space-y-4">
       {bare ? (
         <p className="text-sm font-medium text-fg-strong">Set up</p>
       ) : (
@@ -589,7 +664,11 @@ function Setup({
         />
       ) : null}
       {feed.ecosystem === "godot" ? (
-        <GodotUrl feed={feed} registryOrigin={registryOrigin} />
+        <GodotUrl
+          feed={feed}
+          registryOrigin={registryOrigin}
+          primary={godotOnly}
+        />
       ) : (
         <SetupTabs
           key={`${feed.product}-${feed.ecosystem}`}
@@ -599,7 +678,7 @@ function Setup({
           }).map((s) => ({ ...s, feed: feed.ecosystem }))}
         />
       )}
-      {bare ? null : (
+      {bare || feed.ecosystem === "godot" ? null : (
         <p className="flex gap-2 text-sm text-fg-muted">
           <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
           <span>
@@ -616,9 +695,12 @@ function Setup({
 function GodotUrl({
   feed,
   registryOrigin,
+  primary,
 }: {
   feed: PortalReadableFeed;
   registryOrigin: string | null;
+  /** Every feed is Godot's: this is the section's one primary action. */
+  primary: boolean;
 }): React.ReactElement {
   const [creating, setCreating] = React.useState(false);
   const [minted, setMinted] = React.useState<{
@@ -633,6 +715,15 @@ function GodotUrl({
     labelMax: 64,
     perAccount: 25,
   };
+  const steps = minted
+    ? godotPasteSteps(
+        feedSnippets(
+          feed,
+          { product: feed.product, registryOrigin },
+          minted.token,
+        ).map((s) => ({ ...s, feed: "godot" })),
+      )
+    : [];
   return (
     <div className="space-y-3">
       <p className="text-sm text-fg">
@@ -641,7 +732,7 @@ function GodotUrl({
       </p>
       <Button
         ref={openerRef}
-        variant="outline"
+        variant={primary ? "primary" : "outline"}
         className="min-h-11"
         iconStart={<Plus aria-hidden />}
         onClick={() => setCreating(true)}
@@ -659,6 +750,16 @@ function GodotUrl({
         limits={limits}
         fixedDays={GODOT_URL_DAYS}
         initialLabel="Godot editor"
+        describeError={(err) => {
+          const e = err as { status?: number; reason?: string };
+          if (e.status === 409)
+            return `${feed.productName} already has the most per-app tokens. Revoke one under Per-app tokens first.`;
+          if (e.status === 403)
+            return `Your ${feed.productName} license isn't active.`;
+          if (e.status === 422 && e.reason === undefined)
+            return "A Godot editor URL can't be made for this app right now.";
+          return null;
+        }}
         useMint={() => {
           const m = useMintRegistryToken(feed.product, feed.licenseId);
           return {
@@ -686,7 +787,7 @@ function GodotUrl({
           };
         }}
       />
-      {minted ? (
+      {minted && steps[0] ? (
         <OneTimeSecretDialog
           open
           onOpenChange={(o) => {
@@ -697,23 +798,32 @@ function GodotUrl({
           size="lg"
           title="Copy your Godot editor URL now"
           description="This is the only time you'll see it. If you lose it, revoke it and create another."
-          label="Token in the URL"
-          value={minted.token}
-          hint={`“${minted.label}” · read-only · Godot only`}
+          label="Godot editor URL (Godot 4.4 to 4.6)"
+          copyLabel="Copy Godot editor URL"
+          value={steps[0].code}
+          hint={`“${minted.label}” · read-only · Godot only. Godot 4.7 and later, and GodotEnv, use the URLs below.`}
           onDone={() => announce(`Godot editor URL ${minted.label} is ready`)}
           acknowledgeLast
-          details={
-            <SetupTabs
-              snippets={feedSnippets(
-                feed,
-                { product: feed.product, registryOrigin },
-                minted.token,
-              ).map((s) => ({ ...s, feed: "godot" }))}
-            />
-          }
+          details={<SetupTabs snippets={steps} />}
         />
       ) : null}
     </div>
+  );
+}
+
+/**
+ * Where to paste each Godot URL. The generator's caption for Godot 4.4 to 4.6 reads "4.6 and
+ * earlier": say the same range as its tab.
+ */
+function godotPasteSteps(snippets: readonly TabSnippet[]): TabSnippet[] {
+  return snippets.map((s) =>
+    s.id === "editor-4.6"
+      ? {
+          ...s,
+          title:
+            "Godot 4.4 to 4.6: Editor Settings → asset_library/available_urls",
+        }
+      : s,
   );
 }
 
@@ -727,6 +837,7 @@ function CreateDialog({
   limits,
   fixedDays,
   initialLabel = "",
+  describeError,
   useMint,
 }: {
   open: boolean;
@@ -737,6 +848,8 @@ function CreateDialog({
   /** A lifetime the person does not choose (the Godot URL's). */
   fixedDays?: number;
   initialLabel?: string;
+  /** Copy for a refusal this dialog knows (the limit, an inactive license); else the generic. */
+  describeError?: (err: unknown) => string | null;
   useMint: () => Runner<
     [string, number, { onSuccess: () => void; onError: (e: unknown) => void }]
   >;
@@ -764,7 +877,9 @@ function CreateDialog({
   const trimmed = label.trim();
   const fieldError = empty
     ? "Give it a name."
-    : mint.error && (mint.error as { status?: number }).status === 422
+    : mint.error &&
+        (mint.error as { status?: number; reason?: string }).status === 422 &&
+        (mint.error as { reason?: string }).reason !== undefined
       ? `Give it a name of up to ${limits.labelMax} characters.`
       : null;
   const days = [
@@ -790,7 +905,8 @@ function CreateDialog({
   };
   const generic =
     mint.error && !fieldError && !isStepUpRequired(mint.error)
-      ? portalErrorCopy(mint.error, { account: true }).description
+      ? (describeError?.(mint.error) ??
+        portalErrorCopy(mint.error, { account: true }).description)
       : null;
   return (
     <Dialog
@@ -818,6 +934,7 @@ function CreateDialog({
               id={labelId}
               value={label}
               maxLength={limits.labelMax}
+              className="max-sm:min-h-11"
               placeholder="Laptop, CI build server…"
               onValueChange={(v) => {
                 setLabel(v);
@@ -841,7 +958,7 @@ function CreateDialog({
               <select
                 value={String(expires)}
                 onChange={(e) => setExpires(Number(e.target.value))}
-                className={CONTROL_INPUT}
+                className={cn(CONTROL_INPUT, "max-sm:min-h-11")}
               >
                 {days.map((d) => (
                   <option key={d} value={d}>

@@ -113,9 +113,12 @@ afterAll(async () => {
 });
 
 /** Controls inside the Packages section under 44 px on either side (the customer-surface floor). */
-async function belowFloor(page: Page): Promise<string[]> {
-  return page.evaluate(() => {
-    const root = document.getElementById("section-packages");
+async function belowFloor(page: Page, scope = "section"): Promise<string[]> {
+  return page.evaluate((scope) => {
+    const root =
+      scope === "dialog"
+        ? document.querySelector<HTMLElement>('[role="dialog"]')
+        : document.getElementById("section-packages");
     if (!root) return [];
     const out: string[] = [];
     for (const el of root.querySelectorAll<HTMLElement>(
@@ -129,7 +132,7 @@ async function belowFloor(page: Page): Promise<string[]> {
         );
     }
     return out;
-  });
+  }, scope);
 }
 
 const SIZES = [
@@ -172,15 +175,23 @@ describe.concurrent("Account → Packages", () => {
         const region = o.page.getByRole("region", { name: /^Packages$/ });
         await region.getByText("CI build server").waitFor();
         const tag = `${s.w}-${s.theme}${s.scale > 1 ? `-${s.scale}x` : ""}`;
-        const check = async (name: string, floor = false): Promise<void> => {
+        const phone = s.w < 640 && s.scale === 1;
+        const check = async (
+          name: string,
+          floor: boolean | "dialog" = false,
+        ): Promise<void> => {
           await shoot(o.page, `packages.${name}-${tag}`);
           expect(await o.violations(), `${name} csp`).toEqual([]);
           expect(await axe(o.page), `${name} axe`).toEqual([]);
           expect(await h1Count(o.page), `${name} h1`).toBe(1);
           expect(await horizontalOverflow(o.page), `${name} overflow`).toBe(0);
           expect(await smallTargets(o.page), `${name} targets`).toEqual([]);
-          if (floor)
+          if (floor === true)
             expect(await belowFloor(o.page), `${name} 44px`).toEqual([]);
+          if (floor === "dialog")
+            expect(await belowFloor(o.page, "dialog"), `${name} 44px`).toEqual(
+              [],
+            );
         };
         await check("section", true);
         await region
@@ -190,7 +201,7 @@ describe.concurrent("Account → Packages", () => {
           name: "Create a personal token",
         });
         await dialog.getByLabel("Name").fill("Laptop");
-        await check("create");
+        await check("create", phone ? "dialog" : false);
         await dialog
           .getByRole("button", { name: "Create", exact: true })
           .click();
@@ -204,7 +215,7 @@ describe.concurrent("Account → Packages", () => {
             .getByRole("button", { name: "Create", exact: true })
             .count(),
         ).toBe(0);
-        await check("step-up");
+        await check("step-up", phone ? "dialog" : false);
         stale = false;
         // A confirmed sign-in runs the request again; here, press Escape-free: reopen the form.
         await dialog.getByRole("button", { name: "Cancel" }).first().click();
@@ -215,7 +226,11 @@ describe.concurrent("Account → Packages", () => {
           name: "Copy your personal token now",
         });
         await shown.waitFor();
-        await check("shown-once");
+        await check("shown-once", phone ? "dialog" : false);
+        // No second dialog to make a Godot URL from inside this one.
+        expect(await shown.getByRole("radio", { name: "Godot" }).count()).toBe(
+          0,
+        );
         // The setup in the dialog names the variable: the token is in no config file.
         expect(await shown.textContent()).not.toContain(`_authToken=${TOKEN}`);
         await shown.getByRole("checkbox", { name: /stored it/ }).check();
@@ -252,6 +267,67 @@ describe.concurrent("Account → Packages", () => {
       await o.close();
     }
   });
+
+  for (const s of [
+    { w: 360, h: 780, theme: "dark" as Theme },
+    { w: 1440, h: 900, theme: "light" as Theme },
+  ]) {
+    it(`Godot URL: the shown value is the URL, at ${s.w} (${s.theme})`, async () => {
+      const o = await portal.open("three", "/#/account/packages", {
+        theme: s.theme,
+        width: s.w,
+        height: s.h,
+        routes: {
+          "GET /api/me/tokens": () => ({
+            body: { ...list, feeds: [list.feeds[2]], legacy: [] },
+          }),
+          "POST /api/licenses/tidewater/lic_tidewater/registry-tokens": () => ({
+            status: 201,
+            body: {
+              ok: true,
+              token: "pkeyr_GodotUrlToken0123456789abcdef",
+              view: {},
+            },
+          }),
+        },
+      });
+      try {
+        await h1(o.page, "Account");
+        const region = o.page.getByRole("region", { name: /^Packages$/ });
+        await region.getByText(/can't use personal tokens/).waitFor();
+        expect(
+          await region
+            .getByRole("button", { name: "Create personal token" })
+            .count(),
+        ).toBe(0);
+        await shoot(o.page, `packages.godot-only-${s.w}-${s.theme}`);
+        await region
+          .getByRole("button", { name: "Create Godot editor URL" })
+          .click();
+        const form = o.page.getByRole("dialog", {
+          name: "Create a Godot editor URL",
+        });
+        await form.getByRole("button", { name: "Create", exact: true }).click();
+        const shown = o.page.getByRole("dialog", {
+          name: "Copy your Godot editor URL now",
+        });
+        await shown.waitFor();
+        await shoot(o.page, `packages.godot-shown-${s.w}-${s.theme}`);
+        await shown
+          .getByRole("button", { name: "Copy Godot editor URL" })
+          .waitFor();
+        expect(await shown.textContent()).toContain(
+          "/t/pkeyr_GodotUrlToken0123456789abcdef/asset-library/api",
+        );
+        expect(await o.violations()).toEqual([]);
+        expect(await axe(o.page)).toEqual([]);
+        expect(await horizontalOverflow(o.page)).toBe(0);
+        if (s.w < 640) expect(await belowFloor(o.page, "dialog")).toEqual([]);
+      } finally {
+        await o.close();
+      }
+    });
+  }
 
   it("is left out with no feed, token or per-app token", async () => {
     const o = await portal.open("three", "/#/account", {

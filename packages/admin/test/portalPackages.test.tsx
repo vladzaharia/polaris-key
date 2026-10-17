@@ -99,6 +99,13 @@ function routes(extra: Record<string, unknown> = {}) {
   return signedIn([], { [ME]: tokens(), ...extra } as never);
 }
 
+/** Wait for the dialog to put focus in Name (its opening), then type: no keystroke is lost. */
+async function typeName(form: HTMLElement, text: string): Promise<void> {
+  const field = within(form).getByLabelText("Name");
+  await waitFor(() => expect(document.activeElement).toBe(field));
+  await userEvent.type(field, text);
+}
+
 async function card(): Promise<HTMLElement> {
   const h = await screen.findByRole("heading", {
     name: "Your personal tokens",
@@ -176,7 +183,7 @@ describe("Account → Packages (F-33)", () => {
     expect(
       within(form).getByText(/Expires Dec 30, 2026|Expires \w+ \d+, \d{4}/),
     ).toBeTruthy();
-    await userEvent.type(within(form).getByLabelText("Name"), "Laptop 2");
+    await typeName(form, "Laptop 2");
     await userEvent.click(within(form).getByRole("button", { name: "Create" }));
     const shown = await screen.findByRole("dialog", {
       name: "Copy your personal token now",
@@ -228,7 +235,7 @@ describe("Account → Packages (F-33)", () => {
     });
     await userEvent.click(within(form).getByRole("button", { name: "Create" }));
     expect(within(form).getByText("Give it a name.")).toBeTruthy();
-    await userEvent.type(within(form).getByLabelText("Name"), "Laptop 2");
+    await typeName(form, "Laptop 2");
     await userEvent.click(within(form).getByRole("button", { name: "Create" }));
     await waitFor(() =>
       expect(within(form).queryByRole("button", { name: "Create" })).toBeNull(),
@@ -388,6 +395,164 @@ describe("Account → Packages (F-33)", () => {
     ]);
     expect(shown.textContent).toContain("/t/pkeyr_GodotUrlToken");
     expect(shown.textContent).not.toContain("pkeyp_");
+  });
+
+  it("after a per-app revoke focus moves to the next per-app Revoke", async () => {
+    const mk = (id: string, label: string) => ({
+      product: "tidewater",
+      productName: "Tidewater Studio",
+      licenseId: "lic_tidewater",
+      tokenId: id,
+      label,
+      hint: "q9Zx",
+      ecosystems: null,
+      presentation: "header",
+      createdAt: NOW_S - 90 * DAY,
+      expiresAt: NOW_S + 30 * DAY,
+      lastUsedAt: null,
+      revokedAt: null,
+      status: "active" as const,
+    });
+    let gone = false;
+    mockFetch(
+      routes({
+        [ME]: () =>
+          tokens({
+            legacy: gone
+              ? [mk("rt_a", "Old A"), mk("rt_b", "Old B")].map((t, i) =>
+                  i === 0 ? { ...t, status: "revoked" as const } : t,
+                )
+              : [mk("rt_a", "Old A"), mk("rt_b", "Old B")],
+          }),
+        "DELETE /api/licenses/tidewater/lic_tidewater/registry-tokens/rt_a":
+          () => {
+            gone = true;
+            return { ok: true, view: {} };
+          },
+      }),
+    );
+    renderPortal();
+    const c = await card();
+    await userEvent.click(
+      within(c).getByRole("button", { name: "Revoke Old A" }),
+    );
+    expect(
+      within(c).getByText(/Use a personal token to reconnect/),
+    ).toBeTruthy();
+    await userEvent.click(
+      within(c).getByRole("button", { name: "Revoke Old A" }),
+    );
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        within(c).getByRole("button", { name: "Revoke Old B" }),
+      ),
+    );
+  });
+
+  it("with only Godot feeds, the Godot URL is the primary, no personal token is offered, and the URL is the shown value", async () => {
+    mockFetch(
+      routes({
+        [ME]: tokens({
+          tokens: [],
+          feeds: [
+            {
+              product: "tidewater",
+              productName: "Tidewater Studio",
+              licenseId: "lic_tidewater",
+              ecosystem: "godot",
+              accessMode: "licensed",
+              baseUrl: "https://pkg.plrs.im/godot/tidewater/",
+              namespace: {},
+            },
+          ],
+        }),
+        "POST /api/licenses/tidewater/lic_tidewater/registry-tokens": {
+          status: 201,
+          body: {
+            ok: true,
+            token: "pkeyr_GodotUrlToken0123456789abcdef",
+            view: {},
+          },
+        },
+      }),
+    );
+    renderPortal();
+    const h = await screen.findByRole("heading", { name: /^Packages$/ });
+    const c = h.closest("section")!;
+    await screen.findByText(/can't use personal tokens/);
+    expect(
+      within(c).queryByRole("button", { name: "Create personal token" }),
+    ).toBeNull();
+    expect(c.textContent).not.toContain("No personal tokens yet");
+    expect(c.textContent).not.toContain("PKEY_REGISTRY_TOKEN");
+    await userEvent.click(
+      within(c).getByRole("button", { name: "Create Godot editor URL" }),
+    );
+    const form = await screen.findByRole("dialog", {
+      name: "Create a Godot editor URL",
+    });
+    await userEvent.click(within(form).getByRole("button", { name: "Create" }));
+    const shown = await screen.findByRole("dialog", {
+      name: "Copy your Godot editor URL now",
+    });
+    expect(
+      within(shown).getByRole("button", { name: "Copy Godot editor URL" }),
+    ).toBeTruthy();
+    expect(
+      within(shown).getAllByText(
+        "https://pkg.plrs.im/godot/tidewater/t/pkeyr_GodotUrlToken0123456789abcdef/asset-library/api",
+      ).length,
+    ).toBeGreaterThan(0);
+    expect(
+      within(shown).getByRole("tab", { name: "Godot 4.4 to 4.6" }),
+    ).toBeTruthy();
+    expect(shown.textContent).toContain("Godot 4.4 to 4.6: Editor Settings");
+    expect(shown.textContent).not.toContain("4.6 and earlier");
+  });
+
+  it("names the Godot refusals: the limit and an inactive license", async () => {
+    let status = 409;
+    mockFetch(
+      routes({
+        [ME]: tokens({
+          feeds: [
+            {
+              product: "tidewater",
+              productName: "Tidewater Studio",
+              licenseId: "lic_tidewater",
+              ecosystem: "godot",
+              accessMode: "licensed",
+              baseUrl: "https://pkg.plrs.im/godot/tidewater/",
+              namespace: {},
+            },
+          ],
+        }),
+        "POST /api/licenses/tidewater/lic_tidewater/registry-tokens": () => ({
+          status,
+          body: {
+            error: "x",
+            reason: status === 409 ? "token_limit" : undefined,
+          },
+        }),
+      }),
+    );
+    renderPortal();
+    const c = await card();
+    await userEvent.click(
+      within(c).getByRole("button", { name: "Create Godot editor URL" }),
+    );
+    const form = await screen.findByRole("dialog", {
+      name: "Create a Godot editor URL",
+    });
+    await userEvent.click(within(form).getByRole("button", { name: "Create" }));
+    expect(
+      await within(form).findByText(/already has the most per-app tokens/),
+    ).toBeTruthy();
+    status = 403;
+    await userEvent.click(within(form).getByRole("button", { name: "Create" }));
+    expect(
+      await within(form).findByText(/Tidewater Studio license isn't active/),
+    ).toBeTruthy();
   });
 
   it("disables Create at the account's limit and says why", async () => {

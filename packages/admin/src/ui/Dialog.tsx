@@ -462,7 +462,7 @@ export function Dialog({
             {dismissible ? (
               <DialogPrimitive.Close
                 aria-label="Close"
-                className="-mr-2 -mt-1 inline-flex size-8 shrink-0 items-center justify-center rounded-md text-fg-muted hover:bg-hover hover:text-fg-strong focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
+                className="-mr-2 -mt-1 inline-flex size-8 shrink-0 max-sm:size-11 items-center justify-center rounded-md text-fg-muted hover:bg-hover hover:text-fg-strong focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
               >
                 <X aria-hidden className="size-4" />
               </DialogPrimitive.Close>

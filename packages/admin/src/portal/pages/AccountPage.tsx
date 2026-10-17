@@ -92,15 +92,23 @@ export function AccountPage({
   React.useEffect(() => {
     if (!section || landed.current || !settled) return;
     landed.current = true;
-    const go = (): void => {
+    const go = (refocus: boolean): void => {
       document
         .getElementById(`section-${section}`)
         ?.scrollIntoView?.({ block: "start" });
-      if (section === "packages") focusSectionHeading("packages");
+      // Never take focus from a control the person has reached since: only from the page's own
+      // headings or the body.
+      const at = document.activeElement;
+      const idle =
+        !at ||
+        at === document.body ||
+        (at instanceof HTMLElement && /^H[123]$/.test(at.tagName));
+      if (section === "packages" && refocus && idle)
+        focusSectionHeading("packages");
     };
-    go();
+    go(true);
     // The sign-in methods card above fills in a frame later: land again once it has.
-    if (section === "packages") setTimeout(go, 400);
+    if (section === "packages") setTimeout(() => go(true), 400);
   }, [section, settled]);
   const pick = (s: AccountSection): void => {
     setCurrent(s);
