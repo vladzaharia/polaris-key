@@ -11,7 +11,7 @@ import {
   type KitContext,
   type TerminalIO,
 } from "./context.js";
-import { activateFlow, ensureDiscovery } from "./flows.js";
+import { activateFlow, busyAfter, ensureDiscovery } from "./flows.js";
 import { envelope, EXIT, jsonLine } from "./json.js";
 import { endRow, fixRows, gap, problemRows } from "./parts.js";
 import {
@@ -22,6 +22,8 @@ import {
 
 /** The gate statuses a host's command runs on (with the entitlement held). */
 const USABLE: readonly string[] = ["ok", "grace", "not-applicable"];
+/** A license check that takes longer than this shows "Checking your license…" on stderr. */
+const CHECKING_AFTER_MS = 400;
 /** What an interactive run resolves inline: activating another key fixes them. */
 const INLINE_FLOW: readonly string[] = [
   "needs-activation",
@@ -125,6 +127,18 @@ export async function runGate(r: GateRun): Promise<number | null> {
     flags,
     ...(r.io ? { io: r.io } : {}),
   });
+  // Everything the gate says to a person goes to stderr, laid out and coloured for that stream
+  // (no escape off a terminal), and the kit's own frame stays even where the host's flows have none.
+  const { frame: _frame, ...errBase } = base;
+  const errCtx = await createKitContext({
+    ...errBase,
+    flags,
+    io: {
+      ...r.io,
+      stdout: r.io?.stderr ?? process.stderr,
+    },
+    queryScheme: false,
+  });
   const check = () => {
     const status = client.status().status as string;
     const usable = USABLE.includes(status);
@@ -137,16 +151,31 @@ export async function runGate(r: GateRun): Promise<number | null> {
     if (s.usable && s.entitled) return null;
     // A license that is not usable may be one sync away from it (an expired document, a renewal).
     if (!s.usable) {
-      await ensureDiscovery(client);
-      await client.sync().catch(() => undefined);
+      await busyAfter(
+        errCtx,
+        errCtx.copy.t("gate.checking"),
+        async () => {
+          await ensureDiscovery(client);
+          await client.sync().catch(() => undefined);
+        },
+        CHECKING_AFTER_MS,
+      );
       s = check();
       if (s.usable && s.entitled) return null;
     }
+    let flowExit: number | null = null;
     if (!s.usable && ctx.caps.interactive && INLINE_FLOW.includes(s.status)) {
-      const flow = await activateFlow(ctx, client, {});
-      if (flow.exitCode !== EXIT.ok) return flow.exitCode;
-      s = check();
-      if (s.usable && s.entitled) return null;
+      const flow = await activateFlow(ctx, client, {
+        reason: ctx.copy.t("cli.gate.needs", { command: r.command }),
+      });
+      if (flow.exitCode !== EXIT.ok) {
+        // Esc leaves the command unrun: say so and show the way back. Ctrl-C ends quietly.
+        if (flow.state !== "cancelled") return flow.exitCode;
+        flowExit = flow.exitCode;
+      } else {
+        s = check();
+        if (s.usable && s.entitled) return null;
+      }
     }
     const refusal = refusalFor(s.status, s.usable, ctx, r.mounted);
     if (ctx.caps.json) {
@@ -164,29 +193,16 @@ export async function runGate(r: GateRun): Promise<number | null> {
       );
       return EXIT.licenseRequired;
     }
-    // The refusal goes to stderr, laid out and coloured for that stream: no escape off a terminal.
-    const errCtx = await createKitContext({
-      ...base,
-      flags,
-      io: {
-        ...r.io,
-        stdout: r.io?.stderr ?? process.stderr,
-      },
-      queryScheme: false,
-    });
-    try {
-      errCtx.rows([
-        ...problemRows("warn", refusal.title, refusal.message),
-        ...(refusal.fixes.length
-          ? [...gap(errCtx), ...fixRows(errCtx, refusal.fixes)]
-          : []),
-        endRow(),
-      ]);
-    } finally {
-      errCtx.close();
-    }
-    return EXIT.licenseRequired;
+    errCtx.rows([
+      ...problemRows("warn", refusal.title, refusal.message),
+      ...(refusal.fixes.length
+        ? [...gap(errCtx), ...fixRows(errCtx, refusal.fixes)]
+        : []),
+      endRow(),
+    ]);
+    return flowExit ?? EXIT.licenseRequired;
   } finally {
+    errCtx.close();
     ctx.close();
   }
 }

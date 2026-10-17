@@ -263,7 +263,8 @@ export function fixRows(
         label: [
           { text: `${ctx.bin} ${f.verb}`, style: ["strong"], keep: true },
         ] as Line,
-        value: [{ text: ctx.copy.t(f.key), style: ["muted"] }] as Line,
+        // What the command does is read, so it keeps the normal colour; faint is for the rail.
+        value: [{ text: ctx.copy.t(f.key) }] as Line,
       })),
   );
 }

@@ -5383,6 +5383,66 @@
         }
       }
     },
+    "cli.gate.needs": {
+      "comment": "Terminal: the first line when a host command that needs a license sends the person to activate. {command} is the command they ran, such as 'export'. Arguments: 1=command.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ needs a license"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ erfordert eine Lizenz"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ nécessite une licence"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ requiere una licencia"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ requer uma licença"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ richiede una licenza"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@にはライセンスが必要です"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@에는 라이선스가 필요합니다"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@需要许可证"
+          }
+        }
+      }
+    },
     "cli.group.account": {
       "comment": "Terminal help: the heading over the sign-in and sign-out commands.",
       "extractionState": "manual",
@@ -5979,6 +6039,66 @@
           "stringUnit": {
             "state": "translated",
             "value": "运行%1$@查看单个命令的选项。"
+          }
+        }
+      }
+    },
+    "cli.help.namespace": {
+      "comment": "Terminal help of a host's own command-line tool: what the one namespace command (license) holds, when the license commands are nested under it.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activate, sign in, devices and updates"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktivieren, anmelden, Geräte und Updates"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activation, connexion, appareils et mises à jour"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activar, iniciar sesión, dispositivos y actualizaciones"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ativar, entrar, dispositivos e atualizações"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Attivazione, accesso, dispositivi e aggiornamenti"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "有効化、サインイン、デバイス、アップデート"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "활성화, 로그인, 기기 및 업데이트"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "激活、登录、设备和更新"
           }
         }
       }
@@ -11450,7 +11570,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "License, devices and offline time"
+            "value": "Show your license, devices and offline time"
           }
         },
         "de": {

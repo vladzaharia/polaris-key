@@ -3162,6 +3162,16 @@ msgstr "명령별 옵션을 보려면 다음을 실행하세요: {command}"
 msgid "cli.help.group"
 msgstr "라이선스"
 
+#. Activate, sign in, devices and updates
+#. Terminal help of a host's own command-line tool: what the one namespace command (license) holds, when the license commands are nested under it.
+msgid "cli.help.namespace"
+msgstr "활성화, 로그인, 기기 및 업데이트"
+
+#. {command} needs a license
+#. Terminal: the first line when a host command that needs a license sends the person to activate. {command} is the command they ran, such as 'export'.
+msgid "cli.gate.needs"
+msgstr "{command}에는 라이선스가 필요합니다"
+
 #. Add a license key (prompted, or piped on stdin)
 #. Terminal help: what the activate command does. The key is typed at a prompt or piped in, never written on the command line.
 msgid "cli.verb.activate"
@@ -3177,7 +3187,7 @@ msgstr "무료 라이선스 받기 ({product}에서 제공하는 경우)"
 msgid "cli.verb.deactivate"
 msgstr "이 기기에서 라이선스 사용을 중지하고 자리 비우기"
 
-#. License, devices and offline time
+#. Show your license, devices and offline time
 #. Terminal help: what the status command shows.
 msgid "cli.verb.status"
 msgstr "라이선스, 기기 및 오프라인 시간"
