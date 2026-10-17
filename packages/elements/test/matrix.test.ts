@@ -45,6 +45,17 @@ const LEFT_OUT = new Set([
   "update.whatsNew",
 ]);
 
+// Keys one state's drawing leaves out on purpose (UK-04 fix): a refused key says it once, under
+// the field (its message, not its title); a revoked device is signed out already, so the screen
+// offers Sign in and Use a different key, never Sign out.
+function leftOutFor(view: { component: string; state: string }, key: string) {
+  if (view.component === "Activate" && view.state === "rejected")
+    return /^core\.(activation|codes)\..*\.title$/.test(key);
+  if (view.component === "StatusScreen" && view.state === "revoked")
+    return key === "common.signOut";
+  return false;
+}
+
 // A key whose argument the corpus row leaves out is not drawn (never as `{name}`); the kit says so.
 const dropped = new Set<string>();
 const warn = vi.spyOn(console, "warn").mockImplementation((m: unknown) => {
@@ -113,7 +124,7 @@ for (const family of COMPONENT_FAMILIES) {
       for (const key of view.copy) {
         const message = en.raw(key) ?? "";
         const lit = literal(message);
-        if (LEFT_OUT.has(key)) continue;
+        if (LEFT_OUT.has(key) || leftOutFor(view, key)) continue;
         if (dropped.has(key)) {
           expect(root.querySelector(`[data-key="${key}"]`)).toBeNull();
           continue;
@@ -176,6 +187,10 @@ for (const family of COMPONENT_FAMILIES) {
           // The form's Done step always offers Start.
           ...(view.component === "SignIn" ? ["signin.done.start"] : []),
           ...(view.component === "Activate" ? ["common.done"] : []),
+          // A revoked device is offered Sign in first.
+          ...(view.component === "StatusScreen" && view.state === "revoked"
+            ? ["welcome.signIn"]
+            : []),
         ]).toContain(filled[0]!.getAttribute("data-key"));
       // DL4/DL6: a view with a primary draws it as the one filled control (a destructive
       // confirm's is the danger fill).
@@ -184,6 +199,7 @@ for (const family of COMPONENT_FAMILIES) {
         !dropped.has(view.decisions.primary) &&
         view.component !== "PolarisKeyGate" &&
         view.component !== "OfflineActivation" &&
+        !(view.component === "StatusScreen" && view.state === "revoked") &&
         !(LAYOUTS[view.component].quiet ?? []).includes(view.decisions.primary)
       )
         expect(

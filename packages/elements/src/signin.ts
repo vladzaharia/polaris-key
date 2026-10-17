@@ -74,6 +74,9 @@ export class PkSignIn extends PkElement {
   private pushed = false;
   private lastStep: string | null = null;
   private morphFrom: { height: number; index: number } | null = null;
+  /** The code step's countdown: the seconds the code had when first seen, and when. */
+  private countFrom: { left: number; at: number } | null = null;
+  private countTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor() {
     super();
@@ -183,6 +186,8 @@ export class PkSignIn extends PkElement {
     super.disconnectedCallback();
     this.stopForm?.();
     this.stopForm = null;
+    if (this.countTimer !== null) clearInterval(this.countTimer);
+    this.countTimer = null;
     // Stop following; the sign-in itself stays open on the server (SignInModel.dispose()).
     this.formModel?.dispose();
     this.formModel = null;
@@ -221,6 +226,19 @@ export class PkSignIn extends PkElement {
         ...(this.replace ? { replace: this.replace } : {}),
       };
     if (this.replacePick !== undefined) base.replacePick = this.replacePick;
+    // The code step counts down on its own (at 0:00 the view goes to expired, DL14).
+    const dc = base.deviceCode;
+    if (dc?.secondsLeft !== undefined && dc.phase === "waiting") {
+      if (this.countFrom === null || this.countFrom.left !== dc.secondsLeft)
+        this.countFrom = { left: dc.secondsLeft, at: Date.now() };
+      const secondsLeft = Math.max(
+        0,
+        Math.ceil(
+          this.countFrom.left - (Date.now() - this.countFrom.at) / 1000,
+        ),
+      );
+      base.deviceCode = { ...dc, secondsLeft };
+    } else this.countFrom = null;
     // The Done line names the license that was chosen, and the holder the host gave.
     if (base.signIn?.outcome === "signedIn" && this.pickedTier)
       base.account = {
@@ -393,13 +411,16 @@ export class PkSignIn extends PkElement {
     const moved = this.lastStep !== null && key !== this.lastStep;
     this.lastStep = key;
     const out = this.baseInput().signIn?.outcome;
-    if (out === "signedIn") {
-      this.finish();
-      // An existing license opens the app with the toast: the sheet closes by itself.
-      if (this.sheet && this.open && !this.baseInput().signIn?.issuedNow)
-        this.close();
-    } else this.doneSent = false;
+    // The sign-in finished: the host hears it once, and the person gets Done (their way out).
+    if (out === "signedIn") this.finish();
+    else this.doneSent = false;
     this.syncDialog();
+    if (this.countFrom !== null && this.countTimer === null)
+      this.countTimer = setInterval(() => this.requestUpdate(), 1000);
+    else if (this.countFrom === null && this.countTimer !== null) {
+      clearInterval(this.countTimer);
+      this.countTimer = null;
+    }
     if (moved) this.morph(from);
   }
 
@@ -409,6 +430,10 @@ export class PkSignIn extends PkElement {
     if (!dialog) return;
     if (this.open && !dialog.open && typeof dialog.showModal === "function") {
       dialog.showModal();
+      // Focus the heading, not the close button, so the first thing read is the step.
+      this.renderRoot
+        .querySelector<HTMLElement>("h1")
+        ?.focus({ preventScroll: true });
       if (!this.pushed && typeof history !== "undefined") {
         history.pushState({ pkSheet: true }, "");
         this.pushed = true;

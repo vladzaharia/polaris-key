@@ -137,5 +137,4 @@ document.getElementById("open-sign-in")!.addEventListener("click", () => {
   document.body.append(form);
   form.show();
   form.addEventListener("pk-close", () => form.remove());
-  form.addEventListener("pk-done", () => form.close());
 });

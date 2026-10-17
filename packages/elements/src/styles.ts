@@ -568,15 +568,9 @@ bdi {
   background: var(--pk-primary);
   color: var(--pk-primary-on);
 }
-.btn[data-variant="primary"]:hover {
-  background: color-mix(in oklab, var(--pk-primary) 88%, var(--pk-primary-on));
-}
 .btn[data-variant="secondary"] {
   background: color-mix(in oklab, var(--pk-text-strong) 8%, var(--pk-surface-raised));
   color: var(--pk-text-strong);
-}
-.btn[data-variant="secondary"]:hover {
-  background: color-mix(in oklab, var(--pk-text-strong) 13%, var(--pk-surface-raised));
 }
 .btn[data-variant="danger"] {
   background: var(--pk-kit-danger-solid);
@@ -590,10 +584,25 @@ bdi {
   color: var(--pk-text-muted);
   font-weight: 400;
 }
-.btn[data-variant="link"]:hover {
-  color: var(--pk-text-strong);
-  text-decoration: underline;
-  text-underline-offset: 0.2em;
+/* Hover only where a pointer hovers: on touch it would stay lit after a tap. The primary
+   darkens (away from its text colour), so its text keeps its contrast. */
+@media (hover: hover) {
+  .btn[data-variant="primary"]:hover {
+    background: color-mix(in oklab, var(--pk-primary) 86%, black);
+    background: color-mix(
+      in oklab,
+      var(--pk-primary) 86%,
+      oklch(from var(--pk-primary-on) calc(1 - l) 0 0)
+    );
+  }
+  .btn[data-variant="secondary"]:hover {
+    background: color-mix(in oklab, var(--pk-text-strong) 13%, var(--pk-surface-raised));
+  }
+  .btn[data-variant="link"]:hover {
+    color: var(--pk-text-strong);
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+  }
 }
 .btn:active:not([aria-disabled="true"]) {
   transform: scale(var(--pk-motion-scale-press));
@@ -662,13 +671,16 @@ bdi {
 .field input[aria-invalid="true"] {
   box-shadow: inset 0 0 0 1px var(--pk-danger-border);
 }
+/* The field and Paste share a line until the field would shrink below ten characters' worth
+   (large text, a narrow window): then Paste stacks under it. */
 .field-row {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--pk-space-2);
 }
 .field-row input {
-  flex: 1;
-  min-inline-size: 0;
+  flex: 1 1 10rem;
+  min-inline-size: min(10rem, 100%);
 }
 
 /* ── User code (§2.1 Code) ───────────────────────────────────────────────────────────────── */
@@ -757,7 +769,17 @@ bdi {
   color: var(--pk-text-strong);
 }
 .row[data-part="settings-row"] {
-  grid-template-columns: minmax(0, 1fr) auto;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--pk-space-2) var(--pk-space-3);
+}
+.row[data-part="settings-row"] > .row-text {
+  flex: 1 1 10rem;
+}
+.row[data-part="settings-row"] > .row-value {
+  flex: 0 0 auto;
+  margin-inline-start: auto;
 }
 .row-text {
   display: grid;
@@ -792,6 +814,24 @@ bdi {
   min-block-size: 2.5rem;
   min-inline-size: 0;
   padding-inline: var(--pk-space-3);
+}
+/* A license row: the tier pill is one width down the list so the text lines up; a full license's Replace sits under its text. */
+.row[data-part="license-row"] > .pill:first-child {
+  min-inline-size: 4rem;
+  justify-content: center;
+}
+.row[role="group"][data-part="license-row"] {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+.row[role="group"][data-part="license-row"] > .btn {
+  grid-column: 1 / -1;
+  inline-size: 100%;
+}
+.meta-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--pk-space-0_5) var(--pk-space-2);
 }
 .check {
   inline-size: 1.25rem;
@@ -1059,6 +1099,7 @@ dialog.sheet {
   color: inherit;
 }
 dialog.sheet .stage {
+  grid-template-columns: minmax(0, 1fr);
   min-block-size: 0;
   padding: 0;
   background: none;
@@ -1072,7 +1113,8 @@ dialog.sheet .card,
 .pk-root[data-shape] dialog.sheet .stage[data-split] .card {
   inline-size: 100%;
   min-block-size: 0;
-  grid-template-columns: none;
+  /* One column that may shrink: at large text a long word wraps, the card never outgrows the sheet. */
+  grid-template-columns: minmax(0, 1fr);
   border-radius: var(--pk-kit-radius-card);
   padding: var(--pk-kit-card-pad);
   /* The dialog box clips an outer shadow into a lighter square at the corners; the scrim already
@@ -1245,6 +1287,7 @@ dialog.sheet .card,
   background: var(--pk-surface-sunken);
   color: var(--pk-text-strong);
   cursor: pointer;
+  z-index: 3;
 }
 .sheet-close .glyph {
   inline-size: 1.25rem;

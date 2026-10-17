@@ -87,7 +87,22 @@ function argsOf(
   const developer = c.resolved.identity.developer;
   if (args.developer === undefined && developer) args.developer = developer;
   fillFromInput(c, key, args);
+  // The installed version's line says the size of a download only when it knows one.
+  if (key === "update.current" && args.size === undefined) args.size = "";
   return args;
+}
+
+/** One string of the catalog; "You have 2.4.1 · {size} download" is just "You have 2.4.1" with
+ *  no size to say. */
+function formatKey(
+  c: RenderCtx,
+  key: string,
+  args: Record<string, string | number>,
+): string {
+  const s = c.copy.format(key, args);
+  return key === "update.current" && args.size === ""
+    ? s.split("·")[0]!.trim()
+    : s;
 }
 
 /** The names of a message's own arguments (`{name}`, `{n, plural, …}`), not those nested in a
@@ -195,7 +210,7 @@ export function text(
   for (const [k, v] of Object.entries(args))
     marked[k] =
       isolated.has(k) && typeof v === "string" ? `${OPEN}${v}${CLOSE}` : v;
-  const s = c.copy.format(key, marked);
+  const s = formatKey(c, key, marked);
   if (!s.includes(OPEN)) return html`${s}`;
   const parts: (string | TemplateResult)[] = [];
   for (const chunk of s.split(OPEN)) {
@@ -220,7 +235,7 @@ export function plain(
     warnMissing(key, lost);
     return "";
   }
-  return c.copy.format(key, argsOf(c, key, extra));
+  return formatKey(c, key, argsOf(c, key, extra));
 }
 
 // ── Glyphs (decorative, aria-hidden) ─────────────────────────────────────────────────────────
@@ -391,6 +406,8 @@ export function button(
     args?: Record<string, string | number>;
     /** Extra detail for the `pk-action` this control sends (a row's id). */
     detail?: Record<string, unknown>;
+    /** Not available now (a Save over a value out of range): announced, and ignores presses. */
+    disabled?: boolean;
   } = {},
 ): TemplateResult {
   const external = OPENS.has(key);
@@ -398,10 +415,23 @@ export function button(
     NAMED_PRIMARY.has(key) && c.copy.has("signin.replace.confirmNamed")
       ? pickedDevice(c)
       : null;
+  // The web page cannot install an update: its one action downloads the new version.
+  const version = c.input.update?.version;
+  const download =
+    key === "update.install" &&
+    c.view.component === "UpdatePrompt" &&
+    c.view.state === "available" &&
+    c.input.platform?.os === "web" &&
+    version &&
+    c.copy.has("boot.consent.download")
+      ? `${c.copy.format("boot.consent.download", {})} ${version}`
+      : null;
   const label =
     device !== null
       ? text(c, "signin.replace.confirmNamed", { device })
-      : text(c, key, extra.args);
+      : download !== null
+        ? html`${download}`
+        : text(c, key, extra.args);
   const part =
     variant === "primary"
       ? "primary"
@@ -417,10 +447,12 @@ export function button(
     data-part=${part}
     data-variant=${variant}
     data-key=${key}
-    aria-disabled=${ifDefined(extra.busy ? "true" : undefined)}
+    aria-disabled=${ifDefined(
+      extra.busy || extra.disabled ? "true" : undefined,
+    )}
     aria-label=${ifDefined(extra.label)}
     @click=${() => {
-      if (!extra.busy) c.act(key, extra.detail);
+      if (!extra.busy && !extra.disabled) c.act(key, extra.detail);
     }}
   >
     ${extra.busy
@@ -689,6 +721,25 @@ export function a11yOnly(c: RenderCtx): TemplateResult | typeof nothing {
 // ── The one screen template ──────────────────────────────────────────────────────────────────
 
 /** The controls, the primary first on top in a card (§1.5 rule 10). */
+/** A number setting whose value is outside its range: Save waits until it is fixed. */
+export function outOfRange(r: {
+  type?: string;
+  value?: unknown;
+  min?: number;
+  max?: number;
+}): boolean {
+  if (r.type !== "number" || typeof r.value !== "number") return false;
+  return (
+    Number.isNaN(r.value) ||
+    (typeof r.min === "number" && r.value < r.min) ||
+    (typeof r.max === "number" && r.value > r.max)
+  );
+}
+
+function settingsInvalid(input: RenderCtx["input"]): boolean {
+  return (input.config ?? []).some((r) => outOfRange(r));
+}
+
 export function actions(
   c: RenderCtx,
   controls: string[],
@@ -720,7 +771,10 @@ export function actions(
           : k === "common.signOut" && c.view.component === "AccountAndLicense"
             ? "link"
             : "secondary",
-        { busy: busy && k === primary },
+        {
+          busy: busy && k === primary,
+          disabled: k === "common.save" && settingsInvalid(c.input),
+        },
       ),
     )}
   </div>`;

@@ -236,15 +236,8 @@ function place(c: KitCtx, layout: Layout) {
   if (!x) return p;
   if (x.meta?.length) p.meta = [...p.meta, ...x.meta];
   const drop = new Set(x.drop ?? []);
-  // A control the drop-in adds is not also drawn as text.
-  const added = new Set(x.controls ?? []);
-  const unadded = (ks: string[]) => ks.filter((k) => !added.has(k));
   return {
     ...p,
-    titles: unadded(p.titles),
-    body: unadded(p.body),
-    meta: unadded(p.meta),
-    footnote: unadded(p.footnote),
     controls: [...new Set([...p.controls, ...(x.controls ?? [])])].filter(
       (k) => !drop.has(k),
     ),

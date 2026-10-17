@@ -22,6 +22,7 @@ import {
   GLYPHS,
   qrCode,
   keyField,
+  outOfRange,
   links,
   missingArgs,
   warnMissing,
@@ -70,8 +71,14 @@ function contentFor(c: RenderCtx): TemplateResult | typeof nothing {
       ].includes(view.state);
       const used = input.activation?.deviceCount;
       const limit = input.activation?.limit;
+      // A refused key is an input that is wrong: the stroke, and the message linked to it.
+      const refused = view.state === "rejected" || view.state === "cut-short";
       return html`${editing
-        ? keyField(c, invalid, verdict.length ? "pk-verdict" : null)
+        ? keyField(
+            c,
+            invalid || refused,
+            verdict.length ? "pk-verdict" : refused ? "pk-message" : null,
+          )
         : nothing}
       ${keys.has("part.seatMeter.caption") &&
       used !== undefined &&
@@ -135,6 +142,18 @@ function contentFor(c: RenderCtx): TemplateResult | typeof nothing {
     default:
       return nothing;
   }
+}
+
+/** The download's percent, beside its bar (the bar itself is named for assistive tech). */
+function percentFor(c: RenderCtx): TemplateResult | typeof nothing {
+  const f = c.input.update?.progress?.fraction;
+  if (c.view.component !== "UpdatePrompt" || c.view.state !== "downloading")
+    return nothing;
+  if (typeof f !== "number") return nothing;
+  const pct = new Intl.NumberFormat(c.resolved.locale, {
+    style: "percent",
+  }).format(Math.max(0, Math.min(1, f)));
+  return html`<p class="meta percent" aria-hidden="true">${pct}</p>`;
 }
 
 function progressFor(c: RenderCtx): TemplateResult | typeof nothing {
@@ -306,7 +325,8 @@ function screen(c: RenderCtx, layout: Layout): TemplateResult {
             </p>`
           : nothing}
       </div>
-      ${contentFor(c)} ${progressFor(c)} ${callout(c, errorKeys)}
+      ${contentFor(c)} ${progressFor(c)} ${percentFor(c)}
+      ${callout(c, errorKeys)}
       ${actions(c, p.controls, view.component === "UpdatePrompt")}
       ${links(c, p.links)} ${a11yOnly(c)}
       ${p.footnote.length ? paragraphs(c, p.footnote, "footnote") : nothing}
@@ -497,7 +517,7 @@ function withBase(c: RenderCtx): View {
             ];
       // Each full license draws its own Replace a device, carrying the license.
       const rowReplace =
-        view.state === "all-full" &&
+        (view.state === "all-full" || view.state === "mixed") &&
         ch.choices.some((r) => r.state !== "free" && r.replace?.allowed);
       const base = add(
         "signin.choice.title",
@@ -538,6 +558,15 @@ function withBase(c: RenderCtx): View {
             ),
           });
     }
+    case "SignInHandoff": {
+      // The code step: how long the code lasts, that it waits, and a Cancel to leave by.
+      if (view.state !== "code") return view;
+      return add(
+        ...(view.args.time !== undefined ? ["signin.handoff.expires"] : []),
+        "cli.signin.waitingCode",
+        "common.cancel",
+      );
+    }
     case "SignIn": {
       // The form ends on a heading and one Start; every other step can be backed out of (DL2).
       if (view.state === "done") {
@@ -568,8 +597,8 @@ function withBase(c: RenderCtx): View {
         ["empty", "typing", "parsed", "cut-short", "rejected"].includes(
           view.state,
         )
-      )
-        return add(
+      ) {
+        const kept = add(
           "activate.title",
           "activate.lede",
           "part.keyField.placeholder",
@@ -577,7 +606,19 @@ function withBase(c: RenderCtx): View {
           "activate.submit",
           "common.back",
         );
-      if (view.state === "device-limit") return add("common.back");
+        if (view.state !== "rejected") return kept;
+        // The refusal once, under the field: its message, not its title; the danger tone.
+        return {
+          ...kept,
+          copy: kept.copy.filter(
+            (k) => !/^core\.(activation|codes)\..*\.title$/.test(k),
+          ),
+          decisions: { ...kept.decisions, tone: "danger" },
+        };
+      }
+      // Over the limit the key is right: Back, or another key.
+      if (view.state === "device-limit")
+        return add("common.back", "signin.key.differentKey");
       if (view.state === "done") {
         const done = add("common.done");
         return {
@@ -586,6 +627,17 @@ function withBase(c: RenderCtx): View {
         };
       }
       return view;
+    }
+    case "StatusScreen": {
+      // Revoked says "signed out": Sign in is the way on, not Sign out.
+      if (view.state !== "revoked" || input.capabilities?.signIn === false)
+        return view;
+      const signIn = add("welcome.signIn");
+      return {
+        ...signIn,
+        copy: signIn.copy.filter((k) => k !== "common.signOut"),
+        decisions: { ...signIn.decisions, primary: "welcome.signIn" },
+      };
     }
     case "Devices": {
       if (
@@ -620,11 +672,34 @@ function withBase(c: RenderCtx): View {
     }
     case "UpdatePrompt": {
       const notes = input.releaseNotes ?? [];
-      return view.state === "available" || view.state === "ready"
-        ? notes.length === 0
-          ? { ...view, copy: view.copy.filter((k) => k !== "update.whatsNew") }
-          : view
-        : view;
+      if (view.state === "downloading")
+        // The download keeps its title: what is coming.
+        return add(
+          input.update?.version ? "update.title" : "update.availableTitle",
+        );
+      if (view.state !== "available" && view.state !== "ready") return view;
+      const kept =
+        notes.length === 0
+          ? view.copy.filter((k) => k !== "update.whatsNew")
+          : view.copy;
+      // On the web the page cannot install: one Download action and Later, a title that says so.
+      if (view.state === "available" && input.platform?.os === "web") {
+        const gone = new Set([
+          "update.title",
+          "update.restartWhenReady",
+          "update.skipVersion",
+        ]);
+        return {
+          ...view,
+          copy: [
+            "update.availableTitle",
+            ...kept.filter(
+              (k) => !gone.has(k) && k !== "update.availableTitle",
+            ),
+          ],
+        };
+      }
+      return { ...view, copy: kept };
     }
     case "OfflineActivation": {
       if (view.state === "default")
@@ -1079,9 +1154,12 @@ function licenseRows(c: RenderCtx): TemplateResult | typeof nothing {
                 })}</span
               ><br />`
           : nothing}
-        <span class="meta">${meta}</span>
-        ${full ? tag("signin.choice.tag.full") : nothing}
-        ${r.current ? tag("signin.choice.tag.current") : nothing}
+        <span class="meta-line"
+          ><span class="meta">${meta}</span> ${full
+            ? tag("signin.choice.tag.full")
+            : nothing}
+          ${r.current ? tag("signin.choice.tag.current") : nothing}</span
+        >
       </span>`;
     if (!full)
       return html`<div
@@ -1099,7 +1177,8 @@ function licenseRows(c: RenderCtx): TemplateResult | typeof nothing {
       </div>`;
     // A full license cannot be chosen. In a list that can be chosen from it is a disabled radio;
     // when every license is full, Replace a device is its action, carrying its license.
-    if (!allFull)
+    const replaceHere = r.replace?.allowed && has("signin.replace.open");
+    if (!allFull && !replaceHere)
       return html`<div
         class="row"
         role="radio"
@@ -1121,7 +1200,7 @@ function licenseRows(c: RenderCtx): TemplateResult | typeof nothing {
       aria-label=${r.tierName}
     >
       ${body}
-      ${r.replace?.allowed && has("signin.replace.open")
+      ${replaceHere
         ? button(c, "signin.replace.open", lone ? "primary" : "secondary", {
             detail: { licenseId: r.id },
           })
@@ -1452,6 +1531,8 @@ function settingsRows(c: RenderCtx): TemplateResult | typeof nothing {
         : "settings.setByGuardian"
       : `settings.source.${r.source}`;
     const meta: TemplateResult[] = [];
+    // Validated as you type: the range turns into the error, and Save waits (aria-invalid).
+    const bad = outOfRange(r);
     if (has(from))
       meta.push(
         html`<span data-key=${from}
@@ -1465,9 +1546,17 @@ function settingsRows(c: RenderCtx): TemplateResult | typeof nothing {
       has("settings.range")
     )
       meta.push(
-        html`<span data-key="settings.range"
-          >${text(c, "settings.range", { min: r.min, max: r.max })}</span
-        >`,
+        bad
+          ? html`<span
+              class="message"
+              id=${`pk-range-${r.key}`}
+              data-tone="danger"
+              data-key="settings.range"
+              >${text(c, "settings.range", { min: r.min, max: r.max })}</span
+            >`
+          : html`<span data-key="settings.range" id=${`pk-range-${r.key}`}
+              >${text(c, "settings.range", { min: r.min, max: r.max })}</span
+            >`,
       );
     const change = (value: string | number | boolean) =>
       c.edit("setting", value, { key: r.key });
@@ -1486,6 +1575,12 @@ function settingsRows(c: RenderCtx): TemplateResult | typeof nothing {
           type="number"
           inputmode="decimal"
           aria-label=${label}
+          aria-invalid=${bad ? "true" : "false"}
+          aria-describedby=${ifDefined(
+            has("settings.range") && typeof r.max === "number"
+              ? `pk-range-${r.key}`
+              : undefined,
+          )}
           min=${ifDefined(r.min)}
           max=${ifDefined(r.max)}
           ?disabled=${r.locked}
