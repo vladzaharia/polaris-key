@@ -344,6 +344,17 @@ const KIT_CSS = String.raw`
   flex: 1 1 10rem;
 }
 
+/* UpdatePrompt: the primary takes the first line, Later and Restart when ready share the next. */
+.pk-root[data-component="UpdatePrompt"] .card .actions[data-layout="row"] {
+  justify-content: stretch;
+}
+.pk-root[data-component="UpdatePrompt"] .card .actions .btn {
+  flex: 1 1 8rem;
+}
+.pk-root[data-component="UpdatePrompt"] .card .actions .btn[data-variant="primary"] {
+  flex-basis: 100%;
+}
+
 /* ── Product header (DL5) ─────────────────────────────────────────────────────────────────── */
 .identity {
   display: grid;
@@ -716,6 +727,13 @@ bdi {
   box-shadow: inset 0 0 0 1px var(--pk-border-subtle);
   overflow: clip;
   text-align: start;
+}
+/* Past six rows the list scrolls in its own box, so the callout and the primary stay in view
+   (its focusable rows make the box keyboard-reachable). */
+.list[data-scroll] {
+  max-block-size: min(24rem, 55dvh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 .row {
   display: grid;

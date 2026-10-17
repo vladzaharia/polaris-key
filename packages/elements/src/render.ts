@@ -404,6 +404,7 @@ export function seatMeter(
   c: RenderCtx,
   used: number,
   limit: number,
+  caption = true,
 ): TemplateResult {
   const segs = Array.from(
     { length: Math.max(1, Math.min(limit, 12)) },
@@ -424,9 +425,11 @@ export function seatMeter(
     <div class="seat-bar" aria-hidden="true">
       ${segs.map((on) => html`<span ?data-used=${on}></span>`)}
     </div>
-    <span class="meta num"
-      >${text(c, "part.seatMeter.caption", { used, limit })}</span
-    >
+    ${caption
+      ? html`<span class="meta num"
+          >${text(c, "part.seatMeter.caption", { used, limit })}</span
+        >`
+      : nothing}
   </div>`;
 }
 
