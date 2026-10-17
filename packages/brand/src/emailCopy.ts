@@ -1,6 +1,6 @@
 /**
  * The words of the licence-key email (LX-27), pure and import-free so the console's Delivery
- * preview (LX-29) drives from the same strings as the template in `templates.ts`.
+ * preview (LX-29) and the Worker's template (`core/notify/templates.ts`) read the same strings.
  */
 
 export type KeyEmailContext = "created" | "sent" | "assigned";

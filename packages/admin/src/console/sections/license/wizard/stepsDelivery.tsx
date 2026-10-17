@@ -16,7 +16,7 @@ import {
   keyEmailIntro,
   keyEmailPrimaryLabel,
   keyEmailSubject,
-} from "../../../../../../worker/src/core/notify/keyEmailCopy.js";
+} from "@polaris-key/brand/email-copy";
 import {
   deliveriesFor,
   deliveryOf,
@@ -97,8 +97,9 @@ function EmailPreview({
         <p className="font-medium text-fg-strong">
           {productName} via Polaris Key
         </p>
-        <p className="break-all text-xs text-fg-muted">
-          To <bdi>{to}</bdi> · {keyEmailSubject(productName)}
+        <p className="break-words text-xs text-fg-muted">
+          To <bdi className="break-all">{to}</bdi> ·{" "}
+          {keyEmailSubject(productName)}
         </p>
       </figcaption>
       <div className="space-y-2 px-3 py-3">

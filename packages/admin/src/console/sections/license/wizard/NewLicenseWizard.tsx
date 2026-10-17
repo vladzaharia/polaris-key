@@ -85,6 +85,21 @@ function focusPageTitle(): void {
   }, 80);
 }
 
+/** The step heading of the open wizard: where focus goes when the button that had it is gone. */
+function focusHeading(): void {
+  window.setTimeout(
+    () =>
+      document
+        .querySelector<HTMLElement>('[data-wizard="drawer"] h2[tabindex="-1"]')
+        ?.focus({ preventScroll: true }),
+    0,
+  );
+}
+
+/** Whether another try could help: a server or network failure, not a refusal. */
+const retryable = (e: unknown): boolean =>
+  !(e instanceof ApiError) || e.status >= 500;
+
 export function NewLicenseWizard({
   slug,
 }: {
@@ -114,6 +129,8 @@ export function NewLicenseWizard({
   const [retryUntil, setRetryUntil] = React.useState(0);
   /** A step was entered from Review (Change, the stepper): its primary goes back there. */
   const [toReview, setToReview] = React.useState(false);
+  /** A refused value with no control of its own on its step: said above the step's fields. */
+  const [stepNote, setStepNote] = React.useState<string | null>(null);
 
   // A result exists only in this tab's memory: a refresh on Done returns to Review.
   const step: Step = urlStep === "done" && !result ? "review" : urlStep;
@@ -136,17 +153,18 @@ export function NewLicenseWizard({
     if (open && step !== "done" && !result) saveDraft(slug, draft);
   }, [open, step, result, slug, draft]);
 
-  // The first tier is preselected, unless "No tier" was chosen on purpose.
+  // The first tier is preselected, unless "No tier" was chosen on purpose. A product with no tier
+  // has only "No tier", so that is the choice; a tier deleted since the draft was made is dropped.
   React.useEffect(() => {
-    if (
-      open &&
-      !result &&
-      tiersQ.isSuccess &&
-      tiers.length > 0 &&
-      draft.tier === null &&
-      !draft.noTier
-    )
-      setDraft((d) => ({ ...d, tier: tiers[0]!.id }));
+    if (!open || result || !tiersQ.isSuccess) return;
+    if (draft.tier !== null && !tiers.some((t) => t.id === draft.tier))
+      setDraft((d) => ({ ...d, tier: null }));
+    else if (draft.tier === null && !draft.noTier)
+      setDraft((d) =>
+        tiers.length > 0
+          ? { ...d, tier: tiers[0]!.id }
+          : { ...d, noTier: true },
+      );
   }, [open, result, tiersQ.isSuccess, tiers, draft.tier, draft.noTier]);
 
   // A deep link lands where the draft is good: an empty draft's Review is its first invalid step,
@@ -172,8 +190,10 @@ export function NewLicenseWizard({
   };
 
   const focusFirst = (errs: Errors): void => {
-    const first = Object.keys(errs)[0];
-    if (!first) return;
+    const key = Object.keys(errs)[0];
+    if (!key) return;
+    // A batch's missing tier is said under "How many keys".
+    const first = key === "tier" ? "count" : key;
     requestAnimationFrame(() =>
       document
         .querySelector<HTMLElement>(`[data-create-field="${first}"]`)
@@ -184,6 +204,7 @@ export function NewLicenseWizard({
 
   const goStep = (to: StepId, opts: { replace?: boolean } = {}): void => {
     if (to === "review") setToReview(false);
+    setStepNote(null);
     go(to, { replace: false, ...opts });
   };
   const next = (from: StepId): void => {
@@ -300,16 +321,27 @@ export function NewLicenseWizard({
       const field = fields?.find((f) => f in FIELD_STEP);
       if (field) {
         // A refused value goes back to its own step, in words.
-        setErrors({
-          [field]: "This value isn't accepted. Check it and try again.",
-        });
-        announce("A value was refused. Check it and try again.");
-        const to = FIELD_STEP[field]!;
-        goStep(to);
+        const words =
+          field === "tier"
+            ? "That tier no longer exists. Choose another."
+            : "This value isn't accepted. Check it and try again.";
+        if (field === "tier") void tiersQ.refetch();
+        announce(words);
+        goStep(FIELD_STEP[field]!);
+        // After goStep, which clears the note; the field's own message, and a step-level one for
+        // a refusal on something with no control here (tier, delivery, an inherited limit).
+        setErrors({ [field]: words });
+        setStepNote(words);
+        setToReview(true);
         focusFirst({ [field]: "" });
       } else {
         setSubmitError(err);
         announce("The license wasn't created.");
+        // The button that had focus is busy and blurred: keep the operator where they were.
+        window.setTimeout(
+          () => document.getElementById("new-license-create")?.focus(),
+          0,
+        );
       }
     } finally {
       setSubmitting(false);
@@ -327,9 +359,11 @@ export function NewLicenseWizard({
         setResult({
           ...result,
           onlyCopy: false,
+          retried: true,
           delivered: { email: "sent" },
         });
         announce(`License created. Key sent to ${result.email}.`);
+        focusHeading();
       } else {
         setResult({
           ...result,
@@ -339,6 +373,7 @@ export function NewLicenseWizard({
           delivered: res.delivered,
         });
         setKept(false);
+        focusHeading();
       }
     } catch (err) {
       if (err instanceof ApiError && err.status === 429)
@@ -432,9 +467,10 @@ export function NewLicenseWizard({
         </Button>
       ),
       primary: (
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="contents sm:flex sm:flex-wrap sm:items-center sm:gap-2">
           <Button
             variant="outline"
+            className="max-sm:order-2 max-sm:ml-auto"
             disabledReason={gate}
             onClick={() => {
               finished();
@@ -449,6 +485,7 @@ export function NewLicenseWizard({
           </Button>
           <Button
             variant={result.kind === "batch" && !kept ? "outline" : "primary"}
+            className="max-sm:order-3 max-sm:w-full"
             disabledReason={gate}
             onClick={finished}
           >
@@ -474,11 +511,17 @@ export function NewLicenseWizard({
       reason:
         tierBlock ||
         (at === "review" && submitError
-          ? "Nothing was created. Try again."
+          ? retryable(submitError)
+            ? "Nothing was created. Try again."
+            : "Nothing was created."
           : undefined),
       primary:
         at === "review" ? (
-          <Button loading={submitting} onClick={() => void submit()}>
+          <Button
+            id="new-license-create"
+            loading={submitting}
+            onClick={() => void submit()}
+          >
             {primaryLabel(draft)}
           </Button>
         ) : (
@@ -492,7 +535,11 @@ export function NewLicenseWizard({
         ),
     };
     const form = (children: React.ReactNode): React.ReactNode => (
-      <FormStep formId={`new-license-${at}`} onSubmit={() => next(at)}>
+      <FormStep
+        formId={`new-license-${at}`}
+        onSubmit={() => next(at)}
+        error={stepNote ? { title: stepNote } : null}
+      >
         {children}
       </FormStep>
     );

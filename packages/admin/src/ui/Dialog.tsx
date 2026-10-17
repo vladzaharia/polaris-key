@@ -301,11 +301,11 @@ export function DiscardStrip({
         className,
       )}
     >
-      <p className="flex min-w-0 flex-1 items-center gap-2 font-medium text-fg-strong">
+      <p className="flex min-w-0 flex-1 items-center gap-2 font-medium text-fg-strong max-sm:basis-full">
         <TriangleAlert aria-hidden className="size-4 shrink-0 text-warning" />
         {words?.message ?? "Discard your changes? Nothing has been saved."}
       </p>
-      <div className="flex gap-2">
+      <div className="flex gap-2 max-sm:w-full max-sm:[&>*]:flex-1">
         <Button size="sm" variant="outline" autoFocus onClick={onKeep}>
           {words?.keep ?? "Keep editing"}
         </Button>

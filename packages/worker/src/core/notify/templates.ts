@@ -30,7 +30,7 @@ import {
   keyEmailPrimaryLabel,
   keyEmailSubject,
   type KeyEmailContext,
-} from "./keyEmailCopy.js";
+} from "@polaris-key/brand/email-copy";
 import { platformLabel } from "@polaris-key/manifest";
 import { renderEmail, emailAssetOrigin, type EmailContent } from "./render.js";
 

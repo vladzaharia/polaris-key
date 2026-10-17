@@ -92,9 +92,7 @@ export function TierStep({
       <ChoiceStep
         legend="Tier"
         columns={1}
-        value={
-          draft.tier ?? (draft.noTier || tiers.length === 0 ? NO_TIER : null)
-        }
+        value={draft.tier ?? (draft.noTier ? NO_TIER : null)}
         onChange={(v) => {
           set("tier", v === NO_TIER ? null : v);
           set("noTier", v === NO_TIER);
@@ -402,7 +400,7 @@ export function LimitsStep({
               integer
               unit="days"
               placeholder={`${product?.defaultMaxOfflineDays ?? "—"} · product default`}
-              className="sm:max-w-48"
+              className="sm:max-w-64"
             />
           )}
         </FormField>

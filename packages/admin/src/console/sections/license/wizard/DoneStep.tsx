@@ -37,6 +37,8 @@ export type Result =
       first: boolean;
       /** "Pro · 5 devices · for Lena Ortiz". */
       summary: string;
+      /** A later send went out: the email holds a newer key than the one on screen. */
+      retried?: boolean;
     }
   | {
       kind: "batch";
@@ -62,7 +64,7 @@ export function needsKeep(result: Result): boolean {
 }
 
 const clock = (d: Date): string =>
-  d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 
 function sizeText(bytes: number): string {
   return bytes < 1024 ? `${bytes} B` : `${(bytes / 1024).toFixed(1)} KB`;
@@ -108,7 +110,13 @@ export function DoneBody({
       <Button
         size="sm"
         variant="outline"
-        disabledReason={gate ? "Keep the key first" : undefined}
+        disabledReason={
+          gate
+            ? result.kind === "batch"
+              ? "Download or copy the keys first"
+              : "Copy the key first"
+            : undefined
+        }
         onClick={onTryIt}
       >
         Try it
@@ -161,6 +169,7 @@ export function DoneBody({
             value={keys.join("\n")}
             label="Copy all keys"
             text="Copy all"
+            size="md"
             showLabel
             onCopy={(ok) => ok && onKept(true)}
           />
@@ -205,7 +214,9 @@ export function DoneBody({
           hint={
             result.onlyCopy
               ? "Shown once. Copy it now."
-              : "Shown once. It is in their email too."
+              : result.retried
+                ? "Their email has a newer key. This one works too."
+                : "Shown once. It is in their email too."
           }
           hideAck={!result.onlyCopy}
           acknowledged={kept}

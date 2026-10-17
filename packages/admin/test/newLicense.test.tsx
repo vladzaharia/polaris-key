@@ -433,7 +433,7 @@ describe("New license wizard", () => {
       expect(heading(dialog).textContent).toContain("Limits"),
     );
     expect(
-      within(dialog).getByText(
+      within(dialog).getAllByText(
         "This value isn't accepted. Check it and try again.",
       ),
     ).toBeTruthy();
@@ -457,6 +457,63 @@ describe("New license wizard", () => {
       expect(screen.queryByRole("dialog", { name: "New license" })).toBeNull(),
     );
     await waitFor(() => expect(document.activeElement?.tagName).toBe("H1"));
+  });
+
+  it("a tier lookup that fails is not a dead end: choose No tier and go on (N1)", async () => {
+    bootLicense("#/p/djdl/license/licenses", {
+      routes: { [`${API}/license/tiers`]: failing(500) },
+    });
+    await table();
+    await userEvent.click(
+      screen.getAllByRole("button", { name: "New license" })[0]!,
+    );
+    const dialog = await screen.findByRole("dialog", { name: "New license" });
+    await within(dialog).findByText("Couldn't load tiers");
+    const card = within(dialog).getByRole("radio", { name: /^No tier/ });
+    // Not shown as chosen until the operator chooses it; Continue waits for that.
+    expect(card).toHaveProperty("ariaChecked", "false");
+    expect(primary(dialog, "Continue")).toHaveProperty("disabled", true);
+    await userEvent.click(card);
+    expect(primary(dialog, "Continue")).toHaveProperty("disabled", false);
+    await press(dialog, "Continue");
+    await waitFor(() =>
+      expect(heading(dialog).textContent).toContain("Who it's for"),
+    );
+  });
+
+  it("a product with no tiers has No tier chosen, and Continue works (N1)", async () => {
+    bootLicense("#/p/djdl/license/licenses", {
+      routes: { [`${API}/license/tiers`]: { tiers: [] } },
+    });
+    await table();
+    await userEvent.click(
+      screen.getAllByRole("button", { name: "New license" })[0]!,
+    );
+    const dialog = await screen.findByRole("dialog", { name: "New license" });
+    await waitFor(() =>
+      expect(
+        within(dialog).getByRole("radio", { name: /^No tier/ }),
+      ).toHaveProperty("ariaChecked", "true"),
+    );
+    await press(dialog, "Continue");
+    await waitFor(() =>
+      expect(heading(dialog).textContent).toContain("Who it's for"),
+    );
+  });
+
+  it("a 403 says nothing was created, without 'Try again' (N6)", async () => {
+    const { dialog } = await open({
+      [`POST ${API}/license/licenses`]: failing(403, "forbidden"),
+    });
+    await toReview(dialog);
+    await press(dialog, "Create and email license");
+    expect(
+      await within(dialog).findByText("Nothing was created."),
+    ).toBeTruthy();
+    // Focus stays on Create, not on the dialog container.
+    await waitFor(() =>
+      expect(document.activeElement?.textContent).toContain("Create and email"),
+    );
   });
 
   it("passes axe on its steps", async () => {
