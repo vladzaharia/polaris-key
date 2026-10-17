@@ -272,3 +272,35 @@ def test_an_oversized_header_value_is_refused_without_splitting() -> None:
     assert header_elements([("X-PKey-License", big)], "X-PKey-License") == [big]
     polaris = PolarisKey(config=CFG, trust_refresh=False, clock=lambda: NOW)
     assert polaris.authenticate([("X-PKey-License", big)]).problem.code == "license_invalid"  # type: ignore[union-attr]
+
+
+def test_overlapping_refreshes_never_install_an_older_manifest() -> None:
+    """M200 then M100 served to two overlapping refreshes: floor stays 200, the removed kid stays untrusted."""
+    import threading
+    import time
+
+    m200 = sign_manifest([], issued=NOW + 200)  # drops "rotated-2027"
+    m100 = sign_manifest([key_entry("rotated-2027", ROTATED_PUB)], issued=NOW + 100)
+    served = iter([m200, m100])
+    lock = threading.Lock()
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        with lock:
+            body = next(served)
+        time.sleep(0.05)
+        return httpx.Response(200, text=body)
+
+    polaris = _quiet(
+        PolarisKey(config=CFG, http_client=httpx.Client(transport=httpx.MockTransport(handler)), clock=lambda: NOW + 300)
+    )
+    ts = [threading.Thread(target=polaris.refresh_trust) for _ in range(2)]
+    for t in ts:
+        t.start()
+    for t in ts:
+        t.join()
+    t = polaris._trust["djdl"]
+    assert t.floor == NOW + 200
+    assert "rotated-2027" not in t.effective
+    # install itself refuses an older manifest
+    assert t.install({"rotated-2027": ROTATED_PUB}, [], NOW + 100) is False
+    assert t.floor == NOW + 200 and "rotated-2027" not in t.effective

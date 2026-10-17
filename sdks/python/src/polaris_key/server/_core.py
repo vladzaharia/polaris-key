@@ -117,14 +117,19 @@ class _Trust:
         self.last_attempt = 0
         self.last_unknown = 0
         self.lock = threading.Lock()
+        self.refresh_lock = threading.Lock()
 
-    def install(self, discovered: TrustSet, revoked: Iterable[str], issued_at: Optional[int]) -> None:
+    def install(self, discovered: TrustSet, revoked: Iterable[str], issued_at: Optional[int]) -> bool:
+        """Install a verified manifest's keys; False (nothing changes) unless it is newer than the floor."""
+        if issued_at is not None and self.floor is not None and issued_at <= self.floor:
+            return False
         self.tombstones.update(revoked)
         self.discovered = discovered
         self.effective = merge_trust(usable_pins(self.pins, self.tombstones), discovered)
         if issued_at is not None:
-            self.floor = issued_at
+            self.floor = issued_at if self.floor is None else max(self.floor, issued_at)
         self.version += 1
+        return True
 
 
 class PolarisKey:
@@ -202,11 +207,12 @@ class PolarisKey:
         return {slug: t.effective for slug, t in self._trust.items()}
 
     def _client(self) -> Any:
-        if self._http is None:
-            import httpx
+        with self._slots:
+            if self._http is None:
+                import httpx
 
-            self._http = httpx.Client(timeout=_FETCH_TIMEOUT)
-        return self._http
+                self._http = httpx.Client(timeout=_FETCH_TIMEOUT)
+            return self._http
 
     def refresh_trust(self, signer: Optional[str] = None) -> bool:
         """Fetch and verify each product's signed trust manifest now. True if any installed.
@@ -215,50 +221,62 @@ class PolarisKey:
             return False
         any_ok = False
         for t in self._trust.values():
-            now = int(self._clock())
-            t.last_attempt = now
-            try:
-                url = f"{t.base_url}/{t.slug}/{TRUST_MANIFEST_PATH}"
-                with self._client().stream(
-                    "GET",
-                    url,
-                    headers={
-                        "accept": "application/jose",
-                        HEADER_SDK_NAME: "python-server",
-                        HEADER_SDK_VERSION: _sdk_version(),
-                    },
-                ) as res:
-                    if res.status_code != 200:
-                        continue
-                    body = bytearray()
-                    for chunk in res.iter_bytes():
-                        body += chunk
-                        if len(body) > MANIFEST_MAX_BYTES:
-                            raise ValueError("trust manifest over the size bound")
-                result = verify_trust_manifest(
-                    body.decode("ascii"),
-                    pinned=t.pins,
-                    tombstones=t.tombstones,
-                    expected_aud=t.slug,
-                    last_trust_issued_at=t.floor,
-                    now=now,
+            # One refresh per product at a time, across fetch, verify and install, so an older
+            # manifest can never land after a newer one.
+            with t.refresh_lock:
+                if self._refresh_one(t):
+                    any_ok = True
+        return any_ok
+
+    def _refresh_one(self, t: "_Trust") -> bool:
+        now = int(self._clock())
+        t.last_attempt = now
+        try:
+            url = f"{t.base_url}/{t.slug}/{TRUST_MANIFEST_PATH}"
+            with self._client().stream(
+                "GET",
+                url,
+                headers={
+                    "accept": "application/jose",
+                    HEADER_SDK_NAME: "python-server",
+                    HEADER_SDK_VERSION: _sdk_version(),
+                },
+            ) as res:
+                if res.status_code != 200:
+                    return False
+                body = bytearray()
+                for chunk in res.iter_bytes():
+                    body += chunk
+                    if len(body) > MANIFEST_MAX_BYTES:
+                        raise ValueError("trust manifest over the size bound")
+            with t.lock:
+                tombstones, floor = set(t.tombstones), t.floor
+            result = verify_trust_manifest(
+                body.decode("ascii"),
+                pinned=t.pins,
+                tombstones=tombstones,
+                expected_aud=t.slug,
+                last_trust_issued_at=floor,
+                now=now,
+            )
+        except Exception:
+            log.debug("trust manifest fetch failed for %s", t.slug)
+            return False
+        if result.doc is None:
+            log.debug("trust manifest for %s was not accepted", t.slug)
+            return False
+        issued = result.doc.get("issuedAt")
+        # Install and invalidate together: a verification that began under the older set
+        # must not put its result in the cache afterwards.
+        with self._cache_lock:
+            with t.lock:
+                installed = t.install(
+                    result.discovered, result.revokedPins, issued if isinstance(issued, int) else None
                 )
-            except Exception:
-                log.debug("trust manifest fetch failed for %s", t.slug)
-                continue
-            if result.doc is None:
-                log.debug("trust manifest for %s was not accepted", t.slug)
-                continue
-            issued = result.doc.get("issuedAt")
-            # Install and invalidate together: a verification that began under the older set
-            # must not put its result in the cache afterwards.
-            with self._cache_lock:
-                with t.lock:
-                    t.install(result.discovered, result.revokedPins, issued if isinstance(issued, int) else None)
+            if installed:
                 self._generation += 1
                 self._cache.clear()
-            any_ok = True
-        return any_ok
+        return installed
 
     def _trust_version(self) -> int:
         return sum(t.version for t in self._trust.values())
