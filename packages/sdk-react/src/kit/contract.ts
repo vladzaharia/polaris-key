@@ -21,6 +21,7 @@ export {
   onCopyLoaded,
   OPENS,
   placeKeys,
+  provideTable,
   platformLabel,
   resolveFor,
   themeVars,

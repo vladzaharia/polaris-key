@@ -1831,8 +1831,8 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   "ui.update": { status: "implemented", service: "sdk", na: [] },
   "ui.settings": { status: "implemented", service: "sdk", na: [] },
   "ui.paywall": { status: "implemented", service: "sdk", na: [] },
-  "ui.theme": { status: "planned", service: "sdk", na: [] },
-  "ui.i18n": { status: "planned", service: "sdk", na: [] },
+  "ui.theme": { status: "implemented", service: "sdk", na: [] },
+  "ui.i18n": { status: "implemented", service: "sdk", na: [] },
   "commerce.receipt": { status: "implemented", service: "license", na: [] },
   "server.license": {
     status: "na",
@@ -1870,4 +1870,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "b33e8e06743ff5cb3a2c60dcf483127f73f98a5c43a453da09c6c1d10cd026f2";
+  "183b313746bfab95c3cdb2f29199d7695051dda40b2fd628e0de9aaeb62a7a49";

@@ -281,12 +281,26 @@ Electron (UK-06), React Native (UK-20) and the shadcn registry (UK-22) build on 
 The role agent sets `--set UK-05 in-review` when it hands off. After review, the lead adds the last
 commit of the PR: `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set UK-05 done`.
 
-## Progress and continuation (2026-10-16)
+## Progress and continuation (2026-10-16, second pass)
 
-Reconciled against main in the 2026-10-16 audit. Remaining:
+Found on main (the audit's list was stale): the one sign-in form (`ui.signin` implemented,
+`src/kit/signin.tsx`), the legacy-component cutover (commit 56b9027b9: no `LicenseGate`,
+`PolarisLogin`, inline theme or `expectServices`), `examples/ui/react-vite` and `react-next`, and the
+framework page. Done in this pass:
 
-- Port the one sign-in form (SignIn presentation/replace, useSignIn) from elements signin.ts, then flip ui.signin
-- Re-point legacy components (LicenseGate, PolarisLogin, DeviceManager, UpdatePrompt, ConfigPanel, PolarisLogout) onto the kit; retire inline-style theme; DX provider changes
-- Theme and i18n families; flip ui.theme and ui.i18n
-- Baselines for every component x state at the 7.1 sizes
-- Docs/examples, UX BUILT review
+- `ui.theme` and `ui.i18n` flipped: the matrix test runs both families (450 tests green), and a new
+  Chromium group renders Welcome, Activate, Devices and Settings in de, fr, es, pt-BR, it, ja, ko
+  and zh-Hans at 390 and 1440 in both schemes, asserting `lang` and a 600 heading (DL12).
+- `provideKitCopy` on `/kit` (the elements' `provideTable`): registers a pack up front. Needed because
+  Vite's browser dev server cannot serve the packs' lazy JSON imports (the pack never loaded in
+  Chromium), and useful to a host whose bundler does not split them.
+- Browser suite on the whole matrix: 21 scenes x 16 sizes x 2 schemes (every §7.1 row, 200 % and a
+  24 px root), native, and the 133 states at 390 and 1440 x 2 schemes: 1241 passed. Renders are under
+  `_mockups/built/UK-05/`.
+
+Remaining: the committed baselines are still the 390 and 1440 rows (133 states x 4); the other §7.1
+rows are asserted (overflow, first viewport, targets, contrast, fonts) and rendered but not committed
+as PNGs, pending the lead's storage decision (about 250 KB each at 1440). The cross-renderer diff
+needs UK-04's baselines. `packages/sdk-react/README.md` still carries the update-driver and boot-guard
+sections, which have no docs page yet: move them before cutting the README to install + one line +
+link. UX review (`pkey-ux-reviewer`, BUILT mode) not yet run.
