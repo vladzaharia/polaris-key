@@ -23,12 +23,13 @@ import {
 import type { ClientFactory } from "./commands.js";
 import { ttyProgress } from "./commander.js";
 import { bindGate } from "./gate.js";
-import { VERB_OPTIONS } from "./help.js";
+import { createKitContextSync } from "./context.js";
+import { describeVerb, GROUP_HEADINGS, VERB_OPTIONS } from "./help.js";
 import { argName, type CliIO, type CliVerb } from "./kit.js";
 import {
   clientFactoryFor,
   planMount,
-  skipWarning,
+  reportSkipped,
   verbId,
   type MountOptions,
 } from "./mount.js";
@@ -114,11 +115,16 @@ export function polarisCommands(
   const factory = typeof a === "function" ? a : clientFactoryFor(options);
   const namespace = options.namespace;
   const plan = planMount(options.hostCommands ?? [], options, options.bin);
-  if (plan.skipped.length)
-    (options.warn ?? ((m) => process.stderr.write(`${m}\n`)))(
-      skipWarning(plan.skipped, options.bin ?? "mytool"),
-    );
+  reportSkipped(plan, options, options.bin ?? "mytool");
   const verbs = plan.verbs;
+  // Help text in the catalog's words (the kit's own help pages are the commander adapter's).
+  const helpCtx = createKitContextSync({
+    slug: options.productSlug ?? options.config?.productSlug ?? "polaris-key",
+    bin: options.bin ?? "mytool",
+    ...(options.theme ? { theme: options.theme } : {}),
+    ...(options.io ? { io: options.io } : {}),
+    queryScheme: false,
+  });
   // What people type before a verb: under a namespace, the namespace too.
   const binOf = (bin: string): string =>
     namespace ? `${options.bin ?? bin} ${namespace}` : (options.bin ?? bin);
@@ -144,7 +150,9 @@ export function polarisCommands(
       ...verb.args.map((a) => yargsArg(kit ? optionalArg(a) : a)),
     ].join(" "),
     aliases: verb.aliases ?? [],
-    describe: `[${verb.group}] ${verb.describe}`,
+    describe: kit
+      ? describeVerb(helpCtx, verb)
+      : `[${verb.group}] ${verb.describe}`,
     builder: (y: Argv<CommonArgs>) => {
       if (!kit)
         return verb.path[0] === "secret" || verb.path[0] === "mint"
@@ -233,7 +241,11 @@ export function polarisCommands(
     for (const [word, inGroup] of groups)
       out.push({
         command: `${word} <command>`,
-        describe: `[${inGroup[0]!.group}] ${word} commands`,
+        describe: kit
+          ? helpCtx.copy.t(
+              GROUP_HEADINGS.find(([g]) => g === inGroup[0]!.group)![1],
+            )
+          : `[${inGroup[0]!.group}] ${word} commands`,
         builder: (g: Argv<CommonArgs>) => {
           let gy = g;
           for (const v of inGroup)
@@ -268,7 +280,7 @@ export function polarisCommands(
   return [
     {
       command: `${namespace} <command>`,
-      describe: "License commands",
+      describe: kit ? helpCtx.copy.t("cli.help.namespace") : "License commands",
       builder: (y: Argv<CommonArgs>) => {
         let b = y;
         for (const m of modulesFor(verbs)) b = b.command(m);
