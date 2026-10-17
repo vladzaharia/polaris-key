@@ -31,7 +31,9 @@ async function createOne(name: string): Promise<HTMLElement> {
   return dialog;
 }
 
-async function openDialog(): Promise<void> {
+async function openDialog(settled = true): Promise<void> {
+  // The first read settles first: an empty list moves the primary into its empty state.
+  if (settled) await screen.findByText(/No licenses yet|Ada Lovelace/);
   const buttons = await screen.findAllByRole("button", {
     name: "Create license",
   });
@@ -87,7 +89,7 @@ describe("the first license (EXPERIENCE §0.7)", () => {
     bootLicense("#/p/djdl/license/licenses", {
       routes: { [`${API}/license/licenses`]: PENDING },
     });
-    await openDialog();
+    await openDialog(false);
     const dialog = await createOne("Grace Hopper");
     expect(dialog.querySelector("[data-moment]")).toBeNull();
     expect(within(dialog).queryByRole("button", { name: "Try it" })).toBeNull();

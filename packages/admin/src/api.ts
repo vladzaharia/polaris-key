@@ -3487,6 +3487,21 @@ export const LICENSE_PAGE_MAX = 90;
 export interface LicensePage {
   licenses: LicenseSummary[];
   nextCursor: string | null;
+  /** What the filters match, and by state. First page only (the Worker sends them without a cursor). */
+  total?: number;
+  counts?: {
+    active: number;
+    expiring: number;
+    expired: number;
+    disabled: number;
+  };
+}
+
+/** The list's server-side narrowing: the Worker filters on these before it pages. */
+export interface LicenseListFilter {
+  holder?: string;
+  batch?: string;
+  tier?: string;
 }
 
 export interface LicenseSummary {
@@ -5415,9 +5430,11 @@ const rawApi = {
   /** One page of the list (P0-29): newest first, `nextCursor` null on the last. */
   licensesPage: (
     slug: string,
-    page: { cursor?: string | null; limit?: number } = {},
+    page: { cursor?: string | null; limit?: number } & LicenseListFilter = {},
   ) => {
     const search = new URLSearchParams();
+    for (const k of ["holder", "batch", "tier"] as const)
+      if (page[k]) search.set(k, page[k]);
     if (page.limit) search.set("limit", String(page.limit));
     if (page.cursor) search.set("cursor", page.cursor);
     const qs = search.toString();

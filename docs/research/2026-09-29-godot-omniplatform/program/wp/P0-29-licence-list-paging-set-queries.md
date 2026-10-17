@@ -137,3 +137,18 @@ What downstream work packages rely on from this one is named in their briefs (th
 - Not done: an index on `licenses(product, activated_at, id)` (no migration here); the keyset scan
   sorts the product's licences. Follow-up for the lead to number.
 - Self-look (real Chromium, 390 and 1440, dark and light) done; the lead schedules the UX review.
+
+## UX fix round (2026-10-17)
+
+Built-mode UX review failed (`_mockups/review/P0-29/ux-review.md`). Fixed on `wp/P0-29-ux-fix`:
+F1 (a failed page keeps the rows; footer error with Try again), F2 (page 1 carries `total` and
+`counts`; `?tier=` added next to `?holder=` and `?batch=`, sent from deep links; "Searched the N
+newest of M" and Search all), F3 (first-licence read is a one-row page), F4 (aria-disabled while
+loading; focus to the first new row), F5 (`Announcer` in the console shell), F6 (Export labelled
+"Export N loaded"), F7 (DataTable cursor footer with `local`, `loadError`, `onSearchAll`; one
+footer, no "50+" chip), F8, F9, F10 (`mutateEach`: one refetch), F11 (full-width states on card
+widths; the table scroller is a named focusable region), F12 (one primary on first run, mockup
+copy, Open Access), F13 (permission state), F15 (keyring copy keyed on its code).
+Not built: F14 (the single workbench band, 56 px rows, sticky License column, avatar/Duration/
+Origin columns, row menus) and F16 (row-shaped skeleton, mockup error titles) need DataTable
+density and column work shared by every table; they need their own slice.
