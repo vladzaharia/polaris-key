@@ -422,8 +422,7 @@ export abstract class PkElement extends LitElement {
     if (key === "offlineActivation.submit")
       detail.response = input.offline?.response ?? "";
     if (key === "paywall.upgrade" || key === "paywall.portal") {
-      const id =
-        (drafts.offer as string | undefined) ?? input.offers?.items?.[0]?.id;
+      const id = input.selected ?? input.offers?.items?.[0]?.id;
       if (id) detail.offerId = id;
       if (input.offers?.url) detail.url = input.offers.url;
     }

@@ -523,11 +523,20 @@ function withBase(c: RenderCtx): View {
             ),
           };
     }
-    case "SignIn":
-      // The form ends on a heading and one Start, or hands the completion to the host.
-      return view.state === "done"
-        ? add("signin.return.signedInShort", "signin.done.start")
-        : view;
+    case "SignIn": {
+      // The form ends on a heading and one Start; every other step can be backed out of (DL2).
+      if (view.state === "done") {
+        const licensed = !input.services || input.services.includes("license");
+        if (!licensed) return view;
+        const done = add("signin.return.signedInShort", "signin.done.start");
+        return {
+          ...done,
+          decisions: { ...done.decisions, primary: "signin.done.start" },
+        };
+      }
+      const sheet = input.signIn?.presentation === "sheet";
+      return view.state === "methods" && !sheet ? view : add("common.cancel");
+    }
     case "Devices": {
       if (
         !input.devices?.length ||
