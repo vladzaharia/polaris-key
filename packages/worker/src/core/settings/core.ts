@@ -9,6 +9,8 @@
  */
 
 import { setting } from "./define.js";
+import { SETUP_SCHEMA } from "./rules.js";
+import { EMPTY_SETUP } from "./setupShape.js";
 import type { SettingDef } from "./types.js";
 import {
   ASSET_MEDIA_QUOTA_DEFAULT,
@@ -391,6 +393,30 @@ export const CORE_SLICE: readonly SettingDef[] = [
     readers: STOREFRONT_READERS,
     storage: storefrontColumn("store_group_labels_json"),
     since: "PS-02",
+  }),
+
+  // ── Setup choices (ST-39) ───────────────────────────────────────────────────────────────
+  // The explicit choices the wizard kit records (Integration hidden, "not using this channel",
+  // runner consent, skipped steps). One operator-owned value, no manifest path; whether a step is
+  // done is computed from state and never stored. Written through `writeSetting()`.
+  setting({
+    key: "core.setup",
+    scope: "product",
+    service: "core",
+    area: "setup",
+    label: "Setup choices",
+    description:
+      "What the operator chose in the setup wizards: Integration hidden, channels not in use, consent for the setup runner and skipped steps. Choices only: a step's progress is read from the product, never stored.",
+    keywords: ["wizard", "setup", "integration", "skipped", "hidden"],
+    docs: "/docs/operate/console/products/",
+    value: { kind: "json", schema: SETUP_SCHEMA },
+    defaultValue: EMPTY_SETUP,
+    merge: "cascade",
+    ownership: "operator",
+    confirm: { change: "L0" },
+    readers: ["core/settings/setupShape.ts"],
+    storage: { kind: "scalar" },
+    since: "ST-39",
   }),
 
   // ── Hosted assets (HA-10, notes/S-20 §6.10, owner decisions 6 and 9) ────────────────────

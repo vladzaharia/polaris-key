@@ -39,6 +39,7 @@
  * Adding an entry is a THREAT-MODEL §9 review trigger even when these rules pass.
  */
 
+import { isSetupChoices } from "./setupShape.js";
 import { isAreaId, PRODUCT_AREAS } from "../rbac/areas.js";
 import type { RegisteredSlice, SettingsRegistry } from "./registry.js";
 import type {
@@ -239,6 +240,9 @@ export function wideningConfirm(def: SettingDef): ConfirmLevel {
       : maxLevel(c.on, c.off);
 }
 
+/** The `schema` name of `core.setup`: its value is checked by `setupShape.ts`. */
+export const SETUP_SCHEMA = "SetupChoices (core/settings/setupShape.ts)";
+
 /** Whether `value` is a value of `spec` (`null` is never one; see `allowUnset`). */
 export function fitsValueSpec(spec: ValueSpec, value: unknown): boolean {
   switch (spec.kind) {
@@ -268,7 +272,9 @@ export function fitsValueSpec(spec: ValueSpec, value: unknown): boolean {
         value.every((v) => fitsValueSpec(spec.of, v))
       );
     case "json":
-      return value !== undefined && value !== null;
+      if (value === undefined || value === null) return false;
+      // A json setting with a pinned shape (the validator is named by `schema`).
+      return spec.schema === SETUP_SCHEMA ? isSetupChoices(value) : true;
   }
 }
 

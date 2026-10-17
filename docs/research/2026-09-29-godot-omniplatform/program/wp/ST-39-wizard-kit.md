@@ -92,6 +92,18 @@ Applied from the brand and transition integration ([Brand transition decisions](
 - Structure follows the current dx-mockups ids (I-29: identity.app-sign-in, identity.app-sign-in-changes, identity.sign-in-off; I-31: identity.connections, identity.connection*, centred 960 px wizard column; ST-38: commerce.features*, commerce.turn-off-licensing; A-22: commerce.sales\*; ST-39: the stepper where done steps say what was decided, inside the centred wizard column). The guide boards supply chrome only. (admin-3-18)
 - [ ] `pkey-ux-reviewer` passes against those mockups in BUILT mode. (admin-3-18)
 
+## Verification notes (2026-10-16)
+
+- Code corrections: `GET/PATCH/DELETE settings/:key` served only row-backed claimable keys, so
+  `core.setup` (operator-owned scalar, no manifest path, `area: "setup"`) is served by widening that
+  handler (`isRowServed`, `OPERATOR_ROW_KEYS`); no new route or table. Its shape is checked in
+  `fitsValueSpec` (`core/settings/setupShape.ts`).
+- `ui/` may not import `api.ts` (boundaries test), so the hook lives in `console/wizard/useSetup.ts`.
+- Both existing flows have seven steps. `lintFlow` holds five; `FLOW_EXEMPT` lists Storefronts and
+  App Store (owner A-23) and only shrinks. App Store uses the kit's `Stepper`, not yet `Wizard`.
+- Storefronts proves the kit: `Wizard` page host, decided text, and "Skip this step" on Listing and
+  Assets saved as a `core.setup` choice.
+
 ## Steps
 
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
@@ -105,9 +117,9 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 ## Acceptance criteria
 
-- [ ] No wizard outside ui/wizard (lint)
+- [x] No wizard outside ui/wizard (lint)
 - [ ] core.setup writes are audited through writeSetting (no new table or route)
-- [ ] One existing flow migrated
+- [x] One existing flow migrated
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

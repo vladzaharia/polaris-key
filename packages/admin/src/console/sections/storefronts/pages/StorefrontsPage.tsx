@@ -40,7 +40,11 @@ import { EmptyState } from "../../../../ui/EmptyState.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
 import { Skeleton } from "../../../../ui/Skeleton.js";
 import { StatusPill } from "../../../../ui/StatusPill.js";
-import { Stepper, type Step } from "../../../../ui/Stepper.js";
+import { Wizard, type WizardStep } from "../../../../ui/wizard/index.js";
+import { ASIDE, SKIPPABLE, TITLE, decidedStores } from "../model/flowCopy.js";
+import { STOREFRONTS_FLOW } from "../../../wizard/flows.js";
+import { skippedIn } from "../../../wizard/setup.js";
+import { useSetup } from "../../../wizard/useSetup.js";
 import { PageHeader } from "../../../../ui/PageHeader.js";
 import { Link, useSearchParam } from "../../../router.js";
 import { codecs, globalPage, r } from "../../../routes.js";
@@ -78,30 +82,10 @@ export const FLOW_STEPS = [
 ] as const;
 export type FlowStep = (typeof FLOW_STEPS)[number];
 
-const STEPS: Step[] = [
-  { id: "choose", label: "Storefronts" },
-  { id: "prerequisites", label: "Prerequisites" },
-  { id: "listing", label: "Listing" },
-  { id: "assets", label: "Assets" },
-  { id: "plan", label: "Plan" },
-  { id: "run", label: "Run" },
-  { id: "submit", label: "Submit and release" },
-];
-
-const ASIDE: Record<FlowStep, string> = {
-  choose:
-    "Each store shows what Polaris Key does for it through the store's API, what CI does, and what you do from a link.",
-  prerequisites:
-    "Checked for each store: the team connection, the product's app, and the write permissions, which only a first write can prove.",
-  listing:
-    "One listing serves every store. The fit report shows what does not fit a store; nothing is ever cut to fit.",
-  assets:
-    "CI derives and composes the store art from your masters. Nothing reaches a store until you accept it here.",
-  plan: "Every step, in order, with how it is done. The external writes are listed before anything runs.",
-  run: "Each step shows what the store answers, read back after the write. You can leave and come back: progress is kept.",
-  submit:
-    "Submit and release are confirmed by typing the app's name as the store shows it.",
-};
+const STEPS: readonly WizardStep[] = STOREFRONTS_FLOW.steps.map((x) => ({
+  id: x.id,
+  label: x.label,
+}));
 
 const flowCodec = codecs.oneOf(["", "add"] as const, "");
 const stepCodec = codecs.oneOf(FLOW_STEPS, "choose");
@@ -294,7 +278,10 @@ function Catalogue({ slug }: { slug: string }): React.ReactElement {
   const q = useStorefronts(slug);
   const [flow] = useSearchParam("flow", flowCodec);
   return (
-    <div className="space-y-6" data-template={flow ? "flow" : "collection"}>
+    <div
+      className={`space-y-6${flow ? " mx-auto w-full max-w-[60rem]" : ""}`}
+      data-template={flow ? "flow" : "collection"}
+    >
       <PageHeader
         title={flow ? "Add to storefronts" : "Storefronts"}
         primaryAction={
@@ -350,6 +337,7 @@ function AddFlow({
   const [step, setStep] = useSearchParam("step", stepCodec);
   const [storesRaw, setStoresRaw] = useSearchParam("stores", storesCodec);
   const [intent, setIntent] = React.useState<StepIntent | null>(null);
+  const setup = useSetup(slug);
   // What each step's last run left to finish in the store's console (decision 6), by step key.
   const [followUps, setFollowUps] = React.useState<
     Record<string, StorefrontFollowUp>
@@ -370,113 +358,124 @@ function AddFlow({
   const listingColumns = chosen
     .map((s) => s.listingStore)
     .filter((x): x is string => x !== null);
+  const steps: WizardStep[] = STEPS.map((x) =>
+    x.id === "choose" ? { ...x, decided: decidedStores(chosen) } : x,
+  );
+  const skip = async () => {
+    if (await setup.skip(STOREFRONTS_FLOW.id, current))
+      go(FLOW_STEPS[FLOW_STEPS.indexOf(current) + 1]!);
+  };
 
   return (
-    <div className="space-y-6">
-      <Stepper
-        steps={STEPS}
-        current={current}
-        completed={[...completed]}
-        onStep={(id) => go(id as FlowStep)}
+    <>
+      <Wizard
+        centered={false}
         label="Add to storefronts"
-      />
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
-        <div className="min-w-0 space-y-4">
-          {current === "choose" ? (
-            <ChooseStep
-              stores={stores}
-              picked={picked}
-              onChange={(next) => setStoresRaw(next.join(","))}
-            />
-          ) : null}
-          {current === "prerequisites"
-            ? chosen.map((s) => <Prerequisites key={s.id} store={s} />)
-            : null}
-          {current === "listing" ? (
-            <>
-              <Panel title="Fit report">
-                <FitReport slug={slug} stores={listingColumns} />
-              </Panel>
-              <Panel
-                title="Import"
-                action={
-                  <Button size="sm" variant="outline" asChild>
-                    <Link to={r.listing(slug)}>Edit the listing</Link>
-                  </Button>
-                }
+        steps={steps}
+        current={current}
+        done={completed}
+        skipped={skippedIn(setup.choices, STOREFRONTS_FLOW.id)}
+        onStep={(id) => go(id as FlowStep)}
+        title={TITLE[current]!}
+        aside={
+          <>
+            <h2 className="text-sm font-semibold text-fg-strong">
+              What happens here
+            </h2>
+            <p>{ASIDE[current]}</p>
+            <a
+              href="/docs/admin/storefronts/"
+              className="text-accent-fg underline-offset-4 hover:underline"
+            >
+              Storefronts in the docs
+            </a>
+          </>
+        }
+        footer={{
+          later: (
+            <Button variant="ghost" asChild>
+              <Link to={r.storefronts(slug)}>Do this later</Link>
+            </Button>
+          ),
+          onSkip:
+            SKIPPABLE.has(current) && setup.allowed
+              ? () => void skip()
+              : undefined,
+          onBack:
+            index > 0 && current !== "choose"
+              ? () => go(FLOW_STEPS[FLOW_STEPS.indexOf(current) - 1]!)
+              : undefined,
+          reason:
+            chosen.length === 0 ? "Choose a storefront to continue" : undefined,
+          primary:
+            current === "submit" ? (
+              <Button asChild>
+                <Link to={r.storefronts(slug)}>
+                  <Check aria-hidden />
+                  Done
+                </Link>
+              </Button>
+            ) : (
+              <Button
+                disabled={chosen.length === 0}
+                onClick={() => go(FLOW_STEPS[FLOW_STEPS.indexOf(current) + 1]!)}
               >
-                <ImportPanel slug={slug} />
-              </Panel>
-            </>
-          ) : null}
-          {current === "assets" ? (
-            <SlotBoard slug={slug} groups={["masters", ...listingColumns]} />
-          ) : null}
-          {current === "plan"
-            ? chosen.map((s) => <PlanReview key={s.id} store={s} />)
-            : null}
-          {current === "run" || current === "submit"
-            ? chosen.map((s) => (
-                <StorePhase
-                  key={s.id}
-                  slug={slug}
-                  store={s}
-                  steps={s.steps.filter((x) =>
-                    current === "run"
-                      ? PHASES_RUN.has(x.phase)
-                      : x.phase === "submit",
-                  )}
-                  onIntent={setIntent}
-                  followUps={followUps}
-                />
-              ))
-            : null}
-        </div>
-        <aside className="space-y-2 rounded-lg border border-border bg-surface-sunken p-4 text-sm text-fg">
-          <h2 className="text-sm font-semibold text-fg-strong">
-            What happens here
-          </h2>
-          <p>{ASIDE[current]}</p>
-          <a
-            href="/docs/admin/storefronts/"
-            className="text-accent-fg underline-offset-4 hover:underline"
-          >
-            Storefronts in the docs
-          </a>
-        </aside>
-      </div>
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
-        <Button variant="ghost" asChild>
-          <Link to={r.storefronts(slug)}>Close</Link>
-        </Button>
-        <div className="ml-auto flex items-center gap-2">
-          {index > 0 && current !== "choose" ? (
-            <Button
-              variant="outline"
-              onClick={() => go(FLOW_STEPS[FLOW_STEPS.indexOf(current) - 1]!)}
+                Continue
+                <ArrowRight aria-hidden />
+              </Button>
+            ),
+        }}
+      >
+        {current === "choose" ? (
+          <ChooseStep
+            stores={stores}
+            picked={picked}
+            onChange={(next) => setStoresRaw(next.join(","))}
+          />
+        ) : null}
+        {current === "prerequisites"
+          ? chosen.map((s) => <Prerequisites key={s.id} store={s} />)
+          : null}
+        {current === "listing" ? (
+          <>
+            <Panel title="Fit report">
+              <FitReport slug={slug} stores={listingColumns} />
+            </Panel>
+            <Panel
+              title="Import"
+              action={
+                <Button size="sm" variant="outline" asChild>
+                  <Link to={r.listing(slug)}>Edit the listing</Link>
+                </Button>
+              }
             >
-              <ArrowLeft aria-hidden />
-              Back
-            </Button>
-          ) : null}
-          {current !== "submit" ? (
-            <Button
-              disabled={chosen.length === 0}
-              onClick={() => go(FLOW_STEPS[FLOW_STEPS.indexOf(current) + 1]!)}
-            >
-              Continue
-              <ArrowRight aria-hidden />
-            </Button>
-          ) : (
-            <Button asChild>
-              <Link to={r.storefronts(slug)}>
-                <Check aria-hidden />
-                Done
-              </Link>
-            </Button>
-          )}
-        </div>
-      </div>
+              <ImportPanel slug={slug} />
+            </Panel>
+          </>
+        ) : null}
+        {current === "assets" ? (
+          <SlotBoard slug={slug} groups={["masters", ...listingColumns]} />
+        ) : null}
+        {current === "plan"
+          ? chosen.map((s) => <PlanReview key={s.id} store={s} />)
+          : null}
+        {current === "run" || current === "submit"
+          ? chosen.map((s) => (
+              <StorePhase
+                key={s.id}
+                slug={slug}
+                store={s}
+                steps={s.steps.filter((x) =>
+                  current === "run"
+                    ? PHASES_RUN.has(x.phase)
+                    : x.phase === "submit",
+                )}
+                onIntent={setIntent}
+                followUps={followUps}
+              />
+            ))
+          : null}
+      </Wizard>
       <StepDialog
         slug={slug}
         intent={intent}
@@ -491,7 +490,7 @@ function AddFlow({
           });
         }}
       />
-    </div>
+    </>
   );
 }
 

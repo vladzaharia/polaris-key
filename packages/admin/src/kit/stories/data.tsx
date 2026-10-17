@@ -5,7 +5,7 @@ import {
 } from "../../console/components/DeviceTable.js";
 import { DescriptionList } from "../../ui/DescriptionList.js";
 import { Grid } from "../../ui/Grid.js";
-import { Stepper } from "../../ui/Stepper.js";
+
 import { Timeline, TimelineItem } from "../../ui/Timeline.js";
 import { StatusPill } from "../../ui/StatusPill.js";
 import { Button } from "../../ui/Button.js";
@@ -252,25 +252,6 @@ function GridDemo(): React.ReactElement {
           : "Arrow keys move; Enter opens a cell."}
       </p>
     </div>
-  );
-}
-
-function StepperDemo(): React.ReactElement {
-  const steps = [
-    { id: "source", label: "Source" },
-    { id: "basics", label: "Basics" },
-    { id: "catalog", label: "Catalog" },
-    { id: "defaults", label: "Defaults" },
-    { id: "review", label: "Review" },
-  ];
-  const [current, setCurrent] = React.useState("catalog");
-  return (
-    <Stepper
-      steps={steps}
-      current={current}
-      onStep={setCurrent}
-      label="New product steps"
-    />
   );
 }
 
@@ -583,13 +564,5 @@ export const stories: Story[] = [
     description:
       "One tab stop; arrows, Home/End, Ctrl+Home/End; Enter opens the cell drawer; each cell's name is a sentence.",
     render: () => <GridDemo />,
-  },
-  {
-    id: "stepper",
-    group: "Data display",
-    title: "Stepper",
-    description:
-      "Completed steps go back; future steps are disabled with a reason.",
-    render: () => <StepperDemo />,
   },
 ];

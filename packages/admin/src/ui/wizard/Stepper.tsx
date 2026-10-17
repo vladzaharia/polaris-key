@@ -1,0 +1,255 @@
+import * as React from "react";
+import { Check, ChevronDown, Minus } from "lucide-react";
+import { cn } from "../../lib/cn.js";
+import { useChangedSinceMount } from "../motion/changed.js";
+import { setMeter } from "../motion/index.js";
+import { STEP_WORDS, type WizardStep } from "./model.js";
+
+/**
+ * The line between two steps (MO-09): an accent fill over the track that grows from the start
+ * (`pk-meter-fill`, transform only) when the step before it is done, and drains when the wizard
+ * goes back. Set before the first paint, so a wizard opens at rest.
+ */
+function Connector({ filled }: { filled: boolean }): React.ReactElement {
+  const fill = React.useRef<HTMLSpanElement>(null);
+  React.useLayoutEffect(() => setMeter(fill.current, filled ? 1 : 0), [filled]);
+  return (
+    <span
+      aria-hidden
+      data-filled={filled || undefined}
+      className="relative h-px w-6 shrink-0 overflow-hidden bg-border-strong"
+    >
+      <span ref={fill} className="pk-meter-fill absolute inset-0 bg-accent" />
+    </span>
+  );
+}
+
+export interface StepperProps {
+  steps: readonly WizardStep[];
+  current: string;
+  /** Steps done. Default: every step before `current`. */
+  done?: readonly string[];
+  /** Steps the operator skipped: they read "Skipped" and stay reachable. */
+  skipped?: readonly string[];
+  /** Go back to a done or skipped step. Without it those steps are plain text. */
+  onStep?: (id: string) => void;
+  label?: string;
+  /**
+   * `list`: one row on wide screens, the current step with "Step n of m" and a list on phones.
+   * `segments` (a drawer): a row of segments under the title.
+   */
+  variant?: "list" | "segments";
+  className?: string;
+}
+
+/**
+ * The wizard's step list (SETUP.md §1.1). An `ol`; the current step has `aria-current="step"`.
+ * Done steps are buttons that go back to them and say what was decided; future steps are disabled,
+ * with the reason ("Complete Basics first") in their accessible description. Below 640 px the list
+ * collapses to the current step ("Step 2 of 5 · Basics") and opens on tap.
+ *
+ * Motion (MO-09): the connectors fill as steps complete, and the new current step's marker pops
+ * (`pk-pop-in`) when the step changes, never on first render. Under reduced motion both are
+ * instant swaps.
+ */
+export function Stepper({
+  steps,
+  current,
+  done: doneProp,
+  skipped: skippedProp,
+  onStep,
+  label = "Steps",
+  variant = "list",
+  className,
+}: StepperProps): React.ReactElement {
+  const uid = React.useId();
+  const [open, setOpen] = React.useState(false);
+  const currentIndex = steps.findIndex((s) => s.id === current);
+  const skipped = new Set(skippedProp ?? []);
+  const done = new Set(
+    doneProp ?? steps.slice(0, Math.max(0, currentIndex)).map((s) => s.id),
+  );
+  const moved = useChangedSinceMount(current);
+  const segments = variant === "segments";
+  const here = steps[currentIndex];
+  const reached = (id: string) => done.has(id) || skipped.has(id);
+
+  return (
+    <nav aria-label={label} className={className}>
+      {segments ? null : (
+        <button
+          type="button"
+          aria-expanded={open}
+          aria-controls={`${uid}-list`}
+          onClick={() => setOpen((o) => !o)}
+          className="flex min-h-11 w-full items-center justify-between gap-2 rounded-md border border-border px-3 text-sm font-medium text-fg-strong sm:hidden"
+        >
+          <span>
+            Step {currentIndex + 1} of {steps.length}
+            {here ? ` · ${here.label}` : ""}
+          </span>
+          <ChevronDown
+            aria-hidden
+            className={cn("size-4 transition-transform", open && "rotate-180")}
+          />
+        </button>
+      )}
+      <ol
+        id={`${uid}-list`}
+        className={cn(
+          segments
+            ? "flex items-stretch gap-1"
+            : cn(
+                "mt-2 flex-col gap-y-1 sm:mt-0 sm:flex sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-2 sm:gap-y-2",
+                open ? "flex" : "hidden",
+              ),
+        )}
+      >
+        {steps.map((step, i) => {
+          const isCurrent = step.id === current;
+          const isSkipped = skipped.has(step.id) && !isCurrent;
+          const isDone = done.has(step.id) && !isCurrent && !isSkipped;
+          const blocker = steps
+            .slice(0, i)
+            .find((s) => !reached(s.id) && s.id !== current);
+          const reasonId = `${uid}-reason-${step.id}`;
+          const marker = (
+            <span
+              // A step that becomes current remounts its marker, so the pop runs once per change.
+              key={isCurrent ? "current" : "step"}
+              aria-hidden
+              className={cn(
+                "inline-flex size-6 shrink-0 items-center justify-center rounded-full border text-xs font-medium tabular-nums",
+                isCurrent && "border-accent bg-accent text-accent-on",
+                isCurrent && moved && "pk-pop-in",
+                isDone && "border-accent text-accent-fg",
+                isSkipped && "border-border-strong text-fg-muted",
+                !isCurrent &&
+                  !isDone &&
+                  !isSkipped &&
+                  "border-border-strong text-fg-muted",
+              )}
+            >
+              {isDone ? (
+                <Check className="size-3.5" />
+              ) : isSkipped ? (
+                <Minus className="size-3.5" />
+              ) : (
+                i + 1
+              )}
+            </span>
+          );
+          const text = (
+            <span className="flex min-w-0 flex-col text-left">
+              <span className="truncate">{step.label}</span>
+              {isDone && step.decided ? (
+                <small className="truncate text-xs font-normal text-fg-muted">
+                  {step.decided}
+                </small>
+              ) : isSkipped ? (
+                <small className="text-xs font-normal text-fg-muted">
+                  Skipped
+                </small>
+              ) : null}
+            </span>
+          );
+          if (segments) {
+            return (
+              <li key={step.id} className="min-w-0 flex-1">
+                <span
+                  aria-current={isCurrent ? "step" : undefined}
+                  className="flex flex-col gap-1"
+                >
+                  <span
+                    aria-hidden
+                    data-filled={reached(step.id) || isCurrent || undefined}
+                    className={cn(
+                      "h-1 rounded-full",
+                      reached(step.id) || isCurrent
+                        ? "bg-accent"
+                        : "bg-border-strong",
+                    )}
+                  />
+                  <span
+                    className={cn(
+                      "truncate text-xs",
+                      isCurrent
+                        ? "font-medium text-fg-strong"
+                        : "text-fg-muted",
+                    )}
+                  >
+                    {step.label}
+                  </span>
+                  <span className="sr-only">
+                    {isDone
+                      ? ` (${STEP_WORDS.done})`
+                      : isSkipped
+                        ? ` (${STEP_WORDS.skipped})`
+                        : ""}
+                  </span>
+                </span>
+              </li>
+            );
+          }
+          return (
+            <li key={step.id} className="flex items-center gap-2">
+              {i > 0 ? (
+                <span className="hidden sm:inline-flex">
+                  <Connector
+                    filled={
+                      i <= currentIndex ||
+                      (reached(steps[i - 1]!.id) &&
+                        steps[i - 1]!.id !== current)
+                    }
+                  />
+                </span>
+              ) : null}
+              {isCurrent ? (
+                <span
+                  aria-current="step"
+                  className="inline-flex min-h-8 items-center gap-2 text-sm font-medium text-fg-strong"
+                >
+                  {marker}
+                  {text}
+                </span>
+              ) : (isDone || isSkipped) && onStep ? (
+                <button
+                  type="button"
+                  onClick={() => onStep(step.id)}
+                  className="inline-flex min-h-8 items-center gap-2 rounded-md text-sm text-fg hover:text-fg-strong hover:underline"
+                >
+                  {marker}
+                  {text}
+                  <span className="sr-only">
+                    {` (${isSkipped ? STEP_WORDS.skipped : STEP_WORDS.done})`}
+                  </span>
+                </button>
+              ) : isDone || isSkipped ? (
+                <span className="inline-flex min-h-8 items-center gap-2 text-sm text-fg">
+                  {marker}
+                  {text}
+                  <span className="sr-only">
+                    {` (${isSkipped ? STEP_WORDS.skipped : STEP_WORDS.done})`}
+                  </span>
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  disabled
+                  aria-describedby={reasonId}
+                  className="inline-flex min-h-8 cursor-not-allowed items-center gap-2 text-sm text-fg-muted"
+                >
+                  {marker}
+                  {text}
+                  <span id={reasonId} className="sr-only">
+                    {`Complete ${(blocker ?? steps[Math.max(0, currentIndex)])?.label ?? "the previous step"} first`}
+                  </span>
+                </button>
+              )}
+            </li>
+          );
+        })}
+      </ol>
+    </nav>
+  );
+}

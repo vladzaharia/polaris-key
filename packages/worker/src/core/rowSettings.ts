@@ -94,6 +94,23 @@ export function isRowBacked(def: SettingDef): boolean {
   );
 }
 
+/**
+ * Operator-owned scalar keys the same routes serve (ST-39): no manifest path, so no claim and no
+ * resync. A write is `setting.update`, Revert is "reset to default".
+ */
+export const OPERATOR_ROW_KEYS: readonly string[] = ["core.setup"];
+
+/** Does the settings API serve `def`: a row-backed claimable key or an operator row key? */
+export function isRowServed(def: SettingDef): boolean {
+  return (
+    isRowBacked(def) ||
+    (def.scope === "product" &&
+      def.storage.kind === "scalar" &&
+      def.ownership === "operator" &&
+      OPERATOR_ROW_KEYS.includes(def.key))
+  );
+}
+
 /** The default `product` falls back to for `def` (S-18 §4.3 "absence means default"). */
 export function rowSettingDefault(
   def: SettingDef,
@@ -404,7 +421,7 @@ export async function writeRowSetting(
 ): Promise<RowSettingWriteResult> {
   const { view } = await readOne(ctx.db, product, def, now);
 
-  const claimed = claimsApply(product);
+  const claimed = claimsApply(product) && isRowBacked(def);
   const res = await writeSetting(
     ctx,
     {
@@ -467,14 +484,15 @@ export async function revertRowSetting(
       ok: false,
       status: 409,
       reason: "not_claimed",
-      message: claimsApply(product)
-        ? `${def.key} is not claimed: it already follows the manifest`
-        : `${def.key} is not set in the console: it already has its default`,
+      message:
+        claimsApply(product) && isRowBacked(def)
+          ? `${def.key} is not claimed: it already follows the manifest`
+          : `${def.key} is not set in the console: it already has its default`,
     };
 
   let restore: { value: unknown } | null = null;
   let applied = true;
-  if (claimsApply(product)) {
+  if (claimsApply(product) && isRowBacked(def)) {
     const snapshot = await getManifestSnapshot(ctx.db, product.slug);
     if (!snapshot) applied = false;
     else {
@@ -512,9 +530,10 @@ export async function revertRowSetting(
       ...(restore ? { restore: restore.value } : {}),
       audit: {
         action: "setting.revert",
-        summary: claimsApply(product)
-          ? `Reverted ${def.key} to the manifest: ${auditValue(view.value)} → ${after}`
-          : `Reset ${def.key} to its default: ${auditValue(view.value)} → ${after}`,
+        summary:
+          claimsApply(product) && isRowBacked(def)
+            ? `Reverted ${def.key} to the manifest: ${auditValue(view.value)} → ${after}`
+            : `Reset ${def.key} to its default: ${auditValue(view.value)} → ${after}`,
       },
     },
     {
