@@ -120,7 +120,7 @@ shortens the window: that would end base access offline.
 
 The signed greeting block — name, first name, email, activation time — so a client can render a
 personalised, tamper-proof welcome with no network. It tolerates an anonymous license (a keyless
-[enrollment](/docs/services/license/enrollment/)) by rendering empty strings rather than
+[enrollment](/docs/features/licensing/access/)) by rendering empty strings rather than
 special-casing the document shape.
 
 This is `DocProfile`, and it is **not** the reusable managed-payload profile a tier attaches.
@@ -149,7 +149,7 @@ Catalog-declared `flag` entries, plus the policy the server injects as **enforce
 | `deviceLimit`       | The tier's seat count. The same number the seat check enforces.      |
 
 Every injected entry is `state: "enforced"` and carries `updatedAt` from the license row's
-`modified_at`, which is what makes [re-licensing](/docs/services/license/relicensing/) detectable
+`modified_at`, which is what makes [re-licensing](/docs/features/licensing/relicensing/) detectable
 without changing the document's shape.
 
 The document carries **no secret material**. Entitlements are never sealed, which is the
@@ -279,7 +279,7 @@ row of the mint says so when it happens.
   and grace), §5 (transport and gate placement), §7 (offline bundles).
 - [Wire error codes](/docs/reference/error-codes/) — `version_blocked`, `channel_not_allowed`,
   `unauthorized`.
-- [Re-licensing](/docs/services/license/relicensing/) — how a tier change reaches a running
+- [Re-licensing](/docs/features/licensing/relicensing/) — how a tier change reaches a running
   client through this document.
-- [The license model](/docs/services/license/model/) — the merge order that produces
+- [The license model](/docs/features/licensing/model/) — the merge order that produces
   `entitlements`.

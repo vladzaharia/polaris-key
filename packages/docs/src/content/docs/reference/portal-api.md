@@ -122,14 +122,14 @@ A license's `origin` is `key`, `store-key`, `store`, `developer` or `signin`. Th
 
 The activate preview takes `{ "key": "<license key>" }`, rejects anything that isn't a license key shape with `422`, and returns a `verdict`.
 
-| Verdict          | Meaning                                                                      |
-| ---------------- | ---------------------------------------------------------------------------- |
+| Verdict          | Meaning                                                                        |
+| ---------------- | ------------------------------------------------------------------------------ |
 | `addable`        | The key can be added. Carries the license, platforms, device count, Cloud Sync |
-| `already_yours`  | Already in this account                                                      |
-| `license_owned`  | In another account. A license never moves by its key                          |
-| `email_mismatch` | Carries an email this account hasn't verified, masked in `maskedEmail`       |
-| `portal_off`     | The product manages this license elsewhere                                   |
-| `unknown`        | No such key, or no such product                                              |
+| `already_yours`  | Already in this account                                                        |
+| `license_owned`  | In another account. A license never moves by its key                           |
+| `email_mismatch` | Carries an email this account hasn't verified, masked in `maskedEmail`         |
+| `portal_off`     | The product manages this license elsewhere                                     |
+| `unknown`        | No such key, or no such product                                                |
 
 Every answer carries `product` (`null` for `unknown`, so a guess never reveals a product) and `keyEntries` (`{ used, limit }` on a product with Identity on, else `null`). Previewing writes nothing and never counts. The signed-out `key/preview` answers `{ product, verdict, license, keyEntries, upgrade }` with `upgrade` of `forced` or `skippable`, never an email or license id, and allows 10 per minute per network.
 
@@ -150,12 +150,12 @@ Email download takes `{ "platform": "macos" }` (one of `macos`, `ios`, `android`
 
 ## Sign in on another device
 
-| Method | Path                           | Who                | Purpose                                                  |
-| ------ | ------------------------------ | ------------------ | -------------------------------------------------------- |
-| `POST` | `/api/device-login/start`      | The new device     | Creates a request: a code, a QR code and a poll handle   |
-| `GET`  | `/api/device-login/<id>`       | The new device     | Polls; once approved, the answer signs this browser in   |
-| `POST` | `/api/device-login/lookup`     | The signed-in approver | Shows what is asking, reads only                     |
-| `POST` | `/api/device-login/approve`    | The signed-in approver | `{ code, decision: "approve" or "deny" }`             |
+| Method | Path                        | Who                    | Purpose                                                |
+| ------ | --------------------------- | ---------------------- | ------------------------------------------------------ |
+| `POST` | `/api/device-login/start`   | The new device         | Creates a request: a code, a QR code and a poll handle |
+| `GET`  | `/api/device-login/<id>`    | The new device         | Polls; once approved, the answer signs this browser in |
+| `POST` | `/api/device-login/lookup`  | The signed-in approver | Shows what is asking, reads only                       |
+| `POST` | `/api/device-login/approve` | The signed-in approver | `{ code, decision: "approve" or "deny" }`              |
 
 Start answers `201` with `id`, an 8-letter `code` from the consonant alphabet, a QR code of the approve link, `expiresIn` (300) and `interval` (3). It sets `__Host-pkey_device_login` to bind the request to this browser. Poll without that cookie, or for an unknown or expired request, is `410 expired`. Lookup and approve share 10 calls a minute per account. Approving from another country, or from an unknown place, needs a step-up. An approval is not a sign-in: the new session carries the approver's sign-in time, so it is never fresh enough for a step-up.
 

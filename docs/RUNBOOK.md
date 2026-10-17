@@ -8,19 +8,19 @@ DJDL onboarding, use [DEPLOYMENT.md](./DEPLOYMENT.md).
 
 ## Production shape
 
-| Item                 | Value                                                                                |
-| -------------------- | ------------------------------------------------------------------------------------ |
-| Cloudflare account   | `Polaris` / `07a2eb0d4916b220da1f9c1387b5f6d8`                                       |
-| Worker env           | `prod`                                                                               |
-| Public origin        | `https://key.plrs.im`                                                                |
-| Admin                | `https://key.plrs.im/manage`                                                         |
-| Customer portal      | `https://key.plrs.im`                                                                |
-| D1 database          | `polaris_key_prod`                                                                   |
-| KV namespace         | `POLARIS_HOT_prod`                                                                   |
-| PocketID issuer      | `https://id.plrs.im`                                                                 |
-| Platform admin group | `admins`                                                                             |
-| GitHub App           | `polaris-key`                                                                        |
-| Email sender         | `Polaris Key <noreply@auth.plrs.im>` (I-18; `noreply@plrs.im` until the switch-over) |
+| Item                 | Value                                          |
+| -------------------- | ---------------------------------------------- |
+| Cloudflare account   | `Polaris` / `07a2eb0d4916b220da1f9c1387b5f6d8` |
+| Worker env           | `prod`                                         |
+| Public origin        | `https://key.plrs.im`                          |
+| Admin                | `https://key.plrs.im/manage`                   |
+| Customer portal      | `https://key.plrs.im`                          |
+| D1 database          | `polaris_key_prod`                             |
+| KV namespace         | `POLARIS_HOT_prod`                             |
+| PocketID issuer      | `https://id.plrs.im`                           |
+| Platform admin group | `admins`                                       |
+| GitHub App           | `polaris-key`                                  |
+| Email sender         | `Polaris Key <noreply@auth.plrs.im>`           |
 
 Reserved platform routes:
 
@@ -63,8 +63,8 @@ U+0000 in a member name, two member names equal after NFC normalization, a numbe
 1e-307 to 1e308, more than 32 levels of nesting, or an integer claim that is not a safe
 integer), and its write paths refuse such values at write. Values stored before those checks
 existed are still in D1. One that trips the signer is pruned from the config document or
-turns that product's licence documents into `500 document_not_representable`, for v3 clients
-too (docs/research/2026-09-29-godot-omniplatform/program/plans/P3-01.md §2.2).
+turns that product's license documents into `500 document_not_representable`, for v3 clients
+too.
 
 **Before the first production deploy of a Worker that contains P3-12** (manual, or the `v*`
 tag that CI deploys, which does not run the check), and again after any manual D1 edit, run the check against production D1 from `packages/worker` (it needs the
@@ -81,17 +81,16 @@ keys are checked as the member names they become) and the two offline-day counts
 (`licenses.max_offline_days`, `products.default_max_offline_days`). It prints one `FLAGGED`
 line per value, naming the table, column, row key and JSON pointer, then exits 1. An
 offline-day count is `FLAGGED` when it makes `graceUntil` unsignable (about 1.04e11 days or
-more, below about −20 000 days, or not a number), because every licence and config document
+more, below about −20 000 days, or not a number), because every license and config document
 that uses it then answers `500 document_not_representable`. Fix every flagged value in the
-console (licence, tier, profile or product editors) or in the product's `.pkey/` manifest and
+console (license, tier, profile or product editors) or in the product's `.pkey/` manifest and
 resync, then run the check again until it exits 0. Do not deploy while it flags anything.
 `warning` lines do not block a deploy. They are any other offline-day count that is not an
 integer from 1 to 365, which the builders floor and sign, and a JSON column that does not
 parse, which the Worker ignores. Sealed secrets cannot be opened by the check; a flagged one
 is dropped from the config document at signing.
 
-The manifest validator does not yet bound `licensing.defaultMaxOfflineDays` (plans/P3-01.md
-§8 risk 13), so a resync can still store a product default the check flags. Until that rule
+The manifest validator does not yet bound `licensing.defaultMaxOfflineDays`, so a resync can still store a product default the check flags. Until that rule
 lands, run the check again after a resync that changes the default.
 
 `--local [--persist-to DIR]` runs the same check against a local D1 (miniflare), which is how
@@ -126,7 +125,7 @@ PLATFORM_ADMIN_GROUP=admins
 PLATFORM_OIDC_ISSUER=https://id.plrs.im
 PLATFORM_OIDC_CLIENT_ID
 PLATFORM_OIDC_CLIENT_SECRET
-ADMIN_OIDC_ISSUER=https://id.plrs.im   # the console's own client (I-03)
+ADMIN_OIDC_ISSUER=https://id.plrs.im   # the console's own client
 ADMIN_OIDC_CLIENT_ID
 ADMIN_OIDC_CLIENT_SECRET
 GITHUB_APP_ID
@@ -156,7 +155,7 @@ from "someone deleted all the products". Read the rotation procedure below befor
 Product secrets are not Worker secrets. Set them through the admin UI/API so they are sealed
 into `product_secrets`; values are write-only and never echoed back.
 
-### The console's Pocket ID client (I-03)
+### The console's Pocket ID client
 
 The console signs operators in through its own Pocket ID client, separate from the platform
 client that the customer portal and `provider: platform` products use.
@@ -183,7 +182,7 @@ client that the customer portal and `provider: platform` products use.
 - **Rolling back.** `wrangler secret delete ADMIN_OIDC_CLIENT_ID --env <env>` returns the console
   to the platform client, which then needs `/manage/callback` back in its callback URLs.
 
-### Who can use the console, and lockout recovery (ST-29)
+### Who can use the console, and lockout recovery
 
 Every console route checks one rule, `can()`, against the member's roles (Superadmin, Platform
 admin, Product admin, Console access). Today the only source of a role is the **root rule**:
@@ -203,7 +202,7 @@ revoked from the console or lost to a bad write.
 - **If `PLATFORM_ADMIN_GROUP` is unset or empty,** no one is a Superadmin and no one can sign in to
   the console (it fails closed). Set it and redeploy.
 
-### Moving end users off the platform IdP (I-17)
+### Moving end users off the platform IdP
 
 End users of `provider: platform` products, and customers who use **Continue with single sign-on**
 on the portal, still sign in through Pocket ID. They move to their Polaris Key account by **claim
@@ -226,7 +225,7 @@ change to `packages/worker/wrangler.toml` (`[env.<env>.vars]`) and a deploy.
   portal opens the email step's join offer (I-07's gate), which joins only after the person signs
   in to that account in the same browser and confirms. An app's sign-in page links to the portal
   for it. If two or more accounts use it, nothing is written or offered. A subject with no
-  verified email gets an account whose only method is the temporary one. The licences its
+  verified email gets an account whose only method is the temporary one. The licenses its
   sign-ins created attach to the account (platform products only, first attach only).
 - **One browser.** `/login` binds the single sign-on flow to the browser that started it
   (`__Host-pkey_sso`, ten minutes); a `/callback` opened anywhere else is refused with _We couldn't
@@ -249,9 +248,9 @@ change to `packages/worker/wrangler.toml` (`[env.<env>.vars]`) and a deploy.
   linked.withOtherMethod   ... with another way in: they keep access after the sunset
   linked.onlyMethod        ... whose only way in is the temporary method
   linked.onlyMethodRecent  ... of those, signed in through Pocket ID in the last 90 days
-  unlinked.subjects        subjects seen only on licences (licenses.sub) and not moved yet
-  unlinked.onAccount       ... with a licence already on an account (that account is the way in)
-  unlinked.withEmail       ... whose floating licence names an email (it attaches when that
+  unlinked.subjects        subjects seen only on licenses (licenses.sub) and not moved yet
+  unlinked.onAccount       ... with a license already on an account (that account is the way in)
+  unlinked.withEmail       ... whose floating license names an email (it attaches when that
                                address signs up)
   unlinked.emailLess       ... with nothing to go on
   emailLess                linked.onlyMethod + unlinked.emailLess: who loses sign-in at the sunset
@@ -286,7 +285,7 @@ change to `packages/worker/wrangler.toml` (`[env.<env>.vars]`) and a deploy.
 
 **Rolling back.** Set `PLATFORM_OIDC_MIGRATION = "off"` (or remove it) and deploy: every sign-in
 behaves as before I-17. Accounts and methods the claim made stay; they are ordinary accounts, and
-like every account one with no sign-in and no licence for 36 months gets the warning email and is
+like every account one with no sign-in and no license for 36 months gets the warning email and is
 then deleted (D23). Removing `PLATFORM_OIDC_SUNSET`, or moving it later, reopens the platform
 client to the people it had ended.
 
@@ -302,7 +301,7 @@ The owner signs off each step; the lead records the date and value here in the c
 | Go for `operators-only`                           | pending | pending |
 | End users removed from Pocket ID                  | pending | pending |
 
-### Platform store connections (A-16)
+### Platform store connections
 
 The team-level store credentials (App Store Connect API key, In-App Purchase key, Google Play
 service account, Partner Center app, Steam publisher key) and the shared store settings (Apple
@@ -421,7 +420,7 @@ Five classes of value are covered, and all five are counted and swept together:
 | `secrets`             | `product_secrets.enc_value_json` — per-product secrets                                                                                                |
 | `outletCredentials`   | `outlet_credentials.enc_value_json` — store credentials (App Store Connect, Google Play, Partner Center; P5-01)                                       |
 | `managed`             | catalog-declared managed secrets sealed inside `profiles.payload_json`, `licenses.overrides_json` and `account_overrides.payload_json` (R12-02, U-03) |
-| `platformCredentials` | `platform_credentials.enc_value_json` — team store credentials stored in the console (A-16)                                                           |
+| `platformCredentials` | `platform_credentials.enc_value_json` — team store credentials stored in the console                                                                  |
 
 ### Rotating PLATFORM_KEK
 
@@ -836,14 +835,14 @@ refuses every request if the pepper is missing or shorter than 32 characters; th
 silent production fallback, but it does **not** provide versioning or a dual-read window.
 
 Do **not** rotate this secret merely because its value leaked. It is useful to an attacker only
-with the corresponding D1/KV hashes. Licence keys have 128 random bits and device tokens 256, so
+with the corresponding D1/KV hashes. License keys have 128 random bits and device tokens 256, so
 the pepper does not make either practical to brute-force; the meaningful offline risk is
 low-entropy values such as email-derived limit keys and short-lived sign-in codes. Contain the
 data-access incident first: rotate Cloudflare credentials, audit D1/KV access, and let
 short-lived flows expire.
 
-There is no safe in-place rotation today. Changing the pepper invalidates device-token,
-licence-key, CI-token, registry-token, admin-API-token, portal-session and single-use-flow hashes. Licence-key
+There is no safe in-place rotation. Changing the pepper invalidates device-token,
+license-key, CI-token, registry-token, admin-API-token, portal-session and single-use-flow hashes. License-key
 plaintext is shown once and is not stored, so old keys cannot be re-hashed. A forced rotation is a
 planned, owner-approved platform-wide credential reissue, and it **replaces `ADMIN_SESSION_SECRET`
 in the same update**. Do not begin without a customer communication and recovery plan.
@@ -937,7 +936,7 @@ Forced reissue, in this order:
    `"revoked":false` means the store could not record the sign-out and the cookie still works:
    treat the environment as unverified and do not continue.
 
-6. **Reissue.** Sign in again, then mint and distribute replacement keys through each licence's
+6. **Reissue.** Sign in again, then mint and distribute replacement keys through each license's
    Keys API, have devices re-activate or sign in again, and reissue CI and registry tokens. Do this
    only now: a key minted earlier was hashed under the old pepper and would not match.
 
@@ -983,7 +982,7 @@ one bulk update, change GitHub, verify a new delivery, then delete `_PREVIOUS`.
 ### Compromised product signing key
 
 This is the product Ed25519 key held under `PLATFORM_KEK`, not a CI release key. It signs the
-product's licence, config, feed, trust and bundle documents; release records remain separately
+product's license, config, feed, trust and bundle documents; release records remain separately
 signed by CI. First determine whether one product key leaked or whether a Worker/KEK compromise
 requires the KEK procedure and rotation across every product.
 
@@ -1035,10 +1034,10 @@ curl -fsS https://key.plrs.im/djdl/appcast.xml >/dev/null
 Use the Releases view to inspect GitHub sync status, changed `.pkey/` paths, manifest
 validation errors, and release health. Use manual resync there when a webhook was missed.
 
-### Settings backfill (ST-01c, owner decision D19)
+### Settings backfill
 
 A one-off per product, run once the build that carries it is deployed. It moves each repository-
-linked product onto the settings claim model (notes/S-18 §4.14) by the owner's rule **"Revert all
+linked product onto the settings claim model by the owner's rule **"Revert all
 console values"**: every field and tier/profile row the product's `.pkey/` declares takes its
 manifest value and loses any console claim; tiers and profiles the manifest does not declare stay,
 marked as console rows, so no later resync deletes them. There is no per-value review and no
@@ -1116,12 +1115,12 @@ default services (License and Config) beside Release and Distribution, while the
 turns License and Config off, so the marker is reported `differs` and **kept**
 (`services_source = 'admin'`). To hand services to the manifest, switch License and Config off in
 the console (Services) and run the dry run and apply again: with equal services it resets the
-marker to `manifest`. Its name is never written (F-03).
+marker to `manifest`. Its name is never written.
 
 **`djdl`.** Expect no differences, or a few with `console-edit` evidence. Commit any value to keep
 to `vladzaharia/djdl`'s `.pkey/` first, then apply.
 
-**Every other product** (none today): `POST $BASE/platform/settings/backfill?dryRun=1` runs the
+**Every other product** (none): `POST $BASE/platform/settings/backfill?dryRun=1` runs the
 dry run for every product (20 per call; pass `after=<next>` while `next` is not null; each call
 answers its own `batchId`) and `GET $BASE/platform/settings/backfill` lists each product's newest
 report. Read every report in the batch, then
@@ -1129,7 +1128,7 @@ report. Read every report in the batch, then
 products that dry run covered, each pinned to its own report; a product that moved since answers
 `stale` and is not written.
 
-### Package feeds (F-02)
+### Package feeds: the registry host
 
 The feeds answer on the registry host, `pkg.plrs.im` (`pkg-staging`, `pkg-dev`), the same
 Worker on a third custom domain (DEPLOYMENT §3, "Registry host and feeds"). Check the host after
@@ -1152,8 +1151,7 @@ bytes the edge has cached for a year, because the access check runs before the c
 4. Distribution itself for the owner.
 
 Tightening a feed's or a deliverable's access mode away from `public` answers clients without a
-registry token `401` with their native challenge within the same window (see "Registry tokens
-(F-21)" below).
+registry token `401` with their native challenge within the same window (see "Registry tokens" below).
 
 **A missing or stale index object** heals itself: a read that misses renders the package from
 D1, writes it back under `registry/` and counts `registry.render_miss`. The cron's self-check
@@ -1164,10 +1162,10 @@ Bootstrapping the system product, turning an owner's feeds on, yanks and depreca
 rebuilds, the Swift signing-certificate rotation and the forward-only migration note follow with
 F-03, F-06 and F-11.
 
-### Registry tokens (F-21)
+### Registry tokens
 
 Clients of a non-public feed present a registry token (`pkeyr_…`): minted in the console
-(**Distribution → Package feeds → Tokens**, or a licence's **Keys** tab) or by a licensee in the
+(**Distribution → Package feeds → Tokens**, or a license's **Keys** tab) or by a licensee in the
 portal. Every token expires (at most 365 days). The store is `registry_tokens` (Core's).
 
 **Switching a feed's mode.** In the feed's **Settings → Access**. Leaving `public` answers every
@@ -1177,7 +1175,7 @@ first. Switching back to `public` reopens the feed within 30 seconds. A rollback
 than F-21 with a non-public feed refuses every read of that feed (it fails closed); switch the
 feed back to `public` to reopen it. The platform's own feeds stay `public`.
 
-**A leaked token.** Revoke it on the Tokens page (or the licence's panel); it stops within 30
+**A leaked token.** Revoke it on the Tokens page (or the license's panel); it stops within 30
 seconds on every isolate. If you cannot tell which token leaked, **Revoke all** on the Tokens page
 revokes every active token of the product, including licensee-minted ones; tell licensees to mint
 new ones in the portal. Revocations are audited (`registry_token.revoke`,
@@ -1291,24 +1289,23 @@ is updated in place. An older submit is refused (`revocation-stale`).
 
 **Effect on devices.** A revoked optional pack is unmounted and play continues. A revoked
 **required** pack with no usable replacement stops the boot (`blocked {revoked-content}`, boot
-`required`) until a replacement or an app update arrives. SDKs older than P4-13 ignore
+`required`) until a replacement or an app update arrives. SDKs older than the revocation build ignore
 revocations and keep mounting the revoked release until the host upgrades its SDK; the yank only
 stops new installs.
 
-### Do not roll back past P4-13 without the yank
+### Do not roll back past the revocation build without the yank
 
-A Worker rolled back to a build older than P4-13 does not read `release_revocations` and does not
+A Worker rolled back to a build older than the revocation build does not read `release_revocations` and does not
 list revocations in feeds. The `release_yanks` row that ingest writes is what keeps a revoked
 target out of an old Worker's sets: never delete those rows (reason `revoked`) during a rollback,
 and never roll back the migration. Devices that already learned a revocation keep refusing the
-target. Every SDK release note must state that SDKs older than P4-13 keep using revoked content
+target. Every SDK release note must state that SDKs older than the revocation build keep using revoked content
 until upgraded.
 
-### Package feeds (F-03)
+### Package feeds: bootstrap and day-to-day
 
-Package feeds serve versions of `kind: package` deliverables (our SDKs among them) on
-`pkg.plrs.im`. F-03 ships the data side; the registry host (F-02), the ecosystem renderers (F-04
-to F-09) and the console pages (F-11) follow.
+Package feeds serve versions of `kind: package` deliverables (the SDKs among them) on
+`pkg.plrs.im`. The registry host, the ecosystem renderers and the console pages sit on top of it.
 
 - **Bootstrap the system product** after deploying F-03, in each environment (dev, staging,
   production), as a platform admin:
@@ -1326,7 +1323,7 @@ to F-09) and the console pages (F-11) follow.
 - **Publish:** CI runs `pkey release publish --deliverable <package id>`, which always dry-runs
   first; a Worker older than F-03 is reported as such and nothing is uploaded.
 
-### Releasing our SDKs to the feeds (F-10)
+### Releasing the SDKs to the feeds
 
 Every SDK this repository ships is a package deliverable of the system product, declared in the
 root `.pkey/release`, and is published only to its feed on `pkg.plrs.im` (owner decision
@@ -1363,7 +1360,7 @@ nothing to bump and no per-SDK tag:
   dist-tag and the image's tag included), naming each package that is behind. A failed publish
   shows up here too; rerun the failed jobs, then the drift job. npm's `latest` must be a stable
   release: a prerelease there (no stable release yet) fails a `main` or `beta` build's check.
-- **npm order and closure (P0-52):** the npm packages pin each other exactly, so they publish in
+- **npm order and closure:** the npm packages pin each other exactly, so they publish in
   six tiers (`npm-tier-0` … `npm-tier-5`), each needing the one below, and `publish-package.yml`
   publishes an npm package only once the feed lists every `@polaris-key` version it pins
   (`tools/feed-closure.mjs requires`, waiting up to ten minutes for the render queue). The drift
@@ -1434,7 +1431,7 @@ Owner request 2026-10-06. These decisions were made by the lead under delegated 
   publish retries it, because each run prunes every remaining candidate. The backfill below also
   retries it. Every statement is idempotent, so running it twice is harmless.
 - **The setting.** `release.packages.prunePrereleases` (settings registry; table
-  `release_package_retention`) is ON by default for every product (F-36), after a one-time
+  `release_package_retention`) is ON by default for every product, after a one-time
   dry-run notice. The Release cron (every 15 minutes), or the product's first stable publish,
   records the notice (`release_package_retention_notices`: what a dry run found, and
   `starts_at`, a week later; one `package.prune.notice` audit row). Nothing is deleted before
@@ -1491,7 +1488,7 @@ Owner request 2026-10-06. These decisions were made by the lead under delegated 
   release that a feed still lists (`::warning::`). It never fails the job. A warning means the
   automatic prune did not run or failed: check the audit for `package.prune.failed`, then run the
   backfill.
-- **The backstop after each stable tag (P0-48).** `publish-sdks.yml`'s `prune` job runs the same
+- **The backstop after each stable tag.** `publish-sdks.yml`'s `prune` job runs the same
   backfill for `polaris-key` once a stable `vX.Y.Z` tag's publish jobs and drift check have all
   passed. It dry-runs first (the output goes to the log and the job summary), refuses to go on if
   the plan holds anything but builds of main (`X-main.N`, `X.devN`), and only then runs
@@ -1525,7 +1522,7 @@ CODE back is safe. Rolling the SCHEMA back past it (recreating the old `CHECK (k
 of kind `package`. Package versions are meant to be unique forever, so do this only for an
 environment that is being abandoned.
 
-### Content keys (delegation, P4-19)
+### Content keys (delegation)
 
 A content key may sign data-only pack releases (`files.tree`, `data.json`, `l10n.table`) of
 compatible or standalone packs under one pack-id scope, inside a window of at most 366 days. The
@@ -1604,7 +1601,7 @@ login card then offers another sign-in method.
 Until the owner steps below are done the Worker keeps sending from `noreply@plrs.im`
 (`EMAIL_SENDER_ADDRESS` unset in prod) and staging answers `email_unavailable`.
 
-### Owner setup (DNS and Apple; agents never touch either)
+### Owner setup (DNS and Apple)
 
 1. **Onboard the subdomain on Email Sending.** Cloudflare dashboard → Compute → Email Service →
    Email Sending → Onboard Domain → `auth.plrs.im` → Add records and onboard (or
@@ -1712,10 +1709,10 @@ in once afterwards. There is nothing to migrate.
 minutes and sees nothing different; waiting is the fix. The limits are in
 `src/core/notify/emailLimits.ts`.
 
-### Publish Polaris Key's terms (I-33)
+### Publish Polaris Key's terms
 
 `identity.platformTerms` is unset, so no new account is asked to accept Polaris Key's terms and
-nothing is recorded (plans/I-27.md Q2: `docs/legal/` holds drafts that must not be published). It
+nothing is recorded (`docs/legal/` holds drafts that must not be published). It
 is an owner step, and it waits for four things:
 
 1. the owner's legal review of the terms and the privacy notice, and both published at https URLs;
@@ -1758,7 +1755,7 @@ not available_ and the rest of the card works as before.
 | staging     | `https://key-staging.plrs.im` | `https://key-staging.plrs.im/login/<provider>/callback` |
 | dev         | `https://key-dev.plrs.im`     | `https://key-dev.plrs.im/login/<provider>/callback`     |
 
-### Owner setup (consoles and secrets; agents never touch either)
+### Owner setup (consoles and secrets)
 
 1. **Google OAuth client.** Google Cloud console → a Polaris Key project → Google Auth Platform:
    - **Branding:** app name `Polaris Key`, a support email, the logo, home page
@@ -1842,16 +1839,15 @@ not available_ and the rest of the card works as before.
   isolate. A sign-in that answers _… sign-in is unavailable right now_ is the provider's endpoint
   failing, or answering with a host outside the allowlist (`providers/net.ts`).
 
-## Licence override migration
+## License override migration
 
-The licence-level config override layer is removed on every product and replaced by the
-**account override**: managed config an operator sets for one account on one product (notes/S-17
-§5.12; owner decisions 3, 4, 20 and 21). Devices get the layer of the account signed in on them,
-else of their licence's owner; a floating licence gets none. Entitlement overrides stay on the
-licence. Operators edit the layer on a user's record (Users → a user → Overview), or with
+The license-level config override layer is removed on every product and replaced by the
+**account override**: managed config an operator sets for one account on one product. Devices get the layer of the account signed in on them,
+else of their license's owner; a floating license gets none. Entitlement overrides stay on the
+license. Operators edit the layer on a user's record (Users → a user → Overview), or with
 `PUT /manage/api/products/<slug>/users/<subject>/overrides`.
 
-Until the migration runs, both layers are read (the account layer above the licence's) and every
+Until the migration runs, both layers are read (the account layer above the license's) and every
 document is byte-identical to before: the account layer is empty until someone writes one. The
 migration is **one platform-wide run that the owner schedules**. Nothing in the Worker starts it;
 it stays off until the steps below are taken by hand, in order. Agents never run any of it against
@@ -1860,7 +1856,7 @@ staging or production, and never run `wrangler` against a remote.
 **Owner steps (production).**
 
 1. **Deploy.** The `account_overrides` migration ships with the release that carries U-03 and is
-   applied by the normal deploy. Every licence keeps working unchanged.
+   applied by the normal deploy. Every license keeps working unchanged.
 2. **Dry run on a production-shaped copy.** Either in the console (Platform → Override migration →
    Dry run), which writes nothing, or offline, with no Worker and no KEK:
 
@@ -1870,29 +1866,29 @@ staging or production, and never run `wrangler` against a remote.
    ```
 
    `ovm-dry/` then holds `inventory.json`, `report.json` and `report.csv`: per product, every
-   licence carrying config or secret overrides, whether it moves to its owner's account overrides
-   (`moved`), loses values to another licence of the same owner (`collapsed`, with the kept and
+   license carrying config or secret overrides, whether it moves to its owner's account overrides
+   (`moved`), loses values to another license of the same owner (`collapsed`, with the kept and
    lost values), or is dropped (`dropped`: no account). Secret values are never in any of them
    (names only). The tool loads the copy into memory and fails if the dry run changed anything.
    Delete `prod.sql` afterwards: it holds customer data.
 
-3. **Flag the prerequisites** once the login card (I-07) **and** the portal Library with Activate
-   License (I-11) are live in production (decision 21: customers must be able to add their
-   licence to an account during the notice). Platform → Override migration → flag each, or
+3. **Flag the prerequisites** once the login card **and** the portal Library with Activate
+   License are live in production (decision 21: customers must be able to add their
+   license to an account during the notice). Platform → Override migration → flag each, or
    `PUT /manage/api/platform/override-migration/prerequisites` with `{"loginCard":true,"library":true}`.
    The notice is refused until both are set.
 
-   **Before the notice: OIDC-provisioned secrets on licences with no account (decision 4).** A
+   **Before the notice: OIDC-provisioned secrets on licenses with no account (decision 4).** A
    product whose Identity provisioning writes a secret from a sign-in claim (djdl's
-   `proxy.subscriptionUrl`) keeps that secret on the licence until the run; from the run on, its
-   only target is the licence owner's account overrides. So **OIDC licences that are not in an
-   account** (no `account_id`: the customer never added the licence in the portal Library, and
+   `proxy.subscriptionUrl`) keeps that secret on the license until the run; from the run on, its
+   only target is the license owner's account overrides. So **OIDC licenses that are not in an
+   account** (no `account_id`: the customer never added the license in the portal Library, and
    LX-26's auto-attach never matched a verified email) **stop receiving provisioned secrets**:
    from the run's start, every sign-in (`updateLicenseOnSignIn`, and `activateFromIdentity`'s
-   claim and new-licence paths in `services/identity/oidc.ts`) removes them from the licence
-   instead of renewing them, and from the run's completion the licence stops delivering any it
+   claim and new-license paths in `services/identity/oidc.ts`) removes them from the license
+   instead of renewing them, and from the run's completion the license stops delivering any it
    still holds. A sign-in during the run can strip the secret before the run reaches the product,
-   so such a licence may then be missing from the report: count them from the dry run, before the
+   so such a license may then be missing from the report: count them from the dry run, before the
    notice. They are the `dropped` rows whose `keys.secrets` include a key the provisioning
    declares:
 
@@ -1900,37 +1896,37 @@ staging or production, and never run `wrangler` against a remote.
    jq '[.[] | select(.outcome == "dropped" and (.keys.secrets | index("proxy.subscriptionUrl")))] | length' ovm-dry/report.json
    ```
 
-   In the console, the product's licence list under Platform → Override migration shows the same
-   licences with their `secretKeys`. Ask those customers to add the licence to their account
+   In the console, the product's license list under Platform → Override migration shows the same
+   licenses with their `secretKeys`. Ask those customers to add the license to their account
    during the notice: one that does keeps the secret through the owner line.
 
 4. **Start the notice** (`POST …/override-migration/notice`). The run becomes possible 30 days
    later (`runNotBefore`). During the window the inventory is recomputed nightly, so the count to
    be dropped falls as customers attach; the console shows it on every affected product's
-   Licenses page. Operators can ask those customers to add the licence to their account (the
-   licence page offers the portal's Activate License link). Withdraw with
+   Licenses page. Operators can ask those customers to add the license to their account (the
+   license page offers the portal's Activate License link). Withdraw with
    `DELETE …/override-migration/notice` if needed; a new notice starts a fresh 30 days.
 5. **Run it** on or after the run date: sign in to the console again (the run needs a sign-in from
    the last 5 minutes), then Platform → Override migration → Run, or
    `POST /manage/api/platform/override-migration/run`, repeated while `progress.done` is false
    (each call processes up to 25 products). From the first call,
    `PUT …/licenses/<id>/overrides` refuses config and secrets (entitlements stay writable) and the
-   OIDC provisioning writer targets the owner's account overrides; an OIDC licence with no account
+   OIDC provisioning writer targets the owner's account overrides; an OIDC license with no account
    stops receiving its provisioned secrets from here on (see before step 4). When `done` is true,
-   documents stop reading config and secrets from licences. Each licence touched has an audit row
+   documents stop reading config and secrets from licenses. Each license touched has an audit row
    (`license.overrides.migrated` or `license.overrides.dropped`), and the platform activity log
    has the start and the completion.
 6. **The report** (Platform → Override migration → Report, or
    `GET …/override-migration/report?format=csv[&product=<slug>]`) stays 90 days; use it to
    re-apply a dropped or lost value by hand once the customer has an account. Secret values are
    never in it: re-enter those from the source.
-7. **After 90 days** the nightly job deletes the report and empties the licences' config and
+7. **After 90 days** the nightly job deletes the report and empties the licenses' config and
    secrets columns (entitlements kept). Nothing to do.
 
-**Rolling back.** Before step 5 nothing changed. Between the run and the 90-day mark the licences
+**Rolling back.** Before step 5 nothing changed. Between the run and the 90-day mark the licenses
 still hold their old config and secrets, so a Worker built before U-03 would deliver them again
-(the account rows it ignores); a dropped licence's values come back that way too. **Do not roll
-back past U-03 once the columns are emptied:** the licence values are gone, and only the account
+(the account rows it ignores); a dropped license's values come back that way too. **Do not roll
+back past U-03 once the columns are emptied:** the license values are gone, and only the account
 rows (which an older Worker does not read) hold them.
 
 **KEK rotation** covers the account rows: their sealed secrets are counted and re-sealed by the
@@ -1938,17 +1934,17 @@ rows (which an older Worker does not read) hold them.
 
 ## Offline grace clamp
 
-A licence's offline grace no longer outlasts the licence (S-19 G9, decision 7). While a product's
-`licensing.clampGraceToExpiry` is on (the default), every document a licence grants (the licence
+A license's offline grace no longer outlasts the license (S-19 G9, decision 7). While a product's
+`licensing.clampGraceToExpiry` is on (the default), every document a license grants (the license
 document, the config document of a device bound to it, an offline bundle's inner documents, the
 browser-session document) has `graceUntil = min(issuedAt + maxOfflineDays × 86 400,
-max(expires_at, expiresAt))`. A perpetual licence, and one whose expiry lies past its window, is
+max(expires_at, expiresAt))`. A perpetual license, and one whose expiry lies past its window, is
 unchanged; a grant's own expiry never shortens the window. The opt-out is per product: License →
 Settings → **Clamp offline grace to expiry** off (a reason is required), or
 `clampGraceToExpiry: false` under `licensing:` in `.pkey/product`.
 
 **Owner steps (production), before the release that carries LX-07.** The clamp is on for every
-product the moment that release is deployed, so read the affected-licence report first. Agents
+product the moment that release is deployed, so read the affected-license report first. Agents
 never run any of this against staging or production, and never run `wrangler` against a remote.
 
 1. **Report on a production-shaped copy**, offline, with no Worker and no KEK:
@@ -1962,21 +1958,21 @@ never run any of this against staging or production, and never run `wrangler` ag
 
    `grace-report/` then holds `report.json` and `report.csv`: per product, whether License is on,
    the clamp's state and where it comes from (`default`, `manifest` or `console`), and every
-   usable licence that expires inside its offline window, with its expiry, its window, the window
-   it gets instead, the days removed and how many devices are authorised on it. Licence ids and
+   usable license that expires inside its offline window, with its expiry, its window, the window
+   it gets instead, the days removed and how many devices are authorised on it. License ids and
    counts only: no name, email or key. The tool loads the copy into memory and fails if the report
    changed anything. Delete `prod.sql` afterwards: it holds customer data.
 
-2. **Opt out where the full window must stay** (a product whose licences are routinely renewed
+2. **Opt out where the full window must stay** (a product whose licenses are routinely renewed
    after they lapse, say). The setting exists since LX-06 and does nothing until this release, so
    the opt-out can be set before the deploy. If LX-06 ships in the same release, set it right after
    the deploy: an online device picks up the clamped window at its next document fetch (within the
    hour), an offline one only when it next reconnects.
 3. **Deploy.** Nothing else to do; there is no migration.
 
-**After the deploy.** A licence that is renewed (its `expires_at` moved later) gets its full window
-back at the next full fetch (within the hour while online; a `304` keeps the copy it has). A licence that expires within the hour gets documents that end with their
-ordinary hour of validity, which every verifier requires. An offline bundle minted for a licence
+**After the deploy.** A license that is renewed (its `expires_at` moved later) gets its full window
+back at the next full fetch (within the hour while online; a `304` keeps the copy it has). A license that expires within the hour gets documents that end with their
+ordinary hour of validity, which every verifier requires. An offline bundle minted for a license
 that expires inside `graceDays` is clamped the same way, and its `bundle.minted` audit row says so.
 
 **Rolling back.** Turn the setting off per product (no deploy; devices get the full window at their
@@ -1984,25 +1980,25 @@ next fetch), or redeploy the previous Worker.
 
 ## Licensing model expand
 
-The licensing model (S-19 model OC, plans/LX-01.md) adds **grants**: reasons a holder (a licence,
-an account or a store identity) has entitlements. LX-08 is the expand step only (S-19 §7.14 steps
-1–4). Every licence and device document stays **byte-identical**, ETag included, and every read
+The licensing model adds **grants**: reasons a holder (a license,
+an account or a store identity) has entitlements. This release is the expand step only (steps
+1–4). Every license and device document stays **byte-identical**, ETag included, and every read
 stays on the old objects until LX-09. Three things change underneath:
 
 - **Store grants are dual-written.** Every store purchase in `license_store_grants` also has one
-  licence-held grant, `grt_s_<store>_<purchase key hash>` (`grants`, `grant_entitlements`,
+  license-held grant, `grt_s_<store>_<purchase key hash>` (`grants`, `grant_entitlements`,
   `dist_purchases.grant_id`), and every store mapping has its entitlement rows
   (`dist_store_product_entitlements`). The new rows are a projection of the old ones and are
   written in the same batch, so they cannot drift.
-- **OIDC-provisioned entitlement keys move** out of `licenses.overrides_json` into the licence's
+- **OIDC-provisioned entitlement keys move** out of `licenses.overrides_json` into the license's
   `oidc` grant, `grt_oidc_<license id>` (djdl's `polarisVpn`). Each entry's state, value and
-  `updatedAt` is copied, and the licence document reads the grant where the keys used to sit. A
-  sign-in moves its own licence. Provisioned **secrets** are not touched: they stay a licence
+  `updatedAt` is copied, and the license document reads the grant where the keys used to sit. A
+  sign-in moves its own license. Provisioned **secrets** are not touched: they stay a license
   override until the U-03 run, and then go to the owner's account overrides (U-03).
 - **Tiers gain `rank` and `policyOfflineGraceDays`** (default 0 and none). A sign-in whose
   groups map to several tiers picks the highest-ranked one. While every rank is 0 that is still
   the first match, so nothing changes until a rank is set. `oidc.syncTierOnSignIn: upgradeOnly`
-  (off by default) moves an existing licence to a higher-ranked tier at sign-in.
+  (off by default) moves an existing license to a higher-ranked tier at sign-in.
 
 **Owner steps (production).** Agents never run any of this against staging or production.
 
@@ -2017,18 +2013,18 @@ stays on the old objects until LX-09. Three things change underneath:
    until nothing is left (`src/core/licensing/licensingCatchUp.ts`). Each pass does two things:
    - it re-projects the store grants and mappings, which picks up what the old Worker wrote
      between the migration and the deploy;
-   - it moves the provisioned keys of licences that have not signed in since. That is the job
-     `licensing.migrateProvisioned` in plans/LX-01.md §6.2.
+   - it moves the provisioned keys of licenses that have not signed in since. That is the job
+     `licensing.migrateProvisioned`.
 
    The hook runs its pass after it has answered (its answer says `licensing: {scheduled: true}`),
    so a pass cut short never fails or replays the deploy. Check the outcome in the console under
    Platform → Activity: the row "ran the licensing catch-up" (`licensing.catch_up`) carries
    `{products, failed, provisioned: {moved, deferred, raced, more}}`. `failed` should be empty.
-   `more: true` means the nightly pass finishes the work. Only OIDC licences move: on any other
-   licence a provisioned key is an operator's override and stays in the column.
+   `more: true` means the nightly pass finishes the work. Only OIDC licenses move: on any other
+   license a provisioned key is an operator's override and stays in the column.
 
-   A licence is **deferred** when moving it would reorder the keys in its document. That happens
-   when an operator added an override key after the licence's last sign-in. A deferred licence is
+   A license is **deferred** when moving it would reorder the keys in its document. That happens
+   when an operator added an override key after the license's last sign-in. A deferred license is
    left exactly as it is, and its next sign-in moves it, as every sign-in rewrites the document
    anyway.
 
@@ -2046,7 +2042,7 @@ npx wrangler d1 execute polaris_key_prod --env prod --remote \
   --file packages/worker/scripts/rollback/0105_licensing.down.sql
 ```
 
-It appends each grant's keys after the licence's other keys, where LX-02's writer kept them, so
+It appends each grant's keys after the license's other keys, where LX-02's writer kept them, so
 the old Worker's documents are the LX-08 Worker's byte for byte. It then deletes the copied keys
 from the `oidc` grants, and the grants they empty, so the column is their only source again. Without
 that step, a key the old Worker revoked (its claim disappeared at a sign-in) would come back when
@@ -2145,8 +2141,8 @@ An account on the ledger is refused from the moment a restore lands, before the 
   links answer `404`;
 - package-registry tokens a person minted from the portal resolve to nothing, as a revoked token
   does;
-- devices bound to the account cannot attach a licence or read its subject; joining, linking,
-  undoing a join and relinking a licence to it are refused.
+- devices bound to the account cannot attach a license or read its subject; joining, linking,
+  undoing a join and relinking a license to it are refused.
 
 **It fails closed.** With `BLOBS` unbound or R2 failing, nothing is let through for an account: the
 portal API answers `503 unavailable` (the browser keeps its cookie and retries), sign-in is refused,
@@ -2246,7 +2242,7 @@ clears no portal cookie and ends no product browser session; it only refuses unt
 ## Release-file mirroring
 
 Polaris Key keeps its own copy of every app-release file whose bytes live only on GitHub or at an
-external URL, so downloads are served from R2 and GitHub stays the fallback (notes/S-20 §6.8).
+external URL, so downloads are served from R2 and GitHub stays the fallback.
 A truth-store sync (the GitHub `release` webhook), a resync and a descriptor ingest queue the
 files that owe a copy to `pkey-assets-<env>`; the request Worker consumes them
 (`services/release/mirror.ts`). A copy is promoted only when its bytes are GitHub's `digest` and
@@ -2315,7 +2311,7 @@ evidence for a Container tier, P4-17b). Setup is DEPLOYMENT §3 "Lazy deltas".
 - **The size cap.** `LAZY_DELTA_MAX_BYTES` in `wrangler.deltas.toml` (32 MiB) is the deploy-time
   value; Platform → Settings → Lazy delta size cap may only lower it (1 MiB to 32 MiB, the
   measured ceiling).
-- **Withdraw the menu (P4-29).** The channel feed lists a product's `ready` lazy deltas in its
+- **Withdraw the menu.** The channel feed lists a product's `ready` lazy deltas in its
   `deltas` member, and the blob route and the payload URL serve them, only while both switches
   are on. Either switch withdraws the menu at the next feed request (the feed's `seq` moves) and
   stops serving the frames at once; a device holding an older feed gets a 404 for a listed delta
@@ -2335,7 +2331,7 @@ evidence for a Container tier, P4-17b). Setup is DEPLOYMENT §3 "Lazy deltas".
   and expire after 4 days. Alert on its depth (`npx wrangler queues info pkey-deltas-dlq-<env>`);
   a growing DLQ means the consumer is throwing (read its logs: `npx wrangler tail
 polaris-key-deltas-<env>`).
-- **Live checks after the first deploy** (notes/S-08 §8.6): one pair at the 32 MiB cap, watching
+- **Live checks after the first deploy**: one pair at the 32 MiB cap, watching
   the consumer's logs for Error 1102 or "exceeded resource limits"; the consumer's reported CPU
   ms; the R2 event-to-consumer latency; and a re-PUT of the same object producing one delta.
 

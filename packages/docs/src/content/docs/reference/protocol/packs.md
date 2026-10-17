@@ -104,7 +104,7 @@ strategy. A first install stays `full` and then keeps its index as a seed.
 
 `plan-matrix.json` pins the install planner, variant selection and target mapping beside it
 (spec §11.4). How the blobs are kept and regenerated is on
-[The conformance corpus](/docs/contribute/corpus/).
+[The conformance corpus](/docs/reference/protocol/corpus/).
 
 ## Content in the feed and revocations
 

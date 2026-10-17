@@ -8,7 +8,7 @@ sidebar:
 ---
 
 `#/products` is the platform product registry — every product a session with platform-admin
-authority can see, which today is every product that exists. This page covers registering one,
+authority can see: every product. This page covers registering one,
 turning its services on and off, and the setup-health checklist the
 [Overview page](/docs/operate/console/tour/#core) and Home are built from. Resync, linking a
 repository and deleting are on [Product actions](/docs/operate/console/product-actions/).
@@ -59,7 +59,7 @@ sent. The slug is permanent: it is used in keys and URLs.
 
 **Advanced: license defaults** holds the per-license offline grace (1 to 365 days) and device
 limit. Leave either blank to use the platform default. A config catalog, the compatibility window
-([Update → Feed](/docs/admin/console-tour/#update)) and everything else are set up later from
+([Update → Feed](/docs/operate/console/tour/#update)) and everything else are set up later from
 Overview. The worker mints an Ed25519 signing key and an empty active catalog in one batch:
 **a product can never exist without a usable signing key**. No release row and no edge-mint row
 are created, because this path has no GitHub coordinates to hang them on.
@@ -82,13 +82,12 @@ When the link is refused, the screen shows what to do next:
 - **The manifest's slug is taken, reserved or malformed.** Change `product.slug` in
   `.pkey/product`, push, then press **Check again**. Linking registers new products only: if the
   slug is taken because this repository is already registered, open that product and resync it
-  instead (see [What resync actually re-applies](#what-resync-actually-re-applies)).
+  instead (see [What resync actually re-applies](/docs/operate/console/product-actions/#what-resync-actually-re-applies)).
 
 Overview's welcome lists any **remaining secrets**. These are names the manifest declared that
 have no value yet, such as an OIDC client secret or an edge-mint signing key. A **Set _n_ missing
-secrets** link goes to [Secrets & keys](/docs/admin/secrets-and-keys/). Secrets are write-only
-and never echoed back. This is also the path DJDL uses in production; see [Operating: the KEK
-keyring](/docs/admin/kek/) → _Product operations_ for its specific checklist.
+secrets** link goes to [Keys & secrets](/docs/operate/console/keys-and-secrets/). Secrets are write-only
+and never echoed back.
 
 ### Reserved slugs
 
@@ -111,7 +110,7 @@ link-repo and resync), the slug check and manual create all apply the same shape
 
 ### The system product
 
-`polaris-key` is the platform's own product: it owns the platform packages (our SDKs and the
+`polaris-key` is the platform's own product: it owns the platform packages (the SDKs and the
 `pkey` image) on the package feeds. It is not a reserved slug — its `.pkey/` at the root of this
 repository is an ordinary manifest — but neither creation path makes it: manual create and
 link-repo both refuse the slug. Only the package-feeds bootstrap creates it, idempotently:
@@ -126,13 +125,13 @@ product, turns Release and Distribution on, turns its package feeds on and seeds
 ecosystem with the platform's namespaces (`@polaris-key`, `polaris-key`, `im.plrs.key`, the
 PyPI name `polaris-key`, the Godot publisher `polaris-key`; Swift releases must be signed). A
 second run creates nothing and leaves an operator's later feed settings alone. It is audited as
-`feed.bootstrap` in the [platform trail](/docs/admin/activity/#the-platform-trail) and answers
+`feed.bootstrap` in the [platform trail](/docs/operate/console/activity/#the-platform-trail) and answers
 `{ ok, slug, created }`; a product of that slug that is not the system product is refused (409,
 `slug_taken`).
 
 The system product cannot be deleted or renamed (409, `system_product`), and the console keeps it
 out of the product switcher and the Products list. It is always
-[manifest-authoritative](#manifest-authoritative-mode): its only manifest writer is the deploy hook,
+[manifest-authoritative](/docs/operate/console/product-actions/#manifest-authoritative-mode): its only manifest writer is the deploy hook,
 which every production deploy runs with the root `.pkey/` at the deployed commit.
 
 ### The `adminGroup` field is metadata, not a grant
@@ -141,7 +140,7 @@ Settings has no input for it: a product that has one shows it read-only, marked
 **Not enforced** (New product does not ask for it either). It's recorded on the
 product row and shown back to you, and it authorizes **nothing**: there is no
 per-product admin tier. The console authorizes every request on the platform-wide
-`PLATFORM_ADMIN_GROUP` alone (see [Operating: the KEK keyring](/docs/admin/kek/) → _Secrets_).
+`PLATFORM_ADMIN_GROUP` alone (a platform admin sets it).
 The field exists because a product's own OIDC configuration (`.pkey/product`'s `oidc.groupRoleMap`)
 often names a group with a similar-looking purpose for a _different_ system — that product's own
 customer-facing sign-in — and the two are hard to tell apart. If you're setting this to grant
@@ -156,30 +155,21 @@ Home's Needs attention list are all projections of one server-computed setup sta
 every product read rather than cached. It checks six
 things:
 
-| Module              | Healthy when                                                                                                                                                                                                       |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Signing key**     | An active signing key exists.                                                                                                                                                                                      |
-| **OIDC**            | Platform provider: `PLATFORM_OIDC_ISSUER`/`PLATFORM_OIDC_CLIENT_ID` are configured worker-wide. Custom provider: the product's own issuer, client id and client-secret product-secret are all set.                 |
-| **Release**         | (Linked products only) A GitHub repo, an installation id, and a binary name are all present.                                                                                                                       |
-| **Customer portal** | Always "configured" — this module reports its enabled/disabled state, not a completeness check.                                                                                                                    |
-| **Manifest sync**   | The most recent resync attempt didn't error.                                                                                                                                                                       |
-| **Edge mint**       | Every recipe's signing secret is set and marked usage `edge-mint`, and every recipe is [approved](/docs/services/config/edge-mint/#approving-a-recipe) as it stands (`needs-secret` / `needs-approval` otherwise). |
+| Module              | Healthy when                                                                                                                                                                                                               |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Signing key**     | An active signing key exists.                                                                                                                                                                                              |
+| **OIDC**            | Platform provider: `PLATFORM_OIDC_ISSUER`/`PLATFORM_OIDC_CLIENT_ID` are configured worker-wide. Custom provider: the product's own issuer, client id and client-secret product-secret are all set.                         |
+| **Release**         | (Linked products only) A GitHub repo, an installation id, and a binary name are all present.                                                                                                                               |
+| **Customer portal** | Always "configured" — this module reports its enabled/disabled state, not a completeness check.                                                                                                                            |
+| **Manifest sync**   | The most recent resync attempt didn't error.                                                                                                                                                                               |
+| **Edge mint**       | Every recipe's signing secret is set and marked usage `edge-mint`, and every recipe is [approved](/docs/features/managed-config/edge-mint/#approving-a-recipe) as it stands (`needs-secret` / `needs-approval` otherwise). |
 
 Anything incomplete surfaces two ways: as a plain-language entry in the "needs attention" strip,
 and as an actionable row in the checklist (a direct link to Secrets, Settings, or Releases,
 whichever fixes it). The **required secrets** list on
-[Secrets & keys](/docs/admin/secrets-and-keys/) is drawn from the same computation — a
+[Keys & secrets](/docs/operate/console/keys-and-secrets/) is drawn from the same computation — a
 product's OIDC and edge-mint configuration name which secrets it needs, and setup health checks
 whether each one is actually set.
-
-## Reference
-
-- [D1 data model](/docs/reference/data-model/) — the `products`, `product_keys` and
-  `product_secrets` columns this page describes.
-- [Manifest validation codes](/docs/reference/validation-codes/) — every code the `.pkey/`
-  validator can emit, including `reserved_slug`.
-- [Authoring the manifest](/docs/build/manifest/) — the `.pkey/` format both creation paths
-  validate against.
 
 ## Services & enablement
 
@@ -229,17 +219,6 @@ scripts still get the 404. Read
 [The service model](/docs/start/service-model/) for the four projections and the full coherence
 rule set this page's table is drawn from.
 
-## When Distribution was added
-
-Distribution was added after the other services were in production. Migration `0033`
-turned it on for every product that already had Release on — admin-owned rows included, because
-Distribution did not exist when the operator claimed the row, and every Release product already
-serves downloads that later move into Distribution. A product whose `.pkey/product` names the
-slugs `release` and `update` directly (rather than the legacy `releases` module) fails its next
-push with `update_requires_distribution` until the manifest adds `distribution: { enabled: true }`;
-the stored set keeps serving in the meantime. The **Distribution** nav section appears only while
-Distribution is on.
-
 ## Package feeds
 
 Under **Ship builds**, the **Packages** switch is Distribution's one sub-capability: whether the
@@ -248,13 +227,17 @@ it), blocked until Ship builds is on, and saves on its own, through
 `/manage/api/products/<slug>/distribution/package-feeds` (PUT) with `{enabled, expectedVersion}`; a
 stale version is a 409 and nothing changes. Turning it off asks first, because every feed of the
 product answers not-found within 30 seconds. While it is on, **Distribution → Package feeds** is in
-the sidebar: see [Package feeds](/docs/admin/feeds/).
+the sidebar: see [Package feeds](/docs/features/ship-builds/packages/).
 
 ## Reference
 
-- [D1 data model](/docs/reference/data-model/) — `products.services_json` and
-  `products.services_source`.
-- [The device principal](/docs/services/core/device-principal/) — the registration policies in
+- [D1 data model](/docs/reference/data-model/) — `products`, `product_keys` and `product_secrets`,
+  including `services_json` and `services_source`.
+- [Manifest validation codes](/docs/reference/validation-codes/) — every code the `.pkey/`
+  validator can emit, including `reserved_slug`.
+- [Authoring the manifest](/docs/build/manifest/) — the `.pkey/` format both creation paths
+  validate against.
+- [The device principal](/docs/reference/protocol/device-principal/) — the registration policies in
   full.
 - [Product actions](/docs/operate/console/product-actions/#what-resync-actually-re-applies) — how a resync interacts with
   an admin-claimed row.

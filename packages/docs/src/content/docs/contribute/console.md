@@ -105,5 +105,5 @@ mise exec node@22 -- pnpm --filter @polaris-key/admin build
 mise exec node@22 -- pnpm --filter @polaris-key/docs check:links
 ```
 
-Run the repository green gate before opening a PR. See [Setup](/docs/contribute/setup/) for the
+Run the repository green gate before opening a PR. See [Set up the repo](/docs/contribute/setup/) for the
 full command set.

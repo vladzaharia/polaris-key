@@ -24,7 +24,7 @@ Use this when you ship a new version, or you check what CI deploys and what gate
 - Before the deploy, `pnpm check:representable` exits 0. Do not deploy while it flags a value.
 - After the deploy, the smoke checks in **Deploy** answer: `/manage` loads and `/api/capabilities` returns JSON.
 - After a CI deploy, the workflow's own smoke check has read `/djdl/.well-known/jwks.json` and found a non-empty key set. That route needs D1, KV and the signing path, which `/manage` does not.
-- Run the acceptance checklist in [Deploying to production](/docs/operate/platform/deploy/) after the first deploy of a new environment.
+- Run the acceptance checklist in [Deploy Polaris Key](/docs/operate/platform/deploy/) after the first deploy of a new environment.
 
 ## Roll back
 

@@ -279,7 +279,7 @@ The bounds, in order:
   entries `{pack, from, to, strategy, bytes?, durationMs?, fallbackUsed?, failureStage?}`, where
   `from` and `to` are payload SHA-256s. A malformed entry is dropped, unknown fields are stripped
   and `failureStage` is cut to 128 characters. For a product whose operator opted into
-  [lazy deltas](/docs/services/release/packs/#lazy-deltas), each (pack, from, to) is counted once
+  [lazy deltas](/docs/features/ship-builds/packs/#lazy-deltas), each (pack, from, to) is counted once
   per device as demand; an entry whose strategy is `delta` is not demand. Counting touches D1
   only and fails open.
 - **Probes.** At most **32** entries. Each must be an object with a boolean `present`; anything
@@ -294,10 +294,8 @@ Clients treat this as best-effort and swallow errors: telemetry must never fail 
 
 ## See also
 
-- [Fingerprints](/docs/services/core/fingerprints/) — what a presented fingerprint contains and
+- [Fingerprints](/docs/features/licensing/fingerprints/) — what a presented fingerprint contains and
   how it is matched.
 - [Errors and limits](/docs/reference/protocol/errors/) — the wire error shapes and the rate-limit
   buckets.
-- [D1 data model](/docs/reference/data-model/) — the `devices`, `device_fingerprints`, and
-  `device_facts` columns.
 - [Public route table](/docs/reference/routes/) — every route with its owning service.

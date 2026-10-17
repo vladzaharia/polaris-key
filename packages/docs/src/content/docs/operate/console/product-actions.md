@@ -10,11 +10,11 @@ sidebar:
 The registry row menu opens the product's own pages rather than repeating their forms, so each
 setting has one form with one set of rules:
 
-| Action                                                        | What it does                                                                                                                                                       |
-| ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Open overview**, **Open settings**, **Open keys & secrets** | Go to that page of the product. Name and per-license defaults are edited in Settings; secrets and signing keys in [Secrets & keys](/docs/admin/secrets-and-keys/). |
-| **Resync from repo…**                                         | Repository-linked products only. Re-fetches `.pkey/` from the repo's default branch and re-applies it — see below. You confirm the consequences first.             |
-| **Delete product…** (also the Danger zone on Settings)        | Tombstones the product. See below.                                                                                                                                 |
+| Action                                                        | What it does                                                                                                                                                                 |
+| ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Open overview**, **Open settings**, **Open keys & secrets** | Go to that page of the product. Name and per-license defaults are edited in Settings; secrets and signing keys in [Keys & secrets](/docs/operate/console/keys-and-secrets/). |
+| **Resync from repo…**                                         | Repository-linked products only. Re-fetches `.pkey/` from the repo's default branch and re-applies it — see below. You confirm the consequences first.                       |
+| **Delete product…** (also the Danger zone on Settings)        | Tombstones the product. See below.                                                                                                                                           |
 
 ## What resync actually re-applies
 
@@ -90,10 +90,9 @@ console edit still claims them as before. They are not yet covered by the mode.
 **The system product** is manifest-authoritative always; the switch shows it locked, and the
 settings registry, not a stored value, fixes it (`core.manifest.authoritative`). Its manifest is the
 monorepo's root `.pkey/`, and its only manifest writer is the deploy hook (`/webhooks/deploy` (POST),
-called by `deploy.yml` with every production deploy at the deployed commit; see
-[Releasing](/docs/contribute/releasing/)): a push webhook for the platform repository and a console
+called by `deploy.yml` with every production deploy at the deployed commit): a push webhook for the platform repository and a console
 Resync of it are refused with "the system product is applied by the deploy hook", and Settings
-offers no Resync for it. Today the deploy hook applies the release configuration, the package
+offers no Resync for it. The deploy hook applies the release configuration, the package
 deliverables, the trusted publisher and each enabled service's manifest rows, plus the value of
 any field whose break-glass claim it ends. It does not yet apply the display name, the licence
 defaults, the web origins, the catalog or the admin group from `.pkey/`; applying every declared
@@ -133,7 +132,7 @@ Releases page before the first release. Both open the same drawer, and it works 
    manifest applied is always the one you read. Otherwise the product's source becomes the
    repository and the manifest is applied by the same code as **Resync from repo**. The signing
    key is not touched. Secrets the manifest names but cannot carry are listed for you to set in
-   [Secrets & keys](/docs/admin/secrets-and-keys/).
+   [Keys & secrets](/docs/operate/console/keys-and-secrets/).
 
 The link is recorded in Activity as _linked the product to a repository_. After it, every push to
 the default branch re-applies `.pkey/`, exactly as for a product created from its repository. The

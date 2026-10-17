@@ -236,5 +236,5 @@ porting the contract, they are the checklist:
 - [Trust](/docs/reference/protocol/trust/) — what step 2 of the load is verifying against.
 - [Offline bundles](/docs/reference/protocol/bundles/) — the one path that replaces this record
   wholesale.
-- [The conformance corpus](/docs/contribute/corpus/) — `clockFloorCases` replays this entire
+- [The conformance corpus](/docs/reference/protocol/corpus/) — `clockFloorCases` replays this entire
   load path as pure data.

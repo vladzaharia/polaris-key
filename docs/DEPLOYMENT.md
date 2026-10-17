@@ -21,7 +21,7 @@ Target account and fixed values:
 | Platform admin group | `admins`                                        |
 | GitHub App           | `polaris-key`                                   |
 | First product        | `djdl` (linked from its own product repository) |
-| Portal email sender  | `Polaris Key <noreply@auth.plrs.im>` (I-18)     |
+| Portal email sender  | `Polaris Key <noreply@auth.plrs.im>`            |
 
 Do not change the production hostname as a deployment-time tweak. The SDK defaults,
 signed-config issuer, tests, docs, and product examples assume `key.plrs.im`; using a
@@ -38,7 +38,7 @@ Do these before tagging the next release. The deploy refuses to ship without the
      `ADMIN_SESSION_SECRET`. Portal sessions no longer fall back to the admin secret.
    - `ADMIN_SESSION_SECRET`.
    - `KEY_HASH_PEPPER`. **If it is unset on an environment that already holds data, setting it
-     changes every stored key hash** (licence keys, device tokens and the other hashed
+     changes every stored key hash** (license keys, device tokens and the other hashed
      credentials stop matching). Decide the migration first; never set it blind.
    - `PLATFORM_KEK` (or the `PLATFORM_KEK_KEYS` keyring), as today.
    - When set, `DOWNLOAD_TICKET_KEY`, `DOWNLOAD_TICKET_KEY_PREVIOUS`, `GITHUB_WEBHOOK_SECRET` and
@@ -137,7 +137,7 @@ access. PocketID ID tokens must include a `groups` claim containing group names 
 Polaris Key uses two Pocket ID OIDC clients: one for the console (operators only) and one for
 customers (the root portal and every product that uses platform OIDC). Pocket ID supports a
 separate client per app. Keeping them apart means a leaked customer-client secret, or a group
-mistake on that client, cannot reach the console (I-03, S-16 §5.4).
+mistake on that client, cannot reach the console.
 
 **The console client.** In Pocket ID's admin UI, open OIDC Clients and add a client:
 
@@ -293,13 +293,13 @@ Token permissions:
 
 The token must be able to apply D1 migrations and deploy Workers in the `Polaris`
 Cloudflare account. The local OAuth login already has the needed account access, but CI
-needs its own token. It also needs **Queues Edit** (P4-17): `wrangler deploy` lists the account's
+needs its own token. It also needs **Queues Edit**: `wrangler deploy` lists the account's
 queues for the request Worker's `DELTA_QUEUE` producer (Queues Read), and the lazy-delta consumer
 (`wrangler.deltas.toml`) attaches itself to `pkey-deltas-<env>` as its consumer, which needs Queues
 Edit. The deploy job's "Queues preflight" step (`wrangler queues info` on both queues) fails before
 any migration runs when the permission or a queue is missing.
 
-### GitHub environment `package-registry` (F-10)
+### GitHub environment `package-registry`
 
 Our SDKs are published to the package feeds automatically, in lockstep with the server (owner
 decision 2026-10-04): `.github/workflows/publish-sdks.yml` runs on every push to `main` (a
@@ -315,7 +315,7 @@ publisher (`.pkey/release` `publishing.trustedPublisher`) and runs in the GitHub
    The manual npm backfill, `npm-repair.yml`, also runs from `main` in this environment;
    dispatching it needs write access to the repository.
 2. **Environment secrets** on `package-registry`, for the signed Swift registry releases
-   (plans/F-01.md §5.3). Until they exist, the Swift job stops with
+   Until they exist, the Swift job stops with
    `Swift registry releases are signed (owner decision 2026-10-04). Set …`, and never publishes
    unsigned; they reach the signing script through its environment only and are never echoed:
    - `SWIFT_REGISTRY_SIGNING_KEY`: the signing certificate's private key, PEM, then base64
@@ -324,7 +324,7 @@ publisher (`.pkey/release` `publishing.trustedPublisher`) and runs in the GitHub
    - `SWIFT_REGISTRY_CERT_CHAIN`: the intermediates and the root, each DER and base64, separated
      by commas.
 3. **Branch protection on `main`** and a **tag ruleset on `v*`** (restricting creation, update
-   and deletion to maintainers). The trusted publisher requires `ref_protected` (P2-02), so an
+   and deletion to maintainers). The trusted publisher requires `ref_protected` so an
    unprotected ref cannot publish. The `production` environment's deploy job (deploy.yml) relies
    on the same tag ruleset.
    Also add a **ruleset requiring code-owner review on `.github/**`, `actions/publish/**`,
@@ -354,7 +354,7 @@ publisher (`.pkey/release` `publishing.trustedPublisher`) and runs in the GitHub
 
 No other publishing credential exists: there is no npm, PyPI, Maven Central or Docker Hub token,
 and no workflow publishes to GitHub Packages, PyPI or a GitHub Release (owner decision 2026-10-04,
-feeds only). Operating it: RUNBOOK, "Releasing our SDKs to the feeds".
+feeds only). Operating it: RUNBOOK, "Releasing the SDKs to the feeds".
 
 ## 3. Cloudflare resources
 
@@ -443,7 +443,7 @@ npx wrangler r2 bucket lifecycle list "$B"
 Rules for the bucket, each one load-bearing:
 
 - **Age lock, not indefinite.** 180 days is long enough to roll back to any build a channel
-  could still point at, and short enough that the garbage collector (P4-14) can eventually
+  could still point at, and short enough that the garbage collector can eventually
   delete an unreferenced object. An indefinite lock would make that impossible; the trade-off
   is recorded in `docs/security/THREAT-MODEL.md` §3.
 - **No R2 public domain and no `r2.dev`.** Do not attach a custom domain to the bucket in the
@@ -457,7 +457,7 @@ Rules for the bucket, each one load-bearing:
   `BLOB_ORIGIN` naming the console's own hostname makes every console path answer not-found.
   Add or remove the `[[env.<env>.routes]]` `dl*` entry and the `BLOB_ORIGIN` var in the same
   change; `test/bytesHost.test.ts` refuses a committed `wrangler.toml` that breaks either rule
-  (P2-05).
+  .
 - **`CONSOLE_ORIGIN` names the console host** (`https://key.plrs.im`, `key-staging`, `key-dev`)
   beside each `BLOB_ORIGIN` (P2b-06). The public download page renders on the bytes host and
   links the storefront feeds, which are served on the console host; without the var (or with it
@@ -473,12 +473,12 @@ Rules for the bucket, each one load-bearing:
   `BLOB_ORIGIN` is itself `http:`, for local development) and, on `dl-staging` and `dl-dev`, names
   the environment under its title and asks not to be indexed. Do not put anything else on `dl.plrs.im`, and never add a `Domain=plrs.im` cookie
   anywhere on the platform.
-- **`erasures/` is the account-erasure ledger (I-11): no lifecycle rule, no manual deletes.** The
+- **`erasures/` is the account-erasure ledger: no lifecycle rule, no manual deletes.** The
   Worker writes one id-only object per erased account there (create-only) and never overwrites or
   deletes one, so the prefix needs no age lock. A lifecycle or expiry rule, or an object deleted by
   hand, removes the record that both the request-time fence and the D1 restore replay read, and the
   bucket is the ledger's only copy. No other code writes the prefix (the blob store refuses the
-  layout). See "Account erasure ledger (I-11)" under "Account erasures (SEC-PRV-1): migration
+  layout). See "Account erasure ledger" under "Account erasures: migration
   order" and RUNBOOK "Account erasure ledger and D1 restore".
 
 After the next deploy, check the isolation from outside:
@@ -528,8 +528,8 @@ Licensed builds served by the bytes host (held on R2, or in a private GitHub rep
 bytes host streams through the installation token) download from the customer portal through a
 **download ticket**:
 the portal's `/download/<token>` redemption 302s to the file's bytes-host URL with
-`?ticket=<t>`, and the bytes host accepts the ticket in place of a device token
-(plans/PX-W3.md). The ticket is an HMAC under a dedicated Worker secret. Set it per environment,
+`?ticket=<t>`, and the bytes host accepts the ticket in place of a device token.
+The ticket is an HMAC under a dedicated Worker secret. Set it per environment,
 in dev, then staging, then prod:
 
 ```sh
@@ -546,9 +546,9 @@ product and a signed-in portal account that owns it: the portal's "Get it" butto
 build should 302 to `https://dl.plrs.im/<slug>/distribution/files/<releaseId>/<name>?ticket=v1.…`
 and the file should download; the same URL without `?ticket=` answers `401`.
 
-### Registry host and feeds (F-02)
+### Registry host and feeds
 
-The package feeds (plans/F-01.md §6) answer on a THIRD custom domain of the same Worker, the
+The package feeds answer on a THIRD custom domain of the same Worker, the
 **registry host**, confined by `packages/worker/src/core/registry/registryHost.ts` to the package-feed
 routes, a static landing page at `/` and OCI's `/v2/` root. It keeps every bytes-host
 compensation (no cookies, `nosniff`, a `sandbox` CSP, JSON errors), adds
@@ -574,10 +574,10 @@ compensation (no cookies, `nosniff`, a `sandbox` CSP, JSON errors), adds
   `npm install`.
 - `[env.test]` in `wrangler.toml` is the local registry-client harness only (`wrangler dev --env
 test`, `registry-clients.yml`). It has no routes and must never be deployed.
-- Until the feeds' tables exist (F-03) every feed path answers the not-found: the settings read
+- Until the feeds' tables exist every feed path answers the not-found: the settings read
   fails closed.
-- **`REGISTRY_TOKEN_KEY` (F-21), per environment, before deploying F-21.** The HMAC key of the OCI
-  pull tokens `GET /v2/token` issues (plans/F-20.md §6.4). Set it in dev, then staging, then prod:
+- **`REGISTRY_TOKEN_KEY`, per environment, before deploying the registry token endpoint.** The HMAC key of the OCI
+  pull tokens `GET /v2/token` issues. Set it in dev, then staging, then prod:
 
   ```sh
   cd packages/worker
@@ -587,7 +587,7 @@ test`, `registry-clients.yml`). It has no routes and must never be deployed.
   Without it `/v2/token` answers 503 and `/v2/` stays a plain 200; with it `/v2/` answers the
   Bearer challenge to a request without a pull token (anonymous pull tokens keep public images
   pullable). No feature flag: every feed is `public` until an operator changes its mode. Rotation
-  is in the RUNBOOK ("Registry tokens (F-21)"). Optionally, add a GitHub secret-scanning custom
+  is in the RUNBOOK ("Registry tokens"). Optionally, add a GitHub secret-scanning custom
   pattern `pkeyr_[A-Za-z0-9_-]{43}` at organisation level.
 
 After the next deploy, check the host from outside:
@@ -607,9 +607,9 @@ curl -s -o /dev/null -w '%{http_code}\n' -X OPTIONS https://pkg.plrs.im/npm/x/y
 # 405 (no preflight is ever answered)
 ```
 
-### Image host (HA-02)
+### Image host
 
-A product's public hosted images (notes/S-20 §6.5) answer on a FOURTH custom domain of the same
+A product's public hosted images answer on a FOURTH custom domain of the same
 Worker, the **image host**, confined by `packages/worker/src/core/assets/imgHost.ts` to five path shapes:
 `/<product>/a/<sha256>` and `/<product>/a/<sha256>/<w>.webp` (content-addressed, immutable) and
 the stable aliases `/<product>/icon`, `/<product>/header` and `/<product>/screenshots/<n>` (a 302
@@ -651,7 +651,7 @@ curl -s -o /dev/null -w '%{http_code}\n' -X POST https://img.plrs.im/<slug>/icon
 # 405
 ```
 
-### Trusted publishing: the R2 parent token (P2-02)
+### Trusted publishing: the R2 parent token
 
 CI never uploads through the Worker. `POST /<p>/release/publish/uploads` hands a CI job R2
 **temporary credentials** that can only `PutObject` and `HeadObject` under
@@ -709,11 +709,11 @@ aws s3api create-multipart-upload --endpoint-url "$ENDPOINT" --bucket "$BUCKET" 
 The GitHub OIDC side needs nothing from the operator: the issuer and its JWKS are GitHub's and
 fixed in code. A product opts in from its own `.pkey/release` (`publishing.trustedPublisher`).
 
-### Hosted-asset pulls: the queue (HA-05)
+### Hosted-asset pulls: the queue
 
 A link or resync enqueues the pulls its manifest's asset refs owe (`presentation.icon`, the
 listing art) to `pkey-assets-<env>`, which the request Worker itself consumes
-(`src/assetQueue.ts`; notes/S-20 §6.3). Two queues per environment (`<env>` = `prod`, `staging`,
+(`src/assetQueue.ts`). Two queues per environment (`<env>` = `prod`, `staging`,
 `dev`), created once before the first deploy that carries the bindings:
 
 ```sh
@@ -729,7 +729,7 @@ nothing is planned or pulled. The nightly maintenance sweep re-enqueues failed p
 the Images binding is bound, ladder retries for ready copies whose variants an ingest could not
 build (rebuilt from the stored copy, never re-pulled), at most 50 per run between them.
 
-Release-file mirroring (HA-08, `services/release/mirror.ts`) rides the same queue and needs no
+Release-file mirroring rides the same queue and needs no
 resource of its own: a truth-store sync, a resync or a descriptor ingest queues every app-release
 file whose bytes are only on GitHub or at an external URL, and the consumer copies it into the
 blob store, verified against GitHub's `digest` and the descriptor's `sha256`, before it appends an
@@ -740,7 +740,7 @@ files once their back-off elapses. An operator can queue a product's owed files 
 migration `release_mirrors` must be applied before the deploy (the job table; nothing older reads
 it).
 
-### Package-file blob refs (SEC-DST-1): migration order
+### Package-file blob refs: migration order
 
 Migration `0107_package_file_ref_kind` re-kinds package files' blob refs from `artifact` to
 `package-file`. `deploy.yml` applies migrations before the Worker, so the previous Worker runs over
@@ -751,7 +751,7 @@ hook once the new Worker is live and on every cron tick, so the exposure ends at
 healed by the next tick at the latest. The deploy hook writes a `feed.bootstrap` platform audit row when it changed anything; the cron path writes no audit row, only the `packageFileRefs` count in the maintenance report. Refs with no release row are never touched. A `package-file` ref left behind by the old Worker's prune is a storage leak, not an exposure, and is out of scope here. To check: no `blob_refs` row has `ref_kind = 'artifact'` and a
 `release_artifacts.kind = 'package'` row.
 
-### Account erasures (SEC-PRV-1): migration order
+### Account erasures: migration order
 
 Migration `0108_account_erasures` adds the `account_erasures` progress table (expand-only; the
 previous Worker never reads it). `deploy.yml` applies it before the Worker. Nothing needs doing by
@@ -759,7 +759,7 @@ hand: the sweeper (`services/identity/accounts/deletion.ts`, nightly and on ever
 adopts every `status = 'deleted'` account that has no row. An erasure that has failed 5 times
 fails the nightly `erasures` step, which names its account id and failing step.
 
-### Account erasure ledger (I-11): bucket, binding and first deploy
+### Account erasure ledger: bucket, binding and first deploy
 
 The ledger is the existing `BLOBS` bucket under `erasures/` (see "Blob store (R2) and the bytes
 host" above): no new binding, queue or secret. It is what lets Polaris Key refuse and then erase an
@@ -794,12 +794,12 @@ account again after a D1 Time Travel restore, which rewinds the tombstone togeth
   procedure are in RUNBOOK "Account erasure ledger and D1 restore". Then confirm that
   `npx wrangler r2 bucket lifecycle list polaris-key-blobs-<env>` shows no rule on `erasures/`.
 
-### Lazy deltas: the queues, the consumer Worker and the R2 rules (P4-17)
+### Lazy deltas: the queues, the consumer Worker and the R2 rules
 
-Lazy hot-pair deltas (notes/S-08 §6; RUNBOOK "Lazy deltas") need Workers Paid with Queues
+Lazy hot-pair deltas (RUNBOOK "Lazy deltas") need Workers Paid with Queues
 enabled, two queues per environment, a second Worker script and, after its first deploy, two R2
 event-notification rules. The feature ships off: both scripts carry `LAZY_DELTAS = "runtime"`,
-which hands the switch to the console's platform settings store (A-13), where it defaults to off.
+which hands the switch to the console's platform settings store, where it defaults to off.
 None of this changes behaviour until an operator turns it on.
 
 1. **Queues** (per environment `<env>` = `prod`, `staging`, `dev`):
@@ -920,9 +920,9 @@ Paste the complete GitHub App private key PEM for `GITHUB_APP_PRIVATE_KEY`, incl
 `BEGIN` and `END` lines.
 
 `PORTAL_EMAIL_FROM` does not need to be set. The sender's display name is fixed (`Polaris Key`,
-or `<App> via Polaris Key`); the address is the `EMAIL_SENDER_ADDRESS` var (I-18).
+or `<App> via Polaris Key`); the address is the `EMAIL_SENDER_ADDRESS` var.
 
-### Platform store connections (A-16, optional)
+### Platform store connections (optional)
 
 The platform holds ONE team-level credential per store (Platform → Store connections in the
 console; `/manage/api/platform/store-connections`). A product with no store credential of its own
@@ -1076,7 +1076,7 @@ git push origin v0.1.0
 If a tag is malformed, if its commit is not on `main`, or if CI was not green on that commit,
 the workflow exits before applying migrations or deploying.
 
-**Deploy identity (A-11).** Both `wrangler deploy` calls carry the release tag and commit:
+**Deploy identity.** Both `wrangler deploy` calls carry the release tag and commit:
 `--var PKEY_RELEASE_TAG:<tag>`, `--var PKEY_GIT_SHA:<sha>`, and the same values on the
 Cloudflare version (`--tag <tag>`, cut to 25 characters, and `--message "<tag> <short sha>"`, the tag cut to 80).
 Both wrangler configs bind `CF_VERSION_METADATA` (`[env.<env>.version_metadata]`, one per
@@ -1084,7 +1084,7 @@ environment, because a binding is not inherited from the top level). Platform ad
 result at `GET /manage/api/platform/version` and `/manage/api/platform/deployment`; the second
 also compares `d1_migrations` with the build's newest migration (`LATEST_MIGRATION`).
 
-**The deploy record (A-11).** The last step, "Record deploy", runs
+**The deploy record.** The last step, "Record deploy", runs
 `packages/worker/scripts/record-deploy.mjs`, which inserts one `platform_deploys` row (tag,
 commit, run URL, time, environment, both scripts' Cloudflare version ids from wrangler's
 `WRANGLER_OUTPUT_FILE_PATH` output, the smoke outcome) with the same `CLOUDFLARE_API_TOKEN`; it
@@ -1099,7 +1099,7 @@ After the first deploy that includes A-11, confirm on the Deployment endpoint th
 binding on hosted D1, which the workerd lane shows only for local D1. If it is `null`, the page
 reports migrations as unknown and nothing else is affected.
 
-**Self-reported operations (A-14).** `GET /manage/api/platform/operations` (platform admins
+**Self-reported operations.** `GET /manage/api/platform/operations` (platform admins
 only) returns what the Worker can see about itself, with no Cloudflare token: `probes` (D1, KV and
 R2 answer, with latency), `queues` (the lazy-delta queue and its dead-letter queue: backlog count,
 bytes and oldest message, plus the consumer's fixed settings), `heartbeats` (when the cron and the

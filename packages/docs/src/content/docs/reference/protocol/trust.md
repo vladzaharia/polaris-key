@@ -476,5 +476,5 @@ to one tenant.
   document, and why that is a hint rather than a trust root.
 - [The device principal](/docs/reference/protocol/device-principal/) — the credential the document
   routes authenticate with.
-- [License](/docs/services/license/) and [Config](/docs/services/config/) — the two signed
+- [License](/docs/features/licensing/) and [Config](/docs/features/managed-config/) — the two signed
   documents this key set verifies.

@@ -460,6 +460,7 @@ export const DOOR_TREES: readonly DoorTree[] = [
           "operate/platform/settings",
           "operate/platform/jobs",
           "operate/platform/connections",
+          "operate/platform/outlet-credentials",
         ),
       },
       {

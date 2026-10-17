@@ -9,10 +9,10 @@ sidebar:
 
 Platform settings apply to the whole instance, not to one product. Almost all of them are
 deploy-time: they live in `wrangler.toml` or as Worker secrets and change only with a deploy.
-Eight can also be changed at runtime, without a deploy: four background-job settings, the two
+Some can also be changed at runtime, without a deploy: the background-job settings, the
 reserved-name settings, the key-entry refusal switch and the hosted-assets switch. Every change is
 recorded in the
-[platform trail](/docs/admin/activity/#the-platform-trail).
+[platform trail](/docs/operate/console/activity/#the-platform-trail).
 
 In the console this is **Platform → Settings** (`#/platform/settings`; `#/platform` opens it).
 
@@ -69,7 +69,7 @@ files already copied keep serving from their copies, and image URLs already hand
 working. It is not a security gate, so it uses runtime precedence:
 an unreadable settings store does not turn it off. It sits under Delivery in the console. Each
 product's quotas and its own mirroring switch are on its
-[Presentation page](/docs/admin/presentation/#hosting-and-quotas).
+[Presentation page](/docs/operate/console/presentation/#hosting-and-quotas).
 
 `identity.platformTerms` is Polaris Key's own terms: `{version, termsUrl, privacyUrl}`, with
 https URLs. It is unset, so no new account is asked to accept anything of Polaris Key's and nothing
@@ -112,12 +112,12 @@ Platform → Settings has these sections, top to bottom.
 - **Warnings.** Each warning the API returns (the console still shares the customer sign-in
   client, `PLATFORM_KEK_ID` set, `PLATFORM_KEK` kept as a legacy key beside
   `PLATFORM_KEK_KEYS`, `PORTAL_SESSION_SECRET` unset) is shown first.
-- **Background jobs.** The four background-job settings. Each row shows the effective value and a source
+- **Background jobs.** The background-job settings. Each row shows the effective value and a source
   badge: _Code default_, _Deploy var_ or _Set in console_ (with who set it and when). Each row
   saves on its own:
-  - The two switches apply when you flip them. Turning a job **on** asks first and lists what
+  - The switches apply when you flip them. Turning a job **on** asks first and lists what
     changes. Turning one **off** applies at once, with **Undo** in the confirmation toast.
-  - The two numbers have their own Save bar. The size cap is entered in MiB, from 1 to 32. It can
+  - The numbers have their own Save bar. The size cap is entered in MiB, from 1 to 32. It can
     only lower the measured 32 MiB ceiling, so a larger value is refused before it is sent.
     Raising the cap or lowering the collector's grace asks first. The other direction saves at
     once, with Undo.
@@ -133,10 +133,10 @@ Platform → Settings has these sections, top to bottom.
   product whose catalog declares a reserved name, each declaration marked compatible or not with
   the reason. Check this list before switching to Refuse: a product marked incompatible would
   fail its next resync.
-- **Delivery.** The hosted-assets switch (`ASSET_HOSTING`; turning it either way asks first),
-  then the deploy-time delivery values, read-only.
 - **Identity & access.** The reserved display-name setting and the key-entry refusal switch, then
   the deploy-time values, read-only.
+- **Delivery.** The hosted-assets switch (`ASSET_HOSTING`; turning it either way asks first),
+  then the deploy-time delivery values, read-only.
 - **Email.** The deploy-time values, read-only. Identity
   shows the console's own client (`ADMIN_OIDC_ISSUER`, `ADMIN_OIDC_CLIENT_ID`) above the platform
   client the portal and products use (`PLATFORM_OIDC_*`).
@@ -149,7 +149,7 @@ Platform → Settings has these sections, top to bottom.
   _Legacy, open only_, and a **Legacy key** row says how many values (and which sealed Worker
   secrets) are still under it, or _Safe to delete PLATFORM_KEK_ once none are. When the ring does
   not parse, the section says the keyring is unusable. Rotation and the re-seal sweep follow the
-  [KEK runbook](/docs/admin/kek/).
+  [KEK runbook](/docs/operate/platform/runbook/rotate-the-kek/).
 - **Secrets.** Each platform secret as _Set_ or _Not set_, with what it is for and what being
   unset means.
 - **History.** Each settings change from the platform trail, with who made it and the value
@@ -232,6 +232,6 @@ name, with its `catalogVersion` and one `declarations` entry per declared name
 
 ## Reference
 
-- [KEK runbook](/docs/admin/kek/): the keyring the Keyring section reads.
-- [Activity](/docs/admin/activity/#the-platform-trail): the platform trail these changes write.
-- [Deploying to production](/docs/admin/deploy/): where the deploy-time values are set.
+- [KEK runbook](/docs/operate/platform/runbook/rotate-the-kek/): the keyring the Keyring section reads.
+- [Activity](/docs/operate/console/activity/#the-platform-trail): the platform trail these changes write.
+- [Deploy Polaris Key](/docs/operate/platform/deploy/): where the deploy-time values are set.

@@ -1,46 +1,42 @@
 ---
 title: "Help a customer"
-description: "Export or delete a person's data for your product, and relink their license."
+description: "Export or delete a person's data for your product, and move their license to another person."
 type: "how-to"
-lastReviewed: "2026-10-11"
+lastReviewed: "2026-10-16"
 sidebar:
   order: 7
 ---
 
-**Role required:** Access to **Users**. **Impact:** An export contains personal data. Deleting
-data cannot be undone.
+**Requires:** access to **Users**. **Impact:** an export contains personal data, and deleting data can't be undone.
+
+The person's own side of these tasks is in [Manage your data](/docs/help/manage-your-data/) and [Move to a new computer](/docs/help/new-computer/).
 
 ## Export a person's data
 
-1. Open **Users**.
-2. Open the person's record.
-3. Select **Export**.
-4. Save the per-subject JSON file securely.
+1. Open **Users**, then the person's record.
+2. Select **Export JSON**.
+3. Save the file securely.
 
-The export contains only data for that person in your product. The export is recorded in
-**Activity**.
+The file holds only what your product has for that person. The export is recorded in **Activity**.
 
-## Delete data for a person
+## Delete a person's data
 
-1. Open **Users**.
-2. Open the person's record.
-3. Select **Delete data**.
-4. Type `delete`, then confirm.
+1. Open **Users**, then the person's record.
+2. Select **More actions**, then **Delete data for this product…**.
+3. Type `delete`, then select **Delete data**.
 
-This deletes data held for the person in your product. Their license and Polaris Key account stay.
-A developer can never delete the account.
+This empties the product's data for the person. Their license and Polaris Key account stay. You can't delete the person's account.
 
 ## Move a license to another person
 
-The person can manage their own export and data removal from their library at key.plrs.im. To
-move a license to them, ask them to open the product's page in their library and select **Get a
-support code**. The code is their user id for the product.
+The person who is to hold the license opens your product's page in their library at key.plrs.im and selects **Get a support code**. The code is their user id for your product.
 
-1. Open **Users**, then the license's record.
-2. Select **Relink…**.
-3. Enter the support code as the person's user id.
-4. Give the reason for the move.
-5. Select **Relink license**, then sign in again if asked.
+1. Open **Users**, then the record of the person who holds the license.
+2. On the **Licenses** tab, select **Relink…** on the license.
+3. Under **Move to user**, enter the support code.
+4. Give a reason.
+5. Select **Relink license**. Sign in again if asked.
 
-Both people receive an email before the license moves. **Undo** returns it while the relink is
-open, within 72 hours.
+Both people get an email before the license moves. To reverse it within 72 hours, open the **Licenses** tab, select **Undo…** on the relink, then **Undo relink**.
+
+The safeguards, **Make floating** and **Reassign** are on [Users](/docs/operate/console/users/#relink-a-license).
