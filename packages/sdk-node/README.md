@@ -705,14 +705,14 @@ The end-user verbs mount at the top level; `namespace`, `verbs` and `onCollision
 the fix and exits 4. yargs is at `@polaris-key/node/cli/yargs` (`polarisCommands`).
 
 The verbs, the styled parts and the `@polaris-key/node/terminal` primitives, the headless views,
-theming, localisation, the `--json` contract and the fallbacks (`NO_COLOR`, `TERM=dumb`,
+theming, localization, the `--json` contract and the fallbacks (`NO_COLOR`, `TERM=dumb`,
 `--ascii`, CI, narrow and short terminals, a resize) are on
 [Terminal (Node)](https://key.plrs.im/docs/build/ui/frameworks/terminal-node/).
 `kit: false` keeps the plain output, and each verb is also a plain function (`status(client)`,
 `devicesList(client)`, …) returning `{ ok, message, data }`.
 
 **Changed in the terminal kit (UK-14).** The adapters' human output is new: the rail, catalog
-copy in the active locale (nine languages), colour on a terminal, and new verb names `login` and
+copy in the active locale (nine languages), color on a terminal, and new verb names `login` and
 `logout` (`sign-in` and `sign-out` still work). Human output is for people and may change between
 releases; a script reads `--json`, whose envelope is versioned (`"v": 1`). The exit codes a script
 saw before are unchanged: 0 success and 1 failure, with 2 for a usage error and 130 for Ctrl-C.

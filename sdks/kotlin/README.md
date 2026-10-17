@@ -2,7 +2,7 @@
 
 The Kotlin SDK for native Android apps and JVM desktop apps, with a Jetpack Compose UI kit, and the
 shared Android backend that the Godot SDK, and later Unity and MAUI, bind. It reached full parity in
-P6-05: P6-06 landed the verified core and the conformance runner, P6-07 the licence, config,
+P6-05: P6-06 landed the verified core and the conformance runner, P6-07 the license, config,
 devices, identity and release services and the umbrella client, P6-08 the update client and the
 pack engine, P6-09 the platform module's stable API, P6-10 the Godot binding on `:platform`, P6-11
 the Compose UI kit and P6-12 the Android glue. `parity.json` says which features are implemented;
@@ -14,7 +14,7 @@ each with a note.
 | Module         | Kind                  | What                                                                                                                                                                                                          |
 | -------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `:core`        | JVM library (JAR)     | JWS + Ed25519, the signed documents, trust, the verified cache and clock floor, transport, discovery, sync, capabilities, the boot stage machine, the generated constants                                     |
-| `:license`     | JVM library (JAR)     | the licence gate, activation, enrolment, entitlements, channels, deactivation                                                                                                                                 |
+| `:license`     | JVM library (JAR)     | the license gate, activation, enrolment, entitlements, channels, deactivation                                                                                                                                 |
 | `:config`      | JVM library (JAR)     | layered config resolution, the user-visible list, secrets, the catalog fetch, edge-mint                                                                                                                       |
 | `:identity`    | JVM library (JAR)     | RFC 8628 device-code sign-in (the OIDC redirect stays a host-supplied closure)                                                                                                                                |
 | `:release`     | JVM library (JAR)     | the changelog, download and install URLs, release-record verification                                                                                                                                         |
@@ -22,15 +22,15 @@ each with a note.
 | `:packs`       | JVM library (JAR)     | the pack engine: planner, full / file / chunk / delta appliers (zstd-jni), install state, `DirPackStorage`, revocations, delegation, handlers, provides, feed deltas                                          |
 | `:sdk`         | JVM library (JAR)     | `PolarisKeyClient`, the umbrella; re-exports `:core` and every service module (`api`)                                                                                                                         |
 | `:ui-core`     | JVM library (JAR)     | the Compose-free UI layer (UK-09): state holders and the presentation core of the Kotlin UI kits; no Compose or AndroidX; `:ui` exposes it (`api`)                                                            |
-| `:server`      | JVM library (JAR)     | `polaris-key-server` (SP-57): gate a server route with the app's signed licence document, offline: the six-step verdict, the problem body (eight locales), the trust refresh; no framework, over `:core` only |
+| `:server`      | JVM library (JAR)     | `polaris-key-server` (SP-57): gate a server route with the app's signed license document, offline: the six-step verdict, the problem body (eight locales), the trust refresh; no framework, over `:core` only |
 | `:server-ktor` | JVM library (JAR)     | `polaris-key-server-ktor` (SP-57): the Ktor plugin over `:server`: `polarisKey { }`, `requireLicense`, `requireEntitlement`, `requireSignIn`; see `server-ktor/README.md`                                     |
 | `:conformance` | tests only            | the corpus and HTTP-transcript runner (never published)                                                                                                                                                       |
-| `:platform`    | Android library (AAR) | install source, Keystore, Play Integrity, Play In-App Updates / Play Asset Delivery or PackageInstaller self-update (flavours `play`, `direct`); standalone                                                   |
+| `:platform`    | Android library (AAR) | install source, Keystore, Play Integrity, Play In-App Updates / Play Asset Delivery or PackageInstaller self-update (flavors `play`, `direct`); standalone                                                    |
 | `:android`     | Android library (AAR) | the Android glue, the only module that sees both `:sdk` and `:platform`: Keystore store, device inputs, outlet readers, install drivers, the PAD transport (P6-12)                                            |
 | `:godot`       | Android library (AAR) | the Godot Android plugin (v2) over `:platform` ONLY, singleton `PolarisKeyAndroid` (`../godot/native/android/`); `checkPlatformOnly`                                                                          |
-| `:boundary`    | Android app (probe)   | an empty app per flavour; `tools/check_flavours.sh` proves the flavour boundary on its release                                                                                                                |
+| `:boundary`    | Android app (probe)   | an empty app per flavor; `tools/check_flavours.sh` proves the flavor boundary on its release                                                                                                                  |
 | `:ui`          | Android library (AAR) | the Jetpack Compose UI kit (P6-11): boot shell, gate, activation, sign-in with QR, settings, devices, update banner and prompt, pack progress; see `ui/README.md`                                             |
-| `:billing`     | Android library (AAR) | Play Billing as licence flags (SP-K05): `PolarisPlayBilling` buys with the licence binding as `obfuscatedAccountId`, claims, acknowledges after the claim, restores                                           |
+| `:billing`     | Android library (AAR) | Play Billing as license flags (SP-K05): `PolarisPlayBilling` buys with the license binding as `obfuscatedAccountId`, claims, acknowledges after the claim, restores                                           |
 
 `:ui` sees `:sdk` and never `:platform` or `:android`. No JVM module has an Android
 dependency, each service module depends on `:core` only (never on a sibling; `:sdk` is the one
@@ -39,12 +39,12 @@ place they meet), `:platform` depends on no SDK module, and no module but `:andr
 `./gradlew checkModuleBoundaries` fails otherwise, in CI.
 
 Coordinates are `im.plrs.key:polaris-key-<module>`, except `:platform`, which publishes one
-artifact per flavour: `polaris-key-platform-play` and `polaris-key-platform-direct` (see below),
+artifact per flavor: `polaris-key-platform-play` and `polaris-key-platform-direct` (see below),
 `:android`, likewise `polaris-key-android-play` and `polaris-key-android-direct` (each depending on
-`polaris-key-sdk` and the platform artifact of the same flavour), and `:godot`, likewise
+`polaris-key-sdk` and the platform artifact of the same flavor), and `:godot`, likewise
 `polaris-key-godot-play` and `polaris-key-godot-direct`, each depending on
-the platform artifact of the same flavour and on no other SDK module (P6-10: Godot keeps its
-verifier, licence client, updater and pack engine in GDScript, as Godot on iOS links only Swift's
+the platform artifact of the same flavor and on no other SDK module (P6-10: Godot keeps its
+verifier, license client, updater and pack engine in GDScript, as Godot on iOS links only Swift's
 `PolarisKeyPlatform`).
 Kotlin artifacts reach adopters only through Polaris Key's own Maven feed (F-07, F-10); there is
 no Maven Central publication, no signing configuration and no remote repository in this build. `maven-publish` writes to
@@ -140,7 +140,7 @@ Maven, the coordinate table and the other SDKs:
 ## The services and PolarisKeyClient
 
 `polaris-key-sdk` is the one-line dependency: `PolarisKeyClient` composes `:core` with one
-sub-client per service, and every public call is `suspend` (licence changes stream as a `Flow`,
+sub-client per service, and every public call is `suspend` (license changes stream as a `Flow`,
 `licenseChanges`). Errors are `:core`'s `PolarisException` with a registry code; a call to a
 service the product does not run throws `service-unavailable` before any request (D-21).
 
@@ -160,7 +160,7 @@ client.identity.waitForSignIn(prompt)
 
 - **`:license`**: `LicenseClient.status()` (the §5 gate over the verified cache and the clock
   floor), `activate`, `enroll`, `deactivate` (remote best-effort, local wipe mandatory),
-  `entitlements`, `entitlementValue`, `isEntitled`, `licenseInfo` (licence id, tier, tier label,
+  `entitlements`, `entitlementValue`, `isEntitled`, `licenseInfo` (license id, tier, tier label,
   device limit, profile, channels), `profile`, `licenseId`, `entitledChannels` (the grants, raw, or
   `["stable"]`). **`isEntitled` answers `false` whenever the gate is not usable** (revoked,
   expired, blocked, never activated; S-19 G11), whatever the last document said; it used to read
@@ -170,7 +170,7 @@ client.identity.waitForSignIn(prompt)
   `AttestationRequired`, `RateLimited(retryAfterSeconds)`, `Refused(code, status, message)` for any
   other 4xx, and `Error` (`network` or `server-error`). An unknown 403 is `Refused`, never
   `DeviceLimit` (notes/SDK-PARITY-PASS.md §3.1). A 401 re-acquires once per pass (§5): `POST /license/token`, or re-registration
-  for a registered-without-licence device (P1b-06).
+  for a registered-without-license device (P1b-06).
 - **`:config`**: `ConfigClient.config(key, default)` and `configSource` (enforced or hidden, then
   local, environment, remote default, fallback), `listUserConfig`, `secret`, `fetchSchema` (null
   on any failure), `mintToken` (edge-mint, cached in memory only and bound to the device token).
@@ -191,7 +191,7 @@ client.identity.waitForSignIn(prompt)
   (so the trailing lambda still binds `onAcquired`); a caller passing the listener positionally must
   now pass it by name or swap the order. `OkHttpTransport` has two constructors, `()` (owns its client,
   `close()` shuts it down) and `(client)` (shares the host's, `close()` leaves it alone).
-- **Live licence state** (SP-51): `licenseChanges`, `events` and the `licenseState` StateFlow emit on
+- **Live license state** (SP-51): `licenseChanges`, `events` and the `licenseState` StateFlow emit on
   every transition (activate, deactivate, wipe, a server revoke or block seen by a sync, grace and
   expiry as the floor moves), not only when a document's ETag moved; an unchanged state is not
   repeated. `entitlementValue()` and `entitlements()` answer nothing while the gate is not usable
@@ -203,11 +203,11 @@ client.identity.waitForSignIn(prompt)
 - **`client.events`**: one multi-subscriber `SharedFlow<PolarisEvent>`: `License` (a sync that
   changed the documents, an activation), `Config` (a key's value moved), `UpdateAvailable` (a
   decision offered a newer build; also `update.offers`) and `Packs` (pack progress).
-- **Channels**: `channelChoices()` lists the current channel, `stable` and every channel the licence
+- **Channels**: `channelChoices()` lists the current channel, `stable` and every channel the license
   grants, and `lockedBy` names the outlet when its capabilities forbid a switch (store, Steam,
   package-managed builds). `setChannel(channel)` switches at runtime (persisted beside the store;
   `null` returns to the build's channel), refused `channel_not_allowed` when the outlet locks it or
-  the licence does not grant it, then syncs so documents and decisions follow.
+  the license does not grant it, then syncs so documents and decisions follow.
 - **Java callers** (SP-K11): `PolarisKeyFutures(client)` wraps the suspend API as
   `CompletableFuture`s (`start`, `sync`, `status`, `isEntitled`, `licenseInfo`, `activate`,
   `enroll`, `setConfig`, `decide`, `install`, `fetch`, `setChannel`, `crashTags`, …;
@@ -393,7 +393,7 @@ edges (Godot, later Unity and MAUI) links it alone, exactly as Godot on iOS link
 dependency or an `im.plrs.key` module. A convenience that wants the core belongs in `:android`
 (P6-12), never here.
 
-**Coordinates.** One artifact per flavour, each with its own POM (the play one depends on Play
+**Coordinates.** One artifact per flavor, each with its own POM (the play one depends on Play
 Core, the direct one must not), sources jar and Gradle module metadata:
 `im.plrs.key:polaris-key-platform-play` and `im.plrs.key:polaris-key-platform-direct`. They are
 published only to a local repository, `./gradlew :platform:publishAllPublicationsToLocalRepository`
@@ -404,12 +404,12 @@ Maven Central: adopters get them from the Polaris Key Maven feed later (F-07, F-
 additively: the Godot binding addresses it through its `cmd(json)` surface, so a rename is a
 breaking change for P6-10.
 
-## The flavours are a policy boundary
+## The flavors are a policy boundary
 
 Play forbids self-update and `REQUEST_INSTALL_PACKAGES` in Play builds, so a build is one or the
 other, fixed at build time (`PolarisKeyPlatform.flavor`):
 
-| Flavour  | Has                                                                                                                               | Never has                                          |
+| Flavor   | Has                                                                                                                               | Never has                                          |
 | -------- | --------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
 | `play`   | install source, Keystore, Play In-App Updates, Play Asset Delivery, Play Integrity                                                | PackageInstaller session code, install permissions |
 | `direct` | install source, Keystore, verified PackageInstaller self-update, status receiver (builds for the Polaris Key outlet, id `direct`) | any `com.google.android.play` class                |
@@ -449,13 +449,13 @@ permissions into play builds (notes/S-10 §2).
   `INTEGRITY_TOKEN_PROVIDER_INVALID` (-19). The request hash is the Worker's `requestHash` from
   `POST /<product>/devices/attest/challenge`, verbatim (1–500 characters). Failures are
   `IntegrityError(errorCode)` with the `StandardIntegrityErrorCode`, or none without Play services.
-- **`PlatformIntegrity.create(context)`** (P6-09): the same Integrity surface in every flavour.
+- **`PlatformIntegrity.create(context)`** (P6-09): the same Integrity surface in every flavor.
   `prepare(cloudProjectNumber)` and `request(cloudProjectNumber, requestHash)` answer an
   `IntegrityResult`: `Success` (a `PlatformIntegrityToken` with its `prepared`/`reprepared` flags),
   `Refused` (a project number that is not positive, a hash outside 1–500 characters; Play is never
   asked), `Failed(exception, message, errorCode)` (Play's failure), or `Unsupported(reason)`. The
-  `play` flavour answers through `play.PlayPlatformIntegrity` over `play.PlayIntegrity` (Play's
-  manager created on first use); the `direct` flavour answers `Unsupported("outlet")` to every call
+  `play` flavor answers through `play.PlayPlatformIntegrity` over `play.PlayIntegrity` (Play's
+  manager created on first use); the `direct` flavor answers `Unsupported("outlet")` to every call
   and carries no Play Core class. The cloud project number is the host app's, supplied at call time
   (the Worker returns it with each challenge); the module never embeds one.
 - **`direct.ApkInstaller(context)`**: `verify` and `install(file, sha256, versionCode, options)`.
@@ -473,7 +473,7 @@ permissions into play builds (notes/S-10 §2).
 
 `:android` (P6-12) is the Kotlin SDK's Android glue: the one module that depends on both the SDK
 (`:sdk`, and through it `:core` and every service module) and `:platform`, so `:platform` stays
-standalone for the Godot binding. Flavours match the platform's (`play`, `direct`), and the flavour
+standalone for the Godot binding. Flavours match the platform's (`play`, `direct`), and the flavor
 boundary covers it (`tools/check_flavours.sh` reads the `:boundary` APKs, which now carry it).
 
 ```kotlin
@@ -560,7 +560,7 @@ tools/check_publication.sh     # platform, godot, android in build/repo with POM
 
 `:conformance` reads `conformance/corpus/v2/` and `conformance/transcripts/` from the repository
 in place. Its `test` task depends on `testTink`, so every suite runs on the JCA Ed25519 backend
-and again with Tink forced: `cases.json` (the JWS, licence, config, trust, clock-floor and bundle
+and again with Tink forced: `cases.json` (the JWS, license, config, trust, clock-floor and bundle
 families and their pointer sets, `releaseRecordCases`, `feedCases`, `feedContentCases`,
 `revocationCases`, `packRecordCases`, `markerCases` and `delegationCases`), `gate-matrix.json`,
 `config-matrix.json`, `update-matrix.json`, `plan-matrix.json`, every `content/` section (under

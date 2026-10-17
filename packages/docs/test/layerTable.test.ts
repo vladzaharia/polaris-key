@@ -1,5 +1,5 @@
 /**
- * The layer table on `build/ui/index.mdx` ("| Kit | Status | (a) Drop-in flow | (b) Styled parts |
+ * The layer table on `build/ui/frameworks/index.mdx` ("| Kit | Status | (a) Drop-in flow | (b) Styled parts |
  * (c) Headless |") mixes five languages in one table, so the snippet symbol check (one language per
  * covered page) cannot read it. This test checks it row by row: each row's kit maps to an SDK
  * language through `UI_KITS`, and every backticked name in cells (a) to (c) must be one that SDK
@@ -21,9 +21,18 @@ import { IGNORED } from "./snippets/nativeIgnore";
 import { mentions } from "./snippets/symbols";
 
 const docsRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
-const PAGE = "packages/docs/src/content/docs/build/ui/index.mdx";
+const PAGE = "packages/docs/src/content/docs/build/ui/frameworks/index.mdx";
 const source = readFileSync(
-  join(docsRoot, "src", "content", "docs", "build", "ui", "index.mdx"),
+  join(
+    docsRoot,
+    "src",
+    "content",
+    "docs",
+    "build",
+    "ui",
+    "frameworks",
+    "index.mdx",
+  ),
   "utf8",
 );
 
@@ -131,7 +140,7 @@ const LONG = 240_000;
 // A machine without the SDK's venv skips the Python rows loudly; CI always has it.
 const pyIt = python ? it : process.env.CI ? it : it.skip;
 
-describe("the layer table on build/ui/index.mdx", () => {
+describe("the layer table on build/ui/frameworks/index.mdx", () => {
   pyIt(
     "names only symbols its row's SDK exports, or labels them planned",
     () => {

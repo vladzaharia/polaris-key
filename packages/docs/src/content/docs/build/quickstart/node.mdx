@@ -26,10 +26,17 @@ You end with a Node app that creates a client from your product's config and gat
 
 ## 1. Install
 
-**CLI** Install the SDK. The block routes the `@polaris-key` scope to the feed first, then installs. Install the `pkey` CLI the same way, as a dev dependency, and run it through your package manager: a bare `npx pkey` resolves the name from npmjs, not the feed.
+**CLI** Install the SDK and, as a dev dependency, the `pkey` CLI. The block routes the `@polaris-key` scope to the feed first, then installs both. Run `pkey` through your package manager: a bare `npx pkey` resolves the name from npmjs, not the feed.
 
-<InstallSteps sdk="node" />
-<InstallSteps sdk="cli" />
+<InstallSteps sdk="node" dev="cli" />
+
+The code below is TypeScript with top-level `await`, so make the project an ES module, and add `commander` (the CLI example) and `tsx` to run `.ts` files, because Node 22.13 can't run them itself:
+
+```sh title="Terminal"
+npm pkg set type=module
+npm install commander
+npm install -D tsx
+```
 
 You should see `@polaris-key/node` in `package.json`.
 
@@ -43,7 +50,7 @@ pkey sdk --lang node --product <slug> --write
 
 The file is `polaris.config.ts`; add `--out polaris.config.mjs` for JavaScript. It holds the slug, base URL, trust pins, advertised services and, when the product has release keys, `update.pinnedReleaseKeys`. Replace `<slug>` with your product's slug. To try this without a registered product, [run Polaris Key locally](/docs/build/local/).
 
-You should see the file written and each pin's key id and SHA-256 fingerprint. Compare the fingerprints with the console before you ship.
+You should see the file written and each pin's key id and SHA-256 fingerprint. Compare each key in the file with **Public key** under **Core → Keys & secrets** before you ship.
 
 ## 3. Create the client
 
@@ -130,6 +137,21 @@ The renderer wraps the app in `<PolarisKeyProvider config={polarisKey}>` and `<P
 
 Call the client and handle each state yourself. Activate with `client.license.activateWithKey(key)`, read the state with `client.status()` and `client.isLicensed()`, and sign in with `client.identity.signInWithBrowser()`. [Your own UI](/docs/build/sdks/node/your-own-ui/) gives each call with its states and words, for a CLI, for Electron and for a server.
 
+```ts title="own-ui.ts"
+import { copy, type PolarisKeyClient } from "@polaris-key/node";
+
+// What to show for a key the person entered: nothing when it worked.
+export async function activate(client: PolarisKeyClient, key: string) {
+  const r = await client.license.activateWithKey(key);
+  return r.kind === "ok" ? null : copy.activation(r.kind, { code: r.code });
+}
+
+// What to show instead of your app: nothing when the license is usable.
+export function lockedMessage(client: PolarisKeyClient) {
+  return client.isLicensed() ? null : copy.message(client.status().status);
+}
+```
+
   </Fragment>
 </Lanes>
 
@@ -143,7 +165,15 @@ You should see the app locked, with the status `needs-activation`, until a key i
 pkey dev
 ```
 
-**App** Enter the `ok` key where the app asks for it.
+The config from step 2 points at production, where `ok` is not a key. In a second terminal, rewrite it from the running server, then rebuild or restart the app:
+
+```sh title="Terminal"
+pkey sdk --lang node --dev --write
+```
+
+To go back to your product, run the step 2 command again.
+
+**App** Run the app, for example `npx tsx cli.ts activate`, and enter the `ok` key where it asks.
 
 You should see the app unlock, and the status become `ok`.
 

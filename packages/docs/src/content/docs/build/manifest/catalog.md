@@ -1,5 +1,5 @@
 ---
-title: "Write the catalog"
+title: "Catalog manifest"
 description: "Declare config, secret and flag entries, synced settings and Cloud Sync records in .pkey/schema."
 type: "reference"
 lastReviewed: "2026-10-16"

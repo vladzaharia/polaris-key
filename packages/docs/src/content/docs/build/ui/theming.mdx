@@ -1,6 +1,6 @@
 ---
 title: "Theming"
-description: "One theme value in every kit: its fields and defaults, where each kit takes it, the accent resolver, the native preset, and bringing your own design system."
+description: "One theme value in every kit: its fields and defaults, where each kit takes it, the accent resolver, the native preset, product identity, the sign-in presentation and accessibility."
 sidebar:
   order: 2
 type: "reference"
@@ -10,13 +10,6 @@ lastReviewed: "2026-10-16"
 import { Tabs, TabItem } from "@astrojs/starlight/components";
 import AccentVectors from "../../../../components/ui/AccentVectors.astro";
 import KitStatus from "../../../../components/ui/KitStatus.astro";
-
-:::note[Status]
-This section documents the UI-kit specification (`docs/design/UI-KITS.md`) the kits are being
-rebuilt to. The [Node terminal kit](/docs/build/ui/frameworks/terminal-node/) is the first to ship
-the shared theme API; [The kits](/docs/build/ui/#the-kits) says where each other kit's current docs
-are.
-:::
 
 Every kit exposes **one theme value** with the same field names, cased for the language
 (`colorScheme` in TypeScript, Swift and Kotlin; `color_scheme` in Python and GDScript). Every field
@@ -36,7 +29,7 @@ is optional. An empty theme is the Polaris Key look in the product's accent.
 | `density`     | `"compact"` · `"comfortable"` · `"spacious"`                                     | `"comfortable"`; `"spacious"` for Godot and TV       | Control height and spacing only, never the component                                                                                                       |
 | `motion`      | `"system"` · `"reduced"` · `"none"`                                              | `"system"`                                           | `system` follows the OS reduced-motion setting                                                                                                             |
 | `ambient`     | boolean                                                                          | `true` (`false` under `native`)                      | The product's own icon or art, blurred behind the gate and boot screens                                                                                    |
-| `product`     | `ProductIdentity`                                                                | from the presentation, then the bundle               | [Product identity](/docs/build/ui/#product-identity), including `shortName`, `wordmark` and `deviceCodeUrl`                                                |
+| `product`     | `ProductIdentity`                                                                | from the presentation, then the bundle               | [Product identity](#product-identity), including `shortName`, `wordmark` and `deviceCodeUrl`                                                               |
 | `copy`        | a partial map of copy keys, or a `locale`                                        | the OS locale                                        | [Localization](/docs/build/ui/localization/#overriding-copy)                                                                                               |
 | `poweredBy`   | `false` · `"line"` · `"badge"`                                                   | `false`                                              | The optional "Powered by Polaris Key" line, at the foot of AccountAndLicense and About, or badge, on About                                                 |
 | `platform`    | `"auto"` · `"ios"` · `"android"` · `"macos"` · `"windows"` · `"linux"` · `"web"` | `"auto"`                                             | Web and Qt Quick kits render that platform's variant inside a webview or QML (Electron on Windows gets Fluent, Tauri on macOS gets the Mac sheet)          |
@@ -186,3 +179,33 @@ port must reproduce exactly (`packages/brand/fixtures/accent-vectors.json`):
 ## Bring your own design system
 
 Host design systems have no kits of their own. Use the `native` preset, or draw the screens with host components over the headless layer ([Your own UI](/docs/start/choose-your-integration/)).
+
+## Product identity
+
+The product is the hero of every kit screen. A kit's `ProductIdentity` holds `name`, `icon`, `developer`, and optionally `shortName`, `accent`, `art`, `wordmark` and `deviceCodeUrl`. The kit fills it from, in order:
+
+1. the theme you pass (`product`);
+2. the product's **registered presentation**, the `presentation` block of `.pkey/product` ([Presentation](/docs/build/manifest/product/#presentation-presentation)), served in the discovery document and read, verified and cached by the SDK;
+3. the app bundle: `Info.plist`, the Android manifest, `package.json`'s `productName`, or Godot's `application/config/name` and icon.
+
+With no icon at all, a kit draws a monogram tile, the product's initial on a neutral surface, never a Polaris Key mark. The accent follows the same order: yours, else the presentation's `accent` (its `accentDark` in the dark scheme), else a color derived from the icon, else a neutral ink.
+
+Polaris Key appears only in the optional "Powered by Polaris Key" line (`poweredBy`, off by default) and in two statements that are true about who handles a step: the sign-in footnote, and the device-code URL when the product sets no `deviceCodeUrl`. The service accents are off on product screens; opt in with `serviceCues: true`.
+
+## The presentation default
+
+Every kit has **one sign-in form**. Its body changes in place through Sign in, Finish in your browser (or the code), Choose a license (and Replace a device, when the license is full), and Done. No sheet or dialog stacks on it. Activation with a license key is a step of the same form, and also ships on its own for a key-only product.
+
+One option sets where the form appears, with the same values in every kit:
+
+| `presentation`       | The form                                                                                                                  |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `"inline"` (default) | In the screen or window pane the kit already owns                                                                         |
+| `"sheet"`            | In one platform sheet or dialog that holds every step: a sheet on macOS, `ContentDialog` on Windows, `AdwDialog` on GNOME |
+| `"browser"`          | The hosted sign-in card in the browser; the kit waits and moves on by itself                                              |
+
+`replace` (`"inline"` or `"browser"`) does the same for Replace a device. Native controls stay native inside the form, including the system confirmation for a destructive Replace where the platform expects one.
+
+## Accessibility
+
+Kits target WCAG 2.2 AA in both themes: one heading per screen; visible labels on every field; errors announced and focused; modals that trap focus, restore it and close on Escape, B or back; layouts that survive the largest text size; keyboard, gamepad and D-pad reach; named icon-only controls; status never shown by color alone; and glass that turns opaque under reduced transparency.

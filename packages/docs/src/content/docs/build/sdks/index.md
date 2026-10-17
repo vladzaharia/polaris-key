@@ -25,7 +25,7 @@ Every SDK has two lanes, with equal depth: the drop-in screens on the kit's
 ([Node](/docs/build/sdks/node/your-own-ui/), [React](/docs/build/sdks/react/your-own-ui/),
 [Python](/docs/build/sdks/python/your-own-ui/), [Swift](/docs/build/sdks/swift/your-own-ui/),
 [Kotlin](/docs/build/sdks/kotlin/your-own-ui/), [Godot](/docs/build/sdks/godot/your-own-ui/)). The
-[quickstarts](/docs/build/quickstart/) fork into them.
+quickstart for each SDK, linked from [Choose your integration](/docs/start/choose-your-integration/), forks into them.
 
 Every SDK that draws UI ships a UI kit. The kits share one component catalog, one theme API and
 one copy catalog, documented once in [UI kits](/docs/build/ui/), with a page per framework.
@@ -36,22 +36,21 @@ Every package is published to Polaris Key's own feeds on `pkg.plrs.im`, and nowh
 Node and React additionally share one isomorphic implementation of the verification, gate,
 trust, config-resolution and boot-stage logic, `@polaris-key/client-core`, rather than each reimplementing
 it; Python, Swift, Godot and Kotlin carry independent ports proven identical by the same cross-language
-conformance corpus. See `packages/client-core/README.md` for why that split exists, and
-[The wire contract](/docs/reference/protocol/) for the envelope itself.
+conformance corpus. [The wire contract](/docs/reference/protocol/) describes the envelope itself.
 
 ## The shared shape
 
 Every SDK composes one always-on **Core** (device id, credential, trust, the offline cache,
 `sync()`) with one **sub-client per enabled service**, addressed as `client.<service>.<verb>`:
 
-| Sub-client        | Owns                                                                                                |
-| ----------------- | --------------------------------------------------------------------------------------------------- |
-| `client.license`  | activation, enrollment, deactivation, status, entitlements, profile                                 |
-| `client.config`   | the signed config document + layered resolution (`getConfig`, `getSecret`), edge-mint (`mintToken`) |
-| `client.devices`  | registration, the roster, fingerprint/facts                                                         |
-| `client.identity` | device-code sign-in (`beginSignIn`, `waitForSignIn`)                                                |
-| `client.release`  | changelog, install script, artifact URLs                                                            |
-| `client.update`   | version check, the Sparkle appcast URL                                                              |
+| Sub-client        | Owns                                                                                                    |
+| ----------------- | ------------------------------------------------------------------------------------------------------- |
+| `client.license`  | activation, enrollment, deactivation, status, entitlements, profile                                     |
+| `client.config`   | the signed config document + layered resolution (`getConfig`, `getSecret`), minted tokens (`mintToken`) |
+| `client.devices`  | registration, the roster, fingerprint/facts                                                             |
+| `client.identity` | device-code sign-in (`beginSignIn`, `waitForSignIn`)                                                    |
+| `client.release`  | changelog, install script, artifact URLs                                                                |
+| `client.update`   | version check, the Sparkle appcast URL                                                                  |
 
 Node also carries `client.distribution`, the public download model for a platform, and `client.commerce`, which turns store purchases into license flags. [The parity matrix](/docs/reference/parity/) lists which SDK implements each feature.
 
@@ -60,8 +59,8 @@ on the top-level client, for the code a host writes before it knows which servic
 to. Verbs and field names follow each language's own convention (`activateWithKey` in
 TypeScript, `activate_with_key` in Python, `activate(key:)` in Swift, `activate_with_key` in GDScript), but the _shape_ —
 Core plus one sub-client per service, the same services in the same order — never
-changes, which is what makes the SDK READMEs on the following pages readable as one document
-in five dialects rather than five unrelated APIs.
+changes, which is what makes the SDK pages that follow read as one document in six languages
+rather than six unrelated APIs.
 
 ## Capability negotiation, fail-closed
 
@@ -70,7 +69,7 @@ No SDK lets a product talk to a service it doesn't run. `client.capabilities()`
 
 1. a discovery document loaded this session (`await client.discover()`) — always wins;
 2. `expectedServices` — what the build was compiled expecting;
-3. the suite default: **License + Config on**, Release/Update/Identity **off**.
+3. the default: **License + Config on**, Release/Update/Identity **off**.
 
 The license **gate** is stricter than capability negotiation: it is on when the build's
 `expectedServices` (default License + Config) names `license`, or when a discovery document says
@@ -93,7 +92,7 @@ constants. The answer is Supported, or Unsupported with a `feature`, a `reason` 
 | Reason       | Meaning                                                                        |
 | ------------ | ------------------------------------------------------------------------------ |
 | `runtime`    | the runtime cannot do it at all (a browser holds no secrets and no keyring)    |
-| `outlet`     | the outlet forbids it (iOS: no self-update, only a store link)                 |
+| `outlet`     | the channel forbids it (iOS: no self-update, only a store link)                |
 | `product`    | the owning service is off, by the capability precedence above                  |
 | `dependency` | an optional dependency is missing (Node or Python without a usable OS keyring) |
 | `version`    | this SDK version does not implement the feature yet, or does not know the id   |
@@ -111,7 +110,7 @@ fails with the same fields, in each language's idiom. The code depends on the re
   fields. Node and Python throw `UnsupportedError`. Swift throws its usual `PolarisError`, with
   the fields in `PolarisError.unsupported` so existing `catch let e as PolarisError` sites keep
   working. Godot returns its usual result, with the fields in `detail`.
-- **React keeps two older codes.** Its browser device-management verbs throw
+- **React has two codes of its own.** Its browser device-management verbs throw
   `UnsupportedError` with code `device-management-unsupported`, and `report()` throws it with
   `report-unsupported`. React's own refusals for a service that is off keep the plain
   `PolarisError` code `service-disabled`.
@@ -164,5 +163,5 @@ environment supplies is not listed (rule 4).
 - **[Swift](/docs/build/sdks/swift/)** — native CryptoKit verification, per-service SwiftPM
   targets so an app links only what it ships.
 - **[Godot](/docs/build/sdks/godot/)** — a pure-GDScript addon: the `PolarisKey` autoload,
-  `PKeyBoot` and the UI kit, updates by outlet, and packs mounted at a boot (a build without a
+  `PKeyBoot` and the UI kit, updates by channel, and packs mounted at a boot (a build without a
   content stamp at `res://pkey_packs/pkey-content.json` has no packs).

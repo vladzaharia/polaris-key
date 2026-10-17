@@ -106,17 +106,17 @@ Everything below hangs off one `PolarisKeyClient`. Names match the other SDKs up
 | -------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `activate(key:)`, `enroll()`                                               | A typed `ActivationResult` sorted by the server's error code: `unauthorized`, `deviceLimit`, `fingerprintRequired`, `hardwareMismatch`, `enrollDisabled`, `enrollClaimed`, `licenseDisabled`, `licenseExpired`, `attestationRequired`, `rateLimited(retryAfterSeconds:)`, `refused(code:status:message:)` or, with no usable answer, `error(code:message:status:)`. An unknown 403 is never `deviceLimit`. `PolarisError` is a `LocalizedError` whose text comes from the shared copy.                   |
 | `isEnabled(flag:)`, `license.isEntitled(_:)`                               | False whenever the gate is not usable (revoked, expired, blocked), even while a cached document still lists the flag.                                                                                                                                                                                                                                                                                                                                                                                    |
-| `licenseInfo()`                                                            | Licence id, tier and tier label, device limit, expiry, profile and channels.                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| `licenseInfo()`                                                            | License id, tier and tier label, device limit, expiry, profile and channels.                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | `config.bool` / `int` / `double` / `string` / `decode(_:as:)`              | Typed reads of the resolved value.                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | `config.set(_:_:)`, `clear(_:)`, `localValues()`                           | The user's own values, persisted in UserDefaults (an app-group suite with `appGroup`). They beat the environment and a remote `default`, never `enforced` or `hidden`, and are checked against the catalog's `type` and `enum`.                                                                                                                                                                                                                                                                          |
 | `config.fetchCatalog()`                                                    | The served catalog decoded as `ConfigCatalog` (entries, schema type, enum, UI hints).                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | `events`                                                                   | One `AsyncStream<PolarisKeyEvent>` per subscriber, one event per difference: `license(status:previous:)`, `entitlement(name:value:previous:)`, `config(key:value:previous:source:)`, `updateAvailable(version:action:mandatory:channel:)`, `packs(pack:phase:done:total:)`, `store(reason:detail:)`, the same kinds and fields as every SDK. `changes` is the deprecated earlier name. `syncOnForeground()` syncs when the app becomes active; SwiftUI gets it from `.polarisKeyGate` and `.polarisKey`. |
 | `devices.attest()`                                                         | App Attest on iOS: challenge, `attestKey` over SHA-256 of the request hash, POST, key id in the Keychain, a fresh key when the old one is invalid. A 403 `attestation_required` from edge-mint or a commerce claim attests once and retries once. macOS answers the typed `runtime` N/A.                                                                                                                                                                                                                 |
 | `commerce.purchase(productID:)`, `restore()`, `startTransactionUpdates()`  | StoreKit 2 with `appAccountToken` set to the server binding, then claim, then `finish()` only after the claim, then sync.                                                                                                                                                                                                                                                                                                                                                                                |
-| `identity.signInWithBrowser()`, `identity.signOut()`, `identity.current()` | Device-code sign-in shown in `ASWebAuthenticationSession` (the interim until native OIDC, I-15); sign-out is `deactivate()` plus the `license` event; `current()` is the signed profile (an empty field reads nil), or nil when no licence or an anonymous profile names no one. `SignInPoll.ready` carries `identity` and `attached`. The client-level `signInWithBrowser()` and `signOut()` forward to these.                                                                                          |
+| `identity.signInWithBrowser()`, `identity.signOut()`, `identity.current()` | Device-code sign-in shown in `ASWebAuthenticationSession` (the interim until native OIDC, I-15); sign-out is `deactivate()` plus the `license` event; `current()` is the signed profile (an empty field reads nil), or nil when no license or an anonymous profile names no one. `SignInPoll.ready` carries `identity` and `attached`. The client-level `signInWithBrowser()` and `signOut()` forward to these.                                                                                          |
 | `report(extras:)`                                                          | The device report carries the gate, the outlet and up to 16 queued update-health events (`update_offered`, `update_downloaded`, `update_applied`, `update_confirmed`, `pack_failed`, `boot_rolled_back`), dropped only once a report is accepted.                                                                                                                                                                                                                                                        |
 | `boot()`                                                                   | Drives the boot stages (discover, guard, sync, gate, decide, fetch, mount) and confirms the launch after `BOOT_OK_SECONDS`. The boot guard counts unconfirmed launches; an Apple app has no previous build, so it journals `boot_rolled_back` once instead.                                                                                                                                                                                                                                              |
-| `update.install(_:)`, `update.feedUrl(_:)`, `update.fetch(...)`            | Opens the App Store, TestFlight or marketplace listing on iOS and hands off to Sparkle on macOS. `PolarisSparkle.start(client:)` follows licence and channel changes.                                                                                                                                                                                                                                                                                                                                    |
+| `update.install(_:)`, `update.feedUrl(_:)`, `update.fetch(...)`            | Opens the App Store, TestFlight or marketplace listing on iOS and hands off to Sparkle on macOS. `PolarisSparkle.start(client:)` follows license and channel changes.                                                                                                                                                                                                                                                                                                                                    |
 | `distribution`                                                             | The download-page model.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 
 Keychain and directories: `keychainAccessGroup` (`<TeamID>.<group>`) puts the token item in a
@@ -180,7 +180,7 @@ body's own code (`unauthorized`, `channel_not_allowed`, …).
 
 A 401 on a document gets exactly **one** re-acquire per `sync()` pass, then one retry of the
 failed fetch. A licensed device rotates its token with `POST /<product>/license/token`. A
-registered device without a licence **re-registers** instead: when License is off for the
+registered device without a license **re-registers** instead: when License is off for the
 product, or the token came from `register()` in this process, the one attempt is
 `POST /<product>/devices/register` (the same request as `register()`: the fingerprint when
 fingerprinting is enabled, and no `Authorization` header). Both documents share the attempt, so
@@ -291,13 +291,13 @@ poll that fails on the network or with a 5xx is retried at the same interval, ne
 returns `.expired` once `prompt.expiresAt` has passed without asking the server again.
 `pollSignIn(_:)` makes exactly one poll (`.pending`, `.slowDown(interval:)`, `.ready`, `.expired`
 or `.error`). `prompt.deviceCode` is the poll credential: never show it. A sign-in yields the
-signed-in identity's **own** licence; it does not attach a licence this device already held.
+signed-in identity's **own** license; it does not attach a license this device already held.
 
 **After `.ready`, show on the device which account signed in.** Anyone holding the user code can
 complete the sign-in on the verification page, so the player must be able to see a mis-binding.
 `.ready(let ready)` carries `ready.identity` (name and email, when the Worker said) and
 `ready.attached`; the post-acquisition sync has already run, so `await client.currentDevice().profile`
-(or `LicenseClient.profile()`) returns the signed licence profile too. Show "Signed in as Ada
+(or `LicenseClient.profile()`) returns the signed license profile too. Show "Signed in as Ada
 Lovelace <ada@example.com>" with a way out: `PolarisSignIn` does, ending in Continue and
 "Not you?" (which signs out and starts again).
 
@@ -311,7 +311,7 @@ third-party token through an operator-approved recipe (`GET /<product>/config/mi
 with the device token) and returns a `MintedToken(token:expiresAt:)`. It is cached **in memory
 only** — never in the cache file or the keychain — and reused until 30 seconds before
 `expiresAt`, and only while the client still holds the device token it was minted with —
-`deactivate()`, a cleared token or a different sign-in drops it. A 401 gets the usual single re-acquire, on the same route a document 401 takes (so a registered device without a licence re-registers), and one retry. Failures throw
+`deactivate()`, a cleared token or a different sign-in drops it. A 401 gets the usual single re-acquire, on the same route a document 401 takes (so a registered device without a license re-registers), and one retry. Failures throw
 `PolarisError`: `service-unavailable` (Config off) and `bad_request` (an id outside `[a-z0-9-]`)
 before any request, `unauthorized` (no token, or still 401), or the Worker's `not_found` /
 `rate_limited` / `misconfigured`.
@@ -439,7 +439,7 @@ Three depths, all first-class:
 2. **Air-gapped activation** (§7) — an operator mints a `.pkeybundle` against this device's id;
    `try await client.importBundle(jws)` verifies it against the **pins** all-or-nothing and
    writes the cache atomically. No token is created; the gate reads `activation: .bundle` while
-   the stored bundle still re-verifies and carries the cached licence document. A bundle must
+   the stored bundle still re-verifies and carries the cached license document. A bundle must
    be strictly newer than the documents already held, and re-importing the same bytes is a no-op. A
    refusal throws `PolarisError` carrying the §7 step that refused, because the step is the
    operator's remedy.
@@ -453,9 +453,9 @@ Three depths, all first-class:
 `PolarisKeyUI` draws the gate in SwiftUI. `.polarisKeyGate(client)` is the one-line drop-in: it
 starts the client, shows the product's icon with a loading line until the first check answers (a
 licensed launch never flashes the activation card), re-renders on `client.events`, syncs when the
-scene becomes active, runs every screen the licence needs, shows an offline-grace banner over your
+scene becomes active, runs every screen the license needs, shows an offline-grace banner over your
 content, and for a blocking state offers the actions that can change it. Your own UI shows once the
-licence is usable (`ok`, `grace` or `not-applicable`). The kit reads the nine launch locales. The
+license is usable (`ok`, `grace` or `not-applicable`). The kit reads the nine launch locales. The
 screens, `KitGateOptions` and the theme are on the
 [SwiftUI kit](/docs/build/ui/frameworks/swiftui/) page.
 
@@ -519,7 +519,7 @@ struct GatedRoot: View {
 The first SwiftUI gate still ships beside it. One modifier gates the app: it puts the model in the
 environment, syncs when the scene becomes active and wraps your content in the gate. The gate
 draws nothing but its ground until the client has been read, shows the activation form when a
-licence is needed, an offline-grace banner over your content, and for a blocking state the actions
+license is needed, an offline-grace banner over your content, and for a blocking state the actions
 that can change it, then your own UI once usable (`ok` / `grace` / `not-applicable`). Its words are
 English unless you set them through `PolarisTheme(copy:)`. The rest of this section describes it.
 
@@ -560,11 +560,11 @@ struct MyAppRootView: View {
 
 | Option                    | Default                     | What it does                                                                                                                        |
 | ------------------------- | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `showsKeyEntry`           | `true`                      | The licence-key field. Turn it off where the store's rules forbid key entry (App Store 3.1.1); sign-in and your own actions remain. |
+| `showsKeyEntry`           | `true`                      | The license-key field. Turn it off where the store's rules forbid key entry (App Store 3.1.1); sign-in and your own actions remain. |
 | `offersOfflineActivation` | `false` on iOS, else `true` | "Activate offline", for a machine with no network. A phone has one, so iOS leaves it out unless you ask.                            |
 | `offersFreeTier`          | `false`                     | "Continue free" (keyless enrolment); hidden for good once the server answers `enroll_disabled`.                                     |
 | `returnURL`               | none                        | Where the portal sends the person back after **Replace a device** (the device-limit refusal's link carries it).                     |
-| `renewURL`                | none                        | Your renewal or account page. An expired licence then leads with **Renew or manage**; without it, with **Try again**.               |
+| `renewURL`                | none                        | Your renewal or account page. An expired license then leads with **Renew or manage**; without it, with **Try again**.               |
 | `blockedAction`           | none                        | Your own action on an expired, revoked or version-blocked gate (a support link, an Update button), drawn under the gate's.          |
 
 A blocking state always has a way out (one filled action, the rest quiet): **expired** offers Renew
@@ -574,11 +574,11 @@ different key** shows the activation form on the same screen and **Cancel** goes
 needs a relaunch. The explanation is worded for the controls the gate really has.
 
 An accent you pass (`accent:`) goes through the same contrast resolver as a product's registered
-accent: the button fill and its label clear 4.5:1 and so does the accent text, in both colour
+accent: the button fill and its label clear 4.5:1 and so does the accent text, in both color
 schemes (white on `#FF6A3D` is 2.85:1 as given).
 
 **Native by default.** Out of the box the gate looks like your app: system fonts with Dynamic Type,
-your app's tint (`.tint(_:)` / the asset catalog accent), system colours that follow dark and
+your app's tint (`.tint(_:)` / the asset catalog accent), system colors that follow dark and
 light, system button shapes, and no Polaris Key branding. The product leads every screen: your
 `logo:`, else the product's presentation icon (below), else your app's icon from the bundle, else
 a monogram tile of the product's initial.
@@ -623,11 +623,11 @@ register. The product stays the hero there too: no Polaris Key mark on the gate 
 **The product's presentation** (discovery `core.presentation`: name, developer, accent and the
 verified icon) reaches the kit through `.polarisKeyPresentation(_:)`, the seam the SDK's
 accessor fills once HA-13 lands. Under `.polarisKey` branding its accent (`accentDark` in the dark
-scheme) colours the kit through the contrast resolver (`PolarisAccent`); natively your app's tint
+scheme) colors the kit through the contrast resolver (`PolarisAccent`); natively your app's tint
 still leads. Your theme wins over the presentation field by field.
 
 Overrides apply in either mode and win over the branding: `accent:` / `accentOn:` re-point the
-primary button in both schemes, `palette:` replaces every colour per scheme, `typography:` picks
+primary button in both schemes, `palette:` replaces every color per scheme, `typography:` picks
 `.system`, `.brand` or `.custom(regular:bold:)`, and `logo:` replaces the product icon.
 
 **"Powered by Polaris Key" is optional and off by default** in both modes. Opt in with
@@ -686,7 +686,7 @@ func makeUpdater(_ client: PolarisKeyClient) async throws
   these paths and left aliases behind.
 - **`httpHeaders`** so an `entitled` product's feed (D-13) is reachable at all; Sparkle makes its
   own HTTP requests, and without this they are anonymous and answer 401.
-- **`allowedChannels`** from the licence's `channels` entitlement, so a stable-only customer is
+- **`allowedChannels`** from the license's `channels` entitlement, so a stable-only customer is
   not offered a beta the server will then refuse. A UX narrowing, not an enforcement point. A
   `staging` grant also allows `beta`, and a `beta` grant `staging`, as the server treats them.
 
@@ -977,10 +977,10 @@ The channel names are WIRE-CONTRACT-V3 §5.1's: `stable`, `beta`, `pr`/`pr-<n>`,
 product's manual channels. `Semver.channelForVersion` derives the default `X-PKey-Channel` from
 the build version: `0.0.0-beta*` and the legacy `0.0.0-staging*` builds are now `.beta`.
 
-**Behaviour note (P1b-07):** `client.license.entitledChannels()` now answers `["stable"]` when
-the licence carries no `channels` entitlement (or a non-array one), where it used to answer `[]`.
+**Behavior note (P1b-07):** `client.license.entitledChannels()` now answers `["stable"]` when
+the license carries no `channels` entitlement (or a non-array one), where it used to answer `[]`.
 That is the Worker's own answer and every other SDK's; Sparkle's `allowedChannels(from:)` already
-treated an empty grant as stable only, so the updater's behaviour does not change. The list is
+treated an empty grant as stable only, so the updater's behavior does not change. The list is
 the raw grants: `staging` is not rewritten to `beta`.
 
 **Source note (P0-04):** `enum Channel` gained `case beta`, and `case staging` is deprecated
@@ -1056,7 +1056,7 @@ the document); `alg == "EdDSA"` and a String `kid` are asserted _before_ any sig
 `none`/HMAC downgrade is rejected). Public keys are RAW 32 bytes
 (`Curve25519.Signing.PublicKey(rawRepresentation:)`) — no SPKI prefix. The signature is checked
 over the ASCII bytes of the original `encHeader.encPayload` substrings; the payload is never
-re-serialised, so verification is byte-stable across Node, Python, React and Swift.
+re-serialized, so verification is byte-stable across Node, Python, React and Swift.
 
 Additionally, in this order: the **encoded** segments are bounded before any decode (1 KiB
 header, 64 KiB payload — 256 KiB for `pkey-bundle+jws` alone), base64url is **strict** (`-_`

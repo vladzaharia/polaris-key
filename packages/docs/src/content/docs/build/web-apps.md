@@ -9,23 +9,30 @@ lastReviewed: "2026-10-16"
 
 A web app on another origin, such as the React kit on your own domain or a Godot web export, calls Polaris Key with a device token and verifies every document in the page against the pins in its generated config ([React quickstart](/docs/build/quickstart/react/#2-generate-the-config)). The browser also has to be allowed to read the response, which is what this page sets up. A page served from Polaris Key's own origin needs none of it.
 
-A browser page can only read a cross-origin response when the server says it may. The Worker
-says so per product, and only for the origins that product lists under `web.origins` in
-`.pkey/product`. A Godot web export on `https://play.example.com`, or the React SDK embedded in
+A browser page can only read a cross-origin response when the server says it may. Polaris Key
+says so per product, and only for the origins that product lists: under **Core → Settings →
+Web origins** in the console, or under `web.origins` in `.pkey/product`. A Godot web export on `https://play.example.com`, or the React SDK embedded in
 a third-party site, can then call that product's device-facing routes with `fetch`. Every other
-origin gets no `Access-Control-*` header at all, which is how things behaved before this field
-existed.
+origin gets no `Access-Control-*` header at all.
 
 ## Declaring origins
 
+**Console** Open **Core → Settings → Web origins**, enter the origin under **Allowed origins** and select **Save settings**. On a product linked to a repository, confirm **Save and claim**.
+
+You should see the origin listed. A page on it can now read the product's device-facing responses.
+
+An edit in the console takes the field from the manifest, so later pushes leave it alone. **Revert to manifest** hands it back.
+
+To keep the list in the repository instead, declare it in `.pkey/product`:
+
 ```jsonc
 {
-  "product": { "slug": "acme", "name": "Acme" },
+  "product": { "slug": "tidewater", "name": "Tidewater Studio" },
   "web": {
     // Up to 16 exact origins, spelled the way a browser sends the Origin header.
     "origins": [
-      "https://play.acme.example",
-      "https://acme.example:8443",
+      "https://play.tidewater.example",
+      "https://tidewater.example:8443",
       // Plain http only for local web-export testing, and only on these two hosts.
       "http://localhost:8060",
       "http://127.0.0.1:8060",
@@ -34,21 +41,20 @@ existed.
 }
 ```
 
-The list is applied on link and rewritten on every resync. Removing the block clears it, so no
-origin is allowed. There is no console override: the manifest owns this field.
+A link applies the list and every resync rewrites it, until a console edit takes the field. Removing the block clears the list, so no origin is allowed.
 
 Each entry is compared **byte for byte** with the request's `Origin`, so ingest refuses anything
 a browser would never send instead of rewriting it:
 
-| Refused                                              | Why                                                |
-| ---------------------------------------------------- | -------------------------------------------------- |
-| `https://acme.example/`, `https://acme.example/play` | an origin has no path, not even `/`                |
-| `https://Acme.example`, `HTTPS://acme.example`       | browsers lower-case scheme and host                |
-| `https://acme.example:443`                           | browsers drop the default port                     |
-| `https://*.acme.example`, `*`, `null`                | there is no wildcard, and `null` is not an origin  |
-| `https://user@acme.example`, `?query`, `#fragment`   | never part of an origin                            |
-| `http://acme.example`, `http://[::1]:8060`, `ws://…` | plain http is for `localhost` and `127.0.0.1` only |
-| a 17th entry, or a repeated one                      | the cap is 16; a duplicate is always a typo        |
+| Refused                                                        | Why                                                |
+| -------------------------------------------------------------- | -------------------------------------------------- |
+| `https://tidewater.example/`, `https://tidewater.example/play` | an origin has no path, not even `/`                |
+| `https://Tidewater.example`, `HTTPS://tidewater.example`       | browsers lower-case scheme and host                |
+| `https://tidewater.example:443`                                | browsers drop the default port                     |
+| `https://*.tidewater.example`, `*`, `null`                     | there is no wildcard, and `null` is not an origin  |
+| `https://user@tidewater.example`, `?query`, `#fragment`        | never part of an origin                            |
+| `http://tidewater.example`, `http://[::1]:8060`, `ws://…`      | plain http is for `localhost` and `127.0.0.1` only |
+| a 17th entry, or a repeated one                                | the cap is 16; a duplicate is always a typo        |
 
 Two validator codes report these: `invalid_web_origins` for the block's shape (not an object,
 not an array, more than 16 entries) and `invalid_web_origin` for a single entry, with a
@@ -61,7 +67,7 @@ the same rules in your editor except the default-port case, which only the valid
 On a covered route, a request whose `Origin` is on the list gets:
 
 ```http
-Access-Control-Allow-Origin: https://play.acme.example
+Access-Control-Allow-Origin: https://play.tidewater.example
 Access-Control-Expose-Headers: ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest
 Vary: Origin
 ```
@@ -82,7 +88,7 @@ Authenticate with the bearer token the SDK already holds, which is never ambient
 first. `OPTIONS` on a covered path always answers `204`. For a listed origin it adds:
 
 ```http
-Access-Control-Allow-Origin: https://play.acme.example
+Access-Control-Allow-Origin: https://play.tidewater.example
 Access-Control-Allow-Methods: GET, POST, PATCH, DELETE
 Access-Control-Allow-Headers: Authorization, Content-Type, Range, If-None-Match, If-Range, X-PKey-Device, X-PKey-Version, X-PKey-Channel, X-PKey-SDK, X-PKey-SDK-Version, X-PKey-Platform, X-PKey-Arch
 Access-Control-Max-Age: 600
@@ -98,7 +104,7 @@ plain `404`.
 ## Covered routes
 
 Every product-scoped route in the [public route table](/docs/reference/routes/) is covered
-except the seven below. The covered routes include discovery, JWKS, the trust manifest, the
+except the routes below. The covered routes include discovery, JWKS, the trust manifest, the
 device routes, License, Config (document, schema, mint token), Release (changelog),
 Distribution (`install.sh`, downloads, builds, files, blobs), Update (appcasts, version) and the
 device-code flow. The permanent aliases are covered like the routes they point to.

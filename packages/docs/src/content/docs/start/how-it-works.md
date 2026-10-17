@@ -56,29 +56,26 @@ A record Polaris Key can't read in full falls back to License and Config on. It 
 
 Services depend on each other. Distribution needs Release, Update needs Distribution, and Cloud Sync needs Config and Identity. Polaris Key checks an enablement set as a whole. Each fault has one stable code, so every surface reports the same fault.
 
-| Code                             | The fault                                           | `pkey validate` and ingest | Enablement API |
-| -------------------------------- | --------------------------------------------------- | -------------------------- | -------------- |
-| `distribution_requires_release`  | Distribution on, Release off                        | Error                      | Error          |
-| `update_requires_distribution`   | Update on, Distribution off                         | Error                      | Error          |
-| `sync_requires_config`           | Cloud Sync on, Config off                           | Error                      | Error          |
-| `sync_requires_identity`         | Cloud Sync on, Identity off                         | Error                      | Error          |
-| `registration_requires_identity` | `requires-identity` declared, Identity off          | Not checked                | Error          |
-| `config_without_activation`      | Config on, License and Identity off                 | Warning                    | Not checked    |
-| `config_without_activation`      | Config on, License off, `requires-license` declared | Not checked                | Error          |
+| Code                            | The fault                    | `pkey validate` and ingest | Enablement API |
+| ------------------------------- | ---------------------------- | -------------------------- | -------------- |
+| `distribution_requires_release` | Distribution on, Release off | Error                      | Error          |
+| `update_requires_distribution`  | Update on, Distribution off  | Error                      | Error          |
+| `sync_requires_config`          | Cloud Sync on, Config off    | Error                      | Error          |
+| `sync_requires_identity`        | Cloud Sync on, Identity off  | Error                      | Error          |
 
-A config-only product is valid on purpose: it issues config documents to registered devices with no license anywhere. Ingest doesn't check `registration_requires_identity`, so a repository can push a `requires-identity` policy to a product without Identity. Core asks Identity again on every registration and refuses with `403 registration_closed`.
+`pkey validate` also warns with `config_without_activation` when Config is on and License and Identity are both off. It is a warning only: a config-only product is valid on purpose, issuing config documents to registered devices with no license anywhere.
 
 ## Registration policy
 
 Core derives the registration policy from the service set; no manifest or console control declares it:
 
-| Policy              | When it applies                        | Behaviour                                             |
-| ------------------- | -------------------------------------- | ----------------------------------------------------- |
-| `requires-license`  | License is enabled                     | Activation and enrollment are the only mint paths.    |
-| `requires-identity` | License is off and Identity is enabled | Registration requires a live product browser session. |
-| `open`              | License and Identity are both off      | Any caller may register, rate-limited by edge IP.     |
+| Policy              | When it applies                        | Behavior                                                    |
+| ------------------- | -------------------------------------- | ----------------------------------------------------------- |
+| `requires-license`  | License is enabled                     | Activation and enrollment are the only ways to get a token. |
+| `requires-identity` | License is off and Identity is enabled | Registration requires a live product browser session.       |
+| `open`              | License and Identity are both off      | Any caller may register, rate-limited by edge IP.           |
 
-Every refusal is `403 registration_closed`, without revealing why. Core asks Identity through a narrow predicate for the identity-required case. The current result is exposed as `effectiveRegistration`, and it changes with the validated service set.
+Every refusal is `403 registration_closed`, without revealing why. In the identity-required case, Core asks Identity whether the browser session is live. The result is exposed as `effectiveRegistration` and changes with the enabled services.
 
 ## Next steps
 

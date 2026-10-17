@@ -5,7 +5,7 @@ type: "concept"
 lastReviewed: "2026-10-10"
 ---
 
-This is the canonical glossary. When code and this page disagree, this page wins: open a pull request to reconcile them. The console, the portal and the docs' prose use one word per concept and one concept per word, spelled in US English and sentence case. A word in the first column is what a reader sees. The identifier in the third column is what code, manifests and the wire call it. Identifiers keep their names when a word changes.
+This is the canonical glossary. The console, the portal and the docs use one word per concept and one concept per word, spelled in US English and sentence case. A word in the first column is what a reader sees. The identifier in the third column is what code, manifests and the wire call it. Identifiers keep their names when a word changes.
 
 ## UI words and the identifiers they keep
 
@@ -85,13 +85,13 @@ The identifiers keep them (`outlet`, `dist_outlets`, `grants`, `outletCapabiliti
 
 ## Core nouns
 
-- **product**: one tenant of Polaris Key, addressed by its `slug`. Every row, key, signature and admin route is product-scoped.
+- **product**: what an app is licensed and configured through, addressed by its `slug`. Every row, key, signature and admin route is product-scoped.
 - **license**: an access contract for one product. It carries entitlements and optionally belongs to an account. An admin creates it, or sign-in mints it.
 - **key**: the `pkey_<product>_…` secret a person redeems to activate a device. It is shown once and stored only as a hash.
 - **device**: an authorized install of the product, bound to a bearer token (`pkeyt_…`). A device belongs to Core, not to licensing: with an `open` or `requires-identity` policy it holds a token with no license behind it.
 - **profile**: a reusable managed-payload baseline that a tier or license attaches.
 - **entitlement**: a named right or value a device gets from its license, for example `channels` or `app.minVersion`. Entitlements ride the license document only.
-- **enrollment**: a keyless activation that auto-issues a license under the product's access policy. **Activation** redeems a `pkey_…` key.
+- **keyless activation**: activation with no key, which auto-issues a license under the product's access policy (identifier `enroll`). **Activation** with a key redeems a `pkey_…` key.
 - **origin**: how a license came to exist: `admin`, `oidc` (minted at sign-in) or `enroll`.
 - **re-licensing**: changing a license's tier. Running clients pick up the change at their next license-document refresh. A downgrade below the active device count keeps existing devices and refuses new activations until the count drops.
 - **account**: one person across every product, with a primary verified email and its sign-in methods. Developers see a **pairwise subject** (`ps_…`) instead of the account id.
@@ -154,4 +154,4 @@ A package is a library or image that other software installs from a **package fe
 
 ## Distribution model
 
-An **outlet** is a venue a build reaches players through. The UI word is **Channel**. A **transport** is how a deliverable's bytes arrive on an outlet. **Availability** says that release V is live on outlet O. A **rollout** is the percentage of devices that see a release on one outlet.
+A **channel** (identifier `outlet`) is a place a build reaches customers. A **transport** is how a deliverable's bytes arrive on a channel. **Availability** says that release V is live on channel C. A **rollout** is the percentage of devices that see a release on one channel.

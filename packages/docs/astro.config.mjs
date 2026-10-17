@@ -16,6 +16,7 @@ import starlight from "@astrojs/starlight";
 import tailwindcss from "@tailwindcss/vite";
 import { loadMap, redirectsFor } from "./scripts/site-map.mjs";
 import { starlightSidebar } from "./src/lib/doors.ts";
+import importedMarkdown from "./scripts/imported-markdown.mjs";
 
 export default defineConfig({
   site: "https://key.plrs.im",
@@ -32,7 +33,7 @@ export default defineConfig({
     inlineStylesheets: "never",
   },
   vite: {
-    plugins: [tailwindcss()],
+    plugins: [importedMarkdown(), tailwindcss()],
     ssr: {
       // Expressive Code's chunk inlines postcss (CJS), whose `require("nanoid/non-secure")`
       // gets rewritten to a DEFAULT import; nanoid v3's ESM build has no default export, so

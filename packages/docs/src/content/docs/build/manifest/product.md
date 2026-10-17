@@ -1,5 +1,5 @@
 ---
-title: "Write the product manifest"
+title: "Product manifest"
 description: "Declare the product, its services, origins, presentation, licensing and sign-in settings in .pkey/product."
 type: "reference"
 lastReviewed: "2026-10-16"
@@ -9,41 +9,13 @@ sidebar:
 
 A product is data. `.pkey/product` holds its identity, the services it runs, browser origins, presentation, device policy, licensing defaults and sign-in settings. The Worker, the console and every SDK read that data, so changing a product never needs a Worker deploy.
 
-This page covers `.pkey/product`. The catalog is on [Write the catalog](/docs/build/manifest/catalog/), releases and packages on [Write the release manifest](/docs/build/manifest/release/), and store listings on [Distribution](/docs/build/manifest/distribution/). The words are defined on [Concepts](/docs/start/concepts/).
+This page covers `.pkey/product`. The catalog is on [Catalog](/docs/build/manifest/catalog/), releases and packages on [Release manifest](/docs/build/manifest/release/), and store listings on [Distribution](/docs/build/manifest/distribution/). The words are defined on [Concepts](/docs/start/concepts/).
 
-## The `.pkey/` directory
+## Where the file lives
 
-`.pkey/` is the **only** manifest directory. There is no second candidate directory and no
-fallback between two: an interim design renamed it, and the dual-read that rename needed meant
-every miss cost a second GitHub round trip and made "which file is actually live" a question you
-had to trace through a fallback chain. Both were withdrawn.
+`.pkey/product` is one of the manifest's files, in `.json`, `.yaml` or `.yml`. [The `.pkey/` manifest](/docs/build/manifest/) lists the files and what each carries, and [Register a product](/docs/build/manifest/register/) links the repository. The file is required. Runtime changes made in the console, such as secrets, license and device overrides, service switches and operator policy, live separately and survive a resync.
 
-The directory holds up to **four independent files**. The base name (no extension) selects the
-role; the extension is a pure format preference, tried in the fixed order **`.json`, then
-`.yaml`, then `.yml`**, resolved per document independently — so a repo may keep `product.yaml`
-next to `schema.json`. The files are the **manifest baseline**: they describe intended product
-defaults. Runtime admin changes such as secrets, license/device overrides, live service toggles,
-and operator policy overrides live separately in Polaris Key and are preserved across resync.
-
-| File        | Base name                 | Maps to                                                                                                                    | What it carries                                                                                                                                           |
-| ----------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **schema**  | `schema.{json,yaml,yml}`  | `product_schema` row                                                                                                       | the config catalog: `{ schemaVersion, entries[] }` (**required**)                                                                                         |
-| **product** | `product.{json,yaml,yml}` | `products` (incl. `services_json`, `web_origins_json`) + `oidc_config` + `profiles` + `tiers` + `provisioning_config` rows | product metadata, enabled services, OIDC, profiles, tiers, provisioning hooks (**required**)                                                              |
-| **release** | `release.{json,yaml,yml}` | provider-backed `release_config` + `release_deliverables` + `edge_mint_config` rows                                        | release provider coordinates + channel/install/appcast/edge-mint settings + the app deliverable and its artifact map (required when releases are enabled) |
-
-The fourth, optional file — **distribution** (`distribution.{json,yaml,yml}`, mapping to
-`dist_outlets` + `dist_transports`) — declares the product's outlets, their store identities,
-the transport per deliverable and the store listing. It has its own page:
-[Distribution: outlets, transports and listing](/docs/build/manifest/distribution/).
-
-In this repo the same data lives split for fixture clarity as `products/djdl/catalog.json`
-(the schema) and `products/djdl/product.json` (product + release + edge-mint inlined). When
-a product hosts its own `.pkey/`,
-`parseManifest` from `@polaris-key/manifest` (repo ingest is a release-service path, in
-`packages/worker/src/services/release/`) parses the files,
-aggregates **all** validation errors, and returns a `ParsedManifest` ready for D1 insertion. The
-schema is compiled through `@polaris-key/catalog` before anything is written so malformed
-JSON-Schema fragments fail during import/resync, not during a client request.
+Polaris Key parses the files, reports **all** validation errors at once, and compiles the schema before anything is stored, so a malformed fragment fails at link or resync, not in a client request.
 
 `pkey init` writes `product.yaml` and `schema.yaml` every time (plus `release.yaml` when releases
 are selected): ingest requires the schema even when Config is off, and `pkey validate` applies the
@@ -199,19 +171,16 @@ is on.
 
 ## Browser origins: `web.origins`
 
-`web.origins` lists up to 16 exact origins, such as `https://play.acme.example` or
-`http://localhost:8060`, that may read this product's device-facing responses from a browser
-with `fetch`. It is persisted to `products.web_origins_json`. Link writes it and every resync
-rewrites it; dropping the block clears it. There is no console override. Entries must be spelled
-exactly as a browser sends `Origin`, and ingest refuses anything else (`invalid_web_origins`,
-`invalid_web_origin`). Credentials are never allowed, and the cookie-bearing identity routes,
-the console, the portal and the docs never answer CORS. The rules, headers and covered routes
-are at [Web apps and CORS](/docs/build/web-apps/).
+`web.origins` lists up to 16 exact origins, such as `https://play.tidewater.example` or `http://localhost:8060`, that may read this product's device-facing responses from a browser with `fetch`. A link writes the list and every resync rewrites it; dropping the block clears it.
+
+To set the list without a repository, open **Core → Settings → Web origins** and edit **Allowed origins**. An edit there takes the field from the manifest, so later pushes leave it alone. **Revert to manifest** hands it back, and the manifest's list applies at the next resync.
+
+Entries must be spelled exactly as a browser sends `Origin`, and ingest refuses anything else (`invalid_web_origins`, `invalid_web_origin`). Credentials are never allowed, and the cookie-bearing identity routes, the console, the portal and the docs never answer CORS. The rules, headers and covered routes are at [Web apps and CORS](/docs/build/web-apps/).
 
 ```jsonc title=".pkey/product"
 {
   "web": {
-    "origins": ["https://play.acme.example", "http://localhost:8060"],
+    "origins": ["https://play.tidewater.example", "http://localhost:8060"],
   },
 }
 ```

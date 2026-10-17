@@ -2,7 +2,7 @@
  * Which feed, scope and package `<InstallSteps>` asks `feedsSetup()` for, per SDK (docs plan §4).
  * Kept out of the component so a test can feed the same mapping to the CLI's own function.
  */
-import { SDK_LABELS, type SdkId } from "./docs";
+import { type SdkId } from "./docs";
 
 /** An SDK, or "cli" for the `pkey` command-line tool (npm feed). */
 export type InstallTarget = SdkId | "cli";
@@ -56,6 +56,11 @@ export const FEEDS: Readonly<Record<InstallTarget, FeedTarget>> = {
 };
 
 export const INSTALL_LABELS: Readonly<Record<InstallTarget, string>> = {
-  ...SDK_LABELS,
+  node: "the Node SDK",
+  react: "the React SDK",
+  python: "the Python SDK",
+  swift: "the Swift SDK",
+  kotlin: "the Kotlin SDK",
+  godot: "the Godot add-on",
   cli: "the pkey CLI",
 };

@@ -12,7 +12,7 @@ Python and Swift SDKs on every vector, in the editor and on an exported release 
   `-main.N` pre-release).
 - **Engines:** Godot 4.4 or later; 4.6 or later recommended (see
   [Supported engines](#supported-engines)).
-- **Licence:** MIT, like the rest of the repository. Changes: `sdks/godot/CHANGELOG.md`.
+- **License:** MIT, like the rest of the repository. Changes: `sdks/godot/CHANGELOG.md`.
 - **Contributing** (layout, the test runner, GDScript rules, the measured engine pitfalls,
   releasing): `sdks/godot/CONTRIBUTING.md`.
 
@@ -90,7 +90,7 @@ func _ready() -> void:
 ```
 
 `PolarisKey.boot()` configures from `res://polaris_key.tres` when nothing has configured yet,
-starts offline from the verified cache, syncs, gates on the licence, checks for an update and
+starts offline from the verified cache, syncs, gates on the license, checks for an update and
 drives packs, showing the `PKeyBoot` screen on a layer above the game until READY. Put a
 `PKeyBoot` in your own boot scene and pass it as `view` to style it yourself. The full stage list
 and options are in [Boot and UI kit](#boot-and-ui-kit-polariskeyboot-pkeyboot-p1-10).
@@ -134,11 +134,11 @@ PolarisKey.state_changed.connect(func(s): print(s["status"]))
 `PolarisKey.status()` is the gate's state: `status` is `ok`, `grace`, `expired`, `revoked`,
 `needs-activation` or a block reason, or `not-applicable` for a product without License, where
 `is_licensed()` is true. `is_entitled(name)` is true only while the gate is usable: a revoked
-or expired licence unlocks nothing, even though `get_entitlements()` still reads the last verified
-values. A 401 during a sync re-acquires the token once. `expired` is the cached licence document
+or expired license unlocks nothing, even though `get_entitlements()` still reads the last verified
+values. A 401 during a sync re-acquires the token once. `expired` is the cached license document
 outliving its grace window with no successful sync (a device that stayed offline too long): the
-player sees "Connect to keep playing" and Try again. It is not how a licence whose term ended
-shows: the server answers a dead licence like a wrong key (401), so a key typed for it gets "That
+player sees "Connect to keep playing" and Try again. It is not how a license whose term ended
+shows: the server answers a dead license like a wrong key (401), so a key typed for it gets "That
 license key wasn't accepted.", a sync that finds it ends in `revoked` ("Signed out"), and no
 screen tells a key holder the difference yet.
 
@@ -225,8 +225,8 @@ await PolarisKey.commerce.claim_play(sku, purchase_token) # from your own Play b
 if PolarisKey.commerce.is_unlocked("extras.diceSkins"): print("extras.diceSkins unlocked")
 ```
 
-Store purchases become licence flags (P6-01): the store sells, the Worker verifies the purchase
-and puts the mapped flag on the licence. `purchase(flag)` is the whole flow: the binding, the
+Store purchases become license flags (P6-01): the store sells, the Worker verifies the purchase
+and puts the mapped flag on the license. `purchase(flag)` is the whole flow: the binding, the
 store's purchase with the binding token, the claim, the transaction finished only after the
 claim succeeded, then a sync. It drives the App Store on iOS (`PKeyApple`) and Steam through
 GodotSteam (the overlay's store page; the DLC is claimed with a Web API ticket bound to the
@@ -382,12 +382,12 @@ gamepad or a TV remote.
   padding) derived from your font size, so a partial theme still lays out well. A replacement
   Theme may style the type variations `PKeyTitle`, `PKeySection`, `PKeyMuted`, `PKeyCode`,
   `PKeyMono`, `PKeyStrong`, `PKeyError`, `PKeyBadge`, `PKeyBanner`, `PKeyCard`, `PKeyQrTile` and
-  `PKeyPrimary`; `PKeyQrRect` reads the colours `dark` and `light`. `PKeyBoot`'s
+  `PKeyPrimary`; `PKeyQrRect` reads the colors `dark` and `light`. `PKeyBoot`'s
   `theme` option applies a Theme a mounted pack provides. `PKeyUiTheme.build(dark, accent, font,
 bold_font)` makes the Polaris Key theme with your accent or fonts if you want a starting point.
 - **Font.** With branding on, Rubik (Regular for text, Bold for titles and codes) ships in
   `ui/theme/fonts/` under the SIL Open Font License 1.1: keep `fonts/OFL.txt` with your game's
-  licences or credits. A `.txt` file is not exported by default; to ship the licence inside the
+  licenses or credits. A `.txt` file is not exported by default; to ship the license inside the
   game, add `addons/polaris_key/ui/theme/fonts/OFL.txt` to the export preset's "Filters to export
   non-resource files/folders" (`include_filter`). Rubik falls back to the system font for scripts it lacks. The neutral look
   uses your font and never loads Rubik.
@@ -449,7 +449,7 @@ The addon is written to 4.4 syntax and feature-detects newer engine APIs:
   `add_control_to_dock` before.
 - **iOS Info.plist entries** go through `add_apple_embedded_platform_plist_content` on 4.5+ and
   the older iOS hook before.
-- **Localisation packs** use the engine's own plural rules on 4.6+.
+- **Localization packs** use the engine's own plural rules on 4.6+.
 - **Data packs exported by 4.4 or 4.5** carry a uid cache naming the whole project, which the
   device check and `pkey release publish` refuse; export data packs with 4.6+.
 - **Godot 4.5.x** crashes when a read reaches a mounted pack whose file has been removed (the
@@ -470,7 +470,7 @@ plugin, run it) on 4.4.1 and 4.7.2 before each zip reaches the feed.
   which the browser may clear: that mints a new device id. Keep large packs out of `user://`.
   **Clearing site data can consume a seat**: the device token goes with it, and with no
   fingerprint the server cannot tell the browser is the same device, so entering the key again
-  activates a new device against the licence's device limit. The old one stays listed until it
+  activates a new device against the license's device limit. The old one stays listed until it
   is freed in the customer portal (Devices) or in the console. The addon cannot reuse the old
   token on re-entry: `license/token` needs the old bearer and device id, and the clear took
   both. Avoiding the extra seat needs a server-side rebind by key (not available yet).
@@ -479,18 +479,18 @@ plugin, run it) on 4.4.1 and 4.7.2 before each zip reaches the feed.
   build (and on web by any same-origin script); use edge-mint (`mint_token`) for third-party API
   keys.
 - **iOS** resets the device id when every app from your team is uninstalled, and enrolling again
-  then mints a new free licence; the client does not work around it.
+  then mints a new free license; the client does not work around it.
 - **iOS and Android stores**: unlocking paid digital content with a key bought outside the store
   conflicts with App Store 3.1.1 and Play's payments policy. Signing in is fine. The client does
   not enforce this.
 - **The client gate is a user-experience gate, not DRM.** Anything in a `.pck` can be extracted
-  and a GDScript check can be patched out; the signed documents stop forged licences and
+  and a GDScript check can be patched out; the signed documents stop forged licenses and
   tampered config, not a determined cracker. Gate valuable content on the server (entitled
   downloads, edge-minted tokens).
 
 ## Reference
 
-The sections below are the addon's detailed behaviour, service by service: what each call sends,
+The sections below are the addon's detailed behavior, service by service: what each call sends,
 when it refuses, and what it stores.
 
 ## supports() and capabilities (`PolarisKey.supports`, P1b-10)
@@ -510,7 +510,7 @@ if not r.ok:
 `core/caps.gd` (PKeyCaps) reads the capability table that `pnpm gen constants` generates from
 `parity.json` into `PKeyConstants.capabilities()`. Reasons are checked in one order: an unknown
 id is `version`; a `runtime` N/A on this platform; a `planned` feature is `version`; a feature of
-an opt-in service the product does not run (discovery, else `expected_services`, else licence
+an opt-in service the product does not run (discovery, else `expected_services`, else license
 and config) is `product`; then any conditional N/A's detector (Godot declares none yet). A call
 into an unsupported feature returns the same result (enrol on web is `PKeyActivationResult`
 kind `unsupported` with that detail). A sub-client whose service is off keeps its code
@@ -589,7 +589,7 @@ func _ready() -> void:
 
 - **Boot options.** `resolve_on_stop` (above); `confirm_identity` (a sign-in stops at "Is this you?"
   with the account it found before handing back); `persistent_gate` (a gate stays on the boot's
-  layer as `PolarisKey.boot_gate`: hidden while the licence is usable, covering the game again with
+  layer as `PolarisKey.boot_gate`: hidden while the license is usable, covering the game again with
   the boot's screens when it is revoked, expired or signed out). A second `boot()` while one runs
   joins it; after READY it starts a new boot (a sign-out, say) with a fresh gate. A
   `PKeyUpdatePrompt` the game places replaces the one the boot kept over the game, so one update
@@ -614,7 +614,7 @@ func _ready() -> void:
   `PKeySyncResult.classify()` (answered 200/304/401/403/429 is `ok`, no answer is `offline`,
   unusable is `error`; `PKeySyncResult.errors` keeps each failed document's status, 0 for no
   answer); gate sends `PolarisKey.status()` and sends it again while it waits whenever the
-  licence state changes; decide is `optional` when `PolarisKey.update.decide()` has something to
+  license state changes; decide is `optional` when `PolarisKey.update.decide()` has something to
   show (or, without the signed decision, the v3 check found a newer version), otherwise `none`.
   Floors never stop play; a CI-signed revocation of a REQUIRED pack does (plans/P4-13.md
   decision 4): decide is then `required` and the boot stops at a confirmed BLOCKED
@@ -626,7 +626,7 @@ func _ready() -> void:
   45 s on a build without threads where a bundle verify runs in frame slices), after which the
   machine gets `sync.timeout` and a late answer is dropped.
 - **Scenes** (each a `.tscn` with the default theme, a view script and a headless controller):
-  `PKeyBoot`, `PKeyGate` (class `PKeyGateView`: the licence-gate logic already owns the name
+  `PKeyBoot`, `PKeyGate` (class `PKeyGateView`: the license-gate logic already owns the name
   `PKeyGate`), `PKeyActivationPanel`, `PKeySignInDialog`, `PKeyOfflineDialog`,
   `PKeySettingsPanel`, `PKeyStatusBanner`, `PKeyUpdatePrompt`, `PKeyEntitlementBadge`,
   `PKeyDevMenuSection` (a Control, and `rows()` for a data-driven dev menu). Every string goes
@@ -729,7 +729,7 @@ var who = PolarisKey.identity.current()          # {name, email, activatedAt} or
 await PolarisKey.identity.sign_out()             # cancel, forget, license.deactivate()
 ```
 
-- **Account calls.** `current()` reads the signed-in person off the verified licence's profile.
+- **Account calls.** `current()` reads the signed-in person off the verified license's profile.
   `sign_out()` cancels any sign-in, forgets the identity and releases the seat through
   `license.deactivate()` (best-effort server call, then the mandatory local wipe), so
   `state_changed` fires as for a deactivation. `sign_in_with_browser()` is the interim "Sign in
@@ -746,22 +746,22 @@ await PolarisKey.identity.sign_out()             # cancel, forget, license.deact
   seconds to the current one, a poll that got no answer or a 5xx is retried at the same
   interval, and nothing is sent after `expires_at`. Every poll carries the `X-PKey-Device` id.
 - `ready` stores the device token (source `signin`) and runs one forced `sync(true)`, so the
-  licence and config documents arrive at once. Show `PKeySignInResult.identity` afterwards: it
+  license and config documents arrive at once. Show `PKeySignInResult.identity` afterwards: it
   is how a player notices a stranger confirmed the code and signed the device in to their
   account.
-- **Opt-in licence attach.** `begin_sign_in(name, true)` holds the flow at the signed-in identity:
+- **Opt-in license attach.** `begin_sign_in(name, true)` holds the flow at the signed-in identity:
   `sign_in_confirm({identity, attachable})` fires and polling stops until the game calls
   `accept_sign_in(attach)` or `cancel()`. With `attachable`, `accept_sign_in(true)` attaches the
-  device's anonymous enrolled licence to the account (`attached` is `claimed` or `migrated`).
+  device's anonymous enrolled license to the account (`attached` is `claimed` or `migrated`).
   Nothing is minted or merged before the player accepts on the device, and only the device,
   which holds the device code, can ask.
 - Device-code sign-in sends no fingerprint, so a `strict` tier refuses it.
 - `PKeyQrRect` renders `verification_uri_complete` at any size: one texel per module, NEAREST
-  filtering, a four-module quiet zone, theme colours `dark` / `light` for the type `PKeyQrRect`.
+  filtering, a four-module quiet zone, theme colors `dark` / `light` for the type `PKeyQrRect`.
   The encoder is pure GDScript, held to fixtures from Nayuki's qrcodegen (`tests/qr/`); about
   8 ms per encode on a release template (11 ms in the editor) on an M-series Mac.
 
-## Licence notes
+## License notes
 
 - `X-PKey-Channel` is always a canonical §5.1 name: `dev` for `0.0.0-dev*` builds, `pr` for PR
   builds (the Worker narrows it to the build's `pr-<n>`), `beta` for `0.0.0-beta*` and
@@ -804,7 +804,7 @@ a channel use it, and the dev menu's picker calls it. An alias is stored canonic
 name is `invalid-options`, and an outlet that owns the channel (`channelSwitch` false: Steam
 branches, the App Store, …) answers unsupported with reason `outlet`. Staged code from another
 channel is dropped. `get_channel()`, `clear_channel()` and `channel_changed(channel)` complete it.
-The server still decides entitlement (`channel_not_allowed`), and the licence gate's
+The server still decides entitlement (`channel_not_allowed`), and the license gate's
 `X-PKey-Channel` stays this build's channel.
 
 **The decision (wire v4, P3-08).** `decide(channel, staged, skip_version)` runs plans/P3-01.md
@@ -1167,7 +1167,7 @@ if not PolarisKey.update.packs.is_available("foe.goblin"):           # save comp
 `provides`, a list of opaque content ids (printable ASCII without the space, 1–128 characters, at
 most 4096, unique; an unusable list provides nothing and never fails the record).
 `is_available(content_id)` is true when a pack in the running set (mounted or active in this
-process, embedded baselines included) provides the id and the licence holds its `entitlement` (no
+process, embedded baselines included) provides the id and the license holds its `entitlement` (no
 License service hides nothing); false before packs start. `pack_for(content_id, targets = null)`
 is a coroutine naming the first target, in order, that provides the id: `targets` is a packs
 decision's install list (`[{pack, release: {sha256, seq, version}}]`), else the stamp's pins. It
@@ -1532,7 +1532,7 @@ r = await android.apk_install(path, sha256, version_code)    # direct: verified,
   (`addons/polaris_key/native/android_export_plugin.gd`, rules in `PKeyAndroidExport`) adds Play
   Core for play and, for direct only, `REQUEST_INSTALL_PACKAGES` and
   `UPDATE_PACKAGES_WITHOUT_USER_ACTION`. It needs the Gradle build and warns on a Play outlet with
-  the direct flavour or an F-Droid outlet with the play flavour.
+  the direct flavor or an F-Droid outlet with the play flavor.
 - **Store.** On Android with the plugin PKeyCore keeps the device id and token in the Keystore
   (`PKeyKeystoreStore`: migrated from the file store, failures surfaced as `keyring-error`, a lost
   key surfaced and the device re-activated); `PKeyOptions.store` overrides.
@@ -1611,7 +1611,7 @@ challenge's `play.cloudProjectNumber`, else `PKeyOptions.play_cloud_project_numb
   it. A key the system no longer knows (reinstall, device migration, restore) answers
   `invalid_key`; `attest()` drops it and attests a fresh key in the same call. On
   `server_unavailable` the generated key is kept for the retry, as Apple advises.
-- **Call it after activation.** Activating (or re-activating) a licence key, or a keyless
+- **Call it after activation.** Activating (or re-activating) a license key, or a keyless
   re-registration, mints a new device token and resets the device to `basic` on the Worker. Call
   `attest()` once the device holds its final token — after `activate`/`enroll`/`register`, not
   before. A token refresh keeps the level.

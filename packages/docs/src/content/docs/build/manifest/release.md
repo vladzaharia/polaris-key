@@ -1,5 +1,5 @@
 ---
-title: "Write the release manifest"
+title: "Release manifest"
 description: "Declare the app deliverable, builds, packs, packages, trusted publishing and release keys in .pkey/release."
 type: "reference"
 lastReviewed: "2026-10-16"

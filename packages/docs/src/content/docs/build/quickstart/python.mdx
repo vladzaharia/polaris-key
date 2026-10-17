@@ -43,7 +43,7 @@ docker run --rm -v "$PWD:/work" pkg.plrs.im/polaris-key/pkey:latest \
 
 The file is `polaris_config.py`. It holds the slug, base URL, trust pins, advertised services and, when the product has release keys, `UpdateClientOptions(pinned_release_keys=…)`, all in `CONFIG`. To try this without a registered product, [run Polaris Key locally](/docs/build/local/).
 
-You should see the file written and each pin's key id and SHA-256 fingerprint. Compare the fingerprints with the console before you ship.
+You should see the file written and each pin's key id and SHA-256 fingerprint. Compare each key in the file with **Public key** under **Core → Keys & secrets** before you ship.
 
 ## 3. Create the client
 
@@ -99,6 +99,24 @@ Every mounted verb takes `--product`. Verbs, theming and `--json` are on [Termin
 
 Call the client and handle each state yourself. Activate with `client.license.activate_with_key(key)`, read the state with `client.status()` and `client.is_licensed()`, and sign in with `client.identity.sign_in_with_browser()`. [Your own UI](/docs/build/sdks/python/your-own-ui/) gives each call with its states and words, including [a Qt app](/docs/build/sdks/python/your-own-ui/#qt).
 
+```python title="own_ui.py"
+from typing import Optional
+
+from polaris_key import ActivationOk, PolarisKeyClient, copy
+from polaris_key.copy import activation_message
+
+
+def activate(client: PolarisKeyClient, key: str) -> Optional[str]:
+    """What to show for the key: None when it worked."""
+    r = client.license.activate_with_key(key)
+    return None if isinstance(r, ActivationOk) else activation_message(r.kind, code=r.code)
+
+
+def locked_message(client: PolarisKeyClient) -> Optional[str]:
+    """What to show instead of your app: None when the license is usable."""
+    return None if client.is_licensed() else copy.message(client.status().status)
+```
+
   </Fragment>
 </Lanes>
 
@@ -111,6 +129,14 @@ You should see the program locked, with the status `needs-activation`, until a k
 ```sh title="Terminal"
 pkey dev
 ```
+
+The config from step 2 points at production, where `ok` is not a key. In a second terminal, rewrite it from the running server, then rebuild or restart the app:
+
+```sh title="Terminal"
+pkey sdk --lang python --dev --write
+```
+
+To go back to your product, run the step 2 command again.
 
 **App** Enter the `ok` key. In the kit, run `tidewater activate`.
 

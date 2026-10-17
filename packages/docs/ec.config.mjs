@@ -19,7 +19,26 @@ const SUNKEN = {
 if (typeof SUNKEN.dark !== "string" || typeof SUNKEN.light !== "string")
   throw new Error("@polaris-key/brand tokens.json has no surface.sunken");
 
+// A block with an angle-bracket placeholder (`<slug>`) has no Copy button: pasted into a shell,
+// `<slug>` is an input redirect (style guide §7). Markup languages use angle brackets for real.
+const MARKUP = new Set(["xml", "html", "tsx", "jsx", "vue", "svelte", "svg"]);
+const PLACEHOLDER = /<[a-z][a-z0-9]*(?:[ -][a-z0-9]+)*>/;
+const noCopyOnPlaceholders = {
+  name: "pk-no-copy-on-placeholders",
+  hooks: {
+    postprocessRenderedBlock: ({ codeBlock, renderData }) => {
+      if (MARKUP.has(codeBlock.language)) return;
+      if (!PLACEHOLDER.test(codeBlock.code)) return;
+      const frame = renderData.blockAst;
+      frame.children = (frame.children ?? []).filter(
+        (c) => !(c.properties?.className ?? []).includes("copy"),
+      );
+    },
+  },
+};
+
 export default defineEcConfig({
+  plugins: [noCopyOnPlaceholders],
   customizeTheme(theme) {
     const sunken = theme.type === "dark" ? SUNKEN.dark : SUNKEN.light;
     theme.bg = sunken;

@@ -8,7 +8,7 @@ sidebar:
   label: "The .pkey/ manifest"
 ---
 
-A product is data. Everything the control plane needs to run it lives in a `.pkey/` directory in the product's own repo, and the Worker, the console and every SDK read that data. `.pkey/` is the only manifest directory: there is no fallback location and no second copy that could disagree with it.
+A product is data. Everything Polaris Key needs to run it lives in a `.pkey/` directory in the product's own repo, and the Worker, the console and every SDK read that data. `.pkey/` is the only manifest directory: there is no fallback location and no second copy that could disagree with it.
 
 ## The files
 
@@ -31,13 +31,13 @@ The service slugs are `license`, `config`, `release`, `distribution`, `update`, 
 
 ## Size and depth caps
 
-Manifest ingest runs on a push to a repo the platform doesn't control, so cost is bounded before parsing. Each document is capped at 64 KiB and 32 levels of nesting, and YAML anchor expansion is bounded too. A file over a cap is refused whole, not truncated. Real manifests run about 1.5 KB.
+Manifest ingest runs on a push to a repo the platform doesn't control, so cost is bounded before parsing. Each document is capped at 64 KiB and 32 levels of nesting, and YAML anchor expansion is bounded too. A file over a cap is refused whole, not truncated.
 
 ## Resync and operator ownership
 
 The files are a baseline, not the live state. A resync updates product metadata, services, fingerprint and auto-issue policy, catalog shape, sign-in, release settings, profiles, tiers and provisioning, then skips any block an operator has claimed in the console. **Revert to manifest** hands a block back without changing its value; the next resync applies the manifest's. Secrets, per-license and per-device state, and operational overrides live in the platform and are never overwritten.
 
-[The service model](/docs/start/how-it-works/) defines claiming once. [Register a product from its repo](/docs/build/manifest/register/#after-the-first-link) lists what a resync leaves alone.
+[How Polaris Key works](/docs/start/how-it-works/) defines claiming once. [Register a product from its repo](/docs/build/manifest/register/#after-the-first-link) lists what a resync leaves alone.
 
 ## Next steps
 

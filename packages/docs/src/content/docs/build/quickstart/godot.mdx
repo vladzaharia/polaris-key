@@ -51,7 +51,7 @@ docker run --rm -v "$PWD:/work" pkg.plrs.im/polaris-key/pkey:latest \
 
 The file holds the slug, base URL, trust pins, advertised services and, when the product has release keys, the pinned release keys. To try this without a registered product, [run Polaris Key locally](/docs/build/local/).
 
-You should see the file written and each pin's key id and SHA-256 fingerprint. Compare the fingerprints with the console before you ship.
+You should see the file written and each pin's key id and SHA-256 fingerprint. Compare each key in the file with **Public key** under **Core → Keys & secrets** before you ship.
 
 ## 3. Gate the game
 
@@ -97,6 +97,12 @@ func _on_state_changed(state: Dictionary) -> void:
 
 Activate with `PolarisKey.license.activate_with_key(key)` and read the state with `PolarisKey.status()`.
 
+```gdscript title="activate.gd"
+func activate(key: String) -> Array:
+	var result: PKeyActivationResult = await PolarisKey.license.activate_with_key(key)
+	return PKeyActivationController.message_for(result)  # [copy key, arguments]
+```
+
   </Fragment>
 </Lanes>
 
@@ -109,6 +115,14 @@ You should see the game hold on the activation card until a key is entered.
 ```sh title="Terminal"
 pkey dev
 ```
+
+The config from step 2 points at production, where `ok` is not a key. In a second terminal, rewrite it from the running server, then rebuild or restart the app:
+
+```sh title="Terminal"
+pkey sdk --lang godot --dev --write
+```
+
+To go back to your product, run the step 2 command again.
 
 **App** Enter the `ok` key in the activation panel.
 

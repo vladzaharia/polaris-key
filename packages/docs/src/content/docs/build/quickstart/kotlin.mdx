@@ -66,7 +66,7 @@ docker run --rm -v "$PWD:/work" pkg.plrs.im/polaris-key/pkey:latest sdk --lang k
 
 The file holds `PolarisConfig`: the slug, base URL, trust pins, advertised services and, when the product has release keys, `pinnedReleaseKeys`. To try this without a registered product, [run Polaris Key locally](/docs/build/local/).
 
-You should see the file written and each pin's key id and SHA-256 fingerprint. Compare the fingerprints with the console before you ship.
+You should see the file written and each pin's key id and SHA-256 fingerprint. Compare each key in the file with **Public key** under **Core → Keys & secrets** before you ship.
 
 ## 3. Create the client
 
@@ -145,6 +145,19 @@ Here `client` is the one `App` built: `(application as App).client`. Screens, br
 
 Call the client and handle each state yourself. Activate with `client.activate(key)`, read the state with `client.status()` and then `client.licenseChanges`, and sign in with `client.identity.beginSignIn()` and `waitForSignIn(prompt)`. [Your own UI](/docs/build/sdks/kotlin/your-own-ui/) gives each call with its states and words, for [Compose Desktop](/docs/build/sdks/kotlin/your-own-ui/#compose-desktop) and [a command-line tool](/docs/build/sdks/kotlin/your-own-ui/#a-command-line-tool).
 
+```kotlin title="OwnUi.kt"
+import im.plrs.key.core.Copy
+import im.plrs.key.license.ActivationResult
+import im.plrs.key.sdk.PolarisKeyClient
+
+suspend fun activate(client: PolarisKeyClient, key: String): Boolean =
+    client.activate(key) is ActivationResult.Ok
+
+// What to show instead of your app: null when the license is usable.
+suspend fun lockedMessage(client: PolarisKeyClient): String? =
+    if (client.isLicensed()) null else Copy.message(client.status().status.wire)
+```
+
   </Fragment>
 </Lanes>
 
@@ -157,6 +170,15 @@ You should see the app locked, with an activation prompt, until a key is entered
 ```sh title="Terminal"
 pkey dev
 ```
+
+The config from step 2 points at production, where `ok` is not a key. In a second terminal, rewrite it from the running server, then rebuild or restart the app:
+
+```sh title="Terminal"
+pkey sdk --lang kotlin --dev --write --package com.acme.polaris \
+  --out app/src/main/kotlin/com/acme/polaris/PolarisConfig.kt
+```
+
+To go back to your product, run the step 2 command again.
 
 **App** Enter the `ok` key in the activation prompt.
 

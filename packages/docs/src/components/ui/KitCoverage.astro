@@ -6,7 +6,7 @@
  */
 import { BASELINES, pairLabel, pairs } from "../../lib/baselines";
 import { CATALOG, kebab } from "../../lib/shots";
-import { kitById } from "../../lib/uiKits";
+import { COMPONENTS_NOT_BUILT, kitById } from "../../lib/uiKits";
 
 interface Props {
   /** The kit's id in src/lib/uiKits.ts, e.g. "compose". */
@@ -19,7 +19,9 @@ const rows = Object.entries(CATALOG).map(([component, states]) => {
   const covered = kitPairs.filter((p) => p.component === component);
   return {
     component,
-    href: `/docs/build/ui/components/${kebab(component)}/`,
+    href: COMPONENTS_NOT_BUILT.includes(component)
+      ? null
+      : `/docs/build/ui/components/${kebab(component)}/`,
     total: states.length,
     states: [...new Set(covered.map((p) => pairLabel(p)))],
     known: new Set(covered.map((p) => p.state).filter((s) => s !== "")).size,
@@ -45,7 +47,13 @@ const unmapped = [
       rows.map((row) => (
         <tr>
           <td>
-            <a href={row.href}>{row.component}</a>
+            {row.href === null ? (
+              <>
+                {row.component} <span class="pk-ui-muted">(not built yet)</span>
+              </>
+            ) : (
+              <a href={row.href}>{row.component}</a>
+            )}
           </td>
           <td>
             {row.known} of {row.total}

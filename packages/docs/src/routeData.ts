@@ -1,4 +1,5 @@
 import { defineRouteMiddleware } from "@astrojs/starlight/route-data";
+import { embeddedToc } from "./lib/embedded";
 import { HELP_MESSAGES, KNOWN_ENTRIES, messageToc } from "./lib/helpMessages";
 
 /**
@@ -12,10 +13,16 @@ import { HELP_MESSAGES, KNOWN_ENTRIES, messageToc } from "./lib/helpMessages";
  * Markdown heading is the developer-only section at the foot of Other messages), so the list
  * stays in the order of the page; `helpMessages.test.ts` keeps it so.
  */
-export const onRequest = defineRouteMiddleware((context) => {
+export const onRequest = defineRouteMiddleware(async (context) => {
   const { toc, id } = context.locals.starlightRoute;
   // The list is off for the page, or does not show level 2.
   if (toc === undefined || toc.minHeadingLevel > 2 || toc.maxHeadingLevel < 2)
     return;
   toc.items.splice(1, 0, ...messageToc(HELP_MESSAGES, KNOWN_ENTRIES, id));
+  // The headings of a repository file the page renders whole (src/lib/embedded.ts).
+  toc.items.splice(
+    1,
+    0,
+    ...(await embeddedToc(id, toc.minHeadingLevel, toc.maxHeadingLevel)),
+  );
 });
