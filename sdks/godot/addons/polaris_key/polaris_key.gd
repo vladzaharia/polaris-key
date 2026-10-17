@@ -115,7 +115,7 @@ var _last_state: Dictionary = {}
 ## `insecure-base-url` (http to a non-loopback host) or `invalid-options` (a bad product slug,
 ## a non-semver version, malformed pins, an unknown expected service).
 func configure(opts: PKeyOptions) -> PKeyResult:
-	for origin in opts.backend_origins:
+	for origin in (opts.backend_origins if opts != null else PackedStringArray()):
 		if PKeyBackend.normalize_origin(origin) == "":
 			return PKeyResult.failure(PKeyConstants.ErrorCode.INVALID_OPTIONS, "backend_origins: \"%s\" is not an exact origin (https://host[:port]; http only on loopback)." % origin)
 	var r := PKeyCore.create(opts, self, SDK_VERSION)
