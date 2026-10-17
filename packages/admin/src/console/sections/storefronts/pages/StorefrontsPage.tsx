@@ -358,11 +358,9 @@ function AddFlow({
   const listingColumns = chosen
     .map((s) => s.listingStore)
     .filter((x): x is string => x !== null);
-
   const steps: WizardStep[] = STEPS.map((x) =>
     x.id === "choose" ? { ...x, decided: decidedStores(chosen) } : x,
   );
-  const skipped = skippedIn(setup.choices, STOREFRONTS_FLOW.id);
   const skip = async () => {
     if (await setup.skip(STOREFRONTS_FLOW.id, current))
       go(FLOW_STEPS[FLOW_STEPS.indexOf(current) + 1]!);
@@ -376,7 +374,7 @@ function AddFlow({
         steps={steps}
         current={current}
         done={completed}
-        skipped={skipped}
+        skipped={skippedIn(setup.choices, STOREFRONTS_FLOW.id)}
         onStep={(id) => go(id as FlowStep)}
         title={TITLE[current]!}
         aside={
