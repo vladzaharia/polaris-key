@@ -279,7 +279,7 @@ export class PkSignIn extends PkElement {
 
   protected override renderBody(c: RenderCtx): unknown {
     const step = formStep(c.input);
-    const body = renderView({ ...c, view: step.body });
+    const body = renderView({ ...c, view: step.body, form: true });
     const announce = step.announce.length
       ? html`<p class="visually-hidden" role="status">
           ${step.announce.map(

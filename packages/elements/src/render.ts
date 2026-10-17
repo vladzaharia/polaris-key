@@ -29,6 +29,8 @@ export interface RenderCtx {
   input: UiInput;
   /** True where the screen owns the window: it is the page's main landmark. */
   fill?: boolean;
+  /** The step is the sign-in form's body: every step shares one card width (the split). */
+  form?: boolean;
   /** A control was pressed: the element turns it into a `pk-action` event. */
   act(key: string, detail?: Record<string, unknown>): void;
   /** The person typed in a field, flipped a switch or chose an option. */

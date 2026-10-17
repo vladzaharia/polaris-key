@@ -200,6 +200,8 @@ function isLoading(view: View): boolean {
 /** A blocking step: the card on the product ambient (DL1, DL2, DL5). */
 function screen(c: RenderCtx, layout: Layout): TemplateResult {
   const { view } = c;
+  // One form, one card width: a step of the sign-in form splits like its first step does.
+  const split = layout.split === true || c.form === true;
   const placed = placeKeys(view, layout);
   // Keys a component draws inside its own steps are not repeated as text or controls.
   const own: readonly string[] =
@@ -237,7 +239,7 @@ function screen(c: RenderCtx, layout: Layout): TemplateResult {
     data-part="stage"
     role=${ifDefined(c.fill ? "main" : undefined)}
     data-kind="screen"
-    ?data-split=${layout.split === true}
+    ?data-split=${split}
   >
     ${ambient
       ? html`<div class="ambient" aria-hidden="true">
@@ -255,7 +257,7 @@ function screen(c: RenderCtx, layout: Layout): TemplateResult {
     >
       ${loading ? shimmer() : nothing}
       <div class="split passport">
-        ${layout.split && c.resolved.iconUrl
+        ${split && c.resolved.iconUrl
           ? html`<div class="passport-ambient" aria-hidden="true">
               <img src=${c.resolved.iconUrl} alt="" />
             </div>`
