@@ -544,7 +544,7 @@ describe("Approve a minted token's recipe", () => {
         .getAttribute("aria-disabled"),
     ).toBe("true");
     expect(
-      within(drawer).getAllByText(/Managed config access/).length,
+      within(drawer).getAllByText(/Managed config edit access/).length,
     ).toBeGreaterThan(0);
     expect(within(drawer).queryByRole("button", { name: /Revoke/ })).toBeNull();
   });
