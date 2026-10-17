@@ -12140,7 +12140,7 @@
         "docs/research/2026-10-08-framework-drop-ins/README.md §12 (SP-59)"
       ],
       "brief": "wp/SP-59-client-backend-swift-kotlin-godot.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "SP-60",
