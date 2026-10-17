@@ -222,8 +222,8 @@ export interface PlatformActivityPage {
  * mint also needs a recent sign-in (403 `step_up_required`).
  */
 
-/** The scope vocabulary: one entry, mirroring the worker's. */
-export const ADMIN_API_SCOPES = ["bundles:mint"] as const;
+/** The scope vocabulary, mirroring the worker's. */
+export const ADMIN_API_SCOPES = ["bundles:mint", "migrations:report"] as const;
 export type AdminApiScope = (typeof ADMIN_API_SCOPES)[number];
 
 /** The worker's longest token lifetime. Mirrored so the mint form can bound its input rather

@@ -203,7 +203,7 @@ async function plant(
     opts.id ?? "apitok_planted",
     await hashKey(secret, env.KEY_HASH_PEPPER),
     "planted",
-    JSON.stringify(opts.scopes ?? [...ADMIN_API_SCOPES]),
+    JSON.stringify(opts.scopes ?? ["bundles:mint"]),
     NOW - DAY,
     opts.expiresAt ?? NOW + 30 * DAY,
     opts.revokedAt ?? null,
@@ -978,8 +978,11 @@ describe("token authentication", () => {
 describe("scope confinement", () => {
   const tokenRows = ADMIN_ROUTES.filter((r) => r.tokenScope);
 
-  it("names a scope on the bundle mint row, and on no other row", () => {
+  it("names a scope on the bundle mint row and the three read-side migration rows, and on no other", () => {
     expect(tokenRows.map((r) => `${routeKey(r)} → ${r.tokenScope}`)).toEqual([
+      "GET /platform/migrations → migrations:report",
+      "GET /platform/migrations/runs/:id → migrations:report",
+      "POST /platform/migrations/dry-run → migrations:report",
       "POST /products/:slug/bundles → bundles:mint",
     ]);
   });
@@ -989,6 +992,63 @@ describe("scope confinement", () => {
       expect(ADMIN_API_SCOPES, routeKey(r)).toContain(r.tokenScope);
       expect(r.stepUp, routeKey(r)).toBeUndefined();
     }
+  });
+
+  it("a migrations:report token reaches the migration read side and dry run, never apply, down or a bundle", async () => {
+    const { db, env } = await world();
+    const secret = await plant(env, db, { scopes: ["migrations:report"] });
+    const call = async (method: string, path: string, body?: unknown) =>
+      (
+        await dispatch(
+          mkReq(method, path, { bearer: secret, ...(body ? { body } : {}) }),
+          env,
+          db,
+          path,
+        )
+      ).status;
+    expect(await call("GET", "/api/platform/migrations")).toBe(200);
+    expect(await call("GET", "/api/platform/migrations/runs/none")).toBe(404);
+    expect(
+      await call("POST", "/api/platform/migrations/dry-run", { job: "nope" }),
+    ).toBe(404);
+    // The run records the token (`token:<id>`), never the minting admin's OIDC subject.
+    const dryRes = await dispatch(
+      mkReq("POST", "/api/platform/migrations/dry-run", {
+        bearer: secret,
+        body: { job: "core.licence-override-migration" },
+      }),
+      env,
+      db,
+      "/api/platform/migrations/dry-run",
+    );
+    expect(dryRes.status).toBe(200);
+    expect(
+      ((await dryRes.json()) as { run?: { requestedBy?: string } }).run
+        ?.requestedBy,
+    ).toBe("token:apitok_planted");
+    for (const verb of ["apply", "down"])
+      expect(
+        await call("POST", `/api/platform/migrations/${verb}`, { job: "x" }),
+        verb,
+      ).toBe(403);
+    expect(await call("POST", bundlePath, bundleBody)).toBe(403);
+    // A bundles:mint token does not reach the migrations.
+    const mintOnly = await plant(env, db, {
+      id: "apitok_mint",
+      scopes: ["bundles:mint"],
+    });
+    const res = await dispatch(
+      mkReq("GET", "/api/platform/migrations", { bearer: mintOnly }),
+      env,
+      db,
+      "/api/platform/migrations",
+    );
+    expect(res.status).toBe(403);
+    // The reads were audited as token use.
+    const used = (await platformAuditRows(db)).filter(
+      (r) => r.action === "api_token.used",
+    );
+    expect(used.length).toBeGreaterThanOrEqual(3);
   });
 
   it("names no scope on the token roster, so no token can reach it", () => {

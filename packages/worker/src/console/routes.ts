@@ -16,7 +16,7 @@
  *
  * Token reach. An admin API token (`./apiTokens.ts`) reaches a row only through the row's
  * `tokenScope`; a row without one refuses every token, and so does a path no row matches. Today
- * that is one row, `POST /products/:slug/bundles`. A tokenised row still goes through `can()` for
+ * that is `POST /products/:slug/bundles` and the three read-side migration rows. A tokenised row still goes through `can()` for
  * its area like any other, and never needs a step-up (a token has none).
  *
  * Drift. `test/fixtures/rbac-route-areas.json` pins every row's `METHOD path → area`; a new or
@@ -164,9 +164,17 @@ export const ADMIN_ROUTES: readonly AdminRoute[] = [
   ...rows(["PATCH", "DELETE"], "/platform/settings/:key", "platform", platform),
   ...rows(["GET", "POST"], "/platform/settings/backfill", "platform", platform),
   // P0-49: the data-migration runner. Apply and down are step-up writes.
-  ...rows(["GET"], "/platform/migrations", "platform", platform),
-  ...rows(["GET"], "/platform/migrations/runs/:id", "platform", platform),
-  ...rows(["POST"], "/platform/migrations/dry-run", "platform", platform),
+  // A `migrations:report` token (`pkey migrate`) reaches the read side and the dry run; apply and
+  // down need a step-up, which a token cannot have, so they refuse every token.
+  ...rows(["GET"], "/platform/migrations", "platform", platform, {
+    tokenScope: "migrations:report",
+  }),
+  ...rows(["GET"], "/platform/migrations/runs/:id", "platform", platform, {
+    tokenScope: "migrations:report",
+  }),
+  ...rows(["POST"], "/platform/migrations/dry-run", "platform", platform, {
+    tokenScope: "migrations:report",
+  }),
   ...rows(["POST"], "/platform/migrations/apply", "platform", platform, {
     stepUp: true,
   }),

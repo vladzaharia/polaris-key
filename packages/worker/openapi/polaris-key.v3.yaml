@@ -17072,7 +17072,7 @@ paths:
       description: >
         Every job a mounted service contributes, each with its five newest runs (without units).
         Nothing runs by itself: a job runs only when an operator calls dry-run, apply or down.
-        Platform admins only; admin session cookie.
+        Platform admins only; admin session cookie, or a `migrations:report` admin API token.
       responses:
         "200":
           description: The jobs.
@@ -17101,7 +17101,7 @@ paths:
       operationId: getAdminMigrationRun
       tags: [admin]
       summary: One run with its units (the report)
-      description: Platform admins only; admin session cookie.
+      description: Platform admins only; admin session cookie, or a `migrations:report` admin API token.
       parameters:
         - { name: runId, in: path, required: true, schema: { type: string } }
       responses:
@@ -17129,7 +17129,7 @@ paths:
       description: >
         Plans every unit of the job and stores the report (`changes` is the diff count; zero means
         the data is already migrated). Audited. Platform admins only; admin session cookie and
-        CSRF header.
+        CSRF header, or a `migrations:report` admin API token.
       requestBody:
         required: true
         content:
@@ -17202,7 +17202,7 @@ paths:
               schema: { $ref: "#/components/schemas/AdminError" }
         "409":
           description: >
-            `busy`, `lease_lost`, `reverting` (a down exists for this apply), `report_incomplete` (a unit could not be planned), `report_stale` (the report is over 24 hours old; dry-run again) or `reverted` (dry-run again).
+            `busy`, `lease_lost`, `reverting` (a down exists for this apply), `report_incomplete` (a unit could not be planned), `report_stale` (the report is over 24 hours old; dry-run again) `reverted` (dry-run again) or `delegated` (the job has its own console flow; the runner only reports it).
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
@@ -18789,7 +18789,10 @@ components:
         that is presented and bad is one 401, never a fall-through to a cookie. `pkeya_` + 43
         base64url characters (256-bit), hash-stored server-side under `KEY_HASH_PEPPER`, with a
         mandatory expiry and an operator kill switch. It reaches `POST
-        /manage/api/products/{product}/bundles` (scope `bundles:mint`) and nothing else.
+        /manage/api/products/{product}/bundles` (scope `bundles:mint`) and, with scope
+        `migrations:report`, the data-migration runner's job list, run report and dry run
+        (`/manage/api/platform/migrations`, `.../runs/{runId}`, `.../dry-run`); apply and down need
+        a step-up and refuse every token.
   parameters:
     TokenId:
       name: tokenId
@@ -19612,10 +19615,10 @@ components:
     AdminApiScope:
       type: string
       description: >
-        A coarse admin API-token scope. One value exists, because one machine caller exists. A
+        A coarse admin API-token scope. Two values exist, because two machine callers exist. A
         scope the dispatcher does not consult would be a claim about authority that nothing
         enforces, so a scope is added alongside the route that needs it, never ahead of it.
-      enum: [bundles:mint]
+      enum: [bundles:mint, migrations:report]
     AdminApiToken:
       type: object
       description: >

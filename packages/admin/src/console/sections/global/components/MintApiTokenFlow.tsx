@@ -46,6 +46,7 @@ const LABEL_MAX = 200;
 /** What each scope lets the token do, beside its id. */
 const SCOPE_TEXT: Record<AdminApiScope, string> = {
   "bundles:mint": "Mint offline bundles",
+  "migrations:report": "Dry-run and read data migrations",
 };
 
 /** The message for a field name the worker returned in a 422's `fields`. */
@@ -63,9 +64,7 @@ export function MintApiTokenFlow({
   const { fresh, markStale } = useStepUp(true);
   const [label, setLabel] = React.useState("");
   const [days, setDays] = React.useState<number | null>(null);
-  const [scopes, setScopes] = React.useState<AdminApiScope[]>([
-    ...ADMIN_API_SCOPES,
-  ]);
+  const [scopes, setScopes] = React.useState<AdminApiScope[]>(["bundles:mint"]);
   const [secret, setSecret] = React.useState<string | null>(null);
   const [saving, setSaving] = React.useState(false);
   const [failure, setFailure] = React.useState<unknown>(null);

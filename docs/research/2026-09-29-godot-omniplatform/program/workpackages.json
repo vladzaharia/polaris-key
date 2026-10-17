@@ -1292,7 +1292,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/cq-worker-services.md"
       ],
       "brief": "wp/P0-49-data-migration-runner-dry-run-report.md",
-      "status": "todo"
+      "status": "in-progress"
     },
     {
       "id": "P0-50",
