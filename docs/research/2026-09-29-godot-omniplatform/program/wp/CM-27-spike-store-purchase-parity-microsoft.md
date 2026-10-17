@@ -16,6 +16,16 @@
 
 Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) as **CM-27** in [Track H, Distribution channels, storefronts and commerce](../../../2026-10-07-dx-consolidation/tracks.md#h-distribution-channels-storefronts-and-commerce).
 
+## Outcome (2026-10-16)
+
+The note is [`notes/CM-27-store-purchase-parity.md`](../../notes/CM-27-store-purchase-parity.md). Its recommendation:
+
+- CM-28 keeps App Store and Google Play consumables, with four extra acceptance criteria (now in its brief).
+- Three follow-ups are proposed for the lead to register: CM-30 (Microsoft Store commerce in the Worker), CM-31 (Godot Windows Store purchase operations on the existing `StoreContext` bridge) and CM-32 (itch.io ownership through the player's itch.io sign-in).
+- Steam microtransactions and Epic stay out.
+
+**Correction to the scope below (step 1).** "itch.io download-key … lookups" need `game:view:purchases`. Third-party OAuth applications cannot get that scope, so it means the developer's unscoped API key, which S-15 keeps in CI only (`core/storefront/stores/itch.ts:19-20`). The spike therefore uses the player-token routes instead: `GET /games/{id}/ownership` and `/profile/owned-keys`.
+
 ## Goal
 
 Spike: store purchase parity (Microsoft Store, itch.io, consumables), as scoped below. Done when every acceptance criterion holds and the green gate passes.
@@ -53,7 +63,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 
 ## Acceptance criteria
 
-- [ ] A note with tagged facts and a recommended scope
+- [x] A note with tagged facts and a recommended scope
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

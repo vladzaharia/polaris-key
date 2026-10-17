@@ -23,6 +23,17 @@ These approved plans change this package. Where they differ from the text below,
 - [`plans/CM-20.md`](../plans/CM-20.md) §14: quantity is the offer's quantity times the store's. Consumable offers are refused until LX-42 lands.
 - [`plans/CM-29.md`](../plans/CM-29.md) §10: its code goes in `services/commerce/`, after CM-29.
 
+## CM-27 spike findings (2026-10-16)
+
+From [`notes/CM-27-store-purchase-parity.md`](../../notes/CM-27-store-purchase-parity.md) §4 and its recommendation 1. The scope stays the App Store and Google Play; the Microsoft Store is CM-30's, proposed. The plan (`plans/CM-28.md`) takes in the following:
+
+- **Play drain.** The Worker calls `purchases.products…:consume` (v3; there is no v2 consume). Consuming meets the acknowledgement requirement. Failures retry on the existing acknowledgement tick (`commerce/recheck.ts`) inside Google's 3-day window. Today the code only acknowledges and never consumes.
+- **Apple drain.** The client calls `finish()` after a successful claim, as `PKeyCommerce.claim_app_store()` does today. `apple.ts:254` stops refusing `type: "Consumable"`.
+- **Partial refunds.** On Play, `refundableQuantity`, and `voidedQuantity` with `includeQuantityBasedPartialRefund=true`. On the App Store, `revocationType: REFUND_PRORATED` with `revocationPercentage` (milliunits). These fields are verified, which closes `plans/CM-20.md` §12's open item for both stores.
+- **Remainder on refund.** When a refund takes back more than the balance, the balance stops at zero and the uncollectable remainder is recorded on the purchase's `detail_json`.
+- **A store-neutral drain interface** (`drain(purchase)`) on P0-27's commerce facet, so the Microsoft Store (consume with `trackingId`, where the order key only arrives in the consume response) plugs in without changing CM-28's ledger path.
+- **Out:** answering Apple's `CONSUMPTION_REQUEST`. It needs the customer's consent (the API returns 400 without `customerConsented: true`) and a reply within 12 hours.
+
 ## Goal
 
 Consumables and quantity grants from store purchases, as scoped below. Done when every acceptance criterion holds and the green gate passes.
@@ -70,6 +81,10 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 - [ ] A replayed transaction grants nothing
 - [ ] Refund reduces the balance
+- [ ] A Play consumable is consumed by the Worker inside the 3-day window, with retries
+- [ ] A partial refund (Play `voidedQuantity`, App Store `REFUND_PRORATED`) takes back only the refunded share
+- [ ] A refund larger than the balance stops at zero and records the remainder
+- [ ] The drain step sits behind a store-neutral interface on the commerce facet
 - [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/commerce/*` (with `features/ship-builds/commerce` and `channels/storefronts` moved in); `help/restore-purchase`, `help/refunds`.
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
