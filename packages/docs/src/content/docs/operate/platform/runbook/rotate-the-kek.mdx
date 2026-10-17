@@ -1,0 +1,34 @@
+---
+title: "Rotate the KEK"
+description: "Set platform secrets and rotate PLATFORM_KEK while the platform keeps serving, including when nobody holds the old key."
+type: "runbook"
+lastReviewed: "2026-10-16"
+sidebar:
+  order: 2
+---
+
+import RunbookSection from "../../../../../components/docs/RunbookSection.astro";
+
+**Role required:** Platform admin with Cloudflare access. Escrow of the current KEK is needed to roll back.
+
+**Impact:** Every sealed value (signing keys, product secrets, store credentials) is re-sealed. A key dropped while values are still under it cannot be recovered. A wrong keyring is silent: every product route answers a plain `404` with no log line, and `/manage` still loads.
+
+Use this when you rotate the KEK, load or change a platform secret, lock down console access, or move end users off the platform identity provider.
+
+<RunbookSection file="RUNBOOK" heading="Secrets" />
+
+## Verify
+
+- `/manage/api/products/kek` (GET, as a platform admin) shows `remaining` 0, `unopenable` 0 and `countsComplete` true. `legacy` is absent once `PLATFORM_KEK` is deleted.
+- `/<slug>/.well-known/jwks.json` still answers for a product. A product that returns 404 for every route has a sealed value the ring cannot open.
+- **Platform**, **Settings**, **Keyring** in the console shows the same state: the active kid, every kid in the ring and what each still seals.
+
+## Roll back
+
+- Before the old key is dropped (step 8), set `PLATFORM_KEK_ACTIVE` back to the previous kid and keep both keys in `PLATFORM_KEK_KEYS`. Rows already re-sealed still open.
+- After step 8, only the escrowed old key can bring back a value it left dark. After step 9 there is no rollback.
+- Do not use `wrangler rollback` as a secret rollback. An old keyring cannot open rows already re-sealed under the new kid.
+
+## Escalate
+
+`unopenable` above 0 means the old key left too early: put it back at once, then repeat the sweep. If you do not hold the old key at all, use _Rotating when the old KEK is unknown_ in the section. If a KEK leaked, also follow [Respond to a key compromise](/docs/operate/platform/runbook/respond-to-a-key-compromise/).

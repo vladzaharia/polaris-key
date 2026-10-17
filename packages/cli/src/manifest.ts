@@ -351,16 +351,17 @@ product:
 ${opts.adminGroup ? `  adminGroup: ${quoteYaml(opts.adminGroup)}\n` : ""}modules:
 ${moduleLines.join("\n")}
 
+profiles:
+  - id: standard-defaults
+    name: Standard defaults
+    payload:
+      config: {}
+      secrets: {}
+      entitlements: {}
+
 licensing:
   defaultDeviceLimit: 5
   defaultMaxOfflineDays: 14
-  profiles:
-    - id: standard-defaults
-      name: Standard defaults
-      payload:
-        config: {}
-        secrets: {}
-        entitlements: {}
   tiers:
     - id: standard
       label: Standard

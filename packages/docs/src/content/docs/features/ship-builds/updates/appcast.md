@@ -1,6 +1,8 @@
 ---
 title: "Appcast"
 description: "The appcast feed, per-architecture enclosures, and the four permanent pre-namespace aliases."
+type: "reference"
+lastReviewed: "2026-10-16"
 ---
 
 The appcast is what a Sparkle-based updater actually polls. Polaris Key generates it on the
@@ -28,11 +30,11 @@ GET /<product>/update/<channel>/appcast.xml
 The first always serves the `stable` channel. The second serves any other channel name —
 `beta`, `pr-<n>`, or an operator-defined manual channel — resolved through the identical
 selector logic [Eligibility](/docs/services/update/eligibility/) documents in full. Both
-answer with a single `<item>`: the newest release on that channel, at the moment of the
+answer with a single `<item>`: the newest release on that channel, as of the
 request.
 
-Both routes are governed by **artifacts access**, not metadata access — worth calling out
-because it's easy to guess the opposite. An appcast item embeds a download URL, so gating
+Both routes are governed by **artifacts access**, not metadata access — which is the opposite of
+what you might guess. An appcast item embeds a download URL, so gating
 it under the same column as the changelog would let a caller read a pointer to bytes the
 artifact restriction is supposed to withhold. See Release's
 [Artifacts](/docs/services/release/artifacts/) page for the full four-mode ladder and the
@@ -57,7 +59,7 @@ cache.
 
 :::note[This SDK always sends it explicitly]
 The Swift client covered on [Swift client & Sparkle](/docs/services/update/sparkle/) never
-relies on the default — it detects the running machine's architecture and always passes
+relies on the default — it detects the running device's architecture and always passes
 `arch` on the URL it builds. Relying on the unparameterized feed's default is a choice for
 a host that has no arm64/x86_64 distinction to make; anything else should send it.
 :::
@@ -203,7 +205,7 @@ so anything new is told to use it.
 `/<product>/release/changelog` — was deliberately **not** kept as a fifth alias, for the
 mirror-image reason: nothing ever shipped that URL inside a distributed binary or a
 published one-liner, so there was nothing external depending on it to preserve. It was
-simply moved, and the old path answers `404` like any other removed route.
+moved, and the old path answers `404` like any other removed route.
 
 ## See also
 

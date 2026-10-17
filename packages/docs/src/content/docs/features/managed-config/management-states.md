@@ -5,19 +5,37 @@ sidebar:
   order: 3
 ---
 
-Every `config` and `secret` key carries a **management state** — `default`, `enforced`, or
-`hidden` — the MDM-style knob that decides whether the operator's value is a suggestion or a
-mandate. `flag` entries don't have one: they're entitlements, resolved by a different mechanism
-entirely (`isEntitled`/`getEntitlements` on the license document), not "managed config" in this
-sense.
+Every `config` key carries a **management state** — `default`, `enforced`, or `hidden` — the
+MDM-style knob that decides whether the operator's value is a suggestion or a mandate. The
+console says it from the person's side, **In the app**: Editable, Read-only or Hidden. The wire and
+the catalog keep the three stored words.
+
+`flag` entries don't have one: they're entitlements, resolved by a different mechanism entirely
+(`isEntitled`/`getEntitlements` on the license document), not "managed config" in this sense.
+A `secret` and a minted token have none either: they are never listed, so there is nothing to
+show or hide.
+
+## Five combinations, not nine
+
+Three types times three visibilities would be nine cells. Only five mean something:
+
+| Type             | In the app                                   |
+| ---------------- | -------------------------------------------- |
+| **Setting**      | Editable, Read-only, or Hidden (three cells) |
+| **Secret**       | Never listed (one cell)                      |
+| **Minted token** | Never listed (one cell)                      |
+
+The other four cells are refused on purpose. A person-changeable secret is a Setting with a
+password widget. Listing a secret as Read-only would change what the signed document carries.
+A minted token is only ever read in code.
 
 ## The three states
 
-| State      | On the wire                 | Client behaviour                                                                                                                                          |
-| ---------- | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `default`  | A suggested value.          | The user/local override wins, then an environment variable, then this remote value, then the SDK's own fallback. Overridable.                             |
-| `enforced` | The value, marked enforced. | The remote value always wins; local and environment overrides are ignored. Shown read-only in a settings UI (`listUserConfig` marks it `enforced: true`). |
-| `hidden`   | The value, marked hidden.   | Enforced, **and** withheld from `listUserConfig`/any user-facing enumeration — still applied internally by `getConfig`.                                   |
+| In the app | Stored     | On the wire                 | Client behaviour                                                                                                                                          |
+| ---------- | ---------- | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Editable   | `default`  | A suggested value.          | The user/local override wins, then an environment variable, then this remote value, then the SDK's own fallback. Overridable.                             |
+| Read-only  | `enforced` | The value, marked enforced. | The remote value always wins; local and environment overrides are ignored. Shown read-only in a settings UI (`listUserConfig` marks it `enforced: true`). |
+| Hidden     | `hidden`   | The value, marked hidden.   | Enforced, **and** withheld from `listUserConfig`/any user-facing enumeration — still applied internally by `getConfig`.                                   |
 
 ## `managementDefault`: seeding a fresh key
 

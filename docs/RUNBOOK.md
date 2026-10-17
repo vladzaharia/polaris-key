@@ -1589,7 +1589,7 @@ bytes by chance, about 1.5e-5 per file (65,557 positions × 2^-32). It fails clo
 reports the file by path before anything is signed. The remedy is to re-encode the file (any
 change of the compressed bytes moves the match).
 
-## Sign-in email (I-18)
+## Sign-in email
 
 Every sign-in and account email leaves ONE shared sender, `noreply@auth.plrs.im`, on the
 dedicated auth sending subdomain `auth.plrs.im`, so its reputation is every product's (S-16 §9
@@ -1665,7 +1665,7 @@ Polaris Key <noreply@auth.plrs.im>`. Repeat to a Hide-My-Email (`@privaterelay.a
   `emailSendingAdaptive` dataset show the rest (delivery rate over 95 %, hard bounces under 2 %,
   complaints under 0.1 %).
 
-## Login card (I-07)
+## Login card
 
 The login card's Worker half needs two owner inputs per environment. Until they are set the card
 works without them: no Turnstile token is asked for, and avatars use the `BLOBS` bucket and the
@@ -1744,7 +1744,7 @@ accounts then accept that version; the acceptance is a `_platform` row in
 created before it are not asked again (existing accounts accepting a new version is a later
 decision). Deleting the row turns the step off again; the acceptances already recorded stay.
 
-## Login-card providers (I-06)
+## Login-card providers
 
 The login card offers Sign in with Google, Apple and Steam through Polaris's own clients, one set
 per environment (`src/services/identity/providers/`). They are account sign-in methods for every
@@ -1787,7 +1787,7 @@ not available_ and the rest of the card works as before.
      Configure → the primary App ID → Register. Download `AuthKey_<KEYID>.p8` (Apple offers it
      **once**) and note the Key ID (ten characters).
    - Apple's private relay delivers sign-in email only from registered senders: that is step 4 of
-     "Sign-in email (I-18)" above.
+     "Sign-in email" above.
 3. **Steam Web API key.** Signed in to the Polaris Steam account (it needs Steam Guard and a
    purchase history), open `https://steamcommunity.com/dev/apikey`, enter the domain
    `key.plrs.im`, agree and register. One account holds one key; the domain is informational, so
@@ -1842,7 +1842,7 @@ not available_ and the rest of the card works as before.
   isolate. A sign-in that answers _… sign-in is unavailable right now_ is the provider's endpoint
   failing, or answering with a host outside the allowlist (`providers/net.ts`).
 
-## Licence override migration (U-03)
+## Licence override migration
 
 The licence-level config override layer is removed on every product and replaced by the
 **account override**: managed config an operator sets for one account on one product (notes/S-17
@@ -1936,7 +1936,7 @@ rows (which an older Worker does not read) hold them.
 **KEK rotation** covers the account rows: their sealed secrets are counted and re-sealed by the
 `managed` bucket of the KEK sweep (above).
 
-## Offline grace clamp (LX-07)
+## Offline grace clamp
 
 A licence's offline grace no longer outlasts the licence (S-19 G9, decision 7). While a product's
 `licensing.clampGraceToExpiry` is on (the default), every document a licence grants (the licence
@@ -1982,7 +1982,7 @@ that expires inside `graceDays` is clamped the same way, and its `bundle.minted`
 **Rolling back.** Turn the setting off per product (no deploy; devices get the full window at their
 next fetch), or redeploy the previous Worker.
 
-## Licensing model expand (LX-08)
+## Licensing model expand
 
 The licensing model (S-19 model OC, plans/LX-01.md) adds **grants**: reasons a holder (a licence,
 an account or a store identity) has entitlements. LX-08 is the expand step only (S-19 §7.14 steps
@@ -2057,7 +2057,7 @@ It leaves the LX-08 tables, columns and store-grant rows in place. A roll forwar
 over, as the first deploy did: each sign-in and the catch-up move the keys out of the column again,
 and the catch-up re-projects the store grants the old Worker wrote in between.
 
-## The blob collector (P4-14)
+## The blob collector
 
 The nightly maintenance cron (`17 3 * * *`) runs Core's blob collector after the retention steps:
 per live product it drops the refs no live pack release needs (and restores ones a live release
@@ -2087,7 +2087,7 @@ surface in the cron's aggregate error (`blobRefs:<slug>`, `blobMark`, `blobSweep
   its lock age: stop the collector and escalate. Never shorten or remove the bucket lock to make
   it pass.
 
-## Account erasure ledger and D1 restore (I-11)
+## Account erasure ledger and D1 restore
 
 A D1 Time Travel restore rewinds the whole database, so an account erased after the restore point
 comes back with nothing in D1 to say it was erased. The erasure ledger is the record a restore
@@ -2243,7 +2243,7 @@ product sessions while R2 is degraded or `BLOBS` is unbound is the fence failing
 account problem: restore R2 or the binding and signed-in clients carry on. An unreadable ledger
 clears no portal cookie and ends no product browser session; it only refuses until it can be read.
 
-## Release-file mirroring (HA-08)
+## Release-file mirroring
 
 Polaris Key keeps its own copy of every app-release file whose bytes live only on GitHub or at an
 external URL, so downloads are served from R2 and GitHub stays the fallback (notes/S-20 §6.8).
@@ -2282,7 +2282,7 @@ inside the 15-minute wall clock; a mirror not started is retried a minute later.
   copy (`hosted-asset` for the copy, `release-artifact` for the location) are never dropped by the
   blob collector.
 
-## Lazy deltas (P4-17)
+## Lazy deltas
 
 When install telemetry shows at least 25 devices (per product, configurable) moving between the
 same two payloads of a container pack within 7 days without a delta, and the pack's record has no
@@ -2410,7 +2410,7 @@ Portal magic links are hidden:
 - Confirm at least one product has portal and magic links enabled.
 - Confirm prod deployed with the `EMAIL` send binding.
 - Confirm Cloudflare Email Service allows the sender (`EMAIL_SENDER_ADDRESS`, else
-  `noreply@plrs.im`); "Sign-in email (I-18)" above has the setup and the DNS check.
+  `noreply@plrs.im`); "Sign-in email" above has the setup and the DNS check.
 
 DJDL OIDC activation fails with `platform oidc is not configured`:
 

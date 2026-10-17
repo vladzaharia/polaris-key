@@ -1,6 +1,8 @@
 ---
 title: "Swift client & Sparkle"
 description: "The PolarisKeyUpdate target, the Sparkle version floor, the SUPublicEDKey trust anchor, and entitled feed headers."
+type: "reference"
+lastReviewed: "2026-10-16"
 ---
 
 This page is the client half of Update — specifically, the Swift package's integration
@@ -11,7 +13,7 @@ thing Sparkle already does correctly.
 
 ## Five targets, one capability boundary
 
-The Swift package ships five targets, and the split is a **link-time** guarantee, not just
+The Swift package ships five targets, and the split is a **link-time** guarantee, not only
 a runtime flag:
 
 | Target              | Depends on            | Platforms  |
@@ -65,14 +67,14 @@ one thing about update integrity, and it is not verification:
 :::caution[Assertion, never reimplementation]
 At construction time, `PolarisKeyUpdate` checks that `SUPublicEDKey` is actually present —
 and non-empty — in the running app's own `Info.plist`, and **throws immediately** if it
-isn't. It never verifies an update signature itself, and it never will: a Polaris-side
+isn't. It never verifies an update signature itself, by design: a Polaris-side
 EdDSA check would be a second, weaker anchor sitting next to the real one, which is a worse
 posture than trusting Sparkle's own check alone.
 :::
 
 The failure this catches is real and silent without it: an app that ships Sparkle without
 `SUPublicEDKey` does not fail to build, does not fail to launch, and does not fail its
-first update check — it simply accepts unsigned payloads from that point on. Failing loudly
+first update check — it accepts unsigned payloads from that point on. Failing loudly
 at construction turns that into a crash a developer sees on their very first run, instead
 of a supply-chain incident that surfaces in production.
 
@@ -84,7 +86,7 @@ is what keeps an already-shipped app working across a server-side route change.
 
 ### The feed URL
 
-The appcast URL — with `?arch=` applied for the running machine's architecture — is read
+The appcast URL — with `?arch=` applied for the running device's architecture — is read
 straight out of Update's discovery fragment. A host never constructs
 `/<product>/update/…/appcast.xml` by hand; it asks discovery for the endpoint and lets the
 SDK apply the channel and architecture. See
@@ -96,7 +98,7 @@ unparameterized default.
 
 Sparkle makes its own HTTP requests — it fetches the appcast, and later the enclosure,
 independently of the rest of the SDK's networking. For an `entitled`-mode product, that
-means Sparkle's requests need the device's bearer token or the feed simply answers `401`
+means Sparkle's requests need the device's bearer token or the feed answers `401`
 on every check; there is no other path for the credential to reach Sparkle's own fetch. The
 SDK configures Sparkle's HTTP headers with exactly that token (alongside the same client
 metadata headers every SDK request carries) so an entitled feed is reachable at all. A
@@ -136,7 +138,7 @@ could learn by probing that the capability map doesn't already say.
 `SPUUpdater.delegate` is a **weak** reference. The object the SDK's Sparkle configuration
 call returns has to be retained by the caller for as long as the updater should keep using
 it — this is the one integration step that fails silently: a delegate that deallocates
-doesn't crash or log anything, it just quietly reverts Sparkle to whatever `SUFeedURL` and
+doesn't crash or log anything, it quietly reverts Sparkle to whatever `SUFeedURL` and
 default behavior are baked into the host's `Info.plist`, and update checks keep running as
 if none of this configuration had ever happened.
 

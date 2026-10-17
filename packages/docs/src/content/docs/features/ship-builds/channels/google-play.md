@@ -2,17 +2,19 @@
 sidebar:
   order: 6
 title: "Google Play connector"
-description: "How Distribution follows a product's Google Play tracks — a throwaway edit read on the 15-minute connector cron, availability by version code, staged rollouts mirrored as outlet rollouts — and the operator controls: rollout fraction, halt, resume, complete, the in-app update priority, and the opt-in vitals auto-halt."
+description: "How Distribution follows a product's Google Play tracks — a throwaway edit read on the 15-minute connector cron, availability by version code, staged rollouts mirrored as channel rollouts — and the operator controls: rollout fraction, halt, resume, complete, the in-app update priority, and the opt-in vitals auto-halt."
+type: "reference"
+lastReviewed: "2026-10-16"
 ---
 
 For a product that ships on Google Play, Distribution can follow every Play track instead of
 waiting for CI to report it. The **Google Play connector** reads the Google Play Developer API
 with the product's service account and keeps three things current:
 
-- **availability** of each release's Android builds on your `play` and `play-testing` outlets
+- **availability** of each release's Android builds on your `play` and `play-testing` channels
   (see [Availability, submissions and keys](/docs/services/distribution/availability/)), written
   with `source: play`;
-- each track's **staged rollout** (`userFraction`, halted or not), mirrored as an outlet rollout
+- each track's **staged rollout** (`userFraction`, halted or not), mirrored as a channel rollout
   (see [Rollouts and halts](/docs/services/distribution/rollouts/#store-rollouts));
 - the **in-app update priority** (`inAppUpdatePriority`, 0–5) of every release, which the
   Android plugin's In-App Updates flow reads.
@@ -25,8 +27,8 @@ connector reads on the connector cron (every 15 minutes) and after every control
 
 The connector runs for a product when all of these hold:
 
-1. **Distribution is on**, and `.pkey/distribution` declares a `play` (or `play-testing`) outlet
-   whose identity carries the Android package name and a **track map** — your channel on the
+1. **Distribution is on**, and `.pkey/distribution` declares a `play` (or `play-testing`) channel
+   whose identity carries the Android package name and a **track map** — your release track on the
    left, Play's track id on the right:
 
    ```yaml
@@ -45,20 +47,20 @@ The connector runs for a product when all of these hold:
 
    Write the internal-testing track id exactly as Play lists it — some apps have `internal`,
    others `qa`. The connector never assumes one: it reads the track ids from Play and shows any
-   track your map does not name (as **unmapped**) without writing anything for it. A Play outlet
+   track your map does not name (as **unmapped**) without writing anything for it. A Play channel
    naming another package is ignored; the connector serves one app per product.
 
-2. A **`google-service-account` outlet credential** is stored in Distribution → Outlet credentials — the service
+2. A **`google-service-account` channel credential** is stored under Distribution, on **Outlet credentials** — the service
    account's JSON key file — **pinned** to this product's app: the same package name as the
    `packageName` above (see [Pinning the app](#pinning-the-app)). See
-   [Outlet credentials](/docs/admin/secrets-and-keys/#outlet-credentials). A credential bound to
-   one of the Play outlets (`outletId`) is preferred over an unbound one.
+   [Channel credentials](/docs/admin/secrets-and-keys/#outlet-credentials). A credential bound to
+   one of the Play channels (`outletId`) is preferred over an unbound one.
 
 3. **The first release is made by hand** in Play Console. Google requires the first bundle of a
    new app to be uploaded there before the API can manage it.
 
-Without the credential, without a Play outlet, or with a credential that is not pinned to the
-outlet's package, the connector does not run for the product: the poller skips it and every
+Without the credential, without a Play channel, or with a credential that is not pinned to the
+channel's package, the connector does not run for the product: the poller skips it and every
 control is refused. `GET …/distribution/connectors/play` says why in `inert` (`no_outlet`,
 `no_credential`, `pin_missing` or `pin_mismatch`, with a sentence on what to do).
 
@@ -102,11 +104,11 @@ So the credential carries a **pin** that only a platform admin sets: the package
 used for in this product. The connector runs only while the manifest's `packageName` equals the
 pin.
 
-- **Set it with the key.** Distribution → Outlet credentials asks for the package name with the key file. Over the
+- **Set it with the key.** **Outlet credentials** under Distribution asks for the package name with the key file. Over the
   API, send it as `pin`:
 
   ```http
-  PUT /manage/api/products/<slug>/outlet-credentials/play
+  /manage/api/products/<slug>/outlet-credentials/play (PUT)
   {"kind": "google-service-account", "value": { …the JSON key file… }, "pin": "gg.acme.dice"}
   ```
 
@@ -122,7 +124,7 @@ another app — the connector stops (`pin_mismatch`): no reads, no mirroring, no
 control (`settings` too) refused with `409 credential_pin_mismatch` before any token is minted or
 request sent. It stays stopped until the manifest names the pinned package again, or until you
 **check that the new package really is this product's app** and re-pin. The pin is checked on the
-credential the connector chooses (one bound to a Play outlet before an unbound one); another
+credential the connector chooses (one bound to a Play channel before an unbound one); another
 credential's pin never stands in for it. Inviting the account to one app only ([above](#least-privilege-for-the-service-account)) is still
 the best protection if the key is ever stolen.
 
@@ -131,9 +133,9 @@ the best protection if the key is ever stolen.
 Every tick opens a **throwaway edit**, lists its tracks, and deletes it:
 
 ```http
-POST   /androidpublisher/v3/applications/{packageName}/edits
-GET    /androidpublisher/v3/applications/{packageName}/edits/{editId}/tracks
-DELETE /androidpublisher/v3/applications/{packageName}/edits/{editId}
+/androidpublisher/v3/applications/{packageName}/edits (POST)
+/androidpublisher/v3/applications/{packageName}/edits/{editId}/tracks (GET)
+/androidpublisher/v3/applications/{packageName}/edits/{editId} (DELETE)
 ```
 
 A fresh edit is a copy of what Play serves now, so that is the truth for every track. Edits are
@@ -156,19 +158,19 @@ whose build number is that version code (platform `android`), so give each Andro
 `buildNumber` in your release descriptor. A release with two version codes (an arm64 and an armv7
 build, say) makes both builds available.
 
-| Play status  | Availability | Outlet rollout                  |
+| Play status  | Availability | Channel rollout                 |
 | ------------ | ------------ | ------------------------------- |
 | `inProgress` | `live`       | `active`, at `userFraction`     |
 | `halted`     | `approved`   | `halted`                        |
 | `completed`  | `live`       | `complete` (10000 basis points) |
 | `draft`      | `pending`    | none — nothing is served        |
 
-`userFraction` becomes basis points: 0.05 is 500. A build on several tracks of one outlet takes
-the most-served state. A build the connector reported before that no track of the outlet carries
+`userFraction` becomes basis points: 0.05 is 500. A build on several tracks of one channel takes
+the most-served state. A build the connector reported before that no track of the channel carries
 any more becomes `removed`. A version code no release build carries is shown on the track,
 unresolved, and writes nothing.
 
-Each mapped (outlet, channel) mirrors its track's staged release (or, with none, its completed
+Each mapped (channel, release track) mirrors its track's staged release (or, with none, its completed
 release) as a rollout row marked `mirrored`, which refuses direct edits; change it with the
 controls below. The mirror informs the feed and the console — users who already have a halted
 release keep it, and a staged rollout is applied by Play, not by Polaris Key.
@@ -206,7 +208,7 @@ Two rules need your attention:
 ### Priority policy
 
 When a draft starts rolling out without a priority, the connector picks one: **5** if Release marks
-the channel `critical`, **4** if the channel's floor (`minSupported`) is above the version the track
+the release track `critical`, **4** if the release track's floor (`minSupported`) is above the version the track
 serves now, otherwise your **default** (`settings` → `priority.default`, 0 unless you set it). An
 explicit `priority` in the request, or one already on the draft, wins.
 
@@ -240,7 +242,7 @@ not fight it. With the setting off, the connector makes no Reporting API call at
 ## Security
 
 - The connector calls only `androidpublisher.googleapis.com` and
-  `playdeveloperreporting.googleapis.com`, for the one package your outlet names and your pin
+  `playdeveloperreporting.googleapis.com`, for the one package your channel names and your pin
   allows; nothing in a response can redirect it, and a manifest naming another package stops it
   ([Pinning the app](#pinning-the-app)).
 - The service-account key never leaves custody: the connector uses short-lived access tokens

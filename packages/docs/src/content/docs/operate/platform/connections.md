@@ -1,6 +1,8 @@
 ---
 title: "Connections"
 description: "Store connections (the platform's team-level store credentials, the shared store settings, the apps list, assigning an app to a product) and sign-in connections (OpenID Connect providers, verified email domains, enforcement)."
+type: "reference"
+lastReviewed: "2026-10-16"
 sidebar:
   order: 13
 ---
@@ -48,7 +50,7 @@ the state of the store's primary credential and how many apps are assigned.
   deletes a short edit per app (see below).
 - **Assign to product…** (an app's row menu) asks you to choose a product and confirm (a caution
   confirmation: the change is reversible and changes what that product's connectors act on). The
-  confirmation lists what will be pinned, including the bundle ID for the In-App Purchase key.
+  confirmation lists what is pinned, including the bundle ID for the In-App Purchase key.
   Afterwards a result panel lists every pin set, any pin released, the product's own keys
   re-pinned, and the own keys left alone because their account could not be told from their
   metadata. Check those and re-pin them on the product's Keys & secrets page. An app held through
@@ -81,9 +83,9 @@ found:
 
 | Store           | What the check reads                                                     | What it can tell you                                                                                                             |
 | --------------- | ------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
-| App Store       | `GET /v1/apps` (names and bundle ids, one page)                          | The team and how many apps the key sees; a revoked or mismatched key; a role that cannot read apps (App Manager or Admin needed) |
+| App Store       | `GET` of `/v1/apps`                                                      | The team and how many apps the key sees; a revoked or mismatched key; a role that cannot read apps (App Manager or Admin needed) |
 | Google Play     | Google's token exchange, then one page of the Reporting API's app search | The service account and its apps; a deleted key; not invited to the Play Console; the Reporting API turned off                   |
-| Microsoft Store | Entra's client-credentials token, then `GET /v1.0/my/applications`       | The seller and its apps; an expired or wrong client secret; no such app or tenant; the app not added to Partner Center           |
+| Microsoft Store | Entra's client-credentials token, then `GET` of `/v1.0/my/applications`  | The seller and its apps; an expired or wrong client secret; no such app or tenant; the app not added to Partner Center           |
 | Steam           | `GetPartnerAppListForWebAPIKey`                                          | The group's apps; a personal (non-publisher) key                                                                                 |
 
 The answer is one of: **valid** ("Team 69a6de7f · 3 apps"), a **warning** you can still save
@@ -93,19 +95,17 @@ expired, on the field it concerns), or **unavailable** when the store did not an
 known, so nothing is saved; check again). The In-App Purchase key is format-checked only: every
 App Store Server API call is made for one app, so it is checked at its first use.
 
-Nothing is stored by a check: no credential row, no cached token, no audit row. The response
+A check stores nothing: no credential row, token or audit row. The response
 carries what the store reported (the account, the apps), never the key. Checks are limited to 20
-per operator in 10 minutes; a mistyped field is caught before any call and costs nothing. The
-routes are `POST /manage/api/platform/store-connections/<store>/check` (the primary slot) and
-`…/<store>/credentials/<slot>/check`, with the same `{"value": …}` body as the `PUT`.
+per operator in 10 minutes. The routes are `/manage/api/platform/store-connections/<store>/check`
+for the primary slot and `…/<store>/credentials/<slot>/check`, both with `POST` and the same
+`{"value": …}` body as the `PUT`.
 
 The same check exists for the CI secrets a storefront needs, which Polaris Key never keeps:
-`POST /manage/api/products/<slug>/distribution/storefronts/<id>/ci-secrets/<name>/check` with
-`{"value": "…"}` for itch.io's `BUTLER_API_KEY` (whose key, and whether it can push to the
-outlet's game), the Snap Store's `SNAPCRAFT_STORE_CREDENTIALS` (the account, its permissions, the
-snaps it is scoped to and its expiry) and winget's `PKEY_PR_TOKEN` (the GitHub account, the
-token's scopes and expiry, and its `winget-pkgs` fork). Steam's builder login
-(`STEAM_USERNAME`, `STEAM_CONFIG_VDF`) cannot be checked outside SteamCMD and is answered as such.
+`/manage/api/products/<slug>/distribution/storefronts/<id>/ci-secrets/<name>/check` (`POST`) with
+`{"value": "…"}`. It covers itch.io's `BUTLER_API_KEY`, the Snap Store's
+`SNAPCRAFT_STORE_CREDENTIALS` and winget's `PKEY_PR_TOKEN`, and reports the account and its scopes.
+Steam's builder login (`STEAM_USERNAME`, `STEAM_CONFIG_VDF`) cannot be checked outside SteamCMD.
 
 #### Or as a Worker secret
 
@@ -134,7 +134,7 @@ then lists its apps.
 
 Each slot has two sources, and the first one present wins:
 
-1. **The console credential** — `PUT /manage/api/platform/store-connections/<store>` (the primary
+1. **The console credential** — `/manage/api/platform/store-connections/<store>` (`PUT`, the primary
    slot) or `…/<store>/credentials/<slot>` with `{"value": …}`. It is validated exactly like the
    outlet credential of that kind (a `.p8` must be a P-256 key, a Google key must name Google's
    token endpoint; a Google key file may be pasted as the JSON text), sealed under the platform
@@ -142,7 +142,7 @@ Each slot has two sources, and the first one present wins:
 2. **The Worker secret** — the same JSON, set with `wrangler secret put` (see DEPLOYMENT.md §4).
    Use it to bootstrap; prefer the console credential afterwards.
 
-`GET /manage/api/platform/store-connections` lists every store: each slot's `configured`, the
+`/manage/api/platform/store-connections` (`GET`) lists every store: each slot's `configured`, the
 `source` in use (`console` or `secret`), its metadata (key id, issuer id, client email, tenant,
 client and seller ids), the console row's health (`lastUsedAt`, `lastOkAt`, `lastError`), whether
 the Worker secret is present and valid, the store's settings, and which product holds which app.

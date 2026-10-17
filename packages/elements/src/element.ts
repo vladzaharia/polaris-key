@@ -370,6 +370,11 @@ export abstract class PkElement extends LitElement {
     return renderView(c);
   }
 
+  /** True where the element's screen owns the window (DL2, DL18): the drop-in gate's own. */
+  protected fillsWindow(_state: string): boolean {
+    return false;
+  }
+
   protected override render(): unknown {
     const view = this.view;
     if (view.state === "hidden") return nothing;
@@ -386,6 +391,7 @@ export abstract class PkElement extends LitElement {
       data-density=${r.theme.density}
       data-motion=${r.theme.motion}
       data-shape=${this.shape}
+      ?data-fill=${this.fillsWindow(view.state)}
       data-pk-platform=${r.theme.platform ?? "web"}
       ?data-keyboard=${keyboard}
       lang=${c.copy.locale}

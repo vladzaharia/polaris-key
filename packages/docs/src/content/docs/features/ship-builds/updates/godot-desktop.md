@@ -1,6 +1,8 @@
 ---
 title: "Godot desktop updaters"
 description: "The Godot SDK's native update plugins: Sparkle on macOS, Velopack, WinSparkle and the Microsoft Store on Windows, their export switches, signing, and what only the owner can check."
+type: "reference"
+lastReviewed: "2026-10-16"
 ---
 
 A Godot game on a direct desktop outlet updates its whole app through the platform's own updater.
@@ -90,13 +92,13 @@ with a Developer ID, notarises, staples and writes the zip that `sign_update` si
   which the Worker redirects to the package bytes.
 - **Velopack under licensed or entitled delivery.** Velopack resolves each package's bare
   `FileName` against the feed URL, and its HTTP client (ureq) drops `Authorization` on every
-  redirect, even a same-origin one (notes/S-11 §5.2; P5-07's end-to-end run). So under a
+  redirect, even a same-origin one (seen in an end-to-end run). So under a
   non-public delivery the Worker's package route checks the file with the bearer it sees and
-  redirects with a short-lived download ticket that needs no header (SP-09). If a download still
+  redirects with a short-lived download ticket that needs no header. If a download still
   fails with 401 or 403 (a ticket that expired before the request, or a key rotated twice inside
   its window), the facade calls `download()` once more, which asks the route again for a fresh
   ticket. A second 401 or 403 answers `unsupported` (`product`): the deployment cannot sign
-  Velopack downloads, or the licence does not cover this release. The prompt then opens the
+  Velopack downloads, or the license does not cover this release. The prompt then opens the
   build's download link. The facade never clears tokens on either answer.
 - **WinSparkle.** It needs the EdDSA public key in `PKeyOptions.update_eddsa_public_key`; without
   one it refuses to start. The release's build `format` must be `inno`, `nsis` or `msi`, so the
@@ -136,7 +138,7 @@ certificates or accounts and are recorded by whoever runs them:
 3. A Developer-ID 1.0 updates to a Developer-ID 1.1, and refuses a 1.1 signed by another team.
 4. A notarised app without the Disable Library Validation entitlement fails to load the bridge.
 5. Authenticode or Artifact Signing of the shim, the game exe, the DLLs and the installers, and
-   SmartScreen on a fresh machine.
+   SmartScreen on a fresh device.
 6. A signed MSIX from a Partner Center app (it can be hidden): the update query lists a flight,
    the consent dialog is owned by the game window, a silent install works with automatic updates
    on, and a mandatory flag reads `true`.

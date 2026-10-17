@@ -173,6 +173,7 @@ export {
   GLOBAL_OPTIONS,
   GROUP_HEADINGS,
   renderHelp,
+  renderMountSection,
   renderVerbHelp,
   VERB_OPTIONS,
   type CompletionShell,
@@ -200,10 +201,29 @@ export {
   type CommanderAdapterOptions,
 } from "./commander.js";
 
-// The yargs adapter shares the `registerPolarisCommands` name; expose it under explicit
-// aliases to avoid the collision while keeping both reachable from the barrel.
 export {
-  polarisCommandModule,
-  registerPolarisCommands as registerYargsCommands,
-  type YargsAdapterOptions,
-} from "./yargs.js";
+  bindGate,
+  polarisGate,
+  requireLicense,
+  runGate,
+  type GateRun,
+  type GateTarget,
+  type PolarisGateOptions,
+  type RequireLicenseOptions,
+} from "./gate.js";
+
+export {
+  COLLISION_CODE,
+  CONFIG_OPTIONS,
+  END_USER,
+  planMount,
+  selectVerbs,
+  VerbCollisionError,
+  verbId,
+  type MountOptions,
+  type MountPlan,
+  type PolarisCliConfig,
+} from "./mount.js";
+
+// The yargs adapter is its own entry, `@polaris-key/node/cli/yargs`, so a project on commander
+// alone never compiles yargs' types.

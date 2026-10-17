@@ -1,12 +1,14 @@
 ---
 title: "Operations"
 description: "What the Operations page reports about cron runs, consumers, queues, storage and store connectors, and what Healthy, Degraded and Failed mean."
+type: "reference"
+lastReviewed: "2026-10-16"
 sidebar:
   order: 14
 ---
 
 **Platform → Operations** is the instance's own account of its background work. It reads one
-platform-admin endpoint, `GET /manage/api/platform/operations`, which answers from the Worker's
+platform-admin endpoint, `/manage/api/platform/operations` (GET), which answers from the Worker's
 bindings and from rows the Worker writes about itself. It needs no Cloudflare API token, and it
 makes no outbound call.
 

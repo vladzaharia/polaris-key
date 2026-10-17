@@ -63,6 +63,41 @@
       "pattern": "dev_[A-Za-z0-9]+",
       "boards": ["terminal"],
       "reason": "A device id the kit prints for the person to copy (a value, not copy)."
+    },
+    {
+      "pattern": "Render quality|Audio volume|Net proxy|Net lockdown|Ui compact|Ui sounds|Debug logging|Extra [a-g]|\\d+",
+      "boards": ["elements"],
+      "reason": "Fixture settings: the entry's label (else its key read as words) and a numeric value, product data the kit displays."
+    },
+    {
+      "pattern": "Mara's iPad|Edu|Plus|Standard",
+      "boards": ["elements"],
+      "reason": "Fixture device and tier names (data, not copy); the straight apostrophe the matrix input carries."
+    },
+    {
+      "pattern": "(From (signing in|Tidewater Studio|Harbor Audio)|Added with a key|Free)( · (Lifetime|Until [\\d/]+))?",
+      "boards": ["elements"],
+      "reason": "A license row's meta line: the origin and term joined as the catalog's {origin} · {term}; the whole line is arguments, so the matcher cannot key it."
+    },
+    {
+      "pattern": "[\\p{L}\\d ]+ · last used \\d+ days? ago( · Least recent)?",
+      "boards": ["elements"],
+      "reason": "A device row's meta line: platform, when and the Least recent tag joined; its parts are catalog messages (signin.replace.meta, signin.replace.leastRecent)."
+    },
+    {
+      "pattern": "Open Microsoft Store|Get Tidewater Studio|by (Harbor Audio|Lanternworks)",
+      "boards": ["elements"],
+      "reason": "A catalog message that is mostly an argument ({store}, {product}, {developer}), filled with a fixture value."
+    },
+    {
+      "pattern": "Welcome to Tidewater Studio Professional Edition for Teams and Classrooms",
+      "boards": ["elements"],
+      "reason": "The long-product-name fixture in the Welcome title (a ProductIdentity value inside a catalog message)."
+    },
+    {
+      "pattern": "Faster sync\\. Fixes a crash on launch\\.|Fixes the mixer on Windows\\.|<script>alert\\(1\\)</script> Fixes <b>sync</b>\\.",
+      "boards": ["elements"],
+      "reason": "Fixture release notes, one of them hostile markup the kit must show as text."
     }
   ]
 }

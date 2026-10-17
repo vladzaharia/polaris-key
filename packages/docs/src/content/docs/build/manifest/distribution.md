@@ -1,13 +1,15 @@
 ---
 sidebar:
   order: 3
-title: "Distribution: outlets, transports and listing"
+title: "Distribution: channels, transports and listing"
 description: "The optional fourth .pkey/ file — where a product is distributed, its store identities, which transport carries each deliverable, and its store listing."
+type: "reference"
+lastReviewed: "2026-10-16"
 ---
 
 `.pkey/release` says **what exists**. The optional fourth file, `.pkey/distribution.{json,yaml,yml}`,
-says **how it reaches devices and outlets**: the product's **outlets** with their store
-identities, the **transport** each deliverable uses on each outlet, and the store **listing**.
+says **how it reaches devices and channels**: the product's **channels** with their store
+identities, the **transport** each deliverable uses on each channel, and the store **listing**.
 The [Distribution service](/docs/services/distribution/) reads it; nothing else does.
 
 | File             | Base name                      | Required when | Maps to                            |
@@ -15,7 +17,7 @@ The [Distribution service](/docs/services/distribution/) reads it; nothing else 
 | **distribution** | `distribution.{json,yaml,yml}` | never         | `dist_outlets` + `dist_transports` |
 
 **No file is fine.** With Distribution enabled and no document, the product has one implicit
-outlet, the Polaris Key outlet (`direct`), served by `pkey-cdn` — so a product that only ships its own downloads needs
+channel, the Polaris Key channel (`direct`), served by `pkey-cdn` — so a product that only ships its own downloads needs
 nothing here. A document with no `outlets` block means the same; `outlets: {}` declares none.
 
 The document is validated whenever it is present (even with Distribution off), by `pkey
@@ -69,24 +71,24 @@ listing:
   tintColor: "#3b1f1f"
 ```
 
-## Outlets
+## Channels
 
-`outlets` is keyed by **outlet id**: lower-case, starting with a letter, at most 64 characters
-(`^[a-z][a-z0-9-]{0,63}$`), at most 32 outlets. Each outlet has a **kind**:
+`outlets` is keyed by **channel id**: lower-case, starting with a letter, at most 64 characters
+(`^[a-z][a-z0-9-]{0,63}$`), at most 32 channels. Each channel has a **kind**:
 
 `direct`, `app-store`, `testflight`, `altstore`, `altstore-pal`, `play`, `play-testing`,
 `obtainium`, `fdroid-repo`, `ms-store`, `app-installer`, `steam`, `itch`, `flathub`, `snap`,
 `winget`, `web`.
 
-An id that is itself a kind may omit `kind` (`steam:` is a `steam` outlet), and an explicit
+An id that is itself a kind may omit `kind` (`steam:` is a `steam` channel), and an explicit
 `kind` there must repeat the id: `app-store: { kind: web }` fails with `outlet_kind_mismatch`.
 Any other id needs one — `altstore-beta: { kind: altstore }` — or validation fails with
-`unknown_outlet_kind`. An outlet with no identity fields is written `web: {}`.
+`unknown_outlet_kind`. A channel with no identity fields is written `web: {}`.
 
-Because capabilities default per kind, a kind change on an outlet that already exists is applied
+Because capabilities default per kind, a kind change on a channel that already exists is applied
 only when it does not widen those defaults (for example `web` to `altstore`). A widening change
-(`altstore` to `direct`) is held: the outlet keeps its old kind and the rest of the push applies.
-Declare a new outlet id for the wider kind, so copies already installed through the old one keep
+(`altstore` to `direct`) is held: the channel keeps its old kind and the rest of the push applies.
+Declare a new channel id for the wider kind, so copies already installed through the old one keep
 what they had.
 
 ### Identity fields per kind
@@ -101,20 +103,20 @@ optional. A bad value is `invalid_outlet_identity`.
 | `testflight`               | `appleId`, `bundleId`, `publicLink` (the public link's join code)                                                                                                                                        |
 | `altstore`                 | `artifact`, `bundleId`                                                                                                                                                                                   |
 | `altstore-pal`             | `artifact`, `bundleId`, `marketplaceId`                                                                                                                                                                  |
-| `play`, `play-testing`     | `packageName` (Android package), `tracks` (channel → Play track)                                                                                                                                         |
+| `play`, `play-testing`     | `packageName` (Android package), `tracks` (release track → Play track)                                                                                                                                   |
 | `obtainium`, `fdroid-repo` | `artifact`, `packageName`                                                                                                                                                                                |
-| `ms-store`                 | `productId` (12 characters), `packageFamilyName`, `flights` (channel → package flight)                                                                                                                   |
+| `ms-store`                 | `productId` (12 characters), `packageFamilyName`, `flights` (release track → package flight)                                                                                                             |
 | `app-installer`            | `packageFamilyName`, `publisher` (the MSIX Publisher, a certificate subject DN starting `CN=`), `updateSettings`                                                                                         |
-| `steam`                    | `appId` (numeric), `branches` (channel → Steam branch)                                                                                                                                                   |
+| `steam`                    | `appId` (numeric), `branches` (release track → Steam branch)                                                                                                                                             |
 | `itch`                     | `target` (the butler `user/game` slug), `gameId` (numeric)                                                                                                                                               |
 | `flathub`                  | `appId` (a Flatpak id such as `gg.vlad.Diceroll`)                                                                                                                                                        |
-| `snap`                     | `name`, `channels` (channel → snap channel, `[<track>/]<risk>[/<branch>]`)                                                                                                                               |
+| `snap`                     | `name`, `channels` (release track → snap release track, `[<track>/]<risk>[/<branch>]`)                                                                                                                   |
 | `winget`                   | `packageIdentifier` (such as `Vlad.Diceroll`)                                                                                                                                                            |
 | `web`                      | none                                                                                                                                                                                                     |
 
 - **`publicLink`** is the code after `/join/` in a public TestFlight link: 1–32 letters and
-  digits. The signed update feed turns it into the outlet's `listingUrl`
-  (`https://testflight.apple.com/join/<publicLink>`); without it a TestFlight outlet has no
+  digits. The signed update feed turns it into the channel's `listingUrl`
+  (`https://testflight.apple.com/join/<publicLink>`); without it a TestFlight channel has no
   listing link.
 - **`app-installer`** needs both `packageFamilyName` and `publisher` before
   `/update/<channel>/app.appinstaller` answers. `updateSettings` is optional:
@@ -134,21 +136,21 @@ optional. A bad value is `invalid_outlet_identity`.
   this `productId` equals the Store ID a platform admin pinned on the product's
   `ms-partner-center` credential (see
   [Microsoft Store](/docs/services/distribution/microsoft-store/#pinning-the-app)).
-- **`flights`** maps a declared channel to a Microsoft Store package flight, named by its
+- **`flights`** maps a declared release track to a Microsoft Store package flight, named by its
   Partner Center friendly name or its flight id. The non-flighted submission is always the
-  `stable` channel, so `flights` names only the others (`{ beta: "Beta testers" }`).
-- **`snap.channels`** maps a declared channel to the snap channel `snapcraft upload --release`
+  `stable` release track, so `flights` names only the others (`{ beta: "Beta testers" }`).
+- **`snap.release tracks`** maps a declared release track to the snap release track `snapcraft upload --release`
   releases to (`{ stable: "latest/stable", beta: "beta" }`). The publish action's allow-list
-  admits no other channel, so a snap step for a channel without an entry is refused (see
-  [Storefront steps](/docs/build/ci/#storefront-steps-itchio-and-snap)).
-- **`tracks`, `branches`, `flights` and `channels`** keys must be declared channels — `stable`,
-  `beta`, a manual channel, or one of `deliverables.app.channels` — otherwise
+  admits no other release track, so a snap step for a release track without an entry is refused (see
+  [Storefront steps](/docs/features/ship-builds/ci-stores/#storefront-steps-itchio-and-snap)).
+- **`tracks`, `branches`, `flights` and `release tracks`** keys must be declared release tracks — `stable`,
+  `beta`, a manual release track, or one of `deliverables.app.channels` — otherwise
   `unknown_channel_ref`.
 - **`packageFamilyName`** is the MSIX `<Name>_<PublisherId>`, the publisher id being 13
   characters. The Microsoft Store and App Installer entries may differ: a Store-signed and a
   self-signed package can have different publisher ids.
 
-Four fields exist only so an installed copy can recognise its own launcher (runtime outlet
+Four fields exist only so an installed copy can recognise its own launcher (runtime channel
 detection, notes/S-06 rule 4): `itch.gameId` (the receipt's numeric `game.id` — `target` is
 not it), `packageFamilyName`, `direct.homebrewCask`, and `direct.homebrewFormula` (a formula
 name such as `diceroll` or `diceroll@2`: lower-case letters, digits, `.`, `@`, `+`, `_` and `-`,
@@ -156,45 +158,45 @@ for a command-line build whose executable resolves under `Cellar/<formula>/`).
 
 `direct.homebrewTap` and `direct.scoopBucket` (optional) are your **own** tap and bucket on
 GitHub, where `pkey storefront homebrew pr` and `pkey storefront scoop pr` open pull requests
-([Pull-request steps](/docs/build/ci/#pull-request-steps-winget-homebrew-scoop-and-flathub)): a
+([Pull-request steps](/docs/features/ship-builds/ci-stores/#pull-request-steps-winget-homebrew-scoop-and-flathub)): a
 tap is `<owner>/homebrew-<name>` and a bucket `<owner>/<repo>`, and neither may belong to the
 `Homebrew` or `ScoopInstaller` organisation.
 
 `direct.scoop` (optional) is what the [Scoop manifest](/docs/services/distribution/feeds/#scoop)
 installs: `bin`, a relative path inside the Windows archive or a list of up to 16, which Scoop
 shims onto `PATH`; and `shortcuts`, up to 16 Start-menu entries as `[target, name]` pairs. A path
-may not climb out of the archive (`..`). A `direct` outlet that declares `platforms` must include
+may not climb out of the archive (`..`). A `direct` channel that declares `platforms` must include
 `windows` to carry it. The storefront feeds themselves — AltStore, Obtainium, F-Droid, Scoop,
-Flathub — are rendered from these outlets; see
+Flathub — are rendered from these channels; see
 [Storefront feeds](/docs/services/distribution/feeds/).
 
 ## Transports
 
-How each deliverable's bytes arrive on each outlet:
+How each deliverable's bytes arrive on each channel:
 
-| Transport       | Outlet kinds that may carry it |
-| --------------- | ------------------------------ |
-| `pkey-cdn`      | any                            |
-| `embedded`      | any                            |
-| `apple-ba`      | `app-store`, `testflight`      |
-| `play-pad`      | `play`, `play-testing`         |
-| `steam-depot`   | `steam`                        |
-| `msix-optional` | `ms-store`, `app-installer`    |
-| `flatpak-ext`   | `flathub`                      |
-| `web`           | `web`                          |
+| Transport       | Channel kinds that may carry it |
+| --------------- | ------------------------------- |
+| `pkey-cdn`      | any                             |
+| `embedded`      | any                             |
+| `apple-ba`      | `app-store`, `testflight`       |
+| `play-pad`      | `play`, `play-testing`          |
+| `steam-depot`   | `steam`                         |
+| `msix-optional` | `ms-store`, `app-installer`     |
+| `flatpak-ext`   | `flathub`                       |
+| `web`           | `web`                           |
 
-For each deliverable on each outlet, the first of these that applies wins:
+For each deliverable on each channel, the first of these that applies wins:
 
 1. `transports.deliverables.<deliverableId>.<outletId>` — a per-deliverable override; the
    deliverable must be declared in `.pkey/release` (`app` always is), or
    `unknown_deliverable_ref`;
 2. `transports.packs.<outletId>` — for pack deliverables only;
-3. `transports.default` — applies to every outlet, so only `pkey-cdn` or `embedded`;
+3. `transports.default` — applies to every channel, so only `pkey-cdn` or `embedded`;
 4. `pkey-cdn`.
 
-A transport map may only name declared outlets (`unknown_outlet_ref`), and only a transport
-that outlet's kind can carry (`transport_not_allowed`). The resolved pairs are stored in
-`dist_transports`, one row per declared deliverable (the app and every pack) per live outlet.
+A transport map may only name declared channels (`unknown_outlet_ref`), and only a transport
+that channel's kind can carry (`transport_not_allowed`). The resolved pairs are stored in
+`dist_transports`, one row per declared deliverable (the app and every pack) per live channel.
 Polaris Key delivers by `pkey-cdn`, `web` and `embedded`, and tracks the store transports
 `apple-ba`, `play-pad` and `steam-depot` through reports
 ([Platform pack transports](/docs/build/pack-transports/)); any other transport
@@ -207,7 +209,7 @@ Store-page metadata, every field optional: `name`, `subtitle`, `category`, `deve
 (one line each, at most 200 characters), `description` (at most 4000, newlines allowed),
 `website` (an https URL) and `tintColor` (`#rrggbb`), plus the two support links the customer
 portal shows: `supportUrl` (an https URL) and `supportEmail` (one address, at most 254
-characters). An outlet may carry its own `listing`, merged over the document's for that outlet.
+characters). A channel may carry its own `listing`, merged over the document's for that channel.
 A malformed listing is `invalid_listing`.
 
 The art is `icon`, `header` and `screenshots` (up to 16). Each is an **asset ref**: an https URL
@@ -232,7 +234,7 @@ listing:
   screenshots: [.pkey/art/shot-1.png, .pkey/art/shot-2.png]
 ```
 
-The **document's** listing (not an outlet's) is also the product's presentation in the customer
+The **document's** listing (not a channel's) is also the product's presentation in the customer
 portal: `name`, `developerName`, `tintColor`, `website`, the support links, and `icon` and
 `header` as art. The portal never loads that art from the developer's host: it serves it
 same-origin through its media proxy (`/media/<product>/icon` and `/media/<product>/header`), which
@@ -243,34 +245,33 @@ on its tint.
 
 ## Capabilities are not here
 
-What an install from an outlet may do — `binaryUpdates`, `codeUpdates`, `dataUpdates`,
-`channelSwitch`, `commerce`, `downloadedScripts` — defaults per outlet kind and is changed only
+What an install from a channel may do — `binaryUpdates`, `codeUpdates`, `dataUpdates`,
+`channelSwitch`, `commerce`, `downloadedScripts` — defaults per channel kind and is changed only
 by an operator, and only to narrow it. A `capabilities` key **anywhere** in the file is an error,
 `capabilities_not_manifest_writable`, not silently ignored: a repo must not be able to widen
 what an installed copy may do by pushing a line of YAML (the same reasoning that keeps
 `requireSparkleSignature` out of `.pkey/release`). See
-[Outlet capabilities](/docs/services/distribution/#outlet-capabilities).
+[Channel capabilities](/docs/services/distribution/#channel-capabilities).
 
 ## Link and resync
 
 Link and resync read the file with the other three and apply it in the same batch, through
 Distribution's own ingest hook, only while Distribution is enabled for the product:
 
-- every declared outlet is upserted into `dist_outlets` — kind, identity and merged listing.
+- every declared channel is upserted into `dist_outlets` — kind, identity and merged listing.
   A row changes (and its `modified_at` moves) only when one of those does, so resyncing the same
-  manifest twice is a no-op. An existing outlet's kind changes only when that narrows its
+  manifest twice is a no-op. An existing channel's kind changes only when that narrows its
   capability defaults (see above);
-- an outlet the file no longer declares gets `removed_at`; its row is never deleted, because
+- a channel the file no longer declares gets `removed_at`; its row is never deleted, because
   availability history refers to it. Declaring it again clears `removed_at`;
-- `dist_transports` is replaced with the resolved pairs — one per live outlet for each
-  deliverable that Release ingests. Pack deliverables are ignored for now, so today that means
-  only `app`, and at most 32 rows;
+- `dist_transports` is replaced with the resolved pairs — one per live channel for each
+  deliverable that Release ingests. Pack deliverables are ignored, so only `app` is resolved, and at most 32 rows;
 - the operator-owned capability columns are never written.
 
-## Outlet ids for a Godot export
+## Channel ids for a Godot export
 
 A Godot export plugin cannot read YAML, and `.pkey/` need not sit inside the Godot project, so
-the CLI converts the build's outlet into the JSON the export stamps into the build:
+the CLI converts the build's channel into the JSON the export stamps into the build:
 
 ```sh
 PKEY_OUTLET_IDS="$(pkey distribution outlet-ids --outlet steam)"
@@ -292,7 +293,7 @@ It prints one compact JSON object, keys sorted, **every value a string**:
 For each key the build's own entry is used when it has that kind, otherwise the entry whose id
 is the kind (`steam`, `itch`, …). A Godot export's own bundle identifier (the preset's
 `application/bundle_identifier` or `package/unique_name`) wins over `bundleId`. With no `.pkey/distribution` at all it prints `{}` and exits 0
-for any `--outlet`; with a file, the manifest must validate and declare the outlet, or the
+for any `--outlet`; with a file, the manifest must validate and declare the channel, or the
 command exits non-zero.
 
 ## Editor support
@@ -301,5 +302,5 @@ command exits non-zero.
 wire it for `**/.pkey/distribution.{json,yaml,yml}` as described in
 [JSON Schema & editor setup](/docs/build/manifest/json-schema/). The cross-document checks
 (`unknown_artifact_ref`, `unknown_channel_ref`, `unknown_deliverable_ref`, `unknown_outlet_ref`,
-and `transport_not_allowed` inside a transport map) are validator-only: an editor will not flag
-them, `pkey validate` will.
+and `transport_not_allowed` inside a transport map) are validator-only: an editor does not flag
+them, `pkey validate` does.

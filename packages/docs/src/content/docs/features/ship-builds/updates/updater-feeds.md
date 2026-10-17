@@ -1,6 +1,8 @@
 ---
 title: "App-updater feeds"
 description: "The extended Sparkle appcast, WinSparkle, Velopack, MSIX App Installer and AppImage zsync feeds, and the extended version check, all rendered from the release records."
+type: "reference"
+lastReviewed: "2026-10-16"
 sidebar:
   order: 4
 ---
@@ -220,6 +222,6 @@ only. The SDKs read the three v3 fields in `check()` and use the signed feed for
 The appcasts and the four new feeds are governed by the app's delivery access, as the appcast
 always was. The version check is governed by the metadata access mode. A `public` answer is
 cached and carries `public, max-age=300` (120 for the version check). Under any other mode the
-request must carry a licence the mode admits, and the answer is `private, no-store`. Most native
+request must carry a license the mode admits, and the answer is `private, no-store`. Most native
 updaters cannot send one. Every answer has a strong `ETag` and answers `If-None-Match` with 304.
 No CORS is added for these routes, because only native updaters read them.

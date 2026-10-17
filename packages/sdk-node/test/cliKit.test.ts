@@ -22,7 +22,6 @@ import {
   parseCliValue,
   progressBar,
   registerPolarisCommands,
-  registerYargsCommands,
   secret,
   signIn,
   signOut,
@@ -30,6 +29,7 @@ import {
   updateCheck,
   type CliIO,
 } from "../src/cli/index.js";
+import { registerPolarisCommands as registerYargsCommands } from "../src/cli/yargs.js";
 import { DEVICE, json, seededClient, signedLicense } from "./parityFixtures.js";
 
 const ALL = [
@@ -248,6 +248,7 @@ describe("the adapters build every verb from CLI_VERBS", () => {
     program.exitOverride();
     registerPolarisCommands(program, async () => c, {
       pinnedKeys: {},
+      verbs: "all",
       productSlug: "djdl",
       version: "1.2.3",
       print: (l) => lines.push(l),
@@ -275,6 +276,7 @@ describe("the adapters build every verb from CLI_VERBS", () => {
     program.exitOverride();
     registerPolarisCommands(program, async () => c, {
       pinnedKeys: {},
+      verbs: "all",
       productSlug: "djdl",
       version: "1.2.3",
       kit: false,
@@ -297,16 +299,17 @@ describe("the adapters build every verb from CLI_VERBS", () => {
     const y = yargs([]).exitProcess(false);
     registerYargsCommands(y, async () => c, {
       pinnedKeys: {},
+      verbs: "all",
       productSlug: "djdl",
       version: "1.2.3",
       print: (l) => lines.push(l),
       setExitCode: () => undefined,
     });
-    await y.parseAsync(["polaris-key", "devices", "list"]);
+    await y.parseAsync(["devices", "list"]);
     expect(lines.join("\n")).toContain(
       "No devices are using this license yet.",
     );
-    await y.parseAsync(["polaris-key", "config", "get", "missing.key"]);
+    await y.parseAsync(["config", "get", "missing.key"]);
     expect(lines.join("\n")).toContain("missing.key has no value.");
   });
 });

@@ -132,6 +132,37 @@ export function describeVerb(ctx: KitContext, v: CliVerb): string {
   return ctx.copy.t(v.describeKey, { product: ctx.product.name });
 }
 
+/**
+ * The Polaris Key section of a host program's help: one heading (`cli.help.group`) and its
+ * commands in two columns, to follow the host's own sections. Under a `namespace` the section is
+ * one entry that points at the namespace's own help. Returns the lines, no trailing newline.
+ */
+export function renderMountSection(
+  ctx: KitContext,
+  verbs: readonly CliVerb[],
+  namespace?: string,
+): string[] {
+  if (!verbs.length) return [];
+  const t = ctx.copy.t.bind(ctx.copy);
+  const heading = ctx.painter.line([{ text: `${t("cli.help.group")}:` }]);
+  const rows =
+    namespace !== undefined
+      ? [
+          {
+            term: `${namespace} <command>`,
+            text: t("cli.help.more", {
+              command: `${ctx.bin} ${namespace} --help`,
+            }),
+          },
+        ]
+      : verbs.map((v) => ({ term: verbUsage(v), text: describeVerb(ctx, v) }));
+  const column = Math.min(
+    ctx.caps.columns < 70 ? 16 : 24,
+    Math.max(...rows.map((r) => cellWidth(r.term)).filter((w) => w <= 24), 0),
+  );
+  return [heading, ...twoColumns(ctx, rows, 2, column)];
+}
+
 /** The whole help page, grouped (the terminal board's help shot). */
 export function renderHelp(ctx: KitContext, verbs: readonly CliVerb[]): string {
   const t = ctx.copy.t.bind(ctx.copy);

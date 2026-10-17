@@ -48,10 +48,10 @@ The owner asked for "first class documentation, thorough but not overly so" on o
 
 ## Acceptance criteria
 
-- [ ] The common definition of done in the docs plan §6.3 holds.
-- [ ] Each runbook page has Verify and Roll back.
+- [x] The common definition of done in the docs plan §6.3 holds.
+- [x] Each runbook page has Verify and Roll back.
 - [ ] `pkey-wp-reviewer` passes the package.
-- [ ] The green gate passes (`AGENTS.md`), including every drift gate in the header.
+- [x] The green gate passes (lead gate on wp/DOC-lane-C, 2026-10-16; step 6 retried once under machine load 300 to 550) (`AGENTS.md`), including every drift gate in the header.
 
 ## Verify
 
@@ -66,3 +66,10 @@ mise exec node@22 -- pnpm --filter @polaris-key/docs check:links
 
 The role agent sets `--set DOC-11b in-review` when it hands off. After review, the lead adds the last commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set DOC-11b done`.
+
+## Verification notes (2026-10-16)
+
+- `docs/RUNBOOK.md` is rendered by H2 section with `<RunbookSection>` in nine pages under `operate/platform/runbook/`, each with Role required, Impact, Verify, Roll back and Escalate written from the section's own text (type `runbook`, so the lint requires Verify and Roll back). `runbook/index` lists them and renders _Production shape_.
+- `deploy` keeps `docs/DEPLOYMENT.md` whole (the split by section is a later change, per the plan) with Role, Impact, Verify, Roll back and Escalate around it. `incidents` and `email` were stubs and are written; `email` states the limits from `core/notify/emailLimits.ts` and the checks of `emailDelivery.ts`. `security` points at the V4 wire contract and drops "this section is last".
+- The RUNBOOK H2 headings carried programme ids (for example "Sign-in email (I-18)"), which the lint bans and a reader would see. The ids were removed from the nine headings and from the three cross-references in `docs/RUNBOOK.md` and `docs/DEPLOYMENT.md`; code comments cite the headings without ids.
+- Not done: Verify and Roll back text is a summary of each section, not new procedure. The Login card section still carries its warning about the Turnstile secret; the portal has no Turnstile widget today, so it still holds.

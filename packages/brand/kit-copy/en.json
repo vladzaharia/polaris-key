@@ -109,6 +109,71 @@
       "role": "label",
       "note": "The current device as a tag in a device list. Each case is the platform's own word, capitalized as a label. Arguments: {formFactor} = the device's form factor; each case is a whole phrase."
     },
+    "part.platform.macos": {
+      "value": "macOS",
+      "role": "label",
+      "note": "A device's platform name in a device list (DL8). A trademark: the same in every locale. Never a raw platform id."
+    },
+    "part.platform.ios": {
+      "value": "iOS",
+      "role": "label",
+      "note": "A device's platform name in a device list (DL8). A trademark: the same in every locale. Never a raw platform id."
+    },
+    "part.platform.ipados": {
+      "value": "iPadOS",
+      "role": "label",
+      "note": "A device's platform name in a device list (DL8). A trademark: the same in every locale. Never a raw platform id."
+    },
+    "part.platform.android": {
+      "value": "Android",
+      "role": "label",
+      "note": "A device's platform name in a device list (DL8). A trademark: the same in every locale. Never a raw platform id."
+    },
+    "part.platform.windows": {
+      "value": "Windows",
+      "role": "label",
+      "note": "A device's platform name in a device list (DL8). A trademark: the same in every locale. Never a raw platform id."
+    },
+    "part.platform.linux": {
+      "value": "Linux",
+      "role": "label",
+      "note": "A device's platform name in a device list (DL8). A trademark: the same in every locale. Never a raw platform id."
+    },
+    "part.platform.web": {
+      "value": "Web",
+      "role": "label",
+      "note": "A device's platform name in a device list (DL8). A trademark: the same in every locale. Never a raw platform id."
+    },
+    "part.platform.tvos": {
+      "value": "tvOS",
+      "role": "label",
+      "note": "A device's platform name in a device list (DL8). A trademark: the same in every locale. Never a raw platform id."
+    },
+    "part.platform.visionos": {
+      "value": "visionOS",
+      "role": "label",
+      "note": "A device's platform name in a device list (DL8). A trademark: the same in every locale. Never a raw platform id."
+    },
+    "part.platform.watchos": {
+      "value": "watchOS",
+      "role": "label",
+      "note": "A device's platform name in a device list (DL8). A trademark: the same in every locale. Never a raw platform id."
+    },
+    "part.platform.chromeos": {
+      "value": "ChromeOS",
+      "role": "label",
+      "note": "A device's platform name in a device list (DL8). A trademark: the same in every locale. Never a raw platform id."
+    },
+    "part.platform.steamos": {
+      "value": "SteamOS",
+      "role": "label",
+      "note": "A device's platform name in a device list (DL8). A trademark: the same in every locale. Never a raw platform id."
+    },
+    "part.platform.freebsd": {
+      "value": "FreeBSD",
+      "role": "label",
+      "note": "A device's platform name in a device list (DL8). A trademark: the same in every locale. Never a raw platform id."
+    },
     "part.keyField.label": {
       "value": "License key",
       "role": "label",
@@ -1825,6 +1890,11 @@
       "value": "Choose a device to sign out. {thisDevice} takes its seat.",
       "role": "body",
       "note": "Replace a device, as a step in the in-app form (SIGN-IN.md §3.7). Arguments: {thisDevice} = the platform phrase for the current device (part.thisDevice)."
+    },
+    "signin.replace.heading": {
+      "value": "Replace a device",
+      "role": "title",
+      "note": "Replace a device, inline in the license choice (SIGN-IN.md §3.7). The step's heading; the same words as the DeviceLimit title."
     },
     "signin.replace.openSystem": {
       "value": "Replace…",

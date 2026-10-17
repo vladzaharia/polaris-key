@@ -206,6 +206,71 @@ msgctxt "tv"
 msgid "part.thisDeviceTitle"
 msgstr ""
 
+#. macOS
+#. A device's platform name in a device list (DL8). A trademark: the same in every locale. Never a raw platform id.
+msgid "part.platform.macos"
+msgstr ""
+
+#. iOS
+#. A device's platform name in a device list (DL8). A trademark: the same in every locale. Never a raw platform id.
+msgid "part.platform.ios"
+msgstr ""
+
+#. iPadOS
+#. A device's platform name in a device list (DL8). A trademark: the same in every locale. Never a raw platform id.
+msgid "part.platform.ipados"
+msgstr ""
+
+#. Android
+#. A device's platform name in a device list (DL8). A trademark: the same in every locale. Never a raw platform id.
+msgid "part.platform.android"
+msgstr ""
+
+#. Windows
+#. A device's platform name in a device list (DL8). A trademark: the same in every locale. Never a raw platform id.
+msgid "part.platform.windows"
+msgstr ""
+
+#. Linux
+#. A device's platform name in a device list (DL8). A trademark: the same in every locale. Never a raw platform id.
+msgid "part.platform.linux"
+msgstr ""
+
+#. Web
+#. A device's platform name in a device list (DL8). A trademark: the same in every locale. Never a raw platform id.
+msgid "part.platform.web"
+msgstr ""
+
+#. tvOS
+#. A device's platform name in a device list (DL8). A trademark: the same in every locale. Never a raw platform id.
+msgid "part.platform.tvos"
+msgstr ""
+
+#. visionOS
+#. A device's platform name in a device list (DL8). A trademark: the same in every locale. Never a raw platform id.
+msgid "part.platform.visionos"
+msgstr ""
+
+#. watchOS
+#. A device's platform name in a device list (DL8). A trademark: the same in every locale. Never a raw platform id.
+msgid "part.platform.watchos"
+msgstr ""
+
+#. ChromeOS
+#. A device's platform name in a device list (DL8). A trademark: the same in every locale. Never a raw platform id.
+msgid "part.platform.chromeos"
+msgstr ""
+
+#. SteamOS
+#. A device's platform name in a device list (DL8). A trademark: the same in every locale. Never a raw platform id.
+msgid "part.platform.steamos"
+msgstr ""
+
+#. FreeBSD
+#. A device's platform name in a device list (DL8). A trademark: the same in every locale. Never a raw platform id.
+msgid "part.platform.freebsd"
+msgstr ""
+
 #. License key
 #. Visible label of the license key field.
 msgid "part.keyField.label"
@@ -2300,6 +2365,11 @@ msgstr ""
 #. Choose a device to sign out. {thisDevice} takes its seat.
 #. Replace a device, as a step in the in-app form (SIGN-IN.md §3.7). Arguments: {thisDevice} = the platform phrase for the current device (part.thisDevice).
 msgid "signin.replace.lede"
+msgstr ""
+
+#. Replace a device
+#. Replace a device, inline in the license choice (SIGN-IN.md §3.7). The step's heading; the same words as the DeviceLimit title.
+msgid "signin.replace.heading"
 msgstr ""
 
 #. Replace…
