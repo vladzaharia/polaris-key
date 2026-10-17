@@ -9,7 +9,7 @@ sidebar:
 
 Platform settings apply to the whole instance, not to one product. Almost all of them are
 deploy-time: they live in `wrangler.toml` or as Worker secrets and change only with a deploy.
-Eight can also be changed at runtime, without a deploy: four background-job settings, the two
+Some can also be changed at runtime, without a deploy: the background-job settings, the
 reserved-name settings, the key-entry refusal switch and the hosted-assets switch. Every change is
 recorded in the
 [platform trail](/docs/operate/console/activity/#the-platform-trail).
@@ -112,12 +112,12 @@ Platform → Settings has these sections, top to bottom.
 - **Warnings.** Each warning the API returns (the console still shares the customer sign-in
   client, `PLATFORM_KEK_ID` set, `PLATFORM_KEK` kept as a legacy key beside
   `PLATFORM_KEK_KEYS`, `PORTAL_SESSION_SECRET` unset) is shown first.
-- **Background jobs.** The four background-job settings. Each row shows the effective value and a source
+- **Background jobs.** The background-job settings. Each row shows the effective value and a source
   badge: _Code default_, _Deploy var_ or _Set in console_ (with who set it and when). Each row
   saves on its own:
-  - The two switches apply when you flip them. Turning a job **on** asks first and lists what
+  - The switches apply when you flip them. Turning a job **on** asks first and lists what
     changes. Turning one **off** applies at once, with **Undo** in the confirmation toast.
-  - The two numbers have their own Save bar. The size cap is entered in MiB, from 1 to 32. It can
+  - The numbers have their own Save bar. The size cap is entered in MiB, from 1 to 32. It can
     only lower the measured 32 MiB ceiling, so a larger value is refused before it is sent.
     Raising the cap or lowering the collector's grace asks first. The other direction saves at
     once, with Undo.
@@ -133,10 +133,10 @@ Platform → Settings has these sections, top to bottom.
   product whose catalog declares a reserved name, each declaration marked compatible or not with
   the reason. Check this list before switching to Refuse: a product marked incompatible would
   fail its next resync.
-- **Delivery.** The hosted-assets switch (`ASSET_HOSTING`; turning it either way asks first),
-  then the deploy-time delivery values, read-only.
 - **Identity & access.** The reserved display-name setting and the key-entry refusal switch, then
   the deploy-time values, read-only.
+- **Delivery.** The hosted-assets switch (`ASSET_HOSTING`; turning it either way asks first),
+  then the deploy-time delivery values, read-only.
 - **Email.** The deploy-time values, read-only. Identity
   shows the console's own client (`ADMIN_OIDC_ISSUER`, `ADMIN_OIDC_CLIENT_ID`) above the platform
   client the portal and products use (`PLATFORM_OIDC_*`).
@@ -234,4 +234,4 @@ name, with its `catalogVersion` and one `declarations` entry per declared name
 
 - [KEK runbook](/docs/operate/platform/runbook/rotate-the-kek/): the keyring the Keyring section reads.
 - [Activity](/docs/operate/console/activity/#the-platform-trail): the platform trail these changes write.
-- [Deploying to production](/docs/operate/platform/deploy/): where the deploy-time values are set.
+- [Deploy Polaris Key](/docs/operate/platform/deploy/): where the deploy-time values are set.

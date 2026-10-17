@@ -11,9 +11,9 @@ import CardGrid from "../../../../../components/docs/CardGrid.astro";
 import RunbookSection from "../../../../../components/docs/RunbookSection.astro";
 import { LinkCard } from "@astrojs/starlight/components";
 
-The runbook is `docs/RUNBOOK.md`, shown one procedure per page. Each page has Verify, Roll back and Escalate. For a first deployment, use [Deploying to production](/docs/operate/platform/deploy/).
+Procedures for a running instance. For a first deployment, use [Deploy Polaris Key](/docs/operate/platform/deploy/).
 
-**Requires** a platform admin's console session.
+**Role required:** Platform admin.
 
 <CardGrid>
   <LinkCard
@@ -22,7 +22,7 @@ The runbook is `docs/RUNBOOK.md`, shown one procedure per page. Each page has Ve
     description="Migrate, deploy and smoke-check."
   />
   <LinkCard
-    title="Rotate the KEK"
+    title="Platform secrets and the KEK"
     href="/docs/operate/platform/runbook/rotate-the-kek/"
     description="Re-key sealed values while serving."
   />

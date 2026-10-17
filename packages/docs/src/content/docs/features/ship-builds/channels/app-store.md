@@ -21,7 +21,7 @@ App Store Connect API with the product's API key and keeps three things current:
 
 It never uploads a build or an asset pack, and it never submits anything for review on its own.
 Builds stay with CI and Apple's tools; the only files it uploads are the listing's screenshots, when
-you push them ([Pushing the listing](#pushing-the-listing)). Its setup controls can also prepare a new app: server notifications,
+you push them ([Pushing the listing](/docs/features/ship-builds/channels/app-store-distribute/#pushing-the-listing)). Its setup controls can also prepare a new app: server notifications,
 TestFlight groups and testers, and the free price and availability defaults (see
 [Setting up the app](#setting-up-the-app)).
 

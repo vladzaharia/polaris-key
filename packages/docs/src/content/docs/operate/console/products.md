@@ -155,13 +155,13 @@ Home's Needs attention list are all projections of one server-computed setup sta
 every product read rather than cached. It checks six
 things:
 
-| Module              | Healthy when                                                                                                                                                                                                       |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Signing key**     | An active signing key exists.                                                                                                                                                                                      |
-| **OIDC**            | Platform provider: `PLATFORM_OIDC_ISSUER`/`PLATFORM_OIDC_CLIENT_ID` are configured worker-wide. Custom provider: the product's own issuer, client id and client-secret product-secret are all set.                 |
-| **Release**         | (Linked products only) A GitHub repo, an installation id, and a binary name are all present.                                                                                                                       |
-| **Customer portal** | Always "configured" — this module reports its enabled/disabled state, not a completeness check.                                                                                                                    |
-| **Manifest sync**   | The most recent resync attempt didn't error.                                                                                                                                                                       |
+| Module              | Healthy when                                                                                                                                                                                                               |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Signing key**     | An active signing key exists.                                                                                                                                                                                              |
+| **OIDC**            | Platform provider: `PLATFORM_OIDC_ISSUER`/`PLATFORM_OIDC_CLIENT_ID` are configured worker-wide. Custom provider: the product's own issuer, client id and client-secret product-secret are all set.                         |
+| **Release**         | (Linked products only) A GitHub repo, an installation id, and a binary name are all present.                                                                                                                               |
+| **Customer portal** | Always "configured" — this module reports its enabled/disabled state, not a completeness check.                                                                                                                            |
+| **Manifest sync**   | The most recent resync attempt didn't error.                                                                                                                                                                               |
 | **Edge mint**       | Every recipe's signing secret is set and marked usage `edge-mint`, and every recipe is [approved](/docs/features/managed-config/edge-mint/#approving-a-recipe) as it stands (`needs-secret` / `needs-approval` otherwise). |
 
 Anything incomplete surfaces two ways: as a plain-language entry in the "needs attention" strip,

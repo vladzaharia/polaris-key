@@ -9,7 +9,7 @@ sidebar:
 
 This page points to the security material. Nothing on it is copied to this site.
 
-**Requires** a platform admin's console session.
+**Role required:** Platform admin.
 
 | What                                                      | Where                                                                                     |
 | --------------------------------------------------------- | ----------------------------------------------------------------------------------------- |

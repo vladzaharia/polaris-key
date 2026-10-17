@@ -1,6 +1,6 @@
 // Internal link checker for the built site: every `/docs/...` href in the emitted HTML must
 // resolve — page links against the route set, asset links against real dist files, and
-// `#fragment` targets against actual element ids in the target page. Every `/docs/...` src
+// `#fragment` targets against actual element ids in the target page (a bare `#fragment` link against the page it is on). Every `/docs/...` src
 // (images, such as the UI-kit baselines the build/ui/ component pages embed, and scripts) must
 // be a real dist file too. Runs after `astro build` via `pnpm check:links` (CI runs it on every
 // PR); exits 1 with a per-page report on breakage.
@@ -91,6 +91,14 @@ for (const file of htmlFiles(dist)) {
     ) {
       failures.push(`${page}: dead anchor ${href} (no id "${fragment}")`);
     }
+  }
+  // A bare #fragment link points into the page it sits on.
+  for (const match of html.matchAll(/\shref="#([^"]+)"/g)) {
+    checked += 1;
+    if (!idsOf(file).has(match[1]))
+      failures.push(
+        `${page}: dead anchor #${match[1]} (no such id on the page)`,
+      );
   }
   for (const match of html.matchAll(/\ssrc="(\/docs\/[^"#?]*)"/g)) {
     checked += 1;
