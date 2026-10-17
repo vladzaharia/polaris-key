@@ -219,6 +219,11 @@
       "verdict": "pass",
       "date": "2026-10-17",
       "evidence": "_mockups/review/ST-09/ux-review-2.md (re-review pass-with-fixes after one fix round; N1-N10 + Advanced folded in wp/ST-09-fix 56fe9ad34)"
+    },
+    "F-33": {
+      "verdict": "pass",
+      "date": "2026-10-17",
+      "evidence": "_mockups/review/F-33/ux-review-2.md (re-review pass-with-fixes after one fix round; N1-N15 polish in wp/F-33-s2 608b997ae)"
     }
   }
 }
