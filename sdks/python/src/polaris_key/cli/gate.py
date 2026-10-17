@@ -87,7 +87,7 @@ def _refusal(status: str, usable: bool, mounted: Optional[Sequence[str]]) -> Tup
     )
 
 
-def run_gate(
+def _run_gate(
     client: Any,
     *,
     command: str,
@@ -165,6 +165,67 @@ def run_gate(
     return EXIT.license_required
 
 
+def run_gate(client: Any, **kw: Any) -> Optional[int]:
+    """:func:`_run_gate`, failing closed: any error while the license is checked or the inline flow
+    runs refuses the command with exit 4 (and the ``--json`` ``license_required`` line). Ctrl-C and
+    ``SystemExit`` pass through."""
+    try:
+        return _run_gate(client, **kw)
+    except (KeyboardInterrupt, SystemExit):
+        raise
+    except Exception:
+        return _fail_closed(client, **kw)
+
+
+def _fail_closed(client: Any, *, command: str, json: bool = False, **kw: Any) -> int:
+    """Draw the refusal for a gate that could not decide; the exit code is 4 whatever happens here."""
+    try:
+        _run_refusal(client, command=command, json=json, **kw)
+    except Exception:
+        if json:
+            try:
+                import json as _json
+
+                sys.stdout.write(
+                    _json.dumps({"v": 1, "command": command, "event": "result", "ok": False, "exit": EXIT.license_required, "error": "license_required"})
+                    + "\n"
+                )
+            except Exception:
+                pass
+    return EXIT.license_required
+
+
+def _run_refusal(
+    client: Any,
+    *,
+    command: str,
+    json: bool = False,
+    no_color: bool = False,
+    ascii: bool = False,
+    prog: str = "polaris-key",
+    mounted: Optional[Sequence[str]] = None,
+    theme: Any = None,
+    terminal: Any = None,
+    env: Optional[Dict[str, str]] = None,
+    stdout: Optional[IO[str]] = None,
+    stderr: Optional[IO[str]] = None,
+    stdin: Optional[IO[str]] = None,
+    entitlement: Optional[str] = None,
+) -> None:
+    from ..ui.terminal.flows import Terminal
+
+    t = terminal
+    if t is None:
+        t = Terminal.create(
+            product=getattr(client, "product", None), client=None, theme=theme, prog=prog, verb=command, json=json,
+            no_color=no_color, ascii=ascii, env=env, stdout=stdout, stdin=stdin,
+        )
+        if stderr is not None:
+            t.err = stderr
+    t.verb = command
+    t.finish(refusal_outcome(t, command, "error", False, mounted))
+
+
 def refusal_outcome(t: Any, command: str, status: str, usable: bool, mounted: Optional[Sequence[str]] = None) -> Any:
     """The refusal for ``command`` on ``status``: a triangle, the title and message, and the commands
     that fix it, for stderr; under ``--json`` the result's fields only. Exit 4."""
@@ -227,7 +288,18 @@ def require_license(
                 )
             flags = _flags(args, kwargs)
             own = client is None and target is not None and target.owns_client
-            c = client if client is not None else target.client()  # type: ignore[union-attr]
+            command = fn.__name__.replace("_", "-")
+            gate_prog = prog or (target.prog if target else None) or "polaris-key"
+            try:
+                c = client if client is not None else target.client()  # type: ignore[union-attr]
+            except Exception:
+                # No client, no verdict: refuse.
+                code = _fail_closed(
+                    None, command=command, json=bool(flags.get("json")), no_color=bool(flags.get("no_color")),
+                    ascii=bool(flags.get("ascii")), prog=gate_prog, mounted=target.mounted if target else None,
+                )
+                (exit or sys.exit)(code)
+                return None
             try:
                 code = run_gate(
                     c,

@@ -143,3 +143,49 @@ def test_a_json_refusal_is_read_from_the_argparse_namespace(capsys: pytest.Captu
     assert caught.value.code == 4
     line = json.loads(capsys.readouterr().out.strip())
     assert line["error"] == "license_required" and line["command"] == "export" and line["exit"] == 4
+
+
+def test_a_gate_that_cannot_decide_refuses_with_4_and_never_runs_the_command(capsys: pytest.CaptureFixture[str]) -> None:
+    class Broken:
+        product = "tidewater"
+        license = SimpleNamespace(is_entitled=lambda n: True)
+
+        def status(self) -> Any:
+            raise RuntimeError("store unreadable")
+
+    ran: List[int] = []
+
+    @require_license(client=Broken(), prog="tidewater")
+    def export(args: Any) -> None:
+        ran.append(1)
+
+    for flags, as_json in ((SimpleNamespace(json=False), False), (SimpleNamespace(json=True), True)):
+        with pytest.raises(SystemExit) as caught:
+            export(flags)
+        assert caught.value.code == 4 and ran == []
+        cap = capsys.readouterr()
+        if as_json:
+            line = json.loads(cap.out.strip().splitlines()[-1])
+            assert line["error"] == "license_required" and line["exit"] == 4
+        else:
+            assert cap.out == "" and "tidewater" in plain(cap.err)
+
+
+def test_a_failing_refusal_still_exits_4(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    monkeypatch.setattr(gate, "refusal_outcome", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("draw")))
+
+    class Broken:
+        def status(self) -> Any:
+            raise RuntimeError("x")
+
+    assert gate.run_gate(Broken(), command="export", json=True) == 4
+    assert json.loads(capsys.readouterr().out.strip())["error"] == "license_required"
+
+
+def test_ctrl_c_passes_through_the_gate() -> None:
+    class Interrupted:
+        def status(self) -> Any:
+            raise KeyboardInterrupt
+
+    with pytest.raises(KeyboardInterrupt):
+        gate.run_gate(Interrupted(), command="export")

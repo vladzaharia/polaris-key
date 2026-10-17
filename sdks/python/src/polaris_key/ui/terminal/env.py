@@ -61,6 +61,9 @@ def layout_columns(columns: int) -> int:
 class TermEnv:
     #: stdout is a terminal (or colour is forced).
     tty: bool = False
+    #: stdout itself is a terminal (``tty`` is also true when colour is forced on a pipe). Whether a
+    #: value is cleaned or guarded depends on this, never on ``tty``.
+    out_tty: bool = False
     #: stdin and stdout are terminals and no CI runs: the kit may prompt and read keys.
     interactive: bool = False
     color: str = "none"
@@ -278,6 +281,7 @@ def detect(
     )
     return TermEnv(
         tty=tty,
+        out_tty=out_tty,
         interactive=interactive,
         color=color,
         symbols=sym,

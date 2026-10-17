@@ -128,7 +128,9 @@ class Terminal:
         )
         slug = product or (getattr(client, "product", None) if client is not None else None)
         kit = Kit.create(te, theme=th, product=slug, source=presentation_source(client), prog=prog)
-        return cls(kit, Device(te, kit.palette(), stdout=stdout, stdin=stdin, use_rich=use_rich, size=size), verb)
+        t = cls(kit, Device(te, kit.palette(), stdout=stdout, stdin=stdin, use_rich=use_rich, size=size), verb)
+        t.log_env = os.environ if env is None else env
+        return t
 
     @property
     def env(self) -> TermEnv:
@@ -669,7 +671,7 @@ def _hidden(t: Terminal, title_key: str, command: str, data: Dict[str, Any], **a
 
 def _print_value(t: Terminal, verb: str, arg: str, value: str, data: Dict[str, Any], allow: bool) -> Outcome:
     k = t.kit
-    tty = t.env.tty
+    tty = t.env.out_tty
     if not tty and not allow and _reads_log_commands(t.log_env) and has_log_command(value):
         command = f"{k.prog} {verb} {arg} --reveal --allow-workflow-commands"
         return _problem(t, "fail", k.t("cli.output.workflowCommand", command=command), None, EXIT.failed, data)

@@ -96,8 +96,13 @@ class _NoPrompt:
     """A stdin that is no terminal, so ``resolve_activation_key`` never prompts with getpass: the
     kit's masked entry asks instead."""
 
-    def readline(self) -> str:
-        return sys.stdin.readline()
+    def readline(self, size: int = -1) -> str:
+        # The same bounded reader as a piped key (4096 bytes, a deadline); a stream with no
+        # descriptor (a test double) is read as a line.
+        if core.stdin_kind(sys.stdin) in ("file", "fifo", "socket"):
+            key = core.read_piped_key(sys.stdin)
+            return key + "\n" if key else ""
+        return sys.stdin.readline(size)
 
     def isatty(self) -> bool:
         return False
@@ -116,8 +121,8 @@ def activate(client: Any, ns: Dict[str, Any]) -> CommandResult:
             stdin=_NoPrompt(),
         )
     except ValueError as e:
-        if ns.get("key_stdin"):
-            return _done(_flows().usage(t, f"activate --key-stdin  ({e})"), ns)
+        if ns.get("key_stdin") or ns.get("key_file"):
+            return _done(_flows().usage(t, f"activate {'--key-file <path>' if ns.get('key_file') else '--key-stdin'}  ({e})"), ns)
         # No source named: a piped stdin is read without --key-stdin, within a bound; a terminal
         # prompts; anything else says there is no key.
         stdin = t.device.inp
