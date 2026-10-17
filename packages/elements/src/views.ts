@@ -672,15 +672,20 @@ function fillable(c: RenderCtx): View {
     if (lost.length) warnMissing(k, lost);
     return lost.length === 0;
   });
-  if (copy.length === view.copy.length) return view;
   const primary = view.decisions.primary;
+  // A primary that rides outside the copy list (a busy control) goes too when its label is lost.
+  const keepPrimary =
+    primary === null ||
+    (copy.includes(primary)
+      ? true
+      : view.copy.includes(primary)
+        ? false
+        : usable({ ...c, view }, primary));
+  if (copy.length === view.copy.length && keepPrimary) return view;
   return {
     ...view,
     copy,
-    decisions: {
-      ...view.decisions,
-      primary: primary !== null && !copy.includes(primary) ? null : primary,
-    },
+    decisions: { ...view.decisions, primary: keepPrimary ? primary : null },
   };
 }
 
@@ -909,8 +914,9 @@ function deviceLimitContent(c: RenderCtx): TemplateResult | typeof nothing {
 function radioKeys(e: KeyboardEvent, c: RenderCtx): void {
   const row = e.currentTarget as HTMLElement;
   const radios = [
-    ...(row.parentElement?.querySelectorAll<HTMLElement>('[role="radio"]') ??
-      []),
+    ...(row.parentElement?.querySelectorAll<HTMLElement>(
+      '[role="radio"]:not([aria-disabled="true"])',
+    ) ?? []),
   ];
   const i = radios.indexOf(row);
   const n = radios.length;
@@ -1073,7 +1079,21 @@ function licenseRows(c: RenderCtx): TemplateResult | typeof nothing {
       >
         ${body} ${check(on)}
       </div>`;
-    // A full license cannot be chosen; Replace a device is its action, carrying its license.
+    // A full license cannot be chosen. In a list that can be chosen from it is a disabled radio;
+    // when every license is full, Replace a device is its action, carrying its license.
+    if (!allFull)
+      return html`<div
+        class="row"
+        role="radio"
+        part="license-row"
+        data-part="license-row"
+        data-id=${r.id}
+        aria-disabled="true"
+        aria-checked="false"
+        tabindex="-1"
+      >
+        ${body} <span></span>
+      </div>`;
     return html`<div
       class="row"
       role="group"
@@ -1092,7 +1112,7 @@ function licenseRows(c: RenderCtx): TemplateResult | typeof nothing {
   };
   return html`<div
     class="list pk-stagger"
-    role=${allFull ? "list" : "radiogroup"}
+    role=${allFull ? "group" : "radiogroup"}
     aria-label=${has("signin.choice.group")
       ? plain(c, "signin.choice.group")
       : ""}
