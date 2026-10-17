@@ -137,6 +137,6 @@ export function newEntry(
   };
 }
 
-/** The draft's flag keys: what a minted token's Required flag may name. */
+/** The draft's flag keys: what a minted token's Required entitlement may name. */
 export const flagKeysOf = (entries: ConfigEntry[]): string[] =>
   entries.filter((e) => e.kind === "flag").map((e) => e.key);
