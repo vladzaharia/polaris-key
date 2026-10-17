@@ -58,7 +58,7 @@ export interface RepoHandle {
 
 /** Where a manifest came from. Core never reads GitHub itself; the adapter closes over it. */
 export interface ManifestSource {
-  origin: "link" | "resync";
+  origin: "link" | "resync" | "deploy-hook";
   /** The commit every document was read at. */
   sha: string | null;
   /** The raw `.pkey/` documents (the snapshot records them). */
@@ -76,8 +76,18 @@ export interface CreateRequest {
   author?: string;
 }
 
+/**
+ * `full` applies every owner's rows. `system` is the deploy hook's subset for the system product
+ * (plans/P0-26.md D3): the release block and deliverables, the manifest-authoritative publisher
+ * (an admin claim replaced, static CI tokens revoked), the row settings, Distribution's rows and
+ * the ended break-glass claims; never the services, catalog, tiers, profiles, OIDC or recipes.
+ */
+export type IngestScope = "full" | "system";
+
 export interface IngestInput {
   mode: IngestMode;
+  /** Absent: `full`. `system` needs `mode: "apply"`. */
+  scope?: IngestScope;
   product: string;
   manifest: ParsedManifest;
   now: number;
@@ -169,6 +179,7 @@ export interface IngestContext {
   env: Env;
   db: Db;
   mode: IngestMode;
+  scope: IngestScope;
   slug: string;
   manifest: ParsedManifest;
   now: number;

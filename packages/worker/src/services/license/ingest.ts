@@ -55,7 +55,9 @@ async function prepare(ctx: IngestContext): Promise<ManifestContribution> {
   const statements: DbStatement[] = [];
   const audits: DbStatement[] = [];
   const updated: string[] = [];
-  if (ctx.mode === "create") {
+  if (ctx.scope === "system") {
+    // The deploy hook's subset: the row settings only (never tiers).
+  } else if (ctx.mode === "create") {
     for (const t of manifest.tiers)
       statements.push(stmtInsertTier(tierInput(ctx, t)));
   } else {

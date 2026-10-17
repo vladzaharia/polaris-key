@@ -247,6 +247,7 @@ describe("the manifest snapshot: one row per apply, in the apply's batch (ST-01a
     const rec = recording(base);
     const deploySha = "c".repeat(40);
     const res = await linkSystemProduct(
+      env,
       rec.db,
       parsed.manifest,
       repo,
@@ -277,6 +278,7 @@ describe("the manifest snapshot: one row per apply, in the apply's batch (ST-01a
     // No `PKEY_GIT_SHA` (a hand deploy, `wrangler dev`) — or a malformed one — is stored as NULL.
     for (const sha of [null, "not-a-sha"]) {
       const again = await linkSystemProduct(
+        env,
         base,
         parsed.manifest,
         repo,
@@ -536,6 +538,7 @@ describe("a snapshot holds no secret value", () => {
       ],
     };
     const res = await linkSystemProduct(
+      env,
       base,
       manifest as typeof parsed.manifest,
       {

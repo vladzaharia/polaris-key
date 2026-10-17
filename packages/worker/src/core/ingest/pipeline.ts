@@ -148,6 +148,7 @@ async function run(
   input: IngestInput,
 ): Promise<IngestResult> {
   const { mode, manifest, now, source } = input;
+  const scope = input.scope ?? "full";
   const slug = input.product;
 
   // ── 1. Read ──────────────────────────────────────────────────────────────────
@@ -187,7 +188,7 @@ async function run(
     // The set this ingest leaves: the stored one when an operator claimed it, the manifest's
     // otherwise, so a service an operator turned off live is not rewritten by a push.
     services = parseServices(
-      before.services_source === "admin"
+      before.services_source === "admin" || scope === "system"
         ? before.services_json
         : serializeServices({ services: manifest.services }),
     ).services;
@@ -216,6 +217,7 @@ async function run(
     env,
     db,
     mode,
+    scope,
     slug,
     manifest,
     now,
@@ -259,9 +261,13 @@ async function run(
   }));
 
   // ── 2. Refuse ────────────────────────────────────────────────────────────────
-  const checks: IngestCheck[] = active.flatMap(({ contributor, ctx }) =>
-    contributor.checks ? contributor.checks(ctx) : [],
-  );
+  // The deploy hook's subset runs no checks: its caller refused a wrong manifest already.
+  const checks: IngestCheck[] =
+    scope === "system"
+      ? []
+      : active.flatMap(({ contributor, ctx }) =>
+          contributor.checks ? contributor.checks(ctx) : [],
+        );
   const order: readonly string[] = REFUSAL_ORDER[mode];
   const ranked = checks
     .map((c, i) => ({ c, i, r: order.indexOf(c.check) }))
@@ -277,7 +283,7 @@ async function run(
   // keep working. Swept once here, after the checks and before the batch, against the state the
   // previous ingest left; once more after the batch by the caller.
   const droppedBefore =
-    mode === "apply"
+    mode === "apply" && scope === "full"
       ? await invalidateWidenedEdgeMintApprovals(
           db,
           slug,
@@ -329,7 +335,11 @@ async function run(
     ...late.flatMap((f) => f.audits),
     await manifestSnapshotStatement(
       slug,
-      source.origin === "link" ? "link" : "resync",
+      source.origin === "link"
+        ? "link"
+        : source.origin === "deploy-hook"
+          ? "deploy-hook"
+          : "resync",
       source.sha,
       source.files,
       manifest,
@@ -350,7 +360,8 @@ async function run(
     ...parts.filter((p) => p.svc === null),
   ];
   for (const { part } of afterOrder)
-    if (part.afterCommit) after.push(await part.afterCommit());
+    if (part.afterCommit && scope === "full")
+      after.push(await part.afterCommit());
 
   // ── the answer ───────────────────────────────────────────────────────────────
   const updated = [

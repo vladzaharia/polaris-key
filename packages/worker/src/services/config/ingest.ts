@@ -208,6 +208,9 @@ function edgeMintStatements(ctx: IngestContext): DbStatement[] {
 }
 
 async function prepare(ctx: IngestContext): Promise<ManifestContribution> {
+  // The deploy hook's subset never touches the catalog, profiles or recipes (the bootstrap's).
+  if (ctx.scope === "system")
+    return { statements: [], audits: [], updated: [] };
   const { slug, now, manifest, db } = ctx;
   const state = await catalogState(ctx);
   const statements: DbStatement[] = [];

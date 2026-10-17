@@ -686,6 +686,7 @@ describe("linkSystemProduct writes products.presentation_json", () => {
 
     const declared = { accent: "#123456", accentDark: "#ABCDEF" };
     const linked = await linkSystemProduct(
+      env,
       db,
       { ...parsed.manifest, presentation: declared },
       repo,
@@ -697,6 +698,7 @@ describe("linkSystemProduct writes products.presentation_json", () => {
 
     const { presentation: _dropped, ...undeclared } = parsed.manifest;
     const again = await linkSystemProduct(
+      env,
       db,
       undeclared,
       repo,

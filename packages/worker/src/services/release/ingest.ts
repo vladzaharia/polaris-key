@@ -363,6 +363,77 @@ async function prepareApply(ctx: IngestContext): Promise<ManifestContribution> {
   };
 }
 
+/** The deploy hook's subset (plans/P0-26.md D3): `release_config` and the declared deliverables. */
+async function prepareSystem(
+  ctx: IngestContext,
+): Promise<ManifestContribution> {
+  const { manifest, slug, now } = ctx;
+  const rel = manifest.release!;
+  const repo = ctx.source.repo!;
+  const binaryName = rel.binaryName || repo.name;
+  const config = stmtInsertReleaseConfig({
+    product: slug,
+    ghOwner: repo.owner,
+    ghRepo: repo.name,
+    ghInstallationId: null,
+    channelWorkflow: rel.channelWorkflow || null,
+    betaBranch: rel.betaBranch || "main",
+    binaryName,
+    sparkleEd25519Pub: rel.sparkleEd25519Pub || null,
+    summaryMarker: rel.summaryMarker || "pkey:summary",
+    manualChannelsJson: rel.manualChannels.length
+      ? JSON.stringify(rel.manualChannels)
+      : null,
+    artifactPolicyJson: rel.artifactPolicy
+      ? JSON.stringify(rel.artifactPolicy)
+      : null,
+    metadataAccess: rel.access.metadata,
+    artifactsAccess: rel.access.artifacts,
+    accessSource: "manifest",
+    stableTagPattern: rel.stableTagPattern,
+    ignoreTagsJson: rel.ignoreTags.length
+      ? JSON.stringify(rel.ignoreTags)
+      : null,
+  });
+  // A first link inserts the row; a later one re-applies the manifest-owned columns exactly as a
+  // resync does: the manual channels a package publish's `channel` is checked against among
+  // them. The installation id, the operator-only policy, the release keys and the access modes
+  // once an operator claimed them (`access_source = 'admin'`) are never touched.
+  return {
+    statements: [
+      {
+        sql: `${config.sql}
+          ON CONFLICT(product) DO UPDATE SET
+            gh_owner = excluded.gh_owner,
+            gh_repo = excluded.gh_repo,
+            channel_workflow = excluded.channel_workflow,
+            beta_branch = excluded.beta_branch,
+            binary_name = excluded.binary_name,
+            sparkle_ed25519_pub = excluded.sparkle_ed25519_pub,
+            summary_marker = excluded.summary_marker,
+            manual_channels_json = excluded.manual_channels_json,
+            artifact_policy_json = excluded.artifact_policy_json,
+            stable_tag_pattern = excluded.stable_tag_pattern,
+            ignore_tags_json = excluded.ignore_tags_json,
+            metadata_access = CASE WHEN COALESCE(release_config.access_source, 'manifest') = 'manifest'
+                                   THEN excluded.metadata_access ELSE release_config.metadata_access END,
+            artifacts_access = CASE WHEN COALESCE(release_config.access_source, 'manifest') = 'manifest'
+                                    THEN excluded.artifacts_access ELSE release_config.artifacts_access END`,
+        params: config.params,
+      },
+      ...manifestDeliverableStatements(
+        slug,
+        rel.app,
+        now,
+        rel.packDeliverables,
+        rel.packageDeliverables,
+      ),
+    ],
+    audits: [],
+    updated: [],
+  };
+}
+
 export const releaseManifest: ManifestContributor = {
   checks: (ctx) => [
     {
@@ -400,7 +471,11 @@ export const releaseManifest: ManifestContributor = {
       : []),
   ],
   prepare: (ctx) =>
-    ctx.mode === "create" ? prepareCreate(ctx) : prepareApply(ctx),
+    ctx.scope === "system"
+      ? prepareSystem(ctx)
+      : ctx.mode === "create"
+        ? prepareCreate(ctx)
+        : prepareApply(ctx),
 };
 
 // ── statement builders (moved from core/products/store.ts, P0-26) ──────────────

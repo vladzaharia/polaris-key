@@ -62,7 +62,6 @@ import {
   issueStaticCiToken,
 } from "../../src/core/publisher.js";
 import { ingestFor } from "../../src/core/ingest/pipeline.js";
-import { manifestIngestFor } from "../../src/core/registry.js";
 import { SERVICES } from "../../src/mount.js";
 import {
   linkRepo,
@@ -95,8 +94,6 @@ interface Captured {
 }
 
 const ingest = ingestFor(SERVICES);
-/** The deploy hook still runs the descriptor hooks (P0-26b moves it onto the pipeline). */
-const hooks = manifestIngestFor(SERVICES);
 
 /** Deep-mask a result: strings through `mask`, key order kept. */
 function maskDeep(v: unknown): unknown {
@@ -563,12 +560,13 @@ describe("ingest golden: the deploy hook", () => {
       "11a-deploy-first",
       await record(w, (rdb) =>
         linkSystemProduct(
+          env,
           rdb,
           parsed.manifest,
           repo,
           { files, sha },
           NOW + 1,
-          hooks,
+          ingest,
         ),
       ),
     );
@@ -601,12 +599,13 @@ describe("ingest golden: the deploy hook", () => {
       "11b-deploy-relink",
       await record(w, (rdb) =>
         linkSystemProduct(
+          env,
           rdb,
           parsed.manifest,
           repo,
           { files, sha },
           NOW + 100,
-          hooks,
+          ingest,
         ),
       ),
     );
