@@ -13,7 +13,7 @@
  * living under a config path.
  */
 
-import type { ServiceContext } from "../../core/registry.js";
+import { serviceRoutes } from "../../core/http/routes.js";
 import { handleConfigDocument } from "./document.js";
 import { handleSchema } from "./schema.js";
 import { handleMintAuth, handleMintToken } from "./mint.js";
@@ -22,29 +22,37 @@ import { handleMintAuth, handleMintToken } from "./mint.js";
  *  an encoded separator cannot reach the recipe lookup. */
 const MINT_ID = /^[a-z0-9-]+$/;
 
-export async function handleConfigRoutes(
-  ctx: ServiceContext,
-): Promise<Response | null> {
-  const { req, env, db, product, rest, now, settings } = ctx;
-
-  if (rest.length === 1) {
-    switch (rest[0]) {
-      case "document":
-        return handleConfigDocument(req, env, db, product, now, settings);
-      case "schema":
-        return handleSchema(db, product);
-      default:
-        return null;
-    }
-  }
-
+export const CONFIG_ROUTES = serviceRoutes("config", [
+  {
+    path: "document",
+    methods: ["GET"],
+    auth: { kind: "device" },
+    handler: ({ req, env, db, product, now, settings }) =>
+      handleConfigDocument(req, env, db, product, now, settings),
+  },
+  {
+    path: "schema",
+    methods: ["GET"],
+    alsoHead: true,
+    auth: { kind: "none" },
+    handler: ({ db, product }) => handleSchema(db, product),
+  },
   // /config/mint/<id>/{token,auth}
-  if (rest.length === 3 && rest[0] === "mint" && MINT_ID.test(rest[1] ?? "")) {
-    const mintId = rest[1] as string;
-    if (rest[2] === "token")
-      return handleMintToken(req, env, db, product, mintId, now);
-    if (rest[2] === "auth") return handleMintAuth(db, product, mintId);
-  }
-
-  return null;
-}
+  {
+    path: "mint/:mintId/token",
+    methods: ["GET", "POST"],
+    auth: { kind: "handler" },
+    params: { mintId: MINT_ID },
+    handler: ({ req, env, db, product, now }, { params }) =>
+      handleMintToken(req, env, db, product, params.mintId as string, now),
+  },
+  {
+    path: "mint/:mintId/auth",
+    methods: ["GET"],
+    alsoHead: true,
+    auth: { kind: "none" },
+    params: { mintId: MINT_ID },
+    handler: ({ db, product }, { params }) =>
+      handleMintAuth(db, product, params.mintId as string),
+  },
+]);

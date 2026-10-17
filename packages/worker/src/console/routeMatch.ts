@@ -22,12 +22,13 @@ export const METHODS: readonly Method[] = [
   "DELETE",
 ];
 
-export interface MatchedPath {
-  /** `:name` segments, by name. */
-  params: Readonly<Record<string, string>>;
-  /** The segments a trailing `/**` covered (empty when none, or when the pattern has none). */
-  rest: readonly string[];
-}
+import {
+  compareSpecificity,
+  matchPath,
+  type MatchedPath,
+} from "../core/http/pathMatch.js";
+
+export { compareSpecificity, matchPath, type MatchedPath };
 
 /** One declared route. `H` is the handler type, kept generic so this module stays pure. */
 export interface RouteDecl<H> {
@@ -61,49 +62,6 @@ export function levelOf(route: { method: Method; level?: Level }): Level {
 /** `METHOD /path`, the key `test/fixtures/rbac-route-areas.json` uses. */
 export function routeKey(route: { method: Method; path: string }): string {
   return `${route.method} ${route.path}`;
-}
-
-function patternSegments(path: string): string[] {
-  return path.split("/").filter(Boolean);
-}
-
-/** Match one pattern against request segments, or `null`. */
-export function matchPath(
-  pattern: string,
-  segments: readonly string[],
-): MatchedPath | null {
-  const pat = patternSegments(pattern);
-  const params: Record<string, string> = {};
-  for (let i = 0; i < pat.length; i++) {
-    const p = pat[i]!;
-    if (p === "**") {
-      if (i !== pat.length - 1) return null;
-      return { params, rest: segments.slice(i) };
-    }
-    const s = segments[i];
-    if (s === undefined) return null;
-    if (p.startsWith(":")) params[p.slice(1)] = s;
-    else if (p !== s) return null;
-  }
-  return segments.length === pat.length ? { params, rest: [] } : null;
-}
-
-/** Segment rank for specificity: literal 0, parameter 1, `**` 2, absent 3. */
-function rank(seg: string | undefined): number {
-  if (seg === undefined) return 3;
-  if (seg === "**") return 2;
-  return seg.startsWith(":") ? 1 : 0;
-}
-
-/** Negative when `a` is more specific than `b`. */
-export function compareSpecificity(a: string, b: string): number {
-  const pa = patternSegments(a);
-  const pb = patternSegments(b);
-  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
-    const d = rank(pa[i]) - rank(pb[i]);
-    if (d !== 0) return d;
-  }
-  return 0;
 }
 
 export type RouteMatch<H> =

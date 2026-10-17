@@ -41,7 +41,7 @@ import {
   seedDeliveryAccess,
 } from "./releaseSurface.js";
 import { updateParams } from "../src/services/update/eligibility.js";
-import { handleUpdateRoutes } from "../src/services/update/routes.js";
+import { UPDATE_ROUTES } from "../src/services/update/routes.js";
 import { TEST_RSA_PKCS8 } from "./releaseFixtures.js";
 
 const SLUG = "djdl";
@@ -351,7 +351,7 @@ describe("entitled feeds (D-13) — the R3 gap", () => {
     // The query spelling is held to the router's path-channel alphabet, refused at the
     // ROUTE (null → the registry's 404) before any resolution or network work.
     const { db, env, product } = await fixture();
-    const res = await handleUpdateRoutes({
+    const res = await UPDATE_ROUTES.handle({
       req: feedReq("https://key.plrs.im/djdl/update/version?channel=Beta%2F1"),
       env,
       db,
@@ -359,7 +359,7 @@ describe("entitled feeds (D-13) — the R3 gap", () => {
       rest: ["version"],
       now: NOW,
       viaAlias: false,
-    } as unknown as Parameters<typeof handleUpdateRoutes>[0]);
+    } as unknown as Parameters<typeof UPDATE_ROUTES.handle>[0]);
     expect(res).toBeNull();
   });
 

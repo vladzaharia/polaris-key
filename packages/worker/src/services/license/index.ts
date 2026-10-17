@@ -16,7 +16,7 @@ import type {
   DiscoveryContext,
   ServiceDescriptor,
 } from "../../core/registry.js";
-import { handleLicenseRoutes } from "./routes.js";
+import { LICENSE_ROUTES } from "./routes.js";
 import { handleLicenseAdmin } from "./admin/index.js";
 import { applyStoreGrant, storeGrantMergeStatements } from "./storeGrants.js";
 import { licenseProvenance } from "./provenance.js";
@@ -44,15 +44,9 @@ export const licenseService: ServiceDescriptor = {
    */
   manifestIngestAlways: (parsed, product, now) =>
     manifestRowSettingStatements(product, LICENSING_SETTINGS, parsed, now),
-  handle: handleLicenseRoutes,
+  handle: LICENSE_ROUTES.handle,
   /** The canonical surface `routes.ts` dispatches; what `routeCoverage` pins. */
-  surface: [
-    { path: "/{product}/license/activate", methods: ["post"] },
-    { path: "/{product}/license/enroll", methods: ["post"] },
-    { path: "/{product}/license/token", methods: ["post"] },
-    { path: "/{product}/license/deauthorize", methods: ["post"] },
-    { path: "/{product}/license/document", methods: ["get"] },
-  ],
+  surface: LICENSE_ROUTES.surface,
   /** `license/{licenses,tiers,policy}` on the console API (§R1). */
   adminHandle: handleLicenseAdmin,
   /** License's slice of `/.well-known/polaris.json` (design spec §4.3): the activation, token

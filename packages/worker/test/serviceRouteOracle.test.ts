@@ -152,6 +152,28 @@ const NEAR_MISSES: string[] = [
   "sync/pull",
 ];
 
+/**
+ * Routes whose handler never checked the method, so the hand dispatch served POST, PUT, PATCH,
+ * DELETE (and for some, OPTIONS or HEAD) on a route the spec lists as GET (or GET and POST).
+ * The table answers the documented methods and refuses the rest with the plain 405. Each is a
+ * route that now accepts LESS than it did; the list is closed, and a route that accepted a method
+ * and no longer does without being listed here fails the replay.
+ */
+const TIGHTENED = new Set<string>([
+  // Config: the schema and the recipe's auth page are reads; the mint token is GET and POST.
+  `/${SLUG}/config/schema`,
+  `/${SLUG}/config/mint/recipe-1/auth`,
+  `/${SLUG}/config/mint/recipe-1/token`,
+  // Identity: the sign-in redirect and the IdP callback are GET.
+  `/${SLUG}/identity/auth/start`,
+  `/${SLUG}/identity/auth/callback`,
+  // Release and Update: the changelog, the appcasts and the version check are reads.
+  `/${SLUG}/release/changelog`,
+  `/${SLUG}/update/appcast.xml`,
+  `/${SLUG}/update/stable/appcast.xml`,
+  `/${SLUG}/update/version`,
+]);
+
 function instantiate(template: string): string {
   return template.replace(
     /\{(\w+)\}/g,
@@ -332,7 +354,20 @@ describe("service route tables replay the hand dispatch", () => {
       Row
     >;
     expect(Object.keys(observed)).toEqual(Object.keys(recorded));
-    for (const key of Object.keys(recorded))
-      expect(observed[key], key).toEqual(recorded[key]);
+    const changed: string[] = [];
+    for (const key of Object.keys(recorded)) {
+      if (JSON.stringify(observed[key]) === JSON.stringify(recorded[key]))
+        continue;
+      const path = key.replace(/^\S+ /, "").replace(/\?.*$/, "");
+      const before = recorded[key]!.status;
+      const after = observed[key]!.status;
+      // The only difference allowed: a method the spec never listed, which the hand dispatch let
+      // a guard-less handler serve, is now the 405. Never a route that answers more than it did.
+      if (after === 405 && TIGHTENED.has(path)) continue;
+      changed.push(`${key}: ${before} -> ${after}`);
+    }
+    if (process.env.PKEY_ORACLE_DIFF)
+      writeFileSync(process.env.PKEY_ORACLE_DIFF, changed.join("\n") + "\n");
+    expect(changed).toEqual([]);
   }, 120_000);
 });

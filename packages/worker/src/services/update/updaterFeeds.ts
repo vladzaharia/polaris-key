@@ -553,7 +553,7 @@ function preferArch(
 
 // ── WinSparkle ───────────────────────────────────────────────────────────────────────────────
 
-function serveWinSparkle(
+export function serveWinSparkle(
   ctx: ServiceContext,
   channel: string,
   recorded: string[],
@@ -741,7 +741,7 @@ export function velopackCandidatesFrom(
   return out;
 }
 
-function serveVelopack(
+export function serveVelopack(
   ctx: ServiceContext,
   channel: string,
   file: string,
@@ -821,7 +821,7 @@ export async function velopackAssets(
  */
 const VELOPACK_FILE_RE = /^[A-Za-z0-9][A-Za-z0-9._+-]{0,199}\.nupkg$/;
 
-function isVelopackFileName(name: string): boolean {
+export function isVelopackFileName(name: string): boolean {
   return VELOPACK_FILE_RE.test(name) && !name.includes("..");
 }
 
@@ -847,7 +847,7 @@ const VELOPACK_TARGETS: ReadonlyArray<{ platform: string; arch: string }> =
  * allows, appends a download ticket, because Velopack drops `Authorization` on the redirect
  * (SP-09, `ticketedPackageUrl`). `null` = not a package name.
  */
-function serveVelopackPackage(
+export function serveVelopackPackage(
   ctx: ServiceContext,
   channel: string,
   file: string,
@@ -965,7 +965,7 @@ const APPINSTALLER_ARCH: Readonly<Record<string, string>> = {
   arm64: "arm64",
 };
 
-function serveAppInstaller(
+export function serveAppInstaller(
   ctx: ServiceContext,
   channel: string,
   recorded: string[],
@@ -1062,7 +1062,7 @@ function isBuildFile(
 
 // ── zsync ────────────────────────────────────────────────────────────────────────────────────
 
-function serveZsync(
+export function serveZsync(
   ctx: ServiceContext,
   channel: string,
   buildId: string,
@@ -1194,43 +1194,19 @@ export function serveExtendedVersion(
   );
 }
 
-// ── Routing ──────────────────────────────────────────────────────────────────────────────────
-
-const ZSYNC_SUFFIX = ".AppImage.zsync";
 const BUILD_ID_RE = new RegExp(BUILD_ID_PATTERN.source);
 
+// ── Routing ──────────────────────────────────────────────────────────────────────────────────
+
 /**
- * The four new feed routes (and the Velopack package route), over `rest = [channel, …]` (the channel already checked against the
- * route alphabet). `null` = not one of them.
+ * A zsync control file's name, `<buildId>.AppImage.zsync`: what `routes.ts` constrains the
+ * `:name` segment to. A name that ends in the suffix with a malformed build id is no route.
  */
-export async function handleUpdaterFeedRoutes(
-  ctx: ServiceContext,
-  channel: string,
-  tail: readonly string[],
-): Promise<Response | null> {
-  if (ctx.req.method !== "GET" && ctx.req.method !== "HEAD") return null;
-  const name = tail[0] ?? "";
-  if (tail.length === 1 && name === "winsparkle.xml")
-    return serveWinSparkle(ctx, channel, await recordedAppReleases(ctx));
-  if (tail.length === 1 && name === "app.appinstaller")
-    return serveAppInstaller(ctx, channel, await recordedAppReleases(ctx));
-  if (tail.length === 1 && name.endsWith(ZSYNC_SUFFIX)) {
-    const buildId = name.slice(0, -ZSYNC_SUFFIX.length);
-    if (!BUILD_ID_RE.test(buildId)) return null;
-    return serveZsync(ctx, channel, buildId, await recordedAppReleases(ctx));
-  }
-  if (tail.length === 2 && name === "velopack") {
-    const file = tail[1] ?? "";
-    if (/^releases\./.test(file))
-      return serveVelopack(ctx, channel, file, await recordedAppReleases(ctx));
-    // The package name is checked before ANY read, the recorded-releases D1 read included.
-    if (!isVelopackFileName(file)) return null;
-    return serveVelopackPackage(
-      ctx,
-      channel,
-      file,
-      await recordedAppReleases(ctx),
-    );
-  }
-  return null;
+export const ZSYNC_NAME = new RegExp(
+  `^${BUILD_ID_PATTERN.source.replace(/^\^|\$$/g, "")}\\.AppImage\\.zsync$`,
+);
+
+/** The build id out of a name that passed {@link ZSYNC_NAME}. */
+export function zsyncBuildId(name: string): string {
+  return name.slice(0, -".AppImage.zsync".length);
 }

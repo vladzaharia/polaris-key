@@ -39,7 +39,7 @@ import type {
   ServiceDescriptor,
 } from "../../core/registry.js";
 import type { AdminSession } from "../../core/console/session.js";
-import { handleIdentityRoutes } from "./routes.js";
+import { IDENTITY_ROUTES } from "./routes.js";
 import { handleIdentityAdmin } from "./admin.js";
 import { authorizeRegistration } from "./registration.js";
 import {
@@ -78,7 +78,7 @@ export const identityService: ServiceDescriptor = {
   /** I-09: `identity.keyEntry.claimByKey` from the `identity:` block, into its column. */
   manifestIngest: (parsed, product, now) =>
     manifestClaimByKeyStatements(product, parsed, now),
-  handle: handleIdentityRoutes,
+  handle: IDENTITY_ROUTES.handle,
   contributes: {
     productDeletion: identityProductDeletion,
     // LX-26: the licence-holder hooks, so License's creation path and every account-email
@@ -95,26 +95,7 @@ export const identityService: ServiceDescriptor = {
    * The canonical surface `routes.ts` dispatches; what `routeCoverage` pins. The root portal
    * paths are not here: they are platform routes, not this service's namespace.
    */
-  surface: [
-    { path: "/{product}/identity/session", methods: ["get"] },
-    { path: "/{product}/identity/session/license", methods: ["post"] },
-    { path: "/{product}/identity/auth/start", methods: ["get"] },
-    { path: "/{product}/identity/auth/callback", methods: ["get"] },
-    { path: "/{product}/identity/auth/logout", methods: ["post"] },
-    { path: "/{product}/identity/auth/device", methods: ["get", "post"] },
-    { path: "/{product}/identity/auth/device/start", methods: ["post"] },
-    {
-      path: "/{product}/identity/auth/device/verify",
-      methods: ["get", "post"],
-    },
-    { path: "/{product}/identity/auth/device/poll", methods: ["post"] },
-    // The legacy sign-in's licence chooser (server-rendered HTML).
-    { path: "/{product}/identity/auth/choose", methods: ["get", "post"] },
-    // The account on the device wire (device bearer; CORS without credentials).
-    { path: "/{product}/identity/attach", methods: ["post"] },
-    { path: "/{product}/identity/subject", methods: ["get"] },
-    { path: "/{product}/identity/signout", methods: ["post"] },
-  ],
+  surface: IDENTITY_ROUTES.surface,
   adminHandle: (ctx: ServiceContext & { session: AdminSession }) =>
     handleIdentityAdmin(ctx),
   authorizeRegistration: (ctx: RegistrationAuthContext) =>

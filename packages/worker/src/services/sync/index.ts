@@ -28,15 +28,15 @@ import type {
 import { SYNC_SETTINGS_SLICE } from "./settings.js";
 
 import { syncIntegration } from "./integration.js";
+import { SYNC_ROUTES } from "./routes.js";
 
 export const syncService: ServiceDescriptor = {
   slug: "sync",
   contributes: {
     integration: syncIntegration,
   },
-  handle: async () => null,
-  /** No route yet: until the device routes ship, `handle` answers none (`null` → Core's not-found). */
-  surface: [],
+  handle: SYNC_ROUTES.handle,
+  surface: SYNC_ROUTES.surface,
   /** The operator's product ceiling (plans/U-01b.md D6); the quota is an entitlement (D5). */
   settings: SYNC_SETTINGS_SLICE,
   /**

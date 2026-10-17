@@ -132,34 +132,27 @@ function reverseHost(req: Request): string {
 }
 
 /**
- * Distribution's feed routes. `null` when the path is not a feed path (the registry contract:
- * Core decides what "no route here" means); a feed path that names nothing is the plain
- * not-found.
+ * `GET|POST /<p>/distribution/feeds/fdroid/<channel>` (`routes.ts` has checked the method and the
+ * shape): the CI plane's F-Droid feed. It reads its own `pkeyci_` token, after the channel
+ * decodes (a channel that does not is the hardened not-found, before any credential).
  */
-export async function handleFeedRoutes(
+export async function handleFdroidFeedsCi(
   ctx: ServiceContext,
-): Promise<Response | null> {
+): Promise<Response> {
+  const channel = decode(ctx.rest[2] as string);
+  if (channel === null) return harden(notFound());
+  return harden(await handleFeedsCi(ctx, channel));
+}
+
+/**
+ * A public feed read (`routes.ts` has checked the method and the shape of `ctx.rest`, whose first
+ * segment is `area`): rate limit, then the feed's document, cached.
+ */
+export async function serveFeedRead(
+  ctx: ServiceContext,
+  area: Exclude<(typeof FEED_AREAS)[number], "feeds">,
+): Promise<Response> {
   const { req, rest } = ctx;
-  const area = rest[0] as (typeof FEED_AREAS)[number];
-  if (!(FEED_AREAS as readonly string[]).includes(area)) return null;
-
-  if (area === "feeds") {
-    if (rest.length !== 3 || rest[1] !== "fdroid") return null;
-    if (req.method !== "GET" && req.method !== "POST") return null;
-    const channel = decode(rest[2] as string);
-    if (channel === null) return harden(notFound());
-    return harden(await handleFeedsCi(ctx, channel));
-  }
-
-  // Everything else is a public read.
-  if (req.method !== "GET" && req.method !== "HEAD") return null;
-  const shape =
-    area === "fdroid"
-      ? rest.length >= 4 && rest[2] === "repo"
-      : area === "altstore" || area === "altstore-pal"
-        ? rest.length === 3 && rest[2] === "source.json"
-        : rest.length === 2;
-  if (!shape) return null;
 
   if (
     !(await rateLimitOk(

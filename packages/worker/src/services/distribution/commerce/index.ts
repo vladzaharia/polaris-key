@@ -118,33 +118,13 @@ const REDELIVERABLE = new Set(["failed", "unresolved"]);
 export const APP_STORE_EVENTS = "app-store-notifications";
 export const PLAY_EVENTS = "play-rtdn";
 
-/** Is `rest` (after `/distribution`) one of the commerce routes? */
-export function isCommerceRoute(rest: readonly string[]): boolean {
-  return (
-    (rest[0] === "commerce" &&
-      rest.length === 2 &&
-      (rest[1] === "binding" || rest[1] === "claim")) ||
-    (rest[0] === "hooks" &&
-      rest.length === 2 &&
-      (rest[1] === "app-store" || rest[1] === "play-rtdn"))
-  );
-}
-
-export async function handleCommerceRoutes(
-  ctx: ServiceContext,
-): Promise<Response | null> {
-  const { rest, req } = ctx;
-  // License off (or no grant writer): commerce does not exist for this product.
-  if (!ctx.storeGrants || !ctx.product.services.license?.enabled) return null;
-  if (rest[0] === "commerce" && rest[1] === "binding")
-    return req.method === "GET" ? handleBinding(ctx) : null;
-  if (rest[0] === "commerce" && rest[1] === "claim")
-    return req.method === "POST" ? handleClaim(ctx) : null;
-  if (rest[0] === "hooks" && rest[1] === "app-store")
-    return req.method === "POST" ? handleAppStoreHook(ctx) : null;
-  if (rest[0] === "hooks" && rest[1] === "play-rtdn")
-    return req.method === "POST" ? handlePlayHook(ctx) : null;
-  return null;
+/**
+ * Does commerce exist for this product? License off (or no grant writer) and it does not: every
+ * commerce route is then Core's not-found, whatever the method (`routes.ts` runs this as the
+ * routes' `accept`, ahead of the method gate and any credential).
+ */
+export function commerceAvailable(ctx: ServiceContext): boolean {
+  return Boolean(ctx.storeGrants && ctx.product.services.license?.enabled);
 }
 
 // ── helpers ──────────────────────────────────────────────────────────────────────────────────
@@ -259,7 +239,7 @@ async function callerLicence(
  * SDK hides a flag that is not also an App Store product; the licence document stays
  * outlet-agnostic).
  */
-async function handleBinding(ctx: ServiceContext): Promise<Response> {
+export async function handleBinding(ctx: ServiceContext): Promise<Response> {
   const who = await callerLicence(ctx);
   if (who instanceof Response) return who;
   const bindingId = await bindingFor(
@@ -371,7 +351,9 @@ export async function steamContext(
  *   `{store: "play", productId, purchaseToken}`,
  *   `{store: "steam", ticket, dlcAppId}`.
  */
-async function handleClaim(ctx: ServiceContext): Promise<Response | null> {
+export async function handleClaim(
+  ctx: ServiceContext,
+): Promise<Response | null> {
   const { env, db, product, now } = ctx;
   const raw = await readBody(ctx.req, MAX_CLAIM_BODY);
   if (raw === null)
@@ -538,7 +520,7 @@ export async function acknowledgeOnce(
 
 // ── App Store Server Notifications V2 ────────────────────────────────────────────────────────
 
-async function handleAppStoreHook(
+export async function handleAppStoreHook(
   ctx: ServiceContext,
 ): Promise<Response | null> {
   const { env, db, product, now } = ctx;
@@ -664,7 +646,9 @@ async function handleAppStoreHook(
 
 // ── Play RTDN ────────────────────────────────────────────────────────────────────────────────
 
-async function handlePlayHook(ctx: ServiceContext): Promise<Response | null> {
+export async function handlePlayHook(
+  ctx: ServiceContext,
+): Promise<Response | null> {
   const { env, db, product, now } = ctx;
   const settings = await readCommerceSettings(db, product.slug);
   const pctx = await playContext(ctx, settings);
