@@ -51,6 +51,39 @@ import {
   type TableState,
 } from "./types.js";
 
+/**
+ * Does the element's content overflow it sideways? A scroller is a Tab stop (a named region) only
+ * while it overflows, or every table would be one for nothing. Measured again on resize.
+ */
+function useOverflows(ref: React.RefObject<HTMLElement | null>): boolean {
+  const [over, setOver] = React.useState(false);
+  const watched = React.useRef<{
+    el: Element | null;
+    ro: ResizeObserver | null;
+  }>({ el: null, ro: null });
+  React.useEffect(() => {
+    const el = ref.current;
+    const measure = (): void =>
+      setOver(el ? el.scrollWidth > el.clientWidth + 1 : false);
+    measure();
+    // The scroller can come and go (cards on a phone); watch whichever is mounted.
+    if (el === watched.current.el || typeof ResizeObserver === "undefined")
+      return;
+    watched.current.ro?.disconnect();
+    watched.current.el = el;
+    if (!el) return;
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    if (el.firstElementChild) ro.observe(el.firstElementChild);
+    watched.current.ro = ro;
+  });
+  React.useEffect(() => {
+    const w = watched.current;
+    return () => w.ro?.disconnect();
+  }, []);
+  return over;
+}
+
 /** Client mode virtualizes above this many rows (components.md §6.1). */
 export const VIRTUALIZE_ABOVE = 200;
 
@@ -483,6 +516,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
     listRef.current = el;
   }, []);
   const scrollRef = React.useRef<HTMLDivElement>(null);
+  const overflows = useOverflows(scrollRef);
   /** The rows last committed, to find the created and edited ones. */
   const committed = React.useRef(data);
   /** Has the table shown loaded data before (so a new row is a created one, not the first load)? */
@@ -558,7 +592,12 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
           ).find((el) => el.dataset.rowId === getRowId(first));
     const target =
       row?.querySelector<HTMLElement>("a[href]") ?? footerRef.current;
-    target?.focus();
+    target?.focus({ preventScroll: true });
+    // The new rows start at the top of the window, not below the fold.
+    (row ?? target)?.scrollIntoView?.({
+      block: "start",
+      behavior: reducedMotion() ? "auto" : "smooth",
+    });
     if (pagination.mode === "cursor") {
       const n = data.length - from;
       announce(
@@ -666,17 +705,33 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
   const selectedRows = table.getSelectedRowModel().rows;
   const selectedCount = selectedRows.length;
 
-  // Live row count after a filter change (not on first render).
+  // Live row count after a filter change only (not when the first load lands). A server-side view
+  // waits for its rows. Over a partly loaded list the count says what it covered.
   const filterKey = `${view.q}\u0000${JSON.stringify(view.filters)}`;
-  const firstFilter = React.useRef(true);
+  const lastFilterKey = React.useRef(filterKey);
+  const announcePending = React.useRef(false);
   React.useEffect(() => {
-    if (firstFilter.current) {
-      firstFilter.current = false;
-      return;
+    if (lastFilterKey.current !== filterKey) {
+      lastFilterKey.current = filterKey;
+      announcePending.current = true;
     }
-    if (loading) return;
+    if (!announcePending.current || loading) return;
+    announcePending.current = false;
     const n = serverSide ? data.length : filteredData.length;
-    announce(`${formatCount(n)} ${n === 1 ? "row" : "rows"}`);
+    const noun = caption.toLowerCase();
+    const partial =
+      pagination.mode === "cursor" && pagination.local && pagination.hasMore;
+    const inAll =
+      partial && pagination.mode === "cursor" && pagination.total !== undefined
+        ? ` ${formatCount(pagination.total)} in all.`
+        : "";
+    announce(
+      partial
+        ? n === 0
+          ? `No match in the ${formatCount(data.length)} newest ${noun}.${inAll}`
+          : `${formatCount(n)} ${n === 1 ? "match" : "matches"} in the ${formatCount(data.length)} newest ${noun}.${inAll}`
+        : `${formatCount(n)} ${n === 1 && noun.endsWith("s") && !noun.endsWith("ss") ? noun.slice(0, -1) : noun}`,
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterKey, loading]);
 
@@ -930,6 +985,16 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
       data.length < 10 &&
       hidden.length === 0);
   const showViewControls = !minimalChrome && !isPhone;
+  // Unfiltered and still paging: Export walks the rest first, then saves every row.
+  const exportAll =
+    loadedOnlyCursor &&
+    pagination.mode === "cursor" &&
+    pagination.hasMore &&
+    Boolean(pagination.onSearchAll) &&
+    view.q.trim() === "" &&
+    Object.entries(view.filters).every(
+      ([k, v]) => v.length === 0 || (pagination.serverFacets ?? []).includes(k),
+    );
   const exportCsv = (): void => {
     const visibleDefs = columns.filter((c) => !hidden.includes(columnId(c)));
     const sorted = allRows.map((r) => r.original);
@@ -1084,19 +1149,31 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
                 variant="outline"
                 size="sm"
                 iconStart={<Download aria-hidden />}
-                onClick={exportCsv}
+                onClick={() => {
+                  if (exportAll) {
+                    exportAfterWalk.current = true;
+                    startSearchAll();
+                  } else exportCsv();
+                }}
                 disabledReason={
                   allRows.length === 0
                     ? "There are no rows to export."
                     : undefined
                 }
               >
-                {loadedOnlyCursor &&
-                pagination.mode === "cursor" &&
-                pagination.hasMore &&
-                allRows.length > 0
-                  ? `Export ${formatCount(allRows.length)} loaded`
-                  : "Export CSV"}
+                {exportAll
+                  ? `Export all${
+                      pagination.mode === "cursor" &&
+                      pagination.total !== undefined
+                        ? ` ${formatCount(pagination.total)}`
+                        : ""
+                    }`
+                  : loadedOnlyCursor &&
+                      pagination.mode === "cursor" &&
+                      pagination.hasMore &&
+                      allRows.length > 0
+                    ? `Export ${formatCount(allRows.length)} loaded`
+                    : "Export CSV"}
               </Button>
             ) : null}
           </>
@@ -1132,27 +1209,97 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
     Object.entries(view.filters).some(
       ([k, v]) => v.length > 0 && !(unloaded?.serverFacets ?? []).includes(k),
     );
+  // A search or a facet the Worker did not apply: the rows shown are a subset of the loaded ones.
+  const filteredLoaded =
+    pagination.mode === "cursor" &&
+    pagination.local === true &&
+    (view.q.trim() !== "" ||
+      Object.entries(view.filters).some(
+        ([k, v]) =>
+          v.length > 0 && !(pagination.serverFacets ?? []).includes(k),
+      ));
   const searchAllBtn = unloaded?.onSearchAll;
+  const searchingAll =
+    pagination.mode === "cursor" && pagination.searchingAll === true;
+  const searchFailed =
+    pagination.mode === "cursor" && pagination.loadError === true;
   const startSearchAll = (): void => {
-    loadMoreFrom.current = data.length;
     searchAllBtn?.();
   };
+  const exportAfterWalk = React.useRef(false);
+  const rootRef = React.useRef<HTMLDivElement>(null);
+  const noMatchRef = React.useRef<HTMLElement | null>(null);
+  // When Search all ends, focus moves once: to the first matching row, or the no-match heading.
+  // The button that held it is gone by then. A failed walk keeps the focus on the button.
+  const wasSearching = React.useRef(false);
+  const walkEnded = React.useRef(false);
+  React.useEffect(() => {
+    if (searchingAll) wasSearching.current = true;
+    else if (wasSearching.current) {
+      wasSearching.current = false;
+      walkEnded.current = true;
+    }
+    // Wait out a list transition: until it lands the table still draws the rows it held.
+    if (!walkEnded.current || searchingAll || moving) return;
+    walkEnded.current = false;
+    if (searchFailed) {
+      exportAfterWalk.current = false;
+      rootRef.current
+        ?.querySelector<HTMLElement>("[data-search-all]")
+        ?.focus({ preventScroll: true });
+      return;
+    }
+    if (exportAfterWalk.current) {
+      exportAfterWalk.current = false;
+      exportCsv();
+    }
+    const n = allRows.length;
+    const first = listRef.current?.querySelector<HTMLElement>(
+      "[data-row-id] a[href]",
+    );
+    const target = first ?? noMatchRef.current;
+    target?.focus({ preventScroll: true });
+    target?.scrollIntoView?.({ block: "nearest" });
+    const stopped = pagination.mode === "cursor" && pagination.hasMore;
+    announce(
+      stopped
+        ? `Stopped at ${formatCount(data.length)} ${caption.toLowerCase()}.`
+        : n === 0
+          ? "No match."
+          : filteredLoaded
+            ? `${formatCount(n)} ${n === 1 ? "match" : "matches"} in all.`
+            : `All ${caption.toLowerCase()} loaded`,
+    );
+  });
   const noResultsState = isFiltered ? (
     <EmptyState
       kind="no-results"
+      headingRef={noMatchRef}
       title={
         unloaded && narrowedLoaded
           ? `No match in the ${formatCount(data.length)} newest`
           : `No ${caption.toLowerCase()} match these filters`
       }
+      description={
+        unloaded && narrowedLoaded && searchFailed ? (
+          <span role="alert">{`Couldn't load more ${caption.toLowerCase()}.`}</span>
+        ) : undefined
+      }
       filters={describeFilters(view, facets)}
       onClearFilters={clearFilters}
       primaryAction={
         unloaded?.onSearchAll && narrowedLoaded ? (
-          <Button loading={unloaded.searchingAll} onClick={startSearchAll}>
-            {unloaded.total !== undefined
-              ? `Search all ${formatCount(unloaded.total)}`
-              : "Search all"}
+          <Button
+            data-search-all=""
+            loading={unloaded.searchingAll}
+            busyFocusable
+            onClick={startSearchAll}
+          >
+            {searchFailed
+              ? "Try again"
+              : unloaded.total !== undefined
+                ? `Search all ${formatCount(unloaded.total)}`
+                : "Search all"}
           </Button>
         ) : undefined
       }
@@ -1385,6 +1532,8 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
       ) : null;
     } else if (pagination.mode === "cursor") {
       const shown = pagination.local ? allRows.length : data.length;
+      // The partial-search banner above carries the retry while it is up.
+      const bannerUp = Boolean(unloaded) && narrowedLoaded;
       footer = (
         <div className="flex flex-wrap items-center gap-3" data-footer>
           <p
@@ -1392,14 +1541,14 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
             tabIndex={-1}
             className="text-xs text-fg-muted tabular-nums outline-hidden"
           >
-            {pagination.local && isFiltered
+            {filteredLoaded
               ? `Showing ${formatCount(shown)} of ${formatCount(data.length)} loaded`
               : `Showing ${formatCount(shown)}`}
-            {pagination.total !== undefined && !(pagination.local && isFiltered)
+            {pagination.total !== undefined && !filteredLoaded
               ? ` of ${formatCount(pagination.total)}`
               : ""}
           </p>
-          {pagination.loadError ? (
+          {pagination.loadError && !bannerUp ? (
             <p role="alert" className="text-xs text-danger">
               {`Couldn't load more ${caption.toLowerCase()}.`}
             </p>
@@ -1411,12 +1560,13 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
               className="w-28 justify-center"
               loading={pagination.loadingMore}
               busyFocusable
+              disabled={pagination.searchingAll}
               onClick={() => {
                 loadMoreFrom.current = data.length;
                 pagination.onLoadMore();
               }}
             >
-              {pagination.loadError ? "Try again" : "Load more"}
+              {pagination.loadError && !bannerUp ? "Try again" : "Load more"}
             </Button>
           ) : null}
         </div>
@@ -1499,7 +1649,11 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
     showViewControls;
 
   return (
-    <div className={cn("space-y-3", className)} data-table-id={id}>
+    <div
+      ref={rootRef}
+      className={cn("space-y-3", className)}
+      data-table-id={id}
+    >
       {hasToolbar ? toolbar : null}
       {/* pk-vt-scope: during a list transition the card and the footer move with the rows instead
           of jumping (S-23 §3.4 item 2); the toolbar above is part of the page and swaps at once. */}
@@ -1521,9 +1675,28 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
                       : ""
                   }.`}
             </p>
+            {searchFailed && !unloaded.searchingAll ? (
+              <p role="alert" className="text-danger">
+                {`Couldn't load more ${caption.toLowerCase()}.`}
+              </p>
+            ) : null}
             {unloaded.onSearchAll && !unloaded.searchingAll ? (
-              <Button variant="outline" size="sm" onClick={startSearchAll}>
-                Search all
+              <Button
+                data-search-all=""
+                variant="outline"
+                size="sm"
+                onClick={startSearchAll}
+              >
+                {searchFailed ? "Try again" : "Search all"}
+              </Button>
+            ) : null}
+            {unloaded.searchingAll && unloaded.onStopSearchAll ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={unloaded.onStopSearchAll}
+              >
+                Stop
               </Button>
             ) : null}
           </div>
@@ -1555,9 +1728,9 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
             <div
               ref={scrollRef}
               // A table wider than its window scrolls here: named and reachable by keyboard.
-              role="region"
-              aria-label={`${caption} table`}
-              tabIndex={0}
+              role={overflows ? "region" : undefined}
+              aria-label={overflows ? `${caption} table` : undefined}
+              tabIndex={overflows ? 0 : undefined}
               className={cn(
                 "relative overflow-auto rounded-lg border border-border bg-surface-raised pk-scroll",
                 virtual && "max-h-[70vh]",

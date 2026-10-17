@@ -7,10 +7,11 @@ import { navigate } from "../../../router.js";
 import { Button } from "../../../../ui/Button.js";
 import { ApiError, type LicenseSummary } from "../../../../api.js";
 import { mutateEach } from "../../../data/mutations.js";
-import { PageHeader } from "../../../../ui/PageHeader.js";
 import { ConfirmDialog } from "../../../../ui/ConfirmDialog.js";
 import { EmptyState } from "../../../../ui/EmptyState.js";
 import { toast } from "../../../../ui/toast.js";
+import { useMe, useProduct } from "../../../data/hooks.js";
+import { NoAccessPage } from "../../../access/NoAccessPage.js";
 import { HOLDER_STATES, type HolderState } from "./holders.js";
 
 /** The facet value for "no tier" and "not in a batch": only the client can filter on them. */
@@ -25,6 +26,7 @@ export function useServerFilter(filters: Record<string, string[]>): {
   holder?: string;
   batch?: string;
   tier?: string;
+  state?: string;
 } {
   return React.useMemo(() => {
     const one = (id: string, not?: string): string | undefined => {
@@ -34,7 +36,10 @@ export function useServerFilter(filters: Record<string, string[]>): {
     const holder = one("holder");
     const batch = one("batch", NO_BATCH);
     const tier = one("tier", NO_TIER);
+    const status = one("status");
     return {
+      // The Status facet is the computed state: one value goes to the Worker.
+      ...(status && LIST_STATES.includes(status) ? { state: status } : {}),
       ...(holder && HOLDER_STATES.includes(holder as HolderState)
         ? { holder }
         : {}),
@@ -44,27 +49,27 @@ export function useServerFilter(filters: Record<string, string[]>): {
   }, [filters]);
 }
 
+const LIST_STATES = ["active", "expiring", "expired", "disabled"];
+
+/** The facet ids the Worker applied: its `state` is the Status facet. */
+export function serverFacetIds(filter: Record<string, string>): string[] {
+  return Object.keys(filter).map((k) => (k === "state" ? "status" : k));
+}
+
 export function isForbidden(error: unknown): boolean {
   return error instanceof ApiError && error.status === 403;
 }
 
-/** Permission refused: the list, its toolbar and its write actions stay away. */
+/** Permission refused: the console's no-access page, for the Licensing area. */
 export function LicensesForbidden({
-  name,
+  slug,
 }: {
-  name: string;
-}): React.ReactElement {
-  return (
-    <div className="space-y-6" data-template="collection">
-      <PageHeader title="Licenses" />
-      <EmptyState
-        kind="not-found"
-        headingLevel={2}
-        title={`You don't have access to licenses on ${name}`}
-        description="Ask a platform admin for access."
-      />
-    </div>
-  );
+  slug: string;
+}): React.ReactElement | null {
+  const me = useMe().data;
+  const name = useProduct(slug).data?.name ?? slug;
+  if (!me) return null;
+  return <NoAccessPage me={me} area="license" slug={slug} productName={name} />;
 }
 
 const noun = (n: number): string => (n === 1 ? "license" : "licenses");

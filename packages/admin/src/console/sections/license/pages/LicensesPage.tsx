@@ -25,7 +25,6 @@ import { cn } from "../../../../lib/cn.js";
 import { Button } from "../../../../ui/Button.js";
 import { Meter } from "../../../../ui/charts/Meter.js";
 import { Timestamp } from "../../../../ui/Timestamp.js";
-import { announce } from "../../../../ui/LiveRegion.js";
 import { toast } from "../../../../ui/toast.js";
 import {
   DataTable,
@@ -42,6 +41,7 @@ import {
   NO_TIER,
   LicensesFirstRun,
   LicensesForbidden,
+  serverFacetIds,
   useServerFilter,
 } from "../components/LicenseListParts.js";
 import { OverrideMigrationNotice } from "../components/OverrideMigrationNotice.js";
@@ -389,11 +389,12 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
     if (!ok) toast.error("This browser can't save files from the page.");
   };
 
+  const stopWalk = React.useRef(false);
   const searchAll = async (): Promise<void> => {
+    stopWalk.current = false;
     setSearchingAll(true);
-    const ok = await loadAll();
+    await loadAll(() => stopWalk.current);
     setSearchingAll(false);
-    if (ok) announce("All licenses loaded");
   };
 
   const forbidden = !licensesQ.data && isForbidden(licensesQ.error);
@@ -405,7 +406,7 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
     state.q === "" &&
     Object.values(state.filters).every((v) => v.length === 0);
 
-  if (forbidden) return <LicensesForbidden name={product?.name ?? slug} />;
+  if (forbidden) return <LicensesForbidden slug={slug} />;
 
   return (
     <CollectionTemplate
@@ -420,25 +421,30 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
               </Button>
             )
           }
-          secondaryActions={[
-            {
-              label: "Clean up duplicates…",
-              onSelect: () => setCleanupOpen(true),
-            },
-            ...(hasBatches
-              ? [
+          secondaryActions={
+            firstRun
+              ? []
+              : [
                   {
-                    label: "Batches",
-                    onSelect: () => navigate(r.licenseBatches(slug)),
+                    label: "Clean up duplicates…",
+                    onSelect: () => setCleanupOpen(true),
                   },
+                  ...(hasBatches
+                    ? [
+                        {
+                          label: "Batches",
+                          onSelect: () => navigate(r.licenseBatches(slug)),
+                        },
+                      ]
+                    : []),
                 ]
-              : []),
-          ]}
+          }
           refetching={licensesQ.isFetching && !licensesQ.isPending}
         />
       }
       summary={
-        licensesQ.data && licenses.length > 0 ? (
+        licensesQ.data &&
+        (licenses.length > 0 || Object.values(counts).some((n) => n > 0)) ? (
           <>
             {STATES.map((s) => (
               <FacetTile
@@ -527,7 +533,10 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
           onLoadMore: () => void licensesQ.fetchNextPage(),
           onSearchAll: () => void searchAll(),
           searchingAll,
-          serverFacets: Object.keys(serverFilter),
+          onStopSearchAll: () => {
+            stopWalk.current = true;
+          },
+          serverFacets: serverFacetIds(serverFilter),
         }}
         onRetry={() => void licensesQ.refetch()}
         empty={

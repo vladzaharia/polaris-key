@@ -505,11 +505,25 @@ export function decodeLicenseCursor(raw: string): LicenseCursor | null {
   return m ? { activatedAt: Number(m[1]), id: m[2]! } : null;
 }
 
-/** What the list narrows by: holder state, batch and tier (`tier_id`). */
+/** The licence list's computed states, as the console names them (LIC-1). */
+export const LICENSE_LIST_STATES = [
+  "active",
+  "expiring",
+  "expired",
+  "disabled",
+] as const;
+export type LicenseListState = (typeof LICENSE_LIST_STATES)[number];
+
+/**
+ * What the list narrows by: holder state, batch, tier (`tier_id`) and computed state. `state`
+ * needs `now` (epoch seconds), the same clock the counts use.
+ */
 export interface LicenseListFilter {
   holder?: HolderFilter;
   batch?: string;
   tier?: string;
+  state?: LicenseListState;
+  now?: number;
 }
 
 /** The licence list's computed states, as the console names them (LIC-1). */
@@ -540,6 +554,30 @@ function filterSql(
     sql += " AND tier_id = ?";
     params.push(filter.tier);
   }
+  if (filter.state !== undefined && filter.now !== undefined) {
+    const now = filter.now;
+    // The same ladder as `countLicenses`: disabled, then expired, then expiring, else active.
+    switch (filter.state) {
+      case "disabled":
+        sql += " AND status = 'disabled'";
+        break;
+      case "expired":
+        sql +=
+          " AND status <> 'disabled' AND expires_at IS NOT NULL AND expires_at <= ?";
+        params.push(now);
+        break;
+      case "expiring":
+        sql +=
+          " AND status <> 'disabled' AND expires_at IS NOT NULL AND expires_at > ? AND expires_at - ? <= ?";
+        params.push(now, now, EXPIRES_SOON_SECONDS);
+        break;
+      case "active":
+        sql +=
+          " AND status <> 'disabled' AND (expires_at IS NULL OR expires_at - ? > ?)";
+        params.push(now, EXPIRES_SOON_SECONDS);
+        break;
+    }
+  }
   return sql;
 }
 
@@ -554,7 +592,9 @@ export async function countLicenses(
   now: number,
 ): Promise<{ total: number; counts: LicenseStateCounts }> {
   const params: (string | number)[] = [];
-  const where = filterSql(filter, params);
+  // The tiles count every state of the other filters, so the state filter is left out here.
+  const { state, ...rest } = filter;
+  const where = filterSql(rest, params);
   const rows = await db.all<{ s: keyof LicenseStateCounts; n: number }>(
     `SELECT CASE
         WHEN status = 'disabled' THEN 'disabled'
@@ -575,8 +615,9 @@ export async function countLicenses(
     disabled: 0,
   };
   for (const r of rows) counts[r.s] = r.n;
-  const total =
-    counts.active + counts.expiring + counts.expired + counts.disabled;
+  const total = state
+    ? counts[state]
+    : counts.active + counts.expiring + counts.expired + counts.disabled;
   return { total, counts };
 }
 

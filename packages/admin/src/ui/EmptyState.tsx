@@ -40,6 +40,8 @@ export interface EmptyStateProps {
   onClearFilters?: () => void;
   /** Heading level for the title (default: a paragraph; use 2 on a page whose body this is). */
   headingLevel?: 2 | 3;
+  /** A ref to the title, which then takes programmatic focus (a page moves focus to it). */
+  headingRef?: React.Ref<HTMLElement>;
   /**
    * `inline` sits inside a card (a settings section, a panel, a table): compact and left-aligned,
    * with no illustration, no dashed border of its own and the docs as a text link, so it never
@@ -89,10 +91,18 @@ export function EmptyState({
   filters,
   onClearFilters,
   headingLevel,
+  headingRef,
   variant = "default",
   className,
 }: EmptyStateProps): React.ReactElement {
-  const Title = headingLevel ? (`h${headingLevel}` as const) : "p";
+  const Tag = headingLevel ? (`h${headingLevel}` as const) : "p";
+  const Title = Tag as "p";
+  const focusable = headingRef
+    ? {
+        ref: headingRef as React.Ref<HTMLParagraphElement>,
+        tabIndex: -1,
+      }
+    : {};
   const inline = variant === "inline";
   if (inline && kind !== "service-off") {
     // In a card: one compact, left-aligned block (title, a line of context, actions), never the
@@ -103,7 +113,13 @@ export function EmptyState({
         className={cn("flex flex-col items-start gap-2 py-1", className)}
       >
         <div className="space-y-0.5">
-          <Title className="text-sm font-semibold text-fg-strong">
+          <Title
+            {...focusable}
+            className={cn(
+              "text-sm font-semibold text-fg-strong",
+              headingRef && "outline-hidden",
+            )}
+          >
             {title}
             {kind === "no-results" && filters ? (
               <>
@@ -173,7 +189,13 @@ export function EmptyState({
         <SearchX aria-hidden className="size-8 text-fg-subtle" />
       ) : null}
       <div className="max-w-md space-y-1">
-        <Title className="text-base font-semibold text-fg-strong">
+        <Title
+          {...focusable}
+          className={cn(
+            "text-base font-semibold text-fg-strong",
+            headingRef && "outline-hidden",
+          )}
+        >
           {title}
           {kind === "no-results" && filters ? (
             <>

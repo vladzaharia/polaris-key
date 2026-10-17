@@ -15630,7 +15630,7 @@ paths:
         holder's `email` is the licence's own, never the account's. `?holder=` filters: `floating`,
         `assigned` (in an account or waiting), `waiting`, `inAccount`. LX-28: each also carries
         `batchId` (the batch it was created in, or `null`), and `?batch=` lists one batch's
-        licences; `?tier=` lists one tier's. The first page (no `cursor`) also carries `total` and
+        licences; `?tier=` lists one tier's; `?state=` lists one computed state's. The first page (no `cursor`) also carries `total` and
         `counts`, one grouped read. Platform admins only; admin session cookie.
       parameters:
         - { name: product, in: path, required: true, schema: { type: string } }
@@ -15655,6 +15655,13 @@ paths:
             required: false,
             schema: { type: string },
             description: "Only the licences on this tier id. An unknown id lists none.",
+          }
+        - {
+            name: state,
+            in: query,
+            required: false,
+            schema: { type: string, enum: [active, expiring, expired, disabled] },
+            description: "Only licences in this computed state. `total` is that state's count; `counts` still covers every state.",
           }
         - {
             name: limit,
@@ -15698,7 +15705,7 @@ paths:
                       expired: { type: integer }
                       disabled: { type: integer }
         "400":
-          description: "`holder` is not one of the four values, `limit` is out of range, or `cursor` is not one this list wrote (`bad_request`, `fields` names it)."
+          description: "`holder` or `state` is not one of its values, `limit` is out of range, or `cursor` is not one this list wrote (`bad_request`, `fields` names it)."
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
