@@ -15,6 +15,7 @@ import {
   pageOf,
   PRODUCT_PAGES,
   sectionOf,
+  visibleSections,
   type GlobalPageId,
   type NavFeatures,
   type PageId,
@@ -79,12 +80,28 @@ export function pageTitle(route: Route): string {
   return page.label;
 }
 
+/** Is this route a page the member's role does not include (so NoAccessPage shows)? */
+function knownProductPageRefused(me: Me, route: Route): boolean {
+  if (route.kind === "global") return !canOpenPage(me, route.page, null);
+  if (route.kind !== "product") return false;
+  return (
+    me.products.some((p) => p.slug === route.slug) &&
+    isProductPage(route.page) &&
+    !canOpenPage(me, route.page, route.slug)
+  );
+}
+
 /** `"{page title} · {product} · Polaris Key"`, or `"{page title} · Polaris Key"` off a product. */
 export function documentTitle(
   route: Route,
   productName: string | null,
+  refused = false,
 ): string {
-  return [pageTitle(route), productName, "Polaris Key"]
+  return [
+    refused ? `No access · ${pageTitle(route)}` : pageTitle(route),
+    productName,
+    "Polaris Key",
+  ]
     .filter(Boolean)
     .join(" · ");
 }
@@ -212,9 +229,15 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
     return () => root.removeAttribute("data-service");
   }, [accent]);
 
+  // A page the member's role does not include renders NoAccessPage, so its title says so.
+  const refused =
+    (route.kind === "product" || route.kind === "global") &&
+    page !== null &&
+    knownProductPageRefused(me, route);
   const title = documentTitle(
     route,
     routeSlug && knownProduct ? productName : null,
+    refused,
   );
   React.useEffect(() => {
     document.title = title;
@@ -239,7 +262,20 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
   }, []);
   const [sheetOpen, setSheetOpen] = React.useState(false);
   const [switcherOpen, setSwitcherOpen] = React.useState(false);
-  const { expanded, toggle } = useNavCollapse(group);
+  // A refused or unknown page holds no section: open every group the member can use if there are
+  // three or fewer, else the first, so the way out is in view.
+  const openable =
+    refused && slug !== null
+      ? visibleSections(services)
+          .filter((sec) =>
+            sec.items.some((item) => canOpenPage(me, item.page, slug)),
+          )
+          .map((sec) => sec.key)
+      : [];
+  const { expanded, toggle } = useNavCollapse(
+    group,
+    openable.length <= 3 ? openable : openable.slice(0, 1),
+  );
   const version = usePlatformVersion(canIn(me, "platform"));
 
   const key = viewKey(route);
@@ -258,7 +294,10 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
     desktop.addEventListener("change", onChange);
     return () => desktop.removeEventListener("change", onChange);
   }, []);
-  const announcement = useRouteFocus(key, pageTitle(route));
+  const announcement = useRouteFocus(
+    key,
+    refused ? `No access · ${pageTitle(route)}` : pageTitle(route),
+  );
 
   useGlobalShortcuts({
     openPalette: () => openPalette(),
@@ -562,6 +601,7 @@ function PageContent({
         area={areaOfPage(route.page)}
         slug={route.slug}
         productName={productName}
+        services={services}
       />
     );
   }

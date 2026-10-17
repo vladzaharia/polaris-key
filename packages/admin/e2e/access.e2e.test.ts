@@ -111,16 +111,38 @@ const NOOR = {
   },
 };
 
+/** The same member of a product with a long name: the h1 wraps, nothing scrolls sideways. */
+const LONG = {
+  ...LUCIA,
+  products: [
+    {
+      slug: "diceroll",
+      name: "Starfall Chronicles Remastered",
+      schemaVersion: 2,
+    },
+  ],
+};
+
 const STATES = [
   {
     name: "no-access",
     hash: "#/p/diceroll/license/licenses",
     me: LUCIA,
-    h1: "You don’t have access to Diceroll → Licensing",
+    h1: "You don’t have access to Diceroll , Licensing",
     admins: [
       { name: "Kenji Mori", email: "kenji@example.com", role: "product_admin" },
       { name: "Ada Lindqvist", email: "ada@example.com", role: "superadmin" },
       { name: "Jonas Weber", email: "jonas@example.com", role: "superadmin" },
+    ],
+  },
+  {
+    name: "no-access-long",
+    hash: "#/p/diceroll/license/licenses",
+    me: LONG,
+    h1: "You don’t have access to Starfall Chronicles Remastered , Licensing",
+    admins: [
+      { name: "Kenji Mori", email: "kenji@example.com", role: "product_admin" },
+      { name: "Ada Lindqvist", email: "ada@example.com", role: "superadmin" },
     ],
   },
   {
@@ -136,7 +158,9 @@ const STATES = [
 ] as const;
 
 const SIZES = [
+  { width: 360, height: 780 },
   { width: 390, height: 844 },
+  { width: 1024, height: 800 },
   { width: 1440, height: 1000 },
 ] as const;
 
@@ -190,7 +214,7 @@ async function open(
       products: state.me.products.map((p) => product(p.slug, p.name)),
     },
     "/manage/api/products/diceroll": {
-      product: product("diceroll", "Diceroll"),
+      product: product("diceroll", state.me.products[0]?.name ?? "Diceroll"),
     },
     "/manage/api/access/admins": {
       scope: "product:diceroll",
@@ -252,13 +276,25 @@ describe("NoAccessPage in the browser", () => {
           const page = await open(state, theme, size);
           const h1 = page.getByRole("heading", { level: 1 });
           expect(await h1.count()).toBe(1);
-          expect((await h1.textContent())?.trim()).toBe(state.h1);
+          // The accessible name leaves out the arrow, which is decoration.
+          expect(
+            await page
+              .getByRole("heading", { level: 1, name: state.h1, exact: true })
+              .count(),
+          ).toBe(1);
           expect(
             await page.evaluate(
               () =>
                 document.documentElement.scrollWidth <=
                 document.documentElement.clientWidth,
             ),
+          ).toBe(true);
+          // <main> is the scroller the page-level check cannot see.
+          expect(
+            await page.evaluate(() => {
+              const main = document.querySelector("main")!;
+              return main.scrollWidth <= main.clientWidth;
+            }),
           ).toBe(true);
           expect(await unlabelledScrollers(page)).toEqual([]);
           expect(await smallTargets(page)).toEqual([]);
@@ -278,7 +314,7 @@ describe("NoAccessPage in the browser", () => {
         }, 60_000);
 
   it("keeps its parts in forced colours", async () => {
-    const page = await open(STATES[0], "dark", SIZES[1]);
+    const page = await open(STATES[0], "dark", SIZES[3]);
     await page.emulateMedia({ forcedColors: "active" });
     expect(await forcedColourBreaches(page)).toEqual([]);
     await page.context().close();
