@@ -160,7 +160,7 @@ dropped. The header's **History** button jumps to the trail at the foot.
     follow the [KEK runbook](/docs/operate/platform/runbook/rotate-the-kek/).
   - **Secrets.** Each platform secret as _Set_ or _Not set_, with what it is for and what being
     unset means.
-- **Recently changed.** Each settings change from the platform trail, with who made it and the
+- `Recently changed`. Each settings change from the platform trail, with who made it and the
   value before and after, newest first.
 
 ### When someone else saved first
