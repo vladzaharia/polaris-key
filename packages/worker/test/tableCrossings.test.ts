@@ -31,7 +31,7 @@ import { SERVICE_SLUGS } from "../src/core/services.js";
 import { TABLE_OWNERS } from "../src/db/owners.js";
 import { SRC, stripComments, walkTs } from "./srcScan.js";
 
-type RemovedBy = "permanent" | `P${number}-${number}`;
+type RemovedBy = "permanent" | `P${number}-${number}` | `ST-${number}`;
 
 /** A service's use of a table another service owns: [service, table, removedBy]. */
 const SEAMS: readonly (readonly [string, string, RemovedBy])[] = [
@@ -67,7 +67,8 @@ const WRITE_SEAMS: readonly (readonly [string, string, RemovedBy])[] = [
   ["core/accounts/accountSubjects.ts", "licenses", "P0-20"],
   // The audit row core/notify leaves when a security notice reaches nobody (P0-21).
   ["core/accounts/portalAudit.ts", "portal_audit", "permanent"],
-  ["core/edgeMintApproval.ts", "edge_mint_approvals", "P0-26"],
+  // P0-12's widening rule has four callers across Core, the console, License and the ingest.
+  ["core/edgeMintApproval.ts", "edge_mint_approvals", "permanent"],
   // core/licensing is the licences' home.
   ["core/licensing/grants.ts", "licenses", "permanent"],
   ["core/licensing/issue.ts", "licenses", "permanent"],
@@ -76,9 +77,9 @@ const WRITE_SEAMS: readonly (readonly [string, string, RemovedBy])[] = [
   ["core/ops/overrideMigration.ts", "licenses", "P0-49"],
   ["core/ops/overrideMigration.ts", "override_migration", "P0-49"],
   ["core/ops/overrideMigration.ts", "override_migration_report", "P0-49"],
-  ["core/ops/settingsBackfill.ts", "product_schema", "P0-26"],
-  ["core/ops/settingsBackfill.ts", "profiles", "P0-26"],
-  ["core/ops/settingsBackfill.ts", "tiers", "P0-26"],
+  ["core/ops/settingsBackfill.ts", "product_schema", "P0-49"],
+  ["core/ops/settingsBackfill.ts", "profiles", "P0-49"],
+  ["core/ops/settingsBackfill.ts", "tiers", "P0-49"],
   // The licences' owner store: core/licensing/store.ts is where licence rows are written.
   ["core/licensing/store.ts", "keys_index", "permanent"],
   ["core/licensing/store.ts", "license_profiles", "permanent"],
@@ -91,7 +92,7 @@ const WRITE_SEAMS: readonly (readonly [string, string, RemovedBy])[] = [
   ["core/products/store.ts", "edge_mint_config", "P0-26"],
   ["core/products/store.ts", "oidc_config", "P0-26"],
   ["core/products/store.ts", "product_schema", "P0-26"],
-  ["core/products/store.ts", "profiles", "P0-26"],
+  ["core/products/store.ts", "profiles", "ST-43"],
   ["core/products/store.ts", "provisioning_config", "P0-26"],
   ["core/products/store.ts", "release_config", "P0-26"],
   ["core/products/store.ts", "tiers", "P0-26"],
@@ -99,7 +100,7 @@ const WRITE_SEAMS: readonly (readonly [string, string, RemovedBy])[] = [
   // so moving the adapters means moving the entries (and the generated settings pages) to
   // Identity. P0-19 did not take that move; the lead retags this row to the package that does.
   ["core/settings/columns.ts", "portal_product_settings", "P0-19"],
-  ["core/settingsClaims.ts", "product_schema", "P0-26"],
+  ["core/settingsClaims.ts", "product_schema", "ST-17"],
   // The erasure sweeps (SEC-WP-04).
   ["privacyResidue.ts", "account_tombstones", "permanent"],
   ["privacyResidue.ts", "license_relinks", "permanent"],
@@ -246,9 +247,9 @@ describe("table ownership", () => {
 
   it("each allow-list row names a package that removes it, or is permanent", () => {
     for (const [, , removedBy] of [...SEAMS, ...WRITE_SEAMS])
-      expect(removedBy).toMatch(/^(permanent|P\d+-\d+)$/);
+      expect(removedBy).toMatch(/^(permanent|P\d+-\d+|ST-\d+)$/);
     for (const [, removedBy] of LICENSE_WRITE_SEAMS)
-      expect(removedBy).toMatch(/^(permanent|P\d+-\d+)$/);
+      expect(removedBy).toMatch(/^(permanent|P\d+-\d+|ST-\d+)$/);
     for (const [, table] of [...SEAMS, ...WRITE_SEAMS])
       expect(OWNER.has(table), `${table} is in TABLE_OWNERS`).toBe(true);
   });
