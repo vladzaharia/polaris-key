@@ -58,15 +58,27 @@ This is the half of I-08 that decides which licence a device runs on ([I-04 §G]
 
 ## Acceptance criteria
 
-- [ ] `choice/complete` and `token` answer the same shape (test).
-- [ ] A mint only at Continue; two concurrent Continue presses on one account, and a Continue racing a Discover add, leave exactly one licence; the loser answers `license_choice_required`; an unreachable store mints nothing (tests).
-- [ ] Sign-in never mints while the account holds a usable licence unless `choice.kind` is `create`; Continue without a choice answers 409 when the step was shown (tests).
-- [ ] A grant from another device id answers `invalid_grant`; `choice/devices` answers one `404` for unknown, foreign and non-replaceable licences (tests).
-- [ ] Replace and the portal's Remove share one budget and write the same audit row (test).
-- [ ] With the product's Identity toggle off, every choice route is refused and discovery lists none (test).
-- [ ] Transcripts and mirrors recorded; `errors.json`, parity row, OpenAPI and `routeCoverage` updated; `PROTOCOL_VERSION` unchanged.
-- [ ] Docs in this PR: its part of `features/sign-in/*`, `help/account` and `help/connected-apps`.
+- [x] `choice/complete` and `token` answer the same shape (test).
+- [x] A mint only at Continue; two concurrent Continue presses on one account, and a Continue racing a Discover add, leave exactly one licence; the loser answers `license_choice_required`; an unreachable store mints nothing (tests).
+- [x] Sign-in never mints while the account holds a usable licence unless `choice.kind` is `create`; Continue without a choice answers 409 when the step was shown (tests).
+- [x] A grant from another device id answers `invalid_grant`; `choice/devices` answers one `404` for unknown, foreign and non-replaceable licences (tests).
+- [x] Replace and the portal's Remove share one budget and write the same audit row (test).
+- [x] With the product's Identity toggle off, every choice route is refused and discovery lists none (test).
+- [x] Transcripts and mirrors recorded; `errors.json`, parity row, OpenAPI and `routeCoverage` updated; `PROTOCOL_VERSION` unchanged.
+- [x] Docs in this PR: its part of `features/sign-in/*`, `help/account` and `help/connected-apps`.
 - [ ] The green gate passes, including every drift gate listed in the header.
+
+## Corrections to the brief (code is the fact; 2026-10-17)
+
+- **Account arm (D7).** P0-20's `issueLicense` has only the identity (`sub`) holder. The account arm is a sibling, `issueAccountLicense(db, product, accountId, identity, via, now)` in `core/licensing/issueAccount.ts`: same policy (`identityTier`), provisioning and audit, origin `oidc`, `account_id` set in the insert's batch (`stmtAttachNewLicense`), no `sub`, no key. `accountGrant` is its read-only twin.
+- **Route rows.** The table forbids `bodyCap` on a non-CI row (`serviceRouteTables.test.ts`), so the four `choice/*` rows are `auth: code`, POST, and the handler reads its 4 KiB cap with `readCiJson`.
+- **Key in Continue.** Continue refuses `{kind: "key"}` (and `keep`: a browser has no device): a key is never stored on a code. A key is entered through `choice/complete` only.
+- **Replace on the card path.** Continue validates the intent dry and stores `replaceDeviceId` on the code; `token` runs `planFreeAccountDevice` and the seat claim in one batch (`claimDeviceSeat`'s new `freeing` option, `authorizeDevice`'s `replace`). `racedAfterFree` is the fallback only if the claim cannot join the batch.
+- **`origin` of a choice row** is `signin` (no key, held), `free` (enrolled), `key` or `developer`; `purchase` and `store` need `licenseProvenance` and are a follow-up.
+- **No choice at `complete`** (member absent) is `409 license_choice_required` and keeps the grant; a malformed choice is `400 bad_request`.
+- **App-mode choice due.** A candidate, a Keep, or the no-licence state of a product that accepts keys. A product with License on, no licence and no grant therefore always answers `choose` (state `none`) in app mode; the app can cancel or enter a key.
+- **Transcripts.** `choice-grant-errors.json` records the lapsed grant, a licence outside the view, no choice, and a second complete. The other-device grant and the 31st read need a second device id or 30 identical steps and are worker tests (`identityChoice.test.ts`). The replaced device's next 401 is a worker test too (the recorder has one device id).
+- **Review notes taken (token.ts).** (1) A licence-less device row holding a credential is re-registered only with its own Bearer proof (`403 not_entitled` otherwise). (2) `configured` means only that `authorize` and `token` are served; WIRE-CONTRACT-V4 §12.6 now says clients gate on endpoints. (3) **Not done, follow-up (plan mode):** `redirect_uri` required at `token` when it was sent at authorize (RFC 6749 §4.1.3). The approved I-27 §2.1 and I-08 §3 say "compared exactly when sent"; making it required changes §12.5 rule 1 and the SDK request, so it needs its own plan (proposed owner: I-10a/I-10b for the SDK side, a one-line §12.5 change and a `token` check).
 
 ## Verify
 
