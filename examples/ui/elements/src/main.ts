@@ -46,11 +46,8 @@ function signIn(): void {
   form.input = { ...TIDEWATER };
   document.body.append(form);
   form.show();
-  // The form closes itself after an existing license; Done's Start ends a new one.
-  form.addEventListener("pk-done", () => {
-    form.close();
-    open("ok");
-  });
+  // The app opens behind the sheet; Done's Start closes it.
+  form.addEventListener("pk-done", () => open("ok"));
   form.addEventListener("pk-close", () => form.remove());
 }
 

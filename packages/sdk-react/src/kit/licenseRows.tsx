@@ -224,20 +224,5 @@ export function withChoice(ctx: KitCtx): KitCtx {
     ctx.input.signIn?.presentation === "sheet",
     has,
   );
-  // The license step's layout draws Cancel as text; it is a control here.
-  const cancel =
-    view.component === "LicenseChoice" && view.copy.includes("common.cancel");
-  return {
-    ...ctx,
-    view,
-    licenseRows,
-    ...(cancel
-      ? {
-          chrome: {
-            ...ctx.chrome,
-            controls: [...(ctx.chrome?.controls ?? []), "common.cancel"],
-          },
-        }
-      : {}),
-  };
+  return { ...ctx, view, licenseRows };
 }

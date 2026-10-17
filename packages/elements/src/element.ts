@@ -393,8 +393,15 @@ export abstract class PkElement extends LitElement {
       drafts: { ...input.drafts, ...d },
     });
     switch (field) {
-      case "key":
-        return { keyField: { text: String(value) } };
+      case "key": {
+        // Editing the key clears a refusal of the old one.
+        const a = input.activation;
+        const stale = a && a.result !== "ok" && a.result !== "device-limit";
+        return {
+          keyField: { text: String(value) },
+          ...(stale ? { activation: undefined } : {}),
+        };
+      }
       case "setting":
         return {
           config: (input.config ?? []).map((r) =>
@@ -448,6 +455,11 @@ export abstract class PkElement extends LitElement {
       detail.values = Object.fromEntries(
         (input.config ?? []).map((r) => [r.key, r.value]),
       );
+    if (key === "signin.key.differentKey" && view.component === "Activate") {
+      // Another key: the refusal goes, the field keeps what was typed.
+      this.input = { ...input, activation: undefined } as UiInput;
+      return true;
+    }
     if (key === "settings.advanced") {
       this.input = {
         ...input,

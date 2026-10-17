@@ -69,7 +69,7 @@ const CHOICES: LicenseChoiceView = {
       current: false,
       expiresAt: null,
       state: "full",
-      replace: null,
+      replace: { allowed: true, retryAfter: null },
       freeDeviceUrl: null,
     },
   ],
