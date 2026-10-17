@@ -150,3 +150,19 @@ Then the full green gate in `AGENTS.md`.
 
 What downstream work packages rely on from this one is named in their briefs (the Unblocks row). The role agent sets `--set F-33 in-review` when it hands off. After review, the lead adds the last commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set F-33 done`.
+
+## Progress and continuation (2026-10-17, slice 2)
+
+Branch **wp/F-33-s2**. Corrections from the code:
+
+- Console members are not portal accounts until ST-30, so "console account menu -> Personal tokens" (a member's own tokens) cannot resolve an account yet. Built instead: the Superadmin roster, **Personal tokens** (`#/personal-tokens`, one nav entry), `GET /manage/api/account-tokens` and `DELETE .../:id` (Platform area, session only, `platform_audit` `account_token.revoke`, `revoked_by = admin`).
+- The portal's per-licence mint answers 410; existing `pkeyr_` licence tokens stay listed, honoured and revocable.
+
+Built: portal Account -> Packages (create with step-up, shown once, list, revoke, one setup per product from `feeds` in `GET /api/me/tokens`); per-product pointer row replaces the Package access card; docs (help/packages, features/ship-builds/packages, build/install); threat model; e2e `portalPackages.e2e.test.ts` (360/390/1440, dark and light, axe, CSP, targets).
+
+Still to build:
+
+[ ] New product service tokens as `pkeyci_` with `packages:read` (needs a CI scope, console feeds handler, registry host change; own slice).
+[ ] Serve-time filtering of list documents per ecosystem adapter.
+[ ] The authenticated registry-clients.yml row over two owners.
+[ ] Role-granted and console-member access in personMayRead, and the member's own Personal tokens page (ST-30/ST-31).
