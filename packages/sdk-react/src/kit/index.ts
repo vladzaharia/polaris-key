@@ -25,6 +25,9 @@ export {
   type PolarisKeyGateProps,
 } from "./component.js";
 export { adoptKitStyles, kitStylesCss } from "./styles.js";
+// Register a launch locale's copy pack up front, for a host whose bundler does not split the
+// lazily loaded packs (the kit otherwise fetches a pack the first time its locale is asked for).
+export { provideTable as provideKitCopy } from "./contract.js";
 // The one sign-in form (SIGN-IN.md §3.17): the drop-in form, its step parts, its headless hook.
 export {
   ReplaceDevice,
