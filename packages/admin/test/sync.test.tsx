@@ -52,7 +52,7 @@ const services = (sync: boolean): ProductDetail["services"] => ({
   distribution: { enabled: false },
   update: { enabled: false },
   identity: { enabled: true },
-  sync: { enabled: sync },
+  sync: { enabled: sync }, commerce: { enabled: false },
 });
 
 const PRODUCT = (sync: boolean): ProductDetail => ({

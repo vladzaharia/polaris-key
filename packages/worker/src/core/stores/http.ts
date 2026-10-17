@@ -8,7 +8,7 @@
  * The global `fetch` is late-bound, so a test that swaps it is honoured.
  */
 
-import { isRedirect, readCappedText } from "../../../core/readCapped.js";
+import { isRedirect, readCappedText } from "../readCapped.js";
 
 /** The most of one store response read. Store answers here are single small objects. */
 export const MAX_STORE_RESPONSE_BYTES = 256 * 1024;

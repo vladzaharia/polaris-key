@@ -124,14 +124,6 @@ export const TABLE_OWNERS: Readonly<Record<string, readonly string[]>> = {
     "dist_connector_objects",
     "dist_feed_files",
     "dist_readiness",
-    "dist_store_products",
-    "dist_purchase_bindings",
-    "dist_purchase_binding_aliases",
-    "dist_purchases",
-    // LX-08: the licensing model's commerce tables.
-    "dist_store_product_entitlements",
-    "dist_holder_bindings",
-    "dist_binding_aliases",
     "dist_registry_owners",
     "dist_registry_feeds",
     "dist_registry_policy",
@@ -141,6 +133,17 @@ export const TABLE_OWNERS: Readonly<Record<string, readonly string[]>> = {
     "dist_listing_release_notes",
     "dist_listing_overrides",
     "store_edit_leases",
+  ],
+  // CM-29: Commerce's store-product map, purchases and holder bindings (names unchanged, no migration).
+  commerce: [
+    "dist_store_products",
+    "dist_purchase_bindings",
+    "dist_purchase_binding_aliases",
+    "dist_purchases",
+    // LX-08: the licensing model's commerce tables.
+    "dist_store_product_entitlements",
+    "dist_holder_bindings",
+    "dist_binding_aliases",
   ],
   update: ["update_feed_state", "update_feed_ceiling", "update_feed_docs"],
   identity: [

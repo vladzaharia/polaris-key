@@ -150,7 +150,6 @@ import {
 import { APP_DELIVERABLE_ID } from "@polaris-key/manifest";
 import { CONNECTORS, connectorOf } from "./connectors/index.js";
 import { handleUpdateHealthAdmin } from "./updateHealthAdmin.js";
-import { handleCommerceAdmin } from "./commerce/admin.js";
 import {
   packageFeedsOf,
   stmtSetPackageFeeds,
@@ -230,7 +229,6 @@ export async function handleDistributionAdmin(
     );
   }
   if (rest[0] === "update-health") return handleUpdateHealthAdmin(ctx);
-  if (rest[0] === "commerce") return handleCommerceAdmin(ctx);
   if (rest[0] === "package-feeds") return handlePackageFeedsAdmin(ctx);
   if (rest[0] === "listing") return handleListingAdmin(ctx);
   if (rest[0] === "storefronts") {

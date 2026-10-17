@@ -134,13 +134,6 @@ this page or fails the freshness gate.
 | `dist_connector_objects` | 0041_distribution_connectors.sql | `product`, `connector`, `object_type`, `object_id`, `outlet_id`, `release_id`, `build_id`, `store_state`, `state`, `ref_json`, `detail_json`, `terminal`, `first_seen_at`, `updated_at`, `polled_at` |
 | `dist_feed_files` | 0043_storefront_feeds.sql | `product`, `feed`, `channel`, `path`, `sha256`, `size`, `content_type`, `updated_at` |
 | `dist_readiness` | 0048_a_dist_readiness_blob_gc.sql | `product`, `app_release_id`, `outlet_id`, `blocking_pack_release_id`, `state`, `detail_json`, `source`, `override_reason`, `computed_at`, `updated_at`, `updated_by` |
-| `dist_store_products` | 0052_commerce.sql | `product`, `store`, `store_product_id`, `deliverable_id`, `flag`, `source`, `modified_at`, `modified_by`, `grants_kind (0105)`, `base_tier_id (0105)` |
-| `dist_purchase_bindings` | 0052_commerce.sql | `product`, `binding_id`, `license_id`, `created_at` |
-| `dist_purchase_binding_aliases` | 0073_dist_purchase_binding_aliases.sql | `product`, `binding_id`, `license_id`, `from_license_id`, `created_at` |
-| `dist_purchases` | 0052_commerce.sql | `product`, `store`, `purchase_key_hash`, `store_product_id`, `license_id`, `state`, `environment`, `first_seen`, `last_verified`, `detail_json`, `grant_id (0105)` |
-| `dist_store_product_entitlements` | 0105_l_licensing_commerce.sql | `product`, `store`, `store_product_id`, `key`, `value_json` |
-| `dist_holder_bindings` | 0105_l_licensing_commerce.sql | `product`, `holder_kind`, `holder_id`, `binding_id`, `created_at` |
-| `dist_binding_aliases` | 0105_l_licensing_commerce.sql | `product`, `binding_id`, `holder_kind`, `holder_id`, `created_at` |
 | `dist_registry_owners` | 0058_d_registry.sql | `product`, `enabled`, `version`, `updated_at`, `updated_by` |
 | `dist_registry_feeds` | 0058_d_registry.sql | `product`, `ecosystem`, `enabled`, `access_mode`, `namespace_json`, `max_package_bytes`, `upstream`, `claims_json`, `ext_json`, `version`, `updated_at`, `updated_by` |
 | `dist_registry_policy` | 0058_d_registry.sql | `ecosystem`, `enabled`, `max_package_bytes_ceiling`, `version`, `updated_at`, `updated_by` |
@@ -150,6 +143,18 @@ this page or fails the freshness gate.
 | `dist_listing_release_notes` | 0065_dist_listing_model.sql | `product`, `release_id`, `locale`, `text`, `short`, `source`, `modified_at`, `modified_by` |
 | `dist_listing_overrides` | 0065_dist_listing_model.sql | `product`, `store`, `locale`, `field`, `value_json`, `source`, `modified_at`, `modified_by` |
 | `store_edit_leases` | 0070_store_edit_leases.sql | `store`, `app`, `holder`, `purpose`, `actor`, `acquired_at`, `expires_at` |
+
+## commerce
+
+| Table | Since | Columns (ALTERs annotated with their migration) |
+| --- | --- | --- |
+| `dist_store_products` | 0052_commerce.sql | `product`, `store`, `store_product_id`, `deliverable_id`, `flag`, `source`, `modified_at`, `modified_by`, `grants_kind (0105)`, `base_tier_id (0105)` |
+| `dist_purchase_bindings` | 0052_commerce.sql | `product`, `binding_id`, `license_id`, `created_at` |
+| `dist_purchase_binding_aliases` | 0073_dist_purchase_binding_aliases.sql | `product`, `binding_id`, `license_id`, `from_license_id`, `created_at` |
+| `dist_purchases` | 0052_commerce.sql | `product`, `store`, `purchase_key_hash`, `store_product_id`, `license_id`, `state`, `environment`, `first_seen`, `last_verified`, `detail_json`, `grant_id (0105)` |
+| `dist_store_product_entitlements` | 0105_l_licensing_commerce.sql | `product`, `store`, `store_product_id`, `key`, `value_json` |
+| `dist_holder_bindings` | 0105_l_licensing_commerce.sql | `product`, `holder_kind`, `holder_id`, `binding_id`, `created_at` |
+| `dist_binding_aliases` | 0105_l_licensing_commerce.sql | `product`, `binding_id`, `holder_kind`, `holder_id`, `created_at` |
 
 ## update
 

@@ -119,7 +119,8 @@
                       "accountPortal": "https://key.plrs.im/#/p/djdl"
                     }
                   },
-                  "sync": { "enabled": false }
+                  "sync": { "enabled": false },
+                  "commerce": { "enabled": false }
                 }
               }
             }

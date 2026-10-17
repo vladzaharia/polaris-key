@@ -77,7 +77,6 @@ import { connectorOf } from "./connectors/index.js";
 import { handleSentryWebhook } from "./sentry.js";
 import { handleFeedRoutes } from "./feeds/index.js";
 import { handleDownloadModel } from "./page/index.js";
-import { handleCommerceRoutes, isCommerceRoute } from "./commerce/index.js";
 import {
   MAX_LISTING_ASSETS_BODY_BYTES,
   registerListingAssets,
@@ -102,10 +101,6 @@ export async function handleDistributionRoutes(
     if (!verb || req.method !== "POST") return null;
     return handleCiRollout(ctx, rest[1] as string, rest[2] as string, verb);
   }
-
-  // The commerce bridge (P6-01): the binding and claim routes and the two store-notification
-  // hooks. `null` (Core's not-found) unless License is on and the store is set up.
-  if (isCommerceRoute(rest)) return handleCommerceRoutes(ctx);
 
   // A store webhook. `null` (Core's not-found) for an unknown connector, one without a webhook,
   // or a product the connector is not set up for — the connector decides the last.

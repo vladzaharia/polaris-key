@@ -755,24 +755,18 @@ describe("transitive reach (blocking)", () => {
 // ── The store infrastructure (P0-27a) ────────────────────────────────────────────────────────
 
 describe("the store infrastructure (P0-27a)", () => {
-  /** The Apple connector framework Commerce's catalog sync still drives (`ConnectorControl`,
-   *  `Flow`): P0-27 folds it into the store adapter and removes both rows. */
-  const COMMERCE_CONNECTOR_SEAMS = [
-    "services/distribution/commerce/appleCatalog.ts|../connectors/asc/controls.js",
-    "services/distribution/commerce/appleCatalog.ts|../connectors/asc/flow.js",
-  ];
-
   it("Commerce reaches a store's client, credentials and events only through core/stores/", () => {
+    // CM-29 retired the two Apple connector seams P0-27a left: the IAP catalog flows live in
+    // Distribution (`connectors/asc/iapCatalog.ts`) and read Commerce's map through the
+    // `storeProducts` hook, so nothing under services/commerce reaches a connector.
     const found = new Set<string>();
-    for (const full of walkTs(
-      join(SRC, "services", "distribution", "commerce"),
-    )) {
+    for (const full of walkTs(join(SRC, "services", "commerce"))) {
       for (const specifier of importsOf(readFileSync(full, "utf8"))) {
         if (specifier.includes("connectors/"))
           found.add(`${srcRel(full)}|${specifier}`);
       }
     }
-    expect([...found].sort()).toEqual(COMMERCE_CONNECTOR_SEAMS);
+    expect([...found].sort()).toEqual([]);
   });
 
   it("core/stores imports no service (the layer test, named for the move)", () => {

@@ -37,6 +37,18 @@ import type { ProductPublic } from "../products.js";
 export const STORES = ["app-store", "play", "steam"] as const;
 export type Store = (typeof STORES)[number];
 
+/** A store product id per store: an App Store product id, a Play product id (SKU), or a Steam
+ *  DLC app id. */
+const STORE_PRODUCT_ID: Record<Store, RegExp> = {
+  "app-store": /^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/,
+  play: /^[a-z0-9][a-z0-9._]{0,139}$/,
+  steam: /^[1-9][0-9]{0,9}$/,
+};
+
+export function isStoreProductId(store: Store, id: unknown): id is string {
+  return typeof id === "string" && STORE_PRODUCT_ID[store].test(id);
+}
+
 export function isStore(v: unknown): v is Store {
   return typeof v === "string" && (STORES as readonly string[]).includes(v);
 }

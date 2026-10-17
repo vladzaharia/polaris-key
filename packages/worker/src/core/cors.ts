@@ -141,8 +141,8 @@ export const CORS_SERVICE_PATHS: readonly string[] = [
   // SP-16: the commerce bridge (P6-01) for a bearer-mode page. Both take the device bearer
   // (never ambient), so a listed origin reaches only what that page's own device token already
   // can (THREAT-MODEL, the commerce bridge's browser-pages note). The store hooks beside them stay uncovered.
-  "distribution/commerce/binding",
-  "distribution/commerce/claim",
+  "commerce/binding",
+  "commerce/claim",
   "update/appcast.xml",
   "update/{channel}/appcast.xml",
   "update/{channel}/feed.jws",

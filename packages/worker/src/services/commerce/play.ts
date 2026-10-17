@@ -32,30 +32,30 @@ import {
   jwtVerify,
   type JSONWebKeySet,
 } from "jose";
-import { parseJsonObject } from "../../../platform/json.js";
-import type { Db } from "../../../db/types.js";
-import type { Env } from "../../../platform/env.js";
+import { parseJsonObject } from "../../platform/json.js";
+import type { Db } from "../../db/types.js";
+import type { Env } from "../../platform/env.js";
 import {
   checkOutletCredentialPin,
   listOutletCredentials,
-} from "../../../core/outletCredentials.js";
+} from "../../core/outletCredentials.js";
 import {
   googleAccessToken,
   platformGoogleAccessToken,
-} from "../../../core/outletTokens.js";
-import { parsePlatformCredentialHandle } from "../../../core/platformCredentials.js";
-import { resolvePlatformStoreSetting } from "../../../core/platformStoreSettings.js";
-import { platformFallback } from "../../../core/stores/platformFallback.js";
-import { readCappedText } from "../../../core/readCapped.js";
+} from "../../core/outletTokens.js";
+import { parsePlatformCredentialHandle } from "../../core/platformCredentials.js";
+import { resolvePlatformStoreSetting } from "../../core/platformStoreSettings.js";
+import { platformFallback } from "../../core/stores/platformFallback.js";
+import { readCappedText } from "../../core/readCapped.js";
 import {
   ANDROID_PUBLISHER_ORIGIN,
   ANDROID_PUBLISHER_SCOPE,
   GoogleApiClient,
   PlayError,
-} from "../../../core/stores/play/client.js";
+} from "../../core/stores/play/client.js";
 import type { PlaySettings } from "./settings.js";
 import { normaliseBinding, type VerifiedPurchase } from "./state.js";
-import { StoreUnavailable } from "./http.js";
+import { StoreUnavailable } from "../../core/stores/http.js";
 
 export const GOOGLE_JWKS_URL = "https://www.googleapis.com/oauth2/v3/certs";
 export const GOOGLE_PUSH_ISSUERS = [

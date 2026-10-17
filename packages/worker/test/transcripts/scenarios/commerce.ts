@@ -24,8 +24,8 @@ import {
   type Scenario,
 } from "../world.js";
 import { putOutletCredential } from "../../../src/core/outletCredentials.js";
-import { writeCommerceSettings } from "../../../src/services/distribution/commerce/settings.js";
-import { upsertStoreProduct } from "../../../src/services/distribution/commerce/state.js";
+import { writeCommerceSettings } from "../../../src/services/commerce/settings.js";
+import { upsertStoreProduct } from "../../../src/services/commerce/state.js";
 import {
   SteamFake,
   STEAM_APP,
@@ -44,7 +44,7 @@ export const commerceClaim: Scenario = {
   record: () =>
     pinned("commerce-claim", async (pin) => {
       const world = await productWorld(
-        servicesOn("license", "config", "release", "distribution"),
+        servicesOn("license", "config", "release", "distribution", "commerce"),
       );
       const { key } = await seedLicense(world);
       const token = await activated(world, key);
@@ -125,7 +125,7 @@ export const commerceClaim: Scenario = {
           async (s) => {
             const res = await s.send({
               method: "GET",
-              path: `/${PRODUCT}/distribution/commerce/binding`,
+              path: `/${PRODUCT}/commerce/binding`,
               bearer: "token",
             });
             expect(res.status).toBe(200);
@@ -162,7 +162,7 @@ export const commerceClaim: Scenario = {
             async (s) => {
               await s.send({
                 method: "POST",
-                path: `/${PRODUCT}/distribution/commerce/claim`,
+                path: `/${PRODUCT}/commerce/claim`,
                 bearer: "token",
                 body: { store: "steam", ticket, dlcAppId: STEAM_DLC },
                 expectBody: {

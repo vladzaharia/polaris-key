@@ -30,22 +30,24 @@
  * `dist_connector_events`, and on the purchase key hash in `dist_purchases`.
  */
 
-import type { ServiceContext } from "../../../core/registry.js";
-import { errorResponse, json, wireError } from "../../../core/errors.js";
-import { bearer } from "../../../platform/http.js";
-import { parseJsonObject } from "../../../platform/json.js";
-import { licenseUsable, validateDeviceToken } from "../../../core/devices.js";
-import { trustRefusal } from "../../../core/trust/deviceTrust.js";
-import type { DeviceRow } from "../../../core/repo.js";
-import { sha256Hex } from "../../../platform/hash.js";
-import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";
-import { readCappedText } from "../../../core/readCapped.js";
-import { isStore, type Store } from "../../../core/licensing/storeGrants.js";
+import type { ServiceContext } from "../../core/registry.js";
+import { errorResponse, json, wireError } from "../../core/errors.js";
+import { bearer } from "../../platform/http.js";
+import { parseJsonObject } from "../../platform/json.js";
+import { licenseUsable, validateDeviceToken } from "../../core/devices.js";
+import { trustRefusal } from "../../core/trust/deviceTrust.js";
+import type { DeviceRow } from "../../core/repo.js";
+import { sha256Hex } from "../../platform/hash.js";
+import { clientNetwork, rateLimitOk } from "../../core/rateLimit.js";
+import { readCappedText } from "../../core/readCapped.js";
+import { STORE_HOOK } from "../../core/stores/hooks.js";
+import { isStore, type Store } from "../../core/licensing/storeGrants.js";
 import {
+  APP_STORE_EVENTS,
   eventSeen,
   recordEvent,
   type ConnectorEventOutcome,
-} from "../../../core/stores/events.js";
+} from "../../core/stores/events.js";
 import {
   APPLE_ACTED_TYPES,
   AppleRejected,
@@ -97,7 +99,7 @@ import {
   type RecordOutcome,
   type VerifiedPurchase,
 } from "./state.js";
-import { StoreUnavailable } from "./http.js";
+import { StoreUnavailable } from "../../core/stores/http.js";
 
 /** A claim body: a StoreKit JWS is the largest member (a few KiB). */
 export const MAX_CLAIM_BODY = 32 * 1024;
@@ -115,34 +117,31 @@ export const HOOK_IP_RATE = { limit: 60, windowSec: 60 } as const;
 /** An event that ended `failed` or `unresolved` is processed again when redelivered. */
 const REDELIVERABLE = new Set(["failed", "unresolved"]);
 
-export const APP_STORE_EVENTS = "app-store-notifications";
+export { APP_STORE_EVENTS };
 export const PLAY_EVENTS = "play-rtdn";
 
-/** Is `rest` (after `/distribution`) one of the commerce routes? */
-export function isCommerceRoute(rest: readonly string[]): boolean {
-  return (
-    (rest[0] === "commerce" &&
-      rest.length === 2 &&
-      (rest[1] === "binding" || rest[1] === "claim")) ||
-    (rest[0] === "hooks" &&
-      rest.length === 2 &&
-      (rest[1] === "app-store" || rest[1] === "play-rtdn"))
-  );
-}
-
+/**
+ * Commerce's device routes and the two store notification hooks (CM-29). `rest` is the path after
+ * `/<p>/commerce`: `binding` and `claim` are the device routes. The hooks are canonical at
+ * `/<p>/distribution/hooks/{app-store,play-rtdn}` (the router matches them and sets
+ * `ctx.storeHook`); `/<p>/commerce/hooks/*` is the registry's not-found. `null` (Core's not-found)
+ * unless License is on.
+ */
 export async function handleCommerceRoutes(
   ctx: ServiceContext,
 ): Promise<Response | null> {
   const { rest, req } = ctx;
   // License off (or no grant writer): commerce does not exist for this product.
   if (!ctx.storeGrants || !ctx.product.services.license?.enabled) return null;
-  if (rest[0] === "commerce" && rest[1] === "binding")
+  if (rest.length === 1 && rest[0] === "binding")
     return req.method === "GET" ? handleBinding(ctx) : null;
-  if (rest[0] === "commerce" && rest[1] === "claim")
+  if (rest.length === 1 && rest[0] === "claim")
     return req.method === "POST" ? handleClaim(ctx) : null;
-  if (rest[0] === "hooks" && rest[1] === "app-store")
+  if (ctx.storeHook !== true || rest.length !== 2 || rest[0] !== "hooks")
+    return null;
+  if (rest[1] === STORE_HOOK.app_store)
     return req.method === "POST" ? handleAppStoreHook(ctx) : null;
-  if (rest[0] === "hooks" && rest[1] === "play-rtdn")
+  if (rest[1] === STORE_HOOK.play)
     return req.method === "POST" ? handlePlayHook(ctx) : null;
   return null;
 }

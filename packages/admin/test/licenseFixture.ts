@@ -222,7 +222,7 @@ export const SERVICES: ServicesResponse = {
     distribution: { enabled: false },
     update: { enabled: false },
     identity: { enabled: false },
-    sync: { enabled: false },
+    sync: { enabled: false }, commerce: { enabled: false },
   },
   effectiveRegistration: "requires-license",
   source: "manifest",

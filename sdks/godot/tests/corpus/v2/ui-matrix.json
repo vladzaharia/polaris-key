@@ -93,7 +93,8 @@
       { "slug": "distribution", "requires": ["release"] },
       { "slug": "update", "requires": ["distribution"] },
       { "slug": "identity", "requires": [] },
-      { "slug": "sync", "requires": ["config", "identity"] }
+      { "slug": "sync", "requires": ["config", "identity"] },
+      { "slug": "commerce", "requires": ["license"] }
     ],
     "serviceDependencies": {
       "PolarisKeyGate": ["license"],
@@ -1121,7 +1122,8 @@
           "release",
           "distribution",
           "identity",
-          "sync"
+          "sync",
+          "commerce"
         ],
         "toast": { "kind": "update" }
       },
@@ -1252,7 +1254,14 @@
     {
       "name": "Welcome: Identity off",
       "input": {
-        "services": ["license", "config", "release", "distribution", "update"],
+        "services": [
+          "license",
+          "config",
+          "release",
+          "distribution",
+          "update",
+          "commerce"
+        ],
         "capabilities": { "signIn": false }
       },
       "expect": {
@@ -4203,7 +4212,14 @@
     {
       "name": "SignIn: Identity off",
       "input": {
-        "services": ["license", "config", "release", "distribution", "update"],
+        "services": [
+          "license",
+          "config",
+          "release",
+          "distribution",
+          "update",
+          "commerce"
+        ],
         "capabilities": { "signIn": false }
       },
       "expect": { "component": "SignIn", "state": "hidden", "copy": [] }
@@ -4873,7 +4889,14 @@
     {
       "name": "SignInHandoff: Identity off",
       "input": {
-        "services": ["license", "config", "release", "distribution", "update"],
+        "services": [
+          "license",
+          "config",
+          "release",
+          "distribution",
+          "update",
+          "commerce"
+        ],
         "capabilities": { "signIn": false }
       },
       "expect": { "component": "SignInHandoff", "state": "hidden", "copy": [] }
@@ -7649,7 +7672,14 @@
     {
       "name": "LicenseChoice: Identity off",
       "input": {
-        "services": ["license", "config", "release", "distribution", "update"],
+        "services": [
+          "license",
+          "config",
+          "release",
+          "distribution",
+          "update",
+          "commerce"
+        ],
         "capabilities": { "signIn": false }
       },
       "expect": { "component": "LicenseChoice", "state": "hidden", "copy": [] }
@@ -8737,7 +8767,8 @@
           "release",
           "distribution",
           "identity",
-          "sync"
+          "sync",
+          "commerce"
         ]
       },
       "expect": { "component": "UpdatePrompt", "state": "hidden", "copy": [] }
@@ -8890,7 +8921,8 @@
           "release",
           "distribution",
           "identity",
-          "sync"
+          "sync",
+          "commerce"
         ]
       },
       "expect": { "component": "UpdateProgress", "state": "hidden", "copy": [] }
@@ -9015,7 +9047,9 @@
     },
     {
       "name": "ReleaseNotes: Release off",
-      "input": { "services": ["license", "config", "identity", "sync"] },
+      "input": {
+        "services": ["license", "config", "identity", "sync", "commerce"]
+      },
       "expect": { "component": "ReleaseNotes", "state": "hidden", "copy": [] }
     }
   ],
@@ -9161,7 +9195,14 @@
     {
       "name": "AccountAndLicense: Identity off",
       "input": {
-        "services": ["license", "config", "release", "distribution", "update"],
+        "services": [
+          "license",
+          "config",
+          "release",
+          "distribution",
+          "update",
+          "commerce"
+        ],
         "capabilities": { "signIn": false },
         "account": { "signedIn": false }
       },
@@ -9218,7 +9259,8 @@
           "release",
           "distribution",
           "update",
-          "identity"
+          "identity",
+          "commerce"
         ],
         "account": { "signedIn": true, "holder": "account" }
       },
@@ -9250,7 +9292,8 @@
           "release",
           "distribution",
           "identity",
-          "sync"
+          "sync",
+          "commerce"
         ],
         "account": { "signedIn": true, "holder": "account" }
       },
@@ -9280,7 +9323,8 @@
           "release",
           "distribution",
           "update",
-          "identity"
+          "identity",
+          "commerce"
         ],
         "account": { "signedIn": true, "holder": "account" }
       },
@@ -10013,7 +10057,14 @@
     {
       "name": "Settings: Config off",
       "input": {
-        "services": ["license", "release", "distribution", "update", "identity"]
+        "services": [
+          "license",
+          "release",
+          "distribution",
+          "update",
+          "identity",
+          "commerce"
+        ]
       },
       "expect": { "component": "Settings", "state": "hidden", "copy": [] }
     }

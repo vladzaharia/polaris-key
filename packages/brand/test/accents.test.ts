@@ -9,6 +9,7 @@ import { BRAND } from "../src/tokens/primitives.js";
 import { COLOR_RULES, colorViolations } from "../src/tokens/rules.js";
 import {
   ACCENT_FAMILIES,
+  SERVICE_ALIAS,
   SERVICE_FAMILY,
   SERVICE_IDS,
   STATUS_IDS,
@@ -86,9 +87,13 @@ describe("pairwise distinctness", () => {
   );
 
   it("every section has its own family (Distribution and Update no longer share green)", () => {
-    const families = SERVICE_IDS.map((id) => SERVICE_FAMILY[id]);
-    expect(new Set(families).size).toBe(SERVICE_IDS.length);
+    // B1 (2026-10-09): exactly one declared shared pair, Commerce with Distribution.
+    const owners = SERVICE_IDS.filter((id) => !(id in SERVICE_ALIAS));
+    const families = owners.map((id) => SERVICE_FAMILY[id]);
+    expect(new Set(families).size).toBe(owners.length);
     expect([...families].sort()).toEqual([...ACCENT_FAMILIES].sort());
+    expect(SERVICE_ALIAS).toEqual({ commerce: "distribution" });
+    expect(SERVICE_FAMILY.commerce).toBe(SERVICE_FAMILY.distribution);
     expect(SERVICE_FAMILY.update).toBe("tangerine");
     expect(SERVICE_FAMILY.config).toBe("yellow");
     expect(SERVICE_FAMILY.license).toBe("chartreuse");
@@ -121,9 +126,13 @@ export const DE00_FLOORS = { services: 17.5, platform: 13, references: 17.5 };
 
 describe("CIEDE2000 distinctness", () => {
   const services = SERVICE_IDS.filter((s) => s !== "core");
+  // Commerce is Distribution's green by decision (B1), so that one pair is skipped.
   const pairs = THEMES.flatMap((theme) =>
     services.flatMap((a, i) =>
-      services.slice(i + 1).map((b) => [theme, a, b] as const),
+      services
+        .slice(i + 1)
+        .filter((b) => SERVICE_ALIAS[b] !== a && SERVICE_ALIAS[a] !== b)
+        .map((b) => [theme, a, b] as const),
     ),
   );
   it.each(pairs)(

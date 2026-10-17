@@ -26,7 +26,7 @@
           {
             "request": {
               "method": "GET",
-              "path": "/djdl/distribution/commerce/binding",
+              "path": "/djdl/commerce/binding",
               "headers": {
                 "x-pkey-device": "{deviceId}",
                 "x-pkey-version": "{version}",
@@ -92,7 +92,7 @@
           {
             "request": {
               "method": "POST",
-              "path": "/djdl/distribution/commerce/claim",
+              "path": "/djdl/commerce/claim",
               "headers": {
                 "x-pkey-device": "{deviceId}",
                 "x-pkey-version": "{version}",
@@ -159,7 +159,7 @@
           {
             "request": {
               "method": "POST",
-              "path": "/djdl/distribution/commerce/claim",
+              "path": "/djdl/commerce/claim",
               "headers": {
                 "x-pkey-device": "{deviceId}",
                 "x-pkey-version": "{version}",

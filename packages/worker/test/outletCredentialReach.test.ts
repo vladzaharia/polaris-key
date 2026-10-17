@@ -154,7 +154,7 @@ const PLATFORM_TEAM_PURPOSE_ALLOW_FILES = [
   "src/services/distribution/connectors/asc/platform.ts",
   "src/services/distribution/connectors/play/platform.ts",
   "src/services/distribution/connectors/msstore/platform.ts",
-  "src/services/distribution/commerce/steam.ts", // inside fetchSteamApps only (checked below)
+  "src/services/commerce/steam.ts", // inside fetchSteamApps only (checked below)
 ];
 const PLATFORM_OPENER_ALLOW_FILES = [
   "src/core/platformCredentials.ts",
@@ -163,7 +163,7 @@ const PLATFORM_OPENER_ALLOW_FILES = [
   // product's pin before its cache, and the open checks it again.
   "src/core/stores/microsoftStore/credentials.ts",
   // Reviewed (A-16): Steam uses the raw key per call (no token); the open checks the pin.
-  "src/services/distribution/commerce/steam.ts",
+  "src/services/commerce/steam.ts",
 ];
 
 // ── UX-69: the transient path ─────────────────────────────────────────────────────────────────
@@ -309,7 +309,7 @@ function reachViolations(sources: Source[]): string[] {
       team.test(body)
     )
       out.push(`${src.file} builds a team-wide platform purpose`);
-    if (src.file === "src/services/distribution/commerce/steam.ts") {
+    if (src.file === "src/services/commerce/steam.ts") {
       const start = body.indexOf("async function fetchSteamApps(");
       const end = start < 0 ? -1 : body.indexOf("\n}\n", start);
       const outside =
@@ -486,7 +486,7 @@ describe("outlet-credential reach", () => {
           text: 'import { setPlatformPin } from "../../../../core/platformCredentials.js";\nawait setPlatformPin(db, input);',
         },
         {
-          file: "src/services/distribution/commerce/apple.ts",
+          file: "src/services/commerce/apple.ts",
           text: 'import { openPlatformCredential } from "../../../core/platformCredentials.js";\nawait openPlatformCredential(env, db, id, use, p, now);',
         },
       ]),
@@ -495,7 +495,7 @@ describe("outlet-credential reach", () => {
       "src/services/release/sync.ts names a platform credential table",
       'src/core/ingest.ts spells the "platform-credential" seal kind',
       "src/services/distribution/connectors/asc/setup.ts names a platform-credential writer",
-      "src/services/distribution/commerce/apple.ts names the platform-credential opener",
+      "src/services/commerce/apple.ts names the platform-credential opener",
     ]);
   });
 
@@ -507,13 +507,13 @@ describe("outlet-credential reach", () => {
           text: "platformGoogleAccessToken(env, db, { team: actor }, scopes, use, now);",
         },
         {
-          file: "src/services/distribution/commerce/steam.ts",
+          file: "src/services/commerce/steam.ts",
           text: "async function publisherKey() {\n  return open({ team: x });\n}\nasync function fetchSteamApps(o) {\n  return open({ team: o.actor });\n}\n",
         },
       ]),
     ).toEqual([
       "src/services/distribution/connectors/play/run.ts builds a team-wide platform purpose",
-      "src/services/distribution/commerce/steam.ts builds a team-wide platform purpose outside fetchSteamApps",
+      "src/services/commerce/steam.ts builds a team-wide platform purpose outside fetchSteamApps",
     ]);
   });
 

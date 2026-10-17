@@ -1332,6 +1332,7 @@ export const ServiceSlug = {
   update: "update",
   identity: "identity",
   sync: "sync",
+  commerce: "commerce",
 } as const;
 export type ServiceSlug = (typeof ServiceSlug)[keyof typeof ServiceSlug];
 
@@ -1344,6 +1345,7 @@ export const SERVICE_SLUG_VALUES: readonly ServiceSlug[] = [
   "update",
   "identity",
   "sync",
+  "commerce",
 ];
 
 /** The wire contract version (`@polaris-key/protocol/core`). */

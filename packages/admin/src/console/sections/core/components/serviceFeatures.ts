@@ -58,6 +58,8 @@ export const DISABLE_CONSEQUENCES: Record<ServiceSlug, string> = {
   identity:
     "Sign-in through this product stops. Licenses stay attached to their owners’ accounts.",
   sync: "Cloud Sync stops: settings stay on each device and nothing syncs.",
+  commerce:
+    "Commerce’s endpoints answer not-found: no purchase claims, and store refunds do not land until Commerce is back on.",
 };
 
 export function readEnabled(data: ServicesResponse): Enabled {

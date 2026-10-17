@@ -57,6 +57,7 @@ const HOOKS: readonly HookName[] = [
   "delivery",
   "outletCapabilities",
   "licenseProvenance",
+  "storeProducts",
 ];
 
 function servicesWith(on: readonly ServiceSlug[]): ServicesMap {
@@ -307,6 +308,7 @@ describe("hook providers", () => {
       delivery: "distribution",
       outletCapabilities: "distribution",
       licenseProvenance: "license",
+      storeProducts: "commerce",
     };
     for (const name of HOOKS) {
       const providers = [...SERVICES.values()].filter(

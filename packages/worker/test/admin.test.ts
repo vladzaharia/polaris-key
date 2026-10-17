@@ -1348,6 +1348,7 @@ describe("admin services enablement", () => {
     update: { enabled: false },
     identity: { enabled: false },
     sync: { enabled: false },
+    commerce: { enabled: false },
   };
 
   async function world(): Promise<{
@@ -1401,6 +1402,7 @@ describe("admin services enablement", () => {
       update: { enabled: false },
       identity: { enabled: false },
       sync: { enabled: false },
+      commerce: { enabled: false },
     });
     expect(body.effectiveRegistration).toBe("requires-license");
     expect(body.source).toBe("manifest");
@@ -1473,6 +1475,7 @@ describe("admin services enablement", () => {
       update: { enabled: true },
       identity: { enabled: false },
       sync: { enabled: false },
+      commerce: { enabled: false },
     });
     const product = await loadProduct(w.env, w.db, "djdl");
     expect(product?.services.update.enabled).toBe(true);
@@ -1573,7 +1576,7 @@ describe("admin services enablement", () => {
     const w = await world();
     // Defaults: License + Config on, Identity off. Cloud Sync needs Identity.
     const noIdentity = await call(w, "PATCH", "", {
-      services: { sync: { enabled: true } },
+      services: { sync: { enabled: true }, commerce: { enabled: false } },
     });
     expect(noIdentity.status).toBe(422);
     expect(noIdentity.body.errors).toEqual(["sync_requires_identity"]);
@@ -1582,13 +1585,18 @@ describe("admin services enablement", () => {
         config: { enabled: false },
         identity: { enabled: true },
         sync: { enabled: true },
+        commerce: { enabled: false },
       },
     });
     expect(noConfig.status).toBe(422);
     expect(noConfig.body.errors).toContain("sync_requires_config");
     // With both, it turns on; turning off a requirement cascades it off in the same write.
     const on = await call(w, "PATCH", "", {
-      services: { identity: { enabled: true }, sync: { enabled: true } },
+      services: {
+        identity: { enabled: true },
+        sync: { enabled: true },
+        commerce: { enabled: false },
+      },
     });
     expect(on.status).toBe(200);
     const identityOff = await call(w, "PATCH", "", {
@@ -1598,6 +1606,7 @@ describe("admin services enablement", () => {
     expect(identityOff.body.services).toMatchObject({
       identity: { enabled: false },
       sync: { enabled: false },
+      commerce: { enabled: false },
     });
   });
 
@@ -1642,6 +1651,7 @@ describe("admin services enablement", () => {
           update: { enabled: true },
           identity: { enabled: false },
           sync: { enabled: false },
+          commerce: { enabled: false },
         }),
         "manifest",
         NOW,
@@ -1704,6 +1714,7 @@ describe("admin services enablement", () => {
         update: { enabled: true },
         identity: { enabled: true },
         sync: { enabled: false },
+        commerce: { enabled: false },
       }),
       "manifest",
       NOW + 1,
@@ -1822,6 +1833,7 @@ describe("admin product setup: Sparkle warning", () => {
       update: { enabled: opts.update },
       identity: { enabled: false },
       sync: { enabled: false },
+      commerce: { enabled: false },
     };
     await setServices(
       db,

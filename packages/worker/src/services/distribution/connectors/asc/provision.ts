@@ -36,7 +36,7 @@
  * environments the answer carries the fallback — the App Information deep link and the URL to
  * paste — with `persisted: false`. `notifications-url/verify` repeats the read once the operator
  * has pasted it, and the test notification proves delivery end to end: Apple sends `TEST` to the
- * configured URL and the hook stores it (`commerce/index.ts`, `APP_STORE_EVENTS`).
+ * configured URL and the hook stores it (Commerce's `index.ts`, `APP_STORE_EVENTS`).
  *
  * **Testers' emails are sent to Apple once and never stored.** A tester's natural key and request
  * hash carry `testerDigest` (keyed with the pepper and the never-stored Idempotency-Key), the
@@ -79,7 +79,8 @@ import {
   readConnectorSettings,
   writeConnectorSettings,
 } from "../../../../core/stores/settings.js";
-import { APP_STORE_EVENTS } from "../../commerce/index.js";
+import { APP_STORE_EVENTS } from "../../../../core/stores/events.js";
+import { storeHookPath } from "../../../../core/stores/hooks.js";
 import {
   appStoreCredential,
   getTestNotificationStatus,
@@ -87,8 +88,8 @@ import {
   requestTestNotification,
   type AppleServerContext,
   type AppleServerEnvironment,
-} from "../../commerce/apple.js";
-import { StoreUnavailable } from "../../commerce/http.js";
+} from "../../../../core/stores/apple/server.js";
+import { StoreUnavailable } from "../../../../core/stores/http.js";
 import type { AscRun } from "./apply.js";
 import {
   refuse,
@@ -436,7 +437,7 @@ export function appStoreNotificationsUrl(
   origin: string,
   product: string,
 ): string {
-  return `${origin}/${product}/distribution/hooks/app-store`;
+  return `${origin}/${product}/${storeHookPath("app-store")}`;
 }
 
 const ASN_VERSION = "V2";

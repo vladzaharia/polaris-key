@@ -28,7 +28,7 @@ import {
   resolvePlatformCredential,
 } from "../../../../core/platformCredentials.js";
 import { STEAM_NUMERIC_ID } from "../../../../core/stores/steam/client.js";
-import { STEAM_PLATFORM_CREDENTIAL } from "../../commerce/steam.js";
+import { STEAM_PLATFORM_CREDENTIAL } from "../../../../core/stores/steam/publisher.js";
 import { listOutlets } from "../../outlets.js";
 import {
   platformFallback,

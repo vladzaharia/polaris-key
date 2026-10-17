@@ -325,6 +325,7 @@ async function dispatchProductRoute(
       rest: route.rest,
       now,
       ...(route.alias ? { alias: true } : {}),
+      ...(route.storeHook ? { storeHook: true } : {}),
       ...(exec
         ? { waitUntil: (p: Promise<unknown>) => exec.waitUntil(p) }
         : {}),

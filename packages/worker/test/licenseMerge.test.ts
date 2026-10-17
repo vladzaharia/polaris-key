@@ -139,7 +139,7 @@ describe("a licence merge carries store grants, purchases and the binding (LX-03
   });
 
   const claim = (cw: CommerceWorld, token: string, signedTransaction: string) =>
-    route(cw, "POST", "/distribution/commerce/claim", {
+    route(cw, "POST", "/commerce/claim", {
       token,
       body: { store: "app-store", signedTransaction },
     });

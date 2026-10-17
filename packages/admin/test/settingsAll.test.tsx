@@ -65,7 +65,7 @@ const PRODUCT: ProductDetail = {
     distribution: { enabled: true },
     update: { enabled: true },
     identity: { enabled: true },
-    sync: { enabled: true },
+    sync: { enabled: true }, commerce: { enabled: false },
   },
 };
 

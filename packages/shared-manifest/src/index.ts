@@ -174,6 +174,10 @@ const REQUIREMENT_MESSAGES: ReadonlyMap<string, string> = new Map([
     "sync_requires_identity",
     "Cloud Sync needs a signed-in person, so identity must be enabled too.",
   ],
+  [
+    "commerce_requires_license",
+    "The commerce service turns store purchases into licence flags, so license must be enabled too.",
+  ],
 ]);
 
 /** Who may register a device against this product (design spec §2.3). The policy is derived from

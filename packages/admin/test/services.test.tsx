@@ -77,7 +77,7 @@ const state = (over: Partial<ServicesResponse> = {}): ServicesResponse => ({
     distribution: { enabled: false },
     update: { enabled: false },
     identity: { enabled: false },
-    sync: { enabled: false },
+    sync: { enabled: false }, commerce: { enabled: false },
   },
   effectiveRegistration: "requires-license",
   source: "manifest",
@@ -215,7 +215,7 @@ describe("Services feature groups", () => {
         services: {
           ...state().services,
           identity: { enabled: true },
-          sync: { enabled: true },
+          sync: { enabled: true }, commerce: { enabled: false },
         },
       }),
     );
@@ -267,7 +267,7 @@ describe("Services feature groups", () => {
         services: {
           ...state().services,
           identity: { enabled: true },
-          sync: { enabled: true },
+          sync: { enabled: true }, commerce: { enabled: false },
         },
       }),
     );
@@ -307,14 +307,14 @@ describe("Services feature groups", () => {
         services: {
           ...state().services,
           identity: { enabled: true },
-          sync: { enabled: true },
+          sync: { enabled: true }, commerce: { enabled: false },
         },
       }),
     );
     await user.click(screen.getByRole("button", { name: "Retry" }));
     await waitFor(() => expect(updateServices).toHaveBeenCalledTimes(2));
     expect(updateServices).toHaveBeenLastCalledWith("djdl", {
-      services: { sync: { enabled: true } },
+      services: { sync: { enabled: true }, commerce: { enabled: false }, },
     });
     await waitFor(() =>
       expect(screen.queryByText("Something went wrong")).toBeNull(),

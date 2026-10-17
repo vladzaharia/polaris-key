@@ -855,7 +855,7 @@ describe("rule 7: every entry's rbacArea", () => {
     const area = (key: string) => SETTINGS.get(key, "product")?.rbacArea;
     expect(area("core.manifest.authoritative")).toBe("settings");
     expect(area("core.secrets")).toBe("keys");
-    expect(area("distribution.commerce")).toBe("commerce");
+    expect(area("commerce.stores")).toBe("commerce");
     for (const key of [
       "storefront.polarisKey.listed",
       "storefront.polarisKey.audience",

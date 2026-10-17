@@ -911,6 +911,8 @@ function ServiceTile({
       return <IdentityTile slug={slug} />;
     case "sync":
       return <SyncTile slug={slug} />;
+    case "commerce":
+      return <CommerceTile slug={slug} />;
   }
 }
 
@@ -1153,6 +1155,19 @@ function IdentityTile({ slug }: { slug: string }): React.ReactElement {
           </Line>
         </>
       ) : null}
+    </TileFrame>
+  );
+}
+
+function CommerceTile({ slug }: { slug: string }): React.ReactElement {
+  return (
+    <TileFrame
+      service="commerce"
+      href={r.commerce(slug)}
+      linkLabel="In-app purchases"
+      loading={false}
+    >
+      <Line>Store purchases that grant licences and add-ons.</Line>
     </TileFrame>
   );
 }

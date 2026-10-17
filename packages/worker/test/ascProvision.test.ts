@@ -21,7 +21,7 @@ import {
   CSRF_HEADER,
   issueSession,
 } from "../src/core/console/session.js";
-import { APP_STORE_EVENTS } from "../src/services/distribution/commerce/index.js";
+import { APP_STORE_EVENTS } from "../src/services/commerce/bridge.js";
 import { CONSOLE } from "./releaseRoutesFixture.js";
 import {
   APPLE_ID,

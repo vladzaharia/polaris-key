@@ -610,6 +610,17 @@ const unwrap = (d: Docs) => {
 /** One entry per validator error code (asserted complete against the source below). */
 const MUTATIONS: Mutation[] = [
   {
+    // CM-29: Commerce on with License off. The legacy `licensing` module satisfies it too.
+    code: "commerce_requires_license",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) =>
+      (p(d).modules = {
+        config: { enabled: true },
+        commerce: { enabled: true },
+      }),
+  },
+  {
     code: "invalid_trusted_publisher_workflow",
     file: "release",
     schema: "rejects",
