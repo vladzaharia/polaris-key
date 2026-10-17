@@ -41,7 +41,7 @@ import {
 import { linkRepo } from "../src/services/release/linkRepo.js";
 import { resyncRepo } from "../src/services/release/resync.js";
 import { planResync } from "../src/services/release/linkExisting.js";
-import { manifestIngestFor } from "../src/core/registry.js";
+import { ingestFor } from "../src/core/ingest/pipeline.js";
 import { SERVICES } from "../src/mount.js";
 import { withDefaultHead } from "./githubHead.js";
 
@@ -209,7 +209,7 @@ async function linked(profiles: ProfileDecl[], opts: PushOptions = {}) {
     "acme-org/acme-app",
     NOW,
     pkey(productJson(profiles), opts),
-    manifestIngestFor(SERVICES),
+    ingestFor(SERVICES),
   );
   expect(res.ok).toBe(true);
   const { token, session } = await issueSession(
@@ -269,7 +269,7 @@ async function resync(
     SLUG,
     at,
     pkey(productJson(profiles), opts),
-    manifestIngestFor(SERVICES),
+    ingestFor(SERVICES),
   );
   if (!res.ok) throw new Error(`resync refused: ${res.error}`);
   return res;
@@ -590,7 +590,7 @@ describe("a catalog the resync cannot build (R2)", () => {
         }),
         { schema: JSON.stringify({ schemaVersion: 1, entries: [null] }) },
       ),
-      manifestIngestFor(SERVICES),
+      ingestFor(SERVICES),
     );
 
     expect(res.ok).toBe(false);
@@ -627,7 +627,7 @@ function tryResync(
     SLUG,
     at,
     pkey(productJson(profiles), opts),
-    manifestIngestFor(SERVICES),
+    ingestFor(SERVICES),
   );
 }
 
@@ -834,6 +834,7 @@ describe("a manifest never replaces a sealed secret", () => {
           { id: "standard", payload: apiKeyPayload("from-the-manifest") },
         ]),
       ),
+      ingestFor(SERVICES),
     );
 
     expect(plan.ok).toBe(true);

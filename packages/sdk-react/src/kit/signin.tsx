@@ -32,6 +32,12 @@ import {
   type UiInput,
 } from "@polaris-key/ui-core";
 
+import {
+  adaptHandoff,
+  adaptMethods,
+  adaptReplace,
+  HANDOFF_WAITING,
+} from "./adapt.js";
 import { KitRoot, useKit, type KitProps } from "./component.js";
 import {
   FORM_ORDER,
@@ -39,7 +45,8 @@ import {
   type FormInput,
   type FormStep,
 } from "./contract.js";
-import { text } from "./parts.js";
+import { text, type Chrome } from "./parts.js";
+import { withChoice } from "./licenseRows.js";
 import { renderView } from "./views.js";
 
 export type { FormInput, FormStep } from "./contract.js";
@@ -141,6 +148,34 @@ export interface SignInProps extends KitProps {
   onClose?: () => void;
 }
 
+/** The view a step draws: the model's, with the form's drawing rules (no "or" divider, a code
+ *  that says how long it lasts and can be cancelled). */
+const bodyOf = (i: FormInput): ReturnType<typeof formStep>["body"] =>
+  adaptReplace(adaptHandoff(adaptMethods(formStep(i).body)));
+
+/** The code step counts down on its own: the model hands over the seconds left when the code was
+ *  issued, and this keeps them ticking (at 0:00 the view goes to expired, DL14). */
+function useCountdown(input: FormInput): FormInput {
+  const left = input.deviceCode?.secondsLeft;
+  const from = useRef<{ left: number; at: number } | null>(null);
+  const [, tick] = useReducer((n: number) => n + 1, 0);
+  if (left === undefined) from.current = null;
+  else if (from.current === null || from.current.left !== left)
+    from.current = { left, at: Date.now() };
+  const live = left !== undefined && input.deviceCode?.phase === "waiting";
+  useEffect(() => {
+    if (!live) return;
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [live]);
+  if (!live || from.current === null || !input.deviceCode) return input;
+  const secondsLeft = Math.max(
+    0,
+    Math.ceil(from.current.left - (Date.now() - from.current.at) / 1000),
+  );
+  return { ...input, deviceCode: { ...input.deviceCode, secondsLeft } };
+}
+
 /** Steps a step part draws; the form draws all of them. */
 type Steps = readonly string[] | null;
 
@@ -194,14 +229,44 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
   const model = form.model;
   // The device picked in the Replace step (kit-side, as in the elements).
   const [replacePick, setReplacePick] = useState<string | undefined>();
-  const input: FormInput =
+  const picked: FormInput =
     replacePick !== undefined ? { ...form.input, replacePick } : form.input;
+  // The Done line names the license that was chosen (the host gives the holder).
+  const [pickedTier, setPickedTier] = useState<string | undefined>();
+  const named: FormInput =
+    picked.signIn?.outcome === "signedIn" && pickedTier
+      ? {
+          ...picked,
+          account: {
+            signedIn: true,
+            ...(picked.account ?? {}),
+            tier: picked.account?.tier ?? pickedTier,
+          },
+        }
+      : picked;
+  const input = useCountdown(named);
   const sheet = (props.presentation ?? input.signIn?.presentation) === "sheet";
 
   const close = () => {
-    if (model && model.snapshot.session.outcome !== undefined)
-      void model.cancel();
+    const out = model?.snapshot.session.outcome;
+    if (model && out !== undefined && out !== "signedIn") void model.cancel();
     props.onClose?.();
+  };
+  const closeRef = useRef(close);
+  closeRef.current = close;
+  // The host hears the sign-in finished once per sign-in (it can finish its own task).
+  const doneSent = useRef(false);
+  const finish = () => {
+    if (doneSent.current) return;
+    doneSent.current = true;
+    props.onDone?.();
+  };
+  const tierOf = (id: string | null | undefined): string | undefined => {
+    const ch = model?.snapshot.choices;
+    if (!id || !ch) return undefined;
+    return id === "create" || id === "new"
+      ? ch.create?.tierName
+      : ch.choices.find((r) => r.id === id)?.tierName;
   };
 
   /** One control of the form, applied to the live model (plans/I-04.md §G.9's primitives). */
@@ -210,7 +275,7 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
     detail: Record<string, unknown>,
   ): Promise<void> => {
     if (key === "signin.done.start") {
-      props.onDone?.();
+      finish();
       if (sheet) props.onClose?.();
       return;
     }
@@ -234,9 +299,13 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
       case "signInHandoff.newCode":
         return model.retry();
       case "common.cancel":
-        if (s.session.outcome === undefined && sheet) return close();
+        // In a sheet, Cancel leaves it (and drops a sign-in in flight); in the page, it backs out.
+        if (sheet) return close();
         return model.cancel();
       case "signin.choice.continue":
+        // Pressed once: a second press while the license is redeemed does nothing.
+        if (s.session.redeeming) return;
+        setPickedTier(tierOf(s.selected ?? s.choices?.preselected));
         return model.continue();
       case "signin.choice.keyInstead":
         return model.haveKey();
@@ -244,10 +313,22 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
         return model.submitKey(s.keyField?.text ?? "");
       case "signin.replace.open":
       case "signin.replace.openSystem": {
-        const id = s.selected ?? s.choices?.preselected;
+        // A full license names itself; else the pick, the preselected, or the only full one.
+        const full = (s.choices?.choices ?? []).filter(
+          (r) => r.state !== "free",
+        );
+        const id =
+          (typeof detail.licenseId === "string"
+            ? detail.licenseId
+            : undefined) ??
+          s.selected ??
+          s.choices?.preselected ??
+          (full.length === 1 ? full[0]!.id : undefined);
         return id ? model.openReplace(id) : undefined;
       }
       case "signin.replace.confirm":
+        if (s.session.redeeming) return;
+        setPickedTier(tierOf(s.replaceView?.licenseId));
         return typeof detail.deviceId === "string"
           ? model.confirmReplace(detail.deviceId)
           : undefined;
@@ -262,6 +343,7 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
     {
       ...props,
       input,
+      driven: model !== null,
       onAction: (a) => {
         props.onAction?.(a);
         void drive(a.key, a);
@@ -276,7 +358,7 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
         props.onSelect?.(id);
       },
     },
-    (_view, i) => formStep(i).body,
+    (_view, i) => bodyOf(i as FormInput),
     {
       // Replace and continue carries the picked device; Use this license, the license.
       detail: (key, i) => {
@@ -306,6 +388,7 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
   );
 
   const step = formStep(kit.input as FormInput);
+  const body_ = bodyOf(kit.input as FormInput);
   const stepKey = `${step.body.component}.${step.body.state}`;
 
   // The morph: measured after every commit, so a step change animates from the last height.
@@ -323,6 +406,62 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
     morph(card, prev.height, index >= prev.index);
   });
 
+  // The sign-in finished: the host hears it once. An existing license opens the app with the
+  // toast, so its sheet closes by itself; a new one ends on Done.
+  const outcome = input.signIn?.outcome;
+  useEffect(() => {
+    if (outcome !== "signedIn") {
+      doneSent.current = false;
+      return;
+    }
+    finish();
+    if (sheet && props.open && !input.signIn?.issuedNow) closeRef.current();
+  }, [outcome]);
+
+  // Focus follows the step: the new heading takes it when the old control is gone (or the sheet
+  // is open), unless the kit already put it on a field.
+  const firstStep = useRef(true);
+  useEffect(() => {
+    if (firstStep.current) {
+      firstStep.current = false;
+      return;
+    }
+    const root = kit.rootRef.current;
+    const at = document.activeElement;
+    if (!root) return;
+    const lost =
+      at === null ||
+      at === document.body ||
+      (root.contains(at) && at instanceof HTMLButtonElement);
+    if (!lost && !(sheet && props.open)) return;
+    if (at instanceof HTMLInputElement && root.contains(at)) return;
+    root
+      .querySelector<HTMLElement>('[data-part="title"]')
+      ?.focus({ preventScroll: true });
+  }, [stepKey]);
+
+  // `sheet`: Back on a phone closes the sheet (there is no Escape key there).
+  const pushed = useRef(false);
+  const sheetOpen = sheet && props.open === true;
+  useEffect(() => {
+    if (!sheetOpen) return;
+    if (!pushed.current) {
+      history.pushState({ pkSheet: true }, "");
+      pushed.current = true;
+    }
+    const onPop = () => {
+      pushed.current = false;
+      closeRef.current();
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [sheetOpen]);
+  useEffect(() => {
+    if (sheetOpen || !pushed.current) return;
+    pushed.current = false;
+    if (history.state?.pkSheet) history.back();
+  }, [sheetOpen]);
+
   // `sheet`: the dialog follows `open` (showModal makes the page behind inert).
   const dialogRef = useRef<HTMLDialogElement | null>(null);
   useEffect(() => {
@@ -331,6 +470,10 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
     if (props.open && !d.open) {
       if (typeof d.showModal === "function") d.showModal();
       else d.setAttribute("open", "");
+      // The heading takes focus on open, never the close control.
+      d.querySelector<HTMLElement>('[data-part="title"]')?.focus({
+        preventScroll: true,
+      });
     } else if (!props.open && d.open) {
       if (typeof d.close === "function") d.close();
       else d.removeAttribute("open");
@@ -340,7 +483,12 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
   if (kit.view.state === "hidden") return null;
   if (props.steps && !props.steps.includes(kit.view.state)) return null;
 
-  const c = kit.ctxFor(step.body);
+  const waiting =
+    body_.component === "SignInHandoff" &&
+    body_.state === "code" &&
+    kit.copy.has(HANDOFF_WAITING);
+  const chrome: Chrome = waiting ? { meta: [HANDOFF_WAITING] } : {};
+  const c = withChoice(kit.ctxFor(body_, chrome));
   const announce = step.announce.length ? (
     <p className="visually-hidden" role="status">
       {step.announce.map((k) => (
@@ -376,9 +524,37 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
             e.preventDefault();
             close();
           }}
+          onClick={(e) => {
+            // A click on the scrim lands on the dialog itself: it backs out like Escape.
+            if (e.target === e.currentTarget) close();
+          }}
         >
           {announce}
           {body}
+          <button
+            type="button"
+            className="sheet-close"
+            data-part="close"
+            aria-label={
+              kit.copy.has("common.close")
+                ? kit.copy.format("common.close", {})
+                : "Close"
+            }
+            onClick={close}
+          >
+            <svg
+              className="glyph"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              aria-hidden="true"
+              focusable="false"
+            >
+              <path d="M18 6 6 18M6 6l12 12" />
+            </svg>
+          </button>
         </dialog>
       ) : (
         <>

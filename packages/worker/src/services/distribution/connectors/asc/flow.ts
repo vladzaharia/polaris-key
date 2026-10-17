@@ -1,6 +1,6 @@
 /**
  * The plumbing shared by A-17's product-scope App Store Connect flows: A-17d's Distribute
- * (`distribute.ts`) and A-17e's IAP catalog (`../../commerce/appleCatalog.ts`). Moved out of
+ * (`distribute.ts`) and A-17e's IAP catalog (`iapCatalog.ts`). Moved out of
  * `distribute.ts` by A-17e so both import it without importing each other.
  *
  *   - `distributeControl` / `distributeRead`: the `Idempotency-Key` (writes), then P5-02's pinned

@@ -121,6 +121,7 @@ async function services(
         update: { enabled: false },
         identity: { enabled: true },
         sync: { enabled: false },
+        commerce: { enabled: false },
         ...over,
       },
     }),

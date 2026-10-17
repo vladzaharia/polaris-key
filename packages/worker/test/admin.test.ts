@@ -1348,6 +1348,7 @@ describe("admin services enablement", () => {
     update: { enabled: false },
     identity: { enabled: false },
     sync: { enabled: false },
+    commerce: { enabled: false },
   };
 
   async function world(): Promise<{
@@ -1401,6 +1402,7 @@ describe("admin services enablement", () => {
       update: { enabled: false },
       identity: { enabled: false },
       sync: { enabled: false },
+      commerce: { enabled: false },
     });
     expect(body.effectiveRegistration).toBe("requires-license");
     expect(body.source).toBe("manifest");
@@ -1473,6 +1475,7 @@ describe("admin services enablement", () => {
       update: { enabled: true },
       identity: { enabled: false },
       sync: { enabled: false },
+      commerce: { enabled: false },
     });
     const product = await loadProduct(w.env, w.db, "djdl");
     expect(product?.services.update.enabled).toBe(true);
@@ -1547,7 +1550,7 @@ describe("admin services enablement", () => {
     expect(status).toBe(200);
     const row = await getProduct(w.db, "djdl");
     expect(row?.services_json).toBe(
-      '{"license":{"enabled":true},"config":{"enabled":true},"release":{"enabled":true},"distribution":{"enabled":false},"update":{"enabled":false},"identity":{"enabled":false},"sync":{"enabled":false},"zeta":{"enabled":true}}',
+      '{"license":{"enabled":true},"config":{"enabled":true},"release":{"enabled":true},"distribution":{"enabled":false},"update":{"enabled":false},"identity":{"enabled":false},"sync":{"enabled":false},"commerce":{"enabled":false},"zeta":{"enabled":true}}',
     );
     // The console still cannot patch a slug it does not know.
     const bad = await call(w, "PATCH", "", {
@@ -1588,7 +1591,10 @@ describe("admin services enablement", () => {
     expect(noConfig.body.errors).toContain("sync_requires_config");
     // With both, it turns on; turning off a requirement cascades it off in the same write.
     const on = await call(w, "PATCH", "", {
-      services: { identity: { enabled: true }, sync: { enabled: true } },
+      services: {
+        identity: { enabled: true },
+        sync: { enabled: true },
+      },
     });
     expect(on.status).toBe(200);
     const identityOff = await call(w, "PATCH", "", {
@@ -1598,7 +1604,46 @@ describe("admin services enablement", () => {
     expect(identityOff.body.services).toMatchObject({
       identity: { enabled: false },
       sync: { enabled: false },
+      commerce: { enabled: false },
     });
+  });
+
+  it("PATCH refuses Commerce without License; turning License off turns Commerce off in one audit row (CM-29)", async () => {
+    const w = await world();
+    const withoutLicense = await call(w, "PATCH", "", {
+      services: { license: { enabled: false }, commerce: { enabled: true } },
+    });
+    expect(withoutLicense.status).toBe(422);
+    expect(withoutLicense.body.errors).toEqual(["commerce_requires_license"]);
+    const on = await call(w, "PATCH", "", {
+      services: { commerce: { enabled: true } },
+    });
+    expect(on.status).toBe(200);
+    // The confirmation names the dependent before anything is written.
+    const dry = await call(w, "PATCH", "?dryRun=1", {
+      services: { license: { enabled: false } },
+    });
+    expect(JSON.stringify(dry.body)).toContain("commerce");
+    const off = await call(w, "PATCH", "", {
+      services: { license: { enabled: false } },
+    });
+    expect(off.status).toBe(200);
+    expect(off.body.services).toMatchObject({
+      license: { enabled: false },
+      commerce: { enabled: false },
+    });
+    // Turning License back on does not turn Commerce back on.
+    const back = await call(w, "PATCH", "", {
+      services: { license: { enabled: true } },
+    });
+    expect(back.body.services).toMatchObject({ commerce: { enabled: false } });
+    const rows = (await listAudit(w.db, "djdl", { limit: 20 })).filter(
+      (r) =>
+        r.action === "product.services.update" &&
+        (r.summary ?? "").includes("commerce") &&
+        (r.summary ?? "").includes("license"),
+    );
+    expect(rows.length).toBeGreaterThanOrEqual(1);
   });
 
   it("a service's admin context carries Core's hooks, gated on the product's enablement (P2b-01)", async () => {
@@ -1642,6 +1687,7 @@ describe("admin services enablement", () => {
           update: { enabled: true },
           identity: { enabled: false },
           sync: { enabled: false },
+          commerce: { enabled: false },
         }),
         "manifest",
         NOW,
@@ -1704,6 +1750,7 @@ describe("admin services enablement", () => {
         update: { enabled: true },
         identity: { enabled: true },
         sync: { enabled: false },
+        commerce: { enabled: false },
       }),
       "manifest",
       NOW + 1,
@@ -1822,6 +1869,7 @@ describe("admin product setup: Sparkle warning", () => {
       update: { enabled: opts.update },
       identity: { enabled: false },
       sync: { enabled: false },
+      commerce: { enabled: false },
     };
     await setServices(
       db,

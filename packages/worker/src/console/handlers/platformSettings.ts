@@ -29,7 +29,6 @@ import type { Env } from "../../platform/env.js";
 import type { Db } from "../../db/types.js";
 import { ErrorCode } from "../../core/errors.js";
 import type { AdminSession } from "../../core/console/session.js";
-import { ADMIN_SESSION_TTL_SECONDS } from "../../core/console/session.js";
 import {
   adminJson,
   err,
@@ -39,10 +38,8 @@ import {
 import { adminOidcIsDedicated } from "../../platform/platformOidc.js";
 import { describeKeyring } from "../../platform/keyvault.js";
 import { SETTINGS } from "../../mount.js";
-import {
-  LAZY_DELTA_MAX_BYTES_CEILING,
-  SETTINGS_CACHE_MS,
-} from "../../core/platformSettings.js";
+import { SETTINGS_CACHE_MS } from "../../core/platformSettings.js";
+import { LIMITS } from "../../limits.js";
 import {
   aliasedPlatformEntries,
   platformSettingResolved,
@@ -51,13 +48,8 @@ import {
 import type { ResolvedSetting } from "../../core/settings/resolve.js";
 import type { ConfirmLevel, SettingDef } from "../../core/settings/types.js";
 import { writeSetting } from "../../core/settings/write.js";
-import { AUDIT_RETENTION_SECONDS } from "../../scheduled.js";
 import { PLATFORM_INVENTORY } from "../../platformInventory.generated.js";
 import type { InventoryArea } from "../../platformInventory.js";
-import {
-  BLOB_LOCK_AGE_SECONDS,
-  MIN_GC_GRACE_SECONDS,
-} from "../../core/assets/blobGc.js";
 
 /**
  * Secrets the page reports as present or absent. Presence only. ST-02: every `Env` member tagged
@@ -195,40 +187,16 @@ export async function settingsWarnings(env: Env): Promise<Warning[]> {
   return out;
 }
 
-/** Code constants that act as policy (S-13 §5.3), shown read-only. */
+/** Code constants that act as policy (S-13 §5.3), shown read-only: the limits inventory. */
 function constants() {
-  return [
-    {
-      name: "ADMIN_SESSION_TTL_SECONDS",
-      area: "sessions",
-      value: ADMIN_SESSION_TTL_SECONDS,
-      unit: "seconds",
-    },
-    {
-      name: "AUDIT_RETENTION_SECONDS",
-      area: "retention",
-      value: AUDIT_RETENTION_SECONDS,
-      unit: "seconds",
-    },
-    {
-      name: "BLOB_LOCK_AGE_SECONDS",
-      area: "blob-store",
-      value: BLOB_LOCK_AGE_SECONDS,
-      unit: "seconds",
-    },
-    {
-      name: "MIN_GC_GRACE_SECONDS",
-      area: "blob-store",
-      value: MIN_GC_GRACE_SECONDS,
-      unit: "seconds",
-    },
-    {
-      name: "LAZY_DELTA_MAX_BYTES_CEILING",
-      area: "lazy-deltas",
-      value: LAZY_DELTA_MAX_BYTES_CEILING,
-      unit: "bytes",
-    },
-  ];
+  return LIMITS.map(({ name, area, label, help, unit, value }) => ({
+    name,
+    area,
+    label,
+    help,
+    value,
+    unit,
+  }));
 }
 
 /** The labels of an enum entry's options (the registry holds the values, not their wording). */

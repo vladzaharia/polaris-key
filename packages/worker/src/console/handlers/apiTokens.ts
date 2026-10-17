@@ -29,7 +29,6 @@ import {
 } from "../../core/console/respond.js";
 import { hashKey, mintAdminApiToken, randomId } from "../../platform/crypto.js";
 import {
-  ADMIN_API_SCOPES,
   MAX_ADMIN_API_TOKENS,
   MAX_TOKEN_DAYS,
   apiTokenView,
@@ -66,10 +65,9 @@ export async function handleApiTokenMint(c: AdminCtx): Promise<Response> {
   if (!Number.isInteger(days) || days < 1 || days > MAX_TOKEN_DAYS)
     fields.push("expiresInDays");
 
-  // Omitted means every scope this build knows about, which is one. Stated explicitly so a future
-  // second scope does not silently widen tokens that an older console minted.
-  const requested =
-    body.scopes === undefined ? [...ADMIN_API_SCOPES] : body.scopes;
+  // Omitted means `bundles:mint`, the original scope, and not every scope this build knows: a new
+  // scope never silently widens a token minted by an older caller.
+  const requested = body.scopes === undefined ? ["bundles:mint"] : body.scopes;
   if (
     !Array.isArray(requested) ||
     requested.length === 0 ||

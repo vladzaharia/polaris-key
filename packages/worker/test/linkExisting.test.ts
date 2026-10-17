@@ -1,3 +1,5 @@
+import { ingestFor } from "../src/core/ingest/pipeline.js";
+import { SERVICES } from "../src/mount.js";
 /**
  * Link repository for a product that already exists (UX-23, `services/release/linkExisting.ts`):
  * the dry run checks and plans without writing, the link re-checks against the manifest GitHub
@@ -153,6 +155,7 @@ describe("prepareLink (the dry run)", () => {
       URL_,
       NOW,
       stubFetch(files()),
+      ingestFor(SERVICES),
     );
     expect(res.ok).toBe(true);
     if (!res.ok) return;
@@ -194,6 +197,7 @@ describe("prepareLink (the dry run)", () => {
       "not a url",
       NOW,
       stubFetch(files()),
+      ingestFor(SERVICES),
     );
     expect(bad).toMatchObject({ ok: false, check: "repository", status: 422 });
 
@@ -204,6 +208,7 @@ describe("prepareLink (the dry run)", () => {
       URL_,
       NOW,
       stubFetch(files(), { installed: false }),
+      ingestFor(SERVICES),
     );
     expect(notInstalled).toMatchObject({ ok: false, check: "app" });
 
@@ -214,6 +219,7 @@ describe("prepareLink (the dry run)", () => {
       URL_,
       NOW,
       stubFetch({ ".pkey/schema.json": SCHEMA }),
+      ingestFor(SERVICES),
     );
     expect(invalid).toMatchObject({ ok: false, check: "manifest" });
     if (!invalid.ok) expect(invalid.errors?.length).toBeGreaterThan(0);
@@ -225,6 +231,7 @@ describe("prepareLink (the dry run)", () => {
       URL_,
       NOW,
       stubFetch(files(productJson("ghost"))),
+      ingestFor(SERVICES),
     );
     expect(other).toMatchObject({
       ok: false,
@@ -256,6 +263,7 @@ describe("prepareLink (the dry run)", () => {
       URL_,
       NOW,
       stubFetch({ ...files(), ".pkey/schema.json": reserved }),
+      ingestFor(SERVICES),
     );
     expect(res).toMatchObject({ ok: false, check: "manifest" });
     if (!res.ok)
@@ -285,6 +293,7 @@ describe("prepareLink (the dry run)", () => {
           }),
         ),
       ),
+      ingestFor(SERVICES),
     );
     expect(res).toMatchObject({ ok: false, check: "policy" });
   });
@@ -301,6 +310,7 @@ describe("prepareLink (the dry run)", () => {
       URL_,
       NOW,
       stubFetch(files()),
+      ingestFor(SERVICES),
     );
     expect(res).toMatchObject({ ok: false, check: "product" });
     if (!res.ok) expect(res.error).toContain("already linked");
@@ -314,6 +324,7 @@ describe("prepareLink (the dry run)", () => {
       URL_,
       NOW,
       stubFetch(files()),
+      ingestFor(SERVICES),
     );
     expect(system).toMatchObject({ ok: false, check: "product" });
     if (!system.ok) expect(system.error).toContain("deploy hook");
@@ -324,7 +335,15 @@ describe("prepareLink (the dry run)", () => {
     await seedTier(db, "tonebox", "legacy");
     await seedLicenseWithKey(db, "tonebox", { tierId: "legacy" });
     const fetchImpl = stubFetch(files());
-    const res = await prepareLink(env, db, "tonebox", URL_, NOW, fetchImpl);
+    const res = await prepareLink(
+      env,
+      db,
+      "tonebox",
+      URL_,
+      NOW,
+      fetchImpl,
+      ingestFor(SERVICES),
+    );
     expect(res.ok).toBe(true);
     if (!res.ok) return;
     expect(res.plan.conflicts).toHaveLength(1);
@@ -341,6 +360,7 @@ describe("prepareLink (the dry run)", () => {
       res.manifestDigest,
       NOW,
       fetchImpl,
+      ingestFor(SERVICES),
     );
     expect(linked).toMatchObject({ ok: false, check: "policy", status: 422 });
     expect((await getProduct(db, "tonebox"))?.release_source).toBeNull();
@@ -459,7 +479,15 @@ describe("linkExistingProduct", () => {
   it("links, applies the manifest through resync, and keeps the signing key", async () => {
     const { db, env } = await manualProduct();
     const fetchImpl = stubFetch(files());
-    const check = await prepareLink(env, db, "tonebox", URL_, NOW, fetchImpl);
+    const check = await prepareLink(
+      env,
+      db,
+      "tonebox",
+      URL_,
+      NOW,
+      fetchImpl,
+      ingestFor(SERVICES),
+    );
     expect(check.ok).toBe(true);
     if (!check.ok) return;
     const kidBefore = (await getProduct(db, "tonebox"))?.signing_kid;
@@ -472,6 +500,7 @@ describe("linkExistingProduct", () => {
       check.manifestDigest,
       NOW + 10,
       fetchImpl,
+      ingestFor(SERVICES),
     );
     expect(res.ok).toBe(true);
     if (!res.ok) return;
@@ -508,6 +537,7 @@ describe("linkExistingProduct", () => {
       URL_,
       NOW,
       stubFetch(files()),
+      ingestFor(SERVICES),
     );
     expect(check.ok).toBe(true);
     if (!check.ok) return;
@@ -522,6 +552,7 @@ describe("linkExistingProduct", () => {
       check.manifestDigest,
       NOW,
       pushed,
+      ingestFor(SERVICES),
     );
     expect(res).toMatchObject({ ok: false, status: 409, check: "manifest" });
     expect((await getProduct(db, "tonebox"))?.release_source).toBeNull();
@@ -548,7 +579,15 @@ describe("linkExistingProduct rolls back what it wrote", () => {
       { ...files(), ".pkey/release.json": PUBLISHING },
       { identity: false },
     );
-    const check = await prepareLink(env, db, "tonebox", URL_, NOW, fetchImpl);
+    const check = await prepareLink(
+      env,
+      db,
+      "tonebox",
+      URL_,
+      NOW,
+      fetchImpl,
+      ingestFor(SERVICES),
+    );
     expect(check.ok).toBe(true);
     if (!check.ok) return;
     const res = await linkExistingProduct(
@@ -559,6 +598,7 @@ describe("linkExistingProduct rolls back what it wrote", () => {
       check.manifestDigest,
       NOW,
       fetchImpl,
+      ingestFor(SERVICES),
     );
     expect(res).toMatchObject({ ok: false, afterWrite: true, check: "policy" });
     if (!res.ok) expect(res.error).toContain("trustedPublisher");
@@ -569,7 +609,15 @@ describe("linkExistingProduct rolls back what it wrote", () => {
   it("a throw from the apply rolls back too, then propagates", async () => {
     const { db, env } = await manualProduct();
     const fetchImpl = stubFetch(files());
-    const check = await prepareLink(env, db, "tonebox", URL_, NOW, fetchImpl);
+    const check = await prepareLink(
+      env,
+      db,
+      "tonebox",
+      URL_,
+      NOW,
+      fetchImpl,
+      ingestFor(SERVICES),
+    );
     expect(check.ok).toBe(true);
     if (!check.ok) return;
     // The link's own batch (1st) and the rollback (3rd) go through; resync's batch (2nd) throws.
@@ -595,6 +643,7 @@ describe("linkExistingProduct rolls back what it wrote", () => {
         check.manifestDigest,
         NOW,
         fetchImpl,
+        ingestFor(SERVICES),
       ),
     ).rejects.toThrow("D1 went away");
     expect(batches).toBe(3);
@@ -607,7 +656,15 @@ describe("linkExistingProduct rolls back what it wrote", () => {
 async function linkedProduct(): Promise<{ db: Db; env: Env }> {
   const { db, env } = await manualProduct();
   const fetchImpl = stubFetch(files());
-  const check = await prepareLink(env, db, "tonebox", URL_, NOW, fetchImpl);
+  const check = await prepareLink(
+    env,
+    db,
+    "tonebox",
+    URL_,
+    NOW,
+    fetchImpl,
+    ingestFor(SERVICES),
+  );
   if (!check.ok) throw new Error(check.error);
   const res = await linkExistingProduct(
     env,
@@ -617,6 +674,7 @@ async function linkedProduct(): Promise<{ db: Db; env: Env }> {
     check.manifestDigest,
     NOW,
     fetchImpl,
+    ingestFor(SERVICES),
   );
   if (!res.ok) throw new Error(res.error);
   return { db, env };
@@ -647,6 +705,7 @@ describe("planResync (the resync dry run, UX-78)", () => {
       "tonebox",
       NOW + 5,
       stubFetch(withTiers(["pro", "studio"])),
+      ingestFor(SERVICES),
     );
     expect(res.ok).toBe(true);
     if (!res.ok) return;
@@ -677,6 +736,7 @@ describe("planResync (the resync dry run, UX-78)", () => {
       "tonebox",
       NOW + 5,
       stubFetch(withTiers(["studio"])),
+      ingestFor(SERVICES),
     );
     expect(res.ok).toBe(true);
     if (!res.ok) return;
@@ -703,6 +763,7 @@ describe("planResync (the resync dry run, UX-78)", () => {
           }),
         ),
       ),
+      ingestFor(SERVICES),
     );
     expect(res.ok).toBe(true);
     if (!res.ok) return;
@@ -725,14 +786,28 @@ describe("planResync (the resync dry run, UX-78)", () => {
       { ...files(), ".pkey/release.json": publishing },
       { identity: false },
     );
-    const res = await planResync(env, db, "tonebox", NOW + 5, fetchImpl);
+    const res = await planResync(
+      env,
+      db,
+      "tonebox",
+      NOW + 5,
+      fetchImpl,
+      ingestFor(SERVICES),
+    );
     expect(res.ok).toBe(true);
     if (!res.ok) return;
     expect(res.plan.conflicts).toEqual([
       expect.objectContaining({ area: "publisher" }),
     ]);
     // The same shared check refuses the real resync, before it writes.
-    const applied = await resyncRepo(env, db, "tonebox", NOW + 6, fetchImpl);
+    const applied = await resyncRepo(
+      env,
+      db,
+      "tonebox",
+      NOW + 6,
+      fetchImpl,
+      ingestFor(SERVICES),
+    );
     expect(applied.ok).toBe(false);
     if (!applied.ok) expect(applied.error).toBe(res.plan.conflicts[0]!.summary);
   });
@@ -746,6 +821,7 @@ describe("planResync (the resync dry run, UX-78)", () => {
         "tonebox",
         NOW,
         stubFetch(files()),
+        ingestFor(SERVICES),
       ),
     ).toMatchObject({ ok: false, check: "product" });
 
@@ -757,6 +833,7 @@ describe("planResync (the resync dry run, UX-78)", () => {
         "tonebox",
         NOW + 5,
         stubFetch(files(productJson("other"))),
+        ingestFor(SERVICES),
       ),
     ).toMatchObject({ ok: false, check: "slug" });
     expect(
@@ -766,6 +843,7 @@ describe("planResync (the resync dry run, UX-78)", () => {
         "tonebox",
         NOW + 5,
         stubFetch({ ...files(), ".pkey/product.json": "{" }),
+        ingestFor(SERVICES),
       ),
     ).toMatchObject({ ok: false, check: "manifest" });
   });

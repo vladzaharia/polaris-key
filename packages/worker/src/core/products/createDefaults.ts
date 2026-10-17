@@ -23,7 +23,8 @@
 
 import { RELEASE_PLATFORMS } from "@polaris-key/manifest";
 import type { DbStatement } from "../../db/types.js";
-import { stmtInsertConsoleProfile, stmtInsertConsoleTier } from "./store.js";
+import { stmtInsertConsoleProfile } from "./store.js";
+import { stmtInsertConsoleTier } from "../licensing/store.js";
 import {
   applyRequirementRule,
   DEFAULT_SERVICES,

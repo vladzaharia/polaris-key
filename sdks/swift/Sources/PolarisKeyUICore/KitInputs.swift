@@ -203,7 +203,7 @@ public struct KitCapabilities: Sendable, Codable, Equatable, Hashable {
 
 /// The opt-in services (tools/services.json slugs).
 public enum KitService: String, Sendable, Codable, CaseIterable {
-    case license, config, release, distribution, update, identity, sync
+    case license, config, release, distribution, update, identity, sync, commerce
 
     /// The services each one requires (closed under `requires`).
     public var requires: [KitService] {
@@ -211,6 +211,7 @@ public enum KitService: String, Sendable, Codable, CaseIterable {
         case .distribution: return [.release]
         case .update: return [.distribution]
         case .sync: return [.config, .identity]
+        case .commerce: return [.license]
         default: return []
         }
     }

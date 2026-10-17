@@ -692,7 +692,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/cq-worker-services.md"
       ],
       "brief": "wp/P0-26-core-manifest-ingest-pipeline.md",
-      "status": "todo"
+      "status": "in-progress"
     },
     {
       "id": "P0-27",
@@ -1292,7 +1292,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/cq-worker-services.md"
       ],
       "brief": "wp/P0-49-data-migration-runner-dry-run-report.md",
-      "status": "todo"
+      "status": "in-progress"
     },
     {
       "id": "P0-50",
@@ -6170,7 +6170,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/config-cloudsync.md"
       ],
       "brief": "wp/U-31-minted-tokens-carry-their-recipe.md",
-      "status": "in-progress"
+      "status": "done"
     },
     {
       "id": "U-32",
@@ -9127,7 +9127,7 @@
         "DX consolidation 2026-10-07: edit (docs/research/2026-10-07-dx-consolidation/backlog-changes.json)"
       ],
       "brief": "wp/ST-09-platform-settings-area.md",
-      "status": "in-progress"
+      "status": "in-review"
     },
     {
       "id": "ST-10",
@@ -15081,7 +15081,7 @@
         "consolidation alias CQW-14"
       ],
       "brief": "wp/CM-29-commerce-service.md",
-      "status": "todo"
+      "status": "in-progress"
     },
     {
       "id": "CM-29b",

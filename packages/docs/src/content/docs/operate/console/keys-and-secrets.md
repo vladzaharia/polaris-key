@@ -10,7 +10,7 @@ sidebar:
 **Keys & secrets** (`#/p/<slug>/settings/keys`, a tab of **Settings**) holds what a product signs and
 authenticates with, whether or not it runs any service: its **Signing keys**, its write-only
 **Secrets** and its **CI publishing** credentials. Signing keys and secrets are sealed under the
-same platform KEK. Edge-mint recipes are approved on **Config → Edge mint**, and store credentials
+same platform KEK. Edge-mint recipes are approved on their catalog entry, and store credentials
 are on **Distribution → Outlet credentials**.
 
 ## Product secrets
@@ -43,8 +43,8 @@ current_ never changes what it may sign, and a change of usage is audited on its
 
 ### Edge-mint recipes
 
-Edge-mint recipes are approved on their own page, **Config → Edge mint**. A recipe arrives from
-the linked repo, so it mints only once its signing secret, set here with usage _Edge-mint signing
+Edge-mint recipes are approved on their entry in **Config → Catalog**. A recipe arrives from
+the linked repo or the console, so it mints only once its signing secret, set here with usage _Edge-mint signing
 key_, is marked edge-mint and you have **approved the recipe exactly as it stands** there. The
 Overview's **Needs attention** lists each recipe awaiting approval and each recipe secret not yet marked
 edge-mint. The full rule (public mints, sign-in trust, License checks and why a widening is

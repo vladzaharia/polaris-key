@@ -45,6 +45,7 @@ const ALL_OFF: ServicesMap = {
   update: { enabled: false },
   identity: { enabled: true },
   sync: { enabled: false },
+  commerce: { enabled: false },
 };
 const LICENSED: Partial<ServicesMap> = { license: { enabled: true } };
 const DOWNLOADS_ONLY: Partial<ServicesMap> = {

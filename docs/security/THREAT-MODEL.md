@@ -56,7 +56,7 @@ holds, and is indistinguishable in the audit log from the human clicking in the 
 365 days at mint. Its blast radius is bounded by **default deny**: a row of the admin route table
 (`console/routes.ts`) reaches a token only through its `tokenScope`, and every other row, path
 and method refuses with one 403, so adding an admin route does not silently widen every existing
-token. The scope vocabulary is exactly one entry (`bundles:mint`), and the token routes
+token. The scope vocabulary is two entries (`bundles:mint`; `migrations:report`, which reaches the data-migration runner's job list, run report and dry run, never apply or down: those need a step-up a token cannot have), and the token routes
 themselves name no scope, so a token cannot mint, list or revoke a token, including itself.
 Minting needs a console step-up, so a stolen session cannot leave a year-long credential behind
 it. The token is stored only as `hashKey(token, KEY_HASH_PEPPER)` and shown once. It is exempt
@@ -3312,10 +3312,26 @@ operator mapped (`dist_store_products`) puts a licence flag on the buyer's licen
 (`license_store_grants`), which `core/licensing/payload.ts` merges into every licence document after the
 licence profiles and before the licence's own overrides. The asset is therefore the same as
 AT-1's: a flag that unlocks paid content. The new inputs are a device's claim
-(`POST /<p>/distribution/commerce/claim`, device token), the binding read
-(`GET …/commerce/binding`), and two store notification hooks (`POST …/hooks/app-store`,
-`POST …/hooks/play-rtdn`). The licence document's shape and `PROTOCOL_VERSION` do not change: a
+(`POST /<p>/commerce/claim`, device token), the binding read
+(`GET /<p>/commerce/binding`), and two store notification hooks (`POST /<p>/distribution/hooks/app-store`,
+`POST /<p>/distribution/hooks/play-rtdn`; canonical, not aliases, CM-29). The licence document's shape and `PROTOCOL_VERSION` do not change: a
 flag was always a licence entitlement.
+
+**Commerce is a service (CM-29).** The bridge moved out of Distribution into the `commerce`
+service, which requires License (`commerce_requires_license`, the generic requirement rule: turning
+License off turns Commerce off in the same audited batch). Commerce gates its routes; License is
+structural and the admin 409 stays, because admin routes are dispatched without an enablement
+check. The hooks stay at the stores' URLs (`core/stores/hooks.ts`, one spelling the router, the URL
+builder and the ASC write gate share), and the ASC write gate admits only that path. Discovery
+discloses only whether Commerce runs.
+
+**Commerce off.** The hooks answer the not-found, so the stores retry and then drop the
+notification: Apple retries five times at 1, 12, 24, 48 and 72 hours (about 6.5 days) in
+production only, Pub/Sub keeps an unacknowledged message for 7 days by default and deletes a
+subscription after 31 days without a successful push (verified 2026-10-08). The console shows
+Attention on the Commerce row meanwhile. On re-enable, CM-22's catch-up polls Play's voided
+purchases and re-verifies App Store purchases, so a refund made while Commerce was off still
+revokes; before CM-22 lands nothing catches up, but production holds no store purchase.
 
 **Who writes a grant.** Only License, through Core's `applyStoreGrant` descriptor method
 (`core/licensing/storeGrants.ts`, `core/registry.ts`), and only on a purchase Distribution has verified

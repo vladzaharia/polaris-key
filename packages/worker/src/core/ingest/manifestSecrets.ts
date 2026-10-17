@@ -37,7 +37,7 @@ import {
   isSealedEnvelope,
   managedValueMatches,
   sealManagedValue,
-} from "../../core/managedSecrets.js";
+} from "../managedSecrets.js";
 
 /** The payload buckets whose values can be catalog-declared secrets. `entitlements` cannot. */
 const SECRET_BEARING_BUCKETS = ["config", "secrets"] as const;

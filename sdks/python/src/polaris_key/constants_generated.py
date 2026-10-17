@@ -1533,6 +1533,7 @@ class ServiceSlug:
     UPDATE: Final = "update"
     IDENTITY: Final = "identity"
     SYNC: Final = "sync"
+    COMMERCE: Final = "commerce"
 
 
 #: Every ``ServiceSlug`` value, in source order.
@@ -1544,6 +1545,7 @@ SERVICE_SLUG_VALUES: Tuple[str, ...] = (
     "update",
     "identity",
     "sync",
+    "commerce",
 )
 
 
@@ -1985,7 +1987,7 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "ui.paywall": CapabilityRow("planned", "sdk", ()),
         "ui.theme": CapabilityRow("planned", "sdk", ()),
         "ui.i18n": CapabilityRow("planned", "sdk", ()),
-        "commerce.receipt": CapabilityRow("implemented", "license", ()),
+        "commerce.receipt": CapabilityRow("implemented", "commerce", ()),
         "server.license": CapabilityRow("implemented", "license", ()),
         "server.signin": CapabilityRow("implemented", "identity", ()),
         "server.config": CapabilityRow("planned", "config", ()),
@@ -1994,4 +1996,4 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "5b3697d0d1653dffdb46d9e8f68d8bcf4f70da381593e4d96b465aa508bc8414"
+CAPABILITY_DIGEST: Final[str] = "5fbfb853307c3c8ad39314325f28b6da34d01fbfc2cca8bf6909c694c79e8303"

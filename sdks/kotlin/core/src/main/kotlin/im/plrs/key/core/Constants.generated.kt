@@ -1671,7 +1671,7 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "ui.paywall" to CapabilityRow("planned", "sdk", listOf()),
     "ui.theme" to CapabilityRow("planned", "sdk", listOf()),
     "ui.i18n" to CapabilityRow("planned", "sdk", listOf()),
-    "commerce.receipt" to CapabilityRow("implemented", "license", listOf()),
+    "commerce.receipt" to CapabilityRow("implemented", "commerce", listOf()),
     "server.license" to CapabilityRow("implemented", "license", listOf(CapabilityNa("android", "runtime"))),
     "server.signin" to CapabilityRow("implemented", "identity", listOf(CapabilityNa("android", "runtime"))),
     "server.config" to CapabilityRow("planned", "config", listOf(CapabilityNa("android", "runtime"))),
@@ -1679,4 +1679,4 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
 )
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
-public const val CAPABILITY_DIGEST: String = "a5ec6666d88712bd7a8c39f45abd8a459cd75fe925a5c9ec6d54e9976c048927"
+public const val CAPABILITY_DIGEST: String = "b941c447fa34fc625bbde1882650ca8e096029c2ab97ddd1af1a67d3175cafbe"

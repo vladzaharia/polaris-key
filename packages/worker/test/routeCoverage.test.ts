@@ -460,6 +460,14 @@ describe("router → spec", () => {
         `${slug}: an empty surface means no routes`,
       ).toBe(ROUTELESS.has(slug));
       for (const route of descriptor.surface) {
+        // The one exception: Commerce's two store hooks are canonical at their stores' URLs
+        // under `/distribution/hooks/` (CM-29 D1; `core/stores/hooks.ts`), not aliases.
+        const storeHook =
+          slug === "commerce" &&
+          /^\/\{product\}\/distribution\/hooks\/(app-store|play-rtdn)$/.test(
+            route.path,
+          );
+        if (storeHook) continue;
         expect(route.path, `${slug}: ${route.path}`).toMatch(
           new RegExp(`^/\\{product\\}/${slug}/`),
         );

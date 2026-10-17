@@ -46,6 +46,7 @@ const NONE = {
   update: { enabled: false },
   identity: { enabled: false },
   sync: { enabled: false },
+  commerce: { enabled: false },
 } as const;
 
 /**
@@ -119,6 +120,7 @@ function workerDoc(
       update: { enabled: false },
       identity: { enabled: false },
       sync: { enabled: false },
+      commerce: { enabled: false },
     },
     ...overrides,
   };
@@ -350,8 +352,10 @@ describe("discoverProduct — the v3 services map (D-21)", () => {
       update: { enabled: false },
       identity: { enabled: false },
       sync: { enabled: false },
+      commerce: { enabled: false },
     });
     expect(Object.keys(res.manifest.services).sort()).toEqual([
+      "commerce",
       "config",
       "distribution",
       "identity",

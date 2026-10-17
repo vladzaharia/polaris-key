@@ -15,6 +15,7 @@ export * from "./tokens/scales.js";
 export {
   ACCENT_FAMILIES,
   SERVICE_FAMILY,
+  SERVICE_ALIAS,
   SERVICE_IDS,
   SERVICE_LABEL,
   SERVICE_MARK,

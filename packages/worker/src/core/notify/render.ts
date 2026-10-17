@@ -125,7 +125,7 @@ export function renderEmail(c: EmailContent): string {
       `<p style="margin:0;font-family:${mono};font-size:13px;line-height:20px;word-break:break-all"><a class="pk-link" href="${escapeHtml(c.action.url)}" style="color:${LIGHT.accent.violet.fg};text-decoration:underline">${escapeHtml(c.action.url)}</a></p>`
     : "";
   const secret = c.secret
-    ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 16px"><tr><td class="pk-key" bgcolor="${LIGHT.surface.page}" style="padding:14px 16px;background-color:${LIGHT.surface.page};border:1px solid ${LIGHT.border.subtle};border-radius:6px;font-family:${mono};font-size:16px;line-height:24px;font-weight:700;word-break:break-all;overflow-wrap:anywhere;color:${LIGHT.text.strong}"><span class="pk-strong">${escapeHtml(c.secret)}</span></td></tr></table>`
+    ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 16px"><tr><td class="pk-key" bgcolor="${LIGHT.surface.page}" style="padding:14px 16px;background-color:${LIGHT.surface.page};border:1px solid ${LIGHT.border.subtle};border-radius:6px;font-family:${mono};font-size:16px;line-height:24px;font-weight:700;overflow-wrap:anywhere;color:${LIGHT.text.strong}"><span class="pk-strong">${escapeHtml(c.secret).replace(/_/g, "_<wbr>")}</span></td></tr></table>`
     : "";
   const secondary = c.secondary
     ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:24px 0 0"><tr>` +
@@ -153,7 +153,7 @@ export function renderEmail(c: EmailContent): string {
     `<meta name="color-scheme" content="light dark">`,
     `<meta name="supported-color-schemes" content="light dark">`,
     `<title>${escapeHtml(c.subject)}</title>`,
-    `<style>:root{color-scheme:light dark;supported-color-schemes:light dark}body{margin:0;padding:0}${darkCss()}</style>`,
+    `<style>:root{color-scheme:light dark;supported-color-schemes:light dark}body{margin:0;padding:0}@media (max-width:480px){.pk-key{font-size:14px!important;line-height:22px!important;padding:12px!important}}${darkCss()}</style>`,
     `</head>`,
     `<body class="pk-bg" style="margin:0;padding:0;background-color:${LIGHT.surface.page}">`,
     `<table role="presentation" class="pk-bg" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${LIGHT.surface.page}" style="width:100%;background-color:${LIGHT.surface.page}">`,

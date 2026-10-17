@@ -75,7 +75,7 @@ import {
 } from "./core/publisher.js";
 import { randomId } from "./platform/crypto.js";
 import { appendPlatformAudit } from "./core/audit.js";
-import { manifestIngestFor } from "./core/registry.js";
+import { ingestFor } from "./core/ingest/pipeline.js";
 import { SERVICES } from "./mount.js";
 import {
   ensureSystemProduct,
@@ -378,6 +378,7 @@ export async function handleDeployHook(
     );
 
   const linked = await linkSystemProduct(
+    env,
     db,
     parsed.manifest,
     {
@@ -389,7 +390,7 @@ export async function handleDeployHook(
     // deploy built (`PKEY_GIT_SHA`, which deploy.yml sets to the same `GITHUB_SHA` the job ran at).
     { files, sha: env.PKEY_GIT_SHA ?? null },
     now,
-    manifestIngestFor(SERVICES),
+    ingestFor(SERVICES),
   );
   if (!linked.ok)
     return refuse(409, ErrorCode.BadRequest, linked.reason, linked.message);

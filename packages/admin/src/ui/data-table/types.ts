@@ -110,6 +110,8 @@ export type PaginationConfig =
       /** Load every page still waiting; the filtered-empty state offers it. */
       onSearchAll?: () => void;
       searchingAll?: boolean;
+      /** Stop the walk after the page in flight; offered while `searchingAll`. */
+      onStopSearchAll?: () => void;
       /** Facet ids the server already applied before paging (they are not "searching the loaded"). */
       serverFacets?: string[];
     }

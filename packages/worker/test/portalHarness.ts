@@ -68,6 +68,7 @@ export async function enableDownloads(
         update: { enabled: false },
         identity: { enabled: false },
         sync: { enabled: false },
+        commerce: { enabled: false },
       },
     }),
     "manifest",

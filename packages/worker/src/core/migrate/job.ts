@@ -44,6 +44,12 @@ export interface MigrationJob {
   id: string;
   /** One line for the operator. */
   summary: string;
+  /**
+   * Set when the change has its own gated flow (a notice window, a freeze, a step-up, a stored
+   * report the console reads) that the runner must not bypass. The runner dry-runs the job and
+   * keeps the report, but refuses `apply` and `down` (`delegated`); this names where to apply.
+   */
+  delegatedTo?: string;
   /** The units to migrate: product slugs, or `[PLATFORM_UNIT]` for a platform-wide job. */
   units(ctx: MigrationContext): Promise<string[]>;
   /** The dry run of one unit. Reads only. */

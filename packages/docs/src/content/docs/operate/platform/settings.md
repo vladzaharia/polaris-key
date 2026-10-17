@@ -123,7 +123,10 @@ dropped. The header's **History** button jumps to the trail at the foot.
   `ADMIN_OIDC_CLIENT_ID`) above the platform client the portal and products use
   (`PLATFORM_OIDC_*`), and the console session length.
 - **Storefront and hosting.** The storefront and hosted-assets switches (`ASSET_HOSTING`; turning
-  either asks first), then the deploy-time hosts and accounts, read-only.
+  either asks first), then the deploy-time hosts and accounts, read-only. **Package feeds** holds each
+  ecosystem's platform policy: _Serve_ (stopping an ecosystem asks first and names every product)
+  and a size ceiling in MiB with its own Save bar. A member without Platform edit sees the rows
+  disabled and who to ask.
 - **Email and alerts.** The sender address, the legacy sender, the daily cap per product and the
   Apple private relay. All deploy-time, read-only.
 - **Licensing.** The reserved-names setting as a Warn / Refuse choice (switching to Refuse asks
@@ -148,8 +151,10 @@ dropped. The header's **History** button jumps to the trail at the foot.
   - If the settings store cannot be read, the switches show _Off: store unreadable_ and nothing
     can be saved.
 - **Advanced.**
-  - **Limits.** The code constants: retention, the bucket's age lock, the collector's shortest
-    grace and the delta size ceiling. Collapsed until you open it.
+  - **Limits.** The code limits, read-only, grouped as Access, Email, Retention, Storage and
+    delivery, Licensing and Requests: session and token lives, email send and attempt caps,
+    retention periods, the bucket's age lock, upload and delta sizes. The list comes from the
+    Worker, so it matches the build. Collapsed until you open it.
   - **Keyring.** The KEK keyring, read-only: which KEK secrets are set, the `PLATFORM_KEK_ACTIVE`
     and `PLATFORM_KEK_ID` kid names, the active key, every key in the ring with how many values
     it seals, and the re-seal progress. Values under a key that has left the ring are flagged as

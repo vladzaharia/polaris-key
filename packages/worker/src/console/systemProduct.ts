@@ -27,44 +27,22 @@
  * rows and Distribution's feed rows in one batch, which Core itself may not (rule 6).
  */
 
-import { type AuditActor, SYSTEM_ACTORS } from "../core/audit.js";
 import {
   SYSTEM_PRODUCT_SLUG,
   type ParsedManifest,
 } from "@polaris-key/manifest";
+import type { Ingest } from "../core/ingest/types.js";
+import { stmtInsertSchema } from "../services/config/public.js";
 import type { Env } from "../platform/env.js";
 import type { Db, DbStatement } from "../db/types.js";
 import { generateEd25519, seal } from "../platform/keyvault.js";
 import {
-  getActiveSchema,
   getProduct,
   stmtInsertProduct,
   stmtInsertProductKey,
-  stmtInsertSchema,
 } from "../core/products/store.js";
 import { parseServices, serializeServices } from "../core/services.js";
-import { serializePresentation } from "../core/products.js";
-import type { ManifestIngest } from "../core/registry.js";
-import {
-  getPublisherPolicy,
-  manifestPublisherChanged,
-  stmtDeleteManifestPublisher,
-  stmtUpsertManifestPublisher,
-} from "../core/publisher.js";
-import { stmtInsertReleaseConfig } from "../core/products/store.js";
-import {
-  manifestDeliverableStatements,
-  managedSecretKeyPredicate,
-  parseStoredCatalog,
-} from "../services/release/public.js";
-import { Catalog } from "@polaris-key/catalog";
-import { manifestSnapshotStatement } from "../core/manifestSnapshot.js";
-import {
-  claimsForApply,
-  endBreakGlassStatements,
-  type BreakGlassClaim,
-  type ClaimKey,
-} from "../core/settingsClaims.js";
+import { type BreakGlassClaim, type ClaimKey } from "../core/settingsClaims.js";
 import { isSafeBinaryName } from "../services/release/public.js";
 import {
   stmtEnqueuePackageRender,
@@ -309,6 +287,7 @@ export function systemManifestProblem(
  * every claimable product field here is ST-17's shared plan function.
  */
 export async function linkSystemProduct(
+  env: Env,
   db: Db,
   manifest: ParsedManifest,
   repo: SystemRepository,
@@ -319,7 +298,7 @@ export async function linkSystemProduct(
     sha: string | null;
   },
   now: number,
-  ingest?: ManifestIngest,
+  ingest: Ingest,
 ): Promise<LinkSystemProduct> {
   const slug = SYSTEM_PRODUCT_SLUG;
   const product = await getProduct(db, slug);
@@ -331,194 +310,48 @@ export async function linkSystemProduct(
     };
   const problem = systemManifestProblem(manifest, repo);
   if (problem) return { ok: false, reason: "wrong_manifest", message: problem };
-  const rel = manifest.release!;
   const [owner, name] = repo.repository.split("/") as [string, string];
-  const binaryName = rel.binaryName || name;
 
-  const stmts: DbStatement[] = [
-    {
-      // `presentation_json` (HA-12): the manifest's `presentation`, manifest-only, NULL when the
-      // platform's own `.pkey/product` declares none.
-      sql: `UPDATE products SET release_source = 'github', presentation_json = ?, modified_at = ?
-             WHERE slug = ? AND system = 1`,
-      params: [serializePresentation(manifest.presentation), now, slug],
-    },
-  ];
-  const manualChannelsJson = rel.manualChannels.length
-    ? JSON.stringify(rel.manualChannels)
-    : null;
-  const artifactPolicyJson = rel.artifactPolicy
-    ? JSON.stringify(rel.artifactPolicy)
-    : null;
-  const ignoreTagsJson = rel.ignoreTags.length
-    ? JSON.stringify(rel.ignoreTags)
-    : null;
-  const config = stmtInsertReleaseConfig({
+  // The deploy hook is the pipeline's `system` scope (plans/P0-26.md D3): today's subset, in one
+  // batch, with the manifest snapshot (origin `deploy-hook`, `applied_sha` = the deploy's commit).
+  const result = await ingest.run(env, db, {
+    mode: "apply",
+    scope: "system",
     product: slug,
-    ghOwner: owner,
-    ghRepo: name,
-    ghInstallationId: null,
-    channelWorkflow: rel.channelWorkflow || null,
-    betaBranch: rel.betaBranch || "main",
-    binaryName,
-    sparkleEd25519Pub: rel.sparkleEd25519Pub || null,
-    summaryMarker: rel.summaryMarker || "pkey:summary",
-    manualChannelsJson,
-    artifactPolicyJson,
-    metadataAccess: rel.access.metadata,
-    artifactsAccess: rel.access.artifacts,
-    accessSource: "manifest",
-    stableTagPattern: rel.stableTagPattern,
-    ignoreTagsJson,
-  });
-  // A first link inserts the row; a later one re-applies the manifest-owned columns exactly as a
-  // resync does (`resync.ts`): the manual channels a package publish's `channel` is checked
-  // against among them. The installation id, the operator-only policy, the release keys and the
-  // access modes once an operator claimed them (`access_source = 'admin'`) are never touched.
-  stmts.push({
-    sql: `${config.sql}
-          ON CONFLICT(product) DO UPDATE SET
-            gh_owner = excluded.gh_owner,
-            gh_repo = excluded.gh_repo,
-            channel_workflow = excluded.channel_workflow,
-            beta_branch = excluded.beta_branch,
-            binary_name = excluded.binary_name,
-            sparkle_ed25519_pub = excluded.sparkle_ed25519_pub,
-            summary_marker = excluded.summary_marker,
-            manual_channels_json = excluded.manual_channels_json,
-            artifact_policy_json = excluded.artifact_policy_json,
-            stable_tag_pattern = excluded.stable_tag_pattern,
-            ignore_tags_json = excluded.ignore_tags_json,
-            metadata_access = CASE WHEN COALESCE(release_config.access_source, 'manifest') = 'manifest'
-                                   THEN excluded.metadata_access ELSE release_config.metadata_access END,
-            artifacts_access = CASE WHEN COALESCE(release_config.access_source, 'manifest') = 'manifest'
-                                    THEN excluded.artifacts_access ELSE release_config.artifacts_access END`,
-    params: config.params,
-  });
-  stmts.push(
-    ...manifestDeliverableStatements(
-      slug,
-      rel.app,
-      now,
-      rel.packDeliverables,
-      rel.packageDeliverables,
-    ),
-  );
-
-  const current = await getPublisherPolicy(db, slug);
-  const claimed = current?.source === "admin";
-  const declared = rel.trustedPublisher ?? null;
-  const next = declared
-    ? {
-        repositoryId: repo.repositoryId,
-        repositoryOwnerId: repo.repositoryOwnerId,
-        repository: repo.repository,
-        workflow: declared.workflow,
-        environment: declared.environment,
-      }
-    : null;
-  // The system product's policy is manifest-authoritative and the console can no longer
-  // claim it. A claim found here (a pre-fix one, or a direct D1 write) is replaced by the
-  // manifest's policy, and every live static CI token on the product is revoked with its open
-  // tickets: the platform publishes through GitHub OIDC only.
-  const publisherChanged = manifestPublisherChanged(current, next);
-  if (claimed)
-    stmts.push({
-      sql: "DELETE FROM ci_publishers WHERE product = ? AND source = 'admin'",
-      params: [slug],
-    });
-  stmts.push(
-    next
-      ? stmtUpsertManifestPublisher({ product: slug, ...next, now })
-      : stmtDeleteManifestPublisher(slug),
-  );
-  const staticTokensRevoked =
-    (
-      await db.first<{ n: number }>(
-        `SELECT COUNT(*) AS n FROM ci_tokens
-          WHERE product = ? AND kind = 'static' AND revoked_at IS NULL`,
-        slug,
-      )
-    )?.n ?? 0;
-  // Unconditional: the statements are no-ops when nothing matches, and a token minted between
-  // the count above and the batch is revoked too.
-  stmts.push(
-    {
-      sql: `UPDATE ci_upload_tickets SET expires_at = MIN(expires_at, ?)
-               WHERE redeemed_at IS NULL AND token_hash IN
-                 (SELECT token_hash FROM ci_tokens
-                   WHERE product = ? AND kind = 'static' AND revoked_at IS NULL)`,
-      params: [now, slug],
-    },
-    {
-      sql: `UPDATE ci_tokens SET revoked_at = ?
-               WHERE product = ? AND kind = 'static' AND revoked_at IS NULL`,
-      params: [now, slug],
-    },
-  );
-
-  if (ingest) {
-    const services = parseServices(product.services_json).services;
-    stmts.push(...ingest(manifest, slug, services, now).statements);
-  }
-  // ST-20: break-glass claims, compared against the snapshot this batch replaces (read first).
-  const claims = await claimsForApply(db, slug, manifest, now);
-  // F-03: the system product keeps its name, so an ended `core.name` claim (none can be made:
-  // the console never claims its name) never writes the manifest's name.
-  const ended = (name: boolean) =>
-    claims.ended.filter((e) => (e.key === "core.name") === name);
-  stmts.push(
-    ...(await endBreakGlassStatements(db, slug, ended(false), {
-      actor: SYSTEM_ACTORS.deploy,
+    manifest,
+    now,
+    source: {
+      origin: "deploy-hook",
       sha: applied.sha,
-      now,
-      apply: manifest,
-    })),
-    ...(await endBreakGlassStatements(db, slug, ended(true), {
-      actor: SYSTEM_ACTORS.deploy,
-      sha: applied.sha,
-      now,
-    })),
-  );
-  stmts.push(
-    await manifestSnapshotStatement(
-      slug,
-      "deploy-hook",
-      applied.sha,
-      applied.files,
-      manifest,
-      now,
-      managedSecretKeyPredicate(
-        [
-          new Catalog(manifest.catalog as never),
-          parseStoredCatalog((await getActiveSchema(db, slug))?.catalog_json),
-        ].filter((c): c is Catalog => c !== null),
-      ),
-    ),
-  );
-  await db.batch(stmts);
+      files: applied.files as Record<string, string>,
+      fetchImpl: fetch,
+      repo: {
+        owner,
+        name,
+        installId: null,
+        // GitHub's numeric ids come from the hook's verified policy, never from the manifest.
+        identity: async () => ({
+          id: repo.repositoryId,
+          ownerId: repo.repositoryOwnerId,
+          fullName: repo.repository,
+        }),
+        hasFile: async () => false,
+        blob: async () => "error",
+      },
+    },
+    seed: { product },
+  });
+  if (!result.ok)
+    return { ok: false, reason: "wrong_manifest", message: result.error };
+  const facts = result.facts.system as Omit<
+    Extract<LinkSystemProduct, { ok: true }>,
+    "ok" | "slug" | "breakGlass" | "breakGlassEnded"
+  >;
   return {
     ok: true,
     slug,
-    packages: rel.packageDeliverables.map((p) => p.id).sort(),
-    publisher: declared
-      ? { workflow: declared.workflow, environment: declared.environment }
-      : null,
-    publisherClaimed: claimed,
-    publisherChanged: publisherChanged || claimed,
-    staticTokensRevoked,
-    replacedClaim:
-      claimed && current
-        ? {
-            source: current.source,
-            repository: current.repository,
-            workflow: current.workflow,
-            environment: current.environment,
-            scopes: current.scopes,
-            modifiedBy: current.modifiedBy ?? null,
-          }
-        : null,
-    breakGlass: claims.live,
-    breakGlassEnded: claims.ended.map((e) => ({ key: e.key, why: e.why })),
+    ...facts,
+    breakGlass: result.breakGlass ?? [],
+    breakGlassEnded: result.breakGlassEnded ?? [],
   };
 }

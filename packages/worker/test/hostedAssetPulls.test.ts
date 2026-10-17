@@ -50,7 +50,7 @@ import { TEST_RSA_PKCS8 } from "./releaseFixtures.js";
 import { HEAD_SHA, withDefaultHead } from "./githubHead.js";
 import { linkRepo } from "../src/services/release/linkRepo.js";
 import { resyncRepo } from "../src/services/release/resync.js";
-import { manifestIngestFor } from "../src/core/registry.js";
+import { ingestFor } from "../src/core/ingest/pipeline.js";
 import { SERVICES } from "../src/mount.js";
 import { handleAdmin } from "../src/console/index.js";
 import { ADMIN_COOKIE, issueSession } from "../src/core/console/session.js";
@@ -1287,7 +1287,7 @@ describe("link and resync with a repo-path icon", () => {
       "acme-org/acme-app",
       NOW,
       gh,
-      manifestIngestFor(SERVICES),
+      ingestFor(SERVICES),
     );
     expect(link.ok).toBe(true);
     expect(q.sent.map((m) => [m.slot, m.commit, m.blob])).toEqual([
@@ -1308,14 +1308,28 @@ describe("link and resync with a repo-path icon", () => {
     // The same commit: nothing enqueued, no listing read.
     let sent = q.sent.length;
     state.calls.length = 0;
-    const same = await resyncRepo(e, db, SLUG, NOW + 10, gh);
+    const same = await resyncRepo(
+      e,
+      db,
+      SLUG,
+      NOW + 10,
+      gh,
+      ingestFor(SERVICES),
+    );
     expect(same.ok).toBe(true);
     expect(q.sent.length).toBe(sent);
     expect(state.calls.some((u) => u.includes("/contents/art?"))).toBe(false);
 
     // A new commit that leaves the icon alone: one listing read, nothing enqueued.
     state.head = "a".repeat(40);
-    const moved = await resyncRepo(e, db, SLUG, NOW + 20, gh);
+    const moved = await resyncRepo(
+      e,
+      db,
+      SLUG,
+      NOW + 20,
+      gh,
+      ingestFor(SERVICES),
+    );
     expect(moved.ok).toBe(true);
     expect(q.sent.length).toBe(sent);
     expect(state.calls.filter((u) => u.includes("/contents/art?")).length).toBe(
@@ -1331,7 +1345,14 @@ describe("link and resync with a repo-path icon", () => {
     state.blob = BLOB_2;
     state.bytes = ICON_B;
     sent = q.sent.length;
-    const changed = await resyncRepo(e, db, SLUG, NOW + 30, gh);
+    const changed = await resyncRepo(
+      e,
+      db,
+      SLUG,
+      NOW + 30,
+      gh,
+      ingestFor(SERVICES),
+    );
     expect(changed.ok && changed.updated).toContain("assets");
     expect(q.sent.slice(sent).map((m) => [m.slot, m.blob])).toEqual([
       ["presentation.icon", BLOB_2],
@@ -1356,21 +1377,13 @@ describe("link and resync with a repo-path icon", () => {
     };
     const gh = github(state);
     expect(
-      (
-        await linkRepo(
-          e,
-          db,
-          "acme-org/acme-app",
-          NOW,
-          gh,
-          manifestIngestFor(SERVICES),
-        )
-      ).ok,
+      (await linkRepo(e, db, "acme-org/acme-app", NOW, gh, ingestFor(SERVICES)))
+        .ok,
     ).toBe(true);
     // The file is not an image: refused, nothing served.
     state.bytes = new TextEncoder().encode("<svg></svg>");
     await drain(e, gh, NOW + 1, 0);
-    const res = await resyncRepo(e, db, SLUG, NOW + 2, gh);
+    const res = await resyncRepo(e, db, SLUG, NOW + 2, gh, ingestFor(SERVICES));
     expect(res.ok).toBe(true);
     expect(res.ok && res.warnings?.map((w) => [w.code, w.path])).toEqual([
       ["asset_unreachable", "/presentation/icon"],

@@ -1,6 +1,11 @@
 import * as React from "react";
 import { Collapsible } from "radix-ui";
-import { ChevronDown, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import {
+  ChevronDown,
+  PanelLeftClose,
+  PanelLeftOpen,
+  TriangleAlert,
+} from "lucide-react";
 import { cn } from "../../lib/cn.js";
 import {
   navItems,
@@ -17,6 +22,8 @@ import {
   type ServiceAccent,
   type ServiceState,
 } from "../nav.js";
+import { useProduct } from "../data/hooks.js";
+import { pendingRecipes } from "../sections/config/model/pending.js";
 import { Link } from "../router.js";
 import { globalPage, productPage } from "../routes.js";
 import {
@@ -125,6 +132,8 @@ export function Sidebar({
   canOpen = () => true,
 }: SidebarProps): React.ReactElement {
   const sections = slug ? visibleSections(services) : [];
+  // Recipes awaiting approval ride the Catalog item, where their entries live.
+  const pending = pendingRecipes(useProduct(slug).data).length;
   // ST-29: what the member cannot open is absent, not disabled (ADMIN.md §5.10, hidden vs
   // disabled). A section with nothing left to show goes too.
   const links = platformLinks().filter((p) => canOpen(p.page));
@@ -192,6 +201,7 @@ export function Sidebar({
             items={items.map((p) => ({
               page: p,
               to: productPage(slug!, p.page as ProductPageId),
+              badge: p.page === "catalog" ? pending : 0,
             }))}
             activePage={activePage}
             active={section.key === activeSection}
@@ -276,7 +286,7 @@ function SidebarGroup({
   accent: ServiceAccent;
   /** The section glyph, drawn for a collapsed section in the rail; Platform has none. */
   glyph?: NavSection["glyph"];
-  items: { page: NavPage; to: string }[];
+  items: { page: NavPage; to: string; badge?: number }[];
   activePage: PageId | null;
   active: boolean;
   open: boolean;
@@ -286,11 +296,12 @@ function SidebarGroup({
   onPrefetch?: () => void;
   contentId: string;
 }): React.ReactElement {
-  const items = links.map(({ page: p, to }) => (
+  const items = links.map(({ page: p, to, badge }) => (
     <li key={p.page}>
       <SidebarItem
         page={p}
         to={to}
+        badge={badge}
         active={isActivePage(activePage, p.page)}
         rail={rail}
         onNavigate={onNavigate}
@@ -391,6 +402,7 @@ export function SidebarItem({
   to,
   active,
   rail,
+  badge,
   starCut = false,
   onNavigate,
   onPrefetch,
@@ -399,17 +411,22 @@ export function SidebarItem({
   to: string;
   active: boolean;
   rail: boolean;
+  /** A count of things needing attention on this page: a warning mark and the number. */
+  badge?: number;
   /** Draw the Star Cut (the Distribution glyph) in place of the page icon. */
   starCut?: boolean;
   onNavigate?: () => void;
   onPrefetch?: () => void;
 }): React.ReactElement {
   const Icon = page.icon;
+  const railLabel = badge
+    ? `${page.label}, ${badge} ${badge === 1 ? "recipe needs" : "recipes need"} approval`
+    : page.label;
   const link = (
     <Link
       to={to}
       aria-current={active ? "page" : undefined}
-      aria-label={rail ? page.label : undefined}
+      aria-label={rail ? railLabel : undefined}
       data-page={page.page}
       onClick={() => onNavigate?.()}
       onMouseEnter={onPrefetch}
@@ -435,13 +452,29 @@ export function SidebarItem({
           className={cn("size-4 shrink-0", active && "text-accent")}
         />
       )}
+      {rail && badge ? (
+        <span
+          aria-hidden
+          data-nav-dot=""
+          className="absolute right-2 top-1.5 size-2 rounded-full bg-warning"
+        />
+      ) : null}
       {rail ? null : (
         <span className={cn("truncate", RAIL_FADE)}>{page.label}</span>
       )}
+      {badge && !rail ? (
+        <span className="ml-auto inline-flex items-center gap-1 text-xs text-warning">
+          <TriangleAlert aria-hidden className="size-3.5" />
+          {badge}
+          <span className="sr-only">
+            {badge === 1 ? " recipe needs approval" : " recipes need approval"}
+          </span>
+        </span>
+      ) : null}
     </Link>
   );
   return rail ? (
-    <Tooltip content={page.label} side="right">
+    <Tooltip content={railLabel} side="right">
       {link}
     </Tooltip>
   ) : (

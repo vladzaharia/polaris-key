@@ -282,6 +282,10 @@ h6,
   details:has(> ul > li > a[href*="/docs/features/cloud-sync/"]) {
   --pkd-group-accent: var(--pk-service-sync);
 }
+/* Commerce draws in the Distribution green family (B1, CM-29b): no variables of its own. */
+.sidebar-content details:has(> ul > li > a[href*="/docs/features/commerce/"]) {
+  --pkd-group-accent: var(--pk-service-distribution);
+}
 
 /* ---- Page title: the section eyebrow and rule on service pages ------------------------------- */
 

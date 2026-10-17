@@ -12,6 +12,7 @@
  * is what it refuses.
  */
 
+import { licenseManifest } from "./ingest.js";
 import type {
   DiscoveryContext,
   ServiceDescriptor,
@@ -22,8 +23,8 @@ import { applyStoreGrant, storeGrantMergeStatements } from "./storeGrants.js";
 import { licenseProvenance } from "./provenance.js";
 import { licenseDeleteContribution } from "./deletion.js";
 import { LICENSE_SETTINGS_SLICE } from "./settings.js";
-import { LICENSING_SETTINGS } from "./licensingSettings.js";
-import { manifestRowSettingStatements } from "../../core/rowSettings.js";
+import {} from "./licensingSettings.js";
+import {} from "../../core/rowSettings.js";
 
 import { licenseIntegration } from "./integration.js";
 
@@ -32,18 +33,12 @@ import { licenseProductDeletion } from "./productDeletion.js";
 export const licenseService: ServiceDescriptor = {
   slug: "license",
   contributes: {
+    manifest: licenseManifest,
     productDeletion: licenseProductDeletion,
     integration: licenseIntegration,
   },
   /** ST-03: this service's settings registry slice (`settings.ts`). */
   settings: LICENSE_SETTINGS_SLICE,
-  /**
-   * LX-06: `.pkey/product`'s `licensing.*` settings → their claimable `product_settings` rows, on
-   * every link and resync whatever License's enablement (S-19 §7.13; `licensingSettings.ts`), so
-   * they are already right when License is turned on. A console claim is never overwritten.
-   */
-  manifestIngestAlways: (parsed, product, now) =>
-    manifestRowSettingStatements(product, LICENSING_SETTINGS, parsed, now),
   handle: handleLicenseRoutes,
   /** The canonical surface `routes.ts` dispatches; what `routeCoverage` pins. */
   surface: [

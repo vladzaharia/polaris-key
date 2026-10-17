@@ -71,6 +71,7 @@ const SET = {
     update: { enabled: false },
     identity: { enabled: false },
     sync: { enabled: false },
+    commerce: { enabled: false },
   },
   /** D-08: Config alone. Derived policy `open`. */
   configOnly: {
@@ -81,6 +82,7 @@ const SET = {
     update: { enabled: false },
     identity: { enabled: false },
     sync: { enabled: false },
+    commerce: { enabled: false },
   },
   /** Config + Identity, License off. Derived policy `requires-identity`. */
   identity: {
@@ -91,6 +93,7 @@ const SET = {
     update: { enabled: false },
     identity: { enabled: true },
     sync: { enabled: false },
+    commerce: { enabled: false },
   },
 } satisfies Record<string, ServicesMap>;
 

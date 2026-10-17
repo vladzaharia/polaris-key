@@ -139,11 +139,50 @@ describe("Licenses list", () => {
     await within(t).findByText("Old seat");
   });
 
+  it("keeps the server total in the footer on a deep link (P0-29 N1)", async () => {
+    const [first] = LICENSES;
+    bootLicense("#/p/djdl/license/licenses?tier=pro", {
+      routes: {
+        [`${API}/license/licenses`]: () => ({
+          licenses: [first],
+          nextCursor: "c1",
+          total: 321,
+        }),
+      },
+    });
+    await screen.findByText("Showing 1 of 321");
+    expect(screen.queryByText(/Searched the/)).toBeNull();
+  });
+
+  it("says when Search all fails, and keeps the button (P0-29 N2)", async () => {
+    const [first, second] = LICENSES;
+    bootLicense("#/p/djdl/license/licenses?q=Old%20seat", {
+      routes: {
+        [`${API}/license/licenses`]: (q: URLSearchParams) =>
+          q.get("cursor") === "c1"
+            ? failing(500)
+            : { licenses: [first, second], nextCursor: "c1", total: 5 },
+      },
+    });
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Search all 5" }),
+    );
+    expect(await screen.findByRole("alert")).toHaveProperty(
+      "textContent",
+      "Couldn't load more licenses.",
+    );
+    const retry = screen.getByRole("button", { name: "Try again" });
+    expect(document.activeElement).toBe(retry);
+  });
+
   it("shows a permission state, with no toolbar or write actions, on a 403 (P0-29 F13)", async () => {
     bootLicense("#/p/djdl/license/licenses", {
-      routes: { [`${API}/license/licenses`]: failing(403, "forbidden") },
+      routes: {
+        [`${API}/license/licenses`]: failing(403, "forbidden"),
+        "/manage/api/access/admins": { admins: [] },
+      },
     });
-    await screen.findByText(/You don't have access to licenses/);
+    await screen.findByText("Who can give you access");
     expect(screen.queryByRole("button", { name: /Create license/ })).toBeNull();
     expect(screen.queryByRole("button", { name: /Retry/ })).toBeNull();
   });

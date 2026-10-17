@@ -169,6 +169,7 @@ async function setIdentityServices(
         update: { enabled: false },
         identity: { enabled: services.identity },
         sync: { enabled: false },
+        commerce: { enabled: false },
       },
     }),
     "manifest",

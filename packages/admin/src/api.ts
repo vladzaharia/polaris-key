@@ -222,8 +222,8 @@ export interface PlatformActivityPage {
  * mint also needs a recent sign-in (403 `step_up_required`).
  */
 
-/** The scope vocabulary: one entry, mirroring the worker's. */
-export const ADMIN_API_SCOPES = ["bundles:mint"] as const;
+/** The scope vocabulary, mirroring the worker's. */
+export const ADMIN_API_SCOPES = ["bundles:mint", "migrations:report"] as const;
 export type AdminApiScope = (typeof ADMIN_API_SCOPES)[number];
 
 /** The worker's longest token lifetime. Mirrored so the mint form can bound its input rather
@@ -387,7 +387,15 @@ export interface PlatformSettingsView {
   /** Presence only: never a value, a length or a hash. */
   secrets: { name: string; set: boolean }[];
   /** Code constants that act as policy. */
-  constants: { name: string; area: string; value: number; unit: string }[];
+  constants: {
+    name: string;
+    /** The group the Limits section files it under. */
+    area: string;
+    label: string;
+    help: string;
+    value: number;
+    unit: string;
+  }[];
   warnings: { code: string; message: string; names: string[] }[];
 }
 
@@ -2135,6 +2143,7 @@ export const SERVICE_ERROR_MESSAGES: Record<string, string> = {
     "In-app updates need Ship builds to be on first.",
   sync_requires_config: "Cloud Sync needs Managed config to be on first.",
   sync_requires_identity: "Cloud Sync needs Sign-in to be on first.",
+  commerce_requires_license: "Commerce needs Licensing to be on first.",
 };
 
 // ── update settings (feed access + compat window) ─────────────────────────────
@@ -3553,6 +3562,8 @@ export interface LicenseListFilter {
   holder?: string;
   batch?: string;
   tier?: string;
+  /** One computed state: active, expiring, expired or disabled. */
+  state?: string;
 }
 
 export interface LicenseSummary {
@@ -3925,7 +3936,9 @@ export type KeyEmailOutcome = "sent" | "queued" | "failed";
 /** Why a key email did not go out (`delivered.reason`, and a 409's `reason`). */
 export type KeyEmailFailure =
   | "no_mail_binding"
+  | "address_unusable"
   | "suppressed"
+  | "daily_cap"
   | "provider_refused";
 
 export interface PatchLicenseBody {
@@ -4103,6 +4116,12 @@ export interface FeedsOverviewDto extends FeedsHead {
     versions: number;
     lastPublishedAt: number | null;
   };
+  /** Platform scope: each ecosystem's kill switch and size ceiling (`null` before its row exists). */
+  policies?: {
+    ecosystem: FeedEcosystem;
+    label: string;
+    policy: FeedPolicy | null;
+  }[];
   /** Platform scope: every owner with a packageFeeds row. */
   owners?: {
     slug: string;
@@ -5484,7 +5503,7 @@ const rawApi = {
     page: { cursor?: string | null; limit?: number } & LicenseListFilter = {},
   ) => {
     const search = new URLSearchParams();
-    for (const k of ["holder", "batch", "tier"] as const)
+    for (const k of ["holder", "batch", "tier", "state"] as const)
       if (page[k]) search.set(k, page[k]);
     if (page.limit) search.set("limit", String(page.limit));
     if (page.cursor) search.set("cursor", page.cursor);

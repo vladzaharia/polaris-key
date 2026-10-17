@@ -1,4 +1,12 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 import {
   cleanup,
   fireEvent,
@@ -8,6 +16,7 @@ import {
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { configureAxe } from "vitest-axe";
+import { platformOverview } from "./feedsFixture.js";
 import {
   PENDING,
   boot,
@@ -26,6 +35,12 @@ const axe = configureAxe({
   rules: { "color-contrast": { enabled: false } },
 });
 
+// The Platform section is a React.lazy chunk (shell/AppShell.tsx). Load it once up front so the
+// first test does not pay its first transform and evaluation inside a findBy wait (it took ~900 ms
+// of the 1 s budget alone, and missed it in a loaded deploy Verify run).
+beforeAll(async () => {
+  await import("../src/console/sections/platform/index.js");
+});
 beforeEach(resetConsole);
 afterEach(() => {
   cleanup();
@@ -285,19 +300,25 @@ function view(over: Record<string, unknown> = {}) {
     constants: [
       {
         name: "ADMIN_SESSION_TTL_SECONDS",
-        area: "sessions",
+        label: "Console session length",
+        help: "A console session ends after this, however active it is.",
+        area: "Access",
         value: 28_800,
         unit: "seconds",
       },
       {
         name: "AUDIT_RETENTION_SECONDS",
-        area: "retention",
+        label: "Audit trail",
+        help: "Audit and platform trail rows older than this are deleted nightly.",
+        area: "Retention",
         value: 15_552_000,
         unit: "seconds",
       },
       {
         name: "LAZY_DELTA_MAX_BYTES_CEILING",
-        area: "lazy-deltas",
+        label: "Lazy delta size ceiling",
+        help: "The measured largest payload the delta consumer can encode.",
+        area: "Storage and delivery",
         value: 33_554_432,
         unit: "bytes",
       },
@@ -376,6 +397,7 @@ function routes(over: Record<string, unknown> = {}): Record<string, unknown> {
     "/manage/api/platform/reserved-names": RESERVED,
     "/manage/api/products/kek": KEK,
     "/manage/api/platform/activity": HISTORY,
+    "/manage/api/platform/feeds": platformOverview(),
     ...over,
   };
 }
@@ -1113,7 +1135,7 @@ describe("the read-only inventory", () => {
     await userEvent.click(
       within(limits).getByRole("button", { name: "Show 2" }),
     );
-    expect(within(limits).getByText("Audit retention")).toBeTruthy();
+    expect(within(limits).getByText("Audit trail")).toBeTruthy();
     expect(within(limits).getByText("180 days")).toBeTruthy();
     expect(within(limits).getByText("32 MiB")).toBeTruthy();
   });
@@ -1316,5 +1338,116 @@ describe("accessibility", () => {
     await within(page).findByText("Active");
     const results = await axe(page);
     expect(results.violations.map((v) => v.id)).toEqual([]);
+  });
+});
+
+describe("Package feeds policy in Storefront and hosting (ST-09)", () => {
+  const policyPut = (log: FetchLog) =>
+    log.calls.filter(
+      (c) => c.method === "PUT" && c.path.endsWith("/feeds/npm/policy"),
+    );
+
+  it("moved here: a switch and a size ceiling per ecosystem", async () => {
+    boot("#/platform/settings", { extra: routes() });
+    const hosting = await section("Storefront and hosting");
+    const sw = within(hosting).getByRole("switch", { name: "Serve npm" });
+    expect(sw.getAttribute("aria-checked")).toBe("true");
+    expect(
+      within(hosting).getByLabelText("npm size ceiling (MiB)"),
+    ).toBeTruthy();
+    expect(
+      within(hosting).getByRole("switch", { name: "Serve Godot" }),
+    ).toBeTruthy();
+  });
+
+  it("stopping an ecosystem names every product (L2) before it saves with expectedVersion", async () => {
+    const log = boot("#/platform/settings", {
+      extra: routes({
+        "PUT /manage/api/platform/feeds/npm/policy": {
+          ok: true,
+          policy: {
+            enabled: false,
+            maxPackageBytesCeiling: 52_428_800,
+            version: 2,
+            updatedAt: 1,
+            updatedBy: "ada",
+          },
+        },
+      }),
+    });
+    const hosting = await section("Storefront and hosting");
+    await userEvent.click(
+      within(hosting).getByRole("switch", { name: "Serve npm" }),
+    );
+    const dialog = await screen.findByRole("alertdialog");
+    expect(within(dialog).getByText(/Every product.s npm feed/)).toBeTruthy();
+    expect(policyPut(log)).toHaveLength(0);
+    const buttons = within(dialog).getAllByRole("button");
+    await userEvent.click(buttons[buttons.length - 1]!);
+    await waitFor(() => expect(policyPut(log)).toHaveLength(1));
+    expect(JSON.parse(policyPut(log)[0]!.body!)).toEqual({
+      expectedVersion: 1,
+      enabled: false,
+    });
+  });
+
+  it("Escape backs out of the confirmation and focus returns to the switch (keyboard)", async () => {
+    const log = boot("#/platform/settings", { extra: routes() });
+    const hosting = await section("Storefront and hosting");
+    const sw = within(hosting).getByRole("switch", { name: "Serve npm" });
+    sw.focus();
+    await userEvent.keyboard(" ");
+    await screen.findByRole("alertdialog");
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(document.activeElement).toBe(sw);
+    expect(policyPut(log)).toHaveLength(0);
+    expect(sw.getAttribute("aria-checked")).toBe("true");
+  });
+
+  it("is read-only without Platform edit, and says who to ask", async () => {
+    boot("#/platform/settings", {
+      extra: routes(),
+      me: {
+        platformAdmin: false,
+        permissions: {
+          roles: [],
+          platform: { view: ["console", "platform"], edit: ["console"] },
+          products: {},
+        },
+      },
+    });
+    const hosting = await section("Storefront and hosting");
+    const sw = within(hosting).getByRole("switch", { name: "Serve npm" });
+    expect((sw as HTMLButtonElement).disabled).toBe(true);
+    const jobs = await section("Jobs");
+    expect(
+      (
+        within(jobs).getByRole("switch", {
+          name: "Lazy deltas",
+        }) as HTMLButtonElement
+      ).disabled,
+    ).toBe(true);
+    expect(
+      within(hosting).getAllByText(/Platform access/).length,
+    ).toBeGreaterThan(0);
+  });
+});
+
+describe("Limits (ST-09)", () => {
+  it("has one h1 and an axe-clean page with every group open", async () => {
+    boot("#/platform/settings", { extra: routes() });
+    const limits = await section("Limits");
+    await userEvent.click(within(limits).getByRole("button", { name: /Show/ }));
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect((await axe(main())).violations.map((v) => v.id)).toEqual([]);
+  });
+
+  it("groups the Worker's inventory by area, one named group each", async () => {
+    boot("#/platform/settings", { extra: routes() });
+    const limits = await section("Limits");
+    await userEvent.click(within(limits).getByRole("button", { name: /Show/ }));
+    for (const name of ["Retention", "Storage and delivery"])
+      expect(within(limits).getByRole("group", { name })).toBeTruthy();
   });
 });

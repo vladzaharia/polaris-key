@@ -32,6 +32,7 @@
  * the product-scoped routes only.
  */
 
+import { identityManifest } from "./ingest.js";
 import type {
   DiscoveryContext,
   RegistrationAuthContext,
@@ -42,11 +43,7 @@ import type { AdminSession } from "../../core/console/session.js";
 import { handleIdentityRoutes } from "./routes.js";
 import { handleIdentityAdmin } from "./admin.js";
 import { authorizeRegistration } from "./registration.js";
-import {
-  identityManifestIngest,
-  IDENTITY_SETTINGS_SLICE,
-  manifestClaimByKeyStatements,
-} from "./settings.js";
+import { IDENTITY_SETTINGS_SLICE } from "./settings.js";
 import type { IdentityDiscovery } from "@polaris-key/protocol/identity";
 import { keyEntryLimit } from "../../core/licensing/keyEntries.js";
 import {
@@ -68,19 +65,9 @@ export const identityService: ServiceDescriptor = {
   slug: "identity",
   /** ST-03: this service's settings registry slice (`settings.ts`). */
   settings: IDENTITY_SETTINGS_SLICE,
-  /**
-   * LX-06: `oidc.syncTierOnSignIn` → the claimable `identity.oidc.syncTierOnSignIn` row, on every
-   * link and resync whatever Identity's enablement, so it is already right when Identity is
-   * turned on (it does nothing while Identity is off). A console claim is never overwritten.
-   * I-09: the `identity:` block's settings ride along (`settings.ts` `identityManifestIngest`).
-   */
-  manifestIngestAlways: (parsed, product, now) =>
-    identityManifestIngest(parsed, product, now),
-  /** I-09: `identity.keyEntry.claimByKey` from the `identity:` block, into its column. */
-  manifestIngest: (parsed, product, now) =>
-    manifestClaimByKeyStatements(product, parsed, now),
   handle: handleIdentityRoutes,
   contributes: {
+    manifest: identityManifest,
     productDeletion: identityProductDeletion,
     // LX-26: the licence-holder hooks, so License's creation path and every account-email
     // verification reach them (`core/licensing/licenseHolders.ts`).

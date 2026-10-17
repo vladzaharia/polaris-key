@@ -39,6 +39,7 @@
 
 import { RESERVED_PRODUCT_SLUGS } from "@polaris-key/manifest";
 import { SERVICE_SLUGS, type ServiceSlug } from "./core/services.js";
+import { storeHookOf } from "./core/stores/hooks.js";
 
 /**
  * The service slugs the core router dispatches through the registry today.
@@ -101,6 +102,9 @@ export type Route =
       product: string;
       rest: string[];
       alias?: true;
+      /** CM-29: one of Commerce's two canonical store hooks (`core/stores/hooks.ts`); not an
+       *  alias, and the only way Commerce's `hooks/*` answers. */
+      storeHook?: true;
     }
   | { kind: "notFound" }
   /**
@@ -258,6 +262,21 @@ export function matchRoute(pathname: string): Route {
       releaseBytes[1],
       ...releaseBytes[2].split("/"),
     ]);
+
+  // Commerce's store notification hooks (CM-29, D1): canonical at their stores' URLs under
+  // `/distribution/hooks/`, so Distribution's namespace would claim them. Ahead of the namespace
+  // check. `asc` and `sentry` stay Distribution's.
+  const hook = storeHookOf(
+    rest.startsWith("/distribution/") ? rest.slice(14).split("/") : [],
+  );
+  if (hook)
+    return {
+      kind: "service",
+      slug: "commerce",
+      product,
+      rest: ["hooks", hook],
+      storeHook: true,
+    };
 
   // /<product>/<service>/<rest…> for the services that have been cut over. Placed before the
   // channel-appcast and download patterns so a service namespace can never be shadowed by a

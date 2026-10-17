@@ -30,7 +30,7 @@ import { linkRepo } from "../src/services/release/linkRepo.js";
 import { resyncNotes, resyncRepo } from "../src/services/release/resync.js";
 import { planResync } from "../src/services/release/linkExisting.js";
 import { handleGithubWebhook } from "../src/githubWebhook.js";
-import { manifestIngestFor } from "../src/core/registry.js";
+import { ingestFor } from "../src/core/ingest/pipeline.js";
 import { SERVICES } from "../src/mount.js";
 import {
   BREAK_GLASS_MAX_SECONDS,
@@ -156,7 +156,7 @@ async function linked(d: Decl = {}) {
     "acme-org/acme-app",
     NOW,
     github(d),
-    manifestIngestFor(SERVICES),
+    ingestFor(SERVICES),
   );
   expect(res.ok).toBe(true);
   const { token, session } = await issueSession(
@@ -191,14 +191,7 @@ async function call(
 }
 
 async function resync(ctx: Ctx, d: Decl = {}, at = NOW + 60) {
-  return resyncRepo(
-    ctx.env,
-    ctx.db,
-    SLUG,
-    at,
-    github(d),
-    manifestIngestFor(SERVICES),
-  );
+  return resyncRepo(ctx.env, ctx.db, SLUG, at, github(d), ingestFor(SERVICES));
 }
 
 async function okResync(ctx: Ctx, d: Decl = {}, at = NOW + 60) {
@@ -476,7 +469,14 @@ describe("a break-glass claim (ST-20)", () => {
   it("the dry run plans the ending and lists the live claims", async () => {
     const ctx = await authoritative();
     await breakGlass(ctx);
-    const keep = await planResync(ctx.env, ctx.db, SLUG, NOW + 60, github());
+    const keep = await planResync(
+      ctx.env,
+      ctx.db,
+      SLUG,
+      NOW + 60,
+      github(),
+      ingestFor(SERVICES),
+    );
     if (!keep.ok) throw new Error(keep.error);
     expect(keep.breakGlass.map((b) => b.key)).toEqual([KEY]);
     const end = await planResync(
@@ -485,6 +485,7 @@ describe("a break-glass claim (ST-20)", () => {
       SLUG,
       NOW + 60,
       github({ devices: 4 }),
+      ingestFor(SERVICES),
     );
     if (!end.ok) throw new Error(end.error);
     expect(end.breakGlass).toEqual([]);

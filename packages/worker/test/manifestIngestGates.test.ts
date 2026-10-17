@@ -26,8 +26,8 @@ import { linkRepo } from "../src/services/release/linkRepo.js";
 import { resyncRepo } from "../src/services/release/resync.js";
 import { planResync } from "../src/services/release/linkExisting.js";
 import { getReleaseConfig } from "../src/services/release/config.js";
-import { sealedProfilePayload } from "../src/services/release/manifestSecrets.js";
-import { manifestIngestFor } from "../src/core/registry.js";
+import { sealedProfilePayload } from "../src/core/ingest/manifestSecrets.js";
+import { ingestFor } from "../src/core/ingest/pipeline.js";
 import { SERVICES } from "../src/mount.js";
 import { withDefaultHead } from "./githubHead.js";
 
@@ -129,7 +129,7 @@ async function linked(over: Over = {}): Promise<Ctx> {
     "acme-org/acme-app",
     NOW,
     github(over),
-    manifestIngestFor(SERVICES),
+    ingestFor(SERVICES),
   );
   expect(res.ok, JSON.stringify(res)).toBe(true);
   return { db, env };
@@ -142,7 +142,7 @@ function resync(ctx: Ctx, over: Over = {}, at = NOW + 60) {
     SLUG,
     at,
     github(over),
-    manifestIngestFor(SERVICES),
+    ingestFor(SERVICES),
   );
 }
 
@@ -197,6 +197,7 @@ describe("a push cannot swap the Sparkle verification key", () => {
       SLUG,
       NOW + 60,
       github({ release: { sparkleEd25519Pub: KEY_B } }),
+      ingestFor(SERVICES),
     );
 
     expect(plan.ok).toBe(true);

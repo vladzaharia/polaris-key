@@ -78,6 +78,9 @@
       },
       "sync": {
         "enabled": false
+      },
+      "commerce": {
+        "enabled": false
       }
     }
   },
@@ -229,6 +232,13 @@
           "push": null,
           "files": null
         }
+      },
+      "commerce": {
+        "enabled": true,
+        "endpoints": {
+          "binding": "https://key.plrs.im/full/commerce/binding",
+          "claim": "https://key.plrs.im/full/commerce/claim"
+        }
       }
     }
   },
@@ -304,6 +314,9 @@
         "enabled": false
       },
       "sync": {
+        "enabled": false
+      },
+      "commerce": {
         "enabled": false
       }
     }

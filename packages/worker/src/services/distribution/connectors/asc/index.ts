@@ -2,7 +2,7 @@
  * The App Store Connect connector (P5-02) as a `DistributionConnector`: the poller, the webhook
  * route and the controls. See `client.ts` (the API), `webhook.ts`, `map.ts` (the vocabulary),
  * `apply.ts` (read one object, write its state), `poll.ts`, `controls.ts`, `distribute.ts`
- * (A-17d's Distribute flow) and `../../commerce/appleCatalog.ts` (A-17e's in-app purchases).
+ * (A-17d's Distribute flow) and `iapCatalog.ts` (A-17e's in-app purchases).
  */
 
 import type { DistributionConnector } from "../index.js";
@@ -12,10 +12,7 @@ import { ASC_CONTROLS } from "./controls.js";
 import { ASC_SETUP_CONTROLS, provisioningView } from "./provision.js";
 import { ASC_DISTRIBUTE_CONTROLS, ASC_DISTRIBUTE_READS } from "./distribute.js";
 import { ASC_LISTING_CONTROLS } from "./listingPush.js";
-import {
-  ASC_CATALOG_CONTROLS,
-  ASC_CATALOG_READS,
-} from "../../commerce/appleCatalog.js";
+import { ASC_CATALOG_CONTROLS, ASC_CATALOG_READS } from "./iapCatalog.js";
 import { pollAsc } from "./poll.js";
 import { readRate } from "../../../../core/storefront/budget.js";
 import { platformPin } from "../../../../core/platformCredentials.js";

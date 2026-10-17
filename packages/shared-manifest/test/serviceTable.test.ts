@@ -68,7 +68,9 @@ describe("the service table, as the manifest package sees it", () => {
         const modules = Object.fromEntries(
           SERVICE_SLUGS.map((s) => [
             s,
-            { enabled: s === slug || s === "license" },
+            // License stays on so the product is valid, except where License IS the
+            // requirement under test (Commerce, CM-29).
+            { enabled: s === slug || (s === "license" && required !== s) },
           ]),
         );
         const result = validateManifestDocuments({

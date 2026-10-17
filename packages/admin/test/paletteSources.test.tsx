@@ -96,6 +96,7 @@ describe("Turn on <Service>", () => {
       ["Turn on Update", "Needs Distribution and Release"],
       ["Turn on Identity", "Services"],
       ["Turn on Cloud Sync", "Needs Identity"],
+      ["Turn on Commerce", "Services"],
     ]);
     expect(items.every((i) => i.matchOnly && i.group === "Actions")).toBe(true);
   });

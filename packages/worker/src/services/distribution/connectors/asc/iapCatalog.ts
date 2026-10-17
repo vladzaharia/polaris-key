@@ -65,12 +65,9 @@ import {
   relId,
   single,
   type AscResource,
-} from "../../../core/stores/apple/client.js";
-import { checkTypedConfirmation } from "../connectors/asc/controls.js";
-import type {
-  ConnectorControl,
-  ConnectorRead,
-} from "../connectors/asc/controls.js";
+} from "../../../../core/stores/apple/client.js";
+import { checkTypedConfirmation } from "./controls.js";
+import type { ConnectorControl, ConnectorRead } from "./controls.js";
 import {
   ID,
   LOCALE,
@@ -81,12 +78,23 @@ import {
   stop,
   type Flow,
   type StepResult,
-} from "../connectors/asc/flow.js";
-import {
-  getStoreProduct,
-  isStoreProductId,
-  listStoreProducts,
-} from "./state.js";
+} from "./flow.js";
+import { isStoreProductId } from "../../../../core/licensing/storeGrants.js";
+import type {
+  StoreProductMapping,
+  StoreProducts,
+} from "../../../../core/hooks.js";
+
+/** The product's store-product map through Commerce's hook (CM-29). While Commerce is off the
+ *  map reads as empty: nothing is mapped, so nothing is created at Apple. */
+const EMPTY_MAP: StoreProducts = {
+  list: async () => [],
+  get: async () => null,
+};
+const storeProducts = (f: Pick<Flow, "c">): StoreProducts =>
+  f.c.hooks.storeProducts() ?? EMPTY_MAP;
+const appStoreProducts = (f: Pick<Flow, "c">): Promise<StoreProductMapping[]> =>
+  storeProducts(f).list("app-store");
 
 type Pinned = Pick<Flow, "c" | "run" | "setup">;
 
@@ -205,7 +213,7 @@ async function mappedProductId(
     stop(422, "invalid_body", "productId must be an App Store product id", [
       "productId",
     ]);
-  const row = await getStoreProduct(f.c.db, f.c.product, "app-store", raw);
+  const row = await storeProducts(f).get("app-store", raw);
   if (!row)
     stop(
       404,
@@ -215,7 +223,7 @@ async function mappedProductId(
   return {
     productId: raw,
     flag: row.flag,
-    deliverableId: row.deliverable_id,
+    deliverableId: row.deliverableId,
   };
 }
 
@@ -379,16 +387,14 @@ async function pricePoints(
 // ── Reads ────────────────────────────────────────────────────────────────────────────────────
 
 const products: ConnectorRead = distributeRead(async (f) => {
-  const rows = (await listStoreProducts(f.c.db, f.c.product)).filter(
-    (r) => r.store === "app-store",
-  );
+  const rows = await appStoreProducts(f);
   const byProductId = new Map<string, AscResource>();
   for (let i = 0; i < rows.length; i += PRODUCT_ID_CHUNK) {
     const chunk = rows.slice(i, i + PRODUCT_ID_CHUNK);
     const doc = await f.run.client.get(
       ascPath("apps", f.setup.appleId, "inAppPurchasesV2"),
       {
-        "filter[productId]": chunk.map((r) => r.store_product_id).join(","),
+        "filter[productId]": chunk.map((r) => r.storeProductId).join(","),
         limit: "200",
       },
     );
@@ -405,12 +411,12 @@ const products: ConnectorRead = distributeRead(async (f) => {
     ...(first ? { firstInAppPurchaseNote: FIRST_IAP_NOTE } : {}),
     priceChangeWarning: PRICE_CHANGE_WARNING,
     products: rows.map((r) => {
-      const iap = byProductId.get(r.store_product_id) ?? null;
+      const iap = byProductId.get(r.storeProductId) ?? null;
       const type = attr(iap, "inAppPurchaseType");
       return {
-        storeProductId: r.store_product_id,
+        storeProductId: r.storeProductId,
         flag: r.flag,
-        deliverableId: r.deliverable_id,
+        deliverableId: r.deliverableId,
         status: iap ? (attr(iap, "state") ?? "unknown") : "missing",
         typeMismatch: iap !== null && type !== IAP_TYPE,
         iap: iap
@@ -472,9 +478,7 @@ const submissionItems: ConnectorRead = distributeRead(async (f, q) => {
       ["platform"],
     );
   const mapped = new Set(
-    (await listStoreProducts(f.c.db, f.c.product))
-      .filter((r) => r.store === "app-store")
-      .map((r) => r.store_product_id),
+    (await appStoreProducts(f)).map((r) => r.storeProductId),
   );
   const first = mapped.size > 0 ? !(await hasApprovedIap(f)) : false;
   const iaps = [];
@@ -1080,7 +1084,7 @@ export async function proveSubmissionExtras(
     if (
       !productId ||
       !isStoreProductId("app-store", productId) ||
-      !(await getStoreProduct(f.c.db, f.c.product, "app-store", productId))
+      !(await storeProducts(f).get("app-store", productId))
     )
       unknown();
     // Ownership: the pinned app's IAP with that product id must be this one.
@@ -1152,9 +1156,7 @@ export async function proveSubmissionExtras(
 export async function firstIapCheck(
   f: Pinned,
 ): Promise<{ id: string; ok: null; detail: string } | null> {
-  const mapped = (await listStoreProducts(f.c.db, f.c.product)).some(
-    (r) => r.store === "app-store",
-  );
+  const mapped = (await appStoreProducts(f)).length > 0;
   if (!mapped || (await hasApprovedIap(f))) return null;
   return { id: "firstInAppPurchase", ok: null, detail: FIRST_IAP_NOTE };
 }

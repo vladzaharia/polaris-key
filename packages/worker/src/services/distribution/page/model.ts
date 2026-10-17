@@ -265,6 +265,7 @@ export function memoHooks(h: ServiceHooks): ServiceHooks {
     delivery: () => d,
     outletCapabilities: (id) => h.outletCapabilities(id),
     licenseProvenance: () => h.licenseProvenance(),
+    storeProducts: () => h.storeProducts(),
   };
 }
 

@@ -4,11 +4,11 @@ The store sells; the Worker verifies the purchase with the store and puts the ma
 the player's licence for every release of the deliverable, until a refund or revocation. The
 device only forwards what its store handed it, so this is plain HTTP and needs no store SDK:
 
-* :meth:`CommerceClient.binding` — ``GET /<p>/distribution/commerce/binding``: the licence's
+* :meth:`CommerceClient.binding` — ``GET /<p>/commerce/binding``: the licence's
   opaque purchase binding and the store products on sale. Call it BEFORE buying and hand
   ``bindingId`` to the store (Steam: ``GetAuthTicketForWebApi(bindingId)``; Play:
   ``obfuscatedAccountId``; App Store: ``appAccountToken``).
-* :meth:`CommerceClient.claim` — ``POST /<p>/distribution/commerce/claim``: forward one
+* :meth:`CommerceClient.claim` — ``POST /<p>/commerce/claim``: forward one
   purchase. A :class:`ClaimOk` means the next licence document carries the flag; ``claim``
   itself does not sync (the host decides when), the one-call helpers below do.
 * :meth:`CommerceClient.claim_steam`, :meth:`~CommerceClient.claim_play`,
@@ -175,7 +175,7 @@ class CommerceClient:
         ``network-error``, ``server-error``, ``bad_response`` (no binding UUID), or the Worker's
         code for a refusal (``not_entitled`` before the device holds a licence, …)."""
         token = self._require()
-        res = self._send("GET", "distribution/commerce/binding", token)
+        res = self._send("GET", "commerce/binding", token)
         body = _json(res)
         if res.status_code != 200:
             raise PolarisError(
@@ -217,7 +217,7 @@ class CommerceClient:
         an answer."""
         body = _claim_body(store, payload)
         token = self._require()
-        res = self._send("POST", "distribution/commerce/claim", token, body)
+        res = self._send("POST", "commerce/claim", token, body)
         b = _json(res)
         if res.status_code == 200:
             if b.get("ok") is not True:
@@ -283,8 +283,7 @@ class CommerceClient:
         return r
 
     def _require(self) -> str:
-        for slug in ("license", "distribution"):
-            self._ctx.require_service(slug, Feature.COMMERCE_RECEIPT)
+        self._ctx.require_service("commerce", Feature.COMMERCE_RECEIPT)
         token = self._tokens.current
         if not token:
             raise PolarisError("no-token", "Activate, enrol or register before claiming purchases.")

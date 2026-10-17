@@ -1,3 +1,5 @@
+import { ingestFor } from "../../src/core/ingest/pipeline.js";
+import { SERVICES } from "../../src/mount.js";
 /**
  * RED TEAM R9 — injection, SSRF, open redirects, untrusted-input sinks.
  *
@@ -455,6 +457,7 @@ describe("R9-01 repo-manifest-controlled OIDC issuer -> SSRF + secret exfil", ()
       "acme-org/acme-app",
       NOW,
       stub.fetchImpl,
+      ingestFor(SERVICES),
     );
     expect(res.ok).toBe(false);
     if (res.ok) return;
@@ -481,6 +484,7 @@ describe("R9-01 repo-manifest-controlled OIDC issuer -> SSRF + secret exfil", ()
       "acme-org/acme-app",
       NOW,
       stub.fetchImpl,
+      ingestFor(SERVICES),
     );
     expect(allowed.ok, allowed.ok ? "" : allowed.error).toBe(true);
     expect(
@@ -506,7 +510,16 @@ describe("R9-01 repo-manifest-controlled OIDC issuer -> SSRF + secret exfil", ()
       ".pkey/product.json": acmeProduct("https://id.example"),
     });
     expect(
-      (await linkRepo(env, db, "acme-org/acme-app", NOW, stub.fetchImpl)).ok,
+      (
+        await linkRepo(
+          env,
+          db,
+          "acme-org/acme-app",
+          NOW,
+          stub.fetchImpl,
+          ingestFor(SERVICES),
+        )
+      ).ok,
     ).toBe(true);
 
     // A repo writer repoints the IdP and renames the product in the same push.
@@ -514,7 +527,14 @@ describe("R9-01 repo-manifest-controlled OIDC issuer -> SSRF + secret exfil", ()
       "https://exfil.attacker.example",
       { name: "Pwned" },
     );
-    const res = await resyncRepo(env, db, "acme", NOW + 10, stub.fetchImpl);
+    const res = await resyncRepo(
+      env,
+      db,
+      "acme",
+      NOW + 10,
+      stub.fetchImpl,
+      ingestFor(SERVICES),
+    );
     expect(res.ok).toBe(false);
     if (res.ok) return;
     expect(res.error).toContain("OIDC_ISSUER_ALLOWLIST");
@@ -549,14 +569,30 @@ describe("R9-01 repo-manifest-controlled OIDC issuer -> SSRF + secret exfil", ()
       ".pkey/product.json": acmeProduct("https://id.example"),
     });
     expect(
-      (await linkRepo(env, db, "acme-org/acme-app", NOW, stub.fetchImpl)).ok,
+      (
+        await linkRepo(
+          env,
+          db,
+          "acme-org/acme-app",
+          NOW,
+          stub.fetchImpl,
+          ingestFor(SERVICES),
+        )
+      ).ok,
     ).toBe(true);
 
     delete env.OIDC_ISSUER_ALLOWLIST;
     stub.files[".pkey/product.json"] = acmeProduct("https://id.example", {
       name: "Acme Renamed",
     });
-    const res = await resyncRepo(env, db, "acme", NOW + 10, stub.fetchImpl);
+    const res = await resyncRepo(
+      env,
+      db,
+      "acme",
+      NOW + 10,
+      stub.fetchImpl,
+      ingestFor(SERVICES),
+    );
     expect(res.ok, res.ok ? "" : res.error).toBe(true);
     expect(
       (
@@ -593,6 +629,7 @@ describe("R9-01 repo-manifest-controlled OIDC issuer -> SSRF + secret exfil", ()
       "example-org/djdl",
       NOW,
       stub.fetchImpl,
+      ingestFor(SERVICES),
     );
     expect(linked.ok, linked.ok ? "" : linked.error).toBe(true);
     const oidc = await db.first<{ provider: string; issuer: string }>(
@@ -602,7 +639,14 @@ describe("R9-01 repo-manifest-controlled OIDC issuer -> SSRF + secret exfil", ()
     expect(oidc?.provider).toBe("platform");
     expect(oidc?.issuer).toBe(""); // no repo-supplied issuer exists to gate
 
-    const res = await resyncRepo(env, db, SLUG, NOW + 10, stub.fetchImpl);
+    const res = await resyncRepo(
+      env,
+      db,
+      SLUG,
+      NOW + 10,
+      stub.fetchImpl,
+      ingestFor(SERVICES),
+    );
     expect(res.ok, res.ok ? "" : res.error).toBe(true);
   });
 
@@ -1674,7 +1718,8 @@ describe("R9-11 edge-mint auth page", () => {
 
   it("REFUTED (today): no code path writes auth_page_template", () => {
     const repoSrc = readFileSync(
-      join(HERE, "..", "..", "src", "core", "products", "store.ts"),
+      // P0-26 moved the statement builder to its owner, Config's ingest.
+      join(HERE, "..", "..", "src", "services", "config", "ingest.ts"),
       "utf8",
     );
     // The only INSERT that touches the column hardcodes NULL, asserted POSITIONALLY: the same

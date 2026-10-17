@@ -1,12 +1,13 @@
 /**
  * Overview's Needs attention items (OVR-2): operational problems only, from the product's setup
- * state and its licenses. Split out of `Overview.tsx` for the page budget.
+ * state and its licenses (pending edge-mint recipes included, U-31). Split out of `Overview.tsx` for the page budget.
  */
 
 import { formatCount } from "../../../../lib/format.js";
 import type { ProductDetail } from "../../../../api.js";
 import type { AttentionItem } from "../../../templates/Dashboard.js";
 import { r } from "../../../routes.js";
+import { pendingRecipes } from "../../config/model/pending.js";
 
 const DAY = 86_400;
 
@@ -14,11 +15,11 @@ export function useAttention(
   slug: string,
   p: ProductDetail,
   licenses: { status: string; expiresAt: number | null }[] | undefined,
-  skipSigning = false,
+  skip: { signing?: boolean; recipes?: boolean } = {},
 ): AttentionItem[] {
   const items: AttentionItem[] = [];
   const setup = p.setup;
-  if (!p.signing?.publicKey && !skipSigning) {
+  if (!p.signing?.publicKey && !skip.signing) {
     items.push({
       id: "signing",
       tone: "warning",
@@ -47,14 +48,13 @@ export function useAttention(
       action: { label: "Repository", href: `${r.settings(slug)}` },
     });
   }
-  const edge = moduleOf(p, "edgeMint");
-  for (const id of (edge?.pendingApproval as string[] | undefined) ?? []) {
+  for (const id of skip.recipes ? [] : pendingRecipes(p)) {
     items.push({
       id: `edge-${id}`,
       tone: "warning",
       object: `Edge-mint recipe ${id}`,
       reason: "Mints nothing until it is approved as it stands.",
-      action: { label: "Review", href: r.edgeMint(slug) },
+      action: { label: "Review", href: r.catalogEntry(slug, id, true) },
     });
   }
   for (const w of setup?.warnings ?? []) {
@@ -88,15 +88,4 @@ export function useAttention(
     }
   }
   return items;
-}
-
-function moduleOf(
-  p: ProductDetail,
-  id: string,
-): Record<string, unknown> | undefined {
-  const modules = p.setup?.modules;
-  if (!Array.isArray(modules)) return undefined;
-  return modules.find((m) => m.id === id) as
-    | Record<string, unknown>
-    | undefined;
 }

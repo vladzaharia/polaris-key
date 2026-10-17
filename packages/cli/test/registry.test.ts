@@ -108,7 +108,15 @@ describe("the command table", () => {
       COMMANDS.filter((c) => c.json)
         .map((c) => c.name)
         .sort(),
-    ).toEqual(["dev", "doctor", "feeds", "listing", "storefront", "validate"]);
+    ).toEqual([
+      "dev",
+      "doctor",
+      "feeds",
+      "listing",
+      "migrate",
+      "storefront",
+      "validate",
+    ]);
   });
 
   it("reads parse's valueless flags from the table", () => {

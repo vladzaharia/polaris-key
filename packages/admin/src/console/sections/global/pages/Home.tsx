@@ -73,6 +73,7 @@ const SERVICE_HOME: Record<ServiceSlug, (slug: string) => string> = {
   update: (slug) => r.feed(slug),
   identity: (slug) => r.portal(slug),
   sync: (slug) => r.syncData(slug),
+  commerce: (slug) => r.commerce(slug),
 };
 
 const TONE_RANK: Record<AttentionTone, number> = {

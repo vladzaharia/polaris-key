@@ -8,7 +8,7 @@
 
 import type { ServiceId } from "./source.js";
 
-/** Ten icons: core, the seven services in tools/services.json, plus commerce and packs. */
+/** Ten icons: core, the eight services in tools/services.json (Commerce is one since CM-29), plus packs. */
 export const SERVICE_ICON_IDS = [
   "core",
   "license",

@@ -107,3 +107,33 @@ Not done, for the next slice:
   needs their notice, prerequisite and step-up flows mapped onto jobs; until then the "no
   consumer ships its own one-off runner" criterion holds for new consumers only.
 - Recording each report in P0-24's ledger (blocked on P0-24).
+
+## Progress and continuation (2026-10-17, slice 2)
+
+Done:
+
+- `pkey migrate list | dry-run <job> | report <run>` (`packages/cli/src/migrate.ts`), authenticated
+  by `PKEY_ADMIN_TOKEN`. A new admin API token scope, `migrations:report`, is the `tokenScope` of
+  exactly three rows: `GET /platform/migrations`, `GET /platform/migrations/runs/:id` and
+  `POST /platform/migrations/dry-run`. Apply and down stay console-only: they carry `stepUp: true`,
+  a token has no step-up, and the dispatcher refuses a token there (test). A token minted without
+  an explicit scope list still gets `bundles:mint` only, so the new scope never widens an old caller.
+  OpenAPI, the threat model, the admin scope list and the CLI reference are updated.
+- Core's own jobs (`core/migrate/coreJobs.ts`, listed first by `migrationJobs()`): a job may set
+  `delegatedTo`; the runner then dry-runs and keeps the report but answers `delegated` (409) to
+  apply and down. `core.licence-override-migration` is the first.
+
+Decisions (the folds):
+
+- U-03's override migration is NOT folded. It is a platform-wide state machine (prerequisite flags,
+  30-day notice, not-before date, a freeze from the run's start, a completion that switches the
+  document builder, a 90-day report, a nightly sweep) and its drops are irreversible, so it has no
+  down. Folding it would change console behaviour or give the runner a second way to start it.
+  Only its dry run joins the runner (counts per product, no licence ids).
+- The settings backfill is NOT folded. Its dry run writes a report row and reads GitHub, which a
+  runner `plan` may not; its apply reverts console values (D19) and has no down. Its three
+  `tableCrossings` rows (`product_schema`, `profiles`, `tiers`) stay: wrapping would not remove
+  the writes, and they leave with P0-26's owner stores.
+- So the criterion "no consumer ships its own one-off runner" still holds for new consumers only.
+
+Not done: recording each report in P0-24's ledger (blocked on P0-24).

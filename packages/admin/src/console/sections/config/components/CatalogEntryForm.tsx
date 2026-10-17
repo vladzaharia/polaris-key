@@ -151,7 +151,7 @@ export function CatalogEntryForm({
   slug?: string;
   /** Cloud Sync is on for the product, so an Editable setting's choice can sync. */
   syncEnabled?: boolean;
-  /** The draft's flag keys, offered for a minted token's Required flag. */
+  /** The draft's flag keys, offered for a minted token's Required entitlement. */
   flagKeys?: string[];
   onChange: (next: ConfigEntry) => void;
 }): React.ReactElement {

@@ -89,15 +89,16 @@ crypto, KV, the key vault, encodings; the `Db` interface), `src/core/` is the al
 substrate (domain folders `licensing/`, `accounts/`, `notify/`, `trust/`, `assets/`, `registry/`,
 `ops/`, and `core/console/` for what services' admin handlers share with the console), each
 `src/services/<slug>/` is one opt-in service (`license`, `config`, `release`, `distribution`,
-`update`, `identity`, `sync`), and `src/console/` is the operator console. The services are
+`update`, `identity`, `sync`, `commerce`), and `src/console/` is the operator console. The services are
 declared once, as rows of `tools/services.json`; `pnpm gen services` generates every language's slug
 constants from it. `src/mount.ts` is the composition root; `src/router.ts` builds
 `SERVICE_NAMESPACES` from the generated `SERVICE_SLUGS`. Release, Distribution and Update form a
 chain (release ← distribution ← update, coherence codes `distribution_requires_release` and
 `update_requires_distribution`), and Cloud Sync (`sync`) requires Config and Identity
-(`sync_requires_config`, `sync_requires_identity`); services read one another's state only through Core's
+(`sync_requires_config`, `sync_requires_identity`), and Commerce (`commerce`) requires License
+(`commerce_requires_license`); services read one another's state only through Core's
 read-only descriptor hooks in `src/core/hooks.ts` (`releaseCatalog`, `delivery`,
-`outletCapabilities`), which answer `null` while the providing service is off.
+`outletCapabilities`, `storeProducts`), which answer `null` while the providing service is off.
 
 ## Toolchain constraint: Node 22
 

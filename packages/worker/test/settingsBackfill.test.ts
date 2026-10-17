@@ -40,7 +40,7 @@ import {
 } from "../src/core/console/session.js";
 import { linkRepo } from "../src/services/release/linkRepo.js";
 import { parseManifest } from "@polaris-key/manifest";
-import { manifestIngestFor } from "../src/core/registry.js";
+import { ingestFor } from "../src/core/ingest/pipeline.js";
 import { SERVICES } from "../src/mount.js";
 import { stmtClaim } from "../src/core/settingsClaims.js";
 import {
@@ -218,7 +218,7 @@ async function linked(d: Decl = {}) {
     "acme-org/acme-app",
     NOW,
     github({ head: d }),
-    manifestIngestFor(SERVICES),
+    ingestFor(SERVICES),
   );
   expect(res.ok).toBe(true);
   const { token, session } = await issueSession(
@@ -681,7 +681,7 @@ describe("the apply", () => {
       SLUG,
       NOW + 200,
       github({ head: next }),
-      manifestIngestFor(SERVICES),
+      ingestFor(SERVICES),
     );
     expect(res.ok).toBe(true);
     expect((await rows(ctx.db, "tiers")).map((t) => t.id)).toEqual([
@@ -1532,6 +1532,7 @@ describe("the system product (its manifest is the deploy hook's snapshot)", () =
       const parsed = parseManifest(rootFiles());
       if (!parsed.ok) throw new Error(parsed.errors.join("; "));
       const res = await linkSystemProduct(
+        env,
         db,
         parsed.manifest,
         {
@@ -1541,6 +1542,7 @@ describe("the system product (its manifest is the deploy hook's snapshot)", () =
         },
         { files: rootFiles(), sha: "c".repeat(40) },
         NOW + 1,
+        ingestFor(SERVICES),
       );
       expect(res.ok).toBe(true);
     }

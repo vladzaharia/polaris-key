@@ -105,3 +105,178 @@ export function adaptPane(view: View, input: UiInput): View {
     });
   return view;
 }
+
+/** The sign-in form's methods step: no "or" divider over the providers (DL4), no "Sign in…" link
+ *  on the sign-in step itself. Drawing only; the model's copy list is the corpus's. */
+export function adaptMethods(view: View): View {
+  if (view.component !== "SignIn") return view;
+  if (view.state !== "methods" && view.state !== "error") return view;
+  return patched(view, {
+    copy: view.copy.filter(
+      (k) => k !== "signin.provider.group" && k !== "signin.menu.signIn",
+    ),
+  });
+}
+
+/** The Replace step confirms on its own button: its "Replace a device" openers are gone. */
+export function adaptReplace(view: View): View {
+  if (view.component !== "LicenseChoice" || view.state !== "replace-open")
+    return view;
+  return patched(view, {
+    copy: view.copy.filter(
+      (k) => k !== "signin.replace.open" && k !== "signin.replace.openSystem",
+    ),
+  });
+}
+
+/** The code step: how long the code lasts and a Cancel to leave by. */
+export function adaptHandoff(view: View): View {
+  if (view.component !== "SignInHandoff" || view.state !== "code") return view;
+  const add: string[] = [];
+  if (view.args.time !== undefined) add.push("signin.handoff.expires");
+  add.push("common.cancel");
+  return patched(view, { copy: union(view.copy, add) });
+}
+
+/** What the code step says while it waits (a status, not the ticking countdown). */
+export const HANDOFF_WAITING = "cli.signin.waitingCode";
+
+export const ORIGIN_KEY: Readonly<Record<string, string>> = {
+  store: "signin.choice.origin.store",
+  key: "signin.choice.origin.keyAdded",
+  free: "signin.choice.origin.free",
+  developer: "signin.choice.origin.developer",
+  signin: "signin.choice.origin.signIn",
+};
+
+const CHOICE_STATES = new Set([
+  "mixed",
+  "current",
+  "keep",
+  "new",
+  "create",
+  "raced",
+  "one",
+  "many",
+  "all-full",
+]);
+
+/** The license step's base anatomy in every state (the review's "additive" rule): title, lede,
+ *  list, Cancel and the key option, whatever the state adds. Each full license draws its own
+ *  Replace a device when every license is full. Drawing only; the model's copy is the corpus's. */
+export function adaptChoice(
+  view: View,
+  input: UiInput,
+  has: (key: string) => boolean,
+): View {
+  const ch = input.choices;
+  if (
+    view.component !== "LicenseChoice" ||
+    !ch ||
+    !CHOICE_STATES.has(view.state)
+  )
+    return view;
+  const rowKeys = ch.choices.flatMap((r) => [
+    ...(ORIGIN_KEY[r.origin] ? [ORIGIN_KEY[r.origin]!] : []),
+    r.expiresAt === null ? "signin.term.lifetime" : "signin.term.until",
+  ]);
+  const keyInstead =
+    input.capabilities?.keyEntry !== false && ch.getLicense?.keyEntry !== false;
+  const lede =
+    view.state === "all-full" || view.state === "raced"
+      ? []
+      : [
+          view.state === "new"
+            ? "signin.choice.ledeNew"
+            : input.platform?.os === "web"
+              ? "signin.choice.ledeBrowser"
+              : "signin.choice.lede",
+        ];
+  const rowReplace =
+    view.state === "all-full" &&
+    ch.choices.some((r) => r.state !== "free" && r.replace?.allowed);
+  const base = union(
+    view.copy,
+    [
+      "signin.choice.title",
+      ...lede,
+      "signin.choice.group",
+      "signin.choice.meta",
+      "signin.choice.devices",
+      "signin.choice.tag.current",
+      "signin.choice.tag.full",
+      ...rowKeys,
+      "common.cancel",
+      ...(keyInstead ? ["signin.choice.keyInstead"] : []),
+    ].filter(has),
+  );
+  const gone = new Set<string>([
+    // One lede: the browser's, where the form runs in one.
+    ...(base.includes("signin.choice.ledeBrowser")
+      ? ["signin.choice.lede"]
+      : []),
+    // A full license draws its own Replace; Keep and Create are list rows, not buttons.
+    ...(rowReplace ? ["signin.replace.open"] : []),
+    ...(view.state === "all-full"
+      ? []
+      : ["signin.choice.keep", "signin.choice.create"]),
+  ]);
+  const primary = view.decisions.primary;
+  return patched(view, {
+    copy: base.filter((k) => !gone.has(k)),
+    decisions: {
+      ...view.decisions,
+      primary: rowReplace && primary === "signin.replace.open" ? null : primary,
+    },
+  });
+}
+
+/** The sign-in form's frame: Done ends on a heading and one Start; every other step of a sheet
+ *  can be backed out of (DL2). */
+export function adaptSignIn(
+  view: View,
+  input: UiInput,
+  sheet: boolean,
+  has: (key: string) => boolean,
+): View {
+  if (view.component !== "SignIn") return view;
+  if (view.state === "done") {
+    if (input.services && !input.services.includes("license")) return view;
+    return patched(view, {
+      copy: union(
+        view.copy,
+        ["signin.return.signedInShort", "signin.done.start"].filter(has),
+      ),
+      decisions: { ...view.decisions, primary: "signin.done.start" },
+    });
+  }
+  return view.state === "methods" && !sheet
+    ? view
+    : patched(view, { copy: union(view.copy, ["common.cancel"]) });
+}
+
+/** The web's update prompt: the person downloads the new version (the page cannot install it),
+ *  so one Download action and Later, a title that says so, and the installed version without the
+ *  size of a download that is not theirs to wait for. */
+export function adaptUpdate(view: View): View {
+  if (view.component !== "UpdatePrompt" || view.state !== "available")
+    return view;
+  const gone = new Set([
+    "update.title",
+    "update.restartWhenReady",
+    "update.skipVersion",
+  ]);
+  return patched(view, {
+    copy: union(
+      ["update.availableTitle"],
+      view.copy.filter((k) => !gone.has(k)),
+    ),
+  });
+}
+
+/** A pane's title says what its list is; the Devices lede repeats it. */
+export function withoutLede(view: View): View {
+  return view.component === "Devices" && view.copy.includes("devices.lede")
+    ? patched(view, { copy: view.copy.filter((k) => k !== "devices.lede") })
+    : view;
+}

@@ -177,4 +177,52 @@ describe("licence list paging", () => {
     ).json()) as { total: number };
     expect(pro.total).toBe(5);
   });
+
+  it("filters by computed state before it pages, and counts stay whole", async () => {
+    await seed(5);
+    const ids = (
+      (await (await call("GET", "/license/licenses")).json()) as Page
+    ).licenses.map((l) => l.id);
+    await db.run(
+      "UPDATE licenses SET status = 'disabled' WHERE id = ?",
+      ids[0],
+    );
+    await db.run(
+      "UPDATE licenses SET expires_at = ? WHERE id = ?",
+      NOW - 10,
+      ids[1],
+    );
+    await db.run(
+      "UPDATE licenses SET expires_at = ? WHERE id = ?",
+      NOW + 86_400,
+      ids[2],
+    );
+    const get = async (state: string) =>
+      (await (
+        await call("GET", `/license/licenses?state=${state}&limit=1`)
+      ).json()) as {
+        total: number;
+        counts: Record<string, number>;
+        licenses: { id: string }[];
+        nextCursor: string | null;
+      };
+    const expired = await get("expired");
+    expect(expired.total).toBe(1);
+    expect(expired.licenses.map((l) => l.id)).toEqual([ids[1]]);
+    expect(expired.nextCursor).toBeNull();
+    expect(expired.counts).toEqual({
+      active: 2,
+      expiring: 1,
+      expired: 1,
+      disabled: 1,
+    });
+    expect((await get("disabled")).licenses.map((l) => l.id)).toEqual([ids[0]]);
+    expect((await get("expiring")).licenses.map((l) => l.id)).toEqual([ids[2]]);
+    const active = await get("active");
+    expect(active.total).toBe(2);
+    expect(active.nextCursor).not.toBeNull();
+    expect((await call("GET", "/license/licenses?state=nope")).status).toBe(
+      400,
+    );
+  });
 });

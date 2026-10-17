@@ -112,7 +112,7 @@ func _claim_ok(req: Dictionary) -> Dictionary:
 func _sdk(outlet := "") -> Node:
 	var store := PKeyMemoryStore.new("TRANSCRIPTDEVICE0000000000000001", TOKEN)
 	var opts := PKeyTestFixtures.options(server.base_url(), store, [1_700_000_000])
-	opts.expected_services = PackedStringArray(["license", "config", "release", "distribution"])
+	opts.expected_services = PackedStringArray(["license", "config", "release", "distribution", "commerce"])
 	if outlet != "":
 		opts.update_outlet = outlet
 	var sdk := PKeyTestFixtures.new_sdk()
@@ -122,11 +122,11 @@ func _sdk(outlet := "") -> Node:
 
 
 func _claims() -> Array:
-	return server.requests.filter(func(r): return String(r["path"]).ends_with("/distribution/commerce/claim"))
+	return server.requests.filter(func(r): return String(r["path"]).ends_with("/commerce/claim"))
 
 
 func _app_store(t: PKeyTestContext) -> void:
-	plan = {"/distribution/commerce/binding": _json(200, {"bindingId": BINDING, "products": PRODUCTS}), "/distribution/commerce/claim": _claim_ok}
+	plan = {"/commerce/binding": _json(200, {"bindingId": BINDING, "products": PRODUCTS}), "/commerce/claim": _claim_ok}
 	var sdk = await _sdk("app-store")
 	var apple := Apple.new()
 	sdk.commerce.apple = apple
@@ -144,13 +144,13 @@ func _app_store(t: PKeyTestContext) -> void:
 	r = await sdk.commerce.purchase("extras.nope")
 	t.check("purchase: a flag no product sells is refused before the store", r.kind == PKeyPurchaseResult.KIND_REFUSED and r.code == PKeyErrors.NOT_FOUND)
 	apple.result = "success"
-	plan["/distribution/commerce/claim"] = _json(403, {"error": {"code": "forbidden"}, "reason": "bound_elsewhere"})
+	plan["/commerce/claim"] = _json(403, {"error": {"code": "forbidden"}, "reason": "bound_elsewhere"})
 	r = await sdk.commerce.purchase("extras.diceSkins")
 	t.check("purchase: a refused claim keeps code and reason, and is not finished", r.kind == PKeyPurchaseResult.KIND_REFUSED and r.code == &"forbidden" and r.reason == "bound_elsewhere" and apple.finished.size() == 1, str(r))
-	plan["/distribution/commerce/claim"] = _json(403, {"error": {"code": "forbidden"}, "reason": "not_owned"})
+	plan["/commerce/claim"] = _json(403, {"error": {"code": "forbidden"}, "reason": "not_owned"})
 	r = await sdk.commerce.purchase("extras.diceSkins")
 	t.check("purchase: not_owned reads as not-owned", r.kind == PKeyPurchaseResult.KIND_NOT_OWNED)
-	plan["/distribution/commerce/claim"] = _claim_ok
+	plan["/commerce/claim"] = _claim_ok
 	syncs[0] = 0
 	r = await sdk.commerce.restore()
 	t.check("restore: nothing owned -> not-owned, no sync", r.kind == PKeyPurchaseResult.KIND_NOT_OWNED and syncs[0] == 0)
@@ -184,11 +184,11 @@ func _app_store_updates(t: PKeyTestContext, sdk: Node, apple: Apple, syncs: Arra
 	for i in 5:
 		await Engine.get_main_loop().process_frame
 	t.check("updates: a refund (revoked) is not claimed", _claims().size() == 1 and seen.size() == 1)
-	plan["/distribution/commerce/claim"] = _json(503, {"error": {"code": "unavailable"}})
+	plan["/commerce/claim"] = _json(503, {"error": {"code": "unavailable"}})
 	apple.transaction_updated.emit("f.a.i", {"id": "79", "jws": "f.a.i"})
 	await _until(func() -> bool: return seen.size() >= 2)
 	t.check("updates: a failed claim is reported and the transaction stays unfinished", seen.size() == 2 and not seen[1].ok and apple.finished == ["77"], str(seen))
-	plan["/distribution/commerce/claim"] = _claim_ok
+	plan["/commerce/claim"] = _claim_ok
 	apple.transaction_updated.emit("f.a.i", {"id": "79", "jws": "f.a.i"})
 	await _until(func() -> bool: return seen.size() >= 3)
 	t.check("updates: StoreKit's redelivery of a failed one is claimed", seen.size() == 3 and seen[2].ok and apple.finished == ["77", "79"], str(seen))
@@ -205,7 +205,7 @@ func _until(done: Callable, frames := 600) -> void:
 
 
 func _steam(t: PKeyTestContext) -> void:
-	plan = {"/distribution/commerce/binding": _json(200, {"bindingId": BINDING, "products": PRODUCTS}), "/distribution/commerce/claim": _claim_ok}
+	plan = {"/commerce/binding": _json(200, {"bindingId": BINDING, "products": PRODUCTS}), "/commerce/claim": _claim_ok}
 	var sdk = await _sdk("steam")
 	var steam := Steam.new()
 	sdk.commerce.steam = steam
@@ -234,7 +234,7 @@ func _steam(t: PKeyTestContext) -> void:
 
 
 func _play_and_outlets(t: PKeyTestContext) -> void:
-	plan = {"/distribution/commerce/binding": _json(200, {"bindingId": BINDING, "products": PRODUCTS}), "/distribution/commerce/claim": _claim_ok}
+	plan = {"/commerce/binding": _json(200, {"bindingId": BINDING, "products": PRODUCTS}), "/commerce/claim": _claim_ok}
 	var play = await _sdk("play")
 	var r: PKeyPurchaseResult = await play.commerce.purchase("extras.ost")
 	t.check("purchase: Play is unsupported/dependency until the billing helper ships", r.kind == PKeyPurchaseResult.KIND_UNSUPPORTED and r.detail["reason"] == "dependency", str(r))

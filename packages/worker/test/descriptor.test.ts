@@ -16,6 +16,8 @@ import {
   parseManifest,
   type ManifestAppDeliverable,
 } from "@polaris-key/manifest";
+import { ingestFor } from "../src/core/ingest/pipeline.js";
+import { SERVICES } from "../src/mount.js";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedProduct } from "./seed.js";
@@ -378,7 +380,14 @@ describe("a Diceroll-shaped release is classified by the declared map", () => {
     const db = makeTestDb();
     await seedLinked(db, false);
     const { fetchImpl } = github([ghRelease()]);
-    const res = await resyncRepo(envFor(), db, SLUG, NOW, fetchImpl);
+    const res = await resyncRepo(
+      envFor(),
+      db,
+      SLUG,
+      NOW,
+      fetchImpl,
+      ingestFor(SERVICES),
+    );
     expect(res).toMatchObject({ ok: true });
 
     const builds = await listBuilds(db, SLUG, "v1.2.3");
@@ -434,7 +443,7 @@ describe("a Diceroll-shaped release is classified by the declared map", () => {
     const db = makeTestDb();
     await seedLinked(db, false);
     const { fetchImpl } = github([ghRelease()], { withMap: false });
-    await resyncRepo(envFor(), db, SLUG, NOW, fetchImpl);
+    await resyncRepo(envFor(), db, SLUG, NOW, fetchImpl, ingestFor(SERVICES));
 
     expect(await listBuilds(db, SLUG, "v1.2.3")).toEqual([]);
     const artifacts = await listReleaseArtifacts(db, SLUG, "v1.2.3");
@@ -542,12 +551,12 @@ describe("a Diceroll-shaped release is classified by the declared map", () => {
     const db = makeTestDb();
     await seedLinked(db, false);
     const { fetchImpl } = github([ghRelease()]);
-    await resyncRepo(envFor(), db, SLUG, NOW, fetchImpl);
+    await resyncRepo(envFor(), db, SLUG, NOW, fetchImpl, ingestFor(SERVICES));
     expect(await listBuilds(db, SLUG, "v1.2.3")).toHaveLength(6);
 
     // The manifest drops its map: sniffing again, and no map-made build survives.
     const { fetchImpl: noMap } = github([ghRelease()], { withMap: false });
-    await resyncRepo(envFor(), db, SLUG, NOW + 60, noMap);
+    await resyncRepo(envFor(), db, SLUG, NOW + 60, noMap, ingestFor(SERVICES));
     expect(await listBuilds(db, SLUG, "v1.2.3")).toEqual([]);
     const dmg = (await listReleaseArtifacts(db, SLUG, "v1.2.3")).find(
       (a) => a.name === "Diceroll-1.2.3-macos.dmg",
@@ -573,7 +582,7 @@ describe("a Diceroll-shaped release is classified by the declared map", () => {
       ],
     });
     const { fetchImpl } = github([twoDmgs]);
-    await resyncRepo(envFor(), db, SLUG, NOW, fetchImpl);
+    await resyncRepo(envFor(), db, SLUG, NOW, fetchImpl, ingestFor(SERVICES));
     expect(await listBuilds(db, SLUG, "v1.2.3")).toEqual([]);
     for (const a of await listReleaseArtifacts(db, SLUG, "v1.2.3"))
       expect([a.build_id, a.platform, a.arch]).toEqual([null, null, null]);
@@ -1340,7 +1349,14 @@ describe("the GitHub path: pkey-release.json during the truth-store sync", () =>
         201: JSON.stringify(augustDescriptor()),
       },
     });
-    const res = await resyncRepo(envFor(), db, SLUG, NOW, fetchImpl);
+    const res = await resyncRepo(
+      envFor(),
+      db,
+      SLUG,
+      NOW,
+      fetchImpl,
+      ingestFor(SERVICES),
+    );
     expect(res).toMatchObject({ ok: true });
     expect((res as { updated: string[] }).updated).toContain("releases");
     expect(await seqs(db)).toEqual({ "v1.1.0": 1, "v1.2.3": 2 });
@@ -1422,7 +1438,14 @@ describe("the GitHub path: pkey-release.json during the truth-store sync", () =>
     await seedLinked(db, false);
     const assets = { 200: JSON.stringify(attachedDescriptor()) };
     const noMap = github([withDescriptorAsset()], { withMap: false, assets });
-    await resyncRepo(envFor(), db, SLUG, NOW, noMap.fetchImpl);
+    await resyncRepo(
+      envFor(),
+      db,
+      SLUG,
+      NOW,
+      noMap.fetchImpl,
+      ingestFor(SERVICES),
+    );
     expect(noMap.assetFetches()).toBe(1);
     const marker = async () =>
       JSON.parse((await listReleaseMetadata(db, SLUG))[0]!.metadata_json!)
@@ -1433,7 +1456,14 @@ describe("the GitHub path: pkey-release.json during the truth-store sync", () =>
       assetId: 200,
     });
     // Same asset, same declaration: not fetched again, still degraded.
-    await resyncRepo(envFor(), db, SLUG, NOW + 60, noMap.fetchImpl);
+    await resyncRepo(
+      envFor(),
+      db,
+      SLUG,
+      NOW + 60,
+      noMap.fetchImpl,
+      ingestFor(SERVICES),
+    );
     expect(noMap.assetFetches()).toBe(1);
     expect(
       (await listReleaseHealth(db, SLUG)).find(
@@ -1443,7 +1473,14 @@ describe("the GitHub path: pkey-release.json during the truth-store sync", () =>
 
     // The manifest now declares the map the descriptor was written against.
     const withMap = github([withDescriptorAsset()], { withMap: true, assets });
-    await resyncRepo(envFor(), db, SLUG, NOW + 120, withMap.fetchImpl);
+    await resyncRepo(
+      envFor(),
+      db,
+      SLUG,
+      NOW + 120,
+      withMap.fetchImpl,
+      ingestFor(SERVICES),
+    );
     expect(withMap.assetFetches()).toBe(1);
     expect(await marker()).toMatchObject({
       status: "ingested",

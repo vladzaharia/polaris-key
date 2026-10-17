@@ -57,6 +57,7 @@ const RELEASE_CHAIN: ServicesMap = {
   update: { enabled: true },
   identity: { enabled: false },
   sync: { enabled: false },
+  commerce: { enabled: false },
 };
 
 const UPDATE_KINDS = new Set<ReleaseKind>([

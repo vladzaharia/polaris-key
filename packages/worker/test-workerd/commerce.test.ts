@@ -14,9 +14,9 @@ import {
   AppleRejected,
   setAppleRootsForTesting,
   verifyAppleJws,
-} from "../src/services/distribution/commerce/apple.js";
-import { APPLE_ROOT_CA_G3_DER } from "../src/services/distribution/commerce/appleRoot.js";
-import { verifyPushJwt } from "../src/services/distribution/commerce/play.js";
+} from "../src/services/commerce/apple.js";
+import { APPLE_ROOT_CA_G3_DER } from "../src/services/commerce/appleRoot.js";
+import { verifyPushJwt } from "../src/services/commerce/play.js";
 import {
   GoogleFake,
   PUSH_ACCOUNT,

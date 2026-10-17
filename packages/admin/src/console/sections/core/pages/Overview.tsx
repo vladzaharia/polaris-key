@@ -55,6 +55,9 @@ import { PageHeader } from "../../../../ui/PageHeader.js";
 import { useProduct } from "../../../data/hooks.js";
 import { qk } from "../../../data/queries.js";
 import { Link, navigate } from "../../../router.js";
+import { Big, Line, TileFrame } from "../components/TileFrame.js";
+import { CommerceTile } from "../../commerce/CommerceTile.js";
+import { pendingRecipes, reviewHref } from "../../config/model/pending.js";
 import { r } from "../../../routes.js";
 import {
   AttentionList,
@@ -159,7 +162,7 @@ function OverviewBody({
       : UNKNOWN;
   const sync = p.setup?.sync;
   const next = view
-    ? nextStep(slug, view, Boolean(p.signing?.publicKey))
+    ? nextStep(slug, view, Boolean(p.signing?.publicKey), pendingRecipes(p))
     : null;
   const setup = useSetup(slug);
   const hidden = setup.choices.integrationHidden !== null;
@@ -171,7 +174,13 @@ function OverviewBody({
     p,
     licenses.data?.licenses,
     // The next step already says it.
-    next?.to === r.keys(slug) && cardShown,
+    {
+      signing: cardShown && next?.to === r.keys(slug),
+      recipes:
+        cardShown &&
+        next !== null &&
+        next.to === reviewHref(slug, pendingRecipes(p)),
+    },
   );
 
   const fallback = on(p, "license") ? (
@@ -529,81 +538,6 @@ function OverviewMoments({
 
 // ── Service tiles ──────────────────────────────────────────────────────────────────────────────
 
-function TileFrame({
-  service,
-  badge,
-  href,
-  linkLabel,
-  loading,
-  error,
-  onRetry,
-  children,
-}: {
-  service: ServiceSlug;
-  /**
-   * A pill at the header's right edge: a neutral fact ("Schema v8") or an issue ("Needs
-   * setup"). Never a healthy state: pills mean attention (ADMIN.md §5.11).
-   */
-  badge?: React.ReactNode;
-  href: string;
-  linkLabel: string;
-  loading?: boolean;
-  error?: unknown;
-  onRetry?: () => void;
-  children?: React.ReactNode;
-}): React.ReactElement {
-  const id = `tile-${service}`;
-  return (
-    <section
-      data-service={service}
-      aria-labelledby={id}
-      className="flex flex-col gap-3 rounded-lg border border-border border-t-2 border-t-accent bg-surface-raised p-4"
-    >
-      <div data-card-header="" className="flex items-center gap-2">
-        <h2
-          id={id}
-          className="flex min-w-0 flex-1 items-center gap-2 text-sm font-medium text-fg-strong"
-        >
-          <ServiceGlyph id={service} />
-          {serviceLabel(service)}
-        </h2>
-        {badge}
-      </div>
-      <div className="min-h-12 flex-1 space-y-1 text-sm text-fg">
-        {loading ? (
-          <>
-            <Skeleton className="h-5 w-24" />
-            <Skeleton className="h-4 w-32" />
-          </>
-        ) : error ? (
-          <ErrorState compact error={error} onRetry={onRetry} />
-        ) : (
-          children
-        )}
-      </div>
-      <Link
-        to={href}
-        className="inline-flex items-center gap-1 text-sm text-accent-fg underline-offset-4 hover:underline"
-      >
-        {linkLabel}
-        <ArrowRight aria-hidden className="size-3.5" />
-      </Link>
-    </section>
-  );
-}
-
-function Big({ children }: { children: React.ReactNode }): React.ReactElement {
-  return (
-    <p className="text-xl font-semibold tabular-nums text-fg-strong">
-      {children}
-    </p>
-  );
-}
-
-function Line({ children }: { children: React.ReactNode }): React.ReactElement {
-  return <p className="text-sm text-fg-muted">{children}</p>;
-}
-
 function ServiceTile({
   slug,
   service,
@@ -628,6 +562,8 @@ function ServiceTile({
       return <IdentityTile slug={slug} />;
     case "sync":
       return <SyncTile slug={slug} />;
+    case "commerce":
+      return <CommerceTile slug={slug} />;
   }
 }
 

@@ -21,7 +21,7 @@ import { isJsonObject } from "../../platform/json.js";
 import {
   managedSecretKeyPredicate,
   parseStoredCatalog,
-} from "./manifestSecrets.js";
+} from "../../core/ingest/manifestSecrets.js";
 
 async function scrubbed(
   ctx: MigrationContext,

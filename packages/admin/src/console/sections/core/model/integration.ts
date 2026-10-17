@@ -21,6 +21,7 @@ import type {
 import type { DocsLinkKey } from "../../../../lib/docsLinks.js";
 import { platformName } from "../../../../lib/vocab/platforms.js";
 import { r } from "../../../routes.js";
+import { reviewHref } from "../../config/model/pending.js";
 
 export const FEATURE_LABEL: Record<IntegrationFeatureId, string> = {
   licensing: "Licensing",
@@ -239,12 +240,20 @@ export function nextStep(
   slug: string,
   view: IntegrationView,
   hasSigningKey: boolean,
+  pending: readonly string[] = [],
 ): NextStep | null {
   if (!hasSigningKey)
     return {
       text: "Activate a signing key",
       reason: "Nothing can be signed until one is active.",
       to: r.keys(slug),
+    };
+  if (pending.length > 0)
+    return {
+      text: pending.length === 1 ? "Review the recipe" : "Review the recipes",
+      reason:
+        "A minted token mints nothing until its recipe is approved as it stands.",
+      to: reviewHref(slug, [...pending]),
     };
   const blocked = view.features.find((f) => f.status === "blocked");
   if (blocked) {

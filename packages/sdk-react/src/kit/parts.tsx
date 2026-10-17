@@ -15,6 +15,10 @@ export interface Chrome {
   controls?: string[];
   links?: string[];
   drop?: string[];
+  /** A control's visible words, where the drop-in knows better than the catalog (Download 2.5.0). */
+  labels?: Record<string, string>;
+  /** Status lines under the text (the code step's "Waiting for you to sign in…"). */
+  meta?: string[];
 }
 
 /** What a part needs to draw one view. */
@@ -27,6 +31,8 @@ export interface KitCtx {
   fill?: boolean;
   /** The drop-in drives this part: lines with a missing argument are left out. */
   driven?: boolean;
+  /** The license step's list; the parts that draw that step pass it (the gate does not). */
+  licenseRows?: (c: KitCtx) => ReactNode;
   /** A screen-form component drawn as an embedded pane. */
   embedded?: boolean;
   chrome?: Chrome;
@@ -79,6 +85,21 @@ function argsOf(
   return args;
 }
 
+/** One string. The installed version's line says the size of a download only when it knows one
+ *  (the web prompt does not); there the line is just "You have 2.4.1". */
+function formatKey(
+  c: KitCtx,
+  key: string,
+  args: Record<string, string | number>,
+): string {
+  if (key !== "update.current" || args.size !== undefined)
+    return c.copy.format(key, args);
+  return c.copy
+    .format(key, { ...args, size: "" })
+    .split("·")[0]!
+    .trim();
+}
+
 export function text(
   c: KitCtx,
   key: string,
@@ -90,7 +111,7 @@ export function text(
   for (const [k, v] of Object.entries(args))
     marked[k] =
       isolated.has(k) && typeof v === "string" ? `${OPEN}${v}${CLOSE}` : v;
-  const s = c.copy.format(key, marked);
+  const s = formatKey(c, key, marked);
   if (!s.includes(OPEN)) return s;
   const parts: ReactNode[] = [];
   s.split(OPEN).forEach((chunk, i) => {
@@ -110,7 +131,7 @@ export function plain(
   key: string,
   extra: Record<string, string | number> = {},
 ): string {
-  return c.copy.format(key, argsOf(c, key, extra));
+  return formatKey(c, key, argsOf(c, key, extra));
 }
 
 /** True when the string still holds a `{name}` argument nothing filled. */
@@ -331,6 +352,46 @@ export function productHeader(
 export type Variant = "primary" | "secondary" | "link" | "danger";
 
 /** A control. The view's primary is filled; a lone control is the primary too (DL4). */
+/** The Replace step's primary names the device it replaces ("Replace Work laptop and continue"). */
+const NAMED_PRIMARY: ReadonlySet<string> = new Set([
+  "signin.replace.confirm",
+  "deviceLimit.primary",
+]);
+
+function pickedDevice(c: KitCtx): string | null {
+  const unnamed = () => plain(c, "devices.unnamed");
+  const rv = c.input.replaceView;
+  if (rv && rv.devices.length) {
+    const pickId = (c.input as { replacePick?: string }).replacePick;
+    const d =
+      rv.devices.find((x) => x.id === pickId) ??
+      rv.devices.find((x) => x.leastRecent) ??
+      rv.devices[0]!;
+    return d.label?.trim() || unnamed();
+  }
+  const list = c.input.devices ?? [];
+  if (!list.length) return null;
+  const least = list.reduce(
+    (best, d, i) =>
+      (d.lastSeenDays ?? 0) > (list[best]!.lastSeenDays ?? 0) ? i : best,
+    0,
+  );
+  const picked =
+    c.input.selected !== undefined ? Number(c.input.selected) : least;
+  return list[picked]?.name?.trim() || unnamed();
+}
+
+/** A list that scrolls (past six devices) opens on its checked row, not the top. */
+export function openOnChecked(list: HTMLElement | null): void {
+  if (!list) return;
+  const row = list.querySelector<HTMLElement>('[aria-checked="true"]');
+  if (!row || list.scrollTop !== 0 || list.scrollHeight <= list.clientHeight)
+    return;
+  const top = row.offsetTop - list.offsetTop;
+  if (top + row.offsetHeight > list.clientHeight)
+    list.scrollTop = top - list.clientHeight / 2 + row.offsetHeight / 2;
+}
+
 export function button(
   c: KitCtx,
   key: string,
@@ -343,7 +404,11 @@ export function button(
     detail?: Record<string, unknown>;
   } = {},
 ): ReactNode {
-  const external = OPENS.has(key);
+  const external = OPENS.has(key) || c.chrome?.labels?.[key] !== undefined;
+  const device =
+    NAMED_PRIMARY.has(key) && c.copy.has("signin.replace.confirmNamed")
+      ? pickedDevice(c)
+      : null;
   return (
     <button
       key={key}
@@ -359,7 +424,11 @@ export function button(
       }}
     >
       {extra.busy ? <span className="ring" aria-hidden="true" /> : null}
-      <span>{text(c, key, extra.args)}</span>
+      <span>
+        {device !== null
+          ? text(c, "signin.replace.confirmNamed", { device })
+          : (c.chrome?.labels?.[key] ?? text(c, key, extra.args))}
+      </span>
       {external ? (
         <>
           {GLYPHS.external()}
@@ -393,7 +462,12 @@ export function backButton(c: KitCtx): ReactNode {
 }
 
 /** SeatMeter (§1.5 rule 9): neutral segments with "{used} of {limit} in use". */
-export function seatMeter(c: KitCtx, used: number, limit: number): ReactNode {
+export function seatMeter(
+  c: KitCtx,
+  used: number,
+  limit: number,
+  caption = true,
+): ReactNode {
   const segs = Array.from(
     { length: Math.max(1, Math.min(limit, 12)) },
     (_, i) => i < used,
@@ -417,9 +491,11 @@ export function seatMeter(c: KitCtx, used: number, limit: number): ReactNode {
           <span key={i} data-used={on ? "" : undefined} />
         ))}
       </div>
-      <span className="meta num">
-        {text(c, "part.seatMeter.caption", { used, limit })}
-      </span>
+      {caption ? (
+        <span className="meta num">
+          {text(c, "part.seatMeter.caption", { used, limit })}
+        </span>
+      ) : null}
     </div>
   );
 }
@@ -634,7 +710,9 @@ export function actions(
   const sorted = [...controls].sort(
     (a, b) => Number(b === primary) - Number(a === primary),
   );
-  const busy = c.input.pending !== undefined;
+  // Pressed once: while the work runs the primary is busy and ignores further presses.
+  const busy =
+    c.input.pending !== undefined || c.input.signIn?.redeeming === true;
   return (
     <div
       className="actions"
@@ -750,15 +828,27 @@ export function callout(
 /** The meta line of a screen or pane: its keys joined by a middle dot, announced politely. */
 export function statusLine(c: KitCtx, keys: string[]): ReactNode {
   if (keys.length === 0) return null;
+  // A ticking countdown is not a live region: a screen reader would read it every second.
+  const ticking: string[] = keys.filter((k) => k === "signin.handoff.expires");
+  const live = keys.filter((k) => !ticking.includes(k));
   return (
-    <p className="status-line" data-part="status" role="status">
-      {keys.map((k, i) => (
-        <Fragment key={k}>
-          {i ? " · " : ""}
+    <>
+      {ticking.map((k) => (
+        <p key={k} className="status-line" data-part="countdown">
           <span data-key={k}>{text(c, k)}</span>
-        </Fragment>
+        </p>
       ))}
-    </p>
+      {live.length ? (
+        <p className="status-line" data-part="status" role="status">
+          {live.map((k, i) => (
+            <Fragment key={k}>
+              {i ? " · " : ""}
+              <span data-key={k}>{text(c, k)}</span>
+            </Fragment>
+          ))}
+        </p>
+      ) : null}
+    </>
   );
 }
 

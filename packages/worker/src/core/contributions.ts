@@ -34,11 +34,13 @@
 import type { Db, DbStatement } from "../db/types.js";
 import type { Env } from "../platform/env.js";
 import type { MigrationJob } from "./migrate/job.js";
+import { CORE_MIGRATIONS } from "./migrate/coreJobs.js";
 import type { AuthorizationListener } from "./authorizationListeners.js";
 import type { SubjectStore } from "./accounts/subjectHooks.js";
 import type { LicenseHolderHooks } from "./licensing/licenseHolders.js";
 import type { ProductPublic } from "./products.js";
 import type { ServiceHooks } from "./hooks.js";
+import type { ManifestContributor } from "./ingest/types.js";
 import type { ServiceRegistry } from "./registry.js";
 import {
   SERVICE_SLUGS,
@@ -155,6 +157,12 @@ export type ProductDeletionContributor = (
 
 export interface ServiceContributions {
   productDeletion?: ProductDeletionContributor;
+  /**
+   * The service's rows of a `.pkey/` ingest (P0-26): checks, statements for its OWN tables,
+   * audit rows and after-commit steps, run by Core's pipeline (`core/ingest/pipeline.ts`) for
+   * every mounted service WHATEVER its enablement (a contributor reads `ctx.enabled`).
+   */
+  manifest?: ManifestContributor;
   integration?: IntegrationContributor;
   maintenance?: MaintenanceContribution;
   /**
@@ -179,7 +187,7 @@ export function bindServiceRegistry(registry: ServiceRegistry): void {
 }
 
 /** The bound registry, or an empty one before `mount.ts` has run. */
-function bound(): ServiceRegistry {
+export function bound(): ServiceRegistry {
   return BOUND ?? new Map();
 }
 
@@ -255,9 +263,10 @@ export function maintenanceContributions(): MaintenanceContribution[] {
   );
 }
 
-/** Every mounted service's data-migration jobs. An id claimed twice throws. */
+/** Core's own data-migration jobs, then every mounted service's. An id claimed twice throws. */
 export function migrationJobs(): MigrationJob[] {
   const out = new Map<string, MigrationJob>();
+  for (const job of CORE_MIGRATIONS) out.set(job.id, job);
   for (const [slug, c] of contributionsOf())
     for (const job of c.migrations ?? []) {
       if (out.has(job.id))

@@ -25,6 +25,7 @@ import {
   qrCode,
   radioKeys,
   seatMeter,
+  openOnChecked,
   shimmer,
   statusLine,
   successMark,
@@ -101,14 +102,16 @@ function contentFor(c: KitCtx): ReactNode {
     case "SignIn":
     case "SignInHandoff": {
       const url = c.view.decisions.link;
-      const showUrl = keys.has("signin.handoff.url") && url?.display;
+      // The address is shown as text whenever there is one (a no-browser device has only it).
+      const shown = url?.display ?? url?.url?.replace(/^https?:\/\//, "");
+      const showUrl = keys.has("signin.handoff.url") && shown;
       return (
         <>
           {codeDisplay(c)}
           {qrCode(c, url?.qr ? url.url : null)}
           {showUrl ? (
             <p className="body" data-key="signin.handoff.url">
-              {text(c, "signin.handoff.url", { url: url!.display! })}
+              {text(c, "signin.handoff.url", { url: shown as string })}
               {copyAddress(c)}
             </p>
           ) : keys.has("signin.handoff.url") ? (
@@ -125,7 +128,9 @@ function contentFor(c: KitCtx): ReactNode {
     case "DeviceLimit":
       return deviceLimitContent(c);
     case "LicenseChoice":
-      return c.view.state === "replace-open" ? replaceRows(c) : licenseRows(c);
+      return c.view.state === "replace-open"
+        ? replaceRows(c)
+        : (c.licenseRows?.(c) ?? null);
     case "Devices":
       return deviceRows(c);
     case "ReleaseNotes":
@@ -229,10 +234,18 @@ function place(c: KitCtx, layout: Layout) {
   };
   const x = c.chrome;
   if (!x) return p;
+  if (x.meta?.length) p.meta = [...p.meta, ...x.meta];
   const drop = new Set(x.drop ?? []);
+  // A control the drop-in adds is not also drawn as text.
+  const added = new Set(x.controls ?? []);
+  const unadded = (ks: string[]) => ks.filter((k) => !added.has(k));
   return {
     ...p,
-    controls: [...p.controls, ...(x.controls ?? [])].filter(
+    titles: unadded(p.titles),
+    body: unadded(p.body),
+    meta: unadded(p.meta),
+    footnote: unadded(p.footnote),
+    controls: [...new Set([...p.controls, ...(x.controls ?? [])])].filter(
       (k) => !drop.has(k),
     ),
     links: [...p.links, ...(x.links ?? [])].filter((k) => !drop.has(k)),
@@ -521,7 +534,7 @@ function deviceLimitContent(c: KitCtx): ReactNode {
     <>
       {qr}
       {keys.has("part.seatMeter.caption") && used !== undefined && limit != null
-        ? seatMeter(c, used, limit)
+        ? seatMeter(c, used, limit, !keys.has("deviceLimit.heading"))
         : null}
       {keys.has("signin.replace.meta") ? (
         <div
@@ -529,6 +542,8 @@ function deviceLimitContent(c: KitCtx): ReactNode {
           role="radiogroup"
           aria-labelledby="pk-title"
           data-part="device-list"
+          data-scroll={devices.length > 6 ? "" : undefined}
+          ref={devices.length > 6 ? openOnChecked : undefined}
         >
           {devices.map((d, i) => (
             <div
@@ -602,177 +617,6 @@ function days(n: number | null | undefined): string {
   return rtf.format(-n, "day");
 }
 
-const ORIGIN_KEY: Readonly<Record<string, string>> = {
-  store: "signin.choice.origin.store",
-  key: "signin.choice.origin.keyAdded",
-  free: "signin.choice.origin.free",
-  developer: "signin.choice.origin.developer",
-  signin: "signin.choice.origin.signIn",
-};
-
-function licenseRows(c: KitCtx): ReactNode {
-  const keys = new Set(c.view.copy);
-  const view = c.input.choices;
-  const rows = view?.choices ?? [];
-  const selected = c.input.selected ?? view?.preselected ?? null;
-  // A row of its own for keep, create and a first automatic license (never blurred, Must not).
-  const special = (key: string, meta: string | null, id: string) => (
-    <div
-      className="row"
-      role="radio"
-      data-part="license-row"
-      tabIndex={0}
-      aria-checked={
-        selected === id || c.view.state === "new" ? "true" : "false"
-      }
-      onClick={() => c.pick(id)}
-    >
-      <span />
-      <span>
-        <span className="row-title" data-key={key}>
-          {text(c, key)}
-        </span>
-        {meta && keys.has(meta) ? (
-          <>
-            <br />
-            <span className="meta" data-key={meta}>
-              {text(c, meta)}
-            </span>
-          </>
-        ) : null}
-      </span>
-      {GLYPHS.check()}
-    </div>
-  );
-  if (c.view.state === "keep")
-    return (
-      <div className="list" role="radiogroup">
-        {special("signin.choice.keep", "signin.choice.keepMeta", "keep")}
-      </div>
-    );
-  if (c.view.state === "create")
-    return (
-      <div className="list" role="radiogroup">
-        {special("signin.choice.create", "signin.choice.createMeta", "create")}
-      </div>
-    );
-  if (c.view.state === "new")
-    return (
-      <div className="list" role="radiogroup">
-        <div
-          className="row"
-          role="radio"
-          aria-checked="true"
-          data-part="license-row"
-          tabIndex={0}
-        >
-          <span className="pill">{String(c.view.args.tier ?? "")}</span>
-          <span>
-            <span className="row-title" data-key="signin.choice.metaNew">
-              {text(c, "signin.choice.metaNew")}
-            </span>
-            <span className="pill" data-key="signin.choice.tag.new">
-              {text(c, "signin.choice.tag.new")}
-            </span>
-          </span>
-          {GLYPHS.check()}
-        </div>
-      </div>
-    );
-  const tagged = ["signin.choice.tag.current", "signin.choice.tag.full"].filter(
-    (k) => keys.has(k),
-  );
-  if (!keys.has("signin.choice.group") && tagged.length === 0) return null;
-  const shownRows = keys.has("signin.choice.group")
-    ? rows
-    : rows.filter(
-        (r) =>
-          (keys.has("signin.choice.tag.current") && r.current) ||
-          (keys.has("signin.choice.tag.full") && r.state !== "free"),
-      );
-  return (
-    <div
-      className="list pk-stagger"
-      role="radiogroup"
-      aria-label={
-        keys.has("signin.choice.group") ? plain(c, "signin.choice.group") : ""
-      }
-      data-part="license-list"
-      data-key={
-        keys.has("signin.choice.group") ? "signin.choice.group" : undefined
-      }
-    >
-      {shownRows.map((r, i) => {
-        const full = r.state !== "free";
-        const on = r.id === selected || (selected === null && i === 0 && !full);
-        const origin = ORIGIN_KEY[r.origin];
-        const term =
-          r.expiresAt === null ? "signin.term.lifetime" : "signin.term.until";
-        const date = r.expiresAt
-          ? new Date(r.expiresAt * 1000).toLocaleDateString(c.copy.locale)
-          : "";
-        // An origin naming a store the row does not carry (`LicenseChoiceRow` has none) is left
-        // out, never drawn as "From {store}": the term still says what the license is.
-        const originText = origin && keys.has(origin) ? plain(c, origin) : "";
-        const metaArgs = {
-          origin: /\{[A-Za-z]\w*\}/.test(originText) ? "" : originText,
-          term: keys.has(term) ? plain(c, term, { date }) : "",
-        };
-        return (
-          <div
-            key={r.id}
-            className="row"
-            role={full ? "group" : "radio"}
-            data-part="license-row"
-            tabIndex={full ? -1 : on ? 0 : -1}
-            aria-checked={full ? undefined : on ? "true" : "false"}
-            onClick={() => (full ? undefined : c.pick(r.id))}
-          >
-            <span className="pill">{r.tierName}</span>
-            <span>
-              {keys.has("signin.choice.devices") && r.seats.limit !== null ? (
-                <>
-                  <span className="row-title num">
-                    {text(c, "signin.choice.devices", {
-                      used: r.seats.used,
-                      limit: r.seats.limit,
-                    })}
-                  </span>
-                  <br />
-                </>
-              ) : null}
-              {keys.has("signin.choice.meta") ? (
-                <span className="meta">
-                  {metaArgs.origin
-                    ? text(c, "signin.choice.meta", metaArgs)
-                    : metaArgs.term}
-                </span>
-              ) : null}
-              {full && keys.has("signin.choice.tag.full") ? (
-                <>
-                  {" "}
-                  <span className="pill" data-key="signin.choice.tag.full">
-                    {text(c, "signin.choice.tag.full")}
-                  </span>
-                </>
-              ) : null}
-              {r.current && keys.has("signin.choice.tag.current") ? (
-                <>
-                  {" "}
-                  <span className="pill" data-key="signin.choice.tag.current">
-                    {text(c, "signin.choice.tag.current")}
-                  </span>
-                </>
-              ) : null}
-            </span>
-            {on ? GLYPHS.check() : <span />}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
 /** "3 days ago", "last month": a relative time from epoch seconds (the server's `lastSeen`). */
 function since(epochSeconds: number, locale: string): string {
   const d = Math.max(
@@ -817,6 +661,8 @@ function replaceRows(c: KitCtx): ReactNode {
         role="radiogroup"
         aria-labelledby="pk-title"
         data-part="device-list"
+        data-scroll={devices.length > 6 ? "" : undefined}
+        ref={devices.length > 6 ? openOnChecked : undefined}
       >
         {devices.map((d, i) => (
           <div
@@ -1059,19 +905,28 @@ function settingControl(c: KitCtx, r: SettingsRow, name: string): ReactNode {
   const field = `config:${r.key}`;
   if (typeof r.value === "boolean") {
     const on = r.value;
+    const word = on ? "settings.on" : "settings.off";
     return (
-      <button
-        type="button"
-        role="switch"
-        className="btn"
-        data-part="switch"
-        data-variant={on ? "primary" : "secondary"}
-        aria-checked={on ? "true" : "false"}
-        aria-label={name}
-        onClick={() => c.edit(field, String(!on))}
-      >
-        <span>{text(c, on ? "settings.on" : "settings.off")}</span>
-      </button>
+      <>
+        {c.copy.has(word) ? (
+          <span className="meta" data-key={word}>
+            {text(c, word)}
+          </span>
+        ) : null}
+        <span className="switch-wrap">
+          <button
+            type="button"
+            role="switch"
+            className="switch"
+            data-part="switch"
+            aria-checked={on ? "true" : "false"}
+            aria-label={name}
+            onClick={() => c.edit(field, String(!on))}
+          >
+            <span className="switch-thumb" />
+          </button>
+        </span>
+      </>
     );
   }
   if (r.options && r.options.length > 0)
@@ -1119,6 +974,34 @@ function settingControl(c: KitCtx, r: SettingsRow, name: string): ReactNode {
   );
 }
 
+/** Words a key spells in capitals when it is read as a label (ui.compact reads "UI compact"). */
+const ACRONYMS: Readonly<Record<string, string>> = {
+  ui: "UI",
+  url: "URL",
+  uri: "URI",
+  id: "ID",
+  api: "API",
+  cpu: "CPU",
+  gpu: "GPU",
+  fps: "FPS",
+  hdr: "HDR",
+  vr: "VR",
+  ar: "AR",
+  ip: "IP",
+  dns: "DNS",
+  vpn: "VPN",
+  usb: "USB",
+  tls: "TLS",
+  ssl: "SSL",
+  sdk: "SDK",
+  os: "OS",
+  pc: "PC",
+  tv: "TV",
+  hdmi: "HDMI",
+  pin: "PIN",
+  qr: "QR",
+};
+
 /** A setting's name: the catalog entry's label, else its key read as words (`audio.volume` →
  *  "Audio volume"), never the raw key (DL8). */
 export function settingLabel(row: SettingsRow): string {
@@ -1127,7 +1010,11 @@ export function settingLabel(row: SettingsRow): string {
     .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
     .split(/[._\-\s/:]+/)
     .filter(Boolean)
-    .map((w) => w.toLocaleLowerCase())
+    .map((w) =>
+      Object.prototype.hasOwnProperty.call(ACRONYMS, w.toLowerCase())
+        ? ACRONYMS[w.toLowerCase()]!
+        : w.toLocaleLowerCase(),
+    )
     .join(" ");
   return phrase ? phrase[0]!.toLocaleUpperCase() + phrase.slice(1) : row.key;
 }

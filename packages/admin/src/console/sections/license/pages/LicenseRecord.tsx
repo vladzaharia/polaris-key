@@ -58,12 +58,8 @@ import {
   useLicenseHolderMoves,
 } from "../components/holders.js";
 import { DeleteLicenseDialog, deletionBlockedReason } from "./LicenseDelete.js";
-import {
-  LicenseKeys,
-  MintKeyDialog,
-  SendKeyDialog,
-  type UnsentKey,
-} from "./LicenseKeys.js";
+import { LicenseKeys, MintKeyDialog } from "./LicenseKeys.js";
+import { SendKeyDialog, type UnsentKey } from "../components/SendKeyDialog.js";
 import { LicenseTerms } from "./LicenseTerms.js";
 import {
   actorName,
@@ -195,6 +191,9 @@ function LicenseRecordBody({
 
   const id = license.id;
   const active = license.status === "active";
+  // Status stays "active" past expiresAt; a key emailed then would not activate anything.
+  const expired =
+    license.expiresAt != null && fromSeconds(license.expiresAt) <= Date.now();
   const holder = holderOf(license);
   const floating = holder.kind === "floating";
   const inAccount = holder.kind === "assigned" && holder.inAccount;
@@ -336,7 +335,7 @@ function LicenseRecordBody({
           },
           { label: "Device limit…", onSelect: () => setDialog("deviceLimit") },
           // LX-27: an assigned licence's key can be emailed anew (a floating one has no address).
-          ...(floating || !active || !license.email?.trim()
+          ...(floating || !active || expired || !license.email?.trim()
             ? []
             : [
                 { label: "Send a new key…", onSelect: () => setDialog("send") },
@@ -519,6 +518,7 @@ function LicenseRecordBody({
         email={handoff?.email ?? license.email?.trim() ?? ""}
         initial={handoff?.unsent ?? null}
         context={handoff ? "assigned" : undefined}
+        onMint={() => setDialog("mint")}
         open={dialog === "send"}
         onOpenChange={(o) => {
           setDialog(o ? "send" : null);
