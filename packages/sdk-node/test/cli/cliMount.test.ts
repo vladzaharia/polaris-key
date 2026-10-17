@@ -1,4 +1,5 @@
 // @pkey-feature ui.cli.contract
+// @pkey-feature ui.cli.mount
 // The mount, help and gate rows of the `cli` family in conformance/corpus/v2/ui-matrix.json
 // (plans/UK-51.md), run against the commander adapter, `requireLicense` and the yargs adapter's
 // mount: what registering the kit into a host CLI adds, the error and the skip when a host command
