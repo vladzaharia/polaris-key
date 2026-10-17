@@ -63,7 +63,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 - [x] One product load per admin request (test: `test/productContext.test.ts`)
 - [x] /me issues one catalog query
 - [x] Transcripts byte-identical
-- [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
+- [x] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify
 
