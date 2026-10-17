@@ -31,7 +31,7 @@ import type { ProductRow } from "../../core/repo.js";
 import { ErrorCode } from "../../core/errors.js";
 import { parseServices } from "../../core/services.js";
 import {
-  isRowBacked,
+  isRowServed,
   manifestValueAt,
   readRowSettings,
   revertRowSetting,
@@ -54,7 +54,7 @@ import {
 
 /** The settings this slice serves: live, row-backed, claimable product entries. */
 export function rowBackedSettings(): SettingDef[] {
-  return SETTINGS.entries.filter((d) => isRowBacked(d) && !d.pending);
+  return SETTINGS.entries.filter((d) => isRowServed(d) && !d.pending);
 }
 
 /** One setting as the console renders it: the registry's description plus the value in force. */
@@ -188,7 +188,7 @@ export async function handleProductSettings(
   // is the key (as `claims/<key>` reads it); anything else is simply not a registry key.
   const key = segment;
   const def = SETTINGS.get(key, "product");
-  if (!def || !isRowBacked(def))
+  if (!def || !isRowServed(def))
     return err(
       404,
       ErrorCode.BadRequest,
