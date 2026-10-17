@@ -99,12 +99,6 @@
     },
     {
       "rule": "grant",
-      "file": "console/sections/license/pages/LicenseSettingsPage.tsx",
-      "text": "A refund or chargeback still revokes the grant; this only delays it.",
-      "count": 1
-    },
-    {
-      "rule": "grant",
       "file": "console/sections/update/pages/UpdateChannelsPage.tsx",
       "text": "Every license grant is intersected with this window.",
       "count": 1
@@ -113,12 +107,6 @@
       "rule": "grant",
       "file": "console/settings.generated.ts",
       "text": "Always revokes that one grant (S-19 decision 5). licensing.refundGraceHours can only delay the revocation, by at most 168 hours, never prevent it; a keep-access-after-refund switch would override a store's revocation.",
-      "count": 1
-    },
-    {
-      "rule": "grant",
-      "file": "console/settings.generated.ts",
-      "text": "Days a subscription grant keeps working while the store retries a failed renewal. Zero follows the store's own billing grace only.",
       "count": 1
     },
     {
@@ -136,18 +124,6 @@
     {
       "rule": "grant",
       "file": "console/settings.generated.ts",
-      "text": "Hooks that turn a verified OIDC claim into an entitlement and a secret on the signed-in person's licence: the claim, the entitlement key and value, and a secret built from a URL template whose host must be one the hook allows. Changing one changes what a sign-in grants.",
-      "count": 1
-    },
-    {
-      "rule": "grant",
-      "file": "console/settings.generated.ts",
-      "text": "Hours a refunded or charged-back grant keeps working before it is revoked. Zero revokes at once. It only delays the revocation; a refund always revokes.",
-      "count": 1
-    },
-    {
-      "rule": "grant",
-      "file": "console/settings.generated.ts",
       "text": "Named channels beyond stable and beta, each matching release tags by an anchored regular expression (a nightly or canary line). Licences grant them and SDKs request them like any other channel.",
       "count": 1
     },
@@ -155,12 +131,6 @@
       "rule": "grant",
       "file": "console/settings.generated.ts",
       "text": "Records of where a grant or a sale-minted licence came from (a store purchase, a Polaris Key sale, an OIDC sign-in, an operator's comp): facts about a sale, not Polaris behaviour.",
-      "count": 1
-    },
-    {
-      "rule": "grant",
-      "file": "console/settings.generated.ts",
-      "text": "Whether devices see the combined entitlements of every grant their holder has, or only their own licence's (the legacy model). Products registered before 2026-10-06 start on legacy; newer ones start combined.",
       "count": 1
     },
     {

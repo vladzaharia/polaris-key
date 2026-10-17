@@ -1529,7 +1529,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     rbacArea: "settings",
     label: "Provisioning hooks",
     description:
-      "Hooks that turn a verified OIDC claim into an entitlement and a secret on the signed-in person's license: the claim, the entitlement key and value, and a secret built from a URL template whose host must be one the hook allows. Changing one changes what a sign-in grants.",
+      "Hooks that turn a verified OIDC claim into an entitlement and a secret on the signed-in person's license: the claim, the entitlement key and value, and a secret built from a URL template whose host must be one the hook allows. Changing one changes what a sign-in gives.",
     keywords: ["claims", "entitlements", "provisioning_config"],
     docs: "/docs/features/sign-in/oidc/",
     ownership: "manifest",

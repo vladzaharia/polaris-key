@@ -276,7 +276,7 @@ export const IDENTITY_SETTINGS_SLICE: ServiceSettingsSlice = {
       area: "identity.signIn",
       label: "Provisioning hooks",
       description:
-        "Hooks that turn a verified OIDC claim into an entitlement and a secret on the signed-in person's license: the claim, the entitlement key and value, and a secret built from a URL template whose host must be one the hook allows. Changing one changes what a sign-in grants.",
+        "Hooks that turn a verified OIDC claim into an entitlement and a secret on the signed-in person's license: the claim, the entitlement key and value, and a secret built from a URL template whose host must be one the hook allows. Changing one changes what a sign-in gives.",
       keywords: ["claims", "entitlements", "provisioning_config"],
       docs: "/docs/features/sign-in/oidc/",
       value: { kind: "json", schema: "provisioning (product.schema.json)" },

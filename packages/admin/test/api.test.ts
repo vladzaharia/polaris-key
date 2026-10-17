@@ -581,7 +581,7 @@ describe("api — every product-scoped resource is under its owning service", ()
       expect(err.status).toBe(422);
       expect(err.errors).toEqual(["update_requires_distribution"]);
       expect(err.fields).toBeUndefined();
-      expect(SERVICE_ERROR_MESSAGES[err.errors![0]!]).toContain("Distribution");
+      expect(SERVICE_ERROR_MESSAGES[err.errors![0]!]).toContain("Ship builds");
     }
   });
 });
