@@ -137,7 +137,10 @@ export interface PayloadLayerSource {
   profile(id: string): Promise<ProfileRow | null>;
   licenseProfiles(licenseId: string): Promise<LicenseProfileRow[]>;
   storeGrant(licenseId: string): Promise<string | null>;
-  oidcGrant(licenseId: string, overridesJson: string | null): Promise<string | null>;
+  oidcGrant(
+    licenseId: string,
+    overridesJson: string | null,
+  ): Promise<string | null>;
 }
 
 /** The layers read straight from the database, one query set per call. */
@@ -224,9 +227,7 @@ export async function resolveMergedPayload(
     // A caller previewing a hypothetical row whose overrides already carry the provisioned keys
     // passes `withoutOidcGrant`, so the stored grant is not read twice.
     if (!opts.withoutOidcGrant)
-      layers.push(
-        await source.oidcGrant(license.id, license.overrides_json),
-      );
+      layers.push(await source.oidcGrant(license.id, license.overrides_json));
   }
 
   // U-03: outside `if (license)`, so a licence-less signed-in device gets its account's layer.

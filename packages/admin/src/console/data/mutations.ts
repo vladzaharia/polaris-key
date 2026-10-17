@@ -217,6 +217,7 @@ const device = (slug: string, licenseId?: string): Target[] =>
     : [
         prefix(qk.devices(slug)),
         exact(qk.licenses(slug)),
+        prefix(qk.licensesPages(slug)),
         prefix(qk.license(slug, licenseId)),
       ];
 

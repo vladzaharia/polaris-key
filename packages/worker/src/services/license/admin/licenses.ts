@@ -388,7 +388,6 @@ export async function handleLicenses(
         deletion: verdicts.get(r.id),
       }));
       return adminJson({ licenses, nextCursor: page.nextCursor });
-
     }
     if (req.method === "POST") {
       const body = await readBody(req);

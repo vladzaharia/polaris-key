@@ -31,7 +31,10 @@ function counting(inner: Db): Db {
       const v = Reflect.get(target, prop, receiver) as unknown;
       if (
         typeof v === "function" &&
-        (prop === "all" || prop === "first" || prop === "run" || prop === "batch")
+        (prop === "all" ||
+          prop === "first" ||
+          prop === "run" ||
+          prop === "batch")
       )
         return (...args: unknown[]) => {
           queries += prop === "batch" ? (args[0] as unknown[]).length : 1;

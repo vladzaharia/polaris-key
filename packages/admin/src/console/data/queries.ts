@@ -143,6 +143,9 @@ export const qk = {
   licenses: (slug: string) => product(slug, "license", "licenses"),
   license: (slug: string, id: string) =>
     product(slug, "license", "licenses", id),
+  /** The Licenses page's loaded pages (P0-29); under the licenses prefix, so every licence write refreshes them. */
+  licensesPages: (slug: string) =>
+    product(slug, "license", "licenses", "_pages"),
   /** The "Clean up duplicates" list; under the licenses prefix, so every licence write refreshes it. */
   licenseCleanup: (slug: string) =>
     product(slug, "license", "licenses", "_cleanup"),

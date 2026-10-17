@@ -8,10 +8,11 @@
 
 import * as React from "react";
 import { Clock } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import {
   api,
   type DeviceLimitSource,
+  type LicensePage,
   type LicenseSummary,
   type ProductDetail,
   type TierSummary,
@@ -37,6 +38,19 @@ export function useLicenses(slug: string) {
   return useQuery({
     queryKey: qk.licenses(slug),
     queryFn: () => api.licenses(slug),
+  });
+}
+
+/**
+ * The Licenses page's rows, one page at a time (P0-29). Pages append in the Worker's order; a
+ * licence write refreshes every loaded page (the key sits under `qk.licenses`).
+ */
+export function useLicensePages(slug: string) {
+  return useInfiniteQuery({
+    queryKey: qk.licensesPages(slug),
+    queryFn: ({ pageParam }) => api.licensesPage(slug, { cursor: pageParam }),
+    initialPageParam: null as string | null,
+    getNextPageParam: (last: LicensePage) => last.nextCursor ?? undefined,
   });
 }
 
