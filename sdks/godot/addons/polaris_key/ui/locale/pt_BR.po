@@ -4187,7 +4187,7 @@ msgstr "Acesso indisponível"
 msgid "core.codes.invalid_scope.message"
 msgstr "O app pediu um acesso que este login não oferece. Fale com o desenvolvedor."
 
-#. Sign-in can't finish
+#. Sign-in can't return to the app
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.redirect_uri_mismatch.title"
 msgstr "Endereço de retorno não permitido"

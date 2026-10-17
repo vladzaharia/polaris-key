@@ -30878,7 +30878,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sign-in can't finish"
+            "value": "Sign-in can't return to the app"
           }
         },
         "de": {
@@ -30890,7 +30890,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sign-in can't finish"
+            "value": "Sign-in can't return to the app"
           }
         },
         "es": {

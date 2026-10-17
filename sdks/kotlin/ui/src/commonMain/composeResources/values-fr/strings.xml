@@ -1591,7 +1591,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_scope_message">The app asked for access this sign-in doesn't offer. Contact its developer.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_redirect_uri_mismatch_title">Sign-in can't finish</string>
+    <string name="core_codes_redirect_uri_mismatch_title">Sign-in can't return to the app</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_redirect_uri_mismatch_message">This app's sign-in isn't set up correctly, so it stopped here to keep your account safe. Let its developer know.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

@@ -4167,7 +4167,7 @@ msgstr "无法访问"
 msgid "core.codes.invalid_scope.message"
 msgstr "应用请求的访问权限此次登录不提供。请联系其开发者。"
 
-#. Sign-in can't finish
+#. Sign-in can't return to the app
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.redirect_uri_mismatch.title"
 msgstr "返回地址不被允许"

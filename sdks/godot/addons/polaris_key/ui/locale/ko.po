@@ -4167,7 +4167,7 @@ msgstr "액세스할 수 없습니다"
 msgid "core.codes.invalid_scope.message"
 msgstr "앱이 이 로그인에서 제공하지 않는 액세스를 요청했습니다. 개발자에게 문의하세요."
 
-#. Sign-in can't finish
+#. Sign-in can't return to the app
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.redirect_uri_mismatch.title"
 msgstr "돌아갈 주소가 허용되지 않습니다"

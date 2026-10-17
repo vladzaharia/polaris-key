@@ -169,7 +169,7 @@
       "message": "The app asked for access this sign-in doesn't offer. Contact its developer."
     },
     "redirect_uri_mismatch": {
-      "title": "Sign-in can't finish",
+      "title": "Sign-in can't return to the app",
       "message": "This app's sign-in isn't set up correctly, so it stopped here to keep your account safe. Let its developer know."
     },
     "license_choice_required": {

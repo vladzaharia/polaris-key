@@ -58,7 +58,7 @@ const COPY_CODES := {
 	"invalid_grant": {"title": "Sign-in no longer valid", "message": "That sign-in has expired or was already used. Sign in again."},
 	"unsupported_grant_type": {"title": "Sign-in request invalid", "message": "The app asked for a sign-in type we don't support. Contact its developer."},
 	"invalid_scope": {"title": "Access not available", "message": "The app asked for access this sign-in doesn't offer. Contact its developer."},
-	"redirect_uri_mismatch": {"title": "Sign-in can't finish", "message": "This app's sign-in isn't set up correctly, so it stopped here to keep your account safe. Let its developer know."},
+	"redirect_uri_mismatch": {"title": "Sign-in can't return to the app", "message": "This app's sign-in isn't set up correctly, so it stopped here to keep your account safe. Let its developer know."},
 	"license_choice_required": {"title": "Choose a license", "message": "Choose which license this device uses, then continue."},
 	"auth_method_disabled": {"title": "Sign-in method unavailable", "message": "That sign-in method is turned off. Choose another one."},
 	"email_unavailable": {"title": "Email sign-in unavailable", "message": "Email sign-in isn't available right now. Choose another sign-in method."},

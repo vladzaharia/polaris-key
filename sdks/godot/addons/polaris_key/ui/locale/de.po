@@ -4177,7 +4177,7 @@ msgstr "Zugriff nicht verfügbar"
 msgid "core.codes.invalid_scope.message"
 msgstr "Die App hat Zugriff angefragt, den diese Anmeldung nicht bietet. Wende dich an den Entwickler."
 
-#. Sign-in can't finish
+#. Sign-in can't return to the app
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.redirect_uri_mismatch.title"
 msgstr "Rücksprungadresse nicht erlaubt"

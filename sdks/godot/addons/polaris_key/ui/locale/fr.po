@@ -4187,10 +4187,10 @@ msgstr "Access not available"
 msgid "core.codes.invalid_scope.message"
 msgstr "The app asked for access this sign-in doesn't offer. Contact its developer."
 
-#. Sign-in can't finish
+#. Sign-in can't return to the app
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.redirect_uri_mismatch.title"
-msgstr "Sign-in can't finish"
+msgstr "Sign-in can't return to the app"
 
 #. This app's sign-in isn't set up correctly, so it stopped here to keep your account safe. Let its developer know.
 #. Core copy (conformance/parity/copy.en.json, codes).
