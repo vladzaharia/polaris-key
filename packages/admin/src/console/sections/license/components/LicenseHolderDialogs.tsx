@@ -47,6 +47,7 @@ import {
   useStepUp,
 } from "../../core/pages/UserRelink.js";
 import { holderConfirmValue, holderOf } from "./holders.js";
+import { sendKeyRefusal, type UnsentKey } from "../pages/LicenseKeys.js";
 import { EMAIL_RE } from "./shared.js";
 
 /** "When ada@example.com signs in with that email, it's in their library." (S-24 D4) */
@@ -95,11 +96,14 @@ export function AssignDialog({
   license,
   open,
   onOpenChange,
+  onUnsent,
 }: {
   slug: string;
   license: LicenseDetail;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** The key was minted but the email did not go out: the record shows it once (LX-27). */
+  onUnsent?: (unsent: UnsentKey, email: string) => void;
 }): React.ReactElement {
   return (
     <Dialog
@@ -113,6 +117,7 @@ export function AssignDialog({
           slug={slug}
           license={license}
           onDone={() => onOpenChange(false)}
+          onUnsent={onUnsent}
         />
       ) : null}
     </Dialog>
@@ -123,10 +128,12 @@ function AssignForm({
   slug,
   license,
   onDone,
+  onUnsent,
 }: {
   slug: string;
   license: LicenseDetail;
   onDone: () => void;
+  onUnsent?: (unsent: UnsentKey, email: string) => void;
 }): React.ReactElement {
   const form = useAdminForm<AssignValues>({
     values: { email: "", name: license.name ?? "", sendKey: false },
@@ -144,22 +151,33 @@ function AssignForm({
         ...(name && name !== license.name ? { name } : {}),
       });
       // LX-27 (D12): a ticked box mails a NEW key once the assignment has landed. The licence
-      // stays assigned whatever the mail does; the toast says which.
+      // stays assigned whatever the mail does. A send that did not go out hands its key to the
+      // record's send dialog (shown once, with the reason); a refusal minted none and says so.
+      let handoff: [UnsentKey, string] | null = null;
       if (draft.sendKey) {
+        const to = draft.email.trim();
         try {
-          const res = await mutate("sendLicenseKey", slug, license.id, false);
-          toast.success(
-            res.delivered.email === "sent"
-              ? "License assigned. Key sent."
-              : "License assigned. The key email didn't go out: send a new key from the record.",
+          const res = await mutate(
+            "sendLicenseKey",
+            slug,
+            license.id,
+            false,
+            "assigned",
           );
-        } catch {
-          toast.success(
-            "License assigned. The key email didn't go out: send a new key from the record.",
+          if (res.delivered.email === "sent") {
+            toast.success("License assigned. Key sent.");
+          } else {
+            toast.warning("License assigned. The key email didn't go out.");
+            handoff = [{ key: res.key, reason: res.delivered.reason }, to];
+          }
+        } catch (e) {
+          toast.warning(
+            `License assigned. No key was made: ${sendKeyRefusal(e, to, 600).description}`,
           );
         }
       } else toast.success("License assigned");
       onDone();
+      if (handoff) onUnsent?.(...handoff);
     },
   });
   useDismissGuard(form.isDirty && !form.isSubmitting);
@@ -195,7 +213,9 @@ function AssignForm({
           Cancel
         </Button>
         <Button type="submit" loading={form.isSubmitting}>
-          Assign license
+          {form.rhf.watch("sendKey")
+            ? "Assign and email key"
+            : "Assign license"}
         </Button>
       </DialogFooter>
     </Form>

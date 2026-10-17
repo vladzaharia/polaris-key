@@ -7606,9 +7606,11 @@ An operator can email a key to the licence's address: `delivery: {email: true}` 
 licence's other active keys in the same batch). Same product-admin session and CSRF as any licence
 write.
 
-- **Rate-limited and audited.** One delivered send-key per licence per 10 minutes (`429
-rate_limited`, `retryAfter`), read from the audit trail so it holds across isolates; a failed
-  send does not count, so it stays retryable. Audited `license.create` (with the delivery outcome)
+- **Rate-limited and audited.** One send-key per licence per 10 minutes (`429
+rate_limited`, `retryAfter`), read from the audit trail (the attempt row is written before the send, and a
+  `license.key.send.failed` row with the attempt as its `parent_id` frees it), so it holds across
+  isolates and a crash mid-send. What no retry can fix (no mail binding, a suppressed recipient, a
+  disabled licence) is refused with 409 before a key is minted, so failures do not pile up valid keys. Audited `license.create` (with the delivery outcome)
   and `license.key.send` (key label, outcome, revoked count).
 - **The key appears only in the email body and the one response that minted it.** Never in the
   subject, the audit summary, a log, or the audit row's address (the recipient is not recorded).

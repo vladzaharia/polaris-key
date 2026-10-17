@@ -6,7 +6,13 @@
 
 import * as React from "react";
 import { KeyRound } from "lucide-react";
-import { ApiError, type KeyDto, type LicenseDetail } from "../../../../api.js";
+import {
+  ApiError,
+  type KeyDto,
+  type KeyEmailFailure,
+  type LicenseDetail,
+} from "../../../../api.js";
+import { CopyButton } from "../../../../ui/CopyButton.js";
 import { Checkbox } from "../../../../ui/Checkbox.js";
 import { useMe } from "../../../data/hooks.js";
 import { mutate } from "../../../data/mutations.js";
@@ -304,12 +310,78 @@ export function MintKeyDialog({
   );
 }
 
+/** What a send-key left behind when the email did not go out: the key (valid) and why. */
+export interface UnsentKey {
+  key: string;
+  reason?: KeyEmailFailure;
+}
+
+/** Whether another try could help: a refused address or missing mail setup cannot be fixed here. */
+export const canRetryKeyEmail = (reason?: KeyEmailFailure): boolean =>
+  reason !== "no_mail_binding" && reason !== "suppressed";
+
+/** One line for why the email did not go out, in the operator's terms. */
+export function keyEmailFailureCopy(
+  reason: KeyEmailFailure | undefined,
+  email: string,
+): string {
+  if (reason === "no_mail_binding")
+    return "Email isn't set up for this product. Copy the key and send it yourself.";
+  if (reason === "suppressed")
+    return `${email} can't receive email from us. Copy the key and send it yourself.`;
+  return "The email provider didn't accept it. Copy the key and send it yourself, or try again.";
+}
+
+const minutesText = (seconds: number): string => {
+  const m = Math.max(1, Math.ceil(seconds / 60));
+  return `${m} min`;
+};
+
+/**
+ * What a refused send-key (no key minted) says: the 409 reasons, the 429 with its wait, else
+ * errorCopy's own title and description.
+ */
+export function sendKeyRefusal(
+  error: unknown,
+  email: string,
+  waitSeconds: number,
+): { title: string; description: string; details?: Record<string, unknown> } {
+  if (error instanceof ApiError && error.status === 409) {
+    if (error.reason === "license_not_active")
+      return {
+        title: "No key was made",
+        description: "Enable the license first, then send a key.",
+      };
+    if (error.reason === "no_mail_binding" || error.reason === "suppressed")
+      return {
+        title: "No key was made",
+        description: keyEmailFailureCopy(error.reason, email).replace(
+          "Copy the key and send it yourself.",
+          "Mint a key and send it yourself.",
+        ),
+      };
+  }
+  if (error instanceof ApiError && error.status === 429)
+    return {
+      title: "No key was made",
+      description: `A key was just emailed. You can send another in ${minutesText(waitSeconds)}.`,
+    };
+  const copy = errorCopy(error, { thing: "License" });
+  return {
+    title: copy.title,
+    description: copy.description,
+    ...(copy.action === "copy-details" ? { details: copy.details } : {}),
+  };
+}
+
 /**
  * **Send a new key…** (LX-27; notes/S-24 §8.4, D12): mints a key labelled "Sent by email" and
  * mails it to the license's address; the old keys keep working unless **Also revoke its other
- * keys** is ticked. One send per license per 10 minutes (the refusal shows inline). When the
- * email does not go out the new key is already valid, so it is shown once here to copy, with
- * **Try again** (which mints another).
+ * keys** is ticked. One send per license per 10 minutes (the wait shows, and Send waits with it).
+ * When the email does not go out the new key is already valid, so it is shown once here (closing
+ * early asks first), with the reason; **Try again** (only when a retry can help, and only after
+ * "I've stored it") emails another new key and leaves this one working. `initial` opens straight
+ * on that result, for the Assign… dialog's failed send.
  */
 export function SendKeyDialog({
   slug,
@@ -317,76 +389,166 @@ export function SendKeyDialog({
   email,
   open,
   onOpenChange,
+  initial = null,
+  context,
 }: {
   slug: string;
   licenseId: string;
   email: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  initial?: UnsentKey | null;
+  context?: "assigned";
 }): React.ReactElement {
   const [revokeOthers, setRevokeOthers] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<unknown>(null);
-  const [unsent, setUnsent] = React.useState<string | null>(null);
+  const [unsent, setUnsent] = React.useState<UnsentKey | null>(null);
   const [ack, setAck] = React.useState(false);
+  const [asking, setAsking] = React.useState(false);
+  const [until, setUntil] = React.useState(0);
+  const [clock, setClock] = React.useState(Date.now());
+  const titleRef = React.useRef<HTMLHeadingElement>(null);
 
   React.useEffect(() => {
     if (open) {
       setRevokeOthers(false);
       setBusy(false);
       setError(null);
-      setUnsent(null);
+      setUnsent(initial);
       setAck(false);
+      setAsking(false);
+      setUntil(0);
     }
-  }, [open]);
+  }, [open, initial]);
+  React.useEffect(() => {
+    if (!open || until <= Date.now()) return;
+    const t = setInterval(() => setClock(Date.now()), 5_000);
+    return () => clearInterval(t);
+  }, [open, until]);
 
-  const send = async (): Promise<void> => {
+  const waitSeconds = Math.max(0, Math.ceil((until - clock) / 1000));
+
+  const send = async (retry: boolean): Promise<void> => {
     setBusy(true);
     setError(null);
     try {
-      const res = await mutate("sendLicenseKey", slug, licenseId, revokeOthers);
+      // A retry never revokes: the key on screen may already be copied.
+      const res = await mutate(
+        "sendLicenseKey",
+        slug,
+        licenseId,
+        retry ? false : revokeOthers,
+        context,
+      );
       if (res.delivered.email === "sent") {
-        toast.success(`Key sent to ${email}`);
+        toast.success(
+          `Key sent to ${email}.` +
+            (res.revoked > 0
+              ? ` ${res.revoked} other key${res.revoked === 1 ? "" : "s"} revoked.`
+              : ""),
+        );
         onOpenChange(false);
       } else {
-        setUnsent(res.key);
+        setUnsent({ key: res.key, reason: res.delivered.reason });
         setAck(false);
       }
     } catch (err) {
+      if (err instanceof ApiError && err.status === 429) {
+        const wait = err.retryAfter ?? 600;
+        setUntil(Date.now() + wait * 1000);
+        setClock(Date.now());
+      }
       setError(err);
     } finally {
       setBusy(false);
     }
   };
 
-  const limited = error instanceof ApiError && error.status === 429;
+  const refusal = error
+    ? sendKeyRefusal(error, email, waitSeconds || 600)
+    : null;
+  const errorCallout = refusal ? (
+    <Callout tone="danger" title={refusal.title} live>
+      <span>{refusal.description}</span>
+      {refusal.details ? (
+        <CopyButton
+          value={JSON.stringify(refusal.details, null, 2)}
+          label="Copy details"
+          showLabel
+        />
+      ) : null}
+    </Callout>
+  ) : null;
+
+  const guardedClose = (next: boolean): void => {
+    if (next) return onOpenChange(true);
+    if (unsent && !ack) return setAsking(true);
+    onOpenChange(false);
+  };
+
   return (
     <Dialog
       open={open}
-      title={unsent ? "The email didn't go out" : "Send a new key"}
+      title={unsent ? "Key not emailed" : "Send a new key"}
       description={
-        unsent
-          ? "The new key works. Copy it now, it is shown only once."
-          : `Emails a new key to ${email}.`
+        unsent ? "The new key works." : `Emails a new key to ${email}.`
       }
       dismissible={!busy}
-      onOpenChange={(o) => onOpenChange(o)}
+      titleRef={titleRef}
+      initialFocusRef={titleRef}
+      onOpenChange={guardedClose}
     >
       {unsent ? (
         <OneTimeSecretPanel
           label="License key"
-          value={unsent}
+          value={unsent.key}
           acknowledged={ack}
-          onAcknowledgedChange={setAck}
+          onAcknowledgedChange={(v) => {
+            setAck(v);
+            if (v) setAsking(false);
+          }}
+          closeRequested={asking}
+          onCancelClose={() => setAsking(false)}
+          onConfirmClose={() => {
+            setAsking(false);
+            onOpenChange(false);
+          }}
           onDone={() => onOpenChange(false)}
+          details={
+            <div className="space-y-3">
+              <Callout
+                tone="warning"
+                title={`The email to ${email} didn't go out`}
+                live
+              >
+                {keyEmailFailureCopy(unsent.reason, email)}
+              </Callout>
+              {errorCallout}
+              {canRetryKeyEmail(unsent.reason) ? (
+                <p className="text-xs text-fg-muted">
+                  Try again emails another new key. This one keeps working.
+                </p>
+              ) : null}
+            </div>
+          }
           actions={
-            <Button
-              variant="secondary"
-              loading={busy}
-              onClick={() => void send()}
-            >
-              Try again
-            </Button>
+            canRetryKeyEmail(unsent.reason) ? (
+              <Button
+                variant="outline"
+                loading={busy}
+                disabledReason={
+                  !ack
+                    ? "Tick “I've stored it” first"
+                    : waitSeconds > 0
+                      ? `Try again in ${minutesText(waitSeconds)}`
+                      : undefined
+                }
+                onClick={() => void send(true)}
+              >
+                Try again
+              </Button>
+            ) : null
           }
         />
       ) : (
@@ -395,7 +557,7 @@ export function SendKeyDialog({
           className="contents"
           onSubmit={(e) => {
             e.preventDefault();
-            void send();
+            void send(false);
           }}
         >
           <DialogBody className="space-y-4">
@@ -403,19 +565,9 @@ export function SendKeyDialog({
               checked={revokeOthers}
               onCheckedChange={setRevokeOthers}
               label="Also revoke its other keys"
-              description="Devices already activated keep working. Anyone with an old key can't activate a new one."
+              description="Old keys can't activate more devices. Devices already activated keep working."
             />
-            {error ? (
-              <Callout
-                tone={limited ? "warning" : "danger"}
-                title={limited ? "Sent a moment ago" : "The key wasn't sent"}
-                live
-              >
-                {limited
-                  ? "A key was emailed for this license in the last 10 minutes. Try again later."
-                  : errorCopy(error, { thing: "License" }).description}
-              </Callout>
-            ) : null}
+            {errorCallout}
           </DialogBody>
           <DialogFooter>
             <Button
@@ -425,7 +577,15 @@ export function SendKeyDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" loading={busy}>
+            <Button
+              type="submit"
+              loading={busy}
+              disabledReason={
+                waitSeconds > 0
+                  ? `Try again in ${minutesText(waitSeconds)}`
+                  : undefined
+              }
+            >
               Send key
             </Button>
           </DialogFooter>

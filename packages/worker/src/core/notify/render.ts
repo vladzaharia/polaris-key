@@ -50,6 +50,7 @@ function darkCss(): string {
     `.pk-strong{color:${DARK.text.strong} !important}`,
     `.pk-text{color:${DARK.text.default} !important}`,
     `.pk-muted{color:${DARK.text.muted} !important}`,
+    `.pk-key{background-color:${DARK.surface.page} !important;border-color:${DARK.border.subtle} !important}`,
     `.pk-btn{background-color:${DARK.accent.violet.solid} !important}`,
     `.pk-btn-a{color:${DARK.accent.violet.on} !important}`,
     `.pk-link{color:${DARK.accent.violet.fg} !important}`,
@@ -78,6 +79,17 @@ export interface EmailContent {
   action?: { label: string; url: string };
   /** A security notice's "Wasn't you? Secure your account" line, a URL the Worker built. */
   secure?: { label: string; url: string };
+  /**
+   * The product as the hero (LX-27): its icon (an https image URL, optional) and name replace the
+   * platform lockup above the card; the platform then shows as `secondary` instead.
+   */
+  hero?: { name: string; iconUrl?: string | null };
+  /** A secret shown in a tinted monospace box that wraps anywhere, never at a hyphen. */
+  secret?: string;
+  /** Paragraphs after the `secret` box. */
+  paragraphsAfter?: string[];
+  /** A quiet second link with the small Polaris Key logo, under the card's content. */
+  secondary?: { label: string; url: string };
   /** The small print under the card. Plain text. */
   footer: string;
   /** The origin to load the lockup from, or null to use a text wordmark instead. */
@@ -112,6 +124,23 @@ export function renderEmail(c: EmailContent): string {
       ) +
       `<p style="margin:0;font-family:${mono};font-size:13px;line-height:20px;word-break:break-all"><a class="pk-link" href="${escapeHtml(c.action.url)}" style="color:${LIGHT.accent.violet.fg};text-decoration:underline">${escapeHtml(c.action.url)}</a></p>`
     : "";
+  const secret = c.secret
+    ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 16px"><tr><td class="pk-key" bgcolor="${LIGHT.surface.page}" style="padding:14px 16px;background-color:${LIGHT.surface.page};border:1px solid ${LIGHT.border.subtle};border-radius:6px;font-family:${mono};font-size:16px;line-height:24px;font-weight:700;word-break:break-all;overflow-wrap:anywhere;color:${LIGHT.text.strong}"><span class="pk-strong">${escapeHtml(c.secret)}</span></td></tr></table>`
+    : "";
+  const secondary = c.secondary
+    ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:24px 0 0"><tr>` +
+      (c.origin
+        ? `<td style="padding:0 10px 0 0"><img class="pk-logo-light" src="${escapeHtml(`${c.origin}/assets/branding/key/key-horizontal-light-944.png`)}" width="90" height="30" alt="Polaris Key" style="display:block;border:0;width:90px;height:auto"><!--[if !mso]><!--><img class="pk-logo-dark" src="${escapeHtml(`${c.origin}/assets/branding/key/key-horizontal-dark-944.png`)}" width="90" height="30" alt="Polaris Key" style="display:none;max-height:0;overflow:hidden;mso-hide:all;border:0;width:90px;height:auto"><!--<![endif]--></td>`
+        : "") +
+      `<td style="font-family:${font};font-size:15px;line-height:22px"><a class="pk-link" href="${escapeHtml(c.secondary.url)}" style="color:${LIGHT.accent.violet.fg};text-decoration:underline">${escapeHtml(c.secondary.label)}</a></td></tr></table>`
+    : "";
+  const hero = c.hero
+    ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 20px"><tr>` +
+      (c.hero.iconUrl
+        ? `<td style="padding:0 14px 0 0"><img src="${escapeHtml(c.hero.iconUrl)}" width="56" height="56" alt="" style="display:block;border:0;border-radius:12px;width:56px;height:56px"></td>`
+        : "") +
+      `<td><h1 class="pk-strong" style="margin:0;font-family:${font};font-size:24px;line-height:32px;font-weight:700;letter-spacing:-0.01em;color:${LIGHT.text.strong}">${escapeHtml(c.hero.name)}</h1></td></tr></table>`
+    : "";
   const secure = c.secure
     ? `<p class="pk-text" style="margin:24px 0 0;font-family:${font};font-size:15px;line-height:22px;color:${LIGHT.text.default}"><strong>Wasn&#x27;t you?</strong> <a class="pk-link" href="${escapeHtml(c.secure.url)}" style="color:${LIGHT.accent.violet.fg};text-decoration:underline">${escapeHtml(c.secure.label)}</a></p>`
     : "";
@@ -132,14 +161,21 @@ export function renderEmail(c: EmailContent): string {
     `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:520px">`,
     // The lockup PNG carries its own clear space; the text wordmark needs the gap.
     // The lockup sits centred over the card (SIGN-IN.md §3.15).
-    `<tr><td align="center" style="padding:0 0 ${c.origin ? 0 : 24}px;text-align:center">${brand}</td></tr>`,
+    c.hero
+      ? ""
+      : `<tr><td align="center" style="padding:0 0 ${c.origin ? 0 : 24}px;text-align:center">${brand}</td></tr>`,
     `<tr><td class="pk-card" bgcolor="${LIGHT.surface.raised}" style="padding:32px;background-color:${LIGHT.surface.raised};border:1px solid ${LIGHT.border.subtle};border-radius:10px">`,
-    `<h1 class="pk-strong" style="margin:0 0 16px;font-family:${font};font-size:24px;line-height:32px;font-weight:700;letter-spacing:-0.01em;color:${LIGHT.text.strong}">${escapeHtml(c.heading)}</h1>`,
+    c.hero
+      ? hero
+      : `<h1 class="pk-strong" style="margin:0 0 16px;font-family:${font};font-size:24px;line-height:32px;font-weight:700;letter-spacing:-0.01em;color:${LIGHT.text.strong}">${escapeHtml(c.heading)}</h1>`,
     c.code
       ? `<p class="pk-strong" style="margin:0 0 24px;font-family:${mono};font-size:36px;line-height:44px;font-weight:700;letter-spacing:0.12em;color:${LIGHT.text.strong}">${escapeHtml(c.code)}</p>`
       : "",
     ...c.paragraphs.map((t) => para(t)),
+    secret,
+    ...(c.paragraphsAfter ?? []).map((t) => para(t)),
     action,
+    secondary,
     secure,
     `</td></tr>`,
     `<tr><td class="pk-muted" style="padding:24px 8px 0;font-family:${font};font-size:13px;line-height:20px;color:${LIGHT.text.muted}">${escapeHtml(c.footer)}</td></tr>`,

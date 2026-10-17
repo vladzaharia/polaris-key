@@ -14,6 +14,10 @@ import {
   issueSession,
 } from "../src/core/console/session.js";
 import { getLicense } from "../src/core/licensing/store.js";
+import {
+  suppressEmail,
+  unsuppressEmail,
+} from "../src/core/notify/emailDelivery.js";
 import { listAudit } from "../src/core/audit.js";
 import { licenseKeyEmail } from "../src/core/notify/templates.js";
 
@@ -146,7 +150,10 @@ describe("create with deviceLimit and delivery, and send-key (LX-27)", () => {
     });
     expect(res.status).toBe(201);
     const body = (await res.json()) as Created;
-    expect(body.delivered).toEqual({ email: "failed" });
+    expect(body.delivered).toEqual({
+      email: "failed",
+      reason: "provider_refused",
+    });
     expect(await getLicense(db, "djdl", body.licenseId)).not.toBeNull();
   });
 
@@ -223,6 +230,47 @@ describe("create with deviceLimit and delivery, and send-key (LX-27)", () => {
       (await admin("POST", `/${created.licenseId}/send-key`, {})).status,
     ).toBe(201);
     expect(sent).toHaveLength(1);
+  });
+
+  it("refuses before minting when mail is not configured or the recipient is suppressed", async () => {
+    const created = (await (
+      await create({ email: "holder@example.com" })
+    ).json()) as Created;
+    const count = async () =>
+      (
+        (await (await admin("GET", `/${created.licenseId}`)).json()) as {
+          keys: unknown[];
+        }
+      ).keys.length;
+    expect(await count()).toBe(1);
+    await suppressEmail(env, db, "holder@example.com", "operator", clock);
+    const sup = await admin("POST", `/${created.licenseId}/send-key`, {});
+    expect(sup.status).toBe(409);
+    expect(await sup.json()).toMatchObject({ reason: "suppressed" });
+    await unsuppressEmail(env, db, "holder@example.com");
+    const mail = env.EMAIL;
+    env.EMAIL = undefined as unknown as Env["EMAIL"];
+    const none = await admin("POST", `/${created.licenseId}/send-key`, {});
+    expect(none.status).toBe(409);
+    expect(await none.json()).toMatchObject({ reason: "no_mail_binding" });
+    env.EMAIL = mail;
+    expect(await count()).toBe(1);
+  });
+
+  it("a failed send says why, and a disabled licence is refused (409)", async () => {
+    const created = (await (
+      await create({ email: "holder@example.com", delivery: { email: true } })
+    ).json()) as Created;
+    expect(created.delivered).toEqual({ email: "sent" });
+    failSend = true;
+    const res = await admin("POST", `/${created.licenseId}/send-key`, {});
+    expect(((await res.json()) as { delivered: unknown }).delivered).toEqual({
+      email: "failed",
+      reason: "provider_refused",
+    });
+    await admin("POST", `/${created.licenseId}/disable`, {});
+    const off = await admin("POST", `/${created.licenseId}/send-key`, {});
+    expect(off.status).toBe(409);
   });
 
   it("send-key is refused on a floating licence and on a bad body", async () => {

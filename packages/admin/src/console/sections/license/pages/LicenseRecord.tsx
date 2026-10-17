@@ -58,7 +58,12 @@ import {
   useLicenseHolderMoves,
 } from "../components/holders.js";
 import { DeleteLicenseDialog, deletionBlockedReason } from "./LicenseDelete.js";
-import { LicenseKeys, MintKeyDialog, SendKeyDialog } from "./LicenseKeys.js";
+import {
+  LicenseKeys,
+  MintKeyDialog,
+  SendKeyDialog,
+  type UnsentKey,
+} from "./LicenseKeys.js";
 import { LicenseTerms } from "./LicenseTerms.js";
 import {
   actorName,
@@ -164,6 +169,10 @@ function LicenseRecordBody({
   const product = useProduct(slug).data;
   const tiers = useTiers(slug).data?.tiers ?? [];
   const [termsDirty, setTermsDirty] = React.useState(false);
+  const [handoff, setHandoff] = React.useState<{
+    unsent: UnsentKey;
+    email: string;
+  } | null>(null);
   const [dialog, setDialog] = React.useState<
     | "holder"
     | "assign"
@@ -327,7 +336,7 @@ function LicenseRecordBody({
           },
           { label: "Device limit…", onSelect: () => setDialog("deviceLimit") },
           // LX-27: an assigned licence's key can be emailed anew (a floating one has no address).
-          ...(floating || !license.email?.trim()
+          ...(floating || !active || !license.email?.trim()
             ? []
             : [
                 { label: "Send a new key…", onSelect: () => setDialog("send") },
@@ -457,6 +466,10 @@ function LicenseRecordBody({
         license={license}
         open={dialog === "assign"}
         onOpenChange={(o) => setDialog(o ? "assign" : null)}
+        onUnsent={(unsent, email) => {
+          setHandoff({ unsent, email });
+          setDialog("send");
+        }}
       />
       <ReassignDialog
         slug={slug}
@@ -503,9 +516,14 @@ function LicenseRecordBody({
       <SendKeyDialog
         slug={slug}
         licenseId={id}
-        email={license.email?.trim() ?? ""}
+        email={handoff?.email ?? license.email?.trim() ?? ""}
+        initial={handoff?.unsent ?? null}
+        context={handoff ? "assigned" : undefined}
         open={dialog === "send"}
-        onOpenChange={(o) => setDialog(o ? "send" : null)}
+        onOpenChange={(o) => {
+          setDialog(o ? "send" : null);
+          if (!o) setHandoff(null);
+        }}
       />
       <ConfirmDialog
         open={dialog === "disable"}

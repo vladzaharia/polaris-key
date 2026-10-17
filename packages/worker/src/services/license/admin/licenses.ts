@@ -501,8 +501,9 @@ export async function handleLicenses(
       const row = await getLicense(db, slug, licenseId);
       // LX-27: the key email, in this request (the key exists in plaintext only here). A failure
       // never undoes the licence; the answer says `failed` and send-key tries again.
-      const emailDelivered =
+      const keyEmail =
         emailDelivery && row ? await emailLicenseKey(ctx, row, key) : null;
+      const emailDelivered = keyEmail?.email ?? null;
       await audit(
         db,
         slug,
@@ -519,7 +520,14 @@ export async function handleLicenses(
         {
           licenseId,
           key,
-          ...(emailDelivered ? { delivered: { email: emailDelivered } } : {}),
+          ...(keyEmail
+            ? {
+                delivered: {
+                  email: keyEmail.email,
+                  ...(keyEmail.reason ? { reason: keyEmail.reason } : {}),
+                },
+              }
+            : {}),
           // The answer is built as if no account had taken the licence, so a create
           // is not an oracle for "does this address have an account" (no `inAccount`, no
           // `ownerSubject`, whatever the association found).

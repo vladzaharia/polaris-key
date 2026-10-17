@@ -199,7 +199,7 @@ afterAll(async () => {
   await new Promise<void>((r) => server?.httpServer.close(() => r()));
 });
 
-let sendOutcome: "sent" | "failed" = "sent";
+let sendOutcome: "sent" | "failed" | "429" | "suppressed" = "sent";
 
 async function open(
   theme: "dark" | "light",
@@ -223,16 +223,30 @@ async function open(
   await ctx.route("**/*", async (route) => {
     const url = new URL(route.request().url());
     if (url.pathname.startsWith("/manage/api/")) {
-      if (url.pathname.endsWith("/send-key"))
+      if (url.pathname.endsWith("/send-key")) {
+        if (sendOutcome === "429")
+          return route.fulfill({
+            status: 429,
+            json: { code: "rate_limited", message: "limited", retryAfter: 420 },
+          });
+        if (sendOutcome === "suppressed")
+          return route.fulfill({
+            status: 409,
+            json: { code: "bad_request", reason: "suppressed" },
+          });
         return route.fulfill({
           status: 201,
           json: {
             key: "pkey_djdl_3WPLDA7Q2M8K5NHV",
             hash: "h1",
-            delivered: { email: sendOutcome },
+            delivered:
+              sendOutcome === "sent"
+                ? { email: "sent" }
+                : { email: "failed", reason: "provider_refused" },
             revoked: 0,
           },
         });
+      }
       const body = ROUTES[url.pathname];
       return body
         ? route.fulfill({ json: body })
@@ -370,11 +384,45 @@ describe("Licence holder surfaces under the Worker's CSP", () => {
         // The failed send keeps the new key: shown once, with Try again.
         sendOutcome = "failed";
         await dialog.getByRole("button", { name: "Send key" }).click();
-        await page.getByText("The email didn't go out").first().waitFor();
-        await page.getByRole("button", { name: "Try again" }).waitFor();
+        await page
+          .getByText(/didn't go out/)
+          .first()
+          .waitFor();
         await shot(page, `lx27-send-key-failed-${theme}-${width}`);
-        expect(await violations(page)).toEqual([]);
         await page.keyboard.press("Escape");
+        await page.getByText(/Close without copying\?/).waitFor();
+        await shot(page, `lx27-send-key-guard-${theme}-${width}`);
+        await page.getByRole("button", { name: "Keep it open" }).click();
+        await page.getByRole("button", { name: "Try again" }).waitFor();
+        expect(await violations(page)).toEqual([]);
+        await page.context().close();
+      });
+
+      it(`Send a new key… refusals: 429 wait, suppressed (${theme}, ${width}px)`, async () => {
+        const page = await open(
+          theme,
+          "#/p/djdl/license/licenses/lic_lena",
+          width,
+        );
+        await page
+          .locator("[data-page-title]", { hasText: "Lena Ortiz" })
+          .first()
+          .waitFor();
+        for (const mode of ["429", "suppressed"] as const) {
+          sendOutcome = mode;
+          await page
+            .getByRole("button", { name: "More actions" })
+            .first()
+            .click();
+          await page.getByRole("menuitem", { name: "Send a new key…" }).click();
+          const dialog = page.getByRole("dialog", { name: "Send a new key" });
+          await dialog.getByRole("button", { name: "Send key" }).click();
+          await dialog.getByText("No key was made").waitFor();
+          await shot(page, `lx27-send-key-${mode}-${theme}-${width}`);
+          await page.keyboard.press("Escape");
+          await dialog.waitFor({ state: "hidden" });
+        }
+        expect(await violations(page)).toEqual([]);
         await page.context().close();
       });
 
