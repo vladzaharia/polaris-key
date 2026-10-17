@@ -4127,12 +4127,12 @@ msgstr "로그인 요청이 올바르지 않습니다"
 msgid "core.codes.invalid_request.message"
 msgstr "앱이 읽을 수 없는 요청을 보냈습니다. 다시 시도하세요."
 
-#. App not recognised
+#. Sign-in can't finish
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_client.title"
 msgstr "앱을 인식할 수 없습니다"
 
-#. This app isn't set up for sign-in. Contact its developer.
+#. This app's sign-in isn't set up correctly, so it stopped here to keep your account safe. Let its developer know.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_client.message"
 msgstr "이 앱은 로그인용으로 설정되지 않았습니다. 개발자에게 문의하세요."
@@ -4167,12 +4167,12 @@ msgstr "액세스할 수 없습니다"
 msgid "core.codes.invalid_scope.message"
 msgstr "앱이 이 로그인에서 제공하지 않는 액세스를 요청했습니다. 개발자에게 문의하세요."
 
-#. Return address not allowed
+#. Sign-in can't return to the app
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.redirect_uri_mismatch.title"
 msgstr "돌아갈 주소가 허용되지 않습니다"
 
-#. This app's return address isn't registered, so we didn't send you back. Contact its developer.
+#. This app's sign-in isn't set up correctly, so it stopped here to keep your account safe. Let its developer know.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.redirect_uri_mismatch.message"
 msgstr "이 앱의 돌아갈 주소가 등록되지 않아 이동하지 않았습니다. 개발자에게 문의하세요."

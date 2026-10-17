@@ -102,13 +102,13 @@ const STATIC_HTML_CSP = [
  * one stylesheet's hash, plus the brand font from this origin. `form-action 'self'` stays a
  * literal token: the device pages widen it by one IdP origin (`oidc.ts`).
  */
-function brandedHtmlCsp(): string {
+function brandedHtmlCsp(imgOrigin: string | null = null): string {
   return [
     "default-src 'none'",
     "base-uri 'none'",
     "frame-ancestors 'none'",
     "form-action 'self'",
-    "img-src 'self' data:",
+    `img-src 'self' data:${imgOrigin ? ` ${imgOrigin}` : ""}`,
     `style-src ${brandPageStyleSource()}`,
     "font-src 'self'",
   ].join("; ");
@@ -161,9 +161,15 @@ export function staticHtmlSecurityHeaders(headers = new Headers()): Headers {
  * the device-authorization pages and the "you're signed in" page. Same hardening as
  * `staticHtmlSecurityHeaders`, with a policy that allows only the brand stylesheet and font.
  */
-export function brandedHtmlSecurityHeaders(headers = new Headers()): Headers {
+export function brandedHtmlSecurityHeaders(
+  headers = new Headers(),
+  opts: AppSecurityOptions = {},
+): Headers {
   commonHeaders(headers);
-  headers.set("content-security-policy", brandedHtmlCsp());
+  headers.set(
+    "content-security-policy",
+    brandedHtmlCsp(cspImageOrigin(opts.imgOrigin)),
+  );
   return headers;
 }
 

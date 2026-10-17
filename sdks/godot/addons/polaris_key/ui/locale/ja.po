@@ -4127,12 +4127,12 @@ msgstr "サインインリクエストが無効です"
 msgid "core.codes.invalid_request.message"
 msgstr "アプリから読み取れないリクエストが届きました。もう一度お試しください。"
 
-#. App not recognised
+#. Sign-in can't finish
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_client.title"
 msgstr "アプリを認識できません"
 
-#. This app isn't set up for sign-in. Contact its developer.
+#. This app's sign-in isn't set up correctly, so it stopped here to keep your account safe. Let its developer know.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_client.message"
 msgstr "このアプリはサインインに対応していません。開発元にお問い合わせください。"
@@ -4167,12 +4167,12 @@ msgstr "アクセスできません"
 msgid "core.codes.invalid_scope.message"
 msgstr "アプリがこのサインインでは提供されないアクセスを要求しました。開発元にお問い合わせください。"
 
-#. Return address not allowed
+#. Sign-in can't return to the app
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.redirect_uri_mismatch.title"
 msgstr "戻り先が許可されていません"
 
-#. This app's return address isn't registered, so we didn't send you back. Contact its developer.
+#. This app's sign-in isn't set up correctly, so it stopped here to keep your account safe. Let its developer know.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.redirect_uri_mismatch.message"
 msgstr "このアプリの戻り先が登録されていないため、移動しませんでした。開発元にお問い合わせください。"

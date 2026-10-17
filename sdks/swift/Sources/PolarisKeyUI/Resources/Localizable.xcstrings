@@ -24458,7 +24458,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "This app isn't set up for sign-in. Contact its developer."
+            "value": "This app's sign-in isn't set up correctly, so it stopped here to keep your account safe. Let its developer know."
           }
         },
         "de": {
@@ -24470,7 +24470,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "This app isn't set up for sign-in. Contact its developer."
+            "value": "This app's sign-in isn't set up correctly, so it stopped here to keep your account safe. Let its developer know."
           }
         },
         "es": {
@@ -24518,7 +24518,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "App not recognised"
+            "value": "Sign-in can't finish"
           }
         },
         "de": {
@@ -24530,7 +24530,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "App not recognised"
+            "value": "Sign-in can't finish"
           }
         },
         "es": {
@@ -30818,7 +30818,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "This app's return address isn't registered, so we didn't send you back. Contact its developer."
+            "value": "This app's sign-in isn't set up correctly, so it stopped here to keep your account safe. Let its developer know."
           }
         },
         "de": {
@@ -30830,7 +30830,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "This app's return address isn't registered, so we didn't send you back. Contact its developer."
+            "value": "This app's sign-in isn't set up correctly, so it stopped here to keep your account safe. Let its developer know."
           }
         },
         "es": {
@@ -30878,7 +30878,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Return address not allowed"
+            "value": "Sign-in can't return to the app"
           }
         },
         "de": {
@@ -30890,7 +30890,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Return address not allowed"
+            "value": "Sign-in can't return to the app"
           }
         },
         "es": {

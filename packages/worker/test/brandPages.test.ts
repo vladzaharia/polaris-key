@@ -114,7 +114,7 @@ describe("the branded page shell", () => {
       /\.surface\{color:var\(--muted\);font-size:\.75rem;[^}]*font-weight:400;[^}]*text-transform:uppercase/,
     );
     expect(BRAND_PAGE_CSS).toMatch(
-      /\.wordmark\{[^}]*font-size:1rem;[^}]*font-weight:700/,
+      /\.wordmark\{[^}]*font-size:1\.25rem;[^}]*font-weight:700/,
     );
     // The console's md Button: 36 px tall, 14 px, regular weight, full width.
     const button = /\.button\{([^}]*)\}/.exec(BRAND_PAGE_CSS)![1]!;
