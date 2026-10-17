@@ -81,7 +81,7 @@ instead:
 - `conflicting_spelling`: the document sets both. The message names the value that is used.
 
 The canonical layout is the one `pkey init` writes: `product:` for identity and compatibility,
-`licensing:` for licence defaults, tiers and profiles, and `release:` in `.pkey/release`. The
+`licensing:` for licence defaults and tiers, `profiles:` at the root, and `release:` in `.pkey/release`. The
 list is `DEPRECATED_SPELLINGS` in `@polaris-key/manifest` (`packages/shared-manifest/src/spellings.ts`),
 and it is what the validator, the schemas and the settings registry's parity test all read.
 
@@ -92,7 +92,7 @@ and it is what the validator, the schemas and the settings registry's parity tes
 | product      | `defaultDeviceLimit` at the root or under `product:`          | `licensing.defaultDeviceLimit`                                                                  | the old value is used                                                            |
 | product      | `defaultMaxOfflineDays` at the root or under `product:`       | `licensing.defaultMaxOfflineDays`                                                               | the old value is used                                                            |
 | product      | `tiers` at the root                                           | `licensing.tiers`                                                                               | the old value is used                                                            |
-| product      | `profiles` at the root                                        | `licensing.profiles`                                                                            | the old value is used                                                            |
+| product      | `licensing.profiles`                                          | `profiles` at the root                                                                          | the canonical value is used                                                      |
 | product      | tier `profile`                                                | tier `profileId`                                                                                | the canonical value is used                                                      |
 | product      | tier `expiryDays`                                             | tier `policyExpiryDays`                                                                         | the canonical value is used                                                      |
 | product      | profile `label`                                               | profile `name`                                                                                  | the canonical value is used                                                      |

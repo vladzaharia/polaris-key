@@ -6,6 +6,10 @@ only API (no deprecated aliases).
 
 ## Unreleased
 
+Server drop-ins.
+
+- **`polaris_key.server` (`server.license`, `server.signin`).** `PolarisKey` verifies `X-PKey-License` per WIRE-CONTRACT-V4 §14 (the six-step verdict, the problem body, the signed trust manifest refreshed every 900 s and once a minute on an unknown `kid`), with adapters for FastAPI/Starlette, Django and DRF, and Flask. Extras: `starlette`, `fastapi`, `flask`, `django`, `drf`. Replays `backend-matrix.json`.
+
 Hostile-input fixes.
 
 - **A `blocked` hint outside the block vocabulary can no longer unlock the gate.** The gate returns the hint's reason as the status, and `ok`, `grace` and `not-applicable` are usable, so an unsigned `{"reason": "ok"}` in `managed.json` or in a 403 body would have licensed the client. `polaris_key.core` now exports `BLOCK_REASONS`, `STRICTEST_BLOCK_REASON`, `is_block_reason` and `coerce_block_reason`. A 403 reason that is not a member reads as the stricter `version-too-old` (`channel-not-entitled` for `channel_not_allowed`), `CacheRecord.from_dict` drops a hint whose reason is not a member, and `license_state` coerces at the decision point.

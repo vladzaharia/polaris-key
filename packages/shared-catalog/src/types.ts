@@ -6,11 +6,13 @@
 
 import type { SecretDelivery } from "@polaris-key/protocol/config";
 
+/** The console's types over the stored kind: `config` is a Setting, `secret` a Secret, and
+ *  `secret` with `delivery: "edgeMint"` a Minted token. `flag` is an entitlement (Licensing's). */
 export type ConfigKind = "config" | "secret" | "flag";
 
-/** Per-key MDM-style management state — applies to `config` keys only.
- *  `default` (overridable by user/env) | `enforced` (server wins, read-only) |
- *  `hidden` (enforced + withheld from user-facing enumeration). */
+/** Per-key MDM-style management state — applies to `config` keys only. The console says
+ *  "In the app": `default` is Editable (people can change it), `enforced` is Read-only (server
+ *  wins, listed), `hidden` is Hidden (enforced + withheld from user-facing enumeration). */
 export type ManagementState = "default" | "enforced" | "hidden";
 
 /** rjsf/SwiftUI rendering hints — never affect validation, only presentation. */
@@ -42,9 +44,12 @@ export interface ConfigEntry {
   schema: JsonSchema;
   examples?: unknown[];
   default?: unknown;
+  /** Retired: `kind: "secret"` says it. Redundant on a secret entry (dropped at ingest); on a
+   *  `config` entry it still seals the value, and the validator warns to use `kind: "secret"`. */
   secret?: boolean;
-  /** How a SECRET reaches a runtime (default `clientScoped`). `serverOnly` values are
-   *  consumed by the worker and never signed into a device document; `edgeMint` marks the
+  /** How a SECRET reaches a runtime (default `clientScoped`). `serverOnly` is retired (the
+   *  validator warns: a Worker-only secret belongs in the product's secrets); it is never signed
+   *  into a device document. `edgeMint` marks the
    *  Config-service capability that mints short-lived third-party tokens (D-19). */
   delivery?: SecretDelivery;
   /** State a freshly-minted key gets if the admin doesn't override it. CONFIG only. */

@@ -466,6 +466,7 @@ describe("cli/commander adapter smoke", () => {
 
     registerPolarisCommands(program, factory, {
       pinnedKeys: base.trust.pinnedKeys,
+      verbs: "all",
       print: (line) => lines.push(line),
       setExitCode: () => {
         /* don't touch process.exitCode in tests */
@@ -526,6 +527,7 @@ describe("cli/commander adapter smoke", () => {
 
     registerPolarisCommands(program, factory, {
       pinnedKeys: base.trust.pinnedKeys,
+      verbs: "all",
       print: (line) => lines.push(line),
       setExitCode: () => {
         /* no process side effects in tests */

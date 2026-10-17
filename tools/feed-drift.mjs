@@ -6,10 +6,10 @@
  *
  *   node tools/feed-drift.mjs --origin https://pkg.plrs.im --version 0.9.1-main.4 \
  *     --pep440 0.9.1.dev4 --channel main [--owner polaris-key] [--root .] [--timeout 600] \
- *     [--only npm,maven] [--skip npm.ui-core,maven.ui-core]
+ *     [--only npm,maven] [--skip npm.ui-core,maven.ui-core,maven.server,maven.server-ktor]
  *
  * `--skip` names deliverable ids a build does not publish (publish-sdks.yml publishes the
- * `ui-core` deliverables, and so the packages that pin it, on v* tag builds only); they are not read.
+ * `ui-core`, `server` and `server-ktor` deliverables, and so the packages that pin it, on v* tag builds only); they are not read.
  *
  * For each package deliverable it reads the feed's own version listing, over plain HTTP, as a
  * client would:

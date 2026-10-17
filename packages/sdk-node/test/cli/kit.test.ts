@@ -20,7 +20,6 @@ import {
   KitCopy,
   keyVerdict,
   registerPolarisCommands,
-  registerYargsCommands,
   resolveAccent,
   resolveLocale,
   resolveProduct,
@@ -30,6 +29,7 @@ import {
   updateView,
   devicesView,
 } from "../../src/cli/index.js";
+import { registerPolarisCommands as registerYargsCommands } from "../../src/cli/yargs.js";
 import {
   detectTerminal,
   readsLogCommands,
@@ -427,6 +427,7 @@ describe("product identity (UI-KITS §1.2) through the presentation seam", () =>
     });
     registerPolarisCommands(program, async () => client, {
       pinnedKeys: {},
+      verbs: "all",
       productSlug: "tidewater",
       io: {
         stdout: screen,
@@ -557,6 +558,7 @@ describe("--json on every verb (both adapters)", () => {
       program.exitOverride();
       registerPolarisCommands(program, async () => stubClient(), {
         pinnedKeys: {},
+        verbs: "all",
         productSlug: "tidewater",
         io: {
           stdout: screen,
@@ -694,6 +696,7 @@ describe("--json on every verb (both adapters)", () => {
     const y = yargs([]).exitProcess(false);
     registerYargsCommands(y, async () => stubClient(), {
       pinnedKeys: {},
+      verbs: "all",
       productSlug: "tidewater",
       io: {
         stdout: screen,
@@ -704,7 +707,7 @@ describe("--json on every verb (both adapters)", () => {
       },
       setExitCode: () => undefined,
     });
-    await y.parseAsync(["polaris-key", "status", "--json"]);
+    await y.parseAsync(["status", "--json"]);
     expect(JSON.parse(screen.raw)).toMatchObject({
       v: 1,
       command: "status",
@@ -721,6 +724,7 @@ describe("--json on every verb (both adapters)", () => {
     const err = new Screen();
     registerPolarisCommands(program, async () => stubClient(), {
       pinnedKeys: {},
+      verbs: "all",
       productSlug: "tidewater",
       io: {
         stdout: screen,
@@ -796,6 +800,7 @@ describe("a raw value never runs as a CI log command (secret, mint)", () => {
         }),
       {
         pinnedKeys: {},
+        verbs: "all",
         productSlug: "tidewater",
         io: {
           stdout: out,
@@ -904,6 +909,7 @@ describe("a raw value never runs as a CI log command (secret, mint)", () => {
         }),
       {
         pinnedKeys: {},
+        verbs: "all",
         productSlug: "tidewater",
         io: { stdout: out, stderr: err, env: {}, ticker: frozenTicker },
         setExitCode: (c) => {
@@ -946,6 +952,7 @@ describe("a raw value never runs as a CI log command (secret, mint)", () => {
       async () => stubClient({ config: { getSecret: () => HOSTILE[0] } }),
       {
         pinnedKeys: {},
+        verbs: "all",
         productSlug: "tidewater",
         io: {
           stdout: out,
@@ -959,11 +966,10 @@ describe("a raw value never runs as a CI log command (secret, mint)", () => {
         },
       },
     );
-    await y.parseAsync(["polaris-key", "secret", "api.key", "--reveal"]);
+    await y.parseAsync(["secret", "api.key", "--reveal"]);
     expect(out.raw).toBe("");
     expect(code).toBe(1);
     await y.parseAsync([
-      "polaris-key",
       "secret",
       "api.key",
       "--reveal",
@@ -980,22 +986,22 @@ describe("help and completion", () => {
     program.exitOverride().configureOutput({ writeOut: (s) => (out += s) });
     registerPolarisCommands(program, async () => stubClient(), {
       pinnedKeys: {},
+      verbs: "all",
       productSlug: "tidewater",
       io: { env: {}, stdout: new Screen({ tty: false }) },
     });
     await program
       .parseAsync(["--help"], { from: "user" })
       .catch(() => undefined);
-    for (const heading of [
-      "License",
-      "Account",
-      "Devices",
-      "Settings",
-      "Updates",
-      "Content",
-      "Support",
-      "Options",
-    ])
+    // One heading for what the mount added, after the host's own sections (mount rows live in
+    // cliMount.test.ts); a command group's own help keeps the grouped page.
+    expect(out).toContain("\nLicense:\n");
+    for (const verb of CLI_VERBS) expect(out).toContain(verb.path[0]);
+    out = "";
+    await program
+      .parseAsync(["devices", "--help"], { from: "user" })
+      .catch(() => undefined);
+    for (const heading of ["Devices", "Options"])
       expect(out).toContain(`\n${heading}\n`);
     out = "";
     await program

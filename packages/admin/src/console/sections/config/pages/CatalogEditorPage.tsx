@@ -339,10 +339,10 @@ function Editor({
         </div>
         <div className={cn("w-40", mode === "json" && "hidden")}>
           <Select
-            aria-label="Kind"
+            aria-label="Type"
             value={kind}
             options={[
-              { value: "all", label: "All kinds" },
+              { value: "all", label: "All types" },
               ...(["config", "secret", "flag"] as const).map((k) => ({
                 value: k,
                 label: KIND_LABELS[k]!,

@@ -1,8 +1,7 @@
 // @pkey-feature ui.cli.contract
 // The Node terminal kit against the `cli` family of conformance/corpus/v2/ui-matrix.json
 // (plans/UK-51.md): every row of its `exit`, `capabilities`, `stdin` and `outcomes` sections. The
-// `mount`, `help` and `gate` rows are the adapters' (UK-46 runs them when it mounts the verbs into
-// a host CLI and gates its commands). A row the kit fails is a bug against the row or the kit,
+// `mount`, `help` and `gate` rows are the adapters' and run in cliMount.test.ts (UK-46). A row the kit fails is a bug against the row or the kit,
 // never a reason to skip it (AGENTS.md rule 1).
 
 import { spawn } from "node:child_process";

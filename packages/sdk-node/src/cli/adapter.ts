@@ -30,6 +30,11 @@ export interface KitAdapterOptions {
    * `print`, with no rail, no prompts and no `--json`.
    */
   kit?: boolean;
+  /**
+   * `false` keeps the host's frame: no product chip heads a kit flow and no closing row ends it,
+   * so a flow sits inside the host's own intro and outro. Default true.
+   */
+  frame?: boolean;
 }
 
 /** Flags as either parser hands them over. */
@@ -130,6 +135,7 @@ export async function runKitVerb(
     },
     io,
     ...(o.theme ? { theme: o.theme } : {}),
+    ...(o.frame === false ? { frame: false } : {}),
     presentation: o.presentation ?? presentationSourceOf(client),
   });
   const verbFlags: VerbFlags = {
