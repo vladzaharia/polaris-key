@@ -189,21 +189,6 @@ function PolicyRow({
         <span className="min-w-24 flex-1 text-sm font-medium text-fg-strong">
           {label}
         </span>
-        <span className="inline-flex items-center gap-2">
-          {readOnly ? (
-            <Lock aria-hidden className="size-3.5 text-fg-muted" />
-          ) : null}
-          <Switch
-            id={`${id}-enabled`}
-            aria-label={`Serve ${label}`}
-            aria-describedby={readOnly ? `${id}-readonly` : undefined}
-            checked={enabled.draft === "on"}
-            disabled={readOnly}
-            readOnly={enabled.busy}
-            aria-busy={enabled.busy || undefined}
-            onCheckedChange={(next) => enabled.propose(next ? "on" : "off")}
-          />
-        </span>
         <div
           className="flex items-center gap-2"
           onKeyDown={(e) => {
@@ -270,6 +255,21 @@ function PolicyRow({
             </>
           ) : null}
         </div>
+        <span className="ml-auto inline-flex items-center gap-2">
+          {readOnly ? (
+            <Lock aria-hidden className="size-3.5 text-fg-muted" />
+          ) : null}
+          <Switch
+            id={`${id}-enabled`}
+            aria-label={`Serve ${label}`}
+            aria-describedby={readOnly ? `${id}-readonly` : undefined}
+            checked={enabled.draft === "on"}
+            disabled={readOnly}
+            readOnly={enabled.busy}
+            aria-busy={enabled.busy || undefined}
+            onCheckedChange={(next) => enabled.propose(next ? "on" : "off")}
+          />
+        </span>
       </div>
       {readOnly ? (
         <span id={`${id}-readonly`} className="sr-only">
