@@ -80,7 +80,7 @@ interface ConnectionRow {
   source: string;
 }
 
-const CLAIM_NAME_RE = /^[A-Za-z0-9_:.\-/]{1,64}$/;
+export const CLAIM_NAME_RE = /^[A-Za-z0-9_:.\-/]{1,64}$/;
 /** At most this many access-rule claims per connection. */
 export const CLAIM_MAP_MAX_CLAIMS = 20;
 

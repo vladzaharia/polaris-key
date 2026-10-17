@@ -151,5 +151,17 @@
   "PUT /products/:slug/sync/**": "sync",
   "PUT /products/:slug/trust-policy": "keys",
   "PUT /products/:slug/update/**": "ship",
-  "PUT /products/:slug/users/:subject/overrides": "config"
+  "PUT /products/:slug/users/:subject/overrides": "config",
+  "GET /platform/connections": "platform",
+  "POST /platform/connections": "platform",
+  "POST /platform/connections/discover": "platform",
+  "POST /platform/connections/test/start": "platform",
+  "GET /platform/connections/test/result": "platform",
+  "GET /platform/connections/:id": "platform",
+  "PATCH /platform/connections/:id": "platform",
+  "DELETE /platform/connections/:id": "platform",
+  "POST /platform/connections/:id/domains": "platform",
+  "POST /platform/connections/:id/domains/verify": "platform",
+  "PATCH /platform/connections/:id/domains/:domain": "platform",
+  "DELETE /platform/connections/:id/domains/:domain": "platform"
 }

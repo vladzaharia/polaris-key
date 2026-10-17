@@ -18,7 +18,7 @@ import type { AdminSession } from "../core/console/session.js";
 import { err } from "../core/console/respond.js";
 
 export interface StepUpRoute {
-  method: "GET" | "POST" | "DELETE";
+  method: "GET" | "POST" | "PATCH" | "DELETE";
   /** Path under `/manage/api`, with `:slug`, `:subject`, `:id` placeholders. */
   path: string;
   /** Why it is gated. */
@@ -82,6 +82,41 @@ export const STEP_UP_ROUTES: readonly StepUpRoute[] = [
     method: "POST",
     path: "/products/:slug/config/mint/:id/approve",
     why: "lets the product's signing key mint tokens for its devices",
+  },
+  {
+    method: "POST",
+    path: "/platform/connections",
+    why: "adds a sign-in provider and seals its secret",
+  },
+  {
+    method: "PATCH",
+    path: "/platform/connections/:id",
+    why: "changes a sign-in provider, its secret or its on/off state",
+  },
+  {
+    method: "DELETE",
+    path: "/platform/connections/:id",
+    why: "deletes a sign-in provider",
+  },
+  {
+    method: "POST",
+    path: "/platform/connections/:id/domains",
+    why: "claims an email domain for a sign-in provider",
+  },
+  {
+    method: "POST",
+    path: "/platform/connections/:id/domains/verify",
+    why: "lets a provider vouch for a domain's addresses",
+  },
+  {
+    method: "PATCH",
+    path: "/platform/connections/:id/domains/:domain",
+    why: "requires a provider for every address on a domain",
+  },
+  {
+    method: "DELETE",
+    path: "/platform/connections/:id/domains/:domain",
+    why: "releases a domain from a provider",
   },
   {
     method: "POST",

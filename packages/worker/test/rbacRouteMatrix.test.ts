@@ -362,6 +362,13 @@ describe("negative controls", () => {
         "POST /products/:slug/users/licenses/:id/reassign",
         "POST /products/:slug/users/relinks/:id/undo",
         "POST /products/:slug/config/mint/:id/approve",
+        "POST /platform/connections",
+        "PATCH /platform/connections/:id",
+        "DELETE /platform/connections/:id",
+        "POST /platform/connections/:id/domains",
+        "POST /platform/connections/:id/domains/verify",
+        "PATCH /platform/connections/:id/domains/:domain",
+        "DELETE /platform/connections/:id/domains/:domain",
       ].sort(),
     );
     for (const r of steps) {
