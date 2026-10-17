@@ -419,11 +419,14 @@ export function SidebarItem({
   onPrefetch?: () => void;
 }): React.ReactElement {
   const Icon = page.icon;
+  const railLabel = badge
+    ? `${page.label}, ${badge} ${badge === 1 ? "recipe needs" : "recipes need"} approval`
+    : page.label;
   const link = (
     <Link
       to={to}
       aria-current={active ? "page" : undefined}
-      aria-label={rail ? page.label : undefined}
+      aria-label={rail ? railLabel : undefined}
       data-page={page.page}
       onClick={() => onNavigate?.()}
       onMouseEnter={onPrefetch}
@@ -449,6 +452,13 @@ export function SidebarItem({
           className={cn("size-4 shrink-0", active && "text-accent")}
         />
       )}
+      {rail && badge ? (
+        <span
+          aria-hidden
+          data-nav-dot=""
+          className="absolute right-2 top-1.5 size-2 rounded-full bg-warning"
+        />
+      ) : null}
       {rail ? null : (
         <span className={cn("truncate", RAIL_FADE)}>{page.label}</span>
       )}
@@ -464,7 +474,7 @@ export function SidebarItem({
     </Link>
   );
   return rail ? (
-    <Tooltip content={page.label} side="right">
+    <Tooltip content={railLabel} side="right">
       {link}
     </Tooltip>
   ) : (

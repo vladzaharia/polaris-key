@@ -46,3 +46,39 @@ export function blockOf(
 export function withMint(entry: ConfigEntry, mint: MintBlock): ConfigEntry {
   return { ...entry, mint };
 }
+
+const canonical = (v: unknown): string =>
+  JSON.stringify(v, (_k, x: unknown) =>
+    x && typeof x === "object" && !Array.isArray(x)
+      ? Object.fromEntries(
+          Object.entries(x as Record<string, unknown>).sort(([a], [b]) =>
+            a < b ? -1 : 1,
+          ),
+        )
+      : x,
+  );
+
+const normal = (b: MintBlock): string =>
+  canonical({
+    alg: b.alg,
+    signingKeySecret: b.signingKeySecret,
+    kid: b.kid || null,
+    audience: b.audience || null,
+    ttlSeconds: b.ttlSeconds ?? 3600,
+    requires: b.requires ?? "licensed",
+    requiredEntitlement: b.requiredEntitlement || null,
+    claimsTemplate: b.claimsTemplate ?? {},
+  });
+
+/**
+ * True when the draft's `mint` block differs from the stored recipe: an edit that reverted to the
+ * stored values is no edit. Without a stored recipe any block counts.
+ */
+export function mintEdited(
+  entry: ConfigEntry,
+  recipe: EdgeMintRecipe | null | undefined,
+): boolean {
+  if (!entry.mint) return false;
+  if (!recipe) return true;
+  return normal(entry.mint) !== normal(blockFromRecipe(recipe));
+}

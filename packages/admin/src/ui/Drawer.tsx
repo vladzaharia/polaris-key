@@ -53,6 +53,8 @@ export interface DrawerProps {
   dismissible?: boolean;
   /** The draft holds unsaved input: dismissing asks first. See also `useDismissGuard`. */
   unsaved?: boolean;
+  /** Replaces the default return of focus to the opener (the handler says where focus goes). */
+  onCloseAutoFocus?: (e: Event) => void;
   children?: React.ReactNode;
   className?: string;
 }
@@ -66,6 +68,7 @@ export function Drawer({
   size = "md",
   dismissible = true,
   unsaved = false,
+  onCloseAutoFocus,
   children,
   className,
 }: DrawerProps): React.ReactElement {
@@ -93,7 +96,7 @@ export function Drawer({
           ref={contentRef}
           {...(description ? {} : { "aria-describedby": undefined })}
           onOpenAutoFocus={focus.onOpenAutoFocus}
-          onCloseAutoFocus={focus.onCloseAutoFocus}
+          onCloseAutoFocus={onCloseAutoFocus ?? focus.onCloseAutoFocus}
           onEscapeKeyDown={(e) => {
             if (!dismissible) e.preventDefault();
           }}

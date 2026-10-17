@@ -144,7 +144,10 @@ export interface DiffLine {
   text: string;
 }
 
-/** A line diff of two line lists (longest common subsequence). */
+/** A trailing comma moves when a line is added after it: it is no change to the line. */
+const bare = (line: string): string => line.replace(/,$/, "");
+
+/** A line diff of two line lists (longest common subsequence), blind to a trailing comma. */
 export function lineDiff(a: string[], b: string[]): DiffLine[] {
   const t = Array.from({ length: a.length + 1 }, () =>
     new Array<number>(b.length + 1).fill(0),
@@ -152,15 +155,15 @@ export function lineDiff(a: string[], b: string[]): DiffLine[] {
   for (let i = a.length - 1; i >= 0; i--)
     for (let j = b.length - 1; j >= 0; j--)
       t[i]![j] =
-        a[i] === b[j]
+        bare(a[i]!) === bare(b[j]!)
           ? t[i + 1]![j + 1]! + 1
           : Math.max(t[i + 1]![j]!, t[i]![j + 1]!);
   const out: DiffLine[] = [];
   let i = 0;
   let j = 0;
   while (i < a.length && j < b.length) {
-    if (a[i] === b[j]) {
-      out.push({ kind: "same", text: a[i]! });
+    if (bare(a[i]!) === bare(b[j]!)) {
+      out.push({ kind: "same", text: b[j]! });
       i++;
       j++;
     } else if (t[i + 1]![j]! >= t[i]![j + 1]!)
