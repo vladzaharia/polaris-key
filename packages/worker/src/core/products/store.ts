@@ -360,6 +360,38 @@ export function stmtInsertTier(t: TierInput): DbStatement {
   };
 }
 
+/** ST-42: a profile the console's create adds (`source = 'console'`: a resync never rewrites it). */
+export function stmtInsertConsoleProfile(p: {
+  product: string;
+  id: string;
+  name: string;
+  payloadJson: string;
+  author: string;
+  now: number;
+}): DbStatement {
+  return {
+    sql: `INSERT INTO profiles (product, id, name, description, payload_json, modified_by, modified_at, source)
+          VALUES (?, ?, ?, NULL, ?, ?, ?, 'console')`,
+    params: [p.product, p.id, p.name, p.payloadJson, p.author, p.now],
+  };
+}
+
+/** ST-42: the starter tier the console's create adds (rank 0, the product's limits). */
+export function stmtInsertConsoleTier(t: {
+  product: string;
+  id: string;
+  label: string;
+  profileId: string;
+  author: string;
+  now: number;
+}): DbStatement {
+  return {
+    sql: `INSERT INTO tiers (product, id, label, profile_id, rank, modified_by, modified_at, source)
+          VALUES (?, ?, ?, ?, 0, ?, ?, 'console')`,
+    params: [t.product, t.id, t.label, t.profileId, t.author, t.now],
+  };
+}
+
 /**
  * ST-01b: the resync's write of one manifest-declared tier. Inserts it as a `manifest` row, or
  * updates the stored row only while it is still manifest-owned — the guard is the upsert's own

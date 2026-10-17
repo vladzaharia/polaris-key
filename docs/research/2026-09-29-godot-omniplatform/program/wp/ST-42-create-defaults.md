@@ -65,9 +65,9 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 ## Acceptance criteria
 
-- [ ] One D1 batch, rolled back whole on failure (test)
-- [ ] A created product is ready for an SDK in one call
-- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `start/first-product` (the wizard steps); `operate/console/products`.
+- [x] One D1 batch, rolled back whole on failure (test)
+- [x] A created product is ready for an SDK in one call
+- [x] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `start/first-product` (the wizard steps); `operate/console/products`.
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify
@@ -84,3 +84,18 @@ Then the full green gate in `AGENTS.md`.
 
 What downstream work packages rely on from this one is named in their briefs (the Unblocks row). The role agent sets `--set ST-42 in-review` when it hands off. After review, the lead adds the last commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set ST-42 done`.
+
+## Verification against the code (2026-10-17)
+
+- The brief's `admin/handlers/products.ts` is `packages/worker/src/console/handlers/products.ts`.
+- The Worker has no feature table (`features` is generated for the console and docs only), so
+  the API takes `services` (slugs); the console resolves a feature to its slugs (ST-43). Adding a
+  worker-side feature map would regenerate `@polaris-key/manifest` and the Action bundle for no gain.
+- `accent` (FLOWS W25) is not taken: UX-76 deferred it until one presentation store exists.
+- The `default` profile id is reserved by ownership, not by a manifest validator rule: a `.pkey/`
+  that declares its own `default` keeps it and the console's is skipped (no rule 9 entry).
+- `distribution.intendedPlatforms` is added to the Distribution settings slice (scalar,
+  operator-owned, list of `RELEASE_PLATFORMS`); UX-53 reads it.
+- Create rows are `source = 'console'`, so a resync never rewrites them. On link-repo a `services`
+  list adds to the manifest's set and makes the enablement the operator's (`services_source = admin`).
+- No UI or D1 migration in this package; the screens and self-look belong to ST-43.

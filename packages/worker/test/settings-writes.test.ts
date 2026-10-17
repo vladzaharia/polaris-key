@@ -64,6 +64,10 @@ const MANIFEST_WRITERS: Readonly<
       "stmtSetServices",
     ],
   },
+  "core/products/createDefaults.ts": {
+    why: "the operator's create answers (planned platforms) go in the create batch, with the product they reference (ST-42)",
+    functions: ["planCreateDefaults"],
+  },
   "services/release/resync.ts": {
     why: "the resync apply: claim-guarded in SQL (ST-01b), one `setting.resync` audit row per field",
   },

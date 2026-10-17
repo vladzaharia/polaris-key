@@ -89,6 +89,27 @@ have no value yet, such as an OIDC client secret or an edge-mint signing key. A 
 secrets** link goes to [Keys & secrets](/docs/operate/console/keys-and-secrets/). Secrets are write-only
 and never echoed back.
 
+### What a create writes
+
+Both paths write the same defaults in the one batch as the product, so a new product is ready
+for an SDK without another call. If any row fails, none is written.
+
+| Row               | Written                                                                                   |
+| ----------------- | ----------------------------------------------------------------------------------------- |
+| Signing key       | Ed25519, sealed, active                                                                   |
+| Catalog           | Version 1: the supplied or `.pkey/schema` catalog, else an empty one                      |
+| Default profile   | `default`, empty. The id is reserved; a `.pkey/` that declares its own `default` keeps it |
+| Free tier         | `free`, rank 0, on the Default profile. Skipped when License is off or `.pkey/` has tiers |
+| Services          | The ones you ask for; License and Config otherwise                                        |
+| Planned platforms | The platforms you plan to ship (`distribution.intendedPlatforms`)                         |
+| Release trust     | From a repository: `.github/workflows/release.yml` as the product's CI publisher          |
+
+The API takes these as `services`, `intendedPlatforms`, `starterTier` (`free` or `none`) and, on
+`link-repo`, `trustReleaseWorkflow`. A service whose requirement is off is refused with its
+`<service>_requires_<requirement>` code. From a repository, `services` adds to what `.pkey/`
+enables. The licence defaults and the compatibility window are not create fields: tiers and
+platform defaults own the first, `release.compatWindow` the second.
+
 ### Reserved slugs
 
 A product slug can't collide with a root path the router matches before `/<product>/…` — that

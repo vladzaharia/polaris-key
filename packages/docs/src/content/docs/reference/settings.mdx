@@ -7,7 +7,7 @@ description: "Every platform, product and service setting in the settings regist
     Source of truth: the settings registry (packages/worker/src/core/settings/ and each service's
     settings.ts), emitted by packages/worker/scripts/gen-settings.ts. */}
 
-The settings registry describes every setting Polaris Key has: 83 entries (18 platform, 65 product, 0 entity), 11 of them registered ahead of the work package that wires them. This page is generated from the registry and checked against it in CI, so it cannot drift from it. An entry registered ahead of its work package is not offered in the console yet.
+The settings registry describes every setting Polaris Key has: 84 entries (18 platform, 66 product, 0 entity), 11 of them registered ahead of the work package that wires them. This page is generated from the registry and checked against it in CI, so it cannot drift from it. An entry registered ahead of its work package is not offered in the console yet.
 
 How to read the columns:
 
@@ -118,6 +118,7 @@ One value per product. A service's settings are product settings whose key start
 | Key | Setting | Value | Default | Merge | Ownership | Manifest | Confirm | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `distribution.access` | [Download access](/docs/features/ship-builds/channels/delivery/): Who may download each deliverable's bytes: anyone, a registered device, a licensed one, or an entitled one. Loosening it gives the files away. | structured (dist_access rows (access.ts)) | unset | cascade | claimable | `release:release.access.artifacts` | L1 on change | reason required; security-widening; console area: Settings |
+| `distribution.intendedPlatforms` | [Planned platforms](/docs/features/ship-builds/channels/): The platforms the product will ship on, before any build exists. Storefronts that do not fit them are left out of the catalogue. | list of up to 6: one of `macos`, `ios`, `android`, `windows`, `linux`, `web` | unset | cascade | operator | — | L0 on change | — |
 | `distribution.capabilities` | [Outlet capabilities](/docs/features/ship-builds/channels/): What an install that arrived through each outlet may do (fetch new code, run downloaded scripts, sell things). The starting point is the compiled default for the outlet's kind; an operator may only narrow it. | structured (CapabilitySet per outlet (capabilities.ts)) | unset | cascade | operator | — | L1 on change | — |
 | `distribution.outlets` | [Outlets](/docs/features/ship-builds/channels/): The places the product is distributed (direct, App Store, Play, Steam, …) with each store's identity for it. | structured (outlets (distribution.schema.json)) | unset | cascade | manifest | `distribution:outlets` | L0 on change | — |
 | `distribution.transports` | [Transports](/docs/features/ship-builds/channels/delivery/): Which transport carries each deliverable on each outlet: a deliverable's own entry, else the packs entry for a pack, else the default (pkey-cdn when unset). | structured (transports (distribution.schema.json)) | unset | cascade | manifest | `distribution:transports` | L1 on change | devices see it (document) |

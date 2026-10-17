@@ -64,7 +64,13 @@ import {
 import { syncReleaseStore } from "./sync.js";
 import { manifestDeliverableStatements } from "./deliverables.js";
 import { releaseKeysForSync } from "./records.js";
-import { serializeServices } from "../../core/services.js";
+import { SERVICE_SLUGS, serializeServices } from "../../core/services.js";
+import {
+  planCreateDefaults,
+  resolveServices,
+  type CreateChoices,
+  type CreatedDefaults,
+} from "../../core/products/createDefaults.js";
 import type { ManifestIngest } from "../../core/registry.js";
 import { serializeWebOrigins } from "../../core/cors.js";
 import { serializePresentation } from "../../core/products.js";
@@ -88,6 +94,8 @@ export type LinkRepoResult =
       install: string;
       /** NAMES of the sealed secrets the manifest references but didn't ship — never values. */
       remainingSecrets: string[];
+      /** ST-42: what the create wrote beyond the manifest's own rows. */
+      defaults: CreatedDefaults;
     }
   | {
       ok: false;
@@ -95,7 +103,18 @@ export type LinkRepoResult =
       errors?: string[];
       /** 409 when the `.pkey/` read is not the one the dry run checked (`manifestDigest`). */
       status?: 409;
+      /** ST-42: a create choice the request got wrong (a 422 with this stable reason). */
+      reason?: string;
+      fields?: string[];
+      codes?: string[];
     };
+
+/** ST-42: the create choices and who made them, handed to the link. */
+export interface LinkCreate {
+  choices: CreateChoices;
+  /** The console session's subject: the author of the console-owned default rows. */
+  author: string;
+}
 
 /**
  * Pull `{owner, repo}` from a GitHub URL or a bare `owner/repo`. Returns null on garbage.
@@ -735,7 +754,7 @@ export async function linkRepo(
   now: number,
   fetchImpl: FetchImpl = fetch,
   ingest?: ManifestIngest,
-  opts: { manifestDigest?: string } = {},
+  opts: { manifestDigest?: string; create?: LinkCreate } = {},
 ): Promise<LinkRepoResult> {
   const read = await readRepoForCreate(env, repoUrl, now, fetchImpl);
   if (!read.ok) return { ok: false, error: read.error };
@@ -779,6 +798,7 @@ export async function linkRepo(
     now,
     fetchImpl,
     ingest,
+    opts.create,
   );
 }
 
@@ -792,6 +812,7 @@ export async function registerFromManifest(
   now: number,
   fetchImpl: FetchImpl,
   ingest: ManifestIngest | undefined,
+  create?: LinkCreate,
 ): Promise<LinkRepoResult> {
   const slug = manifest.product.slug;
   const kid = `${slug}-${new Date(now * 1000).getUTCFullYear()}`;
@@ -877,6 +898,98 @@ export async function registerFromManifest(
     }
   }
 
+  // ST-42: a `services` list adds to what `.pkey/` enables, through the requirement rule. The
+  // set then differs from the manifest's, so it is the operator's (`admin`): a resync would
+  // otherwise turn the added services straight back off.
+  let services = manifest.services;
+  let servicesSource: "manifest" | "admin" = "manifest";
+  if (create?.choices.services) {
+    const resolved = resolveServices(
+      create.choices.services,
+      manifest.services,
+    );
+    if (!resolved.ok)
+      return {
+        ok: false,
+        error: resolved.message,
+        reason: resolved.reason,
+        fields: resolved.fields,
+        codes: resolved.codes,
+      };
+    services = resolved.services;
+    if (JSON.stringify(services) !== JSON.stringify(manifest.services))
+      servicesSource = "admin";
+  }
+  if (create?.choices.starterTier === "free" && !services.license.enabled)
+    return {
+      ok: false,
+      error: "the Free tier needs the License service",
+      reason: "starter_tier_requires_license",
+      fields: ["starterTier"],
+    };
+
+  // F9: trust the repository's release workflow as the CI publisher, when it exists at the
+  // commit that was checked. A `.pkey/` that declares its own trustedPublisher owns the policy.
+  let trustedRepo: {
+    repositoryId: number;
+    repositoryOwnerId: number;
+    repository: string;
+    workflow: string;
+  } | null = null;
+  if (create?.choices.trustReleaseWorkflow && !publisherStmt) {
+    try {
+      const present =
+        (await fetchRepoFile(
+          gh.token,
+          gh.owner,
+          gh.repo,
+          RELEASE_WORKFLOW_PATH,
+          fetchImpl,
+          applied.sha,
+        )) !== null;
+      if (!present)
+        return {
+          ok: false,
+          error: `${RELEASE_WORKFLOW_PATH} does not exist in the repository`,
+          reason: "release_workflow_missing",
+          fields: ["trustReleaseWorkflow"],
+        };
+      const identity = await getRepoIdentity(
+        gh.token,
+        gh.owner,
+        gh.repo,
+        fetchImpl,
+      );
+      trustedRepo = {
+        repositoryId: identity.id,
+        repositoryOwnerId: identity.ownerId,
+        repository: identity.fullName,
+        workflow: RELEASE_WORKFLOW_PATH,
+      };
+    } catch (err) {
+      return {
+        ok: false,
+        error: `could not trust the release workflow: ${err instanceof Error ? err.message : "github lookup failed"}`,
+        reason: "release_workflow_unreadable",
+        fields: ["trustReleaseWorkflow"],
+      };
+    }
+  }
+
+  const plan = create
+    ? planCreateDefaults({
+        product: slug,
+        now,
+        services,
+        choices: create.choices,
+        declaredProfiles: manifest.profiles.map((p) => p.id),
+        declaredTiers: manifest.tiers.map((t) => t.id),
+        manifestHasPublisher: publisherStmt !== null,
+        publisher: trustedRepo,
+        author: create.author,
+      })
+    : null;
+
   const statements: DbStatement[] = [
     stmtInsertProduct({
       slug,
@@ -895,8 +1008,8 @@ export async function registerFromManifest(
       // fingerprint/auto-issue policies: enablement decides which routes a product has, so there
       // must be no instant where a product row exists without it. A freshly linked product is
       // manifest-owned.
-      services_json: serializeServices({ services: manifest.services }),
-      services_source: "manifest",
+      services_json: serializeServices({ services }),
+      services_source: servicesSource,
       // The compat window is manifest-owned until an operator sets it in `update/settings`.
       compat_source: "manifest",
       // The CORS allowlist (P0-05). Validated by the manifest parser; NULL when undeclared.
@@ -1054,9 +1167,11 @@ export async function registerFromManifest(
   // reference. A freshly linked product is manifest-owned, so the manifest's enablement is the
   // product's enablement.
   if (ingest)
-    statements.push(
-      ...ingest(manifest, slug, manifest.services, now).statements,
-    );
+    statements.push(...ingest(manifest, slug, services, now).statements);
+
+  // ST-42: the Default profile, Free tier, planned platforms and trust policy, in the same
+  // atomic batch as everything above.
+  if (plan) statements.push(...plan.statements);
 
   // ST-01a: the manifest snapshot (origin `link`), in the same atomic batch and after the product
   // row it references, so a linked product always has its applied manifest on record.
@@ -1138,6 +1253,13 @@ export async function registerFromManifest(
     trustKeys: { [kid]: publicRawB64url },
     install,
     remainingSecrets,
+    defaults: plan?.created ?? {
+      services: SERVICE_SLUGS.filter((x) => services[x].enabled),
+      profile: null,
+      tier: null,
+      intendedPlatforms: [],
+      trustedWorkflow: null,
+    },
   };
 }
 
