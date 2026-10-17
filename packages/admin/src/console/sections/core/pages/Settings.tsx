@@ -76,6 +76,7 @@ import { useProduct } from "../../../data/hooks.js";
 import { mutate } from "../../../data/mutations.js";
 import { Link } from "../../../router.js";
 import { r } from "../../../routes.js";
+import { AlertDestinations } from "../../notify/AlertDestinations.js";
 import { deviceLimitIssue } from "../../../../lib/deviceLimit.js";
 import {
   DangerAction,
@@ -274,6 +275,7 @@ function SettingsBody({
     { id: "settings-origins", title: "Web origins" },
     { id: "settings-repository", title: "Repository" },
     { id: "settings-storage", title: "Storage" },
+    { id: "settings-alerts", title: "Alerts" },
     { id: "danger-zone", title: "Danger zone" },
   ];
   const nonFieldError =
@@ -430,6 +432,16 @@ function SettingsBody({
 
       <RepositorySection slug={slug} product={product} />
       <StorageSection slug={slug} />
+      <SettingsSection
+        id="settings-alerts"
+        title="Alerts"
+        description="Where this product's alerts go, instead of the platform's. Auto-halts, store and commerce problems, access changes."
+      >
+        <AlertDestinations
+          scope={{ kind: "product", slug }}
+          returnHash={r.settings(slug)}
+        />
+      </SettingsSection>
 
       <DangerZone>
         <DangerAction

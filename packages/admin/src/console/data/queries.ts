@@ -20,7 +20,7 @@
  */
 
 import type { QueryKey } from "@tanstack/react-query";
-import type { FeedEcosystem, FeedScope } from "../../api.js";
+import type { AlertScope, FeedEcosystem, FeedScope } from "../../api.js";
 
 const product = (slug: string, ...rest: (string | number)[]): QueryKey => [
   "product",
@@ -84,6 +84,11 @@ export const qk = {
     scope.kind === "platform"
       ? ["platform", "feeds"]
       : product(scope.slug, "distribution", "feeds"),
+  /** Alert destinations (ST-27), in either scope. */
+  alertDestinations: (scope: AlertScope): QueryKey =>
+    scope.kind === "platform"
+      ? ["platform", "alerts"]
+      : product(scope.slug, "alerts"),
   pkgFeed: (scope: FeedScope, eco: FeedEcosystem): QueryKey => [
     ...qkFeeds(scope),
     eco,

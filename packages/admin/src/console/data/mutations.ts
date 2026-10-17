@@ -18,7 +18,12 @@
  */
 
 import type { QueryClient, QueryKey } from "@tanstack/react-query";
-import { api, type AdminApi, type FeedScope } from "../../api.js";
+import {
+  api,
+  type AdminApi,
+  type AlertScope,
+  type FeedScope,
+} from "../../api.js";
 import { SYSTEM_PRODUCT_SLUG } from "../sections/feeds/model/model.js";
 import { qk } from "./queries.js";
 
@@ -29,6 +34,12 @@ export interface Target {
 }
 
 const prefix = (key: QueryKey): Target => ({ key });
+/** The trail a write in `scope` appends to (ST-27 alert destinations). */
+const activity = (scope: AlertScope): Target[] => [
+  scope.kind === "platform"
+    ? { key: qk.platformActivity() }
+    : { key: qk.activity(scope.slug) },
+];
 const exact = (key: QueryKey): Target => ({ key, exact: true });
 
 /** The API methods that write. Kept in step with `api.ts` by `test/mutations.test.ts`. */
@@ -38,6 +49,10 @@ export type WriteMethod =
   | "revertPlatformSetting"
   | "mintApiToken"
   | "revokeApiToken"
+  | "createAlertDestination"
+  | "updateAlertDestination"
+  | "deleteAlertDestination"
+  | "testAlertDestination"
   | "revokePersonalToken"
   | "putOverrideMigrationPrerequisites"
   | "startOverrideMigrationNotice"
@@ -309,6 +324,35 @@ export const MUTATIONS: MutationTable = {
   revokeApiToken: {
     label: "admin API token revoke",
     invalidates: () => [prefix(qk.apiTokens()), prefix(qk.platformActivity())],
+  },
+  createAlertDestination: {
+    label: "alert destination add",
+    invalidates: (scope) => [
+      prefix(qk.alertDestinations(scope)),
+      ...activity(scope),
+    ],
+  },
+  updateAlertDestination: {
+    label: "alert destination change",
+    invalidates: (scope) => [
+      prefix(qk.alertDestinations(scope)),
+      ...activity(scope),
+    ],
+  },
+  deleteAlertDestination: {
+    label: "alert destination remove",
+    invalidates: (scope) => [
+      prefix(qk.alertDestinations(scope)),
+      ...activity(scope),
+    ],
+  },
+  testAlertDestination: {
+    label: "alert destination test",
+    // The outcome is recorded on the destination, and the test is audited.
+    invalidates: (scope) => [
+      prefix(qk.alertDestinations(scope)),
+      ...activity(scope),
+    ],
   },
   revokePersonalToken: {
     label: "personal token revoke",

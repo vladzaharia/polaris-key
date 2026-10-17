@@ -47,6 +47,8 @@ import {
   IDENTITY_VARS,
   LimitsSection,
 } from "./platformDeploy.js";
+import { AlertDestinations } from "../../notify/AlertDestinations.js";
+import { r } from "../../../routes.js";
 import { FeedPolicySection } from "./platformFeedPolicy.js";
 import { HistorySection } from "./platformHistory.js";
 import { KeyringSection, SecretsSection } from "./platformKeyring.js";
@@ -363,6 +365,21 @@ export function PlatformSettingsPage(): React.ReactElement {
           {EMAIL_VARS.map((n) => (
             <DeployRow key={n} item={deploy.get(n)} />
           ))}
+          <div className="border-t border-border">
+            <div className="px-5 pt-4">
+              <h3 className="text-sm font-semibold text-fg-strong">
+                Alert destinations
+              </h3>
+              <p className="text-sm text-fg-muted">
+                Where auto-halts, store and commerce problems, access changes
+                and failing destinations are sent.
+              </p>
+            </div>
+            <AlertDestinations
+              scope={{ kind: "platform" }}
+              returnHash={r.platformSettings()}
+            />
+          </div>
         </SettingsSection>
       ) : null}
 
