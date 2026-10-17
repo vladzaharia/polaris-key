@@ -42,6 +42,9 @@
  * `configured` (now always true: the platform sign-in needs no per-product IdP row) and the
  * `authorize` and `token` endpoints after `authDevicePoll`. Additive; every Identity-off fragment
  * is unchanged.
+ * I-08b (WIRE-CONTRACT-V4 §12.5.1, plans/I-08.md D2, approved) added the four `choiceLicenses`,
+ * `choiceDevices`, `choiceComplete` and `choiceCancel` endpoints after `token`. Additive keys a
+ * client ignores; every Identity-off fragment is unchanged.
  */
 
 import { readFileSync } from "node:fs";

@@ -1,0 +1,339 @@
+{
+  "transcriptVersion": 1,
+  "id": "redirect-web-choose-app",
+  "description": "The licence is chosen in the app (I-08b, WIRE-CONTRACT-V4 §12.5.1; plans/I-04.md §G). authorize carries license_choice=app, so Continue needs no choice and the code carries none. The SDK redeems it and, because a choice is due, token answers status choose with a pending sign-in grant (300 s) and the licence view instead of a device token. The SDK reads the licences again with the grant and completes with its pick; choice/complete answers the same shape token does.",
+  "features": ["identity.choice"],
+  "requires": [],
+  "product": "djdl",
+  "baseUrl": "https://key.plrs.im",
+  "now": 1700000000,
+  "trust": {
+    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+  },
+  "initial": {
+    "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+    "version": "1.0.0"
+  },
+  "steps": [
+    {
+      "action": "browser",
+      "note": "App mode: the card has no licence step. The browser goes to authorize and then presses Continue.",
+      "args": {
+        "state": "tidewater-state-0123456789",
+        "redirectUri": "https://app.example/auth/callback",
+        "codeVerifier": "transcript-verifier-0123456789-abcdefghijklmnopqrst"
+      },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/identity/authorize?response_type=code&client_id=djdl&redirect_uri=https%3A%2F%2Fapp.example%2Fauth%2Fcallback&state=tidewater-state-0123456789&code_challenge=-583Jx3Gn4AKAj7xr5NSDQ3V6snyKHhZUDKua28Tp10&code_challenge_method=S256&scope=profile+email&license_choice=app",
+              "headers": {},
+              "requiredHeaders": [],
+              "body": null
+            },
+            "response": {
+              "status": 303,
+              "headers": {
+                "cache-control": "no-store",
+                "location": "https://key.plrs.im/signin?request=rq_8NPLNVsyHGrHx0Z_Lx3htQ"
+              },
+              "body": ""
+            }
+          },
+          {
+            "request": {
+              "method": "POST",
+              "path": "/api/signin/requests/rq_8NPLNVsyHGrHx0Z_Lx3htQ/continue",
+              "headers": {},
+              "requiredHeaders": [],
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json; charset=utf-8"
+              },
+              "body": {
+                "redirect": "https://app.example/auth/callback?code=l-OzqwSB50NTBIUy_vlDrAMWGzd2BmLqDGrn_sjiFpQ&state=tidewater-state-0123456789&iss=https%3A%2F%2Fkey.plrs.im%2Fdjdl%2Fidentity"
+              }
+            }
+          }
+        ]
+      },
+      "expect": { "navigated": "app" }
+    },
+    {
+      "action": "redirectComplete",
+      "note": "The exchange answers a grant, not a token: no device is bound yet.",
+      "args": {
+        "callbackUrl": "https://app.example/auth/callback?code=l-OzqwSB50NTBIUy_vlDrAMWGzd2BmLqDGrn_sjiFpQ&state=tidewater-state-0123456789&iss=https%3A%2F%2Fkey.plrs.im%2Fdjdl%2Fidentity",
+        "codeVerifier": "transcript-verifier-0123456789-abcdefghijklmnopqrst",
+        "state": "tidewater-state-0123456789"
+      },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/token",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "content-type": "application/x-www-form-urlencoded"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "grant_type": "authorization_code",
+                  "client_id": "djdl",
+                  "code": "l-OzqwSB50NTBIUy_vlDrAMWGzd2BmLqDGrn_sjiFpQ",
+                  "code_verifier": "transcript-verifier-0123456789-abcdefghijklmnopqrst",
+                  "redirect_uri": "https://app.example/auth/callback"
+                },
+                "match": "exact",
+                "allowedKeys": [
+                  "grant_type",
+                  "client_id",
+                  "code",
+                  "code_verifier",
+                  "redirect_uri",
+                  "device_name"
+                ]
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "status": "choose",
+                "grant": "sg_Fq0jyQJyCWLYVEFtzwZphbq0C7qUv6HIOznyB3-4MTI",
+                "expiresIn": 300,
+                "choices": {
+                  "state": "choose",
+                  "choices": [
+                    {
+                      "id": "lic_djdl_lite",
+                      "tierName": "djdl",
+                      "name": null,
+                      "origin": "key",
+                      "access": "seats",
+                      "seats": { "used": 0, "limit": 3 },
+                      "current": false,
+                      "expiresAt": null,
+                      "state": "free",
+                      "replace": null,
+                      "freeDeviceUrl": null
+                    },
+                    {
+                      "id": "lic_djdl_pro",
+                      "tierName": "djdl",
+                      "name": null,
+                      "origin": "key",
+                      "access": "seats",
+                      "seats": { "used": 0, "limit": 3 },
+                      "current": false,
+                      "expiresAt": null,
+                      "state": "free",
+                      "replace": null,
+                      "freeDeviceUrl": null
+                    }
+                  ],
+                  "keep": false,
+                  "preselected": "lic_djdl_lite",
+                  "create": null,
+                  "getLicense": null
+                }
+              }
+            }
+          }
+        ]
+      },
+      "expect": { "result": "choose" }
+    },
+    {
+      "action": "choiceLicenses",
+      "note": "choice.licenses(grant): a fresh view of the account's licences.",
+      "args": { "grant": "sg_Fq0jyQJyCWLYVEFtzwZphbq0C7qUv6HIOznyB3-4MTI" },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/choice/licenses",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "grant": "sg_Fq0jyQJyCWLYVEFtzwZphbq0C7qUv6HIOznyB3-4MTI"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "state": "choose",
+                "choices": [
+                  {
+                    "id": "lic_djdl_lite",
+                    "tierName": "djdl",
+                    "name": null,
+                    "origin": "key",
+                    "access": "seats",
+                    "seats": { "used": 0, "limit": 3 },
+                    "current": false,
+                    "expiresAt": null,
+                    "state": "free",
+                    "replace": null,
+                    "freeDeviceUrl": null
+                  },
+                  {
+                    "id": "lic_djdl_pro",
+                    "tierName": "djdl",
+                    "name": null,
+                    "origin": "key",
+                    "access": "seats",
+                    "seats": { "used": 0, "limit": 3 },
+                    "current": false,
+                    "expiresAt": null,
+                    "state": "free",
+                    "replace": null,
+                    "freeDeviceUrl": null
+                  }
+                ],
+                "keep": false,
+                "preselected": "lic_djdl_lite",
+                "create": null,
+                "getLicense": null
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "state": "choose",
+        "licenses": ["lic_djdl_lite", "lic_djdl_pro"]
+      }
+    },
+    {
+      "action": "choiceComplete",
+      "note": "choice.complete(grant, license): the same members as token's answer.",
+      "args": { "grant": "sg_Fq0jyQJyCWLYVEFtzwZphbq0C7qUv6HIOznyB3-4MTI" },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/choice/complete",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "grant": "sg_Fq0jyQJyCWLYVEFtzwZphbq0C7qUv6HIOznyB3-4MTI",
+                  "choice": { "kind": "license", "licenseId": "lic_djdl_pro" }
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "access_token": "pkeyt_r6XlqtowEQ5xlRVD4lSrHq_igRYA67p3Wm8xGjRC478",
+                "token_type": "Bearer",
+                "scope": "profile email",
+                "schemaVersion": 1,
+                "device": {
+                  "id": "TRANSCRIPTDEVICE0000000000000001",
+                  "licenseId": "lic_djdl_pro",
+                  "label": null,
+                  "status": "authorized",
+                  "current": true,
+                  "firstSeen": 1700000000,
+                  "lastSeen": 1700000000,
+                  "userAgent": null,
+                  "platform": "linux",
+                  "arch": "x86_64",
+                  "appVersion": "1.0.0",
+                  "sdkName": "pkey-transcript-recorder",
+                  "sdkVersion": "1"
+                },
+                "license": {
+                  "id": "lic_djdl_pro",
+                  "status": "active",
+                  "name": "Ada Lovelace",
+                  "email": null,
+                  "tierId": null,
+                  "activatedAt": 1700000000,
+                  "expiresAt": null,
+                  "maxOfflineDays": null,
+                  "channels": [],
+                  "minVersion": null,
+                  "maxVersion": null
+                },
+                "subject": "ps_ADQ5ARl2C5w6290rhvHdOg"
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "licenseId": "lic_djdl_pro",
+        "subject": "ps_ADQ5ARl2C5w6290rhvHdOg",
+        "tokenHeld": true
+      }
+    }
+  ]
+}

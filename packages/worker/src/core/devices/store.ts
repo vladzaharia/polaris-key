@@ -176,6 +176,17 @@ export async function claimDeviceSeat(
      * the claim. Never run for a device that already holds a seat on this licence.
      */
     withClaim?: () => DbStatement;
+    /**
+     * I-08b (Replace a device): a seat-holding device that leaves in the SAME batch as the
+     * claim, so a lost race rolls the removal back with it. Its ordinal is not counted as taken
+     * and `statements` (its deauthorisation) run first in the batch.
+     */
+    freeing?: {
+      deviceId: string;
+      statements: DbStatement[];
+      /** Set when the batch ran AND its first statement (the deauthorisation) changed a row. */
+      performed?: boolean;
+    };
   } = {},
 ): Promise<boolean> {
   await releaseDormantSeats(db, product, now, licenseId);
@@ -204,11 +215,14 @@ export async function claimDeviceSeat(
            WHERE product = ? AND license_id = ?
              AND status = 'authorized' AND seat_no IS NOT NULL
              AND last_seen > ?
+             AND device_id <> ?
         )`,
       limit,
       product,
       licenseId,
       seatActiveSince(now),
+      // No device carries the empty id, so without `freeing` the extra condition changes nothing.
+      opts.freeing?.deviceId ?? "",
     );
     if (!free || free.n == null) return false; // every seat is taken
     const seat: DbStatement = {
@@ -261,8 +275,20 @@ export async function claimDeviceSeat(
     try {
       // Applied, or a no-op because the row already holds a seat: either way nothing is left to
       // claim. Only a UNIQUE loss on `idx_devices_seat` (below) tries again.
-      if (opts.withClaim) await db.batch([opts.withClaim(), ...clear, seat]);
-      else if (clear.length > 0) await db.batch([...clear, seat]);
+      const freeing = opts.freeing?.statements ?? [];
+      const run = async (statements: DbStatement[]): Promise<void> => {
+        if (opts.freeing && db.batchChanges) {
+          const changes = await db.batchChanges(statements);
+          opts.freeing.performed = (changes[0] ?? 0) > 0;
+        } else {
+          await db.batch(statements);
+          if (opts.freeing) opts.freeing.performed = true;
+        }
+      };
+      if (opts.withClaim)
+        await run([...freeing, opts.withClaim(), ...clear, seat]);
+      else if (freeing.length > 0 || clear.length > 0)
+        await run([...freeing, ...clear, seat]);
       else await db.runChanges(seat.sql, ...seat.params);
       // A no-op upsert is success only when the row is ours: a row held by another licence is
       // never reported as claimed (the caller turns this into a refusal, not a seat).
@@ -441,6 +467,37 @@ export async function setDeviceStatus(
     await releaseDeviceSeat(db, product, deviceId);
     await purgeDeviceData(db, product, deviceId);
   }
+}
+
+/**
+ * `setDeviceStatus(…, "deauthorized")` as statements, for a caller that commits the removal in the
+ * same batch as something else (I-08b: the Replace that frees a seat and claims it for the
+ * signing-in device in one transaction). The same three writes, in the same order: the row, then
+ * the fingerprint and software snapshot. Keep the two in step.
+ */
+export function stmtsDeauthorizeDevice(
+  product: string,
+  deviceId: string,
+  licenseId: string,
+): DbStatement[] {
+  // Guarded by the licence the caller proved: a device rebound to another licence between the
+  // check and the batch is left alone, and so are its fingerprint and facts.
+  const removed = `EXISTS (SELECT 1 FROM devices WHERE product = ? AND device_id = ?
+                      AND license_id = ? AND status = 'deauthorized')`;
+  return [
+    {
+      sql: "UPDATE devices SET status = 'deauthorized', seat_no = NULL WHERE product = ? AND device_id = ? AND license_id = ?",
+      params: [product, deviceId, licenseId],
+    },
+    {
+      sql: `DELETE FROM device_fingerprints WHERE product = ? AND device_id = ? AND ${removed}`,
+      params: [product, deviceId, product, deviceId, licenseId],
+    },
+    {
+      sql: `DELETE FROM device_facts WHERE product = ? AND device_id = ? AND ${removed}`,
+      params: [product, deviceId, product, deviceId, licenseId],
+    },
+  ];
 }
 
 /** Drop a device's fingerprint and software snapshot. Safe to call when neither exists. */

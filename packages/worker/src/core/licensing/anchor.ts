@@ -275,6 +275,8 @@ export type BindSignedInDeviceResult =
       token?: string;
       device?: DeviceRow;
       minted: boolean;
+      /** I-08b: a Replace's removal committed with this bind (`authorize.replace`). */
+      replaced?: true;
     }
   /** The step was shown and the choice is missing or was not offered (I-08's 409). */
   | { ok: false; reason: "license_choice_required" }
@@ -364,5 +366,6 @@ export async function bindSignedInDevice(
     token: authorized.token,
     device: authorized.device,
     minted,
+    ...(authorized.replaced ? { replaced: true as const } : {}),
   };
 }

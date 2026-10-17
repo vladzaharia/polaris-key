@@ -170,6 +170,10 @@
       "status": "planned",
       "wp": "I-10b"
     },
+    "identity.choice": {
+      "status": "planned",
+      "wp": "I-10b"
+    },
     "identity.signin.hints": {
       "status": "planned",
       "wp": "I-10b"

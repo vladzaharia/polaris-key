@@ -37,7 +37,6 @@ import type { SettingsRegistry } from "../../../core/settings/registry.js";
 import { loadProductPublic } from "../../../core/products.js";
 import { rateLimitOk } from "../../../core/rateLimit.js";
 import { subjectFor } from "../../../core/accounts/accountSubjects.js";
-import { rankAnchorCandidates } from "../../../core/licensing/anchor.js";
 import { erasureVerdict } from "../../../core/accounts/erasureFence.js";
 import { isSameOriginRequest } from "../../../core/accounts/browserRequestGuard.js";
 import { cardJson, readJsonObject } from "../card/http.js";
@@ -45,6 +44,9 @@ import { getPortalAccount } from "../portal/repo.js";
 import { stmtRecordTermsAcceptance, termsAccepted } from "../accounts/terms.js";
 import { productTerms } from "../productTerms.js";
 import { issuerOf } from "./authorize.js";
+import { offerFor, replaceView, type ChoiceCx } from "./choice.js";
+import { mintAccountLicense } from "./mint.js";
+import type { LicenseChoiceInput } from "@polaris-key/protocol/identity";
 import { issueAuthorizationCode } from "./code.js";
 import { takeSignInRequest } from "./request.js";
 import { askedScopeHash, liveRequest } from "./routes.js";
@@ -75,6 +77,58 @@ function target(
   url.searchParams.set("state", state);
   url.searchParams.set("iss", issuer);
   return url.toString();
+}
+
+/** The choice a Continue body carries, validated; `null` when absent, `"invalid"` when malformed. */
+function parseChoice(
+  raw: unknown,
+):
+  | Exclude<LicenseChoiceInput, { kind: "key" }>
+  | { kind: "key" }
+  | null
+  | "invalid" {
+  if (raw === undefined) return null;
+  if (raw === null || typeof raw !== "object") return "invalid";
+  const c = raw as Record<string, unknown>;
+  if (c.kind === "keep" || c.kind === "create" || c.kind === "key")
+    return { kind: c.kind };
+  // The pre-I-08b spelling, `{licenseId}`, is a licence choice too.
+  if (c.kind === "license" || c.kind === undefined) {
+    if (typeof c.licenseId !== "string") return "invalid";
+    if (
+      c.replaceDeviceId !== undefined &&
+      typeof c.replaceDeviceId !== "string"
+    )
+      return "invalid";
+    return {
+      kind: "license",
+      licenseId: c.licenseId,
+      ...(typeof c.replaceDeviceId === "string"
+        ? { replaceDeviceId: c.replaceDeviceId }
+        : {}),
+    };
+  }
+  return "invalid";
+}
+
+/**
+ * Mint the account's licence under the claim, or the response to refuse with: a lost claim or a
+ * licence that appeared meanwhile is 409 (`license_choice_required`: the card re-reads the view and
+ * shows the winner's licence); a store that cannot be reached fails closed and mints nothing.
+ */
+async function mintFor(
+  cx: ChoiceCx,
+  accountId: string,
+  mode: "first" | "create",
+): Promise<string | Response> {
+  let out: Awaited<ReturnType<typeof mintAccountLicense>>;
+  try {
+    out = await mintAccountLicense(cx, accountId, mode, null);
+  } catch {
+    return refuse(503, "unavailable");
+  }
+  if (out.kind === "minted") return out.license.id;
+  return refuse(409, ErrorCode.LicenseChoiceRequired);
 }
 
 export interface CardCaller {
@@ -174,18 +228,57 @@ export async function handleSignInContinue(
     acceptTerms = true;
   }
 
-  // The licence choice is never silent (S-19 decision 3): an account that holds licences for the
-  // product says which one this device runs on. `blocked` rows cannot be bound by a sign-in.
-  let choice: { licenseId: string } | null = null;
+  // The licence choice is never silent (S-19 decision 3, I-04 §A): an account that holds licences
+  // for the product says which one this device runs on, and an account with none gets the first
+  // automatic licence on this press (plans/I-27.md §2.2). `blocked` rows cannot be bound by a
+  // sign-in, and a full row is chosen only with a device to replace. In app mode the app chooses
+  // through a pending sign-in grant at `token`; only the "New" mint happens here, because no
+  // device exists yet and the code must carry the licence it earned (plan D5).
+  const parsed = parseChoice(body.choice);
+  if (parsed === "invalid") return refuse(400, ErrorCode.InvalidRequest);
+  let choice: { licenseId: string; replaceDeviceId?: string } | null = null;
   if (product.services.license.enabled) {
-    const offer = await rankAnchorCandidates(db, product, account.id, now);
+    const cx = { env, db, product, now };
+    const offer = await offerFor(cx, account.id, null);
     if (offer.candidates.length > 0) {
-      const wanted = (body.choice as { licenseId?: unknown } | undefined)
-        ?.licenseId;
-      const row = offer.candidates.find((c) => c.licenseId === wanted);
-      if (!row || row.state === "blocked")
-        return refuse(409, ErrorCode.LicenseChoiceRequired);
-      choice = { licenseId: row.licenseId };
+      if (authz.licenseChoice === "card") {
+        if (!parsed) return refuse(409, ErrorCode.LicenseChoiceRequired);
+        if (parsed.kind === "license") {
+          const row = offer.candidates.find(
+            (c) => c.licenseId === parsed.licenseId,
+          );
+          if (!row || row.state === "blocked")
+            return refuse(409, ErrorCode.LicenseChoiceRequired);
+          if (parsed.replaceDeviceId !== undefined) {
+            const devices = await replaceView(cx, account.id, row.licenseId, {
+              deviceId: null,
+            });
+            if (!devices?.devices.some((d) => d.id === parsed.replaceDeviceId))
+              return refuse(404, ErrorCode.NotFound);
+          } else if (row.state === "full") {
+            return refuse(409, ErrorCode.LicenseChoiceRequired);
+          }
+          choice = {
+            licenseId: row.licenseId,
+            ...(parsed.replaceDeviceId !== undefined
+              ? { replaceDeviceId: parsed.replaceDeviceId }
+              : {}),
+          };
+        } else if (parsed.kind === "create") {
+          if (!offer.create)
+            return refuse(409, ErrorCode.LicenseChoiceRequired);
+          const minted = await mintFor(cx, account.id, "create");
+          if (minted instanceof Response) return minted;
+          choice = { licenseId: minted };
+        } else {
+          // `keep` needs a device and is not offered to a browser; `key` is the app's alone.
+          return refuse(409, ErrorCode.LicenseChoiceRequired);
+        }
+      }
+    } else if (offer.granted) {
+      const minted = await mintFor(cx, account.id, "first");
+      if (minted instanceof Response) return minted;
+      choice = { licenseId: minted };
     }
   }
 

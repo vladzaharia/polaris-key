@@ -253,7 +253,7 @@
       "code": "license_choice_required",
       "kind": "wire",
       "service": "identity",
-      "description": "409: a licence choice is needed and none was made. Answered flat by POST /<p>/identity/token and by the portal's Continue when the account holds licences for the product (I-08; the choice API is I-08b)."
+      "description": "409: a licence choice is needed and none was made. Answered flat by POST /<p>/identity/token and by the portal's Continue when the account holds licences for the product (I-08), and nested by POST /<p>/identity/choice/complete when no choice was made, one was not offered, or another press won the mint (I-08b)."
     },
     {
       "code": "auth_method_disabled",

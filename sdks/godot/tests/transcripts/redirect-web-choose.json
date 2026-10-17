@@ -1,0 +1,256 @@
+{
+  "transcriptVersion": 1,
+  "id": "redirect-web-choose",
+  "description": "The licence is chosen on the card (I-08b, WIRE-CONTRACT-V4 §12.4.1; plans/I-04.md §C). The account holds a Pro licence with a free seat and a Team licence whose only seat is taken. The card lists both (`licenses`), and Continue without a choice is refused with license_choice_required and consumes nothing. The person picks Pro; the code carries the choice; the SDK redeems it at token and the device is bound to Pro, seat-checked.",
+  "features": ["identity.choice"],
+  "requires": [],
+  "product": "djdl",
+  "baseUrl": "https://key.plrs.im",
+  "now": 1700000000,
+  "trust": {
+    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+  },
+  "initial": {
+    "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+    "version": "1.0.0"
+  },
+  "steps": [
+    {
+      "action": "browser",
+      "note": "The card's reads and a Continue with no choice: the list, then 409.",
+      "args": {
+        "state": "tidewater-state-0123456789",
+        "redirectUri": "https://app.example/auth/callback",
+        "codeVerifier": "transcript-verifier-0123456789-abcdefghijklmnopqrst"
+      },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/identity/authorize?response_type=code&client_id=djdl&redirect_uri=https%3A%2F%2Fapp.example%2Fauth%2Fcallback&state=tidewater-state-0123456789&code_challenge=-583Jx3Gn4AKAj7xr5NSDQ3V6snyKHhZUDKua28Tp10&code_challenge_method=S256&scope=profile+email",
+              "headers": {},
+              "requiredHeaders": [],
+              "body": null
+            },
+            "response": {
+              "status": 303,
+              "headers": {
+                "cache-control": "no-store",
+                "location": "https://key.plrs.im/signin?request=rq_aUaJKuOO1Da6QcKIRaWtrA"
+              },
+              "body": ""
+            }
+          },
+          {
+            "request": {
+              "method": "GET",
+              "path": "/api/signin/requests/rq_aUaJKuOO1Da6QcKIRaWtrA/licenses",
+              "headers": {},
+              "requiredHeaders": [],
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json; charset=utf-8"
+              },
+              "body": {
+                "state": "choose",
+                "choices": [
+                  {
+                    "id": "lic_djdl_pro",
+                    "tierName": "djdl",
+                    "name": null,
+                    "origin": "key",
+                    "access": "seats",
+                    "seats": { "used": 0, "limit": 3 },
+                    "current": false,
+                    "expiresAt": null,
+                    "state": "free",
+                    "replace": null,
+                    "freeDeviceUrl": null
+                  },
+                  {
+                    "id": "lic_djdl_team",
+                    "tierName": "djdl",
+                    "name": null,
+                    "origin": "key",
+                    "access": "seats",
+                    "seats": { "used": 1, "limit": 1 },
+                    "current": false,
+                    "expiresAt": null,
+                    "state": "full",
+                    "replace": { "allowed": true, "retryAfter": null },
+                    "freeDeviceUrl": "https://key.plrs.im/#/p/djdl/free-device?license=lic_djdl_team&return=%2Fsignin%3Frequest%3Drq_aUaJKuOO1Da6QcKIRaWtrA"
+                  }
+                ],
+                "keep": false,
+                "preselected": "lic_djdl_pro",
+                "create": null,
+                "getLicense": null
+              }
+            }
+          },
+          {
+            "request": {
+              "method": "POST",
+              "path": "/api/signin/requests/rq_aUaJKuOO1Da6QcKIRaWtrA/continue",
+              "headers": {},
+              "requiredHeaders": [],
+              "body": null
+            },
+            "response": {
+              "status": 409,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json; charset=utf-8"
+              },
+              "body": { "error": "license_choice_required" }
+            }
+          }
+        ]
+      },
+      "expect": { "navigated": "card" }
+    },
+    {
+      "action": "browser",
+      "note": "Continue with the Pro licence chosen.",
+      "args": {},
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/api/signin/requests/rq_aUaJKuOO1Da6QcKIRaWtrA/continue",
+              "headers": {},
+              "requiredHeaders": ["content-type"],
+              "body": {
+                "json": {
+                  "choice": { "kind": "license", "licenseId": "lic_djdl_pro" }
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json; charset=utf-8"
+              },
+              "body": {
+                "redirect": "https://app.example/auth/callback?code=kfGRZFJYRUruoYLovqCjtBjsUmsx7i5Iyqr7R-Kyy9I&state=tidewater-state-0123456789&iss=https%3A%2F%2Fkey.plrs.im%2Fdjdl%2Fidentity"
+              }
+            }
+          }
+        ]
+      },
+      "expect": { "navigated": "app" }
+    },
+    {
+      "action": "redirectComplete",
+      "note": "The SDK redeems the code; the device is on the chosen licence.",
+      "args": {
+        "callbackUrl": "https://app.example/auth/callback?code=kfGRZFJYRUruoYLovqCjtBjsUmsx7i5Iyqr7R-Kyy9I&state=tidewater-state-0123456789&iss=https%3A%2F%2Fkey.plrs.im%2Fdjdl%2Fidentity",
+        "codeVerifier": "transcript-verifier-0123456789-abcdefghijklmnopqrst",
+        "state": "tidewater-state-0123456789"
+      },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/token",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "content-type": "application/x-www-form-urlencoded"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "grant_type": "authorization_code",
+                  "client_id": "djdl",
+                  "code": "kfGRZFJYRUruoYLovqCjtBjsUmsx7i5Iyqr7R-Kyy9I",
+                  "code_verifier": "transcript-verifier-0123456789-abcdefghijklmnopqrst",
+                  "redirect_uri": "https://app.example/auth/callback"
+                },
+                "match": "exact",
+                "allowedKeys": [
+                  "grant_type",
+                  "client_id",
+                  "code",
+                  "code_verifier",
+                  "redirect_uri",
+                  "device_name"
+                ]
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "access_token": "pkeyt_mHj2rDETSca2fck44kuejKEgP7dqsRHABLHRtFxaFRM",
+                "token_type": "Bearer",
+                "scope": "profile email",
+                "schemaVersion": 1,
+                "device": {
+                  "id": "TRANSCRIPTDEVICE0000000000000001",
+                  "licenseId": "lic_djdl_pro",
+                  "label": null,
+                  "status": "authorized",
+                  "current": true,
+                  "firstSeen": 1700000000,
+                  "lastSeen": 1700000000,
+                  "userAgent": null,
+                  "platform": "linux",
+                  "arch": "x86_64",
+                  "appVersion": "1.0.0",
+                  "sdkName": "pkey-transcript-recorder",
+                  "sdkVersion": "1"
+                },
+                "license": {
+                  "id": "lic_djdl_pro",
+                  "status": "active",
+                  "name": "Ada Lovelace",
+                  "email": null,
+                  "tierId": null,
+                  "activatedAt": 1700000000,
+                  "expiresAt": null,
+                  "maxOfflineDays": null,
+                  "channels": [],
+                  "minVersion": null,
+                  "maxVersion": null
+                },
+                "subject": "ps_93KbA_FgLw3pBllk8xMwMQ"
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "scope": "profile email",
+        "licenseId": "lic_djdl_pro",
+        "subject": "ps_93KbA_FgLw3pBllk8xMwMQ",
+        "tokenHeld": true
+      }
+    }
+  ]
+}

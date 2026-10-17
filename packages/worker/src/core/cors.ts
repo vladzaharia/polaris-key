@@ -152,6 +152,12 @@ export const CORS_SERVICE_PATHS: readonly string[] = [
   // I-08: the token endpoint takes a form body from a listed page, never with credentials: the
   // code and the PKCE verifier are the only proof, and the answer is a device token the page holds.
   "identity/token",
+  // I-08b: the pending sign-in grant's four routes, called by the same page that redeemed the code.
+  // The grant in the body and the device id are the proof; no ambient credential exists to ride on.
+  "identity/choice/licenses",
+  "identity/choice/devices",
+  "identity/choice/complete",
+  "identity/choice/cancel",
   // I-09: the account on the device wire. Each takes the device bearer (never ambient), so a
   // listed origin reaches only what that page's own device token already can.
   "identity/attach",

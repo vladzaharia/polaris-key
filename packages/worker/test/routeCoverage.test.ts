@@ -147,6 +147,8 @@ const PORTAL_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     // PX-W13 (G28): the sign-in request the card renders, and its app-consent view.
     ["/api/signin/requests/{request}", ["get"]],
     ["/api/signin/requests/{request}/consent", ["get"]],
+    ["/api/signin/requests/{request}/licenses", ["get"]],
+    ["/api/signin/requests/{request}/licenses/{licenseId}/devices", ["get"]],
     ["/api/signin/requests/{request}/continue", ["post"]],
     ["/api/signin/requests/{request}/cancel", ["post"]],
     // I-16: passkeys on the login card, and the account's passkeys.

@@ -56,6 +56,10 @@ export type SingleUseKind =
   | "signin-request"
   /** An app passthrough authorization code (I-08, WIRE-CONTRACT-V4 §12.4), by its hash. */
   | "signin-code"
+  /** A pending sign-in grant (I-08b, WIRE-CONTRACT-V4 §12.5.1), by the hash of the grant. */
+  | "signin-grant"
+  /** The one-at-a-time claim on minting an account's first licence for a product (I-08b, plans/I-27.md §2.2); LX-38 retires it. */
+  | "license-mint"
   /** Adding an email sign-in method (PX-W12): the code's address, by the account session. */
   | "method-flow"
   /** Link an existing account (PX-W12): the two accounts' proofs, by the browser's flow secret. */

@@ -1,6 +1,6 @@
 # Polaris Wire Contract v4
 
-**Status:** Normative. Supersedes `WIRE-CONTRACT-V3.md`, the way v3 superseded v2. v3 remains the record; everything v3 said that v4 does not change is restated here, so this document can be read on its own. Amended for packs v1 by `plans/P4-01.md` (§2.5.1, §2.5.2, §2.6, §2.7, §3.7, §11.3, §11.4), inside v4: no new `typ`, no feed field, `PROTOCOL_VERSION` stays 4. Amended for chunk indexes by `plans/P4-10.md` (§2.5.1, §2.6, §3.1, §8, §9, §10, §11.4), also inside v4. Amended for content-key delegation by `plans/P4-19.md` (§1, §2, §2.4.1, §2.5, §2.5.3, §2.5.4, §2.8, §3.4, §3.5, §8, §9, §10), also inside v4: no new `typ`, claim, feed member or selector key. Amended for passthrough request metadata by `plans/PX-W13.md` (§5.4, §8, §12.7), also inside v4: no new `typ`, claim or signed shape, and `corpusVersion` stays 2. Amended for the built-in `dev` channel by `plans/P2-08.md` (§5.1), also inside v4: documentation only, no new `typ`, claim, header or signed shape. Amended for key-entry counting by `plans/PX-W9.md` (§5.3, §12, §12.2), also inside v4: one unsigned refusal code, one unsigned response member and one portal route, no new `typ`, claim, header or signed shape, and the signed corpus is unchanged. Amended for product presentation by `plans/HA-11.md` and `plans/HA-12.md` (§5.5, §9, §10), also inside v4: one unsigned discovery member and one unsigned client table. There is no new `typ`, claim, header, route or signed shape, and `PROTOCOL_VERSION` stays 4. Amended for trust custody and signed bundle custody (§1, §2.3, §3.2, §4.1, §6, §7, §9, §10), also inside v4: pinned keys can be tombstoned by another pin, key statuses are an allow-list, base64url must be canonical, the trust manifest can be fetched signed by a named key, and the cache keeps the imported bundle's signed JWS and the pin revocations' evidence (two additive slices). There is no new `typ`, claim or signed shape; one query parameter is added to an existing route. `PROTOCOL_VERSION` stays 4 and `corpusVersion` stays 2; one existing corpus verdict changes (`trust-member-shapes-ignored`: a key with no `status` is no longer trusted). Amended for Cloud Sync by `plans/U-01.md` and `plans/U-01b.md` (§8, §9, §11.5, §13), inside v4: unsigned device routes under `/<p>/sync`, one discovery fragment and one client table. There is no new `typ`, claim, header or signed shape. Amended for product backends by `plans/SP-53.md` (§5.2, §8, §9, §10, §14), also inside v4: one request header from an app to its developer's own backend, never to the Worker, with its verdict, problem body and client rule. There is no new `typ`, claim, route or signed shape; `PROTOCOL_VERSION` stays 4 and `corpusVersion` 2. Amended for the Commerce service by `plans/CM-29.md` (§5.6, §9), also inside v4: one unsigned discovery member, `services.commerce`, and two device routes that moved to `/<p>/commerce/{binding,claim}`. There is no new `typ`, claim, header or signed shape.
+**Status:** Normative. Supersedes `WIRE-CONTRACT-V3.md`, the way v3 superseded v2. v3 remains the record; everything v3 said that v4 does not change is restated here, so this document can be read on its own. Amended for packs v1 by `plans/P4-01.md` (§2.5.1, §2.5.2, §2.6, §2.7, §3.7, §11.3, §11.4), inside v4: no new `typ`, no feed field, `PROTOCOL_VERSION` stays 4. Amended for chunk indexes by `plans/P4-10.md` (§2.5.1, §2.6, §3.1, §8, §9, §10, §11.4), also inside v4. Amended for content-key delegation by `plans/P4-19.md` (§1, §2, §2.4.1, §2.5, §2.5.3, §2.5.4, §2.8, §3.4, §3.5, §8, §9, §10), also inside v4: no new `typ`, claim, feed member or selector key. Amended for passthrough request metadata by `plans/PX-W13.md` (§5.4, §8, §12.7), also inside v4: no new `typ`, claim or signed shape, and `corpusVersion` stays 2. Amended for the built-in `dev` channel by `plans/P2-08.md` (§5.1), also inside v4: documentation only, no new `typ`, claim, header or signed shape. Amended for key-entry counting by `plans/PX-W9.md` (§5.3, §12, §12.2), also inside v4: one unsigned refusal code, one unsigned response member and one portal route, no new `typ`, claim, header or signed shape, and the signed corpus is unchanged. Amended for product presentation by `plans/HA-11.md` and `plans/HA-12.md` (§5.5, §9, §10), also inside v4: one unsigned discovery member and one unsigned client table. There is no new `typ`, claim, header, route or signed shape, and `PROTOCOL_VERSION` stays 4. Amended for trust custody and signed bundle custody (§1, §2.3, §3.2, §4.1, §6, §7, §9, §10), also inside v4: pinned keys can be tombstoned by another pin, key statuses are an allow-list, base64url must be canonical, the trust manifest can be fetched signed by a named key, and the cache keeps the imported bundle's signed JWS and the pin revocations' evidence (two additive slices). There is no new `typ`, claim or signed shape; one query parameter is added to an existing route. `PROTOCOL_VERSION` stays 4 and `corpusVersion` stays 2; one existing corpus verdict changes (`trust-member-shapes-ignored`: a key with no `status` is no longer trusted). Amended for Cloud Sync by `plans/U-01.md` and `plans/U-01b.md` (§8, §9, §11.5, §13), inside v4: unsigned device routes under `/<p>/sync`, one discovery fragment and one client table. There is no new `typ`, claim, header or signed shape. Amended for product backends by `plans/SP-53.md` (§5.2, §8, §9, §10, §14), also inside v4: one request header from an app to its developer's own backend, never to the Worker, with its verdict, problem body and client rule. There is no new `typ`, claim, route or signed shape; `PROTOCOL_VERSION` stays 4 and `corpusVersion` 2. Amended for the Commerce service by `plans/CM-29.md` (§5.6, §9), also inside v4: one unsigned discovery member, `services.commerce`, and two device routes that moved to `/<p>/commerce/{binding,claim}`. There is no new `typ`, claim, header or signed shape. Amended for the app passthrough and the licence choice at sign-in by `plans/I-08.md` (§12.4, §12.4.1, §12.5, §12.5.1, §12.6), also inside v4: unsigned routes (`authorize`, `token`, four `choice/*` routes and two portal reads), their discovery members, the `license_choice_required` code. There is no new `typ`, claim, header or signed shape; `PROTOCOL_VERSION` stays 4, `DISCOVERY_VERSION` 2 and `corpusVersion` 2.
 **PROTOCOL_VERSION:** `4` (`@polaris-key/protocol` `core.PROTOCOL_VERSION`).
 **Scope:** Everything that crosses the wire or the disk boundary between the Polaris Worker, the CI that signs releases, and the client SDKs (Node, React, Python, Swift, Godot, Kotlin): JWS envelope and its strictness, the six signed artifacts, trust distribution, the pinned release keys, device principal, offline bundles, verified cache, the monotonic clock floor and the feed `seq` floor. Server-internal behavior (D1 shapes, admin API) is out of scope except where it produces signed artifacts.
 **Conformance:** `conformance/corpus/v2/` pins every rule marked **[C]** byte-for-byte across all implementations, within the representation limits declared in §10. `pnpm gen corpus --check` is the drift gate. The v4 plan is `docs/research/2026-09-29-godot-omniplatform/program/plans/P3-01.md`; its §2–§4 are the long form of §1–§4 and §11 here.
@@ -1301,8 +1301,8 @@ of `licenses.account_id` and `devices.subject` until LX-09: attaching a licence,
 a sign-out and a counted key entry leave every document a device verifies unchanged. §12.2 is
 PX-W9's key entry with I-09's step 3 (`license_owned`). §12.3 (attach, subject and sign-out) and
 the account members of §12.6 are I-09's; §12.4 (`authorize`, Continue and Cancel), §12.5
-(`token`) and the issuer and endpoints of §12.6 are I-08's, with the licence choice's answer
-reserved for I-08b. §12.7 is PX-W13's passthrough request metadata and §12.8 is PX-W17's Identity-off
+(`token`) and the issuer and endpoints of §12.6 are I-08's; the licence choice (§12.4.1, §12.5.1) is
+I-08b's. §12.7 is PX-W13's passthrough request metadata and §12.8 is PX-W17's Identity-off
 behaviour. The plan is `plans/I-09.md`.
 
 ### 12.1 What the toggle scopes
@@ -1483,7 +1483,7 @@ on (§12.8).
 4. **Continue** is `POST /api/signin/requests/<handle>/continue` (same-origin portal JSON) with
    the account session, the portal CSRF header and the binder cookie of the browser that started
    the request: this is the callback binding of R1-07 for the web redirect. The body is
-   `{consent?: {claims}, choice?: {licenseId}, terms?}`; `consent.claims` is a subset of the
+   `{consent?: {claims}, choice?: LicenseChoiceInput, terms?}` (§12.4.1); `consent.claims` is a subset of the
    request's scope. Continue is always shown (there is no skip). It refuses without consuming
    anything with `409 terms_required` (the product's terms version was not accepted; `terms` names
    the version shown) and `409 license_choice_required` (the account holds licences for the
@@ -1523,7 +1523,10 @@ on (§12.8).
    bound licence-less. A device that presents its own live token in `Authorization: Bearer`
    keeps the licence it runs on: the account is bound to it where it stands and the answer is
    that token. A device id that already runs on a licence, without that proof, is never taken
-   over: `409 license_choice_required`.
+   over: `409 license_choice_required`. A licence-less device id that already holds a credential
+   is re-registered only by the device that presents it the same way; without the proof the
+   answer is `403 not_entitled`. With `license_choice=app` and a choice due, `token` answers the
+   pending sign-in of §12.5.1 instead and binds nothing.
 5. **Errors** are flat (RFC 6749 §5.2): `400 invalid_request`, `401 invalid_client`,
    `400 invalid_grant`, `400 unsupported_grant_type`, `400 invalid_scope`; and the Polaris refusals
    beside them, as on `license/activate`: `403 not_entitled`, `403 device_limit` (with `limit`,
@@ -1532,6 +1535,98 @@ on (§12.8).
    I-21) answer `unsupported_grant_type` until then.
 6. **Never a token in a URL.** The device token is in the body of this response only, and the
    redirect carries a code that is useless without the verifier.
+
+### 12.4.1 The licence choice on the card [C]
+
+Pinned by `redirect-web-choose.json`. Both reads need the portal session and the request's binder
+(as the consent view does), are same-origin JSON with `cache-control: no-store`, and answer
+`404 not_found` for a handle that is unknown, expired, bound to another browser or for a product
+whose Identity is off. They are display data and authorise nothing: Continue and `token` re-read
+the offer.
+
+- `GET /api/signin/requests/<handle>/licenses` answers `LicenseChoiceView`: `state` (`choose` when
+  the account holds a candidate, `autoIssue` when it holds none and the product's policy grants
+  one, else `none`), `choices[]`, `keep` (never true here: a browser has no device), `preselected`,
+  `create` (the explicit "Create a new license" row, only when every candidate is full) and
+  `getLicense` (the no-licence state: `activateUrl`, `purchaseUrl`, `keyEntry`). A `LicenseChoice`
+  is `{id, tierName, name, origin, access, seats {used, limit}, current, expiresAt, state,
+blockedReason?, replace, freeDeviceUrl}`: `origin` is one of `purchase`, `store`, `key`, `free`,
+  `developer`, `signin`; `access` is `account` for a licence issued by signing in (no key) and
+  `seats` otherwise, never a displayed type; `state` is `free`, `full` (a full row offers Replace
+  while the product's portal is on) or `blocked` (its tier needs a fingerprint a sign-in cannot
+  present); `replace` is `{allowed, retryAfter}` on a full row and `null` otherwise.
+- `GET /api/signin/requests/<handle>/licenses/<licenseId>/devices` answers `ReplaceView`:
+  `{licenseId, seats, devices[{id, label, platform, deviceType, lastSeen, leastRecent, activeNow,
+thisBrowser}], replace}`, the licence's seat-holding devices, least recently used first. One
+  `404 not_found` for a licence that is unknown, another account's, not full, or whose portal is
+  off.
+- **Continue's `choice`** is `{kind: "license", licenseId, replaceDeviceId?}`, `{kind: "create"}`,
+  or the earlier `{licenseId}`. With `license_choice=card` and candidates, a missing choice, a
+  full licence without `replaceDeviceId`, a blocked one, `keep` (a browser has no device) and
+  `key` (a key is never stored on a code) are `409 license_choice_required`; `create` is accepted
+  only when the offer says so; an unknown `replaceDeviceId` is `404 not_found`. With no candidate
+  and a policy that grants one, Continue mints the account's first licence (see below) and the code
+  carries it. Nothing is consumed by a refusal. The code carries the choice; `token` binds it, and
+  a Replace is executed there (§12.5.1).
+- **The first automatic licence.** Minted by the press (Continue; `choice/complete` `create` in app
+  mode), never by sign-in alone and never while a usable licence exists unless the choice is the
+  explicit `create`. One licence per account and product: the press takes the `license-mint` claim
+  (I-02's store, 30 s), re-reads the offer inside it and mints once; a press that loses the claim,
+  or finds the licence already there, mints nothing and answers `409 license_choice_required`,
+  and the card re-reads `licenses`. An unreachable store fails closed (`503 unavailable`). The
+  licence is an account licence (origin `oidc`, held by the account, no key). Discover's add takes
+  the same claim.
+
+### 12.5.1 The pending sign-in grant [C]
+
+Pinned by `redirect-web-choose-app.json`, `choice-replace-app.json`, `choice-key-app.json` and
+`choice-grant-errors.json`. With `license_choice=app` on `authorize` (recorded on the request and
+the code), the card has no licence step, and `token` answers `200`
+`{"status": "choose", "grant": "sg_…", "expiresIn": 300, "choices": LicenseChoiceView}` instead of
+the §12.5 body when a choice is due (the account holds a candidate or the device runs on a licence
+outside the list; or it holds none, the policy grants none and the product accepts keys). Only the
+`choose` body has a `status` member. With no choice due (the press minted the first licence, or
+the product runs no License service), `token` answers as in §12.5. The grant is `sg_` and 43
+base64url characters, bound to the product, the account, the pairwise subject and the redeeming
+`X-PKey-Device`, lives 300 seconds and is consumed by `complete` or `cancel`.
+
+The four routes are `POST /<p>/identity/choice/{licenses,devices,complete,cancel}`: JSON bodies
+(at most 4 KiB), `no-store`, `X-PKey-Device` required, CORS for `web.origins` without credentials,
+Identity on only. Errors are the nested Polaris body.
+
+| Route      | Body                           | Answer                                                                        |
+| ---------- | ------------------------------ | ----------------------------------------------------------------------------- |
+| `licenses` | `{grant}`                      | a fresh `LicenseChoiceView`                                                   |
+| `devices`  | `{grant, licenseId}`           | `ReplaceView`                                                                 |
+| `complete` | `{grant, choice, deviceName?}` | the §12.5 body (`TokenResponse`), plus `keyEntries {used, limit}` after a key |
+| `cancel`   | `{grant}`                      | `204`; nothing is bound                                                       |
+
+`choice` is `{kind: "license", licenseId, replaceDeviceId?}`, `{kind: "keep"}` (needs the device's
+own token in `Authorization: Bearer`), `{kind: "create"}` or `{kind: "key", key}`.
+
+1. **Replace.** `replaceDeviceId` names a seat-holding device of a FULL licence. The removal is the
+   portal's Remove (same checks, the shared `portalDeviceDisconnect` budget of 20 per 60 s, the
+   `portal.device.disconnect` audit row "to sign in <label>", the security email) and commits in
+   one D1 batch with the new device's seat claim. `429 rate_limited` carries `retryAfter`. If the
+   claim cannot join the batch the freed device stays freed and the answer is `403 device_limit`
+   with `racedAfterFree: true`.
+2. **Key.** The key is PX-W9's key entry on the `app` surface: counted exactly once, atomically
+   with the seat claim, refused with `403 license_owned` (`signInUrl`) and `403 key_entry_limit`
+   (`keyEntries`, `manageUrl`) as `license/activate` does; a key that is not an active licence key
+   is `401 unauthorized`. The device stays key-bound and is also signed in to the account.
+3. **Errors.** `400 invalid_grant` (malformed, unknown, expired, consumed, another product's or
+   another device's grant; the grant of another device is not burned), `400 bad_request` (no or a
+   malformed device id, a malformed choice), `404 not_found` (a licence outside the view, another
+   account's, not replaceable, or an unknown device), `409 license_choice_required` (no choice, a
+   choice that was not offered, a lost mint), `403 device_limit` (with `limit`, `deviceCount`,
+   `manageUrl` and a fresh `view`), `403 not_entitled`, `403 fingerprint_required`,
+   `409 hardware_mismatch`, `429 rate_limited`. A refusal the person can retry leaves the grant open
+   for the time it has left.
+4. **Budgets.** 30 reads per grant (`licenses`, `devices`, and each key attempt), 60 calls a minute
+   per client network, failing closed.
+5. **Device code never issues a grant.** The cross-device channel can be phished (R1-07); only the
+   same-device channels (the web redirect here; loopback, scheme and claimed HTTPS by I-15; the
+   native exchange by I-13) can.
 
 ### 12.6 Discovery
 
@@ -1550,7 +1645,13 @@ A client uses an account feature only when its endpoint is present and never bui
 client that predates them ignores them. With Identity off the fragment stays `{"enabled":false}`
 (`discovery-capabilities.json` is unchanged). I-08 adds `"issuer"` (§12.4), the `authorize`
 and `token` endpoints (§12.4, §12.5) and makes `"configured"` always `true`: the platform sign-in
-needs no per-product identity-provider row.
+needs no per-product identity-provider row. **`configured` says only that `authorize` and `token`
+are served.** The legacy `auth/*` routes and the device-code sign-in still need the product's
+identity-provider row and answer `404 disabled` without one, whatever `configured` says; a
+client decides what it can offer by the endpoints present (`authorize`, `token`, `authDeviceStart`)
+and never by `configured` alone. I-08b adds `choiceLicenses`, `choiceDevices`, `choiceComplete` and
+`choiceCancel` (§12.5.1) beside `token`; an SDK sends `license_choice=app` only when all four are
+present.
 
 ### 12.7 Passthrough request metadata
 

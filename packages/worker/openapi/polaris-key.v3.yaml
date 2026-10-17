@@ -8301,10 +8301,16 @@ paths:
             schema: { $ref: "#/components/schemas/TokenRequest" }
       responses:
         "200":
-          description: "The token response. `cache-control: no-store`."
+          description: >
+            The token response, or (I-08b, `license_choice=app` and a choice is due) the pending
+            sign-in: `{status: "choose", grant, expiresIn, choices}`. Only the `choose` body has
+            a `status` member. `cache-control: no-store`.
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/TokenResponse" }
+              schema:
+                oneOf:
+                  - { $ref: "#/components/schemas/TokenResponse" }
+                  - { $ref: "#/components/schemas/PendingSignIn" }
               examples:
                 licenceLess:
                   summary: test/identityAuthorize.test.ts
@@ -8368,6 +8374,249 @@ paths:
               schema: { $ref: "#/components/schemas/FlatError" }
     options:
       operationId: preflightIdentityToken
+      tags: [identity]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. Answered
+        before service dispatch, so the result never depends on whether the service
+        behind this path is enabled. See `CorsPreflight`. No credentials are allowed.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
+  /{product}/identity/choice/licenses:
+    post:
+      operationId: identityChoiceLicenses
+      tags: [identity]
+      summary: A fresh licence choice for the pending sign-in
+      description: >
+        I-08b (WIRE-CONTRACT-V4 §12.5.1). The pending sign-in grant from `token`'s `choose`
+        answer travels in the body, never in a URL, and answers only the device that redeemed
+        the code (`X-PKey-Device` is required). JSON body, `no-store`, nested Polaris errors.
+        Only while the product's Identity service is on.
+        Spends one of the grant's 30 reads.
+      security: []
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { $ref: "#/components/parameters/DeviceHeader" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ChoiceLicensesRequest" }
+      responses:
+        "200":
+          description: "The account's licences for the product, as the card lists them. `cache-control: no-store`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LicenseChoiceView" }
+        "400":
+          description: >
+            `invalid_grant` (unknown, expired, consumed, malformed, or another device's grant) or
+            `bad_request` (no device id, a malformed choice). NESTED.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "404":
+          description: >
+            `not_found`: a licence outside the grant's view, another account's, not full, or a
+            device that cannot be replaced. One answer for every case. NESTED.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "429":
+          description: >
+            `rate_limited` (60 a minute per client network; 30 view and device reads per grant;
+            `retryAfter` on a blocked Replace). NESTED.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+    options:
+      operationId: preflightIdentityChoiceLicenses
+      tags: [identity]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. Answered
+        before service dispatch, so the result never depends on whether the service
+        behind this path is enabled. See `CorsPreflight`. No credentials are allowed.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
+  /{product}/identity/choice/devices:
+    post:
+      operationId: identityChoiceDevices
+      tags: [identity]
+      summary: The seat-holding devices of a full licence (Replace)
+      description: >
+        I-08b (WIRE-CONTRACT-V4 §12.5.1). The pending sign-in grant from `token`'s `choose`
+        answer travels in the body, never in a URL, and answers only the device that redeemed
+        the code (`X-PKey-Device` is required). JSON body, `no-store`, nested Polaris errors.
+        Only while the product's Identity service is on.
+        Answers only for a FULL licence in the grant's view whose Replace is allowed; every other
+        id gets the one `404`. Spends one read.
+      security: []
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { $ref: "#/components/parameters/DeviceHeader" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ChoiceDevicesRequest" }
+      responses:
+        "200":
+          description: "The licence's seat-holding devices. `cache-control: no-store`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ReplaceView" }
+        "400":
+          description: >
+            `invalid_grant` (unknown, expired, consumed, malformed, or another device's grant) or
+            `bad_request` (no device id, a malformed choice). NESTED.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "404":
+          description: >
+            `not_found`: a licence outside the grant's view, another account's, not full, or a
+            device that cannot be replaced. One answer for every case. NESTED.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "429":
+          description: >
+            `rate_limited` (60 a minute per client network; 30 view and device reads per grant;
+            `retryAfter` on a blocked Replace). NESTED.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+    options:
+      operationId: preflightIdentityChoiceDevices
+      tags: [identity]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. Answered
+        before service dispatch, so the result never depends on whether the service
+        behind this path is enabled. See `CorsPreflight`. No credentials are allowed.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
+  /{product}/identity/choice/complete:
+    post:
+      operationId: identityChoiceComplete
+      tags: [identity]
+      summary: Finish the sign-in with the person's choice
+      description: >
+        I-08b (WIRE-CONTRACT-V4 §12.5.1). The pending sign-in grant from `token`'s `choose`
+        answer travels in the body, never in a URL, and answers only the device that redeemed
+        the code (`X-PKey-Device` is required). JSON body, `no-store`, nested Polaris errors.
+        Only while the product's Identity service is on.
+        Consumes the grant and answers exactly what `token` answers (`TokenResponse`, plus
+        `keyEntries` after a key). `choice.kind` is `license` (with an optional
+        `replaceDeviceId`, committed in one batch with the seat), `keep` (needs the device's own
+        `Authorization: Bearer`), `create` or `key`. A key is PX-W9's app key entry, counted once
+        with the seat, and refuses with `license_owned` and `key_entry_limit`. A refusal the
+        person can retry (`device_limit` with a fresh `view`, a lost mint, a wrong key) leaves
+        the grant open for the time it has left.
+      security: []
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { $ref: "#/components/parameters/DeviceHeader" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ChoiceCompleteRequest" }
+      responses:
+        "200":
+          description: "The activation response under its OAuth names. `cache-control: no-store`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TokenResponse" }
+        "400":
+          description: >
+            `invalid_grant` (unknown, expired, consumed, malformed, or another device's grant) or
+            `bad_request` (no device id, a malformed choice). NESTED.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "404":
+          description: >
+            `not_found`: a licence outside the grant's view, another account's, not full, or a
+            device that cannot be replaced. One answer for every case. NESTED.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "429":
+          description: >
+            `rate_limited` (60 a minute per client network; 30 view and device reads per grant;
+            `retryAfter` on a blocked Replace). NESTED.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+    options:
+      operationId: preflightIdentityChoiceComplete
+      tags: [identity]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. Answered
+        before service dispatch, so the result never depends on whether the service
+        behind this path is enabled. See `CorsPreflight`. No credentials are allowed.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
+  /{product}/identity/choice/cancel:
+    post:
+      operationId: identityChoiceCancel
+      tags: [identity]
+      summary: End the pending sign-in; nothing is bound
+      description: >
+        I-08b (WIRE-CONTRACT-V4 §12.5.1). The pending sign-in grant from `token`'s `choose`
+        answer travels in the body, never in a URL, and answers only the device that redeemed
+        the code (`X-PKey-Device` is required). JSON body, `no-store`, nested Polaris errors.
+        Only while the product's Identity service is on.
+      security: []
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { $ref: "#/components/parameters/DeviceHeader" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ChoiceCancelRequest" }
+      responses:
+        "204":
+          description: The grant is consumed. Nothing was bound.
+        "400":
+          description: >
+            `invalid_grant` (unknown, expired, consumed, malformed, or another device's grant) or
+            `bad_request` (no device id, a malformed choice). NESTED.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "404":
+          description: >
+            `not_found`: a licence outside the grant's view, another account's, not full, or a
+            device that cannot be replaced. One answer for every case. NESTED.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "429":
+          description: >
+            `rate_limited` (60 a minute per client network; 30 view and device reads per grant;
+            `retryAfter` on a blocked Replace). NESTED.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+    options:
+      operationId: preflightIdentityChoiceCancel
       tags: [identity]
       summary: CORS preflight
       description: >
@@ -12343,6 +12592,64 @@ paths:
               schema: { $ref: "#/components/schemas/FlatError" }
         "404": { $ref: "#/components/responses/NotFound" }
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
+  /api/signin/requests/{request}/licenses:
+    get:
+      operationId: getSignInLicenses
+      tags: [portal]
+      summary: The licence choice for the signed-in account (the card's step)
+      description: >
+        I-08b (WIRE-CONTRACT-V4 §12.4.1). Needs the portal session AND the request's binder
+        cookie. A browser has no device yet, so `keep` is never offered here. Display data: it
+        authorises nothing, and Continue re-reads the offer.
+      parameters:
+        - name: request
+          in: path
+          required: true
+          schema: { type: string, pattern: "^rq_[A-Za-z0-9_-]{22}$" }
+      responses:
+        "200":
+          description: The account's licences for the product.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LicenseChoiceView" }
+        "401":
+          description: No portal session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+  /api/signin/requests/{request}/licenses/{licenseId}/devices:
+    get:
+      operationId: getSignInLicenseDevices
+      tags: [portal]
+      summary: The seat-holding devices of a full licence (Replace a device)
+      description: >
+        I-08b (WIRE-CONTRACT-V4 §12.4.1). Needs the portal session AND the request's binder
+        cookie. One `404` for a licence that is unknown, another account's, not full, or whose
+        portal is off.
+      parameters:
+        - name: request
+          in: path
+          required: true
+          schema: { type: string, pattern: "^rq_[A-Za-z0-9_-]{22}$" }
+        - name: licenseId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: The licence's seat-holding devices.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ReplaceView" }
+        "401":
+          description: No portal session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
   /api/signin/requests/{request}/continue:
     post:
       operationId: continueSignInRequest
@@ -15754,7 +16061,8 @@ paths:
             name: state,
             in: query,
             required: false,
-            schema: { type: string, enum: [active, expiring, expired, disabled] },
+            schema:
+              { type: string, enum: [active, expiring, expired, disabled] },
             description: "Only licences in this computed state. `total` is that state's count; `counts` still covers every state.",
           }
         - {
@@ -15860,7 +16168,14 @@ paths:
                       email: { type: string, enum: [sent, queued, failed] }
                       reason:
                         type: string
-                        enum: [no_mail_binding, address_unusable, suppressed, daily_cap, provider_refused]
+                        enum:
+                          [
+                            no_mail_binding,
+                            address_unusable,
+                            suppressed,
+                            daily_cap,
+                            provider_refused,
+                          ]
                         description: "Present when `email` is `failed`."
                   key:
                     {
@@ -16475,7 +16790,14 @@ paths:
                       email: { type: string, enum: [sent, queued, failed] }
                       reason:
                         type: string
-                        enum: [no_mail_binding, address_unusable, suppressed, daily_cap, provider_refused]
+                        enum:
+                          [
+                            no_mail_binding,
+                            address_unusable,
+                            suppressed,
+                            daily_cap,
+                            provider_refused,
+                          ]
                         description: "Present when `email` is `failed`."
                   revoked: { type: integer, description: "Other keys revoked." }
         "400":
@@ -23609,6 +23931,190 @@ components:
           additionalProperties: true
           description: "`null` on a device with no licence."
         subject: { type: string, pattern: "^ps_[A-Za-z0-9_-]{22}$" }
+        keyEntries:
+          type: object
+          description: "I-08b: after a key entered through `choice/complete`, the licence's key-entry count."
+          required: [used, limit]
+          properties:
+            used: { type: integer }
+            limit: { type: integer }
+    PendingSignIn:
+      type: object
+      description: >
+        I-08b (§12.5.1): `token`'s `200` when `license_choice=app` and a choice is due. The grant
+        is `sg_` and 43 base64url characters, 300 s, bound to the redeeming device.
+      required: [status, grant, expiresIn, choices]
+      additionalProperties: false
+      properties:
+        status: { type: string, const: choose }
+        grant: { type: string, pattern: "^sg_[A-Za-z0-9_-]{43}$" }
+        expiresIn: { type: integer, const: 300 }
+        choices: { $ref: "#/components/schemas/LicenseChoiceView" }
+    LicenseChoiceView:
+      type: object
+      description: "I-08b (§12.4.1, plans/I-04.md §C): the licence choice. Display data."
+      required: [state, choices, keep, preselected, create, getLicense]
+      additionalProperties: false
+      properties:
+        state: { type: string, enum: [choose, autoIssue, none] }
+        choices:
+          type: array
+          items: { $ref: "#/components/schemas/LicenseChoice" }
+        keep:
+          type: boolean
+          description: True only when the device runs on a usable licence that is not in `choices`.
+        preselected:
+          type: [string, "null"]
+          description: A licence id, `keep`, `create`, or `null`.
+        create:
+          type: [object, "null"]
+          required: [tierName, access]
+          properties:
+            tierName: { type: string }
+            access: { type: string, const: account }
+        getLicense:
+          type: [object, "null"]
+          required: [activateUrl, purchaseUrl, keyEntry]
+          properties:
+            activateUrl: { type: string }
+            purchaseUrl: { type: [string, "null"] }
+            keyEntry: { type: boolean }
+    LicenseChoice:
+      type: object
+      required:
+        [
+          id,
+          tierName,
+          name,
+          origin,
+          access,
+          seats,
+          current,
+          expiresAt,
+          state,
+          replace,
+          freeDeviceUrl,
+        ]
+      additionalProperties: false
+      properties:
+        id: { type: string }
+        tierName: { type: string }
+        name: { type: [string, "null"] }
+        origin:
+          {
+            type: string,
+            enum: [purchase, store, key, free, developer, signin],
+          }
+        access:
+          type: string
+          enum: [seats, account]
+          description: "`account` for a licence issued by signing in (no key); never a displayed type."
+        seats:
+          type: object
+          required: [used, limit]
+          properties:
+            used: { type: integer }
+            limit: { type: [integer, "null"] }
+        current: { type: boolean }
+        expiresAt: { type: [integer, "null"] }
+        state: { type: string, enum: [free, full, blocked] }
+        blockedReason: { type: string, const: fingerprint_required }
+        replace:
+          type: [object, "null"]
+          required: [allowed, retryAfter]
+          properties:
+            allowed: { type: boolean }
+            retryAfter: { type: [integer, "null"] }
+        freeDeviceUrl: { type: [string, "null"] }
+    ReplaceView:
+      type: object
+      description: "I-08b (§12.4.1): the seat-holding devices Replace could free."
+      required: [licenseId, seats, devices, replace]
+      additionalProperties: false
+      properties:
+        licenseId: { type: string }
+        seats:
+          type: object
+          required: [used, limit]
+          properties:
+            used: { type: integer }
+            limit: { type: [integer, "null"] }
+        devices:
+          type: array
+          items:
+            type: object
+            required:
+              [
+                id,
+                label,
+                platform,
+                deviceType,
+                lastSeen,
+                leastRecent,
+                activeNow,
+                thisBrowser,
+              ]
+            properties:
+              id: { type: string }
+              label: { type: [string, "null"] }
+              platform: { type: [string, "null"] }
+              deviceType: { type: [string, "null"] }
+              lastSeen: { type: integer }
+              leastRecent: { type: boolean }
+              activeNow: { type: boolean }
+              thisBrowser: { type: boolean }
+        replace:
+          type: object
+          required: [allowed, retryAfter]
+          properties:
+            allowed: { type: boolean }
+            retryAfter: { type: [integer, "null"] }
+    LicenseChoiceInput:
+      description: >
+        The person's explicit choice. `key` is accepted by `choice/complete` only, never by
+        Continue.
+      oneOf:
+        - type: object
+          required: [kind, licenseId]
+          additionalProperties: false
+          properties:
+            kind: { type: string, const: license }
+            licenseId: { type: string }
+            replaceDeviceId: { type: string }
+        - type: object
+          required: [kind]
+          additionalProperties: false
+          properties:
+            kind: { type: string, enum: [keep, create] }
+        - type: object
+          required: [kind, key]
+          additionalProperties: false
+          properties:
+            kind: { type: string, const: key }
+            key: { type: string, maxLength: 512 }
+    ChoiceLicensesRequest:
+      type: object
+      required: [grant]
+      properties:
+        grant: { type: string, pattern: "^sg_[A-Za-z0-9_-]{43}$" }
+    ChoiceCancelRequest:
+      type: object
+      required: [grant]
+      properties:
+        grant: { type: string, pattern: "^sg_[A-Za-z0-9_-]{43}$" }
+    ChoiceDevicesRequest:
+      type: object
+      required: [grant, licenseId]
+      properties:
+        grant: { type: string, pattern: "^sg_[A-Za-z0-9_-]{43}$" }
+        licenseId: { type: string }
+    ChoiceCompleteRequest:
+      type: object
+      required: [grant, choice]
+      properties:
+        grant: { type: string, pattern: "^sg_[A-Za-z0-9_-]{43}$" }
+        choice: { $ref: "#/components/schemas/LicenseChoiceInput" }
+        deviceName: { type: string }
     SignInContinueRequest:
       type: object
       description: "`POST /api/signin/requests/{request}/continue` (I-08, §12.4). Every member is optional."
@@ -23622,10 +24128,15 @@ components:
               type: array
               items: { type: string, enum: [profile, email, cloudSync] }
         choice:
-          type: object
-          required: [licenseId]
-          properties:
-            licenseId: { type: string }
+          description: >
+            I-08b: `license` (with an optional `replaceDeviceId` on a full licence) or `create`.
+            `keep` and `key` are refused. The pre-I-08b `{licenseId}` still reads as `license`.
+          oneOf:
+            - { $ref: "#/components/schemas/LicenseChoiceInput" }
+            - type: object
+              required: [licenseId]
+              properties:
+                licenseId: { type: string }
         terms:
           type: string
           description: The terms version the person accepted, when the product requires them.

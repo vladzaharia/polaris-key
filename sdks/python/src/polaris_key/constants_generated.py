@@ -729,6 +729,7 @@ class Feature:
     IDENTITY_ATTACH: Final = "identity.attach"
     IDENTITY_ACCOUNT: Final = "identity.account"
     IDENTITY_REDIRECT_WEB: Final = "identity.redirect.web"
+    IDENTITY_CHOICE: Final = "identity.choice"
     IDENTITY_SIGNIN_HINTS: Final = "identity.signin.hints"
     RELEASE_CHANGELOG: Final = "release.changelog"
     RELEASE_DOWNLOAD: Final = "release.download"
@@ -846,6 +847,7 @@ FEATURE_VALUES: Tuple[str, ...] = (
     "identity.attach",
     "identity.account",
     "identity.redirect.web",
+    "identity.choice",
     "identity.signin.hints",
     "release.changelog",
     "release.download",
@@ -1929,6 +1931,7 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "identity.attach": CapabilityRow("planned", "identity", ()),
         "identity.account": CapabilityRow("planned", "identity", ()),
         "identity.redirect.web": CapabilityRow("planned", "identity", ()),
+        "identity.choice": CapabilityRow("planned", "identity", ()),
         "identity.signin.hints": CapabilityRow("planned", "identity", ()),
         "release.changelog": CapabilityRow("implemented", "release", ()),
         "release.download": CapabilityRow("implemented", "release", ()),
@@ -1996,4 +1999,4 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "5fbfb853307c3c8ad39314325f28b6da34d01fbfc2cca8bf6909c694c79e8303"
+CAPABILITY_DIGEST: Final[str] = "5bc6d312624e8daef978dce55397c27091b4d2382072de82fc55c5fd8f05b5b4"

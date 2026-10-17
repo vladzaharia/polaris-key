@@ -292,6 +292,24 @@ export async function attachLicenseAccount(
 }
 
 /**
+ * Attach a licence to its account in the batch that inserts it (I-08b): the account arm of the
+ * issuance engine mints an owned licence in one transaction, so there is no moment at which it is
+ * floating. Same compare-and-set as {@link attachLicenseAccount}, as a statement.
+ */
+export function stmtAttachNewLicense(
+  product: string,
+  licenseId: string,
+  accountId: string,
+  now: number,
+): DbStatement {
+  return {
+    sql: `UPDATE licenses SET account_id = ?, modified_at = ?
+           WHERE product = ? AND id = ? AND account_id IS NULL`,
+    params: [accountId, now, product, licenseId],
+  };
+}
+
+/**
  * Move a licence from `from` (an account id, or `null` for floating) to `to` (an account, or
  * `null` to detach), as one compare-and-set statement: conditional on the current owner, so a
  * concurrent change loses cleanly. The caller puts it in the same batch as its own writes

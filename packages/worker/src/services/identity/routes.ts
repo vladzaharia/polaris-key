@@ -20,6 +20,10 @@
  *                                           POST  record a step of it, or the choice
  *     /identity/authorize                   GET   I-08, begin the app passthrough sign-in
  *     /identity/token                       POST  I-08, redeem the code (form body)
+ *     /identity/choice/licenses             POST  I-08b, the pending sign-in grant: the licence view
+ *     /identity/choice/devices              POST  I-08b, a full licence's seat-holding devices
+ *     /identity/choice/complete             POST  I-08b, the choice; answers the `token` response
+ *     /identity/choice/cancel               POST  I-08b, end the grant; nothing is bound
  *     /identity/attach                      POST  add the device's licence to the signed-in
  *                                                 account (I-09; device bearer)
  *     /identity/subject                     GET   the pairwise subject signed in on the device
@@ -43,7 +47,10 @@
  * unregistered slug and a bad path indistinguishable from outside.
  */
 
-import { serviceRoutes } from "../../core/http/routes.js";
+import {
+  serviceRoutes,
+  type ServiceRouteHandler,
+} from "../../core/http/routes.js";
 import {
   handleAuthCallback,
   handleAuthChoose,
@@ -65,6 +72,36 @@ import {
 } from "./attach.js";
 import { handleAuthorize } from "./passthrough/authorize.js";
 import { handleToken } from "./passthrough/token.js";
+import { readCiJson } from "../../core/ciScope.js";
+import { handleChoice } from "./passthrough/choiceRoutes.js";
+
+/** The grant routes' largest body: a grant, a licence id or a choice with a key. */
+const CHOICE_BODY_CAP = 4 * 1024;
+
+/**
+ * One row per grant route (I-08b, §12.5.1). The grant in the body and the redeeming device id are
+ * the credential (`code`: the artefact the flow that issued it hands out), checked by the handler.
+ */
+const choiceRow = (action: "licenses" | "devices" | "complete" | "cancel") => ({
+  path: `choice/${action}`,
+  methods: ["POST" as const],
+  auth: { kind: "code" as const },
+  handler: (async (ctx) => {
+    // The table forbids a cap on a non-CI row (`serviceRouteTables`), so the handler reads it.
+    const body = await readCiJson(ctx.req, CHOICE_BODY_CAP);
+    if (body instanceof Response) return body;
+    const { req, env, db, product, now, settings } = ctx;
+    return handleChoice(action, {
+      req,
+      env,
+      db,
+      product,
+      now,
+      body,
+      ...(settings ? { settings } : {}),
+    });
+  }) satisfies ServiceRouteHandler,
+});
 
 export const IDENTITY_ROUTES = serviceRoutes("identity", [
   {
@@ -106,6 +143,11 @@ export const IDENTITY_ROUTES = serviceRoutes("identity", [
     handler: ({ req, env, db, product, now }) =>
       handleToken({ req, env, db, product, now }),
   },
+  // I-08b (§12.5.1): the pending sign-in grant's routes.
+  choiceRow("licenses"),
+  choiceRow("devices"),
+  choiceRow("complete"),
+  choiceRow("cancel"),
   // I-09 (WIRE-CONTRACT-V4 §12.3): the account on the device wire.
   {
     path: "attach",
