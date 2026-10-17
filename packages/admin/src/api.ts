@@ -3859,7 +3859,9 @@ export type KeyEmailOutcome = "sent" | "queued" | "failed";
 /** Why a key email did not go out (`delivered.reason`, and a 409's `reason`). */
 export type KeyEmailFailure =
   | "no_mail_binding"
+  | "address_unusable"
   | "suppressed"
+  | "daily_cap"
   | "provider_refused";
 
 export interface PatchLicenseBody {

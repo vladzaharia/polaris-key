@@ -17,6 +17,7 @@ import { getLicense } from "../src/core/licensing/store.js";
 import {
   suppressEmail,
   unsuppressEmail,
+  setProductDailyEmailCap,
 } from "../src/core/notify/emailDelivery.js";
 import { listAudit } from "../src/core/audit.js";
 import { licenseKeyEmail } from "../src/core/notify/templates.js";
@@ -125,7 +126,7 @@ describe("create with deviceLimit and delivery, and send-key (LX-27)", () => {
     expect(m.subject).toBe("Your Mossgarden license");
     expect(m.subject).not.toContain(body.key);
     expect(m.text).toContain(body.key);
-    expect(m.html).toContain(body.key);
+    expect(m.html.replaceAll("<wbr>", "")).toContain(body.key);
     expect(m.text).toContain("Hi Grace,");
     expect(m.text).toMatch(
       /Open in Polaris Key: https?:\/\/[^\s]+\/signin\?product=djdl/,
@@ -255,6 +256,34 @@ describe("create with deviceLimit and delivery, and send-key (LX-27)", () => {
     expect(await none.json()).toMatchObject({ reason: "no_mail_binding" });
     env.EMAIL = mail;
     expect(await count()).toBe(1);
+  });
+
+  it("refuses before minting an unusable address, a spent daily cap and an expired licence (409)", async () => {
+    const relay = (await (
+      await create({ email: "x@privaterelay.appleid.com" })
+    ).json()) as Created;
+    const r = await admin("POST", `/${relay.licenseId}/send-key`, {});
+    expect(r.status).toBe(409);
+    expect(await r.json()).toMatchObject({ reason: "address_unusable" });
+
+    await setProductDailyEmailCap(db, "djdl", 1, clock);
+    const ok = (await (
+      await create({ email: "holder@example.com", delivery: { email: true } })
+    ).json()) as Created;
+    expect(ok.delivered).toEqual({ email: "sent" });
+    const capped = await admin("POST", `/${ok.licenseId}/send-key`, {});
+    expect(capped.status).toBe(409);
+    expect(await capped.json()).toMatchObject({ reason: "daily_cap" });
+    await setProductDailyEmailCap(db, "djdl", null, clock);
+
+    await db.run(
+      "UPDATE licenses SET expires_at = ? WHERE id = ?",
+      clock - 10,
+      ok.licenseId,
+    );
+    const old = await admin("POST", `/${ok.licenseId}/send-key`, {});
+    expect(old.status).toBe(409);
+    expect(await old.json()).toMatchObject({ reason: "license_expired" });
   });
 
   it("a failed send says why, and a disabled licence is refused (409)", async () => {

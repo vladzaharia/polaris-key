@@ -26,9 +26,14 @@ import {
 import { adminJson, err, readBody } from "../../../core/console/respond.js";
 import { licenseHolder } from "../../../core/licensing/licenseHolders.js";
 import {
+  applePrivateRelayRegistered,
   deliverEmail,
   emailSuppressed,
+  isApplePrivateRelay,
+  productEmailCapOk,
 } from "../../../core/notify/emailDelivery.js";
+import { passthroughSender } from "../../../core/notify/emailSender.js";
+import { strictEmail } from "../../../core/strictEmail.js";
 import {
   appLink,
   licenseKeyEmail,
@@ -45,9 +50,22 @@ import type { LicenseAdminContext } from "./index.js";
 export type EmailDelivered = "sent" | "queued" | "failed";
 /** Why a send did not go out: what the console words, and whether a retry could help. */
 export type EmailFailure =
+  /** No binding or no usable sender: deployment-wide. */
   | "no_mail_binding"
+  /** The address is malformed, or an Apple relay the sender is not registered with. */
+  | "address_unusable"
   | "suppressed"
+  /** The product's daily email cap is spent. */
+  | "daily_cap"
+  /** The provider refused or was down: a retry may work. */
   | "provider_refused";
+/** Reasons a retry cannot fix (the console hides Try again). */
+export const PERMANENT_EMAIL_FAILURES: readonly EmailFailure[] = [
+  "no_mail_binding",
+  "address_unusable",
+  "suppressed",
+  "daily_cap",
+];
 export interface KeyEmailResult {
   email: EmailDelivered;
   reason?: EmailFailure;
@@ -83,20 +101,29 @@ async function productIconUrl(
 }
 
 /**
- * Refuse BEFORE minting what no retry can fix: no mail binding, or a recipient known to be
- * suppressed. Answers the reason, or null when a send may be tried.
+ * Refuse BEFORE minting what no retry can fix: no mail binding or sender, an unusable address,
+ * a suppressed recipient, the product's spent daily cap. Answers the reason, or null when a send
+ * may be tried.
  */
 export async function keyEmailBlocked(
   ctx: LicenseAdminContext,
   to: string,
 ): Promise<EmailFailure | null> {
-  if (!ctx.env.EMAIL) return "no_mail_binding";
+  const { env, db, product, now } = ctx;
+  if (!env.EMAIL || !passthroughSender(env, product.name, product.slug))
+    return "no_mail_binding";
+  if (
+    strictEmail(to) === null ||
+    (isApplePrivateRelay(to) && !applePrivateRelayRegistered(env))
+  )
+    return "address_unusable";
   try {
-    if (await emailSuppressed(ctx.env, ctx.db, to, ctx.now))
-      return "suppressed";
+    if (await emailSuppressed(env, db, to, now)) return "suppressed";
   } catch {
     // An unreadable list fails closed inside deliverEmail; do not block on it here.
   }
+  if (!(await productEmailCapOk(env, db, product.slug, now, true)))
+    return "daily_cap";
   return null;
 }
 
@@ -110,8 +137,9 @@ export async function emailLicenseKey(
   context: KeyEmailContext = "created",
 ): Promise<KeyEmailResult> {
   const to = license.email?.trim();
-  if (!to) return { email: "failed", reason: "provider_refused" };
-  if (!ctx.env.EMAIL) return { email: "failed", reason: "no_mail_binding" };
+  if (!to) return { email: "failed", reason: "address_unusable" };
+  const blocked = await keyEmailBlocked(ctx, to);
+  if (blocked) return { email: "failed", reason: blocked };
   const { env, db, product, req, now } = ctx;
   try {
     const origin = portalOriginOf(env, req) ?? new URL(req.url).origin;
@@ -213,15 +241,19 @@ export async function handleSendKey(
       "a floating license has no email to send a key to; assign it first",
     );
   // A key emailed to a disabled or expired licence would say "activate" and not work.
-  if (
-    license.status !== "active" ||
-    (license.expires_at !== null && license.expires_at <= now)
-  )
+  if (license.status !== "active")
     return err(
       409,
       ErrorCode.BadRequest,
       "enable the license before sending a key",
       { reason: "license_not_active" },
+    );
+  if (license.expires_at !== null && license.expires_at <= now)
+    return err(
+      409,
+      ErrorCode.BadRequest,
+      "extend the license before sending a key",
+      { reason: "license_expired", expiresAt: license.expires_at },
     );
   const retryAfter = await sendKeyRetryAfter(ctx, license.id);
   if (retryAfter > 0) {

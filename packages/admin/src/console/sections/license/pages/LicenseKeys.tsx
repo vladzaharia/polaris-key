@@ -316,9 +316,9 @@ export interface UnsentKey {
   reason?: KeyEmailFailure;
 }
 
-/** Whether another try could help: a refused address or missing mail setup cannot be fixed here. */
+/** Whether another try could help: only a provider hiccup can clear on its own. */
 export const canRetryKeyEmail = (reason?: KeyEmailFailure): boolean =>
-  reason !== "no_mail_binding" && reason !== "suppressed";
+  reason === undefined || reason === "provider_refused";
 
 /** One line for why the email did not go out, in the operator's terms. */
 export function keyEmailFailureCopy(
@@ -326,9 +326,13 @@ export function keyEmailFailureCopy(
   email: string,
 ): string {
   if (reason === "no_mail_binding")
-    return "Email isn't set up for this product. Copy the key and send it yourself.";
+    return "Email isn't set up on this Polaris Key server. Copy the key and send it yourself.";
+  if (reason === "address_unusable")
+    return `${email} isn't an address we can email. Copy the key and send it yourself.`;
   if (reason === "suppressed")
     return `${email} can't receive email from us. Copy the key and send it yourself.`;
+  if (reason === "daily_cap")
+    return "This product has reached today's email limit. Copy the key and send it yourself.";
   return "The email provider didn't accept it. Copy the key and send it yourself, or try again.";
 }
 
@@ -337,25 +341,61 @@ const minutesText = (seconds: number): string => {
   return `${m} min`;
 };
 
+/** A refused send-key (no key minted), worded for the callout and the Assign toast. */
+export interface SendKeyRefusal {
+  title: string;
+  description: string;
+  tone: "danger" | "warning";
+  /** True when the Worker minted no key (a 409 or 429), so "No key was made" is known. */
+  noKey: boolean;
+  /** A 409 that no retry changes: Send key stays off and Mint key is offered. */
+  permanent: boolean;
+  details?: Record<string, unknown>;
+}
+
+const PERMANENT_REASONS = [
+  "no_mail_binding",
+  "address_unusable",
+  "suppressed",
+  "daily_cap",
+];
+
 /**
- * What a refused send-key (no key minted) says: the 409 reasons, the 429 with its wait, else
- * errorCopy's own title and description.
+ * What a refused send-key says: the 409 reasons, the 429 with its wait, else errorCopy's own
+ * title and description. Only a 409 or 429 knows no key was made.
  */
 export function sendKeyRefusal(
   error: unknown,
   email: string,
   waitSeconds: number,
-): { title: string; description: string; details?: Record<string, unknown> } {
+): SendKeyRefusal {
   if (error instanceof ApiError && error.status === 409) {
+    const base = {
+      tone: "danger",
+      noKey: true,
+      title: "No key was made",
+    } as const;
     if (error.reason === "license_not_active")
       return {
-        title: "No key was made",
+        ...base,
+        permanent: false,
         description: "Enable the license first, then send a key.",
       };
-    if (error.reason === "no_mail_binding" || error.reason === "suppressed")
+    if (error.reason === "license_expired")
       return {
-        title: "No key was made",
-        description: keyEmailFailureCopy(error.reason, email).replace(
+        ...base,
+        permanent: false,
+        description:
+          "This license has expired. Extend it first, then send a key.",
+      };
+    if (error.reason && PERMANENT_REASONS.includes(error.reason))
+      return {
+        ...base,
+        permanent: true,
+        description: keyEmailFailureCopy(
+          error.reason as KeyEmailFailure,
+          email,
+        ).replace(
           "Copy the key and send it yourself.",
           "Mint a key and send it yourself.",
         ),
@@ -363,11 +403,17 @@ export function sendKeyRefusal(
   }
   if (error instanceof ApiError && error.status === 429)
     return {
-      title: "No key was made",
-      description: `A key was just emailed. You can send another in ${minutesText(waitSeconds)}.`,
+      tone: "warning",
+      noKey: true,
+      permanent: false,
+      title: "Sent a moment ago",
+      description: `You can send another in ${minutesText(waitSeconds)}.`,
     };
   const copy = errorCopy(error, { thing: "License" });
   return {
+    tone: "danger",
+    noKey: false,
+    permanent: false,
     title: copy.title,
     description: copy.description,
     ...(copy.action === "copy-details" ? { details: copy.details } : {}),
@@ -391,6 +437,7 @@ export function SendKeyDialog({
   onOpenChange,
   initial = null,
   context,
+  onMint,
 }: {
   slug: string;
   licenseId: string;
@@ -399,6 +446,8 @@ export function SendKeyDialog({
   onOpenChange: (open: boolean) => void;
   initial?: UnsentKey | null;
   context?: "assigned";
+  /** Opens the Mint key dialog (the refusal's way out when mail cannot work). */
+  onMint?: () => void;
 }): React.ReactElement {
   const [revokeOthers, setRevokeOthers] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
@@ -469,15 +518,28 @@ export function SendKeyDialog({
     ? sendKeyRefusal(error, email, waitSeconds || 600)
     : null;
   const errorCallout = refusal ? (
-    <Callout tone="danger" title={refusal.title} live>
-      <span>{refusal.description}</span>
-      {refusal.details ? (
-        <CopyButton
-          value={JSON.stringify(refusal.details, null, 2)}
-          label="Copy details"
-          showLabel
-        />
-      ) : null}
+    <Callout
+      tone={refusal.tone}
+      title={refusal.title}
+      live
+      action={
+        refusal.permanent && onMint ? (
+          <Button variant="outline" size="sm" onClick={onMint}>
+            Mint key…
+          </Button>
+        ) : undefined
+      }
+    >
+      <div className="flex flex-col items-start gap-2">
+        <span>{refusal.description}</span>
+        {refusal.details ? (
+          <CopyButton
+            value={JSON.stringify(refusal.details, null, 2)}
+            label="Copy details"
+            showLabel
+          />
+        ) : null}
+      </div>
     </Callout>
   ) : null;
 
@@ -517,11 +579,7 @@ export function SendKeyDialog({
           onDone={() => onOpenChange(false)}
           details={
             <div className="space-y-3">
-              <Callout
-                tone="warning"
-                title={`The email to ${email} didn't go out`}
-                live
-              >
+              <Callout tone="warning" live>
                 {keyEmailFailureCopy(unsent.reason, email)}
               </Callout>
               {errorCallout}
@@ -581,9 +639,11 @@ export function SendKeyDialog({
               type="submit"
               loading={busy}
               disabledReason={
-                waitSeconds > 0
-                  ? `Try again in ${minutesText(waitSeconds)}`
-                  : undefined
+                refusal?.permanent
+                  ? refusal.description
+                  : waitSeconds > 0
+                    ? `Try again in ${minutesText(waitSeconds)}`
+                    : undefined
               }
             >
               Send key
