@@ -107,11 +107,11 @@ Built as scoped; the code differs from the brief in these places (the code is th
   the CLI's `sdkSnippet`/`trustSnippet` and six `sdkConfig.ts` renderers are gone (the renderers moved
   to `@polaris-key/manifest/integration`; `pkey trust` now prints every SDK's config module).
 - Signature: `renderUsage(feature, sdk, lane, framework = null, ctx = {})`, `lane` = `kit | library |
-  server`, per the docs plan amendment 3 and the framework drop-ins plan §12.2. A combination with no
+server`, per the docs plan amendment 3 and the framework drop-ins plan §12.2. A combination with no
   code today is `null`, never a guess.
 - Server lane: Node's framework-free `verifyLicenseDocument` only. Express, Hono, FastAPI and the other
   framework goldens wait for the server adapter packages (SP-53 onward); `usageFrameworks("node",
-  "server")` is empty until they ship.
+"server")` is empty until they ship.
 - Swift, Kotlin and Godot render licensing (kit and library) only. Their goldens are written but not
   compiled here: SP-33b owns their lanes and the rest of their features.
 - Cloud Sync renders as `status: "planned"` (its routes have not shipped); packs, commerce and the
