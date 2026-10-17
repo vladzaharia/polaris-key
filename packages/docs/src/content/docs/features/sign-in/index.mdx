@@ -7,7 +7,9 @@ sidebar:
   order: 1
 ---
 
+import CardGrid from "../../../../components/docs/CardGrid.astro";
 import Requires from "../../../../components/docs/Requires.astro";
+import { LinkCard } from "@astrojs/starlight/components";
 
 Sign-in proves who a person is to one product and turns that into a license, a browser session or a device token the rest of Polaris Key already understands. It also runs the customer portal, where people manage their licenses and devices across your products.
 
@@ -15,24 +17,72 @@ Sign-in proves who a person is to one product and turns that into a license, a b
 
 ## Get started
 
-| Page                                                           | What you get                                    |
-| -------------------------------------------------------------- | ----------------------------------------------- |
-| [Add sign-in to your app](/docs/features/sign-in/add-sign-in/) | A sign-in path for your SDK and for your server |
+<CardGrid>
+  <LinkCard
+    title="Add sign-in to your app"
+    href="/docs/features/sign-in/add-sign-in/"
+    description="A sign-in path for your SDK and for your server."
+  />
+</CardGrid>
 
 ## Concepts
 
-| Page                                                       | What you get                                         |
-| ---------------------------------------------------------- | ---------------------------------------------------- |
-| [Product sign-in provider](/docs/features/sign-in/oidc/)   | Platform or custom provider, groups to tiers, claims |
-| [Device flow](/docs/features/sign-in/device-flow/)         | Sign-in for a client with no browser redirect        |
-| [Browser sessions](/docs/features/sign-in/sessions/)       | The product cookie and the session document          |
-| [Customer portal](/docs/features/sign-in/customer-portal/) | The account surface customers use                    |
+<CardGrid>
+  <LinkCard
+    title="Product sign-in provider"
+    href="/docs/features/sign-in/oidc/"
+    description="Platform or custom provider, groups to tiers, claims."
+  />
+  <LinkCard
+    title="Device flow"
+    href="/docs/features/sign-in/device-flow/"
+    description="Sign-in for a client with no browser redirect."
+  />
+  <LinkCard
+    title="Browser sessions"
+    href="/docs/features/sign-in/sessions/"
+    description="The product cookie and the session document."
+  />
+  <LinkCard
+    title="Customer portal"
+    href="/docs/features/sign-in/customer-portal/"
+    description="The account surface customers use."
+  />
+</CardGrid>
 
-## Reference and help
+## Prebuilt UI
 
-| Page                                                            | What you get                     |
-| --------------------------------------------------------------- | -------------------------------- |
-| [Portal API](/docs/reference/portal-api/)                       | Every portal route and its gates |
-| [Troubleshoot sign-in](/docs/features/sign-in/troubleshooting/) | Causes and fixes by error code   |
+<CardGrid>
+  <LinkCard
+    title="Sign in"
+    href="/docs/build/ui/components/sign-in/"
+    description="The sign-in form."
+  />
+  <LinkCard
+    title="Sign-in handoff"
+    href="/docs/build/ui/components/sign-in-handoff/"
+    description="The code and QR screen for a client with no browser."
+  />
+</CardGrid>
+
+## Reference
+
+<CardGrid>
+  <LinkCard
+    title="Portal API"
+    href="/docs/reference/portal-api/"
+    description="Every portal route and its gates."
+  />
+</CardGrid>
+
+## Troubleshooting
+
+<CardGrid>
+  <LinkCard
+    title="Troubleshoot sign-in"
+    href="/docs/features/sign-in/troubleshooting/"
+    description="Causes and fixes by error code."
+  />
+</CardGrid>
 
 Related: [Licensing](/docs/features/licensing/) and [Managed config](/docs/features/managed-config/).

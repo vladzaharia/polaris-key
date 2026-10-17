@@ -39,10 +39,10 @@ The client shows `userCode` large, renders `verificationUriComplete` as a QR cod
 
 A `POST` with `csrf` confirms, and only when the request isn't cross-site, the posted CSRF token matches the one the render minted, and that token is deleted at once. On success the page stamps `confirmedAt` on the flow, stops resolving the user code and answers `303` to the provider's authorize URL with `Referrer-Policy: no-referrer` and `Cache-Control: no-store`. A cross-site request and an empty, wrong or reused token get the same `403`.
 
-An unknown, expired, malformed or already-confirmed code re-renders the form with one generic line and status `404`, so a guesser learns nothing. `GET` and `POST /<product>/identity/auth/device/verify` is the same page addressed by device code. Start no longer hands it out, because its URL carries the device code.
+An unknown, expired, malformed or already-confirmed code re-renders the form with one generic line and status `404`, so a guesser learns nothing. `GET` and `POST /<product>/identity/auth/device/verify` is the same page addressed by device code.
 
 :::caution[A confirmation doesn't prove who started the flow]
-The origin check and CSRF token stop a cross-site page from confirming someone else's flow. They don't stop a flow's own starter from reading the token and posting it back. The provider callback is bound to the browser that confirmed it, through a `__Host-` cookie, so a starter who sends the authorize URL to a victim gets no token. See the threat model's "Remote phishing".
+The origin check and CSRF token stop a cross-site page from confirming someone else's flow. They don't stop a flow's own starter from reading the token and posting it back. The provider callback is bound to the browser that confirmed it, through a `__Host-` cookie, so a starter who sends the authorize URL to a victim gets no token.
 :::
 
 The person then signs in as in the browser flow, landing on `/identity/auth/callback`. The callback sets no cookie and activates nothing: it checks that the identity would be entitled, stores the verified identity on the flow and stops. The poll activates it. By default the device moves onto the signing-in identity's own license, or a new one from the group mapping or `oidcDefault` tier. Nothing claims, migrates or disables the license the device is already on, because the user code is public and whoever confirms need not own the device.
