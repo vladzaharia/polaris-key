@@ -497,7 +497,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/cq-worker-services.md"
       ],
       "brief": "wp/P0-18-table-ownership-owner-stores-one-audit.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "P0-19",
@@ -956,7 +956,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/cq-frontend.md"
       ],
       "brief": "wp/P0-35-vocabularies-as-data-platforms.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "P0-36",
@@ -4921,7 +4921,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/cq-worker-services.md"
       ],
       "brief": "wp/I-30-connections-one-oidc-relying-party.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "I-31",
@@ -12120,7 +12120,7 @@
         "docs/research/2026-10-08-framework-drop-ins/README.md §12 (SP-58)"
       ],
       "brief": "wp/SP-58-client-backend-node-react-python.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "SP-59",
@@ -15033,7 +15033,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/commerce.md"
       ],
       "brief": "wp/CM-27-spike-store-purchase-parity-microsoft.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "CM-28",
@@ -15126,7 +15126,7 @@
         "docs/research/2026-10-08-docs/style-guide.md"
       ],
       "brief": "wp/DOC-01-docs-mockups.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "DOC-02a",
@@ -15267,7 +15267,7 @@
         "docs/research/2026-10-08-docs/style-guide.md"
       ],
       "brief": "wp/DOC-04a-help-get-started.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "DOC-04b",
@@ -15288,7 +15288,7 @@
         "docs/research/2026-10-08-docs/style-guide.md"
       ],
       "brief": "wp/DOC-04b-help-sign-in-and-account.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "DOC-05a",
@@ -15309,7 +15309,7 @@
         "docs/research/2026-10-08-docs/style-guide.md"
       ],
       "brief": "wp/DOC-05a-help-messages.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "DOC-05b",
@@ -15330,7 +15330,7 @@
         "docs/research/2026-10-08-docs/style-guide.md"
       ],
       "brief": "wp/DOC-05b-help-library-and-devices.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "DOC-05c",
@@ -15351,7 +15351,7 @@
         "docs/research/2026-10-08-docs/style-guide.md"
       ],
       "brief": "wp/DOC-05c-help-downloads-updates-purchases.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "DOC-06a",
@@ -15449,7 +15449,7 @@
         "docs/research/2026-10-08-docs/style-guide.md"
       ],
       "brief": "wp/DOC-07a-start-path.md",
-      "status": "in-progress"
+      "status": "done"
     },
     {
       "id": "DOC-07b",
@@ -15470,7 +15470,7 @@
         "docs/research/2026-10-08-docs/style-guide.md"
       ],
       "brief": "wp/DOC-07b-build-basics.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "DOC-08a",
@@ -15491,7 +15491,7 @@
         "docs/research/2026-10-08-docs/style-guide.md"
       ],
       "brief": "wp/DOC-08a-sdk-quickstarts.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "DOC-08b",
@@ -15512,7 +15512,7 @@
         "docs/research/2026-10-08-docs/style-guide.md"
       ],
       "brief": "wp/DOC-08b-ui-kits-and-web-apps.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "DOC-09a",
@@ -15533,7 +15533,7 @@
         "docs/research/2026-10-08-docs/style-guide.md"
       ],
       "brief": "wp/DOC-09a-licensing.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "DOC-09b",
@@ -15554,7 +15554,7 @@
         "docs/research/2026-10-08-docs/style-guide.md"
       ],
       "brief": "wp/DOC-09b-sign-in.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "DOC-09c",
@@ -15575,7 +15575,7 @@
         "docs/research/2026-10-08-docs/style-guide.md"
       ],
       "brief": "wp/DOC-09c-managed-config-and-cloud-sync.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "DOC-10a",
@@ -15596,7 +15596,7 @@
         "docs/research/2026-10-08-docs/style-guide.md"
       ],
       "brief": "wp/DOC-10a-releases-and-updates.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "DOC-10b",
@@ -15617,7 +15617,7 @@
         "docs/research/2026-10-08-docs/style-guide.md"
       ],
       "brief": "wp/DOC-10b-channels.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "DOC-10c",
@@ -15638,7 +15638,7 @@
         "docs/research/2026-10-08-docs/style-guide.md"
       ],
       "brief": "wp/DOC-10c-packages-and-packs.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "DOC-11a",
@@ -15659,7 +15659,7 @@
         "docs/research/2026-10-08-docs/style-guide.md"
       ],
       "brief": "wp/DOC-11a-operate-console.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "DOC-11b",
@@ -15680,7 +15680,7 @@
         "docs/research/2026-10-08-docs/style-guide.md"
       ],
       "brief": "wp/DOC-11b-operate-platform.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "DOC-12a",
@@ -15722,7 +15722,7 @@
         "docs/research/2026-10-08-docs/style-guide.md"
       ],
       "brief": "wp/DOC-12b-reference-and-contribute.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "DOC-13",
@@ -15765,7 +15765,7 @@
         "UX coverage 2026-10-09: B15.1-B15.6, B2.9, B11.1, B11.5 and doc:BRAND#v2-action-neutral-and-service-icons had no owner"
       ],
       "brief": "wp/DOC-14-design-doc-amendments.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "LX-26",
@@ -16491,7 +16491,7 @@
         "docs/research/2026-10-08-sdk-usability/findings.json"
       ],
       "brief": "wp/UK-48-python-terminal-kit-as-a-mountable-drop-in.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "UK-49",
@@ -16891,7 +16891,7 @@
         "section change portal-01"
       ],
       "brief": "wp/PX-27-library-discover-presence.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "PX-28",

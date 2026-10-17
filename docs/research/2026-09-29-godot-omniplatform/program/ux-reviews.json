@@ -64,6 +64,121 @@
       "verdict": "pass",
       "date": "2026-10-17",
       "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/UK-46/ (built review 2026-10-16, pass with fixes; 16/18 fixed in fix/UK-46-review ff27f9790; 3 corpus-pinned items to the UK-51 corpus follow-up)"
+    },
+    "UK-48": {
+      "verdict": "pass",
+      "date": "2026-10-17",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/UK-48/ (built review; one fix round merged 2026-10-17)"
+    },
+    "I-30": {
+      "verdict": "pass",
+      "date": "2026-10-17",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/I-30/ (built review; one fix round merged 2026-10-17)"
+    },
+    "PX-27": {
+      "verdict": "pass",
+      "date": "2026-10-17",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/PX-27/ (built review; one fix round merged 2026-10-17)"
+    },
+    "DOC-04a": {
+      "verdict": "pass",
+      "date": "2026-10-17",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/docs-help/ (docs built review 2026-10-16; fix round fix/docs-help-review)"
+    },
+    "DOC-04b": {
+      "verdict": "pass",
+      "date": "2026-10-17",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/docs-help/ (docs built review 2026-10-16; fix round fix/docs-help-review)"
+    },
+    "DOC-05a": {
+      "verdict": "pass",
+      "date": "2026-10-17",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/docs-help/ (docs built review 2026-10-16; fix round fix/docs-help-review)"
+    },
+    "DOC-05b": {
+      "verdict": "pass",
+      "date": "2026-10-17",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/docs-help/ (docs built review 2026-10-16; fix round fix/docs-help-review)"
+    },
+    "DOC-05c": {
+      "verdict": "pass",
+      "date": "2026-10-17",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/docs-help/ (docs built review 2026-10-16; fix round fix/docs-help-review)"
+    },
+    "DOC-07a": {
+      "verdict": "pass",
+      "date": "2026-10-17",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/docs-start-build/ (docs built review; fix round fix/docs-start-build-review)"
+    },
+    "DOC-07b": {
+      "verdict": "pass",
+      "date": "2026-10-17",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/docs-start-build/ (docs built review; fix round fix/docs-start-build-review)"
+    },
+    "DOC-08a": {
+      "verdict": "pass",
+      "date": "2026-10-17",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/docs-start-build/ (docs built review; fix round fix/docs-start-build-review)"
+    },
+    "DOC-08b": {
+      "verdict": "pass",
+      "date": "2026-10-17",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/docs-start-build/ (docs built review; fix round fix/docs-start-build-review)"
+    },
+    "DOC-09a": {
+      "verdict": "pass",
+      "date": "2026-10-17",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/docs-features/ (docs built review; fix round fix/docs-features-review)"
+    },
+    "DOC-09b": {
+      "verdict": "pass",
+      "date": "2026-10-17",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/docs-features/ (docs built review; fix round fix/docs-features-review)"
+    },
+    "DOC-09c": {
+      "verdict": "pass",
+      "date": "2026-10-17",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/docs-features/ (docs built review; fix round fix/docs-features-review)"
+    },
+    "DOC-10a": {
+      "verdict": "pass",
+      "date": "2026-10-17",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/docs-features/ (docs built review; fix round fix/docs-features-review)"
+    },
+    "DOC-10b": {
+      "verdict": "pass",
+      "date": "2026-10-17",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/docs-features/ (docs built review; fix round fix/docs-features-review)"
+    },
+    "DOC-10c": {
+      "verdict": "pass",
+      "date": "2026-10-17",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/docs-features/ (docs built review; fix round fix/docs-features-review)"
+    },
+    "DOC-11a": {
+      "verdict": "pass",
+      "date": "2026-10-17",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/docs-operate-ref/ (docs built review; fix round fix/docs-operate-ref-review)"
+    },
+    "DOC-11b": {
+      "verdict": "pass",
+      "date": "2026-10-17",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/docs-operate-ref/ (docs built review; fix round fix/docs-operate-ref-review)"
+    },
+    "DOC-12b": {
+      "verdict": "pass",
+      "date": "2026-10-17",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/docs-operate-ref/ (docs built review; fix round fix/docs-operate-ref-review)"
+    },
+    "DOC-01": {
+      "verdict": "pass",
+      "date": "2026-10-17",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/docs-operate-ref/ (docs built review; fix round fix/docs-operate-ref-review)"
+    },
+    "DOC-14": {
+      "verdict": "pass",
+      "date": "2026-10-17",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/docs-operate-ref/ (docs built review; fix round fix/docs-operate-ref-review)"
     }
   }
 }
