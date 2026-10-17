@@ -6,6 +6,13 @@ deprecated aliases).
 
 ## Unreleased
 
+- **Client backend (`core.backend`, SP-59).** `client.backend.install(OkHttpClient.Builder())` sends
+  `X-PKey-License` and `X-PKey-Device` to the app's own backend, only to `backendOrigins`. The
+  network half checks every hop's origin before it is sent (OkHttp keeps custom headers across a
+  redirect, so an application interceptor alone is not enough: `interceptor()` without
+  `networkInterceptor()` sends no licence and throws `not-configured`). Pre-sync, one forced retry at
+  least 10 s apart, typed `not_entitled` and `sign_in_required`; `headers()` is raw.
+
 - **Server drop-ins (`server.license`, `server.signin`, SP-57).** `im.plrs.key:polaris-key-server`
   (`:server`) decides a request to a product backend from the app's signed licence document,
   offline (WIRE-CONTRACT-V4 §14): `backendVerdict` (the six steps), `backendProblem` (the

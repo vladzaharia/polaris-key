@@ -6,6 +6,13 @@ deprecated aliases).
 
 ## Unreleased
 
+- **Client backend (`core.backend`, SP-59).** `client.backend.data(for:)` and `headers()` send
+  `X-PKey-License` and `X-PKey-Device` to the app's own backend, only to `backendOrigins` (exact origin, https
+  or loopback http), checked before the request and on every redirect hop before it is sent
+  (`backend-origin-not-allowed`). A document near its expiry is synced first, `license_stale` and
+  `license_invalid` force one sync (at least 10 s apart) and one retry, `not_entitled` and
+  `sign_in_required` throw a typed `PolarisError`.
+
 Hostile-input fixes.
 
 - **A poisoned `blocked` hint drops the hint, not the cache.** A cache record whose `blocked.reason` is outside `BlockReason` now loads without the hint; it used to discard the whole record. `BlockReason` is `CaseIterable`.
