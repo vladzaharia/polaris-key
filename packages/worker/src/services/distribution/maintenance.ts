@@ -3,7 +3,7 @@
  */
 
 import type { MaintenanceContribution } from "../../core/contributions.js";
-import { pruneEvents as pruneConnectorEvents } from "./connectors/state.js";
+import { pruneEvents as pruneConnectorEvents } from "../../core/stores/events.js";
 
 export const distributionMaintenance: MaintenanceContribution = {
   /**

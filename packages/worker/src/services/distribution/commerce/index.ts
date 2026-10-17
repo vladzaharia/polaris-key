@@ -45,7 +45,7 @@ import {
   eventSeen,
   recordEvent,
   type ConnectorEventOutcome,
-} from "../connectors/state.js";
+} from "../../../core/stores/events.js";
 import {
   APPLE_ACTED_TYPES,
   AppleRejected,

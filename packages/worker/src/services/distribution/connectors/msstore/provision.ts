@@ -42,8 +42,11 @@ import {
 import { StoreVendorError } from "../../../../core/storefront/errors.js";
 import type { StoreResource } from "../../../../core/storefront/audit.js";
 import { MICROSOFT_STORE_ADAPTER } from "../../../../core/storefront/stores/microsoftStore.js";
-import { STORE_ID } from "./setup.js";
-import { FLIGHT_ID, SUBMISSION_ID } from "./client.js";
+import { STORE_ID } from "../../../../core/stores/microsoftStore/client.js";
+import {
+  FLIGHT_ID,
+  SUBMISSION_ID,
+} from "../../../../core/stores/microsoftStore/client.js";
 import {
   applicationResource,
   isSasUrl,

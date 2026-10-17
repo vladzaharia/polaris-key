@@ -35,7 +35,7 @@ import {
   AscError,
   ascPath,
   ascPathV,
-} from "../src/core/asc/client.js";
+} from "../src/core/stores/apple/client.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 

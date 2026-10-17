@@ -18,7 +18,10 @@
  */
 
 import type { Db } from "../../../../db/types.js";
-import { readConnectorSettings, writeConnectorSettings } from "../settings.js";
+import {
+  readConnectorSettings,
+  writeConnectorSettings,
+} from "../../../../core/stores/settings.js";
 import { isPriority } from "./map.js";
 import { PLAY_CONNECTOR } from "./setup.js";
 

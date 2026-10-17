@@ -55,7 +55,7 @@ import { listOutlets } from "../../outlets.js";
 import {
   platformFallback,
   platformFallbackMessage,
-} from "../platformFallback.js";
+} from "../../../../core/stores/platformFallback.js";
 
 /** The platform credential the fallback uses (A-16). */
 export const PLAY_PLATFORM_CREDENTIAL = "google-play.service-account" as const;

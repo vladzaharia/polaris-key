@@ -18,7 +18,7 @@ import { renderDeepLink } from "../src/core/storefront/deeplinks.js";
 import {
   ANDROID_PUBLISHER_ORIGIN,
   GoogleApiClient,
-} from "../src/services/distribution/connectors/play/client.js";
+} from "../src/core/stores/play/client.js";
 import {
   acquirePlayEditLease,
   readPlayEditLease,

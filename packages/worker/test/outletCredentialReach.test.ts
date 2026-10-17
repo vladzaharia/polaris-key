@@ -82,6 +82,8 @@ const IMPORT_ALLOW_FILES = [
   // A-16 (reviewed): validators and pin specs only; neither file writes or opens a product key.
   "src/core/platformCredentials.ts",
   "src/console/handlers/platformStoreConnections.ts",
+  // P0-27a: moved from Distribution's connectors/msstore, already allowed there by prefix.
+  "src/core/stores/microsoftStore/credentials.ts",
 ];
 const TABLE_ALLOW_FILES = [
   "src/db/owners.ts", // the table ownership map (P0-18) names every table
@@ -103,7 +105,14 @@ const TOKENS_IMPORT_ALLOW_PREFIXES = ["src/services/distribution/"];
  * attest route is device-authenticated and rate-limited per device BEFORE the token is asked for,
  * so an unauthenticated caller cannot make it open (and audit) the credential.
  */
-const TOKENS_IMPORT_ALLOW_FILES = ["src/core/trust/attestation.ts"];
+const TOKENS_IMPORT_ALLOW_FILES = [
+  "src/core/trust/attestation.ts",
+  // P0-27a: the store clients and the Entra exchange moved from Distribution's connectors, which
+  // the prefix allowed; each takes only the `FetchImpl` type or mints a token after the pin check.
+  "src/core/stores/microsoftStore/client.ts",
+  "src/core/stores/microsoftStore/credentials.ts",
+  "src/core/stores/play/client.ts",
+];
 const KIND_ALLOW_FILES = [
   "src/platform/keyvault.ts",
   "src/core/outletCredentials.ts",
@@ -118,6 +127,10 @@ const PLATFORM_IMPORT_ALLOW_FILES = [
   "src/core/outletTokens.ts",
   "src/console/handlers/platformStoreConnections.ts",
   "src/console/handlers/outletCredentials.ts",
+  // P0-27a: moved from Distribution's connectors, already allowed there by prefix.
+  "src/core/stores/microsoftStore/credentials.ts",
+  "src/core/stores/platformApps.ts",
+  "src/core/stores/platformFallback.ts",
 ];
 const PLATFORM_TABLE_ALLOW_FILES = [
   "src/db/owners.ts", // the table ownership map (P0-18) names every table
@@ -146,9 +159,9 @@ const PLATFORM_TEAM_PURPOSE_ALLOW_FILES = [
 const PLATFORM_OPENER_ALLOW_FILES = [
   "src/core/platformCredentials.ts",
   "src/core/outletTokens.ts",
-  // Reviewed (A-16): the Entra exchange lives beside P5-04's own token code; it checks the
+  // Reviewed (A-16): the Entra exchange lives in core/stores (P0-27a); it checks the
   // product's pin before its cache, and the open checks it again.
-  "src/services/distribution/connectors/msstore/token.ts",
+  "src/core/stores/microsoftStore/credentials.ts",
   // Reviewed (A-16): Steam uses the raw key per call (no token); the open checks the pin.
   "src/services/distribution/commerce/steam.ts",
 ];
@@ -162,6 +175,8 @@ const REVEAL_ALLOW_PREFIXES = ["src/services/distribution/"];
 const REVEAL_ALLOW_FILES = [
   "src/core/outletCredentials.ts",
   "src/core/outletTokens.ts",
+  // P0-27a: the Entra exchange, moved from Distribution's connectors/msstore.
+  "src/core/stores/microsoftStore/credentials.ts",
 ];
 
 interface Source {

@@ -27,7 +27,7 @@ import {
   PlayError,
   PlayPublisher,
   type FetchImpl,
-} from "./client.js";
+} from "../../../../core/stores/play/client.js";
 import type { PlaySetup } from "./setup.js";
 
 /** Everything one connector run needs: one product, one setup, the clients. */

@@ -59,7 +59,10 @@
 
 import type { RolloutState } from "../../../../core/hooks.js";
 import type { AvailabilityState, SubmissionState } from "../../availability.js";
-import { FLIGHT_ID, SUBMISSION_ID } from "./client.js";
+import {
+  FLIGHT_ID,
+  SUBMISSION_ID,
+} from "../../../../core/stores/microsoftStore/client.js";
 
 export const STORE_STATUSES = [
   "None",

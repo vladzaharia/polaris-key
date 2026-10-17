@@ -9,7 +9,7 @@
  * declarations") are the vendor-side control, and "Manage store presence" also covers PRICES. So
  * THIS TABLE is what keeps a console session (or a compromised Worker path) to the approved surface:
  *
- *   - `GoogleApiClient` (`connectors/play/client.ts`) calls `checkPlayRequest` **before its token
+ *   - `GoogleApiClient` (`core/stores/play/client.ts`) calls `checkPlayRequest` **before its token
  *     thunk runs** for every Android Publisher request a gated client sends. A refusal throws
  *     `PlayWriteDenied`: no token is minted and nothing is sent.
  *   - A write passes only when a `PLAY_WRITE_ALLOW` rule matches its method and its path template

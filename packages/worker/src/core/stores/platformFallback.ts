@@ -13,15 +13,15 @@
  * inert on its own terms and never falls through to the team key.
  */
 
-import type { Db } from "../../../db/types.js";
-import type { Env } from "../../../platform/env.js";
+import type { Db } from "../../db/types.js";
+import type { Env } from "../../platform/env.js";
 import {
   platformCredentialHandle,
   platformPin,
   resolvePlatformCredential,
   type PlatformCredentialId,
   type PlatformCredentialSource,
-} from "../../../core/platformCredentials.js";
+} from "../platformCredentials.js";
 
 export type PlatformFallback =
   | { ok: true; handle: string; origin: PlatformCredentialSource }

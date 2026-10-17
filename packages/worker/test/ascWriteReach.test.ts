@@ -12,7 +12,7 @@
  *      be sent with a raw `fetch`.
  *   2. **The client.** `new AscClient(` appears only in those same two files, so no other code
  *      builds a client with a token source of its own.
- *   3. **The host.** No source file but `core/asc/client.ts` spells `api.appstoreconnect.apple.com`,
+ *   3. **The host.** No source file but `core/stores/apple/client.ts` spells `api.appstoreconnect.apple.com`,
  *      so no raw `fetch` to Apple's API exists outside the gated client.
  *
  * Adding a file to an allowlist is a custody decision: it needs a review that says why, and the
@@ -36,7 +36,7 @@ const CLIENT_BUILDERS = [
 ];
 const MINTER_ALLOW_FILES = ["src/core/outletTokens.ts", ...CLIENT_BUILDERS];
 const CLIENT_ALLOW_FILES = CLIENT_BUILDERS;
-const HOST_ALLOW_FILES = ["src/core/asc/client.ts"];
+const HOST_ALLOW_FILES = ["src/core/stores/apple/client.ts"];
 
 function sourceFiles(dir: string): string[] {
   const out: string[] = [];
@@ -106,7 +106,9 @@ describe("A-17a: the write gate cannot be bypassed", () => {
   });
 
   it("the gated client checks every request before it mints a token", () => {
-    const client = FILES.find((f) => f.file === "src/core/asc/client.ts")!.src;
+    const client = FILES.find(
+      (f) => f.file === "src/core/stores/apple/client.ts",
+    )!.src;
     const send = client.slice(client.indexOf("private async send("));
     const gate = send.indexOf("checkAscRequest(");
     const token = send.indexOf("this.bearer(");

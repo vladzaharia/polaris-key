@@ -52,8 +52,8 @@ import {
   listObjects,
   retireObject,
   upsertObject,
-  type ConnectorWriteContext,
 } from "../state.js";
+import { type ConnectorWriteContext } from "../../../../core/stores/events.js";
 import {
   AVAILABILITY_RANK,
   parseTrackList,

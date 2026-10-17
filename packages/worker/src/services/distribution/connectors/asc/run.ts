@@ -16,7 +16,7 @@ import {
   AscError,
   AscWriteDenied,
   type FetchImpl,
-} from "../../../../core/asc/client.js";
+} from "../../../../core/stores/apple/client.js";
 import { writeRate } from "../../../../core/storefront/budget.js";
 import type { AscRun } from "./apply.js";
 import { ASC_PLATFORM_CREDENTIAL, type AscSetup } from "./setup.js";

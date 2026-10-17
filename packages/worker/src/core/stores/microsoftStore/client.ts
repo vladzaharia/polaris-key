@@ -24,9 +24,11 @@
  *     `outlet_credentials.last_error` and the connector page.
  */
 
-import type { FetchImpl } from "../../../../core/outletTokens.js";
-import { isRedirect, readCappedText } from "../../../../core/readCapped.js";
-import { STORE_ID } from "./setup.js";
+import type { FetchImpl } from "../../outletTokens.js";
+import { isRedirect, readCappedText } from "../../readCapped.js";
+
+/** A Store ID (the manifest's rule, re-checked: it becomes a URL segment). */
+export const STORE_ID = /^[A-Za-z0-9]{12}$/;
 
 export type { FetchImpl };
 /** Re-exported: the shared redirect test lives in `core/readCapped.ts`. */

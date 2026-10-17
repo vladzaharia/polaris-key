@@ -49,7 +49,7 @@ import {
   storeUnavailable,
   type CheckFact,
   type CredentialCheck,
-} from "./connectors/credentialCheck.js";
+} from "../../core/stores/credentialCheck.js";
 
 export const ITCH_API_ORIGIN = "https://api.itch.io";
 export const SNAP_DASHBOARD_ORIGIN = "https://dashboard.snapcraft.io";

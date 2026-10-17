@@ -26,7 +26,7 @@
  * the write landed: an ambiguous outcome) or without it.
  */
 
-import type { AscResource } from "../src/core/asc/client.js";
+import type { AscResource } from "../src/core/stores/apple/client.js";
 import { AscFake } from "./ascFake.js";
 
 /** `<parentType>/<relationship>` → the child type and the child's relationship to the parent. */

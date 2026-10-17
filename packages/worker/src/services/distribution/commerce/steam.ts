@@ -47,7 +47,7 @@ import { resolvePlatformStoreSetting } from "../../../core/platformStoreSettings
 import type { SteamSettings } from "./settings.js";
 import type { VerifiedPurchase } from "./state.js";
 import { StoreUnavailable, storeJson } from "./http.js";
-import { platformFallback } from "../connectors/platformFallback.js";
+import { platformFallback } from "../../../core/stores/platformFallback.js";
 import {
   appCount,
   checked,
@@ -55,14 +55,14 @@ import {
   storeUnavailable,
   type CheckFact,
   type CredentialCheck,
-} from "../connectors/credentialCheck.js";
+} from "../../../core/stores/credentialCheck.js";
 import {
   cachedPlatformApps,
   PlatformStoreNotConfigured,
   PlatformStoreUnavailable,
   type PlatformAppsListing,
   type PlatformStoreApp,
-} from "../connectors/platformApps.js";
+} from "../../../core/stores/platformApps.js";
 
 /** The platform credential the fallback uses (A-16). */
 export const STEAM_PLATFORM_CREDENTIAL = "steam.publisher-key" as const;

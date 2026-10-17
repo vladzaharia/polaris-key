@@ -64,3 +64,15 @@ Then the full green gate in `AGENTS.md`.
 
 P0-27 builds the adapters over `core/stores/`; CM-29 moves Commerce onto it. The role agent sets `--set P0-27a in-review` when it hands off. After review, the lead adds the last commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P0-27a done`.
+
+## Corrections and result (2026-10-17)
+
+- The brief's `{client,credentials,events}` per store did not match the code. Moved, with every importer repointed (no re-exports):
+  - Apple: `core/asc/{client,upload}.ts` to `core/stores/apple/`. Steam: `core/steam/client.ts` to `core/stores/steam/client.ts`.
+  - Play: `connectors/play/client.ts` to `core/stores/play/client.ts`.
+  - Microsoft Store: `connectors/msstore/client.ts` and `token.ts` to `core/stores/microsoftStore/{client,credentials}.ts`; `STORE_ID` now lives in the client.
+  - Store-neutral: `connectors/{credentialCheck,platformFallback,platformApps,settings}.ts` to `core/stores/`; the events half of `connectors/state.ts` to `core/stores/events.ts` (with `ConnectorWriteContext`).
+- itch.io has no client, credentials or events module (only `core/storefront/stores/itch.ts`, rules); nothing to move.
+- `dist_connector_events` and `dist_connector_settings` are now owned by `core` in `TABLE_OWNERS`, since their SQL moved.
+- `outletCredentialReach` allow-lists name the moved files exactly (they were allowed by the `services/distribution/` prefix before).
+- Left for P0-27 and CM-29: Commerce still imports `connectors/asc/{controls,flow}` (the connector framework) and `../access.js`. `boundaries.test.ts` pins the first two as a shrinking seam list; `access.js` is Distribution's entitlement helper, not store infrastructure.

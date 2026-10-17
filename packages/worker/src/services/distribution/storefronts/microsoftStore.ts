@@ -20,7 +20,7 @@ import type { Db } from "../../../db/types.js";
 import type { Env } from "../../../platform/env.js";
 import { parsePlatformCredentialHandle } from "../../../core/platformCredentials.js";
 import type { StoreWriteResult } from "../../../core/storefront/ledger.js";
-import type { FetchImpl } from "../connectors/msstore/client.js";
+import type { FetchImpl } from "../../../core/stores/microsoftStore/client.js";
 import {
   appPrimaryName,
   commitSubmission,
@@ -37,7 +37,7 @@ import {
   msStoreToken,
   platformMsStoreSellerId,
   platformMsStoreToken,
-} from "../connectors/msstore/token.js";
+} from "../../../core/stores/microsoftStore/credentials.js";
 import { MsStoreWriteClient } from "../connectors/msstore/write.js";
 import { readListing } from "../listing/store.js";
 import { flowOp } from "./plan.js";

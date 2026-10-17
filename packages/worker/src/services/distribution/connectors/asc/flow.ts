@@ -17,7 +17,7 @@ import {
   single,
   type AscDocument,
   type AscResource,
-} from "../../../../core/asc/client.js";
+} from "../../../../core/stores/apple/client.js";
 import {
   isIdempotencyKey,
   performStoreWrite,

@@ -31,7 +31,7 @@ import { claimDeviceSeat } from "../src/core/devices/store.js";
 import { insertLicense } from "../src/core/licensing/store.js";
 import { setServices } from "../src/core/products/store.js";
 import { appendAudit } from "../src/core/audit.js";
-import { CONNECTOR_EVENT_RETENTION_SECONDS } from "../src/services/distribution/connectors/state.js";
+import { CONNECTOR_EVENT_RETENTION_SECONDS } from "../src/core/stores/events.js";
 import { portalAudit } from "../src/services/identity/portal/repo.js";
 import { createHash } from "node:crypto";
 import { asR2, R2Mock } from "./r2Mock.js";

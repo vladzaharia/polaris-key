@@ -27,14 +27,14 @@ import {
   STORE_API_ORIGIN,
   SUBMISSION_ID,
   type FetchImpl,
-} from "./client.js";
+} from "../../../../core/stores/microsoftStore/client.js";
 import { errorLine } from "./poll.js";
-import { STORE_ID } from "./setup.js";
+import { STORE_ID } from "../../../../core/stores/microsoftStore/client.js";
 import {
   MSSTORE_PLATFORM_CREDENTIAL,
   platformMsStoreToken,
   transientMsStoreToken,
-} from "./token.js";
+} from "../../../../core/stores/microsoftStore/credentials.js";
 import { TokenExchangeError } from "../../../../core/outletTokens.js";
 import type {
   OutletCredentialMeta,
@@ -47,14 +47,14 @@ import {
   storeUnavailable,
   type CheckFact,
   type CredentialCheck,
-} from "../credentialCheck.js";
+} from "../../../../core/stores/credentialCheck.js";
 import {
   cachedPlatformApps,
   PlatformStoreNotConfigured,
   PlatformStoreUnavailable,
   type PlatformAppsListing,
   type PlatformStoreApp,
-} from "../platformApps.js";
+} from "../../../../core/stores/platformApps.js";
 
 export interface PlatformMsStoreOptions {
   env: Env;

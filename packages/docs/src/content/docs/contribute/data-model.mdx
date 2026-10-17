@@ -19,6 +19,8 @@ this page or fails the freshness gate.
 | `product_keys` | 0003_keyvault.sql | `product`, `kid`, `alg`, `public_b64url`, `enc_private_json`, `status`, `created_at`, `rotated_at`, `revoked_at (0021)` |
 | `product_secrets` | 0003_keyvault.sql | `product`, `name`, `enc_value_json`, `created_at`, `modified_at`, `usage (0025)` |
 | `outlet_credentials` | 0034_outlet_credentials.sql | `product`, `credential_id`, `kind`, `outlet_id`, `enc_value_json`, `meta_json`, `status`, `created_at`, `created_by`, `rotated_at`, `expires_at`, `last_used_at`, `last_ok_at`, `last_error` |
+| `dist_connector_events` | 0041_distribution_connectors.sql | `product`, `connector`, `event_id`, `event_type`, `instance_type`, `instance_id`, `outcome`, `payload_json`, `received_at` |
+| `dist_connector_settings` | 0042_distribution_connector_settings.sql | `product`, `connector`, `settings_json`, `updated_at`, `updated_by` |
 | `devices` | 0001_init.sql | `product`, `device_id`, `customer_id`, `license_id`, `status`, `first_seen`, `last_seen`, `ua`, `label`, `platform`, `arch`, `app_version`, `sdk_name`, `sdk_version`, `overrides_json`, `reported_json`, `token_hash`, `seat_no (0014)`, `trust_level (0053)`, `attested_at (0053)`, `attestation_json (0053)`, `subject (0068)`, `bound_by (0068)` |
 | `license_refusals` | 0074_license_refusals.sql | `product`, `id`, `license_id`, `at`, `reason`, `device_label`, `device_hash` |
 | `license_auto_attach_blocks` | 0092_license_auto_attach_blocks.sql | `product`, `license_id`, `account_id`, `created_at` |
@@ -130,9 +132,7 @@ this page or fails the freshness gate.
 | `dist_submissions` | 0039_distribution_availability_keys.sql | `product`, `release_id`, `outlet_id`, `state`, `submitted_at`, `reviewed_at`, `detail_json`, `source`, `updated_at` |
 | `dist_keys` | 0039_distribution_availability_keys.sql | `product`, `purpose`, `fingerprint_sha256`, `outlet_id`, `notes`, `registered_at`, `source`, `observed_json`, `created_at`, `modified_at` |
 | `dist_connector_objects` | 0041_distribution_connectors.sql | `product`, `connector`, `object_type`, `object_id`, `outlet_id`, `release_id`, `build_id`, `store_state`, `state`, `ref_json`, `detail_json`, `terminal`, `first_seen_at`, `updated_at`, `polled_at` |
-| `dist_connector_events` | 0041_distribution_connectors.sql | `product`, `connector`, `event_id`, `event_type`, `instance_type`, `instance_id`, `outcome`, `payload_json`, `received_at` |
 | `dist_feed_files` | 0043_storefront_feeds.sql | `product`, `feed`, `channel`, `path`, `sha256`, `size`, `content_type`, `updated_at` |
-| `dist_connector_settings` | 0042_distribution_connector_settings.sql | `product`, `connector`, `settings_json`, `updated_at`, `updated_by` |
 | `dist_readiness` | 0048_a_dist_readiness_blob_gc.sql | `product`, `app_release_id`, `outlet_id`, `blocking_pack_release_id`, `state`, `detail_json`, `source`, `override_reason`, `computed_at`, `updated_at`, `updated_by` |
 | `dist_store_products` | 0052_commerce.sql | `product`, `store`, `store_product_id`, `deliverable_id`, `flag`, `source`, `modified_at`, `modified_by`, `grants_kind (0105)`, `base_tier_id (0105)` |
 | `dist_purchase_bindings` | 0052_commerce.sql | `product`, `binding_id`, `license_id`, `created_at` |

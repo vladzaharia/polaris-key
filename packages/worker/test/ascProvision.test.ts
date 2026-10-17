@@ -12,7 +12,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { AscResource } from "../src/core/asc/client.js";
+import type { AscResource } from "../src/core/stores/apple/client.js";
 import { putOutletCredential } from "../src/core/outletCredentials.js";
 import { setPlatformPin } from "../src/core/platformCredentials.js";
 import { handleAdmin } from "../src/console/index.js";

@@ -73,7 +73,7 @@ import {
   relId,
   single,
   type AscResource,
-} from "../../../../core/asc/client.js";
+} from "../../../../core/stores/apple/client.js";
 import { getObject } from "../state.js";
 import { syncAppStoreVersion } from "./apply.js";
 import {

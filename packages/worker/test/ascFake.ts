@@ -30,7 +30,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { AscResource } from "../src/core/asc/client.js";
+import type { AscResource } from "../src/core/stores/apple/client.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 export const ASC_FIXTURES = join(HERE, "fixtures", "asc");

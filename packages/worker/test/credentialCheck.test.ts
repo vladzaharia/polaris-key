@@ -42,7 +42,7 @@ import {
   parseMacaroonV1,
   snapAuthorization,
 } from "../src/services/distribution/ciSecretCheck.js";
-import { CREDENTIAL_CHECK_LIMIT } from "../src/services/distribution/connectors/credentialCheck.js";
+import { CREDENTIAL_CHECK_LIMIT } from "../src/core/stores/credentialCheck.js";
 import { KvMock } from "./kvMock.js";
 import { makeTestDb } from "./helpers.js";
 import { CONSOLE, envFor, seedReleaseProduct } from "./releaseRoutesFixture.js";

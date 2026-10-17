@@ -19,9 +19,9 @@
  *     that names "upload operation", never the presigned URL (it is a bearer of its own).
  */
 
-import { isRedirect } from "../readCapped.js";
-import { checkAscUpload } from "../storefront/rules/appStore.js";
-import type { UploadDescriptor } from "../storefront/match/multipart.js";
+import { isRedirect } from "../../readCapped.js";
+import { checkAscUpload } from "../../storefront/rules/appStore.js";
+import type { UploadDescriptor } from "../../storefront/match/multipart.js";
 import { AscError, AscWriteDenied, type FetchImpl } from "./client.js";
 
 /** One upload operation as Apple answers it (`UploadOperation`). */

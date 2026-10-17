@@ -25,7 +25,10 @@ import {
   type ListingSnapshot,
   type SourceOutcome,
 } from "../../../../core/storefront/listingImport.js";
-import { MsStoreError, type MsStoreClient } from "./client.js";
+import {
+  MsStoreError,
+  type MsStoreClient,
+} from "../../../../core/stores/microsoftStore/client.js";
 import { parseApplication } from "./map.js";
 
 const obj = (v: unknown): Record<string, unknown> | null =>

@@ -30,14 +30,14 @@ import {
   AscError,
   ascPath,
   MAX_RESPONSE_BYTES as ASC_MAX,
-} from "../src/core/asc/client.js";
+} from "../src/core/stores/apple/client.js";
 import {
   ANDROID_PUBLISHER_ORIGIN,
   GoogleApiClient,
   MAX_RESPONSE_BYTES as PLAY_MAX,
   PlayError,
-} from "../src/services/distribution/connectors/play/client.js";
-import { MsStoreClient } from "../src/services/distribution/connectors/msstore/client.js";
+} from "../src/core/stores/play/client.js";
+import { MsStoreClient } from "../src/core/stores/microsoftStore/client.js";
 import { MAX_GOOGLE_TOKEN_RESPONSE_BYTES } from "../src/core/outletTokens.js";
 import { isRedirect } from "../src/core/readCapped.js";
 import { loadProductPublic } from "../src/core/products.js";

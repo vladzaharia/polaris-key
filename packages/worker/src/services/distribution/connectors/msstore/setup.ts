@@ -32,11 +32,12 @@ import {
   checkOutletCredentialPin,
   listOutletCredentials,
 } from "../../../../core/outletCredentials.js";
+import { STORE_ID } from "../../../../core/stores/microsoftStore/client.js";
 import { listOutlets } from "../../outlets.js";
 import {
   platformFallback,
   platformFallbackMessage,
-} from "../platformFallback.js";
+} from "../../../../core/stores/platformFallback.js";
 
 export const MSSTORE_CONNECTOR = "ms-store";
 export const MSSTORE_LABEL = "Microsoft Store";
@@ -46,8 +47,6 @@ export const MSSTORE_CREDENTIAL_KIND = "ms-partner-center";
 /** The channel the non-flighted submission serves. */
 export const MAIN_CHANNEL = "stable";
 
-/** A Store ID (the manifest's rule, re-checked: it becomes a URL segment). */
-export const STORE_ID = /^[A-Za-z0-9]{12}$/;
 /** A flight reference in the manifest: a friendly name or a flight id (the manifest's rule). */
 const FLIGHT_REF = /^[A-Za-z0-9][A-Za-z0-9 ._:()-]{0,99}$/;
 /** A channel name as `dist_rollouts` keys it. */
