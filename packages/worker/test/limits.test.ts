@@ -35,6 +35,7 @@ const INTERNAL: Record<string, string[]> = {
     "PERSONAL_TOKEN_MIN_DAYS",
     "PERSONAL_TOKEN_LABEL_MAX",
     "PERSONAL_TOKEN_RETENTION_SECONDS",
+    "ADMIN_TOKEN_LIST_LIMIT",
   ],
   "core/ascProvisioning.ts": [
     "MAX_BUNDLE_PAGES",
@@ -147,6 +148,7 @@ const INTERNAL: Record<string, string[]> = {
   "core/storefront/rules/googlePlay.ts": ["PLAY_IMAGE_MAX_BYTES"],
   "core/stores/apple/client.ts": ["MAX_RESPONSE_BYTES"],
   "core/stores/events.ts": ["MAX_STORED_PAYLOAD"],
+  "core/stores/http.ts": ["MAX_STORE_RESPONSE_BYTES"],
   "core/stores/microsoftStore/client.ts": [
     "MAX_RESPONSE_BYTES",
     "MAX_FLIGHT_PAGES",
@@ -155,6 +157,7 @@ const INTERNAL: Record<string, string[]> = {
   "core/stores/platformApps.ts": ["PLATFORM_APPS_TTL_SECONDS"],
   "core/stores/play/client.ts": ["MAX_RESPONSE_BYTES"],
   "core/stores/steam/client.ts": ["MAX_STEAM_RESPONSE_BYTES"],
+  "core/stores/steam/publisher.ts": ["MAX_STEAM_APPS"],
   "core/trust/attestation.ts": ["ATTEST_CHALLENGE_TTL"],
   "core/trust/deviceTrust.ts": ["TRUST_AUDIT_WINDOW"],
   "core/trust/playIntegrity.ts": ["MAX_VERDICT_AGE", "MAX_CLOCK_SKEW"],
