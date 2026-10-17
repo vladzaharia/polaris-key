@@ -404,6 +404,26 @@ describe("personal tokens: Account → Packages (portal API)", () => {
     expect(audit).not.toContain(body.token);
   });
 
+  it("lists the private feeds the account's usable licenses reach, once per product and ecosystem, never the system product's", async () => {
+    await seedOwner(SYSTEM_PRODUCT_SLUG);
+    for (const product of [OWNER, SYSTEM_PRODUCT_SLUG]) {
+      const { licenseId } = await seedLicenseWithKey(db, product);
+      await linkLicense(db, ada, product, licenseId, "admin", NOW);
+    }
+    const body = (await (await call("GET", "/api/me/tokens")).json()) as {
+      feeds: { product: string; ecosystem: string }[];
+    };
+    expect(body.feeds.map((f) => `${f.product}/${f.ecosystem}`).sort()).toEqual(
+      [`${OWNER}/oci`, `${OWNER}/swift`],
+    );
+    // Bob holds no licence: nothing to set up.
+    const other = await session(bob);
+    const none = (await (
+      await call("GET", "/api/me/tokens", undefined, { auth: other })
+    ).json()) as { feeds: unknown[] };
+    expect(none.feeds).toEqual([]);
+  });
+
   it("needs the CSRF header and a fresh sign-in to mint, and refuses a scope other than packages:read", async () => {
     expect(
       (await call("POST", "/api/me/tokens", { label: "x" }, { csrf: false }))

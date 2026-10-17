@@ -16,18 +16,14 @@ import {
   usePackageAccess,
   useProduct,
 } from "../data.js";
-import { PackageAccessCard } from "../components/product/PackageAccessCard.js";
+import { PackagesPointer } from "../components/product/PackagesPointer.js";
 import { ProductIdentityCard } from "../components/product/ProductIdentityCard.js";
 import { ProductDataCard } from "../components/product/ProductDataCard.js";
 import { RemoveLicenseDialog } from "../components/product/RemoveLicenseDialog.js";
 import { toast } from "../../ui/toast.js";
 import { consumeHeadingFocus, focusSectionHeading } from "../focus.js";
 import { useLibrary } from "../library.js";
-import {
-  quickAction,
-  tierLabel,
-  type LicensedProduct,
-} from "../model/library.js";
+import { quickAction, type LicensedProduct } from "../model/library.js";
 import {
   presentSections,
   readUaHints,
@@ -359,16 +355,9 @@ function ProductBody({
             ) : null}
             {has("package") ? (
               <div className="order-5">
-                <PackageAccessCard
-                  product={product.slug}
+                <PackagesPointer
                   productName={product.name}
                   developer={product.presentation.developer}
-                  tier={tierLabel(selected.tier)}
-                  licenseId={selected.id}
-                  access={pkg.data}
-                  loading={pkg.isPending}
-                  error={pkg.error}
-                  onRetry={() => void pkg.refetch()}
                 />
               </div>
             ) : null}

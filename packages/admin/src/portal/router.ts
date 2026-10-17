@@ -51,6 +51,7 @@ export type ProductSection = (typeof PRODUCT_SECTIONS)[number];
 export const ACCOUNT_SECTIONS = [
   "profile",
   "methods",
+  "packages",
   "products",
   "sessions",
   "appearance",

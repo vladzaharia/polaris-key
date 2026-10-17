@@ -206,6 +206,8 @@ const ADMIN_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     // token reaches it.
     ["/manage/api/tokens", ["get", "post"]],
     ["/manage/api/tokens/{tokenId}", ["delete"]],
+    ["/manage/api/account-tokens", ["get"]],
+    ["/manage/api/account-tokens/{tokenId}", ["delete"]],
   ],
   // `/manage/api/products[/…]` routes as its own kind (the product registry), narrative too.
   products: [

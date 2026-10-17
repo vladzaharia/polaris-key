@@ -50,6 +50,10 @@ import {
   handleApiTokenMint,
   handleApiTokenRevoke,
 } from "./handlers/apiTokens.js";
+import {
+  handleAccountTokenList,
+  handleAccountTokenRevoke,
+} from "./handlers/accountTokens.js";
 
 /** What every handler receives once the dispatcher has authorized the request. */
 export interface AdminCtx {
@@ -215,6 +219,16 @@ export const ADMIN_ROUTES: readonly AdminRoute[] = [
     stepUp: true,
   }),
   ...rows(["DELETE"], "/tokens/:id", "platform", handleApiTokenRevoke),
+  // ── Platform: people's personal tokens (F-33) ─────────────────────────────────────────────
+  // A Superadmin lists and revokes (`./handlers/accountTokens.ts`); the person mints, in the
+  // portal. Session only, like the roster above.
+  ...rows(["GET"], "/account-tokens", "platform", handleAccountTokenList),
+  ...rows(
+    ["DELETE"],
+    "/account-tokens/:id",
+    "platform",
+    handleAccountTokenRevoke,
+  ),
 
   // ── One product: the record ───────────────────────────────────────────────────────────────
   // The record every holder of any of the product's areas reads (the shell's name and services);

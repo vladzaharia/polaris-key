@@ -13941,7 +13941,8 @@ paths:
         Newest first, revoked and expired tokens included until the nightly purge (90 days after
         they ended). Each carries its label, the last four characters, its one scope, its times
         and its status; never the token or its hash. `registryOrigin` and `username` are what the
-        package-manager setup needs beside a token.
+        package-manager setup needs beside a token; `feeds` lists the private feeds the account's
+        usable licences reach (one entry per product and ecosystem, never the system product).
       responses:
         "200":
           description: The tokens.
@@ -13949,10 +13950,22 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [registryOrigin, username, tokens, limits]
+                required: [registryOrigin, username, tokens, feeds, limits]
                 properties:
                   registryOrigin: { type: [string, "null"] }
                   username: { type: string, enum: ["__token__"] }
+                  feeds:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        [product, productName, ecosystem, accessMode, baseUrl]
+                      properties:
+                        product: { type: string }
+                        productName: { type: string }
+                        ecosystem: { type: string }
+                        accessMode: { type: string }
+                        baseUrl: { type: [string, "null"] }
                   tokens:
                     type: array
                     items: { $ref: "#/components/schemas/AccountToken" }
@@ -17420,6 +17433,66 @@ paths:
               schema: { $ref: "#/components/schemas/AdminError" }
         "409":
           description: Already revoked.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
+  /manage/api/account-tokens:
+    get:
+      operationId: listAccountTokensAdmin
+      tags: [admin]
+      summary: List people's personal tokens
+      description: >
+        F-33. Every account's `pkeyp_` tokens, live first, then newest (at most 500): label, the
+        last four characters, scope, times, status, and whose they are (`accountId`, `email`).
+        Never a token or a hash. Platform admins only; admin session cookie. A token cannot call
+        it.
+      security:
+        - adminSession: []
+      responses:
+        "200":
+          description: The tokens.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [tokens]
+                properties:
+                  tokens:
+                    type: array
+                    items: { $ref: "#/components/schemas/AccountTokenAdmin" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
+  /manage/api/account-tokens/{tokenId}:
+    delete:
+      operationId: revokeAccountTokenAdmin
+      tags: [admin]
+      summary: Revoke a person's personal token
+      description: >
+        F-33. Reason `admin`; the registry host stops accepting it at once on this isolate and
+        within 30 seconds on the others. Revoking a revoked token answers it as it stands, with
+        no second audit row. Audited in the platform activity log as `account_token.revoke`,
+        without the token. Platform admins only; admin session cookie and CSRF header.
+      security:
+        - adminSession: []
+      parameters:
+        - { $ref: "#/components/parameters/TokenId" }
+      responses:
+        "200":
+          description: Revoked.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, token]
+                properties:
+                  ok: { type: boolean }
+                  token: { $ref: "#/components/schemas/AccountTokenAdmin" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No token with that id.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
@@ -22340,6 +22413,16 @@ components:
           type: [string, "null"]
           enum: [manual, admin, account_deleted, access_removed, null]
         status: { type: string, enum: [active, expired, revoked] }
+    AccountTokenAdmin:
+      description: >
+        A personal token as a Superadmin lists it (F-33): the portal's view plus whose it is.
+      allOf:
+        - { $ref: "#/components/schemas/AccountToken" }
+        - type: object
+          required: [accountId, email]
+          properties:
+            accountId: { type: string }
+            email: { type: [string, "null"] }
     FlatError:
       type: object
       description: >
