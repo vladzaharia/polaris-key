@@ -46,7 +46,7 @@ let package = Package(
     name: "MyApp",
     platforms: [.macOS(.v15), .iOS(.v18)],
     dependencies: [
-        .package(id: "polaris-key.PolarisKey", from: "<version>")
+        .package(id: "polaris-key.PolarisKey", from: "0.9.0")
     ],
     targets: [
         .executableTarget(name: "MyApp", dependencies: [
@@ -58,7 +58,7 @@ let package = Package(
 )
 ```
 
-Replace `<version>` with the version the feed lists.
+`from:` takes the newest release at or above it.
 
   </TabItem>
   <TabItem label="Xcode">
@@ -88,7 +88,8 @@ Without Node, run the image from the project directory:
 
 ```sh title="Terminal"
 docker run --rm -v "$PWD:/work" pkg.plrs.im/polaris-key/pkey:latest \
-  sdk --lang swift --product <slug> --write
+  sdk --lang swift --product <slug> --write \
+  --out Sources/<Target>/PolarisConfig.swift
 ```
 
 The file holds the slug, base URL, trust pins, advertised services and, when the product has release keys, `pinnedReleaseKeys`. Add it to the app target. To try this without a registered product, [run Polaris Key locally](/docs/build/local/).
@@ -102,9 +103,11 @@ You should see the file written and each pin's key id and SHA-256 fingerprint. C
 ```swift title="Client.swift"
 import PolarisKey
 
-let client = try await PolarisKeyClient.create(
-    options: PolarisConfig.clientOptions(version: "1.4.2")  // your app's marketing version
-)
+func makeClient() async throws -> PolarisKeyClient {
+    try await PolarisKeyClient.create(
+        options: PolarisConfig.clientOptions(version: "1.4.2")  // your app's marketing version
+    )
+}
 ```
 
 You should see the client create with no network request.
@@ -153,6 +156,23 @@ The kit reads its words in nine locales, the device's or `PolarisKeyTheme.locale
 
 Call the client and handle each state yourself. Activate with `client.activate(key:)`, read the state with `client.status()` and `client.isLicensed()`, and sign in with `client.signInWithBrowser()`. `ErrorCopy.activationMessage(result.kind)` gives the words for a refusal, in English only. [Your own UI](/docs/build/sdks/swift/your-own-ui/) gives each call with its states, including [UIKit and AppKit](/docs/build/sdks/swift/your-own-ui/#uikit-and-appkit).
 
+```swift title="OwnUI.swift"
+import PolarisKey
+
+/// What to show for the key: nil when it worked.
+func activate(_ client: PolarisKeyClient, key: String) async -> String? {
+    let result = await client.activate(key: key)
+    if case .ok = result { return nil }
+    return ErrorCopy.activationMessage(result.kind)
+}
+
+/// What to show instead of your app: nil when the license is usable.
+func lockedMessage(_ client: PolarisKeyClient) async -> String? {
+    if await client.isLicensed() { return nil }
+    return ErrorCopy.message(await client.status().status.rawValue)
+}
+```
+
   </Fragment>
 </Lanes>
 
@@ -165,6 +185,14 @@ You should see the app locked behind the gate's key field.
 ```sh title="Terminal"
 pkey dev
 ```
+
+The config from step 2 points at production, where `ok` is not a key. In a second terminal, rewrite it from the running server, then rebuild or restart the app:
+
+```sh title="Terminal"
+pkey sdk --lang swift --dev --write --out Sources/<Target>/PolarisConfig.swift
+```
+
+To go back to your product, run the step 2 command again.
 
 **App** Enter the `ok` key in the gate.
 

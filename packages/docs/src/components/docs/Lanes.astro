@@ -26,9 +26,9 @@ const { intro, lanes = LANE_IDS } = Astro.props;
   {
     lanes.map((lane) => (
       <section class="pk-lane" data-lane={lane} aria-label={LANE_LABELS[lane]}>
-        <p class="pk-lane__label">
-          <strong>{LANE_LABELS[lane]}</strong>
-        </p>
+        <h3 class="pk-lane__label" id={`lane-${lane}`}>
+          {LANE_LABELS[lane]}
+        </h3>
         <slot name={lane} />
       </section>
     ))

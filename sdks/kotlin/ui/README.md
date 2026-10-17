@@ -9,9 +9,9 @@ Android glue.
 
 ## Neutral by default, branded by one switch
 
-With the defaults, the kit inherits your app's look. Every colour, shape and text style comes from
-your `MaterialTheme`, dynamic colour included. Only warning and success, which Material 3 has no
-role for, are the brand's fixed amber and green. No Polaris Key colour, font, mark or badge
+With the defaults, the kit inherits your app's look. Every color, shape and text style comes from
+your `MaterialTheme`, dynamic color included. Only warning and success, which Material 3 has no
+role for, are the brand's fixed amber and green. No Polaris Key color, font, mark or badge
 appears.
 
 ```kotlin
@@ -44,10 +44,10 @@ Your product is the hero, in either mode. `logo = { Image(...) }` is your produc
 size on the welcome, beside your product's name on focused steps and on the update prompt. Without
 one the kit draws a monogram tile of your product's initial. The Pinned K appears only inside the
 optional Powered-by badge.
-`accent = Color(0xFF369186)` applies your product's colour in either mode. It replaces the primary
+`accent = Color(0xFF369186)` applies your product's color in either mode. It replaces the primary
 roles (the core violet when branded, your scheme's primary when neutral) after the accent resolver
 has adjusted it for contrast in the current scheme. Without it, neutral keeps your scheme exactly,
-dynamic colour included.
+dynamic color included.
 `darkTheme` picks the branded palette's theme. It follows the system by default.
 
 ## The screens
@@ -102,7 +102,7 @@ runs `finish()`). It provides the client through `LocalPolarisKey`, so any scree
 `polarisKey()` and the live helpers `rememberPolarisLicense()`, `rememberPolarisEntitled(name)` and
 `rememberPolarisSetting(key)`.
 
-### Headless behaviour the screens consume
+### Headless behavior the screens consume
 
 - `PolarisGateState.continueFree()` runs keyless enrolment (`client.enroll()`); a refusal lands on
   the activation form like an activation's.
@@ -143,7 +143,7 @@ cutouts, the keyboard) and picks the layout from the space it is given:
   480 dp tall, such as a phone in landscape), on Android TV, and in a landscape window 840 dp wide
   or more. The content sits on the start side and the controls on the end side, each pane
   scrolling on its own, so the primary action never falls below the fold. Pass your own screen's
-  controls as `PolarisScreen`'s `actions` to get the same behaviour.
+  controls as `PolarisScreen`'s `actions` to get the same behavior.
 - **Message screens** (an expired license, a boot stop) never split: a centred column on a phone,
   and elsewhere one start-aligned block with its actions in a trailing row, on a card on TV and in
   wide windows.
@@ -202,9 +202,9 @@ revoked license shows, how an activation error reads, and how a version window i
 ## Brand rules
 
 The neutral theme reads everything from `MaterialTheme`. A test scans the module and fails on a
-colour literal, font or corner shape outside the theme and the generated token file. The brand
+color literal, font or corner shape outside the theme and the generated token file. The brand
 values come from `@polaris-key/brand`: `pnpm gen brand` writes `PolarisBrandTokens.generated.kt`
-(colours, accents, radii, optical cuts, badge minimums, and the Pinned K and badge as vector data)
+(colors, accents, radii, optical cuts, badge minimums, and the Pinned K and badge as vector data)
 and copies the kit's Rubik TTFs into `res/font`. `pnpm gen brand --check` fails the green gate
 on any drift. Rubik is under the SIL Open Font License 1.1, and its `OFL.txt` and the kit notice
 ship in the module's assets, so they travel inside every APK that carries the fonts. A neutral kit

@@ -27,9 +27,9 @@ Every SDK has a drop-in lane and an own-UI lane. The drop-in lane gives you the 
 | Node   | CLIs, Electron, servers | [Terminal kit](/docs/build/ui/frameworks/terminal-node/)   | [Node, your own UI](/docs/build/sdks/node/your-own-ui/)     | [Node quickstart](/docs/build/quickstart/node/)     |
 | React  | Web apps                | [React kit](/docs/build/ui/frameworks/react/)              | [React, your own UI](/docs/build/sdks/react/your-own-ui/)   | [React quickstart](/docs/build/quickstart/react/)   |
 | Python | CLIs, servers, tools    | [Terminal kit](/docs/build/ui/frameworks/terminal-python/) | [Python, your own UI](/docs/build/sdks/python/your-own-ui/) | [Python quickstart](/docs/build/quickstart/python/) |
-| Swift  | macOS, iOS, iPadOS      | [SwiftUI kit](/docs/build/ui/frameworks/swiftui/)          | [Swift, your own UI](/docs/build/sdks/swift/your-own-ui/)                  | [Swift quickstart](/docs/build/quickstart/swift/)   |
-| Kotlin | Android, JVM            | [Compose kit](/docs/build/ui/frameworks/compose/)          | [Kotlin, your own UI](/docs/build/sdks/kotlin/your-own-ui/)                | [Kotlin quickstart](/docs/build/quickstart/kotlin/) |
-| Godot  | Games                   | [Godot kit](/docs/build/ui/frameworks/godot/)              | [Godot, your own UI](/docs/build/sdks/godot/your-own-ui/)                  | [Godot quickstart](/docs/build/quickstart/godot/)   |
+| Swift  | macOS, iOS, iPadOS      | [SwiftUI kit](/docs/build/ui/frameworks/swiftui/)          | [Swift, your own UI](/docs/build/sdks/swift/your-own-ui/)   | [Swift quickstart](/docs/build/quickstart/swift/)   |
+| Kotlin | Android, JVM            | [Compose kit](/docs/build/ui/frameworks/compose/)          | [Kotlin, your own UI](/docs/build/sdks/kotlin/your-own-ui/) | [Kotlin quickstart](/docs/build/quickstart/kotlin/) |
+| Godot  | Games                   | [Godot kit](/docs/build/ui/frameworks/godot/)              | [Godot, your own UI](/docs/build/sdks/godot/your-own-ui/)   | [Godot quickstart](/docs/build/quickstart/godot/)   |
 
 ## Other ways in
 

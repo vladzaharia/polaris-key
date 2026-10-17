@@ -1,4 +1,5 @@
 import { defineRouteMiddleware } from "@astrojs/starlight/route-data";
+import { embeddedToc } from "./lib/embedded";
 import { HELP_MESSAGES, KNOWN_ENTRIES, messageToc } from "./lib/helpMessages";
 
 /**
@@ -18,4 +19,10 @@ export const onRequest = defineRouteMiddleware((context) => {
   if (toc === undefined || toc.minHeadingLevel > 2 || toc.maxHeadingLevel < 2)
     return;
   toc.items.splice(1, 0, ...messageToc(HELP_MESSAGES, KNOWN_ENTRIES, id));
+  // The headings of a repository file the page renders whole (src/lib/embedded.ts).
+  toc.items.splice(
+    1,
+    0,
+    ...embeddedToc(id, toc.minHeadingLevel, toc.maxHeadingLevel),
+  );
 });

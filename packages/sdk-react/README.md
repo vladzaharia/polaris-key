@@ -94,7 +94,7 @@ back for later crashes.
 
 `localAdapter({ productSlug, license?, config?, status?, version?, storage? })`
 (`@polaris-key/react/local`) is an adapter that never touches the network: it takes no `fetch`
-and imports no transport. It serves the documents your build bundles and a fixed licence state
+and imports no transport. It serves the documents your build bundles and a fixed license state
 (`status`, default `ok`), is `ready` from construction and does no I/O when built. The gate,
 config, `config.local`, `crashTags()`, the boot guard and a whole `boot()` pass work offline;
 every verb that would dial (sign-in, activation, devices, the release and update reads, the

@@ -108,7 +108,7 @@ fallback. Inject an `InMemoryStore` (or your own `Store`) for tests, and an `htt
 
 A 401 on a document gets exactly **one** re-acquire per `sync()` pass, then one retry of the
 failed fetch. A licensed device rotates its token with `POST /<product>/license/token`. A
-registered device without a licence **re-registers** instead: when License is off for the
+registered device without a license **re-registers** instead: when License is off for the
 product, or the token came from `devices.register()` in this process, the one attempt is
 `POST /<product>/devices/register` (the same request as `register()`: the fingerprint, and no
 `Authorization` header). A refusal (403 `registration_closed`, 404, 429) spends the attempt and
@@ -152,13 +152,13 @@ is created until something uses one, and the config directory has not moved.
 The fingerprint anchor and the device id read `/etc/machine-id`, else
 `/var/lib/dbus/machine-id` (a blank file and `uninitialized` are skipped); DMI files are never
 read, so root and non-root agree. A container with neither file has no anchor and cannot enrol
-without a licence key: mount the host's `/etc/machine-id` read-only, or create one and keep it in
+without a license key: mount the host's `/etc/machine-id` read-only, or create one and keep it in
 a volume. Never bake one into an image. On Windows, `boardSerial` and `machineModel` come from
 one PowerShell `Get-CimInstance` call, run with no console window and a null stdin.
 
 ## Sub-packages
 
-Every one is importable on its own, so a config-only daemon never pulls the licence module.
+Every one is importable on its own, so a config-only daemon never pulls the license module.
 `import polaris_key` itself loads no service, httpx or cryptography until a name is used, so a
 host CLI that mounts the verbs pays for the client only when a verb runs.
 
@@ -172,12 +172,12 @@ host CLI that mounts the verbs pays for the client only when a verb runs.
 | `polaris_key.release`  | changelog, install script, artifact URLs, verified `fetch()`                                                         |
 | `polaris_key.update`   | version check, the Sparkle appcast URL, the signed update decision (`decide`, `feed`, `release_record`, `build_url`) |
 | `polaris_key.commerce` | store purchase claims: `binding()`, `claim()`, `claim_steam()`, `claim_play()`, `claim_app_store()`                  |
-| `polaris_key.copy`     | the localised message table for every registry code and status                                                       |
+| `polaris_key.copy`     | the localized message table for every registry code and status                                                       |
 | `polaris_key.aio`      | `AsyncClient`: every sub-client as coroutines over the same core                                                     |
 | `polaris_key.local`    | the transportless profile                                                                                            |
 
 `client.license.entitled_channels()` returns the `channels` entitlement's string grants in
-order, or `["stable"]` when the licence carries none — the Worker's own answer, and every SDK's.
+order, or `["stable"]` when the license carries none — the Worker's own answer, and every SDK's.
 `client.config.fetch_schema()` returns the product's catalog as a `dict`, or `None` on any
 failure (it is unsigned and diagnostic, so it never raises). `client.release` raises
 `service-unavailable` when the product does not run Release, forwards the device token when one
@@ -196,7 +196,7 @@ client must not lose its gate to an unreachable control plane.
 
 A slug outside `SERVICE_SLUGS` raises `PolarisError("invalid-options")` from the constructor,
 `create()` and `AsyncClient.create()`, and the CLI's `--service` refuses it. A misspelt
-`"licence"` used to turn License off, and a product without License is usable, so an unactivated
+`"license"` used to turn License off, and a product without License is usable, so an unactivated
 device read as licensed.
 
 ### Product presentation
@@ -309,8 +309,8 @@ per key; any other tag adds a locale that falls back to English.
 is `revoked` or `expired`, whatever the cached document still says (S-19 G11).
 `license.license_info()` returns a `LicenseInfo` (`licenseId`, `tier`, `tierLabel`,
 `deviceLimit`, `profile`, `entitledChannels`; `deviceCount` and `expiresAt` stay `None` until
-the licence document carries them) or `None`, read regardless of the gate so an account screen
-can show which licence was revoked.
+the license document carries them) or `None`, read regardless of the gate so an account screen
+can show which license was revoked.
 
 ### Events and local overrides
 
@@ -425,7 +425,7 @@ terminal kit's `tidewater` demo) and `examples/python-renpy/` (a Ren'Py boot sni
 `is_licensed()` is true for `ok` / `grace` / `not-applicable`.
 
 `not-applicable` is what a product that does not enable the License service reports: it has
-no licence to be missing, so it boots **usable** rather than sitting on `needs-activation`
+no license to be missing, so it boots **usable** rather than sitting on `needs-activation`
 forever.
 
 ## When every seat is taken
@@ -466,19 +466,19 @@ if result.status == "ready":
 lengthens the interval for every later poll (to the server's value, or by five seconds), and a
 poll that fails on the network or with a 5xx is retried at the same interval, never faster. It
 returns `expired` once `prompt.expiresAt` has passed without asking the server again, raises
-`TimeoutError` when `timeout` runs out first, and raises `PolarisError("cancelled")` when the
+`TimeoutError` when `timeout` runs out first, and raises `PolarisError("canceled")` when the
 `cancel` event (a `threading.Event`) is set. `poll_sign_in(prompt)` makes exactly one poll
 (`pending`, `slow-down` with an `interval`, `ready`, `expired` or `error`).
 
 A refused start or poll carries the server's message (`PolarisError.message`,
 `SignInPoll.message`). `prompt.deviceCode` is the poll credential: never show it. A sign-in yields the signed-in
-identity's **own** licence; it does not attach a licence this device already held.
+identity's **own** license; it does not attach a license this device already held.
 
 **After `ready`, show on the device which account signed in.** Anyone holding the user code can
 complete the sign-in on the verification page, so the player must be able to see a mis-binding:
 `ready` carries `identity` (a `SignedInIdentity`) when the Worker sent it, and the
 post-acquisition sync has already run, so `client.license.get_profile()` also returns the signed
-licence profile (`name`, `email`) — show, for example, "Signed in as Ada Lovelace
+license profile (`name`, `email`) — show, for example, "Signed in as Ada Lovelace
 <ada@example.com>" with a way to sign out (`client.identity.sign_out()`).
 
 `client.identity.sign_in_with_browser()` is the native interim until the redirect-token route
@@ -487,7 +487,7 @@ licence profile (`name`, `email`) — show, for example, "Signed in as Ada Lovel
 (`polaris_key.qr.terminal(prompt.verificationUriComplete)`) for a browser on another device.
 `begin_sign_in(..., confirm_identity=True)` with `on_confirm` is the attach opt-in: the poll
 stops at `confirm` (with `identity` and `attachable`) until the player accepts, and
-`accept_sign_in(prompt, attach_license=True)` attaches this device's free licence. It polls
+`accept_sign_in(prompt, attach_license=True)` attaches this device's free license. It polls
 `/identity/auth/device/poll` like any device-code sign-in; the old `/identity/auth/poll` route is
 retired and the Worker no longer serves it.
 
@@ -501,14 +501,14 @@ through an operator-approved recipe (`GET /<product>/config/mint/<recipe_id>/tok
 device token) and returns a `MintedToken(token, expiresAt)`. It is cached **in memory only** —
 never in the cache file or the keyring — and reused until 30 seconds before `expiresAt`, and only
 while the client still holds the device token it was minted with — `deactivate()`, a cleared
-token or a different sign-in drops it. A 401 gets the usual single re-acquire, on the same route a document 401 takes (so a registered device without a licence re-registers), and one retry. Failures raise `PolarisError`:
+token or a different sign-in drops it. A 401 gets the usual single re-acquire, on the same route a document 401 takes (so a registered device without a license re-registers), and one retry. Failures raise `PolarisError`:
 `service-unavailable` (Config off) and `bad_request` (an id outside `[a-z0-9-]`) before any
 request, `unauthorized` (no token, or still 401), `network-error`, `server-error`, or the
 Worker's `not_found` / `rate_limited` / `misconfigured`.
 
 ## Server drop-ins
 
-`polaris_key.server` gates a server route with the app's signed licence document. The app sends it
+`polaris_key.server` gates a server route with the app's signed license document. The app sends it
 in `X-PKey-License`; the backend verifies it offline against the pinned keys and the signed trust
 manifest. The core needs only `cryptography` and `httpx`; each adapter imports its framework when
 you import it. Extras: `starlette`, `fastapi`, `flask`, `django`, `drf`.
@@ -533,7 +533,7 @@ def export(auth: Annotated[PolarisAuth, Depends(polaris.require_entitlement("exp
 | DRF       | `polaris_key.server.drf`       | `PolarisKeyAuthentication`, `has_entitlement(n)`; raises `AuthenticationFailed` / `PermissionDenied` |
 
 A refusal is `application/problem+json` with a `code` of `license_required`, `license_invalid`,
-`license_stale` (401), `not_entitled` or `sign_in_required` (403), localised from `Accept-Language`.
+`license_stale` (401), `not_entitled` or `sign_in_required` (403), localized from `Accept-Language`.
 `max_age_seconds` tightens freshness, `on_refusal` returns your own response, and `errors="raise"`
 raises `PolarisKeyError` into the framework's handler. The header, the document and the holder's name
 and email never reach a log line or a `repr`; add `X-PKey-License` to your APM's header scrubbing.
@@ -645,7 +645,7 @@ verbs under your own command so the kit names it:
 register_argparse(parser.add_subparsers(dest="command", required=True), client_factory, prog="tidewater")
 ```
 
-**Scripts read `--json`, never the human lines.** The human output is localised catalog copy: its
+**Scripts read `--json`, never the human lines.** The human output is localized catalog copy: its
 words, layout and language can change between releases. `--json` is versioned (`"v": 1`). The
 lines this CLI printed before the kit map to JSON fields: `Status:` is `status`, `Usable:` is
 `usable`, `Token store:` is `tokenStore`, `Registered device` is `deviceId` and `Imported bundle`
@@ -825,7 +825,7 @@ client.update.packs.rollback("djdl.l10n")          # back to the install it repl
 What `ensure` does, per pack: the stamp's pin, the record fetched by hash from
 `release.endpoints.record` and verified against `pinned_release_keys` with `pin.kind: "pack"`,
 a handler for its `type` (`files.tree` is built in; `register_handler` adds more), the
-licence's entitlement, `select_variant`, the files index, `plan_target` and `plan`; then a
+license's entitlement, `select_variant`, the files index, `plan_target` and `plan`; then a
 journal, each object fetched from `distribution.endpoints.blobs` with `Range`/`If-Range` (a
 dropped download resumes on the next `ensure`, the staged bytes re-hashed, never trusted), the
 applier (`full`, `file` or a `zstd-patch-from` delta), and the commit: the payload moves into
