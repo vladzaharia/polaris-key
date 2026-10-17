@@ -47,6 +47,7 @@ import {
   useStepUp,
 } from "../../core/pages/UserRelink.js";
 import { holderConfirmValue, holderOf } from "./holders.js";
+import { sendKeyRefusal, type UnsentKey } from "../pages/LicenseKeys.js";
 import { EMAIL_RE } from "./shared.js";
 
 /** "When ada@example.com signs in with that email, it's in their library." (S-24 D4) */
@@ -87,6 +88,7 @@ interface AssignValues {
   [key: string]: unknown;
   email: string;
   name: string;
+  sendKey: boolean;
 }
 
 export function AssignDialog({
@@ -94,11 +96,14 @@ export function AssignDialog({
   license,
   open,
   onOpenChange,
+  onUnsent,
 }: {
   slug: string;
   license: LicenseDetail;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** The key was minted but the email did not go out: the record shows it once (LX-27). */
+  onUnsent?: (unsent: UnsentKey, email: string) => void;
 }): React.ReactElement {
   return (
     <Dialog
@@ -112,6 +117,7 @@ export function AssignDialog({
           slug={slug}
           license={license}
           onDone={() => onOpenChange(false)}
+          onUnsent={onUnsent}
         />
       ) : null}
     </Dialog>
@@ -122,13 +128,15 @@ function AssignForm({
   slug,
   license,
   onDone,
+  onUnsent,
 }: {
   slug: string;
   license: LicenseDetail;
   onDone: () => void;
+  onUnsent?: (unsent: UnsentKey, email: string) => void;
 }): React.ReactElement {
   const form = useAdminForm<AssignValues>({
-    values: { email: "", name: license.name ?? "" },
+    values: { email: "", name: license.name ?? "", sendKey: false },
     validate: (v) => {
       const e: Record<string, string> = {};
       if (!v.email.trim()) e.email = "Enter their email.";
@@ -142,8 +150,34 @@ function AssignForm({
         email: draft.email.trim(),
         ...(name && name !== license.name ? { name } : {}),
       });
-      toast.success("License assigned");
+      // LX-27 (D12): a ticked box mails a NEW key once the assignment has landed. The licence
+      // stays assigned whatever the mail does. A send that did not go out hands its key to the
+      // record's send dialog (shown once, with the reason); a refusal minted none and says so.
+      let handoff: [UnsentKey, string] | null = null;
+      if (draft.sendKey) {
+        const to = draft.email.trim();
+        try {
+          const res = await mutate(
+            "sendLicenseKey",
+            slug,
+            license.id,
+            false,
+            "assigned",
+          );
+          if (res.delivered.email === "sent") {
+            toast.success("License assigned. Key sent.");
+          } else {
+            toast.warning("License assigned. The key email didn't go out.");
+            handoff = [{ key: res.key, reason: res.delivered.reason }, to];
+          }
+        } catch (e) {
+          toast.warning(
+            `License assigned. No key was made: ${sendKeyRefusal(e, to, 600).description}`,
+          );
+        }
+      } else toast.success("License assigned");
       onDone();
+      if (handoff) onUnsent?.(...handoff);
     },
   });
   useDismissGuard(form.isDirty && !form.isSubmitting);
@@ -162,6 +196,12 @@ function AssignForm({
         <FormField name="name" label="Name" help="Optional.">
           {(f) => <Input {...f} />}
         </FormField>
+        <Checkbox
+          checked={Boolean(form.rhf.watch("sendKey"))}
+          onCheckedChange={(v) => form.rhf.setValue("sendKey", v)}
+          label="Email them the key"
+          description="Sends a new key to this address. Its other keys keep working."
+        />
         {form.submitError && !Object.keys(form.errors).length ? (
           <Callout tone="danger" title="The license wasn't assigned" live>
             {errorCopy(form.submitError, { thing: "License" }).description}
@@ -173,7 +213,9 @@ function AssignForm({
           Cancel
         </Button>
         <Button type="submit" loading={form.isSubmitting}>
-          Assign license
+          {form.rhf.watch("sendKey")
+            ? "Assign and email key"
+            : "Assign license"}
         </Button>
       </DialogFooter>
     </Form>

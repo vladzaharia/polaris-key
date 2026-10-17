@@ -213,6 +213,80 @@ export function downloadLinkEmail(input: {
   });
 }
 
+/** Why the key email was sent: it picks the footer, which must be true for each path. */
+export type KeyEmailContext = "created" | "sent" | "assigned";
+
+const KEY_FOOTERS: Record<KeyEmailContext, string> = {
+  created:
+    "You are receiving this because a license was created for this address.",
+  sent: "You are receiving this because a new key was sent for your license.",
+  assigned:
+    "You are receiving this because a license was assigned to this address.",
+};
+
+/**
+ * LX-27 (S-24 §8.4, D11/D12): the key an operator emailed to a licence's holder, sent as
+ * "<App> via Polaris Key" (the caller picks the sender). The product is the hero (name, and its
+ * icon when it has a hosted one); the key sits in a monospace box in the body only, never in the
+ * subject. The primary button is the product's download when it has one, else **Open in Polaris
+ * Key**, a plain portal sign-in link that carries no token, so a forwarded email signs nobody in.
+ */
+export function licenseKeyEmail(input: {
+  productName: string | null | undefined;
+  holderName: string | null | undefined;
+  key: string;
+  /** The portal's sign-in page; carries no token. */
+  signInUrl: string;
+  /** The product's download page, when it has one. */
+  downloadUrl?: string | null;
+  /** The product's hosted icon (https), when it has one. */
+  iconUrl?: string | null;
+  context?: KeyEmailContext;
+  origin: string;
+}): NoticeMessage {
+  const name = displayValue(input.productName, "");
+  const holder = displayValue(input.holderName, "");
+  const subject = name ? `Your ${name} license` : "Your license";
+  const footer = KEY_FOOTERS[input.context ?? "created"];
+  const intro = [
+    ...(holder ? [`Hi ${holder},`] : []),
+    "Here is your license key.",
+  ];
+  const after = [
+    "Enter it in the app to activate. Keep it private: anyone with the key can use it.",
+  ];
+  const primary = input.downloadUrl
+    ? { label: "Download", url: input.downloadUrl }
+    : { label: "Open in Polaris Key", url: input.signInUrl };
+  const secondary = input.downloadUrl
+    ? { label: "Open in Polaris Key", url: input.signInUrl }
+    : undefined;
+  const text = [
+    ...(name ? [name] : []),
+    ...intro,
+    input.key,
+    ...after,
+    `${primary.label}: ${primary.url}`,
+    ...(secondary ? [`${secondary.label}: ${secondary.url}`] : []),
+    footer,
+  ].join("\n\n");
+  const content: EmailContent = {
+    subject,
+    heading: name || "Your license",
+    ...(name
+      ? { hero: { name, ...(input.iconUrl ? { iconUrl: input.iconUrl } : {}) } }
+      : {}),
+    paragraphs: intro,
+    secret: input.key,
+    paragraphsAfter: after,
+    action: primary,
+    ...(secondary ? { secondary } : {}),
+    footer,
+    origin: emailAssetOrigin(input.origin),
+  };
+  return { subject, text, html: renderEmail(content) };
+}
+
 // ── Security notices ─────────────────────────────────────────────────────────────────────────
 
 /** A device was removed from a product license: "Studio PC was removed from Tidewater Studio". */

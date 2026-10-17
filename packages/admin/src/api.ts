@@ -3848,7 +3848,19 @@ export interface CreateLicenseBody {
   channels?: string[];
   minVersion?: string;
   maxVersion?: string;
+  /** LX-27: the licence's own device limit; omitted inherits. */
+  deviceLimit?: number;
+  /** LX-27: `email: true` mails the first key to `email` in the same request. */
+  delivery?: { email: boolean };
 }
+
+/** LX-27: how the key email went. */
+export type KeyEmailOutcome = "sent" | "queued" | "failed";
+/** Why a key email did not go out (`delivered.reason`, and a 409's `reason`). */
+export type KeyEmailFailure =
+  | "no_mail_binding"
+  | "suppressed"
+  | "provider_refused";
 
 export interface PatchLicenseBody {
   name?: string;
@@ -4330,6 +4342,8 @@ export class ApiError extends Error {
     super(`api ${status}`);
     this.name = "ApiError";
   }
+  /** Seconds until a 429 clears, when the route says (`retryAfter`). */
+  retryAfter?: number;
 }
 
 async function call<T>(
@@ -4377,6 +4391,7 @@ async function send(
     let code: string | undefined;
     let message: string | undefined;
     let reason: string | undefined;
+    let retryAfter: number | undefined;
     try {
       const body = (await res.json()) as {
         error?:
@@ -4393,7 +4408,9 @@ async function send(
         errors?: string[];
         code?: string;
         reason?: string;
+        retryAfter?: number;
       };
+      if (typeof body.retryAfter === "number") retryAfter = body.retryAfter;
       if (typeof body.error === "object" && body.error) {
         fields = body.error.fields ?? body.fields;
         errors = body.error.errors ?? body.errors;
@@ -4412,6 +4429,7 @@ async function send(
     }
     const error = new ApiError(res.status, fields, code, errors, reason);
     if (message) error.message = message;
+    if (retryAfter !== undefined) error.retryAfter = retryAfter;
     if (
       res.status === 403 &&
       code === "step_up_required" &&
@@ -5424,13 +5442,15 @@ const rawApi = {
   license: (slug: string, id: string) =>
     call<LicenseDetail>(`${p(slug)}/license/licenses/${enc(id)}`),
   createLicense: (slug: string, body: CreateLicenseBody) =>
-    call<{ licenseId: string; key: string; license: LicenseSummary }>(
-      `${p(slug)}/license/licenses`,
-      {
-        method: "POST",
-        body: JSON.stringify(body),
-      },
-    ),
+    call<{
+      licenseId: string;
+      key: string;
+      delivered?: { email: KeyEmailOutcome; reason?: KeyEmailFailure };
+      license: LicenseSummary;
+    }>(`${p(slug)}/license/licenses`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
   patchLicense: (slug: string, id: string, body: PatchLicenseBody) =>
     call<{
       ok: true;
@@ -5507,6 +5527,22 @@ const rawApi = {
         body: JSON.stringify({ label }),
       },
     ),
+  /** LX-27: mint a key labelled "Sent by email", mail it to the licence's address. */
+  sendLicenseKey: (
+    slug: string,
+    id: string,
+    revokeOthers = false,
+    context?: "assigned",
+  ) =>
+    call<{
+      key: string;
+      hash: string;
+      delivered: { email: KeyEmailOutcome; reason?: KeyEmailFailure };
+      revoked: number;
+    }>(`${p(slug)}/license/licenses/${enc(id)}/send-key`, {
+      method: "POST",
+      body: JSON.stringify({ revokeOthers, ...(context ? { context } : {}) }),
+    }),
   revokeKey: (slug: string, id: string, keyHash: string) =>
     call<{ ok: true; hash: string; status: KeyStatus }>(
       `${p(slug)}/license/licenses/${enc(id)}/keys/${enc(keyHash)}/revoke`,

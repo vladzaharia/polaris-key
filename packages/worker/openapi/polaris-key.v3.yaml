@@ -15730,8 +15730,12 @@ paths:
         and the product's auto-link resolves on (custom issuers default off), the licence joins
         that account in the same request (`account.license.attach`, the pairwise subject created).
         The answer has the same shape either way: `license.holder` says what a read would. The
-        account lookup runs on every create with an email, whatever the outcome. `deviceLimit` is
-        refused here (set it afterwards with PATCH). Audited `license.create` with the holder.
+        account lookup runs on every create with an email, whatever the outcome. LX-27: `deviceLimit`
+        sets the licence's own limit; `delivery: {email: true}` (needs an email) mails the key as
+        "Your <product> license", from "<product> via Polaris Key", in this request, and the answer
+        gains `delivered: {email: sent | queued | failed}`. A failed send never undoes the licence:
+        send a new key with `POST …/licenses/{licenseId}/send-key`. The key is in the email body
+        and this answer only, never in the audit row. Audited `license.create` with the holder.
         Platform admins only; admin session cookie and CSRF header.
       parameters:
         - { name: product, in: path, required: true, schema: { type: string } }
@@ -15757,6 +15761,16 @@ paths:
                 required: [licenseId, key, license]
                 properties:
                   licenseId: { type: string }
+                  delivered:
+                    type: object
+                    description: "Present when the request asked for `delivery.email`."
+                    required: [email]
+                    properties:
+                      email: { type: string, enum: [sent, queued, failed] }
+                      reason:
+                        type: string
+                        enum: [no_mail_binding, suppressed, provider_refused]
+                        description: "Present when `email` is `failed`."
                   key:
                     {
                       type: string,
@@ -15789,7 +15803,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
         "422":
-          description: "An unknown tier or profile, `deviceLimit` on create, or a value a signed document cannot carry."
+          description: "An unknown tier or profile, a bad `deviceLimit` or `delivery`, `delivery.email` without an email, or a value a signed document cannot carry."
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
@@ -16315,6 +16329,88 @@ paths:
               schema: { $ref: "#/components/schemas/AdminError" }
         "422":
           description: "A value the catalog refuses (`bad_request` or `value_not_representable`, with `fields`)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+  /manage/api/products/{product}/license/licenses/{licenseId}/send-key:
+    post:
+      operationId: sendAdminLicenseKey
+      tags: [admin]
+      summary: Mint a new key and email it to the licence's address
+      description: >
+        LX-27 (notes/S-24 §8.4, D11, D12): mints a key labelled "Sent by email", mails it to the
+        licence's email as "Your <product> license" and, with `revokeOthers`, revokes the licence's
+        other active keys in the same batch as the insert. The key is in the email and this answer
+        only. A failed send keeps the new key valid (`delivered.email` is `failed`); call again to
+        retry, which a failed send does not count against. One send per licence per 10
+        minutes (a failed one frees it). A floating licence is refused (400). Audited `license.key.send` with the key's
+        label and whether others were revoked, never the key or the address. Platform admins
+        only; admin session cookie and CSRF header.
+      parameters:
+        - { name: product, in: path, required: true, schema: { type: string } }
+        - {
+            name: licenseId,
+            in: path,
+            required: true,
+            schema: { type: string },
+          }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                revokeOthers: { type: boolean }
+                context:
+                  type: string
+                  enum: [assigned]
+                  description: "Worded into the email's footer: the licence was just assigned."
+      responses:
+        "201":
+          description: Minted. The key is in this answer only.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [key, hash, delivered, revoked]
+                properties:
+                  key: { type: string }
+                  hash: { type: string }
+                  delivered:
+                    type: object
+                    required: [email]
+                    properties:
+                      email: { type: string, enum: [sent, queued, failed] }
+                      reason:
+                        type: string
+                        enum: [no_mail_binding, suppressed, provider_refused]
+                        description: "Present when `email` is `failed`."
+                  revoked: { type: integer, description: "Other keys revoked." }
+        "400":
+          description: The licence is floating, so it has no email (`bad_request`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "409":
+          description: "Refused before a key is minted: the licence is disabled or expired (`reason: license_not_active`), mail is not set up (`no_mail_binding`) or the address cannot receive our mail (`suppressed`)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such product or licence.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "422":
+          description: "`revokeOthers` is not a boolean."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "429":
+          description: A key was sent for this licence in the last 10 minutes (`rate_limited`, `retryAfter` in seconds, also the `retry-after` header).
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
@@ -20183,6 +20279,16 @@ components:
         minVersion: { type: string }
         maxVersion: { type: string }
         profiles: { type: array, items: { type: string } }
+        deviceLimit:
+          type: [integer, "null"]
+          minimum: 1
+          maximum: 1000
+          description: "The licence's own device limit (LX-14a precedence); absent or `null` inherits."
+        delivery:
+          type: object
+          description: "LX-27: how the key reaches the holder. `email: true` mails the first key to the licence's `email` in this request; refused (422) without an email."
+          properties:
+            email: { type: boolean }
     AdminLicensePatch:
       type: object
       properties:

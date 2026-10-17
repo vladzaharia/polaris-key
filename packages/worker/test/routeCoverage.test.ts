@@ -233,6 +233,11 @@ const ADMIN_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
       "/manage/api/products/{product}/license/licenses/{licenseId}",
       ["get", "patch"],
     ],
+    // LX-27: a new key emailed to the licence's address.
+    [
+      "/manage/api/products/{product}/license/licenses/{licenseId}/send-key",
+      ["post"],
+    ],
     // LX-28: bulk floating keys, the batch reads and Disable unused keys.
     ["/manage/api/products/{product}/license/batches", ["get", "post"]],
     ["/manage/api/products/{product}/license/batches/{batchId}", ["get"]],

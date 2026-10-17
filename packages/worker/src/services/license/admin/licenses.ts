@@ -114,6 +114,7 @@ import type { LicenseRow } from "../../../core/repo.js";
 import { withIncludedChannels } from "../../../core/channels.js";
 import type { LicenseAdminContext } from "./index.js";
 import { handleKeys } from "./keys.js";
+import { emailLicenseKey, handleSendKey } from "./keyEmail.js";
 import { handleAdminDevices } from "./devices.js";
 import { deletionVerdicts, handleDeleteLicense } from "./deletion.js";
 
@@ -393,14 +394,35 @@ export async function handleLicenses(
       const body = await readBody(req);
       const refused = licenseWriteChecks(body);
       if (refused) return refused;
-      // LX-14a: a new licence inherits its device limit; its own is set afterwards with PATCH
-      // (audited as `license.device_limit.set`). Refused rather than silently dropped.
-      if ("deviceLimit" in body)
+      // LX-14a/LX-27: a licence's own device limit may be set at creation (1 to the ceiling, or
+      // null/absent to inherit); the effective limit follows LX-14a's precedence.
+      if (invalidLicenseDeviceLimit(body)) return licenseDeviceLimitRefusal();
+      // LX-27: `delivery: {email: true}` emails the first key to the licence's address in this
+      // request. It needs an email (a floating key is never emailed, S-24 D11).
+      const delivery = body.delivery;
+      if (
+        delivery !== undefined &&
+        (typeof delivery !== "object" ||
+          delivery === null ||
+          Array.isArray(delivery) ||
+          ("email" in delivery && typeof delivery.email !== "boolean"))
+      )
         return err(
           422,
           ErrorCode.BadRequest,
-          "deviceLimit cannot be set when creating a license; create it, then PATCH deviceLimit",
-          { fields: ["deviceLimit"] },
+          "delivery must be {email: boolean}",
+          {
+            fields: ["delivery"],
+          },
+        );
+      const emailDelivery =
+        (delivery as { email?: boolean } | undefined)?.email === true;
+      if (emailDelivery && bodyEmail(body) == null)
+        return err(
+          422,
+          ErrorCode.BadRequest,
+          "delivery.email needs an email on the license",
+          { fields: ["delivery"] },
         );
       const licenseId = randomId("lic");
       const profiles = parseProfiles(body);
@@ -451,6 +473,8 @@ export async function handleLicenses(
           typeof body.minVersion === "string" ? body.minVersion : null,
         max_version:
           typeof body.maxVersion === "string" ? body.maxVersion : null,
+        device_limit:
+          typeof body.deviceLimit === "number" ? body.deviceLimit : null,
         modified_by: session.sub,
         modified_at: now,
       });
@@ -475,6 +499,11 @@ export async function handleLicenses(
       if (email !== null)
         await associateLicenseHolder(holderContext(ctx), slug, licenseId);
       const row = await getLicense(db, slug, licenseId);
+      // LX-27: the key email, in this request (the key exists in plaintext only here). A failure
+      // never undoes the licence; the answer says `failed` and send-key tries again.
+      const keyEmail =
+        emailDelivery && row ? await emailLicenseKey(ctx, row, key) : null;
+      const emailDelivered = keyEmail?.email ?? null;
       await audit(
         db,
         slug,
@@ -483,13 +512,22 @@ export async function handleLicenses(
         "license.create",
         { kind: "license", id: licenseId },
         // The id, never the buyer's email or name (an audit row outlives erasure by up
-        // to 180 days), nor whether an account took the licence.
-        `Created license ${licenseId} (${email !== null ? "assigned" : "floating"})`,
+        // to 180 days), nor whether an account took the licence, nor the key.
+        `Created license ${licenseId} (${email !== null ? "assigned" : "floating"})` +
+          (emailDelivered ? `, key email ${emailDelivered}` : ""),
       );
       return adminJson(
         {
           licenseId,
           key,
+          ...(keyEmail
+            ? {
+                delivered: {
+                  email: keyEmail.email,
+                  ...(keyEmail.reason ? { reason: keyEmail.reason } : {}),
+                },
+              }
+            : {}),
           // The answer is built as if no account had taken the licence, so a create
           // is not an oracle for "does this address have an account" (no `inAccount`, no
           // `ownerSubject`, whatever the association found).
@@ -924,6 +962,8 @@ export async function handleLicenses(
   }
 
   // /licenses/<id>/keys ...
+  if (sub === "send-key") return handleSendKey(ctx, license);
+
   if (sub === "keys") {
     return handleKeys(ctx, id, subId, action);
   }

@@ -53,8 +53,8 @@ export function stmtInsertLicense(row: LicenseRow): DbStatement {
   return {
     sql: `INSERT INTO licenses (product, id, status, sub, name, email, groups_json, tier_id,
        activated_at, expires_at, max_offline_days, overrides_json, channels_json, min_version, max_version,
-       origin, enroll_hwid, email_issuer_class, modified_by, modified_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       origin, enroll_hwid, email_issuer_class, device_limit, modified_by, modified_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     params: [
       row.product,
       row.id,
@@ -77,6 +77,8 @@ export function stmtInsertLicense(row: LicenseRow): DbStatement {
       // alone (`activateFromIdentity`). NULL = nobody recorded one, so an operator-entered address
       // on an admin-minted licence keeps resolving through the product's live provider.
       row.email_issuer_class ?? null,
+      // LX-27: a licence's own device limit, set at creation (LX-14a's column); null inherits.
+      row.device_limit ?? null,
       row.modified_by,
       row.modified_at,
     ],

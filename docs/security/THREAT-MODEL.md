@@ -7599,6 +7599,30 @@ Account-wide alike, through `PATCH /manage/api/products/<slug>/license/licenses/
 - **No wire change.** The signed licence document carries the resolved number in its existing
   `deviceLimit` entitlement, so a client cannot tell (or forge) where the number came from.
 
+### Licence administration: emailing a key (LX-27)
+
+An operator can email a key to the licence's address: `delivery: {email: true}` on create, or
+`POST …/licenses/<id>/send-key` (a new key labelled "Sent by email", optionally revoking the
+licence's other active keys in the same batch). Same product-admin session and CSRF as any licence
+write.
+
+- **Rate-limited and audited.** One send-key per licence per 10 minutes (`429
+rate_limited`, `retryAfter`), read from the audit trail (the attempt row is written before the send, and a
+  `license.key.send.failed` row with the attempt as its `parent_id` frees it), so it holds across
+  isolates and a crash mid-send. What no retry can fix (no mail binding, a suppressed recipient, a
+  disabled licence) is refused with 409 before a key is minted, so failures do not pile up valid keys. Audited `license.create` (with the delivery outcome)
+  and `license.key.send` (key label, outcome, revoked count).
+- **The key appears only in the email body and the one response that minted it.** Never in the
+  subject, the audit summary, a log, or the audit row's address (the recipient is not recorded).
+- **Only to the licence's own address.** There is no recipient field; a floating licence is
+  refused, so a key is never emailed to nobody (S-24 D11). The mail is "<App> via Polaris Key"
+  through Core's one send choke point, so suppression, the relay gate and the per-product daily
+  cap apply (I-18). The "Open in Polaris Key" link is a plain sign-in page that carries no token,
+  so a forwarded email signs nobody in.
+- **Residual, accepted.** An operator can still mint keys with `POST …/keys` as before; emailing
+  adds a delivery channel, not a capability. Two concurrent send-keys can both pass the 10-minute
+  check; each mints its own key and both are audited.
+
 ### Licence holders: association by email and the auto-attach block (LX-26)
 
 A licence is floating (no account, no email) or assigned (in an account, or waiting for an account
