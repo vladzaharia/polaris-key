@@ -815,8 +815,8 @@ describe("Account → Sign-in methods: Make primary and Rename (PX-W19)", () => 
     try {
       await h1(o.page, "Account");
       const region = o.page.getByRole("region", { name: "Sign-in methods" });
-      await region.getByText(/brought in 2 products/).waitFor();
-      await region.getByText(/brought in 1 product\b/).waitFor();
+      await region.getByText(/Found 2 products/).waitFor();
+      await region.getByText(/Found 1 product\b/).waitFor();
       await shoot(o.page, "account-methods-w19-desktop-dark");
       await region
         .getByRole("button", { name: "Make mara.f@proton.me primary" })
@@ -1370,7 +1370,14 @@ describe("product page, owner polish 2026-10-07", () => {
       });
       await h1(o.page, "Nightfall");
       const links = o.page.getByRole("navigation", { name: nav });
-      const order = ["Get it", "License", "Devices 2", "What's new", "Help"];
+      const order = [
+        "Get it",
+        "License",
+        "Devices 2",
+        "What's new",
+        "Help",
+        "Your data",
+      ];
       expect(await links.getByRole("link").allTextContents()).toEqual(order);
       // The device count is a pill.
       expect(
