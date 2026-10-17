@@ -35,6 +35,10 @@
  * everything product's identity fragment: `account` and `keyEntryLimit` after `configured`, and
  * the `attach`, `subject`, `signout` and `accountPortal` endpoints last. Additive keys a client
  * ignores; every Identity-off fragment is unchanged.
+ * I-08 (WIRE-CONTRACT-V4 §12.4, §12.5, plans/I-08.md, approved) added Identity's `issuer` after
+ * `configured` (now always true: the platform sign-in needs no per-product IdP row) and the
+ * `authorize` and `token` endpoints after `authDevicePoll`. Additive; every Identity-off fragment
+ * is unchanged.
  */
 
 import { readFileSync } from "node:fs";

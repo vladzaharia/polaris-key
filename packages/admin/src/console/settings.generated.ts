@@ -1535,7 +1535,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     ownership: "claimable",
     critical: true,
     secret: false,
-    pending: "I-08",
+    pending: null,
     deprecated: null,
   },
   {

@@ -83,6 +83,12 @@ export interface ExchangeSpec {
   presentHeaders?: Record<string, string>;
   /** The JSON body actually sent. */
   body?: unknown;
+  /**
+   * A form body actually sent (`application/x-www-form-urlencoded`, I-08's `token`). Recorded as
+   * `body.json` (the fields), with `content-type` asserted by value, so a replayer encodes the
+   * fields as a form because the request says so. Exclusive with `body`.
+   */
+  form?: Record<string, string>;
   /** What a replaying SDK's body is held to. Required when `body` is set. */
   expectBody?: RequestBody;
   /** Bind values from the JSON response for later requests. */
@@ -149,7 +155,15 @@ export class StepRecorder {
     for (const [name, value] of Object.entries(spec.presentHeaders ?? {}))
       sent[name.toLowerCase()] = value;
     let body: string | undefined;
-    if (spec.body !== undefined) {
+    if (spec.form !== undefined) {
+      if (spec.body !== undefined)
+        throw new Error(`${spec.path}: body and form are exclusive`);
+      if (!spec.expectBody)
+        throw new Error(`${spec.path}: a form needs an expectBody`);
+      sent["content-type"] = "application/x-www-form-urlencoded";
+      asserted["content-type"] = "application/x-www-form-urlencoded";
+      body = new URLSearchParams(spec.form).toString();
+    } else if (spec.body !== undefined) {
       if (!spec.expectBody)
         throw new Error(`${spec.path}: a body needs an expectBody`);
       sent["content-type"] = "application/json";

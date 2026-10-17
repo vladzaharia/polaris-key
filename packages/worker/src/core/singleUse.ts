@@ -54,6 +54,8 @@ export type SingleUseKind =
   | "auth-code"
   /** A passthrough sign-in request handle (PX-W13, WIRE-CONTRACT-V4 §12.7.2), by its hash. */
   | "signin-request"
+  /** An app passthrough authorization code (I-08, WIRE-CONTRACT-V4 §12.4), by its hash. */
+  | "signin-code"
   /** Adding an email sign-in method (PX-W12): the code's address, by the account session. */
   | "method-flow"
   /** Link an existing account (PX-W12): the two accounts' proofs, by the browser's flow secret. */

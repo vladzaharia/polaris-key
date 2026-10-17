@@ -110,6 +110,10 @@ export const identityService: ServiceDescriptor = {
     { path: "/{product}/identity/auth/device/poll", methods: ["post"] },
     // The legacy sign-in's licence chooser (server-rendered HTML).
     { path: "/{product}/identity/auth/choose", methods: ["get", "post"] },
+    // I-08: the app passthrough. `authorize` is a navigation; `token` takes a form body and
+    // answers CORS for the product's web origins, without credentials.
+    { path: "/{product}/identity/authorize", methods: ["get"] },
+    { path: "/{product}/identity/token", methods: ["post"] },
     // The account on the device wire (device bearer; CORS without credentials).
     { path: "/{product}/identity/attach", methods: ["post"] },
     { path: "/{product}/identity/subject", methods: ["get"] },
@@ -166,16 +170,16 @@ export const identityService: ServiceDescriptor = {
     base,
     settings,
   }: DiscoveryContext) => {
-    const row = await db.first<{ product: string }>(
-      "SELECT product FROM oidc_config WHERE product = ?",
-      product.slug,
-    );
     const accountPortal = (await portalEnabled(db, product.slug))
       ? accountPortalUrl(env, base, product)
       : null;
     const fragment: IdentityDiscovery = {
       enabled: true,
-      configured: Boolean(row),
+      // I-08: the platform sign-in (`authorize`, `token`) needs no per-product IdP row, so a
+      // product with Identity on is always configured. The legacy `auth/*` routes still need
+      // an `oidc_config` row and answer for themselves.
+      configured: true,
+      issuer: `${base}/identity`,
       account: true,
       keyEntryLimit: await keyEntryLimit(
         { env, db, ...(settings ? { registry: settings } : {}) },
@@ -191,6 +195,8 @@ export const identityService: ServiceDescriptor = {
         authDeviceEntry: `${base}/identity/auth/device`,
         authDeviceVerify: `${base}/identity/auth/device/verify`,
         authDevicePoll: `${base}/identity/auth/device/poll`,
+        authorize: `${base}/identity/authorize`,
+        token: `${base}/identity/token`,
         attach: `${base}/identity/attach`,
         subject: `${base}/identity/subject`,
         signout: `${base}/identity/signout`,

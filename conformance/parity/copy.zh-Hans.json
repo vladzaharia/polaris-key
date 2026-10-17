@@ -149,6 +149,34 @@
       "title": "登录不可用",
       "message": "已关闭通过此应用登录。你的安装和许可证仍可正常使用。"
     },
+    "invalid_request": {
+      "title": "登录请求无效",
+      "message": "应用发送了我们无法读取的请求。请重试。"
+    },
+    "invalid_client": {
+      "title": "无法识别该应用",
+      "message": "该应用尚未设置登录。请联系其开发者。"
+    },
+    "invalid_grant": {
+      "title": "登录已失效",
+      "message": "此次登录已过期或已被使用。请重新登录。"
+    },
+    "unsupported_grant_type": {
+      "title": "登录请求无效",
+      "message": "应用请求了我们不支持的登录方式。请联系其开发者。"
+    },
+    "invalid_scope": {
+      "title": "无法访问",
+      "message": "应用请求的访问权限此次登录不提供。请联系其开发者。"
+    },
+    "redirect_uri_mismatch": {
+      "title": "返回地址不被允许",
+      "message": "该应用的返回地址未登记，因此我们没有跳转。请联系其开发者。"
+    },
+    "license_choice_required": {
+      "title": "选择许可证",
+      "message": "选择此设备使用的许可证，然后继续。"
+    },
     "auth_method_disabled": {
       "title": "登录方式不可用",
       "message": "该登录方式已关闭。请选择其他方式。"

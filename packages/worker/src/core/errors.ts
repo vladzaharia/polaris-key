@@ -57,6 +57,16 @@ export const ErrorCode = {
   LicenseEmailBound: "license_email_bound",
   /** I-09 (§12.3): the request needs an account signed in on the device. */
   AccountRequired: "account_required",
+  /** I-08 (§12.4, §12.5): the OAuth-shaped passthrough's codes. The grant's own refusals are the
+   *  flat RFC 6749 §5.2 bodies; `RedirectUriMismatch` is a card page and never travels. */
+  InvalidRequest: "invalid_request",
+  InvalidClient: "invalid_client",
+  InvalidGrant: "invalid_grant",
+  UnsupportedGrantType: "unsupported_grant_type",
+  InvalidScope: "invalid_scope",
+  RedirectUriMismatch: "redirect_uri_mismatch",
+  /** I-08: a licence choice is owed and was not made (Continue, `token`). */
+  LicenseChoiceRequired: "license_choice_required",
 } as const;
 
 export function json(
