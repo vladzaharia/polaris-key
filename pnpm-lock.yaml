@@ -377,6 +377,9 @@ importers:
       '@polaris-key/react':
         specifier: workspace:*
         version: link:../sdk-react
+      '@polaris-key/server':
+        specifier: workspace:*
+        version: link:../server
       '@types/node':
         specifier: ^22.14.0
         version: 22.20.0
