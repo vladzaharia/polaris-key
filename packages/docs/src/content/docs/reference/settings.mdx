@@ -7,7 +7,7 @@ description: "Every platform, product and service setting in the settings regist
     Source of truth: the settings registry (packages/worker/src/core/settings/ and each service's
     settings.ts), emitted by packages/worker/scripts/gen-settings.ts. */}
 
-The settings registry describes every setting Polaris Key has: 82 entries (18 platform, 64 product, 0 entity), 11 of them registered ahead of the work package that wires them. This page is generated from the registry and checked against it in CI, so it cannot drift from it. An entry registered ahead of its work package is not offered in the console yet.
+The settings registry describes every setting Polaris Key has: 83 entries (18 platform, 65 product, 0 entity), 11 of them registered ahead of the work package that wires them. This page is generated from the registry and checked against it in CI, so it cannot drift from it. An entry registered ahead of its work package is not offered in the console yet.
 
 How to read the columns:
 
@@ -88,8 +88,9 @@ One value per product. A service's settings are product settings whose key start
 
 | Key | Setting | Value | Default | Merge | Ownership | Manifest | Confirm | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `config.catalog` | [Config catalog](/docs/features/managed-config/catalog/): The product's catalog of settings, secrets, minted tokens and flags, claimed as one unit: a console edit claims the whole catalog, with the recipes its minted tokens carry. | structured (schema.schema.json) | unset | cascade | claimable | `schema:entries` | L1 on change | — |
+| `config.catalog` | [Config catalog](/docs/features/managed-config/catalog/): The product's catalog of settings, secrets, minted tokens and flags, claimed as one unit: a console edit claims the whole catalog, with the recipes its minted tokens carry (`config.edgeMint.recipes`). | structured (schema.schema.json) | unset | cascade | claimable | `schema:entries` | L1 on change | — |
 | `config.profiles` | [Profiles](/docs/features/managed-config/profiles/): Reusable managed-payload baselines tiers point at. Each row is claimed on its own (S-18 D3). | structured (profiles (product.schema.json)) | `[]` | cascade | claimable | `product:profiles` | L1 on change | devices see it (document) |
+| `config.edgeMint.recipes` | [Edge-mint recipes](/docs/features/managed-config/edge-mint/): The recipes a minted token carries (the `mint` block of its catalog entry): short-lived third-party credentials signed at the edge for licensed devices. A console catalog publish saves them and claims them with the catalog; each recipe still needs an operator approval. | structured (edgeMint (product.schema.json)) | unset | cascade | claimable | `product:edgeMint` | L1 on change | reason required |
 
 ### Release
 
