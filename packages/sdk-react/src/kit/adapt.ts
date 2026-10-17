@@ -62,7 +62,11 @@ export function adaptStatus(view: View, input: UiInput): View {
       ["welcome.signIn"],
       view.copy.filter((k) => k !== "common.signOut"),
     ),
-    decisions: { ...view.decisions, primary: "welcome.signIn" },
+    decisions: {
+      ...view.decisions,
+      primary: "welcome.signIn",
+      focus: "welcome.signIn",
+    },
   });
 }
 

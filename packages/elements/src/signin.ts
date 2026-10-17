@@ -77,6 +77,9 @@ export class PkSignIn extends PkElement {
   /** The code step's countdown: the seconds the code had when first seen, and when. */
   private countFrom: { left: number; at: number } | null = null;
   private countTimer: ReturnType<typeof setInterval> | null = null;
+  /** The toast an existing license leaves behind when its sheet closes: the line's key, and who. */
+  private toast: { key: string; args: Record<string, string> } | null = null;
+  private toastTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
     super();
@@ -120,7 +123,8 @@ export class PkSignIn extends PkElement {
       case "signInHandoff.newCode":
         return m.retry();
       case "common.cancel":
-        if (s.session.outcome === undefined && this.sheet) return this.close();
+        // In a sheet, Cancel leaves it (and drops a sign-in in flight); in the page it backs out.
+        if (this.sheet) return this.close();
         return m.cancel();
       case "signin.choice.continue": {
         // Pressed once: a second press while the license is redeemed does nothing.
@@ -188,6 +192,8 @@ export class PkSignIn extends PkElement {
     this.stopForm = null;
     if (this.countTimer !== null) clearInterval(this.countTimer);
     this.countTimer = null;
+    if (this.toastTimer !== null) clearTimeout(this.toastTimer);
+    this.toastTimer = null;
     // Stop following; the sign-in itself stays open on the server (SignInModel.dispose()).
     this.formModel?.dispose();
     this.formModel = null;
@@ -256,6 +262,10 @@ export class PkSignIn extends PkElement {
     );
   }
 
+  protected override isSheet(): boolean {
+    return this.sheet;
+  }
+
   /** The step drawn now. */
   get step(): FormStep {
     return formStep(this.modelInput());
@@ -306,31 +316,47 @@ export class PkSignIn extends PkElement {
         </p>`
       : nothing;
     if (this.sheet !== true) return html`${announce}${body}`;
-    return html`<dialog
-      class="sheet"
-      part="sheet"
-      data-part="sheet"
-      aria-labelledby="pk-title"
-      @cancel=${this.onDialogCancel}
-      @close=${this.onDialogClose}
-      @click=${(e: MouseEvent) => {
-        // A click on the scrim lands on the dialog itself: it backs out like Escape.
-        if (e.target === e.currentTarget) this.close();
-      }}
-    >
-      <button
-        type="button"
-        class="sheet-close"
-        data-part="close"
-        aria-label=${c.copy.has("common.close")
-          ? c.copy.format("common.close", {})
-          : "Close"}
-        @click=${() => this.close()}
+    const toast = this.toast;
+    return html`${toast
+        ? html`<div
+            class="toast pk-flash"
+            role="status"
+            part="toast"
+            data-part="toast"
+            data-key=${toast.key}
+            data-status="success"
+          >
+            ${GLYPHS.success()}
+            <span class="texts"
+              ><span>${text(c, toast.key, toast.args)}</span></span
+            >
+          </div>`
+        : nothing}
+      <dialog
+        class="sheet"
+        part="sheet"
+        data-part="sheet"
+        aria-labelledby="pk-title"
+        @cancel=${this.onDialogCancel}
+        @close=${this.onDialogClose}
+        @click=${(e: MouseEvent) => {
+          // A click on the scrim lands on the dialog itself: it backs out like Escape.
+          if (e.target === e.currentTarget) this.close();
+        }}
       >
-        ${GLYPHS.close()}
-      </button>
-      ${announce}${body}
-    </dialog>`;
+        <button
+          type="button"
+          class="sheet-close"
+          data-part="close"
+          aria-label=${c.copy.has("common.close")
+            ? c.copy.format("common.close", {})
+            : "Close"}
+          @click=${() => this.close()}
+        >
+          ${GLYPHS.close()}
+        </button>
+        ${announce}${body}
+      </dialog>`;
   }
 
   private onDialogCancel = (e: Event): void => {
@@ -363,6 +389,8 @@ export class PkSignIn extends PkElement {
 
   /** `sheet`: close the dialog and cancel a sign-in in flight. */
   close(): void {
+    // Idempotent: a host that calls close() inside its pk-close handler must not re-enter.
+    if (!this.open) return;
     if (this.formModel && this.formModel.snapshot.session.outcome !== undefined)
       void this.formModel.cancel();
     this.open = false;
@@ -412,8 +440,13 @@ export class PkSignIn extends PkElement {
     this.lastStep = key;
     const out = this.baseInput().signIn?.outcome;
     // The sign-in finished: the host hears it once, and the person gets Done (their way out).
-    if (out === "signedIn") this.finish();
-    else this.doneSent = false;
+    if (out === "signedIn") {
+      this.finish();
+      // An existing license opens the app with a toast: its sheet closes by itself; a new one
+      // ends on Done.
+      if (this.sheet && this.open && !this.baseInput().signIn?.issuedNow)
+        this.closeWithToast();
+    } else this.doneSent = false;
     this.syncDialog();
     if (this.countFrom !== null && this.countTimer === null)
       this.countTimer = setInterval(() => this.requestUpdate(), 1000);
@@ -422,6 +455,24 @@ export class PkSignIn extends PkElement {
       this.countTimer = null;
     }
     if (moved) this.morph(from);
+  }
+
+  /** Close the sheet and say who signed in, for a few seconds, in the page. */
+  private closeWithToast(): void {
+    const input = this.baseInput();
+    const holder = input.account?.holder?.trim();
+    const tier = input.account?.tier ?? this.pickedTier;
+    this.toast =
+      holder && tier
+        ? { key: "signin.desktop.toast", args: { name: holder, tier } }
+        : { key: "signin.return.signedInShort", args: {} };
+    if (this.toastTimer !== null) clearTimeout(this.toastTimer);
+    this.toastTimer = setTimeout(() => {
+      this.toast = null;
+      this.toastTimer = null;
+      this.requestUpdate();
+    }, 6000);
+    this.close();
   }
 
   private syncDialog(): void {

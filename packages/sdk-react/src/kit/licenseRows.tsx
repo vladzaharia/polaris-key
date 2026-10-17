@@ -163,7 +163,8 @@ export function licenseRows(c: KitCtx): ReactNode {
       );
     // A full license cannot be chosen. In a list that can be chosen from it is a disabled radio;
     // when every license is full, Replace a device is its action, carrying its license.
-    if (!allFull)
+    const replaceHere = r.replace?.allowed && has("signin.replace.open");
+    if (!allFull && !replaceHere)
       return (
         <div
           key={e.id}
@@ -189,7 +190,7 @@ export function licenseRows(c: KitCtx): ReactNode {
         aria-label={r.tierName}
       >
         {body}
-        {r.replace?.allowed && has("signin.replace.open") ? (
+        {replaceHere ? (
           button(c, "signin.replace.open", lone ? "primary" : "secondary", {
             detail: { licenseId: r.id },
           })

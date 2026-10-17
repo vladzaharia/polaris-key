@@ -410,7 +410,6 @@ export function button(
     disabled?: boolean;
   } = {},
 ): TemplateResult {
-  const external = OPENS.has(key);
   const device =
     NAMED_PRIMARY.has(key) && c.copy.has("signin.replace.confirmNamed")
       ? pickedDevice(c)
@@ -426,6 +425,7 @@ export function button(
     c.copy.has("boot.consent.download")
       ? `${c.copy.format("boot.consent.download", {})} ${version}`
       : null;
+  const external = OPENS.has(key) || download !== null;
   const label =
     device !== null
       ? text(c, "signin.replace.confirmNamed", { device })

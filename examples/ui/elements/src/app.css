@@ -13,8 +13,3 @@ main {
   gap: 1.5rem;
   max-inline-size: 40rem;
 }
-/* The key step fills the window, as the gate's screens do. */
-pk-activate::part(root) {
-  display: grid;
-  min-block-size: 100dvh;
-}

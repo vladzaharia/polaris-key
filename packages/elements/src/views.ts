@@ -314,16 +314,7 @@ function screen(c: RenderCtx, layout: Layout): TemplateResult {
           c,
           body.filter((k) => k !== "common.byDeveloper"),
         )}
-        ${p.meta.length
-          ? html`<p class="status-line" data-part="status" role="status">
-              ${p.meta.map(
-                (k, i) =>
-                  html`${i ? " · " : ""}<span data-key=${k}
-                      >${text(c, k)}</span
-                    >`,
-              )}
-            </p>`
-          : nothing}
+        ${statusLine(c, p.meta)}
       </div>
       ${contentFor(c)} ${progressFor(c)} ${percentFor(c)}
       ${callout(c, errorKeys)}
@@ -332,6 +323,30 @@ function screen(c: RenderCtx, layout: Layout): TemplateResult {
       ${p.footnote.length ? paragraphs(c, p.footnote, "footnote") : nothing}
     </div>
   </section>`;
+}
+
+/** The meta line of a screen or pane: its keys joined by a middle dot, announced politely. A
+ *  ticking countdown is not a live region (a screen reader would read it every second). */
+function statusLine(
+  c: RenderCtx,
+  keys: string[],
+): TemplateResult | typeof nothing {
+  if (keys.length === 0) return nothing;
+  const ticking: string[] = keys.filter((k) => k === "signin.handoff.expires");
+  const live = keys.filter((k) => !ticking.includes(k));
+  return html`${ticking.map(
+    (k) =>
+      html`<p class="status-line" data-part="countdown">
+        <span data-key=${k}>${text(c, k)}</span>
+      </p>`,
+  )}${live.length
+    ? html`<p class="status-line" data-part="status" role="status">
+        ${live.map(
+          (k, i) =>
+            html`${i ? " · " : ""}<span data-key=${k}>${text(c, k)}</span>`,
+        )}
+      </p>`
+    : nothing}`;
 }
 
 /** An embedded pane (DL2): start edge, at most 40rem, its own frame unless `bare`. */
@@ -350,14 +365,7 @@ function pane(c: RenderCtx, layout: Layout): TemplateResult {
     ${productHeader(c, layout.header === "none" ? "none" : "compact")}
     <div class="texts" data-part="texts">
       ${titles(c, p.titles, "section", [], 2)} ${paragraphs(c, body)}
-      ${p.meta.length
-        ? html`<p class="status-line" data-part="status" role="status">
-            ${p.meta.map(
-              (k, i) =>
-                html`${i ? " · " : ""}<span data-key=${k}>${text(c, k)}</span>`,
-            )}
-          </p>`
-        : nothing}
+      ${statusLine(c, p.meta)}
     </div>
     ${loading
       ? html`<div class="skeleton" aria-hidden="true">
@@ -491,6 +499,15 @@ function withBase(c: RenderCtx): View {
   };
   switch (view.component) {
     case "LicenseChoice": {
+      // The Replace step confirms on its own button: its "Replace a device" openers are gone.
+      if (view.state === "replace-open")
+        return {
+          ...view,
+          copy: view.copy.filter(
+            (k) =>
+              k !== "signin.replace.open" && k !== "signin.replace.openSystem",
+          ),
+        };
       const ch = input.choices;
       if (!ch || !CHOICE_STATES.has(view.state)) return view;
       const web = input.platform?.os === "web";

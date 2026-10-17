@@ -16,6 +16,11 @@ function componentClass(component: ComponentName): typeof PkElement {
   // An anonymous subclass per component: the same base, the component fixed.
   return class extends PkElement {
     readonly component = component;
+
+    /** The key step is a blocking screen: it owns the window, as the gate's screens do (DL2). */
+    protected override fillsWindow(): boolean {
+      return component === "Activate";
+    }
   } as unknown as typeof PkElement;
 }
 

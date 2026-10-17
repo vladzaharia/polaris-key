@@ -188,12 +188,6 @@ const KIT_CSS = String.raw`
   }
 }
 
-/* A window under 34rem tall (large text): the bar scrolls with the content, never over it. */
-.pk-root[data-tight] .stage[data-kind="screen"] .card > .actions {
-  position: static;
-  margin-block: 0;
-  padding-block: 0;
-}
 
 /* DL1: two panes in a landscape box from 52.5rem, the identity panel at the start. */
 .split {
@@ -331,6 +325,24 @@ const KIT_CSS = String.raw`
   margin-block: calc(-1 * var(--pk-space-2));
   background: var(--pk-surface-raised);
 }
+/* The docked bar's opaque ground spans the whole window, so content scrolling under it is hidden
+   edge to edge, never sliced at the bar's own width (the stage clips it to the window). */
+.pk-root[data-shape="short"]:not([data-tight]) .stage[data-kind="screen"] .card > .actions::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inset-inline: -100vw;
+  z-index: -1;
+  background: var(--pk-surface-raised);
+}
+/* A window under 34rem tall (large text), or a short one under 18rem: the bar scrolls with the
+   content, never over it. After the short rule above, which it overrides. */
+.pk-root[data-tight] .stage[data-kind="screen"] .card > .actions,
+.pk-root[data-tight][data-shape="short"] .stage[data-kind="screen"] .card > .actions {
+  position: static;
+  margin-block: 0;
+  padding-block: 0;
+}
 /* Height is what a short window lacks: a group of links is two columns, not a column. */
 .pk-root[data-shape="short"] .links:has(> :nth-child(3)) {
   display: grid;
@@ -369,6 +381,9 @@ const KIT_CSS = String.raw`
 }
 .card[data-align="start"] .identity[data-size="compact"] {
   justify-content: start;
+}
+.card[data-align="start"] .identity[data-size="medium"] {
+  justify-items: start;
 }
 .icon {
   inline-size: var(--pk-icon-size, 6rem);
@@ -670,6 +685,11 @@ bdi {
 }
 .field input[aria-invalid="true"] {
   box-shadow: inset 0 0 0 1px var(--pk-danger-border);
+  /* The focus ring of a refused field is danger too, so the refusal stays readable in focus. */
+  --pk-ring: var(--pk-danger);
+}
+.field input[aria-invalid="true"]:focus-visible {
+  box-shadow: inset 0 0 0 1px var(--pk-danger-border);
 }
 /* The field and Paste share a line until the field would shrink below ten characters' worth
    (large text, a narrow window): then Paste stacks under it. */
@@ -746,6 +766,8 @@ bdi {
   max-block-size: min(24rem, 55dvh);
   overflow-y: auto;
   overscroll-behavior: contain;
+  /* A row is as tall as its content: a two-line name never runs into the next row. */
+  grid-auto-rows: max-content;
 }
 .row {
   display: grid;
@@ -826,6 +848,21 @@ bdi {
 .row[role="group"][data-part="license-row"] > .btn {
   grid-column: 1 / -1;
   inline-size: 100%;
+}
+/* A narrow box (large text on a phone): the tier sits above the counts, in one column, so no
+   count is clipped. */
+@container pk (max-width: 18rem) {
+  .row[data-part="license-row"] {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .row[data-part="license-row"] > .pill:first-child {
+    grid-column: 1 / -1;
+    justify-self: start;
+    min-inline-size: 0;
+  }
+  .row[role="group"][data-part="license-row"] {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 .meta-line {
   display: flex;
@@ -1028,6 +1065,16 @@ bdi {
 }
 .toast .texts {
   flex: 1;
+}
+/* The toast an existing license leaves in the page when its sheet closes: low and centred, over
+   the app, for a few seconds. */
+.toast.pk-flash {
+  position: fixed;
+  inset-block-end: max(var(--pk-space-6), env(safe-area-inset-bottom));
+  inset-inline: 0;
+  margin-inline: auto;
+  z-index: 5;
+  animation: pk-rise var(--pk-duration-slow) var(--pk-ease-enter) both;
 }
 .toast .timer {
   position: absolute;
@@ -1288,6 +1335,12 @@ dialog.sheet .card,
   color: var(--pk-text-strong);
   cursor: pointer;
   z-index: 3;
+}
+/* The close button sits in the sheet's corner: the header keeps clear of it, whatever the text size. */
+dialog.sheet .identity {
+  padding-inline-end: calc(var(--pk-kit-control-height) + var(--pk-space-2));
+  /* A name too wide for the line beside the icon goes under it, never under the close button. */
+  flex-wrap: wrap;
 }
 .sheet-close .glyph {
   inline-size: 1.25rem;
