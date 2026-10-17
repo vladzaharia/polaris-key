@@ -123,7 +123,9 @@ const SCENES: Scene[] = [
     native: true,
   },
   { id: "Activate.rejected", row: "Activate/rejected: not a key" },
-  { id: "SignIn.code", row: "SignIn/code: Use a code instead" },
+  { id: "SignIn.methods-web", row: "SignIn/methods: web" },
+  { id: "SignIn.error-kept", row: "SignIn/error: a sign-in method failed" },
+  { id: "SignIn.code-live", row: "SignIn/code: a device-code sign-in" },
   { id: "SignIn.choose", row: "SignIn/choose: desktop" },
   { id: "SignIn.replace", row: "SignIn/replace: the web confirms inline" },
   {
@@ -276,6 +278,8 @@ async function mount(
     ...withDefaults(fixture.input, matrix.vocabulary.defaults),
     ...extras(fixture.input),
   };
+  if (scene.id === "SignIn.code") console.log("DBG", JSON.stringify(input));
+  if (scene.id === "SignIn.code") console.log("DBG", JSON.stringify(input));
   root = createRoot(host);
   root.render(
     <Component
