@@ -146,3 +146,16 @@ Then the full green gate in `AGENTS.md`.
 
 What downstream work packages rely on from this one is named in their briefs (the Unblocks row). The role agent sets `--set ST-41 in-review` when it hands off. After review, the lead adds the last commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set ST-41 done`.
+
+## Fix round (2026-10-17, BUILT UX review)
+
+Built the products.overview hero and gauge pane (the next step with its reason, the page's one
+primary; per-platform meters) as the Integration card above the service tiles, and on Integration
+the "Your app" side column (one command or by hand), a fold for done features, a quiet foot Hide
+line and one label pair (Hide Integration / Show Integration). Snippets use the product's own
+names. F1-F13, V1-V8 and C1-C3 are addressed.
+
+**Named follow-up (not built here):** the products.overview feature board and the Integration
+steps rail (per-platform, per-step timeline). Until it lands, the card lists the features and the
+service tiles stay. The sdkFit input is the platforms an SDK was seen on; the product's declared
+platforms (deliverables) are not read, so a product nothing has called opens on Node.

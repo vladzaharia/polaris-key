@@ -157,21 +157,21 @@ export function createActions(
 /**
  * Connecting an app (UX-59; SETUP.md §3): the SDK quick start, its install from pkg.plrs.im and
  * the trust pins, findable by the words a developer types ("sdk", "install", "pins"). The quick
- * start rows open Overview with the SDK chooser focused; the pins row opens Keys & secrets.
+ * start rows open Integration with the SDK picker focused; the pins row opens Keys & secrets.
  * Shown on a match only, on a product.
  */
 export function sdkActions(slug: string | null): PaletteItem[] {
   if (!slug) return [];
   const toQuickStart = (api: PaletteRunApi): void => {
-    api.navigate(r.overview(slug));
-    focusWhenReady(SDK_QUICK_START_ID);
+    api.navigate(r.integration(slug));
+    focusWhenReady(`${SDK_QUICK_START_ID}-tab`);
   };
   return [
     {
       id: "action:sdk-quick-start",
       group: "Actions",
       label: "SDK quick start",
-      detail: "Overview · Trust & SDK",
+      detail: "Integration",
       keywords:
         "sdk connect integrate app client snippet setup code node react web python swift ios kotlin android godot",
       icon: <Code2 aria-hidden className="size-4" />,

@@ -43,6 +43,8 @@ export interface UseSetup {
   skip: (flow: string, step: string) => Promise<boolean>;
   /** Undo a skip. Same failure words as `skip`. */
   unskip: (flow: string, step: string) => Promise<boolean>;
+  /** Hide or show Integration (the operator's choice). Same failure words as `skip`. */
+  setIntegrationHidden: (hidden: boolean) => Promise<boolean>;
   saving: boolean;
 }
 
@@ -107,6 +109,11 @@ export function useSetup(slug: string): UseSetup {
     }
   };
 
+  const stampNow = (): SetupStamp => ({
+    at: Math.floor(Date.now() / 1000),
+    by: me?.email || me?.sub || "operator",
+  });
+
   return {
     choices,
     ready: q.isSuccess,
@@ -114,12 +121,11 @@ export function useSetup(slug: string): UseSetup {
     allowed: gate.allowed,
     disabledReason: gate.disabledReason,
     save,
-    stamp: () => ({
-      at: Math.floor(Date.now() / 1000),
-      by: me?.email || me?.sub || "operator",
-    }),
+    stamp: stampNow,
     skip: (flow, step) => change(edit.skip(flow, step)),
     unskip: (flow, step) => change(edit.skip(flow, step, false)),
+    setIntegrationHidden: (hidden) =>
+      change(edit.hideIntegration(hidden ? stampNow() : null)),
     saving,
   };
 }

@@ -131,6 +131,8 @@ export const qk = {
   activity: (slug: string) => product(slug, "core", "activity"),
   secrets: (slug: string) => product(slug, "core", "secrets"),
   keys: (slug: string) => product(slug, "core", "keys"),
+  /** ST-41: the Integration read model (ST-40). */
+  integration: (slug: string) => product(slug, "core", "integration"),
   ciPublisher: (slug: string) => product(slug, "core", "ci", "publisher"),
   ciTokens: (slug: string) => product(slug, "core", "ci", "tokens"),
   blobGc: (slug: string) => product(slug, "core", "blob-gc"),

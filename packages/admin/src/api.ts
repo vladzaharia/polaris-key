@@ -1890,6 +1890,57 @@ export interface LinkExistingResult extends Omit<ResyncResult, "updated"> {
   remainingSecrets: string[];
 }
 
+// ── Integration (ST-40's read model, rendered by ST-41) ─────────────────────────────
+
+export type IntegrationFeatureId =
+  | "licensing"
+  | "config"
+  | "identity"
+  | "update"
+  | "packs"
+  | "sync"
+  | "commerce";
+
+/** Where a feature was seen working. `sdkVersion` is client-supplied: text only, never a trust signal. */
+export interface IntegrationVerifiedOn {
+  sdk: string;
+  platform: string;
+  arch: string;
+  sdkVersion: string | null;
+  lastOkAt: number | null;
+}
+
+export interface IntegrationFeature {
+  id: IntegrationFeatureId;
+  service: ServiceSlug;
+  prerequisites: Array<{ id: string; met: boolean }>;
+  unavailable: boolean;
+  facts: Record<string, number | boolean | string | null>;
+  status: "verified" | "not_seen" | "blocked";
+  verifiedOn: IntegrationVerifiedOn[];
+}
+
+export interface IntegrationView {
+  product: string;
+  now: number;
+  snippet: {
+    slug: string;
+    services: ServiceSlug[];
+    pins: Array<{ kid: string; publicKey: string }>;
+  };
+  features: IntegrationFeature[];
+  server: IntegrationVerifiedOn[];
+  sightings: Array<{
+    sdk: string;
+    platform: string;
+    arch: string;
+    sdkVersion: string | null;
+    firstSeenAt: number;
+    lastSeenAt: number;
+  }>;
+  verified: boolean;
+}
+
 // ── Core inventories (chunk 5 · A-4, A-5) and CI publishing (P2-02) ─────────────
 export type SigningKeyState = "active" | "staged" | "retired" | "revoked";
 
@@ -5736,6 +5787,10 @@ const rawApi = {
       `${p(slug)}/identity/sign-in-settings`,
       { method: "PATCH", body: JSON.stringify(patch) },
     ),
+
+  /** ST-40: per enabled feature, its prerequisites and where it is Verified. */
+  integration: (slug: string) =>
+    call<IntegrationView>(`${p(slug)}/integration`),
 
   // ── product settings (LX-06: the row-backed slice of S-18 §4.7's settings API) ─────
   /** The row-backed settings of one settings-hub area, with the value in force. */

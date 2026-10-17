@@ -17,6 +17,9 @@ const fns = vi.hoisted(() => ({
   portalSettings: vi.fn(),
   activity: vi.fn(),
   productKeys: vi.fn(),
+  integration: vi.fn(),
+  productSettings: vi.fn(),
+  updateProductSetting: vi.fn(),
 }));
 
 vi.mock("../src/api.js", async () => {
@@ -79,6 +82,61 @@ function product(over: Partial<ProductDetail> = {}): ProductDetail {
       ],
       warnings: [],
     },
+    ...over,
+  };
+}
+
+export function integrationView(
+  over: Partial<import("../src/api.js").IntegrationView> = {},
+): import("../src/api.js").IntegrationView {
+  return {
+    product: "djdl",
+    now: NOW,
+    snippet: {
+      slug: "djdl",
+      services: ["license", "config"],
+      pins: [{ kid: "djdl-a", publicKey: "PUBKEY-A" }],
+    },
+    features: [
+      {
+        id: "licensing",
+        service: "license",
+        prerequisites: [{ id: "tiers", met: true }],
+        unavailable: false,
+        facts: {},
+        status: "verified",
+        verifiedOn: [
+          {
+            sdk: "swift",
+            platform: "macos",
+            arch: "arm64",
+            sdkVersion: "1.2.3",
+            lastOkAt: NOW - 60,
+          },
+        ],
+      },
+      {
+        id: "config",
+        service: "config",
+        prerequisites: [{ id: "catalog", met: false }],
+        unavailable: false,
+        facts: {},
+        status: "blocked",
+        verifiedOn: [],
+      },
+    ],
+    server: [],
+    sightings: [
+      {
+        sdk: "swift",
+        platform: "macos",
+        arch: "arm64",
+        sdkVersion: "1.2.3",
+        firstSeenAt: NOW - 600,
+        lastSeenAt: NOW - 60,
+      },
+    ],
+    verified: true,
     ...over,
   };
 }
@@ -151,21 +209,32 @@ beforeEach(() => {
     ],
     now: NOW,
   });
+  fns.integration.mockResolvedValue(integrationView());
+  fns.productSettings.mockResolvedValue({ settings: [] });
 });
 afterEach(cleanup);
 
 describe("Core → Overview", () => {
   it("titles the page with the product and offers Create license when License is on (OVR-1)", async () => {
+    // Nothing left to do on Integration: the header's primary follows enablement.
+    fns.integration.mockResolvedValue(
+      integrationView({ features: [], verified: false }),
+    );
     mount();
     expect(
       await screen.findByRole("heading", { level: 1, name: "DJDL" }),
     ).toBeTruthy();
     expect(
-      screen.getByRole("link", { name: "Create license" }).getAttribute("href"),
+      (
+        await screen.findByRole("link", { name: "Create license" })
+      ).getAttribute("href"),
     ).toBe("#/p/djdl/license/licenses");
   });
 
   it("offers Publish catalog with only Config on, else Enable services", async () => {
+    fns.integration.mockResolvedValue(
+      integrationView({ features: [], verified: false }),
+    );
     fns.product.mockResolvedValue({
       product: product({ services: enablement(["config"]) }),
     });
@@ -204,53 +273,87 @@ describe("Core → Overview", () => {
     expect(await screen.findByText("7 devices")).toBeTruthy();
   });
 
-  it("renders setup as a checklist with words, not colour, and links that go elsewhere (OVR-2, OVR-7)", async () => {
+  it("replaces the checklist, Trust & SDK and the welcome with the Integration card", async () => {
     mount();
-    expect(await screen.findByText("Set secret WEBHOOK_SECRET")).toBeTruthy();
-    expect(screen.getAllByText("Needs attention").length).toBeGreaterThan(0);
+    const card = (
+      await screen.findByRole("heading", { name: "Integration" })
+    ).closest("section")!;
     expect(
-      screen.getByRole("link", { name: /^Set/ }).getAttribute("href"),
-    ).toBe("#/p/djdl/settings/keys");
-    // No license yet: the step is to do, and links to Licenses.
-    expect(await screen.findByText("Issue a first license")).toBeTruthy();
-    for (const link of screen.getAllByRole("link"))
-      expect(link.getAttribute("href")).not.toBe("#/p/djdl");
+      await within(card).findByText(/of 2 features Verified/),
+    ).toBeTruthy();
+    expect(within(card).getByText("Verified")).toBeTruthy();
+    expect(within(card).getByText("Waiting on setup")).toBeTruthy();
+    expect(within(card).getByText("macOS")).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Setup" })).toBeNull();
+    expect(screen.queryByText("Trust & SDK")).toBeNull();
+    expect(screen.queryByTestId("product-welcome")).toBeNull();
   });
 
-  it("marks the first license done once a license exists", async () => {
-    fns.licenses.mockResolvedValue({
-      licenses: [{ id: "l1", status: "active", expiresAt: null }],
-    });
+  it("the computed next step is the one primary action", async () => {
     mount();
-    expect(await screen.findByText("First license issued")).toBeTruthy();
+    expect(
+      (
+        await screen.findByRole("link", { name: "Publish a catalog" })
+      ).getAttribute("href"),
+    ).toBe("#/p/djdl/config/catalog");
+    expect(screen.queryByRole("link", { name: "Create license" })).toBeNull();
+    // It lives in the card, with its reason, and the header carries no second primary.
+    const card = screen.getByTestId("integration-card");
+    expect(
+      within(card).getByText(/cannot be verified until you do/),
+    ).toBeTruthy();
+    expect(
+      screen.getAllByRole("link", { name: "Publish a catalog" }),
+    ).toHaveLength(1);
   });
 
-  it("omits License steps when License is off", async () => {
+  it("names an unset secret and a missing signing key under Needs attention", async () => {
     fns.product.mockResolvedValue({
-      product: product({ services: enablement(["config", "release"]) }),
+      product: product({ signing: undefined }),
     });
     mount();
-    await screen.findByText("Set secret WEBHOOK_SECRET");
-    expect(screen.queryByText("Issue a first license")).toBeNull();
-    expect(fns.licenses).not.toHaveBeenCalled();
+    expect(await screen.findByText("Secret WEBHOOK_SECRET")).toBeTruthy();
+    expect(screen.getByText("Signing key")).toBeTruthy();
   });
 
-  it("hides a complete checklist, with no healthy pill, behind a Setup checklist action", async () => {
+  it("a hidden Integration card is one line that reopens it", async () => {
     const user = userEvent.setup();
-    fns.product.mockResolvedValue({
-      product: product({ setup: { secrets: [] } }),
-    });
-    fns.licenses.mockResolvedValue({
-      licenses: [{ id: "l1", status: "active", expiresAt: null }],
+    fns.productSettings.mockResolvedValue({
+      settings: [
+        {
+          key: "core.setup",
+          version: 1,
+          value: {
+            integrationHidden: { at: NOW, by: "a@b.c" },
+            notUsing: [],
+            runnerConsent: null,
+            skipped: [],
+          },
+        },
+      ],
     });
     mount();
-    const reopen = await screen.findByRole("button", {
-      name: "Setup checklist",
+    const show = await screen.findByRole("button", {
+      name: "Show Integration",
     });
-    // Pills mean attention: a finished setup draws no "Setup complete" pill anywhere.
-    expect(screen.queryByText("Setup complete")).toBeNull();
-    await user.click(reopen);
-    expect(await screen.findByRole("heading", { name: "Setup" })).toBeTruthy();
+    expect(screen.queryByText(/features Verified/)).toBeNull();
+    fns.updateProductSetting.mockResolvedValue({
+      ok: true,
+      claimed: false,
+      setting: {
+        key: "core.setup",
+        version: 2,
+        value: { integrationHidden: null },
+      },
+    });
+    await user.click(show);
+    await waitFor(() => expect(fns.updateProductSetting).toHaveBeenCalled());
+    const body = fns.updateProductSetting.mock.calls[0]![2] as {
+      value: { integrationHidden: unknown };
+      expectedVersion: number;
+    };
+    expect(body.value.integrationHidden).toBeNull();
+    expect(body.expectedVersion).toBe(1);
   });
 
   it("lists licenses expiring soon under Needs attention", async () => {
@@ -264,74 +367,6 @@ describe("Core → Overview", () => {
     expect(
       await screen.findByText("1 license expires within 14 days."),
     ).toBeTruthy();
-  });
-
-  it("shows the signing key in gold with copy, and a quick start that installs from pkg.plrs.im (UX-59)", async () => {
-    fns.product.mockResolvedValue({
-      product: product({
-        services: enablement(["license", "config", "release"]),
-      }),
-    });
-    mount();
-    expect(await screen.findByText("PUBKEY-A")).toBeTruthy();
-    expect(
-      screen.getByRole("button", { name: /Copy signing key/ }),
-    ).toBeTruthy();
-    const text = () => document.body.textContent ?? "";
-    // The registry line comes before the install, never a bare npm install against npmjs.
-    const registry =
-      "@polaris-key:registry=https://pkg.plrs.im/npm/polaris-key/";
-    expect(text()).toContain(registry);
-    expect(text()).toContain("npm install @polaris-key/node");
-    expect(text().indexOf(registry)).toBeLessThan(
-      text().indexOf("npm install @polaris-key/node"),
-    );
-    // The app's own version is a placeholder, never the latest release's (2.4.0).
-    expect(text()).toContain(`version: "1.4.2",`);
-    expect(text()).not.toContain('version: "2.4.0"');
-    expect(text()).toContain('"djdl-a": "PUBKEY-A"');
-    expect(text()).not.toContain("PUBKEY-OLD");
-  });
-
-  it("pins the active and the staged key, and offers every SDK (UX-59)", async () => {
-    const user = userEvent.setup();
-    fns.productKeys.mockResolvedValue({
-      keys: [
-        signingKey("djdl-b", "staged", "PUBKEY-B"),
-        signingKey("djdl-a", "active", "PUBKEY-A"),
-      ],
-      now: NOW,
-    });
-    mount();
-    expect(
-      await screen.findByText(/Pins the active key and the key staged/),
-    ).toBeTruthy();
-    const text = () => document.body.textContent ?? "";
-    expect(text()).toContain('"djdl-b": "PUBKEY-B"');
-    const pick = async (label: string) => {
-      await user.click(
-        screen.getByRole("combobox", { name: "SDK quick start" }),
-      );
-      await user.click(await screen.findByRole("option", { name: label }));
-    };
-    await pick("Swift");
-    expect(text()).toContain("import PolarisKey");
-    expect(text()).toContain("swift/polaris-key");
-    await pick("React and web");
-    expect(text()).toContain("npm install @polaris-key/react");
-    expect(text()).toContain("<PolarisKeyProvider");
-    await pick("Python");
-    expect(text()).toContain("https://pkg.plrs.im/pypi/polaris-key/simple/");
-    expect(text()).toContain("from polaris_key import PolarisKeyClient");
-    // pip installs the package alone: its description says to install the dependencies first.
-    expect(text()).toContain("dependencies from your usual index");
-    await pick("Kotlin and Android");
-    expect(text()).toContain("https://pkg.plrs.im/maven/polaris-key/");
-    expect(text()).toContain('"djdl-a" to "PUBKEY-A"');
-    await pick("Godot");
-    expect(text()).toContain("const PINNED_TRUST_KEYS := {");
-    expect(text()).toContain("await PolarisKey.boot(");
-    expect(text()).toContain("https://pkg.plrs.im/godot/polaris-key/");
   });
 
   it("shows an error state with Retry when the product cannot load", async () => {
