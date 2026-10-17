@@ -109,11 +109,11 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 ## Acceptance criteria
 
-- [ ] `python mytool.py sign-in` and `status` work unchanged.
-- [ ] A host's `--help` lists only the chosen verbs without integration flags.
-- [ ] Every verb has offline and update-unconfigured goldens in both themes.
-- [ ] The `require_*` snippets are tested files.
-- [ ] The SP-33a Python CLI golden compiles.
+- [x] `python mytool.py sign-in` and `status` work unchanged.
+- [x] A host's `--help` lists only the chosen verbs without integration flags.
+- [x] Every verb has offline and update-unconfigured goldens in both themes.
+- [x] The `require_*` snippets are tested files.
+- [x] The SP-33a Python CLI golden compiles.
 - [ ] `pkey-ux-reviewer` passes every changed screen.
 - [ ] The acceptance in "Design language v2 (2026-10-08)" above holds.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate in the header.
@@ -126,3 +126,24 @@ Each acceptance item's test in its SDK lane, then the full green gate in `AGENTS
 
 The role agent sets `--set UK-48 in-review` when it hands off. After review, the lead adds the last commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set UK-48 done`.
+
+## Progress and corrections (2026-10-16)
+
+Built: the cli family's capability, stdin, outcome, mount, help and gate rows all run in
+`sdks/python/tests/cli/` (`test_cli_contract.py` has no pending rows; `test_cli_mount.py` runs the
+mount and help rows on argparse and the mount rows on click and typer; `test_cli_gate.py` runs the
+gate rows); `register_argparse`, `register_click`/`polaris_click_group` and
+`register_typer`/`polaris_typer_app` take `client=` or `config=` with `version=`, `namespace`,
+`verbs` (default `END_USER`) and `on_collision`; `require_license` and `require_entitlement` exit 4.
+
+Corrections to the brief, from the code:
+
+- `update download` is Python's own verb and is in neither corpus list. It mounts only when named
+  (`verbs=["update"]` or `"update download"`) and a partly mounted `update` refuses it. The corpus is
+  unchanged.
+- `--json` enums are kebab-case in Python (`signed-in`); the Node kit still writes `signedIn`
+  (follow-up: UK-46's owner aligns Node).
+- Not done, and why: the `<Product> sign-in` copy and the bundle name from package metadata have no
+  copy key or HA-13 seam to build on yet; the locale for the host's help is `en` until the theme
+  reaches `GroupedHelpParser`.
+- Screens are the goldens in `tests/cli/golden/scenes/`; no UX review has run.
