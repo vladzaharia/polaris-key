@@ -36,6 +36,7 @@ const services = Object.fromEntries(
     "update",
     "identity",
     "sync",
+    "commerce",
   ].map((s) => [s, { enabled: true }]),
 );
 
@@ -95,6 +96,7 @@ const PRODUCTS = [
       distribution: { enabled: false },
       update: { enabled: false },
       sync: { enabled: false },
+      commerce: { enabled: false },
     },
   }),
   product(LONG_SLUG, LONG_NAME, { presentation: { icon: null } }),
