@@ -1,5 +1,5 @@
 ---
-title: "App Store: distribute, listing and products"
+title: "Distribute on the App Store"
 description: "Send a build to TestFlight and the App Store, push the store listing, manage in-app purchases, and read the App Store page of a product."
 type: "reference"
 lastReviewed: "2026-10-16"
@@ -14,28 +14,28 @@ This page continues [App Store](/docs/features/ship-builds/channels/app-store/):
 The Distribute flow takes a build of the pinned app through TestFlight and App Review from the
 console API, under the same `/manage/api/products/<slug>/distribution/connectors/asc/` prefix.
 Uploading the build stays in CI; everything after the upload is here. In the console it is the
-**Distribution → App Store** page ([App Store: Distribute](/docs/admin/app-store/)).
+**Distribution → App Store** page ([App Store: Distribute](/docs/features/ship-builds/channels/app-store/)).
 
-| `GET`                                 | Answers                                                                                                                                                                                                                                                                                                     |
-| ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `distribute/builds[?limit=]`          | the app's unexpired builds, newest first: build number, version, processing state, export compliance, TestFlight states, the upload's state with Apple's warning and error codes                                                                                                                            |
-| `distribute/beta-groups`              | the app's TestFlight groups, internal or external                                                                                                                                                                                                                                                           |
-| `distribute/versions[?platform=]`     | the app's App Store versions (state, whether still editable, build, release type, phased release) and its live review submissions                                                                                                                                                                           |
-| `distribute/preflight?versionId=<id>` | a readiness checklist: build, export compliance, screenshots per locale, age rating, App Review contact, price, availability, beta review details, App Privacy (portal-only), and the [shared listing](/docs/admin/storefront-listing/)'s App Store fit (advisory; `&releaseId=` adds that release's notes) |
+| `GET`                                 | Answers                                                                                                                                                                                                                                                                                                                      |
+| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `distribute/builds[?limit=]`          | the app's unexpired builds, newest first: build number, version, processing state, export compliance, TestFlight states, the upload's state with Apple's warning and error codes                                                                                                                                             |
+| `distribute/beta-groups`              | the app's TestFlight groups, internal or external                                                                                                                                                                                                                                                                            |
+| `distribute/versions[?platform=]`     | the app's App Store versions (state, whether still editable, build, release type, phased release) and its live review submissions                                                                                                                                                                                            |
+| `distribute/preflight?versionId=<id>` | a readiness checklist: build, export compliance, screenshots per locale, age rating, App Review contact, price, availability, beta review details, App Privacy (portal-only), and the [shared listing](/docs/features/ship-builds/channels/polaris-key/)'s App Store fit (advisory; `&releaseId=` adds that release's notes) |
 
-| `POST`                              | Body                                                                                                                                                                                                                                                               | Sends to App Store Connect                                                                       |
-| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ |
-| `distribute/export-compliance`      | `{ buildId, usesNonExemptEncryption }`                                                                                                                                                                                                                             | `/v1/builds/{id}` (PATCH) (an unanswered build only)                                             |
-| `distribute/beta-localization`      | `{ buildId, locale, whatsNew }`                                                                                                                                                                                                                                    | TestFlight's What to Test: `POST` or `/v1/betaBuildLocalizations` (PATCH)                        |
-| `distribute/testflight/groups`      | `{ buildId, betaGroupIds }`                                                                                                                                                                                                                                        | `/v1/betaGroups/{id}/relationships/builds` (POST) per group not yet holding the build            |
-| `distribute/testflight/beta-review` | `{ buildId }`                                                                                                                                                                                                                                                      | `/v1/betaAppReviewSubmissions` (POST) (external groups see the build after review)               |
-| `distribute/version`                | `{ platform, versionString }`                                                                                                                                                                                                                                      | reuses the editable version with that string, or `/v1/appStoreVersions` (POST)                   |
-| `distribute/version/build`          | `{ versionId, buildId }`                                                                                                                                                                                                                                           | `/v1/appStoreVersions/{id}/relationships/build` (PATCH)                                          |
-| `distribute/version/release-type`   | `{ versionId, releaseType, earliestReleaseDate? }`                                                                                                                                                                                                                 | `/v1/appStoreVersions/{id}` (PATCH): `MANUAL`, `AFTER_APPROVAL` or `SCHEDULED` (a future date)   |
-| `distribute/version/phased-release` | `{ versionId }`                                                                                                                                                                                                                                                    | `/v1/appStoreVersionPhasedReleases` (POST); the phased-release controls above manage it later    |
-| `distribute/version-localization`   | `{ versionId, locale, whatsNew?, promotionalText?, releaseId? }`: with `releaseId`, what is left out defaults from the [shared listing](/docs/admin/storefront-listing/) (the release's store notes, the locale's promotional text), refused if over Apple's limit | `POST` or `/v1/appStoreVersionLocalizations` (PATCH) (release notes only)                        |
-| `distribute/submit`                 | `{ versionId, confirm, inAppPurchaseVersionIds?, backgroundAssetVersionIds? }`                                                                                                                                                                                     | the open review submission or a new one, the version and any given items, then `submitted: true` |
-| `distribute/submission/cancel`      | `{ submissionId }`                                                                                                                                                                                                                                                 | `/v1/reviewSubmissions/{id}` (PATCH) `canceled: true`                                            |
+| `POST`                              | Body                                                                                                                                                                                                                                                                                | Sends to App Store Connect                                                                       |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `distribute/export-compliance`      | `{ buildId, usesNonExemptEncryption }`                                                                                                                                                                                                                                              | `/v1/builds/{id}` (PATCH) (an unanswered build only)                                             |
+| `distribute/beta-localization`      | `{ buildId, locale, whatsNew }`                                                                                                                                                                                                                                                     | TestFlight's What to Test: `POST` or `/v1/betaBuildLocalizations` (PATCH)                        |
+| `distribute/testflight/groups`      | `{ buildId, betaGroupIds }`                                                                                                                                                                                                                                                         | `/v1/betaGroups/{id}/relationships/builds` (POST) per group not yet holding the build            |
+| `distribute/testflight/beta-review` | `{ buildId }`                                                                                                                                                                                                                                                                       | `/v1/betaAppReviewSubmissions` (POST) (external groups see the build after review)               |
+| `distribute/version`                | `{ platform, versionString }`                                                                                                                                                                                                                                                       | reuses the editable version with that string, or `/v1/appStoreVersions` (POST)                   |
+| `distribute/version/build`          | `{ versionId, buildId }`                                                                                                                                                                                                                                                            | `/v1/appStoreVersions/{id}/relationships/build` (PATCH)                                          |
+| `distribute/version/release-type`   | `{ versionId, releaseType, earliestReleaseDate? }`                                                                                                                                                                                                                                  | `/v1/appStoreVersions/{id}` (PATCH): `MANUAL`, `AFTER_APPROVAL` or `SCHEDULED` (a future date)   |
+| `distribute/version/phased-release` | `{ versionId }`                                                                                                                                                                                                                                                                     | `/v1/appStoreVersionPhasedReleases` (POST); the phased-release controls above manage it later    |
+| `distribute/version-localization`   | `{ versionId, locale, whatsNew?, promotionalText?, releaseId? }`: with `releaseId`, what is left out defaults from the [shared listing](/docs/features/ship-builds/channels/polaris-key/) (the release's store notes, the locale's promotional text), refused if over Apple's limit | `POST` or `/v1/appStoreVersionLocalizations` (PATCH) (release notes only)                        |
+| `distribute/submit`                 | `{ versionId, confirm, inAppPurchaseVersionIds?, backgroundAssetVersionIds? }`                                                                                                                                                                                                      | the open review submission or a new one, the version and any given items, then `submitted: true` |
+| `distribute/submission/cancel`      | `{ submissionId }`                                                                                                                                                                                                                                                                  | `/v1/reviewSubmissions/{id}` (PATCH) `canceled: true`                                            |
 
 **Each write needs an `Idempotency-Key` header**, a fresh UUID per thing you mean to do; without
 one the answer is 428 `idempotency_key_required`. Sending the same request again with the same key
@@ -48,7 +48,7 @@ the step that did not finish. `submit` runs three such steps and answers each on
 
 **Submitting is typed.** `confirm` must be the app's name exactly as App Store Connect shows it,
 compared by the Worker before anything is opened; otherwise 422 `confirmation_required` or
-`confirmation_mismatch`. Cancelling a submission is not typed.
+`confirmation_mismatch`. Canceling a submission is not typed.
 
 **Only the pinned app's objects.** A build, group, version or submission named in a request is
 re-read from Apple first and must belong to the pinned app (`unknown_build`,
@@ -62,7 +62,7 @@ audited as `distribution.asc.<step>` with Apple's state before and after kept on
 
 ## Pushing the listing
 
-The [shared listing](/docs/admin/storefront-listing/) reaches App Store Connect from the console
+The [shared listing](/docs/features/ship-builds/channels/polaris-key/) reaches App Store Connect from the console
 API, under the same prefix, with the same `Idempotency-Key`, pinned-app and audit rules as
 Distribute. Both writes are a plain confirmation.
 
@@ -96,9 +96,9 @@ and none of the app's in-app purchases has passed review yet, it adds a `firstIn
 
 ## In-app purchases
 
-The App Store rows of the [commerce bridge](/docs/services/distribution/commerce/)'s product map
+The App Store rows of the [commerce bridge](/docs/features/ship-builds/commerce/)'s product map
 can be created in App Store Connect from the console (**Distribution → Commerce**,
-[App Store products](/docs/admin/app-store/#app-store-products-in-commerce)) or its API, under the
+[App Store products](/docs/features/ship-builds/channels/app-store/#app-store-products-in-commerce)) or its API, under the
 same prefix, as
 **non-consumable** in-app purchases of the pinned app. Only a mapped product id can be created,
 priced or made available (`unmapped_product`): what exists at Apple follows your map.
@@ -144,9 +144,9 @@ refuses them (409 `first_iap_portal`). The review screenshot is added in App Sto
 ## App Store: Distribute and App Store products
 
 Two console pages drive a product's App Store app through the
-[App Store Connect connector](/docs/services/distribution/app-store-connect/): **Distribution →
+[App Store Connect connector](/docs/features/ship-builds/channels/app-store/): **Distribution →
 App Store** takes a build to TestFlight and the App Store, and **Distribution → Commerce** creates
-the In-App Purchases the [commerce bridge](/docs/services/distribution/commerce/) maps to licence
+the In-App Purchases the [commerce bridge](/docs/features/ship-builds/commerce/) maps to license
 flags. Both act only on the app the product is pinned to, and both are for platform admins.
 
 Every change is one named request to App Store Connect, confirmed before it is sent, and what the
@@ -194,7 +194,7 @@ earlier step that is not finished yet comes first.
 
 Beside each version, **Release…** releases an approved version that waits for a manual release,
 and a phased release can be paused, resumed or released to everyone. A review submission that is
-with App Review or has unresolved issues can be cancelled. Releasing and releasing to everyone are
+with App Review or has unresolved issues can be canceled. Releasing and releasing to everyone are
 typed the same way as submitting, because App Store Connect cannot take a release back. These
 controls need the version's build to be linked to a Polaris Key release (the release matching its
 version number).

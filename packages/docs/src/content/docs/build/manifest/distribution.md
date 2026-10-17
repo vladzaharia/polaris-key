@@ -1,7 +1,7 @@
 ---
 sidebar:
   order: 3
-title: "Distribution: channels, transports and listing"
+title: "The distribution manifest"
 description: "The optional fourth .pkey/ file — where a product is distributed, its store identities, which transport carries each deliverable, and its store listing."
 type: "reference"
 lastReviewed: "2026-10-16"
@@ -10,7 +10,7 @@ lastReviewed: "2026-10-16"
 `.pkey/release` says **what exists**. The optional fourth file, `.pkey/distribution.{json,yaml,yml}`,
 says **how it reaches devices and channels**: the product's **channels** with their store
 identities, the **transport** each deliverable uses on each channel, and the store **listing**.
-The [Distribution service](/docs/services/distribution/) reads it; nothing else does.
+The [Distribution service](/docs/features/ship-builds/channels/) reads it; nothing else does.
 
 | File             | Base name                      | Required when | Maps to                            |
 | ---------------- | ------------------------------ | ------------- | ---------------------------------- |
@@ -122,20 +122,20 @@ optional. A bad value is `invalid_outlet_identity`.
   `/update/<channel>/app.appinstaller` answers. `updateSettings` is optional:
   `{hoursBetweenUpdateChecks` (0–255)`, showPrompt, updateBlocksActivation` (needs
   `showPrompt: true`)`, automaticBackgroundTask}`. See
-  [MSIX App Installer](/docs/services/update/updater-feeds/#msix-app-installer).
+  [MSIX App Installer](/docs/features/ship-builds/updates/updater-feeds/#msix-app-installer).
 - **Numeric ids** (`appleId`, `steam.appId`, `itch.gameId`) accept a positive integer or a
   string of digits with no leading zero, and are stored as the digit string either way.
 - **`appleId` must match the operator's pin.** The App Store Connect connector runs only while
   this `appleId` equals the app id a platform admin pinned on the product's `asc-api-key`
   credential. Changing it stops the connector until they re-pin (see
-  [Pinning the app](/docs/services/distribution/app-store-connect/#pinning-the-app)): the
+  [Pinning the app](/docs/features/ship-builds/channels/app-store/#pinning-the-app)): the
   manifest can describe the app, but not choose which app the operator's key works on.
 - **`artifact`** must name an `id` in `.pkey/release`'s `deliverables.app.artifacts` —
   otherwise `unknown_artifact_ref`.
 - **`productId` must match the operator's pin.** The Microsoft Store connector runs only while
   this `productId` equals the Store ID a platform admin pinned on the product's
   `ms-partner-center` credential (see
-  [Microsoft Store](/docs/services/distribution/microsoft-store/#pinning-the-app)).
+  [Microsoft Store](/docs/features/ship-builds/channels/microsoft-store/#pinning-the-app)).
 - **`flights`** maps a declared release track to a Microsoft Store package flight, named by its
   Partner Center friendly name or its flight id. The non-flighted submission is always the
   `stable` release track, so `flights` names only the others (`{ beta: "Beta testers" }`).
@@ -150,8 +150,8 @@ optional. A bad value is `invalid_outlet_identity`.
   characters. The Microsoft Store and App Installer entries may differ: a Store-signed and a
   self-signed package can have different publisher ids.
 
-Four fields exist only so an installed copy can recognise its own launcher (runtime channel
-detection, notes/S-06 rule 4): `itch.gameId` (the receipt's numeric `game.id` — `target` is
+Four fields exist only so an installed copy can recognize its own launcher (runtime channel
+detection): `itch.gameId` (the receipt's numeric `game.id` — `target` is
 not it), `packageFamilyName`, `direct.homebrewCask`, and `direct.homebrewFormula` (a formula
 name such as `diceroll` or `diceroll@2`: lower-case letters, digits, `.`, `@`, `+`, `_` and `-`,
 for a command-line build whose executable resolves under `Cellar/<formula>/`).
@@ -162,13 +162,13 @@ GitHub, where `pkey storefront homebrew pr` and `pkey storefront scoop pr` open 
 tap is `<owner>/homebrew-<name>` and a bucket `<owner>/<repo>`, and neither may belong to the
 `Homebrew` or `ScoopInstaller` organisation.
 
-`direct.scoop` (optional) is what the [Scoop manifest](/docs/services/distribution/feeds/#scoop)
+`direct.scoop` (optional) is what the [Scoop manifest](/docs/features/ship-builds/channels/feeds/#scoop)
 installs: `bin`, a relative path inside the Windows archive or a list of up to 16, which Scoop
 shims onto `PATH`; and `shortcuts`, up to 16 Start-menu entries as `[target, name]` pairs. A path
 may not climb out of the archive (`..`). A `direct` channel that declares `platforms` must include
 `windows` to carry it. The storefront feeds themselves — AltStore, Obtainium, F-Droid, Scoop,
 Flathub — are rendered from these channels; see
-[Storefront feeds](/docs/services/distribution/feeds/).
+[Storefront feeds](/docs/features/ship-builds/channels/feeds/).
 
 ## Transports
 
@@ -201,7 +201,7 @@ Polaris Key delivers by `pkey-cdn`, `web` and `embedded`, and tracks the store t
 `apple-ba`, `play-pad` and `steam-depot` through reports
 ([Platform pack transports](/docs/build/pack-transports/)); any other transport
 (`msix-optional`, `flatpak-ext`) is stored and shown "not delivered by Polaris Key", and nothing
-is served or derived for it ([Pack transports](/docs/services/distribution/delivery/#pack-transports)).
+is served or derived for it ([Pack transports](/docs/features/ship-builds/channels/delivery/#pack-transports)).
 
 ## Listing
 
@@ -251,7 +251,7 @@ by an operator, and only to narrow it. A `capabilities` key **anywhere** in the 
 `capabilities_not_manifest_writable`, not silently ignored: a repo must not be able to widen
 what an installed copy may do by pushing a line of YAML (the same reasoning that keeps
 `requireSparkleSignature` out of `.pkey/release`). See
-[Channel capabilities](/docs/services/distribution/#channel-capabilities).
+[Channel capabilities](/docs/features/ship-builds/channels/#channel-capabilities).
 
 ## Link and resync
 

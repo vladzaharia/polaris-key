@@ -1,6 +1,6 @@
 ---
 title: "Going offline"
-description: "The three offline depths, grace, offline activation files and local-only builds, and how an operator mints a file."
+description: "The three offline depths, grace, offline activation files and local-only builds, and how a member mints a file."
 type: "concept"
 lastReviewed: "2026-10-16"
 sidebar:
@@ -15,15 +15,15 @@ Every signed document has a short `expiresAt` (one hour) and a longer, server-si
 
 ## 2. Offline activation files
 
-An install that never reaches Polaris Key activates from a signed `pkey-bundle+jws` file. The app shows a request code, which is the device id: 32 characters generated on the device. An operator mints a file against that code on a machine that can reach Polaris Key, and the file crosses the gap by USB stick or ticket attachment. The envelope and its refusal steps are in [Offline bundles](/docs/reference/protocol/bundles/).
+An install that never reaches Polaris Key activates from a signed `pkey-bundle+jws` file. The app shows a request code, which is the device id: 32 characters generated on the device. A member mints a file against that code on a device that can reach Polaris Key, and the file crosses the gap by USB stick or ticket attachment. The envelope and its refusal steps are in [Offline bundles](/docs/reference/protocol/bundles/).
 
 Three time bounds ride in one file:
 
-| Bound                       | Length                               | Limits                                            |
-| --------------------------- | ------------------------------------ | ------------------------------------------------- |
-| Inner document `expiresAt`  | 1 hour, as for an online document    | Nothing file-specific                             |
-| Inner document `graceUntil` | 1 to 365 days, the operator's choice | How long the install works before re-provisioning |
-| File `expiresAt`            | 30 days, fixed                       | How long the file may sit unimported              |
+| Bound                       | Length                             | Limits                                            |
+| --------------------------- | ---------------------------------- | ------------------------------------------------- |
+| Inner document `expiresAt`  | 1 hour, as for an online document  | Nothing file-specific                             |
+| Inner document `graceUntil` | 1 to 365 days, the member's choice | How long the install works before re-provisioning |
+| File `expiresAt`            | 30 days, fixed                     | How long the file may sit unimported              |
 
 The import window is short on purpose. It bounds how long a stolen file is useful, while grace bounds the install. With no server to revoke against, the grace bound is the revocation lever, so re-issue on an annual cadence rather than by default at the 365-day maximum.
 

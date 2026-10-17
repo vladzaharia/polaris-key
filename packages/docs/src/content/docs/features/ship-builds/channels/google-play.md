@@ -12,10 +12,10 @@ waiting for CI to report it. The **Google Play connector** reads the Google Play
 with the product's service account and keeps three things current:
 
 - **availability** of each release's Android builds on your `play` and `play-testing` channels
-  (see [Availability, submissions and keys](/docs/services/distribution/availability/)), written
+  (see [Availability, submissions and keys](/docs/features/ship-builds/channels/availability/)), written
   with `source: play`;
 - each track's **staged rollout** (`userFraction`, halted or not), mirrored as a channel rollout
-  (see [Rollouts and halts](/docs/services/distribution/rollouts/#store-rollouts));
+  (see [Rollouts and halts](/docs/features/ship-builds/channels/rollouts/#store-rollouts));
 - the **in-app update priority** (`inAppUpdatePriority`, 0–5) of every release, which the
   Android plugin's In-App Updates flow reads.
 
@@ -31,7 +31,7 @@ The connector runs for a product when all of these hold:
    whose identity carries the Android package name and a **track map** — your release track on the
    left, Play's track id on the right:
 
-   ```yaml
+   ```yaml title="Excerpt of .pkey/distribution"
    outlets:
      play:
        packageName: gg.acme.dice
@@ -53,7 +53,7 @@ The connector runs for a product when all of these hold:
 2. A **`google-service-account` channel credential** is stored under Distribution, on **Outlet credentials** — the service
    account's JSON key file — **pinned** to this product's app: the same package name as the
    `packageName` above (see [Pinning the app](#pinning-the-app)). See
-   [Channel credentials](/docs/admin/secrets-and-keys/#outlet-credentials). A credential bound to
+   [Channel credentials](/docs/operate/console/keys-and-secrets/#outlet-credentials). A credential bound to
    one of the Play channels (`outletId`) is preferred over an unbound one.
 
 3. **The first release is made by hand** in Play Console. Google requires the first bundle of a
@@ -67,7 +67,7 @@ control is refused. `GET …/distribution/connectors/play` says why in `inert` (
 **The platform's team key.** A product with no `google-service-account` of its own falls back to the platform's
 team-level credential for this store, only for the app a platform admin assigned to the product
 (the same `pin_missing` / `pin_mismatch` reasons, with `credentialSource: "platform"`). A key of
-the product's own always wins. See [Store connections](/docs/admin/store-connections/).
+the product's own always wins. A platform admin connects the store.
 
 ### Least privilege for the service account
 
@@ -107,7 +107,7 @@ pin.
 - **Set it with the key.** **Outlet credentials** under Distribution asks for the package name with the key file. Over the
   API, send it as `pin`:
 
-  ```http
+  ```http title="Request"
   /manage/api/products/<slug>/outlet-credentials/play (PUT)
   {"kind": "google-service-account", "value": { …the JSON key file… }, "pin": "gg.acme.dice"}
   ```
@@ -132,7 +132,7 @@ the best protection if the key is ever stolen.
 
 Every tick opens a **throwaway edit**, lists its tracks, and deletes it:
 
-```http
+```http title="Request"
 /androidpublisher/v3/applications/{packageName}/edits (POST)
 /androidpublisher/v3/applications/{packageName}/edits/{editId}/tracks (GET)
 /androidpublisher/v3/applications/{packageName}/edits/{editId} (DELETE)
@@ -216,7 +216,7 @@ explicit `priority` in the request, or one already on the draft, wins.
 
 Off by default. Turn it on with `settings`:
 
-```json
+```json title="Settings"
 {
   "vitals": {
     "enabled": true,
@@ -232,7 +232,7 @@ Off by default. Turn it on with `settings`:
 While it is on, each tick that finds a staged (`inProgress`) release on a mapped track reads the
 Play Developer Reporting API's crash and ANR rate metric sets — hourly, by version code, over the
 last `windowHours` Google has data for. `user-perceived` reads `userPerceivedCrashRate` and
-`userPerceivedAnrRate` (Play's own bad-behaviour basis); `all` reads `crashRate` and `anrRate`.
+`userPerceivedAnrRate` (Play's own bad-behavior basis); `all` reads `crashRate` and `anrRate`.
 Thresholds are fractions of users (0.02 is 2 %). A release whose rate, weighted across its version
 codes, is above a threshold over at least `minDistinctUsers` user-hours is **halted** through the
 same path as `rollout/halt`, audited once as `distribution.play.halt` by `connector:play-vitals`

@@ -1,5 +1,5 @@
 ---
-title: "Swift client & Sparkle"
+title: "Sparkle and the Swift client"
 description: "The PolarisKeyUpdate target, the Sparkle version floor, the SUPublicEDKey trust anchor, and entitled feed headers."
 type: "reference"
 lastReviewed: "2026-10-16"
@@ -90,7 +90,7 @@ The appcast URL — with `?arch=` applied for the running device's architecture 
 straight out of Update's discovery fragment. A host never constructs
 `/<product>/update/…/appcast.xml` by hand; it asks discovery for the endpoint and lets the
 SDK apply the channel and architecture. See
-[Appcast](/docs/services/update/appcast/#architecture-selection) for what `arch` actually
+[Appcast](/docs/features/ship-builds/updates/appcast/#architecture-selection) for what `arch` actually
 selects and why this SDK always sends it explicitly rather than relying on the
 unparameterized default.
 
@@ -103,14 +103,14 @@ on every check; there is no other path for the credential to reach Sparkle's own
 SDK configures Sparkle's HTTP headers with exactly that token (alongside the same client
 metadata headers every SDK request carries) so an entitled feed is reachable at all. A
 `public` product sends an empty header set, and Sparkle behaves precisely as if this SDK
-had never touched it. See [Eligibility](/docs/services/update/eligibility/) for what the
+had never touched it. See [Eligibility](/docs/features/ship-builds/updates/eligibility/) for what the
 server actually enforces once that request arrives.
 
 ### The allowed-channels filter
 
 Sparkle asks its delegate which channels an installation may see before it offers a build.
 The SDK answers from the license's own `channels` entitlement — the same value
-[Eligibility](/docs/services/update/eligibility/) checks server-side — rather than
+[Eligibility](/docs/features/ship-builds/updates/eligibility/) checks server-side — rather than
 whatever channel list a host happened to hard-code, which is exactly the gap that let a
 stable-only customer get offered a beta build in the first place. `stable` is always allowed,
 and because `staging` is the legacy spelling of `beta`, either grant allows both names.
@@ -155,11 +155,11 @@ on the server, respectively.
 
 ## See also
 
-- [Appcast](/docs/services/update/appcast/) — the feed this client polls, and the
+- [Appcast](/docs/features/ship-builds/updates/appcast/) — the feed this client polls, and the
   server-side signature check that gates what reaches it.
-- [Eligibility](/docs/services/update/eligibility/) — what the entitled check actually
+- [Eligibility](/docs/features/ship-builds/updates/eligibility/) — what the entitled check actually
   enforces once a request lands.
-- [Artifacts, changelog & install](/docs/services/release/artifacts/) — the download route
+- [Artifacts, changelog & install](/docs/features/ship-builds/releases/artifacts/) — the download route
   behind every enclosure Sparkle fetches.
-- [Godot desktop updaters](/docs/services/update/godot-desktop/) — the same Sparkle rules in
+- [Godot desktop updaters](/docs/features/ship-builds/updates/godot-desktop/) — the same Sparkle rules in
   the Godot SDK's macOS bridge, and its Windows counterparts.

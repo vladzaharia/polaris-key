@@ -85,13 +85,15 @@ release:
 3. **CI** Publish the pack. The command strips and lints each variant's payload, builds the objects and deltas, signs the record and writes a marker beside each payload. `--out` is the cache that store transports and later publishes read.
 
    ```sh title="Terminal"
-   pkey release publish --product <slug> --version <version> --dir <dir> --deliverable tidewater.foes --out <cache>
+   pkey release publish --product <slug> --version <version> --dir <dir> \
+     --deliverable tidewater.foes --out <cache>
    ```
 
 4. **CI** Write the content stamp an app build embeds, then publish the app with the pins.
 
    ```sh title="Terminal"
-   pkey release content-stamp --product <slug> --out pkey-content.json --pin tidewater.foes@<version>
+   pkey release content-stamp --product <slug> --out pkey-content.json \
+     --pin tidewater.foes@<version>
    ```
 
 Use `--dry-run` first to see the resulting pack sets without writing anything. The `polaris-key/publish` Action runs the same steps. See [CI publishing](/docs/features/ship-builds/ci/).
@@ -152,7 +154,8 @@ A content key signs data-only packs so a content team can publish without the re
 2. **CI** Delegate with the release key. The default window is 180 days.
 
    ```sh title="Terminal"
-   pkey release delegate --prefix <packId> --types files.tree,data.json --public-key <public key>
+   pkey release delegate --prefix <packId> --types files.tree,data.json \
+     --public-key <public key>
    ```
 
 3. **CI** Publish content with `PKEY_CONTENT_KEY` and `--delegation <sha256>`. The CLI warns within 14 days of the window's end.

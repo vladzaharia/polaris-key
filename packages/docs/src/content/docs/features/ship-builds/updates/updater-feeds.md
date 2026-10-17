@@ -7,10 +7,10 @@ sidebar:
   order: 4
 ---
 
-Polaris Key SDKs decide updates from the [signed feed](/docs/services/update/signed-feed/). A
+Polaris Key SDKs decide updates from the [signed feed](/docs/features/ship-builds/updates/signed-feed/). A
 desktop app that updates itself with a native updater reads that updater's own feed instead.
 Update renders each of those feeds from the same CI-signed release records and the same
-per-outlet state as the signed feed. A new updater only needs a new renderer, never a new
+per-channel state as the signed feed. A new updater only needs a new renderer, never a new
 architecture.
 
 | Feed                                                                       | Updater                                   | Content type                      |
@@ -32,16 +32,16 @@ WinSparkle appcast URL, the Velopack base URL `…/update/<channel>/velopack`, t
 
 A feed lists only releases that have a **stored release record**. Those are the releases the
 signed feed can pin. The releases are chosen by the same rules as the
-[storefront feeds](/docs/services/distribution/feeds/):
+[storefront feeds](/docs/features/ship-builds/channels/feeds/):
 
-- the channel's history from Release (beta includes stable; a pinned channel serves its pointer);
-- a build of the feed's platform that the outlet delivers (the `direct` outlet by default, or the
-  `app-installer` outlet for App Installer; `?outlet=` picks another of that kind);
-- live on that outlet, with an immutable delivery URL on the bytes host;
-- not **yanked**, and not **held** by a rollout on that outlet.
+- the release track's history from Release (beta includes stable; a pinned release track serves its pointer);
+- a build of the feed's platform that the channel delivers (the `direct` channel by default, or the
+  `app-installer` channel for App Installer; `?outlet=` picks another of that kind);
+- live on that channel, with an immutable delivery URL on the bytes host;
+- not **yanked**, and not **held** by a rollout on that channel.
 
 A yank or a halt removes a release from every feed at once. A cached feed is keyed by a stamp
-of the rollouts, yanks, availability, outlets and channel policies, so a change to any of them
+of the rollouts, yanks, availability, channels and release track policies, so a change to any of them
 is a new key. The previous release is listed instead. A new release reaches the feeds within
 five minutes (`Cache-Control: public, max-age=300`).
 
@@ -61,11 +61,11 @@ changes `bp`. So 1–14 % opens one group, 15–28 % opens two, and so on. At 10
 the interval goes and the real date comes back. A release that is critical to everyone is never
 phased.
 
-Rollouts are kept per outlet **and channel**, and the Sparkle appcast phases a release only by the
-rendered channel's own rollout, the row the signed channel feed reads. A release complete on
+Rollouts are kept per channel **and release track**, and the Sparkle appcast phases a release only by the
+rendered release track's own rollout, the row the signed release track feed reads. A release complete on
 `stable` but still rolling out on `beta` is listed unphased on the stable appcast. A paused or
-halted rollout on any channel still holds the release back, which is the safe side. The other
-feeds hold a release while any channel's rollout of it on that outlet is not complete.
+halted rollout on any release track still holds the release back, which is the safe side. The other
+feeds hold a release while any release track's rollout of it on that channel is not complete.
 
 ## Signatures and hashes
 
@@ -74,13 +74,13 @@ The Worker never signs an updater payload and never passes through a value it di
 - **Sparkle and WinSparkle.** `sparkle:edSignature` is CI's `<file>.sig` sidecar, which
   `pkey release publish` uploads as a `signature` artifact. The Worker reads the sidecar, checks
   it against its recorded SHA-256, and verifies the signature over the payload's stored bytes
-  with the streaming verifier. Final verdicts are memoised, so a release costs one streamed read,
+  with the streaming verifier. Final verdicts are memoized, so a release costs one streamed read,
   not one per request. With a configured Sparkle key, an enclosure whose signature does not verify
   is left out. Without a key, enclosures are listed unsigned only when an operator has turned off
   `requireSparkleSignature`.
 - **Velopack.** `SHA256` comes from the record. `SHA1` is not in the record, so the Worker
   computes it with a streaming digest that also checks the recorded SHA-256 and size, and
-  memoises it by that SHA-256.
+  memoizes it by that SHA-256.
 - **MSIX** relies on the publisher certificate.
 - **AppImage** zsync block hashes check transfer consistency; they do not authorize executable
   bytes independently of the update host. The Godot SDK downloads the selected AppImage build
@@ -100,20 +100,20 @@ architectures. Each item carries:
   `sparkle:shortVersionString`: the version;
 - `sparkle:minimumSystemVersion`: the build's `minOS`, else the operator's minimum;
 - `sparkle:hardwareRequirements` `arm64` for an Apple-silicon-only build;
-- `sparkle:criticalUpdate`: with no attribute for the channel's critical pointer release, and with
-  `sparkle:version` set to the floor's build number for a release above the channel's
+- `sparkle:criticalUpdate`: with no attribute for the release track's critical pointer release, and with
+  `sparkle:version` set to the floor's build number for a release above the release track's
   `min_supported`;
 - `sparkle:phasedRolloutInterval` during an active rollout (see above);
 - `<sparkle:deltas>`: one enclosure per `delta` artifact that names its `deltaFrom` in the release
   descriptor (the build number the delta updates from), each with its own verified signature.
 
-A product without release records keeps the [legacy appcast](/docs/services/update/appcast/),
+A product without release records keeps the [legacy appcast](/docs/features/ship-builds/updates/appcast/),
 byte for byte. Signed Sparkle feeds (`SURequireSignedFeed`) stay off, because the feed is
 rendered dynamically.
 
 ## WinSparkle
 
-WinSparkle has no channels, so it gets one appcast URL per channel. Each release is one item,
+WinSparkle has no release tracks, so it gets one appcast URL per release track. Each release is one item,
 with one enclosure per Windows **installer** build (`.exe` or `.msi` payloads only, because
 WinSparkle runs what it downloads), x64 first. Each enclosure carries:
 
@@ -125,9 +125,9 @@ WinSparkle runs what it downloads), x64 first. Each enclosure carries:
 
 ## Velopack
 
-Velopack clients request `<base>/releases.<channel>.json`, where the channel is the one the app
+Velopack clients request `<base>/releases.<channel>.json`, where the release track is the one the app
 was packed with (`vpk pack --channel`). Use `…/update/<polaris channel>/velopack` as the base
-URL. The Velopack channel's first token is the OS (`win`, `osx`, `linux`). If the second token is
+URL. The Velopack release track's first token is the OS (`win`, `osx`, `linux`). If the second token is
 `x64` or `arm64` it sets the architecture; otherwise the client's `?arch=` does, and the default
 is x64. Velopack's other query parameters change nothing.
 
@@ -171,9 +171,9 @@ The `.appinstaller` uses the 2021 schema. Its `Uri` is exactly the URL it is ser
 App Installer re-polls it. App Installer refuses a `Uri` with more than one query pair, so the
 route reads at most one: `?arch=x64|arm64` or `?outlet=<id>`. The `Uri` keeps the requested spelling of that pair, and each spelling is cached on its own. The main package (a `MainBundle`
 for a bundle, otherwise a `MainPackage` with its architecture) takes its identity from the
-`app-installer` outlet in `.pkey/distribution`:
+`app-installer` channel in `.pkey/distribution`:
 
-```yaml
+```yaml title=".pkey/distribution"
 outlets:
   app-installer:
     packageFamilyName: Acme.Game_1a2b3c4d5e6f7 # its <Name> half is the package Name
@@ -186,8 +186,8 @@ outlets:
 ```
 
 The version is the build's four-part build number, or else the release's `major.minor.patch.0`.
-An outlet without `publisher` has no file. `ForceUpdateFromAnyVersion` is not offered, because it
-permits downgrades. For side-by-side channels, declare a second `app-installer` outlet with its
+A channel without `publisher` has no file. `ForceUpdateFromAnyVersion` is not offered, because it
+permits downgrades. For side-by-side release tracks, declare a second `app-installer` channel with its
 own package family name and pick it with `?outlet=`.
 
 ## AppImage zsync
@@ -210,7 +210,7 @@ descriptor named for the build.
 `/update/version` keeps its three fields (`version`, `tag`, `url`) and adds `build`, `sha256`,
 `size`, `downloadUrl`, `minOS` and `critical` when the request names `?platform=` (required for
 the extended answer), and optionally `?arch=`, `?outlet=` or `?build=`. The answer is the newest
-recorded release that the outlet delivers for that platform, with one build of it (the exact arch
+recorded release that the channel delivers for that platform, with one build of it (the exact arch
 before a universal build, or the named build). Without `?platform=`, or for a product that
 publishes no release records, the answer stays the legacy one: `?arch=`, `?outlet=` and `?build=`
 on their own are discarded, so every URL that worked before keeps working. With records, an

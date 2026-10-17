@@ -2,7 +2,7 @@
 sidebar:
   order: 5
 title: "App Store Connect connector"
-description: "How Distribution follows a product's App Store and TestFlight state from App Store Connect — signed webhooks, a 15-minute poller, phased release mirrored as a rollout, Background Asset states — and the operator controls: phased release, releasing a held version, the TestFlight public link, registering the webhook."
+description: "How Distribution follows a product's App Store and TestFlight state from App Store Connect, and the controls it gives you."
 type: "reference"
 lastReviewed: "2026-10-16"
 ---
@@ -12,16 +12,16 @@ state instead of waiting for CI to report it. The **App Store Connect connector*
 App Store Connect API with the product's API key and keeps three things current:
 
 - **availability and submissions** of each release on the `app-store` and `testflight` channels
-  (see [Availability, submissions and keys](/docs/services/distribution/availability/)), written
+  (see [Availability, submissions and keys](/docs/features/ship-builds/channels/availability/)), written
   with `source: asc`;
 - the **phased release** of an App Store version, mirrored as a channel rollout (see
-  [Rollouts and halts](/docs/services/distribution/rollouts/#store-rollouts));
+  [Rollouts and halts](/docs/features/ship-builds/channels/rollouts/#store-rollouts));
 - the states of **Background Asset** versions (Apple-hosted asset packs), kept as connector
   objects until a pack release claims them.
 
 It never uploads a build or an asset pack, and it never submits anything for review on its own.
 Builds stay with CI and Apple's tools; the only files it uploads are the listing's screenshots, when
-you push them ([Pushing the listing](#pushing-the-listing)). Its setup controls can also prepare a new app: server notifications,
+you push them ([Pushing the listing](/docs/features/ship-builds/channels/app-store-distribute/#pushing-the-listing)). Its setup controls can also prepare a new app: server notifications,
 TestFlight groups and testers, and the free price and availability defaults (see
 [Setting up the app](#setting-up-the-app)).
 
@@ -32,7 +32,7 @@ The connector runs for a product when all of these hold:
 1. **Distribution is on**, and `.pkey/distribution` declares an `app-store` or `testflight`
    channel whose identity carries the app's App Store Connect id (`appleId`, digits) and bundle id:
 
-   ```yaml
+   ```yaml title=".pkey/distribution"
    outlets:
      app-store:
        appleId: "1234567890"
@@ -46,13 +46,13 @@ The connector runs for a product when all of these hold:
    the **App Manager** role (not Admin), as key id, issuer id and the `.p8` file, **pinned** to
    this product's app — its App Store Connect app id, the same digits as the `appleId` above (see
    [Pinning the app](#pinning-the-app)). See
-   [Channel credentials](/docs/admin/secrets-and-keys/#outlet-credentials). A credential bound to
+   [Channel credentials](/docs/operate/console/keys-and-secrets/#outlet-credentials). A credential bound to
    one of the Apple channels (`outletId`) is preferred over an unbound one.
 
 3. For webhooks, an **`asc-webhook-secret` channel credential**. Let the Worker generate it — it is
    stored sealed and never shown to anyone:
 
-   ```http
+   ```http title="Request"
    /manage/api/products/<slug>/outlet-credentials/asc-webhook (PUT)
    {"kind": "asc-webhook-secret", "outletId": "app-store", "generate": true}
    ```
@@ -70,7 +70,7 @@ and the webhook route answers not-found, exactly as it does with Distribution of
 **The platform's team key.** A product with no `asc-api-key` of its own falls back to the platform's
 team-level credential for this store, only for the app a platform admin assigned to the product
 (the same `pin_missing` / `pin_mismatch` reasons, with `credentialSource: "platform"`). A key of
-the product's own always wins. See [Store connections](/docs/admin/store-connections/).
+the product's own always wins. A platform admin connects the store.
 
 ## Pinning the app
 
@@ -86,7 +86,7 @@ this product. The connector runs only while the manifest's `appleId` equals the 
 - **Set it with the key.** **Outlet credentials** under Distribution asks for the app id with the key. Over the API, send it
   as `pin`:
 
-  ```http
+  ```http title="Request"
   /manage/api/products/<slug>/outlet-credentials/asc (PUT)
   {"kind": "asc-api-key", "value": {"keyId": "…", "issuerId": "…", "p8": "…"}, "pin": "1234567890"}
   ```
@@ -325,10 +325,7 @@ The row actions:
   while the purchase has no availability. It always needs the app's name typed: availability
   decides where the purchase is sold.
 
-Ready purchases go to App Review with the next version from the App Store page. An app's **first**
-In-App Purchase is the exception: App Store Connect requires it to be submitted there, with an app
-version, and both pages say so until one of the app's purchases has been approved. The review
-screenshot is added in App Store Connect too.
+Ready purchases go to App Review with the next version from the App Store page. The app's first In-App Purchase has its own rule: see [In-app purchases](/docs/features/ship-builds/channels/app-store-distribute/#in-app-purchases).
 
 ## Audit
 

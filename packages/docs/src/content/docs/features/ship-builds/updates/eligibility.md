@@ -6,7 +6,7 @@ lastReviewed: "2026-10-16"
 ---
 
 Two different questions sit behind the word "eligibility." **Access** — covered in full on
-Release's [Artifacts](/docs/services/release/artifacts/) page — asks whether a caller may
+Release's [Artifacts](/docs/features/ship-builds/releases/artifacts/) page — asks whether a caller may
 read a surface at all. **Eligibility**, this page, asks the narrower question the feed
 itself is actually built around: given that a caller may read it, which channel and which
 build is _this specific request_ asking for, and is _this specific caller_ allowed that
@@ -17,13 +17,13 @@ against the caller's own license.
 
 ## The version check
 
-```
+```text title="Request"
 GET /<product>/update/version
 ```
 
 Returns the newest build on a channel:
 
-```json
+```json title="Response"
 { "version": "1.2.3", "tag": "v1.2.3", "url": "https://github.com/…" }
 ```
 
@@ -36,11 +36,11 @@ unknown channel appcast. Under `entitled`, the gate evaluates the query
 channel precisely as it would the path spelling, so `?channel=beta` from a stable-only
 license answers `403 channel_not_allowed`. Without `?platform=`, `?arch=` is accepted and discarded — the
 answer names a release, not an asset (with `?platform=`, a product that publishes release
-records gets the [extended answer](/docs/services/update/updater-feeds/#the-extended-version-check)). The response carries `max-age=120`, the cache policy every
+records gets the [extended answer](/docs/features/ship-builds/updates/updater-feeds/#the-extended-version-check)). The response carries `max-age=120`, the cache policy every
 moving selector gets. Unlike the
 appcast, the version check is a **metadata** surface — a plain informational read, not a
 pointer to bytes — so it's governed separately; see
-[Appcast](/docs/services/update/appcast/) for why the feed itself is gated under the
+[Appcast](/docs/features/ship-builds/updates/appcast/) for why the feed itself is gated under the
 stricter column.
 
 ## Channel resolution
@@ -106,7 +106,7 @@ without a `v` can be pinned and its stable appcast's pinned enclosure resolves.
 
 ### Channel floors: no silent downgrade
 
-Each truth-store [sync](/docs/services/release/github-sync/) records the highest version every
+Each truth-store [sync](/docs/features/ship-builds/releases/github-sync/) records the highest version every
 moving channel has resolved to (`release_channel_floors`). The channels floored are `stable`,
 `beta` when no channel workflow is configured, and manual channels. Pinned versions and
 `pr-<n>` are never floored. When a request's pick lands **below** that floor, the route looks
@@ -116,7 +116,7 @@ the floor's release up by tag, which costs one extra GitHub call:
 - If it is gone (deleted or unpublished), the channel answers `404` rather than quietly
   promoting an older build to `latest` behind a public cache header.
 
-The console's [release health](/docs/services/release/truth-store/#health-checks) then reports
+The console's release health then reports
 `channel-regressed`, naming the floor and what the list now offers. The only way past a floor
 is an operator's decision. A `POST` to `/manage/api/products/<slug>/release/channels/<channel>/floor`
 with `{ "version": "1.0.0" }` lowers it, and `{ "clear": true }` removes it. Both are audited
@@ -128,7 +128,7 @@ channel workflow is configured) can still be cleared, but not lowered.
 
 A request can fail for either reason, and they produce different refusals. A caller who may
 not read the surface at all under the configured access mode never reaches channel or
-version evaluation — that's Release's [Artifacts](/docs/services/release/artifacts/) page.
+version evaluation — that's Release's [Artifacts](/docs/features/ship-builds/releases/artifacts/) page.
 A caller who _may_ read it, under `entitled`, can still be refused the _specific_ channel
 or version being asked for — that's what the rest of this page covers.
 
@@ -145,7 +145,7 @@ license's own grant cover _this_ channel, at _this_ version.
 
 ### Opt-in, per product and per surface
 
-`entitled` is one of the four modes in Release's [access ladder](/docs/services/release/artifacts/#access-modes),
+`entitled` is one of the four modes in Release's [access ladder](/docs/features/ship-builds/releases/artifacts/#access-modes),
 set independently for metadata and artifacts. `public` stays the default specifically so
 anonymous update-checking keeps working for the products that want it — nothing about
 `entitled` existing forces every product toward it.
@@ -185,30 +185,30 @@ exists at all.
 
 ### The three outcomes
 
-```json
+```json title="Response"
 // 401 — no usable device or license
 { "error": { "code": "unauthorized" } }
 ```
 
-```json
+```json title="Response"
 // 403 — the license doesn't cover this channel
 { "error": { "code": "channel_not_allowed" } }
 ```
 
-```json
+```json title="Response"
 // 403 — the requested version sits outside the license's window
 { "error": { "code": "version_blocked" }, "allowedRange": { "min": "2.0.0" } }
 ```
 
 This is the same nested wire shape the signed license document's own build gate answers
-with — see Release's [Artifacts](/docs/services/release/artifacts/#two-error-grammars) page
+with — see Release's [Artifacts](/docs/features/ship-builds/releases/artifacts/#two-error-grammars) page
 for how it compares to the flat body `authenticated`/`licensed` still use.
 
 ## Client-side narrowing is not enforcement
 
 A well-built client may read the same `channels` entitlement off its own license and use it
 to decide which channels to _offer_ a user — the Swift SDK does exactly this for Sparkle's
-channel filter, covered on [Swift client & Sparkle](/docs/services/update/sparkle/). That's
+channel filter, covered on [Swift client & Sparkle](/docs/features/ship-builds/updates/sparkle/). That's
 a courtesy, not the enforcement point. If the two ever disagree — a stale cached
 entitlement, a client bug, a hand-edited config — the request that actually reaches the
 server is what wins, and the caller sees a `403` instead of a silent download. Nothing
@@ -230,7 +230,7 @@ sections, each saved on its own with only its own fields:
   - **Minimum macOS version** (`minimumSystemVersion`, `^\d+(\.\d+){0,2}$` or empty to clear) —
     rendered as `sparkle:minimumSystemVersion` on every appcast item.
   - **Require Sparkle signatures** (`requireSparkleSignature`, boolean, default `true`) — see
-    [Appcast](/docs/services/update/appcast/#the-signature-gate).
+    [Appcast](/docs/features/ship-builds/updates/appcast/#the-signature-gate).
 
 A fourth section, **Endpoints**, lists the public URLs updaters read (discovery, the version
 check, the appcasts, WinSparkle and the signed feed per channel), each with a copy button. The
@@ -239,7 +239,7 @@ release has a macOS build or file, WinSparkle when one has a Windows one. While 
 platform, every updater feed is listed.
 
 **Artifact access** — who may read the appcast, the downloads and the customer portal's download
-mint — is Distribution's [delivery access](/docs/services/distribution/delivery/#delivery-access).
+mint — is Distribution's [delivery access](/docs/features/ship-builds/channels/delivery/#delivery-access).
 The Feed page shows it read-only and links to **Distribution → Access**, where it is set, saved to
 the `/manage/api/products/<product>/distribution/access` route (`PUT`) with its own owner and revert;
 `update/settings` refuses `artifactsAccess` by name.
@@ -262,7 +262,7 @@ manifest's mode (default `public`). Since P2b-04 the two access modes have separ
 `accessSource` covers the metadata mode, and the delivery access carries its own `source` on
 Distribution's endpoint, with its own revert (`POST …/distribution/access/revert`).
 
-```
+```text title="Request"
 /manage/api/products/<product>/update/settings/revert   (POST)
 { "fields": ["access" | "compat", …] }
 ```
@@ -281,10 +281,10 @@ nothing to revert.
 
 ## See also
 
-- [Appcast](/docs/services/update/appcast/) — where this resolution and this check
+- [Appcast](/docs/features/ship-builds/updates/appcast/) — where this resolution and this check
   actually gate a response.
-- [Artifacts, changelog & install](/docs/services/release/artifacts/) — the full access
+- [Artifacts, changelog & install](/docs/features/ship-builds/releases/artifacts/) — the full access
   ladder and both error grammars.
-- [Swift client & Sparkle](/docs/services/update/sparkle/) — the client that consumes an
+- [Swift client & Sparkle](/docs/features/ship-builds/updates/sparkle/) — the client that consumes an
   entitled feed.
 - [Wire error codes](/docs/reference/error-codes/) for the complete nested error taxonomy.

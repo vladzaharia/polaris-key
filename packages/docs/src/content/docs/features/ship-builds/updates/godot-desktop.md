@@ -21,7 +21,7 @@ choice. The Godot SDK drives four of them through optional native plugins (GDExt
 
 The SDK picks the updater from the install, never the facade. Steam, itch, Microsoft Store, Mac
 App Store, Flatpak and Snap builds never run Sparkle, Velopack or WinSparkle; a Store MSIX runs
-only StoreContext. See [App-updater feeds](/docs/services/update/updater-feeds/) for the feeds
+only StoreContext. See [App-updater feeds](/docs/features/ship-builds/updates/updater-feeds/) for the feeds
 themselves.
 
 ## How a facade answers
@@ -42,12 +42,12 @@ therefore costs only its own updater; an import-linked one would unload all thre
 The bridge refuses to start in three cases: off the main thread, without `Sparkle.framework`, and
 without `SUPublicEDKey` in the bundle's `Info.plist`. Without that key Sparkle would accept
 unsigned updates, so the facade answers `invalid-options`. The rule is the same one the
-[Swift client](/docs/services/update/sparkle/) enforces. The facade never verifies an update
+[Swift client](/docs/features/ship-builds/updates/sparkle/) enforces. The facade never verifies an update
 itself: the key in the signed bundle is the only anchor.
 
 The feed URL comes from discovery and goes through Sparkle's delegate. The bearer for an
 `entitled` feed goes into `httpHeaders`. Foundation drops it on a cross-origin redirect, so an
-entitled enclosure must authorise itself.
+entitled enclosure must authorize itself.
 
 Turn the plugin on per macOS export preset. CI can set each option through its environment
 variable:
@@ -79,7 +79,7 @@ The macOS bridge's **headless mode** installs every update without asking. It ex
 unattended end-to-end tests and is refused unless the environment sets `PKEY_SPARKLE_HEADLESS=1`.
 
 The release job then runs `sdks/godot/native/macos/sign_and_notarize.sh`. It signs inside-out
-with a Developer ID, notarises, staples and writes the zip that `sign_update` signs. It fails if the entitlements grant
+with a Developer ID, notarizes, staples and writes the zip that `sign_update` signs. It fails if the entitlements grant
 `allow-dyld-environment-variables` alongside Disable Library Validation.
 
 ## Velopack, WinSparkle and StoreContext on Windows
@@ -134,9 +134,9 @@ certificates or accounts and are recorded by whoever runs them:
 
 1. A Developer ID export: Godot signs Sparkle's helpers with the hardened runtime, and
    `codesign --verify --deep --strict` passes.
-2. Notarisation and stapling, and a quarantined first launch that passes Gatekeeper.
+2. Notarization and stapling, and a quarantined first launch that passes Gatekeeper.
 3. A Developer-ID 1.0 updates to a Developer-ID 1.1, and refuses a 1.1 signed by another team.
-4. A notarised app without the Disable Library Validation entitlement fails to load the bridge.
+4. A notarized app without the Disable Library Validation entitlement fails to load the bridge.
 5. Authenticode or Artifact Signing of the shim, the game exe, the DLLs and the installers, and
    SmartScreen on a fresh device.
 6. A signed MSIX from a Partner Center app (it can be hidden): the update query lists a flight,

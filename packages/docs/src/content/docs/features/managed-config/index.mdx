@@ -7,7 +7,9 @@ sidebar:
   order: 1
 ---
 
+import CardGrid from "../../../../components/docs/CardGrid.astro";
 import Requires from "../../../../components/docs/Requires.astro";
+import { LinkCard } from "@astrojs/starlight/components";
 
 Managed config answers one question for each device: which settings and secrets does it get, and who has the last word over each? You declare a catalog of keys. Polaris Key signs the resolved answer into a config document the app reads, offline-first.
 
@@ -15,25 +17,67 @@ Managed config answers one question for each device: which settings and secrets 
 
 ## Get started
 
-| Page                                                                        | What you get                                  |
-| --------------------------------------------------------------------------- | --------------------------------------------- |
-| [Add managed config to your app](/docs/features/managed-config/add-config/) | A catalog, a profile and an app that reads it |
+<CardGrid>
+  <LinkCard
+    title="Add managed config to your app"
+    href="/docs/features/managed-config/add-config/"
+    description="A catalog, a profile and an app that reads it."
+  />
+</CardGrid>
+
+## How-to guides
+
+<CardGrid>
+  <LinkCard
+    title="Tag crash reports with the release"
+    href="/docs/features/managed-config/crash-tags/"
+    description="Tag crash reports to a release, track and source."
+  />
+</CardGrid>
 
 ## Concepts
 
-| Page                                                                  | What you get                                       |
-| --------------------------------------------------------------------- | -------------------------------------------------- |
-| [The catalog](/docs/features/managed-config/catalog/)                 | Keys, kinds and the schema each value must match   |
-| [Management states](/docs/features/managed-config/management-states/) | Default, Enforced and Hidden, and how layers merge |
-| [Profiles](/docs/features/managed-config/profiles/)                   | Reusable sets of values for tiers and licenses     |
-| [Edge mint](/docs/features/managed-config/edge-mint/)                 | Short-lived tokens from a secret that never leaves |
-| [Crash tags](/docs/features/managed-config/crash-tags/)               | Tag crash reports to a release, track and source   |
+<CardGrid>
+  <LinkCard
+    title="The catalog"
+    href="/docs/features/managed-config/catalog/"
+    description="Keys, kinds and the schema each value must match."
+  />
+  <LinkCard
+    title="Management states"
+    href="/docs/features/managed-config/management-states/"
+    description="Editable, Read-only and Hidden, and how layers merge."
+  />
+  <LinkCard
+    title="Profiles"
+    href="/docs/features/managed-config/profiles/"
+    description="Reusable sets of values for tiers and licenses."
+  />
+  <LinkCard
+    title="Edge mint"
+    href="/docs/features/managed-config/edge-mint/"
+    description="Short-lived tokens from a secret that never leaves."
+  />
+</CardGrid>
 
-## Help and reference
+## Reference
 
-| Page                                                                          | What you get                        |
-| ----------------------------------------------------------------------------- | ----------------------------------- |
-| [Troubleshoot managed config](/docs/features/managed-config/troubleshooting/) | Causes and fixes by error code      |
-| [Config entry](/docs/reference/config-entry/)                                 | The catalog item shape, from source |
+<CardGrid>
+  <LinkCard
+    title="Config entry"
+    href="/docs/reference/config-entry/"
+    description="The catalog item shape, from source."
+  />
+</CardGrid>
+
+## Troubleshooting
+
+<CardGrid>
+  <LinkCard
+    title="Troubleshoot managed config"
+    href="/docs/features/managed-config/troubleshooting/"
+    description="Causes and fixes by error code."
+  />
+</CardGrid>
 
 Related: [Cloud Sync](/docs/features/cloud-sync/) and [Licensing](/docs/features/licensing/).

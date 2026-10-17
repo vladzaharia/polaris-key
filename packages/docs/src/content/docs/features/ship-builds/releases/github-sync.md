@@ -72,20 +72,20 @@ for the platform's own product it must name the platform repository; otherwise i
 Every other field below is written at link and rewritten by every resync, so editing the file is
 the only way to change it.
 
-| Field             | What it does                                                                                                                                                                     | When unset                                       |
-| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
-| `provider`        | `{ type: github, owner, repo }`: names the repository releases come from. It is validated, not stored: the stored repository is the one linked under Settings → Repository.      | required                                         |
-| `binaryName`      | The executable's name in artifact file names and in the install script (see [Binary name safety](#binary-name-safety)).                                                          | the repository's name                            |
-| `channelWorkflow` | A workflow file name or numeric id. `beta` is the newest tag a successful run of it built from `betaBranch`, and `pr-<n>` the newest tag it built from that pull request's head. | `beta` and `pr-<n>` fall back to prerelease tags |
-| `betaBranch`      | The branch whose `channelWorkflow` runs make `beta`.                                                                                                                             | `main`                                           |
-| `summaryMarker`   | The marker that fences a release's summary in its notes, `<!-- pkey:summary -->` … `<!-- /pkey:summary -->`. The changelog route and the appcast show the fenced text.           | `pkey:summary`                                   |
-| `manualChannels`  | Named channels beyond `stable` and `beta`, each `{ name, regex }`, matched anchored against release tags. See [Channels and policy](/docs/services/release/channels/).           | none                                             |
+| Field             | What it does                                                                                                                                                                        | When unset                                       |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| `provider`        | `{ type: github, owner, repo }`: names the repository releases come from. It is validated, not stored: the stored repository is the one linked under Settings → Repository.         | required                                         |
+| `binaryName`      | The executable's name in artifact file names and in the install script (see [Binary name safety](#binary-name-safety)).                                                             | the repository's name                            |
+| `channelWorkflow` | A workflow file name or numeric id. `beta` is the newest tag a successful run of it built from `betaBranch`, and `pr-<n>` the newest tag it built from that pull request's head.    | `beta` and `pr-<n>` fall back to prerelease tags |
+| `betaBranch`      | The branch whose `channelWorkflow` runs make `beta`.                                                                                                                                | `main`                                           |
+| `summaryMarker`   | The marker that fences a release's summary in its notes, `<!-- pkey:summary -->` … `<!-- /pkey:summary -->`. The changelog route and the appcast show the fenced text.              | `pkey:summary`                                   |
+| `manualChannels`  | Named channels beyond `stable` and `beta`, each `{ name, regex }`, matched anchored against release tags. See [Channels and policy](/docs/features/ship-builds/releases/channels/). | none                                             |
 
 The rest of the block is covered elsewhere: `deliverables`, with each channel's `includes`, under
 [Release deliverables](/docs/build/manifest/release/#release-deliverables-deliverablesapp-and-the-artifact-map);
 `publishing.trustedPublisher` under [Trusted publishing](/docs/features/ship-builds/releases/trusted-publishing/);
-`releaseKeys` under [Release records](/docs/services/update/signed-feed/#release-records); and
-`artifactPolicy` and `access` on [Artifacts, changelog & install](/docs/services/release/artifacts/).
+`releaseKeys` under [Release records](/docs/features/ship-builds/updates/signed-feed/#release-records); and
+`artifactPolicy` and `access` on [Artifacts, changelog & install](/docs/features/ship-builds/releases/artifacts/).
 
 ## Installation tokens
 
@@ -136,7 +136,7 @@ repository (a single repo can back more than one product).
 The same endpoint also accepts GitHub's `release` event, and treats every action it sends —
 `published`, `unpublished`, `created`, `edited`, `deleted`, `prereleased`, `released` — the
 same way: for each product linked to the delivery's repository, it re-runs the
-[truth-store](/docs/services/release/truth-store/) half of a resync and nothing else. Publishing
+truth-store half of a resync and nothing else. Publishing
 a build therefore shows up in the console's Releases page and the customer portal within one
 delivery, without a push to `.pkey/` and without anyone pressing **Resync from repo**.
 
@@ -161,7 +161,7 @@ What a release delivery does **not** do matters as much:
   `release_health` subject turns `degraded` with `absentUpstream: true`. A list cut short by the
   10-page cap marks nothing, because absence from a partial read proves nothing. Deleting a
   release that was a channel's head is also what trips that channel's
-  [floor](/docs/services/update/eligibility/#channel-floors-no-silent-downgrade).
+  [floor](/docs/features/ship-builds/updates/eligibility/#channel-floors-no-silent-downgrade).
 
 Each release delivery costs one installation-token read (normally a KV hit) plus the release
 list pages — one call for a repository with fewer than 100 releases. That is cheap at release
@@ -221,8 +221,8 @@ state:
   listing against the same installation token. It follows GitHub's `Link: rel="next"` for up
   to 10 pages of 100 (1,000 releases), so a busy repository cannot push its last stable release
   out of the store. A repository with fewer than 100 releases still costs one call. The same
-  pass raises each moving channel's [floor](/docs/services/update/eligibility/#channel-floors-no-silent-downgrade).
-  See [The truth store](/docs/services/release/truth-store/) for what that populates.
+  pass raises each moving channel's [floor](/docs/features/ship-builds/updates/eligibility/#channel-floors-no-silent-downgrade).
+  See The truth store for what that populates.
 
 Removing a repository-side field returns the corresponding server value to its default,
 not to whatever it last was — a manifest is the whole statement of intent, not a set of
@@ -298,14 +298,12 @@ install script every user of that product pipes straight into `sh`. It is valida
 a strict character class at _every_ point it can enter the system — both ingest paths
 (link and resync) and the installer renderer itself — so a manifest cannot smuggle a value
 the renderer would later refuse. See
-[Artifacts, changelog & install](/docs/services/release/artifacts/) for how the installer
+[Artifacts, changelog & install](/docs/features/ship-builds/releases/artifacts/) for how the installer
 uses it.
 
 ## See also
 
-- [The truth store](/docs/services/release/truth-store/) — what a sync actually populates,
-  and the health checks built on it.
-- [Artifacts, changelog & install](/docs/services/release/artifacts/) — what gets served
+- [Artifacts, changelog & install](/docs/features/ship-builds/releases/artifacts/) — what gets served
   once a repo is linked.
 - [JSON Schema & editor setup](/docs/build/manifest/json-schema/) — editor validation for
   `.pkey/` documents.

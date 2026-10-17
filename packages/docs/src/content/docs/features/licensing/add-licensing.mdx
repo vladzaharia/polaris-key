@@ -11,11 +11,7 @@ import Requires from "../../../../components/docs/Requires.astro";
 
 Your app activates a license key, caches the signed license document and unlocks while the document is valid.
 
-<Requires
-  features={["licensing"]}
-  role="Product admin"
-  sdk={["Node 22.13 or later"]}
-/>
+<Requires features={["licensing"]} role="Product admin" />
 
 Before you start:
 
@@ -33,20 +29,33 @@ Before you start:
    pkey sdk --lang <lang> --product <slug> --write
    ```
 
-5. **App** Create the client from that file and read its license status. Your SDK's page has the code; the drop-in kit's gate component does steps 5 to 7 for you.
+5. **App** Create the client from that file and read its license status. Pick your SDK in the table; the drop-in kit's gate component does steps 5 to 7 for you.
+
+   | SDK    | Drop-in kit                                                | Your own UI                                    |
+   | ------ | ---------------------------------------------------------- | ---------------------------------------------- |
+   | Node   | [Terminal kit](/docs/build/ui/frameworks/terminal-node/)   | [Node](/docs/build/sdks/node/your-own-ui/)     |
+   | React  | [React kit](/docs/build/ui/frameworks/react/)              | [React](/docs/build/sdks/react/your-own-ui/)   |
+   | Python | [Terminal kit](/docs/build/ui/frameworks/terminal-python/) | [Python](/docs/build/sdks/python/your-own-ui/) |
+   | Swift  | [SwiftUI kit](/docs/build/ui/frameworks/swiftui/)          | [Swift](/docs/build/sdks/swift/your-own-ui/)   |
+   | Kotlin | [Compose kit](/docs/build/ui/frameworks/compose/)          | [Kotlin](/docs/build/sdks/kotlin/your-own-ui/) |
+   | Godot  | [Godot kit](/docs/build/ui/frameworks/godot/)              | [Godot](/docs/build/sdks/godot/your-own-ui/)   |
+
 6. **App** When the status is `needs-activation`, ask for the key and activate it. A refused activation carries a code: show the fix for `device_limit` ([Handle the device limit](/docs/features/licensing/device-limit/)) and for the others the message the SDK gives you.
 7. **App** Call the client's sync to refresh the document. The client keeps the last verified document, so the app works offline until the document's grace window ends ([Going offline](/docs/features/licensing/offline/)).
+8. **Server** Optional: gate your own backend on the same license. See [Verify licenses on your server](/docs/features/licensing/server-verification/) for the Node, Python and Kotlin drop-ins.
 
-| SDK    | Drop-in kit                                                | Your own UI                                    |
-| ------ | ---------------------------------------------------------- | ---------------------------------------------- |
-| Node   | [Terminal kit](/docs/build/ui/frameworks/terminal-node/)   | [Node](/docs/build/sdks/node/your-own-ui/)     |
-| React  | [React kit](/docs/build/ui/frameworks/react/)              | [React](/docs/build/sdks/react/your-own-ui/)   |
-| Python | [Terminal kit](/docs/build/ui/frameworks/terminal-python/) | [Python](/docs/build/sdks/python/your-own-ui/) |
-| Swift  | [SwiftUI kit](/docs/build/ui/frameworks/swiftui/)          | [Swift](/docs/build/sdks/swift/your-own-ui/)   |
-| Kotlin | [Compose kit](/docs/build/ui/frameworks/compose/)          | [Kotlin](/docs/build/sdks/kotlin/your-own-ui/) |
-| Godot  | [Godot kit](/docs/build/ui/frameworks/godot/)              | [Godot](/docs/build/sdks/godot/your-own-ui/)   |
+Show the person what each refusal state means. The app is usable on `ok` and `grace`.
 
-The status is one of `ok`, `grace`, `expired`, `revoked`, `needs-activation`, `version-too-old`, `version-too-new`, `channel-not-entitled` or `not-applicable`. The app is usable on `ok` and `grace`.
+| State                  | What to show                                       | Help for the person                          |
+| ---------------------- | -------------------------------------------------- | -------------------------------------------- |
+| `needs-activation`     | Ask for the key                                    | [Activate](/docs/help/activate/)             |
+| `expired`              | Ask the person to reconnect or renew               | [License status](/docs/help/license-status/) |
+| `revoked`              | Say the license was turned off                     | [License status](/docs/help/license-status/) |
+| `version-too-old`      | Ask the person to update the app                   | [License status](/docs/help/license-status/) |
+| `version-too-new`      | Say this license doesn't cover the newer version   | [License status](/docs/help/license-status/) |
+| `channel-not-entitled` | Say the license doesn't cover this build's channel | [License status](/docs/help/license-status/) |
+
+The full set is `ok`, `grace`, `expired`, `revoked`, `needs-activation`, `version-too-old`, `version-too-new`, `channel-not-entitled` and `not-applicable`.
 
 ## Check it works
 

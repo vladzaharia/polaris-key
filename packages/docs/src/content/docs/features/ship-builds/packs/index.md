@@ -44,7 +44,7 @@ A pack's `type` names the handler a device installs it with. Transport, patching
 
 ## The delivery gate
 
-Who may download a pack is the pack's own delivery access, set by an operator and never inherited from the app's. Its license flag, the `entitlement`, is the pack's gate. `.pkey/release` only asserts it: a publish whose gate differs from the assertion is refused, so a paid pack the operator hasn't gated yet fails closed, and no push can gate, ungate or re-flag a pack. While Distribution is off, every pack publish is refused with `distribution_disabled`.
+Who may download a pack is the pack's own delivery access, set by a member and never inherited from the app's. Its license flag, the `entitlement`, is the pack's gate. `.pkey/release` only asserts it: a publish whose gate differs from the assertion is refused, so a paid pack the member hasn't gated yet fails closed, and no push can gate, ungate or re-flag a pack. While Distribution is off, every pack publish is refused with `distribution_disabled`.
 
 ## App releases: pins, holds and embeds
 
@@ -61,7 +61,7 @@ On every publish, pointer move, floor change, yank and resync, Release re-resolv
 3. **Per pack.** The newest release on the pack's channel whose `requires.contentApi` range holds the level, that runs on the engine, carries the variant and is at or above the pack's floor.
 4. **The solver.** It keeps `requires.packs` ranges and `conflicts`, backtracking highest-first, leaving out as few packs as possible. Past its work budget, or 4,096 rows, a publish fails with `pack-sets-bound` rather than guess.
 
-A pack nothing satisfies is listed in the set's `unsatisfied` with a reason: `no-release`, `content-api`, `engine`, `variant`, `content-floor`, `dependency` or `conflict`. So a floor with no backport deliberately blocks an old content line. A floor is set per `contentApi` line, so a fix can be backported to an older line: "foes 1.3.4 or later for contentApi 3". It is operator-owned and set on the channel. If a resolution fails, it never refuses the yank, floor change or resync that caused it. It fails closed: the product's sets are cleared, `release.pack_sets.failed` is audited and the response carries `packSets: { ok: false, reason }`.
+A pack nothing satisfies is listed in the set's `unsatisfied` with a reason: `no-release`, `content-api`, `engine`, `variant`, `content-floor`, `dependency` or `conflict`. So a floor with no backport deliberately blocks an old content line. A floor is set per `contentApi` line, so a fix can be backported to an older line: "foes 1.3.4 or later for contentApi 3". It is member-owned and set on the channel. If a resolution fails, it never refuses the yank, floor change or resync that caused it. It fails closed: the product's sets are cleared, `release.pack_sets.failed` is audited and the response carries `packSets: { ok: false, reason }`.
 
 ## Save compatibility
 
@@ -99,7 +99,7 @@ Install state is never trusted from storage. Every load re-verifies each pack re
 
 ## Lazy deltas
 
-CI builds whole-payload deltas only against the last few releases. For a product an operator opted in, a consumer Worker generates a missing delta off the request path when at least 25 devices (configurable) moved between the same two payloads of a container pack within 7 days. It refuses a pair when a payload is over 32 MiB, when the delta would not save 30% and 1 MiB, or past the product's daily cap (20 by default). A lazy delta is in no signed record: the channel feed offers it, and the device checks every byte against the pack's CI-signed record and falls back on any failure.
+CI builds whole-payload deltas only against the last few releases. For a product a member opted in, a consumer Worker generates a missing delta off the request path when at least 25 devices (configurable) moved between the same two payloads of a container pack within 7 days. It refuses a pair when a payload is over 32 MiB, when the delta would not save 30% and 1 MiB, or past the product's daily cap (20 by default). A lazy delta is in no signed record: the channel feed offers it, and the device checks every byte against the pack's CI-signed record and falls back on any failure.
 
 ## Next steps
 

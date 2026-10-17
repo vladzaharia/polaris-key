@@ -17,19 +17,19 @@ This page describes the appcast rendered from GitHub release state, which every 
 CI-signed release records keeps. A product that publishes release records gets the **extended**
 appcast instead: build numbers, `criticalUpdate`, phased rollouts, deltas,
 `hardwareRequirements` and universal DMGs, rendered from the records. See
-[App-updater feeds](/docs/services/update/updater-feeds/#sparkle-extended).
+[App-updater feeds](/docs/features/ship-builds/updates/updater-feeds/#sparkle-extended).
 :::
 
 ## The two routes
 
-```
+```text title="Request"
 GET /<product>/update/appcast.xml
 GET /<product>/update/<channel>/appcast.xml
 ```
 
 The first always serves the `stable` channel. The second serves any other channel name —
 `beta`, `pr-<n>`, or an operator-defined manual channel — resolved through the identical
-selector logic [Eligibility](/docs/services/update/eligibility/) documents in full. Both
+selector logic [Eligibility](/docs/features/ship-builds/updates/eligibility/) documents in full. Both
 answer with a single `<item>`: the newest release on that channel, as of the
 request.
 
@@ -37,12 +37,12 @@ Both routes are governed by **artifacts access**, not metadata access — which 
 what you might guess. An appcast item embeds a download URL, so gating
 it under the same column as the changelog would let a caller read a pointer to bytes the
 artifact restriction is supposed to withhold. See Release's
-[Artifacts](/docs/services/release/artifacts/) page for the full four-mode ladder and the
+[Artifacts](/docs/features/ship-builds/releases/artifacts/) page for the full four-mode ladder and the
 two error shapes a refusal can take.
 
 ## Architecture selection
 
-```
+```text title="Request"
 GET /<product>/update/appcast.xml?arch=arm64
 GET /<product>/update/appcast.xml?arch=x86_64
 ```
@@ -58,7 +58,7 @@ alongside the channel and version, so the two architectures' responses can never
 cache.
 
 :::note[This SDK always sends it explicitly]
-The Swift client covered on [Swift client & Sparkle](/docs/services/update/sparkle/) never
+The Swift client covered on [Swift client & Sparkle](/docs/features/ship-builds/updates/sparkle/) never
 relies on the default — it detects the running device's architecture and always passes
 `arch` on the URL it builds. Relying on the unparameterized feed's default is a choice for
 a host that has no arm64/x86_64 distinction to make; anything else should send it.
@@ -76,11 +76,11 @@ Each rendered `<item>` carries:
   tag. Polaris Key doesn't distinguish a marketing version from a separate build number;
   the tag is the version, in both fields.
 - **`sparkle:minimumSystemVersion`** — present only when an operator set a minimum macOS
-  version in [Update → Feed](/docs/services/update/eligibility/#the-console-feed)
+  version in [Update → Feed](/docs/features/ship-builds/updates/eligibility/#the-console-feed)
   (no manifest can declare it), and only after its value passes a shape check (Sparkle compares it, never
   displays it, so a value it can't parse would silently make every update ineligible).
 - **`<description>`** — the same curated changelog summary the changelog endpoint extracts
-  (see Release's [Artifacts](/docs/services/release/artifacts/) page), HTML-escaped and
+  (see Release's [Artifacts](/docs/features/ship-builds/releases/artifacts/) page), HTML-escaped and
   wrapped in CDATA.
 - **`<enclosure>`** — the download URL, the byte length, and — only when the release
   published a verifiable signature — `sparkle:edSignature`.
@@ -90,7 +90,7 @@ Each rendered `<item>` carries:
 A pinned resolution (`stable`, `latest`, or an exact `X.Y.Z`) points its enclosure at the
 concrete version segment, so the URL is immutable once minted:
 
-```
+```text title="URL"
 https://key.plrs.im/<product>/release/dl/1.2.3/<binary>-arm64.dmg
 ```
 
@@ -106,11 +106,11 @@ A moving channel (`beta`, `pr-<n>`, a manual channel) points at the channel segm
 instead, so the enclosure URL is stable across releases on that channel even though what it
 resolves to changes underneath it:
 
-```
+```text title="URL"
 https://key.plrs.im/<product>/release/dl/beta/<binary>-arm64.dmg
 ```
 
-Either way, the enclosure is an ordinary [download route](/docs/services/release/artifacts/)
+Either way, the enclosure is an ordinary [download route](/docs/features/ship-builds/releases/artifacts/)
 URL back through this same gateway — Sparkle's download and a browser's download are the
 same request.
 
@@ -137,7 +137,7 @@ This check happens once, server-side, before an item is ever offered. It is what
 misconfigured or tampered sidecar from reaching users at all — but Sparkle's own signature
 check, against the key baked into the _client_ app bundle, is what actually decides whether
 an individual install trusts an individual update. Polaris Key never touches that boundary;
-see [Swift client & Sparkle](/docs/services/update/sparkle/) for why.
+see [Swift client & Sparkle](/docs/features/ship-builds/updates/sparkle/) for why.
 :::
 
 Whether a product requires a signature at all is an operator-only setting — a `.pkey/`
@@ -163,7 +163,7 @@ unchanged either way; only what a parser does with the surrounding bytes is.
 
 Appcast responses carry `max-age=300` — five minutes — and so does the changelog. The
 version check is the exception: it follows its own resolution instead, which in practice
-means `max-age=120` (see [Eligibility](/docs/services/update/eligibility/)). All three are
+means `max-age=120` (see [Eligibility](/docs/features/ship-builds/updates/eligibility/)). All three are
 eligible for Cloudflare's edge cache, but only when the effective access mode for that
 request is `public` — a cache entry is only ever written for a request that already cleared its own
 access check, so a hit can never bypass one. The cache key is built from the product,
@@ -175,7 +175,7 @@ that all miss.
 
 Four URLs predate the current `/<product>/<service>/…` namespace, and they are kept
 **forever** (the byte routes' `/release/…` spellings are permanent aliases too, of
-Distribution's routes — see [Byte delivery](/docs/services/distribution/delivery/#permanent-aliases)):
+Distribution's routes — see [Byte delivery](/docs/features/ship-builds/channels/delivery/#permanent-aliases)):
 
 | Alias                              | Canonical                                 |
 | ---------------------------------- | ----------------------------------------- |
@@ -209,11 +209,11 @@ moved, and the old path answers `404` like any other removed route.
 
 ## See also
 
-- [Eligibility](/docs/services/update/eligibility/) — channel resolution, the version
+- [Eligibility](/docs/features/ship-builds/updates/eligibility/) — channel resolution, the version
   check, and the `entitled` access mode this feed is gated by.
-- [Swift client & Sparkle](/docs/services/update/sparkle/) — how a macOS client actually
+- [Swift client & Sparkle](/docs/features/ship-builds/updates/sparkle/) — how a macOS client actually
   points itself at one of these URLs, and what it does and doesn't verify.
-- [Artifacts, changelog & install](/docs/services/release/artifacts/) — the download route
+- [Artifacts, changelog & install](/docs/features/ship-builds/releases/artifacts/) — the download route
   behind every enclosure.
 - [Public route table](/docs/reference/routes/) for every alias and canonical path in one
   place.

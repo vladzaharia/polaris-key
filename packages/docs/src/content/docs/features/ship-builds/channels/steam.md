@@ -14,7 +14,7 @@ done in Steamworks. For a product on Steam, Polaris Key does what Steam does all
 - it **reads** the apps the publisher key may act on, the app's builds and its branches;
 - it **sets a build live on a named branch** (`beta`, `staging`, a playtest branch);
 - it shows a **copy card** of the store page's text, pre-filled from the
-  [shared listing](/docs/admin/storefront-listing/), and serves the **asset pack** that
+  [shared listing](/docs/features/ship-builds/channels/polaris-key/), and serves the **asset pack** that
   [`pkey listing assets`](/docs/features/ship-builds/ci-stores/#listing-assets) made at Steam's sizes;
 - it keeps a **checklist** of the human steps, with links to the Steamworks pages.
 
@@ -26,7 +26,7 @@ deletion are never automated.
 
 The app is the `appId` of the product's `steam` channel in `.pkey/distribution` (the lowest channel
 id when there are several). A product being set up for Steam, with no Steam channel yet, uses the
-app a platform admin assigned to it in [Store connections](/docs/admin/store-connections/).
+app a platform admin assigned to it in Store connections.
 
 The key is the product's own `steam-publisher-key` channel credential, pinned to that app id. With
 no key of its own, the product uses the platform's Steam group key (`steam.publisher-key`), and only

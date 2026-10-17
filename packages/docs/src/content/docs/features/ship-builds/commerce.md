@@ -2,13 +2,13 @@
 sidebar:
   order: 9
 title: "Commerce bridge"
-description: "Store purchases on the App Store, Google Play and Steam become licence flags per deliverable: the store-product map, the purchase binding, verification with each store, refunds and revocations, and what to set up in each store."
+description: "Store purchases on the App Store, Google Play and Steam become license flags per deliverable: the store-product map, the purchase binding, verification with each store, refunds and revocations, and what to set up in each store."
 type: "reference"
 lastReviewed: "2026-10-16"
 ---
 
-A player who buys a store product you mapped to a licence flag — say the product that unlocks
-Diceroll's supporter skins, flag `extras.diceSkins` — gets that flag on their Polaris licence, for
+A player who buys a store product you mapped to a license flag — say the product that unlocks
+Diceroll's supporter skins, flag `extras.diceSkins` — gets that flag on their Polaris license, for
 **every release** of the deliverable, and loses it on a refund or revocation. The device only
 forwards what its store handed it; the Worker verifies every purchase with the store itself.
 
@@ -19,42 +19,42 @@ alternative billing.
 ## How it works
 
 1. **Bind before buying.** The game calls `PolarisKey.commerce.get_binding()`
-   (`GET /<product>/distribution/commerce/binding`, device token) and gets the licence's
-   **binding** — a random UUID, not the licence id and not personal data — plus the store products
+   (`GET /<product>/distribution/commerce/binding`, device token) and gets the license's
+   **binding** — a random UUID, not the license id and not personal data — plus the store products
    on sale. It hands the binding to the store with the purchase: Apple's `appAccountToken`, Play's
-   `obfuscatedAccountId`, or the identity of a Steam web-API ticket. A device without a licence
+   `obfuscatedAccountId`, or the identity of a Steam web-API ticket. A device without a license
    is told `not_entitled` / `no_license`; the game enrols first. The bridge never creates a
-   licence.
+   license.
 2. **Claim.** After the store says the purchase went through, the game calls
    `PolarisKey.commerce.claim(store, payload)` (`POST …/commerce/claim`) with the StoreKit JWS,
    the Play purchase token, or a Steam ticket. The Worker verifies it with the store, checks that
    the store's own record names **the caller's** binding, and grants the mapped flag through the
-   License service. Then the game syncs: the next licence document carries the flag. On the App
+   License service. Then the game syncs: the next license document carries the flag. On the App
    Store the game finishes the transaction only after the claim answered ok.
 3. **Store notifications** keep the flag honest afterwards: an App Store refund or revocation,
    a voided Play purchase, or a Steam ownership re-check removes it.
 
-The flag lands in the licence document **after** the licence's profiles and **before** the
-licence's own overrides, so an operator override of the same flag always wins. Gated delivery
-reads it like any licence flag.
+The flag lands in the license document **after** the license's profiles and **before** the
+license's own overrides, so an operator override of the same flag always wins. Gated delivery
+reads it like any license flag.
 
-A transaction bound to one licence never grants another: a claim with another licence's binding
-is refused (`binding_mismatch`), a purchase already recorded for a licence cannot be claimed by
+A transaction bound to one license never grants another: a claim with another license's binding
+is refused (`binding_mismatch`), a purchase already recorded for a license cannot be claimed by
 any other (`bound_elsewhere`), and a purchase made without a binding is refused (`unbound`).
 
 ### The App Store's cross-store rule
 
 App Store guideline 3.1.3(b) lets content bought elsewhere unlock in an iOS or macOS App Store
-build only if the same content is also sold there as an in-app purchase. The licence document
+build only if the same content is also sold there as an in-app purchase. The license document
 stays the same on every channel; the Godot SDK applies the rule: on an `app-store` or `testflight`
 channel, `PolarisKey.commerce.hidden_here(flag)` is true for a flag you sell on Play or Steam but
-not on the App Store, and `is_unlocked(flag)` combines it with the licence. Map an App Store
+not on the App Store, and `is_unlocked(flag)` combines it with the license. Map an App Store
 product to the same flag to unlock it there. A flag you grant without selling it (a profile, an
 override) is never hidden.
 
 ## Commerce needs License
 
-The bridge writes licence flags, so it runs only while the **License** service is on. With License
+The bridge writes license flags, so it runs only while the **License** service is on. With License
 off, the commerce routes answer not-found and the console refuses commerce settings and product
 mappings (`409`, `commerce_requires_license`).
 
@@ -63,13 +63,13 @@ mappings (`409`, `commerce_requires_license`).
 Everything is operator-owned: no `.pkey/` manifest field reaches it, so a repo push cannot decide
 what a payment unlocks or whose purchases are believed. As a platform admin:
 
-1. **Store the store's credential** under Distribution, on **Outlet credentials** ([Channel credentials](/docs/admin/secrets-and-keys/#outlet-credentials)),
+1. **Store the store's credential** under Distribution, on **Outlet credentials** ([Channel credentials](/docs/operate/console/keys-and-secrets/#outlet-credentials)),
    pinned to the app: an `app-store-server-key` pinned to the bundle id, a
    `google-service-account` pinned to the package name (the Google Play connector's), a
    `steam-publisher-key` pinned to the game's app id.
 2. **Set the commerce settings**, one block per store you sell on:
 
-   ```http
+   ```http title="Request"
    /manage/api/products/<slug>/distribution/commerce/settings (PUT)
    {
      "appStore": { "bundleId": "gg.vlad.diceroll", "appAppleId": 1234567890 },
@@ -89,20 +89,20 @@ what a payment unlocks or whose purchases are believed. As a platform admin:
 
    A store runs only when its block is present **and** an active credential is pinned to the
    same app. `acceptSandbox` (App Store) and `acceptTestPurchases` (Play) default to `false`: a
-   production product refuses sandbox transactions and licence-tester purchases. Turn them on
+   production product refuses sandbox transactions and license-tester purchases. Turn them on
    only on a staging product. StoreKit Testing (`Xcode`) transactions are always refused.
 
 3. **Map each store product** to a flag and a deliverable (`app`, or a pack the Release service
    knows):
 
-   ```http
+   ```http title="Request"
    /manage/api/products/<slug>/distribution/commerce/products (PUT)
    { "store": "app-store", "productId": "gg.vlad.diceroll.skins", "flag": "extras.diceSkins", "deliverable": "app" }
    ```
 
    `productId` is the App Store product id, the Play product id, or the Steam DLC's app id.
    `flag` must be a name something reads: a `flag` entry of the product's active catalog, or the
-   deliverable's own delivery gate (the licence flag set under Distribution → Access, so a pack
+   deliverable's own delivery gate (the license flag set under Distribution → Access, so a pack
    sold as DLC maps to the flag that gates its download whether or not the catalog declares it).
    Anything else is refused `422` with `fields: ["flag"]`, since a purchase mapped to it would
    grant a name nothing reads: an undeclared name (a typo), a `config` or `secret` key, and any
@@ -139,22 +139,22 @@ down the hook answers `503` and Apple redelivers.
   The App Store Connect connector can create them from this map, with their localizations, price
   and availability ([In-app purchases](/docs/features/ship-builds/channels/app-store-distribute/#in-app-purchases);
   in the console, **Distribution → Commerce**, see
-  [App Store products](/docs/admin/app-store/#app-store-products-in-commerce));
+  [App Store products](/docs/features/ship-builds/channels/app-store/#app-store-products-in-commerce));
   the app's first purchase is still submitted in App Store Connect, with an app version;
 - **App Information → App Store Server Notifications**: Production Server URL
   `https://key.plrs.im/<product>/distribution/hooks/app-store`, **Version 2** (set the Sandbox
   URL to a staging product's hook, or leave it empty);
 - an **In-App Purchase key** (Users and Access → Integrations → In-App Purchase) — stored as the
   `app-store-server-key`, pinned to the bundle id. This is not the App Store Connect API key the
-  [App Store Connect connector](/docs/services/distribution/app-store-connect/) uses;
+  [App Store Connect connector](/docs/features/ship-builds/channels/app-store/) uses;
 - a **Sandbox Apple Account** to test with (on a staging product with `acceptSandbox`).
 
 ## Google Play
 
 **Verification.** Every decision comes from `purchases.products.get` through the
-[Google Play connector](/docs/services/distribution/google-play/)'s client and its pinned service
+[Google Play connector](/docs/features/ship-builds/channels/google-play/)'s client and its pinned service
 account: only a purchase in state **PURCHASED** grants (a **PENDING** purchase is recorded and
-grants nothing until it completes), a licence-tester purchase only where you accept test
+grants nothing until it completes), a license-tester purchase only where you accept test
 purchases, and `obfuscatedExternalAccountId` must be the caller's binding. A granted purchase is
 **acknowledged once** — right away, or on the next connector tick if that failed — well inside
 Google's three-day limit.
@@ -178,15 +178,15 @@ polls the **Voided Purchases** API once a day.
   `https://key.plrs.im/<product>/distribution/hooks/play-rtdn`, with **authentication enabled**: a
   service account (its email goes in `pushServiceAccount`) and an audience (it goes in
   `pushAudience`; the endpoint URL is a good choice);
-- **licence testers** to test with (on a staging product with `acceptTestPurchases`).
+- **license testers** to test with (on a staging product with `acceptTestPurchases`).
 
 ## Steam
 
 **Verification.** The game creates a web-API ticket with
 `Steam.getAuthTicketForWebApi(bindingId)` (GodotSteam) and claims with
 `{ticket, dlcAppId}`. The Worker calls `ISteamUserAuth/AuthenticateUserTicket` with your
-publisher key and the binding as the ticket's identity — so a ticket made for another licence
-fails — then `ISteamUser/CheckAppOwnership` for the DLC. The account must own the DLC outright: a permanent licence (not Family Sharing, a free weekend or the PC Café programme), held by the account itself, not self-cancelled and not a timed trial. Steam does not push refunds, so
+publisher key and the binding as the ticket's identity — so a ticket made for another license
+fails — then `ISteamUser/CheckAppOwnership` for the DLC. The account must own the DLC outright: a permanent license (not Family Sharing, a free weekend or the PC Café program), held by the account itself, not self-canceled and not a timed trial. Steam does not push refunds, so
 every active Steam grant is re-checked **weekly** on the connector tick (and on every claim): a
 refunded DLC loses its flag within a week.
 
@@ -200,7 +200,7 @@ refunded DLC loses its flag within a week.
 ## Device checklist
 
 Once the store accounts exist, check one real sandbox purchase per store end to end: the
-purchase grants the flag (the next licence document carries it) and a refund removes it.
+purchase grants the flag (the next license document carries it) and a refund removes it.
 
 ## Reference
 

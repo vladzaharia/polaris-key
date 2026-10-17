@@ -13,7 +13,7 @@ Entries are ordered by how often they happen. Every code is in the [error codes]
 
 **Cause** Every seat on the license is taken. Devices not seen for 90 days no longer count. A tier downgrade also leaves existing devices in place and refuses new ones.
 
-**Fix** Free a seat. The user deauthorizes a device from another activated device, or from the portal through the response's `manageUrl`. An operator can **Deauthorize** a device or raise the limit with **Device limit…** on the license. See [Handle the device limit](/docs/features/licensing/device-limit/).
+**Fix** Free a seat. The user deauthorizes a device from another activated device, or from the portal through the response's `manageUrl`. A member can **Deauthorize** a device or raise the limit with **Device limit…** on the license. See [Handle the device limit](/docs/features/licensing/device-limit/).
 
 **Check it works** Activation succeeds, and the license's **Seats** meter shows a free seat.
 
@@ -29,7 +29,7 @@ Entries are ordered by how often they happen. Every code is in the [error codes]
 
 **Cause** The presented hardware differs from the stored hardware by more than the fingerprint mode tolerates. The Worker retired the old binding.
 
-**Fix** Retry activation: it binds the new hardware as a new authorization. To avoid spending a re-activation, an operator selects **Reset binding** on the device before the user hits it. If customers legitimately run several instances on one host, switch the mode to **Off** on **License → Enrollment**. See [Fingerprints](/docs/features/licensing/fingerprints/).
+**Fix** Retry activation: it binds the new hardware as a new authorization. To avoid spending a re-activation, a member selects **Reset binding** on the device before the user hits it. If customers legitimately run several instances on one host, switch the mode to **Off** on **License → Enrollment**. See [Fingerprints](/docs/features/licensing/fingerprints/).
 
 **Check it works** The device appears authorized, with a fresh binding.
 
@@ -67,15 +67,15 @@ Entries are ordered by how often they happen. Every code is in the [error codes]
 
 ## enroll_claimed
 
-**Cause** This machine's free license now belongs to an identity.
+**Cause** This device's free license now belongs to an identity.
 
-**Fix** Sign in with that identity. An anonymous enrollment from the machine is refused from now on.
+**Fix** Sign in with that identity. An anonymous enrollment from the device is refused from now on.
 
 **Check it works** Signing in activates the claimed license.
 
 ## license_disabled
 
-**Cause** An operator disabled the license, or an anonymous enrolled license was disabled.
+**Cause** A member disabled the license, or an anonymous enrolled license was disabled.
 
 **Fix** Re-enable it with **Enable license**, or issue a new license. A license that ended by refund or chargeback can be restored only by the store's reversal. See [The license model](/docs/features/licensing/model/).
 

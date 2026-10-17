@@ -1,6 +1,6 @@
 ---
 title: "Publishing from CI"
-description: "pkey release publish and the polaris-key/publish GitHub Action — publishing a release or a content pack from a release job with no secret in the repository, content stamps, dry runs, channel commands and troubleshooting."
+description: "pkey release publish and the polaris-key/publish GitHub Action — publishing a release or a content pack from a release job with no secret in the repository, content stamps, dry runs, release track commands and troubleshooting."
 type: "reference"
 lastReviewed: "2026-10-16"
 sidebar:
@@ -13,7 +13,7 @@ for a short-lived `pkeyci_` token, matches the built files against your `.pkey/r
 map, hashes them, uploads what Polaris Key does not already hold, and submits a **release
 descriptor**. No long-lived secret is stored in your repository.
 
-The step is not a build server. It never exports, signs binaries, notarises or uploads to a store:
+The step is not a build server. It never exports, signs binaries, notarizes or uploads to a store:
 your existing export, signing and vendor-tool steps (fastlane, `msstore`, `butler`, `steamcmd`, …)
 run first, unchanged, and this step records what they produced. The underlying routes, and the
 rules the Worker applies, are on [Trusted publishing](/docs/features/ship-builds/releases/trusted-publishing/).
@@ -27,7 +27,7 @@ rules the Worker applies, are on [Trusted publishing](/docs/features/ship-builds
    [the release manifest](/docs/build/manifest/release/#trusted-publishing-publishingtrustedpublisher).
 3. **`.pkey/release` names the publisher**, the workflow file and (optionally) the environment:
 
-   ```yaml
+   ```yaml title=".pkey/release"
    publishing:
      trustedPublisher:
        workflow: .github/workflows/release.yml
@@ -44,7 +44,7 @@ rules the Worker applies, are on [Trusted publishing](/docs/features/ship-builds
 
 ## The workflow
 
-```yaml
+```yaml title=".github/workflows/release.yml"
 name: Release
 on:
   push:
@@ -75,8 +75,7 @@ jobs:
           release-key: ${{ secrets.PKEY_RELEASE_KEY }} # when .pkey/release declares releaseKeys
 ```
 
-Until the Action is listed as `polaris-key/publish@v1`, reference it by a full commit SHA of this
-repository, as above. It runs on the current Node runtime GitHub supports and needs no install
+Reference the Action by a full commit SHA of this repository, as above. It runs on the current Node runtime GitHub supports and needs no install
 step.
 
 | Input               | Default               | Meaning                                                                                                                   |
@@ -85,7 +84,7 @@ step.
 | `dir`               | (required)            | The built files, searched recursively, relative to the workspace.                                                         |
 | `tag`               |                       | The git tag, which is also the release id. It must spell the version (the tag minus a leading `v`).                       |
 | `version`           | `tag` without its `v` | The version; must parse under the deliverable's version scheme.                                                           |
-| `channel`           |                       | The canonical channel the release is published to: `stable`, `beta`, or one the product declares.                         |
+| `channel`           |                       | The canonical release track the release is published to: `stable`, `beta`, or one the product declares.                   |
 | `deliverable`       | `app`                 | `app`, or a pack id `.pkey/release` declares ([Publishing a pack](#publishing-a-pack)).                                   |
 | `source`            | `r2`                  | `r2` uploads the bytes to Polaris Key. `github` uploads nothing and locates every file on the tagged GitHub release.      |
 | `meta`              |                       | A JSON file of per-build facts (below).                                                                                   |
@@ -106,12 +105,12 @@ refusal fails the step with the server's reason as an error annotation.
 
 ### Without the Action
 
-The same command runs anywhere Node 20 or later does. The CLI is published to Polaris Key's own
+The same command runs anywhere Node 22.13 or later does. The CLI is published to Polaris Key's own
 package feeds (see [Install from the feeds](/docs/build/install-from-feeds/)), so a repository
 with no `node_modules` (a Godot project) points the `@polaris-key` scope at the npm feed and runs
 it with `npx`:
 
-```sh
+```sh title="Terminal"
 echo "@polaris-key:registry=https://pkg.plrs.im/npm/polaris-key/" >> ~/.npmrc
 npx --yes -p @polaris-key/cli pkey release publish --product your-product \
   --tag "$GITHUB_REF_NAME" --channel beta --dir dist --meta builds.json
@@ -138,7 +137,7 @@ variables through, since the OIDC exchange reads them.
    and a `<file>.sha256` as its `checksum`.
 2. **Hash.** Each file is hashed with a streamed SHA-256, so a 2 GiB export does not need 2 GiB of
    memory. One uploaded file is at most 5 GiB less 5 MiB (a single upload).
-3. **Describe.** The descriptor carries the version, tag, channel, every build and its files with
+3. **Describe.** The descriptor carries the version, tag, release track, every build and its files with
    their roles, sizes and SHA-256s, and provenance: the commit (`GITHUB_SHA`) and the workflow
    run's URL. It is validated locally with the same function the Worker uses, so a mistake fails
    before anything is sent. Its `seq` is the one the upload ticket answers for the release (the
@@ -154,7 +153,7 @@ variables through, since the OIDC exchange reads them.
 6. **Submit.** The Worker verifies every uploaded object, checks the descriptor against your
    declaration and the record against the descriptor and your declared keys
    (`release_record_rejected` with a reason otherwise), and only then writes the release. Only
-   releases with a record appear in the [signed feed](/docs/services/update/signed-feed/).
+   releases with a record appear in the [signed feed](/docs/features/ship-builds/updates/signed-feed/).
 
 **The release key.** `pkey release keys generate --kid ci-2026 --out release-key.pem` writes a new
 key and prints the `releaseKeys` entry for `.pkey/release`; store the file's contents as the
@@ -163,7 +162,7 @@ key. See [Release keys](/docs/build/manifest/release/#release-keys-releasekeys).
 
 **Build metadata.** For an `ios` build whose format is `ipa`, and an `android` build whose
 format is `apk`, the step reads the facts the
-[storefront feeds](/docs/services/distribution/feeds/#build-metadata) need from inside the
+[storefront feeds](/docs/features/ship-builds/channels/feeds/#build-metadata) need from inside the
 payload and records them in the descriptor:
 
 - from an IPA: the bundle id, the versions, the minimum OS, the entitlements and the privacy
@@ -177,7 +176,7 @@ metadata.
 written as one), a `minOS`, and a `requires` object. An unknown build id or field is an error,
 because it is almost always a typo.
 
-```json
+```json title=".pkey/release"
 {
   "android": { "buildNumber": 130, "minOS": "8.0" },
   "ios": { "buildNumber": "130", "minOS": "16.0" }
@@ -185,7 +184,7 @@ because it is almost always a typo.
 ```
 
 **Re-running is safe.** Publishing the same release again is a no-op (`outcome: unchanged`): the
-same descriptor is recognised and nothing is uploaded or written. A different descriptor for a
+same descriptor is recognized and nothing is uploaded or written. A different descriptor for a
 release that already exists is refused `release_exists`. Re-running a failed job keeps its run
 URL, so it describes the same release; publishing one tag from a second workflow run does not.
 
@@ -211,13 +210,13 @@ GitHub digest and size match the descriptor. Use it when GitHub releases already
 
 ## Publishing a pack
 
-A content pack ([Packs](/docs/services/release/packs/)) is published by the same step with
+A content pack ([Packs](/docs/features/ship-builds/packs/)) is published by the same step with
 `deliverable: <packId>` (or `--deliverable <packId>`). A pack release is one **signed release
 record** (`kind: pack`), so the step needs `release-key`, and the zstd CLI 1.5.5 or later on the
 runner (GitHub's hosted runners carry it; the Action installs it with `apt-get` when it is
 missing on Linux).
 
-```yaml
+```yaml title=".github/workflows/release.yml"
 - uses: actions/cache@v4
   with:
     path: pack-cache
@@ -335,7 +334,7 @@ When `.pkey/release` declares packs, every app release states which pack release
 build learns them from a **content stamp** (`pkey-content.json`) it embeds, so write the stamp
 before the export:
 
-```sh
+```sh title="Terminal"
 node pkey.mjs release content-stamp --product diceroll --out pkey-content.json \
   --embedded packs --pin diceroll.l10n@2.0.1
 ```
@@ -347,7 +346,7 @@ the stored record. `contentApi` comes from `deliverables.app.content`, and each 
 and `delivery` from the pack's declaration. Every `required` and every `baseline: embedded` pack
 must be pinned. Then publish the app with the same stamp:
 
-```yaml
+```yaml title=".github/workflows/release.yml"
 - uses: vladzaharia/polaris-key/actions/publish@<commit-sha>
   with:
     product: diceroll
@@ -363,11 +362,11 @@ record is moved from that descriptor, so it carries both. `embedded` and `pins` 
 content inside the publish instead, for a build that embeds no stamp. Polaris Key must advertise
 `release.packs` in its discovery document, or the step refuses to stamp or publish a pack.
 
-## Channel commands
+## Release track commands
 
-The same credential drives channel policy from CI:
+The same credential drives release track policy from CI:
 
-```sh
+```sh title="Terminal"
 pkey release promote v0.3.0 --channel stable --product your-product
 pkey release pin v0.3.0 --channel beta --product your-product
 pkey release unpin --channel beta --product your-product
@@ -376,37 +375,41 @@ pkey release yank v0.3.0 --reason "crashes on launch" --product your-product
 
 Promote, pin and unpin need the `release:promote` scope, which the default grant includes. Yank
 needs `release:yank`, which an operator adds to the product's publisher policy in the console.
-`--deliverable` selects a pack's channel pointers.
+`--deliverable` selects a pack's release track pointers.
 
 `pkey feeds prune --product your-product` is the package feeds' retention backfill. For each
 package, it deletes the builds of main below the package's newest stable release. It is a dry
 run that prints what would go, with counts and bytes, unless you pass `--apply`. With `--apply`
-it lists any version it skipped (a channel took hold of it since the plan, so it was kept) and
+it lists any version it skipped (a release track took hold of it since the plan, so it was kept) and
 exits non-zero if any version failed. It needs `release:yank` as well. Once the product turned
 retention on (it is off by default), a stable publish runs the same prune for its own package; see
 [Install from the feeds](/docs/build/install-from-feeds/#builds-of-main-and-dev-are-pruned-once-released).
 
 ## Distribution commands
 
-The same credential reports what a store says and drives outlet rollouts:
+The same credential reports what a store says and drives channel rollouts:
 
-```sh
-pkey distribution report availability --product your-product --outlet app-store \
+```sh title="Terminal"
+pkey distribution report availability --product your-product \
+  --outlet app-store \
   --release v0.3.0 --build ios --state in-review
 pkey distribution report submission --product your-product --outlet app-store \
   --release v0.3.0 --state submitted
-pkey distribution report key --product your-product --purpose android-app-signing \
+pkey distribution report key --product your-product \
+  --purpose android-app-signing \
   --sha256 "$SIGNING_CERT_SHA256"
-pkey distribution rollout --product your-product --outlet direct --channel stable \
+pkey distribution rollout --product your-product --outlet direct \
+  --channel stable \
   --release v0.3.0 --bp 2500
-pkey distribution halt --product your-product --outlet direct --channel stable   # also resume, pause, complete
+# also resume, pause, complete
+pkey distribution halt --product your-product --outlet direct --channel stable
 ```
 
 The reports need `distribution:report`, which the default grant includes; a key report whose
 fingerprint is not in the product's key inventory is flagged and exits 1. See
-[Availability, submissions and keys](/docs/services/distribution/availability/). The rollout
+[Availability, submissions and keys](/docs/features/ship-builds/channels/availability/). The rollout
 commands need `distribution:rollout`, which an operator adds deliberately; see
-[Rollouts and halts](/docs/services/distribution/rollouts/).
+[Rollouts and halts](/docs/features/ship-builds/channels/rollouts/).
 
 Store feeds, listing assets, hosted assets, itch.io and Snap pushes and package-manager pull
 requests are on [Publish to stores from CI](/docs/features/ship-builds/ci-stores/).

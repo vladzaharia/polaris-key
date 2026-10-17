@@ -15,7 +15,7 @@ The AltStore, Obtainium, Scoop and Flathub feeds need nothing from CI beyond the
 Worker renders them from the release. The F-Droid repository is the exception, because it is
 signed with a repo key the Worker never holds:
 
-```yaml
+```yaml title=".github/workflows/release.yml"
 - run:
     node pkey.mjs feeds fdroid --product your-product --channel stable --out fdroid
     --keystore fdroid.keystore --alias repo
@@ -30,17 +30,17 @@ the files. It needs `distribution:feeds`, which an operator adds deliberately. W
 `--keystore` it writes the unsigned files and stops. `--out` must be a directory of its own: the
 command replaces only the files it writes there, and refuses the working directory, a parent of
 it, or a directory that holds anything else (keep the keystore and the APKs outside it). See
-[Storefront feeds](/docs/services/distribution/feeds/#the-f-droid-repository).
+[Storefront feeds](/docs/features/ship-builds/channels/feeds/#the-f-droid-repository).
 
 ## Listing assets
 
 `pkey listing assets` makes every store's listing art from three images a person draws: a square
 icon master (1024×1024 is best), key art with no logo on it, and the wordmark on transparency.
-Export them in sRGB: an image with another embedded colour profile is converted first, and that
+Export them in sRGB: an image with another embedded color profile is converted first, and that
 conversion is not guaranteed to give identical bytes on every device. It needs the `sharp` image
 library beside `pkey` (`npm install sharp`):
 
-```yaml
+```yaml title=".github/workflows/release.yml"
 - run: |
     npm install sharp
     node pkey.mjs listing assets --out listing --icon art/icon.png --key-art art/key-art.png \
@@ -67,7 +67,7 @@ library beside `pkey` (`npm install sharp`):
 Everything lands under `--out`: one directory per store, `report.json` (every slot's status, size,
 alpha, format and digest), `preview.html` to look at, and a ZIP per store under `packs/` (Steam has
 no listing API, so its pack is what you upload by hand). `--upload` stores the images in the
-product's [shared listing](/docs/admin/storefront-listing/). It needs `distribution:listing`,
+product's [shared listing](/docs/features/ship-builds/channels/polaris-key/). It needs `distribution:listing`,
 which an operator adds deliberately. Only `ok` and `warn` outputs go up: a red output (an icon-only
 fallback, a title slot with no wordmark, a file over the store's size limit) stays in `--out` and is
 listed as not uploaded, as are `human` and `missing` slots and pending proposals. It never pushes
@@ -81,7 +81,7 @@ and the Action's `assets` input send such files to Polaris Key, which hosts a co
 from its image host, exactly like the files a manifest names (`.pkey/product`
 `presentation.icon`, the `.pkey/distribution` listing's `icon`, `header` and `screenshots`).
 
-```yaml
+```yaml title=".github/workflows/release.yml"
 - uses: vladzaharia/polaris-key/actions/publish@<sha>
   with:
     product: diceroll
@@ -94,12 +94,12 @@ from its image host, exactly like the files a manifest names (`.pkey/product`
 
 Each line is `<glob>: <slot>[@<locale>]`. A slot is `presentation.icon`, `listing.icon`,
 `listing.header`, `listing.screenshot:<1-16>` or a store slot of the
-[shared listing](/docs/admin/storefront-listing/) (`icon-master`, `play:feature-graphic`, …).
+[shared listing](/docs/features/ship-builds/channels/polaris-key/) (`icon-master`, `play:feature-graphic`, …).
 Every glob must match exactly one file, except for the unnumbered `listing.screenshot`, whose
 matches become screenshots 1 to n. Globs resolve against `dir` when it is set, else the workspace.
 From a shell, one file at a time:
 
-```sh
+```sh title="Terminal"
 pkey assets push art/icon.png --slot presentation.icon --product diceroll
 ```
 
@@ -108,7 +108,7 @@ pkey assets push art/icon.png --slot presentation.icon --product diceroll
   nothing.
 - **Who wins a slot.** An upload in the console, then the manifest, then CI. A slot an operator
   uploaded, or one the manifest names, is reported as kept and left as it is; that is not a
-  failure. See [Presentation](/docs/admin/presentation/).
+  failure. See [Presentation](/docs/operate/console/presentation/).
 - **Credentials.** The token needs `assets:write`, which an operator adds deliberately (it is not
   a default scope). The files go up through the same upload ticket as a release, so Release must
   be on for the product.
@@ -121,7 +121,7 @@ whose credentials stay in CI and never reach Polaris Key. The Action runs them f
 reported to Polaris Key before and after it runs, so the store's ledger shows CI steps beside the
 console's.
 
-```yaml
+```yaml title=".github/workflows/release.yml"
 jobs:
   itch:
     runs-on: ubuntu-latest
@@ -175,12 +175,12 @@ jobs:
 | `snap-upload-metadata` | `snapcraft upload-metadata <snap>` (the summary, description and icon the snap carries) |
 
 - **The target and channels come from `.pkey/distribution`, never from the workflow.** itch's
-  `target` is the outlet's `user/game`; a snap is released only to the snap channels its outlet's
+  `target` is the distribution channel's `user/game`; a snap is released only to the snap channels its distribution channel's
   `channels` map declares for `channel` (see
   [Distribution manifest](/docs/build/manifest/distribution/)). A step for an undeclared game or
   channel is refused before the tool starts, and again by Polaris Key.
-- **`storefront-outlet` picks the outlet** when `.pkey/distribution` declares more than one of the
-  store's kind (two itch.io games, say): set it to the outlet's id. With one outlet of that kind,
+- **`storefront-outlet` picks the distribution channel** when `.pkey/distribution` declares more than one of the
+  store's kind (two itch.io games, say): set it to the distribution channel's id. With one distribution channel of that kind,
   leave it unset.
 - **itch.io channel names tag platforms.** The channel starts with the platform word (`windows`,
   `linux`, `mac`, `android`); a release channel other than `stable` suffixes it (`windows-beta`),
@@ -201,9 +201,10 @@ that release to production channels:
   push to every game of the account, which is why the environment and its reviewers matter.
 - **Snap Store:** a scoped, expiring login, stored as `SNAPCRAFT_STORE_CREDENTIALS`:
 
-  ```sh
+  ```sh title="Terminal"
   snapcraft export-login --snaps your-snap --channels stable,beta \
-    --acls package_push,package_release --expires 2027-01-01 snap-credentials.txt
+    --acls package_push,package_release \
+      --expires 2027-01-01 snap-credentials.txt
   ```
 
   Never grant `package_manage` (collaborators) or `package_upload`; the allow-list never runs
@@ -214,7 +215,7 @@ that release to production channels:
 `pkey storefront exec` runs any other allow-listed command, with its arguments after `--`, and
 reports it the same way (`pkey storefront allow-list` prints every list):
 
-```sh
+```sh title="Terminal"
 node pkey.mjs storefront exec steam run-app-build --op uploadBuild -- \
   +login "$STEAM_BUILDER" +run_app_build build/app_480.vdf +quit
 node pkey.mjs storefront exec msstore publish --op uploadBuild -- \
@@ -234,7 +235,7 @@ newest release, from the release and the listing model, and opens a pull request
 token from CI; `pkey storefront <store> status` reads the pull request back. Both are reported to
 Polaris Key, so the store's ledger shows each PR with its state and review labels.
 
-```yaml
+```yaml title=".github/workflows/release.yml"
 jobs:
   packages:
     runs-on: ubuntu-latest
@@ -259,10 +260,10 @@ jobs:
 | `flathub`  | `flathub/<appId>`                    | The app repository's manifest with each `extra-data` source moved to the new build, and the MetaInfo                                             |
 
 - **The repositories come from `.pkey/distribution`.** Set `homebrewTap` (`<owner>/homebrew-<name>`)
-  and `scoopBucket` (`<owner>/<repo>`) on the `direct` outlet, `packageIdentifier` on the `winget`
-  outlet and `appId` on the `flathub` outlet (see
+  and `scoopBucket` (`<owner>/<repo>`) on the `direct` distribution channel, `packageIdentifier` on the `winget`
+  distribution channel and `appId` on the `flathub` distribution channel (see
   [Distribution manifest](/docs/build/manifest/distribution/)). A tap or bucket of the `Homebrew` or
-  `ScoopInstaller` organisation is refused: the official `homebrew/cask` has its own rules and
+  `ScoopInstaller` organization is refused: the official `homebrew/cask` has its own rules and
   needs you, by hand.
 - **One pull request per version.** If a pull request for the package and version is already open
   or merged, the step records it and opens nothing; re-running a job never opens a second one.
