@@ -59,9 +59,7 @@ export function DeliveryStep({
             value: d,
             label: DELIVERY_COPY[d].label,
             description: DELIVERY_COPY[d].hint(to),
-            ...(i === 0 && draft.who === "person"
-              ? { recommended: "They have it at once." }
-              : {}),
+            ...(i === 0 && draft.who === "person" ? { recommended: "" } : {}),
           }))}
         />
       ) : (

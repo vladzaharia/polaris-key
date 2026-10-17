@@ -167,6 +167,7 @@ describe("New license wizard", () => {
       expect(heading(dialog).textContent).toContain("License created"),
     );
     expect(within(dialog).getByText("Shown once. Copy it now.")).toBeTruthy();
+    expect(within(dialog).getAllByText(/shown once/i)).toHaveLength(1);
     // Ways out wait for the key to be stored.
     const open_ = primary(dialog, "Open license");
     expect(open_.getAttribute("aria-disabled")).toBe("true");

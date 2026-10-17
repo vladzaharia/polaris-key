@@ -44,7 +44,7 @@ export const NEW_LICENSE_FLOW: FlowDef = {
   title: "New license",
   steps: [
     { id: "tier", label: "Tier", kind: "choice" },
-    { id: "holder", label: "Who it's for", kind: "form" },
+    { id: "holder", label: "Who", kind: "form" },
     { id: "limits", label: "Limits", kind: "form" },
     { id: "delivery", label: "Delivery", kind: "choice" },
     { id: "review", label: "Review", kind: "confirm" },
