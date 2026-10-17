@@ -9,6 +9,7 @@ import { stmtInsertSchema } from "./schemaStore.js";
 import { Catalog } from "@polaris-key/catalog";
 import { SYSTEM_ACTORS } from "../../core/audit.js";
 import { declassifyRefusal } from "../../core/configDelivery.js";
+import { DEFAULT_PROFILE_ID } from "../../core/products/createDefaults.js";
 import { listProfiles } from "../../core/licensing/store.js";
 import type { DbParam, DbStatement } from "../../db/types.js";
 import {
@@ -270,6 +271,26 @@ async function prepare(ctx: IngestContext): Promise<ManifestContribution> {
             modifiedAt: now,
           }),
         );
+    // ST-42's Default profile, so a tier and the config chain have something to point at. A
+    // manifest that declares the id owns it; every row is `console`, so a resync never rewrites it.
+    if (
+      ctx.create &&
+      !manifest.profiles.some((p) => p.id === DEFAULT_PROFILE_ID)
+    )
+      statements.push(
+        stmtInsertConsoleProfile({
+          product: slug,
+          id: DEFAULT_PROFILE_ID,
+          name: "Default",
+          payloadJson: JSON.stringify({
+            config: {},
+            secrets: {},
+            entitlements: {},
+          }),
+          author: ctx.create.author ?? "",
+          now,
+        }),
+      );
     statements.push(...edgeMintStatements(ctx));
     // P0-12: a freshly linked product's recipes are PENDING: a link never writes an approval,
     // because an approval is the operator's decision and the manifest is the repo's. So the
@@ -494,6 +515,22 @@ export interface ProfileInput {
   description?: string | null;
   payloadJson: string;
   modifiedAt: number;
+}
+
+/** ST-42: a profile the console's create adds (`source = 'console'`: a resync never rewrites it). */
+export function stmtInsertConsoleProfile(p: {
+  product: string;
+  id: string;
+  name: string;
+  payloadJson: string;
+  author: string;
+  now: number;
+}): DbStatement {
+  return {
+    sql: `INSERT INTO profiles (product, id, name, description, payload_json, modified_by, modified_at, source)
+          VALUES (?, ?, ?, NULL, ?, ?, ?, 'console')`,
+    params: [p.product, p.id, p.name, p.payloadJson, p.author, p.now],
+  };
 }
 
 export function stmtInsertProfile(p: ProfileInput): DbStatement {

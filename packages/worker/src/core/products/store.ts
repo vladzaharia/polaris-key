@@ -266,22 +266,6 @@ export async function activeSchemaVersions(
 // can compose them into a single atomic `db.batch([...])`. Column order mirrors
 // products/gen-seed.ts so the manual + GitHub paths persist identically to the seed SQL.
 
-/** ST-42: a profile the console's create adds (`source = 'console'`: a resync never rewrites it). */
-export function stmtInsertConsoleProfile(p: {
-  product: string;
-  id: string;
-  name: string;
-  payloadJson: string;
-  author: string;
-  now: number;
-}): DbStatement {
-  return {
-    sql: `INSERT INTO profiles (product, id, name, description, payload_json, modified_by, modified_at, source)
-          VALUES (?, ?, ?, NULL, ?, ?, ?, 'console')`,
-    params: [p.product, p.id, p.name, p.payloadJson, p.author, p.now],
-  };
-}
-
 /** Build the `products`-INSERT as a statement (for atomic batch with its child rows). */
 /**
  * Build the products INSERT as a statement (for atomic batch).

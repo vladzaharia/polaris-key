@@ -81,3 +81,60 @@ describe("create from documents (D8)", () => {
     ).toBeNull();
   });
 });
+
+describe("the create dry run asks what the create refuses (P0-26b)", () => {
+  const profileWithSecret = () =>
+    minimal({
+      product: {
+        profiles: [
+          {
+            id: "standard",
+            name: "Standard",
+            payload: {
+              config: {},
+              secrets: {
+                "api.key": {
+                  state: "default",
+                  value: "a-secret-value",
+                  updatedAt: 0,
+                },
+              },
+            },
+          },
+        ],
+      },
+    });
+
+  it("plan reports the seal refusal the create makes, with no KEK", async () => {
+    const files = profileWithSecret();
+    const parsed = parseManifest(
+      Object.fromEntries(
+        Object.entries(files).map(([path, text]) => [
+          path.replace(/^\.pkey\//, "").replace(/\.(json|yaml)$/, ""),
+          text,
+        ]),
+      ),
+    );
+    if (!parsed.ok) throw new Error(parsed.errors.join("; "));
+    const env = envFor();
+    delete (env as { PLATFORM_KEK?: string }).PLATFORM_KEK;
+    const db = makeTestDb();
+    const input = {
+      mode: "create" as const,
+      product: SLUG,
+      manifest: parsed.manifest,
+      now: NOW,
+      source: {
+        origin: "link" as const,
+        sha: null,
+        files,
+        fetchImpl: async () => new Response("no", { status: 404 }),
+      },
+    };
+    const ingest = ingestFor(SERVICES);
+    const run = await ingest.run(env, db, input);
+    expect(run.ok).toBe(false);
+    const plan = await ingest.plan(env, db, input);
+    expect(plan.problems.map((p) => p.check)).toContain("seal");
+  });
+});
