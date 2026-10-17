@@ -48,6 +48,9 @@ public struct PolarisKeyClientOptions: Sendable {
     public let attest: AttestOptions
     /// StoreKit behind its seam, for `client.commerce`; nil uses StoreKit 2 where available.
     public let storeClient: (any StoreClient)?
+    /// `backend.origins`: the exact origins `client.backend.data(for:)` may send the licence to
+    /// (https, or http on loopback). Empty refuses every URL.
+    public let backendOrigins: [String]
 
     public init(
         core: CoreOptions,
@@ -57,8 +60,10 @@ public struct PolarisKeyClientOptions: Sendable {
         refreshIntervalSeconds: Double? = nil,
         pinnedReleaseKeys: TrustSet = [:],
         attest: AttestOptions = AttestOptions(),
-        storeClient: (any StoreClient)? = nil
+        storeClient: (any StoreClient)? = nil,
+        backendOrigins: [String] = []
     ) {
+        self.backendOrigins = backendOrigins
         self.core = core
         self.license = license
         self.config = config
@@ -89,8 +94,10 @@ public struct PolarisKeyClientOptions: Sendable {
         attest: AttestOptions = AttestOptions(),
         storeClient: (any StoreClient)? = nil,
         keychainAccessGroup: String? = nil,
-        appGroup: String? = nil
+        appGroup: String? = nil,
+        backendOrigins: [String] = []
     ) {
+        self.backendOrigins = backendOrigins
         self.pinnedReleaseKeys = pinnedReleaseKeys
         self.attest = attest
         self.storeClient = storeClient
@@ -174,6 +181,8 @@ public actor PolarisKeyClient {
     public nonisolated let commerce: CommerceClient
     /// The download page's model (`downloadModel()`, `thisPlatform()`).
     public nonisolated let distribution: DistributionClient
+    /// The licence document to the app's own backend: `data(for:)` and `headers()`.
+    public nonisolated let backend: BackendClient
     /// The pinned release keys this client was built with (`client.update` reads them).
     public nonisolated let pinnedReleaseKeys: TrustSet
     /// Per-module state the other targets attach (`client.update` in PolarisKeyUpdate), keyed by
@@ -246,6 +255,19 @@ public actor PolarisKeyClient {
         self.release = ReleaseClient(core: core)
         self.distribution = DistributionClient(core: core)
         self.pinnedReleaseKeys = options.pinnedReleaseKeys
+        let backendSync = LockedValue<(@Sendable (Bool) async -> Bool)?>(nil)
+        self.backend = try BackendClient(
+            origins: options.backendOrigins,
+            seams: BackendClient.Seams(
+                held: {
+                    await core.cache().license.map {
+                        BackendClient.Held(
+                            jws: $0.jws, issuedAt: $0.doc.issuedAt, expiresAt: $0.doc.expiresAt)
+                    }
+                },
+                deviceId: { await core.deviceId },
+                now: { await core.now() },
+                sync: { force in await backendSync.current?(force) ?? false }))
         self.commerce = CommerceClient(
             core: core, store: options.storeClient ?? defaultStoreClient()
         ) {
@@ -286,6 +308,12 @@ public actor PolarisKeyClient {
         // `identity.signOut()` is the facade's `deactivate()`: seat release, wipe, `license`.
         identity.installSignOut {
             try await PolarisKeyClient.deactivate(license: license, publisher: publisher)
+        }
+        backendSync.set { [weak self] force in
+            guard let self else { return false }
+            let result = await self.sync(force: force)
+            return !result.unauthorized
+                && (result.documents[.license] == .applied || result.documents[.license] == .unchanged)
         }
     }
 
