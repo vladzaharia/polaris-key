@@ -48,7 +48,7 @@ import {
   MIN_OFFLINE_DAYS,
   effectivePolicy,
   tierSummary,
-  useLicenses,
+  useHasLicenses,
   useManualChannels,
   useProfiles,
   useTiers,
@@ -157,7 +157,7 @@ export function CreateLicenseDialog({
   const manual = useManualChannels(slug);
   const product = useProduct(slug).data;
   // The product's licenses as the page knows them: an empty list means the next one is the first.
-  const licensesQ = useLicenses(slug);
+  const hasLicenses = useHasLicenses(slug);
   const tiers = React.useMemo(() => tiersQ.data?.tiers ?? [], [tiersQ.data]);
   const profiles = profilesQ.data?.profiles ?? [];
 
@@ -251,9 +251,7 @@ export function CreateLicenseDialog({
     // Read before the create invalidates the list. An unknown list (still loading, failed) is
     // not an empty one: no moment.
     const first =
-      licensesQ.data !== undefined &&
-      licensesQ.data.licenses.length === 0 &&
-      !momentSeen(momentKey("first-license", slug));
+      hasLicenses === false && !momentSeen(momentKey("first-license", slug));
     try {
       const res = await mutate("createLicense", slug, createBody(draft));
       setCreated({ id: res.licenseId, key: res.key, first });

@@ -2430,6 +2430,16 @@ msgctxt "macos"
 msgid "signin.replace.confirm"
 msgstr "Reemplazar y continuar"
 
+#. Replace {device} and continue
+#. Replace a device, inline in the license choice (SIGN-IN.md §3.7). The primary once a device is picked, in place of the generic one. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”.
+msgid "signin.replace.confirmNamed"
+msgstr "Reemplazar {device} y continuar"
+
+#. macos: Replace {device} and Continue
+msgctxt "macos"
+msgid "signin.replace.confirmNamed"
+msgstr "Reemplazar {device} y continuar"
+
 #. Back
 #. Replace a device, inline in the license choice (SIGN-IN.md §3.7).
 msgid "signin.replace.back"

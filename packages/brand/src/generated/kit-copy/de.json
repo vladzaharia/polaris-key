@@ -384,6 +384,7 @@
   "signin.replace.consequence": "{device} wird von {product} abgemeldet und {thisDevice} übernimmt den Platz. {device} kann sich später wieder anmelden, wenn ein Platz frei ist. Wir informieren Sie per E-Mail darüber.",
   "signin.replace.inUse": "{device} wird gerade verwendet.",
   "signin.replace.confirm": "Ersetzen und fortfahren",
+  "signin.replace.confirmNamed": "{device} ersetzen und fortfahren",
   "signin.replace.back": "Zurück",
   "signin.replace.gone": "Dieses Gerät wurde bereits entfernt. Wählen Sie erneut.",
   "signin.replace.rateLimited": "Zu viele Geräteänderungen. Versuchen Sie es in {seconds, plural, one {# Sekunde} other {# Sekunden}} erneut.",

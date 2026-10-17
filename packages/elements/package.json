@@ -25,6 +25,7 @@
       "default": "./dist/contract.js"
     },
     "./styles.css": "./dist/styles.css",
+    "./fonts.css": "./dist/fonts/fonts.css",
     "./package.json": "./package.json"
   },
   "files": [

@@ -466,6 +466,7 @@ export const KIT_COPY: Readonly<
       "{device} signs out of {product} and {thisDevice} takes its seat. {device} can sign in again later if a seat is free. We'll email you about it.",
     "signin.replace.inUse": "{device} is in use right now.",
     "signin.replace.confirm": "Replace and continue",
+    "signin.replace.confirmNamed": "Replace {device} and continue",
     "signin.replace.back": "Back",
     "signin.replace.gone": "That device was already removed. Choose again.",
     "signin.replace.rateLimited":
@@ -1782,6 +1783,7 @@ export const KIT_COPY: Readonly<
       "{device} wird von {product} abgemeldet und {thisDevice} übernimmt den Platz. {device} kann sich später wieder anmelden, wenn ein Platz frei ist. Wir informieren Sie per E-Mail darüber.",
     "signin.replace.inUse": "{device} wird gerade verwendet.",
     "signin.replace.confirm": "Ersetzen und fortfahren",
+    "signin.replace.confirmNamed": "{device} ersetzen und fortfahren",
     "signin.replace.back": "Zurück",
     "signin.replace.gone":
       "Dieses Gerät wurde bereits entfernt. Wählen Sie erneut.",
@@ -3142,6 +3144,7 @@ export const KIT_COPY: Readonly<
       "{device} sera déconnecté de {product} et {thisDevice} prendra sa place. {device} pourra se reconnecter plus tard si une place se libère. Nous vous enverrons un e-mail à ce sujet.",
     "signin.replace.inUse": "{device} est en cours d’utilisation.",
     "signin.replace.confirm": "Remplacer et continuer",
+    "signin.replace.confirmNamed": "Remplacer {device} et continuer",
     "signin.replace.back": "Retour",
     "signin.replace.gone":
       "Cet appareil a déjà été retiré. Faites un autre choix.",
@@ -4468,6 +4471,7 @@ export const KIT_COPY: Readonly<
       "Se cerrará la sesión de {product} en {device} y {thisDevice} ocupará su plaza. {device} podrá volver a iniciar sesión más tarde si hay una plaza libre. Te lo notificaremos por correo.",
     "signin.replace.inUse": "{device} se está usando ahora mismo.",
     "signin.replace.confirm": "Reemplazar y continuar",
+    "signin.replace.confirmNamed": "Reemplazar {device} y continuar",
     "signin.replace.back": "Atrás",
     "signin.replace.gone": "Ese dispositivo ya se quitó. Vuelve a elegir.",
     "signin.replace.rateLimited":
@@ -5819,6 +5823,7 @@ export const KIT_COPY: Readonly<
       "{device} sai de {product} e {thisDevice} ocupa a vaga. {device} poderá entrar novamente depois, se houver uma vaga livre. Enviaremos um e-mail sobre isso.",
     "signin.replace.inUse": "{device} está em uso agora.",
     "signin.replace.confirm": "Substituir e continuar",
+    "signin.replace.confirmNamed": "Substituir {device} e continuar",
     "signin.replace.back": "Voltar",
     "signin.replace.gone":
       "Esse dispositivo já foi removido. Escolha novamente.",
@@ -7144,6 +7149,7 @@ export const KIT_COPY: Readonly<
       "{device} esce da {product} e {thisDevice} ne prende il posto. {device} potrà accedere di nuovo in seguito se si libera un posto. Ti invieremo un'email al riguardo.",
     "signin.replace.inUse": "{device} è in uso in questo momento.",
     "signin.replace.confirm": "Sostituisci e continua",
+    "signin.replace.confirmNamed": "Sostituisci {device} e continua",
     "signin.replace.back": "Indietro",
     "signin.replace.gone":
       "Quel dispositivo è già stato rimosso. Scegli di nuovo.",
@@ -8488,6 +8494,7 @@ export const KIT_COPY: Readonly<
       "{device}は{product}からサインアウトし、{thisDevice}がその枠を使用します。枠が空けば、{device}は後で再びサインインできます。この件についてはメールでお知らせします。",
     "signin.replace.inUse": "{device}は現在使用中です。",
     "signin.replace.confirm": "置き換えて続ける",
+    "signin.replace.confirmNamed": "{device}を置き換えて続ける",
     "signin.replace.back": "戻る",
     "signin.replace.gone":
       "そのデバイスはすでに削除されています。もう一度選択してください。",
@@ -9823,6 +9830,7 @@ export const KIT_COPY: Readonly<
       "{device}은(는) {product}에서 로그아웃되고 {thisDevice}이(가) 그 자리를 사용해요. 자리가 비면 {device}에서 나중에 다시 로그인할 수 있어요. 이 내용은 이메일로 알려 드려요.",
     "signin.replace.inUse": "{device}에서 지금 사용 중이에요.",
     "signin.replace.confirm": "교체하고 계속",
+    "signin.replace.confirmNamed": "{device} 교체하고 계속",
     "signin.replace.back": "뒤로",
     "signin.replace.gone": "이미 제거된 기기예요. 다시 선택하세요.",
     "signin.replace.rateLimited":
@@ -11083,6 +11091,7 @@ export const KIT_COPY: Readonly<
       "{device}将退出登录{product}，{thisDevice}将占用它的席位。如有空余席位，{device}之后可以重新登录。我们会通过电子邮件通知你。",
     "signin.replace.inUse": "{device}正在使用中。",
     "signin.replace.confirm": "替换并继续",
+    "signin.replace.confirmNamed": "替换{device}并继续",
     "signin.replace.back": "返回",
     "signin.replace.gone": "该设备已被移除。请重新选择。",
     "signin.replace.rateLimited":
@@ -11933,6 +11942,7 @@ export const KIT_COPY_VARIANTS: Readonly<
   "signin.none.otherAccount": { macos: "Use Another Account" },
   "signin.replace.open": { macos: "Replace a Device" },
   "signin.replace.confirm": { macos: "Replace and Continue" },
+  "signin.replace.confirmNamed": { macos: "Replace {device} and Continue" },
   "signin.notYou": { macos: "Not You?" },
   "signin.key.addAndUse": { macos: "Add and Use on This Device" },
   "signin.key.keep": { macos: "Keep {product} in an Account" },

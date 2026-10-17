@@ -1143,6 +1143,7 @@ async function applyRepoManifest(
       files,
       manifest,
       now,
+      isSecretKey,
     ),
   );
 

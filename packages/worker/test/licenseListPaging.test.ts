@@ -143,4 +143,38 @@ describe("licence list paging", () => {
     expect(big.body.licenses).toHaveLength(24);
     expect(queries).toBe(small);
   });
+
+  it("answers the filtered total and the four state counts with page 1 only", async () => {
+    await seed(5);
+    const first = (await (
+      await call("GET", "/license/licenses?limit=2")
+    ).json()) as {
+      total: number;
+      counts: Record<string, number>;
+      nextCursor: string;
+    };
+    expect(first.total).toBe(5);
+    expect(first.counts).toEqual({
+      active: 5,
+      expiring: 0,
+      expired: 0,
+      disabled: 0,
+    });
+    const next = (await (
+      await call(
+        "GET",
+        `/license/licenses?limit=2&cursor=${encodeURIComponent(first.nextCursor)}`,
+      )
+    ).json()) as Record<string, unknown>;
+    expect(next).not.toHaveProperty("total");
+    const none = (await (
+      await call("GET", "/license/licenses?tier=nope")
+    ).json()) as { total: number; licenses: unknown[] };
+    expect(none.total).toBe(0);
+    expect(none.licenses).toHaveLength(0);
+    const pro = (await (
+      await call("GET", "/license/licenses?tier=pro&limit=1")
+    ).json()) as { total: number };
+    expect(pro.total).toBe(5);
+  });
 });

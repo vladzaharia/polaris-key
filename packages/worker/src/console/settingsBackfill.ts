@@ -44,6 +44,7 @@ import {
 import { listProfiles, listTiers } from "../core/licensing/store.js";
 import {
   getManifestSnapshot,
+  unredactPayload,
   gitShaOrNull,
   manifestFilesSha256,
   manifestSnapshotStatement,
@@ -455,7 +456,9 @@ export async function runSettingsBackfill(
       env,
       slug,
       p.id,
-      p.payload,
+      // A payload read back from a snapshot may hold the redaction marker: no value from the
+      // manifest, so the stored entry is kept and the marker is never sealed or written.
+      unredactPayload(p.payload, storedProfileById.get(p.id)?.payload_json),
       sealKey,
       storedProfileById.get(p.id)?.payload_json,
     );
@@ -531,6 +534,7 @@ export async function runSettingsBackfill(
         source.files,
         manifest,
         opts.now,
+        sealKey,
       );
   }
 
