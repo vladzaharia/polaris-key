@@ -38,7 +38,7 @@ import {
   msStoreApiOf,
   type MsStoreRule,
 } from "../../../../core/storefront/rules/microsoftStore.js";
-import { STORE_API_ORIGIN } from "./client.js";
+import { STORE_API_ORIGIN } from "../../../../core/stores/microsoftStore/client.js";
 
 export const CLASSIC_API_ORIGIN = STORE_API_ORIGIN;
 export const MSI_API_ORIGIN = "https://api.store.microsoft.com";

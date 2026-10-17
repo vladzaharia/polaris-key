@@ -27,7 +27,7 @@
  * Narrative-only like the rest of the console API (`routeCoverage`'s `adminApi` kind); session,
  * CSRF, rate limit and the platform-admin gate run in `console/api.ts` first.
  *
- * EVERY Steam call goes through `SteamClient` (`core/steam/client.ts`): the gate admits it first,
+ * EVERY Steam call goes through `SteamClient` (`core/stores/steam/client.ts`): the gate admits it first,
  * then the per-day budget (stopped on the first 403), and only then is the publisher key opened
  * (audited, `steam:storefront`). The branch move is ONE `performStoreWrite` step: the natural key is
  * `GetAppBetas` (the branch already showing that build id answers `existing` with nothing sent),
@@ -67,7 +67,7 @@ import {
   STEAM_NUMERIC_ID,
   SteamClient,
   type SteamBranch,
-} from "../../../../core/steam/client.js";
+} from "../../../../core/stores/steam/client.js";
 import { openSteamPublisherKey } from "../../commerce/steam.js";
 import { StoreUnavailable } from "../../commerce/http.js";
 import { listAssets, readListing } from "../../listing/store.js";

@@ -40,7 +40,7 @@ import {
   single,
   type AscResource,
   type FetchImpl,
-} from "../../../../core/asc/client.js";
+} from "../../../../core/stores/apple/client.js";
 import { recordTeamRate } from "../../../../core/storefront/budget.js";
 import { ASC_PLATFORM_CREDENTIAL } from "./setup.js";
 import {
@@ -50,14 +50,14 @@ import {
   storeUnavailable,
   type CheckFact,
   type CredentialCheck,
-} from "../credentialCheck.js";
+} from "../../../../core/stores/credentialCheck.js";
 import {
   cachedPlatformApps,
   PlatformStoreNotConfigured,
   PlatformStoreUnavailable,
   type PlatformAppsListing,
   type PlatformStoreApp,
-} from "../platformApps.js";
+} from "../../../../core/stores/platformApps.js";
 
 export interface PlatformAscOptions {
   env: Env;

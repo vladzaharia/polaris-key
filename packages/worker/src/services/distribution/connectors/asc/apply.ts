@@ -50,12 +50,8 @@ import {
   type SubmissionState,
 } from "../../availability.js";
 import { getRollout, mirrorRollout } from "../../rollouts.js";
-import {
-  auditConnector,
-  connectorWriter,
-  upsertObject,
-  type ConnectorWriteContext,
-} from "../state.js";
+import { auditConnector, connectorWriter, upsertObject } from "../state.js";
+import { type ConnectorWriteContext } from "../../../../core/stores/events.js";
 import {
   AscClient,
   ascPath,
@@ -65,7 +61,7 @@ import {
   relId,
   single,
   type AscResource,
-} from "../../../../core/asc/client.js";
+} from "../../../../core/stores/apple/client.js";
 import {
   ASC_PLATFORM_TO_RELEASE,
   APP_VERSION_AVAILABILITY,

@@ -44,7 +44,7 @@ import {
   PlayError,
   PlayPublisher,
   type FetchImpl,
-} from "./client.js";
+} from "../../../../core/stores/play/client.js";
 import { errorLine } from "./run.js";
 import { PlayEditLeaseHeld, withPlayEditLease } from "./lease.js";
 import { PLAY_PLATFORM_CREDENTIAL } from "./setup.js";
@@ -55,14 +55,14 @@ import {
   storeUnavailable,
   type CheckFact,
   type CredentialCheck,
-} from "../credentialCheck.js";
+} from "../../../../core/stores/credentialCheck.js";
 import {
   cachedPlatformApps,
   PlatformStoreNotConfigured,
   PlatformStoreUnavailable,
   type PlatformAppsListing,
   type PlatformStoreApp,
-} from "../platformApps.js";
+} from "../../../../core/stores/platformApps.js";
 
 export interface PlatformPlayOptions {
   env: Env;

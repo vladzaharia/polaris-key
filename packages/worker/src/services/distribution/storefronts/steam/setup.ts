@@ -27,13 +27,13 @@ import {
   platformPin,
   resolvePlatformCredential,
 } from "../../../../core/platformCredentials.js";
-import { STEAM_NUMERIC_ID } from "../../../../core/steam/client.js";
+import { STEAM_NUMERIC_ID } from "../../../../core/stores/steam/client.js";
 import { STEAM_PLATFORM_CREDENTIAL } from "../../commerce/steam.js";
 import { listOutlets } from "../../outlets.js";
 import {
   platformFallback,
   platformFallbackMessage,
-} from "../../connectors/platformFallback.js";
+} from "../../../../core/stores/platformFallback.js";
 
 export const STEAM_CREDENTIAL_KIND = "steam-publisher-key";
 

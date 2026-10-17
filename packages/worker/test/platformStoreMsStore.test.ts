@@ -21,7 +21,7 @@ import {
 } from "../src/core/platformCredentials.js";
 import { runConnectorPolls } from "../src/scheduled.js";
 import { resolveMsStoreSetup } from "../src/services/distribution/connectors/msstore/setup.js";
-import { platformMsStoreToken } from "../src/services/distribution/connectors/msstore/token.js";
+import { platformMsStoreToken } from "../src/core/stores/microsoftStore/credentials.js";
 import { makeTestDb } from "./helpers.js";
 import {
   envFor,

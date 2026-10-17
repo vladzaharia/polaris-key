@@ -46,7 +46,7 @@ import {
   type PlayStoreContext,
 } from "../connectors/play/storefront.js";
 import { PLAY_STANDARD_TRACKS } from "../../../core/storefront/rules/googlePlay.js";
-import type { FetchImpl } from "../connectors/play/client.js";
+import type { FetchImpl } from "../../../core/stores/play/client.js";
 import { readListing } from "../listing/store.js";
 import { acceptedAssets } from "./slots.js";
 import { flowOp } from "./plan.js";

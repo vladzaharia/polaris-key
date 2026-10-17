@@ -24,9 +24,9 @@ import {
 import {
   putUploadOperations,
   uploadOperations,
-} from "../src/core/asc/upload.js";
-import { AscWriteDenied } from "../src/core/asc/client.js";
-import type { AscResource } from "../src/core/asc/client.js";
+} from "../src/core/stores/apple/upload.js";
+import { AscWriteDenied } from "../src/core/stores/apple/client.js";
+import type { AscResource } from "../src/core/stores/apple/client.js";
 import { DistributeFake } from "./ascDistributeFake.js";
 import { R2Mock, asR2 } from "./r2Mock.js";
 import {

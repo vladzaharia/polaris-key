@@ -66,7 +66,7 @@ import {
   single,
   type AscDocument,
   type AscResource,
-} from "../../../../core/asc/client.js";
+} from "../../../../core/stores/apple/client.js";
 import {
   testerDigest,
   isIdempotencyKey,
@@ -75,7 +75,10 @@ import {
   type StoreWriteResult,
 } from "../../../../core/storefront/ledger.js";
 import type { StoreProjection } from "../../../../core/storefront/audit.js";
-import { readConnectorSettings, writeConnectorSettings } from "../settings.js";
+import {
+  readConnectorSettings,
+  writeConnectorSettings,
+} from "../../../../core/stores/settings.js";
 import { APP_STORE_EVENTS } from "../../commerce/index.js";
 import {
   appStoreCredential,

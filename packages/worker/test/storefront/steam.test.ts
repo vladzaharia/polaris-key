@@ -43,7 +43,7 @@ import {
   parseBuilds,
   SteamClient,
   type SteamBudget,
-} from "../../src/core/steam/client.js";
+} from "../../src/core/stores/steam/client.js";
 import { readRate, storeMeter } from "../../src/core/storefront/budget.js";
 import { setPlatformPin } from "../../src/core/platformCredentials.js";
 import {
@@ -946,8 +946,8 @@ describe("nothing reaches SetAppBuildLive around the gated client", () => {
       )
       .map((f) => relative(WORKER_ROOT, f).split(sep).join("/"));
     expect(hits.sort()).toEqual([
-      "src/core/steam/client.ts",
       "src/core/storefront/rules/steam.ts",
+      "src/core/stores/steam/client.ts",
     ]);
   });
 });

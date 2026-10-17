@@ -44,7 +44,11 @@ import type { AdminSession } from "../../../../core/console/session.js";
 import { getRollout, rolloutRecord } from "../../rollouts.js";
 import type { ConnectorControl } from "../index.js";
 import { auditConnector } from "../state.js";
-import { PLAY_ROLLOUT_CONTROL, PlayError, type FetchImpl } from "./client.js";
+import {
+  PLAY_ROLLOUT_CONTROL,
+  PlayError,
+  type FetchImpl,
+} from "../../../../core/stores/play/client.js";
 import {
   isPriority,
   parseTrack,

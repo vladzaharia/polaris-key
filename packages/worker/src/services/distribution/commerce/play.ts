@@ -45,14 +45,14 @@ import {
 } from "../../../core/outletTokens.js";
 import { parsePlatformCredentialHandle } from "../../../core/platformCredentials.js";
 import { resolvePlatformStoreSetting } from "../../../core/platformStoreSettings.js";
-import { platformFallback } from "../connectors/platformFallback.js";
+import { platformFallback } from "../../../core/stores/platformFallback.js";
 import { readCappedText } from "../../../core/readCapped.js";
 import {
   ANDROID_PUBLISHER_ORIGIN,
   ANDROID_PUBLISHER_SCOPE,
   GoogleApiClient,
   PlayError,
-} from "../connectors/play/client.js";
+} from "../../../core/stores/play/client.js";
 import type { PlaySettings } from "./settings.js";
 import { normaliseBinding, type VerifiedPurchase } from "./state.js";
 import { StoreUnavailable } from "./http.js";

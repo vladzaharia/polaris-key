@@ -10,12 +10,12 @@
  * cached: the admin handler joins them fresh from D1 on every read.
  */
 
-import type { Env } from "../../../platform/env.js";
+import type { Env } from "../../platform/env.js";
 import type {
   PlatformCredentialId,
   PlatformCredentialSource,
   PlatformStore,
-} from "../../../core/platformCredentials.js";
+} from "../platformCredentials.js";
 
 /** One app a team credential can see. */
 export interface PlatformStoreApp {

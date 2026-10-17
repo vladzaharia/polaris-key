@@ -36,7 +36,7 @@ import {
   lookupAppByBundleId,
 } from "../../../core/ascProvisioning.js";
 import type { StoreOperationRow } from "../../../core/storefront/ledger.js";
-import { AscError, AscWriteDenied } from "../../../core/asc/client.js";
+import { AscError, AscWriteDenied } from "../../../core/stores/apple/client.js";
 import { platformAscClient } from "../connectors/asc/platform.js";
 import {
   checklistView,

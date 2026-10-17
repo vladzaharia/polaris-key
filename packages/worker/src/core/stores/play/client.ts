@@ -37,15 +37,15 @@
  * outside the storefront surface (the gate's `commerceRuntime` deny group).
  */
 
-import type { FetchImpl } from "../../../../core/outletTokens.js";
-import { isRedirect, readCappedText } from "../../../../core/readCapped.js";
-import { StoreVendorError } from "../../../../core/storefront/errors.js";
-import type { GateContext } from "../../../../core/storefront/gate.js";
+import type { FetchImpl } from "../../outletTokens.js";
+import { isRedirect, readCappedText } from "../../readCapped.js";
+import { StoreVendorError } from "../../storefront/errors.js";
+import type { GateContext } from "../../storefront/gate.js";
 import {
   checkPlayRequest,
   PLAY_EDIT_SCOPE,
   type PlayGateRequest,
-} from "../../../../core/storefront/rules/googlePlay.js";
+} from "../../storefront/rules/googlePlay.js";
 
 export type { FetchImpl };
 

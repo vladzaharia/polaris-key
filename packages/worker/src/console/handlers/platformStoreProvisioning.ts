@@ -42,7 +42,7 @@ import {
   AscError,
   AscWriteDenied,
   type AscClient,
-} from "../../core/asc/client.js";
+} from "../../core/stores/apple/client.js";
 import {
   isIdempotencyKey,
   listStoreOperations,

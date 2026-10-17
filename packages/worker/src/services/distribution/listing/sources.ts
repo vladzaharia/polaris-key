@@ -19,7 +19,7 @@ import type { Db } from "../../../db/types.js";
 import type { Env } from "../../../platform/env.js";
 import type { ServiceHooks } from "../../../core/hooks.js";
 import type { FetchImpl } from "../../../core/outletTokens.js";
-import { AscError, AscWriteDenied } from "../../../core/asc/client.js";
+import { AscError, AscWriteDenied } from "../../../core/stores/apple/client.js";
 import {
   canonicalCategory,
   emptySnapshot,
@@ -35,7 +35,7 @@ import { readAppStoreListing } from "../connectors/asc/listing.js";
 import { ascRun, finishRun as finishAscRun } from "../connectors/asc/run.js";
 import { resolveAscSetup } from "../connectors/asc/setup.js";
 import { readPlayListing } from "../connectors/play/listing.js";
-import { PlayError } from "../connectors/play/client.js";
+import { PlayError } from "../../../core/stores/play/client.js";
 import {
   acquirePlayEditLease,
   PlayEditLeaseHeld,
@@ -46,7 +46,7 @@ import {
   isPinReason as isPlayPinReason,
   resolvePlaySetup,
 } from "../connectors/play/setup.js";
-import { MsStoreError } from "../connectors/msstore/client.js";
+import { MsStoreError } from "../../../core/stores/microsoftStore/client.js";
 import { readMsStoreListing } from "../connectors/msstore/listing.js";
 import {
   errorLine as msErrorLine,

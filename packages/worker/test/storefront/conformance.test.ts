@@ -122,12 +122,12 @@ import {
 } from "../../src/core/storefront/ledger.js";
 import type { StoreResource } from "../../src/core/storefront/audit.js";
 import { PLATFORM_CREDENTIALS } from "../../src/core/platformCredentials.js";
-import { AscClient } from "../../src/core/asc/client.js";
+import { AscClient } from "../../src/core/stores/apple/client.js";
 import { MsStoreWriteClient } from "../../src/services/distribution/connectors/msstore/write.js";
 import {
   ANDROID_PUBLISHER_ORIGIN,
   GoogleApiClient,
-} from "../../src/services/distribution/connectors/play/client.js";
+} from "../../src/core/stores/play/client.js";
 import { PLAY_EDIT_SCOPE } from "../../src/core/storefront/rules/googlePlay.js";
 import {
   PlayEditSession,
@@ -143,7 +143,7 @@ import {
   poll as playPoll,
   SLUG as PLAY_SLUG,
 } from "../playWorld.js";
-import { SteamClient } from "../../src/core/steam/client.js";
+import { SteamClient } from "../../src/core/stores/steam/client.js";
 import {
   FEED_ADAPTERS,
   feedCapabilityView,

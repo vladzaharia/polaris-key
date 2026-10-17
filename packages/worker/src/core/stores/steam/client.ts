@@ -25,16 +25,16 @@
  * against the owner's key (S-15 §12).
  */
 
-import { isRedirect, readCappedText } from "../readCapped.js";
-import { StoreVendorError } from "../storefront/errors.js";
-import type { GateContext } from "../storefront/gate.js";
+import { isRedirect, readCappedText } from "../../readCapped.js";
+import { StoreVendorError } from "../../storefront/errors.js";
+import type { GateContext } from "../../storefront/gate.js";
 import {
   checkSteamRequest,
   STEAM_READS,
   STEAM_SET_LIVE,
-} from "../storefront/rules/steam.js";
+} from "../../storefront/rules/steam.js";
 
-export { SteamWriteDenied } from "../storefront/rules/steam.js";
+export { SteamWriteDenied } from "../../storefront/rules/steam.js";
 
 export const STEAM_WEB_API = "https://partner.steam-api.com";
 

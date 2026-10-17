@@ -47,7 +47,7 @@ import {
 import {
   platformMsStoreSellerId,
   platformMsStoreToken,
-} from "../../src/services/distribution/connectors/msstore/token.js";
+} from "../../src/core/stores/microsoftStore/credentials.js";
 import type { AdminSession } from "../../src/core/console/session.js";
 import { makeTestDb } from "../helpers.js";
 import { KvMock } from "../kvMock.js";

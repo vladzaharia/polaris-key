@@ -29,7 +29,7 @@ import {
 } from "../src/core/console/session.js";
 import { setPlatformPin } from "../src/core/platformCredentials.js";
 import { TEAM_RATE_KEY } from "../src/core/storefront/budget.js";
-import type { AscResource } from "../src/core/asc/client.js";
+import type { AscResource } from "../src/core/stores/apple/client.js";
 import { CONSOLE } from "./releaseRoutesFixture.js";
 import { makeTestDb } from "./helpers.js";
 import { envFor } from "./releaseRoutesFixture.js";

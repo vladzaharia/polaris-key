@@ -28,7 +28,7 @@ import {
   relId,
   single,
   type AscResource,
-} from "../../../../core/asc/client.js";
+} from "../../../../core/stores/apple/client.js";
 import {
   canonicalCategory,
   emptySnapshot,

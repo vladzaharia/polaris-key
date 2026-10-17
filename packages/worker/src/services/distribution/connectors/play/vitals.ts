@@ -31,7 +31,7 @@
 import type { ControlResult } from "./controls.js";
 import { applyPlayControl } from "./controls.js";
 import { getObject, upsertObject } from "../state.js";
-import { PlayError } from "./client.js";
+import { PlayError } from "../../../../core/stores/play/client.js";
 import type { PlayTrack } from "./map.js";
 import type { PlayVitalsSettings } from "./policy.js";
 import { errorLine, type PlayRun } from "./run.js";

@@ -16,7 +16,7 @@ import { storefrontAdapter } from "../../../../core/storefront/adapter.js";
 import {
   readConnectorSettings,
   writeConnectorSettings,
-} from "../../connectors/settings.js";
+} from "../../../../core/stores/settings.js";
 
 /** The settings slot of the checklist (`dist_connector_settings`). */
 export const STEAM_SETUP_SETTINGS = "steam-setup";

@@ -61,7 +61,11 @@ import {
   SNIFF_BYTES,
   sniffContentType,
 } from "../../../../core/assets/sniff.js";
-import { PlayError, type FetchImpl, type GoogleApiClient } from "./client.js";
+import {
+  PlayError,
+  type FetchImpl,
+  type GoogleApiClient,
+} from "../../../../core/stores/play/client.js";
 import {
   acquirePlayEditLease,
   isLeaseHeld,

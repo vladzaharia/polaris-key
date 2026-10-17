@@ -56,7 +56,7 @@ import { applyRollout, listRollouts, type DistRolloutRow } from "./rollouts.js";
 import {
   readConnectorSettings,
   writeConnectorSettings,
-} from "./connectors/settings.js";
+} from "../../core/stores/settings.js";
 import { auditConnector, getObject, upsertObject } from "./connectors/state.js";
 
 export const AUTO_HALT_CONNECTOR = "auto-halt";

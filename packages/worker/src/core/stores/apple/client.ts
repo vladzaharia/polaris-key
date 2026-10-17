@@ -34,18 +34,18 @@
  * `fetchImpl` and `sleep` are injectable; the tests drive the client against a fake ASC server.
  */
 
-import { isRedirect, readCappedText } from "../readCapped.js";
-import { StoreVendorError } from "../storefront/errors.js";
+import { isRedirect, readCappedText } from "../../readCapped.js";
+import { StoreVendorError } from "../../storefront/errors.js";
 import {
   AscWriteDenied,
   checkAscRequest,
   type AscGateContext,
-} from "../storefront/rules/appStore.js";
+} from "../../storefront/rules/appStore.js";
 
 export {
   AscWriteDenied,
   type AscGateContext,
-} from "../storefront/rules/appStore.js";
+} from "../../storefront/rules/appStore.js";
 
 /** A fetch with the platform `fetch` shape, injectable for tests. */
 export type FetchImpl = (

@@ -65,7 +65,7 @@ import {
   relId,
   single,
   type AscResource,
-} from "../../../core/asc/client.js";
+} from "../../../core/stores/apple/client.js";
 import { checkTypedConfirmation } from "../connectors/asc/controls.js";
 import type {
   ConnectorControl,

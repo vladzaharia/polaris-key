@@ -69,7 +69,7 @@ import {
   relId,
   single,
   type FetchImpl,
-} from "../../../../core/asc/client.js";
+} from "../../../../core/stores/apple/client.js";
 import { ASC_WEBHOOK_EVENT_TYPES } from "./map.js";
 import { ascRun, finishRun } from "./run.js";
 import { ASC_CONNECTOR, resolveAscSetup, type AscSetup } from "./setup.js";

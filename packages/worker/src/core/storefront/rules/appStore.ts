@@ -807,7 +807,7 @@ export function checkAscRequest(
  * with (`POST /v1/appScreenshots` → `uploadOperations[]`). It is not an App Store Connect API
  * operation, so it is not in `ASC_WRITE_ALLOW` (which the spec classification pins): it is this
  * one upload rule on the store-agnostic upload matcher (`../match/multipart.ts`, owner decision 2:
- * listing assets from the blob store, binaries never). `core/asc/upload.ts` consults
+ * listing assets from the blob store, binaries never). `core/stores/apple/upload.ts` consults
  * `checkAscUpload` before it reads a byte, for every operation.
  */
 export const ASC_SCREENSHOT_UPLOAD: UploadRule = {
@@ -822,7 +822,7 @@ export const ASC_SCREENSHOT_UPLOAD: UploadRule = {
 /**
  * Where an upload operation may send bytes: `https` on a host under `apple.com`, the default
  * port, no credentials in the URL. The URL is presigned by Apple and carries no bearer token: the
- * PUT never has an `Authorization` header (`core/asc/upload.ts`).
+ * PUT never has an `Authorization` header (`core/stores/apple/upload.ts`).
  */
 export function isAscUploadUrl(value: unknown): boolean {
   if (typeof value !== "string" || value.length > 4096) return false;

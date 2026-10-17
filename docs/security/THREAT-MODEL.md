@@ -2374,7 +2374,7 @@ Microsoft fetches a redirecting `packageUrl`, whether a Developer role suffices 
 
 **What it is.** The Steam storefront adapter (`core/storefront/stores/steam.ts`, rule table
 `core/storefront/rules/steam.ts` with the deny groups in `rules/steamDenied.ts`), calling through
-its own gated client (`core/steam/client.ts`) with the product's `steam-publisher-key` or the A-16
+its own gated client (`core/stores/steam/client.ts`) with the product's `steam-publisher-key` or the A-16
 group key `steam.publisher-key`, opened through `openSteamPublisherKey` (`commerce/steam.ts`, the
 same pin checks as A-16's lister) under the audited use `steam:storefront`. Distribution's console
 routes (`services/distribution/storefronts/steam/`) serve the plan, the reads, a named-branch
@@ -2567,7 +2567,7 @@ sources; its review is the app repository's own.
 ### App Store Connect writes: the write gate, the ledger and the budget (A-17a)
 
 **What it is.** The substrate every App Store Connect call goes through (notes/S-14 §7): the
-client (`core/asc/client.ts`, moved there from P5-02's connector), the **write gate** (the rule
+client (`core/stores/apple/client.ts`, moved there from P5-02's connector), the **write gate** (the rule
 table `core/storefront/rules/appStore.ts` on the store-agnostic engine since A-18a), the
 **operation ledger** (`core/storefront/ledger.ts`, table `store_operations`; every A-17 row is
 `store = 'app-store'`), the **before-and-after projection and audit**
@@ -2605,7 +2605,7 @@ the same origin and `/v1/` or `/v2/`), and A-17c adds test-notification calls to
 - **(a″) No way around the client.** A source scan (`test/ascWriteReach.test.ts`) keeps the ASC
   token minters (`ascToken`, `platformAscToken`) and `new AscClient(` to the two files that build
   the gated client (`connectors/asc/run.ts`, `platform.ts`), and the API host
-  `api.appstoreconnect.apple.com` to `core/asc/client.ts`, so no raw `fetch` with a bearer token
+  `api.appstoreconnect.apple.com` to `core/stores/apple/client.ts`, so no raw `fetch` with a bearer token
   can skip the gate. Adding a file to either list is a custody review.
 - **(a′) Every spec write classified, in CI.** A pinned copy of the write operations of Apple's
   OpenAPI document 4.5 (`test/fixtures/asc/openapi-writes.json`, generated from the spec with
@@ -2733,7 +2733,7 @@ drops screenshots. The handlers are `connectors/asc/listingPush.ts` (`listing/te
 **New outbound action: Apple's upload operations.** A reserved screenshot's bytes are PUT to the
 presigned URLs Apple answers the reserve with. That PUT is not an App Store Connect API operation, so
 it is gated by its own rule, `ASC_SCREENSHOT_UPLOAD` on the store-agnostic upload matcher, through
-`checkAscUpload` (`rules/appStore.ts`), called by `core/asc/upload.ts` for every operation before a
+`checkAscUpload` (`rules/appStore.ts`), called by `core/stores/apple/upload.ts` for every operation before a
 byte is read: method `PUT` only; `https` on a host under `apple.com`, the default port, no
 credentials in the URL (`isAscUploadUrl`); PNG or JPEG of at most 32 MiB, as the blob store's record
 says (the type sniffed from the stored bytes, never from a request). The operations must cover the
@@ -8981,8 +8981,8 @@ or a path template or loosens one, the CLI's GitHub client (`storefronts/github.
 that merges, closes, deletes or force-pushes, a CI-plane step starts running without report-back, the store-step ingest
 stops re-checking the command, an adapter
 declares `api` for `uploadBuild` or empties a never-list category, a check of
-`test/storefront/conformance.test.ts` is relaxed, anything but `core/asc/client.ts` sends a request
-to App Store Connect (and anything but `core/asc/upload.ts`, gated by `checkAscUpload`, PUTs to an
+`test/storefront/conformance.test.ts` is relaxed, anything but `core/stores/apple/client.ts` sends a request
+to App Store Connect (and anything but `core/stores/apple/upload.ts`, gated by `checkAscUpload`, PUTs to an
 upload operation; `isAscUploadUrl` or `ASC_SCREENSHOT_UPLOAD` loosened, A-18m), anything but `msstore/write.ts` sends a non-GET request to a Microsoft Store
 API or a SAS upload, Microsoft's hand-written operation list (`test/fixtures/msstore/operations.json`)
 is edited or its `MSSTORE_SPEC_PIN` re-dated (the docs-drift review: re-read every page it names and

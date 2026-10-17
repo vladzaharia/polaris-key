@@ -35,14 +35,14 @@ import {
   MAX_RESPONSE_BYTES,
   MsStoreClient,
   STORE_API_ORIGIN,
-} from "../src/services/distribution/connectors/msstore/client.js";
+} from "../src/core/stores/microsoftStore/client.js";
 import {
   STATUS_MAP,
   STORE_STATUSES,
   parseSubmission,
   percentToBp,
 } from "../src/services/distribution/connectors/msstore/map.js";
-import { entraTokenUrl } from "../src/services/distribution/connectors/msstore/token.js";
+import { entraTokenUrl } from "../src/core/stores/microsoftStore/credentials.js";
 import { makeTestDb } from "./helpers.js";
 import {
   envFor,
@@ -277,7 +277,7 @@ describe("the poll", () => {
     );
     // And the client cannot be asked for another method: it has none to take.
     const src = readFileSync(
-      join(HERE, "../src/services/distribution/connectors/msstore/client.ts"),
+      join(HERE, "../src/core/stores/microsoftStore/client.ts"),
       "utf8",
     ).replace(/\/\*[\s\S]*?\*\//g, "");
     expect(src).not.toMatch(/"(POST|PUT|PATCH|DELETE)"/);

@@ -51,9 +51,9 @@ import {
   recordEvent,
   setEventOutcome,
   type ConnectorEventOutcome,
-} from "../state.js";
+} from "../../../../core/stores/events.js";
 import { eventOutcomeOf, syncEventInstance, type AscRun } from "./apply.js";
-import type { FetchImpl } from "../../../../core/asc/client.js";
+import type { FetchImpl } from "../../../../core/stores/apple/client.js";
 import {
   ASC_EVENT_EFFECTS,
   ASC_PING_TYPE,

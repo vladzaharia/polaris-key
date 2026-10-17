@@ -33,7 +33,7 @@ import {
   ascPath,
   backoffMillis,
   parseRateLimit,
-} from "../src/core/asc/client.js";
+} from "../src/core/stores/apple/client.js";
 import { pollBudget } from "../src/core/storefront/budget.js";
 
 describe("app version states", () => {

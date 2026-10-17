@@ -36,7 +36,7 @@ import {
   single,
   type AscClient,
   type AscResource,
-} from "./asc/client.js";
+} from "./stores/apple/client.js";
 import {
   performStoreWrite,
   type StoreWriteResult,

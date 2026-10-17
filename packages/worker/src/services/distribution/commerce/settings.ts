@@ -23,7 +23,7 @@ import type { Db } from "../../../db/types.js";
 import {
   readConnectorSettings,
   writeConnectorSettings,
-} from "../connectors/settings.js";
+} from "../../../core/stores/settings.js";
 
 export const COMMERCE_SETTINGS = "commerce";
 

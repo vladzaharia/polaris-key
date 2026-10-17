@@ -55,13 +55,12 @@ import {
 import { applyRollout, listRollouts, type RolloutRefusal } from "./rollouts.js";
 import {
   auditConnector,
-  eventSeen,
   getObject,
   listObjects,
   objectView,
-  recordEvent,
   upsertObject,
 } from "./connectors/state.js";
+import { eventSeen, recordEvent } from "../../core/stores/events.js";
 import { BodyTooLargeError, readBodyBytes } from "../../core/cappedBody.js";
 
 export const SENTRY_CONNECTOR = "sentry";

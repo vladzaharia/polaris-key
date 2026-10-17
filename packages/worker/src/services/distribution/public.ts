@@ -18,7 +18,7 @@ export {
   type CredentialCheck,
   credentialCheckAllowed,
   formatFailure,
-} from "./connectors/credentialCheck.js";
+} from "../../core/stores/credentialCheck.js";
 export {
   checkMsPartnerCenter,
   listPlatformMsStoreApps,
@@ -27,7 +27,7 @@ export {
   type PlatformAppsListing,
   PlatformStoreNotConfigured,
   PlatformStoreUnavailable,
-} from "./connectors/platformApps.js";
+} from "../../core/stores/platformApps.js";
 export {
   checkPlayServiceAccount,
   listPlatformPlayApps,

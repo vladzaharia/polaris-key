@@ -6,7 +6,8 @@
  */
 
 import type { DistributionConnector } from "../index.js";
-import { eventView, listEvents, listObjects, objectView } from "../state.js";
+import { listObjects, objectView } from "../state.js";
+import { eventView, listEvents } from "../../../../core/stores/events.js";
 import { ASC_CONTROLS } from "./controls.js";
 import { ASC_SETUP_CONTROLS, provisioningView } from "./provision.js";
 import { ASC_DISTRIBUTE_CONTROLS, ASC_DISTRIBUTE_READS } from "./distribute.js";

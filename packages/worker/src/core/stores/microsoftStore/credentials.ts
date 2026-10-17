@@ -36,13 +36,13 @@
  * client secret anywhere else.
  */
 
-import type { Db } from "../../../../db/types.js";
-import type { Env } from "../../../../platform/env.js";
+import type { Db } from "../../../db/types.js";
+import type { Env } from "../../../platform/env.js";
 import {
   openOutletCredential,
   outletCredentialVersion,
   type TransientOutletCredential,
-} from "../../../../core/outletCredentials.js";
+} from "../../outletCredentials.js";
 import {
   oauthErrorCode,
   outletTokenSlot,
@@ -51,15 +51,15 @@ import {
   TokenExchangeError,
   writeSealedToken,
   type FetchImpl,
-} from "../../../../core/outletTokens.js";
-import { isRedirect, readCappedText } from "../../../../core/readCapped.js";
+} from "../../outletTokens.js";
+import { isRedirect, readCappedText } from "../../readCapped.js";
 import {
   openPlatformCredential,
   PLATFORM_SEAL_PRODUCT,
   platformPin,
   resolvePlatformCredential,
   type PlatformOpenPurpose,
-} from "../../../../core/platformCredentials.js";
+} from "../../platformCredentials.js";
 
 /** The platform credential the fallback uses (A-16). */
 export const MSSTORE_PLATFORM_CREDENTIAL =

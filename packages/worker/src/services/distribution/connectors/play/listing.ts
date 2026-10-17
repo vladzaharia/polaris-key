@@ -21,7 +21,7 @@ import {
   type ListingSnapshot,
   type SnapshotAsset,
 } from "../../../../core/storefront/listingImport.js";
-import type { PlayPublisher } from "./client.js";
+import type { PlayPublisher } from "../../../../core/stores/play/client.js";
 
 /** `edits.images.list` image types → the model's slots (`tvBanner` has none). */
 export const PLAY_IMAGE_SLOTS: Readonly<Record<string, string | null>> = {

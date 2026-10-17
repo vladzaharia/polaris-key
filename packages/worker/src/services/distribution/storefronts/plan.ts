@@ -37,7 +37,7 @@ import {
   PLATFORM_CREDENTIALS,
   resolvePlatformCredential,
 } from "../../../core/platformCredentials.js";
-import { peekPlatformAppName } from "../connectors/platformApps.js";
+import { peekPlatformAppName } from "../../../core/stores/platformApps.js";
 import { listOutlets } from "../outlets.js";
 import type {
   FlowContext,

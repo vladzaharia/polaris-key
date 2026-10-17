@@ -40,12 +40,11 @@
  */
 
 import type { ConnectorContext, PollOutcome } from "../index.js";
+import { objectsToReconcile, retireObject } from "../state.js";
 import {
   eventsToRedrive,
-  objectsToReconcile,
-  retireObject,
   setEventOutcome,
-} from "../state.js";
+} from "../../../../core/stores/events.js";
 import {
   eventOutcomeOf,
   syncAppStoreVersion,
@@ -62,7 +61,7 @@ import {
   findIncluded,
   relId,
   type AscResource,
-} from "../../../../core/asc/client.js";
+} from "../../../../core/stores/apple/client.js";
 import {
   ASC_EVENT_EFFECTS,
   BACKGROUND_ASSET_INSTANCE_TYPES,

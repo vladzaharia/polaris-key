@@ -38,7 +38,7 @@ import {
   AscError,
   AscWriteDenied,
   type AscResource,
-} from "../src/core/asc/client.js";
+} from "../src/core/stores/apple/client.js";
 
 // A-18a: the ledger, projection and budget are store-agnostic; these are the App Store's.
 const projectAscResource = (r: StoreResource | null) =>

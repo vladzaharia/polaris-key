@@ -39,7 +39,7 @@ import {
   type Store,
 } from "../../../core/licensing/storeGrants.js";
 import { entitlementOf } from "../access.js";
-import { listEvents } from "../connectors/state.js";
+import { listEvents } from "../../../core/stores/events.js";
 import {
   readCommerceSettings,
   validateCommerceSettings,

@@ -20,7 +20,7 @@ import {
   GoogleApiClient,
   PLAY_REPORTING_ORIGIN,
   PlayError,
-} from "../src/services/distribution/connectors/play/client.js";
+} from "../src/core/stores/play/client.js";
 import {
   normalizePlaySettings,
   patchPlaySettings,

@@ -16,7 +16,7 @@
  *        The stored `app-store:screenshot:<sizeClass>:<n>` assets of that locale (else of every
  *        locale), in order, into the localization's set of the class's display type: the set is
  *        found or created, then each screenshot is reserved, its bytes PUT from the blob store to
- *        Apple's upload operations (`core/asc/upload.ts`, gated by `checkAscUpload`) and
+ *        Apple's upload operations (`core/stores/apple/upload.ts`, gated by `checkAscUpload`) and
  *        committed with its MD5. Natural key: a screenshot of the same checksum (or file name,
  *        which carries the SHA-256) already in the set.
  *
@@ -36,11 +36,11 @@ import {
   attr,
   single,
   type AscResource,
-} from "../../../../core/asc/client.js";
+} from "../../../../core/stores/apple/client.js";
 import {
   putUploadOperations,
   uploadOperations,
-} from "../../../../core/asc/upload.js";
+} from "../../../../core/stores/apple/upload.js";
 import {
   ASC_SCREENSHOT_DISPLAY_TYPES,
   ASC_SCREENSHOT_MAX_BYTES,

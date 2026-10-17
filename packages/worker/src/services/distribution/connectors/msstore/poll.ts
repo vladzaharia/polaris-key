@@ -56,9 +56,13 @@ import {
   listObjects,
   retireObject,
   upsertObject,
-  type ConnectorWriteContext,
 } from "../state.js";
-import { MsStoreClient, MsStoreError, type FetchImpl } from "./client.js";
+import { type ConnectorWriteContext } from "../../../../core/stores/events.js";
+import {
+  MsStoreClient,
+  MsStoreError,
+  type FetchImpl,
+} from "../../../../core/stores/microsoftStore/client.js";
 import {
   AVAILABILITY_RANK,
   availabilityOf,
@@ -84,7 +88,10 @@ import {
   type MsStoreRoute,
   type MsStoreSetup,
 } from "./setup.js";
-import { msStoreToken, platformMsStoreToken } from "./token.js";
+import {
+  msStoreToken,
+  platformMsStoreToken,
+} from "../../../../core/stores/microsoftStore/credentials.js";
 
 export const APPLICATION_OBJECT = "application";
 export const FLIGHT_OBJECT = "flight";

@@ -751,3 +751,38 @@ describe("transitive reach (blocking)", () => {
     expect(kinds).toEqual(["type ./a.js", "type ./b.js", "./c.js"]);
   });
 });
+
+// ── The store infrastructure (P0-27a) ────────────────────────────────────────────────────────
+
+describe("the store infrastructure (P0-27a)", () => {
+  /** The Apple connector framework Commerce's catalog sync still drives (`ConnectorControl`,
+   *  `Flow`): P0-27 folds it into the store adapter and removes both rows. */
+  const COMMERCE_CONNECTOR_SEAMS = [
+    "services/distribution/commerce/appleCatalog.ts|../connectors/asc/controls.js",
+    "services/distribution/commerce/appleCatalog.ts|../connectors/asc/flow.js",
+  ];
+
+  it("Commerce reaches a store's client, credentials and events only through core/stores/", () => {
+    const found = new Set<string>();
+    for (const full of walkTs(
+      join(SRC, "services", "distribution", "commerce"),
+    )) {
+      for (const specifier of importsOf(readFileSync(full, "utf8"))) {
+        if (specifier.includes("connectors/"))
+          found.add(`${srcRel(full)}|${specifier}`);
+      }
+    }
+    expect([...found].sort()).toEqual(COMMERCE_CONNECTOR_SEAMS);
+  });
+
+  it("core/stores imports no service (the layer test, named for the move)", () => {
+    for (const full of walkTs(join(SRC, "core", "stores"))) {
+      for (const specifier of importsOf(readFileSync(full, "utf8"))) {
+        expect(
+          layerViolation(srcRel(full), specifier),
+          `${srcRel(full)} → ${specifier}`,
+        ).toBeNull();
+      }
+    }
+  });
+});
