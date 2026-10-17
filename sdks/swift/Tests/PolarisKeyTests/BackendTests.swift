@@ -221,6 +221,18 @@ final class BackendTests: XCTestCase {
         XCTAssertEqual(last.value(forHTTPHeaderField: "X-PKey-License"), jws)
     }
 
+    func testAuthorizationDoesNotCrossBetweenAllowedOrigins() async throws {
+        BackendStub.reset { req in
+            req.url?.host == "api.example.com" ? .redirect("https://other.example.com/b") : .ok(status: 200, body: "ok")
+        }
+        let (backend, _) = try make(origins: ["https://api.example.com", "https://other.example.com"])
+        _ = try await backend.data(for: get("https://api.example.com/a", headers: ["Authorization": "Bearer app"]))
+        XCTAssertEqual(BackendStub.urls.count, 2)
+        let last = BackendStub.seen.last!
+        XCTAssertNil(last.value(forHTTPHeaderField: "Authorization"))
+        XCTAssertEqual(last.value(forHTTPHeaderField: "X-PKey-License"), jws)
+    }
+
     func testRedirectToHttpDowngradeIsRefused() async throws {
         BackendStub.reset { _ in .redirect("http://api.example.com/b") }
         let (backend, _) = try make()

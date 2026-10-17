@@ -293,7 +293,13 @@ public final class BackendClient: Sendable {
             lock.unlock()
             let origin = BackendClient.origin(of: request.url)
             if let origin, allowed.contains(origin), count <= BackendClient.maxHops {
-                completionHandler(request)
+                var next = request
+                // The app's Authorization never crosses origins, even between two allowed ones;
+                // stripped here rather than left to URLSession (Linux differs).
+                if origin != BackendClient.origin(of: task.currentRequest?.url ?? task.originalRequest?.url) {
+                    next.setValue(nil, forHTTPHeaderField: "Authorization")
+                }
+                completionHandler(next)
                 return
             }
             lock.lock()

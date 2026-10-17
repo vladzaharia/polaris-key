@@ -19,6 +19,9 @@
 //     a hop whose origin is not in `backend.origins` is refused (`backend-origin-not-allowed`), and
 //     an allowed hop gets the headers.
 //
+// A refused hop may still cost a DNS lookup or a TLS handshake, but no header is sent. An app that
+// logs with HttpLoggingInterceptor should call `redactHeader("X-PKey-License")` on it.
+//
 // Add `interceptor()` without the network half and the request goes out with no licence at all
 // (nothing leaks); the call then throws `not-configured`. `headers()` is raw and checks nothing.
 // An error message names the origin only: a URL's path and query can hold a secret.

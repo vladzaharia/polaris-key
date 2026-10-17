@@ -51,8 +51,8 @@ var body_limit := BODY_LIMIT
 var local_only := false
 ## Follow redirects (by hand, as above). False: a 3xx is the answer.
 var follow_redirects := true
-## Every request this transport sent, newest last: {method, url, headers} (headers without any
-## credential value). Tests read it; capped at 64 entries.
+## Every request this transport sent, newest last: {method, url, headers} (authorization, x-pkey-license and
+## x-pkey-device redacted). Tests read it; capped at 64 entries.
 var sent: Array = []
 
 
@@ -179,7 +179,8 @@ func _once(method: String, url: String, headers: Dictionary, body: PackedByteArr
 	var logged := {}
 	for k in headers:
 		lines.append("%s: %s" % [k, headers[k]])
-		logged[String(k).to_lower()] = "<redacted>" if String(k).to_lower() == "authorization" else headers[k]
+		var lk := String(k).to_lower()
+		logged[lk] = "<redacted>" if lk == "authorization" or lk == "x-pkey-license" or lk == "x-pkey-device" else headers[k]
 	sent.append({"method": method, "url": url, "headers": logged})
 	if sent.size() > 64:
 		sent.pop_front()

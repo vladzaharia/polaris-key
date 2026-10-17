@@ -26,6 +26,8 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	await _headers(t)
 	await _request(t)
 	await _redirects(t)
+	await _cross_allowed(t)
+	await _web(t)
 	await _retry(t)
 	await _typed(t)
 	await _shared(t)
@@ -145,6 +147,31 @@ func _redirects(t: PKeyTestContext) -> void:
 	var ok: PKeyResult = await s.backend.request("GET", api.base_url() + "/a")
 	t.check("backend: a redirect within the origin is followed with the headers", ok.ok and api.requests.size() == 2 and api.requests[1]["path"] == "/b" and api.requests[1]["headers"].has("x-pkey-license"), str(api.requests))
 	api_plan = []
+	s.free()
+
+
+func _cross_allowed(t: PKeyTestContext) -> void:
+	var clock := [h.F["now"]]
+	var s := await _ready_sdk(t, clock, [0.0])
+	s.backend.attach(s.core, func(force: bool) -> PKeySyncResult: return await s.sync(force), PackedStringArray([api.base_url(), other.base_url()]))
+	api_plan = [{"status": 302, "headers": {"Location": other.base_url() + "/b"}}]
+	var r: PKeyResult = await s.backend.request("GET", api.base_url() + "/a", {"Authorization": "Bearer app"})
+	t.check("backend: a hop between two allowed origins is followed", r.ok and other.requests.size() == 1, str(r))
+	var hop: Dictionary = other.requests[0]
+	t.check("backend: the app's Authorization does not cross origins", not hop["headers"].has("authorization"), str(hop["headers"].keys()))
+	t.check("backend: the licence still rides an allowed hop", hop["headers"].has("x-pkey-license"))
+	api_plan = []
+	s.free()
+
+
+func _web(t: PKeyTestContext) -> void:
+	var clock := [h.F["now"]]
+	var s := await _ready_sdk(t, clock, [0.0])
+	s.backend.is_web = func() -> bool: return true
+	var r: PKeyResult = await s.backend.request("GET", api.base_url() + "/x")
+	t.check("backend: request fails closed on web", not r.ok and String(r.code) == "unsupported" and r.detail["reason"] == "runtime" and api.requests.is_empty(), str(r))
+	var hf: PKeyResult = await s.backend.headers_for(api.base_url() + "/x")
+	t.check("backend: headers_for fails closed on web", not hf.ok and String(hf.code) == "unsupported")
 	s.free()
 
 

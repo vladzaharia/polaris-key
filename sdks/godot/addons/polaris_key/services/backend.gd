@@ -21,6 +21,13 @@ extends RefCounted
 ## and the URL you checked yourself (`headers_for` does the check). An error message names the
 ## origin only (a path or query can hold a secret).
 ##
+## WEB EXPORTS. The browser's fetch follows redirects itself, so neither the per-hop check nor
+## `max_redirects = 0` holds there: an open redirect on an allowed backend could bounce the
+## licence headers to another origin. On web `request()` and `headers_for()` fail closed with
+## the typed `unsupported` result (reason `runtime`); `HTTPRequest` offers no fetch
+## `redirect: "manual"`. `headers()` is raw and still answers; use it on web only for a backend
+## that never redirects.
+##
 ## The rule is `PKeyBackend.action()` (`backend-matrix.json`'s `client` section): a document
 ## within REFRESH_MARGIN_SECONDS of its expiry is synced before sending; `license_stale` and
 ## `license_invalid` (401) force one sync and one retry; `not_entitled` and `sign_in_required`
@@ -51,6 +58,8 @@ var _core_ref: WeakRef = null
 var _sync: Callable = Callable()
 ## `func() -> float`, seconds on a clock that never goes back. Tests replace it.
 var monotonic: Callable = func() -> float: return Time.get_ticks_msec() / 1000.0
+## `func() -> bool`: whether this is a web export. Tests replace it.
+var is_web: Callable = func() -> bool: return OS.has_feature("web")
 var _allowed: Dictionary = {}
 var _origins: PackedStringArray = PackedStringArray()
 var _flight: Flight = null
@@ -132,15 +141,23 @@ func headers() -> PackedStringArray:
 
 
 ## `headers()` for `url`: ok with detail = the lines, or `backend-origin-not-allowed` (nothing is
-## synced, nothing is built). A coroutine.
+## synced, nothing is built). The caller MUST set `HTTPRequest.max_redirects = 0`: the check covers
+## this URL only, and HTTPRequest re-sends the headers to a redirect target. Unsupported on web.
+## A coroutine.
 func headers_for(url: String) -> PKeyResult:
 	var core := _core()
 	if core == null:
 		return PKeyResult.failure(PKeyErrors.NOT_CONFIGURED, "Call configure() first.")
+	if is_web.call():
+		return _web_refusal()
 	var refused := _check(url)
 	if refused != null:
 		return refused
 	return PKeyResult.success(await headers())
+
+
+func _web_refusal() -> PKeyResult:
+	return PKeyResult.unsupported(PKeyConstants.Feature.CORE_BACKEND, PKeyConstants.UnsupportedReason.RUNTIME, "On web the browser follows redirects itself, so the licence cannot be kept to backend_origins.")
 
 
 func _build() -> Dictionary:
@@ -214,6 +231,8 @@ func request(method: String, url: String, headers: Dictionary = {}, body: Packed
 	var core := _core()
 	if core == null:
 		return PKeyResult.failure(PKeyErrors.NOT_CONFIGURED, "Call configure() first.")
+	if is_web.call():
+		return _web_refusal()
 	var refused := _check(url)
 	if refused != null:
 		return refused
@@ -241,10 +260,19 @@ func _send(core: PKeyCore, method: String, url: String, headers: Dictionary, bod
 		h[k] = _build()[k]
 	var b := body
 	var current := url
+	var prev_origin: String = PKeyTransport.parse_url(url).get("origin", "")
 	for hop in PKeyTransport.MAX_REDIRECTS + 1:
 		var refused := _check(current)
 		if refused != null:
 			return refused
+		# The app's Authorization never crosses origins, even between two allowed ones; once
+		# dropped it is not restored on a later hop.
+		var origin: String = PKeyTransport.parse_url(current).get("origin", "")
+		if origin != prev_origin:
+			for k in h.keys():
+				if String(k).to_lower() == "authorization":
+					h.erase(k)
+			prev_origin = origin
 		var r := await core.transport.request(m, current, h, b, {"follow_redirects": false})
 		if not r.ok:
 			return r
