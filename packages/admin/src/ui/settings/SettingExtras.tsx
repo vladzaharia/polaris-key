@@ -36,12 +36,7 @@ export function ConflictNote({
         className="mt-3"
         live
         action={
-          <Button
-            size="sm"
-            variant="outline"
-            loading={reloading}
-            onClick={onReload}
-          >
+          <Button size="sm" loading={reloading} onClick={onReload}>
             Reload
           </Button>
         }

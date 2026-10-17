@@ -2081,7 +2081,7 @@ export const SERVICE_ERROR_MESSAGES: Record<string, string> = {
   distribution_requires_release:
     "Distribution delivers what Release says exists — turn on Release first.",
   update_requires_distribution:
-    "In-app updates need Distribution to be on first.",
+    "In-app updates need Ship builds to be on first.",
   sync_requires_config: "Cloud Sync needs Managed config to be on first.",
   sync_requires_identity: "Cloud Sync needs Sign-in to be on first.",
 };

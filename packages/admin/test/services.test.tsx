@@ -202,7 +202,7 @@ describe("Services feature groups", () => {
     });
     expect(
       within(dialog).getByText(
-        "Also turns off Update because it requires this service.",
+        "Also turns off In-app updates because it needs Ship builds.",
       ),
     ).toBeTruthy();
     expect(updateServices).not.toHaveBeenCalled();
@@ -389,7 +389,7 @@ describe("Services feature groups", () => {
     const dialog = await screen.findByRole("alertdialog");
     expect(
       within(dialog).getByText(
-        "Also turns off Update because it requires this service.",
+        "Also turns off In-app updates because it needs Ship builds.",
       ),
     ).toBeTruthy();
     expect(shipBuilds.getAttribute("aria-describedby")).toBeNull();
@@ -407,9 +407,17 @@ describe("Services feature groups", () => {
   it("blocks Cloud Sync while Sign-in is off and says what it needs", async () => {
     mount();
     const sync = await screen.findByRole("switch", { name: /Cloud Sync/i });
-    expect((sync as HTMLButtonElement).disabled).toBe(true);
-    expect(screen.getByText(/Needs .*Identity|Needs Sign-in/i)).toBeTruthy();
+    expect(sync.getAttribute("aria-disabled")).toBe("true");
+    expect(screen.getByText(/Turn on Sign-in first/i)).toBeTruthy();
+    // Focusable (Tab reaches it) and inert: a click changes nothing.
+    sync.focus();
+    expect(document.activeElement).toBe(sync);
+    await userEvent.setup().click(sync);
     expect(updateServices).not.toHaveBeenCalled();
+    expect(servicesDryRun).not.toHaveBeenCalled();
+    // The reason moves focus to the switch that fixes it.
+    await userEvent.setup().click(screen.getByText(/Turn on Sign-in first/i));
+    expect(document.activeElement?.id).toBe("feature-sign-in-switch");
   });
 
   it("shows the Edge mint recipe approval path for minted tokens", async () => {
@@ -500,10 +508,10 @@ describe("Services feature groups", () => {
     mount();
     const sync = await screen.findByRole("switch", { name: /Cloud Sync/i });
     const requirementId = sync.getAttribute("aria-describedby");
-    expect((sync as HTMLButtonElement).disabled).toBe(true);
+    expect(sync.getAttribute("aria-disabled")).toBe("true");
     expect(requirementId).toBe("feature-cloud-sync-requirements");
     expect(document.getElementById(requirementId!)?.textContent).toMatch(
-      /Needs Identity/,
+      /Turn on Sign-in first/,
     );
   });
 
@@ -521,12 +529,12 @@ describe("Services feature groups", () => {
       name: /In-app updates/i,
     });
     const requirementId = updates.getAttribute("aria-describedby");
-    expect((updates as HTMLButtonElement).disabled).toBe(true);
+    expect(updates.getAttribute("aria-disabled")).toBe("true");
     expect(requirementId).toBe(
       "feature-ship-builds-in-app-updates-requirements",
     );
     expect(document.getElementById(requirementId!)?.textContent).toMatch(
-      /Needs Distribution/,
+      /Turn on Ship builds first/,
     );
   });
 

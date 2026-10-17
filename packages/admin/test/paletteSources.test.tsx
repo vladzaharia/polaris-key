@@ -344,7 +344,7 @@ describe("the palette in the console", () => {
     expect((owner as HTMLButtonElement).disabled).toBe(false);
     await waitFor(() => expect(document.activeElement).toBe(owner));
     const updates = screen.getByRole("switch", { name: /In-app updates/i });
-    expect((updates as HTMLButtonElement).disabled).toBe(true);
+    expect(updates.getAttribute("aria-disabled")).toBe("true");
   });
 
   it("“sdk” finds the SDK quick start, which opens Overview on the SDK chooser (UX-59)", async () => {

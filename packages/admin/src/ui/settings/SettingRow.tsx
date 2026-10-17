@@ -117,7 +117,10 @@ export function SettingRow(props: SettingRowProps): React.ReactElement {
       <Switch
         id={id}
         checked={on}
-        disabled={off}
+        // Busy is not disabled: a disabled control drops focus, and the write keeps it.
+        disabled={disabled || locked !== undefined}
+        readOnly={w.busy}
+        aria-busy={w.busy || undefined}
         onCheckedChange={(next) =>
           w.propose(spec.kind === "boolean" ? next : next ? "on" : "off")
         }
@@ -236,14 +239,16 @@ export function SettingRow(props: SettingRowProps): React.ReactElement {
           >
             Discard
           </Button>
-          <Button
-            size="sm"
-            loading={w.busy}
-            disabled={locked !== undefined || disabled}
-            onClick={() => w.commit()}
-          >
-            {w.asks ? "Save…" : "Save"}
-          </Button>
+          {w.conflict === "refused" ? null : (
+            <Button
+              size="sm"
+              loading={w.busy}
+              disabled={locked !== undefined || disabled}
+              onClick={() => w.commit()}
+            >
+              {w.asks ? "Save…" : "Save"}
+            </Button>
+          )}
         </div>
       ) : null}
       {w.error ? (

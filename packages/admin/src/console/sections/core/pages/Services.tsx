@@ -22,6 +22,7 @@ import { toast } from "../../../../ui/toast.js";
 import { useLoadingAnnouncement } from "../../../../ui/loading.js";
 import { mutate } from "../../../data/mutations.js";
 import { qk } from "../../../data/queries.js";
+import { useWriteGate } from "../../../access/useCan.js";
 import { SettingsTemplate } from "../../../templates/Settings.js";
 import { FeatureSection } from "../components/FeatureSection.js";
 import { ServiceOffConfirmation } from "../components/ServiceOffConfirmation.js";
@@ -44,7 +45,6 @@ export function ServicesPage({ slug }: { slug: string }): React.ReactElement {
   const header = (
     <PageHeader
       title="Services"
-      description="Turn product features on or off. The server keeps required services coherent."
       refetching={query.isFetching && !query.isPending}
     />
   );
@@ -79,6 +79,7 @@ function ServicesForm({
   header: React.ReactNode;
 }): React.ReactElement {
   const queryClient = useQueryClient();
+  const gate = useWriteGate("core", slug);
   const [pending, setPending] = React.useState<PendingChange | null>(null);
   const [failure, setFailure] = React.useState<FailedChange | null>(null);
   const [codes, setCodes] = React.useState<string[]>([]);
@@ -151,6 +152,11 @@ function ServicesForm({
         title: feature.label,
       }))}
     >
+      {gate.disabledReason ? (
+        <p role="note" className="text-sm text-fg-muted">
+          {gate.disabledReason}
+        </p>
+      ) : null}
       {FEATURES.map((feature) => (
         <FeatureSection
           key={feature.id}
@@ -160,6 +166,7 @@ function ServicesForm({
           facts={data.facts}
           effectiveRegistration={data.effectiveRegistration}
           busy={busy}
+          locked={!gate.allowed}
           source={source}
           error={failure?.change.feature === feature.id ? failure : null}
           codes={failure?.change.feature === feature.id ? codes : []}
@@ -209,7 +216,7 @@ function ServicesForm({
             variant="outline"
             size="sm"
             iconStart={<Undo2 aria-hidden />}
-            disabled={busy}
+            disabled={busy || !gate.allowed}
             onClick={() => setConfirmRevert(true)}
           >
             Revert to manifest…

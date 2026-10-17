@@ -538,6 +538,32 @@ for (const vp of VIEWPORTS) {
                 await forcedColourBreaches(page),
                 "forced-colour boundaries",
               ).toEqual([]);
+            if (vp.forcedColors && c.name === "djdl:services") {
+              // State never rests on colour alone: in forced colours an on switch must draw
+              // differently from an off one (track fill and knob). The fixture has every
+              // switch on, so an off twin is a clone with the unchecked state attributes.
+              const looks = await page.evaluate(() => {
+                const sw = document.querySelector<HTMLElement>(
+                  '[role="switch"][data-state="checked"]',
+                );
+                if (!sw) return null;
+                const draw = (el: HTMLElement) =>
+                  `${getComputedStyle(el).backgroundColor}|${getComputedStyle(el.firstElementChild!).backgroundColor}`;
+                const on = draw(sw);
+                const twin = sw.cloneNode(true) as HTMLElement;
+                for (const el of [twin, twin.firstElementChild!])
+                  el.setAttribute("data-state", "unchecked");
+                sw.after(twin);
+                const off = draw(twin);
+                twin.remove();
+                return { on, off };
+              });
+              expect(looks, "an on switch is drawn").not.toBeNull();
+              expect(
+                looks!.on,
+                "on and off switches look the same in forced colours",
+              ).not.toBe(looks!.off);
+            }
             expect(
               await columnBreaches(
                 page,

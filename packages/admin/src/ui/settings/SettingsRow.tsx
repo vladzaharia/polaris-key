@@ -55,7 +55,9 @@ export function SettingsRow({
         )}
         {source}
       </div>
-      {help ? <p className="text-sm text-fg-muted">{help}</p> : null}
+      {help ? (
+        <p className="max-w-[68ch] text-sm text-fg-muted">{help}</p>
+      ) : null}
     </div>
   );
   return (
