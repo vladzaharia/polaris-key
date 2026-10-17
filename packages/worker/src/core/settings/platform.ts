@@ -68,7 +68,7 @@ export const ASSETS_DOCS = "/docs/operate/console/presentation/";
 
 const PLATFORM_DOCS = "/docs/operate/platform/settings/";
 
-/** The lowest platform default quota (1 MiB, the licence-less quota): below it no person could
+/** The lowest platform default quota (1 MiB, the license-less quota): below it no person could
  *  keep even the settings budget's worth of data. */
 export const CLOUD_SYNC_QUOTA_DEFAULT_MIN =
   CLOUD_SYNC_DEFAULTS.unlicensedQuotaBytes;
@@ -293,7 +293,7 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
   // name is `KEYENTRY_REFUSALS`, "key entry" as one word and no `IDENTITY_` prefix: a `KEY` token
   // or a `_KEY` would read as key material to the AT-2 deny-list (`rules.ts`,
   // `test/platformSettings.test.ts`). Counting runs whatever it says; it decides
-  // only whether a licence past its limit is refused (WIRE-CONTRACT-V4 §12.2 step 4). I-09 adds
+  // only whether a license past its limit is refused (WIRE-CONTRACT-V4 §12.2 step 4). I-09 adds
   // its own reader (`license_owned`).
   setting({
     key: "identity.keyEntryRefusals",
@@ -303,7 +303,7 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     area: "identity",
     label: "Key-entry refusals",
     description:
-      "Lets Identity products refuse key entry past the per-licence limit and on owned licences. Counting runs either way; turn it on once the SDKs that show the refusals are released.",
+      "Lets Identity products refuse key entry past the per-license limit and on owned licenses. Counting runs either way; turn it on once the SDKs that show the refusals are released.",
     keywords: ["key entry", "key_entry_limit", "license_owned", "rollout"],
     docs: "/docs/features/sign-in/",
     value: { kind: "switch" },
@@ -327,8 +327,8 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     area: "product-defaults",
     label: "Key-entry limit ceiling",
     description:
-      "The most key entries any product may allow per licence that is in no account. A product may set a lower limit, never a higher one; there is no unlimited value while Identity is on.",
-    keywords: ["key entry", "activations", "floating licence"],
+      "The most key entries any product may allow per license that is in no account. A product may set a lower limit, never a higher one; there is no unlimited value while Identity is on.",
+    keywords: ["key entry", "activations", "floating license"],
     docs: "/docs/features/sign-in/",
     value: {
       kind: "integer",
@@ -356,7 +356,7 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     area: "storefront",
     label: "Polaris Key storefront",
     description:
-      "Lets products be listed in the Polaris Key library (Discover and the storefront page). Off hides every listing on this deployment; licences, sign-in and auto-issue keep working.",
+      "Lets products be listed in the Polaris Key library (Discover and the storefront page). Off hides every listing on this deployment; licenses, sign-in and auto-issue keep working.",
     keywords: ["discover", "library", "storefront", "kill switch"],
     docs: "/docs/features/sign-in/customer-portal/",
     value: { kind: "switch" },
@@ -492,7 +492,7 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     since: "U-01b",
     pending: { wp: "U-05" },
   }),
-  // The quota a person gets when no tier, licence override or add-on sets `pkey.cloudSync.bytes`.
+  // The quota a person gets when no tier, license override or add-on sets `pkey.cloudSync.bytes`.
   // Clamped to the per-person ceiling; lowering it deletes nothing (a person over it can still
   // read, clear and delete). One write reaches every product with Cloud Sync on, so it takes the
   // passkey confirm with ST-16's fan-out dialog. LX-34 later adopts it as the registry default of
@@ -504,7 +504,7 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     area: "cloudSync",
     label: "Default Cloud Sync quota",
     description:
-      "How many bytes of Cloud Sync data one person may keep on a product when no tier, licence or add-on sets pkey.cloudSync.bytes. A change reaches every product with Cloud Sync on; lowering it deletes nothing.",
+      "How many bytes of Cloud Sync data one person may keep on a product when no tier, license or add-on sets pkey.cloudSync.bytes. A change reaches every product with Cloud Sync on; lowering it deletes nothing.",
     keywords: ["cloud sync", "quota", "storage", "pkey.cloudSync.bytes"],
     docs: "/docs/features/cloud-sync/",
     value: {

@@ -38,7 +38,7 @@ export function SettingsTemplate({
       {header}
       <div
         className={cn(
-          "grid grid-cols-1 gap-6",
+          "mx-auto grid w-full max-w-[72rem] grid-cols-1 gap-6",
           rail && "xl:grid-cols-[12rem_minmax(0,1fr)]",
         )}
       >

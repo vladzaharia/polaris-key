@@ -103,7 +103,8 @@ export function useSettingWrite(o: SettingWriteOptions) {
   // A new value from the server (a save, a revert, a resync) replaces the draft, except while
   // a conflict is open: the operator's input stays against the new value.
   React.useEffect(() => {
-    if (conflictRef.current === null) setDraft(o.value);
+    if (conflictRef.current === null || latest.current.commit === "immediate")
+      setDraft(o.value);
   }, [o.value, o.version]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const dirty = !sameValue(draft, o.value);
@@ -134,6 +135,9 @@ export function useSettingWrite(o: SettingWriteOptions) {
       setConflict(null);
       setReason("");
     } catch (e) {
+      // An immediate row has no Save bar to show an unsaved draft: the control goes back to the
+      // value in force, and the error or conflict note says why.
+      if (cur.commit === "immediate") setDraft(latest.current.value);
       if (cur.isConflict(e)) {
         setConflict("refused");
         announce(
@@ -196,6 +200,7 @@ export function useSettingWrite(o: SettingWriteOptions) {
     setReloading(true);
     try {
       await latest.current.reload?.();
+      if (latest.current.commit === "immediate") setDraft(latest.current.value);
       setConflict("reloaded");
       announce(`${latest.current.label} reloaded`);
     } finally {
@@ -251,16 +256,21 @@ export function useSettingWrite(o: SettingWriteOptions) {
         }}
       >
         {needsReason ? (
-          <label className="block space-y-1 text-sm">
-            <span className="font-medium text-fg-strong">Reason</span>
-            <Textarea
-              value={reason}
-              onValueChange={setReason}
-              maxLength={500}
-              rows={2}
-              placeholder="Why this changes (kept in the activity log)"
-            />
-          </label>
+          <div className="space-y-1 text-sm">
+            <label className="block space-y-1">
+              <span className="font-medium text-fg-strong">Reason</span>
+              <Textarea
+                value={reason}
+                onValueChange={setReason}
+                maxLength={500}
+                rows={2}
+                placeholder="Why this changes"
+              />
+            </label>
+            <p className="text-xs text-fg-muted">
+              Required. Kept in the activity log.
+            </p>
+          </div>
         ) : null}
       </ConfirmDialog>
     );
@@ -268,7 +278,11 @@ export function useSettingWrite(o: SettingWriteOptions) {
 
   return {
     draft,
-    setDraft,
+    /** An edit clears the error the last attempt left: it described the old value. */
+    setDraft: (v: unknown) => {
+      setDraft(v);
+      setError(null);
+    },
     dirty,
     level,
     /** Save will ask first (so the button says "Save…"). */

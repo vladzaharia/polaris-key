@@ -15,7 +15,7 @@ import {
   type FeatureRow,
   type FeatureSwitchRow,
 } from "../../../../services.generated.js";
-import { serviceLabel } from "../../../../ui/ServiceBadge.js";
+import { FEATURES, SERVICE_TABLE } from "../../../../services.generated.js";
 
 export type Enabled = Record<ServiceSlug, boolean>;
 
@@ -105,9 +105,22 @@ export function unmetRequirements(
   return SERVICE_SLUGS.filter((slug) => missing.has(slug));
 }
 
-/** "Distribution and Release", "A, B and C". */
+/** The feature word an operator knows a service by: its feature's label, not its slug. */
+export function featureWord(slug: ServiceSlug): string {
+  if (slug === "update") return "In-app updates";
+  const group = SERVICE_TABLE.find((row) => row.slug === slug)?.group;
+  return FEATURES.find((f) => f.id === group)?.label ?? slug;
+}
+
+/** The id of the switch that turns the feature of `slug` on. */
+export function featureSwitchId(slug: ServiceSlug): string {
+  const group = SERVICE_TABLE.find((row) => row.slug === slug)?.group;
+  return `feature-${group}-switch`;
+}
+
+/** "Sign-in and Cloud Sync", "A, B and C", in feature words, each once. */
 export function listOf(slugs: readonly ServiceSlug[]): string {
-  const names = slugs.map(serviceLabel);
+  const names = [...new Set(slugs.map(featureWord))];
   return names.length <= 1
     ? (names[0] ?? "")
     : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
@@ -122,7 +135,7 @@ export function codeMessage(code: string): string {
 
 export function signedInConsequence(signedIn: number): string | null {
   if (!signedIn) return null;
-  return `${signedIn} signed-in device${signedIn === 1 ? "" : "s"} will be signed out; installs and licenses keep working.`;
+  return `${signedIn.toLocaleString("en-US")} signed-in device${signedIn === 1 ? "" : "s"} will be signed out; installs and licenses keep working.`;
 }
 
 export function factFor(
@@ -131,7 +144,7 @@ export function factFor(
 ): string | null {
   switch (feature.id) {
     case "licensing":
-      return `${facts.licensing.tiers} ${facts.licensing.tiers === 1 ? "tier" : "tiers"} · ${facts.licensing.licenses} ${facts.licensing.licenses === 1 ? "license" : "licenses"}`;
+      return `${facts.licensing.tiers.toLocaleString("en-US")} ${facts.licensing.tiers === 1 ? "tier" : "tiers"} · ${facts.licensing.licenses.toLocaleString("en-US")} ${facts.licensing.licenses === 1 ? "license" : "licenses"}`;
     case "managed-config":
       return facts.managedConfig.catalogVersion === null
         ? "No published catalog"

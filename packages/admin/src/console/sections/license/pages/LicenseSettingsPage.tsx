@@ -70,7 +70,7 @@ export const LICENSING_COPY: Record<string, SettingCopy> = {
   },
   "licensing.refundGraceHours": {
     consequences: () => [
-      "A refund or chargeback still revokes the grant; this only delays it.",
+      "A refund or chargeback still revokes the entitlement; this only delays it.",
     ],
   },
 };

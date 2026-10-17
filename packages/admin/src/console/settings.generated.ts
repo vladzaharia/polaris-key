@@ -206,7 +206,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     rbacArea: "platform",
     label: "Key-entry refusals",
     description:
-      "Lets Identity products refuse key entry past the per-licence limit and on owned licences. Counting runs either way; turn it on once the SDKs that show the refusals are released.",
+      "Lets Identity products refuse key entry past the per-license limit and on owned licenses. Counting runs either way; turn it on once the SDKs that show the refusals are released.",
     keywords: ["key entry", "key_entry_limit", "license_owned", "rollout"],
     docs: "/docs/features/sign-in/",
     ownership: "operator",
@@ -225,8 +225,8 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     rbacArea: "platform",
     label: "Key-entry limit ceiling",
     description:
-      "The most key entries any product may allow per licence that is in no account. A product may set a lower limit, never a higher one; there is no unlimited value while Identity is on.",
-    keywords: ["key entry", "activations", "floating licence"],
+      "The most key entries any product may allow per license that is in no account. A product may set a lower limit, never a higher one; there is no unlimited value while Identity is on.",
+    keywords: ["key entry", "activations", "floating license"],
     docs: "/docs/features/sign-in/",
     ownership: "operator",
     critical: false,
@@ -244,7 +244,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     rbacArea: "platform",
     label: "Polaris Key storefront",
     description:
-      "Lets products be listed in the Polaris Key library (Discover and the storefront page). Off hides every listing on this deployment; licences, sign-in and auto-issue keep working.",
+      "Lets products be listed in the Polaris Key library (Discover and the storefront page). Off hides every listing on this deployment; licenses, sign-in and auto-issue keep working.",
     keywords: ["discover", "library", "storefront", "kill switch"],
     docs: "/docs/features/sign-in/customer-portal/",
     ownership: "operator",
@@ -339,7 +339,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     rbacArea: "platform",
     label: "Default Cloud Sync quota",
     description:
-      "How many bytes of Cloud Sync data one person may keep on a product when no tier, licence or add-on sets pkey.cloudSync.bytes. A change reaches every product with Cloud Sync on; lowering it deletes nothing.",
+      "How many bytes of Cloud Sync data one person may keep on a product when no tier, license or add-on sets pkey.cloudSync.bytes. A change reaches every product with Cloud Sync on; lowering it deletes nothing.",
     keywords: ["cloud sync", "quota", "storage", "pkey.cloudSync.bytes"],
     docs: "/docs/features/cloud-sync/",
     ownership: "operator",
@@ -453,7 +453,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     rbacArea: "settings",
     label: "Manifest-authoritative",
     description:
-      "The product's .pkey/ is the only writer of its display name, licence defaults, web origins, catalog and licensing settings: a console edit to one is refused unless it is a break-glass claim, which needs a reason and expires after 7 days or at the first resync or deploy that changes that field, whichever comes first. Settings claimed through their older markers (services, the compatibility window, update access, the device policies) are not refused yet. Off by default; always on, and locked, for the system product.",
+      "The product's .pkey/ is the only writer of its display name, license defaults, web origins, catalog and licensing settings: a console edit to one is refused unless it is a break-glass claim, which needs a reason and expires after 7 days or at the first resync or deploy that changes that field, whichever comes first. Settings claimed through their older markers (services, the compatibility window, update access, the device policies) are not refused yet. Off by default; always on, and locked, for the system product.",
     keywords: ["break-glass", "gitops", "claims", "lock", "single writer"],
     docs: "/docs/operate/console/products/",
     ownership: "operator",
@@ -515,7 +515,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     rbacArea: "keys",
     label: "Signing keys",
     description:
-      "The product's Ed25519 signing keys: one active key signs licences, config and the feed, retired keys stay published so older documents still verify. The private half is sealed and never shown. Rotating or retiring a key changes what devices accept.",
+      "The product's Ed25519 signing keys: one active key signs licenses, config and the feed, retired keys stay published so older documents still verify. The private half is sealed and never shown. Rotating or retiring a key changes what devices accept.",
     keywords: ["signing", "kid", "rotate", "keyring", "ed25519", "retire"],
     docs: "/docs/operate/console/keys-and-secrets/",
     ownership: "operator",
@@ -800,7 +800,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     rbacArea: "license",
     label: "Entitlement model",
     description:
-      "Whether devices see the combined entitlements of every grant their holder has, or only their own licence's (the legacy model). Products registered before 2026-10-06 start on legacy; newer ones start combined.",
+      "Whether devices see the combined entitlements of every entitlement their holder has, or only their own license's (the legacy model). Products registered before 2026-10-06 start on legacy; newer ones start combined.",
     keywords: ["combined", "legacy", "grants", "holder report"],
     docs: "/docs/features/licensing/model/",
     ownership: "claimable",
@@ -819,7 +819,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     rbacArea: "license",
     label: "Entitlement holder",
     description:
-      "Whose entitlements a device sees: the account signed in on that device (device), or the licence owner's whole set (owner). Owner lets anyone with a shared key reach everything the owner holds.",
+      "Whose entitlements a device sees: the account signed in on that device (device), or the license owner's whole set (owner). Owner lets anyone with a shared key reach everything the owner holds.",
     keywords: ["owner", "device", "shared key"],
     docs: "/docs/features/licensing/model/",
     ownership: "claimable",
@@ -838,7 +838,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     rbacArea: "license",
     label: "Clamp offline grace to expiry",
     description:
-      "Ends a device's offline grace no later than its licence's expiry, so an expired licence cannot keep running offline.",
+      "Ends a device's offline grace no later than its license's expiry, so an expired license cannot keep running offline.",
     keywords: ["grace", "offline", "graceUntil", "expiry"],
     docs: "/docs/features/licensing/model/",
     ownership: "claimable",
@@ -855,9 +855,9 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     service: "license",
     area: "license.licensing",
     rbacArea: "license",
-    label: "Anchor licence choice",
+    label: "Anchor license choice",
     description:
-      "Which of a holder's licences a device runs on: the highest-ranked tier, the one with the most free seats, or the oldest.",
+      "Which of a holder's licenses a device runs on: the highest-ranked tier, the one with the most free seats, or the oldest.",
     keywords: ["anchor", "rank", "seats"],
     docs: "/docs/features/licensing/model/",
     ownership: "claimable",
@@ -876,7 +876,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     rbacArea: "license",
     label: "Re-anchor",
     description:
-      "When a device may move to a better anchor licence: never, or on activation. Moving on every refresh is not available yet.",
+      "When a device may move to a better anchor license: never, or on activation. Moving on every refresh is not available yet.",
     keywords: ["anchor", "onActivation"],
     docs: "/docs/features/licensing/model/",
     ownership: "claimable",
@@ -895,7 +895,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     rbacArea: "license",
     label: "Refund grace",
     description:
-      "Hours a refunded or charged-back grant keeps working before it is revoked. Zero revokes at once. It only delays the revocation; a refund always revokes.",
+      "Hours a refunded or charged-back purchase keeps working before it is revoked. Zero revokes at once. It only delays the revocation; a refund always revokes.",
     keywords: ["refund", "chargeback", "revoke"],
     docs: "/docs/features/licensing/model/",
     ownership: "claimable",
@@ -914,7 +914,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     rbacArea: "license",
     label: "Billing-retry grace",
     description:
-      "Days a subscription grant keeps working while the store retries a failed renewal. Zero follows the store's own billing grace only.",
+      "Days a subscription keeps working while the store retries a failed renewal. Zero follows the store's own billing grace only.",
     keywords: ["dunning", "billing", "subscription"],
     docs: "/docs/features/licensing/model/",
     ownership: "claimable",
@@ -1434,7 +1434,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     rbacArea: "signin",
     label: "Key-entry limit",
     description:
-      "How many times the key of a licence that is in no account may be entered on new devices while Identity is on. Past it, with key-entry refusals on, key entry is refused with a link to the portal.",
+      "How many times the key of a license that is in no account may be entered on new devices while Identity is on. Past it, with key-entry refusals on, key entry is refused with a link to the portal.",
     keywords: ["key entry", "key_entry_limit", "activations"],
     docs: "/docs/features/sign-in/",
     ownership: "claimable",
@@ -1453,7 +1453,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     rbacArea: "settings",
     label: "Add by key without the purchase email",
     description:
-      "Whether a licence that carries a buyer email may join an account by its key alone, without that email verified on the account. On, anyone holding a leaked key can add an email-bound licence to their own account. A licence already in an account never moves by its key either way.",
+      "Whether a license that carries a buyer email may join an account by its key alone, without that email verified on the account. On, anyone holding a leaked key can add an email-bound license to their own account. A license already in an account never moves by its key either way.",
     keywords: ["claim", "license_email_bound", "email-bound", "leaked key"],
     docs: "/docs/features/sign-in/",
     ownership: "claimable",
@@ -1529,7 +1529,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     rbacArea: "settings",
     label: "Provisioning hooks",
     description:
-      "Hooks that turn a verified OIDC claim into an entitlement and a secret on the signed-in person's licence: the claim, the entitlement key and value, and a secret built from a URL template whose host must be one the hook allows. Changing one changes what a sign-in grants.",
+      "Hooks that turn a verified OIDC claim into an entitlement and a secret on the signed-in person's license: the claim, the entitlement key and value, and a secret built from a URL template whose host must be one the hook allows. Changing one changes what a sign-in grants.",
     keywords: ["claims", "entitlements", "provisioning_config"],
     docs: "/docs/features/sign-in/oidc/",
     ownership: "manifest",
@@ -1586,7 +1586,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     rbacArea: "keys",
     label: "Sync tier on sign-in",
     description:
-      "Whether a sign-in may move a licence to the tier the identity provider's groups map to. Upgrade-only never lowers a tier.",
+      "Whether a sign-in may move a license to the tier the identity provider's groups map to. Upgrade-only never lowers a tier.",
     keywords: ["groupRoleMap", "tier", "upgrade"],
     docs: "/docs/features/sign-in/oidc/",
     ownership: "claimable",

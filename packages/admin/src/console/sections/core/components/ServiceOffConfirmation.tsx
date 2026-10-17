@@ -34,19 +34,21 @@ export function ServiceOffConfirmation({
     <ConfirmDialog
       open={confirmation !== null}
       onOpenChange={onOpenChange}
-      intent="caution"
+      intent={cascaded.length ? "danger" : "caution"}
       title={`Turn off ${change?.label ?? "this feature"}?`}
       consequences={[
         ...(cascaded.length
           ? [
-              `Also turns off ${listOf(cascaded)} because ${cascaded.length === 1 ? "it requires" : "they require"} this service.`,
+              `Also turns off ${listOf(cascaded)} because ${cascaded.length === 1 ? "it needs" : "they need"} ${change?.label ?? "this feature"}.`,
             ]
           : []),
         ...affected.map((service) => DISABLE_CONSEQUENCES[service]),
         ...(signedIn ? [signedIn] : []),
-        "Settings are kept and return when the service is turned on again.",
+        cascaded.length
+          ? "Settings are kept. Turning it back on does not turn the others on."
+          : "Settings are kept and return when it is turned on again.",
       ]}
-      confirmLabel={`Turn off ${change?.label ?? "feature"}`}
+      confirmLabel={`Turn off ${[change?.label ?? "feature", ...(cascaded.length ? [listOf(cascaded)] : [])].join(" and ")}`}
       describeError={errorCopy}
       onConfirm={onConfirm}
     />

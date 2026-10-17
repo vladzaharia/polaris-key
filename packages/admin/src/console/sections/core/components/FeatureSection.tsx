@@ -1,6 +1,10 @@
 import * as React from "react";
 import { ChevronRight } from "lucide-react";
-import type { ServiceFeatureFacts, ServicesResponse } from "../../../../api.js";
+import type {
+  ServiceFeatureFacts,
+  ServiceSlug,
+  ServicesResponse,
+} from "../../../../api.js";
 import type {
   FeatureRow,
   FeatureSwitchRow,
@@ -22,6 +26,7 @@ import {
   factFor,
   featureChange,
   featureOn,
+  featureSwitchId,
   listOf,
   serviceChange,
   unmetRequirements,
@@ -37,6 +42,7 @@ export function FeatureSection({
   facts,
   effectiveRegistration,
   busy,
+  locked,
   source,
   error,
   codes,
@@ -49,6 +55,8 @@ export function FeatureSection({
   facts: ServiceFeatureFacts;
   effectiveRegistration: ServicesResponse["effectiveRegistration"];
   busy: boolean;
+  /** The member cannot edit Core: every switch is inert, and the page says why once. */
+  locked: boolean;
   source: "admin" | "manifest";
   error: FailedChange | null;
   codes: readonly string[];
@@ -136,9 +144,7 @@ export function FeatureSection({
           htmlFor={`${sectionId}-switch`}
           help={
             blocked ? (
-              <span id={requirementId}>
-                Needs {listOf(missing)} to be on first.
-              </span>
+              <TurnOnFirst id={requirementId} missing={missing} />
             ) : (
               "Turns this feature’s services on or off together."
             )
@@ -147,8 +153,8 @@ export function FeatureSection({
           <Switch
             id={`${sectionId}-switch`}
             checked={on}
-            disabled={blocked}
-            readOnly={busy}
+            aria-disabled={blocked || locked || undefined}
+            readOnly={busy || blocked || locked}
             aria-invalid={primaryErrorDescribedBy ? true : undefined}
             aria-describedby={describedBy(
               blocked ? requirementId : undefined,
@@ -160,11 +166,8 @@ export function FeatureSection({
           />
         </SettingsRow>
 
-        {fact ? (
-          <p
-            role="status"
-            className="border-t border-border px-5 py-3 text-sm text-fg-muted"
-          >
+        {fact && on ? (
+          <p className="border-t border-border px-5 py-3 text-sm text-fg-muted">
             {fact}
           </p>
         ) : null}
@@ -177,7 +180,7 @@ export function FeatureSection({
             slug={slug}
             enabled={enabled}
             featureOn={on}
-            busy={busy}
+            busy={busy || locked}
             errorDescribedBy={row === failedRow ? errorDescribedBy : undefined}
             onRequestChange={onRequestChange}
           />
@@ -230,19 +233,17 @@ function FeatureSwitch({
             htmlFor={id}
             help={
               blocked ? (
-                <span id={requirementId}>
-                  Needs {listOf(missing)} to be on first.
-                </span>
+                <TurnOnFirst id={requirementId} missing={missing} />
               ) : (
-                "Controls this service independently of the feature switch."
+                "The Godot updater"
               )
             }
           >
             <Switch
               id={id}
               checked={on}
-              disabled={blocked}
-              readOnly={busy}
+              aria-disabled={blocked || undefined}
+              readOnly={busy || blocked}
               aria-invalid={errorDescribedBy ? true : undefined}
               aria-describedby={describedBy(
                 blocked ? requirementId : undefined,
@@ -298,6 +299,30 @@ function FeatureSwitch({
       row.id satisfies never;
       return <></>;
   }
+}
+
+/** "Turn on Sign-in first": a button that moves focus to the switch that fixes it. */
+function TurnOnFirst({
+  id,
+  missing,
+}: {
+  id: string;
+  missing: readonly ServiceSlug[];
+}): React.ReactElement {
+  return (
+    <button
+      id={id}
+      type="button"
+      className="rounded-sm text-left underline underline-offset-2 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
+      onClick={() => {
+        const target = document.getElementById(featureSwitchId(missing[0]!));
+        target?.scrollIntoView({ block: "center" });
+        target?.focus();
+      }}
+    >
+      Turn on {listOf(missing)} first
+    </button>
+  );
 }
 
 /** Space-separated `aria-describedby` from the ids that apply; undefined when none do. */

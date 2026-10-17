@@ -16,7 +16,7 @@
  *   identity.keyEntry.claimByKey  `identity.keyEntry.claimByKey`: column-backed on
  *                                 `portal_product_settings.claim_by_key` (`settingsColumns.ts`)
  *                                 until ST-14 folds that table into rows. Off by default; on lets a
- *                                 leaked key claim an email-bound licence, so it is
+ *                                 leaked key claim an email-bound license, so it is
  *                                 security-widening and the console warns while it is on.
  *   identity.terms                `identity.terms` `{version, url?}` (`productTerms.ts`).
  *   identity.redirectPaths        `identity.redirectPaths`: critical; read by I-08's redirect.
@@ -64,7 +64,7 @@ const VISIBLE = { service: "identity", offBehaviour: "hide" } as const;
  * `licensing.*`) in the same row store, but in Identity's namespace under `identity.oidc`,
  * because its manifest home is the `oidc:` block. Row-backed: there is no `oidc_config` column.
  * It names `oidc`, so the registry's rule 2 makes it security-widening: `upgradeOnly` lets an
- * identity provider's groups raise a licence's tier.
+ * identity provider's groups raise a license's tier.
  */
 const SYNC_TIER_ON_SIGN_IN: SettingDef = setting({
   key: "identity.oidc.syncTierOnSignIn",
@@ -74,7 +74,7 @@ const SYNC_TIER_ON_SIGN_IN: SettingDef = setting({
   area: "identity.signIn",
   label: "Sync tier on sign-in",
   description:
-    "Whether a sign-in may move a licence to the tier the identity provider's groups map to. Upgrade-only never lowers a tier.",
+    "Whether a sign-in may move a license to the tier the identity provider's groups map to. Upgrade-only never lowers a tier.",
   keywords: ["groupRoleMap", "tier", "upgrade"],
   docs: "/docs/features/sign-in/oidc/",
   value: { kind: "enum", values: OIDC_SYNC_TIER_ON_SIGN_IN_VALUES },
@@ -100,7 +100,7 @@ const KEY_ENTRY_LIMIT: SettingDef = setting({
   area: "identity.keyEntry",
   label: "Key-entry limit",
   description:
-    "How many times the key of a licence that is in no account may be entered on new devices while Identity is on. Past it, with key-entry refusals on, key entry is refused with a link to the portal.",
+    "How many times the key of a license that is in no account may be entered on new devices while Identity is on. Past it, with key-entry refusals on, key entry is refused with a link to the portal.",
   keywords: ["key entry", "key_entry_limit", "activations"],
   docs: "/docs/features/sign-in/",
   value: {
@@ -139,7 +139,7 @@ const CLAIM_BY_KEY: SettingDef = setting({
   area: "identity.keyEntry",
   label: "Add by key without the purchase email",
   description:
-    "Whether a licence that carries a buyer email may join an account by its key alone, without that email verified on the account. On, anyone holding a leaked key can add an email-bound licence to their own account. A licence already in an account never moves by its key either way.",
+    "Whether a license that carries a buyer email may join an account by its key alone, without that email verified on the account. On, anyone holding a leaked key can add an email-bound license to their own account. A license already in an account never moves by its key either way.",
   keywords: ["claim", "license_email_bound", "email-bound", "leaked key"],
   docs: "/docs/features/sign-in/",
   value: { kind: "boolean" },
@@ -265,7 +265,7 @@ export const IDENTITY_SETTINGS_SLICE: ServiceSettingsSlice = {
     }),
     // ST-19b: `.pkey/product`'s `provisioning` hooks. Link and every resync replace the rows whole
     // (`resync.ts`), and no admin route writes them, so the manifest owns them. A hook writes an
-    // entitlement and a templated secret into a signed-in licence's payload from a verified claim
+    // entitlement and a templated secret into a signed-in license's payload from a verified claim
     // (`applyProvisioningHooks`), so changing one can widen what a sign-in grants:
     // security-widening, like the OIDC block it extends. The entitlement reaches the document.
     setting({
@@ -276,7 +276,7 @@ export const IDENTITY_SETTINGS_SLICE: ServiceSettingsSlice = {
       area: "identity.signIn",
       label: "Provisioning hooks",
       description:
-        "Hooks that turn a verified OIDC claim into an entitlement and a secret on the signed-in person's licence: the claim, the entitlement key and value, and a secret built from a URL template whose host must be one the hook allows. Changing one changes what a sign-in grants.",
+        "Hooks that turn a verified OIDC claim into an entitlement and a secret on the signed-in person's license: the claim, the entitlement key and value, and a secret built from a URL template whose host must be one the hook allows. Changing one changes what a sign-in grants.",
       keywords: ["claims", "entitlements", "provisioning_config"],
       docs: "/docs/features/sign-in/oidc/",
       value: { kind: "json", schema: "provisioning (product.schema.json)" },
