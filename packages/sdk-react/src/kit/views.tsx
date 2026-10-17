@@ -1164,7 +1164,7 @@ export function settingLabel(row: SettingsRow): string {
     .split(/[._\-\s/:]+/)
     .filter(Boolean)
     .map((w) =>
-      Object.hasOwn(ACRONYMS, w.toLowerCase())
+      Object.prototype.hasOwnProperty.call(ACRONYMS, w.toLowerCase())
         ? ACRONYMS[w.toLowerCase()]!
         : w.toLocaleLowerCase(),
     )
