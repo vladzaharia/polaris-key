@@ -131,6 +131,8 @@ const V4_FEATURES = new Set<string>([
   Feature.releaseDistribution,
   Feature.updateFeeds,
   Feature.crashTags,
+  // SP-58: the host's client.backend.headers().
+  Feature.coreBackend,
   Feature.configLocal,
   // SP-14: renderer update-health events, forwarded to the host's journal.
   Feature.telemetryUpdates,
@@ -1067,6 +1069,21 @@ export class DesktopAdapter implements PolarisAdapter {
       "core",
       "crashTags",
       opts,
+    );
+  }
+
+  /** `invoke("core", "backendHeaders")`: the host's `client.backend.headers()`, which syncs a
+   *  document near its expiry first. `force` has the host sync unconditionally (`refresh()`)
+   *  before it answers. A v3 host answers the typed `version` N/A. */
+  async backendHeaders(
+    opts: { force?: boolean } = {},
+  ): Promise<Record<string, string>> {
+    if (opts.force) await this.refresh();
+    return this.invokeV4<Record<string, string>>(
+      Feature.coreBackend,
+      "the backend headers",
+      "core",
+      "backendHeaders",
     );
   }
 

@@ -36,6 +36,15 @@ export {
   type UseLicenseGate,
   type GateScreen,
 } from "./react/hooks.js";
+// `client.backend` (SP-58): a fetch that carries the licence document to the app's own backend.
+export { usePolarisFetch } from "./react/usePolarisFetch.js";
+export {
+  createPolarisFetch,
+  normalizeBackendOrigin,
+  type BackendHeaders,
+  type BackendOptions,
+  type PolarisFetch,
+} from "./core/backend.js";
 // Discovery's `core.presentation` (HA-13): the hook, and the seam the kits read.
 export {
   usePresentation,

@@ -387,6 +387,18 @@ export class LocalAdapter implements PolarisAdapter {
     );
   }
 
+  async backendHeaders(): Promise<Record<string, string>> {
+    throw new UnsupportedError(
+      {
+        supported: false,
+        feature: Feature.coreBackend,
+        reason: "runtime",
+        detail: LOCAL_ONLY_DETAIL,
+      },
+      "unsupported",
+    );
+  }
+
   async report(): Promise<boolean> {
     throw new UnsupportedError(
       {

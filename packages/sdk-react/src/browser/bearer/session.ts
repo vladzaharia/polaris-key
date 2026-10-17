@@ -399,6 +399,23 @@ export class BearerSession {
     };
   }
 
+  /** The held licence document's compact JWS and times, for `client.backend` (SP-58). */
+  backendLicense(): {
+    jws: string;
+    issuedAt: number;
+    expiresAt: number;
+  } | null {
+    const l = this.license;
+    return l
+      ? { jws: l.jws, issuedAt: l.doc.issuedAt, expiresAt: l.doc.expiresAt }
+      : null;
+  }
+
+  /** The time every gate comparison runs at: `max(systemClock, floor)`. */
+  effectiveTime(): number {
+    return this.now();
+  }
+
   /** The gate inputs, shaped as the desktop bridge's `BridgeState` (Node's `getSyncState`). */
   syncState(): BridgeState {
     return {

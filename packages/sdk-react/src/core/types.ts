@@ -603,6 +603,17 @@ export interface PolarisAdapter {
    *  them. Desktop: the host's `client.crashTags()` over bridge v4. */
   crashTags(opts?: CrashTagsOptions): Promise<CrashTags>;
   /**
+   * The headers for the app's own backend (`client.backend.headers()`, WIRE-CONTRACT-V4 §14.5):
+   * `X-PKey-License`, the signed licence document (when one is held), and `X-PKey-Device`.
+   * A document within the refresh margin of its expiry is synced first, and concurrent callers
+   * share that sync; `force` syncs unconditionally and throws when the sync fails. Never the
+   * device token or the config document. Raw: use `usePolarisFetch()` to send them. Browser:
+   * bearer mode (a cookie page holds no signed document and throws the typed
+   * `UnsupportedError`). Desktop: the host's `client.backend.headers()` over bridge v4
+   * (`invoke("core", "backendHeaders")`).
+   */
+  backendHeaders(opts?: { force?: boolean }): Promise<Record<string, string>>;
+  /**
    * Install what a decision offers (update.driver, SDK-PARITY-PASS §3.16): answers an
    * `InstallOutcome` and never throws for something that cannot be installed (it answers
    * `unsupported{reason}`). Browser: a decision whose build is a newer one this page already

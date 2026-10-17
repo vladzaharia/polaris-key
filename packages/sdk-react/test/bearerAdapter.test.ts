@@ -1,7 +1,7 @@
 // @vitest-environment node
 //
 // @pkey-feature core.store core.cache devices.manage devices.report license.activate
-// @pkey-feature license.entitlements identity.devicecode commerce.receipt
+// @pkey-feature license.entitlements identity.devicecode commerce.receipt core.backend
 //
 // Bearer mode through the browser ADAPTER (SDK-PARITY-PASS §3.17, SP-R02): what the transcript
 // replayer cannot see because it drives the engine directly — the `auth` option, the typed
@@ -516,5 +516,108 @@ describe("bearer mode: the unsigned blocked hint's vocabulary", () => {
     await adapter.refresh();
     expect(adapter.snapshot().status).toBe("channel-not-entitled");
     adapter.dispose();
+  });
+});
+
+describe("client.backend: backendHeaders (SP-58)", () => {
+  it("bearer mode sends the verified licence document and the device id, nothing else", async () => {
+    const s = await server();
+    // The Worker re-signs on a forced fetch: a newer `issuedAt` each time.
+    let issued = NOW - 5;
+    let resigned = 0;
+    const fetchImpl = (async (input: RequestInfo | URL, init?: RequestInit) =>
+      new URL(String(input)).pathname === "/acme/license/document" &&
+      issued > NOW - 5 &&
+      ++resigned
+        ? new Response(
+            await signCompact(
+              {
+                iss: "key.plrs.im",
+                aud: "acme",
+                deviceId: DEVICE,
+                issuedAt: issued,
+                expiresAt: NOW + 3600,
+                graceUntil: NOW + 86400,
+                licenseId: "lic-1",
+                entitlements: {},
+              },
+              s.key,
+              "pkey-license+jws",
+            ),
+            { status: 200 },
+          )
+        : s.fetchImpl(input, init)) as typeof fetch;
+    const adapter = browserAdapter({
+      productSlug: "acme",
+      auth: "bearer",
+      trust: { pinnedKeys: { [s.key.kid]: s.key.raw } },
+      fetchImpl,
+      now: () => NOW,
+      store: indexedDbStore("acme", { factory: await seededFactory() })!,
+    });
+    await settled(adapter);
+    expect(adapter.supports(Feature.coreBackend)).toMatchObject({
+      supported: true,
+    });
+    await adapter.submitKey("pkey_good");
+    const headers = await adapter.backendHeaders();
+    expect(Object.keys(headers).sort()).toEqual([
+      "X-PKey-Device",
+      "X-PKey-License",
+    ]);
+    expect(headers["X-PKey-Device"]).toBe(DEVICE);
+    expect(headers["X-PKey-License"]!.split(".")).toHaveLength(3);
+    // Fresh: no document fetch beyond the activation's.
+    const fetched = () =>
+      resigned +
+      s.seen.filter((r) => r.path === "/acme/license/document").length;
+    const before = fetched();
+    await adapter.backendHeaders();
+    expect(fetched()).toBe(before);
+    // Forced: one more, and concurrent forced callers share it.
+    issued = NOW - 4;
+    await Promise.all([
+      adapter.backendHeaders({ force: true }),
+      adapter.backendHeaders({ force: true }),
+    ]);
+    expect(fetched()).toBe(before + 1);
+    adapter.dispose();
+  });
+
+  it("a forced refresh the Worker refuses throws, so the fetch hands back the backend's answer", async () => {
+    const s = await server();
+    const adapter = browserAdapter({
+      productSlug: "acme",
+      auth: "bearer",
+      trust: { pinnedKeys: { [s.key.kid]: s.key.raw } },
+      fetchImpl: s.fetchImpl,
+      now: () => NOW,
+      store: indexedDbStore("acme", { factory: await seededFactory() })!,
+    });
+    await settled(adapter);
+    await adapter.submitKey("pkey_good");
+    s.revoke();
+    await expect(adapter.backendHeaders({ force: true })).rejects.toMatchObject(
+      { code: "refresh-failed" },
+    );
+    adapter.dispose();
+  });
+
+  it("a cookie page holds no signed document: runtime N/A, and a typed refusal", async () => {
+    const adapter = browserAdapter({
+      auth: "cookie",
+      productSlug: "acme",
+      offlineStore: null,
+      autoStart: false,
+    });
+    expect(adapter.supports(Feature.coreBackend)).toMatchObject({
+      supported: false,
+      reason: "runtime",
+    });
+    expect(adapter.caps()).not.toContain(Feature.coreBackend);
+    await expect(adapter.backendHeaders()).rejects.toMatchObject({
+      code: "unsupported",
+      reason: "runtime",
+    });
   });
 });
