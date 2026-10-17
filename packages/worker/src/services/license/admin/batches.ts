@@ -27,7 +27,7 @@ import {
   err,
   readBody,
 } from "../../../core/console/respond.js";
-import { auditStatementFor } from "../../../core/console/audit.js";
+import { auditStatementFor } from "../../../core/audit.js";
 import { WriteChecks } from "../../../core/console/writeChecks.js";
 import type { AdminSession } from "../../../core/console/session.js";
 import type { Db, DbStatement } from "../../../db/types.js";

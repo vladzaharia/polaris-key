@@ -41,9 +41,9 @@
  * pulled again at the next resync. Neither touches a developer's source.
  */
 
+import { auditStatement, sql, actorColumns } from "../audit.js";
 import type { Db, DbStatement } from "../../db/types.js";
 import type { Env } from "../../platform/env.js";
-import { randomId } from "../../platform/crypto.js";
 import { errorResponse, ErrorCode, json, notFound } from "../errors.js";
 import { blobKey, stagingKey } from "./blobs.js";
 import {
@@ -409,7 +409,7 @@ export async function releaseHostedAsset(
       sql: `DELETE FROM blob_refs WHERE product = ? AND ref_kind = ? AND ref_id = ? AND ${guard}`,
       params: [product, HOSTED_ASSET_REF, refId, ...guardParams],
     },
-    auditStatement(
+    auditAsset(
       product,
       refId,
       actor,
@@ -454,7 +454,7 @@ async function applied(db: Db, statements: DbStatement[]): Promise<boolean> {
   return true;
 }
 
-function auditStatement(
+function auditAsset(
   product: string,
   refId: string,
   actor: IngestActor,
@@ -464,23 +464,18 @@ function auditStatement(
   guard: string,
   guardParams: readonly (string | null)[],
 ): DbStatement {
-  return {
-    sql: `INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action,
-            target_kind, target_id, parent_id, summary)
-          SELECT ?, ?, ?, ?, ?, ?, ?, 'hosted-asset', ?, NULL, ? WHERE ${guard}`,
-    params: [
+  return auditStatement(
+    {
       product,
-      randomId("aud"),
-      now,
-      actor.sub,
-      actor.name,
-      actor.email ?? null,
+      at: now,
+      ...actorColumns({ ...actor, email: actor.email ?? null }),
       action,
-      refId,
+      target_kind: "hosted-asset",
+      target_id: refId,
       summary,
-      ...guardParams,
-    ],
-  };
+    },
+    sql(`WHERE ${guard}`, ...guardParams),
+  );
 }
 
 async function revert(
@@ -515,7 +510,7 @@ async function revert(
       sql: `DELETE FROM blob_refs WHERE product = ? AND ref_kind = ? AND ref_id = ? AND ${guard}`,
       params: [product, HOSTED_ASSET_REF, refId, ...guardParams],
     },
-    auditStatement(
+    auditAsset(
       product,
       refId,
       actor,
@@ -899,28 +894,26 @@ export async function handleAssetsPush(
 
   const list = (xs: { slot: string }[]) => xs.map((x) => x.slot).join(", ");
   await db.batch([
-    {
-      sql: `INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action,
-              target_kind, target_id, parent_id, summary)
-            VALUES (?, ?, ?, ?, 'CI', NULL, 'assets.push', 'product', ?, NULL, ?)`,
-      params: [
-        product,
-        randomId("aud"),
-        now,
-        by,
-        product,
-        [
-          `Pushed ${stored.length} hosted asset${stored.length === 1 ? "" : "s"} from CI` +
-            (stored.length ? ` (${list(stored)})` : ""),
-          kept.length ? `kept ${kept.length} (${list(kept)})` : "",
-          refused.length
-            ? `refused ${refused.length} (${refused.map((r) => `${r.slot}: ${r.reason}`).join(", ")})`
-            : "",
-        ]
-          .filter(Boolean)
-          .join("; "),
-      ],
-    },
+    auditStatement({
+      product,
+      at: now,
+      actor_sub: by,
+      actor_name: "CI",
+      actor_email: null,
+      action: "assets.push",
+      target_kind: "product",
+      target_id: product,
+      summary: [
+        `Pushed ${stored.length} hosted asset${stored.length === 1 ? "" : "s"} from CI` +
+          (stored.length ? ` (${list(stored)})` : ""),
+        kept.length ? `kept ${kept.length} (${list(kept)})` : "",
+        refused.length
+          ? `refused ${refused.length} (${refused.map((r) => `${r.slot}: ${r.reason}`).join(", ")})`
+          : "",
+      ]
+        .filter(Boolean)
+        .join("; "),
+    }),
   ]);
   return json({ ok: refused.length === 0, stored, kept, refused });
 }

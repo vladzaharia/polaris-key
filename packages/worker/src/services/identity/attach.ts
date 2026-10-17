@@ -71,7 +71,8 @@ import {
   resolveSubject,
 } from "../../core/accounts/accountSubjects.js";
 import { clearDeviceSubjects } from "../../core/accounts/subjectHooks.js";
-import { appendAudit, type LicenseRow } from "../../core/repo.js";
+import { type LicenseRow } from "../../core/repo.js";
+import { appendAudit } from "../../core/audit.js";
 import { portalOriginOf } from "../../core/licensing/manageUrl.js";
 import { readBodyJson } from "../../core/cappedBody.js";
 import { attachLicense, evaluateAttach } from "./accounts/claim.js";

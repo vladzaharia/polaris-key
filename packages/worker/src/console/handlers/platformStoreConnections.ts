@@ -50,11 +50,8 @@
 import type { Env } from "../../platform/env.js";
 import type { Db } from "../../db/types.js";
 import { ErrorCode } from "../../core/errors.js";
-import {
-  auditStatement,
-  getProduct,
-  platformAuditStatement,
-} from "../../core/repo.js";
+import { getProduct } from "../../core/repo.js";
+import { auditStatement, platformAuditStatement } from "../../core/audit.js";
 import { randomId } from "../../platform/crypto.js";
 import type { DbStatement } from "../../db/types.js";
 import {

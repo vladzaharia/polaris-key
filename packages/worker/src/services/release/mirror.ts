@@ -64,11 +64,16 @@
  *   `ingest`'s batch). The job row goes `failed` with back-off, and GitHub keeps serving.
  */
 
+import {
+  auditStatement,
+  sql,
+  SYSTEM_ACTORS,
+  actorColumns,
+} from "../../core/audit.js";
 import { APP_DELIVERABLE_ID } from "@polaris-key/manifest";
 import type { Db, DbStatement } from "../../db/types.js";
 import type { Env } from "../../platform/env.js";
 import { isAllowedStorageHost } from "../../platform/http.js";
-import { randomId } from "../../platform/crypto.js";
 import { blobKey } from "../../core/assets/blobs.js";
 import {
   hostedAssetRefId,
@@ -745,21 +750,19 @@ async function appendLocation(
         ...guardParams,
       ],
     },
-    {
-      sql: `INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action,
-              target_kind, target_id, parent_id, summary)
-            SELECT ?, ?, ?, NULL, 'Polaris Key', NULL, 'release.mirror', 'release-artifact', ?,
-                   ?, ? WHERE ${guard}`,
-      params: [
-        row.product,
-        randomId("aud"),
-        now,
-        refId,
-        row.release_id,
-        `${info.name} of ${row.release_id} is now served from Polaris Key's own copy (sha256 ${sha256.slice(0, 12)}, from ${info.label.startsWith("github:") ? "GitHub" : "its external URL"}); the original location stays as the fallback`,
-        ...guardParams,
-      ],
-    },
+    auditStatement(
+      {
+        product: row.product,
+        at: now,
+        ...actorColumns(SYSTEM_ACTORS.platform),
+        action: "release.mirror",
+        target_kind: "release-artifact",
+        target_id: refId,
+        parent_id: row.release_id,
+        summary: `${info.name} of ${row.release_id} is now served from Polaris Key's own copy (sha256 ${sha256.slice(0, 12)}, from ${info.label.startsWith("github:") ? "GitHub" : "its external URL"}); the original location stays as the fallback`,
+      },
+      sql(`WHERE ${guard}`, ...guardParams),
+    ),
     {
       sql: `INSERT INTO release_mirrors (product, release_id, artifact_id, status, source_ref, sha256,
               error, attempts, next_attempt_at, tried_at, modified_at)

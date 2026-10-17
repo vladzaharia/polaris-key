@@ -22,12 +22,8 @@ import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
 import { serializeServices, type ServicesMap } from "../src/core/services.js";
 import { setServices } from "../src/core/repo.js";
-import {
-  appendAudit,
-  getLicense,
-  getLicenseBySub,
-  type AuditRow,
-} from "../src/core/repo.js";
+import { getLicense, getLicenseBySub } from "../src/core/repo.js";
+import { appendAudit, type AuditRow } from "../src/core/audit.js";
 import {
   licenseDeviceLimit,
   resolveEntitlements,

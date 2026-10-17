@@ -24,14 +24,12 @@
  *   pnpm --filter @polaris-key/worker exec vitest run test/tableCrossings.test.ts --reporter=verbose
  */
 
-import { readdirSync, readFileSync, statSync } from "node:fs";
-import { dirname, join, relative } from "node:path";
-import { fileURLToPath } from "node:url";
+import { readFileSync } from "node:fs";
+import { relative } from "node:path";
 import { describe, expect, it } from "vitest";
 import { SERVICE_SLUGS } from "../src/core/services.js";
 import { TABLE_OWNERS } from "../src/db/owners.js";
-
-const SRC = join(dirname(fileURLToPath(import.meta.url)), "..", "src");
+import { SRC, stripComments, walkTs } from "./srcScan.js";
 
 type RemovedBy = "permanent" | `P${number}-${number}`;
 
@@ -123,47 +121,6 @@ const WRITE_SEAMS: readonly (readonly [string, string, RemovedBy])[] = [
 const OWNER = new Map<string, string>();
 for (const [owner, tables] of Object.entries(TABLE_OWNERS))
   for (const t of tables) OWNER.set(t, owner);
-
-function walkTs(dir: string, out: string[] = []): string[] {
-  for (const name of readdirSync(dir)) {
-    const full = join(dir, name);
-    if (statSync(full).isDirectory()) walkTs(full, out);
-    else if (name.endsWith(".ts") && !name.endsWith(".d.ts")) out.push(full);
-  }
-  return out;
-}
-
-/** The source without its comments; string and template literals (the SQL) are kept whole. */
-function stripComments(source: string): string {
-  let out = "";
-  let quote: string | null = null;
-  for (let i = 0; i < source.length; i++) {
-    const c = source[i]!;
-    const next = source[i + 1];
-    if (quote) {
-      out += c;
-      if (c === "\\") out += source[++i] ?? "";
-      else if (c === quote) quote = null;
-      continue;
-    }
-    if (c === "/" && next === "/") {
-      while (i < source.length && source[i] !== "\n") i++;
-      out += "\n";
-      continue;
-    }
-    if (c === "/" && next === "*") {
-      i += 2;
-      while (i < source.length && !(source[i] === "*" && source[i + 1] === "/"))
-        i++;
-      i++;
-      out += " ";
-      continue;
-    }
-    if (c === '"' || c === "'" || c === "`") quote = c;
-    out += c;
-  }
-  return out;
-}
 
 const TABLE_RE = /\b(?:FROM|JOIN|INTO|UPDATE|TABLE)\s+([a-z_][a-z0-9_]*)\b/g;
 const WRITE_RE =

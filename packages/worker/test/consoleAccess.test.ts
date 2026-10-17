@@ -10,7 +10,7 @@ import type { Db } from "../src/db/types.js";
 import type { Principal } from "../src/core/rbac/can.js";
 import { handleAdminApi } from "../src/console/api.js";
 import { ADMIN_COOKIE, issueSession } from "../src/core/console/session.js";
-import { appendPlatformAudit } from "../src/core/repo.js";
+import { appendPlatformAudit } from "../src/core/audit.js";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedProduct } from "./seed.js";

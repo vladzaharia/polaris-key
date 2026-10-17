@@ -21,7 +21,8 @@ import {
   CSRF_HEADER,
   issueSession,
 } from "../src/core/console/session.js";
-import { appendAudit, getProduct, listAudit } from "../src/core/repo.js";
+import { getProduct } from "../src/core/repo.js";
+import { appendAudit, listAudit } from "../src/core/audit.js";
 
 const PLATFORM_GROUP = "platform-admins";
 const SLUG = "djdl";
@@ -162,6 +163,20 @@ describe("A-2: activity filters", () => {
         `action=license&limit=2&beforeAt=${page.nextCursor!.beforeAt}&beforeId=${page.nextCursor!.beforeId}`,
       ),
     ).toEqual(["a1"]);
+  });
+
+  it("ST-24: format=ndjson downloads the filtered history, one object per line", async () => {
+    const w = await world();
+    await seedAudit(w.db);
+    const res = await w.call("GET", "/activity?action=license.&format=ndjson");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toContain("application/x-ndjson");
+    expect(res.headers.get("content-disposition")).toContain("attachment");
+    expect(res.headers.get("x-pkey-truncated")).toBeNull();
+    const lines = (await res.text()).trimEnd().split("\n");
+    expect(lines.map((l) => JSON.parse(l).id)).toEqual(["a2", "a1"]);
+    const bad = await w.call("GET", "/activity?since=yesterday&format=ndjson");
+    expect(bad.status).toBe(422);
   });
 
   it("refuses a malformed filter with the field named", async () => {

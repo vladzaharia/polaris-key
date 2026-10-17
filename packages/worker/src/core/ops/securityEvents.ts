@@ -5,7 +5,7 @@
 // Recording never fails or delays the request it describes.
 
 import type { Db } from "../../db/types.js";
-import { appendPlatformAudit } from "../repo.js";
+import { appendPlatformAudit } from "../audit.js";
 import { randomId } from "../../platform/crypto.js";
 
 const EMAIL = /[^\s@<>"']+@[^\s@<>"']+/g;

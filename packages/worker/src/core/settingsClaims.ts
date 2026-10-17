@@ -40,9 +40,9 @@
  * keys' column adapters, never SQL of this module's own.
  */
 
+import { type AuditActor, auditStatement, actorColumns } from "./audit.js";
 import { Catalog } from "@polaris-key/catalog";
 import type { Db, DbStatement } from "../db/types.js";
-import { randomId } from "../platform/crypto.js";
 import { getManifestSnapshot } from "./manifestSnapshot.js";
 import { CORE_COLUMN_ADAPTERS } from "./settings/columns.js";
 import { snapshotValue, type SnapshotManifest } from "./settings/snapshot.js";
@@ -59,7 +59,6 @@ import {
 import {
   auditValue as writeAuditValue,
   writeSetting,
-  type AuditActor,
   type SettingsWriteContext,
 } from "./settings/write.js";
 
@@ -298,16 +297,6 @@ export function stmtDeleteClaim(product: string, key: ClaimKey): DbStatement {
   };
 }
 
-/** Who a settings audit row names (`core/settings/write.ts`'s, re-exported). */
-export type { AuditActor };
-
-/** The actor of every resync audit row. */
-export const RESYNC_ACTOR: AuditActor = {
-  sub: "resync",
-  name: "Manifest resync",
-  email: null,
-};
-
 /** A short, bounded rendering of a setting value for an audit summary. */
 export const auditValue = writeAuditValue;
 
@@ -353,28 +342,19 @@ export function stmtSettingAudit(
 ): DbStatement {
   const side = (v: unknown) =>
     change && v !== undefined ? JSON.stringify({ effective: v }) : null;
-  return {
-    sql: `INSERT INTO audit
-            (product, id, at, actor_sub, actor_name, actor_email, action, target_kind,
-             target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, NULL, ?)`,
-    params: [
-      product,
-      randomId("aud"),
-      now,
-      actor.sub,
-      actor.name,
-      actor.email,
-      action,
-      targetKind,
-      targetId,
-      summary,
-      side(change?.before),
-      side(change?.after),
-      ORIGIN_OF[action],
-      targetKind === "setting" ? targetId : ROW_SETTING[targetKind],
-    ],
-  };
+  return auditStatement({
+    product,
+    at: now,
+    ...actorColumns(actor),
+    action,
+    target_kind: targetKind,
+    target_id: targetId,
+    summary,
+    before_json: side(change?.before),
+    after_json: side(change?.after),
+    origin: ORIGIN_OF[action],
+    setting_key: targetKind === "setting" ? targetId : ROW_SETTING[targetKind],
+  });
 }
 
 // ── Revert ──────────────────────────────────────────────────────────────────────

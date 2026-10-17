@@ -65,7 +65,7 @@ import {
   type RelinkRefusal,
 } from "../../services/identity/public.js";
 import type { AccountContext } from "../../services/identity/public.js";
-import { audit } from "../../core/console/audit.js";
+import { audit } from "../../core/audit.js";
 import {
   adminJson,
   err,

@@ -60,10 +60,9 @@ import { D1Db } from "./db/d1.js";
 import {
   listAllProductSlugs,
   listProducts,
-  pruneAudit,
-  prunePlatformAudit,
   releaseDormantSeats,
 } from "./core/repo.js";
+import { pruneAudit, prunePlatformAudit } from "./core/audit.js";
 import {
   prunePortalAudit,
   purgeDownloadTokensForProduct,

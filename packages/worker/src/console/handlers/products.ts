@@ -93,7 +93,7 @@ import {
   parseAutoIssue,
   parseFingerprintPolicy,
 } from "../../core/fingerprint.js";
-import { audit, platformAudit } from "../../core/console/audit.js";
+import { audit, platformAudit } from "../../core/audit.js";
 import {
   deviceLimitMessage,
   invalidDeviceLimit,

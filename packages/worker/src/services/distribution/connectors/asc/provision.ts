@@ -50,7 +50,7 @@
 import { renderDeepLink } from "../../../../core/storefront/deeplinks.js";
 import type { Db } from "../../../../db/types.js";
 import type { Env } from "../../../../platform/env.js";
-import { audit } from "../../../../core/console/audit.js";
+import { audit } from "../../../../core/audit.js";
 import { listOutletCredentials } from "../../../../core/outletCredentials.js";
 import {
   platformPin,

@@ -48,7 +48,7 @@ import {
   isAdminApiToken,
   mintAdminApiToken,
 } from "../src/platform/crypto.js";
-import { listAudit } from "../src/core/repo.js";
+import { listAudit } from "../src/core/audit.js";
 
 const ADMIN_SECRET = "test-admin-session-secret";
 const PLATFORM_GROUP = "platform-admins";

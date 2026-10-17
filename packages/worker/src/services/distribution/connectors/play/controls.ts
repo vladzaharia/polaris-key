@@ -39,7 +39,7 @@
 import type { Db } from "../../../../db/types.js";
 import type { Env } from "../../../../platform/env.js";
 import type { ServiceHooks } from "../../../../core/hooks.js";
-import { audit } from "../../../../core/console/audit.js";
+import { audit } from "../../../../core/audit.js";
 import type { AdminSession } from "../../../../core/console/session.js";
 import { getRollout, rolloutRecord } from "../../rollouts.js";
 import type { ConnectorControl } from "../index.js";

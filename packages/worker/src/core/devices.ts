@@ -61,7 +61,6 @@ import {
   randomId,
 } from "../platform/crypto.js";
 import {
-  appendAudit,
   findFingerprintByHwid,
   getDevice,
   getDeviceByTokenHash,
@@ -82,6 +81,7 @@ import {
   type FingerprintRow,
   type LicenseRow,
 } from "./repo.js";
+import { appendAudit } from "./audit.js";
 import {
   computeHwid,
   matchFingerprint,

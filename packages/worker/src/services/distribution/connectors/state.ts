@@ -16,7 +16,7 @@
 import { parseJsonObject } from "../../../platform/json.js";
 import { randomId } from "../../../platform/crypto.js";
 import type { Db } from "../../../db/types.js";
-import { appendAudit } from "../../../core/repo.js";
+import { appendAudit } from "../../../core/audit.js";
 import type { AvailabilityWriter } from "../availability.js";
 
 // ── Audit ────────────────────────────────────────────────────────────────────────────────────

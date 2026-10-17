@@ -79,7 +79,7 @@ import {
 import { ciActor, type CiPrincipal } from "../../../core/ciScope.js";
 import type { ReleaseCatalog } from "../../../core/hooks.js";
 import { publicKeyIsPublic } from "../blobAccess.js";
-import { appendAudit } from "../../../core/repo.js";
+import { appendAudit } from "../../../core/audit.js";
 import { cachedFeedText, feedCacheKey, feedStateStamp } from "./cache.js";
 import {
   feedReaders,

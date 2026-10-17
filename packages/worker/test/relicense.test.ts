@@ -32,7 +32,8 @@ import {
   CSRF_HEADER,
   issueSession,
 } from "../src/core/console/session.js";
-import { listAudit, SEAT_DORMANCY_SECONDS } from "../src/core/repo.js";
+import { SEAT_DORMANCY_SECONDS } from "../src/core/repo.js";
+import { listAudit } from "../src/core/audit.js";
 
 const TRUST = { [TEST_KID]: TEST_PUB };
 const PLATFORM_GROUP = "admins";

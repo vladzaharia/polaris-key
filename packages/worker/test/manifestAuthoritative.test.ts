@@ -12,6 +12,7 @@
  *     is its single writer (the deploy-hook half is in `deployHook.test.ts`).
  */
 
+import { SYSTEM_ACTORS } from "../src/core/audit.js";
 import { describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
@@ -36,7 +37,6 @@ import {
   claimedKeys,
   claimsForApply,
   endBreakGlassStatements,
-  RESYNC_ACTOR,
   stmtClaim,
   SYSTEM_RESYNC_REFUSAL,
 } from "../src/core/settingsClaims.js";
@@ -527,7 +527,7 @@ describe("a break-glass claim (ST-20)", () => {
     ]);
     // …and the batch (the deploy hook's form, which writes the value) leaves everything alone.
     const statements = await endBreakGlassStatements(ctx.db, SLUG, ended, {
-      actor: RESYNC_ACTOR,
+      actor: SYSTEM_ACTORS.resync,
       sha: null,
       now: at,
       apply: next,

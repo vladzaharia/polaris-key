@@ -53,7 +53,7 @@ import {
   err,
   readBody,
 } from "../../../core/console/respond.js";
-import { auditStatementFor } from "../../../core/console/audit.js";
+import { auditStatementFor } from "../../../core/audit.js";
 import type { LicenseAdminContext } from "./index.js";
 
 /** Origins a licence may be deleted from while still active: minted by a flow, not by a person. */

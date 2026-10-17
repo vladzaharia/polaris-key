@@ -17,7 +17,8 @@ import { restoreDb, snapshotDb } from "./d1Restore.js";
 import { makeEnv, NOW, seedProduct } from "./seed.js";
 import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
-import { appendAudit, insertLicense, type AuditRow } from "../src/core/repo.js";
+import { insertLicense } from "../src/core/repo.js";
+import { appendAudit, type AuditRow } from "../src/core/audit.js";
 import {
   subjectFor,
   subjectForOrNull,

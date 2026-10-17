@@ -26,7 +26,6 @@ import {
   computeEnrollHwid,
 } from "../../core/fingerprint.js";
 import {
-  appendAudit,
   getLicense,
   getLicenseByEnrollHwid,
   getTier,
@@ -34,6 +33,7 @@ import {
   type LicenseRow,
   type TierRow,
 } from "../../core/repo.js";
+import { appendAudit } from "../../core/audit.js";
 import {
   authorizationError,
   refusalManageUrl,

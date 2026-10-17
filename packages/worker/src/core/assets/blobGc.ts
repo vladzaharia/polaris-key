@@ -132,7 +132,7 @@
 import { APP_DELIVERABLE_ID } from "@polaris-key/manifest";
 import type { Db, DbStatement } from "../../db/types.js";
 import type { Env } from "../../platform/env.js";
-import { appendAudit } from "../repo.js";
+import { appendAudit } from "../audit.js";
 import { randomId } from "../../platform/crypto.js";
 import { blobKey, parseKey } from "./blobs.js";
 import type { CatalogRelease, ReleaseCatalog, ServiceHooks } from "../hooks.js";

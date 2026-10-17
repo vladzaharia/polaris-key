@@ -3,7 +3,6 @@ import { makeTestDb } from "./helpers.js";
 import { NOW, seedProduct } from "./seed.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
 import {
-  appendAudit,
   countActiveDevices,
   getKey,
   getLicense,
@@ -13,7 +12,6 @@ import {
   getTier,
   insertKey,
   insertLicense,
-  listAudit,
   listKeysByLicense,
   listDevicesByLicense,
   listProducts,
@@ -22,10 +20,10 @@ import {
   setDeviceStatus,
   touchKey,
   upsertDevice,
-  type AuditRow,
   type LicenseRow,
   type DeviceRow,
 } from "../src/core/repo.js";
+import { appendAudit, listAudit, type AuditRow } from "../src/core/audit.js";
 
 const lic = (
   slug: string,

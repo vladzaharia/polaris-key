@@ -36,7 +36,7 @@ import { randomId } from "../../../../platform/crypto.js";
 import type { Db } from "../../../../db/types.js";
 import type { RegistryRouteContext } from "../../../../core/registry/registryHost.js";
 import type { PublishPrincipal } from "../../../../core/registry/registryPublish.js";
-import { appendAudit } from "../../../../core/repo.js";
+import { appendAudit } from "../../../../core/audit.js";
 import {
   answeringFeed,
   commitNative,

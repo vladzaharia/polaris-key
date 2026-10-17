@@ -26,9 +26,9 @@ import {
   getActiveProductKey,
   getProduct,
   getProductSecret,
-  listAudit,
   setServices,
 } from "../src/core/repo.js";
+import { listAudit } from "../src/core/audit.js";
 import { SETTINGS } from "../src/mount.js";
 import { loadProduct } from "../src/core/products.js";
 import type { ServiceHooks } from "../src/core/hooks.js";

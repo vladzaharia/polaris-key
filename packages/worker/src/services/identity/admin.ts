@@ -28,7 +28,7 @@ import {
   readBody,
   settingRefused,
 } from "../../core/console/respond.js";
-import { audit, auditStatementFor } from "../../core/console/audit.js";
+import { audit, auditStatementFor } from "../../core/audit.js";
 import { writeSettings } from "../../core/settings/write.js";
 import {
   planSignInSettingsPatch,

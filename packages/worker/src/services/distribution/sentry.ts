@@ -45,7 +45,7 @@ import type { Db } from "../../db/types.js";
 import type { ServiceContext } from "../../core/registry.js";
 import type { ServiceHooks } from "../../core/hooks.js";
 import type { AdminSession } from "../../core/console/session.js";
-import { audit } from "../../core/console/audit.js";
+import { audit } from "../../core/audit.js";
 import { errorResponse, json } from "../../core/errors.js";
 import { rateLimitOk } from "../../core/rateLimit.js";
 import {

@@ -77,8 +77,6 @@ import {
   type RateLimit,
 } from "../../core/rateLimit.js";
 import {
-  appendAudit,
-  auditStatement,
   claimEnrolledLicense,
   getLicense,
   countActiveDevices,
@@ -90,6 +88,7 @@ import {
   type LicenseRow,
   type TierRow,
 } from "../../core/repo.js";
+import { appendAudit, auditStatement } from "../../core/audit.js";
 import {
   guardedInsert,
   guardedWrite,

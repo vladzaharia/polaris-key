@@ -49,7 +49,7 @@ import {
   applyOverrides,
   type OverrideUpdate,
 } from "../../../core/console/overrides.js";
-import { audit } from "../../../core/console/audit.js";
+import { audit } from "../../../core/audit.js";
 import {
   keyEntryListContext,
   licenseSummary,

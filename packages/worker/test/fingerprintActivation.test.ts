@@ -23,9 +23,9 @@ import type { SqliteDb } from "../src/db/sqlite.js";
 import {
   getDeviceFacts,
   getFingerprint,
-  listAudit,
   type FingerprintRow,
 } from "../src/core/repo.js";
+import { listAudit } from "../src/core/audit.js";
 
 const DEVICE = "device-fixture-01";
 

@@ -32,11 +32,8 @@ import {
   issueSession,
 } from "../src/core/console/session.js";
 import { loadProduct } from "../src/core/products.js";
-import {
-  getProductSecret,
-  listAudit,
-  listPlatformAudit,
-} from "../src/core/repo.js";
+import { getProductSecret } from "../src/core/repo.js";
+import { listAudit, listPlatformAudit } from "../src/core/audit.js";
 import { signInSecretContext } from "../src/services/identity/providers/config.js";
 import { sealSignInSecret } from "../scripts/seal-signin-secret.js";
 

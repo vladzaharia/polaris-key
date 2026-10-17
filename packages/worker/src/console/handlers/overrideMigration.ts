@@ -43,7 +43,7 @@ import {
 } from "../../core/ops/overrideMigration.js";
 import { getProduct } from "../../core/repo.js";
 import { appSecurityHeaders } from "../../core/securityHeaders.js";
-import { platformAudit } from "../../core/console/audit.js";
+import { platformAudit } from "../../core/audit.js";
 import {
   adminJson,
   err,

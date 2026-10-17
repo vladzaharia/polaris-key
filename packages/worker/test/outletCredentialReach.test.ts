@@ -84,6 +84,7 @@ const IMPORT_ALLOW_FILES = [
   "src/console/handlers/platformStoreConnections.ts",
 ];
 const TABLE_ALLOW_FILES = [
+  "src/db/owners.ts", // the table ownership map (P0-18) names every table
   "src/core/outletCredentials.ts",
   "src/console/handlers/products.ts",
   "src/core/console/repo.ts",
@@ -119,6 +120,7 @@ const PLATFORM_IMPORT_ALLOW_FILES = [
   "src/console/handlers/outletCredentials.ts",
 ];
 const PLATFORM_TABLE_ALLOW_FILES = [
+  "src/db/owners.ts", // the table ownership map (P0-18) names every table
   "src/core/platformCredentials.ts",
   "src/console/handlers/products.ts",
   "src/core/console/repo.ts",

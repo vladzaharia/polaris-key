@@ -19,7 +19,7 @@
  */
 
 import type { Db } from "../../db/types.js";
-import { audit } from "../console/audit.js";
+import { audit } from "../audit.js";
 import type { AdminSession } from "../console/session.js";
 import { appendPlatformEvent } from "../ops/platformEvents.js";
 import { storefrontAdapter, type StorefrontId } from "./adapter.js";

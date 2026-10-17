@@ -46,6 +46,7 @@ import type { AdminSession } from "../../core/console/session.js";
 import {
   AdminBodyError,
   adminJson,
+  adminNdjson,
   err,
   notFound,
 } from "../../core/console/respond.js";
@@ -59,10 +60,14 @@ import {
 } from "../../core/ops/deployIdentity.js";
 import { consoleEnvironment } from "./me.js";
 import { missingRequiredIndexes } from "../../scheduled.js";
-import { listPlatformAudit, listPlatformDeploys } from "../../core/repo.js";
+import { listPlatformDeploys } from "../../core/repo.js";
+import {
+  exportPlatformAuditNdjson,
+  listPlatformAudit,
+} from "../../core/audit.js";
 import { ensureSystemProduct } from "../systemProduct.js";
 import { handleFeedsAdmin } from "./feeds.js";
-import { platformAudit } from "../../core/console/audit.js";
+import { platformAudit } from "../../core/audit.js";
 import { operationsSnapshot } from "../../core/ops/operations.js";
 import { adminOidcIsDedicated } from "../../platform/platformOidc.js";
 import { platformMigrationReport } from "../../services/identity/public.js";
@@ -156,6 +161,10 @@ async function deployment(req: Request, env: Env, db: Db): Promise<Response> {
 }
 
 async function activity(req: Request, db: Db): Promise<Response> {
+  if (new URL(req.url).searchParams.get("format") === "ndjson") {
+    const out = await exportPlatformAuditNdjson(db);
+    return adminNdjson(out.body, "audit-platform.ndjson", out.truncated);
+  }
   const cursor = cursorOf(new URL(req.url), 50, 200);
   const rows = await listPlatformAudit(db, cursor);
   const items = rows.map((r) => ({

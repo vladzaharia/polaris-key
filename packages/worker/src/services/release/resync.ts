@@ -21,6 +21,7 @@
  * key or overwrite an already-sealed profile secret: `sparkleKeyRefusal`, `manifestSecrets.ts`.
  */
 
+import { SYSTEM_ACTORS, auditStatement } from "../../core/audit.js";
 import { Catalog } from "@polaris-key/catalog";
 import {
   catalogDeliveryIssues,
@@ -36,7 +37,6 @@ import {
   endBreakGlassStatements,
   systemResyncRefusal,
   type BreakGlassClaim,
-  RESYNC_ACTOR,
   stmtSettingAudit,
   unlessClaimed,
   type ClaimKey,
@@ -508,7 +508,7 @@ async function applyRepoManifest(
     db,
     slug,
     applyClaims.ended,
-    { actor: RESYNC_ACTOR, sha: appliedSha, now },
+    { actor: SYSTEM_ACTORS.resync, sha: appliedSha, now },
   );
   const audits: DbStatement[] = [];
   const auditSetting = (
@@ -521,7 +521,7 @@ async function applyRepoManifest(
     const stmt = stmtSettingAudit(
       slug,
       now,
-      RESYNC_ACTOR,
+      SYSTEM_ACTORS.resync,
       "setting.resync",
       "setting",
       key,
@@ -741,7 +741,7 @@ async function applyRepoManifest(
         stmtSettingAudit(
           slug,
           now,
-          RESYNC_ACTOR,
+          SYSTEM_ACTORS.resync,
           "setting.resync",
           "setting",
           "config.catalog",
@@ -1010,7 +1010,7 @@ async function applyRepoManifest(
     if (manifestPublisherChanged(currentPublisher, nextPublisher)) {
       updated.push("publisher");
       stmts.push(
-        auditStatement(
+        publisherAudit(
           slug,
           now,
           `manifest:${owner}/${repo}`,
@@ -1263,7 +1263,7 @@ function rowAudit(
   return stmtSettingAudit(
     product,
     now,
-    RESYNC_ACTOR,
+    SYSTEM_ACTORS.resync,
     "setting.resync",
     kind,
     id,
@@ -1536,20 +1536,23 @@ function carried(
 }
 
 /** The audit row for a manifest-driven publisher change, in the resync's batch. */
-function auditStatement(
+function publisherAudit(
   product: string,
   now: number,
   actor: string,
   summary: string,
 ): DbStatement {
-  return {
-    sql: `INSERT INTO audit
-            (product, id, at, actor_sub, actor_name, actor_email, action, target_kind,
-             target_id, parent_id, summary)
-          VALUES (?, ?, ?, ?, 'Manifest resync', NULL, 'ci.publisher.manifest', 'ci_publisher',
-                  ?, NULL, ?)`,
-    params: [product, randomId("aud"), now, actor, product, summary],
-  };
+  return auditStatement({
+    product,
+    at: now,
+    actor_sub: actor,
+    actor_name: "Manifest resync",
+    actor_email: null,
+    action: "ci.publisher.manifest",
+    target_kind: "ci_publisher",
+    target_id: product,
+    summary,
+  });
 }
 
 /**

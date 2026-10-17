@@ -48,7 +48,7 @@ import { reservedDisplayNamesMode } from "../../../core/accounts/reservedDisplay
 import type { ServiceContext } from "../../../core/registry.js";
 import type { AdminSession } from "../../../core/console/session.js";
 import { adminJson, err, readBody } from "../../../core/console/respond.js";
-import { audit } from "../../../core/console/audit.js";
+import { audit } from "../../../core/audit.js";
 import {
   appProblems,
   DEFAULT_PRECEDENCE,

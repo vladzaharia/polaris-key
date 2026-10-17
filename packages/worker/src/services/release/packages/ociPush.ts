@@ -74,7 +74,7 @@ import {
   type RegistryPublisher,
 } from "../../../core/registry/registryTokens.js";
 import { rateLimitOk } from "../../../core/rateLimit.js";
-import { appendAudit } from "../../../core/repo.js";
+import { appendAudit } from "../../../core/audit.js";
 import { randomId } from "../../../platform/crypto.js";
 import { sha256Hex } from "../../../platform/hash.js";
 import {

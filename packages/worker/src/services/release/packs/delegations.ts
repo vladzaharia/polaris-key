@@ -67,7 +67,7 @@ import type { CatalogRevocation } from "../../../core/hooks.js";
 import { errorResponse, ErrorCode, json } from "../../../core/errors.js";
 import { ciActor } from "../../../core/ciScope.js";
 import type { CiTokenRecord } from "../../../core/publisher.js";
-import { appendAudit } from "../../../core/repo.js";
+import { appendAudit } from "../../../core/audit.js";
 import { randomId } from "../../../platform/crypto.js";
 import { sha256Hex } from "../../../platform/hash.js";
 import type { Db, DbStatement } from "../../../db/types.js";

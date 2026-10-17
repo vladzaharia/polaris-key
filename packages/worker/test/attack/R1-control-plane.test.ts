@@ -31,7 +31,7 @@ import {
 } from "../../src/services/identity/portal/session.js";
 import { can, PLATFORM, resolvePrincipal } from "../../src/console/authz.js";
 import { hashKey } from "../../src/platform/crypto.js";
-import { listAudit } from "../../src/core/repo.js";
+import { listAudit } from "../../src/core/audit.js";
 import { handleMintAuth } from "../../src/services/config/mint.js";
 import { secureResponse } from "../../src/core/securityHeaders.js";
 import { loadProduct } from "../../src/core/products.js";

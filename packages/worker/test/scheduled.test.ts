@@ -28,11 +28,11 @@ import {
   type SweepState,
 } from "../src/scheduled.js";
 import {
-  appendAudit,
   claimDeviceSeat,
   insertLicense,
   setServices,
 } from "../src/core/repo.js";
+import { appendAudit } from "../src/core/audit.js";
 import { CONNECTOR_EVENT_RETENTION_SECONDS } from "../src/services/distribution/connectors/state.js";
 import { portalAudit } from "../src/services/identity/portal/repo.js";
 import { createHash } from "node:crypto";

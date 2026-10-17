@@ -27,9 +27,9 @@ import { validateDeviceToken } from "../src/core/devices.js";
 import {
   claimDeviceSeat,
   getDevice,
-  listAudit,
   setDeviceStatus,
 } from "../src/core/repo.js";
+import { listAudit } from "../src/core/audit.js";
 
 function hash(seed: string): string {
   return seed

@@ -20,7 +20,7 @@ import {
   CSRF_HEADER,
   issueSession,
 } from "../src/core/console/session.js";
-import { listAudit } from "../src/core/repo.js";
+import { listAudit } from "../src/core/audit.js";
 import { open } from "../src/platform/keyvault.js";
 import {
   GOOGLE_TOKEN_URI,

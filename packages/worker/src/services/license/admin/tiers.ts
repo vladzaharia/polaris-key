@@ -16,7 +16,7 @@ import {
   err,
   readBody,
 } from "../../../core/console/respond.js";
-import { audit } from "../../../core/console/audit.js";
+import { audit } from "../../../core/audit.js";
 import {
   deviceLimitMessage,
   invalidDeviceLimit,

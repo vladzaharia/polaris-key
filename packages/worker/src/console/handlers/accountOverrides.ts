@@ -34,7 +34,7 @@ import {
 import { redactPayload } from "../../core/console/redact.js";
 import { loadCatalog } from "../../core/activeCatalog.js";
 import { adminJson, err, readBody } from "../../core/console/respond.js";
-import { audit } from "../../core/console/audit.js";
+import { audit } from "../../core/audit.js";
 import type { AdminSession } from "../../core/console/session.js";
 
 /** The keys a batch names, for the audit summary (names only: never a value). */

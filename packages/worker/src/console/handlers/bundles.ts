@@ -69,7 +69,7 @@ import type { BundleDoc } from "@polaris-key/protocol/core";
 import type { Env } from "../../platform/env.js";
 import type { Db } from "../../db/types.js";
 import type { AdminSession } from "../../core/console/session.js";
-import { audit } from "../../core/console/audit.js";
+import { audit } from "../../core/audit.js";
 import {
   adminJson,
   err,
