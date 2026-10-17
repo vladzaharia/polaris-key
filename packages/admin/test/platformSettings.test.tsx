@@ -16,6 +16,7 @@ import {
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { configureAxe } from "vitest-axe";
+import { activeSectionAt } from "../src/console/templates/Settings.js";
 import { platformOverview } from "./feedsFixture.js";
 import {
   PENDING,
@@ -415,8 +416,17 @@ async function settingsPage(): Promise<HTMLElement> {
   return main();
 }
 
+/** Advanced is folded; the sections inside it open it first. */
+const IN_ADVANCED = ["Limits", "Keyring", "Secrets", "Identity provider"];
+
 async function section(name: string): Promise<HTMLElement> {
-  return within(await settingsPage()).findByRole("region", { name });
+  const page = await settingsPage();
+  if (IN_ADVANCED.includes(name)) {
+    const adv = await within(page).findByRole("region", { name: "Advanced" });
+    const show = within(adv).queryByRole("button", { name: "Show" });
+    if (show) await userEvent.click(show);
+  }
+  return within(page).findByRole("region", { name });
 }
 
 function writes(log: FetchLog, method: string) {
@@ -1356,6 +1366,7 @@ describe("accessibility", () => {
   it("passes axe", async () => {
     boot("#/platform/settings", { extra: routes() });
     const page = await settingsPage();
+    await section("Keyring");
     await within(page).findByText("Ada Lovelace");
     await within(page).findByText("Active");
     const results = await axe(page);
@@ -1405,7 +1416,9 @@ describe("Package feeds policy in Storefront and hosting (ST-09)", () => {
     expect(
       within(dialog).getByText("Stop serving npm for every product?"),
     ).toBeTruthy();
-    expect(within(dialog).getByText(/feeds of 2 products answer/)).toBeTruthy();
+    expect(
+      within(dialog).getByText(/Every product's npm feed.*not-found/),
+    ).toBeTruthy();
     expect(policyPut(log)).toHaveLength(0);
     await userEvent.click(
       within(dialog).getByRole("button", { name: "Stop serving npm" }),
@@ -1444,16 +1457,12 @@ describe("Package feeds policy in Storefront and hosting (ST-09)", () => {
       },
     });
     const hosting = await section("Storefront and hosting");
-    const sw = within(hosting).getByRole("switch", { name: "Serve npm" });
-    expect((sw as HTMLButtonElement).disabled).toBe(true);
+    // A view-only value is text with a lock, never a faint disabled control.
+    expect(within(hosting).queryByRole("switch")).toBeNull();
+    expect(within(hosting).getAllByText("On").length).toBeGreaterThan(0);
     const jobs = await section("Jobs");
-    expect(
-      (
-        within(jobs).getByRole("switch", {
-          name: "Lazy deltas",
-        }) as HTMLButtonElement
-      ).disabled,
-    ).toBe(true);
+    expect(within(jobs).queryByRole("switch")).toBeNull();
+    expect(within(jobs).getByText("Off")).toBeTruthy();
     // One notice for the page, not one reason per row; the row keeps a lock.
     const notice = within(main()).getByText("You can view these settings");
     expect(notice).toBeTruthy();
@@ -1584,6 +1593,99 @@ describe("section navigation (ST-09 UX review)", () => {
     await section("Licensing");
     await waitFor(() =>
       expect(document.activeElement?.id).toBe("platform-licensing"),
+    );
+  });
+});
+
+describe("section navigation: current section and unsaved edits (ST-09)", () => {
+  it("activeSectionAt marks the last section whose top is above the line, and the last at the foot", () => {
+    expect(activeSectionAt([-900, -300, 40, 700], 96, false)).toBe(2);
+    expect(activeSectionAt([200, 500, 900], 96, false)).toBe(0);
+    // A short last section never reaches the line: at the foot it is the current one.
+    expect(activeSectionAt([-900, -300, 40, 700], 96, true)).toBe(3);
+    expect(activeSectionAt([], 96, true)).toBe(-1);
+  });
+
+  it("a jump marks the chosen section at once, in the pills and the picker, and a deep link marks its section", async () => {
+    HTMLElement.prototype.scrollIntoView = vi.fn();
+    boot("#/platform/settings", { extra: routes() });
+    await settingsPage();
+    await section("Jobs");
+    const pills = screen.getByRole("navigation", { name: "Jump to section" });
+    await userEvent.click(within(pills).getByRole("link", { name: "Jobs" }));
+    expect(
+      within(pills)
+        .getAllByRole("link", { current: "location" })
+        .map((a) => a.textContent),
+    ).toEqual(["Jobs"]);
+    expect(
+      (
+        screen.getByRole("combobox", {
+          name: "Jump to section",
+        }) as HTMLSelectElement
+      ).value,
+    ).toBe("platform-jobs");
+    // The last section (Recently changed) is markable too.
+    await userEvent.click(
+      within(pills).getByRole("link", { name: "Recently changed" }),
+    );
+    expect(
+      within(pills)
+        .getAllByRole("link", { current: "location" })
+        .map((a) => a.textContent),
+    ).toEqual(["Recently changed"]);
+    cleanup();
+    resetConsole();
+    boot("#/platform/settings?section=platform-licensing", { extra: routes() });
+    await settingsPage();
+    const again = await screen.findByRole("navigation", {
+      name: "Jump to section",
+    });
+    await waitFor(() =>
+      expect(
+        within(again)
+          .getAllByRole("link", { current: "location" })
+          .map((a) => a.textContent),
+      ).toEqual(["Licensing"]),
+    );
+  });
+
+  it("a jump with a draft in a field asks nothing and keeps the draft", async () => {
+    HTMLElement.prototype.scrollIntoView = vi.fn();
+    boot("#/platform/settings", { extra: routes() });
+    const hosting = await section("Storefront and hosting");
+    const input = within(hosting).getByLabelText("npm size ceiling (MiB)");
+    await userEvent.clear(input);
+    await userEvent.type(input, "80");
+    const pills = screen.getByRole("navigation", { name: "Jump to section" });
+    await userEvent.click(within(pills).getByRole("link", { name: "Jobs" }));
+    await waitFor(() =>
+      expect(window.location.hash).toBe(
+        "#/platform/settings?section=platform-jobs",
+      ),
+    );
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect((input as HTMLInputElement).value).toBe("80");
+  });
+});
+
+describe("Advanced is folded (ST-09)", () => {
+  it("opens from a Go to link inside it", async () => {
+    boot("#/platform/settings", { extra: routes() });
+    const page = await settingsPage();
+    const adv = await within(page).findByRole("region", { name: "Advanced" });
+    expect(within(adv).queryByRole("region", { name: "Keyring" })).toBeNull();
+    await within(page).findByRole("region", { name: "Platform ready" });
+    await userEvent.click(
+      within(page).getByRole("button", { name: /^Show all/ }),
+    );
+    HTMLElement.prototype.scrollIntoView = vi.fn();
+    await userEvent.click(
+      within(page).getByRole("link", { name: "Go to Secrets" }),
+    );
+    await within(adv).findByRole("region", { name: "Secrets" });
+    await waitFor(() =>
+      expect(document.activeElement?.id).toBe("platform-secrets"),
     );
   });
 });

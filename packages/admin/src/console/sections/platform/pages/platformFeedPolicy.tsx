@@ -54,9 +54,6 @@ export function ceilingError(bytes: unknown): string | null {
 export function FeedPolicySection(): React.ReactElement | null {
   const query = useFeedsOverview(PLATFORM);
   const rows = (query.data?.policies ?? []).filter((p) => p.policy !== null);
-  const affected = (query.data?.owners ?? []).filter(
-    (o) => o.packageFeeds,
-  ).length;
   const head = (body: React.ReactNode) => (
     <div
       id="platform-feeds-policy"
@@ -98,12 +95,7 @@ export function FeedPolicySection(): React.ReactElement | null {
     <ul className="mt-2 divide-y divide-border">
       {rows.map((p) => (
         <li key={p.ecosystem}>
-          <PolicyRow
-            eco={p.ecosystem}
-            label={p.label}
-            policy={p.policy!}
-            affected={affected}
-          />
+          <PolicyRow eco={p.ecosystem} label={p.label} policy={p.policy!} />
         </li>
       ))}
     </ul>,
@@ -114,12 +106,10 @@ function PolicyRow({
   eco,
   label,
   policy,
-  affected,
 }: {
   eco: FeedEcosystem;
   label: string;
   policy: FeedPolicy;
-  affected: number;
 }): React.ReactElement {
   const queryClient = useQueryClient();
   const write = useWriteGate("platform");
@@ -128,7 +118,6 @@ function PolicyRow({
   const readOnly = !write.allowed;
   const reason = write.disabledReason ?? "You can't edit this.";
   const id = `platform-feeds-${eco}`;
-  const products = (n: number) => `${n} ${n === 1 ? "product" : "products"}`;
 
   const enabled = useSettingWrite({
     label: `Serve ${label}`,
@@ -147,7 +136,7 @@ function PolicyRow({
     consequences: (to) =>
       to === "off"
         ? [
-            `The ${label} feeds of ${products(affected)} answer not-found within 30 seconds.`,
+            `Every product's ${label} feed, the platform's included, answers not-found within 30 seconds.`,
             "Settings, packages and versions are kept; the feeds answer again when the ecosystem is served.",
           ]
         : [`Every ${label} feed serves as its own settings say.`],
@@ -190,7 +179,7 @@ function PolicyRow({
           {label}
         </span>
         <div
-          className="flex items-center gap-2"
+          className="order-2 flex min-w-0 basis-full flex-wrap items-center gap-2 sm:order-none sm:basis-auto"
           onKeyDown={(e) => {
             if (e.key === "Enter" && ceiling.dirty && !draftBad && !busy) {
               e.preventDefault();
@@ -210,7 +199,7 @@ function PolicyRow({
               {formatSettingValue(CEILING_SPEC, policy.maxPackageBytesCeiling)}
             </span>
           ) : (
-            <div className="w-40">
+            <div className="w-full min-w-0 max-w-40">
               <NumberInput
                 id={`${id}-ceiling`}
                 aria-label={`${label} size ceiling (MiB)`}
@@ -255,20 +244,25 @@ function PolicyRow({
             </>
           ) : null}
         </div>
-        <span className="ml-auto inline-flex items-center gap-2">
+        <span className="order-1 ml-auto inline-flex items-center gap-2 sm:order-none">
           {readOnly ? (
-            <Lock aria-hidden className="size-3.5 text-fg-muted" />
-          ) : null}
-          <Switch
-            id={`${id}-enabled`}
-            aria-label={`Serve ${label}`}
-            aria-describedby={readOnly ? `${id}-readonly` : undefined}
-            checked={enabled.draft === "on"}
-            disabled={readOnly}
-            readOnly={enabled.busy}
-            aria-busy={enabled.busy || undefined}
-            onCheckedChange={(next) => enabled.propose(next ? "on" : "off")}
-          />
+            <span
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-fg-strong"
+              aria-describedby={`${id}-readonly`}
+            >
+              <Lock aria-hidden className="size-3.5 text-fg-muted" />
+              {policy.enabled ? "On" : "Off"}
+            </span>
+          ) : (
+            <Switch
+              id={`${id}-enabled`}
+              aria-label={`Serve ${label}`}
+              checked={enabled.draft === "on"}
+              readOnly={enabled.busy}
+              aria-busy={enabled.busy || undefined}
+              onCheckedChange={(next) => enabled.propose(next ? "on" : "off")}
+            />
+          )}
         </span>
       </div>
       {readOnly ? (

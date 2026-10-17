@@ -169,7 +169,7 @@ function consequencesOf(
     case "KEYENTRY_REFUSALS":
       return after === "on"
         ? [
-            "On products with Identity on, a new device is refused a key whose licence is in no account and has used every key entry. The app shows a link to add the key to an account.",
+            "On products with Identity on, a new device is refused a key whose license is in no account and has used every key entry. The app shows a link to add the key to an account.",
             "Devices already using a key are never refused. Turn this on only once the SDKs that show the refusal are released.",
             reach,
           ]

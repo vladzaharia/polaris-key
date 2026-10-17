@@ -226,14 +226,16 @@ function parsed(hash: string): ParsedLocation {
 
 /**
  * Navigate to a hash. Returns `false` when a blocker refused. `replace` swaps the history entry
- * instead of pushing one (redirects, query edits).
+ * instead of pushing one (redirects, query edits). `force` skips the blockers, for a change that
+ * stays on the page (a section anchor in the query): nothing there can be lost.
  */
 export function navigate(
   hash: string,
-  opts: { replace?: boolean } = {},
+  opts: { replace?: boolean; force?: boolean } = {},
 ): boolean {
   if (hash === currentHash()) return true;
-  if (!allowed(hash)) return false;
+  // `force`: an in-page change (the path is the same) that never leaves unsaved work behind.
+  if (!opts.force && !allowed(hash)) return false;
   if (opts.replace) {
     replaceHash(hash);
     committedHash = hash;
@@ -285,19 +287,20 @@ export function useSearchParam<T>(
   name: string,
   codec: QueryCodec<T>,
   options: { replace?: boolean } = {},
-): [T, (value: T, opts?: { replace?: boolean }) => void] {
+): [T, (value: T, opts?: { replace?: boolean; force?: boolean }) => void] {
   const replaceDefault = options.replace ?? true;
   const { route, hash } = useLocation();
   const raw = route.query.get(name);
   const value = React.useMemo(() => codec.parse(raw), [codec, raw]);
   const set = React.useCallback(
-    (next: T, opts?: { replace?: boolean }) => {
+    (next: T, opts?: { replace?: boolean; force?: boolean }) => {
       const q = hash.indexOf("?");
       const path = q === -1 ? hash : hash.slice(0, q);
       const query = withParam(route.query, name, codec, next);
       const s = query.toString();
       navigate(`${path || "#/"}${s ? `?${s}` : ""}`, {
         replace: opts?.replace ?? replaceDefault,
+        force: opts?.force,
       });
     },
     [codec, hash, name, replaceDefault, route.query],

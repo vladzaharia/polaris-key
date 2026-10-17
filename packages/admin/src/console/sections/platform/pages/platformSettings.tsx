@@ -118,8 +118,16 @@ const WARNING_TARGETS: Record<string, string> = {
   portal_session_secret_unset: "platform-secrets",
 };
 
+const OPEN_ADVANCED = "platform-open-advanced";
+
 function jump(id: string): void {
   const el = document.getElementById(id);
+  if (!el && id.startsWith("platform-")) {
+    // Inside the folded Advanced card: open it, then go.
+    window.dispatchEvent(new Event(OPEN_ADVANCED));
+    requestAnimationFrame(() => jump(id));
+    return;
+  }
   el?.scrollIntoView({ block: "start" });
   el?.focus({ preventScroll: true });
 }
@@ -154,6 +162,56 @@ function SettingsSkeleton(): React.ReactElement {
         ))}
       </div>
     </div>
+  );
+}
+
+/** Advanced: read-only deploy values, limits, keyring and secrets. Folded until asked for. */
+function AdvancedSection({
+  forceOpen,
+  children,
+}: {
+  forceOpen: boolean;
+  children: React.ReactNode;
+}): React.ReactElement {
+  const [open, setOpen] = React.useState(forceOpen);
+  React.useEffect(() => {
+    const on = () => setOpen(true);
+    window.addEventListener(OPEN_ADVANCED, on);
+    return () => window.removeEventListener(OPEN_ADVANCED, on);
+  }, []);
+  return (
+    <section
+      id="platform-advanced"
+      aria-labelledby="platform-advanced-title"
+      tabIndex={-1}
+      className="space-y-6 outline-none"
+    >
+      <div className="flex items-center justify-between gap-4 rounded-lg border border-border bg-surface-raised px-5 py-4">
+        <div className="min-w-0">
+          <h2
+            id="platform-advanced-title"
+            className="text-lg font-semibold text-fg-strong"
+          >
+            Advanced
+          </h2>
+          <p className="text-sm text-fg-muted">
+            Identity provider, limits, keyring and secrets. Read-only.
+          </p>
+        </div>
+        <Button
+          size="sm"
+          variant="outline"
+          aria-expanded={open}
+          aria-controls="platform-advanced-body"
+          onClick={() => setOpen((v) => !v)}
+        >
+          {open ? "Hide" : "Show"}
+        </Button>
+      </div>
+      <div id="platform-advanced-body" hidden={!open} className="space-y-6">
+        {open ? children : null}
+      </div>
+    </section>
   );
 }
 
@@ -249,6 +307,7 @@ export function PlatformSettingsPage(): React.ReactElement {
 
   return (
     <SettingsTemplate
+      jump
       header={header}
       sections={SECTIONS.filter((s) => !hidden.has(s.id))}
     >
@@ -328,8 +387,7 @@ export function PlatformSettingsPage(): React.ReactElement {
         {rows("platform-jobs")}
       </SettingsSection>
 
-      <div id="platform-advanced" tabIndex={-1} className="space-y-6">
-        <h2 className="text-lg font-semibold text-fg-strong">Advanced</h2>
+      <AdvancedSection forceOpen={rowsIn("platform-advanced").length > 0}>
         {rows("platform-advanced")}
         {has(IDENTITY_VARS) ? (
           <Section
@@ -351,7 +409,7 @@ export function PlatformSettingsPage(): React.ReactElement {
           warning={kekWarning?.message}
         />
         <SecretsSection view={view} />
-      </div>
+      </AdvancedSection>
 
       <HistorySection settings={view.settings} />
     </SettingsTemplate>

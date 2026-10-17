@@ -122,7 +122,7 @@ export function SettingRow(props: SettingRowProps): React.ReactElement {
           : "default";
 
   const reasonId = `${id}-readonly`;
-  const asText = viewOnly && spec.kind !== "switch" && spec.kind !== "boolean";
+  const asText = viewOnly;
   let control: React.ReactNode;
   if (asText)
     control = (
@@ -335,9 +335,6 @@ export function SettingRow(props: SettingRowProps): React.ReactElement {
         <span id={reasonId} className="sr-only">
           Read-only. {readOnly}
         </span>
-      ) : null}
-      {viewOnly && !asText ? (
-        <Lock aria-hidden className="size-3.5 shrink-0 text-fg-muted" />
       ) : null}
       {control}
     </SettingsRow>

@@ -122,8 +122,8 @@ section (`?section=`), so a link opens there.
   a default is editable.
 - **Sign-in.** The reserved display-name setting and the console session length. The identity
   provider's deploy-time values are under Advanced.
-- **Storefront and hosting.** The storefront and hosted-assets switches (`ASSET_HOSTING`; turning
-  either asks first), then the deploy-time hosts and accounts, read-only. **Package feeds** holds each
+- **Storefront and hosting.** The hosted-assets switch (`ASSET_HOSTING`; turning it
+  off asks first), then the deploy-time hosts and accounts, read-only. **Package feeds** holds each
   ecosystem's platform policy: _Serve_ (stopping an ecosystem asks first and names every product)
   and a size ceiling in MiB with its own Save bar. A member without Platform edit sees values with a lock
   and one notice at the top saying who to ask.

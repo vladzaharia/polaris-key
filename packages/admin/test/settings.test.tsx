@@ -81,6 +81,27 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("Core → Settings", () => {
+  it("keeps the rail as it was: no pills or picker, and a jump with unsaved edits asks nothing (ST-09)", async () => {
+    const user = userEvent.setup();
+    HTMLElement.prototype.scrollIntoView = vi.fn();
+    mount();
+    const name = await screen.findByLabelText(/Display name/);
+    await user.clear(name);
+    await user.type(name, "DJDL Pro");
+    expect(
+      screen.queryByRole("combobox", { name: "Jump to section" }),
+    ).toBeNull();
+    expect(
+      screen.queryByRole("navigation", { name: "Jump to section" }),
+    ).toBeNull();
+    const rail = screen.getByRole("navigation", { name: "On this page" });
+    const hash = window.location.hash;
+    await user.click(within(rail).getAllByRole("link").at(-1)!);
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(window.location.hash).toBe(hash);
+    expect((name as HTMLInputElement).value).toBe("DJDL Pro");
+  });
+
   it("saves only what changed (A-3, PRD-6)", async () => {
     const user = userEvent.setup();
     fns.updateProduct.mockResolvedValue({ ok: true, slug: "djdl" });
