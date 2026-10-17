@@ -36,7 +36,12 @@ describe("Personal tokens roster", () => {
         "DELETE /manage/api/account-tokens/pt_a": () => {
           roster = roster.map((t) =>
             t.id === "pt_a"
-              ? { ...t, status: "revoked", revokeReason: "admin" }
+              ? {
+                  ...t,
+                  status: "revoked",
+                  revokeReason: "admin",
+                  revokedAt: 1_750_100_000,
+                }
               : t,
           );
           return { ok: true, token: roster[0] };
@@ -67,5 +72,9 @@ describe("Personal tokens roster", () => {
     await waitFor(() =>
       expect(within(table).getAllByText("Revoked").length).toBeGreaterThan(0),
     );
+    // The row says who ended it, in place of the expiry.
+    expect(within(table).getAllByText(/by admin/).length).toBeGreaterThan(0);
+    // Focus does not fall to the body.
+    await waitFor(() => expect(document.activeElement).not.toBe(document.body));
   });
 });

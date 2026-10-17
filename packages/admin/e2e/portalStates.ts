@@ -807,12 +807,12 @@ export const SHIPPED: ShippedState[] = [
   {
     section: "4.20",
     id: "product-package",
-    title: "Product page with Package access (Tidewater Studio)",
+    title: "Product page with the Packages pointer (Tidewater Studio)",
     scenario: "three",
     path: "/#/p/tidewater/package",
     ready: async (p) => {
       await h1(p, "Tidewater Studio");
-      await p.getByRole("heading", { name: /Package access/ }).waitFor();
+      await p.getByRole("heading", { name: /^Packages$/ }).waitFor();
     },
   },
   {

@@ -96,10 +96,11 @@ describe("account tokens roster (Superadmin)", () => {
     const t = await mint("laptop");
     const res = await admin("DELETE", `/account-tokens/${t.view.id}`);
     expect(res.status).toBe(200);
-    expect((await res.json()).token).toMatchObject({
+    const body = await res.json();
+    expect(JSON.stringify(body)).not.toContain("revokedBy");
+    expect(body.token).toMatchObject({
       status: "revoked",
       revokeReason: "admin",
-      revokedBy: "admin",
     });
     expect(
       await resolvePersonalToken(env, db, t.token, PACKAGES_READ_SCOPE, NOW),

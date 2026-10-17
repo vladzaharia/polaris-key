@@ -192,7 +192,7 @@ export function StepUp({
       <Button
         key="email"
         variant="link"
-        className="text-sm font-medium"
+        className="text-sm font-medium max-sm:min-h-11"
         onClick={() => {
           setWay("email");
           setError(null);
@@ -206,7 +206,7 @@ export function StepUp({
       <Button
         key="passkey"
         variant="link"
-        className="text-sm font-medium"
+        className="text-sm font-medium max-sm:min-h-11"
         onClick={() => {
           setWay("passkey");
           setSent(false);
@@ -302,7 +302,7 @@ export function StepUp({
             </Button>
             <Button
               variant="link"
-              className="text-sm font-medium"
+              className="text-sm font-medium max-sm:min-h-11"
               onClick={() => void sendCode()}
             >
               {t("signin.code.resend")}

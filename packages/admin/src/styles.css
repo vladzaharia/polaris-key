@@ -396,6 +396,7 @@
      and a section's heading after a jump to it from the section nav (PS-05 review M4); neither is
      a control, so it draws no focus ring. */
   [data-page-title]:focus-visible,
+  [data-pk-overlay-header] h2[tabindex="-1"]:focus-visible,
   main :is(h1, h2, h3)[tabindex="-1"]:focus-visible {
     outline: none;
     box-shadow: none;

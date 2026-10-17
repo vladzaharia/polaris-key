@@ -390,22 +390,27 @@ export function useMintRegistryToken(product: string, licenseId: string) {
   return useMutation({
     mutationFn: (input: PortalMintTokenInput) =>
       portalApi.mintRegistryToken(product, licenseId, input),
-    onSuccess: () =>
+    onSuccess: () => {
       void qc.invalidateQueries({
         queryKey: qk.portalRegistryTokens(product, licenseId),
-      }),
+      });
+      void qc.invalidateQueries({ queryKey: qk.portalPersonalTokens() });
+    },
   });
 }
 
-export function useRevokeRegistryToken(product: string, licenseId: string) {
+/** Revoke a licence-bound token, from Account → Packages' per-app group (any licence). */
+export function useRevokeRegistryToken() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (tokenId: string) =>
-      portalApi.revokeRegistryToken(product, licenseId, tokenId),
-    onSuccess: () =>
+    mutationFn: (t: { product: string; licenseId: string; tokenId: string }) =>
+      portalApi.revokeRegistryToken(t.product, t.licenseId, t.tokenId),
+    onSuccess: (_res, t) => {
       void qc.invalidateQueries({
-        queryKey: qk.portalRegistryTokens(product, licenseId),
-      }),
+        queryKey: qk.portalRegistryTokens(t.product, t.licenseId),
+      });
+      void qc.invalidateQueries({ queryKey: qk.portalPersonalTokens() });
+    },
   });
 }
 

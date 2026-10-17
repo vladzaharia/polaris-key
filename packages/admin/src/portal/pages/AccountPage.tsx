@@ -12,7 +12,10 @@ import { cn } from "../../lib/cn.js";
 import type { PortalAccount } from "../api.js";
 import { ProfileCard } from "../components/ProfileCard.js";
 import { SignInMethods } from "../components/account/SignInMethods.js";
-import { PackagesCard } from "../components/account/PackagesCard.js";
+import {
+  PackagesCard,
+  packagesVisible,
+} from "../components/account/PackagesCard.js";
 import { SessionsCard } from "../components/account/SessionsCard.js";
 import { SectionCard } from "../components/product/Card.js";
 import { DownloadData } from "../components/DownloadData.js";
@@ -22,6 +25,7 @@ import {
   useCancelAccountDeletion,
   useDeleteAccount,
   useExportAccountData,
+  usePersonalTokens,
   useSessions,
 } from "../data.js";
 import { YOUR_DATA_COPY } from "../copy/yourData.js";
@@ -67,19 +71,45 @@ export function AccountPage({
   useDocumentTitle("Account");
   const sessions = useSessions();
   const sessionsShown = !sessions.isPending && sessions.data !== null;
-  const sections = SECTIONS.filter((s) => s.id !== "sessions" || sessionsShown);
+  const packages = usePersonalTokens();
+  const packagesShown = packagesVisible(packages.data);
+  const sections = SECTIONS.filter(
+    (s) =>
+      (s.id !== "sessions" || sessionsShown) &&
+      (s.id !== "packages" || packagesShown),
+  );
   const [current, setCurrent] = React.useState<AccountSection>(
     SECTIONS.some((s) => s.id === section) ? section! : "profile",
   );
   // A section deep link scrolls there once, as the page opens; the router scrolls to a section
   // the URL names later (MO-05), so this does not undo its smooth scroll with an instant one.
+  // The sections above Packages load after the first paint and push it down, so a link to it
+  // waits until they have settled, scrolls there and moves focus to its heading, once (the
+  // product page's pointer row links here).
+  const landed = React.useRef(false);
+  const settled =
+    section === "packages" ? !packages.isPending && !sessions.isPending : true;
   React.useEffect(() => {
-    if (!section) return;
-    document
-      .getElementById(`section-${section}`)
-      ?.scrollIntoView?.({ block: "start" });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    if (!section || landed.current || !settled) return;
+    landed.current = true;
+    const go = (refocus: boolean): void => {
+      document
+        .getElementById(`section-${section}`)
+        ?.scrollIntoView?.({ block: "start" });
+      // Never take focus from a control the person has reached since: only from the page's own
+      // headings or the body.
+      const at = document.activeElement;
+      const idle =
+        !at ||
+        at === document.body ||
+        (at instanceof HTMLElement && /^H[123]$/.test(at.tagName));
+      if (section === "packages" && refocus && idle)
+        focusSectionHeading("packages");
+    };
+    go(true);
+    // The sign-in methods card above fills in a frame later: land again once it has.
+    if (section === "packages") setTimeout(() => go(true), 400);
+  }, [section, settled]);
   const pick = (s: AccountSection): void => {
     setCurrent(s);
     document.getElementById(`section-${s}`)?.scrollIntoView?.({

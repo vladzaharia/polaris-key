@@ -65,7 +65,24 @@ const DOWNLOAD_REFUSALS: Record<string, PortalErrorCopy> = {
   },
 };
 
-export function portalErrorCopy(err: unknown): PortalErrorCopy {
+export function portalErrorCopy(
+  err: unknown,
+  /** `account`: no developer owns the screen, so "contact the developer" names Polaris Key. */
+  opts: { account?: boolean } = {},
+): PortalErrorCopy {
+  const copy = describePortalError(err);
+  return opts.account
+    ? {
+        ...copy,
+        description: copy.description.replace(
+          "contact the developer",
+          "contact Polaris Key support",
+        ),
+      }
+    : copy;
+}
+
+function describePortalError(err: unknown): PortalErrorCopy {
   if (err instanceof PortalApiError) {
     // Erasing the account, removing a license and minting a package token ask for a
     // sign-in from the last five minutes.

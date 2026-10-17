@@ -1,6 +1,6 @@
 ---
-title: "Install an app's packages"
-description: "Create an access code, find the setup for an app's packages, and what to do when a development build is gone."
+title: "Install packages with a personal token"
+description: "Create a personal token, find the setup for an app's packages, and what to do when a development build is gone."
 type: "help"
 status: "shipped"
 lastReviewed: "2026-10-17"
@@ -8,28 +8,32 @@ sidebar:
   order: 7
 ---
 
-Some apps publish packages for people whose license includes them: a library, a command-line tool, a container image or an add-on. You install one with a package manager such as npm, pip or Docker. This page shows how to create an access code, where to find the setup and which versions stay available.
+Some apps publish packages for people whose license includes them: a library, a command-line tool, a container image or an add-on. A personal token is a read-only credential from your account that installs every package your licenses include.
 
 ## Find the setup
 
-Open **Account → Packages** at key.plrs.im. It shows the setup for each package manager, for each app whose license includes private packages.
+Open **Account → Packages** at key.plrs.im. It shows the setup for each app whose license includes private packages.
 
-## Create an access code
+## Create a personal token
 
-One access code installs every package your licenses include. Make one per computer.
+Make one per computer.
 
-1. Choose **Create access code**, name it, and pick how long it lasts, up to a year.
+1. Choose **Create personal token**, name it, and pick how long it lasts.
 2. If asked, confirm it's you.
-3. Copy the code. It is shown once. If you lose it, revoke it and make another.
-4. Set the environment variable `PKEY_REGISTRY_TOKEN` to the code, then follow the setup on the page.
+3. Copy the personal token. It is shown once. If you lose it, revoke it and make another.
+4. Set `PKEY_REGISTRY_TOKEN` to it, then follow the setup on the page.
 
-**Check it worked.** The code is in your list. After your first install it shows its last use.
+**Check it worked.** It is in your list, with its last use after an install.
 
-A code only reads. It works while a license that includes the package is active.
+It only reads, and works while the license is active.
 
-## Revoke an access code
+## Use Godot
 
-Choose **Revoke** next to the code, then confirm. Anything using it stops at once. Older codes keep working until they expire.
+The Godot editor can't use a personal token. Under **Package type**, choose Godot, then **Create Godot editor URL**. The 30-day URL is shown once. Paste it into Editor Settings, as the page says.
+
+## Revoke a personal token
+
+Choose **Revoke** next to it, then confirm. Anything using it stops within 30 seconds. Older single-app ones and Godot URLs work until they expire; revoke them in the page's per-app group.
 
 ## Which versions stay available
 
