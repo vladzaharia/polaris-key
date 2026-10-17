@@ -3,6 +3,8 @@ sidebar:
   order: 7
 title: "Compatibility and the device simulator"
 description: "The console's Compatibility page: the matrix of app releases against pack releases with each cell's state, the live contentApi levels and per-outlet liveness, and the simulator that shows what a device running one app release on one outlet gets."
+type: "concept"
+lastReviewed: "2026-10-16"
 ---
 
 Floors, holds, pack channels, store lag and transports interact. Without a view of them an
@@ -50,7 +52,7 @@ Each app release's row header carries the per-outlet liveness overlay. It comes 
 never reads Distribution. An outlet is listed when the app release is live there, marked **held**
 when outlet readiness holds the release because a pack it needs is not live on that outlet yet, and
 **not ready** on a store outlet Polaris Key cannot hold
-([Outlet readiness](/docs/services/distribution/availability/#outlet-readiness)). Distribution
+([Outlet readiness](/docs/services/distribution/availability/#channel-readiness)). Distribution
 tracks its newest 50 releases; an older row says it is not tracked there rather than unserved. When
 Distribution is off or does not answer, the overlay is left out and the matrix still renders.
 

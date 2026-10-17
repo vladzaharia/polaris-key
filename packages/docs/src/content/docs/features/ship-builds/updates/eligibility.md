@@ -1,6 +1,8 @@
 ---
 title: "Eligibility"
 description: "Channel resolution, the version check, and the entitled access mode's per-license channel and version gating."
+type: "reference"
+lastReviewed: "2026-10-16"
 ---
 
 Two different questions sit behind the word "eligibility." **Access** — covered in full on
@@ -45,7 +47,7 @@ stricter column.
 
 The download route, the appcast, and the version check all resolve a channel or version
 selector through one shared vocabulary, so the three can never disagree about what "beta"
-currently means:
+means:
 
 | Selector                                             | Resolves to                                                                                                                                                                          |
 | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -70,7 +72,7 @@ manual channel could never be called `stable`, `beta`, `latest` or `pr-<n>`; the
 pseudo-channel or the PR family. `staging` is the exception: the alias is looked up after the
 manual names, so a declared manual `staging` keeps working. An aliased request keeps its own
 spelling for the asset suffix, the enclosure, the feed title and the edge-cache key; resolution,
-floors and the entitlement check go by `beta`. The full vocabulary is WIRE-CONTRACT-V3 §5.1.
+floors and the entitlement check go by `beta`. The full vocabulary is WIRE-CONTRACT-V4 §5.1.
 
 ### Which tags are candidates, and which one wins
 
@@ -89,7 +91,7 @@ semver.
   channels keep their own regex, but they skip these tags too. A pinned `X.Y.Z` still
   reaches an ignored tag, because a pin names its tag exactly.
 
-Among the candidates, the winner is the **highest semver precedence**, not the most recently
+Among the candidates, the winner is the **highest semver precedence**, not the latest
 created release: `v1.10.0` beats `v1.4.0` even when `v1.4.0` was cut later as a backport. When
 two tags strip to the same version (`v1.2.0` and `1.2.0`), the later `published_at` wins. A
 manual channel over tags that are not semver, such as dated nightlies, is ordered by
@@ -116,7 +118,7 @@ the floor's release up by tag, which costs one extra GitHub call:
 
 The console's [release health](/docs/services/release/truth-store/#health-checks) then reports
 `channel-regressed`, naming the floor and what the list now offers. The only way past a floor
-is an operator's decision. `POST /manage/api/products/<slug>/release/channels/<channel>/floor`
+is an operator's decision. A `POST` to `/manage/api/products/<slug>/release/channels/<channel>/floor`
 with `{ "version": "1.0.0" }` lowers it, and `{ "clear": true }` removes it. Both are audited
 as `release.channel.floor`. A floor can only be lowered this way. Only a sync raises one. A
 floor whose channel is no longer floored (a manual channel since removed, or `beta` once a
@@ -137,7 +139,7 @@ or version being asked for — that's what the rest of this page covers.
 Before `entitled` existed, "may this caller download" only ever asked whether _some_ usable
 license existed — never whether _that specific license_ actually covered the channel or
 version being requested. A customer holding a stable-only license could fetch the beta
-appcast, and the beta DMG behind it, simply by knowing the URL; the license being real and
+appcast, and the beta DMG behind it, by knowing the URL; the license being real and
 usable was the whole check. `entitled` asks the narrower, correct question: does _this_
 license's own grant cover _this_ channel, at _this_ version.
 
@@ -164,7 +166,7 @@ not two that could quietly drift apart.
 What gets evaluated, and in this order:
 
 1. **Authentication.** A caller with no usable device token or license learns nothing about
-   the product's channels — just a `401`.
+   the product's channels, only a `401`.
 2. **Channel.** Is the requested channel in the license's entitled set. `stable` is always
    in it; it's the floor every license holds regardless of what it was ever granted
    explicitly. A license entitled to the coarser `pr` channel also covers any specific
@@ -239,7 +241,7 @@ platform, every updater feed is listed.
 **Artifact access** — who may read the appcast, the downloads and the customer portal's download
 mint — is Distribution's [delivery access](/docs/services/distribution/delivery/#delivery-access).
 The Feed page shows it read-only and links to **Distribution → Access**, where it is set, saved to
-`PUT /manage/api/products/<product>/distribution/access` with its own owner and revert;
+the `/manage/api/products/<product>/distribution/access` route (`PUT`) with its own owner and revert;
 `update/settings` refuses `artifactsAccess` by name.
 
 A product with no release configuration yet has nowhere to store an access mode or an
@@ -261,7 +263,7 @@ manifest's mode (default `public`). Since P2b-04 the two access modes have separ
 Distribution's endpoint, with its own revert (`POST …/distribution/access/revert`).
 
 ```
-POST /manage/api/products/<product>/update/settings/revert
+/manage/api/products/<product>/update/settings/revert   (POST)
 { "fields": ["access" | "compat", …] }
 ```
 

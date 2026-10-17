@@ -3,6 +3,8 @@ sidebar:
   order: 4
 title: "Artifacts, changelog & install"
 description: "The unified download route, the build, file and blob routes, the bytes host, architecture matching, the four access modes, and the curl-pipe installer."
+type: "reference"
+lastReviewed: "2026-10-16"
 ---
 
 :::note[Served by Distribution]
@@ -18,7 +20,7 @@ Three things make up what a human or an install script actually touches: downloa
 binary (as a bare CLI executable or a macOS disk image — two content types behind one
 route), reading the changelog, and running the installer. The first two resolve against
 GitHub — a download's selector resolution is cached for 90 seconds, the changelog is the only
-one of the three the edge cache will hold, and a download is streamed through every time —
+one of the three the edge cache holds, and a download is streamed through every time —
 while the installer is rendered from
 stored configuration and touches GitHub not at all. What none of them read is the
 [truth store](/docs/services/release/truth-store/), which exists for the portal and the
@@ -92,9 +94,9 @@ same-origin scripts could execute.
 ### Checksums
 
 `?checksum=sha256` on the same URL serves the published `<asset>.sha256` sidecar as a bare
-lowercase hex digest — not the raw `shasum`-style `<digest>  <filename>` line, just the
+lowercase hex digest — not the raw `shasum`-style `<digest>  <filename>` line, only the
 digest. This is exactly what the [install script](#the-install-script) verifies against
-before it will make anything executable.
+before it makes anything executable.
 
 ### SHA256SUMS
 
@@ -138,7 +140,7 @@ Each also answers at its `/<product>/release/…` alias, on both hosts.
 - **blobs** serves a content-addressed object only when an artifact of **this** product
   references it. Another product holding the same bytes does not count, and the answer is the
   same not-found as for an unknown hash, so the route reveals nothing about other tenants.
-  Under `entitled` the object must also belong to a release the caller's licence covers
+  Under `entitled` the object must also belong to a release the caller's license covers
   ([Access modes](#access-modes)). It is also the only route for a pack's objects, under the
   pack's own access and gate ([Pack bytes](/docs/services/distribution/delivery/#pack-bytes)).
 
@@ -190,7 +192,7 @@ surfaces (the downloads and the appcast — Distribution's
 | `entitled`      | a device whose _own license_ covers the requested channel and version | The only mode that can offer two licensed devices different builds.         |
 
 `licensed` and `authenticated` are kept as two distinct names on purpose, even though
-nothing currently distinguishes their enforcement: both refuse a device whose license is not
+nothing distinguishes their enforcement: both refuse a device whose license is not
 usable — a product's stated posture should
 survive even when today's behavior happens to coincide. `entitled` is genuinely different:
 it evaluates the _caller's own_ channel and version entitlements, not merely whether some
@@ -217,7 +219,7 @@ surfaces have always answered with:
 
 That shape is unchanged deliberately — these paths _moved_ to their current namespace, they
 did not change behavior, and a client written against the old routes shouldn't have to
-learn a new refusal shape just because the URL did. `entitled` has no such history. It
+learn a new refusal shape because the URL changed. `entitled` has no such history. It
 speaks the newer nested shape throughout, matching the same grammar the signed license
 document's own build gate answers with:
 
@@ -238,7 +240,7 @@ document's own build gate answers with:
 
 The window is compared as semver. A pinned version that does not parse as semver (a
 four-part `1.2.3.4`, a `2.0.0.1` tag, `3.0.0beta`) cannot be placed in it, so whenever the
-window is bounded (a licence, tier or the product's compatibility range sets a minimum or
+window is bounded (a license, tier or the product's compatibility range sets a minimum or
 maximum) such a version is refused with `version_blocked` rather than waved through. This
 applies to `/release/dl`, `/release/builds` and `/release/files` alike.
 
@@ -250,12 +252,12 @@ Every window is bounded in practice, because the product's compatibility range d
 `0.0.0`–`99.0.0`, so a stored version that is not semver is always refused.
 
 A fixed release, like a pinned version, is checked as the stable channel, not by the release's
-own channel or prerelease flag. A licence that holds only `stable` can therefore fetch a release
+own channel or prerelease flag. A license that holds only `stable` can therefore fetch a release
 whose stored version is semver and inside its window, such as a GitHub prerelease
 `v1.2.0-beta.1`, by exact file, by hash, or by pinned version on `/release/builds` and
 `/release/dl`. Channel restrictions apply to moving selectors (`/release/dl/beta`,
 `/release/builds/beta/...`). Do not rely on a channel grant to keep a prerelease's bytes from a
-stable-only licence.
+stable-only license.
 
 A blob URL names a hash, not a release, and a hash is no secret: signed manifests publish it.
 Under `entitled`, `/release/blobs` therefore serves an object only if at least one release of
@@ -308,8 +310,8 @@ nothing — when:
   new release published before this one, since each takes the next `seq` in publication order;
 - GitHub holds bytes and the tagged release is not an **immutable release**, or a file's
   GitHub digest or size differs from the descriptor's;
-- an `r2` key is not stored with that file's hash and size, or the product neither just
-  uploaded it nor already references it.
+- an `r2` key is not stored with that file's hash and size, or the product neither uploaded it in this
+  publish nor already references it.
 
 These checks read the store before the batch is written, so the batch repeats the ones another
 writer can invalidate in between: it writes the release only while it has no other descriptor
@@ -333,71 +335,6 @@ what the changelog, the portal and the appcast show (edit the release notes on G
 descriptor). A release CI published to the blob store with no GitHub release keeps the
 descriptor's values, because no sync touches it. This is deliberate: two sources for the same
 prose would drift, and GitHub's is the one an author can correct after publishing.
-
-## Trusted publishing
-
-CI publishes a release without a long-lived secret in the product's repository (README §3.4, the
-npm/PyPI trusted-publishing model). `pkey release publish` and the `polaris-key/publish` Action
-drive the whole flow for you: see [Publishing from CI](/docs/build/ci/). Underneath, the flow is
-three POSTs, all in the release namespace, so a product with Release off does not have them:
-
-1. **`POST /<product>/release/publish/token`** with `{"token": "<GitHub Actions OIDC JWT>"}`.
-   Request the OIDC token with the audience `https://key.plrs.im/<product>/release/publish` (the
-   origin you call, then the product and route). If the token's claims satisfy the product's
-   **publisher policy**, the answer is a `pkeyci_` token valid for 30 minutes with the policy's
-   scopes. Each OIDC token can be exchanged once.
-2. **`POST /<product>/release/publish/uploads`** with the `pkeyci_` token (`release:publish`) and
-   `{"objects": [{"sha256": "…", "size": n}, …]}`. The answer is a one-shot `ticket`, R2
-   temporary `credentials` (S3 endpoint, bucket, access key, secret, session token) that can only
-   PUT and HEAD under `staging/<product>/<ticketId>/`, each object's staging `key`, whether it is
-   already `present` (this product already references it, so skip the upload), and `nextSeq`
-   (each deliverable's highest `seq` + 1). Upload each object that is not present as **one** PUT
-   with `x-amz-checksum-sha256`; multipart is not granted.
-3. **`POST /<product>/release/publish/submit`** with the token and
-   `{"ticket": "…", "descriptor": {…}, "dryRun": false}`. Every `r2` location the product does
-   not already reference must be an object of the ticket whose staged copy has the descriptor's
-   size and SHA-256; the descriptor is then checked exactly as ingest checks it. Only when all of
-   that passes is the ticket redeemed, the objects promoted into the blob store and the release
-   written. `dryRun: true` stops before writing anything, and may come before the uploads: an
-   object of the ticket not yet staged is judged as if it were and listed in `unverified`. A failed submit gives the ticket back,
-   so you can fix an upload and submit again; a refusal carrying `"retryable": true` (a lost
-   race with another writer, or a transient promote failure) may simply be sent again, and every
-   other refusal is final. One descriptor per submit.
-
-**The publisher policy.** A product opts in from `.pkey/release`:
-
-```yaml
-publishing:
-  trustedPublisher:
-    workflow: .github/workflows/release.yml
-    environment: release # the default
-```
-
-Link and resync turn that into the policy, adding the linked repository's **numeric** id and
-owner id from GitHub (never from the manifest, so a recycled repository name cannot inherit the
-policy). A token is accepted only when all of these hold: the `repository_id` and
-`repository_owner_id` match; `job_workflow_ref` is this repository's declared workflow at the ref
-that triggered the run (a reusable workflow in another repository does not count); the job runs
-in the declared environment; `ref_protected` is `true`; the runner is GitHub-hosted; and the
-event is `push`, `release` or `workflow_dispatch`. The last three are fixed by the platform.
-`ref_protected` is true only when a branch or tag **ruleset** covers the ref, so a tag-triggered
-release needs a tag ruleset, and the environment should require reviewers if not every writer
-may publish.
-
-The default scopes are `release:publish`, `release:promote` and `distribution:report`;
-`release:yank`, `distribution:rollout` (the
-[rollout controls](/docs/services/distribution/rollouts/)), `distribution:feeds` and
-`distribution:listing` ([listing assets](/docs/build/ci/#listing-assets)) and `assets:write`
-([hosted assets](/docs/build/ci/#hosted-assets)) are opt-in. Scopes are an operator setting, never a manifest one: in the console's
-admin API an operator can read the policy (`GET /manage/api/products/<slug>/ci-publisher`),
-claim and edit it (`PUT`, which also stops resync from changing it), and issue, list and revoke
-**static** `pkeyci_` tokens for a CI that is not GitHub (`/manage/api/products/<slug>/ci-tokens`;
-shown once, expiring at most 90 days out). Every one of those writes is audited.
-
-Errors use the platform's flat shape with a machine-readable `reason`
-(`policy_mismatch` names the failing `claim`). The routes are in the
-[route reference](/docs/reference/routes/); the security model is
-`docs/security/THREAT-MODEL.md`, "Trusted publishing (P2-02)".
 
 ## Changelog
 
@@ -425,7 +362,7 @@ Renders either an operator-supplied template — substituting `{{binaryName}}`,
 `{{origin}}`, `{{cliBase}}`, `{{installPath}}`, `{{versionEnv}}`, and `{{channels}}` — or,
 when no template is configured, a built-in POSIX script that:
 
-1. Detects the machine's architecture (`arm64`/`x86_64`; anything else, or a non-Darwin
+1. Detects the device's architecture (`arm64`/`x86_64`; anything else, or a non-Darwin
    `uname`, exits with an explanation rather than attempting a download).
 2. Downloads the matching binary from this same gateway, selecting `latest` unless an
    environment variable (named after the binary, e.g. `FOO_VERSION`) requests a specific

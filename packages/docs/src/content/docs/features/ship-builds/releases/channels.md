@@ -3,6 +3,8 @@ sidebar:
   order: 5
 title: "Channels and policy"
 description: "How a channel resolves per platform, and how operators and CI promote, pin, yank and set floors."
+type: "concept"
+lastReviewed: "2026-10-16"
 ---
 
 A channel answers one question for each deliverable: which release does it serve on this
@@ -29,7 +31,7 @@ The rules apply to every deliverable, the product's `app` and each pack alike.
 3. **Yanks.** A yanked release is removed from the candidates. Only an explicit pin can serve
    it, and so can a version selector such as `1.2.3`, which names one release explicitly.
 4. **Order.** The newest candidate is the highest version in the deliverable's version scheme
-   (`semver`, `semver+build` or `4part`), with ties going to the later publication. For the
+   (`semver`, `semver+build` or `4part`), and the later publication wins a tie. For the
    app, a tag listed in `ignoreTags` is never a candidate, and a tag outside
    `stableTagPattern` is a candidate only through a manual channel's own regex.
 5. **Pins.** A pinned channel serves only releases at or below its pointer. An unpinned
@@ -53,7 +55,7 @@ Each (deliverable, channel) pair may have one policy row:
 | `pointer`      | A release that is a member of the channel. With `pinned`, the channel's ceiling.      |
 | `pinned`       | Freeze the channel at or below the pointer.                                           |
 | `includes`     | Channels this one includes (the manifest's declaration).                              |
-| `minSupported` | The device floor the signed feed will carry. Stored and returned, not yet enforced.   |
+| `minSupported` | The device floor the signed feed carries. Stored and returned, not yet enforced.      |
 | `critical`     | Flags the current pointer release as critical. Stored and returned, not yet enforced. |
 | `source`       | `manifest` until an operator or CI changes the row, then `admin`.                     |
 
@@ -84,7 +86,7 @@ actor.
 ## Yanks
 
 A yank withdraws a release from every moving selector — `latest`, `stable`, `beta`, manual
-channels — on every surface. How soon each surface stops offering it is set out under
+channels — on every surface. When each surface stops offering it is set out under
 [Caching](#caching): the download, build, file and blob routes stop on the next request, but
 for a public product the edge-cached version check and appcast can keep the old answer for up
 to two and five minutes. Nothing is deleted, and the release still resolves by version and by
@@ -105,9 +107,10 @@ reason) and its feeds re-render. Unyank returns it to live. A package version ca
 **deprecated**, a warning the feeds show (npm's `deprecated`) while the version stays
 installable:
 
-```http
-POST   /manage/api/products/<product>/release/releases/<releaseId>/deprecate   {"message": "use 2.x"}
-DELETE /manage/api/products/<product>/release/releases/<releaseId>/deprecate
+```
+/manage/api/products/<product>/release/releases/<releaseId>/deprecate
+  POST    {"message": "use 2.x"}   deprecate
+  DELETE                           undeprecate
 ```
 
 Deprecation applies to package versions only (404 otherwise) and never to a yanked one (409:
@@ -149,7 +152,7 @@ routes and answer no CORS.
 
 Every change writes an audit row naming its actor (`admin` for the console session's subject,
 `ci:<subject>` for a CI token), and invalidates the product's cached resolutions. See
-[Caching](#caching) for how soon each surface reflects it.
+[Caching](#caching) for when each surface reflects it.
 
 ## Caching
 
@@ -159,7 +162,7 @@ change and any floor change drop those cached resolutions immediately. What the 
 alone bounds is a change nobody told the worker about, such as a release deleted on GitHub
 with no webhook. A channel that resolves to nothing is never cached.
 
-That does not make every surface change on the next request. How soon a yank, pin, unpin or
+That does not make every surface change on the next request. When a yank, pin, unpin or
 promote reaches each surface:
 
 | Surface                                                 | Sees the change                                                           |

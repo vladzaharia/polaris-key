@@ -103,7 +103,7 @@ forward, still sealed, as long as the manifest still lists the profile, its own 
 declare that key, and the catalog in the same push still declares the key a secret. A plaintext
 value (a row from before sealing, never re-saved) is not carried. A plain config value or flag you
 edit here lasts only until the next push; see
-[What resync actually re-applies](/docs/admin/products/#what-resync-actually-re-applies).
+[What resync actually re-applies](/docs/operate/console/product-actions/#what-resync-actually-re-applies).
 
 ## Redaction on read
 
