@@ -1,5 +1,5 @@
 ---
-title: "Release"
+title: "Releases"
 description: "GitHub-linked release truth: channels, artifacts, changelog, install script."
 type: "concept"
 lastReviewed: "2026-10-16"
@@ -13,7 +13,7 @@ linked GitHub repository, the channels resolved against it, the artifacts indexe
 releases, the changelog extracted from their notes, and the install script generated for
 them.
 
-A separate service, [Update](/docs/services/update/), renders a live Sparkle appcast and a
+A separate service, [Update](/docs/features/ship-builds/updates/), renders a live Sparkle appcast and a
 version check _over_ that truth. Release itself never renders anything Sparkle-shaped —
 `update → release` is the only cross-service dependency the platform allows, which is why
 a product can enable Release for plain downloads and a curl-pipe installer without ever
@@ -33,18 +33,20 @@ and `configured` (a repo is actually linked). A client that cannot distinguish "
 set up yet" from "on and serving" would retry a `404` forever; a client that reads
 `configured: false` knows to stop asking.
 
-One coherence rule ties Release to its sibling: a product cannot enable Update while
-Release stays off. A feed with no truth behind it would answer every caller with an empty
-document and call that success, which is a silent failure the platform refuses to ship —
-so the admin API rejects the combination outright rather than serving it.
+One coherence rule ties Release to its siblings: a product cannot enable Distribution while
+Release stays off, or Update while Distribution stays off. A feed with no truth behind it
+would answer every caller with an empty document and call that success, which is a silent
+failure the platform refuses to ship, so the admin API rejects the combination outright
+rather than serving it.
 
-Enablement itself is a manifest concern. A `.pkey/product` file turns both services on
+Enablement itself is a manifest concern. A `.pkey/product` file turns Release, Distribution and Update on
 alongside License and Config:
 
-```json
+```json title=".pkey/product"
 {
   "modules": {
     "release": { "enabled": true },
+    "distribution": { "enabled": true },
     "update": { "enabled": true }
   }
 }
@@ -54,28 +56,28 @@ Older manifests may still use the single pre-split `releases` module name; the p
 it onto `release`, `distribution` and `update` together, so a product written before they
 existed as separate slugs keeps working unchanged.
 
-## Channels, in one paragraph
+## Release tracks
 
 Every version-shaped path in Release and Update — a changelog entry, a download, an
-appcast item — resolves against the same small vocabulary of **channels**. `stable` (or
+appcast item — resolves against the same small vocabulary of **release tracks**. `stable` (or
 `latest`, or a bare pinned `X.Y.Z` tag) is the floor every product and every license holds.
 `beta` (and its legacy alias `staging`) and `pr-<n>` resolve through an optional GitHub Actions
 workflow the product configures, falling back to prerelease heuristics when it hasn't. Only tags that are real app
 releases are candidates, and the highest semver wins rather than the newest by creation order.
 `release.stableTagPattern` and `release.ignoreTags` say which tags count, so a rolling
-`channels` or `packs` release never becomes `latest`. A channel also never silently drops
+`channels` or `packs` release never becomes `latest`. A release track also never silently drops
 below the highest version a sync has seen it serve. Beyond the built-ins, a
-product may declare **manual channels** — a name bound to an anchored regular expression
+product may declare **manual release tracks** — a name bound to an anchored regular expression
 over release tags — for anything project-specific, like a `nightly` or `canary` line:
 `release.manualChannels` in the [release manifest](/docs/build/manifest/release/) is the
-writer, linkRepo/resync persist it, and resolution honours the names everywhere a channel
+writer, linkRepo/resync persist it, and resolution honors the names everywhere a release track
 can appear. The same
 resolution logic backs the download route, the appcast, and the version check, so the
 three can never disagree about what "beta" means. These are the same names a license
-is granted and an SDK sends as `X-PKey-Channel` (WIRE-CONTRACT-V4 §5.1); a manual channel
-named `staging` takes precedence over the alias. [GitHub sync](/docs/services/release/github-sync/)
-covers where a channel workflow is configured; Update's
-[Eligibility](/docs/services/update/eligibility/) page covers the full selector grammar.
+is granted and an SDK sends as `X-PKey-Channel` (WIRE-CONTRACT-V4 §5.1); a manual release track
+named `staging` takes precedence over the alias. [GitHub sync](/docs/features/ship-builds/releases/github-sync/)
+covers where a release track workflow is configured; Update's
+[Eligibility](/docs/features/ship-builds/updates/eligibility/) page covers the full selector grammar.
 
 ## How a product gets linked
 
@@ -85,7 +87,7 @@ installation on that repo, mints a token scoped to it alone, reads the product's
 key, and its release configuration in one atomic write. From that point on, the repository
 is the editor: release configuration changes by editing `.pkey/release` and either waiting
 for a push or clicking **Resync from repo**, never by a form field in the console. See
-[GitHub sync](/docs/services/release/github-sync/) for the full flow, including the
+[GitHub sync](/docs/features/ship-builds/releases/github-sync/) for the full flow, including the
 push-webhook pipeline that keeps a linked repo current without anyone visiting the console
 at all.
 
@@ -103,7 +105,7 @@ and that classification is what the customer portal lists (the portal hands out 
 by redirecting to its GitHub URL) — but classification is a store concern only; it adds no
 route under `/release/dl/`. Only the DMG path and the Sparkle appcast assume
 Apple's update mechanism, so a product that ships no DMG has nothing for
-[Update](/docs/services/update/) to render a feed over, and release health does not ask it for
+[Update](/docs/features/ship-builds/updates/) to render a feed over, and release health does not ask it for
 one: the DMG and Sparkle checks apply only to a product that requires a DMG or whose latest
 release carries one.
 
@@ -118,13 +120,10 @@ this side.
 
 ## The three pages
 
-- **[GitHub sync](/docs/services/release/github-sync/)** — linking a repository through the
+- **[GitHub sync](/docs/features/ship-builds/releases/github-sync/)** — linking a repository through the
   GitHub App, the `.pkey/` manifest, installation tokens, and the push-webhook pipeline
   that keeps everything current without a manual step.
-- **[The truth store](/docs/services/release/truth-store/)** — the four tables a sync
-  populates, why nothing in them is ever deleted, and the health checks built on top of
-  them.
-- **[Artifacts, changelog & install](/docs/services/release/artifacts/)** — the unified
+- **[Artifacts, changelog & install](/docs/features/ship-builds/releases/artifacts/)** — the unified
   download route, architecture matching, the four access modes, and the curl-pipe
   installer.
 
@@ -135,9 +134,9 @@ Every Release surface is governed by one of four access modes — `public`, `aut
 install script) and the artifacts themselves. `public` is the default, which is what keeps
 anonymous `curl | sh` installs and anonymous update checks working for products that want
 that. The full ladder, including the two different error shapes a client may see, is on the
-[Artifacts](/docs/services/release/artifacts/) page; the license-aware `entitled` mode —
+[Artifacts](/docs/features/ship-builds/releases/artifacts/) page; the license-aware `entitled` mode —
 which additionally checks a caller's own channel and version entitlements — is covered
-end to end on Update's [Eligibility](/docs/services/update/eligibility/) page, since that is
+end to end on Update's [Eligibility](/docs/features/ship-builds/updates/eligibility/) page, since that is
 where the same check governs the feed.
 
 ## The console
@@ -155,12 +154,12 @@ applied, and holds the operator controls Release does have:
   serves on each platform, and its policy (promote, pin, minimum supported, critical, the
   rollback floor, a pack's floors per contentApi line, revert to manifest).
 - **Deliverables**, **Content keys** and **Compatibility** cover packs; see
-  [Packs](/docs/services/release/packs/#in-the-console) and
-  [Compatibility](/docs/services/release/compatibility/).
+  [Packs](/docs/features/ship-builds/packs/#in-the-console) and
+  [Compatibility](/docs/features/ship-builds/releases/compatibility/).
 
 What the health check evaluates, and what the last sync records, are covered on
-[GitHub sync](/docs/services/release/github-sync/) and
-[The truth store](/docs/services/release/truth-store/) rather than duplicated here.
+[GitHub sync](/docs/features/ship-builds/releases/github-sync/) and
+The truth store rather than duplicated here.
 
 ## What Release is not
 
@@ -184,4 +183,4 @@ endpoints alongside the linked repository's owner and name.
 - [Public route table](/docs/reference/routes/) for every Release path in one place.
 - [D1 data model](/docs/reference/data-model/) for the full column list behind the truth
   store.
-- [Update](/docs/services/update/) for the feed rendered over this truth.
+- [Update](/docs/features/ship-builds/updates/) for the feed rendered over this truth.

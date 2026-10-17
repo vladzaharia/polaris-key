@@ -1,0 +1,55 @@
+---
+title: "Publish your first release"
+description: "Turn Release on, declare your builds, add the workflow and check that the release appears."
+type: "how-to"
+lastReviewed: "2026-10-16"
+sidebar:
+  order: 2
+---
+
+import Requires from "../../../../components/docs/Requires.astro";
+
+Your release job builds the app, then one step publishes it to Polaris Key with no secret stored in your repository.
+
+<Requires features={["ship-builds"]} role="Product admin" />
+
+Before you start:
+
+- A product linked to its GitHub repository. See [Your first product](/docs/start/first-product/).
+- A GitHub-hosted runner and a repository ruleset over your release tags.
+
+## Steps
+
+1. **Console** Open **Core → Services** and switch **Release** on.
+2. **CLI** Declare one artifact entry per build in `.pkey/release` (`deliverables.app.artifacts`), each with the `match` glob that names its file. Name the publisher in the same file:
+
+   ```yaml title=".pkey/release"
+   publishing:
+     trustedPublisher:
+       workflow: .github/workflows/release.yml
+       environment: release
+   ```
+
+3. **CLI** Check the manifest before you push it.
+
+   ```sh title="Terminal"
+   pkey validate
+   ```
+
+4. **CLI** Add the publish job to `.github/workflows/release.yml`. It needs `id-token: write` and the `release` environment. The full job, with every input, is on [Publishing from CI](/docs/features/ship-builds/ci/#the-workflow).
+5. **CLI** Push a tag, such as `v1.0.0`, that a ruleset protects.
+
+## Check it works
+
+The job's publish step succeeds and sets the `release-id` output. In the console, open **Release → Releases**: the release appears with its builds. To try the job first, set `dry-run: true`: it signs and uploads nothing ([Dry runs](/docs/features/ship-builds/ci/#dry-runs)).
+
+## If it isn't working
+
+- [Troubleshoot shipping builds](/docs/features/ship-builds/troubleshooting/): the refusal the step printed.
+- [Trusted publishing](/docs/features/ship-builds/releases/trusted-publishing/): what the Worker checks on the job's token.
+
+## Next steps
+
+- [Publishing from CI](/docs/features/ship-builds/ci/): every input, packs and release track commands.
+- [Release tracks and policy](/docs/features/ship-builds/releases/channels/): promote, pin and yank.
+- [Choose a channel](/docs/features/ship-builds/channels/): where the build reaches customers.

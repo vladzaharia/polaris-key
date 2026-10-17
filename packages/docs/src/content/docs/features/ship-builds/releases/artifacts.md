@@ -1,7 +1,7 @@
 ---
 sidebar:
   order: 4
-title: "Artifacts, changelog & install"
+title: "Artifacts and downloads"
 description: "The unified download route, the build, file and blob routes, the bytes host, architecture matching, the four access modes, and the curl-pipe installer."
 type: "reference"
 lastReviewed: "2026-10-16"
@@ -9,7 +9,7 @@ lastReviewed: "2026-10-16"
 
 :::note[Served by Distribution]
 Every byte route on this page — the download, the build, file and blob routes, and the install
-script — is a [Distribution](/docs/services/distribution/delivery/) route since P2b-04, at
+script — is a [Distribution](/docs/features/ship-builds/channels/delivery/) route since P2b-04, at
 `/<product>/distribution/…`. The `/<product>/release/…` spellings used below (and
 `/<product>/install.sh`) are **permanent aliases** that answer byte-identically. Who may
 download is Distribution's **delivery access**; with Distribution off, none of these routes is
@@ -23,7 +23,7 @@ GitHub — a download's selector resolution is cached for 90 seconds, the change
 one of the three the edge cache holds, and a download is streamed through every time —
 while the installer is rendered from
 stored configuration and touches GitHub not at all. What none of them read is the
-[truth store](/docs/services/release/truth-store/), which exists for the portal and the
+truth store, which exists for the portal and the
 console, not for these routes. The newer [build, file and blob routes](#builds-files-and-blobs)
 are the opposite: they resolve from the truth store and touch GitHub only for the bytes.
 
@@ -31,7 +31,7 @@ are the opposite: they resolve from the truth store and touch GitHub only for th
 
 One route replaced the old `/<product>/cli/…` and `/<product>/dmg/…` pair:
 
-```
+```text title="Request"
 GET /<product>/distribution/dl/<version>/<binary>-<arch>[.dmg]
 GET /<product>/release/dl/<version>/<binary>-<arch>[.dmg]        (permanent alias)
 ```
@@ -40,19 +40,19 @@ They were always the same handler wearing two content types and two asset matche
 file extension now carries the whole distinction, and the old paths are removed outright
 rather than aliased — nothing ever shipped a `.dmg` URL as a standalone published
 reference the way it did for the appcast and install-script URLs (see
-[Appcast](/docs/services/update/appcast/) for the paths that _were_ kept forever, and why
+[Appcast](/docs/features/ship-builds/updates/appcast/) for the paths that _were_ kept forever, and why
 this one wasn't).
 
-- **`<version>`** is a channel selector: `latest`, `stable`, a pinned `X.Y.Z` tag, `beta` (or
+- **`<version>`** is a release track selector: `latest`, `stable`, a pinned `X.Y.Z` tag, `beta` (or
   its legacy alias `staging`, which matches `-staging-` assets), `pr-<n>`, or an operator's
-  manual channel name — the identical vocabulary
-  [Eligibility](/docs/services/update/eligibility/) documents in full, since the download
+  manual release track name — the identical vocabulary
+  [Eligibility](/docs/features/ship-builds/updates/eligibility/) documents in full, since the download
   route, the appcast, and the version check all resolve it through the same logic.
 - **`<binary>-<arch>`** matches an asset by convention. On the bare-binary path an exact
   filename hit (`<binaryName>-<arch>`, or `<binaryName>-<channel>-<arch>` for a non-stable
-  channel) short-circuits everything else. Failing that — and always, for a DMG — matching
-  scores candidates by file extension, architecture token, binary name, and channel suffix. A
-  request that names no channel prefers assets carrying no `beta`, `staging` or `pr` token.
+  release track) short-circuits everything else. Failing that — and always, for a DMG — matching
+  scores candidates by file extension, architecture token, binary name, and release track suffix. A
+  request that names no release track prefers assets carrying no `beta`, `staging` or `pr` token.
   Real projects aren't always perfectly consistent about naming, so this is deliberately
   fuzzy; when it leaves two equally good candidates the route answers `404` rather than
   guessing.
@@ -61,9 +61,9 @@ this one wasn't).
   `Content-Type` values on the way out; only the CLI path carries the exact-name
   short-circuit above.
 
-The channel policy applies here exactly as on the appcast and the version check: a
-[yanked](/docs/services/release/channels/#yanks) release is never served on a moving selector,
-and a [pinned](/docs/services/release/channels/#pointers-and-pins) channel serves its pointer.
+The release track policy applies here exactly as on the appcast and the version check: a
+[yanked](/docs/features/ship-builds/releases/channels/#yanks) release is never served on a moving selector,
+and a [pinned](/docs/features/ship-builds/releases/channels/#pointers-and-pins) release track serves its pointer.
 
 ### Architecture
 
@@ -114,11 +114,11 @@ MD5 is refused: it is broken for verification, so there is no `MD5SUMS` and no M
 
 ## Builds, files and blobs
 
-Three more byte routes serve what the [release model](/docs/services/release/truth-store/)
+Three more byte routes serve what the release model
 records rather than what GitHub's asset names suggest. Each answers `GET` and `HEAD`, on the
 console host and on the **bytes host** (`dl.plrs.im`, see below):
 
-```
+```text title="Request"
 GET /<product>/distribution/builds/<selector>/<buildId>   [?deliverable=<id>] [?checksum=sha256] [?redirect=1]
 GET /<product>/distribution/files/<releaseId>/<name>      [?redirect=1]
 GET /<product>/distribution/blobs/sha256/<hash>
@@ -130,9 +130,9 @@ Each also answers at its `/<product>/release/…` alias, on both hosts.
   not-found: a pack's bytes are on the blob route only) and serves the payload of
   the build `<buildId>` — an id from the deliverable's artifact map, such as `macos` or `apk`.
   Resolution is per platform: a release that lacks this build is skipped, so a release with no
-  iOS build does not blank iOS; iOS gets the newest release that has one. The rules — channel
+  iOS build does not blank iOS; iOS gets the newest release that has one. The rules — release track
   membership, `includes`, pointers and pins, yanks, the version scheme and the tag filter — are
-  on [Channels and policy](/docs/services/release/channels/). `?checksum=sha256` answers the
+  on [Release tracks and policy](/docs/features/ship-builds/releases/channels/). `?checksum=sha256` answers the
   payload's SHA-256 as bare hex, like the download route.
 - **files** serves one exact file of one app release by name, sidecars included (`.sig`,
   `.sha256`, an index). The release id and the name fix the bytes, so the response is
@@ -142,7 +142,7 @@ Each also answers at its `/<product>/release/…` alias, on both hosts.
   same not-found as for an unknown hash, so the route reveals nothing about other tenants.
   Under `entitled` the object must also belong to a release the caller's license covers
   ([Access modes](#access-modes)). It is also the only route for a pack's objects, under the
-  pack's own access and gate ([Pack bytes](/docs/services/distribution/delivery/#pack-bytes)).
+  pack's own access and gate ([Pack bytes](/docs/features/ship-builds/channels/delivery/#pack-bytes)).
 
 An artifact's bytes are taken from the first location that has them, in this order:
 
@@ -154,7 +154,7 @@ An artifact's bytes are taken from the first location that has them, in this ord
 3. An **external** `https://` URL, as a 302.
 
 Streaming is the default because winget refuses redirects and App Installer and zsync need
-`Range`. `?redirect=1` asks for a 302 to GitHub's own download URL instead; it is honoured
+`Range`. `?redirect=1` asks for a 302 to GitHub's own download URL instead; it is honored
 only for a public artifact of a public repository, and everything else keeps streaming.
 
 All three routes count against the artifact rate-limit lane and follow the deliverable's
@@ -182,23 +182,23 @@ else answers not-found. Every response there carries `X-Content-Type-Options: no
 Every surface answers under one of four modes, set independently for the _metadata_ surfaces
 (changelog, version check, install script — Release's `metadata_access`) and the _artifact_
 surfaces (the downloads and the appcast — Distribution's
-[delivery access](/docs/services/distribution/delivery/#delivery-access), per deliverable):
+[delivery access](/docs/features/ship-builds/channels/delivery/#delivery-access), per deliverable):
 
-| Mode            | Who                                                                   | Notes                                                                       |
-| --------------- | --------------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| `public`        | anyone                                                                | The default — keeps anonymous installs and anonymous update checks working. |
-| `authenticated` | a device with a valid token                                           | Requires a usable license, exactly as `licensed` does today.                |
-| `licensed`      | a device whose license is usable                                      | Behaves identically to `authenticated` today (both require a usable one).   |
-| `entitled`      | a device whose _own license_ covers the requested channel and version | The only mode that can offer two licensed devices different builds.         |
+| Mode            | Who                                                                         | Notes                                                                       |
+| --------------- | --------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `public`        | anyone                                                                      | The default — keeps anonymous installs and anonymous update checks working. |
+| `authenticated` | a device with a valid token                                                 | Requires a usable license, exactly as `licensed` does today.                |
+| `licensed`      | a device whose license is usable                                            | Behaves identically to `authenticated` today (both require a usable one).   |
+| `entitled`      | a device whose _own license_ covers the requested release track and version | The only mode that can offer two licensed devices different builds.         |
 
 `licensed` and `authenticated` are kept as two distinct names on purpose, even though
 nothing distinguishes their enforcement: both refuse a device whose license is not
 usable — a product's stated posture should
 survive even when today's behavior happens to coincide. `entitled` is genuinely different:
-it evaluates the _caller's own_ channel and version entitlements, not merely whether some
-usable license exists. The full mechanics — channel resolution, the version window, and
+it evaluates the _caller's own_ release track and version entitlements, not merely whether some
+usable license exists. The full mechanics — release track resolution, the version window, and
 the exact 401/403 outcomes — are covered on Update's
-[Eligibility](/docs/services/update/eligibility/) page, since the identical check governs
+[Eligibility](/docs/features/ship-builds/updates/eligibility/) page, since the identical check governs
 the feed.
 
 The changelog and the install script are governed by **metadata access**; the downloads, the
@@ -213,7 +213,7 @@ longer read.
 A request refused under `authenticated` or `licensed` gets the same flat body these
 surfaces have always answered with:
 
-```json
+```json title="Response"
 { "error": "download_auth_required" }
 ```
 
@@ -223,17 +223,17 @@ learn a new refusal shape because the URL changed. `entitled` has no such histor
 speaks the newer nested shape throughout, matching the same grammar the signed license
 document's own build gate answers with:
 
-```json
+```json title="Response"
 // 401 — no usable device/license at all
 { "error": { "code": "unauthorized" } }
 ```
 
-```json
+```json title="Response"
 // 403 — the license doesn't cover the requested channel
 { "error": { "code": "channel_not_allowed" } }
 ```
 
-```json
+```json title="Response"
 // 403 — the requested version sits outside the license's window
 { "error": { "code": "version_blocked" }, "allowedRange": { "min": "2.0.0" } }
 ```
@@ -245,18 +245,18 @@ maximum) such a version is refused with `version_blocked` rather than waved thro
 applies to `/release/dl`, `/release/builds` and `/release/files` alike.
 
 `/release/files` checks the release's stored version as that one fixed release, never as a
-selector. A release tagged `latest`, `stable`, `beta`, `pr-5` or a manual channel's name stores
+selector. A release tagged `latest`, `stable`, `beta`, `pr-5` or a manual release track's name stores
 that word as its version; it is window-checked like any pinned version, so under a bounded
-window it is refused with `version_blocked` rather than treated as the moving channel it spells.
+window it is refused with `version_blocked` rather than treated as the moving release track it spells.
 Every window is bounded in practice, because the product's compatibility range defaults to
 `0.0.0`–`99.0.0`, so a stored version that is not semver is always refused.
 
-A fixed release, like a pinned version, is checked as the stable channel, not by the release's
-own channel or prerelease flag. A license that holds only `stable` can therefore fetch a release
+A fixed release, like a pinned version, is checked as the stable release track, not by the release's
+own release track or prerelease flag. A license that holds only `stable` can therefore fetch a release
 whose stored version is semver and inside its window, such as a GitHub prerelease
 `v1.2.0-beta.1`, by exact file, by hash, or by pinned version on `/release/builds` and
-`/release/dl`. Channel restrictions apply to moving selectors (`/release/dl/beta`,
-`/release/builds/beta/...`). Do not rely on a channel grant to keep a prerelease's bytes from a
+`/release/dl`. Release track restrictions apply to moving selectors (`/release/dl/beta`,
+`/release/builds/beta/...`). Do not rely on a release track grant to keep a prerelease's bytes from a
 stable-only license.
 
 A blob URL names a hash, not a release, and a hash is no secret: signed manifests publish it.
@@ -284,7 +284,7 @@ recorded as the file's SHA-256. Without a map, filenames are sniffed exactly as 
 ### The release descriptor
 
 A **release descriptor** is the unsigned body of one release of one deliverable: its version,
-an optional `seq` (publication order), tag and channel, provenance, and its builds — each with
+an optional `seq` (publication order), tag and release track, provenance, and its builds — each with
 its build number, minimum OS and files, every file with its role, SHA-256, size and
 **locations** (`r2` — a content-addressed blob-store key; `github` — an asset of the tagged
 release; `store` — published to a store, no bytes here; `external` — an https URL). CI produces
@@ -297,7 +297,7 @@ nothing — when:
 
 - the descriptor does not fit its schema or the map: an undeclared build id, a platform, arch
   or format other than the declaration's, a payload name that does not match `match`, a role
-  outside the role list, a file name used twice, a channel the product does not declare, or a
+  outside the role list, a file name used twice, a release track the product does not declare, or a
   tag that does not spell the version
   ([descriptor codes](/docs/reference/validation-codes/#release-descriptor-codes));
 - the release already exists from a different descriptor (`release_exists`). The same
@@ -322,7 +322,7 @@ writes nothing and is refused with the reason the checks give against the store 
 
 A refused `pkey-release.json` marks its release `degraded` in release health, with the
 reason, and is not fetched again until the asset or the product's declaration (its
-`deliverables.app` and manual channels) changes. A refusal that depends on other rows
+`deliverables.app` and manual release tracks) changes. A refusal that depends on other rows
 (`release_exists`, `r2_object_missing`, `r2_ref_not_owned`) is retried on every sync, within
 the per-sync fetch limit. Once a release has a descriptor, the
 descriptor owns its builds and classification; later syncs refresh only the serving columns
@@ -338,7 +338,7 @@ prose would drift, and GitHub's is the one an author can correct after publishin
 
 ## Changelog
 
-```
+```text title="Request"
 GET /<product>/release/changelog
 ```
 
@@ -352,7 +352,7 @@ this is the same extraction the appcast's `<description>` uses for its release n
 
 ## The install script
 
-```
+```text title="Request"
 GET /<product>/distribution/install.sh
 GET /<product>/release/install.sh        (permanent alias)
 GET /<product>/install.sh                (permanent alias)
@@ -366,7 +366,7 @@ when no template is configured, a built-in POSIX script that:
    `uname`, exits with an explanation rather than attempting a download).
 2. Downloads the matching binary from this same gateway, selecting `latest` unless an
    environment variable (named after the binary, e.g. `FOO_VERSION`) requests a specific
-   version or channel.
+   version or release track.
 3. Fetches the published SHA-256 checksum and refuses to proceed without one — an
    unverifiable binary is treated as an error, not installed anyway with a warning.
 4. Verifies the download against that checksum before doing anything else, and stops with
@@ -374,23 +374,20 @@ when no template is configured, a built-in POSIX script that:
 5. Installs to `/usr/local/bin` when writable, or `~/.local/bin` otherwise, and prints a
    `PATH` hint when the chosen directory isn't already on it.
 
-Channel builds (`beta`, its legacy alias `staging`, `pr-<n>`) install under a name suffixed
-with the channel, so a beta build and the stable install coexist rather than overwriting each
+Release track builds (`beta`, its legacy alias `staging`, `pr-<n>`) install under a name suffixed
+with the release track, so a beta build and the stable install coexist rather than overwriting each
 other.
 
 Every value this script interpolates is either bounded to a strict character class or
 emitted as a shell-quoted literal, because the whole thing is piped straight into `sh` —
-see [GitHub sync](/docs/services/release/github-sync/#binary-name-safety) for where that
+see [GitHub sync](/docs/features/ship-builds/releases/github-sync/#binary-name-safety) for where that
 validation actually runs.
 
 ## See also
 
-- [The truth store](/docs/services/release/truth-store/) — where artifact rows get their
-  recorded kind, platform, and architecture (used for the console and portal, not this
-  route).
-- [Eligibility](/docs/services/update/eligibility/) — channel resolution and the full
+- [Eligibility](/docs/features/ship-builds/updates/eligibility/) — release track resolution and the full
   `entitled` decision.
-- [Appcast](/docs/services/update/appcast/) — the DMG's other life as a Sparkle enclosure.
-- [Channels and policy](/docs/services/release/channels/) — resolution rules, promote, pin,
+- [Appcast](/docs/features/ship-builds/updates/appcast/) — the DMG's other life as a Sparkle enclosure.
+- [Release tracks and policy](/docs/features/ship-builds/releases/channels/) — resolution rules, promote, pin,
   yank, and the CI and console operations.
 - [Public route table](/docs/reference/routes/) for every Release path in one place.

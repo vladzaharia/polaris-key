@@ -2,16 +2,16 @@
 sidebar:
   order: 7
 title: "Compatibility and the device simulator"
-description: "The console's Compatibility page: the matrix of app releases against pack releases with each cell's state, the live contentApi levels and per-outlet liveness, and the simulator that shows what a device running one app release on one outlet gets."
+description: "The console's Compatibility page: the matrix of app releases against pack releases with each cell's state, the live contentApi levels and per-channel liveness, and the simulator that shows what a device running one app release on one channel gets."
 type: "concept"
 lastReviewed: "2026-10-16"
 ---
 
-Floors, holds, pack channels, store lag and transports interact. Without a view of them an
+Floors, holds, pack release tracks, store lag and transports interact. Without a view of them an
 operator learns what a device gets only when the device gets it. The **Compatibility** page in the
 Release section answers it before then, in two read-only views: **Matrix** and **Simulator**. Nothing here edits a floor, a
 hold, a pin or a yank: floors and yanks are set under
-[Channels](/docs/services/release/channels/), pins and holds in `.pkey/release`
+[Release tracks](/docs/features/ship-builds/releases/channels/), pins and holds in `.pkey/release`
 ([Packs](/docs/features/ship-builds/packs/#app-releases-pins-holds-and-embeds)).
 
 ## The matrix
@@ -32,7 +32,7 @@ Two markers ride on top of the state:
 - **Current** (a ring and the word): this pack release is the member of the stored pack set that
   serves the app release, the one the signed feed lists for it. A compatible release that is not current was
   passed over: an older one, one below a floor, or one a dependency or conflict ruled out.
-- **Yanked** (struck through, and labelled in the headers): yanked is a modifier, never a state.
+- **Yanked** (struck through, and labeled in the headers): yanked is a modifier, never a state.
   Revoking a release also yanks it.
 
 The matrix is a keyboard grid with sticky headers: arrow keys move between cells and Enter opens
@@ -40,33 +40,33 @@ the cell's drawer. The drawer holds the cell's reason (for example "contentApi >
 level 4"), the pack release's requirements, any unsatisfied requirement of that pack for the app
 release, and links to the pack release, the app release and **Simulate this device**.
 
-The **live levels** are the contentApi levels of the app releases each channel serves at or above
+The **live levels** are the contentApi levels of the app releases each release track serves at or above
 its floor. They are the levels resolution stores sets for and the feed carries, so they never
 depend on store availability. An app release row shows its level (highlighted when live), the
-channels it is live on, and a warning with the count of **unsatisfied** packs: the packs no release
+release tracks it is live on, and a warning with the count of **unsatisfied** packs: the packs no release
 satisfies at one of its selectors, each with its reason (`no-release`, `content-api`, `engine`,
 `variant`, `content-floor`, `dependency` or `conflict`).
 
-Each app release's row header carries the per-outlet liveness overlay. It comes from Distribution's own matrix
-([Distribution matrix](/docs/admin/distribution-matrix/)), fetched separately, so Release's answer
-never reads Distribution. An outlet is listed when the app release is live there, marked **held**
-when outlet readiness holds the release because a pack it needs is not live on that outlet yet, and
-**not ready** on a store outlet Polaris Key cannot hold
-([Outlet readiness](/docs/services/distribution/availability/#channel-readiness)). Distribution
+Each app release's row header carries the per-channel liveness overlay. It comes from Distribution's own matrix
+([Distribution matrix](/docs/features/ship-builds/channels/)), fetched separately, so Release's answer
+never reads Distribution. A channel is listed when the app release is live there, marked **held**
+when channel readiness holds the release because a pack it needs is not live on that channel yet, and
+**not ready** on a store channel Polaris Key cannot hold
+([Channel readiness](/docs/features/ship-builds/channels/availability/#channel-readiness)). Distribution
 tracks its newest 50 releases; an older row says it is not tracked there rather than unserved. When
 Distribution is off or does not answer, the overlay is left out and the matrix still renders.
 
-The matrix is paged. A page shows every live app release plus 10 releases of each channel, and
+The matrix is paged. A page shows every live app release plus 10 releases of each release track, and
 every pack release that is a set member plus 10 releases of each pack, newest first. **Older** and
 **Newer** move that window by 10, and **Jump to a version** opens the page that holds a given app
-release. The pack, channel and **Live only** filters narrow the page; they, the page and the open
+release. The pack, release track and **Live only** filters narrow the page; they, the page and the open
 cell are all in the URL. One page carries at most 200 app releases (live ones first); a page cut by
 that cap says so.
 
 ## What does this device get?
 
-Pick an app release (any in the store), a platform (from that release's builds), an outlet, the
-channel the device follows and, optionally, a variant (one choice per axis the packs declare, or
+Pick an app release (any in the store), a platform (from that release's builds), a channel, the
+release track the device follows and, optionally, a variant (one choice per axis the packs declare, or
 `texture=etc2;tier=hd` when they declare none; a value can be a preference list such as
 `texture=astc,etc2`), a device id, a device's reported `packSetId` and the binary update methods
 it supports. The inputs are kept in the URL, so a simulation can be shared; changing an input
@@ -83,11 +83,11 @@ clears the previous answer until you simulate again. The simulator answers with:
   device's bucket and the fallback it takes outside it); the **floor** that applies; the
   **unsatisfied** markers for the selector; the **revocations** that name it; and what the device
   installs, unmounts and runs;
-- the feed it decided from: channel-wide or per platform, any content member the size cap left
-  out, how many entries its delta menu lists (`feed.deltas`), and the app rollout on the outlet.
+- the feed it decided from: for the whole release track or per platform, any content member the size cap left
+  out, how many entries its delta menu lists (`feed.deltas`), and the app rollout on the channel.
 
 There is no second implementation. The Worker composes the document the feed route would sign for
-that channel and platform, signs it with a throwaway key generated for that one request (never the
+that release track and platform, signs it with a throwaway key generated for that one request (never the
 product's signing key), and runs client-core's update check over it, exactly as an SDK does on a
 device with no cache, except that the simulated device trusts the throwaway key for the feed. The
 feed signature itself is therefore not what the simulator tests; the conformance corpus covers it.
@@ -97,7 +97,7 @@ buckets from the device id and decides. The device's active set before the check
 embedded baselines. Without a device id the device is outside every client-evaluated rollout, as an
 SDK without one is.
 
-A device on an older app release on a self-updating outlet is offered the newer build first, and
+A device on an older app release on a self-updating channel is offered the newer build first, and
 content waits behind that offer; the simulator shows that answer rather than a set the device would
 not take.
 
@@ -106,10 +106,10 @@ not take.
 Both routes are read-only, under `/manage/api/products/<slug>/` and behind the same platform-admin
 session as the rest of the console.
 
-| Method and path                                                                                     | Answers                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| --------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GET release/compat[?limit=N&offset=M]`                                                             | `channels`, `liveLevels` (per channel) and `levels`; `packs[]`; `appReleases[]` (level, `live`, `liveOn`, yank, platforms, engines, pins, holds, `unsatisfied[]`); `packReleases[]` (requirements, yank, `revoked`, `current`); `cells[]` (`state`, `current`, `yanked`, `reason`); `hidden`, `older` (releases past the window), `offset` and `capped` (more than 200 app releases qualified). `limit` is 1–100, default 10; `offset` 0–100,000, default 0 |
-| `GET update/simulate?appRelease=&platform=[&outlet=&variant=&channel=&device=&methods=&packSetId=]` | `selector`, `feed`, `decision` (client-core's `UpdateDecision`), `boot`, `errors`, `set[]`, `packSetId`, `activePackSetId`, `reported`, `block`, `packs[]` and `notes[]`. `channel` defaults to `stable` and `methods` to `download`. 400 names the bad field; 404 an unknown app release or outlet                                                                                                                                                         |
+| Method and path                                                                                     | Answers                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| --------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET release/compat[?limit=N&offset=M]`                                                             | `channels`, `liveLevels` (per release track) and `levels`; `packs[]`; `appReleases[]` (level, `live`, `liveOn`, yank, platforms, engines, pins, holds, `unsatisfied[]`); `packReleases[]` (requirements, yank, `revoked`, `current`); `cells[]` (`state`, `current`, `yanked`, `reason`); `hidden`, `older` (releases past the window), `offset` and `capped` (more than 200 app releases qualified). `limit` is 1–100, default 10; `offset` 0–100,000, default 0 |
+| `GET update/simulate?appRelease=&platform=[&outlet=&variant=&channel=&device=&methods=&packSetId=]` | `selector`, `feed`, `decision` (client-core's `UpdateDecision`), `boot`, `errors`, `set[]`, `packSetId`, `activePackSetId`, `reported`, `block`, `packs[]` and `notes[]`. `channel` defaults to `stable` and `methods` to `download`. 400 names the bad field; 404 an unknown app release or channel                                                                                                                                                              |
 
 Support tooling reads the simulate answer's shape: given a device's reported app release and
 `packSetId`, it reproduces that device's content.

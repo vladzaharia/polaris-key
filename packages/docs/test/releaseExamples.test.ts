@@ -42,7 +42,9 @@ const PRODUCT = {
 
 function fences(text: string): string[] {
   const out: string[] = [];
-  for (const m of text.matchAll(/^([ \t]*)```yaml\n([\s\S]*?)\n\1```/gm)) {
+  for (const m of text.matchAll(
+    /^([ \t]*)```yaml(?: [^\n]*)?\n([\s\S]*?)\n\1```/gm,
+  )) {
     const indent = m[1]!;
     out.push(
       m[2]!

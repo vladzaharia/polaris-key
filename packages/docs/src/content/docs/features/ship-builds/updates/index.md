@@ -1,5 +1,5 @@
 ---
-title: "Update"
+title: "Updates"
 description: "The appcast feed, version checks, eligibility, and the entitled access mode."
 type: "concept"
 lastReviewed: "2026-10-16"
@@ -7,7 +7,7 @@ sidebar:
   order: 1
 ---
 
-Update renders a live feed _over_ [Release](/docs/services/release/)'s truth. Its only
+Update renders a live feed _over_ [Release](/docs/features/ship-builds/releases/)'s truth. Its only
 tables are the signed feed's own (`update_feed_state`, `update_feed_ceiling`,
 `update_feed_docs`) — every release row it reads belongs to Release — and it answers exactly two
 questions: what is the newest build on a given channel, and which build is _this specific
@@ -39,7 +39,7 @@ than the coupling. Nothing points back the other way — Release has never heard
 Update is opt-in per product, like every service beyond Core. It also carries a coherence
 rule the platform enforces at the same layer as enablement itself. The chain is
 **Release ← Distribution ← Update**: truth, then delivery, then decision. A product
-**cannot** enable Update while [Distribution](/docs/services/distribution/) is off
+**cannot** enable Update while [Distribution](/docs/features/ship-builds/channels/) is off
 (`update_requires_distribution`), and Distribution in turn needs Release
 (`distribution_requires_release`) — a feed with no delivery and no truth behind it would
 answer every caller with an empty document and call that success, and the admin API refuses
@@ -47,7 +47,7 @@ to ship that silent failure. (The older `update_requires_release` is retired: th
 rules together imply it.) Turning Update on is a manifest concern, alongside every other
 service:
 
-```json
+```json title=".pkey/product"
 {
   "modules": {
     "release": { "enabled": true },
@@ -60,7 +60,7 @@ service:
 All three together — the parser also accepts the single pre-split `releases` module name
 and expands it into all three slugs, so a manifest written before the services existed
 separately keeps working unchanged. See
-[Release](/docs/services/release/#off-by-default-and-config-only-until-linked) for the
+[Release](/docs/features/ship-builds/releases/#off-by-default-and-config-only-until-linked) for the
 `enabled`/`configured` distinction discovery reports for each service independently.
 
 What Distribution knows — transports, availability, and later per-outlet rollouts — reaches
@@ -68,17 +68,17 @@ Update through Core's descriptor hooks, never by import, and only while Distribu
 
 ## The pages
 
-- **[Appcast](/docs/services/update/appcast/)** — the Sparkle feed itself, per-architecture
+- **[Appcast](/docs/features/ship-builds/updates/appcast/)** — the Sparkle feed itself, per-architecture
   enclosures, and the four pre-namespace URLs kept working forever.
-- **[Eligibility](/docs/services/update/eligibility/)** — the version check, channel
+- **[Eligibility](/docs/features/ship-builds/updates/eligibility/)** — the version check, channel
   resolution, and the `entitled` access mode end to end.
-- **[Signed feed](/docs/services/update/signed-feed/)** — `pkey-feed+jws` and the CI-signed
+- **[Signed feed](/docs/features/ship-builds/updates/signed-feed/)** — `pkey-feed+jws` and the CI-signed
   release records it pins (wire v4): what a v4 SDK decides from, floors, rollouts and halts,
   and the `seq` ceiling recovery.
-- **[App-updater feeds](/docs/services/update/updater-feeds/)** — the extended Sparkle appcast,
+- **[App-updater feeds](/docs/features/ship-builds/updates/updater-feeds/)** — the extended Sparkle appcast,
   WinSparkle, Velopack, MSIX App Installer and AppImage zsync, and the extended version check,
   all rendered from the release records.
-- **[Swift client & Sparkle](/docs/services/update/sparkle/)** — the macOS client target,
+- **[Swift client & Sparkle](/docs/features/ship-builds/updates/sparkle/)** — the macOS client target,
   the Sparkle version floor, and the trust anchor Polaris Key deliberately never
   reimplements.
 
@@ -93,7 +93,7 @@ product gets a working feed the moment it links a repository, with no separate p
 step and no baked-at-build-time XML file to keep in sync by hand. Sparkle's own signature
 verification — the part that actually decides whether an update is safe to install — is
 untouched by any of this; Update's server-side EdDSA check (covered on
-[Appcast](/docs/services/update/appcast/)) is a _publishing_ gate, not a substitute for it.
+[Appcast](/docs/features/ship-builds/updates/appcast/)) is a _publishing_ gate, not a substitute for it.
 
 Sparkle itself has no opinion about channels — a host either points at one `SUFeedURL` or
 it doesn't. Update's channel model (`stable`, `beta`, `pr-<n>`, and any operator-defined
@@ -109,7 +109,7 @@ service is enabled: the channels a product declares, the configured Sparkle publ
 `null` when none is set), and the canonical endpoint URLs for the version check and both
 appcast shapes. A well-built client — the Swift SDK included — reads its feed URL from
 here rather than constructing one by hand, which is exactly what keeps it working across a
-route change; see [Swift client & Sparkle](/docs/services/update/sparkle/) for how that
+route change; see [Swift client & Sparkle](/docs/features/ship-builds/updates/sparkle/) for how that
 plays out end to end.
 
 ## Live, not cached in a database
@@ -119,7 +119,7 @@ sitting in the edge cache — there is no local table Update reads from, not eve
 release truth store its sibling service maintains for the portal and the console. The two
 are kept in step because both ultimately reflect the same GitHub state, not because one
 queries the other. See
-[The truth store](/docs/services/release/truth-store/) for what that store is actually
+The truth store for what that store is actually
 for.
 
 ## Access, briefly
@@ -130,8 +130,8 @@ feed and any channel-specific one — is governed by **artifacts access**, the s
 that gates a raw download. That is deliberate: an appcast item embeds a download URL, so
 gating it under the informational column would let a caller read past the artifact
 restriction it points at. The full ladder and the two error shapes are covered on
-[Eligibility](/docs/services/update/eligibility/) and on Release's
-[Artifacts](/docs/services/release/artifacts/) page, which owns the shared explanation of
+[Eligibility](/docs/features/ship-builds/updates/eligibility/) and on Release's
+[Artifacts](/docs/features/ship-builds/releases/artifacts/) page, which owns the shared explanation of
 the four modes.
 
 ## The console
@@ -144,7 +144,7 @@ settings form, beside the display name; it moved here because it means nothing o
 — it is only ever read together with the access modes it is intersected against. There is
 no per-field API for the rest of Update's behavior: the appcast's content, the channels it
 resolves, and its Sparkle key all come from Release's own `.pkey/release` configuration.
-[Eligibility](/docs/services/update/eligibility/) covers the settings form in full.
+[Eligibility](/docs/features/ship-builds/updates/eligibility/) covers the settings form in full.
 
 ## Informing versus enforcing
 
@@ -156,12 +156,12 @@ signed license document, a different service entirely. A product can run Update 
 enforcement at all (a public feed, informing everyone equally) and separately enforce a
 version floor through licensing, or fold both together under `entitled` so the same
 license grant governs which builds are even offered. See
-[Eligibility](/docs/services/update/eligibility/) for where that line actually sits.
+[Eligibility](/docs/features/ship-builds/updates/eligibility/) for where that line actually sits.
 
 ## See also
 
 - [Public route table](/docs/reference/routes/) for every Update path in one place.
 - [Wire error codes](/docs/reference/error-codes/) for the nested `entitled` error shape.
-- [Release](/docs/services/release/) for the truth this service renders a feed over.
+- [Release](/docs/features/ship-builds/releases/) for the truth this service renders a feed over.
 - [D1 data model](/docs/reference/data-model/) for the Release-owned tables that describe
   the same GitHub state this service resolves live, on every request.

@@ -37,7 +37,7 @@ three POSTs, all in the release namespace, so a product with Release off does no
 
 **The publisher policy.** A product opts in from `.pkey/release`:
 
-```yaml
+```yaml title=".pkey/release"
 publishing:
   trustedPublisher:
     workflow: .github/workflows/release.yml
@@ -57,7 +57,7 @@ may publish.
 
 The default scopes are `release:publish`, `release:promote` and `distribution:report`;
 `release:yank`, `distribution:rollout` (the
-[rollout controls](/docs/services/distribution/rollouts/)), `distribution:feeds` and
+[rollout controls](/docs/features/ship-builds/channels/rollouts/)), `distribution:feeds` and
 `distribution:listing` ([listing assets](/docs/features/ship-builds/ci-stores/#listing-assets)) and `assets:write`
 ([hosted assets](/docs/features/ship-builds/ci-stores/#hosted-assets)) are opt-in. Scopes are an operator setting, never a manifest one: in the console's
 admin API an operator can read the policy (`/manage/api/products/<slug>/ci-publisher`),

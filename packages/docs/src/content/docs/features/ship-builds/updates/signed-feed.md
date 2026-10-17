@@ -1,6 +1,6 @@
 ---
 title: "Signed feed"
-description: "The signed channel feed (pkey-feed+jws), the CI-signed release records it pins, floors that prompt, and the seq ceiling recovery."
+description: "The signed release track feed (pkey-feed+jws), the CI-signed release records it pins, floors that prompt, and the seq ceiling recovery."
 type: "concept"
 lastReviewed: "2026-10-16"
 sidebar:
@@ -9,9 +9,9 @@ sidebar:
 
 Wire contract v4 splits an update into two signed documents with two signers. **CI signs what
 exists**: a release record (`pkey-release+jws`) per release, signed with a release key that lives
-only in CI. **The Worker signs which and when**: the channel feed (`pkey-feed+jws`), signed with
+only in CI. **The Worker signs which and when**: the release track feed (`pkey-feed+jws`), signed with
 the product key, which says which release each platform should be on, its floor, and what each
-outlet is doing. An SDK fetches the feed, fetches the record it pins, verifies both and decides.
+channel is doing. An SDK fetches the feed, fetches the record it pins, verifies both and decides.
 A compromised Worker can choose among CI-signed releases, but it cannot make one up.
 
 ## Release records
@@ -38,23 +38,23 @@ Records are stored once and never rewritten, and served by their SHA-256 at
 keys in [`.pkey/release` `releaseKeys`](/docs/build/manifest/release/#release-keys-releasekeys).
 A release published without a record is never a feed target.
 
-## The channel feed
+## The release track feed
 
-`GET /<product>/update/<channel>/feed.jws?platform=<platform>` answers one channel, for every
+`GET /<product>/update/<channel>/feed.jws?platform=<platform>` answers one release track, for every
 platform at once:
 
-- **`channel`** is the canonical channel (`latest` → `stable`, `staging` → `beta` unless the
+- **`channel`** is the canonical release track (`latest` → `stable`, `staging` → `beta` unless the
   product declares a manual `staging`). It keys the client's `seq` floor, so an alias can never
-  give one channel two floors.
-- **`targets`**: per platform, the channel's release for that platform, if it has a record,
-  pinned by the record's hash, `seq` and version; `critical` when it is the channel's pointer
+  give one release track two floors.
+- **`targets`**: per platform, the release track's release for that platform, if it has a record,
+  pinned by the record's hash, `seq` and version; `critical` when it is the release track's pointer
   release and the policy says so; and the platform's **floor**.
-- **`outlets`** per target, keyed by your outlet ids: what is live on each outlet, whether it is
+- **`outlets`** per target, keyed by your channel ids: what is live on each channel, whether it is
   halted, a partial rollout the client evaluates for itself, the store listing URL, and any
   capability you narrowed in the console.
 - **`seq`** moves only when the content changes (a pointer move, a floor, a rollout, a halt, a new
-  release); every caller of a channel gets the same bytes, re-signed at most every 450 s, valid
-  for 900 s. A channel that has never offered anything (an unused `pr-<n>` or manual channel)
+  release); every caller of a release track gets the same bytes, re-signed at most every 450 s, valid
+  for 900 s. A release track that has never offered anything (an unused `pr-<n>` or manual release track)
   answers an empty feed at `seq` 1 and is not stored.
 
 Nothing in the feed is device-specific: rollout buckets are computed on the device, and the
@@ -64,24 +64,24 @@ The feed can also carry **content members** (`packSets`, `packFloors`, `revocati
 a **delta menu** (`deltas`): per target pack payload, the lazy deltas the Worker generated
 for devices on an older payload. Each is read beside the claims, so a malformed one is unusable
 and never refuses the feed. The menu is added last, into whatever room is left under the
-65,536-byte cap, and is trimmed first; it never turns the channel-wide document into a
+65,536-byte cap, and is trimmed first; it never turns the document that covers the whole release track into a
 per-platform one. A delta turning ready or cold moves `seq`. See
 [Content in the feed and revocations](/docs/build/wire/packs/#content-in-the-feed-and-revocations)
 and [the delta menu](/docs/build/wire/packs/#the-feeds-delta-menu).
 
-## Which outlet an install is
+## Which channel an install is
 
-The decision reads the feed entry of the install's own outlet, so every SDK first works out
-where the install came from. A host that names its outlet (`update.outlet`) always wins.
-Otherwise the SDK combines the build stamp (the outlet a Godot export was stamped with) with what
+The decision reads the feed entry of the install's own channel, so every SDK first works out
+where the install came from. A host that names its channel (`update.outlet`) always wins.
+Otherwise the SDK combines the build stamp (the channel a Godot export was stamped with) with what
 the device can see:
 
 - **attested** evidence the platform vouches for — an App Store or TestFlight receipt and signing
-  certificate on macOS, iOS `AppDistributor`, `/.flatpak-info` — names the outlet even over the
+  certificate on macOS, iOS `AppDistributor`, `/.flatpak-info` — names the channel even over the
   stamp;
 - **declared** and **heuristic** evidence — an installer or launcher that says so (Android's
   install source, the Steam library, the itch receipt, a snap or AppImage environment, a
-  Homebrew, WinGet or Scoop path) — can only move the stamp to an outlet that updates no more
+  Homebrew, WinGet or Scoop path) — can only move the stamp to a channel that updates no more
   widely, and a launcher signal counts only when it names this product (the Steam app id, itch
   game id, Flatpak app id and so on, which CI stamps from `pkey distribution outlet-ids`);
 - a contradiction (a Developer ID build stamped `app-store`, Android's installer forged by the
@@ -93,11 +93,11 @@ never sends a raw signal anywhere. The rules are one function, pinned row for ro
 
 ## Floors prompt, they never block
 
-A floor — the channel's `min_supported`, a release published with
+A floor — the release track's `min_supported`, a release published with
 `pkey release publish --min-supported-seq <n>`, or a pack floor — reaches every install of that
 platform below it as an update prompt **the player cannot dismiss**. Play continues: no floor
-stops an app from running, even on an outlet that has nothing newer to offer. When an old build
-must stop working, use License's [compatibility window](/docs/services/license/document/), which
+stops an app from running, even on a channel that has nothing newer to offer. When an old build
+must stop working, use License's [compatibility window](/docs/reference/protocol/license-document/), which
 the license document enforces on the device.
 
 One answer does stop play: a CI-signed revocation of a **required** pack with no usable
@@ -123,7 +123,7 @@ answer on its own.
 Anyone who held the product key can sign a feed at the largest possible `seq`, and installs that
 fetch it then refuse the honest Worker's feeds until it expires and they freeze. After any
 suspected product-key or Worker compromise, rotate the product key and run
-`pnpm --filter @polaris-key/worker feed:seq-ceiling --product <slug>`: from then on every channel
+`pnpm --filter @polaris-key/worker feed:seq-ceiling --product <slug>`: from then on every release track
 of the product, including ones nobody has asked for yet, is signed at the ceiling with a newer
 `issuedAt`, which every install accepts. The steps are in `docs/RUNBOOK.md`, "Recovering the
 update feeds after a signer compromise".
