@@ -70,8 +70,8 @@
       "note": "im.plrs.key.core.Copy serves the generated Copy.generated.kt tables (from copy.en.json): message(code)/title(code) read COPY_CODES, then COPY_GATE, then COPY_ACTIVATION; activationMessage/activationTitle read COPY_ACTIVATION only (any kind spelling); an unknown code reads COPY_FALLBACK naming it; {name} placeholders fill from params or drop; registerLocale(\"en\", ...) is the host override layer and other locales fall back to English (CopyTest checks every table against copy.en.json). The Android kit's PolarisCopy keeps its own fields (host overrides and string resources still win) and reads Copy.message for every other refusal code the catalog knows (PolarisCopyMappingTest)."
     },
     "core.backend": {
-      "status": "planned",
-      "wp": "SP-59"
+      "status": "implemented",
+      "note": "client.backend (im.plrs.key.sdk.BackendClient): install(OkHttpClient.Builder) adds interceptor() (origin check, pre-sync, one forced retry at least 10 s after the last, typed not_entitled/sign_in_required) and networkInterceptor() (every hop's origin checked before it is sent, then X-PKey-License and X-PKey-Device attached; an application interceptor alone attaches nothing); headers() is raw. backendOrigins: exact, https except loopback. ClientBackendMatrixTest replays backend-matrix.json's client rows; BackendTest covers the rest."
     },
     "license.gate": {
       "status": "implemented"
