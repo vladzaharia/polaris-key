@@ -1,9 +1,6 @@
 # Polaris Key — what clients collect, and why
 
-Polaris Key had no written privacy policy before hardware fingerprinting landed, but it did
-have a consistent unwritten one: collect the minimum needed to license and configure software,
-bound it hard, and never keep it longer than the thing it describes. This document makes that
-explicit, because fingerprinting is the first feature where the policy became load-bearing.
+What an SDK and the Worker collect from a device, why, and how long it is kept.
 
 The rules below are enforced in code, not just documented. Where that is true, the enforcing
 call site is named.
@@ -16,7 +13,7 @@ call site is named.
    cannot recover a serial number, MAC address, or platform UUID from what it stores. This
    mirrors how the device id has always worked (`pkey-device:<product>:<raw>`).
 2. **Domain separation per product.** The product slug is inside every hash, so the same
-   machine produces unrelated digests for two different products. A leak of one product's
+   device produces unrelated digests for two different products. A leak of one product's
    table cannot be joined against another's.
 3. **Collect declared things only.** There is no installed-application enumeration. A product
    declares the companion apps it cares about as **probes**; the client answers only those.
@@ -38,26 +35,26 @@ omitted rather than substituted.
 
 | Component        | Source                                                                                                                                             | Purpose                                                                            |
 | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| `machineUuid`    | macOS `IOPlatformUUID` · Windows registry `MachineGuid` · Linux `/etc/machine-id`, else `/var/lib/dbus/machine-id` · iOS `identifierForVendor`     | The anchor: identifies the machine (on Linux, the OS install) across upgrades      |
-| `boardSerial`    | macOS `IOPlatformSerialNumber` · Windows `Win32_BaseBoard.SerialNumber` (PowerShell `Get-CimInstance`) · not read on Linux or iOS                  | Distinguishes otherwise-identical machines                                         |
+| `machineUuid`    | macOS `IOPlatformUUID` · Windows registry `MachineGuid` · Linux `/etc/machine-id`, else `/var/lib/dbus/machine-id` · iOS `identifierForVendor`     | The anchor: identifies the device (on Linux, the OS install) across upgrades       |
+| `boardSerial`    | macOS `IOPlatformSerialNumber` · Windows `Win32_BaseBoard.SerialNumber` (PowerShell `Get-CimInstance`) · not read on Linux or iOS                  | Distinguishes otherwise-identical devices                                          |
 | `cpuModel`       | CPU brand string + logical core count                                                                                                              | Detects a mainboard/CPU swap                                                       |
 | `primaryMac`     | Lowest non-loopback MAC                                                                                                                            | Detects a NIC change                                                               |
 | `bootVolumeUuid` | macOS boot volume UUID · Windows `vol C:` serial · Linux `findmnt -no UUID /`                                                                      | Detects a disk replacement or reimage                                              |
 | `ramBucket`      | Total RAM in whole GiB, rounded down to a power of two; omitted below 1 GiB                                                                        | Coarse on purpose: stable while the reported total stays between two powers of two |
-| `machineModel`   | macOS `hw.model` · Windows `Win32_ComputerSystem.Model` (PowerShell `Get-CimInstance`) · Linux `/sys/class/dmi/id/product_name` · iOS `hw.machine` | Distinguishes machine classes                                                      |
+| `machineModel`   | macOS `hw.model` · Windows `Win32_ComputerSystem.Model` (PowerShell `Get-CimInstance`) · Linux `/sys/class/dmi/id/product_name` · iOS `hw.machine` | Distinguishes device classes                                                       |
 
 The exact derivation rules are normative in WIRE-CONTRACT-V3 §6.1 and pinned by the conformance
 corpus. **No DMI serial or product UUID is read on Linux** (`product_uuid` and `board_serial` are
 root-only, so reading them made the fingerprint depend on the process's privilege). A Linux host
 with no usable machine-id — which includes most container images — therefore has no anchor
-component, and cannot obtain a keyless (free-tier) licence; activating with a licence key still
+component, and cannot obtain a keyless (free-tier) license; activating with a license key still
 works. In a container, mount the host's `/etc/machine-id` read-only, or create one and keep it in a
 volume.
 
 **Godot** reads the same desktop sources through `OS.execute` and the file system (on Windows,
 `getmac` for the MAC; on macOS, `ifconfig`; on Linux, `/sys/class/net/*/address`), once per
 session and off the main thread. On iOS and Android it sends only the anchor (Godot's
-`OS.get_unique_id()`: `identifierForVendor` on iOS, `ANDROID_ID` on Android), the machine model,
+`OS.get_unique_id()`: `identifierForVendor` on iOS, `ANDROID_ID` on Android), the device model,
 RAM and, on iOS, the CPU. A Godot web export collects no fingerprint.
 
 **Kotlin** on a JVM desktop reads a subset of the desktop sources: the Linux machine-id, macOS's
@@ -70,11 +67,11 @@ fingerprinting is unreliable, actively degraded by browsers, and privacy-hostile
 keeps its existing server-minted session identity.
 
 Used for: enforcing per-tier device limits honestly, deduplicating auto-issued free licenses
-to one per machine, and detecting when a device's hardware has been replaced.
+to one per device, and detecting when a device's hardware has been replaced.
 
 ### Software facts — all SDKs
 
-OS name, version, build, and kernel; CPU model, core count, total RAM, and machine model;
+OS name, version, build, and kernel; CPU model, core count, total RAM, and device model;
 runtime name and version; locale and timezone; and the results of product-declared probes.
 
 A Godot game also reports `engine` (the engine version, the renderer, the graphics adapter's
@@ -90,7 +87,7 @@ reported or known already. It adds one bit about the device: whether an optional
 present. For example, `core.store` is missing from a Node or Python install without a usable OS
 keyring. It names features only. It never names a library, a path or a version.
 
-Used for: admin visibility, compatibility gating, and targeting configuration at the machines
+Used for: admin visibility, compatibility gating, and targeting configuration at the devices
 that need it.
 
 ### Update outcome events — SDKs with an updater
@@ -109,7 +106,7 @@ only; no crash payload is stored. Of each Sentry delivery the Worker keeps only 
 rule, issueId, release, environment, outlet}` (30 days, with the connector event log), never the
 crash message, exception, user or other tags.
 
-### Pack install reports — SDKs with packs (Node today)
+### Pack install reports — SDKs with packs (Node)
 
 How the device's recent content-pack installs went: the pack id, the content hashes of the
 payload it moved from and to, the strategy that installed it (`delta`, `chunk`, `file`, `full`),
@@ -122,16 +119,16 @@ whose operator opted in.
 
 ### Store purchases — the commerce bridge (products that sell through a store)
 
-When a player claims a store purchase, the Worker keeps what it needs to keep the licence flag
+When a player claims a store purchase, the Worker keeps what it needs to keep the license flag
 honest: the SHA-256 of the store's purchase key (never the key itself), the store product id, the
-licence it was bound to, its state and environment, and the store ids a later re-check needs — an
+license it was bound to, its state and environment, and the store ids a later re-check needs — an
 App Store transaction id, a Play purchase token and order id, or a **Steam ID** (a Steam account
-number) with the DLC's app id. The licence's purchase **binding** is a random UUID handed to the
-store; it is not the licence id and identifies no one by itself. Store notifications are kept as
+number) with the DLC's app id. The license's purchase **binding** is a random UUID handed to the
+store; it is not the license id and identifies no one by itself. Store notifications are kept as
 received (Apple's signed payload, Play's notification body: product and purchase ids, no name,
 email or payment data) for 30 days, with the connector event log.
 
-Used for: granting and revoking the purchased licence flag, and nothing else.
+Used for: granting and revoking the purchased license flag, and nothing else.
 
 ### The Polaris Key account's sign-in (the login card on key.plrs.im)
 
@@ -166,7 +163,7 @@ design:
   content.
 - **Deleted with the account**, at once.
 
-Once the owner publishes Polaris Key's own terms (`identity.platformTerms`, unset today), each new
+Once the owner publishes Polaris Key's own terms (`identity.platformTerms`, unset), each new
 account also records the terms version it accepted and the terms URL it was shown (a `_platform`
 row beside the product terms acceptances). The privacy notice is linked beside them and is not
 "accepted", so it gets no row.
@@ -176,7 +173,7 @@ identity provider (single sign-on at id.plrs.im, in an app of a `provider: platf
 the portal) is kept on a Polaris Key account: the provider's subject as a sign-in method, the
 address it verified as the account's primary email and an email sign-in method (when no other
 account uses it), the name it sent, the groups it reported (`groups`, which Discover reads to
-offer a product's group tiers; replaced at each sign-in), and the time of the sign-in. The licences
+offer a product's group tiers; replaced at each sign-in), and the time of the sign-in. The licenses
 that provider's
 sign-ins created join the account. Nothing new is collected from the device. The operator's count
 of who would lose single sign-on at the sunset holds numbers only.
@@ -208,12 +205,12 @@ the person's device. A pending passkey ceremony is held for 5 minutes: its rando
 the relying party, plus the same-origin return path for a sign-in, or the account id and its user
 handle for adding a passkey.
 
-### Product backends — the licence document sent to the developer's own server
+### Product backends — the license document sent to the developer's own server
 
-An app built with a client half (`client.backend`) sends its signed licence document to its
+An app built with a client half (`client.backend`) sends its signed license document to its
 developer's own backend in the `X-PKey-License` header, with its device id in `X-PKey-Device`
-(WIRE-CONTRACT-V4 §14). The document is the one the device already holds: it carries the licence
-holder's name and email (its signed `profile`), the licence id, the device id, the entitlements
+(WIRE-CONTRACT-V4 §14). The document is the one the device already holds: it carries the license
+holder's name and email (its signed `profile`), the license id, the device id, the entitlements
 and, when an account is signed in on the device, that account's pairwise subject. It goes to the developer's own
 server, never to Polaris Key: the Worker never receives or reads the header, so nothing about these
 requests is collected or stored by Polaris Key. What that server keeps is the developer's own
@@ -241,9 +238,9 @@ request are kept with the pending sign-in (above) so the link can say where it w
 | Sign-in artefacts: OIDC flow records, device codes, portal magic links (which name the recipient's email), email codes (stored hashed) and wrong-code strikes (keyed by a hashed recipient)                                                                                                                                                                                                                                                                 | `SingleUseDO` (the sharded single-use store)                                    | Until used or expired: 10 minutes for a flow, link or code; a strike record at most an hour (a lockout 15 minutes); expired records are deleted by the object's own sweep                                                                                        |
 | Pack install reports (latest report's `packInstalls`)                                                                                                                                                                                                                                                                                                                                                                                                       | `devices.reported_json`                                                         | Replaced by the next report. A deauthorized device keeps its record, so keeps its last report                                                                                                                                                                    |
 | Lazy-delta demand: one row per device and pack-payload pair (strategy, last time), for products that opted in                                                                                                                                                                                                                                                                                                                                               | `delta_demand_devices`                                                          | 30 days after the device last reported the pair, then deleted by the nightly sweep                                                                                                                                                                               |
-| Store purchases (hashed key, product, licence, state, re-check ids incl. a Steam ID) and the licence's store grants                                                                                                                                                                                                                                                                                                                                         | `dist_purchases`, `license_store_grants`                                        | Kept while the licence exists; a refund marks them revoked                                                                                                                                                                                                       |
-| Grants: why a licence, an account or a Steam identity holds an entitlement: the source, the hashed purchase key, the store product, the state and times, and each key it carries (a licence's OIDC-provisioned keys included); the Steam identities verified on a device (hashed); entitlement-change events (the product's pairwise subject, the keys)                                                                                                     | `grants`, `grant_entitlements`, `device_store_identities`, `entitlement_events` | A licence's grants are kept while the licence exists and deleted with it; account- and Steam-held grants, Steam identities and events (none written before LX-11 and LX-13) are deleted with the product, and events also with the person's data for the product |
-| Purchase binding (random UUID per licence)                                                                                                                                                                                                                                                                                                                                                                                                                  | `dist_purchase_bindings`                                                        | Kept while the licence exists                                                                                                                                                                                                                                    |
+| Store purchases (hashed key, product, license, state, re-check ids incl. a Steam ID) and the license's store grants                                                                                                                                                                                                                                                                                                                                         | `dist_purchases`, `license_store_grants`                                        | Kept while the license exists; a refund marks them revoked                                                                                                                                                                                                       |
+| Grants: why a license, an account or a Steam identity holds an entitlement: the source, the hashed purchase key, the store product, the state and times, and each key it carries (a license's OIDC-provisioned keys included); the Steam identities verified on a device (hashed); entitlement-change events (the product's pairwise subject, the keys)                                                                                                     | `grants`, `grant_entitlements`, `device_store_identities`, `entitlement_events` | A license's grants are kept while the license exists and deleted with it; account- and Steam-held grants, Steam identities and events (none written before LX-11 and LX-13) are deleted with the product, and events also with the person's data for the product |
+| Purchase binding (random UUID per license)                                                                                                                                                                                                                                                                                                                                                                                                                  | `dist_purchase_bindings`                                                        | Kept while the license exists                                                                                                                                                                                                                                    |
 | Store notifications (as received)                                                                                                                                                                                                                                                                                                                                                                                                                           | `dist_connector_events`                                                         | 30 days                                                                                                                                                                                                                                                          |
 | Account sessions (times, sign-in method, browser label)                                                                                                                                                                                                                                                                                                                                                                                                     | `account_sessions`                                                              | 14 days while live; an ended session is pruned 30 days after it ended; deleted with the account                                                                                                                                                                  |
 | Pending email sign-ins, email gates and passkey ceremonies (the address, the provider identity and profile, a connection's offered birth date, the requesting city and country; a passkey ceremony's challenge, relying party, return path or account id and user handle)                                                                                                                                                                                   | `SingleUseDO` (the sharded single-use store)                                    | Until used or expired: 10 minutes for a sign-in, 15 for an email gate, 5 for a passkey ceremony                                                                                                                                                                  |
@@ -253,13 +250,13 @@ request are kept with the pending sign-in (above) so the link can say where it w
 | The account's birth date and its source (`user` or `connection:<id>`), optional, only when the person added or accepted it                                                                                                                                                                                                                                                                                                                                  | `accounts.birthdate`, `accounts.birthdate_source`                               | Until the person removes it; cleared at once when the account is deleted; a join fills it on the survivor only when the survivor has none, and the join's undo takes it back                                                                                     |
 | Passkeys (public key, credential id, counter, transports, user handle, times, AAGUID, synced flag, browser label)                                                                                                                                                                                                                                                                                                                                           | `account_passkeys`, `accounts`                                                  | Until the person removes the passkey or the account is deleted                                                                                                                                                                                                   |
 | Account overrides: managed config an operator sets for one person on one product, secrets sealed                                                                                                                                                                                                                                                                                                                                                            | `account_overrides` (by the product's pairwise subject)                         | Until an operator removes them; deleted with the person's data for the product, with the account and with the product                                                                                                                                            |
-| The licence-override migration report: licence id, the licence's own email, key names, non-secret config values, the owner's pairwise subject (never a secret value)                                                                                                                                                                                                                                                                                        | `override_migration_report`                                                     | 90 days after the run, then deleted by the nightly sweep; a person's rows go with their data for the product and with the account, and every row with the product                                                                                                |
-| The relink tool's history: which pairwise subject a licence moved from and to, the reason, the operator, the undo window; for Make floating and Reassign also the licence's own name and email before and after                                                                                                                                                                                                                                             | `license_relinks`                                                               | The licence's name and email in the snapshot are cleared by the nightly job once the 72-hour undo window ends; the row is deleted with the licence and with the product; an account deletion clears its account ids                                              |
+| The license-override migration report: license id, the license's own email, key names, non-secret config values, the owner's pairwise subject (never a secret value)                                                                                                                                                                                                                                                                                        | `override_migration_report`                                                     | 90 days after the run, then deleted by the nightly sweep; a person's rows go with their data for the product and with the account, and every row with the product                                                                                                |
+| The relink tool's history: which pairwise subject a license moved from and to, the reason, the operator, the undo window; for Make floating and Reassign also the license's own name and email before and after                                                                                                                                                                                                                                             | `license_relinks`                                                               | The license's name and email in the snapshot are cleared by the nightly job once the 72-hour undo window ends; the row is deleted with the license and with the product; an account deletion clears its account ids                                              |
 | Accepted product terms, and Polaris Key's own once published (product or `_platform`, terms version, the terms URL the gate showed, time accepted)                                                                                                                                                                                                                                                                                                          | `account_terms_acceptances`                                                     | For the account's life, one row per terms version (a merge moves them to the survivor); deleted with the account, and a product's rows with the product                                                                                                          |
-| Storefront library entries (account, product, time added): an open product added from the Polaris Key storefront, with no licence                                                                                                                                                                                                                                                                                                                           | `library_entries`                                                               | Until the person removes it; deleted with the account, moved to the survivor on an account merge and back to the joined account on the join's undo, if the survivor still holds it; cleared when the product is deleted                                          |
+| Storefront library entries (account, product, time added): an open product added from the Polaris Key storefront, with no license                                                                                                                                                                                                                                                                                                                           | `library_entries`                                                               | Until the person removes it; deleted with the account, moved to the survivor on an account merge and back to the joined account on the join's undo, if the survivor still holds it; cleared when the product is deleted                                          |
 | Storefront impression dedupe: a daily keyed HMAC of the account id (the salt derived from `KEY_HASH_PEPPER` and the day, never stored), with the product and day; no account id. Not written at all without `KEY_HASH_PEPPER`                                                                                                                                                                                                                               | `storefront_seen`                                                               | At most two days (today and yesterday), then deleted by the nightly sweep                                                                                                                                                                                        |
 | Storefront daily counters per product, day and path kind (impressions, adds, first activations); nothing about a person                                                                                                                                                                                                                                                                                                                                     | `storefront_daily`                                                              | Kept until the product is deleted                                                                                                                                                                                                                                |
-| An account join's undo snapshot (`snapshot_json`): the absorbed account's row (primary email, display name, locale, profile sources, birth date and its source, passkey user handle), its consents (claims shared with each app), terms acceptances, auto-attach blocks and library entries, and the ids of what moved (sign-in methods, passkeys, licences, sessions, pictures, registry tokens, relinks, pairwise subjects and the devices bound to them) | `account_merges`                                                                | Up to 72 hours: cleared by an undo, deleted by the nightly job once the window ends, and deleted with either account                                                                                                                                             |
+| An account join's undo snapshot (`snapshot_json`): the absorbed account's row (primary email, display name, locale, profile sources, birth date and its source, passkey user handle), its consents (claims shared with each app), terms acceptances, auto-attach blocks and library entries, and the ids of what moved (sign-in methods, passkeys, licenses, sessions, pictures, registry tokens, relinks, pairwise subjects and the devices bound to them) | `account_merges`                                                                | Up to 72 hours: cleared by an undo, deleted by the nightly job once the window ends, and deleted with either account                                                                                                                                             |
 
 ### Residue and limits
 
@@ -267,15 +264,15 @@ The Worker's request logs (Cloudflare Workers Logs) are enabled and persisted at
 
 What the sections above do not promise, stated plainly:
 
-- **Console audit rows** (`audit`) name the licence by id; since October 2026 they no longer copy the
+- **Console audit rows** (`audit`) name the license by id; since October 2026 they no longer copy the
   buyer's email or name. Rows written before that may still hold an address and are deleted by the
   nightly job after 180 days. Account erasure rewrites the rows that name the person as their actor:
-  a Discover add through the portal, and a product sign-in's licence merge, tier change or licence
+  a Discover add through the portal, and a product sign-in's license merge, tier change or license
   choice, record the person's platform subject, name and address. In the erasure batch such a row
-  keeps its time, action and licence and loses the actor (replaced by the marker `erased-account`),
+  keeps its time, action and license and loses the actor (replaced by the marker `erased-account`),
   the name, the address and the summary. A row is rewritten only when its actor is one of the
-  account's platform sign-ins and it concerns the person's own licence: an address alone is no link,
-  and an operator's console actions on anyone else's licence stay attributed. The product's
+  account's platform sign-ins and it concerns the person's own license: an address alone is no link,
+  and an operator's console actions on anyone else's license stay attributed. The product's
   developer sees the marker, never the global account id. Removing your data from a single app does
   not rewrite them.
 - **Merge tombstones** (`account_tombstones` with a merge target, which carry an email hash) are
@@ -285,7 +282,7 @@ What the sections above do not promise, stated plainly:
 - **Store connector events** (raw Apple payloads, Play notifications) are deleted after 30 days.
   Purchase records keep a hashed purchase key, but the re-check ids (a Play purchase token, a
   Steam ID with the DLC app id) are stored in clear in `dist_purchases.detail_json` for as long as
-  the licence exists.
+  the license exists.
 - **Rate limiting** keys its counters by the client network (an IPv4 address or an IPv6 /64) in a
   Durable Object, for the length of the limit window (minutes to a day); the email-code lockout is
   keyed by the recipient's peppered hash with the requester's IPv4 /24 or IPv6 /48. The object's
@@ -295,8 +292,8 @@ What the sections above do not promise, stated plainly:
   reached no address is recorded in the account's activity as counts only. Both follow their
   log's retention, and the account's activity is deleted with the account.
 - **Worker invocation logs** are off: request URLs carry single-use tokens and codes.
-- **Signed licence documents and offline bundles** include the licence's name and email. A
-  licence document for a device an account is signed in on also carries that person's pairwise
+- **Signed license documents and offline bundles** include the license's name and email. A
+  license document for a device an account is signed in on also carries that person's pairwise
   subject for the product (`profile.user`), which is no new personal data: no name, email or
   account id. Once issued they cannot be recalled or erased; they expire with the document.
 - **Export and removal.** `GET /api/me/export` and `GET /api/products/<product>/export` hand the
@@ -313,7 +310,7 @@ What the sections above do not promise, stated plainly:
   the account active for fourteen days. At its deadline the scheduled worker claims the request
   and starts the resumable hard-erasure state machine (`account_erasures`); it deletes
   account-linked data and the request's account activity, retains only the id-only erasure
-  tombstone and final receipt, and detaches licences. The tombstone is kept and reapplied after a
+  tombstone and final receipt, and detaches licenses. The tombstone is kept and reapplied after a
   D1 restore so legacy catch-up cannot recreate the account, and a restored deleted account is
   refused at sign-in and on every request before that cleanup erases it again. Data is not
   encrypted per person (no crypto-shredding), and D1 Time Travel backups keep deleted rows for up to
@@ -400,12 +397,12 @@ check-in without losing its seat.
 
 A product's **Users** page (Core → Users) shows each person by a random id that exists for that
 product only (`ps_…`); another product's console sees a different id for the same person. It
-shows that product's licences, devices, data size and console audit, and, with Identity on, the
+shows that product's licenses, devices, data size and console audit, and, with Identity on, the
 person's sign-ins to that product by method kind ("Steam") only. It never shows the Polaris Key
 account id, the account's sign-in methods, its birth date, or anything from another product. The
-contact email is the licence's buyer email; the account's own email appears only when the person
+contact email is the license's buyer email; the account's own email appears only when the person
 agreed to share it with that product. An admin can export that product's data for the person as JSON,
-delete it, detach a licence, or move a licence to another person of the same product (a fresh
+delete it, detach a license, or move a license to another person of the same product (a fresh
 admin sign-in, a recorded reason, an email to both people first, and 72 hours to undo). An admin
 can also set the person's **account overrides** for that product (managed config; a secret is
 never shown again once saved). No admin can delete, disable, sign out or merge an account, or

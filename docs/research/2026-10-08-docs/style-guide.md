@@ -1,15 +1,15 @@
 # Polaris Key docs style guide
 
-How every page on `key.plrs.im/docs` is written. It goes with the plan in `README.md`,
+How every page on `key.plrs.im/docs` is written. It goes with the plan in `docs/research/2026-10-08-docs/README.md` ("the plan" below),
 which owns the machinery: page types and their budgets (§2), the doors (§3.1), and where code
 comes from and what checks it (§4). This guide is the **only home** for writing rules: the
 voices, the Help voice, copy rules, words, how code is written, admonitions, screenshots and
-diagrams. DOC-12b publishes it as `/docs/contribute/writing-docs/`. Writers get it with every
-package, and reviewers check against §12.
+diagrams. The site shows it as Contribute → Writing docs. Writers follow it for every page, and
+reviewers check against §12.
 
 What enforces it:
 
-- DOC-03a's lints check the mechanical rules: type skeletons, banned words, programme ids, counts,
+- The docs lints check the mechanical rules: type skeletons, banned words, programme ids, counts,
   future tense, Help's word list, `pkey` commands and HTTP paths. Today's hits sit in
   `lint-debt.json`, which only shrinks; a package clears its own pages.
 - A critic pass checks the rest. For Help, the critic is a fresh reader with no repo context.
@@ -49,7 +49,7 @@ Every door follows §4 to §11. The voices differ only in vocabulary (§5) and t
   yet is a "Not built yet" row in a generated table, never a sentence about the future. The
   changelog strip on the Developers overview is headed **Latest changes**.
 - **No promised durations you haven't measured.** "About 10 minutes" appears only after the
-  fresh-reader run (README §6.2) measured it.
+  fresh-reader run (plan §6.2) measured it.
 - **No programme ids, plan paths or history.** Readers can't resolve "LX-33", "D-14", "SDK parity
   pass §3.1", `plans/P4-01.md`, "until wire contract v3", "v2 used refresh()". The changelog and
   **Upgrade to 0.9** hold history.
@@ -57,7 +57,7 @@ Every door follows §4 to §11. The voices differ only in vocabulary (§5) and t
 - **Operate pages** open with **Role required** and, for anything that changes data, the
   **impact**. Steps name the console page and labels in bold, exactly as shown: "Open **Licenses**,
   select the license, then **Deauthorize Old iMac**". Skip anything the screen makes obvious.
-- **Write in the door that owns the page** (README §3.1). A feature's console screens are
+- **Write in the door that owns the page** (plan §3.1). A feature's console screens are
   documented in that feature's how-tos; Operate → Console covers only screens that span the
   product. When a task touches another door, link it in one sentence.
 
@@ -87,7 +87,7 @@ phone.
 - **Quote messages verbatim.** A heading for a message is the app's title, character for
   character, even when the catalog breaks a house rule ("Sign-in cancelled"; file the copy fix).
   It comes from the copy catalog through `<HelpMessage>`, never retyped, and its anchor is the
-  message id (README §7.1), never written by hand. One title with two causes is one heading with
+  message id (plan §7.1), never written by hand. One title with two causes is one heading with
   a branch per cause.
 - **Use their words** (§5.2). No SDK, API, token, OIDC, SSO, seat, magic link, manifest,
   entitlement, flag, channel, release track, tier (unless the app shows it), wire, endpoint, JSON
@@ -123,7 +123,7 @@ These come from docs/design/EXPERIENCE.md §2 and apply to every page.
 | People and things               | Names; ids as secondary text                                               | `lic_1 · seat 1`, "by u1"                                   |
 | When a line earns its place     | A consequence, an irreversible fact, a constraint, or the one missing fact | Restating the title; defining the label; promising a future |
 
-Repo rules also apply (AGENTS.md rule 4, as DOC-03a words it):
+Repo rules also apply (AGENTS.md rule 4):
 
 - device, never machine;
 - **product** is the record in Polaris Key: the console's product, the manifest, the API.
@@ -135,11 +135,10 @@ Repo rules also apply (AGENTS.md rule 4, as DOC-03a words it):
 
 ## 5. Words
 
-### 5.1 UI words (ST-37's glossary)
+### 5.1 UI words
 
-`start/concepts.md` is the canonical glossary (AGENTS.md rule 4), and ST-37 is bringing in the
-consolidation's words. **A word enters the docs in the same PR that puts it in the console.**
-Until that package lands, write the word the console shows today. Identifiers in code, manifests
+`start/concepts.md` is the canonical glossary (AGENTS.md rule 4). **A word enters the docs in the same PR that puts it in the console.**
+Write the word the console shows. Identifiers in code, manifests
 and on the wire keep their names; format them as code.
 
 | Say                                                                   | Meaning                                                                                          | Not in prose (code spans only where an identifier)         |
@@ -197,7 +196,7 @@ and on the wire keep their names; format them as code.
 
 ## 6. Structure
 
-- **Titles.** Each page type has a title pattern (README §2):
+- **Titles.** Each page type has a title pattern (plan §2):
   - How-to titles are imperative with no "How to" and no gerund: "Add licensing to your app".
   - Concept titles are nouns.
   - A decision page is an Overview titled "Choose…": "Choose your integration".
@@ -235,7 +234,7 @@ and on the wire keep their names; format them as code.
 
 ## 7. Code
 
-This is how code is written. README §4 is where it comes from and what checks it.
+This is how code is written. plan §4 is where it comes from and what checks it.
 
 - **Never write an SDK snippet into a page.** Generate it (`<Generated>`) or include it by region
   from `examples/` or from the SDK's docs-snippets target (`<Snippet>`), where that SDK's CI
@@ -246,7 +245,7 @@ This is how code is written. README §4 is where it comes from and what checks i
 - **Every block is titled** with its file name (`App.swift`, `polaris-key.json`,
   `.pkey/product`) or **Terminal**. Output goes in its own block titled **Output**.
 - **Tidewater Studio (`tidewater`)** is the one example product. App code reads its generated
-  config (`polaris-key.json` from SP-32), so slugs, URLs and pins don't appear in snippets.
+  config (`polaris-key.json`), so slugs, URLs and pins don't appear in snippets.
 - **Placeholders** look like `<fingerprint from Integration>`: angle brackets, lowercase, a
   description. A block containing one has no Copy button, and its footer says where to get the
   value.
@@ -262,7 +261,7 @@ This is how code is written. README §4 is where it comes from and what checks i
   - No `...` inside a region a reader copies. Long files are included by region instead.
 - **Shell commands** have no prompt (`$`) in copyable blocks. A command and its output never share
   a block.
-- **Manifests, `pkey` commands and HTTP calls** are validated (README §4): write them so the
+- **Manifests, `pkey` commands and HTTP calls** are validated (plan §4): write them so the
   validator, `help.ts` and the OpenAPI spec accept them as they stand.
 - **Inline code** is for identifiers, file names, commands, values and codes. Never for emphasis,
   and never for UI labels (those are **bold**).
@@ -334,8 +333,8 @@ title, never told by colour alone.
 
 The reviewer, and for Help the plain-language critic, cites `page#anchor` for each finding.
 
-1. Is the type right, and does the page follow its skeleton and budget (README §2)? Is it in the
-   door that owns its subject (README §3.1)?
+1. Is the type right, and does the page follow its skeleton and budget (plan §2)? Is it in the
+   door that owns its subject (plan §3.1)?
 2. Does the first sentence say what the reader gets? Is the answer outside every tab and
    collapsible?
 3. Is every claim true against today's code, with the evidence in the PR? Is anything unbuilt

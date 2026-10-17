@@ -7,7 +7,7 @@ sidebar:
   order: 0
 ---
 
-Look things up here. Most pages are generated from the source and byte-compared in CI, so they can't drift from the code they describe. Regenerate them with `pnpm --filter @polaris-key/docs gen`, and never edit one by hand.
+Look things up here. Most pages are generated from the source and byte-compared in CI, so they can't drift from the code they describe.
 
 ## Generated from source
 
@@ -27,15 +27,16 @@ Look things up here. Most pages are generated from the source and byte-compared 
 
 The frozen wire format every SDK verifies. These pages summarize wire contract v4.
 
-| Page                                                                     | Covers                                                   |
-| ------------------------------------------------------------------------ | -------------------------------------------------------- |
-| [The protocol](/docs/reference/protocol/)                                | The envelope, the six documents and the version counters |
-| [Conformance corpus v2](/docs/reference/protocol/corpus/)                | Case counts, generated from the corpus files             |
-| [Fingerprint constants](/docs/reference/protocol/fingerprint-constants/) | The frozen hash domains, generated from the corpus       |
+| Page                                                                     | Covers                                               |
+| ------------------------------------------------------------------------ | ---------------------------------------------------- |
+| [The protocol](/docs/reference/protocol/)                                | The envelope, the documents and the version counters |
+| [Conformance corpus v2](/docs/reference/protocol/corpus/)                | Case counts, generated from the corpus files         |
+| [Fingerprint constants](/docs/reference/protocol/fingerprint-constants/) | The frozen hash domains, generated from the corpus   |
 
 ## Written by hand
 
 | Page                                                    | Covers                                                   |
 | ------------------------------------------------------- | -------------------------------------------------------- |
 | [HTTP API](/docs/reference/http-api/)                   | Base URL, authentication, errors, versioning, pagination |
+| [Portal API](/docs/reference/portal-api/)               | The customer portal's routes                             |
 | [What apps collect](/docs/reference/what-apps-collect/) | What a product collects from a device, and why           |

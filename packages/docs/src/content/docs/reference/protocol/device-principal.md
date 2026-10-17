@@ -298,6 +298,4 @@ Clients treat this as best-effort and swallow errors: telemetry must never fail 
   how it is matched.
 - [Errors and limits](/docs/reference/protocol/errors/) — the wire error shapes and the rate-limit
   buckets.
-- [D1 data model](/docs/reference/data-model/) — the `devices`, `device_fingerprints`, and
-  `device_facts` columns.
 - [Public route table](/docs/reference/routes/) — every route with its owning service.

@@ -1,5 +1,5 @@
 ---
-title: "Setup"
+title: "Set up the repo"
 description: "Install the JS workspace, the Python SDK, and the Swift, Godot and Kotlin toolchains, then run the green gate before opening a PR."
 sidebar:
   order: 2

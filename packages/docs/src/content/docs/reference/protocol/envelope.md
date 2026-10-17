@@ -257,5 +257,5 @@ _network_ freshness for the whole window, which is exactly what a replay wants.
   revoked.
 - [Cache and clock](/docs/reference/protocol/cache-and-clock/) — what `now` actually is once the
   monotonic floor is applied.
-- [The conformance corpus](/docs/contribute/corpus/) — the 36 raw-JWS vectors and 34 document
+- [The conformance corpus](/docs/reference/protocol/corpus/) — the 36 raw-JWS vectors and 34 document
   vectors that pin everything on this page.

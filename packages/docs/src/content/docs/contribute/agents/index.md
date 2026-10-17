@@ -25,36 +25,20 @@ Everything in this section is downstream of that file:
 | Page                                                | What it is                                                                                                    |
 | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
 | [Task recipes](/docs/contribute/agents/recipes/)    | Six common tasks as task → steps → verify tables, each pointing at the deep page and ending in a real command |
-| [Conventions](/docs/contribute/agents/conventions/) | The green gate and hard rules distilled, plus the full drift-gate inventory                                   |
+| [Conventions](/docs/contribute/agents/conventions/) | Where the hard rules, the green gate and the drift gates are explained                                        |
 
 When this section and `AGENTS.md` disagree, `AGENTS.md` wins. Treat a disagreement as a bug in
 this section and fix it here.
 
-## Why there is no `llms.txt`
+## What to read
 
-The usual answer for "make a docs site legible to agents" is to publish `llms.txt` and a set of
-flat markdown mirrors at a stable public URL. That is the wrong shape for this site.
+The agent-readable source of truth is **the repository**, not the deployed site:
 
-`key.plrs.im/docs` is served by the same worker as the console, **in tiers**: the developer
-sections are public, while Operate and Contribute stay behind the console's session gate. That
-is a deliberate trade: because Operate → Platform is gated, it can carry the real runbook, the
-real deployment procedure, and real operational values instead of a sanitised public subset. An
-`llms.txt` for the public developer door is possible now and is planned separately; one that
-reached the gated pages would leak exactly the material the gate exists to protect.
-
-So the agent-readable source of truth is **the repository**, not the deployed site:
-
-- `AGENTS.md` — conventions, gates, hard rules. Read first, always.
-- `CLAUDE.md` — Claude Code specifics only.
-- `.claude/skills/` — three packaged procedures: `authoring-pkey-manifests`,
-  `adding-a-catalog-entry` and `running-the-omniplatform-program`. The last one drives the role
-  agents in `.claude/agents/` through the work packages of the Godot-on-Polaris-Key program.
-- `CONTRIBUTING.md`, `README.md`, `docs/` — the long-form human material, all git-tracked.
-- The tests named in [Conventions](/docs/contribute/agents/conventions/) — every rule that matters is
-  enforced by one, so an agent can check its own work without reading prose at all.
-
-An agent with a checkout has everything. An agent with only a URL has a login page — which is the
-correct outcome, not a gap to paper over.
+- `AGENTS.md`: conventions, gates, hard rules. Read first, always.
+- `CLAUDE.md`: Claude Code specifics only.
+- `.claude/skills/`: packaged procedures, among them `authoring-pkey-manifests`,
+  `adding-a-catalog-entry` and `running-the-omniplatform-program`.
+- `CONTRIBUTING.md`, `README.md`, `docs/`: the long-form human material, all git-tracked.
 
 ## The one-paragraph orientation
 

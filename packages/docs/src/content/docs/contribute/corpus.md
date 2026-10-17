@@ -1,6 +1,6 @@
 ---
 title: "The conformance corpus"
-description: "One generator and its family modules, the language runners, the generator-owned Godot mirror, how to add a case without hand-editing generated output, and the HTTP transcripts recorded beside it."
+description: "One generator and its family modules, the language runners, the generator-owned Godot mirror, the files and case families, and the HTTP transcripts recorded beside it."
 sidebar:
   order: 5
   label: "Corpus"
@@ -18,9 +18,8 @@ fixed keypair and a fixed case list. It is a driver: each corpus file and each `
 section is built by its own family module in `tools/corpus/` (`gate.ts`, `stage.ts`, `jws.ts`,
 `feed.ts`, `update.ts` and so on, over the shared fixtures in `common.ts`, `release-records.ts`,
 `pack-records.ts` and `content-fixture.ts`), and every verdict is recomputed by the generator's
-independent reference implementations in `tools/corpus/reference/`. The runner set is taxonomized in full on
-[the wire-contract corpus page](/docs/contribute/corpus/) (which also counts React's
-gate-matrix-only runner); the ones a contributor touches most:
+independent reference implementations in `tools/corpus/reference/`. If you port the wire contract
+to another language, the corpus is your acceptance test. The runners a contributor touches most:
 
 - **Node** — `conformance/runners/node`: `corpusV2.test.ts` covers the JWS, document, trust,
   and bundle cases plus the gate matrix, and for wire contract v4 the pointer sets, the
@@ -48,7 +47,7 @@ gate-matrix-only runner); the ones a contributor touches most:
 - **Godot** — `sdks/godot/tests/`: `suite_conformance.gd` covers every `cases.json` family, the
   `fingerprint.json` device ids and both `headers.json` sections, and `config/test_matrix.gd`
   runs `config-matrix.json` with the environment layer on and off (the gate and stage matrices
-  follow with the licence client and the boot stage machine), run by
+  follow with the license client and the boot stage machine), run by
   `sdks/godot/tools/run_tests.sh` on an editor and an exported release template.
 - **Kotlin** — `sdks/kotlin/conformance/src/test/kotlin/im/plrs/key/conformance/`: `CorpusV2Test.kt`
   (the JWS, document, trust, clock-floor and bundle families and their pointer sets),
@@ -76,14 +75,14 @@ Node, Python, and Swift each assert byte-identical verify outcomes against the w
 the Worker's slice is narrower but no less load-bearing, since a drifted `hwid` formula would
 silently stop matching a returning machine to its existing free-tier enrollment.
 
-## What's in the corpus
+## The files
 
-Fourteen files and the content corpus, one directory, so a runner can point at `corpus/v2/` and find everything it needs:
+The files, in one directory, so a runner can point at `corpus/v2/` and find everything it needs:
 
 | File                       | Contents                                                                                                                                                                                                                                                                                                                                    |
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `cases.json`               | JWS cases, license/config documents, trust manifests, clock-floor sequences, offline bundles, and (wire contract v4) channel feeds and release records. A case whose payload holds a number that cannot be a wire integer lists those pointers in `nonWireIntegers`, beside `expect`.                                                       |
-| `gate-matrix.json`         | The client gate's decision table — every input combination and the state it must produce (`rows`) — and, in `entitlementRows`, what `isEntitled` answers in each licence state.                                                                                                                                                             |
+| `gate-matrix.json`         | The client gate's decision table — every input combination and the state it must produce (`rows`) — and, in `entitlementRows`, what `isEntitled` answers in each license state.                                                                                                                                                             |
 | `fingerprint.json`         | Hardware-fingerprint and device-id derivation vectors, and the §6.1 source rules: `windowsCim` (with `windowsCimCommand`), `linuxAnchor`, `ramBuckets`. Node and Python run all three; Swift runs `ramBuckets`.                                                                                                                             |
 | `stage-matrix.json`        | The boot stage machine (client boot behaviour, outside the wire contract): rows, guard cases and (version 2) boot-confirmation cases.                                                                                                                                                                                                       |
 | `headers.json`             | WIRE-CONTRACT-V4 §5.2: each runtime spelling of a platform or arch and its canonical header value, or none. The rows are the `PLATFORM_SPELLINGS` / `ARCH_SPELLINGS` tables.                                                                                                                                                                |
@@ -96,7 +95,7 @@ Fourteen files and the content corpus, one directory, so a runner can point at `
 | `device-label.json`        | WIRE-CONTRACT-V4 §12.7.1 (PX-W13): raw device labels and their normalised form, or none. Every SDK runs every row, and the Worker runs them through `/identity/auth/device/start`. Non-ASCII code points are written escaped; no row holds U+0000, which a Godot `String` cannot.                                                           |
 | `presentation-matrix.json` | WIRE-CONTRACT-V4 §5.5: discovery's `core.presentation` parsed field by field (`parseCases`), the icon size chosen for a pixel size, scale and decodable set (`pickCases`), and icon bytes checked against their SHA-256 (`verifyCases`, base64 bytes). ASCII only.                                                                          |
 | `ui-matrix.json`           | The UI kits' layer-(c) state matrix: for each of the eight component families an input and the component, state, copy keys and actions every kit's headless model answers; the `theme` resolution and the `i18n` lookup and formatter; and `cli`, the terminal drop-in contract. Generated, unsigned, ASCII only.                           |
-| `backend-matrix.json`      | WIRE-CONTRACT-V4 §14: product backends. `verdict` (the verdict on `X-PKey-License`, signed licence documents inside), `problem` (the refusal body, its challenge and its locale, written from the copy catalog) and `client` (the refresh-and-retry rule). Server cores replay `verdict` and `problem`, client halves `client`. ASCII only. |
+| `backend-matrix.json`      | WIRE-CONTRACT-V4 §14: product backends. `verdict` (the verdict on `X-PKey-License`, signed license documents inside), `problem` (the refusal body, its challenge and its locale, written from the copy catalog) and `client` (the refresh-and-retry rule). Server cores replay `verdict` and `problem`, client halves `client`. ASCII only. |
 | `content/`                 | WIRE-CONTRACT-V4 §2.6: `content/cases.json` (path rules, the files index, the chunk index, full, delta, file and chunk apply, `packSetId`, the content stamp, `frameWindow`) over the committed blobs in `content/blobs/`. Source only, not mirrored.                                                                                       |
 
 There is exactly one corpus: v1 was deleted when wire contract v2 shipped, so there is no
@@ -191,19 +190,6 @@ Never weaken a runner to make a change "pass." If a runner disagrees with the co
 runner has a bug or the corpus is missing a case for the behavior you actually intended — not a
 reason to loosen an assertion.
 
-## The conformance corpus
-
-The corpus is the only automated cross-language enforcement this contract has. The spec is
-prose; the SDKs are separate codebases in separate languages, each with its own JSON parser and
-base64 implementation. What proves they agree is a set of committed, signed vectors that every
-one of them runs.
-
-If you are porting the wire contract to another language, the corpus is your acceptance test —
-and the moment your runner passes it, it becomes part of the gate that keeps the others honest.
-
-Spec references: §6 (mandatory corpus additions, carried from v2), §9 (version counters),
-§10 (the divergence ledger).
-
 ## One generator
 
 ```
@@ -250,25 +236,7 @@ into the v2 generator before deletion. Fourteen are still carried; the fifteenth
 the dev-build bypass R3-01 removed, was retired by an approved plan, and its successor
 row pins the opt-in bypass instead.
 
-## The files
-
-| File                   | What it pins                                                                                                                                                                                       | Contract section                              |
-| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
-| `cases.json`           | Six case families covering verification end to end, plus the two test keys                                                                                                                         | §1–§4, §7                                     |
-| `gate-matrix.json`     | Every gate transition, as pure input/expected-status rows (`rows`), and whether an entitlement holds in each status (`entitlementRows`)                                                            | §5                                            |
-| `fingerprint.json`     | Component order, per-component and composite digest lengths, the device-id derivations, and the three source rules (`windowsCim` with the pinned `windowsCimCommand`, `linuxAnchor`, `ramBuckets`) | Fingerprint v1, §6.1                          |
-| `stage-matrix.json`    | The boot stage machine: rows of host events with the exact emits each produces, and guard cases                                                                                                    | client boot behaviour, not a contract section |
-| `headers.json`         | Each runtime spelling of a platform or arch and its canonical `X-PKey-Platform` / `X-PKey-Arch` value, or none (`platformCases`, `archCases`)                                                      | §5.2                                          |
-| `config-matrix.json`   | Config precedence, the environment variable name, the strict environment value and the user-visible list (`resolveCases`, `envValueCases`, `listCases`), with each no-environment answer           | §2.2.1                                        |
-| `update-matrix.json`   | The update decision: version comparison, capability narrowing, the outlet, the rollout bucket and every decision row                                                                               | §11.1 (client behaviour)                      |
-| `outlet-matrix.json`   | Outlet capability defaults and narrowing, listing-URL prefixes, and outlet detection                                                                                                               | §11.2 (client behaviour)                      |
-| `feed-url-matrix.json` | The native updater feed URLs (appcast, WinSparkle, Velopack, App Installer, zsync) expanded from discovery's `update.endpoints` templates, or `unsupported: product`                               | client behaviour (`update.feeds`)             |
-| `plan-matrix.json`     | The install planner (`rows`), variant selection (`variantCases`) and target mapping (`targetCases`)                                                                                                | §11.4 (client behaviour)                      |
-| `sync-scenarios.json`  | The Cloud Sync client state machine: scenarios of SDK calls, clock moves and scripted server answers, with the requests, journal, values, events and status each produces                          | §11.5 (client behaviour)                      |
-| `device-label.json`    | The device label every SDK sends as `deviceName` and the Worker stores: raw labels and their normalised form, or none                                                                              | §12.7.1                                       |
-| `content/cases.json`   | The content corpus: path rules, the files index, full, delta and file apply, `packSetId`, the content stamp and `frameWindow`, over the committed blobs in `content/blobs/`                        | §2.6, §2.7                                    |
-
-### The case families in `cases.json`
+## The case families in `cases.json`
 
 | Family               | Contract section | What it drives                                                                                                                                    |
 | -------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -283,24 +251,6 @@ row pins the opt-in bypass instead.
 | `packRecordCases`    | §2.5.1, §2.5.2   | `kind: pack` records and an app record's `content` and `builds[].embeds`, one case per registered claim check, over the content set's object refs |
 | `markerCases`        | §2.7, §3.7       | Embedded-pack markers, in the marker verification order                                                                                           |
 | `licenseUserCases`   | §2.1, §3.2       | The signed-in subject, `profile.user`, read beside the claims by `licenseUserOf`; never refuses a document                                        |
-
-### The content corpus
-
-`content/` is the one part of the corpus that holds bytes rather than signed text. Its blobs
-(a real v1 → v2 pack pair, its file blobs, a whole-payload delta, the packed per-file delta set,
-the same files as trees, a small tree pair, and since content corpus v2 the `pkey-chunks/1`
-indexes and the chunk bundles they name) are **inputs**: zstd output is not stable across
-libzstd versions, so a normal or `--check` run never compresses. It decodes the blobs with
-`@polaris-key/zstd-wasm`, checks each against the `blobs` table in `content/cases.json`, and
-rebuilds `content/cases.json` and `plan-matrix.json` from them. `content/blobs/refs.json` holds
-the refs of the few objects the signed records pin but the corpus does not ship (they would pass
-the 5 MB budget). Only `pnpm gen corpus -- --rebuild-content-blobs`, which refuses any zstd but
-1.5.7, writes the blobs or `refs.json`, and it may only add them: it throws, writing nothing,
-when an existing blob or `refs.json` entry would change, so
-changing an existing blob, which changes hashes, is a PR of its own.
-`content/` is not mirrored: every runner reads it from the checkout. `.prettierignore` and
-`.gitattributes` (`binary`) keep formatters and line-ending conversion away from the hashed
-bytes.
 
 Live case counts are generated from the corpus files themselves and published at
 [Conformance corpus v2](/docs/reference/corpus/). The fingerprint constants those vectors pin
@@ -324,8 +274,7 @@ reference implementation written for the test.
 
 ### Runtimes and version floors
 
-One runtime is not proof: notes/A7 found decoder behaviour that only shows on the lowest
-supported version. CI therefore runs the corpus on more than one build of each runtime, and
+One runtime is not proof: decoder behaviour can show only on the lowest supported version. CI therefore runs the corpus on more than one build of each runtime, and
 every runner prints its runtime and library versions at the top of its log, so a failure is
 attributable to the build that produced it.
 
@@ -360,7 +309,7 @@ inputs — `licenseServiceEnabled` from the capability map, `activation` from th
 from.
 
 The Godot runner covers every `cases.json` family and the `deviceIds` vectors; the gate matrix
-follows with the licence client. Its platform has one declared representation limit
+follows with the license client. Its platform has one declared representation limit
 (WIRE-CONTRACT-V4 §10): a GDScript `String` cannot hold U+0000. The Godot verifier decodes the escape `\u0000` as U+FFFD on every engine, and
 for each `jwsCases` string that contains U+0000 the generator writes `expect.docNulReplaced`, a
 map from the value's RFC 6901 pointer to its U+FFFD form. The Godot runner compares those values

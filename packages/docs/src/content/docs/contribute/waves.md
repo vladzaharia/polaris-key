@@ -75,7 +75,7 @@ Concretely, to add a config key or any wire-visible capability:
    the layered-config precedence: `enforced|hidden` beats `local`, which beats `env`, which
    beats `remote-default`, which beats `fallback`.
 5. **Verify parity** — run every conformance runner plus the SDK test suites, i.e. the
-   green-gate commands in [Setup](/docs/contribute/setup/). Update the relevant READMEs and
+   green-gate commands in [Set up the repo](/docs/contribute/setup/). Update the relevant READMEs and
    docs pages.
 
 ## The drift-gate inventory

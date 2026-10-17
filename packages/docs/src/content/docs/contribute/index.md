@@ -20,16 +20,18 @@ same rules.
 Terminology throughout follows [Concepts & terminology](/docs/start/concepts/); when code and
 the glossary disagree, the glossary wins.
 
+Generated reference pages are regenerated with `pnpm --filter @polaris-key/docs gen`. Never edit one by hand.
+
 ## In this section
 
 | Page                                                                     | What it covers                                                                                                                                           |
 | ------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [Setup](/docs/contribute/setup/)                                         | Installing the JS workspace, the Python SDK, and the Swift, Godot and Kotlin toolchains; why Node must be 22; the green-gate commands; pre-commit hooks. |
+| [Set up the repo](/docs/contribute/setup/)                               | Installing the JS workspace, the Python SDK, and the Swift, Godot and Kotlin toolchains; why Node must be 22; the green-gate commands; pre-commit hooks. |
 | [Monorepo layout](/docs/contribute/layout/)                              | The full package map, the Worker's `core/` + `services/<slug>/` split, the boundary test that enforces it, and `mount.ts` as the composition root.       |
 | [The contract-first wave model](/docs/contribute/waves/)                 | The contract → catalog → corpus → SDKs ordering, a six-language walkthrough for a wire-visible field, and the full drift-gate inventory.                 |
-| [The conformance corpus](/docs/contribute/corpus/)                       | How one generator, the language runners and the generator-owned Godot mirror keep the implementations byte-identical, and how to add a case.             |
+| [The conformance corpus](/docs/contribute/corpus/)                       | How one generator, the language runners and the generator-owned Godot mirror keep the implementations byte-identical.                                    |
 | [Add a page, a setting, a wizard, or a write](/docs/contribute/console/) | The console's page registry, settings engine, routed flows, mutation invalidation, permissions, and focused checks.                                      |
-| [Adding a package feed](/docs/contribute/package-feeds/)                 | The `FeedAdapter` contract every registry-host feed implements, what stays shared, and the checklist the adapter conformance suite enforces.             |
+| [Add a package feed](/docs/contribute/package-feeds/)                    | The `FeedAdapter` contract every registry-host feed implements, what stays shared, and the checklist the adapter conformance suite enforces.             |
 | [Architecture](/docs/contribute/architecture/)                           | One Worker, a modular monolith: the layers, the `ServiceDescriptor` and hide-don't-reveal dispatch.                                                      |
 | [Service model internals](/docs/contribute/service-model/)               | How `products.services_json` is parsed, written and owned.                                                                                               |
 | [The truth store](/docs/contribute/release-truth-store/)                 | What a product has published, per release and per channel, and how it is kept honest.                                                                    |
