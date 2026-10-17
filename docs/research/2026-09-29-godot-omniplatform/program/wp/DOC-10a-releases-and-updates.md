@@ -51,7 +51,7 @@ The owner asked for "first class documentation, thorough but not overly so" on o
 - [x] The common definition of done in the docs plan §6.3 holds.
 - [x] The release example passes the validator.
 - [ ] `pkey-wp-reviewer` passes the package.
-- [ ] The green gate passes (`AGENTS.md`), including every drift gate in the header.
+- [x] The green gate passes (lead gate on wp/DOC-lane-C, 2026-10-16; step 6 retried once under machine load 300 to 550) (`AGENTS.md`), including every drift gate in the header.
 
 ## Verify
 
