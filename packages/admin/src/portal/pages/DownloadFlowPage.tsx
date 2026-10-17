@@ -11,7 +11,8 @@ import {
   TaskFrame,
   TaskFrameSkeleton,
 } from "../components/FocusedFlow.js";
-import { PLATFORM_NAME, type PlatformKey } from "../components/Glyphs.js";
+import { type PlatformKey } from "../components/Glyphs.js";
+import { platformInSentence } from "../../lib/vocab/platforms.js";
 import { StorePills } from "../components/StorePills.js";
 import { ErrorPanel } from "../components/States.js";
 import { BuildDetails } from "../components/product/BuildDetails.js";
@@ -215,7 +216,7 @@ function DownloadBody({
     (x) => normalisePlatform(x.platform) === platform,
   )?.recommended;
   const latest = downloads?.latest ?? null;
-  const where = platform ? PLATFORM_NAME[platform] : null;
+  const where = platform ? platformInSentence(platform) : null;
   const os = platform ? osName(platform) : null;
 
   // On a phone, a build for another OS is never downloaded: its link is mailed instead.

@@ -37,8 +37,11 @@ import { r } from "../../../routes.js";
 
 export type { FeedScope };
 
-/** The platform's own product (`@polaris-key/manifest` SYSTEM_PRODUCT_SLUG). */
-export const SYSTEM_PRODUCT_SLUG = "polaris-key";
+export {
+  ECOSYSTEM_LABELS,
+  SYSTEM_PRODUCT_SLUG,
+  TOKEN_ENV,
+} from "../../../../lib/vocab/ecosystems.js";
 
 export const PLATFORM_SCOPE: FeedScope = { kind: "platform" };
 
@@ -57,17 +60,6 @@ export const ECOSYSTEMS: readonly FeedEcosystem[] = [
 export function isEcosystem(v: string | undefined): v is FeedEcosystem {
   return v !== undefined && (ECOSYSTEMS as readonly string[]).includes(v);
 }
-
-export const ECOSYSTEM_LABELS: Record<FeedEcosystem, string> = {
-  npm: "npm",
-  pypi: "PyPI",
-  oci: "Docker / OCI",
-  swift: "Swift",
-  maven: "Maven / Gradle",
-  godot: "Godot",
-  cargo: "Cargo",
-  go: "Go",
-};
 
 /** The clients each feed answers: its setup declaration's (`@polaris-key/manifest` FEED_SETUP). */
 export const ECOSYSTEM_CLIENTS: Record<FeedEcosystem, string> =
@@ -193,9 +185,6 @@ export type { FeedSnippet };
  *  in the editor's URL. `@polaris-key/manifest`'s `FeedSetupCredential`, the shape
  *  `renderFeedSetup` and `pkey feeds setup --token-env` share. */
 export type FeedCredential = FeedSetupCredential;
-
-/** The environment variable the docs and the Setup tab name the token by. */
-export const TOKEN_ENV = "PKEY_REGISTRY_TOKEN";
 
 /**
  * The copy-paste setup for one feed, for its owner, optionally for one package, with or without a

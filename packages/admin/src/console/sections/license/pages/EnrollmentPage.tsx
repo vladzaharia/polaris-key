@@ -50,6 +50,7 @@ import { SaveBar } from "../../../../ui/SaveBar.js";
 import { Skeleton } from "../../../../ui/Skeleton.js";
 import { SourceBadge } from "../../../../ui/SourceBadge.js";
 import { StatusPill } from "../../../../ui/StatusPill.js";
+import { platformName } from "../../../../lib/vocab/platforms.js";
 import { toast } from "../../../../ui/toast.js";
 import { useUnsavedChangesGuard } from "../../../../ui/useUnsavedChangesGuard.js";
 import { DataTable, type DataColumn } from "../../../../ui/data-table/index.js";
@@ -374,7 +375,7 @@ function ProbesSection({
       ...(["macos", "windows", "linux"] as const).map(
         (os): DataColumn<FingerprintProbeDto> => ({
           id: os,
-          header: { macos: "macOS", windows: "Windows", linux: "Linux" }[os],
+          header: platformName(os),
           accessorFn: (p) => p[os] ?? "",
           // Priority 1: the paths are the probe's content, so phone cards show them too.
           meta: { priority: 1, mono: true },

@@ -22,7 +22,7 @@ import type {
   ReleaseDto,
 } from "../../../../api.js";
 import { cn } from "../../../../lib/cn.js";
-import { label, PLATFORM_LABELS } from "../../../../lib/labels.js";
+import { platformName as vocabPlatformName } from "../../../../lib/vocab/platforms.js";
 import { Popover } from "../../../../ui/Popover.js";
 import { SignedBadge } from "../../../../ui/SignedBadge.js";
 import type { ReleaseOption } from "./PolicyDialog.js";
@@ -32,7 +32,7 @@ export const APP = "app";
 
 export function platformName(platform: string | null | undefined): string {
   if (!platform) return "Any platform";
-  return label(PLATFORM_LABELS, platform);
+  return vocabPlatformName(platform);
 }
 
 const PLATFORM_ICON: Record<string, LucideIcon> = {

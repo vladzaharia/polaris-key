@@ -1,3 +1,4 @@
+import { devicesText } from "../../../lib/vocab/license.js";
 import * as React from "react";
 import { flushSync } from "react-dom";
 import {
@@ -25,7 +26,6 @@ import type { PortalDevice, PortalLicenseDetail } from "../../api.js";
 import { useRemoveDevice } from "../../data.js";
 import { portalErrorCopy } from "../../errors.js";
 import {
-  devicesText,
   deviceFamily,
   deviceOsName,
   isSignInLicense,

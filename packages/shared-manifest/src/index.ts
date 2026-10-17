@@ -6510,3 +6510,5 @@ export * from "./reservedNames.js";
 export * from "./displayName.js";
 // ST-19: the duplicate manifest spellings, deprecated with warnings.
 export * from "./spellings.js";
+// The licence-key format, shared by the portal and the console (P0-35).
+export * from "./licenseKey.js";

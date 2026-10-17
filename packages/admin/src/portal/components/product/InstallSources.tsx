@@ -11,8 +11,9 @@ import {
   sourceName,
   versionLine,
 } from "../../copy/getIt.js";
-import { PLATFORM_NAME, PlatformGlyph, type PlatformKey } from "../Glyphs.js";
+import { PlatformGlyph, type PlatformKey } from "../Glyphs.js";
 import { PILL_CLASS } from "../StorePills.js";
+import { platformInSentence } from "../../../lib/vocab/platforms.js";
 
 /**
  * "Other ways to install" (P0-48): a platform's install sources, after its files, on the product
@@ -47,7 +48,9 @@ export function InstallSourceList({
         {C["getIt.otherWays"]}
       </Heading>
       <ul
-        aria-label={platform ? otherWaysOn(PLATFORM_NAME[platform]) : undefined}
+        aria-label={
+          platform ? otherWaysOn(platformInSentence(platform)) : undefined
+        }
         aria-labelledby={platform ? undefined : id}
         className="divide-y divide-border"
       >

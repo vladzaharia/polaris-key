@@ -1,7 +1,7 @@
 import * as React from "react";
 import type { DeviceDto, ProductDeviceDto } from "../../api.js";
 import { fromSeconds } from "../../lib/format.js";
-import { PLATFORM_LABELS } from "../../lib/labels.js";
+import { platformName } from "../../lib/vocab/platforms.js";
 import {
   DataTable,
   type DataColumn,
@@ -156,10 +156,7 @@ export function DeviceTable({
         id: "platform",
         header: "Platform",
         accessorFn: (d) =>
-          [
-            d.platform ? (PLATFORM_LABELS[d.platform] ?? d.platform) : null,
-            d.arch,
-          ]
+          [d.platform ? platformName(d.platform) : null, d.arch]
             .filter(Boolean)
             .join(" · "),
         meta: { priority: 2 },
@@ -229,7 +226,7 @@ export function DeviceTable({
         ),
       ]
         .sort()
-        .map((p) => ({ value: p, label: PLATFORM_LABELS[p] ?? p })),
+        .map((p) => ({ value: p, label: platformName(p) })),
     [devices, platformList],
   );
   const facets: Facet<DeviceRow>[] = [

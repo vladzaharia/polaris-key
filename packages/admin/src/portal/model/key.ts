@@ -3,107 +3,19 @@
  * base64url>`, case-sensitive, never grouped or re-cased.
  */
 
+import type { LicenseKeyCheck as KeyCheck } from "@polaris-key/manifest";
 import { t } from "../../lib/copy.js";
 
-/**
- * The masked display: the prefix, the slug, an ellipsis and the last 4 (`pkey_tidewater_…KQ2w`).
- * Without the last 4 (today's Worker keeps none, G7) it ends at the ellipsis.
- */
-export function maskKey(slug: string, last4?: string | null): string {
-  return `pkey_${slug}_…${last4 ?? ""}`;
-}
-
-/** The exact minted format (`mintLicenseKey`): the portal checks the full length. */
-export const KEY_PATTERN = /^pkey_([a-z0-9-]+)_([A-Za-z0-9_-]{22})$/;
-const PREFIX = "pkey_";
-const SECRET_LENGTH = 22;
-const STEAM_SHAPE = /^[A-Z0-9]{5}-[A-Z0-9]{5}-[A-Z0-9]{5}$/i;
-
-/** The only normalisation (§4.17): trim leading and trailing whitespace, newlines included. */
-export function normaliseKey(raw: string): string {
-  return raw.replace(/^\s+|\s+$/g, "");
-}
-
-/** Why a key with the right prefix can't be sent yet. */
-export type IncompleteReason =
-  /** The secret is shorter than 22 (or the slug's separator hasn't arrived). */
-  | "short"
-  /** Longer than 22 characters of the secret alphabet. */
-  | "long"
-  /** A space or line break inside the key (a key wrapped across lines in an email). */
-  | "space"
-  /** A character outside A–Z a–z 0–9 - _, or a slug that isn't lowercase. */
-  | "chars";
-
-export type KeyCheck =
-  | { kind: "empty" }
-  /** Still typing the prefix ("pke"). */
-  | { kind: "partial" }
-  | { kind: "valid"; slug: string; secret: string }
-  | { kind: "notKey"; steam: boolean }
-  /** The right prefix, the wrong length or a character outside A–Z a–z 0–9 - _. */
-  | {
-      kind: "incomplete";
-      slug: string | null;
-      length: number;
-      short: boolean;
-      reason: IncompleteReason;
-    };
-
-export function checkKey(raw: string): KeyCheck {
-  const key = normaliseKey(raw);
-  if (!key) return { kind: "empty" };
-  if (!key.startsWith(PREFIX)) {
-    if (PREFIX.startsWith(key)) return { kind: "partial" };
-    return { kind: "notKey", steam: STEAM_SHAPE.test(key) };
-  }
-  const m = KEY_PATTERN.exec(key);
-  if (m) return { kind: "valid", slug: m[1]!, secret: m[2]! };
-  const parts = /^pkey_([a-z0-9-]+)_(.*)$/s.exec(key);
-  if (!parts) {
-    // "pkey_tidewater": the product so far, no separator yet. Anything else (an upper-case
-    // slug, a stray character) is a key that doesn't look right, not one that's cut short.
-    const cut = /^pkey_[a-z0-9-]*$/.test(key);
-    return {
-      kind: "incomplete",
-      slug: null,
-      length: 0,
-      short: cut,
-      reason: cut ? "short" : /\s/.test(key) ? "space" : "chars",
-    };
-  }
-  const secret = parts[2]!;
-  const alphabet = /^[A-Za-z0-9_-]*$/.test(secret);
-  const reason: IncompleteReason = /\s/.test(secret)
-    ? "space"
-    : !alphabet
-      ? "chars"
-      : secret.length < SECRET_LENGTH
-        ? "short"
-        : "long";
-  return {
-    kind: "incomplete",
-    slug: parts[1]!,
-    length: secret.length,
-    short: reason === "short",
-    reason,
-  };
-}
-
-/** The slug a key names, as soon as its prefix is complete (before any request). */
-export function slugOf(raw: string): string | null {
-  const m = /^pkey_([a-z0-9-]+)_/.exec(normaliseKey(raw));
-  return m ? m[1]! : null;
-}
-
-/** The key split for colouring: `pkey_` · slug · `_` · secret (or the raw text). */
-export function keyParts(
-  raw: string,
-): { prefix: string; slug: string; sep: string; rest: string } | null {
-  const m = /^(pkey_)([a-z0-9-]*)(_?)(.*)$/s.exec(raw);
-  if (!m) return null;
-  return { prefix: m[1]!, slug: m[2]!, sep: m[3]!, rest: m[4]! };
-}
+export {
+  LICENSE_KEY_PATTERN as KEY_PATTERN,
+  checkLicenseKey as checkKey,
+  licenseKeyParts as keyParts,
+  licenseKeySlug as slugOf,
+  maskLicenseKey as maskKey,
+  normaliseLicenseKey as normaliseKey,
+  type LicenseKeyCheck as KeyCheck,
+  type LicenseKeyIncompleteReason as IncompleteReason,
+} from "@polaris-key/manifest";
 
 /**
  * The name a product is shown by (EXPERIENCE.md §0.6 P2: the presentation name, never the

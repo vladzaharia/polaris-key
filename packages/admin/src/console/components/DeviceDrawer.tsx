@@ -1,5 +1,5 @@
 import * as React from "react";
-import { PLATFORM_LABELS } from "../../lib/labels.js";
+import { platformName } from "../../lib/vocab/platforms.js";
 import { useQuery } from "@tanstack/react-query";
 import {
   api,
@@ -285,7 +285,7 @@ function DeviceFacts({
             {
               term: "Platform",
               detail: join(
-                d.platform ? (PLATFORM_LABELS[d.platform] ?? d.platform) : null,
+                d.platform ? platformName(d.platform) : null,
                 d.arch && `· ${d.arch}`,
               ),
             },

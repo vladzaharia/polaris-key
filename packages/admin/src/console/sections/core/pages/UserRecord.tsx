@@ -28,7 +28,7 @@ import {
 import { confirmFor } from "../../../../lib/actions.js";
 import { errorCopy } from "../../../../lib/errorCopy.js";
 import { formatBytes, fromSeconds } from "../../../../lib/format.js";
-import { PLATFORM_LABELS } from "../../../../lib/labels.js";
+import { platformName } from "../../../../lib/vocab/platforms.js";
 import { Button } from "../../../../ui/Button.js";
 import { ConfirmDialog } from "../../../../ui/ConfirmDialog.js";
 import { DescriptionList } from "../../../../ui/DescriptionList.js";
@@ -627,9 +627,7 @@ function UserDevices({
               <span className="text-xs text-fg-muted">
                 {[
                   d.label,
-                  d.platform
-                    ? (PLATFORM_LABELS[d.platform] ?? d.platform)
-                    : null,
+                  d.platform ? platformName(d.platform) : null,
                   d.appVersion,
                   user.identityOn && d.signedIn ? "signed in" : null,
                 ]
