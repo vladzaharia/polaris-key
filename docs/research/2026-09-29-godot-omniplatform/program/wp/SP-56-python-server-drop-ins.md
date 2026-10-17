@@ -52,9 +52,9 @@ The owner asked for drop-ins that gate a server route or a CLI command with the 
 
 ## Acceptance criteria
 
-- [ ] A gated FastAPI, Django/DRF and Flask route answers each §5.2 verdict.
-- [ ] The core needs only `cryptography` and `httpx` (already dependencies); adapters import lazily.
-- [ ] No token or holder PII in logs or `repr`.
+- [x] A gated FastAPI, Django/DRF and Flask route answers each §5.2 verdict.
+- [x] The core needs only `cryptography` and `httpx` (already dependencies); adapters import lazily.
+- [x] No token or holder PII in logs or `repr`.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate in the header.
 
 ## Verify
@@ -65,3 +65,10 @@ Each acceptance item's test in its lane, then the full green gate in `AGENTS.md`
 
 The role agent sets `--set SP-56 in-review` when it hands off. After review, the lead adds the last commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set SP-56 done`.
+
+## Corrections and notes (2026-10-16, SP-56 build)
+
+- The wire section is WIRE-CONTRACT-V4 §14 (the plan text says §13); the privacy file is `docs/PRIVACY.md`; the copy has eight locales.
+- The wheel cannot read `conformance/parity/copy.<locale>.json`, so `polaris_key/server/_copy.py` carries the five codes' title and message in all eight locales; `tests/test_server_core.py::test_copy_tables_equal_the_registry` fails on drift. Follow-up: emit it from `tools/gen-sdk-constants.ts`.
+- Extras added: `starlette`, `fastapi`, `flask`, `django` and `drf` (DRF needs `djangorestframework`).
+- `core.backend` (the client half) stays planned for SP-58; `server.config` and `server.webhooks` stay planned (SP-63, SP-67).

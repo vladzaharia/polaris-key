@@ -1,5 +1,5 @@
 // Platform names for device rows (DL8: never a raw platform id; `macos` is macOS). The kit-copy
-// catalog has no platform-name keys yet, so this typed table is the fallback until it does: every
+// catalog's part.platform.<id> keys win; this typed table is the fallback until a catalog lacks them: every
 // `Os` of ui-core's vocabulary has a label (the compiler holds the table to the vocabulary), plus
 // the ids a server's device record commonly carries. Platform names are trademarks and stay the
 // same in every launch locale. A value the table does not know is shown as the server sent it
@@ -32,9 +32,15 @@ const MORE_LABELS: Readonly<Record<string, string>> = {
 
 /** A device's platform as a person reads it: the table's name for a known id, else the text as
  *  sent; an empty string for none. */
-export function platformLabel(platform: string | null | undefined): string {
+export function platformLabel(
+  platform: string | null | undefined,
+  copy?: { has(key: string): boolean; format(key: string): string },
+): string {
   if (!platform) return "";
   const id = platform.trim().toLowerCase();
+  // The catalog's `part.platform.<id>` names win; the typed table covers a catalog without them.
+  const key = `part.platform.${id}`;
+  if (copy?.has(key)) return copy.format(key);
   return (
     (OS_LABELS as Readonly<Record<string, string>>)[id] ??
     MORE_LABELS[id] ??

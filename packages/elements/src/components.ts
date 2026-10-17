@@ -28,6 +28,11 @@ function componentClass(component: ComponentName): typeof PkElement {
 export class PkGate extends PkElement {
   readonly component = "PolarisKeyGate" as const;
 
+  /** Booting, Welcome and the blocking screens own the window; the app and the banner do not. */
+  protected override fillsWindow(state: string): boolean {
+    return state !== "licensed" && state !== "grace";
+  }
+
   protected override renderBody(c: RenderCtx): unknown {
     const { view } = c;
     const sub = (component: ComponentName) =>

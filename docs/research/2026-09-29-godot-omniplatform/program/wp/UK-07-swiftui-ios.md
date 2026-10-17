@@ -282,3 +282,12 @@ from here.
    README; `fromConfig()` (SP-32b) and the UIKit hosting recipe (UK-23).
 8. The `--live` run against a local Worker; `pnpm ui:lint` (Chromium) and the docs build in the
    gate; `UI_MATRIX_VERSION` is a constant in the core until `gen:constants` emits it.
+
+## Progress and continuation (2026-10-16)
+
+Reconciled against main in the 2026-10-16 audit. Remaining:
+
+- Re-apply held-back glass tint and banner inset changes (ca57805e7), re-record all baselines
+- Rest of the UX review plus a second review (Settings controls, AccountAndLicense, device rows, SignIn.choose etc.); record in ux-reviews.json
+- OfflineActivation view and Boot non-progress stages
+- ui-matrix v3 alignment and remaining acceptance items

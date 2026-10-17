@@ -9,11 +9,8 @@
 import { describe, expect, it } from "vitest";
 import { Command } from "commander";
 import yargs from "yargs";
-import {
-  CLI_VERBS,
-  registerPolarisCommands,
-  registerYargsCommands,
-} from "../../src/cli/index.js";
+import { CLI_VERBS, registerPolarisCommands } from "../../src/cli/index.js";
+import { registerPolarisCommands as registerYargsCommands } from "../../src/cli/yargs.js";
 import {
   activateFlow,
   changelogFlow,
@@ -223,7 +220,16 @@ describe("TERM=dumb: plain lines, no cursor control (SIGN-IN.md D-77)", () => {
       bundle: {},
     });
     try {
-      await run({ ctx, screen, stdin, snap: () => undefined, opened: [] });
+      await run({
+        ctx,
+        screen,
+        err: screen,
+        env: {},
+        variant: VARIANTS[0]!,
+        stdin,
+        snap: () => undefined,
+        opened: [],
+      });
     } finally {
       ctx.close();
     }
@@ -314,6 +320,7 @@ describe("--json: the last line of every run is the result", () => {
       let exit = -1;
       registerPolarisCommands(program, async () => stubClient(), {
         pinnedKeys: {},
+        verbs: "all",
         productSlug: "tidewater",
         io: io(screen),
         setExitCode: (c) => (exit = c),
@@ -336,11 +343,12 @@ describe("--json: the last line of every run is the result", () => {
     let exit = -1;
     registerYargsCommands(y, async () => stubClient(), {
       pinnedKeys: {},
+      verbs: "all",
       productSlug: "tidewater",
       io: io(screen),
       setExitCode: (c) => (exit = c),
     });
-    await y.parseAsync(["polaris-key", "config", "get", "--json"]);
+    await y.parseAsync(["config", "get", "--json"]);
     expect(exit).toBe(2);
     expect(last(screen)).toMatchObject({
       v: 1,

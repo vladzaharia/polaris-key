@@ -72,7 +72,6 @@ function catalogWithSecretDelivery(
       {
         key: "api.token",
         kind: "secret",
-        secret: true,
         category: "Secrets",
         label: "API token",
         description: "Token delivered according to the manifest policy.",

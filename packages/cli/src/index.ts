@@ -843,7 +843,11 @@ function writeFixed(moves: FixMove[], stdout: TermOut, term: Term): void {
   }
   for (const m of moves)
     stdout.write(
-      `${painter.style(symbols.ok, ["success"])}  Moved ${m.from} to ${m.to} (${m.file})\n`,
+      `${painter.style(symbols.ok, ["success"])}  ${
+        m.to === "(dropped)"
+          ? `Dropped ${m.from}`
+          : `Moved ${m.from} to ${m.to}`
+      } (${m.file})\n`,
     );
   stdout.write("\n");
 }

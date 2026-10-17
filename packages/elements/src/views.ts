@@ -503,7 +503,7 @@ function deviceLimitContent(c: RenderCtx): TemplateResult | typeof nothing {
                 ><br />
                 <span class="meta">
                   ${text(c, "signin.replace.meta", {
-                    platform: platformLabel(d.platform),
+                    platform: platformLabel(d.platform, c.copy),
                     when: days(d.lastSeenDays),
                   })}
                   ${i === leastRecent && keys.has("signin.replace.leastRecent")
@@ -680,7 +680,11 @@ function licenseRows(c: RenderCtx): TemplateResult | typeof nothing {
         ? new Date(r.expiresAt * 1000).toLocaleDateString(c.copy.locale)
         : "";
       const metaArgs = {
-        origin: origin && keys.has(origin) ? plain(c, origin) : "",
+        // A store-origin row with no store name says nothing of its origin (never "From {store}").
+        origin:
+          origin && keys.has(origin) && (r.origin !== "store" || r.store)
+            ? plain(c, origin, r.store ? { store: r.store } : {})
+            : "",
         term: keys.has(term) ? plain(c, term, { date }) : "",
       };
       return html`<div
@@ -793,7 +797,7 @@ function replaceRows(c: RenderCtx): TemplateResult | typeof nothing {
                 : nothing}<br />
               <span class="meta"
                 >${text(c, "signin.replace.meta", {
-                  platform: platformLabel(d.platform),
+                  platform: platformLabel(d.platform, c.copy),
                   when: since(d.lastSeen, c.copy.locale),
                 })}</span
               >
@@ -891,7 +895,7 @@ function deviceRows(c: RenderCtx): TemplateResult | typeof nothing {
                   · `
                 : nothing}
               ${text(c, "devices.meta", {
-                platform: platformLabel(d.platform),
+                platform: platformLabel(d.platform, c.copy),
                 when: days(d.lastSeenDays),
               })}
             </span>

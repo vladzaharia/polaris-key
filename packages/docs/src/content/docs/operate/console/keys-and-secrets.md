@@ -1,20 +1,22 @@
 ---
-title: "Secrets & keys"
-description: "Core → Keys & secrets: signing keys and their lifecycle, write-only product secrets and their usage, CI publishing, edge-mint recipe approval and outlet credentials."
+title: "Keys & secrets"
+description: "Keys & secrets: signing keys and their lifecycle, write-only product secrets and their usage, CI publishing, edge-mint approval and outlet credentials."
+type: "reference"
+lastReviewed: "2026-10-16"
 sidebar:
   order: 6
 ---
 
-**Core → Keys & secrets** (`#/p/<slug>/keys`) holds what a product signs and authenticates with,
-whether or not it runs any service at all: its **signing keys**, its write-only **secrets**, and
-its **CI publishing** credentials. Signing keys and secrets are sealed under the same platform KEK.
-While Config or Distribution is on, the page ends with **Edge mint and store credentials**: the
-edge-mint recipe approvals and the outlet credentials described below.
+**Keys & secrets** (`#/p/<slug>/settings/keys`, a tab of **Settings**) holds what a product signs and
+authenticates with, whether or not it runs any service: its **Signing keys**, its write-only
+**Secrets** and its **CI publishing** credentials. Signing keys and secrets are sealed under the
+same platform KEK. Edge-mint recipes are approved on **Config → Edge mint**, and store credentials
+are on **Distribution → Outlet credentials**; both are described below.
 
 ## Product secrets
 
 Secrets are **write-only**. **Set secret** opens a drawer with a name, a value and a usage, and
-saves with `PUT /manage/api/products/<slug>/secrets/<name>`. The server seals the value under `PLATFORM_KEK` and
+saves with `/manage/api/products/<slug>/secrets/<name>` (PUT). The server seals the value under `PLATFORM_KEK` and
 stores it; the response echoes the **name only** — never the value, on this write or any later
 read. There is no endpoint that returns a secret's value, by design; if you need to confirm one
 is right, rotate it rather than trying to recover it.
@@ -72,7 +74,7 @@ value is never overwritten by accident. The required names come from the same se
 as the Overview checklist — see [Products](/docs/admin/products/#setup-health) for exactly which
 manifest fields feed it.
 
-`GET /manage/api/products/<slug>/secrets` returns the list as
+`/manage/api/products/<slug>/secrets` (GET) returns the list as
 `{ secrets: [{ name, configured, usage, createdAt, updatedAt, requiredBy }] }`. It never reads a
 value: the sealed column is not even selected.
 
@@ -110,7 +112,7 @@ kept.
 
 The rules, all enforced by the Worker rather than by the console:
 
-- **Platform admins only, write-only.** `PUT /manage/api/products/<slug>/outlet-credentials/<id>`
+- **Platform admins only, write-only.** `/manage/api/products/<slug>/outlet-credentials/<id>` (PUT)
   with `{kind, value, pin?, outletId?, expiresAt?}` seals and stores the value and echoes the **id
   only**. Saving to an existing id of the same kind rotates it in place (and clears its health);
   saving a different kind to an existing id is refused (409) — delete it first. No `.pkey/`
@@ -151,7 +153,7 @@ The rules, all enforced by the Worker rather than by the console:
   seller account: see
   [the Microsoft Store connector's setup](/docs/services/distribution/microsoft-store/#pinning-the-app).
 - **Deleted with the product,** and re-sealed by the KEK rotation sweep like everything else on
-  this page (its own `outletCredentials` bucket in `GET /manage/api/products/kek`).
+  this page (its own `outletCredentials` bucket in `/manage/api/products/kek` (GET)).
 
 **Delete…** (in a row's menu, `DELETE …/outlet-credentials/<id>`) removes the value for good;
 connectors that used it stop working until a new one is set. In the console, **Set credential…**
@@ -194,12 +196,12 @@ days have **refreshed** since the new key went live: devices whose last contact 
 came after the activation. The platform keeps no per-device record of a trust fetch, so this is a
 reassurance, not proof that a given device holds the new key.
 
-Retire and revoke both refuse (`409`) on the **currently active** key — stage and activate a
+Retire and revoke both refuse (`409`) on the **active** key — stage and activate a
 replacement first. A product must always have exactly one active key; this guard is what stops
 an operator from accidentally leaving it with zero. The private key never leaves the platform's
 KEK-sealed storage at any point.
 
-`GET /manage/api/products/<slug>/keys` returns
+`/manage/api/products/<slug>/keys` (GET) returns
 `{ keys: [{ kid, status, alg, publicKey, createdAt, activateAfter, activatedAt, retiredAt, revokedAt }], now, refresh }`
 — public material only, active key first. `now` is the server's clock, which the countdown is
 measured against. `refresh` is `{ kid, activatedAt, activeDevices, refreshedDevices, windowDays }`
@@ -230,12 +232,12 @@ The **CI publishing** section holds how your CI proves who it is:
   run must match to exchange its OIDC token for a short-lived publishing token. A linked repo's
   manifest can declare it (_From manifest_); **Edit…** claims it (_Set in console_), after which
   resyncs leave it alone. Claiming is the only way to grant `release:yank`.
-  `GET`/`PUT /manage/api/products/<slug>/ci-publisher`.
+  `GET`/`/manage/api/products/<slug>/ci-publisher` (PUT).
 - **CI tokens** — static tokens for a CI that is not GitHub Actions, and the short-lived tokens
   trusted runs were issued, with their scopes, status and expiry. **Issue token…** shows a new
   token once (only its hash is stored); it lasts 1 to 90 days. **Revoke…** refuses it from then on,
   together with any upload tickets it bought and has not used.
-  `GET`/`POST /manage/api/products/<slug>/ci-tokens`, `DELETE .../ci-tokens/<tokenId>`.
+  `GET`/`/manage/api/products/<slug>/ci-tokens` (POST), `DELETE .../ci-tokens/<tokenId>`.
 
 See [CI publishing](/docs/build/ci/) for the workflow side.
 

@@ -42,7 +42,8 @@ sdks/
   godot/             Godot addon               pure-GDScript verify and a headless runner
   kotlin/            Gradle build              :core (JVM: verify, cache, sync, stages, devices),
                                                the :license :config :identity :release services,
-                                               :update and :packs, the umbrella :sdk + the
+                                               :update and :packs, the :server and :server-ktor
+                                               drop-ins, the umbrella :sdk + the
                                                :conformance runner; Android: the standalone
                                                :platform backend, the :android glue, the
                                                Compose :ui kit and :godot (the Godot binding,
@@ -150,7 +151,7 @@ pnpm --filter @polaris-key/react test:browser
 ( cd sdks/swift && swift build && swift test )        # Swift
 sdks/godot/tools/run_tests.sh    # Godot (GODOT_BIN, optional GODOT_TEMPLATE; CI runs both)
 ( cd sdks/kotlin && ./gradlew -Ppkey.jvmOnly=true :core:test :license:test :config:test \
-    :identity:test :release:test :update:test :packs:test :sdk:test :ui-core:test :conformance:test )  # Kotlin (JDK 17;
+    :identity:test :release:test :update:test :packs:test :sdk:test :ui-core:test :server:test :server-ktor:test :conformance:test )  # Kotlin (JDK 17;
                                  # :conformance runs every suite on JCA and again with Tink forced)
 
 pnpm format                      # prettier check over md/json too (format:fix to apply)

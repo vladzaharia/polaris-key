@@ -114,7 +114,7 @@ These steps are browser/provider tasks. Complete them before deploying.
    certificate; a name that already has a DNS record outside the Worker must be cleared first.
 3. Onboard the auth sending subdomain `auth.plrs.im` on Cloudflare Email Sending, add its
    SPF record, register it with Apple's private email relay and run the DNS check: RUNBOOK
-   "Sign-in email (I-18)" lists the exact records and steps. (`plrs.im` itself is onboarded
+   "Sign-in email" lists the exact records and steps. (`plrs.im` itself is onboarded
    too; the Worker sends from `noreply@plrs.im` until `EMAIL_SENDER_ADDRESS` is set.)
 4. The Worker binds Email Service as `EMAIL` in prod and staging and restricts senders:
 

@@ -30,17 +30,17 @@ The export contains only data for that person in your product. The export is rec
 This deletes data held for the person in your product. Their license and Polaris Key account stay.
 A developer can never delete the account.
 
-## Help with a support code
+## Move a license to another person
 
-The person can manage their own export and data removal from your library at key.plrs.im. To
-relink a license, ask them to open the app in their library, select **Get a support code**, and
-read the code to you.
+The person can manage their own export and data removal from their library at key.plrs.im. To
+move a license to them, ask them to open the product's page in their library and select **Get a
+support code**. The code is their user id for the product.
 
-1. Open **Users** and the license's record.
-2. Select **Relink**.
-3. Enter the support code.
-4. Sign in again and give the reason for the move.
-5. Confirm the relink.
+1. Open **Users**, then the license's record.
+2. Select **Relink…**.
+3. Enter the support code as the person's user id.
+4. Give the reason for the move.
+5. Select **Relink license**, then sign in again if asked.
 
 Both people receive an email before the license moves. **Undo** returns it while the relink is
-open.
+open, within 72 hours.

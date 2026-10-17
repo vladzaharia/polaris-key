@@ -10,7 +10,17 @@ import type {
   ConfigKind,
   ManagementState,
 } from "../../../../api.js";
-import { KIND_LABELS } from "../../../../lib/labels.js";
+import { IN_APP_LABELS } from "../../../../lib/labels.js";
+import {
+  ENTRY_TYPE_LABELS,
+  TYPE_LABELS,
+  USER_CONFLICT_LABELS,
+  USER_SCOPE_OPTIONS,
+  WIDGETS,
+  IN_APP_HELP,
+  entryType,
+  type EntryType,
+} from "./entryType.js";
 import {
   MANAGEMENT_STATES,
   SchemaField,
@@ -37,30 +47,7 @@ const TYPES = [
   "array",
   "object",
 ] as const;
-type SchemaType = (typeof TYPES)[number];
-
-const TYPE_LABELS: Record<SchemaType, string> = {
-  string: "Text",
-  integer: "Whole number",
-  number: "Number",
-  boolean: "On / off",
-  array: "List (JSON)",
-  object: "Object (JSON)",
-};
-
-/** Where a synced setting's value roams (plans/U-01b.md D2), in the console's words. A key that
- *  does not sync is `user: {sync: "local"}`, the Syncs switch turned off. */
-const USER_SCOPE_OPTIONS: { value: "user" | "platform"; label: string }[] = [
-  { value: "user", label: "Everywhere the person signs in" },
-  { value: "platform", label: "Per platform family" },
-];
-
-const USER_CONFLICT_LABELS: Record<UserSettingConflict, string> = {
-  lastWrite: "Last write wins",
-  max: "Keep the highest",
-  min: "Keep the lowest",
-  merge: "Merge members",
-};
+export type SchemaType = (typeof TYPES)[number];
 
 /**
  * The conflict policies a value type allows (plans/U-01b.md §2.2, R7): a number gets last write,
@@ -73,14 +60,6 @@ export function conflictOptionsFor(type: string): UserSettingConflict[] {
   if (type === "object") return ["lastWrite", "merge"];
   return ["lastWrite"];
 }
-
-const WIDGETS = [
-  "password",
-  "select",
-  "textarea",
-  "switch",
-  "stepper",
-] as const;
 
 /** A copy of `obj` with `field` set, or removed when `value` is empty. */
 function withField<T extends object>(obj: T, field: string, value: unknown): T {
@@ -302,18 +281,30 @@ export function CatalogEntryForm({
         </FormField>
         <FormField
           name="kind"
-          label="Kind"
+          label="Type"
           group
           value={entry.kind}
           error={issue("kind")}
         >
           {(f) => (
-            <SegmentedControl<ConfigKind>
+            <SegmentedControl<EntryType>
               className="w-fit self-start"
               aria-labelledby={f["aria-labelledby"]}
-              value={entry.kind}
-              onChange={(kind) => {
-                let next: ConfigEntry = { ...entry, kind };
+              value={entryType(entry)}
+              onChange={(picked) => {
+                const kind: ConfigKind =
+                  picked === "setting"
+                    ? "config"
+                    : picked === "flag"
+                      ? "flag"
+                      : "secret";
+                // A minted token is a secret delivered as edgeMint; the other types carry no
+                // delivery of their own (a secret then means clientScoped).
+                let next: ConfigEntry = withField(
+                  { ...entry, kind },
+                  "delivery",
+                  picked === "minted" ? "edgeMint" : undefined,
+                );
                 // A secret has no plaintext default; a management default is config-only.
                 if (kind === "secret") {
                   next = withField(next, "default", undefined);
@@ -330,16 +321,23 @@ export function CatalogEntryForm({
                 }
                 onChange(next);
               }}
-              options={(["config", "secret", "flag"] as const).map((k) => ({
+              options={(
+                [
+                  "setting",
+                  "secret",
+                  "minted",
+                  ...(entry.kind === "flag" ? (["flag"] as const) : []),
+                ] as const
+              ).map((k) => ({
                 value: k,
-                label: KIND_LABELS[k],
+                label: ENTRY_TYPE_LABELS[k],
               }))}
             />
           )}
         </FormField>
         <FormField
           name="type"
-          label="Type"
+          label="Value type"
           help={
             guessing && entry.default !== undefined
               ? "Guessed from the default."
@@ -370,8 +368,9 @@ export function CatalogEntryForm({
         </FormField>
         {secret ? (
           <p className="self-end text-sm text-fg-muted sm:pb-2">
-            A secret has no default: its value is write-only and set per profile
-            or license.
+            {entry.delivery === "edgeMint"
+              ? "A minted token is signed on request from a recipe. It is never stored or listed."
+              : "A secret has no default: its value is write-only and set per profile or license. The app reads it in code; it is never listed."}
           </p>
         ) : guessing ? (
           <FormField
@@ -480,13 +479,9 @@ export function CatalogEntryForm({
       {entry.kind === "config" ? (
         <FormField
           name="managementDefault"
-          label="Management default"
+          label="In the app"
           group
-          help={
-            MANAGEMENT_STATES.find(
-              (s) => s.value === (entry.managementDefault ?? "default"),
-            )?.help
-          }
+          help={IN_APP_HELP[entry.managementDefault ?? "default"]}
           value={entry.managementDefault ?? "default"}
         >
           {(f) => (
@@ -499,7 +494,7 @@ export function CatalogEntryForm({
               }
               options={MANAGEMENT_STATES.map((s) => ({
                 value: s.value,
-                label: s.label,
+                label: IN_APP_LABELS[s.value] ?? s.label,
               }))}
             />
           )}

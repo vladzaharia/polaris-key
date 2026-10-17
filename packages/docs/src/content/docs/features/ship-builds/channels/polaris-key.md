@@ -1,6 +1,8 @@
 ---
 title: "Polaris Key: the built-in storefront"
 description: "Distribution → Storefronts → Polaris Key: readiness, how the customer portal lists the product, who it is shown to, the ways to add it, group labels, a persona preview and 28 days of analytics."
+type: "reference"
+lastReviewed: "2026-10-16"
 sidebar:
   order: 15
 ---
@@ -107,7 +109,7 @@ Narrative-only, under `/manage/api/products/<slug>/storefronts/polaris-key`. Non
 | `POST` | `…/preview`   | `{platformAccount?, groups?, emailDomain?, stores?, holds?}`: a persona, answered with `{visible, hidden, tile}`; any other field is a 422 |
 | `GET`  | `…/analytics` | the last 28 days: `totals`, `byKind`, `daily` and `impressionsCounted`                                                                     |
 
-The page writes through `PATCH /manage/api/products/<slug>/identity/portal` (`storeListed`,
+The page writes through `/manage/api/products/<slug>/identity/portal` (PATCH) (`storeListed`,
 `storeAudience` with `"confirm": "storefront.polarisKey.audience"` when widening,
 `storeOfferPaths`, `storeGroupLabels`). Each change is a `storefront.polarisKey.update` row in
 the product's activity.
@@ -180,11 +182,11 @@ or edit. The proposal is never stored or sent until you save it. The App Store g
 (up to 4,000), Microsoft up to 1,500, winget up to 10,000.
 
 The App Store Connect Distribute flow reads these notes: given the release being distributed, an
-App Store version's What's New defaults to the release's store notes in that locale, and its
+App Store version's release notes default to the release's store notes in that locale, and its
 promotional text to the listing's, each only when you do not type one. The preflight shows the
 listing's App Store fit. It is advisory: App Store Connect's own listing is what review sees until
 you push the listing's text and screenshots to it
-([Pushing the listing](/docs/services/distribution/app-store-connect/#pushing-the-listing)).
+([Pushing the listing](/docs/features/ship-builds/channels/app-store-distribute/#pushing-the-listing)).
 
 ## Importing
 
@@ -198,7 +200,7 @@ diff. The sources:
 | `play`      | Google Play's listing: the default language, contact website and email, title, short and full description per language                                                                                                                                            |
 | `ms-store`  | The Microsoft Store's last published submission: title, description, short description, keywords and features per language, the category, copyright and the developer name                                                                                        |
 | `godot`     | What `pkey listing import --godot` read from the project (below)                                                                                                                                                                                                  |
-| `manifest`  | `.pkey/distribution` `listing` as an outlet shows it: name, developer name, category, website and tint; subtitle and description in the default locale                                                                                                            |
+| `manifest`  | `.pkey/distribution` `listing` as a channel shows it: name, developer name, category, website and tint; subtitle and description in the default locale                                                                                                            |
 | `product`   | `.pkey/product`'s product name                                                                                                                                                                                                                                    |
 
 Importing from a store only **reads** it: App Store Connect through its write gate (every request
@@ -233,7 +235,7 @@ release notes, which belong to each release; Godot's `application/config/descrip
 only the Project Manager's tooltip. Screenshots, icons and videos the sources point at are
 **listed** with their size and digest where known, never stored: listing assets are uploaded files
 made by `pkey listing assets`, which checks each one against the target store before another store
-sees it. Version and bundle ids a source declares are shown beside the outlets' identities, so a
+sees it. Version and bundle ids a source declares are shown beside the channels' identities, so a
 mismatch is visible.
 
 ### From a Godot project
@@ -277,7 +279,7 @@ did before. An edit reaches the feeds at once: the feed cache follows the listin
 ## Listing assets
 
 The images come from CI, never from the console's own image tools:
-[`pkey listing assets`](/docs/build/ci/#listing-assets) derives every store icon from the icon
+[`pkey listing assets`](/docs/features/ship-builds/ci-stores/#listing-assets) derives every store icon from the icon
 master and composes every store's art from the key art and the wordmark. It fits each screenshot
 for each store, using a crop or pad only where you accept it. It then uploads every output that passed (a red one stays in CI) with its digests, sizes and
 alpha. Each derived row records the master it came from (`derivedFrom`), so Google Play's adapter

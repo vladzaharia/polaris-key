@@ -94,8 +94,8 @@ describe("Catalog page", () => {
     expect(screen.getByText("v8")).toBeTruthy();
     expect(screen.getByText("4 keys")).toBeTruthy();
     const timeout = within(table()).getByText("network.timeout").closest("tr")!;
-    expect(within(timeout).getByText("Config")).toBeTruthy();
-    expect(within(timeout).getByText("Enforced")).toBeTruthy();
+    expect(within(timeout).getByText("Setting")).toBeTruthy();
+    expect(within(timeout).getByText("Read-only")).toBeTruthy();
     expect(within(timeout).getByText("30")).toBeTruthy();
     const dsn = within(table()).getByText("sentry.dsn").closest("tr")!;
     expect(within(dsn).getByText("(write-only)")).toBeTruthy();
@@ -630,7 +630,7 @@ describe("Catalog entry form", () => {
       expect(await screen.findByRole("textbox", { name })).toBeTruthy();
     // A category suggests the draft's others, so it is a combobox.
     expect(screen.getByRole("combobox", { name: /^Category/ })).toBeTruthy();
-    expect(screen.getByRole("combobox", { name: /^Type/ })).toBeTruthy();
+    expect(screen.getByRole("combobox", { name: /^Value type/ })).toBeTruthy();
     expect(screen.getByRole("textbox", { name: /^Default/ })).toBeTruthy();
     const validation = screen.getByText("Validation").closest("details")!;
     const hints = screen.getByText("Form hints").closest("details")!;
@@ -676,7 +676,7 @@ describe("Catalog entry form", () => {
     await userEvent.type(value, "512");
     expect(await screen.findByText("Guessed from the default.")).toBeTruthy();
     expect(
-      screen.getByRole("combobox", { name: /^Type/ }).textContent,
+      screen.getByRole("combobox", { name: /^Value type/ }).textContent,
     ).toContain("Whole number");
     await userEvent.click(
       screen.getByRole("button", { name: "Review changes" }),

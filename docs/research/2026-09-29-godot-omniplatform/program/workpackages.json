@@ -446,7 +446,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/cq-worker-services.md"
       ],
       "brief": "wp/P0-16-first-party-respond-body-module-console.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "P0-17",
@@ -472,7 +472,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/cq-worker-services.md"
       ],
       "brief": "wp/P0-17-layering-move-lead-codemod-at-batch-6.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "P0-18",
@@ -980,7 +980,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/cq-frontend.md"
       ],
       "brief": "wp/P0-36-portal-on-copy-catalog.md",
-      "status": "in-review"
+      "status": "in-progress"
     },
     {
       "id": "P0-37",
@@ -1053,7 +1053,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/cq-frontend.md"
       ],
       "brief": "wp/P0-39-console-sections-move-page-budget-lead.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "P0-40",
@@ -1101,7 +1101,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/cq-frontend.md"
       ],
       "brief": "wp/P0-41-living-admin-md-portal-md-ux-rows.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "P0-42",
@@ -1149,7 +1149,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/cq-sdks-tools.md"
       ],
       "brief": "wp/P0-43-ci-consolidation.md",
-      "status": "in-review"
+      "status": "in-progress"
     },
     {
       "id": "P0-44",
@@ -1198,7 +1198,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/cq-sdks-tools.md"
       ],
       "brief": "wp/P0-45-pkey-command-registry-context-doctor.md",
-      "status": "in-review"
+      "status": "in-progress"
     },
     {
       "id": "P0-46",
@@ -1313,7 +1313,7 @@
         "lead addition 2026-10-07 (owner decision: the 0.9 line now, 1.0 later)"
       ],
       "brief": "wp/P0-50-dependency-alerts-none-open-at-high-or.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "P0-51",
@@ -4254,7 +4254,7 @@
         "DX consolidation 2026-10-07: edit (docs/research/2026-10-07-dx-consolidation/backlog-changes.json)"
       ],
       "brief": "wp/I-11-portal-library.md",
-      "status": "in-progress"
+      "status": "in-review"
     },
     {
       "id": "I-12",
@@ -6092,7 +6092,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/config-cloudsync.md"
       ],
       "brief": "wp/U-30-config-types-in-app-visibility-in-one.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "U-31",
@@ -6986,7 +6986,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/feeds-updates-packs.md"
       ],
       "brief": "wp/F-36-feed-cleanup-on-default-dev-main.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "F-37",
@@ -7480,7 +7480,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/cq-frontend.md"
       ],
       "brief": "wp/A-19-one-channel-catalogue-tools-channels.md",
-      "status": "in-review"
+      "status": "in-progress"
     },
     {
       "id": "A-20",
@@ -9052,7 +9052,7 @@
         "DX consolidation 2026-10-07: edit (docs/research/2026-10-07-dx-consolidation/backlog-changes.json)"
       ],
       "brief": "wp/ST-08-product-settings-hub.md",
-      "status": "todo"
+      "status": "in-progress"
     },
     {
       "id": "ST-09",
@@ -9512,7 +9512,7 @@
         "consolidation alias ST-05 (split)"
       ],
       "brief": "wp/ST-05a-one-settings-read-write-path.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "ST-05b",
@@ -9798,7 +9798,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/release-distribution.md"
       ],
       "brief": "wp/ST-38-service-table-five-features-one-service.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "ST-39",
@@ -10989,7 +10989,7 @@
         "DX consolidation 2026-10-07: keep (docs/research/2026-10-07-dx-consolidation/backlog-changes.json)"
       ],
       "brief": "wp/SP-15-react-local-update-lifecycle.md",
-      "status": "in-review"
+      "status": "in-progress"
     },
     {
       "id": "SP-16",
@@ -11349,7 +11349,7 @@
         "DX consolidation 2026-10-07: edit (docs/research/2026-10-07-dx-consolidation/backlog-changes.json)"
       ],
       "brief": "wp/SP-31-node-bridge-v4.md",
-      "status": "in-progress"
+      "status": "done"
     },
     {
       "id": "SP-32a",
@@ -11671,7 +11671,7 @@
         "docs/research/2026-10-08-sdk-usability/findings.json"
       ],
       "brief": "wp/SP-41-pkey-dev-a-local-polaris-key-for-integrators.md",
-      "status": "todo"
+      "status": "in-progress"
     },
     {
       "id": "SP-42",
@@ -11776,7 +11776,7 @@
         "docs/research/2026-10-08-sdk-usability/findings.json"
       ],
       "brief": "wp/SP-45b-developer-docs-two-lanes-per-sdk-on-today-s.md",
-      "status": "todo"
+      "status": "in-progress"
     },
     {
       "id": "SP-46",
@@ -11923,7 +11923,7 @@
         "docs/research/2026-10-08-sdk-usability/findings.json"
       ],
       "brief": "wp/SP-52-swift-package-footprint.md",
-      "status": "in-progress"
+      "status": "in-review"
     },
     {
       "id": "SP-53",
@@ -11987,7 +11987,7 @@
         "docs/research/2026-10-08-sdk-usability/README.md §10.2 (the Python terminal kit signed-in finding)"
       ],
       "brief": "wp/SP-54b-native-signed-in-user-readers.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "SP-55",
@@ -12027,7 +12027,7 @@
         "docs/research/2026-10-08-framework-drop-ins/README.md §12 (SP-56)"
       ],
       "brief": "wp/SP-56-python-server-drop-ins.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "SP-57",
@@ -12047,7 +12047,7 @@
         "docs/research/2026-10-08-framework-drop-ins/README.md §12 (SP-57)"
       ],
       "brief": "wp/SP-57-kotlin-server-drop-ins-ktor.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "SP-58",
@@ -15396,7 +15396,7 @@
         "docs/research/2026-10-08-docs/style-guide.md"
       ],
       "brief": "wp/DOC-07a-start-path.md",
-      "status": "in-review"
+      "status": "in-progress"
     },
     {
       "id": "DOC-07b",
@@ -15543,7 +15543,7 @@
         "docs/research/2026-10-08-docs/style-guide.md"
       ],
       "brief": "wp/DOC-10a-releases-and-updates.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "DOC-10b",
@@ -15564,7 +15564,7 @@
         "docs/research/2026-10-08-docs/style-guide.md"
       ],
       "brief": "wp/DOC-10b-channels.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "DOC-10c",
@@ -15606,7 +15606,7 @@
         "docs/research/2026-10-08-docs/style-guide.md"
       ],
       "brief": "wp/DOC-11a-operate-console.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "DOC-11b",
@@ -15627,7 +15627,7 @@
         "docs/research/2026-10-08-docs/style-guide.md"
       ],
       "brief": "wp/DOC-11b-operate-platform.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "DOC-12a",
@@ -16265,7 +16265,7 @@
         "DX consolidation 2026-10-07: edit (docs/research/2026-10-07-dx-consolidation/backlog-changes.json)"
       ],
       "brief": "wp/PX-W19-account-api-gaps.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "PX-23",
@@ -16396,7 +16396,7 @@
         "docs/research/2026-10-08-sdk-usability/findings.json"
       ],
       "brief": "wp/UK-46-node-terminal-kit-for-existing-clis.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "UK-47",

@@ -129,6 +129,7 @@ function base(): Docs {
         accentDark: "#E8B4B4",
       },
       // ST-19: the canonical spellings (plans/ST-19.md §3.1); `base()` emits no warning.
+      profiles: [{ id: "base", name: "Base profile", payload: { config: {} } }],
       licensing: {
         defaultDeviceLimit: 5,
         defaultMaxOfflineDays: 30,
@@ -140,9 +141,6 @@ function base(): Docs {
         reanchor: "onActivation",
         refundGraceHours: 48,
         dunningGraceDays: 7,
-        profiles: [
-          { id: "base", name: "Base profile", payload: { config: {} } },
-        ],
         tiers: [
           {
             id: "free",
@@ -231,7 +229,6 @@ function base(): Docs {
         {
           key: "api.token",
           kind: "secret",
-          secret: true,
           category: "Secrets",
           label: "API token",
           description: "Delivered to the OS keyring.",
@@ -821,6 +818,34 @@ const MUTATIONS: Mutation[] = [
     mutate: (d) => (p(d).licensing.tiers[0].maxOfflineDays = 14),
   },
   {
+    // U-30 (CFG-04): `secret: true` on a secret entry (entries[1]) is redundant and dropped. A
+    // warning; the schema keeps the boolean, so it accepts.
+    code: "catalog_secret_flag_retired",
+    file: "schema",
+    schema: "accepts",
+    mutate: (d) => ((d.schema as any).entries[1].secret = true),
+  },
+  {
+    // ...and on a config entry (entries[0]) it says to use kind secret.
+    code: "catalog_secret_flag_retired",
+    file: "schema",
+    schema: "accepts",
+    mutate: (d) => ((d.schema as any).entries[0].secret = true),
+  },
+  {
+    code: "catalog_delivery_server_only",
+    file: "schema",
+    schema: "accepts",
+    mutate: (d) => ((d.schema as any).entries[1].delivery = "serverOnly"),
+  },
+  {
+    // The recipe is named by the entry's key; the base manifest declares no recipe of that id.
+    code: "catalog_edge_mint_without_recipe",
+    file: "schema",
+    schema: "accepts",
+    mutate: (d) => ((d.schema as any).entries[1].delivery = "edgeMint"),
+  },
+  {
     // P0-04: a name `CHANNEL_RE` accepts but the canonical alphabet (WIRE-CONTRACT-V3 §5.1)
     // does not. A warning, and the schemas keep `CHANNEL_RE`, so they accept.
     code: "noncanonical_channel_name",
@@ -856,31 +881,31 @@ const MUTATIONS: Mutation[] = [
     code: "invalid_profile_id",
     file: "product",
     schema: "rejects",
-    mutate: (d) => (p(d).licensing.profiles[0].id = "bad id!"),
+    mutate: (d) => (p(d).profiles[0].id = "bad id!"),
   },
   {
     code: "duplicate_profile_id",
     file: "product",
     schema: "accepts",
-    mutate: (d) => p(d).licensing.profiles.push({ id: "base" }),
+    mutate: (d) => p(d).profiles.push({ id: "base" }),
   },
   {
     code: "invalid_profile_name",
     file: "product",
     schema: "rejects",
-    mutate: (d) => (p(d).licensing.profiles[0].name = "x".repeat(300)),
+    mutate: (d) => (p(d).profiles[0].name = "x".repeat(300)),
   },
   {
     code: "invalid_profile_description",
     file: "product",
     schema: "rejects",
-    mutate: (d) => (p(d).licensing.profiles[0].description = "x".repeat(2100)),
+    mutate: (d) => (p(d).profiles[0].description = "x".repeat(2100)),
   },
   {
     code: "invalid_payload",
     file: "product",
     schema: "rejects",
-    mutate: (d) => (p(d).licensing.profiles[0].payload = "not-an-object"),
+    mutate: (d) => (p(d).profiles[0].payload = "not-an-object"),
   },
   {
     code: "invalid_tier_id",
@@ -3214,10 +3239,7 @@ const MUTATIONS: Mutation[] = [
     file: "product",
     schema: "accepts",
     row: 6,
-    mutate: (d) => {
-      p(d).profiles = p(d).licensing.profiles;
-      delete p(d).licensing.profiles;
-    },
+    mutate: licensingProfiles,
   },
   {
     code: "deprecated_spelling",
@@ -3243,7 +3265,7 @@ const MUTATIONS: Mutation[] = [
     schema: "accepts",
     row: 9,
     mutate: (d) => {
-      const profile = p(d).licensing.profiles[0];
+      const profile = p(d).profiles[0];
       profile.label = profile.name;
       delete profile.name;
     },
@@ -3375,7 +3397,7 @@ describe("valid manifests pass both validators", () => {
         slug: "acme",
         name: "Acme",
         compatMin: "1.0.0",
-        profiles: [{ id: "base", label: "Base" }],
+        licensing: { profiles: [{ id: "base", label: "Base" }] },
         tiers: [{ id: "free", profile: "base", expiryDays: 30 }],
         oidc: {
           provider: "platform",
@@ -3395,10 +3417,10 @@ describe("valid manifests pass both validators", () => {
         "product/name",
         "product/compatMin",
         "product/tiers",
-        "product/profiles",
         "product/tiers/0/profile",
         "product/tiers/0/expiryDays",
-        "product/profiles/0/label",
+        "product/licensing/profiles",
+        "product/licensing/profiles/0/label",
         "product/oidc/clientSecretRef",
         "schema/catalog",
       ]
@@ -3808,21 +3830,21 @@ const tiersWithLabel = (label: string) => {
   return tiers;
 };
 const profilesWithName = (name: string) => {
-  const profiles = structuredClone(p(base()).licensing.profiles);
+  const profiles = structuredClone(p(base()).profiles);
   profiles[0].name = name;
   return profiles;
 };
-const altProfile = (d: Docs) =>
-  p(d).licensing.profiles.push({ id: "alt", name: "Alt" });
+const altProfile = (d: Docs) => p(d).profiles.push({ id: "alt", name: "Alt" });
 const rootTiers = (d: Docs) => {
   altProfile(d);
   p(d).tiers = p(d).licensing.tiers;
   delete p(d).licensing.tiers;
 };
-const rootProfiles = (d: Docs) => {
-  p(d).profiles = p(d).licensing.profiles;
-  delete p(d).licensing.profiles;
-};
+/** Move the base fixture's profiles to the alias place, `licensing.profiles`. */
+function licensingProfiles(d: Docs): void {
+  p(d).licensing.profiles = p(d).profiles;
+  delete p(d).profiles;
+}
 const mintAs = (id: string) => [
   { ...structuredClone(p(base()).edgeMint[0]), id },
 ];
@@ -3899,11 +3921,11 @@ const SPELLING_CASES: Record<string, SpellingCase> = {
     alone: "Old",
     both: "Old",
   },
-  "product/profiles": {
+  "product/licensing/profiles": {
     old: profilesWithName("Old"),
     read: (m) => m.profiles[0]?.name,
     alone: "Old",
-    both: "Old",
+    both: "Base profile",
   },
   "product/licensing/tiers/*/profile": {
     setup: altProfile,
@@ -3937,13 +3959,13 @@ const SPELLING_CASES: Record<string, SpellingCase> = {
     both: 20,
   },
   "product/licensing/profiles/*/label": {
+    setup: licensingProfiles,
     old: "Old",
     read: (m) => m.profiles[0]?.name,
     alone: "Old",
     both: "Base profile",
   },
   "product/profiles/*/label": {
-    setup: rootProfiles,
     old: "Old",
     read: (m) => m.profiles[0]?.name,
     alone: "Old",

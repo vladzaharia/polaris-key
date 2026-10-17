@@ -91,6 +91,22 @@ Eighteen hands-on trials across Node, React, Python, Swift, Kotlin and Godot (th
 
 - No new copies (tracks.md rule 4): build on the one mechanism this package names, never beside it.
 
+## Corrections (code is the fact, 2026-10-16)
+
+- `polarisConfig` is the file `pkey sdk` generates (`Omit<PolarisKeyClientOptions, "version">`), not
+  an export of the SDK: `config` takes that shape, and with it no factory is needed.
+- Before this package the adapters mounted all 25 verbs; the end-user set is now the default and
+  `verbs: "all"` restores the old mount. Existing tests and the two examples pass it.
+- The corpus lists a `boot` developer verb that `CLI_VERBS` does not have. `verbs` rejects an unknown
+  id (`polaris-unknown-verb`), so naming `boot` throws until a verb exists.
+- The mount row "with no host commands only the license heading" holds for every mount: the root
+  help is the host's page plus one **License** section. The per-service grouped page now serves a
+  verb group's and a namespace's own `--help`.
+- The `flow` gate rows are silent on a license that is still not entitled after the inline flow.
+  The gate re-checks and refuses with `not_entitled` (exit 4) rather than run a paid command.
+- yargs has no command headings, so "the host's commands first" there is registration order.
+  `polarisGate` is commander only (yargs gates per handler with `requireLicense`).
+
 ## Steps
 
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
@@ -104,13 +120,15 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 ## Acceptance criteria
 
-- [ ] A host CLI with its own `config`, `update` and `status` registers without throwing.
-- [ ] `--help` lists the host's commands first.
-- [ ] Gating a host command takes 3 lines or fewer.
-- [ ] `tsc` with `skipLibCheck: false` passes in a commander-only project.
-- [ ] The SP-33a Node CLI golden is 8 lines or fewer and compiles.
+- [x] A host CLI with its own `config`, `update` and `status` registers without throwing.
+- [x] `--help` lists the host's commands first (commander; yargs by registration order).
+- [x] Gating a host command takes 3 lines or fewer.
+- [x] `tsc` with `skipLibCheck: false` passes in a commander-only project (the barrel no longer
+      reaches yargs; the check needs the DOM lib for two other packages' declarations, see the report).
+- [x] The SP-33a Node CLI golden is 8 lines or fewer and compiles.
 - [ ] `pkey-ux-reviewer` passes every changed screen.
-- [ ] The acceptance in "Design language v2 (2026-10-08)" above holds.
+- [ ] The acceptance in "Design language v2 (2026-10-08)" above holds (rows and goldens at 32, 40
+      and 80 columns pass; the UX review is the lead's).
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate in the header.
 
 ## Verify

@@ -147,7 +147,7 @@ describe("@polaris-key/cli", () => {
         compatMin: "0.0.0",
         defaultDeviceLimit: 5,
         adminGroup: "admins",
-        profiles: [{ id: "default", name: "Default" }],
+        licensing: { profiles: [{ id: "default", name: "Default" }] },
         tiers: [{ id: "standard", profileId: "default" }],
       }),
     );
@@ -164,7 +164,7 @@ describe("@polaris-key/cli", () => {
       "/compatMin",
       "/defaultDeviceLimit",
       "/adminGroup",
-      "/profiles",
+      "/licensing/profiles",
       "/tiers",
     ])
       expect(io.out()).toContain(`warning product${at} (.pkey/product.json): `);

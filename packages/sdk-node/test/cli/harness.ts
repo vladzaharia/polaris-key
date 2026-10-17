@@ -138,6 +138,11 @@ export const settle = async (): Promise<void> => {
 export interface Harness {
   ctx: KitContext;
   screen: Screen;
+  /** The error stream and the environment the context was built over, for a flow that builds
+   *  its own (the gate). */
+  err: Screen;
+  env: Record<string, string>;
+  variant: Variant;
   stdin: FakeStdin;
   /** Take the golden now (the screen while the flow is still waiting). */
   snap(): void;
@@ -155,6 +160,8 @@ export interface RunOptions {
   presentation?: ProductPresentation | null;
   /** The OS opener's answer (default: it opened). */
   openUrl?: boolean;
+  /** Take the golden from stderr instead of stdout (a refusal goes there). */
+  capture?: "stderr";
   headless?: boolean;
   copy?: (text: string) => string;
 }
@@ -215,6 +222,9 @@ export async function render(
     await scenario({
       ctx,
       screen,
+      err,
+      env,
+      variant: v,
       stdin,
       snap: () => {
         snapshot = screen.text();
@@ -225,7 +235,7 @@ export async function render(
     ctx.close();
   }
   return {
-    text: snapshot ?? screen.text(),
+    text: o.capture === "stderr" ? err.text() : (snapshot ?? screen.text()),
     raw: screen.raw,
     stderr: err.text(),
   };

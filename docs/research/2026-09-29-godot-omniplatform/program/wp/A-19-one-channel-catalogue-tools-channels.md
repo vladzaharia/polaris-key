@@ -86,3 +86,12 @@ Then the full green gate in `AGENTS.md`.
 
 What downstream work packages rely on from this one is named in their briefs (the Unblocks row). The role agent sets `--set A-19 in-review` when it hands off. After review, the lead adds the last commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set A-19 done`.
+
+## Progress and continuation (2026-10-16)
+
+Reconciled against main in the 2026-10-16 audit. Remaining:
+
+- Migrate admin label tables (lib/labels.ts, storefronts data.ts) and the worker and CLI readers onto findChannel/channelLabel
+- Lint that refuses store-label literals elsewhere
+- Per-channel features/ship-builds/channels/\* page rewrites (only the index page exists)
+- Green-gate box; consider splitting the remainder into an A-19b

@@ -1,16 +1,23 @@
 ---
 title: "Incidents"
-description: "Where to start when products 404, the KEK is wrong, a connector fails or email is down."
+description: "Where to start when products return 404, a connector fails, a rollout halts, a feed is stale or email is down."
 type: "overview"
-status: "stub"
+lastReviewed: "2026-10-16"
 sidebar:
-  hidden: true
-pagefind: false
-head:
-  - tag: meta
-    attrs:
-      name: robots
-      content: noindex
+  order: 8
 ---
 
-Placeholder page. See [Operating: the KEK keyring](/docs/operate/platform/runbook/) for the nearest live page.
+Find the symptom, then open the page that owns it. Each page ends with Verify, Roll back and Escalate.
+
+**Requires** a platform admin's console session.
+
+| Symptom                                                     | Start at                                                                                                                                              |
+| ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Every product's routes answer 404 at once                   | [Rotate the KEK](/docs/operate/platform/runbook/rotate-the-kek/). A keyring that cannot open sealed values fails silently, and `/manage` still loads. |
+| The console does not sign in, or a repository does not sync | [Troubleshoot the platform](/docs/operate/platform/runbook/troubleshooting/)                                                                          |
+| A secret or a signing key may have leaked                   | [Respond to a key compromise](/docs/operate/platform/runbook/respond-to-a-key-compromise/)                                                            |
+| A store connector fails                                     | [Store connections](/docs/operate/platform/connections/). The check names the account and what the key can see.                                       |
+| A rollout halted by itself                                  | [Update health](/docs/features/ship-builds/channels/update-health/). The auto-halt is opt-in; the page shows the rates it acts on.                    |
+| A feed looks stale, or background work is late              | [Operations](/docs/operate/platform/jobs/) shows cron runs and the queue backlog.                                                                     |
+| Sign-in email does not arrive                               | [Email delivery](/docs/operate/platform/email/)                                                                                                       |
+| A deploy broke something                                    | [Deploy a release](/docs/operate/platform/runbook/deploy-a-release/)                                                                                  |

@@ -1,0 +1,73 @@
+---
+title: "Operate"
+description: "Run the console and the platform: products, users, secrets, activity, and the production runbook."
+type: "overview"
+lastReviewed: "2026-10-16"
+sidebar:
+  order: 1
+---
+
+import CardGrid from "../../../components/docs/CardGrid.astro";
+import { LinkCard } from "@astrojs/starlight/components";
+
+This door is for people who run a Polaris Key instance that is already live. Console pages need a console session. Platform pages need a platform admin's session, the one `/manage` checks. **Home** in the console lists what needs attention across every product.
+
+## Console
+
+<CardGrid>
+  <LinkCard
+    title="Console tour"
+    href="/docs/operate/console/tour/"
+    description="Every console page and where it is documented."
+  />
+  <LinkCard
+    title="Products"
+    href="/docs/operate/console/products/"
+    description="Register a product and turn its services on."
+  />
+  <LinkCard
+    title="Users"
+    href="/docs/operate/console/users/"
+    description="A product's users, their data and relinks."
+  />
+  <LinkCard
+    title="Secrets & keys"
+    href="/docs/operate/console/keys-and-secrets/"
+    description="Product secrets, signing keys and CI publishing."
+  />
+  <LinkCard
+    title="Activity"
+    href="/docs/operate/console/activity/"
+    description="The audit log of a product."
+  />
+  <LinkCard
+    title="Help a customer"
+    href="/docs/operate/console/help-a-customer/"
+    description="Export, delete and relink for one person."
+  />
+</CardGrid>
+
+## Platform
+
+<CardGrid>
+  <LinkCard
+    title="Deploying to production"
+    href="/docs/operate/platform/deploy/"
+    description="Bootstrap a new instance."
+  />
+  <LinkCard
+    title="Incidents"
+    href="/docs/operate/platform/incidents/"
+    description="Where to start when something is down."
+  />
+  <LinkCard
+    title="Email delivery"
+    href="/docs/operate/platform/email/"
+    description="Sending, limits and outages."
+  />
+  <LinkCard
+    title="Platform settings"
+    href="/docs/operate/platform/settings/"
+    description="Instance-wide settings."
+  />
+</CardGrid>

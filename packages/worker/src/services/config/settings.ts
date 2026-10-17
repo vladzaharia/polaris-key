@@ -49,7 +49,7 @@ export const CONFIG_SETTINGS_SLICE: ServiceSettingsSlice = {
       defaultValue: [],
       merge: "cascade",
       ownership: "claimable",
-      manifest: { path: "product:licensing.profiles" },
+      manifest: { path: "product:profiles" },
       confirm: { change: "L1" },
       visibleWhen: VISIBLE,
       wire: ["document"],

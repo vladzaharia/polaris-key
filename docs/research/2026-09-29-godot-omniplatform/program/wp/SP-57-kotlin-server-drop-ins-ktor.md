@@ -50,11 +50,21 @@ The owner asked for drop-ins that gate a server route or a CLI command with the 
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
 2. Implement the scope; run the green gate; hand off.
 
+## Corrections (2026-10-16, SP-57 builder)
+
+- The brief's source for the verdict is WIRE-CONTRACT-V4 §14 (not the plan's §5.1), and the
+  generated Kotlin constants carry no `BACKEND_*` values, so `BackendWire` in `:server` holds the
+  header names, the 16 384 limit and the scheme; `BackendMatrixTest` pins them to the matrix's
+  `constants`. A generator emitting them is a follow-up.
+- The eight locales' copy is copied into the JAR from `conformance/parity/copy.<locale>.json` at
+  build time (`:server:copyLocales`), not generated or hand-written.
+- Ktor 3.2.3 (Kotlin 2.1 metadata) is new in `libs.versions.toml`.
+
 ## Acceptance criteria
 
-- [ ] A gated Ktor route answers each §5.2 verdict.
+- [x] A gated Ktor route answers each §5.2 verdict.
 - [ ] Replays the `verdict` and `problem` sections green.
-- [ ] No token or holder PII in logs.
+- [x] No token or holder PII in logs.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate in the header.
 
 ## Verify
