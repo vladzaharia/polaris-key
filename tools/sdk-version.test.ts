@@ -272,7 +272,8 @@ describe("stamping", () => {
     expect(files).not.toContain("packages/worker/package.json");
     expect(files).not.toContain("packages/admin/package.json");
     expect(files).toContain("packages/ui-core/package.json");
-    expect(files).toHaveLength(11);
+    expect(files).toContain("packages/server/package.json");
+    expect(files).toHaveLength(12);
   });
 
   it("writes one version into every SDK, PEP 440 for Python, and leaves everything else", () => {
@@ -292,7 +293,7 @@ describe("stamping", () => {
       version: "0.8.13-main.7",
       pep440: "0.8.13.dev7",
     });
-    expect(written).toHaveLength(STAMP_TARGETS.length + 11);
+    expect(written).toHaveLength(STAMP_TARGETS.length + 12);
     const read = (f: string) => readFileSync(join(root, f), "utf8");
     expect(read("sdks/python/pyproject.toml")).toMatch(
       /^version = "0\.8\.13\.dev7"$/m,
