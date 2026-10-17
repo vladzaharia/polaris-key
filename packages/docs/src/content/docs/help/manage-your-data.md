@@ -19,7 +19,7 @@ You can download everything from your account, or information from one app.
 1. Open **Account**, then **Your data**, to download your full account file.
 2. Open an app in your library to download a file for that app only.
 3. Select **Download my data**.
-4. Sign in again when asked. This protects your information if you left the site signed in.
+4. If you see **Confirm it's you first**, confirm with your passkey or an emailed code. This protects your information if you left the site signed in.
 
 Your full account file includes your account, sign-in methods, name and pictures, passkeys, where
 you've signed in, connected apps, accepted terms, library, licenses, package access details, joined
@@ -32,7 +32,7 @@ Removing information from an app deletes the information Polaris Key holds for y
 
 1. Open the app in your library.
 2. Select **Remove my data**.
-3. Sign in again when asked.
+3. If you see **Confirm it's you first**, confirm it.
 4. Choose whether to keep your license, then confirm.
 
 Keeping your license keeps the app in your library. Its developer can still connect you to old
@@ -51,28 +51,8 @@ Removing your information from that app ends the old code. Ask for another code 
 
 ## Delete your account
 
-Deleting your account schedules it for erasure 14 days later. Until then, you stay signed in and
-your licenses and devices keep working. For the full steps, see
-[Delete your account](/docs/help/delete-account/).
-
-1. Open **Account**, then **Your data**.
-2. Select **Delete account**.
-3. Type your email address, then select **Schedule deletion**. Sign in again when asked.
-
-During the 14 days, select **Cancel scheduled deletion** in **Your data** to keep your account.
-After 14 days, Polaris Key erases the account for good. Your licenses stay with each app's
-developer, and each developer erases its own records.
-
-While a deletion is scheduled, you cannot join another account to this one. Cancel the deletion
-first, then join them.
-
-Polaris Key keeps database backups for up to 30 days, used only after a serious fault. If a backup
-brings back an account deleted after it was taken, no one can sign in to it, and a separate record
-with only an internal reference and date makes the next scheduled cleanup erase it again. This
-usually takes about 15 minutes, or longer if many accounts need cleanup.
-
-A deletion still within its 14-day waiting period is not in that record. If a restore predates your
-request, schedule deletion again.
+Deleting your account schedules it for erasure 14 days later. For the steps, what happens in the 14
+days and how to cancel, see [Delete your account](/docs/help/delete-account/).
 
 ## Ask about or erase your data
 

@@ -46,7 +46,7 @@ device** or **Reduced**, which turns animation off. Your choices apply in this b
 
 ## Your data
 
-**Download my data** saves your whole account as one file. **Delete account** schedules your
+**Download my data** saves your whole account as one file. **Delete account…** schedules your
 account to be erased after 14 days, and you can cancel before then. Read
 [Delete your account](/docs/help/delete-account/) first. For what apps and Polaris Key hold about
 you, read [Your data and privacy](/docs/help/your-data/).

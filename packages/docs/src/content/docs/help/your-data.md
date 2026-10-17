@@ -60,5 +60,7 @@ or settings. You can change your account details in
 
 ## Download, remove or delete
 
-To download your data, remove an app's data, get a support code or delete your account, see
-[Download, remove or delete your data](/docs/help/manage-your-data/).
+To download your data, see [Download my data](/docs/help/manage-your-data/#download-my-data). To
+remove an app's data or get a support code, see
+[Download, remove or delete your data](/docs/help/manage-your-data/). To delete your account, see
+[Delete your account](/docs/help/delete-account/).
