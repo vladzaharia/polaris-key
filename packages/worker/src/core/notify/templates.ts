@@ -213,6 +213,40 @@ export function downloadLinkEmail(input: {
   });
 }
 
+/**
+ * LX-27 (S-24 §8.4, D11/D12): "Your Mossgarden license", the key an operator emailed to a
+ * licence's holder, sent as "<App> via Polaris Key" (the caller picks the sender). The key
+ * appears in the body only, never in the subject. **Open in Polaris Key** is a plain portal
+ * sign-in link for the address: it carries no token, so a forwarded email signs nobody in.
+ */
+export function licenseKeyEmail(input: {
+  productName: string | null | undefined;
+  holderName: string | null | undefined;
+  key: string;
+  /** The portal's sign-in page; carries no token. */
+  signInUrl: string;
+  /** The product's download page, when it has one. */
+  downloadUrl?: string | null;
+  origin: string;
+}): NoticeMessage {
+  const name = displayValue(input.productName, "Your new product");
+  const holder = displayValue(input.holderName, "");
+  return buildNotice({
+    subject: `Your ${name} license`,
+    paragraphs: [
+      ...(holder ? [`Hi ${holder},`] : []),
+      `Your ${name} license key:`,
+      input.key,
+      "Enter it in the app to activate. Keep it private: anyone with the key can use your license.",
+      ...(input.downloadUrl ? [`Download ${name}: ${input.downloadUrl}`] : []),
+    ],
+    action: { label: "Open in Polaris Key", url: input.signInUrl },
+    footer:
+      "You are receiving this because a license was created for this address.",
+    origin: input.origin,
+  });
+}
+
 // ── Security notices ─────────────────────────────────────────────────────────────────────────
 
 /** A device was removed from a product license: "Studio PC was removed from Tidewater Studio". */
