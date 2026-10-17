@@ -35,6 +35,11 @@ names a row the operator still has to configure in admin's product secrets — d
 recipe and supplying its key material are two separate steps, and the product's setup view lists
 which required secrets remain unconfigured.
 
+In the console's vocabulary this is a **Minted token**: a catalog entry of `kind: "secret"` with
+`delivery: "edgeMint"`, read in code with `mintToken(key)`, never listed or synced. The recipe is
+matched by id: the entry's `key` must equal a recipe's `id`, or the validator warns that nothing can
+be minted.
+
 A worked recipe, in the shape of `.pkey/release`'s `edgeMint[]` entry:
 
 ```jsonc

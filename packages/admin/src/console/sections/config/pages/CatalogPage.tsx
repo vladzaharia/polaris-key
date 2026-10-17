@@ -2,7 +2,7 @@ import * as React from "react";
 import { Check, History, Pencil, Plus } from "lucide-react";
 import type { ConfigEntry, ProductCatalog } from "../../../../api.js";
 import { fromSeconds } from "../../../../lib/format.js";
-import { KIND_LABELS, MANAGEMENT_LABELS } from "../../../../lib/labels.js";
+import { inAppLabel, typeLabel } from "../../../../lib/labels.js";
 import {
   KIND_TONE,
   STATE_TONE,
@@ -120,12 +120,12 @@ export function CatalogPage({ slug }: { slug: string }): React.ReactElement {
       },
       {
         id: "kind",
-        header: "Kind",
+        header: "Type",
         accessorFn: (e) => e.kind,
         meta: { priority: 1 },
         cell: ({ row }) => (
           <StatusPill tone={KIND_TONE[row.original.kind]} icon={null} size="sm">
-            {KIND_LABELS[row.original.kind] ?? row.original.kind}
+            {typeLabel(row.original)}
           </StatusPill>
         ),
       },
@@ -146,7 +146,7 @@ export function CatalogPage({ slug }: { slug: string }): React.ReactElement {
       },
       {
         id: "state",
-        header: "Management",
+        header: "In the app",
         accessorFn: stateOf,
         meta: { priority: 1 },
         cell: ({ row }) => (
@@ -155,7 +155,7 @@ export function CatalogPage({ slug }: { slug: string }): React.ReactElement {
             icon={null}
             size="sm"
           >
-            {MANAGEMENT_LABELS[stateOf(row.original)]}
+            {inAppLabel(row.original)}
           </StatusPill>
         ),
       },
@@ -194,10 +194,10 @@ export function CatalogPage({ slug }: { slug: string }): React.ReactElement {
     return [
       {
         id: "kind",
-        label: "Kind",
+        label: "Type",
         options: (["config", "secret", "flag"] as const).map((k) => ({
           value: k,
-          label: KIND_LABELS[k]!,
+          label: typeLabel({ kind: k }),
         })),
       },
       {
@@ -207,10 +207,10 @@ export function CatalogPage({ slug }: { slug: string }): React.ReactElement {
       },
       {
         id: "state",
-        label: "Management",
+        label: "In the app",
         options: (["default", "enforced", "hidden"] as const).map((s) => ({
           value: s,
-          label: MANAGEMENT_LABELS[s]!,
+          label: inAppLabel({ kind: "config", managementDefault: s }),
         })),
       },
     ];
@@ -386,8 +386,8 @@ function KeyDrawer({
               columns={2}
               items={[
                 {
-                  term: "Kind",
-                  detail: KIND_LABELS[entry.kind] ?? entry.kind,
+                  term: "Type",
+                  detail: typeLabel(entry),
                 },
                 {
                   term: "Category",
@@ -404,8 +404,8 @@ function KeyDrawer({
                 ...(entry.kind === "config"
                   ? [
                       {
-                        term: "Management default",
-                        detail: MANAGEMENT_LABELS[stateOf(entry)],
+                        term: "In the app",
+                        detail: inAppLabel(entry),
                       },
                     ]
                   : []),

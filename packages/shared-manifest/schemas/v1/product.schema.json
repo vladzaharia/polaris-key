@@ -91,7 +91,11 @@
       "properties": {
         "defaultDeviceLimit": { "$ref": "#/$defs/deviceLimit" },
         "defaultMaxOfflineDays": { "$ref": "#/$defs/nonNegativeInteger" },
-        "profiles": { "$ref": "#/$defs/profiles" },
+        "profiles": {
+          "$ref": "#/$defs/profiles",
+          "description": "Deprecated: write profiles at the root. Still accepted; pkey validate warns with deprecated_spelling.",
+          "deprecated": true
+        },
         "tiers": { "$ref": "#/$defs/tiers" },
         "entitlementModel": {
           "description": "Whether devices see the combined entitlements of every grant their holder has (combined) or only their own licence's (legacy). Undeclared: legacy for products registered before 2026-10-06, combined for newer ones. A console edit claims it; Revert returns it to this value.",
@@ -129,8 +133,7 @@
     },
     "profiles": {
       "$ref": "#/$defs/profiles",
-      "description": "Deprecated: write licensing.profiles. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
-      "deprecated": true
+      "description": "The reusable managed-payload baselines tiers point at (a tier names one with profileId)."
     },
     "tiers": {
       "$ref": "#/$defs/tiers",

@@ -50,7 +50,8 @@ pkey init --product <slug> --name "<Name>" --modules license,config
 
 - [ ] **Write the canonical spellings** — the layout `pkey init` writes: `product:` holds
       identity and compatibility (`slug`, `name`, `adminGroup`, `compatMin`, `compatMax`),
-      `licensing:` holds the licence defaults, `tiers` and `profiles`, a tier names its profile
+      `licensing:` holds the licence defaults and `tiers`, `profiles` sits at the root (the
+      old `licensing.profiles` warns, and `pkey validate --fix` moves it), a tier names its profile
       with `profileId`, the catalog is `entries`, and `.pkey/release` puts its body under
       `release:` with `provider: { type: github, owner, repo }`. The old spellings (a flat product
       document, root `tiers`, `catalog`, `ghOwner`/`ghRepo`, legacy `modules:` names, …) still
