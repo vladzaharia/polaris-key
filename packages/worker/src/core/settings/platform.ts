@@ -523,6 +523,103 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     pending: { wp: "U-05" },
   }),
 
+  // ── Email and alerts (ST-09; I-18) ──────────────────────────────────────────────────────
+  // Deploy-time values the console shows: the sender is the address on the auth sending
+  // subdomain, which the email binding's allowed senders still restrict, so a console write
+  // could only produce mail the binding refuses. ST-27 owns the writable alert destinations.
+  setting({
+    key: "email.sender",
+    scope: "platform",
+    service: "platform",
+    area: "email",
+    label: "Sender address",
+    description:
+      "The one address sign-in and account mail is sent from. Unset sends from noreply@plrs.im.",
+    keywords: ["from", "noreply", "sending"],
+    docs: PLATFORM_DOCS,
+    value: { kind: "string", maxLength: 254 },
+    defaultValue: "noreply@plrs.im",
+    merge: "cascade",
+    varName: "EMAIL_SENDER_ADDRESS",
+    ownership: "read-only",
+    confirm: { change: "L2" },
+    readers: ["core/notify/emailSender.ts"],
+    storage: { kind: "none" },
+    since: "ST-09",
+  }),
+  setting({
+    key: "email.senderLegacy",
+    scope: "platform",
+    service: "platform",
+    area: "email",
+    label: "Legacy sender",
+    description:
+      "The older sender setting. Only its address is read, and only while the sender address is not set.",
+    docs: PLATFORM_DOCS,
+    value: { kind: "string", maxLength: 320 },
+    defaultValue: null,
+    allowUnset: true,
+    merge: "cascade",
+    varName: "PORTAL_EMAIL_FROM",
+    ownership: "read-only",
+    confirm: { change: "L2" },
+    readers: ["core/notify/emailSender.ts"],
+    storage: { kind: "none" },
+    deprecated: { replacedBy: "email.sender" },
+    since: "ST-09",
+  }),
+  setting({
+    key: "email.appleRelay",
+    scope: "platform",
+    service: "platform",
+    area: "email",
+    label: "Apple private relay",
+    description:
+      "Registered once the sender is registered with Apple's private email relay. Until then relay recipients are refused, not bounced.",
+    keywords: ["hide my email", "apple"],
+    docs: PLATFORM_DOCS,
+    value: { kind: "enum", values: ["unregistered", "registered"] },
+    defaultValue: "unregistered",
+    merge: "cascade",
+    varName: "EMAIL_APPLE_RELAY",
+    ownership: "read-only",
+    confirm: { change: "L2" },
+    readers: ["core/notify/emailSender.ts"],
+    storage: { kind: "none" },
+    since: "ST-09",
+  }),
+
+  // ── Package feeds policy (F-11; moved here by ST-09) ────────────────────────────────────
+  // One platform row per ecosystem: the kill switch and the size ceiling every product's feed
+  // answers to. Written by `PUT /platform/feeds/:eco/policy` (its own optimistic version).
+  setting({
+    key: "feeds.policy",
+    scope: "platform",
+    service: "platform",
+    area: "feeds",
+    label: "Package feeds policy",
+    description:
+      "Per ecosystem: whether feeds answer at all and the largest package a product may publish. Off makes every feed for that ecosystem answer not found.",
+    keywords: ["npm", "pypi", "registry", "kill switch", "ceiling"],
+    docs: "/docs/features/ship-builds/channels/",
+    value: {
+      kind: "json",
+      schema: "dist_registry_policy rows (registry/settings.ts)",
+    },
+    defaultValue: null,
+    allowUnset: true,
+    merge: "cascade",
+    widensWhen: "on",
+    ownership: "operator",
+    confirm: { change: "L1" },
+    readers: [
+      "services/distribution/registry/settings.ts",
+      "services/distribution/registry/authorize.ts",
+    ],
+    storage: { kind: "rich", adapter: "dist_registry_policy" },
+    since: "ST-09",
+  }),
+
   // ── Product defaults (ST-16 wires them; owner decision 2: live inheritance) ─────────────
   setting({
     key: "license.defaults.deviceLimit",
