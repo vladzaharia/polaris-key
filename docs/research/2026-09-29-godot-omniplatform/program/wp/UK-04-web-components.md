@@ -341,3 +341,16 @@ Still to do, in this order:
 4. A live adapter for `<pk-gate>` (and `--live` in the sample), the htmx sample, kit tabs on the
    component pages, the UX review and the design review. React's own platform names should read
    `part.platform.*` too.
+
+## Progress and continuation (2026-10-17, `wp/UK-04-ux`, driven by the BUILT UX review)
+
+ui-core input plumbing, committed first for the React builder (UK-05) to consume: tip `c1d7a99a7`
+(additive `UiInput` members only, no copy lists or corpus touched): `DeviceInput.id`,
+`offline.requestCode` and `offline.response`, `account.devices` and `account.autoUpdate`,
+`offers.items` and `offers.url`, `channel.current` and `channel.options`. The placeholders
+(`{version}`, `{size}`, `{date}`, `{tier}`, `{name}`, `{store}`) already had inputs
+(`update.version/size`, `gate.graceDate`, `account.tier/holder`, `entitlement.tier`,
+`LicenseChoiceRow.store`); the sample and fixtures just never filled them, so the fix is in the
+renderer (drop the line, never paint braces) and the live sign-in adapter (fill holder and tier).
+Per-state `LicenseChoice` copy lists are corpus-fixed, so the base anatomy is drawn by the
+elements from `input.choices`, not by changing ui-core's copy lists.
