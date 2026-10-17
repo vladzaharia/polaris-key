@@ -235,6 +235,9 @@ const PLATFORM_ROWS = ADMIN_ROUTES.filter((r) => !isProductRoute(r)).sort(
 );
 const PRODUCT_ROWS = ADMIN_ROUTES.filter((r) => isProductRoute(r));
 
+/** The only rows a session that resolves to no grant may call. */
+const STRANGER_OPEN = new Set(["GET /me", "POST /logout"]);
+
 describe("the route × principal matrix", () => {
   it("covers every row of the route table", () => {
     expect(PLATFORM_ROWS.length + PRODUCT_ROWS.length).toBe(
@@ -259,7 +262,10 @@ describe("the route × principal matrix", () => {
         if (name === "none") {
           if (o.status !== 401) wrong.push(what);
         } else if (name === "stranger") {
-          if (!isNoAccess(o) || o.area !== "console") wrong.push(what);
+          // `GET /me` and `POST /logout` stay open to a session with no grant (ST-29 review).
+          if (STRANGER_OPEN.has(routeKey(r))) {
+            if (o.status !== 200) wrong.push(what);
+          } else if (!isNoAccess(o) || o.area !== "console") wrong.push(what);
         } else if (allowed) {
           if (o.status === 401 || isNoAccess(o)) wrong.push(what);
           else if (r.stepUp && o.code !== "step_up_required") wrong.push(what);

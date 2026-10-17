@@ -34,24 +34,31 @@ import { PolarisMark } from "@polaris-key/brand/react";
  * - A collapsed section can be expanded by hand to look inside; that is a temporary peek, and
  *   entering any other section collapses it again. Nothing is persisted.
  * - The active section is always open and cannot be collapsed.
+ * - `defaultOpen` starts open (a refused page passes the groups the member can use), so a member
+ *   sent to a refusal sees where they can go.
  */
-export function useNavCollapse(activeSection: NavGroupKey | null): {
+export function useNavCollapse(
+  activeSection: NavGroupKey | null,
+  defaultOpen: readonly NavGroupKey[] = [],
+): {
   expanded: ReadonlySet<NavGroupKey>;
   toggle: (key: NavGroupKey) => void;
 } {
   const [peek, setPeek] = React.useState<{
     section: NavGroupKey | null;
-    keys: ReadonlySet<NavGroupKey>;
-  }>({ section: activeSection, keys: new Set() });
+    /** `null` until a section is toggled by hand: the defaults then stand. */
+    keys: ReadonlySet<NavGroupKey> | null;
+  }>({ section: activeSection, keys: null });
   // A change of section drops every peek, so only the new active section stays open.
+  const base = new Set<NavGroupKey>(defaultOpen);
   const expanded =
-    peek.section === activeSection ? peek.keys : new Set<NavGroupKey>();
+    peek.section === activeSection && peek.keys ? peek.keys : base;
   const toggle = React.useCallback(
     (key: NavGroupKey) => {
       if (key === activeSection) return;
       setPeek((prev) => {
         const keys = new Set<NavGroupKey>(
-          prev.section === activeSection ? prev.keys : [],
+          prev.section === activeSection && prev.keys ? prev.keys : base,
         );
         if (keys.has(key)) keys.delete(key);
         else keys.add(key);

@@ -27,6 +27,7 @@ import { useTableUrlState } from "../../../useTableUrlState.js";
 import { attentionFor } from "../model/attention.js";
 import { runningServices, runsSentence } from "./Home.js";
 import { useWriteGate } from "../../../access/useCan.js";
+import { useCanOpenHref } from "../../../access/context.js";
 
 /** A registry row with what the table derives from it. */
 interface ProductRow {
@@ -208,13 +209,18 @@ export function Products(): React.ReactElement {
     () => (products.data ?? []).map(toRow),
     [products.data],
   );
+  // ST-29: a link into a page the member cannot open is left out, not offered to land on a refusal.
+  const canOpenHref = useCanOpenHref();
+  const openActions = (row: ProductRow): RowActionItem[] =>
+    [
+      { label: "Open overview", href: r.overview(row.slug) },
+      { label: "Open settings", href: r.settings(row.slug) },
+      { label: "Open keys & secrets", href: r.keys(row.slug) },
+    ]
+      .filter((a) => canOpenHref(a.href))
+      .map((a) => ({ label: a.label, onSelect: () => navigate(a.href) }));
   const rowActions = (row: ProductRow): RowActionItem[] => [
-    { label: "Open overview", onSelect: () => navigate(r.overview(row.slug)) },
-    { label: "Open settings", onSelect: () => navigate(r.settings(row.slug)) },
-    {
-      label: "Open keys & secrets",
-      onSelect: () => navigate(r.keys(row.slug)),
-    },
+    ...openActions(row),
     ...(row.source === "github"
       ? [
           {

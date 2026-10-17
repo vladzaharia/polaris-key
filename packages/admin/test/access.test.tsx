@@ -174,7 +174,7 @@ describe("NoAccessPage", () => {
       extra: { "/manage/api/access/admins": ADMINS },
     });
     const h1 = await screen.findByRole("heading", { level: 1 });
-    expect(h1.textContent).toBe("You don’t have access to DJDL → Licensing");
+    expect(h1.textContent).toBe("You don’t have access to DJDL, → Licensing");
     expect(screen.getByText("lucia@example.com")).toBeTruthy();
     expect(screen.getByText("DJDL admin")).toBeTruthy();
     expect(screen.getByText("Ship builds, Commerce")).toBeTruthy();
@@ -190,7 +190,7 @@ describe("NoAccessPage", () => {
     expect(call?.query).toBe("scope=product%3Adjdl&area=license");
     // Where to go: the member's real destinations, and the library.
     expect(
-      screen.getByRole("link", { name: "DJDL releases" }).getAttribute("href"),
+      screen.getByRole("link", { name: "Ship builds" }).getAttribute("href"),
     ).toBe("#/p/djdl/release/releases");
     expect(
       screen.getByRole("link", { name: /Open your library/ }),
@@ -238,7 +238,6 @@ describe("NoAccessPage", () => {
     expect(h1.textContent).toBe("You don’t have access to any product yet");
     expect(screen.getByText("Console access")).toBeTruthy();
     expect(await screen.findByText("Ada Lindqvist")).toBeTruthy();
-    expect(screen.getByText("Superadmins can give you any role.")).toBeTruthy();
     expect(screen.getByRole("link", { name: /Your library/ })).toBeTruthy();
     const nav = screen.getByRole("navigation", { name: "Console" });
     expect(within(nav).queryByText("Platform")).toBeNull();
@@ -254,9 +253,7 @@ describe("NoAccessPage", () => {
     const h1 = await screen.findByRole("heading", { level: 1 });
     expect(h1.textContent).toBe("You don’t have access to Platform");
     expect(
-      await screen.findByText(
-        "No one can be named yet. A Superadmin of this Polaris Key can give you access.",
-      ),
+      await screen.findByText("Ask a Superadmin of this console for access."),
     ).toBeTruthy();
   });
 
