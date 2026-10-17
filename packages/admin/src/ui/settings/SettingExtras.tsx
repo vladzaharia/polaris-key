@@ -84,9 +84,12 @@ export interface SettingHistoryEntry {
 export function SettingHistory({
   label,
   load,
+  details,
 }: {
   label: string;
   load: () => Promise<SettingHistoryEntry[]>;
+  /** Facts about the setting (deploy var, default, readers), above the changes. */
+  details?: React.ReactNode;
 }): React.ReactElement {
   const [open, setOpen] = React.useState(false);
   const [state, setState] = React.useState<
@@ -121,6 +124,11 @@ export function SettingHistory({
         title={`${label} history`}
         description="Changes made in the console, newest first."
       >
+        {details ? (
+          <div className="mb-4 space-y-1 border-b border-border pb-4 text-sm text-fg-muted">
+            {details}
+          </div>
+        ) : null}
         {state.phase === "loading" ? (
           <p className="text-sm text-fg-muted" role="status">
             Loading history

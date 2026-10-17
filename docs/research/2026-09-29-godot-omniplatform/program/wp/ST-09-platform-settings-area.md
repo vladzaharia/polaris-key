@@ -166,3 +166,24 @@ only through `public.ts`); a service limit an operator needs is a follow-up that
 
 Still open: Product defaults and the product-policies matrix rows (ST-16), SQL-only and API-only
 rows (ST-11, ST-12), `@modified`/search and the phone shell search icon (shell).
+
+### Fix round (2026-10-17)
+
+After the BUILT UX review (wp/ST-09-fix): the viewer gate (no Revert, locked values as full-contrast
+text with a lock, one notice under the header, `askReason` says "edit" when the member has view);
+the feed policy as one compact row per ecosystem with explicit "Stop serving {label}" copy naming
+the products; Platform ready as one banner (worst item first, its own target, Show all, gone when
+complete); limits copy; registry key as a quiet chip with the deploy-var line in the History
+drawer; deploy values compact; identity-provider values under Advanced; section navigation in
+`SettingsTemplate` (rail, pills, phone picker, scroll-spy `aria-current`, `?section=` in the
+address); loading shape; ceiling checked as you type; history strikes the old value; key-entry
+refusals under Licensing. Not done: Advanced folded into one card, Jobs last-run line, source chip
+out of the tab order, phone switch placement, the rail on a container query at 200 % text, the
+feed pointer focusing the Package feeds group itself (it opens Storefront and hosting).
+
+Re-review fixes (2026-10-17): section jumps are opt-in (`SettingsTemplate jump`, Platform settings
+only) and write `?section=` without asking the unsaved-changes guard (`navigate(..., {force})`); the
+current section follows the scroll (last section whose top is above the line; the last at the foot)
+and a chosen one is marked at once; sticky pills with a fade; feed rows lay out on phone with the
+switch on the name line; view-only switches read as On/Off text; the stop dialog no longer counts
+products; Advanced is folded by default (it opens from a Go to link, and when it holds editable rows).

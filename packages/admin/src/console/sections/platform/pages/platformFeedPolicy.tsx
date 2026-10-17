@@ -1,20 +1,29 @@
 /**
  * Package feeds policy in Storefront and hosting (ST-09; moved from the Package feeds page).
- * Per ecosystem, the kill switch and the size ceiling, as rows of the settings engine. Both rows
- * of an ecosystem write the one policy record, so each carries its version and the page refetches
- * after a save. Viewing needs Platform access; changing needs Platform edit.
+ * One compact row per ecosystem: its name, the kill switch and the size ceiling. Both controls
+ * run the settings engine's write flow (`useSettingWrite`: confirm level, `expectedVersion`, 409
+ * with Reload, input kept on failure). Both write the one policy record, so each carries its
+ * version and the page refetches after a save. Viewing needs Platform access, changing Platform
+ * edit; without it the row shows its values with a lock and the page says why once.
  */
 
 import * as React from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { Lock } from "lucide-react";
 import type { FeedEcosystem, FeedPolicy } from "../../../../api.js";
-import { fromSeconds } from "../../../../lib/format.js";
+import { Button } from "../../../../ui/Button.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
-import { Section } from "../../../../ui/Section.js";
+import { NumberInput } from "../../../../ui/NumberInput.js";
 import { PageSkeleton } from "../../../../ui/Skeleton.js";
-import { SourceBadge } from "../../../../ui/SourceBadge.js";
-import { SettingRow } from "../../../../ui/settings/SettingRow.js";
-import type { SettingSpec } from "../../../../ui/settings/model.js";
+import { Switch } from "../../../../ui/Switch.js";
+import { ConflictNote } from "../../../../ui/settings/SettingExtras.js";
+import {
+  formatSettingValue,
+  fromField,
+  toField,
+  type SettingSpec,
+} from "../../../../ui/settings/model.js";
+import { useSettingWrite } from "../../../../ui/settings/useSettingWrite.js";
 import { toast } from "../../../../ui/toast.js";
 import { useWriteGate } from "../../../access/useCan.js";
 import { mutate } from "../../../data/mutations.js";
@@ -23,59 +32,77 @@ import { useFeedsOverview } from "../../feeds/data.js";
 import { isConflict } from "./platformSettingRow.js";
 
 const PLATFORM = { kind: "platform" } as const;
-const GIB = 1024 ** 3;
+const MIB = 1_048_576;
+const MAX_MIB = 5120;
 
 const CEILING_SPEC: SettingSpec = {
   kind: "integer",
   unit: "bytes",
-  min: 1024,
-  max: 5 * GIB,
+  min: MIB,
+  max: MAX_MIB * MIB,
 };
+
+/** What is wrong with a ceiling draft, in the field's own unit; `null` when it can be saved. */
+export function ceilingError(bytes: unknown): string | null {
+  if (typeof bytes !== "number" || !Number.isFinite(bytes))
+    return "Enter a size.";
+  if (bytes < MIB) return "Enter at least 1 MiB.";
+  if (bytes > MAX_MIB * MIB) return "Enter 5,120 MiB or less.";
+  return null;
+}
 
 export function FeedPolicySection(): React.ReactElement | null {
   const query = useFeedsOverview(PLATFORM);
   const rows = (query.data?.policies ?? []).filter((p) => p.policy !== null);
-  const head = {
-    variant: "settings" as const,
-    id: "platform-feeds-policy",
-    headingLevel: 3 as const,
-    title: "Package feeds",
-    description:
-      "Each ecosystem's switch and size ceiling apply to every product's feed of it.",
-  };
+  const head = (body: React.ReactNode) => (
+    <div
+      id="platform-feeds-policy"
+      tabIndex={-1}
+      role="group"
+      aria-labelledby="platform-feeds-policy-title"
+      className="border-t border-border outline-none"
+    >
+      <div className="px-5 pt-4">
+        <h3
+          id="platform-feeds-policy-title"
+          className="text-sm font-semibold text-fg-strong"
+        >
+          Package feeds
+        </h3>
+        <p className="text-sm text-fg-muted">
+          Each switch and ceiling applies to every product&apos;s feed of that
+          ecosystem. Ceilings go up to 5,120 MiB.
+        </p>
+      </div>
+      {body}
+    </div>
+  );
   if (query.isPending)
-    return (
-      <Section {...head}>
-        <PageSkeleton template="form" label="package feeds policy" />
-      </Section>
-    );
+    return head(<PageSkeleton template="form" label="package feeds policy" />);
   if (query.isError)
-    return (
-      <Section {...head}>
+    return head(
+      <div className="px-5 py-3">
         <ErrorState
           compact
           error={query.error}
           onRetry={() => void query.refetch()}
           context={{ area: "distribution", thing: "Package feeds policy" }}
         />
-      </Section>
+      </div>,
     );
   if (rows.length === 0) return null;
-  return (
-    <Section {...head}>
+  return head(
+    <ul className="mt-2 divide-y divide-border">
       {rows.map((p) => (
-        <PolicyRows
-          key={p.ecosystem}
-          eco={p.ecosystem}
-          label={p.label}
-          policy={p.policy!}
-        />
+        <li key={p.ecosystem}>
+          <PolicyRow eco={p.ecosystem} label={p.label} policy={p.policy!} />
+        </li>
       ))}
-    </Section>
+    </ul>,
   );
 }
 
-function PolicyRows({
+function PolicyRow({
   eco,
   label,
   policy,
@@ -88,80 +115,204 @@ function PolicyRows({
   const write = useWriteGate("platform");
   const reload = () =>
     queryClient.refetchQueries({ queryKey: qk.pkgFeeds(PLATFORM) });
-  const source = policy.updatedBy ? (
-    <SourceBadge
-      source="runtime"
-      by={policy.updatedBy}
-      at={fromSeconds(policy.updatedAt)}
-    />
-  ) : (
-    <SourceBadge source="default" />
-  );
-  const common = {
+  const readOnly = !write.allowed;
+  const reason = write.disabledReason ?? "You can't edit this.";
+  const id = `platform-feeds-${eco}`;
+
+  const enabled = useSettingWrite({
+    label: `Serve ${label}`,
+    settingKey: `feeds.policy.${eco}.enabled`,
+    spec: { kind: "switch" },
+    confirm: { on: "L0", off: "L2" },
+    value: policy.enabled ? "on" : "off",
     version: policy.version,
-    source,
-    locked: write.allowed ? undefined : write.disabledReason,
+    commit: "immediate",
     isConflict,
     reload,
-  };
+    confirmCopy: () => ({
+      title: `Stop serving ${label} for every product?`,
+      confirmLabel: `Stop serving ${label}`,
+    }),
+    consequences: (to) =>
+      to === "off"
+        ? [
+            `Every product's ${label} feed, the platform's included, answers not-found within 30 seconds.`,
+            "Settings, packages and versions are kept; the feeds answer again when the ecosystem is served.",
+          ]
+        : [`Every ${label} feed serves as its own settings say.`],
+    save: (value, ctx) =>
+      mutate("saveFeedPolicy", eco, {
+        expectedVersion: ctx.expectedVersion,
+        enabled: value === "on",
+      }),
+    onSaved: (_r, done) =>
+      toast.success(`${label} ${done.value === "on" ? "served" : "stopped"}`),
+  });
+  const ceiling = useSettingWrite({
+    label: `${label} size ceiling`,
+    settingKey: `feeds.policy.${eco}.ceiling`,
+    spec: CEILING_SPEC,
+    confirm: { up: "L0", down: "L0" },
+    value: policy.maxPackageBytesCeiling,
+    version: policy.version,
+    commit: "explicit",
+    isConflict,
+    reload,
+    consequences: () => [
+      `New ${label} publishes above the ceiling are refused.`,
+    ],
+    save: (value, ctx) =>
+      mutate("saveFeedPolicy", eco, {
+        expectedVersion: ctx.expectedVersion,
+        maxPackageBytesCeiling: value as number,
+      }),
+    onSaved: () => toast.success(`${label} size ceiling saved`),
+  });
+
+  const draftBad = ceiling.dirty ? ceilingError(ceiling.draft) : null;
+  const errId = `${id}-ceiling-error`;
+  const busy = enabled.busy || ceiling.busy;
   return (
-    <>
-      <SettingRow
-        {...common}
-        id={`platform-feeds-${eco}-enabled`}
-        settingKey={`feeds.policy.${eco}.enabled`}
-        label={`Serve ${label}`}
-        help={
-          policy.enabled
-            ? `On: each owner's ${label} feed serves as its own settings say.`
-            : `Off: every owner's ${label} feed answers not-found.`
-        }
-        spec={{ kind: "switch" }}
-        confirm={{ on: "L0", off: "L2" }}
-        commit="immediate"
-        value={policy.enabled ? "on" : "off"}
-        consequences={(to) =>
-          to === "off"
-            ? [
-                `Every product's ${label} feed, the platform's included, answers not-found within 30 seconds.`,
-                "Settings, packages and versions are kept; the feeds answer again when the ecosystem is served.",
-              ]
-            : [`Every ${label} feed serves as its own settings say.`]
-        }
-        save={(value, ctx) =>
-          mutate("saveFeedPolicy", eco, {
-            expectedVersion: ctx.expectedVersion,
-            enabled: value === "on",
-          })
-        }
-        onSaved={(_res, done) =>
-          toast.success(
-            `${label} ${done.value === "on" ? "served" : "stopped"}`,
-          )
+    <div className="space-y-2 px-5 py-3" data-eco={eco}>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <span className="min-w-24 flex-1 text-sm font-medium text-fg-strong">
+          {label}
+        </span>
+        <div
+          className="order-2 flex min-w-0 basis-full flex-wrap items-center gap-2 sm:order-none sm:basis-auto"
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && ceiling.dirty && !draftBad && !busy) {
+              e.preventDefault();
+              ceiling.commit();
+            } else if (e.key === "Escape" && ceiling.dirty) {
+              e.stopPropagation();
+              ceiling.discard();
+            }
+          }}
+        >
+          {readOnly ? (
+            <span
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-fg-strong"
+              aria-describedby={`${id}-readonly`}
+            >
+              <Lock aria-hidden className="size-3.5 text-fg-muted" />
+              {formatSettingValue(CEILING_SPEC, policy.maxPackageBytesCeiling)}
+            </span>
+          ) : (
+            <div className="w-full min-w-0 max-w-40">
+              <NumberInput
+                id={`${id}-ceiling`}
+                aria-label={`${label} size ceiling (MiB)`}
+                aria-invalid={draftBad ? true : undefined}
+                aria-describedby={draftBad ? errId : undefined}
+                value={
+                  typeof ceiling.draft === "number"
+                    ? toField(CEILING_SPEC, ceiling.draft)
+                    : null
+                }
+                onChange={(v) =>
+                  ceiling.setDraft(
+                    v === null ? null : fromField(CEILING_SPEC, v),
+                  )
+                }
+                unit="MiB"
+                min={1}
+                max={MAX_MIB}
+                step="any"
+                disabled={busy}
+              />
+            </div>
+          )}
+          {ceiling.dirty && !readOnly ? (
+            <>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={ceiling.discard}
+                disabled={ceiling.busy}
+              >
+                Discard
+              </Button>
+              <Button
+                size="sm"
+                loading={ceiling.busy}
+                disabled={draftBad !== null}
+                onClick={() => ceiling.commit()}
+              >
+                Save
+              </Button>
+            </>
+          ) : null}
+        </div>
+        <span className="order-1 ml-auto inline-flex items-center gap-2 sm:order-none">
+          {readOnly ? (
+            <span
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-fg-strong"
+              aria-describedby={`${id}-readonly`}
+            >
+              <Lock aria-hidden className="size-3.5 text-fg-muted" />
+              {policy.enabled ? "On" : "Off"}
+            </span>
+          ) : (
+            <Switch
+              id={`${id}-enabled`}
+              aria-label={`Serve ${label}`}
+              checked={enabled.draft === "on"}
+              readOnly={enabled.busy}
+              aria-busy={enabled.busy || undefined}
+              onCheckedChange={(next) => enabled.propose(next ? "on" : "off")}
+            />
+          )}
+        </span>
+      </div>
+      {readOnly ? (
+        <span id={`${id}-readonly`} className="sr-only">
+          Read-only. {reason}
+        </span>
+      ) : null}
+      {draftBad ? (
+        <p id={errId} role="alert" className="text-sm text-danger">
+          {draftBad}
+        </p>
+      ) : null}
+      {ceiling.dirty && !draftBad && !readOnly ? (
+        <p className="text-xs text-fg-muted">
+          Not saved · was{" "}
+          {formatSettingValue(CEILING_SPEC, policy.maxPackageBytesCeiling)}
+        </p>
+      ) : null}
+      {[enabled, ceiling].map((w, i) =>
+        w.error ? (
+          <p key={i} role="alert" className="text-sm font-medium text-danger">
+            {w.error.title}
+            {w.error.description ? (
+              <span className="block font-normal text-fg-muted">
+                {w.error.description}
+              </span>
+            ) : null}
+          </p>
+        ) : null,
+      )}
+      <ConflictNote
+        state={enabled.conflict ?? ceiling.conflict}
+        reloading={enabled.reloading || ceiling.reloading}
+        onReload={() => {
+          void enabled.reload();
+          void ceiling.reload();
+        }}
+        onDismiss={() => {
+          enabled.clearConflict();
+          ceiling.clearConflict();
+        }}
+        now={`${policy.enabled ? "served" : "stopped"}, ${formatSettingValue(CEILING_SPEC, policy.maxPackageBytesCeiling)}`}
+        draft={
+          ceiling.dirty && typeof ceiling.draft === "number"
+            ? formatSettingValue(CEILING_SPEC, ceiling.draft)
+            : undefined
         }
       />
-      <SettingRow
-        {...common}
-        id={`platform-feeds-${eco}-ceiling`}
-        settingKey={`feeds.policy.${eco}.ceiling`}
-        label={`${label} size ceiling`}
-        help={`No ${label} feed may accept a larger package, whatever its own limit.`}
-        spec={CEILING_SPEC}
-        confirm={{ up: "L0", down: "L0" }}
-        commit="explicit"
-        value={policy.maxPackageBytesCeiling}
-        bounds="Up to 5,120 MiB."
-        consequences={() => [
-          `New ${label} publishes above the ceiling are refused.`,
-        ]}
-        save={(value, ctx) =>
-          mutate("saveFeedPolicy", eco, {
-            expectedVersion: ctx.expectedVersion,
-            maxPackageBytesCeiling: value as number,
-          })
-        }
-        onSaved={() => toast.success(`${label} size ceiling saved`)}
-      />
-    </>
+      {enabled.dialog}
+      {ceiling.dialog}
+    </div>
   );
 }

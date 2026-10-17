@@ -63,8 +63,11 @@ export function useAccessAdmins(
 export function askReason(
   area: AreaId,
   admins: readonly AccessAdmin[] | undefined,
+  hasView = false,
 ): string {
-  const what = `${AREA_NAMES[area]} access`;
+  const what = hasView
+    ? `${AREA_NAMES[area]} edit access`
+    : `${AREA_NAMES[area]} access`;
   if (!admins?.length)
     return `You don't have ${what}. A Superadmin can give it to you.`;
   const [first, ...rest] = admins;
@@ -82,11 +85,15 @@ export function askReason(
 export function useWriteGate(
   area: AreaId,
   slug: string | null = null,
-): { allowed: boolean; disabledReason: string | undefined } {
+): { allowed: boolean; disabledReason: string | undefined; canView: boolean } {
   const allowed = useCan(area, slug, "edit");
+  const canView = useCan(area, slug, "view");
   const admins = useAccessAdmins(area, slug, !allowed);
   return {
     allowed,
-    disabledReason: allowed ? undefined : askReason(area, admins.data?.admins),
+    canView,
+    disabledReason: allowed
+      ? undefined
+      : askReason(area, admins.data?.admins, canView),
   };
 }

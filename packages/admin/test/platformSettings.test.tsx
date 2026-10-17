@@ -16,6 +16,7 @@ import {
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { configureAxe } from "vitest-axe";
+import { activeSectionAt } from "../src/console/templates/Settings.js";
 import { platformOverview } from "./feedsFixture.js";
 import {
   PENDING,
@@ -415,8 +416,17 @@ async function settingsPage(): Promise<HTMLElement> {
   return main();
 }
 
+/** Advanced is folded; the sections inside it open it first. */
+const IN_ADVANCED = ["Limits", "Keyring", "Secrets", "Identity provider"];
+
 async function section(name: string): Promise<HTMLElement> {
-  return within(await settingsPage()).findByRole("region", { name });
+  const page = await settingsPage();
+  if (IN_ADVANCED.includes(name)) {
+    const adv = await within(page).findByRole("region", { name: "Advanced" });
+    const show = within(adv).queryByRole("button", { name: "Show" });
+    if (show) await userEvent.click(show);
+  }
+  return within(page).findByRole("region", { name });
 }
 
 function writes(log: FetchLog, method: string) {
@@ -483,8 +493,12 @@ describe("the sections, ordered by use (ST-09)", () => {
     const titles = within(page)
       .getAllByRole("heading", { level: 2 })
       .map((h) => h.textContent);
+    const banner = within(page).getByRole("region", { name: "Platform ready" });
+    const signin = within(page).getByRole("region", { name: "Sign-in" });
+    expect(
+      banner.compareDocumentPosition(signin) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
     const order = [
-      "Platform ready",
       "Sign-in",
       "Storefront and hosting",
       "Email and alerts",
@@ -522,9 +536,12 @@ describe("the sections, ordered by use (ST-09)", () => {
         "/manage/api/platform/settings": view({ warnings: [] }),
       }),
     });
-    const ready = await section("Platform ready");
-    expect(within(ready).getByText("Ready")).toBeTruthy();
-    expect(within(ready).queryByRole("region", { name: "To fix" })).toBeNull();
+    await settingsPage();
+    await section("Sign-in");
+    // Complete: the banner goes.
+    expect(
+      within(main()).queryByRole("region", { name: "Platform ready" }),
+    ).toBeNull();
   });
 
   it("the header's History button jumps to the trail", async () => {
@@ -1096,7 +1113,9 @@ describe("Background jobs", () => {
 describe("the read-only inventory", () => {
   it("shows deploy-time values, the console-client fallback and the warnings", async () => {
     boot("#/platform/settings", { extra: routes() });
-    const identity = await section("Sign-in");
+    const signin = await section("Sign-in");
+    expect(within(signin).getByText("8 hours")).toBeTruthy();
+    const identity = await section("Identity provider");
     expect(within(identity).getByText("pk-admins")).toBeTruthy();
     expect(
       within(identity).getAllByText(
@@ -1107,7 +1126,6 @@ describe("the read-only inventory", () => {
       within(identity).getByText("https://login.example.com"),
     ).toBeTruthy();
     expect(within(identity).getByText("auth.acme.dev")).toBeTruthy();
-    expect(within(identity).getByText("8 hours")).toBeTruthy();
     const delivery = await section("Storefront and hosting");
     expect(within(delivery).getByText("Production")).toBeTruthy();
     expect(within(delivery).getByText("https://dl.example.com")).toBeTruthy();
@@ -1117,15 +1135,26 @@ describe("the read-only inventory", () => {
     expect(within(email).getByText("noreply@auth.example.com")).toBeTruthy();
     expect(within(email).getByText("Not set: 500")).toBeTruthy();
     expect(within(email).getByText("Not registered")).toBeTruthy();
-    const warnings = within(main()).getByRole("region", { name: "To fix" });
+    const warnings = within(main()).getByRole("region", {
+      name: "Platform ready",
+    });
+    await userEvent.click(
+      within(warnings).getByRole("button", { name: /^Show all/ }),
+    );
     expect(
-      within(warnings).getByText("Portal sessions share the admin secret"),
+      within(warnings).getByText("Customer portal sessions cannot be signed"),
     ).toBeTruthy();
     expect(
-      within(warnings).getByText(
-        "The console shares the customer sign-in client",
-      ),
+      within(warnings).getByText(/The console shares the customer sign-in/),
     ).toBeTruthy();
+    // Each warning goes where it is fixed.
+    expect(
+      within(warnings)
+        .getAllByRole("link")
+        .map((a) => a.textContent),
+    ).toEqual(
+      expect.arrayContaining(["Go to Identity provider", "Go to Secrets"]),
+    );
   });
 
   it("collapses the code limits until asked", async () => {
@@ -1313,7 +1342,10 @@ describe("History", () => {
     boot("#/platform/settings", { extra: routes() });
     const history = await section("Recently changed");
     expect(await within(history).findByText("Ada Lovelace")).toBeTruthy();
-    expect(within(history).getByText(/\(30 days → 21 days\)/)).toBeTruthy();
+    // The old value is struck through, the new one plain.
+    const old = within(history).getByText("30 days", { selector: "del" });
+    expect(old.tagName).toBe("DEL");
+    expect(within(history).getByText(/21 days/)).toBeTruthy();
     expect(within(history).queryByText(/Re-sealed/)).toBeNull();
   });
 
@@ -1334,6 +1366,7 @@ describe("accessibility", () => {
   it("passes axe", async () => {
     boot("#/platform/settings", { extra: routes() });
     const page = await settingsPage();
+    await section("Keyring");
     await within(page).findByText("Ada Lovelace");
     await within(page).findByText("Active");
     const results = await axe(page);
@@ -1380,10 +1413,16 @@ describe("Package feeds policy in Storefront and hosting (ST-09)", () => {
       within(hosting).getByRole("switch", { name: "Serve npm" }),
     );
     const dialog = await screen.findByRole("alertdialog");
-    expect(within(dialog).getByText(/Every product.s npm feed/)).toBeTruthy();
+    expect(
+      within(dialog).getByText("Stop serving npm for every product?"),
+    ).toBeTruthy();
+    expect(
+      within(dialog).getByText(/Every product's npm feed.*not-found/),
+    ).toBeTruthy();
     expect(policyPut(log)).toHaveLength(0);
-    const buttons = within(dialog).getAllByRole("button");
-    await userEvent.click(buttons[buttons.length - 1]!);
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Stop serving npm" }),
+    );
     await waitFor(() => expect(policyPut(log)).toHaveLength(1));
     expect(JSON.parse(policyPut(log)[0]!.body!)).toEqual({
       expectedVersion: 1,
@@ -1418,19 +1457,23 @@ describe("Package feeds policy in Storefront and hosting (ST-09)", () => {
       },
     });
     const hosting = await section("Storefront and hosting");
-    const sw = within(hosting).getByRole("switch", { name: "Serve npm" });
-    expect((sw as HTMLButtonElement).disabled).toBe(true);
+    // A view-only value is text with a lock, never a faint disabled control.
+    expect(within(hosting).queryByRole("switch")).toBeNull();
+    expect(within(hosting).getAllByText("On").length).toBeGreaterThan(0);
     const jobs = await section("Jobs");
+    expect(within(jobs).queryByRole("switch")).toBeNull();
+    expect(within(jobs).getByText("Off")).toBeTruthy();
+    // One notice for the page, not one reason per row; the row keeps a lock.
+    const notice = within(main()).getByText("You can view these settings");
+    expect(notice).toBeTruthy();
     expect(
-      (
-        within(jobs).getByRole("switch", {
-          name: "Lazy deltas",
-        }) as HTMLButtonElement
-      ).disabled,
-    ).toBe(true);
+      within(notice.closest("[data-tone]") as HTMLElement).getByText(
+        /Platform edit access/,
+      ),
+    ).toBeTruthy();
     expect(
-      within(hosting).getAllByText(/Platform access/).length,
-    ).toBeGreaterThan(0);
+      within(main()).queryByRole("button", { name: /^Revert/ }),
+    ).toBeNull();
   });
 });
 
@@ -1449,5 +1492,200 @@ describe("Limits (ST-09)", () => {
     await userEvent.click(within(limits).getByRole("button", { name: /Show/ }));
     for (const name of ["Retention", "Storage and delivery"])
       expect(within(limits).getByRole("group", { name })).toBeTruthy();
+  });
+});
+
+describe("fix round (ST-09 UX review)", () => {
+  it("a ceiling is checked as you type and Save waits for a valid one", async () => {
+    boot("#/platform/settings", { extra: routes() });
+    const hosting = await section("Storefront and hosting");
+    const input = within(hosting).getByLabelText("npm size ceiling (MiB)");
+    await userEvent.clear(input);
+    await userEvent.type(input, "6000");
+    expect(within(hosting).getByText("Enter 5,120 MiB or less.")).toBeTruthy();
+    expect(
+      (
+        within(hosting).getByRole("button", {
+          name: "Save",
+        }) as HTMLButtonElement
+      ).disabled,
+    ).toBe(true);
+    await userEvent.clear(input);
+    await userEvent.type(input, "0");
+    expect(within(hosting).getByText("Enter at least 1 MiB.")).toBeTruthy();
+  });
+
+  it("Platform ready leads with the most severe item and uses the danger tone", async () => {
+    boot("#/platform/settings", {
+      extra: routes({
+        "/manage/api/platform/settings": view({
+          warnings: [
+            {
+              code: "portal_session_secret_unset",
+              message: "PORTAL_SESSION_SECRET is not set.",
+              names: [],
+            },
+            {
+              code: "kek_keyring_unusable",
+              message: "The keyring does not load.",
+              names: [],
+            },
+          ],
+        }),
+      }),
+    });
+    const banner = await section("Platform ready");
+    const callout = banner.querySelector("[data-tone]")!;
+    expect(callout.getAttribute("data-tone")).toBe("danger");
+    expect(callout.textContent).toContain("The KEK keyring does not load");
+    expect(within(banner).getByText(/^2 to fix/)).toBeTruthy();
+    expect(
+      within(banner).getByRole("link", { name: "Go to Keyring" }),
+    ).toBeTruthy();
+  });
+
+  it("a viewer's page has no Revert, shows values as text, and passes axe", async () => {
+    boot("#/platform/settings", {
+      extra: routes(),
+      me: {
+        platformAdmin: false,
+        permissions: {
+          roles: [],
+          platform: { view: ["console", "platform"], edit: ["console"] },
+          products: {},
+        },
+      },
+    });
+    const jobs = await section("Jobs");
+    expect(within(jobs).queryByRole("button", { name: /^Revert/ })).toBeNull();
+    expect(within(jobs).queryByLabelText(/\(days\)$/)).toBeNull();
+    expect((await axe(main())).violations.map((v) => v.id)).toEqual([]);
+  });
+});
+
+describe("section navigation (ST-09 UX review)", () => {
+  it("has a picker on phone and pills on tablet, and a click puts the section in the address", async () => {
+    boot("#/platform/settings", { extra: routes() });
+    await settingsPage();
+    await section("Jobs");
+    HTMLElement.prototype.scrollIntoView = vi.fn();
+    const picker = screen.getByRole("combobox", { name: "Jump to section" });
+    expect(picker).toBeTruthy();
+    const pills = screen.getByRole("navigation", { name: "Jump to section" });
+    await userEvent.click(within(pills).getByRole("link", { name: "Jobs" }));
+    await waitFor(() =>
+      expect(window.location.hash).toBe(
+        "#/platform/settings?section=platform-jobs",
+      ),
+    );
+    expect(document.activeElement?.id).toBe("platform-jobs");
+    // The current section is marked in the rail and the pills; the first until the scroll moves.
+    expect(
+      within(nav()).queryAllByRole("link", { current: "location" }).length,
+    ).toBeLessThanOrEqual(1);
+  });
+
+  it("a shared link opens at its section", async () => {
+    HTMLElement.prototype.scrollIntoView = vi.fn();
+    boot("#/platform/settings?section=platform-licensing", {
+      extra: routes(),
+    });
+    await section("Licensing");
+    await waitFor(() =>
+      expect(document.activeElement?.id).toBe("platform-licensing"),
+    );
+  });
+});
+
+describe("section navigation: current section and unsaved edits (ST-09)", () => {
+  it("activeSectionAt marks the last section whose top is above the line, and the last at the foot", () => {
+    expect(activeSectionAt([-900, -300, 40, 700], 96, false)).toBe(2);
+    expect(activeSectionAt([200, 500, 900], 96, false)).toBe(0);
+    // A short last section never reaches the line: at the foot it is the current one.
+    expect(activeSectionAt([-900, -300, 40, 700], 96, true)).toBe(3);
+    expect(activeSectionAt([], 96, true)).toBe(-1);
+  });
+
+  it("a jump marks the chosen section at once, in the pills and the picker, and a deep link marks its section", async () => {
+    HTMLElement.prototype.scrollIntoView = vi.fn();
+    boot("#/platform/settings", { extra: routes() });
+    await settingsPage();
+    await section("Jobs");
+    const pills = screen.getByRole("navigation", { name: "Jump to section" });
+    await userEvent.click(within(pills).getByRole("link", { name: "Jobs" }));
+    expect(
+      within(pills)
+        .getAllByRole("link", { current: "location" })
+        .map((a) => a.textContent),
+    ).toEqual(["Jobs"]);
+    expect(
+      (
+        screen.getByRole("combobox", {
+          name: "Jump to section",
+        }) as HTMLSelectElement
+      ).value,
+    ).toBe("platform-jobs");
+    // The last section (Recently changed) is markable too.
+    await userEvent.click(
+      within(pills).getByRole("link", { name: "Recently changed" }),
+    );
+    expect(
+      within(pills)
+        .getAllByRole("link", { current: "location" })
+        .map((a) => a.textContent),
+    ).toEqual(["Recently changed"]);
+    cleanup();
+    resetConsole();
+    boot("#/platform/settings?section=platform-licensing", { extra: routes() });
+    await settingsPage();
+    const again = await screen.findByRole("navigation", {
+      name: "Jump to section",
+    });
+    await waitFor(() =>
+      expect(
+        within(again)
+          .getAllByRole("link", { current: "location" })
+          .map((a) => a.textContent),
+      ).toEqual(["Licensing"]),
+    );
+  });
+
+  it("a jump with a draft in a field asks nothing and keeps the draft", async () => {
+    HTMLElement.prototype.scrollIntoView = vi.fn();
+    boot("#/platform/settings", { extra: routes() });
+    const hosting = await section("Storefront and hosting");
+    const input = within(hosting).getByLabelText("npm size ceiling (MiB)");
+    await userEvent.clear(input);
+    await userEvent.type(input, "80");
+    const pills = screen.getByRole("navigation", { name: "Jump to section" });
+    await userEvent.click(within(pills).getByRole("link", { name: "Jobs" }));
+    await waitFor(() =>
+      expect(window.location.hash).toBe(
+        "#/platform/settings?section=platform-jobs",
+      ),
+    );
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect((input as HTMLInputElement).value).toBe("80");
+  });
+});
+
+describe("Advanced is folded (ST-09)", () => {
+  it("opens from a Go to link inside it", async () => {
+    boot("#/platform/settings", { extra: routes() });
+    const page = await settingsPage();
+    const adv = await within(page).findByRole("region", { name: "Advanced" });
+    expect(within(adv).queryByRole("region", { name: "Keyring" })).toBeNull();
+    await within(page).findByRole("region", { name: "Platform ready" });
+    await userEvent.click(
+      within(page).getByRole("button", { name: /^Show all/ }),
+    );
+    HTMLElement.prototype.scrollIntoView = vi.fn();
+    await userEvent.click(
+      within(page).getByRole("link", { name: "Go to Secrets" }),
+    );
+    await within(adv).findByRole("region", { name: "Secrets" });
+    await waitFor(() =>
+      expect(document.activeElement?.id).toBe("platform-secrets"),
+    );
   });
 });

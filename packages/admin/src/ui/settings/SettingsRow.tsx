@@ -1,4 +1,5 @@
 import * as React from "react";
+import { cn } from "../../lib/cn.js";
 
 /**
  * One setting: label and help on the left, the control (or read-only value) on the right.
@@ -21,6 +22,8 @@ export function SettingsRow({
   help,
   htmlFor,
   source,
+  chip,
+  compact = false,
   align = "end",
   aside,
   children,
@@ -32,6 +35,10 @@ export function SettingsRow({
   htmlFor?: string;
   /** A `SourceBadge` for this one value (Platform → Settings). */
   source?: React.ReactNode;
+  /** A quiet mono chip after the title: the registry key. */
+  chip?: React.ReactNode;
+  /** A read-only fact: tighter padding and quieter help. */
+  compact?: boolean;
   align?: "end" | "stretch" | "block";
   aside?: React.ReactNode;
   children: React.ReactNode;
@@ -53,15 +60,31 @@ export function SettingsRow({
         ) : (
           <span className="text-sm font-medium text-fg-strong">{label}</span>
         )}
+        {chip ? (
+          <code className="rounded border border-border px-1.5 py-px font-mono text-xs text-fg-muted [overflow-wrap:anywhere]">
+            {chip}
+          </code>
+        ) : null}
         {source}
       </div>
       {help ? (
-        <p className="max-w-[68ch] text-sm text-fg-muted">{help}</p>
+        <p
+          className={cn(
+            "max-w-[68ch] text-fg-muted",
+            compact ? "text-xs" : "text-sm",
+          )}
+        >
+          {help}
+        </p>
       ) : null}
     </div>
   );
   return (
-    <div className="px-5 py-4" data-align={align} data-state={state}>
+    <div
+      className={cn("px-5", compact ? "py-2.5" : "py-4")}
+      data-align={align}
+      data-state={state}
+    >
       {align === "block" ? (
         <div className="space-y-3">
           <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-2">

@@ -130,7 +130,7 @@ export function FeedSettingsTab({
         <Panel scope={scope} eco={eco} detail={detail} save={save} />
       ) : null}
       {scope.kind === "platform" && detail.policy ? (
-        <PolicyPointer eco={eco} />
+        <PolicyPointer eco={eco} detail={detail} />
       ) : null}
     </div>
   );
@@ -737,13 +737,27 @@ function YankSection({
   );
 }
 
-/** The platform policy lives in Platform settings (ST-09); this feed only points to it. */
-function PolicyPointer({ eco }: { eco: FeedEcosystem }): React.ReactElement {
+/** The platform policy lives in Platform settings (ST-09); this feed points to it. */
+function PolicyPointer({
+  eco,
+  detail,
+}: {
+  eco: FeedEcosystem;
+  detail: FeedDetailDto;
+}): React.ReactElement {
+  const mib = detail.policy
+    ? `${bytesToMiB(detail.policy.maxPackageBytesCeiling)} MiB`
+    : null;
   return (
     <p className="text-sm text-fg-muted">
-      The {ECOSYSTEM_LABELS[eco]} switch and size ceiling for every product are
-      in{" "}
-      <Link to="#/platform/settings" className="underline underline-offset-4">
+      {mib
+        ? `The platform's ${ECOSYSTEM_LABELS[eco]} ceiling is ${mib}, and its switch applies to every product. `
+        : `The platform's ${ECOSYSTEM_LABELS[eco]} switch and ceiling apply to every product. `}
+      Change them in{" "}
+      <Link
+        to="#/platform/settings?section=platform-hosting"
+        className="underline underline-offset-4"
+      >
         Platform settings
       </Link>
       .

@@ -55,6 +55,8 @@ export interface SettingWriteOptions {
     result: unknown,
     done: { value: unknown; level: SettingLevel },
   ) => void;
+  /** The confirmation's own words for a change to `to`, when the default wording does not read. */
+  confirmCopy?: (to: unknown) => { title: string; confirmLabel: string };
   /** Extra lines for the confirmation of a change to `to`. */
   consequences?: (to: unknown) => string[];
   /** The confirmation of Revert, or `null` when there is nothing to revert. */
@@ -217,7 +219,8 @@ export function useSettingWrite(o: SettingWriteOptions) {
           title: pending.plan.title,
           confirmLabel: pending.plan.confirmLabel,
         }
-      : saveCopy(o.label, o.spec, pending.value, labels);
+      : (o.confirmCopy?.(pending.value) ??
+        saveCopy(o.label, o.spec, pending.value, labels));
     const consequences = isRevert
       ? pending.plan.consequences
       : (o.consequences?.(pending.value) ?? [

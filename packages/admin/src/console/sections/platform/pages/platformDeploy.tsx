@@ -159,15 +159,10 @@ export function DeployRow({
   const value = item.value;
   return (
     <SettingsRow
+      compact
       label={meta.label}
-      help={
-        <>
-          {meta.help}
-          <span className={cn("block font-mono text-xs", meta.help && "mt-1")}>
-            {item.name}
-          </span>
-        </>
-      }
+      chip={item.name}
+      help={meta.help || undefined}
     >
       <div className="flex flex-wrap items-center justify-end gap-2">
         {value === null || (Array.isArray(value) && value.length === 0) ? (
@@ -230,15 +225,7 @@ type Limit = PlatformSettingsView["constants"][number];
 
 function LimitRow({ limit: c }: { limit: Limit }): React.ReactElement {
   return (
-    <SettingsRow
-      label={c.label}
-      help={
-        <>
-          {c.help}
-          <span className="mt-1 block font-mono text-xs">{c.name}</span>
-        </>
-      }
-    >
+    <SettingsRow compact label={c.label} chip={c.name} help={c.help}>
       {formatConstant(c.value, c.unit)}
     </SettingsRow>
   );

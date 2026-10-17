@@ -64,13 +64,23 @@ export function HistorySection({
       .finally(() => setLoading(false));
   };
   const byKey = new Map(settings.map((s) => [s.key, s]));
-  const describe = (a: PlatformActivityItem): string | undefined => {
+  const describe = (a: PlatformActivityItem): React.ReactNode => {
     const s = a.target ? byKey.get(a.target.id) : undefined;
     const before = snapshotValue(a.before);
     const after = snapshotValue(a.after);
     if (!s || before === undefined || after === undefined)
       return a.summary || undefined;
-    return `${formatPlatformValue(s, before)} → ${formatPlatformValue(s, after)}`;
+    return (
+      <>
+        <del className="decoration-fg-muted">
+          <span className="sr-only">was </span>
+          {formatPlatformValue(s, before)}
+        </del>
+        <span aria-hidden> → </span>
+        <span className="sr-only"> now </span>
+        {formatPlatformValue(s, after)}
+      </>
+    );
   };
   return (
     <SettingsSection id="platform-history" title="Recently changed">
@@ -135,7 +145,7 @@ export function HistorySection({
                         {s?.label ?? a.target?.id ?? "a setting"}
                         {change ? (
                           <span className="ml-1 font-normal text-fg-muted">
-                            ({change})
+                            {change}
                           </span>
                         ) : null}
                       </span>
