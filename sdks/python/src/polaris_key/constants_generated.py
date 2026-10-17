@@ -1956,12 +1956,12 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "ui.theme": CapabilityRow("planned", "sdk", ()),
         "ui.i18n": CapabilityRow("planned", "sdk", ()),
         "commerce.receipt": CapabilityRow("implemented", "license", ()),
-        "server.license": CapabilityRow("planned", "license", ()),
-        "server.signin": CapabilityRow("planned", "identity", ()),
+        "server.license": CapabilityRow("implemented", "license", ()),
+        "server.signin": CapabilityRow("implemented", "identity", ()),
         "server.config": CapabilityRow("planned", "config", ()),
         "server.webhooks": CapabilityRow("planned", "core", ()),
     }
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "2ba5bcbb8c3e52a40407ec45b6afcae219617a6714b836cb6279112adf295918"
+CAPABILITY_DIGEST: Final[str] = "08e88caa160e845924e34904b5a2c16113582583815b66b5b4ae6d90b2c708b3"

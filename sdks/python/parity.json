@@ -430,12 +430,12 @@
       "wp": "U-22"
     },
     "server.license": {
-      "status": "planned",
-      "wp": "SP-56"
+      "status": "implemented",
+      "note": "polaris_key.server: PolarisKey (verdict, trust refresh, verified-document cache), with FastAPI/Starlette, Django/DRF and Flask adapters that import their framework lazily (extras starlette, fastapi, flask, django, drf). Replays backend-matrix.json's verdict and problem sections (tests/test_server_matrix.py) and gates a route in each framework."
     },
     "server.signin": {
-      "status": "planned",
-      "wp": "SP-56"
+      "status": "implemented",
+      "note": "require_sign_in() / has_sign_in() read profile.user.subject through license_user; the verdict rows replay in tests/test_server_matrix.py."
     },
     "server.config": {
       "status": "planned",
