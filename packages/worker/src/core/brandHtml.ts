@@ -133,7 +133,7 @@ export const BRAND_PAGE_CSS = [
   // The console sign-in look (shared with the customer portal's login card and the console's
   // own boot screen): the brand block centred over one card, brand type, generous spacing. The
   // block is the console `Logo`'s, measure for measure: the 48 px mark, a 12 px gap, "Polaris
-  // Key" in bold at 16 px and the surface ("console", "account") as a small uppercase label.
+  // Key" in bold at 20 px (the console Logo's 16 px read small beside the 48 px mark) and the surface ("console", "account") as a small uppercase label.
   `.brand{display:flex;justify-content:center;align-items:center;gap:.75rem;margin:0 0 2rem;color:var(--strong)}`,
   `.brand svg{display:block;flex:none}`,
   `.wordmark{display:flex;align-items:baseline;gap:.375rem;font-size:1.25rem;line-height:1.75rem;font-weight:700;letter-spacing:-.025em}`,
