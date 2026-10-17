@@ -16710,7 +16710,7 @@ paths:
               schema: { $ref: "#/components/schemas/AdminError" }
         "409":
           description: >
-            `busy`, `report_incomplete` (a unit could not be planned) or `reverted` (dry-run again).
+            `busy`, `lease_lost`, `reverting` (a down exists for this apply), `report_incomplete` (a unit could not be planned), `report_stale` (the report is over 24 hours old; dry-run again) or `reverted` (dry-run again).
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
@@ -16758,7 +16758,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
         "409":
-          description: "`busy` or `nothing_applied`."
+          description: "`busy`, `lease_lost` or `nothing_applied` (the apply changed nothing)."
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }

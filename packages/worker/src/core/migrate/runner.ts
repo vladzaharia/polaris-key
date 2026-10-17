@@ -1,7 +1,7 @@
 /**
  * The data-migration runner (P0-49, CQW-17): dry run, report, apply, down, for every
  * `MigrationJob` (`./job.ts`). State lives in `data_migration_runs` and `data_migration_units`
- * (migration 0121).
+ * (migration 0122).
  *
  *   dryRun   plans every unit, writes only the report (run mode `dry-run`, status `reported`).
  *   apply    needs the id of a dry run (the report the operator read) and applies its units one
@@ -31,6 +31,9 @@ import type { MigrationContext, MigrationJob } from "./job.js";
 
 /** How long one apply or down call holds a run (seconds). A killed call is resumable after it. */
 export const MIGRATION_LEASE_SECONDS = 120;
+
+/** An apply of a new report older than this is refused: dry-run again. */
+export const MIGRATION_REPORT_MAX_AGE_SECONDS = 24 * 3600;
 
 export type RunMode = "dry-run" | "apply" | "down";
 export type RunStatus =
@@ -74,7 +77,10 @@ export type RunRefusal =
   | "unknown_apply" // no apply with that id for the job
   | "nothing_applied" // down of an apply with no finished unit
   | "reverted" // the apply was undone: dry-run again for a fresh report
-  | "busy"; // another call holds the run
+  | "busy" // another call holds the run
+  | "lease_lost" // this call's lease lapsed and another call took the run over
+  | "reverting" // a down exists for this apply: apply and down exclude each other
+  | "report_stale"; // the dry run is older than MIGRATION_REPORT_MAX_AGE_SECONDS
 
 export type RunResult =
   | { ok: true; run: RunView; noop: boolean }
@@ -90,6 +96,7 @@ interface RunRow {
   started_at: number;
   finished_at: number | null;
   lease_until: number | null;
+  lease_token: string | null;
   changes: number;
 }
 
@@ -164,17 +171,21 @@ function auditStmt(
   job: string,
   summary: string,
   after: unknown,
+  tail?: { sql: string; params: string[] },
 ): DbStatement {
-  return platformAuditStatement({
-    at: now,
-    ...actorColumns(actor),
-    action,
-    target_kind: "migration",
-    target_id: job,
-    summary,
-    before_json: null,
-    after_json: JSON.stringify(after),
-  });
+  return platformAuditStatement(
+    {
+      at: now,
+      ...actorColumns(actor),
+      action,
+      target_kind: "migration",
+      target_id: job,
+      summary,
+      before_json: null,
+      after_json: JSON.stringify(after),
+    },
+    tail,
+  );
 }
 
 function insertUnit(
@@ -278,27 +289,136 @@ export interface StepOptions {
 
 type Step = "apply" | "down";
 
-/** Claim a run for this call: true when the lease was free or had lapsed. */
-async function claim(db: Db, id: string, now: number): Promise<boolean> {
-  const changed = await db.runChanges(
-    `UPDATE data_migration_runs SET status = 'running', lease_until = ?
-      WHERE id = ? AND status IN ('running', 'failed') AND (lease_until IS NULL OR lease_until <= ?)`,
-    now + MIGRATION_LEASE_SECONDS,
-    id,
-    now,
-  );
-  return changed > 0;
+/** True while the run's row still carries this call's token (a guard for a batch's statements). */
+function held(runId: string, token: string): { sql: string; params: string[] } {
+  return {
+    sql: "EXISTS (SELECT 1 FROM data_migration_runs WHERE id = ? AND lease_token = ?)",
+    params: [runId, token],
+  };
 }
 
-/** Run the pending units of `run` through the job's `apply` or `down`; settle the run. */
+/** Claim a run for this call: true when the lease was free or had lapsed. */
+async function claim(
+  db: Db,
+  id: string,
+  token: string,
+  now: number,
+): Promise<boolean> {
+  return (
+    (await db.runChanges(
+      `UPDATE data_migration_runs SET status = 'running', lease_until = ?, lease_token = ?
+        WHERE id = ? AND status IN ('running', 'failed') AND (lease_until IS NULL OR lease_until <= ?)`,
+      now + MIGRATION_LEASE_SECONDS,
+      token,
+      id,
+      now,
+    )) > 0
+  );
+}
+
+/** Hold an apply run's lease without touching its status (the down's guard against a live apply). */
+async function claimSource(
+  db: Db,
+  id: string,
+  token: string,
+  now: number,
+): Promise<boolean> {
+  return (
+    (await db.runChanges(
+      `UPDATE data_migration_runs SET lease_until = ?, lease_token = ?
+        WHERE id = ? AND mode = 'apply' AND (lease_until IS NULL OR lease_until <= ?)`,
+      now + MIGRATION_LEASE_SECONDS,
+      token,
+      id,
+      now,
+    )) > 0
+  );
+}
+
+async function release(db: Db, id: string, token: string): Promise<void> {
+  await db.run(
+    "UPDATE data_migration_runs SET lease_until = NULL, lease_token = NULL WHERE id = ? AND lease_token = ?",
+    id,
+    token,
+  );
+}
+
+type Acquired =
+  | { ok: true; runId: string; token: string }
+  | { ok: false; reason: "busy" };
+
+/**
+ * The run for (`sourceId`, `mode`), leased to this call. The first call creates it; the unique
+ * index on (source_id, mode) makes a racing first call fail its insert, and it then goes through
+ * `claim` like any resume, so two parallel first calls make one run and one of them is `busy`.
+ */
+async function acquire(
+  ctx: MigrationContext,
+  job: MigrationJob,
+  actor: AuditActor,
+  mode: "apply" | "down",
+  sourceId: string,
+  units: Array<{ unit: string; planned: number }>,
+): Promise<Acquired> {
+  const token = randomId("lease");
+  const find = () =>
+    ctx.db.first<RunRow>(
+      "SELECT * FROM data_migration_runs WHERE source_id = ? AND mode = ?",
+      sourceId,
+      mode,
+    );
+  const existing = await find();
+  if (!existing) {
+    const runId = randomId("mig");
+    try {
+      await ctx.db.batch([
+        {
+          sql: `INSERT INTO data_migration_runs
+                  (id, job, mode, status, source_id, requested_by, started_at, lease_until, lease_token, changes)
+                VALUES (?, ?, ?, 'running', ?, ?, ?, ?, ?, 0)`,
+          params: [
+            runId,
+            job.id,
+            mode,
+            sourceId,
+            actor.sub,
+            ctx.now,
+            ctx.now + MIGRATION_LEASE_SECONDS,
+            token,
+          ],
+        },
+        ...units.map((u) =>
+          insertUnit(runId, u.unit, "pending", u.planned, null, null, ctx.now),
+        ),
+      ]);
+      return { ok: true, runId, token };
+    } catch (e) {
+      if (!(await find())) throw e; // not the race: a real failure
+    }
+  }
+  const run = (await find()) as RunRow;
+  return (await claim(ctx.db, run.id, token, ctx.now))
+    ? { ok: true, runId: run.id, token }
+    : { ok: false, reason: "busy" };
+}
+
+/**
+ * Run the pending units of a leased run through the job's `apply` or `down`; settle the run.
+ * Every write to the run is conditional on the call's token and the lease is renewed before each
+ * unit, so a call whose lease lapsed and was taken over stops writing (`null`).
+ */
 async function drive(
   ctx: MigrationContext,
   job: MigrationJob,
   actor: AuditActor,
   runId: string,
+  token: string,
   step: Step,
   opts: StepOptions,
-): Promise<RunView> {
+): Promise<RunView | null> {
+  const started = Date.now();
+  const clock = () => ctx.now + Math.floor((Date.now() - started) / 1000);
+  const guard = held(runId, token);
   const pending = (await unitRows(ctx.db, runId)).filter(
     (u) => u.status !== "done",
   );
@@ -307,45 +427,58 @@ async function drive(
   let changed = 0;
   let failed = false;
   for (const u of pending.slice(0, Math.max(0, budget))) {
+    const renewed = await ctx.db.runChanges(
+      "UPDATE data_migration_runs SET lease_until = ? WHERE id = ? AND lease_token = ?",
+      clock() + MIGRATION_LEASE_SECONDS,
+      runId,
+      token,
+    );
+    if (renewed === 0) return null;
+    let n: number;
     try {
-      const n = await (step === "apply"
+      n = await (step === "apply"
         ? job.apply(ctx, u.unit)
         : job.down(ctx, u.unit));
-      await ctx.db.batch([
-        {
-          sql: `UPDATE data_migration_units SET status = 'done', changes = ?, error = NULL, at = ?
-                 WHERE run_id = ? AND unit = ?`,
-          params: [n, ctx.now, runId, u.unit],
-        },
-        {
-          sql: "UPDATE data_migration_runs SET changes = changes + ? WHERE id = ?",
-          params: [n, runId],
-        },
-      ]);
-      done += 1;
-      changed += n;
     } catch (e) {
-      failed = true;
-      await ctx.db.run(
+      const marked = await ctx.db.runChanges(
         `UPDATE data_migration_units SET status = 'failed', error = ?, at = ?
-          WHERE run_id = ? AND unit = ?`,
+          WHERE run_id = ? AND unit = ? AND ${guard.sql}`,
         e instanceof Error ? e.name : "error",
         ctx.now,
         runId,
         u.unit,
+        ...guard.params,
       );
+      if (marked === 0) return null;
+      failed = true;
       break; // later units wait: a failure may be shared
     }
+    const stmts: DbStatement[] = [
+      {
+        sql: `UPDATE data_migration_units SET status = 'done', changes = ?, error = NULL, at = ?
+               WHERE run_id = ? AND unit = ? AND ${guard.sql}`,
+        params: [n, ctx.now, runId, u.unit, ...guard.params],
+      },
+      {
+        sql: `UPDATE data_migration_runs SET changes = changes + ? WHERE id = ? AND lease_token = ?`,
+        params: [n, runId, token],
+      },
+    ];
+    if (ctx.db.batchChanges) {
+      const r = await ctx.db.batchChanges(stmts);
+      if ((r[0] ?? 0) === 0) return null;
+    } else {
+      await ctx.db.batch(stmts);
+    }
+    done += 1;
+    changed += n;
   }
   const remaining = pending.length - done;
   const finalStatus: RunStatus =
     remaining === 0 ? (step === "apply" ? "applied" : "reverted") : "running";
   const status: RunStatus = failed ? "failed" : finalStatus;
+  const run = await runRow(ctx.db, runId);
   const settle: DbStatement[] = [
-    {
-      sql: `UPDATE data_migration_runs SET status = ?, lease_until = NULL, finished_at = ? WHERE id = ?`,
-      params: [status, remaining === 0 && !failed ? ctx.now : null, runId],
-    },
     auditStmt(
       actor,
       ctx.now,
@@ -353,15 +486,22 @@ async function drive(
       job.id,
       `${step === "apply" ? "Applied" : "Reverted"} ${done} unit(s) of ${job.id}, ${remaining} left`,
       { run: runId, done, changes: changed, remaining, status },
+      { sql: `WHERE ${guard.sql}`, params: guard.params },
     ),
   ];
-  const run = await runRow(ctx.db, runId);
   if (step === "down" && status === "reverted" && run?.source_id)
     settle.push({
-      sql: "UPDATE data_migration_runs SET status = 'reverted' WHERE id = ?",
-      params: [run.source_id],
+      sql: `UPDATE data_migration_runs SET status = 'reverted' WHERE id = ? AND ${guard.sql}`,
+      params: [run.source_id, ...guard.params],
     });
+  settle.push({
+    sql: `UPDATE data_migration_runs SET status = ?, lease_until = NULL, lease_token = NULL, finished_at = ?
+           WHERE id = ? AND lease_token = ?`,
+    params: [status, remaining === 0 && !failed ? ctx.now : null, runId, token],
+  });
   await ctx.db.batch(settle);
+  const after = await runRow(ctx.db, runId);
+  if (after?.lease_token === token) return null; // the settle did not land
   return (await getRun(ctx.db, runId)) as RunView;
 }
 
@@ -393,50 +533,42 @@ export async function apply(
       noop: true,
       run: viewOf(existing, await unitRows(ctx.db, existing.id)),
     };
-
   if (existing?.status === "reverted") return { ok: false, reason: "reverted" };
+  if (
+    !existing &&
+    ctx.now - report.started_at > MIGRATION_REPORT_MAX_AGE_SECONDS
+  )
+    return { ok: false, reason: "report_stale" };
 
-  let runId = existing?.id;
-  if (!runId) {
-    runId = randomId("mig");
-    await ctx.db.batch([
-      {
-        sql: `INSERT INTO data_migration_runs
-                (id, job, mode, status, source_id, requested_by, started_at, lease_until, changes)
-              VALUES (?, ?, 'apply', 'running', ?, ?, ?, ?, 0)`,
-        params: [
-          runId,
-          job.id,
-          reportId,
-          actor.sub,
-          ctx.now,
-          ctx.now + MIGRATION_LEASE_SECONDS,
-        ],
-      },
-      ...reportUnits.map((u) =>
-        insertUnit(
-          runId as string,
-          u.unit,
-          "pending",
-          u.planned,
-          null,
-          null,
-          ctx.now,
-        ),
-      ),
-    ]);
-  } else if (!(await claim(ctx.db, runId, ctx.now)))
-    return { ok: false, reason: "busy" };
-  return {
-    ok: true,
-    noop: false,
-    run: await drive(ctx, job, actor, runId, "apply", opts),
-  };
+  const got = await acquire(
+    ctx,
+    job,
+    actor,
+    "apply",
+    reportId,
+    reportUnits.map((u) => ({ unit: u.unit, planned: u.planned })),
+  );
+  if (!got.ok) return got;
+  // A down for this apply excludes it. Checked after the lease: a down holds the apply's lease
+  // while it creates its run, so either that run is visible here or the down was refused busy.
+  const undoing = await ctx.db.first(
+    "SELECT id FROM data_migration_runs WHERE source_id = ? AND mode = 'down'",
+    got.runId,
+  );
+  if (undoing) {
+    await release(ctx.db, got.runId, got.token);
+    return { ok: false, reason: "reverting" };
+  }
+  const run = await drive(ctx, job, actor, got.runId, got.token, "apply", opts);
+  return run
+    ? { ok: true, noop: false, run }
+    : { ok: false, reason: "lease_lost" };
 }
 
 /**
- * Undo an apply: the job's `down` over the units that apply finished. Resumes a partial down;
- * a finished one answers `noop`.
+ * Undo an apply: the job's `down` over the units that apply changed. Resumes a partial down;
+ * a finished one answers `noop`. It takes the apply's lease first, so it never runs beside a
+ * live apply, and once its run exists an apply of the same report is refused.
  */
 export async function down(
   ctx: MigrationContext,
@@ -448,56 +580,53 @@ export async function down(
   const source = await runRow(ctx.db, applyId);
   if (!source || source.job !== job.id || source.mode !== "apply")
     return { ok: false, reason: "unknown_apply" };
-  if (source.status === "running" && (source.lease_until ?? 0) > ctx.now)
-    return { ok: false, reason: "busy" };
-  const existing = await ctx.db.first<RunRow>(
-    "SELECT * FROM data_migration_runs WHERE source_id = ? AND mode = 'down'",
+  const finished = await ctx.db.first<RunRow>(
+    "SELECT * FROM data_migration_runs WHERE source_id = ? AND mode = 'down' AND status = 'reverted'",
     applyId,
   );
-  if (existing?.status === "reverted")
+  if (finished)
     return {
       ok: true,
       noop: true,
-      run: viewOf(existing, await unitRows(ctx.db, existing.id)),
+      run: viewOf(finished, await unitRows(ctx.db, finished.id)),
     };
-  let runId = existing?.id;
-  if (!runId) {
-    const finished = (await unitRows(ctx.db, applyId)).filter(
-      (u) => u.status === "done",
-    );
-    if (finished.length === 0) return { ok: false, reason: "nothing_applied" };
-    runId = randomId("mig");
-    await ctx.db.batch([
-      {
-        sql: `INSERT INTO data_migration_runs
-                (id, job, mode, status, source_id, requested_by, started_at, lease_until, changes)
-              VALUES (?, ?, 'down', 'running', ?, ?, ?, ?, 0)`,
-        params: [
-          runId,
-          job.id,
-          applyId,
-          actor.sub,
-          ctx.now,
-          ctx.now + MIGRATION_LEASE_SECONDS,
-        ],
-      },
-      ...finished.map((u) =>
-        insertUnit(
-          runId as string,
-          u.unit,
-          "pending",
-          u.changes,
-          null,
-          null,
-          ctx.now,
-        ),
-      ),
-    ]);
-  } else if (!(await claim(ctx.db, runId, ctx.now)))
+  const sourceToken = randomId("lease");
+  if (!(await claimSource(ctx.db, applyId, sourceToken, ctx.now)))
     return { ok: false, reason: "busy" };
-  return {
-    ok: true,
-    noop: false,
-    run: await drive(ctx, job, actor, runId, "down", opts),
-  };
+  try {
+    // Only units the apply changed: a no-op unit's data was there before the apply.
+    const changedUnits = (await unitRows(ctx.db, applyId)).filter(
+      (u) => u.status === "done" && u.changes > 0,
+    );
+    const hasRun = await ctx.db.first(
+      "SELECT id FROM data_migration_runs WHERE source_id = ? AND mode = 'down'",
+      applyId,
+    );
+    if (!hasRun && changedUnits.length === 0)
+      return { ok: false, reason: "nothing_applied" };
+    const got = await acquire(
+      ctx,
+      job,
+      actor,
+      "down",
+      applyId,
+      changedUnits.map((u) => ({ unit: u.unit, planned: u.changes })),
+    );
+    if (!got.ok) return got;
+    await release(ctx.db, applyId, sourceToken);
+    const run = await drive(
+      ctx,
+      job,
+      actor,
+      got.runId,
+      got.token,
+      "down",
+      opts,
+    );
+    return run
+      ? { ok: true, noop: false, run }
+      : { ok: false, reason: "lease_lost" };
+  } finally {
+    await release(ctx.db, applyId, sourceToken);
+  }
 }

@@ -8,7 +8,9 @@
 --   source_id   an apply's dry run, a down's apply (the report an operator read, pinned);
 --   changes     rows a dry run would change, or an apply / down changed;
 --   lease_until the epoch second a running call holds the run until (a killed call is resumed
---               once it passes);
+--               once it passes); lease_token names the call that holds it: every write a call
+--               makes to the run is conditional on its token, so a call whose lease lapsed and
+--               was taken over writes nothing more;
 --   report_json the totals, with no secret material.
 --
 -- Expand-only: new tables. Append-only; never pruned. Core owns both (`TABLE_OWNERS.core`).
@@ -25,6 +27,7 @@ CREATE TABLE IF NOT EXISTS data_migration_runs (
   started_at INTEGER NOT NULL,
   finished_at INTEGER,
   lease_until INTEGER,
+  lease_token TEXT,
   changes INTEGER NOT NULL DEFAULT 0,
   report_json TEXT,
   CHECK (mode IN ('dry-run', 'apply', 'down'))
@@ -45,3 +48,7 @@ CREATE TABLE IF NOT EXISTS data_migration_units (
   PRIMARY KEY (run_id, unit),
   CHECK (status IN ('pending', 'done', 'failed'))
 );
+
+-- One apply per report and one down per apply, whatever races: a second first-call hits this.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_data_migration_runs_source
+  ON data_migration_runs(source_id, mode) WHERE source_id IS NOT NULL;

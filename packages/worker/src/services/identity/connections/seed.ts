@@ -161,16 +161,26 @@ export async function applyPlatformConnectionSeed(
   };
 }
 
-/** The down path: delete the seeded row (its domains go by cascade). */
+/**
+ * The down path: delete the seeded row (its domains with it). One guarded batch: the domains go
+ * only while the row is still the env seed (`source = 'env'`), so an operator-owned connection
+ * under the same id, and its domains, are never touched.
+ */
 export async function downPlatformConnectionSeed(db: Db): Promise<number> {
-  await db.run(
-    "DELETE FROM identity_connection_domains WHERE connection_id = ?",
-    PLATFORM_ENV_CONNECTION_ID,
-  );
-  return db.runChanges(
-    "DELETE FROM identity_connections WHERE id = ? AND source = 'env'",
-    PLATFORM_ENV_CONNECTION_ID,
-  );
+  const stmts = [
+    {
+      sql: `DELETE FROM identity_connection_domains WHERE connection_id = ?
+              AND EXISTS (SELECT 1 FROM identity_connections WHERE id = ? AND source = 'env')`,
+      params: [PLATFORM_ENV_CONNECTION_ID, PLATFORM_ENV_CONNECTION_ID],
+    },
+    {
+      sql: "DELETE FROM identity_connections WHERE id = ? AND source = 'env'",
+      params: [PLATFORM_ENV_CONNECTION_ID],
+    },
+  ];
+  if (db.batchChanges) return (await db.batchChanges(stmts))[1] ?? 0;
+  await db.batch(stmts);
+  return 0;
 }
 
 /** The seeded connection, applying the seed first when it is missing (the sign-in paths). */

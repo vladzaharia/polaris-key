@@ -24,6 +24,7 @@ import {
 } from "../src/core/migrate/job.js";
 import {
   MIGRATION_LEASE_SECONDS,
+  MIGRATION_REPORT_MAX_AGE_SECONDS,
   apply,
   down,
   dryRun,
@@ -31,6 +32,7 @@ import {
 } from "../src/core/migrate/runner.js";
 import {
   PLATFORM_ENV_CONNECTION_ID,
+  downPlatformConnectionSeed,
   platformConnectionSeedJob,
 } from "../src/services/identity/connections/seed.js";
 import { resolveConnection } from "../src/core/oidc/connections.js";
@@ -227,6 +229,144 @@ describe("migration runner", () => {
   });
 });
 
+describe("migration runner: races, leases and exclusion", () => {
+  it("two parallel first applies make one run; the other is busy", async () => {
+    const { db, ctx } = await setup();
+    const { job } = fakeJob();
+    const report = await dryRun(ctx(), job, ACTOR);
+    const [a, b] = await Promise.all([
+      apply(ctx(NOW + 1), job, ACTOR, report.id),
+      apply(ctx(NOW + 1), job, ACTOR, report.id),
+    ]);
+    expect([a.ok, b.ok].filter(Boolean)).toHaveLength(1);
+    const loser = a.ok ? b : a;
+    expect(loser).toEqual({ ok: false, reason: "busy" });
+    const n = await db.first<{ n: number }>(
+      "SELECT COUNT(*) AS n FROM data_migration_runs WHERE mode = 'apply'",
+    );
+    expect(n?.n).toBe(1);
+  });
+
+  it("parallel first downs make one run", async () => {
+    const { db, ctx } = await setup();
+    const { job } = fakeJob();
+    const report = await dryRun(ctx(), job, ACTOR);
+    const applied = await apply(ctx(), job, ACTOR, report.id);
+    const id = (applied.ok && applied.run.id) as string;
+    const rs = await Promise.all([
+      down(ctx(NOW + 1), job, ACTOR, id),
+      down(ctx(NOW + 1), job, ACTOR, id),
+    ]);
+    expect(rs.filter((r) => r.ok)).toHaveLength(1);
+    const n = await db.first<{ n: number }>(
+      "SELECT COUNT(*) AS n FROM data_migration_runs WHERE mode = 'down'",
+    );
+    expect(n?.n).toBe(1);
+  });
+
+  it("a down after a no-op apply undoes nothing", async () => {
+    const { ctx } = await setup();
+    const { job, state } = fakeJob();
+    for (const k of state.keys()) state.set(k, 1); // already migrated before the apply
+    const report = await dryRun(ctx(), job, ACTOR);
+    expect(report.changes).toBe(0);
+    const applied = await apply(ctx(), job, ACTOR, report.id);
+    expect(applied.ok && applied.run.status).toBe("applied");
+    const undone = await down(
+      ctx(NOW + 1),
+      job,
+      ACTOR,
+      (applied.ok && applied.run.id) as string,
+    );
+    expect(undone).toEqual({ ok: false, reason: "nothing_applied" });
+    expect([...state.values()]).toEqual([1, 1, 1]);
+  });
+
+  it("a call whose lease lapsed and was taken over writes nothing more", async () => {
+    const { db, ctx } = await setup();
+    const { job, state } = fakeJob();
+    const report = await dryRun(ctx(), job, ACTOR);
+    let inner: unknown = null;
+    const wrapped: MigrationJob = {
+      ...job,
+      apply: async (c, u) => {
+        if (u === "beta" && inner === null) {
+          // The first call stalls; its lease lapses and a second call takes the run over.
+          inner = await apply(
+            ctx(NOW + MIGRATION_LEASE_SECONDS + 5),
+            wrapped,
+            ACTOR,
+            report.id,
+          );
+        }
+        return job.apply(c, u);
+      },
+    };
+    const outer = await apply(ctx(), wrapped, ACTOR, report.id);
+    expect(outer).toEqual({ ok: false, reason: "lease_lost" });
+    const takeover = inner as Awaited<ReturnType<typeof apply>>;
+    expect(takeover.ok && takeover.run.status).toBe("applied");
+    const run = await db.first<{ status: string; changes: number }>(
+      "SELECT status, changes FROM data_migration_runs WHERE mode = 'apply'",
+    );
+    expect(run).toEqual({ status: "applied", changes: 3 });
+    expect([...state.values()]).toEqual([1, 1, 1]);
+    const audits = (await auditActions(db)).filter(
+      (a) => a === "migration.apply",
+    );
+    expect(audits).toHaveLength(1);
+  });
+
+  it("apply and down exclude each other, in both orders", async () => {
+    const { ctx } = await setup();
+    const { job } = fakeJob();
+    const report = await dryRun(ctx(), job, ACTOR);
+
+    // A down while an apply holds its lease is busy.
+    let during: unknown = null;
+    const probe: MigrationJob = {
+      ...job,
+      apply: async (c, u) => {
+        if (u === "alpha") {
+          const row = await c.db.first<{ id: string }>(
+            "SELECT id FROM data_migration_runs WHERE mode = 'apply'",
+          );
+          during = await down(c, probe, ACTOR, row!.id);
+        }
+        return job.apply(c, u);
+      },
+    };
+    const first = await apply(ctx(NOW + 1), probe, ACTOR, report.id, {
+      limit: 1,
+    });
+    expect(during).toEqual({ ok: false, reason: "busy" });
+    expect(first.ok && first.run.remaining).toBe(2);
+
+    // Once a down exists for a part-applied run, the apply is refused.
+    const applyId = (first.ok && first.run.id) as string;
+    const started = await down(ctx(NOW + 2), job, ACTOR, applyId, { limit: 0 });
+    expect(started.ok && started.run.remaining).toBe(1);
+    expect(await apply(ctx(NOW + 3), job, ACTOR, report.id)).toEqual({
+      ok: false,
+      reason: "reverting",
+    });
+  });
+
+  it("refuses to start an apply from a report older than 24 hours, but resumes one", async () => {
+    const { ctx } = await setup();
+    const { job } = fakeJob();
+    const report = await dryRun(ctx(), job, ACTOR);
+    const late = NOW + MIGRATION_REPORT_MAX_AGE_SECONDS + 1;
+    expect(await apply(ctx(late), job, ACTOR, report.id)).toEqual({
+      ok: false,
+      reason: "report_stale",
+    });
+    await apply(ctx(NOW + 1), job, ACTOR, report.id, { limit: 1 });
+    const resumed = await apply(ctx(late), job, ACTOR, report.id);
+    expect(resumed.ok && resumed.run.status).toBe("applied");
+  });
+});
+
 describe("identity.seed-platform-connection as a runner job", () => {
   it("is contributed by Identity and runs dry run, apply, no-op re-apply and down", async () => {
     expect(migrationJobs().map((j) => j.id)).toContain(
@@ -272,6 +412,61 @@ describe("identity.seed-platform-connection as a runner job", () => {
     expect(
       await resolveConnection(w.db, PLATFORM_ENV_CONNECTION_ID),
     ).toBeNull();
+  });
+});
+
+describe("the seed's down path", () => {
+  it("leaves an operator-owned connection and its domains in place", async () => {
+    const w = await seededWorld();
+    await w.db.run(
+      `INSERT INTO identity_connections (id, scope, label, issuer, client_id, audience, status,
+         source, created_at, modified_at)
+       VALUES (?, 'platform', 'Mine', 'https://mine.idp.example', 'c', 'both', 'active', 'console', ?, ?)`,
+      PLATFORM_ENV_CONNECTION_ID,
+      NOW,
+      NOW,
+    );
+    await w.db.run(
+      "INSERT INTO identity_connection_domains (connection_id, scope, domain, token, verified_at) VALUES (?, 'platform', 'example.com', 't', ?)",
+      PLATFORM_ENV_CONNECTION_ID,
+      NOW,
+    );
+    expect(await downPlatformConnectionSeed(w.db)).toBe(0);
+    expect(
+      await resolveConnection(w.db, PLATFORM_ENV_CONNECTION_ID),
+    ).not.toBeNull();
+    const d = await w.db.first<{ n: number }>(
+      "SELECT COUNT(*) AS n FROM identity_connection_domains WHERE connection_id = ?",
+      PLATFORM_ENV_CONNECTION_ID,
+    );
+    expect(d?.n).toBe(1);
+  });
+
+  it("a down after a no-op apply keeps the row the apply did not create", async () => {
+    const w = await seededWorld();
+    w.env.PLATFORM_OIDC_ISSUER = "https://id.plrs.example";
+    w.env.PLATFORM_OIDC_CLIENT_ID = "platform-client";
+    const ctx = { env: w.env, db: w.db, now: NOW };
+    const first = await apply(
+      ctx,
+      platformConnectionSeedJob,
+      ACTOR,
+      (await dryRun(ctx, platformConnectionSeedJob, ACTOR)).id,
+    );
+    expect(first.ok).toBe(true); // the row now exists
+    const report = await dryRun(ctx, platformConnectionSeedJob, ACTOR);
+    expect(report.changes).toBe(0);
+    const noop = await apply(ctx, platformConnectionSeedJob, ACTOR, report.id);
+    const r = await down(
+      ctx,
+      platformConnectionSeedJob,
+      ACTOR,
+      (noop.ok && noop.run.id) as string,
+    );
+    expect(r).toEqual({ ok: false, reason: "nothing_applied" });
+    expect(
+      await resolveConnection(w.db, PLATFORM_ENV_CONNECTION_ID),
+    ).not.toBeNull();
   });
 });
 
