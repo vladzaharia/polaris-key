@@ -212,6 +212,7 @@ const INTEGRATION = {
     slug: "djdl",
     services: ["license", "config", "update"],
     pins: [{ kid: "djdl-2026-a1", publicKey: PUB }],
+    releaseKeys: [],
   },
   features: [
     {

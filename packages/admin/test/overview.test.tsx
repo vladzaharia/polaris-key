@@ -96,6 +96,7 @@ export function integrationView(
       slug: "djdl",
       services: ["license", "config"],
       pins: [{ kid: "djdl-a", publicKey: "PUBKEY-A" }],
+      releaseKeys: [],
     },
     features: [
       {

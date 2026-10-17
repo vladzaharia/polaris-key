@@ -136,6 +136,12 @@ export type IntegrationFact = number | boolean | string | null;
 export interface IntegrationContribution {
   prerequisites: IntegrationPrerequisite[];
   facts: Record<string, IntegrationFact>;
+  /**
+   * The product's declared release keys, public material only (Release's contribution): the
+   * console's `pkey sdk add` command passes each as `--release-key`, because the CLI refuses a
+   * product whose discovery advertises keys it was not given.
+   */
+  releaseKeys?: Array<{ kid: string; publicKey: string }>;
 }
 
 export type IntegrationContributor = (

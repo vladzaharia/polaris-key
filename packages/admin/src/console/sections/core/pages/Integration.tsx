@@ -161,6 +161,7 @@ export function IntegrationPage({
     slug,
     origin,
     pins: data.snippet.pins,
+    releaseKeys: data.snippet.releaseKeys,
     services: data.snippet.services,
     usage: ctx,
   });
@@ -236,7 +237,12 @@ export function IntegrationPage({
                 <>
                   {prints.length > 0 ? (
                     <CodeBlock
-                      code={sdkAddCommand(sdk, slug, prints)}
+                      code={sdkAddCommand(
+                        sdk,
+                        slug,
+                        prints,
+                        data.snippet.releaseKeys,
+                      )}
                       language="sh"
                       filename="Terminal"
                       wrap

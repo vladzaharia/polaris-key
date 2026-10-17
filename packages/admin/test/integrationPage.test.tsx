@@ -29,6 +29,7 @@ function view(over: Record<string, unknown> = {}) {
       slug: "djdl",
       services: ["license", "config"],
       pins: [{ kid: "djdl-a", publicKey: "PUBKEY-A" }],
+      releaseKeys: [],
     },
     features: [
       {
@@ -354,6 +355,27 @@ describe("Core → Integration", () => {
       ),
     );
     expect(document.body.textContent).toMatch(/sha256:[0-9a-f]{64}/);
+  });
+
+  it("adds one --release-key per declared release key, and none without (N1)", async () => {
+    boot("#/p/djdl/integration?sdk=node", {
+      extra: {
+        [`${API}/integration`]: view({
+          snippet: {
+            slug: "djdl",
+            services: ["license", "release"],
+            pins: [{ kid: "djdl-a", publicKey: "PUBKEY-A" }],
+            releaseKeys: [{ kid: "djdl-ci", publicKey: "RELKEY" }],
+          },
+        }),
+      },
+    });
+    await page();
+    await waitFor(() =>
+      expect(document.body.textContent).toContain(
+        "--release-key djdl-ci=RELKEY",
+      ),
+    );
   });
 
   it("puts Your app before the cards in the DOM, and says when no signing key is active (N2, N6)", async () => {

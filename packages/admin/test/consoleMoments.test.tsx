@@ -134,7 +134,7 @@ function integrationOf(status: "verified" | "not_seen") {
   return {
     product: "djdl",
     now: NOW,
-    snippet: { slug: "djdl", services: ["license"], pins: [] },
+    snippet: { slug: "djdl", services: ["license"], pins: [], releaseKeys: [] },
     features: [
       {
         id: "licensing",

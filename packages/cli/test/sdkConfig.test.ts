@@ -384,16 +384,19 @@ describe("pkey sdk add (D30: no trust on first use)", () => {
   it("takes the command the console renders, in a folder with no .pkey/, and its fingerprint is the CLI's", async () => {
     const fp = await pinFingerprint(TRUST_KEY);
     expect(fp).toBe(fingerprintOf(TRUST_KEY));
-    const command = sdkAddCommand("python", "acme", [
-      { kid: TRUST_KID, fingerprint: fp },
-    ]);
+    const command = sdkAddCommand(
+      "python",
+      "acme",
+      [{ kid: TRUST_KID, fingerprint: fp }],
+      [{ kid: RELEASE_KID, publicKey: RELEASE_KEY }],
+    );
     // What a shell hands the CLI: continuation lines joined, the program name dropped.
     const argv = command.replace(/\\\n/g, " ").trim().split(/\s+/).slice(1);
     expect(argv.slice(0, 4)).toEqual(["sdk", "add", "python", "--product"]);
     const cwd = await tempDir();
     const io = capture();
     expect(
-      await runPkey([...argv, ...release], {
+      await runPkey(argv, {
         cwd,
         fetchImpl: fakeFetch(DISCOVERY).fetchImpl,
         ...io,
