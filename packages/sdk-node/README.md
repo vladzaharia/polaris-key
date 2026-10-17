@@ -93,7 +93,7 @@ what changed: `license`, `config`, `updateAvailable`, `packs` and `store`.
 | Install an update      | `update.install(decision)` through a driver (below), answering `restartRequired`, `handedOff`, `storeOpened` or `unsupported{reason}`.                                                                                          |
 | Boot guard             | `update.markBootAttempt()` at start-up, `update.confirmBoot()` once healthy; after `MAX_FAILED_BOOTS` the driver's rollback runs, else `boot_rolled_back` is reported and the version is skipped.                               |
 | Update health          | decide, packs, downloads, drivers and the guard journal P6-03 events in the state directory; each device report carries at most 16 and marks them sent.                                                                         |
-| Server-side check      | `verifyLicenseDocument(jws, { trust, product, deviceId })` from `@polaris-key/node/server` for a backend a client presents its license to.                                                                                      |
+| Server-side check      | Moved to `@polaris-key/server` in 0.9 (no alias): `createPolarisKey()` and the Express, Hono and Next.js drop-ins, and `verifyLicenseDocument` there.                                                                           |
 | Crash reporting        | `client.crashTags()` → `{ release, environment, "pkey.outlet" }` for a Sentry init (`release`, `environment`, and a tag).                                                                                                       |
 | Build stamp and outlet | `.polaris_key/build.json` (P1-11) is autoloaded; `readWindowsSignatureKind()` feeds the attested Windows signal.                                                                                                                |
 
@@ -179,7 +179,7 @@ decrypts.
 | `client.commerce`     | `@polaris-key/node/commerce`     | `binding` / `claim` / `claimSteam` / `claimAppStore` / `claimPlay`                                                          |
 | `client.distribution` | `@polaris-key/node/distribution` | `downloadModel` / `thisPlatform`                                                                                            |
 | —                     | `@polaris-key/node/electron`     | `exposePolarisBridge`, `SafeStorageStore`; `/electron/preload` for the renderer side                                        |
-| —                     | `@polaris-key/node/server`       | `verifyLicenseDocument` for a backend                                                                                       |
+| —                     | `@polaris-key/node/server`       | `crashTagsFor` (`verifyLicenseDocument` moved to `@polaris-key/server`)                                                     |
 
 `client.license.entitledChannels()` returns the `channels` entitlement's string grants in order,
 or `["stable"]` when the license carries none — the Worker's own answer, and every SDK's for the

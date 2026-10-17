@@ -311,6 +311,8 @@ function MethodGroups({
       consequence: string;
       doneText: string;
       notice?: React.ReactNode;
+      /** The primary email: a quiet tag beside the address. */
+      primary?: boolean;
       /** Wraps the row with an action beside Remove (Make primary, Rename). */
       tool?: (
         render: (slots: ToolSlots) => React.ReactElement,
@@ -331,10 +333,19 @@ function MethodGroups({
         keepLabel={shape.keepLabel}
         guardName={shape.guardName}
         badge={
-          m.reason === "last_link" ? (
-            <span className="rounded-full bg-accent-subtle px-2 py-0.5 text-xs font-medium text-accent-fg">
-              Only method
-            </span>
+          shape.primary || m.reason === "last_link" ? (
+            <>
+              {shape.primary ? (
+                <span className="rounded-full border border-border-strong px-2 py-0.5 text-xs font-medium text-fg">
+                  Primary
+                </span>
+              ) : null}
+              {m.reason === "last_link" ? (
+                <span className="rounded-full bg-accent-subtle px-2 py-0.5 text-xs font-medium text-accent-fg">
+                  Only method
+                </span>
+              ) : null}
+            </>
           ) : undefined
         }
         identity={shape.identity}
@@ -475,10 +486,10 @@ function MethodGroups({
                         {render}
                       </MakePrimaryTool>
                     ),
+              primary: e.primary,
               meta: [
-                e.primary ? "Primary" : null,
                 e.productCount
-                  ? `brought in ${plural(e.productCount, "product", "products")}`
+                  ? `found ${new Intl.NumberFormat().format(e.productCount)} ${e.productCount === 1 ? "product" : "products"}`
                   : null,
                 `added ${formatDate(e.connectedAt * 1000)}`,
                 e.lastUsedAt
@@ -486,7 +497,8 @@ function MethodGroups({
                   : "never used to sign in",
               ]
                 .filter(Boolean)
-                .join(" · "),
+                .join(" · ")
+                .replace(/^./, (c) => c.toUpperCase()),
               verb: "Remove",
               consequence: e.primary
                 ? `You won't sign in with ${e.email} any more, and notices go to your next oldest address.`
@@ -528,6 +540,7 @@ function MethodGroups({
                           key={m.id}
                           passkeyId={p.id}
                           current={p.name ?? ""}
+                          fallback={passkeyName({ ...p, name: null })}
                           what={which}
                           {...common}
                           returnTo={returnTo({})}
@@ -706,7 +719,7 @@ function ConnectRow({
           <Button
             ref={buttonRef}
             variant="outline"
-            className="ml-auto h-10 font-medium"
+            className="ml-auto h-11 font-medium"
             loading={busy}
             aria-label={t("signin.provider.connect", { provider: name })}
             onClick={() => void connect()}

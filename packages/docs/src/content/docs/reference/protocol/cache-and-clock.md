@@ -3,6 +3,8 @@ title: "Cache and clock"
 description: "Cache record v3 stores signed artifacts only, re-verifies everything on load, and derives a monotonic clock floor that makes clock rollback inert."
 sidebar:
   order: 8
+type: "reference"
+lastReviewed: "2026-10-16"
 ---
 
 The offline cache is one Core-owned record per product. It holds **signed artifacts only**,
@@ -65,15 +67,15 @@ Every load re-verifies everything, in this order:
    state forward; an air-gapped install re-imports its bundle.
 2. **Pin evidence.** Each `pinRevocations` entry is re-verified, in ascending manifest
    `issuedAt`, against the pins minus the tombstones before it; what survives gives the usable
-   pins ([Trust](/docs/build/wire/trust/)). An entry that fails is dropped.
+   pins ([Trust](/docs/reference/protocol/trust/)). An entry that fails is dropped.
 3. **Trust against the usable pins.** `trustJws` is verified against the **usable pinned keys
    only**, with `checkFreshness: false`, producing the effective set. On failure, discard it and
    fall back to the usable pins alone — never to whatever the file claimed.
 4. **Each document against the effective set**, with `checkFreshness: false` and the full
-   claim validation from [The envelope](/docs/build/wire/envelope/) — including `aud` and
+   claim validation from [The envelope](/docs/reference/protocol/envelope/) — including `aud` and
    `deviceId`, so a cache file copied from another machine or another product verifies as
    nothing.
-5. **The bundle** on the bundle reload profile ([Offline bundles](/docs/build/wire/bundles/)).
+5. **The bundle** on the bundle reload profile ([Offline bundles](/docs/reference/protocol/bundles/)).
 6. **Derive every counter** from what verified: the per-type anti-replay floors, the
    monotonic clock floor, and `lastVerifiedAt`.
 
@@ -82,7 +84,7 @@ failed license document yields `needs-activation`, never a partial state. There 
 field left to poison, and forging one now requires forging a signature.
 
 A dropped slice is dropped **in memory**, not eagerly erased from disk. A read path that
-deleted files would turn a transient key-rotation gap into data loss; the slice is simply
+deleted files would turn a transient key-rotation gap into data loss; the slice is
 rewritten out on the next patch.
 
 ### `lastVerifiedAt` is derived too
@@ -91,7 +93,7 @@ On load, the "last checked" timestamp a UI renders is derived from the newest ve
 document's signed `issuedAt` — not from a local write time. Offline, the server's own statement
 of when it minted is the only trustworthy answer available. A successful authenticated exchange
 then re-marks it against the local clock, `200` and `304` alike: at that instant the client has
-just been told, so its own reading of "now" is as good as the server's.
+been told, so its own reading of "now" is as good as the server's.
 
 ### Writes are read-modify-write of the whole record
 
@@ -102,7 +104,7 @@ mutations this way is what stops a config write from clobbering a license slice 
 microseconds earlier in the same parallel sync.
 
 The one exception is bundle import, which **replaces** the record wholesale rather than merging
-into it — see [Offline bundles](/docs/build/wire/bundles/).
+into it — see [Offline bundles](/docs/reference/protocol/bundles/).
 
 ## The monotonic clock floor
 
@@ -127,7 +129,7 @@ export function effectiveNow(systemNow: number, floor: number): number {
 ```
 
 The fold is over the **whole** artifact set — license document, config document, **and** the
-trust manifest. An empty set folds to `0`, and `max(now, 0)` is just `now`, so a fresh install
+trust manifest. An empty set folds to `0`, and `max(now, 0)` is `now`, so a fresh install
 is unaffected.
 
 The floor is a **minimum, never a substitute**. With an honest clock ahead of every signed
@@ -231,8 +233,8 @@ porting the contract, they are the checklist:
 
 ## Where to go next
 
-- [Trust](/docs/build/wire/trust/) — what step 2 of the load is verifying against.
-- [Offline bundles](/docs/build/wire/bundles/) — the one path that replaces this record
+- [Trust](/docs/reference/protocol/trust/) — what step 2 of the load is verifying against.
+- [Offline bundles](/docs/reference/protocol/bundles/) — the one path that replaces this record
   wholesale.
-- [The conformance corpus](/docs/build/wire/corpus/) — `clockFloorCases` replays this entire
+- [The conformance corpus](/docs/contribute/corpus/) — `clockFloorCases` replays this entire
   load path as pure data.

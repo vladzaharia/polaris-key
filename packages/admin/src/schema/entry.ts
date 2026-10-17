@@ -273,9 +273,8 @@ export const STATE_TONE: Record<ManagementState, Tone> = {
 };
 
 /**
- * The three management states, worded from the protocol's own definition
- * (`@polaris-key/protocol` `ManagementState`) so the console cannot drift from the semantics
- * the SDKs implement.
+ * The three management states in the console's In the app words (Editable, Read-only, Hidden)
+ * over the protocol's `ManagementState` (default, enforced, hidden).
  */
 export const MANAGEMENT_STATES: {
   value: ManagementState;
@@ -284,18 +283,18 @@ export const MANAGEMENT_STATES: {
 }[] = [
   {
     value: "default",
-    label: "Default",
-    help: "The server's value is a default: the client may override it locally or by environment variable.",
+    label: "Editable",
+    help: "Listed in the app's settings. People can change it.",
   },
   {
     value: "enforced",
-    label: "Enforced",
-    help: "The server value wins; the client cannot override it and shows it read-only.",
+    label: "Read-only",
+    help: "Listed, but only you can change it, here or in a profile.",
   },
   {
     value: "hidden",
     label: "Hidden",
-    help: "Enforced, and withheld from user-facing enumeration: still applied, never listed.",
+    help: "Not listed in the app. The app still reads the value.",
   },
 ];
 

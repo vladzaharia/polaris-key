@@ -3182,6 +3182,16 @@ msgstr "Execute {command} para ver as opções de um comando."
 msgid "cli.help.group"
 msgstr "Licença"
 
+#. Activate, sign in, devices and updates
+#. Terminal help of a host's own command-line tool: what the one namespace command (license) holds, when the license commands are nested under it.
+msgid "cli.help.namespace"
+msgstr "Ativar, entrar, dispositivos e atualizações"
+
+#. {command} needs a license
+#. Terminal: the first line when a host command that needs a license sends the person to activate. {command} is the command they ran, such as 'export'.
+msgid "cli.gate.needs"
+msgstr "{command} requer uma licença"
+
 #. Add a license key (prompted, or piped on stdin)
 #. Terminal help: what the activate command does. The key is typed at a prompt or piped in, never written on the command line.
 msgid "cli.verb.activate"
@@ -3197,7 +3207,7 @@ msgstr "Obter a licença gratuita, se {product} oferecer uma"
 msgid "cli.verb.deactivate"
 msgstr "Parar de usar a licença neste dispositivo e liberar a vaga"
 
-#. License, devices and offline time
+#. Show your license, devices and offline time
 #. Terminal help: what the status command shows.
 msgid "cli.verb.status"
 msgstr "Licença, dispositivos e tempo offline"

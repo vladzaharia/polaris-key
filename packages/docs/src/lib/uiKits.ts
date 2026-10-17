@@ -29,7 +29,7 @@ export interface UiKit {
   tier: Tier;
   /** The package or module a host installs. */
   package: string;
-  /** "Ships today" or "Planned in UK-xx". The package's rebuild (UK-05, UK-07, …) does not change
+  /** "Shipped" or "Not built yet" (the badge); `planned` keeps the owning package for the lead. The package's rebuild (UK-05, UK-07, …) does not change
    *  a shipped kit's status: the names it ships now are the ones its page documents. */
   status: KitStatus;
   current?: { label: string; href: string };
@@ -214,9 +214,7 @@ export const UI_KITS: readonly UiKit[] = [
 ];
 
 export function statusLabel(kit: UiKit): string {
-  return "ships" in kit.status
-    ? "Ships today"
-    : `Planned in ${kit.status.planned}`;
+  return "ships" in kit.status ? "Shipped" : "Not built yet";
 }
 
 export function kitById(id: string): UiKit {
@@ -229,3 +227,13 @@ export function kitById(id: string): UiKit {
 export function frameworkHref(kit: UiKit): string {
   return `/docs/build/ui/frameworks/${kit.id}/`;
 }
+
+/**
+ * Catalog components no kit has code for. A component with a shipping kit has a page under
+ * `build/ui/components/`; one in this list is a "Not built yet" row of the components index and
+ * has no page. A component leaves this list in the change that ships it.
+ */
+export const COMPONENTS_NOT_BUILT: readonly string[] = [
+  "ChannelPicker",
+  "CloudSyncStatus",
+];

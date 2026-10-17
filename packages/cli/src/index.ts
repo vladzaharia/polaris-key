@@ -1395,6 +1395,12 @@ async function cmdSdk(
     );
   // `sdk add` pins nothing it was not told to: no trust on first use (SETUP.md D30).
   const expect = add ? parseExpect(flagString(parsed, "expect")) : null;
+  // Outside `add` the fetched pins are written as served, so an --expect there would read as a
+  // pin it never checked.
+  if (!add && flagString(parsed, "expect") !== undefined)
+    throw new Error(
+      "--expect is only for pkey sdk add <lang>; it checks the served pins before writing.",
+    );
 
   // The product repo's .pkey/, when there is one: the slug and the declared release keys.
   let local: { slug: string; releaseKeys: DeclaredReleaseKey[] } | null = null;

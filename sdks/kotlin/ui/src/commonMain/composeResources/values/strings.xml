@@ -1178,6 +1178,10 @@
     <string name="cli_help_more">Run %1$s for one command's options.</string>
     <!-- Terminal help of a host's own command-line tool: the one heading over the license commands it mounted (activate, status, login…), after the tool's own headings. -->
     <string name="cli_help_group">License</string>
+    <!-- Terminal help of a host's own command-line tool: what the one namespace command (license) holds, when the license commands are nested under it. -->
+    <string name="cli_help_namespace">Activate, sign in, devices and updates</string>
+    <!-- Terminal: the first line when a host command that needs a license sends the person to activate. {command} is the command they ran, such as 'export'. Arguments: 1=command. -->
+    <string name="cli_gate_needs">%1$s needs a license</string>
     <!-- Terminal help: what the activate command does. The key is typed at a prompt or piped in, never written on the command line. -->
     <string name="cli_verb_activate">Add a license key (prompted, or piped on stdin)</string>
     <!-- Terminal help: what the enroll command does. Arguments: 1=product. -->
@@ -1185,7 +1189,7 @@
     <!-- Terminal help: what the deactivate command does. -->
     <string name="cli_verb_deactivate">Stop using your license on this device and free its seat</string>
     <!-- Terminal help: what the status command shows. -->
-    <string name="cli_verb_status">License, devices and offline time</string>
+    <string name="cli_verb_status">Show your license, devices and offline time</string>
     <!-- Terminal help: what the offline-request command does. -->
     <string name="cli_verb_offlineRequest">Print the request code for offline activation</string>
     <!-- Terminal help: what the import-bundle command does. -->

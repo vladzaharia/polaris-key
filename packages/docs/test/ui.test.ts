@@ -11,7 +11,7 @@ import { describe, expect, it } from "vitest";
 import { BASELINE_DIRS } from "../../ui-qa/src/config";
 import { BASELINES, DIRS } from "../src/lib/baselines";
 import { CATALOG, classify, kebab } from "../src/lib/shots";
-import { UI_KITS } from "../src/lib/uiKits";
+import { COMPONENTS_NOT_BUILT, UI_KITS } from "../src/lib/uiKits";
 
 const docsRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 const uiDir = join(docsRoot, "src", "content", "docs", "build", "ui");
@@ -133,14 +133,22 @@ describe("baseline names", () => {
 describe("component pages", () => {
   const pages = pagesIn("components");
 
-  it("every catalog component has its page, built on the template", () => {
+  it("every catalog component a kit ships has its page, built on the template", () => {
     for (const name of Object.keys(CATALOG)) {
+      if (COMPONENTS_NOT_BUILT.includes(name)) continue;
       const slug = kebab(name);
       expect(pages, `build/ui/components/${slug}.mdx`).toContain(slug);
       const page = read(uiDir, "components", `${slug}.mdx`);
       expect(page).toContain(`title: "${name}"`);
       expect(page).toContain(`<ComponentStates component="${name}" />`);
       expect(page).toContain(`<KitBaselines component="${name}" />`);
+    }
+  });
+
+  it("a component no kit builds has no page, and is a catalog component", () => {
+    for (const name of COMPONENTS_NOT_BUILT) {
+      expect(Object.keys(CATALOG), name).toContain(name);
+      expect(pages, name).not.toContain(kebab(name));
     }
   });
 

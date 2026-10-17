@@ -3,6 +3,8 @@ title: "Adding a package feed"
 description: "The FeedAdapter contract every package feed on the registry host implements, what stays shared, and the checklist the adapter conformance suite enforces for a new ecosystem."
 sidebar:
   order: 7
+type: "how-to"
+lastReviewed: "2026-10-16"
 ---
 
 The registry host (`pkg.plrs.im`) serves eight package feeds today: npm, PyPI, Swift, Maven, OCI,
@@ -53,10 +55,10 @@ An adapter never re-implements the shared pieces:
 ## One integration pattern
 
 `FeedAdapter` extends `Adapter<Id, Op>` from `packages/worker/src/core/adapters/contract.ts`, the
-base the storefront adapters extend too (`packages/worker/src/core/storefront/adapter.ts`, A-18a).
+base the storefront adapters extend too (`packages/worker/src/core/storefront/adapter.ts`).
 Both families have the same pieces:
 
-| Piece                    | Package feeds                                                                            | Storefronts (A-18a)                                                                           |
+| Piece                    | Package feeds                                                                            | Storefronts                                                                                   |
 | ------------------------ | ---------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
 | The adapter interface    | `FeedAdapter`, one directory per ecosystem                                               | `StorefrontAdapter`, one declaration per store (`core/storefront/stores/`), one registry line |
 | A capability declaration | `capabilities.ops`: one `Support` per operation, plus the protocol facts                 | `capabilities.ops`: one `Support` per store op                                                |
@@ -66,7 +68,7 @@ Both families have the same pieces:
 
 A feed's operations are `render`, `serve`, `auth`, `yank`, `unyank`, `deprecate` and `setup`. A
 feed writes a `FeedAdapterSpec`, and `defineFeedAdapter` derives the base's parts from it: `serve`
-is an `api` operation whose rules are the feed's read route names, `auth` (registry tokens, F-21,
+is an `api` operation whose rules are the feed's read route names, `auth` (registry tokens,
 judged by the same ladder) is an `api` operation whose rules are the feed's credential routes
 (`authRoutes`, built by `feedAuthRoute`, such as Swift's `POST …/login`) and owner-less routes
 (`ownerlessRoutes`, such as OCI's `GET /v2/token`), and `yank` and `deprecate` are `true` or
@@ -88,10 +90,9 @@ one fails CI.
    compile error until you do. The enum is part of the published JSON Schemas, so the schema and
    the mutation table change with it. Run `pnpm --filter @polaris-key/manifest test`.
 2. **The host.** Add the ecosystem to `REGISTRY_ECOSYSTEMS` in `core/registry/registryHost.ts` (NuGet is
-   already there, reserved: take yours out of `RESERVED_ECOSYSTEMS`, as Cargo's F-30 and Go's
-   F-31 did). If the protocol needs a content type that is not on `REGISTRY_HOST_TYPES`, stop:
+   already there, reserved: take yours out of `RESERVED_ECOSYSTEMS`, as Cargo and Go did). If the protocol needs a content type that is not on `REGISTRY_HOST_TYPES`, stop:
    that list is a THREAT-MODEL review trigger. Seed the ecosystem's row in `dist_registry_policy`
-   with a migration (F-30's `0076_cargo_registry_policy.sql`, F-31's `0077_go_registry_policy.sql`):
+   with a migration (as `0076_cargo_registry_policy.sql` and `0077_go_registry_policy.sql` did):
    the access ladder reads a missing row as the platform switch off, so without it the feed never
    answers.
 3. **The directory.** Create `registry/<ecosystem>/` with `render.ts` (pure documents),

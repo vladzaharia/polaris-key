@@ -76,8 +76,8 @@ setting's latest row, NDJSON export), `core/repo.ts` and `core/console/repo.ts` 
 `core/{products,licensing,devices}/store.ts` (row types stay in `repo.ts`), Identity's holder-move
 and merge-undo `licenses` writes behind `core/licensing/store.ts`.
 
-Left on the allow-lists for the packages that own them: Identity's `oidc.ts` licence writes
-(P0-20) and `legacy.ts` (P0-24); the product-delete cascade and registration builders in
+Left on the allow-lists for the packages that own them: Identity's `legacy.ts` licence write
+(P0-24); the product-delete cascade and registration builders in
 `core/products/store.ts` writing other owners' tables (P0-19, P0-26). Audit callers that wrap
 `appendAudit` in their own helper (`auditStep`, `auditChange` …) already go through the one
 writer; folding them onto `actorOf` is mechanical cleanup.

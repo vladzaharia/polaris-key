@@ -1,26 +1,24 @@
 ---
 title: "SDKs"
-description: "One wire contract, six surfaces — the shared core-plus-sub-client shape, fail-closed capability negotiation, and the PKEY_CONFIG_* env convention."
+description: "The SDKs share one wire contract and one shape: a core, a sub-client per service, fail-closed capability negotiation and the PKEY_CONFIG_* env convention."
+type: "concept"
+sdks: ["node", "react", "python", "swift", "kotlin", "godot"]
+lastReviewed: "2026-10-16"
 sidebar:
   order: 4
   label: "SDKs"
 ---
 
-There is **one** wire contract — the frozen compact-JWS envelope described in
-[The wire contract](/docs/build/wire/) — and **seven** surfaces that speak it: six language
-SDKs, and a CLI built from the same core as a seventh. Whichever one your product links against,
-it verifies the identical signed documents, exposes the identical `core` +
-per-service-sub-client shape, and fails closed the same way when a capability is not on.
+The SDKs speak one wire contract: the frozen compact-JWS envelope described in [The protocol](/docs/reference/protocol/). Whichever one your product links against, it verifies the identical signed documents, exposes the identical `core` plus per-service-sub-client shape, and fails closed the same way when a capability is not on. A CLI built from the same core ships inside the Node and Python SDKs.
 
-| Surface | Package                                                   | Page                                                                                                  |
-| ------- | --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| Node    | `@polaris-key/node`                                       | [Node](/docs/build/sdks/node/)                                                                        |
-| React   | `@polaris-key/react`                                      | [React](/docs/build/sdks/react/)                                                                      |
-| Python  | `polaris-key` (Polaris Key's PyPI feed)                   | [Python](/docs/build/sdks/python/)                                                                    |
-| Swift   | `polaris-key.PolarisKey` (Polaris Key's Swift registry)   | [Swift](/docs/build/sdks/swift/)                                                                      |
-| Godot   | the `addons/polaris_key` addon (Polaris Key's Godot feed) | [Godot](/docs/build/sdks/godot/)                                                                      |
-| Kotlin  | `polaris-key-sdk` (Polaris Key's Maven feed)              | [Kotlin](/docs/build/sdks/kotlin/); the Compose UI kit: [Compose](/docs/build/ui/frameworks/compose/) |
-| CLI     | `@polaris-key/node/cli`, `polaris-key`'s console script   | shipped inside the Node and Python pages above                                                        |
+| SDK    | Package                                                   | Page                                                                                                  |
+| ------ | --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Node   | `@polaris-key/node`                                       | [Node](/docs/build/sdks/node/)                                                                        |
+| React  | `@polaris-key/react`                                      | [React](/docs/build/sdks/react/)                                                                      |
+| Python | `polaris-key` (Polaris Key's PyPI feed)                   | [Python](/docs/build/sdks/python/)                                                                    |
+| Swift  | `polaris-key.PolarisKey` (Polaris Key's Swift registry)   | [Swift](/docs/build/sdks/swift/)                                                                      |
+| Godot  | the `addons/polaris_key` addon (Polaris Key's Godot feed) | [Godot](/docs/build/sdks/godot/)                                                                      |
+| Kotlin | `polaris-key-sdk` (Polaris Key's Maven feed)              | [Kotlin](/docs/build/sdks/kotlin/); the Compose UI kit: [Compose](/docs/build/ui/frameworks/compose/) |
 
 Every SDK has two lanes, with equal depth: the drop-in screens on the kit's
 [framework page](/docs/build/ui/frameworks/), and your own UI over the library
@@ -33,13 +31,13 @@ Every SDK that draws UI ships a UI kit. The kits share one component catalog, on
 one copy catalog, documented once in [UI kits](/docs/build/ui/), with a page per framework.
 
 Every package is published to Polaris Key's own feeds on `pkg.plrs.im`, and nowhere else:
-[Installing the SDKs from the feeds](/docs/build/install-from-feeds/) has each client's snippet.
+[Installing the SDKs from the feeds](/docs/build/install/) has each client's snippet.
 
 Node and React additionally share one isomorphic implementation of the verification, gate,
 trust, config-resolution and boot-stage logic, `@polaris-key/client-core`, rather than each reimplementing
 it; Python, Swift, Godot and Kotlin carry independent ports proven identical by the same cross-language
 conformance corpus. See `packages/client-core/README.md` for why that split exists, and
-[The wire contract](/docs/build/wire/) for the envelope itself.
+[The wire contract](/docs/reference/protocol/) for the envelope itself.
 
 ## The shared shape
 
@@ -55,8 +53,7 @@ Every SDK composes one always-on **Core** (device id, credential, trust, the off
 | `client.release`  | changelog, install script, artifact URLs                                                            |
 | `client.update`   | version check, the Sparkle appcast URL                                                              |
 
-Distribution has no sub-client: storefront clients read its feeds directly, and the SDKs only
-carry its slug in their capability map.
+Node also carries `client.distribution`, the public download model for a platform, and `client.commerce`, which turns store purchases into license flags. [The parity matrix](/docs/reference/parity/) lists which SDK implements each feature.
 
 A handful of calls — `status`/`isLicensed`, `getConfig`, `sync`, `importBundle` — are also kept
 on the top-level client, for the code a host writes before it knows which service it's talking
@@ -68,14 +65,14 @@ in five dialects rather than five unrelated APIs.
 
 ## Capability negotiation, fail-closed
 
-None of the SDKs will let a product talk to a service it doesn't run. `client.capabilities()`
+No SDK lets a product talk to a service it doesn't run. `client.capabilities()`
 (or the equivalent property) resolves with **no network call**, in one fixed precedence:
 
 1. a discovery document loaded this session (`await client.discover()`) — always wins;
 2. `expectedServices` — what the build was compiled expecting;
 3. the suite default: **License + Config on**, Release/Update/Identity **off**.
 
-The licence **gate** is stricter than capability negotiation: it is on when the build's
+The license **gate** is stricter than capability negotiation: it is on when the build's
 `expectedServices` (default License + Config) names `license`, or when a discovery document says
 so. Unsigned discovery can switch the gate on, never off.
 
@@ -140,14 +137,13 @@ A key's env var is the prefix (default `PKEY_CONFIG_`) plus the key with every `
 Nothing else about the name changes, case included, and a variable that is set counts even when
 it is empty. The value is the parsed JSON value when the raw string is one **strict** JSON text
 (`4` → number, `true` → boolean, `[…]`/`{…}` → array/object, `"…"` → string), and otherwise the
-raw string, unchanged; reading a variable never errors (WIRE-CONTRACT-V3 §2.2.1 rule 2, pinned
-by `conformance/corpus/v2/config-matrix.json`). Strict means RFC 8259 with no trailing comma,
+raw string, unchanged; reading a variable never errors (pinned by `conformance/corpus/v2/config-matrix.json`). Strict means RFC 8259 with no trailing comma,
 `NaN`, `Infinity`, leading zero or byte order mark, plus: no two members of the same name (names
 compare by Unicode scalar value, never normalized); no member name holding U+0000; no lone
 surrogate; every number zero or of magnitude 10^−307 up to below 10^308, judged from its
 digits; and at most 64 levels of nesting. Noncharacters such as U+FFFF are ordinary characters.
 Every SDK reaches the same verdict for every input. Two parsed values are a declared
-representation limit (WIRE-CONTRACT-V3 §10): Swift keeps only the first of two canonically
+representation limit (see [the protocol](/docs/reference/protocol/)): Swift keeps only the first of two canonically
 equivalent member names, and Godot's number reader is not correctly rounded.
 
 `enforced`/`hidden` keys ignore the environment layer entirely — the remote value always wins

@@ -30881,7 +30881,7 @@ var NODE_SERVER = {
     filename: "verify.ts",
     language: "ts",
     code: lines2(
-      `import { verifyLicenseDocument } from "@polaris-key/node/server";`,
+      `import { verifyLicenseDocument } from "@polaris-key/server";`,
       `import { polarisConfig } from "./polaris.config.js";`,
       ``,
       `// The app sends its cached licence document and its device id with the request.`,
@@ -45499,6 +45499,10 @@ ${setup.start.code}
 ${SDK_CONFIG_USAGE}`
     );
   const expect = add5 ? parseExpect(flagString(parsed, "expect")) : null;
+  if (!add5 && flagString(parsed, "expect") !== void 0)
+    throw new Error(
+      "--expect is only for pkey sdk add <lang>; it checks the served pins before writing."
+    );
   let local = null;
   try {
     const m = descriptorManifestOf(await loadManifest(cwd));

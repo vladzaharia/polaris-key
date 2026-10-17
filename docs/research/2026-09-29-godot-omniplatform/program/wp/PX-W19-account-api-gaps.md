@@ -235,3 +235,13 @@ PX-25 adds the controls on PX-13's page. PX-19 documents sign-in methods.
 The role agent sets `--set PX-W19 in-review` when it hands off. After review, the lead adds the
 last commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set PX-W19 done`.
+
+## Review fix round (2026-10-16)
+
+- `StepUp`: the main button fills a phone's width, wraps and is 44 px tall; labels are short
+  ("Use your passkey", "Email me a code"), the long form is the accessible name.
+- Row actions are outline, 44 px; Primary is a tag; "Found N products"; Make primary has a notice
+  line and Undo; Rename: "Passkey name", fallback placeholder, Save always the primary button
+  (stale sign-in asks on Save), Cancel locked while saving, Escape closes, no-op save sends nothing.
+- Not done: Button `loading` as `aria-disabled` (shared component), toast close-button target size
+  (shared toast), one action row for StepUp's button and Cancel.

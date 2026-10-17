@@ -29,6 +29,7 @@ import {
   type ProductAttention,
 } from "../model/attention.js";
 import { useWriteGate } from "../../../access/useCan.js";
+import { useCanOpenHref } from "../../../access/context.js";
 
 /** Home shows the most recently changed products; Products is the whole registry (EXPERIENCE C17). */
 export const HOME_PRODUCT_LIMIT = 6;
@@ -108,7 +109,13 @@ export function Home(): React.ReactElement {
   const create = useWriteGate("platform");
 
   const list = React.useMemo(() => products.data ?? [], [products.data]);
-  const attention = React.useMemo(() => attentionAcross(list), [list]);
+  // ST-29: attention the member cannot open stays out of every count, pill and list, so each
+  // number matches what is listed.
+  const canOpenHref = useCanOpenHref();
+  const attention = React.useMemo(
+    () => attentionAcross(list).filter((a) => canOpenHref(a.action.href)),
+    [list, canOpenHref],
+  );
   const byProduct = React.useMemo(() => {
     const m = new Map<string, ProductAttention[]>();
     for (const a of attention)

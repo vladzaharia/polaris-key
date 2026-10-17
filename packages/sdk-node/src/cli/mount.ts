@@ -52,7 +52,12 @@ export interface MountOptions {
   onCollision?: "error" | "skip";
   /** Your generated `polarisConfig`. Builds the client, so no factory, pins or flags are needed. */
   config?: PolarisCliConfig;
-  /** Where the skip warning goes (default: stderr). */
+  /** Called once with the ids `onCollision: "skip"` dropped, for the developer's own log. */
+  onSkip?: (skipped: readonly string[]) => void;
+  /**
+   * Where the skip warning goes. Default: nowhere for the people using the program; stderr when
+   * `DEBUG` names `polaris`.
+   */
   warn?: (message: string) => void;
 }
 
@@ -63,11 +68,13 @@ export class VerbCollisionError extends PolarisError {
   /** The two options that resolve it. */
   readonly fixes = ["namespace", "verbs"] as const;
   constructor(words: string[], bin: string) {
-    const list = words.map((w) => `"${w}"`).join(", ");
+    const q = words.map((w) => `"${w}"`);
+    const list =
+      q.length > 1 ? `${q.slice(0, -1).join(", ")} and ${q.at(-1)}` : q[0]!;
     super(
       COLLISION_CODE,
-      `${COLLISION_CODE}: ${list} ${words.length > 1 ? "are" : "is"} already a command. ` +
-        `Set namespace: "license" (${bin} license ${words[0]}), or leave ${list} out of verbs.`,
+      `${COLLISION_CODE}: ${list} ${words.length > 1 ? "are" : "is"} already ${words.length > 1 ? "commands" : "a command"}. ` +
+        `Set namespace: "license" (${bin} license ${words[0]}), leave ${words.length > 1 ? "them" : "it"} out of verbs, or set onCollision: "skip".`,
     );
     this.name = "VerbCollisionError";
     this.words = words;
@@ -139,6 +146,22 @@ export function planMount(
     skipped: skipped.map(verbId).sort(),
     hidden,
   };
+}
+
+/** Tell the developer about a skipped mount: `onSkip`, and `warn` (or stderr under `DEBUG=polaris`). */
+export function reportSkipped(
+  plan: MountPlan,
+  o: Pick<MountOptions, "onSkip" | "warn">,
+  bin: string,
+): void {
+  if (!plan.skipped.length) return;
+  o.onSkip?.(plan.skipped);
+  const warn =
+    o.warn ??
+    (/(^|[,\s])(polaris|\*)/.test(process.env.DEBUG ?? "")
+      ? (m: string) => process.stderr.write(`${m}\n`)
+      : undefined);
+  warn?.(skipWarning(plan.skipped, bin));
 }
 
 /** The one warning for a skipped mount. */

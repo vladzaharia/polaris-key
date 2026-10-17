@@ -560,7 +560,7 @@ export function ManagedPayloadEditor({
       <EmptyState
         kind="first-run"
         title="This product has no config catalog"
-        description="Managed values are declared by the catalog. Publish a catalog version with config, secret or flag entries and they show up here."
+        description="Managed values are declared by the catalog. Publish a catalog version with settings, secrets or minted tokens and they show up here."
         primaryAction={
           <Button asChild variant="outline">
             <Link to={r.catalog(slug)}>Open the catalog</Link>

@@ -3,10 +3,11 @@ title: "Contributing"
 description: "Setup, the monorepo layout, service boundaries, the contract-first wave model, the conformance corpus, and how releases ship."
 sidebar:
   order: 1
+type: "overview"
+lastReviewed: "2026-10-16"
 ---
 
-Polaris Key is a **contract-first, seven-language** monorepo: one Cloudflare Worker plus SDKs
-for Node, React, Python, Swift, Godot and Kotlin, all agreeing on a single frozen wire format. The rule that
+Polaris Key is a **contract-first** monorepo: one Cloudflare Worker plus SDKs for Node, React, Python, Swift, Godot and Kotlin, all agreeing on a single frozen wire format. The rule that
 follows from that shapes everything in this section: **the wire contract is the source of
 truth, and every language must verify it identically.**
 
@@ -29,3 +30,12 @@ the glossary disagree, the glossary wins.
 | [The conformance corpus](/docs/contribute/corpus/)                       | How one generator, the language runners and the generator-owned Godot mirror keep the implementations byte-identical, and how to add a case.             |
 | [Add a page, a setting, a wizard, or a write](/docs/contribute/console/) | The console's page registry, settings engine, routed flows, mutation invalidation, permissions, and focused checks.                                      |
 | [Adding a package feed](/docs/contribute/package-feeds/)                 | The `FeedAdapter` contract every registry-host feed implements, what stays shared, and the checklist the adapter conformance suite enforces.             |
+| [Architecture](/docs/contribute/architecture/)                           | One Worker, a modular monolith: the layers, the `ServiceDescriptor` and hide-don't-reveal dispatch.                                                      |
+| [Service model internals](/docs/contribute/service-model/)               | How `products.services_json` is parsed, written and owned.                                                                                               |
+| [The truth store](/docs/contribute/release-truth-store/)                 | What a product has published, per release and per channel, and how it is kept honest.                                                                    |
+| [D1 data model](/docs/contribute/data-model/)                            | The tables, replayed from the migrations.                                                                                                                |
+| [Add a corpus case](/docs/contribute/corpus-cases/)                      | Pin a divergence in the corpus and record HTTP transcripts.                                                                                              |
+| [Releasing](/docs/contribute/releasing/)                                 | How a release ships and how the drift job checks it.                                                                                                     |
+| [Docs components](/docs/contribute/docs-components/)                     | The components the docs pages use.                                                                                                                       |
+| [Writing docs](/docs/contribute/writing-docs/)                           | The style guide every page follows.                                                                                                                      |
+| [Working on this system as an agent](/docs/contribute/agents/)           | The doctrine, the task recipes and the conventions an agent follows.                                                                                     |

@@ -576,17 +576,17 @@ describe("ManagedField — v2 management state + updatedAt", () => {
       />,
     );
     // The selected radio is the one place the state shows (no badge repeating it).
-    expect(screen.getAllByText("Enforced")).toHaveLength(1);
+    expect(screen.getAllByText("Read-only")).toHaveLength(1);
     // An updatedAt stamp is rendered.
     expect(screen.getByText(/Updated/)).toBeTruthy();
     // The state selector is a segmented radio group, labelled per entry.
     const group = screen.getByRole("radiogroup", {
-      name: /Management state for A field/,
+      name: /In the app for A field/,
     });
     expect(group).toBeTruthy();
     expect(
       screen
-        .getByRole("radio", { name: "Enforced" })
+        .getByRole("radio", { name: "Read-only" })
         .getAttribute("aria-checked"),
     ).toBe("true");
   });
@@ -604,7 +604,7 @@ describe("ManagedField — v2 management state + updatedAt", () => {
     expect(screen.queryByText(/Updated/)).toBeNull();
   });
 
-  it("explains the selected state in the protocol's own words", () => {
+  it("explains the selected state in the In the app words", () => {
     render(
       <ManagedField
         entry={entry()}
@@ -614,9 +614,7 @@ describe("ManagedField — v2 management state + updatedAt", () => {
         onStateChange={vi.fn()}
       />,
     );
-    expect(
-      screen.getByText(/withheld from user-facing enumeration/),
-    ).toBeTruthy();
+    expect(screen.getByText(/Not listed in the app/)).toBeTruthy();
   });
 
   it("moves between states with the arrow keys (radio-group pattern)", async () => {
@@ -630,7 +628,7 @@ describe("ManagedField — v2 management state + updatedAt", () => {
         onStateChange={onStateChange}
       />,
     );
-    const selected = screen.getByRole("radio", { name: "Default" });
+    const selected = screen.getByRole("radio", { name: "Editable" });
     selected.focus();
     // Held, as a real key press is: the radio group selects what the arrow focuses.
     await userEvent.keyboard("{ArrowRight>}");
@@ -748,7 +746,7 @@ describe("ManagedField — set vs unset is a real state", () => {
     );
     expect(
       screen.getByText(
-        "Profile “base” enforces dark; this value is ignored. Choose Enforced to override it.",
+        "Profile “base” enforces dark; this value is ignored. Choose Read-only to override it.",
       ),
     ).toBeTruthy();
     expect(screen.queryByText(/Overrides dark/)).toBeNull();
@@ -830,9 +828,7 @@ describe("ManagedField — secrets are write-only", () => {
     expect(editable.value).toBe("");
   });
 
-  it("warns that demoting a configured secret to Default clears it", () => {
-    // `applyOverrides` deletes a key whose update carries no value and state `default`; the
-    // console has no secret value to resend, so this really does drop the stored secret.
+  it("offers no In the app control on a secret: it is code only", () => {
     render(
       <ManagedField
         entry={secret}
@@ -844,7 +840,8 @@ describe("ManagedField — secrets are write-only", () => {
         onStateChange={vi.fn()}
       />,
     );
-    expect(screen.getByText(/removes the stored secret/)).toBeTruthy();
+    expect(screen.queryByRole("radiogroup")).toBeNull();
+    expect(screen.getByText("Code only")).toBeTruthy();
   });
 
   it("an unconfigured secret shows a 'Missing' badge", () => {

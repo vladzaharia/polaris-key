@@ -3,11 +3,15 @@ title: "Your own UI (Python)"
 description: "Draw your own screens on polaris-key: the state model, each call with the words to show, the headless views, Qt and asyncio, the thread contract and tests."
 sidebar:
   order: 2
+type: "reference"
+sdks: ["python"]
+lanes: ["library"]
+lastReviewed: "2026-10-16"
 ---
 
 The library returns typed results and draws nothing. This page gives, for each screen you build,
 the call, the states it can answer and the words to show. To take the finished terminal screens
-instead, see the [drop-in quickstart](/docs/build/quickstart/python/#pick-a-lane). Create the
+instead, see the [drop-in quickstart](/docs/build/quickstart/python/#4-gate-the-app). Create the
 `client` as the quickstart does; every snippet here takes it as a parameter.
 
 ## The state model

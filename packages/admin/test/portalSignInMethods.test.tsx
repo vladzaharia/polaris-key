@@ -234,8 +234,8 @@ describe("Sign-in methods (PX-13)", () => {
     expect(
       within(region).getByRole("button", { name: "Disconnect Steam" }),
     ).toBeTruthy();
-    // The primary is said as text; an unused address says so.
-    expect(within(region).getByText(/^Primary · added/)).toBeTruthy();
+    // The primary is a tag beside the address; an unused address says so.
+    expect(within(region).getByText("Primary")).toBeTruthy();
     expect(within(region).getByText(/never used to sign in/)).toBeTruthy();
     // The passkey is named by its provider (AAGUID), with where it came from.
     expect(within(region).getByText("iCloud Keychain")).toBeTruthy();
@@ -1174,8 +1174,8 @@ describe("Make primary and Rename (PX-W19)", () => {
     mockFetch(routes(withCounts()));
     renderPortal();
     const region = await methodsRegion();
-    expect(within(region).getByText(/brought in 2 products/)).toBeTruthy();
-    expect(within(region).getByText(/brought in 1 product\b/)).toBeTruthy();
+    expect(within(region).getByText(/Found 2 products/)).toBeTruthy();
+    expect(within(region).getByText(/Found 1 product\b/)).toBeTruthy();
     expect(
       within(region).getAllByRole("button", { name: /^Make .* primary$/ }),
     ).toHaveLength(1);
@@ -1282,7 +1282,9 @@ describe("Make primary and Rename (PX-W19)", () => {
         name: "Rename the iCloud Keychain passkey",
       }),
     );
-    const field = await within(region).findByRole("textbox", { name: "Name" });
+    const field = await within(region).findByRole("textbox", {
+      name: "Passkey name",
+    });
     expect(await axeViolations()).toEqual([]);
     await userEvent.type(field, "Work laptop");
     await userEvent.click(within(region).getByRole("button", { name: "Save" }));
@@ -1296,6 +1298,42 @@ describe("Make primary and Rename (PX-W19)", () => {
     expect(JSON.parse(String(patch[1]![1]!.body))).toEqual({
       name: "Work laptop",
     });
+  });
+
+  it("asks to confirm it's you when Save is pressed on a stale sign-in, and Enter means Save", async () => {
+    mockFetch(routes(withCounts()));
+    renderPortal();
+    const region = await methodsRegion();
+    await userEvent.click(
+      within(region).getByRole("button", {
+        name: "Rename the iCloud Keychain passkey",
+      }),
+    );
+    const field = await within(region).findByRole("textbox", {
+      name: "Passkey name",
+    });
+    // The fallback is the placeholder and the help, not a guess about the browser.
+    expect((field as HTMLInputElement).placeholder).toBe("iCloud Keychain");
+    expect(
+      within(region).getByText("Leave it empty to use “iCloud Keychain”."),
+    ).toBeTruthy();
+    // Nothing to confirm until Save is pressed.
+    expect(
+      within(region).queryByRole("group", { name: "Confirm it's you first" }),
+    ).toBeNull();
+    await userEvent.type(field, "Work laptop{Enter}");
+    expect(
+      await within(region).findByRole("group", {
+        name: "Confirm it's you first",
+      }),
+    ).toBeTruthy();
+    // Escape closes the panel and returns focus to Rename.
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() =>
+      expect(
+        within(region).queryByRole("textbox", { name: "Passkey name" }),
+      ).toBeNull(),
+    );
   });
 
   it("shows a given name as the passkey's title", async () => {

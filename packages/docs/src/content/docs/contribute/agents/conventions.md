@@ -3,6 +3,8 @@ title: "Conventions and drift gates"
 description: "The green gate and the hard rules, distilled — plus the seven drift gates, what each catches, and the command that runs it."
 sidebar:
   order: 3
+type: "reference"
+lastReviewed: "2026-10-16"
 ---
 
 The source for everything on this page is **`AGENTS.md` at the repository root**. This is the
@@ -66,7 +68,7 @@ deliberately lightweight. A green hook is not a green gate.
 
 1. **Never hand-edit the corpus.** `conformance/corpus/v2/` and its Godot mirror are
    output.
-2. **A wire change bumps `PROTOCOL_VERSION` and regenerates the corpus.** It is currently 4; the
+2. **A wire change bumps `PROTOCOL_VERSION` and regenerates the corpus.** It is 4; the
    signed set is license / config / trust / bundle / feed / release, and a release record is
    signed by a CI-held release key, never a product key.
 3. **Generated files carry a GENERATED banner.** Regenerate; never hand-edit.
@@ -83,7 +85,7 @@ deliberately lightweight. A green hook is not a green gate.
 9. **A validation rule needs a mutation-table entry.**
 10. **A new route needs an OpenAPI entry and a coverage-table row.**
 11. **The site is tiered; the repo is the agent-readable source.** There is no `llms.txt` — see
-    [the section index](/docs/agents/) for why.
+    [the section index](/docs/contribute/agents/) for why.
 
 ## The drift-gate inventory
 

@@ -629,6 +629,20 @@ export function useExportProductData(product: string) {
 }
 
 /**
+ * I-11: "Get a support code" (`POST /api/products/<p>/support-code`). The product view carries the
+ * code once it exists, so a success reads that view again.
+ */
+export function useCreateSupportCode(product: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => portalApi.createSupportCode(product),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: portalKeys.product(product) });
+    },
+  });
+}
+
+/**
  * I-11: Remove my data from <Product> (`DELETE /api/products/<p>/data`). `alsoRemoveLicense` is the
  * person's explicit choice to take the product's licenses out of the library too; without it they
  * stay. `licenseIds` are the licenses the page holds in this product, so the views that show them

@@ -13,7 +13,7 @@
  *      synthetic one, and set on `session.principal` for the handler. This is the ONLY module that
  *      reads the session cookie (`sessionFromRequest`) or validates a token; the docs gate uses the
  *      cookie resolver and nothing else. A principal with no grant is no member, and every route
- *      answers it 403 (after the limiter).
+ *      answers it 403 (after the limiter), except `GET /me` and `POST /logout`.
  *   2. **Rate limit.** A per-member budget on the whole surface (R1-04): the OIDC subject for a
  *      session, `token:<id>` for a token, so neither can spend the other's.
  *   3. **Token reach.** A token caller may call only a row that names a `tokenScope` it holds
@@ -287,8 +287,14 @@ export async function handleAdminApi(
   // A verified session whose principal holds no grant is not a member: every route answers the
   // same 403, so it learns nothing about what exists. (The sign-in gate mints no such session; one
   // appears when the platform group changes under a live cookie.) A reach into an existing
-  // product is still audited on that product.
-  if (!can(principal, PLATFORM, "console", "view")) {
+  // product is still audited on that product. Two rows stay open to it, so a refused member can
+  // still read who they are (`GET /me`, for the console's "no access" screen) and sign out
+  // (`POST /logout`, which still passes the CSRF check below); neither reads any product data.
+  const noGrantRow =
+    found.kind === "route" &&
+    ((found.route.method === "GET" && found.route.path === "/me") ||
+      (found.route.method === "POST" && found.route.path === "/logout"));
+  if (!noGrantRow && !can(principal, PLATFORM, "console", "view")) {
     if (found.kind === "route" && isProductRoute(found.route)) {
       const target = await getProduct(db, found.match.params.slug ?? "");
       if (target)
@@ -329,7 +335,7 @@ export async function handleAdminApi(
 
   // 7. The area.
   const area = areaFor(route, match.params);
-  if (!allowedRoute(principal, scope, route, match.params)) {
+  if (!noGrantRow && !allowedRoute(principal, scope, route, match.params)) {
     if (scope.kind === "product")
       await auditDenied(env, db, session, scope.slug, area, now);
     return forbiddenArea(scope, area);

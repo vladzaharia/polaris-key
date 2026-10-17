@@ -10,7 +10,7 @@ import ts from "typescript";
 import yargs from "yargs";
 import { describe, expect, it } from "vitest";
 import { registerPolarisCommands } from "../../src/cli/commander.js";
-import { polarisGate, requireLicense } from "../../src/cli/gate.js";
+import { polarisGate, requireLicense, runGate } from "../../src/cli/gate.js";
 import { EXIT } from "../../src/cli/json.js";
 import { registerPolarisCommands as registerYargs } from "../../src/cli/yargs.js";
 import type { PolarisKeyClient } from "../../src/client.js";
@@ -20,6 +20,7 @@ import {
   frozenTicker,
   NOW,
   render,
+  settle,
   stubClient,
   VARIANTS,
 } from "./harness.js";
@@ -207,6 +208,67 @@ describe("frame: false", () => {
     expect(bare).not.toContain("· status");
     expect(bare).toContain("Pro");
     expect(bare.split("\n").length).toBeLessThan(framed.split("\n").length);
+  });
+});
+
+describe("frame: false refusal", () => {
+  it("the refusal is the kit's own screen, so it still closes", async () => {
+    const t = terminal();
+    await runGate({
+      client: revoked(),
+      command: "export",
+      slug: "tidewater",
+      bin: "mytool",
+      frame: false,
+      io: t.io,
+    });
+    const lines = plain(t.stderr.raw).trimEnd().split("\n");
+    expect(lines.at(-1)).toMatch(/^└/);
+  });
+});
+
+describe("the inline gate flow", () => {
+  it("says which command needs a license, and on Esc shows the refusal and the way back", async () => {
+    const t = terminal(true);
+    const done = runGate({
+      client: revoked(),
+      command: "export",
+      slug: "tidewater",
+      bin: "mytool",
+      mounted: ["activate", "login"],
+      io: t.io,
+    });
+    await settle();
+    expect(plain(t.stdout.raw)).toContain("export needs a license");
+    t.stdin.press("escape", { sequence: "\x1b" });
+    const code = await done;
+    expect(code).not.toBe(0);
+    const err = plain(t.stderr.raw);
+    expect(err).toContain("mytool activate");
+    expect(err).toContain("mytool login");
+  });
+
+  it("shows nothing on a quick check and Checking your license on a slow one", async () => {
+    const check = async (syncMs: number) => {
+      const t = terminal(true);
+      const stdin = new FakeStdin(false);
+      stdin.end();
+      await runGate({
+        client: stubClient({
+          status: () => ({ status: "revoked" }),
+          extra: {
+            sync: () => new Promise<void>((r) => setTimeout(r, syncMs)),
+          },
+        }) as PolarisKeyClient,
+        command: "export",
+        slug: "tidewater",
+        bin: "mytool",
+        io: { ...t.io, stdin },
+      });
+      return plain(t.stderr.raw);
+    };
+    expect(await check(0)).not.toContain("Checking your license");
+    expect(await check(700)).toContain("Checking your license");
   });
 });
 

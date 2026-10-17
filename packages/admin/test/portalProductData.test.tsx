@@ -3,6 +3,7 @@ import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { PortalLicenseSummary } from "../src/portal/api.js";
 import {
+  ACCOUNT,
   NOW_S,
   axeViolations,
   detail,
@@ -178,19 +179,7 @@ describe("Download my data from a product (I-11)", () => {
   it("shows the product's own card, scoped in its words, and fetches nothing until pressed", async () => {
     const card = await open(worker().routes);
     expect(
-      within(card).getByText(
-        "Only what Mossgarden holds for you, not your account or your other apps.",
-      ),
-    ).toBeTruthy();
-    expect(
-      within(card).getByText(
-        "A JSON file with your Mossgarden license, devices, settings and activity.",
-      ),
-    ).toBeTruthy();
-    expect(
-      within(card).getByText(
-        "Saved as polaris-key-mossgarden-data.json. It holds personal details, so keep it private.",
-      ),
+      within(card).getByText("Your license, devices, settings and activity."),
     ).toBeTruthy();
     expect(
       within(card).getByRole("button", {
@@ -202,8 +191,10 @@ describe("Download my data from a product (I-11)", () => {
       screen.queryByRole("button", { name: "Download my data" }),
     ).toBeNull();
     expect(screen.queryByRole("button", { name: "Delete account" })).toBeNull();
-    // Like the product sign-in card, it is in no section of the nav.
-    expect(screen.queryByRole("link", { name: /Your data/ })).toBeNull();
+    // It is the last section of the nav.
+    expect(
+      screen.getAllByRole("link", { name: "Your data" }).length,
+    ).toBeGreaterThan(0);
     await settle();
     expect(fetchedRequests().filter((r) => /export|\/data$/.test(r))).toEqual(
       [],
@@ -235,7 +226,9 @@ describe("Download my data from a product (I-11)", () => {
       "csrf-token",
     );
     expect(await screen.findByText("Your download has started")).toBeTruthy();
-    expect(screen.getByText("polaris-key-mossgarden-data.json")).toBeTruthy();
+    expect(
+      screen.getByText("It holds personal details, so keep it private."),
+    ).toBeTruthy();
     expect(within(card).queryByRole("alert")).toBeNull();
   });
 
@@ -278,14 +271,16 @@ describe("Download my data from a product (I-11)", () => {
     const card = await open({
       ...routes,
       "/api/products/mossgarden/export": () =>
-        ++asked === 1 ? STEP_UP : fileOf("mossgarden"),
+        ++asked === 1
+          ? { status: 429, body: { error: "rate_limited" } }
+          : fileOf("mossgarden"),
     });
     const button = within(card).getByRole("button", {
       name: "Download my data from Mossgarden",
     }) as HTMLButtonElement;
     await userEvent.click(button);
     expect((await within(card).findByRole("alert")).textContent).toBe(
-      "Sign in again to continue. This needs a sign-in from the last five minutes. Sign out, sign back in, then try again.",
+      "Too many tries. Wait a minute, then try again.",
     );
     expect(files.saved).toHaveLength(0);
     expect(button.disabled).toBe(false);
@@ -311,9 +306,8 @@ describe("Remove my data from a product (I-11)", () => {
         .getAllByRole("listitem")
         .map((li) => li.textContent),
     ).toEqual([
-      "Polaris Key deletes the settings and synced data it keeps for you in Mossgarden. This can't be undone.",
-      "Devices you signed in on keep working, but are no longer linked to you.",
-      "Little Fern is told, so they can delete anything they keep themselves.",
+      "Polaris Key deletes your settings and activity for Mossgarden. This can't be undone.",
+      "Little Fern is told, so they can delete their own copy.",
       "Your license stays in your library. While it does, Little Fern can still connect you to your old records through it.",
     ]);
     const keep = within(dialog).getByRole("button", { name: "Keep my data" });
@@ -352,7 +346,7 @@ describe("Remove my data from a product (I-11)", () => {
     const dialog = await openRemove(card);
     expect(
       within(dialog).getByText(
-        "The developer is told, so they can delete anything they keep themselves.",
+        "The developer is told, so they can delete their own copy.",
       ),
     ).toBeTruthy();
     expect(
@@ -461,9 +455,7 @@ describe("Remove my data from a product (I-11)", () => {
     ]);
     const card = await open(routes);
     expect(
-      within(card).getByText(
-        "A JSON file with your Mossgarden licenses, devices, settings and activity.",
-      ),
+      within(card).getByText("Your licenses, devices, settings and activity."),
     ).toBeTruthy();
     const dialog = await openRemove(card);
     expect(
@@ -634,12 +626,6 @@ describe("Remove my data from a product (I-11)", () => {
 
   it.each([
     [
-      "a sign-in older than five minutes",
-      STEP_UP,
-      "Sign in again to continue",
-      "This needs a sign-in from the last five minutes. Sign out, sign back in, then try again.",
-    ],
-    [
       "too many tries",
       { status: 429, body: { error: "rate_limited" } },
       "Too many tries",
@@ -777,11 +763,7 @@ describe("an open product's page (I-11)", () => {
   it("has the same card, and speaks of no license: what the file holds, what goes, what stays", async () => {
     const { routes, removals } = entryWorker();
     const card = await open(routes, "driftwood", "Driftwood Notes");
-    expect(
-      within(card).getByText(
-        "A JSON file with your settings and activity in Driftwood Notes.",
-      ),
-    ).toBeTruthy();
+    expect(within(card).getByText("Your settings and activity.")).toBeTruthy();
     expect(card.textContent).not.toMatch(/license/i);
     const dialog = await openRemove(card, "Driftwood Notes");
     expect(
@@ -789,9 +771,8 @@ describe("an open product's page (I-11)", () => {
         .getAllByRole("listitem")
         .map((li) => li.textContent),
     ).toEqual([
-      "Polaris Key deletes the settings and synced data it keeps for you in Driftwood Notes. This can't be undone.",
-      "Devices you signed in on keep working, but are no longer linked to you.",
-      "Tern Studio is told, so they can delete anything they keep themselves.",
+      "Polaris Key deletes your settings and activity for Driftwood Notes. This can't be undone.",
+      "Tern Studio is told, so they can delete their own copy.",
       "Driftwood Notes stays in your library.",
     ]);
     expect(dialog.textContent).not.toMatch(/license/i);
@@ -856,5 +837,151 @@ describe("an open product's page (I-11)", () => {
       }),
     ).toBeTruthy();
     expect(within(card).queryByText(/Remove from library/)).toBeNull();
+  });
+});
+
+describe("A stale sign-in and the support code (I-11)", () => {
+  const STALE = {
+    methods: [
+      {
+        id: "lnk_mail1",
+        kind: "email",
+        group: "email",
+        label: "Email",
+        display: ACCOUNT.email,
+        connectedAt: NOW_S - 90 * 86_400,
+        lastUsedAt: NOW_S - 3 * 86_400,
+        canRemove: false,
+        reason: "last_link",
+        flag: null,
+        relay: false,
+        tenantScoped: false,
+      },
+    ],
+    emails: [
+      {
+        methodId: "lnk_mail1",
+        email: ACCOUNT.email,
+        primary: true,
+        connectedAt: NOW_S - 90 * 86_400,
+        lastUsedAt: NOW_S - 3 * 86_400,
+        canRemove: false,
+        reason: "last_link",
+      },
+    ],
+    passkeys: [],
+    providers: [],
+    passkey: { canAdd: false, reason: null },
+    primaryEmail: ACCOUNT.email,
+    hideMyEmail: false,
+    stepUp: {
+      authenticatedAt: NOW_S - 3600,
+      freshUntil: NOW_S - 3300,
+      fresh: false,
+      maxAgeSeconds: 300,
+    },
+  };
+
+  it("remove: shows 'Confirm it's you first' in the dialog, then removes once confirmed", async () => {
+    let asked = 0;
+    const { routes, removals } = worker([mine()], (_url, done) =>
+      ++asked === 1 ? STEP_UP : done(),
+    );
+    const card = await open({
+      ...routes,
+      "/api/me/methods": STALE,
+      "POST /api/signin/email/start": {
+        ok: true,
+        expiresIn: 600,
+        codeLength: 6,
+        resendIn: 60,
+      },
+      "POST /api/signin/email/verify": { status: "signed_in", next: "/" },
+    });
+    const dialog = await openRemove(card);
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Remove my data" }),
+    );
+    const prompt = await within(dialog).findByRole("group", {
+      name: "Confirm it's you first",
+    });
+    expect(within(dialog).queryByRole("alert")).toBeNull();
+    await userEvent.click(
+      within(prompt).getByRole("button", {
+        name: `Email a code to ${ACCOUNT.email}`,
+      }),
+    );
+    await userEvent.type(
+      await within(prompt).findByRole("textbox", { name: "6-digit code" }),
+      "481920",
+    );
+    expect(
+      await screen.findByText("Your data was removed from Mossgarden"),
+    ).toBeTruthy();
+    expect(removals).toHaveLength(2);
+  });
+
+  it("download: the prompt takes the refusal's place, and confirming downloads", async () => {
+    let asked = 0;
+    const { routes } = worker();
+    const card = await open({
+      ...routes,
+      "/api/products/mossgarden/export": () =>
+        ++asked === 1 ? STEP_UP : fileOf("mossgarden"),
+      "/api/me/methods": STALE,
+      "POST /api/signin/email/start": {
+        ok: true,
+        expiresIn: 600,
+        codeLength: 6,
+        resendIn: 60,
+      },
+      "POST /api/signin/email/verify": { status: "signed_in", next: "/" },
+    });
+    await userEvent.click(
+      within(card).getByRole("button", {
+        name: "Download my data from Mossgarden",
+      }),
+    );
+    const prompt = await within(card).findByRole("group", {
+      name: "Confirm it's you first",
+    });
+    expect(within(card).queryByRole("alert")).toBeNull();
+    await userEvent.click(
+      within(prompt).getByRole("button", {
+        name: `Email a code to ${ACCOUNT.email}`,
+      }),
+    );
+    await userEvent.type(
+      await within(prompt).findByRole("textbox", { name: "6-digit code" }),
+      "481920",
+    );
+    await waitFor(() => expect(files.saved).toHaveLength(1));
+  });
+
+  it("asks for a support code on request, then shows it with Copy", async () => {
+    let code: string | null = null;
+    const { routes } = worker();
+    const card = await open({
+      ...routes,
+      "/api/products/mossgarden": () => ({
+        ...productView("mossgarden", [mine()]),
+        supportCode: code,
+      }),
+      "POST /api/products/mossgarden/support-code": () => {
+        code = "ps_abc123";
+        return { supportCode: code };
+      },
+    });
+    expect(within(card).queryByText("ps_abc123")).toBeNull();
+    await userEvent.click(
+      await within(card).findByRole("button", { name: "Get a support code" }),
+    );
+    expect(await within(card).findByText("ps_abc123")).toBeTruthy();
+    expect(
+      within(card).getByRole("button", { name: "Copy support code" }),
+    ).toBeTruthy();
+    expect(
+      within(card).queryByRole("button", { name: "Get a support code" }),
+    ).toBeNull();
   });
 });

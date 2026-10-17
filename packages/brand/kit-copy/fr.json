@@ -517,6 +517,8 @@
     "cli.help.lede": "Licence et mises à jour de {product}",
     "cli.help.more": "Exécutez {command} pour voir les options d’une commande.",
     "cli.help.group": "Licence",
+    "cli.help.namespace": "Activation, connexion, appareils et mises à jour",
+    "cli.gate.needs": "{command} nécessite une licence",
     "cli.verb.activate": "Ajouter une clé de licence (saisie, ou via stdin)",
     "cli.verb.enroll": "Obtenir la licence gratuite, si {product} en propose une",
     "cli.verb.deactivate": "Retirer votre licence de cet appareil et libérer sa place",

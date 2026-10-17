@@ -3,6 +3,8 @@ title: "Monorepo layout"
 description: "The package map, the Worker's layers (platform/, core/, services/, console/), the boundary test that enforces them, mount.ts as the composition root, the service table, and the checklist for adding a service."
 sidebar:
   order: 3
+type: "concept"
+lastReviewed: "2026-10-16"
 ---
 
 The `pnpm` + `turbo` JS workspace covers `packages/*`, `tools`, `products`, and the Node
@@ -146,7 +148,7 @@ work down the list until it passes.
 
 1. **Confirm the production Worker tolerates unknown slugs.** A newer build writes the new slug
    into `products.services_json`; an older build must carry it through rather than reset the
-   record (P0-08). Confirm the production deploy includes that before the first slug ships.
+   record. Confirm the production deploy includes that before the first slug ships.
 2. **Add the row** to `tools/services.json` and run `pnpm gen services`. Commit the generated
    files with it.
 3. **Directory and descriptor.** Create `packages/worker/src/services/<slug>/` with an

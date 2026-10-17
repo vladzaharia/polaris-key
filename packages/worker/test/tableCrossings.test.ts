@@ -38,8 +38,6 @@ const SEAMS: readonly (readonly [string, string, RemovedBy])[] = [
   // Identity issues, links and merges licences; the writes go through core/licensing.
   ["identity", "licenses", "permanent"],
   ["identity", "keys_index", "P0-20"],
-  // LX-08: the sign-in's upgrade-only rank reads the tier.
-  ["identity", "tiers", "P0-20"],
   // The portal's listings and download tokens (portal/repo.ts).
   ["identity", "release_metadata", "P0-23"],
   ["identity", "release_artifacts", "P0-23"],
@@ -72,6 +70,7 @@ const WRITE_SEAMS: readonly (readonly [string, string, RemovedBy])[] = [
   ["core/edgeMintApproval.ts", "edge_mint_approvals", "P0-26"],
   // core/licensing is the licences' home.
   ["core/licensing/grants.ts", "licenses", "permanent"],
+  ["core/licensing/issue.ts", "licenses", "permanent"],
   ["core/licensing/lifecycleWrites.ts", "licenses", "permanent"],
   ["core/ops/overrideMigration.ts", "account_overrides", "P0-49"],
   ["core/ops/overrideMigration.ts", "licenses", "P0-49"],
@@ -128,7 +127,6 @@ const LICENSE_WRITE_SEAMS: readonly (readonly [string, RemovedBy])[] = [
   ["core/products/store.ts", "P0-19"],
   ["core/ops/overrideMigration.ts", "P0-49"],
   ["services/identity/accounts/legacy.ts", "P0-24"],
-  ["services/identity/oidc.ts", "P0-20"],
 ];
 
 const OWNER = new Map<string, string>();

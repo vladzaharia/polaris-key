@@ -1,0 +1,16 @@
+{
+  "name": "polaris-key-example-server-hono",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx server.ts"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.13.0",
+    "@polaris-key/server": "^0.0.0",
+    "hono": "^4.7.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0"
+  }
+}

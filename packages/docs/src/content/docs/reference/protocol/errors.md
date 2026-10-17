@@ -1,8 +1,10 @@
 ---
 title: "Errors and limits"
-description: "The nested wire-v3 error body, the flat shape it co-exists with, the hide-don't-reveal 404 policy, and how rate limiting fails per surface."
+description: "The nested wire v4 error body, the flat shape it co-exists with, the hide-don't-reveal 404 policy, and how rate limiting fails per surface."
 sidebar:
   order: 6
+type: "reference"
+lastReviewed: "2026-10-16"
 ---
 
 Core owns the error taxonomy, because a service has to be able to answer at all — the codes and
@@ -10,12 +12,12 @@ the response helpers live in `core/` precisely so `services/<slug>/` can import 
 
 ## Two body shapes, on purpose
 
-Wire contract v3 specifies a **nested** error body. The pre-split worker emitted a **flat** one.
+Wire contract v4 specifies a **nested** error body. The pre-split worker emitted a **flat** one.
 Both are in the codebase today, and carrying both across the migration is the point: a handler
-that moved without changing its body keeps its behaviour byte-identical, while the surfaces v3
-introduced speak the nested shape from their first request.
+that moved without changing its body keeps its behaviour byte-identical, while the surfaces added with the split
+speak the nested shape from their first request.
 
-**Nested (wire v3):**
+**Nested (wire v4):**
 
 ```json
 { "error": { "code": "registration_closed" } }
@@ -176,7 +178,7 @@ nothing — no key, no session, no prior state — so with the limiter gone it i
 free-credential faucet, and the device and telemetry rows it writes are the amplifier.
 
 One ordering detail worth repeating from
-[the device principal](/docs/services/core/device-principal/): on that endpoint the
+[the device principal](/docs/reference/protocol/device-principal/): on that endpoint the
 `requires-license` refusal comes **before** the limiter (a policy that can never say yes must not
 have its budget consumed), and the limiter comes **before** the identity exchange (so a flood of
 forged cookies cannot turn a rate-limited endpoint into an unmetered session-probing oracle).
@@ -195,6 +197,6 @@ manifest) set `public, max-age=300` explicitly.
 ## See also
 
 - [Wire error codes](/docs/reference/error-codes/) — the generated taxonomy.
-- [The device principal](/docs/services/core/device-principal/) — where the 401, 403, and 413
+- [The device principal](/docs/reference/protocol/device-principal/) — where the 401, 403, and 413
   answers come from.
-- [Discovery](/docs/services/core/discovery/) — the other half of hide-don't-reveal.
+- [Discovery](/docs/reference/protocol/discovery/) — the other half of hide-don't-reveal.

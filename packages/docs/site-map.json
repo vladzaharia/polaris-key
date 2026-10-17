@@ -234,56 +234,14 @@
       "action": "delete",
       "to": ["build/ui/components/index"],
       "pri": "P1",
-      "package": "DOC-08b",
-      "deferred": "DOC-08b"
+      "package": "DOC-08b"
     },
     {
       "from": "build/ui/components/cloud-sync-status",
       "action": "delete",
       "to": ["build/ui/components/index"],
       "pri": "P1",
-      "package": "DOC-08b",
-      "deferred": "DOC-08b"
-    },
-    {
-      "from": "build/ui/components/entitlement-gate",
-      "action": "delete",
-      "to": ["build/ui/components/index"],
-      "pri": "P1",
-      "package": "DOC-08b",
-      "deferred": "DOC-08b"
-    },
-    {
-      "from": "build/ui/components/license-choice",
-      "action": "delete",
-      "to": ["build/ui/components/index"],
-      "pri": "P1",
-      "package": "DOC-08b",
-      "deferred": "DOC-08b"
-    },
-    {
-      "from": "build/ui/components/paywall",
-      "action": "delete",
-      "to": ["build/ui/components/index"],
-      "pri": "P1",
-      "package": "DOC-08b",
-      "deferred": "DOC-08b"
-    },
-    {
-      "from": "build/ui/components/toast",
-      "action": "delete",
-      "to": ["build/ui/components/index"],
-      "pri": "P1",
-      "package": "DOC-08b",
-      "deferred": "DOC-08b"
-    },
-    {
-      "from": "build/ui/components/welcome",
-      "action": "delete",
-      "to": ["build/ui/components/index"],
-      "pri": "P1",
-      "package": "DOC-08b",
-      "deferred": "DOC-08b"
+      "package": "DOC-08b"
     },
     {
       "from": "build/wire/index",

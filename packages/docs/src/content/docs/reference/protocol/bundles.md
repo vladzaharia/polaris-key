@@ -3,6 +3,8 @@ title: "Offline bundles"
 description: "pkey-bundle+jws — the air-gapped activation artifact, its three time bounds, the four ordered refusal steps that make import all-or-nothing, and the reload profile that re-verifies it at every start."
 sidebar:
   order: 9
+type: "reference"
+lastReviewed: "2026-10-16"
 ---
 
 An offline activation bundle is the air-gapped path: an operator mints one against a device's
@@ -47,11 +49,11 @@ activation screen.
 Three timestamps, three different meanings. Getting these confused is the most common way to
 misread a bundle.
 
-| Bound              | Value                                                                                                                                                                                                                      | Profile it is checked on                    | What it means                                  |
-| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- | ---------------------------------------------- |
-| Inner `expiresAt`  | `issuedAt + DOC_EXPIRY_SECONDS` (1 hour)                                                                                                                                                                                   | **Reload** — not asserted                   | Exactly what the online path mints. Deliberate |
-| Inner `graceUntil` | `issuedAt + graceDays × 86 400`, `graceDays ≤ 365`; no later than the licence's expiry (never earlier than `expiresAt`) while `licensing.clampGraceToExpiry` is on ([§3.6](/docs/services/license/document/#the-envelope)) | Enforced by the gate against `effectiveNow` | How long the imported install runs             |
-| Bundle `expiresAt` | `issuedAt + BUNDLE_IMPORT_WINDOW_SECONDS` = 2 592 000 s (30 days)                                                                                                                                                          | **Network** — a stale bundle is refused     | How long this file may sit on a USB stick      |
+| Bound              | Value                                                                                                                                                                                                                                | Profile it is checked on                    | What it means                                  |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------- | ---------------------------------------------- |
+| Inner `expiresAt`  | `issuedAt + DOC_EXPIRY_SECONDS` (1 hour)                                                                                                                                                                                             | **Reload** — not asserted                   | Exactly what the online path mints. Deliberate |
+| Inner `graceUntil` | `issuedAt + graceDays × 86 400`, `graceDays ≤ 365`; no later than the licence's expiry (never earlier than `expiresAt`) while `licensing.clampGraceToExpiry` is on ([§3.6](/docs/reference/protocol/license-document/#the-envelope)) | Enforced by the gate against `effectiveNow` | How long the imported install runs             |
+| Bundle `expiresAt` | `issuedAt + BUNDLE_IMPORT_WINDOW_SECONDS` = 2 592 000 s (30 days)                                                                                                                                                                    | **Network** — a stale bundle is refused     | How long this file may sit on a USB stick      |
 
 ### Why the inner documents expire in an hour
 
@@ -120,7 +122,7 @@ type BundleRefusalReason =
   | "inner-doc-rejected"; // step 4 — a carried document failed against the effective set
 ```
 
-`verifyBundle` returns the verified contents or `null` — the shape a host wants when it just
+`verifyBundle` returns the verified contents or `null` — the shape a host wants when it only
 needs to know whether to write. `inspectBundle` is the same walk with the step attributed; use
 it when the reason matters, because "get a bundle minted for THIS machine" is a materially
 better error than "invalid".
@@ -128,7 +130,7 @@ better error than "invalid".
 ### Pins only, everywhere
 
 Both the bundle **and** the manifest it carries are verified against the compiled-in pins,
-minus any a verified manifest has revoked ([tombstones](/docs/build/wire/trust/)). An air-gapped
+minus any a verified manifest has revoked ([tombstones](/docs/reference/protocol/trust/)). An air-gapped
 device must not be the one place where a planted key set is accepted.
 
 ### Two profiles: import and reload
@@ -163,7 +165,7 @@ revoked. **No ETags** are written: these
 documents did not come from a conditional GET, and inventing validators for them would make the
 next online sync send an `If-None-Match` the server never issued.
 
-A well-behaved host then re-runs its normal load path over what it just wrote, rather than
+A well-behaved host then re-runs its normal load path over what it wrote, rather than
 trusting the in-memory objects. The imported install must reach exactly the state a **restart**
 would reach, and the only way to be sure of that is to take the same route.
 
@@ -186,7 +188,7 @@ would reach, and the only way to be sure of that is to take the same route.
 
 ## Minting
 
-Two front doors onto one endpoint, `POST /manage/api/products/<slug>/bundles`. It is an admin
+Two front doors onto one endpoint, `/manage/api/products/<slug>/bundles` (POST). It is an admin
 surface: authenticated (a console session, or an admin API token scoped to `bundles:mint`),
 CSRF-protected for session callers, rate-limited with the rest of the admin API, and
 **audit-logged** — the audit row is the only record that a mint happened, since the artifact

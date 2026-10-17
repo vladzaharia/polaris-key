@@ -1,49 +1,90 @@
 ---
-title: "Building on Polaris Key"
-description: "Onboard a product, author the manifest, integrate an SDK, go offline, read the wire contract."
+title: "Build"
+description: "Write the manifest, add an SDK, test the integration and go live."
+type: "overview"
+lastReviewed: "2026-10-16"
 sidebar:
   order: 1
 ---
 
-This section is for the side that **adopts** Polaris Key: the team shipping a product that
-wants licensing, managed config, releases, distribution, updates, or identity, and needs to know what to
-write, what to run, and what to link against. If you want to know what a service actually does
-on the wire, start at [Services](/docs/services/core/) instead; if you're operating an
-already-deployed Polaris Key instance, that's [Administer](/docs/admin/).
+import CardGrid from "../../../components/docs/CardGrid.astro";
+import { LinkCard } from "@astrojs/starlight/components";
 
-Building on Polaris Key has one recurring shape, whichever of the seven services you turn on: a
-**product** is registered as data (a `.pkey/` manifest), the control plane signs documents
-against it, and a **client** — one of six SDKs, or a CLI built from the same core — verifies
-those documents and gates the app on them. Everything below is one of those three moving parts.
+This section is for the developer who adds Polaris Key to an app. A product is described as data in a `.pkey/` manifest, the Worker signs documents against it, and an SDK in your app verifies them and gates on the result.
 
-## In this section
+**Requires:** a product in the console, and the **Platform admin** role to create one.
 
-| Page                                                                  | What it covers                                                                                                                                        |
-| --------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [The .pkey/ manifest](/docs/build/manifest/)                          | The three files, the `ConfigEntry` catalog shape, editor tooling, service requirements, and how a resync reconciles the manifest with admin overrides |
-| [Onboarding a product](/docs/build/onboarding/)                       | The end-to-end walkthrough — stand up the platform, declare services, register, integrate, ship — using djdl as the worked example                    |
-| [Registering a product](/docs/build/registering/)                     | How a product becomes a row: repo-link vs. manual create, and the `modules` service declaration                                                       |
-| [Integrate in 5 minutes](/docs/build/quickstart/)                     | One page per SDK: `pkey sdk --lang <x> --write`, then create the client, gate and read config                                                         |
-| [Recipes](/docs/build/recipes/)                                       | Device-limit recovery, server-side licence checks, crash tags, attestation-gated products, store outlets                                              |
-| [SDKs](/docs/build/sdks/)                                             | One wire contract, seven surfaces — Node, React, Python, Swift, Godot, Kotlin and the CLI                                                             |
-| [UI kits](/docs/build/ui/)                                            | One design system for every SDK's UI: theming, localisation, the component catalog and a page per framework                                           |
-| [Installing the SDKs from the feeds](/docs/build/install-from-feeds/) | Each SDK on its package feed at `pkg.plrs.im`, and the snippet every client needs                                                                     |
-| [The wire contract](/docs/build/wire/)                                | The frozen JWS envelope your client verifies, for debugging a rejection or porting a sixth SDK                                                        |
-| [Going offline](/docs/build/offline/)                                 | The three offline depths: grace, air-gapped bundles, and local-only builds                                                                            |
-| [API reference](/docs/build/api/)                                     | Where the machine-readable OpenAPI spec and the full route table live                                                                                 |
+## Get started
 
-Most integrations read the manifest and onboarding pages once, pick an SDK, and only come back
-for [Going offline](/docs/build/offline/) if the product ships somewhere that can't always
-reach `key.plrs.im`. The wire contract and API reference are lookup material, not a reading
-order — reach for them when something needs to match byte-for-byte.
+<CardGrid>
+  <LinkCard
+    title="Register a product from its repo"
+    href="/docs/build/manifest/register/"
+    description="Scaffold .pkey/ and link the repository."
+  />
+  <LinkCard
+    title="Choose your integration"
+    href="/docs/start/choose-your-integration/"
+    description="Drop-in UI kit or your own UI, and your SDK."
+  />
+</CardGrid>
 
-## Before you start
+## Build
 
-One decision precedes any code: which services your product runs. `.pkey/product`'s `modules`
-block is projected everywhere else a client or operator looks — route mounting, the discovery
-document, the console, and every SDK's capability map. Service requirements are validated as a
-set: Distribution needs Release, Update needs Distribution, and Cloud Sync needs Config and
-Identity. Device registration then derives from that set: license-required with License on,
-identity-required with Identity on otherwise, and open only when both are off. Read
-[Registering a product](/docs/build/registering/) for the declaration and
-[The device principal](/docs/reference/protocol/device-principal/) for the wire behavior.
+<CardGrid>
+  <LinkCard
+    title="The .pkey/ manifest"
+    href="/docs/build/manifest/"
+    description="Product, catalog, release and distribution files."
+  />
+  <LinkCard
+    title="SDKs"
+    href="/docs/build/sdks/"
+    description="Node, React, Python, Swift, Kotlin and Godot."
+  />
+  <LinkCard
+    title="Drop-in UI kits"
+    href="/docs/build/ui/"
+    description="Prebuilt screens for each SDK."
+  />
+  <LinkCard
+    title="Install the SDKs and the CLI"
+    href="/docs/build/install/"
+    description="Package feeds and package managers."
+  />
+  <LinkCard
+    title="Web apps"
+    href="/docs/build/web-apps/"
+    description="Browser origins and CORS."
+  />
+  <LinkCard
+    title="Run Polaris Key locally"
+    href="/docs/build/local/"
+    description="A local server with a test key for every state."
+  />
+</CardGrid>
+
+## Ship
+
+<CardGrid>
+  <LinkCard
+    title="Test your integration"
+    href="/docs/build/test-your-integration/"
+    description="Test licenses, offline, grace and a skewed clock."
+  />
+  <LinkCard
+    title="Go live"
+    href="/docs/build/go-live/"
+    description="Pins, signing and CI."
+  />
+  <LinkCard
+    title="Troubleshoot your integration"
+    href="/docs/build/troubleshooting/"
+    description="Find the cause from the status or code."
+  />
+  <LinkCard
+    title="Reference"
+    href="/docs/reference/"
+    description="CLI, error codes, settings and the protocol."
+  />
+</CardGrid>

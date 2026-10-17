@@ -1,24 +1,22 @@
 import * as React from "react";
-import { AlertCircle, ChevronRight } from "lucide-react";
+import { AlertCircle } from "lucide-react";
 import { SUPPORTED_FORMATS, userSettingIssues } from "@polaris-key/catalog";
-import type {
-  UserSettingConflict,
-  UserSettingPolicy,
-} from "@polaris-key/catalog";
 import type {
   ConfigEntry,
   ConfigKind,
   ManagementState,
 } from "../../../../api.js";
 import { IN_APP_LABELS } from "../../../../lib/labels.js";
+import { Link } from "../../../router.js";
+import { r } from "../../../routes.js";
 import {
   ENTRY_TYPE_LABELS,
   TYPE_LABELS,
-  USER_CONFLICT_LABELS,
-  USER_SCOPE_OPTIONS,
   WIDGETS,
-  IN_APP_HELP,
+  TYPE_HELP,
+  codeOnlyText,
   entryType,
+  inAppHelp,
   type EntryType,
 } from "./entryType.js";
 import {
@@ -36,6 +34,17 @@ import { SegmentedControl } from "../../../../ui/SegmentedControl.js";
 import { Select } from "../../../../ui/Select.js";
 import { Textarea } from "../../../../ui/Textarea.js";
 import { newEntry } from "../model/catalogDraft.js";
+import {
+  Group,
+  NumberKeyword,
+  UserSettingFields,
+  conflictOptionsFor,
+  numberOrUndefined,
+  withField,
+} from "./EntryFormParts.js";
+
+export { conflictOptionsFor };
+import { retiredNotes } from "../model/entryNotes.js";
 
 type Json = Record<string, unknown>;
 
@@ -48,40 +57,6 @@ const TYPES = [
   "object",
 ] as const;
 export type SchemaType = (typeof TYPES)[number];
-
-/**
- * The conflict policies a value type allows (plans/U-01b.md §2.2, R7): a number gets last write,
- * highest or lowest; an object (a set is an object of booleans) gets last write or merge; every
- * other type, a list included, gets last write only. `union` and `revision` are record policies.
- */
-export function conflictOptionsFor(type: string): UserSettingConflict[] {
-  if (type === "number" || type === "integer")
-    return ["lastWrite", "max", "min"];
-  if (type === "object") return ["lastWrite", "merge"];
-  return ["lastWrite"];
-}
-
-/** A copy of `obj` with `field` set, or removed when `value` is empty. */
-function withField<T extends object>(obj: T, field: string, value: unknown): T {
-  const next = { ...obj } as Record<string, unknown>;
-  if (
-    value === undefined ||
-    value === null ||
-    value === "" ||
-    (Array.isArray(value) && value.length === 0)
-  ) {
-    delete next[field];
-  } else {
-    next[field] = value;
-  }
-  return next as T;
-}
-
-const numberOrUndefined = (raw: string): number | undefined => {
-  if (raw.trim() === "") return undefined;
-  const n = Number(raw);
-  return Number.isFinite(n) ? n : undefined;
-};
 
 /** Keywords that only describe a fragment; anything else in it is a validation rule. */
 const DESCRIPTIVE_KEYWORDS = new Set(["type", "description"]);
@@ -161,6 +136,9 @@ export function CatalogEntryForm({
   issues,
   categories,
   fresh = false,
+  slug,
+  syncEnabled = true,
+  recipeIds = null,
   onChange,
 }: {
   entry: ConfigEntry;
@@ -170,6 +148,12 @@ export function CatalogEntryForm({
   categories: string[];
   /** The entry was added in this draft (its type may still be guessed from the default). */
   fresh?: boolean;
+  /** The product, for the link to its recipes. */
+  slug?: string;
+  /** Cloud Sync is on for the product, so an Editable setting's choice can sync. */
+  syncEnabled?: boolean;
+  /** The ids of the product's mint recipes, or null while unknown. */
+  recipeIds?: string[] | null;
   onChange: (next: ConfigEntry) => void;
 }): React.ReactElement {
   const schema = (entry.schema ?? {}) as Json;
@@ -207,6 +191,8 @@ export function CatalogEntryForm({
 
   const enumValues = Array.isArray(schema.enum) ? schema.enum : null;
   const secret = entry.kind === "secret";
+  const minted = entryType(entry) === "minted";
+  const codeOnly = secret;
   const ui = (entry.ui ?? {}) as Json;
   const hasRules = Object.keys(schema).some(
     (k) => !DESCRIPTIVE_KEYWORDS.has(k),
@@ -283,6 +269,7 @@ export function CatalogEntryForm({
           name="kind"
           label="Type"
           group
+          help={TYPE_HELP[entryType(entry)]}
           value={entry.kind}
           error={issue("kind")}
         >
@@ -299,26 +286,14 @@ export function CatalogEntryForm({
                       ? "flag"
                       : "secret";
                 // A minted token is a secret delivered as edgeMint; the other types carry no
-                // delivery of their own (a secret then means clientScoped).
-                let next: ConfigEntry = withField(
+                // delivery of their own (a secret then means clientScoped). Fields the new type
+                // does not use stay on the entry, so picking the earlier type puts them back;
+                // the publish drops them (`applicableEntry`).
+                const next: ConfigEntry = withField(
                   { ...entry, kind },
                   "delivery",
                   picked === "minted" ? "edgeMint" : undefined,
                 );
-                // A secret has no plaintext default; a management default is config-only.
-                if (kind === "secret") {
-                  next = withField(next, "default", undefined);
-                  setDefaultRaw("");
-                }
-                if (kind !== "config") {
-                  next = withField(next, "managementDefault", undefined);
-                  // A user setting is a config key (Cloud Sync rule 1).
-                  next = withField(next, "user", undefined);
-                }
-                if (kind !== "flag") {
-                  next = withField(next, "userGrant", undefined);
-                  next = withField(next, "grantLabel", undefined);
-                }
                 onChange(next);
               }}
               options={(
@@ -335,44 +310,111 @@ export function CatalogEntryForm({
             />
           )}
         </FormField>
+      </div>
+      {entry.kind === "config" ? (
         <FormField
-          name="type"
-          label="Value type"
-          help={
-            guessing && entry.default !== undefined
-              ? "Guessed from the default."
-              : undefined
-          }
-          value={type}
+          name="managementDefault"
+          label="In the app"
+          group
+          help={inAppHelp(
+            entry.managementDefault ?? "default",
+            syncEnabled && entry.user?.sync !== "local",
+          )}
+          value={entry.managementDefault ?? "default"}
         >
           {(f) => (
-            <Select
-              {...f}
-              value={type}
-              options={TYPES.map((t) => ({
-                value: t,
-                label: TYPE_LABELS[t],
+            <SegmentedControl<ManagementState>
+              className="w-fit self-start"
+              aria-labelledby={f["aria-labelledby"]}
+              value={entry.managementDefault ?? "default"}
+              onChange={(v) =>
+                set("managementDefault", v === "default" ? undefined : v)
+              }
+              options={MANAGEMENT_STATES.map((s) => ({
+                value: s.value,
+                label: IN_APP_LABELS[s.value] ?? s.label,
               }))}
-              onChange={(t) => {
-                setTypePicked(true);
-                setDefaultRaw("");
-                const next: Json = { type: t };
-                if (schema.description) next.description = schema.description;
-                onChange({
-                  ...withField(entry, "default", undefined),
-                  schema: next,
-                });
-              }}
             />
           )}
         </FormField>
-        {secret ? (
-          <p className="self-end text-sm text-fg-muted sm:pb-2">
-            {entry.delivery === "edgeMint"
-              ? "A minted token is signed on request from a recipe. It is never stored or listed."
-              : "A secret has no default: its value is write-only and set per profile or license. The app reads it in code; it is never listed."}
+      ) : codeOnly ? (
+        <div className="space-y-1">
+          <p className="text-sm font-medium text-fg-strong">In the app</p>
+          <p className="text-sm text-fg-muted">
+            {codeOnlyText(entryType(entry), entry.key)}
           </p>
-        ) : guessing ? (
+        </div>
+      ) : null}
+      {minted && recipeIds !== null && !recipeIds.includes(entry.key) ? (
+        <p
+          role="status"
+          className="flex items-start gap-2 text-sm text-warning"
+        >
+          <AlertCircle aria-hidden className="mt-0.5 size-4 shrink-0" />
+          <span>
+            No recipe called {entry.key}. Minting fails until one exists.{" "}
+            {slug ? (
+              <Link
+                to={r.edgeMint(slug)}
+                className="underline underline-offset-2"
+              >
+                Recipes
+              </Link>
+            ) : null}
+          </span>
+        </p>
+      ) : null}
+      {retiredNotes(entry).map((note) => (
+        <p
+          key={note}
+          role="status"
+          className="flex items-start gap-2 text-sm text-warning"
+        >
+          <AlertCircle aria-hidden className="mt-0.5 size-4 shrink-0" />
+          <span>{note}</span>
+        </p>
+      ))}
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        {minted ? (
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-fg-strong">Value type</p>
+            <p className="text-sm text-fg-muted">Text, a signed token</p>
+          </div>
+        ) : (
+          <FormField
+            name="type"
+            label="Value type"
+            help={
+              guessing && entry.default !== undefined
+                ? "Guessed from the default."
+                : undefined
+            }
+            value={type}
+          >
+            {(f) => (
+              <Select
+                {...f}
+                value={type}
+                options={TYPES.map((t) => ({
+                  value: t,
+                  label: TYPE_LABELS[t],
+                }))}
+                onChange={(t) => {
+                  setTypePicked(true);
+                  setDefaultRaw("");
+                  const next: Json = { type: t };
+                  if (schema.description) next.description = schema.description;
+                  onChange({
+                    ...withField(entry, "default", undefined),
+                    schema: next,
+                  });
+                }}
+              />
+            )}
+          </FormField>
+        )}
+        {secret ? null : guessing ? (
           <FormField
             name="default"
             label="Default"
@@ -476,31 +518,6 @@ export function CatalogEntryForm({
         )}
       </FormField>
 
-      {entry.kind === "config" ? (
-        <FormField
-          name="managementDefault"
-          label="In the app"
-          group
-          help={IN_APP_HELP[entry.managementDefault ?? "default"]}
-          value={entry.managementDefault ?? "default"}
-        >
-          {(f) => (
-            <SegmentedControl<ManagementState>
-              className="w-fit self-start"
-              aria-labelledby={f["aria-labelledby"]}
-              value={entry.managementDefault ?? "default"}
-              onChange={(v) =>
-                set("managementDefault", v === "default" ? undefined : v)
-              }
-              options={MANAGEMENT_STATES.map((s) => ({
-                value: s.value,
-                label: IN_APP_LABELS[s.value] ?? s.label,
-              }))}
-            />
-          )}
-        </FormField>
-      ) : null}
-
       {entry.kind === "flag" ? (
         <div className="grid gap-4 sm:grid-cols-2">
           <Checkbox
@@ -528,167 +545,175 @@ export function CatalogEntryForm({
       ) : null}
 
       <div className="space-y-3">
-        <Group
-          title="Validation"
-          open={validationOpen}
-          onOpenChange={setValidationOpen}
-          problem={schemaProblem !== undefined}
-        >
-          {advanced ? (
-            <FormField
-              name="schema-json"
-              label="Schema (JSON)"
-              value={schemaText}
-              error={schemaProblem}
-              announceError
-            >
-              {(f) => (
-                <Textarea
-                  {...f}
-                  mono
-                  rows={8}
-                  spellCheck={false}
-                  value={schemaText}
-                  onChange={(e) => {
-                    const text = e.target.value;
-                    setSchemaText(text);
-                    let parsed: unknown;
-                    try {
-                      parsed = JSON.parse(text);
-                    } catch (err) {
-                      setSchemaTextError(
-                        `Invalid JSON: ${err instanceof Error ? err.message : String(err)}`,
-                      );
-                      return;
-                    }
-                    const problem = schemaIssue(parsed);
-                    setSchemaTextError(problem);
-                    if (problem === null) {
-                      lastSchema.current = parsed as Json;
-                      setSchema(parsed as Json);
-                    }
-                  }}
-                />
-              )}
-            </FormField>
-          ) : type === "string" || type === "integer" || type === "number" ? (
-            <div className="grid gap-4 sm:grid-cols-2">
-              {type === "string" ? (
-                <FormField name="format" label="Format" value={schema.format}>
-                  {(f) => (
-                    <Select
-                      {...f}
-                      value={
-                        typeof schema.format === "string" ? schema.format : null
-                      }
-                      allowEmpty
-                      emptyLabel="Any text"
-                      options={SUPPORTED_FORMATS.map((s) => ({
-                        value: s,
-                        label: s,
-                      }))}
-                      onChange={(v) => setSchemaField("format", v)}
-                    />
-                  )}
-                </FormField>
-              ) : null}
+        {minted ? null : (
+          <Group
+            title="Validation"
+            open={validationOpen}
+            onOpenChange={setValidationOpen}
+            problem={schemaProblem !== undefined}
+          >
+            {advanced ? (
               <FormField
-                name="enum"
-                label="Allowed values"
-                help="Comma-separated. Leave empty to allow any value."
-                value={enumValues}
+                name="schema-json"
+                label="Schema (JSON)"
+                value={schemaText}
+                error={schemaProblem}
+                announceError
               >
                 {(f) => (
-                  <Input
+                  <Textarea
                     {...f}
-                    value={enumValues ? enumValues.map(String).join(", ") : ""}
+                    mono
+                    rows={8}
+                    spellCheck={false}
+                    value={schemaText}
                     onChange={(e) => {
-                      const parts = e.target.value
-                        .split(",")
-                        .map((p) => p.trim())
-                        .filter((p) => p !== "");
-                      setSchemaField(
-                        "enum",
-                        type === "string"
-                          ? parts
-                          : parts.map(Number).filter((n) => Number.isFinite(n)),
-                      );
+                      const text = e.target.value;
+                      setSchemaText(text);
+                      let parsed: unknown;
+                      try {
+                        parsed = JSON.parse(text);
+                      } catch (err) {
+                        setSchemaTextError(
+                          `Invalid JSON: ${err instanceof Error ? err.message : String(err)}`,
+                        );
+                        return;
+                      }
+                      const problem = schemaIssue(parsed);
+                      setSchemaTextError(problem);
+                      if (problem === null) {
+                        lastSchema.current = parsed as Json;
+                        setSchema(parsed as Json);
+                      }
                     }}
                   />
                 )}
               </FormField>
-              {type === "integer" || type === "number" ? (
-                <>
-                  <NumberKeyword
-                    name="minimum"
-                    label="Minimum"
-                    schema={schema}
-                    onChange={setSchemaField}
-                  />
-                  <NumberKeyword
-                    name="maximum"
-                    label="Maximum"
-                    schema={schema}
-                    onChange={setSchemaField}
-                  />
-                </>
-              ) : (
-                <>
-                  <NumberKeyword
-                    name="minLength"
-                    label="Minimum length"
-                    schema={schema}
-                    onChange={setSchemaField}
-                  />
-                  <NumberKeyword
-                    name="maxLength"
-                    label="Maximum length"
-                    schema={schema}
-                    onChange={setSchemaField}
-                  />
-                  <FormField
-                    name="pattern"
-                    label="Pattern"
-                    help="A regular expression the value must match."
-                    value={schema.pattern}
-                  >
+            ) : type === "string" || type === "integer" || type === "number" ? (
+              <div className="grid gap-4 sm:grid-cols-2">
+                {type === "string" ? (
+                  <FormField name="format" label="Format" value={schema.format}>
                     {(f) => (
-                      <Input
+                      <Select
                         {...f}
-                        mono
                         value={
-                          typeof schema.pattern === "string"
-                            ? schema.pattern
-                            : ""
+                          typeof schema.format === "string"
+                            ? schema.format
+                            : null
                         }
-                        onChange={(e) =>
-                          setSchemaField("pattern", e.target.value)
-                        }
+                        allowEmpty
+                        emptyLabel="Any text"
+                        options={SUPPORTED_FORMATS.map((s) => ({
+                          value: s,
+                          label: s,
+                        }))}
+                        onChange={(v) => setSchemaField("format", v)}
                       />
                     )}
                   </FormField>
-                </>
-              )}
-            </div>
-          ) : null}
-          {issue("schema") && !advanced ? (
-            <p role="alert" className="text-xs text-danger">
-              {issue("schema")}
-            </p>
-          ) : null}
-          <Checkbox
-            label="Edit the schema as JSON"
-            checked={advanced}
-            onCheckedChange={(on) => {
-              setAdvanced(on);
-              const pretty = formatJson(JSON.stringify(schema));
-              setSchemaText((pretty ?? "{}").trimEnd());
-              setSchemaTextError(null);
-            }}
-          />
-        </Group>
+                ) : null}
+                <FormField
+                  name="enum"
+                  label="Allowed values"
+                  help="Comma-separated. Leave empty to allow any value."
+                  value={enumValues}
+                >
+                  {(f) => (
+                    <Input
+                      {...f}
+                      value={
+                        enumValues ? enumValues.map(String).join(", ") : ""
+                      }
+                      onChange={(e) => {
+                        const parts = e.target.value
+                          .split(",")
+                          .map((p) => p.trim())
+                          .filter((p) => p !== "");
+                        setSchemaField(
+                          "enum",
+                          type === "string"
+                            ? parts
+                            : parts
+                                .map(Number)
+                                .filter((n) => Number.isFinite(n)),
+                        );
+                      }}
+                    />
+                  )}
+                </FormField>
+                {type === "integer" || type === "number" ? (
+                  <>
+                    <NumberKeyword
+                      name="minimum"
+                      label="Minimum"
+                      schema={schema}
+                      onChange={setSchemaField}
+                    />
+                    <NumberKeyword
+                      name="maximum"
+                      label="Maximum"
+                      schema={schema}
+                      onChange={setSchemaField}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <NumberKeyword
+                      name="minLength"
+                      label="Minimum length"
+                      schema={schema}
+                      onChange={setSchemaField}
+                    />
+                    <NumberKeyword
+                      name="maxLength"
+                      label="Maximum length"
+                      schema={schema}
+                      onChange={setSchemaField}
+                    />
+                    <FormField
+                      name="pattern"
+                      label="Pattern"
+                      help="A regular expression the value must match."
+                      value={schema.pattern}
+                    >
+                      {(f) => (
+                        <Input
+                          {...f}
+                          mono
+                          value={
+                            typeof schema.pattern === "string"
+                              ? schema.pattern
+                              : ""
+                          }
+                          onChange={(e) =>
+                            setSchemaField("pattern", e.target.value)
+                          }
+                        />
+                      )}
+                    </FormField>
+                  </>
+                )}
+              </div>
+            ) : null}
+            {issue("schema") && !advanced ? (
+              <p role="alert" className="text-xs text-danger">
+                {issue("schema")}
+              </p>
+            ) : null}
+            <Checkbox
+              label="Edit the schema as JSON"
+              checked={advanced}
+              onCheckedChange={(on) => {
+                setAdvanced(on);
+                const pretty = formatJson(JSON.stringify(schema));
+                setSchemaText((pretty ?? "{}").trimEnd());
+                setSchemaTextError(null);
+              }}
+            />
+          </Group>
+        )}
 
-        {entry.kind === "config" ? (
+        {entry.kind === "config" && syncEnabled ? (
           <Group
             title="Synced setting"
             open={userOpen}
@@ -713,287 +738,82 @@ export function CatalogEntryForm({
           </Group>
         ) : null}
 
-        <Group title="Form hints" open={hintsOpen} onOpenChange={setHintsOpen}>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <FormField name="widget" label="Widget" value={ui.widget}>
-              {(f) => (
-                <Select
-                  {...f}
-                  value={typeof ui.widget === "string" ? ui.widget : null}
-                  allowEmpty
-                  emptyLabel="Automatic"
-                  options={WIDGETS.map((w) => ({ value: w, label: w }))}
-                  onChange={(v) => setUi("widget", v)}
-                />
-              )}
-            </FormField>
-            <FormField name="unit" label="Unit" value={ui.unit}>
-              {(f) => (
-                <Input
-                  {...f}
-                  value={typeof ui.unit === "string" ? ui.unit : ""}
-                  placeholder="seconds"
-                  onChange={(e) => setUi("unit", e.target.value)}
-                />
-              )}
-            </FormField>
-            <FormField name="help" label="Help" value={ui.help}>
-              {(f) => (
-                <Input
-                  {...f}
-                  value={typeof ui.help === "string" ? ui.help : ""}
-                  onChange={(e) => setUi("help", e.target.value)}
-                />
-              )}
-            </FormField>
-            <FormField
-              name="placeholder"
-              label="Placeholder"
-              value={ui.placeholder}
-            >
-              {(f) => (
-                <Input
-                  {...f}
-                  value={
-                    typeof ui.placeholder === "string" ? ui.placeholder : ""
-                  }
-                  onChange={(e) => setUi("placeholder", e.target.value)}
-                />
-              )}
-            </FormField>
-            <FormField name="order" label="Order" value={ui.order}>
-              {(f) => (
-                <Input
-                  {...f}
-                  type="number"
-                  inputMode="numeric"
-                  value={typeof ui.order === "number" ? String(ui.order) : ""}
-                  onChange={(e) =>
-                    setUi("order", numberOrUndefined(e.target.value))
-                  }
-                />
-              )}
-            </FormField>
-          </div>
-          <Checkbox
-            label="Show under More settings"
-            description="Collapses the key into the trailing group of generated forms."
-            checked={ui.advanced === true}
-            onCheckedChange={(on) => setUi("advanced", on ? true : undefined)}
-          />
-        </Group>
-      </div>
-    </div>
-  );
-}
-
-/** `user` with no members is no block: an absent block means synced everywhere, last write. */
-function compact(user: UserSettingPolicy): UserSettingPolicy | undefined {
-  return Object.keys(user).length > 0 ? user : undefined;
-}
-
-/**
- * The entry's `user` block (plans/U-01b.md D2). Every Editable `config` key is a synced setting:
- * a person's choice, kept on the device and, with Cloud Sync on and the person signed in, synced.
- * The block only tunes it, so turning the Syncs switch off writes `user: {sync: "local"}` rather
- * than dropping the block (no block means "synced"). A catalog-locked key (`enforced` or `hidden`)
- * never syncs, and a block on it is a no-op: the publish route warns, and so does the form.
- */
-function UserSettingFields({
-  user,
-  type,
-  locked,
-  note,
-  error,
-  onChange,
-}: {
-  user: UserSettingPolicy | undefined;
-  /** The schema's type, which decides the conflict policies on offer. */
-  type: string;
-  /** The key's management default locks it, so it never syncs. */
-  locked: boolean;
-  /** A non-blocking note from the publish route's checks. */
-  note: string | undefined;
-  error: string | undefined;
-  onChange: (next: UserSettingPolicy | undefined) => void;
-}): React.ReactElement {
-  const u = user ?? {};
-  const syncs = u.sync !== "local";
-  const conflict = u.conflict ?? "lastWrite";
-  const allowed = conflictOptionsFor(type);
-  // A policy the type does not allow stays on offer, so the refusal below it can be read and fixed.
-  const offered = allowed.includes(conflict) ? allowed : [...allowed, conflict];
-  return (
-    <div className="space-y-4">
-      {locked ? (
-        <p className="text-sm text-fg-muted">
-          Locked keys never sync: people cannot change them.
-        </p>
-      ) : (
-        <>
-          <Checkbox
-            label="Syncs across devices"
-            description="With Cloud Sync on, a person's choice follows them to every device they sign in on. Off: it stays on the device."
-            checked={syncs}
-            onCheckedChange={(on) => {
-              if (on) {
-                const { sync: _local, ...rest } = u;
-                onChange(compact(rest));
-              } else {
-                onChange({
-                  sync: "local",
-                  ...(u.listed === false ? { listed: false } : {}),
-                });
-              }
-            }}
-          />
-          {syncs ? (
+        {secret ? null : (
+          <Group
+            title="Form hints"
+            open={hintsOpen}
+            onOpenChange={setHintsOpen}
+          >
             <div className="grid gap-4 sm:grid-cols-2">
-              <FormField
-                name="user-sync"
-                label="Syncs"
-                value={u.sync ?? "user"}
-              >
+              <FormField name="widget" label="Widget" value={ui.widget}>
                 {(f) => (
                   <Select
                     {...f}
-                    value={u.sync ?? "user"}
-                    options={USER_SCOPE_OPTIONS}
-                    onChange={(v) =>
-                      onChange(
-                        compact(
-                          withField(
-                            u,
-                            "sync",
-                            v === "platform" ? "platform" : undefined,
-                          ),
-                        ),
-                      )
+                    value={typeof ui.widget === "string" ? ui.widget : null}
+                    allowEmpty
+                    emptyLabel="Automatic"
+                    options={WIDGETS.map((w) => ({ value: w, label: w }))}
+                    onChange={(v) => setUi("widget", v)}
+                  />
+                )}
+              </FormField>
+              <FormField name="unit" label="Unit" value={ui.unit}>
+                {(f) => (
+                  <Input
+                    {...f}
+                    value={typeof ui.unit === "string" ? ui.unit : ""}
+                    placeholder="seconds"
+                    onChange={(e) => setUi("unit", e.target.value)}
+                  />
+                )}
+              </FormField>
+              <FormField name="help" label="Help" value={ui.help}>
+                {(f) => (
+                  <Input
+                    {...f}
+                    value={typeof ui.help === "string" ? ui.help : ""}
+                    onChange={(e) => setUi("help", e.target.value)}
+                  />
+                )}
+              </FormField>
+              <FormField
+                name="placeholder"
+                label="Placeholder"
+                value={ui.placeholder}
+              >
+                {(f) => (
+                  <Input
+                    {...f}
+                    value={
+                      typeof ui.placeholder === "string" ? ui.placeholder : ""
+                    }
+                    onChange={(e) => setUi("placeholder", e.target.value)}
+                  />
+                )}
+              </FormField>
+              <FormField name="order" label="Order" value={ui.order}>
+                {(f) => (
+                  <Input
+                    {...f}
+                    type="number"
+                    inputMode="numeric"
+                    value={typeof ui.order === "number" ? String(ui.order) : ""}
+                    onChange={(e) =>
+                      setUi("order", numberOrUndefined(e.target.value))
                     }
                   />
                 )}
               </FormField>
-              {offered.length === 1 ? (
-                <div className="space-y-1">
-                  <p className="text-sm font-medium text-fg-strong">
-                    When two devices disagree
-                  </p>
-                  <p className="text-sm">{USER_CONFLICT_LABELS.lastWrite}</p>
-                </div>
-              ) : (
-                <FormField
-                  name="user-conflict"
-                  label="When two devices disagree"
-                  value={conflict}
-                >
-                  {(f) => (
-                    <Select
-                      {...f}
-                      value={conflict}
-                      options={offered.map((value) => ({
-                        value,
-                        label: USER_CONFLICT_LABELS[value],
-                      }))}
-                      onChange={(v) =>
-                        onChange(
-                          compact(
-                            withField(
-                              u,
-                              "conflict",
-                              v === "lastWrite" ? undefined : v,
-                            ),
-                          ),
-                        )
-                      }
-                    />
-                  )}
-                </FormField>
-              )}
             </div>
-          ) : null}
-          <Checkbox
-            label="Show in settings panels"
-            checked={u.listed !== false}
-            onCheckedChange={(on) =>
-              onChange(compact(withField(u, "listed", on ? undefined : false)))
-            }
-          />
-        </>
-      )}
-      {note ? <p className="text-xs text-fg-muted">{note}</p> : null}
-      {error ? (
-        <p role="alert" className="text-xs text-danger">
-          {error}
-        </p>
-      ) : null}
+            <Checkbox
+              label="Show under More settings"
+              description="Collapses the key into the trailing group of generated forms."
+              checked={ui.advanced === true}
+              onCheckedChange={(on) => setUi("advanced", on ? true : undefined)}
+            />
+          </Group>
+        )}
+      </div>
     </div>
-  );
-}
-
-/**
- * A collapsed group of the form: a native disclosure, so it needs no script to open and is
- * announced as expandable. LX-14's `combine` and `entitlementKind` selects join Validation.
- */
-function Group({
-  title,
-  open,
-  onOpenChange,
-  problem = false,
-  children,
-}: {
-  title: string;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  /** Something inside is wrong: the summary says so while the group is closed. */
-  problem?: boolean;
-  children: React.ReactNode;
-}): React.ReactElement {
-  return (
-    <details
-      open={open}
-      onToggle={(e) => onOpenChange(e.currentTarget.open)}
-      className="group rounded-md border border-border"
-    >
-      <summary className="flex cursor-pointer list-none items-center gap-2 rounded-md px-4 py-3 text-sm font-medium text-fg-strong focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus [&::-webkit-details-marker]:hidden">
-        <ChevronRight
-          aria-hidden
-          className="size-4 shrink-0 text-fg-muted transition-transform group-open:rotate-90"
-        />
-        <span className="flex-1">{title}</span>
-        {problem && !open ? (
-          <span className="inline-flex items-center gap-1 text-xs font-normal text-danger">
-            <AlertCircle aria-hidden className="size-3" />
-            Has a problem
-          </span>
-        ) : null}
-      </summary>
-      <div className="space-y-4 border-t border-border p-4">{children}</div>
-    </details>
-  );
-}
-
-function NumberKeyword({
-  name,
-  label,
-  schema,
-  onChange,
-}: {
-  name: string;
-  label: string;
-  schema: Json;
-  onChange: (field: string, value: unknown) => void;
-}): React.ReactElement {
-  const value = schema[name];
-  return (
-    <FormField name={name} label={label} value={value}>
-      {(f) => (
-        <Input
-          {...f}
-          type="number"
-          value={typeof value === "number" ? String(value) : ""}
-          onChange={(e) => onChange(name, numberOrUndefined(e.target.value))}
-        />
-      )}
-    </FormField>
   );
 }

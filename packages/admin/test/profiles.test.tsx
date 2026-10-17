@@ -434,7 +434,7 @@ describe("Profile record", () => {
     expect(screen.getByText(/1 unsaved change/)).toBeTruthy();
     // Editing the refused row retires the server's message; the save goes through.
     reject = false;
-    await userEvent.click(screen.getByRole("radio", { name: "Default" }));
+    await userEvent.click(screen.getByRole("radio", { name: "Editable" }));
     await waitFor(() =>
       expect(screen.queryByText('must be one of "dark", "light"')).toBeNull(),
     );

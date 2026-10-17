@@ -159,6 +159,8 @@ export interface Sources {
   protocol: Record<string, unknown>;
   /** The core copy (copy.en.json), already checked by validateCopy. */
   copy?: CopyDoc;
+  /** Every translated core pack (copy.<locale>.json, English excluded), keyed by locale. */
+  localeCopy?: Record<string, CopyDoc>;
   corpus: {
     corpusVersion: number;
     gateMatrixVersion: number;
@@ -581,11 +583,15 @@ export function loadSources(root = ROOT): Sources {
       }),
   );
   // The translated core packs: checked, not emitted (plans/UK-02.md D4).
+  const localeCopy: Record<string, CopyDoc> = {};
   for (const file of readdirSync(join(root, "conformance", "parity")).sort()) {
     const m = /^copy\.(.+)\.json$/.exec(file);
     if (!m || m[1] === "en" || m[1] === "schema") continue;
-    loadValidated<CopyDoc>(root, file, "copy.schema.json", (doc) =>
-      validateCopyLocale(doc, copy, m[1]!),
+    localeCopy[m[1]!] = loadValidated<CopyDoc>(
+      root,
+      file,
+      "copy.schema.json",
+      (doc) => validateCopyLocale(doc, copy, m[1]!),
     );
   }
   const coverage = [
@@ -640,6 +646,7 @@ export function loadSources(root = ROOT): Sources {
     // The identity subpath's exports join core's; only the names in IDENTITY_EXPORTS are read.
     protocol: { ...protocolCore, ...protocolIdentity },
     copy,
+    localeCopy,
     corpus: {
       corpusVersion: corpus("cases.json", "corpusVersion"),
       gateMatrixVersion: corpus("gate-matrix.json", "gateMatrixVersion"),
@@ -760,6 +767,41 @@ export interface Model {
   capabilities: Record<string, SdkCapabilities>;
   /** The core copy, each section in its source's order; absent when Sources has none. */
   copy?: CopyModel;
+  /** The backend refusals' copy in every locale, English first (WIRE-CONTRACT-V4 §14.3). */
+  backendCopy?: BackendCopyModel[];
+}
+
+/** The codes a product backend answers with (§14.2); `not_entitled` is the existing wire code. */
+export const BACKEND_COPY_CODES = [
+  "license_required",
+  "license_invalid",
+  "license_stale",
+  "not_entitled",
+  "sign_in_required",
+] as const;
+
+export interface BackendCopyModel {
+  locale: string;
+  codes: [string, CopyEntry][];
+}
+
+function backendCopyModel(sources: Sources): BackendCopyModel[] | undefined {
+  const en = sources.copy;
+  if (!en || !sources.localeCopy) return undefined;
+  const pick = (doc: CopyDoc): BackendCopyModel => ({
+    locale: doc.locale,
+    codes: BACKEND_COPY_CODES.map((code) => {
+      const e = doc.codes[code];
+      if (!e) throw new Error(`copy.${doc.locale}.json has no entry "${code}"`);
+      return [code, { title: e.title, message: e.message }];
+    }),
+  });
+  return [
+    pick(en),
+    ...Object.keys(sources.localeCopy)
+      .sort()
+      .map((l) => pick(sources.localeCopy![l]!)),
+  ];
 }
 
 export interface CopyModel {
@@ -1161,6 +1203,9 @@ export function buildModel(sources: Sources): Model {
     scalars,
     capabilities: sources.capabilities ?? {},
     ...(sources.copy ? { copy: copyModel(sources)! } : {}),
+    ...(sources.copy && sources.localeCopy
+      ? { backendCopy: backendCopyModel(sources)! }
+      : {}),
   };
 }
 
@@ -2018,13 +2063,56 @@ export const COPY_TARGETS: readonly Target[] = [
   },
 ];
 
+/** @polaris-key/server's refusal copy: the five backend codes in every locale (§14.3). */
+export function renderBackendCopyTs(model: Model): string {
+  const tables = model.backendCopy;
+  if (!tables) throw new Error("the model carries no backend copy");
+  return [
+    `// GENERATED FILE — do not edit by hand.
+//
+// Written by \`pnpm gen constants\` (tools/gen-sdk-constants.ts) from conformance/parity/
+// copy.<locale>.json. \`pnpm gen constants --check\` fails the green gate on any difference. To
+// change a string, edit the copy file and regenerate.
+//
+// WIRE-CONTRACT-V4 §14.3: a refusal's title and detail, per locale, for the five backend codes.
+
+import type {\n  BackendCopyTable,\n  BackendLocale,\n} from "@polaris-key/client-core/backend";
+
+export const BACKEND_COPY: Readonly<Record<BackendLocale, BackendCopyTable>> = {`,
+    ...tables.map(
+      (t) =>
+        `  ${q(t.locale)}: {\n${t.codes
+          .map(
+            ([k, e]) =>
+              `    ${q(k)}: { title: ${q(e.title)}, message: ${q(e.message)} },`,
+          )
+          .join("\n")}\n  },`,
+    ),
+    "};",
+    "",
+  ].join("\n");
+}
+
+export const BACKEND_COPY_TARGETS: readonly Target[] = [
+  {
+    path: "packages/server/src/copy.generated.ts",
+    sdk: "node",
+    render: renderBackendCopyTs,
+    parser: "typescript",
+  },
+];
+
 /** Every applicable generated file's content, keyed by repo-relative path. */
 export async function renderAll(
   model: Model,
   root = ROOT,
 ): Promise<Map<string, string>> {
   const out = new Map<string, string>();
-  for (const target of [...TARGETS, ...(model.copy ? COPY_TARGETS : [])]) {
+  for (const target of [
+    ...TARGETS,
+    ...(model.copy ? COPY_TARGETS : []),
+    ...(model.copy && model.backendCopy ? BACKEND_COPY_TARGETS : []),
+  ]) {
     if (target.onlyIfDir && !existsSync(join(root, target.onlyIfDir))) continue;
     let content = target.render(model, model.capabilities[target.sdk]);
     if (target.parser) {

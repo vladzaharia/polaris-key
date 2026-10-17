@@ -54,10 +54,20 @@ the moved pages' sources; WIRE-CONTRACT-V4; `shared-protocol/src/core.ts`
 
 ## Acceptance criteria
 
-- [ ] The common definition of done in the docs plan §6.3 holds.
-- [ ] Protocol pages point at V4.
+- [x] The common definition of done in the docs plan §6.3 holds.
+- [x] Protocol pages point at V4.
 - [ ] `pkey-wp-reviewer` passes the package.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate in the header.
+
+## Corrections and notes (2026-10-16)
+
+- DOC-03a's site map had already moved every page in scope; this package typed them, cleared their lint debt, and wrote the two stubs: `contribute/service-model` (from the old `start/service-model`, corrected to the code: the `registration` key is retired and never written) and `contribute/writing-docs` (renders `docs/research/2026-10-08-docs/style-guide.md`; its one relative link became a code span so it doesn't break on the site).
+- The protocol pages cite WIRE-CONTRACT-V4, whose section numbers match the sections they cited in V3 (§2.2, §5.1, §5.2, §6.1, §10). `build/wire/index` is now **The protocol**; "a fifth SDK" and "wire contract v3" are gone from them.
+- `contribute/corpus` was 8,000 words with the add-a-case loop twice. It is split: `corpus` (what is in it, the generator, the runners, the drift gate) and a new `corpus-cases` (add a case, each hand-authored matrix, the HTTP transcripts). Programme ids and plan paths were removed from both. Case history that named a package was dropped with its id.
+- `reference/http-api` is rewritten (base URL, authentication, errors, versioning, pagination); the "skeleton" and "wire contract v3" wording is gone. The OpenAPI file's own header comment still says WIRE-CONTRACT-V3; that is rule 10's file and outside this package.
+- `docs/PRIVACY.md` (rendered as **What apps collect**) is corrected against the code for each REVIEW-NOTES §4 item: IP-derived geolocation (a sign-in keeps Cloudflare's city and country with the pending sign-in), `devices.ua` (the raw User-Agent, kept with the device record), Workers Logs (enabled and persisted), the `reported_json` snapshot (a deauthorized device keeps its record), "Godot today" (the heading drops it; the Node report type carries `updates`), and "disabling a license purges every device" (only deauthorizing a device purges). The `docs/legal` drafts and the portal docs page in REVIEW-NOTES §4's last bullet are not part of this package.
+- The `contribute/` public-page text that DOC-08b moved out of the UI section ("Writing into this section", the component and framework page templates' prose) is not carried over: the templates carry their own header comments. Add it to `docs-components` if wanted.
+- `contribute/data-model` and `reference/protocol/{corpus,fingerprint-constants}` are generated and are untouched; their frontmatter comes from `gen-reference.mjs`.
 
 ## Verify
 

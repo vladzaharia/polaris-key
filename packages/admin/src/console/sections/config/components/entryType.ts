@@ -21,11 +21,33 @@ export function entryType(entry: ConfigEntry): EntryType {
 
 /** What each in-app visibility means to the person using the app. */
 export const IN_APP_HELP: Record<string, string> = {
-  default:
-    "Listed in the app's settings. People can change it, and their choice syncs.",
+  default: "Listed in the app's settings. People can change it.",
   enforced: "Listed, but only you can change it, here or in a profile.",
   hidden: "Not listed in the app. The app still reads the value.",
 };
+
+/** Editable's help, with the sync sentence only when the choice does sync. */
+export function inAppHelp(state: string, syncs: boolean): string {
+  const base = IN_APP_HELP[state] ?? "";
+  return state === "default" && syncs ? `${base} Their choice syncs.` : base;
+}
+
+/** The one line under the Type control. */
+export const TYPE_HELP: Record<EntryType, string> = {
+  setting:
+    "A value the app reads, with a default. It can be listed for people to change.",
+  secret:
+    "Write-only. The app reads it in code; it is never listed. Set it per profile or license.",
+  minted: "Signed on request from a recipe. It is never stored or listed.",
+  flag: "An entitlement the license includes.",
+};
+
+/** The In the app row for a type that is never listed. */
+export function codeOnlyText(type: EntryType, key: string): string {
+  return type === "minted"
+    ? `Code only. The app calls mintToken("${key}").`
+    : "Code only. Write-only; set per profile or license.";
+}
 
 export const TYPE_LABELS: Record<SchemaType, string> = {
   string: "Text",

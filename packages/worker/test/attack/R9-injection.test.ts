@@ -1703,10 +1703,19 @@ describe("R9-11 edge-mint auth page", () => {
 describe("R9-12 escapeHtml coverage", () => {
   it('REFUTED (today): the device-verify page escapes `<>&"` and every sink is a text node or a double-quoted attr', () => {
     const src = readFileSync(
-      join(HERE, "..", "..", "src", "services", "identity", "oidc.ts"),
+      join(
+        HERE,
+        "..",
+        "..",
+        "src",
+        "services",
+        "identity",
+        "productOidc",
+        "pages.ts",
+      ),
       "utf8",
     );
-    // P0-15: the escaper lives in `platform/html.ts`. oidc.ts binds the variant that escapes
+    // P0-15: the escaper lives in `platform/html.ts`. pages.ts (P0-20: it was oidc.ts) binds the variant that escapes
     // `<>&"` and lets `'` through under its old local name, so every interpolation below still
     // reads `escapeHtml(…)`; the escaping itself is asserted on the function.
     expect(src).toContain("escapeHtmlKeepApostrophe as escapeHtml,");

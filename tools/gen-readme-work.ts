@@ -71,6 +71,20 @@ export const TARGETS: Target[] = [
     ],
   },
   {
+    dir: "packages/server",
+    packages: [
+      {
+        dir: "packages/server",
+        scripts: [
+          ["build", "Build the package."],
+          ["typecheck", "Typecheck."],
+          ["test", "Run the unit tests."],
+        ],
+        oneTest: true,
+      },
+    ],
+  },
+  {
     dir: "packages/elements",
     packages: [
       {

@@ -13,7 +13,8 @@ import {
   removedNote,
 } from "../../copy/yourData.js";
 import { useRemoveProductData } from "../../data.js";
-import { portalErrorCopy } from "../../errors.js";
+import { isStepUpRequired, portalErrorCopy } from "../../errors.js";
+import { StepUpInline } from "../account/StepUpInline.js";
 import type { LibraryProduct } from "../../model/library.js";
 
 /**
@@ -56,6 +57,8 @@ export function RemoveProductDataDialog({
   const [alsoRemove, setAlsoRemove] = React.useState(false);
   // The Worker refused the license's removal on this page: the choice is not offered again.
   const [refused, setRefused] = React.useState(false);
+  // A stale sign-in: the prompt shows in the dialog, and confirming removes the data.
+  const [askFirst, setAskFirst] = React.useState(false);
   const offered =
     licenses > 0 &&
     !refused &&
@@ -63,8 +66,30 @@ export function RemoveProductDataDialog({
   const also = offered && alsoRemove;
   // A fresh dialog keeps the license, the default, every time it opens.
   React.useEffect(() => {
-    if (open) setAlsoRemove(false);
+    if (open) {
+      setAlsoRemove(false);
+      setAskFirst(false);
+    }
   }, [open]);
+
+  /** The removal, its toast and the close; throws what the Worker refused. */
+  const run = async (alsoRemoveLicense: boolean): Promise<void> => {
+    try {
+      await remove.mutateAsync(alsoRemoveLicense);
+    } catch (err) {
+      // Nothing was written: the license can't go, but the data still can.
+      if (isNotRemovable(err)) {
+        setRefused(true);
+        setAlsoRemove(false);
+      }
+      throw err;
+    }
+    toast.success(`Your data was removed from ${name}`, {
+      description: removedNote({ name, licenses, alsoRemoveLicense }),
+    });
+    onOpenChange(false);
+    if (alsoRemoveLicense) onLeftLibrary?.();
+  };
 
   return (
     <ConfirmDialog
@@ -81,29 +106,35 @@ export function RemoveProductDataDialog({
       })}
       cancelLabel={YOUR_DATA_COPY["yourData.remove.keep"]}
       confirmLabel={removeConfirm(also, licenses)}
+      closeOnSuccess={false}
       describeError={(err) =>
         isNotRemovable(err)
           ? notRemovableCopy(name, err.reason)
           : portalErrorCopy(err)
       }
       onConfirm={async () => {
-        const alsoRemoveLicense = also;
         try {
-          await remove.mutateAsync(alsoRemoveLicense);
+          await run(also);
         } catch (err) {
-          // Nothing was written: the license can't go, but the data still can.
-          if (isNotRemovable(err)) {
-            setRefused(true);
-            setAlsoRemove(false);
+          if (isStepUpRequired(err)) {
+            setAskFirst(true);
+            return;
           }
           throw err;
         }
-        toast.success(`Your data was removed from ${name}`, {
-          description: removedNote({ name, licenses, alsoRemoveLicense }),
-        });
-        if (alsoRemoveLicense) onLeftLibrary?.();
       }}
     >
+      {askFirst ? (
+        <StepUpInline
+          verb="remove your data"
+          onConfirmed={() => {
+            setAskFirst(false);
+            // A refusal shows on the next press of the confirm button.
+            void run(also).catch(() => undefined);
+          }}
+          onCancel={() => setAskFirst(false)}
+        />
+      ) : null}
       {offered ? (
         <Checkbox
           checked={alsoRemove}
