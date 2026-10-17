@@ -1,6 +1,7 @@
 import * as React from "react";
 import { Globe, Smartphone } from "lucide-react";
 import { cn } from "../../lib/cn.js";
+import { platformInSentence } from "../../lib/vocab/platforms.js";
 
 /**
  * Platform and provider marks for the customer site. Drawn inline (CSP: `img-src 'self'`), mono
@@ -116,15 +117,6 @@ export const PLATFORM_ORDER: readonly PlatformKey[] = [
   "web",
 ];
 
-export const PLATFORM_NAME: Record<PlatformKey, string> = {
-  macos: "macOS",
-  windows: "Windows",
-  linux: "Linux",
-  ios: "iPhone and iPad",
-  android: "Android",
-  web: "the web",
-};
-
 export function PlatformGlyph({
   platform,
   className = "size-4",
@@ -157,7 +149,7 @@ export function PlatformGlyphs({
   className?: string;
 }): React.ReactElement | null {
   if (platforms.length === 0) return null;
-  const label = `Runs on ${platforms.map((p) => PLATFORM_NAME[p]).join(", ")}`;
+  const label = `Runs on ${platforms.map((p) => platformInSentence(p)).join(", ")}`;
   return (
     <span
       role="img"

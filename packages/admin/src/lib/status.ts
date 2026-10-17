@@ -23,6 +23,7 @@ import {
   XCircle,
   type LucideIcon,
 } from "lucide-react";
+import { EXPIRES_SOON_DAYS, expiresInText } from "./vocab/license.js";
 
 export type Tone =
   | "success"
@@ -162,9 +163,9 @@ export function licenseState(
     const ms = license.expiresAt * 1000;
     if (ms <= now) return STATUS.license.expired;
     const days = Math.ceil((ms - now) / 86_400_000);
-    if (days <= 14) {
+    if (days <= EXPIRES_SOON_DAYS) {
       return {
-        label: `Expires in ${days} ${days === 1 ? "day" : "days"}`,
+        label: expiresInText(days),
         tone: "warning",
         icon: Clock,
       };

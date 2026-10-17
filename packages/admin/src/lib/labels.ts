@@ -125,20 +125,6 @@ export const BINDING_LABELS: Record<string, string> = {
   compatible: "Compatible",
 };
 
-/** Build platforms. */
-export const PLATFORM_LABELS: Record<string, string> = {
-  macos: "macOS",
-  ios: "iOS",
-  ipados: "iPadOS",
-  windows: "Windows",
-  linux: "Linux",
-  android: "Android",
-  web: "Web",
-  tvos: "tvOS",
-  visionos: "visionOS",
-  watchos: "watchOS",
-};
-
 /** Environments (`/me.environment`). */
 export const ENVIRONMENT_LABELS: Record<string, string> = {
   prod: "Production",

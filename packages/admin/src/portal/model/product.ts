@@ -30,6 +30,7 @@ import {
   type QuickAction,
 } from "./library.js";
 import { t } from "../../lib/copy.js";
+import { platformConsumerName } from "../../lib/vocab/platforms.js";
 
 /**
  * The product page's model on today's API (PORTAL.md §4.20, PX-04): which sections exist, the
@@ -251,7 +252,7 @@ const ARCH_RANK: Record<string, number> = {
 
 export interface PlatformGroup {
   platform: PlatformKey | null;
-  /** "macOS", "Windows", "Linux", or "Extras" for files with no platform. */
+  /** The platform's customer name, or "Extras" for files with no platform. */
   label: string;
   rows: FileRowModel[];
   /** The platform's install sources, offered after its files ("Other ways to install", P0-48);
@@ -259,14 +260,6 @@ export interface PlatformGroup {
   sources: PortalInstallSource[];
 }
 
-const GROUP_LABEL: Record<PlatformKey, string> = {
-  macos: "macOS",
-  windows: "Windows",
-  linux: "Linux",
-  ios: "iPhone and iPad",
-  android: "Android",
-  web: "Web",
-};
 const GROUP_ORDER: readonly PlatformKey[] = [
   "macos",
   "windows",
@@ -294,7 +287,7 @@ function groupRows(rows: FileRowModel[]): PlatformGroup[] {
     if (own.length)
       groups.push({
         platform: p,
-        label: GROUP_LABEL[p],
+        label: platformConsumerName(p),
         rows: own,
         sources: [],
       });
@@ -323,7 +316,12 @@ function placeSources(
       if (!p) continue;
       let g = out.find((x) => x.platform === p);
       if (!g) {
-        g = { platform: p, label: GROUP_LABEL[p], rows: [], sources: [] };
+        g = {
+          platform: p,
+          label: platformConsumerName(p),
+          rows: [],
+          sources: [],
+        };
         out.push(g);
       }
       if (!g.sources.some((x) => x.id === s.id)) g.sources.push(s);

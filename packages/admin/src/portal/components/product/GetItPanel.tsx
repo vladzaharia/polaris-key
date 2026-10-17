@@ -16,12 +16,13 @@ import {
   installOnThis,
   openOnComputer,
 } from "../../copy/getIt.js";
-import { PLATFORM_NAME, PlatformGlyph } from "../Glyphs.js";
+import { PlatformGlyph } from "../Glyphs.js";
 import { PILL_CLASS, StorePillList } from "../StorePills.js";
 import { SectionCard } from "./Card.js";
 import { DownloadButton } from "./DownloadButton.js";
 import { InstallSourceList } from "./InstallSources.js";
 import { t } from "../../../lib/copy.js";
+import { platformInSentence } from "../../../lib/vocab/platforms.js";
 
 /**
  * Get it, first cut (§4.20, PX-04): the build recommended for the device in hand (honest: a
@@ -71,7 +72,7 @@ export function GetItPanel({
   if (!model) return null;
   const { latest, here } = model;
   const describe = (r: FileRowModel) =>
-    r.platform ? `${PLATFORM_NAME[r.platform]} ${r.title}` : r.title;
+    r.platform ? `${platformInSentence(r.platform)} ${r.title}` : r.title;
   const desktopFiles = model.groups.some(
     (g) =>
       g.rows.length > 0 &&

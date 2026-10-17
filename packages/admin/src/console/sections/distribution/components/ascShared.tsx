@@ -111,12 +111,7 @@ export function buildLabel(b: AscBuildDto): string {
   return b.buildNumber ? `${v} (${b.buildNumber})` : v;
 }
 
-export const PLATFORM_LABEL: Record<string, string> = {
-  IOS: "iOS",
-  MAC_OS: "macOS",
-  TV_OS: "tvOS",
-  VISION_OS: "visionOS",
-};
+export { APPLE_PLATFORM_LABELS as PLATFORM_LABEL } from "../../../../lib/vocab/platforms.js";
 
 // ── Deep links ────────────────────────────────────────────────────────────────────────────────
 

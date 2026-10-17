@@ -1,4 +1,12 @@
 import {
+  AUTOMATIC_GRANT,
+  EXPIRES_SOON_DAYS,
+  FROM_SIGNING_IN,
+  devicesText,
+  expiresInText,
+} from "../../lib/vocab/license.js";
+import { platformInSentence } from "../../lib/vocab/platforms.js";
+import {
   isEntryItem,
   type PortalArtifact,
   type PortalDownloadFile,
@@ -141,7 +149,6 @@ export const FREE_TO_USE: ProductStatus = {
 };
 
 const DAY = 86_400;
-export const EXPIRES_SOON_DAYS = 14;
 
 /** How long a new product stays "Added just now" (EXPERIENCE §0.6 P1 step 7, §0.7): 24 hours. */
 export const JUST_ADDED_SECONDS = DAY;
@@ -282,28 +289,6 @@ export function formatDay(epochSeconds: number, withYear = true): string {
   const day = `${d.getDate()} ${MONTHS[d.getMonth()]}`;
   return withYear ? `${day} ${d.getFullYear()}` : day;
 }
-
-/** "2 devices", or "2 of 3 devices" when the seat limit is known (G5). */
-export function devicesText(n: number, limit?: number | null): string {
-  if (limit != null && limit > 0)
-    return `${n} of ${limit} ${limit === 1 ? "device" : "devices"}`;
-  return `${n} ${n === 1 ? "device" : "devices"}`;
-}
-
-/**
- * Every licence is account-bound, so none is labelled by type: how it came to be is a quiet
- * origin in plain words (owner decision, 2026-10-05: no "Account-wide" label).
- */
-export const FROM_SIGNING_IN = t("signin.choice.origin.signIn");
-
-/**
- * The **License source** of a licence granted automatically through OIDC, by the product's
- * auto-issue or a group grant when the person signed in (the Worker's `signin` origin): "Automatic
- * grant", sentence case (owner polish 2026-10-07; P0-36). The status line and the picker keep
- * "From signing in" and "Sign-in" until the catalog's `signin.choice.origin.signIn` takes this
- * wording too.
- */
-export const AUTOMATIC_GRANT = "Automatic grant";
 
 /**
  * A licence issued by signing in (`identityProvider` "oidc") with no key. Activation counts its
@@ -480,7 +465,7 @@ export function licenseStatus(
     const days = Math.max(1, Math.ceil((l.expiresAt - now) / DAY));
     return {
       kind: "expiresSoon",
-      label: days === 1 ? "Expires tomorrow" : `Expires in ${days} days`,
+      label: expiresInText(days, { tomorrow: true }),
       tone: "warning",
       note: [tier, `ends ${formatDay(l.expiresAt, false)}`]
         .filter(Boolean)
@@ -637,7 +622,7 @@ export function statusFromServer(
       const days = Math.max(1, Math.ceil((at - now) / DAY));
       return {
         kind: "expiresSoon",
-        label: days === 1 ? "Expires tomorrow" : `Expires in ${days} days`,
+        label: expiresInText(days, { tomorrow: true }),
         tone: "warning",
         note: [tier, `ends ${formatDay(at, false)}`]
           .filter(Boolean)
@@ -1101,14 +1086,7 @@ export function isDownloadAction(action: QuickAction): boolean {
 }
 
 export function osName(os: PlatformKey): string {
-  return {
-    macos: "macOS",
-    windows: "Windows",
-    linux: "Linux",
-    ios: "iPhone",
-    android: "Android",
-    web: "the web",
-  }[os];
+  return platformInSentence(os, { phone: true });
 }
 
 /** The OS name a device row shows for its stored platform, header-only Apple values included;
@@ -1140,9 +1118,7 @@ export function platformsOnlyNote(
 ): string | null {
   if (!device.os || p.platforms.length === 0) return null;
   if (p.platforms.includes(device.os)) return null;
-  const names = p.platforms.map((x) =>
-    x === "ios" ? "iPhone and iPad" : osName(x),
-  );
+  const names = p.platforms.map((x) => platformInSentence(x));
   const list =
     names.length === 1
       ? names[0]

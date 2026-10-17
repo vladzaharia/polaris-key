@@ -7,29 +7,16 @@ import {
 } from "@polaris-key/manifest";
 import type { PortalPackageFeed } from "../api.js";
 import { t } from "../../lib/copy.js";
+import { TOKEN_ENV, ecosystemLabel } from "../../lib/vocab/ecosystems.js";
+import { EXPIRES_SOON_DAYS, expiresInText } from "../../lib/vocab/license.js";
+
+export { TOKEN_ENV, ecosystemLabel };
 
 /**
  * Package access (PORTAL.md §4.20, §4.21; PX-11) over F-21's portal token API. The snippets are
  * `@polaris-key/manifest` `renderFeedSetup`, the bytes `pkey feeds setup` and the console print,
  * so the three never disagree.
  */
-
-/** The environment variable the card's snippets name the token by (the console's too). */
-export const TOKEN_ENV = "PKEY_REGISTRY_TOKEN";
-
-export const ECOSYSTEM_LABEL: Record<string, string> = {
-  npm: "npm",
-  pypi: "PyPI",
-  oci: "Docker / OCI",
-  swift: "Swift",
-  maven: "Maven / Gradle",
-  godot: "Godot",
-  cargo: "Cargo",
-};
-
-export function ecosystemLabel(eco: string): string {
-  return ECOSYSTEM_LABEL[eco] ?? eco;
-}
 
 /**
  * One feed's setup, for its owner, with the token as an environment variable (the card) or the
@@ -62,9 +49,6 @@ export function feedSnippets(
 }
 
 const DAY = 86_400;
-/** §4.20: "the amber 'Expires in 6 days' pill" inside this window. */
-export const TOKEN_EXPIRES_SOON_DAYS = 14;
-
 /** A token's expiry as the card words it: a pill inside 14 days, else a plain date. */
 export function tokenExpiry(
   expiresAt: number,
@@ -72,10 +56,10 @@ export function tokenExpiry(
 ): { soon: boolean; text: string } {
   const days = Math.ceil((expiresAt - now) / DAY);
   if (expiresAt <= now) return { soon: true, text: t("part.status.expired") };
-  if (days <= TOKEN_EXPIRES_SOON_DAYS)
+  if (days <= EXPIRES_SOON_DAYS)
     return {
       soon: true,
-      text: days <= 1 ? "Expires tomorrow" : `Expires in ${days} days`,
+      text: expiresInText(days, { tomorrow: true }),
     };
   return { soon: false, text: `Expires ${formatDate(expiresAt)}` };
 }

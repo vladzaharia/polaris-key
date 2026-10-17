@@ -1,7 +1,8 @@
 import * as React from "react";
 import { ArrowRight } from "lucide-react";
 import type { LibraryProduct, QuickAction } from "../model/library.js";
-import { devicesText, tierLabel } from "../model/library.js";
+import { devicesText } from "../../lib/vocab/license.js";
+import { tierLabel } from "../model/library.js";
 import { href } from "../router.js";
 import { PlatformGlyphs } from "./Glyphs.js";
 import { ProductArt } from "./ProductArt.js";

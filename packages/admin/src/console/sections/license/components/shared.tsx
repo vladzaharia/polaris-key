@@ -19,6 +19,10 @@ import {
 import { qk } from "../../../data/queries.js";
 import { fromSeconds, formatDate } from "../../../../lib/format.js";
 import { compareVersions } from "../../../../lib/version.js";
+import {
+  EXPIRES_SOON_DAYS,
+  expiresInText,
+} from "../../../../lib/vocab/license.js";
 import { StatusPill } from "../../../../ui/StatusPill.js";
 // LX-32: the one limits resolver. It is pure and imports nothing, so the console shares the
 // Worker's implementation for the live read-out of a form that is not saved yet.
@@ -67,8 +71,6 @@ export function useManualChannels(slug: string): string[] {
 
 export type LicenseState = "active" | "expiring" | "expired" | "disabled";
 
-/** "Expires in N days" starts this many days out. */
-export const EXPIRING_DAYS = 14;
 const DAY_MS = 86_400_000;
 
 export const LICENSE_STATE_LABELS: Record<LicenseState, string> = {
@@ -90,7 +92,7 @@ export function licenseState(
   if (l.expiresAt != null) {
     const at = fromSeconds(l.expiresAt);
     if (at <= now) return "expired";
-    if (at - now <= EXPIRING_DAYS * DAY_MS) return "expiring";
+    if (at - now <= EXPIRES_SOON_DAYS * DAY_MS) return "expiring";
   }
   return "active";
 }
@@ -117,7 +119,7 @@ export function LicenseStatus({
     const days = daysUntil(license.expiresAt!, now);
     return (
       <StatusPill tone="warning" icon={Clock} size={size}>
-        Expires in {days} {days === 1 ? "day" : "days"}
+        {expiresInText(days)}
       </StatusPill>
     );
   }

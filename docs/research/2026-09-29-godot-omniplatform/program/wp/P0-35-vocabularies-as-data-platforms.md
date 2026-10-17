@@ -92,6 +92,23 @@ apply says why in one line. One home: EXPERIENCE.md ยง7.3; kits also follow DL1โ
 - [ ] No duplicated platform or ecosystem labels (grep test)
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
+## Corrections and notes (2026-10-16)
+
+- Platform names layer on UK-04's catalog keys: `lib/vocab/platforms.ts` reads `part.platform.<id>`,
+  then `@polaris-key/manifest` `platformLabel`, then the id as sent. No second table was added.
+  Wire vocabularies (`enums.json`, corpus) are untouched.
+- The six platform maps were `lib/labels.ts`, `portal/model/product.ts`, `portal/model/library.ts`
+  (`osName`), `Glyphs.tsx`, `EnrollmentPage` and two App Store Connect enum maps (now
+  `APPLE_PLATFORM_LABELS`). `lib/buildLabels.ts` was already gone.
+- Ecosystems: the console and portal tables, `SYSTEM_PRODUCT_SLUG` and the two `TOKEN_ENV` copies are
+  now `lib/vocab/ecosystems.ts` (the portal gains "Go").
+- Licence: the key format moved to `@polaris-key/manifest` (`licenseKey.ts`); `lib/vocab/license.ts`
+  holds the expiry horizon (three copies of 14), the expiry and device phrases and the
+  sign-in origin words. The two status models stay with their apps: their wording differs by
+  audience and merging them is a behaviour change.
+- Stores half: A-19 / DC-02 (`tools/channels.json`), not this package.
+- `test/vocab.test.ts` is the grep test.
+
 ## Verify
 
 ```sh

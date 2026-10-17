@@ -48,6 +48,7 @@ import { cn } from "../../../../lib/cn.js";
 import { docsUrl } from "../../../../lib/docsLinks.js";
 import { errorCopy } from "../../../../lib/errorCopy.js";
 import { formatCount, fromSeconds } from "../../../../lib/format.js";
+import { APPLE_PLATFORM_LABELS } from "../../../../lib/vocab/platforms.js";
 import { Button } from "../../../../ui/Button.js";
 import { Callout } from "../../../../ui/Callout.js";
 import { CodeBlock } from "../../../../ui/CodeBlock.js";
@@ -197,14 +198,6 @@ function storeHealth(s: PlatformStoreConnection): {
   return HEALTH[h];
 }
 
-/** App Store Connect's platform values, as Apple writes them. */
-const APPLE_PLATFORMS: Record<string, string> = {
-  IOS: "iOS",
-  MAC_OS: "macOS",
-  TV_OS: "tvOS",
-  VISION_OS: "visionOS",
-};
-
 /** `WAITING_FOR_REVIEW` → "Waiting for review"; `inProgress` → "In progress". */
 export function humanize(state: string): string {
   const s = state
@@ -250,7 +243,7 @@ export function appStatusLines(
     if (v) {
       const what = [
         v.platform
-          ? (APPLE_PLATFORMS[v.platform] ?? humanize(v.platform))
+          ? (APPLE_PLATFORM_LABELS[v.platform] ?? humanize(v.platform))
           : null,
         v.versionString,
       ]
