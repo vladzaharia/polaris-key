@@ -41,7 +41,7 @@ import {
   getProductSyncState,
   listProducts,
 } from "../core/products/store.js";
-import { listProfiles, listTiers } from "../core/console/repo.js";
+import { listProfiles, listTiers } from "../core/licensing/store.js";
 import {
   getManifestSnapshot,
   gitShaOrNull,

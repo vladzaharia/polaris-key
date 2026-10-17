@@ -1,13 +1,14 @@
 // Licensing store (P0-18): the `licenses`, `keys_index`, `tiers` and `license_profiles` queries.
 // Split out of `core/repo.ts`; the seats, grants and lifecycle live beside it in `core/licensing/`.
 
+import { holderFilterSql, type HolderFilter } from "./licenseHolders.js";
 import type { Db, DbParam, DbStatement } from "../../db/types.js";
 import type {
-  KeyRow,
-  LicenseProfileRow,
   LicenseRow,
   ProfileRow,
   TierRow,
+  KeyRow,
+  LicenseProfileRow,
 } from "../repo.js";
 import {
   claimDeviceSeat,
@@ -452,4 +453,262 @@ export function stmtRestoreLicenseAccount(
     sql: "UPDATE licenses SET account_id = ? WHERE product = ? AND id = ? AND account_id = ?",
     params: [accountId, product, licenseId, from],
   };
+}
+
+// ── Licenses ─────────────────────────────────────────────────────────────────
+export async function listLicenses(
+  db: Db,
+  product: string,
+  filter: { holder?: HolderFilter; batch?: string } = {},
+): Promise<LicenseRow[]> {
+  // LX-26: the holder filter is the derived rule as SQL (`core/licensing/licenseHolders.ts`), never a copy.
+  const holder = filter.holder
+    ? ` AND ${holderFilterSql(filter.holder, "licenses")}`
+    : "";
+  // LX-28: one batch's licences (`idx_licenses_batch`).
+  const batch = filter.batch !== undefined ? " AND batch_id = ?" : "";
+  return db.all<LicenseRow>(
+    `SELECT * FROM licenses WHERE product = ?${holder}${batch} ORDER BY activated_at DESC, id DESC`,
+    product,
+    ...(filter.batch !== undefined ? [filter.batch] : []),
+  );
+}
+
+// A licence's status changes only through the lifecycle (LX-12): `transitionLicense` in
+// `core/licensing/lifecycleWrites.ts`, which writes `ended_reason` with it.
+
+export async function patchLicense(
+  db: Db,
+  product: string,
+  id: string,
+  fields: Partial<
+    Pick<
+      LicenseRow,
+      | "name"
+      | "email"
+      | "expires_at"
+      | "max_offline_days"
+      | "tier_id"
+      | "overrides_json"
+      | "channels_json"
+      | "min_version"
+      | "max_version"
+      | "device_limit"
+    >
+  >,
+  modifiedBy: string | null,
+  now: number,
+): Promise<void> {
+  const sets: string[] = [];
+  const params: (string | number | null)[] = [];
+  for (const [col, val] of Object.entries(fields)) {
+    if (val === undefined) continue;
+    sets.push(`${col} = ?`);
+    params.push(val as string | number | null);
+  }
+  if (sets.length === 0) return;
+  sets.push("modified_by = ?", "modified_at = ?");
+  params.push(modifiedBy, now, product, id);
+  await db.run(
+    `UPDATE licenses SET ${sets.join(", ")} WHERE product = ? AND id = ?`,
+    ...params,
+  );
+}
+
+// ── Keys ─────────────────────────────────────────────────────────────────────
+export async function countKeysByLicense(
+  db: Db,
+  product: string,
+  licenseId: string,
+): Promise<{ total: number; active: number }> {
+  const total = await db.first<{ n: number }>(
+    "SELECT COUNT(*) AS n FROM keys_index WHERE product = ? AND license_id = ?",
+    product,
+    licenseId,
+  );
+  const active = await db.first<{ n: number }>(
+    "SELECT COUNT(*) AS n FROM keys_index WHERE product = ? AND license_id = ? AND status = 'active'",
+    product,
+    licenseId,
+  );
+  return { total: total?.n ?? 0, active: active?.n ?? 0 };
+}
+
+// ── Profiles ─────────────────────────────────────────────────────────────────
+export async function listProfiles(
+  db: Db,
+  product: string,
+): Promise<ProfileRow[]> {
+  return db.all<ProfileRow>(
+    "SELECT * FROM profiles WHERE product = ? ORDER BY id",
+    product,
+  );
+}
+
+/**
+ * The console's profile write. ST-01b: a console create or edit owns the row (`source =
+ * 'console'`), so a resync leaves it alone from then on — a manifest row edited here is claimed.
+ *
+ * `claim: false` keeps the stored owner: the one console write that is NOT a claim is setting a
+ * managed secret's value, which a manifest cannot express and the resync already carries forward
+ * on a manifest row (R2, `resync.ts` `withStoredSecrets`).
+ */
+export async function upsertProfile(
+  db: Db,
+  row: ProfileRow,
+  opts: { claim?: boolean } = {},
+): Promise<void> {
+  const claim = opts.claim ?? true;
+  await db.run(
+    `INSERT INTO profiles (product, id, name, description, payload_json, modified_by, modified_at,
+       source)
+     VALUES (?, ?, ?, ?, ?, ?, ?, 'console')
+     ON CONFLICT(product, id) DO UPDATE SET
+       name = excluded.name, description = excluded.description,
+       payload_json = excluded.payload_json, modified_by = excluded.modified_by,
+       modified_at = excluded.modified_at${claim ? ", source = 'console'" : ""}`,
+    row.product,
+    row.id,
+    row.name,
+    row.description,
+    row.payload_json,
+    row.modified_by,
+    row.modified_at,
+  );
+}
+
+export async function deleteProfile(
+  db: Db,
+  product: string,
+  id: string,
+): Promise<void> {
+  await db.run(
+    "DELETE FROM profiles WHERE product = ? AND id = ?",
+    product,
+    id,
+  );
+}
+
+/**
+ * How many things still point at this profile — across EVERY referrer, not just the direct
+ * license attachments.
+ *
+ * R11-01: this used to count `license_profiles` only. A tier attaches a baseline profile via
+ * `tiers.profile_id` (the documented way to give a whole tier a managed payload,
+ * 0001_init.sql:38-39) and that column is a plain TEXT with no foreign key, so deleting a
+ * tier's baseline passed the 0-reference guard, returned 200, and silently stripped the
+ * config defaults, secrets and ENFORCED ENTITLEMENTS that every license on that tier inherits
+ * — `resolveEffective` treats a dangling profile_id as an empty layer, so nothing errors.
+ */
+export async function countLicensesUsingProfile(
+  db: Db,
+  product: string,
+  profileId: string,
+): Promise<number> {
+  const r = await db.first<{ n: number }>(
+    `SELECT (SELECT COUNT(*) FROM license_profiles
+              WHERE product = ? AND profile_id = ?)
+          + (SELECT COUNT(*) FROM tiers
+              WHERE product = ? AND profile_id = ?) AS n`,
+    product,
+    profileId,
+    product,
+    profileId,
+  );
+  return r?.n ?? 0;
+}
+
+/**
+ * What points at each profile, by profile id: the tiers whose baseline it is and the licenses
+ * that list it (`license_profiles`), the two referrer classes `countLicensesUsingProfile` sums.
+ * The console's Profiles list shows the counts, the profile record lists them, and Delete stays
+ * disabled while either is non-empty.
+ */
+export async function listProfileReferences(
+  db: Db,
+  product: string,
+): Promise<{
+  tiers: { profile_id: string; id: string; label: string }[];
+  licenses: {
+    profile_id: string;
+    id: string;
+    name: string | null;
+    email: string | null;
+  }[];
+}> {
+  const tiers = await db.all<{ profile_id: string; id: string; label: string }>(
+    "SELECT profile_id, id, label FROM tiers WHERE product = ? AND profile_id IS NOT NULL ORDER BY id",
+    product,
+  );
+  const licenses = await db.all<{
+    profile_id: string;
+    id: string;
+    name: string | null;
+    email: string | null;
+  }>(
+    `SELECT lp.profile_id AS profile_id, l.id AS id, l.name AS name, l.email AS email
+       FROM license_profiles lp
+       JOIN licenses l ON l.product = lp.product AND l.id = lp.license_id
+      WHERE lp.product = ?
+      ORDER BY l.id`,
+    product,
+  );
+  return { tiers, licenses };
+}
+
+export async function countLicensesUsingTier(
+  db: Db,
+  product: string,
+  tierId: string,
+): Promise<number> {
+  const r = await db.first<{ n: number }>(
+    "SELECT COUNT(*) AS n FROM licenses WHERE product = ? AND tier_id = ?",
+    product,
+    tierId,
+  );
+  return r?.n ?? 0;
+}
+
+// ── Tiers ────────────────────────────────────────────────────────────────────
+export async function listTiers(db: Db, product: string): Promise<TierRow[]> {
+  return db.all<TierRow>(
+    "SELECT * FROM tiers WHERE product = ? ORDER BY id",
+    product,
+  );
+}
+
+/** The console's tier write; ST-01b: it owns the row (`source = 'console'`), like `upsertProfile`. */
+export async function upsertTier(db: Db, row: TierRow): Promise<void> {
+  await db.run(
+    `INSERT INTO tiers (product, id, label, profile_id, policy_expiry_days, policy_device_limit,
+       channels_json, min_version, max_version, modified_by, modified_at, source)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'console')
+     ON CONFLICT(product, id) DO UPDATE SET
+       label = excluded.label, profile_id = excluded.profile_id,
+       policy_expiry_days = excluded.policy_expiry_days,
+       policy_device_limit = excluded.policy_device_limit,
+       channels_json = excluded.channels_json, min_version = excluded.min_version,
+       max_version = excluded.max_version,
+       modified_by = excluded.modified_by, modified_at = excluded.modified_at,
+       source = 'console'`,
+    row.product,
+    row.id,
+    row.label,
+    row.profile_id,
+    row.policy_expiry_days,
+    row.policy_device_limit,
+    row.channels_json,
+    row.min_version,
+    row.max_version,
+    row.modified_by,
+    row.modified_at,
+  );
+}
+
+export async function deleteTier(
+  db: Db,
+  product: string,
+  id: string,
+): Promise<void> {
+  await db.run("DELETE FROM tiers WHERE product = ? AND id = ?", product, id);
 }

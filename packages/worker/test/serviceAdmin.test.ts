@@ -35,7 +35,7 @@ import {
 } from "../src/core/console/session.js";
 import { getProduct } from "../src/core/products/store.js";
 import { listAudit } from "../src/core/audit.js";
-import { listTiers } from "../src/core/console/repo.js";
+import { listTiers } from "../src/core/licensing/store.js";
 import { MAX_DEVICE_LIMIT } from "@polaris-key/manifest";
 import { getReleaseConfig } from "../src/services/release/index.js";
 

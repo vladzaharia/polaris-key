@@ -45,8 +45,8 @@ import {
   countLicensesUsingTier,
   listProfiles,
   listTiers,
-  nextSchemaVersion,
-} from "../../core/console/repo.js";
+} from "../../core/licensing/store.js";
+import { nextSchemaVersion } from "../../core/products/store.js";
 import { type ProductRow, type TierRow } from "../../core/repo.js";
 import {
   getActiveSchema,

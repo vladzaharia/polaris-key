@@ -1,13 +1,18 @@
 // Product store (P0-18): the `products` row and its policies, sealed key custody, the active
 // catalog, and the registration statement-builders. Split out of `core/repo.ts`.
 
-import type { Db, DbParam, DbStatement } from "../../db/types.js";
+import { stmtRevokeProductCiTokens } from "../publisher.js";
+import { stmtRevokeProductRegistryTokens } from "../registry/registryTokens.js";
+import { productGrantErasureStatements } from "../licensing/grants.js";
+import { licenseTransitionSetSql } from "../licensing/lifecycleWrites.js";
+import { stmtDeleteProductAutoAttachBlocks } from "../licensing/licenseHolders.js";
+import type { Db, DbStatement, DbParam } from "../../db/types.js";
 import type {
-  ProductKeyRow,
   ProductRow,
+  SchemaRow,
+  ProductKeyRow,
   ProductSecretRow,
   ProductSyncStateRow,
-  SchemaRow,
 } from "../repo.js";
 
 // ── Products ─────────────────────────────────────────────────────────────────
@@ -779,4 +784,252 @@ export function stmtSetServices(
        modified_at = ? WHERE slug = ?`,
     params: [servicesJson, at, product],
   };
+}
+
+// ── Products (platform registry) ─────────────────────────────────────────────
+export type ProductUpdateFields = Partial<
+  Pick<
+    ProductRow,
+    | "name"
+    | "compat_min"
+    | "compat_max"
+    | "default_max_offline_days"
+    | "default_device_limit"
+    | "admin_group"
+    | "branding_json"
+  >
+>;
+
+export async function updateProduct(
+  db: Db,
+  slug: string,
+  fields: ProductUpdateFields,
+  now: number,
+): Promise<void> {
+  const stmt = stmtUpdateProduct(slug, fields, now);
+  await db.run(stmt.sql, ...stmt.params);
+}
+
+/** `updateProduct` as a statement, so a console write and its claims (ST-01b) share one batch. */
+export function stmtUpdateProduct(
+  slug: string,
+  fields: ProductUpdateFields,
+  now: number,
+): DbStatement {
+  const sets: string[] = [];
+  const params: (string | number | null)[] = [];
+  for (const [col, val] of Object.entries(fields)) {
+    if (val === undefined) continue;
+    sets.push(`${col} = ?`);
+    params.push(val as string | number | null);
+  }
+  sets.push("modified_at = ?");
+  params.push(now);
+  params.push(slug);
+  return {
+    sql: `UPDATE products SET ${sets.join(", ")} WHERE slug = ?`,
+    params,
+  };
+}
+
+/**
+ * Soft-delete a product and revoke everything that authenticates against it.
+ *
+ * R11-09 / R12-10: the soft delete used to be a pure status flip that deleted NOTHING, so
+ * `licenses.email`, `.name`, `.sub` and `.groups_json` survived verbatim forever and
+ * right-to-erasure was structurally unimplementable. The status flip is still the right
+ * primitive (audit trails, license ids and device history stay intact), but the personal data
+ * is now erased in the same atomic batch: a deleted product retains the SHAPE of its licenses,
+ * not the people behind them. `sub` and `enroll_hwid` go too — they are re-identifiers and,
+ * left in place, they keep occupying `idx_licenses_sub` / `idx_licenses_enroll_hwid` so a
+ * re-created product could never re-issue to the same subject or machine.
+ */
+export async function deleteProduct(
+  db: Db,
+  slug: string,
+  now: number,
+): Promise<void> {
+  await db.batch([
+    {
+      sql: "UPDATE products SET status = 'deleted', deleted_at = ?, modified_at = ? WHERE slug = ?",
+      params: [now, now, slug],
+    },
+    {
+      // LX-12: deleting the product revokes every licence still active (`ended_reason`
+      // `revoked`); a licence that already ended keeps its status and reason.
+      sql: `UPDATE licenses
+               SET ${licenseTransitionSetSql("revoke")},
+                   email = NULL, name = NULL, sub = NULL, groups_json = NULL,
+                   enroll_hwid = NULL, account_id = NULL, modified_at = ?
+             WHERE product = ?`,
+      params: [now, slug],
+    },
+    {
+      sql: "DELETE FROM portal_license_links WHERE product = ?",
+      params: [slug],
+    },
+    // LX-26: the auto-attach blocks name accounts; the licences they guarded are erased above.
+    stmtDeleteProductAutoAttachBlocks(slug),
+    // I-05: the product's pairwise subjects, their aliases and its "Continue to" grants go with
+    // it; no account keeps a link to a product that no longer exists.
+    {
+      sql: "DELETE FROM account_product_subject_aliases WHERE product = ?",
+      params: [slug],
+    },
+    {
+      sql: "DELETE FROM account_product_subjects WHERE product = ?",
+      params: [slug],
+    },
+    {
+      sql: "DELETE FROM account_product_grants WHERE product = ?",
+      params: [slug],
+    },
+    // PX-W15: and every account's acceptance of its terms (a re-created slug asks again).
+    {
+      sql: "DELETE FROM account_terms_acceptances WHERE product = ?",
+      params: [slug],
+    },
+    // PS-04: every account's library entry for it, its storefront aggregates and its impression
+    // dedupe keys (a re-created slug starts with an empty storefront history).
+    {
+      sql: "DELETE FROM library_entries WHERE product = ?",
+      params: [slug],
+    },
+    {
+      sql: "DELETE FROM storefront_daily WHERE product = ?",
+      params: [slug],
+    },
+    {
+      sql: "DELETE FROM storefront_seen WHERE product = ?",
+      params: [slug],
+    },
+    // U-03: every account's managed config for the product (its subjects are gone above), and the
+    // licence-override migration's report rows, which name the licences' emails.
+    {
+      sql: "DELETE FROM account_overrides WHERE product = ?",
+      params: [slug],
+    },
+    {
+      sql: "DELETE FROM override_migration_report WHERE product = ?",
+      params: [slug],
+    },
+    // I-12 and LX-30: the relink history names accounts and subjects, and a holder move keeps the
+    // licence's name and email before and after (`holder_json`); nothing is left to undo.
+    {
+      sql: "DELETE FROM license_relinks WHERE product = ?",
+      params: [slug],
+    },
+    // LX-08: the licensing model's account- and store-held grants, the Steam identities verified
+    // on its devices and the entitlement-event feed (subjects); licence-held grants stay with
+    // their licences (`core/licensing/grants.ts`).
+    ...productGrantErasureStatements(slug),
+    {
+      sql: "UPDATE devices SET status = 'deauthorized', subject = NULL WHERE product = ?",
+      params: [slug],
+    },
+    {
+      sql: "UPDATE keys_index SET status = 'revoked' WHERE product = ?",
+      params: [slug],
+    },
+    {
+      sql: "UPDATE product_keys SET status = 'revoked', rotated_at = ?, revoked_at = ? WHERE product = ?",
+      params: [now, now, slug],
+    },
+    // P5-01: a deleted product keeps no store keys. Deleted, not flagged: an outlet credential
+    // is a live key to someone else's account, and nothing about a deleted product needs it.
+    // (This and the KEK sweep are the only places outside `core/outletCredentials.ts` allowed
+    // to name the table — `test/outletCredentialReach.test.ts`.)
+    {
+      sql: "DELETE FROM outlet_credentials WHERE product = ?",
+      params: [slug],
+    },
+    // F-hardening: a deleted product's package feeds go off (the read path also refuses a
+    // product whose status is not active, so this is belt and braces for a re-created slug).
+    {
+      sql: `UPDATE dist_registry_owners
+               SET enabled = 0, version = version + 1, updated_at = ?
+             WHERE product = ? AND enabled = 1`,
+      params: [now, slug],
+    },
+    // A-16: a deleted product holds no platform store app: its pins on the team credentials go,
+    // which frees the app for another product.
+    {
+      sql: "DELETE FROM platform_credential_pins WHERE product = ?",
+      params: [slug],
+    },
+    // P2-02: no CI credential outlives its product (`lookupCiToken` also refuses a deleted
+    // product's tokens; this makes the revocation visible in the token list too).
+    stmtRevokeProductCiTokens(slug, now),
+    // F-21: nor any registry token (the lookup also joins `products.status <> 'deleted'`).
+    stmtRevokeProductRegistryTokens(slug, now),
+  ]);
+}
+
+// ── Schema (catalog) writes ──────────────────────────────────────────────────
+export async function deactivateSchemas(
+  db: Db,
+  product: string,
+): Promise<void> {
+  await db.run(
+    "UPDATE product_schema SET active = 0 WHERE product = ?",
+    product,
+  );
+}
+
+export async function nextSchemaVersion(
+  db: Db,
+  product: string,
+): Promise<number> {
+  const r = await db.first<{ v: number | null }>(
+    "SELECT MAX(catalog_version) AS v FROM product_schema WHERE product = ?",
+    product,
+  );
+  return (r?.v ?? 0) + 1;
+}
+
+/**
+ * Every catalog version a product has published, newest first (ADMIN.md A-6). Versions are never
+ * deleted: a publish deactivates the old row and inserts the next, so this is the full history.
+ */
+export async function listSchemaVersions(
+  db: Db,
+  product: string,
+): Promise<SchemaRow[]> {
+  return db.all<SchemaRow>(
+    "SELECT * FROM product_schema WHERE product = ? ORDER BY catalog_version DESC",
+    product,
+  );
+}
+
+/** One catalog version, active or not. */
+export async function getSchemaVersion(
+  db: Db,
+  product: string,
+  version: number,
+): Promise<SchemaRow | null> {
+  return db.first<SchemaRow>(
+    "SELECT * FROM product_schema WHERE product = ? AND catalog_version = ?",
+    product,
+    version,
+  );
+}
+
+/**
+ * Who published each console catalog version: the `schema.publish` audit rows (their target id
+ * is the version). A version with no row came from the product's manifest (create or resync).
+ */
+export async function listSchemaPublishers(
+  db: Db,
+  product: string,
+): Promise<
+  {
+    target_id: string | null;
+    actor_name: string | null;
+    actor_email: string | null;
+  }[]
+> {
+  return db.all(
+    "SELECT target_id, actor_name, actor_email FROM audit WHERE product = ? AND action = 'schema.publish'",
+    product,
+  );
 }

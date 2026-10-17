@@ -36,7 +36,7 @@ import {
   CSRF_HEADER,
   issueSession,
 } from "../src/core/console/session.js";
-import { deleteProduct } from "../src/core/console/repo.js";
+import { deleteProduct } from "../src/core/products/store.js";
 import { listAudit } from "../src/core/audit.js";
 import { loadProduct, type Product } from "../src/core/products.js";
 import { oidcGrantStatements } from "../src/core/licensing/grants.js";

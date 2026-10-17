@@ -45,7 +45,7 @@ import {
   countLicensesUsingTier,
   listProfiles,
   listTiers,
-} from "../../core/console/repo.js";
+} from "../../core/licensing/store.js";
 import {
   getActiveSchema,
   getProduct,

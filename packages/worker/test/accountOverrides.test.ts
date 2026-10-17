@@ -82,7 +82,7 @@ import {
   detachLicense,
 } from "../src/services/identity/accounts/claim.js";
 import { handleAdmin } from "../src/console/index.js";
-import { deleteProduct } from "../src/core/console/repo.js";
+import { deleteProduct } from "../src/core/products/store.js";
 import { dryRunOnCopy } from "../scripts/override-migration-dry-run.js";
 import {
   ADMIN_COOKIE,

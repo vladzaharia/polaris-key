@@ -79,7 +79,7 @@ import {
   upsertProductSecret,
 } from "../../src/core/products/store.js";
 import { upsertDevice } from "../../src/core/devices/store.js";
-import { deactivateSchemas } from "../../src/core/console/repo.js";
+import { deactivateSchemas } from "../../src/core/products/store.js";
 import { verifyJws, signJws } from "@polaris-key/jws";
 import type { ConfigDoc } from "@polaris-key/protocol/config";
 import {

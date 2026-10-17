@@ -8,7 +8,7 @@ import { describe, expect, it } from "vitest";
 import { NOW, seedProduct } from "./seed.js";
 import { Device, seededWorld, type CardWorld } from "./identityCardHarness.js";
 import { insertLicense } from "../src/core/licensing/store.js";
-import { deleteProduct } from "../src/core/console/repo.js";
+import { deleteProduct } from "../src/core/products/store.js";
 import {
   ACCOUNT_SESSION_COOKIE,
   LINK_FLOW_COOKIE,

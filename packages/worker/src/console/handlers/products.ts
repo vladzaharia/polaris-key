@@ -59,10 +59,8 @@ import {
 import { getTier } from "../../core/licensing/store.js";
 import { mintKid } from "../../core/keys.js";
 import { deleteTokenRecord } from "../../platform/kv.js";
-import {
-  deleteProduct,
-  listDevicesByProduct,
-} from "../../core/console/repo.js";
+import { deleteProduct } from "../../core/products/store.js";
+import { listDevicesByProduct } from "../../core/devices/store.js";
 import {
   claimsApply,
   manifestAuthorityOf,

@@ -62,7 +62,7 @@ import {
   listProfiles,
   listTiers,
   patchLicense,
-} from "../../../core/console/repo.js";
+} from "../../../core/licensing/store.js";
 import { loadCatalog } from "../../../core/activeCatalog.js";
 import { parsePayload, redactPayload } from "../../../core/console/redact.js";
 import {

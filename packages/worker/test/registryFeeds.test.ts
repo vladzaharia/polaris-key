@@ -65,7 +65,7 @@ import { setServices } from "../src/core/products/store.js";
 import type { Db } from "../src/db/types.js";
 import type { Env } from "../src/platform/env.js";
 import { makeTestDb } from "./helpers.js";
-import { deleteProduct } from "../src/core/console/repo.js";
+import { deleteProduct } from "../src/core/products/store.js";
 import { KvMock } from "./kvMock.js";
 import { R2Mock, asR2 } from "./r2Mock.js";
 import { makeEnv, NOW, seedProduct } from "./seed.js";

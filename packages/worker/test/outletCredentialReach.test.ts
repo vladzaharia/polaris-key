@@ -11,7 +11,7 @@
  *      edge-mint's home — may not, nor may `core/products.ts`, home of `openProductSecret`.
  *   2. **The table name.** No file outside the owner, the KEK re-seal sweep
  *      (`src/console/handlers/products.ts`, `SEALED_TABLES`) and `deleteProduct`
- *      (`src/core/console/repo.ts`) names `outlet_credentials` — so no manifest ingest, resync or
+ *      (`src/core/products/store.ts`) names `outlet_credentials` — so no manifest ingest, resync or
  *      service hook can write it, and nothing can read the sealed column around the audited
  *      accessor.
  *   3. **The AAD kind.** No file outside the vault, the owner, the token helpers and the sweep
@@ -87,7 +87,7 @@ const TABLE_ALLOW_FILES = [
   "src/db/owners.ts", // the table ownership map (P0-18) names every table
   "src/core/outletCredentials.ts",
   "src/console/handlers/products.ts",
-  "src/core/console/repo.ts",
+  "src/core/products/store.ts",
 ];
 const WRITER_ALLOW_FILES = [
   "src/core/outletCredentials.ts",
@@ -123,7 +123,7 @@ const PLATFORM_TABLE_ALLOW_FILES = [
   "src/db/owners.ts", // the table ownership map (P0-18) names every table
   "src/core/platformCredentials.ts",
   "src/console/handlers/products.ts",
-  "src/core/console/repo.ts",
+  "src/core/products/store.ts",
 ];
 const PLATFORM_KIND_ALLOW_FILES = [
   "src/platform/keyvault.ts",

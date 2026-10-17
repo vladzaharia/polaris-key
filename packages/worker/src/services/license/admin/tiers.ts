@@ -27,7 +27,7 @@ import {
   listProfiles,
   listTiers,
   upsertTier,
-} from "../../../core/console/repo.js";
+} from "../../../core/licensing/store.js";
 import { WriteChecks } from "../../../core/console/writeChecks.js";
 import { withIncludedChannels } from "../../../core/channels.js";
 import type { LicenseAdminContext } from "./index.js";

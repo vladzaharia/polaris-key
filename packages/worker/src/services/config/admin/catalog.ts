@@ -52,13 +52,15 @@ import {
 import { audit } from "../../../core/audit.js";
 import {
   getSchemaVersion,
-  listLicenses,
-  listProfiles,
   listSchemaPublishers,
   listSchemaVersions,
-  listTiers,
   nextSchemaVersion,
-} from "../../../core/console/repo.js";
+} from "../../../core/products/store.js";
+import {
+  listLicenses,
+  listProfiles,
+  listTiers,
+} from "../../../core/licensing/store.js";
 import { parsePayload } from "../../../core/console/redact.js";
 import { reservedNamesMode } from "../../../core/licensing/reservedNames.js";
 import type { ConfigAdminContext } from "./index.js";

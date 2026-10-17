@@ -64,7 +64,7 @@ import {
 } from "../src/services/identity/accounts/terms.js";
 import { mergeAccounts } from "../src/services/identity/accounts/merge.js";
 import { deleteAccount } from "../src/services/identity/accounts/deletion.js";
-import { deleteProduct } from "../src/core/console/repo.js";
+import { deleteProduct } from "../src/core/products/store.js";
 import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
 

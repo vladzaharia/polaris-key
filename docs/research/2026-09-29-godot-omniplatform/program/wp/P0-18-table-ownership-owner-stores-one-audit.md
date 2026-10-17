@@ -68,20 +68,19 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 - ST-24's export is `GET …/activity?format=ndjson` (product) and
   `GET /api/platform/activity?format=ndjson`, no new route, so rule 10 has nothing to add.
 
-## Progress and continuation (2026-10-16)
+## Hand-off notes (2026-10-16)
 
-Done: `db/owners.ts`, enforced crossing and writer-location tests, AGENTS.md rule 6, `core/audit.ts`
-(one builder, `actorOf`, `SYSTEM_ACTORS`, retention that keeps each setting's latest row, NDJSON
-export), `core/repo.ts` split into `core/{products,licensing,devices}/store.ts` (row types stay in
-`repo.ts`), Identity's holder-move and merge-undo `licenses` writes behind `core/licensing/store.ts`.
+Built: `db/owners.ts`, the enforced crossing, writer-location and licence-writer tests, AGENTS.md
+rule 6, `core/audit.ts` (one builder, `actorOf`, `SYSTEM_ACTORS`, retention that keeps each
+setting's latest row, NDJSON export), `core/repo.ts` and `core/console/repo.ts` split into
+`core/{products,licensing,devices}/store.ts` (row types stay in `repo.ts`), Identity's holder-move
+and merge-undo `licenses` writes behind `core/licensing/store.ts`.
 
-Not done, left for a follow-up slice:
-
-- `core/console/repo.ts` (the admin repo, 679 lines) is not split into owner stores; its writes
-  to other owners' tables are the `core/console/repo.ts` rows in `WRITE_SEAMS` (tagged P0-19, P0-20, P0-26).
-- Identity's `oidc.ts` licence writes wait for P0-20 (`LICENSE_WRITE_SEAMS`), `legacy.ts` for P0-24.
-- Audit callers that wrap `appendAudit` with their own helper (`auditStep`, `auditChange` …) go
-  through the one writer already; folding them into `actorOf` call sites is mechanical cleanup.
+Left on the allow-lists for the packages that own them: Identity's `oidc.ts` licence writes
+(P0-20) and `legacy.ts` (P0-24); the product-delete cascade and registration builders in
+`core/products/store.ts` writing other owners' tables (P0-19, P0-26). Audit callers that wrap
+`appendAudit` in their own helper (`auditStep`, `auditChange` …) already go through the one
+writer; folding them onto `actorOf` is mechanical cleanup.
 
 ## Steps
 

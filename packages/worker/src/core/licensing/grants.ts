@@ -231,7 +231,7 @@ export function licenseGrantDeleteStatements(target: {
 }
 
 /**
- * A soft-deleted product's account- and store-held licensing rows (`core/console/repo.ts`
+ * A soft-deleted product's account- and store-held licensing rows (`core/products/store.ts`
  * `deleteProduct`, R11-09: a deleted product keeps the shape of its licences, not the people). The
  * licence-held grants stay with the licence rows they belong to.
  */

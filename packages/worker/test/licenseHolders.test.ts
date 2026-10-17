@@ -59,7 +59,7 @@ import {
   insertLink,
   verifiedAccountEmails,
 } from "../src/services/identity/accounts/repo.js";
-import { deleteProduct } from "../src/core/console/repo.js";
+import { deleteProduct } from "../src/core/products/store.js";
 import type { Db, DbStatement } from "../src/db/types.js";
 import {
   syncAccountLicenseLinks,

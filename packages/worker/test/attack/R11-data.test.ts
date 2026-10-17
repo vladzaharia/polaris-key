@@ -27,7 +27,7 @@ import {
 } from "../../src/core/products/store.js";
 import { insertKey, insertLicense } from "../../src/core/licensing/store.js";
 import { D1Db } from "../../src/db/d1.js";
-import { deleteProfile, deleteTier } from "../../src/core/console/repo.js";
+import { deleteProfile, deleteTier } from "../../src/core/licensing/store.js";
 import { licenseSummary } from "../../src/core/licensing/summary.js";
 import {
   getOrCreateAccountByEmail,

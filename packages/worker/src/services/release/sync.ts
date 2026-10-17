@@ -20,7 +20,7 @@
  * A repo link IS Release's front door — the coordinates, the installation token, the
  * `.pkey/` read. But what it WRITES is the whole product (catalog, tiers, profiles, OIDC,
  * edge-mint), almost none of which is Release's data. Since a service may not import another
- * service or the console, those writers are Core's (`core/repo.ts`, `core/console/repo.ts`,
+ * service or the console, those writers are Core's (`core/products/store.ts`, `core/licensing/store.ts`,
  * `core/settingsClaims.ts`), imported directly.
  */
 
