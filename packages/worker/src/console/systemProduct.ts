@@ -27,7 +27,6 @@
  * rows and Distribution's feed rows in one batch, which Core itself may not (rule 6).
  */
 
-import { type AuditActor, SYSTEM_ACTORS } from "../core/audit.js";
 import {
   SYSTEM_PRODUCT_SLUG,
   type ParsedManifest,
