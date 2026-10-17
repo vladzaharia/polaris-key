@@ -48,6 +48,13 @@ public object ErrorCode {
     public const val unavailable: String = "unavailable"
     public const val erasureLedgerUnavailable: String = "erasure_ledger_unavailable"
     public const val identityDisabled: String = "identity_disabled"
+    public const val invalidRequest: String = "invalid_request"
+    public const val invalidClient: String = "invalid_client"
+    public const val invalidGrant: String = "invalid_grant"
+    public const val unsupportedGrantType: String = "unsupported_grant_type"
+    public const val invalidScope: String = "invalid_scope"
+    public const val redirectUriMismatch: String = "redirect_uri_mismatch"
+    public const val licenseChoiceRequired: String = "license_choice_required"
     public const val authMethodDisabled: String = "auth_method_disabled"
     public const val emailUnavailable: String = "email_unavailable"
     public const val turnstileFailed: String = "turnstile_failed"
@@ -215,6 +222,13 @@ public val ERROR_CODE_VALUES: List<String> = listOf(
     "unavailable",
     "erasure_ledger_unavailable",
     "identity_disabled",
+    "invalid_request",
+    "invalid_client",
+    "invalid_grant",
+    "unsupported_grant_type",
+    "invalid_scope",
+    "redirect_uri_mismatch",
+    "license_choice_required",
     "auth_method_disabled",
     "email_unavailable",
     "turnstile_failed",
@@ -382,6 +396,13 @@ public val ERROR_CODE_KINDS: Map<String, String> = mapOf(
     "unavailable" to "wire",
     "erasure_ledger_unavailable" to "wire",
     "identity_disabled" to "wire",
+    "invalid_request" to "wire",
+    "invalid_client" to "wire",
+    "invalid_grant" to "wire",
+    "unsupported_grant_type" to "wire",
+    "invalid_scope" to "wire",
+    "redirect_uri_mismatch" to "wire",
+    "license_choice_required" to "wire",
     "auth_method_disabled" to "wire",
     "email_unavailable" to "wire",
     "turnstile_failed" to "wire",

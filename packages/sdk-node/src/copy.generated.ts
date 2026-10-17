@@ -186,6 +186,37 @@ export const COPY_CODES: Readonly<Record<string, CopyEntry>> = {
     message:
       "Sign-in through this app is turned off. Your installs and licenses keep working.",
   },
+  invalid_request: {
+    title: "Sign-in request invalid",
+    message: "The app sent a sign-in request we can't read. Try again.",
+  },
+  invalid_client: {
+    title: "App not recognised",
+    message: "This app isn't set up for sign-in. Contact its developer.",
+  },
+  invalid_grant: {
+    title: "Sign-in expired",
+    message: "That sign-in has expired or was already used. Sign in again.",
+  },
+  unsupported_grant_type: {
+    title: "Sign-in request invalid",
+    message:
+      "The app asked for a sign-in type we don't support. Contact its developer.",
+  },
+  invalid_scope: {
+    title: "Access not available",
+    message:
+      "The app asked for access this sign-in doesn't offer. Contact its developer.",
+  },
+  redirect_uri_mismatch: {
+    title: "Return address not allowed",
+    message:
+      "This app's return address isn't registered, so we didn't send you back. Contact its developer.",
+  },
+  license_choice_required: {
+    title: "Choose a license",
+    message: "Choose which license this device uses, then continue.",
+  },
   auth_method_disabled: {
     title: "Sign-in method unavailable",
     message: "That sign-in method is turned off. Choose another one.",

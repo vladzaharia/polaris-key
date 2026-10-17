@@ -149,6 +149,34 @@
       "title": "Acesso indisponível",
       "message": "O acesso por este app está desativado. Suas instalações e licenças continuam funcionando."
     },
+    "invalid_request": {
+      "title": "Solicitação de login inválida",
+      "message": "O app enviou uma solicitação que não conseguimos ler. Tente de novo."
+    },
+    "invalid_client": {
+      "title": "App não reconhecido",
+      "message": "Este app não está configurado para login. Fale com o desenvolvedor."
+    },
+    "invalid_grant": {
+      "title": "Login expirado",
+      "message": "Este login expirou ou já foi usado. Entre de novo."
+    },
+    "unsupported_grant_type": {
+      "title": "Solicitação de login inválida",
+      "message": "O app pediu um tipo de login que não aceitamos. Fale com o desenvolvedor."
+    },
+    "invalid_scope": {
+      "title": "Acesso indisponível",
+      "message": "O app pediu um acesso que este login não oferece. Fale com o desenvolvedor."
+    },
+    "redirect_uri_mismatch": {
+      "title": "Endereço de retorno não permitido",
+      "message": "O endereço de retorno deste app não está registrado, então não redirecionamos você. Fale com o desenvolvedor."
+    },
+    "license_choice_required": {
+      "title": "Escolha uma licença",
+      "message": "Escolha qual licença este dispositivo usa e continue."
+    },
     "auth_method_disabled": {
       "title": "Método de acesso indisponível",
       "message": "Esse método de acesso está desativado. Escolha outro."

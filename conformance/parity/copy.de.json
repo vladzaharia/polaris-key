@@ -149,6 +149,34 @@
       "title": "Anmeldung nicht verfügbar",
       "message": "Die Anmeldung über diese App ist deaktiviert. Ihre Installationen und Lizenzen funktionieren weiterhin."
     },
+    "invalid_request": {
+      "title": "Anmeldeanfrage ungültig",
+      "message": "Die App hat eine Anmeldeanfrage gesendet, die wir nicht lesen können. Versuche es erneut."
+    },
+    "invalid_client": {
+      "title": "App nicht erkannt",
+      "message": "Diese App ist nicht für die Anmeldung eingerichtet. Wende dich an den Entwickler."
+    },
+    "invalid_grant": {
+      "title": "Anmeldung abgelaufen",
+      "message": "Diese Anmeldung ist abgelaufen oder wurde bereits verwendet. Melde dich erneut an."
+    },
+    "unsupported_grant_type": {
+      "title": "Anmeldeanfrage ungültig",
+      "message": "Die App hat eine Anmeldeart angefragt, die wir nicht unterstützen. Wende dich an den Entwickler."
+    },
+    "invalid_scope": {
+      "title": "Zugriff nicht verfügbar",
+      "message": "Die App hat Zugriff angefragt, den diese Anmeldung nicht bietet. Wende dich an den Entwickler."
+    },
+    "redirect_uri_mismatch": {
+      "title": "Rücksprungadresse nicht erlaubt",
+      "message": "Die Rücksprungadresse dieser App ist nicht registriert, deshalb haben wir dich nicht zurückgeleitet. Wende dich an den Entwickler."
+    },
+    "license_choice_required": {
+      "title": "Lizenz wählen",
+      "message": "Wähle, welche Lizenz dieses Gerät verwendet, und fahre dann fort."
+    },
     "auth_method_disabled": {
       "title": "Anmeldemethode nicht verfügbar",
       "message": "Diese Anmeldemethode ist deaktiviert. Wählen Sie eine andere."

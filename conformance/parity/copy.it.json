@@ -149,6 +149,34 @@
       "title": "Accesso non disponibile",
       "message": "L'accesso tramite questa app è disattivato. Le tue installazioni e licenze continuano a funzionare."
     },
+    "invalid_request": {
+      "title": "Richiesta di accesso non valida",
+      "message": "L'app ha inviato una richiesta che non riusciamo a leggere. Riprova."
+    },
+    "invalid_client": {
+      "title": "App non riconosciuta",
+      "message": "Questa app non è configurata per l'accesso. Contatta il suo sviluppatore."
+    },
+    "invalid_grant": {
+      "title": "Accesso scaduto",
+      "message": "Questo accesso è scaduto o è già stato usato. Accedi di nuovo."
+    },
+    "unsupported_grant_type": {
+      "title": "Richiesta di accesso non valida",
+      "message": "L'app ha chiesto un tipo di accesso che non supportiamo. Contatta il suo sviluppatore."
+    },
+    "invalid_scope": {
+      "title": "Accesso non disponibile",
+      "message": "L'app ha chiesto un accesso che questo accesso non offre. Contatta il suo sviluppatore."
+    },
+    "redirect_uri_mismatch": {
+      "title": "Indirizzo di ritorno non consentito",
+      "message": "L'indirizzo di ritorno di questa app non è registrato, quindi non ti abbiamo reindirizzato. Contatta il suo sviluppatore."
+    },
+    "license_choice_required": {
+      "title": "Scegli una licenza",
+      "message": "Scegli quale licenza usa questo dispositivo, poi continua."
+    },
     "auth_method_disabled": {
       "title": "Metodo di accesso non disponibile",
       "message": "Questo metodo di accesso è disattivato. Scegline un altro."

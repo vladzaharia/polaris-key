@@ -187,6 +187,13 @@ class ErrorCode:
     UNAVAILABLE: Final = "unavailable"
     ERASURE_LEDGER_UNAVAILABLE: Final = "erasure_ledger_unavailable"
     IDENTITY_DISABLED: Final = "identity_disabled"
+    INVALID_REQUEST: Final = "invalid_request"
+    INVALID_CLIENT: Final = "invalid_client"
+    INVALID_GRANT: Final = "invalid_grant"
+    UNSUPPORTED_GRANT_TYPE: Final = "unsupported_grant_type"
+    INVALID_SCOPE: Final = "invalid_scope"
+    REDIRECT_URI_MISMATCH: Final = "redirect_uri_mismatch"
+    LICENSE_CHOICE_REQUIRED: Final = "license_choice_required"
     AUTH_METHOD_DISABLED: Final = "auth_method_disabled"
     EMAIL_UNAVAILABLE: Final = "email_unavailable"
     TURNSTILE_FAILED: Final = "turnstile_failed"
@@ -354,6 +361,13 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "unavailable",
     "erasure_ledger_unavailable",
     "identity_disabled",
+    "invalid_request",
+    "invalid_client",
+    "invalid_grant",
+    "unsupported_grant_type",
+    "invalid_scope",
+    "redirect_uri_mismatch",
+    "license_choice_required",
     "auth_method_disabled",
     "email_unavailable",
     "turnstile_failed",
@@ -523,6 +537,13 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "unavailable": "wire",
         "erasure_ledger_unavailable": "wire",
         "identity_disabled": "wire",
+        "invalid_request": "wire",
+        "invalid_client": "wire",
+        "invalid_grant": "wire",
+        "unsupported_grant_type": "wire",
+        "invalid_scope": "wire",
+        "redirect_uri_mismatch": "wire",
+        "license_choice_required": "wire",
         "auth_method_disabled": "wire",
         "email_unavailable": "wire",
         "turnstile_failed": "wire",
