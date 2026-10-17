@@ -82,7 +82,7 @@ apply says why in one line. One home: EXPERIENCE.md ยง7.3; kits also follow DL1โ
 
 Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
 
-- `doc:PORTAL#5.3`: Carry the owner's 2026-10-08 lapsed-page decision: state once, no 'Not included' row, Renew only in the License card; DOC-14 amends PORTAL 5.3.
+- `doc:PORTAL#5.3`: Build the owner's 2026-10-08 lapsed-page decision that PORTAL 4.4 states: Updates ended once, no 'Not included' row, Renew only in the License card.
 
 ## Acceptance criteria
 
