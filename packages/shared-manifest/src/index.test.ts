@@ -2861,6 +2861,52 @@ describe("package deliverables (F-03, plans/F-01.md §3.1)", () => {
   });
 });
 
+describe("parseManifest carries the validator's warnings (P0-26)", () => {
+  const product = JSON.stringify({
+    slug: "acme",
+    name: "Acme",
+    compatMin: "1.0.0",
+    compatMax: "9.0.0",
+    defaultMaxOfflineDays: 14,
+    defaultDeviceLimit: 3,
+    tiers: [],
+    provisioning: [],
+  });
+  const schema = (extra: Record<string, unknown>) =>
+    JSON.stringify({
+      schemaVersion: 1,
+      entries: [
+        {
+          key: "api.key",
+          kind: "secret",
+          category: "api",
+          label: "API key",
+          description: "",
+          schema: { type: "string" },
+          ...extra,
+        },
+      ],
+    });
+
+  it("returns them on an ok parse", () => {
+    const clean = parseManifest({ product, schema: schema({}) });
+    expect(clean.ok).toBe(true);
+    if (clean.ok)
+      expect(clean.warnings.map((w) => w.code)).not.toContain(
+        "catalog_secret_flag_retired",
+      );
+    const flagged = parseManifest({
+      product,
+      schema: schema({ secret: true }),
+    });
+    expect(flagged.ok).toBe(true);
+    if (!flagged.ok) return;
+    expect(flagged.warnings.map((w) => w.code)).toContain(
+      "catalog_secret_flag_retired",
+    );
+  });
+});
+
 describe("minted tokens carry their recipe (U-31)", () => {
   const entry = (over: Record<string, unknown> = {}) => ({
     key: "musickit",

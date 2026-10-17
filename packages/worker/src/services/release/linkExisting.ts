@@ -46,11 +46,7 @@ import {
   listProfiles,
   listTiers,
 } from "../../core/licensing/store.js";
-import {
-  getActiveSchema,
-  getProduct,
-  stmtInsertReleaseConfig,
-} from "../../core/products/store.js";
+import { getActiveSchema, getProduct } from "../../core/products/store.js";
 import { getManifestSnapshot } from "../../core/manifestSnapshot.js";
 import { liveRowClaimKeys } from "../../core/rowSettings.js";
 import { parseServices } from "../../core/services.js";
@@ -82,7 +78,9 @@ import {
   unsafeBinaryNameRefusal,
   type ResyncResult,
 } from "./resync.js";
-import type { ManifestIngest } from "../../core/registry.js";
+import type { Ingest } from "../../core/ingest/types.js";
+import { stmtInsertReleaseConfig } from "./ingest.js";
+import { getRepoIdentity } from "./github.js";
 
 /** Which check a refusal belongs to: the console marks the rows before it passed. */
 export type LinkCheck =
@@ -326,7 +324,7 @@ export async function linkExistingProduct(
   manifestDigest: string,
   now: number,
   fetchImpl: FetchImpl = fetch,
-  ingest?: ManifestIngest,
+  ingest?: Ingest,
 ): Promise<LinkExistingResult> {
   const prepared = await prepareLink(env, db, slug, repoUrl, now, fetchImpl);
   if (!prepared.ok) return prepared;
@@ -537,14 +535,8 @@ export async function planResync(
   );
   // The resync resolves the trusted publisher's repository ids before its first write and
   // refuses the push when GitHub cannot answer; the dry run makes the same lookup.
-  const publisher = await resolveManifestPublisher(
-    db,
-    slug,
-    manifest,
-    token,
-    owner,
-    repo,
-    fetchImpl,
+  const publisher = await resolveManifestPublisher(db, slug, manifest, () =>
+    getRepoIdentity(token, owner, repo, fetchImpl),
   );
   if (!publisher.ok)
     plan.conflicts.unshift({ area: "publisher", summary: publisher.error });

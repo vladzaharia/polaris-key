@@ -45,6 +45,7 @@
  * test allows exactly one cross-service edge (`update → release`) and this service is not it.
  */
 
+import { distributionManifest } from "./ingest.js";
 import type { HookContext, OutletCapabilities } from "../../core/hooks.js";
 import type {
   DiscoveryContext,
@@ -210,6 +211,7 @@ import { distributionProductDeletion } from "./productDeletion.js";
 export const distributionService: ServiceDescriptor = {
   slug: "distribution",
   contributes: {
+    manifest: distributionManifest,
     productDeletion: distributionProductDeletion,
     integration: distributionIntegration,
     maintenance: distributionMaintenance,

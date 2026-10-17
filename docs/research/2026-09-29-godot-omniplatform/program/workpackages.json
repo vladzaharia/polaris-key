@@ -692,7 +692,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/cq-worker-services.md"
       ],
       "brief": "wp/P0-26-core-manifest-ingest-pipeline.md",
-      "status": "todo"
+      "status": "in-progress"
     },
     {
       "id": "P0-27",

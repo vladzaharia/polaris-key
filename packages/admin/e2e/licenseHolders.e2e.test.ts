@@ -384,10 +384,7 @@ describe("Licence holder surfaces under the Worker's CSP", () => {
         // The failed send keeps the new key: shown once, with Try again.
         sendOutcome = "failed";
         await dialog.getByRole("button", { name: "Send key" }).click();
-        await page
-          .getByText(/didn't go out/)
-          .first()
-          .waitFor();
+        await page.getByRole("dialog", { name: "Key not emailed" }).waitFor();
         await shot(page, `lx27-send-key-failed-${theme}-${width}`);
         await page.keyboard.press("Escape");
         await page.getByText(/Close without copying\?/).waitFor();
@@ -417,7 +414,18 @@ describe("Licence holder surfaces under the Worker's CSP", () => {
           await page.getByRole("menuitem", { name: "Send a new key…" }).click();
           const dialog = page.getByRole("dialog", { name: "Send a new key" });
           await dialog.getByRole("button", { name: "Send key" }).click();
-          await dialog.getByText("No key was made").waitFor();
+          await dialog
+            .getByText(mode === "429" ? "Sent a moment ago" : "No key was made")
+            .waitFor();
+          if (mode === "suppressed") {
+            // A refusal no retry changes: Send key stays off and Mint key is the way out.
+            expect(
+              await dialog
+                .getByRole("button", { name: "Send key" })
+                .getAttribute("aria-disabled"),
+            ).toBe("true");
+            await dialog.getByRole("button", { name: "Mint key…" }).waitFor();
+          }
           await shot(page, `lx27-send-key-${mode}-${theme}-${width}`);
           await page.keyboard.press("Escape");
           await dialog.waitFor({ state: "hidden" });

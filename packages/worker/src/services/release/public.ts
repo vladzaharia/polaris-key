@@ -4,6 +4,7 @@
  * what the console uses; anything new the console needs from this service is added here.
  */
 
+export { stmtInsertReleaseConfig } from "./ingest.js";
 export { hasArtifactMap } from "./artifactMap.js";
 export { shipsDmgs } from "./config.js";
 export { manifestDeliverableStatements } from "./deliverables.js";

@@ -47,7 +47,7 @@ import {
   useStepUp,
 } from "../../core/pages/UserRelink.js";
 import { holderConfirmValue, holderOf } from "./holders.js";
-import { sendKeyRefusal, type UnsentKey } from "../pages/LicenseKeys.js";
+import { sendKeyRefusal, type UnsentKey } from "./SendKeyDialog.js";
 import { EMAIL_RE } from "./shared.js";
 
 /** "When ada@example.com signs in with that email, it's in their library." (S-24 D4) */
@@ -171,8 +171,15 @@ function AssignForm({
             handoff = [{ key: res.key, reason: res.delivered.reason }, to];
           }
         } catch (e) {
+          const r = sendKeyRefusal(
+            e,
+            to,
+            e instanceof ApiError ? (e.retryAfter ?? 600) : 600,
+          );
           toast.warning(
-            `License assigned. No key was made: ${sendKeyRefusal(e, to, 600).description}`,
+            r.noKey
+              ? `License assigned. No key was made. ${r.tone === "warning" ? "A key was just emailed. " : ""}${r.description}`
+              : "License assigned. The key email didn't go out. Send a new key from the record.",
           );
         }
       } else toast.success("License assigned");

@@ -12,6 +12,7 @@
  * is what it refuses.
  */
 
+import { licenseManifest } from "./ingest.js";
 import type {
   DiscoveryContext,
   ServiceDescriptor,
@@ -32,6 +33,7 @@ import { licenseProductDeletion } from "./productDeletion.js";
 export const licenseService: ServiceDescriptor = {
   slug: "license",
   contributes: {
+    manifest: licenseManifest,
     productDeletion: licenseProductDeletion,
     integration: licenseIntegration,
   },

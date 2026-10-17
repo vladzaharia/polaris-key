@@ -41,6 +41,8 @@ import {
   type LicenseDelete,
   type LicenseDeleteContributor,
 } from "./licensing/licenseDelete.js";
+import { ingestFor } from "./ingest/pipeline.js";
+import type { Ingest } from "./ingest/types.js";
 import type { ServiceContributions } from "./contributions.js";
 import type { ServiceSettingsSlice } from "./settings/types.js";
 import {
@@ -93,7 +95,7 @@ export interface ServiceContext {
    * runs an ingest (Release's resync, behind its admin route) so it can put them in ITS batch
    * without ever seeing — or importing — the services that answer. Built by Core like `hooks`.
    */
-  ingest: ManifestIngest;
+  ingest: Ingest;
   /**
    * The runtime's `ExecutionContext.waitUntil`, when the request came through the Worker's
    * `fetch` entry point (P5-02). A handler that must answer fast and finish work afterwards (a
@@ -463,7 +465,7 @@ export function serviceContext<K extends keyof CoreBuilt>(
     kind === "request"
       ? {
           hooks,
-          ingest: manifestIngestFor(registry),
+          ingest: ingestFor(registry),
           storeGrants: storeGrantWriter(registry, services, base),
           licenseMerge: licenseMergeFor(registry),
           settings: settingsRegistryFor(registry),
@@ -471,7 +473,7 @@ export function serviceContext<K extends keyof CoreBuilt>(
       : kind === "admin"
         ? {
             hooks,
-            ingest: manifestIngestFor(registry),
+            ingest: ingestFor(registry),
             licenseDelete: licenseDeleteFor(registry),
             settings: settingsRegistryFor(registry),
           }

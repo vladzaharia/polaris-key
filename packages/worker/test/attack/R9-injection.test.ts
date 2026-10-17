@@ -1674,7 +1674,8 @@ describe("R9-11 edge-mint auth page", () => {
 
   it("REFUTED (today): no code path writes auth_page_template", () => {
     const repoSrc = readFileSync(
-      join(HERE, "..", "..", "src", "core", "products", "store.ts"),
+      // P0-26 moved the statement builder to its owner, Config's ingest.
+      join(HERE, "..", "..", "src", "services", "config", "ingest.ts"),
       "utf8",
     );
     // The only INSERT that touches the column hardcodes NULL, asserted POSITIONALLY: the same

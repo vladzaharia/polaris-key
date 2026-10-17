@@ -40,7 +40,7 @@ import {
 } from "../src/core/console/session.js";
 import { linkRepo } from "../src/services/release/linkRepo.js";
 import { parseManifest } from "@polaris-key/manifest";
-import { manifestIngestFor } from "../src/core/registry.js";
+import { ingestFor } from "../src/core/ingest/pipeline.js";
 import { SERVICES } from "../src/mount.js";
 import { stmtClaim } from "../src/core/settingsClaims.js";
 import {
@@ -218,7 +218,7 @@ async function linked(d: Decl = {}) {
     "acme-org/acme-app",
     NOW,
     github({ head: d }),
-    manifestIngestFor(SERVICES),
+    ingestFor(SERVICES),
   );
   expect(res.ok).toBe(true);
   const { token, session } = await issueSession(
@@ -681,7 +681,7 @@ describe("the apply", () => {
       SLUG,
       NOW + 200,
       github({ head: next }),
-      manifestIngestFor(SERVICES),
+      ingestFor(SERVICES),
     );
     expect(res.ok).toBe(true);
     expect((await rows(ctx.db, "tiers")).map((t) => t.id)).toEqual([
