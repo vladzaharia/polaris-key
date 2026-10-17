@@ -67,9 +67,22 @@ const DOWNLOAD_REFUSALS: Record<string, PortalErrorCopy> = {
 
 export function portalErrorCopy(
   err: unknown,
-  /** `account`: no developer owns the screen, so the fallback names Polaris Key support. */
+  /** `account`: no developer owns the screen, so "contact the developer" names Polaris Key. */
   opts: { account?: boolean } = {},
 ): PortalErrorCopy {
+  const copy = describePortalError(err);
+  return opts.account
+    ? {
+        ...copy,
+        description: copy.description.replace(
+          "contact the developer",
+          "contact Polaris Key support",
+        ),
+      }
+    : copy;
+}
+
+function describePortalError(err: unknown): PortalErrorCopy {
   if (err instanceof PortalApiError) {
     // Erasing the account, removing a license and minting a package token ask for a
     // sign-in from the last five minutes.
@@ -118,9 +131,7 @@ export function portalErrorCopy(
   }
   return {
     title: t("core.fallback.title"),
-    description: opts.account
-      ? "Try again. If it keeps happening, contact Polaris Key support."
-      : "Try again. If it keeps happening, contact the developer.",
+    description: "Try again. If it keeps happening, contact the developer.",
     retry: true,
   };
 }

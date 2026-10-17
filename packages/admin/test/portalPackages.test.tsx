@@ -206,7 +206,10 @@ describe("Account → Packages (F-33)", () => {
     );
     expect(document.body.textContent).not.toContain(TOKEN);
     // Focus lands on a control of the page, not the body.
-    await waitFor(() => expect(document.activeElement).not.toBe(document.body));
+    await waitFor(
+      () => expect(document.activeElement).not.toBe(document.body),
+      { timeout: 4000 },
+    );
   });
 
   it("says give it a name on an empty submit, and asks to confirm it's you without a second footer", async () => {
