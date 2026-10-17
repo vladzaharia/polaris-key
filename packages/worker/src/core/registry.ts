@@ -40,6 +40,7 @@ import type {
   LicenseDelete,
   LicenseDeleteContributor,
 } from "./licensing/licenseDelete.js";
+import type { ServiceContributions } from "./contributions.js";
 import type { ServiceSettingsSlice } from "./settings/types.js";
 import {
   settingsRegistryFor,
@@ -363,6 +364,12 @@ export interface ServiceDescriptor extends DescriptorHooks {
    * turn them into R2 documents. Core never learns what a render is.
    */
   registryMaterialiser?: RegistryMaterialiser;
+  /**
+   * What this service hands Core in place of registering itself at module load (P0-19,
+   * `core/contributions.ts`): subject stores, the licence-holder hooks, new-authorization
+   * listeners, maintenance steps and the integration contributor.
+   */
+  contributes?: ServiceContributions;
   // The descriptor hooks — `releaseCatalog?`, `delivery?`, `outletCapabilities?` — come from
   // `DescriptorHooks` (`core/hooks.ts`): read-only views one service offers the others, through
   // Core, under the same fail-closed enablement gate as `authorizeRegistration`.

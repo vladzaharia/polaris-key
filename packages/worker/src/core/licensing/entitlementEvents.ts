@@ -2,18 +2,15 @@
  * The `entitlements.changed` feed's subject store (LX-08; plans/LX-01.md §6.1 and §8 Q4).
  *
  * `entitlement_events` (migrations/0105_a) names the product's pairwise subject a change concerns.
- * LX-13 writes it and serves its pull cursor; LX-08 creates the table empty and registers it here,
+ * LX-13 writes it and serves its pull cursor; LX-08 creates the table empty and `subjectHooks.ts` lists it,
  * so from its first row an account merge re-keys it and an account deletion or per-product removal
- * removes it, through Core's subject-store registry (`core/accounts/subjectHooks.ts`; the registry guard,
+ * removes it, through Core's subject-store list (`core/accounts/subjectHooks.ts`; the registry guard,
  * `test/subjectStores.test.ts`, refuses a subject-keyed table nobody claims). The feed is history
  * of the subject's entitlements, so a merge moves the absorbed subject's events to the survivor
  * (no collision is possible: event ids are unique) and a deletion drops them.
  */
 
-import {
-  registerSubjectStore,
-  type SubjectStore,
-} from "../accounts/subjectHooks.js";
+import type { SubjectStore } from "../accounts/subjectHooks.js";
 
 /** The registry name (stable: the export document is keyed by it). */
 export const ENTITLEMENT_EVENT_STORE = "core.entitlementEvents";
@@ -60,5 +57,3 @@ export const entitlementEventStore: SubjectStore = {
     });
   },
 };
-
-registerSubjectStore(ENTITLEMENT_EVENT_STORE, entitlementEventStore);

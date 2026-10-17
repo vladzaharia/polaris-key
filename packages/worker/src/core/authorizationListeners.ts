@@ -4,10 +4,12 @@
  *
  * `authorizeDevice` (`core/licensing/authz.ts`) is the one place every activation path binds a device to a
  * licence (key entry, enrol, a product sign-in, the browser session), so it is the one place that
- * can say "a device first bound to this licence". A service that needs to know registers a
- * listener here at module load, so Core never imports a service and the service never reads
- * Core's device rows (rule 6). Identity's storefront registers one to count first activations of
- * licences added from Discover (`services/identity/portal/store/analytics.ts`).
+ * can say "a device first bound to this licence". A service that needs to know contributes a
+ * listener on its descriptor (`contributes.onAuthorization`, `core/contributions.ts`), so Core
+ * never imports a service and the service never reads Core's device rows (rule 6). A listener
+ * runs only while its service is enabled for the product. Identity's storefront contributes one to
+ * count first activations of licences added from Discover
+ * (`services/identity/portal/store/analytics.ts`).
  *
  * A listener is BOOKKEEPING, never policy: it runs only after the device is bound, it cannot
  * refuse or change the activation, and a listener that throws is ignored. With the request's
@@ -16,6 +18,8 @@
 
 import type { Db } from "../db/types.js";
 import type { Env } from "../platform/env.js";
+import { contributedAuthorizationListeners } from "./contributions.js";
+import type { ServicesMap } from "./services.js";
 import type { WaitUntil } from "./licensing/refusals.js";
 
 /** One new authorization: a device that now holds a seat on `licenseId` it did not hold before. */
@@ -44,25 +48,9 @@ export type AuthorizationListener = (
   event: NewAuthorization,
 ) => Promise<void>;
 
-const LISTENERS = new Map<string, AuthorizationListener>();
-
-/**
- * Register a listener under a stable name. Registering one name twice is a programming error (two
- * modules claiming one job), so it throws rather than silently replacing the first.
- */
-export function registerAuthorizationListener(
-  name: string,
-  listener: AuthorizationListener,
-): void {
-  if (LISTENERS.has(name)) {
-    throw new Error(`authorization listener "${name}" is already registered`);
-  }
-  LISTENERS.set(name, listener);
-}
-
-/** Is anyone listening? `authorizeDevice` reads `firstOnLicense` only when someone is. */
-export function hasAuthorizationListeners(): boolean {
-  return LISTENERS.size > 0;
+/** Is anyone listening for this product? `authorizeDevice` reads `firstOnLicense` only when someone is. */
+export function hasAuthorizationListeners(services: ServicesMap): boolean {
+  return contributedAuthorizationListeners(services).length > 0;
 }
 
 /**
@@ -73,10 +61,11 @@ export function hasAuthorizationListeners(): boolean {
 export async function notifyNewAuthorization(
   ctx: AuthorizationListenerContext,
   event: NewAuthorization,
+  services: ServicesMap,
   waitUntil?: WaitUntil,
 ): Promise<void> {
-  if (LISTENERS.size === 0) return;
-  const listeners = [...LISTENERS.values()];
+  const listeners = contributedAuthorizationListeners(services);
+  if (listeners.length === 0) return;
   const work = (async () => {
     for (const listener of listeners) {
       try {

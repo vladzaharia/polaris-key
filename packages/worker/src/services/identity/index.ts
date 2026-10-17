@@ -53,9 +53,13 @@ import {
   accountPortalUrl,
   portalEnabled,
 } from "../../core/licensing/manageUrl.js";
-// LX-26: registers Identity's licence-holder hooks with Core (`core/licensing/licenseHolders.ts`) at load,
-// so License's creation path and every account-email verification reach them.
-import "./accounts/holders.js";
+import { licenseHolderHooks } from "./accounts/holders.js";
+import {
+  STOREFRONT_ACTIVATIONS_LISTENER,
+  recordFirstActivation,
+} from "./portal/store/analytics.js";
+import { identityIntegration } from "./integration.js";
+import { identityMaintenance } from "./maintenance.js";
 
 export const identityService: ServiceDescriptor = {
   slug: "identity",
@@ -73,6 +77,17 @@ export const identityService: ServiceDescriptor = {
   manifestIngest: (parsed, product, now) =>
     manifestClaimByKeyStatements(product, parsed, now),
   handle: handleIdentityRoutes,
+  contributes: {
+    // LX-26: the licence-holder hooks, so License's creation path and every account-email
+    // verification reach them (`core/licensing/licenseHolders.ts`).
+    licenseHolders: licenseHolderHooks,
+    // PS-04: the storefront counts first activations of licences added from Discover.
+    onAuthorization: {
+      [STOREFRONT_ACTIVATIONS_LISTENER]: recordFirstActivation,
+    },
+    maintenance: identityMaintenance,
+    integration: identityIntegration,
+  },
   /**
    * The canonical surface `routes.ts` dispatches; what `routeCoverage` pins. The root portal
    * paths are not here: they are platform routes, not this service's namespace.

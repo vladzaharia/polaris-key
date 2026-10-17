@@ -34,16 +34,16 @@
  * assigned by PATCH): it joins the account that verified that address, if one did.
  *
  * Both are implemented by Identity, which owns the account tables, the auto-link setting
- * (R5-01) and `portal_audit`, and which registers them once at module load
- * (`services/identity/accounts/holders.ts`), the way a subject store registers in
- * `subjectHooks.ts`. Core holds only the contract, so License (the creation path) and any later
- * caller reach them without importing Identity (AGENTS.md rule 6). With nothing registered both
+ * (R5-01) and `portal_audit`, and which contributes them on its
+ * descriptor (`contributes.licenseHolders`, `core/contributions.ts`). Core holds only the contract, so License (the creation path) and any later
+ * caller reach them without importing Identity (AGENTS.md rule 6). With nothing contributed both
  * answer "nothing attached": the licence simply waits, which is safe (it fails towards no
  * association, never towards a wrong one).
  */
 
 import type { Db, DbStatement } from "../../db/types.js";
 import type { Env } from "../../platform/env.js";
+import { contributedLicenseHolders } from "../contributions.js";
 import {
   floatingLicenseSql,
   isFloatingLicense,
@@ -274,23 +274,15 @@ export interface LicenseHolderHooks {
   ): Promise<boolean>;
 }
 
-let HOOKS: LicenseHolderHooks | null = null;
-
-/** Identity registers once, at module load. A second registration is a programming error. */
-export function registerLicenseHolderHooks(hooks: LicenseHolderHooks): void {
-  if (HOOKS) throw new Error("licence holder hooks are already registered");
-  HOOKS = hooks;
-}
-
-/** Whether Identity's implementation is registered (the guard test asserts it is, at the root). */
+/** Whether a mounted service contributes the implementation (the guard test asserts it does, at the root). */
 export function licenseHolderHooksRegistered(): boolean {
-  return HOOKS !== null;
+  return contributedLicenseHolders() !== null;
 }
 
 /**
  * THE account-email hook (S-24 §5.4): call it wherever an address becomes verified on an
  * account. It runs the email half of the portal's link sweep for that one address. Answers how
- * many licences joined (0 when nothing is registered).
+ * many licences joined (0 when nothing is contributed).
  */
 export async function onAccountEmailVerified(
   db: Db,
@@ -298,12 +290,13 @@ export async function onAccountEmailVerified(
   email: string,
   now: number,
 ): Promise<number> {
-  return HOOKS ? HOOKS.accountEmailVerified(db, { accountId, email, now }) : 0;
+  const hooks = contributedLicenseHolders();
+  return hooks ? hooks.accountEmailVerified(db, { accountId, email, now }) : 0;
 }
 
 /**
  * Association at creation or assignment (S-24 D3): the licence joins the account that verified its
- * email, when one did. Answers whether it attached (false when nothing is registered). The caller
+ * email, when one did. Answers whether it attached (false when nothing is contributed). The caller
  * answers the same `holder` shape either way (D4).
  */
 export async function associateLicenseHolder(
@@ -311,7 +304,8 @@ export async function associateLicenseHolder(
   product: string,
   licenseId: string,
 ): Promise<boolean> {
-  return HOOKS
-    ? HOOKS.licenseEmailAssigned(ctx, { product, licenseId })
+  const hooks = contributedLicenseHolders();
+  return hooks
+    ? hooks.licenseEmailAssigned(ctx, { product, licenseId })
     : false;
 }

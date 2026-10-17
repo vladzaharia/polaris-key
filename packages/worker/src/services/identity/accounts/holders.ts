@@ -20,7 +20,7 @@ import { getLicense } from "../../../core/licensing/store.js";
 import { licenseEmail } from "../../../core/accounts/accountSubjects.js";
 import {
   autoAttachBlockedAccounts,
-  registerLicenseHolderHooks,
+  type LicenseHolderHooks,
   type LicenseHolderContext,
 } from "../../../core/licensing/licenseHolders.js";
 import { normalizeEmail } from "../../../platform/email.js";
@@ -89,4 +89,8 @@ export async function licenseEmailAssigned(
   return result.ok && result.attached;
 }
 
-registerLicenseHolderHooks({ accountEmailVerified, licenseEmailAssigned });
+/** Identity's two association directions, contributed on its descriptor (`contributes.licenseHolders`). */
+export const licenseHolderHooks: LicenseHolderHooks = {
+  accountEmailVerified,
+  licenseEmailAssigned,
+};

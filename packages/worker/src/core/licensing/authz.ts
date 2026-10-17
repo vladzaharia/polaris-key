@@ -557,7 +557,7 @@ export async function authorizeDevice(
   // PS-04: the device now holds a seat on this licence it did not hold before. Bookkeeping only
   // (`core/authorizationListeners.ts`): total, after the bind, off the response path with a
   // `waitUntil`, so a listener can neither refuse nor fail the activation.
-  if (isNewAuthorization && hasAuthorizationListeners()) {
+  if (isNewAuthorization && hasAuthorizationListeners(product.services)) {
     const firstOnLicense =
       (reconciled.existing?.license_id ?? null) !== license.id &&
       !(await otherDeviceOnLicense(db, product.slug, license.id, deviceId));
@@ -569,6 +569,7 @@ export async function authorizeDevice(
         deviceId,
         firstOnLicense,
       },
+      product.services,
       opts.waitUntil,
     );
   }
