@@ -105,14 +105,18 @@ async function draw(
   return host;
 }
 
-function Sheet(props: { input: UiInput; onClosed?: () => void }): ReactNode {
+function Sheet(props: {
+  input: UiInput;
+  onClosed?: () => void;
+  scheme?: "dark" | "light";
+}): ReactNode {
   const [open, setOpen] = useState(true);
   return (
     <Kit.SignIn
       input={props.input}
       presentation="sheet"
       open={open}
-      theme={THEME}
+      theme={{ ...THEME, colorScheme: props.scheme ?? "dark" }}
       onClose={() => {
         setOpen(false);
         props.onClosed?.();
@@ -163,6 +167,8 @@ describe("large text on a phone: the sheet", () => {
         h,
         2,
       );
+      q(el, '[data-part="license-list"]')?.scrollIntoView({ block: "center" });
+      await frame();
       await shot("choose-mixed", `${w}-200-dark`);
       const lr = q(el, '[data-part="license-list"]')!.getBoundingClientRect();
       for (const row of qa(el, '[data-part="license-row"]'))
@@ -201,6 +207,8 @@ describe("large text on a phone: the sheet", () => {
         h,
         2,
       );
+      q(el, '[data-part="license-list"]')?.scrollIntoView({ block: "center" });
+      await frame();
       await shot("choose-allfull", `${w}-200-dark`);
       const lr = q(el, '[data-part="license-list"]')!.getBoundingClientRect();
       for (const n of qa(el, '[data-part="license-row"] *'))
@@ -211,6 +219,8 @@ describe("large text on a phone: the sheet", () => {
 
     it(`${w}: 12 devices scroll without rows overlapping`, async () => {
       const el = await sheet(devices12(), w, h, 2);
+      q(el, '[data-part="device-list"]')?.scrollIntoView({ block: "center" });
+      await frame();
       await shot("replace-12", `${w}-200-dark`);
       const rows = qa(el, '[data-part="device-list"] .row');
       expect(rows.length).toBe(12);
@@ -218,6 +228,18 @@ describe("large text on a phone: the sheet", () => {
         expect(r.getBoundingClientRect().height + 1).toBeGreaterThanOrEqual(
           r.scrollHeight,
         );
+      for (const r of rows) {
+        const rr = r.getBoundingClientRect();
+        for (const n of r.querySelectorAll<HTMLElement>("*")) {
+          const nr = n.getBoundingClientRect();
+          if (nr.height === 0) continue;
+          expect(
+            nr.top + 1,
+            n.textContent ?? n.className,
+          ).toBeGreaterThanOrEqual(rr.top);
+          expect(nr.bottom - 1).toBeLessThanOrEqual(rr.bottom);
+        }
+      }
       for (let i = 1; i < rows.length; i++)
         expect(rows[i]!.getBoundingClientRect().top + 1).toBeGreaterThanOrEqual(
           rows[i - 1]!.getBoundingClientRect().bottom,
@@ -359,4 +381,28 @@ describe("minor polish", () => {
       ),
     ).toBeLessThan(2);
   });
+});
+
+describe("the same scenes in the light scheme (shots only)", () => {
+  for (const [w, h, scale] of [
+    [390, 844, 2],
+    [360, 740, 2],
+    [1440, 900, 1],
+  ] as const)
+    it(`sheet at ${w} x ${h}, ${scale * 100}%`, async () => {
+      const el = await draw(
+        <Sheet
+          input={inputOf("SignIn/choose: desktop (sheet)")}
+          scheme="light"
+        />,
+        w,
+        h,
+        scale,
+      );
+      document.body.style.background = "#f6f8ff";
+      q(el, '[data-part="license-list"]')?.scrollIntoView({ block: "center" });
+      await frame();
+      await shot("light-choose-mixed", `${w}-${scale * 100}-light`);
+      expect(q(el, '[data-part="license-list"]')).not.toBeNull();
+    });
 });

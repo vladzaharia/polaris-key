@@ -169,6 +169,8 @@ describe("large text on a phone: the sheet", () => {
         h,
         2,
       );
+      q(el, '[data-part="license-list"]')?.scrollIntoView({ block: "center" });
+      await frames();
       await shot("choose-mixed", `${w}-200-dark`);
       const list = q(el, '[data-part="license-list"]')!;
       const lr = list.getBoundingClientRect();
@@ -193,6 +195,8 @@ describe("large text on a phone: the sheet", () => {
         h,
         2,
       );
+      q(el, '[data-part="license-list"]')?.scrollIntoView({ block: "center" });
+      await frames();
       await shot("choose-allfull", `${w}-200-dark`);
       const list = q(el, '[data-part="license-list"]')!;
       const lr = list.getBoundingClientRect();
@@ -204,6 +208,8 @@ describe("large text on a phone: the sheet", () => {
 
     it(`${w}: 12 devices scroll without rows overlapping`, async () => {
       const el = await sheet(devices12(), w, h, 2);
+      q(el, '[data-part="device-list"]')?.scrollIntoView({ block: "center" });
+      await frames();
       await shot("replace-12", `${w}-200-dark`);
       const rows = qa(el, '[data-part="device-list"] .row');
       expect(rows.length).toBe(12);
@@ -211,6 +217,18 @@ describe("large text on a phone: the sheet", () => {
         expect(r.getBoundingClientRect().height + 1).toBeGreaterThanOrEqual(
           r.scrollHeight,
         );
+      for (const r of rows) {
+        const rr = r.getBoundingClientRect();
+        for (const n of r.querySelectorAll<HTMLElement>("*")) {
+          const nr = n.getBoundingClientRect();
+          if (nr.height === 0) continue;
+          expect(
+            nr.top + 1,
+            n.textContent ?? n.className,
+          ).toBeGreaterThanOrEqual(rr.top);
+          expect(nr.bottom - 1).toBeLessThanOrEqual(rr.bottom);
+        }
+      }
       for (let i = 1; i < rows.length; i++)
         expect(rows[i]!.getBoundingClientRect().top + 1).toBeGreaterThanOrEqual(
           rows[i - 1]!.getBoundingClientRect().bottom,
@@ -359,4 +377,25 @@ describe("minor polish", () => {
       ),
     ).not.toBeNull();
   });
+});
+
+describe("the same scenes in the light scheme (shots only)", () => {
+  for (const [w, h, scale] of [
+    [390, 844, 2],
+    [360, 740, 2],
+    [1440, 900, 1],
+  ] as const)
+    it(`sheet at ${w} x ${h}, ${scale * 100}%`, async () => {
+      const el = await sheet(
+        inputOf("SignIn/choose: desktop (sheet)"),
+        w,
+        h,
+        scale,
+        "light",
+      );
+      q(el, '[data-part="license-list"]')?.scrollIntoView({ block: "center" });
+      await frames();
+      await shot("light-choose-mixed", `${w}-${scale * 100}-light`);
+      expect(q(el, '[data-part="license-list"]')).not.toBeNull();
+    });
 });
