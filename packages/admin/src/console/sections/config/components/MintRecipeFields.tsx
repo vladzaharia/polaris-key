@@ -6,8 +6,7 @@ import { FormField } from "../../../../ui/form.js";
 import { Input } from "../../../../ui/Input.js";
 import { StatusPill } from "../../../../ui/StatusPill.js";
 import { Textarea } from "../../../../ui/Textarea.js";
-import { Link } from "../../../router.js";
-import { r } from "../../../routes.js";
+import { codecs, useSearchParam } from "../../../router.js";
 import { changedLabel } from "../model/edgeMintFields.js";
 import { useEdgeMint } from "../data.js";
 import { blockOf, withMint, MINT_TTL_MAX } from "../model/mintBlock.js";
@@ -43,6 +42,7 @@ export function MintRecipeFields({
   onChange: (next: ConfigEntry) => void;
 }): React.ReactElement {
   // The stored recipe for this key: `null` when there is none, `undefined` while loading.
+  const [, setRecipeId] = useSearchParam("recipe", codecs.string());
   const stored = useEdgeMint(slug).data?.recipes;
   const recipe =
     stored === undefined
@@ -87,14 +87,15 @@ export function MintRecipeFields({
           <span className="text-sm text-fg-muted">Not saved yet</span>
         ) : null}
         {recipe ? (
-          <Link
-            to={`${r.edgeMint(slug)}?recipe=${encodeURIComponent(entry.key)}`}
+          <button
+            type="button"
+            onClick={() => setRecipeId(entry.key)}
             className="text-sm text-accent-fg underline underline-offset-2"
           >
             {recipe.status === "approved"
               ? "View approval"
               : "Review and approve"}
-          </Link>
+          </button>
         ) : null}
       </div>
       <p className="text-sm text-fg-muted">

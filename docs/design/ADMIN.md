@@ -111,7 +111,7 @@ Enabled services add their sections:
 | Section      | Shipped pages                                                                                                                                                                     |
 | ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | License      | Licenses (record tabs: overview, keys, devices, config), Tiers (overview and used-by), Enrollment, Licensing settings, and non-sidebar Batches                                    |
-| Config       | Catalog, its non-sidebar editor, Profiles (payload and used-by), and Edge mint                                                                                                    |
+| Config       | Catalog, its non-sidebar editor (the minted-token approve drawer opens there), and Profiles                                                                                       |
 | Release      | Releases (builds, packs, channels, distribution), Channels, Deliverables (releases, channels, delivery, files), Compatibility, its non-sidebar Update simulator, and Content keys |
 | Distribution | non-sidebar Matrix, Rollouts, Outlets & feeds, Storefronts (including a record route), Listing, App Store, Commerce, Access, Package feeds, Health, and Outlet credentials        |
 | Update       | Feed                                                                                                                                                                              |

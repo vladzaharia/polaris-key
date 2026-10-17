@@ -54,9 +54,9 @@ An unapproved or changed recipe answers exactly like an unknown one: `404 not_fo
 
 Role required: a member who can edit the product, with a sign-in from the last 5 minutes (`step_up_required` otherwise). Approval is permanent until you revoke it, but widening the product revokes it for you.
 
-1. **Console** Open **Config → Edge mint**, or select **Review and approve** on the entry in **Config → Catalog**. Each recipe shows **Approved**, **Needs approval** or **Changed since approval**, its signing secret and that secret's usage.
-2. Select **Approve…**. The drawer shows the recipe's fields beside the last approval's values. Tick the public-mint acknowledgement when it appears.
-3. Select **Approve**. If the recipe, its sign-in trust or License changed while the drawer was open, the server answers `409` and the drawer reloads, so you approve only what you saw.
+1. **Console** Open the minted-token entry in **Config → Catalog → Edit** and select **Review and approve**. The entry shows **Approved**, **Needs approval** or **Changed since approval**, with the signing secret's usage in the drawer. (The old **Config → Edge mint** address redirects to the entry.)
+2. The drawer lists what changed since the last approval, changed fields first, the old value struck and the new one marked, and says plainly when a change allows more than before. Tick the public-mint acknowledgement when it appears.
+3. Select **Approve**. With a sign-in older than 5 minutes the button reads **Sign in to approve** and brings you back to the drawer. If the check does not finish, the drawer says nothing was approved and offers **Try again**. If the recipe, its sign-in trust or License changed while the drawer was open, the drawer says so, shows the new comparison and approves nothing; you approve only what you saw.
 
 **Revoke approval…** asks first, and the recipe answers `404` again. The admin routes are `/manage/api/products/<slug>/config/mint` (`GET`) and `…/mint/<id>/approve` and `…/mint/<id>/revoke` (`POST`). The approve body echoes the recipe's fields, `identity` and `licenseEnabled` as you saw them.
 

@@ -65,7 +65,6 @@ const PRODUCT_PAGE_AREAS: Record<ProductPageId, AreaId> = {
   catalog: "config",
   "catalog-edit": "config",
   profiles: "config",
-  "edge-mint": "config",
   releases: "ship",
   channels: "ship",
   deliverables: "ship",

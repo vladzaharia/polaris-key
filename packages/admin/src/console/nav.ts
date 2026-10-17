@@ -66,7 +66,6 @@ import {
   ShoppingBag,
   SquarePen,
   SlidersHorizontal,
-  Stamp,
   Store,
   TrendingUp,
   UserRound,
@@ -124,7 +123,6 @@ export type ProductPageId =
   | "catalog"
   | "catalog-edit"
   | "profiles"
-  | "edge-mint"
   // release
   | "releases"
   | "channels"
@@ -455,14 +453,6 @@ export const SECTIONS: NavSection[] = [
           // A History tab joins these once the activity log filters by target (ADMIN.md A-2).
           tabs: ["payload", "used-by"],
         },
-      },
-      {
-        page: "edge-mint",
-        label: "Edge mint",
-        path: "config/edge-mint",
-        icon: Stamp,
-        docs: "/docs/features/managed-config/edge-mint/",
-        inNav: true,
       },
     ],
   },

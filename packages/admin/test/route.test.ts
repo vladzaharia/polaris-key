@@ -507,7 +507,6 @@ describe("the nav model (nav.ts)", () => {
       "catalog",
       "catalog-edit",
       "profiles",
-      "edge-mint",
       "releases",
       "channels",
       "deliverables",

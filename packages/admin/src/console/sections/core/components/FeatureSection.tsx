@@ -281,14 +281,14 @@ function FeatureSwitch({
           label={row.label}
           help={
             <>
-              Recipes are declared in <code>.pkey/release</code>. They mint only
-              after their signing secret is marked Edge mint and an operator
-              approves the recipe exactly as shown.
+              A recipe is the <code>mint</code> block of a minted-token entry in
+              the catalog. It mints only after its signing secret is marked Edge
+              mint and an operator approves it exactly as shown.
             </>
           }
         >
           <Link
-            to={r.edgeMint(slug)}
+            to={r.catalog(slug)}
             className="text-sm text-accent-fg underline underline-offset-2"
           >
             Review recipe

@@ -318,7 +318,7 @@ function useAttention(
       tone: "warning",
       object: `Edge-mint recipe ${id}`,
       reason: "Mints nothing until it is approved as it stands.",
-      action: { label: "Review", href: r.edgeMint(slug) },
+      action: { label: "Review", href: r.catalogEntry(slug, id, true) },
     });
   }
   for (const w of setup?.warnings ?? []) {
@@ -696,7 +696,7 @@ function useChecklist(
       id: "edge",
       label: ok ? "Edge-mint recipes approved" : "Approve edge-mint recipes",
       state: ok ? "done" : "todo",
-      action: ok ? undefined : { label: "Edge mint", href: r.edgeMint(slug) },
+      action: ok ? undefined : { label: "Catalog", href: r.catalog(slug) },
     });
   }
   const settled =

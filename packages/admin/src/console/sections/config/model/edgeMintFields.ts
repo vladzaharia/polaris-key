@@ -70,3 +70,39 @@ export function changedLabel(
     field
   );
 }
+
+const REQUIRES_RANK = { licensed: 0, registered: 1, none: 2 } as const;
+
+/** A lifetime in words: "1 hour", "90 minutes", "45 seconds". */
+export function lifetime(seconds: number | null): string {
+  if (seconds === null) return "the default lifetime";
+  const unit = (n: number, one: string): string =>
+    `${n} ${one}${n === 1 ? "" : "s"}`;
+  if (seconds % 3600 === 0) return unit(seconds / 3600, "hour");
+  if (seconds % 60 === 0) return unit(seconds / 60, "minute");
+  return unit(seconds, "second");
+}
+
+/**
+ * What a change allows that the last approval did not: a longer lifetime, a wider "who may mint".
+ * `null` for a narrowing or unchanged recipe, and for one never approved.
+ */
+export function widening(recipe: EdgeMintRecipe): string | null {
+  const was = recipe.approval;
+  if (!was) return null;
+  const lines: string[] = [];
+  if (
+    recipe.ttlSeconds !== null &&
+    (was.ttlSeconds === null || recipe.ttlSeconds > was.ttlSeconds)
+  )
+    lines.push(
+      `A leaked token works for ${lifetime(recipe.ttlSeconds)} instead of ${lifetime(was.ttlSeconds)}.`,
+    );
+  if (REQUIRES_RANK[recipe.requires] > REQUIRES_RANK[was.requires])
+    lines.push(
+      recipe.requires === "none"
+        ? "Anyone can now mint it."
+        : "Any device of this product can now mint it, licensed or not.",
+    );
+  return lines.length ? lines.join(" ") : null;
+}
