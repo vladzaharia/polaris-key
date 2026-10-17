@@ -61,6 +61,7 @@ import {
   decodeLicenseCursor,
   LICENSE_PAGE_DEFAULT,
   LICENSE_PAGE_MAX,
+  countLicenses,
   listLicensePage,
   type LicenseCursor,
   listProfiles,
@@ -343,6 +344,7 @@ export async function handleLicenses(
       // LX-28: `?batch=<id>` lists one batch's licences (an unknown id lists none).
       const batch = new URL(req.url).searchParams.get("batch");
       const params = new URL(req.url).searchParams;
+      const tier = params.get("tier");
       const rawLimit = params.get("limit");
       const rawCursor = params.get("cursor");
       let limit = LICENSE_PAGE_DEFAULT;
@@ -372,6 +374,7 @@ export async function handleLicenses(
         {
           ...(holder ? { holder } : {}),
           ...(batch ? { batch } : {}),
+          ...(tier ? { tier } : {}),
         },
         { limit, ...(after ? { after } : {}) },
       );
@@ -387,7 +390,21 @@ export async function handleLicenses(
         ...summaries[i],
         deletion: verdicts.get(r.id),
       }));
-      return adminJson({ licenses, nextCursor: page.nextCursor });
+      // The first page also carries what the filter matches and its state counts (one GROUP BY),
+      // so the console can say how much it has not loaded.
+      const totals = after
+        ? {}
+        : await countLicenses(
+            db,
+            slug,
+            {
+              ...(holder ? { holder } : {}),
+              ...(batch ? { batch } : {}),
+              ...(tier ? { tier } : {}),
+            },
+            now,
+          );
+      return adminJson({ licenses, nextCursor: page.nextCursor, ...totals });
     }
     if (req.method === "POST") {
       const body = await readBody(req);

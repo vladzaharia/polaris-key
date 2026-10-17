@@ -15297,7 +15297,8 @@ paths:
         holder's `email` is the licence's own, never the account's. `?holder=` filters: `floating`,
         `assigned` (in an account or waiting), `waiting`, `inAccount`. LX-28: each also carries
         `batchId` (the batch it was created in, or `null`), and `?batch=` lists one batch's
-        licences. Platform admins only; admin session cookie.
+        licences; `?tier=` lists one tier's. The first page (no `cursor`) also carries `total` and
+        `counts`, one grouped read. Platform admins only; admin session cookie.
       parameters:
         - { name: product, in: path, required: true, schema: { type: string } }
         - {
@@ -15314,6 +15315,13 @@ paths:
             required: false,
             schema: { type: string },
             description: "Only the licences of this batch (LX-28). An unknown id lists none.",
+          }
+        - {
+            name: tier,
+            in: query,
+            required: false,
+            schema: { type: string },
+            description: "Only the licences on this tier id. An unknown id lists none.",
           }
         - {
             name: limit,
@@ -15344,6 +15352,18 @@ paths:
                   nextCursor:
                     type: [string, "null"]
                     description: "Pass as `cursor` for the next page; `null` on the last."
+                  total:
+                    type: integer
+                    description: "How many licences the filters match. First page only (no `cursor`)."
+                  counts:
+                    type: object
+                    required: [active, expiring, expired, disabled]
+                    description: "The matches by computed state (disabled; expired; expiring within 14 days; active). First page only."
+                    properties:
+                      active: { type: integer }
+                      expiring: { type: integer }
+                      expired: { type: integer }
+                      disabled: { type: integer }
         "400":
           description: "`holder` is not one of the four values, `limit` is out of range, or `cursor` is not one this list wrote (`bad_request`, `fields` names it)."
           content:

@@ -505,10 +505,85 @@ export function decodeLicenseCursor(raw: string): LicenseCursor | null {
   return m ? { activatedAt: Number(m[1]), id: m[2]! } : null;
 }
 
+/** What the list narrows by: holder state, batch and tier (`tier_id`). */
+export interface LicenseListFilter {
+  holder?: HolderFilter;
+  batch?: string;
+  tier?: string;
+}
+
+/** The licence list's computed states, as the console names them (LIC-1). */
+export interface LicenseStateCounts {
+  active: number;
+  expiring: number;
+  expired: number;
+  disabled: number;
+}
+
+/** Days before expiry at which a licence reads "expiring soon" (the console's `EXPIRES_SOON_DAYS`). */
+const EXPIRES_SOON_SECONDS = 14 * 86_400;
+
+function filterSql(
+  filter: LicenseListFilter,
+  params: (string | number)[],
+): string {
+  // LX-26: the holder filter is the derived rule as SQL (`core/licensing/licenseHolders.ts`), never a copy.
+  let sql = filter.holder
+    ? ` AND ${holderFilterSql(filter.holder, "licenses")}`
+    : "";
+  // LX-28: one batch's licences (`idx_licenses_batch`).
+  if (filter.batch !== undefined) {
+    sql += " AND batch_id = ?";
+    params.push(filter.batch);
+  }
+  if (filter.tier !== undefined) {
+    sql += " AND tier_id = ?";
+    params.push(filter.tier);
+  }
+  return sql;
+}
+
+/**
+ * How many licences the filter matches and how many sit in each computed state: one GROUP BY,
+ * the same on every page of the list, so the console reads them with page 1.
+ */
+export async function countLicenses(
+  db: Db,
+  product: string,
+  filter: LicenseListFilter,
+  now: number,
+): Promise<{ total: number; counts: LicenseStateCounts }> {
+  const params: (string | number)[] = [];
+  const where = filterSql(filter, params);
+  const rows = await db.all<{ s: keyof LicenseStateCounts; n: number }>(
+    `SELECT CASE
+        WHEN status = 'disabled' THEN 'disabled'
+        WHEN expires_at IS NOT NULL AND expires_at <= ? THEN 'expired'
+        WHEN expires_at IS NOT NULL AND expires_at - ? <= ? THEN 'expiring'
+        ELSE 'active' END AS s, COUNT(*) AS n
+       FROM licenses WHERE product = ?${where} GROUP BY s`,
+    now,
+    now,
+    EXPIRES_SOON_SECONDS,
+    product,
+    ...params,
+  );
+  const counts: LicenseStateCounts = {
+    active: 0,
+    expiring: 0,
+    expired: 0,
+    disabled: 0,
+  };
+  for (const r of rows) counts[r.s] = r.n;
+  const total =
+    counts.active + counts.expiring + counts.expired + counts.disabled;
+  return { total, counts };
+}
+
 export async function listLicenses(
   db: Db,
   product: string,
-  filter: { holder?: HolderFilter; batch?: string } = {},
+  filter: LicenseListFilter = {},
 ): Promise<LicenseRow[]> {
   return (await listLicensePage(db, product, filter)).licenses;
 }
@@ -520,24 +595,20 @@ export async function listLicenses(
 export async function listLicensePage(
   db: Db,
   product: string,
-  filter: { holder?: HolderFilter; batch?: string } = {},
+  filter: LicenseListFilter = {},
   page: { limit?: number; after?: LicenseCursor } = {},
 ): Promise<{ licenses: LicenseRow[]; nextCursor: string | null }> {
-  // LX-26: the holder filter is the derived rule as SQL (`core/licensing/licenseHolders.ts`), never a copy.
-  const holder = filter.holder
-    ? ` AND ${holderFilterSql(filter.holder, "licenses")}`
-    : "";
-  // LX-28: one batch's licences (`idx_licenses_batch`).
-  const batch = filter.batch !== undefined ? " AND batch_id = ?" : "";
+  const filterParams: (string | number)[] = [];
+  const where = filterSql(filter, filterParams);
   const after = page.after
     ? " AND (activated_at < ? OR (activated_at = ? AND id < ?))"
     : "";
   const rows = await db.all<LicenseRow>(
-    `SELECT * FROM licenses WHERE product = ?${holder}${batch}${after} ORDER BY activated_at DESC, id DESC${
+    `SELECT * FROM licenses WHERE product = ?${where}${after} ORDER BY activated_at DESC, id DESC${
       page.limit !== undefined ? " LIMIT ?" : ""
     }`,
     product,
-    ...(filter.batch !== undefined ? [filter.batch] : []),
+    ...filterParams,
     ...(page.after
       ? [page.after.activatedAt, page.after.activatedAt, page.after.id]
       : []),
