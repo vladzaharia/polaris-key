@@ -93,6 +93,7 @@ export type WriteMethod =
   | "approveEdgeMintRecipe"
   | "revokeEdgeMintRecipe"
   | "createLicense"
+  | "createLicenseBatch"
   | "patchLicense"
   | "setLicenseEnabled"
   | "deleteLicense"
@@ -665,6 +666,11 @@ export const MUTATIONS: MutationTable = {
   },
   createLicense: {
     label: "license create",
+    invalidates: (slug) => license(slug),
+  },
+  // LX-28: the keys come back once; the batch row and every licence it made are new.
+  createLicenseBatch: {
+    label: "license batch create",
     invalidates: (slug) => license(slug),
   },
   patchLicense: {

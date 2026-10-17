@@ -33,7 +33,7 @@ import {
   type DataColumn,
   type Facet,
 } from "../../../../ui/data-table/index.js";
-import { CreateLicenseDialog } from "../components/CreateLicenseDialog.js";
+import { NewLicenseWizard } from "../wizard/NewLicenseWizard.js";
 import {
   BulkEnableDialog,
   isForbidden,
@@ -97,7 +97,8 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
   const tiersQ = useTiers(slug);
   const batchesQ = useLicenseBatches(slug);
   const product = useProduct(slug).data;
-  const [createOpen, setCreateOpen] = React.useState(false);
+  const openNew = (): void =>
+    void navigate(r.newLicense(slug), { replace: false });
   const [cleanupOpen, setCleanupOpen] = React.useState(false);
   const [bulkDelete, setBulkDelete] = React.useState<LicenseSummary[] | null>(
     null,
@@ -416,8 +417,8 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
           // First run keeps one primary: the empty state's.
           primaryAction={
             firstRun ? undefined : (
-              <Button iconStart={<Plus />} onClick={() => setCreateOpen(true)}>
-                Create license
+              <Button iconStart={<Plus />} onClick={openNew}>
+                New license
               </Button>
             )
           }
@@ -539,17 +540,11 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
           serverFacets: serverFacetIds(serverFilter),
         }}
         onRetry={() => void licensesQ.refetch()}
-        empty={
-          <LicensesFirstRun slug={slug} onCreate={() => setCreateOpen(true)} />
-        }
+        empty={<LicensesFirstRun slug={slug} onCreate={openNew} />}
         mobile="cards"
       />
 
-      <CreateLicenseDialog
-        slug={slug}
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-      />
+      <NewLicenseWizard slug={slug} />
 
       <BulkDeleteDialog
         slug={slug}

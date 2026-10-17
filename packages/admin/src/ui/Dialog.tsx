@@ -273,15 +273,25 @@ export function useGuardedDismissal({
   };
 }
 
+/** The words of a guarded close, when the default ("Discard your changes?") does not fit. */
+export interface DiscardWords {
+  message?: string;
+  keep?: string;
+  discard?: string;
+}
+
 /** "Discard your changes?", asked in place when an overlay with unsaved input is dismissed. */
 export function DiscardStrip({
   onKeep,
   onDiscard,
   className,
+  words,
 }: {
   onKeep: () => void;
   onDiscard: () => void;
   className?: string;
+  /** What this overlay says instead of the default (LX-29: "Discard this license?"). */
+  words?: DiscardWords;
 }): React.ReactElement {
   return (
     <div
@@ -293,14 +303,14 @@ export function DiscardStrip({
     >
       <p className="flex min-w-0 flex-1 items-center gap-2 font-medium text-fg-strong">
         <TriangleAlert aria-hidden className="size-4 shrink-0 text-warning" />
-        Discard your changes? Nothing has been saved.
+        {words?.message ?? "Discard your changes? Nothing has been saved."}
       </p>
       <div className="flex gap-2">
         <Button size="sm" variant="outline" autoFocus onClick={onKeep}>
-          Keep editing
+          {words?.keep ?? "Keep editing"}
         </Button>
         <Button size="sm" variant="danger" onClick={onDiscard}>
-          Discard
+          {words?.discard ?? "Discard"}
         </Button>
       </div>
     </div>

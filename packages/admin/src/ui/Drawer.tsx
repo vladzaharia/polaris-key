@@ -5,6 +5,7 @@ import { cn } from "../lib/cn.js";
 import {
   DialogOverlay,
   DiscardStrip,
+  type DiscardWords,
   DismissGuardContext,
   useGuardedDismissal,
   useOverlayFocus,
@@ -53,6 +54,8 @@ export interface DrawerProps {
   dismissible?: boolean;
   /** The draft holds unsaved input: dismissing asks first. See also `useDismissGuard`. */
   unsaved?: boolean;
+  /** The words of the "discard" question, when the default does not fit. */
+  discard?: DiscardWords;
   children?: React.ReactNode;
   className?: string;
 }
@@ -66,6 +69,7 @@ export function Drawer({
   size = "md",
   dismissible = true,
   unsaved = false,
+  discard,
   children,
   className,
 }: DrawerProps): React.ReactElement {
@@ -155,6 +159,7 @@ export function Drawer({
           {dismissal.asking ? (
             <DiscardStrip
               className="px-4 lg:px-6"
+              words={discard}
               onKeep={dismissal.keepEditing}
               onDiscard={dismissal.discard}
             />

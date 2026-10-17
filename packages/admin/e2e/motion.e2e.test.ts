@@ -720,7 +720,7 @@ describe("motion on: the console under the Worker's CSP", () => {
       await takeLog(page);
 
       await page
-        .getByRole("button", { name: "Create license" })
+        .getByRole("button", { name: "Clean up duplicates…" })
         .first()
         .click();
       const dialog = page.getByRole("dialog");
@@ -1443,7 +1443,7 @@ describe("reduced motion: the same interactions are instant swaps", () => {
       await takeLog(page);
 
       await page
-        .getByRole("button", { name: "Create license" })
+        .getByRole("button", { name: "Clean up duplicates…" })
         .first()
         .click();
       await page.getByRole("dialog").waitFor();

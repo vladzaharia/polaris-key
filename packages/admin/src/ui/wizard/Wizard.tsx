@@ -2,6 +2,7 @@ import * as React from "react";
 import { ArrowLeft } from "lucide-react";
 import { cn } from "../../lib/cn.js";
 import { Button } from "../Button.js";
+import type { DiscardWords } from "../Dialog.js";
 import { Drawer, DrawerBody, DrawerFooter } from "../Drawer.js";
 import { Stepper } from "./Stepper.js";
 import type { WizardStep } from "./model.js";
@@ -60,6 +61,10 @@ export interface WizardProps {
     onOpenChange: (open: boolean) => void;
     title: string;
     unsaved?: boolean;
+    /** The words of the guarded close ("Discard this license?"). */
+    discard?: DiscardWords;
+    /** False while busy, or while a one-time value must be kept first. */
+    dismissible?: boolean;
   };
   className?: string;
 }
@@ -189,6 +194,8 @@ export function Wizard({
         title={drawer.title}
         size="lg"
         unsaved={drawer.unsaved}
+        discard={drawer.discard}
+        dismissible={drawer.dismissible}
       >
         <DrawerBody className={className} data-wizard="drawer">
           <div className="space-y-4">

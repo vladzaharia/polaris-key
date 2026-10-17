@@ -22,9 +22,18 @@ import {
   validateTier,
 } from "../src/console/sections/license/components/TierForm.js";
 import {
+  EMPTY as NEW_EMPTY,
+  batchBody,
   createBody,
+  csvCell,
+  csvOf,
+  deliveriesFor,
+  deliveryOf,
+  loadDraft,
+  saveDraft,
   validateHolder,
-} from "../src/console/sections/license/components/CreateLicenseDialog.js";
+  validateLimits,
+} from "../src/console/sections/license/wizard/draft.js";
 import {
   modeOf,
   policyPatch,
@@ -155,16 +164,10 @@ describe("license bodies", () => {
 
   it("creates with only what was stated", () => {
     const draft = {
+      ...NEW_EMPTY,
       name: " Ada ",
-      email: "ada@x.io",
-      tier: null,
-      expiryMode: "tier" as const,
-      expiresAt: null,
-      maxOfflineDays: null,
-      channels: [],
-      minVersion: "",
-      maxVersion: "",
-      profiles: [],
+      email: " ada@x.io ",
+      delivery: "show" as const,
     };
     // "The tier's term" with no tier is no expiry.
     expect(createBody(draft)).toEqual({
@@ -172,15 +175,93 @@ describe("license bodies", () => {
       email: "ada@x.io",
       expiresAt: null,
     });
-    expect(createBody({ ...draft, tier: "pro" })).toEqual({
-      name: "Ada",
+    expect(createBody({ ...draft, tier: "pro", name: "" })).toEqual({
       email: "ada@x.io",
       tier: "pro",
     });
-    expect(validateHolder({ name: "", email: "x" })).toEqual({
-      name: "Enter the holder's name.",
+    // The default for someone specific is the email; the limit goes only when set.
+    expect(
+      createBody({ ...draft, delivery: null, devices: "set", deviceLimit: 4 }),
+    ).toEqual({
+      name: "Ada",
+      email: "ada@x.io",
+      expiresAt: null,
+      deviceLimit: 4,
+      delivery: { email: true },
+    });
+    expect(validateHolder({ ...NEW_EMPTY, email: "x" })).toEqual({
       email: "Enter a valid email address.",
     });
+    expect(validateHolder(NEW_EMPTY)).toEqual({ email: "Enter their email." });
+  });
+
+  it("makes a floating key or a labelled batch, and a batch needs a tier", () => {
+    const anyone = { ...NEW_EMPTY, who: "anyone" as const };
+    expect(createBody(anyone)).toEqual({ expiresAt: null });
+    expect(deliveriesFor(anyone)).toEqual(["show", "csv"]);
+    const many = { ...anyone, count: 50, label: " Steam, Oct " };
+    expect(deliveriesFor(many)).toEqual(["csv"]);
+    expect(deliveryOf({ ...many, delivery: "show" })).toBe("csv");
+    expect(validateHolder(many)).toEqual({
+      tier: "A batch needs a tier. Go back and choose one.",
+    });
+    expect(validateHolder({ ...many, tier: "pro", label: "" })).toEqual({
+      label: "Name the batch.",
+    });
+    expect(validateHolder({ ...many, tier: "pro", count: 501 })).toEqual({
+      count: "Use a whole number from 1 to 500.",
+    });
+    expect(batchBody({ ...many, tier: "pro", expiryMode: "tier" })).toEqual({
+      label: "Steam, Oct",
+      count: 50,
+      tier: "pro",
+    });
+  });
+
+  it("checks the limits step", () => {
+    expect(
+      validateLimits({ ...NEW_EMPTY, devices: "set", deviceLimit: 0 }),
+    ).toEqual({ deviceLimit: "Use a whole number from 1 to 1000." });
+    expect(
+      validateLimits({ ...NEW_EMPTY, devices: "set", deviceLimit: 3 }),
+    ).toEqual({});
+  });
+
+  it("writes the CSV with escaped cells and no formulas", () => {
+    expect(csvCell('a,"b"')).toBe('"a,""b"""');
+    expect(csvCell("=SUM(A1)")).toBe("'=SUM(A1)");
+    expect(
+      csvOf([
+        {
+          key: "pkey_djdl_AAA",
+          licenseId: "lic_1",
+          product: "djdl",
+          tier: "pro",
+          deviceLimit: null,
+          expiresAt: 0,
+          batch: "Steam, Oct",
+        },
+      ]),
+    ).toBe(
+      "key,license_id,product,tier,device_limit,expires_at,batch\r\n" +
+        'pkey_djdl_AAA,lic_1,djdl,pro,,1970-01-01T00:00:00.000Z,"Steam, Oct"\r\n',
+    );
+  });
+
+  it("keeps the draft per product in sessionStorage, and ignores a damaged one", () => {
+    window.sessionStorage.clear();
+    saveDraft("djdl", { ...NEW_EMPTY, email: "a@x.io", count: 7 });
+    expect(loadDraft("djdl")).toMatchObject({ email: "a@x.io", count: 7 });
+    expect(loadDraft("other")).toEqual(NEW_EMPTY);
+    saveDraft("djdl", NEW_EMPTY);
+    expect(window.sessionStorage.getItem("pk-new-license:djdl")).toBeNull();
+    window.sessionStorage.setItem("pk-new-license:djdl", "{nope");
+    expect(loadDraft("djdl")).toEqual(NEW_EMPTY);
+    window.sessionStorage.setItem(
+      "pk-new-license:djdl",
+      JSON.stringify({ who: 5, channels: "x", count: "3", email: 9 }),
+    );
+    expect(loadDraft("djdl")).toEqual(NEW_EMPTY);
   });
 });
 

@@ -150,9 +150,9 @@ describe("Turn on <Service>", () => {
 });
 
 describe("create actions", () => {
-  it("offers Create license… only while the product runs License", () => {
+  it("offers New license… only while the product runs License", () => {
     expect(createActions("djdl", ALL_ON).map((i) => i.label)).toEqual([
-      "Create license…",
+      "New license…",
       "Create product",
     ]);
     expect(
@@ -381,18 +381,20 @@ describe("the palette in the console", () => {
     );
   });
 
-  it("Create license… opens the create dialog over the page", async () => {
+  it("New license… opens the wizard drawer over the Licenses page", async () => {
     boot("#/p/djdl/activity", { services: ALL_ON });
     await screen.findByRole("navigation", { name: "Console" });
     const dialog = await openPalette();
-    await userEvent.type(input(dialog), "create lic");
+    await userEvent.type(input(dialog), "new lic");
     await userEvent.click(
-      await within(dialog).findByRole("option", { name: /^Create license/ }),
+      await within(dialog).findByRole("option", { name: /^New license/ }),
     );
     expect(
-      await screen.findByRole("dialog", { name: /create license/i }),
+      await screen.findByRole("dialog", { name: "New license" }),
     ).toBeTruthy();
-    expect(window.location.hash).toBe("#/p/djdl/activity");
+    expect(window.location.hash).toBe(
+      "#/p/djdl/license/licenses?setup=new-license&step=tier",
+    );
   });
 
   it("remembers records opened anywhere and offers them under Recent", async () => {

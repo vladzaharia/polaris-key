@@ -70,6 +70,65 @@ export function saveAsFile(
   }
 }
 
+/**
+ * The value, its Copy button and the "I've stored it" box: the one-time pattern without a dialog
+ * around it (LX-29 shows it inside a wizard drawer). Copying counts as storing it.
+ */
+export function SecretValue({
+  label,
+  value,
+  hint = "Shown once. Polaris Key stores only its hash.",
+  acknowledged,
+  onAcknowledgedChange,
+}: {
+  label: string;
+  value: string;
+  hint?: React.ReactNode;
+  acknowledged: boolean;
+  onAcknowledgedChange: (acknowledged: boolean) => void;
+}): React.ReactElement {
+  const valueId = React.useId();
+  const ackId = React.useId();
+  return (
+    <>
+      <div className="space-y-1.5">
+        <p id={valueId} className="font-medium text-fg-strong">
+          {label}
+        </p>
+        <div className="flex items-start gap-2 rounded-md border border-border bg-surface-sunken p-3">
+          <code
+            aria-describedby={valueId}
+            className="min-w-0 flex-1 select-all break-all font-mono text-sm text-fg-strong"
+          >
+            {value}
+          </code>
+          <CopyButton
+            value={value}
+            label={`Copy ${label.toLowerCase()}`}
+            onCopy={(ok) => {
+              if (ok) onAcknowledgedChange(true);
+            }}
+          />
+        </div>
+        <p className="text-xs text-fg-muted">{hint}</p>
+      </div>
+      <label
+        htmlFor={ackId}
+        className="flex items-center gap-2 text-sm text-fg"
+      >
+        <input
+          id={ackId}
+          type="checkbox"
+          checked={acknowledged}
+          onChange={(e) => onAcknowledgedChange(e.target.checked)}
+          className="size-4 accent-(--pk-accent)"
+        />
+        I&apos;ve stored it
+      </label>
+    </>
+  );
+}
+
 export function OneTimeSecretPanel({
   label,
   value,
@@ -91,46 +150,17 @@ export function OneTimeSecretPanel({
     onAcknowledgedChange?.(v);
   };
   const [downloadFailed, setDownloadFailed] = React.useState(false);
-  const valueId = React.useId();
-  const ackId = React.useId();
 
   return (
     <>
       <DialogBody className="space-y-4 text-sm">
-        <div className="space-y-1.5">
-          <p id={valueId} className="font-medium text-fg-strong">
-            {label}
-          </p>
-          <div className="flex items-start gap-2 rounded-md border border-border bg-surface-sunken p-3">
-            <code
-              aria-describedby={valueId}
-              className="min-w-0 flex-1 select-all break-all font-mono text-sm text-fg-strong"
-            >
-              {value}
-            </code>
-            <CopyButton
-              value={value}
-              label={`Copy ${label.toLowerCase()}`}
-              onCopy={(ok) => {
-                if (ok) setAck(true);
-              }}
-            />
-          </div>
-          <p className="text-xs text-fg-muted">{hint}</p>
-        </div>
-        <label
-          htmlFor={ackId}
-          className="flex items-center gap-2 text-sm text-fg"
-        >
-          <input
-            id={ackId}
-            type="checkbox"
-            checked={acknowledged}
-            onChange={(e) => setAck(e.target.checked)}
-            className="size-4 accent-(--pk-accent)"
-          />
-          I&apos;ve stored it
-        </label>
+        <SecretValue
+          label={label}
+          value={value}
+          hint={hint}
+          acknowledged={acknowledged}
+          onAcknowledgedChange={setAck}
+        />
         {details}
         {download ? (
           <div className="space-y-1">

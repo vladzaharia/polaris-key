@@ -38,7 +38,25 @@ export const APPSTORE_FLOW: FlowDef = {
   ],
 };
 
-export const FLOWS: readonly FlowDef[] = [STOREFRONTS_FLOW, APPSTORE_FLOW];
+/** License → Licenses → New license (LX-29; S-24 §8): a drawer over the list. */
+export const NEW_LICENSE_FLOW: FlowDef = {
+  id: "new-license",
+  title: "New license",
+  steps: [
+    { id: "tier", label: "Tier", kind: "choice" },
+    { id: "holder", label: "Who it's for", kind: "form" },
+    { id: "limits", label: "Limits", kind: "form" },
+    { id: "delivery", label: "Delivery", kind: "choice" },
+    { id: "review", label: "Review", kind: "confirm" },
+    { id: "done", label: "Done", kind: "done" },
+  ],
+};
+
+export const FLOWS: readonly FlowDef[] = [
+  STOREFRONTS_FLOW,
+  APPSTORE_FLOW,
+  NEW_LICENSE_FLOW,
+];
 
 /** Flows longer than five steps today: the most they may have, and who splits them. */
 export const FLOW_EXEMPT: Readonly<

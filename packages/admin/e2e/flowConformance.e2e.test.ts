@@ -12,8 +12,8 @@ import { CORE_ROUTES } from "./coreFixtures.js";
  * Chromium, under the Worker's exact Content-Security-Policy:
  *
  * - first focus lands on the first field or the title, never on Close or Back;
- * - Create license moves focus to each step's heading, names its primaries and asks before
- *   Escape drops a draft; its result takes focus on the title;
+ * - New license moves focus to each step's heading, names its primaries and asks before
+ *   Escape drops a draft; its result takes focus on the heading;
  * - the offline bundle result is not dropped by Escape before it is saved;
  * - Escape from a controlled confirm (Services, a rollout's row menu) returns focus to the
  *   control that opened it, never to `<body>`;
@@ -84,6 +84,7 @@ const WRITES: Record<string, unknown> = {
   [`${API}/license/licenses`]: {
     licenseId: "lic_new",
     key: "PK-7Q2M-9XKD-4HRW-C3VA",
+    delivered: { email: "sent" },
     license: { ...LICENSE, id: "lic_new", name: "Grace Hopper" },
   },
   [`${API}/bundles`]: {
@@ -208,7 +209,7 @@ async function shot(page: Page, name: string): Promise<void> {
 const THEMES: Theme[] = ["dark", "light"];
 const WIDTHS = [1440, 390];
 
-describe("Create license (C-17)", () => {
+describe("New license (C-17)", () => {
   for (const theme of THEMES)
     for (const width of WIDTHS)
       it(`steps, focus, primaries and the draft guard (${theme}, ${width})`, async () => {
@@ -217,44 +218,57 @@ describe("Create license (C-17)", () => {
           width,
         });
         await title(page, "Licenses");
-        await page
-          .getByRole("button", { name: "Create license" })
-          .first()
-          .click();
-        const dialog = page.getByRole("dialog", { name: "Create license" });
+        await page.getByRole("button", { name: "New license" }).first().click();
+        const dialog = page.getByRole("dialog", { name: "New license" });
         await dialog.waitFor();
+        await dialog.getByRole("radio", { name: /Standard/ }).waitFor();
         await page.waitForTimeout(200);
-        expect(await focused(page)).toMatch(/^input:Name/);
-        expect(await dialog.getByText("Step 1 of 2 for you").count()).toBe(1);
-        await dialog.getByLabel(/^Name/).fill("Grace Hopper");
+        expect(
+          await dialog.locator("h2", { hasText: "Step 1 of 6" }).count(),
+        ).toBe(1);
+        await shot(page, `new-license-tier-${theme}-${width}`);
+        await dialog.getByRole("radio", { name: /Standard/ }).click();
+        await dialog.getByRole("button", { name: "Continue" }).click();
+        await dialog
+          .getByText("Who it's for", { exact: false })
+          .first()
+          .waitFor();
+        await page.waitForTimeout(150);
+        expect(await focused(page)).toMatch(/^h2:Step 2 of 6/);
         await dialog.getByLabel(/^Email/).fill("grace@example.com");
-        await shot(page, `create-license-holder-${theme}-${width}`);
+        await shot(page, `new-license-holder-${theme}-${width}`);
 
         await afterTyping(page);
         await page.keyboard.press("Escape");
-        await dialog.getByText("Discard your changes?").waitFor();
+        await dialog.getByText("Discard this license?").waitFor();
         await page.waitForTimeout(100);
         expect(await focused(page)).toBe("button:Keep editing");
-        await shot(page, `create-license-discard-${theme}-${width}`);
+        await shot(page, `new-license-discard-${theme}-${width}`);
         await dialog.getByRole("button", { name: "Keep editing" }).click();
 
-        await dialog.getByRole("button", { name: "Continue to terms" }).click();
-        await dialog.getByRole("heading", { name: "Set the terms" }).waitFor();
-        await page.waitForTimeout(100);
-        expect(await focused(page)).toBe("h3:Set the terms");
-        await shot(page, `create-license-terms-${theme}-${width}`);
+        await dialog.getByRole("button", { name: "Continue" }).click();
+        await dialog.getByText("What devices receive").waitFor();
+        await shot(page, `new-license-limits-${theme}-${width}`);
+        await dialog.getByRole("button", { name: "Continue" }).click();
+        await dialog.getByLabel("Email preview").waitFor();
+        await shot(page, `new-license-delivery-${theme}-${width}`);
+        await dialog.getByRole("button", { name: "Continue" }).click();
+        await dialog.getByText("Polaris Key will").waitFor();
+        await shot(page, `new-license-review-${theme}-${width}`);
 
-        await dialog.getByRole("button", { name: "Create license" }).click();
+        await dialog
+          .getByRole("button", { name: "Create and email license" })
+          .click();
         await page.getByText("PK-7Q2M-9XKD-4HRW-C3VA").waitFor();
-        await page.waitForTimeout(100);
-        expect(await focused(page)).toBe("h2:License created");
+        await page.waitForTimeout(150);
+        expect(await focused(page)).toMatch(/^h2:Step 6 of 6/);
         expect(
           await page
             .getByRole("dialog")
             .getByText(/shown once/i)
-            .count(),
-        ).toBe(1);
-        await shot(page, `create-license-result-${theme}-${width}`);
+            .allInnerTexts(),
+        ).toEqual(["Shown once. Copy it now."]);
+        await shot(page, `new-license-result-${theme}-${width}`);
         expect(await violations(page)).toEqual([]);
         expect(errors).toEqual([]);
         await page.context().close();
