@@ -1,324 +1,104 @@
 ---
 title: "Activation"
-description: "Redeeming a key for a device token: the request, the authorization pipeline in order, token rotation, and self-deauthorize."
+description: "How a key becomes a device token: the request, the checks in order, token rotation and self-deauthorize."
+type: "concept"
+lastReviewed: "2026-10-16"
 sidebar:
-  order: 3
+  order: 4
 ---
 
-Activation is the hot path: a user pastes a `pkey_…` key, and one machine walks away with a
-`pkeyt_` device token it will use for everything afterwards. Three routes make up the lifecycle
-— redeem, rotate, release.
+Activation redeems a `pkey_…` key for a `pkeyt_…` device token that the device uses for everything afterwards. Three routes make up the lifecycle: redeem, rotate and release.
 
-## `POST /<product>/license/activate`
+## Redeem a key
 
-```http
-POST /djdl/license/activate
-Authorization: Bearer pkey_djdl_kf9Q2xR7bN4vL1mZ
-X-PKey-Device: 7Yb2Qh8sK1nR4tV9wX3zA6cD0eF5gH7j
+```http title="Request"
+POST /tidewater/license/activate
+Authorization: Bearer <license key>
+X-PKey-Device: <device id>
 X-PKey-Version: 2.4.1
 Content-Type: application/json
 
-{ "fingerprint": { "components": { "machineUuid": "…", "cpuModel": "…" } } }
+{ "fingerprint": { "components": { "machineUuid": "<hash>" } } }
 ```
 
-The key rides in `Authorization`, not the body. `X-PKey-Device` is **required**; the body is
-**optional** and carries nothing but a hardware fingerprint.
+The key travels in `Authorization`. `X-PKey-Device` is required. The body is optional and carries only a hardware fingerprint. A success is `200` with `token`, `schemaVersion` (the product's catalog version), `device` and `license`. [Enrollment](/docs/features/licensing/access/) returns the same shape, so an SDK reuses one result type for both paths.
 
-A success is `200` with four fields:
+The Worker checks, in order:
 
-| Field           | Contents                                                                                                            |
-| --------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `token`         | The minted `pkeyt_` device token. Never shown again.                                                                |
-| `schemaVersion` | The product's active catalog version — not the wire version.                                                        |
-| `device`        | The device as the server now sees it: id, status, labels, platform/arch, SDK name and version, first and last seen. |
-| `license`       | Id, status, name, email, tier id, activation time, expiry, `maxOfflineDays`, channels, and the version window.      |
+1. The method is `POST`, else `405`.
+2. The rate limit: 30 attempts per 60 seconds per client network and product, else `429 rate_limited`. The limiter fails closed, because an open credential endpoint is a brute-force oracle against keys.
+3. A bearer key is present, else `401 unauthorized`.
+4. The device header is present, else `400 bad_request`.
+5. The key hash exists and is `active`, else `401`.
+6. The key's license exists, else `401`.
+7. The key entry check, when Identity is on.
 
-[Enrollment](/docs/services/license/enrollment/) returns this **exact** shape, which is why an
-SDK reuses one activation result type for both paths with no new client plumbing.
-
-On a product with Identity on, the answer carries a fifth member, `keyEntries` — see
-[Key entries](#key-entries-identity-products) below. Older SDKs ignore it.
-
-### The request checks, in order
-
-1. **Method.** Anything but `POST` is `405`. The method check lives in the handler, so a
-   `GET /license/activate` is a `405` rather than falling through to the router's `404`.
-2. **Rate limit.** Bucket `activate`, 30 attempts per 60 seconds, keyed by client network (an
-   IPv4 address or an IPv6 /64) and product. Over the limit is `429 rate_limited`. This bucket **fails closed**: if the limiter
-   itself is unavailable the request is refused, because an unlimited credential endpoint is a
-   brute-force oracle against license keys.
-3. **Bearer key.** Absent is `401 unauthorized`.
-4. **Device header.** Absent is `400 bad_request`, "missing device id".
-5. **Key lookup.** The key is hashed with the deployment pepper and looked up by hash. A key
-   that does not exist, or whose status is not `active`, is `401`.
-6. **License lookup.** A key whose license row has vanished is `401`.
-7. **Key entry** (Identity products only). A device already enrolled on the licence goes on as
-   before. A new device may be refused `key_entry_limit` here — see
-   [Key entries](#key-entries-identity-products).
-
-:::note[One 401 for several causes]
-Unknown key, revoked key, missing license, and dead license all answer `401 unauthorized` with
-no distinguishing detail. Telling them apart would let a caller enumerate which key strings are
-real and probe license state from outside.
-:::
-
-On success the key's `last_used_at` is stamped — which is what the console's key list shows, and
-the only trace redemption leaves on the key row.
+An unknown key, a revoked key, a missing license and a dead license all answer the same `401`. Telling them apart would let a caller enumerate real keys.
 
 ## The authorization pipeline
 
-Everything after the key check is `authorizeDevice`, which is Core's because Identity's sign-in
-paths run the identical decision. The order of its side effects is load-bearing, not incidental:
+After the key checks, Core runs one shared decision. Sign-in activation runs the same one. The order of its side effects matters.
 
-```text
-license usable
-  → tier lookup
-    → fingerprint mode resolution
-      → strict-requires-fingerprint
-        → reconcileDeviceHardware
-          → seat claim
-            → bindDevice
-```
+1. **License usable.** The license is `active` and not expired, else `401`.
+2. **Fingerprint mode.** With the product's fingerprint policy on, the tier's mode wins, then the product's default, then `normal`. With it off the mode is `off`. See [Fingerprints](/docs/features/licensing/fingerprints/).
+3. **Strict needs a fingerprint.** Only `strict` makes one mandatory: without it the answer is `403 fingerprint_required`. Other modes accept a client that sent none and record the device as `unverified`.
+4. **Hardware reconcile**, before any seat decision. If the presented hardware differs from the stored hardware by more than the mode tolerates, the old binding is retired and the call answers `409 hardware_mismatch` with `drift` and `changed`. A retry binds the new hardware. If a new authorization presents hardware that an authorized sibling on the same license already holds, the stale id is retired so one machine holds one seat.
+5. **Seat claim**, only for a new authorization. A device refreshing its own seat skips it. A full license answers `403 device_limit`.
+6. **Bind.** The device row is written with the request's platform, architecture, version and SDK headers. The Worker mints and stores a token hash, so a re-activation invalidates the old token at once. It also writes the server-recomputed fingerprint row, or an `unverified` marker.
 
-### 1. License usable
-
-`status = 'active'` and either no `expires_at` or one still in the future. A failure here is
-`401 unauthorized`, the same answer a bad key gets.
-
-### 2. Tier lookup
-
-The license's `tier_id`, if it has one, is read now — its `policy_fingerprint` decides the next
-step, and its `policy_device_limit` reaches the seat check later as an entitlement.
-
-### 3. Fingerprint mode resolution
-
-```text
-mode := product.fingerprintPolicy.enabled
-          ? (tier.policy_fingerprint ?? product.defaultMode ?? "normal")
-          : "off"
-```
-
-The product-level switch wins outright: turning fingerprinting off for a product forces `off`
-regardless of what any tier says. Otherwise the tier's mode wins over the product default, and
-`normal` is the floor when neither names a valid mode. Tolerances per mode are in
-[Fingerprint constants](/docs/reference/fingerprint-constants/).
-
-### 4. Strict requires a fingerprint
-
-`strict` is the **only** mode that makes a fingerprint mandatory. Without one it is
-`403 fingerprint_required`. Every other mode tolerates a client that sent nothing — including
-clients that predate fingerprinting entirely, which `bindDevice` later records as `unverified`
-so an operator can tell "old client" from "declined to identify".
-
-### 5. `reconcileDeviceHardware`
-
-Core reconciles the presented hardware against what this product already knows, **before** any
-seat decision. Two things can happen:
-
-- **Mismatch.** The presented components differ from the stored ones by more than the mode
-  tolerates. The existing binding is _retired_ — the device is deauthorized, its fingerprint and
-  facts rows are purged, its cached token record is evicted — an audit entry
-  (`device.fingerprint.mismatch`) is written, and the call answers
-  `409 hardware_mismatch` with `drift` and `changed`.
-
-  It is a `409` and not a `403` deliberately: the caller resolves it by simply retrying
-  activation, which re-binds the new hardware cleanly. A flat `403` reads as "never going to
-  work". Retiring rather than rebinding in place is also deliberate — the old machine is gone
-  and must not keep holding a seat.
-
-- **Coalescing.** For a _new_ authorization presenting hardware that already has an authorized
-  sibling device id on the same license, the stale id is retired (audit
-  `device.seat.coalesced`) so one machine holds one seat. See
-  [Seat pools](/docs/services/license/model/#seat-pools-and-devicelimit).
-
-This runs before the seat check for two behavioural reasons: a swapped machine gets a precise
-`hardware_mismatch` instead of a confusing `device_limit`, and a coalesced sibling has already
-released its seat by the time capacity is counted.
-
-### 6. Seat claim
-
-Only when this is a **new authorization** — no device row, a non-authorized one, or one bound to
-a different license. A device refreshing its own seat skips this step entirely.
-
-The limit is read as the `deviceLimit` entitlement (falling back to the product default), the
-active devices are pre-counted with the dormancy floor applied, and then the ordinal is claimed
-atomically in the database. Either failure is:
-
-```json
+```json title="Output"
 {
   "error": "device_limit",
   "message": "device limit reached",
   "limit": 5,
   "deviceCount": 5,
-  "manageUrl": "https://key.plrs.im/activate?product=djdl&next=free-device&for=macOS%20arm64"
+  "manageUrl": "https://key.plrs.im/activate?product=tidewater&next=free-device"
 }
 ```
 
-with status `403`. A non-positive limit denies rather than meaning "unlimited".
+`manageUrl` opens the portal flow that frees a seat. It is present only while the product's portal is on, never carries a key, account id or device id, and isn't an auth failure: offer it behind a user action such as **Replace a device**.
 
-On an Identity product the claim also records the [key entry](#key-entries-identity-products), in
-the same database batch as the seat: a claim that loses the ordinal race rolls the entry back
-with it, and of concurrent calls from one device only one records.
+## Fingerprint body rules
 
-`manageUrl` is the customer-portal link that frees a seat (WIRE-CONTRACT-V4 §5.3), built by
-`core/licensing/manageUrl.ts` and present only while the product's portal is on. For a licence attached to
-an account it opens the free-device flow for that licence
-(`/#/p/<slug>/free-device?license=<id>`); for a floating licence it opens the activate page, which
-goes on to free-device once the key is added. `for` is a coarse platform-and-arch label from the
-request's metadata headers. The link never carries the key, an account id or a device id, and it
-is not an auth failure: SDKs offer it behind a "Replace a device" action.
+An absent, empty, oversized (over 4 KiB) or unparseable body means no fingerprint, never an error, so shipped clients kept working when fingerprinting arrived. Unknown component names are dropped. A known component whose value isn't a base64url string of the canonical digest length rejects the whole fingerprint. The client's own `hwid` is ignored and recomputed on the server.
 
-### 7. `bindDevice`
+## Key entries
 
-The rows the binding consists of, written only once a seat is granted:
+While Identity is on, the Worker counts how many times a license key was typed on a new device, so a key passed around in public stops working on new devices and points people at an account.
 
-- The `devices` row — upserted, preserving `first_seen`, the user's label, per-device overrides
-  and the reported snapshot, and folding in the request's `X-PKey-Platform`, `X-PKey-Arch`,
-  `X-PKey-Version`, `X-PKey-SDK` and `X-PKey-SDK-Version`. Platform, arch and SDK are stored as
-  their canonical WIRE-CONTRACT-V3 §5.2 values, with an older SDK's spelling mapped (`darwin` →
-  `macos`, `x64` → `x86_64`, `@polaris-key/node` → `node`) and an empty header ignored.
-- The token: minted, hashed, stored on the device row. Any previous token record is deleted from
-  KV, so a re-activation invalidates the old credential immediately.
-- The fingerprint row — `verified`, with the **server-recomputed** hwid and the anchor hash. If
-  the match was tolerated drift, a `device.fingerprint.drift` audit entry records what changed.
-- Or, when no fingerprint was presented and the mode is not `off`, an `unverified` marker row —
-  written only if no prior row exists.
-- The KV token record: product, device id, license id.
+- **What counts.** A new device taking a seat through `/license/activate`, a browser key session, and a portal claim. Rotation, document fetches and a device that is already enrolled don't count.
+- **The member.** Every success carries `"keyEntries": { "used": 3, "limit": 10 }`. Show `max(0, limit − used)` entries left.
+- **The limit.** The product setting `identity.keyEntry.limit`, from 1 to 100, capped by the platform setting of the same name.
+- **The refusal.** With the platform switch `identity.keyEntryRefusals` on, a new device whose key belongs to a usable license in no account, at or past its limit, gets `403 key_entry_limit` with the portal's activate link as `manageUrl`. The switch is off until the SDKs that show the refusal ship. Counting runs either way.
+- **Owned licenses.** With the same switch on, a usable license that is in an account refuses a device not enrolled on it: `403 license_owned` with `signInUrl`. The device reaches the license by signing in to that account.
 
-## Key entries (Identity products)
+With Identity off nothing is counted or refused.
 
-A **key entry** is someone typing the licence key to use it (WIRE-CONTRACT-V4 §12.2). While the
-product's Identity service is on, every licence counts them, so a key passed around in public
-eventually stops working on new devices and the person is pointed at an account instead (see
-**key entry** and **key-entry limit** in [Concepts & terminology](/docs/start/concepts/)).
+## Rotate a token
 
-- **What counts.** A new device that takes a seat through `/license/activate` (surface `app`), a
-  browser key session through `/identity/session/license` (`browser`, once per enrolment of the
-  licence's `browser:<licenseId>` device), and a portal claim that adds the key to an account
-  (`portal`). Nothing else: not an enrolled device entering the key again, not a refused or failed
-  attempt, not token rotation, offline grace or a document fetch, not
-  [enrollment](/docs/services/license/enrollment/), store bindings or sign-in.
-- **The member.** Every Identity-on success carries `"keyEntries": {"used": 3, "limit": 10}`,
-  an enrolled device's included. `used` may exceed `limit` (concurrent entries at the last one,
-  portal claims, a period with refusals off); an app shows `max(0, limit − used)` entries left.
-- **The limit.** The product setting `identity.keyEntry.limit`: 1 to 100, default 10, never
-  unlimited while Identity is on.
-- **The refusal.** While the platform switch `identity.keyEntryRefusals` is on, a new device whose
-  key belongs to a usable licence in no account, at or past its limit, is refused:
-
-  ```json
-  {
-    "error": "key_entry_limit",
-    "message": "key entry limit reached",
-    "manageUrl": "https://key.plrs.im/activate?product=djdl",
-    "keyEntries": { "used": 10, "limit": 10 }
-  }
-  ```
-
-  with status `403`. `manageUrl` opens the portal's activate page, where the key joins an
-  account; it is omitted while the product's portal is off. The refusal is logged with the
-  licence's other refusals (reason `key_entry_limit`). It is not an auth failure: an SDK keeps
-  its state and offers the link behind a user action. A device already using the key is never
-  refused.
-
-- **The switch stays off** until the SDKs that show the refusal are released. Counting runs
-  either way, so the meter is right on the day the switch turns on.
-- **Identity off:** nothing is counted or refused, and the member is absent.
-
-## The fingerprint body
-
-`/activate` carried no body before fingerprinting existed, so the reader is deliberately
-forgiving. An absent, empty, oversized (over 4 KiB), or unparseable body means **"no
-fingerprint"** and never an error — otherwise every already-shipped client would have started
-failing the day fingerprinting deployed. Whether a missing fingerprint is _acceptable_ is the
-tier's decision, taken at step 4.
-
-Validation of what is present is strict, though:
-
-- Component names the worker does not know are **dropped**, so a newer SDK reporting an
-  unfamiliar component still activates.
-- A known component whose value is not a string of exactly the canonical digest length in the
-  base64url alphabet rejects the **whole** fingerprint (it becomes "no fingerprint").
-- An empty component map is "no fingerprint".
-- The client's own `hwid` is **ignored and recomputed server-side**. A forged hwid would
-  otherwise let a caller collide with another device's dedupe key; recomputing removes the
-  surface entirely.
-
-## `POST /<product>/license/token`
-
-Rotate or re-acquire the token for a device that is already authorized.
-
-```http
-POST /djdl/license/token
-Authorization: Bearer pkeyt_…
-X-PKey-Device: 7Yb2Qh8sK1nR4tV9wX3zA6cD0eF5gH7j
+```http title="Request"
+POST /tidewater/license/token
+Authorization: Bearer <device token>
+X-PKey-Device: <device id>
 ```
 
-Both the **current token** and the **matching device id** are required, and the two must agree —
-a token presented with somebody else's device header is `401`. Rate limit: bucket `token`, 30
-per 60 seconds per IP, fail-closed like activation.
+The token and the device id must agree, else `401`. The token is checked for shape first: `pkeyt_` plus at least 43 base64url characters. The rate limit is 30 per 60 seconds per network and fails closed. Rotation deletes the old token record, so the previous token stops at once. The response is `token` and `schemaVersion`.
 
-Rotation deletes the old KV token record, writes the new hash onto the device row, and installs
-the new record — so the previous token stops working at once rather than at KV expiry. The
-response is `token` and `schemaVersion`; no device or license block.
+On a `401` from a document fetch, an SDK makes exactly one rotate attempt and then one retry of the fetch.
 
-The token itself is checked on **shape** first: `pkeyt_` followed by at least 43 base64url
-characters. Anything else — a license key, a session cookie value, a browser-session token
-pasted into the header — is refused before the pepper HMAC and the KV/D1 reads it would
-otherwise cost.
+## Release a device
 
-:::tip[The client contract]
-Wire contract v3 §5: on a `401` from a document fetch, an SDK makes **exactly one**
-`POST /license/token` re-acquire attempt, then **one** retry of the failed fetch. Not a loop.
-:::
-
-## `POST /<product>/license/deauthorize`
-
-Self-deauthorize the bearer token's own device.
-
-```http
-POST /djdl/license/deauthorize
-Authorization: Bearer pkeyt_…
+```http title="Request"
+POST /tidewater/license/deauthorize
+Authorization: Bearer <device token>
 ```
 
-The device is marked `deauthorized` — which purges its fingerprint and facts rows and frees its
-seat — and its token record is evicted from KV. The response is `{"ok": true}`.
+The device is marked `deauthorized`, its fingerprint and facts rows are purged, its seat frees and its token record is evicted. The response is `{"ok": true}`. No device header is needed, and the bucket (30 per 60 seconds) fails open.
 
-Two asymmetries with `/token` are worth knowing:
+A device token authenticates one device. Deauthorizing a sibling is refused with `403`, because any device could otherwise evict every other install. Cross-device management belongs on the portal.
 
-- No `X-PKey-Device` header is required. The token identifies the device on its own; the header
-  on `/token` exists to make rotation refuse a mismatched pairing.
-- Its rate limit is a cost budget, not a guard on a credential: bucket `deauthorize`, 30 requests
-  per 60 seconds per client network, failing open. It destroys a credential rather than minting
-  one.
+## Next steps
 
-A device token authenticates **one** device, not the license. Deauthorizing a _sibling_ device is
-refused on Core's `/devices/<id>` surface with `403`, because any device could otherwise evict
-every other install on the same license — and the eviction purges the victim's fingerprint, so
-it is not even recoverable by re-activating the same hardware. Cross-device management belongs on
-the portal, which authenticates the license owner.
-
-## Behaviour pinned by tests
-
-- `test/enroll.test.ts` — "still enforces the tier's device limit when distinct machines share a
-  license": two distinct machines fill a two-seat license through `/activate`, and a third gets
-  `403 device_limit`.
-- `test/enroll.test.ts` — the R3-11 case: four authorizations from one machine under four device
-  ids leave exactly one authorized device, named by the newest id.
-- `test/relicense.test.ts` — "refuses a NEW activation once over the downgraded limit": after a
-  downgrade the existing devices keep working and the next activation is `403 device_limit`.
-- `test/fingerprintPolicy.test.ts` — the admin fingerprint reset clears a device's binding
-  **without** deauthorizing it, so a false-positive drift lockout does not cost the user a seat.
-- `test/keyEntries.test.ts` — key entries: racing seat claims from one device write one entry,
-  racing new devices write one per seat won, a refusal writes none, the refusal applies only with
-  the switch on to a usable licence in no account, and an enrolled device's document is
-  byte-for-byte the same with counting on. The transcripts `keyentry-limit.json`,
-  `keyentry-refusals-off.json` and `keyentry-identity-off.json` pin what an SDK sees.
-
-## Reference
-
-- [Public route table](/docs/reference/routes/) — every route with its owning service.
-- [Wire error codes](/docs/reference/error-codes/) — `unauthorized`, `device_limit`,
-  `key_entry_limit`, `fingerprint_required`, `hardware_mismatch`, `rate_limited`, `bad_request`.
-- [The license model](/docs/services/license/model/) — seat pools, dormancy, and where
-  `deviceLimit` is resolved.
+- [The license model](/docs/features/licensing/model/): seat pools and dormancy.
+- [Handle the device limit](/docs/features/licensing/device-limit/): what to show on `device_limit`.
+- [Public routes](/docs/reference/routes/) and [error codes](/docs/reference/error-codes/).

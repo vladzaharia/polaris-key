@@ -297,7 +297,7 @@ two tables, `identity_connections` and `identity_connection_domains`, and is the
 everything else reads them through Core (`core/oidc/connections.ts`). Every connection signs in
 through the Worker's one relying-party client, with discovery, PKCE, `state`, `nonce` and the
 issuer's hosts as the only hosts it dials. What the card does with a connection is in
-[Customer portal](/docs/features/sign-in/customer-portal/#work-and-school-addresses).
+[Customer portal](/docs/features/sign-in/customer-portal/#signing-in).
 
 The console has no page or admin route for sign-in connections yet, so a deploy has only the
 seeded connection below. Adding a connection, proving its domains and enforcing them come with the

@@ -31,7 +31,7 @@ Grouped by what triggers them:
 | Release                   | `release.resync`, `release.channel.floor`                                                                                                       |
 | Update                    | `update.settings.update`                                                                                                                        |
 | Identity                  | `portal.settings.update`, `storefront.polarisKey.update`                                                                                        |
-| Offline bundles           | `bundle.minted` — see [Offline bundles](/docs/admin/bundles/#nothing-is-stored-but-the-audit-row)                                               |
+| Offline bundles           | `bundle.minted` — see [Offline bundles](/docs/features/licensing/offline/#mint-a-file)                                                          |
 | Access                    | `access.denied`                                                                                                                                 |
 
 A customer's own sign-in appends one too when it creates the license: `license.mint.oidc`, with the

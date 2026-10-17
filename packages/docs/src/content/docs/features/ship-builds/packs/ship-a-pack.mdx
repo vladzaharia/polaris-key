@@ -1,0 +1,179 @@
+---
+title: "Ship a pack"
+description: "Publish a content pack and deliver it to devices."
+type: "how-to"
+lastReviewed: "2026-10-16"
+sidebar:
+  order: 2
+---
+
+import Requires from "../../../../../components/docs/Requires.astro";
+
+A pack release is a CI-signed record plus the objects it names. Publishing uploads the objects, then submits the record, and Release re-resolves which devices get it. [Packs](/docs/features/ship-builds/packs/) explains the model.
+
+<Requires
+  features={["ship-builds"]}
+  role="Product admin"
+  sdk={["Node 22.13 or later"]}
+/>
+
+Before you start:
+
+- The product's Distribution and Release services are on. A pack publish is refused with `distribution_disabled` while Distribution is off.
+- A release key in CI. A publish signs the record with it.
+- The CLI installed. See [Install the SDKs and the CLI](/docs/build/install/).
+
+## Declare the pack
+
+Declare packs in `.pkey/release.yaml` beside the app, then sync the manifest. The app needs `content.contentApi` once any pack exists.
+
+```yaml title=".pkey/release.yaml"
+apiVersion: pkey.dev/v1
+release:
+  provider:
+    type: github
+    owner: "tidewater-studio"
+    repo: "tidewater"
+  deliverables:
+    app:
+      kind: app
+      content:
+        contentApi: 3
+      artifacts:
+        - id: macos
+          platform: macos
+          arch: universal
+          format: dmg
+          match: "Tidewater-*-macos.dmg"
+          embeds: [tidewater.core]
+    tidewater.core:
+      kind: pack
+      type: godot.pck
+      baseline: embedded
+      required: true
+      delivery: essential
+      handler:
+        mountOrder: 2
+        prefixes: ["res://assets/core/"]
+      requires: { engine: godot-4.7 }
+    tidewater.foes:
+      kind: pack
+      type: godot.pck
+      binding: compatible
+      handler: { prefixes: ["res://foes/"] }
+      requires:
+        engine: godot-4.7
+        contentApi: { app: ">=3 <4" }
+```
+
+- A build's `embeds` names the packs it ships inside it. Omitted means every `baseline: embedded` pack, and `[]` means none, such as a lean web build.
+- `requires.contentApi` is keyed by the app deliverable. It holds one to four comparators that must all hold. A `compatible` pack declares it. A `standalone` one never does.
+- `requires.packs` names other packs with a version range. `conflicts` names packs this one never shares a set with.
+- A pack's `channels` are where its releases may publish beyond `stable` and `beta`. `content.packChannels` maps a pack id or a `prefix.*` to the channel every app channel consumes for those packs.
+- `variants` declares axes such as `locale` or `texture`. `handler.prefixes` is the admission list for a `godot.pck`.
+- These are the defaults CI signs into each variant. The record is the truth: a release keeps the range it was published with.
+
+## Publish the pack
+
+1. **CI** Get a CI token. The release key comes from your CI secrets.
+
+   ```sh title="Terminal"
+   pkey auth github-oidc --product <slug>
+   ```
+
+2. **CI** Build each variant's payload into a directory.
+3. **CI** Publish the pack. The command strips and lints each variant's payload, builds the objects and deltas, signs the record and writes a marker beside each payload. `--out` is the cache that store transports and later publishes read.
+
+   ```sh title="Terminal"
+   pkey release publish --product <slug> --version <version> --dir <dir> --deliverable tidewater.foes --out <cache>
+   ```
+
+4. **CI** Write the content stamp an app build embeds, then publish the app with the pins.
+
+   ```sh title="Terminal"
+   pkey release content-stamp --product <slug> --out pkey-content.json --pin tidewater.foes@<version>
+   ```
+
+Use `--dry-run` first to see the resulting pack sets without writing anything. The `polaris-key/publish` Action runs the same steps. See [CI publishing](/docs/features/ship-builds/ci/).
+
+A publish is three stages. A preflight asks for each release's `seq` and the pack's gate without a ticket. Stage rounds upload objects in batches of at most 256, and each round verifies the objects, refuses one whose `gated` flag differs from the gate and records a reference. A small pack can carry its objects with the record and publish in one request. Then the submit sends the record.
+
+An object counts as already present only when that pack uploaded it, so two packs sharing bytes each earn their own references.
+
+### Chunk indexes
+
+A container variant (`godot.pck`) of 4 MiB or more gets a chunk index when the pack's `patch.strategies` lists `chunk`, which is the default, and discovery advertises `release.chunks`. CI cuts the payload into chunks of about 64 KiB with FastCDC, never across two entries of the PCK, stores each as one `zstd -19` frame and packs them into bundles of about 4 MiB. The signed `chunks` names a `pkey-chunks/1` index that lists each chunk's hash, length, bundle and offset. An SDK that has an earlier release's index fetches only the chunks it lacks.
+
+With `--bases`, a publish continues the chain from the newest cached release of the same gating class, so an update from the previous release costs the index plus about one bundle run. A gated and a free pack never share a bundle. An index over 8 MiB isn't published: the variant ships without `chunks` and the publish warns.
+
+## What a publish checks
+
+Ingest refuses with `release_record_rejected` and a `reason`. It runs the checks every record shares (`typ`, `kid`, `product-key`, `signature`, `claims`), then the pack checks in this order:
+
+| Reason                      | When                                                                                                              |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `pack-unknown`              | The pack isn't declared                                                                                           |
+| `scheme`, `seq`             | The version scheme is wrong, or `seq` isn't above the pack's last                                                 |
+| `pack-type`                 | The type doesn't match the declaration                                                                            |
+| `pack-variant`              | An axis or value the declaration lacks                                                                            |
+| `pack-requires`             | A variant's signed `requires` or `conflicts` disagrees with the binding or names an undeclared pack               |
+| `pack-channel`              | A channel the pack doesn't publish to                                                                             |
+| `pack-entitlement`          | Not the gate, or not the assertion                                                                                |
+| `pack-index`, `pack-object` | An index that doesn't parse, or an object not stored with its recorded length under this pack's references        |
+| `pack-unsatisfiable`        | The release lacks a variant of a live selector, breaks a dependency or conflict, or breaks a live release's holds |
+
+For app releases, `content-api`, `pin-unknown`, `pin-mismatch`, `pin-yanked`, `pin-revoked`, `pin-missing`, `pin-gated`, `embeds`, `pin-requires`, the `hold-*` reasons and `content-unsatisfied` apply. An engine bump refuses a new-engine app release only for a `required` pack with no release for that engine. Each index is at most 8 MiB and a record's indexes at most 64 MiB. A submit, dry run or not, answers `packSets`: the resulting sets and every selector whose set changed.
+
+## Keep saves compatible
+
+If a pack provides content ids that saves reference, list them so a release can't silently drop one.
+
+1. **CI** Generate the list of ids as a JSON array from your content registry, such as `.pkey/provides.json`.
+2. **Repo** Declare it on the pack: `provides: { required: true, from: .pkey/provides.json }`.
+3. **CI** Publish. `--provides <file>` overrides `from`. To retire an id on purpose, add `--removes <id>` for that one release.
+
+Each release is compared with the previous one on its channel. A beta release never moves stable's baseline, and a prerelease channel carries no save-compatibility promise, so ids only beta provided aren't protected: the publish prints a warning instead.
+
+## Revoke a release
+
+Role required: a holder of the release key. A revocation is permanent.
+
+```sh title="Terminal"
+pkey release revoke <packId>@<version> --replacement <version> --reason "<why>"
+```
+
+Ingest refuses a revocation whose body is unusable, whose target isn't a stored pack record of that version, that is older than one already stored, or whose replacement isn't a stored, unyanked, unrevoked record of the same pack that covers the target's variants, engines and live `contentApi` levels. The feed lists the revocations in force, and devices verify each one against their pinned release keys.
+
+## Delegate to a content team
+
+A content key signs data-only packs so a content team can publish without the release key.
+
+1. **CI** Generate the key: `pkey release keys generate --content --out content.pem`. Keep the PEM as `PKEY_CONTENT_KEY` in the content team's CI.
+2. **CI** Delegate with the release key. The default window is 180 days.
+
+   ```sh title="Terminal"
+   pkey release delegate --prefix <packId> --types files.tree,data.json --public-key <public key>
+   ```
+
+3. **CI** Publish content with `PKEY_CONTENT_KEY` and `--delegation <sha256>`. The CLI warns within 14 days of the window's end.
+4. **CI** Revoke with `pkey release revoke --delegation <sha256> --reason "<why>"`. Revoking a delegation yanks every release signed under it.
+
+To rotate, generate a new key, delegate it, republish what must survive, then revoke the old delegation. Installed releases need no republish.
+
+## Check it works
+
+Open the pack in the console's Release section: **Releases** lists the new release with its channel, signer and which app releases pin it. On a device, `ensure` installs it and the active set reports the new `packSetId`.
+
+## If it isn't working
+
+- `release_record_rejected`: read `reason` against the tables above.
+- `pack-sets-bound`: the resolution is too large. Reduce variants or dependencies.
+- `distribution_disabled`: turn Distribution on under **Core → Services**.
+- [Packs](/docs/features/ship-builds/packs/): bindings and resolution.
+- [Error codes](/docs/reference/error-codes/).
+
+## Next steps
+
+- [Platform pack transports](/docs/features/ship-builds/packs/transports/): ship a pack through an app store.
+- [Packs](/docs/reference/protocol/packs/): the byte formats.
+- [CI publishing](/docs/features/ship-builds/ci/).
