@@ -11,7 +11,11 @@
 //
 // `?state=` on the page's address pins the gate for one load: ok, grace, expired or revoked.
 
-import { servicesFromList, type ServicesMap } from "@polaris-key/react/core";
+import {
+  servicesFromList,
+  type JSONValue,
+  type ServicesMap,
+} from "@polaris-key/react/core";
 import type {
   BridgeActivation,
   BridgeOidcPoll,
@@ -83,8 +87,52 @@ const CONFIG: BridgeState["config"] = {
   "audio.dither": { state: "default", value: true, updatedAt: 1 },
 };
 
+/** Tidewater's config catalog, as the host's `client.config.fetchSchema()` answers: the labels,
+ *  units and choices the Settings part draws. */
+const CATALOG = {
+  schemaVersion: 1,
+  entries: [
+    {
+      key: "audio.sampleRate",
+      kind: "config",
+      category: "audio",
+      label: "Sample rate",
+      description: "Samples per second.",
+      schema: { type: "number", enum: [44_100, 48_000, 96_000] },
+      ui: { unit: "Hz", widget: "select" },
+    },
+    {
+      key: "export.format",
+      kind: "config",
+      category: "export",
+      label: "Export format",
+      description: "The file format for exports.",
+      schema: { type: "string", enum: ["wav", "flac", "mp3"] },
+      ui: { optionLabels: { wav: "WAV", flac: "FLAC", mp3: "MP3" } },
+    },
+    {
+      key: "export.loudnessTarget",
+      kind: "config",
+      category: "export",
+      label: "Loudness target",
+      description: "Set by Harbor Audio.",
+      schema: { type: "number", minimum: -30, maximum: -6 },
+      ui: { unit: "LUFS" },
+      managementDefault: "enforced",
+    },
+    {
+      key: "audio.dither",
+      kind: "config",
+      category: "audio",
+      label: "Dither",
+      description: "Dither when lowering the bit depth.",
+      schema: { type: "boolean" },
+    },
+  ],
+};
+
 /** The devices on Mara's license, as the host's `client.devices.list()` answers. */
-const DEVICES = [
+const INITIAL_DEVICES = [
   {
     id: "dev_9fK2Lw7QmZ",
     current: true,
@@ -142,6 +190,8 @@ export function tidewaterBridge(): PolarisBridge {
   });
 
   let state: BridgeState = pinned ? licensed() : base();
+  let devices = INITIAL_DEVICES.map((d) => ({ ...d }));
+  let local: Record<string, JSONValue> = {};
   const limited = new Set<string>();
   const flows = new Map<string, number>();
   const listeners = new Set<(s: BridgeState) => void>();
@@ -200,8 +250,43 @@ export function tidewaterBridge(): PolarisBridge {
     async signOut() {
       push(base());
     },
-    async invoke(service, method) {
-      if (service === "devices" && method === "list") return DEVICES;
+    async fetchSchema() {
+      return CATALOG as unknown as JSONValue;
+    },
+    async invoke(service, method, args) {
+      if (service === "config" && method === "set") {
+        const { key, value } = (args ?? {}) as {
+          key?: string;
+          value?: unknown;
+        };
+        if (typeof key !== "string") throw new Error("Invalid setting.");
+        local = { ...local, [key]: value as never };
+        push({ ...state, localConfig: local });
+        return null;
+      }
+      if (service === "config" && method === "clear") {
+        const { key } = (args ?? {}) as { key?: string };
+        const { [key ?? ""]: _gone, ...rest } = local;
+        local = rest;
+        push({ ...state, localConfig: local });
+        return null;
+      }
+      if (service === "devices" && method === "list") return devices;
+      if (service === "devices" && method === "rename") {
+        const { deviceId, label } = (args ?? {}) as {
+          deviceId?: string;
+          label?: string | null;
+        };
+        devices = devices.map((d) =>
+          d.id === deviceId ? { ...d, label: label ?? null } : d,
+        );
+        return null;
+      }
+      if (service === "devices" && method === "deauthorize") {
+        const { deviceId } = (args ?? {}) as { deviceId?: string };
+        devices = devices.filter((d) => d.id !== deviceId);
+        return null;
+      }
       if (service === "update" && method === "check")
         return {
           version: "2.5.0",

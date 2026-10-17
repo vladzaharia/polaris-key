@@ -52,6 +52,10 @@ export {
   type View,
 } from "@polaris-key/ui-core";
 
+// The parts that act run themselves inside the provider (layer a) and are the plain parts given an
+// `input` (layer b).
+export { About, Devices, Settings, UpdatePrompt } from "./drive.js";
+
 const c = (name: ComponentName) => kitComponent(name);
 
 export const Boot = c("Boot");
@@ -61,17 +65,13 @@ export const Activate = c("Activate");
 export const OfflineActivation = c("OfflineActivation");
 export const DeviceLimit = c("DeviceLimit");
 export const LicenseChoice = c("LicenseChoice");
-export const Devices = c("Devices");
-export const UpdatePrompt = c("UpdatePrompt");
 export const UpdateProgress = c("UpdateProgress");
 export const ReleaseNotes = c("ReleaseNotes");
 export const StatusScreen = c("StatusScreen");
 export const GraceBanner = c("GraceBanner");
 export const AccountAndLicense = c("AccountAndLicense");
-export const Settings = c("Settings");
 export const Paywall = c("Paywall");
 export const EntitlementGate = c("EntitlementGate");
 export const CloudSyncStatus = c("CloudSyncStatus");
-export const About = c("About");
 export const ChannelPicker = c("ChannelPicker");
 export const Toast = c("Toast");

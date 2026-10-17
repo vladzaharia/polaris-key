@@ -9,6 +9,10 @@ export interface PolarisContextValue {
   adapter: PolarisAdapter;
   /** `config.backend`: the origins `usePolarisFetch()` may send the licence to. */
   backend?: BackendOptions;
+  /** The host app's version (`config.version`): the kit's About and update prompt name it. */
+  version?: string;
+  /** The product slug (`config.productSlug`): the kit's diagnostics name it. */
+  productSlug?: string;
 }
 
 /** Null until a `<PolarisKeyProvider>` mounts — hooks throw a clear error otherwise. */

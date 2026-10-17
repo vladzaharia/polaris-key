@@ -8,8 +8,8 @@ Tidewater Studio by Harbor Audio is gated by `@polaris-key/react`. This sample s
 - **the product as hero**: Tidewater's name and accent come from the SDK presentation, without
   sample theme code;
 - **App Router pages**: `/` is the host Studio page and `/settings` renders client content with
-  the `UpdatePrompt`, Devices, Settings and About parts from `@polaris-key/react/kit`, fed by the
-  SDK hooks.
+  the `UpdatePrompt`, Devices, Settings and About parts from `@polaris-key/react/kit`, which read
+  the SDK themselves inside the provider (rename and remove a device, change a setting, update).
 
 The framework page is [React](https://key.plrs.im/docs/build/ui/frameworks/react/).
 

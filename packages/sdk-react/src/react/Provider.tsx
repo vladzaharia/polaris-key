@@ -284,8 +284,13 @@ export function PolarisKeyProvider(
     const origins = (JSON.parse(originsKey) as string[]).map(
       normalizeBackendOrigin,
     );
-    return origins.length > 0 ? { adapter, backend: { origins } } : { adapter };
-  }, [adapter, originsKey]);
+    return {
+      adapter,
+      ...(origins.length > 0 ? { backend: { origins } } : {}),
+      ...(version !== undefined ? { version } : {}),
+      productSlug,
+    };
+  }, [adapter, originsKey, version, productSlug]);
   return (
     <PolarisContext.Provider value={value}>{children}</PolarisContext.Provider>
   );

@@ -7,8 +7,29 @@ import { Fragment, type KeyboardEvent, type ReactNode } from "react";
 import type { Copy, UiInput, View } from "@polaris-key/ui-core";
 import { encodeQr, monogramOf, OPENS, type Resolved } from "./contract.js";
 
+/** What the drop-in adds around a view's own controls: the step's Back, controls and links the
+ *  state lacks (Use another key), and keys it drops (Sign out on a signed-out screen). */
+export interface Chrome {
+  /** Draw Back above the card's content, bound to `common.back`. */
+  back?: boolean;
+  controls?: string[];
+  links?: string[];
+  drop?: string[];
+}
+
 /** What a part needs to draw one view. */
 export interface KitCtx {
+  /** The heading level of the part's title (its sections take the next level down). */
+  headingLevel?: number;
+  /** True when the host handles `onInput`: settings rows draw as real controls. */
+  interactive?: boolean;
+  /** The part owns the window: its stage is the page's `main`. */
+  fill?: boolean;
+  /** The drop-in drives this part: lines with a missing argument are left out. */
+  driven?: boolean;
+  /** A screen-form component drawn as an embedded pane. */
+  embedded?: boolean;
+  chrome?: Chrome;
   view: View;
   copy: Copy;
   resolved: Resolved;
@@ -92,6 +113,11 @@ export function plain(
   return c.copy.format(key, argsOf(c, key, extra));
 }
 
+/** True when the string still holds a `{name}` argument nothing filled. */
+export function unfilled(c: KitCtx, key: string): boolean {
+  return /\{[A-Za-z]\w*\}/.test(plain(c, key));
+}
+
 // ── Glyphs (decorative, aria-hidden) ─────────────────────────────────────────────────────────
 
 function Glyph({ d, cls }: { d: ReactNode; cls: string }) {
@@ -125,6 +151,7 @@ export const GLYPHS = {
       }
     />
   ),
+  back: (cls = "glyph") => <Glyph cls={cls} d={<path d="m15 18-6-6 6-6" />} />,
   check: (cls = "check") => (
     <Glyph cls={cls} d={<path d="M20 6 9 17l-5-5" />} />
   ),
@@ -312,6 +339,8 @@ export function button(
     busy?: boolean;
     label?: string;
     args?: Record<string, string | number>;
+    /** Extra members of the `onAction` this control reports (a row's index). */
+    detail?: Record<string, unknown>;
   } = {},
 ): ReactNode {
   const external = OPENS.has(key);
@@ -326,7 +355,7 @@ export function button(
       aria-disabled={extra.busy ? "true" : undefined}
       aria-label={extra.label}
       onClick={() => {
-        if (!extra.busy) c.act(key);
+        if (!extra.busy) c.act(key, extra.detail);
       }}
     >
       {extra.busy ? <span className="ring" aria-hidden="true" /> : null}
@@ -342,6 +371,24 @@ export function button(
         </>
       ) : null}
     </button>
+  );
+}
+
+/** Back (DL9): the same action as Escape, drawn on every step past Welcome. */
+export function backButton(c: KitCtx): ReactNode {
+  return (
+    <div className="links" data-part="back">
+      <button
+        type="button"
+        className="btn"
+        data-variant="link"
+        data-key="common.back"
+        onClick={() => c.act("common.back")}
+      >
+        {GLYPHS.back()}
+        <span>{text(c, "common.back")}</span>
+      </button>
+    </div>
   );
 }
 
@@ -612,7 +659,8 @@ export function links(c: KitCtx, keys: string[]): ReactNode {
   );
 }
 
-/** The view's titles: the first is the screen's h1 (DL9's "heading"), the rest h2. */
+/** The view's titles: the first is the part's heading (DL9's "heading"; h1 only on a screen that
+ *  owns the page, else the level the host or the pane form gives), the rest one level below. */
 export function titles(
   c: KitCtx,
   keys: string[],
@@ -621,9 +669,12 @@ export function titles(
 ): ReactNode {
   if (keys.length === 0) return null;
   const [first, ...more] = keys;
+  const level = Math.min(6, Math.max(1, c.headingLevel ?? 1));
+  const H = `h${level}` as "h1";
+  const Sub = `h${Math.min(6, level + 1)}` as "h2";
   return (
     <>
-      <h1
+      <H
         id="pk-title"
         className="title"
         data-part="title"
@@ -632,9 +683,9 @@ export function titles(
         tabIndex={-1}
       >
         {text(c, first!)}
-      </h1>
+      </H>
       {more.map((k) => (
-        <h2
+        <Sub
           key={k}
           className="title"
           data-size={subtitles.includes(k) ? "sub" : "section"}
@@ -642,7 +693,7 @@ export function titles(
           data-key={k}
         >
           {text(c, k)}
-        </h2>
+        </Sub>
       ))}
     </>
   );
