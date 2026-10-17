@@ -42,32 +42,51 @@ name, so its fix lines and help name its command:
 ```python
 import argparse
 
-from polaris_key import PolarisKeyClient
-from polaris_key.cli import ClientOptions, register_argparse
+from polaris_key.cli import register_argparse, require_license
 
 import polaris_config
 
-
-def client_factory(opts: ClientOptions) -> PolarisKeyClient:
-    # Spread the generated config. A factory built from opts.trust alone drops the base URL and
-    # the release keys, and its writes go to production.
-    return PolarisKeyClient.create(**{**polaris_config.CONFIG, "version": opts.version})
-
-
 parser = argparse.ArgumentParser(prog="tidewater")
-register_argparse(
-    parser.add_subparsers(dest="command", required=True), client_factory, prog="tidewater"
-)
+sub = parser.add_subparsers(dest="command", required=True)
+register_argparse(sub, config=polaris_config.CONFIG, version="2.4.1")  # your app's version
+
+
+@require_license(entitlement="export.pdf")
+def export(args: argparse.Namespace) -> int:
+    return 0
+
+
+sub.add_parser("export", help="Export a mix.").set_defaults(func=export)
 args = parser.parse_args()
 raise SystemExit(args.func(args))
 ```
 
-`client_factory` takes the `ClientOptions` the parsed flags make and returns a client; `polaris_config`
-is the module `pkey sdk --lang python --write` generates
-([quickstart](/docs/build/quickstart/python/)). Today every mounted verb still asks for `--product`;
-binding the client once, `verbs=` for an end-user set and `require_license` for your own commands are
-planned. `polaris_click_group(client_factory, theme=…, prog=…)` and `polaris_typer_app(…)` do
-the same for click and typer. The verbs:
+`polaris_config` is the module `pkey sdk --lang python --write` generates
+([quickstart](/docs/build/quickstart/python/)); `config=` builds the client, so no verb takes
+`--product`, `--trust`, `--base-url`, `--service`, `--config-dir` or `--version`, and `--help` lists
+only the verbs people need. Pass `client=` for a client you keep, or `client_factory` to build one
+from the parsed options.
+
+- `verbs=["activate", "status"]` picks the verbs by id (`devices list`), by a one-word verb's alias
+  or by group (`devices`). The default is `END_USER`; developer verbs (`config`, `secret`, `mint`,
+  `doctor`, …) mount only when named, or all with `verbs="all"`.
+- `namespace="license"` nests every verb: `tidewater license activate`.
+- A host command that equals a verb's first word fails the registration with
+  `polaris-verb-collision`; `on_collision="skip"` drops the verb and warns once.
+- `require_license` runs your command only on a usable license that holds the entitlement. At a
+  terminal it first takes the person through activation; anything else prints a warning with the
+  command that fixes it on stderr and exits 4 (`--json`: the result line on stdout with
+  `license_required` or `not_entitled`). `require_entitlement("export.pdf")` is the same with the
+  entitlement first.
+- `secret` and `mint` print their value only with `--reveal`; without it they print nothing on
+  stdout and exit 2. In a CI log that would run a line of it as a command (GitHub Actions, Azure
+  Pipelines, TeamCity) the value is withheld unless `--allow-workflow-commands`.
+
+`polaris_click_group(client_factory, theme=…, prog=…)` and `polaris_typer_app(…)` take the same
+options and mount the verbs under a group of their own; `register_click(host, …)` and
+`register_typer(host, …)` add them to your own group or app, at its root or under `namespace`. A
+host that uses `GroupedHelpParser` gets its own commands first (`add_parser(name, group="Build")`
+names the heading), then the license verbs under one heading. The verbs:
 
 | Verb                  | What it draws                                                                                                                                                                   |
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

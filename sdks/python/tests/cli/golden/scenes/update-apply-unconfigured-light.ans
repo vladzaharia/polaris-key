@@ -1,0 +1,39 @@
+── truecolor · 80 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · update apply[0m
+[2m│[0m
+[2m└[0m  This build configures no signed updates (UpdateClientOptions).
+── ansi16 · 80 ──
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · update apply[0m
+[2m│[0m
+[2m└[0m  This build configures no signed updates (UpdateClientOptions).
+── no-color · 80 ──
+┌  [7m Tidewater Studio [0m · update apply
+│
+└  This build configures no signed updates (UpdateClientOptions).
+── ascii · 80 ──
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - update apply[0m
+[2m|[0m
+[2m`[0m  This build configures no signed updates (UpdateClientOptions).
+── truecolor · 60 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · update apply[0m
+[2m│[0m
+[2m│[0m  This build configures no signed
+[2m└[0m  updates (UpdateClientOptions).
+── ansi16 · 60 ──
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · update apply[0m
+[2m│[0m
+[2m│[0m  This build configures no signed
+[2m└[0m  updates (UpdateClientOptions).
+── no-color · 60 ──
+┌  [7m Tidewater Studio [0m · update apply
+│
+│  This build configures no signed
+└  updates (UpdateClientOptions).
+── ascii · 60 ──
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - update apply[0m
+[2m|[0m
+[2m|[0m  This build configures no signed
+[2m`[0m  updates (UpdateClientOptions).
+── pipe · 80 ──
+Tidewater Studio · update apply
+This build configures no signed updates (UpdateClientOptions).

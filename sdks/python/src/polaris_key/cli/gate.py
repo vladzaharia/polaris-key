@@ -107,8 +107,8 @@ def run_gate(
     """Check the license for a host command. ``None`` when the command may run, else the exit code
     to end with (4 for a refusal; the flow's own code when the inline flow failed or was cancelled).
     Never raises for a license problem."""
-    from ..ui.terminal import flows, screens
-    from ..ui.terminal.flows import Outcome, Terminal
+    from ..ui.terminal import flows
+    from ..ui.terminal.flows import Terminal
 
     def make(verb: str) -> Any:
         if terminal is not None:
@@ -160,17 +160,26 @@ def run_gate(
         if usable and entitled:
             return None
         t = make(command)
+    out = refusal_outcome(t, command, status, usable, mounted)
+    t.finish(out)
+    return EXIT.license_required
+
+
+def refusal_outcome(t: Any, command: str, status: str, usable: bool, mounted: Optional[Sequence[str]] = None) -> Any:
+    """The refusal for ``command`` on ``status``: a triangle, the title and message, and the commands
+    that fix it, for stderr; under ``--json`` the result's fields only. Exit 4."""
+    from ..ui.terminal import screens
+    from ..ui.terminal.flows import Outcome
+
     error, title_key, message_key, fixes = _refusal(status, usable, mounted)
     k = t.kit
     if t.env.json:
-        t.finish(Outcome(EXIT.license_required, [], {"error": error}))
-        return EXIT.license_required
+        return Outcome(EXIT.license_required, [], {"error": error})
     lines = [k.header(command)] + ([k.rail()] if k.decor else []) + k.step("warn", [k.t(title_key, "strong")]) + k.body([k.t(message_key)])
     if fixes:
         lines += screens._gap(k) + screens._fixes(k, [(v, FIX_COPY[v]) for v in fixes])
     lines += k.end()
-    t.finish(Outcome(EXIT.license_required, lines, {"error": error}, stream="stderr"))
-    return EXIT.license_required
+    return Outcome(EXIT.license_required, lines, {"error": error}, stream="stderr")
 
 
 def _flags(args: Tuple[Any, ...], kwargs: Dict[str, Any]) -> Dict[str, Any]:

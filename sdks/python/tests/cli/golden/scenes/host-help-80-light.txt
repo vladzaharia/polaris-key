@@ -1,0 +1,24 @@
+tidewater · Tidewater Studio license and updates
+
+Usage  tidewater <command> [options]
+
+Build
+  build                  Build the project
+
+Commands
+  export                 Export a mix
+
+License
+  activate               Add a license key (prompted, or piped on stdin)
+  deactivate             Stop using your license on this device and free
+                         its seat
+  devices deauthorize    Remove a device and free its seat
+  devices list           List the devices using your license
+  devices rename         Rename a device (no name clears it)
+  login                  Sign in with your account in the browser
+  logout                 Sign out on this device
+  status                 License, devices and offline time
+  update apply           Download and install the newer version
+  update check           Check for a newer version
+
+Run tidewater <command> --help for one command's options.

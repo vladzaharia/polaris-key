@@ -691,7 +691,7 @@ def secret(client: Any, t: Terminal, words: Sequence[str], *, reveal: bool = Fal
     if t.env.json:
         return Outcome(EXIT.ok, [], data)
     if not reveal:
-        return _hidden(t, "cli.secret.hidden", f"{t.kit.prog} secret {key} --reveal", data, name=key)
+        return _hidden(t, "cli.secret.hidden", f"secret {key} --reveal", data, name=key)
     return _print_value(t, "secret", key, value, data, allow_workflow_commands)
 
 
@@ -701,7 +701,7 @@ def mint(client: Any, t: Terminal, words: Sequence[str], *, reveal: bool = False
     recipe = words[0]
     if not reveal and not t.env.json:
         # Minting prints a token and nothing else, so without --reveal it asks the server for none.
-        return _hidden(t, "cli.mint.hidden", f"{t.kit.prog} mint {recipe} --reveal", {"recipe": recipe})
+        return _hidden(t, "cli.mint.hidden", f"mint {recipe} --reveal", {"recipe": recipe})
     try:
         tok = client.config.mint_token(recipe)
     except PolarisError as e:
