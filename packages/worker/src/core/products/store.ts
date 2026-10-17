@@ -4,7 +4,7 @@
 import { stmtRevokeProductCiTokens } from "../publisher.js";
 import { stmtRevokeProductRegistryTokens } from "../registry/registryTokens.js";
 import { productGrantErasureStatements } from "../licensing/grants.js";
-import { licenseTransitionSetSql } from "../licensing/lifecycleWrites.js";
+import { productDeletionStatements } from "../contributions.js";
 import { stmtDeleteProductAutoAttachBlocks } from "../licensing/licenseHolders.js";
 import type { Db, DbStatement, DbParam } from "../../db/types.js";
 import type {
@@ -854,81 +854,20 @@ export async function deleteProduct(
       sql: "UPDATE products SET status = 'deleted', deleted_at = ?, modified_at = ? WHERE slug = ?",
       params: [now, now, slug],
     },
-    {
-      // LX-12: deleting the product revokes every licence still active (`ended_reason`
-      // `revoked`); a licence that already ended keeps its status and reason.
-      sql: `UPDATE licenses
-               SET ${licenseTransitionSetSql("revoke")},
-                   email = NULL, name = NULL, sub = NULL, groups_json = NULL,
-                   enroll_hwid = NULL, account_id = NULL, modified_at = ?
-             WHERE product = ?`,
-      params: [now, slug],
-    },
-    {
-      sql: "DELETE FROM portal_license_links WHERE product = ?",
-      params: [slug],
-    },
+    // Each mounted service erases its own rows for the product (`contributes.productDeletion`):
+    // License revokes the active licences and erases their holders; Identity drops the account
+    // links, subjects, grants, terms acceptances, library entries, storefront aggregates and
+    // relink history; Config drops the account overrides and the migration report; Distribution
+    // switches the product's package feeds off.
+    ...productDeletionStatements(slug, now),
     // LX-26: the auto-attach blocks name accounts; the licences they guarded are erased above.
     stmtDeleteProductAutoAttachBlocks(slug),
-    // I-05: the product's pairwise subjects, their aliases and its "Continue to" grants go with
-    // it; no account keeps a link to a product that no longer exists.
-    {
-      sql: "DELETE FROM account_product_subject_aliases WHERE product = ?",
-      params: [slug],
-    },
-    {
-      sql: "DELETE FROM account_product_subjects WHERE product = ?",
-      params: [slug],
-    },
-    {
-      sql: "DELETE FROM account_product_grants WHERE product = ?",
-      params: [slug],
-    },
-    // PX-W15: and every account's acceptance of its terms (a re-created slug asks again).
-    {
-      sql: "DELETE FROM account_terms_acceptances WHERE product = ?",
-      params: [slug],
-    },
-    // PS-04: every account's library entry for it, its storefront aggregates and its impression
-    // dedupe keys (a re-created slug starts with an empty storefront history).
-    {
-      sql: "DELETE FROM library_entries WHERE product = ?",
-      params: [slug],
-    },
-    {
-      sql: "DELETE FROM storefront_daily WHERE product = ?",
-      params: [slug],
-    },
-    {
-      sql: "DELETE FROM storefront_seen WHERE product = ?",
-      params: [slug],
-    },
-    // U-03: every account's managed config for the product (its subjects are gone above), and the
-    // licence-override migration's report rows, which name the licences' emails.
-    {
-      sql: "DELETE FROM account_overrides WHERE product = ?",
-      params: [slug],
-    },
-    {
-      sql: "DELETE FROM override_migration_report WHERE product = ?",
-      params: [slug],
-    },
-    // I-12 and LX-30: the relink history names accounts and subjects, and a holder move keeps the
-    // licence's name and email before and after (`holder_json`); nothing is left to undo.
-    {
-      sql: "DELETE FROM license_relinks WHERE product = ?",
-      params: [slug],
-    },
     // LX-08: the licensing model's account- and store-held grants, the Steam identities verified
     // on its devices and the entitlement-event feed (subjects); licence-held grants stay with
     // their licences (`core/licensing/grants.ts`).
     ...productGrantErasureStatements(slug),
     {
       sql: "UPDATE devices SET status = 'deauthorized', subject = NULL WHERE product = ?",
-      params: [slug],
-    },
-    {
-      sql: "UPDATE keys_index SET status = 'revoked' WHERE product = ?",
       params: [slug],
     },
     {
@@ -942,14 +881,6 @@ export async function deleteProduct(
     {
       sql: "DELETE FROM outlet_credentials WHERE product = ?",
       params: [slug],
-    },
-    // F-hardening: a deleted product's package feeds go off (the read path also refuses a
-    // product whose status is not active, so this is belt and braces for a re-created slug).
-    {
-      sql: `UPDATE dist_registry_owners
-               SET enabled = 0, version = version + 1, updated_at = ?
-             WHERE product = ? AND enabled = 1`,
-      params: [now, slug],
     },
     // A-16: a deleted product holds no platform store app: its pins on the team credentials go,
     // which frees the app for another product.

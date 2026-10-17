@@ -3,12 +3,18 @@
  * licence-ownership revocation hook, and the registry through which every store of account ×
  * product data hears about merges and deletions.
  *
- * Identity calls these; Config (U-03) and Cloud Sync (U-05) register into the registry. Because
- * all of it is Core, neither of them imports Identity and Identity imports neither (rule 6).
+ * Identity calls these; Config (U-03) and Cloud Sync (U-05) contribute stores through their
+ * descriptor (`contributes.subjectStores`, `core/contributions.ts`). Because all of it is Core,
+ * neither of them imports Identity and Identity imports neither (rule 6).
  */
 
 import type { Db } from "../../db/types.js";
 import type { Env } from "../../platform/env.js";
+import { contributedSubjectStores } from "../contributions.js";
+import {
+  ENTITLEMENT_EVENT_STORE,
+  entitlementEventStore,
+} from "../licensing/entitlementEvents.js";
 import { revokeAllRegistryTokens } from "../registry/registryTokens.js";
 import { mirrorTokenSubject } from "./accountSubjects.js";
 import { retireDeviceBinding, writeDeviceSubject } from "../devices.js";
@@ -24,7 +30,8 @@ export interface SubjectStoreContext {
 
 /**
  * A store keyed by pairwise subject (managed config overrides, Cloud Sync data, later the layer 2
- * app profile). Every such store registers once, at module load, under a stable name.
+ * app profile). Every such store is contributed once by its service's descriptor, under a stable
+ * name; Core's own (`core.entitlementEvents`) is added here.
  */
 export interface SubjectStore {
   /** Re-key `from`'s data to `to` for one product (an account merge, D21). A collision (both
@@ -62,34 +69,45 @@ export interface SubjectStore {
   durableObjects?: readonly string[];
 }
 
-const STORES = new Map<string, SubjectStore>();
+/** Stores a test adds beside the contributed ones; always empty in production. */
+const TEST_STORES = new Map<string, SubjectStore>();
 
-/**
- * Register a subject-keyed store. Names are unique: registering one twice is a programming error
- * (two modules claiming one table), so it throws rather than silently replacing the first.
- * `test/subjectStores.test.ts` (U-02) fails when a subject-keyed table or Durable Object class
- * has no registration, or a registration lacks `merge`, `delete` or `export`.
- */
-export function registerSubjectStore(name: string, store: SubjectStore): void {
-  if (STORES.has(name)) {
-    throw new Error(`subject store "${name}" is already registered`);
-  }
-  STORES.set(name, store);
+/** Core's own stores, then the mounted services' contributed ones, then a test's fixtures. */
+function allStores(): Map<string, SubjectStore> {
+  const all = new Map<string, SubjectStore>([
+    [ENTITLEMENT_EVENT_STORE, entitlementEventStore],
+  ]);
+  for (const [name, store] of contributedSubjectStores()) all.set(name, store);
+  for (const [name, store] of TEST_STORES) all.set(name, store);
+  return all;
 }
 
-/** Remove a registration (tests only: the registry is module state). */
+/**
+ * TEST FIXTURES ONLY: add a store beside the contributed ones. Production stores come from a
+ * descriptor's `contributes.subjectStores`; `test/contributions.test.ts` fails when any file under
+ * `src/` calls this. Names are unique: registering one twice throws.
+ */
+export function registerSubjectStore(name: string, store: SubjectStore): void {
+  if (TEST_STORES.has(name) || allStores().has(name)) {
+    throw new Error(`subject store "${name}" is already registered`);
+  }
+  TEST_STORES.set(name, store);
+}
+
+/** Remove a fixture (tests only). */
 export function unregisterSubjectStore(name: string): void {
-  STORES.delete(name);
+  TEST_STORES.delete(name);
 }
 
 /** The registered stores by name, sorted (for the registry guard test). */
 export function subjectStores(): Array<[string, SubjectStore]> {
-  return subjectStoreNames().map((n) => [n, STORES.get(n)!]);
+  const all = allStores();
+  return [...all.keys()].sort().map((n) => [n, all.get(n)!]);
 }
 
 /** The registered store names, sorted (for the guard test and diagnostics). */
 export function subjectStoreNames(): string[] {
-  return [...STORES.keys()].sort();
+  return [...allStores().keys()].sort();
 }
 
 /** Run every store's `merge` for one product, in name order. */
@@ -97,8 +115,9 @@ export async function runSubjectMerge(
   ctx: SubjectStoreContext,
   args: { product: string; from: string; to: string },
 ): Promise<void> {
+  const all = allStores();
   for (const name of subjectStoreNames()) {
-    await STORES.get(name)!.merge(ctx, args);
+    await all.get(name)!.merge(ctx, args);
   }
 }
 
@@ -107,8 +126,9 @@ export async function runSubjectDelete(
   ctx: SubjectStoreContext,
   args: { product: string; subject: string },
 ): Promise<void> {
+  const all = allStores();
   for (const name of subjectStoreNames()) {
-    await STORES.get(name)!.delete(ctx, args);
+    await all.get(name)!.delete(ctx, args);
   }
 }
 
@@ -123,9 +143,10 @@ export async function runSubjectDeleteIsolated(
   args: { product: string; subject: string },
 ): Promise<Array<{ store: string; error: unknown }>> {
   const failures: Array<{ store: string; error: unknown }> = [];
+  const all = allStores();
   for (const name of subjectStoreNames()) {
     try {
-      await STORES.get(name)!.delete(ctx, args);
+      await all.get(name)!.delete(ctx, args);
     } catch (error) {
       failures.push({ store: name, error });
     }
@@ -143,8 +164,9 @@ export async function runSubjectExport(
   args: { product: string; subject: string },
 ): Promise<Record<string, unknown>> {
   const out: Record<string, unknown> = {};
+  const all = allStores();
   for (const name of subjectStoreNames()) {
-    const store = STORES.get(name)!;
+    const store = all.get(name)!;
     out[name] = store.export ? await store.export(ctx, args) : null;
   }
   return out;
@@ -157,8 +179,9 @@ export async function subjectDataSize(
 ): Promise<{ total: number; stores: Array<{ name: string; bytes: number }> }> {
   const stores: Array<{ name: string; bytes: number }> = [];
   let total = 0;
+  const all = allStores();
   for (const name of subjectStoreNames()) {
-    const store = STORES.get(name)!;
+    const store = all.get(name)!;
     const bytes = store.size ? Math.max(0, await store.size(ctx, args)) : 0;
     stores.push({ name, bytes });
     total += bytes;

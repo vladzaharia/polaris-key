@@ -31,8 +31,13 @@ import { handleUpdateRoutes } from "./routes.js";
 import { handleUpdateAdmin } from "./admin.js";
 import { UPDATE_SETTINGS_SLICE } from "./settings.js";
 
+import { updateIntegration } from "./integration.js";
+
 export const updateService: ServiceDescriptor = {
   slug: "update",
+  contributes: {
+    integration: updateIntegration,
+  },
   /** ST-03: this service's settings registry slice (`settings.ts`). */
   settings: UPDATE_SETTINGS_SLICE,
   handle: handleUpdateRoutes,

@@ -32,10 +32,7 @@ import {
   type AccountOverridePayload,
 } from "../../core/accounts/accountOverrides.js";
 import { listOverrideMigrationReport } from "../../core/ops/overrideMigration.js";
-import {
-  registerSubjectStore,
-  type SubjectStore,
-} from "../../core/accounts/subjectHooks.js";
+import { type SubjectStore } from "../../core/accounts/subjectHooks.js";
 import { isSealedEnvelope } from "../../core/managedSecrets.js";
 import { randomId } from "../../platform/crypto.js";
 import { getActiveSchema } from "../../core/products/store.js";
@@ -205,5 +202,3 @@ export const accountOverrideStore: SubjectStore = {
     return Number(row?.n ?? 0);
   },
 };
-
-registerSubjectStore(ACCOUNT_OVERRIDE_STORE, accountOverrideStore);

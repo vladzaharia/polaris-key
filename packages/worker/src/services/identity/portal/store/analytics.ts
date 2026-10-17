@@ -40,7 +40,6 @@ import { hashKey } from "../../../../platform/crypto.js";
 import type { Db, DbStatement } from "../../../../db/types.js";
 import type { Env } from "../../../../platform/env.js";
 import {
-  registerAuthorizationListener,
   type AuthorizationListenerContext,
   type NewAuthorization,
 } from "../../../../core/authorizationListeners.js";
@@ -215,7 +214,8 @@ export async function recordFirstActivation(
   await bump(db, event.product, storefrontDay(claim.at), kind, "activations");
 }
 
-registerAuthorizationListener("storefront.activations", recordFirstActivation);
+/** The listener name Identity contributes it under (`contributes.onAuthorization`). */
+export const STOREFRONT_ACTIVATIONS_LISTENER = "storefront.activations";
 
 // ── The console card (PS-06) ────────────────────────────────────────────────────────────────
 

@@ -22,9 +22,12 @@
 
 import type { Env } from "../../platform/env.js";
 import type { Db, DbStatement } from "../../db/types.js";
-import { buildHooks } from "../hooks.js";
 import { loadProductPublic, type ProductPublic } from "../products.js";
-import type { RegistryMaterialiser, ServiceRegistry } from "../registry.js";
+import {
+  serviceContext,
+  type RegistryMaterialiser,
+  type ServiceRegistry,
+} from "../registry.js";
 import { SERVICE_SLUGS } from "../services.js";
 
 /** The `deliverable_id` of a full render: every package of the owner. */
@@ -203,7 +206,7 @@ export async function drainRenderQueue(
         report.dropped += list.length;
         continue;
       }
-      const hooks = buildHooks(registry, product.services, {
+      const { hooks } = serviceContext("host", registry, product.services, {
         env: ctx.env,
         db: ctx.db,
         product,
@@ -244,7 +247,7 @@ export async function selfCheckRenders(
       const product = await loadProductPublic(ctx.db, slug);
       const materialiser = product ? materialiserFor(registry, product) : null;
       if (!product || !materialiser) continue;
-      const hooks = buildHooks(registry, product.services, {
+      const { hooks } = serviceContext("host", registry, product.services, {
         env: ctx.env,
         db: ctx.db,
         product,

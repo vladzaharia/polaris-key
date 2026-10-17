@@ -13,19 +13,29 @@ import type {
   DiscoveryContext,
   ServiceDescriptor,
 } from "../../core/registry.js";
+import { configIntegration } from "./integration.js";
 import { handleConfigRoutes } from "./routes.js";
 import { hasApprovedEdgeMintRecipes } from "./mint.js";
 import { handleConfigAdmin } from "./admin/index.js";
 import { CONFIG_SETTINGS_SLICE } from "./settings.js";
-// U-03: registers the account override layer with Core's subject-store registry (merge, delete,
-// export), at module load like every store (`core/accounts/subjectHooks.ts`).
-import "./accountOverrideStore.js";
+import {
+  ACCOUNT_OVERRIDE_STORE,
+  accountOverrideStore,
+} from "./accountOverrideStore.js";
+
+import { configProductDeletion } from "./productDeletion.js";
 
 export const configService: ServiceDescriptor = {
   slug: "config",
   /** ST-03: this service's settings registry slice (`settings.ts`). */
   settings: CONFIG_SETTINGS_SLICE,
   handle: handleConfigRoutes,
+  contributes: {
+    productDeletion: configProductDeletion,
+    // U-03: the account override layer joins Core's subject-store merge, delete and export.
+    subjectStores: { [ACCOUNT_OVERRIDE_STORE]: accountOverrideStore },
+    integration: configIntegration,
+  },
   /** The canonical surface `routes.ts` dispatches; what `routeCoverage` pins. */
   surface: [
     { path: "/{product}/config/document", methods: ["get"] },

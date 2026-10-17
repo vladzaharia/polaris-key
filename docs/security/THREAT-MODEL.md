@@ -6500,7 +6500,7 @@ keeps every subject-keyed store honest (plans/U-01.md §6.1).
   unaffected. Tests: `syncPrincipal.test.ts` (detach, re-add, another account, merge and the inert
   block) and `portalFloatingKeys.test.ts` (through the portal route).
 - **The registry guard** (`test/subjectStores.test.ts`, S-17 §7.1 risk 8). Every D1 table with a
-  `subject` column is claimed by a registered store (`registerSubjectStore` with `tables`) or is
+  `subject` column is claimed by a contributed store (`contributes.subjectStores` with `tables`) or is
   listed as Identity's own with its reason; every Durable Object class is claimed
   (`durableObjects`) or listed as not named by subject; every store has `merge`, `delete` and
   `export`; no claimed table has an `account_id` column. A store added without its hooks fails the

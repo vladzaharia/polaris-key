@@ -27,8 +27,15 @@ import { sweepNativeSessions } from "./packages/native/index.js";
 import { sweepPruneNotice } from "./packages/prune.js";
 import { RELEASE_SETTINGS_SLICE } from "./settings.js";
 
+import { releaseIntegration } from "./integration.js";
+import { releaseMaintenance } from "./maintenance.js";
+
 export const releaseService: ServiceDescriptor = {
   slug: "release",
+  contributes: {
+    integration: releaseIntegration,
+    maintenance: releaseMaintenance,
+  },
   /** ST-03: this service's settings registry slice (`settings.ts`). */
   settings: RELEASE_SETTINGS_SLICE,
   handle: handleReleaseRoutes,

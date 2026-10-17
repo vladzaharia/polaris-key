@@ -202,8 +202,18 @@ async function scheduled(
   return { connectors: outcomes, autoHalt, readiness, commerce, listingArt };
 }
 
+import { distributionIntegration } from "./integration.js";
+import { distributionMaintenance } from "./maintenance.js";
+
+import { distributionProductDeletion } from "./productDeletion.js";
+
 export const distributionService: ServiceDescriptor = {
   slug: "distribution",
+  contributes: {
+    productDeletion: distributionProductDeletion,
+    integration: distributionIntegration,
+    maintenance: distributionMaintenance,
+  },
   /** ST-03: this service's settings registry slice (`settings.ts`). */
   settings: DISTRIBUTION_SETTINGS_SLICE,
   /** `routes.ts`: the byte routes and the CI rollout routes. `null` = Core's not-found. */

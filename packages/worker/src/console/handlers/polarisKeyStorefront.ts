@@ -38,7 +38,7 @@
 import type { Env } from "../../platform/env.js";
 import type { Db } from "../../db/types.js";
 import { ErrorCode } from "../../core/errors.js";
-import { buildHooks } from "../../core/hooks.js";
+import { serviceContext } from "../../core/registry.js";
 import { loadProductPublic, type ProductPublic } from "../../core/products.js";
 import {
   firstPartyHandler,
@@ -190,7 +190,12 @@ const notAllowed = () => err(405, ErrorCode.BadRequest, "method not allowed");
 
 function hooksFor(env: Env, db: Db) {
   return (product: ProductPublic, at: number) =>
-    buildHooks(SERVICES, product.services, { env, db, product, now: at });
+    serviceContext("host", SERVICES, product.services, {
+      env,
+      db,
+      product,
+      now: at,
+    }).hooks;
 }
 
 /**

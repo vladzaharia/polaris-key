@@ -155,7 +155,11 @@ work down the list until it passes.
    `index.ts` exporting its `ServiceDescriptor` (`slug: "<slug>"`). `boundaries.test.ts` scans
    it from then on.
 4. **`mount.ts`.** Import the descriptor and add it to `SERVICES` in table order
-   (`serviceTable.test.ts` checks keys and order).
+   (`serviceTable.test.ts` checks keys and order). A service wires itself in only through its
+   descriptor's `contributes` (subject stores, maintenance steps, new-authorization listeners,
+   product-deletion statements, the integration contributor); an `import "./x.js"` that
+   registers at load fails `contributions.test.ts`. Surfaces outside the service (`dispatch.ts`,
+   the webhooks) import its `index.ts` or `api.ts`, the console its `public.ts`.
 5. **Coherence.** For each `requires` edge `<a> → <b>`, add a literal `<a>_requires_<b>` to
    `validateServices` in `packages/worker/src/core/services.ts` and to the manifest validator
    (`packages/shared-manifest/src/index.ts`) with its rule-9 mutation-table entry, and a

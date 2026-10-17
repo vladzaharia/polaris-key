@@ -15,11 +15,11 @@ import {
   type Product,
   type ProductPublic,
 } from "./core/products.js";
-import { buildHooks, type ServiceHooks } from "./core/hooks.js";
+import type { ServiceHooks } from "./core/hooks.js";
 import { corsPreflight, isCorsCoveredRoute, withCors } from "./core/cors.js";
 import { handleDiscovery } from "./core/discovery.js";
 import { handleJwks, handleTrustManifest } from "./core/trust/trust.js";
-import { dispatchService } from "./core/registry.js";
+import { dispatchService, serviceContext } from "./core/registry.js";
 import { identityNavigationRedirect } from "./core/accounts/identityGate.js";
 import {
   BYTE_ROUTES,
@@ -50,7 +50,7 @@ import {
 import { handleAssetsPush } from "./core/assets/hostedAssetUploads.js";
 // HA-06: a CI push into a listing-model slot also writes Distribution's listing row; Core takes
 // the writer from here rather than importing the service.
-import { listingSlotMirror } from "./services/distribution/listing/hostedMirror.js";
+import { listingSlotMirror } from "./services/distribution/api.js";
 import { dispatchBytesHost, isBytesHost } from "./core/assets/bytesHost.js";
 import {
   dispatchRegistryHost,
@@ -177,7 +177,12 @@ async function routeRequest(
   // access every download surface reads), built here from the composition root's registry under
   // that product's own enablement.
   const hooksFor = (product: ProductPublic, at: number): ServiceHooks =>
-    buildHooks(SERVICES, product.services, { env, db, product, now: at });
+    serviceContext("host", SERVICES, product.services, {
+      env,
+      db,
+      product,
+      now: at,
+    }).hooks;
 
   if ("product" in route && PRODUCT_ROUTES.has(route.kind)) {
     const product = await loadProduct(env, db, route.product);
@@ -339,7 +344,12 @@ async function dispatchProductRoute(
         db,
         product,
         now,
-        buildHooks(SERVICES, product.services, { env, db, product, now }),
+        serviceContext("host", SERVICES, product.services, {
+          env,
+          db,
+          product,
+          now,
+        }).hooks,
       );
     case "register":
       // The registry is threaded through because `requires-identity` registration is
@@ -356,7 +366,12 @@ async function dispatchProductRoute(
         db,
         product,
         now,
-        buildHooks(SERVICES, product.services, { env, db, product, now }),
+        serviceContext("host", SERVICES, product.services, {
+          env,
+          db,
+          product,
+          now,
+        }).hooks,
       );
     case "assetsPush":
       return handleAssetsPush(

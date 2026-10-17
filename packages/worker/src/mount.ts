@@ -19,6 +19,7 @@
  */
 
 import type { ServiceRegistry } from "./core/registry.js";
+import { bindServiceRegistry } from "./core/contributions.js";
 import {
   settingsRegistryFor,
   type SettingsRegistry,
@@ -55,6 +56,10 @@ export const SERVICES: ServiceRegistry = new Map([
   [identityService.slug, identityService],
   [syncService.slug, syncService],
 ]);
+
+// Core answers its contributions (`core/contributions.ts`: subject stores, licence-holder hooks,
+// new-authorization listeners, maintenance) from this table; this one call is the only wiring.
+bindServiceRegistry(SERVICES);
 
 /**
  * The settings registry (ST-03, `core/settings/`): the platform slice, Core's product slice and

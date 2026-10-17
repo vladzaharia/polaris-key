@@ -23,7 +23,7 @@ import {
   resyncRepo,
   syncReleaseStoreReport,
   type FetchImpl,
-} from "./services/release/sync.js";
+} from "./services/release/api.js";
 import { BodyTooLargeError, readBodyBytes } from "./core/cappedBody.js";
 
 /** How long a processed `X-GitHub-Delivery` GUID is remembered (7 days). */

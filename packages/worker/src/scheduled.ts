@@ -44,53 +44,33 @@
 // throws, by the rows `recordTick` persists for the Operations page, and by the `SweepState`
 // record written to KV on every nightly tick.
 
-import { reconcilePackageFileRefs } from "./services/release/packages/refReconcile.js";
 import { purgeRegistryTokens } from "./core/registry/registryTokens.js";
 import { pruneCiCredentials } from "./core/publisher.js";
 import { loadProductPublic } from "./core/products.js";
-import { runScheduledServices } from "./core/registry.js";
+import { runScheduledServices, serviceContext } from "./core/registry.js";
 import {
   drainRenderQueue,
   selfCheckRenders,
 } from "./core/registry/registryQueue.js";
 import { SERVICES } from "./mount.js";
+import {
+  maintenanceContributions,
+  type MaintenanceRecorder,
+} from "./core/contributions.js";
 import type { Env } from "./platform/env.js";
 import type { Db } from "./db/types.js";
 import { D1Db } from "./db/d1.js";
 import { listAllProductSlugs, listProducts } from "./core/products/store.js";
 import { releaseDormantSeats } from "./core/devices/store.js";
 import { pruneAudit, prunePlatformAudit } from "./core/audit.js";
-import {
-  prunePortalAudit,
-  purgeDownloadTokensForProduct,
-} from "./services/identity/portal/repo.js";
-import {
-  catchUpLegacyAccounts,
-  settleOwnershipConflicts,
-} from "./services/identity/accounts/legacy.js";
-import { sweepAvatars } from "./services/identity/card/avatars.js";
-import { pruneStorefrontSeen } from "./services/identity/portal/store/analytics.js";
-import { pruneAccountMerges } from "./services/identity/accounts/mergeUndo.js";
-import { recheckConnectionDomains } from "./services/identity/connections/domains.js";
-import {
-  replayErasures,
-  stuckErasures,
-  sweepErasures,
-} from "./services/identity/accounts/deletion.js";
-import { sweepAccountDeletions } from "./services/identity/accounts/lifecycle.js";
 import { overrideMigrationNightly } from "./core/ops/overrideMigration.js";
 import { runLicensingCatchUp } from "./core/licensing/licensingCatchUp.js";
-import { pruneEvents as pruneConnectorEvents } from "./services/distribution/connectors/state.js";
 import {
   REFUSAL_RETENTION_SECONDS,
   pruneRefusals,
 } from "./core/licensing/refusals.js";
-import { lazyDeltaProducts } from "./core/assets/deltaDemand.js";
 import { refreshPlatformSettings } from "./core/platformSettings.js";
-import { sweepLazyDeltas } from "./services/release/packs/deltas/sweep.js";
-import { buildHooks } from "./core/hooks.js";
 import { recheckHostedAssets } from "./core/assets/hostedAssetPulls.js";
-import { backfillReleaseMirrors } from "./services/release/mirror.js";
 import {
   JOB_RUN_RETENTION_SECONDS,
   SUMMARY_NAMES_MAX,
@@ -345,6 +325,41 @@ async function drainStep(
   });
 }
 
+/** The recorder a service's maintenance contribution reports through (`core/contributions.ts`). */
+function recorderFor(report: MaintenanceReport): MaintenanceRecorder {
+  return {
+    step: (name, run) => step(report, name, run),
+    drain: (name, pass) => drainStep(report, name, pass),
+    fail: (name, error) => {
+      report.failures[name] =
+        error instanceof Error ? error.message : String(error);
+    },
+  };
+}
+
+/**
+ * Run one slot of every mounted service's `contributes.maintenance`, in canonical service order.
+ * A contribution that throws outside its own steps is recorded under its slot name and the others
+ * still run: a service's scheduled work can never cost another service its turn.
+ */
+async function runSlot(
+  report: MaintenanceReport,
+  slot: "early" | "late" | "frequent" | "registry",
+  ctx: { db: Db; env?: Env; now: number; nightly: boolean },
+): Promise<void> {
+  const rec = recorderFor(report);
+  const full = { ...ctx, cutoff: ctx.now - AUDIT_RETENTION_SECONDS };
+  for (const m of maintenanceContributions()) {
+    const run = m[slot];
+    if (!run) continue;
+    try {
+      await run(full, rec);
+    } catch (e) {
+      rec.fail(`maintenance:${slot}`, e);
+    }
+  }
+}
+
 /**
  * The blob collector's nightly pass (P4-14, `core/assets/blobGc.ts`), after the retention steps:
  *
@@ -382,12 +397,12 @@ export async function runBlobGc(
     await step(report, `blobRefs:${slug}`, async () => {
       const product = await loadProductPublic(db, slug);
       if (!product) return 0;
-      const hooks = buildHooks(SERVICES, product.services, {
+      const hooks = serviceContext("host", SERVICES, product.services, {
         env,
         db,
         product,
         now,
-      });
+      }).hooks;
       const plan = await planProductGc({
         db,
         product: slug,
@@ -479,15 +494,6 @@ export async function runScheduledMaintenance(
     await drainStep(report, `audit:${product}`, (limit) =>
       pruneAudit(db, product, cutoff, limit),
     );
-    await drainStep(report, `portalAudit:${product}`, (limit) =>
-      prunePortalAudit(db, product, cutoff, limit),
-    );
-    // Drained like its siblings: a single pass would remove at most PRUNE_BATCH_ROWS per night,
-    // so a product minting download tokens faster than that would accumulate them for ever while
-    // the report showed a healthy-looking count.
-    await drainStep(report, `downloadTokens:${product}`, (limit) =>
-      purgeDownloadTokensForProduct(db, product, now, limit),
-    );
     await step(report, `seats:${product}`, () =>
       releaseDormantSeats(db, product, now),
     );
@@ -495,30 +501,19 @@ export async function runScheduledMaintenance(
     await step(report, `ciCredentials:${product}`, () =>
       pruneCiCredentials(db, product, now),
     );
-    // P5-02: store-connector webhook events past `CONNECTOR_EVENT_RETENTION_SECONDS` (30 days).
-    // Here and not on the connector poll tick, because the poll reaches only live products with
-    // Distribution on and a loadable signing key — a deleted or disabled product's raw payloads
-    // would otherwise be kept forever.
-    await drainStep(report, `connectorEvents:${product}`, (limit) =>
-      pruneConnectorEvents(db, product, now, limit),
-    );
     // UX-15: the refusal log past `REFUSAL_RETENTION_SECONDS` (30 days, `core/licensing/refusals.ts`).
     await drainStep(report, `refusals:${product}`, (limit) =>
       pruneRefusals(db, product, now - REFUSAL_RETENTION_SECONDS, limit),
     );
-    // PS-04: the storefront's impression dedupe keys older than yesterday (notes/S-21 §6.6:
-    // nothing per person is kept past two days).
-    await drainStep(report, `storefrontSeen:${product}`, (limit) =>
-      pruneStorefrontSeen(db, product, now, limit),
-    );
+    // Each mounted service's own per-product steps (`contributes.maintenance.product`).
+    const rec = recorderFor(report);
+    for (const m of maintenanceContributions())
+      try {
+        await m.product?.({ db, env, now, cutoff, product }, rec);
+      } catch (e) {
+        rec.fail(`maintenance:product:${product}`, e);
+      }
   }
-
-  // `portal_audit.product` is nullable — a magic-link sign-in belongs to no tenant — so without
-  // this pass those rows would be the one part of the table that still grew forever. Not
-  // product-scoped, so outside the rotation: it runs on every tick.
-  await drainStep(report, "portalAudit:_platform", (limit) =>
-    prunePortalAudit(db, null, cutoff, limit),
-  );
 
   // A-12: the product-less admin trail, under the same 180-day retention as `audit`.
   await drainStep(report, "platformAudit", (limit) =>
@@ -541,23 +536,10 @@ export async function runScheduledMaintenance(
   // F-21: registry tokens 90 days past their expiry or revocation (`core/registry/registryTokens.ts`).
   await step(report, "registryTokens", () => purgeRegistryTokens(db, now));
 
-  // I-11: the erasure ledger (R2, outside the D1 a restore rewinds) is replayed BEFORE the legacy
-  // catch-up below: the D1 tombstone of every erased account is recreated (the catch-up copies no
-  // tombstoned portal account), and an account a restore brought back is re-erased.
-  if (env) await runErasureLedgerReplay(report, env, db, now);
-  // I-05: portal rows a pre-I-05 Worker wrote during the deploy window join the account model,
-  // then every second account linked to a licence another account owns loses its link, is
-  // emailed and is listed in the platform audit log (plans/I-04.md §8 Q1).
-  await step(report, "accountsCatchUp", async () => {
-    await catchUpLegacyAccounts(db);
-    return 0;
-  });
-  // I-11: due requests first enter the resumable erasure state machine, then incomplete erasures
-  // retry under their own back-off. Both runs are bounded and fault-isolated.
-  if (env) {
-    await runAccountDeletionSweep(report, env, db, now);
-    await runErasureSweep(report, env, db, now, true);
-  }
+  // The services' early nightly work (`contributes.maintenance.early`): Identity's erasure
+  // ledger replay BEFORE its legacy catch-up (a restored account is re-erased before the
+  // catch-up looks at it), its due account deletions and its erasure retries.
+  await runSlot(report, "early", { db, env, now, nightly: true });
   // U-03: the licence-override migration's daily inventory (until the run), its report past 90
   // days and, once the report window has passed, the licences' emptied config and secrets columns
   // (`core/ops/overrideMigration.ts`). The run itself is never started here: it is the owner's.
@@ -577,21 +559,6 @@ export async function runScheduledMaintenance(
       );
     return r.provisioned.moved;
   });
-  if (env) {
-    await step(report, "accountOwnership", () =>
-      settleOwnershipConflicts({
-        db,
-        env,
-        now,
-        origin: env.CONSOLE_ORIGIN ?? "",
-      }),
-    );
-  }
-
-  // P4-17: the lazy-delta sweep, for products opted in (none while `LAZY_DELTAS` is off). Before
-  // the collector, so a delta marked cold tonight loses its ref before tonight's mark pass.
-  if (env) await runLazyDeltaSweep(report, env, db, now);
-
   // HA-05: owed hosted-asset pulls whose back-off has elapsed (failed, stale, never delivered),
   // and, with the Images binding, ready copies still owing their variant ladder, re-enqueued to
   // `pkey-assets-<env>`, at most `RECHECK_MAX_PER_RUN` per night between them. Before the
@@ -599,61 +566,15 @@ export async function runScheduledMaintenance(
   if (env)
     await step(report, "hostedAssets", () => recheckHostedAssets(env, db, now));
 
-  // HA-08: release files still owing a copy of ours (S-20 §6.8): on first deploy the backfill of
-  // every existing release, afterwards the retry of failed ones once their back-off elapsed, at
-  // most `MIRROR_BACKFILL_MAX_PER_RUN` per night, to `pkey-assets-<env>`. Before the collector,
-  // which never drops either ref a copy is held by.
-  if (env)
-    await step(report, "releaseMirrors", () =>
-      backfillReleaseMirrors(env, db, now),
-    );
-
-  // PX-W16: account pictures nothing has used for a day (a disconnected provider's copy, an
-  // upload never saved, a merged account's leftovers, a write that died half way).
-  if (env) await step(report, "avatars", () => sweepAvatars(env, db, now));
-
-  // PX-W12: a join whose 72-hour undo window ended keeps no snapshot of the absorbed account.
-  await step(report, "accountMerges", () => pruneAccountMerges(db, now));
-
-  // I-30: every DNS-verified connection domain is asked again (plans/I-27.md §2.3 "Domains"). An
-  // answer without the token unverifies it at once; resolver errors keep it for 72 h, then
-  // unverify it, so a lapsed or taken-over domain stops routing, vouching and enforcing.
-  await step(report, "connectionDomains", async () => {
-    const r = await recheckConnectionDomains(db, now);
-    return r.checked;
-  });
+  // The services' late nightly work (`contributes.maintenance.late`): Identity's ownership
+  // settling, avatar, merge-snapshot and connection-domain sweeps, Release's lazy deltas and
+  // mirror backfill. Before the collector, which never drops a ref one of them still holds.
+  await runSlot(report, "late", { db, env, now, nightly: true });
 
   if (env) await runBlobGc(report, env, db, now);
 
   report.complete = isComplete(report);
   return report;
-}
-
-/**
- * The lazy-delta sweep (P4-17, `services/release/packs/deltas/sweep.ts`), one fault-isolated
- * step per opted-in product (`lazyDeltas:<slug>`): refresh the demand aggregate, enqueue the
- * pairs that turned hot (to `DELTA_QUEUE`; the consumer Worker encodes them), and mark cold the
- * deltas no device used for 30 days. Nothing at all while the `LAZY_DELTAS` switch is off (the
- * platform settings store, A-13: a `[vars]` `off` is a hard off).
- */
-export async function runLazyDeltaSweep(
-  report: MaintenanceReport,
-  env: Env,
-  db: Db,
-  now: number,
-): Promise<void> {
-  let products: string[] = [];
-  try {
-    products = await lazyDeltaProducts(env, db);
-  } catch (e) {
-    report.failures["lazyDeltas:products"] =
-      e instanceof Error ? e.message : String(e);
-  }
-  for (const product of products)
-    await step(report, `lazyDeltas:${product}`, async () => {
-      const r = await sweepLazyDeltas(env, db, product, now);
-      return r.demandRows + r.queued + r.cold;
-    });
 }
 
 /**
@@ -665,97 +586,6 @@ export async function runLazyDeltaSweep(
  */
 export const MAINTENANCE_CRON = "17 3 * * *";
 export const CONNECTOR_POLL_CRON = "*/15 * * * *";
-
-/**
- * I-11: one bounded pass of the erasure ledger replay (`services/identity/accounts/erasureLedger.ts`).
- * The count is what the pass repaired (tombstones recreated, restored accounts re-erased, erasure
- * tombstones copied into the ledger): 0 while D1 and the ledger agree. An account whose re-erasure
- * or ledger copy threw fails the step, naming the opaque account ids.
- */
-export async function runErasureLedgerReplay(
-  report: MaintenanceReport,
-  env: Env,
-  db: Db,
-  now: number,
-): Promise<void> {
-  await step(report, "erasureLedger", async () => {
-    const r = await replayErasures({
-      db,
-      env,
-      now,
-      origin: env.CONSOLE_ORIGIN ?? "",
-    });
-    if (r.failures.length > 0)
-      throw new Error(
-        `${r.failures.length} erasure ledger repair(s) failed: ` +
-          r.failures
-            .slice(0, 10)
-            .map((f) => `${f.accountId} (${f.step}: ${f.message})`)
-            .join(", ") +
-          (r.failures.length > 10 ? ", …" : ""),
-      );
-    return r.tombstoned + r.reapplied + r.mirrored;
-  });
-}
-
-/**
- * I-11: start hard erasure for account deletions whose fourteen-day grace period elapsed. The
- * lifecycle helper conditionally claims each request, so an account holder's cancellation and
- * this cron tick cannot both win.
- */
-export async function runAccountDeletionSweep(
-  report: MaintenanceReport,
-  env: Env,
-  db: Db,
-  now: number,
-): Promise<void> {
-  await step(report, "accountDeletions", async () => {
-    const r = await sweepAccountDeletions({
-      db,
-      env,
-      now,
-      origin: env.CONSOLE_ORIGIN ?? "",
-    });
-    return r.started;
-  });
-}
-
-/**
- * The account-erasure retry sweep (`services/identity/accounts/deletion.ts`): resume
- * every unfinished erasure whose back-off elapsed. `reportStuck` (the nightly tick only) fails
- * the `erasures` step while any erasure has failed `ERASURE_STUCK_ATTEMPTS` times, naming the
- * opaque account ids and the failing step, so the Operations page shows a stuck erasure.
- */
-export async function runErasureSweep(
-  report: MaintenanceReport,
-  env: Env,
-  db: Db,
-  now: number,
-  reportStuck: boolean,
-): Promise<void> {
-  await step(report, "erasures", async () => {
-    const r = await sweepErasures({
-      db,
-      env,
-      now,
-      origin: env.CONSOLE_ORIGIN ?? "",
-    });
-    if (reportStuck) {
-      const stuck = await stuckErasures(db);
-      if (stuck.length > 0)
-        throw new Error(
-          `${stuck.length} account erasure(s) stuck: ` +
-            stuck
-              .map(
-                (s) =>
-                  `${s.accountId} (${s.attempts} attempts, ${s.failedStep ?? "?"})`,
-              )
-              .join(", "),
-        );
-    }
-    return r.completed;
-  });
-}
 
 /**
  * One connector-poll tick (P5-02): every live product's ENABLED services' `scheduled` hooks
@@ -1023,21 +853,17 @@ export async function handleScheduled(
   // connector-poll tick. Their failures wait for the nightly report so the Operations page reads
   // this tick as connector work.
   if (poll) {
-    const erasure: MaintenanceReport = { counts: {}, failures: {} };
-    // The replay first: a restored account is closed before the sweeps below look at it.
-    await runErasureLedgerReplay(erasure, env, db, now);
-    await runAccountDeletionSweep(erasure, env, db, now);
-    await runErasureSweep(erasure, env, db, now, false);
-    report.counts["erasureLedger"] = erasure.counts["erasureLedger"] ?? 0;
-    report.counts["accountDeletions"] = erasure.counts["accountDeletions"] ?? 0;
-    report.counts["erasures"] = erasure.counts["erasures"] ?? 0;
+    const frequent: MaintenanceReport = { counts: {}, failures: {} };
+    await runSlot(frequent, "frequent", { db, env, now, nightly: false });
+    // A step that failed here counts 0: its failure waits for the nightly report.
+    for (const name of Object.keys(frequent.failures))
+      frequent.counts[name] ??= 0;
+    Object.assign(report.counts, frequent.counts);
   }
   const registry: MaintenanceReport = { counts: {}, failures: {} };
   await runRegistryRenders(env, db, now, registry);
   // Heal package refs the deploy window's old Worker wrote as `artifact`, every tick.
-  await step(registry, "packageFileRefs", () =>
-    reconcilePackageFileRefs(db, "cron"),
-  );
+  await runSlot(registry, "registry", { db, env, now, nightly: !poll });
   Object.assign(report.counts, registry.counts);
   Object.assign((report.timings ??= {}), registry.timings);
   // A render failure stays queued and is retried every tick, so it is not the connector poll's

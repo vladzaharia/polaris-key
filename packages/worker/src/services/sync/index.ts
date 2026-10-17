@@ -27,8 +27,13 @@ import type {
 } from "../../core/registry.js";
 import { SYNC_SETTINGS_SLICE } from "./settings.js";
 
+import { syncIntegration } from "./integration.js";
+
 export const syncService: ServiceDescriptor = {
   slug: "sync",
+  contributes: {
+    integration: syncIntegration,
+  },
   handle: async () => null,
   /** No route yet: until the device routes ship, `handle` answers none (`null` → Core's not-found). */
   surface: [],
