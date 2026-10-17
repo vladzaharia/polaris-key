@@ -85,8 +85,8 @@ from the parsed options.
 
 `polaris_click_group(client_factory, theme=…, prog=…)` and `polaris_typer_app(…)` take the same
 options and mount the verbs under a group of their own; `register_click(host, …)` and
-`register_typer(host, …)` add them to your own group or app, at its root or under `namespace`. `GroupedHelpParser`, as above, prints your commands first (`add_parser(name, group="Build")` names
-the heading), then the license verbs under one License heading, in task order with their
+`register_typer(host, …)` add them to your own group or app, at its root or under `namespace`. `GroupedHelpParser`, as above, prints your commands first (pass `group="Build"` when you add a subcommand to name
+its heading), then the license verbs under one License heading, in task order with their
 arguments. A plain `argparse.ArgumentParser` can only list every command in one block, so the
 verbs show there with the same one-line copy and no heading; click prints a License section and
 typer a License panel. The verbs:
