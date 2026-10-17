@@ -192,7 +192,7 @@ def _cancelled(t: Terminal, lines: List[Line], data: Dict[str, Any]) -> Outcome:
 # ── license ──────────────────────────────────────────────────────────────────────────────────
 
 
-def status(client: Any, t: Terminal, *, store_line: Optional[str] = None) -> Outcome:
+def status(client: Any, t: Terminal) -> Outcome:
     """``status``: the account summary, the grace line, or the blocked state with its fix."""
     st = client.status()
     profile = None
@@ -233,10 +233,6 @@ def status(client: Any, t: Terminal, *, store_line: Optional[str] = None) -> Out
     )
     usable = bool(client.is_licensed())
     lines = screens.gate(t.kit, view, t.verb or "status")
-    if store_line:
-        k = t.kit
-        warn = k.body(k.icon("warn", "warning") + [Span(store_line, (), None, "data:diagnostic")])
-        lines = lines[:-1] + warn + lines[-1:] if k.decor else lines + warn
     data: Dict[str, Any] = {
         "status": st.status,
         "usable": usable,
@@ -828,7 +824,7 @@ def update(client: Any, t: Terminal, words: Sequence[str], *, channel: Optional[
     verb = f"{t.verb or 'update'} {action}" if action in ("check", "download", "apply") else (t.verb or "update")
     current = getattr(getattr(client, "core", None), "version", None)
     try:
-        if client.update._configured is None:
+        if not client.update.configured:
             if action != "check":
                 return Outcome(EXIT.failed, screens.diagnostic(k, verb, [("", "This build configures no signed updates (UpdateClientOptions).")], ok=False), {"error": "not-configured"})
             vc = client.update.check(channel=channel)

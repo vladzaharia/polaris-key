@@ -25,7 +25,7 @@ from .. import _tokens
 from ..core.copy import Copy
 from ..core.identity import ResolvedIdentity, presentation_source, resolve_identity
 from ...core.models import license_user
-from ..core.models import DevicesView, DeviceRow, GateView, gate_view, update_view
+from ..core.models import DevicesView, DeviceRow, GateView, UpdateView, gate_view, update_view
 from ..core.theme import Theme
 from .text import clean
 
@@ -152,8 +152,13 @@ class PolarisKeyApp(App):
     def update_state(self) -> Any:
         if "update" in self.data:
             return self.data["update"]
+        current = getattr(self.client.core, "version", None)
         try:
-            return update_view(self.client.update.decide().decision, current=getattr(self.client.core, "version", None))
+            if not self.client.update.configured:
+                # No signed updates here: the unsigned version check, as `update check` does.
+                vc = self.client.update.check()
+                return UpdateView("UpdatePrompt", "available" if vc.updateAvailable else "up-to-date", vc.version if vc.updateAvailable else None, current, notes_url=vc.url or None, installable=False)
+            return update_view(self.client.update.decide().decision, current=current)
         except Exception:
             return None
 
@@ -220,7 +225,11 @@ class PolarisKeyApp(App):
             return [
                 _text(t("update.title", product=self.identity.name, version=u.version or ""), classes="pk-title"),
                 _text(t("account.version", version=u.current or ""), classes="pk-muted"),
-                Horizontal(Button(t("update.install"), classes="pk-primary", id="pk-install"), Button(t("update.later"), classes="pk-secondary", id="pk-later"), classes="pk-actions"),
+                Horizontal(
+                    *([Button(t("update.install"), classes="pk-primary", id="pk-install")] if u.installable else []),
+                    Button(t("update.later"), classes="pk-secondary", id="pk-later"),
+                    classes="pk-actions",
+                ),
             ]
         g = self.gate()
         lines: List[Any] = []

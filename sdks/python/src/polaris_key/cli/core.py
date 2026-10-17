@@ -437,8 +437,9 @@ def status(client: PolarisKeyClient, *, terminal: Any = None) -> CommandResult:
     grace line offline, the blocked state with its fix, or the activation prompt.
 
     The exit code reflects whether the gate currently permits running — which for a
-    product with License disabled is 0 on ``not-applicable``, not a failure. A degraded token
-    store is named under the summary (and in ``--json`` as ``tokenStore``).
+    product with License disabled is 0 on ``not-applicable``, not a failure. The token store is a
+    developer's concern: ``doctor`` names a degraded one and ``--json`` carries ``tokenStore``, but an
+    end user's summary never does.
     """
     from ..core.store import StoreStatus
     from ..ui.terminal import flows
@@ -447,8 +448,7 @@ def status(client: PolarisKeyClient, *, terminal: Any = None) -> CommandResult:
     # `getattr`: a host's test double need not implement it.
     store_status = getattr(client, "store_status", None)
     store = store_status() if callable(store_status) else None
-    line = format_store_status(store) if isinstance(store, StoreStatus) and store.degraded is not None else None
-    out = flows.status(client, t, store_line=line)
+    out = flows.status(client, t)
     if isinstance(store, StoreStatus):
         out.data["tokenStore"] = {
             "backend": store.backend,

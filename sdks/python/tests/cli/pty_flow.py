@@ -68,7 +68,7 @@ def update_client() -> SimpleNamespace:
             time.sleep(0.1)
         return SimpleNamespace(kind="restartRequired", version="2.5.0")
 
-    update = SimpleNamespace(_configured=object(), driver=object(), decide=lambda channel=None: SimpleNamespace(decision=decision, channel="stable"), install=install)
+    update = SimpleNamespace(configured=True, driver=object(), decide=lambda channel=None: SimpleNamespace(decision=decision, channel="stable"), install=install)
     return SimpleNamespace(product="tidewater", update=update, core=SimpleNamespace(version="2.4.1"))
 
 

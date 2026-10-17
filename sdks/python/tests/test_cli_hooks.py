@@ -313,13 +313,14 @@ def test_activation_fingerprint_required_on_linux_has_no_enrol_hint():
     assert core.LINUX_NO_MACHINE_ID_HINT not in r.lines
 
 
-def test_status_names_a_degraded_token_store():
+def test_status_carries_a_degraded_token_store_in_json_only():
     c = FakeClient(state=_State(status="ok"))
     c.store_status = lambda: StoreStatus(  # type: ignore[attr-defined]
         "file", StoreDegraded("keyring-unavailable", "no keyring extra")
     )
     r = core.status(c)
-    assert "Token store: file (degraded: keyring-unavailable: no keyring extra)" in r.lines
+    # A developer's line: `doctor` and `--json` carry it, an end user's summary does not.
+    assert not any(ln.startswith("Token store") for ln in r.lines)
     assert r.data["tokenStore"] == {"backend": "file", "degraded": {"reason": "keyring-unavailable", "detail": "no keyring extra"}}
     c.store_status = lambda: StoreStatus("keyring")  # type: ignore[attr-defined]
     healthy = core.status(c)
