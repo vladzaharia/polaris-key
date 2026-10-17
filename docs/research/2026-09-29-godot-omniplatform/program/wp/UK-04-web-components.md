@@ -344,13 +344,68 @@ Still to do, in this order:
 
 ## Progress and continuation (2026-10-17, `wp/UK-04-ux`, driven by the BUILT UX review)
 
-ui-core input plumbing, committed first for the React builder (UK-05) to consume: tip `c1d7a99a7`
-(additive `UiInput` members only, no copy lists or corpus touched): `DeviceInput.id`,
-`offline.requestCode` and `offline.response`, `account.devices` and `account.autoUpdate`,
-`offers.items` and `offers.url`, `channel.current` and `channel.options`. The placeholders
-(`{version}`, `{size}`, `{date}`, `{tier}`, `{name}`, `{store}`) already had inputs
-(`update.version/size`, `gate.graceDate`, `account.tier/holder`, `entitlement.tier`,
-`LicenseChoiceRow.store`); the sample and fixtures just never filled them, so the fix is in the
-renderer (drop the line, never paint braces) and the live sign-in adapter (fill holder and tier).
-Per-state `LicenseChoice` copy lists are corpus-fixed, so the base anatomy is drawn by the
-elements from `input.choices`, not by changing ui-core's copy lists.
+Review: `_lead/reviews/2026-10-16/ux-UK-04.json` (fail, 11 blockers). This slice, in order.
+
+**ui-core inputs, committed first for UK-05 (tip `c1d7a99a7`).** Additive `UiInput` members only,
+no copy lists or corpus rows touched: `DeviceInput.id`, `offline.requestCode` and
+`offline.response`, `account.devices` and `account.autoUpdate`, `offers.items` and `offers.url`,
+`channel.current` and `channel.options`. The placeholders (`{version}`, `{size}`, `{date}`,
+`{tier}`, `{name}`, `{store}`) already had inputs (`update.version/size`, `gate.graceDate`,
+`account.tier/holder`, `entitlement.tier`, `LicenseChoiceRow.store`); the sample and fixtures never
+filled them, so the fix is in the renderer. Per-state `LicenseChoice` copy lists are corpus-fixed
+(no ui-matrix row needed a new input), so the elements add the base anatomy at draw time
+(`withBase` in `views.ts`), from `input.choices`, and leave `view.copy` as the corpus has it.
+
+**Fixed (all 11 blockers, and the cheap should/nit items):**
+
+- Placeholders: a key whose own arguments the input lacks is not drawn (`fillable`, `text`,
+  `plain`; dev `console.warn`), never as braces; the facts the SDK result carries are filled
+  (`fillFromInput`: holder, tier, grace date, download figures, counts, seat counts). `keyArgs` is
+  honoured (UpdatePrompt names the installed version). A counted download draws its bar.
+- License rows in every choices shape (mixed, one, many, current, keep, new, create, raced,
+  all-full) with title, lede, group, Cancel and "Use a license key instead".
+- All-full: Replace a device on each full license, carrying `licenseId`; `drive()` opens Replace
+  by it (the single full license needs no pick).
+- Radio rows: Arrow, Home, End, Space and Enter on the license, device and offer rows; the checked
+  row takes initial focus.
+- Done: heading and Start, `pk-done` once per sign-in, the picked tier fills "{tier} license", a
+  sheet closes itself after an existing license; Continue and Replace ignore a second press.
+- Sheet: close button, scrim click, Back on a phone, focus returns to the opener (pointer target
+  where Safari does not focus the button); Cancel on every step but the first inline one.
+- Events: `devices.rename|remove|save` carry `deviceId` and the typed `name` (rename and remove
+  are inline in the row, Enter saves, Escape cancels); `pk-input` for settings, channel, auto
+  update, offline response; `offerId`, `url`, `response`, `values` on the actions they finish.
+- Settings: switch, number and text fields, advanced rows behind their toggle. Account: label and
+  value rows with devices "2 of 3", auto-update switch, channel choice, version. ChannelPicker:
+  Stable and Beta as one radiogroup. Panes head at h2 and never take focus on mount.
+- UpdatePrompt: release notes under What's new (the heading goes when there are none), Later and
+  Restart when ready as one row. Offline activation: two numbered steps, the request code shown
+  with Copy and a QR, one Activate. Paywall: offers as radio rows with prices; not-available opens
+  the store page.
+- Also: Activate keeps its title, lede and Back, Done and device-limit have a control; Welcome reads
+  icon, title, byline; "Or continue with" and "Sign in..." gone from the sign-in step; unnamed
+  device fallback and Least recent pill in Replace; short-landscape measured against the window;
+  native preset takes the host font for titles; `role=main` on a window-filling screen.
+- Tests: `test/review.test.ts` (one test per blocker); the matrix and string tests now accept a
+  key the kit leaves out on purpose.
+
+**Remaining from the review (next slice):**
+
+1. Plan-mode, corpus fixtures (UK-02b): rows that still leave `{tier}`, `{size}`, `{time}`,
+   `{date}`, `{version}` out draw nothing now instead of braces; add the inputs to the rows.
+2. Wide-window composition: centre the gate card (upper third, about 880px, 5:7 panes), fill the
+   identity panel, one card width across the sign-in steps.
+3. 844x390 and 200% text: the docked action bar needs an opaque ground and reserved height; add
+   the rows to the browser suite (the shape measure is fixed, the bar is not verified in a
+   browser).
+4. Fonts in a bundled app (`installFonts` against `import.meta.url`): emit the `@font-face` or
+   export `@polaris-key/elements/fonts.css`; a check that the built sample loads Rubik.
+5. Non-mandatory UpdatePrompt as a `<dialog>` over the host with progress and notes; the sample
+   wired to a fake `SignInPrimitives` (click-through) with an index of states.
+6. The sign-in error keeps the other methods; DeviceLimit's primary names the device ("Replace
+   {device} and continue", a catalog string) and the list scrolls in a region past six rows;
+   copy items left in the review's copy finding (revoked/expired ledes, "last seen" vs "last
+   used", counts stated twice, "Ui compact" labels) and the nits (CloudSync Review action,
+   no-browser handoff URL).
+7. Rerun the BUILT review on the live sign-in flow, the embedded panes and the 844x390 and 200%
+   rows. React (UK-05) draws these panes itself in `parts.tsx`: it needs the same controls.

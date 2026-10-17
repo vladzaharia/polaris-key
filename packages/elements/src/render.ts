@@ -435,11 +435,14 @@ export function progressBar(c: RenderCtx, fraction: number): TemplateResult {
   const own = c.view.copy.find(
     (k) => !k.startsWith("a11y.") && !k.startsWith("common."),
   );
-  const label = c.view.copy.includes("a11y.progress")
+  const named = c.view.copy.includes("a11y.progress")
     ? plain(c, "a11y.progress")
-    : own
-      ? plain(c, own)
-      : undefined;
+    : "";
+  const label =
+    named ||
+    (own && plain(c, own)) ||
+    (c.copy.has("common.loading") && plain(c, "common.loading")) ||
+    undefined;
   return html`<div
     class="progress"
     part="progress"
@@ -449,7 +452,7 @@ export function progressBar(c: RenderCtx, fraction: number): TemplateResult {
     aria-valuemax="100"
     aria-valuenow=${pct}
     aria-label=${ifDefined(label)}
-    data-key=${ifDefined(label ? "a11y.progress" : undefined)}
+    data-key=${ifDefined(named ? "a11y.progress" : undefined)}
     style=${styleMap({ "--pk-fraction": String(pct / 100) })}
   >
     <span></span>

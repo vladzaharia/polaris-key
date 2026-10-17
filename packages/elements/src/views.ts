@@ -864,15 +864,18 @@ function deviceLimitContent(c: RenderCtx): TemplateResult | typeof nothing {
                   >${d.name
                     ? html`<bdi>${d.name}</bdi>`
                     : text(c, "devices.unnamed")}</span
-                ><br />
+                >${i === leastRecent && keys.has("signin.replace.leastRecent")
+                  ? html` <span
+                      class="pill"
+                      data-key="signin.replace.leastRecent"
+                      >${text(c, "signin.replace.leastRecent")}</span
+                    >`
+                  : nothing}<br />
                 <span class="meta">
                   ${text(c, "signin.replace.meta", {
                     platform: platformLabel(d.platform, c.copy),
                     when: days(d.lastSeenDays),
                   })}
-                  ${i === leastRecent && keys.has("signin.replace.leastRecent")
-                    ? html` · ${text(c, "signin.replace.leastRecent")}`
-                    : nothing}
                 </span>
               </span>
               ${i === selected ? GLYPHS.check() : html`<span></span>`}
