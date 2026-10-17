@@ -1,7 +1,7 @@
 /// <reference types="@cloudflare/workers-types" />
 
 /**
- * Distribution's sub-router, over the path segments AFTER `/<product>/distribution`.
+ * Distribution's routes, as a table (`core/http/routes.ts`), over the path AFTER `/<product>/distribution`.
  *
  *     /distribution/install.sh                               (P2b-04, `bytes.ts`)
  *     /distribution/dl/:version/:binary-:arch[.dmg]
@@ -52,22 +52,28 @@
 
 import type { ServiceContext } from "../../core/registry.js";
 import { errorResponse, ErrorCode, json, notFound } from "../../core/errors.js";
-import { readCiJson, requireCiScope } from "../../core/ciScope.js";
-import { byteTargetOf, serveDistributionBytes } from "./bytes.js";
+import {
+  serviceRoutes,
+  type RouteMatch,
+  type ServiceRouteDecl,
+} from "../../core/http/routes.js";
+import {
+  byteTargetOf,
+  serveDistributionBytes,
+  type ByteTarget,
+} from "./bytes.js";
 import {
   applyRollout,
-  isRolloutVerb,
+  ROLLOUT_VERBS,
   type RolloutRefusal,
   type RolloutVerb,
 } from "./rollouts.js";
 import { applyReport } from "./availability.js";
 import { ciListingProjection, ciListingStore } from "./listing/ci.js";
-import type { ListingStore } from "../../core/storefront/listingProfiles.js";
 import { prInputs, prInputStore } from "./prInputs.js";
-import type { PrStoreId } from "../../core/storefront/prPlane.js";
 import { connectorOf } from "./connectors/index.js";
 import { handleSentryWebhook } from "./sentry.js";
-import { handleFeedRoutes } from "./feeds/index.js";
+import { handleFdroidFeedsCi, serveFeedRead } from "./feeds/index.js";
 import { handleDownloadModel } from "./page/index.js";
 import {
   MAX_LISTING_ASSETS_BODY_BYTES,
@@ -77,87 +83,6 @@ import {
 /** A rollout body is tiny (`{deliverable?, releaseId?, bp?}`); a report carries at most two small
  *  JSON objects (`platformRef`, `detail`). */
 const MAX_CI_BODY_BYTES = 16 * 1024;
-
-export async function handleDistributionRoutes(
-  ctx: ServiceContext,
-): Promise<Response | null> {
-  const { req, env, db, product, rest, hooks, now } = ctx;
-
-  if (rest[0] === "rollouts") {
-    const verb: RolloutVerb | null =
-      rest.length === 3
-        ? "set"
-        : rest.length === 4 && isRolloutVerb(rest[3] as string)
-          ? (rest[3] as RolloutVerb)
-          : null;
-    if (!verb || req.method !== "POST") return null;
-    return handleCiRollout(ctx, rest[1] as string, rest[2] as string, verb);
-  }
-
-  // A store webhook. `null` (Core's not-found) for an unknown connector, one without a webhook,
-  // or a product the connector is not set up for — the connector decides the last.
-  if (rest[0] === "hooks" && rest.length === 2) {
-    // The Sentry alert hook (P6-03) opens halt candidates; it is not a store connector.
-    if (rest[1] === "sentry") return handleSentryWebhook(ctx);
-    const webhook = connectorOf(rest[1] as string)?.webhook;
-    return webhook ? webhook(ctx) : null;
-  }
-
-  // The listing assets `pkey listing assets` derived and uploaded (A-18d).
-  if (rest.length === 2 && rest[0] === "listing" && rest[1] === "assets") {
-    if (req.method !== "POST") return null;
-    const principal = await requireCiScope(
-      req,
-      env,
-      db,
-      product.slug,
-      "distribution:listing",
-      now,
-    );
-    if (principal instanceof Response) return principal;
-    const body = await readCiJson(req, MAX_LISTING_ASSETS_BODY_BYTES);
-    if (body instanceof Response) return body;
-    return registerListingAssets(
-      { env, db, product: product.slug, now, principal },
-      body,
-    );
-  }
-
-  if (rest[0] === "report" && rest.length === 1) {
-    if (req.method !== "POST") return null;
-    return handleCiReport(ctx);
-  }
-
-  // A-18h: a CI-plane store's projection of the listing model (`listing/ci.ts`).
-  if (rest[0] === "listing" && rest.length === 2) {
-    if (req.method !== "GET") return null;
-    const store = ciListingStore(decodeSegment(rest[1] as string) ?? "");
-    if (!store) return null;
-    return handleCiListing(ctx, store);
-  }
-
-  // A-18i: a PR-plane generator's inputs (`prInputs.ts`).
-  if (rest[0] === "pr" && rest.length === 2) {
-    if (req.method !== "GET") return null;
-    const store = prInputStore(decodeSegment(rest[1] as string) ?? "");
-    if (!store) return null;
-    return handlePrInputs(ctx, store);
-  }
-
-  // The download page's model (P2b-06). The page itself never answers here (see above).
-  if (rest.length === 1 && rest[0] === "download.json") {
-    if (req.method !== "GET" && req.method !== "HEAD") return null;
-    return handleDownloadModel(ctx);
-  }
-
-  // The storefront feeds and the F-Droid relay (P2b-05, `feeds/`).
-  const feed = await handleFeedRoutes(ctx);
-  if (feed) return feed;
-
-  const target = byteTargetOf(rest);
-  if (!target) return null;
-  return serveDistributionBytes({ req, env, db, product, hooks, now }, target);
-}
 
 function decodeSegment(segment: string): string | null {
   try {
@@ -174,27 +99,50 @@ export function rolloutRefusal(r: RolloutRefusal): Response {
   });
 }
 
+// ── The bytes ────────────────────────────────────────────────────────────────────────────────
+//
+// `byteTargetOf` is the one parser of a byte path, shared with the bytes host (`bytesHost.ts`) so
+// the two can never disagree; each row's `accept` runs it, and a path it does not name is no
+// route. P2-05's byte routes answer only GET and HEAD, with a 405 that names them; the legacy
+// installer and download never checked the method, and the handler still does not.
+
+const BYTES_ONLY_READS = (): Response =>
+  new Response(null, {
+    status: 405,
+    headers: { allow: "GET, HEAD", "cache-control": "no-store" },
+  });
+
+function byteRow(
+  kind: ByteTarget["kind"],
+  row: Pick<ServiceRouteDecl, "path" | "doc" | "methods" | "alsoHead">,
+  reads: boolean,
+): ServiceRouteDecl {
+  return {
+    ...row,
+    auth: { kind: "handler" },
+    other: reads ? BYTES_ONLY_READS : "handler",
+    accept: (ctx) => byteTargetOf(ctx.rest)?.kind === kind,
+    handler: ({ req, env, db, product, hooks, now, rest }) =>
+      serveDistributionBytes(
+        { req, env, db, product, hooks, now },
+        byteTargetOf(rest) as ByteTarget,
+      ),
+  };
+}
+
+// ── CI plane ─────────────────────────────────────────────────────────────────────────────────
+
 /** `POST /<p>/distribution/rollouts/<outlet>/<channel>[/<verb>]` — `distribution:rollout`. */
-async function handleCiRollout(
+async function ciRollout(
   ctx: ServiceContext,
-  rawOutlet: string,
-  rawChannel: string,
+  m: RouteMatch,
   verb: RolloutVerb,
 ): Promise<Response> {
-  const { req, env, db, product, hooks, now } = ctx;
-  const principal = await requireCiScope(
-    req,
-    env,
-    db,
-    product.slug,
-    "distribution:rollout",
-    now,
-  );
-  if (principal instanceof Response) return principal;
-  const body = await readCiJson(req, MAX_CI_BODY_BYTES);
+  const { db, product, hooks, now } = ctx;
+  const body = await m.readJson();
   if (body instanceof Response) return body;
-  const outlet = decodeSegment(rawOutlet);
-  const channel = decodeSegment(rawChannel);
+  const outlet = decodeSegment(m.params.outlet as string);
+  const channel = decodeSegment(m.params.channel as string);
   if (outlet === null || channel === null)
     return errorResponse(404, ErrorCode.NotFound, "no such rollout", {
       reason: "unknown_outlet",
@@ -209,7 +157,7 @@ async function handleCiRollout(
       releaseId: body.releaseId,
       bp: body.bp,
     },
-    { kind: "ci", principal },
+    { kind: "ci", principal: m.principal! },
   );
   if (!result.ok) return rolloutRefusal(result);
   return json({ ok: true, rollout: result.rollout });
@@ -220,50 +168,17 @@ async function handleCiRollout(
  * availability or a submission state for (release, outlet), or the fingerprint CI signed with
  * (`availability.ts` `applyReport`). A refused report writes nothing.
  */
-async function handleCiReport(ctx: ServiceContext): Promise<Response> {
-  const { req, env, db, product, hooks, now } = ctx;
-  const principal = await requireCiScope(
-    req,
-    env,
-    db,
-    product.slug,
-    "distribution:report",
-    now,
-  );
-  if (principal instanceof Response) return principal;
-  const body = await readCiJson(req, MAX_CI_BODY_BYTES);
+async function ciReport(ctx: ServiceContext, m: RouteMatch): Promise<Response> {
+  const { db, product, hooks, now } = ctx;
+  const body = await m.readJson();
   if (body instanceof Response) return body;
   const result = await applyReport(
     { db, product: product.slug, hooks, now },
     body,
-    principal,
+    m.principal!,
   );
   if (!result.ok) return rolloutRefusal(result);
   return json(result);
-}
-
-/**
- * `GET /<p>/distribution/listing/<store>` — `distribution:report`. The store's projection of the
- * listing model, for a CI-plane listing step (A-18h, `listing/ci.ts`).
- */
-async function handleCiListing(
-  ctx: ServiceContext,
-  store: ListingStore,
-): Promise<Response> {
-  const { req, env, db, product, now } = ctx;
-  const principal = await requireCiScope(
-    req,
-    env,
-    db,
-    product.slug,
-    "distribution:report",
-    now,
-  );
-  if (principal instanceof Response) return principal;
-  return json({
-    ok: true,
-    listing: await ciListingProjection(db, product.slug, store),
-  });
 }
 
 /**
@@ -271,20 +186,13 @@ async function handleCiListing(
  * PR-plane generator needs for the channel's newest release on the outlet (A-18i, `prInputs.ts`).
  * The not-found while the app's delivery access is not public, or for no such channel or outlet.
  */
-async function handlePrInputs(
+async function ciPrInputs(
   ctx: ServiceContext,
-  store: PrStoreId,
+  m: RouteMatch,
 ): Promise<Response> {
-  const { req, env, db, product, now, hooks } = ctx;
-  const principal = await requireCiScope(
-    req,
-    env,
-    db,
-    product.slug,
-    "distribution:report",
-    now,
-  );
-  if (principal instanceof Response) return principal;
+  const { req, env, db, product, hooks } = ctx;
+  const store = prInputStore(decodeSegment(m.params.store as string) ?? "");
+  if (!store) return notFound();
   const url = new URL(req.url);
   const channel = url.searchParams.get("channel") ?? "stable";
   const outlet = url.searchParams.get("outlet");
@@ -309,3 +217,195 @@ async function handlePrInputs(
   if (!inputs) return notFound();
   return json({ ok: true, inputs });
 }
+
+// ── The table ────────────────────────────────────────────────────────────────────────────────
+
+const READS = ["GET"] as const;
+
+/** A public feed read: GET (and an undocumented HEAD), the shape checked by the pattern. */
+function feedRow(
+  path: string,
+  area: Parameters<typeof serveFeedRead>[1],
+  doc: string,
+): ServiceRouteDecl {
+  return {
+    path,
+    doc,
+    methods: READS,
+    alsoHead: true,
+    auth: { kind: "none" },
+    other: "none",
+    handler: (ctx) => serveFeedRead(ctx, area),
+  };
+}
+
+export const DISTRIBUTION_ROUTES = serviceRoutes("distribution", [
+  byteRow("install", { path: "install.sh", methods: ["GET"] }, false),
+  byteRow("dl", { path: "dl/:version/:asset", methods: ["GET"] }, false),
+  byteRow(
+    "build",
+    { path: "builds/:selector/:buildId", methods: ["GET"], alsoHead: true },
+    true,
+  ),
+  byteRow(
+    "file",
+    { path: "files/:releaseId/:name", methods: ["GET"], alsoHead: true },
+    true,
+  ),
+  byteRow(
+    "blob",
+    { path: "blobs/sha256/:sha256", methods: ["GET", "HEAD"] },
+    true,
+  ),
+  byteRow(
+    "payload",
+    {
+      path: "packs/:pack/:variant/payload/:sha256",
+      methods: ["GET", "HEAD"],
+    },
+    true,
+  ),
+
+  // The CI rollout routes (`distribution:rollout`): the set, then the four verbs.
+  {
+    path: "rollouts/:outlet/:channel",
+    methods: ["POST"],
+    auth: { kind: "ci", scope: "distribution:rollout" },
+    bodyCap: MAX_CI_BODY_BYTES,
+    other: "none",
+    handler: (ctx, m) => ciRollout(ctx, m, "set"),
+  },
+  ...ROLLOUT_VERBS.map(
+    (verb): ServiceRouteDecl => ({
+      path: `rollouts/:outlet/:channel/${verb}`,
+      methods: ["POST"],
+      auth: { kind: "ci", scope: "distribution:rollout" },
+      bodyCap: MAX_CI_BODY_BYTES,
+      other: "none",
+      handler: (ctx, m) => ciRollout(ctx, m, verb),
+    }),
+  ),
+  {
+    path: "report",
+    methods: ["POST"],
+    auth: { kind: "ci", scope: "distribution:report" },
+    bodyCap: MAX_CI_BODY_BYTES,
+    other: "none",
+    handler: ciReport,
+  },
+  // The listing assets `pkey listing assets` derived and uploaded (A-18d).
+  {
+    path: "listing/assets",
+    methods: ["POST"],
+    auth: { kind: "ci", scope: "distribution:listing" },
+    bodyCap: MAX_LISTING_ASSETS_BODY_BYTES,
+    other: "none",
+    handler: async ({ env, db, product, now }, m) => {
+      const body = await m.readJson();
+      if (body instanceof Response) return body;
+      return registerListingAssets(
+        { env, db, product: product.slug, now, principal: m.principal! },
+        body,
+      );
+    },
+  },
+  // A-18h: a CI-plane store's projection of the listing model (`listing/ci.ts`). A store it does
+  // not know is the not-found, before any credential.
+  {
+    path: "listing/:store",
+    methods: ["GET"],
+    auth: { kind: "ci", scope: "distribution:report" },
+    other: "none",
+    accept: (_ctx, p) =>
+      ciListingStore(decodeSegment(p.store as string) ?? "") !== null,
+    handler: async ({ db, product }, m) =>
+      json({
+        ok: true,
+        listing: await ciListingProjection(
+          db,
+          product.slug,
+          ciListingStore(decodeSegment(m.params.store as string) ?? "")!,
+        ),
+      }),
+  },
+  // A-18i: a PR-plane generator's inputs (`prInputs.ts`).
+  {
+    path: "pr/:store",
+    methods: ["GET"],
+    auth: { kind: "ci", scope: "distribution:report" },
+    other: "none",
+    accept: (_ctx, p) =>
+      Boolean(prInputStore(decodeSegment(p.store as string) ?? "")),
+    handler: ciPrInputs,
+  },
+
+  // The Sentry alert hook (P6-03) opens halt candidates; it is not a store connector.
+  {
+    path: "hooks/sentry",
+    methods: ["POST"],
+    auth: { kind: "signature" },
+    other: "none",
+    handler: (ctx) => handleSentryWebhook(ctx),
+  },
+  // A store webhook. `null` (Core's not-found) for an unknown connector, one without a webhook,
+  // or a product the connector is not set up for — the connector decides the last. `asc` is the
+  // one connector today, and the one the spec documents.
+  {
+    path: "hooks/:connector",
+    doc: "hooks/asc",
+    methods: ["POST"],
+    auth: { kind: "signature" },
+    other: "none",
+    accept: (_ctx, p) =>
+      connectorOf(p.connector as string)?.webhook !== undefined,
+    handler: (ctx, m) =>
+      connectorOf(m.params.connector as string)!.webhook!(ctx),
+  },
+
+  // The storefront feeds and the F-Droid relay (P2b-05, `feeds/`).
+  feedRow(
+    "altstore/:channel/source.json",
+    "altstore",
+    "altstore/{channel}/source.json",
+  ),
+  feedRow(
+    "altstore-pal/:channel/source.json",
+    "altstore-pal",
+    "altstore-pal/{channel}/source.json",
+  ),
+  feedRow("obtainium/:file", "obtainium", "obtainium/{channel}.json"),
+  feedRow("scoop/:file", "scoop", "scoop/{channel}.json"),
+  feedRow("flathub/:file", "flathub", "flathub/{channel}.json"),
+  feedRow(
+    "fdroid/:channel/repo/:file/**",
+    "fdroid",
+    "fdroid/{channel}/repo/{path}",
+  ),
+  // The CI plane's F-Droid feed: reads its own `pkeyci_` token after the channel decodes.
+  {
+    path: "feeds/fdroid/:channel",
+    methods: ["GET", "POST"],
+    auth: { kind: "handler" },
+    other: "none",
+    handler: (ctx) => handleFdroidFeedsCi(ctx),
+  },
+
+  // The download page's model (P2b-06). The page itself never answers here: it is served ONLY on
+  // the bytes host (`page/index.ts` `DOWNLOAD_PAGE_ROUTE`), so no repo-authored HTML is ever
+  // served on the console's origin.
+  {
+    path: "download.json",
+    methods: ["GET"],
+    alsoHead: true,
+    auth: { kind: "none" },
+    other: "none",
+    handler: (ctx) => handleDownloadModel(ctx),
+  },
+  {
+    path: "download",
+    methods: ["GET"],
+    auth: { kind: "none" },
+    other: "none",
+    handler: async () => null,
+  },
+]);

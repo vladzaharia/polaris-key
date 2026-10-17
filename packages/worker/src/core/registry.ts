@@ -220,15 +220,11 @@ export interface ScheduledServiceContext {
  * `/{product}/license/activate`, `/{product}/config/mint/{mintId}/token` — so the drift gate
  * compares like with like instead of transcribing one shape into another.
  *
- * The list lives on the descriptor, not in the test. `test/routeCoverage.test.ts` used to carry
- * it as a hand-written literal, which made the gate answerable in the wrong direction: a service
- * could grow a route in its `routes.ts`, nobody would document it, and the test stayed green
- * because the only thing it compared was one copy of the spec against another copy of the spec.
- * `routes.ts` is imperative and there is nothing to reflect over, so the list is not
- * self-derived; but it sits in the same directory as the router it describes (a route added
- * without a `surface` entry is a diff a reviewer reads in one place), and it is executable:
- * `routeCoverage` instantiates every declared path and asserts the core router actually
- * dispatches it to this slug, so a declared path the router cannot reach fails too.
+ * The list lives on the descriptor, not in the test, and it is DERIVED from the service's route
+ * table (`core/http/routes.ts` `serviceRoutes`; P0-25): a row is a served route and a documented
+ * one, so a service cannot serve a path it does not declare or declare one it does not serve.
+ * `test/routeCoverage.test.ts` instantiates every declared path and asserts the core router
+ * dispatches it to this slug, and checks each against the spec.
  */
 export interface ServiceRoute {
   /** The OpenAPI path template, product placeholder included. */

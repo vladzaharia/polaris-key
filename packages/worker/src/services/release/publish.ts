@@ -152,25 +152,13 @@ export function setPublishJwksFetcherForTests(f: JwksFetcher | null): void {
   jwksFetcherOverride = f;
 }
 
-/** `rest` after `/release`: `["publish", "token" | "uploads" | "submit"]`. */
-export async function handlePublishRoute(
-  ctx: ServiceContext,
-  action: string,
-): Promise<Response | null> {
-  if (ctx.req.method !== "POST") return null;
-  if (action === "token") return handleToken(ctx);
-  if (action === "uploads") return handleUploads(ctx);
-  if (action === "submit") return handleSubmit(ctx);
-  if (action === "stage") return handleStage(ctx);
-  if (action === "delegations") return handleDelegations(ctx);
-  return null;
-}
-
 // ── POST /<p>/release/publish/delegations (P4-19) ───────────────────────────────────────────
 
 /** The product's delegations, for `pkey release delegate` (plans/P4-19.md §6.3). Same token,
  *  scope and body cap as `uploads`; no blob store needed (a delegation is a signature). */
-async function handleDelegations(ctx: ServiceContext): Promise<Response> {
+export async function handleDelegations(
+  ctx: ServiceContext,
+): Promise<Response> {
   const holder = await requirePublisher(ctx);
   if (holder instanceof Response) return holder;
   const body = await readCiJson(ctx.req, MAX_UPLOADS_BODY_BYTES);
@@ -182,7 +170,7 @@ async function handleDelegations(ctx: ServiceContext): Promise<Response> {
 
 /** A stage round of a pack's objects (`packs/publish.ts`); same token, scope and body cap as
  *  `uploads`. */
-async function handleStage(ctx: ServiceContext): Promise<Response> {
+export async function handleStage(ctx: ServiceContext): Promise<Response> {
   if (!ctx.env.BLOBS) return notFound();
   const holder = await requirePublisher(ctx);
   if (holder instanceof Response) return holder;
@@ -241,7 +229,7 @@ async function requirePublisher(
 
 // ── POST /<p>/release/publish/token ─────────────────────────────────────────────────────────
 
-async function handleToken(ctx: ServiceContext): Promise<Response> {
+export async function handleToken(ctx: ServiceContext): Promise<Response> {
   const { req, env, db, product, now } = ctx;
   // Per IP, before anything: an anonymous flood only ever spends the flooder's own budget.
   if (
@@ -310,7 +298,7 @@ async function handleToken(ctx: ServiceContext): Promise<Response> {
 
 // ── POST /<p>/release/publish/uploads ───────────────────────────────────────────────────────
 
-async function handleUploads(ctx: ServiceContext): Promise<Response> {
+export async function handleUploads(ctx: ServiceContext): Promise<Response> {
   const { req, env, db, product, now } = ctx;
   // No blob store or no parent R2 token in this environment: there is nothing to upload to, and
   // the route does not exist (the brief's "answers not-found" until the operator sets them).
@@ -605,7 +593,7 @@ function ingestRefusal(r: Extract<IngestResult, { ok: false }>): Response {
   });
 }
 
-async function handleSubmit(ctx: ServiceContext): Promise<Response> {
+export async function handleSubmit(ctx: ServiceContext): Promise<Response> {
   const { req, env, db, product, now } = ctx;
   const bucket = env.BLOBS;
   if (!bucket) return notFound();

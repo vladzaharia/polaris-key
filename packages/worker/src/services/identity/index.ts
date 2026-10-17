@@ -40,7 +40,7 @@ import type {
   ServiceDescriptor,
 } from "../../core/registry.js";
 import type { AdminSession } from "../../core/console/session.js";
-import { handleIdentityRoutes } from "./routes.js";
+import { IDENTITY_ROUTES } from "./routes.js";
 import { handleIdentityAdmin } from "./admin.js";
 import { authorizeRegistration } from "./registration.js";
 import { IDENTITY_SETTINGS_SLICE } from "./settings.js";
@@ -65,7 +65,7 @@ export const identityService: ServiceDescriptor = {
   slug: "identity",
   /** ST-03: this service's settings registry slice (`settings.ts`). */
   settings: IDENTITY_SETTINGS_SLICE,
-  handle: handleIdentityRoutes,
+  handle: IDENTITY_ROUTES.handle,
   contributes: {
     manifest: identityManifest,
     productDeletion: identityProductDeletion,
@@ -85,30 +85,7 @@ export const identityService: ServiceDescriptor = {
    * The canonical surface `routes.ts` dispatches; what `routeCoverage` pins. The root portal
    * paths are not here: they are platform routes, not this service's namespace.
    */
-  surface: [
-    { path: "/{product}/identity/session", methods: ["get"] },
-    { path: "/{product}/identity/session/license", methods: ["post"] },
-    { path: "/{product}/identity/auth/start", methods: ["get"] },
-    { path: "/{product}/identity/auth/callback", methods: ["get"] },
-    { path: "/{product}/identity/auth/logout", methods: ["post"] },
-    { path: "/{product}/identity/auth/device", methods: ["get", "post"] },
-    { path: "/{product}/identity/auth/device/start", methods: ["post"] },
-    {
-      path: "/{product}/identity/auth/device/verify",
-      methods: ["get", "post"],
-    },
-    { path: "/{product}/identity/auth/device/poll", methods: ["post"] },
-    // The legacy sign-in's licence chooser (server-rendered HTML).
-    { path: "/{product}/identity/auth/choose", methods: ["get", "post"] },
-    // I-08: the app passthrough. `authorize` is a navigation; `token` takes a form body and
-    // answers CORS for the product's web origins, without credentials.
-    { path: "/{product}/identity/authorize", methods: ["get"] },
-    { path: "/{product}/identity/token", methods: ["post"] },
-    // The account on the device wire (device bearer; CORS without credentials).
-    { path: "/{product}/identity/attach", methods: ["post"] },
-    { path: "/{product}/identity/subject", methods: ["get"] },
-    { path: "/{product}/identity/signout", methods: ["post"] },
-  ],
+  surface: IDENTITY_ROUTES.surface,
   adminHandle: (ctx: ServiceContext & { session: AdminSession }) =>
     handleIdentityAdmin(ctx),
   authorizeRegistration: (ctx: RegistrationAuthContext) =>

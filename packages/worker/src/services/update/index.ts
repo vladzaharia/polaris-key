@@ -27,7 +27,7 @@ import type {
 import type { AdminSession } from "../../core/console/session.js";
 import { getReleaseConfig } from "../release/config.js";
 import { knownChannels } from "../release/resolve.js";
-import { handleUpdateRoutes } from "./routes.js";
+import { UPDATE_ROUTES } from "./routes.js";
 import { handleUpdateAdmin } from "./admin.js";
 import { UPDATE_SETTINGS_SLICE } from "./settings.js";
 
@@ -40,34 +40,12 @@ export const updateService: ServiceDescriptor = {
   },
   /** ST-03: this service's settings registry slice (`settings.ts`). */
   settings: UPDATE_SETTINGS_SLICE,
-  handle: handleUpdateRoutes,
+  handle: UPDATE_ROUTES.handle,
   /**
    * The canonical surface `routes.ts` dispatches; what `routeCoverage` pins. The appcast and
    * version aliases are the ROUTER's rewrites, not Update's surface.
    */
-  surface: [
-    { path: "/{product}/update/appcast.xml", methods: ["get"] },
-    { path: "/{product}/update/{channel}/appcast.xml", methods: ["get"] },
-    // The signed channel feed.
-    { path: "/{product}/update/{channel}/feed.jws", methods: ["get"] },
-    // The app-updater feeds.
-    { path: "/{product}/update/{channel}/winsparkle.xml", methods: ["get"] },
-    {
-      path: "/{product}/update/{channel}/velopack/releases.{velopackChannel}.json",
-      methods: ["get"],
-    },
-    // The package a bare Velopack `FileName` resolves to (a 302 to its delivery URL).
-    {
-      path: "/{product}/update/{channel}/velopack/{fileName}",
-      methods: ["get"],
-    },
-    { path: "/{product}/update/{channel}/app.appinstaller", methods: ["get"] },
-    {
-      path: "/{product}/update/{channel}/{buildId}.AppImage.zsync",
-      methods: ["get"],
-    },
-    { path: "/{product}/update/version", methods: ["get"] },
-  ],
+  surface: UPDATE_ROUTES.surface,
   adminHandle: (ctx: ServiceContext & { session: AdminSession }) =>
     handleUpdateAdmin(ctx),
   /**

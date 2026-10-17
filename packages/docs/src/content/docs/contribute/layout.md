@@ -153,7 +153,9 @@ work down the list until it passes.
    files with it.
 3. **Directory and descriptor.** Create `packages/worker/src/services/<slug>/` with an
    `index.ts` exporting its `ServiceDescriptor` (`slug: "<slug>"`). `boundaries.test.ts` scans
-   it from then on.
+   it from then on. Its routes are a table in `routes.ts`, built with `serviceRoutes`
+   (`core/http/routes.ts`): the descriptor's `handle` and `surface` are that table's, not
+   hand-written. A CI-token row names its scope and body cap, and the table checks the token.
 4. **`mount.ts`.** Import the descriptor and add it to `SERVICES` in table order
    (`serviceTable.test.ts` checks keys and order). A service wires itself in only through its
    descriptor's `contributes` (subject stores, maintenance steps, new-authorization listeners,
@@ -173,9 +175,10 @@ work down the list until it passes.
    pages.
 8. **OpenAPI and the surface.** Add the slug to the discovery document's
    `services.required` in `packages/worker/openapi/polaris-key.v3.yaml` (in table order), every
-   new route to the spec, and each canonical route to the descriptor's `surface` (a path template
-   and its methods; a service with no route yet declares `[]`). `routeCoverage.test.ts` derives
-   its service table from `SERVICES` (rule 10).
+   new route to the spec. The descriptor's `surface` comes from the routes table, so a row is
+   also its path template and methods (a service with no route yet has an empty table; a row
+   whose spec path differs from its pattern sets `doc`). `routeCoverage.test.ts` derives its
+   service table from `SERVICES` (rule 10).
 9. **Console.** A `SECTIONS` entry in `packages/admin/src/console/nav.ts` with the table's accent (the
    slug) and its pages (each with a path, an icon and a docs link), a page module in
    `packages/admin/src/console/sections/`, a section accent in

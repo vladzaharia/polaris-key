@@ -1,18 +1,14 @@
 /// <reference types="@cloudflare/workers-types" />
 
 /**
- * License's own sub-router, over the path segments AFTER `/<product>/license`.
+ * License's routes, as a table (`core/http/routes.ts`), over the path AFTER `/<product>/license`.
  *
- * Returning `null` rather than a 404 for an unmatched segment is the registry contract
- * (`core/registry.ts`): only Core knows whether "no route here" should be a not-found, and
- * centralising that is what makes a disabled service, an unregistered slug and a bad path
- * indistinguishable from outside.
- *
- * Method checks stay inside each handler, exactly as they were before the move, so a `GET
- * /license/activate` still answers `405` rather than falling through to a 404.
+ * Unmatched is `null`, not a 404: only Core knows whether "no route here" should be a not-found
+ * (`core/registry.ts`). A matched path with another method is the plain 405 the table answers
+ * before the handler runs; every handler keeps its own method guard as well.
  */
 
-import type { ServiceContext } from "../../core/registry.js";
+import { serviceRoutes } from "../../core/http/routes.js";
 import {
   handleActivate,
   handleDeauthorize,
@@ -21,23 +17,40 @@ import {
 import { handleLicenseDocument } from "./document.js";
 import { handleEnroll } from "./enroll.js";
 
-export async function handleLicenseRoutes(
-  ctx: ServiceContext,
-): Promise<Response | null> {
-  const { req, env, db, product, rest, now, waitUntil, settings } = ctx;
-  if (rest.length !== 1) return null;
-  switch (rest[0]) {
-    case "activate":
-      return handleActivate(req, env, db, product, now, waitUntil, settings);
-    case "enroll":
-      return handleEnroll(req, env, db, product, now, waitUntil);
-    case "token":
-      return handleToken(req, env, db, product, now);
-    case "deauthorize":
-      return handleDeauthorize(req, env, db, product);
-    case "document":
-      return handleLicenseDocument(req, env, db, product, now, settings);
-    default:
-      return null;
-  }
-}
+export const LICENSE_ROUTES = serviceRoutes("license", [
+  {
+    path: "activate",
+    methods: ["POST"],
+    auth: { kind: "handler" },
+    handler: ({ req, env, db, product, now, waitUntil, settings }) =>
+      handleActivate(req, env, db, product, now, waitUntil, settings),
+  },
+  {
+    path: "enroll",
+    methods: ["POST"],
+    auth: { kind: "handler" },
+    handler: ({ req, env, db, product, now, waitUntil }) =>
+      handleEnroll(req, env, db, product, now, waitUntil),
+  },
+  {
+    path: "token",
+    methods: ["POST"],
+    auth: { kind: "device" },
+    handler: ({ req, env, db, product, now }) =>
+      handleToken(req, env, db, product, now),
+  },
+  {
+    path: "deauthorize",
+    methods: ["POST"],
+    auth: { kind: "device" },
+    handler: ({ req, env, db, product }) =>
+      handleDeauthorize(req, env, db, product),
+  },
+  {
+    path: "document",
+    methods: ["GET"],
+    auth: { kind: "device" },
+    handler: ({ req, env, db, product, now, settings }) =>
+      handleLicenseDocument(req, env, db, product, now, settings),
+  },
+]);

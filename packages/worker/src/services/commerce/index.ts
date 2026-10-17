@@ -33,7 +33,7 @@ import type {
 } from "../../core/registry.js";
 import type { HookContext, StoreProducts } from "../../core/hooks.js";
 import { handleCommerceAdmin } from "./admin.js";
-import { handleCommerceRoutes } from "./bridge.js";
+import { COMMERCE_ROUTES } from "./routes.js";
 import { commerceIntegration } from "./integration.js";
 import { runCommerceTick, type CommerceTick } from "./recheck.js";
 import { COMMERCE_SETTINGS_SLICE } from "./settingsSlice.js";
@@ -91,17 +91,12 @@ export const commerceService: ServiceDescriptor = {
   slug: "commerce",
   contributes: { integration: commerceIntegration },
   settings: COMMERCE_SETTINGS_SLICE,
-  handle: handleCommerceRoutes,
+  handle: COMMERCE_ROUTES.handle,
   /**
    * The canonical surface. The two hooks stay under `/distribution/hooks/` (D1): they are
    * Commerce's routes at the stores' URLs, listed here so `routeCoverage` pins them to Commerce.
    */
-  surface: [
-    { path: "/{product}/commerce/binding", methods: ["get"] },
-    { path: "/{product}/commerce/claim", methods: ["post"] },
-    { path: "/{product}/distribution/hooks/app-store", methods: ["post"] },
-    { path: "/{product}/distribution/hooks/play-rtdn", methods: ["post"] },
-  ],
+  surface: COMMERCE_ROUTES.surface,
   /**
    * `{"enabled":true,"endpoints":{binding,claim}}` and nothing else: discovery never names a
    * store, a product id or a count (plans/CM-29.md §2).

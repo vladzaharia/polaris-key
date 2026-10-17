@@ -1,7 +1,7 @@
 /// <reference types="@cloudflare/workers-types" />
 
 /**
- * Release's own sub-router, over the path segments AFTER `/<product>/release`.
+ * Release's routes, as a table (`core/http/routes.ts`), over the path AFTER `/<product>/release`.
  *
  *     /release/changelog
  *     /release/channels/:channel/{promote,pin,unpin}  POST, `pkeyci_` + release:promote
@@ -23,10 +23,17 @@
 
 import type { ServiceContext } from "../../core/registry.js";
 import { errorResponse, ErrorCode, json } from "../../core/errors.js";
-import { ciActor, readCiJson, requireCiScope } from "../../core/ciScope.js";
+import { ciActor } from "../../core/ciScope.js";
+import { serviceRoutes, type RouteMatch } from "../../core/http/routes.js";
 import { handleRelease } from "./surfaces.js";
 import { getReleaseConfig } from "./config.js";
-import { handlePublishRoute } from "./publish.js";
+import {
+  handleDelegations,
+  handleStage,
+  handleSubmit,
+  handleToken,
+  handleUploads,
+} from "./publish.js";
 import { handleRecordRoute } from "./recordRoute.js";
 import { prunePackages } from "./packages/prune.js";
 import {
@@ -36,55 +43,8 @@ import {
   type PolicyRefusal,
 } from "./policy.js";
 
-export async function handleReleaseRoutes(
-  ctx: ServiceContext,
-): Promise<Response | null> {
-  const { req, env, db, product, rest } = ctx;
-
-  if (rest.length === 1) {
-    if (rest[0] === "changelog")
-      return handleRelease(req, env, db, product, "changelog", {});
-    return null;
-  }
-
-  // A CI-signed release record by its hash (P3-03, `recordRoute.ts`).
-  if (rest.length === 2 && rest[0] === "records")
-    return handleRecordRoute(ctx, rest[1] as string);
-
-  // Trusted publishing (P2-02): the OIDC exchange, upload tickets and the submit.
-  if (rest.length === 2 && rest[0] === "publish")
-    return handlePublishRoute(ctx, rest[1] as string);
-
-  // The CI policy routes (P2-05): `pkeyci_` token with the operation's scope.
-  if (
-    rest.length === 3 &&
-    rest[0] === "channels" &&
-    (rest[2] === "promote" || rest[2] === "pin" || rest[2] === "unpin")
-  ) {
-    if (req.method !== "POST") return null;
-    return handleCiPointer(ctx, rest[1] as string, rest[2]);
-  }
-  if (rest.length === 3 && rest[0] === "releases" && rest[2] === "yank") {
-    if (req.method !== "POST") return null;
-    return handleCiYank(ctx, rest[1] as string);
-  }
-  if (rest.length === 2 && rest[0] === "packages" && rest[1] === "prune") {
-    if (req.method !== "POST") return null;
-    return handleCiPrune(ctx);
-  }
-
-  return null;
-}
-
-// ── CI policy routes (P2-05) ─────────────────────────────────────────────────────────────────
-
 /** A CI body is tiny (`{deliverable?, releaseId}` or `{reason}`). */
 const MAX_CI_BODY_BYTES = 16 * 1024;
-
-/** The JSON object a CI route was sent, or a 400 to answer with. */
-function readCiBody(req: Request): Promise<Record<string, unknown> | Response> {
-  return readCiJson(req, MAX_CI_BODY_BYTES);
-}
 
 function refusal(r: PolicyRefusal): Response {
   return errorResponse(r.status, r.code, r.message, {
@@ -101,23 +61,102 @@ function decodeSegment(segment: string): string | null {
   }
 }
 
+export const RELEASE_ROUTES = serviceRoutes("release", [
+  {
+    path: "changelog",
+    methods: ["GET"],
+    alsoHead: true,
+    auth: { kind: "handler" },
+    handler: ({ req, env, db, product }) =>
+      handleRelease(req, env, db, product, "changelog", {}),
+  },
+  // A CI-signed release record by its hash (P3-03, `recordRoute.ts`).
+  {
+    path: "records/:sha256",
+    methods: ["GET"],
+    alsoHead: true,
+    auth: { kind: "handler" },
+    other: "none",
+    handler: (ctx, { params }) =>
+      handleRecordRoute(ctx, params.sha256 as string),
+  },
+  // Trusted publishing (P2-02): the OIDC exchange, upload tickets and the submit; P4-02's stage
+  // round and P4-19's delegations. Each holds a publisher token and checks it in the handler.
+  {
+    path: "publish/token",
+    methods: ["POST"],
+    auth: { kind: "handler" },
+    other: "none",
+    handler: (ctx) => handleToken(ctx),
+  },
+  {
+    path: "publish/uploads",
+    methods: ["POST"],
+    auth: { kind: "handler" },
+    other: "none",
+    handler: (ctx) => handleUploads(ctx),
+  },
+  {
+    path: "publish/submit",
+    methods: ["POST"],
+    auth: { kind: "handler" },
+    other: "none",
+    handler: (ctx) => handleSubmit(ctx),
+  },
+  {
+    path: "publish/stage",
+    methods: ["POST"],
+    auth: { kind: "handler" },
+    other: "none",
+    handler: (ctx) => handleStage(ctx),
+  },
+  {
+    path: "publish/delegations",
+    methods: ["POST"],
+    auth: { kind: "handler" },
+    other: "none",
+    handler: (ctx) => handleDelegations(ctx),
+  },
+  // The CI policy routes (P2-05): `pkeyci_` token with the operation's scope.
+  ...(["promote", "pin", "unpin"] as const).map((op) => ({
+    path: `channels/:channel/${op}`,
+    doc: `channels/{channel}/${op}`,
+    methods: ["POST"] as const,
+    auth: { kind: "ci", scope: "release:promote" } as const,
+    bodyCap: MAX_CI_BODY_BYTES,
+    other: "none" as const,
+    handler: (ctx: ServiceContext, m: RouteMatch) =>
+      pointer(ctx, m, m.params.channel as string, op),
+  })),
+  {
+    path: "releases/:releaseId/yank",
+    methods: ["POST"],
+    auth: { kind: "ci", scope: "release:yank" },
+    bodyCap: MAX_CI_BODY_BYTES,
+    other: "none",
+    handler: (ctx, m) => ciYank(ctx, m, m.params.releaseId as string),
+  },
+  {
+    path: "packages/prune",
+    methods: ["POST"],
+    auth: { kind: "ci", scope: "release:yank" },
+    bodyCap: MAX_CI_BODY_BYTES,
+    other: "none",
+    handler: ciPrune,
+  },
+]);
+
+// ── CI policy routes (P2-05) ─────────────────────────────────────────────────────────────────
+
 /** `POST /<p>/release/channels/<channel>/{promote,pin,unpin}` — `release:promote`. */
-async function handleCiPointer(
+async function pointer(
   ctx: ServiceContext,
+  m: RouteMatch,
   rawChannel: string,
   op: PointerOp,
 ): Promise<Response> {
-  const { req, env, db, product, now } = ctx;
-  const principal = await requireCiScope(
-    req,
-    env,
-    db,
-    product.slug,
-    "release:promote",
-    now,
-  );
-  if (principal instanceof Response) return principal;
-  const body = await readCiBody(req);
+  const { env, db, product, now } = ctx;
+  const body = await m.readJson();
   if (body instanceof Response) return body;
   const channel = decodeSegment(rawChannel);
   if (channel === null)
@@ -131,7 +170,7 @@ async function handleCiPointer(
     await getReleaseConfig(db, product.slug),
     op,
     { channel, deliverable: body.deliverable, releaseId: body.releaseId },
-    { kind: "ci", principal },
+    { kind: "ci", principal: m.principal! },
     now,
   );
   if (!result.ok) return refusal(result);
@@ -139,21 +178,13 @@ async function handleCiPointer(
 }
 
 /** `POST /<p>/release/releases/<releaseId>/yank` — `release:yank`. */
-async function handleCiYank(
+async function ciYank(
   ctx: ServiceContext,
+  m: RouteMatch,
   rawReleaseId: string,
 ): Promise<Response> {
-  const { req, env, db, product, now } = ctx;
-  const principal = await requireCiScope(
-    req,
-    env,
-    db,
-    product.slug,
-    "release:yank",
-    now,
-  );
-  if (principal instanceof Response) return principal;
-  const body = await readCiBody(req);
+  const { env, db, product, now } = ctx;
+  const body = await m.readJson();
   if (body instanceof Response) return body;
   const releaseId = decodeSegment(rawReleaseId);
   if (releaseId === null)
@@ -166,7 +197,7 @@ async function handleCiYank(
     product.slug,
     releaseId,
     body.reason,
-    { kind: "ci", principal },
+    { kind: "ci", principal: m.principal! },
     now,
   );
   if (!result.ok) return refusal(result);
@@ -180,18 +211,9 @@ async function handleCiYank(
  * main below its newest stable release. A DRY RUN unless `apply` is `true`; every deletion is
  * audited as `ci:<subject>`.
  */
-async function handleCiPrune(ctx: ServiceContext): Promise<Response> {
-  const { req, env, db, product, now } = ctx;
-  const principal = await requireCiScope(
-    req,
-    env,
-    db,
-    product.slug,
-    "release:yank",
-    now,
-  );
-  if (principal instanceof Response) return principal;
-  const body = await readCiBody(req);
+async function ciPrune(ctx: ServiceContext, m: RouteMatch): Promise<Response> {
+  const { env, db, product, now } = ctx;
+  const body = await m.readJson();
   if (body instanceof Response) return body;
   if (body.apply !== undefined && typeof body.apply !== "boolean")
     return errorResponse(400, ErrorCode.BadRequest, "apply is a boolean", {
@@ -210,7 +232,7 @@ async function handleCiPrune(ctx: ServiceContext): Promise<Response> {
     ...(body.deliverable !== undefined
       ? { deliverable: body.deliverable as string }
       : {}),
-    actor: { sub: ciActor(principal), name: "CI" },
+    actor: { sub: ciActor(m.principal!), name: "CI" },
     now,
   });
   if (!report)

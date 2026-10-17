@@ -23,7 +23,7 @@ import {
 } from "./seed.js";
 import { loadProduct, type Product } from "../src/core/products.js";
 import { handleActivate } from "../src/services/license/activation.js";
-import { handleLicenseRoutes } from "../src/services/license/routes.js";
+import { LICENSE_ROUTES } from "../src/services/license/routes.js";
 import { authorizeDevice } from "../src/core/licensing/authz.js";
 import {
   REFUSAL_LABEL_MAX,
@@ -178,7 +178,7 @@ describe("the refusal site logs refusals", () => {
         pending.push(p);
       },
     };
-    const res = await handleLicenseRoutes(ctx);
+    const res = await LICENSE_ROUTES.handle(ctx);
     expect(res?.status).toBe(403);
     expect(pending).toHaveLength(1);
     await Promise.all(pending);
