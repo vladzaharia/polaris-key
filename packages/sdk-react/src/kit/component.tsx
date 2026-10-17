@@ -375,7 +375,8 @@ export function useKit(
         Number.parseFloat(
           getComputedStyle(document.documentElement).fontSize,
         ) || 16;
-      const snug = wh > 0 && wh / rem < 34 && next !== "short";
+      const snug =
+        wh > 0 && wh / rem < 34 && (next !== "short" || wh / rem < 18);
       cancelAnimationFrame(frame);
       // After this frame's layout: a shape change never re-enters the observer's loop.
       frame = requestAnimationFrame(() => {
@@ -695,7 +696,10 @@ export function PolarisKeyGate(props: PolarisKeyGateProps): ReactNode {
     },
     (v, input) => {
       const screen = gateScreen(v, step);
-      return screen ? viewOf(screen, input) : v;
+      if (!screen) return v;
+      // Focus follows the view as drawn: a revoked screen focuses its Sign in.
+      const drawn = viewOf(screen, input);
+      return driven ? adaptStatus(drawn, input) : drawn;
     },
   );
   const { view, input } = kit;

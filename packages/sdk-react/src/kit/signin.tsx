@@ -45,7 +45,7 @@ import {
   type FormInput,
   type FormStep,
 } from "./contract.js";
-import { text, type Chrome } from "./parts.js";
+import { GLYPHS, text, type Chrome } from "./parts.js";
 import { withChoice } from "./licenseRows.js";
 import { renderView } from "./views.js";
 
@@ -256,6 +256,11 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
   closeRef.current = close;
   // The host hears the sign-in finished once per sign-in (it can finish its own task).
   const doneSent = useRef(false);
+  /** The toast an existing license leaves in the page when its sheet closes. */
+  const [toast, setToast] = useState<{
+    key: string;
+    args: Record<string, string>;
+  } | null>(null);
   const finish = () => {
     if (doneSent.current) return;
     doneSent.current = true;
@@ -415,8 +420,23 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
       return;
     }
     finish();
-    if (sheet && props.open && !input.signIn?.issuedNow) closeRef.current();
+    if (sheet && props.open && !input.signIn?.issuedNow) {
+      const holder = input.account?.holder?.trim();
+      const tier = input.account?.tier;
+      setToast(
+        holder && tier
+          ? { key: "signin.desktop.toast", args: { name: holder, tier } }
+          : { key: "signin.return.signedInShort", args: {} },
+      );
+      closeRef.current();
+    }
   }, [outcome]);
+  // The toast lasts a few seconds.
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 6000);
+    return () => clearTimeout(t);
+  }, [toast]);
 
   // Focus follows the step: the new heading takes it when the old control is gone (or the sheet
   // is open), unless the kit already put it on a field.
@@ -513,6 +533,20 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
             : undefined
       }
     >
+      {sheet && toast ? (
+        <div
+          className="toast pk-flash"
+          role="status"
+          data-part="toast"
+          data-key={toast.key}
+          data-status="success"
+        >
+          {GLYPHS.success()}
+          <span className="texts">
+            <span>{text(c, toast.key, toast.args)}</span>
+          </span>
+        </div>
+      ) : null}
       {sheet ? (
         <dialog
           ref={dialogRef}
