@@ -38,17 +38,17 @@ Every feed sits under its owner, the product slug, so a product never shadows an
 
 Every read runs one access check before the edge cache: the platform's switch for the ecosystem, then the owner's Distribution and package-feeds switch, then the feed's own switch, then the access mode. The stricter of the feed's mode and the package's delivery access applies.
 
-| Mode      | Who may install                                                                                                                                   |
-| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Public    | Anyone. No credential is ever looked up                                                                                                           |
-| Customers | A registry token (`pkeyr_…`) of this product. An owner-bound or CI token passes, and a license-bound token needs an active license                |
-| Entitled  | Owner-bound and CI tokens pass. A license-bound token also needs the package's delivery gate flag. A package with no gate admits no license token |
+| Mode      | Who may install                                                                                                                                                                                                |
+| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Public    | Anyone. No credential is ever looked up                                                                                                                                                                        |
+| Customers | A registry token (`pkeyr_…`) of this product, or a personal token (`pkeyp_…`) of an account with an active license in it. An owner-bound or CI token passes, and a license-bound token needs an active license |
+| Entitled  | Owner-bound and CI tokens pass. A license-bound or personal token also needs the package's delivery gate flag. A package with no gate admits no license token                                                  |
 
 Customers is stored as `authenticated` or `licensed`. They are one strictness. A package stricter than its feed is left out of list documents, so a license holder finds it in Godot search or the PyPI project list only by its exact name.
 
 A token that is absent, malformed, unknown, expired, revoked, another owner's or outside its feeds gets the registry's native `401`. A refused license token is `403`. Device tokens (`pkeyt_…`) and license keys (`pkey_…`) are never registry credentials. Each client sends the token its own way: Bearer for npm, pnpm, Yarn, Bun and SwiftPM; Basic `__token__:<token>` for pip, uv, Poetry, Gradle and Maven; `docker login pkg.plrs.im -u __token__`, traded at `/v2/token` for a 5-minute pull token; the bare token for Cargo; and for the Godot editor, which sends no credentials, a read-only **Godot editor URL** token inside the URL. Setup for each client is under **Private feeds** on [Install the SDKs and the CLI](/docs/build/install/).
 
-Every token expires within a year, is bound to one owner and is stored only as a hash. A revoked token, a disabled license, a tightened feed and a deleted product all take effect within 30 seconds. docker, SwiftPM and netrc keep one credential per host, so one device holds a token for one owner on `pkg.plrs.im` for those clients.
+Every token expires within a year and is stored only as a hash. A registry token is bound to one owner. A personal token is not: see [Personal tokens](#personal-tokens). A revoked token, a disabled license, a tightened feed and a deleted product all take effect within 30 seconds. docker, SwiftPM and netrc keep one credential per host, so one device holds a token for one owner on `pkg.plrs.im` for those clients.
 
 ## Caching
 
@@ -114,9 +114,21 @@ Each feed page has four tabs and **Rebuild feed** under **More actions**:
 
 A version row offers only what the protocol can express. A yank needs a reason and is a danger confirmation. Unyank, deprecate and lifting a deprecation are caution confirmations. There is no delete: a version number is unique forever, so a yanked version can never be published again.
 
+### Personal tokens
+
+A personal token (`pkeyp_…`) belongs to a person, not a product. One token installs every package the account may read, across products. A person creates it in the portal under **Account → Packages**: a name, 1 to 365 days (90 by default), at most 25 live, `packages:read` only. Creating one needs a sign-in from the last 5 minutes. The token is shown once and stored only as a keyed hash; the list shows its name, last four characters, last use and expiry.
+
+The registry host works out what the token may read for each owner on every request:
+
+- The account's active licenses in the owner's product, judged exactly as a license-bound token is: usable for Customers, and for Entitled also holding the package's gate flag.
+- The platform's own product (`system`) is never readable by a customer's token, whatever licenses the account holds.
+- A personal token never publishes, and is never a Godot editor URL token.
+
+A person revokes their own tokens. A platform admin lists every personal token under **Personal tokens** in the console and can revoke one; they cannot create one. Revoking takes effect within 30 seconds. An erased account's tokens are revoked first; merging two accounts moves the tokens to the one that stays.
+
 ### Registry tokens
 
-**Tokens** lists the owner's `pkeyr_…` tokens: label, last four characters, feeds, binding, creator, expiry, last use and status. **New token** asks for a label, the feeds, an expiry of 1 to 365 days (90 by default), a binding (the product, or one license), and **Godot editor URL**, a read-only token for the Godot feed that lasts 30 days by default. The token is shown once. **Access** chooses **Read** or **Read and publish**. A publish token is bound to the product, names its feeds explicitly and lasts 1 to 30 days (7 by default). Revoking is a danger confirmation and takes effect within 30 seconds. **Revoke all** revokes every active token of the owner, including those licensees minted. A license's **Keys** tab has a **Registry tokens** panel for the tokens bound to it. A licensee can mint their own read tokens in the portal whenever the product has an enabled feed that isn't public.
+**Tokens** lists the owner's `pkeyr_…` tokens: label, last four characters, feeds, binding, creator, expiry, last use and status. **New token** asks for a label, the feeds, an expiry of 1 to 365 days (90 by default), a binding (the product, or one license), and **Godot editor URL**, a read-only token for the Godot feed that lasts 30 days by default. The token is shown once. **Access** chooses **Read** or **Read and publish**. A publish token is bound to the product, names its feeds explicitly and lasts 1 to 30 days (7 by default). Revoking is a danger confirmation and takes effect within 30 seconds. **Revoke all** revokes every active token of the owner, including those licensees minted. A license's **Keys** tab has a **Registry tokens** panel for the tokens bound to it. The portal no longer mints license-bound tokens: licensees create a personal token instead. The license-bound tokens already minted keep working until they expire and can still be revoked.
 
 ### Retention
 

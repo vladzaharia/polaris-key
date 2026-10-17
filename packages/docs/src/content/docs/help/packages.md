@@ -1,18 +1,40 @@
 ---
 title: "Install an app's packages"
-description: "Find where an app's packages are set up, and what to do when a development build is gone."
+description: "Create a token, find the setup for an app's packages, and what to do when a development build is gone."
 type: "help"
 status: "shipped"
-lastReviewed: "2026-10-11"
+lastReviewed: "2026-10-17"
 sidebar:
   order: 7
 ---
 
-Some apps publish packages for people whose license includes them: a library, a command-line tool, a container image or an add-on. You install one with a package manager such as npm, pip or Docker. This page shows where to find the setup and which versions stay available.
+Some apps publish packages for people whose license includes them: a library, a command-line tool, a container image or an add-on. You install one with a package manager such as npm, pip or Docker. This page shows how to create a token, where to find the setup and which versions stay available.
 
 ## Find the setup
 
-When an app has private packages, its page in your library at key.plrs.im has a **Package access** section. It shows the setup for each package manager.
+Open **Account → Packages** at key.plrs.im. It lists the private packages your licenses include, with the setup for each package manager. Choose a product if you have more than one.
+
+A product's page in your library has a **Packages** row that links there.
+
+## Create a token
+
+One token installs every package your licenses include. Create one for each computer or build server.
+
+1. Open **Account → Packages** and choose **Create token**.
+2. Name it, for example "Work laptop". Choose how long it lasts, up to a year. The default is 90 days.
+3. If asked, confirm it's you. You can create a token for 5 minutes after you sign in.
+4. Copy the token. It is shown once. If you lose it, revoke it and create another.
+5. Set the environment variable `PKEY_REGISTRY_TOKEN` to the token, then follow the setup on the page.
+
+**Check it worked.** The token appears in your list with "never used". After your first install it shows when it was last used.
+
+A token only reads. It works while a license that includes the package is active, and stops when the token expires or you revoke it.
+
+## Revoke a token
+
+Choose **Revoke** next to the token, then confirm. Anything installing with it stops at once. Removing a token you no longer use is always safe: create a new one when you need it.
+
+Tokens you made on a product's page before this change keep working until they expire. Revoke them from that product's page, or let them expire.
 
 ## Which versions stay available
 
