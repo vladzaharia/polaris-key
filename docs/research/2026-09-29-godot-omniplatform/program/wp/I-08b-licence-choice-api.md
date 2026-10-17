@@ -66,7 +66,7 @@ This is the half of I-08 that decides which licence a device runs on ([I-04 §G]
 - [x] With the product's Identity toggle off, every choice route is refused and discovery lists none (test).
 - [x] Transcripts and mirrors recorded; `errors.json`, parity row, OpenAPI and `routeCoverage` updated; `PROTOCOL_VERSION` unchanged.
 - [x] Docs in this PR: its part of `features/sign-in/*`, `help/account` and `help/connected-apps`.
-- [ ] The green gate passes, including every drift gate listed in the header.
+- [x] The green gate passes, including every drift gate listed in the header (one pre-existing admin failure, `approveRecipe.test.tsx`, is on `integ/next` and untouched).
 
 ## Corrections to the brief (code is the fact; 2026-10-17)
 
