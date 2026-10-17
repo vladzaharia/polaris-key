@@ -4,49 +4,49 @@
     {
       "kit": "compose",
       "rule": "compose-legacy-icons",
-      "file": "sdks/kotlin/ui/src/main/kotlin/im/plrs/key/ui/PolarisBoot.kt",
+      "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisBoot.kt",
       "count": 4
     },
     {
       "kit": "compose",
       "rule": "compose-legacy-icons",
-      "file": "sdks/kotlin/ui/src/main/kotlin/im/plrs/key/ui/PolarisDevices.kt",
+      "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisDevices.kt",
       "count": 2
     },
     {
       "kit": "compose",
       "rule": "compose-legacy-icons",
-      "file": "sdks/kotlin/ui/src/main/kotlin/im/plrs/key/ui/PolarisGate.kt",
+      "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisGate.kt",
       "count": 2
     },
     {
       "kit": "compose",
       "rule": "compose-legacy-icons",
-      "file": "sdks/kotlin/ui/src/main/kotlin/im/plrs/key/ui/PolarisScreen.kt",
+      "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisScreen.kt",
       "count": 8
     },
     {
       "kit": "compose",
       "rule": "compose-legacy-icons",
-      "file": "sdks/kotlin/ui/src/main/kotlin/im/plrs/key/ui/PolarisSettings.kt",
+      "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisSettings.kt",
       "count": 2
     },
     {
       "kit": "compose",
       "rule": "compose-legacy-icons",
-      "file": "sdks/kotlin/ui/src/main/kotlin/im/plrs/key/ui/PolarisUpdate.kt",
+      "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisUpdate.kt",
       "count": 6
     },
     {
       "kit": "compose",
       "rule": "compose-stock-spinner",
-      "file": "sdks/kotlin/ui/src/main/kotlin/im/plrs/key/ui/PolarisScreen.kt",
+      "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisScreen.kt",
       "count": 1
     },
     {
       "kit": "compose",
       "rule": "compose-system-alert",
-      "file": "sdks/kotlin/ui/src/main/kotlin/im/plrs/key/ui/PolarisDevices.kt",
+      "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisDevices.kt",
       "count": 2
     },
     {

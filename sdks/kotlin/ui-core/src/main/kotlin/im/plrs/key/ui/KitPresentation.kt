@@ -136,6 +136,12 @@ public class KitInputs private constructor(internal val raw: JsonObject) {
         /** Creates immutable inputs from a member map. */
         public fun of(input: Map<String, JsonElement>): KitInputs = KitInputs(JsonObject(input))
     }
+
+    /** Whether the inputs carry the member [name], even as an explicit null. */
+    public fun has(name: String): Boolean = raw.containsKey(name)
+
+    /** These inputs with the member [name] set to [value]. */
+    public fun with(name: String, value: JsonElement): KitInputs = KitInputs(JsonObject(raw + (name to value)))
 }
 
 /** The source selected for a product accent. */

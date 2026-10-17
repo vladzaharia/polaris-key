@@ -12,8 +12,9 @@
 // (checkModuleBoundaries). Published to the local build/repo only, like every Kotlin module.
 plugins {
     alias(libs.plugins.android.library)
-    alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.compose.multiplatform)
     alias(libs.plugins.roborazzi)
     `maven-publish`
 }
@@ -76,9 +77,56 @@ androidComponents {
     beforeVariants(selector().withBuildType("release")) { it.enableUnitTest = false }
 }
 
+// Compose Multiplatform is here for its resources only (the generated string tables under
+// commonMain/composeResources). The UI libraries stay on the androidx Compose BOM, so the Android
+// toolchain remains the Godot template's (AGP 8.6.1, Kotlin 2.1); UK-10 adds the desktop target.
+compose.resources {
+    packageOfResClass = "im.plrs.key.ui.res"
+    generateResClass = always
+}
+
 kotlin {
     jvmToolchain(jvmTarget.toInt())
     explicitApi()
+
+    androidTarget {
+        publishLibraryVariants("release")
+    }
+
+    sourceSets {
+        commonMain.dependencies {
+            api(project(":ui-core"))
+            api(project.dependencies.platform(libs.compose.bom))
+            api(libs.compose.runtime)
+            api(libs.compose.ui)
+            api(libs.compose.foundation)
+            api(libs.compose.material3)
+            implementation(compose.components.resources)
+        }
+        androidMain.dependencies {
+            api(project(":sdk"))
+            implementation(libs.compose.ui.graphics)
+            implementation(libs.compose.material.icons.core)
+            implementation(libs.compose.ui.tooling.preview)
+            implementation(libs.zxing.core)
+            implementation(libs.androidx.lifecycle.viewmodel)
+        }
+        getByName("androidUnitTest") {
+            dependencies {
+                implementation(project.dependencies.testFixtures(project(":core")))
+                implementation(libs.junit)
+                implementation(libs.robolectric)
+                implementation(libs.androidx.test.core)
+                implementation(libs.androidx.test.ext.junit)
+                implementation(libs.compose.ui.test.junit4)
+                implementation(libs.androidx.activity.compose)
+                implementation(libs.roborazzi)
+                implementation(libs.roborazzi.compose)
+                implementation(libs.roborazzi.junit.rule)
+                implementation(libs.kotlinx.coroutines.test)
+            }
+        }
+    }
 }
 
 base { archivesName.set("polaris-key-ui") }
@@ -89,57 +137,33 @@ roborazzi {
 }
 
 dependencies {
-    api(project(":sdk"))
-    api(project(":ui-core"))
-    api(platform(libs.compose.bom))
-    api(libs.compose.ui)
-    api(libs.compose.foundation)
-    api(libs.compose.material3)
-    implementation(libs.compose.ui.graphics)
-    implementation(libs.compose.material.icons.core)
-    implementation(libs.compose.ui.tooling.preview)
-    implementation(libs.zxing.core)
-    implementation(libs.androidx.lifecycle.viewmodel)
     debugImplementation(libs.compose.ui.tooling)
     debugImplementation(libs.compose.ui.test.manifest)
-
-    testImplementation(testFixtures(project(":core")))
-    testImplementation(libs.junit)
-    testImplementation(libs.robolectric)
-    testImplementation(libs.androidx.test.core)
-    testImplementation(libs.androidx.test.ext.junit)
-    testImplementation(libs.compose.ui.test.junit4)
-    testImplementation(libs.androidx.activity.compose)
-    testImplementation(libs.roborazzi)
-    testImplementation(libs.roborazzi.compose)
-    testImplementation(libs.roborazzi.junit.rule)
-    testImplementation(libs.kotlinx.coroutines.test)
 }
 
+// The KMP plugin makes the publications: the root (polaris-key-ui, which Gradle metadata resolves to
+// the platform artifact) and the Android one (polaris-key-ui-android).
 afterEvaluate {
     publishing {
-        publications {
-            create<MavenPublication>("ui") {
-                from(components["release"])
-                groupId = project.group.toString()
-                artifactId = "polaris-key-ui"
-                version = project.version.toString()
-                pom {
-                    name.set("Polaris Key UI (Jetpack Compose)")
-                    description.set(
-                        "The Polaris Key Kotlin SDK's Jetpack Compose UI kit: boot shell, gate, activation, sign-in with QR, " +
-                            "settings, devices, update banner and prompt, pack progress. Neutral Material 3 by default; " +
-                            "Polaris Key branding is opt-in.",
-                    )
-                    url.set("https://github.com/vladzaharia/polaris-key")
-                    licenses {
-                        license {
-                            name.set("MIT License")
-                            url.set("https://opensource.org/licenses/MIT")
-                        }
+        publications.withType<MavenPublication>().configureEach {
+            groupId = project.group.toString()
+            version = project.version.toString()
+            artifactId = if (name == "kotlinMultiplatform") "polaris-key-ui" else "polaris-key-ui-android"
+            pom {
+                name.set("Polaris Key UI (Jetpack Compose)")
+                description.set(
+                    "The Polaris Key Kotlin SDK's Jetpack Compose UI kit: boot shell, gate, activation, sign-in with QR, " +
+                        "settings, devices, update banner and prompt, pack progress. Neutral Material 3 by default; " +
+                        "Polaris Key branding is opt-in.",
+                )
+                url.set("https://github.com/vladzaharia/polaris-key")
+                licenses {
+                    license {
+                        name.set("MIT License")
+                        url.set("https://opensource.org/licenses/MIT")
                     }
-                    scm { url.set("https://github.com/vladzaharia/polaris-key") }
                 }
+                scm { url.set("https://github.com/vladzaharia/polaris-key") }
             }
         }
     }

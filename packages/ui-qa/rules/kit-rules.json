@@ -6,7 +6,10 @@
       "extensions": [".swift"]
     },
     "compose": {
-      "roots": ["sdks/kotlin/ui/src/main/kotlin"],
+      "roots": [
+        "sdks/kotlin/ui/src/commonMain/kotlin",
+        "sdks/kotlin/ui/src/androidMain/kotlin"
+      ],
       "extensions": [".kt"]
     },
     "godot": {
