@@ -297,3 +297,47 @@ Reconciled against main in the 2026-10-16 audit. Remaining:
 - Framework recipes/docs pages, examples, parity rows, string lint
 - Catalog gaps: platform-name keys, Replace title key, provider/store inputs
 - BUILT-mode pkey-ux-reviewer pass and design review
+
+## Progress and continuation (2026-10-16, second session)
+
+Branch `wp/UK-04-continue`. Done:
+
+- **Catalog gaps.** `part.platform.<id>` for 13 platforms (the nine `Os` ids plus `ipados`,
+  `chromeos`, `steamos`, `freebsd`; trademarks, the same in every locale) and
+  `signin.replace.heading` ("Replace a device", title role) are in the brand catalog and every
+  generated table (`pnpm gen brand`). The elements read platform names from the catalog first
+  (`platformLabel(id, copy)`), the typed table is the fallback. `{provider}` was already filled by
+  ui-core (`UiInput.provider`); a license row's `{store}` now has an input
+  (`LicenseChoiceRow.store`, additive in ui-core) and a store row without a name no longer prints
+  "From {store}".
+- **String lint.** `test/strings.test.ts` runs every `ui-matrix.json` component row through
+  ui-qa's matcher and allow list (new `elements` entries in `strings.allow.json`, each with a
+  reason) and fails on an unfilled kit argument. Parity: React's `ui.*` rows already name
+  `packages/elements/test`; the new tests carry the `@pkey-feature ui.*` tags.
+- **Docs and sample.** `build/ui/frameworks/elements.mdx` (on the template, in the sidebar) and
+  `examples/ui/elements/` (a static page on fixtures, no `--live` because `<pk-gate>` has no live
+  adapter). Self-look in Chromium, dark and light, 390 and 1440: `<pk-gate>` now fills the window
+  on Welcome, the blocking screens and boot (`data-fill`, which the stylesheet had but nothing set).
+- **CDN bundle.** `pnpm --filter @polaris-key/elements bundle:cdn` writes `pk.js`, split locale
+  chunks, `fonts/` and `integrity.json` (sha384, reproducible) under `<version>/` and `<major>/`.
+
+Still to do, in this order:
+
+1. **The Worker route (rule 10, its own commit).** `/elements/<major|version>/<file>` serving
+   `bundle:cdn`'s output from the `ASSETS` binding (`assemble-assets.mjs` copies `dist/cdn`):
+   `Route` kind and `routeCoverage` row, the OpenAPI entry, `elements` added to
+   `RESERVED_PRODUCT_SLUGS` (`shared-manifest/src/productSlug.ts`, `product.schema.json`
+   `$defs.slug.not.enum`, the Action bundle and docs reference regenerate), a THREAT-MODEL row for
+   serving script, headers (`nosniff`, `Cross-Origin-Resource-Policy: cross-origin`, CORS for
+   module loads, `immutable` only on the exact-version path, a short max-age on the major path).
+   Then flip the package to public (release closure, UK-03's `ba4184ea0` list) and the kit's
+   status to ships.
+2. **Pixel baselines** (React renders on the elements' contract now, but ui-qa's diff is not
+   switched): the `toMatchScreenshot` compare at the §7.1 rows, WebKit.
+3. **Corpus fixture gaps (plan-mode, UK-02b):** `Activate/done` rows carry no `activation.tier` or
+   `term` (the verdict keeps `{tier} · {term}`); several rows leave `{tier}`, `{size}`, `{time}`,
+   `{date}`, `{version}` out. `signin.replace.heading` is not wired: the Replace step's copy list
+   comes from ui-core and the corpus, so using it is a model plus corpus change.
+4. A live adapter for `<pk-gate>` (and `--live` in the sample), the htmx sample, kit tabs on the
+   component pages, the UX review and the design review. React's own platform names should read
+   `part.platform.*` too.

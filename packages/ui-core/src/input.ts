@@ -156,6 +156,8 @@ export interface LicenseChoiceRow {
   tierName: string;
   name: string | null;
   origin: string;
+  /** The store's name ("Steam", "App Store") on a store-origin license; fills `{store}`. */
+  store?: string;
   access: "seats" | "account";
   seats: { used: number; limit: number | null };
   current: boolean;

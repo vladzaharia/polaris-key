@@ -71,6 +71,26 @@ describe("the form's steps", () => {
     expect(root.querySelector('[data-part="license-list"]')).not.toBeNull();
   });
 
+  it("names a store-origin license's store, never a raw {store}", async () => {
+    const base = input("SignIn/choose: desktop");
+    const choices = base.choices!;
+    const i: UiInput = {
+      ...base,
+      choices: {
+        ...choices,
+        choices: choices.choices.map((r) => ({
+          ...r,
+          origin: "store",
+          store: "Steam",
+        })),
+      },
+    };
+    const el = await draw("pk-sign-in", { input: i });
+    const text = el.shadowRoot!.textContent ?? "";
+    expect(text).toContain("From Steam");
+    expect(text).not.toContain("{store}");
+  });
+
   it("titles Replace a device, preselects the least recent and names it in the confirm", async () => {
     const el = await draw("pk-sign-in", {
       input: input("SignIn/replace: the web confirms inline"),
