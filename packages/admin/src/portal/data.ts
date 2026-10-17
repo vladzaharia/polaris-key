@@ -23,6 +23,7 @@ import {
   type PortalMethods,
   type PortalMintTokenInput,
   type PortalPackageAccess,
+  type PortalPersonalTokens,
   type PortalProduct,
   type PortalProfile,
   type PortalProfileChange,
@@ -61,6 +62,7 @@ const qk = {
   portalProduct: (product: string) => ["portal", "product", product] as const,
   portalRegistryTokens: (product: string, license: string) =>
     ["portal", "registryTokens", product, license] as const,
+  portalPersonalTokens: () => ["portal", "personalTokens"] as const,
   portalProfile: () => ["portal", "profile"] as const,
   portalMethods: () => ["portal", "methods"] as const,
   portalSessions: () => ["portal", "sessions"] as const,
@@ -353,6 +355,33 @@ export function usePackageAccess(
         throw err;
       }
     },
+  });
+}
+
+/** Account → Packages: the person's `pkeyp_` tokens and the private feeds they reach. */
+export function usePersonalTokens(): UseQueryResult<PortalPersonalTokens> {
+  return useQuery({
+    queryKey: qk.portalPersonalTokens(),
+    queryFn: () => portalApi.personalTokens(),
+  });
+}
+
+export function useMintPersonalToken() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { label: string; expiresInDays?: number }) =>
+      portalApi.mintPersonalToken(input),
+    onSuccess: () =>
+      void qc.invalidateQueries({ queryKey: qk.portalPersonalTokens() }),
+  });
+}
+
+export function useRevokePersonalToken() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (tokenId: string) => portalApi.revokePersonalToken(tokenId),
+    onSuccess: () =>
+      void qc.invalidateQueries({ queryKey: qk.portalPersonalTokens() }),
   });
 }
 

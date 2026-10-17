@@ -1752,8 +1752,23 @@ subject `p:<tokenId>`, so each repository's owner is judged on its own request; 
 pull tokens still need `own` to equal the owner, so a personal pull token cannot push or be
 replayed against a publisher check.
 
+**The Superadmin roster is read and revoke only.** `GET /manage/api/account-tokens` and
+`DELETE /manage/api/account-tokens/:id` (`console/handlers/accountTokens.ts`, Platform area, session
+only: a token principal is refused before the handler, so a token cannot revoke or list tokens).
+The list carries each token's label, last four characters, scope, times and the account's
+primary email (never its id), never the token or its hash, so a Superadmin sees whose token it is and nothing that
+authenticates. There is no admin mint: a person's credential is made by that person. A revoke is
+audited in `platform_audit` as `account_token.revoke` (label and last four characters) and stores
+`revoked_by = admin`, with no operator subject, because the portal shows `revokedBy` to the
+account's owner. Tests: `test/accountTokensAdmin.test.ts`.
+
+**The portal stopped minting licence-bound `pkeyr_` tokens.** `POST` on a licence's
+`registry-tokens` answers 410; the ones already minted are listed, honoured and revocable until
+they expire, so no installed machine breaks at the deploy.
+
 **Revocation.** By the person, individually (Account → Packages); by a Superadmin
-(`revokeAllAccountTokens`, reason `admin`); by erasure (the erasure stops the account's
+(`revokeAccountTokenAsAdmin`, reason `admin`, one token at a time from the console;
+`revokeAllAccountTokens` is the account-wide store half); by erasure (the erasure stops the account's
 tokens first, reason `account_deleted`, then deletes them in its closing batch, labels included; and the request-time erasure fence refuses a restored token of an
 erased account: a ledger that cannot be read resolves to nothing for that request). A merge moves
 the tokens to the surviving account and its undo moves exactly those back. A revoke takes effect

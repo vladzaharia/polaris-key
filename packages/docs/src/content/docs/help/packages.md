@@ -1,18 +1,35 @@
 ---
 title: "Install an app's packages"
-description: "Find where an app's packages are set up, and what to do when a development build is gone."
+description: "Create an access code, find the setup for an app's packages, and what to do when a development build is gone."
 type: "help"
 status: "shipped"
-lastReviewed: "2026-10-11"
+lastReviewed: "2026-10-17"
 sidebar:
   order: 7
 ---
 
-Some apps publish packages for people whose license includes them: a library, a command-line tool, a container image or an add-on. You install one with a package manager such as npm, pip or Docker. This page shows where to find the setup and which versions stay available.
+Some apps publish packages for people whose license includes them: a library, a command-line tool, a container image or an add-on. You install one with a package manager such as npm, pip or Docker. This page shows how to create an access code, where to find the setup and which versions stay available.
 
 ## Find the setup
 
-When an app has private packages, its page in your library at key.plrs.im has a **Package access** section. It shows the setup for each package manager.
+Open **Account → Packages** at key.plrs.im. It shows the setup for each package manager, for each app whose license includes private packages.
+
+## Create an access code
+
+One access code installs every package your licenses include. Make one per computer.
+
+1. Choose **Create access code**, name it, and pick how long it lasts, up to a year.
+2. If asked, confirm it's you.
+3. Copy the code. It is shown once. If you lose it, revoke it and make another.
+4. Set the environment variable `PKEY_REGISTRY_TOKEN` to the code, then follow the setup on the page.
+
+**Check it worked.** The code is in your list. After your first install it shows its last use.
+
+A code only reads. It works while a license that includes the package is active.
+
+## Revoke an access code
+
+Choose **Revoke** next to the code, then confirm. Anything using it stops at once. Older codes keep working until they expire.
 
 ## Which versions stay available
 

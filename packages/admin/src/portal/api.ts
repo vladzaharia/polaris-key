@@ -484,6 +484,41 @@ export interface PortalPackageAccess {
   };
 }
 
+/** One personal token (`pkeyp_`) as Account → Packages lists it: never the plaintext or the hash. */
+export interface PortalPersonalToken {
+  id: string;
+  label: string;
+  /** The plaintext's last four characters. */
+  hint: string;
+  scope: string;
+  createdAt: number;
+  expiresAt: number;
+  lastUsedAt: number | null;
+  revokedAt: number | null;
+  status: "active" | "expired" | "revoked";
+}
+
+/** A private feed one of the account's licences reaches. */
+export interface PortalReadableFeed extends PortalPackageFeed {
+  product: string;
+  productName: string;
+}
+
+/** `GET /api/me/tokens`: Account → Packages. */
+export interface PortalPersonalTokens {
+  registryOrigin: string | null;
+  username: string;
+  tokens: PortalPersonalToken[];
+  feeds: PortalReadableFeed[];
+  limits: {
+    minDays: number;
+    maxDays: number;
+    defaultDays: number;
+    labelMax: number;
+    perAccount: number;
+  };
+}
+
 export interface PortalMintTokenInput {
   label: string;
   ecosystem?: string | null;
@@ -1278,6 +1313,17 @@ export const portalApi = {
   packageAccess: (product: string, id: string) =>
     call<PortalPackageAccess>(
       `/api/licenses/${enc(product)}/${enc(id)}/registry-tokens`,
+    ),
+  personalTokens: () => call<PortalPersonalTokens>("/api/me/tokens"),
+  mintPersonalToken: (input: { label: string; expiresInDays?: number }) =>
+    call<{ ok: true; token: string; view: PortalPersonalToken }>(
+      "/api/me/tokens",
+      { method: "POST", body: JSON.stringify(input) },
+    ),
+  revokePersonalToken: (tokenId: string) =>
+    call<{ ok: true; view: PortalPersonalToken }>(
+      `/api/me/tokens/${enc(tokenId)}`,
+      { method: "DELETE" },
     ),
   mintRegistryToken: (
     product: string,

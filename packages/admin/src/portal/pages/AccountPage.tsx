@@ -12,6 +12,7 @@ import { cn } from "../../lib/cn.js";
 import type { PortalAccount } from "../api.js";
 import { ProfileCard } from "../components/ProfileCard.js";
 import { SignInMethods } from "../components/account/SignInMethods.js";
+import { PackagesCard } from "../components/account/PackagesCard.js";
 import { SessionsCard } from "../components/account/SessionsCard.js";
 import { SectionCard } from "../components/product/Card.js";
 import { DownloadData } from "../components/DownloadData.js";
@@ -48,6 +49,7 @@ import { t } from "../../lib/copy.js";
 const SECTIONS: { id: AccountSection; label: string }[] = [
   { id: "profile", label: "Profile" },
   { id: "methods", label: "Sign-in methods" },
+  { id: "packages", label: "Packages" },
   { id: "sessions", label: "Where you're signed in" },
   { id: "appearance", label: "Appearance" },
   { id: "data", label: "Your data" },
@@ -163,6 +165,7 @@ export function AccountPage({
         <div className="min-w-0 flex-1 space-y-6">
           <ProfileCard account={account} />
           <SignInMethods account={account} params={params} />
+          <PackagesCard />
           <SessionsCard />
           <Appearance />
           <YourData account={account} />

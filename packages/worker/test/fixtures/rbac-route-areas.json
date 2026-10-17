@@ -1,4 +1,5 @@
 {
+  "DELETE /account-tokens/:id": "platform",
   "DELETE /platform/override-migration/notice": "platform",
   "DELETE /platform/settings/:key": "platform",
   "DELETE /platform/store-connections/**": "platform",
@@ -20,6 +21,7 @@
   "DELETE /products/:slug/update/**": "ship",
   "DELETE /tokens/:id": "platform",
   "GET /access/admins": "console",
+  "GET /account-tokens": "platform",
   "GET /github/repositories": "platform",
   "GET /me": "console",
   "GET /platform/activity": "platform",

@@ -92,6 +92,8 @@ export type GlobalPageId =
   | "product-new"
   // the deployment's admin API tokens: a credential store that belongs to no product or service
   | "api-tokens"
+  // people's personal tokens (`pkeyp_`): the Superadmin's roster and revoke
+  | "personal-tokens"
   // the Platform section (notes/S-13 §9.1)
   | "platform-settings"
   | "platform-deployment"
@@ -842,6 +844,16 @@ export const GLOBAL_PAGES: NavPage[] = [
     path: "tokens",
     icon: KeySquare,
     docs: "/docs/features/licensing/offline/",
+    inNav: true,
+  },
+  {
+    // People's personal tokens (`pkeyp_`, F-33): who holds one, when it was last used, revoke.
+    page: "personal-tokens",
+    label: "Personal tokens",
+    keywords: "pkeyp packages read registry person revoke",
+    path: "personal-tokens",
+    icon: UserRound,
+    docs: "/docs/features/ship-builds/packages/",
     inNav: true,
   },
   ...PLATFORM_PAGES,
