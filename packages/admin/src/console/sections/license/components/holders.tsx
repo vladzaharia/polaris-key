@@ -114,7 +114,7 @@ export function HolderCell({
     secondary = l.name && email ? email : "In an account";
   else secondary = l.name && email ? `Waiting for ${email}` : "Waiting";
   return (
-    <span className="flex min-w-0 max-w-[22rem] flex-col">
+    <span className="flex min-w-0 max-w-[17rem] flex-col">
       {/* The name flies into the record's title on a drill-down (S-23 §6.1 shared-element): the
           router names it for the old page only. Both ends are fit-content, so the snapshot never
           stretches. */}

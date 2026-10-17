@@ -191,7 +191,7 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
         meta: { priority: 2 },
         cell: ({ getValue }) => (
           <span
-            className="block max-w-[14rem] truncate"
+            className="block max-w-[11rem] truncate"
             title={getValue() as string}
           >
             {getValue() as string}
