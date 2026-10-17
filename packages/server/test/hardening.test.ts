@@ -62,6 +62,76 @@ describe("the unknown-kid refetch is claimed before it is awaited", () => {
   });
 });
 
+describe("trust refreshes are serialised and never roll back", () => {
+  it("an older manifest served after a newer one changes nothing", async () => {
+    let now = T0;
+    const serve: { current: Promise<string> } = {
+      current: manifest(PRODUCT, pin, [pin, rotated], T0 + 100, 100_000),
+    };
+    const core = createPolarisKey({
+      config: cfg(),
+      fetch: async () => new Response(await serve.current, { status: 200 }),
+      now: () => now,
+    });
+    await tick();
+    const jws = await sign(rotated, now);
+    expect(
+      (await core.authenticate([["X-PKey-License", jws]])).problem,
+    ).toBeNull();
+    now += 900;
+    serve.current = manifest(PRODUCT, pin, [pin], T0 + 50, 100_000); // an older manifest, without the key
+    await core.authenticate([["X-PKey-License", jws]]);
+    await tick();
+    expect(
+      (await core.authenticate([["X-PKey-License", jws]])).problem,
+    ).toBeNull();
+    // Equal issuedAt is no newer either.
+    now += 900;
+    serve.current = manifest(PRODUCT, pin, [pin], T0 + 100, 100_000);
+    await core.authenticate([["X-PKey-License", jws]]);
+    await tick();
+    expect(
+      (await core.authenticate([["X-PKey-License", jws]])).problem,
+    ).toBeNull();
+    // A newer one that drops the key does take effect.
+    now += 900;
+    serve.current = manifest(PRODUCT, pin, [pin], T0 + 200, 100_000);
+    await core.authenticate([["X-PKey-License", jws]]);
+    await tick();
+    expect(
+      (await core.authenticate([["X-PKey-License", jws]])).problem?.code,
+    ).toBe("license_invalid");
+  });
+
+  it("a periodic refresh and an unknown-kid refresh overlap as one flight", async () => {
+    let now = T0;
+    let calls = 0;
+    const fetcher: typeof fetch = async () => {
+      calls++;
+      await tick(30);
+      return new Response(await manifest(PRODUCT, pin, [pin, rotated], now), {
+        status: 200,
+      });
+    };
+    const core = createPolarisKey({
+      config: cfg(),
+      fetch: fetcher,
+      now: () => now,
+    });
+    await tick(60);
+    expect(calls).toBe(1);
+    now += 901; // the periodic refresh is due and the unknown-kid gate is open
+    const learned = await sign(rotated, now);
+    const [a, b] = await Promise.all([
+      core.authenticate([["X-PKey-License", learned]]),
+      core.authenticate([["X-PKey-License", learned]]),
+    ]);
+    expect(a.problem).toBeNull();
+    expect(b.problem).toBeNull();
+    expect(calls).toBe(2); // not three: the two refreshes were one
+  });
+});
+
 describe("a stale verification never fills the cache", () => {
   it("a document verified under a trust set that changed meanwhile is not cached", async () => {
     let now = T0;

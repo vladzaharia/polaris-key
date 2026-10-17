@@ -31,6 +31,7 @@ export function manifest(
   signer: TestKey,
   keys: TestKey[],
   issuedAt: number,
+  ttl = 300,
 ): Promise<string> {
   return signJws(
     {
@@ -38,7 +39,7 @@ export function manifest(
       aud: product,
       iss: "key.plrs.im",
       issuedAt,
-      expiresAt: issuedAt + 300,
+      expiresAt: issuedAt + ttl,
       jwksUrl: `https://key.plrs.im/${product}/.well-known/jwks.json`,
       cacheSeconds: 300,
       keys: keys.map((k) => ({

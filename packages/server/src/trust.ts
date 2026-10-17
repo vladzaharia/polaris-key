@@ -200,6 +200,14 @@ export class ProductTrust {
       }
     }
     if (!result.doc) return;
+    // The floor only rises: a manifest no newer than the one installed is dropped, whatever the
+    // order the fetches finished in (refreshes are serialised per product, so this is the second
+    // line).
+    if (
+      this.lastIssuedAt !== undefined &&
+      result.doc.issuedAt <= this.lastIssuedAt
+    )
+      return;
     const before = JSON.stringify([Object.entries(this.effective).sort()]);
     this.discovered = result.discovered;
     this.lastIssuedAt = result.doc.issuedAt;
