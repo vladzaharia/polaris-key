@@ -679,9 +679,10 @@ describe("the admin regroup (§R1)", () => {
 
   it("lists licences and tiers through License's descriptor", async () => {
     const { db, env, auth } = await fixture(false);
-    for (const [resource, key] of [
-      ["license/licenses", "licenses"],
-      ["license/tiers", "tiers"],
+    for (const [resource, key, extra] of [
+      // P0-29: the licence list answers a page, `nextCursor` null on the last.
+      ["license/licenses", "licenses", { nextCursor: null }],
+      ["license/tiers", "tiers", {}],
     ] as const) {
       const path = `/api/products/${SLUG}/${resource}`;
       const res = await dispatch(
@@ -691,7 +692,7 @@ describe("the admin regroup (§R1)", () => {
         path,
       );
       expect(res.status).toBe(200);
-      expect(await res.json()).toEqual({ [key]: [] });
+      expect(await res.json()).toEqual({ [key]: [], ...extra });
     }
   });
 

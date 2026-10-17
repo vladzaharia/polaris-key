@@ -46,12 +46,17 @@ export function useLicenses(slug: string) {
  * licence write refreshes every loaded page (the key sits under `qk.licenses`).
  */
 export function useLicensePages(slug: string) {
-  return useInfiniteQuery({
+  const query = useInfiniteQuery({
     queryKey: qk.licensesPages(slug),
     queryFn: ({ pageParam }) => api.licensesPage(slug, { cursor: pageParam }),
     initialPageParam: null as string | null,
     getNextPageParam: (last: LicensePage) => last.nextCursor ?? undefined,
   });
+  const licenses = React.useMemo(
+    () => query.data?.pages.flatMap((p) => p.licenses) ?? [],
+    [query.data],
+  );
+  return { query, licenses };
 }
 
 export function useTiers(slug: string) {

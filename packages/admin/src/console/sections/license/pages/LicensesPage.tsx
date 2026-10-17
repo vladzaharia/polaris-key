@@ -38,6 +38,7 @@ import {
   type Facet,
 } from "../../../../ui/data-table/index.js";
 import { CreateLicenseDialog } from "../components/CreateLicenseDialog.js";
+import { LoadMoreLicenses } from "../components/LoadMoreLicenses.js";
 import { OverrideMigrationNotice } from "../components/OverrideMigrationNotice.js";
 import {
   BulkDeleteDialog,
@@ -77,7 +78,7 @@ const NO_TIER = "__none__";
 const NO_BATCH = "__none__";
 
 export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
-  const licensesQ = useLicensePages(slug);
+  const { query: licensesQ, licenses } = useLicensePages(slug);
   const tiersQ = useTiers(slug);
   const batchesQ = useLicenseBatches(slug);
   const product = useProduct(slug).data;
@@ -92,10 +93,6 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
     rows: LicenseSummary[];
   } | null>(null);
 
-  const licenses = React.useMemo(
-    () => licensesQ.data?.pages.flatMap((p) => p.licenses) ?? [],
-    [licensesQ.data],
-  );
   const tiers = React.useMemo(() => tiersQ.data?.tiers ?? [], [tiersQ.data]);
   const batches = React.useMemo(
     () => batchesQ.data?.batches ?? [],
@@ -398,9 +395,7 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
     );
   };
 
-  // The count is exact only once every page is loaded.
   const total = licenses.length;
-  const more = licensesQ.hasNextPage;
 
   return (
     <CollectionTemplate
@@ -411,7 +406,7 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
             licensesQ.data ? (
               <span className="text-sm tabular-nums text-fg-muted">
                 {total.toLocaleString()}
-                {more ? "+" : ""}
+                {licensesQ.hasNextPage ? "+" : ""}
               </span>
             ) : null
           }
@@ -533,21 +528,7 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
         }
         mobile="cards"
       />
-      {more ? (
-        <div className="flex flex-wrap items-center gap-3">
-          <p className="text-xs text-fg-muted">
-            Search, filters and sorting cover the loaded licenses.
-          </p>
-          <Button
-            variant="outline"
-            size="sm"
-            loading={licensesQ.isFetchingNextPage}
-            onClick={() => void licensesQ.fetchNextPage()}
-          >
-            Load more
-          </Button>
-        </div>
-      ) : null}
+      <LoadMoreLicenses query={licensesQ} />
 
       <CreateLicenseDialog
         slug={slug}

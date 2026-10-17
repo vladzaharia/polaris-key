@@ -103,8 +103,8 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 ## Acceptance criteria
 
-- [ ] Constant query count per page (test)
-- [ ] Console list pages by cursor
+- [x] Constant query count per page (test)
+- [x] Console list pages by cursor
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify
@@ -120,3 +120,20 @@ Then the full green gate in `AGENTS.md`.
 
 What downstream work packages rely on from this one is named in their briefs (the Unblocks row). The role agent sets `--set P0-29 in-review` when it hands off. After review, the lead adds the last commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P0-29 done`.
+
+## Brief corrections and progress (2026-10-17)
+
+- Code is the fact: the per-row `resolveMergedPayload` is no longer at `licenses.ts:299`; it ran
+  inside `licenseTerms` (via `deviceLimitView`). `resolveMergedPayload` now takes a
+  `PayloadLayerSource` (default: the DB, per call); `prefetchedLayerSource` answers a page from rows
+  read once, so the merge is the same code.
+- Cursor is `<activated_at>.<id>` (the batches pattern); `limit` 1-90 (default 50), the response gains
+  `nextCursor`. 90 is one `IN (...)` (D1 binds 100). `listLicenses` (unpaged) still serves the
+  other Core callers.
+- The console's other readers (Overview, tiers, pickers) keep the whole set through `api.licenses`,
+  which now walks the pages. The Licenses page loads page by page with Load more; search, facets
+  and sorting still run client-side over the loaded rows. Server-side search and facets belong with
+  the workbench band (admin-1-22).
+- Not done: an index on `licenses(product, activated_at, id)` (no migration here); the keyset scan
+  sorts the product's licences. Follow-up for the lead to number.
+- Self-look (real Chromium, 390 and 1440, dark and light) done; the lead schedules the UX review.
