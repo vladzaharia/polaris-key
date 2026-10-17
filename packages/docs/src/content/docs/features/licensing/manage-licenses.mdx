@@ -22,7 +22,7 @@ Each row shows the holder, the **state**, the tier, the expiry, the seats and th
 | **Active**              | Enabled, and not expiring within 14 days               |
 | **Expires in _N_ days** | Enabled, and the expiry is 14 days away or less        |
 | **Expired**             | The expiry has passed. Devices are refused at check-in |
-| **Disabled**            | An operator disabled it                                |
+| **Disabled**            | A member disabled it                                   |
 
 The four tiles count each state and filter the table. Search matches the name, email and license id. Filters and sort are in the URL, so a filtered list can be shared. **Seats** is the device count against the effective limit, with its source under the meter. **Columns** shows the hidden columns and **Export CSV** downloads what the filters show.
 
@@ -63,7 +63,7 @@ A limit set here beats any tier. Lowering it below the signed-in devices warns f
 
 **Disable license…** purges the cached token of every device at once, so the license stops authenticating immediately. Keys, devices and terms stay, and **Enable license** restores access.
 
-**Delete license…** is permanent. You can delete a disabled license, or one that sign-in or auto-issue created. A license with store purchases can't be deleted: disable it. Neither can a disabled auto-issued license still bound to its machine, because it stops that machine enrolling for another free license. Deleting a disabled sign-in license lifts the refusal, so its holder gets a new license on the next sign-in.
+**Delete license…** is permanent. You can delete a disabled license, or one that sign-in or an access policy created. A license with store purchases can't be deleted: disable it. Neither can a disabled access-policy license still bound to its device, because it stops that device enrolling for another free license. Deleting a disabled sign-in license lifts the refusal, so its holder gets a new license on the next sign-in.
 
 Type `delete <license id>` to confirm. Deletion removes the keys, devices, bindings and portal links in one step. The activity log keeps the history and records **license deleted**.
 

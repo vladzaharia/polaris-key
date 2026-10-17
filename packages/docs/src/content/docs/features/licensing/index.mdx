@@ -7,7 +7,9 @@ sidebar:
   order: 1
 ---
 
+import CardGrid from "../../../../components/docs/CardGrid.astro";
 import Requires from "../../../../components/docs/Requires.astro";
+import { LinkCard } from "@astrojs/starlight/components";
 
 Licensing issues licenses, redeems keys for per-device tokens and signs what each device may do. Your app gates on the signed license document, so it keeps working offline until the document's grace window ends.
 
@@ -15,30 +17,86 @@ Licensing issues licenses, redeems keys for per-device tokens and signs what eac
 
 ## Get started
 
-| Page                                                                 | What you get                                           |
-| -------------------------------------------------------------------- | ------------------------------------------------------ |
-| [Add licensing to your app](/docs/features/licensing/add-licensing/) | A gated app, checked against the dev server            |
-| [Manage licenses](/docs/features/licensing/manage-licenses/)         | Create, disable and inspect licenses, keys and devices |
+<CardGrid>
+  <LinkCard
+    title="Add licensing to your app"
+    href="/docs/features/licensing/add-licensing/"
+    description="A gated app, checked against the dev server."
+  />
+</CardGrid>
+
+## How-to guides
+
+<CardGrid>
+  <LinkCard
+    title="Manage licenses"
+    href="/docs/features/licensing/manage-licenses/"
+  />
+  <LinkCard
+    title="Handle the device limit"
+    href="/docs/features/licensing/device-limit/"
+  />
+  <LinkCard
+    title="Require attested devices"
+    href="/docs/features/licensing/attestation/"
+  />
+  <LinkCard
+    title="Verify licenses on your server"
+    href="/docs/features/licensing/server-verification/"
+  />
+</CardGrid>
 
 ## Concepts
 
-| Page                                                          | What you get                                          |
-| ------------------------------------------------------------- | ----------------------------------------------------- |
-| [The license model](/docs/features/licensing/model/)          | License, key, device, tier and entitlement            |
-| [Activation](/docs/features/licensing/activation/)            | How a key becomes a device token                      |
-| [Enrollment and policy](/docs/features/licensing/access/)     | Keyless licenses and who owns the policy              |
-| [Re-licensing](/docs/features/licensing/relicensing/)         | Change a tier and running apps pick it up             |
-| [Going offline](/docs/features/licensing/offline/)            | Grace, offline activation files and local-only builds |
-| [Fingerprints](/docs/features/licensing/fingerprints/)        | What a device hashes, and how drift is counted        |
-| [Device trust levels](/docs/features/licensing/device-trust/) | Basic and attested devices                            |
+<CardGrid>
+  <LinkCard title="The license model" href="/docs/features/licensing/model/" />
+  <LinkCard title="Activation" href="/docs/features/licensing/activation/" />
+  <LinkCard
+    title="Enrollment and policy"
+    href="/docs/features/licensing/access/"
+  />
+  <LinkCard title="Re-licensing" href="/docs/features/licensing/relicensing/" />
+  <LinkCard title="Going offline" href="/docs/features/licensing/offline/" />
+  <LinkCard
+    title="Fingerprints"
+    href="/docs/features/licensing/fingerprints/"
+  />
+  <LinkCard
+    title="Device trust levels"
+    href="/docs/features/licensing/device-trust/"
+  />
+</CardGrid>
 
-## Guides
+## Prebuilt UI
 
-| Page                                                                            | What you get                                 |
-| ------------------------------------------------------------------------------- | -------------------------------------------- |
-| [Handle the device limit](/docs/features/licensing/device-limit/)               | A recovery path when activation is refused   |
-| [Require attested devices](/docs/features/licensing/attestation/)               | What an app does when attestation is refused |
-| [Verify licenses on your server](/docs/features/licensing/server-verification/) | Check a device's document on your backend    |
-| [Troubleshoot licensing](/docs/features/licensing/troubleshooting/)             | Causes and fixes by error code               |
+<CardGrid>
+  <LinkCard title="Activate" href="/docs/build/ui/components/activate/" />
+  <LinkCard
+    title="Device limit"
+    href="/docs/build/ui/components/device-limit/"
+  />
+  <LinkCard
+    title="Polaris Key gate"
+    href="/docs/build/ui/components/polaris-key-gate/"
+  />
+</CardGrid>
 
-Reference: [error codes](/docs/reference/error-codes/), [public routes](/docs/reference/routes/) and [fingerprint constants](/docs/reference/protocol/fingerprint-constants/).
+## Reference
+
+<CardGrid>
+  <LinkCard title="Error codes" href="/docs/reference/error-codes/" />
+  <LinkCard title="Public routes" href="/docs/reference/routes/" />
+  <LinkCard
+    title="Fingerprint constants"
+    href="/docs/reference/protocol/fingerprint-constants/"
+  />
+</CardGrid>
+
+## Troubleshooting
+
+<CardGrid>
+  <LinkCard
+    title="Troubleshoot licensing"
+    href="/docs/features/licensing/troubleshooting/"
+  />
+</CardGrid>

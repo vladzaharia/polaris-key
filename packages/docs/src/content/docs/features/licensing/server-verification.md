@@ -18,18 +18,55 @@ Requires the License feature, your product's trust pins and a backend on Node, P
 3. **Server** Verify the document. A document that verifies has a valid signature from a pinned key, names this product and this device, and its issue time isn't ahead of the clock. A backend keeps no per-device history, so it doesn't apply the replay floor.
 4. **Server** Read entitlements from the verified document, and deny when verification fails.
 
-| SDK    | Verifier                                           | Arguments you pass                                                                                    |
-| ------ | -------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| Node   | `verifyLicenseDocument` from `@polaris-key/server` | `trust`, `product`, `deviceId`, and optionally `now`                                                  |
-| Python | `verify_license_doc` from `polaris_key`            | The pinned keys, `expected_aud`, `device_id`, `last_accepted_issued_at=None`, `check_freshness=False` |
+| Lane              | Verifier                                           | Arguments you pass                                                                                    |
+| ----------------- | -------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Node              | `verifyLicenseDocument` from `@polaris-key/server` | `trust`, `product`, `deviceId`, and optionally `now`                                                  |
+| Python            | `verify_license_doc` from `polaris_key`            | The pinned keys, `expected_aud`, `device_id`, `last_accepted_issued_at=None`, `check_freshness=False` |
+| Python web        | `polaris_key.server`                               | `PolarisKey(config=...)`, then `require_entitlement(name)`                                            |
+| Kotlin web (Ktor) | `polaris-key-server-ktor`                          | `polarisKey { products = ... }`, then `requireEntitlement(name)`                                      |
+
+`@polaris-key/server` ships with the next release. Until it is on npm, a Node backend can't install it.
+
+```ts title="Node: server.ts" no-compile
+import { verifyLicenseDocument } from "@polaris-key/server";
+
+const result = await verifyLicenseDocument(req.get("x-pkey-license") ?? "", {
+  trust: pinnedKeys, // from the config file `pkey sdk` writes
+  product: "acme", // the product slug: the document's audience
+  deviceId: req.get("x-pkey-device") ?? "",
+});
+if (!result.ok || !result.isEntitled("export.pdf")) {
+  return res.status(403).end();
+}
+```
+
+```python title="Python: server.py"
+from polaris_key.server.fastapi import PolarisKey
+
+polaris = PolarisKey(config=polaris_config)
+polaris.install(app)
+
+@app.get("/api/export")
+def export(auth=Depends(polaris.require_entitlement("export.pdf"))):
+    return {"tier": auth.license.tier}
+```
+
+```kotlin title="Kotlin: Application.kt"
+install(Authentication) {
+    polarisKey { products = listOf(PolarisProduct("acme", PolarisConfig.pinnedKeys)) }
+}
+routing {
+    requireEntitlement("export.pdf") {
+        get("/api/export") { call.respond("ok") }
+    }
+}
+```
 
 The Node helper returns `ok: false` for any invalid document. For a valid one it returns the document, the gate `state`, `usable`, `ageSeconds`, `isEntitled(name)` and `entitlementValue(name)`. Both entitlement getters answer as unentitled when the gate isn't usable. The Python function returns the document or `None`, and you read `doc.entitlements`.
 
 Offline, a document is expected to be past its short `expiresAt`, so the helper applies the gate: `ok` and `grace` are usable and `expired` isn't. Revocation shows up as the server no longer issuing fresh documents. A backend that needs revocation bounds the document's age with `ageSeconds` and asks the app to sync first.
 
 A web backend can let a drop-in do steps 2 to 4 instead: it reads the two headers, verifies offline against the trust manifest and answers `401` or `403` with a problem body when it refuses. `@polaris-key/server` has drop-ins for Express, Hono and Next.js; `polaris_key.server` for FastAPI, Starlette, Django, DRF and Flask; `polaris-key-server-ktor` for Ktor.
-
-The SDK pages carry the compiled code for each runtime. See [Node](/docs/build/sdks/node/) and [Python](/docs/build/sdks/python/).
 
 ## Check it works
 
