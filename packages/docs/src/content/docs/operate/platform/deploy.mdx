@@ -1,5 +1,5 @@
 ---
-title: "Deploying to production"
+title: "Deploy Polaris Key"
 description: "Bootstrap a production instance: external providers, Cloudflare resources, secrets, the first deploy and the first product."
 type: "runbook"
 lastReviewed: "2026-10-16"
@@ -15,7 +15,7 @@ import { Content as Deployment } from "../../../../../../../docs/DEPLOYMENT.md";
 
 Use this when you set up an instance for the first time. For one that is already live, use [Deploy a release](/docs/operate/platform/runbook/deploy-a-release/).
 
-The page below is `docs/DEPLOYMENT.md`, rendered in full, including the real account, zone and service identifiers it carries. That is deliberate: Operate → Platform pages need a platform admin's console session, the same one `/manage` checks, so no lower-privilege reader can reach them. What stays out even of this gate is in [Security material](/docs/operate/platform/security/).
+What stays out even of the platform-admin gate is in [Security material](/docs/operate/platform/security/).
 
 In the console, **Platform → Deployment** shows the build this instance runs, the D1 migrations it has applied against the build's newest, the required indexes, which bindings are present and the platform activity log. Check it first when every product goes dark after a deploy.
 

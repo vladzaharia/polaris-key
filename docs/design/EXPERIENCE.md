@@ -1029,7 +1029,7 @@ Mockups: [Overview](experience/05-console-overview-desktop-dark.png) · [list](e
 
 ## 6. Tables, lists, forms and settings rows
 
-- **Rows are equal height** within a list (56 px comfortable, the console default; 40 px compact; BRAND §7.6 holds the one spec, never 76 px), with the subject (name +
+- **Rows are equal height** within a list (44 px comfortable, the console default; 36 px compact; BRAND §7.6 holds the one spec, never 76 px), with the subject (name +
   secondary id or email) left, values middle, and **pills and row actions right-aligned** in the last
   column. Numbers use tabular figures.
 - **Whole rows open their record** (licenses, devices, releases, rollouts alike; AO cross-cutting).

@@ -1,6 +1,6 @@
 ---
 title: "The protocol"
-description: "PROTOCOL_VERSION 4: the frozen JWS envelope and its strict verifier, the six type-separated documents, and the conformance corpus that proves every SDK agrees."
+description: "PROTOCOL_VERSION 4: the frozen JWS envelope and its strict verifier, the type-separated documents, and the conformance corpus that proves every SDK agrees."
 sidebar:
   order: 5
   label: "The protocol"
@@ -11,8 +11,8 @@ lastReviewed: "2026-10-16"
 Everything that crosses the wire or the disk boundary between the Polaris Key Worker and an
 SDK is one thing: a **compact EdDSA JWS**. A license document, a config document, a trust
 manifest, an offline activation bundle, a channel feed and a release record are the same
-envelope with different `typ` values and different payloads. Learn the envelope once and all
-six are the same artifact.
+envelope with different `typ` values and different payloads. Learn the envelope once and every
+document is the same artifact.
 
 `PROTOCOL_VERSION` is **4**. It is exported from `@polaris-key/protocol/core` as
 `core.PROTOCOL_VERSION`, and it is bumped on any wire-breaking change to a document shape or
@@ -52,10 +52,10 @@ The parts that are frozen _forever_, not merely until the next version step, are
 fingerprint hash domains — renaming `pkey-hw` or `pkey-device:` would orphan every enrolled
 digest. See [Fingerprint constants](/docs/reference/protocol/fingerprint-constants/).
 
-## The six documents
+## The documents
 
 Domain separation is by `typ` in the protected header. Unknown or **missing** `typ` is
-rejected outright; the v2 tolerance window for untyped artifacts is closed (spec §2). One
+rejected outright (spec §2). One
 product signing key signs five of the kinds, so `typ` is the only thing standing between a
 trust manifest and the call site that expects a license document. The sixth, the release
 record, is signed in CI by a **release key** that the app pins separately and that is never a
@@ -81,16 +81,22 @@ signature work.
 The full route table, including every non-document surface, is at
 [Routes](/docs/reference/routes/).
 
-## The six pages in this section
+## In this section
 
-| Page                                                         | What it covers                                                                                                                              | Spec sections |
-| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
-| [The envelope](/docs/reference/protocol/envelope/)           | Compact JWS mechanics, size caps, strict decoding, the verify-before-parse order, shared claims, constants, and the two validation profiles | §1, §2, §3    |
-| [Trust](/docs/reference/protocol/trust/)                     | Pinned keys, the signed trust manifest, revocation by absence, and why the cache is never a key source                                      | §1, §2.3      |
-| [Cache and clock](/docs/reference/protocol/cache-and-clock/) | The v3 cache record, the re-verify-everything load, and the monotonic clock floor                                                           | §4            |
-| [Offline bundles](/docs/reference/protocol/bundles/)         | `pkey-bundle+jws`, its three time bounds, and the four ordered refusal steps                                                                | §7            |
-| [Pack byte formats](/docs/reference/protocol/packs/)         | The files index, the patch descriptor, `treeDigest`, the path rules, the codec rules and the zstd window check                              | §2.6, §2.7    |
-| [The conformance corpus](/docs/contribute/corpus/)           | One generator, the language runners, and the CI drift gate that keeps them honest                                                           | §6, §10       |
+| Page                                                                     | What it covers                                                                                                                              | Spec sections  |
+| ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- | -------------- |
+| [The envelope](/docs/reference/protocol/envelope/)                       | Compact JWS mechanics, size caps, strict decoding, the verify-before-parse order, shared claims, constants, and the two validation profiles | §1, §2, §3     |
+| [Trust](/docs/reference/protocol/trust/)                                 | Pinned keys, the signed trust manifest, revocation by absence, and why the cache is never a key source                                      | §1, §2.3       |
+| [Discovery](/docs/reference/protocol/discovery/)                         | The unsigned `/.well-known/polaris.json` document: per-service fragments and the always-on core block                                       | —              |
+| [The device principal](/docs/reference/protocol/device-principal/)       | Registration policies, keyless minting, `pkeyt_` tokens and the device roster                                                               | —              |
+| [Errors and limits](/docs/reference/protocol/errors/)                    | The wire error shapes, the hide-don't-reveal 404 policy and rate limits                                                                     | —              |
+| [The license document](/docs/reference/protocol/license-document/)       | `pkey-license+jws`: the entitlement map, the content-only ETag and the build gate                                                           | §3             |
+| [The config document](/docs/reference/protocol/config-document/)         | `pkey-config+jws`: its envelope, ETag and grace window                                                                                      | §3             |
+| [Cache and clock](/docs/reference/protocol/cache-and-clock/)             | The v3 cache record, the re-verify-everything load, and the monotonic clock floor                                                           | §4             |
+| [Offline bundles](/docs/reference/protocol/bundles/)                     | `pkey-bundle+jws`, its three time bounds, and the four ordered refusal steps                                                                | §7             |
+| [Pack byte formats](/docs/reference/protocol/packs/)                     | The files index, the patch descriptor, `treeDigest`, the path rules, the codec rules and the zstd window check                              | §2.6, §2.7     |
+| [Fingerprint constants](/docs/reference/protocol/fingerprint-constants/) | The frozen hardware-fingerprint formulas: component order, hash domains, digest lengths                                                     | Fingerprint v1 |
+| [Conformance corpus v2](/docs/reference/protocol/corpus/)                | The case families every SDK verifies identically, with live counts                                                                          | §6, §10        |
 
 ## One client, end to end
 

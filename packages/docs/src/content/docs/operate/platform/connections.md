@@ -56,7 +56,7 @@ the state of the store's primary credential and how many apps are assigned.
   metadata. Check those and re-pin them on the product's Keys & secrets page. An app held through
   a product's own key can only be assigned to that product.
 - **Set up** (the row menu of an assigned app, for a store with a storefront adapter) opens the
-  holding product's [Add to storefronts](/docs/admin/storefronts/) flow, scoped to this store.
+  holding product's [Add to storefronts](/docs/features/ship-builds/channels/storefronts/) flow, scoped to this store.
 - **Release from …** (the row menu of an assigned app) asks for the same caution confirmation.
   The product's connectors that used the team credential stop with `pin_missing` until an app is
   assigned again. Keys the product holds of its own keep their pins.
@@ -118,7 +118,7 @@ gh secret set PLATFORM_ASC_API_KEY --env production < key.json   # the secret na
 gh workflow run sync-worker-secrets.yml -f target=prod
 ```
 
-The secret names and JSON shapes are in [Deploy](/docs/admin/deploy/) (DEPLOYMENT.md §4). After
+The secret names and JSON shapes are in [Deploy](/docs/operate/platform/deploy/) (DEPLOYMENT.md §4). After
 the workflow runs, the store's tile and credential row show the credential as present. Re-check
 then lists its apps.
 
@@ -225,18 +225,18 @@ An own credential that is unpinned or pinned elsewhere never falls through to th
 setup controls can prepare it, even before `.pkey/distribution` names the app. They set the server
 notifications URL and send a test, create TestFlight groups and add testers, and set the free price
 and availability defaults. They also keep a checklist of the steps only the portal can do. See
-[Setting up the app](/docs/services/distribution/app-store-connect/#setting-up-the-app).
+[Setting up the app](/docs/features/ship-builds/channels/app-store/#setting-up-the-app).
 
 ## Provisioning a new App Store app
 
 Before an app record exists there is nothing to assign, so the App Store connection also carries
 the team-level steps of a new app: registering its bundle ID, switching on its capabilities, and
 noticing when the app record appears. A product's
-[Add to storefronts](/docs/admin/storefronts/) flow runs the App Store's steps on these routes
+[Add to storefronts](/docs/features/ship-builds/channels/storefronts/) flow runs the App Store's steps on these routes
 (the bundle ID, the app record found by it, then the assignment). They are the admin API under
 `/manage/api/platform/store-connections/app-store`, platform admins only. They use the team App
 Store Connect key, and every write passes the App Store Connect write gate first (see
-[App Store Connect](/docs/services/distribution/app-store-connect/)): nothing outside the approved
+[App Store Connect](/docs/features/ship-builds/channels/app-store/)): nothing outside the approved
 surface can be sent, and bundle IDs and capabilities are never renamed, disabled or deleted here.
 
 - `GET …/capability-types` — the capabilities the flow offers: In-App Purchase, Push
@@ -278,14 +278,13 @@ error code, never its message text.
 ## Audit
 
 Every key a product's connector opens is a `platform_credential.use` row in that product's
-[activity](/docs/admin/activity/); an assignment is an `outlet_credential.pin` row there too.
+[activity](/docs/operate/console/activity/); an assignment is an `outlet_credential.pin` row there too.
 Credential and setting changes, assignments and the team-wide opens behind the apps list are
 recorded in the platform audit trail with the admin who made them. So is every provisioning
 write (`platform.asc.bundle_id.register`, `platform.asc.capability.enable`), with App Store
 Connect's own view of the object before and after.
 
-See also [Secrets & keys](/docs/admin/secrets-and-keys/) for a product's own outlet credentials
-and their pins, and [the KEK keyring](/docs/admin/kek/): the re-seal sweep includes the console
+See also [Outlet credentials](/docs/operate/platform/outlet-credentials/) for a product's own store keys, [Keys & secrets](/docs/operate/console/keys-and-secrets/) for its secrets and signing keys, and [the KEK keyring](/docs/operate/platform/runbook/rotate-the-kek/): the re-seal sweep includes the console
 store credentials.
 
 ## Sign-in connections

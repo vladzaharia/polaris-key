@@ -48,8 +48,8 @@ The record has four tabs:
   and **Merged from** when two of their accounts were merged (an old id opens this record).
   With Identity on it lists their sign-ins to this product, with the method they used ("Signed
   in with Steam") and never the other methods on their account.
-- **Licenses**: their licenses of this product, with **Detach** and **Relink**, and the relink
-  history with **Undo** while it is open.
+- **Licenses**: their licenses of this product, with **Detach…** and **Relink…**, and the relink
+  history with **Undo…** while it is open.
 - **Devices**: devices on their licenses, or signed in with them.
 - **Activity**: console actions on this person and their licenses.
 
@@ -64,17 +64,15 @@ license with no account gets none. Entitlement overrides stay on each license. V
 against the active catalog, secrets are stored sealed and never shown again, and each save is
 recorded in **Activity** with the key names. When two accounts merge, the surviving account's
 values win and every key both had set is listed in **Activity**. See
-[Account overrides](/docs/services/config/management-states/#account-overrides).
+[Account overrides](/docs/features/managed-config/management-states/#account-overrides).
 
 ### Export and data deletion
 
-**Export JSON** downloads everything this product holds for the person: the record above and
-every data store's export. The export is recorded in **Activity**.
-
-**Delete data for this product** empties every data store of this product for the person
-(config overrides and Cloud Sync data). It asks you to type `delete`, and it can't be undone. The
-person, their licenses and their account stay: a developer can never delete, disable, sign out
-or merge an account, or change its sign-in methods. Only the person can, from their account.
+**Export JSON** downloads everything this product holds for the person, and **More actions**
+holds **Delete data for this product…**. The steps are in
+[Help a customer](/docs/operate/console/help-a-customer/). A developer can never delete,
+disable, sign out or merge an account, or change its sign-in methods. Only the person can,
+from their account.
 
 ### Detach a license
 
@@ -84,8 +82,10 @@ product's claim rules.
 
 ### Relink a license
 
-**Relink** moves a license to another person of this product. It is how you help someone who
-lost access to the account their license is in, so it carries these safeguards:
+**Relink…** moves a license to another person of this product. It is how you help someone who
+lost access to the account their license is in. The steps are in
+[Help a customer](/docs/operate/console/help-a-customer/#move-a-license-to-another-person). It
+carries these safeguards:
 
 1. **Name the target by their user id for this product.** Never by email. The person gets an id
    by signing in to your product, or with **Get a support code** on your product's page in their
@@ -95,8 +95,8 @@ lost access to the account their license is in, so it carries these safeguards:
 3. **Give a reason.** Up to 500 characters, kept with the relink and in **Activity** with the
    before and after.
 4. **Both accounts are emailed** before the license moves.
-5. **Undo for 72 hours.** While the license still sits where the relink put it, **Undo** on
-   either person's record moves it back (another fresh sign-in and a reason). A later relink, a
+5. **Undo for 72 hours.** While the license still sits where the relink put it, **Undo…** on
+   the Licenses tab of either person's record moves it back (another fresh sign-in and a reason). A later relink, a
    detach or an account deletion closes the undo.
 
 An operator who relinks more than five licenses in a day raises an alert in the platform

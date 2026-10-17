@@ -686,7 +686,7 @@ stagger-list, success, skeleton, press; S-23 §6).
 ### 7.6 Console density and layout (data-heavy tables)
 
 - Base UI size `sm` (14/20) for tables, forms and nav; `base` (16/24) for prose and dialog bodies.
-- Table rows **56 px** (comfortable, the console default) or 40 px (compact); never 76 px. One
+- Table rows **44 px** (comfortable, the console default) or 36 px (compact); never 76 px. One
   spec: [EXPERIENCE §6](EXPERIENCE.md#6-tables-lists-forms-and-settings-rows) points here. Cell
   padding `space-2` × `space-3`; header row `text-muted`, `font-size-xs`, sentence case (no
   `text-transform`; never transform an identifier, code or user content).

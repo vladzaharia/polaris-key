@@ -43,8 +43,8 @@ The spec's file name, `v3`, versions the API description. The signed documents c
 
 ## Pagination
 
-A list route that pages takes `limit` and `cursor`, and answers a page with a `nextCursor`. Pass the previous page's `nextCursor` as `cursor` to get the next page. A `nextCursor` of `null` is the last page. A `cursor` or `limit` outside its range is a `422`.
+The console's list routes that page take `limit` and `cursor`, and answer a page with a `nextCursor`. Pass the previous page's `nextCursor` as `cursor` to get the next page. A `nextCursor` of `null` is the last page. A `cursor` or `limit` outside its range is a `422`.
 
 ## The console and portal APIs
 
-`/manage/api/*` and `/api/*` are session-authenticated browser surfaces for the platform's own screens. They are not in the OpenAPI spec, except the admin token roster, the create probes and the portal's library, product and media routes. They are documented by task: [Operate](/docs/operate/console/tour/) for the console, and the library and account tasks in [Help](/docs/help/) for the portal.
+`/manage/api/*` and `/api/*` are session-authenticated browser surfaces for the platform's own screens. They are not in the OpenAPI spec, except the admin token roster, the create probes and the portal's library, product and media routes. The portal's routes are in the [Portal API](/docs/reference/portal-api/).

@@ -922,11 +922,19 @@ function consoleTour() {
       ? `[${title}](${href.replace(/#.*$/, "")}${href.includes("#") ? "#" + href.split("#")[1] : ""})`
       : `\`${href}\``;
   };
+  // Operate → Platform pages need a platform admin's session, so a member-tier page names them
+  // as text instead of linking a page its reader cannot open.
+  const docsCell = (href) => {
+    const cell = titleOf(href);
+    return href.startsWith("/docs/operate/platform/")
+      ? `${cell.replace(/^\[([^\]]+)\]\([^)]*\)$/, "$1")} (platform admins)`
+      : cell;
+  };
   const row = (p, url) => [
     `**${p.label}**`,
     `\`${url}\``,
     p.inNav ? "Sidebar" : "Tab or sub-page",
-    titleOf(p.docs),
+    docsCell(p.docs),
   ];
   const cols = ["Page", "URL", "Where", "Docs"];
   const productUrl = (p) => `#/p/<slug>${p.path ? "/" + p.path : ""}`;
@@ -943,7 +951,7 @@ function consoleTour() {
     "",
     `## Platform`,
     "",
-    `Instance-wide pages. The group shows only off a product. Its Docs section is ${titleOf(nav.platformDocs)}.`,
+    `Instance-wide pages, shown when no product is open. Its Docs section is ${docsCell(nav.platformDocs)}.`,
     "",
     table(
       cols,

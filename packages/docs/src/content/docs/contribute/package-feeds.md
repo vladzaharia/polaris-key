@@ -1,5 +1,5 @@
 ---
-title: "Adding a package feed"
+title: "Add a package feed"
 description: "The FeedAdapter contract every package feed on the registry host implements, what stays shared, and the checklist the adapter conformance suite enforces for a new ecosystem."
 sidebar:
   order: 7

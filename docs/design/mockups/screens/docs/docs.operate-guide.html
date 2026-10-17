@@ -50,14 +50,13 @@
             </button>
           </div>
           <p class="docs-lede">
-            Fix a lost key, changed hardware or a device limit from the console.
+            Export or delete a person's data, or move their license to another
+            person.
           </p>
         </header>
         <div class="docs-requires">
           <span class="pill sm outline"
-            ><i class="ic ic-shield"></i>Role required: Product admin</span
-          ><span class="pill sm outline"
-            ><i class="svc" data-service="license"></i>Licensing</span
+            ><i class="ic ic-shield"></i>Requires: access to Users</span
           >
         </div>
         <div class="callout warning">
@@ -65,45 +64,69 @@
           <div class="grow">
             <div class="callout-title">Impact</div>
             <div class="callout-text">
-              Deauthorizing a device signs it out of DJDL. The license stays
-              active.
+              An export contains personal data. Deleting data can't be undone.
             </div>
           </div>
         </div>
         <section class="docs-section">
-          <h2>Free a device for a customer</h2>
+          <h2>Export a person's data</h2>
           <ol class="docs-steps">
             <li class="docs-step">
               <span class="docs-num">1</span>
               <div class="docs-step-body">
-                <h2>Find the license</h2>
+                <p>Open <strong>Users</strong>, then the person's record.</p>
+              </div>
+            </li>
+            <li class="docs-step">
+              <span class="docs-num">2</span>
+              <div class="docs-step-body">
+                <p>Select <strong>Export JSON</strong> and save the file.</p>
+              </div>
+            </li>
+          </ol>
+        </section>
+        <section class="docs-section">
+          <h2>Delete a person's data</h2>
+          <ol class="docs-steps">
+            <li class="docs-step">
+              <span class="docs-num">1</span>
+              <div class="docs-step-body">
                 <p>
-                  <a class="btn outline sm" href="#"
-                    >Open Licenses<i class="ic ic-arrow-up-right"></i
-                  ></a>
-                  Search for <strong>kenji@example.com</strong> and open the
-                  DJDL license.
+                  On the person's record, select <strong>More actions</strong>,
+                  then <strong>Delete data for this product…</strong>.
                 </p>
               </div>
             </li>
             <li class="docs-step">
               <span class="docs-num">2</span>
               <div class="docs-step-body">
-                <h2>Deauthorize the old device</h2>
                 <p>
-                  Open <strong>Devices</strong>, select
-                  <strong>Booth PC</strong>, then select
-                  <strong>Deauthorize Booth PC</strong>.
+                  Type <code>delete</code>, then select
+                  <strong>Delete data</strong>.
+                </p>
+              </div>
+            </li>
+          </ol>
+        </section>
+        <section class="docs-section">
+          <h2>Move a license to another person</h2>
+          <ol class="docs-steps">
+            <li class="docs-step">
+              <span class="docs-num">1</span>
+              <div class="docs-step-body">
+                <p>
+                  On the <strong>Licenses</strong> tab, select
+                  <strong>Relink…</strong> on the license.
                 </p>
               </div>
             </li>
             <li class="docs-step">
-              <span class="docs-num">3</span>
+              <span class="docs-num">2</span>
               <div class="docs-step-body">
-                <h2>Confirm the customer can continue</h2>
                 <p>
-                  The device count drops. Ask the customer to activate DJDL on
-                  the new computer.
+                  Under <strong>Move to user</strong>, enter the customer's
+                  support code and a reason, then select
+                  <strong>Relink license</strong>.
                 </p>
               </div>
             </li>
@@ -113,8 +136,16 @@
           <h2>What the customer sees</h2>
           <a class="docs-card" href="#"
             ><span class="docs-card-title"
-              ><i class="ic ic-circle-help"></i>Move your license to a new
-              computer<i class="ic ic-arrow-right sm"></i></span
+              ><i class="ic ic-circle-help"></i>Manage your data<i
+                class="ic ic-arrow-right sm"
+              ></i></span
+            >Download or remove an app's data, or get a support code.</a
+          >
+          <a class="docs-card" href="#"
+            ><span class="docs-card-title"
+              ><i class="ic ic-circle-help"></i>Move to a new computer<i
+                class="ic ic-arrow-right sm"
+              ></i></span
             >The public Help article for the customer.</a
           >
         </section>

@@ -36,7 +36,7 @@ never told its copy is current.
 A keyless device is not refused. Under an `open` or `requires-identity` registration policy a
 device of a licensed product can hold a token with no license behind it at all, and it still
 fetches config documents: there is no license to have lapsed. This is narrower than Core's
-`/devices` surfaces and the [edge-mint guard](/docs/services/config/edge-mint/), which on a
+`/devices` surfaces and the [edge-mint guard](/docs/features/managed-config/edge-mint/), which on a
 licensed product require a usable license of every device.
 
 It is a `401`, like the one [`GET /<product>/license/document`](/docs/reference/protocol/license-document/)
@@ -92,7 +92,7 @@ The envelope shared with every other signed document, plus Config's own two maps
 `schemaVersion` is the product's **catalog** version — bumped on an incompatible shape change —
 never the wire protocol version. `config` and `secrets` are both maps of dotted catalog key to a
 `ManagedEntry` (`state`, `value`, `updatedAt`); every key present has already been resolved
-through the full [management-state merge](/docs/services/config/management-states/) and pruned
+through the full [management-state merge](/docs/features/managed-config/management-states/) and pruned
 against the active catalog.
 
 There is no `licenseId`, no `profile`, no `entitlements` — not blanked, **absent**. That absence
@@ -196,9 +196,9 @@ data that had merely been living under a config path. See
 
 - [Public route table](/docs/reference/routes/) — every route with its owning service.
 - [Wire error codes](/docs/reference/error-codes/) — `unauthorized`, `catalog_unavailable`.
-- [Management states](/docs/services/config/management-states/) — how the `config`/`secrets` maps
+- [Management states](/docs/features/managed-config/management-states/) — how the `config`/`secrets` maps
   in this document were resolved before signing.
-- [Edge-mint](/docs/services/config/edge-mint/) — the delivery path for a secret whose value
+- [Edge-mint](/docs/features/managed-config/edge-mint/) — the delivery path for a secret whose value
   should never appear in this document at all.
 - `packages/worker/test/licensing.test.ts` — pins that this document carries settings and no
   license fields at all, and that its ETag is independent of the license document's.
