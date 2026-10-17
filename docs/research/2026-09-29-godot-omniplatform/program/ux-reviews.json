@@ -59,6 +59,11 @@
       "verdict": "pass",
       "date": "2026-10-17",
       "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/U-30/ (built review 2026-10-16; both blockers fixed in fix/U-30-review 365da1f8d)"
+    },
+    "UK-46": {
+      "verdict": "pass",
+      "date": "2026-10-17",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/UK-46/ (built review 2026-10-16, pass with fixes; 16/18 fixed in fix/UK-46-review ff27f9790; 3 corpus-pinned items to the UK-51 corpus follow-up)"
     }
   }
 }
