@@ -851,7 +851,15 @@ describe("I-11: erasure anonymises the product audit rows that name the person",
   it("names the sign-in chooser's action exactly as the product sign-in writes it", () => {
     const here = dirname(fileURLToPath(import.meta.url));
     const oidc = readFileSync(
-      join(here, "..", "src", "services", "identity", "oidc.ts"),
+      join(
+        here,
+        "..",
+        "src",
+        "services",
+        "identity",
+        "productOidc",
+        "chooser.ts",
+      ),
       "utf8",
     );
     expect(oidc).toContain(`action: "${SIGNIN_LICENSE_CHOSEN_ACTION}"`);
