@@ -141,7 +141,7 @@ describe("lane selection", () => {
   });
 
   it("runs the kit lint lane for a kit's UI sources", () => {
-    expect(on(["sdks/kotlin/ui/src/main/kotlin/A.kt"])).toEqual([
+    expect(on(["sdks/kotlin/ui/src/androidMain/kotlin/A.kt"])).toEqual([
       "ui-kits",
       "kotlin",
       "android",

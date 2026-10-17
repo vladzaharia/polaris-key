@@ -199,6 +199,12 @@ release:
         # single-digit major and does not also take polaris-key-ui-core-*. A two-digit major (10.x)
         # will not match: change this glob, and keep it apart from ui-core, when that release comes.
         files: { match: "polaris-key-ui-?.*" }
+    maven.ui-android:
+      kind: package
+      ecosystem: maven
+      name: "im.plrs.key:polaris-key-ui-android"
+      artifacts:
+        files: { match: "polaris-key-ui-android-*" }
     maven.ui-core:
       kind: package
       ecosystem: maven

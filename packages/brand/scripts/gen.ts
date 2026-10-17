@@ -31,11 +31,11 @@
 //                                       tokens.json, for a consumer to pin this package's revision
 //   sdks/godot/addons/polaris_key/ui/theme/brand_tokens_generated.gd    GDScript constants
 //   sdks/swift/Sources/PolarisKeyUI/BrandTokens.generated.swift         Swift constants
-//   sdks/kotlin/ui/src/main/kotlin/im/plrs/key/ui/brand/PolarisBrandTokens.generated.kt
+//   sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/brand/PolarisBrandTokens.generated.kt
 //                                       Kotlin (Compose) constants for the Compose UI kit, with
 //                                       the bit-less display-cut Pinned K and the compact
 //                                       "Powered by" badge as vector data (P6-11)
-//   sdks/kotlin/ui/src/main/res/font/*  the Compose kit's Rubik: each kit TTF byte for byte, with
+//   sdks/kotlin/ui/src/androidMain/res/font/*  the Compose kit's Rubik: each kit TTF byte for byte, with
 //                                       the kit's OFL.txt and notice in the module's assets
 //   sdks/godot/addons/polaris_key/brand/*                                the Godot addon's
 //                                       copies of kit files (the 16 px editor glyphs, the
@@ -1471,7 +1471,7 @@ const VARIABLE_FONTS: [string, string][] = [
  * names, so the kit TTFs are copied there unchanged; the OFL and the kit notice travel in the
  * module's assets (a TARGET below), so they ship inside every app that bundles the fonts.
  */
-const KOTLIN_UI = "sdks/kotlin/ui/src/main";
+const KOTLIN_UI = "sdks/kotlin/ui/src/androidMain";
 const KIT_DIR = join(PKG, "kit");
 const WORDMARK_FONT = loadWordmarkFont(KIT_DIR);
 proveCards(KIT_DIR, WORDMARK_FONT);
@@ -1722,7 +1722,7 @@ const TARGETS: Target[] = [
     render: swiftSource,
   },
   {
-    path: `${KOTLIN_UI}/kotlin/im/plrs/key/ui/brand/PolarisBrandTokens.generated.kt`,
+    path: `sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/brand/PolarisBrandTokens.generated.kt`,
     render: kotlinSource,
   },
   ...["OFL.txt", "FONT-NOTICE.txt"].map((name) => ({
@@ -1778,11 +1778,11 @@ const TARGETS: Target[] = [
     render: () => swiftVectors(KIT_CTX),
   },
   {
-    path: `${KOTLIN_UI}/kotlin/im/plrs/key/ui/brand/PolarisKitTokens.generated.kt`,
+    path: `sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/brand/PolarisKitTokens.generated.kt`,
     render: () => kotlinKit(KIT_CTX),
   },
   {
-    path: "sdks/kotlin/ui/src/test/kotlin/im/plrs/key/ui/brand/AccentVectors.generated.kt",
+    path: "sdks/kotlin/ui/src/androidUnitTest/kotlin/im/plrs/key/ui/brand/AccentVectors.generated.kt",
     render: () => kotlinVectors(KIT_CTX),
   },
   ...["OFL-JetBrainsMono.txt"].map((name) => ({

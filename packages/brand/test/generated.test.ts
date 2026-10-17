@@ -68,7 +68,7 @@ describe("generator drift", () => {
     const kt = readFileSync(
       join(
         PKG,
-        "../../sdks/kotlin/ui/src/main/kotlin/im/plrs/key/ui/brand/PolarisBrandTokens.generated.kt",
+        "../../sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/brand/PolarisBrandTokens.generated.kt",
       ),
       "utf8",
     );
@@ -87,7 +87,7 @@ describe("generator drift", () => {
       kt.indexOf("public val pinnedKLight"),
     );
     expect(pinned).not.toContain("FFC24D");
-    const ui = join(PKG, "../../sdks/kotlin/ui/src/main");
+    const ui = join(PKG, "../../sdks/kotlin/ui/src/androidMain");
     for (const [copy, kit] of [
       ["res/font/polaris_rubik_regular.ttf", "Rubik-Regular.ttf"],
       ["res/font/polaris_rubik_bold.ttf", "Rubik-Bold.ttf"],
@@ -416,7 +416,7 @@ describe("motion tokens (notes/S-23 §5)", () => {
       "sdks/swift/Sources/PolarisKeyUI/KitTokens.generated.swift",
     );
     const kotlin = read(
-      "sdks/kotlin/ui/src/main/kotlin/im/plrs/key/ui/brand/PolarisKitTokens.generated.kt",
+      "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/brand/PolarisKitTokens.generated.kt",
     );
     const gd = read(
       "sdks/godot/addons/polaris_key/ui/theme/kit_tokens_generated.gd",

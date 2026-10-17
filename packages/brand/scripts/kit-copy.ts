@@ -1285,11 +1285,11 @@ export function stringsXml(model: KitCopyModel, locale: string): string {
   }
   return `<?xml version="1.0" encoding="utf-8"?>
 <!--
-${BANNER_LINES.map((l) => (l ? `  ${l}` : "")).join("\n")}
+${BANNER_LINES.map((l) => (l ? `  ${l.replaceAll("--", "\u2011\u2011")}` : "")).join("\n")}
 
   The kit copy for locale ${locale} (Compose Multiplatform resources). Names are the catalog key with
   "." and "-" as "_". A formFactor select is <name>__<case> (the bare name is "other"); a platform
-  variant is <name>__<platform>. Inert until UK-09 makes :ui a KMP module.
+  variant is <name>__<platform>.
 -->
 <resources>
 ${lines.join("\n")}

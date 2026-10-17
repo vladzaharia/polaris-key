@@ -769,16 +769,16 @@ inset, minimum 8.
 
 **New targets:**
 
-| Target                  | File (generated)                                                                            | Consumer                                                |
-| ----------------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
-| CSS (exists) + kit vars | `packages/brand/css/kit.css` (`--pk-kit-*`)                                                 | React, elements, Vue, Svelte, Angular, Electron, Tauri  |
-| JS objects              | `packages/brand/src/generated/kit.ts`                                                       | ui-core theme resolver, React Native                    |
-| Swift (exists) + kit    | `sdks/swift/Sources/PolarisKeyUI/BrandTokens.generated.swift` + `KitTokens.generated.swift` | SwiftUI, UIKit, AppKit                                  |
-| Kotlin (exists) + kit   | `sdks/kotlin/ui/src/main/kotlin/im/plrs/key/ui/brand/PolarisKitTokens.generated.kt` (¹)     | Compose (all targets), Views interop                    |
-| Godot (exists) + themes | `PKeyBrand` + `PKeyKitTokens` + `PKeyKitIcons` (engine control icons) (²)                   | Godot kit                                               |
-| **Python (new)**        | `sdks/python/src/polaris_key/ui/_tokens.py`, `ui/qt/Theme.qml` + `qmldir` + QSS per scheme  | Qt, rich/Textual                                        |
-| **Terminal (new)**      | `packages/sdk-node/src/cli/tokens.generated.ts`, `polaris_key/ui/ansi.py`                   | Node and Python CLIs (ANSI-16 roles + truecolor accent) |
-| **C# (new)**            | `sdks/godot/addons/polaris_key/dotnet/PKeyBrand.generated.cs`                               | Godot .NET facade                                       |
+| Target                  | File (generated)                                                                              | Consumer                                                |
+| ----------------------- | --------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| CSS (exists) + kit vars | `packages/brand/css/kit.css` (`--pk-kit-*`)                                                   | React, elements, Vue, Svelte, Angular, Electron, Tauri  |
+| JS objects              | `packages/brand/src/generated/kit.ts`                                                         | ui-core theme resolver, React Native                    |
+| Swift (exists) + kit    | `sdks/swift/Sources/PolarisKeyUI/BrandTokens.generated.swift` + `KitTokens.generated.swift`   | SwiftUI, UIKit, AppKit                                  |
+| Kotlin (exists) + kit   | `sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/brand/PolarisKitTokens.generated.kt` (¹) | Compose (all targets), Views interop                    |
+| Godot (exists) + themes | `PKeyBrand` + `PKeyKitTokens` + `PKeyKitIcons` (engine control icons) (²)                     | Godot kit                                               |
+| **Python (new)**        | `sdks/python/src/polaris_key/ui/_tokens.py`, `ui/qt/Theme.qml` + `qmldir` + QSS per scheme    | Qt, rich/Textual                                        |
+| **Terminal (new)**      | `packages/sdk-node/src/cli/tokens.generated.ts`, `polaris_key/ui/ansi.py`                     | Node and Python CLIs (ANSI-16 roles + truecolor accent) |
+| **C# (new)**            | `sdks/godot/addons/polaris_key/dotnet/PKeyBrand.generated.cs`                                 | Godot .NET facade                                       |
 
 (¹) The Compose kit is an Android library module today (`src/main`); the file moves to
 `commonMain` when UK-09/UK-10 make it Kotlin Multiplatform. (²) `pkey_brand_{dark,light}.tres`

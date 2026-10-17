@@ -2,14 +2,14 @@
 <!--
   GENERATED FILE — do not edit by hand.
 
-  Written by `pnpm --filter @polaris-key/brand gen` (packages/brand/scripts/kit-copy.ts) from
+  Written by `pnpm ‑‑filter @polaris-key/brand gen` (packages/brand/scripts/kit-copy.ts) from
   packages/brand/kit-copy/ (en.json and the eight locale packs) and the core copy in
-  conformance/parity/copy.<locale>.json. `pnpm gen brand --check` fails the green gate on any
+  conformance/parity/copy.<locale>.json. `pnpm gen brand ‑‑check` fails the green gate on any
   difference. To change a string, edit its source and regenerate.
 
   The kit copy for locale zh-Hans (Compose Multiplatform resources). Names are the catalog key with
   "." and "-" as "_". A formFactor select is <name>__<case> (the bare name is "other"); a platform
-  variant is <name>__<platform>. Inert until UK-09 makes :ui a KMP module.
+  variant is <name>__<platform>.
 -->
 <resources>
     <!-- Shared verb used across the kit's screens. -->

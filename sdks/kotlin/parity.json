@@ -10,7 +10,7 @@
     "sdks/kotlin/release/src/test",
     "sdks/kotlin/update/src/test",
     "sdks/kotlin/packs/src/test",
-    "sdks/kotlin/ui/src/test",
+    "sdks/kotlin/ui/src/androidUnitTest",
     "sdks/kotlin/ui-core/src/test",
     "sdks/kotlin/sdk/src/test",
     "sdks/kotlin/server/src/test",
@@ -437,7 +437,7 @@
     "ui.signin": {
       "status": "planned",
       "wp": "UK-09",
-      "note": "Android kit; desktop via UK-10; Android Views is a recipe"
+      "note": "Android kit; desktop via UK-10; Android Views is a recipe. Progress: KitSignIn(inputs, presentation) and PolarisKitScreen draw KitStates.resolve output, and MatrixSnapshotTest snapshots every distinct (component, state) of ui-matrix.json in both themes; the styled parts (fields, QR, lists) are still to come."
     },
     "ui.devicelimit": {
       "status": "planned",
@@ -467,7 +467,7 @@
     "ui.theme": {
       "status": "planned",
       "wp": "UK-09",
-      "note": "Android kit; desktop via UK-10; Android Views is a recipe"
+      "note": "Android kit; desktop via UK-10; Android Views is a recipe. Progress: PolarisBranding.PolarisKey with no accent falls back to ink, never the core violet (PresentationThemeTest, BrandingTest); the full theme-row proof still to come."
     },
     "ui.i18n": {
       "status": "planned",

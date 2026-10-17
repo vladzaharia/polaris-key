@@ -267,3 +267,47 @@ Reconciled against main in the 2026-10-16 audit. Remaining:
 - examples/ui/compose-android, docs pages, kit README
 - ui.\* parity rows (still planned)
 - Design and UX reviews
+
+## Progress and continuation (2026-10-16, second slice)
+
+- **KMP cutover done.** `:ui` is a Kotlin Multiplatform module with the `android` target only
+  (`kotlin.multiplatform` + `com.android.library` on AGP 8.6.1 and Kotlin 2.1.21, so the Godot template
+  line still builds it). Sources: `commonMain` (the generated brand and kit tokens and `PolarisAccent`,
+  which compile with no platform import; `BrandRulesTest` pins that), `androidMain` (everything else, with
+  `res/` and `assets/`), `androidUnitTest` (the tests), `androidDebug` (the `values-fr` fixture). The
+  snapshots stay in `src/test/snapshots/`. UI libraries stay on the androidx Compose BOM; the Compose
+  Multiplatform plugin is applied for its resources only (`im.plrs.key.ui.res.Res`, the generated
+  accessors over `commonMain/composeResources`; `ComposeResourcesTest` proves every English name has one
+  and every locale keeps the names). Publication is the KMP pair `polaris-key-ui` and
+  `polaris-key-ui-android` (the release glob `polaris-key-ui-?.*` still matches the root only).
+- **Open for UK-10:** the rest of `androidMain` moves to `commonMain` only once it stops importing
+  Material 3 Expressive APIs, `android.*` and the lifecycle `ViewModel`, and the desktop target needs the
+  Compose Multiplatform artifacts (not the androidx BOM) for `commonMain`. `PolarisBrandMarks` waits on
+  `PolarisTheme`, `PolarisPackProgress` on `PolarisCopy`.
+- **Generator fixes.** `pnpm gen brand` wrote `--filter` into the XML banner comment, which is invalid XML
+  and failed Compose Resources conversion; the XML renderer now writes non-breaking hyphens there and
+  drops the "inert until UK-09" line. The brand generator and its tests, `kit-rules.json`,
+  `kit-debt.json`, `ci-scope.test.ts`, `parity.json` `testRoots` and UI-KITS.md follow the new paths.
+- **Ink fallback.** `PolarisBranding.PolarisKey` with no integrator, presentation or icon accent now
+  resolves to ink (`ColorScheme.withInk`: the strongest text colour as primary, the page as its label,
+  ink focus ring and accent text), not the core violet; `BrandingTest` and `PresentationThemeTest` assert
+  it. The branded baselines (161) were re-recorded for it.
+- **Screens from `KitStates`.** `PolarisKitScreen(screen)` draws a `KitStates.resolve` answer (title, body,
+  controls, `a11y.*` as a live-region description) and `KitSignIn(inputs, presentation)` is the
+  SignIn(state, presentation) component over the SDK's presentation source (`KitInputs.has` and `with`
+  are the two new `:ui-core` helpers). `MatrixSnapshotTest` renders the first row of every distinct
+  (component, state) of `ui-matrix.json` (125 states, hidden ones excluded) in both themes under
+  `src/test/snapshots/matrix/<Component>-<state>/phone-polaris-{dark,light}.png`.
+- **Verified** (JDK 17, `ANDROID_HOME` set): `:ui:testDebugUnitTest :ui:verifyRoborazziDebug :ui:lintDebug
+:ui-core:test checkModuleBoundaries :conformance:test :ui:publishAllPublicationsToLocalRepository` green
+  (:ui 192 tests, :ui-core 44, :conformance 117); brand package tests 2226; `pnpm parity:check`,
+  `pnpm gen --check` and the kit lint clean.
+- **Not done, in order:** (1) the styled parts behind `PolarisKitScreen`: fields (key entry), QR and code
+  card, connected lists (devices, settings, licence choice), the update bottom sheet, toasts; today the
+  matrix screens carry only the corpus copy lines, so a state's controls appear only where the matrix
+  lists them; (2) `PolarisKeyGate(client) { App() }` that starts itself, navigation graph and deep links,
+  Credential Manager, predictive back, list-detail at tablet widths; (3) the Compose lint rules of §7.3
+  beyond the shared kit lint, AccessibilityTest and 200 % font on the matrix renders; (4)
+  `examples/ui/compose-android/`, docs pages and the kit README; (5) the `ui.*` parity rows stay
+  `planned` (the signin and theme notes record progress) until a component ships all three layers;
+  (6) design and UX reviews. Every acceptance criterion above is still open.
