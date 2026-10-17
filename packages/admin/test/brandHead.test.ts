@@ -47,16 +47,7 @@ describe("the brand head snippet", () => {
     );
     const brandLockupKey = join(pkg, "..", "brand", "kit", "02-lockups", "key");
     const email = readFileSync(
-      join(
-        pkg,
-        "..",
-        "worker",
-        "src",
-        "services",
-        "identity",
-        "portal",
-        "email.ts",
-      ),
+      join(pkg, "..", "worker", "src", "core", "notify", "render.ts"),
       "utf8",
     );
     for (const variant of ["light", "dark"]) {

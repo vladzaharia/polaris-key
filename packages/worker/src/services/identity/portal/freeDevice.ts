@@ -35,8 +35,8 @@ import {
   getPortalProductSettings,
   portalAudit,
 } from "./repo.js";
-import { sendSecurityNotice } from "./email.js";
-import { deviceRemovedNotice } from "./notices.js";
+import { sendSecurityNotice } from "../../../core/notify/send.js";
+import { deviceRemovedNotice } from "../../../core/notify/templates.js";
 
 /** The rate-limit bucket device removal spends, on every surface. */
 export const DEVICE_DISCONNECT_BUCKET = "portalDeviceDisconnect";

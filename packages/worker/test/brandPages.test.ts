@@ -28,13 +28,9 @@ import {
   handleAuthDeviceEntry,
   handleAuthDeviceVerify,
 } from "../src/services/identity/oidc.js";
-import {
-  emailAssetOrigin,
-  renderEmail,
-  sendMagicLink,
-  sendNotice,
-} from "../src/services/identity/portal/email.js";
-import { licenseAddedNotice } from "../src/services/identity/portal/notices.js";
+import { emailAssetOrigin, renderEmail } from "../src/core/notify/render.js";
+import { sendMagicLink, sendNotice } from "../src/core/notify/send.js";
+import { licenseAddedNotice } from "../src/core/notify/templates.js";
 import type { Env } from "../src/platform/env.js";
 import { artefacts } from "./singleUseMock.js";
 

@@ -121,16 +121,13 @@ import {
   portalLicenseOrigin,
   storeKey,
 } from "./origin.js";
-import {
-  portalEmailConfigured,
-  sendNotice,
-  sendSecurityNotice,
-} from "./email.js";
+import { sendNotice, sendSecurityNotice } from "../../../core/notify/send.js";
+import { emailConfigured } from "../../../core/notify/destinations.js";
 import {
   accountDeletionCancelledNotice,
   accountDeletionScheduledNotice,
   downloadLinkEmail,
-} from "./notices.js";
+} from "../../../core/notify/templates.js";
 import { platformSignInEnded } from "../accounts/platformMigration.js";
 import { appSecurityHeaders as portalSecurityHeaders } from "../../../core/securityHeaders.js";
 import { handleProductDownloads } from "./downloads.js";
@@ -759,8 +756,7 @@ async function handleCapabilities(
         audienceCovers(seeded.audience, "customers") &&
         !platformSignInEnded(env, now),
       connections,
-      magic:
-        caps.portalEnabled && caps.magicEnabled && portalEmailConfigured(env),
+      magic: caps.portalEnabled && caps.magicEnabled && emailConfigured(env),
       // I-16: passkeys are an account sign-in method, platform-level (no product toggle).
       passkey: caps.portalEnabled,
     },
@@ -1315,7 +1311,7 @@ async function handleEmailDownload(
   if (!(await hasLinkedProductLicense(db, session.accountId, product))) {
     return notFound();
   }
-  if (!portalEmailConfigured(env)) {
+  if (!emailConfigured(env)) {
     return err(503, "email_unavailable", "email is not configured");
   }
   const limited = await requireActionRateLimit(

@@ -19,8 +19,8 @@ import { onLicenseOwnershipEnded } from "../../../core/accounts/subjectHooks.js"
 import { appendPlatformEvent } from "../../../core/ops/platformEvents.js";
 import type { Db } from "../../../db/types.js";
 import { getProduct } from "../../../core/products/store.js";
-import { sendSecurityNotice } from "../portal/email.js";
-import { licenseLinkSupersededNotice } from "../portal/notices.js";
+import { sendSecurityNotice } from "../../../core/notify/send.js";
+import { licenseLinkSupersededNotice } from "../../../core/notify/templates.js";
 import { portalAudit } from "../portal/repo.js";
 import type { AccountContext } from "./links.js";
 

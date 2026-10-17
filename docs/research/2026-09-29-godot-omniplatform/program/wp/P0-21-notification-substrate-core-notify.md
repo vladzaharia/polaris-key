@@ -51,11 +51,18 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
 2. Implement the scope; run the green gate; hand off.
 
+## Verified against the code (2026-10-17)
+
+- The 17 notices plus `downloadLinkEmail` moved to `core/notify/templates.ts` (`git mv`, copy unchanged); `renderEmail`/`emailAssetOrigin` to `render.ts`; the senders (`sendMagicLink`, `sendSignInEmail`, `sendNotice`, `sendSecurityNotice`) to `send.ts`; `securityNoticeRecipients` to `recipients.ts`. `portalEmailConfigured` is now `emailConfigured` in `destinations.ts`.
+- Core cannot import identity, so `verifiedAccountEmails` and `portalAudit` moved to `core/accounts/{verifiedEmails,portalAudit}.ts`; identity's `accounts/repo.ts` and `portal/repo.ts` re-export them, so their callers are untouched.
+- No invite or key-email flow exists yet (LX-27), so the email-off path is the substrate primitive `deliverOrLink` (answers the link to copy); `test/notifyDestinations.test.ts` covers it. Webhook destinations are ST-27's.
+- The existing `portalNotices` snapshot (every template) is unchanged; only imports moved in tests.
+
 ## Acceptance criteria
 
-- [ ] No service imports identity/portal email code (rule 6)
-- [ ] Snapshot test per template
-- [ ] Email-off path returns a copyable link
+- [x] No service imports identity/portal email code (rule 6)
+- [x] Snapshot test per template
+- [x] Email-off path returns a copyable link
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

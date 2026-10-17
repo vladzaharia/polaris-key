@@ -51,7 +51,7 @@ import { normalizeEmail } from "../../../platform/email.js";
 import { randomId } from "../../../platform/crypto.js";
 import type { Db } from "../../../db/types.js";
 import { erasureVerdict } from "../../../core/accounts/erasureFence.js";
-import { sendNotice, sendSecurityNotice } from "../portal/email.js";
+import { sendNotice, sendSecurityNotice } from "../../../core/notify/send.js";
 import {
   licenseAssignedToYouNotice,
   licenseMadeFloatingNotice,
@@ -60,7 +60,7 @@ import {
   licenseRelinkedAwayNotice,
   licenseRelinkedInNotice,
   type NoticeMessage,
-} from "../portal/notices.js";
+} from "../../../core/notify/templates.js";
 import { detachLicense, reassignLicense } from "./claim.js";
 import type { AccountContext } from "./links.js";
 import { getAccountRow, verifiedAccountEmails } from "./repo.js";
