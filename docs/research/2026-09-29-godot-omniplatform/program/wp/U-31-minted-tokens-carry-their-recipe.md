@@ -126,8 +126,8 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 - [x] One recipe location (the entry's `mint` block; the console editor writes it, the Edge mint page is now only the approve surface)
 - [x] Approval still required before minting (P0-12), now behind a step-up
-- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/managed-config/{catalog, visibility, minted-tokens, profiles}`; `reference/config-entry`.
-- [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
+- [x] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/managed-config/{catalog, visibility, minted-tokens, profiles}`; `reference/config-entry`.
+- [x] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify
 
