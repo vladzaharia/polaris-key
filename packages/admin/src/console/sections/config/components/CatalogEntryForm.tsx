@@ -4,7 +4,6 @@ import { SUPPORTED_FORMATS, userSettingIssues } from "@polaris-key/catalog";
 import type {
   ConfigEntry,
   ConfigKind,
-  EdgeMintRecipe,
   ManagementState,
 } from "../../../../api.js";
 import { IN_APP_LABELS } from "../../../../lib/labels.js";
@@ -138,7 +137,6 @@ export function CatalogEntryForm({
   fresh = false,
   slug,
   syncEnabled = true,
-  recipes = null,
   flagKeys = [],
   onChange,
 }: {
@@ -153,8 +151,6 @@ export function CatalogEntryForm({
   slug?: string;
   /** Cloud Sync is on for the product, so an Editable setting's choice can sync. */
   syncEnabled?: boolean;
-  /** The product's stored mint recipes, or null while unknown. */
-  recipes?: EdgeMintRecipe[] | null;
   /** The draft's flag keys, offered for a minted token's Required flag. */
   flagKeys?: string[];
   onChange: (next: ConfigEntry) => void;
@@ -348,10 +344,9 @@ export function CatalogEntryForm({
           </p>
         </div>
       ) : null}
-      {minted ? (
+      {minted && slug ? (
         <MintRecipeFields
           entry={entry}
-          recipes={recipes}
           flagKeys={flagKeys}
           slug={slug}
           error={issue("mint")}

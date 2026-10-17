@@ -1,6 +1,6 @@
 import * as React from "react";
 import type { MintBlock } from "@polaris-key/catalog";
-import type { ConfigEntry, EdgeMintRecipe } from "../../../../api.js";
+import type { ConfigEntry } from "../../../../api.js";
 import { Select } from "../../../../ui/Select.js";
 import { FormField } from "../../../../ui/form.js";
 import { Input } from "../../../../ui/Input.js";
@@ -9,6 +9,7 @@ import { Textarea } from "../../../../ui/Textarea.js";
 import { Link } from "../../../router.js";
 import { r } from "../../../routes.js";
 import { changedLabel } from "../model/edgeMintFields.js";
+import { useEdgeMint } from "../data.js";
 import { blockOf, withMint, MINT_TTL_MAX } from "../model/mintBlock.js";
 
 /** Select values cannot be empty, so "no flag" has one of its own. */
@@ -28,27 +29,25 @@ const REQUIRES = [
  */
 export function MintRecipeFields({
   entry,
-  recipes,
   flagKeys,
   slug,
   error,
   onChange,
 }: {
   entry: ConfigEntry;
-  /** The product's stored recipes, or `null` while they load. */
-  recipes: EdgeMintRecipe[] | null;
   /** The draft's problem with the recipe, if any. */
   error?: string;
   /** The catalog's flag keys, offered for Required entitlement. */
   flagKeys: string[];
-  slug?: string;
+  slug: string;
   onChange: (next: ConfigEntry) => void;
 }): React.ReactElement {
   // The stored recipe for this key: `null` when there is none, `undefined` while loading.
+  const stored = useEdgeMint(slug).data?.recipes;
   const recipe =
-    recipes === null
+    stored === undefined
       ? undefined
-      : (recipes.find((x) => x.id === entry.key) ?? null);
+      : (stored.find((x) => x.id === entry.key) ?? null);
   const block = blockOf(entry, recipe);
   const set = (patch: Partial<MintBlock>): void =>
     onChange(withMint(entry, { ...block, ...patch }));
@@ -87,7 +86,7 @@ export function MintRecipeFields({
         ) : recipe === null ? (
           <span className="text-sm text-fg-muted">Not saved yet</span>
         ) : null}
-        {slug && recipe ? (
+        {recipe ? (
           <Link
             to={`${r.edgeMint(slug)}?recipe=${encodeURIComponent(entry.key)}`}
             className="text-sm text-accent-fg underline underline-offset-2"
