@@ -30881,7 +30881,7 @@ var NODE_SERVER = {
     filename: "verify.ts",
     language: "ts",
     code: lines2(
-      `import { verifyLicenseDocument } from "@polaris-key/node/server";`,
+      `import { verifyLicenseDocument } from "@polaris-key/server";`,
       `import { polarisConfig } from "./polaris.config.js";`,
       ``,
       `// The app sends its cached licence document and its device id with the request.`,
