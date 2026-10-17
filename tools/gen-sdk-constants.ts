@@ -2111,7 +2111,7 @@ export async function renderAll(
   for (const target of [
     ...TARGETS,
     ...(model.copy ? COPY_TARGETS : []),
-    ...(model.backendCopy ? BACKEND_COPY_TARGETS : []),
+    ...(model.copy && model.backendCopy ? BACKEND_COPY_TARGETS : []),
   ]) {
     if (target.onlyIfDir && !existsSync(join(root, target.onlyIfDir))) continue;
     let content = target.render(model, model.capabilities[target.sdk]);

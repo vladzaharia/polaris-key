@@ -36,6 +36,7 @@ packages/
   cli/               @polaris-key/cli          the `pkey` CLI
   sdk-node/          @polaris-key/node         Node SDK and CLI adapters
   sdk-react/         @polaris-key/react        React SDK and login UI
+  server/            @polaris-key/server       licence-gated routes: Fetch core, Express, Hono, Next.js
   docs/              @polaris-key/docs         the docs site served at /docs
   brand/             @polaris-key/brand        design tokens, fonts, marks, launch-kit assets
   ui-qa/             @polaris-key/ui-qa        UI-kit visual QA and lints

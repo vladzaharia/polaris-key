@@ -18,6 +18,7 @@ import {
   checkStageCoverage,
   compileSchema,
   COPY_PLACEHOLDERS,
+  BACKEND_COPY_TARGETS,
   COPY_TARGETS,
   loadSources,
   pascalToUpper,
@@ -754,7 +755,7 @@ describe("gen constants --check", () => {
     mkdirSync(join(root, "sdks/godot/addons/polaris_key"), { recursive: true });
     const rendered = await renderAll(MODEL, root);
     expect([...rendered.keys()]).toEqual(
-      [...TARGETS, ...COPY_TARGETS].map((t) => t.path),
+      [...TARGETS, ...COPY_TARGETS, ...BACKEND_COPY_TARGETS].map((t) => t.path),
     );
     for (const [path, content] of rendered) {
       mkdirSync(dirname(join(root, path)), { recursive: true });
@@ -786,6 +787,26 @@ describe("gen constants --check", () => {
     }
   }, 30_000);
 
+  it("reports a hand edit to @polaris-key/server's backend copy", async () => {
+    const root = mkdtempSync(join(tmpdir(), "gen-constants-backend-"));
+    for (const [path, content] of await renderAll(MODEL, root)) {
+      mkdirSync(dirname(join(root, path)), { recursive: true });
+      writeFileSync(join(root, path), content);
+    }
+    const [target] = BACKEND_COPY_TARGETS;
+    const abs = join(root, target!.path);
+    const original = readFileSync(abs, "utf8");
+    // Five codes in every locale, English first (WIRE-CONTRACT-V4 §14.3).
+    expect(original.match(/license_required: \{/g)).toHaveLength(8);
+    expect(original.indexOf("  en: {")).toBeLessThan(
+      original.indexOf("  de: {"),
+    );
+    writeFileSync(abs, original.replace("License needed", "Licence wanted"));
+    expect(await run({ check: true, root, model: MODEL })).toEqual([
+      target!.path,
+    ]);
+  }, 30_000);
+
   it("skips the GDScript module while sdks/godot/addons/polaris_key does not exist", async () => {
     const root = mkdtempSync(join(tmpdir(), "gen-constants-nogodot-"));
     const rendered = await renderAll(MODEL, root);
@@ -795,7 +816,9 @@ describe("gen constants --check", () => {
     expect([...rendered.keys()]).not.toContain(
       "sdks/godot/addons/polaris_key/core/copy_generated.gd",
     );
-    expect(rendered.size).toBe(TARGETS.length + COPY_TARGETS.length - 2);
+    expect(rendered.size).toBe(
+      TARGETS.length + COPY_TARGETS.length + BACKEND_COPY_TARGETS.length - 2,
+    );
   });
 });
 
