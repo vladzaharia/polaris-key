@@ -125,6 +125,8 @@ export interface ServiceRouteDecl {
   other?: "405" | "none" | "handler" | (() => Response);
   /**
    * The OpenAPI path under `/{product}/<slug>/`, when it cannot be derived from `path` (a
+   * template that starts with `/` is the whole path, for a route served at another service's
+   * URL: Commerce's store hooks live under `/{product}/distribution/hooks/`; a
    * template that varies inside a segment, `{buildId}.AppImage.zsync`; or `**`). `false` leaves
    * the row out of the spec on purpose (it must say why, in a comment).
    */
@@ -177,7 +179,9 @@ export function serviceRoutes(
           ? [r.doc]
           : r.doc;
     return tails.map((tail) => ({
-      path: `/{product}/${slug}${tail === "" ? "" : `/${tail}`}`,
+      path: tail.startsWith("/")
+        ? tail
+        : `/{product}/${slug}${tail === "" ? "" : `/${tail}`}`,
       methods: r.methods.map((m) => m.toLowerCase()),
     }));
   });

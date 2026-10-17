@@ -98,6 +98,14 @@ and POST; each now answers the plain 405. `serviceRouteTables.test.ts` pins the 
 walks every row (no unlisted method reaches a handler; no CI row reaches its handler without a
 token).
 
+**Also in slice 1 (after the first review):** I-08's `authorize`/`token` and CM-29's Commerce
+(`COMMERCE_ROUTES`: `binding`, `claim`, and the two store hooks, accepted only with `storeHook`
+set and License on; `/commerce/hooks/*` stays the not-found) are table rows. Each was recorded
+from its hand dispatch first: `service-route-oracle-2.json` (I-08, hostile `%2F` / `..` / `//` /
+trailing-slash spellings on `fdroid/**` and `rollouts`, Origin/HEAD/OPTIONS on CORS-covered
+routes) and `service-route-oracle-3.json` (Commerce in three product states, plus the identity
+pages that changed on integ/next).
+
 **Remaining (slice 2, not started): the portal and the public (core) routes.**
 `dispatch.ts`'s `routeRequest`/`dispatchProductRoute` switches over `router.ts` route kinds and
 `services/identity/portal` `handlePortal` are still hand dispatch. The core product routes

@@ -22,6 +22,7 @@ import { UPDATE_ROUTES } from "../src/services/update/routes.js";
 import { IDENTITY_ROUTES } from "../src/services/identity/routes.js";
 import { RELEASE_ROUTES } from "../src/services/release/routes.js";
 import { DISTRIBUTION_ROUTES } from "../src/services/distribution/routes.js";
+import { COMMERCE_ROUTES } from "../src/services/commerce/routes.js";
 import { SYNC_ROUTES } from "../src/services/sync/routes.js";
 
 const TABLES = {
@@ -32,6 +33,7 @@ const TABLES = {
   release: RELEASE_ROUTES,
   distribution: DISTRIBUTION_ROUTES,
   sync: SYNC_ROUTES,
+  commerce: COMMERCE_ROUTES,
 } as const;
 
 const ALL = ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"] as const;
@@ -54,6 +56,7 @@ function ctxFor(method: string, rest: string[]): ServiceContext {
     rest,
     now: 0,
     storeGrants: () => undefined,
+    storeHook: true,
   } as unknown as ServiceContext;
 }
 
