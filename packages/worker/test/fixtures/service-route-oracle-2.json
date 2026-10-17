@@ -722,6 +722,870 @@
     "cookies": [],
     "body": "30:61b5f4a46397ebc3"
   },
+  "GET /djdl/identity/choice/licenses": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8",
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "HEAD /djdl/identity/choice/licenses": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8",
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "POST /djdl/identity/choice/licenses": {
+    "status": 400,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store",
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "32:97af5772e08c551c"
+  },
+  "POST+body /djdl/identity/choice/licenses": {
+    "status": 400,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store",
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "32:97af5772e08c551c"
+  },
+  "PUT /djdl/identity/choice/licenses": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8",
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "PUT+body /djdl/identity/choice/licenses": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8",
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "PATCH /djdl/identity/choice/licenses": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8",
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "PATCH+body /djdl/identity/choice/licenses": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8",
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "DELETE /djdl/identity/choice/licenses": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8",
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "DELETE+body /djdl/identity/choice/licenses": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8",
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "OPTIONS /djdl/identity/choice/licenses": {
+    "status": 204,
+    "headers": {
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "0:e3b0c44298fc1c14"
+  },
+  "OPTIONS+body /djdl/identity/choice/licenses": {
+    "status": 204,
+    "headers": {
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "0:e3b0c44298fc1c14"
+  },
+  "GET /djdl/identity/choice/licenses/": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8",
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "HEAD /djdl/identity/choice/licenses/": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8",
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "POST /djdl/identity/choice/licenses/": {
+    "status": 400,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store",
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "32:97af5772e08c551c"
+  },
+  "POST+body /djdl/identity/choice/licenses/": {
+    "status": 400,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store",
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "32:97af5772e08c551c"
+  },
+  "PUT /djdl/identity/choice/licenses/": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8",
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "PUT+body /djdl/identity/choice/licenses/": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8",
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "PATCH /djdl/identity/choice/licenses/": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8",
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "PATCH+body /djdl/identity/choice/licenses/": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8",
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "DELETE /djdl/identity/choice/licenses/": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8",
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "DELETE+body /djdl/identity/choice/licenses/": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8",
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "OPTIONS /djdl/identity/choice/licenses/": {
+    "status": 204,
+    "headers": {
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "0:e3b0c44298fc1c14"
+  },
+  "OPTIONS+body /djdl/identity/choice/licenses/": {
+    "status": 204,
+    "headers": {
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "0:e3b0c44298fc1c14"
+  },
+  "GET /djdl/identity/choice/devices": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8",
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "HEAD /djdl/identity/choice/devices": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8",
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "POST /djdl/identity/choice/devices": {
+    "status": 400,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store",
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "32:97af5772e08c551c"
+  },
+  "POST+body /djdl/identity/choice/devices": {
+    "status": 400,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store",
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "32:97af5772e08c551c"
+  },
+  "PUT /djdl/identity/choice/devices": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8",
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "PUT+body /djdl/identity/choice/devices": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8",
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "PATCH /djdl/identity/choice/devices": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8",
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "PATCH+body /djdl/identity/choice/devices": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8",
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "DELETE /djdl/identity/choice/devices": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8",
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "DELETE+body /djdl/identity/choice/devices": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8",
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "OPTIONS /djdl/identity/choice/devices": {
+    "status": 204,
+    "headers": {
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "0:e3b0c44298fc1c14"
+  },
+  "OPTIONS+body /djdl/identity/choice/devices": {
+    "status": 204,
+    "headers": {
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "0:e3b0c44298fc1c14"
+  },
+  "GET /djdl/identity/choice/complete": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8",
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "HEAD /djdl/identity/choice/complete": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8",
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "POST /djdl/identity/choice/complete": {
+    "status": 400,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store",
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "32:97af5772e08c551c"
+  },
+  "POST+body /djdl/identity/choice/complete": {
+    "status": 400,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store",
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "32:97af5772e08c551c"
+  },
+  "PUT /djdl/identity/choice/complete": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8",
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "PUT+body /djdl/identity/choice/complete": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8",
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "PATCH /djdl/identity/choice/complete": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8",
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "PATCH+body /djdl/identity/choice/complete": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8",
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "DELETE /djdl/identity/choice/complete": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8",
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "DELETE+body /djdl/identity/choice/complete": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8",
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "OPTIONS /djdl/identity/choice/complete": {
+    "status": 204,
+    "headers": {
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "0:e3b0c44298fc1c14"
+  },
+  "OPTIONS+body /djdl/identity/choice/complete": {
+    "status": 204,
+    "headers": {
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "0:e3b0c44298fc1c14"
+  },
+  "GET /djdl/identity/choice/cancel": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8",
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "HEAD /djdl/identity/choice/cancel": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8",
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "POST /djdl/identity/choice/cancel": {
+    "status": 400,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store",
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "32:97af5772e08c551c"
+  },
+  "POST+body /djdl/identity/choice/cancel": {
+    "status": 400,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store",
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "32:97af5772e08c551c"
+  },
+  "PUT /djdl/identity/choice/cancel": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8",
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "PUT+body /djdl/identity/choice/cancel": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8",
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "PATCH /djdl/identity/choice/cancel": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8",
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "PATCH+body /djdl/identity/choice/cancel": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8",
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "DELETE /djdl/identity/choice/cancel": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8",
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "DELETE+body /djdl/identity/choice/cancel": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8",
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "OPTIONS /djdl/identity/choice/cancel": {
+    "status": 204,
+    "headers": {
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "0:e3b0c44298fc1c14"
+  },
+  "OPTIONS+body /djdl/identity/choice/cancel": {
+    "status": 204,
+    "headers": {
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "0:e3b0c44298fc1c14"
+  },
+  "GET /djdl/identity/choice/cancel/x": {
+    "status": 404,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "cookies": [],
+    "body": "30:61b5f4a46397ebc3"
+  },
+  "HEAD /djdl/identity/choice/cancel/x": {
+    "status": 404,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "cookies": [],
+    "body": "30:61b5f4a46397ebc3"
+  },
+  "POST /djdl/identity/choice/cancel/x": {
+    "status": 404,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "cookies": [],
+    "body": "30:61b5f4a46397ebc3"
+  },
+  "POST+body /djdl/identity/choice/cancel/x": {
+    "status": 404,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "cookies": [],
+    "body": "30:61b5f4a46397ebc3"
+  },
+  "PUT /djdl/identity/choice/cancel/x": {
+    "status": 404,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "cookies": [],
+    "body": "30:61b5f4a46397ebc3"
+  },
+  "PUT+body /djdl/identity/choice/cancel/x": {
+    "status": 404,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "cookies": [],
+    "body": "30:61b5f4a46397ebc3"
+  },
+  "PATCH /djdl/identity/choice/cancel/x": {
+    "status": 404,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "cookies": [],
+    "body": "30:61b5f4a46397ebc3"
+  },
+  "PATCH+body /djdl/identity/choice/cancel/x": {
+    "status": 404,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "cookies": [],
+    "body": "30:61b5f4a46397ebc3"
+  },
+  "DELETE /djdl/identity/choice/cancel/x": {
+    "status": 404,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "cookies": [],
+    "body": "30:61b5f4a46397ebc3"
+  },
+  "DELETE+body /djdl/identity/choice/cancel/x": {
+    "status": 404,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "cookies": [],
+    "body": "30:61b5f4a46397ebc3"
+  },
+  "OPTIONS /djdl/identity/choice/cancel/x": {
+    "status": 404,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "cookies": [],
+    "body": "30:61b5f4a46397ebc3"
+  },
+  "OPTIONS+body /djdl/identity/choice/cancel/x": {
+    "status": 404,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "cookies": [],
+    "body": "30:61b5f4a46397ebc3"
+  },
+  "GET /djdl/identity/choice": {
+    "status": 404,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "cookies": [],
+    "body": "30:61b5f4a46397ebc3"
+  },
+  "HEAD /djdl/identity/choice": {
+    "status": 404,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "cookies": [],
+    "body": "30:61b5f4a46397ebc3"
+  },
+  "POST /djdl/identity/choice": {
+    "status": 404,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "cookies": [],
+    "body": "30:61b5f4a46397ebc3"
+  },
+  "POST+body /djdl/identity/choice": {
+    "status": 404,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "cookies": [],
+    "body": "30:61b5f4a46397ebc3"
+  },
+  "PUT /djdl/identity/choice": {
+    "status": 404,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "cookies": [],
+    "body": "30:61b5f4a46397ebc3"
+  },
+  "PUT+body /djdl/identity/choice": {
+    "status": 404,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "cookies": [],
+    "body": "30:61b5f4a46397ebc3"
+  },
+  "PATCH /djdl/identity/choice": {
+    "status": 404,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "cookies": [],
+    "body": "30:61b5f4a46397ebc3"
+  },
+  "PATCH+body /djdl/identity/choice": {
+    "status": 404,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "cookies": [],
+    "body": "30:61b5f4a46397ebc3"
+  },
+  "DELETE /djdl/identity/choice": {
+    "status": 404,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "cookies": [],
+    "body": "30:61b5f4a46397ebc3"
+  },
+  "DELETE+body /djdl/identity/choice": {
+    "status": 404,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "cookies": [],
+    "body": "30:61b5f4a46397ebc3"
+  },
+  "OPTIONS /djdl/identity/choice": {
+    "status": 404,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "cookies": [],
+    "body": "30:61b5f4a46397ebc3"
+  },
+  "OPTIONS+body /djdl/identity/choice": {
+    "status": 404,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "cookies": [],
+    "body": "30:61b5f4a46397ebc3"
+  },
+  "GET /djdl/identity/choice/nope": {
+    "status": 404,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "cookies": [],
+    "body": "30:61b5f4a46397ebc3"
+  },
+  "HEAD /djdl/identity/choice/nope": {
+    "status": 404,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "cookies": [],
+    "body": "30:61b5f4a46397ebc3"
+  },
+  "POST /djdl/identity/choice/nope": {
+    "status": 404,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "cookies": [],
+    "body": "30:61b5f4a46397ebc3"
+  },
+  "POST+body /djdl/identity/choice/nope": {
+    "status": 404,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "cookies": [],
+    "body": "30:61b5f4a46397ebc3"
+  },
+  "PUT /djdl/identity/choice/nope": {
+    "status": 404,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "cookies": [],
+    "body": "30:61b5f4a46397ebc3"
+  },
+  "PUT+body /djdl/identity/choice/nope": {
+    "status": 404,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "cookies": [],
+    "body": "30:61b5f4a46397ebc3"
+  },
+  "PATCH /djdl/identity/choice/nope": {
+    "status": 404,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "cookies": [],
+    "body": "30:61b5f4a46397ebc3"
+  },
+  "PATCH+body /djdl/identity/choice/nope": {
+    "status": 404,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "cookies": [],
+    "body": "30:61b5f4a46397ebc3"
+  },
+  "DELETE /djdl/identity/choice/nope": {
+    "status": 404,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "cookies": [],
+    "body": "30:61b5f4a46397ebc3"
+  },
+  "DELETE+body /djdl/identity/choice/nope": {
+    "status": 404,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "cookies": [],
+    "body": "30:61b5f4a46397ebc3"
+  },
+  "OPTIONS /djdl/identity/choice/nope": {
+    "status": 404,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "cookies": [],
+    "body": "30:61b5f4a46397ebc3"
+  },
+  "OPTIONS+body /djdl/identity/choice/nope": {
+    "status": 404,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "cookies": [],
+    "body": "30:61b5f4a46397ebc3"
+  },
   "GET /djdl/distribution/fdroid/stable/repo/index-v2.json": {
     "status": 404,
     "headers": {
@@ -3478,6 +4342,182 @@
     },
     "cookies": [],
     "body": "82:2dea2b202a0486e1"
+  },
+  "GET+origin /djdl/identity/choice/licenses": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8",
+      "vary": "Origin",
+      "access-control-allow-origin": "https://play.djdl.example",
+      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "HEAD+origin /djdl/identity/choice/licenses": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8",
+      "vary": "Origin",
+      "access-control-allow-origin": "https://play.djdl.example",
+      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "OPTIONS+origin /djdl/identity/choice/licenses": {
+    "status": 204,
+    "headers": {
+      "vary": "Origin",
+      "access-control-allow-origin": "https://play.djdl.example",
+      "access-control-allow-methods": "GET, POST, PATCH, DELETE"
+    },
+    "cookies": [],
+    "body": "0:e3b0c44298fc1c14"
+  },
+  "POST+origin /djdl/identity/choice/licenses": {
+    "status": 400,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store",
+      "vary": "Origin",
+      "access-control-allow-origin": "https://play.djdl.example",
+      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest"
+    },
+    "cookies": [],
+    "body": "32:97af5772e08c551c"
+  },
+  "GET+origin /djdl/identity/choice/devices": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8",
+      "vary": "Origin",
+      "access-control-allow-origin": "https://play.djdl.example",
+      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "HEAD+origin /djdl/identity/choice/devices": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8",
+      "vary": "Origin",
+      "access-control-allow-origin": "https://play.djdl.example",
+      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "OPTIONS+origin /djdl/identity/choice/devices": {
+    "status": 204,
+    "headers": {
+      "vary": "Origin",
+      "access-control-allow-origin": "https://play.djdl.example",
+      "access-control-allow-methods": "GET, POST, PATCH, DELETE"
+    },
+    "cookies": [],
+    "body": "0:e3b0c44298fc1c14"
+  },
+  "POST+origin /djdl/identity/choice/devices": {
+    "status": 400,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store",
+      "vary": "Origin",
+      "access-control-allow-origin": "https://play.djdl.example",
+      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest"
+    },
+    "cookies": [],
+    "body": "32:97af5772e08c551c"
+  },
+  "GET+origin /djdl/identity/choice/complete": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8",
+      "vary": "Origin",
+      "access-control-allow-origin": "https://play.djdl.example",
+      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "HEAD+origin /djdl/identity/choice/complete": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8",
+      "vary": "Origin",
+      "access-control-allow-origin": "https://play.djdl.example",
+      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "OPTIONS+origin /djdl/identity/choice/complete": {
+    "status": 204,
+    "headers": {
+      "vary": "Origin",
+      "access-control-allow-origin": "https://play.djdl.example",
+      "access-control-allow-methods": "GET, POST, PATCH, DELETE"
+    },
+    "cookies": [],
+    "body": "0:e3b0c44298fc1c14"
+  },
+  "POST+origin /djdl/identity/choice/complete": {
+    "status": 400,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store",
+      "vary": "Origin",
+      "access-control-allow-origin": "https://play.djdl.example",
+      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest"
+    },
+    "cookies": [],
+    "body": "32:97af5772e08c551c"
+  },
+  "GET+origin /djdl/identity/choice/cancel": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8",
+      "vary": "Origin",
+      "access-control-allow-origin": "https://play.djdl.example",
+      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "HEAD+origin /djdl/identity/choice/cancel": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8",
+      "vary": "Origin",
+      "access-control-allow-origin": "https://play.djdl.example",
+      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "OPTIONS+origin /djdl/identity/choice/cancel": {
+    "status": 204,
+    "headers": {
+      "vary": "Origin",
+      "access-control-allow-origin": "https://play.djdl.example",
+      "access-control-allow-methods": "GET, POST, PATCH, DELETE"
+    },
+    "cookies": [],
+    "body": "0:e3b0c44298fc1c14"
+  },
+  "POST+origin /djdl/identity/choice/cancel": {
+    "status": 400,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store",
+      "vary": "Origin",
+      "access-control-allow-origin": "https://play.djdl.example",
+      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest"
+    },
+    "cookies": [],
+    "body": "32:97af5772e08c551c"
   },
   "GET+origin /djdl/distribution/fdroid/stable/repo/index-v2.json": {
     "status": 404,

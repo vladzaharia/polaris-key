@@ -198,6 +198,15 @@ const GROUP2: string[] = [
   "identity/token",
   "identity/token/",
   "identity/token/x",
+  // I-08b: the pending sign-in grant's four routes (recorded from the table, with their methods).
+  "identity/choice/licenses",
+  "identity/choice/licenses/",
+  "identity/choice/devices",
+  "identity/choice/complete",
+  "identity/choice/cancel",
+  "identity/choice/cancel/x",
+  "identity/choice",
+  "identity/choice/nope",
   "distribution/fdroid/stable/repo/index-v2.json",
   "distribution/fdroid/stable/repo/entry.jar",
   "distribution/fdroid/stable/repo/a%2Fb",
@@ -224,8 +233,14 @@ const GROUP2: string[] = [
   "distribution/feeds/fdroid/st%2Fable",
   "distribution/feeds/fdroid/stable/",
 ].map((n) => `/${SLUG}/${n}`);
-/** I-08's two canonical paths, which the surface now lists but group 1 predates. */
-const I08 = new Set([`/${SLUG}/identity/authorize`, `/${SLUG}/identity/token`]);
+/** I-08's two canonical paths and I-08b's four, which the surface now lists but group 1 predates. */
+const I08 = new Set([
+  `/${SLUG}/identity/authorize`,
+  `/${SLUG}/identity/token`,
+  ...["licenses", "devices", "complete", "cancel"].map(
+    (a) => `/${SLUG}/identity/choice/${a}`,
+  ),
+]);
 const NEAR = new Set(NEAR_MISSES.map((n) => `/${SLUG}/${n}`));
 const G3 = (path: string): boolean => GROUP3_SET.has(path.replace(/\?.*$/, ""));
 
@@ -291,6 +306,9 @@ const CORS_PATHS = [
   `/${SLUG}/license/document`,
   `/${SLUG}/config/schema`,
   `/${SLUG}/identity/token`,
+  ...["licenses", "devices", "complete", "cancel"].map(
+    (a) => `/${SLUG}/identity/choice/${a}`,
+  ),
   `/${SLUG}/distribution/fdroid/stable/repo/index-v2.json`,
 ];
 
