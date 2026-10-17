@@ -1,0 +1,31 @@
+---
+title: "Migration ledger"
+description: "Every expand and contract pair, compatibility window and data-migration report, each with the production fact that closes it."
+type: "runbook"
+lastReviewed: "2026-10-17"
+sidebar:
+  order: 10
+---
+
+import RunbookSection from "../../../../../components/docs/RunbookSection.astro";
+
+**Role required:** Platform admin. The lead records entries; the owner holds the owner steps.
+
+**Impact:** Reading the ledger changes nothing. A row closes the change it gates, so a drop or a removal waits for its entry.
+
+Use this before a release that drops a table, removes a branch or switches a resolver.
+
+<RunbookSection file="RUNBOOK" heading="Migration ledger" />
+
+## Verify
+
+- Each row you act on has an entry that states its exit fact and a date.
+- A job's run id in an entry opens with `pkey migrate report <run>`.
+
+## Roll back
+
+A recorded entry is never edited. If the fact stops being true, add a new entry that says so and reopen the row.
+
+## Escalate
+
+A row with no owner, or a production check that disagrees with its entry, goes to the owner before the drop.
