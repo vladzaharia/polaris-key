@@ -1128,32 +1128,32 @@ function settingControl(c: KitCtx, r: SettingsRow, name: string): ReactNode {
 }
 
 /** Words a key spells in capitals when it is read as a label (ui.compact reads "UI compact"). */
-const ACRONYMS: ReadonlySet<string> = new Set([
-  "ui",
-  "url",
-  "uri",
-  "id",
-  "api",
-  "cpu",
-  "gpu",
-  "fps",
-  "hdr",
-  "vr",
-  "ar",
-  "ip",
-  "dns",
-  "vpn",
-  "usb",
-  "tls",
-  "ssl",
-  "sdk",
-  "os",
-  "pc",
-  "tv",
-  "hdmi",
-  "pin",
-  "qr",
-]);
+const ACRONYMS: Readonly<Record<string, string>> = {
+  ui: "UI",
+  url: "URL",
+  uri: "URI",
+  id: "ID",
+  api: "API",
+  cpu: "CPU",
+  gpu: "GPU",
+  fps: "FPS",
+  hdr: "HDR",
+  vr: "VR",
+  ar: "AR",
+  ip: "IP",
+  dns: "DNS",
+  vpn: "VPN",
+  usb: "USB",
+  tls: "TLS",
+  ssl: "SSL",
+  sdk: "SDK",
+  os: "OS",
+  pc: "PC",
+  tv: "TV",
+  hdmi: "HDMI",
+  pin: "PIN",
+  qr: "QR",
+};
 
 /** A setting's name: the catalog entry's label, else its key read as words (`audio.volume` →
  *  "Audio volume"), never the raw key (DL8). */
@@ -1164,7 +1164,9 @@ export function settingLabel(row: SettingsRow): string {
     .split(/[._\-\s/:]+/)
     .filter(Boolean)
     .map((w) =>
-      ACRONYMS.has(w.toLowerCase()) ? w.toUpperCase() : w.toLocaleLowerCase(),
+      Object.hasOwn(ACRONYMS, w.toLowerCase())
+        ? ACRONYMS[w.toLowerCase()]!
+        : w.toLocaleLowerCase(),
     )
     .join(" ");
   return phrase ? phrase[0]!.toLocaleUpperCase() + phrase.slice(1) : row.key;
