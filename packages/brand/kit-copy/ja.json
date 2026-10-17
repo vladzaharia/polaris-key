@@ -145,7 +145,7 @@
     "deviceLimit.noManage": "別のデバイスで{product}からサインアウトしてから、もう一度お試しください。",
     "devices.title": "お使いのデバイス",
     "devices.lede": "このライセンスを使用しているデバイス。",
-    "devices.meta": "{platform} · 最終使用：{when}",
+    "devices.meta": "{platform} · 最終確認：{when}",
     "devices.count": "{count, plural, other {#台のデバイス}}",
     "devices.unnamed": "名前のないデバイス",
     "devices.rename": "名前を変更",

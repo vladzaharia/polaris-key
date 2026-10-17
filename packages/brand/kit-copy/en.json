@@ -703,7 +703,7 @@
       "note": "Devices: the list of devices using the license."
     },
     "devices.meta": {
-      "value": "{platform} · last used {when}",
+      "value": "{platform} · last seen {when}",
       "role": "body",
       "note": "Devices: the list of devices using the license. Second line of a device row. Arguments: {platform} = the device's platform name (macOS, Windows, iPhone…); {when} = a relative time already formatted by the platform (“2 days ago”)."
     },

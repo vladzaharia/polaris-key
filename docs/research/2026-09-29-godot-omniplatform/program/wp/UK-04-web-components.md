@@ -455,15 +455,16 @@ update. `headless` also re-exports the primitive and result types.
 divider and no "Sign in..." link on the step; DeviceLimit and Replace name the device in the primary
 ("Replace Work laptop and continue", new catalog key `signin.replace.confirmNamed`, nine locales,
 `pnpm gen brand`); the count is stated once (the subhead, not the meter caption too); the list
-scrolls in its own box past six rows and opens on the checked row; Devices says "last used" like
-Replace (`devices.meta`, nine locales); setting labels spell UI, URL, ID; the no-browser handoff
+scrolls in its own box past six rows and opens on the checked row; setting labels spell UI, URL, ID; the no-browser handoff
 shows the address; one lede in the browser's license choice; the shipped stylesheet carries no
 comments (a build step in `scripts/emit-css.mjs`), which keeps React's gate at +70.2 KB against the
 unchanged 71500 B budget.
 
 **Still open.** Item 1 (UK-02b corpus fixtures); the review's catalog strings that need the lead's
 wording call: revoked and expired ledes (Expired repeats its title; Revoked offers no Sign in lede),
-the network-error wording of `signIn.methodError`, CloudSync `conflict` (no Review action: needs a
+"last seen" in `devices.meta` against Replace's "last used" (changing it moves the Godot kit's
+renders, which ui:lint's catalog-string rule compares: a Godot re-render goes with it), the
+network-error wording of `signIn.methodError`, CloudSync `conflict` (no Review action: needs a
 `common.review` key) and `error` (names no fix), a title for the no-browser handoff; pixel
 baselines and the ui-qa cross-renderer diff; the CDN route; React's `parts.tsx` panes need the same
 controls (UK-05); the BUILT re-review (item 7). `ui-qa` `strings.allow.json` pattern now reads

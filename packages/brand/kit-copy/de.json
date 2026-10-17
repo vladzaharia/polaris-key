@@ -145,7 +145,7 @@
     "deviceLimit.noManage": "Melden Sie sich auf einem anderen Gerät von {product} ab und versuchen Sie es dann erneut.",
     "devices.title": "Ihre Geräte",
     "devices.lede": "Geräte, die diese Lizenz verwenden.",
-    "devices.meta": "{platform} · zuletzt verwendet {when}",
+    "devices.meta": "{platform} · zuletzt aktiv {when}",
     "devices.count": "{count, plural, one {# Gerät} other {# Geräte}}",
     "devices.unnamed": "Unbenanntes Gerät",
     "devices.rename": "Umbenennen",

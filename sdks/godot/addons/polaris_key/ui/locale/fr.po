@@ -964,10 +964,10 @@ msgstr "Vos appareils"
 msgid "devices.lede"
 msgstr "Appareils utilisant cette licence."
 
-#. {platform} · last used {when}
+#. {platform} · last seen {when}
 #. Devices: the list of devices using the license. Second line of a device row. Arguments: {platform} = the device's platform name (macOS, Windows, iPhone…); {when} = a relative time already formatted by the platform (“2 days ago”).
 msgid "devices.meta"
-msgstr "{platform} · dernière utilisation {when}"
+msgstr "{platform} · dernière activité {when}"
 
 #. {count, plural, one {# device} other {# devices}}
 #. Devices: the list of devices using the license. Arguments: {count} = a number of items.

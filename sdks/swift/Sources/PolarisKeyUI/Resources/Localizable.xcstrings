@@ -38372,55 +38372,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ · last used %2$@"
+            "value": "%1$@ · last seen %2$@"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ · zuletzt verwendet %2$@"
+            "value": "%1$@ · zuletzt aktiv %2$@"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ · dernière utilisation %2$@"
+            "value": "%1$@ · dernière activité %2$@"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ · usado por última vez %2$@"
+            "value": "%1$@ · visto por última vez %2$@"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ · usado por último %2$@"
+            "value": "%1$@ · visto por último %2$@"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ · usato l'ultima volta %2$@"
+            "value": "%1$@ · visto l'ultima volta %2$@"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ · 最終使用：%2$@"
+            "value": "%1$@ · 最終確認：%2$@"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ · 마지막 사용 %2$@"
+            "value": "%1$@ · 마지막 접속 %2$@"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ · 上次使用：%2$@"
+            "value": "%1$@ · 上次在线：%2$@"
           }
         }
       }

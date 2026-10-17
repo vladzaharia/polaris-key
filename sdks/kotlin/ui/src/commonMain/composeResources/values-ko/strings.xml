@@ -345,7 +345,7 @@
     <!-- Devices: the list of devices using the license. -->
     <string name="devices_lede">이 라이선스를 사용하는 기기예요.</string>
     <!-- Devices: the list of devices using the license. Second line of a device row. Arguments: {platform} = the device's platform name (macOS, Windows, iPhone…); {when} = a relative time already formatted by the platform (“2 days ago”). Arguments: 1=platform, 2=when. -->
-    <string name="devices_meta">%1$s · 마지막 사용 %2$s</string>
+    <string name="devices_meta">%1$s · 마지막 접속 %2$s</string>
     <!-- Devices: the list of devices using the license. Arguments: {count} = a number of items. Arguments: 1=count. -->
     <plurals name="devices_count">
         <item quantity="other">기기 %1$d대</item>

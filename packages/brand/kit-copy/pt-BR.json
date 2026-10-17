@@ -145,7 +145,7 @@
     "deviceLimit.noManage": "Saia de {product} em outro dispositivo e tente novamente.",
     "devices.title": "Seus dispositivos",
     "devices.lede": "Dispositivos que usam esta licença.",
-    "devices.meta": "{platform} · usado por último {when}",
+    "devices.meta": "{platform} · visto por último {when}",
     "devices.count": "{count, plural, one {# dispositivo} many {# de dispositivos} other {# dispositivos}}",
     "devices.unnamed": "Dispositivo sem nome",
     "devices.rename": "Renomear",

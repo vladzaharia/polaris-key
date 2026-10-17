@@ -138,7 +138,7 @@
   "deviceLimit.noManage": "Déconnectez-vous de {product} sur un autre appareil, puis réessayez.",
   "devices.title": "Vos appareils",
   "devices.lede": "Appareils utilisant cette licence.",
-  "devices.meta": "{platform} · dernière utilisation {when}",
+  "devices.meta": "{platform} · dernière activité {when}",
   "devices.count": "{count, plural, one {# appareil} many {# d’appareils} other {# appareils}}",
   "devices.unnamed": "Appareil sans nom",
   "devices.rename": "Renommer",

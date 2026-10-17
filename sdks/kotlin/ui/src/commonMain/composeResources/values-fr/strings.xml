@@ -351,7 +351,7 @@
     <!-- Devices: the list of devices using the license. -->
     <string name="devices_lede">Appareils utilisant cette licence.</string>
     <!-- Devices: the list of devices using the license. Second line of a device row. Arguments: {platform} = the device's platform name (macOS, Windows, iPhone…); {when} = a relative time already formatted by the platform (“2 days ago”). Arguments: 1=platform, 2=when. -->
-    <string name="devices_meta">%1$s · dernière utilisation %2$s</string>
+    <string name="devices_meta">%1$s · dernière activité %2$s</string>
     <!-- Devices: the list of devices using the license. Arguments: {count} = a number of items. Arguments: 1=count. -->
     <plurals name="devices_count">
         <item quantity="one">%1$d appareil</item>
