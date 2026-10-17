@@ -7,7 +7,8 @@
  *   `history.replaceState`, so Back does not loop through the redirect.
  * - **Links** are real `<a href>` (fixes SH-5): middle-click and open-in-new-tab work.
  * - **Query state.** `useSearchParam(name, codec)` reads and writes one hash-query parameter.
- *   Writes replace the history entry: a filter change is not a page you go Back to.
+ *   Writes replace the history entry (a filter change is not a page you go Back to); pass
+ *   `{ replace: false }` for state that is a place of its own, like a wizard's step.
  * - **The blocker.** `blockNavigation(fn)` registers a guard that may refuse a navigation (the
  *   unsaved-changes guard in chunk 3 is its client). It intercepts `<Link>` clicks and `navigate`,
  *   and on a `hashchange` it cannot prevent (typed URL, Back) it restores the previous hash.
@@ -283,19 +284,23 @@ export function useRoute(): Route {
 export function useSearchParam<T>(
   name: string,
   codec: QueryCodec<T>,
-): [T, (value: T) => void] {
+  options: { replace?: boolean } = {},
+): [T, (value: T, opts?: { replace?: boolean }) => void] {
+  const replaceDefault = options.replace ?? true;
   const { route, hash } = useLocation();
   const raw = route.query.get(name);
   const value = React.useMemo(() => codec.parse(raw), [codec, raw]);
   const set = React.useCallback(
-    (next: T) => {
+    (next: T, opts?: { replace?: boolean }) => {
       const q = hash.indexOf("?");
       const path = q === -1 ? hash : hash.slice(0, q);
       const query = withParam(route.query, name, codec, next);
       const s = query.toString();
-      navigate(`${path || "#/"}${s ? `?${s}` : ""}`, { replace: true });
+      navigate(`${path || "#/"}${s ? `?${s}` : ""}`, {
+        replace: opts?.replace ?? replaceDefault,
+      });
     },
-    [codec, hash, name, route.query],
+    [codec, hash, name, replaceDefault, route.query],
   );
   return [value, set];
 }

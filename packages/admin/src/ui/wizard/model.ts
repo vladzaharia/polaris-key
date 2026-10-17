@@ -47,4 +47,5 @@ export const MAX_FLOW_STEPS = 5;
 export const STEP_WORDS = {
   done: "completed",
   skipped: "skipped",
+  unmet: "needs attention",
 } as const;

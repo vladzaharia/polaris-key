@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Check, ChevronDown, Minus } from "lucide-react";
+import { Check, ChevronDown, Minus, TriangleAlert } from "lucide-react";
 import { cn } from "../../lib/cn.js";
 import { useChangedSinceMount } from "../motion/changed.js";
 import { setMeter } from "../motion/index.js";
@@ -17,7 +17,7 @@ function Connector({ filled }: { filled: boolean }): React.ReactElement {
     <span
       aria-hidden
       data-filled={filled || undefined}
-      className="relative h-px w-6 shrink-0 overflow-hidden bg-border-strong"
+      className="relative h-px w-6 min-w-2 shrink overflow-hidden bg-border-strong"
     >
       <span ref={fill} className="pk-meter-fill absolute inset-0 bg-accent" />
     </span>
@@ -31,6 +31,15 @@ export interface StepperProps {
   done?: readonly string[];
   /** Steps the operator skipped: they read "Skipped" and stay reachable. */
   skipped?: readonly string[];
+  /**
+   * Steps whose facts are not met although the operator got past them: a warning marker, and they
+   * stay reachable. Additive (ST-39 fix round).
+   */
+  unmet?: readonly string[];
+  /** Steps the operator has been to without finishing them: neutral, and reachable. */
+  visited?: readonly string[];
+  /** Undo a skip: shown beside a skipped step ("Skipped · Undo"). */
+  onUndoSkip?: (id: string) => void;
   /** Go back to a done or skipped step. Without it those steps are plain text. */
   onStep?: (id: string) => void;
   label?: string;
@@ -57,6 +66,9 @@ export function Stepper({
   current,
   done: doneProp,
   skipped: skippedProp,
+  unmet: unmetProp,
+  visited: visitedProp,
+  onUndoSkip,
   onStep,
   label = "Steps",
   variant = "list",
@@ -69,10 +81,13 @@ export function Stepper({
   const done = new Set(
     doneProp ?? steps.slice(0, Math.max(0, currentIndex)).map((s) => s.id),
   );
+  const unmet = new Set(unmetProp ?? []);
+  const visited = new Set(visitedProp ?? []);
   const moved = useChangedSinceMount(current);
   const segments = variant === "segments";
   const here = steps[currentIndex];
-  const reached = (id: string) => done.has(id) || skipped.has(id);
+  const reached = (id: string) =>
+    done.has(id) || skipped.has(id) || unmet.has(id) || visited.has(id);
 
   return (
     <nav aria-label={label} className={className}>
@@ -100,7 +115,7 @@ export function Stepper({
           segments
             ? "flex items-stretch gap-1"
             : cn(
-                "mt-2 flex-col gap-y-1 sm:mt-0 sm:flex sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-2 sm:gap-y-2",
+                "mt-2 flex-col gap-y-1 sm:mt-0 sm:flex sm:flex-row sm:flex-nowrap sm:items-center sm:gap-x-2 sm:gap-y-2",
                 open ? "flex" : "hidden",
               ),
         )}
@@ -108,7 +123,26 @@ export function Stepper({
         {steps.map((step, i) => {
           const isCurrent = step.id === current;
           const isSkipped = skipped.has(step.id) && !isCurrent;
+          const isUnmet =
+            unmet.has(step.id) &&
+            !isCurrent &&
+            !isSkipped &&
+            !done.has(step.id);
           const isDone = done.has(step.id) && !isCurrent && !isSkipped;
+          const isVisited =
+            visited.has(step.id) &&
+            !isCurrent &&
+            !isSkipped &&
+            !isDone &&
+            !isUnmet;
+          const isOpen = isDone || isSkipped || isUnmet || isVisited;
+          const word = isSkipped
+            ? STEP_WORDS.skipped
+            : isUnmet
+              ? STEP_WORDS.unmet
+              : isDone
+                ? STEP_WORDS.done
+                : "";
           const blocker = steps
             .slice(0, i)
             .find((s) => !reached(s.id) && s.id !== current);
@@ -124,9 +158,11 @@ export function Stepper({
                 isCurrent && moved && "pk-pop-in",
                 isDone && "border-accent text-accent-fg",
                 isSkipped && "border-border-strong text-fg-muted",
+                isUnmet && "border-warning text-warning",
                 !isCurrent &&
                   !isDone &&
                   !isSkipped &&
+                  !isUnmet &&
                   "border-border-strong text-fg-muted",
               )}
             >
@@ -134,6 +170,8 @@ export function Stepper({
                 <Check className="size-3.5" />
               ) : isSkipped ? (
                 <Minus className="size-3.5" />
+              ) : isUnmet ? (
+                <TriangleAlert className="size-3.5" />
               ) : (
                 i + 1
               )}
@@ -141,14 +179,26 @@ export function Stepper({
           );
           const text = (
             <span className="flex min-w-0 flex-col text-left">
-              <span className="truncate">{step.label}</span>
+              <span title={step.label} className="truncate">
+                {step.label}
+              </span>
               {isDone && step.decided ? (
-                <small className="truncate text-xs font-normal text-fg-muted">
+                <small
+                  title={step.decided}
+                  className="max-w-[16rem] truncate text-xs font-normal text-fg-muted"
+                >
                   {step.decided}
                 </small>
               ) : isSkipped ? (
                 <small className="text-xs font-normal text-fg-muted">
                   Skipped
+                </small>
+              ) : isUnmet && step.decided ? (
+                <small
+                  title={step.decided}
+                  className="max-w-[16rem] truncate text-xs font-normal text-warning"
+                >
+                  {step.decided}
                 </small>
               ) : null}
             </span>
@@ -180,21 +230,21 @@ export function Stepper({
                   >
                     {step.label}
                   </span>
-                  <span className="sr-only">
-                    {isDone
-                      ? ` (${STEP_WORDS.done})`
-                      : isSkipped
-                        ? ` (${STEP_WORDS.skipped})`
-                        : ""}
-                  </span>
+                  <span className="sr-only">{word ? ` (${word})` : ""}</span>
                 </span>
               </li>
             );
           }
           return (
-            <li key={step.id} className="flex items-center gap-2">
+            <li
+              key={step.id}
+              className={cn(
+                "flex items-center gap-2",
+                isCurrent ? "shrink-0" : "min-w-0",
+              )}
+            >
               {i > 0 ? (
-                <span className="hidden sm:inline-flex">
+                <span className="hidden min-w-2 shrink sm:inline-flex">
                   <Connector
                     filled={
                       i <= currentIndex ||
@@ -207,45 +257,57 @@ export function Stepper({
               {isCurrent ? (
                 <span
                   aria-current="step"
-                  className="inline-flex min-h-8 items-center gap-2 text-sm font-medium text-fg-strong"
+                  className="inline-flex min-h-8 min-w-0 items-center gap-2 text-sm font-medium text-fg-strong"
                 >
                   {marker}
                   {text}
                 </span>
-              ) : (isDone || isSkipped) && onStep ? (
+              ) : isOpen && onStep ? (
                 <button
                   type="button"
                   onClick={() => onStep(step.id)}
-                  className="inline-flex min-h-8 items-center gap-2 rounded-md text-sm text-fg hover:text-fg-strong hover:underline"
+                  className="inline-flex min-h-8 min-w-0 items-center gap-2 rounded-md text-sm text-fg hover:text-fg-strong hover:underline"
                 >
                   {marker}
                   {text}
-                  <span className="sr-only">
-                    {` (${isSkipped ? STEP_WORDS.skipped : STEP_WORDS.done})`}
-                  </span>
+                  {word ? (
+                    <span className="sr-only">{` (${word})`}</span>
+                  ) : null}
                 </button>
-              ) : isDone || isSkipped ? (
-                <span className="inline-flex min-h-8 items-center gap-2 text-sm text-fg">
+              ) : isOpen ? (
+                <span className="inline-flex min-h-8 min-w-0 items-center gap-2 text-sm text-fg">
                   {marker}
                   {text}
-                  <span className="sr-only">
-                    {` (${isSkipped ? STEP_WORDS.skipped : STEP_WORDS.done})`}
-                  </span>
+                  {word ? (
+                    <span className="sr-only">{` (${word})`}</span>
+                  ) : null}
                 </span>
               ) : (
-                <button
-                  type="button"
-                  disabled
-                  aria-describedby={reasonId}
-                  className="inline-flex min-h-8 cursor-not-allowed items-center gap-2 text-sm text-fg-muted"
-                >
-                  {marker}
-                  {text}
+                <>
+                  <button
+                    type="button"
+                    aria-disabled="true"
+                    aria-describedby={reasonId}
+                    className="inline-flex min-h-8 min-w-0 cursor-not-allowed items-center gap-2 text-sm text-fg-muted"
+                  >
+                    {marker}
+                    {text}
+                  </button>
                   <span id={reasonId} className="sr-only">
                     {`Complete ${(blocker ?? steps[Math.max(0, currentIndex)])?.label ?? "the previous step"} first`}
                   </span>
-                </button>
+                </>
               )}
+              {isSkipped && onUndoSkip ? (
+                <button
+                  type="button"
+                  onClick={() => onUndoSkip(step.id)}
+                  className="rounded-md text-xs text-accent-fg underline-offset-4 hover:underline"
+                >
+                  Undo
+                  <span className="sr-only">{` skipping ${step.label}`}</span>
+                </button>
+              ) : null}
             </li>
           );
         })}

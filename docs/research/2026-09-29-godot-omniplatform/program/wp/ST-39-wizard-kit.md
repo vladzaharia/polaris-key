@@ -109,6 +109,18 @@ Applied from the brand and transition integration ([Brand transition decisions](
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
 2. Implement the scope; run the green gate; hand off.
 
+## UX fix round (2026-10-17)
+
+Blockers and "should" items from `reviews/2026-10-16/ux-ST-39.json`. Kit API changes are additive:
+
+- `Stepper` / `Wizard`: `unmet` (warning marker, stays reachable), `visited` (neutral, reachable), `onUndoSkip` ("Skipped · Undo"). Future steps are `aria-disabled` with the reason as a description outside the button. `decided` is capped at 16rem; the row never wraps.
+- `Wizard`: `focusOnMount`; a live "label, step n of m, title" line; `footer.primary` optional (Submit has no filled primary); `footer.skipDisabledReason` / `skipLoading`; the reason is linked from the primary itself; the "Step n of m" row is gone (the stepper numbers the steps); the aside is `self-start` and sticky; the drawer host puts the stepper and body in `DrawerBody` and the footer in a pinned `DrawerFooter`.
+- `PrereqList`: `words` overrides a state's word.
+- `useSearchParam(name, codec, { replace })` and `set(value, { replace })`; the Storefronts step pushes history.
+- `useSetup`: `unskip`; a failed save shows the title and the description (`disabledReason` for 403).
+
+Skipped, with reasons: framed page host, `note`/`tone` on `WizardStep`, multi-select `ChoiceStep`, aside collapse bar, phone footer stack, outline-until-done Continue, phone segments bar, marker inversion, WaitingFor/SnippetStep/AutoList nits (each needs a design decision or belongs to I-31/products.new-product); skeleton-only-body, toggle/h2 repeat, docs-link routing and the Ship-edit gate on Run (separate packages: pre-existing or outside the wizard).
+
 ## UX coverage (2026-10-09)
 
 Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
