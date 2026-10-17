@@ -179,6 +179,11 @@
       "verdict": "pass",
       "date": "2026-10-17",
       "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/docs-operate-ref/ (docs built review; fix round fix/docs-operate-ref-review)"
+    },
+    "ST-39": {
+      "verdict": "pass",
+      "date": "2026-10-17",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/ST-39/ (built review 2026-10-17; blockers fixed in fix/ST-39-review 1fb35e0ab)"
     }
   }
 }
