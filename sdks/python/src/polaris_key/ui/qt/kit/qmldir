@@ -1,0 +1,3 @@
+module PolarisKeyKit
+KitButton 1.0 KitButton.qml
+KitScreen 1.0 KitScreen.qml

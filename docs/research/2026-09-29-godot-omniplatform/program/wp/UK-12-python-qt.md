@@ -213,3 +213,37 @@ Reconciled against main in the 2026-10-16 audit. Remaining:
 - examples/ui/qt with fixtures and --live
 - Docs kit page/tabs, ui.\* parity rows with proofs
 - Design review vs Qt boards and BUILT UX review
+
+## Progress and continuation (2026-10-17)
+
+Qt runs on the dev machine (PySide6-Essentials 6.12 in `sdks/python/.venv`; `QT_QPA_PLATFORM=offscreen`
+with `QT_QUICK_BACKEND=software` renders baselines with no display). Landed on `wp/UK-12-continue`:
+
+- `polaris_key.ui.qt`: `layout.py` (a `View` to a `ScreenSpec`, no Qt import; catalog copy, FSI/PDI on
+  presentation text, one filled action, unresolved `{placeholders}` dropped, never drawn), `bridge.py`
+  (`KitBridge`, the QObject the QML binds to; resolves the identity from the presentation source,
+  re-renders on the source's `subscribe`, `post()` marshals onto the UI thread), `kit.py` (`KitView`,
+  `render`, bundled fonts), `gate.py` (`run_gate(client, window)` and `GateController`), lazy `_binding.py`
+  (PySide6, else qtpy). `[qt]` extra added.
+- `qt/kit/KitScreen.qml` and `KitButton.qml` over the generated `Theme.qml`: the bridge's identity accent
+  is bound into `Theme` (`Binding`), so a presentation source themes the kit with zero integrator code;
+  responsive on the root's width, font scale, `visualFocus` ring only, reduced-motion honoured.
+- Tests (`sdks/python/tests/ui/`): layout over all 191 fixture rows, 179 offscreen baselines
+  (`snapshots/`, 83 component states x dark/light in the Linux variant, macOS and Windows variants, 320/1024
+  widths and 200% text), QML source lint, `run_gate` on a fake client, the sample, and a fake presentation
+  source. Re-record with `PKEY_UPDATE_SNAPSHOTS=1`, reason in the commit.
+- `examples/ui/qt/` (fixtures and `--live`).
+
+Remaining:
+
+- Rich screens. Views carry catalog keys and args only, so Devices rows, Settings rows, the key field, the
+  seat meter, release notes and the QR are label-level today. Next: build them on `ui.core.models`
+  (`DevicesView`, `SettingsView`, `SignInModel`, `ActivateView`) and add the Activate/SignIn flow to
+  `run_gate` (it only re-reads `client.status()` on Try again today).
+- GraceBanner and Toast render as full screens; they need the banner/toast parts.
+- Dialog scrim (`MultiEffect`), Mica on Windows, QSS layer (b) wiring, Linguist catalogs, `QAccessible` audit
+  on a live tree (spec-level names only today), `preset: "native"`.
+- Docs kit page `build/ui/frameworks/qt` and component tabs; design review against the Qt boards; BUILT UX review.
+- `ui.*` parity rows stay `planned`: the six families have corpus runners and snapshots, but the rich screens
+  above are what make `ui.activate`, `ui.devices` and `ui.settings` honest. `ui.gate` can flip once the banner
+  and toast parts exist.
