@@ -22,7 +22,7 @@ import {
   revertRowSetting,
   writeRowSetting,
 } from "../src/core/rowSettings.js";
-import { getProduct } from "../src/core/repo.js";
+import { getProduct } from "../src/core/products/store.js";
 
 const stamp = { at: 1_700_000_000, by: "ana@example.com" };
 const ACTOR = { sub: "admin-1", name: "Ana", email: "ana@example.com" };
