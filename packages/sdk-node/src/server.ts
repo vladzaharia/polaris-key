@@ -3,7 +3,6 @@
 // `verifyLicenseDocument`, which lived here, moved to `@polaris-key/server` in 0.9 with no alias
 // (framework drop-ins plan §12.1): a backend gates a route with that package.
 
-
 /** The tags a crash reporter attaches (SDK parity pass §3.14, the Worker's Sentry convention). */
 export interface CrashTags {
   /** `<deliverable>@<version>[+<build>]`. */
