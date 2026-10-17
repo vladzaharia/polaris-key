@@ -591,6 +591,15 @@ export async function deleteProduct(
     },
     // ST-40: SDK sightings hold no personal data; a deleted product keeps none of them.
     { sql: "DELETE FROM sdk_sightings WHERE product = ?", params: [slug] },
+    // ST-27: a deleted product's alert override goes with it (its sealed webhook secrets too).
+    {
+      sql: "DELETE FROM notify_destination_secrets WHERE product = ?",
+      params: [slug],
+    },
+    {
+      sql: "DELETE FROM notify_destinations WHERE product = ?",
+      params: [slug],
+    },
     // A-16: a deleted product holds no platform store app: its pins on the team credentials go,
     // which frees the app for another product.
     {

@@ -505,4 +505,31 @@ export const CORE_SLICE: readonly SettingDef[] = [
     storage: { kind: "scalar" },
     since: "HA-10",
   }),
+  // ST-27: this product's alert destinations. They replace the platform's `alerts.destinations`
+  // for the alert kinds they take; with none, the platform's apply. Rich: `notify_destinations`,
+  // written by `/api/products/<slug>/alerts`.
+  setting({
+    key: "core.alerts.destinations",
+    rbacArea: "settings",
+    scope: "product",
+    service: "core",
+    area: "general",
+    label: "Alert destinations",
+    description:
+      "Where this product's alerts go: email addresses and signed https webhooks, per alert kind. They replace the platform's destinations for the kinds they take; with none set, the platform's apply.",
+    keywords: ["notify", "webhook", "email", "alerts", "auto-halt"],
+    docs: "/docs/operate/console/products/",
+    value: {
+      kind: "json",
+      schema: "notify_destinations rows (core/notify/alertDestinations.ts)",
+    },
+    defaultValue: null,
+    allowUnset: true,
+    merge: "cascade",
+    ownership: "operator",
+    confirm: { change: "L1" },
+    readers: ["core/notify/alertDestinations.ts"],
+    storage: { kind: "rich", adapter: "notify_destinations" },
+    since: "ST-27",
+  }),
 ];

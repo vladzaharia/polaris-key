@@ -589,6 +589,33 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     since: "ST-09",
   }),
 
+  // ST-27: where operator alerts go. Rich: the destinations live in `notify_destinations` and are
+  // written by `/api/platform/alerts` (`console/handlers/alertDestinations.ts`), not by the
+  // scalar settings route. A webhook's URL and signing secret are sealed and never shown back.
+  setting({
+    key: "alerts.destinations",
+    scope: "platform",
+    service: "platform",
+    area: "email",
+    label: "Alert destinations",
+    description:
+      "Where the platform's alerts go: email addresses and signed https webhooks, per alert kind (auto-halt, store connection, commerce, access changes, a failing destination). A product's own destinations replace these for the kinds they take. Unset, alerts reach the audit trail only.",
+    keywords: ["notify", "webhook", "email", "alerts", "notifications"],
+    docs: PLATFORM_DOCS,
+    value: {
+      kind: "json",
+      schema: "notify_destinations rows (core/notify/alertDestinations.ts)",
+    },
+    defaultValue: null,
+    allowUnset: true,
+    merge: "cascade",
+    ownership: "operator",
+    confirm: { change: "L1" },
+    readers: ["core/notify/alertDestinations.ts"],
+    storage: { kind: "rich", adapter: "notify_destinations" },
+    since: "ST-27",
+  }),
+
   // ── Package feeds policy (F-11; moved here by ST-09) ────────────────────────────────────
   // One platform row per ecosystem: the kill switch and the size ceiling every product's feed
   // answers to. Written by `PUT /platform/feeds/:eco/policy` (its own optimistic version).

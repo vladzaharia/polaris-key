@@ -18,7 +18,7 @@ import type { AdminSession } from "../core/console/session.js";
 import { err } from "../core/console/respond.js";
 
 export interface StepUpRoute {
-  method: "GET" | "POST" | "DELETE";
+  method: "GET" | "POST" | "PATCH" | "DELETE";
   /** Path under `/manage/api`, with `:slug`, `:subject`, `:id` placeholders. */
   path: string;
   /** Why it is gated. */
@@ -26,6 +26,26 @@ export interface StepUpRoute {
 }
 
 export const STEP_UP_ROUTES: readonly StepUpRoute[] = [
+  {
+    method: "POST",
+    path: "/platform/alerts",
+    why: "aims the platform's alerts at a new address or URL",
+  },
+  {
+    method: "PATCH",
+    path: "/platform/alerts/:id",
+    why: "retargets or re-secrets an alert destination",
+  },
+  {
+    method: "POST",
+    path: "/products/:slug/alerts",
+    why: "aims a product's alerts at a new address or URL",
+  },
+  {
+    method: "PATCH",
+    path: "/products/:slug/alerts/:id",
+    why: "retargets or re-secrets an alert destination",
+  },
   {
     method: "GET",
     path: "/products/:slug/users/:subject/export",

@@ -840,6 +840,14 @@ const SEALED_TABLES = [
     kind: "outlet-credential",
     label: "outletCredentials",
   },
+  // ST-27: the signing secrets of the alert webhooks. `product` is `_platform` or a slug.
+  {
+    table: "notify_destination_secrets",
+    idColumn: "destination_id",
+    blobColumn: "enc_secret_json",
+    kind: "notify-destination",
+    label: "notifyDestinations",
+  },
 ] as const;
 
 /**

@@ -55,6 +55,9 @@ export const TABLE_OWNERS: Readonly<Record<string, readonly string[]>> = {
     "admin_api_tokens",
     "account_tokens",
     "sdk_sightings",
+    // ST-27: where operator alerts go, and the sealed signing secrets of the webhook ones.
+    "notify_destinations",
+    "notify_destination_secrets",
     "platform_settings",
     "platform_job_runs",
     "platform_heartbeats",

@@ -16,7 +16,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import type { Db } from "../src/db/types.js";
 import type { Env } from "../src/platform/env.js";
@@ -26,6 +26,7 @@ import {
   CSRF_HEADER,
   issueSession,
 } from "../src/core/console/session.js";
+import { createDestination } from "../src/core/notify/alertDestinations.js";
 import { buildHooks } from "../src/core/hooks.js";
 import { loadProduct } from "../src/core/products.js";
 import { SERVICES } from "../src/mount.js";
@@ -488,6 +489,43 @@ describe("the auto-halt tick", () => {
       (r) => r.action === "distribution.rollout.resume",
     );
     expect(resumes.map((r) => r.actor_sub)).toEqual(["u1"]);
+  });
+
+  it("tells the product's alert destinations when it halts (ST-27), once", async () => {
+    const w = await setup();
+    await startRollout(w);
+    await enable(w, { minSample: 100, maxRevertRate: 0.05 });
+    await seedCounters(w, { applied: 200, reverted: 30 });
+    const made = await createDestination(
+      w.env,
+      w.db,
+      SLUG,
+      { sub: "u1", name: "Ada", email: null },
+      {
+        kind: "webhook",
+        target: "https://hooks.example.com/t/SECRETPATH",
+        alerts: ["auto_halt"],
+      },
+      NOW,
+    );
+    expect(made.ok).toBe(true);
+    const sent: Array<{ url: string; body: string }> = [];
+    vi.stubGlobal("fetch", async (url: string, init?: RequestInit) => {
+      sent.push({ url, body: String(init?.body) });
+      return new Response(null, { status: 200 });
+    });
+    try {
+      await tick(w);
+      await tick(w);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+    expect(sent).toHaveLength(1);
+    expect(sent[0]!.url).toBe("https://hooks.example.com/t/SECRETPATH");
+    expect(JSON.parse(sent[0]!.body)).toMatchObject({
+      type: "alert.auto_halt",
+      data: { product: SLUG, title: "Auto-halt halted a rollout" },
+    });
   });
 
   it("trips on the boot rollback rate too", async () => {

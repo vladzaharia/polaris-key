@@ -208,6 +208,10 @@ const ADMIN_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     // token reaches it.
     ["/manage/api/tokens", ["get", "post"]],
     ["/manage/api/tokens/{tokenId}", ["delete"]],
+    // ST-27: where operator alerts go (platform scope).
+    ["/manage/api/platform/alerts", ["get", "post"]],
+    ["/manage/api/platform/alerts/{id}", ["patch", "delete"]],
+    ["/manage/api/platform/alerts/{id}/test", ["post"]],
     ["/manage/api/account-tokens", ["get"]],
     ["/manage/api/account-tokens/{tokenId}", ["delete"]],
   ],
@@ -231,6 +235,10 @@ const ADMIN_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
       "/manage/api/products/{product}/assets/settings/{key}",
       ["patch", "delete"],
     ],
+    // ST-27: a product's alert destinations (the override of the platform's).
+    ["/manage/api/products/{product}/alerts", ["get", "post"]],
+    ["/manage/api/products/{product}/alerts/{id}", ["patch", "delete"]],
+    ["/manage/api/products/{product}/alerts/{id}/test", ["post"]],
     // LX-26: the licence reads and writes that carry the derived holder (DELETE stays narrative).
     ["/manage/api/products/{product}/license/licenses", ["get", "post"]],
     [
@@ -788,6 +796,7 @@ function concrete(template: string): string {
     methodId: "lnk_AAAAAAAAAAAA",
     subject: `ps_${"A".repeat(22)}`,
     tokenId: "apitok_AAAAAAAAAAAA",
+    id: "dst_AAAAAAAAAAAA",
     runId: "mig_AAAAAAAAAAAA",
   };
   return template.replace(/\{(\w+)\}/g, (_, name: string) => {

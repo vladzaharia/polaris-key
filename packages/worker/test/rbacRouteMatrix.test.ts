@@ -362,6 +362,10 @@ describe("negative controls", () => {
         "POST /products/:slug/users/licenses/:id/reassign",
         "POST /products/:slug/users/relinks/:id/undo",
         "POST /products/:slug/config/mint/:id/approve",
+        "POST /platform/alerts",
+        "PATCH /platform/alerts/:id",
+        "POST /products/:slug/alerts",
+        "PATCH /products/:slug/alerts/:id",
       ].sort(),
     );
     for (const r of steps) {
