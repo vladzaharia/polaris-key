@@ -102,6 +102,7 @@
   "POST /products/:slug/bundles": "license",
   "POST /products/:slug/ci-tokens": "keys",
   "POST /products/:slug/config/**": "config",
+  "POST /products/:slug/config/mint/:id/approve": "config",
   "POST /products/:slug/devices/:id/deauthorize": "core",
   "POST /products/:slug/devices/:id/fingerprint/reset": "core",
   "POST /products/:slug/distribution/**": "ship",

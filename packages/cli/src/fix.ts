@@ -69,8 +69,7 @@ function jsonEditable(value: Record<string, unknown>): Editable {
   const walk = (p: string[]): unknown => {
     let cur: unknown = value;
     for (const k of p) {
-      if (cur === null || typeof cur !== "object" || Array.isArray(cur))
-        return undefined;
+      if (cur === null || typeof cur !== "object") return undefined;
       cur = (cur as Record<string, unknown>)[k];
     }
     return cur;
@@ -82,15 +81,15 @@ function jsonEditable(value: Record<string, unknown>): Editable {
       let cur = value;
       for (const k of p.slice(0, -1)) {
         const next = cur[k];
-        if (next === null || typeof next !== "object" || Array.isArray(next))
-          cur[k] = {};
+        if (next === null || typeof next !== "object") cur[k] = {};
         cur = cur[k] as Record<string, unknown>;
       }
       cur[p.at(-1)!] = v;
     },
     remove(p) {
       const parent = walk(p.slice(0, -1));
-      if (parent && typeof parent === "object")
+      if (Array.isArray(parent)) parent.splice(Number(p.at(-1)), 1);
+      else if (parent && typeof parent === "object")
         delete (parent as Record<string, unknown>)[p.at(-1)!];
     },
     text: () => `${JSON.stringify(value, null, 2)}\n`,
@@ -109,6 +108,77 @@ function yamlEditable(doc: Document): Editable {
   };
 }
 
+/** A YAML node or a plain value, as plain data. */
+const plain = (v: unknown): unknown =>
+  v !== null && typeof v === "object" && "toJSON" in v
+    ? (v as { toJSON(): unknown }).toJSON()
+    : v;
+
+/** The length of a plain array or a YAML sequence node. */
+const lengthOf = (v: unknown): number =>
+  Array.isArray(v)
+    ? v.length
+    : ((v as { items?: unknown[] } | undefined)?.items?.length ?? 0);
+
+/** One `.pkey/` document being edited, with the path it was read from. */
+interface OpenDoc {
+  file: string;
+  edit: Editable;
+  changed: boolean;
+}
+
+/**
+ * U-31: a legacy `edgeMint[]` recipe moves into the `mint` block of the catalog entry of the same
+ * id, when that entry is a minted token with no block yet. The recipe's fields are unchanged
+ * (the block is the recipe minus its `id`), so what the platform reads is the same. A recipe with
+ * no such entry stays where it is: nothing to move it to without inventing an entry. The
+ * recipes may sit in `.pkey/product` or in the release document's root (a deprecated place).
+ */
+function moveLegacyRecipes(
+  docs: Partial<Record<DocName, OpenDoc>>,
+  cwd: string,
+  moves: FixMove[],
+): void {
+  const schema = docs.schema;
+  if (!schema) return;
+  for (const name of ["product", "release"] as const) {
+    const doc = docs[name];
+    if (!doc) continue;
+    for (let i = lengthOf(doc.edit.get(["edgeMint"])) - 1; i >= 0; i--) {
+      const recipe = plain(doc.edit.get(["edgeMint", String(i)])) as Record<
+        string,
+        unknown
+      >;
+      const id = recipe?.id;
+      if (typeof id !== "string") continue;
+      for (const list of ["entries", "catalog"]) {
+        const n = lengthOf(schema.edit.get([list]));
+        for (let j = 0; j < n; j++) {
+          const at = [list, String(j)];
+          if (
+            schema.edit.get([...at, "key"]) !== id ||
+            schema.edit.get([...at, "kind"]) !== "secret" ||
+            schema.edit.get([...at, "delivery"]) !== "edgeMint" ||
+            isSet(schema.edit.get([...at, "mint"]))
+          )
+            continue;
+          const { id: _id, ...block } = recipe;
+          schema.edit.set([...at, "mint"], block);
+          doc.edit.remove(["edgeMint", String(i)]);
+          if (lengthOf(doc.edit.get(["edgeMint"])) === 0)
+            doc.edit.remove(["edgeMint"]);
+          schema.changed = doc.changed = true;
+          moves.push({
+            file: path.relative(cwd, doc.file),
+            from: `/edgeMint/${i}`,
+            to: `${path.relative(cwd, schema.file)}#/${list}/${j}/mint`,
+          });
+        }
+      }
+    }
+  }
+}
+
 /**
  * Apply every fix to the manifest's files, writing a file only when something moved in it.
  * `manifest` is what `loadManifest` read; reload it after.
@@ -124,6 +194,7 @@ export async function fixManifest(
     distribution: manifest.distributionPath,
   };
   const moves: FixMove[] = [];
+  const open: Partial<Record<DocName, OpenDoc>> = {};
   for (const [name, file] of Object.entries(files) as Array<
     [DocName, string | undefined]
   >) {
@@ -132,7 +203,8 @@ export async function fixManifest(
     const edit: Editable = file.endsWith(".json")
       ? jsonEditable(JSON.parse(raw) as Record<string, unknown>)
       : yamlEditable(parseDocument(raw));
-    let changed = false;
+    const doc: OpenDoc = { file, edit, changed: false };
+    open[name] = doc;
     for (const s of fixableSpellings().filter((x) => x.doc === name)) {
       const from = segments(s.pointer);
       const to = segments(s.canonicalPointer!.pointer);
@@ -140,7 +212,7 @@ export async function fixManifest(
       const value = edit.take(from);
       edit.set(to, value);
       edit.remove(from);
-      changed = true;
+      doc.changed = true;
       moves.push({
         file: path.relative(cwd, file),
         from: s.pointer,
@@ -165,7 +237,7 @@ export async function fixManifest(
           )
             continue;
           edit.remove([list, String(i), "secret"]);
-          changed = true;
+          doc.changed = true;
           moves.push({
             file: path.relative(cwd, file),
             from: `/${list}/${i}/secret`,
@@ -174,7 +246,9 @@ export async function fixManifest(
         }
       }
     }
-    if (changed) await writeFile(file, edit.text());
   }
+  moveLegacyRecipes(open, cwd, moves);
+  for (const doc of Object.values(open))
+    if (doc.changed) await writeFile(doc.file, doc.edit.text());
   return moves;
 }

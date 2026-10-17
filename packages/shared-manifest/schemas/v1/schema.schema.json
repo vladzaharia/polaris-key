@@ -119,7 +119,8 @@
             "listed": { "type": "boolean" }
           },
           "additionalProperties": false
-        }
+        },
+        "mint": { "$ref": "#/$defs/mintBlock" }
       },
       "required": ["key", "kind", "category", "label", "description", "schema"],
       "allOf": [
@@ -148,6 +149,17 @@
           "then": { "properties": { "secret": { "const": false } } }
         },
         {
+          "$comment": "mint is only valid on a secret entry with delivery: edgeMint (catalog_mint_not_minted).",
+          "if": { "required": ["mint"] },
+          "then": {
+            "properties": {
+              "kind": { "const": "secret" },
+              "delivery": { "const": "edgeMint" }
+            },
+            "required": ["kind", "delivery"]
+          }
+        },
+        {
           "$comment": "user is only valid on config entries (user_setting_wrong_kind). On a key whose managementDefault is enforced or hidden it has no effect, which the validator reports as a warning (user_setting_locked_default).",
           "if": { "required": ["user"] },
           "then": {
@@ -156,6 +168,52 @@
           }
         }
       ]
+    },
+    "mintBlock": {
+      "description": "A Minted token's recipe (delivery: edgeMint): what the Worker signs when the app calls mintToken(key). The entry's key is the recipe id, so it must match ^[a-z0-9-]{1,64}$. Authoring only: ingest lifts the block into the product's edge-mint recipes, behind an operator's approval, and the served catalog never carries it.",
+      "type": "object",
+      "properties": {
+        "alg": { "enum": ["ES256", "RS256", "EdDSA"] },
+        "signingKeySecret": {
+          "description": "Stable uppercase secret name: ^[A-Z0-9][A-Z0-9_:-]{1,127}$.",
+          "type": "string",
+          "pattern": "^[A-Z0-9][A-Z0-9_:-]{1,127}$"
+        },
+        "kid": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "claimsTemplate": { "type": "object" },
+        "ttlSeconds": {
+          "description": "Lifetime of a minted token, in seconds. Capped at one hour.",
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 3600
+        },
+        "audience": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "pattern": "^[^\\u0000-\\u001f\\u007f]*$"
+            },
+            { "type": "null" }
+          ]
+        },
+        "requires": {
+          "description": "Who may mint: none (any device of this product) · registered · licensed. Omitted means licensed.",
+          "enum": ["none", "registered", "licensed"]
+        },
+        "requiredEntitlement": {
+          "description": "A catalog key that must be present and truthy in the caller's merged payload before this token may be minted.",
+          "anyOf": [
+            { "type": "string", "pattern": "^[A-Za-z0-9._:-]{1,64}$" },
+            { "type": "null" }
+          ]
+        }
+      },
+      "required": ["alg", "signingKeySecret"]
     },
     "cloudSync": {
       "description": "The data shape of the product's Cloud Sync records (the Cloud Sync service): its collections and the migrations the server applies to synced values. A person's quota is not here: it is the pkey.cloudSync.bytes entitlement a tier, a licence override or an add-on sets.",

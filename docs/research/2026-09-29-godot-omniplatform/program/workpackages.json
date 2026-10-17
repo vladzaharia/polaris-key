@@ -4095,7 +4095,7 @@
         "plans/I-08.md (approved, lead 2026-10-17)"
       ],
       "brief": "wp/I-08-app-passthrough.md",
-      "status": "todo",
+      "status": "in-review",
       "planRef": "I-04"
     },
     {
@@ -6170,7 +6170,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/config-cloudsync.md"
       ],
       "brief": "wp/U-31-minted-tokens-carry-their-recipe.md",
-      "status": "todo"
+      "status": "in-progress"
     },
     {
       "id": "U-32",

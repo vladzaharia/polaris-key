@@ -722,6 +722,8 @@ describe("the settings API refuses what the registry refuses", () => {
       // I-09: the identity block's live row-backed settings.
       "identity.keyEntry.limit",
       "identity.oidc.syncTierOnSignIn",
+      // I-08: `authorize` reads it.
+      "identity.redirectPaths",
       "identity.terms",
       "licensing.anchorPolicy",
       "licensing.clampGraceToExpiry",

@@ -46,6 +46,7 @@ import {
   draftDocument,
   draftEntries,
   draftFrom,
+  flagKeysOf,
   loadDraft,
   newEntry,
   saveDraft,
@@ -57,7 +58,6 @@ import {
   isNotFound,
   useCatalog,
   useCatalogUsage,
-  useEdgeMint,
 } from "../data.js";
 import {
   ENTRY_TYPE_LABELS,
@@ -185,7 +185,6 @@ function Editor({
   onDiscard: () => void;
 }): React.ReactElement {
   const { data: product } = useProduct(slug);
-  const recipes = useEdgeMint(slug);
   const [mode, setMode] = useSearchParam("mode", MODE);
   const [selectedKey, setSelectedKey] = useSearchParam(
     "entry",
@@ -558,7 +557,7 @@ function Editor({
                   fresh={!draft.baseEntries.some((e) => e.key === selected.key)}
                   slug={slug}
                   syncEnabled={product?.services?.sync?.enabled === true}
-                  recipeIds={recipes.data?.recipes?.map((x) => x.id) ?? null}
+                  flagKeys={flagKeysOf(draft.entries)}
                   onChange={(next) => updateEntry(selectedIndex, next)}
                 />
               </div>

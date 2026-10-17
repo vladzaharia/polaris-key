@@ -96,6 +96,16 @@ export interface SignInRequestView {
   userCode: string | null;
   /** Epoch seconds. */
   expiresAt: number;
+  /**
+   * I-08 (§12.4), on a request that came through `authorize`: its `purpose`, licence-choice mode,
+   * the scope the app asked for (as resolved) and the two hints. Hints prefill the card (the email
+   * field, the name step) and verify nothing.
+   */
+  purpose?: AuthorizePurpose;
+  licenseChoice?: AuthorizeLicenseChoice;
+  scope?: string[];
+  loginHint?: string | null;
+  nameHint?: string | null;
 }
 
 /** One line of what an app gets when the person continues (§12.7.3). */
@@ -287,7 +297,10 @@ export interface SignOutResponse {
  */
 export interface IdentityDiscovery {
   enabled: true;
+  /** True while the platform sign-in (`authorize`, `token`) is served; I-08 makes it always true. */
   configured: boolean;
+  /** I-08 (§12.4): the authorization server's issuer, `<origin>/<p>/identity`; also the `iss` of RFC 9207. */
+  issuer?: string;
   /** The account features (attach, subject, sign-out, the account portal) are served. */
   account?: true;
   /** The product's effective `identity.keyEntry.limit` (§12.2 rule 5): the value enforced. */
@@ -302,10 +315,108 @@ export interface IdentityDiscovery {
     authDeviceEntry: string;
     authDeviceVerify: string;
     authDevicePoll: string;
+    /** I-08 (§12.4): the OAuth-shaped authorize page. A client navigates to it and never builds it. */
+    authorize?: string;
+    /** I-08 (§12.5): the OAuth-shaped token endpoint (form-encoded, CORS for `web.origins`). */
+    token?: string;
     attach?: string;
     subject?: string;
     signout?: string;
     /** The product's page in the customer portal, `<origin>/#/p/<slug>` (`openAccount()`). */
     accountPortal?: string;
   };
+}
+
+// ── I-08: app passthrough on an OAuth-shaped authorize and token (§12.4, §12.5) ─────────────────
+
+/** §12.4: the scopes `authorize` grants. `openid` answers `invalid_scope` until I-21. */
+export const AUTHORIZE_SCOPES = ["profile", "email", "cloudSync"] as const;
+export type AuthorizeScope = (typeof AUTHORIZE_SCOPES)[number];
+
+/** §12.4: `state` is 16 to 512 characters. */
+export const AUTHORIZE_STATE_MIN = 16;
+export const AUTHORIZE_STATE_MAX = 512;
+
+/** §12.4: how long an authorization code lives, seconds. Single use. */
+export const AUTHORIZATION_CODE_TTL_SECONDS = 60;
+
+/** §12.4: the `purpose` extension: the card's copy ("sign in" or "add this device's license"). */
+export type AuthorizePurpose = "signin" | "attach";
+
+/** §12.4: the `license_choice` extension: who shows the licence choice, the card or the app (I-08b). */
+export type AuthorizeLicenseChoice = "card" | "app";
+
+/** §12.4: the parameters of `GET /<p>/identity/authorize`, as a client sends them. */
+export interface AuthorizeParams {
+  response_type: "code";
+  client_id: string;
+  redirect_uri: string;
+  state: string;
+  code_challenge: string;
+  code_challenge_method: "S256";
+  scope?: string;
+  nonce?: string;
+  login_hint?: string;
+  name_hint?: string;
+  purpose?: AuthorizePurpose;
+  license_choice?: AuthorizeLicenseChoice;
+}
+
+/** §12.4: the errors a 302 back to the app carries in its `error` query. */
+export type AuthorizeRedirectError =
+  | "invalid_request"
+  | "invalid_scope"
+  | "access_denied"
+  | "server_error";
+
+/**
+ * §12.5: a `200` from `POST /<p>/identity/token` (`authorization_code`). The activation response
+ * under its OAuth names: `access_token` is the `pkeyt_` device token. Exactly these members; no
+ * `expires_in` and no `refresh_token` before I-21.
+ */
+export interface TokenResponse {
+  access_token: string;
+  token_type: "Bearer";
+  /** The granted subset of the requested scope, space-delimited. */
+  scope: string;
+  schemaVersion: number;
+  device: Record<string, unknown>;
+  /** `null` on a device with no licence. */
+  license: Record<string, unknown> | null;
+  /** The pairwise subject ({@link PAIRWISE_SUBJECT_PATTERN}) of the account signed in on the device. */
+  subject: string;
+}
+
+/** §12.5: the flat RFC 6749 §5.2 body, and the Polaris refusals that are flat beside it. */
+export interface TokenError {
+  error:
+    | "invalid_request"
+    | "invalid_client"
+    | "invalid_grant"
+    | "unsupported_grant_type"
+    | "invalid_scope"
+    | "not_entitled"
+    | "device_limit"
+    | "license_owned"
+    | "key_entry_limit"
+    | "license_choice_required"
+    | "rate_limited";
+  error_description?: string;
+  message?: string;
+  retryAfter?: number;
+}
+
+/** §12.4: `POST /api/signin/requests/:handle/continue`. */
+export interface SignInContinueRequest {
+  /** The consent the person gave: the claims granted (a subset of the request's scope). Absent grants all of it. */
+  consent?: { claims: string[] };
+  /** The licence the device runs on after sign-in. Required when the account holds licences for the product. */
+  choice?: { licenseId: string };
+  /** The product's terms version the person accepted, when the product requires them. */
+  terms?: string;
+}
+
+/** §12.4: the answer of Continue and Cancel; the card navigates to `redirect`. */
+export interface SignInRedirect {
+  redirect: string;
 }

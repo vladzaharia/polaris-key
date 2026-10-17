@@ -1,3 +1,4 @@
+import { stmtClaim } from "../src/core/settingsClaims.js";
 import { describe, expect, it } from "vitest";
 import { parseServices } from "../src/core/services.js";
 import { signJws, verifyJws } from "@polaris-key/jws";
@@ -1287,6 +1288,19 @@ describe("edge-mint approvals across link and resync (P0-12)", () => {
         "applemusic",
       ),
     ).toBeNull();
+  });
+
+  it("a console-claimed catalog keeps its recipes through a resync; unclaimed, the manifest replaces them (U-31)", async () => {
+    const w = await linked();
+    await w.resync([BASE_RECIPE]);
+    await approveEdgeMintRecipe(w.db, "acme", "applemusic");
+    const claim = stmtClaim("acme", "config.catalog", "op", NOW);
+    await w.db.run(claim.sql, ...claim.params);
+    await w.resync([]);
+    expect(
+      await w.db.all("SELECT id FROM edge_mint_config WHERE product = 'acme'"),
+    ).toEqual([{ id: "applemusic" }]);
+    expect(await w.mint()).toBe(200);
   });
 
   it("a new recipe arriving by resync returns 404 until approved, then mints", async () => {

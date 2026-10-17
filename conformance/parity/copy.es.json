@@ -149,6 +149,34 @@
       "title": "Inicio de sesión no disponible",
       "message": "El inicio de sesión desde esta app está desactivado. Tus instalaciones y licencias siguen funcionando."
     },
+    "invalid_request": {
+      "title": "Solicitud de inicio de sesión no válida",
+      "message": "La app envió una solicitud que no podemos leer. Inténtalo de nuevo."
+    },
+    "invalid_client": {
+      "title": "App no reconocida",
+      "message": "Esta app no está configurada para iniciar sesión. Contacta con su desarrollador."
+    },
+    "invalid_grant": {
+      "title": "Inicio de sesión ya no válido",
+      "message": "Este inicio de sesión caducó o ya se usó. Inicia sesión de nuevo."
+    },
+    "unsupported_grant_type": {
+      "title": "Solicitud de inicio de sesión no válida",
+      "message": "La app pidió un tipo de inicio de sesión que no admitimos. Contacta con su desarrollador."
+    },
+    "invalid_scope": {
+      "title": "Acceso no disponible",
+      "message": "La app pidió un acceso que este inicio de sesión no ofrece. Contacta con su desarrollador."
+    },
+    "redirect_uri_mismatch": {
+      "title": "Dirección de retorno no permitida",
+      "message": "La dirección de retorno de esta app no está registrada, así que no te devolvimos a ella. Contacta con su desarrollador."
+    },
+    "license_choice_required": {
+      "title": "Elige una licencia",
+      "message": "Elige qué licencia usa este dispositivo y continúa."
+    },
     "auth_method_disabled": {
       "title": "Método de inicio de sesión no disponible",
       "message": "Ese método de inicio de sesión está desactivado. Elige otro."

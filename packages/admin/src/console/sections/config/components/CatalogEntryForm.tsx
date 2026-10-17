@@ -7,8 +7,7 @@ import type {
   ManagementState,
 } from "../../../../api.js";
 import { IN_APP_LABELS } from "../../../../lib/labels.js";
-import { Link } from "../../../router.js";
-import { r } from "../../../routes.js";
+import { MintRecipeFields } from "./MintRecipeFields.js";
 import {
   ENTRY_TYPE_LABELS,
   TYPE_LABELS,
@@ -138,7 +137,7 @@ export function CatalogEntryForm({
   fresh = false,
   slug,
   syncEnabled = true,
-  recipeIds = null,
+  flagKeys = [],
   onChange,
 }: {
   entry: ConfigEntry;
@@ -152,8 +151,8 @@ export function CatalogEntryForm({
   slug?: string;
   /** Cloud Sync is on for the product, so an Editable setting's choice can sync. */
   syncEnabled?: boolean;
-  /** The ids of the product's mint recipes, or null while unknown. */
-  recipeIds?: string[] | null;
+  /** The draft's flag keys, offered for a minted token's Required flag. */
+  flagKeys?: string[];
   onChange: (next: ConfigEntry) => void;
 }): React.ReactElement {
   const schema = (entry.schema ?? {}) as Json;
@@ -345,24 +344,14 @@ export function CatalogEntryForm({
           </p>
         </div>
       ) : null}
-      {minted && recipeIds !== null && !recipeIds.includes(entry.key) ? (
-        <p
-          role="status"
-          className="flex items-start gap-2 text-sm text-warning"
-        >
-          <AlertCircle aria-hidden className="mt-0.5 size-4 shrink-0" />
-          <span>
-            No recipe called {entry.key}. Minting fails until one exists.{" "}
-            {slug ? (
-              <Link
-                to={r.edgeMint(slug)}
-                className="underline underline-offset-2"
-              >
-                Recipes
-              </Link>
-            ) : null}
-          </span>
-        </p>
+      {minted && slug ? (
+        <MintRecipeFields
+          entry={entry}
+          flagKeys={flagKeys}
+          slug={slug}
+          error={issue("mint")}
+          onChange={onChange}
+        />
       ) : null}
       {retiredNotes(entry).map((note) => (
         <p

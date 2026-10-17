@@ -109,6 +109,10 @@ import {
 } from "./library.js";
 import { signInConsentView, signInRequestView } from "../passthrough/routes.js";
 import {
+  handleSignInCancel,
+  handleSignInContinue,
+} from "../passthrough/continue.js";
+import {
   handleActivatePreview,
   handleClaimKey,
   handleKeyPreview,
@@ -1660,6 +1664,21 @@ async function dispatchPortalApi(
       settings,
     );
     return view.status === 200 ? portalJson(view.body) : notFound();
+  }
+  // I-08 (§12.4): Continue and Cancel. The dispatcher above has checked the CSRF header for
+  // these mutations; the handlers check the binder, the product and the account.
+  if (
+    head === "signin" &&
+    rest[0] === "requests" &&
+    rest[1] &&
+    (rest[2] === "continue" || rest[2] === "cancel") &&
+    rest.length === 3
+  ) {
+    if (req.method !== "POST") return err(405, "method_not_allowed");
+    const caller = { accountId: session.accountId };
+    return rest[2] === "continue"
+      ? handleSignInContinue(req, env, db, caller, rest[1], now, settings)
+      : handleSignInCancel(req, env, db, caller, rest[1], now);
   }
   if (
     head === "licenses" &&

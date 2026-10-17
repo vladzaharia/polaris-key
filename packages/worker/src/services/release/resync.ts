@@ -969,24 +969,33 @@ async function applyRepoManifest(
   }
   updated.push("provisioning");
 
+  // U-31: recipes live in the catalog entries' `mint` blocks, so they ride `config.catalog`'s
+  // claim: once the console has published the catalog, the recipes it saved are the console's and
+  // a resync leaves them (and their approvals) exactly as they are. Guarded in SQL as well: a
+  // console publish that claims the catalog after `claims` was read keeps its recipes.
   stmts.push({
-    sql: "DELETE FROM edge_mint_config WHERE product = ?",
-    params: [slug],
+    sql: `DELETE FROM edge_mint_config WHERE product = ? AND NOT ${CLAIMED_SQL}`,
+    params: [slug, ...claimGuardParams(slug, "config.catalog", now)],
   });
   for (const e of manifest.edgeMint) {
     stmts.push(
-      stmtInsertEdgeMint({
-        product: slug,
-        id: e.id,
-        alg: e.alg,
-        signingKeySecret: e.signingKeySecret,
-        kid: e.kid,
-        claimsTemplate: e.claimsTemplate ?? {},
-        ttlSeconds: e.ttlSeconds,
-        audience: e.audience ?? null,
-        requires: e.requires,
-        requiredEntitlement: e.requiredEntitlement ?? null,
-      }),
+      unlessClaimed(
+        stmtInsertEdgeMint({
+          product: slug,
+          id: e.id,
+          alg: e.alg,
+          signingKeySecret: e.signingKeySecret,
+          kid: e.kid,
+          claimsTemplate: e.claimsTemplate ?? {},
+          ttlSeconds: e.ttlSeconds,
+          audience: e.audience ?? null,
+          requires: e.requires,
+          requiredEntitlement: e.requiredEntitlement ?? null,
+        }),
+        slug,
+        "config.catalog",
+        now,
+      ),
     );
   }
   // P0-12: approvals are the operator's, so a resync never WRITES one — the re-inserted rows
