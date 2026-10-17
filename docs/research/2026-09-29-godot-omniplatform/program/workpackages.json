@@ -4062,7 +4062,7 @@
       "stage": "layer-1, phase-1a",
       "lane": "worker",
       "role": "pkey-implementer",
-      "estimateWeeks": [1.2, 1.7],
+      "estimateWeeks": [0.8, 1.1],
       "deps": [
         "I-04",
         "I-07",
@@ -4091,11 +4091,41 @@
         "notes/S-17 §6 (I-08 gains a new wire row)",
         "notes/S-17 §7.3 decision 19",
         "plans/I-04.md, Owner decision (2026-10-05): licence choice at sign-in",
-        "DX consolidation 2026-10-07: edit (docs/research/2026-10-07-dx-consolidation/backlog-changes.json)"
+        "DX consolidation 2026-10-07: edit (docs/research/2026-10-07-dx-consolidation/backlog-changes.json)",
+        "plans/I-08.md (approved, lead 2026-10-17)"
       ],
       "brief": "wp/I-08-app-passthrough.md",
       "status": "todo",
       "planRef": "I-04"
+    },
+    {
+      "id": "I-08b",
+      "title": "Licence choice at sign-in: choice API, grant routes, Replace, key in the card and the first automatic licence",
+      "phase": "I",
+      "stage": "layer-1, phase-1a",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.6, 0.9],
+      "deps": ["I-08"],
+      "planMode": true,
+      "gates": [
+        "plan-mode",
+        "drift-gate",
+        "rule-10",
+        "threat-model",
+        "workerd"
+      ],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "plans/I-08.md D2, D5, D7",
+        "plans/I-04.md §C, §F, §G",
+        "plans/I-27.md §2.2"
+      ],
+      "brief": "wp/I-08b-licence-choice-api.md",
+      "status": "todo",
+      "planRef": "I-08"
     },
     {
       "id": "I-09",
@@ -4171,7 +4201,7 @@
       "lane": "sdk",
       "role": "pkey-sdk-porter",
       "estimateWeeks": [1, 1.4],
-      "deps": ["I-04", "I-08", "I-09", "SP-35"],
+      "deps": ["I-04", "I-08b", "I-09", "SP-35"],
       "planMode": true,
       "gates": ["plan-mode", "all-sdks", "drift-gate", "ui-snapshots"],
       "humanInputs": [],
@@ -4197,7 +4227,7 @@
       "lane": "sdk",
       "role": "pkey-sdk-porter",
       "estimateWeeks": [1.4, 1.95],
-      "deps": ["I-04", "I-08", "I-09", "SP-35", "SP-35b"],
+      "deps": ["I-04", "I-08b", "I-09", "SP-35", "SP-35b"],
       "planMode": true,
       "gates": [
         "plan-mode",
@@ -4926,7 +4956,7 @@
       "lane": "worker",
       "role": "pkey-implementer",
       "estimateWeeks": [1.4, 2],
-      "deps": ["I-30", "I-08", "I-13", "I-35"],
+      "deps": ["I-30", "I-08b", "I-13", "I-35"],
       "planMode": true,
       "gates": ["plan-mode", "migration", "table-owners", "threat-model"],
       "humanInputs": [],
@@ -5024,7 +5054,7 @@
       "lane": "worker",
       "role": "pkey-implementer",
       "estimateWeeks": [0.8, 1.2],
-      "deps": ["I-08", "I-11", "I-35"],
+      "deps": ["I-08b", "I-11", "I-35"],
       "planMode": false,
       "gates": [],
       "humanInputs": [],
@@ -5094,8 +5124,8 @@
       "phase": "I",
       "lane": "worker",
       "role": "pkey-implementer",
-      "estimateWeeks": [0.6, 1.0],
-      "deps": ["I-08"],
+      "estimateWeeks": [0.6, 1],
+      "deps": ["I-08", "I-15"],
       "planMode": true,
       "gates": [
         "plan-mode",
@@ -5116,7 +5146,7 @@
         "plans/I-37.md (awaiting owner approval)"
       ],
       "brief": "wp/I-37-device-code-explicit-confirm.md",
-      "status": "awaiting-approval"
+      "status": "todo"
     },
     {
       "id": "I-38",
@@ -5158,6 +5188,29 @@
         "Brand transition B2, B8"
       ],
       "brief": "wp/I-39-emails-brand-v2.md",
+      "status": "todo"
+    },
+    {
+      "id": "I-40",
+      "title": "Account-initiated pairing for browserless TV and console apps",
+      "phase": "I",
+      "lane": "worker",
+      "role": "pkey-wire-planner",
+      "estimateWeeks": [0.3, 0.5],
+      "deps": ["I-08", "I-37"],
+      "planMode": true,
+      "gates": ["plan-mode", "threat-model"],
+      "humanInputs": [
+        "owner approval of the pairing threat analysis (relay by social engineering)"
+      ],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "plans/I-08.md D1",
+        "plans/I-37.md §2",
+        "docs/security/THREAT-MODEL.md: R1-07/R8-03"
+      ],
+      "brief": "wp/I-40-account-initiated-pairing.md",
       "status": "todo"
     },
     {

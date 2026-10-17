@@ -4,8 +4,8 @@
 | ----------- | --------------------------------------------------------------------------------------------------------------------------- |
 | Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16)                                                          |
 | Size        | 0.6–1 engineer-weeks                                                                                                        |
-| Depends on  | [I-08](I-08-app-passthrough.md)                                                                                             |
-| Unblocks    | [I-38](I-38-hosted-passport-worker-csp.md), [PX-14](PX-14-passthrough-header.md)                                            |
+| Depends on  | [I-08](I-08-app-passthrough.md), [I-15](I-15-native-redirect.md)                                                            |
+| Unblocks    | [I-38](I-38-hosted-passport-worker-csp.md), [I-40](I-40-account-initiated-pairing.md), [PX-14](PX-14-passthrough-header.md) |
 | Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                       |
 | Plan mode   | yes: [I-37 plan](../plans/I-37.md) requires owner approval before implementation                                            |
 | Gates       | plan-mode, drift-gate, threat-model, workerd, portal-e2e, ui-snapshots                                                      |
@@ -133,10 +133,8 @@ browser controls the device code.
       confirms and authenticates, but cannot reach callback completion, chooser,
       consent, `ready`, claim, migrate, `attachLicense`, a token, or any
       licence/device write for the starter's flow (attack tests).
-- [ ] The owner-approved replacement route completes only after its documented
-      secure condition; its TV/console poll remains `pending` beforehand. A
-      user-code-only browser, altered device label, foreign flow, expired flow,
-      or replayed continuation is refused (tests).
+- [ ] The replacement same-device route completes: `authorize` then `token` on I-08's endpoints (web), and I-15's loopback/scheme redirects (CLI, desktop, mobile). There is no poll on that route, so the former "poll stays `pending`" check does not apply. A user-code-only browser, altered device label, foreign flow, expired flow, or replayed continuation is refused (tests).
+- [ ] **Deploy gate and recorded regression (lead, 2026-10-17).** I-37 ships in the same tag as I-08 and I-15 (I-15 is now a dependency). Browserless native TV and console apps have no account-bound sign-in after this change; key entry and I-13 store tokens remain. The lead accepted that regression and recorded it in the rollout record; I-40 plans the account-initiated pairing that may replace it.
 - [ ] Existing curl-forwarded-authorize R1-07 and legacy
       `/identity/auth/device/verify?device_code=` cases remain protected; all
       failures are generic, no secret appears in URLs/HTML/loggable bodies, and

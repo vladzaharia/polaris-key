@@ -1,16 +1,16 @@
 # I-34 Granular consent and Connected apps
 
-| Field       | Value                                                                                                                    |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------ |
-| Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16) (DX consolidation F: Identity)                        |
-| Size        | 0.8–1.2 engineer-weeks                                                                                                   |
-| Depends on  | [I-08](I-08-app-passthrough.md), [I-11](I-11-portal-library.md), [I-35](I-35-one-identity-manifest-block-joint-lx-36.md) |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [PX-31](PX-31-account-composition-v3.md)                                         |
-| Role        | `pkey-implementer`                                                                                                       |
-| Plan mode   | no                                                                                                                       |
-| Gates       | none beyond the green gate                                                                                               |
-| Human input | none                                                                                                                     |
-| Repo        | `vladzaharia/polaris-key`                                                                                                |
+| Field       | Value                                                                                                                         |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16) (DX consolidation F: Identity)                             |
+| Size        | 0.8–1.2 engineer-weeks                                                                                                        |
+| Depends on  | [I-08b](I-08b-licence-choice-api.md), [I-11](I-11-portal-library.md), [I-35](I-35-one-identity-manifest-block-joint-lx-36.md) |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [PX-31](PX-31-account-composition-v3.md)                                              |
+| Role        | `pkey-implementer`                                                                                                            |
+| Plan mode   | no                                                                                                                            |
+| Gates       | none beyond the green gate                                                                                                    |
+| Human input | none                                                                                                                          |
+| Repo        | `vladzaharia/polaris-key`                                                                                                     |
 
 ## Consolidation 2026-10-07
 

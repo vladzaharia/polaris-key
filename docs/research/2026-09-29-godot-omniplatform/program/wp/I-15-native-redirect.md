@@ -5,7 +5,7 @@
 | Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16) (layer-1, phase-1b)                                                                             |
 | Size        | 0.8–1.1 engineer-weeks                                                                                                                                             |
 | Depends on  | [I-08](I-08-app-passthrough.md), [I-10a](I-10a-sdk-identity-node-react-python.md), [I-10b](I-10b-sdk-identity-swift-kotlin-godot.md)                               |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [PX-14](PX-14-passthrough-header.md)                                                                                       |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [I-37](I-37-device-code-explicit-confirm.md), [PX-14](PX-14-passthrough-header.md)                                         |
 | Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                                                                               |
 | Plan mode   | yes: `pkey-wire-planner` writes `plans/I-15.md` first; it needs human approval before code                                                                         |
 | Gates       | plan mode; `errors.json` (rule 3), transcripts (rule 1), `gen constants --check`; rule 10 (OpenAPI + `routeCoverage`); all six SDKs (`parity:check`); THREAT-MODEL |
@@ -87,7 +87,7 @@ Device code is a poor fit on a phone, and four native SDK rows are planned and u
 
 **Out** (and where it belongs instead):
 
-- Web redirect (done in I-08).
+- Web redirect (done in I-08). I-15 relies on I-08's `validateRedirectUri`, which returns a `ClientKind`: widen that one function for loopback, claimed-HTTPS and scheme URIs rather than adding endpoints ([plans/I-08.md](../plans/I-08.md) §2). I-37 deploys in the same tag as I-15 and I-08.
 
 ## Design notes
 
