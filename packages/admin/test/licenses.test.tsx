@@ -201,9 +201,11 @@ describe("Licenses list", () => {
       routes: { [`${API}/license/licenses`]: { licenses: [] } },
     });
     expect(await screen.findByText("No licenses yet")).toBeTruthy();
+    // One primary: the empty state's, and its way to the Access rules.
     expect(
       screen.getAllByRole("button", { name: "Create license" }).length,
-    ).toBe(2);
+    ).toBe(1);
+    expect(screen.getByRole("button", { name: "Open Access" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: /^Expired/ })).toBeNull();
   });
 

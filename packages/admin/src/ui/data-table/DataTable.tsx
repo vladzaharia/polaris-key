@@ -1093,7 +1093,8 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
               >
                 {loadedOnlyCursor &&
                 pagination.mode === "cursor" &&
-                pagination.hasMore
+                pagination.hasMore &&
+                allRows.length > 0
                   ? `Export ${formatCount(allRows.length)} loaded`
                   : "Export CSV"}
               </Button>

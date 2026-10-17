@@ -19,7 +19,6 @@ import { Link, navigate } from "../../../router.js";
 import { useTableUrlState } from "../../../useTableUrlState.js";
 import { PageHeader } from "../../../../ui/PageHeader.js";
 import { CollectionTemplate } from "../../../templates/Collection.js";
-import { docsUrl } from "../../../../lib/docsLinks.js";
 import { fromSeconds } from "../../../../lib/format.js";
 import { SIGN_IN_LABELS } from "../../../../lib/labels.js";
 import { cn } from "../../../../lib/cn.js";
@@ -399,6 +398,13 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
 
   const forbidden = !licensesQ.data && isForbidden(licensesQ.error);
 
+  const firstRun =
+    licensesQ.data !== undefined &&
+    licenses.length === 0 &&
+    !licensesQ.hasNextPage &&
+    state.q === "" &&
+    Object.values(state.filters).every((v) => v.length === 0);
+
   if (forbidden) return <LicensesForbidden name={product?.name ?? slug} />;
 
   return (
@@ -406,10 +412,13 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
       header={
         <PageHeader
           title="Licenses"
+          // First run keeps one primary: the empty state's.
           primaryAction={
-            <Button iconStart={<Plus />} onClick={() => setCreateOpen(true)}>
-              Create license
-            </Button>
+            firstRun ? undefined : (
+              <Button iconStart={<Plus />} onClick={() => setCreateOpen(true)}>
+                Create license
+              </Button>
+            )
           }
           secondaryActions={[
             {
@@ -526,13 +535,20 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
             kind="first-run"
             headingLevel={2}
             title="No licenses yet"
-            description="Create the first license to mint a key and authorize devices."
+            description="Licenses appear when someone signs in under your Access rules, or when you create one."
             primaryAction={
               <Button iconStart={<Plus />} onClick={() => setCreateOpen(true)}>
                 Create license
               </Button>
             }
-            docs={docsUrl("createLicense")}
+            secondaryAction={
+              <Button
+                variant="outline"
+                onClick={() => navigate(r.access(slug))}
+              >
+                Open Access
+              </Button>
+            }
           />
         }
         mobile="cards"
