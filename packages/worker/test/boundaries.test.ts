@@ -530,6 +530,14 @@ function layerViolation(file: string, specifier: string): string | null {
     if (file !== "public.ts")
       return `the console imports src/${target} ("${specifier}"); it reads a service only through services/${slug}/public.ts`;
   }
+  // P0-19: a composition module reaches a service only through its `index.ts` (the descriptor) or
+  // its `api.ts` facade. `mount.ts` is the composition root and names every descriptor.
+  if (from === "root" && to === "services" && file !== "mount.ts") {
+    const [, slug, ...rest] = target.split("/");
+    const inService = rest.join("/").replace(/\.js$/, ".ts");
+    if (inService !== "index.ts" && inService !== "api.ts")
+      return `${file} imports src/${target} ("${specifier}"); a composition module reads a service only through services/${slug}/index.ts or services/${slug}/api.ts`;
+  }
   return null;
 }
 
@@ -539,11 +547,16 @@ function layerSites(): Array<{ file: string; specifier: string }> {
     for (const abs of walkTs(join(SRC, dir)))
       for (const specifier of importsOf(readFileSync(abs, "utf8")))
         out.push({ file: srcRel(abs), specifier });
+  // The composition modules, `src/<name>.ts` (P0-19: they import a service only via index or api).
+  for (const name of readdirSync(SRC))
+    if (name.endsWith(".ts") && !name.endsWith(".d.ts"))
+      for (const specifier of importsOf(readFileSync(join(SRC, name), "utf8")))
+        out.push({ file: name, specifier });
   return out;
 }
 
 describe("the layers (P0-17)", () => {
-  it("holds for every file under src/platform, src/db, src/core and src/console", () => {
+  it("holds for every file under src/platform, src/db, src/core and src/console, and the composition modules", () => {
     const sites = layerSites();
     // Not a no-op: every layer is walked.
     for (const dir of ["platform/", "db/", "core/", "console/"])
@@ -573,6 +586,10 @@ describe("the layers (P0-17)", () => {
       ["core/assets/blobGc.ts", "../../mount.js"],
       ["console/handlers/feeds.ts", "../../services/release/packages/prune.js"],
       ["console/lib/shape.ts", "../../services/config/mint.js"],
+      // P0-19: a composition module uses index or api, not a service internal or public.ts.
+      ["scheduled.ts", "./services/identity/portal/repo.js"],
+      ["githubWebhook.ts", "./services/release/sync.js"],
+      ["dispatch.ts", "./services/release/public.js"],
     ];
     for (const [file, specifier] of refused)
       expect(
@@ -591,7 +608,9 @@ describe("the layers (P0-17)", () => {
       ["console/handlers/feeds.ts", "../../services/release/public.js"],
       ["console/handlers/feeds.ts", "../../core/console/respond.js"],
       ["console/api.ts", "../mount.js"],
-      ["dispatch.ts", "./services/release/routes.js"],
+      ["dispatch.ts", "./services/release/api.js"],
+      ["dispatch.ts", "./services/identity/index.js"],
+      ["mount.ts", "./services/release/routes.js"],
     ];
     for (const [file, specifier] of allowed)
       expect(

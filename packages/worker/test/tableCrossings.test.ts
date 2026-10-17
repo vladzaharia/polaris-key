@@ -61,8 +61,6 @@ const SEAMS: readonly (readonly [string, string, RemovedBy])[] = [
 
 /** Core or the console writing a table a service owns, by file under `src/`: [file, table, removedBy]. */
 const WRITE_SEAMS: readonly (readonly [string, string, RemovedBy])[] = [
-  ["console/handlers/feeds.ts", "dist_registry_feeds", "P0-19"],
-  ["console/handlers/feeds.ts", "dist_registry_policy", "P0-19"],
   // Core's merge reads the override layer; Core's subject rows are the documented seam.
   ["core/accounts/accountOverrides.ts", "account_overrides", "permanent"],
   ["core/accounts/accountSubjects.ts", "account_product_subjects", "permanent"],
@@ -85,21 +83,7 @@ const WRITE_SEAMS: readonly (readonly [string, string, RemovedBy])[] = [
   ["core/licensing/store.ts", "licenses", "permanent"],
   ["core/licensing/store.ts", "tiers", "permanent"],
   ["core/licensing/store.ts", "profiles", "P0-26"],
-  // deleteProduct's cascade removes every owner's rows for the product.
-  ["core/products/store.ts", "account_overrides", "P0-19"],
-  ["core/products/store.ts", "account_product_grants", "P0-19"],
-  ["core/products/store.ts", "account_product_subject_aliases", "P0-19"],
-  ["core/products/store.ts", "account_product_subjects", "P0-19"],
-  ["core/products/store.ts", "account_terms_acceptances", "P0-19"],
-  ["core/products/store.ts", "dist_registry_owners", "P0-19"],
-  ["core/products/store.ts", "keys_index", "P0-19"],
-  ["core/products/store.ts", "library_entries", "P0-19"],
-  ["core/products/store.ts", "license_relinks", "P0-19"],
-  ["core/products/store.ts", "licenses", "P0-19"],
-  ["core/products/store.ts", "override_migration_report", "P0-19"],
-  ["core/products/store.ts", "portal_license_links", "P0-19"],
-  ["core/products/store.ts", "storefront_daily", "P0-19"],
-  ["core/products/store.ts", "storefront_seen", "P0-19"],
+  // deleteProduct's cascade: each service erases its own rows (`contributes.productDeletion`).
   // Product registration's statement-builders write rows other owners hold.
   ["core/products/store.ts", "edge_mint_approvals", "P0-26"],
   ["core/products/store.ts", "edge_mint_config", "P0-26"],
@@ -109,6 +93,9 @@ const WRITE_SEAMS: readonly (readonly [string, string, RemovedBy])[] = [
   ["core/products/store.ts", "provisioning_config", "P0-26"],
   ["core/products/store.ts", "release_config", "P0-26"],
   ["core/products/store.ts", "tiers", "P0-26"],
+  // Core's storefront columns on Identity's table: the `storefront.*` entries are Core's slice,
+  // so moving the adapters means moving the entries (and the generated settings pages) to
+  // Identity. P0-19 did not take that move; the lead retags this row to the package that does.
   ["core/settings/columns.ts", "portal_product_settings", "P0-19"],
   ["core/settingsClaims.ts", "product_schema", "P0-26"],
   // The erasure sweeps (SEC-WP-04).
@@ -124,7 +111,6 @@ const WRITE_SEAMS: readonly (readonly [string, string, RemovedBy])[] = [
  */
 const LICENSE_WRITE_SEAMS: readonly (readonly [string, RemovedBy])[] = [
   ["core/accounts/accountSubjects.ts", "P0-20"],
-  ["core/products/store.ts", "P0-19"],
   ["core/ops/overrideMigration.ts", "P0-49"],
   ["services/identity/accounts/legacy.ts", "P0-24"],
 ];

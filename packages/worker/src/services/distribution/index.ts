@@ -205,9 +205,12 @@ async function scheduled(
 import { distributionIntegration } from "./integration.js";
 import { distributionMaintenance } from "./maintenance.js";
 
+import { distributionProductDeletion } from "./productDeletion.js";
+
 export const distributionService: ServiceDescriptor = {
   slug: "distribution",
   contributes: {
+    productDeletion: distributionProductDeletion,
     integration: distributionIntegration,
     maintenance: distributionMaintenance,
   },

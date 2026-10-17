@@ -23,12 +23,15 @@ import {
   accountOverrideStore,
 } from "./accountOverrideStore.js";
 
+import { configProductDeletion } from "./productDeletion.js";
+
 export const configService: ServiceDescriptor = {
   slug: "config",
   /** ST-03: this service's settings registry slice (`settings.ts`). */
   settings: CONFIG_SETTINGS_SLICE,
   handle: handleConfigRoutes,
   contributes: {
+    productDeletion: configProductDeletion,
     // U-03: the account override layer joins Core's subject-store merge, delete and export.
     subjectStores: { [ACCOUNT_OVERRIDE_STORE]: accountOverrideStore },
     integration: configIntegration,

@@ -39,6 +39,10 @@ export {
   type FeedCapabilityView,
   requireFeedAdapter,
 } from "./registry/index.js";
+export {
+  writeFeedSettings,
+  writePlatformPolicy,
+} from "./registry/feedWrites.js";
 export { forgetRegistrySettings } from "./registry/settings.js";
 export {
   packageFeedsOf,

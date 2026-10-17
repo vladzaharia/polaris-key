@@ -27,9 +27,12 @@ import { manifestRowSettingStatements } from "../../core/rowSettings.js";
 
 import { licenseIntegration } from "./integration.js";
 
+import { licenseProductDeletion } from "./productDeletion.js";
+
 export const licenseService: ServiceDescriptor = {
   slug: "license",
   contributes: {
+    productDeletion: licenseProductDeletion,
     integration: licenseIntegration,
   },
   /** ST-03: this service's settings registry slice (`settings.ts`). */

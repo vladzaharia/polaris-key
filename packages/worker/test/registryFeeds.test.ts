@@ -4,6 +4,8 @@
  * and its headers, and the render-on-write materialiser with a fake renderer.
  */
 
+// deleteProduct collects each service's deletion statements from the registry mount.ts binds.
+import "../src/mount.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReleaseAccess } from "@polaris-key/protocol/release";
 import {

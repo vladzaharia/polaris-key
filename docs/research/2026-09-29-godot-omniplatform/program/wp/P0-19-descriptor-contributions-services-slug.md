@@ -54,10 +54,37 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 
 ## Acceptance criteria
 
-- [ ] No side-effect registration imports remain
-- [ ] Every enabled service answers an integration contribution
-- [ ] Boundary test covers api.ts imports
+- [x] No side-effect registration imports remain
+- [x] Every enabled service answers an integration contribution
+- [x] Boundary test covers api.ts imports
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
+
+## Corrections to the brief (2026-10-17, from the code)
+
+- The three registries were module-load state called from places holding a database and no
+  registry (an account merge, an activation). Core now answers them from the registry that
+  `mount.ts` binds once (`bindServiceRegistry`, `core/contributions.ts`); the descriptor member is
+  `contributes` with `subjectStores`, `licenseHolders`, `onAuthorization`, `maintenance`,
+  `integration` and `productDeletion`. `registerSubjectStore` survives only as a test-fixture hook
+  (`contributions.test.ts` bans it in `src/`).
+- Subject stores, holder hooks and product deletion run for every mounted service WHATEVER the
+  product's enablement (erasure must not skip a switched-off service's rows); `onAuthorization`
+  is gated by enablement.
+- `maintenance` has slots (`product`, `early`, `late`, `frequent`, `registry`) that keep the old
+  step order and names; `scheduled.ts` imports no service.
+- `productDeletion` is an addition: it is what removes the `core/products/store.ts` and
+  `console/handlers/feeds.ts` rows from `WRITE_SEAMS`.
+- `serviceContext(kind, ...)` in `core/registry.ts` replaces the hand-built request, admin,
+  scheduled and host members (kinds `request`, `admin`, `scheduled`, `host`).
+- The console keeps `public.ts`; `api.ts` (release, distribution) is for `dispatch.ts`,
+  `githubWebhook.ts`, `platformDeploy.ts`, `assetQueue.ts` and `deltasEntry.ts`.
+
+## Progress and continuation (2026-10-17)
+
+Done except one seam: `core/settings/columns.ts` writes Identity's `portal_product_settings`
+(the `storefront.*` entries are Core's slice). Moving those adapters means moving the entries to
+Identity and regenerating the settings pages; that row stays tagged P0-19 in
+`test/tableCrossings.test.ts` for the lead to retag.
 
 ## Verify
 

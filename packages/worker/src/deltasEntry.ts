@@ -20,7 +20,7 @@ import {
   handleDeltaBatch,
   type DeltaConsumerDeps,
   type DeltaOutcome,
-} from "./services/release/packs/deltas/consumer.js";
+} from "./services/release/api.js";
 import { writeHeartbeat } from "./core/ops/platformOps.js";
 
 /** The consumer's bindings: the request Worker's D1 and blob store, and the queue it drains

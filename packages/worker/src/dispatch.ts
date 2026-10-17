@@ -50,7 +50,7 @@ import {
 import { handleAssetsPush } from "./core/assets/hostedAssetUploads.js";
 // HA-06: a CI push into a listing-model slot also writes Distribution's listing row; Core takes
 // the writer from here rather than importing the service.
-import { listingSlotMirror } from "./services/distribution/listing/hostedMirror.js";
+import { listingSlotMirror } from "./services/distribution/api.js";
 import { dispatchBytesHost, isBytesHost } from "./core/assets/bytesHost.js";
 import {
   dispatchRegistryHost,

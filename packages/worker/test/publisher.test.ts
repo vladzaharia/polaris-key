@@ -11,6 +11,8 @@
  *      and cannot reach, judged by R2's documented authorisation rules.
  */
 
+// deleteProduct collects each service's deletion statements from the registry mount.ts binds.
+import "../src/mount.js";
 import { createHash } from "node:crypto";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import {

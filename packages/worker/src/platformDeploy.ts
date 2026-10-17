@@ -83,10 +83,10 @@ import {
   systemManifestProblem,
   type SystemRepository,
 } from "./console/systemProduct.js";
-import { MANIFEST_FILE_NAMES } from "./services/release/manifestFiles.js";
+import { MANIFEST_FILE_NAMES } from "./services/release/api.js";
 import { reservedNamesMode } from "./core/licensing/reservedNames.js";
 import { reservedDisplayNamesMode } from "./core/accounts/reservedDisplayNames.js";
-import { reconcilePackageFileRefs } from "./services/release/packages/refReconcile.js";
+import { reconcilePackageFileRefs } from "./services/release/api.js";
 import { runLicensingCatchUp } from "./core/licensing/licensingCatchUp.js";
 
 export const DEPLOY_HOOK_PATH = "/webhooks/deploy";

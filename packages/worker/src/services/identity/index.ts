@@ -61,6 +61,8 @@ import {
 import { identityIntegration } from "./integration.js";
 import { identityMaintenance } from "./maintenance.js";
 
+import { identityProductDeletion } from "./productDeletion.js";
+
 export const identityService: ServiceDescriptor = {
   slug: "identity",
   /** ST-03: this service's settings registry slice (`settings.ts`). */
@@ -78,6 +80,7 @@ export const identityService: ServiceDescriptor = {
     manifestClaimByKeyStatements(product, parsed, now),
   handle: handleIdentityRoutes,
   contributes: {
+    productDeletion: identityProductDeletion,
     // LX-26: the licence-holder hooks, so License's creation path and every account-email
     // verification reach them (`core/licensing/licenseHolders.ts`).
     licenseHolders: licenseHolderHooks,

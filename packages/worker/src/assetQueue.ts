@@ -29,13 +29,13 @@ import {
 } from "./core/assets/hostedAssetPulls.js";
 import type { FetchImpl } from "./core/safeFetch.js";
 import { loadProductPublic } from "./core/products.js";
-import { resolveRepoAssetSource } from "./services/release/assetSource.js";
+import { resolveRepoAssetSource } from "./services/release/api.js";
 import {
   processReleaseMirror,
   readReleaseMirrorMessage,
   type ReleaseMirrorMessage,
-} from "./services/release/mirror.js";
-import { syncManifestListingAssets } from "./services/distribution/listing/manifestAssets.js";
+} from "./services/release/api.js";
+import { syncManifestListingAssets } from "./services/distribution/api.js";
 
 /** The queue this consumer serves (`pkey-assets-<env>`); anything else is not ours. */
 export const ASSET_QUEUE_PREFIX = "pkey-assets-";

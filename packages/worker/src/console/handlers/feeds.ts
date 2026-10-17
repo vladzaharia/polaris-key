@@ -61,7 +61,7 @@ import {
   type PackageEcosystem,
 } from "@polaris-key/manifest";
 import type { Env } from "../../platform/env.js";
-import type { Db, DbStatement } from "../../db/types.js";
+import type { Db } from "../../db/types.js";
 import type { AdminSession } from "../../core/console/session.js";
 import {
   adminJson,
@@ -82,7 +82,11 @@ import {
 } from "../../core/registry/registryQueue.js";
 import { packageFeedsOf } from "../../services/distribution/public.js";
 import { handleRegistryTokensAdmin } from "./registryTokens.js";
-import { forgetRegistrySettings } from "../../services/distribution/public.js";
+import {
+  forgetRegistrySettings,
+  writeFeedSettings,
+  writePlatformPolicy,
+} from "../../services/distribution/public.js";
 import { packageCatalog } from "../../services/release/public.js";
 import {
   pruneRetentionOf,
@@ -556,48 +560,20 @@ async function putSettings(
     );
   const expected = body.expectedVersion as number;
   const accessMode = (body.accessMode as string | undefined) ?? "public";
-  const write: DbStatement =
-    expected === 0
-      ? {
-          sql: `INSERT INTO dist_registry_feeds
-                  (product, ecosystem, enabled, access_mode, namespace_json, max_package_bytes,
-                   upstream, claims_json, ext_json, version, updated_at, updated_by)
-                SELECT ?, ?, ?, ?, ?, ?, 'none', '[]', ?, 1, ?, ?
-                 WHERE NOT EXISTS (SELECT 1 FROM dist_registry_feeds
-                                    WHERE product = ? AND ecosystem = ?)`,
-          params: [
-            owner.slug,
-            eco,
-            enabled ? 1 : 0,
-            accessMode,
-            JSON.stringify(namespace),
-            maxBytes,
-            JSON.stringify(ext),
-            now,
-            session.sub,
-            owner.slug,
-            eco,
-          ],
-        }
-      : {
-          sql: `UPDATE dist_registry_feeds
-                   SET enabled = ?, access_mode = ?, namespace_json = ?, max_package_bytes = ?,
-                       ext_json = ?, version = version + 1, updated_at = ?, updated_by = ?
-                 WHERE product = ? AND ecosystem = ? AND version = ?`,
-          params: [
-            enabled ? 1 : 0,
-            body.accessMode === undefined ? before.accessMode : accessMode,
-            JSON.stringify(namespace),
-            maxBytes,
-            JSON.stringify(ext),
-            now,
-            session.sub,
-            owner.slug,
-            eco,
-            expected,
-          ],
-        };
-  const changed = await db.runChanges(write.sql, ...write.params);
+  const changed = await writeFeedSettings(db, {
+    owner: owner.slug,
+    ecosystem: eco,
+    expected,
+    enabled,
+    accessMode,
+    updateAccessMode:
+      body.accessMode === undefined ? before.accessMode : accessMode,
+    namespace,
+    maxPackageBytes: maxBytes,
+    ext,
+    now,
+    by: session.sub,
+  });
   if (changed === 0) {
     const fresh = settingsView(
       (await feedRows(db, owner.slug)).get(eco),
@@ -670,18 +646,14 @@ async function putPolicy(
   const ceiling =
     (body.maxPackageBytesCeiling as number | undefined) ??
     before.max_package_bytes_ceiling;
-  const changed = await db.runChanges(
-    `UPDATE dist_registry_policy
-        SET enabled = ?, max_package_bytes_ceiling = ?, version = version + 1, updated_at = ?,
-            updated_by = ?
-      WHERE ecosystem = ? AND version = ?`,
-    enabled ? 1 : 0,
+  const changed = await writePlatformPolicy(db, {
+    ecosystem: eco,
+    enabled,
     ceiling,
+    expectedVersion: body.expectedVersion as number,
     now,
-    session.sub,
-    eco,
-    body.expectedVersion as number,
-  );
+    by: session.sub,
+  });
   if (changed === 0)
     return err(
       409,

@@ -31,7 +31,7 @@
 
 /// <reference types="@cloudflare/workers-types" />
 
-import type { Db } from "../db/types.js";
+import type { Db, DbStatement } from "../db/types.js";
 import type { Env } from "../platform/env.js";
 import type { AuthorizationListener } from "./authorizationListeners.js";
 import type { SubjectStore } from "./accounts/subjectHooks.js";
@@ -141,7 +141,19 @@ export type IntegrationContributor = (
 
 // ── the descriptor member ───────────────────────────────────────────────────────────────────
 
+/**
+ * The statements erasing this service's rows for a deleted product (`deleteProduct`'s batch). Run
+ * for every mounted service WHATEVER its enablement: a service switched off still holds the
+ * product's rows, and a deleted product keeps the shape of its licences, not the people.
+ * Statements only, idempotent, touching this service's own tables.
+ */
+export type ProductDeletionContributor = (
+  product: string,
+  now: number,
+) => DbStatement[];
+
 export interface ServiceContributions {
+  productDeletion?: ProductDeletionContributor;
   integration?: IntegrationContributor;
   maintenance?: MaintenanceContribution;
   /** Stores of account × product data, by their stable registry name. */
@@ -210,6 +222,24 @@ export function contributedAuthorizationListeners(
       out.push(listener);
   }
   return out;
+}
+
+/**
+ * Every mounted service's product-deletion statements. Fails CLOSED: before `mount.ts` has bound
+ * the registry it throws, because silently skipping them would delete a product and leave its
+ * people's rows behind.
+ */
+export function productDeletionStatements(
+  product: string,
+  now: number,
+): DbStatement[] {
+  if (!BOUND)
+    throw new Error(
+      "deleteProduct needs the service registry bound (core/contributions.ts bindServiceRegistry)",
+    );
+  return contributionsOf().flatMap(([, c]) =>
+    c.productDeletion ? c.productDeletion(product, now) : [],
+  );
 }
 
 /** The services' maintenance contributions in canonical order. */
