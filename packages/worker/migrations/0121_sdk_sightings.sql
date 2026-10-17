@@ -25,7 +25,8 @@ CREATE TABLE IF NOT EXISTS sdk_sightings (
 CREATE INDEX IF NOT EXISTS idx_sdk_sightings_seen ON sdk_sightings(last_seen);
 
 -- One-time backfill from the devices a product already holds, so a mature product is Verified for
--- Licensing at once. Only devices seen in the last 90 days (the prune horizon), only the SDK ids
+-- Licensing at once. Platform, architecture and SDK version pass the same allow-list as the live
+-- path (anything else becomes ''). Only devices seen in the last 90 days (the prune horizon), only the SDK ids
 -- the wire registry lists. A device exists only after an authorised licence request, so the
 -- Licensing bit (1) is the one fact it proves. This writes no setup choice: hiding the
 -- Integration page stays the operator's act.
@@ -33,14 +34,16 @@ INSERT OR IGNORE INTO sdk_sightings
   (product, sdk, platform, arch, first_seen, last_seen, sdk_version, services_ok, last_ok_at)
 SELECT d.product,
        d.sdk_name,
-       COALESCE(d.platform, ''),
-       COALESCE(d.arch, ''),
+       CASE WHEN d.platform IN ('macos','ios','android','windows','linux','web','tvos','visionos','watchos') THEN d.platform ELSE '' END AS plat,
+       CASE WHEN d.arch IN ('arm64','x86_64','armv7','wasm32') THEN d.arch ELSE '' END AS ar,
        MIN(d.first_seen),
        MAX(d.last_seen),
-       (SELECT d2.sdk_version FROM devices d2
+       (SELECT CASE WHEN d2.sdk_version IS NOT NULL AND length(d2.sdk_version) BETWEEN 1 AND 64
+                 AND d2.sdk_version NOT GLOB '*[^0-9A-Za-z.+-]*' THEN d2.sdk_version ELSE '' END
+          FROM devices d2
          WHERE d2.product = d.product AND d2.sdk_name = d.sdk_name
-           AND COALESCE(d2.platform, '') = COALESCE(d.platform, '')
-           AND COALESCE(d2.arch, '') = COALESCE(d.arch, '')
+           AND CASE WHEN d2.platform IN ('macos','ios','android','windows','linux','web','tvos','visionos','watchos') THEN d2.platform ELSE '' END = CASE WHEN d.platform IN ('macos','ios','android','windows','linux','web','tvos','visionos','watchos') THEN d.platform ELSE '' END
+           AND CASE WHEN d2.arch IN ('arm64','x86_64','armv7','wasm32') THEN d2.arch ELSE '' END = CASE WHEN d.arch IN ('arm64','x86_64','armv7','wasm32') THEN d.arch ELSE '' END
          ORDER BY d2.last_seen DESC LIMIT 1),
        1,
        MAX(d.last_seen)
@@ -49,4 +52,4 @@ SELECT d.product,
                       'node-server', 'python-server', 'swift-server', 'kotlin-server')
    AND d.last_seen >= CAST(strftime('%s', 'now') AS INTEGER) - 7776000
    AND d.product IN (SELECT slug FROM products)
- GROUP BY d.product, d.sdk_name, COALESCE(d.platform, ''), COALESCE(d.arch, '');
+ GROUP BY d.product, d.sdk_name, plat, ar;

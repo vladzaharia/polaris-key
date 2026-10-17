@@ -314,14 +314,18 @@ async function dispatchProductRoute(
 ): Promise<Response> {
   const res = await routeProduct(req, env, db, product, route, now, exec);
   if (exec && res.status >= 200 && res.status < 300) {
-    const write = recordSighting(
-      db,
-      product.slug,
-      req.headers,
-      sightingNamespace(route),
-      now,
-    );
-    if (write) exec.waitUntil(write);
+    try {
+      const write = recordSighting(
+        db,
+        product.slug,
+        req.headers,
+        sightingNamespace(route),
+        now,
+      );
+      if (write) exec.waitUntil(write);
+    } catch {
+      // A sighting never costs a response.
+    }
   }
   return res;
 }

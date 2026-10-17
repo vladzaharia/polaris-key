@@ -67,6 +67,52 @@ describe("sightingFromHeaders", () => {
   });
 });
 
+describe("hardening", () => {
+  it("keeps only registry-shaped SDK versions", () => {
+    const v = (x: string) =>
+      sightingFromHeaders(sdkHeaders({ "X-PKey-SDK-Version": x }))?.version;
+    expect(v("1.2.3-beta.1+build5")).toBe("1.2.3-beta.1+build5");
+    expect(v("1 2")).toBe("");
+    expect(v("x".repeat(65))).toBe("");
+    expect(v("<script>")).toBe("");
+  });
+
+  it("skips writes, never clears, when the throttle map is full of live keys", () => {
+    let writes = 0;
+    const db = {
+      run: async () => {
+        writes++;
+      },
+    } as unknown as Parameters<typeof recordSighting>[0];
+    const nss = ["license", "config", "identity", "sync"] as const;
+    const sdks = ["node", "react", "python", "swift", "godot", "kotlin"];
+    for (let round = 0; round < 2; round++)
+      for (let p = 0; p < 400; p++)
+        for (const ns of nss)
+          for (const sdk of sdks)
+            recordSighting(
+              db,
+              `prod${p}`,
+              sdkHeaders({ "X-PKey-SDK": sdk }),
+              ns,
+              NOW,
+            );
+    // 9600 distinct keys: at most 4096 are taken inside the window, and the second round
+    // (every key already live or skipped) adds none.
+    expect(writes).toBe(4096);
+    // Expired entries free room again.
+    expect(
+      recordSighting(
+        db,
+        "p1",
+        sdkHeaders({}),
+        "license",
+        NOW + SIGHTING_WRITE_INTERVAL_SECONDS + 1,
+      ),
+    ).not.toBeNull();
+  });
+});
+
 describe("namespaces and bits", () => {
   it("gives every service a distinct, fixed bit", () => {
     const bits = SERVICE_SLUGS.map((s) => SIGHTING_BITS[s]);
@@ -306,6 +352,30 @@ describe("backfill and prune", () => {
         "SELECT 1 FROM product_settings WHERE key LIKE 'core.setup%'",
       ),
     ).toEqual([]);
+  });
+
+  it("backfill drops free-text platform, arch and version", async () => {
+    const db = makeTestDb();
+    await seedProduct(db, "p1");
+    const nowSec = Math.floor(Date.now() / 1000);
+    await db.run(
+      `INSERT INTO devices (product, device_id, license_id, status, first_seen, last_seen, platform, arch, sdk_name, sdk_version)
+       VALUES ('p1', 'x', 'L', 'authorized', ?, ?, ?, ?, 'node', ?)`,
+      nowSec - 5,
+      nowSec - 1,
+      "Plan 9 <b>" + "z".repeat(5000),
+      "mips",
+      "1.0 bad",
+    );
+    await db.run("DELETE FROM sdk_sightings");
+    const sql = readFileSync(
+      new URL("../migrations/0121_sdk_sightings.sql", import.meta.url),
+      "utf8",
+    );
+    await db.run(sql.slice(sql.indexOf("INSERT OR IGNORE INTO")));
+    const rows = await listSightings(db, "p1");
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ platform: "", arch: "", sdkVersion: "" });
   });
 
   it("prunes rows last seen past retention", async () => {

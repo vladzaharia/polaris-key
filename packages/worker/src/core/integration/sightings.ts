@@ -69,6 +69,8 @@ export const SIGHTING_WRITE_INTERVAL_SECONDS = 300;
 /** Rows older than this (by `last_seen`) are pruned. */
 export const SIGHTING_RETENTION_SECONDS = 90 * 24 * 60 * 60;
 
+/** The SDK versions a sighting keeps; anything else is stored as ''. */
+const VERSION_RE = /^[0-9A-Za-z.+-]{1,64}$/;
 const PLATFORMS: ReadonlySet<string> = new Set(
   Object.values(PLATFORM_SPELLINGS),
 );
@@ -110,7 +112,7 @@ export function sightingFromHeaders(headers: Headers): SightingKey | null {
     sdk,
     platform: platform !== null && PLATFORMS.has(platform) ? platform : "",
     arch: arch !== null && ARCHES.has(arch) ? arch : "",
-    version: version ? version.slice(0, 64) : null,
+    version: version ? (VERSION_RE.test(version) ? version : "") : null,
   };
 }
 
@@ -124,12 +126,20 @@ export function resetSightingThrottle(): void {
   LAST_WRITE.clear();
 }
 
-/** True when this key is due a write, and records that it is taking it. */
+/**
+ * True when this key is due a write, and records that it is taking it. When the map is full,
+ * expired entries are evicted; if it is still full of live ones the write is skipped, so cycling
+ * header combinations cannot force a write per request.
+ */
 function due(key: string, now: number): boolean {
   const last = LAST_WRITE.get(key);
   if (last !== undefined && now - last < SIGHTING_WRITE_INTERVAL_SECONDS)
     return false;
-  if (LAST_WRITE.size >= LAST_WRITE_CAP) LAST_WRITE.clear();
+  if (last === undefined && LAST_WRITE.size >= LAST_WRITE_CAP) {
+    for (const [k, t] of LAST_WRITE)
+      if (now - t >= SIGHTING_WRITE_INTERVAL_SECONDS) LAST_WRITE.delete(k);
+    if (LAST_WRITE.size >= LAST_WRITE_CAP) return false;
+  }
   LAST_WRITE.set(key, now);
   return true;
 }
