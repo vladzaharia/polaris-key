@@ -160,3 +160,15 @@ mise exec node@22 -- pnpm --filter @polaris-key/worker test -- portal identity r
 The role agent sets `--set I-11 in-review` when it hands off. After review, the lead adds the last
 commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set I-11 done`.
+
+## Review fix round (2026-10-16)
+
+- Export: a device signed in as another subject is left out whole (negative test in
+  `portalDataExport.test.ts`). Rollback script renamed to `0116_account_deletions.down.sql`.
+- Portal: a stale sign-in shows `StepUpInline` in place of the refusal (download, schedule, cancel,
+  Remove my data) and retries; "Get a support code" is a row of `ProductDataCard`; Your data is
+  compact rows; a shell notice shows a scheduled deletion; "Your data" is the product nav's last item.
+- Not done (follow-ups): Delete account as an L3 `ConfirmDialog` (needs a case-insensitive typed
+  match in the shared dialog), typed confirmation and Download-first in Remove my data, the
+  request-id reference in the fallback error (needs the id threaded through `PortalApiError`),
+  service-aware copy, a nav entry on the entry page (it has no section nav).
