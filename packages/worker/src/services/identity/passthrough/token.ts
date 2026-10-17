@@ -26,7 +26,8 @@
  * 'signin'`, the pairwise subject written). With none to choose, the device is bound licence-less
  * (`registerDeviceBinding`), and `license` is `null`. A device id already holding a licence is
  * never taken over without a choice (`license_choice_required`); keeping a licence the device
- * runs on is I-08b's choice answer.
+ * runs on needs the device's own token in `Authorization: Bearer`: with that proof the sign-in
+ * binds the account to the device where it stands and answers the token the device already holds.
  *
  * ── ERRORS ──────────────────────────────────────────────────────────────────────────────────
  *
@@ -38,6 +39,7 @@
 import type { TokenResponse } from "@polaris-key/protocol/identity";
 import { HEADER_DEVICE } from "@polaris-key/protocol/core";
 import { normalizeDeviceLabel } from "@polaris-key/client-core";
+import { bearer } from "../../../platform/http.js";
 import { sha256B64url } from "../../../platform/hash.js";
 import { constantTimeEqual } from "../../../platform/compare.js";
 import type { Db } from "../../../db/types.js";
@@ -59,10 +61,12 @@ import {
 import {
   deviceMetadata,
   isValidClientDeviceId,
+  licenseUsable,
   NO_LICENSE_ID,
   registerDeviceBinding,
   shapeDevice,
   shapeLicense,
+  validateDeviceToken,
 } from "../../../core/devices.js";
 import { getDevice } from "../../../core/devices/store.js";
 import { getLicense } from "../../../core/licensing/store.js";
@@ -230,10 +234,38 @@ export async function handleToken(ctx: {
   const metadata = deviceMetadata(req);
   const label = normalizeDeviceLabel(form.get("device_name") ?? undefined);
 
+  // A device that presents its own live token proves it holds the device. Only then may a sign-in
+  // keep the licence the device runs on: the binding is written on the existing row and the token
+  // it already holds is the answer. Without the proof a licensed device id is never touched.
+  const presented = bearer(req);
+  const held = presented
+    ? await validateDeviceToken(env, db, product, presented, now, { deviceId })
+    : null;
+  const keepable =
+    held &&
+    !("error" in held) &&
+    held.device.license_id !== NO_LICENSE_ID &&
+    held.license !== null &&
+    licenseUsable(held.license, now)
+      ? held
+      : null;
+
   let token: string;
   let deviceRow: Awaited<ReturnType<typeof registerDeviceBinding>>["device"];
   let licenseId: string;
-  if (record.choice) {
+  if (!record.choice && keepable && presented) {
+    const kept = await bindSignedInDevice(env, db, product, {
+      accountId: account.id,
+      subject,
+      deviceId,
+      choice: { kind: "keep" },
+      now,
+    });
+    if (!kept.ok) return oauth(409, ErrorCode.LicenseChoiceRequired);
+    token = presented;
+    deviceRow = keepable.device;
+    licenseId = kept.licenseId;
+  } else if (record.choice) {
     const bound = await bindSignedInDevice(env, db, product, {
       accountId: account.id,
       subject,

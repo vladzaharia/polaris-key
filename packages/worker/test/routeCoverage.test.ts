@@ -147,6 +147,8 @@ const PORTAL_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     // PX-W13 (G28): the sign-in request the card renders, and its app-consent view.
     ["/api/signin/requests/{request}", ["get"]],
     ["/api/signin/requests/{request}/consent", ["get"]],
+    ["/api/signin/requests/{request}/continue", ["post"]],
+    ["/api/signin/requests/{request}/cancel", ["post"]],
     // I-16: passkeys on the login card, and the account's passkeys.
     ["/api/signin/passkey/options", ["post"]],
     ["/api/signin/passkey/verify", ["post"]],
@@ -660,6 +662,8 @@ const CORS_EXCLUDED = new Set([
   "/{product}/identity/auth/device",
   "/{product}/identity/auth/device/verify",
   "/{product}/identity/auth/choose",
+  // I-08: `authorize` is a browser navigation to the card; only `token` is a page's `fetch`.
+  "/{product}/identity/authorize",
   "/{product}/config/mint/{mintId}/auth",
   // P2-05: CI routes, authenticated by a `pkeyci_` bearer — never called from a browser page.
   "/{product}/release/channels/{channel}/promote",
