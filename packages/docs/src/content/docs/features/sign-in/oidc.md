@@ -1,248 +1,72 @@
 ---
-title: "Product OIDC"
-description: "Platform vs. custom providers, the PKCE browser flow, group-to-tier mapping, the auto-issue fallback, and claim provisioning."
+title: "Product sign-in provider"
+description: "Platform or custom OpenID Connect provider, the PKCE browser flow, group-to-tier mapping, the keyless fallback and claim provisioning."
+type: "concept"
+lastReviewed: "2026-10-16"
 sidebar:
-  order: 2
+  order: 3
 ---
 
-Each product has exactly one server-selected OpenID Connect provider — the shared platform
-default, or a provider the product links itself — plus its own group mapping and claim
-provisioning. A browser sign-in mints or locates a **license** for the identity; a device-code
-sign-in (see [The device-code flow](/docs/services/identity/device-flow/)) does the same thing
-for a client that cannot receive a redirect. Every ID token is verified against the issuer's JWKS
-with `jose`, asymmetric algorithms only.
+Each product has one server-selected OpenID Connect provider and its own group mapping and claim provisioning. A browser sign-in mints or locates a license for the identity. The [device-code flow](/docs/features/sign-in/device-flow/) does the same for a client that can't receive a redirect. The Worker verifies every ID token against the issuer's JWKS and accepts asymmetric algorithms only.
 
-## Platform vs. custom
+## Platform or custom
 
-`oidc_config.provider` is one of two values, read by `resolveOidcConfig` on every sign-in:
+`oidc_config.provider` is `platform` (the default) or `custom`.
 
-- **`platform`** (the default when the column is unset) — the operator-configured IdP shared by
-  every product that has not linked its own, read from the `PLATFORM_OIDC_ISSUER` /
-  `PLATFORM_OIDC_CLIENT_ID` / `PLATFORM_OIDC_CLIENT_SECRET` Worker secrets. The customer
-  portal's root `/login` uses the same IdP, as the seeded platform connection `platform-sso`
-  that the trio became (`source: env`; see
-  [Connections](/docs/operate/platform/connections/#sign-in-connections)), so a platform-issuer
-  product and the portal share one trust boundary. The console signs operators in through its own client
-  (`ADMIN_OIDC_*`, falling back to `PLATFORM_OIDC_*` until it is set); a product or the portal
-  never reads the `ADMIN_OIDC_*` names.
-- **`custom`** — a provider the product links itself: `issuer`, `client_id`, and a
-  product-secret-sealed `client_secret`, fed by `.pkey/product`'s `oidc:` block through repo link
-  and resync. `redirect_uris_json`, when set, is an allowlist the computed redirect URI must
-  appear in — the IdP's own registered-redirect check is not the only one enforced here.
+- **Platform.** The operator-configured provider shared by every product that hasn't linked its own, from the `PLATFORM_OIDC_*` Worker secrets. The customer portal's `/login` uses the same provider, so a platform product and the portal share one trust boundary.
+- **Custom.** A provider the product links: `issuer`, `client_id` and a sealed `client_secret`, fed by the `oidc:` block of `.pkey/product` through repo link and resync. When `redirect_uris_json` is set, the computed redirect URI must appear in it.
 
-A **custom** issuer is repo-controlled, not operator-controlled: whoever can push to the linked
-repo's `.pkey/product` can point `oidc.issuer` anywhere. Two independent checks stand between
-that and a live sign-in — see "The issuer allowlist" below.
+Both run on one relying-party client. It reads `<issuer>/.well-known/openid-configuration`, whose `issuer` must equal the configured one exactly, and dials only the issuer's host. A custom provider needs a discovery document that offers the code flow.
 
-Both paths run on the Worker's one relying-party client (`core/oidc/client.ts`), as the portal and
-the console do. It reads `<issuer>/.well-known/openid-configuration`, whose `issuer` must
-equal the configured one exactly, and dials only the issuer's host: an endpoint the document
-names on any other host is refused. A custom IdP needs a discovery document that offers the code
-flow.
+A custom issuer is repo-controlled: whoever can push `.pkey/product` can point it anywhere. Two checks stand between that and a live sign-in:
 
-## The browser PKCE flow
+1. **Shape.** The issuer must be `https` and name no private, loopback, link-local or reserved address. This closes SSRF into internal infrastructure.
+2. **Host allowlist.** The `OIDC_ISSUER_ALLOWLIST` Worker secret lists permitted hosts. Once set it is fail-closed: an issuer off the list is refused with `500 misconfigured` before the client secret is opened. Left unset, the gate doesn't apply, because enforcing an empty list would take every configured custom product offline. The platform issuer is exempt.
 
-Two routes, both under `/<product>/identity/auth`:
+## The browser flow
 
-| Route                             | What it does                                                                                                                                                           |
-| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GET /<p>/identity/auth/start`    | Begins PKCE and 302s to the IdP's discovered authorization endpoint.                                                                                                   |
-| `GET /<p>/identity/auth/callback` | The registered redirect URI: exchanges the code, verifies the ID token, mints or locates the license (a device-code flow: stores the identity; the poll activates it). |
+`GET /<product>/identity/auth/start` begins PKCE and redirects to the provider. `GET /<product>/identity/auth/callback` is the registered redirect URI.
 
-**`/auth/start`** generates `state` and `nonce` (16 random bytes each, base64url) and a PKCE pair
-— a 32-byte random `verifier` and its SHA-256 `challenge`, method `S256` — and stores them in a
-flow record for 600 seconds, keyed by the peppered hash of `state`. Flow records, device-code
-records and the user-code index live in the Worker's atomic single-use store (a sharded Durable
-Object), not KV, so every step that must happen once (the callback's claim of a `state`, a
-confirmation's CSRF token, the final redemption at the poll) is one atomic operation: two racing
-requests can never both pass it. `return_to`, when present, must be same-origin with the request
-and may not point into the console (`/manage`), or the call is refused outright
-(`400 bad_request`); it is what turns the
-callback into a cookie-issuing redirect rather than a bare confirmation page — see
-[Identity](/docs/services/identity/) for the two shapes a completed sign-in can take. The
-redirect URI is always computed as `…/<product>/identity/auth/callback`; when
-`redirect_uris_json` is set, it must appear in that list or the call is refused.
+`start` generates `state`, `nonce` and a 32-byte PKCE verifier with its `S256` challenge, and stores them for 600 seconds keyed by the peppered hash of `state`. Flow records live in the Worker's atomic single-use store, so every once-only step is one atomic operation. A `return_to` must be same-origin and may not point into the console (`/manage`), else `400 bad_request`. It turns the callback into a cookie-issuing redirect.
 
-**`/auth/callback`** claims the flow's `state` before doing anything else — a stored
-`consumedAt` makes it single-use, and a replayed `state` gets the same generic
-`400 unknown state` a state that never existed would (this closes what the findings below call
-"flow injection": a second callback on the same state could otherwise overwrite the license a
-poller is already waiting on). It then exchanges the code at the discovered token endpoint with the
-PKCE verifier, reads the IdP's JWKS through the client's cache, and verifies the ID token:
+`callback` claims the `state` first, so a replayed `state` gets the same generic `400` as an unknown one. It then exchanges the code with the verifier and verifies the ID token:
 
-- algorithms `RS256`, `ES256`, or `EdDSA` only — never a symmetric algorithm an attacker could
-  forge with a public value;
-- `issuer` and `audience` (the client id) must match;
-- `clockTolerance` 300 seconds and `maxTokenAge` 5 minutes, so a token minted long before this
-  exchange cannot be replayed into a sign-in later — freshness is enforced here because a token's
-  `exp` alone is entirely the IdP's choice;
-- the token's `nonce` claim must equal the flow's stored `nonce`; a token with no `nonce` is
-  rejected unconditionally.
+- algorithm `RS256`, `ES256` or `EdDSA` only;
+- `issuer` and `audience` match;
+- clock tolerance 300 seconds and a maximum token age of 5 minutes;
+- the `nonce` equals the flow's, and a token with no `nonce` is rejected.
 
-A verified token with an empty `sub` is treated as invalid (the same generic `401 unauthorized`
-as any other bad token) rather than allowed through — an empty subject would otherwise collapse
-every such identity onto one license row. Only an `email` carried on a token with
-`email_verified: true` is trusted; an unverified email is attacker-chosen and is stored as
-nothing rather than as an unverified fact, because the customer portal may later use this exact
-value to auto-link accounts.
+A verified token with an empty `sub` is invalid. The Worker trusts an `email` only when `email_verified` is true, because the portal may later use it to link accounts.
 
-What happens next depends on whether the flow carries a `return_to` — see
-[Identity](/docs/services/identity/) for the full split between the cookie path and the
-device-token path.
+With a `return_to`, the callback sets a `pkey_<product>_session` cookie ([Browser sessions](/docs/features/sign-in/sessions/)). Without one, it hands the result to a poller that redeems a device token. There is no `state`-keyed poll: `state` isn't a secret, so a device completes the flow on the device-code poll with its secret device code.
 
-**There is no `state`-keyed poll.** `/auth/poll` once polled a device-bound flow by `state` and
-device id, both in the query string. It is retired: `state` is not a secret (it rides on the
-authorize URL, which the device-code confirmation page hands to anyone holding the public user
-code), so `state` plus a device id must never redeem a flow, and nothing it could still complete
-was started any more. A device completes the [device-code flow](/docs/services/identity/device-flow/)
-on `/auth/device/poll`, with the secret device code in the body; `/auth/poll` answers the generic `404` of a path that never existed.
+## Groups to tier
 
-:::note[No aliases]
-These two routes, plus `/auth/logout`, `/auth/choose`, `/auth/device` and the three
-`/auth/device/*` routes, are the _only_ spellings. The pre-namespace paths (`/<p>/auth/…`, `/<p>/session`) are deleted outright, and
-`/auth/login` — a second spelling of `/auth/start` — is gone the same way. See
-[Identity](/docs/services/identity/) for why no compatibility alias was kept.
-:::
+`group_role_map_json` maps provider groups to a role and an optional tier: `{ "<group>": { "role": "…", "tier": "<tierId>" } }`. The first mapped group that names a tier decides the tier. A malformed map grants nothing. The authorize request asks for scope `openid email profile groups`.
 
-## The issuer allowlist: `OIDC_ISSUER_ALLOWLIST`
+An identity in no mapped group is refused with `403 forbidden` unless the product opts into the fallback: an `autoIssue` policy with mode `oidcDefault` or `both` and a tier lands that identity on the policy's tier. A policy with no tier, or a disabled one, counts as off. See [Enrollment and policy](/docs/features/licensing/access/).
 
-A **custom** issuer is checked twice before it is ever fetched or redirected to, because the same
-value is both the base of the discovery fetch and the redirect, and the destination of a POST carrying the
-product's OIDC `client_secret`:
+## Find or mint the license
 
-1. **Shape**, at manifest-ingest time and again here as a sink-side repeat: `isSafeIssuerUrl`
-   refuses anything that is not `https`, or that names a private, loopback, link-local, or
-   reserved address. This closes SSRF into internal infrastructure, but it cannot distinguish a
-   real IdP from `https://exfil.attacker.example` — a public https host is indistinguishable from
-   a legitimate one at the character level.
-2. **Host allowlist**, `issuerHostAllowed`: the `OIDC_ISSUER_ALLOWLIST` Worker secret, a
-   comma/whitespace-separated host list. Once set, it is enforced fail-closed — an issuer whose
-   host is not on the list is refused with `500 misconfigured`, before the product's client
-   secret is even opened. **Left unset, the gate does not apply.** That is a deliberate,
-   documented trade-off: enforcing an empty allowlist would take every already-configured custom
-   OIDC product offline on the deploy that ships the check, with no operator action and no
-   warning.
+`activateFromIdentity` is idempotent on the subject: a second sign-in finds the same license. Sign-in updates `name`, `email` and `groups_json` and nothing else, so a trial ends when it ends however often the person signs in, and an operator's or a purchase's tier stays. The group mapping decides the tier only when a license is first minted or claimed. An existing license that is disabled, expired or revoked is refused with `license-unusable`.
 
-The platform issuer is exempt from this check — it is a Worker secret an operator set, not a
-value a repo can steer.
+It can also merge a claimable enrolled license into the identity, as a claim or a migrate ([Enrollment and policy](/docs/features/licensing/access/)). Only the device-code poll names one, after the person accepts the identity on the device.
 
-## `groupRoleMap`: groups to tier and entitlement grants
+## Claim provisioning
 
-`oidc_config.group_role_map_json` maps IdP group names to a role and an optional tier:
-`{ "<group>": { "role": "…", "tier": "<tierId>" } }`. On sign-in, `activateFromIdentity` walks
-the verified token's `groups` claim: any group present as a key grants entitlement, and the
-**first** mapped group that names a tier decides `tierId` (a later group naming a different tier
-does not override it). A malformed or unparseable map grants nothing — fail closed — rather than
-throwing out of the sign-in path.
+Provisioning rows turn any verified claim into an entitlement or a secret URL. A hook fires only when its claim is a literal `true` or a non-empty string other than `"false"`, `"0"` or `"null"`.
 
-An identity matching no mapped group is refused with `error: "not-entitled"` (surfaced as
-`403 forbidden`) unless the product opts into the fallback below.
+- **Entitlement.** Written as `enforced`. A malformed value skips the whole hook.
+- **Secret.** Every `{claim}` in `secret_url_template` is replaced by the URL-encoded claim, then the host must be in `allowed_hosts_json` or the secret is dropped. This runs on every sign-in. At ingest the template must be an absolute `https` URL (`http` only for loopback), and `{claim}` may not appear in the host.
 
-For a group claim to exist at all, the IdP must be asked for it: every authorize request
-requests scope `openid email profile groups`.
-
-## `oidcDefault`: the auto-issue fallback for group-less users
-
-A product's **auto-issue policy** — `.pkey/product`'s top-level `autoIssue:` block, default off
-— names a tier and a mode: `anonymous`, `oidcDefault`, or `both`.
-
-- `anonymous` opens the keyless `POST /<product>/license/enroll` path — no OIDC involved.
-- `oidcDefault` (or `both`) changes what happens to an OIDC identity that matched **no**
-  `groupRoleMap` entry: instead of the `not-entitled` refusal above, `allowsOidcDefault(policy)`
-  lets them land on `product.autoIssue.tierId` — any authenticated user gets the free/default
-  tier rather than a hard 403.
-
-A policy naming no tier, or left disabled, counts as off — `oidcDefault` never silently grants
-access; a product opts in explicitly.
-
-## `activateFromIdentity`: minting or locating a license
-
-Idempotent on the OIDC subject: a second sign-in by the same identity finds the same license
-(`getLicenseBySub`) rather than minting a duplicate. Before branching on that, it applies every
-matching provisioning hook (below) into a payload of overrides.
-
-`activateFromIdentity` can also merge a **claimable** enrolled license into the identity. A
-claimable license is an anonymous, keyless one with no identity attached yet (`origin: "enroll"`,
-`sub: null`). The caller must name it as the license its device is already on. **Only
-`/device/poll` names one**, and only when the device-code holder opts in. The callback used to
-take it from the device that started a device-code flow. But a device-code flow is confirmed with
-a public user code, so whoever confirmed it and signed in could take that device's license over.
-A device-code callback therefore stores the verified identity and activates nothing; the poll
-activates it. The device first asks to see the identity (`confirmIdentity`, answered `confirm`
-with the name and e-mail), and only after the player accepts it on the device does a poll send
-`attachLicense: true` with that device's own bearer. See
-[attaching the device's anonymous license](/docs/services/identity/device-flow/#attaching-the-devices-anonymous-license). When a caller does name one, two merge outcomes
-are possible, using the vocabulary from
-[the concepts page](/docs/start/concepts/):
-
-- **Claim.** No license exists yet for this identity: the identity is attached to the _same_ row.
-  Its devices, keys, and overrides all survive; the person simply becomes known.
-- **Migrate.** The identity already has its own license: the enrolled license's devices move onto
-  it, and the enrolled row is retired (`disabled`). Its `enroll_hwid` is deliberately **not**
-  cleared — that column is the only guard against one machine enrolling again and repeating the
-  merge with a second identity, so clearing it would remove the guard it exists to be.
-
-Otherwise: an existing identity license is updated in place (refused with `error:
-"license-unusable"` if it is disabled, expired, or revoked), or a brand-new license is inserted
-with `origin: "oidc"`.
-
-The in-place update is deliberately narrow. Sign-in sets `name`, `email` and `groups_json` from
-the provider and nothing else on the row: it does **not** change `tier_id` or `expires_at`, so a
-time-limited tier (a trial) ends when it ends however often the person signs in, and a tier an
-operator or a purchase set stays put. The group mapping and its expiry policy decide the tier
-only when a license is first minted or claimed. In the overrides, sign-in owns exactly the keys
-the product's provisioning hooks declare (every `entitlement_key` and `secret_key`). Each one is
-set from the current claims, or removed when its claim is no longer truthy, so losing the claim
-still revokes what it granted. Every other override key, including an operator's, is left
-alone.
-
-## Provisioning hooks: claim → entitlement / secret
-
-`provisioning_config` rows are generic: any verified claim key on the ID token, not only group
-membership, can grant an **entitlement** or deliver a **secret** URL. Each row names a `claim`,
-and optionally an `entitlement_key` (+ value) and a `secret_key` + `secret_url_template` +
-`allowed_hosts_json`.
-
-A hook only fires when its claim is genuinely truthy: a literal boolean `true`, or a non-empty
-string that is not `"false"`, `"0"`, or `"null"` — an IdP that emits any of those falsy-looking
-strings must not grant anything, so truthiness alone is not enough.
-
-- **Entitlement.** Written into the payload as `state: "enforced"`. A malformed
-  `entitlement_value_json` skips the _whole_ hook rather than guessing a value.
-- **Secret.** `secret_url_template` has every `{claim}` occurrence — there may be more than one —
-  replaced with the URL-encoded claim value, then checked against `allowed_hosts_json`: the
-  resulting URL's host must be a member, or the secret is dropped entirely. A missing or
-  non-array allowlist drops it too. This host check runs on **every** sign-in, independent of the
-  ingest-time check below — two layers, so a future writer of `provisioning_config` cannot
-  silently reopen the gap by skipping one of them.
-
-`secretUrlTemplate` is validated again at manifest-ingest time, before it ever reaches a D1 row:
-it must be an absolute `https://` URL (plain `http://` is accepted only for a loopback host,
-for local development), and the `{claim}` placeholder may not appear in the **host** — only in
-the path or query — so a claim value can retarget where in a service a secret points, but never
-which service receives the request.
+Sign-in owns exactly the override keys its hooks declare. It sets each from the current claims or removes it when the claim is no longer truthy, and leaves every other override alone.
 
 ## In the console
 
-**Identity → Sign-in** shows what this page describes for one product, read-only: the provider
-(`platform` or `custom`), the issuer and client id (where the product stores none, the page says the
-platform's own apply: the `PLATFORM_OIDC_*` secrets), the `groupRoleMap` as a
-group → role → tier table with each tier linked to its record, and whether a signed-in account in
-no mapped group gets the `oidcDefault` tier or is refused. The values are the same ones an
-edge-mint approval records. To change any of them, edit `.pkey/product`, commit, and use
-**Resync from repo** on the page (a confirmed action).
+**Identity → Sign-in** shows the provider, issuer, client id, the group-to-tier table and the `oidcDefault` outcome, read-only. To change them, edit `.pkey/product`, commit, and select **Resync from repo**.
 
-## See also
+## Next steps
 
-- [The device-code flow](/docs/services/identity/device-flow/) — the same mint step, reached by
-  a client that cannot receive a redirect.
-- [Browser sessions](/docs/services/identity/sessions/) — what a `return_to` callback turns the
-  minted license into.
-- [Customer portal](/docs/services/identity/portal/) — the platform-level OIDC login that shares
-  the platform provider with a `platform`-issuer product.
-- the R8 audit findings — `R8-04` (single-use state), `R8-05` (claim trust: empty
-  `sub`, unverified email, truthiness-only provisioning, token freshness), `R8-06` (fail-closed
-  JSON parsing), `R8-10` (rate limiting on every handler here).
-- the R9 audit findings — `R9-01`/`R9-02`, the issuer allowlist and its
-  companion open-redirect fix.
-- [Public route table](/docs/reference/routes/) — every route with its owning service.
+- [Device flow](/docs/features/sign-in/device-flow/): the same mint step without a redirect.
+- [Browser sessions](/docs/features/sign-in/sessions/): what a `return_to` callback produces.
+- [Customer portal](/docs/features/sign-in/customer-portal/): the platform-level login.

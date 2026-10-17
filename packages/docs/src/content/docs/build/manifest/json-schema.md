@@ -1,14 +1,18 @@
 ---
+title: "Set up your editor"
+description: "Get completion and inline errors for .pkey/ files from the published JSON Schemas."
+type: "how-to"
+lastReviewed: "2026-10-16"
 sidebar:
-  order: 4
-title: "JSON Schema & editor setup"
-description: "Machine-readable schemas for the .pkey/ manifest — editor completion, validation, and how the schemas stay honest."
+  order: 6
+  label: "Set up your editor"
 ---
 
-The four `.pkey/` files are also validated against machine-readable [JSON
-Schema](https://json-schema.org/) documents — one per file, Draft 2020-12 — so an editor can
-offer completion and inline errors while you type, before `pkey validate` or a resync ever
-runs. They ship inside the `@polaris-key/manifest` npm package:
+Each `.pkey/` file has a JSON Schema (Draft 2020-12), so an editor can complete fields and flag mistakes before `pkey validate` runs. The schemas ship in the `@polaris-key/manifest` package.
+
+**Requires:** a `.pkey/` directory, and an editor with JSON Schema support. For YAML in VS Code, install the YAML extension (`redhat.vscode-yaml`).
+
+## The schemas
 
 | File                   | Schema                                |
 | ---------------------- | ------------------------------------- |
@@ -17,105 +21,62 @@ runs. They ship inside the `@polaris-key/manifest` npm package:
 | `.pkey/release.*`      | `schemas/v1/release.schema.json`      |
 | `.pkey/distribution.*` | `schemas/v1/distribution.schema.json` |
 
-One more schema, `schemas/v1/release-descriptor.schema.json`, describes the **release
-descriptor** CI attaches to a release as `pkey-release.json` — not a `.pkey/` file, but the
-same package, the same parity rule against its validator (`validateReleaseDescriptor`), and
-the same `$id` convention. See
-[Artifacts](/docs/services/release/artifacts/#the-release-descriptor).
+A fifth, `schemas/v1/release-descriptor.schema.json`, describes the [release descriptor](/docs/features/ship-builds/releases/artifacts/#the-release-descriptor) CI attaches to a release. It is not a `.pkey/` file.
 
-`@polaris-key/manifest`'s `package.json` lists `schemas` alongside `dist` in its published
-`files`, so installing the package for any reason — a direct dependency, or transitively
-through `@polaris-key/cli` — puts real files at
-`node_modules/@polaris-key/manifest/schemas/v1/*.schema.json`. Nothing needs to be downloaded
-separately, and nothing needs network access to resolve.
+## Steps
 
-## `$id` is an identifier, not a locator
+1. **CLI** Scaffold with `pkey init`. Each YAML file it writes opens with a `yaml-language-server` header that points at the package copy, so completion works with no editor setup once `@polaris-key/manifest` is in the repo's `node_modules`, directly or through `@polaris-key/cli`.
 
-Each schema's `$id` is `https://key.plrs.im/docs/schemas/v1/<name>.schema.json` — a real,
-browsable copy of the file, mirrored onto this site's `public/schemas/v1/` at build time from
-the same source, and served publicly with the developer docs. Still, the `$id` exists for what
-JSON Schema uses `$id` for — a stable, canonical name a schema can `$ref` and a human can cite —
-and not as something a tool should ever have to fetch. Every real consumer (an editor, `pkey init`'s
-scaffold headers, the parity test below) reads the file that ships in the npm package, by
-**path**.
+   ```yaml title=".pkey/product.yaml"
+   # yaml-language-server: $schema=../node_modules/@polaris-key/manifest/schemas/v1/product.schema.json
+   ```
 
-## Wiring an editor
+   You should see field completion and inline errors when you edit the file.
 
-**VS Code + the YAML extension** (`redhat.vscode-yaml`) reads two settings,
-`json.schemas` and `yaml.schemas`, each mapping a schema file to the glob(s) it applies to.
-This repo's own `.vscode/settings.json` wires both for `.pkey/` and for the `products/*`
-fixtures that mirror it:
+2. **CLI** If the repo has no `node_modules`, such as a Godot project, write the schemas into a folder and point the header at it.
 
-```jsonc
-{
-  "json.schemas": [
-    {
-      "fileMatch": ["**/.pkey/product.json", "products/*/product.json"],
-      "url": "./packages/shared-manifest/schemas/v1/product.schema.json",
-    },
-    // …schema.json, release.json, distribution.json follow the same shape
-  ],
-  "yaml.schemas": {
-    "./packages/shared-manifest/schemas/v1/product.schema.json": [
-      "**/.pkey/product.yaml",
-      "**/.pkey/product.yml",
-    ],
-    // …schema.{yaml,yml}, release.{yaml,yml}, distribution.{yaml,yml} follow the same shape
-  },
-}
-```
+   ```sh title="Terminal"
+   pkey manifest schemas --out .pkey/schemas
+   ```
 
-A product repo outside this monorepo wires the same two settings against
-`node_modules/@polaris-key/manifest/schemas/v1/<name>.schema.json` instead of a path into this
-repo's `packages/`. Any other `yaml-language-server`-backed editor (Neovim, IntelliJ's YAML
-plugin, …) reads the same two schema files; only the settings syntax differs.
+   You should see the five schema files in `.pkey/schemas`. Change the header's path to `schemas/product.schema.json`.
 
-### The headers `pkey init` emits
+3. **Editor** For JSON files, or to match by path instead of by header, map each schema to its files in VS Code's `json.schemas` and `yaml.schemas` settings.
 
-Running `pkey init` (`@polaris-key/cli`, `packages/cli/README.md`) scaffolds
-`.pkey/product.yaml` and `schema.yaml` (always written, with `entries: []` unless the
-`config` module is selected), plus `release.yaml` when `releases` is selected, each opening with a `yaml-language-server` directive that points straight at the
-package copy with no editor configuration required at all:
+   ```jsonc title=".vscode/settings.json"
+   {
+     "json.schemas": [
+       {
+         "fileMatch": ["**/.pkey/product.json"],
+         "url": "./node_modules/@polaris-key/manifest/schemas/v1/product.schema.json",
+       },
+     ],
+     "yaml.schemas": {
+       "./node_modules/@polaris-key/manifest/schemas/v1/product.schema.json": [
+         "**/.pkey/product.yaml",
+         "**/.pkey/product.yml",
+       ],
+     },
+   }
+   ```
 
-```yaml
-# yaml-language-server: $schema=../node_modules/@polaris-key/manifest/schemas/v1/product.schema.json
-apiVersion: pkey.dev/v1
-product:
-  slug: "djdl"
-  ...
-```
+   Repeat the pair for `schema`, `release` and `distribution`. Other editors backed by `yaml-language-server` read the same schema files; only the settings syntax differs.
 
-The path climbs one level out of `.pkey/` into `node_modules` — where it resolves as long as
-`@polaris-key/manifest` is a dependency of the product repo (directly, or transitively through
-`@polaris-key/cli`) — rather than pointing at the gated `$id` URL, for the same reason the VS
-Code settings above use a path.
+   You should see the same completion for `.pkey/product.json` and `.pkey/product.yaml`.
 
-## The parity-test guarantee
+## What the schemas catch
 
-`validateManifestDocuments` and `validateIngestDocuments` (the TypeScript validators in
-`@polaris-key/manifest`; the second adds the presence rules such as `missing_product`) are
-**authoritative**; these schemas exist for editor completion and other machine consumers, and
-nothing stops the two from drifting apart on their own. `packages/shared-manifest/test/schema-parity.test.ts`
-is the drift gate, and it pins three properties on every CI run:
+The validator behind `pkey validate`, link and resync is authoritative. The schemas cover what JSON Schema can say about one document. A rule that crosses documents, such as a tier that names an unknown profile, is not in the schema: an editor stays quiet, and `pkey validate` or a resync reports it. A schema that accepts a mistake is information, not a stale schema.
 
-1. **Valid stays valid.** Every valid fixture — including the real `products/djdl/product.json`
-   and `products/djdl/catalog.json` — passes _both_ the TypeScript validator and Ajv against
-   the schemas.
-2. **Every error code has a case.** A completeness sweep extracts every error code the
-   validator's _source_ can emit and asserts a mutation-table entry exists for each one — a new
-   validation rule added without a corresponding test case fails CI, not a future bug report.
-3. **The schema catches what it claims to.** Each mutation is tagged `schema: "rejects"` (Ajv
-   must also reject the mutated document) or `schema: "accepts"` (a validator-only rule — a
-   cross-reference like "this tier names an unknown profile" — that JSON Schema's document-local
-   validation genuinely cannot express). The `"accepts"` tag is a documented limitation, not a
-   silent gap: an editor will not flag that mistake, `pkey validate` and a resync will.
+An old spelling of a field is accepted and marked `deprecated`, so the editor strikes it through. [Deprecated spellings](/docs/build/manifest/product/#deprecated-spellings) lists them, and `pkey validate --fix` moves each to its canonical place.
 
-The same suite checks every row of `DEPRECATED_SPELLINGS` (ST-19): the schemas still **accept**
-each old spelling but mark its property `"deprecated": true`, with a description that starts
-"Deprecated: write …", so an editor strikes it through; the validator warns on it at its own
-path; and the parsed value is the one today's precedence picks. See
-[Deprecated spellings](/docs/build/manifest/authoring/#deprecated-spellings).
+## If it isn't working
 
-Because of that guarantee, "the schema didn't catch it" is meaningful information on its own —
-it means the mistake needs a full `pkey validate` or a push to catch, not that the schema is
-merely out of date.
+- The header path is relative to the file, so a `.pkey/` in a subfolder needs more `../`.
+- A schema's `$id` is a name, not an address an editor fetches. Point at the file.
+- [Manifest validation codes](/docs/reference/validation-codes/): every error and warning.
+
+## Next steps
+
+- [Register a product from its repo](/docs/build/manifest/register/)
+- [The .pkey/ manifest](/docs/build/manifest/)

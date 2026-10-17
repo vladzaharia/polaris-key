@@ -339,7 +339,7 @@ const NODE_SERVER: Partial<Record<IntegrationFeature, Maker>> = {
     filename: "verify.ts",
     language: "ts",
     code: lines(
-      `import { verifyLicenseDocument } from "@polaris-key/node/server";`,
+      `import { verifyLicenseDocument } from "@polaris-key/server";`,
       `import { polarisConfig } from "./polaris.config.js";`,
       ``,
       `// The app sends its cached licence document and its device id with the request.`,

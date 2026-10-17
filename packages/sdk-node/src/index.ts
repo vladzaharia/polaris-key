@@ -206,14 +206,8 @@ export type {
   InstallOutcome,
   InstallableDecision,
 } from "./update/drivers/types.js";
-// Server-side license verification and crash tags (§2.1, §3.14).
-export {
-  crashTagsFor,
-  verifyLicenseDocument,
-  type CrashTags,
-  type VerifiedLicense,
-  type VerifyLicenseDocumentOptions,
-} from "./server.js";
+// Crash tags (§3.14). `verifyLicenseDocument` moved to `@polaris-key/server` in 0.9.
+export { crashTagsFor, type CrashTags } from "./server.js";
 // The update-health journal (SDK parity pass §3.13, P6-03).
 export {
   MAX_UPDATE_EVENTS_PER_REPORT,

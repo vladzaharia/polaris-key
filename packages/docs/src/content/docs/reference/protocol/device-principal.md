@@ -3,6 +3,8 @@ title: "The device principal"
 description: "Registration policies, keyless minting, pkeyt_ tokens, the self-service device roster, and the facts/telemetry surface."
 sidebar:
   order: 2
+type: "reference"
+lastReviewed: "2026-10-16"
 ---
 
 A **device** is an authorized install of a product, bound to a per-device bearer token
@@ -10,8 +12,7 @@ A **device** is an authorized install of a product, bound to a per-device bearer
 `requires-identity` registration policy a device holds a token with no license behind it and
 still fetches signed config documents.
 
-Until wire contract v3 there was exactly one way to become a device — present a license key.
-That made "device" a licensing concept, which is precisely what the service split undoes.
+A device is not a licensing concept. A license key is one way to become a device; a signed-in session and open registration are others, depending on the product's services.
 
 ## Device ids
 
@@ -25,7 +26,7 @@ deviceId = base64url(sha256("pkey-device:<product-slug>:<raw>"))[0..32]
 `<raw>` is the platform machine identifier (macOS `IOPlatformUUID`, Windows `MachineGuid`,
 Linux `/etc/machine-id`, else `/var/lib/dbus/machine-id`; a blank file or systemd's
 `uninitialized` marker is skipped), falling back to a random UUID when none can be read. The
-Linux value is the same anchor the fingerprint uses (WIRE-CONTRACT-V3 §6.1 rule 2), and the SDK
+Linux value is the same anchor the fingerprint uses (WIRE-CONTRACT-V4 §6.1 rule 2), and the SDK
 persists the id it derived, so a later change of the source never changes an installed device's
 id. The prefix
 `pkey-device:` is a **hash domain** and is frozen — renaming it would orphan every enrolled
@@ -56,11 +57,11 @@ free of separators.
 The registration policy is derived from the enabled service set; it is not stored or declared
 separately:
 
-| Effective policy | When it applies | `POST /<p>/devices/register` behaviour |
-| ---------------- | --------------- | -------------------------------------- |
-| `requires-license` | License is enabled | Refuse permanently. Activation and enrollment are the mint paths. |
-| `requires-identity` | License is off and Identity is enabled | Requires a live product browser session. |
-| `open` | License and Identity are both off | Mint for any caller. Rate-limited by edge IP; fingerprint optional. |
+| Effective policy    | When it applies                        | `POST /<p>/devices/register` behaviour                              |
+| ------------------- | -------------------------------------- | ------------------------------------------------------------------- |
+| `requires-license`  | License is enabled                     | Refuse permanently. Activation and enrollment are the mint paths.   |
+| `requires-identity` | License is off and Identity is enabled | Requires a live product browser session.                            |
+| `open`              | License and Identity are both off      | Mint for any caller. Rate-limited by edge IP; fingerprint optional. |
 
 The ordering follows how much the product knows about the caller: a licensed product already has a
 mint path, an identity product can authenticate a person, and a product with neither has nobody to
@@ -77,8 +78,7 @@ The order of operations is load-bearing:
 
 1. **Method.** Anything but `POST` is a 405.
 2. **`requires-license` refuses first**, before the limiter. A policy that can never say yes
-   must not be able to have its limiter budget consumed by requests it was never going to
-   answer, and refusing without a Durable Object round-trip keeps that case cheap under exactly
+   must not be able to have its limiter budget consumed by requests it would never answer, and refusing without a Durable Object round-trip keeps that case cheap under exactly
    the flood that would try it.
 3. **Rate limit**, bucket `register`, keyed by edge IP, **10 requests per 60 seconds**, failing
    **closed**. It runs _before_ the identity exchange: the exchange reads a cookie, hashes it,
@@ -108,8 +108,8 @@ Success is `200` with `cache-control: no-store`:
 { "token": "pkeyt_…", "deviceId": "…" }
 ```
 
-`deviceId` is echoed even though the caller chose it: it is what the signed documents will
-carry in their `deviceId` claim, so a client that echoes it back has server confirmation of the
+`deviceId` is echoed even though the caller chose it: it is what the signed documents carry
+in their `deviceId` claim, so a client that echoes it back has server confirmation of the
 binding rather than an assumption about it.
 
 ### One refusal, four causes
@@ -171,7 +171,7 @@ the license; a keyless device registered under an `open` or `requires-identity` 
 fetching config documents.
 
 One more guard rides here: the KV hot record is back-filled only after every check has passed.
-Writing it as soon as the device row was found meant replaying a just-revoked token silently
+Writing it when the device row was found meant replaying a revoked token silently
 recreated the record that revocation had purged.
 
 ## The device roster
@@ -275,7 +275,7 @@ The bounds, in order:
   against the registry, so a newer SDK's features survive. A non-array `caps` is dropped. The
   SDKs send it with every report, because each report overwrites the last. It is stored on
   `devices.reported_json` only.
-- **Pack installs.** `packInstalls` (P4-17) lists recent content-pack installs: at most 8
+- **Pack installs.** `packInstalls` lists recent content-pack installs: at most 8
   entries `{pack, from, to, strategy, bytes?, durationMs?, fallbackUsed?, failureStage?}`, where
   `from` and `to` are payload SHA-256s. A malformed entry is dropped, unknown fields are stripped
   and `failureStage` is cut to 128 characters. For a product whose operator opted into
@@ -296,7 +296,7 @@ Clients treat this as best-effort and swallow errors: telemetry must never fail 
 
 - [Fingerprints](/docs/services/core/fingerprints/) — what a presented fingerprint contains and
   how it is matched.
-- [Errors and limits](/docs/services/core/errors/) — the wire error shapes and the rate-limit
+- [Errors and limits](/docs/reference/protocol/errors/) — the wire error shapes and the rate-limit
   buckets.
 - [D1 data model](/docs/reference/data-model/) — the `devices`, `device_fingerprints`, and
   `device_facts` columns.

@@ -15,28 +15,26 @@ import { t } from "../../lib/copy.js";
  * account, another product or the account's deletion (the 14-day erasure stays on Account).
  */
 export const YOUR_DATA_COPY = {
-  "yourData.subtitle": "Download a copy of your data, or delete your account.",
-  "yourData.account.copy.title": "Get a copy of your data",
+  "yourData.account.copy.title": "Download my data",
   "yourData.account.copy.body":
-    "One JSON file with your account details, sign-in methods, sessions and activity, and your licenses, devices and what each app keeps for you. It leaves out license keys and tokens.",
+    "Account, sign-in methods, licenses, devices and each app's data. No keys or tokens.",
   "yourData.account.copy.button": "Download my data",
-  "yourData.account.deleteNote":
-    "Deleting your account doesn't cancel your licenses: they stay with each developer and you can add them again.",
   "yourData.copy.private": "It holds personal details, so keep it private.",
   "yourData.copy.started": "Your download has started",
-  "yourData.product.copy.title": "Get a copy",
-  "yourData.product.remove.title": "Remove your data",
+  "yourData.product.copy.title": "Download my data",
+  "yourData.product.remove.title": "Remove my data",
+  "yourData.product.remove.body":
+    "Polaris Key deletes your settings and activity here. This can't be undone.",
+  "yourData.product.support.title": "Support code",
+  "yourData.product.support.body": "Read it to the app's support team.",
   "yourData.remove.keep": "Keep my data",
 } as const;
 
-/** What the Account's Download my data saves (`portalApi.exportAccountData` names it). */
-export const ACCOUNT_EXPORT_FILE = "polaris-key-account-data.json";
-
 /** What a product's file holds: its licenses only when the person has one. */
-export function productCopyBody(name: string, licenses: number): string {
+export function productCopyBody(licenses: number): string {
   return licenses > 0
-    ? `A JSON file with your ${name} ${licenses === 1 ? "license" : "licenses"}, devices, settings and activity.`
-    : `A JSON file with your settings and activity in ${name}.`;
+    ? `Your ${licenses === 1 ? "license" : "licenses"}, devices, settings and activity.`
+    : "Your settings and activity.";
 }
 
 /**
@@ -52,9 +50,8 @@ export function removeConsequences(o: {
   alsoRemoveLicense: boolean;
 }): string[] {
   const list = [
-    `Polaris Key deletes the settings and synced data it keeps for you in ${o.name}. This can't be undone.`,
-    "Devices you signed in on keep working, but are no longer linked to you.",
-    `${o.developer ?? "The developer"} is told, so they can delete anything they keep themselves.`,
+    `Polaris Key deletes your settings and activity for ${o.name}. This can't be undone.`,
+    `${o.developer ?? "The developer"} is told, so they can delete their own copy.`,
   ];
   if (o.licenses === 0) list.push(`${o.name} stays in your library.`);
   else if (!o.alsoRemoveLicense) {

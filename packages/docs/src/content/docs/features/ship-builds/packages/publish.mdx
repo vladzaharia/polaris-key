@@ -1,0 +1,110 @@
+---
+title: "Publish a package"
+description: "Publish a package to a Polaris Key feed from CI with the pkey CLI, or with npm, twine, SwiftPM, Maven or Gradle."
+type: "how-to"
+lastReviewed: "2026-10-16"
+sidebar:
+  order: 2
+---
+
+import Requires from "../../../../../components/docs/Requires.astro";
+
+Your package lands on the feed for its ecosystem as a release, with the same checks whichever client sent it. [Package feeds](/docs/features/ship-builds/packages/) explains the feeds.
+
+<Requires
+  features={["ship-builds"]}
+  role="Product admin"
+  sdk={["Node 22.13 or later"]}
+/>
+
+Before you start:
+
+- The product's package feeds are on, and the feed for your ecosystem has a namespace and is enabled. See **Manage feeds in the console** on [Package feeds](/docs/features/ship-builds/packages/).
+- The CLI is installed. See [Install the SDKs and the CLI](/docs/build/install/).
+
+## Declare the package
+
+A name that no deliverable declares is refused with `package-undeclared`. Declare each package as a deliverable in `.pkey/release.yaml` and sync the manifest.
+
+```yaml title=".pkey/release.yaml"
+apiVersion: pkey.dev/v1
+release:
+  provider:
+    type: github
+    owner: "tidewater-studio"
+    repo: "tidewater"
+  deliverables:
+    npm.sdk:
+      kind: package
+      ecosystem: npm
+      name: "@tidewater/sdk"
+      artifacts:
+        tarball: { match: "tidewater-sdk-*.tgz" }
+```
+
+Each `match` is a file-name glob over the publish step's `--dir`. An OCI deliverable matches an image layout, a Cargo one the `.crate`, a Go one a module zip or a `go.mod`.
+
+## Publish from CI
+
+1. **CI** Get a CI token. In GitHub Actions, `pkey auth github-oidc` exchanges the job's OIDC token for a 30-minute `pkeyci_` token that holds `release:publish`, and writes it to `PKEY_CI_TOKEN`. The repository then stores no publish secret.
+
+   ```sh title="Terminal"
+   pkey auth github-oidc --product <slug>
+   ```
+
+2. **CI** Build the package into a directory.
+3. **CI** Publish it. `--dir` holds the build output.
+
+   ```sh title="Terminal"
+   pkey release publish --product <slug> --version <version> --dir <dir> --deliverable npm.sdk
+   ```
+
+`pkey release publish` uploads straight to the blob store with no size limit but the feed's, and the `polaris-key/publish` Action runs the same steps. A version publishes once: a number is never reused. Pass `--channel <channel>` to publish to a channel other than the default. `stable` is `latest` on every feed.
+
+## Publish with a native client
+
+You can also publish with the client your developers already use. Each request becomes the same release the CLI sends, so the namespace rule, the feed's size ceiling, "a version is never republished" and Swift's signing rule all apply. A request carries at most 32 MiB, because the bytes pass through the Worker: publish a larger package with the CLI.
+
+| Client                                             | Request                                       | The version appears                                         |
+| -------------------------------------------------- | --------------------------------------------- | ----------------------------------------------------------- |
+| `npm publish` (also pnpm, `yarn npm publish`, Bun) | `PUT /npm/<owner>/<@scope%2fname>`            | At once. The dist-tag is the channel (`latest` is `stable`) |
+| `twine upload`                                     | `POST /pypi/<owner>/legacy/`, one per file    | 10 seconds after the last file                              |
+| `swift package-registry publish`                   | `PUT /swift/<owner>/<scope>/<name>/<version>` | At once                                                     |
+| `mvn deploy`, Gradle `maven-publish`               | `PUT` each file, then `maven-metadata.xml`    | When `maven-metadata.xml` is uploaded                       |
+| `docker push`, `podman push`, `crane`, `oras`      | The distribution spec's push workflow         | When a version tag is pushed                                |
+
+1. **Console** Open **Distribution → Package feeds → Tokens** and select **New token**. Set **Access** to **Read and publish**, name the feeds, and choose an expiry of 1 to 30 days. Copy the token: it is shown once. A read-only or license-bound token is refused with `403`.
+2. **App** Put the token in `PKEY_PUBLISH_TOKEN` and point your client at the feed. `pkey feeds setup --ecosystem <ecosystem> --owner <slug> --token-env PKEY_PUBLISH_TOKEN` prints the client lines.
+3. **CLI** Publish with your client. For npm, `npm publish`, or `npm publish --tag beta` for the `beta` channel.
+
+Prefer the CI token in CI. A registry publish token is meant for an operator's own machine.
+
+What each adapter checks:
+
+- **npm.** The name in the path, the document and the version agree. The tarball matches npm's own `dist.integrity` and `dist.shasum`. Only a publish is accepted: deprecate and yank from the console.
+- **twine.** Each file is a wheel or sdist of the project and version, and matches twine's `sha256_digest`. The files of one version publish together once uploads stop for 10 seconds, or at the next 15-minute cron run.
+- **SwiftPM.** The manifests are read from the source archive (a top-level `Package.swift` and `Package@swift-*.swift`, at most 1 MiB each). An unsigned release is refused where the feed requires signing. An existing version is `409`.
+- **Maven and Gradle.** Each checksum sidecar must match its file, `.asc` signatures are accepted and dropped, `-SNAPSHOT` versions are refused and a POM must name its path's coordinates. The version publishes when `maven-metadata.xml` arrives, or after 10 idle minutes.
+- **OCI.** The repository must already be a declared deliverable: a push never creates one. A tag pushed is a version, and channel tags move only with `pkey release promote`. A manifest pushed by digest is stored and publishes nothing. Each request carries at most 100 MB, which a layer fits when streamed. `DELETE` is refused.
+
+A publish that fails after the client was answered (a twine or Maven version, in a race) is recorded in the product's audit log as `release.publish.failed` with its reason.
+
+## Check it works
+
+Install the version from the feed with the setup lines from the console's **Setup** tab, or open the package in **Distribution → Package feeds**: **Versions** shows it **Live** with its tags, who published it and how, and its file digests. A new version shows up in index documents within about a minute.
+
+Run the registry clients locally with `pnpm --filter @polaris-key/worker registry:clients`, which stands up a seeded Worker and runs real clients against it. CI runs the same harness.
+
+## If it isn't working
+
+- `package-undeclared`: the name isn't a deliverable in `.pkey/release.yaml`. Sync the manifest.
+- `403`: the token is read-only, license-bound or doesn't name this feed. Mint a **Read and publish** token.
+- `409`: the version exists. A number is never reused: publish the next one.
+- [Package feeds](/docs/features/ship-builds/packages/): the feed's checks and limits.
+- [Troubleshoot installing from the feeds](/docs/build/install/): clients, age gates and private feeds.
+
+## Next steps
+
+- [Package feeds](/docs/features/ship-builds/packages/): access modes, yank and retention.
+- [CI publishing](/docs/features/ship-builds/ci/): the Action and trusted publishing.
+- [Releases](/docs/features/ship-builds/releases/): channels a version joins.

@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "The Polaris Key documentation site — an Astro Starlight build served by the worker at key.plrs.im/docs behind the platform-admin gate.",
+  "description": "The Polaris Key documentation site \u2014 an Astro Starlight build served by the worker at key.plrs.im/docs behind the platform-admin gate.",
   "license": "MIT",
   "scripts": {
     "build": "node scripts/copy-artifacts.mjs && astro build && node scripts/redirect-fragments.mjs && node scripts/collect-csp-hashes.mjs && node scripts/emit-slug-manifest.mjs",
@@ -31,6 +31,7 @@
     "@astrojs/check": "^0.9.10",
     "@polaris-key/node": "workspace:*",
     "@polaris-key/react": "workspace:*",
+    "@polaris-key/server": "workspace:*",
     "@types/node": "^22.14.0",
     "@types/react": "^18.3.0",
     "commander": "^15.0.0",

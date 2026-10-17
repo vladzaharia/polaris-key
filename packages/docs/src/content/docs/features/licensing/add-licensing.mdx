@@ -1,0 +1,67 @@
+---
+title: "Add licensing to your app"
+description: "Gate your app on a license, with the drop-in kit or with your own screens."
+type: "how-to"
+lastReviewed: "2026-10-16"
+sidebar:
+  order: 2
+---
+
+import Requires from "../../../../components/docs/Requires.astro";
+
+Your app activates a license key, caches the signed license document and unlocks while the document is valid.
+
+<Requires
+  features={["licensing"]}
+  role="Product admin"
+  sdk={["Node 22.13 or later"]}
+/>
+
+Before you start:
+
+- A product with a signing key. See [Your first product](/docs/start/first-product/).
+- Your SDK installed. See [Install the SDKs and the CLI](/docs/build/install/).
+
+## Steps
+
+1. **Console** Open **Core → Services** and check that **License** is on.
+2. **Console** Optional: open **License → Tiers** and create a tier for each level you sell. A license without a tier gets the product's default device limit.
+3. **Console** Open **License → Licenses** and select **Create license**. Enter a name and email, select **Continue to terms**, choose the **Tier**, then select **Create license**. Copy the **License key**: the console shows it once.
+4. **CLI** Generate the config file the client reads. Replace `<slug>` with your product's slug and `<lang>` with your SDK (`node`, `react`, `python`, `swift`, `kotlin` or `godot`).
+
+   ```sh title="Terminal"
+   pkey sdk --lang <lang> --product <slug> --write
+   ```
+
+5. **App** Create the client from that file and read its license status. Your SDK's page has the code; the drop-in kit's gate component does steps 5 to 7 for you.
+6. **App** When the status is `needs-activation`, ask for the key and activate it. A refused activation carries a code: show the fix for `device_limit` ([Handle the device limit](/docs/features/licensing/device-limit/)) and for the others the message the SDK gives you.
+7. **App** Call the client's sync to refresh the document. The client keeps the last verified document, so the app works offline until the document's grace window ends ([Going offline](/docs/features/licensing/offline/)).
+
+| SDK    | Drop-in kit                                                | Your own UI                                    |
+| ------ | ---------------------------------------------------------- | ---------------------------------------------- |
+| Node   | [Terminal kit](/docs/build/ui/frameworks/terminal-node/)   | [Node](/docs/build/sdks/node/your-own-ui/)     |
+| React  | [React kit](/docs/build/ui/frameworks/react/)              | [React](/docs/build/sdks/react/your-own-ui/)   |
+| Python | [Terminal kit](/docs/build/ui/frameworks/terminal-python/) | [Python](/docs/build/sdks/python/your-own-ui/) |
+| Swift  | [SwiftUI kit](/docs/build/ui/frameworks/swiftui/)          | [Swift](/docs/build/sdks/swift/your-own-ui/)   |
+| Kotlin | [Compose kit](/docs/build/ui/frameworks/compose/)          | [Kotlin](/docs/build/sdks/kotlin/your-own-ui/) |
+| Godot  | [Godot kit](/docs/build/ui/frameworks/godot/)              | [Godot](/docs/build/sdks/godot/your-own-ui/)   |
+
+The status is one of `ok`, `grace`, `expired`, `revoked`, `needs-activation`, `version-too-old`, `version-too-new`, `channel-not-entitled` or `not-applicable`. The app is usable on `ok` and `grace`.
+
+## Check it works
+
+Run the app against a local server with `pkey dev`, which seeds a test key for each state ([Run Polaris Key locally](/docs/build/local/)). The key `ok` activates and reads `ok`. The key `device-limit-full` returns `device_limit`.
+
+Against your product, activate the key from step 3. The device appears under **License → Licenses** on the license's **Devices** tab.
+
+## If it isn't working
+
+- [Troubleshoot licensing](/docs/features/licensing/troubleshooting/): the error code your app got.
+- [Error codes](/docs/reference/error-codes/): every code and its meaning.
+- [Test your integration](/docs/build/test-your-integration/): states to exercise before you ship.
+
+## Next steps
+
+- [The license model](/docs/features/licensing/model/): tiers, keys, devices and seats.
+- [Manage licenses](/docs/features/licensing/manage-licenses/): disable, extend and move licenses.
+- [Verify licenses on your server](/docs/features/licensing/server-verification/): check a document on your backend.

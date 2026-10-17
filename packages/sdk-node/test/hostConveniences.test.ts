@@ -1,12 +1,12 @@
 // @pkey-feature outlet.detect license.entitlements crash.tags
-// SDK parity pass SP-N15 (build stamp, Windows SignatureKind), SP-N16 (verifyLicenseDocument,
-// crashTags) and SP-N17 (version autoload).
+// SDK parity pass SP-N15 (build stamp, Windows SignatureKind), SP-N16 (crashTags;
+// verifyLicenseDocument moved to @polaris-key/server) and SP-N17 (version autoload).
 
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { resolveAppVersion } from "../src/core/appVersion.js";
-import { crashTagsFor, verifyLicenseDocument } from "../src/server.js";
+import { crashTagsFor } from "../src/server.js";
 import {
   loadBuildStamp,
   readWindowsSignatureKind,
@@ -14,15 +14,7 @@ import {
 } from "../src/update/stamp.js";
 import { readOutletSignals } from "../src/update/outlet.js";
 import { detectOutlet } from "@polaris-key/client-core";
-import {
-  DEVICE,
-  PRODUCT,
-  seededClient,
-  signedLicense,
-  tempDir,
-  TEST_KID,
-  TEST_PUB,
-} from "./parityFixtures.js";
+import { seededClient, tempDir } from "./parityFixtures.js";
 
 describe("build stamp autoload (SP-N15)", () => {
   it("finds .polaris_key/build.json beside the entry script, and PKEY_BUILD_STAMP first", () => {
@@ -129,71 +121,7 @@ describe("Windows SignatureKind (SP-N15)", () => {
   });
 });
 
-describe("verifyLicenseDocument and crashTags (SP-N16)", () => {
-  const trust = { [TEST_KID]: TEST_PUB };
-
-  it("verifies a presented license, binding, audience and gate, with no device state", async () => {
-    const at = 1_700_000_000;
-    const jws = await signedLicense({ pro: true, seats: 4 }, at);
-    const ok = await verifyLicenseDocument(jws, {
-      trust,
-      product: PRODUCT,
-      deviceId: DEVICE,
-      now: at + 10,
-    });
-    expect(ok.ok && ok.state.status).toBe("ok");
-    expect(ok.ok && ok.isEntitled("pro")).toBe(true);
-    expect(ok.ok && ok.entitlementValue("seats")).toBe(4);
-    // Past expiresAt but within grace: grace, still usable.
-    const grace = await verifyLicenseDocument(jws, {
-      trust,
-      product: PRODUCT,
-      deviceId: DEVICE,
-      now: at + 7200,
-    });
-    expect(grace.ok && grace.state.status).toBe("grace");
-    // Past graceUntil: expired, and its grants are not readable (G11).
-    const expired = await verifyLicenseDocument(jws, {
-      trust,
-      product: PRODUCT,
-      deviceId: DEVICE,
-      now: at + 40 * 86400,
-    });
-    expect(expired.ok && expired.state.status).toBe("expired");
-    expect(expired.ok && expired.isEntitled("pro")).toBe(false);
-    // Another device, another product, another key: refused.
-    expect(
-      (
-        await verifyLicenseDocument(jws, {
-          trust,
-          product: PRODUCT,
-          deviceId: "other",
-          now: at,
-        })
-      ).ok,
-    ).toBe(false);
-    expect(
-      (
-        await verifyLicenseDocument(jws, {
-          trust,
-          product: "other",
-          deviceId: DEVICE,
-          now: at,
-        })
-      ).ok,
-    ).toBe(false);
-    expect(
-      (
-        await verifyLicenseDocument(jws, {
-          trust: {},
-          product: PRODUCT,
-          deviceId: DEVICE,
-          now: at,
-        })
-      ).ok,
-    ).toBe(false);
-  });
-
+describe("crashTags (SP-N16)", () => {
   it("crashTags follows the Sentry convention", async () => {
     const { client } = await seededClient();
     expect(client.crashTags({ build: "77" })).toEqual({

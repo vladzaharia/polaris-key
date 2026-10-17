@@ -7,7 +7,8 @@
     "packages/sdk-node/test",
     "packages/ui-core/test",
     "conformance/runners/node",
-    "tools/gen-mirrors.test.ts"
+    "tools/gen-mirrors.test.ts",
+    "packages/server/test"
   ],
   "features": {
     "core.verify": {
@@ -442,12 +443,12 @@
       "wp": "U-22"
     },
     "server.license": {
-      "status": "planned",
-      "wp": "SP-55"
+      "status": "implemented",
+      "note": "@polaris-key/server (SP-55): the Fetch core, Express, Hono and Next.js replay backend-matrix.json's verdict and problem rows; verifyLicenseDocument moved there from @polaris-key/node/server."
     },
     "server.signin": {
-      "status": "planned",
-      "wp": "SP-55"
+      "status": "implemented",
+      "note": "@polaris-key/server requireSignIn() reads profile.user.subject through client-core licenseUserOf and replays the sign_in_required rows."
     },
     "server.config": {
       "status": "planned",

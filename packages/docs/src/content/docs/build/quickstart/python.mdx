@@ -1,0 +1,153 @@
+---
+title: "Python quickstart"
+description: "Install polaris-key, generate polaris_config.py, create the client and gate a CLI, a desktop tool or a server."
+type: "quickstart"
+sdks: ["python"]
+lanes: ["kit", "library"]
+lastReviewed: "2026-10-16"
+sidebar:
+  order: 3
+---
+
+import Requires from "../../../../components/docs/Requires.astro";
+import InstallSteps from "../../../../components/docs/InstallSteps.astro";
+import Lanes from "../../../../components/docs/Lanes.astro";
+import CardGrid from "../../../../components/docs/CardGrid.astro";
+import { LinkCard } from "@astrojs/starlight/components";
+
+You end with a Python program that creates a client from your product's config and gates on the license.
+
+<Requires features={["licensing"]} sdk={["Python 3.9 or later"]} />
+
+## Before you start
+
+1. A product with License on, and its slug. [Your first product](/docs/start/first-product/) creates one.
+2. A Python project for a desktop tool, a server, a CLI or a Ren'Py or Pygame game.
+
+## 1. Install
+
+**CLI** Install the SDK. The block names the feed as an explicit index for this one project, so no other index can answer for `polaris-key`. Add the `keyring` extra for desktop apps and games, where the token goes in the OS keyring. Servers, containers and CI keep it in a `0600` file.
+
+<InstallSteps sdk="python" />
+
+You should see `polaris-key` in your project's dependencies.
+
+## 2. Generate the config
+
+**CLI** `pkey` is the platform CLI. It ships as an npm package and as an image. With Node, install it as [Your first product](/docs/start/first-product/) shows. Without Node, run the image in the project directory:
+
+```sh title="Terminal"
+docker run --rm -v "$PWD:/work" pkg.plrs.im/polaris-key/pkey:latest \
+  sdk --lang python --product <slug> --write
+```
+
+The file is `polaris_config.py`. It holds the slug, base URL, trust pins, advertised services and, when the product has release keys, `UpdateClientOptions(pinned_release_keys=…)`, all in `CONFIG`. To try this without a registered product, [run Polaris Key locally](/docs/build/local/).
+
+You should see the file written and each pin's key id and SHA-256 fingerprint. Compare the fingerprints with the console before you ship.
+
+## 3. Create the client
+
+**App** Create the client from the generated config. `CONFIG` carries every keyword except `version`, including `base_url`. A client built from the slug and `trust` alone talks to production.
+
+```python title="client.py"
+from polaris_key import PolarisKeyClient
+
+import polaris_config
+
+# Offline-first: create() loads the cached documents; no network until discovery or a sync.
+client = PolarisKeyClient.create(**polaris_config.CONFIG, version="1.0.0")
+```
+
+You should see the client create with no network request.
+
+## 4. Gate the app
+
+**App** A CLI has drop-in verbs. A desktop tool and a server use the library.
+
+<Lanes intro="The terminal kit mounts every Polaris Key verb under your own command. Your own UI calls the client and draws its own, for a Qt app, a game or a server.">
+  <Fragment slot="kit">
+
+One call mounts the verbs.
+
+```python title="cli.py"
+import argparse
+
+from polaris_key import PolarisKeyClient
+from polaris_key.cli import ClientOptions, register_argparse
+
+import polaris_config
+
+
+def client_factory(opts: ClientOptions) -> PolarisKeyClient:
+    # Spread the generated config. A factory built from opts.trust alone drops the base URL and
+    # the release keys, and its writes go to production.
+    return PolarisKeyClient.create(**{**polaris_config.CONFIG, "version": opts.version})
+
+
+parser = argparse.ArgumentParser(prog="tidewater")
+register_argparse(
+    parser.add_subparsers(dest="command", required=True), client_factory, prog="tidewater"
+)
+args = parser.parse_args()
+raise SystemExit(args.func(args))
+```
+
+Every mounted verb takes `--product`. Verbs, theming and `--json` are on [Terminal (Python)](/docs/build/ui/frameworks/terminal-python/).
+
+  </Fragment>
+  <Fragment slot="library">
+
+Call the client and handle each state yourself. Activate with `client.license.activate_with_key(key)`, read the state with `client.status()` and `client.is_licensed()`, and sign in with `client.identity.sign_in_with_browser()`. [Your own UI](/docs/build/sdks/python/your-own-ui/) gives each call with its states and words, including [a Qt app](/docs/build/sdks/python/your-own-ui/#qt).
+
+  </Fragment>
+</Lanes>
+
+You should see the program locked, with the status `needs-activation`, until a key is entered.
+
+## 5. Activate a test license
+
+**CLI** Start a local server and activate with its `ok` key. [Run Polaris Key locally](/docs/build/local/) lists the key for each state.
+
+```sh title="Terminal"
+pkey dev
+```
+
+**App** Enter the `ok` key. In the kit, run `tidewater activate`.
+
+You should see the status become `ok`.
+
+## What you built
+
+A client that verifies signed documents against your pins, and a program that gates on the license.
+
+## If it isn't working
+
+- Writes go to production: you built the client without the generated config's `base_url`.
+- pip installs fail to find the package: name the feed as an explicit index, as the install block shows, never as an extra index.
+- [Troubleshoot your integration](/docs/build/troubleshooting/): each status and error code.
+- [Install the SDKs and the CLI](/docs/build/install/): pip, Poetry and age gates.
+
+## Next steps
+
+<CardGrid>
+  <LinkCard
+    title="Your own UI"
+    href="/docs/build/sdks/python/your-own-ui/"
+    description="Every call, its states and words."
+  />
+  <LinkCard
+    title="Python SDK reference"
+    href="/docs/build/sdks/python/"
+    description="The whole API."
+  />
+  <LinkCard
+    title="Test your integration"
+    href="/docs/build/test-your-integration/"
+    description="Every license state, offline and grace."
+  />
+  <LinkCard
+    title="Go live"
+    href="/docs/build/go-live/"
+    description="Pins, signing and CI."
+  />
+</CardGrid>

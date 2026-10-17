@@ -30,6 +30,9 @@ packages/
                                                the mirror renderers live in src/mirrors.ts)
   sdk-node/          @polaris-key/node         full client + CLI adapters
   sdk-react/         @polaris-key/react        browser-OIDC + desktop-over-node + login UI
+  server/            @polaris-key/server       gate a server route with the app's licence: Fetch core
+                                               (the verdict, trust fetch, cache) + ./express ./hono ./next
+                                               ./testing; private until released
   docs/              @polaris-key/docs         the Astro Starlight docs site served at /docs
   brand/             @polaris-key/brand        design system: tokens, Rubik fonts, marks, launch-kit assets
                                                (spec: docs/design/BRAND.md)

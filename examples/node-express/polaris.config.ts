@@ -8,4 +8,5 @@ export default {
         "REPLACE_WITH_DJDL_ED25519_PUBLIC_KEY_BASE64URL",
     },
   },
+  expectedServices: ["license"],
 };

@@ -39,6 +39,16 @@
       "verdict": "pass",
       "date": "2026-10-17",
       "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/ST-07/ (built review 2026-10-16; blocking fixed in fix/ST-07-ST-38-review ae4012cb1; skipped design items in _lead/lead-followups.md)"
+    },
+    "I-11": {
+      "verdict": "pass",
+      "date": "2026-10-17",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/I-11/ (built review 2026-10-16; blockers incl. export leak fixed in fix/I-11-PX-W19-review e27ee117c)"
+    },
+    "PX-W19": {
+      "verdict": "pass",
+      "date": "2026-10-17",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/PX-W19/ (built review 2026-10-16; StepUp clipping fixed in e27ee117c)"
     }
   }
 }

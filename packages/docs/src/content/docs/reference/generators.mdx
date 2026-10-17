@@ -84,7 +84,7 @@ SDK constants: error codes, headers, enums, feature ids, core copy.
 - Check: `pnpm gen constants --check`.
 - Underlying: `pnpm exec tsx tools/gen-sdk-constants.ts`.
 - Reads: `tools/gen-sdk-constants.ts`, `tools/capabilities.ts`, `tools/services.json`, `conformance/parity/**`, `packages/shared-protocol/src/**`, `packages/worker/src/**`, `sdks/*/parity.json`, `packages/*/parity.json`.
-- Writes: `packages/sdk-node/src/constants.generated.ts`, `packages/sdk-node/src/copy.generated.ts`, `packages/sdk-react/src/constants.generated.ts`, `packages/sdk-react/src/copy.generated.ts`, `sdks/python/src/polaris_key/constants_generated.py`, `sdks/python/src/polaris_key/copy_generated.py`, `sdks/swift/Sources/PolarisKeyCore/Constants.generated.swift`, `sdks/swift/Sources/PolarisKeyCore/Copy.generated.swift`, `sdks/godot/addons/polaris_key/core/constants_generated.gd`, `sdks/godot/addons/polaris_key/core/copy_generated.gd`, `sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/Constants.generated.kt`, `sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/Copy.generated.kt`.
+- Writes: `packages/sdk-node/src/constants.generated.ts`, `packages/sdk-node/src/copy.generated.ts`, `packages/server/src/copy.generated.ts`, `packages/sdk-react/src/constants.generated.ts`, `packages/sdk-react/src/copy.generated.ts`, `sdks/python/src/polaris_key/constants_generated.py`, `sdks/python/src/polaris_key/copy_generated.py`, `sdks/swift/Sources/PolarisKeyCore/Constants.generated.swift`, `sdks/swift/Sources/PolarisKeyCore/Copy.generated.swift`, `sdks/godot/addons/polaris_key/core/constants_generated.gd`, `sdks/godot/addons/polaris_key/core/copy_generated.gd`, `sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/Constants.generated.kt`, `sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/Copy.generated.kt`.
 
 ### platform-inventory
 
@@ -162,8 +162,8 @@ Docs reference pages generated from the validators, routes, migrations and corpu
 - Regenerate: `pnpm gen docs-reference`.
 - Check: `pnpm gen docs-reference --check`.
 - Underlying: `pnpm --filter @polaris-key/docs gen`.
-- Reads: `packages/docs/scripts/gen-reference.mjs`, `packages/worker/src/**`, `packages/worker/migrations/**`, `packages/shared-*/src/**`, `conformance/corpus/v2/**`, `conformance/parity/**`, `sdks/*/parity.json`, `packages/*/parity.json`, `packages/worker/openapi/**`, `conformance/transcripts/**`.
-- Writes: `packages/docs/src/content/docs/reference/{config-entry,error-codes,parity,routes,validation-codes}.mdx`, `packages/docs/src/content/docs/reference/protocol/{corpus,fingerprint-constants}.mdx`, `packages/docs/src/content/docs/contribute/data-model.mdx`.
+- Reads: `packages/docs/scripts/gen-reference.mjs`, `packages/docs/scripts/console-nav.mjs`, `packages/admin/src/console/nav.ts`, `packages/worker/src/**`, `packages/worker/migrations/**`, `packages/shared-*/src/**`, `conformance/corpus/v2/**`, `conformance/parity/**`, `sdks/*/parity.json`, `packages/*/parity.json`, `packages/worker/openapi/**`, `conformance/transcripts/**`.
+- Writes: `packages/docs/src/content/docs/reference/{config-entry,error-codes,parity,routes,validation-codes}.mdx`, `packages/docs/src/content/docs/reference/protocol/{corpus,fingerprint-constants}.mdx`, `packages/docs/src/content/docs/contribute/data-model.mdx`, `packages/docs/src/content/docs/operate/console/tour.mdx`.
 
 ### registry-docs
 

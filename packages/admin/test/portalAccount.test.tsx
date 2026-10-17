@@ -142,36 +142,41 @@ describe("Account v1 (PX-07)", () => {
     await waitFor(() => expect(fetchedRequests()).toContain("DELETE /api/me"));
     expect(
       await within(data).findByRole("heading", {
-        name: "Your account is scheduled for deletion",
+        name: /^Your account will be erased on/,
       }),
     ).toBeTruthy();
-    expect(
-      await screen.findByText(
-        "We sent a confirmation to your email. You can cancel it for 14 days.",
+    // Focus moves to the scheduled box, which the press unmounted the button for.
+    await waitFor(() =>
+      expect(document.activeElement?.textContent).toMatch(
+        /^Your account will be erased on/,
       ),
-    ).toBeTruthy();
+    );
+    // The shell says so on every page, with the way back.
+    expect(
+      screen.getAllByText(/Your account will be erased on/).length,
+    ).toBeGreaterThan(1);
 
     await userEvent.click(
-      within(data).getByRole("button", { name: "Cancel scheduled deletion" }),
+      within(data).getByRole("button", { name: "Cancel deletion" }),
     );
     await waitFor(() =>
       expect(fetchedRequests()).toContain("POST /api/me/deletion/cancel"),
     );
-    expect(
-      await within(data).findByRole("button", { name: "Delete account" }),
-    ).toBeTruthy();
+    const trigger = await within(data).findByRole("button", {
+      name: "Delete account",
+    });
+    expect(await screen.findByText("Deletion canceled")).toBeTruthy();
+    await waitFor(() => expect(document.activeElement).toBe(trigger));
   });
 
-  it("keeps the account with Keep my account", async () => {
+  it("keeps the account with Cancel", async () => {
     mockFetch(signedIn());
     renderPortal();
     const data = await screen.findByRole("region", { name: "Your data" });
     await userEvent.click(
       within(data).getByRole("button", { name: "Delete account" }),
     );
-    await userEvent.click(
-      within(data).getByRole("button", { name: "Keep my account" }),
-    );
+    await userEvent.click(within(data).getByRole("button", { name: "Cancel" }));
     expect(
       within(data).queryByRole("heading", { name: /Delete your/ }),
     ).toBeNull();
@@ -202,9 +207,6 @@ const ACCOUNT_FILE = {
   account: { id: ACCOUNT.id, email: ACCOUNT.email },
 };
 
-/** A sign-in older than five minutes: the Worker asks for a fresh one (`PasskeyStepUp`). */
-const STEP_UP = { status: 401, body: { error: "step_up_required" } };
-
 describe("Your data: Download my data (I-11)", () => {
   let files: DownloadCapture;
   beforeEach(() => {
@@ -230,16 +232,11 @@ describe("Your data: Download my data (I-11)", () => {
     return { data, button };
   }
 
-  it("offers the account's file, says what it holds and where it is saved, and fetches nothing until pressed", async () => {
+  it("offers the account's file, says what it holds, and fetches nothing until pressed", async () => {
     const { data } = await open();
     expect(
       within(data).getByText(
-        "One JSON file with your account details, sign-in methods, sessions and activity, and your licenses, devices and what each app keeps for you. It leaves out license keys and tokens.",
-      ),
-    ).toBeTruthy();
-    expect(
-      within(data).getByText(
-        "Saved as polaris-key-account-data.json. It holds personal details, so keep it private.",
+        "Account, sign-in methods, licenses, devices and each app's data. No keys or tokens.",
       ),
     ).toBeTruthy();
     // Beside it, the account's own deletion, as it was.
@@ -268,7 +265,9 @@ describe("Your data: Download my data (I-11)", () => {
       "csrf-token",
     );
     expect(await screen.findByText("Your download has started")).toBeTruthy();
-    expect(screen.getByText("polaris-key-account-data.json")).toBeTruthy();
+    expect(
+      screen.getByText("It holds personal details, so keep it private."),
+    ).toBeTruthy();
     expect(within(data).queryByRole("alert")).toBeNull();
     expect(button.disabled).toBe(false);
   });
@@ -306,11 +305,13 @@ describe("Your data: Download my data (I-11)", () => {
   it("keeps a refusal beside the button in plain words, and pressing again tries again", async () => {
     let asked = 0;
     const { data, button } = await open(() =>
-      ++asked === 1 ? STEP_UP : ACCOUNT_FILE,
+      ++asked === 1
+        ? { status: 429, body: { error: "rate_limited" } }
+        : ACCOUNT_FILE,
     );
     await userEvent.click(button);
     expect((await within(data).findByRole("alert")).textContent).toBe(
-      "Sign in again to continue. This needs a sign-in from the last five minutes. Sign out, sign back in, then try again.",
+      "Too many tries. Wait a minute, then try again.",
     );
     expect(files.saved).toHaveLength(0);
     expect(screen.queryByText("Your download has started")).toBeNull();
@@ -354,7 +355,7 @@ describe("Your data: Download my data (I-11)", () => {
     });
     expect(
       within(data).getByRole("heading", {
-        name: "Your account is scheduled for deletion",
+        name: /^Your account will be erased on/,
       }),
     ).toBeTruthy();
     await userEvent.click(button);
@@ -365,7 +366,159 @@ describe("Your data: Download my data (I-11)", () => {
       ),
     ).toEqual([]);
     expect(
-      within(data).getByRole("button", { name: "Cancel scheduled deletion" }),
+      within(data).getByRole("button", { name: "Cancel deletion" }),
     ).toBeTruthy();
+  });
+});
+
+/** An account whose last sign-in is older than five minutes, with one email to confirm by. */
+const STALE_METHODS = {
+  methods: [
+    {
+      id: "lnk_mail1",
+      kind: "email",
+      group: "email",
+      label: "Email",
+      display: ACCOUNT.email,
+      connectedAt: NOW_S - 90 * DAY,
+      lastUsedAt: NOW_S - 3 * DAY,
+      canRemove: false,
+      reason: "last_link",
+      flag: null,
+      relay: false,
+      tenantScoped: false,
+    },
+  ],
+  emails: [
+    {
+      methodId: "lnk_mail1",
+      email: ACCOUNT.email,
+      primary: true,
+      connectedAt: NOW_S - 90 * DAY,
+      lastUsedAt: NOW_S - 3 * DAY,
+      canRemove: false,
+      reason: "last_link",
+    },
+  ],
+  passkeys: [],
+  providers: [],
+  passkey: { canAdd: false, reason: null },
+  primaryEmail: ACCOUNT.email,
+  hideMyEmail: false,
+  stepUp: {
+    authenticatedAt: NOW_S - 3600,
+    freshUntil: NOW_S - 3300,
+    fresh: false,
+    maxAgeSeconds: 300,
+  },
+};
+
+/** The Worker's answer to a change that needs a sign-in from the last five minutes. */
+const STEP_UP = { status: 401, body: { error: "step_up_required" } };
+
+/** Confirm it's you with an email code, in the prompt that replaced the refusal. */
+async function confirmItsYou(scope: HTMLElement): Promise<void> {
+  const prompt = await within(scope).findByRole("group", {
+    name: "Confirm it's you first",
+  });
+  await userEvent.click(
+    within(prompt).getByRole("button", {
+      name: `Email a code to ${ACCOUNT.email}`,
+    }),
+  );
+  await userEvent.type(
+    await within(prompt).findByRole("textbox", { name: "6-digit code" }),
+    "481920",
+  );
+}
+
+describe("Your data: a stale sign-in asks to confirm it's you in place (I-11)", () => {
+  let files: DownloadCapture;
+  beforeEach(() => {
+    files = captureDownloads();
+  });
+  afterEach(() => {
+    files.restore();
+    vi.restoreAllMocks();
+  });
+
+  const signIn = {
+    "/api/me/methods": STALE_METHODS,
+    "POST /api/signin/email/start": {
+      ok: true,
+      expiresIn: 600,
+      codeLength: 6,
+      resendIn: 60,
+    },
+    "POST /api/signin/email/verify": { status: "signed_in", next: "/" },
+  };
+
+  it("download: shows the prompt where the refusal was, then downloads once confirmed", async () => {
+    let asked = 0;
+    mockFetch({
+      ...signedIn(),
+      ...signIn,
+      "/api/me/export": () => (++asked === 1 ? STEP_UP : ACCOUNT_FILE),
+    });
+    renderPortal();
+    const data = await screen.findByRole("region", { name: "Your data" });
+    await userEvent.click(
+      within(data).getByRole("button", { name: "Download my data" }),
+    );
+    expect(within(data).queryByRole("alert")).toBeNull();
+    await confirmItsYou(data);
+    await waitFor(() => expect(files.saved).toHaveLength(1));
+    expect(asked).toBe(2);
+  });
+
+  it("schedule: keeps what was typed, confirms, then schedules", async () => {
+    let deletes = 0;
+    mockFetch({
+      ...signedIn(),
+      ...signIn,
+      "DELETE /api/me": () => {
+        deletes += 1;
+        return deletes === 1
+          ? STEP_UP
+          : { ok: true, scheduled: true, deletionDueAt: NOW_S + 14 * DAY };
+      },
+    });
+    renderPortal();
+    const data = await screen.findByRole("region", { name: "Your data" });
+    await userEvent.click(
+      within(data).getByRole("button", { name: "Delete account" }),
+    );
+    const field = within(data).getByRole("textbox", {
+      name: `Type ${ACCOUNT.email} to confirm`,
+    }) as HTMLInputElement;
+    await userEvent.type(field, ACCOUNT.email);
+    await userEvent.click(
+      within(data).getByRole("button", { name: "Schedule deletion" }),
+    );
+    expect(within(data).queryByRole("alert")).toBeNull();
+    await confirmItsYou(data);
+    await waitFor(() => expect(deletes).toBe(2));
+    expect(field.value).toBe(ACCOUNT.email);
+  });
+
+  it("cancel: confirms, then cancels the deletion", async () => {
+    let cancels = 0;
+    const deletion = { requestedAt: NOW_S, dueAt: NOW_S + 14 * DAY };
+    mockFetch({
+      ...signedIn(),
+      ...signIn,
+      "/api/me": { account: { ...ACCOUNT, deletion }, csrf: "c" },
+      "POST /api/me/deletion/cancel": () => {
+        cancels += 1;
+        return cancels === 1 ? STEP_UP : { ok: true };
+      },
+    });
+    renderPortal();
+    const data = await screen.findByRole("region", { name: "Your data" });
+    await userEvent.click(
+      await within(data).findByRole("button", { name: "Cancel deletion" }),
+    );
+    await confirmItsYou(data);
+    await waitFor(() => expect(cancels).toBe(2));
   });
 });

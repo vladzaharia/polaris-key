@@ -3,6 +3,8 @@ title: "Releasing"
 description: "How every SDK publishes itself to its feed on pkg.plrs.im, in lockstep with the server, on each push to main and each v* tag, and how the worker deploys — gated, D1-migrated, smoke-checked, and registering its own packages."
 sidebar:
   order: 6
+type: "reference"
+lastReviewed: "2026-10-16"
 ---
 
 One version for everything. Every SDK this repository ships is versioned in **lockstep with the
@@ -103,7 +105,7 @@ things keep that from happening again:
   `package.json` and waits until the feed lists every `@polaris-key` version it pins
   (`tools/feed-closure.mjs requires`). A re-run of one leg cannot skip a missing dependency.
 - **The closure check.** `tools/feed-closure.mjs` reads every packument and fails on a pin to a
-  version the feed does not list. The drift job runs it for the version just published, the
+  version the feed does not list. The drift job runs it for the version published, the
   `npm-install` job then installs from the feed in empty directories (pnpm 11 with its one-day age
   gate, npm with React's peers, and this build's exact set), and `feed-closure.yml` checks every
   version on the npm and PyPI feeds daily.
@@ -146,7 +148,7 @@ that serializes deploys so two tags can never race.
 3. **Assemble static assets** — `pnpm --filter @polaris-key/worker assemble` builds the admin
    SPA and this docs site into the worker's one `[assets]` root (see
    [Monorepo layout](/docs/contribute/layout/)) — then `wrangler deploy`.
-4. **Smoke-check on content, not just status code:**
+4. **Smoke-check on content, and not only the status code:**
    - The data plane: `https://key.plrs.im/djdl/.well-known/jwks.json` must return a non-empty
      `keys` array. This deliberately isn't the admin SPA — a static asset returns `200` even
      with D1, KV, and the whole licensing path down — so the probe exercises the router, D1,

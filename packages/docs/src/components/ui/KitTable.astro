@@ -7,6 +7,13 @@ import { getCollection } from "astro:content";
 import { frameworkHref, UI_KITS } from "../../lib/uiKits";
 import KitStatus from "./KitStatus.astro";
 
+export interface Props {
+  /** Show one tier only: the must kits are the table of record, the should kits are parked. */
+  tier?: "must" | "should";
+}
+const { tier } = Astro.props;
+const kits = UI_KITS.filter((k) => tier === undefined || k.tier === tier);
+
 const pages = new Set(
   (
     await getCollection("docs", (e) =>
@@ -29,7 +36,7 @@ const pages = new Set(
   </thead>
   <tbody>
     {
-      UI_KITS.map((kit) => (
+      kits.map((kit) => (
         <tr>
           <td>
             {pages.has(kit.id) ? (
@@ -52,7 +59,7 @@ const pages = new Set(
             ) : kit.current !== undefined ? (
               <a href={kit.current.href}>{kit.current.label}</a>
             ) : (
-              <span class="pk-ui-muted">Not shipped yet</span>
+              <span class="pk-ui-muted">Not built yet</span>
             )}
           </td>
         </tr>
