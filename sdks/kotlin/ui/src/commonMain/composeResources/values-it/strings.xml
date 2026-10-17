@@ -1571,6 +1571,34 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_identity_disabled_message">L'accesso tramite questa app è disattivato. Le tue installazioni e licenze continuano a funzionare.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invalid_request_title">Richiesta di accesso non valida</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invalid_request_message">L'app ha inviato una richiesta che non riusciamo a leggere. Riprova.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invalid_client_title">App non riconosciuta</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invalid_client_message">Questa app non è configurata per l'accesso. Contatta il suo sviluppatore.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invalid_grant_title">Accesso scaduto</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invalid_grant_message">Questo accesso è scaduto o è già stato usato. Accedi di nuovo.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_unsupported_grant_type_title">Richiesta di accesso non valida</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_unsupported_grant_type_message">L'app ha chiesto un tipo di accesso che non supportiamo. Contatta il suo sviluppatore.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invalid_scope_title">Accesso non disponibile</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invalid_scope_message">L'app ha chiesto un accesso che questo accesso non offre. Contatta il suo sviluppatore.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_redirect_uri_mismatch_title">Indirizzo di ritorno non consentito</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_redirect_uri_mismatch_message">L'indirizzo di ritorno di questa app non è registrato, quindi non ti abbiamo reindirizzato. Contatta il suo sviluppatore.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_license_choice_required_title">Scegli una licenza</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_license_choice_required_message">Scegli quale licenza usa questo dispositivo, poi continua.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_auth_method_disabled_title">Metodo di accesso non disponibile</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_auth_method_disabled_message">Questo metodo di accesso è disattivato. Scegline un altro.</string>

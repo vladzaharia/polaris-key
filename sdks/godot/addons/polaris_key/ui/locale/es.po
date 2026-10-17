@@ -4137,6 +4137,76 @@ msgstr "Inicio de sesión no disponible"
 msgid "core.codes.identity_disabled.message"
 msgstr "El inicio de sesión desde esta app está desactivado. Tus instalaciones y licencias siguen funcionando."
 
+#. Sign-in request invalid
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid_request.title"
+msgstr "Solicitud de inicio de sesión no válida"
+
+#. The app sent a sign-in request we can't read. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid_request.message"
+msgstr "La app envió una solicitud que no podemos leer. Inténtalo de nuevo."
+
+#. App not recognised
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid_client.title"
+msgstr "App no reconocida"
+
+#. This app isn't set up for sign-in. Contact its developer.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid_client.message"
+msgstr "Esta app no está configurada para iniciar sesión. Contacta con su desarrollador."
+
+#. Sign-in expired
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid_grant.title"
+msgstr "Inicio de sesión caducado"
+
+#. That sign-in has expired or was already used. Sign in again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid_grant.message"
+msgstr "Este inicio de sesión caducó o ya se usó. Inicia sesión de nuevo."
+
+#. Sign-in request invalid
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.unsupported_grant_type.title"
+msgstr "Solicitud de inicio de sesión no válida"
+
+#. The app asked for a sign-in type we don't support. Contact its developer.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.unsupported_grant_type.message"
+msgstr "La app pidió un tipo de inicio de sesión que no admitimos. Contacta con su desarrollador."
+
+#. Access not available
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid_scope.title"
+msgstr "Acceso no disponible"
+
+#. The app asked for access this sign-in doesn't offer. Contact its developer.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid_scope.message"
+msgstr "La app pidió un acceso que este inicio de sesión no ofrece. Contacta con su desarrollador."
+
+#. Return address not allowed
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.redirect_uri_mismatch.title"
+msgstr "Dirección de retorno no permitida"
+
+#. This app's return address isn't registered, so we didn't send you back. Contact its developer.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.redirect_uri_mismatch.message"
+msgstr "La dirección de retorno de esta app no está registrada, así que no te devolvimos a ella. Contacta con su desarrollador."
+
+#. Choose a license
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.license_choice_required.title"
+msgstr "Elige una licencia"
+
+#. Choose which license this device uses, then continue.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.license_choice_required.message"
+msgstr "Elige qué licencia usa este dispositivo y continúa."
+
 #. Sign-in method unavailable
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.auth_method_disabled.title"

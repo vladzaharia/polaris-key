@@ -14653,7 +14653,7 @@ init_define_PKEY_EMBEDDED_SCHEMAS();
 // ../shared-protocol/dist/identity.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
 
-// ../shared-protocol/dist/chunk-BKQW4WYJ.js
+// ../shared-protocol/dist/chunk-LINWOCWU.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
 var DISPLAY_TEXT_STRIP = [
   [0, 31],

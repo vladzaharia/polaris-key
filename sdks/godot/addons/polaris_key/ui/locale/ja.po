@@ -4117,6 +4117,76 @@ msgstr "サインインを利用できません"
 msgid "core.codes.identity_disabled.message"
 msgstr "このアプリからのサインインは無効になっています。インストールとライセンスは引き続き使用できます。"
 
+#. Sign-in request invalid
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid_request.title"
+msgstr "サインインリクエストが無効です"
+
+#. The app sent a sign-in request we can't read. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid_request.message"
+msgstr "アプリから読み取れないリクエストが届きました。もう一度お試しください。"
+
+#. App not recognised
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid_client.title"
+msgstr "アプリを認識できません"
+
+#. This app isn't set up for sign-in. Contact its developer.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid_client.message"
+msgstr "このアプリはサインインに対応していません。開発元にお問い合わせください。"
+
+#. Sign-in expired
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid_grant.title"
+msgstr "サインインの有効期限切れ"
+
+#. That sign-in has expired or was already used. Sign in again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid_grant.message"
+msgstr "このサインインは期限切れか、すでに使用されています。もう一度サインインしてください。"
+
+#. Sign-in request invalid
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.unsupported_grant_type.title"
+msgstr "サインインリクエストが無効です"
+
+#. The app asked for a sign-in type we don't support. Contact its developer.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.unsupported_grant_type.message"
+msgstr "アプリが対応していないサインイン方式を要求しました。開発元にお問い合わせください。"
+
+#. Access not available
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid_scope.title"
+msgstr "アクセスできません"
+
+#. The app asked for access this sign-in doesn't offer. Contact its developer.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid_scope.message"
+msgstr "アプリがこのサインインでは提供されないアクセスを要求しました。開発元にお問い合わせください。"
+
+#. Return address not allowed
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.redirect_uri_mismatch.title"
+msgstr "戻り先が許可されていません"
+
+#. This app's return address isn't registered, so we didn't send you back. Contact its developer.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.redirect_uri_mismatch.message"
+msgstr "このアプリの戻り先が登録されていないため、移動しませんでした。開発元にお問い合わせください。"
+
+#. Choose a license
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.license_choice_required.title"
+msgstr "ライセンスを選択"
+
+#. Choose which license this device uses, then continue.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.license_choice_required.message"
+msgstr "このデバイスで使うライセンスを選んでから続行してください。"
+
 #. Sign-in method unavailable
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.auth_method_disabled.title"

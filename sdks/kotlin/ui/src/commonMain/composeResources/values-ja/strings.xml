@@ -1551,6 +1551,34 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_identity_disabled_message">このアプリからのサインインは無効になっています。インストールとライセンスは引き続き使用できます。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invalid_request_title">サインインリクエストが無効です</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invalid_request_message">アプリから読み取れないリクエストが届きました。もう一度お試しください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invalid_client_title">アプリを認識できません</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invalid_client_message">このアプリはサインインに対応していません。開発元にお問い合わせください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invalid_grant_title">サインインの有効期限切れ</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invalid_grant_message">このサインインは期限切れか、すでに使用されています。もう一度サインインしてください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_unsupported_grant_type_title">サインインリクエストが無効です</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_unsupported_grant_type_message">アプリが対応していないサインイン方式を要求しました。開発元にお問い合わせください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invalid_scope_title">アクセスできません</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invalid_scope_message">アプリがこのサインインでは提供されないアクセスを要求しました。開発元にお問い合わせください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_redirect_uri_mismatch_title">戻り先が許可されていません</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_redirect_uri_mismatch_message">このアプリの戻り先が登録されていないため、移動しませんでした。開発元にお問い合わせください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_license_choice_required_title">ライセンスを選択</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_license_choice_required_message">このデバイスで使うライセンスを選んでから続行してください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_auth_method_disabled_title">サインイン方法を利用できません</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_auth_method_disabled_message">このサインイン方法は無効になっています。別の方法を選択してください。</string>

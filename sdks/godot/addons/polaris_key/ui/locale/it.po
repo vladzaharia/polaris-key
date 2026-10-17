@@ -4137,6 +4137,76 @@ msgstr "Accesso non disponibile"
 msgid "core.codes.identity_disabled.message"
 msgstr "L'accesso tramite questa app è disattivato. Le tue installazioni e licenze continuano a funzionare."
 
+#. Sign-in request invalid
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid_request.title"
+msgstr "Richiesta di accesso non valida"
+
+#. The app sent a sign-in request we can't read. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid_request.message"
+msgstr "L'app ha inviato una richiesta che non riusciamo a leggere. Riprova."
+
+#. App not recognised
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid_client.title"
+msgstr "App non riconosciuta"
+
+#. This app isn't set up for sign-in. Contact its developer.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid_client.message"
+msgstr "Questa app non è configurata per l'accesso. Contatta il suo sviluppatore."
+
+#. Sign-in expired
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid_grant.title"
+msgstr "Accesso scaduto"
+
+#. That sign-in has expired or was already used. Sign in again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid_grant.message"
+msgstr "Questo accesso è scaduto o è già stato usato. Accedi di nuovo."
+
+#. Sign-in request invalid
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.unsupported_grant_type.title"
+msgstr "Richiesta di accesso non valida"
+
+#. The app asked for a sign-in type we don't support. Contact its developer.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.unsupported_grant_type.message"
+msgstr "L'app ha chiesto un tipo di accesso che non supportiamo. Contatta il suo sviluppatore."
+
+#. Access not available
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid_scope.title"
+msgstr "Accesso non disponibile"
+
+#. The app asked for access this sign-in doesn't offer. Contact its developer.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid_scope.message"
+msgstr "L'app ha chiesto un accesso che questo accesso non offre. Contatta il suo sviluppatore."
+
+#. Return address not allowed
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.redirect_uri_mismatch.title"
+msgstr "Indirizzo di ritorno non consentito"
+
+#. This app's return address isn't registered, so we didn't send you back. Contact its developer.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.redirect_uri_mismatch.message"
+msgstr "L'indirizzo di ritorno di questa app non è registrato, quindi non ti abbiamo reindirizzato. Contatta il suo sviluppatore."
+
+#. Choose a license
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.license_choice_required.title"
+msgstr "Scegli una licenza"
+
+#. Choose which license this device uses, then continue.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.license_choice_required.message"
+msgstr "Scegli quale licenza usa questo dispositivo, poi continua."
+
 #. Sign-in method unavailable
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.auth_method_disabled.title"
