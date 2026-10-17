@@ -956,7 +956,7 @@ describe("the top bar", () => {
     boot("#/p/djdl/license/tiers", { services: ALL_ON });
     const docs = await screen.findByRole("link", { name: "Docs" });
     expect(docs.getAttribute("href")).toBe(
-      "/docs/features/licensing/manage-licenses/#tiers",
+      "/docs/features/licensing/manage-licenses/",
     );
   });
 

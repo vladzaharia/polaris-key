@@ -26,7 +26,7 @@ export const DOCS_LINKS = {
   mintBundle: "/docs/features/licensing/offline/",
   // The admin API token `pkey bundle` authenticates with: the offline page documents it.
   mintApiToken: "/docs/features/licensing/offline/",
-  tierEditor: "/docs/features/licensing/manage-licenses/#tiers",
+  tierEditor: "/docs/features/licensing/manage-licenses/",
   createProfile: "/docs/features/managed-config/profiles/",
   resync: "/docs/build/manifest/",
   servicesRevert: "/docs/operate/console/products/",

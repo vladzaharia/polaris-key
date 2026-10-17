@@ -382,7 +382,7 @@ export const SECTIONS: NavSection[] = [
         label: "Tiers",
         path: "license/tiers",
         icon: Layers,
-        docs: "/docs/features/licensing/manage-licenses/#tiers",
+        docs: "/docs/features/licensing/manage-licenses/",
         inNav: true,
         record: { noun: "Tier", tabs: ["overview", "used-by"] },
       },
