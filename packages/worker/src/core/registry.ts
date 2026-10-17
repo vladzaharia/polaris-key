@@ -84,6 +84,13 @@ export interface ServiceContext {
    */
   alias?: boolean;
   /**
+   * True when the router matched one of Commerce's two canonical store-notification hooks,
+   * `/<p>/distribution/hooks/{app-store,play-rtdn}` (CM-29, `core/stores/hooks.ts`). Not an
+   * alias: Commerce answers `hooks/*` only with this set, so `/<p>/commerce/hooks/*` is the
+   * registry's not-found.
+   */
+  storeHook?: boolean;
+  /**
    * Read-only access to the other services' state (`core/hooks.ts`), built by Core from the
    * registry and THIS product's enablement. An accessor returns `null` when its providing service
    * is off. Never constructed by a caller: `dispatchService` and the admin API build it.

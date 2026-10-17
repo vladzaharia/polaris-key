@@ -16,7 +16,7 @@
 //   devices.*         GET /<p>/devices, PATCH/DELETE /<p>/devices/:id, POST /<p>/devices/report
 //   mint(recipe)      GET /<p>/config/mint/<recipe>/token, memory-cached per device token
 //   signIn*           POST /<p>/identity/auth/device/{start,poll} (RFC 8628)
-//   commerce*         GET /<p>/distribution/commerce/binding, POST …/claim
+//   commerce*         GET /<p>/commerce/binding, POST …/claim
 //
 // What is persisted is client-core's `Store` contract (`./store.ts`): the token, the random device
 // id, and a `CacheRecordV3` of SIGNED ARTIFACTS ONLY, re-verified against the pinned keys on every
@@ -191,7 +191,7 @@ export interface CommerceProduct {
   deliverable: string;
 }
 
-/** `GET /<p>/distribution/commerce/binding`. Hand `bindingId` to the store before buying. */
+/** `GET /<p>/commerce/binding`. Hand `bindingId` to the store before buying. */
 export interface CommerceBinding {
   bindingId: string;
   products: CommerceProduct[];
@@ -1571,10 +1571,10 @@ export class BearerSession {
 
   // ── Commerce (P6-01) ─────────────────────────────────────────────────────────────────────
 
-  /** `GET /<p>/distribution/commerce/binding`. */
+  /** `GET /<p>/commerce/binding`. */
   async commerceBinding(): Promise<CommerceBinding> {
     await this.init();
-    const res = await this.send("distribution/commerce/binding", {
+    const res = await this.send("commerce/binding", {
       headers: this.headers({ authorization: `Bearer ${this.requireToken()}` }),
     });
     if (!res.ok) throw await refusal(res, `http_${res.status}`);
@@ -1605,7 +1605,7 @@ export class BearerSession {
     return { bindingId: b.bindingId.toLowerCase(), products };
   }
 
-  /** `POST /<p>/distribution/commerce/claim`. On `ok`, sync to receive the flag. */
+  /** `POST /<p>/commerce/claim`. On `ok`, sync to receive the flag. */
   async commerceClaim(
     store: "app-store" | "play" | "steam",
     payload: ClaimPayload,
@@ -1634,7 +1634,7 @@ export class BearerSession {
         "invalid-options",
         `The ${store} claim payload is incomplete.`,
       );
-    const res = await this.send("distribution/commerce/claim", {
+    const res = await this.send("commerce/claim", {
       method: "POST",
       headers: this.headers({
         authorization: `Bearer ${this.requireToken()}`,

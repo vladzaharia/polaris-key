@@ -1357,6 +1357,7 @@ export const ServiceSlug = {
   update: "update",
   identity: "identity",
   sync: "sync",
+  commerce: "commerce",
 } as const;
 export type ServiceSlug = (typeof ServiceSlug)[keyof typeof ServiceSlug];
 
@@ -1369,6 +1370,7 @@ export const SERVICE_SLUG_VALUES: readonly ServiceSlug[] = [
   "update",
   "identity",
   "sync",
+  "commerce",
 ];
 
 /** The wire contract version (`@polaris-key/protocol/core`). */
@@ -1863,7 +1865,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   "ui.paywall": { status: "implemented", service: "sdk", na: [] },
   "ui.theme": { status: "implemented", service: "sdk", na: [] },
   "ui.i18n": { status: "implemented", service: "sdk", na: [] },
-  "commerce.receipt": { status: "implemented", service: "license", na: [] },
+  "commerce.receipt": { status: "implemented", service: "commerce", na: [] },
   "server.license": {
     status: "na",
     service: "license",
@@ -1900,4 +1902,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "3a67eac98b151579c169c8d4fb1dea1c64c4ff6dc090a5bbc49afabb4482d49a";
+  "2f8100fbd1aa394c1b8246af7f308cc7522708c70417a9bc55514f864600bb3b";

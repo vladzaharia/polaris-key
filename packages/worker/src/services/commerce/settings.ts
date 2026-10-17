@@ -19,11 +19,11 @@
  * always (S-09). Turn them on only for a staging product.
  */
 
-import type { Db } from "../../../db/types.js";
+import type { Db } from "../../db/types.js";
 import {
   readConnectorSettings,
   writeConnectorSettings,
-} from "../../../core/stores/settings.js";
+} from "../../core/stores/settings.js";
 
 export const COMMERCE_SETTINGS = "commerce";
 

@@ -92,6 +92,7 @@ const CONFIG_ONLY: ServicesMap = {
   update: { enabled: false },
   identity: { enabled: false },
   sync: { enabled: false },
+  commerce: { enabled: false },
 };
 
 interface World {

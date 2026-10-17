@@ -230,14 +230,7 @@ export const ADMIN_ROUTES: readonly AdminRoute[] = [
     stepUp: true,
   }),
   ...SERVICE_SLUGS.flatMap(serviceRows),
-  // Commerce's surface is `commerce` ahead of Distribution's prefix (CM-29 moves the path, not
-  // the area); the Feeds admin is Ship builds, composed in the console layer.
-  ...rows(
-    ["GET", "PUT", "DELETE"],
-    `${P}/distribution/commerce/**`,
-    "commerce",
-    product,
-  ),
+  // The Feeds admin is Ship builds, composed in the console layer.
   ...rows(
     ["GET", "PUT", "POST"],
     `${P}/distribution/feeds/**`,

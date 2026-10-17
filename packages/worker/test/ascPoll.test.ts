@@ -624,6 +624,7 @@ describe("the poll skips a product that is not set up", () => {
           update: { enabled: false },
           identity: { enabled: false },
           sync: { enabled: false },
+          commerce: { enabled: false },
         },
       }),
       "manifest",

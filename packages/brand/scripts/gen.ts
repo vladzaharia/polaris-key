@@ -106,6 +106,7 @@ import {
 } from "../src/tokens/scales.js";
 import {
   SERVICE_FAMILY,
+  SERVICE_ALIAS,
   SERVICE_IDS,
   SERVICE_LABEL,
   SERVICE_MARK,
@@ -194,6 +195,9 @@ export function sectionBit(theme: Theme, id: ServiceId): string | null {
 }
 
 /** The section ids that carry a bit: every service, never core. */
+/** The ids the CSS defines variables for: an aliased section (Commerce) has none of its own. */
+const CSS_IDS = SERVICE_IDS.filter((id) => !(id in SERVICE_ALIAS));
+
 const BIT_IDS = SERVICE_IDS.filter((id) => id !== "core");
 
 /** The service section's bit, for outputs that only list BIT_IDS. */
@@ -215,7 +219,7 @@ const STATE_KINDS = [
 ] as const;
 
 function stateEntries(theme: Theme): [string, ServiceId, string][] {
-  return SERVICE_IDS.flatMap((id) =>
+  return CSS_IDS.flatMap((id) =>
     STATE_KINDS.map((k): [string, ServiceId, string] => [
       k,
       id,
@@ -247,7 +251,7 @@ function themeVars(theme: Theme): [string, string][] {
   v.push(["brand-text", BRAND.text[theme]]);
   v.push(["brand-muted", BRAND.muted[theme]]);
   v.push(["brand-rose", BRAND.rose[theme]]);
-  for (const id of SERVICE_IDS) {
+  for (const id of CSS_IDS) {
     const a = serviceAccent(theme, id);
     v.push([`service-${id}`, a.solid]);
     v.push([`service-${id}-fg`, a.fg]);
@@ -394,13 +398,11 @@ ${decl(themeVars("light"))}
 ${sectionDecl("core")}
 }
 ${SERVICE_IDS.filter((id) => id !== "core")
-  .map((id) => `\n[data-service="${id}"] {\n${sectionDecl(id)}\n}`)
+  .map(
+    (id) =>
+      `\n[data-service="${id}"] {\n${sectionDecl(SERVICE_ALIAS[id] ?? id)}\n}`,
+  )
   .join("\n")}
-
-/* Commerce shares the Distribution family (B1): same declarations, its own selector. */
-[data-service="commerce"] {
-${sectionDecl("distribution")}
-}
 
 /* Where linear() is unsupported, the spring easing falls back to standard. */
 @supports not (transition-timing-function: linear(0, 1)) {
@@ -552,7 +554,7 @@ function themeCss(): string {
   for (const k of ["", "-fg", "-on", "-subtle"])
     colors.push([`accent${k}`, `accent${k}`]);
   colors.push(["section-bit", "section-bit"]);
-  for (const id of SERVICE_IDS)
+  for (const id of CSS_IDS)
     for (const k of ["", "-fg", "-on", "-subtle"])
       colors.push([`service-${id}${k}`, `service-${id}${k}`]);
   for (const s of STATUS_IDS)

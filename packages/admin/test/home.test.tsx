@@ -203,6 +203,7 @@ describe("Home", () => {
       "update",
       "identity",
       "sync",
+      "commerce",
     ]);
     for (const [label, href] of [
       ["Distribution", "#/p/djdl/distribution/matrix"],

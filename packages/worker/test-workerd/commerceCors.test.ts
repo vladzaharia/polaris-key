@@ -1,7 +1,7 @@
 /// <reference types="@cloudflare/workers-types" />
 // ── The commerce bridge's CORS surface on workerd (SP-16) ──────────────────────────────────
 //
-// `distribution/commerce/binding` and `distribution/commerce/claim` joined `core/cors.ts`'s
+// `commerce/binding` and `commerce/claim` joined `core/cors.ts`'s
 // covered paths so a bearer-mode page on one of the product's own `web.origins` can call them.
 // This drives the real `src/index.ts` over HTTP: a listed origin gets the preflight's allow set
 // and the response's allow-origin; an unlisted origin gets a bare 204 and no `Access-Control-*`
@@ -26,7 +26,7 @@ import { seedProduct } from "./seed.js";
 const SLUG = "djdlcors";
 const LISTED = "https://play.djdl.example";
 const UNLISTED = "https://evil.example";
-const BASE = `https://key.plrs.im/${SLUG}/distribution/commerce`;
+const BASE = `https://key.plrs.im/${SLUG}/commerce`;
 
 /** Every Access-Control-* header on a response, lower-cased names. */
 function acHeaders(res: Response): Record<string, string> {

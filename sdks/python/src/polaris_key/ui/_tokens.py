@@ -170,6 +170,13 @@ SERVICE_ACCENTS = {
             "subtle": "#08262b",
             "bit": "#14f8e1",
         },
+        "commerce": {
+            "solid": "#39d075",
+            "fg": "#39d075",
+            "on": "#060912",
+            "subtle": "#0c211e",
+            "bit": "#39d075",
+        },
     },
     "light": {
         "core": {
@@ -227,6 +234,13 @@ SERVICE_ACCENTS = {
             "on": "#ffffff",
             "subtle": "#dee9ef",
             "bit": "#086260",
+        },
+        "commerce": {
+            "solid": "#05773b",
+            "fg": "#05773b",
+            "on": "#ffffff",
+            "subtle": "#deebeb",
+            "bit": "#05773b",
         },
     },
 }

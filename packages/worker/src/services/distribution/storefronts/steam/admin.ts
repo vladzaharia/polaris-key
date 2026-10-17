@@ -68,8 +68,8 @@ import {
   SteamClient,
   type SteamBranch,
 } from "../../../../core/stores/steam/client.js";
-import { openSteamPublisherKey } from "../../commerce/steam.js";
-import { StoreUnavailable } from "../../commerce/http.js";
+import { openSteamPublisherKey } from "../../../../core/stores/steam/publisher.js";
+import { StoreUnavailable } from "../../../../core/stores/http.js";
 import { listAssets, readListing } from "../../listing/store.js";
 import {
   isSteamChecklistItem,

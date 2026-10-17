@@ -35,6 +35,9 @@
  * everything product's identity fragment: `account` and `keyEntryLimit` after `configured`, and
  * the `attach`, `subject`, `signout` and `accountPortal` endpoints last. Additive keys a client
  * ignores; every Identity-off fragment is unchanged.
+ * CM-29 added the eighth service, Commerce (plans/CM-29.md §2): each golden gained
+ * `services.commerce` after `sync`, `{"enabled":false}` when off; the everything product runs it
+ * and pins the fragment (the two device endpoints, nothing about any store). Additive.
  * I-08 (WIRE-CONTRACT-V4 §12.4, §12.5, plans/I-08.md, approved) added Identity's `issuer` after
  * `configured` (now always true: the platform sign-in needs no per-product IdP row) and the
  * `authorize` and `token` endpoints after `authDevicePoll`. Additive; every Identity-off fragment
@@ -92,7 +95,7 @@ async function seedEverything(db: Db, slug: string): Promise<void> {
   await setServices(
     db,
     slug,
-    '{"license":{"enabled":true},"config":{"enabled":true},"release":{"enabled":true},"distribution":{"enabled":true},"update":{"enabled":true},"identity":{"enabled":true},"sync":{"enabled":true}}',
+    '{"license":{"enabled":true},"config":{"enabled":true},"release":{"enabled":true},"distribution":{"enabled":true},"update":{"enabled":true},"identity":{"enabled":true},"sync":{"enabled":true},"commerce":{"enabled":true}}',
     "manifest",
     NOW,
   );

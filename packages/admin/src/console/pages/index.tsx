@@ -19,6 +19,7 @@ const LOADERS: Record<SectionKey, Loader> = {
   update: () => import("../sections/update/index.js"),
   identity: () => import("../sections/identity/index.js"),
   sync: () => import("../sections/sync/index.js"),
+  commerce: () => import("../sections/commerce/index.js"),
 };
 
 const LAZY = Object.fromEntries(

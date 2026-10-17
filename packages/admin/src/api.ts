@@ -2084,6 +2084,7 @@ export const SERVICE_ERROR_MESSAGES: Record<string, string> = {
     "In-app updates need Ship builds to be on first.",
   sync_requires_config: "Cloud Sync needs Managed config to be on first.",
   sync_requires_identity: "Cloud Sync needs Sign-in to be on first.",
+  commerce_requires_license: "Commerce needs Licensing to be on first.",
 };
 
 // ── update settings (feed access + compat window) ─────────────────────────────

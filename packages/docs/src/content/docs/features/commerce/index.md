@@ -1,6 +1,6 @@
 ---
 sidebar:
-  order: 9
+  order: 1
 title: "Commerce bridge"
 description: "Store purchases on the App Store, Google Play and Steam become license flags per deliverable: the store-product map, the purchase binding, verification with each store, refunds and revocations, and what to set up in each store."
 type: "reference"
@@ -16,10 +16,18 @@ Supported: one-time, non-consumable purchases on the **App Store**, **Google Pla
 (DLC). Not supported: subscriptions, consumables, the Microsoft Store, external offers or
 alternative billing.
 
+## Turn it on
+
+Commerce is its own service, off by default. It needs Licensing: turning Licensing off turns
+Commerce off in the same change, and turning Licensing back on does not turn it back on. Declare
+it with `modules: { commerce: { enabled: true } }` in `.pkey/product`. With Commerce off, its
+routes answer not-found and store refund notifications are not processed; the store retries and
+then drops them.
+
 ## How it works
 
 1. **Bind before buying.** The game calls `PolarisKey.commerce.get_binding()`
-   (`GET /<product>/distribution/commerce/binding`, device token) and gets the license's
+   (`GET /<product>/commerce/binding`, device token) and gets the license's
    **binding** — a random UUID, not the license id and not personal data — plus the store products
    on sale. It hands the binding to the store with the purchase: Apple's `appAccountToken`, Play's
    `obfuscatedAccountId`, or the identity of a Steam web-API ticket. A device without a license
@@ -63,14 +71,14 @@ mappings (`409`, `commerce_requires_license`).
 Everything is operator-owned: no `.pkey/` manifest field reaches it, so a repo push cannot decide
 what a payment unlocks or whose purchases are believed. As a platform admin:
 
-1. **Store the store's credential** under Distribution, on **Outlet credentials** ([Channel credentials](/docs/operate/console/keys-and-secrets/#outlet-credentials)),
+1. **Store the store's credential** on **Outlet credentials** ([Channel credentials](/docs/operate/console/keys-and-secrets/#outlet-credentials)),
    pinned to the app: an `app-store-server-key` pinned to the bundle id, a
    `google-service-account` pinned to the package name (the Google Play connector's), a
    `steam-publisher-key` pinned to the game's app id.
 2. **Set the commerce settings**, one block per store you sell on:
 
    ```http title="Request"
-   /manage/api/products/<slug>/distribution/commerce/settings (PUT)
+   /manage/api/products/<slug>/commerce/settings (PUT)
    {
      "appStore": { "bundleId": "gg.vlad.diceroll", "appAppleId": 1234567890 },
      "play": {
@@ -96,7 +104,7 @@ what a payment unlocks or whose purchases are believed. As a platform admin:
    knows):
 
    ```http title="Request"
-   /manage/api/products/<slug>/distribution/commerce/products (PUT)
+   /manage/api/products/<slug>/commerce/products (PUT)
    { "store": "app-store", "productId": "gg.vlad.diceroll.skins", "flag": "extras.diceSkins", "deliverable": "app" }
    ```
 
@@ -115,7 +123,7 @@ what a payment unlocks or whose purchases are believed. As a platform admin:
 
 4. **Point each store's notifications at the Worker** (below).
 
-`GET …/distribution/commerce` shows the settings, whether each store is set up (and why not), the
+`GET …/commerce` shows the settings, whether each store is set up (and why not), the
 product map, recent purchases (hashed keys only) and recent notifications.
 
 ## App Store
@@ -138,7 +146,7 @@ down the hook answers `503` and Apple redelivers.
 - the in-app purchases themselves (non-consumable), in a cleared agreements/tax/banking state.
   The App Store Connect connector can create them from this map, with their localizations, price
   and availability ([In-app purchases](/docs/features/ship-builds/channels/app-store-distribute/#in-app-purchases);
-  in the console, **Distribution → Commerce**, see
+  in the console, **Commerce → In-app purchases**, see
   [App Store products](/docs/features/ship-builds/channels/app-store/#app-store-products-in-commerce));
   the app's first purchase is still submitted in App Store Connect, with an app version;
 - **App Information → App Store Server Notifications**: Production Server URL
@@ -204,9 +212,9 @@ purchase grants the flag (the next license document carries it) and a refund rem
 
 ## Reference
 
-- Routes: `GET /<product>/distribution/commerce/binding`,
-  `POST /<product>/distribution/commerce/claim`, `POST /<product>/distribution/hooks/app-store`,
+- Routes: `GET /<product>/commerce/binding`,
+  `POST /<product>/commerce/claim`, `POST /<product>/distribution/hooks/app-store`,
   `POST /<product>/distribution/hooks/play-rtdn` — see the [route table](/docs/reference/routes/).
-- Tables: `dist_store_products`, `dist_purchase_bindings`, `dist_purchases` (Distribution) and
+- Tables: `dist_store_products`, `dist_purchase_bindings`, `dist_purchases` (Commerce) and
   `license_store_grants` (License) — see the [data model](/docs/reference/data-model/).
 - Security: the threat model's commerce section (`docs/security/THREAT-MODEL.md`).

@@ -1029,7 +1029,7 @@ describe("platform store connections: the commerce bridge falls back to the team
     const tx = { transactionId: "2000000111", appAccountToken: binding };
     w.fakes.apple.transactions.set(tx.transactionId, tx);
     const jws = await w.fakes.apple.signTransaction(tx, NOW - 60);
-    return route(w, "POST", "/distribution/commerce/claim", {
+    return route(w, "POST", "/commerce/claim", {
       token: w.tokenA,
       body: { store: "app-store", signedTransaction: jws },
     });

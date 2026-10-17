@@ -607,7 +607,7 @@
     {
       "from": "services/distribution/commerce",
       "action": "move",
-      "to": ["features/ship-builds/commerce"],
+      "to": ["features/commerce/index"],
       "pri": "P2",
       "package": "DOC-10b"
     },

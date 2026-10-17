@@ -411,6 +411,7 @@ export const releaseFetchGated: Scenario = {
             update: false,
             identity: false,
             sync: false,
+            commerce: false,
           },
         },
       );

@@ -79,6 +79,7 @@ export const SERVICES: readonly {
   { slug: "update", requires: ["distribution"] },
   { slug: "identity", requires: [] },
   { slug: "sync", requires: ["config", "identity"] },
+  { slug: "commerce", requires: ["license"] },
 ];
 
 export const OS = [

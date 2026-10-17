@@ -132,6 +132,7 @@ async function setProductServices(
         update: { enabled: false },
         identity: { enabled: false },
         sync: { enabled: false },
+        commerce: { enabled: false },
         ...services,
       },
     }),

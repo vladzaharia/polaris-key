@@ -52,7 +52,7 @@ async function world(opts: Parameters<typeof commerceWorld>[0] = {}) {
 }
 
 const claim = (cw: CommerceWorld, token: string, body: unknown) =>
-  route(cw, "POST", "/distribution/commerce/claim", { token, body });
+  route(cw, "POST", "/commerce/claim", { token, body });
 
 async function bodyOf(res: Response): Promise<Record<string, unknown>> {
   return (await res.json()) as Record<string, unknown>;
@@ -74,7 +74,7 @@ async function audits(cw: CommerceWorld, action: string): Promise<number> {
 describe("commerce: binding and the licence-document grant layer", () => {
   it("issues one stable binding UUID per licence, never the licence id, and lists the products", async () => {
     const cw = await world();
-    const res = await route(cw, "GET", "/distribution/commerce/binding", {
+    const res = await route(cw, "GET", "/commerce/binding", {
       token: cw.tokenA,
     });
     expect(res.status).toBe(200);
@@ -98,7 +98,7 @@ describe("commerce: binding and the licence-document grant layer", () => {
 
   it("refuses a device with no licence (403 no_license: the SDK enrols first) and no token (401)", async () => {
     const cw = await world();
-    const none = await route(cw, "GET", "/distribution/commerce/binding", {
+    const none = await route(cw, "GET", "/commerce/binding", {
       token: cw.tokenNone,
     });
     expect(none.status).toBe(403);
@@ -106,9 +106,7 @@ describe("commerce: binding and the licence-document grant layer", () => {
       error: { code: "not_entitled" },
       reason: "no_license",
     });
-    expect(
-      (await route(cw, "GET", "/distribution/commerce/binding")).status,
-    ).toBe(401);
+    expect((await route(cw, "GET", "/commerce/binding")).status).toBe(401);
   });
 
   it("a grant appears in the next licence document, and an operator override of the flag wins", async () => {
@@ -164,6 +162,7 @@ describe("commerce: binding and the licence-document grant layer", () => {
           update: { enabled: true },
           identity: { enabled: false },
           sync: { enabled: false },
+          commerce: { enabled: false },
         },
       }),
       "admin",
@@ -176,7 +175,7 @@ describe("commerce: binding and the licence-document grant layer", () => {
     });
     expect(
       (
-        await route(cw, "GET", "/distribution/commerce/binding", {
+        await route(cw, "GET", "/commerce/binding", {
           token: cw.tokenA,
         })
       ).status,
@@ -1132,7 +1131,7 @@ describe("commerce: admin", () => {
     );
     expect(del.status).toBe(200);
     expect(((await bodyOf(del)).products as unknown[]).length).toBe(2);
-    expect(await audits(cw, "distribution.commerce.product.delete")).toBe(1);
+    expect(await audits(cw, "commerce.product.delete")).toBe(1);
   });
 
   it("maps a pack to its own delivery gate, which the catalog need not declare (P0-48)", async () => {
@@ -1235,6 +1234,7 @@ describe("commerce: the seams", () => {
       update: { enabled: true },
       identity: { enabled: false },
       sync: { enabled: false },
+      commerce: { enabled: false },
     };
     const ctx = {
       env: cw.env,

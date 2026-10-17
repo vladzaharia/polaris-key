@@ -1505,6 +1505,49 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
           }
         }
       }
+    },
+    {
+      "$comment": "commerce_requires_license: Commerce turns store purchases into licence flags. (The legacy \`licensing\` module enables license, so it satisfies the requirement too.)",
+      "if": {
+        "required": ["modules"],
+        "properties": {
+          "modules": {
+            "required": ["commerce"],
+            "properties": {
+              "commerce": {
+                "required": ["enabled"],
+                "properties": { "enabled": { "const": true } }
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "modules": {
+            "anyOf": [
+              {
+                "required": ["license"],
+                "properties": {
+                  "license": {
+                    "required": ["enabled"],
+                    "properties": { "enabled": { "const": true } }
+                  }
+                }
+              },
+              {
+                "required": ["licensing"],
+                "properties": {
+                  "licensing": {
+                    "required": ["enabled"],
+                    "properties": { "enabled": { "const": true } }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
     }
   ],
   "$defs": {
@@ -1618,6 +1661,7 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
         "update": { "$ref": "#/$defs/moduleFlag" },
         "identity": { "$ref": "#/$defs/moduleFlag" },
         "sync": { "$ref": "#/$defs/moduleFlag" },
+        "commerce": { "$ref": "#/$defs/moduleFlag" },
         "licensing": {
           "$ref": "#/$defs/moduleFlag",
           "description": "Deprecated: write the service slug license. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
@@ -16231,7 +16275,8 @@ var SERVICE_SLUGS = [
   "distribution",
   "update",
   "identity",
-  "sync"
+  "sync",
+  "commerce"
 ];
 var DEFAULT_ENABLED_SERVICES = [
   "license",
@@ -16244,7 +16289,8 @@ var SERVICE_REQUIRES = {
   distribution: ["release"],
   update: ["distribution"],
   identity: [],
-  sync: ["config", "identity"]
+  sync: ["config", "identity"],
+  commerce: ["license"]
 };
 var MODULE_SERVICES = {
   licensing: ["license"],
@@ -16257,7 +16303,8 @@ var MODULE_SERVICES = {
   distribution: ["distribution"],
   update: ["update"],
   identity: ["identity"],
-  sync: ["sync"]
+  sync: ["sync"],
+  commerce: ["commerce"]
 };
 var ASSET_REF_EXTENSIONS = [
   "png",
@@ -18401,6 +18448,10 @@ var REQUIREMENT_MESSAGES = /* @__PURE__ */ new Map([
   [
     "sync_requires_identity",
     "Cloud Sync needs a signed-in person, so identity must be enabled too."
+  ],
+  [
+    "commerce_requires_license",
+    "The commerce service turns store purchases into licence flags, so license must be enabled too."
   ]
 ]);
 var LICENSING_ENTITLEMENT_MODELS = ["legacy", "combined"];

@@ -31,11 +31,10 @@ const table = JSON.parse(
 const ICON_DIR = join(PKG, "icons/services");
 
 describe("service icon table", () => {
-  it("has ten icons: core, every service in tools/services.json, commerce, packs", () => {
+  it("has ten icons: core, every service in tools/services.json (Commerce included), packs", () => {
     expect([...SERVICE_ICON_IDS]).toEqual([
       "core",
       ...table.services.map((s) => s.slug),
-      "commerce",
       "packs",
     ]);
     expect(SERVICE_ICON_IDS).toHaveLength(10);

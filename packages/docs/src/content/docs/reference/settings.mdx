@@ -127,7 +127,6 @@ One value per product. A service's settings are product settings whose key start
 | `distribution.outlets` | [Outlets](/docs/features/ship-builds/channels/): The places the product is distributed (direct, App Store, Play, Steam, …) with each store's identity for it. | structured (outlets (distribution.schema.json)) | unset | cascade | manifest | `distribution:outlets` | L0 on change | — |
 | `distribution.transports` | [Transports](/docs/features/ship-builds/channels/delivery/): Which transport carries each deliverable on each outlet: a deliverable's own entry, else the packs entry for a pack, else the default (pkey-cdn when unset). | structured (transports (distribution.schema.json)) | unset | cascade | manifest | `distribution:transports` | L1 on change | devices see it (document) |
 | `distribution.feeds` | [Package feeds](/docs/features/ship-builds/channels/): Per ecosystem: whether the product's feed answers, who may read it, its namespace and the largest package it accepts. The platform's feeds policy bounds it. | structured (dist_registry_feeds rows (registry/settings.ts)) | unset | cascade | operator | — | L1 on change | — |
-| `distribution.commerce` | [Commerce](/docs/features/ship-builds/commerce/): Which store purchases unlock what, and whether sandbox and test purchases count. Operator-only by design: a repo push must never decide which purchases unlock a flag. | structured (commerce settings (commerce/settings.ts)) | unset | cascade | operator | — | L1 on change | reason required; console area: Commerce |
 
 ### Update
 
@@ -155,6 +154,12 @@ One value per product. A service's settings are product settings whose key start
 | Key | Setting | Value | Default | Merge | Ownership | Manifest | Confirm | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `cloudSync.ceiling.bytes` | [Product storage ceiling](/docs/features/cloud-sync/): The most Cloud Sync data all people on the product may keep together: settings, records and files. Past it, a write that grows usage is refused; reads, clears and deletes keep working, and nothing is deleted. | integer 0–1125899906842624 bytes | `53687091200` | cascade | operator | — | L2 up, L1 down | registered ahead of U-05; reason required |
+
+### commerce
+
+| Key | Setting | Value | Default | Merge | Ownership | Manifest | Confirm | Notes |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `commerce.stores` | [Commerce](/docs/features/commerce/): Which store purchases unlock what, and whether sandbox and test purchases count. Operator-only by design: a repo push must never decide which purchases unlock a flag. | structured (commerce settings (settings.ts)) | unset | cascade | operator | — | L1 on change | reason required |
 
 ## Entity
 

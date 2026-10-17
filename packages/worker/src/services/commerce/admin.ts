@@ -1,16 +1,16 @@
 /// <reference types="@cloudflare/workers-types" />
 
 /**
- * The commerce bridge's admin surface (P6-01) — `/manage/api/products/<slug>/distribution/commerce…`:
+ * The commerce bridge's admin surface (P6-01) — `/manage/api/products/<slug>/commerce…`:
  *
- *     GET    …/distribution/commerce                         settings, store products, setup per
+ *     GET    …/commerce                         settings, store products, setup per
  *                                                            store, recent purchases and events
- *     PUT    …/distribution/commerce/settings                replace the settings (`settings.ts`)
- *     PUT    …/distribution/commerce/products                map one store product to a flag (one
+ *     PUT    …/commerce/settings                replace the settings (`settings.ts`)
+ *     PUT    …/commerce/products                map one store product to a flag (one
  *                                                            the catalog declares, or the
  *                                                            deliverable's delivery gate) and a
  *                                                            deliverable
- *     DELETE …/distribution/commerce/products/<store>/<id>   remove a mapping: no new grant for
+ *     DELETE …/commerce/products/<store>/<id>   remove a mapping: no new grant for
  *                                                            the product; grants already made
  *                                                            stay, and a later refund or
  *                                                            revocation still revokes every
@@ -27,19 +27,18 @@
  */
 
 import { APP_DELIVERABLE_ID } from "@polaris-key/manifest";
-import { ErrorCode } from "../../../core/errors.js";
-import type { ServiceContext } from "../../../core/registry.js";
-import type { AdminSession } from "../../../core/console/session.js";
-import { adminJson, err, readBody } from "../../../core/console/respond.js";
-import { audit } from "../../../core/audit.js";
-import { readActiveCatalog } from "../../../core/activeCatalog.js";
+import { ErrorCode } from "../../core/errors.js";
+import type { ServiceContext } from "../../core/registry.js";
+import type { AdminSession } from "../../core/console/session.js";
+import { adminJson, err, readBody } from "../../core/console/respond.js";
+import { audit } from "../../core/audit.js";
+import { readActiveCatalog } from "../../core/activeCatalog.js";
 import {
   isStore,
   STORES,
   type Store,
-} from "../../../core/licensing/storeGrants.js";
-import { entitlementOf } from "../access.js";
-import { listEvents } from "../../../core/stores/events.js";
+} from "../../core/licensing/storeGrants.js";
+import { listEvents } from "../../core/stores/events.js";
 import {
   readCommerceSettings,
   validateCommerceSettings,
@@ -58,7 +57,7 @@ import {
 import { appStoreCredential } from "./apple.js";
 import { playCredential } from "./play.js";
 import { steamCredential } from "./steam.js";
-import { APP_STORE_EVENTS, PLAY_EVENTS } from "./index.js";
+import { APP_STORE_EVENTS, PLAY_EVENTS } from "./bridge.js";
 
 type AdminCtx = ServiceContext & { session: AdminSession };
 
@@ -160,7 +159,7 @@ const licenseOff = () =>
  * so the name must be one something reads, or the store takes the player's money and unlocks
  * nothing (a typo, or a config key's name). Two names are read:
  *
- * - the deliverable's delivery gate (`dist_access.entitlement`, `entitlementOf`): a pack sold as
+ * - the deliverable's delivery gate (`dist_access.entitlement`, read through `hooks.delivery().entitlement`): a pack sold as
  *   DLC is mapped to the very flag that gates its download, and that gate is an entitlement name
  *   the catalog need not declare (policy-only gates pass through unpruned, `core/licensing/payload.ts`);
  * - a `flag` entry of the product's active catalog, which the app reads.
@@ -170,11 +169,14 @@ const licenseOff = () =>
  */
 async function flagRefusal(
   db: AdminCtx["db"],
+  hooks: AdminCtx["hooks"],
   slug: string,
   flag: string,
   deliverable: string,
 ): Promise<string | null> {
-  if ((await entitlementOf(db, slug, deliverable)) === flag) return null;
+  // Distribution's gate, through its hook: no gate is read while Distribution is off.
+  const gate = await hooks.delivery()?.entitlement(deliverable);
+  if (gate === flag) return null;
   const active = await readActiveCatalog(db, slug);
   if (active.state === "missing")
     return `the product has no catalog to check ${flag} against: publish one that declares ${flag} as a flag`;
@@ -192,14 +194,14 @@ export async function handleCommerceAdmin(
 ): Promise<Response | null> {
   const { req, db, product, session, now, rest, hooks } = ctx;
   const slug = product.slug;
-  if (rest.length === 1) {
+  if (rest.length === 0) {
     if (req.method !== "GET")
       return err(405, ErrorCode.BadRequest, "method not allowed");
     return adminJson(await view(ctx));
   }
   const licenseOn = product.services.license?.enabled === true;
 
-  if (rest.length === 2 && rest[1] === "settings") {
+  if (rest.length === 1 && rest[0] === "settings") {
     if (req.method !== "PUT")
       return err(405, ErrorCode.BadRequest, "method not allowed");
     if (!licenseOn) return licenseOff();
@@ -215,15 +217,15 @@ export async function handleCommerceAdmin(
       slug,
       session,
       now,
-      "distribution.commerce.settings",
+      "commerce.settings",
       { kind: "commerce", id: slug },
       `Set the commerce settings of ${slug} (stores: ${on.join(", ") || "none"})`,
     );
     return adminJson(await view(ctx));
   }
 
-  if (rest[1] !== "products") return null;
-  if (rest.length === 2) {
+  if (rest[0] !== "products") return null;
+  if (rest.length === 1) {
     if (req.method !== "PUT")
       return err(405, ErrorCode.BadRequest, "method not allowed");
     if (!licenseOn) return licenseOff();
@@ -278,6 +280,7 @@ export async function handleCommerceAdmin(
       });
     const refused = await flagRefusal(
       db,
+      hooks,
       slug,
       body.flag as string,
       deliverable,
@@ -298,20 +301,20 @@ export async function handleCommerceAdmin(
       slug,
       session,
       now,
-      "distribution.commerce.product.set",
+      "commerce.product.set",
       { kind: "store-product", id: `${store}:${body.productId as string}` },
       `Mapped ${store} product ${body.productId as string} to ${body.flag as string} on ${deliverable}`,
     );
     return adminJson(await view(ctx));
   }
 
-  if (rest.length === 4) {
+  if (rest.length === 3) {
     if (req.method !== "DELETE")
       return err(405, ErrorCode.BadRequest, "method not allowed");
-    const store = rest[2]!;
+    const store = rest[1]!;
     let id: string;
     try {
-      id = decodeURIComponent(rest[3]!);
+      id = decodeURIComponent(rest[2]!);
     } catch {
       return err(404, ErrorCode.NotFound, "no such store product");
     }
@@ -324,7 +327,7 @@ export async function handleCommerceAdmin(
       slug,
       session,
       now,
-      "distribution.commerce.product.delete",
+      "commerce.product.delete",
       { kind: "store-product", id: `${store}:${id}` },
       `Removed the mapping of ${store} product ${id}`,
     );

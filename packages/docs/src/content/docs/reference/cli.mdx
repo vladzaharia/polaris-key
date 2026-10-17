@@ -28,7 +28,7 @@ Every `pkey` command and flag. Run `pkey help` for the same table in your termin
 Scaffold .pkey/ in this directory.
 
 ```text
-pkey init [--product slug] [--name name] [--modules license,config,release,distribution,update,identity,sync] [--admin-group group] [--release-owner owner] [--release-repo repo] [--force]
+pkey init [--product slug] [--name name] [--modules license,config,release,distribution,update,identity,sync,commerce] [--admin-group group] [--release-owner owner] [--release-repo repo] [--force]
 ```
 
 pkey init scaffolds .pkey/ in the current directory: product.yaml and schema.yaml always, release.yaml when Release is on. --modules takes the service slugs or the legacy module names (licensing, releases, oidc, edgeMint) and writes service slugs; without it you get license,config. --product (or --slug) defaults to the directory's name and --name to a titleized slug. Existing files are never overwritten without --force.
