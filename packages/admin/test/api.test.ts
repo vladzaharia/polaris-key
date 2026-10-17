@@ -60,8 +60,8 @@ afterEach(() => {
 
 describe("api — request shaping", () => {
   it("GET requests carry no CSRF header and no Content-Type", async () => {
-    stubFetch(() => json({ licenses: [] }));
-    await api.licenses("djdl");
+    stubFetch(() => json({ licenses: [], nextCursor: null }));
+    await api.licensesPage("djdl");
     const init = calls[0]!.init;
     const headers = init.headers as Headers;
     expect(calls[0]!.url).toBe("/manage/api/products/djdl/license/licenses");
@@ -260,6 +260,22 @@ describe("ApiError", () => {
 // The service-grouped admin surface (plan §R1)
 // ═════════════════════════════════════════════════════════════════════════════
 
+describe("api — licence list paging (P0-29)", () => {
+  it("licenses() walks every page by cursor", async () => {
+    stubFetch((url) =>
+      url.includes("cursor=c1")
+        ? json({ licenses: [{ id: "b" }], nextCursor: null })
+        : json({ licenses: [{ id: "a" }], nextCursor: "c1" }),
+    );
+    const all = await api.licenses("djdl");
+    expect(all.licenses.map((l) => l.id)).toEqual(["a", "b"]);
+    expect(calls.map((c) => c.url)).toEqual([
+      "/manage/api/products/djdl/license/licenses?limit=90",
+      "/manage/api/products/djdl/license/licenses?limit=90&cursor=c1",
+    ]);
+  });
+});
+
 describe("api — every product-scoped resource is under its owning service", () => {
   /**
    * The one place the console's half of §R1 is pinned. The worker deleted the pre-suite
@@ -269,7 +285,7 @@ describe("api — every product-scoped resource is under its owning service", ()
    * clicking through the console is not.
    */
   const CASES: [string, () => Promise<unknown>, string][] = [
-    ["licenses", () => api.licenses("djdl"), "license/licenses"],
+    ["licenses", () => api.licensesPage("djdl"), "license/licenses"],
     ["license", () => api.license("djdl", "l1"), "license/licenses/l1"],
     [
       "putLicenseOverrides",

@@ -68,7 +68,12 @@ import {
   validateDeviceToken,
   type LicensedDeviceToken,
 } from "../devices.js";
-import { openManagedPayload, resolveMergedPayload } from "./payload.js";
+import {
+  openManagedPayload,
+  resolveMergedPayload,
+  type PayloadLayerSource,
+} from "./payload.js";
+import { prefetchedLayerSource } from "./payloadPrefetch.js";
 import {
   injectAdminPolicy,
   licenseTermsOf,
@@ -305,7 +310,7 @@ export async function licenseTerms(
   now: number,
   /** LX-08: `withoutOidcGrant` for a hypothetical row whose overrides already carry the
    *  provisioned keys a sign-in is about to write (`core/licensing/payload.ts`). */
-  opts: { withoutOidcGrant?: boolean } = {},
+  opts: { withoutOidcGrant?: boolean; source?: PayloadLayerSource } = {},
 ): Promise<LicenseTerms> {
   const { payload, tier } = await resolveMergedPayload(
     db,
@@ -313,7 +318,11 @@ export async function licenseTerms(
     license,
     null,
     now,
-    { entitlementsOnly: true, withoutOidcGrant: opts.withoutOidcGrant },
+    {
+      entitlementsOnly: true,
+      withoutOidcGrant: opts.withoutOidcGrant,
+      source: opts.source,
+    },
   );
   const merged = payload.entitlements["deviceLimit"];
   return licenseTermsOf(
@@ -322,6 +331,23 @@ export async function licenseTerms(
     product,
     merged && typeof merged.value === "number" ? merged.value : null,
   );
+}
+
+/**
+ * {@link licenseTerms} for a set of licences (a list's page): the same resolution per licence,
+ * over layers read once for the set (`prefetchedLayerSource`), so the reads do not grow with it.
+ */
+export async function licenseTermsMany(
+  db: Db,
+  product: LicenseTermsProduct,
+  licenses: readonly LicenseRow[],
+  now: number,
+): Promise<Map<string, LicenseTerms>> {
+  const source = await prefetchedLayerSource(db, product.slug, licenses, now);
+  const out = new Map<string, LicenseTerms>();
+  for (const l of licenses)
+    out.set(l.id, await licenseTerms(db, product, l, now, { source }));
+  return out;
 }
 
 /** The seat limit `authorizeDevice` enforces on `license` (`licenseDeviceLimitInfo`'s number).

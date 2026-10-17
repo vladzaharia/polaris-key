@@ -256,6 +256,30 @@ export async function listLicenseProfiles(
   );
 }
 
+/** {@link listLicenseProfiles} for many licences: one read per 90 ids, licence id → its rows in order. */
+export async function listLicenseProfileRows(
+  db: Db,
+  product: string,
+  licenseIds: readonly string[],
+): Promise<Map<string, LicenseProfileRow[]>> {
+  const out = new Map<string, LicenseProfileRow[]>();
+  for (let i = 0; i < licenseIds.length; i += 90) {
+    const ids = licenseIds.slice(i, i + 90);
+    const rows = await db.all<LicenseProfileRow>(
+      `SELECT * FROM license_profiles WHERE product = ? AND license_id IN (${ids.map(() => "?").join(", ")})
+        ORDER BY license_id, sort_order ASC, profile_id ASC`,
+      product,
+      ...ids,
+    );
+    for (const r of rows) {
+      const list = out.get(r.license_id) ?? [];
+      list.push(r);
+      out.set(r.license_id, list);
+    }
+  }
+  return out;
+}
+
 export async function setLicenseProfiles(
   db: Db,
   product: string,
@@ -456,22 +480,78 @@ export function stmtRestoreLicenseAccount(
 }
 
 // ── Licenses ─────────────────────────────────────────────────────────────────
+/** The licence list's page size when the caller names none (P0-29). */
+export const LICENSE_PAGE_DEFAULT = 50;
+/** The largest page: what one `IN (…)` read binds (D1 allows 100 parameters, one is the product). */
+export const LICENSE_PAGE_MAX = 90;
+
+/** A keyset position in the list's order (`activated_at DESC, id DESC`). */
+export interface LicenseCursor {
+  activatedAt: number;
+  id: string;
+}
+
+/** The cursor of the last licence of a page: `<activated_at>.<id>`, opaque to the caller. */
+export function encodeLicenseCursor(l: {
+  activated_at: number;
+  id: string;
+}): string {
+  return `${l.activated_at}.${l.id}`;
+}
+
+/** A cursor back to its position; `null` when it is not one this module wrote. */
+export function decodeLicenseCursor(raw: string): LicenseCursor | null {
+  const m = /^(-?\d{1,15})\.([A-Za-z0-9_-]{1,64})$/.exec(raw);
+  return m ? { activatedAt: Number(m[1]), id: m[2]! } : null;
+}
+
 export async function listLicenses(
   db: Db,
   product: string,
   filter: { holder?: HolderFilter; batch?: string } = {},
 ): Promise<LicenseRow[]> {
+  return (await listLicensePage(db, product, filter)).licenses;
+}
+
+/**
+ * One page of the list, newest first by keyset (`activated_at DESC, id DESC`), or all of it when
+ * `page.limit` is absent. `nextCursor` is `null` on the last page.
+ */
+export async function listLicensePage(
+  db: Db,
+  product: string,
+  filter: { holder?: HolderFilter; batch?: string } = {},
+  page: { limit?: number; after?: LicenseCursor } = {},
+): Promise<{ licenses: LicenseRow[]; nextCursor: string | null }> {
   // LX-26: the holder filter is the derived rule as SQL (`core/licensing/licenseHolders.ts`), never a copy.
   const holder = filter.holder
     ? ` AND ${holderFilterSql(filter.holder, "licenses")}`
     : "";
   // LX-28: one batch's licences (`idx_licenses_batch`).
   const batch = filter.batch !== undefined ? " AND batch_id = ?" : "";
-  return db.all<LicenseRow>(
-    `SELECT * FROM licenses WHERE product = ?${holder}${batch} ORDER BY activated_at DESC, id DESC`,
+  const after = page.after
+    ? " AND (activated_at < ? OR (activated_at = ? AND id < ?))"
+    : "";
+  const rows = await db.all<LicenseRow>(
+    `SELECT * FROM licenses WHERE product = ?${holder}${batch}${after} ORDER BY activated_at DESC, id DESC${
+      page.limit !== undefined ? " LIMIT ?" : ""
+    }`,
     product,
     ...(filter.batch !== undefined ? [filter.batch] : []),
+    ...(page.after
+      ? [page.after.activatedAt, page.after.activatedAt, page.after.id]
+      : []),
+    ...(page.limit !== undefined ? [page.limit + 1] : []),
   );
+  const licenses = page.limit !== undefined ? rows.slice(0, page.limit) : rows;
+  const last = licenses[licenses.length - 1];
+  return {
+    licenses,
+    nextCursor:
+      page.limit !== undefined && rows.length > page.limit && last
+        ? encodeLicenseCursor(last)
+        : null,
+  };
 }
 
 /**

@@ -38,6 +38,7 @@ import {
   type Facet,
 } from "../../../../ui/data-table/index.js";
 import { CreateLicenseDialog } from "../components/CreateLicenseDialog.js";
+import { LoadMoreLicenses } from "../components/LoadMoreLicenses.js";
 import { OverrideMigrationNotice } from "../components/OverrideMigrationNotice.js";
 import {
   BulkDeleteDialog,
@@ -59,7 +60,7 @@ import {
   licenseState,
   seatLimitOf,
   seatLimitText,
-  useLicenses,
+  useLicensePages,
   useTiers,
   type LicenseState,
 } from "../components/shared.js";
@@ -77,7 +78,7 @@ const NO_TIER = "__none__";
 const NO_BATCH = "__none__";
 
 export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
-  const licensesQ = useLicenses(slug);
+  const { query: licensesQ, licenses } = useLicensePages(slug);
   const tiersQ = useTiers(slug);
   const batchesQ = useLicenseBatches(slug);
   const product = useProduct(slug).data;
@@ -92,10 +93,6 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
     rows: LicenseSummary[];
   } | null>(null);
 
-  const licenses = React.useMemo(
-    () => licensesQ.data?.licenses ?? [],
-    [licensesQ.data],
-  );
   const tiers = React.useMemo(() => tiersQ.data?.tiers ?? [], [tiersQ.data]);
   const batches = React.useMemo(
     () => batchesQ.data?.batches ?? [],
@@ -409,6 +406,7 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
             licensesQ.data ? (
               <span className="text-sm tabular-nums text-fg-muted">
                 {total.toLocaleString()}
+                {licensesQ.hasNextPage ? "+" : ""}
               </span>
             ) : null
           }
@@ -530,6 +528,7 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
         }
         mobile="cards"
       />
+      <LoadMoreLicenses query={licensesQ} />
 
       <CreateLicenseDialog
         slug={slug}

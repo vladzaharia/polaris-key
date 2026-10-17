@@ -400,7 +400,7 @@ function overrideEntitlements(
 }
 
 /** One stored entry of an `oidc` grant. */
-interface GrantEntryRow {
+export interface GrantEntryRow {
   key: string;
   value_json: string;
   state: string;
@@ -452,6 +452,14 @@ export async function oidcGrantLayer(
     licenseId,
     ...counts.params,
   );
+  return oidcGrantLayerOf(rows, overridesJson);
+}
+
+/** {@link oidcGrantLayer}'s layer out of one licence's contributing entries. */
+export function oidcGrantLayerOf(
+  rows: readonly GrantEntryRow[],
+  overridesJson: string | null,
+): string | null {
   if (rows.length === 0) return null;
   const shadowed = overrideEntitlements(overridesJson);
   const entitlements: Record<string, ManagedEntry> = {};
@@ -471,6 +479,45 @@ export async function oidcGrantLayer(
   }
   if (Object.keys(entitlements).length === 0) return null;
   return JSON.stringify({ entitlements });
+}
+
+/**
+ * The contributing `oidc` grant entries of many licences in one read per 90 ids (a licence
+ * list's page): licence id → the rows `oidcGrantLayer` reads for it, in the same order.
+ */
+export async function oidcGrantRowsFor(
+  db: Db,
+  product: string,
+  licenseIds: readonly string[],
+  now: number,
+): Promise<Map<string, GrantEntryRow[]>> {
+  const out = new Map<string, GrantEntryRow[]>();
+  const counts = grantContributesSql("g", now);
+  for (let i = 0; i < licenseIds.length; i += 90) {
+    const ids = licenseIds.slice(i, i + 90);
+    const rows = await db.all<GrantEntryRow & { license_id: string }>(
+      `SELECT g.license_id AS license_id, ge.key, ge.value_json, ge.state, ge.updated_at
+         FROM grants g JOIN grant_entitlements ge
+           ON ge.product = g.product AND ge.grant_id = g.id
+        WHERE g.product = ? AND g.id = 'grt_oidc_' || g.license_id
+          AND g.license_id IN (${ids.map(() => "?").join(", ")}) AND ${counts.sql}
+        ORDER BY g.license_id, ge.key`,
+      product,
+      ...ids,
+      ...counts.params,
+    );
+    for (const r of rows) {
+      const list = out.get(r.license_id) ?? [];
+      list.push({
+        key: r.key,
+        value_json: r.value_json,
+        state: r.state,
+        updated_at: r.updated_at,
+      });
+      out.set(r.license_id, list);
+    }
+  }
+  return out;
 }
 
 // ── the provisioned-keys move (§7.14 step 4) ────────────────────────────────────────────────

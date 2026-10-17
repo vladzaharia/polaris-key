@@ -68,6 +68,28 @@ describe("Licenses list", () => {
     ).toBe("#/p/djdl/license/licenses/lic_1");
   });
 
+  it("loads the list by cursor, a page at a time (P0-29)", async () => {
+    const [first, second, ...rest] = LICENSES;
+    const log = bootLicense("#/p/djdl/license/licenses", {
+      routes: {
+        [`${API}/license/licenses`]: (q: URLSearchParams) =>
+          q.get("cursor") === "c1"
+            ? { licenses: rest, nextCursor: null }
+            : { licenses: [first, second], nextCursor: "c1" },
+      },
+    });
+    const t = await table();
+    await within(t).findByText("Ada Lovelace");
+    expect(within(t).queryByText("Old seat")).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Load more" }));
+    await within(t).findByText("Old seat");
+    expect(screen.queryByRole("button", { name: "Load more" })).toBeNull();
+    const cursors = log.calls
+      .filter((c) => c.path === `${API}/license/licenses`)
+      .map((c) => new URLSearchParams(c.query).get("cursor"));
+    expect(cursors).toContain("c1");
+  });
+
   it("counts each state on a facet tile, and a tile filters the table through the URL", async () => {
     bootLicense("#/p/djdl/license/licenses");
     const t = await table();

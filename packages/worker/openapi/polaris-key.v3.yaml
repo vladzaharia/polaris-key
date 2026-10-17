@@ -15287,7 +15287,10 @@ paths:
       tags: [admin]
       summary: The product's licences, each with its derived holder, optionally filtered by holder
       description: >
-        Every licence of the product, newest first, as the console's Licenses list reads it. LX-26
+        The product's licences, newest first (`activated_at`, then id, descending), a page at a
+        time (P0-29): `?limit=` (1 to 90, default 50) and `?cursor=` (the previous answer's
+        `nextCursor`, which is `null` on the last page). Each page is read in a fixed number of
+        queries. The console's Licenses list reads it. LX-26
         (notes/S-24 §5.1, §6.3): each carries `holder`, derived from whether the licence is in an
         account and whether it has an email (no column): `floating` (neither: whoever holds the key
         uses it) or `assigned` (in an account, or waiting for an account to verify its email). The
@@ -15312,20 +15315,37 @@ paths:
             schema: { type: string },
             description: "Only the licences of this batch (LX-28). An unknown id lists none.",
           }
+        - {
+            name: limit,
+            in: query,
+            required: false,
+            schema: { type: integer, minimum: 1, maximum: 90, default: 50 },
+            description: "The page size.",
+          }
+        - {
+            name: cursor,
+            in: query,
+            required: false,
+            schema: { type: string },
+            description: "The previous page's `nextCursor`.",
+          }
       responses:
         "200":
-          description: The licences, newest first.
+          description: One page of licences, newest first.
           content:
             application/json:
               schema:
                 type: object
-                required: [licenses]
+                required: [licenses, nextCursor]
                 properties:
                   licenses:
                     type: array
                     items: { $ref: "#/components/schemas/AdminLicenseSummary" }
+                  nextCursor:
+                    type: [string, "null"]
+                    description: "Pass as `cursor` for the next page; `null` on the last."
         "400":
-          description: "`holder` is not one of the four values (`bad_request`, `fields: [holder]`)."
+          description: "`holder` is not one of the four values, `limit` is out of range, or `cursor` is not one this list wrote (`bad_request`, `fields` names it)."
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }

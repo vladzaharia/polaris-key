@@ -3481,6 +3481,14 @@ export interface OverrideUpdate {
 export type LicenseStatus = "active" | "disabled";
 export type KeyStatus = "active" | "revoked";
 
+/** The licence list's largest page (the Worker's `LICENSE_PAGE_MAX`). */
+export const LICENSE_PAGE_MAX = 90;
+
+export interface LicensePage {
+  licenses: LicenseSummary[];
+  nextCursor: string | null;
+}
+
 export interface LicenseSummary {
   id: string;
   name: string;
@@ -5386,8 +5394,33 @@ const rawApi = {
     ),
 
   // ── licenses ────────────────────────────────────────────────────────────────
-  licenses: (slug: string) =>
-    call<{ licenses: LicenseSummary[] }>(`${p(slug)}/license/licenses`),
+  /** One page of the list (P0-29): newest first, `nextCursor` null on the last. */
+  licensesPage: (
+    slug: string,
+    page: { cursor?: string | null; limit?: number } = {},
+  ) => {
+    const search = new URLSearchParams();
+    if (page.limit) search.set("limit", String(page.limit));
+    if (page.cursor) search.set("cursor", page.cursor);
+    const qs = search.toString();
+    return call<LicensePage>(
+      `${p(slug)}/license/licenses${qs ? `?${qs}` : ""}`,
+    );
+  },
+  /** Every licence, page by page: for the views that need the whole set (counts, pickers). */
+  licenses: async (slug: string): Promise<{ licenses: LicenseSummary[] }> => {
+    const licenses: LicenseSummary[] = [];
+    let cursor: string | null = null;
+    do {
+      const page: LicensePage = await api.licensesPage(slug, {
+        cursor,
+        limit: LICENSE_PAGE_MAX,
+      });
+      licenses.push(...page.licenses);
+      cursor = page.nextCursor;
+    } while (cursor);
+    return { licenses };
+  },
   license: (slug: string, id: string) =>
     call<LicenseDetail>(`${p(slug)}/license/licenses/${enc(id)}`),
   createLicense: (slug: string, body: CreateLicenseBody) =>
