@@ -143,7 +143,7 @@ export function FeatureCard({
       aria-labelledby={headingId}
       data-service={feature.service}
       data-feature={feature.id}
-      className="space-y-4 rounded-xl border border-border bg-surface-raised p-4 sm:p-5"
+      className="flex flex-col gap-4 rounded-xl border border-border bg-surface-raised p-4 sm:p-5"
     >
       <header className="flex flex-wrap items-center justify-between gap-2">
         <h2
@@ -159,6 +159,7 @@ export function FeatureCard({
             <Button
               variant="ghost"
               size="sm"
+              aria-label={`${folded ? "Show" : "Hide"} ${label}`}
               aria-expanded={!folded}
               aria-controls={bodyId}
               onClick={() => setExpanded((v) => !v)}
@@ -171,7 +172,7 @@ export function FeatureCard({
       <div
         id={bodyId}
         hidden={folded}
-        className={folded ? "hidden" : "space-y-4"}
+        className={folded ? "hidden" : "flex flex-col gap-4"}
       >
         {feature.unavailable ? (
           <p className="flex flex-wrap items-center gap-2 text-sm text-fg-muted">
@@ -238,6 +239,8 @@ export function FeatureCard({
                     rel="noreferrer"
                   >
                     Customize the screens
+                    <ExternalLink aria-hidden className="size-3.5" />
+                    <span className="sr-only"> (opens the docs)</span>
                   </a>
                   <a
                     className={LINK}

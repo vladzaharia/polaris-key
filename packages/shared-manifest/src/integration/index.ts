@@ -57,3 +57,4 @@ export {
   type SdkSetupContext,
   type TrustPin,
 } from "./setup.js";
+export { pinFingerprint, sdkAddCommand, type PinFingerprint } from "./pins.js";

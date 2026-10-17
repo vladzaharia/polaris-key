@@ -17,6 +17,7 @@ import { Link } from "../../../router.js";
 import { r } from "../../../routes.js";
 import {
   FEATURE_LABEL,
+  platformProgress,
   progress,
   type NextStep,
 } from "../model/integration.js";
@@ -125,9 +126,7 @@ function Body({
                 className="flex min-h-9 items-center gap-2 py-1.5 text-sm hover:bg-hover"
               >
                 {ICON[f.status]}
-                <span className="min-w-0 flex-1 text-fg">
-                  {FEATURE_LABEL[f.id]}
-                </span>
+                <span className="min-w-0 text-fg">{FEATURE_LABEL[f.id]}</span>
                 <span className="text-fg-muted">{WORD[f.status]}</span>
               </Link>
             </li>
@@ -141,7 +140,27 @@ function Body({
           </span>{" "}
           of {total} {total === 1 ? "feature" : "features"} Verified
         </p>
-        <PlatformMeters view={view} />
+        {platformProgress(view).length > 0 ? (
+          <PlatformMeters view={view} />
+        ) : (
+          <div className="space-y-1.5 text-sm">
+            <p className="flex items-center gap-2 text-fg-muted">
+              <Circle
+                aria-hidden
+                className="size-4 border-dashed"
+                strokeDasharray="3 3"
+              />
+              No app seen yet
+            </p>
+            <Link
+              to={r.integration(slug)}
+              className="inline-flex min-h-6 items-center gap-1 text-accent-fg underline-offset-4 hover:underline"
+            >
+              Add the SDK
+              <ArrowRight aria-hidden className="size-3.5" />
+            </Link>
+          </div>
+        )}
       </div>
     </div>
   );

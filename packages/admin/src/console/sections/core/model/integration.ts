@@ -245,7 +245,7 @@ export function nextStep(
   if (!hasSigningKey)
     return {
       text: "Activate a signing key",
-      reason: "Nothing can be signed until one is active.",
+      reason: "No signing key is active, so nothing can be signed.",
       to: r.keys(slug),
     };
   if (pending.length > 0)
@@ -261,7 +261,7 @@ export function nextStep(
     const info = prerequisiteInfo(missing?.id ?? "", slug);
     return {
       text: info.action,
-      reason: `${FEATURE_LABEL[blocked.id]} cannot be verified until you do. ${info.label} is missing.`,
+      reason: `${FEATURE_LABEL[blocked.id]} needs ${info.label.toLowerCase()} before an app can use it.`,
       to: info.href,
     };
   }

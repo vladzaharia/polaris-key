@@ -128,6 +128,7 @@ export function SdkTabs({
         {hidden > 0 || more ? (
           <button
             type="button"
+            aria-label={more ? "Fewer SDKs" : "More SDKs"}
             aria-expanded={more}
             onClick={() => setMore((m) => !m)}
             className="min-h-8 rounded-md px-2 text-sm text-fg-muted hover:text-fg-strong focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"

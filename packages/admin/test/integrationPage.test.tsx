@@ -71,7 +71,9 @@ const openFeature = async (name: string) => {
   const card = (await screen.findByRole("heading", { level: 2, name })).closest(
     "section",
   )!;
-  await userEvent.click(within(card).getByRole("button", { name: "Show" }));
+  await userEvent.click(
+    within(card).getByRole("button", { name: `Show ${name}` }),
+  );
   return card;
 };
 
@@ -179,7 +181,7 @@ describe("Core → Integration", () => {
     expect(document.activeElement).toBe(after);
     // The first three SDKs and the pick show; More reveals the rest, and End reaches the last.
     await userEvent.click(
-      within(list.parentElement!).getByRole("button", { name: "More" }),
+      within(list.parentElement!).getByRole("button", { name: "More SDKs" }),
     );
     within(list)
       .getAllByRole("tab")
@@ -292,7 +294,7 @@ describe("Core → Integration", () => {
     expect(tabs[0]!.textContent).toBe("Swift");
     expect(tabs).toHaveLength(3);
     expect(
-      within(list.parentElement!).getByRole("button", { name: "More" }),
+      within(list.parentElement!).getByRole("button", { name: "More SDKs" }),
     ).toBeTruthy();
   });
 
@@ -339,6 +341,41 @@ describe("Core → Integration", () => {
     expect(
       screen.getByRole("button", { name: "Hide Integration" }),
     ).toBeTruthy();
+  });
+
+  it("One command names the product and carries every pin's fingerprint (N1)", async () => {
+    boot("#/p/djdl/integration?sdk=python", {
+      extra: { [`${API}/integration`]: view() },
+    });
+    await page();
+    await waitFor(() =>
+      expect(document.body.textContent).toMatch(
+        /pkey sdk add python \\\s+--product djdl \\\s+--expect djdl-a@sha256:[0-9a-f]{64}/,
+      ),
+    );
+    expect(document.body.textContent).toMatch(/sha256:[0-9a-f]{64}/);
+  });
+
+  it("puts Your app before the cards in the DOM, and says when no signing key is active (N2, N6)", async () => {
+    boot("#/p/djdl/integration", {
+      extra: {
+        [`${API}/integration`]: view(),
+        [`${API}`]: {
+          product: { slug: "djdl", name: "DJDL", services: {}, signing: null },
+        },
+      },
+    });
+    await page();
+    const aside = (
+      await screen.findByRole("heading", { level: 2, name: "Your app" })
+    ).closest("aside")!;
+    const card = (
+      await screen.findByRole("heading", { level: 2, name: "Managed config" })
+    ).closest("section")!;
+    expect(
+      aside.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(within(aside).getByText("No signing key is active.")).toBeTruthy();
   });
 
   it("passes axe", async () => {

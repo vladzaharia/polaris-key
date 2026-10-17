@@ -300,7 +300,9 @@ describe("Core → Overview", () => {
     // It lives in the card, with its reason, and the header carries no second primary.
     const card = screen.getByTestId("integration-card");
     expect(
-      within(card).getByText(/cannot be verified until you do/),
+      within(card).getByText(
+        /needs a published catalog before an app can use it/,
+      ),
     ).toBeTruthy();
     expect(
       screen.getAllByRole("link", { name: "Publish a catalog" }),

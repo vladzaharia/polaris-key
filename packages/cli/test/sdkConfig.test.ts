@@ -20,6 +20,10 @@ import {
 } from "../src/sdkConfig.js";
 import { renderCliMirror, renderMirror } from "../src/mirrors.js";
 import { fingerprintOf } from "../src/sdkConfig.js";
+import {
+  pinFingerprint,
+  sdkAddCommand,
+} from "@polaris-key/manifest/integration";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(HERE, "../../..");
@@ -374,6 +378,31 @@ describe("pkey sdk add (D30: no trust on first use)", () => {
     );
     expect(io.out()).toContain("https://pkg.plrs.im/pypi/polaris-key/simple/");
     expect(io.out()).toContain("register_argparse");
+  });
+
+  // ST-41: the Integration page's "One command".
+  it("takes the command the console renders, in a folder with no .pkey/, and its fingerprint is the CLI's", async () => {
+    const fp = await pinFingerprint(TRUST_KEY);
+    expect(fp).toBe(fingerprintOf(TRUST_KEY));
+    const command = sdkAddCommand("python", "acme", [
+      { kid: TRUST_KID, fingerprint: fp },
+    ]);
+    // What a shell hands the CLI: continuation lines joined, the program name dropped.
+    const argv = command.replace(/\\\n/g, " ").trim().split(/\s+/).slice(1);
+    expect(argv.slice(0, 4)).toEqual(["sdk", "add", "python", "--product"]);
+    const cwd = await tempDir();
+    const io = capture();
+    expect(
+      await runPkey([...argv, ...release], {
+        cwd,
+        fetchImpl: fakeFetch(DISCOVERY).fetchImpl,
+        ...io,
+      }),
+      io.err(),
+    ).toBe(0);
+    expect(await readFile(path.join(cwd, "polaris_config.py"), "utf8")).toBe(
+      renderSdkConfig("python", await facts()),
+    );
   });
 
   it("refuses, writing nothing, on a different or missing pin", async () => {
