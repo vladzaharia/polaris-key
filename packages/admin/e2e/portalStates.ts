@@ -3,6 +3,7 @@ import { h1, type Override } from "./portalHarness.js";
 import {
   PROFILE_BORN,
   PROFILE_STEAM,
+  FIXTURE_NOW,
   identityOn,
   profileRoutes,
   samRoutes,
@@ -951,20 +952,87 @@ export const SHIPPED: ShippedState[] = [
     routes: { "/api/library": SERVER_ERROR, "/api/licenses": SERVER_ERROR },
     ready: (p) => h1(p, "Something went wrong"),
   },
-  // §4.21 Package token created (PX-11).
+  // §4.21 Personal token created (PX-11, F-33): Account → Packages, Create personal token, then
+  // the shown-once dialog. The sign-in check is covered by portalPackages.e2e.test.ts; here the
+  // session is fresh, so the mint goes through.
   {
     section: "4.21",
     id: "product-token",
-    title: "Package token created",
+    title: "Personal token created",
     scenario: "three",
-    path: "/#/p/tidewater/package",
+    path: "/#/account/packages",
+    routes: {
+      "GET /api/me/tokens": {
+        body: {
+          registryOrigin: "https://pkg.plrs.im",
+          username: "__token__",
+          feeds: [
+            {
+              product: "tidewater",
+              productName: "Tidewater Studio",
+              licenseId: "lic_tidewater",
+              ecosystem: "npm",
+              accessMode: "licensed",
+              baseUrl: "https://pkg.plrs.im/npm/tidewater/",
+              namespace: { scope: "@tidewater" },
+            },
+          ],
+          tokens: [
+            {
+              id: "pt_ci",
+              label: "CI build server",
+              hint: "Hq2a",
+              scope: "packages:read",
+              createdAt: FIXTURE_NOW - 60 * 86_400,
+              expiresAt: FIXTURE_NOW + 90 * 86_400,
+              lastUsedAt: FIXTURE_NOW - 3 * 3600,
+              revokedAt: null,
+              status: "active",
+            },
+          ],
+          legacy: [],
+          limits: {
+            minDays: 1,
+            maxDays: 365,
+            defaultDays: 90,
+            labelMax: 64,
+            perAccount: 25,
+          },
+        },
+      },
+      "POST /api/me/tokens": {
+        status: 201,
+        body: {
+          ok: true,
+          token: "pkeyp_Lm9xT2qVb8sPzK4wNc7dRf1hYj3e",
+          view: {
+            id: "pt_new",
+            label: "Laptop 2",
+            hint: "Yj3e",
+            scope: "packages:read",
+            createdAt: FIXTURE_NOW,
+            expiresAt: FIXTURE_NOW + 90 * 86_400,
+            lastUsedAt: null,
+            revokedAt: null,
+            status: "active",
+          },
+        },
+      },
+    },
     ready: async (p) => {
-      await h1(p, "Tidewater Studio");
-      await p.getByRole("button", { name: "Create token" }).click();
-      const form = p.getByRole("dialog", { name: "Create a token" });
-      await form.getByLabel("Name").fill("Laptop 2");
-      await form.getByRole("button", { name: "Create token" }).click();
-      await p.getByRole("dialog", { name: "Copy your token now" }).waitFor();
+      await h1(p, "Account");
+      const region = p.getByRole("region", { name: /^Packages$/ });
+      await region
+        .getByRole("button", { name: "Create personal token" })
+        .click();
+      const form = p.getByRole("dialog", { name: "Create a personal token" });
+      const name = form.getByLabel("Name");
+      await name.waitFor();
+      await name.fill("Laptop 2");
+      await form.getByRole("button", { name: "Create", exact: true }).click();
+      await p
+        .getByRole("dialog", { name: "Copy your personal token now" })
+        .waitFor();
     },
   },
   // §4.22 Remove a device, inline (PX-04).
