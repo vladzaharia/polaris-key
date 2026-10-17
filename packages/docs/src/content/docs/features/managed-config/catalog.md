@@ -30,7 +30,7 @@ A `flag` is the odd one out: an entitlement, owned by Licensing. Config owns its
 does for the other types, but a flag's resolved _value_ never appears in this service's document.
 It rides the license document's `entitlements` map, read client-side via
 `isEntitled`/`getEntitlements`. A product with Config enabled and License disabled can still
-declare `flag` entries; it simply has no document to deliver their values on.
+declare `flag` entries; it has no document to deliver their values on.
 
 ### Retired spellings
 
