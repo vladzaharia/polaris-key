@@ -184,6 +184,21 @@ const FR: CopyBundle = {
       "Nous ne pouvons pas vérifier l'état de votre compte pour le moment. Réessayez dans quelques minutes.",
     identity_disabled:
       "La connexion via cette application est désactivée. Vos installations et licences continuent de fonctionner.",
+    // I-08 (WIRE-CONTRACT-V4 §12.4, §12.5): the OAuth-shaped passthrough.
+    invalid_request:
+      "L'application a envoyé une demande de connexion illisible. Réessayez.",
+    invalid_client:
+      "Cette application n'est pas configurée pour la connexion. Contactez son développeur.",
+    invalid_grant:
+      "Cette connexion a expiré ou a déjà été utilisée. Connectez-vous à nouveau.",
+    unsupported_grant_type:
+      "L'application a demandé un type de connexion non pris en charge. Contactez son développeur.",
+    invalid_scope:
+      "L'application a demandé un accès que cette connexion ne propose pas. Contactez son développeur.",
+    redirect_uri_mismatch:
+      "L'adresse de retour de cette application n'est pas enregistrée ; nous ne vous y avons pas renvoyé. Contactez son développeur.",
+    license_choice_required:
+      "Choisissez la licence que cet appareil utilise, puis continuez.",
     auth_method_disabled: "Cette méthode de connexion est désactivée.",
     email_unavailable:
       "La connexion par e-mail n'est pas disponible pour le moment.",
