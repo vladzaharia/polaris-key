@@ -593,8 +593,14 @@ function nameNewEnds(ends: Ends): void {
 function reveal(tile: Element): void {
   const r = tile.getBoundingClientRect();
   if (r.height === 0) return;
-  if (r.top < 0 || r.bottom > window.innerHeight)
+  if (r.top < 0 || r.bottom > window.innerHeight) {
     tile.scrollIntoView?.({ block: "nearest", behavior: "instant" });
+    // The scroll position is a whole number of pixels and a tile's edge is not: rounding down
+    // can leave a fraction of a pixel of the tile's bottom edge below the fold.
+    const over = tile.getBoundingClientRect().bottom - window.innerHeight;
+    if (over > 0)
+      window.scrollBy({ top: Math.ceil(over), behavior: "instant" });
+  }
 }
 
 // The route store: one listener set for every useRoute() (the shell, each QuickAction, the sign-in
