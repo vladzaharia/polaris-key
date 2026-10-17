@@ -86,6 +86,7 @@ describe("the sources", () => {
       "Home",
       "Products",
       "API tokens",
+      "Personal tokens",
       // The Platform section's built pages (notes/S-13 §9.1).
       "Settings",
       "Deployment",
