@@ -8563,6 +8563,24 @@ core (SP-55 to SP-57, SP-62).
   yet (an operator's own console edit, or a push killed before its post-write sweep) lasts until
   the next push or console edit drops the approval — the per-mint check refuses while it lasts,
   but anonymous enrolments or sign-ins it allows in the meantime are issued, and fall under (1).
+- **A minted token carries its recipe on its catalog entry (U-31).** The recipe is the entry's
+  `mint` block, from `.pkey/schema` or from a console catalog publish, so there is one place to
+  author it and the same approval gates both: the block is lifted out of the catalog into
+  `edge_mint_config` (the public `/schema` document never carries a signing-secret name or a claims
+  template), and a recipe nobody has approved as it stands answers `404` exactly as before. The
+  block is held to the manifest's own rules (alg, secret-name alphabet, one-hour ceiling, `requires`,
+  key = recipe id), a block and a legacy `edgeMint[]` recipe of one id are refused, and a console
+  publish writes the recipe inside the catalog's claim guard, so a lost claim or refused publish saves
+  nothing. A console save is **not** an approval: it leaves the approval row alone, so a changed
+  recipe goes `changed` and signs nothing, and an unchanged one keeps its approval. Approving is the
+  one new gate: `POST …/config/mint/<id>/approve` needs a step-up (a sign-in from the last five
+  minutes), so a stolen or idle console session cannot approve a recipe an attacker just saved.
+  The console owns the recipes it saved: with `config.catalog` claimed, a resync neither deletes nor
+  rewrites them (SQL-guarded against a claim that lands mid-resync), and dropping or un-minting an
+  entry removes its recipe and approval in the same batch. An entry published without a block leaves
+  its recipe untouched, since the served catalog never carries one. **Residual:** an operator who
+  can publish the catalog can point a recipe at any `edge-mint`-usage secret; the approval, which
+  shows the signing secret and who may mint, is what stands between that and a mint.
 - **Which commit's `.pkey/` is applied, and the record of it (R6-05, ST-01a).** A push to ANY
   branch touching `.pkey/` triggers a resync, but the push only triggers it: `resyncRepo` and
   `linkRepo` ask GitHub for the DB-configured repository's default-branch head

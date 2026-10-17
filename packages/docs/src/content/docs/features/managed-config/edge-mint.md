@@ -9,7 +9,7 @@ sidebar:
 
 Some secrets shouldn't be held by a client at all: a third-party signing key that should exist only as a short-lived, scoped token. A product declares a recipe, and the Worker mints a fresh token on request instead of shipping the key. Apple MusicKit's ES256 developer token is the motivating case. The mechanism also signs RS256 and EdDSA. In the console this is a **Minted token**, the third config entry type beside a Setting and a Secret: a catalog entry of `kind: "secret"` with `delivery: "edgeMint"`, read in code with `mintToken(key)`, never listed or synced.
 
-A catalog entry opts in with `delivery: "edgeMint"` ([The catalog](/docs/features/managed-config/catalog/)). The recipe is matched by id: the entry's `key` must equal a recipe's `id`, or the validator warns that nothing can be minted. This page is the recipe and the routes.
+A catalog entry opts in with `delivery: "edgeMint"` and carries its recipe in a `mint` block ([The catalog](/docs/features/managed-config/catalog/)). The entry's `key` is the recipe's id; with no block the validator warns that nothing can be minted. This page is the recipe and the routes.
 
 ## The recipe
 
@@ -26,9 +26,9 @@ A catalog entry opts in with `delivery: "edgeMint"` ([The catalog](/docs/feature
 | `requiredEntitlement` | Optional catalog key the caller's merged payload must carry, truthy                                                |
 | `authPageTemplate`    | Optional HTML served verbatim at the `/auth` route                                                                 |
 
-Recipes are authored in the manifest's `edgeMint[]` array at link and resync. Declaring the recipe and supplying its key are separate: the operator still sets the named secret in the console.
+A recipe is the entry's `mint` block, without `id` (the key is the id). Author it in `.pkey/schema`, or edit it on the entry in **Config → Catalog**: a console publish saves it with the catalog and claims it with the catalog, so a later resync leaves it alone. A top-level `edgeMint[]` array is still read, and `pkey validate --fix` moves each recipe into its entry. The served catalog never carries a `mint` block. Declaring the recipe and supplying its key are separate: the operator still sets the named secret in the console.
 
-```json title="edgeMint[] entry"
+```json title="An edgeMint[] item, or the entry's mint block without id"
 {
   "id": "musickit",
   "alg": "ES256",
@@ -52,9 +52,9 @@ An unapproved or changed recipe answers exactly like an unknown one: `404 not_fo
 
 ### Approving a recipe
 
-Role required: a member who can edit the product. Approval is permanent until you revoke it, but widening the product revokes it for you.
+Role required: a member who can edit the product, with a sign-in from the last 5 minutes (`step_up_required` otherwise). Approval is permanent until you revoke it, but widening the product revokes it for you.
 
-1. **Console** Open **Config → Edge mint**. Each recipe shows **Approved**, **Needs approval** or **Changed since approval**, its signing secret and that secret's usage.
+1. **Console** Open **Config → Edge mint**, or select **Review and approve** on the entry in **Config → Catalog**. Each recipe shows **Approved**, **Needs approval** or **Changed since approval**, its signing secret and that secret's usage.
 2. Select **Approve…**. The drawer shows the recipe's fields beside the last approval's values. Tick the public-mint acknowledgement when it appears.
 3. Select **Approve**. If the recipe, its sign-in trust or License changed while the drawer was open, the server answers `409` and the drawer reloads, so you approve only what you saw.
 
