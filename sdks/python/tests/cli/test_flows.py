@@ -167,7 +167,7 @@ def test_sign_in_opens_the_browser_switches_to_a_code_and_finishes() -> None:
     t.kit.env = t.kit.env.but(headless=False)
     out = flows.sign_in(_SignInClient(_Identity(0.4)), t)
     assert opened == [_Prompt.verificationUriComplete]
-    assert out.code == 0 and out.data["state"] == "signedIn" and out.data["email"] == "mara@fennick.studio"
+    assert out.code == 0 and out.data["state"] == "signed-in" and out.data["email"] == "mara@fennick.studio"
     screen = t.device.out.getvalue()
     assert C("signin.cli.opening") in screen and "WDJB-MJHT" in screen and C("common.copied") in screen
     assert C("signin.cli.signedIn", name="Mara Fennick", email="mara@fennick.studio") in "\n".join(out.text)
@@ -189,7 +189,7 @@ def test_sign_in_json_is_pending_then_result_and_never_prompts() -> None:
     t.finish(out)
     objs = [json.loads(ln) for ln in t.device.out.getvalue().splitlines()]
     assert objs[0]["event"] == "pending" and objs[0]["userCode"] == "WDJB-MJHT"
-    assert objs[-1]["event"] == "result" and objs[-1]["state"] == "signedIn" and objs[-1]["v"] == 1
+    assert objs[-1]["event"] == "result" and objs[-1]["state"] == "signed-in" and objs[-1]["v"] == 1
 
 
 def test_sign_out_asks_on_a_terminal_and_yes_skips_it() -> None:

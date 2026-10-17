@@ -484,7 +484,7 @@ def sign_in(
         return Outcome(EXIT.failed, screens.sign_in(k, model.view, verb), {"state": "error", "error": model.view.code})
     result = worker.result
     final = model.finished(result)
-    data: Dict[str, Any] = {"state": "signedIn" if final.state == "done" else final.state}
+    data: Dict[str, Any] = {"state": "signed-in" if final.state == "done" else final.state}
     if final.state == "done":
         data.update(name=final.name, email=final.email, attached=getattr(result, "attached", None))
         try:
@@ -519,10 +519,15 @@ def _rows(client: Any, locale: str = "en") -> Tuple[DeviceRow, ...]:
     for d in client.list_devices():
         seen = getattr(d, "lastVerifiedAt", None) if d.current else None
         when = fmt.relative(seen, time.time(), locale) if seen else None
-        platform = " ".join(p for p in (d.platform, getattr(d, "arch", None)) if p) or None
+        platform = " ".join(p for p in (fmt.platform_name(d.platform), getattr(d, "arch", None)) if p) or None
         rows.append(DeviceRow(d.id, d.label, platform, bool(d.current), when))
     # This device first, as the Node kit lists them.
     return tuple(sorted(rows, key=lambda r: not r.current))
+
+
+def _raw_platform(d: Any) -> Optional[str]:
+    """The platform and arch as the roster gave them (``--json`` keeps machine values)."""
+    return " ".join(p for p in (getattr(d, "platform", None), getattr(d, "arch", None)) if p) or None
 
 
 def devices(client: Any, t: Terminal, words: Sequence[str], *, yes: bool = False) -> Outcome:
@@ -534,7 +539,8 @@ def devices(client: Any, t: Terminal, words: Sequence[str], *, yes: bool = False
         if action == "list":
             rows = _rows(client, k.copy.locale)
             view = DevicesView("Devices", "list" if rows else "empty", rows)
-            data = {"devices": [{"id": r.id, "label": r.label, "platform": r.platform, "current": r.current} for r in rows]}
+            raw = {d.id: d for d in client.list_devices()}
+            data = {"devices": [{"id": r.id, "label": r.label, "platform": _raw_platform(raw.get(r.id)), "current": r.current} for r in rows]}
             return Outcome(EXIT.ok, screens.devices(k, view, verb), data)
         if action == "rename" and len(words) >= 2:
             label = " ".join(words[2:]) or None
