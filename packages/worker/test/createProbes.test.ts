@@ -7,6 +7,7 @@
  *
  * and link-repo's create answering the product (C-2: "<Name> is ready", never the slug).
  */
+import { stmtInsertReleaseConfig } from "../src/services/release/ingest.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
@@ -22,7 +23,6 @@ import {
   prepareCreate,
   slugFromName,
 } from "../src/services/release/linkRepo.js";
-import { stmtInsertReleaseConfig } from "../src/core/products/store.js";
 import { getProduct } from "../src/core/products/store.js";
 import { handleAdmin } from "../src/console/index.js";
 import { resetGithubRepositoryCache } from "../src/console/handlers/github.js";

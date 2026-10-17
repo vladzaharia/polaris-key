@@ -21256,7 +21256,7 @@ function parseManifest(files, opts = {}) {
   if (productRoot.autoIssue !== void 0) {
     parsed.autoIssue = normalizeAutoIssue(productRoot.autoIssue);
   }
-  return { ok: true, manifest: parsed };
+  return { ok: true, manifest: parsed, warnings: validation.warnings };
 }
 function normalizePresentation(raw) {
   const out = {};

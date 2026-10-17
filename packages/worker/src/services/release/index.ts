@@ -11,6 +11,7 @@
  * `releaseCatalog` hook below, which Core gates on this service's enablement.
  */
 
+import { releaseManifest } from "./ingest.js";
 import type {
   DiscoveryContext,
   ServiceContext,
@@ -34,6 +35,7 @@ import { scrubManifestSnapshotsJob } from "./snapshotScrub.js";
 export const releaseService: ServiceDescriptor = {
   slug: "release",
   contributes: {
+    manifest: releaseManifest,
     integration: releaseIntegration,
     maintenance: releaseMaintenance,
     migrations: [scrubManifestSnapshotsJob],

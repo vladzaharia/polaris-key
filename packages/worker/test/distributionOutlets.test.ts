@@ -27,8 +27,8 @@ import {
   issueSession,
 } from "../src/core/console/session.js";
 import { SERVICES } from "../src/mount.js";
+import { ingestFor } from "../src/core/ingest/pipeline.js";
 import {
-  manifestIngestFor,
   manifestIngestStatements,
   type ServiceRegistry,
 } from "../src/core/registry.js";
@@ -54,7 +54,7 @@ import { fileURLToPath } from "node:url";
 import { withDefaultHead } from "./githubHead.js";
 
 const SLUG = "dice";
-const INGEST = manifestIngestFor(SERVICES);
+const INGEST = ingestFor(SERVICES);
 
 function envFor(): Env {
   const env = makeEnv(new KvMock(), []);
@@ -503,7 +503,7 @@ describe("enablement gates the ingest and the hook", () => {
           }),
         }),
       ),
-      manifestIngestFor(registry),
+      ingestFor(registry),
     );
     expect(res.ok).toBe(true);
     expect(spy).not.toHaveBeenCalled();
@@ -537,7 +537,7 @@ describe("enablement gates the ingest and the hook", () => {
       SLUG,
       NOW + 10,
       github(files({ ".pkey/distribution.yaml": "outlets: { web: {} }\n" })),
-      manifestIngestFor(registry),
+      ingestFor(registry),
     );
     expect(res.ok).toBe(true);
     expect(spy).not.toHaveBeenCalled();

@@ -89,7 +89,7 @@ import {
 import { linkRepo, MAX_MANIFEST_BYTES } from "../../services/release/public.js";
 import { SIGNIN_ENV } from "../../services/identity/public.js";
 import { checkSlug, prepareCreate } from "../../services/release/public.js";
-import { manifestIngestFor } from "../../core/registry.js";
+import { ingestFor } from "../../core/ingest/pipeline.js";
 import { SERVICES, SETTINGS } from "../../mount.js";
 import {
   isAutoIssueMode,
@@ -234,7 +234,7 @@ export async function handleProducts(
       repoUrl,
       now,
       fetch,
-      manifestIngestFor(SERVICES),
+      ingestFor(SERVICES),
       {
         ...(digest === undefined ? {} : { manifestDigest: digest }),
         create: { choices: parsed.choices, author: session.sub },

@@ -32,6 +32,7 @@
  * the product-scoped routes only.
  */
 
+import { identityManifest } from "./ingest.js";
 import type {
   DiscoveryContext,
   RegistrationAuthContext,
@@ -81,6 +82,7 @@ export const identityService: ServiceDescriptor = {
     manifestClaimByKeyStatements(product, parsed, now),
   handle: handleIdentityRoutes,
   contributes: {
+    manifest: identityManifest,
     productDeletion: identityProductDeletion,
     // LX-26: the licence-holder hooks, so License's creation path and every account-email
     // verification reach them (`core/licensing/licenseHolders.ts`).

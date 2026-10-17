@@ -30,7 +30,7 @@ import { linkRepo } from "../src/services/release/linkRepo.js";
 import { resyncNotes, resyncRepo } from "../src/services/release/resync.js";
 import { planResync } from "../src/services/release/linkExisting.js";
 import { handleGithubWebhook } from "../src/githubWebhook.js";
-import { manifestIngestFor } from "../src/core/registry.js";
+import { ingestFor } from "../src/core/ingest/pipeline.js";
 import { SERVICES } from "../src/mount.js";
 import {
   BREAK_GLASS_MAX_SECONDS,
@@ -156,7 +156,7 @@ async function linked(d: Decl = {}) {
     "acme-org/acme-app",
     NOW,
     github(d),
-    manifestIngestFor(SERVICES),
+    ingestFor(SERVICES),
   );
   expect(res.ok).toBe(true);
   const { token, session } = await issueSession(
@@ -191,14 +191,7 @@ async function call(
 }
 
 async function resync(ctx: Ctx, d: Decl = {}, at = NOW + 60) {
-  return resyncRepo(
-    ctx.env,
-    ctx.db,
-    SLUG,
-    at,
-    github(d),
-    manifestIngestFor(SERVICES),
-  );
+  return resyncRepo(ctx.env, ctx.db, SLUG, at, github(d), ingestFor(SERVICES));
 }
 
 async function okResync(ctx: Ctx, d: Decl = {}, at = NOW + 60) {
