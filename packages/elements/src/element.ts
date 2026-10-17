@@ -193,15 +193,19 @@ export abstract class PkElement extends LitElement {
     const rem =
       Number.parseFloat(getComputedStyle(document.documentElement).fontSize) ||
       16;
-    const next =
-      h > 0 && h / rem < 30 && w > h
+    // A sheet is a dialog over the page, not a screen that owns the window: always one column.
+    const next = this.isSheet()
+      ? "portrait"
+      : h > 0 && h / rem < 30 && w > h
         ? "short"
         : w / rem >= 52.5 && h > 0 && w / h >= 1.4
           ? "landscape"
           : "portrait";
     // Under 34 rem of window (large text on a phone) a docked bar would cover the text it
     // docks under: it scrolls with the content instead.
-    const tight = h > 0 && h / rem < 34 && next !== "short";
+    // A short window (landscape phone) docks its one-row bar, unless large text leaves under 18 rem
+    // of height: the bar would then take a third of it.
+    const tight = h > 0 && h / rem < 34 && (next !== "short" || h / rem < 18);
     if (next !== this.shape || tight !== this.tight)
       // After this frame's layout: a shape change never re-enters the observer's loop.
       requestAnimationFrame(() => {
@@ -523,6 +527,11 @@ export abstract class PkElement extends LitElement {
   /** The body of the kit root; a subclass may draw more around the view (the gate's app slot). */
   protected renderBody(c: RenderCtx): unknown {
     return renderView(c);
+  }
+
+  /** True where the element draws in a modal sheet (the sign-in form's `presentation`). */
+  protected isSheet(): boolean {
+    return false;
   }
 
   /** True where the element's screen owns the window (DL2, DL18): the drop-in gate's own. */
