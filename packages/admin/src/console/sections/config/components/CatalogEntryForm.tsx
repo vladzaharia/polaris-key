@@ -4,11 +4,11 @@ import { SUPPORTED_FORMATS, userSettingIssues } from "@polaris-key/catalog";
 import type {
   ConfigEntry,
   ConfigKind,
+  EdgeMintRecipe,
   ManagementState,
 } from "../../../../api.js";
 import { IN_APP_LABELS } from "../../../../lib/labels.js";
-import { Link } from "../../../router.js";
-import { r } from "../../../routes.js";
+import { MintRecipeFields } from "./MintRecipeFields.js";
 import {
   ENTRY_TYPE_LABELS,
   TYPE_LABELS,
@@ -138,7 +138,8 @@ export function CatalogEntryForm({
   fresh = false,
   slug,
   syncEnabled = true,
-  recipeIds = null,
+  recipes = null,
+  flagKeys = [],
   onChange,
 }: {
   entry: ConfigEntry;
@@ -152,8 +153,10 @@ export function CatalogEntryForm({
   slug?: string;
   /** Cloud Sync is on for the product, so an Editable setting's choice can sync. */
   syncEnabled?: boolean;
-  /** The ids of the product's mint recipes, or null while unknown. */
-  recipeIds?: string[] | null;
+  /** The product's stored mint recipes, or null while unknown. */
+  recipes?: EdgeMintRecipe[] | null;
+  /** The draft's flag keys, offered for a minted token's Required flag. */
+  flagKeys?: string[];
   onChange: (next: ConfigEntry) => void;
 }): React.ReactElement {
   const schema = (entry.schema ?? {}) as Json;
@@ -345,24 +348,25 @@ export function CatalogEntryForm({
           </p>
         </div>
       ) : null}
-      {minted && recipeIds !== null && !recipeIds.includes(entry.key) ? (
-        <p
-          role="status"
-          className="flex items-start gap-2 text-sm text-warning"
-        >
-          <AlertCircle aria-hidden className="mt-0.5 size-4 shrink-0" />
-          <span>
-            No recipe called {entry.key}. Minting fails until one exists.{" "}
-            {slug ? (
-              <Link
-                to={r.edgeMint(slug)}
-                className="underline underline-offset-2"
-              >
-                Recipes
-              </Link>
-            ) : null}
-          </span>
-        </p>
+      {minted ? (
+        <>
+          <MintRecipeFields
+            entry={entry}
+            recipe={
+              recipes === null
+                ? undefined
+                : (recipes.find((x) => x.id === entry.key) ?? null)
+            }
+            flagKeys={flagKeys}
+            slug={slug}
+            onChange={onChange}
+          />
+          {issue("mint") ? (
+            <p role="alert" className="text-sm text-danger">
+              {issue("mint")}
+            </p>
+          ) : null}
+        </>
       ) : null}
       {retiredNotes(entry).map((note) => (
         <p

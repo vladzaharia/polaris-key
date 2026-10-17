@@ -2,6 +2,7 @@ import {
   compileLinearPattern,
   representabilityIssue,
   type LinearPattern,
+  type MintBlock,
   type ProductCatalog,
 } from "@polaris-key/catalog";
 import { type SecretDelivery } from "@polaris-key/protocol/config";
@@ -626,23 +627,10 @@ export type ManifestSecretDelivery = SecretDelivery;
 
 export type ManifestCatalogEntry = ProductCatalog["entries"][number] & {
   delivery?: ManifestSecretDelivery;
-  /**
-   * U-31: a Minted token's recipe (`kind: "secret"`, `delivery: "edgeMint"`); the entry's key is
-   * the recipe id. Authoring only: ingest lifts it into `ParsedManifest.edgeMint`, and the
-   * stored, served catalog never carries it.
-   */
-  mint?: CatalogMintBlock;
 };
 
 /** A catalog entry's `mint` block: the legacy `edgeMint[]` recipe minus its `id`. */
-export type CatalogMintBlock = Omit<
-  ManifestEdgeMint,
-  "id" | "claimsTemplate" | "ttlSeconds" | "requires"
-> & {
-  claimsTemplate?: Record<string, unknown>;
-  ttlSeconds?: number;
-  requires?: ManifestEdgeMintRequires;
-};
+export type CatalogMintBlock = MintBlock;
 
 export type ManifestCatalog = Omit<ProductCatalog, "entries"> & {
   entries: ManifestCatalogEntry[];

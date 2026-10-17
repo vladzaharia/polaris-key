@@ -89,7 +89,7 @@ export function applicableEntry(
     drop("default", "managementDefault", "user", "userGrant", "grantLabel");
   if (entry.kind === "flag") drop("managementDefault", "user");
   if (entry.kind === "config") drop("userGrant", "grantLabel");
-  if (!isMinted(entry)) drop("delivery");
+  if (!isMinted(entry)) drop("delivery", "mint");
   else {
     next.schema = { type: "string" };
     drop("ui");

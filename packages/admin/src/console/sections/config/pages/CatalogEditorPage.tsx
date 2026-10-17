@@ -558,7 +558,10 @@ function Editor({
                   fresh={!draft.baseEntries.some((e) => e.key === selected.key)}
                   slug={slug}
                   syncEnabled={product?.services?.sync?.enabled === true}
-                  recipeIds={recipes.data?.recipes?.map((x) => x.id) ?? null}
+                  recipes={recipes.data?.recipes ?? null}
+                  flagKeys={draft.entries
+                    .filter((e) => e.kind === "flag")
+                    .map((e) => e.key)}
                   onChange={(next) => updateEntry(selectedIndex, next)}
                 />
               </div>
