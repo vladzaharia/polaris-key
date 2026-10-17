@@ -1146,8 +1146,8 @@
       <!-- 4. Sign-in hand-off, 1440 -->
       <figure>
         <figcaption>
-          web · sign-in hand-off · 1440 × 900 · QR inline when the card is ≥ 560
-          px
+          web · sign-in hand-off · 1440 × 900 · no QR on the web (D-67). Built
+          today
         </figcaption>
         <div class="shot kit w1440" data-shot="sign-in">
           <div class="ambient">
@@ -1196,10 +1196,6 @@
                     in · code expires in 4:12
                   </div>
                 </div>
-                <div class="qrtile">
-                  <div class="q" data-qr="7" data-size="132"></div>
-                  Scan with your phone
-                </div>
               </div>
               <div class="actions row">
                 <button class="k-btn secondary">Cancel</button>
@@ -1215,7 +1211,9 @@
 
       <!-- 5. Sign-in hand-off, 390 -->
       <figure>
-        <figcaption>web · sign-in hand-off · 390 × 844</figcaption>
+        <figcaption>
+          web · sign-in hand-off · 390 × 844 · no QR. Built today
+        </figcaption>
         <div class="shot kit w390" data-shot="sign-in-390">
           <div class="center">
             <div class="k-card flow wide">
@@ -1249,18 +1247,6 @@
                   <div class="waiting tnum">
                     <span data-countdown="0.84"></span>Code expires in 4:12
                   </div>
-                  <a
-                    class="k-link"
-                    style="
-                      display: inline-flex;
-                      gap: 8px;
-                      align-items: center;
-                      font-size: 14px;
-                      color: var(--pk-text-muted);
-                    "
-                    ><span data-icon="qr" data-size="16"></span>Scan with your
-                    phone instead</a
-                  >
                 </div>
               </div>
               <span class="spacer"></span>
@@ -1843,7 +1829,9 @@
                     <div class="t">
                       <span>Pro · Yearly</span><small>3 devices</small>
                     </div>
-                    <b class="tnum" style="font-weight: 500; margin-inline-end: 36px"
+                    <b
+                      class="tnum"
+                      style="font-weight: 500; margin-inline-end: 36px"
                       >$59</b
                     >
                   </div>
@@ -1924,8 +1912,9 @@
                 class="src"
               ><span class="k">import</span> { PolarisKeyProvider, Activate } <span class="k">from</span> "@polaris-key/react";
 <span class="k">import</span> "@polaris-key/react/styles.css";
+<span class="k">import</span> { polarisKey } <span class="k">from</span> "./polaris-key.config";
 
-&lt;PolarisKeyProvider product="tidewater" publishableKey={env.PK_KEY}&gt;
+&lt;PolarisKeyProvider config={polarisKey}&gt;
   &lt;Activate slots={{ header: &lt;HarborHeader /&gt; }} /&gt;
 &lt;/PolarisKeyProvider&gt;
 

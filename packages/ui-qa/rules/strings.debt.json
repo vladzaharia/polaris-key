@@ -448,11 +448,6 @@
     },
     {
       "board": "ios",
-      "state": "live-activity",
-      "text": "About 20 s left · installs when you next open the app"
-    },
-    {
-      "board": "ios",
       "state": "paywall",
       "text": "$3.33/mo Save 33%"
     },
@@ -583,16 +578,6 @@
     },
     {
       "board": "terminal",
-      "state": "activate",
-      "text": "◆ License key You'll find it in your purchase email."
-    },
-    {
-      "board": "terminal",
-      "state": "device-limit",
-      "text": "◇ License key · pkey_tidewater_••••••"
-    },
-    {
-      "board": "terminal",
       "state": "device-limit",
       "text": "key.plrs.im/portal/tidewater/devices"
     },
@@ -613,56 +598,6 @@
     },
     {
       "board": "terminal",
-      "state": "fallbacks",
-      "text": "` Enter open in browser - Esc cancel"
-    },
-    {
-      "board": "terminal",
-      "state": "fallbacks",
-      "text": "+ Tidewater Studio - activate"
-    },
-    {
-      "board": "terminal",
-      "state": "fallbacks",
-      "text": "| key.plrs.im/portal/tidewater/devices"
-    },
-    {
-      "board": "terminal",
-      "state": "fallbacks",
-      "text": "| Replace a device in your browser. Tidewater Studio continues when"
-    },
-    {
-      "board": "terminal",
-      "state": "fallbacks",
-      "text": "| you're done."
-    },
-    {
-      "board": "terminal",
-      "state": "fallbacks",
-      "text": "◇ License key · pkey_tidewater_••••••"
-    },
-    {
-      "board": "terminal",
-      "state": "fallbacks",
-      "text": "key.plrs.im/portal/tidewater/devices"
-    },
-    {
-      "board": "terminal",
-      "state": "fallbacks",
-      "text": "o License key - pkey_tidewater_******"
-    },
-    {
-      "board": "terminal",
-      "state": "fallbacks",
-      "text": "Replace a device in your browser. Tidewater Studio continues when"
-    },
-    {
-      "board": "terminal",
-      "state": "fallbacks",
-      "text": "you're done."
-    },
-    {
-      "board": "terminal",
       "state": "help",
       "text": "--ascii ASCII symbols only"
     },
@@ -679,32 +614,7 @@
     {
       "board": "terminal",
       "state": "help",
-      "text": "-h, --help Help for a command"
-    },
-    {
-      "board": "terminal",
-      "state": "help",
-      "text": "activate [key] Add a license key (prompts; never an argument)"
-    },
-    {
-      "board": "terminal",
-      "state": "help",
-      "text": "deactivate Stop using your license on this device and free"
-    },
-    {
-      "board": "terminal",
-      "state": "help",
       "text": "enroll Get the free license, when Tidewater Studio"
-    },
-    {
-      "board": "terminal",
-      "state": "help",
-      "text": "its seat"
-    },
-    {
-      "board": "terminal",
-      "state": "help",
-      "text": "login Sign in with your account in the browser"
     },
     {
       "board": "terminal",
@@ -714,17 +624,7 @@
     {
       "board": "terminal",
       "state": "help",
-      "text": "status License, devices and offline time"
-    },
-    {
-      "board": "terminal",
-      "state": "help",
       "text": "Usage tidewater <command> [options]"
-    },
-    {
-      "board": "terminal",
-      "state": "narrow",
-      "text": "◇ License key · pkey_tidewater_••••••"
     },
     {
       "board": "terminal",
@@ -768,11 +668,6 @@
     },
     {
       "board": "terminal",
-      "state": "offline-landscape",
-      "text": "tidewater import-bundle <file> Activate from an offline activation file █ ▀ █▀ █▄█▀ █ ▀▄ ▄▄"
-    },
-    {
-      "board": "terminal",
       "state": "short",
       "text": "go to key.plrs.im/device and enter"
     },
@@ -785,76 +680,6 @@
       "board": "terminal",
       "state": "short",
       "text": "this code."
-    },
-    {
-      "board": "terminal",
-      "state": "states",
-      "text": "▲ Can't reach Harbor Audio"
-    },
-    {
-      "board": "terminal",
-      "state": "states",
-      "text": "✓ Devices 2 of 3 · this Mac, MacBook Pro"
-    },
-    {
-      "board": "terminal",
-      "state": "states",
-      "text": "✓ License Pro · Lifetime · mara@fennick.studio"
-    },
-    {
-      "board": "terminal",
-      "state": "states",
-      "text": "✓ Offline 14 days before it needs to check in"
-    },
-    {
-      "board": "terminal",
-      "state": "states",
-      "text": "✓ Tidewater Studio Pro · ready"
-    },
-    {
-      "board": "terminal",
-      "state": "states",
-      "text": "⠹ Checking your license …"
-    },
-    {
-      "board": "terminal",
-      "state": "states",
-      "text": "Check your connection. Tidewater Studio keeps working offline"
-    },
-    {
-      "board": "terminal",
-      "state": "states",
-      "text": "exit 0 · --json for scripts"
-    },
-    {
-      "board": "terminal",
-      "state": "states",
-      "text": "for 3 more days."
-    },
-    {
-      "board": "terminal",
-      "state": "states",
-      "text": "tidewater update --retry try again · exit 4"
-    },
-    {
-      "board": "terminal",
-      "state": "status-error",
-      "text": "exit 3 · --json for scripts"
-    },
-    {
-      "board": "terminal",
-      "state": "status-error",
-      "text": "Harbor Audio revoked this key on Oct 2, after a refund."
-    },
-    {
-      "board": "terminal",
-      "state": "status-error",
-      "text": "tidewater activate add a different key"
-    },
-    {
-      "board": "terminal",
-      "state": "status-error",
-      "text": "tidewater login use the license on your account"
     },
     {
       "board": "terminal",
@@ -910,16 +735,6 @@
       "board": "terminal",
       "state": "textual",
       "text": "Share crash reports On · set by Fennick Studio"
-    },
-    {
-      "board": "terminal",
-      "state": "update",
-      "text": "✓ License Pro · mara@fennick.studio"
-    },
-    {
-      "board": "terminal",
-      "state": "update",
-      "text": "✓ Offline until Oct 19"
     },
     {
       "board": "web",
@@ -1115,11 +930,6 @@
       "board": "web",
       "state": "settings",
       "text": "Up to date · checked 2 min ago"
-    },
-    {
-      "board": "web",
-      "state": "sign-in",
-      "text": "Scan with your phone"
     },
     {
       "board": "web",
