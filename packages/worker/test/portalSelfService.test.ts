@@ -702,7 +702,7 @@ describe("account lifecycle changes need a recent sign-in", () => {
       ["DELETE", "/api/me"],
       ["POST", "/api/me/deletion/cancel"],
       ["DELETE", `/api/licenses/djdl/${licenseId}`],
-      ["POST", "/api/me/tokens"],
+      ["POST", `/api/licenses/djdl/${licenseId}/registry-tokens`],
     ] as const) {
       const res = await call(env, db, method, path, old, undefined, NOW);
       expect(res.status, path).toBe(401);

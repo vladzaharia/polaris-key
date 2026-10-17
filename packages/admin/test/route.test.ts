@@ -482,7 +482,6 @@ describe("the nav model (nav.ts)", () => {
       "products",
       "product-new",
       "api-tokens",
-      "personal-tokens",
       "platform-settings",
       "platform-deployment",
       "platform-operations",
@@ -688,7 +687,6 @@ describe("global pages", () => {
       "products",
       "product-new",
       "api-tokens",
-      "personal-tokens",
       "platform-deployment",
     ] as GlobalPageId[]) {
       expect(sectionOf(id)).toBeNull();
@@ -715,7 +713,6 @@ describe("global pages", () => {
       "home",
       "products",
       "api-tokens",
-      "personal-tokens",
     ]);
     // P0-47: Override migration (U-03, cancelled) is out of the sidebar and the palette; its
     // URL still answers until U-27 removes the page.

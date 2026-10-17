@@ -232,23 +232,6 @@ export const MAX_TOKEN_DAYS = 365;
 
 /** The lifecycle the SERVER collapsed out of `revokedAt` and `expiresAt`. Never re-derived here:
  *  the console would be re-deriving it against the browser's clock, not the worker's. */
-/** A person's `pkeyp_` token as a Superadmin lists it (F-33): never the token or its hash. */
-export interface AdminPersonalToken {
-  id: string;
-  /** The account's primary email; `null` once erased. */
-  email: string | null;
-  label: string;
-  /** The token's last four characters. */
-  hint: string;
-  scope: string;
-  createdAt: number;
-  expiresAt: number;
-  lastUsedAt: number | null;
-  revokedAt: number | null;
-  revokeReason: string | null;
-  status: "active" | "expired" | "revoked";
-}
-
 export type AdminApiTokenStatus = "active" | "expired" | "revoked";
 
 /**
@@ -4570,15 +4553,6 @@ const rawApi = {
     call<{ ok: true; token: AdminApiToken }>(`/manage/api/tokens/${enc(id)}`, {
       method: "DELETE",
     }),
-  /** People's `pkeyp_` tokens (F-33): the Superadmin's roster. Never a token or a hash. */
-  personalTokens: () =>
-    call<{ tokens: AdminPersonalToken[] }>("/manage/api/account-tokens"),
-  /** Revoke one at once (reason `admin`). */
-  revokePersonalToken: (id: string) =>
-    call<{ ok: true; token: AdminPersonalToken }>(
-      `/manage/api/account-tokens/${enc(id)}`,
-      { method: "DELETE" },
-    ),
   /** The runtime settings, the read-only inventory, secrets presence and the warnings (A-13). */
   platformSettings: () =>
     call<PlatformSettingsView>("/manage/api/platform/settings"),

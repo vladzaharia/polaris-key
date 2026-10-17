@@ -310,58 +310,6 @@ export async function revokeAccountToken(
   return getAccountToken(db, accountId, id, now);
 }
 
-/** A token as a Superadmin lists it: the view plus the account's email (never its id). Never the plaintext or the hash. */
-export interface PersonalTokenAdminView extends PersonalTokenView {
-  /** The account's primary email, `null` once it is erased or has none. */
-  readonly email: string | null;
-}
-
-/** The most rows the Superadmin roster returns. */
-export const ADMIN_TOKEN_LIST_LIMIT = 500;
-
-/** Every account's tokens, live first then newest, for the platform roster (F-33). */
-export async function listAllAccountTokens(
-  db: Db,
-  now: number,
-): Promise<PersonalTokenAdminView[]> {
-  const rows = await db.all<PersonalTokenRow & { email: string | null }>(
-    `SELECT t.*, a.primary_email AS email
-       FROM account_tokens t LEFT JOIN accounts a ON a.id = t.account_id
-      ORDER BY (t.revoked_at IS NULL AND t.expires_at > ?) DESC, t.created_at DESC, t.id DESC
-      LIMIT ${ADMIN_TOKEN_LIST_LIMIT}`,
-    now,
-  );
-  return rows.map((r) => ({
-    ...viewOf(r, now),
-    email: r.email,
-  }));
-}
-
-/**
- * A Superadmin revokes one token of any account (reason `admin`). Answers the token as it now
- * stands, or `null` when no such token exists. Revoking a revoked token answers it as it stands.
- */
-export async function revokeAccountTokenAsAdmin(
-  db: Db,
-  id: string,
-  by: string,
-  now: number,
-): Promise<PersonalTokenAdminView | null> {
-  await db.run(
-    `UPDATE account_tokens SET revoked_at = ?, revoked_by = ?, revoke_reason = 'admin'
-      WHERE id = ? AND revoked_at IS NULL`,
-    now,
-    by.slice(0, 320),
-    id,
-  );
-  const row = await db.first<PersonalTokenRow & { email: string | null }>(
-    `SELECT t.*, a.primary_email AS email
-       FROM account_tokens t LEFT JOIN accounts a ON a.id = t.account_id WHERE t.id = ?`,
-    id,
-  );
-  return row ? { ...viewOf(row, now), email: row.email } : null;
-}
-
 /** Revoke every live token of the account; answers how many. */
 export async function revokeAllAccountTokens(
   db: Db,

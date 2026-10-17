@@ -26,7 +26,6 @@ import {
 import {
   forgetRegistryTokens,
   lookupRegistryCredential,
-  mintRegistryToken,
 } from "../src/core/registry/registryTokens.js";
 import { handlePortalApi } from "./portalHarness.js";
 import {
@@ -64,30 +63,6 @@ async function call(
 ): Promise<Response> {
   const path = `/api/licenses/${SLUG}/${licenseId}/registry-tokens${rest}`;
   return handlePortalApi(req(method, path, body, csrf), env, db, path, NOW);
-}
-
-/** A licence-bound token as the portal minted them before F-33 (the portal no longer does). */
-async function legacyToken(label = "laptop"): Promise<{
-  token: string;
-  tokenId: string;
-}> {
-  const res = await mintRegistryToken(
-    env,
-    db,
-    {
-      product: SLUG,
-      label,
-      ecosystems: ["npm"],
-      binding: "license",
-      licenseId,
-      presentation: "header",
-      createdBy: `portal:${auth.accountId}`,
-      portalAccountId: auth.accountId,
-    },
-    NOW,
-  );
-  if (!res.ok) throw new Error(JSON.stringify(res));
-  return { token: res.token, tokenId: res.view.tokenId };
 }
 
 async function setFeed(mode: string, eco = "npm"): Promise<void> {
@@ -153,7 +128,7 @@ beforeEach(async () => {
 });
 
 describe("portal package access (Q3)", () => {
-  it("is unavailable while every feed is public", async () => {
+  it("is unavailable while every feed is public, and minting is refused", async () => {
     await setFeed("public");
     const state = await call("GET");
     expect(state.status).toBe(200);
@@ -163,19 +138,10 @@ describe("portal package access (Q3)", () => {
       tokens: [],
       username: "__token__",
     });
+    expect((await call("POST", "", { label: "laptop" })).status).toBe(409);
   });
 
-  it("no longer mints: the portal answers 410 and points at Account → Packages", async () => {
-    await setFeed("licensed");
-    const res = await call("POST", "", { label: "laptop", ecosystem: "npm" });
-    expect(res.status).toBe(410);
-    expect(((await res.json()) as { error: string }).error).toBe("gone");
-    expect(
-      await db.first("SELECT 1 FROM registry_tokens WHERE product = ?", SLUG),
-    ).toBeNull();
-  });
-
-  it("lists tokens minted before F-33 without the secret, and revokes and audits them", async () => {
+  it("mints a licence-bound read token once a feed is not public; lists, revokes and audits it", async () => {
     await setFeed("licensed");
     const state = (await (await call("GET")).json()) as {
       available: boolean;
@@ -189,13 +155,34 @@ describe("portal package access (Q3)", () => {
         baseUrl: "https://pkg.example.test/npm/acme/",
       },
     ]);
-    const minted = await legacyToken();
+    // The CSRF header is required for a mint.
+    expect((await call("POST", "", { label: "x" }, false)).status).toBe(403);
+    const res = await call("POST", "", { label: "laptop", ecosystem: "npm" });
+    expect(res.status).toBe(201);
+    const minted = (await res.json()) as {
+      token: string;
+      view: Record<string, unknown>;
+    };
     expect(minted.token).toMatch(/^pkeyr_/);
+    expect(minted.view).toMatchObject({
+      binding: "license",
+      licenseId,
+      scopes: ["read"],
+      ecosystems: ["npm"],
+      createdBy: `portal:${auth.accountId}`,
+    });
     const listed = (await (await call("GET")).json()) as {
       tokens: { tokenId: string }[];
     };
     expect(listed.tokens).toHaveLength(1);
     expect(JSON.stringify(listed)).not.toContain(minted.token);
+    // Only a feed the product offers privately, and the Godot URL only with a private Godot feed.
+    expect(
+      (await call("POST", "", { label: "x", ecosystem: "pypi" })).status,
+    ).toBe(422);
+    expect(
+      (await call("POST", "", { label: "x", presentation: "url" })).status,
+    ).toBe(422);
     const del = await call("DELETE", `/${listed.tokens[0]!.tokenId}`);
     expect(del.status).toBe(200);
     expect((await call("DELETE", "/rtok_nope")).status).toBe(404);
@@ -204,11 +191,13 @@ describe("portal package access (Q3)", () => {
         await db.all<{ action: string }>(
           "SELECT action FROM portal_audit WHERE action LIKE 'portal.registry_token.%' ORDER BY at, id",
         )
-      ).map((r) => r.action),
-    ).toEqual(["portal.registry_token.revoke"]);
+      )
+        .map((r) => r.action)
+        .sort(),
+    ).toEqual(["portal.registry_token.create", "portal.registry_token.revoke"]);
   });
 
-  it("answers an unlinked licence 404", async () => {
+  it("refuses an unlinked licence and an inactive one", async () => {
     await setFeed("authenticated");
     const other = await seedLicenseWithKey(db, SLUG, { id: "lic_other" });
     // Someone else's licence: not auto-linked to this account by email.
@@ -227,11 +216,18 @@ describe("portal package access (Q3)", () => {
         )
       ).status,
     ).toBe(404);
+    await db.run(
+      "UPDATE licenses SET status = 'disabled' WHERE id = ?",
+      licenseId,
+    );
+    expect((await call("POST", "", { label: "x" })).status).toBe(403);
   });
 
   it("hard erasure after the grace period revokes every token it minted", async () => {
     await setFeed("licensed");
-    const minted = await legacyToken();
+    const minted = (await (
+      await call("POST", "", { label: "laptop" })
+    ).json()) as { token: string };
     const me = await handlePortalApi(
       new Request("https://key.plrs.im/portal/api/me", {
         method: "DELETE",

@@ -38,7 +38,6 @@ export type WriteMethod =
   | "revertPlatformSetting"
   | "mintApiToken"
   | "revokeApiToken"
-  | "revokePersonalToken"
   | "putOverrideMigrationPrerequisites"
   | "startOverrideMigrationNotice"
   | "withdrawOverrideMigrationNotice"
@@ -309,13 +308,6 @@ export const MUTATIONS: MutationTable = {
   revokeApiToken: {
     label: "admin API token revoke",
     invalidates: () => [prefix(qk.apiTokens()), prefix(qk.platformActivity())],
-  },
-  revokePersonalToken: {
-    label: "personal token revoke",
-    invalidates: () => [
-      prefix(qk.personalTokens()),
-      prefix(qk.platformActivity()),
-    ],
   },
   revertPlatformSetting: {
     label: "platform setting revert",

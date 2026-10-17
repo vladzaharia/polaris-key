@@ -2,8 +2,7 @@
  * Account → Packages: the person's own `pkeyp_` tokens (F-33, plans/I-27.md §2.5).
  *
  *   GET    /api/me/tokens            the account's tokens (newest first, revoked and expired
- *                                    included until purged), the private feeds its licences
- *                                    reach (the setup list), the limits and the registry origin
+ *                                    included until purged), the limits and the registry origin
  *   POST   /api/me/tokens            {label, scope?, expiresInDays?} mint one; the plaintext is in
  *                                    this answer only
  *   DELETE /api/me/tokens/:tokenId   revoke one of the account's own
@@ -52,8 +51,6 @@ export async function handlePersonalTokens(
   /** The path after `/api/me/tokens`. */
   rest: string[],
   now: number,
-  /** The private feeds the account's licences reach (the router's `readableFeeds`). */
-  feeds: () => Promise<readonly unknown[]>,
 ): Promise<Response> {
   const accountId = session.accountId;
   if (rest.length > 1) return notFound();
@@ -85,7 +82,6 @@ export async function handlePersonalTokens(
       registryOrigin: registryOrigin(env),
       username: REGISTRY_TOKEN_USERNAME,
       tokens: await listAccountTokens(db, accountId, now),
-      feeds: await feeds(),
       limits: {
         minDays: PERSONAL_TOKEN_MIN_DAYS,
         maxDays: PERSONAL_TOKEN_DAYS[PACKAGES_READ_SCOPE].max,
