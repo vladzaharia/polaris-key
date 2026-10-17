@@ -173,13 +173,15 @@ function OverviewBody({
     slug,
     p,
     licenses.data?.licenses,
-    // The next step already says it.
+    // The next step already says it. Until the read model answers nobody knows which: the items
+    // wait for it, so the first-load stagger never lifts an item the step then takes back.
     {
-      signing: cardShown && next?.to === r.keys(slug),
+      signing:
+        cardShown && (integration.isPending || next?.to === r.keys(slug)),
       recipes:
         cardShown &&
-        next !== null &&
-        next.to === reviewHref(slug, pendingRecipes(p)),
+        (integration.isPending ||
+          (next !== null && next.to === reviewHref(slug, pendingRecipes(p)))),
     },
   );
 

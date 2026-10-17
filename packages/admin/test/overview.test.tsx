@@ -307,13 +307,44 @@ describe("Core → Overview", () => {
     ).toHaveLength(1);
   });
 
-  it("names an unset secret and a missing signing key under Needs attention", async () => {
+  it("names an unset secret and a missing signing key under Needs attention (the card hidden, so the next step does not say it)", async () => {
+    fns.product.mockResolvedValue({
+      product: product({ signing: undefined }),
+    });
+    fns.productSettings.mockResolvedValue({
+      settings: [
+        {
+          key: "core.setup",
+          version: 1,
+          value: {
+            integrationHidden: { at: NOW, by: "a@b.c" },
+            notUsing: [],
+            runnerConsent: null,
+            skipped: [],
+          },
+        },
+      ],
+    });
+    mount();
+    expect(await screen.findByText("Secret WEBHOOK_SECRET")).toBeTruthy();
+    expect(await screen.findByText("Signing key")).toBeTruthy();
+  });
+
+  it("holds the setup items back until the next step is known (no item rises and is then taken back)", async () => {
+    let answer: (v: ReturnType<typeof integrationView>) => void = () => {};
+    fns.integration.mockReturnValue(
+      new Promise((res) => {
+        answer = res;
+      }),
+    );
     fns.product.mockResolvedValue({
       product: product({ signing: undefined }),
     });
     mount();
     expect(await screen.findByText("Secret WEBHOOK_SECRET")).toBeTruthy();
-    expect(screen.getByText("Signing key")).toBeTruthy();
+    expect(screen.queryByText("Signing key")).toBeNull();
+    answer(integrationView());
+    await waitFor(() => expect(screen.getByTestId("integration-card")));
   });
 
   it("a hidden Integration card is one line that reopens it", async () => {
