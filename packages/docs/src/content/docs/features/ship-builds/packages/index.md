@@ -7,7 +7,7 @@ sidebar:
   order: 1
 ---
 
-Package feeds let a product publish libraries and tools to the package managers its users already run. They answer on their own host, `pkg.plrs.im` (`pkg-staging.plrs.im` and `pkg-dev.plrs.im` in the other environments): the same Worker as the console, on a third custom domain beside `key.plrs.im` and the bytes host `dl.plrs.im`. The console calls the section **Packages**. To publish, see [Publish a package](/docs/features/ship-builds/packages/publish/). To install, see [Install the SDKs and the CLI](/docs/build/install/).
+Package feeds let a product publish libraries and tools to the package managers its users already run. They answer on their own host, `pkg.plrs.im` (`pkg-staging.plrs.im` and `pkg-dev.plrs.im` in the other environments): the same Worker as the console, on a third custom domain beside `key.plrs.im` and the bytes host `dl.plrs.im`. In the console: **Distribution → Package feeds**. To publish, see [Publish a package](/docs/features/ship-builds/packages/publish/). To install, see [Install the SDKs and the CLI](/docs/build/install/).
 
 ## URL layout
 
@@ -48,7 +48,7 @@ Customers is stored as `authenticated` or `licensed`. They are one strictness. A
 
 A token that is absent, malformed, unknown, expired, revoked, another owner's or outside its feeds gets the registry's native `401`. A refused license token is `403`. Device tokens (`pkeyt_…`) and license keys (`pkey_…`) are never registry credentials. Each client sends the token its own way: Bearer for npm, pnpm, Yarn, Bun and SwiftPM; Basic `__token__:<token>` for pip, uv, Poetry, Gradle and Maven; `docker login pkg.plrs.im -u __token__`, traded at `/v2/token` for a 5-minute pull token; the bare token for Cargo; and for the Godot editor, which sends no credentials, a read-only **Godot editor URL** token inside the URL. Setup for each client is under **Private feeds** on [Install the SDKs and the CLI](/docs/build/install/).
 
-Every token expires within a year, is bound to one owner and is stored only as a hash. A revoked token, a disabled license, a tightened feed and a deleted product all take effect within 30 seconds. docker, SwiftPM and netrc keep one credential per host, so one machine holds a token for one owner on `pkg.plrs.im` for those clients.
+Every token expires within a year, is bound to one owner and is stored only as a hash. A revoked token, a disabled license, a tightened feed and a deleted product all take effect within 30 seconds. docker, SwiftPM and netrc keep one credential per host, so one device holds a token for one owner on `pkg.plrs.im` for those clients.
 
 ## Caching
 
@@ -89,7 +89,7 @@ Every feed routes only its own names to itself, so no other name can resolve the
 
 Role required: platform admin. Both scopes use the same pages: **Platform → Package feeds** for the platform's own packages, and **Distribution → Package feeds** for one product's feeds. The product page appears while the **Packages** switch under **Ship builds** on **Core → Services** is on. The platform scope also holds the platform policy: each ecosystem's switch and size ceiling above every product's own settings.
 
-The **Overview** has one row per ecosystem with its status, packages, versions, last publish, access mode and registry URL. A status is **Enabled**, **Off** (with the reason) or **Not available** (the platform policy switched the ecosystem off). Before the platform's feeds exist, **Set up platform feeds** creates the system product and one feed per ecosystem. Running it again changes nothing an operator set.
+The **Overview** has one row per ecosystem with its status, packages, versions, last publish, access mode and registry URL. A status is **Enabled**, **Off** (with the reason) or **Not available** (the platform policy switched the ecosystem off). Before the platform's feeds exist, **Set up platform feeds** creates the system product and one feed per ecosystem. Running it again changes nothing a member set.
 
 Each feed page has four tabs and **Rebuild feed** under **More actions**:
 
@@ -122,7 +122,7 @@ A version row offers only what the protocol can express. A yank needs a reason a
 
 Publishing a version on `stable` prunes the package's builds on the two ephemeral tracks: `X-main.N` from `main`, `X-dev.N` from `dev`, or Python's `X.devN`, for every X at or below the released version. Stable and beta versions stay, and so do builds of a newer version and any version a channel points at. Each pruned version is audited as `package.version.prune` and leaves a tombstone, so the number is never published again.
 
-Retention is on by default (`release.packages.prunePrereleases`). The first time a product that never chose reaches it, the Worker records what a dry run finds and starts cleanup a week later (`package.prune.notice`). Nothing is deleted before that day. An operator's own value applies at once. The platform's own feeds always prune. `pkey feeds prune --product <slug>` is the backfill. It is a dry run unless `--apply`. The token needs `release:yank`, which an operator grants.
+Retention is on by default (`release.packages.prunePrereleases`). The first time a product that never chose reaches it, the Worker records what a dry run finds and starts cleanup a week later (`package.prune.notice`). Nothing is deleted before that day. A member's own value applies at once. The platform's own feeds always prune. `pkey feeds prune --product <slug>` is the backfill. It is a dry run unless `--apply`. The token needs `release:yank`, which a member grants.
 
 ### The admin API
 
@@ -145,4 +145,3 @@ The admin API is not in the OpenAPI spec, like the rest of the console's API. It
 
 - [Publish a package](/docs/features/ship-builds/packages/publish/): native clients and the CLI.
 - [Install the SDKs and the CLI](/docs/build/install/): client setup, age gates and private feeds.
-- [Package feeds for contributors](/docs/contribute/package-feeds/): the adapter contract.
