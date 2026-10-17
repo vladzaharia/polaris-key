@@ -1,15 +1,10 @@
 /**
- * **New license** (LX-29; S-24 §8, FLOWS.md C-17): a five-step drawer on the wizard kit (ST-39)
- * over the Licenses list. Tier, who it's for, limits, delivery, review; then the result in place.
- *
- * - The drawer is the URL: `?setup=new-license&step=<id>`. The draft is in `sessionStorage` per
- *   product, so a refresh or a trip to Tiers resumes it. Escape asks "Discard this license?".
- * - One assigned license (optionally emailed), one floating key, or a batch of floating keys (up to
- *   500, one CSV). Nothing here learns whether an email has an account (D4). Delivery is skipped
- *   when it has one answer. A batch is atomic on the Worker (one `db.batch`): it all happens or none.
- * - The key is shown once, in the response of the request that made it; a batch's CSV is built
- *   here from that response. Leaving asks only when this screen holds the only copy.
- * - The product's first license is a moment (EXPERIENCE.md §0.7; MO-11), once per product.
+ * **New license** (LX-29; S-24 §8, FLOWS.md C-17): a five-step drawer on the wizard kit (ST-39) over
+ * the Licenses list, then the result in place. The URL is `?setup=new-license&step=<id>`; the draft
+ * is in `sessionStorage` per product. One assigned licence (optionally emailed), one floating key or
+ * a batch (atomic on the Worker); nothing here learns whether an email has an account (D4).
+ * Delivery is skipped when it has one answer. The key is shown once, from the create response;
+ * leaving asks only when this screen holds the only copy. The first licence is a moment (MO-11).
  */
 
 import * as React from "react";
@@ -58,47 +53,22 @@ import {
   type Errors,
   type StepId,
 } from "./draft.js";
-import { devicesWords, primaryLabel, reviewRows, willItems } from "./review.js";
+import {
+  csvRows,
+  primaryLabel,
+  reviewRows,
+  summaryOf,
+  willItems,
+} from "./review.js";
 import { HolderStep, LimitsStep, TierStep, tierName } from "./steps.js";
 import { DeliveryStep, ReviewStep } from "./stepsDelivery.js";
+import {
+  STEP_TITLES,
+  focusHeading,
+  focusPageTitle,
+  retryable,
+} from "./helpers.js";
 import { useNewLicenseRoute, type Step } from "./route.js";
-
-const STEP_TITLES: Record<StepId, string> = {
-  tier: "Choose a tier",
-  holder: "Who it's for",
-  limits: "Limits",
-  delivery: "Delivery",
-  review: "Review",
-};
-
-/** With the opener gone (palette, deep link, reload) focus goes to the page's h1. */
-function focusPageTitle(): void {
-  window.setTimeout(() => {
-    const a = document.activeElement;
-    if (a && a !== document.body && !a.closest("[data-wizard]")) return;
-    const h1 = document.querySelector<HTMLElement>(
-      "[data-page-title], main h1",
-    );
-    if (!h1) return;
-    if (!h1.hasAttribute("tabindex")) h1.setAttribute("tabindex", "-1");
-    h1.focus({ preventScroll: true });
-  }, 80);
-}
-
-/** The step heading of the open wizard: where focus goes when the button that had it is gone. */
-function focusHeading(): void {
-  window.setTimeout(
-    () =>
-      document
-        .querySelector<HTMLElement>('[data-wizard="drawer"] h2[tabindex="-1"]')
-        ?.focus({ preventScroll: true }),
-    0,
-  );
-}
-
-/** Whether another try could help: a server or network failure, not a refusal. */
-const retryable = (e: unknown): boolean =>
-  !(e instanceof ApiError) || e.status >= 500;
 
 export function NewLicenseWizard({
   slug,
@@ -263,13 +233,11 @@ export function NewLicenseWizard({
     // not an empty one: no moment.
     const first =
       hasLicenses === false && !momentSeen(momentKey("first-license", slug));
-    const summary = [
+    const summary = summaryOf(
+      draft,
       tier ? tierName(tier) : "No tier",
-      devicesWords(limitLine?.value),
-      draft.who === "person" ? `for ${draft.email.trim()}` : null,
-    ]
-      .filter(Boolean)
-      .join(" · ");
+      limitLine,
+    );
     try {
       if (isBatch(draft)) {
         const res = await mutate("createLicenseBatch", slug, batchBody(draft));
@@ -283,15 +251,7 @@ export function NewLicenseWizard({
           label: res.batch.label,
           first,
           summary: `${summary} · ${res.licenses.length} keys`,
-          rows: res.licenses.map((l) => ({
-            key: l.key,
-            licenseId: l.licenseId,
-            product: slug,
-            tier: draft.tier ?? "",
-            deviceLimit: limit,
-            expiresAt: res.expiresAt,
-            batch: res.batch.label,
-          })),
+          rows: csvRows(res, slug, draft.tier ?? "", limit),
         });
       } else {
         const res = await mutate("createLicense", slug, createBody(draft));

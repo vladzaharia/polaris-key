@@ -11,6 +11,7 @@ import {
   emailsKey,
   expiryWords,
   isBatch,
+  type CsvRow,
   type Draft,
 } from "./draft.js";
 import type { ReviewRow } from "./stepsDelivery.js";
@@ -123,4 +124,41 @@ export function primaryLabel(d: Draft): string {
     : emailsKey(d)
       ? "Create and email license"
       : "Create license";
+}
+
+/** "Pro · 5 devices · for lena@ortiz.audio". */
+export function summaryOf(
+  d: Draft,
+  tierName: string,
+  limit: PolicyLine | undefined,
+): string {
+  return [
+    tierName,
+    devicesWords(limit?.value),
+    d.who === "person" ? `for ${d.email.trim()}` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+
+/** The batch response as CSV rows (the keys exist only in that response). */
+export function csvRows(
+  res: {
+    licenses: { licenseId: string; key: string }[];
+    batch: { label: string };
+    expiresAt: number | null;
+  },
+  product: string,
+  tier: string,
+  deviceLimit: number | null,
+): CsvRow[] {
+  return res.licenses.map((l) => ({
+    key: l.key,
+    licenseId: l.licenseId,
+    product,
+    tier,
+    deviceLimit,
+    expiresAt: res.expiresAt,
+    batch: res.batch.label,
+  }));
 }
