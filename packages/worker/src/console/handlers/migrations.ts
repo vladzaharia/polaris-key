@@ -18,6 +18,7 @@ import type { AdminSession } from "../../core/console/session.js";
 import { actorOf } from "../../core/audit.js";
 import { ErrorCode } from "../../core/errors.js";
 import { migrationJobs } from "../../core/contributions.js";
+import { rateLimitOk } from "../../core/rateLimit.js";
 import {
   apply,
   down,
@@ -33,6 +34,9 @@ import {
   notFound,
   readBody,
 } from "../../core/console/respond.js";
+
+/** The admin API's limiter shard (`../api.ts`). */
+const ADMIN_RL_SHARD = "_admin";
 
 const STATUS: Record<RunRefusal, number> = {
   unknown_report: 404,
@@ -93,8 +97,25 @@ export async function handleMigrations(
   const body = await readBody(req);
   const job = jobs.find((j) => j.id === body.job);
   if (!job) return notFound();
-  if (verb === "dry-run")
+  if (verb === "dry-run") {
+    // A dry run plans every product and writes run, unit and audit rows: a tight budget per
+    // caller (a token's sub is `token:<id>`, so a token has its own).
+    if (
+      !(await rateLimitOk(
+        env,
+        ADMIN_RL_SHARD,
+        {
+          bucket: "migrationDryRun",
+          id: actor.sub ?? "",
+          limit: 6,
+          windowSec: 60,
+        },
+        now,
+      ))
+    )
+      return err(429, "rate_limited", "too many dry runs");
     return adminJson({ run: await dryRun(ctx, job, actor) });
+  }
 
   const key = verb === "apply" ? body.report : body.run;
   if (typeof key !== "string" || key === "")

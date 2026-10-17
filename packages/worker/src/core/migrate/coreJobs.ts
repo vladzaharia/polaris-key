@@ -32,6 +32,7 @@ export const overrideMigrationJob: MigrationJob = {
   async plan({ db, now }, unit) {
     const { inventory } = await dryRunOverrideMigration(db, now, {
       product: unit,
+      slugs: [unit],
     });
     const p = inventory.products[0];
     return {

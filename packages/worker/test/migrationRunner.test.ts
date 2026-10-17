@@ -650,4 +650,25 @@ describe("the admin route", () => {
       ),
     ).toBeNull();
   });
+
+  it("limits dry runs to 6 a minute per caller (429)", async () => {
+    const w = await seededWorld();
+    const env = Object.assign(w.env, {
+      ADMIN_SESSION_SECRET: "test-admin-session-secret",
+      PLATFORM_ADMIN_GROUP: "platform-admins",
+      PLATFORM_OIDC_ISSUER: "https://id.plrs.example",
+      PLATFORM_OIDC_CLIENT_ID: "platform-client",
+    }) as Env;
+    const job = "core.licence-override-migration";
+    const statuses: number[] = [];
+    for (let i = 0; i < 7; i++)
+      statuses.push(
+        (
+          await route(env, w.db, "POST", "/api/platform/migrations/dry-run", {
+            job,
+          })
+        ).status,
+      );
+    expect(statuses).toEqual([200, 200, 200, 200, 200, 200, 429]);
+  });
 });

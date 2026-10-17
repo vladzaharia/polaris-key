@@ -1011,6 +1011,21 @@ describe("scope confinement", () => {
     expect(
       await call("POST", "/api/platform/migrations/dry-run", { job: "nope" }),
     ).toBe(404);
+    // The run records the token (`token:<id>`), never the minting admin's OIDC subject.
+    const dryRes = await dispatch(
+      mkReq("POST", "/api/platform/migrations/dry-run", {
+        bearer: secret,
+        body: { job: "core.licence-override-migration" },
+      }),
+      env,
+      db,
+      "/api/platform/migrations/dry-run",
+    );
+    expect(dryRes.status).toBe(200);
+    expect(
+      ((await dryRes.json()) as { run?: { requestedBy?: string } }).run
+        ?.requestedBy,
+    ).toBe("token:apitok_planted");
     for (const verb of ["apply", "down"])
       expect(
         await call("POST", `/api/platform/migrations/${verb}`, { job: "x" }),
