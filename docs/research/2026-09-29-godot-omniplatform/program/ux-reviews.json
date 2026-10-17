@@ -189,6 +189,11 @@
       "verdict": "pass",
       "date": "2026-10-17",
       "evidence": "_mockups/review/I-08/ux-review.md (pass-with-fixes, refusal pages); fixes wp/I-08-refusal-fixes 11ab13710, evidence _evidence/I-08-fix/ (axe 0, CSP 0, 360/390/1440 dark+light). Continue card is PX-14's."
+    },
+    "LX-27": {
+      "verdict": "pass",
+      "date": "2026-10-17",
+      "evidence": "_mockups/review/LX-27/ux-review-2.md (re-review pass-with-fixes after one fix round; minor N1-N10 in wp/LX-27b-polish)"
     }
   }
 }
