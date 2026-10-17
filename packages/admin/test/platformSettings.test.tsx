@@ -19,6 +19,7 @@ import { configureAxe } from "vitest-axe";
 import { activeSectionAt } from "../src/console/templates/Settings.js";
 import { platformOverview } from "./feedsFixture.js";
 import {
+  ALERTS_NONE,
   PENDING,
   boot,
   resetConsole,
@@ -399,6 +400,7 @@ function routes(over: Record<string, unknown> = {}): Record<string, unknown> {
     "/manage/api/products/kek": KEK,
     "/manage/api/platform/activity": HISTORY,
     "/manage/api/platform/feeds": platformOverview(),
+    "/manage/api/platform/alerts": ALERTS_NONE,
     ...over,
   };
 }
@@ -1687,5 +1689,122 @@ describe("Advanced is folded (ST-09)", () => {
     await waitFor(() =>
       expect(document.activeElement?.id).toBe("platform-secrets"),
     );
+  });
+});
+
+describe("Alert destinations in Email and alerts (ST-27)", () => {
+  const NOW_S = Math.floor(Date.now() / 1000);
+  const FRESH = { authAt: NOW_S - 30, stepUpMaxAgeSeconds: 300 };
+  const WEBHOOK = {
+    id: "dst_hook000001",
+    scope: "_platform",
+    kind: "webhook",
+    target: "https://hooks.example.com/…",
+    label: "Ops channel",
+    alerts: ["auto_halt", "commerce"],
+    enabled: true,
+    version: 1,
+    lastStatus: "failed",
+    lastAt: 1_700_000_000,
+    failures: 2,
+  };
+
+  it("lists a destination by its origin and never a URL or secret", async () => {
+    boot("#/platform/settings", {
+      me: FRESH,
+      extra: routes({
+        "/manage/api/platform/alerts": {
+          ...ALERTS_NONE,
+          destinations: [WEBHOOK],
+        },
+      }),
+    });
+    const email = await section("Email and alerts");
+    const panel = await within(email).findByTestId("alert-destinations");
+    expect(within(panel).getByText("Ops channel")).toBeTruthy();
+    expect(
+      within(panel).getByText(/https:\/\/hooks\.example\.com\/…/),
+    ).toBeTruthy();
+    expect(within(panel).getByText(/2 in a row/)).toBeTruthy();
+    expect(panel.textContent).not.toContain("whsec_");
+  });
+
+  it("adds a webhook, refuses a bad URL in words and shows the secret once", async () => {
+    let attempts = 0;
+    const log = boot("#/platform/settings", {
+      me: FRESH,
+      extra: routes({
+        "/manage/api/platform/alerts": ALERTS_NONE,
+        "POST /manage/api/platform/alerts": () => {
+          attempts += 1;
+          if (attempts === 1)
+            return new Response(
+              JSON.stringify({
+                error: { code: "bad_request", reason: "url_refused" },
+              }),
+              { status: 422, headers: { "content-type": "application/json" } },
+            );
+          return {
+            destination: { ...WEBHOOK, lastStatus: null, failures: 0 },
+            secret: "whsec_TESTSECRETVALUE",
+          };
+        },
+      }),
+    });
+    const email = await section("Email and alerts");
+    await userEvent.click(
+      await within(email).findByRole("button", { name: "Add destination" }),
+    );
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.click(within(dialog).getByRole("combobox"));
+    await userEvent.click(
+      await screen.findByRole("option", { name: "Webhook" }),
+    );
+    await userEvent.type(
+      within(dialog).getByLabelText(/Webhook URL/),
+      "http://10.0.0.1/x",
+    );
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Add destination" }),
+    );
+    expect(
+      await within(dialog).findByText(
+        "That URL cannot be used. It must be a public https address.",
+      ),
+    ).toBeTruthy();
+    const posted = log.calls.filter((c) => c.method === "POST");
+    expect(posted[0]!.json).toMatchObject({
+      kind: "webhook",
+      target: "http://10.0.0.1/x",
+    });
+    await userEvent.clear(within(dialog).getByLabelText(/Webhook URL/));
+    await userEvent.type(
+      within(dialog).getByLabelText(/Webhook URL/),
+      "https://hooks.example.com/t/abc",
+    );
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Add destination" }),
+    );
+    expect(await screen.findByText("whsec_TESTSECRETVALUE")).toBeTruthy();
+  });
+
+  it("asks for a fresh sign-in before adding", async () => {
+    boot("#/platform/settings", {
+      me: { authAt: NOW_S - 3600, stepUpMaxAgeSeconds: 300 },
+      extra: routes({ "/manage/api/platform/alerts": ALERTS_NONE }),
+    });
+    const email = await section("Email and alerts");
+    await userEvent.click(
+      await within(email).findByRole("button", { name: "Add destination" }),
+    );
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText("Sign in again to continue")).toBeTruthy();
+    expect(
+      (
+        within(dialog).getByRole("button", {
+          name: "Add destination",
+        }) as HTMLButtonElement
+      ).disabled,
+    ).toBe(true);
   });
 });
