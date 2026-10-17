@@ -3,6 +3,9 @@ title: "Terminal (Node)"
 description: "@polaris-key/node/cli: the Node SDK's terminal kit for commander and yargs programs, with the one-line flow, the styled parts, the headless views, theming, the --json contract and the fallbacks."
 sidebar:
   order: 7
+type: "reference"
+lastReviewed: "2026-10-16"
+lanes: ["kit"]
 ---
 
 import KitCoverage from "../../../../../components/ui/KitCoverage.astro";
@@ -259,7 +262,7 @@ export async function exported(client: PolarisKeyClient) {
 | `problemRows(mark, title, message?)` | A problem: the mark and title, the message below                                                     |
 | `fixRows(ctx, fixes)`                | The commands that fix a state, `tidewater activate` beside what it does                              |
 | `tableRows(rows)`                    | Label and value rows in two aligned columns (`status`, `doctor`)                                     |
-| `seatMeter(ctx, used, limit)`        | ●●○ and "2 of 3 in use": neutral, never a warning colour                                             |
+| `seatMeter(ctx, used, limit)`        | ●●○ and "2 of 3 in use": neutral, never a warning color                                              |
 | `codeRows(ctx, code)`                | A user code in reverse video, indented, with air above and below                                     |
 | `keyMask(ctx, value, fixed?)`        | The masked key: the public `pkey_<product>_` prefix, then bullets                                    |
 | `linkSpan(url)`                      | A URL without its scheme, an OSC 8 link where the terminal takes one                                 |
@@ -271,7 +274,7 @@ no copy: callers pass their words in.
 
 | Primitive                                                                 | What it is                                                                                                                                         |
 | ------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `detectTerminal(options)`                                                 | One pure decision on colour level, Unicode, prompting, animation, links, width, scheme, CI and headless, from the environment, streams and flags   |
+| `detectTerminal(options)`                                                 | One pure decision on color level, Unicode, prompting, animation, links, width, scheme, CI and headless, from the environment, streams and flags    |
 | `Painter`, `roleStyles`                                                   | Paints spans by role (`accent`, `success`, `warning`, `danger`, `info`, `muted`, `strong`, `link`, `chip`, `code`) with `util.styleText`           |
 | `railLines`, `symbolsFor`, `keyHints`, `columnsOf`                        | The rail layout, the Unicode and ASCII symbol sets, key hints, aligned columns                                                                     |
 | `cellWidth`, `truncateMiddle`, `truncateEnd`, `wrapSpans`, `breakPieces`  | Text measured in terminal cells (wide CJK and emoji included); a key is cut in the middle, a URL or a code wraps at its own break points           |
@@ -328,14 +331,14 @@ The theme goes in the adapter's options as `theme` (or to `createKitContext`). I
 
 | Field                                                        | In a terminal                                                                                                                                                                                                                                                                                  |
 | ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `preset`                                                     | `"polaris-key"` (default) draws the product chip in the product's accent; `"native"` hands the look to the terminal: ANSI roles only (the user's own palette), an inverse chip and no `colors`. `NO_COLOR` still drops every colour in both                                                    |
-| `colorScheme`                                                | `"system"` (default) follows `PKEY_THEME`, then `COLORFGBG`, then the terminal's answer to OSC 11 (asked only on a colour terminal where neither decides it, never under `NO_COLOR`); `"dark"` and `"light"` pin it. It changes only the truecolor chip and the QR's polarity                  |
-| `accent`                                                     | `"product"` (default) takes the integrator's colour, then the presentation's, then one derived from the icon, then ink; `"core"` is Polaris violet; a hex colour is the integrator's own; `"service"` has no section in a terminal and behaves as `"product"`                                  |
+| `preset`                                                     | `"polaris-key"` (default) draws the product chip in the product's accent; `"native"` hands the look to the terminal: ANSI roles only (the user's own palette), an inverse chip and no `colors`. `NO_COLOR` still drops every color in both                                                     |
+| `colorScheme`                                                | `"system"` (default) follows `PKEY_THEME`, then `COLORFGBG`, then the terminal's answer to OSC 11 (asked only on a color terminal where neither decides it, never under `NO_COLOR`); `"dark"` and `"light"` pin it. It changes only the truecolor chip and the QR's polarity                   |
+| `accent`                                                     | `"product"` (default) takes the integrator's color, then the presentation's, then one derived from the icon, then ink; `"core"` is Polaris violet; a hex color is the integrator's own; `"service"` has no section in a terminal and behaves as `"product"`                                    |
 | `colors`                                                     | Per-role overrides as hex, per scheme: `{ dark: { success: "#3fb27f" } }`, over the roles `accent`, `success`, `warning`, `danger`, `info`, `muted`, `strong` and `link`. Drawn only where the terminal draws truecolor; ANSI-16 keeps the user's palette. The Python kit takes the same value |
 | `density`                                                    | `"compact"` drops the blank rail rows between steps; `"comfortable"` (default) and `"spacious"` keep them. A terminal of 16 rows or fewer always drops them                                                                                                                                    |
 | `motion`                                                     | `"reduced"` and `"none"` stop the spinner and the redraws, so each line prints once                                                                                                                                                                                                            |
 | `product`                                                    | The integrator's `ProductIdentity` (`name`, `shortName`, `developer`, `accent`, `accentDark`, `iconPixels`, `deviceCodeUrl`), which wins over every other source                                                                                                                               |
-| `copy`                                                       | `{ locale, overrides }` ([Localisation](#localisation))                                                                                                                                                                                                                                        |
+| `copy`                                                       | `{ locale, overrides }` ([Localization](#localization))                                                                                                                                                                                                                                        |
 | `poweredBy`                                                  | `"line"` or `"badge"` add the Powered by Polaris Key line under `status` and `doctor`                                                                                                                                                                                                          |
 | `symbols`                                                    | The terminal's restyle hook: `"unicode"` (default) or `"ascii"`                                                                                                                                                                                                                                |
 | `serviceCues`, `radius`, `typography`, `ambient`, `platform` | Accepted, so one theme value serves every kit, and without effect: a terminal has no tiles, radii, faces or ambient art                                                                                                                                                                        |
@@ -361,11 +364,11 @@ The chip names the product from, in order: the theme's `product`; the SDK's pres
 accessor (`PolarisKeyClient` has none yet, so pass `theme: { product: { name, developer } }` for
 now); the bundle (`productName` and `author` in the `package.json` above the entry script);
 the slug in title case. The accent follows the same order, then is derived from `iconPixels`, then
-falls back to ink. The kit never fetches discovery or an icon itself. Status colours are the
+falls back to ink. The kit never fetches discovery or an icon itself. Status colors are the
 terminal's own ANSI-16 roles, so they follow its theme; truecolor appears only in the chip, and
 only when `COLORTERM` is `truecolor` or `24bit`.
 
-## Localisation
+## Localization
 
 The kit reads `kitCopy.generated.ts`, the catalog's table generated into the SDK, so
 `@polaris-key/node` needs no brand dependency. It ships the nine launch locales: `en`, `de`, `fr`,
@@ -485,7 +488,7 @@ script that captures it (`TOKEN=$(tidewater mint cdn --reveal --allow-workflow-c
 Text that comes from the server or the product (device names, names and emails, the developer's
 name, changelog summaries, URLs, the sign-in page) is drawn as text, never as an escape sequence:
 the kit's one writer removes every control character (C0, DEL and C1) before it reaches the
-terminal, and puts its own colour and link sequences around the cleaned text. A link is an OSC 8
+terminal, and puts its own color and link sequences around the cleaned text. A link is an OSC 8
 hyperlink only when its target is an `https` URL (or `http` to a loopback address) with no
 whitespace, control character or user name; anything else is printed as plain text.
 
@@ -493,9 +496,9 @@ whitespace, control character or user name; anything else is printed as plain te
 
 | When                                                                          | The kit                                                                                                                                                                                                                                                                                                                                                                    |
 | ----------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `NO_COLOR` is set, `--no-color`, `FORCE_COLOR=0`, or stdout is not a terminal | Drops every colour (on a terminal bold, reverse video and links stay; a pipe gets plain text); the chip and a user code keep a one-cell pad so they still read as blocks                                                                                                                                                                                                   |
-| `FORCE_COLOR` is set                                                          | Colours a pipe too                                                                                                                                                                                                                                                                                                                                                         |
-| `TERM=dumb`                                                                   | Plain lines: no colour, ASCII symbols, no spinner, no cursor control and no redraw; it still asks plain questions (the key is read with no echo at all) and headless sign-in still prints the code                                                                                                                                                                         |
+| `NO_COLOR` is set, `--no-color`, `FORCE_COLOR=0`, or stdout is not a terminal | Drops every color (on a terminal bold, reverse video and links stay; a pipe gets plain text); the chip and a user code keep a one-cell pad so they still read as blocks                                                                                                                                                                                                    |
+| `FORCE_COLOR` is set                                                          | Colors a pipe too                                                                                                                                                                                                                                                                                                                                                          |
+| `TERM=dumb`                                                                   | Plain lines: no color, ASCII symbols, no spinner, no cursor control and no redraw; it still asks plain questions (the key is read with no echo at all) and headless sign-in still prints the code                                                                                                                                                                          |
 | `--ascii`, `PKEY_ASCII=1`, `TERM=linux` or `symbols: "ascii"`                 | Uses ASCII symbols: `+` and a backtick close the rail, `*`, `o`, `+`, `x` and `!` mark the steps, `#` and `-` draw the bar                                                                                                                                                                                                                                                 |
 | `CI` (or `GITHUB_ACTIONS`, `BUILDKITE`) is set                                | Never prompts or animates: each line prints once, and sign-in shows the code                                                                                                                                                                                                                                                                                               |
 | Reduced motion: `motion: "reduced"` or `"none"`, or `PKEY_REDUCED_MOTION=1`   | Stops the spinner and the redraws                                                                                                                                                                                                                                                                                                                                          |
@@ -508,7 +511,7 @@ whitespace, control character or user name; anything else is printed as plain te
 
 For people using the terminal:
 
-- Status is always a mark and a word, never colour alone.
+- Status is always a mark and a word, never color alone.
 - The key field never shows a character of the secret, only the public `pkey_<product>_` prefix
   and bullets, and a key is never printed, logged or put in JSON.
 - Every key a step takes is named on its last row (`Enter activate · Esc cancel`). Esc and Ctrl-D

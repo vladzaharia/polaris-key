@@ -40,7 +40,7 @@ entitlements itself (`channels`, `deviceLimit`, `app.minVersion`, `app.maxVersio
 `license.tier`, `license.tierLabel`) and reserves the `license.`, `app.` and `pkey.` prefixes for
 future ones. A product flag that declares one of these names is always valid when it keeps the
 system key's type and only narrows it (see
-[reserved entitlement names](/docs/build/manifest/authoring/#reserved-entitlement-names)). With
+[reserved entitlement names](/docs/build/manifest/catalog/#reserved-entitlement-names)). With
 `warn`, an incompatible declaration is accepted and reported; with `error`, link, resync and the
 console's catalog publish refuse it. The setting starts at `warn` for a window of two minor
 releases or 60 days, whichever is later, and then moves to `error`. Neither value changes what a
@@ -49,7 +49,7 @@ device is signed: the platform's own value of a system key always wins.
 `IDENTITY_RESERVED_DISPLAY_NAMES` is `identity.reservedDisplayNames`. The sign-in card says
 "<App> wants you to sign in", so a product may not present itself as Polaris Key, Apple, the App
 Store, Google, Google Play, Steam, Valve, Epic Games, Microsoft, Xbox, PlayStation, Nintendo or
-itch.io (see [display names](/docs/build/manifest/authoring/#display-names)). With `warn`, such a
+itch.io (see [display names](/docs/build/manifest/product/#display-names)). With `warn`, such a
 `product.name`, `listing.name` or `listing.developerName` is accepted and reported; with `error`,
 link, resync and the console's listing edits refuse it. Either way the sign-in card shows the
 product slug in a neutral frame instead of a reserved name. The setting starts at `warn` for two

@@ -60,12 +60,20 @@ The owner asked for "first class documentation, thorough but not overly so" on o
 
 ## Acceptance criteria
 
-- [ ] The common definition of done in the docs plan §6.3 holds.
+- [x] The common definition of done in the docs plan §6.3 holds (with the exceptions below).
 - [ ] No hand-written SDK fence remains.
 - [ ] Each snippet target compiles in its SDK lane.
 - [ ] Joins DOC-07a's fresh-reader run.
 - [ ] `pkey-wp-reviewer` passes the package.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate in the header.
+
+## Corrections and notes (2026-10-16)
+
+- The six quickstarts are now numbered, install through `<InstallSteps>`, and show both lanes through `<Lanes>`. They are `.mdx` so they can import the components; `test/snippets/covered.ts` follows the rename.
+- **Not met, waiting on SP-33a/SP-33b:** no hand-written SDK fence remains, and each SDK's docs-snippets target compiles. `<Generated>` throws until SP-33's `renderUsage` exists, and no `docs-snippets` target exists in any SDK. This package wrote no new SDK snippet: the fences that remain are the ones SP-45b compiled in the covered lanes, and the library lane links to each SDK's own-UI page instead of showing a call. SP-33b replaces each fence with `<Generated>` or `<Snippet>` and adds the six targets.
+- The SDK overview's sub-client and verb table is still hand-written; the generated one waits on SP-35 (`api-names`). The old claim "Distribution has no sub-client" was false (`client.distribution` and `client.commerce` exist in Node) and is fixed.
+- The fresh-reader run (DOC-07a's harness) has not been run on these pages.
+- Unbuilt-behaviour lines ("planned", "is planned") are removed from the quickstarts.
 
 ## Verify
 

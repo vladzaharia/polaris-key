@@ -3,6 +3,8 @@ title: "Pack byte formats"
 description: "The files index, the patch descriptor, treeDigest, the path rules, the codec rules and the zstd window check that every SDK applies to pack bytes, pinned by the content corpus."
 sidebar:
   order: 10
+type: "reference"
+lastReviewed: "2026-10-16"
 ---
 
 A pack release is a signed `kind: pack` record (spec §2.5.1) plus side objects: the payload as
@@ -12,7 +14,7 @@ named by the SHA-256 of its stored bytes, and the record pins it with an **objec
 `{sha256, bytes, size, codec}`: the stored hash and length, and the decoded length. A device
 checks the stored hash and length before it decodes anything and the decoded length after.
 
-This page is the map. The normative text is spec §2.6 and §2.7, with `plans/P4-01.md` §2.7 to
+This page is the map. The normative text is spec §2.6 and §2.7, with §2.7 to
 §2.9 as the long form; the content corpus (`conformance/corpus/v2/content/`) pins every rule
 below byte for byte.
 
@@ -63,7 +65,7 @@ through a small buffer: without the check, one verdict would depend on how each 
 
 A container variant of 4 MiB or more may carry `chunks`, an object ref
 `{format, sha256, bytes, size, codec, params}` naming a binary `pkey-chunks/1` index (spec §2.5.1,
-§2.6; `plans/P4-10.md` §2.2–§2.5). The claims refuse only a malformed one (`chunks` not an
+§2.6, §2.2–§2.5). The claims refuse only a malformed one (`chunks` not an
 object, a bad `format`, `params` not an object, or a bad object ref); an unknown `format` or
 codec only makes the chunk strategy unusable, and other members are ignored.
 
@@ -82,7 +84,7 @@ is decoded), then length, magic, version, record size, flags, the exact length, 
 and, given the variant's payload, the binding (`chunks-payload-mismatch`). `planTarget` maps
 `chunks` to inline records only when the index is usable and bound to the payload and no chunk
 is longer than `MAX_CHUNK_BYTES` (4 MiB). Bundles are ordinary blobs, so a chunk is fetched with
-a single-range request and hashed before use. Every SDK applies chunks (`applyChunk`, P4-11):
+a single-range request and hashed before use. Every SDK applies chunks (`applyChunk`):
 seeds are the installed payloads whose index the SDK keeps (any pack, and embedded baselines),
 each missing run is one `Range` request with `If-Range` on the bundle hash, only a `206` with
 exactly the requested `Content-Range` is read, and any other answer falls back to the next
@@ -90,23 +92,23 @@ strategy. A first install stays `full` and then keeps its index as a seed.
 
 ## What the content corpus pins
 
-| Section            | Pins                                                                                                       |
-| ------------------ | ---------------------------------------------------------------------------------------------------------- |
-| `pathCases`        | The path rules                                                                                             |
-| `filesIndexCases`  | `parseFilesIndex`, its five steps in order                                                                 |
-| `chunkIndexCases`  | `parseChunkIndex`, every code in order, the u64 saturation and the exact-length rule (P4-10)               |
-| `applyCases`       | Full, delta, file and (P4-10) chunk apply over a real v1 → v2 pair, with negatives and exact counters      |
-| `packSetIdCases`   | `packSetId`, the identifier of a set of pack releases                                                      |
-| `stampCases`       | The content stamp, and (P4-13) its `holds` read by `holdsOf`, compared only when a case has `expect.holds` |
-| `frameWindowCases` | `frameWindow` over raw frame headers                                                                       |
+| Section            | Pins                                                                                               |
+| ------------------ | -------------------------------------------------------------------------------------------------- |
+| `pathCases`        | The path rules                                                                                     |
+| `filesIndexCases`  | `parseFilesIndex`, its steps in order                                                              |
+| `chunkIndexCases`  | `parseChunkIndex`, every code in order, the u64 saturation and the exact-length rule               |
+| `applyCases`       | Full, delta, file and chunk apply over a real v1 → v2 pair, with negatives and exact counters      |
+| `packSetIdCases`   | `packSetId`, the identifier of a set of pack releases                                              |
+| `stampCases`       | The content stamp, and its `holds` read by `holdsOf`, compared only when a case has `expect.holds` |
+| `frameWindowCases` | `frameWindow` over raw frame headers                                                               |
 
 `plan-matrix.json` pins the install planner, variant selection and target mapping beside it
 (spec §11.4). How the blobs are kept and regenerated is on
-[The conformance corpus](/docs/build/wire/corpus/).
+[The conformance corpus](/docs/contribute/corpus/).
 
 ## Content in the feed and revocations
 
-P4-13 (spec §2.4.1, §2.5.3, §11.1) lets the channel feed carry content and lets CI revoke a pack
+Spec §2.4.1, §2.5.3 and §11.1 let the channel feed carry content and let CI revoke a pack
 release. Nothing here is a new claim: each member is read beside the claims, so a malformed one
 is unusable and never refuses the feed or the record, and the wire stays v4.
 
@@ -133,7 +135,7 @@ withholds a revocation cannot bring the target back.
 
 ## The feed's delta menu
 
-P4-29 (spec §2.4.2, §11.4) gives the feed's reserved `deltas` member a shape, inside wire v4 and
+Spec §2.4.2 and §11.4 give the feed's reserved `deltas` member a shape, inside wire v4 and
 with no new claim. It is an object keyed by a target **payload** SHA-256; each value lists 1–4
 `payload`-scope deltas to that payload, at most 64 in the member:
 
@@ -153,7 +155,7 @@ and an unknown `method` is kept for the planner to refuse.
 
 | Step     | What happens                                                                                                                                                                       |
 | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Source   | The menu of the most recently committed feed, fresh or stale: a stale entry that 404s only falls back                                                                              |
+| Source   | The menu of the latest committed feed, fresh or stale: a stale entry that 404s only falls back                                                                                     |
 | Merge    | `withFeedDeltas(variant, deltas)` appends the entries for the selected `container` variant's payload after the record's own deltas; an entry naming a record delta's id is skipped |
 | Plan     | `planTarget` and `plan` are unchanged: the method must be in `patchMethods`, the base installed, `memBytes` within the budget; a record delta wins a cost tie                      |
 | Apply    | `applyDelta` is unchanged: the artifact against the entry, the base against `from`, the window against `memBytes`, and the output against the **record's** `payload`               |
@@ -167,7 +169,7 @@ and `content/cases.json` the target-hash check in `feedDeltaApplyCases`.
 
 ## Delegated content keys and the data-only rule
 
-P4-19 (spec §1, §2.5.4, §2.8, §3.5 steps 13 and 16) lets a product's release key delegate a
+Spec §1, §2.5.4, §2.8 and §3.5 (steps 13 and 16) let a product's release key delegate a
 **content key** that may sign pack records of data-only types under one pack-id scope, so a content
 team can publish events, localisation and data without code-release power. It stays inside v4: the
 reserved record kind `delegation` is filled, a feed `revocations` entry may carry
@@ -178,7 +180,7 @@ reserved record kind `delegation` is filled, a feed `revocations` entry may carr
 | `kind: delegation` record | CI-signed with a pinned release key: `deliverable` is the scope root (a pack id), `delegate.publicKey` the content key, `types` (1–8; only `files.tree`, `data.json` and `l10n.table` count) and a signing window `issuedAt`–`expiresAt` of at most 366 days | `delegationOf`, `verifyDelegation`                          |
 | The delegated kid         | A pack record signed by the content key carries `kid: pkd1-<the delegation's record hash>`; the device fetches that delegation from the record route                                                                                                         | `delegationHashOf`, `verifyReleaseRecord` with `delegation` |
 | Scope (step 16)           | `kind: pack`; the pack id is the scope root or under it by whole segments (`djdl.events` covers `djdl.events.halloween`, never `djdl.eventsx`); the type is delegated; every variant is tree layout; the record's `issuedAt` is inside the window            | `verifyReleaseRecord` (`scope`)                             |
-| Revocation                | P4-13's revocation record naming the delegation's hash; every release signed under it is then refused                                                                                                                                                        | `verifyRevocation`, `recordRevoked`                         |
+| Revocation                | The revocation record naming the delegation's hash; every release signed under it is then refused                                                                                                                                                            | `verifyRevocation`, `recordRevoked`                         |
 | The data-only rule        | Every file of a delegated release: an already-normalised path, an extension on the allow-list, and no Godot, archive, native-code or script magic in its first 64 or last 65,557 bytes                                                                       | `dataOnlyRefusal`                                           |
 
 A delegation verifies only against the **pinned release keys**, one level deep, so the Worker can
@@ -187,7 +189,7 @@ only for a compatible or standalone pack's feed target and for the reload of a s
 install; app records, pins, holds, revocations, replacements and embedded baselines never take it,
 so a content-key signature fails there at `jws`. Devices check the record's `issuedAt` against the
 window, never their own clock, so an installed release stays valid after the window closes; only a
-revocation stops it. An SDK that predates P4-19 refuses a delegated record at step 13 and keeps
+revocation stops it. An SDK that predates delegation refuses a delegated record at step 13 and keeps
 what it runs.
 
 **The data-only rule** (spec §2.8). The extension allow-list is the real control: `json`, `csv`,

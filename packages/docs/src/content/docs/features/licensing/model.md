@@ -295,7 +295,7 @@ licence's entitlements or everything its holder has (`entitlementModel`), whose 
 are (`entitlementHolder`), which licence a device runs on (`anchorPolicy`, `reanchor`), whether
 offline grace may outlast a licence's expiry (`clampGraceToExpiry`). They are declared under
 `licensing:` in `.pkey/product` (see
-[Licensing settings](/docs/build/manifest/authoring/#licensing-settings-licensing)) and edited on
+[Licensing settings](/docs/build/manifest/product/#licensing-settings-licensing)) and edited on
 **License → Settings**, where a change claims the setting from the manifest until you revert it.
 `refundGraceHours` is accepted and has no effect: refunds have no grace
 ([Why a license ended](/docs/services/license/model/#why-a-license-ended)).

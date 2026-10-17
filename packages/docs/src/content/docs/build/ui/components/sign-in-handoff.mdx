@@ -3,6 +3,9 @@ title: "SignInHandoff"
 description: "Step two of the sign-in form, in place: Finish in your browser, with Open browser again, Cancel and Use a code instead, or the device code with its countdown."
 sidebar:
   order: 9
+type: "reference"
+lastReviewed: "2026-10-16"
+lanes: ["kit"]
 ---
 
 import { Tabs, TabItem } from "@astrojs/starlight/components";
@@ -27,7 +30,7 @@ Step two of the sign-in form, in place: Finish in your browser, with Open browse
   <TabItem label="Terminal (Python)">
     <KitStatus kit="terminal-python" />
 
-    **Drop-in.** `login --device-code`, and automatically over SSH, with no display or with `CI` (D-68): the code in reverse video, `c` copies it (OSC 52); never a QR in a terminal (D-67).
+    **Drop-in.** `login --device-code`, and automatically over SSH, with no display or with `CI`: the code in reverse video, `c` copies it (OSC 52); never a QR in a terminal.
 
     **Styled part.** `screens.sign_in(kit, view)` in `polaris_key.ui.terminal`, drawn with a `Kit`; restyle through
     `Theme(colors=…, symbols=…, preset="native")`.

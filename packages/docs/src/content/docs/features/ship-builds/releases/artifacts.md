@@ -274,7 +274,7 @@ The download route above is the macOS-and-CLI shape: one binary per architecture
 name. A product that ships more — a universal DMG, a Windows zip, a Linux tarball, an APK, a
 sideloaded IPA, a web build — declares an **artifact map** in `.pkey/release`
 (`deliverables.app.artifacts`, see
-[Authoring](/docs/build/manifest/authoring/#release-deliverables-deliverablesapp-and-the-artifact-map)).
+[Authoring](/docs/build/manifest/release/#release-deliverables-deliverablesapp-and-the-artifact-map)).
 Each map entry is one **build** with a platform, an arch and a format, and a `match` glob names
 its file. The truth-store sync then classifies every file of a GitHub release by the map
 instead of by its extension: the matched file is the build's payload, `<payload>.sig` and

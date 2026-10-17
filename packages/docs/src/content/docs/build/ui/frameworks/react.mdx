@@ -5,6 +5,7 @@ type: "reference"
 lastReviewed: "2026-10-10"
 sidebar:
   order: 2
+lanes: ["kit"]
 ---
 
 import KitCoverage from "../../../../../components/ui/KitCoverage.astro";
@@ -112,7 +113,7 @@ Restyle with plain CSS. Every component draws in a `.pk-root` element carrying `
 Inside it each part has a `data-part` name (`card`, `header`, `icon`, `title`, `lede`, `actions`,
 `primary`, `secondary`, `key-field`, `code`, `qr`, `seat-meter`, `device-row`, `license-row`,
 `settings-row`, `callout`, `progress`, …) and each control a `data-key`, its copy key. The theme's
-colours, radii, type and spacing are `--pk-*` variables on `.pk-root`, never on `:root`. The kit's
+colors, radii, type and spacing are `--pk-*` variables on `.pk-root`, never on `:root`. The kit's
 rules sit in `@layer polaris-key`, so any rule of yours wins without `!important`:
 
 ```css
@@ -180,7 +181,7 @@ The presentation icon is shown as a `blob:` URL, so a page with a Content-Securi
 `img-src blob:` and `connect-src` for the image origin. With no verified icon, the kit draws a
 monogram rather than a Polaris Key mark.
 
-## Localisation
+## Localization
 
 Every string is a key of the kit's copy catalog. English is bundled; `de`, `es`, `fr`, `it`, `ja`,
 `ko`, `pt-BR` and `zh-Hans` load once, on demand, and every component showing that locale redraws

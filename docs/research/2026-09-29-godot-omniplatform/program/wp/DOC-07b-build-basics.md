@@ -48,10 +48,18 @@ the manifest validator; `packages/cli/src/{help,index}.ts`; `build/registering.m
 
 ## Acceptance criteria
 
-- [ ] The common definition of done in the docs plan §6.3 holds.
-- [ ] Every manifest fence passes `validateManifestDocuments`.
+- [x] The common definition of done in the docs plan §6.3 holds.
+- [x] Every manifest fence passes `validateManifestDocuments` (`packages/docs/test/manifestSnippets.test.ts`, on fences titled `.pkey/<document>`).
 - [ ] `pkey-wp-reviewer` passes the package.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate in the header.
+
+## Corrections and notes (2026-10-16)
+
+- DOC-03a's site map had already moved `build/registering` to `manifest/register` and `manifest/authoring` to `manifest/product`; this package split `product` into `product`, `catalog` and `release` by H2 and rewrote `register` as the how-to **Register a product from its repo**.
+- `go-live` omits "Verified per platform" and "the support URL set in Presentation": the console has no Integration page and no support-URL field yet. They join the page in the PR that ships them.
+- The old catalog example had no `description`, which the validator refuses; the new test caught it and the example is fixed.
+- Links into `manifest/authoring#...` on other pages now point at `product`, `catalog` or `release`; `manifest/distribution` gets the same fix.
+- `test-your-integration` has no `pkey doctor` sightings or SP-36 replay server step: neither is built.
 
 ## Verify
 

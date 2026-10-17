@@ -1,0 +1,161 @@
+---
+title: "React quickstart"
+description: "Install @polaris-key/react, generate the config file and gate a browser page or an Electron renderer with the drop-in kit or the hooks."
+type: "quickstart"
+sdks: ["react"]
+lanes: ["kit", "library"]
+lastReviewed: "2026-10-16"
+sidebar:
+  order: 2
+---
+
+import Requires from "../../../../components/docs/Requires.astro";
+import InstallSteps from "../../../../components/docs/InstallSteps.astro";
+import Lanes from "../../../../components/docs/Lanes.astro";
+import CardGrid from "../../../../components/docs/CardGrid.astro";
+import { LinkCard } from "@astrojs/starlight/components";
+
+You end with a React app that stays locked until a license is active.
+
+<Requires features={["licensing"]} sdk={["React 18 or later"]} />
+
+## Before you start
+
+1. A product with License on, and its slug. [Your first product](/docs/start/first-product/) creates one.
+2. A React 18 or later app: a browser page on Polaris Key's origin, on your own origin or in Tauri, or an Electron renderer.
+
+## 1. Install
+
+**CLI** Install the kit with `react` and `react-dom`, and the `pkey` CLI as a dev dependency. Each block routes the `@polaris-key` scope to the feed first.
+
+<InstallSteps sdk="react" />
+<InstallSteps sdk="cli" />
+
+You should see `@polaris-key/react` in `package.json`.
+
+## 2. Generate the config
+
+**CLI** Write the config file from the product's discovery document.
+
+```sh title="Terminal"
+pkey sdk --lang react --product <slug> --write
+```
+
+The file is `polaris.config.ts`. It holds `productSlug`, `baseUrl`, `expectedServices` and `trust.pinnedKeys`. A page on another origin, or in Tauri, signs in with a device token and verifies every document against those pins. Without them the page makes no request: developers see a console error and users see a neutral error screen. The file also exports `pinnedKeys` and `pinnedReleaseKeys` for the Electron main process, whose `@polaris-key/node` client verifies. To try this without a registered product, [run Polaris Key locally](/docs/build/local/).
+
+You should see the file written and each pin's key id and SHA-256 fingerprint. Compare the fingerprints with the console before you ship.
+
+## 3. Gate the app
+
+**App** Wrap the app in the provider, which holds the client for every component below it. Pass the generated config and your app's version, then pick a lane.
+
+<Lanes intro="The drop-in kit renders the gate and every screen the license needs. Your own UI reads the hooks and draws its own.">
+  <Fragment slot="kit">
+
+`PolarisKeyGate` renders your app only when the license is usable, and otherwise the screen for the state: loading, sign-in, expired, revoked, a version block or an error. It takes the product's presentation from the provider configuration.
+
+```tsx title="App.tsx"
+import { PolarisKeyProvider } from "@polaris-key/react";
+import { PolarisKeyGate } from "@polaris-key/react/kit";
+import { polarisKey as productPolarisKey } from "./polaris.config";
+
+const polarisKey = {
+  ...productPolarisKey,
+  version: APP_VERSION,
+};
+
+export function App() {
+  return (
+    <PolarisKeyProvider config={polarisKey}>
+      <PolarisKeyGate>
+        <YourApp />
+      </PolarisKeyGate>
+    </PolarisKeyProvider>
+  );
+}
+```
+
+In the Electron renderer, set desktop mode in the same configuration. The provider then uses the bridge the main process exposes ([the Node quickstart](/docs/build/quickstart/node/#4-gate-the-app)).
+
+```tsx title="App.tsx"
+import { PolarisKeyProvider } from "@polaris-key/react";
+import { PolarisKeyGate } from "@polaris-key/react/kit";
+import { polarisKey as productPolarisKey } from "./polaris.config";
+
+const polarisKey = {
+  ...productPolarisKey,
+  mode: "desktop" as const,
+  version: APP_VERSION,
+};
+
+export function App() {
+  return (
+    <PolarisKeyProvider config={polarisKey}>
+      <PolarisKeyGate>
+        <YourApp />
+      </PolarisKeyGate>
+    </PolarisKeyProvider>
+  );
+}
+```
+
+To place kit parts yourself, see [React kit](/docs/build/ui/frameworks/react/#piecemeal).
+
+  </Fragment>
+  <Fragment slot="library">
+
+Under the provider, read the license with `useLicenseGate()` and `useLicense()`, take a key with `usePolarisAuth().submitKey(key)`, and sign in with `usePolarisAuth().signInWithOidc()`. `describeError(error)` gives the words for a refusal. [Your own UI](/docs/build/sdks/react/your-own-ui/) gives each hook with its states, and [Without React](/docs/build/sdks/react/your-own-ui/#without-react) covers the adapter.
+
+  </Fragment>
+</Lanes>
+
+You should see the app locked, with the sign-in screen asking for a key.
+
+## 4. Activate a test license
+
+**CLI** Start a local server and copy its `ok` key. [Run Polaris Key locally](/docs/build/local/) lists the key for each state.
+
+```sh title="Terminal"
+pkey dev
+```
+
+**App** Enter the `ok` key on the sign-in screen.
+
+You should see the app unlock.
+
+## What you built
+
+A provider that verifies signed documents against your pins, and a gate or hooks that follow the license.
+
+## If it isn't working
+
+- The page makes no request and logs a console error: the config has no pins. Regenerate it with `pkey sdk`.
+- A fixture test needs the provider: pass `{ ...polarisKey, adapter }` as the config, with an adapter from `browserAdapter({ fetchImpl })`.
+- [Troubleshoot your integration](/docs/build/troubleshooting/): each status and error code.
+- [Web apps and CORS](/docs/build/web-apps/): browser origins.
+- [Install the SDKs and the CLI](/docs/build/install/): other package managers and age gates.
+
+## Next steps
+
+<CardGrid>
+  <LinkCard
+    title="Your own UI"
+    href="/docs/build/sdks/react/your-own-ui/"
+    description="Every hook, its states and words."
+  />
+  <LinkCard
+    title="React SDK reference"
+    href="/docs/build/sdks/react/"
+    description="The whole API."
+  />
+  <LinkCard
+    title="Test your integration"
+    href="/docs/build/test-your-integration/"
+    description="Every license state, offline and grace."
+  />
+  <LinkCard
+    title="Go live"
+    href="/docs/build/go-live/"
+    description="Pins, signing and CI."
+  />
+</CardGrid>

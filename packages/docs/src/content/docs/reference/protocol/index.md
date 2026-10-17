@@ -1,9 +1,11 @@
 ---
-title: "The wire contract"
-description: "PROTOCOL_VERSION 4 — the frozen JWS envelope and its strict verifier, the six type-separated documents, and where the normative spec and its conformance corpus live."
+title: "The protocol"
+description: "PROTOCOL_VERSION 4: the frozen JWS envelope and its strict verifier, the six type-separated documents, and the conformance corpus that proves every SDK agrees."
 sidebar:
   order: 5
-  label: "The wire contract"
+  label: "The protocol"
+type: "reference"
+lastReviewed: "2026-10-16"
 ---
 
 Everything that crosses the wire or the disk boundary between the Polaris Key Worker and an
@@ -16,10 +18,10 @@ six are the same artifact.
 `core.PROTOCOL_VERSION`, and it is bumped on any wire-breaking change to a document shape or
 to the HTTP contract that carries one.
 
-This section teaches the contract for people integrating an SDK, building a fifth SDK, or
-debugging a verification failure. The **normative** text is the in-repo spec — these pages
-cite its section numbers rather than restating it, so when the two disagree the spec wins and
-the page is a bug.
+This section teaches the contract for people integrating an SDK, porting the contract to another language, or
+debugging a verification failure. These pages summarize wire contract v4, and each cites the section of
+`docs/security/WIRE-CONTRACT-V4.md` it comes from. When a page and the spec disagree, the spec
+wins and the page is a bug.
 
 ## What "frozen" means
 
@@ -44,11 +46,11 @@ rule that makes that possible:
   §3.1).
 - **A divergence gets a corpus case before it gets a fix.** The corpus is the only automated
   cross-language enforcement there is, so an observed difference that is fixed without being
-  pinned will come back.
+  pinned comes back.
 
 The parts that are frozen _forever_, not merely until the next version step, are the
 fingerprint hash domains — renaming `pkey-hw` or `pkey-device:` would orphan every enrolled
-digest. See [Fingerprint constants](/docs/reference/fingerprint-constants/).
+digest. See [Fingerprint constants](/docs/reference/protocol/fingerprint-constants/).
 
 ## The six documents
 
@@ -59,20 +61,20 @@ trust manifest and the call site that expects a license document. The sixth, the
 record, is signed in CI by a **release key** that the app pins separately and that is never a
 product key.
 
-| `typ`              | Artifact                  | Where a client gets it                                                     | Payload cap |
-| ------------------ | ------------------------- | -------------------------------------------------------------------------- | ----------- |
-| `pkey-license+jws` | License document          | `GET /<product>/license/document` (`application/jwt`)                      | 65 536 B    |
-| `pkey-config+jws`  | Config document           | `GET /<product>/config/document` (`application/jwt`)                       | 65 536 B    |
-| `pkey-trust+jws`   | Trust manifest            | `GET /<product>/.well-known/polaris-trust.jws` (`application/jose`)        | 65 536 B    |
-| `pkey-bundle+jws`  | Offline activation bundle | A file, hand-carried; minted by `POST /manage/api/products/<slug>/bundles` | 262 144 B   |
-| `pkey-feed+jws`    | Channel feed              | `GET /<product>/update/<channel>/feed.jws?platform=` (`application/jose`)  | 65 536 B    |
-| `pkey-release+jws` | Release record            | `GET /<product>/release/records/<sha256>` (`application/jose`)             | 65 536 B    |
+| `typ`              | Artifact                  | Where a client gets it                                                       | Payload cap |
+| ------------------ | ------------------------- | ---------------------------------------------------------------------------- | ----------- |
+| `pkey-license+jws` | License document          | `GET /<product>/license/document` (`application/jwt`)                        | 65 536 B    |
+| `pkey-config+jws`  | Config document           | `GET /<product>/config/document` (`application/jwt`)                         | 65 536 B    |
+| `pkey-trust+jws`   | Trust manifest            | `GET /<product>/.well-known/polaris-trust.jws` (`application/jose`)          | 65 536 B    |
+| `pkey-bundle+jws`  | Offline activation bundle | A file, hand-carried; minted by `/manage/api/products/<slug>/bundles` (POST) | 262 144 B   |
+| `pkey-feed+jws`    | Channel feed              | `GET /<product>/update/<channel>/feed.jws?platform=` (`application/jose`)    | 65 536 B    |
+| `pkey-release+jws` | Release record            | `GET /<product>/release/records/<sha256>` (`application/jose`)               | 65 536 B    |
 
 The license and config documents are fetched with `Authorization: Bearer pkeyt_…` and carry
 per-document `ETag`/`If-None-Match`. The trust manifest is unauthenticated — it publishes
 public keys, and it is verified against the caller's compiled-in pins, so serving it to
 anyone costs nothing. The bundle has no client-facing fetch endpoint at all: it is a file an
-operator carries to an air-gapped machine. The feed and record routes arrive with P3-03; a
+operator carries to an air-gapped machine. A
 feed pins each record by the SHA-256 of its exact bytes, which a client checks before any
 signature work.
 
@@ -81,14 +83,14 @@ The full route table, including every non-document surface, is at
 
 ## The six pages in this section
 
-| Page                                                 | What it covers                                                                                                                              | Spec sections |
-| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
-| [The envelope](/docs/build/wire/envelope/)           | Compact JWS mechanics, size caps, strict decoding, the verify-before-parse order, shared claims, constants, and the two validation profiles | §1, §2, §3    |
-| [Trust](/docs/build/wire/trust/)                     | Pinned keys, the signed trust manifest, revocation by absence, and why the cache is never a key source                                      | §1, §2.3      |
-| [Cache and clock](/docs/build/wire/cache-and-clock/) | The v3 cache record, the re-verify-everything load, and the monotonic clock floor                                                           | §4            |
-| [Offline bundles](/docs/build/wire/bundles/)         | `pkey-bundle+jws`, its three time bounds, and the four ordered refusal steps                                                                | §7            |
-| [Pack byte formats](/docs/build/wire/packs/)         | The files index, the patch descriptor, `treeDigest`, the path rules, the codec rules and the zstd window check                              | §2.6, §2.7    |
-| [The conformance corpus](/docs/build/wire/corpus/)   | One generator, the language runners, and the CI drift gate that keeps them honest                                                           | §6, §10       |
+| Page                                                         | What it covers                                                                                                                              | Spec sections |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
+| [The envelope](/docs/reference/protocol/envelope/)           | Compact JWS mechanics, size caps, strict decoding, the verify-before-parse order, shared claims, constants, and the two validation profiles | §1, §2, §3    |
+| [Trust](/docs/reference/protocol/trust/)                     | Pinned keys, the signed trust manifest, revocation by absence, and why the cache is never a key source                                      | §1, §2.3      |
+| [Cache and clock](/docs/reference/protocol/cache-and-clock/) | The v3 cache record, the re-verify-everything load, and the monotonic clock floor                                                           | §4            |
+| [Offline bundles](/docs/reference/protocol/bundles/)         | `pkey-bundle+jws`, its three time bounds, and the four ordered refusal steps                                                                | §7            |
+| [Pack byte formats](/docs/reference/protocol/packs/)         | The files index, the patch descriptor, `treeDigest`, the path rules, the codec rules and the zstd window check                              | §2.6, §2.7    |
+| [The conformance corpus](/docs/contribute/corpus/)           | One generator, the language runners, and the CI drift gate that keeps them honest                                                           | §6, §10       |
 
 ## One client, end to end
 
@@ -101,7 +103,7 @@ any of them:
    discarded; the trust manifest is re-verified against the pins; each document is re-verified
    against the resulting key set. Anything that fails is treated as absent.
 3. **Derive, never read.** The anti-replay floors, the "last verified" timestamp and the
-   monotonic clock floor are all computed from what just verified — not from fields in the
+   monotonic clock floor are all computed from what verified — not from fields in the
    file.
 4. **Refresh trust on Core's own schedule**, independently of any service's document fetch.
    This is what keeps the signed clock advancing for every product shape.
@@ -118,7 +120,7 @@ is unchanged — which is the point of minting bundle documents in the ordinary 
   signal. The offline window is `graceUntil`, enforced by the gate.
 - **A `304` is not proof of freshness forever.** The ETag excludes the timestamps, so a
   content-stable document returns `304` indefinitely; past the half-life the client must
-  re-ask unconditionally or it will drift into `grace` while perfectly online.
+  re-ask unconditionally or it drifts into `grace` while perfectly online.
 - **`schemaVersion` on a config document is the product's catalog version**, not a wire
   version. Validate its shape, never allow-list its value.
 
@@ -171,23 +173,23 @@ deprecated. No verifier, signer or store has ever accepted them.
 The normative spec is repo-only by decision; it is not published on this site. If you are
 reading these pages with a checkout in front of you:
 
-| What                          | Path                                                                                                                                                                                                           |
-| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| The normative spec            | `docs/security/WIRE-CONTRACT-V4.md`                                                                                                                                                                            |
-| Its predecessors (historical) | `docs/security/WIRE-CONTRACT-V3.md`, `docs/security/WIRE-CONTRACT-V2.md`                                                                                                                                       |
-| The conformance corpus        | `conformance/corpus/v2/` — `cases.json`, `gate-matrix.json`, `fingerprint.json`, `stage-matrix.json`, `headers.json`, `config-matrix.json`, `update-matrix.json`, `outlet-matrix.json`, `feed-url-matrix.json` |
-| The corpus generator          | `tools/sign-corpus.ts`, a driver over `tools/corpus/<family>.ts` and `tools/corpus/reference/`                                                                                                                 |
-| Frozen JWS encode/verify      | `packages/shared-jws/src/index.ts`                                                                                                                                                                             |
-| Wire types and constants      | `packages/shared-protocol/src/` — `core.ts`, `license.ts`, `config.ts`, `trust.ts`, `update.ts`, `release.ts`, `distribution.ts`                                                                               |
-| The reference client          | `packages/client-core/src/` — `verify.ts`, `trust.ts`, `bundle.ts`, `gate.ts`, `clock.ts`, `store.ts`, `stages.ts`                                                                                             |
-| The signer                    | `packages/worker/src/core/` — `signing.ts`, `trust.ts`, `bundles.ts`                                                                                                                                           |
+| What                     | Path                                                                                                                                                                                                           |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| The normative spec       | `docs/security/WIRE-CONTRACT-V4.md`                                                                                                                                                                            |
+| Its predecessor          | `docs/security/WIRE-CONTRACT-V3.md`                                                                                                                                                                            |
+| The conformance corpus   | `conformance/corpus/v2/` — `cases.json`, `gate-matrix.json`, `fingerprint.json`, `stage-matrix.json`, `headers.json`, `config-matrix.json`, `update-matrix.json`, `outlet-matrix.json`, `feed-url-matrix.json` |
+| The corpus generator     | `tools/sign-corpus.ts`, a driver over `tools/corpus/<family>.ts` and `tools/corpus/reference/`                                                                                                                 |
+| Frozen JWS encode/verify | `packages/shared-jws/src/index.ts`                                                                                                                                                                             |
+| Wire types and constants | `packages/shared-protocol/src/` — `core.ts`, `license.ts`, `config.ts`, `trust.ts`, `update.ts`, `release.ts`, `distribution.ts`                                                                               |
+| The reference client     | `packages/client-core/src/` — `verify.ts`, `trust.ts`, `bundle.ts`, `gate.ts`, `clock.ts`, `store.ts`, `stages.ts`                                                                                             |
+| The signer               | `packages/worker/src/core/` — `signing.ts`, `trust.ts`, `bundles.ts`                                                                                                                                           |
 
 Case counts for the corpus, generated from the corpus files themselves, are at
-[Conformance corpus v2](/docs/reference/corpus/).
+[Conformance corpus v2](/docs/reference/protocol/corpus/).
 
 :::note[The reference implementation is not the contract]
 `@polaris-key/client-core` is a _correct_ implementation of these rules, not the definition of
-them. When you port the contract to a fifth language, port it from the spec and prove it with
+them. When you port the contract to another language, port it from the spec and prove it with
 the corpus — reading TypeScript and matching its behaviour reproduces its accidents along with
 its intent.
 :::

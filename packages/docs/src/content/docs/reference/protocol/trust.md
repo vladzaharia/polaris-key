@@ -3,6 +3,8 @@ title: "Trust"
 description: "Two tiers of verification keys: compiled-in pins, revocable only by another pin, and a signed manifest verified only against them. Absence is revocation."
 sidebar:
   order: 7
+type: "reference"
+lastReviewed: "2026-10-16"
 ---
 
 A verifier holds exactly **two tiers** of key material, in strictly decreasing authority, and
@@ -127,7 +129,7 @@ Everything else in the envelope still applies: signature, `typ: "pkey-trust+jws"
 
 | Check                                                                 | Behaviour on failure                       |
 | --------------------------------------------------------------------- | ------------------------------------------ |
-| `schemaVersion` in the supported set (currently `1` only)             | Reject the manifest — unknown fails closed |
+| `schemaVersion` in the supported set (`1` only)                       | Reject the manifest — unknown fails closed |
 | `aud` equals the configured product                                   | Reject                                     |
 | `iss === "key.plrs.im"`                                               | Reject                                     |
 | `issuedAt` / `expiresAt` are numbers                                  | Reject                                     |
@@ -147,7 +149,7 @@ into, not unioned with, not diffed against the previous one:
 discovered := { every Ed25519 key this manifest publishes with a live status }
 ```
 
-That single sentence is what restores the server's ability to revoke. A `kid` that simply
+That single sentence is what restores the server's ability to revoke. A `kid` that
 disappears from a newer manifest is gone from the client on the next refresh. There is no
 "remove" operation on the wire because there does not need to be one.
 
@@ -195,7 +197,7 @@ The manifest's `expiresAt` is minutes away by design (`cacheSeconds` is 300 toda
   document signed by a rotated key would suddenly fail.
 - It still **raises the monotonic clock floor**. Its `issuedAt` is a signed lower bound on
   real time regardless of whether it may still publish keys; those are unrelated questions.
-  See [Cache and clock](/docs/build/wire/cache-and-clock/).
+  See [Cache and clock](/docs/reference/protocol/cache-and-clock/).
 
 Do not re-introduce freshness checking on the reload path to justify the floor. The corpus pins
 both halves: `trust-expired-manifest` (network, reject), `trust-expired-manifest-reload-path`
@@ -366,7 +368,7 @@ The checks, in order:
 3. `aud` equals the expected product; `iss` equals `key.plrs.im`.
 4. `issuedAt` and `expiresAt` must be numbers.
 5. **Anti-rollback**: a manifest whose `issuedAt` is not strictly greater than the last verified
-   manifest's is rejected. The floor comes from the manifest currently held in memory, never from
+   manifest's is rejected. The floor comes from the manifest held in memory, never from
    a disk counter — an attacker-writable JSON field is not a rollback defence.
 6. **Freshness**, on the network path only: reject if `issuedAt` is more than the clock skew in
    the future, or if `expiresAt` has already passed by more than the skew. The reload path skips
@@ -387,7 +389,7 @@ The checks, in order:
 The discovered set is **replaced wholesale** on every successful verification. It is not merged
 into, not unioned with, and not diffed against the previous set.
 
-That single rule is what makes revocation work: **absence is revocation**. A kid that simply
+That single rule is what makes revocation work: **absence is revocation**. A kid that
 stops appearing in a newer manifest is gone from the discovered set on the next refresh.
 
 ## Revoking a pinned key
@@ -429,7 +431,7 @@ keeps, not a reason to fail the sync.
 There are two reasons this scheduling is Core's, and both are structural.
 
 **Any service mix must advance the clock.** The v2 design rode trust refresh on the `/config`
-fetch, so a product that fetched no config advanced no signed clock. With seven opt-in services
+fetch, so a product that fetched no config advanced no signed clock. With several opt-in services
 and products that legitimately run only one, coupling the independent clock to one service's
 document makes the clock a function of which services a customer happened to buy.
 
@@ -470,9 +472,9 @@ to one tenant.
 
 ## See also
 
-- [Discovery](/docs/services/core/discovery/) — where `pinnedKeys` appears in an **unsigned**
+- [Discovery](/docs/reference/protocol/discovery/) — where `pinnedKeys` appears in an **unsigned**
   document, and why that is a hint rather than a trust root.
-- [The device principal](/docs/services/core/device-principal/) — the credential the document
+- [The device principal](/docs/reference/protocol/device-principal/) — the credential the document
   routes authenticate with.
 - [License](/docs/services/license/) and [Config](/docs/services/config/) — the two signed
   documents this key set verifies.
