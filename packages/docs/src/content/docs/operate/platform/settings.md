@@ -109,27 +109,27 @@ read the settings fresh at the start of each run.
 
 Platform → Settings has these sections, ordered by use. A section this deployment has nothing to
 show in is left out, and a setting whose area no section names appears under Advanced, so none is
-dropped. The header's **History** button jumps to the trail at the foot.
+dropped. The header's **History** button jumps to the trail at the foot. A rail (wide
+screens), pills (tablet) or a picker (phone) jumps between sections; the address keeps the
+section (`?section=`), so a link opens there.
 
 - **Platform ready.** What still needs doing: an unreadable settings store, each warning the API
   returns (the console still shares the customer sign-in client, `PLATFORM_KEK_ID` set,
   `PLATFORM_KEK` kept as a legacy key beside `PLATFORM_KEK_KEYS`, `PORTAL_SESSION_SECRET` unset),
-  no admin group and no GitHub App. Each item links to the section that fixes it. With nothing
-  to fix the section reads _Ready_.
+  no admin group and no GitHub App. One banner shows the most severe item with a link to where it
+  is fixed; **Show all** lists the rest. With nothing to fix the banner is not shown.
 - **Product defaults.** The values a product starts from when it sets none of its own. Shown once
   a default is editable.
-- **Sign-in.** The reserved display-name setting and the key-entry refusal switch, then the
-  deploy-time values, read-only: the console's own client (`ADMIN_OIDC_ISSUER`,
-  `ADMIN_OIDC_CLIENT_ID`) above the platform client the portal and products use
-  (`PLATFORM_OIDC_*`), and the console session length.
+- **Sign-in.** The reserved display-name setting and the console session length. The identity
+  provider's deploy-time values are under Advanced.
 - **Storefront and hosting.** The storefront and hosted-assets switches (`ASSET_HOSTING`; turning
   either asks first), then the deploy-time hosts and accounts, read-only. **Package feeds** holds each
   ecosystem's platform policy: _Serve_ (stopping an ecosystem asks first and names every product)
-  and a size ceiling in MiB with its own Save bar. A member without Platform edit sees the rows
-  disabled and who to ask.
+  and a size ceiling in MiB with its own Save bar. A member without Platform edit sees values with a lock
+  and one notice at the top saying who to ask.
 - **Email and alerts.** The sender address, the legacy sender, the daily cap per product and the
   Apple private relay. All deploy-time, read-only.
-- **Licensing.** The reserved-names setting as a Warn / Refuse choice (switching to Refuse asks
+- **Licensing.** The key-entry refusal switch, the reserved-names setting as a Warn / Refuse choice (switching to Refuse asks
   first), the reserved keys with the rule the platform applies to each, and every registered
   product whose catalog declares a reserved name, each declaration marked compatible or not with
   the reason. Check this list before switching to Refuse: a product marked incompatible would
@@ -151,6 +151,9 @@ dropped. The header's **History** button jumps to the trail at the foot.
   - If the settings store cannot be read, the switches show _Off: store unreadable_ and nothing
     can be saved.
 - **Advanced.**
+  - **Identity provider.** The deploy-time values, read-only: the console's own client
+    (`ADMIN_OIDC_ISSUER`, `ADMIN_OIDC_CLIENT_ID`) above the platform client the portal and
+    products use (`PLATFORM_OIDC_*`), the admin group and the issuer allowlist.
   - **Limits.** The code limits, read-only, grouped as Access, Email, Retention, Storage and
     delivery, Licensing and Requests: session and token lives, email send and attempt caps,
     retention periods, the bucket's age lock, upload and delta sizes. The list comes from the

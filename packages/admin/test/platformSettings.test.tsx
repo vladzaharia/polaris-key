@@ -1103,7 +1103,9 @@ describe("Background jobs", () => {
 describe("the read-only inventory", () => {
   it("shows deploy-time values, the console-client fallback and the warnings", async () => {
     boot("#/platform/settings", { extra: routes() });
-    const identity = await section("Sign-in");
+    const signin = await section("Sign-in");
+    expect(within(signin).getByText("8 hours")).toBeTruthy();
+    const identity = await section("Identity provider");
     expect(within(identity).getByText("pk-admins")).toBeTruthy();
     expect(
       within(identity).getAllByText(
@@ -1114,7 +1116,6 @@ describe("the read-only inventory", () => {
       within(identity).getByText("https://login.example.com"),
     ).toBeTruthy();
     expect(within(identity).getByText("auth.acme.dev")).toBeTruthy();
-    expect(within(identity).getByText("8 hours")).toBeTruthy();
     const delivery = await section("Storefront and hosting");
     expect(within(delivery).getByText("Production")).toBeTruthy();
     expect(within(delivery).getByText("https://dl.example.com")).toBeTruthy();
@@ -1141,7 +1142,9 @@ describe("the read-only inventory", () => {
       within(warnings)
         .getAllByRole("link")
         .map((a) => a.textContent),
-    ).toEqual(expect.arrayContaining(["Go to Sign-in", "Go to Secrets"]));
+    ).toEqual(
+      expect.arrayContaining(["Go to Identity provider", "Go to Secrets"]),
+    );
   });
 
   it("collapses the code limits until asked", async () => {
@@ -1329,7 +1332,10 @@ describe("History", () => {
     boot("#/platform/settings", { extra: routes() });
     const history = await section("Recently changed");
     expect(await within(history).findByText("Ada Lovelace")).toBeTruthy();
-    expect(within(history).getByText(/\(30 days → 21 days\)/)).toBeTruthy();
+    // The old value is struck through, the new one plain.
+    const old = within(history).getByText("30 days", { selector: "del" });
+    expect(old.tagName).toBe("DEL");
+    expect(within(history).getByText(/21 days/)).toBeTruthy();
     expect(within(history).queryByText(/Re-sealed/)).toBeNull();
   });
 
@@ -1545,5 +1551,39 @@ describe("fix round (ST-09 UX review)", () => {
     expect(within(jobs).queryByRole("button", { name: /^Revert/ })).toBeNull();
     expect(within(jobs).queryByLabelText(/\(days\)$/)).toBeNull();
     expect((await axe(main())).violations.map((v) => v.id)).toEqual([]);
+  });
+});
+
+describe("section navigation (ST-09 UX review)", () => {
+  it("has a picker on phone and pills on tablet, and a click puts the section in the address", async () => {
+    boot("#/platform/settings", { extra: routes() });
+    await settingsPage();
+    await section("Jobs");
+    HTMLElement.prototype.scrollIntoView = vi.fn();
+    const picker = screen.getByRole("combobox", { name: "Jump to section" });
+    expect(picker).toBeTruthy();
+    const pills = screen.getByRole("navigation", { name: "Jump to section" });
+    await userEvent.click(within(pills).getByRole("link", { name: "Jobs" }));
+    await waitFor(() =>
+      expect(window.location.hash).toBe(
+        "#/platform/settings?section=platform-jobs",
+      ),
+    );
+    expect(document.activeElement?.id).toBe("platform-jobs");
+    // The current section is marked in the rail and the pills; the first until the scroll moves.
+    expect(
+      within(nav()).queryAllByRole("link", { current: "location" }).length,
+    ).toBeLessThanOrEqual(1);
+  });
+
+  it("a shared link opens at its section", async () => {
+    HTMLElement.prototype.scrollIntoView = vi.fn();
+    boot("#/platform/settings?section=platform-licensing", {
+      extra: routes(),
+    });
+    await section("Licensing");
+    await waitFor(() =>
+      expect(document.activeElement?.id).toBe("platform-licensing"),
+    );
   });
 });

@@ -28,8 +28,10 @@ import {
 import { Button } from "../../../../ui/Button.js";
 import { Callout } from "../../../../ui/Callout.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
+import { Section } from "../../../../ui/Section.js";
 import { PageHeader } from "../../../../ui/PageHeader.js";
-import { PageSkeleton } from "../../../../ui/Skeleton.js";
+import { LiveRegion } from "../../../../ui/LiveRegion.js";
+import { Skeleton } from "../../../../ui/Skeleton.js";
 import { useWriteGate } from "../../../access/useCan.js";
 import { qk } from "../../../data/queries.js";
 import {
@@ -94,6 +96,11 @@ export const SECTION_OF_AREA: Record<string, SectionId> = {
   "background-jobs": "platform-jobs",
 };
 
+/** A setting that reads better elsewhere than its registry area says. */
+const SECTION_OF_KEY: Record<string, SectionId> = {
+  KEYENTRY_REFUSALS: "platform-licensing",
+};
+
 const WARNING_TITLES: Record<string, string> = {
   console_oidc_shared: "The console shares the customer sign-in client",
   kek_id_set: "PLATFORM_KEK_ID is set",
@@ -103,11 +110,8 @@ const WARNING_TITLES: Record<string, string> = {
 };
 
 /** Where each Worker warning is fixed. */
-const WARNING_TARGETS: Record<
-  string,
-  SectionId | "platform-keyring" | "platform-secrets"
-> = {
-  console_oidc_shared: "platform-signin",
+const WARNING_TARGETS: Record<string, string> = {
+  console_oidc_shared: "platform-identity",
   kek_id_set: "platform-keyring",
   kek_keyring_unusable: "platform-keyring",
   kek_legacy_open_only: "platform-keyring",
@@ -118,6 +122,39 @@ function jump(id: string): void {
   const el = document.getElementById(id);
   el?.scrollIntoView({ block: "start" });
   el?.focus({ preventScroll: true });
+}
+
+/** The loading shape: the template's rail column and cards, with no header of its own. */
+function SettingsSkeleton(): React.ReactElement {
+  return (
+    <div
+      data-skeleton="form"
+      className="pk-skeleton-group mx-auto grid w-full max-w-[72rem] grid-cols-1 gap-6 xl:grid-cols-[12rem_minmax(0,1fr)]"
+    >
+      <LiveRegion message="Loading platform settings…" />
+      <div aria-hidden className="hidden space-y-2 xl:block">
+        {[0, 1, 2, 3, 4, 5].map((i) => (
+          <Skeleton key={i} className="h-4 w-28" />
+        ))}
+      </div>
+      <div aria-hidden className="space-y-6">
+        {[3, 2, 4].map((rows, i) => (
+          <div
+            key={i}
+            className="space-y-4 rounded-lg border border-border bg-surface-raised p-5"
+          >
+            <Skeleton className="h-4 w-36" />
+            {Array.from({ length: rows }, (_, r) => (
+              <div key={r} className="flex items-center justify-between gap-6">
+                <Skeleton className="h-3 w-48" />
+                <Skeleton className="h-6 w-24" />
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 /** One notice for the whole page: a member with view and no edit. Each row shows only a lock. */
@@ -163,7 +200,7 @@ export function PlatformSettingsPage(): React.ReactElement {
     return (
       <div className="space-y-6">
         {header}
-        <PageSkeleton template="form" label="platform settings" />
+        <SettingsSkeleton />
       </div>
     );
   }
@@ -180,7 +217,7 @@ export function PlatformSettingsPage(): React.ReactElement {
   const secrets = new Map(view.secrets.map((s) => [s.name, s.set]));
   const kekWarning = view.warnings.find((w) => w.code === "kek_id_set");
   const sectionOf = (s: PlatformSetting): SectionId =>
-    SECTION_OF_AREA[s.area] ?? "platform-advanced";
+    SECTION_OF_KEY[s.key] ?? SECTION_OF_AREA[s.area] ?? "platform-advanced";
   const rowsIn = (id: SectionId): PlatformSetting[] =>
     view.settings.filter((s) => sectionOf(s) === id);
   const rows = (id: SectionId) =>
@@ -195,7 +232,6 @@ export function PlatformSettingsPage(): React.ReactElement {
   const has = (names: readonly string[]) => names.some((n) => deploy.has(n));
   const showSignin =
     rowsIn("platform-signin").length > 0 ||
-    has(IDENTITY_VARS) ||
     view.constants.some((c) => c.name === "ADMIN_SESSION_TTL_SECONDS");
   const showHosting =
     rowsIn("platform-hosting").length > 0 || has(DELIVERY_VARS);
@@ -233,12 +269,9 @@ export function PlatformSettingsPage(): React.ReactElement {
         <SettingsSection
           id="platform-signin"
           title="Sign-in"
-          description="Reserved display names save on their own; everything else is deploy-time, and a console session can never widen its own access."
+          description="Reserved display names save on their own. The identity provider is under Advanced; a console session can never widen its own access."
         >
           {rows("platform-signin")}
-          {IDENTITY_VARS.map((n) => (
-            <DeployRow key={n} item={deploy.get(n)} />
-          ))}
           <ConstantRow view={view} name="ADMIN_SESSION_TTL_SECONDS" />
         </SettingsSection>
       ) : null}
@@ -298,6 +331,19 @@ export function PlatformSettingsPage(): React.ReactElement {
       <div id="platform-advanced" tabIndex={-1} className="space-y-6">
         <h2 className="text-lg font-semibold text-fg-strong">Advanced</h2>
         {rows("platform-advanced")}
+        {has(IDENTITY_VARS) ? (
+          <Section
+            variant="settings"
+            id="platform-identity"
+            headingLevel={3}
+            title="Identity provider"
+            description="Deploy-time, read-only: the console's own client above the platform client the portal and products use."
+          >
+            {IDENTITY_VARS.map((n) => (
+              <DeployRow key={n} item={deploy.get(n)} />
+            ))}
+          </Section>
+        ) : null}
         <LimitsSection view={view} />
         <KeyringSection
           deploy={deploy}
@@ -354,7 +400,7 @@ export function readyItems(
       tone: "warning",
       title: "No admin group",
       detail: "Nobody is a platform admin until PLATFORM_ADMIN_GROUP is set.",
-      to: "platform-signin",
+      to: "platform-identity",
     });
   if (
     deploy.has("GITHUB_APP_ID") &&
@@ -451,7 +497,9 @@ function ReadySection({
 function sectionName(id: string): string {
   return id === "platform-keyring"
     ? "Keyring"
-    : id === "platform-secrets"
-      ? "Secrets"
-      : "Advanced";
+    : id === "platform-identity"
+      ? "Identity provider"
+      : id === "platform-secrets"
+        ? "Secrets"
+        : "Advanced";
 }
