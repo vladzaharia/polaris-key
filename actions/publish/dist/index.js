@@ -14814,7 +14814,7 @@ var DEPRECATED_SPELLINGS = [
     9,
     P,
     "/licensing/profiles/*/label",
-    "product:licensing.profiles[].name",
+    "product:profiles[].name",
     { doc: P, pointer: "/licensing/profiles/*/name" },
     "canonical"
   ),
@@ -14822,7 +14822,7 @@ var DEPRECATED_SPELLINGS = [
     9,
     P,
     "/profiles/*/label",
-    "product:licensing.profiles[].name",
+    "product:profiles[].name",
     { doc: P, pointer: "/profiles/*/name" },
     "canonical"
   ),
