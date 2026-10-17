@@ -4147,15 +4147,15 @@ msgstr "Sign-in request invalid"
 msgid "core.codes.invalid_request.message"
 msgstr "The app sent a sign-in request we can't read. Try again."
 
-#. App not recognised
+#. Sign-in can't finish
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_client.title"
-msgstr "App not recognised"
+msgstr "Sign-in can't finish"
 
-#. This app isn't set up for sign-in. Contact its developer.
+#. This app's sign-in isn't set up correctly, so it stopped here to keep your account safe. Let its developer know.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_client.message"
-msgstr "This app isn't set up for sign-in. Contact its developer."
+msgstr "This app's sign-in isn't set up correctly, so it stopped here to keep your account safe. Let its developer know."
 
 #. Sign-in no longer valid
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -4187,15 +4187,15 @@ msgstr "Access not available"
 msgid "core.codes.invalid_scope.message"
 msgstr "The app asked for access this sign-in doesn't offer. Contact its developer."
 
-#. Return address not allowed
+#. Sign-in can't finish
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.redirect_uri_mismatch.title"
-msgstr "Return address not allowed"
+msgstr "Sign-in can't finish"
 
-#. This app's return address isn't registered, so we didn't send you back. Contact its developer.
+#. This app's sign-in isn't set up correctly, so it stopped here to keep your account safe. Let its developer know.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.redirect_uri_mismatch.message"
-msgstr "This app's return address isn't registered, so we didn't send you back. Contact its developer."
+msgstr "This app's sign-in isn't set up correctly, so it stopped here to keep your account safe. Let its developer know."
 
 #. Choose a license
 #. Core copy (conformance/parity/copy.en.json, codes).

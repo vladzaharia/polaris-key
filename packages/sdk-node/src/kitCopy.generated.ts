@@ -854,9 +854,9 @@ export const KIT_COPY: Readonly<
     "core.codes.invalid_request.title": "Sign-in request invalid",
     "core.codes.invalid_request.message":
       "The app sent a sign-in request we can't read. Try again.",
-    "core.codes.invalid_client.title": "App not recognised",
+    "core.codes.invalid_client.title": "Sign-in can't finish",
     "core.codes.invalid_client.message":
-      "This app isn't set up for sign-in. Contact its developer.",
+      "This app's sign-in isn't set up correctly, so it stopped here to keep your account safe. Let its developer know.",
     "core.codes.invalid_grant.title": "Sign-in no longer valid",
     "core.codes.invalid_grant.message":
       "That sign-in has expired or was already used. Sign in again.",
@@ -866,9 +866,9 @@ export const KIT_COPY: Readonly<
     "core.codes.invalid_scope.title": "Access not available",
     "core.codes.invalid_scope.message":
       "The app asked for access this sign-in doesn't offer. Contact its developer.",
-    "core.codes.redirect_uri_mismatch.title": "Return address not allowed",
+    "core.codes.redirect_uri_mismatch.title": "Sign-in can't finish",
     "core.codes.redirect_uri_mismatch.message":
-      "This app's return address isn't registered, so we didn't send you back. Contact its developer.",
+      "This app's sign-in isn't set up correctly, so it stopped here to keep your account safe. Let its developer know.",
     "core.codes.license_choice_required.title": "Choose a license",
     "core.codes.license_choice_required.message":
       "Choose which license this device uses, then continue.",
@@ -3557,9 +3557,9 @@ export const KIT_COPY: Readonly<
     "core.codes.invalid_request.title": "Sign-in request invalid",
     "core.codes.invalid_request.message":
       "The app sent a sign-in request we can't read. Try again.",
-    "core.codes.invalid_client.title": "App not recognised",
+    "core.codes.invalid_client.title": "Sign-in can't finish",
     "core.codes.invalid_client.message":
-      "This app isn't set up for sign-in. Contact its developer.",
+      "This app's sign-in isn't set up correctly, so it stopped here to keep your account safe. Let its developer know.",
     "core.codes.invalid_grant.title": "Sign-in no longer valid",
     "core.codes.invalid_grant.message":
       "That sign-in has expired or was already used. Sign in again.",
@@ -3569,9 +3569,9 @@ export const KIT_COPY: Readonly<
     "core.codes.invalid_scope.title": "Access not available",
     "core.codes.invalid_scope.message":
       "The app asked for access this sign-in doesn't offer. Contact its developer.",
-    "core.codes.redirect_uri_mismatch.title": "Return address not allowed",
+    "core.codes.redirect_uri_mismatch.title": "Sign-in can't finish",
     "core.codes.redirect_uri_mismatch.message":
-      "This app's return address isn't registered, so we didn't send you back. Contact its developer.",
+      "This app's sign-in isn't set up correctly, so it stopped here to keep your account safe. Let its developer know.",
     "core.codes.license_choice_required.title": "Choose a license",
     "core.codes.license_choice_required.message":
       "Choose which license this device uses, then continue.",

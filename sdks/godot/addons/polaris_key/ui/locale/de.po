@@ -4137,12 +4137,12 @@ msgstr "Anmeldeanfrage ungültig"
 msgid "core.codes.invalid_request.message"
 msgstr "Die App hat eine Anmeldeanfrage gesendet, die wir nicht lesen können. Versuche es erneut."
 
-#. App not recognised
+#. Sign-in can't finish
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_client.title"
 msgstr "App nicht erkannt"
 
-#. This app isn't set up for sign-in. Contact its developer.
+#. This app's sign-in isn't set up correctly, so it stopped here to keep your account safe. Let its developer know.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_client.message"
 msgstr "Diese App ist nicht für die Anmeldung eingerichtet. Wende dich an den Entwickler."
@@ -4177,12 +4177,12 @@ msgstr "Zugriff nicht verfügbar"
 msgid "core.codes.invalid_scope.message"
 msgstr "Die App hat Zugriff angefragt, den diese Anmeldung nicht bietet. Wende dich an den Entwickler."
 
-#. Return address not allowed
+#. Sign-in can't finish
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.redirect_uri_mismatch.title"
 msgstr "Rücksprungadresse nicht erlaubt"
 
-#. This app's return address isn't registered, so we didn't send you back. Contact its developer.
+#. This app's sign-in isn't set up correctly, so it stopped here to keep your account safe. Let its developer know.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.redirect_uri_mismatch.message"
 msgstr "Die Rücksprungadresse dieser App ist nicht registriert, deshalb haben wir dich nicht zurückgeleitet. Wende dich an den Entwickler."
