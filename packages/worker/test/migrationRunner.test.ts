@@ -612,4 +612,42 @@ describe("the admin route", () => {
     );
     expect(undone.body.run.status).toBe("reverted");
   });
+
+  it("reports Core's delegated override migration but never applies or undoes it", async () => {
+    const w = await seededWorld();
+    const env = Object.assign(w.env, {
+      ADMIN_SESSION_SECRET: "test-admin-session-secret",
+      PLATFORM_ADMIN_GROUP: "platform-admins",
+      PLATFORM_OIDC_ISSUER: "https://id.plrs.example",
+      PLATFORM_OIDC_CLIENT_ID: "platform-client",
+    }) as Env;
+    const job = "core.licence-override-migration";
+    const dry = await route(
+      env,
+      w.db,
+      "POST",
+      "/api/platform/migrations/dry-run",
+      { job },
+    );
+    expect(dry.status).toBe(200);
+    expect(dry.body.run.status).toBe("reported");
+    for (const verb of ["apply", "down"]) {
+      const r = await route(
+        env,
+        w.db,
+        "POST",
+        `/api/platform/migrations/${verb}`,
+        { job, report: dry.body.run.id, run: dry.body.run.id },
+      );
+      expect(r.status, verb).toBe(409);
+      expect(r.body.code ?? r.body.error?.code, verb).toBe("delegated");
+    }
+    // Nothing ran: no apply row exists for the report.
+    expect(
+      await w.db.first(
+        "SELECT id FROM data_migration_runs WHERE source_id = ?",
+        dry.body.run.id,
+      ),
+    ).toBeNull();
+  });
 });

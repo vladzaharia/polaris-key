@@ -34,6 +34,7 @@
 import type { Db, DbStatement } from "../db/types.js";
 import type { Env } from "../platform/env.js";
 import type { MigrationJob } from "./migrate/job.js";
+import { CORE_MIGRATIONS } from "./migrate/coreJobs.js";
 import type { AuthorizationListener } from "./authorizationListeners.js";
 import type { SubjectStore } from "./accounts/subjectHooks.js";
 import type { LicenseHolderHooks } from "./licensing/licenseHolders.js";
@@ -255,9 +256,10 @@ export function maintenanceContributions(): MaintenanceContribution[] {
   );
 }
 
-/** Every mounted service's data-migration jobs. An id claimed twice throws. */
+/** Core's own data-migration jobs, then every mounted service's. An id claimed twice throws. */
 export function migrationJobs(): MigrationJob[] {
   const out = new Map<string, MigrationJob>();
+  for (const job of CORE_MIGRATIONS) out.set(job.id, job);
   for (const [slug, c] of contributionsOf())
     for (const job of c.migrations ?? []) {
       if (out.has(job.id))

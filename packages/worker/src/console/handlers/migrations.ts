@@ -44,6 +44,7 @@ const STATUS: Record<RunRefusal, number> = {
   lease_lost: 409,
   reverting: 409,
   report_stale: 409,
+  delegated: 409,
 };
 
 function answer(r: RunResult): Response {

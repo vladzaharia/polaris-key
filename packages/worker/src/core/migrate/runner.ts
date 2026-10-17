@@ -80,7 +80,8 @@ export type RunRefusal =
   | "busy" // another call holds the run
   | "lease_lost" // this call's lease lapsed and another call took the run over
   | "reverting" // a down exists for this apply: apply and down exclude each other
-  | "report_stale"; // the dry run is older than MIGRATION_REPORT_MAX_AGE_SECONDS
+  | "report_stale" // the dry run is older than MIGRATION_REPORT_MAX_AGE_SECONDS
+  | "delegated"; // the job has its own flow (`MigrationJob.delegatedTo`): the runner only reports
 
 export type RunResult =
   | { ok: true; run: RunView; noop: boolean }
@@ -516,6 +517,7 @@ export async function apply(
   reportId: string,
   opts: StepOptions = {},
 ): Promise<RunResult> {
+  if (job.delegatedTo) return { ok: false, reason: "delegated" };
   const report = await runRow(ctx.db, reportId);
   if (!report || report.job !== job.id || report.mode !== "dry-run")
     return { ok: false, reason: "unknown_report" };
@@ -577,6 +579,7 @@ export async function down(
   applyId: string,
   opts: StepOptions = {},
 ): Promise<RunResult> {
+  if (job.delegatedTo) return { ok: false, reason: "delegated" };
   const source = await runRow(ctx.db, applyId);
   if (!source || source.job !== job.id || source.mode !== "apply")
     return { ok: false, reason: "unknown_apply" };

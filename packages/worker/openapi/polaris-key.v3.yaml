@@ -17169,7 +17169,7 @@ paths:
               schema: { $ref: "#/components/schemas/AdminError" }
         "409":
           description: >
-            `busy`, `lease_lost`, `reverting` (a down exists for this apply), `report_incomplete` (a unit could not be planned), `report_stale` (the report is over 24 hours old; dry-run again) or `reverted` (dry-run again).
+            `busy`, `lease_lost`, `reverting` (a down exists for this apply), `report_incomplete` (a unit could not be planned), `report_stale` (the report is over 24 hours old; dry-run again) `reverted` (dry-run again) or `delegated` (the job has its own console flow; the runner only reports it).
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
