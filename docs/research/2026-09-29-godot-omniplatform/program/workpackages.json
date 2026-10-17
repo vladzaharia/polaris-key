@@ -9030,7 +9030,7 @@
         "DX consolidation 2026-10-07: edit (docs/research/2026-10-07-dx-consolidation/backlog-changes.json)"
       ],
       "brief": "wp/ST-07-settings-row-v2.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "ST-08",
@@ -9798,7 +9798,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/release-distribution.md"
       ],
       "brief": "wp/ST-38-service-table-five-features-one-service.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "ST-39",

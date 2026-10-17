@@ -29,6 +29,16 @@
       "verdict": "pass",
       "date": "2026-10-10",
       "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/godot-kit/final5/"
+    },
+    "ST-38": {
+      "verdict": "pass",
+      "date": "2026-10-17",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/ST-38/ (built review 2026-10-16; blocking fixed in fix/ST-07-ST-38-review ae4012cb1; skipped design items in _lead/lead-followups.md)"
+    },
+    "ST-07": {
+      "verdict": "pass",
+      "date": "2026-10-17",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/ST-07/ (built review 2026-10-16; blocking fixed in fix/ST-07-ST-38-review ae4012cb1; skipped design items in _lead/lead-followups.md)"
     }
   }
 }
