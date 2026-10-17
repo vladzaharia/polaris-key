@@ -32,6 +32,8 @@ export type GateStep = "home" | "activate" | "handoff";
 export interface SdkGate {
   input: UiInput;
   step: GateStep;
+  /** The control that opened the current step, so Back returns focus to it. */
+  opener: string | null;
   act(key: string): void;
   edit(field: string, value: string): void;
 }
@@ -84,6 +86,8 @@ export function gateInput(
     secondsLeft: number | undefined;
     /** The locale the kit speaks: the dates the models show are formatted in it. */
     locale?: string;
+    /** The refusal the person already left (Back, a different key, an edit): not shown again. */
+    dismissed?: unknown;
   },
 ): UiInput {
   const caps = state.capabilities;
@@ -104,7 +108,9 @@ export function gateInput(
       ? "sign-in"
       : undefined;
   const refusal =
-    extra.step === "activate" && !state.busy.license
+    extra.step === "activate" &&
+    !state.busy.license &&
+    state.error.license !== extra.dismissed
       ? refusalOf(state.error.license)
       : undefined;
   const range = state.gate.allowedRange;
@@ -189,6 +195,61 @@ export function useSdkGate(
   const [key, setKey] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [handle, setHandle] = useState<OidcSignInHandle | null>(null);
+  // The refusal the person left behind: leaving the step, or editing the key, clears it (DL7),
+  // and the key they typed stays in the field.
+  const [dismissed, setDismissed] = useState<unknown>(null);
+  const [opener, setOpener] = useState<string | null>(null);
+  const errorRef = useRef<unknown>(null);
+  errorRef.current = state.error.license;
+
+  // The platform's Back steps back through the gate: each step past Welcome is one history entry.
+  const pushed = useRef(false);
+  const skipPop = useRef(false);
+  const toHome = useCallback(() => {
+    handleRef.current?.cancel?.();
+    setHandle(null);
+    setStep("home");
+    setDismissed(errorRef.current);
+    setSubmitted(false);
+  }, []);
+  const enter = useCallback((next: GateStep, from: string) => {
+    setOpener(from);
+    setStep(next);
+    if (typeof history !== "undefined" && !pushed.current) {
+      try {
+        history.pushState({ ...(history.state ?? {}), pkGate: next }, "");
+        pushed.current = true;
+      } catch {
+        // A sandboxed frame has no history: Back still works on screen.
+      }
+    }
+  }, []);
+  const leave = useCallback(() => {
+    toHome();
+    if (pushed.current) {
+      pushed.current = false;
+      skipPop.current = true;
+      try {
+        history.back();
+      } catch {
+        skipPop.current = false;
+      }
+    }
+  }, [toHome]);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const on = (): void => {
+      if (skipPop.current) {
+        skipPop.current = false;
+        return;
+      }
+      if (!pushed.current) return;
+      pushed.current = false;
+      toHome();
+    };
+    window.addEventListener("popstate", on);
+    return () => window.removeEventListener("popstate", on);
+  }, [toHome]);
 
   // The hand-off's countdown (DL14: at 0:00 the view goes to expired while any poll finishes).
   const [secondsLeft, setSecondsLeft] = useState<number | undefined>(undefined);
@@ -214,6 +275,7 @@ export function useSdkGate(
       handleRef.current?.cancel?.();
       setHandle(null);
       setStep("home");
+      pushed.current = false;
     }
   }, [state.status, state.phase]);
   // An identity failure ends the hand-off (the Welcome step shows it).
@@ -222,6 +284,7 @@ export function useSdkGate(
     if (identityError && handleRef.current) {
       setHandle(null);
       setStep("home");
+      pushed.current = false;
     }
   }, [identityError]);
 
@@ -257,11 +320,11 @@ export function useSdkGate(
           (started.userCode || safeLink(started.verificationUrl))
         ) {
           setHandle(started);
-          setStep("handoff");
+          enter("handoff", "welcome.signIn");
         }
       })
       .catch(() => undefined);
-  }, [adapter]);
+  }, [adapter, enter]);
 
   const act = useCallback(
     (k: string) => {
@@ -275,9 +338,25 @@ export function useSdkGate(
           signIn();
           return;
         case "welcome.useKey":
-        case "signin.key.differentKey":
         case "signin.choice.keyInstead":
-          setStep("activate");
+          enter("activate", k);
+          return;
+        case "signin.key.differentKey":
+          // From a refusal: back to the key field with the refused key still in it.
+          setDismissed(errorRef.current);
+          setSubmitted(false);
+          if (step === "activate") return;
+          enter("activate", k);
+          return;
+        case "common.paste":
+          void navigator.clipboard
+            ?.readText()
+            .then((t) => {
+              setKey(t.trim());
+              setSubmitted(false);
+              setDismissed(errorRef.current);
+            })
+            .catch(() => undefined);
           return;
         case "activate.submit": {
           setSubmitted(true);
@@ -313,9 +392,7 @@ export function useSdkGate(
         }
         case "common.cancel":
         case "common.back":
-          handleRef.current?.cancel?.();
-          setHandle(null);
-          setStep("home");
+          leave();
           return;
         case "common.tryAgain":
         case "common.reconnect":
@@ -326,13 +403,24 @@ export function useSdkGate(
           return;
       }
     },
-    [adapter, key, signIn, state.error.license, opts.returnUrl],
+    [
+      adapter,
+      key,
+      signIn,
+      state.error.license,
+      opts.returnUrl,
+      step,
+      enter,
+      leave,
+    ],
   );
 
   const edit = useCallback((field: string, value: string) => {
     if (field !== "key") return;
     setKey(value);
     setSubmitted(false);
+    // Editing the key clears the refusal (DL7).
+    setDismissed(errorRef.current);
   }, []);
 
   const input = useMemo(
@@ -344,15 +432,27 @@ export function useSdkGate(
             submitted,
             handle,
             secondsLeft,
+            dismissed,
             ...(opts.locale !== undefined ? { locale: opts.locale } : {}),
           })
         : null,
-    [ctx, state, step, key, submitted, handle, secondsLeft, opts.locale],
+    [
+      ctx,
+      state,
+      step,
+      key,
+      submitted,
+      handle,
+      secondsLeft,
+      dismissed,
+      opts.locale,
+    ],
   );
   if (!ctx || !input) return null;
   return {
     input,
     step,
+    opener,
     act,
     edit,
   };

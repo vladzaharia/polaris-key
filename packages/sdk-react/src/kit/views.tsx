@@ -10,6 +10,7 @@ import { LAYOUTS, placeKeys, platformLabel, type Layout } from "./contract.js";
 import {
   a11yOnly,
   actions,
+  backButton,
   button,
   callout,
   codeDisplay,
@@ -29,6 +30,7 @@ import {
   successMark,
   text,
   titles,
+  unfilled,
   type KitCtx,
 } from "./parts.js";
 
@@ -54,19 +56,24 @@ function contentFor(c: KitCtx): ReactNode {
         (k) =>
           k !== "part.keyField.verdict" && k !== "part.keyField.forProduct",
       );
-      const editing = [
-        "empty",
-        "typing",
-        "parsed",
-        "cut-short",
-        "rejected",
-      ].includes(view.state);
+      const editing =
+        ["empty", "typing", "parsed", "cut-short", "rejected"].includes(
+          view.state,
+        ) ||
+        // The drop-in keeps the field while a key is checked.
+        (view.state === "busy" && keys.has("part.keyField.label"));
+      // A refused key is an input that is wrong: the stroke, and the message linked to it.
+      const refused = view.state === "rejected" || view.state === "cut-short";
       const used = input.activation?.deviceCount;
       const limit = input.activation?.limit;
       return (
         <>
           {editing
-            ? keyField(c, invalid, verdict.length ? "pk-verdict" : null)
+            ? keyField(
+                c,
+                invalid || refused,
+                verdict.length ? "pk-verdict" : refused ? "pk-message" : null,
+              )
             : null}
           {keys.has("part.seatMeter.caption") &&
           used !== undefined &&
@@ -205,10 +212,35 @@ function isLoading(view: View): boolean {
   return LOADING[view.component]?.includes(view.state) ?? false;
 }
 
+/** `placeKeys`, then the drop-in's chrome: controls and links the state lacks, keys it drops. */
+function place(c: KitCtx, layout: Layout) {
+  const placed = placeKeys(c.view, layout);
+  // A line whose argument the input does not carry is dropped, never drawn as "{version}".
+  // Only where the drop-in drives the part: a fixture state draws its keys as the corpus lists them.
+  const whole = (k: string) => c.driven !== true || !unfilled(c, k);
+  const p = {
+    ...placed,
+    titles: placed.titles.filter(whole),
+    body: placed.body.filter(whole),
+    meta: placed.meta.filter(whole),
+    footnote: placed.footnote.filter(whole),
+  };
+  const x = c.chrome;
+  if (!x) return p;
+  const drop = new Set(x.drop ?? []);
+  return {
+    ...p,
+    controls: [...p.controls, ...(x.controls ?? [])].filter(
+      (k) => !drop.has(k),
+    ),
+    links: [...p.links, ...(x.links ?? [])].filter((k) => !drop.has(k)),
+  };
+}
+
 /** A blocking step: the card on the product ambient (DL1, DL2, DL5). */
 function screen(c: KitCtx, layout: Layout): ReactNode {
   const { view } = c;
-  const p = placeKeys(view, layout);
+  const p = place(c, layout);
   const errorKeys = p.body.filter(isErrorKey);
   const body = p.body.filter((k) => !isErrorKey(k));
   const heroTitle = layout.header === "hero";
@@ -238,6 +270,7 @@ function screen(c: KitCtx, layout: Layout): ReactNode {
         aria-busy={loading ? "true" : undefined}
       >
         {loading ? shimmer() : null}
+        {c.chrome?.back ? backButton(c) : null}
         <div className="split passport">
           {layout.split && c.resolved.iconUrl ? (
             <div className="passport-ambient" aria-hidden="true">
@@ -281,10 +314,22 @@ function screen(c: KitCtx, layout: Layout): ReactNode {
 
 /** An embedded pane (DL2): start edge, at most 40rem, its own frame unless `bare`. */
 function pane(c: KitCtx, layout: Layout): ReactNode {
-  const p = placeKeys(c.view, layout);
+  const p = place(c, layout);
   const errorKeys = p.body.filter(isErrorKey);
   const body = p.body.filter((k) => !isErrorKey(k));
   const loading = isLoading(c.view);
+  // A pane a page of the app holds does not repeat the product above a title that names it, and
+  // an update with no notes to list has no "What's new" heading over nothing.
+  const own = c.interactive === true || c.embedded === true;
+  const name = c.resolved.identity.name || c.resolved.theme.name;
+  const named =
+    own &&
+    name !== "" &&
+    p.titles.length > 0 &&
+    plain(c, p.titles[0]!).includes(name);
+  const heads = own
+    ? p.titles.filter((k) => k !== "update.whatsNew")
+    : p.titles;
   return (
     <section
       className="pane step"
@@ -292,9 +337,9 @@ function pane(c: KitCtx, layout: Layout): ReactNode {
       aria-busy={loading ? "true" : undefined}
     >
       {loading ? shimmer() : null}
-      {productHeader(c, layout.header === "none" ? "none" : "compact")}
+      {productHeader(c, layout.header === "none" || named ? "none" : "compact")}
       <div className="texts" data-part="texts">
-        {titles(c, p.titles, "section")}
+        {titles(c, heads, "section")}
         {paragraphs(c, body)}
         {statusLine(c, p.meta)}
       </div>
@@ -430,6 +475,9 @@ export function renderView(c: KitCtx): ReactNode {
   // DL7: a loading state inside its delay shows nothing at all (its view carries no copy yet).
   if (isLoading(c.view) && c.view.copy.length === 0) return null;
   const layout = LAYOUTS[c.view.component];
+  // A page of the app's holds a screen-form part as a pane (no stage, no ambient, its own width).
+  if (c.embedded && layout.kind === "screen")
+    return pane(c, { ...layout, kind: "pane", split: false });
   switch (layout.kind) {
     case "screen":
       return screen(c, layout);
@@ -830,97 +878,136 @@ function replaceRows(c: KitCtx): ReactNode {
   );
 }
 
+/** The inline rename form of one device row. */
+function renameForm(c: KitCtx, name: string): ReactNode {
+  const keys = new Set(c.view.copy);
+  return (
+    <div className="field" data-part="rename">
+      <label className="label" htmlFor="pk-rename">
+        {text(c, "devices.renameLabel")}
+      </label>
+      <div className="field-row">
+        <input
+          id="pk-rename"
+          defaultValue={name}
+          data-key="devices.renameLabel"
+          autoComplete="off"
+          onChange={(e) => c.edit("rename", e.currentTarget.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") c.act("common.save");
+          }}
+        />
+        {keys.has("common.save")
+          ? button(
+              c,
+              "common.save",
+              c.view.decisions.primary === "common.save"
+                ? "primary"
+                : "secondary",
+            )
+          : null}
+        {keys.has("common.cancel")
+          ? button(c, "common.cancel", "secondary")
+          : null}
+      </div>
+    </div>
+  );
+}
+
+function removeConfirm(c: KitCtx): ReactNode {
+  return (
+    <div className="callout" data-part="confirm">
+      <span>{text(c, "devices.removeConfirm")}</span>
+      <div className="actions" data-layout="row">
+        {button(c, "devices.remove", "danger")}
+        {button(c, "common.cancel", "secondary")}
+      </div>
+    </div>
+  );
+}
+
 function deviceRows(c: KitCtx): ReactNode {
   const keys = new Set(c.view.copy);
-  if (keys.has("devices.renameLabel")) {
-    const device = String(c.view.args.device ?? "");
-    return (
-      <div className="field" data-part="rename">
-        <label className="label" htmlFor="pk-rename">
-          {text(c, "devices.renameLabel")}
-        </label>
-        <div className="field-row">
-          <input
-            id="pk-rename"
-            defaultValue={device}
-            data-key="devices.renameLabel"
-            autoComplete="off"
-            onChange={(e) => c.edit("rename", e.currentTarget.value)}
-          />
-          {keys.has("common.save")
-            ? button(
-                c,
-                "common.save",
-                c.view.decisions.primary === "common.save"
-                  ? "primary"
-                  : "secondary",
-              )
-            : null}
-          {keys.has("common.cancel")
-            ? button(c, "common.cancel", "secondary")
-            : null}
-        </div>
-      </div>
-    );
-  }
-  if (keys.has("devices.removeConfirm"))
-    return (
-      <div className="callout" data-part="confirm">
-        <span>{text(c, "devices.removeConfirm")}</span>
-        <div className="actions" data-layout="row">
-          {button(c, "devices.remove", "danger")}
-          {button(c, "common.cancel", "secondary")}
-        </div>
-      </div>
-    );
-  if (!keys.has("devices.meta")) return null;
   const list = c.input.devices ?? [];
+  const editing = c.view.state === "renaming" || c.view.state === "confirming";
+  // The row the edit concerns (`input.selected`); without a list, the form stands alone.
+  const at =
+    editing && c.input.selected !== undefined ? Number(c.input.selected) : -1;
+  if (!keys.has("devices.meta") || list.length === 0 || (editing && at < 0)) {
+    if (keys.has("devices.renameLabel"))
+      return renameForm(c, String(c.view.args.device ?? ""));
+    if (keys.has("devices.removeConfirm")) return removeConfirm(c);
+  }
+  if (!keys.has("devices.meta")) return null;
+  const unnamed = plain(c, "devices.unnamed");
   return (
     <ul className="list" data-part="device-list">
-      {list.map((d, i) => (
-        <li key={i} className="row" data-part="device-row">
-          <span
-            role="img"
-            aria-label={plain(c, "a11y.formFactor", {
-              formFactor: d.formFactor ?? "other",
-            })}
-          >
-            {GLYPHS.device(d.formFactor)}
-          </span>
-          <span>
-            <span className="row-title">
-              {d.name ? <bdi>{d.name}</bdi> : text(c, "devices.unnamed")}
-            </span>
-            <br />
-            <span className="meta">
-              {d.current && keys.has("part.thisDeviceTitle") ? (
-                <>
-                  {text(c, "part.thisDeviceTitle", {
-                    formFactor: d.formFactor ?? "other",
-                  })}{" "}
-                  ·{" "}
-                </>
-              ) : null}
-              {text(c, "devices.meta", {
-                platform: platformLabel(d.platform),
-                when: days(d.lastSeenDays),
-              })}
-            </span>
-          </span>
-          <span className="row-actions">
-            {button(c, "devices.rename", "link", {
-              label: plain(c, "a11y.renameDevice", { device: d.name ?? "" }),
-            })}
-            {d.current
-              ? null
-              : button(c, "devices.remove", "link", {
-                  label: plain(c, "a11y.removeDevice", {
-                    device: d.name ?? "",
-                  }),
+      {list.map((d, i) => {
+        // A row with no name is named by its platform, so its buttons say which it is.
+        const label = d.name ?? unnamed;
+        const row =
+          c.view.state === "renaming" && i === at ? (
+            <li key={i} className="row" data-part="device-row">
+              {renameForm(c, d.name ?? "")}
+            </li>
+          ) : (
+            <li key={i} className="row" data-part="device-row">
+              <span
+                role="img"
+                aria-label={plain(c, "a11y.formFactor", {
+                  formFactor: d.formFactor ?? "other",
                 })}
-          </span>
-        </li>
-      ))}
+              >
+                {GLYPHS.device(d.formFactor)}
+              </span>
+              <span>
+                <span className="row-title">
+                  {d.name ? <bdi>{d.name}</bdi> : text(c, "devices.unnamed")}
+                </span>
+                <br />
+                <span className="meta">
+                  {d.current && keys.has("part.thisDeviceTitle") ? (
+                    <>
+                      {text(c, "part.thisDeviceTitle", {
+                        formFactor: d.formFactor ?? "other",
+                      })}
+                      {c.interactive ? null : " · "}
+                    </>
+                  ) : null}
+                  {/* A driven row for this device says "This Mac" and no platform beside it. */}
+                  {d.current && c.interactive
+                    ? null
+                    : text(c, "devices.meta", {
+                        platform: platformLabel(d.platform),
+                        when: days(d.lastSeenDays),
+                      })}
+                </span>
+              </span>
+              <span className="row-actions">
+                {button(c, "devices.rename", "link", {
+                  label: plain(c, "a11y.renameDevice", { device: label }),
+                  detail: { index: i },
+                })}
+                {d.current
+                  ? null
+                  : button(c, "devices.remove", "link", {
+                      label: plain(c, "a11y.removeDevice", { device: label }),
+                      detail: { index: i },
+                    })}
+              </span>
+            </li>
+          );
+        return c.view.state === "confirming" && i === at ? (
+          <Fragment key={i}>
+            {row}
+            <li className="row" data-part="device-confirm">
+              {removeConfirm(c)}
+            </li>
+          </Fragment>
+        ) : (
+          row
+        );
+      })}
     </ul>
   );
 }
@@ -953,9 +1040,80 @@ function releaseNotes(c: KitCtx): ReactNode {
 
 /** A config row as the kit takes it: ui-core's row plus the catalog entry's `label`, when the
  *  adapter passes it (every product catalog entry has one). */
-type SettingsRow = NonNullable<KitCtx["input"]["config"]>[number] & {
+export type SettingsRow = NonNullable<KitCtx["input"]["config"]>[number] & {
   label?: string;
+  /** The value as the person reads it ("48,000 Hz", "WAV"): the catalog's unit and option label. */
+  display?: string;
+  /** The choices of an enum setting, in the catalog's order. */
+  options?: readonly { value: string; label: string }[];
+  step?: number;
 };
+
+/** The field a setting's value is edited in. Switches and choices apply at once; a number or text
+ *  applies when it loses focus or on Enter. The host hears `config:<key>` with the new value. */
+function settingControl(c: KitCtx, r: SettingsRow, name: string): ReactNode {
+  const field = `config:${r.key}`;
+  if (typeof r.value === "boolean") {
+    const on = r.value;
+    return (
+      <button
+        type="button"
+        role="switch"
+        className="btn"
+        data-part="switch"
+        data-variant={on ? "primary" : "secondary"}
+        aria-checked={on ? "true" : "false"}
+        aria-label={name}
+        onClick={() => c.edit(field, String(!on))}
+      >
+        <span>{text(c, on ? "settings.on" : "settings.off")}</span>
+      </button>
+    );
+  }
+  if (r.options && r.options.length > 0)
+    return (
+      <span className="field" style={{ inlineSize: "10rem" }}>
+        <select
+          aria-label={name}
+          value={String(r.value ?? "")}
+          onChange={(e) => c.edit(field, e.currentTarget.value)}
+        >
+          {r.options.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+      </span>
+    );
+  const number = r.type === "number" || typeof r.value === "number";
+  const commit = (el: HTMLInputElement) => {
+    if (el.value !== String(r.value ?? "")) c.edit(field, el.value);
+  };
+  return (
+    <span className="field" style={{ inlineSize: "9rem" }}>
+      <input
+        key={String(r.value ?? "")}
+        type={number ? "number" : "text"}
+        aria-label={name}
+        defaultValue={String(r.value ?? "")}
+        autoComplete="off"
+        {...(number
+          ? {
+              inputMode: "decimal" as const,
+              ...(r.min !== undefined ? { min: r.min } : {}),
+              ...(r.max !== undefined ? { max: r.max } : {}),
+              ...(r.step !== undefined ? { step: r.step } : {}),
+            }
+          : {})}
+        onBlur={(e) => commit(e.currentTarget)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") commit(e.currentTarget);
+        }}
+      />
+    </span>
+  );
+}
 
 /** A setting's name: the catalog entry's label, else its key read as words (`audio.volume` →
  *  "Audio volume"), never the raw key (DL8). */
@@ -1001,12 +1159,22 @@ function settingsRows(c: KitCtx): ReactNode {
         </span>,
       );
     let value: ReactNode = null;
-    if (typeof r.value === "boolean") {
+    if (
+      c.interactive &&
+      !r.locked &&
+      r.value !== undefined &&
+      r.value !== null
+    ) {
+      // The switch says On or Off itself.
+      use("settings.on");
+      use("settings.off");
+      value = settingControl(c, r, settingLabel(r));
+    } else if (typeof r.value === "boolean") {
       const k = r.value ? "settings.on" : "settings.off";
       use(k);
       value = <span data-key={k}>{text(c, k)}</span>;
     } else if (r.value !== undefined && r.value !== null)
-      value = <bdi>{String(r.value)}</bdi>;
+      value = <bdi>{r.display ?? String(r.value)}</bdi>;
     return (
       <li key={r.key} className="row" data-part="settings-row">
         <span className="row-text">

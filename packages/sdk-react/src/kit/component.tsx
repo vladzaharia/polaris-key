@@ -37,6 +37,7 @@ import type { PresentationSource } from "@polaris-key/client-core/presentation";
 import {
   actionOf,
   copyFor,
+  LAYOUTS,
   decodeIcon,
   inputWithIdentity,
   mergeThemes,
@@ -47,9 +48,10 @@ import {
 } from "./contract.js";
 
 import { PolarisContext } from "../react/context.js";
-import { text, type KitCtx } from "./parts.js";
+import { text, type Chrome, type KitCtx } from "./parts.js";
 import { useSdkGate, type GateStep } from "./sdk.js";
 import { adoptKitStyles } from "./styles.js";
+import { adaptActivate, adaptPane, adaptStatus } from "./adapt.js";
 import { renderView } from "./views.js";
 
 const SYSTEM_FONT_STACK =
@@ -98,6 +100,14 @@ export interface KitProps {
   /** Own the window (DL2): a blocking screen drawn on its own, at least the window's height. The
    *  drop-in gate always does. */
   fill?: boolean;
+  /** The heading level of the component's title. Default: 2 for a pane and for `embedded`, 1 for a
+   *  screen (the gate and `fill` always own the page's h1). */
+  headingLevel?: 1 | 2 | 3 | 4 | 5 | 6;
+  /** Draw a screen-form component (UpdatePrompt) as an embedded pane, for a page of the app's. */
+  embedded?: boolean;
+  /** Set by the drop-in parts (and the gate): a line whose argument the input does not carry is
+   *  left out rather than drawn as `{version}`. A fixture state draws every key it lists. */
+  driven?: boolean;
   /** A control was pressed. */
   onAction?: (action: KitAction) => void;
   /** The person typed in a field (`key`, `rename`). */
@@ -402,11 +412,18 @@ export function useKit(
     resolved.theme.platform,
   );
 
-  const ctxFor = (v: View): KitCtx => ({
+  const ctxFor = (v: View, chrome?: Chrome): KitCtx => ({
     view: v,
     copy,
     resolved,
     input,
+    headingLevel:
+      props.headingLevel ??
+      (props.embedded || LAYOUTS[v.component].kind === "pane" ? 2 : 1),
+    interactive: props.onInput !== undefined,
+    ...(props.driven ? { driven: true } : {}),
+    ...(props.embedded ? { embedded: true } : {}),
+    ...(chrome ? { chrome } : {}),
     act: (key, extra = {}) => {
       if (key === "activate.submit")
         setLocal((l) => ({
@@ -444,17 +461,31 @@ export function useKit(
     const target = focusView.decisions.focus;
     const root = rootRef.current;
     if (target === null || !root) return;
+    // An embedded part never pulls focus from the page on mount (the last pane would win): only
+    // a screen that owns the window does, or one the person is already in, or one asked to.
     const holds =
       props.autoFocus === true ||
       root.contains(document.activeElement) ||
-      document.activeElement === document.body;
+      (props.fill === true && document.activeElement === document.body);
     if (!holds) return;
-    const el =
+    const heading = () =>
+      root.querySelector<HTMLElement>('[data-part="title"]') ??
+      root.querySelector<HTMLElement>("h1");
+    // DL9: a text field is never focused on appear under a coarse pointer (the keyboard would
+    // cover the screen): the heading takes it.
+    const coarse =
+      typeof matchMedia === "function" &&
+      matchMedia("(pointer: coarse)").matches;
+    const field =
       target === "heading"
-        ? root.querySelector<HTMLElement>("h1")
-        : (root.querySelector<HTMLElement>(
+        ? null
+        : root.querySelector<HTMLElement>(
             `[data-key="${target.replace(/["\\]/g, "")}"]`,
-          ) ?? root.querySelector<HTMLElement>("h1"));
+          );
+    const el =
+      target === "heading" || (coarse && field instanceof HTMLInputElement)
+        ? heading()
+        : (field ?? heading());
     el?.focus({ preventScroll: true });
   });
 
@@ -529,6 +560,9 @@ export function kitComponent(component: ComponentName) {
   function KitComponent(props: KitProps): ReactNode {
     const kit = useKit(component, props);
     if (kit.view.state === "hidden") return null;
+    // A host that handles input keeps a pane's title and rows through its transient states.
+    const view =
+      props.onInput !== undefined ? adaptPane(kit.view, kit.input) : kit.view;
     return (
       <KitRoot
         kit={kit}
@@ -536,7 +570,7 @@ export function kitComponent(component: ComponentName) {
         fill={props.fill}
         className={props.className}
       >
-        {renderView(kit.ctxFor(kit.view))}
+        {renderView(kit.ctxFor(view))}
       </KitRoot>
     );
   }
@@ -590,6 +624,7 @@ export function PolarisKeyGate(props: PolarisKeyGateProps): ReactNode {
       ...props,
       input: driven ? sdk.input : props.input,
       fill: true,
+      driven,
       onAction: (a) => {
         if (driven) sdk.act(a.key);
         props.onAction?.(a);
@@ -605,11 +640,34 @@ export function PolarisKeyGate(props: PolarisKeyGateProps): ReactNode {
     },
   );
   const { view, input } = kit;
+  // Back returns focus to the control that opened the step (DL9).
+  const prevStep = useRef<GateStep>(step);
+  useEffect(() => {
+    const was = prevStep.current;
+    prevStep.current = step;
+    if (!driven || step !== "home" || was === "home") return;
+    const opener = sdk?.opener;
+    if (!opener) return;
+    kit.rootRef.current
+      ?.querySelector<HTMLElement>(
+        `[data-key="${opener.replace(/["\\]/g, "")}"]`,
+      )
+      ?.focus({ preventScroll: true });
+  });
   if (view.state === "hidden" || view.state === "licensed")
     return <>{props.children}</>;
   const c = kit.ctxFor(view);
-  const sub = (component: ComponentName) =>
-    renderView(kit.ctxFor(viewOf(component, input)));
+  const sub = (component: ComponentName) => {
+    const raw = viewOf(component, input);
+    // The drop-in keeps each step's context and offers the way back (never in a fixture state).
+    const v = driven ? adaptStatus(adaptActivate(raw), input) : raw;
+    const chrome: Chrome = {};
+    if (driven && step !== "home" && !v.copy.includes("common.back"))
+      chrome.back = true;
+    if (driven && v.component === "Activate" && v.state === "device-limit")
+      chrome.links = ["signin.key.differentKey"];
+    return renderView(kit.ctxFor(v, chrome));
+  };
   const screen = gateScreen(view, step);
   // The gate's own state, announced once while the screen it hands to draws the paths.
   const announce = (
