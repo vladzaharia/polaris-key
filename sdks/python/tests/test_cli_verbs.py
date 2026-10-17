@@ -59,7 +59,7 @@ def _factory(activated=True, services=("license", "config", "release", "identity
 
 def _argparse(argv, factory, capsys):
     parser = argparse.ArgumentParser()
-    register_argparse(parser.add_subparsers(dest="cmd", required=True), factory)
+    register_argparse(parser.add_subparsers(dest="cmd", required=True), factory, verbs="all")
     args = parser.parse_args(argv)
     code = args.func(args)
     return code, capsys.readouterr().out
@@ -119,17 +119,29 @@ def test_sign_in_json_prints_pending_then_the_result(capsys) -> None:
     assert result["event"] == "result" and result["state"] == "signedIn" and result["email"] == "ada@example.com"
 
 
-def test_secret_never_prints_the_value(capsys) -> None:
-    code, out = _argparse(["secret", "--product", PRODUCT, "proxy.subscriptionUrl"], _factory(), capsys)
-    assert code == 0 and "present" in out and "vpn.example.com" not in out
+def _argparse_err(argv, factory, capsys):
+    parser = argparse.ArgumentParser()
+    register_argparse(parser.add_subparsers(dest="cmd", required=True), factory, verbs="all")
+    args = parser.parse_args(argv)
+    code = args.func(args)
+    cap = capsys.readouterr()
+    return code, cap.out, cap.err
+
+
+def test_secret_prints_the_value_only_with_reveal(capsys) -> None:
+    code, out, err = _argparse_err(["secret", "--product", PRODUCT, "proxy.subscriptionUrl"], _factory(), capsys)
+    assert code == 2 and out == "" and "vpn.example.com" not in err
+    assert "secret proxy.subscriptionUrl --reveal" in " ".join(err.split())
+    code, out, _ = _argparse_err(["secret", "--product", PRODUCT, "proxy.subscriptionUrl", "--json"], _factory(), capsys)
+    assert code == 0 and json.loads(out)["present"] is True and "vpn.example.com" not in out
+    code, out, _ = _argparse_err(["secret", "--product", PRODUCT, "proxy.subscriptionUrl", "--reveal"], _factory(), capsys)
+    assert code == 0 and out == "https://vpn.example.com/sub/abc\n"
 
 
 def test_secret_and_mint_values_never_reach_a_ci_log(capsys, monkeypatch) -> None:
-    """The Node kit prints a secret's value or a minted token raw for a script, so inside a CI job
-    that reads commands from its log (GitHub Actions, Azure Pipelines, TeamCity) it withholds one
-    a line of which the runner would obey, unless ``--allow-workflow-commands``. This kit never
-    prints either value at all, so the same guarantee holds by construction; pinned here so a
-    change that starts printing them has to take the Node kit's guard with it."""
+    """Printed raw for a script (``--reveal``), a secret or a minted token a line of which a CI runner
+    would obey (GitHub Actions, Azure Pipelines, TeamCity) is withheld unless
+    ``--allow-workflow-commands``; ``--json`` and a run without ``--reveal`` never carry the value."""
     # NEL (U+0085) too: GitHub's runner trims it (.NET TrimStart) before it looks for ``::``.
     hostile = "x\n::add-mask::y\n##vso[task.setvariable variable=a]b\n##teamcity[buildStatus text='c']\n\u0085::set-output name=d::e"
     for name, value in (("GITHUB_ACTIONS", "true"), ("TF_BUILD", "True"), ("TEAMCITY_VERSION", "2024.12")):
@@ -145,12 +157,16 @@ def test_secret_and_mint_values_never_reach_a_ci_log(capsys, monkeypatch) -> Non
         c.config.mint_token = lambda recipe: _Token()
         return c
 
+    parts = ("add-mask", "##vso[", "setvariable", "##teamcity[", "buildStatus", "set-output")
     for argv in (["secret", "--product", PRODUCT, "api.key"], ["mint", "--product", PRODUCT, "cdn"]):
-        for extra in ([], ["--json"]):
-            code, out = _argparse(argv + extra, factory, capsys)
-            assert code == 0, out
-            for part in ("add-mask", "##vso[", "setvariable", "##teamcity[", "buildStatus", "set-output"):
+        for extra in ([], ["--json"], ["--reveal"]):
+            code, out, err = _argparse_err(argv + extra, factory, capsys)
+            for part in parts:
                 assert part not in out, (argv, extra, out)
+            assert code == (0 if extra == ["--json"] else 2 if not extra else 1), (argv, extra, out, err)
+        # Asked for, by name: the value goes out byte for byte.
+        code, out, _ = _argparse_err(argv + ["--reveal", "--allow-workflow-commands"], factory, capsys)
+        assert code == 0 and out == hostile + "\n"
 
 
 def test_update_and_packs_explain_a_missing_configuration(capsys) -> None:
@@ -175,7 +191,7 @@ def test_click_runs_the_table_verbs() -> None:
 
     from polaris_key.cli.click_cli import polaris_click_group
 
-    group = polaris_click_group(client_factory=_factory())
+    group = polaris_click_group(client_factory=_factory(), verbs="all")
     r = CliRunner().invoke(group, ["devices", "--product", PRODUCT, "list"])
     assert r.exit_code == 0, r.output
     assert "DEV2" in r.output
@@ -190,7 +206,7 @@ def test_typer_runs_the_table_verbs() -> None:
 
     from polaris_key.cli.typer_cli import polaris_typer_app
 
-    app = polaris_typer_app(client_factory=_factory())
+    app = polaris_typer_app(client_factory=_factory(), verbs="all")
     r = CliRunner().invoke(app, ["config", "list", "--product", PRODUCT])
     assert r.exit_code == 0, r.output
     assert "run.concurrency" in r.output

@@ -154,10 +154,9 @@ class Terminal:
     def _stderr_device(self) -> Device:
         """A device on stderr: coloured only when stderr is a terminal itself."""
         stream = self.err if self.err is not None else sys.stderr
-        env = self.env
-        if not _stream_tty(stream) and env.color != "none":
-            env = env.but(color="none", hyperlinks=False)
-        pal = self.kit.palette() if env is self.env else Palette(color="none")
+        env, pal = self.env, self.kit.palette()
+        if not _stream_tty(stream):
+            env, pal = env.but(color="none", hyperlinks=False), Palette(color="none", attributes=False)
         return Device(env, pal, stdout=stream, use_rich=False)
 
     def plain(self, outcome: Outcome) -> List[str]:

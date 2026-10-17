@@ -113,12 +113,14 @@ class CommandResult:
     styled: Optional[List[Any]] = field(default=None, repr=False, compare=False)
     data: Dict[str, Any] = field(default_factory=dict, repr=False, compare=False)
     terminal: Optional[Any] = field(default=None, repr=False, compare=False)
+    #: ``"stderr"`` for a refusal that leaves stdout empty (see ``Outcome.stream``).
+    stream: str = field(default="stdout", repr=False, compare=False)
 
     def emit(self) -> None:
         if self.terminal is not None:
             from ..ui.terminal.flows import Outcome
 
-            self.terminal.finish(Outcome(self.code, list(self.styled or []), dict(self.data)))
+            self.terminal.finish(Outcome(self.code, list(self.styled or []), dict(self.data), stream=self.stream))
             return
         for line in self.lines:
             print(line)
@@ -388,6 +390,7 @@ def result_of(outcome: Any, terminal: Any = None) -> CommandResult:
         styled=list(outcome.lines),
         data=dict(outcome.data),
         terminal=terminal,
+        stream=getattr(outcome, "stream", "stdout"),
     )
 
 

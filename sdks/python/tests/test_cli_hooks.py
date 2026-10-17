@@ -378,7 +378,7 @@ def _argparse_app(client: FakeClient) -> argparse.ArgumentParser:
 
     parser = argparse.ArgumentParser(prog="host")
     sub = parser.add_subparsers(dest="command", required=True)
-    register_argparse(sub, client_factory=_factory_for(client))
+    register_argparse(sub, client_factory=_factory_for(client), verbs="all")
     return parser
 
 
@@ -459,7 +459,7 @@ def test_register_argparse_passes_trust_and_services_to_the_factory():
     sub = parser.add_subparsers(dest="command", required=True)
     from polaris_key.cli.argparse_cli import register_argparse
 
-    register_argparse(sub, client_factory=factory)
+    register_argparse(sub, client_factory=factory, verbs="all")
     args = parser.parse_args(
         [
             "status",
@@ -503,7 +503,7 @@ def test_polaris_click_group_builds_and_invokes():
     from polaris_key.cli.click_cli import polaris_click_group
 
     client = FakeClient(config={"run.concurrency": 4}, sources={"run.concurrency": "enforced"})
-    group = polaris_click_group(client_factory=_factory_for(client))
+    group = polaris_click_group(client_factory=_factory_for(client), verbs="all")
 
     @click.group()
     def app() -> None:
@@ -521,7 +521,7 @@ def test_polaris_click_group_exposes_every_v3_verb():
     pytest.importorskip("click")
     from polaris_key.cli.click_cli import polaris_click_group
 
-    group = polaris_click_group(client_factory=_factory_for(FakeClient()))
+    group = polaris_click_group(client_factory=_factory_for(FakeClient()), verbs="all")
     expected = {verb for verbs in core.SERVICE_COMMANDS.values() for verb in verbs}
     assert expected <= set(group.commands)
 
@@ -535,7 +535,7 @@ def test_polaris_click_group_register_and_activate_exit_codes():
     runner = CliRunner()
     ok = FakeClient(state=_State(status="ok"))
     result = runner.invoke(
-        polaris_click_group(client_factory=_factory_for(ok)),
+        polaris_click_group(client_factory=_factory_for(ok), verbs="all"),
         ["register", "--product", "djdl"],
     )
     assert result.exit_code == 0, result.output
@@ -543,7 +543,7 @@ def test_polaris_click_group_register_and_activate_exit_codes():
 
     bad = FakeClient(activation_result=ActivationUnauthorized())
     result = runner.invoke(
-        polaris_click_group(client_factory=_factory_for(bad)),
+        polaris_click_group(client_factory=_factory_for(bad), verbs="all"),
         ["activate", "--product", "djdl", "BADKEY"],
     )
     assert result.exit_code == 1
@@ -561,7 +561,7 @@ def test_polaris_click_group_import_bundle(tmp_path):
     path.write_text("a.b.c")
     runner = CliRunner()
     result = runner.invoke(
-        polaris_click_group(client_factory=_factory_for(client)),
+        polaris_click_group(client_factory=_factory_for(client), verbs="all"),
         ["import-bundle", "--product", "djdl", str(path)],
     )
     assert result.exit_code == 0, result.output
@@ -581,7 +581,7 @@ def test_polaris_typer_app_builds_and_invokes():
         licensed=True,
         profile=_FakeProfile("Ada Lovelace", "ada@example.com"),
     )
-    sub = polaris_typer_app(client_factory=_factory_for(client))
+    sub = polaris_typer_app(client_factory=_factory_for(client), verbs="all")
 
     app = typer.Typer()
     app.add_typer(sub, name="polaris")
@@ -601,7 +601,7 @@ def test_polaris_typer_app_config():
     client = FakeClient(config={"x": "y"}, sources={"x": "local"})
     runner = CliRunner()
     result = runner.invoke(
-        polaris_typer_app(client_factory=_factory_for(client)),
+        polaris_typer_app(client_factory=_factory_for(client), verbs="all"),
         ["config", "--product", "djdl", "x"],
     )
     assert result.exit_code == 0, result.output
@@ -617,7 +617,7 @@ def test_polaris_typer_app_register_and_import_bundle(tmp_path):
     runner = CliRunner()
     client = FakeClient(state=_State(status="ok"))
     result = runner.invoke(
-        polaris_typer_app(client_factory=_factory_for(client)),
+        polaris_typer_app(client_factory=_factory_for(client), verbs="all"),
         ["register", "--product", "djdl"],
     )
     assert result.exit_code == 0, result.output
@@ -627,7 +627,7 @@ def test_polaris_typer_app_register_and_import_bundle(tmp_path):
     path = tmp_path / "offline.pkeybundle"
     path.write_text("a.b.c")
     result = runner.invoke(
-        polaris_typer_app(client_factory=_factory_for(other)),
+        polaris_typer_app(client_factory=_factory_for(other), verbs="all"),
         ["import-bundle", "--product", "djdl", str(path)],
     )
     assert result.exit_code == 0, result.output

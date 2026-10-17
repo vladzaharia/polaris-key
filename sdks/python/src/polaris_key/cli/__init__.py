@@ -53,28 +53,48 @@ __all__ = [
     "register_argparse",
     "polaris_click_group",
     "polaris_typer_app",
+    "require_license",
+    "require_entitlement",
+    "END_USER",
 ]
 
 
-def register_argparse(subparsers, client_factory=None, *, theme=None, prog=None):
-    """Re-export: add the Polaris Key subcommands to an existing argparse subparsers object."""
+def register_argparse(subparsers, client_factory=None, *, theme=None, prog=None, **mount):
+    """Re-export: add the Polaris Key subcommands to an existing argparse subparsers object.
+    ``mount`` is ``client=``, ``config=``, ``version=``, ``namespace=``, ``verbs=``,
+    ``on_collision=`` and ``warn=`` (see :func:`polaris_key.cli.argparse_cli.register_argparse`)."""
     from .argparse_cli import register_argparse as _reg
 
-    return _reg(subparsers, client_factory, theme=theme, prog=prog)
+    return _reg(subparsers, client_factory, theme=theme, prog=prog, **mount)
 
 
-def polaris_click_group(client_factory=None, name: str = "polaris", *, theme=None, prog=None):
-    """Re-export: build a ``click.Group`` (requires the ``click`` extra)."""
+def polaris_click_group(client_factory=None, name: str = "polaris", *, theme=None, prog=None, **mount):
+    """Re-export: build a ``click.Group`` (requires the ``click`` extra). ``mount`` as for
+    :func:`register_argparse`, except that ``namespace`` is the group's ``name``."""
     from .click_cli import polaris_click_group as _grp
 
-    return _grp(client_factory, name, theme=theme, prog=prog)
+    return _grp(client_factory, name, theme=theme, prog=prog, **mount)
 
 
-def polaris_typer_app(client_factory=None, *, theme=None, prog=None):
-    """Re-export: build a ``typer.Typer`` app (requires the ``typer`` extra)."""
+def polaris_typer_app(client_factory=None, *, theme=None, prog=None, **mount):
+    """Re-export: build a ``typer.Typer`` app (requires the ``typer`` extra). ``mount`` as for
+    :func:`polaris_click_group`."""
     from .typer_cli import polaris_typer_app as _app
 
-    return _app(client_factory, theme=theme, prog=prog)
+    return _app(client_factory, theme=theme, prog=prog, **mount)
+
+
+def __getattr__(name):
+    """The gate and the mount's constants load when first used, so registering verbs stays light."""
+    if name in ("require_license", "require_entitlement"):
+        from . import gate
+
+        return getattr(gate, name)
+    if name == "END_USER":
+        from .mount import END_USER
+
+        return END_USER
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 def main(argv=None) -> int:

@@ -48,7 +48,7 @@ def test_mounting_the_verbs_on_a_host_cli_loads_no_client() -> None:
         p = argparse.ArgumentParser(prog="mytool")
         sub = p.add_subparsers(dest="cmd")
         sub.add_parser("own")
-        register_argparse(sub, prog="mytool")
+        register_argparse(sub, prog="mytool", verbs="all")
         assert p.parse_args(["own"]).cmd == "own"
         """
     )

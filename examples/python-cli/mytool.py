@@ -1,10 +1,11 @@
 """A product CLI that mounts the Polaris Key verb set next to its own commands.
 
-    python mytool.py run            # your command, gated by the licence
+    python mytool.py run            # your command, gated by the license (exit 4 without one)
     python mytool.py sign-in        # Polaris Key's verbs: sign-in, status, devices, update, ...
 
 Replace PRODUCT, VERSION and TRUST with your product's values (`pkey sdk --lang python` prints
-them). The client is built once per invocation by ``client_factory``.
+them). ``config=`` builds the client for every Polaris Key verb, so none of them takes --product,
+--trust or --base-url, and ``mytool --help`` lists only the verbs people need.
 """
 
 from __future__ import annotations
@@ -14,7 +15,7 @@ import sys
 from typing import Optional, Sequence
 
 import polaris_key
-from polaris_key.cli import register_argparse
+from polaris_key.cli import register_argparse, require_license
 
 PRODUCT = "mytool"
 VERSION = "1.0.0"
@@ -22,12 +23,12 @@ VERSION = "1.0.0"
 TRUST = {"<your-signing-key-id>": "<your-product-signing-key-b64url>"}
 
 
-def client_factory(_opts: object) -> polaris_key.PolarisKeyClient:
-    return polaris_key.create(product_slug=PRODUCT, version=VERSION, trust=TRUST)
+CONFIG = {"product_slug": PRODUCT, "trust": TRUST}
 
 
+@require_license
 def run(_args: argparse.Namespace) -> int:
-    client = client_factory(None)
+    client = polaris_key.create(**CONFIG, version=VERSION)
     try:
         outcome = client.boot(on_stage=lambda state, _emits: print("·", state.stage, file=sys.stderr))
         if not outcome.ready:
@@ -43,7 +44,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="mytool")
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("run", help="Do the work.").set_defaults(func=run)
-    register_argparse(sub, client_factory=client_factory)
+    register_argparse(sub, config=CONFIG, version=VERSION)
     return parser
 
 

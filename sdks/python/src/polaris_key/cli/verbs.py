@@ -333,6 +333,9 @@ VERBS: Tuple[Verb, ...] = (
 
 VERB_NAMES = tuple(v.name for v in VERBS)
 
+#: A verb's other words: ``sign-in`` is ``login``, ``sign-out`` is ``logout``.
+ALIASES_OF = {"sign-in": "login", "sign-out": "logout"}
+
 
 def option_dest(name: str) -> str:
     return name.replace("-", "_")
@@ -353,9 +356,13 @@ def run(
     *,
     theme: Any = None,
     prog: str = "polaris-key",
+    close: bool = True,
+    actions: Optional[Any] = None,
 ) -> CommandResult:
     """Build a client, run ``verb`` through the terminal kit with the flags in ``ns``, close the
-    client. The result's :meth:`~CommandResult.emit` draws it, or prints its JSON."""
+    client (unless the host keeps it: ``close=False``). ``actions`` is a mount's partial verbs
+    (``update`` mounted with ``apply`` and ``check`` only). The result's :meth:`~CommandResult.emit`
+    draws it, or prints its JSON."""
     from ..ui.terminal.exit import EXIT
     from ..ui.terminal.flows import Terminal
 
@@ -381,6 +388,13 @@ def run(
         ns = dict(ns)
         ns["_term"] = term
         try:
+            if actions is not None:
+                from .mount import allowed_actions
+
+                if not allowed_actions(actions, ALIASES_OF.get(verb.name, verb.name), ns.get("words") or []):
+                    mounted = " | ".join(actions[ALIASES_OF.get(verb.name, verb.name)])
+                    term.verb = verb.name
+                    return _done(_flows().usage(term, f"{verb.name} [{mounted}]"), ns)
             result = verb.run(client, ns)
         except KeyboardInterrupt:
             return CommandResult(EXIT.interrupted, [], terminal=term if term.env.json else None, data={"error": "interrupted"})
@@ -393,4 +407,5 @@ def run(
             result.terminal = term
         return result
     finally:
-        client.close()
+        if close:
+            client.close()

@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from polaris_key.cli.verbs import VERB_NAMES
+from polaris_key.cli.mount import END_USER
 
 EXAMPLES = Path(__file__).resolve().parents[3] / "examples"
 
@@ -29,8 +29,12 @@ def test_cli_sample_mounts_every_verb_next_to_its_own_command(capsys: pytest.Cap
     assert exit_.value.code == 0
     out = capsys.readouterr().out
     assert "run" in out
-    for verb in VERB_NAMES:
+    # The end-user verbs, and none of the integration options: mytool says its own product.
+    for verb in {i.split()[0] for i in END_USER}:
         assert verb in out, verb
+    for option in ("--product", "--trust", "--base-url"):
+        assert option not in out, option
+    assert "enroll" not in out
 
 
 def test_renpy_snippet_python_blocks_compile() -> None:
@@ -64,8 +68,9 @@ def test_terminal_kit_sample_runs_against_its_fixtures(capsys: pytest.CaptureFix
     assert exit_.value.code == 0
     out = capsys.readouterr().out
     assert out.startswith("tidewater")
-    for verb in VERB_NAMES:
+    for verb in END_USER:
         assert verb in out, verb
+    assert "--product" not in out
     assert sample.main(["status", "--json"]) == 1
     assert json.loads(capsys.readouterr().out)["status"] == "needs-activation"
     monkeypatch.setattr("sys.stdin", __import__("io").StringIO("pkey_tidewater_7Q2MzK8vRb1xLp4n3WPLDA\n"))
