@@ -91,6 +91,17 @@ export function platformOverview(): FeedsOverviewDto {
       versions: 58,
       lastPublishedAt: T0 - 600,
     },
+    policies: ECOS.map((eco) => ({
+      ecosystem: eco,
+      label: LABELS[eco],
+      policy: {
+        enabled: true,
+        maxPackageBytesCeiling: eco === "oci" ? 5_368_709_120 : 52_428_800,
+        version: 1,
+        updatedAt: T0 - 900_000,
+        updatedBy: null,
+      },
+    })),
     owners: [
       {
         slug: "polaris-key",

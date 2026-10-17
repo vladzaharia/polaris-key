@@ -36,6 +36,7 @@ import {
   type SettingSpec,
 } from "../../../../ui/settings/model.js";
 import type { SettingHistoryEntry } from "../../../../ui/settings/SettingExtras.js";
+import { useWriteGate } from "../../../access/useCan.js";
 import { mutate } from "../../../data/mutations.js";
 import { qk } from "../../../data/queries.js";
 
@@ -68,7 +69,7 @@ export function formatPlatformValue(
 }
 
 /** A 409 from a version-guarded write. */
-function isConflict(error: unknown): boolean {
+export function isConflict(error: unknown): boolean {
   return (
     error instanceof ApiError &&
     error.status === 409 &&
@@ -344,6 +345,7 @@ export function EditableRow({
   propagationSeconds: number;
 }): React.ReactElement {
   const queryClient = useQueryClient();
+  const write = useWriteGate("platform");
   const fmt = (v: unknown) => formatPlatformValue(setting, v);
   const bytes = setting.kind === "integer" && setting.unit === "bytes";
   const stored = setting.stored;
@@ -387,7 +389,13 @@ export function EditableRow({
       commit={setting.kind === "integer" ? "explicit" : "immediate"}
       source={<SettingSource setting={setting} />}
       disabled={!storeAvailable}
-      locked={setting.forcedOff ? <HardOff setting={setting} /> : undefined}
+      locked={
+        setting.forcedOff ? (
+          <HardOff setting={setting} />
+        ) : write.allowed ? undefined : (
+          write.disabledReason
+        )
+      }
       notes={notes.length > 0 ? notes : undefined}
       footnote={
         bytes

@@ -814,12 +814,15 @@ describe("a feed page", () => {
     );
   });
 
-  it("Settings in platform scope: the platform policy, and switching an ecosystem off is L2", async () => {
+  it("Settings in platform scope: the platform policy moved to Platform settings (ST-09)", async () => {
     boot("#/platform/feeds/oci/settings", { extra: feedRoutes() });
-    const policy = await within(await mainReady()).findByRole("form", {
-      name: "Platform policy",
-    });
-    expect(policy.textContent).toContain("every product's");
+    const main_ = await mainReady();
+    await within(main_).findByRole("form", { name: "General" });
+    expect(
+      within(main_).queryByRole("form", { name: "Platform policy" }),
+    ).toBeNull();
+    const link = within(main_).getByRole("link", { name: "Platform settings" });
+    expect(link.getAttribute("href")).toBe("#/platform/settings");
     expect(confirmFor("feed.policyOff").intent).toBe("danger");
   });
 
@@ -884,7 +887,6 @@ describe("a feed page", () => {
           "Limits",
           "Yank policy",
           title,
-          "Platform policy",
         ].filter(Boolean),
       );
       // P0-47: Upstream had one option (none) and is gone; the feed still never proxies.
@@ -955,7 +957,7 @@ describe("a feed page", () => {
       resetConsole();
       boot(`#/platform/feeds/${eco}/settings`, { extra: feedRoutes() });
       await within(await mainReady()).findByRole("form", {
-        name: "Platform policy",
+        name: "General",
       });
       expect(
         (await axe(main())).violations.map((v) => v.id),
