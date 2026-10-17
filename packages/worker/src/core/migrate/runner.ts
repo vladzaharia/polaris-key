@@ -21,6 +21,7 @@
 
 import type { Db, DbStatement } from "../../db/types.js";
 import { randomId } from "../../platform/crypto.js";
+import { parseJsonColumn } from "../../platform/json.js";
 import {
   actorColumns,
   platformAuditStatement,
@@ -102,15 +103,6 @@ interface UnitRow {
   error: string | null;
 }
 
-function parse(json: string | null): unknown {
-  if (json === null) return null;
-  try {
-    return JSON.parse(json) as unknown;
-  } catch {
-    return null;
-  }
-}
-
 function viewOf(run: RunRow, units: UnitRow[]): RunView {
   return {
     id: run.id,
@@ -127,7 +119,7 @@ function viewOf(run: RunRow, units: UnitRow[]): RunView {
       status: u.status,
       planned: u.planned,
       changes: u.changes,
-      detail: parse(u.detail_json),
+      detail: parseJsonColumn(u.detail_json),
       error: u.error,
     })),
     remaining: units.filter((u) => u.status !== "done").length,
