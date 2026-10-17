@@ -22,6 +22,8 @@ export interface SetupChoices {
 }
 
 export const SETUP_KEY = "core.setup";
+/** The registry area `core.setup` lives in, so its read is one small request. */
+export const SETUP_AREA = "setup";
 export const EMPTY_SETUP: SetupChoices = {
   integrationHidden: null,
   notUsing: [],

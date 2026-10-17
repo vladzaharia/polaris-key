@@ -11,12 +11,16 @@
 import * as React from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "../../api.js";
+import { errorCopy } from "../../lib/errorCopy.js";
+import { toast } from "../../ui/toast.js";
 import { useMe } from "../data/hooks.js";
 import { mutate } from "../data/mutations.js";
 import { qk } from "../data/queries.js";
 import { useWriteGate } from "../access/useCan.js";
 import {
+  edit,
   parseSetup,
+  SETUP_AREA,
   SETUP_KEY,
   type SetupChoices,
   type SetupEdit,
@@ -35,6 +39,8 @@ export interface UseSetup {
   save: (edit: SetupEdit) => Promise<SetupChoices>;
   /** Who and when, for a choice that records them. */
   stamp: () => SetupStamp;
+  /** Skip a step: saved as a choice. Says why in a toast and answers false when it fails. */
+  skip: (flow: string, step: string) => Promise<boolean>;
   saving: boolean;
 }
 
@@ -42,10 +48,11 @@ const isConflict = (e: unknown): boolean =>
   e instanceof ApiError && e.status === 409;
 
 export function useSetup(slug: string): UseSetup {
+  const area = SETUP_AREA;
   const queryClient = useQueryClient();
   const q = useQuery({
-    queryKey: qk.productSettings(slug, "setup"),
-    queryFn: () => api.productSettings(slug, "setup"),
+    queryKey: qk.productSettings(slug, area),
+    queryFn: () => api.productSettings(slug, area),
   });
   const me = useMe().data;
   const gate = useWriteGate("core", slug);
@@ -70,8 +77,8 @@ export function useSetup(slug: string): UseSetup {
         if (!isConflict(e)) throw e;
         // Someone saved first: apply this edit to what they saved, once.
         const fresh = await queryClient.fetchQuery({
-          queryKey: qk.productSettings(slug, "setup"),
-          queryFn: () => api.productSettings(slug, "setup"),
+          queryKey: qk.productSettings(slug, area),
+          queryFn: () => api.productSettings(slug, area),
           staleTime: 0,
         });
         const now = fresh.settings?.find((s) => s.key === SETUP_KEY);
@@ -93,6 +100,15 @@ export function useSetup(slug: string): UseSetup {
       at: Math.floor(Date.now() / 1000),
       by: me?.email || me?.sub || "operator",
     }),
+    skip: async (flow, step) => {
+      try {
+        await save(edit.skip(flow, step));
+        return true;
+      } catch (e) {
+        toast.error(errorCopy(e, { thing: "Your choice" }).title);
+        return false;
+      }
+    },
     saving,
   };
 }
