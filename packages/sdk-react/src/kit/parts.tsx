@@ -15,6 +15,8 @@ export interface Chrome {
   controls?: string[];
   links?: string[];
   drop?: string[];
+  /** A control's visible words, where the drop-in knows better than the catalog (Download 2.5.0). */
+  labels?: Record<string, string>;
   /** Status lines under the text (the code step's "Waiting for you to sign in…"). */
   meta?: string[];
 }
@@ -29,6 +31,8 @@ export interface KitCtx {
   fill?: boolean;
   /** The drop-in drives this part: lines with a missing argument are left out. */
   driven?: boolean;
+  /** The license step's list; the parts that draw that step pass it (the gate does not). */
+  licenseRows?: (c: KitCtx) => ReactNode;
   /** A screen-form component drawn as an embedded pane. */
   embedded?: boolean;
   chrome?: Chrome;
@@ -81,6 +85,21 @@ function argsOf(
   return args;
 }
 
+/** One string. The installed version's line says the size of a download only when it knows one
+ *  (the web prompt does not); there the line is just "You have 2.4.1". */
+function formatKey(
+  c: KitCtx,
+  key: string,
+  args: Record<string, string | number>,
+): string {
+  if (key !== "update.current" || args.size !== undefined)
+    return c.copy.format(key, args);
+  return c.copy
+    .format(key, { ...args, size: "" })
+    .split("·")[0]!
+    .trim();
+}
+
 export function text(
   c: KitCtx,
   key: string,
@@ -92,7 +111,7 @@ export function text(
   for (const [k, v] of Object.entries(args))
     marked[k] =
       isolated.has(k) && typeof v === "string" ? `${OPEN}${v}${CLOSE}` : v;
-  const s = c.copy.format(key, marked);
+  const s = formatKey(c, key, marked);
   if (!s.includes(OPEN)) return s;
   const parts: ReactNode[] = [];
   s.split(OPEN).forEach((chunk, i) => {
@@ -112,7 +131,7 @@ export function plain(
   key: string,
   extra: Record<string, string | number> = {},
 ): string {
-  return c.copy.format(key, argsOf(c, key, extra));
+  return formatKey(c, key, argsOf(c, key, extra));
 }
 
 /** True when the string still holds a `{name}` argument nothing filled. */
@@ -385,7 +404,7 @@ export function button(
     detail?: Record<string, unknown>;
   } = {},
 ): ReactNode {
-  const external = OPENS.has(key);
+  const external = OPENS.has(key) || c.chrome?.labels?.[key] !== undefined;
   const device =
     NAMED_PRIMARY.has(key) && c.copy.has("signin.replace.confirmNamed")
       ? pickedDevice(c)
@@ -408,7 +427,7 @@ export function button(
       <span>
         {device !== null
           ? text(c, "signin.replace.confirmNamed", { device })
-          : text(c, key, extra.args)}
+          : (c.chrome?.labels?.[key] ?? text(c, key, extra.args))}
       </span>
       {external ? (
         <>
@@ -691,7 +710,9 @@ export function actions(
   const sorted = [...controls].sort(
     (a, b) => Number(b === primary) - Number(a === primary),
   );
-  const busy = c.input.pending !== undefined;
+  // Pressed once: while the work runs the primary is busy and ignores further presses.
+  const busy =
+    c.input.pending !== undefined || c.input.signIn?.redeeming === true;
   return (
     <div
       className="actions"

@@ -41,7 +41,7 @@ npm run live
 ```sh
 mise exec node@22 -- pnpm --filter @polaris-key/react build
 cd examples/ui/react-vite
-mise exec node@22 -- ../../../node_modules/.bin/vite --config vite.repo.config.ts
+mise exec node@22 -- ../../../packages/admin/node_modules/.bin/vite --config vite.repo.config.ts
 mise exec node@22 -- ../../../node_modules/.bin/tsc --noEmit -p tsconfig.repo.json
 ```
 
