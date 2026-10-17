@@ -1,4 +1,4 @@
-# @pkey-feature ui.cli.contract
+# @pkey-feature ui.cli.mount ui.cli.contract
 """The ``mount`` and ``help`` rows of the ``cli`` family in conformance/corpus/v2/ui-matrix.json
 (plans/UK-51.md), run against the argparse, click and typer adapters: what registering the kit into a
 host CLI adds, the error and the skip when a host command collides, the options a bound mount hides,

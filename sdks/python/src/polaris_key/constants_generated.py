@@ -1943,7 +1943,7 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "ui.kit.keyentry": CapabilityRow("na", "sdk", (CapabilityNa("python", "runtime"),)),
         "ui.kit.account": CapabilityRow("na", "sdk", (CapabilityNa("python", "runtime"),)),
         "ui.cli": CapabilityRow("implemented", "sdk", ()),
-        "ui.cli.mount": CapabilityRow("planned", "sdk", ()),
+        "ui.cli.mount": CapabilityRow("implemented", "sdk", ()),
         "ui.cli.contract": CapabilityRow("implemented", "sdk", ()),
         "ui.gate": CapabilityRow("planned", "sdk", ()),
         "ui.activate": CapabilityRow("planned", "sdk", ()),
@@ -1964,4 +1964,4 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "08e88caa160e845924e34904b5a2c16113582583815b66b5b4ae6d90b2c708b3"
+CAPABILITY_DIGEST: Final[str] = "633500c36f1405ee61f21feb89168b13c9701cce682a25c1676940aaa901e8c7"

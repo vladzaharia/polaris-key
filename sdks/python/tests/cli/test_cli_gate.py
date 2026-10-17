@@ -1,4 +1,4 @@
-# @pkey-feature ui.cli.contract
+# @pkey-feature ui.cli.mount ui.cli.contract
 """The ``gate`` rows of the ``cli`` family in conformance/corpus/v2/ui-matrix.json (plans/UK-51.md):
 what ``require_license`` does with a host command for every license status, terminal and
 entitlement. A row the gate fails is a bug against the row or the gate, never a reason to skip it
