@@ -121,7 +121,6 @@ export const SETTING_HOMES: Readonly<Record<string, SettingHome>> = {
   "config.catalog": at("catalog-edit"),
   "config.profiles": at("profiles"),
   // Edge mint only approves or revokes recipes the manifest declares.
-  "config.edgeMint.recipes": manifest("product"),
 
   // ── Release ────────────────────────────────────────────────────────────────────────────────
   // Linking a repository is the console's only write of it, and only from the unlinked state.

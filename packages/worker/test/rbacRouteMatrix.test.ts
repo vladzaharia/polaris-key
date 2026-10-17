@@ -359,6 +359,7 @@ describe("negative controls", () => {
         "POST /products/:slug/users/licenses/:id/make-floating",
         "POST /products/:slug/users/licenses/:id/reassign",
         "POST /products/:slug/users/relinks/:id/undo",
+        "POST /products/:slug/config/mint/:id/approve",
       ].sort(),
     );
     for (const r of steps) {

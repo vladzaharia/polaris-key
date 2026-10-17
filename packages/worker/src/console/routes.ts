@@ -210,6 +210,11 @@ export const ADMIN_ROUTES: readonly AdminRoute[] = [
   ...rows(["DELETE"], P, "settings", registry, { stepUp: true }),
 
   // ── One product: the services, by prefix ──────────────────────────────────────────────────
+  // Approving a minted token's recipe lets the product's signing key mint for every device it
+  // names (P0-12, U-31): a sign-in proven in the last five minutes, ahead of Config's prefix.
+  ...rows(["POST"], `${P}/config/mint/:id/approve`, "config", product, {
+    stepUp: true,
+  }),
   ...SERVICE_SLUGS.flatMap(serviceRows),
   // Commerce's surface is `commerce` ahead of Distribution's prefix (CM-29 moves the path, not
   // the area); the Feeds admin is Ship builds, composed in the console layer.
