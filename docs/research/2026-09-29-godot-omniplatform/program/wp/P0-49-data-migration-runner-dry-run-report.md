@@ -83,7 +83,7 @@ What downstream work packages rely on from this one is named in their briefs (th
 ## Verification against the code (2026-10-17)
 
 - P0-24 (the ledger) is not built, so the runner keeps its own record: `data_migration_runs` and
-  `data_migration_units` (migration `0121_data_migration_runs.sql`, Core-owned). When P0-24 lands
+  `data_migration_units` (migration `0122_data_migration_runs.sql`, Core-owned). When P0-24 lands
   it takes these report rows.
 - The Core job kind lives in `packages/worker/src/core/migrate/` (`job.ts`, `runner.ts`). A
   service contributes jobs through `ServiceDescriptor.contributes.migrations`
