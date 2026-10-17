@@ -18,7 +18,7 @@ import type {
   ServiceDescriptor,
 } from "../../core/registry.js";
 import type { AdminSession } from "../../core/console/session.js";
-import { handleReleaseRoutes } from "./routes.js";
+import { RELEASE_ROUTES } from "./routes.js";
 import { handleReleaseAdmin } from "./admin.js";
 import { getReleaseConfig } from "./config.js";
 import { bytesHostname } from "../../core/assets/bytesHost.js";
@@ -42,35 +42,13 @@ export const releaseService: ServiceDescriptor = {
   },
   /** ST-03: this service's settings registry slice (`settings.ts`). */
   settings: RELEASE_SETTINGS_SLICE,
-  handle: handleReleaseRoutes,
+  handle: RELEASE_ROUTES.handle,
   /**
    * The canonical surface `routes.ts` dispatches; what `routeCoverage` pins. The installer and
    * the byte routes are Distribution's, and `/{product}/release/dl/…` and its siblings are the
    * router's permanent aliases for them, not Release's surface.
    */
-  surface: [
-    { path: "/{product}/release/changelog", methods: ["get"] },
-    // The CI policy routes.
-    {
-      path: "/{product}/release/channels/{channel}/promote",
-      methods: ["post"],
-    },
-    { path: "/{product}/release/channels/{channel}/pin", methods: ["post"] },
-    { path: "/{product}/release/channels/{channel}/unpin", methods: ["post"] },
-    { path: "/{product}/release/releases/{releaseId}/yank", methods: ["post"] },
-    // Feed retention: the backfill of the builds of main below each package's stable release.
-    { path: "/{product}/release/packages/prune", methods: ["post"] },
-    // Trusted publishing.
-    { path: "/{product}/release/publish/token", methods: ["post"] },
-    { path: "/{product}/release/publish/uploads", methods: ["post"] },
-    { path: "/{product}/release/publish/submit", methods: ["post"] },
-    // A stage round of a pack's objects.
-    { path: "/{product}/release/publish/stage", methods: ["post"] },
-    // The product's delegations, for `pkey release delegate`.
-    { path: "/{product}/release/publish/delegations", methods: ["post"] },
-    // A CI-signed release record by its hash.
-    { path: "/{product}/release/records/{sha256}", methods: ["get"] },
-  ],
+  surface: RELEASE_ROUTES.surface,
   adminHandle: (ctx: ServiceContext & { session: AdminSession }) =>
     handleReleaseAdmin(ctx),
   /**

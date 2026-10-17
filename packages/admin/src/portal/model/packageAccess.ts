@@ -43,7 +43,12 @@ export function feedSnippets(
       : feed.ecosystem === "godot"
         ? { kind: "godot-url", value: token }
         : { kind: "token", value: token };
-  const context = { origin, owner: ctx.product, credential };
+  const context = {
+    origin,
+    owner: ctx.product,
+    credential,
+    ...(feed.namespace ? { namespace: feed.namespace } : {}),
+  };
   if (feedSetupProblem(feed.ecosystem, context) !== null) return [];
   return renderFeedSetup(feed.ecosystem, context);
 }
@@ -64,21 +69,10 @@ export function tokenExpiry(
   return { soon: false, text: `Expires ${formatDate(expiresAt)}` };
 }
 
-const MONTHS = [
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
-  "May",
-  "Jun",
-  "Jul",
-  "Aug",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dec",
-];
+/** "Oct 1, 2026": the date format the rest of Account uses. */
 export function formatDate(at: number): string {
-  const d = new Date(at * 1000);
-  return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+  return new Intl.DateTimeFormat("en-US", {
+    dateStyle: "medium",
+    timeZone: "UTC",
+  }).format(new Date(at * 1000));
 }

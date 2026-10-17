@@ -17,14 +17,14 @@ import type {
   DiscoveryContext,
   ServiceDescriptor,
 } from "../../core/registry.js";
-import { handleLicenseRoutes } from "./routes.js";
+import { LICENSE_ROUTES } from "./routes.js";
 import { handleLicenseAdmin } from "./admin/index.js";
 import { applyStoreGrant, storeGrantMergeStatements } from "./storeGrants.js";
 import { licenseProvenance } from "./provenance.js";
 import { licenseDeleteContribution } from "./deletion.js";
 import { LICENSE_SETTINGS_SLICE } from "./settings.js";
-import { LICENSING_SETTINGS } from "./licensingSettings.js";
-import { manifestRowSettingStatements } from "../../core/rowSettings.js";
+import {} from "./licensingSettings.js";
+import {} from "../../core/rowSettings.js";
 
 import { licenseIntegration } from "./integration.js";
 
@@ -39,22 +39,9 @@ export const licenseService: ServiceDescriptor = {
   },
   /** ST-03: this service's settings registry slice (`settings.ts`). */
   settings: LICENSE_SETTINGS_SLICE,
-  /**
-   * LX-06: `.pkey/product`'s `licensing.*` settings → their claimable `product_settings` rows, on
-   * every link and resync whatever License's enablement (S-19 §7.13; `licensingSettings.ts`), so
-   * they are already right when License is turned on. A console claim is never overwritten.
-   */
-  manifestIngestAlways: (parsed, product, now) =>
-    manifestRowSettingStatements(product, LICENSING_SETTINGS, parsed, now),
-  handle: handleLicenseRoutes,
+  handle: LICENSE_ROUTES.handle,
   /** The canonical surface `routes.ts` dispatches; what `routeCoverage` pins. */
-  surface: [
-    { path: "/{product}/license/activate", methods: ["post"] },
-    { path: "/{product}/license/enroll", methods: ["post"] },
-    { path: "/{product}/license/token", methods: ["post"] },
-    { path: "/{product}/license/deauthorize", methods: ["post"] },
-    { path: "/{product}/license/document", methods: ["get"] },
-  ],
+  surface: LICENSE_ROUTES.surface,
   /** `license/{licenses,tiers,policy}` on the console API (§R1). */
   adminHandle: handleLicenseAdmin,
   /** License's slice of `/.well-known/polaris.json` (design spec §4.3): the activation, token

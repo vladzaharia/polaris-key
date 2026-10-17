@@ -36,6 +36,10 @@ export interface OneTimeSecretPanelProps {
   actions?: React.ReactNode;
   /** Content shown under the value while it is on screen (a registry token's setup snippets). */
   details?: React.ReactNode;
+  /** The copy button's accessible name; default "Copy <label>". */
+  copyLabel?: string;
+  /** Put "I've stored it" after `details`, so the box follows what it confirms. */
+  acknowledgeLast?: boolean;
 }
 
 /** Save `value` as a file. Resolves false when the browser refused every method. */
@@ -70,6 +74,32 @@ export function saveAsFile(
   }
 }
 
+/** The "I've stored it" box (a bigger target on phones). */
+export function SecretAck({
+  acknowledged,
+  onChange,
+}: {
+  acknowledged: boolean;
+  onChange: (acknowledged: boolean) => void;
+}): React.ReactElement {
+  const ackId = React.useId();
+  return (
+    <label
+      htmlFor={ackId}
+      className="flex min-h-6 items-center gap-2 text-sm text-fg max-sm:min-h-11"
+    >
+      <input
+        id={ackId}
+        type="checkbox"
+        checked={acknowledged}
+        onChange={(e) => onChange(e.target.checked)}
+        className="size-4 accent-(--pk-accent) max-sm:size-5"
+      />
+      I&apos;ve stored it
+    </label>
+  );
+}
+
 /**
  * The value, its Copy button and the "I've stored it" box: the one-time pattern without a dialog
  * around it (LX-29 shows it inside a wizard drawer). Copying counts as storing it.
@@ -78,6 +108,7 @@ export function SecretValue({
   label,
   value,
   hint = "Shown once. Polaris Key stores only its hash.",
+  copyLabel,
   acknowledged,
   onAcknowledgedChange,
   hideAck = false,
@@ -85,13 +116,13 @@ export function SecretValue({
   label: string;
   value: string;
   hint?: React.ReactNode;
-  /** The screen does not hold the only copy: no "I've stored it" box. */
+  copyLabel?: string;
+  /** No "I've stored it" box here: the screen does not hold the only copy, or the caller places it. */
   hideAck?: boolean;
   acknowledged: boolean;
   onAcknowledgedChange: (acknowledged: boolean) => void;
 }): React.ReactElement {
   const valueId = React.useId();
-  const ackId = React.useId();
   return (
     <>
       <div className="space-y-1.5">
@@ -107,7 +138,8 @@ export function SecretValue({
           </code>
           <CopyButton
             value={value}
-            label={`Copy ${label.toLowerCase()}`}
+            className="max-sm:[&_button]:min-h-11 max-sm:[&_button]:min-w-11"
+            label={copyLabel ?? `Copy ${label.toLowerCase()}`}
             onCopy={(ok) => {
               if (ok) onAcknowledgedChange(true);
             }}
@@ -116,19 +148,10 @@ export function SecretValue({
         <p className="text-xs text-fg-muted">{hint}</p>
       </div>
       {hideAck ? null : (
-        <label
-          htmlFor={ackId}
-          className="flex min-h-6 items-center gap-2 text-sm text-fg"
-        >
-          <input
-            id={ackId}
-            type="checkbox"
-            checked={acknowledged}
-            onChange={(e) => onAcknowledgedChange(e.target.checked)}
-            className="size-4 accent-(--pk-accent)"
-          />
-          I&apos;ve stored it
-        </label>
+        <SecretAck
+          acknowledged={acknowledged}
+          onChange={onAcknowledgedChange}
+        />
       )}
     </>
   );
@@ -147,6 +170,8 @@ export function OneTimeSecretPanel({
   onConfirmClose,
   actions,
   details,
+  acknowledgeLast = false,
+  copyLabel,
 }: OneTimeSecretPanelProps): React.ReactElement {
   const [ackState, setAckState] = React.useState(false);
   const acknowledged = ackProp ?? ackState;
@@ -155,6 +180,7 @@ export function OneTimeSecretPanel({
     onAcknowledgedChange?.(v);
   };
   const [downloadFailed, setDownloadFailed] = React.useState(false);
+  const ack = <SecretAck acknowledged={acknowledged} onChange={setAck} />;
 
   return (
     <>
@@ -163,10 +189,13 @@ export function OneTimeSecretPanel({
           label={label}
           value={value}
           hint={hint}
+          copyLabel={copyLabel}
+          hideAck={acknowledgeLast}
           acknowledged={acknowledged}
           onAcknowledgedChange={setAck}
         />
         {details}
+        {acknowledgeLast ? ack : null}
         {download ? (
           <div className="space-y-1">
             <Button
@@ -220,7 +249,13 @@ export function OneTimeSecretPanel({
       </DialogBody>
       <DialogFooter>
         {actions}
+        {acknowledged ? null : (
+          <p className="text-sm text-fg-muted sm:mr-auto">
+            Copy it or tick “I&apos;ve stored it” first.
+          </p>
+        )}
         <Button
+          className="max-sm:min-h-11"
           disabledReason={
             acknowledged ? undefined : "Copy it or tick “I've stored it” first"
           }

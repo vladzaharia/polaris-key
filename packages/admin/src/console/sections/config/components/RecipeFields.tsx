@@ -79,12 +79,11 @@ function Claims({
   if (lines.length === 0) return <span className="text-fg-muted">Not set</span>;
   return (
     <pre
-      tabIndex={0}
       role="region"
       aria-label={
         was === undefined ? "Claims template" : "Claims template changes"
       }
-      className="max-w-full overflow-x-auto rounded-md border border-border bg-surface-sunken py-1 font-mono text-xs"
+      className="max-w-full whitespace-pre-wrap rounded-md border border-border bg-surface-sunken py-1 font-mono text-xs [overflow-wrap:anywhere]"
     >
       {lines.map((l, i) => (
         <div key={i} className={`px-2 ${TINT[l.kind]}`}>

@@ -311,9 +311,21 @@ export async function revokeAccountToken(
 }
 
 /** A token as a Superadmin lists it: the view plus the account's email (never its id). Never the plaintext or the hash. */
-export interface PersonalTokenAdminView extends PersonalTokenView {
+export interface PersonalTokenAdminView extends Omit<
+  PersonalTokenView,
+  "revokedBy"
+> {
   /** The account's primary email, `null` once it is erased or has none. */
   readonly email: string | null;
+}
+
+/** The admin's view drops `revokedBy` (it names the revoking account); `revokeReason` says who. */
+function adminViewOf(
+  row: PersonalTokenRow & { email: string | null },
+  now: number,
+): PersonalTokenAdminView {
+  const { revokedBy: _by, ...rest } = viewOf(row, now);
+  return { ...rest, email: row.email };
 }
 
 /** The most rows the Superadmin roster returns. */
@@ -331,10 +343,7 @@ export async function listAllAccountTokens(
       LIMIT ${ADMIN_TOKEN_LIST_LIMIT}`,
     now,
   );
-  return rows.map((r) => ({
-    ...viewOf(r, now),
-    email: r.email,
-  }));
+  return rows.map((r) => adminViewOf(r, now));
 }
 
 /**
@@ -359,7 +368,7 @@ export async function revokeAccountTokenAsAdmin(
        FROM account_tokens t LEFT JOIN accounts a ON a.id = t.account_id WHERE t.id = ?`,
     id,
   );
-  return row ? { ...viewOf(row, now), email: row.email } : null;
+  return row ? adminViewOf(row, now) : null;
 }
 
 /** Revoke every live token of the account; answers how many. */

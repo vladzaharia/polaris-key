@@ -13956,7 +13956,8 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [registryOrigin, username, tokens, feeds, limits]
+                required:
+                  [registryOrigin, username, tokens, feeds, legacy, limits]
                 properties:
                   registryOrigin: { type: [string, "null"] }
                   username: { type: string, enum: ["__token__"] }
@@ -13965,13 +13966,57 @@ paths:
                     items:
                       type: object
                       required:
-                        [product, productName, ecosystem, accessMode, baseUrl]
+                        [
+                          product,
+                          productName,
+                          licenseId,
+                          ecosystem,
+                          accessMode,
+                          baseUrl,
+                          namespace,
+                        ]
                       properties:
                         product: { type: string }
                         productName: { type: string }
+                        licenseId: { type: string }
                         ecosystem: { type: string }
                         accessMode: { type: string }
                         baseUrl: { type: [string, "null"] }
+                        namespace: { type: object, additionalProperties: true }
+                  legacy:
+                    type: array
+                    description: >
+                      The account's licence-bound `pkeyr_` tokens (made before personal tokens,
+                      and Godot editor URL tokens), for revoking. Revoke with
+                      `DELETE /api/licenses/{product}/{licenseId}/registry-tokens/{tokenId}`.
+                    items:
+                      type: object
+                      required:
+                        [
+                          product,
+                          productName,
+                          licenseId,
+                          tokenId,
+                          label,
+                          hint,
+                          status,
+                        ]
+                      properties:
+                        product: { type: string }
+                        productName: { type: string }
+                        licenseId: { type: string }
+                        tokenId: { type: string }
+                        label: { type: string }
+                        hint: { type: string }
+                        ecosystems:
+                          { type: [array, "null"], items: { type: string } }
+                        presentation: { type: string }
+                        createdAt: { type: integer }
+                        expiresAt: { type: integer }
+                        lastUsedAt: { type: [integer, "null"] }
+                        revokedAt: { type: [integer, "null"] }
+                        status:
+                          { type: string, enum: [active, expired, revoked] }
                   tokens:
                     type: array
                     items: { $ref: "#/components/schemas/AccountToken" }
@@ -19838,12 +19883,23 @@ components:
         now: { type: integer, description: Epoch seconds. }
         snippet:
           type: object
-          required: [slug, services, pins]
+          required: [slug, services, pins, releaseKeys]
           properties:
             slug: { type: string }
             services: { type: array, items: { type: string } }
             pins:
               type: array
+              items:
+                type: object
+                required: [kid, publicKey]
+                properties:
+                  kid: { type: string }
+                  publicKey: { type: string }
+            releaseKeys:
+              type: array
+              description: >
+                The declared release keys (public material); empty while Release is off. The
+                console passes each as `--release-key <kid>=<publicKey>` to `pkey sdk add`.
               items:
                 type: object
                 required: [kid, publicKey]
@@ -22430,14 +22486,39 @@ components:
           enum: [manual, admin, account_deleted, access_removed, null]
         status: { type: string, enum: [active, expired, revoked] }
     AccountTokenAdmin:
+      type: object
       description: >
-        A personal token as a Superadmin lists it (F-33): the portal's view plus whose it is.
-      allOf:
-        - { $ref: "#/components/schemas/AccountToken" }
-        - type: object
-          required: [email]
-          properties:
-            email: { type: [string, "null"] }
+        A personal token as a Superadmin lists it (F-33): the account's email, never its id, and
+        no `revokedBy` (it would name the revoking account); `revokeReason` says who ended it
+        (`manual` is the owner).
+      required:
+        [
+          id,
+          label,
+          hint,
+          scope,
+          createdAt,
+          expiresAt,
+          lastUsedAt,
+          revokedAt,
+          revokeReason,
+          status,
+          email,
+        ]
+      properties:
+        id: { type: string }
+        label: { type: string }
+        hint: { type: string }
+        scope: { type: string }
+        createdAt: { type: integer }
+        expiresAt: { type: integer }
+        lastUsedAt: { type: [integer, "null"] }
+        revokedAt: { type: [integer, "null"] }
+        revokeReason:
+          type: [string, "null"]
+          enum: [manual, admin, account_deleted, access_removed, null]
+        status: { type: string, enum: [active, expired, revoked] }
+        email: { type: [string, "null"] }
     FlatError:
       type: object
       description: >

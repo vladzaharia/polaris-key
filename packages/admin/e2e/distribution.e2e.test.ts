@@ -20,9 +20,15 @@ const CSP = appSecurityHeaders().get("content-security-policy")!;
 const SHOTS = process.env.PK_SHOTS;
 
 const services = Object.fromEntries(
-  ["license", "config", "release", "distribution", "update", "identity"].map(
-    (s) => [s, { enabled: true }],
-  ),
+  [
+    "license",
+    "config",
+    "release",
+    "distribution",
+    "update",
+    "identity",
+    "commerce",
+  ].map((s) => [s, { enabled: true }]),
 );
 const row = (slug: string, name: string) => ({
   slug,

@@ -46,6 +46,19 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 - Working id **CQW-09**; DX consolidation B: Foundations (code quality the feature tracks build on).
 - No new copies (tracks.md rule 4): build on the one mechanism this plan names, never beside it.
 
+## Corrections (2026-10-17)
+
+- The `delivery.downloadToken` hook was not built. Hooks are read-only (`core/hooks.ts` rule 2),
+  and `release_download_tokens` is also read by Release (`packages/prune.ts`) and swept by Core, so
+  a Distribution-owned table or hook would have added Release/Distribution seams. The table is
+  now Core's (`TABLE_OWNERS`), with mint, read, spend and purge in `core/assets/downloadTokens.ts`;
+  Identity's portal and maintenance call it. All four portal seams are gone.
+- The portal reads Release only through `releaseCatalog` (`CatalogSourceArtifact` gained
+  `sourceUrl` and `kind`; `releaseNotes` gained `sourceUrl` and `metadataAccess`).
+- `GET /api/releases` is kept, rebuilt over the hook: the product page's What's new notes and the
+  library's fallback read it. Deleting it is a SPA change (follow-up: add notes to
+  `customerDownloads`, then drop the route and `PortalRelease` fallback).
+
 ## Steps
 
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
@@ -53,8 +66,8 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 
 ## Acceptance criteria
 
-- [ ] Table-crossing allow-list loses its portal->release rows
-- [ ] Portal e2e (PX-20 suite) green
+- [x] Table-crossing allow-list loses its portal->release rows
+- [x] Portal e2e (PX-20 suite) green (worker portal\* and attack suites)
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

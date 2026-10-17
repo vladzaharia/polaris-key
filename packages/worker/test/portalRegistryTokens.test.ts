@@ -165,14 +165,46 @@ describe("portal package access (Q3)", () => {
     });
   });
 
-  it("no longer mints: the portal answers 410 and points at Account → Packages", async () => {
+  it("mints only the Godot editor URL token: licence-bound, read-only, Godot-narrowed, audited", async () => {
     await setFeed("licensed");
-    const res = await call("POST", "", { label: "laptop", ecosystem: "npm" });
-    expect(res.status).toBe(410);
-    expect(((await res.json()) as { error: string }).error).toBe("gone");
+    await setFeed("licensed", "godot");
+    // Any other feed is read with the person's pkeyp_ token.
+    for (const ecosystem of ["npm", undefined]) {
+      const refused = await call("POST", "", { label: "laptop", ecosystem });
+      expect(refused.status).toBe(422);
+    }
     expect(
-      await db.first("SELECT 1 FROM registry_tokens WHERE product = ?", SLUG),
-    ).toBeNull();
+      (await call("POST", "", { label: "x", ecosystem: "godot" }, false))
+        .status,
+    ).toBe(403);
+    const res = await call("POST", "", { label: "editor", ecosystem: "godot" });
+    expect(res.status).toBe(201);
+    const minted = (await res.json()) as {
+      token: string;
+      view: Record<string, unknown>;
+    };
+    expect(minted.token).toMatch(/^pkeyr_/);
+    expect(minted.view).toMatchObject({
+      binding: "license",
+      licenseId,
+      scopes: ["read"],
+      ecosystems: ["godot"],
+      presentation: "url",
+    });
+    expect(
+      (
+        await db.all<{ action: string }>(
+          "SELECT action FROM portal_audit WHERE action = 'portal.registry_token.create'",
+        )
+      ).length,
+    ).toBe(1);
+  });
+
+  it("refuses the Godot mint without a private Godot feed", async () => {
+    await setFeed("licensed");
+    expect(
+      (await call("POST", "", { label: "editor", ecosystem: "godot" })).status,
+    ).toBe(422);
   });
 
   it("lists tokens minted before F-33 without the secret, and revokes and audits them", async () => {
@@ -187,6 +219,7 @@ describe("portal package access (Q3)", () => {
         ecosystem: "npm",
         accessMode: "licensed",
         baseUrl: "https://pkg.example.test/npm/acme/",
+        namespace: { scope: "@acme" },
       },
     ]);
     const minted = await legacyToken();

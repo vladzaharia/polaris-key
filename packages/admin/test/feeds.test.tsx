@@ -822,7 +822,9 @@ describe("a feed page", () => {
       within(main_).queryByRole("form", { name: "Platform policy" }),
     ).toBeNull();
     const link = within(main_).getByRole("link", { name: "Platform settings" });
-    expect(link.getAttribute("href")).toBe("#/platform/settings");
+    expect(link.getAttribute("href")).toBe(
+      "#/platform/settings?section=platform-hosting",
+    );
     expect(confirmFor("feed.policyOff").intent).toBe("danger");
   });
 

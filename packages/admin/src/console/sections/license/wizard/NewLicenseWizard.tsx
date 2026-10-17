@@ -23,7 +23,6 @@ import { momentKey } from "../../../components/Moment.js";
 import { navigate } from "../../../router.js";
 import { r } from "../../../routes.js";
 import { focusWhenReady } from "../../../shell/palette/focus.js";
-import { SDK_QUICK_START_ID } from "../../core/model/sdkQuickStart.js";
 import {
   effectivePolicy,
   useHasLicenses,
@@ -405,9 +404,12 @@ export function NewLicenseWizard({
         onRetry={() => void tryAgain()}
         onTryIt={() => {
           finished();
-          navigate(r.overview(slug));
-          // Lands on the SDK chooser, as the palette's "SDK quick start" does.
-          focusWhenReady(SDK_QUICK_START_ID);
+          if (window.location.hash.startsWith(r.integration(slug))) {
+            // Already there: show the Licensing snippet.
+            focusWhenReady("integration-licensing");
+            return;
+          }
+          navigate(r.integration(slug, { feature: "licensing" }));
         }}
       />
     );

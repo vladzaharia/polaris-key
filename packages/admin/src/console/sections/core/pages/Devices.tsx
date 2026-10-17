@@ -29,6 +29,7 @@ import {
   toCsv,
   type RowActionItem,
 } from "../../../../ui/data-table/index.js";
+import { Button } from "../../../../ui/Button.js";
 import { EmptyState } from "../../../../ui/EmptyState.js";
 import { errorCopy } from "../../../../lib/errorCopy.js";
 import { toast } from "../../../../ui/toast.js";
@@ -41,7 +42,7 @@ import {
 import { PageHeader } from "../../../../ui/PageHeader.js";
 import { mutate } from "../../../data/mutations.js";
 import { qk } from "../../../data/queries.js";
-import { navigate, useLocation } from "../../../router.js";
+import { Link, navigate, useLocation } from "../../../router.js";
 import { r } from "../../../routes.js";
 import { CollectionTemplate } from "../../../templates/Collection.js";
 import { useTableUrlState } from "../../../useTableUrlState.js";
@@ -274,6 +275,11 @@ export function DevicesPage({
               title="No devices yet"
               description="A device appears here the first time it registers or activates a license. Point an SDK at this product to see one."
               docs="/docs/admin/licenses-and-devices/"
+              primaryAction={
+                <Button asChild>
+                  <Link to={r.integration(slug)}>Open Integration</Link>
+                </Button>
+              }
             />
           )
         }

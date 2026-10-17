@@ -199,6 +199,21 @@
       "verdict": "pass",
       "date": "2026-10-17",
       "evidence": "_mockups/review/P0-29/ux-review-2.md (re-review pass-with-fixes after one fix round; N1-N10 polish on wp/P0-29-polish; F14/F16 workbench band moved to ST-48)"
+    },
+    "U-31": {
+      "verdict": "pass",
+      "date": "2026-10-17",
+      "evidence": "_mockups/review/U-31/ux-review-2.md (re-review pass-with-fixes after one fix round; N1-N20 on wp/U-31-polish)"
+    },
+    "ST-09": {
+      "verdict": "pass",
+      "date": "2026-10-17",
+      "evidence": "_mockups/review/ST-09/ux-review-2.md (re-review pass-with-fixes after one fix round; N1-N10 + Advanced folded in wp/ST-09-fix 56fe9ad34)"
+    },
+    "ST-41": {
+      "verdict": "pass",
+      "date": "2026-10-17",
+      "evidence": "_mockups/review/ST-41/ux-review-2.md (re-review pass-with-fixes after one fix round; N1 one-command with --product/--expect/--release-key, N2, N9 + minors in wp/ST-41-polish 3d23db9fe)"
     }
   }
 }

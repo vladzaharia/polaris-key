@@ -215,6 +215,52 @@ describe('presentation="sheet"', () => {
   });
 });
 
+describe("the sheet is never a trap", () => {
+  const methods = () => {
+    const base = input("SignIn/methods: web");
+    return base;
+  };
+  it("has a close button, closes on a scrim click, and offers Cancel", () => {
+    const onClose = vi.fn();
+    const { container } = render(
+      <SignIn input={methods()} presentation="sheet" open onClose={onClose} />,
+    );
+    const dialog = container.querySelector("dialog.sheet")!;
+    expect(dialog.querySelector('[data-part="close"]')).not.toBeNull();
+    expect(dialog.querySelector('[data-key="common.cancel"]')).not.toBeNull();
+    fireEvent.click(dialog.querySelector('[data-part="close"]')!);
+    expect(onClose).toHaveBeenCalledTimes(1);
+    fireEvent.click(dialog);
+    expect(onClose).toHaveBeenCalledTimes(2);
+    fireEvent.click(dialog.querySelector('[data-part="title"]')!);
+    expect(onClose).toHaveBeenCalledTimes(2);
+  });
+
+  it("Back closes the sheet (a history entry), and closing it by hand takes the entry back", () => {
+    const onClose = vi.fn();
+    const push = vi.spyOn(history, "pushState");
+    const back = vi.spyOn(history, "back").mockImplementation(() => {});
+    const { rerender } = render(
+      <SignIn input={methods()} presentation="sheet" open onClose={onClose} />,
+    );
+    expect(push).toHaveBeenCalledOnce();
+    act(() => {
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+    expect(onClose).toHaveBeenCalledOnce();
+    expect(back).not.toHaveBeenCalled();
+    rerender(
+      <SignIn
+        input={methods()}
+        presentation="sheet"
+        open={false}
+        onClose={onClose}
+      />,
+    );
+    expect(back).not.toHaveBeenCalled();
+  });
+});
+
 describe("live: the form drives the SDK primitives", () => {
   const choices: LicenseChoiceView = {
     state: "choose",
@@ -298,5 +344,125 @@ describe("live: the form drives the SDK primitives", () => {
     );
     expect(root(container)?.dataset.state).toBe("done");
     expect(container.querySelector(".success")).not.toBeNull();
+  });
+
+  const full = (
+    id: string,
+    tier: string,
+  ): LicenseChoiceView["choices"][number] => ({
+    id,
+    tierName: tier,
+    name: null,
+    origin: "store",
+    access: "seats",
+    seats: { used: 3, limit: 3 },
+    current: false,
+    expiresAt: null,
+    state: "full",
+    replace: { allowed: true, retryAfter: null },
+    freeDeviceUrl: null,
+  });
+
+  it("every license full: each row offers Replace a device, with Cancel and the key option", async () => {
+    const calls: string[] = [];
+    const prims = primitivesOf(calls);
+    const all: LicenseChoiceView = {
+      ...choices,
+      preselected: null,
+      choices: [full("lic_a", "Team"), full("lic_b", "Pro")],
+    };
+    const wait = async (): Promise<SignInWait> => ({
+      outcome: "choose",
+      grant: "g1",
+      choices: all,
+    });
+    const p: SignInPrimitives = {
+      ...prims,
+      start: async () => ({
+        browserOpened: true,
+        wait,
+        reopen: () => true,
+        cancel: () => {},
+      }),
+      choice: {
+        ...prims.choice!,
+        licenses: async () => all,
+        devices: async () => ({
+          licenseId: "lic_b",
+          seats: { used: 3, limit: 3 },
+          devices: [],
+          replace: { allowed: true, retryAfter: null },
+        }),
+      },
+    };
+    const base = input("SignIn/methods: web");
+    delete base.signIn;
+    const { container } = render(<SignIn input={base} primitives={p} />);
+    await flush();
+    fireEvent.click(
+      container.querySelector<HTMLElement>('[data-variant="primary"]')!,
+    );
+    await flush();
+    const rows = container.querySelectorAll(
+      '[data-part="license-row"] [data-key="signin.replace.open"]',
+    );
+    expect(rows).toHaveLength(2);
+    expect(
+      container.querySelector('button[data-key="common.cancel"]'),
+    ).not.toBeNull();
+    expect(
+      container.querySelector('[data-key="signin.choice.keyInstead"]'),
+    ).not.toBeNull();
+    fireEvent.click(rows[1]!);
+    await flush();
+    expect(root(container)?.dataset.state).toBe("replace");
+  });
+
+  it("an existing license: one press completes once, onDone fires once, the sheet closes", async () => {
+    const calls: string[] = [];
+    const prims = primitivesOf(calls);
+    const p: SignInPrimitives = {
+      ...prims,
+      choice: {
+        ...prims.choice!,
+        async complete(grant, choice) {
+          calls.push(`complete:${grant}:${JSON.stringify(choice)}`);
+          await new Promise((r) => setTimeout(r, 5));
+          return { outcome: "signedIn", issuedNow: false };
+        },
+      },
+    };
+    const base = input("SignIn/methods: web");
+    delete base.signIn;
+    const onDone = vi.fn();
+    const onClose = vi.fn();
+    const { container } = render(
+      <SignIn
+        input={base}
+        primitives={p}
+        presentation="sheet"
+        open
+        onDone={onDone}
+        onClose={onClose}
+      />,
+    );
+    await flush();
+    fireEvent.click(
+      container.querySelector<HTMLElement>('[data-variant="primary"]')!,
+    );
+    await flush();
+    const go = container.querySelector<HTMLElement>(
+      '[data-key="signin.choice.continue"]',
+    )!;
+    fireEvent.click(go);
+    fireEvent.click(go);
+    await flush();
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 20));
+    });
+    expect(calls.filter((c) => c.startsWith("complete"))).toHaveLength(1);
+    expect(onDone).toHaveBeenCalledOnce();
+    expect(onClose).toHaveBeenCalledOnce();
+    expect(container.textContent).not.toMatch(/\{(name|tier)\}/);
   });
 });

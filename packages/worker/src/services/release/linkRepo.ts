@@ -17,7 +17,7 @@
  * with a stubbed fetch (no network).
  */
 
-import { Catalog } from "@polaris-key/catalog";
+import {} from "@polaris-key/catalog";
 import {
   PRODUCT_SLUG_MAX,
   PRODUCT_SLUG_RE,
@@ -40,13 +40,12 @@ import {
   getInstallationToken,
 } from "./githubApp.js";
 import { fetchRepoFile, getRepoIdentity } from "./github.js";
-import { isSafeBinaryName } from "./install.js";
+import {} from "./install.js";
 import { fetchPinnedManifestFiles } from "./manifestFetch.js";
 import {
   type CreateChoices,
   type CreatedDefaults,
 } from "../../core/products/createDefaults.js";
-import { BOUND_INGEST } from "../../core/ingest/pipeline.js";
 import type { Ingest } from "../../core/ingest/types.js";
 import { repoBlobLookup } from "./assetSource.js";
 import { reservedNamesMode } from "../../core/licensing/reservedNames.js";
@@ -115,8 +114,7 @@ export function parseRepoUrl(
   return { owner: m[1], repo: m[2] };
 }
 
-export { manifestIssuerRefusal } from "../../core/ingest/shared.js";
-import { manifestIssuerRefusal } from "../../core/ingest/shared.js";
+import {} from "../../core/ingest/shared.js";
 
 // ── create probes (UX-72: FLOWS.md §3.11 W23, W24) ─────────────────────────────────────────
 
@@ -296,60 +294,6 @@ export function manifestProblems(errors: readonly string[]): ManifestProblem[] {
         }
       : { check: "manifest" as const, file: null, path: null, message: line };
   });
-}
-
-/**
- * The pure refusals `registerFromManifest` applies before it writes (an unsafe binary name, an
- * issuer outside the allowlist, a catalog the validator refuses), in the order it applies them.
- * The dry run lists every one; the create refuses with the first.
- */
-function createPolicyProblems(
-  env: Env,
-  manifest: ParsedManifest,
-  repo: string,
-): ManifestProblem[] {
-  const problems: ManifestProblem[] = [];
-  // Defence in depth for R6-01: the manifest boundary already enforces this class, but the
-  // repo-name fallback does not go through it — and this value is interpolated into the
-  // `curl | sh` installer served to every user of the product.
-  const binaryName = manifest.release?.binaryName || repo;
-  if (!isSafeBinaryName(binaryName))
-    problems.push({
-      check: "policy",
-      file: "release",
-      path: "/release/binaryName",
-      message: `unsafe binary name ${JSON.stringify(binaryName)}; set release.binaryName to match ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`,
-    });
-  // R9-01, at ingest and fail-closed (see `manifestIssuerRefusal`). A first write has no
-  // already-working `oidc_config` row to protect, so an unset allowlist refuses it outright.
-  // A product that does not name a custom issuer never reaches this branch: `djdl` ships
-  // `provider: "platform"` and no issuer at all, so linking it is unaffected.
-  if (manifest.oidc?.provider === "custom") {
-    const refusal = manifestIssuerRefusal(env, manifest.oidc.issuer);
-    if (refusal)
-      problems.push({
-        check: "policy",
-        file: "product",
-        path: "/oidc/issuer",
-        message: refusal,
-      });
-  }
-  // The admin API screens every catalog it accepts (`console/handlers/schema.ts`,
-  // `console/handlers/products.ts` both `compileAll()` before writing). The repo-sync path did
-  // not, so a manifest from GitHub could install a catalog the admin API would have rejected
-  // — unsupported keywords, or a `pattern` the validator cannot compile. Screen it here too,
-  // so there is no route into `product_schema` that skips the check.
-  try {
-    new Catalog(manifest.catalog as never).compileAll();
-  } catch (e) {
-    problems.push({
-      check: "policy",
-      file: "schema",
-      path: "/",
-      message: `invalid catalog in manifest: ${e instanceof Error ? e.message : "unknown error"}`,
-    });
-  }
-  return problems;
 }
 
 /**
@@ -563,6 +507,7 @@ export async function prepareCreate(
   repoUrl: string,
   now: number,
   fetchImpl: FetchImpl = fetch,
+  ingest: Ingest,
 ): Promise<CreateDryRun | CreateRefusal> {
   const read = await readRepoForCreate(env, repoUrl, now, fetchImpl);
   if (!read.ok) return read;
@@ -592,8 +537,11 @@ export async function prepareCreate(
     releaseWorkflow,
   };
 
+  // The same severities the create parses with (plans/P0-26.md D5: the dry run now includes the
+  // reserved display names, as the create always did).
   const result = parseManifest(files, {
     reservedNames: await reservedNamesMode(env, db),
+    reservedDisplayNames: await reservedDisplayNamesMode(env, db),
   });
   if (!result.ok) {
     return {
@@ -618,22 +566,37 @@ export async function prepareCreate(
     owner,
     repo,
   );
-  problems.push(...createPolicyProblems(env, manifest, repo));
-
-  // P2-02: the trusted publisher's numeric ids are resolved at create; a lookup that fails here
-  // would refuse the create, so it is a problem now rather than a surprise then.
-  if (manifest.release?.trustedPublisher) {
-    try {
-      await getRepoIdentity(token, owner, repo, fetchImpl);
-    } catch (err) {
-      problems.push({
-        check: "policy",
-        file: "release",
-        path: "/release/publishing/trustedPublisher",
-        message: `could not resolve the repository's ids for publishing.trustedPublisher: ${err instanceof Error ? err.message : "github lookup failed"}`,
-      });
-    }
-  }
+  // The pure refusals the create applies before it writes (an unsafe binary name, an issuer
+  // outside the allowlist, a catalog the validator refuses), and the trusted publisher's numeric
+  // ids, resolved at create: a lookup that fails would refuse the create, so it is a problem now
+  // rather than a surprise then. The pipeline's dry run lists every one.
+  const dry = await ingest.plan(env, db, {
+    mode: "create",
+    product: slug,
+    manifest,
+    now,
+    source: {
+      origin: "link",
+      sha: commit,
+      files,
+      fetchImpl,
+      repo: {
+        owner,
+        name: repo,
+        installId: read.installId,
+        identity: () => getRepoIdentity(token, owner, repo, fetchImpl),
+        hasFile: async () => false,
+        blob: async () => "error",
+      },
+    },
+  });
+  for (const p of dry.problems)
+    problems.push({
+      check: "policy",
+      file: p.file ?? null,
+      path: p.path ?? null,
+      message: p.message,
+    });
 
   const artifacts = manifest.release?.app?.artifacts ?? [];
   const platforms = [...new Set(artifacts.map((a) => String(a.platform)))];
@@ -676,7 +639,7 @@ export async function linkRepo(
   repoUrl: string,
   now: number,
   fetchImpl: FetchImpl = fetch,
-  ingest?: Ingest,
+  ingest: Ingest,
   opts: { manifestDigest?: string; create?: LinkCreate } = {},
 ): Promise<LinkRepoResult> {
   const read = await readRepoForCreate(env, repoUrl, now, fetchImpl);
@@ -738,11 +701,11 @@ export async function registerFromManifest(
   applied: { sha: string; files: Record<string, string> },
   now: number,
   fetchImpl: FetchImpl,
-  ingest?: Ingest,
+  ingest: Ingest,
   create?: LinkCreate,
 ): Promise<LinkRepoResult> {
   const slug = manifest.product.slug;
-  const result = await (ingest ?? BOUND_INGEST).run(env, db, {
+  const result = await ingest.run(env, db, {
     mode: "create",
     product: slug,
     manifest,

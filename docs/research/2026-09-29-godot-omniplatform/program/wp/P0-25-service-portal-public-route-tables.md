@@ -72,3 +72,44 @@ Then the full green gate in `AGENTS.md`.
 
 What downstream work packages rely on from this one is named in their briefs (the Unblocks row). The role agent sets `--set P0-25 in-review` when it hands off. After review, the lead adds the last commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P0-25 done`.
+
+## Progress and continuation (2026-10-17)
+
+**Slice 1 done: the service tables.** `core/http/routes.ts` (`serviceRoutes`) and the shared
+matcher `core/http/pathMatch.ts` (moved out of `console/routeMatch.ts`, which re-exports it).
+License, Config, Update, Identity, Release, Distribution and Sync (empty, U-05's rows go here) each
+export a `<SLUG>_ROUTES` table; the descriptor's `handle` and `surface` are the table's, so
+`routeCoverage` is derived from the rows and the OpenAPI spec did not change (the derived surfaces
+equal the old hand lists, checked path by path). The `handle*Routes` switches are gone.
+
+Verification against the code: the brief said handlers take `ctx` and the table carries a body cap
+and an error family. Handlers already take `ServiceContext`; the table carries `auth`, `bodyCap`
+(read through `match.readJson()`, after auth) and a per-row policy for an unlisted method. An error
+family per row was left out: refusals keep the shapes their handlers give them (plain 405, wire
+errors, flat), because the replay below pins them byte for byte and a family field would document
+what it cannot enforce.
+
+Tests: `serviceRouteOracle.test.ts` replays 1,800 requests (every canonical route, near misses,
+each method, with and without a body) against `fixtures/service-route-oracle.json`, recorded from
+the hand dispatch before the move. The only differences are in its closed `TIGHTENED` list: nine
+routes whose handlers never checked the method and served POST/PUT/PATCH/DELETE (and for
+`config/mint/:id/auth`, `identity/auth/*` also OPTIONS or HEAD) though the spec lists GET or GET
+and POST; each now answers the plain 405. `serviceRouteTables.test.ts` pins the mechanism and
+walks every row (no unlisted method reaches a handler; no CI row reaches its handler without a
+token).
+
+**Also in slice 1 (after the first review):** I-08's `authorize`/`token` and CM-29's Commerce
+(`COMMERCE_ROUTES`: `binding`, `claim`, and the two store hooks, accepted only with `storeHook`
+set and License on; `/commerce/hooks/*` stays the not-found) are table rows. Each was recorded
+from its hand dispatch first: `service-route-oracle-2.json` (I-08, hostile `%2F` / `..` / `//` /
+trailing-slash spellings on `fdroid/**` and `rollouts`, Origin/HEAD/OPTIONS on CORS-covered
+routes) and `service-route-oracle-3.json` (Commerce in three product states, plus the identity
+pages that changed on integ/next).
+
+**Remaining (slice 2, not started): the portal and the public (core) routes.**
+`dispatch.ts`'s `routeRequest`/`dispatchProductRoute` switches over `router.ts` route kinds and
+`services/identity/portal` `handlePortal` are still hand dispatch. The core product routes
+(discovery, jwks, trust manifest, devices, report, register, attest, assets) are the natural
+first rows; the portal API is the larger one (its own path walk, CSRF and session gates).
+`CORS_SERVICE_PATHS` (`core/cors.ts`) is still a third copy of the service path list and should
+become a flag on the rows. I-08's authorize/token rows go straight into `IDENTITY_ROUTES`.

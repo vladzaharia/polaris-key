@@ -14,14 +14,17 @@ export function ErrorPanel({
   error,
   onRetry,
   asPage = false,
+  account = false,
   className,
 }: {
   error: unknown;
   onRetry?: () => void;
   asPage?: boolean;
+  /** An Account screen: no developer to contact. */
+  account?: boolean;
   className?: string;
 }): React.ReactElement {
-  const copy = portalErrorCopy(error);
+  const copy = portalErrorCopy(error, { account });
   const Title = asPage ? "h1" : "h2";
   return (
     <div

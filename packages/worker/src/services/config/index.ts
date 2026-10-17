@@ -15,7 +15,7 @@ import type {
   ServiceDescriptor,
 } from "../../core/registry.js";
 import { configIntegration } from "./integration.js";
-import { handleConfigRoutes } from "./routes.js";
+import { CONFIG_ROUTES } from "./routes.js";
 import { hasApprovedEdgeMintRecipes } from "./mint.js";
 import { handleConfigAdmin } from "./admin/index.js";
 import { CONFIG_SETTINGS_SLICE } from "./settings.js";
@@ -30,7 +30,7 @@ export const configService: ServiceDescriptor = {
   slug: "config",
   /** ST-03: this service's settings registry slice (`settings.ts`). */
   settings: CONFIG_SETTINGS_SLICE,
-  handle: handleConfigRoutes,
+  handle: CONFIG_ROUTES.handle,
   contributes: {
     manifest: configManifest,
     productDeletion: configProductDeletion,
@@ -39,15 +39,7 @@ export const configService: ServiceDescriptor = {
     integration: configIntegration,
   },
   /** The canonical surface `routes.ts` dispatches; what `routeCoverage` pins. */
-  surface: [
-    { path: "/{product}/config/document", methods: ["get"] },
-    { path: "/{product}/config/schema", methods: ["get"] },
-    {
-      path: "/{product}/config/mint/{mintId}/token",
-      methods: ["get", "post"],
-    },
-    { path: "/{product}/config/mint/{mintId}/auth", methods: ["get"] },
-  ],
+  surface: CONFIG_ROUTES.surface,
   /** `config/{catalog,profiles,mint}` on the console API (§R1; `mint` is P0-12). */
   adminHandle: handleConfigAdmin,
   /**

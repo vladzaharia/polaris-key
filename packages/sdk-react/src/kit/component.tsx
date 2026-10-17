@@ -55,9 +55,12 @@ import {
   adaptActivate,
   adaptHandoff,
   adaptPane,
+  adaptUpdate,
+  withoutLede,
   adaptStatus,
   HANDOFF_WAITING,
 } from "./adapt.js";
+import { withChoice } from "./licenseRows.js";
 import { renderView } from "./views.js";
 
 const SYSTEM_FONT_STACK =
@@ -355,6 +358,7 @@ export function useKit(
   // (`fill`) is the window's shape: its own height grows with content that does not fit, which
   // would read a short landscape window as portrait.
   const [shape, setShape] = useState<Shape>("portrait");
+  const [tight, setTight] = useState(false);
   const fill = props.fill === true;
   useIsoLayoutEffect(() => {
     const el = rootRef.current;
@@ -364,9 +368,21 @@ export function useKit(
       const next = fill
         ? shapeOf(w, Math.min(h, window.innerHeight))
         : shapeOf(w, h);
+      // Under 34 rem of window (large text on a phone) a docked bar would cover the text it
+      // docks under: it scrolls with the content instead.
+      const wh = window.visualViewport?.height ?? window.innerHeight;
+      const rem =
+        Number.parseFloat(
+          getComputedStyle(document.documentElement).fontSize,
+        ) || 16;
+      const snug =
+        wh > 0 && wh / rem < 34 && (next !== "short" || wh / rem < 18);
       cancelAnimationFrame(frame);
       // After this frame's layout: a shape change never re-enters the observer's loop.
-      frame = requestAnimationFrame(() => setShape(next));
+      frame = requestAnimationFrame(() => {
+        setShape(next);
+        setTight(snug);
+      });
     };
     const ro = new ResizeObserver(([entry]) => {
       if (!entry) return;
@@ -496,7 +512,18 @@ export function useKit(
     el?.focus({ preventScroll: true });
   });
 
-  return { view, resolved, copy, input, ctxFor, rootRef, shape, kb, fontless };
+  return {
+    view,
+    resolved,
+    copy,
+    input,
+    ctxFor,
+    rootRef,
+    shape,
+    tight,
+    kb,
+    fontless,
+  };
 }
 
 export type Kit = ReturnType<typeof useKit>;
@@ -523,7 +550,16 @@ export function KitRoot(props: {
   fill?: boolean;
   children: ReactNode;
 }): ReactNode {
-  const { view, resolved: r, copy, rootRef, shape, kb, fontless } = props.kit;
+  const {
+    view,
+    resolved: r,
+    copy,
+    rootRef,
+    shape,
+    tight,
+    kb,
+    fontless,
+  } = props.kit;
   return (
     <div
       ref={rootRef}
@@ -536,6 +572,7 @@ export function KitRoot(props: {
       data-density={r.theme.density}
       data-motion={r.theme.motion}
       data-shape={shape}
+      data-tight={tight ? "" : undefined}
       data-pk-platform={r.theme.platform ?? "web"}
       data-keyboard={kb ? "" : undefined}
       data-bare={props.bare ? "" : undefined}
@@ -568,8 +605,22 @@ export function kitComponent(component: ComponentName) {
     const kit = useKit(component, props);
     if (kit.view.state === "hidden") return null;
     // A host that handles input keeps a pane's title and rows through its transient states.
-    const view =
+    let view =
       props.onInput !== undefined ? adaptPane(kit.view, kit.input) : kit.view;
+    // The driven prompt on the web: one Download action (the page cannot install), and Later.
+    const download = props.driven && component === "UpdatePrompt";
+    const version = kit.input.update?.version;
+    if (download) view = adaptUpdate(view);
+    view = withoutLede(view);
+    const labels =
+      download &&
+      version &&
+      view.state === "available" &&
+      kit.copy.has("boot.consent.download")
+        ? {
+            "update.install": `${kit.copy.format("boot.consent.download", {})} ${version}`,
+          }
+        : undefined;
     return (
       <KitRoot
         kit={kit}
@@ -577,7 +628,9 @@ export function kitComponent(component: ComponentName) {
         fill={props.fill}
         className={props.className}
       >
-        {renderView(kit.ctxFor(view))}
+        {renderView(
+          withChoice(kit.ctxFor(view, labels ? { labels } : undefined)),
+        )}
       </KitRoot>
     );
   }
@@ -643,7 +696,10 @@ export function PolarisKeyGate(props: PolarisKeyGateProps): ReactNode {
     },
     (v, input) => {
       const screen = gateScreen(v, step);
-      return screen ? viewOf(screen, input) : v;
+      if (!screen) return v;
+      // Focus follows the view as drawn: a revoked screen focuses its Sign in.
+      const drawn = viewOf(screen, input);
+      return driven ? adaptStatus(drawn, input) : drawn;
     },
   );
   const { view, input } = kit;

@@ -104,8 +104,8 @@ export function DoneBody({
       className="space-y-2 rounded-md border border-border bg-surface-raised p-3"
     >
       <span className="block">
-        Try it in your app: the SDK quick start on Overview installs the SDK and
-        pins your signing key.
+        Try it in your app: Integration has the code to install the SDK and pin
+        your signing key.
       </span>
       <Button
         size="sm"

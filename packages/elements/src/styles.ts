@@ -188,12 +188,6 @@ const KIT_CSS = String.raw`
   }
 }
 
-/* A window under 34rem tall (large text): the bar scrolls with the content, never over it. */
-.pk-root[data-tight] .stage[data-kind="screen"] .card > .actions {
-  position: static;
-  margin-block: 0;
-  padding-block: 0;
-}
 
 /* DL1: two panes in a landscape box from 52.5rem, the identity panel at the start. */
 .split {
@@ -331,6 +325,24 @@ const KIT_CSS = String.raw`
   margin-block: calc(-1 * var(--pk-space-2));
   background: var(--pk-surface-raised);
 }
+/* The docked bar's opaque ground spans the whole window, so content scrolling under it is hidden
+   edge to edge, never sliced at the bar's own width (the stage clips it to the window). */
+.pk-root[data-shape="short"]:not([data-tight]) .stage[data-kind="screen"] .card > .actions::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inset-inline: -100vw;
+  z-index: -1;
+  background: var(--pk-surface-raised);
+}
+/* A window under 34rem tall (large text), or a short one under 18rem: the bar scrolls with the
+   content, never over it. After the short rule above, which it overrides. */
+.pk-root[data-tight] .stage[data-kind="screen"] .card > .actions,
+.pk-root[data-tight][data-shape="short"] .stage[data-kind="screen"] .card > .actions {
+  position: static;
+  margin-block: 0;
+  padding-block: 0;
+}
 /* Height is what a short window lacks: a group of links is two columns, not a column. */
 .pk-root[data-shape="short"] .links:has(> :nth-child(3)) {
   display: grid;
@@ -369,6 +381,9 @@ const KIT_CSS = String.raw`
 }
 .card[data-align="start"] .identity[data-size="compact"] {
   justify-content: start;
+}
+.card[data-align="start"] .identity[data-size="medium"] {
+  justify-items: start;
 }
 .icon {
   inline-size: var(--pk-icon-size, 6rem);
@@ -568,15 +583,9 @@ bdi {
   background: var(--pk-primary);
   color: var(--pk-primary-on);
 }
-.btn[data-variant="primary"]:hover {
-  background: color-mix(in oklab, var(--pk-primary) 88%, var(--pk-primary-on));
-}
 .btn[data-variant="secondary"] {
   background: color-mix(in oklab, var(--pk-text-strong) 8%, var(--pk-surface-raised));
   color: var(--pk-text-strong);
-}
-.btn[data-variant="secondary"]:hover {
-  background: color-mix(in oklab, var(--pk-text-strong) 13%, var(--pk-surface-raised));
 }
 .btn[data-variant="danger"] {
   background: var(--pk-kit-danger-solid);
@@ -590,10 +599,25 @@ bdi {
   color: var(--pk-text-muted);
   font-weight: 400;
 }
-.btn[data-variant="link"]:hover {
-  color: var(--pk-text-strong);
-  text-decoration: underline;
-  text-underline-offset: 0.2em;
+/* Hover only where a pointer hovers: on touch it would stay lit after a tap. The primary
+   darkens (away from its text colour), so its text keeps its contrast. */
+@media (hover: hover) {
+  .btn[data-variant="primary"]:hover {
+    background: color-mix(in oklab, var(--pk-primary) 86%, black);
+    background: color-mix(
+      in oklab,
+      var(--pk-primary) 86%,
+      oklch(from var(--pk-primary-on) calc(1 - l) 0 0)
+    );
+  }
+  .btn[data-variant="secondary"]:hover {
+    background: color-mix(in oklab, var(--pk-text-strong) 13%, var(--pk-surface-raised));
+  }
+  .btn[data-variant="link"]:hover {
+    color: var(--pk-text-strong);
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+  }
 }
 .btn:active:not([aria-disabled="true"]) {
   transform: scale(var(--pk-motion-scale-press));
@@ -661,14 +685,22 @@ bdi {
 }
 .field input[aria-invalid="true"] {
   box-shadow: inset 0 0 0 1px var(--pk-danger-border);
+  /* The focus ring of a refused field is danger too, so the refusal stays readable in focus. */
+  --pk-ring: var(--pk-danger);
 }
+.field input[aria-invalid="true"]:focus-visible {
+  box-shadow: inset 0 0 0 1px var(--pk-danger-border);
+}
+/* The field and Paste share a line until the field would shrink below ten characters' worth
+   (large text, a narrow window): then Paste stacks under it. */
 .field-row {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--pk-space-2);
 }
 .field-row input {
-  flex: 1;
-  min-inline-size: 0;
+  flex: 1 1 10rem;
+  min-inline-size: min(10rem, 100%);
 }
 
 /* ── User code (§2.1 Code) ───────────────────────────────────────────────────────────────── */
@@ -734,6 +766,8 @@ bdi {
   max-block-size: min(24rem, 55dvh);
   overflow-y: auto;
   overscroll-behavior: contain;
+  /* A row is as tall as its content: a two-line name never runs into the next row. */
+  grid-auto-rows: max-content;
 }
 .row {
   display: grid;
@@ -757,7 +791,17 @@ bdi {
   color: var(--pk-text-strong);
 }
 .row[data-part="settings-row"] {
-  grid-template-columns: minmax(0, 1fr) auto;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--pk-space-2) var(--pk-space-3);
+}
+.row[data-part="settings-row"] > .row-text {
+  flex: 1 1 10rem;
+}
+.row[data-part="settings-row"] > .row-value {
+  flex: 0 0 auto;
+  margin-inline-start: auto;
 }
 .row-text {
   display: grid;
@@ -792,6 +836,39 @@ bdi {
   min-block-size: 2.5rem;
   min-inline-size: 0;
   padding-inline: var(--pk-space-3);
+}
+/* A license row: the tier pill is one width down the list so the text lines up; a full license's Replace sits under its text. */
+.row[data-part="license-row"] > .pill:first-child {
+  min-inline-size: 4rem;
+  justify-content: center;
+}
+.row[role="group"][data-part="license-row"] {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+.row[role="group"][data-part="license-row"] > .btn {
+  grid-column: 1 / -1;
+  inline-size: 100%;
+}
+/* A narrow box (large text on a phone): the tier sits above the counts, in one column, so no
+   count is clipped. */
+@container pk (max-width: 18rem) {
+  .row[data-part="license-row"] {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .row[data-part="license-row"] > .pill:first-child {
+    grid-column: 1 / -1;
+    justify-self: start;
+    min-inline-size: 0;
+  }
+  .row[role="group"][data-part="license-row"] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.meta-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--pk-space-0_5) var(--pk-space-2);
 }
 .check {
   inline-size: 1.25rem;
@@ -989,6 +1066,16 @@ bdi {
 .toast .texts {
   flex: 1;
 }
+/* The toast an existing license leaves in the page when its sheet closes: low and centred, over
+   the app, for a few seconds. */
+.toast.pk-flash {
+  position: fixed;
+  inset-block-end: max(var(--pk-space-6), env(safe-area-inset-bottom));
+  inset-inline: 0;
+  margin-inline: auto;
+  z-index: 5;
+  animation: pk-rise var(--pk-duration-slow) var(--pk-ease-enter) both;
+}
 .toast .timer {
   position: absolute;
   inset-block-end: 0;
@@ -1059,6 +1146,7 @@ dialog.sheet {
   color: inherit;
 }
 dialog.sheet .stage {
+  grid-template-columns: minmax(0, 1fr);
   min-block-size: 0;
   padding: 0;
   background: none;
@@ -1072,7 +1160,8 @@ dialog.sheet .card,
 .pk-root[data-shape] dialog.sheet .stage[data-split] .card {
   inline-size: 100%;
   min-block-size: 0;
-  grid-template-columns: none;
+  /* One column that may shrink: at large text a long word wraps, the card never outgrows the sheet. */
+  grid-template-columns: minmax(0, 1fr);
   border-radius: var(--pk-kit-radius-card);
   padding: var(--pk-kit-card-pad);
   /* The dialog box clips an outer shadow into a lighter square at the corners; the scrim already
@@ -1245,6 +1334,13 @@ dialog.sheet .card,
   background: var(--pk-surface-sunken);
   color: var(--pk-text-strong);
   cursor: pointer;
+  z-index: 3;
+}
+/* The close button sits in the sheet's corner: the header keeps clear of it, whatever the text size. */
+dialog.sheet .identity {
+  padding-inline-end: calc(var(--pk-kit-control-height) + var(--pk-space-2));
+  /* A name too wide for the line beside the icon goes under it, never under the close button. */
+  flex-wrap: wrap;
 }
 .sheet-close .glyph {
   inline-size: 1.25rem;

@@ -63,6 +63,8 @@ export interface DrawerProps {
    * at every width, for a drawer whose body has its own Back (a wizard).
    */
   closeStyle?: "back" | "close";
+  /** Replaces the default return of focus to the opener (the handler says where focus goes). */
+  onCloseAutoFocus?: (e: Event) => void;
   children?: React.ReactNode;
   className?: string;
 }
@@ -79,6 +81,7 @@ export function Drawer({
   discard,
   eyebrow,
   closeStyle = "back",
+  onCloseAutoFocus,
   children,
   className,
 }: DrawerProps): React.ReactElement {
@@ -106,7 +109,7 @@ export function Drawer({
           ref={contentRef}
           {...(description ? {} : { "aria-describedby": undefined })}
           onOpenAutoFocus={focus.onOpenAutoFocus}
-          onCloseAutoFocus={focus.onCloseAutoFocus}
+          onCloseAutoFocus={onCloseAutoFocus ?? focus.onCloseAutoFocus}
           onEscapeKeyDown={(e) => {
             if (!dismissible) e.preventDefault();
           }}

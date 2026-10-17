@@ -162,7 +162,15 @@ async function handleLink(
   const dryRun = new URL(req.url).searchParams.get("dryRun") === "1";
 
   if (dryRun) {
-    const prepared = await prepareLink(env, db, slug, repoUrl, now, fetch);
+    const prepared = await prepareLink(
+      env,
+      db,
+      slug,
+      repoUrl,
+      now,
+      fetch,
+      ctx.ingest,
+    );
     if (!prepared.ok) return linkRefusal(prepared);
     return adminJson({
       ok: true,
@@ -436,7 +444,7 @@ export async function handleReleaseAdmin(
   // `?dryRun=1` (S-18 §4.5 item 4, UX-78): the plan the console's Resync confirm renders. It
   // reads the manifest as the resync would and writes nothing: no sync state, no audit row.
   if (new URL(req.url).searchParams.get("dryRun") === "1") {
-    const planned = await planResync(env, db, slug, now, fetch);
+    const planned = await planResync(env, db, slug, now, fetch, ctx.ingest);
     if (!planned.ok) return linkRefusal(planned);
     return adminJson({
       ok: true,

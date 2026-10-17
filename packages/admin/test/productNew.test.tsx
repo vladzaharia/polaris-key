@@ -9,7 +9,6 @@ import {
   slugVerdict,
   suggestSlug,
 } from "../src/console/sections/global/pages/ProductNew.js";
-import { WELCOME_KEY } from "../src/console/sections/core/pages/Welcome.js";
 import type { Me } from "../src/api.js";
 import {
   ALL_ON,
@@ -22,7 +21,7 @@ import {
 /**
  * New product on one screen (EXPERIENCE.md §0.4 S1, C1; UX-20): Start from, then Name with the
  * slug following it and checked as you type, Advanced license defaults, and Enter creates. No
- * result page and no toast: the product opens on Overview with a one-time welcome.
+ * result page and no toast: the product opens on Overview.
  */
 
 const axe = configureAxe({
@@ -222,7 +221,7 @@ describe("New product", () => {
     await waitFor(() => expect(document.activeElement).toBe(field(/^Name/)));
   });
 
-  it("Enter creates, once, and lands on Overview's welcome with the signing key; no toast", async () => {
+  it("Enter creates, once, and lands on Overview; no welcome, no toast", async () => {
     const log = boot("#/products/new", {
       ...created("tonebox", "Tonebox", {
         path: "/manage/api/products",
@@ -244,30 +243,9 @@ describe("New product", () => {
     expect(posts).toHaveLength(1);
     expect(posts[0]!.json).toEqual({ slug: "tonebox", name: "Tonebox" });
 
-    const welcome = await screen.findByTestId("product-welcome");
-    expect(
-      within(welcome).getByRole("heading", { name: "Tonebox is ready" }),
-    ).toBeTruthy();
-    expect(within(welcome).getByText("tonebox-2026")).toBeTruthy();
-    expect(within(welcome).getByText(/Signed/)).toBeTruthy();
-    // The key is for the app's trust pins; releases use the separate CI release key (UX-59).
-    expect(welcome.textContent).toContain(
-      "Pin this key in your app. Releases are signed by a separate CI release key.",
-    );
-    expect(
-      within(welcome).getByRole("button", {
-        name: /Copy the signing public key/,
-      }),
-    ).toBeTruthy();
+    expect(screen.queryByTestId("product-welcome")).toBeNull();
     expect(screen.queryByText("Product created")).toBeNull();
     expect(window.sessionStorage.getItem(DRAFT_KEY)).toBeNull();
-    // Consumed: a refresh or a later visit shows the ordinary Overview.
-    expect(window.sessionStorage.getItem(WELCOME_KEY)).toBeNull();
-
-    await userEvent.click(
-      within(welcome).getByRole("button", { name: "Dismiss" }),
-    );
-    expect(screen.queryByTestId("product-welcome")).toBeNull();
   });
 
   it("sends the license defaults from Advanced", async () => {
@@ -345,7 +323,7 @@ describe("New product", () => {
     expect(field(/^Slug/).value).toBe("ghost-app");
   });
 
-  it("links a repository and lands on the welcome with the missing secrets as the next step", async () => {
+  it("links a repository and lands on Overview", async () => {
     const log = boot("#/products/new?via=github", {
       ...created("linked", "Linked", {
         path: "/manage/api/products/link-repo",
@@ -373,16 +351,7 @@ describe("New product", () => {
       (c) => c.method === "POST" && c.path === "/manage/api/products/link-repo",
     );
     expect(post!.json).toEqual({ repoUrl: "acme/linked" });
-    const welcome = await screen.findByTestId("product-welcome");
-    expect(
-      within(welcome).getByText(/Registered from acme\/linked/),
-    ).toBeTruthy();
-    await userEvent.click(
-      within(welcome).getByRole("link", { name: /Set 2 missing secrets/ }),
-    );
-    await waitFor(() =>
-      expect(window.location.hash).toBe("#/p/linked/settings/keys"),
-    );
+    expect(screen.queryByTestId("product-welcome")).toBeNull();
   });
 
   it("checks the repository's shape before asking the server", async () => {

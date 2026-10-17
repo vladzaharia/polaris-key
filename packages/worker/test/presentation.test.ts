@@ -687,22 +687,26 @@ describe("linkSystemProduct writes products.presentation_json", () => {
 
     const declared = { accent: "#123456", accentDark: "#ABCDEF" };
     const linked = await linkSystemProduct(
+      env,
       db,
       { ...parsed.manifest, presentation: declared },
       repo,
       { files, sha: null },
       NOW + 1,
+      ingestFor(SERVICES),
     );
     expect(linked.ok).toBe(true);
     expect(parseStoredPresentation(await stored())).toEqual(declared);
 
     const { presentation: _dropped, ...undeclared } = parsed.manifest;
     const again = await linkSystemProduct(
+      env,
       db,
       undeclared,
       repo,
       { files, sha: null },
       NOW + 2,
+      ingestFor(SERVICES),
     );
     expect(again.ok).toBe(true);
     expect(await stored()).toBeNull();

@@ -1,3 +1,4 @@
+import { ingestFor } from "../../src/core/ingest/pipeline.js";
 /**
  * RED TEAM R6 — Release-channel poisoning PoCs.
  *
@@ -11,6 +12,7 @@
  * now a regression test.
  */
 
+import { mintDownloadToken } from "../../src/core/assets/downloadTokens.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { makeTestDb } from "../helpers.js";
 import { KvMock } from "../kvMock.js";
@@ -72,7 +74,6 @@ import {
   seedRepositoryVisibility,
 } from "../portalHarness.js";
 import {
-  createPortalDownloadToken,
   getOrCreateAccountByEmail,
   syncAccountLicenseLinks,
 } from "../../src/services/identity/portal/repo.js";
@@ -491,6 +492,7 @@ describe("R6-01 install.sh command injection via .pkey-controlled binaryName", (
       "acme-org/acme-app",
       NOW,
       stub.fetchImpl,
+      ingestFor(SERVICES),
     );
     expect(linked.ok).toBe(true);
     expect((await getReleaseConfig(db, "acme"))?.binary_name).toBe("acme");
@@ -753,7 +755,16 @@ describe("R6-03 Sparkle signature is relayed, not verified", () => {
       ".pkey/release.json": releaseJson(),
     });
     expect(
-      (await linkRepo(env, db, "acme-org/acme-app", NOW, stub.fetchImpl)).ok,
+      (
+        await linkRepo(
+          env,
+          db,
+          "acme-org/acme-app",
+          NOW,
+          stub.fetchImpl,
+          ingestFor(SERVICES),
+        )
+      ).ok,
     ).toBe(true);
     // Before: a Sparkle key is configured, so an unsigned feed fails closed.
     expect((await getReleaseConfig(db, "acme"))?.sparkle_ed25519_pub).toBe(
@@ -1026,7 +1037,16 @@ describe("R6-07 webhook resync trusts payload-supplied ref and has no replay pro
       ".pkey/release.json": releaseJson(),
     });
     expect(
-      (await linkRepo(env, db, "acme-org/acme-app", NOW, stub.fetchImpl)).ok,
+      (
+        await linkRepo(
+          env,
+          db,
+          "acme-org/acme-app",
+          NOW,
+          stub.fetchImpl,
+          ingestFor(SERVICES),
+        )
+      ).ok,
     ).toBe(true);
     stub.calls.length = 0;
 
@@ -1065,7 +1085,16 @@ describe("R6-07 webhook resync trusts payload-supplied ref and has no replay pro
       ".pkey/release.json": releaseJson(),
     });
     expect(
-      (await linkRepo(env, db, "acme-org/acme-app", NOW, stub.fetchImpl)).ok,
+      (
+        await linkRepo(
+          env,
+          db,
+          "acme-org/acme-app",
+          NOW,
+          stub.fetchImpl,
+          ingestFor(SERVICES),
+        )
+      ).ok,
     ).toBe(true);
     await db.run(
       "UPDATE release_config SET binary_name = ? WHERE product = ?",
@@ -1109,7 +1138,16 @@ describe("R6-07 webhook resync trusts payload-supplied ref and has no replay pro
       ".pkey/release.json": releaseJson(),
     });
     expect(
-      (await linkRepo(env, db, "acme-org/acme-app", NOW, stub.fetchImpl)).ok,
+      (
+        await linkRepo(
+          env,
+          db,
+          "acme-org/acme-app",
+          NOW,
+          stub.fetchImpl,
+          ingestFor(SERVICES),
+        )
+      ).ok,
     ).toBe(true);
 
     // Capture ONE valid delivery (body + signature).
@@ -1193,7 +1231,16 @@ describe("R6-07 webhook resync trusts payload-supplied ref and has no replay pro
       ".pkey/release.json": releaseJson(),
     });
     expect(
-      (await linkRepo(env, db, "acme-org/acme-app", NOW, stub.fetchImpl)).ok,
+      (
+        await linkRepo(
+          env,
+          db,
+          "acme-org/acme-app",
+          NOW,
+          stub.fetchImpl,
+          ingestFor(SERVICES),
+        )
+      ).ok,
     ).toBe(true);
 
     stub.files[".pkey/product.json"] = ATTACKER_PRODUCT_JSON;
@@ -1245,7 +1292,16 @@ describe("R6-07 webhook resync trusts payload-supplied ref and has no replay pro
       ".pkey/release.json": releaseJson(),
     });
     expect(
-      (await linkRepo(env, db, "acme-org/acme-app", NOW, stub.fetchImpl)).ok,
+      (
+        await linkRepo(
+          env,
+          db,
+          "acme-org/acme-app",
+          NOW,
+          stub.fetchImpl,
+          ingestFor(SERVICES),
+        )
+      ).ok,
     ).toBe(true);
 
     stub.files[".pkey/product.json"] = ATTACKER_PRODUCT_JSON;
@@ -1290,7 +1346,16 @@ describe("R6-07 webhook resync trusts payload-supplied ref and has no replay pro
       ".pkey/release.json": releaseJson(),
     });
     expect(
-      (await linkRepo(env, db, "acme-org/acme-app", NOW, stub.fetchImpl)).ok,
+      (
+        await linkRepo(
+          env,
+          db,
+          "acme-org/acme-app",
+          NOW,
+          stub.fetchImpl,
+          ingestFor(SERVICES),
+        )
+      ).ok,
     ).toBe(true);
 
     stub.files[".pkey/product.json"] = OVERSIZED_LIMIT_PRODUCT_JSON;
@@ -1793,11 +1858,12 @@ describe("R6-11 portal download redirect host allowlist", () => {
       NOW,
     );
 
-    const token = await createPortalDownloadToken(env, db, {
-      accountId: account.id,
+    const token = await mintDownloadToken(env, db, {
       product: SLUG,
       releaseId: "rel_1",
       artifactId: "art_1",
+      scope: { portalAccountId: account.id },
+
       now: NOW,
     });
 
@@ -1871,11 +1937,12 @@ describe("R6-11 portal download redirect host allowlist", () => {
     );
     // A public repository, so the allowlisted GitHub URL is servable and the race is what is tested.
     await seedRepositoryVisibility(env, db, SLUG, "public");
-    const token = await createPortalDownloadToken(env, db, {
-      accountId: account.id,
+    const token = await mintDownloadToken(env, db, {
       product: SLUG,
       releaseId: "rel_1",
       artifactId: "art_1",
+      scope: { portalAccountId: account.id },
+
       now: NOW,
     });
     // better-sqlite3 is synchronous, so model D1's real async round-trips: every DB call

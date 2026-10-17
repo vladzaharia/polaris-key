@@ -618,7 +618,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/cq-worker-services.md"
       ],
       "brief": "wp/P0-23-portal-off-release-tables.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "P0-24",
@@ -643,7 +643,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/cq-worker-services.md"
       ],
       "brief": "wp/P0-24-migration-ledger-one-time-machinery.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "P0-25",
@@ -667,7 +667,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/cq-worker-services.md"
       ],
       "brief": "wp/P0-25-service-portal-public-route-tables.md",
-      "status": "todo"
+      "status": "in-progress"
     },
     {
       "id": "P0-26",
@@ -692,7 +692,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/cq-worker-services.md"
       ],
       "brief": "wp/P0-26-core-manifest-ingest-pipeline.md",
-      "status": "in-progress"
+      "status": "done"
     },
     {
       "id": "P0-27",
@@ -6170,7 +6170,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/config-cloudsync.md"
       ],
       "brief": "wp/U-31-minted-tokens-carry-their-recipe.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "U-32",
@@ -9127,7 +9127,7 @@
         "DX consolidation 2026-10-07: edit (docs/research/2026-10-07-dx-consolidation/backlog-changes.json)"
       ],
       "brief": "wp/ST-09-platform-settings-area.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "ST-10",
@@ -9928,7 +9928,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/products-onboarding.md"
       ],
       "brief": "wp/ST-41-integration-page-overview-card.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "ST-42",

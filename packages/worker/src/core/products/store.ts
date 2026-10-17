@@ -6,7 +6,7 @@ import { stmtRevokeProductRegistryTokens } from "../registry/registryTokens.js";
 import { productGrantErasureStatements } from "../licensing/grants.js";
 import { productDeletionStatements } from "../contributions.js";
 import { stmtDeleteProductAutoAttachBlocks } from "../licensing/licenseHolders.js";
-import type { Db, DbStatement, DbParam } from "../../db/types.js";
+import type { Db, DbStatement } from "../../db/types.js";
 import type {
   ProductRow,
   SchemaRow,
@@ -261,17 +261,6 @@ export async function activeSchemaVersions(
   return new Map(rows.map((r) => [r.product, r.v]));
 }
 
-export async function insertSchema(db: Db, row: SchemaRow): Promise<void> {
-  await db.run(
-    "INSERT INTO product_schema (product, catalog_version, catalog_json, active, created_at) VALUES (?, ?, ?, ?, ?)",
-    row.product,
-    row.catalog_version,
-    row.catalog_json,
-    row.active,
-    row.created_at,
-  );
-}
-
 // ── Product registration statement-builders ──────────────────────────────────
 // These return `DbStatement`s (rather than running themselves) so a product-creation flow
 // can compose them into a single atomic `db.batch([...])`. Column order mirrors
@@ -330,20 +319,6 @@ export function stmtInsertProduct(row: ProductRow): DbStatement {
       ...presentation.values,
       row.created_at,
       row.modified_at,
-    ],
-  };
-}
-
-/** Build the active-schema INSERT as a statement (for atomic batch). */
-export function stmtInsertSchema(row: SchemaRow): DbStatement {
-  return {
-    sql: "INSERT INTO product_schema (product, catalog_version, catalog_json, active, created_at) VALUES (?, ?, ?, ?, ?)",
-    params: [
-      row.product,
-      row.catalog_version,
-      row.catalog_json,
-      row.active,
-      row.created_at,
     ],
   };
 }
@@ -628,17 +603,6 @@ export async function deleteProduct(
     // F-21: nor any registry token (the lookup also joins `products.status <> 'deleted'`).
     stmtRevokeProductRegistryTokens(slug, now),
   ]);
-}
-
-// ── Schema (catalog) writes ──────────────────────────────────────────────────
-export async function deactivateSchemas(
-  db: Db,
-  product: string,
-): Promise<void> {
-  await db.run(
-    "UPDATE product_schema SET active = 0 WHERE product = ?",
-    product,
-  );
 }
 
 export async function nextSchemaVersion(

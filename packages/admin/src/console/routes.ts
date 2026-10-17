@@ -467,6 +467,8 @@ export const r = {
   page: (slug: string, page: ProductPageId, query?: QueryInit) =>
     productPage(slug, page, { query }),
   overview: (slug: string) => productPage(slug, "overview"),
+  integration: (slug: string, query?: QueryInit) =>
+    productPage(slug, "integration", { query }),
   services: (slug: string) => productPage(slug, "services"),
   devices: (slug: string, query?: QueryInit) =>
     productPage(slug, "devices", { query }),

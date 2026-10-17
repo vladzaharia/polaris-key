@@ -431,7 +431,9 @@ size (it had none: 372 px at 1440). The hero icon is capped at 18 dvh.
 
 **Item 3, 844x390 and 200% text.** The docked bar no longer paints a halo over the text above it
 (its own padding sits in the gap); in a short window it is one row; under 34 rem of window height
-(200% text on a phone) it scrolls with the content (`data-tight`, set by the measure). Browser
+(200% text on a phone) it scrolls with the content (`data-tight`, set by the measure; in a short
+window only under 18 rem of height, UK-kits-polish: at 844x390 and 200% text the one-row bar still
+took half the window). A sheet is always one column. Browser
 rows for Welcome, DeviceLimit, Activate and StatusScreen at 844x390 and at 390 with 200% text, dark
 and light: shape, bar height, nothing under the bar once scrolled to the end, axe.
 

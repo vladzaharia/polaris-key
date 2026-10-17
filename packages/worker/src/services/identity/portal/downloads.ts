@@ -62,11 +62,7 @@ import {
 } from "../../../core/platformDetect.js";
 import { ErrorCode } from "../../../core/errors.js";
 import { getProduct } from "../../../core/products/store.js";
-import {
-  getPortalProductSettings,
-  listPortalArtifacts,
-  releaseServiceEnabled,
-} from "./repo.js";
+import { getPortalProductSettings, releaseServiceEnabled } from "./repo.js";
 import type { PortalSession } from "./session.js";
 import {
   accountMayDownload,
@@ -77,6 +73,7 @@ import {
   notFound,
   portalJson,
   requireActionRateLimit,
+  servedFile,
   type PortalHooksFor,
 } from "./api.js";
 
@@ -225,8 +222,8 @@ export async function productDownloads(
   }
   const memo = new Map<number, Promise<Annotated>>();
   // Entitlement is decided from the version and channel the hook returns (Release's
-  // channelReleases), while the mint reads them through getPortalReleaseFacts. Both read the
-  // same release_metadata rows today; if either source moves, the two can drift, which
+  // channelReleases), while the mint reads them through `catalog.release`. Both read the
+  // same release rows today; if either source moves, the two can drift, which
   // test/portalDownloads.test.ts ("every file it offers is one the token mint
   // answers") guards against.
   const annotateNow = async (release: CustomerRelease): Promise<Annotated> => {
@@ -245,10 +242,9 @@ export async function productDownloads(
     // The portal's own artifact rows: the mint's input. A file the listing leaves out
     // (a signature or checksum by kind) is not offered.
     const rows = new Map(
-      (await listPortalArtifacts(db, q.product, release.releaseId)).map((r) => [
-        r.artifact_id,
-        r,
-      ]),
+      (gate.catalog ? await gate.catalog.artifacts(release.releaseId) : []).map(
+        (r) => [r.artifactId, servedFile(r)],
+      ),
     );
     const files: PortalFile[] = [];
     for (const f of release.files) {

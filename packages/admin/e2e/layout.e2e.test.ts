@@ -634,7 +634,7 @@ describe("Home's product card (owner polish 2026-10-07)", () => {
         const page = desk.page;
         const card = page.locator(`${CARDS} article[aria-label="DJDL"]`);
         const icons = card.locator("[data-service-link]");
-        expect(await icons.count()).toBe(7);
+        expect(await icons.count()).toBe(8);
         for (const label of ["License", "Distribution", "Cloud Sync"]) {
           const link = card.getByRole("link", { name: label, exact: true });
           expect(await link.isVisible()).toBe(true);
@@ -656,7 +656,7 @@ describe("Home's product card (owner polish 2026-10-07)", () => {
         const page = phone.page;
         const card = page.locator(`${CARDS} article[aria-label="DJDL"]`);
         const pips = card.getByRole("img", {
-          name: "Runs License, Config, Release, Distribution, Update, Identity and Cloud Sync",
+          name: "Runs License, Config, Release, Distribution, Update, Identity, Cloud Sync and Commerce",
         });
         expect(await pips.isVisible()).toBe(true);
         // Only the name and the pips: the logo, slug, pill and icon row step aside.
@@ -696,9 +696,16 @@ describe("Home's product card (owner polish 2026-10-07)", () => {
           "update",
           "identity",
           "sync",
+          "commerce",
         ]);
         for (const c of colours) expect(c.got, c.service!).toBe(c.want);
-        expect(new Set(colours.map((c) => c.got)).size).toBe(colours.length);
+        // Commerce draws in the Distribution green by decision (B1): the one declared shared
+        // pair. Every other pip is its own colour.
+        const by = Object.fromEntries(colours.map((c) => [c.service, c.got]));
+        expect(by.commerce).toBe(by.distribution);
+        expect(new Set(colours.map((c) => c.got)).size).toBe(
+          colours.length - 1,
+        );
         expect(await axeWithin(page, CARDS)).toEqual([]);
       } finally {
         await phone.page.context().close();

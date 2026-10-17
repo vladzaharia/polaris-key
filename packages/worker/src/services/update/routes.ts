@@ -1,7 +1,7 @@
 /// <reference types="@cloudflare/workers-types" />
 
 /**
- * Update's own sub-router, over the path segments AFTER `/<product>/update`.
+ * Update's routes, as a table (`core/http/routes.ts`), over the path AFTER `/<product>/update`.
  *
  *     /update/appcast.xml[?arch=]           (+ the permanent alias `/<p>/appcast.xml`)
  *     /update/<channel>/appcast.xml[?arch=] (+ the permanent alias `/<p>/<channel>/appcast.xml`)
@@ -26,16 +26,24 @@
 
 import { APP_DELIVERABLE_ID } from "@polaris-key/manifest";
 import type { ReleaseAccess } from "@polaris-key/protocol/release";
+import { serviceRoutes } from "../../core/http/routes.js";
 import type { ServiceContext } from "../../core/registry.js";
 import { handleUpdate } from "./feed.js";
 import { handleFeedRoute } from "./feedDoc.js";
 import { updateParams } from "./eligibility.js";
 import {
-  handleUpdaterFeedRoutes,
+  ZSYNC_NAME,
   isExtendedVersionRequest,
+  isVelopackFileName,
   recordedAppReleases,
+  serveAppInstaller,
   serveExtendedVersion,
   serveSparkle,
+  serveVelopack,
+  serveVelopackPackage,
+  serveWinSparkle,
+  serveZsync,
+  zsyncBuildId,
 } from "./updaterFeeds.js";
 import { appcastArch } from "./feed.js";
 
@@ -55,91 +63,183 @@ async function appcastAccess(
   );
 }
 
-export async function handleUpdateRoutes(
+/** The channel-less appcast (`/update/appcast.xml`, the alias `/<p>/appcast.xml`). */
+async function appcast(ctx: ServiceContext): Promise<Response> {
+  const { req, env, db, product } = ctx;
+  const recorded = await recordedAppReleases(ctx);
+  if (recorded.length > 0)
+    return serveSparkle(ctx, "stable", appcastArch(req), recorded);
+  return handleUpdate(
+    req,
+    env,
+    db,
+    product,
+    "appcast",
+    updateParams(req, "appcast"),
+    undefined,
+    await appcastAccess(ctx),
+    ctx.waitUntil,
+  );
+}
+
+/** `/update/<channel>/appcast.xml` (the alias `/<p>/<channel>/appcast.xml`). */
+async function channelAppcast(
   ctx: ServiceContext,
-): Promise<Response | null> {
-  const { req, env, db, product, rest } = ctx;
+  channel: string,
+): Promise<Response> {
+  const { req, env, db, product } = ctx;
+  const recorded = await recordedAppReleases(ctx);
+  if (recorded.length > 0)
+    return serveSparkle(ctx, channel, appcastArch(req), recorded);
+  return handleUpdate(
+    req,
+    env,
+    db,
+    product,
+    "channelAppcast",
+    updateParams(req, "channelAppcast", channel),
+    undefined,
+    await appcastAccess(ctx),
+    ctx.waitUntil,
+  );
+}
 
-  if (rest.length === 1) {
-    if (rest[0] === "appcast.xml") {
-      const recorded = await recordedAppReleases(ctx);
-      if (recorded.length > 0)
-        return serveSparkle(ctx, "stable", appcastArch(req), recorded);
-      return handleUpdate(
-        req,
-        env,
-        db,
-        product,
-        "appcast",
-        updateParams(req, "appcast"),
-        undefined,
-        await appcastAccess(ctx),
-        ctx.waitUntil,
-      );
-    }
-    if (rest[0] === "version") {
-      // `?channel=` is held to the same alphabet as a PATH channel; a value the path form
-      // could not express is refused here (→ the registry's 404) before any resolution.
-      const channel = new URL(req.url).searchParams.get("channel");
-      if (channel !== null && !CHANNEL.test(channel)) return null;
-      // Extended only when `?platform=` is named AND the product publishes release records;
-      // otherwise the legacy answer, so every URL that worked before keeps working.
-      if (isExtendedVersionRequest(req)) {
-        const recorded = await recordedAppReleases(ctx);
-        if (recorded.length > 0)
-          return serveExtendedVersion(ctx, channel ?? "stable", recorded);
-      }
-      return handleUpdate(
-        req,
-        env,
-        db,
-        product,
-        "version",
-        updateParams(req, "version"),
-      );
-    }
-    return null;
-  }
-
-  // The signed channel feed (P3-03). No channel name contains a dot (`CHANNEL_NAME_PATTERN`), so
-  // `feed.jws` sits beside `appcast.xml` without reserving a word.
-  if (
-    rest.length === 2 &&
-    rest[1] === "feed.jws" &&
-    CHANNEL.test(rest[0] ?? "")
-  )
-    return handleFeedRoute(ctx, rest[0] as string);
-
-  if (rest.length >= 2 && CHANNEL.test(rest[0] ?? "")) {
-    const feed = await handleUpdaterFeedRoutes(
-      ctx,
-      rest[0] as string,
-      rest.slice(1),
-    );
-    if (feed) return feed;
-  }
-
-  if (
-    rest.length === 2 &&
-    rest[1] === "appcast.xml" &&
-    CHANNEL.test(rest[0] ?? "")
-  ) {
-    const channel = rest[0] as string;
+/** The version check: extended when `?platform=` names it and the product publishes records. */
+async function version(ctx: ServiceContext): Promise<Response | null> {
+  const { req, env, db, product } = ctx;
+  // `?channel=` is held to the same alphabet as a PATH channel; a value the path form
+  // could not express is refused here (→ the registry's 404) before any resolution.
+  const channel = new URL(req.url).searchParams.get("channel");
+  if (channel !== null && !CHANNEL.test(channel)) return null;
+  // Extended only when `?platform=` is named AND the product publishes release records;
+  // otherwise the legacy answer, so every URL that worked before keeps working.
+  if (isExtendedVersionRequest(req)) {
     const recorded = await recordedAppReleases(ctx);
     if (recorded.length > 0)
-      return serveSparkle(ctx, channel, appcastArch(req), recorded);
-    return handleUpdate(
-      req,
-      env,
-      db,
-      product,
-      "channelAppcast",
-      updateParams(req, "channelAppcast", channel),
-      undefined,
-      await appcastAccess(ctx),
-      ctx.waitUntil,
-    );
+      return serveExtendedVersion(ctx, channel ?? "stable", recorded);
   }
-
-  return null;
+  return handleUpdate(
+    req,
+    env,
+    db,
+    product,
+    "version",
+    updateParams(req, "version"),
+  );
 }
+
+const CHANNEL_PARAM = { channel: CHANNEL };
+
+export const UPDATE_ROUTES = serviceRoutes("update", [
+  {
+    path: "appcast.xml",
+    methods: ["GET"],
+    alsoHead: true,
+    auth: { kind: "handler" },
+    handler: appcast,
+  },
+  {
+    path: "version",
+    methods: ["GET"],
+    alsoHead: true,
+    auth: { kind: "none" },
+    handler: version,
+  },
+  // The signed channel feed (P3-03). No channel name contains a dot (`CHANNEL_NAME_PATTERN`), so
+  // `feed.jws` sits beside `appcast.xml` without reserving a word.
+  {
+    path: ":channel/feed.jws",
+    methods: ["GET"],
+    alsoHead: true,
+    auth: { kind: "handler" },
+    other: "none",
+    params: CHANNEL_PARAM,
+    handler: (ctx, { params }) =>
+      handleFeedRoute(ctx, params.channel as string),
+  },
+  {
+    path: ":channel/appcast.xml",
+    methods: ["GET"],
+    alsoHead: true,
+    auth: { kind: "handler" },
+    params: CHANNEL_PARAM,
+    handler: (ctx, { params }) => channelAppcast(ctx, params.channel as string),
+  },
+  // P3-09, the app-updater feeds. A request that is not a read is the not-found.
+  {
+    path: ":channel/winsparkle.xml",
+    methods: ["GET"],
+    alsoHead: true,
+    auth: { kind: "handler" },
+    other: "none",
+    params: CHANNEL_PARAM,
+    handler: async (ctx, { params }) =>
+      serveWinSparkle(
+        ctx,
+        params.channel as string,
+        await recordedAppReleases(ctx),
+      ),
+  },
+  {
+    path: ":channel/app.appinstaller",
+    methods: ["GET"],
+    alsoHead: true,
+    auth: { kind: "handler" },
+    other: "none",
+    params: CHANNEL_PARAM,
+    handler: async (ctx, { params }) =>
+      serveAppInstaller(
+        ctx,
+        params.channel as string,
+        await recordedAppReleases(ctx),
+      ),
+  },
+  {
+    path: ":channel/:name",
+    doc: "{channel}/{buildId}.AppImage.zsync",
+    methods: ["GET"],
+    alsoHead: true,
+    auth: { kind: "handler" },
+    other: "none",
+    params: { ...CHANNEL_PARAM, name: ZSYNC_NAME },
+    handler: async (ctx, { params }) =>
+      serveZsync(
+        ctx,
+        params.channel as string,
+        zsyncBuildId(params.name as string),
+        await recordedAppReleases(ctx),
+      ),
+  },
+  // `releases.<vch>.json`, or a listed package (notes/S-11 §5.1: 302 to it).
+  {
+    path: ":channel/velopack/:file",
+    doc: [
+      "{channel}/velopack/releases.{velopackChannel}.json",
+      "{channel}/velopack/{fileName}",
+    ],
+    methods: ["GET"],
+    alsoHead: true,
+    auth: { kind: "handler" },
+    other: "none",
+    params: CHANNEL_PARAM,
+    handler: async (ctx, { params }) => {
+      const channel = params.channel as string;
+      const file = params.file as string;
+      if (/^releases\./.test(file))
+        return serveVelopack(
+          ctx,
+          channel,
+          file,
+          await recordedAppReleases(ctx),
+        );
+      // The package name is checked before ANY read, the recorded-releases D1 read included.
+      if (!isVelopackFileName(file)) return null;
+      return serveVelopackPackage(
+        ctx,
+        channel,
+        file,
+        await recordedAppReleases(ctx),
+      );
+    },
+  },
+]);

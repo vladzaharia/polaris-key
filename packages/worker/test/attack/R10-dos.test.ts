@@ -1,3 +1,4 @@
+import { ingestFor } from "../../src/core/ingest/pipeline.js";
 /**
  * R10 — Denial of service / resource exhaustion / availability.
  *
@@ -13,7 +14,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { makeTestDb, NO_HOOKS, NO_INGEST } from "../helpers.js";
+import { makeTestDb, NO_HOOKS } from "../helpers.js";
 import { recordRegexRuns, replaySteps } from "../regexReplay.js";
 import { singleUseMock } from "../singleUseMock.js";
 import { KvMock } from "../kvMock.js";
@@ -306,7 +307,7 @@ describe("R10-01 catalog validation no longer generates code at request time", (
         now: NOW,
         session,
         hooks: NO_HOOKS,
-        ingest: NO_INGEST,
+        ingest: ingestFor(new Map()),
         // ST-04: the publish writes `config.catalog` through `writeSetting()`, which needs the
         // registry the dispatcher hands every service.
         settings: SETTINGS,

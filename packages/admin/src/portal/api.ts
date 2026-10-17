@@ -447,6 +447,8 @@ export interface PortalPackageFeed {
   accessMode: string;
   /** The feed's base URL on the registry host, when Distribution knows it. */
   baseUrl: string | null;
+  /** The feed's namespace settings (npm's `scope`), which the setup snippets name. */
+  namespace?: Record<string, unknown>;
 }
 
 /** One token as the portal lists it: never the plaintext or the hash. */
@@ -502,6 +504,25 @@ export interface PortalPersonalToken {
 export interface PortalReadableFeed extends PortalPackageFeed {
   product: string;
   productName: string;
+  /** A usable licence of the account in this product (the Godot URL token binds to it). */
+  licenseId: string;
+}
+
+/** A licence-bound `pkeyr_` token of this account: made before personal tokens, or a Godot URL. */
+export interface PortalLegacyToken {
+  product: string;
+  productName: string;
+  licenseId: string;
+  tokenId: string;
+  label: string;
+  hint: string;
+  ecosystems: string[] | null;
+  presentation: string;
+  createdAt: number;
+  expiresAt: number;
+  lastUsedAt: number | null;
+  revokedAt: number | null;
+  status: "active" | "expired" | "revoked";
 }
 
 /** `GET /api/me/tokens`: Account → Packages. */
@@ -510,6 +531,7 @@ export interface PortalPersonalTokens {
   username: string;
   tokens: PortalPersonalToken[];
   feeds: PortalReadableFeed[];
+  legacy: PortalLegacyToken[];
   limits: {
     minDays: number;
     maxDays: number;

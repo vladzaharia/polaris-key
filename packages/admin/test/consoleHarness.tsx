@@ -235,6 +235,31 @@ export function boot(hash: string, opts: BootOptions = {}): FetchLog {
       health: { healthy: true, status: "healthy", missing: [], checks: [] },
     },
     "/manage/api/products/djdl/distribution/rollouts": { rollouts: [] },
+    // ST-41: the Integration read model, nothing seen yet.
+    "/manage/api/products/djdl/integration": {
+      product: "djdl",
+      now: 0,
+      snippet: {
+        slug: "djdl",
+        services: ["license"],
+        pins: [],
+        releaseKeys: [],
+      },
+      features: [
+        {
+          id: "licensing",
+          service: "license",
+          prerequisites: [{ id: "tiers", met: true }],
+          unavailable: false,
+          facts: {},
+          status: "not_seen",
+          verifiedOn: [],
+        },
+      ],
+      server: [],
+      sightings: [],
+      verified: false,
+    },
     "/manage/api/products/djdl/identity/portal": {
       settings: {
         portalEnabled: false,

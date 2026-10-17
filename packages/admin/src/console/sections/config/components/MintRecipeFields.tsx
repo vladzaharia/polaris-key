@@ -12,7 +12,13 @@ import { Textarea } from "../../../../ui/Textarea.js";
 import { codecs, useSearchParam } from "../../../router.js";
 import { changedLabel, REQUIRES_LABELS } from "../model/edgeMintFields.js";
 import { useEdgeMint } from "../data.js";
-import { blockOf, withMint, MINT_TTL_MAX } from "../model/mintBlock.js";
+import {
+  blockOf,
+  mintEdited,
+  withMint,
+  MINT_TTL_MAX,
+} from "../model/mintBlock.js";
+import { Skeleton } from "../../../../ui/Skeleton.js";
 
 /** Select values cannot be empty, so "no flag" has one of its own. */
 const NO_FLAG = "~none";
@@ -72,7 +78,7 @@ export function MintRecipeFields({
     );
   }, [recipe, entry]);
 
-  const edited = entry.mint !== undefined;
+  const edited = mintEdited(entry, recipe);
   const entitlements = Array.from(
     new Set([
       ...flagKeys,
@@ -87,7 +93,13 @@ export function MintRecipeFields({
         </p>
       ) : null}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-        <p className="text-sm font-medium text-fg-strong">Recipe</p>
+        <p
+          data-recipe-label=""
+          tabIndex={-1}
+          className="text-sm font-medium text-fg-strong"
+        >
+          Recipe
+        </p>
         {recipe ? (
           <StatusPill domain="edgeMint" state={recipe.status} size="sm" />
         ) : recipe === null ? (
@@ -133,7 +145,7 @@ export function MintRecipeFields({
             ? "Your unpublished edits aren't part of the saved recipe. Publish the catalog, then approve it."
             : recipe.status === "changed" && recipe.changedFields.length > 0
               ? `Changed since approval: ${recipe.changedFields.map(changedLabel).join(", ")}.`
-              : "It signs nothing until an operator approves it as it stands."}
+              : null}
         </Callout>
       ) : null}
       {recipe?.status === "approved" || recipe === null ? (
@@ -143,173 +155,181 @@ export function MintRecipeFields({
             : "Edits publish with the catalog. A changed recipe needs approval again."}
         </p>
       ) : null}
-      <fieldset
-        disabled={locked}
-        className="contents"
-        aria-busy={mint.isPending || undefined}
-      >
-        <div className="grid gap-4 sm:grid-cols-2">
-          <FormField name="mint-alg" label="Algorithm" value={block.alg}>
-            {(f) => (
-              <Select
-                {...f}
-                value={block.alg}
-                options={ALGS.map((a) => ({ value: a, label: a }))}
-                onChange={(alg) => alg && set({ alg })}
-              />
-            )}
-          </FormField>
+      {locked ? (
+        loadFailed ? null : (
+          <div className="space-y-3" aria-busy="true" aria-label="Loading">
+            <Skeleton className="h-9 w-full" />
+            <Skeleton className="h-9 w-full" />
+            <Skeleton className="h-20 w-full" />
+          </div>
+        )
+      ) : (
+        <fieldset className="contents">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <FormField name="mint-alg" label="Algorithm" value={block.alg}>
+              {(f) => (
+                <Select
+                  {...f}
+                  value={block.alg}
+                  options={ALGS.map((a) => ({ value: a, label: a }))}
+                  onChange={(alg) => alg && set({ alg })}
+                />
+              )}
+            </FormField>
+            <FormField
+              name="mint-secret"
+              label="Signing secret"
+              help="The product secret that holds the key. Set it in Keys and secrets."
+              value={block.signingKeySecret}
+              required
+            >
+              {(f) => (
+                <Input
+                  {...f}
+                  value={block.signingKeySecret}
+                  placeholder="APPLE_MUSIC_KEY"
+                  onChange={(e) =>
+                    set({ signingKeySecret: e.target.value.trim() })
+                  }
+                />
+              )}
+            </FormField>
+            <FormField
+              name="mint-kid"
+              label="Key id"
+              optional
+              value={block.kid ?? ""}
+            >
+              {(f) => (
+                <Input
+                  {...f}
+                  value={block.kid ?? ""}
+                  onChange={(e) =>
+                    set({ kid: e.target.value.trim() || undefined })
+                  }
+                />
+              )}
+            </FormField>
+            <FormField
+              name="mint-audience"
+              label="Audience"
+              optional
+              value={block.audience ?? ""}
+            >
+              {(f) => (
+                <Input
+                  {...f}
+                  value={block.audience ?? ""}
+                  onChange={(e) => set({ audience: e.target.value || null })}
+                />
+              )}
+            </FormField>
+            <FormField
+              name="mint-ttl"
+              label="Lifetime (seconds)"
+              help={`Up to ${MINT_TTL_MAX}.`}
+              optional
+              value={String(block.ttlSeconds ?? "")}
+            >
+              {(f) => (
+                <Input
+                  {...f}
+                  inputMode="numeric"
+                  value={
+                    block.ttlSeconds === undefined
+                      ? ""
+                      : String(block.ttlSeconds)
+                  }
+                  onChange={(e) => {
+                    const n = Number(e.target.value);
+                    set({
+                      ttlSeconds:
+                        e.target.value.trim() === "" || !Number.isFinite(n)
+                          ? undefined
+                          : n,
+                    });
+                  }}
+                />
+              )}
+            </FormField>
+            <FormField
+              name="mint-requires"
+              label="Who may mint"
+              value={block.requires ?? "licensed"}
+            >
+              {(f) => (
+                <Select
+                  {...f}
+                  value={block.requires ?? "licensed"}
+                  options={REQUIRES}
+                  onChange={(v) =>
+                    set({
+                      requires:
+                        v === "none" || v === "registered" ? v : "licensed",
+                    })
+                  }
+                />
+              )}
+            </FormField>
+            <FormField
+              name="mint-entitlement"
+              label="Required entitlement"
+              optional
+              help="An entitlement the person's license must include."
+              value={block.requiredEntitlement ?? ""}
+            >
+              {(f) => (
+                <Select
+                  {...f}
+                  value={block.requiredEntitlement ?? NO_FLAG}
+                  options={[
+                    { value: NO_FLAG, label: "None" },
+                    ...entitlements.map((k) => ({ value: k, label: k })),
+                  ]}
+                  onChange={(v) =>
+                    set({ requiredEntitlement: v && v !== NO_FLAG ? v : null })
+                  }
+                />
+              )}
+            </FormField>
+          </div>
           <FormField
-            name="mint-secret"
-            label="Signing secret"
-            help="The product secret that holds the key. Set it in Keys and secrets."
-            value={block.signingKeySecret}
-            required
-          >
-            {(f) => (
-              <Input
-                {...f}
-                value={block.signingKeySecret}
-                placeholder="APPLE_MUSIC_KEY"
-                onChange={(e) =>
-                  set({ signingKeySecret: e.target.value.trim() })
-                }
-              />
-            )}
-          </FormField>
-          <FormField
-            name="mint-kid"
-            label="Key id"
+            name="mint-claims"
+            label="Claims template (JSON)"
             optional
-            value={block.kid ?? ""}
+            error={claimsError ?? undefined}
+            announceError
+            value={claimsText}
           >
             {(f) => (
-              <Input
+              <Textarea
                 {...f}
-                value={block.kid ?? ""}
-                onChange={(e) =>
-                  set({ kid: e.target.value.trim() || undefined })
-                }
-              />
-            )}
-          </FormField>
-          <FormField
-            name="mint-audience"
-            label="Audience"
-            optional
-            value={block.audience ?? ""}
-          >
-            {(f) => (
-              <Input
-                {...f}
-                value={block.audience ?? ""}
-                onChange={(e) => set({ audience: e.target.value || null })}
-              />
-            )}
-          </FormField>
-          <FormField
-            name="mint-ttl"
-            label="Lifetime (seconds)"
-            help={`Up to ${MINT_TTL_MAX}.`}
-            optional
-            value={String(block.ttlSeconds ?? "")}
-          >
-            {(f) => (
-              <Input
-                {...f}
-                inputMode="numeric"
-                value={
-                  block.ttlSeconds === undefined ? "" : String(block.ttlSeconds)
-                }
+                rows={4}
+                className="font-mono text-xs"
+                value={claimsText}
                 onChange={(e) => {
-                  const n = Number(e.target.value);
-                  set({
-                    ttlSeconds:
-                      e.target.value.trim() === "" || !Number.isFinite(n)
-                        ? undefined
-                        : n,
-                  });
+                  const text = e.target.value;
+                  setClaimsText(text);
+                  try {
+                    const parsed: unknown =
+                      text.trim() === "" ? {} : JSON.parse(text);
+                    if (
+                      parsed === null ||
+                      typeof parsed !== "object" ||
+                      Array.isArray(parsed)
+                    )
+                      throw new Error("object");
+                    setClaimsError(null);
+                    set({ claimsTemplate: parsed as Record<string, unknown> });
+                  } catch {
+                    setClaimsError("Enter a JSON object.");
+                  }
                 }}
               />
             )}
           </FormField>
-          <FormField
-            name="mint-requires"
-            label="Who may mint"
-            value={block.requires ?? "licensed"}
-          >
-            {(f) => (
-              <Select
-                {...f}
-                value={block.requires ?? "licensed"}
-                options={REQUIRES}
-                onChange={(v) =>
-                  set({
-                    requires:
-                      v === "none" || v === "registered" ? v : "licensed",
-                  })
-                }
-              />
-            )}
-          </FormField>
-          <FormField
-            name="mint-entitlement"
-            label="Required flag"
-            optional
-            help="A flag the person's license must include."
-            value={block.requiredEntitlement ?? ""}
-          >
-            {(f) => (
-              <Select
-                {...f}
-                value={block.requiredEntitlement ?? NO_FLAG}
-                options={[
-                  { value: NO_FLAG, label: "None" },
-                  ...entitlements.map((k) => ({ value: k, label: k })),
-                ]}
-                onChange={(v) =>
-                  set({ requiredEntitlement: v && v !== NO_FLAG ? v : null })
-                }
-              />
-            )}
-          </FormField>
-        </div>
-        <FormField
-          name="mint-claims"
-          label="Claims template (JSON)"
-          optional
-          error={claimsError ?? undefined}
-          announceError
-          value={claimsText}
-        >
-          {(f) => (
-            <Textarea
-              {...f}
-              rows={4}
-              className="font-mono text-xs"
-              value={claimsText}
-              onChange={(e) => {
-                const text = e.target.value;
-                setClaimsText(text);
-                try {
-                  const parsed: unknown =
-                    text.trim() === "" ? {} : JSON.parse(text);
-                  if (
-                    parsed === null ||
-                    typeof parsed !== "object" ||
-                    Array.isArray(parsed)
-                  )
-                    throw new Error("object");
-                  setClaimsError(null);
-                  set({ claimsTemplate: parsed as Record<string, unknown> });
-                } catch {
-                  setClaimsError("Enter a JSON object.");
-                }
-              }}
-            />
-          )}
-        </FormField>
-      </fieldset>
+        </fieldset>
+      )}
     </div>
   );
 }

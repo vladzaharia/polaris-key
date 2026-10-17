@@ -46,7 +46,7 @@ current_ never changes what it may sign, and a change of usage is audited on its
 Edge-mint recipes are approved on their entry in **Config → Catalog**. A recipe arrives from
 the linked repo or the console, so it mints only once its signing secret, set here with usage _Edge-mint signing
 key_, is marked edge-mint and you have **approved the recipe exactly as it stands** there. The
-setup checklist lists each recipe awaiting approval and each recipe secret not yet marked
+Overview's **Needs attention** lists each recipe awaiting approval and each recipe secret not yet marked
 edge-mint. The full rule (public mints, sign-in trust, License checks and why a widening is
 permanent), the admin endpoints and the console page are on
 [Edge mint](/docs/features/managed-config/edge-mint/#approving-a-recipe); the upgrade backfill is in

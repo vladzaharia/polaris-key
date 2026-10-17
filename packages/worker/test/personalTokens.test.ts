@@ -17,6 +17,7 @@ import {
   REGISTRY_TOKEN_TTL_SECONDS,
   forgetRegistryTokens,
   lookupRegistryCredential,
+  mintRegistryToken,
 } from "../src/core/registry/registryTokens.js";
 import {
   MAX_LIVE_PERSONAL_TOKENS,
@@ -417,6 +418,35 @@ describe("personal tokens: Account → Packages (portal API)", () => {
     expect(body.feeds.map((f) => `${f.product}/${f.ecosystem}`).sort()).toEqual(
       [`${OWNER}/oci`, `${OWNER}/swift`],
     );
+    // The account's pre-F-33 licence tokens are listed for revocation, with the feed namespace.
+    expect(body.feeds[0]).toMatchObject({
+      namespace: expect.anything(),
+      licenseId: expect.any(String),
+    });
+    const lic = body.feeds.find((f) => f.product === OWNER) as unknown as {
+      licenseId: string;
+    };
+    await mintRegistryToken(
+      env,
+      db,
+      {
+        product: OWNER,
+        label: "old",
+        ecosystems: null,
+        binding: "license",
+        licenseId: lic.licenseId,
+        presentation: "header",
+        createdBy: `portal:${ada}`,
+        portalAccountId: ada,
+      },
+      NOW,
+    );
+    const again = (await (await call("GET", "/api/me/tokens")).json()) as {
+      legacy: { label: string; product: string; licenseId: string }[];
+    };
+    expect(again.legacy).toHaveLength(1);
+    expect(again.legacy[0]).toMatchObject({ label: "old", product: OWNER });
+    expect(JSON.stringify(again)).not.toContain("pkeyr_");
     // Bob holds no licence: nothing to set up.
     const other = await session(bob);
     const none = (await (

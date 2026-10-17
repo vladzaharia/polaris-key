@@ -20,7 +20,7 @@
  *     (`DISTRIBUTION_BYTE_ROUTES`, registered in `mount.ts`). It also serves the CI rollout
  *     routes (`pkeyci_` + `distribution:rollout`).
  *   - its discovery fragment advertises the download, install, builds and blobs URLs.
- *   - `manifestIngest` applies `.pkey/distribution` — outlets and transports (P2b-02,
+ *   - its manifest contributor (`ingest.ts`) applies `.pkey/distribution` — outlets and transports (P2b-02,
  *     `outlets.ts`) — and the manifest's `release.access.artifacts` into the `app` row of
  *     `dist_access` unless an operator owns it (P2b-04, `access.ts`).
  *   - it implements two of Core's descriptor hooks (`core/hooks.ts`): `delivery` (`delivery.ts`:
@@ -51,24 +51,19 @@ import type {
   ScheduledServiceContext,
   ServiceDescriptor,
 } from "../../core/registry.js";
-import type { ParsedManifest } from "@polaris-key/manifest";
+import type {} from "@polaris-key/manifest";
 import { parseJsonColumn } from "../../platform/json.js";
-import type { DbStatement } from "../../db/types.js";
+import type {} from "../../db/types.js";
 import { bytesHostname } from "../../core/assets/bytesHost.js";
 import { handleDistributionAdmin } from "./admin.js";
 import { registryMaterialiser } from "./registryMaterialiser.js";
 import { defaultCapabilities, effectiveCapabilities } from "./capabilities.js";
 import { delivery } from "./delivery.js";
-import { accessIngestStatements } from "./access.js";
-import { releaseKeyObservationStatements } from "./availability.js";
-import { handleDistributionRoutes } from "./routes.js";
+import { DISTRIBUTION_ROUTES } from "./routes.js";
 import { refreshReadiness } from "./readiness.js";
 import { pollConnectors } from "./connectors/index.js";
 import { runAutoHalt, type AutoHaltOutcome } from "./autoHalt.js";
-import {
-  getOutlet,
-  manifestIngestStatements as outletIngestStatements,
-} from "./outlets.js";
+import { getOutlet } from "./outlets.js";
 import { DISTRIBUTION_SETTINGS_SLICE } from "./settings.js";
 import {
   syncManifestListingAssets,
@@ -94,19 +89,6 @@ async function outletCapabilities(
       ? parseJsonColumn(row.capabilities_json)
       : null;
   return { outletId, ...effectiveCapabilities(defaults, override) };
-}
-
-/** Distribution's `manifestIngest` (enabled only): outlets and transports, and the declared
- *  release keys as key-inventory observations (P3-03). */
-function manifestIngest(
-  parsed: ParsedManifest,
-  product: string,
-  now: number,
-): DbStatement[] {
-  return [
-    ...outletIngestStatements(parsed, product, now),
-    ...releaseKeyObservationStatements(parsed, product, now),
-  ];
 }
 
 /**
@@ -199,98 +181,13 @@ export const distributionService: ServiceDescriptor = {
   /** ST-03: this service's settings registry slice (`settings.ts`). */
   settings: DISTRIBUTION_SETTINGS_SLICE,
   /** `routes.ts`: the byte routes and the CI rollout routes. `null` = Core's not-found. */
-  handle: handleDistributionRoutes,
+  handle: DISTRIBUTION_ROUTES.handle,
   /**
    * The canonical surface `routes.ts` dispatches; what `routeCoverage` pins. The installer, the
    * download and the three byte routes are the ones Release's old `/{product}/release/…`
    * spellings rewrite to; the last three of those also answer on the bytes host.
    */
-  surface: [
-    { path: "/{product}/distribution/install.sh", methods: ["get"] },
-    {
-      path: "/{product}/distribution/dl/{version}/{asset}",
-      methods: ["get"],
-    },
-    {
-      path: "/{product}/distribution/builds/{selector}/{buildId}",
-      methods: ["get"],
-    },
-    {
-      path: "/{product}/distribution/files/{releaseId}/{name}",
-      methods: ["get"],
-    },
-    {
-      path: "/{product}/distribution/blobs/sha256/{sha256}",
-      methods: ["get", "head"],
-    },
-    // A pack's decoded container payload, with Compression Dictionary Transport.
-    {
-      path: "/{product}/distribution/packs/{pack}/{variant}/payload/{sha256}",
-      methods: ["get", "head"],
-    },
-    // The CI rollout routes.
-    {
-      path: "/{product}/distribution/rollouts/{outlet}/{channel}",
-      methods: ["post"],
-    },
-    {
-      path: "/{product}/distribution/rollouts/{outlet}/{channel}/pause",
-      methods: ["post"],
-    },
-    {
-      path: "/{product}/distribution/rollouts/{outlet}/{channel}/resume",
-      methods: ["post"],
-    },
-    {
-      path: "/{product}/distribution/rollouts/{outlet}/{channel}/halt",
-      methods: ["post"],
-    },
-    {
-      path: "/{product}/distribution/rollouts/{outlet}/{channel}/complete",
-      methods: ["post"],
-    },
-    // The CI report of availability, submissions and signing keys.
-    { path: "/{product}/distribution/report", methods: ["post"] },
-    // A CI-plane store's projection of the listing model.
-    { path: "/{product}/distribution/listing/{store}", methods: ["get"] },
-    // A PR-plane generator's inputs.
-    { path: "/{product}/distribution/pr/{store}", methods: ["get"] },
-    // The App Store Connect webhook (Apple to the Worker, HMAC-signed).
-    { path: "/{product}/distribution/hooks/asc", methods: ["post"] },
-    // The Sentry alert webhook (Sentry to the Worker, HMAC-signed); opens halt candidates.
-    { path: "/{product}/distribution/hooks/sentry", methods: ["post"] },
-    // The storefront feeds, the F-Droid relay and its CI route.
-    {
-      path: "/{product}/distribution/altstore/{channel}/source.json",
-      methods: ["get"],
-    },
-    {
-      path: "/{product}/distribution/altstore-pal/{channel}/source.json",
-      methods: ["get"],
-    },
-    {
-      path: "/{product}/distribution/obtainium/{channel}.json",
-      methods: ["get"],
-    },
-    {
-      path: "/{product}/distribution/fdroid/{channel}/repo/{path}",
-      methods: ["get"],
-    },
-    { path: "/{product}/distribution/scoop/{channel}.json", methods: ["get"] },
-    {
-      path: "/{product}/distribution/flathub/{channel}.json",
-      methods: ["get"],
-    },
-    {
-      path: "/{product}/distribution/feeds/fdroid/{channel}",
-      methods: ["get", "post"],
-    },
-    // The listing assets CI derived, registered into the listing model.
-    { path: "/{product}/distribution/listing/assets", methods: ["post"] },
-    // The public download page's model (console host) and the page (bytes host only).
-    { path: "/{product}/distribution/download.json", methods: ["get"] },
-    { path: "/{product}/distribution/download", methods: ["get"] },
-  ],
+  surface: DISTRIBUTION_ROUTES.surface,
   /**
    * Distribution's slice of `/.well-known/polaris.json`: the CANONICAL byte URLs (an alias exists
    * so shipped binaries and published curl lines keep working, not so new clients learn it).
@@ -329,16 +226,6 @@ export const distributionService: ServiceDescriptor = {
   delivery,
   /** `core/hooks.ts` `OutletCapabilities` (P2b-02). */
   outletCapabilities,
-  /** `.pkey/distribution` → `dist_outlets` / `dist_transports`, while Distribution is on. */
-  manifestIngest,
-  /**
-   * `release.access.artifacts` → the `app` row of `dist_access`, on every link and resync
-   * WHATEVER Distribution's enablement (`core/registry.ts` `manifestIngestAlways`): turning
-   * Distribution on runs no ingest, so the row must already hold the manifest's answer then, or
-   * a Release-only product's `licensed` downloads would open (or, with no row, close) the moment
-   * an operator enables Distribution.
-   */
-  manifestIngestAlways: accessIngestStatements,
   /** `/manage/api/products/<slug>/distribution/…` (`admin.ts`). */
   adminHandle: handleDistributionAdmin,
   /** The store-connector poll, on the connector cron (`connectors/`). */

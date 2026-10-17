@@ -491,6 +491,7 @@ describe("the nav model (nav.ts)", () => {
       "platform-override-migration",
       "package-feeds",
       "overview",
+      "integration",
       "services",
       "devices",
       "users",

@@ -1,3 +1,5 @@
+import { ingestFor } from "../src/core/ingest/pipeline.js";
+import { SERVICES } from "../src/mount.js";
 /**
  * The New Product wizard's create probes (UX-72, FLOWS.md §3.11):
  *
@@ -356,6 +358,7 @@ describe("create dry run (W23)", () => {
       "acme/tonebox",
       NOW,
       stubFetch(repoFiles(productJson("Bad Slug"))),
+      ingestFor(SERVICES),
     );
     expect(dry.ok).toBe(true);
     if (!dry.ok) return;
@@ -381,6 +384,7 @@ describe("create dry run (W23)", () => {
       "acme/tonebox",
       NOW,
       stubFetch(repoFiles()),
+      ingestFor(SERVICES),
     );
     expect(dry.ok).toBe(true);
     if (!dry.ok) return;
@@ -408,6 +412,7 @@ describe("create dry run (W23)", () => {
       "acme/tonebox",
       NOW,
       stubFetch(repoFiles()),
+      ingestFor(SERVICES),
     );
     expect(dry.ok).toBe(true);
     if (!dry.ok) return;
@@ -436,6 +441,7 @@ describe("create dry run (W23)", () => {
           }),
         ),
       ),
+      ingestFor(SERVICES),
     );
     expect(dry.ok).toBe(true);
     if (!dry.ok) return;

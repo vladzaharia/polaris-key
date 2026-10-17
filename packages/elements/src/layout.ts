@@ -137,6 +137,7 @@ export const LAYOUTS: Readonly<Record<ComponentName, Layout>> = {
     meta: [
       "signInHandoff.starting",
       "signInHandoff.linkCopied",
+      "cli.signin.waitingCode",
       "signin.handoff.check",
       "signin.handoff.expires",
     ],
@@ -147,6 +148,7 @@ export const LAYOUTS: Readonly<Record<ComponentName, Layout>> = {
     header: "compact",
     split: true,
     controls: ["activate.submit", "common.back", "common.done"],
+    links: ["signin.key.differentKey"],
     meta: ["activate.busy"],
     content: [
       "part.keyField.label",
@@ -206,6 +208,7 @@ export const LAYOUTS: Readonly<Record<ComponentName, Layout>> = {
       "signin.choice.create",
       "signin.replace.back",
       "signin.none.otherAccount",
+      "common.cancel",
     ],
     // Replace a device names the step it opens; in the Replace step itself it is a quiet link.
     // The elements confirm inline everywhere (D-80: the web has no system confirm), so macOS's

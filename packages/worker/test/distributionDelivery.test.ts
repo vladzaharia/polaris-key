@@ -36,7 +36,7 @@ import {
   recordRef,
 } from "../src/core/assets/blobs.js";
 import { buildHooks } from "../src/core/hooks.js";
-import { manifestIngestFor } from "../src/core/registry.js";
+import { contributedRowStatements } from "./ingest/statements.js";
 import { loadProduct } from "../src/core/products.js";
 import { serializeServices } from "../src/core/services.js";
 import { setServices } from "../src/core/products/store.js";
@@ -557,7 +557,7 @@ function manifestWithArtifacts(mode: string) {
 
 /** Run Core's ingest pipeline exactly as a link or resync does, with Distribution OFF. */
 async function ingestWithDistributionOff(w: World, mode: string) {
-  const out = manifestIngestFor(SERVICES)(
+  const out = contributedRowStatements(
     manifestWithArtifacts(mode),
     SLUG,
     {
@@ -572,7 +572,7 @@ async function ingestWithDistributionOff(w: World, mode: string) {
     },
     NOW,
   );
-  for (const st of out.statements) await w.db.run(st.sql, ...st.params);
+  for (const st of out) await w.db.run(st.sql, ...st.params);
 }
 
 /** A parsed manifest with no `.pkey/release` at all: the repo dropped its release block. */
@@ -592,7 +592,7 @@ async function ingestManifest(
   manifest: ReturnType<typeof manifestWithoutRelease>,
   on: { release: boolean; distribution: boolean },
 ) {
-  const out = manifestIngestFor(SERVICES)(
+  const out = contributedRowStatements(
     manifest,
     SLUG,
     {
@@ -607,7 +607,7 @@ async function ingestManifest(
     },
     NOW,
   );
-  for (const st of out.statements) await w.db.run(st.sql, ...st.params);
+  for (const st of out) await w.db.run(st.sql, ...st.params);
 }
 
 /** Every anonymous download surface a licensed product must refuse. */

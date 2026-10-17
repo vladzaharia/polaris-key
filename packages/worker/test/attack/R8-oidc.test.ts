@@ -55,7 +55,7 @@ import {
   deviceFlowKey,
   deviceUserKey,
 } from "../../src/services/identity/oidc.js";
-import { handleIdentityRoutes } from "../../src/services/identity/routes.js";
+import { IDENTITY_ROUTES } from "../../src/services/identity/routes.js";
 import type { ServiceContext } from "../../src/core/registry.js";
 import { handleLicenseDocument } from "../../src/services/license/document.js";
 // Wire v3 split `validateDeviceToken` in two: core answers "is this token a live device row",
@@ -219,7 +219,7 @@ const callback = async (ctx: Ctx, state: string, code = "auth-code") =>
 /** The retired `GET /<p>/identity/auth/poll?<query>` through Identity's sub-router: `null` is
  *  "no route here", which Core answers with its generic 404. */
 const retiredPoll = (ctx: Ctx, query: string) =>
-  handleIdentityRoutes({
+  IDENTITY_ROUTES.handle({
     req: req(`${ORIGIN}/djdl/identity/auth/poll?${query}`),
     env: ctx.env,
     db: ctx.db,

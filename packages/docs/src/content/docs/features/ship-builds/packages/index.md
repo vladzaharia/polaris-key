@@ -7,7 +7,7 @@ sidebar:
   order: 1
 ---
 
-Package feeds let a product publish libraries and tools to the package managers its users already run. They answer on their own host, `pkg.plrs.im` (`pkg-staging.plrs.im` and `pkg-dev.plrs.im` in the other environments): the same Worker as the console, on a third custom domain beside `key.plrs.im` and the bytes host `dl.plrs.im`. In the console: **Distribution → Package feeds**. To publish, see [Publish a package](/docs/features/ship-builds/packages/publish/). To install, see [Install the SDKs and the CLI](/docs/build/install/).
+Package feeds let a product publish libraries and tools to the package managers its users already run. They answer on `pkg.plrs.im` (`pkg-staging.plrs.im` and `pkg-dev.plrs.im` in the other environments), served by the console's Worker beside `key.plrs.im` and the bytes host `dl.plrs.im`. In the console: **Distribution → Package feeds**. To publish, see [Publish a package](/docs/features/ship-builds/packages/publish/). To install, see [Install the SDKs and the CLI](/docs/build/install/).
 
 ## URL layout
 
@@ -124,11 +124,11 @@ The registry host judges it per owner on every request:
 - The platform's own product is never readable by a customer's token.
 - It never publishes and is never a Godot editor URL.
 
-A person revokes their own. A platform admin lists and revokes any under **Personal tokens**, but cannot create one. Erasing an account revokes its tokens; a merge moves them to the account that stays.
+A person revokes their own. A platform admin can list and revoke any, not create one. Erasing an account revokes its tokens; a merge moves them to the account that stays.
 
 ### Registry tokens
 
-**Tokens** lists the owner's `pkeyr_…` tokens: label, last four characters, feeds, binding, creator, expiry, last use and status. **New token** asks for a label, the feeds, an expiry of 1 to 365 days (90 by default), a binding (the product, or one license), and **Godot editor URL**, a read-only token for the Godot feed that lasts 30 days by default. The token is shown once. **Access** chooses **Read** or **Read and publish**. A publish token is bound to the product, names its feeds explicitly and lasts 1 to 30 days (7 by default). Revoking is a danger confirmation and takes effect within 30 seconds. **Revoke all** revokes every active token of the owner, including those licensees minted. A license's **Keys** tab has a **Registry tokens** panel for the tokens bound to it. The portal no longer mints license-bound tokens; those already minted work until they expire.
+**Tokens** lists the owner's `pkeyr_…` tokens: label, last four characters, feeds, binding, creator, expiry, last use and status. **New token** asks for a label, the feeds, an expiry of 1 to 365 days (90 by default), a binding (the product, or one license), and **Godot editor URL**, a read-only token for the Godot feed that lasts 30 days by default. The token is shown once. **Access** chooses **Read** or **Read and publish**. A publish token is bound to the product, names its feeds explicitly and lasts 1 to 30 days (7 by default). Revoking is a danger confirmation and takes effect within 30 seconds. **Revoke all** revokes every active token of the owner, including those licensees minted. A license's **Keys** tab has a **Registry tokens** panel for the tokens bound to it. The portal mints only a license-bound Godot editor URL token (30 days). Older license-bound tokens work until they expire.
 
 ### Retention
 

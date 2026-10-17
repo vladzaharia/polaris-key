@@ -191,9 +191,13 @@ describe("Approve a minted token's recipe", () => {
     expect(
       within(drawer).getByText(/Because anonymous enrollment is on/),
     ).toBeTruthy();
+    // Anonymous enrollment is the manifest's autoIssue block: the console cannot change it.
     expect(
-      within(drawer).getByRole("link", { name: "Change in Enrollment" }),
+      within(drawer).getByRole("link", { name: /autoIssue block/ }),
     ).toBeTruthy();
+    expect(
+      within(drawer).queryByRole("link", { name: /Change in Services/ }),
+    ).toBeNull();
   });
 
   it("echoes the sign-in trust it was shown", async () => {
@@ -266,11 +270,14 @@ describe("Approve a minted token's recipe", () => {
       ),
     );
     const drawer = await openApprove();
+    // One fact once: the callout holds the reason, with the link to where registration changes.
     expect(
-      within(drawer).getByText(
-        /The mint became public \(registration is open\) after this recipe/,
-      ),
+      within(drawer).getByText(/Because registration is open/),
     ).toBeTruthy();
+    expect(
+      within(drawer).getByRole("link", { name: "Change in Services" }),
+    ).toBeTruthy();
+    expect(within(drawer).queryByText(/The mint became public/)).toBeNull();
     await userEvent.click(within(drawer).getByRole("checkbox"));
     await userEvent.click(
       within(drawer).getByRole("button", { name: "Re-approve" }),
@@ -305,7 +312,10 @@ describe("Approve a minted token's recipe", () => {
       within(drawer).getByText("Approved as https://id.example"),
     ).toBeTruthy();
     expect(
-      within(drawer).getByText(/License was turned off after this recipe/),
+      within(drawer).getByText(/License was turned off since the approval/),
+    ).toBeTruthy();
+    expect(
+      within(drawer).getByText("This allows more than before"),
     ).toBeTruthy();
     // One fact once: the change reason, not also the generic License-off line.
     expect(
@@ -493,17 +503,18 @@ describe("Approve a minted token's recipe", () => {
     ).toBeTruthy();
   });
 
-  it("shows a read-only form and a Retry on the entry when the load fails (M15)", async () => {
+  it("hides the fields and offers Retry on the entry when the load fails (M15, N19)", async () => {
     let fail = true;
     open(() => (fail ? apiError(500) : recipes([recipe()])));
-    const secret = (await screen.findByRole("textbox", {
-      name: /^Signing secret/,
-    })) as HTMLInputElement;
-    expect(secret.matches(":disabled")).toBe(true);
     const retry = await screen.findByRole("button", { name: /Retry/ });
+    expect(
+      screen.queryByRole("textbox", { name: /^Signing secret/ }),
+    ).toBeNull();
     fail = false;
     await userEvent.click(retry);
-    await waitFor(() => expect(secret.matches(":disabled")).toBe(false));
+    expect(
+      await screen.findByRole("textbox", { name: /^Signing secret/ }),
+    ).toBeTruthy();
   });
 
   it("puts the call to approve in a warning callout on the entry (M14)", async () => {
@@ -533,8 +544,7 @@ describe("Approve a minted token's recipe", () => {
         .getAttribute("aria-disabled"),
     ).toBe("true");
     expect(
-      within(drawer).getAllByText(/Only members who can edit Managed config/)
-        .length,
+      within(drawer).getAllByText(/Managed config edit access/).length,
     ).toBeGreaterThan(0);
     expect(within(drawer).queryByRole("button", { name: /Revoke/ })).toBeNull();
   });
@@ -601,5 +611,157 @@ describe("Approve a minted token's recipe", () => {
         (v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`,
       ),
     ).toEqual([]);
+  });
+
+  describe("focus after the drawer closes (N1)", () => {
+    const URL_OPEN =
+      "#/p/djdl/config/catalog/edit?entry=applemusic&recipe=applemusic";
+
+    it("lands on the card's opener when a URL-opened drawer is cancelled", async () => {
+      open(recipes([recipe()]), {}, URL_OPEN);
+      const drawer = await screen.findByRole("dialog", { name: /applemusic/ });
+      await userEvent.click(
+        within(drawer).getByRole("button", { name: "Cancel" }),
+      );
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+      await waitFor(() =>
+        expect(document.activeElement?.hasAttribute("data-recipe-opener")).toBe(
+          true,
+        ),
+      );
+    });
+
+    it("lands on the card's opener when a URL-opened drawer is closed with Escape", async () => {
+      open(recipes([recipe()]), {}, URL_OPEN);
+      await screen.findByRole("dialog", { name: /applemusic/ });
+      await userEvent.keyboard("{Escape}");
+      await waitFor(() =>
+        expect(document.activeElement?.hasAttribute("data-recipe-opener")).toBe(
+          true,
+        ),
+      );
+    });
+
+    it("lands on the Recipe label when there is no opener to return to", async () => {
+      // Unpublished edits hide the callout's button, so the label is the stable target.
+      open(recipes([recipe()]), {}, URL_OPEN);
+      const drawer = await screen.findByRole("dialog", { name: /applemusic/ });
+      await userEvent.click(
+        within(drawer).getByRole("button", { name: "Cancel" }),
+      );
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+      const label = document.querySelector("[data-recipe-label]");
+      expect(label?.getAttribute("tabindex")).toBe("-1");
+    });
+
+    it("moves to View approval after Approve unmounts the callout", async () => {
+      let approved = false;
+      open(
+        () =>
+          recipes([
+            approved
+              ? recipe({ status: "approved", approval: APPROVAL })
+              : recipe(),
+          ]),
+        {
+          [`POST ${P}/config/mint/applemusic/approve`]: () => {
+            approved = true;
+            return { ok: true, id: "applemusic", status: "approved" };
+          },
+        },
+      );
+      const opener = await screen.findByRole("button", {
+        name: "Review and approve…",
+      });
+      opener.focus();
+      await userEvent.keyboard("{Enter}");
+      const drawer = await screen.findByRole("dialog", { name: /applemusic/ });
+      await userEvent.click(
+        within(drawer).getByRole("button", { name: "Approve" }),
+      );
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+      await waitFor(() =>
+        expect(document.activeElement).toBe(
+          screen.getByRole("button", { name: "View approval" }),
+        ),
+      );
+    });
+  });
+
+  it("reads an approver's name without the address (m6)", async () => {
+    open(
+      recipes([
+        recipe({
+          status: "approved",
+          approval: { ...APPROVAL, approvedBy: "Ana Lima <ana@x.io>" },
+        }),
+      ]),
+    );
+    const drawer = await openApprove();
+    expect(within(drawer).getByText("Ana Lima")).toBeTruthy();
+    expect(within(drawer).queryByText(/ana@x\.io/)).toBeNull();
+  });
+
+  it("says who installs it when the mint is public (N15)", async () => {
+    open(recipes([recipe()], "open"));
+    const drawer = await openApprove();
+    expect(
+      within(drawer).getByText(/Anyone who installs DJDL can then mint/),
+    ).toBeTruthy();
+    expect(
+      within(drawer).getByRole("checkbox").getAttribute("aria-label") ??
+        drawer.textContent,
+    ).toMatch(/a leaked one works for 1 hour/);
+  });
+
+  it("names the people who can give access, and calls a view-only recipe by its name (N12)", async () => {
+    open(recipes([recipe()]), {}, undefined, {
+      ...FRESH,
+      platformAdmin: false,
+      permissions: {
+        roles: [],
+        platform: { view: ["console"], edit: ["console"] },
+        products: { djdl: { view: ["config"], edit: [] } },
+      },
+    });
+    const drawer = await openApprove();
+    expect(within(drawer).queryByText("Approve applemusic?")).toBeNull();
+    expect(
+      within(drawer).getByText(/until an editor approves it/),
+    ).toBeTruthy();
+  });
+
+  it("does not count a reverted edit as an edit (N11)", async () => {
+    window.sessionStorage.setItem(
+      "pk-catalog-draft:djdl",
+      JSON.stringify({
+        baseVersion: 8,
+        baseEntries: CATALOG.entries,
+        entries: [
+          {
+            ...CATALOG.entries[0],
+            mint: {
+              alg: "ES256",
+              signingKeySecret: FIELDS.signingKeySecret,
+              kid: "KID1",
+              claimsTemplate: { iss: "TEAM" },
+              ttlSeconds: 3600,
+              requires: "licensed",
+            },
+          },
+        ],
+      }),
+    );
+    open(recipes([recipe()]));
+    expect(
+      await screen.findByRole("button", { name: "Review and approve…" }),
+    ).toBeTruthy();
+  });
+
+  it("names the field Required entitlement (N4)", async () => {
+    open(recipes([recipe()]));
+    expect(
+      await screen.findByRole("combobox", { name: /^Required entitlement/ }),
+    ).toBeTruthy();
   });
 });

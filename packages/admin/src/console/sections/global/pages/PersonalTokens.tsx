@@ -61,6 +61,14 @@ const STATUS_FACET: Facet<AdminPersonalToken> = {
   accessor: (t) => t.status,
 };
 
+/** `revokeReason` as a person reads it: who ended the token. */
+const REVOKED_BY: Record<string, string> = {
+  manual: "owner",
+  admin: "admin",
+  account_deleted: "account erasure",
+  access_removed: "access removal",
+};
+
 const COLUMNS: DataColumn<AdminPersonalToken>[] = [
   {
     id: "label",
@@ -68,8 +76,13 @@ const COLUMNS: DataColumn<AdminPersonalToken>[] = [
     accessorFn: (t) => t.label,
     meta: { priority: 1, primary: true, alwaysVisible: true, label: "Token" },
     cell: ({ row }) => (
-      <span className="inline-flex min-w-0 flex-col">
-        <span className="truncate">{row.original.label}</span>
+      <span className="inline-flex min-w-0 max-w-[16rem] flex-col">
+        <span
+          className="truncate max-sm:whitespace-normal max-sm:break-words"
+          title={row.original.label}
+        >
+          {row.original.label}
+        </span>
         <span className="font-mono text-xs text-fg-muted">
           pkeyp_…{row.original.hint}
         </span>
@@ -83,7 +96,12 @@ const COLUMNS: DataColumn<AdminPersonalToken>[] = [
     meta: { priority: 1, label: "Account" },
     cell: ({ row }) =>
       row.original.email ? (
-        <span className="truncate">{row.original.email}</span>
+        <span
+          className="inline-block max-w-[16rem] truncate align-bottom max-sm:max-w-none max-sm:whitespace-normal max-sm:break-all"
+          title={row.original.email}
+        >
+          {row.original.email}
+        </span>
       ) : (
         <span className="text-fg-muted">Erased</span>
       ),
@@ -104,7 +122,20 @@ const COLUMNS: DataColumn<AdminPersonalToken>[] = [
     header: "Expires",
     accessorKey: "expiresAt",
     meta: { numeric: true, priority: 2, label: "Expires" },
-    cell: ({ row }) => <Timestamp at={fromSeconds(row.original.expiresAt)} />,
+    // A revoked token's own expiry no longer matters: say when and by whom it ended.
+    cell: ({ row }) =>
+      row.original.status === "revoked" && row.original.revokedAt !== null ? (
+        <span className="inline-flex flex-col items-end text-right">
+          <span>
+            Revoked <Timestamp at={fromSeconds(row.original.revokedAt)} />
+          </span>
+          <span className="text-xs text-fg-muted">
+            by {REVOKED_BY[row.original.revokeReason ?? ""] ?? "owner"}
+          </span>
+        </span>
+      ) : (
+        <Timestamp at={fromSeconds(row.original.expiresAt)} />
+      ),
   },
   {
     id: "lastUsedAt",
@@ -213,6 +244,21 @@ export function PersonalTokens(): React.ReactElement {
         onConfirm={async () => {
           await mutate("revokePersonalToken", revoking!.id);
           toast.success("Personal token revoked");
+          // The dialog closes onto nothing: the next row's Actions button takes focus.
+          const at = (tokens.data ?? []).findIndex(
+            (t) => t.id === revoking!.id,
+          );
+          requestAnimationFrame(() =>
+            requestAnimationFrame(() => {
+              const buttons = document.querySelectorAll<HTMLElement>(
+                'table button[aria-label^="Actions for"]',
+              );
+              (
+                buttons[Math.min(Math.max(at, 0), buttons.length - 1)] ??
+                document.querySelector<HTMLElement>("h1")
+              )?.focus();
+            }),
+          );
         }}
       />
     </CollectionTemplate>

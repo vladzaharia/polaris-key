@@ -12,7 +12,7 @@ import {
   type ErrorCopy,
   type ErrorFix,
 } from "../../../../lib/errorCopy.js";
-import { signingBundleOf, slugError } from "../../../../lib/products.js";
+import { slugError } from "../../../../lib/products.js";
 import { Button } from "../../../../ui/Button.js";
 import { Callout } from "../../../../ui/Callout.js";
 import { FormField } from "../../../../ui/form.js";
@@ -28,7 +28,6 @@ import { useProducts } from "../../../data/hooks.js";
 import { mutate } from "../../../data/mutations.js";
 import { codecs, Link, navigate, useSearchParam } from "../../../router.js";
 import { r } from "../../../routes.js";
-import { storeWelcome, type Welcome } from "../../core/pages/Welcome.js";
 
 /**
  * Where the product's definition comes from. The URL keeps the old `?via=` names, so Home's and
@@ -226,8 +225,8 @@ const focusField = (name: string): void => {
  * GitHub repository; for Nothing, the name comes first and the slug follows it, checked against
  * the registry as you type. License defaults sit under Advanced. Enter creates.
  *
- * There is no result page and no toast: a created product opens on its Overview, which shows a
- * one-time welcome with the new signing key (`core/Welcome.tsx`). A refusal stays on this screen,
+ * There is no result page and no toast: a created product opens on its Overview, whose Integration
+ * card names the next step. A refusal stays on this screen,
  * worded by `errorCopy` and placed on the field it is about.
  *
  * "Start from" comes first rather than after the slug (the storyboard's order): a linked product
@@ -353,11 +352,10 @@ export function ProductNew(): React.ReactElement {
     slugServer?.suggestion ??
     (verdict.kind === "taken" ? verdict.suggestion : null);
 
-  const finish = (welcome: Welcome) => {
+  const finish = (slug: string) => {
     created.current = true;
     writeDraft(null);
-    storeWelcome(welcome);
-    navigate(r.overview(welcome.slug));
+    navigate(r.overview(slug));
   };
 
   const submit = async (e?: React.FormEvent) => {
@@ -378,15 +376,7 @@ export function ProductNew(): React.ReactElement {
     try {
       if (via === "github") {
         const res: LinkRepoResult = await mutate("linkRepo", draft.repo.trim());
-        const bundle = signingBundleOf(res);
-        finish({
-          slug: res.slug,
-          name: res.product?.name ?? res.slug,
-          kid: bundle.kid ?? res.kid,
-          publicKey: bundle.publicKey,
-          ...(repo ? { repo } : {}),
-          remainingSecrets: res.remainingSecrets ?? [],
-        });
+        finish(res.slug);
       } else {
         const res: CreateManualProductResult = await mutate(
           "createManualProduct",
@@ -397,14 +387,7 @@ export function ProductNew(): React.ReactElement {
             defaultDeviceLimit: draft.deviceLimit ?? undefined,
           },
         );
-        const bundle = signingBundleOf(res);
-        finish({
-          slug: res.slug,
-          name: res.product?.name ?? draft.name.trim(),
-          kid: bundle.kid ?? res.kid,
-          publicKey: bundle.publicKey,
-          remainingSecrets: [],
-        });
+        finish(res.slug);
       }
     } catch (err) {
       setSubmitError({ error: err, via, slug });

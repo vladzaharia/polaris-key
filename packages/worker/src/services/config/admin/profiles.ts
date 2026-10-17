@@ -13,6 +13,7 @@
  * validated against the catalog on every write by the same compiler that serves the catalog.
  */
 
+import { deleteProfile, upsertProfile } from "../profileStore.js";
 import { ErrorCode } from "../../../core/errors.js";
 import { randomId } from "../../../platform/crypto.js";
 import {
@@ -28,10 +29,8 @@ import {
 import { audit } from "../../../core/audit.js";
 import {
   countLicensesUsingProfile,
-  deleteProfile,
   listProfileReferences,
   listProfiles,
-  upsertProfile,
 } from "../../../core/licensing/store.js";
 import { isManagedSecretKey } from "../../../core/managedSecrets.js";
 import { loadCatalog } from "../../../core/activeCatalog.js";

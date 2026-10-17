@@ -31,6 +31,18 @@ afterEach(() => {
 });
 
 describe("the navigation blocker", () => {
+  it("a forced in-page change skips the guard; an ordinary one is still asked (ST-09)", () => {
+    const guard = vi.fn(() => false);
+    render(<Probe />);
+    const unblock = blockNavigation(guard);
+    expect(navigate("#/products?section=a")).toBe(false);
+    expect(
+      navigate("#/products?section=a", { force: true, replace: true }),
+    ).toBe(true);
+    expect(guard).toHaveBeenCalledTimes(1);
+    unblock();
+  });
+
   it("asks once for a link click it allows, and the page follows", async () => {
     const guard = vi.fn(() => true);
     render(<Probe />);

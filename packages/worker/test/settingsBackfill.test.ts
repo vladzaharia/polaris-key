@@ -1532,6 +1532,7 @@ describe("the system product (its manifest is the deploy hook's snapshot)", () =
       const parsed = parseManifest(rootFiles());
       if (!parsed.ok) throw new Error(parsed.errors.join("; "));
       const res = await linkSystemProduct(
+        env,
         db,
         parsed.manifest,
         {
@@ -1541,6 +1542,7 @@ describe("the system product (its manifest is the deploy hook's snapshot)", () =
         },
         { files: rootFiles(), sha: "c".repeat(40) },
         NOW + 1,
+        ingestFor(SERVICES),
       );
       expect(res.ok).toBe(true);
     }

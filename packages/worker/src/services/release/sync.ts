@@ -50,7 +50,8 @@ import { enqueueReleaseMirrors } from "./mirror.js";
 
 // ── The platform-facing façade ───────────────────────────────────────────────
 
-export { linkRepo, manifestIssuerRefusal, parseRepoUrl } from "./linkRepo.js";
+export { linkRepo, parseRepoUrl } from "./linkRepo.js";
+export { manifestIssuerRefusal } from "../../core/ingest/shared.js";
 export type { LinkRepoResult } from "./linkRepo.js";
 export { resyncNotes, resyncRepo } from "./resync.js";
 export type { ResyncResult } from "./resync.js";

@@ -520,7 +520,7 @@ export const MUTATIONS: MutationTable = {
   },
   activateProductKey: {
     label: "signing key activate",
-    // The product row carries the active key (Overview's Trust & SDK, the JWKS link).
+    // The product row carries the active key (the Integration page's pins, the JWKS link).
     invalidates: (slug) => [exact(qk.product(slug)), prefix(qk.keys(slug))],
   },
   retireProductKey: {

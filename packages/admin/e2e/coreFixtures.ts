@@ -196,7 +196,76 @@ const activity = [
   summary,
 }));
 
+const seenOn = (sdk: string, platform: string, arch: string, v: string) => ({
+  sdk,
+  platform,
+  arch,
+  sdkVersion: v,
+  lastOkAt: NOW - 300,
+});
+
+/** ST-41: the Integration read model: two platforms, a blocked and a not-seen feature. */
+const INTEGRATION = {
+  product: "djdl",
+  now: NOW,
+  snippet: {
+    slug: "djdl",
+    services: ["license", "config", "update"],
+    pins: [{ kid: "djdl-2026-a1", publicKey: PUB }],
+    releaseKeys: [],
+  },
+  features: [
+    {
+      id: "licensing",
+      service: "license",
+      prerequisites: [{ id: "tiers", met: true }],
+      unavailable: false,
+      facts: {},
+      status: "verified",
+      verifiedOn: [
+        seenOn("swift", "macos", "arm64", "1.2.3"),
+        seenOn("kotlin", "android", "arm64", "1.2.3"),
+      ],
+    },
+    {
+      id: "config",
+      service: "config",
+      prerequisites: [{ id: "catalog", met: false }],
+      unavailable: false,
+      facts: {},
+      status: "blocked",
+      verifiedOn: [],
+    },
+    {
+      id: "update",
+      service: "update",
+      prerequisites: [
+        { id: "release", met: true },
+        { id: "distribution", met: true },
+      ],
+      unavailable: false,
+      facts: {},
+      status: "not_seen",
+      verifiedOn: [],
+    },
+  ],
+  server: [seenOn("node-server", "linux", "x86_64", "1.2.3")],
+  sightings: [
+    {
+      sdk: "swift",
+      platform: "macos",
+      arch: "arm64",
+      sdkVersion: "1.2.3",
+      firstSeenAt: NOW - 3000,
+      lastSeenAt: NOW - 300,
+    },
+  ],
+  verified: true,
+};
+
 export const CORE_ROUTES: Record<string, unknown> = {
+  "/manage/api/products/djdl/integration": INTEGRATION,
+  "/manage/api/products/djdl/settings/effective": { settings: [] },
   "/manage/api/me": {
     sub: "u1",
     name: "Ada Lovelace",

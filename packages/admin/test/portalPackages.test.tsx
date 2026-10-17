@@ -65,6 +65,8 @@ function tokens(
       {
         product: "tidewater",
         productName: "Tidewater Studio",
+        licenseId: "lic_tidewater",
+        namespace: { scope: "@tidewater" },
         ecosystem: "npm",
         accessMode: "licensed",
         baseUrl: "https://pkg.plrs.im/npm/tidewater/",
@@ -88,6 +90,7 @@ function tokens(
       labelMax: 64,
       perAccount: 25,
     },
+    legacy: [],
     ...over,
   };
 }
@@ -96,41 +99,63 @@ function routes(extra: Record<string, unknown> = {}) {
   return signedIn([], { [ME]: tokens(), ...extra } as never);
 }
 
+/** Wait for the dialog to put focus in Name (its opening), then type: no keystroke is lost. */
+async function typeName(form: HTMLElement, text: string): Promise<void> {
+  const field = within(form).getByLabelText("Name");
+  await waitFor(() => expect(document.activeElement).toBe(field));
+  await userEvent.type(field, text);
+}
+
 async function card(): Promise<HTMLElement> {
-  const h = await screen.findByRole("heading", { name: "Your tokens" });
+  const h = await screen.findByRole("heading", {
+    name: "Your personal tokens",
+  });
   return h.closest("section")!;
 }
 
 describe("Account → Packages (F-33)", () => {
-  it("lists the live tokens by name and last four, and one setup that names the token by its variable", async () => {
+  it("lists the live personal tokens by name and last four, and a setup named by client that never holds a token", async () => {
     mockFetch(routes());
     renderPortal();
     const c = await card();
     expect(within(c).getByText("CI build server")).toBeTruthy();
     expect(within(c).getByText(/pkeyp_…Hq2a/)).toBeTruthy();
     expect(within(c).getByText("Expires in 6 days")).toBeTruthy();
-    expect(within(c).getByText(/never used/)).toBeTruthy();
-    // Revoked tokens are history, not listed.
+    expect(within(c).getByText(/Never used/)).toBeTruthy();
     expect(within(c).queryByText("Old")).toBeNull();
     expect(c.textContent).toContain("PKEY_REGISTRY_TOKEN");
     expect(c.textContent).not.toContain(TOKEN);
+    // Tabs are named by client, and the real scope is in the snippet.
+    expect(within(c).getByRole("tab", { name: "npm and pnpm" })).toBeTruthy();
+    expect(c.textContent).toContain("@tidewater:registry");
     expect(
       screen.getAllByRole("link", { name: "Packages" }).length,
     ).toBeGreaterThan(0);
     expect(await axeViolations()).toEqual([]);
   });
 
-  it("says so when no license reaches a private feed, and when there are no tokens", async () => {
+  it("leaves Packages out when the account has no feed, token or per-app token", async () => {
     mockFetch(routes({ [ME]: tokens({ feeds: [], tokens: [] }) }));
     renderPortal();
-    const c = await card();
-    expect(within(c).getByText(/No tokens yet/)).toBeTruthy();
-    expect(
-      within(c).getByText(/None of your active licenses include a private/),
-    ).toBeTruthy();
+    await screen.findByRole("heading", { level: 1, name: "Account" });
+    await waitFor(() => expect(fetchedRequests()).toContain(`GET ${ME}`));
+    await waitFor(() =>
+      expect(screen.queryByRole("heading", { name: /^Packages$/ })).toBeNull(),
+    );
+    expect(screen.queryByRole("link", { name: "Packages" })).toBeNull();
   });
 
-  it("shows a new token once, in a dialog Escape and the scrim cannot close before it is copied or acknowledged", async () => {
+  it("with tokens but no private feed, lists them without offering to create one", async () => {
+    mockFetch(routes({ [ME]: tokens({ feeds: [] }) }));
+    renderPortal();
+    const c = await card();
+    expect(within(c).getByText("CI build server")).toBeTruthy();
+    expect(
+      within(c).queryByRole("button", { name: "Create personal token" }),
+    ).toBeNull();
+  });
+
+  it("shows a new personal token once, with the shell line, and Escape and the scrim cannot close it before it is copied", async () => {
     const posted: unknown[] = [];
     mockFetch(
       routes({
@@ -150,19 +175,25 @@ describe("Account → Packages (F-33)", () => {
     renderPortal();
     const c = await card();
     await userEvent.click(
-      within(c).getByRole("button", { name: "Create token" }),
+      within(c).getByRole("button", { name: "Create personal token" }),
     );
-    const form = await screen.findByRole("dialog", { name: "Create a token" });
-    await userEvent.type(within(form).getByLabelText("Name"), "Laptop 2");
-    await userEvent.click(
-      within(form).getByRole("button", { name: "Create token" }),
-    );
+    const form = await screen.findByRole("dialog", {
+      name: "Create a personal token",
+    });
+    expect(
+      within(form).getByText(/Expires Dec 30, 2026|Expires \w+ \d+, \d{4}/),
+    ).toBeTruthy();
+    await typeName(form, "Laptop 2");
+    await userEvent.click(within(form).getByRole("button", { name: "Create" }));
     const shown = await screen.findByRole("dialog", {
-      name: "Copy your token now",
+      name: "Copy your personal token now",
     });
     expect(posted).toEqual([{ label: "Laptop 2", expiresInDays: 90 }]);
     expect(within(shown).getAllByText(TOKEN).length).toBeGreaterThan(0);
-    expect(shown.textContent).toContain(`_authToken=${TOKEN}`);
+    expect(shown.textContent).toContain(`export PKEY_REGISTRY_TOKEN=${TOKEN}`);
+    // The setup snippets name the variable: the real token is never written into a config file.
+    expect(shown.textContent).toContain("${PKEY_REGISTRY_TOKEN}");
+    expect(shown.textContent).not.toContain(`_authToken=${TOKEN}`);
     expect(await axeViolations()).toEqual([]);
     fireEvent.keyDown(shown, { key: "Escape" });
     expect(
@@ -177,46 +208,55 @@ describe("Account → Packages (F-33)", () => {
     await userEvent.click(within(shown).getByRole("button", { name: "Done" }));
     await waitFor(() =>
       expect(
-        screen.queryByRole("dialog", { name: "Copy your token now" }),
+        screen.queryByRole("dialog", { name: "Copy your personal token now" }),
       ).toBeNull(),
     );
-    // Closing the dialog drops the token from the page.
     expect(document.body.textContent).not.toContain(TOKEN);
+    // Focus lands on a control of the page, not the body.
+    await waitFor(
+      () => expect(document.activeElement).not.toBe(document.body),
+      { timeout: 4000 },
+    );
   });
 
-  it("asks to confirm it's you when the sign-in is stale, and keeps what was typed", async () => {
+  it("says give it a name on an empty submit, and asks to confirm it's you without a second footer", async () => {
     mockFetch(
       routes({
-        [`POST ${ME}`]: {
-          status: 401,
-          body: { error: "step_up_required" },
-        },
+        [`POST ${ME}`]: { status: 401, body: { error: "step_up_required" } },
       }),
     );
     renderPortal();
     const c = await card();
     await userEvent.click(
-      within(c).getByRole("button", { name: "Create token" }),
+      within(c).getByRole("button", { name: "Create personal token" }),
     );
-    const form = await screen.findByRole("dialog", { name: "Create a token" });
-    await userEvent.type(within(form).getByLabelText("Name"), "Laptop 2");
-    await userEvent.click(
-      within(form).getByRole("button", { name: "Create token" }),
+    const form = await screen.findByRole("dialog", {
+      name: "Create a personal token",
+    });
+    await userEvent.click(within(form).getByRole("button", { name: "Create" }));
+    expect(within(form).getByText("Give it a name.")).toBeTruthy();
+    await typeName(form, "Laptop 2");
+    await userEvent.click(within(form).getByRole("button", { name: "Create" }));
+    await waitFor(() =>
+      expect(within(form).queryByRole("button", { name: "Create" })).toBeNull(),
     );
-    await within(form).findByText(/create a token/i, { selector: "*" });
     expect(
       (within(form).getByLabelText("Name") as HTMLInputElement).value,
     ).toBe("Laptop 2");
   });
 
-  it("revokes a token after an inline confirmation", async () => {
+  it("revokes after an inline confirmation, Escape backs out, and focus moves to the next row", async () => {
     let revoked = false;
+    const two = [
+      token(),
+      token({ id: "pt_two", label: "Second", hint: "zzzz" }),
+    ];
     mockFetch(
       routes({
         [ME]: () =>
           revoked
-            ? tokens({ tokens: [token({ status: "revoked" })] })
-            : tokens({ tokens: [token()] }),
+            ? tokens({ tokens: [token({ status: "revoked" }), two[1]!] })
+            : tokens({ tokens: two }),
         [`DELETE ${ME}/pt_ci`]: () => {
           revoked = true;
           return { ok: true, view: token({ status: "revoked" }) };
@@ -230,6 +270,13 @@ describe("Account → Packages (F-33)", () => {
     );
     const q = within(c).getByText("Revoke CI build server?");
     await waitFor(() => expect(document.activeElement).toBe(q));
+    fireEvent.keyDown(q, { key: "Escape" });
+    await waitFor(() =>
+      expect(within(c).queryByText("Revoke CI build server?")).toBeNull(),
+    );
+    await userEvent.click(
+      within(c).getByRole("button", { name: "Revoke CI build server" }),
+    );
     await userEvent.click(
       within(c).getByRole("button", { name: "Revoke CI build server" }),
     );
@@ -237,6 +284,275 @@ describe("Account → Packages (F-33)", () => {
       expect(within(c).queryByText("CI build server")).toBeNull(),
     );
     expect(fetchedRequests()).toContain(`DELETE ${ME}/pt_ci`);
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        within(c).getByRole("button", { name: "Revoke Second" }),
+      ),
+    );
+  });
+
+  it("lists per-app tokens apart and revokes one through its licence", async () => {
+    mockFetch(
+      routes({
+        [ME]: tokens({
+          legacy: [
+            {
+              product: "tidewater",
+              productName: "Tidewater Studio",
+              licenseId: "lic_tidewater",
+              tokenId: "rt_old",
+              label: "Old laptop",
+              hint: "q9Zx",
+              ecosystems: null,
+              presentation: "header",
+              createdAt: NOW_S - 90 * DAY,
+              expiresAt: NOW_S + 30 * DAY,
+              lastUsedAt: null,
+              revokedAt: null,
+              status: "active",
+            },
+          ],
+        }),
+        "DELETE /api/licenses/tidewater/lic_tidewater/registry-tokens/rt_old": {
+          ok: true,
+          view: {},
+        },
+      }),
+    );
+    renderPortal();
+    const c = await card();
+    const group = within(c).getByRole("heading", { name: "Per-app tokens" })
+      .parentElement!.parentElement!;
+    expect(within(group).getByText("Old laptop")).toBeTruthy();
+    expect(within(group).getByText(/pkeyr_…q9Zx/)).toBeTruthy();
+    await userEvent.click(
+      within(group).getByRole("button", { name: "Revoke Old laptop" }),
+    );
+    await userEvent.click(
+      within(group).getByRole("button", { name: "Revoke Old laptop" }),
+    );
+    await waitFor(() =>
+      expect(fetchedRequests()).toContain(
+        "DELETE /api/licenses/tidewater/lic_tidewater/registry-tokens/rt_old",
+      ),
+    );
+  });
+
+  it("gives a private Godot feed its own licence-bound URL, never a personal token in a URL", async () => {
+    const posted: unknown[] = [];
+    mockFetch(
+      routes({
+        [ME]: tokens({
+          feeds: [
+            {
+              product: "tidewater",
+              productName: "Tidewater Studio",
+              licenseId: "lic_tidewater",
+              ecosystem: "godot",
+              accessMode: "licensed",
+              baseUrl: "https://pkg.plrs.im/godot/tidewater/",
+              namespace: {},
+            },
+          ],
+        }),
+        "POST /api/licenses/tidewater/lic_tidewater/registry-tokens": (
+          init: RequestInit,
+        ) => {
+          posted.push(JSON.parse(String(init.body)));
+          return {
+            status: 201,
+            body: {
+              ok: true,
+              token: "pkeyr_GodotUrlToken0123456789abcdef",
+              view: {},
+            },
+          };
+        },
+      }),
+    );
+    renderPortal();
+    const c = await card();
+    expect(
+      within(c).getByText(/Godot editor can't use personal tokens/),
+    ).toBeTruthy();
+    await userEvent.click(
+      within(c).getByRole("button", { name: "Create Godot editor URL" }),
+    );
+    const form = await screen.findByRole("dialog", {
+      name: "Create a Godot editor URL",
+    });
+    await userEvent.click(within(form).getByRole("button", { name: "Create" }));
+    const shown = await screen.findByRole("dialog", {
+      name: "Copy your Godot editor URL now",
+    });
+    expect(posted).toEqual([
+      {
+        label: "Godot editor",
+        ecosystem: "godot",
+        presentation: "url",
+        expiresInDays: 30,
+      },
+    ]);
+    expect(shown.textContent).toContain("/t/pkeyr_GodotUrlToken");
+    expect(shown.textContent).not.toContain("pkeyp_");
+  });
+
+  it("after a per-app revoke focus moves to the next per-app Revoke", async () => {
+    const mk = (id: string, label: string) => ({
+      product: "tidewater",
+      productName: "Tidewater Studio",
+      licenseId: "lic_tidewater",
+      tokenId: id,
+      label,
+      hint: "q9Zx",
+      ecosystems: null,
+      presentation: "header",
+      createdAt: NOW_S - 90 * DAY,
+      expiresAt: NOW_S + 30 * DAY,
+      lastUsedAt: null,
+      revokedAt: null,
+      status: "active" as const,
+    });
+    let gone = false;
+    mockFetch(
+      routes({
+        [ME]: () =>
+          tokens({
+            legacy: gone
+              ? [mk("rt_a", "Old A"), mk("rt_b", "Old B")].map((t, i) =>
+                  i === 0 ? { ...t, status: "revoked" as const } : t,
+                )
+              : [mk("rt_a", "Old A"), mk("rt_b", "Old B")],
+          }),
+        "DELETE /api/licenses/tidewater/lic_tidewater/registry-tokens/rt_a":
+          () => {
+            gone = true;
+            return { ok: true, view: {} };
+          },
+      }),
+    );
+    renderPortal();
+    const c = await card();
+    await userEvent.click(
+      within(c).getByRole("button", { name: "Revoke Old A" }),
+    );
+    expect(
+      within(c).getByText(/Use a personal token to reconnect/),
+    ).toBeTruthy();
+    await userEvent.click(
+      within(c).getByRole("button", { name: "Revoke Old A" }),
+    );
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        within(c).getByRole("button", { name: "Revoke Old B" }),
+      ),
+    );
+  });
+
+  it("with only Godot feeds, the Godot URL is the primary, no personal token is offered, and the URL is the shown value", async () => {
+    mockFetch(
+      routes({
+        [ME]: tokens({
+          tokens: [],
+          feeds: [
+            {
+              product: "tidewater",
+              productName: "Tidewater Studio",
+              licenseId: "lic_tidewater",
+              ecosystem: "godot",
+              accessMode: "licensed",
+              baseUrl: "https://pkg.plrs.im/godot/tidewater/",
+              namespace: {},
+            },
+          ],
+        }),
+        "POST /api/licenses/tidewater/lic_tidewater/registry-tokens": {
+          status: 201,
+          body: {
+            ok: true,
+            token: "pkeyr_GodotUrlToken0123456789abcdef",
+            view: {},
+          },
+        },
+      }),
+    );
+    renderPortal();
+    const h = await screen.findByRole("heading", { name: /^Packages$/ });
+    const c = h.closest("section")!;
+    await screen.findByText(/can't use personal tokens/);
+    expect(
+      within(c).queryByRole("button", { name: "Create personal token" }),
+    ).toBeNull();
+    expect(c.textContent).not.toContain("No personal tokens yet");
+    expect(c.textContent).not.toContain("PKEY_REGISTRY_TOKEN");
+    await userEvent.click(
+      within(c).getByRole("button", { name: "Create Godot editor URL" }),
+    );
+    const form = await screen.findByRole("dialog", {
+      name: "Create a Godot editor URL",
+    });
+    await userEvent.click(within(form).getByRole("button", { name: "Create" }));
+    const shown = await screen.findByRole("dialog", {
+      name: "Copy your Godot editor URL now",
+    });
+    expect(
+      within(shown).getByRole("button", { name: "Copy Godot editor URL" }),
+    ).toBeTruthy();
+    expect(
+      within(shown).getAllByText(
+        "https://pkg.plrs.im/godot/tidewater/t/pkeyr_GodotUrlToken0123456789abcdef/asset-library/api",
+      ).length,
+    ).toBeGreaterThan(0);
+    expect(
+      within(shown).getByRole("tab", { name: "Godot 4.4 to 4.6" }),
+    ).toBeTruthy();
+    expect(shown.textContent).toContain("Godot 4.4 to 4.6: Editor Settings");
+    expect(shown.textContent).not.toContain("4.6 and earlier");
+  });
+
+  it("names the Godot refusals: the limit and an inactive license", async () => {
+    let status = 409;
+    mockFetch(
+      routes({
+        [ME]: tokens({
+          feeds: [
+            {
+              product: "tidewater",
+              productName: "Tidewater Studio",
+              licenseId: "lic_tidewater",
+              ecosystem: "godot",
+              accessMode: "licensed",
+              baseUrl: "https://pkg.plrs.im/godot/tidewater/",
+              namespace: {},
+            },
+          ],
+        }),
+        "POST /api/licenses/tidewater/lic_tidewater/registry-tokens": () => ({
+          status,
+          body: {
+            error: "x",
+            reason: status === 409 ? "token_limit" : undefined,
+          },
+        }),
+      }),
+    );
+    renderPortal();
+    const c = await card();
+    await userEvent.click(
+      within(c).getByRole("button", { name: "Create Godot editor URL" }),
+    );
+    const form = await screen.findByRole("dialog", {
+      name: "Create a Godot editor URL",
+    });
+    await userEvent.click(within(form).getByRole("button", { name: "Create" }));
+    expect(
+      await within(form).findByText(/already has the most per-app tokens/),
+    ).toBeTruthy();
+    status = 403;
+    await userEvent.click(within(form).getByRole("button", { name: "Create" }));
+    expect(
+      await within(form).findByText(/Tidewater Studio license isn't active/),
+    ).toBeTruthy();
   });
 
   it("disables Create at the account's limit and says why", async () => {
@@ -251,9 +567,11 @@ describe("Account → Packages (F-33)", () => {
     renderPortal();
     const c = await card();
     await userEvent.click(
-      within(c).getByRole("button", { name: /Create token/ }),
+      within(c).getByRole("button", { name: /Create personal token/ }),
     );
-    expect(screen.queryByRole("dialog", { name: "Create a token" })).toBeNull();
+    expect(
+      screen.queryByRole("dialog", { name: "Create a personal token" }),
+    ).toBeNull();
   });
 });
 

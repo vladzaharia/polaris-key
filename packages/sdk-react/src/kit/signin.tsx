@@ -45,7 +45,8 @@ import {
   type FormInput,
   type FormStep,
 } from "./contract.js";
-import { text, type Chrome } from "./parts.js";
+import { GLYPHS, text, type Chrome } from "./parts.js";
+import { withChoice } from "./licenseRows.js";
 import { renderView } from "./views.js";
 
 export type { FormInput, FormStep } from "./contract.js";
@@ -230,13 +231,47 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
   const [replacePick, setReplacePick] = useState<string | undefined>();
   const picked: FormInput =
     replacePick !== undefined ? { ...form.input, replacePick } : form.input;
-  const input = useCountdown(picked);
+  // The Done line names the license that was chosen (the host gives the holder).
+  const [pickedTier, setPickedTier] = useState<string | undefined>();
+  const named: FormInput =
+    picked.signIn?.outcome === "signedIn" && pickedTier
+      ? {
+          ...picked,
+          account: {
+            signedIn: true,
+            ...(picked.account ?? {}),
+            tier: picked.account?.tier ?? pickedTier,
+          },
+        }
+      : picked;
+  const input = useCountdown(named);
   const sheet = (props.presentation ?? input.signIn?.presentation) === "sheet";
 
   const close = () => {
-    if (model && model.snapshot.session.outcome !== undefined)
-      void model.cancel();
+    const out = model?.snapshot.session.outcome;
+    if (model && out !== undefined && out !== "signedIn") void model.cancel();
     props.onClose?.();
+  };
+  const closeRef = useRef(close);
+  closeRef.current = close;
+  // The host hears the sign-in finished once per sign-in (it can finish its own task).
+  const doneSent = useRef(false);
+  /** The toast an existing license leaves in the page when its sheet closes. */
+  const [toast, setToast] = useState<{
+    key: string;
+    args: Record<string, string>;
+  } | null>(null);
+  const finish = () => {
+    if (doneSent.current) return;
+    doneSent.current = true;
+    props.onDone?.();
+  };
+  const tierOf = (id: string | null | undefined): string | undefined => {
+    const ch = model?.snapshot.choices;
+    if (!id || !ch) return undefined;
+    return id === "create" || id === "new"
+      ? ch.create?.tierName
+      : ch.choices.find((r) => r.id === id)?.tierName;
   };
 
   /** One control of the form, applied to the live model (plans/I-04.md §G.9's primitives). */
@@ -245,7 +280,7 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
     detail: Record<string, unknown>,
   ): Promise<void> => {
     if (key === "signin.done.start") {
-      props.onDone?.();
+      finish();
       if (sheet) props.onClose?.();
       return;
     }
@@ -269,9 +304,13 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
       case "signInHandoff.newCode":
         return model.retry();
       case "common.cancel":
-        if (s.session.outcome === undefined && sheet) return close();
+        // In a sheet, Cancel leaves it (and drops a sign-in in flight); in the page, it backs out.
+        if (sheet) return close();
         return model.cancel();
       case "signin.choice.continue":
+        // Pressed once: a second press while the license is redeemed does nothing.
+        if (s.session.redeeming) return;
+        setPickedTier(tierOf(s.selected ?? s.choices?.preselected));
         return model.continue();
       case "signin.choice.keyInstead":
         return model.haveKey();
@@ -279,10 +318,22 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
         return model.submitKey(s.keyField?.text ?? "");
       case "signin.replace.open":
       case "signin.replace.openSystem": {
-        const id = s.selected ?? s.choices?.preselected;
+        // A full license names itself; else the pick, the preselected, or the only full one.
+        const full = (s.choices?.choices ?? []).filter(
+          (r) => r.state !== "free",
+        );
+        const id =
+          (typeof detail.licenseId === "string"
+            ? detail.licenseId
+            : undefined) ??
+          s.selected ??
+          s.choices?.preselected ??
+          (full.length === 1 ? full[0]!.id : undefined);
         return id ? model.openReplace(id) : undefined;
       }
       case "signin.replace.confirm":
+        if (s.session.redeeming) return;
+        setPickedTier(tierOf(s.replaceView?.licenseId));
         return typeof detail.deviceId === "string"
           ? model.confirmReplace(detail.deviceId)
           : undefined;
@@ -297,6 +348,7 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
     {
       ...props,
       input,
+      driven: model !== null,
       onAction: (a) => {
         props.onAction?.(a);
         void drive(a.key, a);
@@ -359,6 +411,77 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
     morph(card, prev.height, index >= prev.index);
   });
 
+  // The sign-in finished: the host hears it once. An existing license opens the app with the
+  // toast, so its sheet closes by itself; a new one ends on Done.
+  const outcome = input.signIn?.outcome;
+  useEffect(() => {
+    if (outcome !== "signedIn") {
+      doneSent.current = false;
+      return;
+    }
+    finish();
+    if (sheet && props.open && !input.signIn?.issuedNow) {
+      const holder = input.account?.holder?.trim();
+      const tier = input.account?.tier;
+      setToast(
+        holder && tier
+          ? { key: "signin.desktop.toast", args: { name: holder, tier } }
+          : { key: "signin.return.signedInShort", args: {} },
+      );
+      closeRef.current();
+    }
+  }, [outcome]);
+  // The toast lasts a few seconds.
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 6000);
+    return () => clearTimeout(t);
+  }, [toast]);
+
+  // Focus follows the step: the new heading takes it when the old control is gone (or the sheet
+  // is open), unless the kit already put it on a field.
+  const firstStep = useRef(true);
+  useEffect(() => {
+    if (firstStep.current) {
+      firstStep.current = false;
+      return;
+    }
+    const root = kit.rootRef.current;
+    const at = document.activeElement;
+    if (!root) return;
+    const lost =
+      at === null ||
+      at === document.body ||
+      (root.contains(at) && at instanceof HTMLButtonElement);
+    if (!lost && !(sheet && props.open)) return;
+    if (at instanceof HTMLInputElement && root.contains(at)) return;
+    root
+      .querySelector<HTMLElement>('[data-part="title"]')
+      ?.focus({ preventScroll: true });
+  }, [stepKey]);
+
+  // `sheet`: Back on a phone closes the sheet (there is no Escape key there).
+  const pushed = useRef(false);
+  const sheetOpen = sheet && props.open === true;
+  useEffect(() => {
+    if (!sheetOpen) return;
+    if (!pushed.current) {
+      history.pushState({ pkSheet: true }, "");
+      pushed.current = true;
+    }
+    const onPop = () => {
+      pushed.current = false;
+      closeRef.current();
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [sheetOpen]);
+  useEffect(() => {
+    if (sheetOpen || !pushed.current) return;
+    pushed.current = false;
+    if (history.state?.pkSheet) history.back();
+  }, [sheetOpen]);
+
   // `sheet`: the dialog follows `open` (showModal makes the page behind inert).
   const dialogRef = useRef<HTMLDialogElement | null>(null);
   useEffect(() => {
@@ -367,6 +490,10 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
     if (props.open && !d.open) {
       if (typeof d.showModal === "function") d.showModal();
       else d.setAttribute("open", "");
+      // The heading takes focus on open, never the close control.
+      d.querySelector<HTMLElement>('[data-part="title"]')?.focus({
+        preventScroll: true,
+      });
     } else if (!props.open && d.open) {
       if (typeof d.close === "function") d.close();
       else d.removeAttribute("open");
@@ -381,7 +508,7 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
     body_.state === "code" &&
     kit.copy.has(HANDOFF_WAITING);
   const chrome: Chrome = waiting ? { meta: [HANDOFF_WAITING] } : {};
-  const c = kit.ctxFor(body_, chrome);
+  const c = withChoice(kit.ctxFor(body_, chrome));
   const announce = step.announce.length ? (
     <p className="visually-hidden" role="status">
       {step.announce.map((k) => (
@@ -406,6 +533,20 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
             : undefined
       }
     >
+      {sheet && toast ? (
+        <div
+          className="toast pk-flash"
+          role="status"
+          data-part="toast"
+          data-key={toast.key}
+          data-status="success"
+        >
+          {GLYPHS.success()}
+          <span className="texts">
+            <span>{text(c, toast.key, toast.args)}</span>
+          </span>
+        </div>
+      ) : null}
       {sheet ? (
         <dialog
           ref={dialogRef}
@@ -417,9 +558,37 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
             e.preventDefault();
             close();
           }}
+          onClick={(e) => {
+            // A click on the scrim lands on the dialog itself: it backs out like Escape.
+            if (e.target === e.currentTarget) close();
+          }}
         >
           {announce}
           {body}
+          <button
+            type="button"
+            className="sheet-close"
+            data-part="close"
+            aria-label={
+              kit.copy.has("common.close")
+                ? kit.copy.format("common.close", {})
+                : "Close"
+            }
+            onClick={close}
+          >
+            <svg
+              className="glyph"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              aria-hidden="true"
+              focusable="false"
+            >
+              <path d="M18 6 6 18M6 6l12 12" />
+            </svg>
+          </button>
         </dialog>
       ) : (
         <>

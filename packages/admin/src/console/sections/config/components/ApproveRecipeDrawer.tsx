@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, XCircle } from "lucide-react";
+import { AlertTriangle, ChevronRight, XCircle } from "lucide-react";
 import {
   ApiError,
   type EdgeMintIdentity,
@@ -16,18 +16,23 @@ import { Checkbox } from "../../../../ui/Checkbox.js";
 import { ConfirmDialog } from "../../../../ui/ConfirmDialog.js";
 import { DescriptionList } from "../../../../ui/DescriptionList.js";
 import { Drawer, DrawerBody, DrawerFooter } from "../../../../ui/Drawer.js";
+import { CopyButton } from "../../../../ui/CopyButton.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
 import { Skeleton } from "../../../../ui/Skeleton.js";
 import { Timestamp } from "../../../../ui/Timestamp.js";
 import { toast } from "../../../../ui/toast.js";
-import { canIn } from "../../../access/can.js";
-import { useMe, useProduct } from "../../../data/hooks.js";
+import { useWriteGate } from "../../../access/useCan.js";
+import { useProduct } from "../../../data/hooks.js";
 import { mutate } from "../../../data/mutations.js";
 import { qk } from "../../../data/queries.js";
 import { codecs, Link, useSearchParam } from "../../../router.js";
 import { r } from "../../../routes.js";
 import { stepUpHref, useStepUp } from "../../core/pages/UserRelink.js";
+import { docsUrl } from "../../../../lib/docsLinks.js";
 import { useEdgeMint } from "../data.js";
+import { mintEdited } from "../model/mintBlock.js";
+import { loadDraft } from "../model/catalogDraft.js";
+import { focusRecipeAnchor, openerOf } from "../model/recipeFocus.js";
 import {
   FieldGrid,
   publicReasons,
@@ -38,6 +43,7 @@ import {
   FIELD_ORDER,
   fieldsOf,
   IDENTITY_ROWS,
+  lifetime,
   show,
   widening,
 } from "../model/edgeMintFields.js";
@@ -50,10 +56,50 @@ const snapshot = (recipe: EdgeMintRecipe): string =>
 function whoCanMint(
   requires: EdgeMintRecipe["requires"],
   name: string,
+  publicMint: boolean,
 ): string {
-  if (requires === "none") return "Anyone";
+  if (requires === "none" || publicMint) return `Anyone who installs ${name}`;
   if (requires === "registered") return `Any device of ${name}`;
   return `Devices of ${name} with a usable license`;
+}
+
+/**
+ * Where a public mint is turned off. Registration is the derived policy (Services); the other two
+ * come from the manifest's autoIssue block, which the console cannot edit.
+ */
+function PublicFix({
+  slug,
+  data,
+}: {
+  slug: string;
+  data: EdgeMintRecipesResponse;
+}): React.ReactElement {
+  const link = "text-fg underline underline-offset-2";
+  const manifest = data.anonymousEnroll || data.oidcDefault;
+  return (
+    <>
+      {data.registration === "open" ? (
+        <Link to={r.services(slug)} className={link}>
+          Change in Services
+        </Link>
+      ) : null}
+      {manifest ? (
+        <>
+          {data.registration === "open" ? " or in" : "Set in"} the
+          manifest&apos;s{" "}
+          <a
+            className={link}
+            href={`${docsUrl("autoIssue")}#auto-issue`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            <code className="font-mono text-xs">autoIssue</code> block
+            <span className="sr-only"> (opens a new tab)</span>
+          </a>
+        </>
+      ) : null}
+    </>
+  );
 }
 
 /**
@@ -79,9 +125,9 @@ export function ApproveRecipeDrawer({
   const open = recipeId !== "";
   const mint = useEdgeMint(slug, open);
   const data = mint.data;
-  const me = useMe().data;
   const productName = useProduct(slug).data?.name ?? slug;
-  const canEdit = canIn(me, "config", slug, "edit");
+  const gate = useWriteGate("config", slug);
+  const canEdit = gate.allowed;
   const recipe = data?.recipes?.find((x) => x.id === recipeId) ?? null;
   const { fresh, markStale } = useStepUp(open);
   const [ack, setAck] = React.useState(false);
@@ -92,7 +138,9 @@ export function ApproveRecipeDrawer({
   const [revoking, setRevoking] = React.useState(false);
   const seen = React.useRef<{ id: string; snap: string } | null>(null);
   // Who opened the drawer, read in the first render, before the drawer moves focus.
-  const opener = React.useRef<Element | null>(document.activeElement);
+  const opener = React.useRef<HTMLElement | null>(
+    openerOf(document.activeElement),
+  );
 
   // What the operator has read. A different recipe resets the drawer; the same one with other
   // fields is "changed while you were reviewing".
@@ -172,17 +220,9 @@ export function ApproveRecipeDrawer({
 
   const closeAfterRevoke = (): void => {
     // The operator's own change must not read as a concurrent one: leave, and put focus back.
-    // The opener's label changes with the status, so it may be a new element by then.
-    const back = opener.current;
     setRevoking(false);
     onClose();
-    window.setTimeout(() => {
-      const target =
-        back instanceof HTMLElement && back.isConnected
-          ? back
-          : document.querySelector<HTMLElement>("[data-recipe-opener]");
-      target?.focus();
-    }, 60);
+    focusRecipeAnchor(queryClient, slug, opener.current);
   };
 
   const fields: { field: Field; moved: boolean }[] = FIELD_ORDER.map(
@@ -192,23 +232,32 @@ export function ApproveRecipeDrawer({
   const movedRows = fields.filter((f) => f.moved);
   const keptRows = hasApproval ? fields.filter((f) => !f.moved) : [];
   const shownRows = approved ? fields : hasApproval ? movedRows : fields;
-  const approver = recipe?.approval?.approvedBy;
+  // "Name <email>" reads as the name: the angle brackets reorder inside right-to-left text.
+  const approver = recipe?.approval?.approvedBy?.replace(/\s*<[^>]*>\s*$/, "");
+  const draftEdited = ((): boolean => {
+    const e = loadDraft(slug)?.entries.find((x) => x.key === recipeId);
+    return e !== undefined && recipe !== null && mintEdited(e, recipe);
+  })();
 
   const title = loadFailed
     ? "Couldn't load the recipe"
     : recipe
       ? approved
         ? `Recipe ${recipe.id}`
-        : `Approve ${recipe.id}?`
+        : canEdit
+          ? `Approve ${recipe.id}?`
+          : `Recipe ${recipe.id}`
       : mint.isPending
         ? "Recipe"
         : "Recipe not found";
   const description = loadFailed
-    ? "Nothing was approved."
+    ? undefined
     : recipe
       ? approved
         ? "Approved: it mints exactly as shown."
-        : `${whoCanMint(recipe.requires, productName)} can then mint tokens signed by ${recipe.signingKeySecret}, with exactly these fields.`
+        : !canEdit
+          ? "It mints nothing until an editor approves it."
+          : `${whoCanMint(recipe.requires, productName, publicMint)} can then mint tokens signed by ${recipe.signingKeySecret}, with exactly these fields.`
       : mint.isPending
         ? "Loading the recipe."
         : "This product has no recipe by that name.";
@@ -217,7 +266,8 @@ export function ApproveRecipeDrawer({
     !recipe || approved
       ? null
       : !canEdit
-        ? "Only members who can edit Managed config can approve."
+        ? (gate.disabledReason ??
+          "Only members who can edit Managed config can approve.")
         : needsSignIn
           ? refused
             ? null
@@ -234,6 +284,10 @@ export function ApproveRecipeDrawer({
           if (!o) onClose();
         }}
         dismissible={!busy}
+        onCloseAutoFocus={(e) => {
+          e.preventDefault();
+          focusRecipeAnchor(queryClient, slug, opener.current);
+        }}
         size="lg"
         title={title}
         description={description}
@@ -254,6 +308,12 @@ export function ApproveRecipeDrawer({
             </div>
           ) : recipe ? (
             <div className="space-y-6">
+              {draftEdited ? (
+                <Callout tone="info" title="You have unpublished edits">
+                  This is the saved recipe. Publish the catalog to include them,
+                  then approve.
+                </Callout>
+              ) : null}
               {stale ? (
                 <Callout
                   tone="info"
@@ -285,8 +345,12 @@ export function ApproveRecipeDrawer({
                   <FieldGrid recipe={recipe} rows={shownRows} />
                 ) : null}
                 {keptRows.length > 0 && !approved ? (
-                  <details className="text-sm">
-                    <summary className="flex min-h-6 cursor-pointer items-center text-fg-muted">
+                  <details className="group text-sm">
+                    <summary className="flex min-h-6 cursor-pointer items-center gap-1 text-fg-muted">
+                      <ChevronRight
+                        aria-hidden
+                        className="size-4 shrink-0 transition-transform group-open:rotate-90 motion-reduce:transition-none"
+                      />
                       {keptRows.length}{" "}
                       {keptRows.length === 1 ? "field" : "fields"} unchanged
                     </summary>
@@ -313,9 +377,12 @@ export function ApproveRecipeDrawer({
                 ) : null}
               </section>
 
-              {wider ? (
+              {wider || changed.has("license") ? (
                 <Callout tone="warning" title="This allows more than before">
                   {wider}
+                  {changed.has("license")
+                    ? " License was turned off since the approval, so the mint no longer checks each device's license: a disabled or expired license would mint again."
+                    : null}
                 </Callout>
               ) : null}
               {changed.has("identity") && identity ? (
@@ -327,7 +394,7 @@ export function ApproveRecipeDrawer({
                     Sign-in now trusts a different identity provider or group
                     map than when this recipe was approved
                     {recipe.approval?.identity === null
-                      ? ", which was approved while Identity was off."
+                      ? " (Identity was off then)."
                       : "."}
                   </p>
                   <DescriptionList
@@ -352,20 +419,6 @@ export function ApproveRecipeDrawer({
                   />
                 </section>
               ) : null}
-              {changed.has("license") ? (
-                <p className="text-sm text-fg">
-                  License was turned off after this recipe was approved, so the
-                  mint no longer checks each device&apos;s license: a disabled
-                  or expired license would mint again.
-                </p>
-              ) : null}
-              {changed.has("registration") && data ? (
-                <p className="text-sm text-fg">
-                  The mint became public ({publicReasons(data)}) after this
-                  recipe was approved. Re-approving needs the acknowledgement
-                  below.
-                </p>
-              ) : null}
               {!approved && !licenseEnabled && !changed.has("license") ? (
                 <p
                   data-testid="edge-mint-approve-license-off"
@@ -383,15 +436,10 @@ export function ApproveRecipeDrawer({
                   <div className="space-y-2">
                     <p>
                       Because {publicReasons(data)}.{" "}
-                      <Link
-                        to={r.enrollment(slug)}
-                        className="text-accent-fg underline underline-offset-2"
-                      >
-                        Change in Enrollment
-                      </Link>
+                      <PublicFix slug={slug} data={data} />
                     </p>
                     <Checkbox
-                      label="I understand, and want this token minted for anyone who installs the app"
+                      label={`I understand: anyone who installs the app can get this token, and a leaked one works for ${lifetime(recipe.ttlSeconds)}.`}
                       checked={ack}
                       onCheckedChange={setAck}
                     />
@@ -403,7 +451,7 @@ export function ApproveRecipeDrawer({
         </DrawerBody>
         {refused || copy || reason ? (
           <div
-            className="max-h-[40vh] shrink-0 space-y-2 overflow-y-auto px-4 pb-3 lg:px-6"
+            className="max-h-[40vh] shrink-0 space-y-2 overflow-y-auto border-t border-border px-4 py-3 lg:px-6"
             data-testid="approve-notices"
           >
             {refused ? (
@@ -424,11 +472,28 @@ export function ApproveRecipeDrawer({
               </div>
             ) : null}
             {copy ? (
-              <ErrorState
-                error={error}
-                context={{ thing: "Recipe" }}
-                className="items-start px-3 py-3 text-left"
-              />
+              <div
+                role="alert"
+                className="flex items-start gap-2 rounded-md border border-danger-border bg-danger-subtle p-3 text-sm"
+              >
+                <XCircle
+                  aria-hidden
+                  className="mt-0.5 size-4 shrink-0 text-danger"
+                />
+                <div className="min-w-0 flex-1 space-y-1">
+                  <p className="font-semibold text-danger">
+                    Nothing was approved. {copy.title}.
+                  </p>
+                  <p className="text-fg">{copy.description}</p>
+                  {copy.action === "copy-details" ? (
+                    <CopyButton
+                      value={JSON.stringify(copy.details, null, 2)}
+                      label="Copy details"
+                      showLabel
+                    />
+                  ) : null}
+                </div>
+              </div>
             ) : null}
             {reason ? (
               <p className="flex items-center gap-2 text-sm text-fg-muted">
@@ -463,13 +528,7 @@ export function ApproveRecipeDrawer({
             ) : (
               <Button
                 loading={busy}
-                disabledReason={
-                  !canEdit
-                    ? "Only members who can edit Managed config can approve."
-                    : needsAck
-                      ? "Tick the acknowledgement above first."
-                      : undefined
-                }
+                disabledReason={reason ?? undefined}
                 onClick={() => void approve()}
               >
                 {recipe.status === "changed" ? "Re-approve" : "Approve"}

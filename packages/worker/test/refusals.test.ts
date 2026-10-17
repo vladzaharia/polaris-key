@@ -1,3 +1,4 @@
+import { ingestFor } from "../src/core/ingest/pipeline.js";
 /**
  * UX-15: the refusal log (`core/licensing/refusals.ts`, docs/design/EXPERIENCE.md §0.9).
  *
@@ -22,7 +23,7 @@ import {
 } from "./seed.js";
 import { loadProduct, type Product } from "../src/core/products.js";
 import { handleActivate } from "../src/services/license/activation.js";
-import { handleLicenseRoutes } from "../src/services/license/routes.js";
+import { LICENSE_ROUTES } from "../src/services/license/routes.js";
 import { authorizeDevice } from "../src/core/licensing/authz.js";
 import {
   REFUSAL_LABEL_MAX,
@@ -44,7 +45,7 @@ import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
 import type { ServiceContext } from "../src/core/registry.js";
-import { NO_HOOKS, NO_INGEST } from "./helpers.js";
+import { NO_HOOKS } from "./helpers.js";
 
 const SLUG = "djdl";
 const ONE_SEAT = {
@@ -172,12 +173,12 @@ describe("the refusal site logs refusals", () => {
       rest: ["activate"],
       now: NOW + 1,
       hooks: NO_HOOKS,
-      ingest: NO_INGEST,
+      ingest: ingestFor(new Map()),
       waitUntil: (p) => {
         pending.push(p);
       },
     };
-    const res = await handleLicenseRoutes(ctx);
+    const res = await LICENSE_ROUTES.handle(ctx);
     expect(res?.status).toBe(403);
     expect(pending).toHaveLength(1);
     await Promise.all(pending);
