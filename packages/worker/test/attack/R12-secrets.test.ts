@@ -1742,11 +1742,11 @@ describe("R12-06 device User-Agent is collected, stored and re-served", () => {
     );
     expect(row!.ua).toBe(UA); // untruncated, unhashed
 
-    // PRIVACY.md never mentions the User-Agent, in either the "collected" or
-    // "not collected" list.
+    // PRIVACY.md now lists the User-Agent among what the server keeps (DOC-12b closed the
+    // disclosure half of R12-06; the collection itself stands).
     const privacy = readFileSync(join(REPO, "docs", "PRIVACY.md"), "utf8");
-    expect(privacy.toLowerCase()).not.toContain("user-agent");
-    expect(privacy.toLowerCase()).not.toContain("user agent");
+    expect(privacy).toContain("User-Agent");
+    expect(privacy).toContain("`devices.ua`");
     // Nor the client IP that rateLimit.clientIp() reads and Workers Logs persists.
     expect(privacy).not.toContain("cf-connecting-ip");
   });
