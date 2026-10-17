@@ -429,7 +429,9 @@
       "slug": "acme",
       "kid": "acme-2023",
       "publicKey": "<blob>",
-      "trustKeys": { "acme-2023": "<blob>" },
+      "trustKeys": {
+        "acme-2023": "<blob>"
+      },
       "install": "Linked acme-org/acme-app. No additional secrets required.",
       "remainingSecrets": [],
       "defaults": {
@@ -4845,8 +4847,14 @@
         }
       ],
       "breakGlassEnded": [
-        { "key": "core.web.origins", "why": "expired" },
-        { "key": "license.defaults.deviceLimit", "why": "changed" }
+        {
+          "key": "core.web.origins",
+          "why": "expired"
+        },
+        {
+          "key": "license.defaults.deviceLimit",
+          "why": "changed"
+        }
       ]
     },
     "trips": 27
@@ -8459,7 +8467,11 @@
             "area": "catalog",
             "summary": "Publishes a new catalog version: adds run.name, api.key"
           },
-          { "area": "tiers", "id": "pro", "summary": "Tier pro added" },
+          {
+            "area": "tiers",
+            "id": "pro",
+            "summary": "Tier pro added"
+          },
           {
             "area": "release",
             "summary": "Release settings from .pkey/release"
@@ -11528,7 +11540,12 @@
         "modifiedBy": "u1"
       },
       "breakGlass": [],
-      "breakGlassEnded": [{ "key": "core.web.origins", "why": "expired" }]
+      "breakGlassEnded": [
+        {
+          "key": "core.web.origins",
+          "why": "expired"
+        }
+      ]
     },
     "trips": 6
   },
@@ -11543,12 +11560,24 @@
       "manifestDigest": "<blob>",
       "releaseWorkflow": false,
       "ready": true,
-      "product": { "slug": "acme", "name": "Acme", "presentation": null },
-      "slug": { "slug": "acme", "status": "available" },
+      "product": {
+        "slug": "acme",
+        "name": "Acme",
+        "presentation": null
+      },
+      "slug": {
+        "slug": "acme",
+        "status": "available"
+      },
       "registeredAs": null,
       "services": ["license", "config", "release", "distribution", "identity"],
-      "catalog": { "entries": 2 },
-      "platforms": { "values": [], "source": "none" },
+      "catalog": {
+        "entries": 2
+      },
+      "platforms": {
+        "values": [],
+        "source": "none"
+      },
       "secrets": ["OIDC_SECRET__ACME", "MINT_KEY__ACME"],
       "problems": []
     },
@@ -11584,7 +11613,9 @@
               "category": "general",
               "label": "Name",
               "description": "",
-              "schema": { "type": "string" }
+              "schema": {
+                "type": "string"
+              }
             },
             {
               "key": "api.key",
@@ -11592,7 +11623,10 @@
               "category": "api",
               "label": "API key",
               "description": "",
-              "schema": { "type": "string", "minLength": 8 }
+              "schema": {
+                "type": "string",
+                "minLength": 8
+              }
             }
           ]
         },
@@ -11615,13 +11649,27 @@
         "provisioning": [],
         "edgeMint": [],
         "services": {
-          "license": { "enabled": true },
-          "config": { "enabled": true },
-          "release": { "enabled": false },
-          "distribution": { "enabled": false },
-          "update": { "enabled": false },
-          "identity": { "enabled": false },
-          "sync": { "enabled": false }
+          "license": {
+            "enabled": true
+          },
+          "config": {
+            "enabled": true
+          },
+          "release": {
+            "enabled": false
+          },
+          "distribution": {
+            "enabled": false
+          },
+          "update": {
+            "enabled": false
+          },
+          "identity": {
+            "enabled": false
+          },
+          "sync": {
+            "enabled": false
+          }
         },
         "webOrigins": [],
         "release": {
@@ -11636,7 +11684,10 @@
           "stableTagPattern": null,
           "ignoreTags": [],
           "artifactPolicy": null,
-          "access": { "metadata": "public", "artifacts": "public" },
+          "access": {
+            "metadata": "public",
+            "artifacts": "public"
+          },
           "app": null,
           "trustedPublisher": null,
           "releaseKeys": [],
@@ -11662,7 +11713,11 @@
             "area": "catalog",
             "summary": "Publishes a new catalog version: adds run.name, api.key"
           },
-          { "area": "tiers", "id": "pro", "summary": "Tier pro added" },
+          {
+            "area": "tiers",
+            "id": "pro",
+            "summary": "Tier pro added"
+          },
           {
             "area": "release",
             "summary": "Release settings from .pkey/release"
@@ -11700,7 +11755,10 @@
             "id": "standard",
             "summary": "Profile standard replaced from the manifest (secret values set in the console are kept)"
           },
-          { "area": "oidc", "summary": "Sign-in provider https://id.example" },
+          {
+            "area": "oidc",
+            "summary": "Sign-in provider https://id.example"
+          },
           {
             "area": "release",
             "summary": "Release settings from .pkey/release"
@@ -11713,7 +11771,10 @@
             "area": "edgeMint",
             "summary": "Token recipes applemusic (each waits for approval)"
           },
-          { "area": "provisioning", "summary": "1 provisioning hook" }
+          {
+            "area": "provisioning",
+            "summary": "1 provisioning hook"
+          }
         ],
         "skipClaimed": [],
         "delete": [],
@@ -11749,13 +11810,20 @@
             "id": "pro",
             "summary": "Tier pro replaced from the manifest"
           },
-          { "area": "tiers", "id": "team", "summary": "Tier team added" },
+          {
+            "area": "tiers",
+            "id": "team",
+            "summary": "Tier team added"
+          },
           {
             "area": "profiles",
             "id": "standard",
             "summary": "Profile standard replaced from the manifest (secret values set in the console are kept)"
           },
-          { "area": "oidc", "summary": "Sign-in provider https://id.example" },
+          {
+            "area": "oidc",
+            "summary": "Sign-in provider https://id.example"
+          },
           {
             "area": "release",
             "summary": "Release settings from .pkey/release"
@@ -11768,10 +11836,19 @@
             "area": "edgeMint",
             "summary": "Token recipes applemusic (each waits for approval)"
           },
-          { "area": "provisioning", "summary": "1 provisioning hook" }
+          {
+            "area": "provisioning",
+            "summary": "1 provisioning hook"
+          }
         ],
         "skipClaimed": [],
-        "delete": [{ "area": "tiers", "id": "free", "summary": "Tier free" }],
+        "delete": [
+          {
+            "area": "tiers",
+            "id": "free",
+            "summary": "Tier free"
+          }
+        ],
         "conflicts": []
       },
       "breakGlass": []
@@ -11802,7 +11879,10 @@
             "id": "standard",
             "summary": "Profile standard replaced from the manifest (secret values set in the console are kept)"
           },
-          { "area": "oidc", "summary": "Sign-in provider https://id.example" },
+          {
+            "area": "oidc",
+            "summary": "Sign-in provider https://id.example"
+          },
           {
             "area": "release",
             "summary": "Release settings from .pkey/release"
@@ -11815,7 +11895,10 @@
             "area": "edgeMint",
             "summary": "Token recipes applemusic (each waits for approval)"
           },
-          { "area": "provisioning", "summary": "1 provisioning hook" }
+          {
+            "area": "provisioning",
+            "summary": "1 provisioning hook"
+          }
         ],
         "skipClaimed": [],
         "delete": [],
@@ -12626,7 +12709,9 @@
       "slug": "acme",
       "kid": "acme-2023",
       "publicKey": "<blob>",
-      "trustKeys": { "acme-2023": "<blob>" },
+      "trustKeys": {
+        "acme-2023": "<blob>"
+      },
       "install": "Linked acme-org/acme-app. Supply these secrets via PUT /api/products/acme/secrets/<name>: OIDC_SECRET__ACME, MINT_KEY__ACME.",
       "remainingSecrets": ["OIDC_SECRET__ACME", "MINT_KEY__ACME"],
       "defaults": {
@@ -12644,5 +12729,14 @@
       }
     },
     "trips": 14
+  },
+  "13-link-secret-default": {
+    "writes": {},
+    "state": {},
+    "result": {
+      "ok": false,
+      "error": "invalid catalog in manifest: api.key: a secret entry cannot carry default or examples"
+    },
+    "trips": 3
   }
 }

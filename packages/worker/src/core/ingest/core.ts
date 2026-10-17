@@ -300,7 +300,7 @@ async function prepareCreate(
       default_device_limit: manifest.product.defaultDeviceLimit,
       admin_group: manifest.product.adminGroup,
       branding_json: null,
-      release_source: "github",
+      release_source: ctx.source.repo ? "github" : null,
       // Which Polaris Key services this product runs (the registration policy is derived from
       // it, ST-38). In the SAME atomic batch as the row itself: enablement decides which routes
       // a product has, so there must be no instant where a product row exists without it.

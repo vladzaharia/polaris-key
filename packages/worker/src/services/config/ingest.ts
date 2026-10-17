@@ -58,30 +58,19 @@ interface CatalogState {
 function catalogState(ctx: IngestContext): Promise<CatalogState> {
   return ctx.read.memo("config.catalog", async () => {
     if (ctx.mode === "create") {
-      // Screened as the admin API screens every catalog it accepts: the repo-sync path must not
-      // install one the console would refuse (unsupported keywords, an uncompilable `pattern`).
-      try {
-        const catalog = new Catalog(ctx.manifest.catalog as never);
-        catalog.compileAll();
-        return {
-          problem: null,
-          catalogChanged: true,
-          catalogClaimed: false,
-          activeJson: null,
-          incoming: catalog,
-        };
-      } catch (e) {
-        return {
-          problem: {
-            check: "catalog",
-            message: `invalid catalog in manifest: ${e instanceof Error ? e.message : "unknown error"}`,
-          },
-          catalogChanged: true,
-          catalogClaimed: false,
-          activeJson: null,
-          incoming: null,
-        };
-      }
+      // Screened as the admin API screens every catalog it accepts, delivery rules included
+      // (plans/P0-26.md D5: a secret with a default no longer gets in through link): the
+      // repo-sync path must not install one the console would refuse.
+      const screened = screenCatalog(ctx.manifest, true);
+      return {
+        problem: screened.ok
+          ? null
+          : { check: "catalog", message: screened.error },
+        catalogChanged: true,
+        catalogClaimed: false,
+        activeJson: null,
+        incoming: screened.ok ? screened.catalog : null,
+      };
     }
     // ST-20: a break-glass claim whose field this manifest changes ended in this apply's batch,
     // so it is not in `claims` and the field applies like any other.
@@ -104,9 +93,7 @@ function catalogState(ctx: IngestContext): Promise<CatalogState> {
 }
 
 /** Create: every manifest profile with its catalog-declared secrets sealed (no stored row yet). */
-function createdProfiles(
-  ctx: IngestContext,
-): Promise<
+function createdProfiles(ctx: IngestContext): Promise<
   | {
       ok: true;
       rows: { profile: ManifestProfile; payload: Record<string, unknown> }[];
