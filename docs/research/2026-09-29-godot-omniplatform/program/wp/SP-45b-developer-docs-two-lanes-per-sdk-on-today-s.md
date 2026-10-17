@@ -101,7 +101,7 @@ signIn = true)`, and the own-UI gate emits `status()` before `licenseChanges` (`
 - [x] A check fails when a page names a symbol the SDK does not export.
 - [x] Docs-links and the slug manifest pass.
 - [x] A newcomer dry run per SDK is recorded in the PR.
-- [ ] The green gate passes (`AGENTS.md`), including every drift gate in the header.
+- [x] The green gate passes (`AGENTS.md`), including every drift gate in the header.
 
 ## Verify
 
