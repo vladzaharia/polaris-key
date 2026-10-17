@@ -3,6 +3,8 @@ title: "The envelope"
 description: "Compact EdDSA JWS mechanics, size caps, strict decoding, the verify-before-parse order, the shared claims, and the two validation profiles."
 sidebar:
   order: 6
+type: "reference"
+lastReviewed: "2026-10-16"
 ---
 
 Every Polaris Key artifact is a **compact JWS signed with Ed25519**. Three base64url segments,
@@ -149,7 +151,7 @@ Two consequences worth internalising when you port this:
   `alg`, a WebCrypto rejection and a bad signature all produce the same "not a document"
   answer, so every call site fails closed identically.
 - **The key comes from the caller.** `kid` is a _selector_ into a trust set the caller owns —
-  see [Trust](/docs/build/wire/trust/). A document that names a key nobody trusts is simply
+  see [Trust](/docs/reference/protocol/trust/). A document that names a key nobody trusts is
   not a document.
 
 ## The shared claims
@@ -189,8 +191,8 @@ These checks run on the network path and the cache-reload path alike, for both d
 - `graceUntil <= issuedAt + MAX_GRACE_SECONDS` — a hostile signer cannot grant a century of
   offline grace, and the ceiling bites at **verify** time, not only in the gate.
 - **Anti-replay floor, per type**: a document whose `issuedAt` is not strictly greater than
-  the currently-accepted document of the same type is rejected. License and config carry
-  independent floors, and the floor is _derived_ from the document currently held — never read
+  the accepted document of the same type is rejected. License and config carry
+  independent floors, and the floor is _derived_ from the document held — never read
   from a counter on disk.
 
 ## Constants
@@ -227,10 +229,10 @@ if (doc.issuedAt > now + CLOCK_SKEW_SECONDS) return null;
 if (doc.expiresAt <= now - CLOCK_SKEW_SECONDS) return null;
 ```
 
-| Profile     | `checkFreshness` | Used for                                                                                                                                   | Why                                                                                                                                                                                                      |
-| ----------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Network** | `true`           | A document that just arrived from `/license/document`, `/config/document` or the trust manifest route; a **bundle's own claims** at import | A stale or future-dated document must never enter the cache. A stale bundle file must be refused.                                                                                                        |
-| **Reload**  | `false`          | Cache reload; the trust manifest _inside_ a bundle; each inner document of a bundle                                                        | A cached document is _expected_ to be past its one-hour `expiresAt` — that is what offline operation is. Its signed outer bound is `graceUntil`, enforced by the gate against the monotonic clock floor. |
+| Profile     | `checkFreshness` | Used for                                                                                                                                  | Why                                                                                                                                                                                                      |
+| ----------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Network** | `true`           | A document that has arrived from `/license/document`, `/config/document` or the trust manifest route; a **bundle's own claims** at import | A stale or future-dated document must never enter the cache. A stale bundle file must be refused.                                                                                                        |
+| **Reload**  | `false`          | Cache reload; the trust manifest _inside_ a bundle; each inner document of a bundle                                                       | A cached document is _expected_ to be past its one-hour `expiresAt` — that is what offline operation is. Its signed outer bound is `graceUntil`, enforced by the gate against the monotonic clock floor. |
 
 Asserting `expiresAt` on the reload path would delete offline grace outright. Conversely,
 skipping it on the network path lets a replayed expired document install itself. The corpus
@@ -251,9 +253,9 @@ _network_ freshness for the whole window, which is exactly what a replay wants.
 
 ## Where to go next
 
-- [Trust](/docs/build/wire/trust/) — where the `kid` lookup set comes from, and how a key is
+- [Trust](/docs/reference/protocol/trust/) — where the `kid` lookup set comes from, and how a key is
   revoked.
-- [Cache and clock](/docs/build/wire/cache-and-clock/) — what `now` actually is once the
+- [Cache and clock](/docs/reference/protocol/cache-and-clock/) — what `now` actually is once the
   monotonic floor is applied.
-- [The conformance corpus](/docs/build/wire/corpus/) — the 36 raw-JWS vectors and 34 document
+- [The conformance corpus](/docs/contribute/corpus/) — the 36 raw-JWS vectors and 34 document
   vectors that pin everything on this page.

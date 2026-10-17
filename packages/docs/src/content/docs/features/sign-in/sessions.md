@@ -1,161 +1,54 @@
 ---
 title: "Browser sessions"
-description: "The session cookie, the fused session document and its build gate, key-to-session exchange, logout, and keyless requires-identity registration."
+description: "The product session cookie, the fused session document and its build gate, key-to-session exchange, logout and keyless identity-required registration."
+type: "concept"
+lastReviewed: "2026-10-16"
 sidebar:
-  order: 4
+  order: 5
 ---
 
-The browser session is Identity's cookie-bearing principal. A page signs in — through the OIDC
-flow in [Product OIDC](/docs/services/identity/oidc/), or by presenting a license key directly —
-and gets a cookie bound to a synthetic `browser:<licenseId>` device row, so a browser tab is
-authorized the same way a native install is: through Core's device principal, not a parallel
-mechanism.
+A browser session is Identity's cookie-bearing principal. A page signs in through the [OIDC flow](/docs/features/sign-in/oidc/) or by presenting a license key, and gets a cookie bound to a synthetic `browser:<licenseId>` device row. A browser tab is authorized the same way a native install is: through Core's device principal.
 
 ## The cookie
 
-Name `pkey_<product>_session` (the product slug's hyphens become underscores), scoped
-`Path=/<product>`, `HttpOnly`, `Secure`, `SameSite=Lax`, `Max-Age` 30 days. It carries an opaque
-token; the record behind it lives in KV, peppered-hash-keyed, holding the device's `pkeyt_` token,
-a CSRF value, the `licenseId`, the synthetic `deviceId`, and a creation timestamp — also on a
-30-day TTL, so the cookie and its record always expire together.
+The name is `pkey_<product>_session` (hyphens in the slug become underscores), with `Path=/<product>`, `HttpOnly`, `Secure`, `SameSite=Lax` and `Max-Age` of 30 days. It carries an opaque token. The record behind it lives in KV under a peppered hash, with a matching 30-day TTL, and holds the device's `pkeyt_` token, a CSRF value, the license id, the synthetic device id and a creation time.
 
-The `pkeyt_` token is a live device credential, so it is stored sealed (AES-GCM under the platform
-KEK) and bound to that one session: a KV dump yields ciphertext, and a sealed token copied into
-another session's record fails to open. A cookie whose KV record is missing, unparseable or can't
-be opened — one written before the token was sealed, or sealed under a key the Worker no longer
-holds — is treated exactly like no cookie at all, the same fail-closed rule the OIDC flow records
-use: every caller already has a well-defined answer for "there is no session here," and a
-truncated or corrupted value must take that branch rather than escape as an unhandled error. The
-browser signs in again.
+The device token is a live credential, so it is stored sealed (AES-GCM under the platform KEK) and bound to that one session. A KV dump yields ciphertext, and a sealed token copied into another session fails to open. A cookie whose record is missing, unparseable or unopenable is treated exactly like no cookie, so the browser signs in again.
 
-## `GET /identity/session` — the fused document
+## The fused session document
 
-Unlike `/license/document` and `/config/document`, this route mints **one fused document** —
-license claims, config, and entitlements together — rather than the split pair wire v3 uses
-elsewhere. That is deliberate: it is minted for a _page_, not an SDK, and it is the one caller
-still using the pre-split shape until the React SDK migrates to the split documents. `secrets` is
-always stripped to an empty object before the response is built — a browser session is never
-handed secret material.
+`GET /<product>/identity/session` returns one fused document with license claims, config and entitlements together, not the split signed pair the SDKs use. It is minted for a page, as plain JSON inside an authenticated response with no signature to carry. `secrets` is always an empty object: a browser session never receives secret material.
 
-The response shape depends on how far the request gets:
+| Situation                                                                | Response                                                                                           |
+| ------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------- |
+| No cookie, or its record is missing or corrupt                           | `200 { "authenticated": false, "doc": null }`                                                      |
+| Session valid, but the device token or license fails the usability check | The same as no session                                                                             |
+| Session valid, but no usable active catalog                              | `500 catalog_unavailable`. It fails closed, like the config document                               |
+| Session valid, but the build gate blocks this version or channel         | `200 { "authenticated": true, "doc": null, "blocked": { "reason", "allowedRange" }, "csrfToken" }` |
+| Session valid and nothing blocks it                                      | `200 { "authenticated": true, "doc": { … }, "csrfToken" }`                                         |
 
-| Situation                                                                                | Response                                                                                                            |
-| ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| No session cookie, or its record is missing, corrupt or can't be opened                  | `200 { "authenticated": false, "doc": null }`                                                                       |
-| Session valid, but the device token or license fails Core's usability check              | `200 { "authenticated": false, "doc": null }` — identical to no session at all                                      |
-| Session valid, but there is no usable active catalog to validate the payload             | `500 catalog_unavailable` — fails closed, matching `/config/document`                                               |
-| Session valid, device/license usable, but the **build gate** blocks this version/channel | `200 { "authenticated": true, "doc": null, "blocked": { "reason": "…", "allowedRange": {...} }, "csrfToken": "…" }` |
-| Session valid and nothing blocks it                                                      | `200 { "authenticated": true, "doc": {...}, "csrfToken": "…" }`                                                     |
+A session that no longer authorizes anything looks the same as no session, so a client can't tell "never signed in" from "license expired". `expiresAt` is `issuedAt` plus 3600 and `graceUntil` is `issuedAt` plus the offline days, clamped to the license's expiry while `licensing.clampGraceToExpiry` is on.
 
-A session that exists but no longer authorizes anything is indistinguishable from having no
-session — a client cannot tell "never signed in" from "signed in, but the license expired"
-without inspecting further, which is the same hide-the-reason posture the rest of this service
-takes.
+The build gate here and on the license document route is one computation, so a browser tab and a native client are refused the same builds. Both read `X-PKey-Version` and `X-PKey-Channel`.
 
-The `doc` itself, when present, mirrors the claim envelope the signed documents carry, plus the
-fused license/config payload. It is delivered as **plain JSON inside this response**, not as a
-compact JWS — the page is already talking to the origin over an authenticated session, so there
-is no cache or disk boundary here for a signature to survive:
+## Key to session
 
-```json
-{
-  "schemaVersion": 1,
-  "aud": "<product>",
-  "iss": "key.plrs.im",
-  "licenseId": "lic_…",
-  "deviceId": "browser:lic_…",
-  "issuedAt": 1756252800,
-  "expiresAt": 1756256400,
-  "graceUntil": 1758844800,
-  "profile": {},
-  "payload": { "config": {}, "secrets": {}, "entitlements": {} }
-}
-```
+`POST /<product>/identity/session/license` exchanges a license key, in the body as `{ "key": "<license key>" }` or as a bearer header, for a session cookie. The key must be active, and its license runs through the same seat authorization as activation. A seat conflict answers `403 device_limit` with `limit` and `deviceCount`. Success is `201` with `Set-Cookie`, and on a product with Identity on the body carries `keyEntries`.
 
-`expiresAt` is `issuedAt + 3600` and `graceUntil` is `issuedAt + maxOfflineDays × 86 400`, the
-same arithmetic the signed documents use, ending no later than the licence's expiry (and never
-earlier than `expiresAt`) while `licensing.clampGraceToExpiry` is on
-([WIRE-CONTRACT-V4 §3.6](/docs/services/license/document/#the-envelope)).
+This endpoint is an online oracle for guessing keys, so it is limited to 30 requests a minute per address, the same budget as activation.
 
-`secrets` is always the empty object shown above — never omitted, never populated. A browser
-session's whole point is to drive a page's UI off config and entitlements; secret material stays
-behind the SDK/keyring path native clients use.
+## Logout
 
-### The build gate lives here too
+`POST /<product>/identity/auth/logout` requires the `X-CSRF-Token` header to equal the session's stored value, else `403 forbidden`. Logout is the one mutating session surface that checks CSRF, because its effect is visible without reading the response. It deauthorizes the `browser:<licenseId>` device, deletes its token record and the session record, and always clears the cookie, so a redundant logout ends signed out rather than erroring.
 
-Wire contract v3 §5 names **two** enforcement points for version and channel blocking: this
-route, and `/license/document`. Both read `X-PKey-Version` / `X-PKey-Channel` and must refuse
-exactly the same builds — a browser tab and a native client are held to one gate, computed once
-in `core/licensing/gate.ts` and imported by both, not reimplemented per surface. See
-[License](/docs/services/license/) for the document-route half of the same enforcement.
+## Identity-required registration
 
-`csrfToken` is returned specifically so a page has it on hand for the one mutating call it is
-likely to make next: logout, below.
+When License is off and Identity is on, keyless registration is `requires-identity`. The browser session is the credential behind Core's `POST /<product>/devices/register`. Core asks Identity through the `authorizeRegistration` hook.
 
-## `POST /identity/session/license` — key to session
+The hook checks one step less than the session document does. It loads the session from the cookie and validates the device token by itself: is it a live device, not does it hold a usable license. That makes the path work for a Config-only or Release-only product with sign-in and no seats. It needs no CSRF check, because it mints a new credential returned only in the response body, which a cross-site caller could never read.
 
-Exchanges a license key for a session cookie, for a page that has a key rather than an existing
-sign-in: body `{ "key": "pkey_…" }`, or a bearer `Authorization` header. The key is hashed,
-looked up, and must be `active`; its license is loaded and run through the _same_
-seat-authorization step activation uses, binding the synthetic `browser:<licenseId>` device the
-same way a native install's device id would be bound. A seat conflict answers `403 device_limit`
-with the same `{ "limit": …, "deviceCount": … }` detail activation's device-limit refusal
-carries.
+## Next steps
 
-This is a credential-exchange endpoint — it takes an attacker-suppliable secret and reports
-whether it is valid, making it an online oracle for guessing license keys — so it is
-rate-limited at 30 requests per minute per IP, the same budget `/license/activate` uses for
-exactly the same key-redemption shape. Success is `201` with `Set-Cookie`, and touches the key's
-`last_used_at`.
-
-## Logout — `POST /identity/auth/logout`
-
-Requires the `X-CSRF-Token` header to equal the session's stored CSRF value, or `403 forbidden`.
-This is the one mutating browser-session surface that _does_ check CSRF: unlike registering a
-device below, logout's effect is visible without reading the response, so a cross-site POST with
-no token attached must not be able to trigger it.
-
-On a valid match, it deauthorizes the `browser:<licenseId>` device row, deletes its KV token
-record, and deletes the session record. The cookie is cleared in the response either way — with
-or without a valid session to act on — so a client that calls logout redundantly always ends up
-signed out rather than erroring.
-
-Despite living beside the session surfaces conceptually, this route is dispatched from the same
-`auth` group as the OIDC flow (`/identity/auth/logout`, not `/identity/session/logout`) — it sits
-in `routes.ts`'s `auth` switch alongside `start`/`callback`/`poll`.
-
-## Authorizing identity-required registration — without a license
-
-When License is off and Identity is on, the derived registration policy is
-`requires-identity`. The browser session is the credential behind Core's keyless
-`POST /<product>/devices/register`; Core asks Identity through the narrow
-`authorizeRegistration` hook rather than importing this service.
-
-What that hook checks is deliberately **one step short** of what `/identity/session` checks:
-
-1. Load the session from the cookie — a pure read, resolving to the stored KV record and nothing
-   more.
-2. Validate the device token _by itself_ — Core's `validateDeviceToken`, not
-   `requireLicensedDevice`. It asks only "is this a live device," never "does it hold a usable
-   license."
-
-That second point is load-bearing. Identity-required registration serves a Config-only or
-Release-only product with sign-in but no seats; demanding a usable license would make that path
-unsatisfiable. The registry confirms that Identity is enabled before it calls the hook, and fails
-closed when the service or hook is unavailable.
-
-No CSRF check applies to this exchange, unlike logout: it authorizes minting a _new_ credential
-that is returned only in the response body, so a cross-site caller that forced the request could
-never read what it produced.
-
-## See also
-
-- [Product OIDC](/docs/services/identity/oidc/) — how a sign-in ends up with a `return_to` and
-  therefore a cookie, versus ending up with a raw device token instead.
-- [The device-code flow](/docs/services/identity/device-flow/) — the token-issuing counterpart
-  for a client that cannot hold a cookie.
-- [License](/docs/services/license/) — the document route this service's build gate mirrors, and
-  the seat-authorization step both key-to-session and activation share.
-- [The device principal](/docs/services/core/device-principal/) — `validateDeviceToken`,
-  registration policies, and why a device is a Core concept rather than a licensing one.
-- [Public route table](/docs/reference/routes/) — every route with its owning service.
+- [Product sign-in provider](/docs/features/sign-in/oidc/): how a sign-in ends up with a cookie.
+- [Device flow](/docs/features/sign-in/device-flow/): the token-issuing counterpart.
+- [Activation](/docs/features/licensing/activation/): the seat authorization both share.

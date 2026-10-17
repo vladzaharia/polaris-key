@@ -2,9 +2,11 @@
 title: "Your own UI (Godot)"
 description: "Draw your own Godot screens on the Polaris Key addon: its four headless controllers, state-to-screen and copy-key mapping, signals, manual discovery, and update decisions."
 type: "reference"
-lastReviewed: "2026-10-11"
+lastReviewed: "2026-10-16"
 sidebar:
   order: 2
+sdks: ["godot"]
+lanes: ["library"]
 ---
 
 The addon draws no screen until a game takes the drop-in boot or scenes. A game with its own menus
@@ -72,7 +74,7 @@ func gate_model() -> Dictionary:
 | `grace` with grace blocked                   | `grace-blocked`       | `boot_offline_title`, `grace_blocked_body`                                   | Connect and retry                                                                          |
 | `needs-activation`                           | `activation`          | The activation controller supplies the result copy                           | Key entry, sign-in, free enrolment, or offline activation                                  |
 | `revoked`                                    | `revoked`             | `revoked_title`                                                              | Explain that the device was signed out, then offer activation or sign-in                   |
-| `expired`                                    | `expired`             | `expired_title`, `expired_body`                                              | Ask the player to connect, then `sync(true)`: the cached licence outlived its grace window |
+| `expired`                                    | `expired`             | `expired_title`, `expired_body`                                              | Ask the player to connect, then `sync(true)`: the cached license outlived its grace window |
 | `version-too-old`                            | `update-required`     | `version_too_old_title`, `version_too_old_body`, `version_min`               | The update action when one is available                                                    |
 | `version-too-new`, `channel-not-entitled`    | `not-available`       | `not_available_title`, `version_too_new_body` or `channel_not_entitled_body` | The availability explanation and retry                                                     |
 | Any other status, or a post-activation error | `error`               | `gate_error_title`, `gate_error_body`                                        | The error and a way forward                                                                |

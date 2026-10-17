@@ -12,20 +12,20 @@ operator learns what a device gets only when the device gets it. The **Compatibi
 Release section answers it before then, in two read-only views: **Matrix** and **Simulator**. Nothing here edits a floor, a
 hold, a pin or a yank: floors and yanks are set under
 [Channels](/docs/services/release/channels/), pins and holds in `.pkey/release`
-([Packs](/docs/services/release/packs/#app-releases-content-pins-and-embeds)).
+([Packs](/docs/features/ship-builds/packs/#app-releases-pins-holds-and-embeds)).
 
 ## The matrix
 
 Rows are app releases, columns are pack releases grouped by pack. Each cell takes the first state
 that applies:
 
-| State          | Meaning                                                                                                                                                                                                                                                                                                                      |
-| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `revoked`      | a revocation record names the pack release ([Revocations](/docs/services/release/packs/#revocations)), or the content-key delegation it was signed under was revoked (the reason names the delegation). The cell still says when the app release pins or holds it, because those devices are the ones the revocation reaches |
-| `pinned`       | the app release pins it                                                                                                                                                                                                                                                                                                      |
-| `held`         | the app release holds it                                                                                                                                                                                                                                                                                                     |
-| `compatible`   | a variant of it admits the app release: for a `compatible` pack, its `requires.contentApi.app` range holds the app release's level and it runs on an engine the app release's builds declare; for a `standalone` pack, the engine alone                                                                                      |
-| `incompatible` | otherwise. A `pinned` pack reaches a device only through a pin, so every other cell of it is incompatible                                                                                                                                                                                                                    |
+| State          | Meaning                                                                                                                                                                                                                                                                                                                                           |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `revoked`      | a revocation record names the pack release ([Revocations](/docs/features/ship-builds/packs/#revocations-and-content-keys)), or the content-key delegation it was signed under was revoked (the reason names the delegation). The cell still says when the app release pins or holds it, because those devices are the ones the revocation reaches |
+| `pinned`       | the app release pins it                                                                                                                                                                                                                                                                                                                           |
+| `held`         | the app release holds it                                                                                                                                                                                                                                                                                                                          |
+| `compatible`   | a variant of it admits the app release: for a `compatible` pack, its `requires.contentApi.app` range holds the app release's level and it runs on an engine the app release's builds declare; for a `standalone` pack, the engine alone                                                                                                           |
+| `incompatible` | otherwise. A `pinned` pack reaches a device only through a pin, so every other cell of it is incompatible                                                                                                                                                                                                                                         |
 
 Two markers ride on top of the state:
 

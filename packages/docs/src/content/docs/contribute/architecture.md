@@ -3,6 +3,8 @@ title: "Architecture"
 description: "One worker, a modular monolith: core/ plus services/<slug>/, the shipped ServiceDescriptor, boundary enforcement by test, and hide-don't-reveal dispatch."
 sidebar:
   order: 4
+type: "reference"
+lastReviewed: "2026-10-16"
 ---
 
 Polaris Key is **one deployed Cloudflare Worker**. Inside it, the code is a **modular monolith**:
@@ -15,14 +17,14 @@ explicitly out of scope and nothing has been split.
 
 ```
 packages/worker/src/
-  core/        router.ts, products.ts, devices.ts, trust.ts, signing.ts,
-               discovery.ts, rateLimit.ts, errors.ts, audit.ts, registry.ts
-  services/
-    license/   routes.ts, document.ts, activation.ts, tiers.ts, policy.ts, admin/
-    config/    routes.ts, document.ts, schema.ts, profiles.ts, mint.ts, admin/
-    release/   routes.ts, sync, channels.ts, assets, changelog, install, store.ts, admin.ts
-    update/    routes.ts, feed.ts, eligibility.ts, admin.ts
-    identity/  routes.ts, oidc.ts, browserSession.ts, portal/, admin.ts
+  platform/    Env, crypto, KV, the key vault, encodings
+  db/          the Db interface
+  core/        the always-on substrate, in domain folders: licensing/, accounts/,
+               notify/, trust/, assets/, registry/, ops/, console/
+  services/<slug>/
+               license, config, release, distribution, update, identity, sync;
+               each has index.ts (its descriptor), routes.ts and its own handlers
+  console/     the operator console
   mount.ts     the composition root's service table
   router.ts    pure route matching
 ```
@@ -83,7 +85,7 @@ Three details in that interface are load-bearing:
 **`handle` returns `null`, not a 404, when no route inside the service matched.** Only Core knows
 whether "no match" should be a `404`, a fall-through to the alias table, or a redirect, and
 centralising that decision is what keeps the not-found response byte-identical whether a service is
-disabled, absent, or simply has no such route.
+disabled, absent, or has no such route.
 
 **`manifestIngest` runs inside Release's link and resync batch.** Core's pipeline
 (`manifestIngestStatements`) runs each enabled service's hook and hands the statements to the
@@ -136,7 +138,7 @@ CI-gated; only the mechanism differs.
 
 The suite is written so it cannot quietly become a no-op. It walks **every file actually present**
 under `src/services/`, and it separately asserts that every service in the table was scanned, that
-Identity's nested `portal/` directory was walked and not just its top level, and that the rule
+Identity's nested `portal/` directory was walked and not only its top level, and that the rule
 itself still allows what it should and refuses what it should. A rename or a broken walk fails
 loudly instead of passing on an empty set.
 
@@ -215,12 +217,12 @@ published command, so it moved to `/<p>/release/changelog` outright.
 
 One worker, with four platform primitives behind it:
 
-| Primitive                 | Role                                                                                                                                                                            |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **D1**                    | relational metadata — products, licenses, devices, release state, portal accounts, audit                                                                                        |
-| **KV** (`HOT`)            | hot-path token and key lookups                                                                                                                                                  |
-| **Durable Object** (`RL`) | `RateLimitDO`, SQLite-backed rather than the legacy KV-backed class                                                                                                             |
-| **Cron** (`17 3 * * *`)   | daily maintenance: audit and portal-audit retention, expired download tokens, dormant device seats, a re-run of the deploy-time index assertion, and the blob collector (P4-14) |
+| Primitive                 | Role                                                                                                                                                                    |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **D1**                    | relational metadata — products, licenses, devices, release state, portal accounts, audit                                                                                |
+| **KV** (`HOT`)            | hot-path token and key lookups                                                                                                                                          |
+| **Durable Object** (`RL`) | `RateLimitDO`, SQLite-backed rather than the legacy KV-backed class                                                                                                     |
+| **Cron** (`17 3 * * *`)   | daily maintenance: audit and portal-audit retention, expired download tokens, dormant device seats, a re-run of the deploy-time index assertion, and the blob collector |
 
 Every D1 row, KV key, DO shard and signature is **product-scoped**, and the URL carries the scope:
 `key.plrs.im/<product>/…`. The worker also serves a single assets root assembled from two built
@@ -236,4 +238,4 @@ out.
 - [The service model](/docs/start/service-model/) — the enablement column the dispatcher reads.
 - [Concepts & terminology](/docs/start/concepts/) — the canonical definitions.
 - [Core](/docs/services/core/) — what the substrate actually serves.
-- [The wire contract](/docs/build/wire/) — the byte-level document rules.
+- [The wire contract](/docs/reference/protocol/) — the byte-level document rules.

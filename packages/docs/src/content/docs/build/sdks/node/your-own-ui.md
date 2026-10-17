@@ -3,11 +3,15 @@ title: "Your own UI (Node)"
 description: "Draw your own screens on @polaris-key/node: the state model, each call with the words to show, a CLI, an Electron renderer without React, and tests."
 sidebar:
   order: 2
+type: "reference"
+sdks: ["node"]
+lanes: ["library"]
+lastReviewed: "2026-10-16"
 ---
 
 The library returns typed results and draws nothing. This page gives, for each screen you build, the
 call, the states it can answer and the words to show. To take the finished screens instead, see the
-[drop-in quickstart](/docs/build/quickstart/node/#pick-a-lane). Create the `client` as the
+[drop-in quickstart](/docs/build/quickstart/node/#4-gate-the-app). Create the `client` as the
 quickstart does; every snippet here takes it as a parameter.
 
 ## The state model
@@ -206,7 +210,7 @@ releases; the status codes do not. To keep the finished verbs, take
 ## Electron
 
 The main process owns the client and exposes the bridge
-([the drop-in setup](/docs/build/quickstart/node/#drop-in-electron)). A renderer that is not React
+([the drop-in setup](/docs/build/quickstart/node/#4-gate-the-app)). A renderer that is not React
 reads the bridge through the same adapter the React kit uses, and gets the same state model:
 
 ```ts

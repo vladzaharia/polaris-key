@@ -24,6 +24,7 @@ import {
 } from "../src/lib/godotKit";
 import { repoRoot } from "../src/lib/repo";
 import { CATALOG, kebab } from "../src/lib/shots";
+import { COMPONENTS_NOT_BUILT } from "../src/lib/uiKits";
 
 const docsRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 const componentsDir = join(
@@ -39,10 +40,12 @@ const kitDir = join(repoRoot(), UI_DIR);
 const entries = Object.entries(GODOT_COMPONENTS);
 
 /** The component pages, as [catalog component, source]. */
-const pages: [string, string][] = Object.keys(CATALOG).map((name) => [
-  name,
-  readFileSync(join(componentsDir, `${kebab(name)}.mdx`), "utf8"),
-]);
+const pages: [string, string][] = Object.keys(CATALOG)
+  .filter((name) => !COMPONENTS_NOT_BUILT.includes(name))
+  .map((name) => [
+    name,
+    readFileSync(join(componentsDir, `${kebab(name)}.mdx`), "utf8"),
+  ]);
 
 describe("the registry against the addon's source", () => {
   it("every stem is a script with a class_name, and every scene exists", () => {

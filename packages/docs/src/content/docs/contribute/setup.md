@@ -3,13 +3,22 @@ title: "Setup"
 description: "Install the JS workspace, the Python SDK, and the Swift, Godot and Kotlin toolchains, then run the green gate before opening a PR."
 sidebar:
   order: 2
+type: "how-to"
+lastReviewed: "2026-10-16"
 ---
 
 Several toolchains, one repo. The JS workspace (`pnpm` + `turbo`) covers `packages/*`, `tools`,
 `products`, and the Node conformance runner; Python, Swift, Godot and Kotlin are standalone
 toolchains under `sdks/`, installed separately.
 
-## Install
+## Steps
+
+1. Install the JS workspace, then the Python SDK. Swift, Godot and Kotlin use the toolchains on your machine.
+2. Use Node 22 for every JS command.
+3. Run the green gate before you open a PR.
+4. Optional: generate fixture SQL for a product in `products/`.
+
+## 1. Install
 
 ```sh
 pnpm install                                   # JS workspace (Node 22 — see below)
@@ -21,7 +30,7 @@ pnpm install                                   # JS workspace (Node 22 — see b
 # Android SDK, which -Ppkey.jvmOnly=true skips.
 ```
 
-## Node must be 22
+## 2. Node must be 22
 
 `engines` pins `>=22` and CI runs 22, but the constraint is sharper than a version range: the
 worker suite drives D1 through the native `better-sqlite3`, which does not build against a
@@ -33,7 +42,7 @@ rather than a toolchain mismatch. If your default Node is newer, prefix every co
 mise exec node@22 -- pnpm test
 ```
 
-## The green-gate commands
+## 3. The green-gate commands
 
 Run these before opening a PR — they are what CI runs (`.github/workflows/ci.yml`), plus
 `pnpm format`, which CI does not run because `pnpm lint` already covers the source files:
@@ -72,7 +81,7 @@ the 4.7.2 editor, on an exported pack under the official 4.7.2 Linux release tem
 the 4.4.1 editor (the floor).
 
 `pnpm build` does not typecheck the Worker — esbuild strips types on the way through — so
-`pnpm typecheck` is never redundant with it, even though both are "just building."
+`pnpm typecheck` is never redundant with it, even though both build.
 
 ## Pre-commit hooks
 
@@ -87,3 +96,13 @@ pnpm typecheck
 
 It is intentionally lightweight — the full cross-language matrix runs in CI, not locally. For a
 trivial or docs-only commit you can skip it with `git commit --no-verify`.
+
+## 4. Fixture SQL for a product
+
+For local fixtures, generate SQL from a product's files in `products/<slug>/`. This is a fixture tool only: it can't mint a sealed signing key or store product secret values, so a live product is registered through the console ([Register a product from its repo](/docs/build/manifest/register/)).
+
+```sh title="Terminal"
+pnpm --silent --filter @polaris-key/products gen-seed djdl > products/djdl/seed.sql
+```
+
+`--silent` keeps pnpm's banner off stdout, where it would become the first lines of the SQL.

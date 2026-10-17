@@ -3,6 +3,9 @@ title: "Terminal (Python)"
 description: "The Python terminal kit: the polaris-key CLI and any host CLI drawn in the Polaris Key terminal look, with --json on every verb and an optional Textual app."
 sidebar:
   order: 20
+type: "reference"
+lastReviewed: "2026-10-16"
+lanes: ["kit"]
 ---
 
 import KitCoverage from "../../../../../components/ui/KitCoverage.astro";
@@ -11,7 +14,7 @@ import KitFacts from "../../../../../components/ui/KitFacts.astro";
 The Python SDK's terminal kit, `polaris_key.ui.terminal`. It draws every verb of the
 `polaris-key` CLI, and any host CLI that mounts those verbs, in the product's identity: the
 product chip, a continuous rail, step glyphs, key hints, the seat meter, progress, the user code
-and links. Colour is ANSI-16 for every status role, so output follows the person's terminal
+and links. Color is ANSI-16 for every status role, so output follows the person's terminal
 theme; truecolor is used only for the product accent, and only when the terminal says it can.
 `NO_COLOR`, pipes and `TERM=dumb` get plain lines. An optional Textual app shows the account,
 devices and updates full screen.
@@ -181,11 +184,11 @@ typer builders; the fields are on [Theming](/docs/build/ui/theming/). In a termi
   accent the kit draws ink (bold and plain reverse video), never Polaris violet;
 - `color_scheme` picks the accent's dark or light form; `system` reads `PKEY_THEME`, then the
   terminal's background (OSC 11), then `COLORFGBG`, then dark;
-- `colors` overrides a role per scheme with a hex colour, `{"dark": {"success": "#3fb27f"}}`, the
+- `colors` overrides a role per scheme with a hex color, `{"dark": {"success": "#3fb27f"}}`, the
   same value the Node kit takes; it is drawn only where the terminal draws truecolor, so ANSI-16
   keeps the user's palette (a value that is not hex, an SGR parameter such as `"2"`, is ignored with a `DeprecationWarning` that names the role). `symbols` picks Unicode or ASCII;
-- `preset="native"` keeps the terminal's own palette: no product colour and no `colors`, the chip
-  in plain reverse video; `NO_COLOR` drops every colour in either preset (bold, reverse video and links stay on a terminal);
+- `preset="native"` keeps the terminal's own palette: no product color and no `colors`, the chip
+  in plain reverse video; `NO_COLOR` drops every color in either preset (bold, reverse video and links stay on a terminal);
 - `density="compact"` drops the blank rail rows between blocks;
 - `motion` set to `reduced` or `none` stops the spinners, which never run without a terminal or
   with `CI`;
@@ -213,7 +216,7 @@ same:
   with one header and the URL and code whole, so nothing is left wider than the terminal or drawn
   twice; Ctrl+C and Esc replace the screen with one result block;
 
-## Localisation
+## Localization
 
 The kit reads the generated table in `polaris_key.ui.kit_copy_generated` in the launch locales,
 picked from the theme's `copy.locale`, else `LC_ALL`, `LC_MESSAGES` or `LANG`, falling back key by

@@ -1,0 +1,185 @@
+---
+title: "Node quickstart"
+description: "Install @polaris-key/node, generate the config file, create the client and gate a CLI, an Electron app or a server."
+type: "quickstart"
+sdks: ["node"]
+lanes: ["kit", "library"]
+lastReviewed: "2026-10-16"
+sidebar:
+  order: 1
+---
+
+import Requires from "../../../../components/docs/Requires.astro";
+import InstallSteps from "../../../../components/docs/InstallSteps.astro";
+import Lanes from "../../../../components/docs/Lanes.astro";
+import CardGrid from "../../../../components/docs/CardGrid.astro";
+import { LinkCard } from "@astrojs/starlight/components";
+
+You end with a Node app that creates a client from your product's config and gates on the license.
+
+<Requires features={["licensing"]} sdk={["Node 22.13 or later"]} />
+
+## Before you start
+
+1. A product with License on, and its slug. [Your first product](/docs/start/first-product/) creates one.
+2. A Node project for a CLI, the Electron main process or a server.
+
+## 1. Install
+
+**CLI** Install the SDK. The block routes the `@polaris-key` scope to the feed first, then installs. Install the `pkey` CLI the same way, as a dev dependency, and run it through your package manager: a bare `npx pkey` resolves the name from npmjs, not the feed.
+
+<InstallSteps sdk="node" />
+<InstallSteps sdk="cli" />
+
+You should see `@polaris-key/node` in `package.json`.
+
+## 2. Generate the config
+
+**CLI** Write the config file from the product's discovery document.
+
+```sh title="Terminal"
+pkey sdk --lang node --product <slug> --write
+```
+
+The file is `polaris.config.ts`; add `--out polaris.config.mjs` for JavaScript. It holds the slug, base URL, trust pins, advertised services and, when the product has release keys, `update.pinnedReleaseKeys`. Replace `<slug>` with your product's slug. To try this without a registered product, [run Polaris Key locally](/docs/build/local/).
+
+You should see the file written and each pin's key id and SHA-256 fingerprint. Compare the fingerprints with the console before you ship.
+
+## 3. Create the client
+
+**App** Create the client from the generated config. The file carries `baseUrl`; a client built without it talks to production.
+
+```ts title="client.ts"
+import { PolarisKeyClient } from "@polaris-key/node";
+import { polarisConfig } from "./polaris.config.js";
+
+// Offline-first: create() loads the token and re-verifies the cached documents; no network.
+const client = await PolarisKeyClient.create({
+  ...polarisConfig,
+  version: "1.4.2", // your app's version; omitted, it is read from package.json
+});
+```
+
+You should see the client create with no network request.
+
+## 4. Gate the app
+
+**App** The host decides the lane. A CLI and an Electron app have drop-in screens. A server has none, so it uses the library.
+
+<Lanes intro="The drop-in kit mounts the screens for a CLI or an Electron app. Your own UI calls the client and draws its own, in any host, including a server.">
+  <Fragment slot="kit">
+
+**CLI.** One call adds the Polaris Key verbs to a commander program, and one line gates your own command.
+
+```ts title="cli.ts"
+import { Command } from "commander";
+import { registerPolarisCommands, requireLicense } from "@polaris-key/node/cli";
+import { polarisConfig } from "./polaris.config.js";
+
+const program = new Command("tidewater");
+registerPolarisCommands(program, { config: polarisConfig, version: "1.4.2" });
+program
+  .command("export")
+  .action(requireLicense(runExport, { entitlement: "export.pdf" }));
+await program.parseAsync();
+
+async function runExport() {
+  /* the program's own work */
+}
+```
+
+Verbs, namespaces, styling and `--json` are on [Terminal (Node)](/docs/build/ui/frameworks/terminal-node/).
+
+**Electron.** The main process owns the client and the token, and the renderer runs the React kit over a bridge.
+
+```ts title="main.ts"
+import { app, ipcMain, safeStorage } from "electron";
+import { PolarisKeyClient } from "@polaris-key/node";
+import {
+  exposePolarisBridge,
+  SafeStorageStore,
+} from "@polaris-key/node/electron";
+import { polarisConfig } from "./polaris.config.js";
+
+// Do not await whenReady() at the top level: a CommonJS main has no top-level await.
+void app.whenReady().then(async () => {
+  const client = await PolarisKeyClient.create({
+    ...polarisConfig,
+    store: new SafeStorageStore(
+      polarisConfig.productSlug,
+      app.getPath("userData"),
+      { safeStorage },
+    ),
+  });
+  exposePolarisBridge(client, {
+    ipcMain,
+    allowSender: (e) => e.senderFrame?.url.startsWith("app://") === true,
+  });
+});
+```
+
+```ts title="preload.ts"
+// Bundle the preload: a sandboxed preload loads no ES modules from node_modules.
+import "@polaris-key/node/electron/preload";
+```
+
+The renderer wraps the app in `<PolarisKeyProvider config={polarisKey}>` and `<PolarisKeyGate>`, as in [the React quickstart](/docs/build/quickstart/react/#3-gate-the-app).
+
+  </Fragment>
+  <Fragment slot="library">
+
+Call the client and handle each state yourself. Activate with `client.license.activateWithKey(key)`, read the state with `client.status()` and `client.isLicensed()`, and sign in with `client.identity.signInWithBrowser()`. [Your own UI](/docs/build/sdks/node/your-own-ui/) gives each call with its states and words, for a CLI, for Electron and for a server.
+
+  </Fragment>
+</Lanes>
+
+You should see the app locked, with the status `needs-activation`, until a key is entered.
+
+## 5. Activate a test license
+
+**CLI** Start a local server and activate with its `ok` key. [Run Polaris Key locally](/docs/build/local/) lists the key for each state.
+
+```sh title="Terminal"
+pkey dev
+```
+
+**App** Enter the `ok` key where the app asks for it.
+
+You should see the app unlock, and the status become `ok`.
+
+## What you built
+
+A client that verifies signed documents against your pins, and an app that gates on the license.
+
+## If it isn't working
+
+- A bare `npx pkey` fails or installs the wrong package: run `pkey` through your package manager.
+- Writes go to production: you built the client without the generated config's `baseUrl`.
+- [Troubleshoot your integration](/docs/build/troubleshooting/): each status and error code.
+- [Web apps and CORS](/docs/build/web-apps/): browser pages.
+- [Install the SDKs and the CLI](/docs/build/install/): other package managers and age gates.
+
+## Next steps
+
+<CardGrid>
+  <LinkCard
+    title="Your own UI"
+    href="/docs/build/sdks/node/your-own-ui/"
+    description="Every call, its states and words."
+  />
+  <LinkCard
+    title="Node SDK reference"
+    href="/docs/build/sdks/node/"
+    description="The whole API."
+  />
+  <LinkCard
+    title="Test your integration"
+    href="/docs/build/test-your-integration/"
+    description="Every license state, offline and grace."
+  />
+  <LinkCard
+    title="Go live"
+    href="/docs/build/go-live/"
+    description="Pins, signing and CI."
+  />
+</CardGrid>

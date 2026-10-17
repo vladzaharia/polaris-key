@@ -3,6 +3,8 @@ title: "Discovery"
 description: "The registry-assembled /.well-known/polaris.json document: honest per-service fragments, the always-on core block, and why an unsigned document is a hint and not a trust root."
 sidebar:
   order: 5
+type: "reference"
+lastReviewed: "2026-10-16"
 ---
 
 `GET /<product>/.well-known/polaris.json` is the one public document that describes a product.
@@ -83,7 +85,7 @@ and publishing a URL that is defined never to work is how a client ends up imple
 loop against a wall.
 
 `registration` carries the **effective** policy derived from the enablement set. See
-[the device principal](/docs/services/core/device-principal/) for the derivation.
+[the device principal](/docs/reference/protocol/device-principal/) for the derivation.
 
 ## Presentation
 
@@ -160,10 +162,10 @@ authority, `products.services_json`:
 
 A slug with **no descriptor** in this build gets the same disabled fragment, and gets it whether
 or not the flag is set — so an operator who enables a service this build does not mount sees
-"off" rather than a fragment nothing will serve.
+"off" rather than a fragment nothing serves.
 
 That makes the document a fourth projection of the same column that mounts the routes, so it can
-no longer disagree with them. A fragment reports **capability**, not just routes — whether this
+no longer disagree with them. A fragment reports **capability**, not only routes — whether this
 product has any edge-mint recipes, which channels Release syncs — which is why descriptors are
 handed a database handle when they build one.
 
@@ -178,7 +180,7 @@ That is deliberate, and it constrains how it may be used. `trust.pinnedKeys`,
 `trust.signingPub`, and `trust.keys` are **conveniences** — for a console, an operator running
 `curl`, or a first-time integration reading which kid is active. They are not a key source. An
 SDK's trust set comes from keys compiled into the host application, and everything else is
-learned only from a [trust manifest verified against those pins](/docs/services/core/trust/).
+learned only from a [trust manifest verified against those pins](/docs/reference/protocol/trust/).
 
 The practical rule: treat discovery as **coordinates and capability**, never as authority.
 
@@ -196,8 +198,8 @@ in the trust module. If one is ever retuned, both have to move.
 
 ## See also
 
-- [Trust and signing](/docs/services/core/trust/) — the signed artifact that _is_ a trust root.
-- [The device principal](/docs/services/core/device-principal/) — the registration policy this
+- [Trust and signing](/docs/reference/protocol/trust/) — the signed artifact that _is_ a trust root.
+- [The device principal](/docs/reference/protocol/device-principal/) — the registration policy this
   document reports.
 - [Public route table](/docs/reference/routes/) — every route, generated from the OpenAPI spec
   that the route-coverage test pins to the router.

@@ -1,9 +1,13 @@
 ---
-title: "Web clients and CORS"
-description: "Letting a browser page on your own origin call a product's device-facing routes with fetch — the web.origins allowlist, what it covers, and what it never will."
+title: "Web apps and CORS"
+description: "Let a browser page on your own origin call a product's device-facing routes with fetch: the web.origins allowlist, what it covers and what it never covers."
 sidebar:
   order: 6.5
+type: "reference"
+lastReviewed: "2026-10-16"
 ---
+
+A web app on another origin, such as the React kit on your own domain or a Godot web export, calls Polaris Key with a device token and verifies every document in the page against the pins in its generated config ([React quickstart](/docs/build/quickstart/react/#2-generate-the-config)). The browser also has to be allowed to read the response, which is what this page sets up. A page served from Polaris Key's own origin needs none of it.
 
 A browser page can only read a cross-origin response when the server says it may. The Worker
 says so per product, and only for the origins that product lists under `web.origins` in
@@ -63,8 +67,7 @@ Vary: Origin
 ```
 
 `ETag` lets a poller replay `If-None-Match`, and the range headers let a resumable download
-work. `Repr-Digest` is not sent yet but is already exposed, so the change that starts sending it
-does not also have to touch CORS.
+work. `Repr-Digest` is exposed for responses that carry it.
 
 Once a product lists **any** origin, every response on its covered routes carries
 `Vary: Origin`, whichever origin asked and whether or not one did. A shared cache can then never
@@ -138,4 +141,4 @@ origin. Added outside, the cached object carries no origin, and each response is
 the request that asked.
 
 Hosting the web build itself, cross-origin isolation for threaded exports, and serving bytes
-from a separate domain are separate work and are not part of this field.
+from a separate domain are outside this field.

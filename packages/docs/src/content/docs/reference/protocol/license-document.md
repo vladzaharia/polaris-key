@@ -3,6 +3,8 @@ title: "The license document"
 description: "The pkey-license+jws document: its envelope, the entitlement map, the content-only ETag, and the build gate that lives on this route."
 sidebar:
   order: 5
+type: "reference"
+lastReviewed: "2026-10-16"
 ---
 
 The license document is the signed statement of what a seat grants. It is the **only** carrier of
@@ -37,7 +39,7 @@ config document, which needs only a live device: this route hands out a grant, s
 must not be able to mint one.
 
 :::note[This route speaks the nested error shape]
-`GET /license/document` answers wire-v3 nested bodies — `{"error":{"code":"unauthorized"}}` —
+`GET /license/document` answers wire v4 nested bodies — `{"error":{"code":"unauthorized"}}` —
 while the activation routes still answer the flat v2 shape (`{"error":"device_limit"}`). The two
 co-exist on purpose: handlers that moved into the suite without changing their body kept theirs
 byte-identical, and the surfaces v3 introduced speak the nested shape from their first request.
@@ -165,7 +167,7 @@ two unsigned local hints that can only _tighten_ the outcome:
 
 `not-applicable` is what a product that does not enable License returns, and it counts as usable
 — so a config-only or release-only product boots working rather than claiming it needs an
-activation it will never have.
+activation it never has.
 
 ## The ETag
 
@@ -241,7 +243,7 @@ Inputs are the `X-PKey-Version` header (defaulting to `0.0.0` when absent), the 
    `0.0.0-beta…` and the legacy `0.0.0-staging…` are `beta`, `0.0.0-pr-42` (hyphen optional) is
    `pr-42`, everything else (including `2.0.0-beta.1`) is `stable`. A declared `X-PKey-Channel`
    header can only **add** a second channel to check, never replace the first — otherwise a
-   pre-release build would simply declare `stable` and skip the entitlement check. The header is
+   pre-release build would declare `stable` and skip the entitlement check. The header is
    normalised: `latest` is `stable`, `staging` is `beta`, the literal `pr` is the build's own
    `pr-<n>`, and `pr42` is `pr-42`.
 4. **Malformed declarations are refusals; unknown names must be granted.** A header outside the
@@ -252,7 +254,7 @@ Inputs are the `X-PKey-Version` header (defaulting to `0.0.0` when absent), the 
 5. **`stable` is the floor** every license holds. A product that has never authored a `channels`
    entitlement still serves its shipping release to everybody. Otherwise the `channels` grant
    must name the channel, with two widenings: a `staging` grant also covers `beta`, and a `pr`
-   grant covers every `pr-<n>`. The full vocabulary is WIRE-CONTRACT-V3 §5.1; see
+   grant covers every `pr-<n>`. The full vocabulary is WIRE-CONTRACT-V4 §5.1; see
    [channel](/docs/start/concepts/#core-nouns) in the glossary.
 
 ## Offline
@@ -273,7 +275,7 @@ row of the mint says so when it happens.
 
 ## Reference
 
-- `docs/security/WIRE-CONTRACT-V3.md` §2 (envelope), §2.1 (this document), §3 (claim validation
+- `docs/security/WIRE-CONTRACT-V4.md` §2 (envelope), §2.1 (this document), §3 (claim validation
   and grace), §5 (transport and gate placement), §7 (offline bundles).
 - [Wire error codes](/docs/reference/error-codes/) — `version_blocked`, `channel_not_allowed`,
   `unauthorized`.

@@ -15417,7 +15417,7 @@
         "docs/research/2026-10-08-docs/style-guide.md"
       ],
       "brief": "wp/DOC-07b-build-basics.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "DOC-08a",
@@ -15438,7 +15438,7 @@
         "docs/research/2026-10-08-docs/style-guide.md"
       ],
       "brief": "wp/DOC-08a-sdk-quickstarts.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "DOC-08b",
@@ -15459,7 +15459,7 @@
         "docs/research/2026-10-08-docs/style-guide.md"
       ],
       "brief": "wp/DOC-08b-ui-kits-and-web-apps.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "DOC-09a",
@@ -15480,7 +15480,7 @@
         "docs/research/2026-10-08-docs/style-guide.md"
       ],
       "brief": "wp/DOC-09a-licensing.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "DOC-09b",
@@ -15501,7 +15501,7 @@
         "docs/research/2026-10-08-docs/style-guide.md"
       ],
       "brief": "wp/DOC-09b-sign-in.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "DOC-09c",
@@ -15522,7 +15522,7 @@
         "docs/research/2026-10-08-docs/style-guide.md"
       ],
       "brief": "wp/DOC-09c-managed-config-and-cloud-sync.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "DOC-10a",
@@ -15585,7 +15585,7 @@
         "docs/research/2026-10-08-docs/style-guide.md"
       ],
       "brief": "wp/DOC-10c-packages-and-packs.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "DOC-11a",
@@ -15669,7 +15669,7 @@
         "docs/research/2026-10-08-docs/style-guide.md"
       ],
       "brief": "wp/DOC-12b-reference-and-contribute.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "DOC-13",
