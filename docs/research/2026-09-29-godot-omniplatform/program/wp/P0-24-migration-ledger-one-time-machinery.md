@@ -66,9 +66,9 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 
 ## Acceptance criteria
 
-- [ ] Ledger exists with an exit criterion per row
-- [ ] Every window is stated in days with a production fact, never in releases
-- [ ] Settings backfill code removed after the owner step
+- [x] Ledger exists with an exit criterion per row
+- [x] Every window is stated in days with a production fact, never in releases
+- [ ] Settings backfill code removed after the owner step (not met: the owner has not confirmed the production run; the ledger row stays open)
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify
@@ -84,3 +84,19 @@ Then the full green gate in `AGENTS.md`.
 
 What downstream work packages rely on from this one is named in their briefs (the Unblocks row). The role agent sets `--set P0-24 in-review` when it hands off. After review, the lead adds the last commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P0-24 done`.
+
+## Verification against the code (2026-10-17)
+
+- The ledger is the RUNBOOK section "Migration ledger" (`docs/RUNBOOK.md`), served at
+  `/docs/operate/platform/runbook/migration-ledger/`. It is documentation and data, not a table or
+  an API: P0-49's `data_migration_runs` and `data_migration_units` (migration 0122, Core-owned) are
+  the record of each job report, read through `pkey migrate` and the existing admin route. No new
+  migration, route or token scope.
+- Entries are rows in the ledger's Entries table. The first is CM-29 section 3.5's pre-check
+  (2026-10-17, 0 rows).
+- The ledger sets one default the plans left open: a drop runs at least 14 days after the Worker
+  that stopped using the object went live. The owner may change it.
+- Not sunset (production state not verifiable here): the ST-01c settings backfill
+  (`core/ops/settingsBackfill.ts`, its routes and console page; owner step), U-03's override
+  migration (U-27 owns it) and the I-05 catch-up in `services/identity/accounts/legacy.ts` (the
+  `LICENSE_WRITE_SEAMS` row names P0-24; it needs the fact that no pre-I-05 Worker serves).

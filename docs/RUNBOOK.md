@@ -2053,6 +2053,99 @@ It leaves the LX-08 tables, columns and store-grant rows in place. A roll forwar
 over, as the first deploy did: each sign-in and the catch-up move the keys out of the column again,
 and the catch-up re-projects the store grants the old Worker wrote in between.
 
+## Migration ledger
+
+Every change that runs in two steps (an expand, then a contract), every compatibility window and
+every data-migration job report has a row here. A row names its owner and ends on a **production
+fact**: something the lead reads in production, never a release number. The lead records the fact
+under _Entries_ in the change that closes the row. A row with no entry is open.
+
+**Rules** (owner, 2026-10-07).
+
+- No compatibility window exists except break-glass, paths that installed native binaries call, and
+  the two-release database contracts. There is none for an SDK, the CLI, the publish Action,
+  cookie mode, `PKEY_ADMIN_COOKIE` or the Pocket ID env override: each goes in the release that
+  replaces it, and a removed manifest field is a validator error that names its replacement.
+- A drop takes two steps. The first stops every read and write. The second drops the object, after
+  a production check that nothing read or wrote it and **14 days** after the Worker that stopped
+  using it went live, so the previous deploy is always a rollback target that still has it. The
+  second step ships its own down script in `scripts/rollback/`.
+- A value change runs through a data-migration job: release N writes the explicit values under the
+  old meaning, and the next release switches once a fresh dry run reports no changes.
+
+### Expand and contract pairs
+
+| Pair                                 | Owner     | Exit fact                                                                                                                                                   |
+| ------------------------------------ | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| U-03 override migration, U-27, U-27b | The lead  | U-27 deletes the machinery. U-27b drops `override_migration` and `override_migration_report` after the check.                                               |
+| ST-01c settings backfill             | The owner | The backfill ran on `djdl` and `polaris-key` and its report is kept. Then the runner, routes and page are deleted.                                          |
+| I-17 platform-IdP claim              | The owner | The count of end users with no email, read on the sunset date `PLATFORM_OIDC_SUNSET`. Closed by I-32b.                                                      |
+| LX-08 licensing catch-up             | The lead  | LX-11 retires `licensingCatchUp` and the store-grant dual-write once offers are the writer.                                                                 |
+| LX-16, LX-16b                        | The lead  | LX-16b drops the six standalone licensing tables after the check. Columns of `licenses` and `grants` stay.                                                  |
+| I-28, I-28b                          | The lead  | I-28b drops the four `portal_*` tables and their views after the check.                                                                                     |
+| P0-28, P0-28b                        | The lead  | P0-28b drops `product_secrets`, `outlet_credentials` and `platform_credentials` after a check that none was opened.                                         |
+| A-27, A-27b                          | The lead  | A-27b drops `dist_listing` after the check.                                                                                                                 |
+| PS-11 storefront close-out           | The lead  | No code reads `discover_enabled`.                                                                                                                           |
+| ST-25, ST-25b                        | The lead  | ST-25 stopped every read of `products.admin_group` and every `adminGroup` offer has an outcome. ST-25b drops it once the previous deploy is ST-25 or later. |
+| I-05 portal-to-account catch-up      | The lead  | No Worker built before I-05 can still serve. Then `services/identity/accounts/legacy.ts` goes (the `LICENSE_WRITE_SEAMS` row names this ledger).            |
+| LX-41 durations and subscriptions    | The lead  | None. LX-41 has no contract step, and its down script only reports.                                                                                         |
+
+### Rollback ladder (licensing)
+
+`scripts/rollback/0105_licensing.down.sql` is valid only before LX-35's migration. Each later
+licensing migration ships its own down script. After LX-35 ships, run the newest script that
+applies, never `0105`.
+
+### Windows
+
+| Window                                                                            | Owner     | Length                               | Exit fact                                                                                                                                                                              |
+| --------------------------------------------------------------------------------- | --------- | ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Break-glass (`/manage/login?breakGlass=1`, ST-30)                                 | The owner | At least 30 days from ST-30's deploy | 14 consecutive days with no `rbac.breakglass` audit row, and two accounts with a Superadmin binding and a strong passkey. Then the branch goes; `ADMIN_OIDC_*` stays as `console-idp`. |
+| Native-binary paths (the permanent aliases and routes DJDL's desktop builds call) | The owner | Until DJDL ships a build on 0.9      | Production request logs show no native client calling the route. SP-40 and I-32b each record this before they remove a route.                                                          |
+| `admin_group` column                                                              | The lead  | 14 days after ST-25's deploy         | See ST-25, ST-25b above.                                                                                                                                                               |
+| `PLATFORM_OIDC_MIGRATION` and `PLATFORM_OIDC_SUNSET`                              | The owner | To the owner-set date `YYYY-MM-DD`   | The seeded platform connection's audience is written once from its last value, recorded here. I-32b then removes both names.                                                           |
+| `licenses.sub`                                                                    | The lead  | To the owner-set date                | The `legacy-sub-sunset` dry run reports the email-less count again. Then I-32b stops every read; the column stays dormant.                                                             |
+
+### Job reports
+
+The data-migration runner (`core/migrate/`) keeps every run: `data_migration_runs` holds the mode,
+status, who ran it, the changes and the report; `data_migration_units` holds each unit. Rows are
+never pruned and hold no secret material. Read them with `pkey migrate list` and
+`pkey migrate report <run>`, or `GET /manage/api/platform/migrations/runs/<id>`. An apply is pinned
+to the dry-run report the lead read, so the run id is the record.
+
+When a row's exit depends on a job, the entry names the run id and its totals. Jobs the ledger
+tracks:
+
+| Job                                 | Owner    | Exit fact                                                                                                                                                                       |
+| ----------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `core.licence-override-migration`   | The lead | The dry run reports no licence with an override, then U-27 deletes the machinery. Applied from the console, never the runner.                                                   |
+| `identity.seed-platform-connection` | The lead | An apply report exists. Its seeded audience is recorded here as above.                                                                                                          |
+| P2-12 resolver comparison           | The lead | Zero blocking rows, every expected row acknowledged below by class and count, and no `workflow-channel` row's old answer newer than the latest `materialise-workflow-beta` run. |
+| P2-12b                              | The lead | The dry run after the switch shows zero blocking rows and nothing was rolled back. P2-12b then deletes the old resolver.                                                        |
+
+**P2-12 deviation.** The two-release rule says the switch waits for a dry run with no changes. The
+resolver comparison accepts six expected classes instead (`beta-includes-stable`,
+`workflow-channel`, `beyond-page-cap`, `duplicate-version`, `descriptor-channel`,
+`descriptor-files`), because they are the deliberate move to one meaning per track and cannot reach
+zero. The lead acknowledges each class and its count here before the switch.
+
+**Owner steps for DJDL** (P2-12). First, change the channel workflow so that beta publishes as a
+GitHub prerelease or with descriptor `channel: beta`, before the switch deploys. Second, drop
+`channelWorkflow` and `betaBranch` from its `.pkey/` manifest right after the switch deploys, not
+earlier: a resync writes `channel_workflow` as NULL when the field is absent.
+
+### Entries
+
+| Date       | Row             | Fact                                                                                                                                                           | Recorded by |
+| ---------- | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
+| 2026-10-17 | CM-29 pre-check | 0 rows in `dist_connector_settings` (`commerce`), `dist_store_products`, `dist_purchases` and `dist_purchase_bindings`. The old device paths are retired (D2). | The lead    |
+
+### Not yet removed
+
+The ST-01c backfill code (`core/ops/settingsBackfill.ts`, its routes and the console page) stays
+until the owner confirms the production run. Its row is above.
+
 ## The blob collector
 
 The nightly maintenance cron (`17 3 * * *`) runs Core's blob collector after the retention steps:
