@@ -319,6 +319,12 @@ h6,
   color: var(--pk-text-default);
 }
 
+/* The accent link colour measures 4.39:1 on the dark note background; text colour, underlined. */
+.starlight-aside a {
+  color: var(--pk-text-default);
+  text-decoration: underline;
+}
+
 .starlight-aside--note {
   --sl-color-asides-text-accent: var(--pk-info);
   --sl-color-asides-border: var(--pk-info-border);
@@ -459,4 +465,23 @@ h6,
   border-radius: var(--pk-radius-md);
   color: var(--pk-text-muted);
   font-size: var(--pk-font-size-sm);
+}
+
+/* ---- Status badges: one line, in the sans face (a status wrapped mid-word reads as three) ---- */
+
+.sl-badge {
+  font-family: var(--pk-font-sans);
+  white-space: nowrap;
+}
+
+/* Tab targets are at least 24 px tall (WCAG 2.2 target size). */
+starlight-tabs [role="tab"] {
+  min-block-size: 1.5rem;
+}
+
+/* Three cards fill a wide row instead of leaving the third alone on its own. */
+@media (min-width: 72rem) {
+  .card-grid:has(> :nth-child(3):last-child) {
+    grid-template-columns: repeat(3, 1fr);
+  }
 }

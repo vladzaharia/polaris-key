@@ -8,7 +8,7 @@ import { frameworkHref, UI_KITS } from "../../lib/uiKits";
 import KitStatus from "./KitStatus.astro";
 
 export interface Props {
-  /** Show one tier only: the must kits are the table of record, the should kits are parked. */
+  /** Show one group only: the must kits are the table of record, the should kits are parked. */
   tier?: "must" | "should";
 }
 const { tier } = Astro.props;
@@ -19,7 +19,8 @@ const pages = new Set(
     await getCollection("docs", (e) =>
       e.id.startsWith("build/ui/frameworks/"),
     )
-  ).map((e) => e.id.slice("build/ui/frameworks/".length)),
+  ).filter((e) => e.data.status !== "stub")
+  .map((e) => e.id.slice("build/ui/frameworks/".length)),
 );
 ---
 
@@ -29,9 +30,8 @@ const pages = new Set(
       <th scope="col">Kit</th>
       <th scope="col">Framework</th>
       <th scope="col">Status</th>
-      <th scope="col">Tier</th>
       <th scope="col">Package</th>
-      <th scope="col">Docs today</th>
+      <th scope="col">Docs</th>
     </tr>
   </thead>
   <tbody>
@@ -49,7 +49,6 @@ const pages = new Set(
           <td>
             <KitStatus kit={kit.id} />
           </td>
-          <td>{kit.tier}</td>
           <td>
             <code>{kit.package}</code>
           </td>
@@ -59,7 +58,7 @@ const pages = new Set(
             ) : kit.current !== undefined ? (
               <a href={kit.current.href}>{kit.current.label}</a>
             ) : (
-              <span class="pk-ui-muted">Not built yet</span>
+              <span class="pk-ui-muted">None</span>
             )}
           </td>
         </tr>

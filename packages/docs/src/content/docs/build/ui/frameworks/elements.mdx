@@ -1,99 +1,20 @@
 ---
 title: "Web components"
-description: "@polaris-key/elements: every Polaris Key UI component as a pk-* element on Lit 3, with the shared stylesheet. Not published yet; it runs from the repository."
+description: "@polaris-key/elements: every Polaris Key UI component as a pk-* element on Lit 3. Not built yet."
 type: "reference"
-lastReviewed: "2026-10-16"
+status: "stub"
 sidebar:
-  order: 1
+  hidden: true
+pagefind: false
+head:
+  - tag: meta
+    attrs:
+      name: robots
+      content: noindex
 ---
 
-import KitCoverage from "../../../../../components/ui/KitCoverage.astro";
 import KitFacts from "../../../../../components/ui/KitFacts.astro";
 
-Every catalog component as a custom element over the shared headless layer, in the product's accent.
-`<pk-gate>` runs every screen the license calls for and renders your app inside. The React kit
-draws the same DOM under the same stylesheet, so a state looks the same in both.
-
-The package is private and the CDN module (`https://key.plrs.im/elements/<major>/pk.js`) is not
-served yet. Until then the kit runs from a checkout of the repository.
+The web components kit is not built yet. [All frameworks](/docs/build/ui/frameworks/) lists the kits that are, and the [React kit](/docs/build/ui/frameworks/react/) covers the web.
 
 <KitFacts kit="elements" />
-
-## Install
-
-Not on a feed yet. In the repository, build the package and import it:
-
-```sh no-compile
-mise exec node@22 -- pnpm --filter @polaris-key/elements build
-```
-
-Importing the module registers every element. It adds its stylesheet to the document itself,
-through `adoptedStyleSheets`, never a `<style>` element. `PolarisKey.fonts(base)` says where Rubik
-lives, or `PolarisKey.fonts(false)` when your page loads it.
-
-## The one-line flow
-
-Layer (a): wrap the app in `<pk-gate>`.
-
-```html no-compile
-<script type="module" src="./main.js"></script>
-
-<pk-gate>
-  <my-app></my-app>
-</pk-gate>
-```
-
-The gate shows nothing while a cached session is checked. It renders the app once the license
-holds, under the grace banner while offline grace runs. Until then it owns the window: Welcome,
-the one sign-in form, Use a license key, Replace a device and the blocking states with their
-fixes. Every control raises a `pk-action` event.
-
-The gate takes its state from its `input` property today. A live adapter that drives it from the
-SDK is not part of the kit yet.
-
-## Piecemeal
-
-Layer (b): each component is its own element (`pk-welcome`, `pk-activate`, `pk-sign-in`,
-`pk-devices`, `pk-settings`, `pk-update-prompt` and the rest of the catalog), each with `::part`
-hooks, named slots and `pk-*` events.
-
-```html no-compile
-<pk-sign-in presentation="sheet"></pk-sign-in>
-```
-
-Style a part with `::part(…)` and the `--pk-*` custom properties.
-
-## Headless
-
-Layer (c): `@polaris-key/elements/headless` re-exports ui-core's models, with no DOM, for a UI of
-your own.
-
-```ts no-compile
-import { viewOf } from "@polaris-key/elements/headless";
-
-const view = viewOf("Welcome", { gate: { status: "needs-activation" } });
-console.log(view.state, view.copy);
-```
-
-## Theming
-
-`PolarisKey.theme({…})` sets the theme for the page, `<pk-provider theme='{…}'>` for a subtree and
-an element's `theme` property for one element. The fields are on
-[Theming](/docs/build/ui/theming/). With no theme the kit draws the Polaris Key look in the
-product's accent; `preset: "native"` restyles it to the host.
-
-## Localisation
-
-The eight launch locales load on demand from the generated copy tables. The locale is the theme's
-`locale`, else the document's `lang`. `copy` overrides take a catalog key per locale; see
-[Localization](/docs/build/ui/localization/).
-
-## Baselines
-
-<KitCoverage kit="elements" />
-
-## Sample
-
-`examples/ui/elements/` gates a fixture product, Tidewater Studio, with `<pk-gate>` on the
-fixtures, with no Worker. `?state=ok`, `grace`, `expired` or `revoked` pins the gate for one load.
-The folder's README says how to run it. There is no `--live` switch yet.

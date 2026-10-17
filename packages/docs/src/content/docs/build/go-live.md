@@ -13,8 +13,8 @@ An app that ships pins the keys that sign its documents, so the pins you build w
 
 ## Before you start
 
-- A product registered from its repo: [Register a product from its repo](/docs/build/manifest/register/).
-- For publishing, Release on and `.pkey/release` in the repo. [Write the release manifest](/docs/build/manifest/release/) covers it.
+- A product and an app that already activates: [Your first product](/docs/start/first-product/).
+- To publish from CI (steps 2 and 6), a product [registered from its repo](/docs/build/manifest/register/), with Release on and `.pkey/release`. [Release manifest](/docs/build/manifest/release/) covers it.
 
 ## Steps
 
@@ -42,9 +42,11 @@ An app that ships pins the keys that sign its documents, so the pins you build w
 
    You should see each pin match a listed key.
 
-5. **CLI** Sign your builds with each platform's own tools, such as Apple notarization or Authenticode. Polaris Key records what those steps produced; it doesn't sign binaries.
+5. **App** Sign your builds with each platform's own tools, such as Apple notarization or Authenticode. Polaris Key records what those steps produced; it doesn't sign binaries.
 
-6. **Server** Wire the publish step into your release job, with `pkey release publish` or the `polaris-key/publish` GitHub Action. Name the workflow in `publishing.trustedPublisher` in `.pkey/release`. The job exchanges its GitHub token for a short-lived token, so no secret sits in the repo. [Publishing from CI](/docs/features/ship-builds/ci/) has the workflow and the ruleset the ref needs.
+   You should see a signed build that opens on a clean machine without an unidentified-developer warning.
+
+6. **CLI** Wire the publish step into your release job, with `pkey release publish` or the `polaris-key/publish` GitHub Action. Name the workflow in `publishing.trustedPublisher` in `.pkey/release`. The job exchanges its GitHub token for a short-lived token, so no secret sits in the repo. [Publishing from CI](/docs/features/ship-builds/ci/) has the workflow and the ruleset the ref needs.
 
    You should see the release in the console after the job runs, with each build matched to your artifact map.
 

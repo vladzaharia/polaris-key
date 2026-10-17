@@ -81,6 +81,54 @@ Each entry starts from a license status or an error code your app reports. For t
 
 **Check it works:** `pkey doctor` lists the service, and the request answers.
 
+## The app can't verify a document
+
+**Cause:** The pins in the app's config file don't match the key that signed the document: the app points at another product or base URL, or the product's signing key changed since the file was generated. The app trusts only keys it pinned at build time, so it refuses a document with an unknown key id or a bad signature, and it never falls back to trusting the network.
+
+**Fix:** Run `pkey sdk --lang <lang> --product <slug> --write --force` and rebuild. Compare each key in the file with **Public key** under **Core → Keys & secrets**. [Go live](/docs/build/go-live/) covers staging a second key before you retire the first.
+
+**Check it works:** The status moves to `ok` after the next sync.
+
+## `network-error`
+
+**Cause:** The request got no answer: a refused connection, a reset, DNS, or the client's deadline. React reports `network`, and `server-error` is a 5xx answer.
+
+**Fix:** Check that the base URL in the config file is reachable from the device. With `pkey dev`, check that the server is running and, for an emulator, that the port is forwarded ([Run Polaris Key locally](/docs/build/local/#emulators-and-simulators)). The client keeps the cached documents, so the app stays usable until `graceUntil`.
+
+**Check it works:** The next sync answers.
+
+## `insecure-base-url`
+
+**Cause:** The base URL is plain `http` to a host that isn't loopback, so the device token would travel in the clear.
+
+**Fix:** Use an `https` base URL. Only `127.0.0.1` and `localhost` may use `http`, which is what `pkey dev` serves.
+
+**Check it works:** The client builds.
+
+## A browser app is blocked by CORS
+
+**Cause:** The page's origin isn't one the product allows.
+
+**Fix:** Open **Core → Settings → Web origins**, add the origin under **Allowed origins** and select **Save settings**, or declare it in `web.origins` in `.pkey/product`. [Web apps and CORS](/docs/build/web-apps/) has both.
+
+**Check it works:** The page's requests answer.
+
+## `registration_closed`
+
+**Cause:** The product's registration policy refuses an anonymous device. With License on, a device registers only by activating; with License off and Identity on, only with a live sign-in.
+
+**Fix:** Activate with a key, or sign in. [How it works](/docs/start/how-it-works/#registration-policy) lists the policies.
+
+**Check it works:** The device appears under **Core → Devices**.
+
+## The clock is wrong
+
+**Cause:** A device clock far ahead of real time makes documents look expired. The client never reads a time earlier than the newest signed document it has verified, so a clock set back changes nothing.
+
+**Fix:** Correct the device clock and sync.
+
+**Check it works:** The status matches a device with the right time.
+
 ## `service-unavailable`
 
 **Cause:** The app called a sub-client whose service the product doesn't run.
@@ -126,3 +174,4 @@ Each entry starts from a license status or an error code your app reports. For t
 - [Wire error codes](/docs/reference/error-codes/): every code the platform and the SDKs raise.
 - [Run Polaris Key locally](/docs/build/local/): reproduce a state with a test key.
 - [pkey CLI](/docs/reference/cli/): `pkey doctor` and `pkey validate`.
+- [Troubleshoot licensing](/docs/features/licensing/troubleshooting/): refusals specific to licenses.

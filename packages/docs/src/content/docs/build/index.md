@@ -2,21 +2,28 @@
 title: "Build"
 description: "Write the manifest, add an SDK, test the integration and go live."
 type: "overview"
+tableOfContents: false
 lastReviewed: "2026-10-16"
 sidebar:
   order: 1
 ---
 
+import Requires from "../../../components/docs/Requires.astro";
 import CardGrid from "../../../components/docs/CardGrid.astro";
 import { LinkCard } from "@astrojs/starlight/components";
 
-This section is for the developer who adds Polaris Key to an app. A product is described as data in a `.pkey/` manifest, the Worker signs documents against it, and an SDK in your app verifies them and gates on the result.
+This section is for the developer who adds Polaris Key to an app. A product is described as data in a `.pkey/` manifest, Polaris Key signs documents against it, and an SDK verifies them and gates your app.
 
-**Requires:** a product in the console, and the **Platform admin** role to create one.
+<Requires role="Platform admin" />
 
 ## Get started
 
 <CardGrid>
+  <LinkCard
+    title="Your first product"
+    href="/docs/start/first-product/"
+    description="Create a product, install an SDK, activate a test license."
+  />
   <LinkCard
     title="Register a product from its repo"
     href="/docs/build/manifest/register/"

@@ -115,8 +115,7 @@ export const UI_KITS: readonly UiKit[] = [
   {
     id: "swiftui",
     label: "SwiftUI",
-    framework:
-      "SwiftUI (iOS and iPadOS; the Mac pass, visionOS and tvOS planned)",
+    framework: "SwiftUI (iOS and iPadOS)",
     sdk: "Swift",
     tier: "must",
     package: "PolarisKeyUI",
@@ -144,7 +143,7 @@ export const UI_KITS: readonly UiKit[] = [
   {
     id: "compose",
     label: "Compose",
-    framework: "Jetpack Compose (Android today; Compose Multiplatform planned)",
+    framework: "Jetpack Compose (Android)",
     sdk: "Kotlin",
     tier: "must",
     package: "im.plrs.key:polaris-key-ui",

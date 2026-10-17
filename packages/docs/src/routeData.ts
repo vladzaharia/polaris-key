@@ -13,7 +13,7 @@ import { HELP_MESSAGES, KNOWN_ENTRIES, messageToc } from "./lib/helpMessages";
  * Markdown heading is the developer-only section at the foot of Other messages), so the list
  * stays in the order of the page; `helpMessages.test.ts` keeps it so.
  */
-export const onRequest = defineRouteMiddleware((context) => {
+export const onRequest = defineRouteMiddleware(async (context) => {
   const { toc, id } = context.locals.starlightRoute;
   // The list is off for the page, or does not show level 2.
   if (toc === undefined || toc.minHeadingLevel > 2 || toc.maxHeadingLevel < 2)
@@ -23,6 +23,6 @@ export const onRequest = defineRouteMiddleware((context) => {
   toc.items.splice(
     1,
     0,
-    ...embeddedToc(id, toc.minHeadingLevel, toc.maxHeadingLevel),
+    ...(await embeddedToc(id, toc.minHeadingLevel, toc.maxHeadingLevel)),
   );
 });

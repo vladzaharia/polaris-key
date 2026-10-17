@@ -13,18 +13,16 @@ interface Heading {
 }
 type Module = { getHeadings?: () => Heading[] };
 
-const FILES = import.meta.glob<Module>(
-  [
-    "../../../sdk-node/README.md",
-    "../../../sdk-react/README.md",
-    "../../../../sdks/*/README.md",
-    "../../../../sdks/kotlin/ui/README.md",
-    "../../../../docs/DEPLOYMENT.md",
-    "../../../../docs/PRIVACY.md",
-    "../../../../docs/research/2026-10-08-docs/style-guide.md",
-  ],
-  { eager: true },
-);
+// Lazy: a test that imports the route middleware never loads a Markdown file.
+const FILES = import.meta.glob([
+  "../../../sdk-node/README.md",
+  "../../../sdk-react/README.md",
+  "../../../../sdks/*/README.md",
+  "../../../../sdks/kotlin/ui/README.md",
+  "../../../../docs/DEPLOYMENT.md",
+  "../../../../docs/PRIVACY.md",
+  "../../../../docs/research/2026-10-08-docs/style-guide.md",
+]) as Record<string, () => Promise<Module>>;
 
 /** The Starlight page id of each page, and the repository file it renders. */
 const PAGES: Readonly<Record<string, string>> = {
@@ -42,14 +40,15 @@ const PAGES: Readonly<Record<string, string>> = {
 };
 
 /** The imported file's headings as TOC items between `min` and `max`, nested by level. */
-export function embeddedToc(
+export async function embeddedToc(
   routeId: string,
   min: number,
   max: number,
-): TocItem[] {
+): Promise<TocItem[]> {
   const file = PAGES[routeId];
+  const load = file === undefined ? undefined : FILES[file];
   const headings =
-    file === undefined ? [] : (FILES[file]?.getHeadings?.() ?? []);
+    load === undefined ? [] : ((await load()).getHeadings?.() ?? []);
   const root: TocItem[] = [];
   const stack: TocItem[] = [];
   for (const h of headings) {

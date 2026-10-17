@@ -85,7 +85,9 @@ const rows = Object.entries(components).map(([name, c]) => {
           <td>{row.states}</td>
           <td>
             {row.kits.length === 0 ? (
-              <span class="pk-ui-muted">Not built yet</span>
+              <span class="pk-ui-muted">
+                {row.href === null ? "Not built yet" : "No baselines"}
+              </span>
             ) : (
               row.kits.join(", ")
             )}
