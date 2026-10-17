@@ -77,17 +77,34 @@ Done on `wp/P0-26-ingest` (plan commit order):
    `settingsBackfill` P0-49, `settingsClaims` ST-17, `core/products/store.ts` profiles ST-43). 14
    `P0-26` rows remain (6 `SEAMS`, 8 `WRITE_SEAMS`), exactly the ones the pipeline deletes.
 
-Not done (the plan's commits 2 and 3 are 1 to 1.5 weeks of work, not a 2.5 h slice): `core/ingest/`
-(types, pipeline, core contributor), the `contributes.manifest` facet, the four service
-`ingest.ts` modules, the builder moves, link/resync/link-existing/deploy hook/dry runs on the
-pipeline, D2 (`ingest` required), the deletions, `settings-writes` and `settings-registry` edits,
-and the architecture docs rewrite. Golden notes for whoever continues: the harness already calls
-`manifestIngestFor(SERVICES)`; when D2 lands, swap those three call sites for `ingestFor(SERVICES)`
-(an import edit only). D5's three deltas change goldens `12b` and `12d/12e` (every policy refusal
-listed), `12a` (reservedDisplayNames) and add a link scenario for a secret with a default; list
-each in the golden test header when taken. Suggested split if the lead wants smaller PRs: P0-26a =
-pipeline + Core + License/Identity/Config/Release/Distribution contributors with link and resync;
-P0-26b = deploy hook + dry runs + deletions + docs.
+**P0-26a (2026-10-17, same branch).** Link and resync run on the Core pipeline:
+
+- `core/ingest/{types,pipeline,core,rows,shared,manifestSecrets,constants}.ts` and the facet
+  `contributes.manifest` (`core/contributions.ts`). Contributors: Core (`core/ingest/core.ts`),
+  License, Config, Identity, Release, Distribution (`services/<slug>/ingest.ts`).
+- Deviation from the plan's shape: a contributor lists its refusals as lazy `checks`, which the
+  pipeline runs in `REFUSAL_ORDER` and stops at the first, then calls `prepare`. This keeps a
+  refused ingest's D1 reads equal to the old code's (D4: round trips may not grow) and the first
+  refusal in the old order. The method is `run`, not `apply` (a plain function has an `apply`,
+  so a stale `ManifestIngest` would type-check as an `Ingest`).
+- `resyncRepo` / `linkRepo` / `registerFromManifest` are now the GitHub source adapters. The
+  descriptor hooks (`manifestIngest`, `manifestIngestAlways`, `manifestIngestFor`) STAY: the
+  deploy hook (`linkSystemProduct`) still runs them until P0-26b. The contributors call the same
+  statement functions, so there is one implementation of each row.
+- Goldens: all pass; the audit rows in the end-state dump are sorted (multiset) and
+  `13-link-secret-default` is D5 delta 1 (both listed in the golden header). D5 deltas 2 and 3
+  belong to the dry runs (26b). New: `test/ingest/documents.test.ts` (D8).
+- Builders moved to their owners; 6 `WRITE_SEAMS` and 3 `SEAMS` rows gone. 5 `P0-26` rows remain.
+- Two small undeclared changes: link now writes a tier's `rank` and `policyOfflineGraceDays`
+  (the old link insert omitted them, so a first link lost them until the next resync), and
+  `ingest` stays optional, falling back to the registry `mount.ts` bound (`BOUND_INGEST`).
+
+Left for P0-26b: the deploy hook on the pipeline (`scope: "system"`), the three dry runs and
+D5 deltas 2 and 3, deleting the old hooks and `NO_INGEST`, `ingest` required (D2), the five
+remaining seam rows (`release` -> `oidc_config` / `provisioning_config` / `edge_mint_config`
+reads in the dry run; `core/licensing/store.ts` and `core/products/store.ts` profile and schema
+writers), `settings-writes` / `settings-registry` cleanup (`setFingerprintPolicy`,
+`setAutoIssuePolicy`, `setServices` callers), and the architecture docs rewrite.
 
 ## Verify
 
