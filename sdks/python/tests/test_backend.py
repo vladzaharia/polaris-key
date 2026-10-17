@@ -362,3 +362,105 @@ def test_the_async_client_mirrors_backend() -> None:
 
     h = asyncio.run(run())
     assert set(h) == {"X-PKey-License", "X-PKey-Device"}
+
+
+# ── Fix round: the licence never reaches a disallowed origin ─────────────────────────
+def _leak_rig(answers: List[httpx.Response]) -> Rig:
+    return Rig(answers)
+
+
+def test_followed_redirect_to_a_disallowed_origin_reaches_the_transport_zero_times() -> None:
+    rig = _leak_rig([httpx.Response(302, headers={"location": "https://evil.test/steal?token=s3cret"})])
+    with rig.backend.httpx_client(transport=httpx.MockTransport(rig.handler), follow_redirects=True) as http:
+        with pytest.raises(PolarisError) as e:
+            http.get(ORIGIN + "/export")
+    assert e.value.code == "backend-origin-not-allowed"
+    assert [str(r.url) for r in rig.sent] == [ORIGIN + "/export"]  # the evil hop was never sent
+    assert "s3cret" not in e.value.message and "/steal" not in e.value.message
+
+
+def test_the_async_client_guards_every_hop_too() -> None:
+    rig = _leak_rig([httpx.Response(302, headers={"location": "https://evil.test/steal"})])
+
+    async def run() -> None:
+        async with rig.backend.httpx_async_client(
+            transport=httpx.MockTransport(rig.handler), follow_redirects=True
+        ) as http:
+            await http.get(ORIGIN + "/export")
+
+    with pytest.raises(PolarisError) as e:
+        asyncio.run(run())
+    assert e.value.code == "backend-origin-not-allowed"
+    assert len(rig.sent) == 1
+
+
+def test_a_redirect_on_the_retried_response_is_guarded() -> None:
+    rig = _leak_rig(
+        [_problem(401, "license_stale"), httpx.Response(302, headers={"location": "https://evil.test/x"})]
+    )
+    with rig.backend.httpx_client(transport=httpx.MockTransport(rig.handler), follow_redirects=True) as http:
+        with pytest.raises(PolarisError) as e:
+            http.get(ORIGIN + "/export")
+    assert e.value.code == "backend-origin-not-allowed"
+    assert len(rig.sent) == 2
+
+
+def test_user_event_hooks_are_kept_after_the_guard() -> None:
+    rig = _leak_rig([httpx.Response(200)])
+    seen: List[str] = []
+    with rig.backend.httpx_client(
+        transport=httpx.MockTransport(rig.handler), event_hooks={"request": [lambda r: seen.append(str(r.url))]}
+    ) as http:
+        http.get(ORIGIN + "/export")
+    assert seen == [ORIGIN + "/export"]
+
+
+def test_requests_retry_that_redirects_elsewhere_is_refused_and_nothing_more_is_sent() -> None:
+    requests = pytest.importorskip("requests")
+    from requests.adapters import BaseAdapter
+
+    rig = Rig(
+        [_problem(401, "license_stale"), httpx.Response(302, headers={"location": "https://evil.test/x"})]
+    )
+
+    class Stub(BaseAdapter):
+        def send(self, request: Any, **kw: Any) -> Any:
+            rig.sent.append(httpx.Request(request.method, request.url))
+            a = rig._answers.pop(0) if len(rig._answers) > 1 else rig._answers[0]
+            resp = requests.Response()
+            resp.status_code = a.status_code
+            resp._content = a.content
+            resp.headers.update(dict(a.headers))
+            resp.url = request.url
+            resp.request = request
+            resp.connection = self
+            return resp
+
+        def close(self) -> None:
+            pass
+
+    s = requests.Session()
+    s.mount("https://", Stub())
+    with pytest.raises(PolarisError) as e:
+        s.get(ORIGIN + "/export", auth=rig.backend.requests_auth())
+    assert e.value.code == "backend-origin-not-allowed"
+    assert [str(r.url) for r in rig.sent] == [ORIGIN + "/export", ORIGIN + "/export"]
+
+
+def test_forced_syncs_are_rate_limited() -> None:
+    clock = {"t": 100.0}
+    syncs: List[bool] = []
+    backend = BackendClient(
+        held=lambda: ("a.b.c", 1_700_000_000, 1_700_003_600),
+        device_id=lambda: DEVICE,
+        now=lambda: 1_700_001_000,
+        sync=lambda force: syncs.append(force) or True,
+        origins=[ORIGIN],
+        monotonic=lambda: clock["t"],
+    )
+    assert backend._shared(True) is True
+    clock["t"] += 5
+    assert backend._shared(True) is False  # inside the interval: no sync, the response stands
+    clock["t"] += 6
+    assert backend._shared(True) is True
+    assert syncs == [True, True]

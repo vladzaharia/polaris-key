@@ -9,10 +9,12 @@ The headers are ``X-PKey-License`` (the compact licence JWS, when one is held) a
 ``X-PKey-Device``. Never the device token, never the config document. A URL whose origin is not
 in ``backend.origins`` (exact, HTTPS only except loopback) is refused with
 ``backend-origin-not-allowed`` before anything is sent. Redirects: ``requests`` is checked on every
-hop before it is sent; ``httpx`` runs an auth once per request and follows redirects inside it, so
-keep ``follow_redirects`` off (httpx's default; you send the next hop, and it goes through this
-auth) or list every redirect target in ``backend.origins``. A response that arrives through a redirect to
-another origin raises anyway, but by then that hop has seen the headers. The rule is :func:`client_backend_action` (``backend-matrix.json``'s
+hop before it is sent. ``httpx`` runs an auth once per request and follows redirects inside it,
+so an auth alone cannot stop a followed redirect from carrying the headers to another origin.
+Build the client with ``client.backend.httpx_client()`` (or ``httpx_async_client()``), or pass
+``event_hooks=client.backend.httpx_event_hooks()`` next to ``auth=``: the hook refuses, before
+anything is sent, any request that carries either header to an origin outside ``backend.origins``.
+``httpx_auth()`` alone is safe only with ``follow_redirects=False`` (httpx's default). The rule is :func:`client_backend_action` (``backend-matrix.json``'s
 ``client`` section): refresh a document within ``REFRESH_MARGIN_SECONDS`` of its expiry before
 sending, force a sync and retry once on ``license_stale`` or ``license_invalid``, and never retry
 ``not_entitled`` or ``sign_in_required``: those raise a :class:`~polaris_key.PolarisError` with
@@ -24,9 +26,10 @@ from __future__ import annotations
 
 import json
 import threading
+import time
 from concurrent.futures import Future
 from dataclasses import dataclass
-from typing import Any, AsyncGenerator, Callable, Dict, Generator, Iterable, Optional, Tuple
+from typing import Any, AsyncGenerator, Callable, Dict, Generator, Iterable, List, Optional, Tuple
 from urllib.parse import urljoin, urlsplit
 
 import httpx
@@ -44,6 +47,9 @@ _LOOPBACK = frozenset({"localhost", "127.0.0.1", "[::1]", "::1"})
 _RETRY_CODES = frozenset({"license_stale", "license_invalid"})
 _SURFACED = frozenset({"not_entitled", "sign_in_required"})
 _DEFAULT_PORTS = {"https": 443, "http": 80}
+#: The least time between two forced syncs: a backend that answers ``license_stale`` to every
+#: request cannot make the client ask the Worker for a document per request.
+FORCED_SYNC_MIN_INTERVAL_SECONDS = 10.0
 
 
 def client_backend_action(
@@ -151,6 +157,7 @@ class BackendClient:
         now: Callable[[], int],
         sync: Callable[[bool], bool],
         origins: Iterable[str] = (),
+        monotonic: Callable[[], float] = time.monotonic,
     ) -> None:
         self._held = held
         self._device_id = device_id
@@ -159,6 +166,8 @@ class BackendClient:
         self._allowed = frozenset(normalize_backend_origin(o) for o in origins)
         self._lock = threading.Lock()
         self._flight: Optional[_Flight] = None
+        self._monotonic = monotonic
+        self._last_forced: Optional[float] = None
 
     @property
     def origins(self) -> Tuple[str, ...]:
@@ -198,6 +207,14 @@ class BackendClient:
             if live is not None and (live.force or not force):
                 flight, owner = live, False
             else:
+                if force:
+                    at = self._monotonic()
+                    if (
+                        self._last_forced is not None
+                        and at - self._last_forced < FORCED_SYNC_MIN_INTERVAL_SECONDS
+                    ):
+                        return False
+                    self._last_forced = at
                 flight, owner = _Flight(force, Future()), True
                 self._flight = flight
         if owner:
@@ -219,7 +236,8 @@ class BackendClient:
         if origin is None or origin not in self._allowed:
             raise PolarisError(
                 ErrorCode.BACKEND_ORIGIN_NOT_ALLOWED,
-                copy.message(ErrorCode.BACKEND_ORIGIN_NOT_ALLOWED, origin or url),
+                # The origin only: a URL's path and query can hold a secret.
+                copy.message(ErrorCode.BACKEND_ORIGIN_NOT_ALLOWED, origin or "an unreadable URL"),
             )
 
     @staticmethod
@@ -231,6 +249,39 @@ class BackendClient:
     def httpx_auth(self) -> httpx.Auth:
         """An ``httpx.Auth`` for ``httpx.Client`` and ``httpx.AsyncClient``."""
         return _HttpxAuth(self)
+
+    def httpx_event_hooks(self, *, asynchronous: bool = False) -> Dict[str, List[Any]]:
+        """``event_hooks`` for an httpx client: a request hook that refuses, before anything is
+        sent, a request carrying ``X-PKey-License`` or ``X-PKey-Device`` to an origin outside
+        ``backend.origins``. It runs on every hop, redirects included. Pair it with
+        :meth:`httpx_auth`, or use :meth:`httpx_client`."""
+
+        def guard(request: httpx.Request) -> None:
+            if HEADER_LICENSE in request.headers or HEADER_DEVICE in request.headers:
+                self._assert_allowed(str(request.url))
+
+        async def aguard(request: httpx.Request) -> None:
+            guard(request)
+
+        return {"request": [aguard if asynchronous else guard]}
+
+    def httpx_client(self, **kwargs: Any) -> httpx.Client:
+        """An ``httpx.Client`` with :meth:`httpx_auth` and the per-hop guard installed. Any
+        ``event_hooks`` you pass run after the guard."""
+        return httpx.Client(auth=self.httpx_auth(), event_hooks=self._hooks(kwargs, False), **kwargs)
+
+    def httpx_async_client(self, **kwargs: Any) -> httpx.AsyncClient:
+        """:meth:`httpx_client` for asyncio."""
+        return httpx.AsyncClient(
+            auth=self.httpx_auth(), event_hooks=self._hooks(kwargs, True), **kwargs
+        )
+
+    def _hooks(self, kwargs: Dict[str, Any], asynchronous: bool) -> Dict[str, List[Any]]:
+        mine = self.httpx_event_hooks(asynchronous=asynchronous)
+        theirs = kwargs.pop("event_hooks", None) or {}
+        merged: Dict[str, List[Any]] = {k: list(v) for k, v in theirs.items()}
+        merged["request"] = [*mine["request"], *merged.get("request", [])]
+        return merged
 
     # ── requests ────────────────────────────────────────────────────────────────────
     def requests_auth(self) -> Any:
@@ -272,6 +323,7 @@ class _HttpxAuth(httpx.Auth):
             if b._shared(True):
                 self._attach(request)
                 response = yield request
+                self._check_history(response)
                 code = _problem_code(
                     response.status_code, lambda: (response.read(), response.content)[1]
                 )
@@ -294,6 +346,7 @@ class _HttpxAuth(httpx.Auth):
             if await asyncio.to_thread(b._shared, True):
                 self._attach(request)
                 response = yield request
+                self._check_history(response)
                 await response.aread()
                 code = _problem_code(response.status_code, lambda: response.content)
         b._surface(response.status_code, code)
@@ -312,12 +365,18 @@ def _make_requests_auth(base: Any) -> Any:
             r.register_hook("response", self._on_response)
             return r
 
-        def _on_response(self, r: Any, **kwargs: Any) -> Any:
-            b = self._backend
-            # A redirect: the next hop carries our headers, so it must be an allowed origin.
+        def _check_redirect(self, r: Any) -> bool:
+            """A redirect's next hop carries our headers, so it must be an allowed origin.
+            True when ``r`` is a redirect (then allowed)."""
             location = r.headers.get("location")
             if r.status_code in (301, 302, 303, 307, 308) and location:
-                b._assert_allowed(urljoin(r.url, location))
+                self._backend._assert_allowed(urljoin(r.url, location))
+                return True
+            return False
+
+        def _on_response(self, r: Any, **kwargs: Any) -> Any:
+            b = self._backend
+            if self._check_redirect(r):
                 return r
             code = _problem_code(r.status_code, lambda: r.content)
             retried = getattr(r.request, "_pkey_retried", False)
@@ -331,6 +390,9 @@ def _make_requests_auth(base: Any) -> Any:
                 retry.history.append(r)
                 retry.request = prep
                 r = retry
+                # The retry's own redirect is checked too: requests would follow it with the headers.
+                if self._check_redirect(r):
+                    return r
                 code = _problem_code(r.status_code, lambda: r.content)
             b._surface(r.status_code, code)
             return r
