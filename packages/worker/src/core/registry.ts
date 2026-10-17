@@ -36,9 +36,10 @@ import {
   type LicenseMerge,
   type LicenseMergeContributor,
 } from "./licensing/licenseMerge.js";
-import type {
-  LicenseDelete,
-  LicenseDeleteContributor,
+import {
+  licenseDeleteFor,
+  type LicenseDelete,
+  type LicenseDeleteContributor,
 } from "./licensing/licenseDelete.js";
 import type { ServiceContributions } from "./contributions.js";
 import type { ServiceSettingsSlice } from "./settings/types.js";
@@ -413,6 +414,73 @@ function serviceNotFound(): Response {
   return json({ error: { code: ErrorCode.NotFound } }, { status: 404 });
 }
 
+/** What every `serviceContext` caller supplies: the product's runtime inputs. */
+export interface ContextBase {
+  env: Env;
+  db: Db;
+  product: ProductPublic;
+  now: number;
+}
+
+/** The Core-built members of a `ServiceContext`, per kind of caller (see {@link serviceContext}). */
+export interface CoreBuilt {
+  request: Pick<
+    ServiceContext,
+    "hooks" | "ingest" | "storeGrants" | "licenseMerge" | "settings"
+  >;
+  admin: Pick<
+    ServiceContext,
+    "hooks" | "ingest" | "licenseDelete" | "settings"
+  >;
+  scheduled: Pick<ScheduledServiceContext, "hooks" | "storeGrants">;
+  host: { hooks: ServiceHooks };
+}
+
+/**
+ * THE builder of everything Core adds to what a service handler is given (P0-19). Four callers
+ * used to assemble these members by hand and could drift apart; each now names its kind:
+ *
+ *   request    the public path (`dispatchService`): hooks, ingest, store grants, licence merge,
+ *              settings;
+ *   admin      the console path (`console/productScoped.ts`): hooks, ingest, licence deletion,
+ *              settings. No store grants or licence merge: a console route is not a purchase or a
+ *              sign-in;
+ *   scheduled  a cron tick (`runScheduledServices`): hooks and store grants;
+ *   host       the bytes and registry hosts and the render queue: hooks only.
+ *
+ * Every kind gets hooks gated on THIS product's enablement, so a service that is off answers
+ * `null` whichever door the caller came through. A member a kind does not list is absent, and the
+ * code that needs it fails closed (see each field on `ServiceContext`).
+ */
+export function serviceContext<K extends keyof CoreBuilt>(
+  kind: K,
+  registry: ServiceRegistry,
+  services: ServicesMap,
+  base: ContextBase,
+): CoreBuilt[K] {
+  const hooks = buildHooks(registry, services, base);
+  const built: CoreBuilt[keyof CoreBuilt] =
+    kind === "request"
+      ? {
+          hooks,
+          ingest: manifestIngestFor(registry),
+          storeGrants: storeGrantWriter(registry, services, base),
+          licenseMerge: licenseMergeFor(registry),
+          settings: settingsRegistryFor(registry),
+        }
+      : kind === "admin"
+        ? {
+            hooks,
+            ingest: manifestIngestFor(registry),
+            licenseDelete: licenseDeleteFor(registry),
+            settings: settingsRegistryFor(registry),
+          }
+        : kind === "scheduled"
+          ? { hooks, storeGrants: storeGrantWriter(registry, services, base) }
+          : { hooks };
+  return built as CoreBuilt[K];
+}
+
 /**
  * Dispatch a product-scoped request to a service, honouring that product's enablement set.
  *
@@ -431,21 +499,12 @@ export async function dispatchService(
   if (!descriptor) return serviceNotFound();
   const res = await descriptor.handle({
     ...ctx,
-    ingest: manifestIngestFor(registry),
-    hooks: buildHooks(registry, services, {
+    ...serviceContext("request", registry, services, {
       env: ctx.env,
       db: ctx.db,
       product: ctx.product,
       now: ctx.now,
     }),
-    storeGrants: storeGrantWriter(registry, services, {
-      env: ctx.env,
-      db: ctx.db,
-      product: ctx.product,
-      now: ctx.now,
-    }),
-    licenseMerge: licenseMergeFor(registry),
-    settings: settingsRegistryFor(registry),
   });
   return res ?? serviceNotFound();
 }
@@ -584,17 +643,12 @@ export async function runScheduledServices(
   const results: Partial<Record<ServiceSlug, Record<string, unknown>>> = {};
   const failures: Partial<Record<ServiceSlug, string>> = {};
   const services = ctx.product.services;
-  const hooks = buildHooks(registry, services, ctx);
-  const storeGrants = storeGrantWriter(registry, services, ctx);
+  const built = serviceContext("scheduled", registry, services, ctx);
   for (const slug of SERVICE_SLUGS) {
     const descriptor = registry.get(slug);
     if (!descriptor?.scheduled || !services[slug]?.enabled) continue;
     try {
-      results[slug] = await descriptor.scheduled({
-        ...ctx,
-        hooks,
-        storeGrants,
-      });
+      results[slug] = await descriptor.scheduled({ ...ctx, ...built });
     } catch (e) {
       failures[slug] = e instanceof Error ? e.message : String(e);
     }

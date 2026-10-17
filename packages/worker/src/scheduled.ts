@@ -47,7 +47,7 @@
 import { purgeRegistryTokens } from "./core/registry/registryTokens.js";
 import { pruneCiCredentials } from "./core/publisher.js";
 import { loadProductPublic } from "./core/products.js";
-import { runScheduledServices } from "./core/registry.js";
+import { runScheduledServices, serviceContext } from "./core/registry.js";
 import {
   drainRenderQueue,
   selfCheckRenders,
@@ -70,7 +70,6 @@ import {
   pruneRefusals,
 } from "./core/licensing/refusals.js";
 import { refreshPlatformSettings } from "./core/platformSettings.js";
-import { buildHooks } from "./core/hooks.js";
 import { recheckHostedAssets } from "./core/assets/hostedAssetPulls.js";
 import {
   JOB_RUN_RETENTION_SECONDS,
@@ -398,12 +397,12 @@ export async function runBlobGc(
     await step(report, `blobRefs:${slug}`, async () => {
       const product = await loadProductPublic(db, slug);
       if (!product) return 0;
-      const hooks = buildHooks(SERVICES, product.services, {
+      const hooks = serviceContext("host", SERVICES, product.services, {
         env,
         db,
         product,
         now,
-      });
+      }).hooks;
       const plan = await planProductGc({
         db,
         product: slug,

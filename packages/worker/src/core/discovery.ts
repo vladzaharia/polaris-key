@@ -48,8 +48,11 @@ import type { Db } from "../db/types.js";
 import type { Product } from "./products.js";
 import { loadPublicSigningKey, loadPublicSigningKeys } from "./products.js";
 import { methodNotAllowed } from "./errors.js";
-import type { DiscoveryContext, ServiceRegistry } from "./registry.js";
-import { buildHooks } from "./hooks.js";
+import {
+  serviceContext,
+  type DiscoveryContext,
+  type ServiceRegistry,
+} from "./registry.js";
 import { resolvePresentation } from "./presentation.js";
 import { SERVICE_SLUGS, type ServiceSlug } from "./services.js";
 import { settingsRegistryFor } from "./settings/registry.js";
@@ -91,7 +94,12 @@ export async function handleDiscovery(
     env,
     db,
     base,
-    hooks: buildHooks(registry, product.services, { env, db, product, now }),
+    hooks: serviceContext("host", registry, product.services, {
+      env,
+      db,
+      product,
+      now,
+    }).hooks,
     settings: settingsRegistryFor(registry),
   };
   // Keys in canonical table order — the order clients read. Every slug gets a fragment.

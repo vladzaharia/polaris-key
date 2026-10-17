@@ -28,9 +28,7 @@ import { handleBundleMint } from "./handlers/bundles.js";
 import { handleBlobGcAdmin } from "../core/assets/blobGc.js";
 import { loadProduct } from "../core/products.js";
 import { handleProductStorefronts } from "./handlers/polarisKeyStorefront.js";
-import { buildHooks } from "../core/hooks.js";
-import { manifestIngestFor } from "../core/registry.js";
-import { licenseDeleteFor } from "../core/licensing/licenseDelete.js";
+import { serviceContext } from "../core/registry.js";
 import { SERVICES, SETTINGS } from "../mount.js";
 import type { ServiceSlug } from "../core/services.js";
 import type { AdminCtx } from "./routes.js";
@@ -91,15 +89,10 @@ export async function handleProductScoped(c: AdminCtx): Promise<Response> {
         rest: rest.slice(1),
         now,
         session,
-        // Core's ingest pipeline over the same registry (P2b-02): Release's resync route runs it.
-        ingest: manifestIngestFor(SERVICES),
-        // Core's licence-deletion collector (`core/licensing/licenseDelete.ts`): License's delete route.
-        licenseDelete: licenseDeleteFor(SERVICES),
-        // ST-04: the settings registry, for the handlers that write through `writeSetting()`.
-        settings: SETTINGS,
-        // Same gate as the public path: a hook whose providing service is off answers `null`,
-        // even though the admin route itself is reachable while its own service is off.
-        hooks: buildHooks(SERVICES, loaded.services, {
+        // Core's ingest pipeline, licence-deletion collector, settings registry and the product's
+        // hooks (a hook whose providing service is off answers `null`, even though the admin
+        // route itself is reachable while its own service is off).
+        ...serviceContext("admin", SERVICES, loaded.services, {
           env,
           db,
           product: loaded,
@@ -201,12 +194,12 @@ export async function handleProductScoped(c: AdminCtx): Promise<Response> {
   if (resource === "blob-gc") {
     const loaded = await loadProduct(env, db, slug);
     if (!loaded) return notFound();
-    const hooks = buildHooks(SERVICES, loaded.services, {
+    const hooks = serviceContext("host", SERVICES, loaded.services, {
       env,
       db,
       product: loaded,
       now,
-    });
+    }).hooks;
     return handleBlobGcAdmin(req, env, db, slug, hooks, id, now);
   }
 
