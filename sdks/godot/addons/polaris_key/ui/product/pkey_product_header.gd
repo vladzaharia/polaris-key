@@ -100,6 +100,7 @@ func _init() -> void:
 	# The product's name is data, never translated (UI-KITS.md §4.7).
 	_name.set_meta(PKeyUiView.DATA_META, true)
 	_name.resized.connect(_fit_name)
+	resized.connect(_fit_name)
 	add_child(_name)
 	refresh()
 
@@ -179,6 +180,9 @@ func _fit_name() -> void:
 		return
 	var want := _name_size
 	var w := _name.size.x
+	_stack_if_cramped()
+	if _stacked:
+		w = size.x
 	if w > 0.0 and _plain != "":
 		var font := _name.get_theme_font("font")
 		var body := get_theme_font_size("font_size", "Label") if has_theme_font_size("font_size", "Label") else _name_size
@@ -196,6 +200,30 @@ func _fit_name() -> void:
 		_name.add_theme_font_size_override("font_size", target)
 	else:
 		_name.remove_theme_font_size_override("font_size")
+
+
+## Whether the icon sits over the name because beside it the name's widest word would not fit (a
+## host's 28 or 36 px type in a narrow pane); a function of the width, so it follows a live resize.
+var _stacked := false
+
+
+func _stack_if_cramped() -> void:
+	if centered or _name == null or _plain == "" or size.x <= 0.0:
+		return
+	var font := _name.get_theme_font("font")
+	var body := get_theme_font_size("font_size", "Label") if has_theme_font_size("font_size", "Label") else _name_size
+	var least := mini(_name_size, body)
+	var words: Array = Array(_plain.split(" ", false)).filter(func(word: String) -> bool: return word.unicode_at(0) < 0x2e80 and word.unicode_at(word.length() - 1) < 0x2e80)
+	var side := maxf(_icon.custom_minimum_size.x, 0.0) if (_icon.visible or _tile.visible) else 0.0
+	var beside := size.x - side - float(get_theme_constant("separation"))
+	var stack := font != null and _widest(font, words, least) > beside
+	if stack == _stacked:
+		return
+	_stacked = stack
+	vertical = stack
+	_name.horizontal_alignment = _start
+	_icon.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN if stack else Control.SIZE_FILL
+	_tile.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN if stack else Control.SIZE_FILL
 
 
 static func _widest(font: Font, words: Array, size: int) -> float:

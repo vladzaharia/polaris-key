@@ -16,6 +16,7 @@ extends RefCounted
 #
 #   godot --headless --path sdks/godot -- --pkey-test ui_matrix
 #   godot --headless --path sdks/godot -- --pkey-test ui_matrix sign_in,gate   # some screens
+#   godot --headless --path sdks/godot -- --pkey-test ui_matrix sign_in native36   # some looks too
 #
 # Not in the `ci` set (it takes about a minute): tools/run_tests.sh runs it as its own step.
 
@@ -30,6 +31,7 @@ func run(t: PKeyTestContext, args: PackedStringArray) -> bool:
 	var tree := Engine.get_main_loop() as SceneTree
 	var mx = MATRIX.new()
 	var only: Array = Array(args[0].split(",", false)) if args.size() > 0 and not args[0].begins_with("-") else []
+	var looks: Array = Array(args[1].split(",", false)) if args.size() > 1 and not args[1].begins_with("-") else []
 	var sizes: Array = []
 	for s in MATRIX.SIZES:
 		sizes.append(Array(s))
@@ -41,9 +43,13 @@ func run(t: PKeyTestContext, args: PackedStringArray) -> bool:
 	# [preset, locale, the size labels it is checked at (empty: all)].
 	var jobs: Array = []
 	for preset in PRESET_LOCALES:
+		if not looks.is_empty() and not looks.has(preset):
+			continue
 		for locale in PRESET_LOCALES[preset]:
 			jobs.append([preset, locale, []])
 	for preset in MATRIX.EXTRA_PRESETS:
+		if not looks.is_empty() and not looks.has(preset):
+			continue
 		var at: Array = MATRIX.EXTRA_SIZES.duplicate()
 		if preset in ["native28", "native36"]:
 			for l in MATRIX.HOST_FONT_SIZES:
@@ -76,6 +82,9 @@ func run(t: PKeyTestContext, args: PackedStringArray) -> bool:
 				layouts += 1
 			(st["vp"] as Node).free()
 			t.check("matrix: %s / %s / %s fits every size" % [entry[0], preset, locale], failed.is_empty(), "; ".join(failed.slice(0, 4)))
+	if not looks.is_empty():
+		mx.drop_locales()
+		return true
 	await _fresh_layouts(t, tree, mx, sizes, only)
 	await _pad_flows(t, tree, mx)
 	await _settings_opened_directly(t, tree, mx)
