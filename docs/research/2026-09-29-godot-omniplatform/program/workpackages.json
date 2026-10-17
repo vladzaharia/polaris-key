@@ -11724,7 +11724,7 @@
         "docs/research/2026-10-08-sdk-usability/findings.json"
       ],
       "brief": "wp/SP-41-pkey-dev-a-local-polaris-key-for-integrators.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "SP-42",
@@ -11829,7 +11829,7 @@
         "docs/research/2026-10-08-sdk-usability/findings.json"
       ],
       "brief": "wp/SP-45b-developer-docs-two-lanes-per-sdk-on-today-s.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "SP-46",
