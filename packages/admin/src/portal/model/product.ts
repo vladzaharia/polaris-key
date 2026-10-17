@@ -51,6 +51,7 @@ export const SECTION_ORDER: readonly ProductSection[] = [
   "new",
   "package",
   "help",
+  "data",
 ];
 
 export const SECTION_LABEL: Record<ProductSection, string> = {
@@ -61,6 +62,7 @@ export const SECTION_LABEL: Record<ProductSection, string> = {
   devices: t("account.devices"),
   package: "Package access",
   help: "Help",
+  data: "Your data",
 };
 
 /**
@@ -84,6 +86,7 @@ export function presentSections(
   if (extra.packageAccess) set.add("package");
   const pres = p.presentation;
   if (pres.supportUrl || pres.supportEmail || pres.website) set.add("help");
+  set.add("data");
   return SECTION_ORDER.filter((s) => set.has(s));
 }
 

@@ -79,7 +79,7 @@ Activate is one dialog available from the signed-in shell and the Library’s ke
 
 Account is a single page with section navigation. It ships Profile, Sign-in methods, Appearance, Your data, and Where you’re signed in when the Worker exposes sessions. The page omits a section for which the API has no representation.
 
-Profile reads and saves the display name and picture through the profile API. The session cache is updated immediately after a successful profile change so the header and account menu agree with the page. Sign-in methods, when supplied by the Worker, use the Worker’s step-up and last-method rules; a refused or stale operation causes the methods query to refresh. Sessions can end another session or sign out everywhere. Appearance stores the theme and motion preferences locally. Account deletion requires a typed confirmation and intentionally signs out without a misleading session-expired toast.
+Profile reads and saves the display name and picture through the profile API. The session cache is updated immediately after a successful profile change so the header and account menu agree with the page. Sign-in methods, when supplied by the Worker, use the Worker’s step-up and last-method rules; a refused or stale operation causes the methods query to refresh. Sessions can end another session or sign out everywhere. Appearance stores the theme and motion preferences locally. Account deletion requires a typed confirmation and schedules an erasure 14 days out; the session stays, a notice under the header on every page says so with a Cancel deletion link, and a stale sign-in shows the step-up prompt in place of the refusal. Download my data and each product's Your data card (Download, Remove, Support code) do the same.
 
 ## 5. Data, writes, and freshness
 
@@ -94,6 +94,10 @@ The portal data layer is `portal/data.ts`. All portal query keys begin with `por
 | Remove a license               | License detail is removed; license summaries, Library, product, releases, Discover refresh |
 | Save profile                   | Profile and session account data are updated; stale profile errors refresh Profile         |
 | Change sign-in method          | Methods, session, Profile, Library, license summaries refresh                              |
+| Schedule or cancel deletion    | The session account refreshes (the shell notice and Your data follow it)                   |
+| Download my data               | Nothing: the file is read-only                                                             |
+| Remove my data from a product  | License detail, license summaries, Library, product, releases, Discover refresh            |
+| Get a support code             | The product record refreshes                                                               |
 | End a session                  | Sessions refresh when the mutation settles                                                 |
 | Mint or revoke a package token | That product-and-license token list refreshes                                              |
 

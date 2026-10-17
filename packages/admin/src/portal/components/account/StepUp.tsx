@@ -60,6 +60,10 @@ export interface StepUpProps {
 
 type Way = "passkey" | "email";
 
+/** The main action fills a phone's width and wraps rather than clipping its label. */
+const MAIN_BUTTON =
+  "h-auto min-h-11 w-full whitespace-normal py-2 text-center sm:w-auto";
+
 export function StepUp({
   verb,
   view,
@@ -233,20 +237,24 @@ export function StepUp({
           variant={tone}
           loading={busy}
           iconStart={<Fingerprint aria-hidden />}
+          className={MAIN_BUTTON}
           onClick={() => void withPasskey()}
+          aria-label={`Use your passkey to ${verb}`}
           aria-describedby={error ? errorId : undefined}
         >
-          Use your passkey to {verb}
+          Use your passkey
         </Button>
       ) : way === "email" && email && !sent ? (
         <Button
           variant={tone}
           loading={busy}
           iconStart={<Mail aria-hidden />}
+          className={MAIN_BUTTON}
           onClick={() => void sendCode()}
+          aria-label={`Email a code to ${email}`}
           aria-describedby={error ? errorId : undefined}
         >
-          Email a code to {email}
+          Email me a code
         </Button>
       ) : way === "email" && email ? (
         <form
@@ -287,8 +295,10 @@ export function StepUp({
               variant={tone}
               loading={busy}
               disabled={code.length !== CODE_LENGTH}
+              className={MAIN_BUTTON}
+              aria-label={`Confirm and ${verb}`}
             >
-              Confirm and {verb}
+              Confirm
             </Button>
             <Button
               variant="link"

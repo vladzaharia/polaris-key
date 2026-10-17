@@ -8,7 +8,7 @@ import { toast } from "../../../ui/toast.js";
 import { PortalApiError, type PortalMethods } from "../../api.js";
 import { useMakePrimary, useRenamePasskey } from "../../data.js";
 import { isStepUpRequired, portalErrorCopy } from "../../errors.js";
-import { stepUpFresh } from "../../model/methods.js";
+import { passkeyName, stepUpFresh } from "../../model/methods.js";
 import { scrollBehavior } from "../../router.js";
 import { StepUp } from "./StepUp.js";
 
@@ -37,13 +37,28 @@ interface ToolProps {
 
 function errorText(err: unknown): string {
   if (err instanceof PortalApiError) {
-    if (err.status === 422 && err.message) return err.message;
+    if (err.status === 422)
+      return err.message && err.message !== `portal api ${err.status}`
+        ? err.message
+        : "Use 1 to 64 characters.";
     if (err.status === 404)
       return "It's already gone. The list is up to date now.";
   }
   const copy = portalErrorCopy(err);
   return `${copy.title}. ${copy.description}`;
 }
+
+/** Escape closes an inline panel, as Cancel does. */
+function closeOnEscape(close: () => void) {
+  return (e: React.KeyboardEvent): void => {
+    if (e.key === "Escape") {
+      e.stopPropagation();
+      close();
+    }
+  };
+}
+
+const NOTICE = "Receipts and security notices go here now.";
 
 export function MakePrimaryTool({
   methodId,
@@ -64,12 +79,23 @@ export function MakePrimaryTool({
   const buttonRef = React.useRef<HTMLButtonElement>(null);
   const headingRef = React.useRef<HTMLHeadingElement>(null);
   const panelId = `primary-${methodId}`;
+  const errorId = React.useId();
   const text = `${email} is now your primary email`;
+  const previous = view.emails.find((e) => e.primary)?.methodId ?? null;
 
   const run = (): void => {
     mutation.mutate(methodId, {
       onSuccess: () => {
-        toast.success(text);
+        toast.success(text, {
+          description: NOTICE,
+          // Undo is a safe inverse: the sign-in is still fresh for 5 minutes.
+          action: previous
+            ? {
+                label: t("toast.undo"),
+                onClick: () => mutation.mutate(previous),
+              }
+            : undefined,
+        });
         announce(text);
         focusAfter();
       },
@@ -77,7 +103,10 @@ export function MakePrimaryTool({
         if (isStepUpRequired(err)) {
           setNeedsStepUp(true);
           setOpen(true);
+          return;
         }
+        // The pressed button was disabled while it ran: give focus back.
+        requestAnimationFrame(() => buttonRef.current?.focus());
       },
     });
   };
@@ -96,12 +125,14 @@ export function MakePrimaryTool({
   const action = open ? null : (
     <Button
       ref={buttonRef}
-      variant="ghost"
-      className="h-10 font-medium"
+      variant="outline"
+      className="h-11 font-medium"
       loading={mutation.isPending}
       aria-label={`Make ${email} primary`}
-      aria-expanded={false}
-      aria-controls={panelId}
+      // A disclosure only when the click opens the panel (a stale sign-in).
+      aria-expanded={fresh ? undefined : false}
+      aria-controls={fresh ? undefined : panelId}
+      aria-describedby={error && !open ? errorId : undefined}
       onClick={() => {
         if (fresh) run();
         else setOpen(true);
@@ -113,7 +144,11 @@ export function MakePrimaryTool({
   const panel = (
     <>
       {error && !open ? (
-        <p role="alert" className="mt-2 text-sm text-danger sm:ml-13">
+        <p
+          id={errorId}
+          role="alert"
+          className="mt-2 text-sm text-danger sm:ml-13"
+        >
           {error}
         </p>
       ) : null}
@@ -129,7 +164,10 @@ export function MakePrimaryTool({
         }
       >
         <div className="pt-3 sm:ml-13">
-          <div className="space-y-3 rounded-lg border border-border bg-surface-sunken p-4">
+          <div
+            className="max-w-xl space-y-3 rounded-lg border border-border bg-surface-sunken p-4"
+            onKeyDown={closeOnEscape(close)}
+          >
             <h4
               ref={headingRef}
               tabIndex={-1}
@@ -137,6 +175,7 @@ export function MakePrimaryTool({
             >
               Make {email} primary?
             </h4>
+            <p className="text-sm text-fg-muted">{NOTICE}</p>
             {error ? (
               <p role="alert" className="text-sm text-danger">
                 {error}
@@ -168,6 +207,7 @@ export function MakePrimaryTool({
 export function RenamePasskeyTool({
   passkeyId,
   current,
+  fallback,
   what,
   view,
   accountId,
@@ -177,6 +217,8 @@ export function RenamePasskeyTool({
   passkeyId: string;
   /** The name it has now, or "" when unnamed. */
   current: string;
+  /** The name an empty field falls back to: "iCloud Keychain". */
+  fallback: string;
   /** For the button's name: "the iCloud Keychain passkey". */
   what: string;
 }): React.ReactElement {
@@ -190,19 +232,26 @@ export function RenamePasskeyTool({
   const panelId = `rename-${passkeyId}`;
   const fresh = stepUpFresh(view.stepUp, Math.floor(Date.now() / 1000));
 
+  const done = (said: string | null): void => {
+    if (said) {
+      toast.success(said);
+      announce(said);
+    }
+    setOpen(false);
+    setNeedsStepUp(false);
+    requestAnimationFrame(() => buttonRef.current?.focus());
+  };
   const save = (): void => {
     const name = value.trim();
+    // Nothing changed: close without a request or a toast.
+    if (name === current.trim()) {
+      done(null);
+      return;
+    }
     mutation.mutate(
       { id: passkeyId, name: name === "" ? null : name },
       {
-        onSuccess: () => {
-          const said = name === "" ? "The name was cleared" : "Renamed";
-          toast.success(said);
-          announce(said);
-          setOpen(false);
-          setNeedsStepUp(false);
-          requestAnimationFrame(() => buttonRef.current?.focus());
-        },
+        onSuccess: () => done(name === "" ? "The name was cleared" : "Renamed"),
         onError: (err) => {
           if (isStepUpRequired(err)) setNeedsStepUp(true);
         },
@@ -210,23 +259,24 @@ export function RenamePasskeyTool({
     );
   };
   const close = (): void => {
+    if (mutation.isPending) return;
     setOpen(false);
     setNeedsStepUp(false);
     setValue(current);
     mutation.reset();
     requestAnimationFrame(() => buttonRef.current?.focus());
   };
+  const stepUpFailed = mutation.error && isStepUpRequired(mutation.error);
   const error =
-    mutation.error && !isStepUpRequired(mutation.error)
-      ? errorText(mutation.error)
-      : null;
-  const askFirst = needsStepUp || (open && !fresh);
+    mutation.error && !stepUpFailed ? errorText(mutation.error) : null;
+  const invalid =
+    mutation.error instanceof PortalApiError && mutation.error.status === 422;
 
   const action = open ? null : (
     <Button
       ref={buttonRef}
-      variant="ghost"
-      className="h-10 font-medium"
+      variant="outline"
+      className="h-11 font-medium"
       aria-label={`Rename ${what}`}
       aria-expanded={false}
       aria-controls={panelId}
@@ -253,61 +303,78 @@ export function RenamePasskeyTool({
       <div className="pt-3 sm:ml-13">
         <form
           noValidate
-          className="space-y-2 rounded-lg border border-border bg-surface-sunken p-4"
+          className="max-w-xl space-y-3 rounded-lg border border-border bg-surface-sunken p-4"
+          onKeyDown={closeOnEscape(close)}
           onSubmit={(e) => {
             e.preventDefault();
-            if (!askFirst) save();
+            if (mutation.isPending || needsStepUp) return;
+            // A stale sign-in: Save asks to confirm it's you, and saves once that's done.
+            if (!fresh) setNeedsStepUp(true);
+            else save();
           }}
         >
-          <label
-            htmlFor={fieldId}
-            className="text-sm font-medium text-fg-strong"
-          >
-            Name
-          </label>
-          <Input
-            id={fieldId}
-            value={value}
-            maxLength={64}
-            autoComplete="off"
-            onValueChange={(v) => {
-              setValue(v);
-              if (mutation.error) mutation.reset();
-            }}
-            aria-invalid={error ? true : undefined}
-            aria-describedby={error ? errorId : undefined}
-          />
-          {error ? (
-            <p id={errorId} role="alert" className="text-sm text-danger">
-              {error}
-            </p>
-          ) : (
-            <p className="text-sm text-fg-muted">
-              Leave it empty to use the browser's name.
-            </p>
-          )}
-          {askFirst ? (
-            <StepUp
-              verb="rename it"
-              view={view}
-              accountId={accountId}
-              returnTo={returnTo}
-              autoFocus={needsStepUp}
-              onConfirmed={() => {
-                setNeedsStepUp(false);
-                save();
+          <div className="space-y-2">
+            <label
+              htmlFor={fieldId}
+              className="text-sm font-medium text-fg-strong"
+            >
+              Passkey name
+            </label>
+            <Input
+              id={fieldId}
+              value={value}
+              maxLength={64}
+              autoComplete="off"
+              placeholder={fallback}
+              readOnly={mutation.isPending}
+              className="max-w-sm"
+              onValueChange={(v) => {
+                setValue(v);
+                if (mutation.error) mutation.reset();
               }}
+              aria-invalid={invalid ? true : undefined}
+              aria-describedby={error ? errorId : undefined}
             />
+            {error ? (
+              <p id={errorId} role="alert" className="text-sm text-danger">
+                {error}
+              </p>
+            ) : (
+              <p className="text-sm text-fg-muted">
+                Leave it empty to use “{fallback}”.
+              </p>
+            )}
+          </div>
+          {needsStepUp ? (
+            <div className="border-t border-border pt-3">
+              <StepUp
+                verb="rename it"
+                view={view}
+                accountId={accountId}
+                returnTo={returnTo}
+                autoFocus
+                onConfirmed={() => {
+                  setNeedsStepUp(false);
+                  save();
+                }}
+              />
+            </div>
           ) : null}
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" onClick={close}>
+            <Button
+              variant="outline"
+              disabled={mutation.isPending}
+              onClick={close}
+            >
               {t("common.cancel")}
             </Button>
-            {askFirst ? null : (
-              <Button type="submit" loading={mutation.isPending}>
-                {t("common.save")}
-              </Button>
-            )}
+            <Button
+              type="submit"
+              loading={mutation.isPending}
+              disabled={needsStepUp}
+            >
+              {t("common.save")}
+            </Button>
           </div>
         </form>
       </div>

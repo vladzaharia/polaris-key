@@ -635,23 +635,25 @@ async function exportLicense(
       createdAt: k.created_at,
       lastUsedAt: k.last_used_at,
     })),
-    devices: devices.map((d) => ({
-      deviceId: d.device_id,
-      status: d.status,
-      // A device signed in as someone else's subject is theirs, not this person's.
-      label:
-        d.subject !== undefined && d.subject !== null && !own.has(d.subject)
-          ? null
-          : d.label,
-      platform: d.platform ?? null,
-      arch: d.arch ?? null,
-      appVersion: d.app_version ?? null,
-      sdkName: d.sdk_name ?? null,
-      sdkVersion: d.sdk_version ?? null,
-      userAgent: d.ua,
-      firstSeen: d.first_seen,
-      lastSeen: d.last_seen,
-    })),
+    // A device signed in as someone else's subject is theirs, not this person's: left out whole.
+    devices: devices
+      .filter(
+        (d) =>
+          d.subject === undefined || d.subject === null || own.has(d.subject),
+      )
+      .map((d) => ({
+        deviceId: d.device_id,
+        status: d.status,
+        label: d.label,
+        platform: d.platform ?? null,
+        arch: d.arch ?? null,
+        appVersion: d.app_version ?? null,
+        sdkName: d.sdk_name ?? null,
+        sdkVersion: d.sdk_version ?? null,
+        userAgent: d.ua,
+        firstSeen: d.first_seen,
+        lastSeen: d.last_seen,
+      })),
   };
 }
 
