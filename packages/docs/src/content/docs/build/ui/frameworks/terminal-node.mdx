@@ -93,11 +93,12 @@ registerPolarisCommands(program, {
   version: "2.4.1",
   namespace: "license", // tidewater license activate
   verbs: ["activate", "status", "login", "logout"], // a verb id, or a group such as "devices"
-  onCollision: "skip", // drop a colliding verb and warn once, instead of failing
+  onCollision: "skip", // drop a colliding verb instead of failing; onSkip gets the ids
 });
 ```
 
-Under a `namespace`, the help page lists one `license <command>` entry, and
+Skipping is silent for the people using your program: read the ids in `onSkip`, or set
+`DEBUG=polaris` to print them. Under a `namespace`, the help page lists one `license` entry, and
 `tidewater license --help` is the grouped page of its verbs. Your own commands are never renamed or changed.
 
 ### Gating your own commands
@@ -106,6 +107,7 @@ Under a `namespace`, the help page lists one `license <command>` entry, and
 the entitlement. A person at a terminal is taken through the activate flow first, then the
 command runs. Anything else prints the command that fixes it on stderr and exits **4**; with
 `--json`, stdout carries the result line with `error` set to `license_required` or `not_entitled`.
+A gated command needs its own `--json` option for that line; without it the parser rejects the flag.
 
 ```ts
 import { Command } from "commander";
@@ -127,7 +129,8 @@ async function runExport() {
 `polarisGate(program, { except: ["version"] })` gates every command of the program in one line (a
 refusal ends the process with 4; `exit` replaces `process.exit`). The kit's own verbs are never
 gated. `frame: false` leaves your frame alone: a kit flow then draws no product chip and no
-closing row, so it sits inside your own intro and outro.
+closing row, so it sits inside your own intro and outro. A refusal keeps its closing row, because
+your command never runs to close it.
 
 `activate` asks for the key with masked entry. A key piped on stdin works too
 (`echo "$KEY" | tidewater activate`); a key typed on the command line still works, and warns that

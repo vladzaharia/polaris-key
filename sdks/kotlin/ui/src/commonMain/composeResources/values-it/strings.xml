@@ -1188,6 +1188,10 @@
     <string name="cli_help_more">Esegui %1$s per le opzioni di un comando.</string>
     <!-- Terminal help of a host's own command-line tool: the one heading over the license commands it mounted (activate, status, login…), after the tool's own headings. -->
     <string name="cli_help_group">Licenza</string>
+    <!-- Terminal help of a host's own command-line tool: what the one namespace command (license) holds, when the license commands are nested under it. -->
+    <string name="cli_help_namespace">Attivazione, accesso, dispositivi e aggiornamenti</string>
+    <!-- Terminal: the first line when a host command that needs a license sends the person to activate. {command} is the command they ran, such as 'export'. Arguments: 1=command. -->
+    <string name="cli_gate_needs">%1$s richiede una licenza</string>
     <!-- Terminal help: what the activate command does. The key is typed at a prompt or piped in, never written on the command line. -->
     <string name="cli_verb_activate">Aggiungi una chiave di licenza (richiesta, o da stdin)</string>
     <!-- Terminal help: what the enroll command does. Arguments: 1=product. -->

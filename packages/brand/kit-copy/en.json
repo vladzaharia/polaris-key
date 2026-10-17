@@ -2571,6 +2571,16 @@
       "role": "label",
       "note": "Terminal help of a host's own command-line tool: the one heading over the license commands it mounted (activate, status, login…), after the tool's own headings."
     },
+    "cli.help.namespace": {
+      "value": "Activate, sign in, devices and updates",
+      "role": "body",
+      "note": "Terminal help of a host's own command-line tool: what the one namespace command (license) holds, when the license commands are nested under it."
+    },
+    "cli.gate.needs": {
+      "value": "{command} needs a license",
+      "role": "body",
+      "note": "Terminal: the first line when a host command that needs a license sends the person to activate. {command} is the command they ran, such as 'export'."
+    },
     "cli.verb.activate": {
       "value": "Add a license key (prompted, or piped on stdin)",
       "role": "body",
@@ -2587,7 +2597,7 @@
       "note": "Terminal help: what the deactivate command does."
     },
     "cli.verb.status": {
-      "value": "License, devices and offline time",
+      "value": "Show your license, devices and offline time",
       "role": "body",
       "note": "Terminal help: what the status command shows."
     },

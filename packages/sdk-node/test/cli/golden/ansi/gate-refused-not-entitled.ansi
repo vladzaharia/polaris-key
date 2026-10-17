@@ -2,58 +2,97 @@
 [33m▲[39m  [1mNot included[22m
 [2m│[22m  Your license doesn't include this.
 [2m│[22m
-[2m└[22m  [1mtidewater status[22m   [2mLicense, devices and offline time[22m
+[2m└[22m  [1mtidewater status[22m   Show your license, devices and offline time
 
 #### truecolor-80-light
 [33m▲[39m  [1mNot included[22m
 [2m│[22m  Your license doesn't include this.
 [2m│[22m
-[2m└[22m  [1mtidewater status[22m   [2mLicense, devices and offline time[22m
+[2m└[22m  [1mtidewater status[22m   Show your license, devices and offline time
 
 #### ansi16-80
 [33m▲[39m  [1mNot included[22m
 [2m│[22m  Your license doesn't include this.
 [2m│[22m
-[2m└[22m  [1mtidewater status[22m   [2mLicense, devices and offline time[22m
+[2m└[22m  [1mtidewater status[22m   Show your license, devices and offline time
 
 #### no-color-80
 ▲  [1mNot included[22m
 │  Your license doesn't include this.
 │
-└  [1mtidewater status[22m   License, devices and offline time
+└  [1mtidewater status[22m   Show your license, devices and offline time
 
 #### ascii-80
 [33m![39m  [1mNot included[22m
 [2m|[22m  Your license doesn't include this.
 [2m|[22m
-[2m`[22m  [1mtidewater status[22m   [2mLicense, devices and offline time[22m
+[2m`[22m  [1mtidewater status[22m   Show your license, devices and offline time
 
 #### truecolor-60-dark
 [33m▲[39m  [1mNot included[22m
 [2m│[22m  Your license doesn't include this.
 [2m│[22m
-[2m└[22m  [1mtidewater status[22m   [2mLicense, devices and offline time[22m
+[2m│[22m  [1mtidewater status[22m
+[2m└[22m    Show your license, devices and offline time
 
 #### truecolor-60-light
 [33m▲[39m  [1mNot included[22m
 [2m│[22m  Your license doesn't include this.
 [2m│[22m
-[2m└[22m  [1mtidewater status[22m   [2mLicense, devices and offline time[22m
+[2m│[22m  [1mtidewater status[22m
+[2m└[22m    Show your license, devices and offline time
 
 #### ansi16-60
 [33m▲[39m  [1mNot included[22m
 [2m│[22m  Your license doesn't include this.
 [2m│[22m
-[2m└[22m  [1mtidewater status[22m   [2mLicense, devices and offline time[22m
+[2m│[22m  [1mtidewater status[22m
+[2m└[22m    Show your license, devices and offline time
 
 #### no-color-60
 ▲  [1mNot included[22m
 │  Your license doesn't include this.
 │
-└  [1mtidewater status[22m   License, devices and offline time
+│  [1mtidewater status[22m
+└    Show your license, devices and offline time
 
 #### ascii-60
 [33m![39m  [1mNot included[22m
 [2m|[22m  Your license doesn't include this.
 [2m|[22m
-[2m`[22m  [1mtidewater status[22m   [2mLicense, devices and offline time[22m
+[2m|[22m  [1mtidewater status[22m
+[2m`[22m    Show your license, devices and offline time
+
+#### truecolor-40-dark
+[33m▲[39m  [1mNot included[22m
+[2m│[22m  Your license doesn't include this.
+[2m│[22m
+[2m│[22m  [1mtidewater status[22m
+[2m│[22m    Show your license, devices and
+[2m└[22m    offline time
+
+#### no-color-40
+▲  [1mNot included[22m
+│  Your license doesn't include this.
+│
+│  [1mtidewater status[22m
+│    Show your license, devices and
+└    offline time
+
+#### truecolor-32-dark
+[33m▲[39m  [1mNot included[22m
+[2m│[22m  Your license doesn't
+[2m│[22m  include this.
+[2m│[22m
+[2m│[22m  [1mtidewater status[22m
+[2m│[22m    Show your license, devices
+[2m└[22m    and offline time
+
+#### no-color-32
+▲  [1mNot included[22m
+│  Your license doesn't
+│  include this.
+│
+│  [1mtidewater status[22m
+│    Show your license, devices
+└    and offline time
