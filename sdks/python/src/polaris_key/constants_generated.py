@@ -187,6 +187,13 @@ class ErrorCode:
     UNAVAILABLE: Final = "unavailable"
     ERASURE_LEDGER_UNAVAILABLE: Final = "erasure_ledger_unavailable"
     IDENTITY_DISABLED: Final = "identity_disabled"
+    INVALID_REQUEST: Final = "invalid_request"
+    INVALID_CLIENT: Final = "invalid_client"
+    INVALID_GRANT: Final = "invalid_grant"
+    UNSUPPORTED_GRANT_TYPE: Final = "unsupported_grant_type"
+    INVALID_SCOPE: Final = "invalid_scope"
+    REDIRECT_URI_MISMATCH: Final = "redirect_uri_mismatch"
+    LICENSE_CHOICE_REQUIRED: Final = "license_choice_required"
     AUTH_METHOD_DISABLED: Final = "auth_method_disabled"
     EMAIL_UNAVAILABLE: Final = "email_unavailable"
     TURNSTILE_FAILED: Final = "turnstile_failed"
@@ -354,6 +361,13 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "unavailable",
     "erasure_ledger_unavailable",
     "identity_disabled",
+    "invalid_request",
+    "invalid_client",
+    "invalid_grant",
+    "unsupported_grant_type",
+    "invalid_scope",
+    "redirect_uri_mismatch",
+    "license_choice_required",
     "auth_method_disabled",
     "email_unavailable",
     "turnstile_failed",
@@ -523,6 +537,13 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "unavailable": "wire",
         "erasure_ledger_unavailable": "wire",
         "identity_disabled": "wire",
+        "invalid_request": "wire",
+        "invalid_client": "wire",
+        "invalid_grant": "wire",
+        "unsupported_grant_type": "wire",
+        "invalid_scope": "wire",
+        "redirect_uri_mismatch": "wire",
+        "license_choice_required": "wire",
         "auth_method_disabled": "wire",
         "email_unavailable": "wire",
         "turnstile_failed": "wire",
@@ -707,6 +728,8 @@ class Feature:
     IDENTITY_KEYENTRY: Final = "identity.keyentry"
     IDENTITY_ATTACH: Final = "identity.attach"
     IDENTITY_ACCOUNT: Final = "identity.account"
+    IDENTITY_REDIRECT_WEB: Final = "identity.redirect.web"
+    IDENTITY_SIGNIN_HINTS: Final = "identity.signin.hints"
     RELEASE_CHANGELOG: Final = "release.changelog"
     RELEASE_DOWNLOAD: Final = "release.download"
     RELEASE_RECORD: Final = "release.record"
@@ -822,6 +845,8 @@ FEATURE_VALUES: Tuple[str, ...] = (
     "identity.keyentry",
     "identity.attach",
     "identity.account",
+    "identity.redirect.web",
+    "identity.signin.hints",
     "release.changelog",
     "release.download",
     "release.record",
@@ -1901,6 +1926,8 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "identity.keyentry": CapabilityRow("planned", "identity", ()),
         "identity.attach": CapabilityRow("planned", "identity", ()),
         "identity.account": CapabilityRow("planned", "identity", ()),
+        "identity.redirect.web": CapabilityRow("planned", "identity", ()),
+        "identity.signin.hints": CapabilityRow("planned", "identity", ()),
         "release.changelog": CapabilityRow("implemented", "release", ()),
         "release.download": CapabilityRow("implemented", "release", ()),
         "release.record": CapabilityRow("implemented", "release", ()),
@@ -1967,4 +1994,4 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "7aecaca4ece5316d553bc5d7dabde1c23e8acc9bab1e751b048d451b2558daed"
+CAPABILITY_DIGEST: Final[str] = "5b3697d0d1653dffdb46d9e8f68d8bcf4f70da381593e4d96b465aa508bc8414"

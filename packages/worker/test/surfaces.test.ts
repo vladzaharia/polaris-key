@@ -303,8 +303,12 @@ describe("worker surfaces", () => {
     // The IdP's own configuration is never published: an anonymous reader learns that login
     // exists and where to start it, not who the provider is or which client id it uses.
     const identity = body.services.identity as Record<string, unknown>;
-    for (const leak of ["provider", "issuer", "clientId"])
+    for (const leak of ["provider", "clientId"])
       expect(identity).not.toHaveProperty(leak);
+    // I-08 publishes the PLATFORM's issuer for this product (`<origin>/<p>/identity`, RFC 9207's
+    // `iss`), never the configured provider's.
+    expect(identity.issuer).toBe("https://key.plrs.im/djdl/identity");
+    expect(JSON.stringify(identity)).not.toContain("id.example");
     // §R1 drops `/auth/login` as a redundant alias of `/auth/start`; discovery is where a
     // retired alias stops being advertised first.
     expect(

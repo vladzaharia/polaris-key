@@ -58,6 +58,25 @@ Applied from the brand and transition integration ([Brand transition decisions](
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
 2. Implement the scope; run the green gate; hand off.
 
+## Corrections (2026-10-17, from the code)
+
+- **No signed document, corpus or wire change.** A recipe never reaches a device document, so the work needs no plan. `ConfigEntry` (in `@polaris-key/catalog`, not `shared-protocol`) gains an optional `mint` block that is authoring-only: ingest and the console's publish lift it into `edge_mint_config`, and the served catalog never carries it. SDK mirrors, the corpus and `PROTOCOL_VERSION` are untouched.
+- **"Ingest of edge_mint_config from the catalog"** is the manifest normaliser: `mint` blocks are lifted into `ParsedManifest.edgeMint` (id = the entry's key), so link, resync, approval and the mint route see the one list they already read. No migration (the table is unchanged).
+- **`config.edgeMint.recipes` rides `config.catalog`.** Resync used to delete and rewrite every recipe whether or not the catalog was claimed. It now leaves recipes alone while `config.catalog` is claimed (SQL-guarded). The registry entry itself stays: `settings-coverage` needs a home for the `edge_mint_config` table and `product:edgeMint` (the canonical home of a deprecated spelling), and one entry cannot cover two stores yet. Folding the entry away needs that registry feature (follow-up). A `linkExisting` replace-whole plan is unchanged.
+- **Approving was not step-up.** `POST …/config/mint/:id/approve` is now a step-up route (route table, `STEP_UP_ROUTES`, the RBAC matrix).
+- **Migration of U-30's warning.** `catalog_edge_mint_without_recipe` stays, now meaning "a minted token with neither a `mint` block nor a legacy recipe". A legacy `edgeMint[]` recipe whose id is a minting entry warns `catalog_edge_mint_legacy`, and `pkey validate --fix` moves it into the entry's `mint` block (a recipe with no entry is still read, silently, since moving it would mean inventing an entry). A block and a legacy recipe of one id is the error `edge_mint_recipe_duplicate`.
+- New codes (each with a mutation-table entry and the JSON Schema `mintBlock`): `invalid_catalog_mint`, `catalog_mint_not_minted`, `edge_mint_recipe_duplicate`, `catalog_edge_mint_legacy`; the existing `invalid_edge_mint_*`, `invalid_ttl` and `invalid_secret_ref` rules also run on the block.
+
+## Progress and continuation (2026-10-17)
+
+Done: the block (validator, schema, ingest, `--fix`), console publish saving recipes under the catalog's claim, step-up approval, resync claim, the setting fold, the recipe editor and approval pill on the entry form (real-browser look: light 1440, dark 390), docs, threat-model paragraph, skill.
+
+Left for the next slice (UX fold, all in the console):
+
+- Move the Approve drawer (public-mint acknowledgement, Revoke, passkey step-up with the failed state and Try again, the "recipe changed while you were reviewing" callout from the brand-transition section, admin-2-16) onto the catalog entry, then delete the Edge mint page (`EdgeMintPage.tsx`, nav entry `edge-mint`) and redirect its URL to the entry. Today the entry's **Review and approve** opens the existing Edge mint page's drawer.
+- The review step's per-entry changed-since-open merge and Copy the diff (U-29 overlap).
+- The UX reviewer pass on the built screens.
+
 ## Screen acceptance (brand transition, 2026-10-09)
 
 Done when every row holds for each screen and state this package ships, checked in the real runtime
@@ -105,10 +124,10 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 ## Acceptance criteria
 
-- [ ] One recipe location
-- [ ] Approval still required before minting (P0-12)
-- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/managed-config/{catalog, visibility, minted-tokens, profiles}`; `reference/config-entry`.
-- [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
+- [x] One recipe location (the entry's `mint` block; the console editor writes it, the Edge mint page is now only the approve surface)
+- [x] Approval still required before minting (P0-12), now behind a step-up
+- [x] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/managed-config/{catalog, visibility, minted-tokens, profiles}`; `reference/config-entry`.
+- [x] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify
 

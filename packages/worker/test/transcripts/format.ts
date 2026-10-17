@@ -56,6 +56,17 @@
 //   * `expect` is the client-visible outcome after the step, in the vocabulary below. Each SDK
 //     maps its own result types onto it in one helper.
 //
+// ── FORM BODIES AND THE BROWSER'S STEPS (I-08) ──────────────────────────────────────────────
+//
+// A request whose `content-type` header is asserted as `application/x-www-form-urlencoded`
+// carries its `body.json` members as the form's fields (`token`, WIRE-CONTRACT-V4 §12.5): a
+// replayer encodes them as a form because the request says so. A `browser` step holds the
+// requests a person's browser makes in a redirect sign-in; a replayer serves them from its fake
+// server and asserts nothing of them. `redirectComplete` is the SDK's one call in that flow:
+// result "ok" | "invalid-grant" | "invalid-request" | "invalid-client" | "license-choice-required"
+// | "rate-limited" | "error", then `scope`, `subject`, `licenseId` (null on a licence-less device)
+// and `tokenHeld` on "ok".
+//
 // ── THE `expect` VOCABULARY ─────────────────────────────────────────────────────────────────
 //
 //   result          discover: "ok" | "not-found" | "invalid" | "error"
@@ -275,7 +286,20 @@ export type Action =
   /** I-09: `identity.subject()` (`identity.account`). */
   | "subject"
   /** I-09: `identity.signOut()` (`identity.account`). */
-  | "signOut";
+  | "signOut"
+  /**
+   * I-08 (WIRE-CONTRACT-V4 §12.4): the BROWSER's half of a redirect sign-in — the navigation to
+   * `authorize`, the card's Continue — requests the SDK never makes. Recorded so a replayer's
+   * fake server can serve the whole conversation; no SDK asserts them. Their requests carry no
+   * metadata headers and may carry cookies the recorder chose (not asserted).
+   */
+  | "browser"
+  /**
+   * I-08 (§12.5): the SDK's `redirect.complete({callbackUrl})` — the code in the callback URL
+   * redeemed at `token` with the PKCE verifier the SDK kept. `args.codeVerifier` is the verifier
+   * the replayer feeds the SDK so the request is reproducible.
+   */
+  | "redirectComplete";
 
 export interface Step {
   action: Action;
@@ -345,6 +369,8 @@ export interface UpdateInitial {
 export const RECORDED_RESPONSE_HEADERS = [
   "cache-control",
   "content-range",
+  // I-08: where an `authorize` navigation went (a redirect's target is the conversation).
+  "location",
   "content-type",
   "etag",
   "retry-after",

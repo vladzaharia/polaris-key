@@ -1,7 +1,7 @@
 /// <reference types="@cloudflare/workers-types" />
 
 /**
- * Identity's routes, as a table (`core/http/routes.ts`), over the path AFTER `/<product>/identity` (§R1):
+ * Identity's own sub-router, over the path segments AFTER `/<product>/identity` (§R1):
  *
  *     /identity/session                     GET   the browser session's fused document
  *     /identity/session/license             POST  licence key → session cookie
@@ -18,6 +18,10 @@
  *     /identity/auth/device/poll            POST  poll a confirmed device flow
  *     /identity/auth/choose                 GET   the legacy sign-in's licence chooser (I-26)
  *                                           POST  record a step of it, or the choice
+ *     /identity/authorize                   GET   the OAuth-shaped sign-in entry of an app (I-08;
+ *                                                 303 to the login card, 302 errors to the app)
+ *     /identity/token                       POST  the code for a device token (I-08; form body,
+ *                                                 CORS for the product's web origins)
  *     /identity/attach                      POST  add the device's licence to the signed-in
  *                                                 account (I-09; device bearer)
  *     /identity/subject                     GET   the pairwise subject signed in on the device
@@ -41,7 +45,7 @@
  * unregistered slug and a bad path indistinguishable from outside.
  */
 
-import { serviceRoutes } from "../../core/http/routes.js";
+import type { ServiceContext } from "../../core/registry.js";
 import {
   handleAuthCallback,
   handleAuthChoose,
@@ -56,103 +60,86 @@ import {
   handleBrowserSession,
   handleBrowserSessionLicense,
 } from "./browserSession.js";
+import { handleAuthorize } from "./passthrough/authorize.js";
+import { handleToken } from "./passthrough/token.js";
 import {
   handleIdentityAttach,
   handleIdentitySignOut,
   handleIdentitySubject,
 } from "./attach.js";
 
-export const IDENTITY_ROUTES = serviceRoutes("identity", [
-  {
-    path: "session",
-    methods: ["GET"],
-    auth: { kind: "session" },
-    handler: ({ req, env, db, product, now, settings }) =>
-      handleBrowserSession(req, env, db, product, now, settings),
-  },
-  {
-    path: "session/license",
-    methods: ["POST"],
-    auth: { kind: "handler" },
-    handler: ({ req, env, db, product, now, settings }) =>
-      handleBrowserSessionLicense(req, env, db, product, now, settings),
-  },
-  // I-09 (WIRE-CONTRACT-V4 §12.3): the account on the device wire.
-  {
-    path: "attach",
-    methods: ["POST"],
-    auth: { kind: "device" },
-    handler: ({ req, env, db, product, now }) =>
-      handleIdentityAttach(req, env, db, product, now),
-  },
-  {
-    path: "subject",
-    methods: ["GET"],
-    auth: { kind: "device" },
-    handler: ({ req, env, db, product, now }) =>
-      handleIdentitySubject(req, env, db, product, now),
-  },
-  {
-    path: "signout",
-    methods: ["POST"],
-    auth: { kind: "device" },
-    handler: ({ req, env, db, product, now }) =>
-      handleIdentitySignOut(req, env, db, product, now),
-  },
-  {
-    path: "auth/start",
-    methods: ["GET"],
-    auth: { kind: "none" },
-    handler: ({ req, env, db, product }) =>
-      handleAuthStart(req, env, db, product),
-  },
-  {
-    path: "auth/callback",
-    methods: ["GET"],
-    auth: { kind: "code" },
-    handler: ({ req, env, db, product, now }) =>
-      handleAuthCallback(req, env, db, product, now),
-  },
-  {
-    path: "auth/logout",
-    methods: ["POST"],
-    auth: { kind: "session" },
-    handler: ({ req, env, db, product, now }) =>
-      handleBrowserLogout(req, env, db, product, now),
-  },
-  {
-    path: "auth/device",
-    methods: ["GET", "POST"],
-    auth: { kind: "code" },
-    handler: ({ req, env, product }) =>
-      handleAuthDeviceEntry(req, env, product),
-  },
-  {
-    path: "auth/choose",
-    methods: ["GET", "POST"],
-    auth: { kind: "code" },
-    handler: ({ req, env, db, product, now, hooks }) =>
-      handleAuthChoose(req, env, db, product, now, hooks),
-  },
-  {
-    path: "auth/device/start",
-    methods: ["POST"],
-    auth: { kind: "none" },
-    handler: ({ req, env, db, product }) =>
-      handleAuthDeviceStart(req, env, db, product),
-  },
-  {
-    path: "auth/device/verify",
-    methods: ["GET", "POST"],
-    auth: { kind: "code" },
-    handler: ({ req, env, product }) =>
-      handleAuthDeviceVerify(req, env, product),
-  },
-  {
-    path: "auth/device/poll",
-    methods: ["POST"],
-    auth: { kind: "code" },
-    handler: ({ req, env, db, product, now, licenseMerge }) =>
-      handleAuthDevicePoll(req, env, db, product, now, licenseMerge),
-  },
-]);
+export async function handleIdentityRoutes(
+  ctx: ServiceContext,
+): Promise<Response | null> {
+  const { req, env, db, product, rest, now, settings } = ctx;
+
+  if (rest.length === 1) {
+    switch (rest[0]) {
+      case "session":
+        return handleBrowserSession(req, env, db, product, now, settings);
+      // I-08 (WIRE-CONTRACT-V4 §12.4, §12.5): the app passthrough.
+      case "authorize":
+        return handleAuthorize({
+          req,
+          env,
+          db,
+          product,
+          now,
+          ...(settings ? { settings } : {}),
+        });
+      case "token":
+        return handleToken({ req, env, db, product, now });
+      // I-09 (WIRE-CONTRACT-V4 §12.3): the account on the device wire.
+      case "attach":
+        return handleIdentityAttach(req, env, db, product, now);
+      case "subject":
+        return handleIdentitySubject(req, env, db, product, now);
+      case "signout":
+        return handleIdentitySignOut(req, env, db, product, now);
+      default:
+        return null;
+    }
+  }
+
+  if (rest.length === 2) {
+    if (rest[0] === "session" && rest[1] === "license")
+      return handleBrowserSessionLicense(req, env, db, product, now, settings);
+    if (rest[0] !== "auth") return null;
+    switch (rest[1]) {
+      case "start":
+        return handleAuthStart(req, env, db, product);
+      case "callback":
+        return handleAuthCallback(req, env, db, product, now);
+      case "logout":
+        return handleBrowserLogout(req, env, db, product, now);
+      case "device":
+        return handleAuthDeviceEntry(req, env, product);
+      case "choose":
+        return handleAuthChoose(req, env, db, product, now, ctx.hooks);
+      default:
+        return null;
+    }
+  }
+
+  if (rest.length === 3 && rest[0] === "auth" && rest[1] === "device") {
+    switch (rest[2]) {
+      case "start":
+        return handleAuthDeviceStart(req, env, db, product);
+      case "verify":
+        return handleAuthDeviceVerify(req, env, product);
+      case "poll":
+        return handleAuthDevicePoll(
+          req,
+          env,
+          db,
+          product,
+          now,
+          ctx.licenseMerge,
+        );
+      default:
+        return null;
+    }
+  }
+
+  return null;
+}

@@ -2860,3 +2860,116 @@ describe("package deliverables (F-03, plans/F-01.md §3.1)", () => {
       expect(isPackageName(e, n), `${e} ${n}`).toBe(false);
   });
 });
+
+describe("minted tokens carry their recipe (U-31)", () => {
+  const entry = (over: Record<string, unknown> = {}) => ({
+    key: "musickit",
+    kind: "secret",
+    category: "Tokens",
+    label: "MusicKit token",
+    description: "A developer token.",
+    schema: { type: "string" },
+    delivery: "edgeMint",
+    mint: { alg: "ES256", signingKeySecret: "MINT_KEY" },
+    ...over,
+  });
+  const docs = (e: Record<string, unknown>, edgeMint?: unknown[]) => ({
+    product: { ...PRODUCT, ...(edgeMint ? { edgeMint } : {}) },
+    schema: { schemaVersion: 1, entries: [e] },
+  });
+  const check = (e: Record<string, unknown>, edgeMint?: unknown[]) => {
+    const res = validateManifestDocuments(docs(e, edgeMint));
+    return {
+      ok: res.ok,
+      errors: res.errors.map((m) => m.code),
+      warnings: res.warnings.map((m) => m.code),
+    };
+  };
+  const parse = (e: Record<string, unknown>, edgeMint?: unknown[]) => {
+    const d = docs(e, edgeMint);
+    return parseManifest({
+      product: JSON.stringify(d.product),
+      schema: JSON.stringify(d.schema),
+    });
+  };
+
+  it("accepts a block, quietly, and lifts it into the one recipe list", () => {
+    const quiet = check(entry());
+    expect(quiet.ok).toBe(true);
+    expect(quiet.warnings.filter((w) => w !== "deprecated_spelling")).toEqual(
+      [],
+    );
+    const res = parse(entry());
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.manifest.edgeMint).toEqual([
+      expect.objectContaining({
+        id: "musickit",
+        alg: "ES256",
+        signingKeySecret: "MINT_KEY",
+        ttlSeconds: 3600,
+        requires: "licensed",
+      }),
+    ]);
+    // The served catalog never carries the recipe.
+    expect(res.manifest.catalog.entries[0]).not.toHaveProperty("mint");
+    expect(validateManifestDocuments(docs(entry())).requiredSecrets).toContain(
+      "MINT_KEY",
+    );
+  });
+
+  it("holds the block to the legacy recipe's rules, at the block's path", () => {
+    for (const [mint, code] of [
+      [{ alg: "HS256", signingKeySecret: "K_1" }, "invalid_edge_mint_alg"],
+      [
+        { alg: "ES256", signingKeySecret: "K_1", ttlSeconds: 7200 },
+        "invalid_ttl",
+      ],
+      [
+        { alg: "ES256", signingKeySecret: "K_1", requires: "licenced" },
+        "invalid_edge_mint_requires",
+      ],
+      [{ alg: "ES256", signingKeySecret: "lower" }, "invalid_secret_ref"],
+      ["ES256", "invalid_catalog_mint"],
+    ] as const)
+      expect(check(entry({ mint })).errors).toContain(code);
+    expect(check(entry({ key: "Apple.Music" })).errors).toContain(
+      "invalid_edge_mint_id",
+    );
+  });
+
+  it("refuses a block on anything but a minted token", () => {
+    expect(check(entry({ delivery: "clientScoped" })).errors).toContain(
+      "catalog_mint_not_minted",
+    );
+    expect(
+      check(entry({ kind: "config", delivery: undefined })).errors,
+    ).toContain("catalog_mint_not_minted");
+  });
+
+  it("refuses a block and a legacy recipe of one id, and warns to migrate a lone legacy recipe", () => {
+    const legacy = {
+      id: "musickit",
+      alg: "ES256",
+      signingKeySecret: "MINT_KEY",
+    };
+    expect(check(entry(), [legacy]).errors).toContain(
+      "edge_mint_recipe_duplicate",
+    );
+    const lone = check(entry({ mint: undefined }), [legacy]);
+    expect(lone.errors).toEqual([]);
+    expect(lone.warnings).toContain("catalog_edge_mint_legacy");
+    expect(lone.warnings).not.toContain("catalog_edge_mint_without_recipe");
+    // ...and the legacy recipe still lands in the list.
+    const res = parse(entry({ mint: undefined }), [legacy]);
+    expect(res.ok && res.manifest.edgeMint.map((e) => e.id)).toEqual([
+      "musickit",
+    ]);
+  });
+
+  it("warns on a minted token with neither a block nor a recipe", () => {
+    expect(check(entry({ mint: undefined })).warnings).toContain(
+      "catalog_edge_mint_without_recipe",
+    );
+  });
+});

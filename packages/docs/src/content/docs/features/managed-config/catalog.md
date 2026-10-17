@@ -25,14 +25,14 @@ A `flag` is the odd one out: an entitlement, owned by Licensing. It has a schema
 
 Each is a validator warning that names its replacement. Nothing is refused.
 
-| Spelling                              | Instead                                                                                        |
-| ------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `secret: true` on a `secret` entry    | Remove it: the kind already says it. Ingest drops it; `pkey validate --fix` removes it.        |
-| `secret: true` on a `config` entry    | `kind: "secret"`. The app then reads it with `getSecret`, so `--fix` leaves the change to you. |
-| `delivery: "serverOnly"`              | Keep a secret only the Worker reads in the product's secrets (Keys and secrets).               |
-| `delivery: "edgeMint"` with no recipe | Declare an `edgeMint` recipe whose `id` is the entry's key.                                    |
-| `licensing.profiles`                  | `profiles` at the root (`pkey validate --fix` moves it).                                       |
-| A `user` block on a locked key        | Remove it: a Read-only or Hidden setting never syncs.                                          |
+| Spelling                                    | Instead                                                                                                                |
+| ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `secret: true` on a `secret` entry          | Remove it: the kind already says it. Ingest drops it; `pkey validate --fix` removes it.                                |
+| `secret: true` on a `config` entry          | `kind: "secret"`. The app then reads it with `getSecret`, so `--fix` leaves the change to you.                         |
+| `delivery: "serverOnly"`                    | Keep a secret only the Worker reads in the product's secrets (Keys and secrets).                                       |
+| `delivery: "edgeMint"` with no `mint` block | Add a `mint` block to the entry. A top-level `edgeMint[]` recipe of the same id moves into it (`pkey validate --fix`). |
+| `licensing.profiles`                        | `profiles` at the root (`pkey validate --fix` moves it).                                                               |
+| A `user` block on a locked key              | Remove it: a Read-only or Hidden setting never syncs.                                                                  |
 
 ## Fields you author
 
@@ -73,7 +73,28 @@ A `secret` may declare `delivery`: `clientScoped`, `serverOnly` or `edgeMint`. A
 
 - `clientScoped` is the default: the value travels in the document's `secrets` map, redacted everywhere in the admin surface. The SDK caches it with the document. Only the device token lives in the OS keyring, so a host that wants the value in a vault copies it itself.
 - `serverOnly` (retired: the validator warns) never leaves the Worker. The signing prune drops it from every device-facing document, bundles included.
-- `edgeMint` marks that the entry isn't read from the document at all: the client calls the paired recipe instead ([Edge mint](/docs/features/managed-config/edge-mint/)).
+- `edgeMint` marks that the entry isn't read from the document at all: the client calls `mintToken(key)` and the Worker signs a token from the entry's `mint` block ([Edge mint](/docs/features/managed-config/edge-mint/)).
+
+A minted token carries its recipe on the entry:
+
+```json
+{
+  "key": "musickit",
+  "kind": "secret",
+  "delivery": "edgeMint",
+  "category": "Tokens",
+  "label": "MusicKit token",
+  "description": "A developer token.",
+  "schema": { "type": "string" },
+  "mint": {
+    "alg": "ES256",
+    "signingKeySecret": "MUSICKIT_PRIVATE_KEY",
+    "ttlSeconds": 3600
+  }
+}
+```
+
+The key is the recipe id, so it uses lowercase letters, digits and hyphens. The block is never served: ingest and the console's publish store it as the product's recipe, which waits for your approval.
 
 ## The schema fragment
 

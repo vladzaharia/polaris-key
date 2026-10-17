@@ -993,6 +993,34 @@
       "note": "I-09 (WIRE-CONTRACT-V4 §12.3, §12.6): subject() reads the pairwise subject signed in on the device; signOut() flushes Cloud Sync first, then clears the binding and drops the token when the seat was released; openAccount() opens discovery's accountPortal. Each only when discovery's identity fragment carries account: true and the endpoint. Pinned by identity-subject-signout.json and discovery-identity.json; I-10a and I-10b implement it."
     },
     {
+      "id": "identity.redirect.web",
+      "family": "devices",
+      "title": "Web redirect sign-in: authorize with PKCE, then the code redeemed at token",
+      "service": "identity",
+      "proof": [
+        {
+          "kind": "transcript",
+          "wp": "I-10a"
+        }
+      ],
+      "allowedNa": [],
+      "note": "I-08 (WIRE-CONTRACT-V4 §12.4, §12.5): the SDK builds the authorize URL (response_type=code, client_id, redirect_uri, state, an S256 code_challenge, scope) for a navigation, keeps the PKCE verifier and state, checks state and iss on the way back, and redeems the code at token with a form body, getting the browser device token. Cancel and every redirect error map to cancelled and sign-in-failed. Pinned by redirect-web-happy.json and redirect-web-errors.json (the browser's own requests are `browser` steps no SDK asserts); I-10a (Node, React, Python; React is the primary consumer) and I-10b (Swift, Godot, Kotlin) implement it."
+    },
+    {
+      "id": "identity.signin.hints",
+      "family": "devices",
+      "title": "Sign-in hints: login_hint, name_hint and purpose prefill the card",
+      "service": "identity",
+      "proof": [
+        {
+          "kind": "transcript",
+          "wp": "I-10a"
+        }
+      ],
+      "allowedNa": [],
+      "note": "I-08 (WIRE-CONTRACT-V4 §12.4, absorbing PX-W18): the authorize request may carry login_hint (an email), name_hint and purpose (signin or attach). The card prefills from them and nothing is verified by them. Pinned by identity-request-hints.json; I-10a and I-10b implement it."
+    },
+    {
       "id": "release.changelog",
       "family": "release",
       "title": "Changelog",

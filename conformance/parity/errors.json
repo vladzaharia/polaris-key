@@ -214,6 +214,48 @@
       "description": "403, human-facing only: a sign-in through a product whose Identity service is off (PX-W17). A browser navigation to an app-sign-in entry is sent to `/signin?product=<slug>&error=identity_disabled`, and the portal's passthrough context answers the code; device and JSON routes answer `not_found`, and SDKs report `service-unavailable` (`service-disabled` in React)."
     },
     {
+      "code": "invalid_request",
+      "kind": "wire",
+      "service": "identity",
+      "description": "400 from POST /<p>/identity/token (flat RFC 6749 body): the request is malformed, a parameter is missing or repeated, or the body is not form-encoded. On GET /<p>/identity/authorize it travels only in the redirect's `error` query once client_id and redirect_uri are valid (I-08)."
+    },
+    {
+      "code": "invalid_client",
+      "kind": "wire",
+      "service": "identity",
+      "description": "401 from POST /<p>/identity/token (flat), and the card page for GET /<p>/identity/authorize: client_id is not the product's slug. Layer 1 has one public client per product (I-08; I-21 adds registered clients)."
+    },
+    {
+      "code": "invalid_grant",
+      "kind": "wire",
+      "service": "identity",
+      "description": "400 from POST /<p>/identity/token (flat): the authorization code is unknown, expired, already used, or does not match the PKCE verifier, client_id or redirect_uri. A mismatch consumes the code (I-08)."
+    },
+    {
+      "code": "unsupported_grant_type",
+      "kind": "wire",
+      "service": "identity",
+      "description": "400 from POST /<p>/identity/token (flat): grant_type is not authorization_code (token exchange is I-13, refresh is I-21)."
+    },
+    {
+      "code": "invalid_scope",
+      "kind": "wire",
+      "service": "identity",
+      "description": "400 from POST /<p>/identity/token (flat) and in the authorize redirect's `error` query: the scope names `openid` (not served until I-21) or asks for nothing this product grants (I-08)."
+    },
+    {
+      "code": "redirect_uri_mismatch",
+      "kind": "wire",
+      "service": "identity",
+      "description": "400, the card page only, never a redirect: GET /<p>/identity/authorize was given a redirect_uri whose origin is not in the product's web origins or whose path is not in identity.redirectPaths, both matched exactly (I-08)."
+    },
+    {
+      "code": "license_choice_required",
+      "kind": "wire",
+      "service": "identity",
+      "description": "409: a licence choice is needed and none was made. Answered flat by POST /<p>/identity/token and by the portal's Continue when the account holds licences for the product (I-08; the choice API is I-08b)."
+    },
+    {
       "code": "auth_method_disabled",
       "kind": "wire",
       "service": "identity",

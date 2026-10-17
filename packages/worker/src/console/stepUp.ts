@@ -70,6 +70,11 @@ export const STEP_UP_ROUTES: readonly StepUpRoute[] = [
   },
   {
     method: "POST",
+    path: "/products/:slug/config/mint/:id/approve",
+    why: "lets the product's signing key mint tokens for its devices",
+  },
+  {
+    method: "POST",
     path: "/tokens",
     why: "mints an admin API credential that outlives the session",
   },

@@ -39,7 +39,7 @@ import type {
   ServiceDescriptor,
 } from "../../core/registry.js";
 import type { AdminSession } from "../../core/console/session.js";
-import { IDENTITY_ROUTES } from "./routes.js";
+import { handleIdentityRoutes } from "./routes.js";
 import { handleIdentityAdmin } from "./admin.js";
 import { authorizeRegistration } from "./registration.js";
 import {
@@ -78,7 +78,7 @@ export const identityService: ServiceDescriptor = {
   /** I-09: `identity.keyEntry.claimByKey` from the `identity:` block, into its column. */
   manifestIngest: (parsed, product, now) =>
     manifestClaimByKeyStatements(product, parsed, now),
-  handle: IDENTITY_ROUTES.handle,
+  handle: handleIdentityRoutes,
   contributes: {
     productDeletion: identityProductDeletion,
     // LX-26: the licence-holder hooks, so License's creation path and every account-email
@@ -95,7 +95,30 @@ export const identityService: ServiceDescriptor = {
    * The canonical surface `routes.ts` dispatches; what `routeCoverage` pins. The root portal
    * paths are not here: they are platform routes, not this service's namespace.
    */
-  surface: IDENTITY_ROUTES.surface,
+  surface: [
+    { path: "/{product}/identity/session", methods: ["get"] },
+    { path: "/{product}/identity/session/license", methods: ["post"] },
+    { path: "/{product}/identity/auth/start", methods: ["get"] },
+    { path: "/{product}/identity/auth/callback", methods: ["get"] },
+    { path: "/{product}/identity/auth/logout", methods: ["post"] },
+    { path: "/{product}/identity/auth/device", methods: ["get", "post"] },
+    { path: "/{product}/identity/auth/device/start", methods: ["post"] },
+    {
+      path: "/{product}/identity/auth/device/verify",
+      methods: ["get", "post"],
+    },
+    { path: "/{product}/identity/auth/device/poll", methods: ["post"] },
+    // The legacy sign-in's licence chooser (server-rendered HTML).
+    { path: "/{product}/identity/auth/choose", methods: ["get", "post"] },
+    // I-08: the app passthrough. `authorize` is a navigation; `token` takes a form body and
+    // answers CORS for the product's web origins, without credentials.
+    { path: "/{product}/identity/authorize", methods: ["get"] },
+    { path: "/{product}/identity/token", methods: ["post"] },
+    // The account on the device wire (device bearer; CORS without credentials).
+    { path: "/{product}/identity/attach", methods: ["post"] },
+    { path: "/{product}/identity/subject", methods: ["get"] },
+    { path: "/{product}/identity/signout", methods: ["post"] },
+  ],
   adminHandle: (ctx: ServiceContext & { session: AdminSession }) =>
     handleIdentityAdmin(ctx),
   authorizeRegistration: (ctx: RegistrationAuthContext) =>
@@ -147,16 +170,16 @@ export const identityService: ServiceDescriptor = {
     base,
     settings,
   }: DiscoveryContext) => {
-    const row = await db.first<{ product: string }>(
-      "SELECT product FROM oidc_config WHERE product = ?",
-      product.slug,
-    );
     const accountPortal = (await portalEnabled(db, product.slug))
       ? accountPortalUrl(env, base, product)
       : null;
     const fragment: IdentityDiscovery = {
       enabled: true,
-      configured: Boolean(row),
+      // I-08: the platform sign-in (`authorize`, `token`) needs no per-product IdP row, so a
+      // product with Identity on is always configured. The legacy `auth/*` routes still need
+      // an `oidc_config` row and answer for themselves.
+      configured: true,
+      issuer: `${base}/identity`,
       account: true,
       keyEntryLimit: await keyEntryLimit(
         { env, db, ...(settings ? { registry: settings } : {}) },
@@ -172,6 +195,8 @@ export const identityService: ServiceDescriptor = {
         authDeviceEntry: `${base}/identity/auth/device`,
         authDeviceVerify: `${base}/identity/auth/device/verify`,
         authDevicePoll: `${base}/identity/auth/device/poll`,
+        authorize: `${base}/identity/authorize`,
+        token: `${base}/identity/token`,
         attach: `${base}/identity/attach`,
         subject: `${base}/identity/subject`,
         signout: `${base}/identity/signout`,

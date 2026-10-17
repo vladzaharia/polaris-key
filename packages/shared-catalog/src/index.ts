@@ -4,6 +4,7 @@ export type {
   UiHints,
   JsonSchema,
   ConfigEntry,
+  MintBlock,
   ProductCatalog,
   UserSettingSync,
   UserSettingConflict,

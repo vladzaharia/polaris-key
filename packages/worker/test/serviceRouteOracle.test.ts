@@ -28,6 +28,7 @@ import { TEST_RSA_PKCS8 } from "./releaseFixtures.js";
 import { dispatchWith } from "../src/dispatch.js";
 import { SERVICES } from "../src/mount.js";
 import { serializeServices } from "../src/core/services.js";
+import { serializeWebOrigins } from "../src/core/cors.js";
 import { setServices } from "../src/core/products/store.js";
 import { seedDeliveryAccess } from "./releaseSurface.js";
 import type { Db } from "../src/db/types.js";
@@ -35,6 +36,7 @@ import type { Env } from "../src/platform/env.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const FIXTURE = join(here, "fixtures", "service-route-oracle.json");
+const FIXTURE2 = join(here, "fixtures", "service-route-oracle-2.json");
 const SLUG = "djdl";
 const BASE = "https://key.plrs.im";
 const METHODS = ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"];
@@ -181,13 +183,69 @@ function instantiate(template: string): string {
   );
 }
 
+/**
+ * Group 2, recorded later than group 1 and from a different pre-change tree (see the header of
+ * `fixtures/service-route-oracle-2.json`'s recorder note below): I-08's passthrough routes, which
+ * main gained after group 1 was recorded, and hostile spellings of paths a table could read
+ * differently from the switch (encoded slashes, dot segments, doubled and trailing slashes).
+ */
+const GROUP2: string[] = [
+  "identity/authorize",
+  "identity/authorize/",
+  "identity/authorize/x",
+  "identity/authorize?client_id=c&redirect_uri=https%3A%2F%2Fapp.example%2Fcb&response_type=code",
+  "identity/token",
+  "identity/token/",
+  "identity/token/x",
+  "distribution/fdroid/stable/repo/index-v2.json",
+  "distribution/fdroid/stable/repo/entry.jar",
+  "distribution/fdroid/stable/repo/a%2Fb",
+  "distribution/fdroid/stable/repo/..%2Findex.json",
+  "distribution/fdroid/stable/repo/../index.json",
+  "distribution/fdroid/stable/repo//index.json",
+  "distribution/fdroid/stable/repo/",
+  "distribution/fdroid/stable/repo",
+  "distribution/fdroid/%2e%2e/repo/index.json",
+  "distribution/fdroid/st%2Fable/repo/index.json",
+  "distribution/fdroid//repo/index.json",
+  "distribution/rollouts/o/stable",
+  "distribution/rollouts/o/stable/",
+  "distribution/rollouts/o%2Fx/stable",
+  "distribution/rollouts/o/st%2Fable/pause",
+  "distribution/rollouts/../stable/pause",
+  "distribution/rollouts//stable",
+  "distribution/rollouts/o//pause",
+  "distribution/rollouts/o/stable/pause/",
+  "distribution/rollouts/o/stable/pause//",
+  "distribution/rollouts/%zz/stable",
+  "distribution/listing/google-play/",
+  "distribution/listing//assets",
+  "distribution/feeds/fdroid/st%2Fable",
+  "distribution/feeds/fdroid/stable/",
+].map((n) => `/${SLUG}/${n}`);
+/** I-08's two canonical paths, which the surface now lists but group 1 predates. */
+const I08 = new Set([`/${SLUG}/identity/authorize`, `/${SLUG}/identity/token`]);
+const NEAR = new Set(NEAR_MISSES.map((n) => `/${SLUG}/${n}`));
+
 function paths(): string[] {
   const out = new Set<string>();
   for (const d of SERVICES.values())
-    for (const r of d.surface) out.add(instantiate(r.path));
+    for (const r of d.surface) {
+      const p = instantiate(r.path);
+      if (!I08.has(p)) out.add(p);
+    }
   for (const n of NEAR_MISSES) out.add(`/${SLUG}/${n}`);
   return [...out].sort();
 }
+
+const ORIGIN = "https://play.djdl.example";
+/** A browser page on a listed origin: HEAD, OPTIONS and GET on CORS-covered routes. */
+const CORS_PATHS = [
+  `/${SLUG}/license/document`,
+  `/${SLUG}/config/schema`,
+  `/${SLUG}/identity/token`,
+  `/${SLUG}/distribution/fdroid/stable/repo/index-v2.json`,
+];
 
 const CARRIED = [
   "allow",
@@ -198,6 +256,9 @@ const CARRIED = [
   "location",
   "retry-after",
   "content-length",
+  "access-control-allow-origin",
+  "access-control-allow-methods",
+  "access-control-expose-headers",
 ];
 
 /** Opaque tokens and times differ per run; their shape does not. */
@@ -310,46 +371,64 @@ describe("service route tables replay the hand dispatch", () => {
     vi.unstubAllGlobals();
   });
 
-  it("answers every request as the recorded dispatch did", async () => {
+  async function replay(
+    pathList: string[],
+    origins: string[] = [],
+  ): Promise<Record<string, Row>> {
     const observed: Record<string, Row> = {};
-    for (const path of paths()) {
-      for (const method of METHODS) {
+    const jobs: Array<[string, string, boolean, boolean]> = [];
+    for (const path of pathList)
+      for (const method of METHODS)
         for (const withBody of method === "GET" || method === "HEAD"
           ? [false]
-          : [false, true]) {
-          const env = envFor();
-          const init: RequestInit = { method };
-          if (withBody) {
-            init.body = "{}";
-            init.headers = { "content-type": "application/json" };
-          }
-          let row: Row;
-          try {
-            const res = await dispatchWith(
-              new Request(`${BASE}${path}`, init) as unknown as Request,
-              env,
-              db,
-              NOW,
-            );
-            row = await observe(res);
-          } catch (e) {
-            // An upstream that is down surfaces as a throw; that, too, is behaviour to keep.
-            row = {
-              status: -1,
-              headers: {},
-              cookies: [],
-              body: normalise(e instanceof Error ? e.message : String(e)),
-            };
-          }
-          observed[`${method}${withBody ? "+body" : ""} ${path}`] = row;
+          : [false, true])
+          jobs.push([path, method, withBody, false]);
+    for (const path of origins)
+      for (const method of ["GET", "HEAD", "OPTIONS", "POST"])
+        jobs.push([path, method, false, true]);
+    for (const [path, method, withBody, withOrigin] of jobs) {
+      const env = envFor();
+      const init: RequestInit = { method };
+      const headers: Record<string, string> = {};
+      if (withBody) {
+        init.body = "{}";
+        headers["content-type"] = "application/json";
+      }
+      if (withOrigin) {
+        headers.origin = ORIGIN;
+        if (method === "OPTIONS") {
+          headers["access-control-request-method"] = "GET";
+          headers["access-control-request-headers"] = "authorization";
         }
       }
+      init.headers = headers;
+      let row: Row;
+      try {
+        const res = await dispatchWith(
+          new Request(`${BASE}${path}`, init) as unknown as Request,
+          env,
+          db,
+          NOW,
+        );
+        row = await observe(res);
+      } catch (e) {
+        // An upstream that is down surfaces as a throw; that, too, is behaviour to keep.
+        row = {
+          status: -1,
+          headers: {},
+          cookies: [],
+          body: normalise(e instanceof Error ? e.message : String(e)),
+        };
+      }
+      observed[
+        `${method}${withBody ? "+body" : ""}${withOrigin ? "+origin" : ""} ${path}`
+      ] = row;
     }
-    if (process.env.PKEY_RECORD_ORACLE === "1") {
-      writeFileSync(FIXTURE, JSON.stringify(observed, null, 1) + "\n");
-      return;
-    }
-    const recorded = JSON.parse(readFileSync(FIXTURE, "utf8")) as Record<
+    return observed;
+  }
+
+  function compare(file: string, observed: Record<string, Row>): string[] {
+    const recorded = JSON.parse(readFileSync(file, "utf8")) as Record<
       string,
       Row
     >;
@@ -368,6 +447,33 @@ describe("service route tables replay the hand dispatch", () => {
     }
     if (process.env.PKEY_ORACLE_DIFF)
       writeFileSync(process.env.PKEY_ORACLE_DIFF, changed.join("\n") + "\n");
-    expect(changed).toEqual([]);
+    return changed;
+  }
+
+  it("answers every request as the recorded dispatch did", async () => {
+    const observed = await replay(paths());
+    if (process.env.PKEY_RECORD_ORACLE === "1") {
+      writeFileSync(FIXTURE, JSON.stringify(observed, null, 1) + "\n");
+      return;
+    }
+    expect(compare(FIXTURE, observed)).toEqual([]);
+  }, 120_000);
+
+  it("answers I-08's routes, hostile spellings and browser origins as recorded", async () => {
+    // The product lists the page's origin; group 1 ran with none, as recorded.
+    await db.run(
+      "UPDATE products SET web_origins_json = ? WHERE slug = ?",
+      serializeWebOrigins([ORIGIN]),
+      SLUG,
+    );
+    const observed = await replay(
+      GROUP2.filter((p) => !NEAR.has(p)),
+      CORS_PATHS,
+    );
+    if (process.env.PKEY_RECORD_ORACLE === "2") {
+      writeFileSync(FIXTURE2, JSON.stringify(observed, null, 1) + "\n");
+      return;
+    }
+    expect(compare(FIXTURE2, observed)).toEqual([]);
   }, 120_000);
 });

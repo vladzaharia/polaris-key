@@ -36,9 +36,9 @@ import { parseServices, type ServicesMap } from "../services.js";
 export const IDENTITY_DISABLED = ErrorCode.IdentityDisabled;
 
 /**
- * The app-sign-in entries a person can navigate to, as paths under `/<p>/identity/`. I-21
- * appends `oauth/authorize` when the per-product issuer lands. `authorize` is reserved here
- * ahead of I-08's route so a link minted for it already lands on the card.
+ * The app-sign-in entries a person can navigate to, as paths under `/<p>/identity/`. `authorize`
+ * is I-08's route: with Identity off a browser navigation to it lands on the friendly card, and a
+ * JSON caller keeps the registry's `404 not_found`.
  */
 export const IDENTITY_NAVIGATION_ENTRIES: readonly string[] = [
   "authorize",
