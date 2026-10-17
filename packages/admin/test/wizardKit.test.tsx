@@ -168,8 +168,52 @@ describe("Stepper", () => {
   it("a future step is disabled and names what to finish first", () => {
     render(<Stepper steps={STEPS} current="a" />);
     const next = screen.getAllByRole("button", { name: /Client/ })[0]!;
-    expect((next as HTMLButtonElement).disabled).toBe(true);
-    expect(next.textContent).toContain("Complete Provider first");
+    // aria-disabled, not hidden from the reader; the reason is its description, not part of its name.
+    expect(next.getAttribute("aria-disabled")).toBe("true");
+    expect(next.textContent).not.toContain("Complete");
+    const reason = document.getElementById(
+      next.getAttribute("aria-describedby")!,
+    );
+    expect(reason?.textContent).toBe("Complete Provider first");
+  });
+
+  it("marks steps from facts: unmet warns, visited is neutral, a skip can be undone", async () => {
+    const onStep = vi.fn();
+    const onUndoSkip = vi.fn();
+    render(
+      <Stepper
+        steps={[...STEPS, { id: "d", label: "Ship", decided: "1 of 2 ready" }]}
+        current="c"
+        done={["a"]}
+        unmet={["d"]}
+        visited={["b"]}
+        skipped={[]}
+        onStep={onStep}
+        onUndoSkip={onUndoSkip}
+      />,
+    );
+    expect(
+      screen.getByRole("button", { name: /Ship.*needs attention/ }),
+    ).toBeTruthy();
+    const visitedBtn = screen.getByRole("button", { name: "Client" });
+    expect(visitedBtn.textContent).not.toMatch(/completed|attention/);
+    await userEvent.click(visitedBtn);
+    expect(onStep).toHaveBeenCalledWith("b");
+  });
+
+  it("Undo beside a skipped step clears the skip", async () => {
+    const onUndoSkip = vi.fn();
+    render(
+      <Stepper
+        steps={STEPS}
+        current="c"
+        skipped={["b"]}
+        onStep={() => {}}
+        onUndoSkip={onUndoSkip}
+      />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: /Undo/ }));
+    expect(onUndoSkip).toHaveBeenCalledWith("b");
   });
 
   it("the phone toggle says where you are and opens the list", async () => {
@@ -213,8 +257,36 @@ describe("Wizard", () => {
   it("names the region by the step's heading and counts the steps", () => {
     render(<Demo />);
     expect(screen.getByRole("region", { name: "First question" })).toBeTruthy();
-    expect(screen.getByText("Step 1 of 2")).toBeTruthy();
+    // The stepper numbers the steps; a live line says where the operator is.
+    expect(screen.getByRole("status").textContent).toBe(
+      "Demo, step 1 of 2, First question",
+    );
     expect(screen.getByText("Choose one to continue")).toBeTruthy();
+    // The reason describes the primary itself, not a wrapper around it.
+    expect(
+      screen
+        .getByRole("button", { name: "Continue" })
+        .getAttribute("aria-describedby"),
+    ).toBeTruthy();
+  });
+
+  it("Skip stays visible with its reason when it is off, and a footer may have no primary", () => {
+    const onSkip = vi.fn();
+    render(
+      <Wizard
+        label="Demo"
+        steps={[{ id: "a", label: "One" }]}
+        current="a"
+        title="Q"
+        footer={{ onSkip, skipDisabledReason: "Ask Ada for Core access." }}
+      >
+        <p>body</p>
+      </Wizard>,
+    );
+    const skip = screen.getByRole("button", { name: "Skip this step" });
+    expect(skip.getAttribute("aria-disabled")).toBe("true");
+    skip.click();
+    expect(onSkip).not.toHaveBeenCalled();
   });
 
   it("moves focus to the step's heading when the step changes, not on first render", async () => {

@@ -22,38 +22,49 @@
  */
 
 import * as React from "react";
-import { ArrowLeft, ArrowRight, Check, Plus } from "lucide-react";
+import { ArrowRight, Plus } from "lucide-react";
 import type {
   StorefrontDto,
   StorefrontFollowUp,
   StorefrontStepDto,
 } from "../../../../api.js";
 import { Button } from "../../../../ui/Button.js";
-import { Callout } from "../../../../ui/Callout.js";
 import {
-  CapabilityBadge,
   CapabilityStrip,
   capabilitySummary,
 } from "../../../../ui/CapabilityBadge.js";
-import { Checkbox } from "../../../../ui/Checkbox.js";
 import { EmptyState } from "../../../../ui/EmptyState.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
 import { Skeleton } from "../../../../ui/Skeleton.js";
-import { StatusPill } from "../../../../ui/StatusPill.js";
-import { Wizard, type WizardStep } from "../../../../ui/wizard/index.js";
+import {
+  DoneStep,
+  prereqsMet,
+  Wizard,
+  type WizardStep,
+} from "../../../../ui/wizard/index.js";
+import { FLOW_STEPS, type FlowStep } from "../model/flowSteps.js";
+import { PHASES_RUN, readCursor, writeCursor } from "../model/flowCursor.js";
+import {
+  ChooseStep,
+  ConnectionIssue,
+  PlanReview,
+  Prerequisites,
+  prereqRows,
+  progress,
+  StorePhase,
+} from "../components/FlowPanels.js";
 import { ASIDE, SKIPPABLE, TITLE, decidedStores } from "../model/flowCopy.js";
 import { STOREFRONTS_FLOW } from "../../../wizard/flows.js";
 import { skippedIn } from "../../../wizard/setup.js";
 import { useSetup } from "../../../wizard/useSetup.js";
 import { PageHeader } from "../../../../ui/PageHeader.js";
-import { Link, useSearchParam } from "../../../router.js";
+import { Link, useLocation, useSearchParam } from "../../../router.js";
 import { codecs, globalPage, r } from "../../../routes.js";
 import { Panel } from "../../../templates/Dashboard.js";
-import { useStorefronts } from "../data.js";
+import { useSlots, useStorefronts } from "../data.js";
 import { FitReport } from "../components/FitReport.js";
 import { ImportPanel } from "../components/ImportPanel.js";
 import { SlotBoard } from "../components/SlotBoard.js";
-import { StepCard, stepKeyOf } from "../components/StepCard.js";
 import {
   followUpOf,
   StepDialog,
@@ -71,16 +82,7 @@ export const STORE_PANELS: Readonly<
   "polaris-key": PolarisKeyPanel,
 };
 
-export const FLOW_STEPS = [
-  "choose",
-  "prerequisites",
-  "listing",
-  "assets",
-  "plan",
-  "run",
-  "submit",
-] as const;
-export type FlowStep = (typeof FLOW_STEPS)[number];
+export { FLOW_STEPS, type FlowStep };
 
 const STEPS: readonly WizardStep[] = STOREFRONTS_FLOW.steps.map((x) => ({
   id: x.id,
@@ -90,36 +92,6 @@ const STEPS: readonly WizardStep[] = STOREFRONTS_FLOW.steps.map((x) => ({
 const flowCodec = codecs.oneOf(["", "add"] as const, "");
 const stepCodec = codecs.oneOf(FLOW_STEPS, "choose");
 const storesCodec = codecs.string("");
-
-const PHASES_RUN = new Set(["setup", "listing", "assets", "store"]);
-
-/** A store's plan progress: steps done of all. */
-function progress(s: StorefrontDto): { done: number; total: number } {
-  return {
-    done: s.steps.filter((x) => x.state === "done").length,
-    total: s.steps.length,
-  };
-}
-
-function ConnectionIssue({
-  store,
-}: {
-  store: StorefrontDto;
-}): React.ReactElement | null {
-  if (store.connection.state === "not-configured")
-    return (
-      <StatusPill tone="warning" size="sm">
-        Not connected
-      </StatusPill>
-    );
-  if (store.connection.lastError)
-    return (
-      <StatusPill tone="danger" size="sm">
-        Connection failing
-      </StatusPill>
-    );
-  return null;
-}
 
 function StoreTile({
   slug,
@@ -277,8 +249,22 @@ function StorePage({
 function Catalogue({ slug }: { slug: string }): React.ReactElement {
   const q = useStorefronts(slug);
   const [flow] = useSearchParam("flow", flowCodec);
+  const root = React.useRef<HTMLDivElement>(null);
+  const hadFlow = React.useRef(Boolean(flow));
+  React.useEffect(() => {
+    // Leaving the flow only changes the query, and the link that was focused is gone: land on the page's h1.
+    if (hadFlow.current && !flow) {
+      const h1 = root.current?.querySelector("h1");
+      if (h1) {
+        h1.tabIndex = -1;
+        h1.focus();
+      }
+    }
+    hadFlow.current = Boolean(flow);
+  }, [flow]);
   return (
     <div
+      ref={root}
       className={`space-y-6${flow ? " mx-auto w-full max-w-[60rem]" : ""}`}
       data-template={flow ? "flow" : "collection"}
     >
@@ -334,10 +320,14 @@ function AddFlow({
   slug: string;
   stores: StorefrontDto[];
 }): React.ReactElement {
-  const [step, setStep] = useSearchParam("step", stepCodec);
+  const { route } = useLocation();
+  const [step, setStep] = useSearchParam("step", stepCodec, { replace: false });
   const [storesRaw, setStoresRaw] = useSearchParam("stores", storesCodec);
   const [intent, setIntent] = React.useState<StepIntent | null>(null);
   const setup = useSetup(slug);
+  const slots = useSlots(slug);
+  const [skipping, setSkipping] = React.useState(false);
+  const skipGuard = React.useRef(false);
   // What each step's last run left to finish in the store's console (decision 6), by step key.
   const [followUps, setFollowUps] = React.useState<
     Record<string, StorefrontFollowUp>
@@ -351,37 +341,174 @@ function AddFlow({
   const index = FLOW_STEPS.indexOf(step);
   // Nothing chosen: every later step waits on the first.
   const current: FlowStep = chosen.length === 0 ? "choose" : step;
-  const completed = chosen.length
-    ? FLOW_STEPS.slice(0, FLOW_STEPS.indexOf(current))
-    : [];
+  const currentIndex = FLOW_STEPS.indexOf(current);
   const go = (s: FlowStep) => setStep(s);
+
+  // A link to a later step with nothing chosen lands on Choose, and choosing never moves the step.
+  React.useEffect(() => {
+    if (chosen.length === 0 && step !== "choose")
+      setStep("choose", { replace: true });
+  });
+  // Reopened with no place in the URL: resume where the operator left off.
+  const resumed = React.useRef(false);
+  React.useEffect(() => {
+    if (resumed.current) return;
+    resumed.current = true;
+    if (route.query.get("step") !== null || route.query.get("stores") !== null)
+      return;
+    const saved = readCursor(slug);
+    if (!saved) return;
+    const ids = saved.stores.split(",").filter((x) => known.has(x));
+    if (ids.length === 0) return;
+    setStoresRaw(ids.join(","));
+    setStep(saved.step, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  React.useEffect(() => {
+    if (chosen.length > 0) writeCursor(slug, current, picked.join(","));
+  }, [slug, current, picked.join(",")]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const listingColumns = chosen
     .map((s) => s.listingStore)
     .filter((x): x is string => x !== null);
-  const steps: WizardStep[] = STEPS.map((x) =>
-    x.id === "choose" ? { ...x, decided: decidedStores(chosen) } : x,
+
+  // ── Step state, from facts ──
+  const readyStores = chosen.filter((s) => prereqsMet(prereqRows(s)));
+  const groups = ["masters", ...listingColumns];
+  const slotRows = (slots.data?.slots ?? []).filter(
+    (x) =>
+      groups.includes(x.group) && (x.state !== "missing" || x.kind === "human"),
   );
-  const skip = async () => {
-    if (await setup.skip(STOREFRONTS_FLOW.id, current))
-      go(FLOW_STEPS[FLOW_STEPS.indexOf(current) + 1]!);
+  const needed = slotRows.filter(
+    (x) =>
+      x.state === "review" || (x.state === "missing" && x.kind === "human"),
+  ).length;
+  const accepted = slotRows.filter((x) => x.state === "accepted").length;
+  const phaseSteps = (pred: (p: string) => boolean) =>
+    chosen.flatMap((s) => s.steps.filter((x) => pred(x.phase)));
+  const runSteps = phaseSteps((p) => PHASES_RUN.has(p));
+  const submitSteps = phaseSteps((p) => p === "submit");
+  const doneCount = (l: StorefrontStepDto[]) =>
+    l.filter((x) => x.state === "done").length;
+  type Fact = { done: boolean; decided?: string } | null;
+  const facts: Record<FlowStep, Fact> = {
+    choose: chosen.length
+      ? { done: true, decided: decidedStores(chosen) }
+      : { done: false },
+    prerequisites: {
+      done: chosen.length > 0 && readyStores.length === chosen.length,
+      decided:
+        chosen.length === 1
+          ? undefined
+          : `${readyStores.length} of ${chosen.length} stores ready`,
+    },
+    // No store-neutral fact says a listing is right or a plan was read: those stay neutral once visited.
+    listing: null,
+    assets: slots.isSuccess
+      ? {
+          done: slotRows.length > 0 && needed === 0,
+          decided: needed
+            ? `${accepted} accepted, ${needed} needed`
+            : `${accepted} accepted`,
+        }
+      : null,
+    plan: null,
+    run: {
+      done: runSteps.length > 0 && doneCount(runSteps) === runSteps.length,
+      decided: `${doneCount(runSteps)} of ${runSteps.length} steps done`,
+    },
+    submit: {
+      done:
+        submitSteps.length > 0 && doneCount(submitSteps) === submitSteps.length,
+      decided: `${doneCount(submitSteps)} of ${submitSteps.length} steps done`,
+    },
   };
+  const skippedList = skippedIn(setup.choices, STOREFRONTS_FLOW.id);
+  const [furthest, setFurthest] = React.useState(currentIndex);
+  React.useEffect(() => {
+    setFurthest((f) => Math.max(f, currentIndex));
+  }, [currentIndex]);
+  const completed: string[] = [];
+  const unmet: string[] = [];
+  const visited: string[] = [];
+  FLOW_STEPS.forEach((id, i) => {
+    if (id === current || skippedList.includes(id)) return;
+    const f = facts[id];
+    if (f?.done && (i < currentIndex || i <= furthest)) completed.push(id);
+    else if (i < currentIndex && f && !f.done) unmet.push(id);
+    else if (i <= furthest) visited.push(id);
+  });
+  const steps: WizardStep[] = STEPS.map((x) => ({
+    ...x,
+    decided: facts[x.id as FlowStep]?.decided,
+  }));
+  // Choose with nothing chosen has no decided line yet.
+  if (chosen.length === 0) steps[0] = { ...steps[0]!, decided: undefined };
+
+  const gate = setup.allowed
+    ? undefined
+    : (setup.disabledReason ?? "You can't change setup choices.");
+  const alreadySkipped = skippedList.includes(current);
+  const skip = async () => {
+    if (skipGuard.current) return;
+    skipGuard.current = true;
+    setSkipping(true);
+    try {
+      if (await setup.skip(STOREFRONTS_FLOW.id, current))
+        go(FLOW_STEPS[currentIndex + 1]!);
+    } finally {
+      skipGuard.current = false;
+      setSkipping(false);
+    }
+  };
+  const next = async () => {
+    // Going on from a skipped step means it was done after all: the skip is cleared.
+    if (alreadySkipped && !(await setup.unskip(STOREFRONTS_FLOW.id, current)))
+      return;
+    go(FLOW_STEPS[currentIndex + 1]!);
+  };
+  const doneStores = chosen.filter((s) => {
+    const l = s.steps.filter((x) => x.phase === "submit");
+    return l.length > 0 && l.every((x) => x.state === "done");
+  });
+
+  if (stores.length === 0)
+    return (
+      <EmptyState
+        kind="first-run"
+        headingLevel={2}
+        title="Every storefront here is built in"
+        description="Connect a store in Store connections to add it here."
+        primaryAction={
+          <Button asChild>
+            <Link to={globalPage("platform-stores")}>
+              Open Store connections
+            </Link>
+          </Button>
+        }
+      />
+    );
 
   return (
     <>
       <Wizard
         centered={false}
+        focusOnMount
         label="Add to storefronts"
         steps={steps}
         current={current}
         done={completed}
-        skipped={skippedIn(setup.choices, STOREFRONTS_FLOW.id)}
+        unmet={unmet}
+        visited={visited}
+        skipped={skippedList}
         onStep={(id) => go(id as FlowStep)}
+        onUndoSkip={(id) => void setup.unskip(STOREFRONTS_FLOW.id, id)}
         title={TITLE[current]!}
         aside={
           <>
-            <h2 className="text-sm font-semibold text-fg-strong">
+            <h3 className="text-sm font-semibold text-fg-strong">
               What happens here
-            </h2>
+            </h3>
             <p>{ASIDE[current]}</p>
             <a
               href="/docs/admin/storefronts/"
@@ -398,27 +525,27 @@ function AddFlow({
             </Button>
           ),
           onSkip:
-            SKIPPABLE.has(current) && setup.allowed
+            SKIPPABLE.has(current) && !alreadySkipped
               ? () => void skip()
               : undefined,
+          skipDisabledReason: gate,
+          skipLoading: skipping || setup.saving,
           onBack:
             index > 0 && current !== "choose"
-              ? () => go(FLOW_STEPS[FLOW_STEPS.indexOf(current) - 1]!)
+              ? () => go(FLOW_STEPS[currentIndex - 1]!)
               : undefined,
           reason:
             chosen.length === 0 ? "Choose a storefront to continue" : undefined,
+          // The last step's typed confirmation is its action; there is no filled primary beside it.
           primary:
-            current === "submit" ? (
-              <Button asChild>
-                <Link to={r.storefronts(slug)}>
-                  <Check aria-hidden />
-                  Done
-                </Link>
-              </Button>
-            ) : (
+            current === "submit" ? undefined : (
               <Button
-                disabled={chosen.length === 0}
-                onClick={() => go(FLOW_STEPS[FLOW_STEPS.indexOf(current) + 1]!)}
+                disabledReason={
+                  chosen.length === 0
+                    ? "Choose a storefront to continue"
+                    : undefined
+                }
+                onClick={() => void next()}
               >
                 Continue
                 <ArrowRight aria-hidden />
@@ -438,11 +565,12 @@ function AddFlow({
           : null}
         {current === "listing" ? (
           <>
-            <Panel title="Fit report">
+            <Panel title="Fit report" headingLevel={3}>
               <FitReport slug={slug} stores={listingColumns} />
             </Panel>
             <Panel
               title="Import"
+              headingLevel={3}
               action={
                 <Button size="sm" variant="outline" asChild>
                   <Link to={r.listing(slug)}>Edit the listing</Link>
@@ -459,6 +587,11 @@ function AddFlow({
         {current === "plan"
           ? chosen.map((s) => <PlanReview key={s.id} store={s} />)
           : null}
+        {current === "submit" && doneStores.length > 0 ? (
+          <DoneStep
+            result={`${doneStores.map((s) => s.label).join(", ")}: sent for review`}
+          />
+        ) : null}
         {current === "run" || current === "submit"
           ? chosen.map((s) => (
               <StorePhase
@@ -491,214 +624,6 @@ function AddFlow({
         }}
       />
     </>
-  );
-}
-
-function ChooseStep({
-  stores,
-  picked,
-  onChange,
-}: {
-  stores: StorefrontDto[];
-  picked: string[];
-  onChange: (next: string[]) => void;
-}): React.ReactElement {
-  return (
-    <fieldset className="space-y-3">
-      <legend className="sr-only">Storefronts to add the product to</legend>
-      <div className="grid gap-3 md:grid-cols-2">
-        {stores.map((s) => {
-          const p = progress(s);
-          return (
-            <div
-              key={s.id}
-              data-store={s.id}
-              className="flex h-full flex-col gap-2 rounded-lg border border-border bg-surface-raised p-4"
-            >
-              <div className="flex min-h-8 items-start justify-between gap-3">
-                <Checkbox
-                  label={s.label}
-                  description={
-                    s.outlets.length && p.total
-                      ? `${p.done} of ${p.total} steps done`
-                      : capabilitySummary(s.capabilities)
-                  }
-                  checked={picked.includes(s.id)}
-                  onCheckedChange={(on) =>
-                    onChange(
-                      on ? [...picked, s.id] : picked.filter((x) => x !== s.id),
-                    )
-                  }
-                />
-                <ConnectionIssue store={s} />
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </fieldset>
-  );
-}
-
-const PREREQ_WORDS = {
-  met: { tone: "success", word: "Met" },
-  unmet: { tone: "danger", word: "Not met" },
-  unknown: { tone: "neutral", word: "Shown by the first write" },
-} as const;
-
-function Prerequisites({
-  store,
-}: {
-  store: StorefrontDto;
-}): React.ReactElement {
-  return (
-    <Panel title={store.label} headingLevel={2}>
-      {store.readOnly ? (
-        <Callout tone="warning" title="Read-only">
-          {store.readOnly}
-        </Callout>
-      ) : null}
-      {store.prerequisites.length === 0 ? (
-        <p className="text-sm text-fg-muted">
-          {store.label} is published from CI: no team connection or app to check
-          here.
-        </p>
-      ) : (
-        <ul className="divide-y divide-border">
-          {store.prerequisites.map((p) => (
-            <li
-              key={p.id}
-              className="flex min-h-12 items-center justify-between gap-3 py-2"
-            >
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-fg-strong">{p.label}</p>
-                <p className="text-sm text-fg-muted">{p.detail}</p>
-              </div>
-              <div className="ml-auto flex shrink-0 items-center gap-2">
-                {p.state === "met" ? (
-                  <span className="inline-flex items-center gap-1 text-sm text-success">
-                    <Check aria-hidden className="size-4" />
-                    {PREREQ_WORDS.met.word}
-                  </span>
-                ) : p.state === "unmet" ? (
-                  <StatusPill tone="danger" size="sm">
-                    {PREREQ_WORDS.unmet.word}
-                  </StatusPill>
-                ) : (
-                  <span className="text-sm text-fg-muted">
-                    {PREREQ_WORDS.unknown.word}
-                  </span>
-                )}
-                {p.page && p.state === "unmet" ? (
-                  <Button size="sm" variant="outline" asChild>
-                    <Link to={globalPage("platform-stores")}>
-                      Open Store connections
-                    </Link>
-                  </Button>
-                ) : null}
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-    </Panel>
-  );
-}
-
-function PlanReview({ store }: { store: StorefrontDto }): React.ReactElement {
-  const writes = store.steps.flatMap((s: StorefrontStepDto) =>
-    s.writes.map((w) => ({ step: s.label, write: w })),
-  );
-  return (
-    <Panel title={store.label} headingLevel={2}>
-      {store.readOnly ? (
-        <Callout tone="warning" title="Read-only">
-          {store.readOnly}
-        </Callout>
-      ) : null}
-      <ol className="divide-y divide-border">
-        {store.steps.map((s, i) => (
-          <li
-            key={s.id}
-            className="flex min-h-10 items-center justify-between gap-3 py-1.5"
-          >
-            <span className="text-sm text-fg">
-              <span className="tabular-nums text-fg-muted">{i + 1}. </span>
-              {s.label}
-              {s.typed ? (
-                <span className="text-fg-muted"> · typed confirmation</span>
-              ) : null}
-            </span>
-            <CapabilityBadge support={{ mode: s.mode }} />
-          </li>
-        ))}
-      </ol>
-      <h3 className="mt-4 text-sm font-semibold text-fg-strong">
-        External writes
-      </h3>
-      {writes.length === 0 ? (
-        <p className="text-sm text-fg-muted">
-          None from Polaris Key: every step is done in {store.label}'s own
-          console or by CI.
-        </p>
-      ) : (
-        <ul className="mt-1 space-y-1">
-          {writes.map((w) => (
-            <li
-              key={`${w.step}:${w.write}`}
-              className="flex min-h-8 items-center justify-between gap-3"
-            >
-              <span className="text-sm text-fg-muted">{w.step}</span>
-              <span className="font-mono text-xs text-fg">{w.write}</span>
-            </li>
-          ))}
-        </ul>
-      )}
-    </Panel>
-  );
-}
-
-function StorePhase({
-  slug,
-  store,
-  steps,
-  onIntent,
-  followUps,
-}: {
-  slug: string;
-  store: StorefrontDto;
-  steps: StorefrontStepDto[];
-  onIntent: (i: StepIntent) => void;
-  followUps: Record<string, StorefrontFollowUp>;
-}): React.ReactElement {
-  return (
-    <Panel title={store.label} headingLevel={2}>
-      {store.readOnly ? (
-        <Callout tone="warning" title="Read-only">
-          {store.readOnly}
-        </Callout>
-      ) : null}
-      {steps.length === 0 ? (
-        <p className="text-sm text-fg-muted">
-          {store.label} has no steps here: its state follows the store's own
-          review and release.
-        </p>
-      ) : (
-        <ol className="space-y-3">
-          {steps.map((s) => (
-            <StepCard
-              key={s.id}
-              slug={slug}
-              store={store}
-              step={s}
-              readOnly={store.readOnly !== null}
-              onIntent={onIntent}
-              followUp={followUps[stepKeyOf(store.id, s.id)] ?? null}
-            />
-          ))}
-        </ol>
-      )}
-    </Panel>
   );
 }
 

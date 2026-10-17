@@ -35,9 +35,12 @@ export function prereqsMet(rows: readonly Prereq[]): boolean {
 export function PrereqList({
   rows,
   label = "Requirements",
+  words,
 }: {
   rows: readonly Prereq[];
   label?: string;
+  /** Replace the word of a state ("Shown by the first write" for `unknown`). */
+  words?: Partial<Record<PrereqState, string>>;
 }): React.ReactElement {
   return (
     <ul aria-label={label} className="divide-y divide-border">
@@ -69,7 +72,7 @@ export function PrereqList({
               ) : (
                 <Circle aria-hidden className="size-4" />
               )}
-              {WORDS[p.state]}
+              {words?.[p.state] ?? WORDS[p.state]}
             </span>
             {p.state === "unmet" ? p.fix : null}
           </div>

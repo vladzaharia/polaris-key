@@ -41,6 +41,8 @@ export interface UseSetup {
   stamp: () => SetupStamp;
   /** Skip a step: saved as a choice. Says why in a toast and answers false when it fails. */
   skip: (flow: string, step: string) => Promise<boolean>;
+  /** Undo a skip. Same failure words as `skip`. */
+  unskip: (flow: string, step: string) => Promise<boolean>;
   saving: boolean;
 }
 
@@ -89,6 +91,22 @@ export function useSetup(slug: string): UseSetup {
     }
   };
 
+  /** Save a choice; on failure say why and what to do, not only that it failed. */
+  const change = async (e: SetupEdit): Promise<boolean> => {
+    try {
+      await save(e);
+      return true;
+    } catch (err) {
+      const copy = errorCopy(err, { thing: "Your choice" });
+      const forbidden = err instanceof ApiError && err.status === 403;
+      toast.error(copy.title, {
+        description:
+          (forbidden ? gate.disabledReason : undefined) || copy.description,
+      });
+      return false;
+    }
+  };
+
   return {
     choices,
     ready: q.isSuccess,
@@ -100,15 +118,8 @@ export function useSetup(slug: string): UseSetup {
       at: Math.floor(Date.now() / 1000),
       by: me?.email || me?.sub || "operator",
     }),
-    skip: async (flow, step) => {
-      try {
-        await save(edit.skip(flow, step));
-        return true;
-      } catch (e) {
-        toast.error(errorCopy(e, { thing: "Your choice" }).title);
-        return false;
-      }
-    },
+    skip: (flow, step) => change(edit.skip(flow, step)),
+    unskip: (flow, step) => change(edit.skip(flow, step, false)),
     saving,
   };
 }

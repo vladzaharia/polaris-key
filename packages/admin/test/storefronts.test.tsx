@@ -26,7 +26,10 @@ const PAGE = "#/p/djdl/distribution/storefronts";
 const LISTING = "#/p/djdl/distribution/listing";
 const SF = (path = "") => P(`/distribution/storefronts${path}`);
 
-beforeEach(() => resetConsole());
+beforeEach(() => {
+  resetConsole();
+  window.localStorage.clear();
+});
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
@@ -582,6 +585,56 @@ describe("Distribution → Storefronts", () => {
         }),
       ]),
     );
+  });
+
+  it("a later step asked for with nothing chosen is written back as Choose, and choosing never moves the step", async () => {
+    bootWith(`${PAGE}?flow=add&step=run`, routes());
+    await userEvent.click(
+      await screen.findByRole("checkbox", { name: /Google Play/ }),
+    );
+    await waitFor(() =>
+      expect(window.location.hash).toContain("stores=google-play"),
+    );
+    expect(window.location.hash).not.toContain("step=run");
+    expect(screen.getByRole("heading", { level: 2 }).textContent).toContain(
+      "Choose the storefronts",
+    );
+  });
+
+  it("steps are marked from facts: a step passed with unmet facts warns, and nothing is done by position", async () => {
+    bootWith(`${PAGE}?flow=add&step=run&stores=google-play`, routes());
+    const nav = await screen.findByRole("navigation", {
+      name: "Add to storefronts",
+    });
+    // The slot board has a missing master and an output awaiting review: Assets is not done.
+    await waitFor(() =>
+      expect(
+        within(nav).getByRole("button", { name: /Assets.*needs attention/ }),
+      ).toBeTruthy(),
+    );
+    expect(
+      within(nav).queryByRole("button", { name: /Plan.*completed/ }),
+    ).toBeNull();
+  });
+
+  it("Submit has no filled primary; Do this later is the exit", async () => {
+    bootWith(`${PAGE}?flow=add&step=submit&stores=google-play`, routes());
+    await screen.findByRole("heading", {
+      level: 2,
+      name: /Submit and release/,
+    });
+    expect(screen.queryByRole("button", { name: /^Done$/ })).toBeNull();
+    expect(screen.queryByRole("link", { name: /^Done$/ })).toBeNull();
+    expect(screen.getByRole("link", { name: "Do this later" })).toBeTruthy();
+  });
+
+  it("Skip is offered on a skippable step, and only there", async () => {
+    bootWith(
+      `${PAGE}?flow=add&step=listing&stores=google-play`,
+      routes({ [P("/settings/effective")]: { settings: [] } }),
+    );
+    const skip = await screen.findByRole("button", { name: "Skip this step" });
+    expect(skip).toBeTruthy();
   });
 
   it("a store without a connection is read-only, with the reason", async () => {

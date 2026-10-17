@@ -2,7 +2,7 @@ import * as React from "react";
 import { ArrowLeft } from "lucide-react";
 import { cn } from "../../lib/cn.js";
 import { Button } from "../Button.js";
-import { Drawer } from "../Drawer.js";
+import { Drawer, DrawerBody, DrawerFooter } from "../Drawer.js";
 import { Stepper } from "./Stepper.js";
 import type { WizardStep } from "./model.js";
 
@@ -11,10 +11,17 @@ export interface WizardFooter {
   later?: React.ReactNode;
   /** "Skip this step": only on a step that may be skipped; the page records it in `core.setup`. */
   onSkip?: () => void;
+  /** Why Skip is off ("Ask Ada for Core access."): it stays visible, `aria-disabled`, with this as its description. */
+  skipDisabledReason?: string;
+  /** A skip is being saved: Skip shows as loading and ignores clicks. */
+  skipLoading?: boolean;
   /** Back one step. Absent on the first step. */
   onBack?: () => void;
-  /** The one filled primary of the step; its label names the action, not "Next". */
-  primary: React.ReactNode;
+  /**
+   * The one filled primary of the step; its label names the action, not "Next". Absent when the
+   * step's own typed action is the action (Submit): the footer then has Do this later and Back only.
+   */
+  primary?: React.ReactNode;
   /** Why the primary is off ("Choose a storefront to continue"). Linked from the footer. */
   reason?: string;
 }
@@ -28,6 +35,10 @@ export interface WizardProps {
   current: string;
   done?: readonly string[];
   skipped?: readonly string[];
+  /** Steps whose facts are not met (warning marker), steps visited but not finished (neutral), and Undo for a skip. */
+  unmet?: readonly string[];
+  visited?: readonly string[];
+  onUndoSkip?: (id: string) => void;
   onStep?: (id: string) => void;
   /** The current step's question, as its h2. Focus lands here when the step changes. */
   title: string;
@@ -39,6 +50,8 @@ export interface WizardProps {
   aside?: React.ReactNode;
   children: React.ReactNode;
   footer: WizardFooter;
+  /** Focus the step's heading on first render too (the page just routed into the flow). */
+  focusOnMount?: boolean;
   /** Centre the page host in a 960 px column (default). */
   centered?: boolean;
   /** The drawer host's open state and title. */
@@ -52,7 +65,7 @@ export interface WizardProps {
 }
 
 /**
- * The wizard shell (SETUP.md §1.1): a header with "Step n of m", the stepper, one question per
+ * The wizard shell (SETUP.md §1.1): the stepper (which numbers the steps; the live line announces "step n of m"), one question per
  * step, an optional aside, and a footer of Do this later, Back and the primary. Host-agnostic: the
  * page host sits in the console's page, the drawer host in a routed `Drawer`. The page owns the step
  * (a search param, so a refresh resumes) and passes it in; a step change is a route change, so
@@ -65,6 +78,9 @@ export function Wizard({
   current,
   done,
   skipped,
+  unmet,
+  visited,
+  onUndoSkip,
   onStep,
   title,
   why,
@@ -73,24 +89,28 @@ export function Wizard({
   children,
   footer,
   centered = true,
+  focusOnMount = false,
   drawer,
   className,
 }: WizardProps): React.ReactElement {
   const uid = React.useId();
   const headingRef = React.useRef<HTMLHeadingElement>(null);
   const first = React.useRef(true);
-  React.useEffect(() => {
-    if (first.current) {
-      first.current = false;
-      return;
-    }
-    headingRef.current?.focus();
-  }, [current]);
-
+  const [announced, setAnnounced] = React.useState("");
   const index = Math.max(
     0,
     steps.findIndex((s) => s.id === current),
   );
+  React.useEffect(() => {
+    const skipFocus = first.current && !focusOnMount;
+    first.current = false;
+    // The live line says where the operator is: "Add to storefronts, step 2 of 7, Check the prerequisites".
+    setAnnounced(`${label}, step ${index + 1} of ${steps.length}, ${title}`);
+    if (!skipFocus) headingRef.current?.focus();
+    // Only a change of step moves focus.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [current]);
+
   const isDrawer = host === "drawer";
   const reasonId = `${uid}-reason`;
 
@@ -101,7 +121,7 @@ export function Wizard({
           ref={headingRef}
           id={`${uid}-title`}
           tabIndex={-1}
-          className="text-lg font-semibold text-fg-strong outline-none focus-visible:underline"
+          className="text-lg font-semibold text-fg-strong outline-none"
         >
           {isDrawer ? (
             <span className="font-normal text-fg-muted">
@@ -113,14 +133,22 @@ export function Wizard({
         {why ? <p className="text-sm text-fg-muted">{why}</p> : null}
       </div>
       {children}
+      <p role="status" className="sr-only">
+        {announced}
+      </p>
     </div>
   );
 
-  const foot = (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-border pt-4">
+  const footRow = (
+    <>
       {footer.later}
       {footer.onSkip ? (
-        <Button variant="ghost" onClick={footer.onSkip}>
+        <Button
+          variant="ghost"
+          onClick={footer.onSkip}
+          loading={footer.skipLoading}
+          disabledReason={footer.skipDisabledReason}
+        >
           Skip this step
         </Button>
       ) : null}
@@ -136,10 +164,20 @@ export function Wizard({
             Back
           </Button>
         ) : null}
-        <span aria-describedby={footer.reason ? reasonId : undefined}>
-          {footer.primary}
-        </span>
+        {React.isValidElement<{ "aria-describedby"?: string }>(footer.primary)
+          ? React.cloneElement(footer.primary, {
+              "aria-describedby":
+                [footer.primary.props["aria-describedby"], reasonId]
+                  .filter((x) => x && footer.reason)
+                  .join(" ") || undefined,
+            })
+          : footer.primary}
       </div>
+    </>
+  );
+  const foot = (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-border pt-4">
+      {footRow}
     </div>
   );
 
@@ -152,19 +190,26 @@ export function Wizard({
         size="lg"
         unsaved={drawer.unsaved}
       >
-        <div className={cn("space-y-4", className)} data-wizard="drawer">
-          <Stepper
-            variant="segments"
-            label={label}
-            steps={steps}
-            current={current}
-            done={done}
-            skipped={skipped}
-            onStep={onStep}
-          />
-          {body}
-          {foot}
-        </div>
+        <DrawerBody className={className} data-wizard="drawer">
+          <div className="space-y-4">
+            <Stepper
+              variant="segments"
+              label={label}
+              steps={steps}
+              current={current}
+              done={done}
+              skipped={skipped}
+              unmet={unmet}
+              visited={visited}
+              onUndoSkip={onUndoSkip}
+              onStep={onStep}
+            />
+            {body}
+          </div>
+        </DrawerBody>
+        <DrawerFooter className="flex-row flex-wrap items-center gap-x-3 gap-y-2 sm:justify-start">
+          {footRow}
+        </DrawerFooter>
       </Drawer>
     );
   }
@@ -180,18 +225,16 @@ export function Wizard({
       )}
     >
       <header className="space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="min-w-0">{eyebrow}</div>
-          <p className="text-sm text-fg-muted max-sm:hidden">
-            Step {index + 1} of {steps.length}
-          </p>
-        </div>
+        {eyebrow ? <div className="min-w-0">{eyebrow}</div> : null}
         <Stepper
           label={label}
           steps={steps}
           current={current}
           done={done}
           skipped={skipped}
+          unmet={unmet}
+          visited={visited}
+          onUndoSkip={onUndoSkip}
           onStep={onStep}
         />
       </header>
@@ -203,7 +246,7 @@ export function Wizard({
       >
         {body}
         {aside ? (
-          <aside className="space-y-2 rounded-lg border border-border bg-surface-sunken p-4 text-sm text-fg max-lg:hidden">
+          <aside className="space-y-2 rounded-lg border border-border bg-surface-sunken p-4 text-sm text-fg self-start max-lg:hidden lg:sticky lg:top-4">
             {aside}
           </aside>
         ) : null}
