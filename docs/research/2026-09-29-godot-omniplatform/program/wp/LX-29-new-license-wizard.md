@@ -136,10 +136,12 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 ## Acceptance criteria
 
 - [ ] All three outcomes (assigned with email, single floating, batch) work end to end against the
-      Worker (e2e), in both themes at 1440 and 390, with zero layout-lint findings.
-- [ ] No step reveals whether an email has an account (review of copy and network answers).
-- [ ] Focus lands on each step heading, step changes are announced, Escape asks before discarding.
-- [ ] The batch drawer cannot close before the CSV is downloaded or copied.
+      Worker (e2e), in both themes at 1440 and 390, with zero layout-lint findings. (Met in the
+      console against mocked Worker answers: `newLicense.test.tsx` for all three, `flowConformance`
+      e2e for the emailed path at 1440, 390 and 360 in both themes. Not run against a live Worker.)
+- [x] No step reveals whether an email has an account (review of copy and network answers).
+- [x] Focus lands on each step heading, step changes are announced, Escape asks before discarding.
+- [x] The batch drawer cannot close before the CSV is downloaded or copied.
 - [ ] Console CSP parity and docsLinks pass; the green gate passes (AGENTS.md).
 
 ## Verify
