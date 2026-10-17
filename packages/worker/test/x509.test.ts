@@ -18,7 +18,7 @@ import {
   readDer,
   verifyChain,
 } from "../src/core/trust/x509.js";
-import { APPLE_ROOT_CA_G3_DER } from "../src/services/distribution/commerce/appleRoot.js";
+import { APPLE_ROOT_CA_G3_DER } from "../src/services/commerce/appleRoot.js";
 import {
   APPLE_INTERMEDIATE_OID,
   APPLE_LEAF_OID,

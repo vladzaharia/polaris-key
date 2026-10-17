@@ -6,6 +6,7 @@ import {
   DEFAULT_BASE_URL,
   mintBundle,
 } from "./bundle.js";
+import { MIGRATE_USAGE, formatMigrate, runMigrate } from "./migrate.js";
 import {
   COMPLETION_SHELLS,
   completionScript,
@@ -382,6 +383,14 @@ export {
 } from "./buildMetadata.js";
 
 export {
+  MIGRATE_USAGE,
+  formatMigrate,
+  runMigrate,
+  type MigrateOptions,
+  type MigrateResult,
+} from "./migrate.js";
+
+export {
   ADMIN_TOKEN_ENV,
   BUNDLE_USAGE,
   DEFAULT_BASE_URL,
@@ -652,6 +661,7 @@ export const HANDLERS: Readonly<Record<string, Handler>> = {
     cmdDistribution(p, rt.cwd, rt.stdout, rt.stderr, rt.ci),
   doctor: (p, rt) => cmdDoctor(p, rt.cwd, rt.stdout, rt.term(rt.stdout), rt.ci),
   bundle: (p, rt) => cmdBundle(p, rt.cwd, rt.stdout, rt.ci.env),
+  migrate: (p, rt) => cmdMigrate(p, rt.stdout, rt.ci.env, rt.ci.fetchImpl),
   trust: (p, rt) => cmdTrust(p, rt.stdout),
   sdk: (p, rt) => cmdSdk(p, rt.cwd, rt.stdout, rt.stderr, rt.ci.fetchImpl),
   dev: (p, rt) => cmdDev(p, rt),
@@ -1294,6 +1304,39 @@ async function cmdBundle(
   // the mint response does not say — so claim nothing rather than guess.
   stdout.write(
     "\nNext: transfer this file to the offline machine and import it there.\n",
+  );
+  return 0;
+}
+
+/**
+ * `pkey migrate list | dry-run <job> | report <run>` — the data-migration runner's read side,
+ * through an admin API token scoped `migrations:report` (`migrate.ts`). Apply and down stay in the
+ * console: they need a step-up a token cannot have.
+ */
+async function cmdMigrate(
+  parsed: ParsedArgs,
+  stdout: Pick<NodeJS.WriteStream, "write">,
+  env: UntrustedEnv,
+  fetchImpl?: typeof fetch,
+): Promise<number> {
+  const [verb, target, ...extra] = parsed.positional;
+  if (
+    (verb !== "list" && verb !== "dry-run" && verb !== "report") ||
+    extra.length > 0 ||
+    (verb === "list" && target !== undefined)
+  )
+    throw new Error(MIGRATE_USAGE);
+  const result = await runMigrate({
+    verb,
+    target,
+    baseUrl: flagString(parsed, "base-url"),
+    token: process.env[ADMIN_TOKEN_ENV],
+    fetchImpl,
+  });
+  stdout.write(
+    flagBool(parsed, "json")
+      ? `${untrustedJson(result, 2)}\n`
+      : formatMigrate(result, env),
   );
   return 0;
 }

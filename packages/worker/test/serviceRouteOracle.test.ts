@@ -36,6 +36,7 @@ import type { Env } from "../src/platform/env.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const FIXTURE = join(here, "fixtures", "service-route-oracle.json");
+const FIXTURE3 = join(here, "fixtures", "service-route-oracle-3.json");
 const FIXTURE2 = join(here, "fixtures", "service-route-oracle-2.json");
 const SLUG = "djdl";
 const BASE = "https://key.plrs.im";
@@ -226,17 +227,63 @@ const GROUP2: string[] = [
 /** I-08's two canonical paths, which the surface now lists but group 1 predates. */
 const I08 = new Set([`/${SLUG}/identity/authorize`, `/${SLUG}/identity/token`]);
 const NEAR = new Set(NEAR_MISSES.map((n) => `/${SLUG}/${n}`));
+const G3 = (path: string): boolean => GROUP3_SET.has(path.replace(/\?.*$/, ""));
 
 function paths(): string[] {
   const out = new Set<string>();
   for (const d of SERVICES.values())
     for (const r of d.surface) {
       const p = instantiate(r.path);
-      if (!I08.has(p)) out.add(p);
+      if (!I08.has(p) && !GROUP3_SET.has(p)) out.add(p);
     }
-  for (const n of NEAR_MISSES) out.add(`/${SLUG}/${n}`);
+  for (const n of NEAR_MISSES)
+    if (!GROUP3_SET.has(`/${SLUG}/${n}`)) out.add(`/${SLUG}/${n}`);
   return [...out].sort();
 }
+
+/**
+ * Group 3, recorded after CM-29 and the identity changes on integ/next, from the hand dispatch
+ * they left (`handleCommerceRoutes` in `commerce/bridge.ts`, Identity's switch): the Commerce
+ * service's routes, the store hooks at their Distribution URLs, and `identity/authorize`, `auth/choose` and
+ * `auth/device` (whose pages changed on integ/next, so groups 1 and 2 rows for them predate them). Replayed in three
+ * product states, because the table's `accept` gate (License on, store hook flagged) is what a
+ * conversion could loosen. Group 1 and 2 skip these paths; the state is in the key's method part.
+ */
+const GROUP3: string[] = [
+  "commerce",
+  "commerce/binding",
+  "commerce/binding/x",
+  "commerce/claim",
+  "commerce/claim/",
+  "commerce/nope",
+  "commerce/hooks",
+  "commerce/hooks/app-store",
+  "commerce/hooks/play-rtdn",
+  "commerce/hooks/nope",
+  "distribution/hooks/app-store",
+  "distribution/hooks/app-store/",
+  "distribution/hooks/app-store/x",
+  "distribution/hooks/play-rtdn",
+  "distribution/hooks/play-rtdn/x",
+  "distribution/hooks/APP-STORE",
+  "distribution/hooks/app%2Dstore",
+  "distribution/commerce",
+  "distribution/commerce/binding",
+  "distribution/commerce/claim",
+  "distribution/commerce/nope",
+  "identity/authorize",
+  "identity/authorize/",
+  "identity/authorize?client_id=c&redirect_uri=https%3A%2F%2Fapp.example%2Fcb&response_type=code",
+  "identity/auth/choose",
+  "identity/auth/device",
+].map((n) => `/${SLUG}/${n}`);
+const GROUP3_SET = new Set(GROUP3.map((p) => p.replace(/\?.*$/, "")));
+const COMMERCE_CORS = [
+  `/${SLUG}/commerce/binding`,
+  `/${SLUG}/commerce/claim`,
+  `/${SLUG}/distribution/hooks/app-store`,
+];
+type State = "on" | "commerce-off" | "license-off";
 
 const ORIGIN = "https://play.djdl.example";
 /** A browser page on a listed origin: HEAD, OPTIONS and GET on CORS-covered routes. */
@@ -309,6 +356,7 @@ async function seed(db: Db): Promise<void> {
         update: { enabled: true },
         identity: { enabled: true },
         sync: { enabled: true },
+        commerce: { enabled: false },
       },
     }),
     "manifest",
@@ -374,7 +422,27 @@ describe("service route tables replay the hand dispatch", () => {
   async function replay(
     pathList: string[],
     origins: string[] = [],
+    state: State = "on",
   ): Promise<Record<string, Row>> {
+    if (state !== "on" || pathList.some((p) => G3(p)))
+      await setServices(
+        db,
+        SLUG,
+        serializeServices({
+          services: {
+            license: { enabled: state !== "license-off" },
+            config: { enabled: true },
+            release: { enabled: true },
+            distribution: { enabled: true },
+            update: { enabled: true },
+            identity: { enabled: true },
+            sync: { enabled: true },
+            commerce: { enabled: state !== "commerce-off" },
+          },
+        }),
+        "manifest",
+        NOW,
+      );
     const observed: Record<string, Row> = {};
     const jobs: Array<[string, string, boolean, boolean]> = [];
     for (const path of pathList)
@@ -421,17 +489,24 @@ describe("service route tables replay the hand dispatch", () => {
         };
       }
       observed[
-        `${method}${withBody ? "+body" : ""}${withOrigin ? "+origin" : ""} ${path}`
+        `${method}${withBody ? "+body" : ""}${withOrigin ? "+origin" : ""}${state === "on" ? "" : `+${state}`} ${path}`
       ] = row;
     }
     return observed;
   }
 
-  function compare(file: string, observed: Record<string, Row>): string[] {
+  function compare(
+    file: string,
+    observed: Record<string, Row>,
+    groupThree = false,
+  ): string[] {
     const recorded = JSON.parse(readFileSync(file, "utf8")) as Record<
       string,
       Row
     >;
+    if (!groupThree)
+      for (const key of Object.keys(recorded))
+        if (G3(key.replace(/^\S+ /, ""))) delete recorded[key];
     expect(Object.keys(observed)).toEqual(Object.keys(recorded));
     const changed: string[] = [];
     for (const key of Object.keys(recorded)) {
@@ -467,7 +542,7 @@ describe("service route tables replay the hand dispatch", () => {
       SLUG,
     );
     const observed = await replay(
-      GROUP2.filter((p) => !NEAR.has(p)),
+      GROUP2.filter((p) => !NEAR.has(p) && !G3(p)),
       CORS_PATHS,
     );
     if (process.env.PKEY_RECORD_ORACLE === "2") {
@@ -475,5 +550,24 @@ describe("service route tables replay the hand dispatch", () => {
       return;
     }
     expect(compare(FIXTURE2, observed)).toEqual([]);
+  }, 120_000);
+
+  it("answers Commerce's routes, the store hooks and identity/authorize as recorded", async () => {
+    await db.run(
+      "UPDATE products SET web_origins_json = ? WHERE slug = ?",
+      serializeWebOrigins([ORIGIN]),
+      SLUG,
+    );
+    const observed: Record<string, Row> = {};
+    for (const state of ["on", "commerce-off", "license-off"] as const)
+      Object.assign(
+        observed,
+        await replay(GROUP3, state === "on" ? COMMERCE_CORS : [], state),
+      );
+    if (process.env.PKEY_RECORD_ORACLE === "3") {
+      writeFileSync(FIXTURE3, JSON.stringify(observed, null, 1) + "\n");
+      return;
+    }
+    expect(compare(FIXTURE3, observed, true)).toEqual([]);
   }, 120_000);
 });

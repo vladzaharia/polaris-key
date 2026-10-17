@@ -1,3 +1,5 @@
+import { ingestFor } from "../src/core/ingest/pipeline.js";
+import { SERVICES } from "../src/mount.js";
 /**
  * The New Product wizard's create probes (UX-72, FLOWS.md §3.11):
  *
@@ -7,6 +9,7 @@
  *
  * and link-repo's create answering the product (C-2: "<Name> is ready", never the slug).
  */
+import { stmtInsertReleaseConfig } from "../src/services/release/ingest.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
@@ -22,7 +25,6 @@ import {
   prepareCreate,
   slugFromName,
 } from "../src/services/release/linkRepo.js";
-import { stmtInsertReleaseConfig } from "../src/core/products/store.js";
 import { getProduct } from "../src/core/products/store.js";
 import { handleAdmin } from "../src/console/index.js";
 import { resetGithubRepositoryCache } from "../src/console/handlers/github.js";
@@ -356,6 +358,7 @@ describe("create dry run (W23)", () => {
       "acme/tonebox",
       NOW,
       stubFetch(repoFiles(productJson("Bad Slug"))),
+      ingestFor(SERVICES),
     );
     expect(dry.ok).toBe(true);
     if (!dry.ok) return;
@@ -381,6 +384,7 @@ describe("create dry run (W23)", () => {
       "acme/tonebox",
       NOW,
       stubFetch(repoFiles()),
+      ingestFor(SERVICES),
     );
     expect(dry.ok).toBe(true);
     if (!dry.ok) return;
@@ -408,6 +412,7 @@ describe("create dry run (W23)", () => {
       "acme/tonebox",
       NOW,
       stubFetch(repoFiles()),
+      ingestFor(SERVICES),
     );
     expect(dry.ok).toBe(true);
     if (!dry.ok) return;
@@ -436,6 +441,7 @@ describe("create dry run (W23)", () => {
           }),
         ),
       ),
+      ingestFor(SERVICES),
     );
     expect(dry.ok).toBe(true);
     if (!dry.ok) return;

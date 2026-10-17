@@ -133,12 +133,17 @@ export const BRAND_PAGE_CSS = [
   // The console sign-in look (shared with the customer portal's login card and the console's
   // own boot screen): the brand block centred over one card, brand type, generous spacing. The
   // block is the console `Logo`'s, measure for measure: the 48 px mark, a 12 px gap, "Polaris
-  // Key" in bold at 16 px and the surface ("console", "account") as a small uppercase label.
+  // Key" in bold at 20 px (the console Logo's 16 px read small beside the 48 px mark) and the surface ("console", "account") as a small uppercase label.
   `.brand{display:flex;justify-content:center;align-items:center;gap:.75rem;margin:0 0 2rem;color:var(--strong)}`,
   `.brand svg{display:block;flex:none}`,
-  `.wordmark{display:flex;align-items:baseline;gap:.375rem;font-size:1rem;line-height:1.5rem;font-weight:700;letter-spacing:-.025em}`,
+  `.wordmark{display:flex;align-items:baseline;gap:.375rem;font-size:1.25rem;line-height:1.75rem;font-weight:700;letter-spacing:-.025em}`,
   `.surface{color:var(--muted);font-size:.75rem;line-height:1rem;font-weight:400;letter-spacing:.05em;text-transform:uppercase}`,
   `.mb{fill:var(--mb)}.ms{fill:var(--ms)}.mt{fill:var(--mt)}`,
+  // The app the page is about (a refusal names it): its icon and name above the card, as the
+  // hosted card's header strip does.
+  `.app{display:flex;justify-content:center;align-items:center;gap:.75rem;margin:0 0 1rem;color:var(--strong);font-size:1.125rem;line-height:1.5rem;font-weight:700;overflow-wrap:anywhere}`,
+  `.app img{display:block;flex:none;width:40px;height:40px;border-radius:9px;object-fit:cover}`,
+  `.card>:last-child{margin-bottom:0}`,
   `.card{padding:2rem;border:1px solid var(--rule);border-radius:8px;background:var(--raised);box-shadow:0 1px 2px rgb(0 0 0 / .12)}`,
   `.eyebrow{margin:0 0 .5rem;color:var(--muted);font-size:.75rem;line-height:1rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase}`,
   `h1{margin:0 0 .5rem;color:var(--strong);font-size:1.25rem;line-height:1.75rem;font-weight:700;letter-spacing:-.01em}`,
@@ -215,6 +220,8 @@ export interface BrandPageOptions {
   surface?: string;
   /** A short line above the heading (a product name). Plain text. */
   eyebrow?: string;
+  /** The app the page is about: its name and, when it has one, its hosted icon (an image-host URL). */
+  app?: { name: string; iconUrl?: string | null };
   /** The card's body below the heading: TRUSTED markup built by the caller, every value escaped. */
   body?: string;
 }
@@ -232,6 +239,13 @@ export function renderBrandPage(opts: BrandPageOptions): string {
   mark ??= themedMark(48, "mark");
   const surface = opts.surface
     ? `<span class="surface">${escapeHtml(opts.surface)}</span>`
+    : "";
+  const app = opts.app
+    ? `<div class="app">${
+        opts.app.iconUrl
+          ? `<img src="${escapeHtml(opts.app.iconUrl)}" alt="" width="40" height="40">`
+          : ""
+      }<span>${escapeHtml(opts.app.name)}</span></div>`
     : "";
   const dark = THEME_TOKENS.dark.surface.page;
   const light = THEME_TOKENS.light.surface.page;
@@ -252,6 +266,7 @@ export function renderBrandPage(opts: BrandPageOptions): string {
     `<body>`,
     `<main>`,
     `<div class="brand" role="img" aria-label="Polaris Key${opts.surface ? ` ${escapeHtml(opts.surface)}` : ""}">${mark}<span class="wordmark" aria-hidden="true">Polaris&nbsp;Key${surface}</span></div>`,
+    app,
     `<div class="card">`,
     opts.eyebrow ? `<p class="eyebrow">${escapeHtml(opts.eyebrow)}</p>` : "",
     `<h1>${escapeHtml(opts.heading)}</h1>`,

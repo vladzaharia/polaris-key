@@ -9,6 +9,7 @@
  * without the License service being enabled.
  */
 
+import { configManifest } from "./ingest.js";
 import type {
   DiscoveryContext,
   ServiceDescriptor,
@@ -31,6 +32,7 @@ export const configService: ServiceDescriptor = {
   settings: CONFIG_SETTINGS_SLICE,
   handle: CONFIG_ROUTES.handle,
   contributes: {
+    manifest: configManifest,
     productDeletion: configProductDeletion,
     // U-03: the account override layer joins Core's subject-store merge, delete and export.
     subjectStores: { [ACCOUNT_OVERRIDE_STORE]: accountOverrideStore },

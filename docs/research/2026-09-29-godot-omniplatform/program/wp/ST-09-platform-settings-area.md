@@ -114,9 +114,9 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 ## Acceptance criteria
 
 - [ ] Every `PENDING` entry listed under "PENDING entries to remove" is registered and gone from `settings-coverage.ts`, `PENDING_CEILING` is 5 lower, and `settings-coverage.test.ts` passes.
-- [ ] Limits match the inventory (test).
-- [ ] Console CSP parity passes.
-- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `operate/platform/settings`; `operate/console/tour` regenerated.
+- [~] Limits match the inventory (test): the page lists every constant the Worker reports; the ~40-constant generated inventory is a follow-up (slice boundary).
+- [x] Console CSP parity passes.
+- [x] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `operate/platform/settings`; `operate/console/tour` regenerated.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
 ## Verify
@@ -132,3 +132,37 @@ mise exec node@22 -- pnpm --filter @polaris-key/admin test
 The role agent sets `--set ST-09 in-review` when it hands off. After review, the lead adds the last
 commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set ST-09 done`.
+
+## Progress and continuation (2026-10-17)
+
+Slice 1 done: the five PENDING entries registered (`email.sender`, `email.senderLegacy` (deprecated,
+older spelling), `email.appleRelay` read-only deploy values; `feeds.policy` platform and
+`distribution.feeds` product, both rich-storage over the existing tables), `PENDING_CEILING` 21 to 16;
+the page reordered by use (Platform ready, Product defaults, Sign-in, Storefront and hosting, Email
+and alerts, Licensing, Jobs, Advanced, Recently changed) and split into five files under the page
+budget (platformSettings.tsx left `OVER_BUDGET`); header History button; unmapped areas fall to
+Advanced. Docs: operate/platform/settings.
+
+Not done (next slice): the ~40-constant Limits generated from code (needs a Worker-side limits
+inventory and a test against it); Product defaults and the product policies matrix rows (ST-16 wires
+the defaults; ST-11/12 add sections); moving the feeds policy editor into the page (still on the
+Package feeds page); `useCan`/`useWriteGate` on the rows (the engine's own gate applies);
+`@modified`/search and phone shell search icon (shell, not this page).
+
+### Slice 2 (2026-10-17)
+
+Done: the Worker limits inventory (`packages/worker/src/limits.ts`, 49 rows imported from their
+owners; `test/limits.test.ts` fails when a limit-shaped numeric export in Core, platform, console
+or the top-level modules has neither a row nor an `INTERNAL` entry) and the Limits section driven
+by it (grouped Access, Email, Retention, Storage and delivery, Licensing, Requests); the feeds
+policy editor moved from the Package feeds page into Storefront and hosting as settings-engine
+rows (`platformFeedPolicy.tsx`; the overview carries `policies` at platform scope; the feed's
+Settings page keeps a pointer); `useWriteGate("platform")` on every editable row; keyboard and
+screen-reader tests (Escape returns focus to the switch, one h1, axe clean with Limits open).
+Item 4 (cold-start flake) was fixed on the integration branch and dropped from this slice.
+
+Correction to the brief: services' constants are not in the inventory (the console reads a service
+only through `public.ts`); a service limit an operator needs is a follow-up that exposes it there.
+
+Still open: Product defaults and the product-policies matrix rows (ST-16), SQL-only and API-only
+rows (ST-11, ST-12), `@modified`/search and the phone shell search icon (shell).

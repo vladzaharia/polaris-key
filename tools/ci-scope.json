@@ -85,6 +85,17 @@
         "docs/design/ui-kits/terminal-parity.json"
       ]
     },
+    "e2e-backend": {
+      "paths": [
+        "packages/server/",
+        "packages/sdk-node/",
+        "packages/cli/",
+        "packages/worker/",
+        "packages/zstd-wasm/",
+        "sdks/python/",
+        "examples/server-"
+      ]
+    },
     "swift": {
       "paths": [
         "sdks/swift/",

@@ -1183,13 +1183,19 @@ describe("workflow hardening", () => {
       });
     });
 
-    it("smoke-checks both doors into the gated docs bundle", () => {
+    it("smoke-checks both doors into the gated docs pages", () => {
       const smoke = (deploy.jobs["deploy-worker"]!.steps ?? []).find(
         (s) => s.id === "smoke",
       );
+      // A gated page redirects into sign-in; the public landing is the built site; the /manage
+      // proxy never serves a gated docs page (its own shell answers unknown paths with a 200).
+      expect(smoke?.run).toContain('"$ORIGIN/docs/contribute/"');
+      expect(smoke?.run).toContain("*/manage/login*");
       expect(smoke?.run).toContain('"$ORIGIN/docs/"');
-      expect(smoke?.run).toContain('"$ORIGIN/manage/docs/index.html"');
-      expect(smoke?.run).toContain('[ "$BYPASS_CODE" = "200" ]');
+      expect(smoke?.run).toContain(
+        '"$ORIGIN/manage/docs/contribute/index.html"',
+      );
+      expect(smoke?.run).toContain('content="Starlight');
     });
 
     it("keeps the production environment and says why it must stay", () => {

@@ -20,7 +20,7 @@
  *     (`DISTRIBUTION_BYTE_ROUTES`, registered in `mount.ts`). It also serves the CI rollout
  *     routes (`pkeyci_` + `distribution:rollout`).
  *   - its discovery fragment advertises the download, install, builds and blobs URLs.
- *   - `manifestIngest` applies `.pkey/distribution` — outlets and transports (P2b-02,
+ *   - its manifest contributor (`ingest.ts`) applies `.pkey/distribution` — outlets and transports (P2b-02,
  *     `outlets.ts`) — and the manifest's `release.access.artifacts` into the `app` row of
  *     `dist_access` unless an operator owns it (P2b-04, `access.ts`).
  *   - it implements two of Core's descriptor hooks (`core/hooks.ts`): `delivery` (`delivery.ts`:
@@ -32,10 +32,9 @@
  *     (`/distribution/hooks/asc`), a poller on the connector cron (`scheduled`) and operator
  *     controls under the admin surface. They write availability, submissions and mirrored
  *     rollouts through the same writers CI and the console use.
- *   - P6-01 gave it the commerce bridge (`commerce/`): store purchases become licence flags per
- *     deliverable — the binding and claim routes, the App Store and Play notification hooks, the
- *     store re-checks on the connector cron and the store-product map under the admin surface. The
- *     effect on a licence goes through Core's `applyStoreGrant` (License), never an import.
+ *   - P6-01 built the commerce bridge here; CM-29 moved it to the Commerce service
+ *     (`services/commerce/`), which requires License. Distribution reads Commerce's store-product
+ *     map only through the `storeProducts` hook.
  *   - P6-03 gave it update health: the telemetry auto-halt on the same cron (`autoHalt.ts`,
  *     halt-only, off by default), the Sentry alert hook (`/distribution/hooks/sentry`,
  *     `sentry.ts`) that opens halt candidates an operator confirms, and the funnel in the console
@@ -45,36 +44,26 @@
  * test allows exactly one cross-service edge (`update → release`) and this service is not it.
  */
 
+import { distributionManifest } from "./ingest.js";
 import type { HookContext, OutletCapabilities } from "../../core/hooks.js";
 import type {
   DiscoveryContext,
   ScheduledServiceContext,
   ServiceDescriptor,
 } from "../../core/registry.js";
-import type { ParsedManifest } from "@polaris-key/manifest";
+import type {} from "@polaris-key/manifest";
 import { parseJsonColumn } from "../../platform/json.js";
-import type { DbStatement } from "../../db/types.js";
+import type {} from "../../db/types.js";
 import { bytesHostname } from "../../core/assets/bytesHost.js";
 import { handleDistributionAdmin } from "./admin.js";
 import { registryMaterialiser } from "./registryMaterialiser.js";
 import { defaultCapabilities, effectiveCapabilities } from "./capabilities.js";
 import { delivery } from "./delivery.js";
-import { accessIngestStatements } from "./access.js";
-import { releaseKeyObservationStatements } from "./availability.js";
 import { DISTRIBUTION_ROUTES } from "./routes.js";
 import { refreshReadiness } from "./readiness.js";
 import { pollConnectors } from "./connectors/index.js";
 import { runAutoHalt, type AutoHaltOutcome } from "./autoHalt.js";
-import { runCommerceTick, type CommerceTick } from "./commerce/recheck.js";
-import {
-  commerceDeleteContribution,
-  commerceLicensingReconcile,
-  commerceMergeStatements,
-} from "./commerce/state.js";
-import {
-  getOutlet,
-  manifestIngestStatements as outletIngestStatements,
-} from "./outlets.js";
+import { getOutlet } from "./outlets.js";
 import { DISTRIBUTION_SETTINGS_SLICE } from "./settings.js";
 import {
   syncManifestListingAssets,
@@ -100,19 +89,6 @@ async function outletCapabilities(
       ? parseJsonColumn(row.capabilities_json)
       : null;
   return { outletId, ...effectiveCapabilities(defaults, override) };
-}
-
-/** Distribution's `manifestIngest` (enabled only): outlets and transports, and the declared
- *  release keys as key-inventory observations (P3-03). */
-function manifestIngest(
-  parsed: ParsedManifest,
-  product: string,
-  now: number,
-): DbStatement[] {
-  return [
-    ...outletIngestStatements(parsed, product, now),
-    ...releaseKeyObservationStatements(parsed, product, now),
-  ];
 }
 
 /**
@@ -164,16 +140,6 @@ async function scheduled(
       error: `readiness: ${e instanceof Error ? e.message : "refresh failed"}`,
     };
   }
-  // P6-01: the commerce bridge's acknowledgement retries, voided-purchase poll and Steam
-  // ownership re-check — fault-isolated like the rest, and a no-op for a product without commerce.
-  let commerce: CommerceTick | { error: string };
-  try {
-    commerce = await runCommerceTick(ctx);
-  } catch (e) {
-    commerce = {
-      error: `commerce: ${e instanceof Error ? e.message : "tick failed"}`,
-    };
-  }
   // HA-07: the manifest's hosted art as listing rows (`listing/manifestAssets.ts`): catches a
   // slot the manifest stopped declaring (dropped at resync) and anything the pull consumer's own
   // sync missed. Idempotent and fault-isolated like the rest.
@@ -194,12 +160,9 @@ async function scheduled(
     ...("error" in listingArt ? [listingArt.error] : []),
     ...(autoHalt.error ? [autoHalt.error] : []),
     ...("error" in readiness ? [readiness.error] : []),
-    ...("error" in commerce
-      ? [commerce.error]
-      : commerce.errors.map((e) => `commerce ${e}`)),
   ];
   if (errors.length) throw new Error(errors.join("; "));
-  return { connectors: outcomes, autoHalt, readiness, commerce, listingArt };
+  return { connectors: outcomes, autoHalt, readiness, listingArt };
 }
 
 import { distributionIntegration } from "./integration.js";
@@ -210,6 +173,7 @@ import { distributionProductDeletion } from "./productDeletion.js";
 export const distributionService: ServiceDescriptor = {
   slug: "distribution",
   contributes: {
+    manifest: distributionManifest,
     productDeletion: distributionProductDeletion,
     integration: distributionIntegration,
     maintenance: distributionMaintenance,
@@ -262,34 +226,6 @@ export const distributionService: ServiceDescriptor = {
   delivery,
   /** `core/hooks.ts` `OutletCapabilities` (P2b-02). */
   outletCapabilities,
-  /** `.pkey/distribution` → `dist_outlets` / `dist_transports`, while Distribution is on. */
-  manifestIngest,
-  /**
-   * `release.access.artifacts` → the `app` row of `dist_access`, on every link and resync
-   * WHATEVER Distribution's enablement (`core/registry.ts` `manifestIngestAlways`): turning
-   * Distribution on runs no ingest, so the row must already hold the manifest's answer then, or
-   * a Release-only product's `licensed` downloads would open (or, with no row, close) the moment
-   * an operator enables Distribution.
-   */
-  manifestIngestAlways: accessIngestStatements,
-  /**
-   * LX-03: a retired licence's purchases move to the survivor and its purchase binding becomes
-   * an alias of it (`commerce/state.ts`, `core/licensing/licenseMerge.ts`), whatever Distribution's
-   * enablement — a purchase left on the retired licence would be stranded when it is turned on.
-   */
-  licenseMerge: commerceMergeStatements,
-  /**
-   * Licence deletion (`core/licensing/licenseDelete.ts`): a licence with recorded store purchases is never
-   * deleted; otherwise its purchase binding and the aliases resolving to it go, whatever
-   * Distribution's enablement.
-   */
-  licenseDelete: commerceDeleteContribution,
-  /**
-   * LX-08 (`core/licensing/licensingCatchUp.ts`): each purchase's `grant_id` and each store mapping's
-   * entitlement rows re-projected from `dist_purchases` and `dist_store_products.flag`, whatever
-   * Distribution's enablement.
-   */
-  licensingReconcile: commerceLicensingReconcile,
   /** `/manage/api/products/<slug>/distribution/…` (`admin.ts`). */
   adminHandle: handleDistributionAdmin,
   /** The store-connector poll, on the connector cron (`connectors/`). */

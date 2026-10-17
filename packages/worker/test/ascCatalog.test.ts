@@ -12,11 +12,13 @@
  *     app's; the app's first IAP stays a portal step.
  */
 
+import { parseServices, serializeServices } from "../src/core/services.js";
+import { setServices } from "../src/core/products/store.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AscResource } from "../src/core/stores/apple/client.js";
 import { checkAscRequest } from "../src/core/storefront/rules/appStore.js";
 import { runConnectorPolls } from "../src/scheduled.js";
-import { upsertStoreProduct } from "../src/services/distribution/commerce/state.js";
+import { upsertStoreProduct } from "../src/services/commerce/state.js";
 import { DistributeFake } from "./ascDistributeFake.js";
 import {
   admin,
@@ -63,6 +65,23 @@ async function world(
 ): Promise<World> {
   const fake = new DistributeFake();
   const w = (await ascWorld({ ...opts, fake })) as World;
+  // CM-29: the catalog flows read the mappings through Commerce's hook, so Commerce runs.
+  const row = await w.db.first<{ services_json: string | null }>(
+    "SELECT services_json FROM products WHERE slug = ?",
+    SLUG,
+  );
+  await setServices(
+    w.db,
+    SLUG,
+    serializeServices({
+      services: {
+        ...parseServices(row?.services_json ?? null).services,
+        commerce: { enabled: true },
+      },
+    }),
+    "admin",
+    NOW,
+  );
   for (const id of opts.mapped ?? [FULL]) await map(w, id);
   await withFetch(w, () => runConnectorPolls(w.env, w.db, NOW));
   w.fake.requests.length = 0;
@@ -169,6 +188,36 @@ async function created(w: World): Promise<string> {
 }
 
 describe("A-17e: the products read", () => {
+  it("reads no mapping while Commerce is off (CM-29): the hook answers null, nothing is created at Apple", async () => {
+    const w = await world({ mapped: [FULL] });
+    const row = await w.db.first<{ services_json: string | null }>(
+      "SELECT services_json FROM products WHERE slug = ?",
+      SLUG,
+    );
+    await setServices(
+      w.db,
+      SLUG,
+      serializeServices({
+        services: {
+          ...parseServices(row?.services_json ?? null).services,
+          commerce: { enabled: false },
+        },
+      }),
+      "admin",
+      NOW,
+    );
+    const r = await get(w, "iap/products");
+    expect(r.status).toBe(200);
+    expect(r.json.products).toEqual([]);
+    const created = await post(w, "iap/create", {
+      productId: FULL,
+      referenceName: "Full",
+      localizations: [{ locale: "en-US", name: "Full" }],
+    });
+    expect(created.status).toBe(404);
+    expect(created.json.reason).toBe("unmapped_product");
+  });
+
   it("shows every App Store mapping beside Apple's state, read by filter[productId]", async () => {
     const w = await world({ mapped: [FULL, SOUNDTRACK, LEGACY] });
     await map(w, "gg.acme.djdl.play_full", "play");

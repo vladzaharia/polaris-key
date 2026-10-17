@@ -119,7 +119,12 @@ export const HOSTED_REF_HELD: { sql: string; params: string[] } = {
                  WHERE r.product = h.product AND r.ref_kind = ?
                    AND r.ref_id = h.slot || '@' || h.locale
                    AND r.storage_key = ? || h.sha256)`,
-  params: [HOSTED_ASSET_REF, BLOB_PREFIX],
+  // A getter, not a value: `hostedAssets.ts` sits in an import cycle with this module, so
+  // `HOSTED_ASSET_REF` can still be uninitialised when this module's body runs (it read
+  // `undefined`, and the image host served nothing, once a new import changed the load order).
+  get params() {
+    return [HOSTED_ASSET_REF, BLOB_PREFIX];
+  },
 };
 
 interface Row {

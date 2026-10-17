@@ -51,8 +51,8 @@ var body_limit := BODY_LIMIT
 var local_only := false
 ## Follow redirects (by hand, as above). False: a 3xx is the answer.
 var follow_redirects := true
-## Every request this transport sent, newest last: {method, url, headers} (headers without any
-## credential value). Tests read it; capped at 64 entries.
+## Every request this transport sent, newest last: {method, url, headers} (authorization, x-pkey-license and
+## x-pkey-device redacted). Tests read it; capped at 64 entries.
 var sent: Array = []
 
 
@@ -123,7 +123,8 @@ static func resolve(base_url: String, location: String) -> String:
 
 
 ## One request, redirects followed by hand. `headers` is name -> value. `body` is sent as is.
-## Options: range (bool: send no Accept-Encoding gzip); body_limit (int > 0: this request's own
+## Options: follow_redirects (false: a 3xx is the answer, for this request; PKeyBackend checks
+## every hop's origin itself); range (bool: send no Accept-Encoding gzip); body_limit (int > 0: this request's own
 ## response cap in bytes, below `body_limit`; a release record stops at 88 844, plans/P3-01.md
 ## §2.5 step 11).
 func request(method: String, url: String, headers: Dictionary = {}, body: PackedByteArray = PackedByteArray(), opts: Dictionary = {}) -> PKeyResult:
@@ -157,7 +158,7 @@ func request(method: String, url: String, headers: Dictionary = {}, body: Packed
 		var r := await _once(m, current, h, b, PKeyClaims.is_true(opts.get("range", false)), deadline, int(opts.get("body_limit", 0)) if PKeyClaims.is_number(opts.get("body_limit")) else 0)
 		if not r.ok or r.detail.get("redirect", "") == "":
 			return r
-		if not follow_redirects:
+		if not follow_redirects or opts.get("follow_redirects", true) == false:
 			r.detail.erase("redirect")
 			return r
 		var status: int = r.detail["status"]
@@ -178,7 +179,8 @@ func _once(method: String, url: String, headers: Dictionary, body: PackedByteArr
 	var logged := {}
 	for k in headers:
 		lines.append("%s: %s" % [k, headers[k]])
-		logged[String(k).to_lower()] = "<redacted>" if String(k).to_lower() == "authorization" else headers[k]
+		var lk := String(k).to_lower()
+		logged[lk] = "<redacted>" if lk == "authorization" or lk == "x-pkey-license" or lk == "x-pkey-device" else headers[k]
 	sent.append({"method": method, "url": url, "headers": logged})
 	if sent.size() > 64:
 		sent.pop_front()

@@ -1505,6 +1505,49 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
           }
         }
       }
+    },
+    {
+      "$comment": "commerce_requires_license: Commerce turns store purchases into licence flags. (The legacy \`licensing\` module enables license, so it satisfies the requirement too.)",
+      "if": {
+        "required": ["modules"],
+        "properties": {
+          "modules": {
+            "required": ["commerce"],
+            "properties": {
+              "commerce": {
+                "required": ["enabled"],
+                "properties": { "enabled": { "const": true } }
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "modules": {
+            "anyOf": [
+              {
+                "required": ["license"],
+                "properties": {
+                  "license": {
+                    "required": ["enabled"],
+                    "properties": { "enabled": { "const": true } }
+                  }
+                }
+              },
+              {
+                "required": ["licensing"],
+                "properties": {
+                  "licensing": {
+                    "required": ["enabled"],
+                    "properties": { "enabled": { "const": true } }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
     }
   ],
   "$defs": {
@@ -1618,6 +1661,7 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
         "update": { "$ref": "#/$defs/moduleFlag" },
         "identity": { "$ref": "#/$defs/moduleFlag" },
         "sync": { "$ref": "#/$defs/moduleFlag" },
+        "commerce": { "$ref": "#/$defs/moduleFlag" },
         "licensing": {
           "$ref": "#/$defs/moduleFlag",
           "description": "Deprecated: write the service slug license. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
@@ -12680,10 +12724,10 @@ async function httpError(res, what, hintFor = statusHint) {
   const label = [String(res.status), detail.code && u(detail.code)].filter(Boolean).join(" ");
   const message = detail.message ? `: ${u(detail.message)}` : "";
   const fields = detail.fields?.length ? ` (fields: ${detail.fields.map(u).join(", ")})` : "";
-  const hint = hintFor(res.status);
+  const hint2 = hintFor(res.status);
   return new Error(
-    `${what} failed (${label})${message}${fields}${hint ? `
-${hint}` : ""}`
+    `${what} failed (${label})${message}${fields}${hint2 ? `
+${hint2}` : ""}`
   );
 }
 function statusHint(status) {
@@ -12787,6 +12831,87 @@ function asStrings(value) {
 }
 function isRecord(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+// src/migrate.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+var MIGRATE_USAGE = "Usage: pkey migrate list | dry-run <job> | report <run> [--base-url <url>] [--json]";
+function hint(status) {
+  if (status === 401)
+    return `The token in ${ADMIN_TOKEN_ENV} was refused (unknown, revoked or expired). Mint a replacement in the console: /manage -> API tokens.`;
+  if (status === 403)
+    return "Not allowed. The token needs the `migrations:report` scope, and its identity must be a platform admin.";
+  if (status === 404) return "No such job or run.";
+  if (status === 429)
+    return "The admin API rate limit tripped. Wait a minute and retry.";
+  return void 0;
+}
+async function runMigrate(opts) {
+  const target = opts.target?.trim();
+  if (opts.verb !== "list" && !target)
+    throw new Error(
+      `${opts.verb === "dry-run" ? "A job id" : "A run id"} is required.
+${MIGRATE_USAGE}`
+    );
+  const token = adminToken(opts.token);
+  const baseUrl = normalizeBaseUrl(
+    opts.baseUrl?.trim() || DEFAULT_BASE_URL,
+    ADMIN_TOKEN_ENV
+  );
+  const root = `${baseUrl}/manage/api/platform/migrations`;
+  const url = opts.verb === "list" ? root : opts.verb === "report" ? `${root}/runs/${encodeURIComponent(target)}` : `${root}/dry-run`;
+  const post = opts.verb === "dry-run";
+  const res = await request(opts.fetchImpl ?? fetch, url, {
+    method: post ? "POST" : "GET",
+    headers: {
+      accept: "application/json",
+      authorization: `Bearer ${token}`,
+      ...post ? { "content-type": "application/json" } : {}
+    },
+    ...post ? { body: JSON.stringify({ job: target }) } : {},
+    signal: opts.signal
+  });
+  if (!res.ok) throw await httpError(res, `Reading ${url}`, hint);
+  const payload = await readJson(res, url);
+  if (opts.verb === "list") {
+    if (!Array.isArray(payload.jobs))
+      throw new Error(`${url} answered ${res.status} without a job list.`);
+    return { verb: "list", jobs: payload.jobs };
+  }
+  const run2 = payload.run;
+  if (!run2 || typeof run2.id !== "string")
+    throw new Error(`${url} answered ${res.status} without a run.`);
+  return { verb: opts.verb, run: run2 };
+}
+function formatMigrate(r, env) {
+  const u = (v) => untrusted(v, env);
+  if (r.verb === "list") {
+    if (!r.jobs.length) return "No migration jobs.\n";
+    return r.jobs.map((j) => {
+      const last = j.runs[0];
+      const state = last ? `${u(last.mode)} ${u(last.status)} (${u(last.id)})` : "never run";
+      return `${u(j.id)}  ${u(j.summary)}
+  latest: ${state}
+`;
+    }).join("");
+  }
+  const { run: run2 } = r;
+  const lines4 = [
+    `${u(run2.job)}  ${u(run2.mode)}  ${u(run2.status)}`,
+    `Run: ${u(run2.id)}`,
+    `${run2.mode === "dry-run" ? "Diffs" : "Changed"}: ${run2.changes}   Remaining: ${run2.remaining}`
+  ];
+  for (const x of run2.units)
+    lines4.push(
+      `  ${u(x.unit)}  ${u(x.status)}  planned ${x.planned}  changed ${x.changes}${x.error ? `  ${u(x.error)}` : ""}`
+    );
+  if (r.verb === "dry-run")
+    lines4.push(
+      "",
+      run2.changes === 0 ? "Nothing to change: the data is already migrated." : `To apply, use the console with report ${u(run2.id)} (apply needs a step-up).`
+    );
+  return `${lines4.join("\n")}
+`;
 }
 
 // src/help.ts
@@ -16231,7 +16356,8 @@ var SERVICE_SLUGS = [
   "distribution",
   "update",
   "identity",
-  "sync"
+  "sync",
+  "commerce"
 ];
 var DEFAULT_ENABLED_SERVICES = [
   "license",
@@ -16244,7 +16370,8 @@ var SERVICE_REQUIRES = {
   distribution: ["release"],
   update: ["distribution"],
   identity: [],
-  sync: ["config", "identity"]
+  sync: ["config", "identity"],
+  commerce: ["license"]
 };
 var MODULE_SERVICES = {
   licensing: ["license"],
@@ -16257,7 +16384,8 @@ var MODULE_SERVICES = {
   distribution: ["distribution"],
   update: ["update"],
   identity: ["identity"],
-  sync: ["sync"]
+  sync: ["sync"],
+  commerce: ["commerce"]
 };
 var ASSET_REF_EXTENSIONS = [
   "png",
@@ -18401,6 +18529,10 @@ var REQUIREMENT_MESSAGES = /* @__PURE__ */ new Map([
   [
     "sync_requires_identity",
     "Cloud Sync needs a signed-in person, so identity must be enabled too."
+  ],
+  [
+    "commerce_requires_license",
+    "The commerce service turns store purchases into licence flags, so license must be enabled too."
   ]
 ]);
 var LICENSING_ENTITLEMENT_MODELS = ["legacy", "combined"];
@@ -21256,7 +21388,7 @@ function parseManifest(files, opts = {}) {
   if (productRoot.autoIssue !== void 0) {
     parsed.autoIssue = normalizeAutoIssue(productRoot.autoIssue);
   }
-  return { ok: true, manifest: parsed };
+  return { ok: true, manifest: parsed, warnings: validation.warnings };
 }
 function normalizePresentation(raw) {
   const out = {};
@@ -22857,8 +22989,8 @@ async function readGodotListing(dir, opts = {}) {
     listing.categoryHints.push({ platform: "macos", value: macCategory });
   const androidCategory = options.android?.["package/app_category"];
   if (typeof androidCategory === "number") {
-    const hint = ANDROID_CATEGORIES[androidCategory];
-    if (hint) listing.categoryHints.push({ platform: "android", value: hint });
+    const hint2 = ANDROID_CATEGORIES[androidCategory];
+    if (hint2) listing.categoryHints.push({ platform: "android", value: hint2 });
   }
   const copyright = opt("macos", "application/copyright") ?? opt("windows", "application/copyright");
   if (copyright) listing.copyright = copyright;
@@ -23242,8 +23374,8 @@ function renderRefusal(what, target, status, body, env = {}) {
       );
     }
   }
-  const hint = refusalHint(status, reason);
-  if (hint) lines4.push(hint);
+  const hint2 = refusalHint(status, reason);
+  if (hint2) lines4.push(hint2);
   return lines4.join("\n");
 }
 function refusalHint(status, reason) {
@@ -23655,6 +23787,39 @@ var COMMANDS = [
       }
     ],
     env: [TOKEN_ENV]
+  },
+  {
+    name: "migrate",
+    group: "bundles",
+    json: true,
+    valueless: ["json"],
+    context: ["baseUrl"],
+    summary: "Dry-run a data migration and read its report",
+    rows: [
+      ["migrate list", "List the data-migration jobs and their latest runs"],
+      [
+        "migrate dry-run job",
+        "Plan a job and store the report; changes no data"
+      ],
+      ["migrate report run", "Show a stored report"]
+    ],
+    tree: { list: [], "dry-run": [], report: [] },
+    usage: [
+      "pkey migrate list [--base-url url] [--json]",
+      "pkey migrate dry-run job [--base-url url] [--json]",
+      "pkey migrate report run [--base-url url] [--json]"
+    ],
+    about: [
+      {
+        text: "pkey migrate reads a deployment's data-migration runner: the jobs, a run's report and a dry run (which changes no data). A job's changes are applied, and undone, from the console, pinned to a report this command printed: both need a recent sign-in that an admin API token cannot give."
+      }
+    ],
+    env: [
+      {
+        name: ADMIN_TOKEN_ENV,
+        text: "Required. An admin API token (`pkeya_...`) with the `migrations:report` scope. Mint one in the console: /manage -> API tokens -> New token. It reaches the migration job list, reports and dry runs, and nothing else."
+      }
+    ]
   },
   {
     name: "auth",
@@ -45123,6 +45288,7 @@ var HANDLERS = {
   distribution: (p, rt) => cmdDistribution(p, rt.cwd, rt.stdout, rt.stderr, rt.ci),
   doctor: (p, rt) => cmdDoctor(p, rt.cwd, rt.stdout, rt.term(rt.stdout), rt.ci),
   bundle: (p, rt) => cmdBundle(p, rt.cwd, rt.stdout, rt.ci.env),
+  migrate: (p, rt) => cmdMigrate(p, rt.stdout, rt.ci.env, rt.ci.fetchImpl),
   trust: (p, rt) => cmdTrust(p, rt.stdout),
   sdk: (p, rt) => cmdSdk(p, rt.cwd, rt.stdout, rt.stderr, rt.ci.fetchImpl),
   dev: (p, rt) => cmdDev(p, rt),
@@ -45597,6 +45763,23 @@ async function cmdBundle(parsed, cwd, stdout, env) {
   );
   stdout.write(
     "\nNext: transfer this file to the offline machine and import it there.\n"
+  );
+  return 0;
+}
+async function cmdMigrate(parsed, stdout, env, fetchImpl) {
+  const [verb, target, ...extra] = parsed.positional;
+  if (verb !== "list" && verb !== "dry-run" && verb !== "report" || extra.length > 0 || verb === "list" && target !== void 0)
+    throw new Error(MIGRATE_USAGE);
+  const result = await runMigrate({
+    verb,
+    target,
+    baseUrl: flagString(parsed, "base-url"),
+    token: process.env[ADMIN_TOKEN_ENV],
+    fetchImpl
+  });
+  stdout.write(
+    flagBool(parsed, "json") ? `${untrustedJson(result, 2)}
+` : formatMigrate(result, env)
   );
   return 0;
 }

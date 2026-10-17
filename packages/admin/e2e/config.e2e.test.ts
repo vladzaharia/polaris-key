@@ -8,7 +8,7 @@ import { appSecurityHeaders } from "../../worker/src/core/securityHeaders.js";
 /**
  * The Config pages (docs/design/ADMIN.md §6.6) in Chromium under the Worker's exact CSP: the
  * catalog's key and history drawers, the catalog editor in both modes (JSON mode loads the lazy
- * CodeMirror editor), a profile's payload editor and its review drawer, and the edge-mint approve
+ * CodeMirror editor), a profile's payload editor and its review drawer, and the minted token's approve
  * drawer. Zero violations, and each drawer scroll-locks the page behind it.
  */
 
@@ -55,6 +55,15 @@ const entries = [
     label: "HD",
     description: "",
     schema: { type: "boolean" },
+  },
+  {
+    key: "music",
+    kind: "secret",
+    category: "Tokens",
+    label: "Music",
+    description: "",
+    schema: { type: "string" },
+    delivery: "edgeMint",
   },
 ];
 const FIELDS = {
@@ -248,10 +257,13 @@ describe("Config pages under the Worker's CSP", () => {
     await page.context().close();
   });
 
-  it("edge mint: the approve drawer", async () => {
-    const page = await open("#/p/djdl/config/edge-mint", "Edge mint");
+  it("minted token: the approve drawer on its entry", async () => {
+    const page = await open(
+      "#/p/djdl/config/catalog/edit?entry=music",
+      "Edit catalog",
+    );
     await drawer(page, "Approve music?", async () => {
-      await page.getByRole("link", { name: "music" }).click();
+      await page.getByRole("button", { name: "Review and approve" }).click();
     });
     await page.context().close();
   });

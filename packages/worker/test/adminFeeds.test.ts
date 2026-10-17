@@ -696,6 +696,13 @@ describe("platform scope", () => {
       packages: 1,
       baseUrl: "https://pkg.plrs.im/npm/polaris-key/",
     });
+    // ST-09: the platform's kill switch and ceiling per ecosystem, for Platform settings.
+    expect(body.policies).toHaveLength(8);
+    expect(body.policies[0]).toMatchObject({
+      ecosystem: "npm",
+      label: "npm",
+      policy: { enabled: true, version: expect.any(Number) },
+    });
     expect(body.owners).toEqual([
       {
         slug: SYSTEM_PRODUCT_SLUG,

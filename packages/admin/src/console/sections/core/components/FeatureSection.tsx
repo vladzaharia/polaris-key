@@ -19,6 +19,7 @@ import { Switch } from "../../../../ui/Switch.js";
 import { SettingsRow, SettingsSection } from "../../../templates/Settings.js";
 import { Link } from "../../../router.js";
 import { r } from "../../../routes.js";
+import { ReviewRecipeLink } from "../../config/components/RecipeState.js";
 import { CustomerPortalControl } from "./CustomerPortalControl.js";
 import { PackageFeedsControl } from "./PackageFeedsControl.js";
 import {
@@ -273,26 +274,21 @@ function FeatureSwitch({
           <CustomerPortalControl slug={slug} />
         </div>
       );
-    // Minted tokens have no separate mutable service state: recipes are declared in the release
-    // manifest and approved in Edge mint.
+    // Minted tokens have no separate mutable service state: recipes live on their catalog entries and
+    // are approved there.
     case "minted-tokens":
       return (
         <SettingsRow
           label={row.label}
           help={
             <>
-              Recipes are declared in <code>.pkey/release</code>. They mint only
-              after their signing secret is marked Edge mint and an operator
-              approves the recipe exactly as shown.
+              A recipe is the <code>mint</code> block of a minted-token entry in
+              the catalog. It mints only after its signing secret is marked Edge
+              mint and an operator approves it exactly as shown.
             </>
           }
         >
-          <Link
-            to={r.edgeMint(slug)}
-            className="text-sm text-accent-fg underline underline-offset-2"
-          >
-            Review recipe
-          </Link>
+          <ReviewRecipeLink slug={slug} />
         </SettingsRow>
       );
     default:

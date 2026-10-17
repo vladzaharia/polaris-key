@@ -7,7 +7,7 @@
 export {
   checkSteamPublisherKey,
   listPlatformSteamApps,
-} from "./commerce/steam.js";
+} from "../../core/stores/steam/publisher.js";
 export {
   checkAscApiKey,
   listPlatformAscApps,

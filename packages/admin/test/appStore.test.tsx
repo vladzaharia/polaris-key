@@ -25,7 +25,7 @@ const axe = configureAxe({
 });
 
 const APP = "#/p/djdl/distribution/app-store";
-const COMMERCE = "#/p/djdl/distribution/commerce";
+const COMMERCE = "#/p/djdl/commerce/in-app-purchases";
 const ASC = (path: string) => P(`/distribution/connectors/asc/${path}`);
 
 beforeEach(() => resetConsole());

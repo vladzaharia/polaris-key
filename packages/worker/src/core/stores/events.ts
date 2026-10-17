@@ -176,3 +176,6 @@ export async function pruneEvents(
     limit,
   );
 }
+
+/** `dist_connector_events` source names (CM-29): the stores' notification hooks record under these. */
+export const APP_STORE_EVENTS = "app-store-notifications";

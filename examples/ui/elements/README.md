@@ -18,11 +18,23 @@ npm install
 npm run dev
 ```
 
-`?state=ok`, `grace`, `expired` or `revoked` pins the gate for one load; the default is Welcome.
+The default page is Welcome, and it clicks through. **Sign in** opens the one sign-in form as a
+sheet on a fake `SignInPrimitives` (`fakeSignIn()` in `src/fixtures.ts`): methods, the browser
+handoff, the license choice, then the app. **Use a license key** opens Activate: any `pkey_` key
+activates, `pkey_full` meets the device limit, anything else is refused. `?state=ok`, `grace`,
+`expired` or `revoked` pins the gate for one load.
 
-There is no `--live` switch: the kit does not drive `<pk-gate>` from the SDK yet. The package and
-its CDN module (`https://key.plrs.im/elements/<major>/pk.js`) are not published, so this sample
-runs on the repository's build.
+`states.html` is the index: the gate's states as links, the sign-in sheet, the Devices and Settings
+panes on fixture data (rename, remove and change a setting), and an optional update as a dialog.
+
+There is no `--live` switch: the kit does not drive `<pk-gate>` from the SDK yet, so `src/main.ts`
+plays the adapter's part against the fixtures. The package and its CDN module
+(`https://key.plrs.im/elements/<major>/pk.js`) are not published, so this sample runs on the
+repository's build.
+
+Fonts need no setup: the module registers Rubik from the files beside it, and a bundler (Vite,
+webpack) emits them. `import "@polaris-key/elements/fonts.css"` is the same faces as a stylesheet;
+`PolarisKey.fonts(false)` leaves fonts to the page.
 
 ## Inside this repository
 

@@ -517,6 +517,7 @@ async function identityWorld(): Promise<CardWorld> {
         update: { enabled: false },
         identity: { enabled: true },
         sync: { enabled: false },
+        commerce: { enabled: false },
       },
     }),
     "manifest",

@@ -42,6 +42,8 @@ import { ErrorCode, methodNotAllowed } from "../../../core/errors.js";
 import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";
 import { strictEmail } from "../../../core/strictEmail.js";
 import { cardPage } from "../card/http.js";
+import { appForPage, codeRefusalPage } from "../../../core/brandPage.js";
+import type { ServiceHooks } from "../../../core/hooks.js";
 import { cloudSyncOn } from "./client.js";
 import { createSignInRequest, type AuthzRecord } from "./request.js";
 import { redirectPathsOf, validateRedirectUri } from "./redirectUri.js";
@@ -90,21 +92,16 @@ export function redirect(status: 302 | 303, location: string): Response {
   return new Response(null, { status, headers });
 }
 
-/** The refusal pages. Terse, no developer jargon, and no way forward but "close this page". */
-function invalidClientPage(): Response {
-  return cardPage(401, {
-    title: "App not recognised",
-    heading: "App not recognised",
-    body: "<p>This app isn't set up to sign people in. Contact its developer.</p>",
-  });
-}
-
-function redirectMismatchPage(): Response {
-  return cardPage(400, {
-    title: "Return address not allowed",
-    heading: "Return address not allowed",
-    body: "<p>This app's return address isn't registered, so we didn't send you back. Contact its developer.</p>",
-  });
+/**
+ * The refusal pages: the catalog's copy for the code (`core.codes.*`), the app named above the
+ * card, and no way forward but "close this page". Neither says which value was wrong.
+ */
+async function refusalPage(
+  ctx: { env: Env; db: Db; product: Product; hooks?: ServiceHooks },
+  status: 400 | 401,
+  code: "invalid_client" | "redirect_uri_mismatch",
+): Promise<Response> {
+  return codeRefusalPage(status, code, await appForPage(ctx));
 }
 
 /** The single value of a parameter; `undefined` when absent and `null` when repeated. */
@@ -143,6 +140,7 @@ export async function handleAuthorize(ctx: {
   product: Product;
   now: number;
   settings?: SettingsRegistry;
+  hooks?: ServiceHooks;
 }): Promise<Response> {
   const { req, env, db, product, now } = ctx;
   if (req.method !== "GET") return methodNotAllowed();
@@ -164,7 +162,8 @@ export async function handleAuthorize(ctx: {
 
   // 1. The two values a redirect depends on. Nothing redirects until both are valid.
   const clientId = single(params, "client_id");
-  if (clientId !== product.slug) return invalidClientPage();
+  if (clientId !== product.slug)
+    return refusalPage(ctx, 401, ErrorCode.InvalidClient);
   const verdict = validateRedirectUri(
     {
       webOrigins: product.webOrigins,
@@ -175,7 +174,7 @@ export async function handleAuthorize(ctx: {
     },
     single(params, "redirect_uri") ?? undefined,
   );
-  if (!verdict.ok) return redirectMismatchPage();
+  if (!verdict.ok) return refusalPage(ctx, 400, ErrorCode.RedirectUriMismatch);
 
   // 2. Everything else answers in the redirect.
   const issuer = issuerOf(req, product);

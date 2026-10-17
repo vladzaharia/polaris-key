@@ -212,6 +212,7 @@ export async function enableServices(
         update: { enabled: release },
         identity: { enabled: false },
         sync: { enabled: false },
+        commerce: { enabled: false },
       },
     }),
     "manifest",

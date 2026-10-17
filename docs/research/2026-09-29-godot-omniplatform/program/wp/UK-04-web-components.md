@@ -409,3 +409,63 @@ filled them, so the fix is in the renderer. Per-state `LicenseChoice` copy lists
    no-browser handoff URL).
 7. Rerun the BUILT review on the live sign-in flow, the embedded panes and the 844x390 and 200%
    rows. React (UK-05) draws these panes itself in `parts.tsx`: it needs the same controls.
+
+## Progress and continuation (2026-10-17, `wp/UK-04-next`, items 2 to 6 of the review's next slice)
+
+Branch `wp/UK-04-next`. Items 2 to 6, and the shared-stylesheet visuals UK-05 lists under Remaining
+(they live in `packages/elements`, so React gets them with its next build).
+
+**Item 2, wide-window composition.** A window-filling screen centres its card with an upper-third
+bias; the split card is at most 55 rem with 5:7 panes; the identity panel is an accent gradient
+(a radial glow in dark) with the name and byline under the icon; every step of the sign-in form
+draws the split (`RenderCtx.form`), so the card keeps one width from methods to Done; the sheet
+keeps the compact header (the wide panel and the clipped outer shadow were sheet-only bugs). The
+shape measure reads the window's height, not the host's: a content-sized host of a short screen
+read as a short window.
+
+**UK-05's visual items.** Links of three or more stack whole (a column; two columns in a short
+window), never 3 + 1; the light sunken ground is a neutral lift of the text colour (the brand's
+lavender stays in brand; the kit overrides it in `tokens.ts`); a pane's form actions sit at the
+end, the primary last (`row-reverse`); a Copy button sits on the text's centre line; the QR has a
+size (it had none: 372 px at 1440). The hero icon is capped at 18 dvh.
+
+**Item 3, 844x390 and 200% text.** The docked bar no longer paints a halo over the text above it
+(its own padding sits in the gap); in a short window it is one row; under 34 rem of window height
+(200% text on a phone) it scrolls with the content (`data-tight`, set by the measure). Browser
+rows for Welcome, DeviceLimit, Activate and StatusScreen at 844x390 and at 390 with 200% text, dark
+and light: shape, bar height, nothing under the bar once scrolled to the end, axe.
+
+**Item 4, fonts.** `installFonts()` registers the faces in one constructed stylesheet from literal
+`new URL("./fonts/x.woff2", import.meta.url)` expressions, so Vite and webpack emit the files;
+beside the module (CDN folder, served `node_modules`) the same URLs resolve to `dist/fonts/`.
+`PolarisKey.fonts("<dir>/")` still loads that folder's `fonts.css` by link, `fonts(false)` leaves
+fonts to the page, and `@polaris-key/elements/fonts.css` is exported. `test/fonts.bundle.test.ts`
+builds an entry with Vite and asserts the four woff2 files are emitted and named.
+
+**Item 5.** An optional `<pk-update-prompt>` is a modal `<dialog>` over the host (bottom sheet on a
+phone, scrim and Escape answer Later, focus returns, `presentation="window"` for the screen form);
+mandatory, blocked and revoked-content updates own the window. Update now takes the first line,
+Later and Restart when ready the next. The sample clicks through (`examples/ui/elements/`): Sign in
+opens the sheet on a fake `SignInPrimitives` (methods, handoff, license choice, then the app), Use a
+license key opens Activate (`pkey_` activates, `pkey_full` meets the device limit), and
+`states.html` indexes the gate states, the sheet, Devices and Settings on fixtures and an optional
+update. `headless` also re-exports the primitive and result types.
+
+**Item 6.** A failed sign-in keeps the methods (the failure under the title); no "Or continue with"
+divider and no "Sign in..." link on the step; DeviceLimit and Replace name the device in the primary
+("Replace Work laptop and continue", new catalog key `signin.replace.confirmNamed`, nine locales,
+`pnpm gen brand`); the count is stated once (the subhead, not the meter caption too); the list
+scrolls in its own box past six rows and opens on the checked row; setting labels spell UI, URL, ID; the no-browser handoff
+shows the address; one lede in the browser's license choice; the shipped stylesheet carries no
+comments (a build step in `scripts/emit-css.mjs`), which keeps React's gate at +70.2 KB against the
+unchanged 71500 B budget.
+
+**Still open.** Item 1 (UK-02b corpus fixtures); the review's catalog strings that need the lead's
+wording call: revoked and expired ledes (Expired repeats its title; Revoked offers no Sign in lede),
+"last seen" in `devices.meta` against Replace's "last used" (changing it moves the Godot kit's
+renders, which ui:lint's catalog-string rule compares: a Godot re-render goes with it), the
+network-error wording of `signIn.methodError`, CloudSync `conflict` (no Review action: needs a
+`common.review` key) and `error` (names no fix), a title for the no-browser handoff; pixel
+baselines and the ui-qa cross-renderer diff; the CDN route; React's `parts.tsx` panes need the same
+controls (UK-05); the BUILT re-review (item 7). `ui-qa` `strings.allow.json` pattern now reads
+`UI compact|UI sounds`.

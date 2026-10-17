@@ -298,12 +298,16 @@ export function rateLimitShard(product: string, rl: RateLimit): string {
   return `${product}:${shardIndex(`${rl.bucket}:${rl.id}`, RL_SHARDS)}`;
 }
 
-/** Returns true if the call is within the limit (and counts it), false if it should 429. */
+/**
+ * Returns true if the call is within the limit (and counts it), false if it should 429. With
+ * `peek`, answers the same without counting.
+ */
 export async function rateLimitOk(
   env: Env,
   product: string,
   rl: RateLimit,
   now: number,
+  peek = false,
 ): Promise<boolean> {
   try {
     const stub = env.RL.get(env.RL.idFromName(rateLimitShard(product, rl)));
@@ -315,6 +319,7 @@ export async function rateLimitOk(
         limit: rl.limit,
         windowSec: rl.windowSec,
         now,
+        ...(peek ? { peek: true } : {}),
       }),
     });
     // A non-2xx (or an HTML error page from the runtime) must not reach `res.json()` — that

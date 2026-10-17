@@ -55,10 +55,69 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 
 ## Acceptance criteria
 
-- [ ] Golden 'statements produced' tests identical before and after
+- [ ] Golden 'statements produced' tests identical before and after (harness and fixtures committed, 2026-10-17; the pipeline is not yet moved onto them)
 - [ ] Resync, link and the deploy hook call one pipeline
 - [ ] Plan approved (cross-cutting ingest semantics)
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
+
+## Progress and continuation (2026-10-17)
+
+Done on `wp/P0-26-ingest` (plan commit order):
+
+1. **Commit 1, the golden harness.** `packages/worker/test/ingest/{recordingDb,world,golden.test}.ts` and
+   `test/fixtures/ingest/golden.json`, captured from the pre-pipeline code. 12 scenarios
+   (35 captures, stable over repeated runs): link (full with ST-42 choices, minimal), resync
+   (unchanged, changed, console claims, drops, every refusal, break-glass, each service off),
+   link-existing (applied, refused after the write), the deploy hook (first link, re-link over a
+   claim, static tokens and an expired break-glass) and the dry runs. It compares per-table writes
+   in order (audit as a multiset), the end state, the masked result and D1 round trips (may not
+   grow). A first run with `INGEST_GOLDEN_CAPTURE=1` only adds a missing key.
+2. **D6.** `parseManifest` returns `warnings` on the ok arm; Action bundle regenerated.
+3. **D7.** `RemovedBy` accepts `ST-` ids; the six rows are retagged (`edgeMintApproval` permanent,
+   `settingsBackfill` P0-49, `settingsClaims` ST-17, `core/products/store.ts` profiles ST-43). 14
+   `P0-26` rows remain (6 `SEAMS`, 8 `WRITE_SEAMS`), exactly the ones the pipeline deletes.
+
+**P0-26a (2026-10-17, same branch).** Link and resync run on the Core pipeline:
+
+- `core/ingest/{types,pipeline,core,rows,shared,manifestSecrets,constants}.ts` and the facet
+  `contributes.manifest` (`core/contributions.ts`). Contributors: Core (`core/ingest/core.ts`),
+  License, Config, Identity, Release, Distribution (`services/<slug>/ingest.ts`).
+- Deviation from the plan's shape: a contributor lists its refusals as lazy `checks`, which the
+  pipeline runs in `REFUSAL_ORDER` and stops at the first, then calls `prepare`. This keeps a
+  refused ingest's D1 reads equal to the old code's (D4: round trips may not grow) and the first
+  refusal in the old order. The method is `run`, not `apply` (a plain function has an `apply`,
+  so a stale `ManifestIngest` would type-check as an `Ingest`).
+- `resyncRepo` / `linkRepo` / `registerFromManifest` are now the GitHub source adapters. The
+  descriptor hooks (`manifestIngest`, `manifestIngestAlways`, `manifestIngestFor`) STAY: the
+  deploy hook (`linkSystemProduct`) still runs them until P0-26b. The contributors call the same
+  statement functions, so there is one implementation of each row.
+- Goldens: all pass; the audit rows in the end-state dump are sorted (multiset) and
+  `13-link-secret-default` is D5 delta 1 (both listed in the golden header). D5 deltas 2 and 3
+  belong to the dry runs (26b). New: `test/ingest/documents.test.ts` (D8).
+- Builders moved to their owners; 6 `WRITE_SEAMS` and 3 `SEAMS` rows gone. 5 `P0-26` rows remain.
+- Two small undeclared changes: link now writes a tier's `rank` and `policyOfflineGraceDays`
+  (the old link insert omitted them, so a first link lost them until the next resync), and
+  `ingest` stays optional, falling back to the registry `mount.ts` bound (`BOUND_INGEST`).
+
+**P0-26b (2026-10-17, branch `wp/P0-26b`).**
+
+1. The deploy hook runs on the pipeline (`scope: "system"`, D3): Core writes the product's
+   presentation, the manifest-authoritative publisher and the ended break-glass claims (as `tail`),
+   Release the `release_config` upsert and deliverables, License/Identity/Distribution only their
+   row settings, Config nothing. `linkSystemProduct` takes `env` first. Goldens 11a/11b identical.
+2. The dry runs call `Ingest.plan` (`core/ingest/plan.ts` holds `planRepoManifest`'s body, now
+   `planManifest`; the refusals are the contributors' own checks, run without stopping). D5 deltas
+   2 and 3 are goldens 14a-14c (listed in the golden header).
+3. The old hooks (`manifestIngest`, `manifestIngestAlways`, `manifestIngestFor`, the registry types),
+   `NO_INGEST` and `BOUND_INGEST` are gone; `ingest` is required (D2) in `linkRepo`, `resyncRepo`,
+   `linkExistingProduct`, `prepareCreate`, `prepareLink`, `planResync` and `linkSystemProduct`.
+4. No `P0-26` row remains in `tableCrossings`. Config owns `schemaStore.ts` and `profileStore.ts`.
+   `setFingerprintPolicy`, `setAutoIssuePolicy` and `setServices` stay: about 25 test files call
+   them, and they are not production callers; `settings-writes` lists them as before.
+5. `contribute/architecture.md` describes `contributes.manifest`.
+6. The shims are removed (`release/manifestSecrets.ts`, the `resync.ts` and `linkRepo.ts`
+   re-exports). `release/public.ts` re-exports `screenCatalog` / `withStoredSecrets` from Core for
+   the console's backfill.
 
 ## Verify
 

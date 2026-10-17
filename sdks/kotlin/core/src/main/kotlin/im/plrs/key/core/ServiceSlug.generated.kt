@@ -20,6 +20,7 @@ public enum class ServiceSlug(
     update("update", false),
     identity("identity", false),
     sync("sync", false),
+    commerce("commerce", false),
     ;
 
     public companion object {

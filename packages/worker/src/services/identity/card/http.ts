@@ -4,11 +4,10 @@
  * script-free shell (`core/brandHtml.ts`) under the branded-page CSP.
  */
 
-import { brandedHtmlSecurityHeaders } from "../../../core/securityHeaders.js";
 import { escapeHtml } from "../../../platform/html.js";
 import type { Env } from "../../../platform/env.js";
 import { strictEmail } from "../../../core/strictEmail.js";
-import { renderBrandPage } from "../../../core/brandHtml.js";
+import { brandPageResponse } from "../../../core/brandPage.js";
 import { readGuardedJsonObject } from "../../../core/accounts/browserRequestGuard.js";
 import { appSecurityHeaders as portalSecurityHeaders } from "../../../core/securityHeaders.js";
 
@@ -110,26 +109,15 @@ export function wrongCodeMessage(triesLeft: number): string {
 /** A branded, script-free page. `body` is TRUSTED markup: every value in it already escaped. */
 export function cardPage(
   status: number,
-  page: { title: string; heading: string; body?: string },
+  page: {
+    title: string;
+    heading: string;
+    body?: string;
+    app?: { name: string; iconUrl?: string | null };
+  },
   cookies: readonly string[] = [],
 ): Response {
-  const headers = brandedHtmlSecurityHeaders(
-    new Headers({
-      "content-type": "text/html; charset=utf-8",
-      "cache-control": "no-store",
-    }),
-  );
-  for (const c of cookies) headers.append("set-cookie", c);
-  return new Response(
-    // No surface label beside the wordmark: sign-in pages carry no eyebrow (SIGN-IN.md §3.13,
-    // D-32).
-    renderBrandPage({
-      title: page.title,
-      heading: page.heading,
-      body: page.body ?? "",
-    }),
-    { status, headers },
-  );
+  return brandPageResponse(status, page, cookies);
 }
 
 /** A request body as a JSON object, or `null` when it is not one, is not same-origin JSON, or is

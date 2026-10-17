@@ -38,7 +38,7 @@ import { Home } from "../sections/global/pages/Home.js";
 import { ProductNew } from "../sections/global/pages/ProductNew.js";
 import { Products } from "../sections/global/pages/Products.js";
 import { ApiTokens } from "../sections/global/pages/ApiTokens.js";
-import { LiveRegion } from "../../ui/LiveRegion.js";
+import { Announcer, LiveRegion } from "../../ui/LiveRegion.js";
 import type { ProductLike } from "./bits.js";
 import { CommandPalette } from "./CommandPalette.js";
 import { navigationSource, productSource } from "./palette/navigation.js";
@@ -466,6 +466,7 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
           />
           <ShortcutSheet open={sheetOpen} onOpenChange={setSheetOpen} />
           <LiveRegion message={announcement} id="route-announcer" />
+          <Announcer />
         </>
       </TooltipProvider>
     </HrefAccess.Provider>

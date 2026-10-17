@@ -149,12 +149,12 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 ## Acceptance criteria
 
-- [ ] Create with `deviceLimit` stores it and the effective limit follows LX-14a's precedence (test).
-- [ ] Create with `delivery.email` sends exactly one email containing the key; without an email it
+- [x] Create with `deviceLimit` stores it and the effective limit follows LX-14a's precedence (test).
+- [x] Create with `delivery.email` sends exactly one email containing the key; without an email it
       is refused (tests, snapshot).
-- [ ] `send-key` mints, emails and optionally revokes, at most once per 10 minutes (tests).
-- [ ] No key appears in audit rows or logs (test).
-- [ ] The green gate passes (AGENTS.md), including OpenAPI and `routeCoverage`.
+- [x] `send-key` mints, emails and optionally revokes, at most once per 10 minutes (tests).
+- [x] No key appears in audit rows or logs (test).
+- [x] The green gate passes (AGENTS.md), including OpenAPI and `routeCoverage`.
 
 ## Verify
 
@@ -169,3 +169,32 @@ LX-29 calls create with `deviceLimit` and `delivery`; LX-30 offers **Send a new 
 The role agent sets `--set LX-27 in-review` when it hands off. After review, the lead adds the last
 commit of the PR: `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set LX-27
 done`.
+
+## Progress and continuation (2026-10-17)
+
+Built on wp/LX-27-create-licence. Verified against the code (the code wins):
+
+- `stmtInsertLicense` did not write `device_limit`; it does now (create stores `deviceLimit`, LX-14a's
+  create refusal is lifted, `licenseDeviceLimit.test.ts` updated).
+- The key email is sent through `deliverEmail` with the **passthrough** sender ("<App> via Polaris Key",
+  I-18), not `deliverOrLink`: that helper sends as the platform and answers a link instead, which is wrong
+  for a key. `delivered.email` is `sent` or `failed` (a suppressed recipient or no mail binding reads
+  `failed`); `queued` is in the contract but nothing emits it yet.
+- The 10-minute limit is read from the audit trail (delivered sends only), so no migration and no new
+  bucket; a failed send stays retryable. Two concurrent calls can both pass (threat model, accepted).
+- "Download link when the product has one" = Release on and the portal on (`#/p/<slug>/download`).
+- Console: **Send a new key…** (record overflow, assigned licences only), `sendLicenseKey` mutation entry,
+  **Email them the key** on Assign…. Evidence: `licenseHolders.e2e.test.ts` shots at 360/390/1440, both themes.
+
+Not done (follow-ups): the Identity-default **invitation** (sign-in link, no key; "Also create a key"
+optional) from the 2026-10-07 consolidation section, and the "From <developer>" library notice for an
+association at first email verification (LX-26 N1). Both belong with the wizard (LX-29) and
+`onAccountEmailVerified`.
+
+## Polish after the UX re-review (LX-27b, 2026-10-17)
+
+N1-N10 of `_mockups/review/LX-27/ux-review-2.md`:
+
+- Worker: send-key answers 409 `license_expired` for an expired licence (the console hides the item too). `delivered.reason` and the 409 `reason` gain `address_unusable` (bad address, unregistered Apple relay) and `daily_cap`; `no_mail_binding` also covers a missing sender. All four are refused before a key is minted, and `emailLicenseKey` checks them first. The cap is read with a new `peek` mode of the rate-limit counter (no charge). Only `provider_refused` offers Try again.
+- Console: refusal copy per reason, 429 as a warning from `retryAfter`, "No key was made" on 409 and 429 only, one "failed" in the result, Send key off after a permanent 409 with a "Mint key…" button, Copy details stacked.
+- Email: `<wbr>` after each `_`, `overflow-wrap:anywhere`, 14 px key below 480 px.

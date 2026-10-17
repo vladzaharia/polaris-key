@@ -115,6 +115,7 @@ const PRODUCT: ProductDetail = {
     update: { enabled: true },
     identity: { enabled: true },
     sync: { enabled: false },
+    commerce: { enabled: false },
   },
 };
 

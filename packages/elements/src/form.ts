@@ -65,6 +65,23 @@ export function formStep(input: UiInput): FormStep {
         ]),
         announce,
       };
+    case "error": {
+      // A failed method keeps the others: the methods step, with the failure under the title.
+      const methods = viewOf("SignIn", { ...input, error: undefined });
+      if (methods.state !== "methods") return { form, body: form, announce };
+      return {
+        form,
+        body: {
+          ...methods,
+          state: form.state,
+          copy: [
+            ...form.copy,
+            ...methods.copy.filter((k) => !form.copy.includes(k)),
+          ],
+        },
+        announce,
+      };
+    }
     default:
       return { form, body: form, announce };
   }

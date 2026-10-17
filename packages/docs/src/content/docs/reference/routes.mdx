@@ -16,6 +16,11 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | Method | Path | Service | Summary |
 | --- | --- | --- | --- |
 | GET | `/manage/api/github/repositories` | admin | The repositories the Polaris Key GitHub App can read |
+| POST | `/manage/api/platform/migrations/apply` | admin | Apply a job against a report, resumably |
+| POST | `/manage/api/platform/migrations/down` | admin | Undo an apply, resumably |
+| POST | `/manage/api/platform/migrations/dry-run` | admin | Plan a job and store the report, changing no data |
+| GET | `/manage/api/platform/migrations/runs/{runId}` | admin | One run with its units (the report) |
+| GET | `/manage/api/platform/migrations` | admin | The data-migration jobs and their latest runs |
 | POST | `/manage/api/platform/override-migration/dry-run` | admin | The inventory and report the run would write, writing nothing |
 | POST | `/manage/api/platform/override-migration/notice` | admin | Start the 30-day notice |
 | DELETE | `/manage/api/platform/override-migration/notice` | admin | Withdraw the notice (before the run) |
@@ -30,11 +35,13 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | DELETE | `/manage/api/products/{product}/assets/settings/{key}` | admin | Reset one of the product's hosted-asset settings to what it inherits |
 | GET | `/manage/api/products/{product}/assets/usage` | admin | What the product holds against its hosting quotas, and its hosted-asset settings |
 | GET | `/manage/api/products/{product}/assets` | admin | The product's hosted assets, their sources and pull status |
+| GET | `/manage/api/products/{product}/integration` | admin | What the product needs wired, and where an SDK has answered it |
 | POST | `/manage/api/products/{product}/license/batches/{batchId}/disable-unused` | admin | Disable every licence of a batch that no device was ever bound to |
 | GET | `/manage/api/products/{product}/license/batches/{batchId}` | admin | One licence batch with its used counts |
 | GET | `/manage/api/products/{product}/license/batches` | admin | The product's licence batches, newest first, with their used counts |
 | POST | `/manage/api/products/{product}/license/batches` | admin | Create up to 500 floating licences in one labelled batch (keys shown once) |
 | PUT | `/manage/api/products/{product}/license/licenses/{licenseId}/overrides` | admin | Edit a licence's own overrides (entitlements only from the override migration's run) |
+| POST | `/manage/api/products/{product}/license/licenses/{licenseId}/send-key` | admin | Mint a new key and email it to the licence's address |
 | GET | `/manage/api/products/{product}/license/licenses/{licenseId}` | admin | One licence, with its holder, keys, devices and overrides |
 | PATCH | `/manage/api/products/{product}/license/licenses/{licenseId}` | admin | Change a licence's terms or holder |
 | GET | `/manage/api/products/{product}/license/licenses` | admin | The product's licences, each with its derived holder, optionally filtered by holder |
@@ -65,6 +72,10 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | GET | `/{product}/release/install.sh` | aliases | Alias → /\{product\}/distribution/install.sh |
 | GET | `/{product}/version` | aliases | Alias → /\{product\}/update/version |
 | GET | `/{product}` | aliases | Alias → /\{product\}/distribution/download |
+| GET | `/{product}/commerce/binding` | commerce | The licence's purchase binding and the store products on sale (device token) |
+| POST | `/{product}/commerce/claim` | commerce | Claim a store purchase as a licence flag (device token) |
+| POST | `/{product}/distribution/hooks/app-store` | commerce | App Store Server Notifications V2 (Apple → Worker) |
+| POST | `/{product}/distribution/hooks/play-rtdn` | commerce | Google Play real-time developer notifications over Pub/Sub push (Google → Worker) |
 | GET | `/{product}/config/document` | config | The signed config document (pkey-config+jws) |
 | GET | `/{product}/config/mint/{mintId}/auth` | config | The edge-mint auth page (HTML) |
 | GET | `/{product}/config/mint/{mintId}/token` | config | Mint a third-party token (edge-mint) |
@@ -87,8 +98,6 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | GET | `/{product}/distribution/blobs/sha256/{sha256}` | distribution | Download a content-addressed object |
 | HEAD | `/{product}/distribution/blobs/sha256/{sha256}` | distribution | Size, ETag and Repr-Digest of a content-addressed object |
 | GET | `/{product}/distribution/builds/{selector}/{buildId}` | distribution | Download the payload of a declared build |
-| GET | `/{product}/distribution/commerce/binding` | distribution | The licence's purchase binding and the store products on sale (device token) |
-| POST | `/{product}/distribution/commerce/claim` | distribution | Claim a store purchase as a licence flag (device token) |
 | GET | `/{product}/distribution/dl/{version}/{asset}` | distribution | Download a release artifact |
 | GET | `/{product}/distribution/download.json` | distribution | The public download page's model |
 | GET | `/{product}/distribution/download` | distribution | The public download page (bytes host only) |
@@ -97,9 +106,7 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | POST | `/{product}/distribution/feeds/fdroid/{channel}` | distribution | Register the F-Droid repository files CI signed and uploaded (CI) |
 | GET | `/{product}/distribution/files/{releaseId}/{name}` | distribution | Download one exact file of one release |
 | GET | `/{product}/distribution/flathub/{channel}.json` | distribution | Flathub x-checker-data JSON for one channel |
-| POST | `/{product}/distribution/hooks/app-store` | distribution | App Store Server Notifications V2 (Apple → Worker) |
 | POST | `/{product}/distribution/hooks/asc` | distribution | App Store Connect webhook notifications (Apple → Worker) |
-| POST | `/{product}/distribution/hooks/play-rtdn` | distribution | Google Play real-time developer notifications over Pub/Sub push (Google → Worker) |
 | POST | `/{product}/distribution/hooks/sentry` | distribution | Sentry alert webhook — opens a halt candidate (Sentry → Worker) |
 | GET | `/{product}/distribution/install.sh` | distribution | The curl-pipe install script |
 | GET | `/{product}/distribution/listing/{store}` | distribution | A CI-plane store's projection of the listing model (CI) |

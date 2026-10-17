@@ -59,10 +59,10 @@ final class CommerceTests: XCTestCase {
 
     private func client(store: FakeStore?, claimStatus: Int = 200) async throws -> PolarisKeyClient {
         await server.reply(
-            "/djdl/distribution/commerce/binding",
+            "/djdl/commerce/binding",
             body: #"{"bindingId":"\#(bindingId)","products":[{"store":"app-store","productId":"pro","flag":"extras.pro","deliverable":"app"}]}"#)
         await server.reply(
-            "/djdl/distribution/commerce/claim", status: claimStatus,
+            "/djdl/commerce/claim", status: claimStatus,
             body: claimStatus == 200
                 ? #"{"ok":true,"store":"app-store","productId":"pro","flag":"extras.pro","deliverable":"app","state":"active","granted":true,"changed":true}"#
                 : #"{"error":{"code":"forbidden"},"reason":"binding_mismatch"}"#)
@@ -71,7 +71,7 @@ final class CommerceTests: XCTestCase {
         var options = PolarisKeyClientOptions(
             productSlug: "djdl", baseUrl: "https://key.example", version: "1.0.0",
             pinnedKeys: [:], trustRefresh: false, store: s, transport: server.transport,
-            expectedServices: [.license, .distribution], fingerprint: false,
+            expectedServices: [.license, .commerce], fingerprint: false,
             storeClient: store)
         if store == nil {
             options = PolarisKeyClientOptions(
@@ -90,7 +90,7 @@ final class CommerceTests: XCTestCase {
         XCTAssertEqual(id, 7)
         XCTAssertEqual(store.tokens, [UUID(uuidString: bindingId)])
         XCTAssertEqual(store.finished, [7])
-        let claimBody = await server.requests(forPath: "/djdl/distribution/commerce/claim").first?.body
+        let claimBody = await server.requests(forPath: "/djdl/commerce/claim").first?.body
         let json = try JSONDecoder().decode([String: String].self, from: claimBody ?? Data())
         XCTAssertEqual(json, ["store": "app-store", "signedTransaction": "jws-7"])
         // The forced sync after the claim fetched the licence document.

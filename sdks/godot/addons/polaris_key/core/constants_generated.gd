@@ -870,10 +870,11 @@ class ServiceSlug:
 	const UPDATE := "update"
 	const IDENTITY := "identity"
 	const SYNC := "sync"
+	const COMMERCE := "commerce"
 
 
 ## Every `ServiceSlug` value, in source order.
-const SERVICE_SLUG_VALUES := ["license", "config", "release", "distribution", "update", "identity", "sync"]
+const SERVICE_SLUG_VALUES := ["license", "config", "release", "distribution", "update", "identity", "sync", "commerce"]
 
 ## The wire contract version (`@polaris-key/protocol/core`).
 const PROTOCOL_VERSION := 4
@@ -1125,7 +1126,7 @@ static func capabilities() -> Dictionary:
 		"core.caps": {"status": "implemented", "service": "core", "na": []},
 		"core.store": {"status": "implemented", "service": "core", "na": []},
 		"core.copy": {"status": "implemented", "service": "sdk", "na": []},
-		"core.backend": {"status": "planned", "service": "license", "na": []},
+		"core.backend": {"status": "implemented", "service": "license", "na": []},
 		"license.gate": {"status": "implemented", "service": "license", "na": []},
 		"license.signedinuser": {"status": "implemented", "service": "license", "na": []},
 		"license.activate": {"status": "implemented", "service": "license", "na": []},
@@ -1221,7 +1222,7 @@ static func capabilities() -> Dictionary:
 		"ui.paywall": {"status": "implemented", "service": "sdk", "na": []},
 		"ui.theme": {"status": "implemented", "service": "sdk", "na": []},
 		"ui.i18n": {"status": "implemented", "service": "sdk", "na": []},
-		"commerce.receipt": {"status": "implemented", "service": "license", "na": []},
+		"commerce.receipt": {"status": "implemented", "service": "commerce", "na": []},
 		"server.license": {"status": "na", "service": "license", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "macos", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}, {"runtime": "android", "reason": "runtime"}, {"runtime": "ios", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
 		"server.signin": {"status": "na", "service": "identity", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "macos", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}, {"runtime": "android", "reason": "runtime"}, {"runtime": "ios", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
 		"server.config": {"status": "na", "service": "config", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "macos", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}, {"runtime": "android", "reason": "runtime"}, {"runtime": "ios", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
@@ -1229,4 +1230,4 @@ static func capabilities() -> Dictionary:
 	}
 
 ## SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-const CAPABILITY_DIGEST := "ec118646f027370ed11c2f3378b699c61a11037e44bce9f1d0f38bd52e298a7c"
+const CAPABILITY_DIGEST := "06a58ce91750be73a78448e7427ecb1e716a738a6911b0b2244d13cafcff5816"

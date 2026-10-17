@@ -475,28 +475,10 @@ export const PENDING: readonly PendingEntry[] = [
   { target: "column:dist_listing_overrides.source", owner: "ST-13" },
   { target: "column:dist_listing_release_notes.source", owner: "ST-13" },
   { target: "manifest:distribution:listing", owner: "ST-13" },
-  // Platform settings area.
-  {
-    target: "table:dist_registry_policy",
-    owner: "ST-09",
-    note: "feeds.<eco> policy",
-  },
-  {
-    target: "table:dist_registry_feeds",
-    owner: "ST-09",
-    note: "distribution.feeds.<eco>",
-  },
-  { target: "env:EMAIL_SENDER_ADDRESS", owner: "ST-09", note: "email.sender" },
-  {
-    target: "env:PORTAL_EMAIL_FROM",
-    owner: "ST-09",
-    note: "older spelling of email.sender",
-  },
-  { target: "env:EMAIL_APPLE_RELAY", owner: "ST-09", note: "email.appleRelay" },
 ];
 
 /** `PENDING.length`, written down: lower it with every removal; raising it needs a review. */
-export const PENDING_CEILING = 21;
+export const PENDING_CEILING = 16;
 
 export interface CoverageInputs {
   targets: readonly CoverageTarget[];

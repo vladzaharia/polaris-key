@@ -32,6 +32,12 @@ import {
   type UiInput,
 } from "@polaris-key/ui-core";
 
+import {
+  adaptHandoff,
+  adaptMethods,
+  adaptReplace,
+  HANDOFF_WAITING,
+} from "./adapt.js";
 import { KitRoot, useKit, type KitProps } from "./component.js";
 import {
   FORM_ORDER,
@@ -39,7 +45,7 @@ import {
   type FormInput,
   type FormStep,
 } from "./contract.js";
-import { text } from "./parts.js";
+import { text, type Chrome } from "./parts.js";
 import { renderView } from "./views.js";
 
 export type { FormInput, FormStep } from "./contract.js";
@@ -141,6 +147,34 @@ export interface SignInProps extends KitProps {
   onClose?: () => void;
 }
 
+/** The view a step draws: the model's, with the form's drawing rules (no "or" divider, a code
+ *  that says how long it lasts and can be cancelled). */
+const bodyOf = (i: FormInput): ReturnType<typeof formStep>["body"] =>
+  adaptReplace(adaptHandoff(adaptMethods(formStep(i).body)));
+
+/** The code step counts down on its own: the model hands over the seconds left when the code was
+ *  issued, and this keeps them ticking (at 0:00 the view goes to expired, DL14). */
+function useCountdown(input: FormInput): FormInput {
+  const left = input.deviceCode?.secondsLeft;
+  const from = useRef<{ left: number; at: number } | null>(null);
+  const [, tick] = useReducer((n: number) => n + 1, 0);
+  if (left === undefined) from.current = null;
+  else if (from.current === null || from.current.left !== left)
+    from.current = { left, at: Date.now() };
+  const live = left !== undefined && input.deviceCode?.phase === "waiting";
+  useEffect(() => {
+    if (!live) return;
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [live]);
+  if (!live || from.current === null || !input.deviceCode) return input;
+  const secondsLeft = Math.max(
+    0,
+    Math.ceil(from.current.left - (Date.now() - from.current.at) / 1000),
+  );
+  return { ...input, deviceCode: { ...input.deviceCode, secondsLeft } };
+}
+
 /** Steps a step part draws; the form draws all of them. */
 type Steps = readonly string[] | null;
 
@@ -194,8 +228,9 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
   const model = form.model;
   // The device picked in the Replace step (kit-side, as in the elements).
   const [replacePick, setReplacePick] = useState<string | undefined>();
-  const input: FormInput =
+  const picked: FormInput =
     replacePick !== undefined ? { ...form.input, replacePick } : form.input;
+  const input = useCountdown(picked);
   const sheet = (props.presentation ?? input.signIn?.presentation) === "sheet";
 
   const close = () => {
@@ -276,7 +311,7 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
         props.onSelect?.(id);
       },
     },
-    (_view, i) => formStep(i).body,
+    (_view, i) => bodyOf(i as FormInput),
     {
       // Replace and continue carries the picked device; Use this license, the license.
       detail: (key, i) => {
@@ -306,6 +341,7 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
   );
 
   const step = formStep(kit.input as FormInput);
+  const body_ = bodyOf(kit.input as FormInput);
   const stepKey = `${step.body.component}.${step.body.state}`;
 
   // The morph: measured after every commit, so a step change animates from the last height.
@@ -340,7 +376,12 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
   if (kit.view.state === "hidden") return null;
   if (props.steps && !props.steps.includes(kit.view.state)) return null;
 
-  const c = kit.ctxFor(step.body);
+  const waiting =
+    body_.component === "SignInHandoff" &&
+    body_.state === "code" &&
+    kit.copy.has(HANDOFF_WAITING);
+  const chrome: Chrome = waiting ? { meta: [HANDOFF_WAITING] } : {};
+  const c = kit.ctxFor(body_, chrome);
   const announce = step.announce.length ? (
     <p className="visually-hidden" role="status">
       {step.announce.map((k) => (

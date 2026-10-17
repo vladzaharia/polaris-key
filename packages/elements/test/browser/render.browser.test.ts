@@ -200,6 +200,100 @@ describe("every component state, rendered", () => {
       });
 });
 
+describe("a short window and large text (DL1, DL3)", () => {
+  const ROWS = [
+    ["Welcome", "default"],
+    ["DeviceLimit", "default"],
+    ["Activate", "empty"],
+    ["StatusScreen", "revoked"],
+  ] as const;
+  const rect = (n: Element) => n.getBoundingClientRect();
+  const overlaps = (a: DOMRect, b: DOMRect) =>
+    a.left < b.right &&
+    a.right > b.left &&
+    a.top < b.bottom &&
+    a.bottom > b.top;
+  /** The text a docked bar must never sit over once the window is scrolled to its end. */
+  const readable = (el: PkElement) => [
+    ...el.shadowRoot!.querySelectorAll(
+      'h1, [data-part="texts"] p, [data-part="device-list"], [data-part="links"]',
+    ),
+  ];
+
+  afterEach(() => {
+    document.documentElement.style.fontSize = "";
+    window.scrollTo(0, 0);
+  });
+
+  for (const [component, state] of ROWS) {
+    const row = () =>
+      SCENES.find(
+        (r) => r.expect.component === component && r.expect.state === state,
+      )!;
+
+    it(`${component}.${state} at 844 x 390: two columns, the bar one row, nothing under it at the end`, async () => {
+      await page.viewport(844, 390);
+      const el = await mount(row(), "dark", 390);
+      const root = el.shadowRoot!.querySelector<HTMLElement>(".pk-root")!;
+      expect(root.dataset.shape).toBe("short");
+      const bar = el.shadowRoot!.querySelector('[data-part="actions"]');
+      if (bar) {
+        // One row of buttons, not a column that takes the window.
+        expect(rect(bar).height, "the bar's height").toBeLessThanOrEqual(
+          390 * 0.4,
+        );
+        // The title is never under the bar, scrolled to the top.
+        const h1 = el.shadowRoot!.querySelector("h1");
+        if (h1) expect(overlaps(rect(h1), rect(bar))).toBe(false);
+        window.scrollTo(0, document.documentElement.scrollHeight);
+        await new Promise((r) => requestAnimationFrame(r));
+        for (const n of readable(el))
+          expect(
+            overlaps(rect(n), rect(bar)),
+            `${n.tagName.toLowerCase()} under the bar at the end`,
+          ).toBe(false);
+      }
+      expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(844);
+      expect(await axeViolations(el)).toEqual([]);
+      if (__PKEY_KIT_SHOTS__)
+        await commands.kitShot(
+          `${__PKEY_KIT_SHOTS__}/elements.${component}.${state}/844x390-dark.png`,
+        );
+    });
+
+    for (const scheme of SCHEMES)
+      it(`${component}.${state} at 390 with 200% text (${scheme}): the bar scrolls with the text, never over it`, async () => {
+        document.documentElement.style.fontSize = "200%";
+        await page.viewport(390, 844);
+        const el = await mount(row(), scheme, 844);
+        // The shape measure runs after the layout; give it a frame.
+        await new Promise((r) =>
+          requestAnimationFrame(() => requestAnimationFrame(r)),
+        );
+        await el.updateComplete;
+        const root = el.shadowRoot!.querySelector<HTMLElement>(".pk-root")!;
+        expect(root.hasAttribute("data-tight")).toBe(true);
+        const bar = el.shadowRoot!.querySelector<HTMLElement>(
+          '[data-part="actions"]',
+        );
+        if (bar) {
+          expect(getComputedStyle(bar).position).toBe("static");
+          for (const n of readable(el))
+            expect(
+              overlaps(rect(n), rect(bar)),
+              `${n.tagName.toLowerCase()} under the bar`,
+            ).toBe(false);
+        }
+        expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(390);
+        expect(await axeViolations(el)).toEqual([]);
+        if (__PKEY_KIT_SHOTS__)
+          await commands.kitShot(
+            `${__PKEY_KIT_SHOTS__}/elements.${component}.${state}/390-200pct-${scheme}.png`,
+          );
+      });
+  }
+});
+
 describe("keyboard (DL9)", () => {
   it("Welcome focuses its primary on appear; a key press shows the ring, Tab moves on", async () => {
     await page.viewport(1440, 900);

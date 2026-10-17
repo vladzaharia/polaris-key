@@ -32,6 +32,8 @@ this page or fails the freshness gate.
 | `product_manifest_snapshot` | 0072_product_manifest_snapshot.sql | `product`, `applied_sha`, `applied_at`, `origin`, `files_sha256`, `manifest_json` |
 | `product_settings` | 0086_product_settings.sql | `product`, `key`, `value_json`, `source`, `version`, `updated_at`, `updated_by`, `reason`, `expires_at` |
 | `settings_backfill_reports` | 0102_settings_backfill_reports.sql | `product`, `id`, `at`, `mode`, `outcome`, `batch_id`, `commit_sha`, `changes`, `actor_sub`, `actor_name`, `report_json` |
+| `data_migration_runs` | 0122_data_migration_runs.sql | `id`, `job`, `mode`, `status`, `source_id`, `requested_by`, `started_at`, `finished_at`, `lease_until`, `lease_token`, `changes`, `report_json` |
+| `data_migration_units` | 0122_data_migration_runs.sql | `run_id`, `unit`, `status`, `planned`, `changes`, `detail_json`, `error`, `at` |
 | `schema_index_assertion` | 0018_index_assertion.sql | `id`, `expected`, `found`, `missing` |
 | `blob_objects` | 0026_blob_store.sql | `storage_key`, `sha256`, `size`, `kind`, `gated`, `verified_at`, `created_at`, `unreferenced_since (0048)`, `gc_claimed_at (0048)` |
 | `blob_refs` | 0026_blob_store.sql | `product`, `storage_key`, `ref_kind`, `ref_id`, `created_at` |
@@ -52,6 +54,7 @@ this page or fails the freshness gate.
 | `registry_tokens` | 0067_registry_tokens.sql | `product`, `token_id`, `token_hash`, `hint`, `label`, `scopes_json`, `ecosystems_json`, `binding`, `license_id`, `presentation`, `created_by`, `portal_account_id`, `created_at`, `expires_at`, `last_used_at`, `revoked_at`, `revoked_by`, `revoke_reason` |
 | `admin_api_tokens` | 0119_admin_api_tokens.sql | `id`, `token_hash`, `label`, `scopes_json`, `created_at`, `expires_at`, `last_used_at`, `revoked_at` |
 | `account_tokens` | 0120_account_tokens.sql | `id`, `account_id`, `token_hash`, `hint`, `label`, `scope`, `created_at`, `expires_at`, `last_used_at`, `revoked_at`, `revoked_by`, `revoke_reason` |
+| `sdk_sightings` | 0121_sdk_sightings.sql | `product`, `sdk`, `platform`, `arch`, `first_seen`, `last_seen`, `sdk_version`, `services_ok`, `last_ok_at` |
 | `platform_settings` | 0056_platform_settings.sql | `key`, `value_json`, `version`, `updated_at`, `updated_by` |
 | `platform_job_runs` | 0057_platform_operations.sql | `id`, `run_id`, `job`, `cron`, `step`, `started_at`, `duration_ms`, `outcome`, `items`, `rows_affected`, `error_summary` |
 | `platform_heartbeats` | 0057_platform_operations.sql | `script`, `at`, `version_tag`, `cf_version_id`, `outcome`, `backlog_count`, `backlog_bytes`, `oldest_at` |
@@ -134,13 +137,6 @@ this page or fails the freshness gate.
 | `dist_connector_objects` | 0041_distribution_connectors.sql | `product`, `connector`, `object_type`, `object_id`, `outlet_id`, `release_id`, `build_id`, `store_state`, `state`, `ref_json`, `detail_json`, `terminal`, `first_seen_at`, `updated_at`, `polled_at` |
 | `dist_feed_files` | 0043_storefront_feeds.sql | `product`, `feed`, `channel`, `path`, `sha256`, `size`, `content_type`, `updated_at` |
 | `dist_readiness` | 0048_a_dist_readiness_blob_gc.sql | `product`, `app_release_id`, `outlet_id`, `blocking_pack_release_id`, `state`, `detail_json`, `source`, `override_reason`, `computed_at`, `updated_at`, `updated_by` |
-| `dist_store_products` | 0052_commerce.sql | `product`, `store`, `store_product_id`, `deliverable_id`, `flag`, `source`, `modified_at`, `modified_by`, `grants_kind (0105)`, `base_tier_id (0105)` |
-| `dist_purchase_bindings` | 0052_commerce.sql | `product`, `binding_id`, `license_id`, `created_at` |
-| `dist_purchase_binding_aliases` | 0073_dist_purchase_binding_aliases.sql | `product`, `binding_id`, `license_id`, `from_license_id`, `created_at` |
-| `dist_purchases` | 0052_commerce.sql | `product`, `store`, `purchase_key_hash`, `store_product_id`, `license_id`, `state`, `environment`, `first_seen`, `last_verified`, `detail_json`, `grant_id (0105)` |
-| `dist_store_product_entitlements` | 0105_l_licensing_commerce.sql | `product`, `store`, `store_product_id`, `key`, `value_json` |
-| `dist_holder_bindings` | 0105_l_licensing_commerce.sql | `product`, `holder_kind`, `holder_id`, `binding_id`, `created_at` |
-| `dist_binding_aliases` | 0105_l_licensing_commerce.sql | `product`, `binding_id`, `holder_kind`, `holder_id`, `created_at` |
 | `dist_registry_owners` | 0058_d_registry.sql | `product`, `enabled`, `version`, `updated_at`, `updated_by` |
 | `dist_registry_feeds` | 0058_d_registry.sql | `product`, `ecosystem`, `enabled`, `access_mode`, `namespace_json`, `max_package_bytes`, `upstream`, `claims_json`, `ext_json`, `version`, `updated_at`, `updated_by` |
 | `dist_registry_policy` | 0058_d_registry.sql | `ecosystem`, `enabled`, `max_package_bytes_ceiling`, `version`, `updated_at`, `updated_by` |
@@ -150,6 +146,18 @@ this page or fails the freshness gate.
 | `dist_listing_release_notes` | 0065_dist_listing_model.sql | `product`, `release_id`, `locale`, `text`, `short`, `source`, `modified_at`, `modified_by` |
 | `dist_listing_overrides` | 0065_dist_listing_model.sql | `product`, `store`, `locale`, `field`, `value_json`, `source`, `modified_at`, `modified_by` |
 | `store_edit_leases` | 0070_store_edit_leases.sql | `store`, `app`, `holder`, `purpose`, `actor`, `acquired_at`, `expires_at` |
+
+## commerce
+
+| Table | Since | Columns (ALTERs annotated with their migration) |
+| --- | --- | --- |
+| `dist_store_products` | 0052_commerce.sql | `product`, `store`, `store_product_id`, `deliverable_id`, `flag`, `source`, `modified_at`, `modified_by`, `grants_kind (0105)`, `base_tier_id (0105)` |
+| `dist_purchase_bindings` | 0052_commerce.sql | `product`, `binding_id`, `license_id`, `created_at` |
+| `dist_purchase_binding_aliases` | 0073_dist_purchase_binding_aliases.sql | `product`, `binding_id`, `license_id`, `from_license_id`, `created_at` |
+| `dist_purchases` | 0052_commerce.sql | `product`, `store`, `purchase_key_hash`, `store_product_id`, `license_id`, `state`, `environment`, `first_seen`, `last_verified`, `detail_json`, `grant_id (0105)` |
+| `dist_store_product_entitlements` | 0105_l_licensing_commerce.sql | `product`, `store`, `store_product_id`, `key`, `value_json` |
+| `dist_holder_bindings` | 0105_l_licensing_commerce.sql | `product`, `holder_kind`, `holder_id`, `binding_id`, `created_at` |
+| `dist_binding_aliases` | 0105_l_licensing_commerce.sql | `product`, `binding_id`, `holder_kind`, `holder_id`, `created_at` |
 
 ## update
 

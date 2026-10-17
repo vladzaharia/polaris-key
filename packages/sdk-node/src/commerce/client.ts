@@ -1,11 +1,11 @@
 // The Commerce sub-client (SDK parity pass §3.9, `commerce.receipt`, the Worker side is P6-01):
 // a store purchase becomes a license flag.
 //
-//   binding()            GET  /<p>/distribution/commerce/binding — the license's opaque binding
+//   binding()            GET  /<p>/commerce/binding — the license's opaque binding
 //                        UUID and the store products the operator mapped. Hand the binding to the
 //                        store BEFORE buying: Apple `appAccountToken`, Play `obfuscatedAccountId`,
 //                        or the identity of a Steam web-API ticket.
-//   claim(store, …)      POST /<p>/distribution/commerce/claim — forward what the store handed the
+//   claim(store, …)      POST /<p>/commerce/claim — forward what the store handed the
 //                        device; on `ok` the next license document carries the flag. The bare
 //                        claim does not sync (the commerce-claim transcript pins one request);
 //                        pass `{ sync: true }`, or use a store helper, which syncs by default.
@@ -83,7 +83,7 @@ export class CommerceClient {
 
   /** The license's purchase binding and the products on sale. */
   async binding(): Promise<BindingResult> {
-    const res = await this.call("GET", "distribution/commerce/binding");
+    const res = await this.call("GET", "commerce/binding");
     if ("kind" in res) return res;
     const body = res.body;
     if (
@@ -113,7 +113,7 @@ export class CommerceClient {
     payload: Record<string, unknown>,
     opts: { sync?: boolean } = {},
   ): Promise<ClaimResult> {
-    const res = await this.call("POST", "distribution/commerce/claim", {
+    const res = await this.call("POST", "commerce/claim", {
       store,
       ...payload,
     });
@@ -179,7 +179,7 @@ export class CommerceClient {
     path: string,
     body?: unknown,
   ): Promise<{ body: unknown } | CommerceRefusal> {
-    this.ctx.requireService("distribution", Feature.commerceReceipt);
+    this.ctx.requireService("commerce", Feature.commerceReceipt);
     this.ctx.fetcher(); // local-only refuses first, as before the token check
     const token = this.tokens.current;
     if (!token)

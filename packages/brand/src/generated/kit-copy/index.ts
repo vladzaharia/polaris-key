@@ -398,6 +398,7 @@ export type KitCopyKey =
   | "signin.replace.consequence"
   | "signin.replace.inUse"
   | "signin.replace.confirm"
+  | "signin.replace.confirmNamed"
   | "signin.replace.back"
   | "signin.replace.gone"
   | "signin.replace.rateLimited"
@@ -1121,6 +1122,7 @@ export const KIT_COPY_VARIANTS: Readonly<
   "signin.none.otherAccount": { macos: "Use Another Account" },
   "signin.replace.open": { macos: "Replace a Device" },
   "signin.replace.confirm": { macos: "Replace and Continue" },
+  "signin.replace.confirmNamed": { macos: "Replace {device} and Continue" },
   "signin.notYou": { macos: "Not You?" },
   "signin.key.addAndUse": { macos: "Add and Use on This Device" },
   "signin.key.keep": { macos: "Keep {product} in an Account" },

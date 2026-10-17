@@ -188,6 +188,12 @@ const ADMIN_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     // Home's product cards: one fact per service for every product (A-8, sliced).
     ["/manage/api/summary", ["get"]],
     // U-03: the licence-override migration (notes/S-17 §5.12, decision 21).
+    // P0-49: the data-migration runner.
+    ["/manage/api/platform/migrations", ["get"]],
+    ["/manage/api/platform/migrations/runs/{runId}", ["get"]],
+    ["/manage/api/platform/migrations/dry-run", ["post"]],
+    ["/manage/api/platform/migrations/apply", ["post"]],
+    ["/manage/api/platform/migrations/down", ["post"]],
     ["/manage/api/platform/override-migration", ["get"]],
     ["/manage/api/platform/override-migration/prerequisites", ["put"]],
     ["/manage/api/platform/override-migration/notice", ["post", "delete"]],
@@ -207,6 +213,8 @@ const ADMIN_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     ["/manage/api/products", ["get", "post"]],
     ["/manage/api/products/link-repo", ["post"]],
     ["/manage/api/products/slug-check", ["get"]],
+    // ST-40: the Integration read model (prerequisites, facts, Verified per platform).
+    ["/manage/api/products/{product}/integration", ["get"]],
     // HA-05: the hosted-asset status read the console's Presentation page uses.
     ["/manage/api/products/{product}/assets", ["get"]],
     // HA-06: the Presentation page's upload (claims the slot), Revert and delete-a-copy.
@@ -224,6 +232,11 @@ const ADMIN_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     [
       "/manage/api/products/{product}/license/licenses/{licenseId}",
       ["get", "patch"],
+    ],
+    // LX-27: a new key emailed to the licence's address.
+    [
+      "/manage/api/products/{product}/license/licenses/{licenseId}/send-key",
+      ["post"],
     ],
     // LX-28: bulk floating keys, the batch reads and Disable unused keys.
     ["/manage/api/products/{product}/license/batches", ["get", "post"]],
@@ -447,6 +460,14 @@ describe("router → spec", () => {
         `${slug}: an empty surface means no routes`,
       ).toBe(ROUTELESS.has(slug));
       for (const route of descriptor.surface) {
+        // The one exception: Commerce's two store hooks are canonical at their stores' URLs
+        // under `/distribution/hooks/` (CM-29 D1; `core/stores/hooks.ts`), not aliases.
+        const storeHook =
+          slug === "commerce" &&
+          /^\/\{product\}\/distribution\/hooks\/(app-store|play-rtdn)$/.test(
+            route.path,
+          );
+        if (storeHook) continue;
         expect(route.path, `${slug}: ${route.path}`).toMatch(
           new RegExp(`^/\\{product\\}/${slug}/`),
         );
@@ -763,6 +784,7 @@ function concrete(template: string): string {
     methodId: "lnk_AAAAAAAAAAAA",
     subject: `ps_${"A".repeat(22)}`,
     tokenId: "apitok_AAAAAAAAAAAA",
+    runId: "mig_AAAAAAAAAAAA",
   };
   return template.replace(/\{(\w+)\}/g, (_, name: string) => {
     const value = samples[name];

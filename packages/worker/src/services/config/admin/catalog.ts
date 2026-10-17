@@ -41,11 +41,11 @@ import {
   validateConsoleMintBlocks,
 } from "@polaris-key/manifest";
 import { ErrorCode } from "../../../core/errors.js";
+import { getActiveSchema } from "../../../core/products/store.js";
 import {
-  getActiveSchema,
   stmtRemoveEdgeMintGuarded,
   stmtSaveEdgeMintGuarded,
-} from "../../../core/products/store.js";
+} from "../ingest.js";
 import { writeSetting } from "../../../core/settings/write.js";
 import {
   catalogRepresentabilityResponse,

@@ -248,7 +248,7 @@ describe("Assign… and Edit holder", () => {
       name: "Assign license",
     });
     await userEvent.type(
-      within(dialog).getByLabelText(/^Email/),
+      within(dialog).getByRole("textbox", { name: /^Email/ }),
       "ada@example.com",
     );
     // D4: the line never says whether the address has an account.
@@ -270,6 +270,223 @@ describe("Assign… and Edit holder", () => {
         },
       ]),
     );
+  });
+
+  it("LX-27: Email them the key patches, then sends a new key once", async () => {
+    const log = bootLicense("#/p/djdl/license/licenses/lic_float", {
+      routes: {
+        ...ROUTES,
+        [`PATCH ${API}/license/licenses/lic_float`]: {
+          ok: true,
+          id: "lic_float",
+        },
+        [`POST ${API}/license/licenses/lic_float/send-key`]: {
+          key: "pkey_djdl_X",
+          hash: "h",
+          delivered: { email: "sent" },
+          revoked: 0,
+        },
+      },
+    });
+    await screen.findByRole("heading", { level: 1, name: "Floating license" });
+    await userEvent.click(screen.getByRole("button", { name: "Assign…" }));
+    const dialog = await screen.findByRole("dialog", {
+      name: "Assign license",
+    });
+    await userEvent.type(
+      within(dialog).getByRole("textbox", { name: /^Email/ }),
+      "ada@example.com",
+    );
+    await userEvent.click(within(dialog).getByLabelText(/Email them the key/));
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Assign and email key" }),
+    );
+    await waitFor(() =>
+      expect(writes(log).map((w) => `${w.method} ${w.path}`)).toEqual([
+        `PATCH ${API}/license/licenses/lic_float`,
+        `POST ${API}/license/licenses/lic_float/send-key`,
+      ]),
+    );
+  });
+
+  it("LX-27: Send a new key… on an assigned licence posts revokeOthers", async () => {
+    const log = bootLicense("#/p/djdl/license/licenses/lic_in", {
+      routes: {
+        ...ROUTES,
+        [`POST ${API}/license/licenses/lic_in/send-key`]: {
+          key: "pkey_djdl_X",
+          hash: "h",
+          delivered: { email: "sent" },
+          revoked: 2,
+        },
+      },
+    });
+    await screen.findByRole("heading", { level: 1, name: "Lena Ortiz" });
+    await more("Send a new key…");
+    const dialog = await screen.findByRole("dialog", {
+      name: "Send a new key",
+    });
+    await userEvent.click(
+      within(dialog).getByLabelText(/Also revoke its other keys/),
+    );
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Send key" }),
+    );
+    await waitFor(() =>
+      expect(writes(log)).toEqual([
+        {
+          path: `${API}/license/licenses/lic_in/send-key`,
+          method: "POST",
+          body: { revokeOthers: true },
+        },
+      ]),
+    );
+  });
+
+  const refusal = (status: number, body: Record<string, unknown>) =>
+    new Response(JSON.stringify({ error: { code: "bad_request" }, ...body }), {
+      status,
+      headers: { "content-type": "application/json" },
+    });
+
+  it("LX-27: a permanent 409 turns Send key off with the reason and offers Mint key…", async () => {
+    bootLicense("#/p/djdl/license/licenses/lic_in", {
+      routes: {
+        ...ROUTES,
+        [`POST ${API}/license/licenses/lic_in/send-key`]: refusal(409, {
+          reason: "no_mail_binding",
+        }),
+      },
+    });
+    await screen.findByRole("heading", { level: 1, name: "Lena Ortiz" });
+    await more("Send a new key…");
+    const dialog = await screen.findByRole("dialog", {
+      name: "Send a new key",
+    });
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Send key" }),
+    );
+    expect(
+      (
+        await within(dialog).findAllByText(
+          /isn't set up on this Polaris Key server/,
+        )
+      ).length,
+    ).toBeGreaterThan(0);
+    expect(
+      within(dialog)
+        .getByRole("button", { name: "Send key" })
+        .getAttribute("aria-disabled"),
+    ).toBe("true");
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Mint key…" }),
+    );
+    expect(
+      await screen.findByRole("dialog", { name: "Mint key" }),
+    ).toBeTruthy();
+  });
+
+  it("LX-27: a 429 is a warning with the wait, not a danger", async () => {
+    bootLicense("#/p/djdl/license/licenses/lic_in", {
+      routes: {
+        ...ROUTES,
+        [`POST ${API}/license/licenses/lic_in/send-key`]: refusal(429, {
+          retryAfter: 412,
+        }),
+      },
+    });
+    await screen.findByRole("heading", { level: 1, name: "Lena Ortiz" });
+    await more("Send a new key…");
+    const dialog = await screen.findByRole("dialog", {
+      name: "Send a new key",
+    });
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Send key" }),
+    );
+    expect(await within(dialog).findByText("Sent a moment ago")).toBeTruthy();
+    expect(
+      within(dialog).getByText("You can send another in 7 min."),
+    ).toBeTruthy();
+  });
+
+  it("LX-27: an expired license is not offered Send a new key…", async () => {
+    bootLicense("#/p/djdl/license/licenses/lic_in", {
+      routes: {
+        ...ROUTES,
+        [`${API}/license/licenses/lic_in`]: detail({
+          ...IN_ACCOUNT,
+          expiresAt: NOW_S - DAY,
+        }),
+      },
+    });
+    await screen.findByRole("heading", { level: 1, name: "Lena Ortiz" });
+    await userEvent.click(
+      screen.getAllByRole("button", { name: "More actions" })[0]!,
+    );
+    await screen.findByRole("menuitem", { name: "Reassign…" });
+    expect(
+      screen.queryByRole("menuitem", { name: "Send a new key…" }),
+    ).toBeNull();
+  });
+
+  it("LX-27: a failed send shows the key once with its reason; Escape asks, Try again waits for the tick and never revokes", async () => {
+    const log = bootLicense("#/p/djdl/license/licenses/lic_in", {
+      routes: {
+        ...ROUTES,
+        [`POST ${API}/license/licenses/lic_in/send-key`]: {
+          key: "pkey_djdl_X",
+          hash: "h",
+          delivered: { email: "failed", reason: "provider_refused" },
+          revoked: 0,
+        },
+      },
+    });
+    await screen.findByRole("heading", { level: 1, name: "Lena Ortiz" });
+    await more("Send a new key…");
+    const dialog = await screen.findByRole("dialog", {
+      name: "Send a new key",
+    });
+    await userEvent.click(
+      within(dialog).getByLabelText(/Also revoke its other keys/),
+    );
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Send key" }),
+    );
+    const result = await screen.findByRole("dialog", {
+      name: "Key not emailed",
+    });
+    expect(within(result).getByText("pkey_djdl_X")).toBeTruthy();
+    expect(within(result).getByText(/provider didn't accept/)).toBeTruthy();
+    // Escape asks first.
+    await userEvent.keyboard("{Escape}");
+    expect(
+      await within(result).findByText(/Close without copying\?/),
+    ).toBeTruthy();
+    await userEvent.click(
+      within(result).getByRole("button", { name: "Keep it open" }),
+    );
+    const retry = within(result).getByRole("button", { name: "Try again" });
+    expect(
+      retry.getAttribute("aria-disabled") === "true" ||
+        (retry as HTMLButtonElement).disabled,
+    ).toBe(true);
+    await userEvent.click(within(result).getByLabelText(/I've stored it/));
+    await userEvent.click(
+      within(result).getByRole("button", { name: "Try again" }),
+    );
+    await waitFor(() => expect(writes(log)).toHaveLength(2));
+    expect(writes(log)[1]!.body).toEqual({ revokeOthers: false });
+  });
+
+  it("LX-27: Send a new key… is offered on an active assigned licence", async () => {
+    bootLicense("#/p/djdl/license/licenses/lic_in", { routes: ROUTES });
+    await screen.findByRole("heading", { level: 1, name: "Lena Ortiz" });
+    await userEvent.click(
+      screen.getAllByRole("button", { name: "More actions" })[0]!,
+    );
+    expect(
+      await screen.findByRole("menuitem", { name: "Send a new key…" }),
+    ).toBeTruthy();
   });
 
   it("Edit holder edits the name only on an assigned licence", async () => {

@@ -222,8 +222,8 @@ export interface PlatformActivityPage {
  * mint also needs a recent sign-in (403 `step_up_required`).
  */
 
-/** The scope vocabulary: one entry, mirroring the worker's. */
-export const ADMIN_API_SCOPES = ["bundles:mint"] as const;
+/** The scope vocabulary, mirroring the worker's. */
+export const ADMIN_API_SCOPES = ["bundles:mint", "migrations:report"] as const;
 export type AdminApiScope = (typeof ADMIN_API_SCOPES)[number];
 
 /** The worker's longest token lifetime. Mirrored so the mint form can bound its input rather
@@ -387,7 +387,15 @@ export interface PlatformSettingsView {
   /** Presence only: never a value, a length or a hash. */
   secrets: { name: string; set: boolean }[];
   /** Code constants that act as policy. */
-  constants: { name: string; area: string; value: number; unit: string }[];
+  constants: {
+    name: string;
+    /** The group the Limits section files it under. */
+    area: string;
+    label: string;
+    help: string;
+    value: number;
+    unit: string;
+  }[];
   warnings: { code: string; message: string; names: string[] }[];
 }
 
@@ -2084,6 +2092,7 @@ export const SERVICE_ERROR_MESSAGES: Record<string, string> = {
     "In-app updates need Ship builds to be on first.",
   sync_requires_config: "Cloud Sync needs Managed config to be on first.",
   sync_requires_identity: "Cloud Sync needs Sign-in to be on first.",
+  commerce_requires_license: "Commerce needs Licensing to be on first.",
 };
 
 // ── update settings (feed access + compat window) ─────────────────────────────
@@ -3487,6 +3496,23 @@ export const LICENSE_PAGE_MAX = 90;
 export interface LicensePage {
   licenses: LicenseSummary[];
   nextCursor: string | null;
+  /** What the filters match, and by state. First page only (the Worker sends them without a cursor). */
+  total?: number;
+  counts?: {
+    active: number;
+    expiring: number;
+    expired: number;
+    disabled: number;
+  };
+}
+
+/** The list's server-side narrowing: the Worker filters on these before it pages. */
+export interface LicenseListFilter {
+  holder?: string;
+  batch?: string;
+  tier?: string;
+  /** One computed state: active, expiring, expired or disabled. */
+  state?: string;
 }
 
 export interface LicenseSummary {
@@ -3848,7 +3874,21 @@ export interface CreateLicenseBody {
   channels?: string[];
   minVersion?: string;
   maxVersion?: string;
+  /** LX-27: the licence's own device limit; omitted inherits. */
+  deviceLimit?: number;
+  /** LX-27: `email: true` mails the first key to `email` in the same request. */
+  delivery?: { email: boolean };
 }
+
+/** LX-27: how the key email went. */
+export type KeyEmailOutcome = "sent" | "queued" | "failed";
+/** Why a key email did not go out (`delivered.reason`, and a 409's `reason`). */
+export type KeyEmailFailure =
+  | "no_mail_binding"
+  | "address_unusable"
+  | "suppressed"
+  | "daily_cap"
+  | "provider_refused";
 
 export interface PatchLicenseBody {
   name?: string;
@@ -4025,6 +4065,12 @@ export interface FeedsOverviewDto extends FeedsHead {
     versions: number;
     lastPublishedAt: number | null;
   };
+  /** Platform scope: each ecosystem's kill switch and size ceiling (`null` before its row exists). */
+  policies?: {
+    ecosystem: FeedEcosystem;
+    label: string;
+    policy: FeedPolicy | null;
+  }[];
   /** Platform scope: every owner with a packageFeeds row. */
   owners?: {
     slug: string;
@@ -4330,6 +4376,8 @@ export class ApiError extends Error {
     super(`api ${status}`);
     this.name = "ApiError";
   }
+  /** Seconds until a 429 clears, when the route says (`retryAfter`). */
+  retryAfter?: number;
 }
 
 async function call<T>(
@@ -4377,6 +4425,7 @@ async function send(
     let code: string | undefined;
     let message: string | undefined;
     let reason: string | undefined;
+    let retryAfter: number | undefined;
     try {
       const body = (await res.json()) as {
         error?:
@@ -4393,7 +4442,9 @@ async function send(
         errors?: string[];
         code?: string;
         reason?: string;
+        retryAfter?: number;
       };
+      if (typeof body.retryAfter === "number") retryAfter = body.retryAfter;
       if (typeof body.error === "object" && body.error) {
         fields = body.error.fields ?? body.fields;
         errors = body.error.errors ?? body.errors;
@@ -4412,6 +4463,7 @@ async function send(
     }
     const error = new ApiError(res.status, fields, code, errors, reason);
     if (message) error.message = message;
+    if (retryAfter !== undefined) error.retryAfter = retryAfter;
     if (
       res.status === 403 &&
       code === "step_up_required" &&
@@ -5397,9 +5449,11 @@ const rawApi = {
   /** One page of the list (P0-29): newest first, `nextCursor` null on the last. */
   licensesPage: (
     slug: string,
-    page: { cursor?: string | null; limit?: number } = {},
+    page: { cursor?: string | null; limit?: number } & LicenseListFilter = {},
   ) => {
     const search = new URLSearchParams();
+    for (const k of ["holder", "batch", "tier", "state"] as const)
+      if (page[k]) search.set(k, page[k]);
     if (page.limit) search.set("limit", String(page.limit));
     if (page.cursor) search.set("cursor", page.cursor);
     const qs = search.toString();
@@ -5424,13 +5478,15 @@ const rawApi = {
   license: (slug: string, id: string) =>
     call<LicenseDetail>(`${p(slug)}/license/licenses/${enc(id)}`),
   createLicense: (slug: string, body: CreateLicenseBody) =>
-    call<{ licenseId: string; key: string; license: LicenseSummary }>(
-      `${p(slug)}/license/licenses`,
-      {
-        method: "POST",
-        body: JSON.stringify(body),
-      },
-    ),
+    call<{
+      licenseId: string;
+      key: string;
+      delivered?: { email: KeyEmailOutcome; reason?: KeyEmailFailure };
+      license: LicenseSummary;
+    }>(`${p(slug)}/license/licenses`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
   patchLicense: (slug: string, id: string, body: PatchLicenseBody) =>
     call<{
       ok: true;
@@ -5507,6 +5563,22 @@ const rawApi = {
         body: JSON.stringify({ label }),
       },
     ),
+  /** LX-27: mint a key labelled "Sent by email", mail it to the licence's address. */
+  sendLicenseKey: (
+    slug: string,
+    id: string,
+    revokeOthers = false,
+    context?: "assigned",
+  ) =>
+    call<{
+      key: string;
+      hash: string;
+      delivered: { email: KeyEmailOutcome; reason?: KeyEmailFailure };
+      revoked: number;
+    }>(`${p(slug)}/license/licenses/${enc(id)}/send-key`, {
+      method: "POST",
+      body: JSON.stringify({ revokeOthers, ...(context ? { context } : {}) }),
+    }),
   revokeKey: (slug: string, id: string, keyHash: string) =>
     call<{ ok: true; hash: string; status: KeyStatus }>(
       `${p(slug)}/license/licenses/${enc(id)}/keys/${enc(keyHash)}/revoke`,

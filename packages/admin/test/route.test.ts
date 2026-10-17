@@ -53,6 +53,7 @@ const ALL_ON: ServiceState = {
   update: { enabled: true },
   identity: { enabled: true },
   sync: { enabled: true },
+  commerce: { enabled: true },
 };
 
 const withOff = (...off: ServiceSlug[]): ServiceState => ({
@@ -507,7 +508,6 @@ describe("the nav model (nav.ts)", () => {
       "catalog",
       "catalog-edit",
       "profiles",
-      "edge-mint",
       "releases",
       "channels",
       "deliverables",
@@ -542,6 +542,7 @@ describe("the nav model (nav.ts)", () => {
       "update",
       "identity",
       "sync",
+      "commerce",
     ]);
     expect(SECTIONS[0]!.service).toBeNull();
     for (const s of SECTIONS.slice(1)) expect(s.service).toBe(s.key);
@@ -557,6 +558,7 @@ describe("the nav model (nav.ts)", () => {
       "update",
       "identity",
       "sync",
+      "commerce",
     ]);
     for (const g of GLOBAL_PAGES) expect(accentOf(g.page)).toBe("core");
     expect(accentOf("tiers")).toBe("license");
@@ -627,6 +629,7 @@ describe("enablement filtering", () => {
       "update",
       "identity",
       "sync",
+      "commerce",
     ]);
   });
 
@@ -639,6 +642,7 @@ describe("enablement filtering", () => {
       "update",
       "identity",
       "sync",
+      "commerce",
     );
     expect(visibleSections(none).map((s) => s.key)).toEqual(["core"]);
   });

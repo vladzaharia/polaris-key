@@ -79,6 +79,7 @@ async function setIdentity(on: boolean): Promise<Product> {
       "update",
       "identity",
       "sync",
+      "commerce",
     ].map((s) => [s, { enabled: enabled.includes(s as ServiceSlug) }]),
   );
   await setServices(

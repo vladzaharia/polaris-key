@@ -8,7 +8,7 @@ extends RefCounted
 ## The opt-in Polaris Key services, generated from the service table.
 
 ## The opt-in services, in canonical order. Core is not a service — it is always on.
-const SLUGS := ["license", "config", "release", "distribution", "update", "identity", "sync"]
+const SLUGS := ["license", "config", "release", "distribution", "update", "identity", "sync", "commerce"]
 
 ## What a product runs when it has never said otherwise, in canonical order.
 const DEFAULT_ENABLED := ["license", "config"]

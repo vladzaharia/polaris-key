@@ -711,10 +711,12 @@ export interface OverrideMigrationDryRun {
 export async function dryRunOverrideMigration(
   db: Db,
   now: number,
-  opts: { product?: string } = {},
+  opts: { product?: string; slugs?: readonly string[] } = {},
 ): Promise<OverrideMigrationDryRun> {
-  const slugs =
-    opts.product !== undefined
+  // `slugs`: the caller already enumerated (the runner's units), so no second listing.
+  const slugs = opts.slugs
+    ? [...opts.slugs]
+    : opts.product !== undefined
       ? (await listAllProductSlugs(db)).filter((s) => s === opts.product)
       : await listAllProductSlugs(db);
   const report: OverrideReportRow[] = [];

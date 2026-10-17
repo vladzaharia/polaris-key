@@ -99,7 +99,7 @@ export const FEATURE_DOCS: Record<IntegrationFeature, string> = {
   update: "/docs/features/ship-builds/updates/",
   packs: "/docs/features/ship-builds/packs/",
   sync: "/docs/features/cloud-sync/",
-  commerce: "/docs/features/ship-builds/commerce/",
+  commerce: "/docs/features/commerce/",
 };
 
 /** The docs page for an SDK's own-UI lane and for its kit lane. */

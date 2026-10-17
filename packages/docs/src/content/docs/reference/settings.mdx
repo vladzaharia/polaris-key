@@ -7,7 +7,7 @@ description: "Every platform, product and service setting in the settings regist
     Source of truth: the settings registry (packages/worker/src/core/settings/ and each service's
     settings.ts), emitted by packages/worker/scripts/gen-settings.ts. */}
 
-The settings registry describes every setting Polaris Key has: 84 entries (18 platform, 66 product, 0 entity), 10 of them registered ahead of the work package that wires them. This page is generated from the registry and checked against it in CI, so it cannot drift from it. An entry registered ahead of its work package is not offered in the console yet.
+The settings registry describes every setting Polaris Key has: 89 entries (22 platform, 67 product, 0 entity), 10 of them registered ahead of the work package that wires them. This page is generated from the registry and checked against it in CI, so it cannot drift from it. An entry registered ahead of its work package is not offered in the console yet.
 
 How to read the columns:
 
@@ -38,6 +38,10 @@ One value per deployment, edited under **Platform → Settings**. A deploy var, 
 | `assets.quota.releaseBytes` | [Default release-file quota](/docs/operate/console/presentation/): How many bytes of mirrored release files a product may hold when it sets no quota of its own. Past it, mirroring stops and GitHub keeps serving the files. | integer 0–10995116277760 bytes | `107374182400` | cascade | — | L1 | — |
 | `cloudSync.writesPaused` | [Pause Cloud Sync writes](/docs/features/cloud-sync/): Pauses every Cloud Sync write on this deployment. Reads keep working, devices keep their unsynced changes and retry after the pause, and nothing is deleted. | on or off | `"off"` | policy, bound: lock | — | L2 on, L1 off | registered ahead of U-05; reason required |
 | `cloudSync.quota.defaultBytes` | [Default Cloud Sync quota](/docs/features/cloud-sync/): How many bytes of Cloud Sync data one person may keep on a product when no tier, license or add-on sets pkey.cloudSync.bytes. A change reaches every product with Cloud Sync on; lowering it deletes nothing. | integer 1048576–1141112832 bytes | `268435456` | cascade | — | L2 | registered ahead of U-05; reason required |
+| `email.sender` | [Sender address](/docs/operate/platform/settings/): The one address sign-in and account mail is sent from. Unset sends from noreply@plrs.im. | text, at most 254 characters | `"noreply@plrs.im"` | cascade | `EMAIL_SENDER_ADDRESS` | L2 on change | — |
+| `email.senderLegacy` | [Legacy sender](/docs/operate/platform/settings/): The older sender setting. Only its address is read, and only while the sender address is not set. | text, at most 320 characters | unset | cascade | `PORTAL_EMAIL_FROM` | L2 on change | deprecated: use `email.sender` |
+| `email.appleRelay` | [Apple private relay](/docs/operate/platform/settings/): Registered once the sender is registered with Apple's private email relay. Until then relay recipients are refused, not bounced. | one of `unregistered`, `registered` | `"unregistered"` | cascade | `EMAIL_APPLE_RELAY` | L2 on change | — |
+| `feeds.policy` | [Package feeds policy](/docs/features/ship-builds/channels/): Per ecosystem: whether feeds answer at all and the largest package a product may publish. Off makes every feed for that ecosystem answer not found. | structured (dist_registry_policy rows (registry/settings.ts)) | unset | cascade | — | L1 on change | — |
 | `license.defaults.deviceLimit` | [Default device limit](/docs/features/licensing/access/): The device limit a product starts from when it sets none of its own. A change reaches every product that inherits it. | integer 1–1000 | `5` | cascade | — | L2 | registered ahead of ST-16 |
 | `license.defaults.maxOfflineDays` | [Default offline window](/docs/features/licensing/access/): How many days a device may run offline when its product sets no window of its own. A change reaches every product that inherits it. | integer 0–365 days | `30` | cascade | — | L2 | registered ahead of ST-16; devices see it (document) |
 
@@ -122,7 +126,7 @@ One value per product. A service's settings are product settings whose key start
 | `distribution.capabilities` | [Outlet capabilities](/docs/features/ship-builds/channels/): What an install that arrived through each outlet may do (fetch new code, run downloaded scripts, sell things). The starting point is the compiled default for the outlet's kind; an operator may only narrow it. | structured (CapabilitySet per outlet (capabilities.ts)) | unset | cascade | operator | — | L1 on change | — |
 | `distribution.outlets` | [Outlets](/docs/features/ship-builds/channels/): The places the product is distributed (direct, App Store, Play, Steam, …) with each store's identity for it. | structured (outlets (distribution.schema.json)) | unset | cascade | manifest | `distribution:outlets` | L0 on change | — |
 | `distribution.transports` | [Transports](/docs/features/ship-builds/channels/delivery/): Which transport carries each deliverable on each outlet: a deliverable's own entry, else the packs entry for a pack, else the default (pkey-cdn when unset). | structured (transports (distribution.schema.json)) | unset | cascade | manifest | `distribution:transports` | L1 on change | devices see it (document) |
-| `distribution.commerce` | [Commerce](/docs/features/ship-builds/commerce/): Which store purchases unlock what, and whether sandbox and test purchases count. Operator-only by design: a repo push must never decide which purchases unlock a flag. | structured (commerce settings (commerce/settings.ts)) | unset | cascade | operator | — | L1 on change | reason required; console area: Commerce |
+| `distribution.feeds` | [Package feeds](/docs/features/ship-builds/channels/): Per ecosystem: whether the product's feed answers, who may read it, its namespace and the largest package it accepts. The platform's feeds policy bounds it. | structured (dist_registry_feeds rows (registry/settings.ts)) | unset | cascade | operator | — | L1 on change | — |
 
 ### Update
 
@@ -150,6 +154,12 @@ One value per product. A service's settings are product settings whose key start
 | Key | Setting | Value | Default | Merge | Ownership | Manifest | Confirm | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `cloudSync.ceiling.bytes` | [Product storage ceiling](/docs/features/cloud-sync/): The most Cloud Sync data all people on the product may keep together: settings, records and files. Past it, a write that grows usage is refused; reads, clears and deletes keep working, and nothing is deleted. | integer 0–1125899906842624 bytes | `53687091200` | cascade | operator | — | L2 up, L1 down | registered ahead of U-05; reason required |
+
+### commerce
+
+| Key | Setting | Value | Default | Merge | Ownership | Manifest | Confirm | Notes |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `commerce.stores` | [Commerce](/docs/features/commerce/): Which store purchases unlock what, and whether sandbox and test purchases count. Operator-only by design: a repo push must never decide which purchases unlock a flag. | structured (commerce settings (settings.ts)) | unset | cascade | operator | — | L1 on change | reason required |
 
 ## Entity
 

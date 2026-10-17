@@ -40,7 +40,7 @@ import { getProduct } from "../src/core/products/store.js";
 import { listAudit } from "../src/core/audit.js";
 import { linkRepo } from "../src/services/release/linkRepo.js";
 import { resyncRepo } from "../src/services/release/resync.js";
-import { manifestIngestFor } from "../src/core/registry.js";
+import { ingestFor } from "../src/core/ingest/pipeline.js";
 import { SERVICES } from "../src/mount.js";
 import { getReleaseConfig } from "../src/services/release/index.js";
 // P2b-04: the appcast reads Distribution's delivery access, so it is driven the way the router
@@ -203,7 +203,7 @@ async function linked(
     "acme-org/acme-app",
     NOW,
     pkey(product, release),
-    manifestIngestFor(SERVICES),
+    ingestFor(SERVICES),
   );
   expect(res.ok).toBe(true);
   const { token, session } = await issueSession(
@@ -257,7 +257,7 @@ async function resync(ctx: Ctx, fetchImpl: FetchImpl, at = NOW + 60) {
     SLUG,
     at,
     fetchImpl,
-    manifestIngestFor(SERVICES),
+    ingestFor(SERVICES),
   );
   expect(res.ok).toBe(true);
   return res;

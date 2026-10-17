@@ -19,7 +19,7 @@
  * - **The ecosystem panel:** `FEED_PANELS` (F-12): the extension settings the feed's adapter
  *   declares, edited by name from `FEED_EXTENSION_FIELDS` (HTML pages, signing, repository URLs,
  *   retention, the asset listing), saved into `ext_json`.
- * - **Platform policy** (platform scope): the ecosystem's kill switch and ceiling. Off is L2.
+ * - **Platform policy** (platform scope): moved to Platform settings (ST-09); a pointer remains.
  */
 
 import * as React from "react";
@@ -130,7 +130,7 @@ export function FeedSettingsTab({
         <Panel scope={scope} eco={eco} detail={detail} save={save} />
       ) : null}
       {scope.kind === "platform" && detail.policy ? (
-        <PolicySection eco={eco} detail={detail} />
+        <PolicyPointer eco={eco} />
       ) : null}
     </div>
   );
@@ -737,107 +737,17 @@ function YankSection({
   );
 }
 
-function PolicySection({
-  eco,
-  detail,
-}: {
-  eco: FeedEcosystem;
-  detail: FeedDetailDto;
-}): React.ReactElement {
-  const policy = detail.policy!;
-  const gate = useConfirmGate<true>();
-  const form = useAdminForm<{ enabled: boolean; mib: number | null }>({
-    values: {
-      enabled: policy.enabled,
-      mib: bytesToMiB(policy.maxPackageBytesCeiling),
-    },
-    resetOn: [policy.version],
-    mapServerErrors: (e) => {
-      const map = serverFieldErrors(e);
-      return map?.maxPackageBytesCeiling
-        ? { mib: map.maxPackageBytesCeiling }
-        : map;
-    },
-    validate: (v): Record<string, string> =>
-      v.mib === null || v.mib < 0.01 ? { mib: "Enter a size above zero." } : {},
-    onSubmit: async (v) => {
-      if (policy.enabled && !v.enabled && !(await gate.ask(true)))
-        throw new SaveCancelled();
-      await mutate("saveFeedPolicy", eco, {
-        expectedVersion: policy.version,
-        enabled: v.enabled,
-        maxPackageBytesCeiling: mibToBytes(v.mib!),
-      });
-      toast.success("Platform policy saved");
-    },
-  });
-  const served = form.rhf.watch("enabled");
+/** The platform policy lives in Platform settings (ST-09); this feed only points to it. */
+function PolicyPointer({ eco }: { eco: FeedEcosystem }): React.ReactElement {
   return (
-    <Form form={form} aria-label="Platform policy">
-      <SettingsSection
-        id="feed-policy"
-        title="Platform policy"
-        description={`Applies to every product's ${ECOSYSTEM_LABELS[eco]} feed, above its own settings.`}
-        footer={
-          <>
-            <SubmitError
-              error={form.submitError}
-              context={{ area: "distribution", thing: "Platform policy" }}
-            />
-            <SaveBar form={form} section="Platform policy" />
-          </>
-        }
-      >
-        <SettingsRow
-          label="Serve this ecosystem"
-          help={
-            served
-              ? "On: each owner's feed of this ecosystem serves as its own settings say."
-              : "Off: every owner's feed of this ecosystem answers not-found, whatever its own settings say."
-          }
-        >
-          <FormField<boolean> name="enabled" label="Served" hideLabel>
-            {(field) => (
-              <Switch
-                id={field.id}
-                checked={field.value}
-                onCheckedChange={field.onChange}
-                aria-describedby={field["aria-describedby"]}
-              />
-            )}
-          </FormField>
-        </SettingsRow>
-        <SettingsRow
-          label="Size ceiling"
-          help="No feed of this ecosystem may accept a larger package, whatever its own limit."
-        >
-          <FormField<number | null>
-            name="mib"
-            label="Ceiling"
-            hideLabel
-            className="w-44"
-          >
-            {(field) => (
-              <NumberInput {...field} unit="MiB" min={0.01} step="any" />
-            )}
-          </FormField>
-        </SettingsRow>
-      </SettingsSection>
-      <ConfirmDialog
-        open={gate.open}
-        onOpenChange={(open) => {
-          if (!open) gate.cancel();
-        }}
-        intent={intentOf("feed.policyOff")}
-        title={`Stop serving ${ECOSYSTEM_LABELS[eco]} for every product?`}
-        consequences={[
-          `Every product's ${ECOSYSTEM_LABELS[eco]} feed, the platform's included, answers not-found within 30 seconds.`,
-          "Settings, packages and versions are kept; the feeds answer again when the ecosystem is served.",
-        ]}
-        confirmLabel={`Stop serving ${ECOSYSTEM_LABELS[eco]}`}
-        onConfirm={gate.confirm}
-      />
-    </Form>
+    <p className="text-sm text-fg-muted">
+      The {ECOSYSTEM_LABELS[eco]} switch and size ceiling for every product are
+      in{" "}
+      <Link to="#/platform/settings" className="underline underline-offset-4">
+        Platform settings
+      </Link>
+      .
+    </p>
   );
 }
 

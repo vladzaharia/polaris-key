@@ -235,7 +235,7 @@ const PAGES: { hash: string; title: string; file: string }[] = [
     file: "app-store-version",
   },
   {
-    hash: "#/p/djdl/distribution/commerce",
+    hash: "#/p/djdl/commerce/in-app-purchases",
     title: "Commerce",
     file: "commerce",
   },
@@ -369,7 +369,7 @@ describe("Distribution and Update pages under the Worker's CSP", () => {
     expect(errors).toEqual([]);
     await page.context().close();
 
-    const c = await open("#/p/djdl/distribution/commerce");
+    const c = await open("#/p/djdl/commerce/in-app-purchases");
     await title(c.page, "Commerce");
     await overlay(c.page, "price change", async () => {
       await c.page
@@ -395,7 +395,7 @@ describe("Distribution and Update pages under the Worker's CSP", () => {
       file: "app-store-version",
     },
     {
-      hash: "#/p/djdl/distribution/commerce",
+      hash: "#/p/djdl/commerce/in-app-purchases",
       title: "Commerce",
       file: "commerce",
     },

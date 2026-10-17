@@ -18,7 +18,9 @@
  *   - `outletCapabilities`  (implemented by Distribution): what one outlet permits;
  *   - `licenseProvenance`   (implemented by License): where each licence came from — the store
  *                            purchases granted onto it, or the developer, a sign-in or a free
- *                            auto-issue that minted it (PX-W6, portal gap G8).
+ *                            auto-issue that minted it (PX-W6, portal gap G8);
+ *   - `storeProducts`       (implemented by Commerce): the product's store-product map, read-only,
+ *                            for Distribution's App Store Connect catalog flows (CM-29).
  *
  * ── THE RULES ───────────────────────────────────────────────────────────────────────────────
  *
@@ -66,6 +68,7 @@ import type { Db } from "../db/types.js";
 import type { ProductPublic } from "./products.js";
 import type { ServiceSlug, ServicesMap } from "./services.js";
 import type { EntitledSelector } from "./licensing/entitledAccess.js";
+import type { Store } from "./licensing/storeGrants.js";
 
 // ── releaseCatalog (Release) ────────────────────────────────────────────────────────────────
 
@@ -1345,6 +1348,31 @@ export interface OutletCapabilities {
   downloadedScripts: boolean;
 }
 
+// ── storeProducts (Commerce) ────────────────────────────────────────────────────────────────
+
+/** One row of the product's store-product map (Commerce): which deliverable and licence flag a
+ *  store product sells. Operator-owned (rule 5). */
+export interface StoreProductMapping {
+  store: Store;
+  storeProductId: string;
+  deliverableId: string;
+  flag: string;
+}
+
+/**
+ * The product's store-product map, read-only (CM-29). Distribution's App Store Connect catalog
+ * flows read which App Store products the operator mapped, never `dist_store_products` itself.
+ * `null` from `ServiceHooks.storeProducts()` while Commerce is off: a caller treats that as an
+ * empty map.
+ */
+export interface StoreProducts {
+  list(store: Store): Promise<StoreProductMapping[]>;
+  get(
+    store: Store,
+    storeProductId: string,
+  ): Promise<StoreProductMapping | null>;
+}
+
 // ── The contract ────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -1365,7 +1393,7 @@ export interface HookContext {
 }
 
 /**
- * The four hooks a descriptor may implement. Each is a SYNCHRONOUS factory returning a reader:
+ * The hooks a descriptor may implement. Each is a SYNCHRONOUS factory returning a reader:
  * the gate (enablement) is decided before it is called, and the reader does its own I/O lazily.
  */
 export interface DescriptorHooks {
@@ -1376,6 +1404,7 @@ export interface DescriptorHooks {
     outletId: string,
   ): Promise<OutletCapabilities | null>;
   licenseProvenance?(ctx: HookContext): LicenseProvenance;
+  storeProducts?(ctx: HookContext): StoreProducts;
 }
 
 export type HookName = keyof DescriptorHooks;
@@ -1386,6 +1415,8 @@ export interface ServiceHooks {
   delivery(): Delivery | null;
   outletCapabilities(outletId: string): Promise<OutletCapabilities | null>;
   licenseProvenance(): LicenseProvenance | null;
+  /** Commerce's store-product map; `null` while Commerce is off. */
+  storeProducts(): StoreProducts | null;
 }
 
 /** The registry, as far as hooks need it — structural, so this file never imports `registry.ts`. */
@@ -1434,10 +1465,12 @@ export function buildHooks(
     delivery: hookProvider(registry, "delivery"),
     outletCapabilities: hookProvider(registry, "outletCapabilities"),
     licenseProvenance: hookProvider(registry, "licenseProvenance"),
+    storeProducts: hookProvider(registry, "storeProducts"),
   };
   let catalog: ReleaseCatalog | null | undefined;
   let delivery: Delivery | null | undefined;
   let provenance: LicenseProvenance | null | undefined;
+  let storeProducts: StoreProducts | null | undefined;
 
   const hooks: ServiceHooks = {
     releaseCatalog() {
@@ -1466,6 +1499,13 @@ export function buildHooks(
           ? p.licenseProvenance(ctx)
           : null;
       return provenance;
+    },
+    storeProducts() {
+      if (storeProducts !== undefined) return storeProducts;
+      const p = providers.storeProducts;
+      storeProducts =
+        p?.storeProducts && enabled(p.slug) ? p.storeProducts(ctx) : null;
+      return storeProducts;
     },
   };
   const ctx: HookContext = { ...base, hooks };

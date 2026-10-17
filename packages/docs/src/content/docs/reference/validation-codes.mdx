@@ -8,7 +8,7 @@ description: "Every error and warning validateManifestDocuments and validateInge
 
 The `.pkey/` validator (`@polaris-key/manifest`) aggregates ALL problems instead of
 stopping at the first; `pkey validate` and the console's link/resync surfaces show these
-codes with their JSON-pointer paths. 252 distinct emit sites.
+codes with their JSON-pointer paths. 253 distinct emit sites.
 
 Interpolated segments (`${…}`) in paths/messages are per-instance values — an array index,
 the offending value, or the allowed set.
@@ -21,6 +21,7 @@ the offending value, or the allowed set.
 | `catalog_edge_mint_without_recipe` | warning | schema | `${at}/delivery` | \ |
 | `catalog_mint_not_minted` | error | schema | `${at}/mint` | `mint` belongs on a secret entry with `delivery: edgeMint`. |
 | `catalog_secret_flag_retired` | warning | schema | `${at}/secret` | `secret: true` is redundant on a secret entry and is dropped: the kind already says it. Remove it (`pkey validate --fix`). |
+| `commerce_requires_license` | error | product | `/modules/commerce` | The commerce service turns store purchases into licence flags, so license must be enabled too. |
 | `config_without_activation` | warning | product | `/modules/config` | Config is enabled without an activation method. |
 | `conflicting_spelling` | warning | product | `${path}` | $\{old\} and $\{write\} are both set; $\{used\} is used. Keep only $\{write\}. |
 | `conflicting_spelling` | warning | schema | `${path}` | $\{old\} and $\{write\} are both set; $\{used\} is used. Keep only $\{write\}. |

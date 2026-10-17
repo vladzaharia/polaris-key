@@ -114,6 +114,7 @@ export abstract class PkElement extends LitElement {
   private lastSource: unknown = undefined;
   private lastFocusState: string | null = null;
   private shape: "landscape" | "portrait" | "short" = "portrait";
+  private tight = false;
   private resize: ResizeObserver | null = null;
 
   protected override createRenderRoot(): HTMLElement | DocumentFragment {
@@ -184,7 +185,11 @@ export abstract class PkElement extends LitElement {
     const box = this.getBoundingClientRect();
     const vv = typeof visualViewport !== "undefined" ? visualViewport : null;
     const w = Math.min(box.width, vv?.width ?? Number.POSITIVE_INFINITY);
-    const h = Math.min(box.height, vv?.height ?? Number.POSITIVE_INFINITY);
+    // The window's height, never the host's own: a host sized by its content is as tall as the
+    // screen it draws, which would read as a short window whenever the screen is short.
+    const h =
+      vv?.height ??
+      (typeof innerHeight === "number" ? innerHeight : box.height);
     const rem =
       Number.parseFloat(getComputedStyle(document.documentElement).fontSize) ||
       16;
@@ -194,11 +199,15 @@ export abstract class PkElement extends LitElement {
         : w / rem >= 52.5 && h > 0 && w / h >= 1.4
           ? "landscape"
           : "portrait";
-    if (next !== this.shape)
+    // Under 34 rem of window (large text on a phone) a docked bar would cover the text it
+    // docks under: it scrolls with the content instead.
+    const tight = h > 0 && h / rem < 34 && next !== "short";
+    if (next !== this.shape || tight !== this.tight)
       // After this frame's layout: a shape change never re-enters the observer's loop.
       requestAnimationFrame(() => {
-        if (next === this.shape) return;
+        if (next === this.shape && tight === this.tight) return;
         this.shape = next;
+        this.tight = tight;
         this.requestUpdate();
       });
   }
@@ -525,6 +534,7 @@ export abstract class PkElement extends LitElement {
       data-density=${r.theme.density}
       data-motion=${r.theme.motion}
       data-shape=${this.shape}
+      ?data-tight=${this.tight}
       ?data-fill=${this.fillsWindow(view.state)}
       data-pk-platform=${r.theme.platform ?? "web"}
       ?data-keyboard=${keyboard}
@@ -538,6 +548,21 @@ export abstract class PkElement extends LitElement {
   protected override updated(changed: PropertyValues): void {
     super.updated(changed);
     const view = this.view;
+    // A list that scrolls (past six devices) opens on its checked row, not the top of the list.
+    for (const list of (
+      this.renderRoot as ShadowRoot
+    ).querySelectorAll<HTMLElement>(".list[data-scroll]")) {
+      const row = list.querySelector<HTMLElement>('[aria-checked="true"]');
+      if (
+        !row ||
+        list.scrollTop !== 0 ||
+        list.scrollHeight <= list.clientHeight
+      )
+        continue;
+      const top = row.offsetTop - list.offsetTop;
+      if (top + row.offsetHeight > list.clientHeight)
+        list.scrollTop = top - list.clientHeight / 2 + row.offsetHeight / 2;
+    }
     const key = `${view.component}.${view.state}`;
     if (key === this.lastFocusState) return;
     this.lastFocusState = key;

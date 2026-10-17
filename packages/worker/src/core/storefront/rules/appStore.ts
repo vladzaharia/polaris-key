@@ -40,6 +40,7 @@
  * the path when nothing matched) and a fixed reason.
  */
 
+import { storeHookPath } from "../hookPath.js";
 import type { SpecPin } from "../../adapters/contract.js";
 import {
   compileGate,
@@ -172,7 +173,7 @@ function listingUrlCheck(
   return null;
 }
 
-const ASN_SUFFIX = "distribution/hooks/app-store";
+const ASN_SUFFIX = storeHookPath("app-store");
 const WEBHOOK_SUFFIX = "distribution/hooks/asc";
 
 // ── The allow table ──────────────────────────────────────────────────────────────────────────

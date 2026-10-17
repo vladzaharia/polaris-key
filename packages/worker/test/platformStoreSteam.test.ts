@@ -16,7 +16,7 @@ import {
   openPlatformCredential,
   setPlatformPin,
 } from "../src/core/platformCredentials.js";
-import { steamCredential } from "../src/services/distribution/commerce/steam.js";
+import { steamCredential } from "../src/services/commerce/steam.js";
 import { seedProduct } from "./seed.js";
 import { SLUG } from "./releaseRoutesFixture.js";
 import { fakeFetch, STEAM_APP, STEAM_DLC, STEAM_KEY } from "./commerceFake.js";
@@ -71,7 +71,7 @@ async function claimSteam(w: CommerceWorld) {
     ownsapp: true,
     ownersteamid: STEAMID,
   });
-  return route(w, "POST", "/distribution/commerce/claim", {
+  return route(w, "POST", "/commerce/claim", {
     token: w.tokenA,
     body: { store: "steam", ticket: TICKET, dlcAppId: STEAM_DLC },
   });
@@ -244,11 +244,11 @@ describe("platform Steam", () => {
         ownsapp: true,
         ownersteamid: STEAMID,
       });
-      const res = await route(w, "POST", "/distribution/commerce/claim", {
+      const res = await route(w, "POST", "/commerce/claim", {
         token: w.tokenA,
         body: { store: "steam", ticket: TICKET, dlcAppId: "7654320" },
       });
-      const notOwned = await route(w, "POST", "/distribution/commerce/claim", {
+      const notOwned = await route(w, "POST", "/commerce/claim", {
         token: w.tokenA,
         body: { store: "steam", ticket: TICKET, dlcAppId: STEAM_DLC },
       });

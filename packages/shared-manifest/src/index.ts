@@ -175,6 +175,10 @@ const REQUIREMENT_MESSAGES: ReadonlyMap<string, string> = new Map([
     "sync_requires_identity",
     "Cloud Sync needs a signed-in person, so identity must be enabled too.",
   ],
+  [
+    "commerce_requires_license",
+    "The commerce service turns store purchases into licence flags, so license must be enabled too.",
+  ],
 ]);
 
 /** Who may register a device against this product (design spec §2.3). The policy is derived from
@@ -710,7 +714,16 @@ export interface ParsedManifest {
 }
 
 export type ParseManifestResult =
-  | { ok: true; manifest: ParsedManifest }
+  | {
+      ok: true;
+      manifest: ParsedManifest;
+      /**
+       * The validator's warnings for the same documents (a deprecated or conflicting spelling,
+       * a retired secret flag, a server-only delivery): they never refuse a manifest, and
+       * `parseManifest` used to drop them. P0-26 carries them to the ingest pipeline's plan.
+       */
+      warnings: ValidationMessage[];
+    }
   | { ok: false; errors: string[] };
 
 /**
@@ -4730,7 +4743,7 @@ export function parseManifest(
   if (productRoot.autoIssue !== undefined) {
     parsed.autoIssue = normalizeAutoIssue(productRoot.autoIssue);
   }
-  return { ok: true, manifest: parsed };
+  return { ok: true, manifest: parsed, warnings: validation.warnings };
 }
 
 /** A VALIDATED `presentation` block, normalised (members only when declared). */

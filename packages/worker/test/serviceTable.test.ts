@@ -112,7 +112,8 @@ describe("the service table, as the worker sees it", () => {
         const services = Object.fromEntries(
           SERVICE_SLUGS.map((s) => [
             s,
-            { enabled: s === slug || s === "license" },
+            // License stays on, except where License IS the requirement under test.
+            { enabled: s === slug || (s === "license" && required !== s) },
           ]),
         ) as ServicesMap;
         expect(validateServices(services)).toContain(

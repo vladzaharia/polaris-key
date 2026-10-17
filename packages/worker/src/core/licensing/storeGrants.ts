@@ -4,7 +4,7 @@
  * Store grants — how a verified store purchase becomes a licence flag (P6-01, README §3.10).
  *
  * Two services meet here. Distribution owns the store side (credentials, connectors, the
- * purchase records and their verification, `services/distribution/commerce/`); License owns the
+ * purchase records and their verification, `services/commerce/`); License owns the
  * licence and therefore the effect on it (`license_store_grants`). A service may not import
  * another (AGENTS.md rule 6), and Core's read-only descriptor hooks (`core/hooks.ts`) may not
  * write, so the write goes through a descriptor method Core declares and License implements —
@@ -21,7 +21,7 @@
  *
  * This is the coherence rule "commerce needs License enabled" made structural: with License off
  * no grant can land, and the commerce routes say so instead of recording a purchase they cannot
- * honour (`services/distribution/commerce/`). The admin API refuses store-product mappings for a
+ * honour (`services/commerce/`). The admin API refuses store-product mappings for a
  * product without License on for the same reason.
  *
  * The grant is per DELIVERABLE, not per version: the flag rides every licence document the buyer
@@ -36,6 +36,18 @@ import type { ProductPublic } from "../products.js";
 /** The stores the bridge verifies purchases with. */
 export const STORES = ["app-store", "play", "steam"] as const;
 export type Store = (typeof STORES)[number];
+
+/** A store product id per store: an App Store product id, a Play product id (SKU), or a Steam
+ *  DLC app id. */
+const STORE_PRODUCT_ID: Record<Store, RegExp> = {
+  "app-store": /^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/,
+  play: /^[a-z0-9][a-z0-9._]{0,139}$/,
+  steam: /^[1-9][0-9]{0,9}$/,
+};
+
+export function isStoreProductId(store: Store, id: unknown): id is string {
+  return typeof id === "string" && STORE_PRODUCT_ID[store].test(id);
+}
 
 export function isStore(v: unknown): v is Store {
   return typeof v === "string" && (STORES as readonly string[]).includes(v);

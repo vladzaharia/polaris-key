@@ -129,7 +129,8 @@
                   },
                   "update": { "enabled": false },
                   "identity": { "enabled": false },
-                  "sync": { "enabled": false }
+                  "sync": { "enabled": false },
+                  "commerce": { "enabled": false }
                 }
               }
             }
@@ -145,7 +146,8 @@
           "distribution": true,
           "update": false,
           "identity": false,
-          "sync": false
+          "sync": false,
+          "commerce": false
         }
       }
     },

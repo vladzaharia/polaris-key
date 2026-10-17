@@ -44,7 +44,7 @@ The owner asked for drop-ins that gate a server route or a CLI command with the 
 
 ## Acceptance criteria
 
-- [ ] The three SDKs send the right headers and refuse a non-allowed origin.
+- [x] The three SDKs send the right headers and refuse a non-allowed origin.
 - [ ] The `client` section replays green in Swift, Kotlin and Godot.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate in the header.
 
@@ -56,3 +56,16 @@ Each acceptance item's test in its lane, then the full green gate in `AGENTS.md`
 
 The role agent sets `--set SP-59 in-review` when it hands off. After review, the lead adds the last commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set SP-59 done`.
+
+## Brief corrections (2026-10-17)
+
+• Kotlin: the plan's `addInterceptor(client.backend.interceptor())` leaks. OkHttp follows
+redirects inside the chain and keeps custom headers on a hop to another host, so an
+application interceptor cannot guard the hop. The licence is attached by a network
+interceptor that checks each hop first; `client.backend.install(builder)` adds both halves.
+`interceptor()` alone sends no licence and throws `not-configured`.
+• Godot: `headers()` is raw as planned; `headers_for(url)` and `request()` are added for the
+origin check, and `request()` checks every redirect hop. Godot's HTTPRequest re-sends its
+headers to a redirect target, so raw headers need `max_redirects = 0`.
+• The plist / `polaris-key.json` `backend.origins` key is SP-32a's; here the option is
+`backendOrigins` (Swift, Kotlin) and `backend_origins` (Godot).

@@ -6,7 +6,7 @@ import { stmtRevokeProductRegistryTokens } from "../registry/registryTokens.js";
 import { productGrantErasureStatements } from "../licensing/grants.js";
 import { productDeletionStatements } from "../contributions.js";
 import { stmtDeleteProductAutoAttachBlocks } from "../licensing/licenseHolders.js";
-import type { Db, DbStatement, DbParam } from "../../db/types.js";
+import type { Db, DbStatement } from "../../db/types.js";
 import type {
   ProductRow,
   SchemaRow,
@@ -261,115 +261,10 @@ export async function activeSchemaVersions(
   return new Map(rows.map((r) => [r.product, r.v]));
 }
 
-export async function insertSchema(db: Db, row: SchemaRow): Promise<void> {
-  await db.run(
-    "INSERT INTO product_schema (product, catalog_version, catalog_json, active, created_at) VALUES (?, ?, ?, ?, ?)",
-    row.product,
-    row.catalog_version,
-    row.catalog_json,
-    row.active,
-    row.created_at,
-  );
-}
-
 // ── Product registration statement-builders ──────────────────────────────────
 // These return `DbStatement`s (rather than running themselves) so a product-creation flow
 // can compose them into a single atomic `db.batch([...])`. Column order mirrors
 // products/gen-seed.ts so the manual + GitHub paths persist identically to the seed SQL.
-
-export interface OidcConfigInput {
-  product: string;
-  provider?: "platform" | "custom";
-  issuer?: string;
-  clientId?: string;
-  clientSecretSecret?: string;
-  redirectUris: string[];
-  groupRoleMap: Record<string, unknown>;
-}
-export function stmtInsertOidcConfig(o: OidcConfigInput): DbStatement {
-  const provider = o.provider ?? "platform";
-  return {
-    sql: `INSERT INTO oidc_config (product, provider, issuer, client_id, client_secret_secret, redirect_uris_json, group_role_map_json)
-          VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    params: [
-      o.product,
-      provider,
-      provider === "custom" ? (o.issuer ?? "") : "",
-      provider === "custom" ? (o.clientId ?? "") : "",
-      provider === "custom" ? (o.clientSecretSecret ?? "") : "",
-      JSON.stringify(o.redirectUris),
-      JSON.stringify(o.groupRoleMap),
-    ],
-  };
-}
-
-export interface TierInput {
-  product: string;
-  id: string;
-  label: string;
-  profileId: string | null;
-  policyExpiryDays: number | null;
-  policyDeviceLimit: number | null;
-  policyFingerprint?: string | null;
-  channels?: string[] | null;
-  minVersion?: string | null;
-  maxVersion?: string | null;
-  /** LX-08: `licensing.tiers[].rank` (0 when omitted). */
-  rank?: number;
-  /** LX-08: `licensing.tiers[].policyOfflineGraceDays` (null when omitted). */
-  policyOfflineGraceDays?: number | null;
-  modifiedAt: number;
-}
-
-/** `stmtInsertTier`'s params from `label` to `policy_offline_grace_days`: the manifest-owned
- *  columns a resync and the settings backfill compare (`slice(...TIER_COMPARED_PARAMS)`). */
-export const TIER_COMPARED_PARAMS = [2, 12] as const;
-
-export interface ProfileInput {
-  product: string;
-  id: string;
-  name: string;
-  description?: string | null;
-  payloadJson: string;
-  modifiedAt: number;
-}
-export function stmtInsertProfile(p: ProfileInput): DbStatement {
-  return {
-    sql: `INSERT INTO profiles (product, id, name, description, payload_json, modified_by, modified_at)
-          VALUES (?, ?, ?, ?, ?, NULL, ?)`,
-    params: [
-      p.product,
-      p.id,
-      p.name,
-      p.description ?? null,
-      p.payloadJson,
-      p.modifiedAt,
-    ],
-  };
-}
-export function stmtInsertTier(t: TierInput): DbStatement {
-  return {
-    sql: `INSERT INTO tiers (product, id, label, profile_id, policy_expiry_days, policy_device_limit,
-             channels_json, min_version, max_version, policy_fingerprint, rank,
-             policy_offline_grace_days, modified_by, modified_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?)`,
-    params: [
-      t.product,
-      t.id,
-      t.label,
-      t.profileId,
-      t.policyExpiryDays,
-      t.policyDeviceLimit,
-      t.channels && t.channels.length > 0 ? JSON.stringify(t.channels) : null,
-      t.minVersion ?? null,
-      t.maxVersion ?? null,
-      t.policyFingerprint ?? null,
-      t.rank ?? 0,
-      t.policyOfflineGraceDays ?? null,
-      t.modifiedAt,
-    ],
-  };
-}
 
 /** ST-42: a profile the console's create adds (`source = 'console'`: a resync never rewrites it). */
 export function stmtInsertConsoleProfile(p: {
@@ -384,266 +279,6 @@ export function stmtInsertConsoleProfile(p: {
     sql: `INSERT INTO profiles (product, id, name, description, payload_json, modified_by, modified_at, source)
           VALUES (?, ?, ?, NULL, ?, ?, ?, 'console')`,
     params: [p.product, p.id, p.name, p.payloadJson, p.author, p.now],
-  };
-}
-
-/** ST-42: the starter tier the console's create adds (rank 0, the product's limits). */
-export function stmtInsertConsoleTier(t: {
-  product: string;
-  id: string;
-  label: string;
-  profileId: string;
-  author: string;
-  now: number;
-}): DbStatement {
-  return {
-    sql: `INSERT INTO tiers (product, id, label, profile_id, rank, modified_by, modified_at, source)
-          VALUES (?, ?, ?, ?, 0, ?, ?, 'console')`,
-    params: [t.product, t.id, t.label, t.profileId, t.author, t.now],
-  };
-}
-
-/**
- * ST-01b: the resync's write of one manifest-declared tier. Inserts it as a `manifest` row, or
- * updates the stored row only while it is still manifest-owned — the guard is the upsert's own
- * WHERE, so a console edit that lands after the resync's reads is never overwritten.
- */
-export function stmtUpsertManifestTier(t: TierInput): DbStatement {
-  return {
-    sql: `INSERT INTO tiers (product, id, label, profile_id, policy_expiry_days, policy_device_limit,
-             channels_json, min_version, max_version, policy_fingerprint, rank,
-             policy_offline_grace_days, modified_by, modified_at, source)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, 'manifest')
-          ON CONFLICT(product, id) DO UPDATE SET
-            label = excluded.label, profile_id = excluded.profile_id,
-            policy_expiry_days = excluded.policy_expiry_days,
-            policy_device_limit = excluded.policy_device_limit,
-            channels_json = excluded.channels_json, min_version = excluded.min_version,
-            max_version = excluded.max_version, policy_fingerprint = excluded.policy_fingerprint,
-            rank = excluded.rank, policy_offline_grace_days = excluded.policy_offline_grace_days,
-            modified_by = NULL, modified_at = excluded.modified_at
-          WHERE tiers.source = 'manifest'`,
-    params: stmtInsertTier(t).params,
-  };
-}
-
-/** ST-01b: the resync's write of one manifest-declared profile, under the same guard. */
-export function stmtUpsertManifestProfile(p: ProfileInput): DbStatement {
-  return {
-    sql: `INSERT INTO profiles (product, id, name, description, payload_json, modified_by, modified_at, source)
-          VALUES (?, ?, ?, ?, ?, NULL, ?, 'manifest')
-          ON CONFLICT(product, id) DO UPDATE SET
-            name = excluded.name, description = excluded.description,
-            payload_json = excluded.payload_json, modified_by = NULL,
-            modified_at = excluded.modified_at
-          WHERE profiles.source = 'manifest'`,
-    params: [
-      p.product,
-      p.id,
-      p.name,
-      p.description ?? null,
-      p.payloadJson,
-      p.modifiedAt,
-    ],
-  };
-}
-
-/** ST-01b: drop a manifest tier the manifest no longer declares (never a console row). */
-export function stmtDeleteManifestTier(
-  product: string,
-  id: string,
-): DbStatement {
-  return {
-    sql: "DELETE FROM tiers WHERE product = ? AND id = ? AND source = 'manifest'",
-    params: [product, id],
-  };
-}
-
-/** ST-01b: drop a manifest profile the manifest no longer declares (never a console row). */
-export function stmtDeleteManifestProfile(
-  product: string,
-  id: string,
-): DbStatement {
-  return {
-    sql: "DELETE FROM profiles WHERE product = ? AND id = ? AND source = 'manifest'",
-    params: [product, id],
-  };
-}
-
-export interface ProvisioningInput {
-  product: string;
-  claim: string;
-  entitlementKey?: string;
-  entitlementValue?: unknown;
-  secretKey?: string;
-  secretUrlTemplate?: string;
-  allowedHosts?: string[];
-}
-export function stmtInsertProvisioning(h: ProvisioningInput): DbStatement {
-  return {
-    sql: `INSERT INTO provisioning_config (product, claim, entitlement_key, entitlement_value_json, secret_key, secret_url_template, allowed_hosts_json)
-          VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    params: [
-      h.product,
-      h.claim,
-      h.entitlementKey ?? null,
-      h.entitlementValue !== undefined
-        ? JSON.stringify(h.entitlementValue)
-        : null,
-      h.secretKey ?? null,
-      h.secretUrlTemplate ?? null,
-      h.allowedHosts ? JSON.stringify(h.allowedHosts) : null,
-    ],
-  };
-}
-
-export interface ReleaseConfigInput {
-  product: string;
-  ghOwner: string;
-  ghRepo: string;
-  /** NULL for the system product, linked by the deploy hook rather than through the App. */
-  ghInstallationId: number | null;
-  channelWorkflow: string | null;
-  betaBranch: string;
-  binaryName: string;
-  sparkleEd25519Pub: string | null;
-  summaryMarker: string;
-  manualChannelsJson?: string | null;
-  artifactPolicyJson?: string | null;
-  metadataAccess?: string;
-  artifactsAccess?: string;
-  /** Owner of the two access modes (0022_b). A freshly linked row is manifest-owned. */
-  accessSource?: "manifest" | "admin" | null;
-  /** The operator-only artifact policy (0022_c). No manifest path supplies it; link leaves it NULL. */
-  operatorPolicyJson?: string | null;
-  stableTagPattern?: string | null;
-  ignoreTagsJson?: string | null;
-  /** `release.releaseKeys` (0044, P3-03); NULL when none or refused at link. */
-  releaseKeysJson?: string | null;
-}
-export function stmtInsertReleaseConfig(r: ReleaseConfigInput): DbStatement {
-  return {
-    sql: `INSERT INTO release_config (product, gh_owner, gh_repo, gh_installation_id, channel_workflow, beta_branch,
-            manual_channels_json, binary_name, install_template, sparkle_ed25519_pub, summary_marker, artifact_policy_json,
-            metadata_access, artifacts_access, access_source, operator_policy_json,
-            stable_tag_pattern, ignore_tags_json, release_keys_json)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    params: [
-      r.product,
-      r.ghOwner,
-      r.ghRepo,
-      r.ghInstallationId,
-      r.channelWorkflow,
-      r.betaBranch,
-      r.manualChannelsJson ?? null,
-      r.binaryName,
-      r.sparkleEd25519Pub,
-      r.summaryMarker,
-      r.artifactPolicyJson ?? null,
-      r.metadataAccess ?? "public",
-      r.artifactsAccess ?? "public",
-      r.accessSource ?? null,
-      r.operatorPolicyJson ?? null,
-      r.stableTagPattern ?? null,
-      r.ignoreTagsJson ?? null,
-      r.releaseKeysJson ?? null,
-    ],
-  };
-}
-
-export interface EdgeMintInput {
-  product: string;
-  id: string;
-  alg: string;
-  signingKeySecret: string;
-  kid?: string;
-  claimsTemplate: Record<string, unknown>;
-  ttlSeconds: number;
-  audience?: string | null;
-  /** Who may mint this recipe. Omitted persists as `licensed`: fail closed. */
-  requires?: "none" | "registered" | "licensed";
-  /** A catalog flag the caller's merged payload must carry, truthy. */
-  requiredEntitlement?: string | null;
-}
-export function stmtInsertEdgeMint(e: EdgeMintInput): DbStatement {
-  return {
-    sql: `INSERT INTO edge_mint_config (product, id, alg, signing_key_secret, kid, claims_template_json, ttl_seconds, audience, auth_page_template, requires, required_entitlement)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?)`,
-    params: [
-      e.product,
-      e.id,
-      e.alg,
-      e.signingKeySecret,
-      e.kid ?? null,
-      JSON.stringify(e.claimsTemplate),
-      e.ttlSeconds,
-      e.audience ?? null,
-      // The `??` restates the column's own fail-closed default, so a caller that builds an
-      // `EdgeMintInput` by hand (a test, a future admin path) does not rely on the DDL to decide
-      // its authorization posture.
-      e.requires ?? "licensed",
-      e.requiredEntitlement ?? null,
-    ],
-  };
-}
-
-/**
- * Save a recipe the console published in a catalog entry's `mint` block (U-31), inside the
- * publish's batch: `guard` is the publish's all-or-nothing condition, so a lost claim or a
- * refused publish writes no recipe. It replaces the recipe's fields and leaves the approval
- * alone: an approval written for other fields stops matching, and the recipe answers 404 until
- * an operator approves it as it now stands (P0-12).
- */
-export function stmtSaveEdgeMintGuarded(
-  e: EdgeMintInput,
-  guard: { sql: string; params: DbParam[] },
-): DbStatement {
-  const insert = stmtInsertEdgeMint(e);
-  return {
-    // The page-template column is not named here: no second statement may bind it (R9-injection).
-    sql: `INSERT INTO edge_mint_config (product, id, alg, signing_key_secret, kid, claims_template_json, ttl_seconds, audience, requires, required_entitlement)
-          SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE (${guard.sql})
-          ON CONFLICT (product, id) DO UPDATE SET
-            alg = excluded.alg, signing_key_secret = excluded.signing_key_secret,
-            kid = excluded.kid, claims_template_json = excluded.claims_template_json,
-            ttl_seconds = excluded.ttl_seconds, audience = excluded.audience,
-            requires = excluded.requires, required_entitlement = excluded.required_entitlement`,
-    params: [...insert.params, ...guard.params],
-  };
-}
-
-/** Remove recipes (and their approvals) whose catalog entry the console publish dropped (U-31). */
-export function stmtRemoveEdgeMintGuarded(
-  product: string,
-  id: string,
-  guard: { sql: string; params: DbParam[] },
-): DbStatement[] {
-  return [
-    {
-      sql: `DELETE FROM edge_mint_approvals WHERE product = ? AND id = ? AND (${guard.sql})`,
-      params: [product, id, ...guard.params],
-    },
-    {
-      sql: `DELETE FROM edge_mint_config WHERE product = ? AND id = ? AND (${guard.sql})`,
-      params: [product, id, ...guard.params],
-    },
-  ];
-}
-
-/**
- * Drop the edge-mint approvals whose recipe id the product no longer declares (P0-12). Pushed
- * into the link/resync batch AFTER the `edge_mint_config` re-insert, so the sub-select sees the
- * manifest's new recipe set. The ingest path only ever DELETES approvals: an approval is an
- * operator decision and is written by the Config admin API alone, never from a manifest.
- */
-export function stmtDeleteOrphanEdgeMintApprovals(
-  product: string,
-): DbStatement {
-  return {
-    sql: `DELETE FROM edge_mint_approvals
-           WHERE product = ?
-             AND id NOT IN (SELECT id FROM edge_mint_config WHERE product = ?)`,
-    params: [product, product],
   };
 }
 
@@ -684,20 +319,6 @@ export function stmtInsertProduct(row: ProductRow): DbStatement {
       ...presentation.values,
       row.created_at,
       row.modified_at,
-    ],
-  };
-}
-
-/** Build the active-schema INSERT as a statement (for atomic batch). */
-export function stmtInsertSchema(row: SchemaRow): DbStatement {
-  return {
-    sql: "INSERT INTO product_schema (product, catalog_version, catalog_json, active, created_at) VALUES (?, ?, ?, ?, ?)",
-    params: [
-      row.product,
-      row.catalog_version,
-      row.catalog_json,
-      row.active,
-      row.created_at,
     ],
   };
 }
@@ -968,6 +589,8 @@ export async function deleteProduct(
       sql: "DELETE FROM outlet_credentials WHERE product = ?",
       params: [slug],
     },
+    // ST-40: SDK sightings hold no personal data; a deleted product keeps none of them.
+    { sql: "DELETE FROM sdk_sightings WHERE product = ?", params: [slug] },
     // A-16: a deleted product holds no platform store app: its pins on the team credentials go,
     // which frees the app for another product.
     {
@@ -980,17 +603,6 @@ export async function deleteProduct(
     // F-21: nor any registry token (the lookup also joins `products.status <> 'deleted'`).
     stmtRevokeProductRegistryTokens(slug, now),
   ]);
-}
-
-// ── Schema (catalog) writes ──────────────────────────────────────────────────
-export async function deactivateSchemas(
-  db: Db,
-  product: string,
-): Promise<void> {
-  await db.run(
-    "UPDATE product_schema SET active = 0 WHERE product = ?",
-    product,
-  );
 }
 
 export async function nextSchemaVersion(

@@ -380,6 +380,46 @@ export const COMMANDS: readonly PkeyCommand[] = [
     env: [TOKEN_ENV],
   },
   {
+    name: "migrate",
+    group: "bundles",
+    json: true,
+    valueless: ["json"],
+    context: ["baseUrl"],
+    summary: "Dry-run a data migration and read its report",
+    rows: [
+      ["migrate list", "List the data-migration jobs and their latest runs"],
+      [
+        "migrate dry-run job",
+        "Plan a job and store the report; changes no data",
+      ],
+      ["migrate report run", "Show a stored report"],
+    ],
+    tree: { list: [], "dry-run": [], report: [] },
+    usage: [
+      "pkey migrate list [--base-url url] [--json]",
+      "pkey migrate dry-run job [--base-url url] [--json]",
+      "pkey migrate report run [--base-url url] [--json]",
+    ],
+    about: [
+      {
+        text:
+          "pkey migrate reads a deployment's data-migration runner: the jobs, a run's report and a " +
+          "dry run (which changes no data). A job's changes are applied, and undone, from the " +
+          "console, pinned to a report this command printed: both need a recent sign-in that an " +
+          "admin API token cannot give.",
+      },
+    ],
+    env: [
+      {
+        name: ADMIN_TOKEN_ENV,
+        text:
+          "Required. An admin API token (`pkeya_...`) with the `migrations:report` scope. Mint one " +
+          "in the console: /manage -> API tokens -> New token. It reaches the migration job list, " +
+          "reports and dry runs, and nothing else.",
+      },
+    ],
+  },
+  {
     name: "auth",
     group: "ci",
     json: false,

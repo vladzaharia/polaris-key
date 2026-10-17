@@ -191,8 +191,9 @@ export const COPY_CODES: Readonly<Record<string, CopyEntry>> = {
     message: "The app sent a sign-in request we can't read. Try again.",
   },
   invalid_client: {
-    title: "App not recognised",
-    message: "This app isn't set up for sign-in. Contact its developer.",
+    title: "Sign-in can't finish",
+    message:
+      "This app's sign-in isn't set up correctly, so it stopped here to keep your account safe. Let its developer know.",
   },
   invalid_grant: {
     title: "Sign-in no longer valid",
@@ -209,9 +210,9 @@ export const COPY_CODES: Readonly<Record<string, CopyEntry>> = {
       "The app asked for access this sign-in doesn't offer. Contact its developer.",
   },
   redirect_uri_mismatch: {
-    title: "Return address not allowed",
+    title: "Sign-in can't return to the app",
     message:
-      "This app's return address isn't registered, so we didn't send you back. Contact its developer.",
+      "This app's sign-in isn't set up correctly, so it stopped here to keep your account safe. Let its developer know.",
   },
   license_choice_required: {
     title: "Choose a license",

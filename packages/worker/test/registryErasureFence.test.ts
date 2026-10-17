@@ -61,6 +61,7 @@ const ON: ServicesMap = {
   update: { enabled: false },
   identity: { enabled: false },
   sync: { enabled: false },
+  commerce: { enabled: false },
 };
 
 /** What the lookups are asked at: the clock the fence's `clear` answers expire on is `NOW`. */

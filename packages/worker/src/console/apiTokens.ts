@@ -52,8 +52,13 @@ import { hashKey, isAdminApiToken } from "../platform/crypto.js";
 import { audit, platformAudit } from "../core/audit.js";
 import type { AdminSession } from "../core/console/session.js";
 
-/** The scope vocabulary. One entry, deliberately: see the header. */
-export const ADMIN_API_SCOPES = ["bundles:mint"] as const;
+/**
+ * The scope vocabulary. Two entries, each added with the caller that needs it (see the header).
+ * `migrations:report` (P0-49) reaches the data-migration runner's READ side only: the job list, a
+ * run's report and a dry run. Apply and down need a console step-up, which a token cannot have,
+ * so they stay console-only.
+ */
+export const ADMIN_API_SCOPES = ["bundles:mint", "migrations:report"] as const;
 
 export type AdminApiScope = (typeof ADMIN_API_SCOPES)[number];
 

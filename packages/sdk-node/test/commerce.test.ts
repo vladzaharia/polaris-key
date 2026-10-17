@@ -4,7 +4,7 @@
 import { describe, expect, it } from "vitest";
 import { json, nowSec, seededClient, signedLicense } from "./parityFixtures.js";
 
-const services = { expectedServices: ["license", "distribution"] as never };
+const services = { expectedServices: ["license", "commerce"] as never };
 
 describe("commerce", () => {
   it("refuses without a token, naming no_license, and sends nothing", async () => {
@@ -34,7 +34,7 @@ describe("commerce", () => {
     const { client } = await seededClient({
       extra: services,
       routes: {
-        "POST /djdl/distribution/commerce/claim": () => answers.shift()!,
+        "POST /djdl/commerce/claim": () => answers.shift()!,
       },
     });
     const kinds = [];
@@ -66,7 +66,7 @@ describe("commerce", () => {
       license: license,
       extra: services,
       routes: {
-        "POST /djdl/distribution/commerce/claim": async (req) => {
+        "POST /djdl/commerce/claim": async (req) => {
           bodies.push(JSON.parse(req.body!));
           license = await signedLicense({ "extras.skins": true }, nowSec() + 1);
           return json({

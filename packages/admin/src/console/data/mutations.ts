@@ -99,6 +99,7 @@ export type WriteMethod =
   | "deleteLicenses"
   | "putLicenseOverrides"
   | "mintKey"
+  | "sendLicenseKey"
   | "revokeKey"
   | "deauthorizeDevice"
   | "resetDeviceFingerprint"
@@ -688,6 +689,11 @@ export const MUTATIONS: MutationTable = {
     label: "license key mint",
     invalidates: (slug, id) => licenseKey(slug, id),
   },
+  // LX-27: mints a key and mails it; "Also revoke its other keys" changes the key list too.
+  sendLicenseKey: {
+    label: "license key send",
+    invalidates: (slug, id) => licenseKey(slug, id),
+  },
   revokeKey: {
     label: "license key revoke",
     invalidates: (slug, id) => licenseKey(slug, id),
@@ -990,4 +996,29 @@ export async function mutate<K extends WriteMethod>(
   const result = await fn(...args);
   invalidateAfter(method, args);
   return result;
+}
+
+/**
+ * One write per argument list, in order, then a single invalidation (a bulk change refetches the
+ * lists once, not once per row). A failed write does not stop the rest; its error is returned in
+ * its place, and nothing is invalidated unless one succeeded.
+ */
+export async function mutateEach<K extends WriteMethod>(
+  method: K,
+  argLists: Parameters<AdminApi[K]>[],
+): Promise<(Error | null)[]> {
+  const fn = api[method] as (...a: unknown[]) => Promise<unknown>;
+  const outcomes: (Error | null)[] = [];
+  let changed: Parameters<AdminApi[K]> | null = null;
+  for (const args of argLists) {
+    try {
+      await fn(...args);
+      changed = args;
+      outcomes.push(null);
+    } catch (e) {
+      outcomes.push(e instanceof Error ? e : new Error(String(e)));
+    }
+  }
+  if (changed) invalidateAfter(method, changed);
+  return outcomes;
 }

@@ -5,7 +5,7 @@ extends RefCounted
 ## for every release of the deliverable, until a refund or revocation. The device only forwards
 ## what its store handed it.
 ##
-##   get_binding()                 `GET /<p>/distribution/commerce/binding` -> PKeyResult, detail
+##   get_binding()                 `GET /<p>/commerce/binding` -> PKeyResult, detail
 ##                                 {bindingId, products: [{store, productId, flag, deliverable}]}.
 ##                                 Call it BEFORE buying and hand `bindingId` to the store:
 ##                                   App Store   purchase(product, bindingId)   (PKeyApple, P5-05:
@@ -13,7 +13,7 @@ extends RefCounted
 ##                                   Play        BillingFlowParams obfuscatedAccountId = bindingId
 ##                                               (godot-google-play-billing)
 ##                                   Steam       Steam.getAuthTicketForWebApi(bindingId) (GodotSteam)
-##   claim(store, payload)         `POST /<p>/distribution/commerce/claim` -> PKeyResult, detail
+##   claim(store, payload)         `POST /<p>/commerce/claim` -> PKeyResult, detail
 ##                                 {store, productId, flag, deliverable, state, granted, changed}:
 ##                                   claim("app-store", {signedTransaction = jws})
 ##                                   claim("play", {productId = sku, purchaseToken = token})
@@ -157,7 +157,7 @@ func _core() -> PKeyCore:
 
 
 func _refused(core: PKeyCore) -> PKeyResult:
-	for slug in ["license", "distribution"]:
+	for slug in ["commerce"]:
 		var off = core.require_service(slug, PKeyConstants.Feature.COMMERCE_RECEIPT)
 		if off != null:
 			return off
@@ -172,7 +172,7 @@ func get_binding() -> PKeyResult:
 	var off := _refused(core)
 	if off != null:
 		return off
-	var r := await core.request("GET", "distribution/commerce/binding", null, true)
+	var r := await core.request("GET", "commerce/binding", null, true)
 	if not r.ok:
 		return r
 	var parsed := PKeyJson.parse_bytes(r.detail["body"])
@@ -219,7 +219,7 @@ func claim(store: String, payload: Dictionary) -> PKeyResult:
 			body["dlcAppId"] = str(payload["dlcAppId"])
 		_:
 			return PKeyResult.failure(PKeyErrors.INVALID_OPTIONS, "store must be app-store, play or steam.")
-	var r := await core.request("POST", "distribution/commerce/claim", body, true)
+	var r := await core.request("POST", "commerce/claim", body, true)
 	if not r.ok:
 		return r
 	var parsed := PKeyJson.parse_bytes(r.detail["body"])

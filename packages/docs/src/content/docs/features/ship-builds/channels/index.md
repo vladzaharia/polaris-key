@@ -114,7 +114,7 @@ A manifest that names `release` and `update` without `distribution` is refused w
   [Update health](/docs/features/ship-builds/channels/update-health/).
 - **The commerce bridge**: App Store, Google Play and Steam purchases of products you map become
   license flags per deliverable, verified with each store and revoked on refund. See
-  [Commerce bridge](/docs/features/ship-builds/commerce/).
+  [Commerce bridge](/docs/features/commerce/).
 - **A console section**, shown only while Distribution is on: the
   [Matrix](/docs/features/ship-builds/channels/) (releases × channels, with a drawer per cell holding
   its readiness and rollout controls), **Rollouts**, **Outlets & feeds** (capabilities, storefront
@@ -242,7 +242,7 @@ with the channel from `PolarisKey.update.outlet()`. Stamp the channel at export 
 Godot export plugin), so a store build never relies on run-time detection alone.
 
 The UI kits do not hide key entry on these channels. Pass the decision to the activation screen yourself. Purchases on a store channel go
-through the store and the [commerce claim](/docs/features/ship-builds/commerce/).
+through the store and the [commerce claim](/docs/features/commerce/).
 
 ## What a pause or halt reaches
 

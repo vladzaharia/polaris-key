@@ -359,6 +359,49 @@
           }
         }
       }
+    },
+    {
+      "$comment": "commerce_requires_license: Commerce turns store purchases into licence flags. (The legacy `licensing` module enables license, so it satisfies the requirement too.)",
+      "if": {
+        "required": ["modules"],
+        "properties": {
+          "modules": {
+            "required": ["commerce"],
+            "properties": {
+              "commerce": {
+                "required": ["enabled"],
+                "properties": { "enabled": { "const": true } }
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "modules": {
+            "anyOf": [
+              {
+                "required": ["license"],
+                "properties": {
+                  "license": {
+                    "required": ["enabled"],
+                    "properties": { "enabled": { "const": true } }
+                  }
+                }
+              },
+              {
+                "required": ["licensing"],
+                "properties": {
+                  "licensing": {
+                    "required": ["enabled"],
+                    "properties": { "enabled": { "const": true } }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
     }
   ],
   "$defs": {
@@ -472,6 +515,7 @@
         "update": { "$ref": "#/$defs/moduleFlag" },
         "identity": { "$ref": "#/$defs/moduleFlag" },
         "sync": { "$ref": "#/$defs/moduleFlag" },
+        "commerce": { "$ref": "#/$defs/moduleFlag" },
         "licensing": {
           "$ref": "#/$defs/moduleFlag",
           "description": "Deprecated: write the service slug license. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",

@@ -384,6 +384,7 @@
   "signin.replace.consequence": "{device}は{product}からサインアウトし、{thisDevice}がその枠を使用します。枠が空けば、{device}は後で再びサインインできます。この件についてはメールでお知らせします。",
   "signin.replace.inUse": "{device}は現在使用中です。",
   "signin.replace.confirm": "置き換えて続ける",
+  "signin.replace.confirmNamed": "{device}を置き換えて続ける",
   "signin.replace.back": "戻る",
   "signin.replace.gone": "そのデバイスはすでに削除されています。もう一度選択してください。",
   "signin.replace.rateLimited": "デバイスの変更が多すぎます。{seconds, plural, other {#秒}}後にもう一度お試しください。",

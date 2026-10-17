@@ -4,6 +4,7 @@
  * what the console uses; anything new the console needs from this service is added here.
  */
 
+export { stmtInsertReleaseConfig } from "./ingest.js";
 export { hasArtifactMap } from "./artifactMap.js";
 export { shipsDmgs } from "./config.js";
 export { manifestDeliverableStatements } from "./deliverables.js";
@@ -30,7 +31,7 @@ export {
   managedSecretKeyPredicate,
   parseStoredCatalog,
   sealedProfilePayload,
-} from "./manifestSecrets.js";
+} from "../../core/ingest/manifestSecrets.js";
 export { mirrorNow } from "./mirror.js";
 export { packageCatalog } from "./packages/catalog.js";
 export {
@@ -44,10 +45,7 @@ export {
   unyank,
   yank,
 } from "./policy.js";
-export {
-  readLinkedManifest,
-  screenCatalog,
-  withStoredSecrets,
-} from "./resync.js";
+export { readLinkedManifest } from "./resync.js";
+export { screenCatalog, withStoredSecrets } from "../../core/ingest/shared.js";
 export { latestReleaseHasDmg } from "./store.js";
 export { linkRepo, MAX_MANIFEST_BYTES } from "./sync.js";

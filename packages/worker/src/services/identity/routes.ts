@@ -88,13 +88,14 @@ export const IDENTITY_ROUTES = serviceRoutes("identity", [
     path: "authorize",
     methods: ["GET"],
     auth: { kind: "none" },
-    handler: ({ req, env, db, product, now, settings }) =>
+    handler: ({ req, env, db, product, now, settings, hooks }) =>
       handleAuthorize({
         req,
         env,
         db,
         product,
         now,
+        hooks,
         ...(settings ? { settings } : {}),
       }),
   },

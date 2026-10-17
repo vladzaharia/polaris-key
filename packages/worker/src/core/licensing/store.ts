@@ -2,7 +2,7 @@
 // Split out of `core/repo.ts`; the seats, grants and lifecycle live beside it in `core/licensing/`.
 
 import { holderFilterSql, type HolderFilter } from "./licenseHolders.js";
-import type { Db, DbParam, DbStatement } from "../../db/types.js";
+import type { Db, DbStatement } from "../../db/types.js";
 import type {
   LicenseRow,
   ProfileRow,
@@ -11,7 +11,6 @@ import type {
   LicenseProfileRow,
 } from "../repo.js";
 import {
-  claimDeviceSeat,
   countActiveDevices,
   releaseDormantSeats,
   seatActiveSince,
@@ -53,8 +52,8 @@ export function stmtInsertLicense(row: LicenseRow): DbStatement {
   return {
     sql: `INSERT INTO licenses (product, id, status, sub, name, email, groups_json, tier_id,
        activated_at, expires_at, max_offline_days, overrides_json, channels_json, min_version, max_version,
-       origin, enroll_hwid, email_issuer_class, modified_by, modified_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       origin, enroll_hwid, email_issuer_class, device_limit, modified_by, modified_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     params: [
       row.product,
       row.id,
@@ -77,6 +76,8 @@ export function stmtInsertLicense(row: LicenseRow): DbStatement {
       // alone (`activateFromIdentity`). NULL = nobody recorded one, so an operator-entered address
       // on an admin-minted licence keeps resolving through the product's live provider.
       row.email_issuer_class ?? null,
+      // LX-27: a licence's own device limit, set at creation (LX-14a's column); null inherits.
+      row.device_limit ?? null,
       row.modified_by,
       row.modified_at,
     ],
@@ -505,10 +506,126 @@ export function decodeLicenseCursor(raw: string): LicenseCursor | null {
   return m ? { activatedAt: Number(m[1]), id: m[2]! } : null;
 }
 
+/** The licence list's computed states, as the console names them (LIC-1). */
+export const LICENSE_LIST_STATES = [
+  "active",
+  "expiring",
+  "expired",
+  "disabled",
+] as const;
+export type LicenseListState = (typeof LICENSE_LIST_STATES)[number];
+
+/**
+ * What the list narrows by: holder state, batch, tier (`tier_id`) and computed state. `state`
+ * needs `now` (epoch seconds), the same clock the counts use.
+ */
+export interface LicenseListFilter {
+  holder?: HolderFilter;
+  batch?: string;
+  tier?: string;
+  state?: LicenseListState;
+  now?: number;
+}
+
+/** The licence list's computed states, as the console names them (LIC-1). */
+export interface LicenseStateCounts {
+  active: number;
+  expiring: number;
+  expired: number;
+  disabled: number;
+}
+
+/** Days before expiry at which a licence reads "expiring soon" (the console's `EXPIRES_SOON_DAYS`). */
+const EXPIRES_SOON_SECONDS = 14 * 86_400;
+
+function filterSql(
+  filter: LicenseListFilter,
+  params: (string | number)[],
+): string {
+  // LX-26: the holder filter is the derived rule as SQL (`core/licensing/licenseHolders.ts`), never a copy.
+  let sql = filter.holder
+    ? ` AND ${holderFilterSql(filter.holder, "licenses")}`
+    : "";
+  // LX-28: one batch's licences (`idx_licenses_batch`).
+  if (filter.batch !== undefined) {
+    sql += " AND batch_id = ?";
+    params.push(filter.batch);
+  }
+  if (filter.tier !== undefined) {
+    sql += " AND tier_id = ?";
+    params.push(filter.tier);
+  }
+  if (filter.state !== undefined && filter.now !== undefined) {
+    const now = filter.now;
+    // The same ladder as `countLicenses`: disabled, then expired, then expiring, else active.
+    switch (filter.state) {
+      case "disabled":
+        sql += " AND status = 'disabled'";
+        break;
+      case "expired":
+        sql +=
+          " AND status <> 'disabled' AND expires_at IS NOT NULL AND expires_at <= ?";
+        params.push(now);
+        break;
+      case "expiring":
+        sql +=
+          " AND status <> 'disabled' AND expires_at IS NOT NULL AND expires_at > ? AND expires_at - ? <= ?";
+        params.push(now, now, EXPIRES_SOON_SECONDS);
+        break;
+      case "active":
+        sql +=
+          " AND status <> 'disabled' AND (expires_at IS NULL OR expires_at - ? > ?)";
+        params.push(now, EXPIRES_SOON_SECONDS);
+        break;
+    }
+  }
+  return sql;
+}
+
+/**
+ * How many licences the filter matches and how many sit in each computed state: one GROUP BY,
+ * the same on every page of the list, so the console reads them with page 1.
+ */
+export async function countLicenses(
+  db: Db,
+  product: string,
+  filter: LicenseListFilter,
+  now: number,
+): Promise<{ total: number; counts: LicenseStateCounts }> {
+  const params: (string | number)[] = [];
+  // The tiles count every state of the other filters, so the state filter is left out here.
+  const { state, ...rest } = filter;
+  const where = filterSql(rest, params);
+  const rows = await db.all<{ s: keyof LicenseStateCounts; n: number }>(
+    `SELECT CASE
+        WHEN status = 'disabled' THEN 'disabled'
+        WHEN expires_at IS NOT NULL AND expires_at <= ? THEN 'expired'
+        WHEN expires_at IS NOT NULL AND expires_at - ? <= ? THEN 'expiring'
+        ELSE 'active' END AS s, COUNT(*) AS n
+       FROM licenses WHERE product = ?${where} GROUP BY s`,
+    now,
+    now,
+    EXPIRES_SOON_SECONDS,
+    product,
+    ...params,
+  );
+  const counts: LicenseStateCounts = {
+    active: 0,
+    expiring: 0,
+    expired: 0,
+    disabled: 0,
+  };
+  for (const r of rows) counts[r.s] = r.n;
+  const total = state
+    ? counts[state]
+    : counts.active + counts.expiring + counts.expired + counts.disabled;
+  return { total, counts };
+}
+
 export async function listLicenses(
   db: Db,
   product: string,
-  filter: { holder?: HolderFilter; batch?: string } = {},
+  filter: LicenseListFilter = {},
 ): Promise<LicenseRow[]> {
   return (await listLicensePage(db, product, filter)).licenses;
 }
@@ -520,24 +637,20 @@ export async function listLicenses(
 export async function listLicensePage(
   db: Db,
   product: string,
-  filter: { holder?: HolderFilter; batch?: string } = {},
+  filter: LicenseListFilter = {},
   page: { limit?: number; after?: LicenseCursor } = {},
 ): Promise<{ licenses: LicenseRow[]; nextCursor: string | null }> {
-  // LX-26: the holder filter is the derived rule as SQL (`core/licensing/licenseHolders.ts`), never a copy.
-  const holder = filter.holder
-    ? ` AND ${holderFilterSql(filter.holder, "licenses")}`
-    : "";
-  // LX-28: one batch's licences (`idx_licenses_batch`).
-  const batch = filter.batch !== undefined ? " AND batch_id = ?" : "";
+  const filterParams: (string | number)[] = [];
+  const where = filterSql(filter, filterParams);
   const after = page.after
     ? " AND (activated_at < ? OR (activated_at = ? AND id < ?))"
     : "";
   const rows = await db.all<LicenseRow>(
-    `SELECT * FROM licenses WHERE product = ?${holder}${batch}${after} ORDER BY activated_at DESC, id DESC${
+    `SELECT * FROM licenses WHERE product = ?${where}${after} ORDER BY activated_at DESC, id DESC${
       page.limit !== undefined ? " LIMIT ?" : ""
     }`,
     product,
-    ...(filter.batch !== undefined ? [filter.batch] : []),
+    ...filterParams,
     ...(page.after
       ? [page.after.activatedAt, page.after.activatedAt, page.after.id]
       : []),
@@ -639,50 +752,6 @@ export async function listProfiles(
   return db.all<ProfileRow>(
     "SELECT * FROM profiles WHERE product = ? ORDER BY id",
     product,
-  );
-}
-
-/**
- * The console's profile write. ST-01b: a console create or edit owns the row (`source =
- * 'console'`), so a resync leaves it alone from then on — a manifest row edited here is claimed.
- *
- * `claim: false` keeps the stored owner: the one console write that is NOT a claim is setting a
- * managed secret's value, which a manifest cannot express and the resync already carries forward
- * on a manifest row (R2, `resync.ts` `withStoredSecrets`).
- */
-export async function upsertProfile(
-  db: Db,
-  row: ProfileRow,
-  opts: { claim?: boolean } = {},
-): Promise<void> {
-  const claim = opts.claim ?? true;
-  await db.run(
-    `INSERT INTO profiles (product, id, name, description, payload_json, modified_by, modified_at,
-       source)
-     VALUES (?, ?, ?, ?, ?, ?, ?, 'console')
-     ON CONFLICT(product, id) DO UPDATE SET
-       name = excluded.name, description = excluded.description,
-       payload_json = excluded.payload_json, modified_by = excluded.modified_by,
-       modified_at = excluded.modified_at${claim ? ", source = 'console'" : ""}`,
-    row.product,
-    row.id,
-    row.name,
-    row.description,
-    row.payload_json,
-    row.modified_by,
-    row.modified_at,
-  );
-}
-
-export async function deleteProfile(
-  db: Db,
-  product: string,
-  id: string,
-): Promise<void> {
-  await db.run(
-    "DELETE FROM profiles WHERE product = ? AND id = ?",
-    product,
-    id,
   );
 }
 
@@ -808,4 +877,104 @@ export async function deleteTier(
   id: string,
 ): Promise<void> {
   await db.run("DELETE FROM tiers WHERE product = ? AND id = ?", product, id);
+}
+
+// ── Tier statement-builders (moved from core/products/store.ts, P0-26) ──────────
+// The ingest's License contributor and the create defaults compose these into a batch.
+
+export interface TierInput {
+  product: string;
+  id: string;
+  label: string;
+  profileId: string | null;
+  policyExpiryDays: number | null;
+  policyDeviceLimit: number | null;
+  policyFingerprint?: string | null;
+  channels?: string[] | null;
+  minVersion?: string | null;
+  maxVersion?: string | null;
+  /** LX-08: `licensing.tiers[].rank` (0 when omitted). */
+  rank?: number;
+  /** LX-08: `licensing.tiers[].policyOfflineGraceDays` (null when omitted). */
+  policyOfflineGraceDays?: number | null;
+  modifiedAt: number;
+}
+
+/** `stmtInsertTier`'s params from `label` to `policy_offline_grace_days`: the manifest-owned
+ *  columns a resync and the settings backfill compare (`slice(...TIER_COMPARED_PARAMS)`). */
+export const TIER_COMPARED_PARAMS = [2, 12] as const;
+
+export function stmtInsertTier(t: TierInput): DbStatement {
+  return {
+    sql: `INSERT INTO tiers (product, id, label, profile_id, policy_expiry_days, policy_device_limit,
+             channels_json, min_version, max_version, policy_fingerprint, rank,
+             policy_offline_grace_days, modified_by, modified_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?)`,
+    params: [
+      t.product,
+      t.id,
+      t.label,
+      t.profileId,
+      t.policyExpiryDays,
+      t.policyDeviceLimit,
+      t.channels && t.channels.length > 0 ? JSON.stringify(t.channels) : null,
+      t.minVersion ?? null,
+      t.maxVersion ?? null,
+      t.policyFingerprint ?? null,
+      t.rank ?? 0,
+      t.policyOfflineGraceDays ?? null,
+      t.modifiedAt,
+    ],
+  };
+}
+
+/** ST-42: the starter tier the console's create adds (rank 0, the product's limits). */
+export function stmtInsertConsoleTier(t: {
+  product: string;
+  id: string;
+  label: string;
+  profileId: string;
+  author: string;
+  now: number;
+}): DbStatement {
+  return {
+    sql: `INSERT INTO tiers (product, id, label, profile_id, rank, modified_by, modified_at, source)
+          VALUES (?, ?, ?, ?, 0, ?, ?, 'console')`,
+    params: [t.product, t.id, t.label, t.profileId, t.author, t.now],
+  };
+}
+
+/**
+ * ST-01b: the resync's write of one manifest-declared tier. Inserts it as a `manifest` row, or
+ * updates the stored row only while it is still manifest-owned — the guard is the upsert's own
+ * WHERE, so a console edit that lands after the resync's reads is never overwritten.
+ */
+export function stmtUpsertManifestTier(t: TierInput): DbStatement {
+  return {
+    sql: `INSERT INTO tiers (product, id, label, profile_id, policy_expiry_days, policy_device_limit,
+             channels_json, min_version, max_version, policy_fingerprint, rank,
+             policy_offline_grace_days, modified_by, modified_at, source)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, 'manifest')
+          ON CONFLICT(product, id) DO UPDATE SET
+            label = excluded.label, profile_id = excluded.profile_id,
+            policy_expiry_days = excluded.policy_expiry_days,
+            policy_device_limit = excluded.policy_device_limit,
+            channels_json = excluded.channels_json, min_version = excluded.min_version,
+            max_version = excluded.max_version, policy_fingerprint = excluded.policy_fingerprint,
+            rank = excluded.rank, policy_offline_grace_days = excluded.policy_offline_grace_days,
+            modified_by = NULL, modified_at = excluded.modified_at
+          WHERE tiers.source = 'manifest'`,
+    params: stmtInsertTier(t).params,
+  };
+}
+
+/** ST-01b: drop a manifest tier the manifest no longer declares (never a console row). */
+export function stmtDeleteManifestTier(
+  product: string,
+  id: string,
+): DbStatement {
+  return {
+    sql: "DELETE FROM tiers WHERE product = ? AND id = ? AND source = 'manifest'",
+    params: [product, id],
+  };
 }

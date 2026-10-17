@@ -24,14 +24,6 @@
  *     /distribution/hooks/:connector                         POST, a store webhook, signed by
  *                                                            the store (P5-02, `connectors/`;
  *                                                            `asc` today)
- *     /distribution/commerce/binding                         GET, device token: the licence's
- *                                                            purchase binding (P6-01, `commerce/`)
- *     /distribution/commerce/claim                           POST, device token: claim a store
- *                                                            purchase as a licence flag
- *     /distribution/hooks/app-store                          POST, App Store Server Notifications
- *                                                            V2, signed by Apple (P6-01)
- *     /distribution/hooks/play-rtdn                          POST, Play RTDN over Pub/Sub push,
- *                                                            Google OIDC (P6-01)
  *     /distribution/hooks/sentry                             POST, a Sentry alert, signed with
  *                                                            the integration's client secret;
  *                                                            opens halt candidates (P6-03,
@@ -83,13 +75,6 @@ import { connectorOf } from "./connectors/index.js";
 import { handleSentryWebhook } from "./sentry.js";
 import { handleFdroidFeedsCi, serveFeedRead } from "./feeds/index.js";
 import { handleDownloadModel } from "./page/index.js";
-import {
-  handleBinding,
-  handleClaim,
-  handleAppStoreHook,
-  handlePlayHook,
-  commerceAvailable,
-} from "./commerce/index.js";
 import {
   MAX_LISTING_ASSETS_BODY_BYTES,
   registerListingAssets,
@@ -354,40 +339,6 @@ export const DISTRIBUTION_ROUTES = serviceRoutes("distribution", [
     handler: ciPrInputs,
   },
 
-  // The commerce bridge (P6-01): the binding and claim routes and the two store-notification
-  // hooks. `null` (Core's not-found) unless License is on and the store is set up.
-  {
-    path: "commerce/binding",
-    methods: ["GET"],
-    auth: { kind: "device" },
-    other: "none",
-    accept: commerceAvailable,
-    handler: (ctx) => handleBinding(ctx),
-  },
-  {
-    path: "commerce/claim",
-    methods: ["POST"],
-    auth: { kind: "device" },
-    other: "none",
-    accept: commerceAvailable,
-    handler: (ctx) => handleClaim(ctx),
-  },
-  {
-    path: "hooks/app-store",
-    methods: ["POST"],
-    auth: { kind: "signature" },
-    other: "none",
-    accept: commerceAvailable,
-    handler: (ctx) => handleAppStoreHook(ctx),
-  },
-  {
-    path: "hooks/play-rtdn",
-    methods: ["POST"],
-    auth: { kind: "signature" },
-    other: "none",
-    accept: commerceAvailable,
-    handler: (ctx) => handlePlayHook(ctx),
-  },
   // The Sentry alert hook (P6-03) opens halt candidates; it is not a store connector.
   {
     path: "hooks/sentry",

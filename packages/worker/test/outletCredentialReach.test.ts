@@ -75,7 +75,11 @@ const SRC = join(WORKER_ROOT, "src");
 const TARGET = "src/core/outletCredentials";
 const TOKENS_TARGET = "src/core/outletTokens";
 
-const IMPORT_ALLOW_PREFIXES = ["src/services/distribution/"];
+// CM-29: the commerce bridge moved out of Distribution; its files keep the reach they had.
+const IMPORT_ALLOW_PREFIXES = [
+  "src/services/distribution/",
+  "src/services/commerce/",
+];
 const IMPORT_ALLOW_FILES = [
   "src/core/outletTokens.ts",
   "src/console/handlers/outletCredentials.ts",
@@ -84,6 +88,9 @@ const IMPORT_ALLOW_FILES = [
   "src/console/handlers/platformStoreConnections.ts",
   // P0-27a: moved from Distribution's connectors/msstore, already allowed there by prefix.
   "src/core/stores/microsoftStore/credentials.ts",
+  // CM-29: moved from Commerce's apple.ts and steam.ts (already allowed there by the prefix).
+  "src/core/stores/apple/server.ts",
+  "src/core/stores/steam/publisher.ts",
 ];
 const TABLE_ALLOW_FILES = [
   "src/db/owners.ts", // the table ownership map (P0-18) names every table
@@ -95,7 +102,11 @@ const WRITER_ALLOW_FILES = [
   "src/core/outletCredentials.ts",
   "src/console/handlers/outletCredentials.ts",
 ];
-const TOKENS_IMPORT_ALLOW_PREFIXES = ["src/services/distribution/"];
+// CM-29: the commerce bridge moved out of Distribution; its files keep the reach they had.
+const TOKENS_IMPORT_ALLOW_PREFIXES = [
+  "src/services/distribution/",
+  "src/services/commerce/",
+];
 /**
  * P6-02 (reviewed): Core's attest route decodes a device's Play Integrity token with Google's
  * `decodeIntegrityToken`, which needs an OAuth token for the product's `google-service-account`
@@ -112,6 +123,7 @@ const TOKENS_IMPORT_ALLOW_FILES = [
   "src/core/stores/microsoftStore/client.ts",
   "src/core/stores/microsoftStore/credentials.ts",
   "src/core/stores/play/client.ts",
+  "src/core/stores/apple/server.ts", // CM-29: the App Store Server API token, moved from Commerce
 ];
 const KIND_ALLOW_FILES = [
   "src/platform/keyvault.ts",
@@ -122,7 +134,11 @@ const KIND_ALLOW_FILES = [
 
 // ── A-16: the platform's team-level store credentials ─────────────────────────────────────────
 const PLATFORM_TARGET = "src/core/platformCredentials";
-const PLATFORM_IMPORT_ALLOW_PREFIXES = ["src/services/distribution/"];
+// CM-29: the commerce bridge moved out of Distribution; its files keep the reach they had.
+const PLATFORM_IMPORT_ALLOW_PREFIXES = [
+  "src/services/distribution/",
+  "src/services/commerce/",
+];
 const PLATFORM_IMPORT_ALLOW_FILES = [
   "src/core/outletTokens.ts",
   "src/console/handlers/platformStoreConnections.ts",
@@ -131,6 +147,9 @@ const PLATFORM_IMPORT_ALLOW_FILES = [
   "src/core/stores/microsoftStore/credentials.ts",
   "src/core/stores/platformApps.ts",
   "src/core/stores/platformFallback.ts",
+  // CM-29: moved from Commerce's apple.ts and steam.ts (already allowed there by the prefix).
+  "src/core/stores/apple/server.ts",
+  "src/core/stores/steam/publisher.ts",
 ];
 const PLATFORM_TABLE_ALLOW_FILES = [
   "src/db/owners.ts", // the table ownership map (P0-18) names every table
@@ -154,7 +173,7 @@ const PLATFORM_TEAM_PURPOSE_ALLOW_FILES = [
   "src/services/distribution/connectors/asc/platform.ts",
   "src/services/distribution/connectors/play/platform.ts",
   "src/services/distribution/connectors/msstore/platform.ts",
-  "src/services/distribution/commerce/steam.ts", // inside fetchSteamApps only (checked below)
+  "src/core/stores/steam/publisher.ts", // inside fetchSteamApps only (checked below)
 ];
 const PLATFORM_OPENER_ALLOW_FILES = [
   "src/core/platformCredentials.ts",
@@ -163,7 +182,9 @@ const PLATFORM_OPENER_ALLOW_FILES = [
   // product's pin before its cache, and the open checks it again.
   "src/core/stores/microsoftStore/credentials.ts",
   // Reviewed (A-16): Steam uses the raw key per call (no token); the open checks the pin.
-  "src/services/distribution/commerce/steam.ts",
+  // CM-29: this moved from Commerce's steam.ts to Core, where Distribution's Steam storefront
+  // reaches it too.
+  "src/core/stores/steam/publisher.ts",
 ];
 
 // ── UX-69: the transient path ─────────────────────────────────────────────────────────────────
@@ -171,12 +192,18 @@ const TRANSIENT_MAKER_ALLOW_FILES = [
   "src/core/outletCredentials.ts",
   "src/console/handlers/platformStoreConnections.ts",
 ];
-const REVEAL_ALLOW_PREFIXES = ["src/services/distribution/"];
+// CM-29: the commerce bridge moved out of Distribution; its files keep the reach they had.
+const REVEAL_ALLOW_PREFIXES = [
+  "src/services/distribution/",
+  "src/services/commerce/",
+];
 const REVEAL_ALLOW_FILES = [
   "src/core/outletCredentials.ts",
   "src/core/outletTokens.ts",
   // P0-27a: the Entra exchange, moved from Distribution's connectors/msstore.
   "src/core/stores/microsoftStore/credentials.ts",
+  // CM-29: the Steam publisher key's live check reveals the transient key (moved from Commerce).
+  "src/core/stores/steam/publisher.ts",
 ];
 
 interface Source {
@@ -309,7 +336,7 @@ function reachViolations(sources: Source[]): string[] {
       team.test(body)
     )
       out.push(`${src.file} builds a team-wide platform purpose`);
-    if (src.file === "src/services/distribution/commerce/steam.ts") {
+    if (src.file === "src/core/stores/steam/publisher.ts") {
       const start = body.indexOf("async function fetchSteamApps(");
       const end = start < 0 ? -1 : body.indexOf("\n}\n", start);
       const outside =
@@ -486,7 +513,7 @@ describe("outlet-credential reach", () => {
           text: 'import { setPlatformPin } from "../../../../core/platformCredentials.js";\nawait setPlatformPin(db, input);',
         },
         {
-          file: "src/services/distribution/commerce/apple.ts",
+          file: "src/services/commerce/apple.ts",
           text: 'import { openPlatformCredential } from "../../../core/platformCredentials.js";\nawait openPlatformCredential(env, db, id, use, p, now);',
         },
       ]),
@@ -495,7 +522,7 @@ describe("outlet-credential reach", () => {
       "src/services/release/sync.ts names a platform credential table",
       'src/core/ingest.ts spells the "platform-credential" seal kind',
       "src/services/distribution/connectors/asc/setup.ts names a platform-credential writer",
-      "src/services/distribution/commerce/apple.ts names the platform-credential opener",
+      "src/services/commerce/apple.ts names the platform-credential opener",
     ]);
   });
 
@@ -507,13 +534,13 @@ describe("outlet-credential reach", () => {
           text: "platformGoogleAccessToken(env, db, { team: actor }, scopes, use, now);",
         },
         {
-          file: "src/services/distribution/commerce/steam.ts",
+          file: "src/core/stores/steam/publisher.ts",
           text: "async function publisherKey() {\n  return open({ team: x });\n}\nasync function fetchSteamApps(o) {\n  return open({ team: o.actor });\n}\n",
         },
       ]),
     ).toEqual([
       "src/services/distribution/connectors/play/run.ts builds a team-wide platform purpose",
-      "src/services/distribution/commerce/steam.ts builds a team-wide platform purpose outside fetchSteamApps",
+      "src/core/stores/steam/publisher.ts builds a team-wide platform purpose outside fetchSteamApps",
     ]);
   });
 

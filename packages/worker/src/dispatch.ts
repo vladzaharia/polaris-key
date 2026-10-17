@@ -20,7 +20,10 @@ import { corsPreflight, isCorsCoveredRoute, withCors } from "./core/cors.js";
 import { handleDiscovery } from "./core/discovery.js";
 import { handleJwks, handleTrustManifest } from "./core/trust/trust.js";
 import { dispatchService, serviceContext } from "./core/registry.js";
-import { identityNavigationRedirect } from "./core/accounts/identityGate.js";
+import {
+  identityNavigationRedirect,
+  unknownProductNavigationPage,
+} from "./core/accounts/identityGate.js";
 import {
   BYTE_ROUTES,
   REGISTRY_OWNERLESS_ROUTES,
@@ -28,6 +31,10 @@ import {
   SERVICES,
   SETTINGS,
 } from "./mount.js";
+import {
+  recordSighting,
+  sightingNamespace,
+} from "./core/integration/sightings.js";
 import { handleAdmin } from "./console/index.js";
 import { handleDocs } from "./docs.js";
 // The root customer portal is a PLATFORM surface implemented by the Identity service: one
@@ -186,7 +193,13 @@ async function routeRequest(
 
   if ("product" in route && PRODUCT_ROUTES.has(route.kind)) {
     const product = await loadProduct(env, db, route.product);
-    if (!product) return notFound();
+    if (!product) {
+      return (
+        (route.kind === "service" && route.slug === "identity"
+          ? unknownProductNavigationPage(req, route.rest)
+          : null) ?? notFound()
+      );
+    }
     // I-07 (S-16 §5.4 item 7): no product route receives or sets the account realm's cookies.
     // The browser sends the host-only account session to every path on this host; it is removed
     // here, before any product handler runs, and any `Set-Cookie` for it is dropped on the way
@@ -295,8 +308,38 @@ async function dispatchProduct(
   );
 }
 
-/** A product-scoped route, once its product has loaded. */
+/**
+ * A product-scoped route, once its product has loaded; a 2xx answer to a request that names a
+ * known SDK is recorded as a sighting after the response (ST-40, `core/integration/sightings.ts`).
+ */
 async function dispatchProductRoute(
+  req: Request,
+  env: Env,
+  db: Db,
+  product: Product,
+  route: Route & { product: string },
+  now: number,
+  exec?: DispatchExecution,
+): Promise<Response> {
+  const res = await routeProduct(req, env, db, product, route, now, exec);
+  if (exec && res.status >= 200 && res.status < 300) {
+    try {
+      const write = recordSighting(
+        db,
+        product.slug,
+        req.headers,
+        sightingNamespace(route),
+        now,
+      );
+      if (write) exec.waitUntil(write);
+    } catch {
+      // A sighting never costs a response.
+    }
+  }
+  return res;
+}
+
+async function routeProduct(
   req: Request,
   env: Env,
   db: Db,
@@ -325,6 +368,7 @@ async function dispatchProductRoute(
       rest: route.rest,
       now,
       ...(route.alias ? { alias: true } : {}),
+      ...(route.storeHook ? { storeHook: true } : {}),
       ...(exec
         ? { waitUntil: (p: Promise<unknown>) => exec.waitUntil(p) }
         : {}),

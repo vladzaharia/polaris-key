@@ -16,7 +16,7 @@
  *
  * Token reach. An admin API token (`./apiTokens.ts`) reaches a row only through the row's
  * `tokenScope`; a row without one refuses every token, and so does a path no row matches. Today
- * that is one row, `POST /products/:slug/bundles`. A tokenised row still goes through `can()` for
+ * that is `POST /products/:slug/bundles` and the three read-side migration rows. A tokenised row still goes through `can()` for
  * its area like any other, and never needs a step-up (a token has none).
  *
  * Drift. `test/fixtures/rbac-route-areas.json` pins every row's `METHOD path → area`; a new or
@@ -43,6 +43,7 @@ import { handleGithub } from "./handlers/github.js";
 import { handlePlatformStoreConnections } from "./handlers/platformStoreConnections.js";
 import { handlePlatform } from "./handlers/platform.js";
 import { handleProducts } from "./handlers/products.js";
+import { handleIntegration } from "./handlers/integration.js";
 import { handleProductScoped } from "./productScoped.js";
 import {
   handleApiTokenList,
@@ -162,6 +163,24 @@ export const ADMIN_ROUTES: readonly AdminRoute[] = [
   ...rows(["GET"], "/platform/settings", "platform", platform),
   ...rows(["PATCH", "DELETE"], "/platform/settings/:key", "platform", platform),
   ...rows(["GET", "POST"], "/platform/settings/backfill", "platform", platform),
+  // P0-49: the data-migration runner. Apply and down are step-up writes.
+  // A `migrations:report` token (`pkey migrate`) reaches the read side and the dry run; apply and
+  // down need a step-up, which a token cannot have, so they refuse every token.
+  ...rows(["GET"], "/platform/migrations", "platform", platform, {
+    tokenScope: "migrations:report",
+  }),
+  ...rows(["GET"], "/platform/migrations/runs/:id", "platform", platform, {
+    tokenScope: "migrations:report",
+  }),
+  ...rows(["POST"], "/platform/migrations/dry-run", "platform", platform, {
+    tokenScope: "migrations:report",
+  }),
+  ...rows(["POST"], "/platform/migrations/apply", "platform", platform, {
+    stepUp: true,
+  }),
+  ...rows(["POST"], "/platform/migrations/down", "platform", platform, {
+    stepUp: true,
+  }),
   ...rows(["GET"], "/platform/override-migration", "platform", platform),
   ...rows(
     ["PUT"],
@@ -219,14 +238,7 @@ export const ADMIN_ROUTES: readonly AdminRoute[] = [
     stepUp: true,
   }),
   ...SERVICE_SLUGS.flatMap(serviceRows),
-  // Commerce's surface is `commerce` ahead of Distribution's prefix (CM-29 moves the path, not
-  // the area); the Feeds admin is Ship builds, composed in the console layer.
-  ...rows(
-    ["GET", "PUT", "DELETE"],
-    `${P}/distribution/commerce/**`,
-    "commerce",
-    product,
-  ),
+  // The Feeds admin is Ship builds, composed in the console layer.
   ...rows(
     ["GET", "PUT", "POST"],
     `${P}/distribution/feeds/**`,
@@ -244,6 +256,7 @@ export const ADMIN_ROUTES: readonly AdminRoute[] = [
   ...rows(["GET", "PATCH"], `${P}/services`, "core", product),
   ...rows(["POST"], `${P}/services/revert`, "core", product),
   ...rows(["GET"], `${P}/activity`, "core", product),
+  ...rows(["GET"], `${P}/integration`, "core", handleIntegration),
   ...rows(["GET"], `${P}/refusals`, "core", product),
   ...rows(["GET"], `${P}/blob-gc`, "core", product),
   ...rows(["GET"], `${P}/blob-gc/bundles`, "core", product),

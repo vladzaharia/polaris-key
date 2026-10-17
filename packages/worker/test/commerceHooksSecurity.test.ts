@@ -205,7 +205,7 @@ describe("one failing Steam row does not block the weekly re-check", () => {
         ownsapp: true,
         ownersteamid: steamid,
       });
-      const r = await route(cw, "POST", "/distribution/commerce/claim", {
+      const r = await route(cw, "POST", "/commerce/claim", {
         token,
         body: { store: "steam", ticket, dlcAppId: STEAM_DLC },
       });
@@ -231,7 +231,7 @@ describe("the weekly App Store re-read revokes a refund no notification delivere
     };
     cw.fakes.apple.transactions.set(tx.transactionId, tx);
     const jws = await cw.fakes.apple.signTransaction(tx, NOW - 60);
-    const c = await route(cw, "POST", "/distribution/commerce/claim", {
+    const c = await route(cw, "POST", "/commerce/claim", {
       token: cw.tokenA,
       body: { store: "app-store", signedTransaction: jws },
     });

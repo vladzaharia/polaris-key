@@ -379,6 +379,12 @@ async function overview(env: Env, db: Db, scope: FeedScope) {
     },
   };
   if (scope.kind === "platform") {
+    // The kill switch and size ceiling of every ecosystem: the Platform settings page edits them.
+    body.policies = PACKAGE_ECOSYSTEMS.map((eco) => ({
+      ecosystem: eco,
+      label: ECOSYSTEM_LABELS[eco],
+      policy: policyView(ctx.policies.get(eco)),
+    }));
     // Every owner with a packageFeeds row: the platform view of who runs feeds at all.
     body.owners = (
       await db.all<{

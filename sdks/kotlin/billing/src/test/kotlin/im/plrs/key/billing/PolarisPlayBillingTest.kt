@@ -56,8 +56,8 @@ class PolarisPlayBillingTest {
     private fun client(claim: (PolarisRequest) -> PolarisResponse): Pair<PolarisKeyClient, ScriptedTransport> = runBlocking {
         val transport = ScriptedTransport { r ->
             when (r.path) {
-                "/djdl/distribution/commerce/binding" -> respond(200, """{"bindingId":"$binding","products":[{"store":"play","productId":"skins","flag":"extras.skins"}]}""")
-                "/djdl/distribution/commerce/claim" -> claim(r)
+                "/djdl/commerce/binding" -> respond(200, """{"bindingId":"$binding","products":[{"store":"play","productId":"skins","flag":"extras.skins"}]}""")
+                "/djdl/commerce/claim" -> claim(r)
                 else -> respond(404)
             }
         }
@@ -66,7 +66,7 @@ class PolarisPlayBillingTest {
                 core = CoreOptions(
                     productSlug = "djdl", version = "1.0.0", pinnedKeys = signer.trust, trustRefresh = false,
                     store = InMemoryStore("djdl", "dev1").also { it.setToken("pkeyt_held") }, transport = transport, clock = { 1_700_000_000L },
-                    expectedServices = listOf(ServiceSlug.license, ServiceSlug.distribution),
+                    expectedServices = listOf(ServiceSlug.license, ServiceSlug.commerce),
                 ),
                 license = LicenseClientOptions(fingerprint = false),
             ),

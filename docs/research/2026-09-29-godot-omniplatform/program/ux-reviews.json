@@ -184,6 +184,26 @@
       "verdict": "pass",
       "date": "2026-10-17",
       "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/ST-39/ (built review 2026-10-17; blockers fixed in fix/ST-39-review 1fb35e0ab)"
+    },
+    "I-08": {
+      "verdict": "pass",
+      "date": "2026-10-17",
+      "evidence": "_mockups/review/I-08/ux-review.md (pass-with-fixes, refusal pages); fixes wp/I-08-refusal-fixes 11ab13710, evidence _evidence/I-08-fix/ (axe 0, CSP 0, 360/390/1440 dark+light). Continue card is PX-14's."
+    },
+    "LX-27": {
+      "verdict": "pass",
+      "date": "2026-10-17",
+      "evidence": "_mockups/review/LX-27/ux-review-2.md (re-review pass-with-fixes after one fix round; minor N1-N10 in wp/LX-27b-polish)"
+    },
+    "P0-29": {
+      "verdict": "pass",
+      "date": "2026-10-17",
+      "evidence": "_mockups/review/P0-29/ux-review-2.md (re-review pass-with-fixes after one fix round; N1-N10 polish on wp/P0-29-polish; F14/F16 workbench band moved to ST-48)"
+    },
+    "U-31": {
+      "verdict": "pass",
+      "date": "2026-10-17",
+      "evidence": "_mockups/review/U-31/ux-review-2.md (re-review pass-with-fixes after one fix round; N1-N20 on wp/U-31-polish)"
     }
   }
 }
