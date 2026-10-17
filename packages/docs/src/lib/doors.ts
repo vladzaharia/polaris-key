@@ -458,6 +458,7 @@ export const DOOR_TREES: readonly DoorTree[] = [
           "operate/platform/runbook/set-up-the-login-card",
           "operate/platform/runbook/change-licensing-data",
           "operate/platform/runbook/restore-data-and-run-storage-jobs",
+          "operate/platform/runbook/migration-ledger",
           "operate/platform/runbook/troubleshooting",
           "operate/platform/deploy",
           "operate/platform/email",
