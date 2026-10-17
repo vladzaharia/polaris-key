@@ -13,31 +13,31 @@ Commands
     Export a mix
 
 License
-  activate
+  activate [key]
     Add a license key (prompted, or
     piped on stdin)
+  status
+    Show your license, devices and
+    offline time
   deactivate
     Stop using your license on this
     device and free its seat
-  devices deauthorize
-    Remove a device and free its seat
-  devices list
-    List the devices using your license
-  devices rename
-    Rename a device (no name clears it)
   login
     Sign in with your account in
     the browser
   logout
     Sign out on this device
-  status
-    Show your license, devices and
-    offline time
+  devices list
+    List the devices using your license
+  devices rename <deviceId> [label...]
+    Rename a device (no name clears it)
+  devices deauthorize <deviceId>
+    Remove a device and free its seat
+  update check
+    Check for a newer version
   update apply
     Download and install the
     newer version
-  update check
-    Check for a newer version
 
 Run tidewater <command> --help for one
 command's options.

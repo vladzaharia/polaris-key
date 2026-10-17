@@ -16,6 +16,7 @@ from typing import Optional, Sequence
 
 import polaris_key
 from polaris_key.cli import register_argparse, require_license
+from polaris_key.cli.argparse_cli import GroupedHelpParser
 
 PRODUCT = "mytool"
 VERSION = "1.0.0"
@@ -41,9 +42,10 @@ def run(_args: argparse.Namespace) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="mytool")
+    # GroupedHelpParser lists your commands first, then the license verbs under one heading.
+    parser = GroupedHelpParser(prog="mytool", description="mytool")
     sub = parser.add_subparsers(dest="command", required=True)
-    sub.add_parser("run", help="Do the work.").set_defaults(func=run)
+    sub.add_parser("run", help="Do the work.", group="Commands").set_defaults(func=run)
     register_argparse(sub, config=CONFIG, version=VERSION)
     return parser
 

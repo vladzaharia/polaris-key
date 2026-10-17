@@ -173,7 +173,9 @@ def test_argparse_help(row: Dict[str, Any]) -> None:
         if re.match(r"^\S", line) and not line.startswith(("Usage", "mytool", "Run ")):
             sections.append({"heading": line, "commands": []})
         elif re.match(r"^ {2}\S", line) and sections:
-            sections[-1]["commands"].append(re.split(r"\s{2,}", line.strip())[0])
+            term = re.split(r"\s{2,}", line.strip())[0]
+            # Signatures follow the command words: `devices rename <deviceId> [label...]`.
+            sections[-1]["commands"].append(" ".join(w for w in term.split(" ") if not re.match(r"^[<\[]", w)))
     got = [{"heading": s["heading"], "commands": sorted(s["commands"])} for s in sections if s["commands"]]
     from polaris_key.ui.core import Copy
 

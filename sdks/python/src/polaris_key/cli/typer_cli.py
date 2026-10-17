@@ -13,6 +13,7 @@ from typing import Any, Callable, List, Mapping, Optional, Sequence, Union
 
 import typer
 
+from ..ui.core import Copy
 from . import core, mount
 from . import verbs as verbs_mod
 
@@ -50,6 +51,8 @@ def register_typer(
     verbs: Union[Sequence[str], str, None] = None,
     on_collision: str = "error",
     warn: Optional[Callable[[str], None]] = None,
+    _nested: bool = False,
+    _nested_name: Optional[str] = None,
 ) -> typer.Typer:
     """Add the Polaris Key commands to ``host`` (a ``typer.Typer``), at its root or under
     ``namespace``. The options are :func:`polaris_key.cli.argparse_cli.register_argparse`'s:
@@ -57,17 +60,20 @@ def register_typer(
     ``verbs=`` picks the commands (default: the end-user set), ``on_collision`` decides what a
     host command with a verb's name does."""
     binding = mount.resolve_binding(client_factory, client=client, config=config, version=version)
-    host_prog = prog or "polaris-key"
+    host_prog = prog or host.info.name or "mytool"
     names = [c.name or (c.callback.__name__.replace("_", "-") if c.callback else "") for c in host.registered_commands]
     names += [g.name or "" for g in host.registered_groups]
     plan = mount.plan_mount(names, namespace=namespace, verbs=verbs, on_collision=on_collision, bound=binding.bound, prog=host_prog)
     if plan.skipped:
         (warn or (lambda m: print(m, file=sys.stderr)))(mount.skip_warning(plan.skipped, host_prog))
-    shown = f"{host_prog} {namespace}" if namespace else host_prog
+    base = prog or host.info.name
+    shown = (f"{base} {namespace}" if namespace else base) if base else None
+    product = binding.product or host_prog
+    heading = Copy("en")("cli.help.group")
     target = host
     if namespace:
-        target = typer.Typer(help=f"{binding.product or host_prog} license and updates")
-        host.add_typer(target, name=namespace)
+        target = typer.Typer(help=Copy("en")("cli.help.namespace"))
+        host.add_typer(target, name=namespace, help=Copy("en")("cli.help.namespace"), rich_help_panel=heading)
 
     def _emit(result: core.CommandResult) -> None:
         result.emit()
@@ -76,13 +82,16 @@ def register_typer(
     by_name = {v.name: v for v in verbs_mod.VERBS}
     for name in plan.verbs:
         verb = by_name[name]
-        target.command(name=verb.name, help=f"[{verb.group}] {verb.help}")(
-            _typer_verb(binding, verb, _emit, theme, shown, plan.actions or None)
-        )
+        target.command(
+            name=verb.name,
+            help=mount.verb_help(verb.name, plan.ids, product),
+            rich_help_panel=None if namespace else heading,
+            hidden=verb.name in mount.ALIASES,
+        )(_typer_verb(binding, verb, _emit, theme, shown, plan.actions or None))
     if binding.bound:
         from .gate import GateTarget, bind_gate
 
-        bind_gate(GateTarget(lambda: binding.factory(binding.options), binding.close, shown, plan.ids, theme))
+        bind_gate(GateTarget(lambda: binding.factory(binding.options), binding.close, shown, plan.ids, theme, namespace or (_nested_name if _nested else None)))
     return host
 
 
@@ -91,6 +100,7 @@ def polaris_typer_app(
     *,
     theme: Any = None,
     prog: Optional[str] = None,
+    name: str = "license",
     **mount_options: Any,
 ) -> typer.Typer:
     """Return a ``typer.Typer`` exposing the Polaris Key commands.
@@ -98,23 +108,25 @@ def polaris_typer_app(
     Mount it with ``app.add_typer(polaris_typer_app(...), name="polaris")``.
     ``client_factory`` (default: build from the parsed options) lets a consumer pin trust
     keys / base URL; ``theme`` restyles the terminal kit and ``prog`` is the command its fix
-    lines name. ``mount_options`` are :func:`register_typer`'s ``client``, ``config``, ``version``,
+    lines name (default: the one the person typed). ``name`` is the group it is mounted under
+    (``license``). ``mount_options`` are :func:`register_typer`'s ``client``, ``config``, ``version``,
     ``verbs``, ``on_collision`` and ``warn``. To mount at the root of your own app, use
     :func:`register_typer`.
     """
-    app = typer.Typer(help="Polaris Key client.")
-    register_typer(app, client_factory, theme=theme, prog=prog or "polaris-key", **mount_options)
+    app = typer.Typer(help=Copy("en")("cli.help.namespace"))
+    register_typer(app, client_factory, theme=theme, prog=prog, _nested=True, _nested_name=name, **mount_options)
     return app
 
 
 def _typer_verb(
-    binding: mount.Binding, verb: "verbs_mod.Verb", emit, theme: Any = None, prog: str = "polaris-key", actions: Any = None
-):  # noqa: ANN001
+    binding: mount.Binding, verb: "verbs_mod.Verb", emit, theme: Any = None, prog: Optional[str] = None, actions: Any = None  # noqa: ANN001
+):
     """A function whose signature typer reads: the common options, the free words and the
     verb's options, all from the one table."""
     P = inspect.Parameter
     hide = binding.bound
     params = [
+        P("ctx", P.KEYWORD_ONLY, default=None, annotation=typer.Context),
         P("product", P.KEYWORD_ONLY, default=typer.Option(None if hide else ..., help="Product slug.", hidden=hide), annotation=Optional[str] if hide else str),
         P("version", P.KEYWORD_ONLY, default=typer.Option(None, hidden=hide), annotation=Optional[str]),
         P("base_url", P.KEYWORD_ONLY, default=typer.Option(None, hidden=hide), annotation=Optional[str]),
@@ -128,10 +140,14 @@ def _typer_verb(
         params.insert(0, P("words", P.POSITIONAL_OR_KEYWORD, default=typer.Argument(None), annotation=Optional[List[str]]))
     for o in verb.opts + verbs_mod.UI_OPTS:
         ann: Any = bool if o.kind == "flag" else (Optional[int] if o.kind == "int" else Optional[str])
-        default = typer.Option(False if o.kind == "flag" else o.default, f"--{o.name}", help=o.help)
+        text = mount.option_help(o)
+        default = typer.Option(
+            False if o.kind == "flag" else o.default, f"--{o.name}", help=None if text == "==SUPPRESS==" else text, hidden=text == "==SUPPRESS=="
+        )
         params.append(P(verbs_mod.option_dest(o.name), P.KEYWORD_ONLY, default=default, annotation=ann))
 
     def run(**kw: Any) -> None:
+        ctx = kw.pop("ctx", None)
         opts = _options(kw.pop("product"), kw.pop("version"), kw.pop("base_url"), kw.pop("config_dir"),
                         kw.pop("trust"), kw.pop("service"), binding)
         if verb.arg:
@@ -140,7 +156,7 @@ def _typer_verb(
         else:
             words = kw.pop("words", None) or []
         ns = verbs_mod.namespace(verb, words, kw)
-        emit(verbs_mod.run(binding.factory, opts, verb, ns, theme=theme, prog=prog, close=binding.close, actions=actions))
+        emit(verbs_mod.run(binding.factory, opts, verb, ns, theme=theme, prog=prog or (ctx.command_path.rsplit(" ", 1)[0] if ctx is not None else mount.program_name()), close=binding.close, actions=actions))
 
     run.__signature__ = inspect.Signature(params)  # type: ignore[attr-defined]
     run.__name__ = verb.name.replace("-", "_")
@@ -148,7 +164,7 @@ def _typer_verb(
 
 
 # Standalone entry point (``python -m polaris_key.cli.typer_cli``).
-app = polaris_typer_app(verbs="all")
+app = polaris_typer_app(prog="polaris-key", verbs="all")
 
 
 if __name__ == "__main__":

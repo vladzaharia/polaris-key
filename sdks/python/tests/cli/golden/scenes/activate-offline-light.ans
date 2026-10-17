@@ -1,0 +1,102 @@
+── truecolor · 80 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · activate[0m
+[2m│[0m
+[32m◇[0m  License key[2m · pkey_tidewater_••••••[0m
+[2m│[0m
+[31m✗[0m  [1mActivation failed[0m
+[2m└[0m  Activation didn't finish. Check your connection and try again.
+── ansi16 · 80 ──
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · activate[0m
+[2m│[0m
+[32m◇[0m  License key[2m · pkey_tidewater_••••••[0m
+[2m│[0m
+[31m✗[0m  [1mActivation failed[0m
+[2m└[0m  Activation didn't finish. Check your connection and try again.
+── no-color · 80 ──
+┌  [7m Tidewater Studio [0m · activate
+│
+◇  License key · pkey_tidewater_••••••
+│
+✗  [1mActivation failed[0m
+└  Activation didn't finish. Check your connection and try again.
+── ascii · 80 ──
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - activate[0m
+[2m|[0m
+[32mo[0m  License key[2m - pkey_tidewater_******[0m
+[2m|[0m
+[31mx[0m  [1mActivation failed[0m
+[2m`[0m  Activation didn't finish. Check your connection and try again.
+── truecolor · 60 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · activate[0m
+[2m│[0m
+[32m◇[0m  License key[2m · pkey_tidewater_••••••[0m
+[2m│[0m
+[31m✗[0m  [1mActivation failed[0m
+[2m│[0m  Activation didn't finish. Check your connection and
+[2m└[0m  try again.
+── ansi16 · 60 ──
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · activate[0m
+[2m│[0m
+[32m◇[0m  License key[2m · pkey_tidewater_••••••[0m
+[2m│[0m
+[31m✗[0m  [1mActivation failed[0m
+[2m│[0m  Activation didn't finish. Check your connection and
+[2m└[0m  try again.
+── no-color · 60 ──
+┌  [7m Tidewater Studio [0m · activate
+│
+◇  License key · pkey_tidewater_••••••
+│
+✗  [1mActivation failed[0m
+│  Activation didn't finish. Check your connection and
+└  try again.
+── ascii · 60 ──
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - activate[0m
+[2m|[0m
+[32mo[0m  License key[2m - pkey_tidewater_******[0m
+[2m|[0m
+[31mx[0m  [1mActivation failed[0m
+[2m|[0m  Activation didn't finish. Check your connection and
+[2m`[0m  try again.
+── pipe · 80 ──
+Tidewater Studio · activate
+License key · pkey_tidewater_••••••
+
+Activation failed
+Activation didn't finish. Check your connection and try again.
+── truecolor · 40 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · activate[0m
+[2m│[0m
+[32m◇[0m  License key[2m · pkey_tidewater_••••••[0m
+[2m│[0m
+[31m✗[0m  [1mActivation failed[0m
+[2m│[0m  Activation didn't finish. Check your
+[2m└[0m  connection and try again.
+── no-color · 40 ──
+┌  [7m Tidewater Studio [0m · activate
+│
+◇  License key · pkey_tidewater_••••••
+│
+✗  [1mActivation failed[0m
+│  Activation didn't finish. Check your
+└  connection and try again.
+── truecolor · 32 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · activate[0m
+[2m│[0m
+[32m◇[0m  License key
+[2m│[0m  [2mpkey_tidewater_••••••[0m
+[2m│[0m
+[31m✗[0m  [1mActivation failed[0m
+[2m│[0m  Activation didn't finish.
+[2m│[0m  Check your connection and
+[2m└[0m  try again.
+── no-color · 32 ──
+┌  [7m Tidewater Studio [0m · activate
+│
+◇  License key
+│  pkey_tidewater_••••••
+│
+✗  [1mActivation failed[0m
+│  Activation didn't finish.
+│  Check your connection and
+└  try again.

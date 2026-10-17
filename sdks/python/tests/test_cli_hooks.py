@@ -504,7 +504,7 @@ def test_polaris_click_group_builds_and_invokes():
     from polaris_key.cli.click_cli import polaris_click_group
 
     client = FakeClient(config={"run.concurrency": 4}, sources={"run.concurrency": "enforced"})
-    group = polaris_click_group(client_factory=_factory_for(client), verbs="all")
+    group = polaris_click_group(client_factory=_factory_for(client), verbs="all", name="polaris")
 
     @click.group()
     def app() -> None:

@@ -223,10 +223,11 @@ class PolarisKeyApp(App):
             if u.state == "up-to-date":
                 return [_text(t("update.upToDate"), classes="pk-title"), _text(t("account.version", version=u.current or ""), classes="pk-muted")]
             return [
-                _text(t("update.title", product=self.identity.name, version=u.version or ""), classes="pk-title"),
+                _text(t("cli.update.availableNoSize", version=u.version or ""), classes="pk-title"),
                 _text(t("account.version", version=u.current or ""), classes="pk-muted"),
                 Horizontal(
                     *([Button(t("update.install"), classes="pk-primary", id="pk-install")] if u.installable else []),
+                    *([Button(t("update.install"), classes="pk-primary", id="pk-download")] if not u.installable and u.notes_url else []),
                     Button(t("update.later"), classes="pk-secondary", id="pk-later"),
                     classes="pk-actions",
                 ),
@@ -256,6 +257,12 @@ class PolarisKeyApp(App):
         elif event.button.id == "pk-sign-out" and self.client is not None:
             self.client.identity.sign_out()
             self.show("account")
+        elif event.button.id == "pk-download":
+            import webbrowser
+
+            u = self.update_state()
+            if u is not None and u.notes_url:
+                webbrowser.open(u.notes_url)
         elif event.button.id == "pk-install":
             self.exit("update")
         elif event.button.id == "pk-later":

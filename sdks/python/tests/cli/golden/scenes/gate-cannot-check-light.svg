@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="705.6" height="112" viewBox="0 0 705.6 112" role="img" aria-label="gate-cannot-check, terminal, light theme">
+<rect width="705.6" height="112" rx="12" fill="#fbfbfc" stroke="#dcdee3"/>
+<g font-family="JetBrains Mono, ui-monospace, monospace" font-size="14" xml:space="preserve">
+<text x="21" y="26.6" text-anchor="middle" fill="#9a6700">▲</text>
+<text x="42" y="26.6" textLength="226.8" lengthAdjust="spacingAndGlyphs" fill="#24292f" font-weight="600">Couldn&#x27;t check your license</text>
+<rect x="20.5" y="30.8" width="1" height="16.8" fill="#24292f"/>
+<text x="42" y="43.4" textLength="571.2" lengthAdjust="spacingAndGlyphs" fill="#24292f">Your license couldn&#x27;t be checked, so the app can&#x27;t start. Check your</text>
+<rect x="20.5" y="47.6" width="1" height="16.8" fill="#24292f"/>
+<text x="42" y="60.2" textLength="210" lengthAdjust="spacingAndGlyphs" fill="#24292f">connection and try again.</text>
+<rect x="20.5" y="64.4" width="1" height="16.8" fill="#24292f"/>
+<rect x="20.5" y="81.2" width="1" height="8.4" fill="#24292f"/>
+<rect x="20.5" y="89.1" width="4.7" height="1" fill="#24292f"/>
+<text x="42" y="93.8" textLength="134.4" lengthAdjust="spacingAndGlyphs" fill="#24292f" font-weight="600">tidewater status</text>
+<text x="201.6" y="93.8" textLength="361.2" lengthAdjust="spacingAndGlyphs" fill="#24292f">Show your license, devices and offline time</text>
+</g></svg>

@@ -121,8 +121,10 @@ def activate(client: Any, ns: Dict[str, Any]) -> CommandResult:
             stdin=_NoPrompt(),
         )
     except ValueError as e:
-        if ns.get("key_stdin") or ns.get("key_file"):
-            return _done(_flows().usage(t, f"activate {'--key-file <path>' if ns.get('key_file') else '--key-stdin'}  ({e})"), ns)
+        if ns.get("key_file"):
+            return _done(_flows().key_file_problem(t, str(ns["key_file"]), empty=True), ns)
+        if ns.get("key_stdin"):
+            return _done(_flows().usage(t, f"activate --key-stdin  ({e})"), ns)
         # No source named: a piped stdin is read without --key-stdin, within a bound; a terminal
         # prompts; anything else says there is no key.
         stdin = t.device.inp
@@ -136,7 +138,7 @@ def activate(client: Any, ns: Dict[str, Any]) -> CommandResult:
         else:
             return _done(_flows().no_key(t, piped=kind != "tty"), ns)
     except OSError as e:
-        return _done(_flows().usage(t, f"activate --key-file <path>  ({e})"), ns)
+        return _done(_flows().key_file_problem(t, str(ns.get("key_file") or ""), empty=False), ns)
     return _done(_flows().activate(client, t, key), ns)
 
 

@@ -171,7 +171,7 @@ def test_secret_and_mint_values_never_reach_a_ci_log(capsys, monkeypatch) -> Non
 
 def test_update_and_packs_explain_a_missing_configuration(capsys) -> None:
     code, out = _argparse(["update", "--product", PRODUCT, "download", "--to", "x"], _factory(), capsys)
-    assert code == 1 and "no signed updates" in out
+    assert code == 1 and "Updates aren" in out
     code, out = _argparse(["packs", "--product", PRODUCT], _factory(), capsys)
     assert code == 1 and "content stamp" in out
 

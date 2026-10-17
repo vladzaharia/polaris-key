@@ -61,7 +61,7 @@ def _add_common(p: argparse.ArgumentParser, bound: bool = False) -> None:
         ),
     )
     for o in verbs.UI_OPTS:
-        p.add_argument(f"--{o.name}", action="store_true", help=o.help)
+        p.add_argument(f"--{o.name}", action="store_true", help=mount.option_help(o))
 
 
 def _options(args: argparse.Namespace, binding: Optional[mount.Binding] = None) -> core.ClientOptions:
@@ -135,28 +135,43 @@ def register_argparse(
         previous = getattr(subparsers, "_parser_class", None)
         subparsers._parser_class = GroupedHelpParser  # type: ignore[attr-defined]
         try:
-            holder = _add(subparsers, namespace, help=Copy("en")("cli.help.lede", product=binding.product or host_prog), group=heading)
+            holder = _add(subparsers, namespace, help=Copy("en")("cli.help.namespace"), group=heading)
         finally:
             subparsers._parser_class = previous  # type: ignore[attr-defined]
-        holder.description = f"{binding.product or host_prog} license and updates"
+        holder.description = Copy("en")("cli.help.namespace")
         target = holder.add_subparsers(dest="polaris_command", required=True)
         target._pk_mount = MountInfo(plan=plan, bound=binding.bound, legacy=False, prog=shown, nested=True)  # type: ignore[attr-defined]
+    legacy = verbs == "all" and namespace is None
+    if getattr(target, "metavar", None) is None:
+        target.metavar = "<command>"
+    product = binding.product or host_prog
     by_name = {v.name: v for v in verbs_table()}
     for name in plan.verbs:
         verb = by_name[name]
-        shown_help = " | ".join(plan.actions[verb.name]) if verb.name in plan.actions else verb.help
-        p = _add(target, verb.name, help=f"[{verb.group}] {shown_help}", group=heading)
+        alias = name in mount.ALIASES
+        if legacy:
+            shown_help = " | ".join(plan.actions[verb.name]) if verb.name in plan.actions else verb.help
+            list_help = f"[{verb.group}] {shown_help}"
+        else:
+            # The catalog's line, as the grouped help writes it; an alias is not a command of its own.
+            list_help = argparse.SUPPRESS if alias else mount.verb_help(verb.name, plan.ids, product)
+        p = _add(target, verb.name, help=list_help, group=heading)
+        p._pk_desc = mount.verb_help(verb.name, plan.ids, product)  # type: ignore[attr-defined]
+        p._pk_usage = mount.verb_usage(mount.ALIASES.get(verb.name, verb.name), plan.ids)  # type: ignore[attr-defined]
+        allowed = plan.actions.get(verb.name)
         _add_common(p, binding.bound)
         if verb.arg:
             p.add_argument(verb.arg, nargs="?", default=None, help=verb.help)
         elif verb.words:
-            p.add_argument("words", nargs="*", metavar="ARG", help=verb.help)
+            p.add_argument("words", nargs="*", metavar="ARG", help=argparse.SUPPRESS if not legacy else verb.help)
         for o in verb.opts:
             flag = f"--{o.name}"
+            hide = (not legacy) and bool(allowed) and o.name == "to" and "download" not in allowed
+            text = mount.option_help(o, hide) if not legacy else o.help
             if o.kind == "flag":
-                p.add_argument(flag, action="store_true", help=o.help)
+                p.add_argument(flag, action="store_true", help=text)
             else:
-                p.add_argument(flag, type=int if o.kind == "int" else str, default=o.default, help=o.help)
+                p.add_argument(flag, type=int if o.kind == "int" else str, default=o.default, help=text)
         p.set_defaults(func=_verb(binding.factory, verb, theme, shown, binding, plan.actions or None))
     info = MountInfo(plan=plan, bound=binding.bound, legacy=verbs == "all" and namespace is None, prog=host_prog)
     subparsers._pk_mount = info  # type: ignore[attr-defined]
@@ -176,7 +191,8 @@ def verbs_table() -> Any:
 
 def _add(sub: "argparse._SubParsersAction", name: str, *, help: str, group: Optional[str] = None) -> argparse.ArgumentParser:
     """``add_parser``, tagging the parser with its help heading when the action takes one."""
-    p = sub.add_parser(name, help=help)
+    # An alias is no command of its own: without ``help`` argparse lists nothing for it.
+    p = sub.add_parser(name) if help == argparse.SUPPRESS else sub.add_parser(name, help=help)
     p._pk_group = group  # type: ignore[attr-defined]
     return p
 
@@ -305,7 +321,7 @@ class _HelpWriter:
                 self.rows.append(self._to_ansi(Line([S("    ")] + r), self.pal))
             return
         body = self._wrap([S(text, ("muted",))], max(1, self.cols - 2 - width))
-        if self._cell_len(term) > width:
+        if self._cell_len(term) >= width:
             # A term wider than the column takes a line of its own; its description sits under it.
             for i, r in enumerate(self._wrap([S(term, ("strong",))], max(1, self.cols - 2))):
                 self.rows.append(self._to_ansi(Line([S("  " if not i else "    ")] + r), self.pal))
@@ -387,9 +403,9 @@ class GroupedHelpParser(argparse.ArgumentParser):
         if plan.namespace and not info.nested:
             license_rows = [(plan.namespace, helps.get(plan.namespace, ""))]
         else:
-            license_rows = [(i, self._id_help(copy, i)) for i in plan.ids]
+            license_rows = [(mount.id_term(i), self._id_help(copy, i)) for i in mount.help_order(plan.ids)]
         sections.append((copy("cli.help.group"), license_rows))
-        width = max((len(t) for _, rows in sections for t, _ in rows), default=0) + 4
+        width = min(36, max((len(t) for _, rows in sections for t, _ in rows), default=0) + 2)
         for heading, rows in sections:
             if not rows:
                 continue
@@ -439,11 +455,13 @@ class VerbHelpParser(argparse.ArgumentParser):
     in the kit's look (the Node kit's ``renderVerbHelp``), never the whole command list."""
 
     def format_help(self) -> str:
+        from ..ui.core import Copy
+
+        copy = Copy("en")
         w = _HelpWriter()
         S = w._Span
-        name = self.prog.split(" ", 1)[-1] if " " in self.prog else self.prog
         verb = self.prog.rsplit(" ", 1)[-1]
-        desc = next((v.help for v in verbs.VERBS if v.name == verb), self.description or "")
+        desc = getattr(self, "_pk_desc", None) or next((v.help for v in verbs.VERBS if v.name == verb), self.description or "")
         w.line(S(self.prog, ("strong",)))
         w.line(S(desc, ("muted",)))
         w.line()
@@ -452,11 +470,15 @@ class VerbHelpParser(argparse.ArgumentParser):
         required = [a for a in shown if a.option_strings and a.required]
         meta = lambda a: "slug" if a.dest == "product" else str(a.metavar or a.dest).lower().replace("_", "-")  # noqa: E731
         usage = [self.prog] + [f"{a.option_strings[-1]} <{meta(a)}>" for a in required]
-        usage += [f"[{(a.metavar or a.dest)}]" if a.nargs in ("?", "*") else f"<{a.metavar or a.dest}>" for a in positional]
+        words = getattr(self, "_pk_usage", None)
+        if words:
+            usage.append(words)
+        else:
+            usage += [f"[{(a.metavar or a.dest)}]" if a.nargs in ("?", "*") else f"<{a.metavar or a.dest}>" for a in positional]
         usage.append("[options]")
-        w.line(S("Usage", ("muted",)), S("  " + " ".join(usage)), hang=7)
+        w.line(S(copy("cli.help.usage"), ("muted",)), S("  " + " ".join(usage)), hang=7)
         w.line()
-        w.line(S("Options", ("strong",)))
+        w.line(S(copy("cli.help.options"), ("strong",)))
         rows = []
         for a in shown:
             if not a.option_strings or a.dest == "help":
@@ -464,9 +486,10 @@ class VerbHelpParser(argparse.ArgumentParser):
             flag = a.option_strings[-1]
             if a.nargs != 0:
                 flag += f" <{meta(a)}>"
-            rows.append((flag, (a.help or "") .replace("%(default)s", str(a.default))))
-        rows.append(("-h, --help", "Help for a command."))
-        width = min(24, max(len(r[0]) for r in rows))
+            rows.append((flag, (a.help or "").replace("%(default)s", str(a.default))))
+        rows.append(("-h, --help", copy("cli.option.help")))
+        # A gutter of two cells at least, so a label never touches its description.
+        width = min(26, max(len(r[0]) for r in rows) + 2)
         for term, text in rows:
             w.pair(term, text, width)
         return w.text()

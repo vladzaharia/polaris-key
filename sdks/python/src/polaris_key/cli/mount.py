@@ -32,6 +32,16 @@ __all__ = [
     "Binding",
     "resolve_binding",
     "ID_COPY",
+    "ID_ARGS",
+    "HELP_ORDER",
+    "help_order",
+    "id_term",
+    "verb_usage",
+    "runtime_prog",
+    "OPTION_COPY",
+    "option_help",
+    "default_id",
+    "verb_help",
 ]
 
 #: The default mount: what a person using the host's CLI needs. Developer verbs mount by name.
@@ -128,6 +138,148 @@ ID_COPY: Mapping[str, str] = {
     "packs ensure": "cli.verb.packsEnsure",
     "doctor": "cli.verb.doctor",
 }
+
+#: The arguments of each id, as the Node kit's help writes them.
+ID_ARGS: Mapping[str, str] = {
+    "activate": "[key]",
+    "devices rename": "<deviceId> [label...]",
+    "devices deauthorize": "<deviceId>",
+    "config get": "<key>",
+    "config set": "<key> <value>",
+    "config reset": "<key>",
+    "secret": "<key>",
+    "mint": "<recipeId>",
+    "packs ensure": "<packIds...>",
+    "import-bundle": "<file>",
+}
+
+#: Help order, the Node kit's: task order, not the alphabet.
+HELP_ORDER: Tuple[str, ...] = (
+    "activate",
+    "status",
+    "enroll",
+    "deactivate",
+    "login",
+    "logout",
+    "register",
+    "devices list",
+    "devices rename",
+    "devices deauthorize",
+    "config get",
+    "config list",
+    "config set",
+    "config reset",
+    "secret",
+    "mint",
+    "update check",
+    "update apply",
+    "update download",
+    "changelog",
+    "packs status",
+    "packs ensure",
+    "offline-request",
+    "import-bundle",
+    "doctor",
+    "boot",
+)
+
+
+#: The catalog key of each shared option's description (``cli.option.*``).
+OPTION_COPY: Mapping[str, str] = {
+    "json": "cli.option.json",
+    "no-color": "cli.option.noColor",
+    "ascii": "cli.option.ascii",
+    "yes": "cli.option.yes",
+    "device-code": "cli.option.deviceCode",
+    "reveal": "cli.option.reveal",
+    "allow-workflow-commands": "cli.option.allowWorkflowCommands",
+}
+
+
+def option_help(opt: Any, hidden: bool = False) -> str:
+    """An option's description: the catalog's when it has one, else the table's. An option kept only
+    for compatibility (``--no-qr`` on sign-in) or one that is not mounted is hidden."""
+    import argparse
+
+    if hidden or opt.help.startswith("Accepted for compatibility"):
+        return argparse.SUPPRESS
+    key = OPTION_COPY.get(opt.name)
+    if key:
+        from ..ui.core import Copy
+
+        return Copy("en")(key)
+    return opt.help
+
+
+def default_id(verb: str, ids: Sequence[str]) -> str:
+    """The id a verb's list entry describes: its first mounted one in help order."""
+    own = [i for i in help_order(ids) if i == verb or i.split(" ", 1)[0] == verb or ALIASES.get(verb) == i]
+    return own[0] if own else verb
+
+
+def verb_help(verb: str, ids: Sequence[str], product: str) -> str:
+    """The catalog's one line for a verb's list entry (the same as the grouped help's)."""
+    from ..ui.core import Copy
+
+    id_ = default_id(ALIASES.get(verb, verb), ids)
+    key = ID_COPY.get(id_)
+    if key:
+        return Copy("en")(key, product=product)
+    return next((v.help for v in _verbs.VERBS if v.name == verb), "")
+
+
+def help_order(ids: Iterable[str]) -> List[str]:
+    """``ids`` in help order."""
+    rank = {i: n for n, i in enumerate(HELP_ORDER)}
+    return sorted(ids, key=lambda i: (rank.get(i, len(rank)), i))
+
+
+def id_term(id_: str) -> str:
+    """An id with its arguments: ``devices rename <deviceId> [label...]``."""
+    args = ID_ARGS.get(id_)
+    return f"{id_} {args}" if args else id_
+
+
+def verb_usage(verb: str, ids: Sequence[str]) -> str:
+    """What follows a verb's name in its usage line: its arguments, or its mounted actions."""
+    actions = [i.split(" ", 1)[1] for i in help_order(ids) if " " in i and i.split(" ", 1)[0] == verb]
+    if actions:
+        return "[" + " | ".join(f"{a} {ID_ARGS[f'{verb} {a}']}" if f"{verb} {a}" in ID_ARGS else a for a in actions) + "]"
+    return ID_ARGS.get(verb, "")
+
+
+def program_name() -> str:
+    """The program the person ran (``tidewater``, or ``python -m tidewater``), as click names it."""
+    import os
+    import sys
+
+    try:
+        from click.utils import _detect_program_name
+
+        return str(_detect_program_name())
+    except Exception:
+        return os.path.basename(sys.argv[0]) or "polaris-key"
+
+
+def runtime_prog(namespace: Optional[str] = None, *, in_verb: bool = False) -> Optional[str]:
+    """The command a person typed, read from click's context while a command runs: the root's name,
+    then the namespace (inside a verb, the verb's own path without the verb). ``None`` outside click."""
+    try:
+        import click
+    except ImportError:  # pragma: no cover
+        return None
+    ctx = click.get_current_context(silent=True)
+    if ctx is None:
+        # typer runs a command with no click context current: the name the shell ran, as click reads it.
+        name = program_name()
+        return f"{name} {namespace}" if namespace else name
+    if in_verb:
+        return ctx.command_path.rsplit(" ", 1)[0]
+    root = ctx.find_root().info_name or None
+    if root is None:
+        return None
+    return f"{root} {namespace}" if namespace else root
+
 
 #: What a bare ``devices`` or ``update`` runs.
 DEFAULT_ACTION: Mapping[str, str] = {"devices": "list", "update": "check", "config": "list", "packs": "status"}

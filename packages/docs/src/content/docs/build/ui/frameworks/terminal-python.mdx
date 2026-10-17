@@ -43,10 +43,11 @@ name, so its fix lines and help name its command:
 import argparse
 
 from polaris_key.cli import register_argparse, require_license
+from polaris_key.cli.argparse_cli import GroupedHelpParser
 
 import polaris_config
 
-parser = argparse.ArgumentParser(prog="tidewater")
+parser = GroupedHelpParser(prog="tidewater", description="Tidewater Studio")
 sub = parser.add_subparsers(dest="command", required=True)
 register_argparse(sub, config=polaris_config.CONFIG, version="2.4.1")  # your app's version
 
@@ -56,7 +57,7 @@ def export(args: argparse.Namespace) -> int:
     return 0
 
 
-sub.add_parser("export", help="Export a mix.").set_defaults(func=export)
+sub.add_parser("export", help="Export a mix.", group="Commands").set_defaults(func=export)
 args = parser.parse_args()
 raise SystemExit(args.func(args))
 ```
@@ -84,9 +85,11 @@ from the parsed options.
 
 `polaris_click_group(client_factory, theme=…, prog=…)` and `polaris_typer_app(…)` take the same
 options and mount the verbs under a group of their own; `register_click(host, …)` and
-`register_typer(host, …)` add them to your own group or app, at its root or under `namespace`. A
-host that uses `GroupedHelpParser` gets its own commands first (`add_parser(name, group="Build")`
-names the heading), then the license verbs under one heading. The verbs:
+`register_typer(host, …)` add them to your own group or app, at its root or under `namespace`. `GroupedHelpParser`, as above, prints your commands first (`add_parser(name, group="Build")` names
+the heading), then the license verbs under one License heading, in task order with their
+arguments. A plain `argparse.ArgumentParser` can only list every command in one block, so the
+verbs show there with the same one-line copy and no heading; click prints a License section and
+typer a License panel. The verbs:
 
 | Verb                  | What it draws                                                                                                                                                                   |
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

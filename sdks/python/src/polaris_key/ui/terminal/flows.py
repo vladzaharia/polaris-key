@@ -176,11 +176,29 @@ def _now() -> int:
     return int(time.time())
 
 
+def _code_of(client: Any, e: PolarisError) -> str:
+    """``e``'s code, except that a service the product seems not to run, because discovery could not be
+    reached, is a network failure (offline), not "Not available"."""
+    if e.code != "service-unavailable":
+        return e.code
+    try:
+        if getattr(getattr(client, "core", None), "local_only", False):
+            return e.code
+        d = client.try_discover()
+    except Exception:
+        return "network"
+    return "network" if d is None or getattr(d, "kind", None) == "error" else e.code
+
+
 def _error_outcome(t: Terminal, code: str, verb: str) -> Outcome:
     k = t.kit
     title, message = screens._code_title_message(k, code)
-    lines = [k.header(verb)] + ([k.rail()] if k.decor else []) + k.step("fail", [title]) + k.body([message]) + k.end()
-    return Outcome(EXIT.failed, lines, {"error": code})
+    lines = [k.header(verb)] + ([k.rail()] if k.decor else []) + k.step("fail", [title]) + k.body([message])
+    if code == "network":
+        # Offline: say how to try again.
+        lines += screens._gap(k) + screens._fixes(k, [(verb, "common.tryAgain")])
+    lines += k.end()
+    return Outcome(EXIT.failed, screens._close(k, lines) if code == "network" else lines, {"error": code})
 
 
 def _cancelled(t: Terminal, lines: List[Line], data: Dict[str, Any]) -> Outcome:
@@ -275,7 +293,7 @@ def _busy(t: Terminal, fn: Callable[[], Any], draw: Callable[[int], List[Line]])
     return w.result
 
 
-def read_key(t: Terminal) -> Optional[str]:
+def read_key(t: Terminal, reason: Optional[Span] = None) -> Optional[str]:
     """Masked key entry (UI-KITS §4.3): the prefix stays clear, the body is bullets and none of it
     shows; the verdict updates as you type, a cut-short key is caught on Enter, a key for
     another product is a warning that does not submit, and the key never touches argv or shell
@@ -288,7 +306,7 @@ def read_key(t: Terminal) -> Optional[str]:
         with t.device.keys() as keys, t.device.live() as live:
             while True:
                 verdict = parse_key(raw, final=final)
-                live.update(lambda r=raw, v=verdict, e=show_empty: screens.key_entry(k, r, v, show_empty=e))
+                live.update(lambda r=raw, v=verdict, e=show_empty: screens.key_entry(k, r, v, show_empty=e, reason=reason))
                 key = keys.read(None)
                 if not key:
                     continue  # a wake (a resize) or nothing: draw again
@@ -312,7 +330,7 @@ def read_key(t: Terminal) -> Optional[str]:
         return None
 
 
-def activate(client: Any, t: Terminal, key: Optional[str]) -> Outcome:
+def activate(client: Any, t: Terminal, key: Optional[str], *, reason: Optional[Span] = None) -> Outcome:
     """``activate``: the key (masked entry when interactive and none was given), the busy line,
     then done, a refusal with its copy, or Replace a device in the browser and Try again."""
     k = t.kit
@@ -320,14 +338,14 @@ def activate(client: Any, t: Terminal, key: Optional[str]) -> Outcome:
     if key is None:
         if not t.env.interactive:
             return usage(t, "activate --key-stdin | --key-file <path>")
-        key = read_key(t)
+        key = read_key(t, reason)
         if key is None:
             # Nothing changed: the header, the step and the line saying so (never a blank screen).
             lines = screens._frame(k, verb, k.step("done", [k.t("part.keyField.label")]), [k.t("cli.nothingChanged", "muted")])
             return _cancelled(t, lines, {"kind": "cancelled"})
     verdict = parse_key(key, final=True)
     while True:
-        result = _busy(t, lambda: client.license.activate_with_key(key), lambda f: screens.key_entry(k, key, verdict, busy=True, frame=f))
+        result = _busy(t, lambda: client.license.activate_with_key(key), lambda f: screens.key_entry(k, key, verdict, busy=True, frame=f, reason=reason))
         view = activation_view(result, key)
         data = _activation_data(result)
         if getattr(result, "kind", None) == "ok":
@@ -382,7 +400,10 @@ def enroll(client: Any, t: Terminal) -> Outcome:
 
 
 def deactivate(client: Any, t: Terminal) -> Outcome:
-    client.license.deactivate()
+    try:
+        client.license.deactivate()
+    except PolarisError as e:
+        return _error_outcome(t, _code_of(client, e), t.verb or "deactivate")
     return _signed_out(t)
 
 
@@ -421,8 +442,8 @@ def sign_in(
     try:
         prompt = _busy(t, lambda: client.identity.begin_sign_in(device_name, confirm_identity=bool(attach)), lambda f: screens.sign_in(k, model.view, verb, frame=f))
     except PolarisError as e:
-        model.failed(e.code)
-        return Outcome(EXIT.failed, screens.sign_in(k, model.view, verb), {"state": "error", "error": e.code})
+        model.failed(_code_of(client, e))
+        return Outcome(EXIT.failed, screens.sign_in(k, model.view, verb), {"state": "error", "error": _code_of(client, e)})
     view = model.prompted(prompt, _now())
     t.emit(
         "pending",
@@ -509,7 +530,10 @@ def sign_out(client: Any, t: Terminal, *, yes: bool = False) -> Outcome:
             key = keys.read(None)
         if key not in ("y", "Y"):
             return Outcome(EXIT.failed, [], {"signedOut": False, "state": "cancelled"})
-    client.identity.sign_out()
+    try:
+        client.identity.sign_out()
+    except PolarisError as e:
+        return _error_outcome(t, _code_of(client, e), t.verb or "sign-out")
     return _signed_out(t)
 
 
@@ -561,8 +585,8 @@ def devices(client: Any, t: Terminal, words: Sequence[str], *, yes: bool = False
             return Outcome(EXIT.ok, screens.devices(k, done, verb), {"deauthorized": words[1]})
     except PolarisError as e:
         if e.code == "device-management-unsupported":
-            return Outcome(EXIT.failed, screens.devices(k, DevicesView("Devices", "browser-mode"), verb), {"error": e.code})
-        return _error_outcome(t, e.code, verb)
+            return Outcome(EXIT.failed, screens.devices(k, DevicesView("Devices", "browser-mode"), verb), {"error": _code_of(client, e)})
+        return _error_outcome(t, _code_of(client, e), verb)
     except Exception as e:  # DeviceManagementUnsupportedError
         code = getattr(e, "code", None)
         if code == "device-management-unsupported" or type(e).__name__.startswith("DeviceManagementUnsupported"):
@@ -577,13 +601,36 @@ def usage(t: Terminal, text: str) -> Outcome:
     return Outcome(EXIT.usage, lines, {"error": "usage", "usage": f"{k.prog} {text}"})
 
 
+def _plain_rows(k: Any, texts: Sequence[str]) -> List[Line]:
+    """Commands that are not ``<prog> <verb>`` (a pipe, an environment variable), as fix rows."""
+    return [Line(k._prefix("rail") + [Span(text, ("strong",), None, "data:command", False, True)]) for text in texts]
+
+
+def _key_fixes(k: Any) -> List[Line]:
+    """The ways to give ``activate`` a key without a terminal."""
+    return (
+        screens._fixes(k, [("activate --key-file <path>", "")])
+        + _plain_rows(k, [f"echo $KEY | {k.prog} activate", f"POLARIS_KEY_ACTIVATION_KEY=… {k.prog} activate"])
+    )
+
+
 def no_key(t: Terminal, piped: bool) -> Outcome:
     """``activate`` with no key to read: a terminal that cannot prompt says how to give one; a pipe
-    that held none says so. Exit 2, ``"error": "usage"``."""
+    that held none says so. Title, then the ways to give a key. Exit 2, ``"error": "usage"``."""
     k = t.kit
-    msg = k.t("cli.activate.noKeyPiped") if piped else k.t("cli.activate.noKey", command=f"{k.prog} activate")
-    lines = [k.header(t.verb)] + ([k.rail()] if k.decor else []) + k.step("warn", [msg]) + k.end()
-    return Outcome(EXIT.usage, lines, {"error": "usage"})
+    msg = k.t("cli.activate.noKeyPiped", "strong") if piped else k.t("cli.activate.noKey", "strong", command=f"{k.prog} activate")
+    lines = [k.header(t.verb)] + ([k.rail()] if k.decor else []) + k.step("warn", [msg]) + screens._gap(k) + _key_fixes(k) + k.end()
+    return Outcome(EXIT.usage, screens._close(k, lines), {"error": "usage"})
+
+
+def key_file_problem(t: Terminal, path: str, empty: bool) -> Outcome:
+    """``activate --key-file`` with a file that is empty or cannot be read: a warning, the path, and
+    the command again. Exit 2, ``"error": "usage"``."""
+    k = t.kit
+    title = "The key file is empty" if empty else "The key file can't be read"
+    lines = [k.header(t.verb)] + ([k.rail()] if k.decor else []) + k.step("warn", [Span(title, ("strong",), None, "data:diagnostic")])
+    lines += k.body([Span(path, ("muted",), None, "data:path")]) + screens._gap(k) + screens._fixes(k, [("activate --key-file <path>", "")]) + k.end()
+    return Outcome(EXIT.usage, screens._close(k, lines), {"error": "usage", "file": path})
 
 
 # ── config ───────────────────────────────────────────────────────────────────────────────────
@@ -618,7 +665,7 @@ def config(client: Any, t: Terminal, words: Sequence[str], *, fallback: Optional
         if len(words) == 1 and action not in ("get", "set", "reset"):
             return _one_setting(client, t, action, fallback=fallback)
     except PolarisError as e:
-        return _error_outcome(t, e.code, verb)
+        return _error_outcome(t, _code_of(client, e), verb)
     return usage(t, "config [list | get <key> | set <key> <value> | reset <key>]")
 
 
@@ -660,8 +707,8 @@ def _problem(t: Terminal, kind: str, title: Span, message: Optional[Span], code:
     lines = [k.header(t.verb)] + ([k.rail()] if k.decor else []) + k.step(kind, [title])
     if message is not None:
         lines += k.body([message])
-    lines += screens._fixes(k, fixes) + k.end()
-    return Outcome(code, lines, data, stream="stderr")
+    lines += (screens._gap(k) if fixes else []) + screens._fixes(k, fixes) + k.end()
+    return Outcome(code, screens._close(k, lines), data, stream="stderr")
 
 
 def _hidden(t: Terminal, title_key: str, command: str, data: Dict[str, Any], **args: Any) -> Outcome:
@@ -707,7 +754,7 @@ def mint(client: Any, t: Terminal, words: Sequence[str], *, reveal: bool = False
     try:
         tok = client.config.mint_token(recipe)
     except PolarisError as e:
-        return _error_outcome(t, e.code, t.verb or "mint")
+        return _error_outcome(t, _code_of(client, e), t.verb or "mint")
     data = {"recipe": recipe, "expiresAt": tok.expiresAt}
     if t.env.json:
         return Outcome(EXIT.ok, [], data)
@@ -817,7 +864,7 @@ def _fetch(
     except PolarisError as e:
         if e.code == "cancelled":
             return Outcome(EXIT.failed, screens.update(k, replace(base, state="cancelled"), verb), {**data, "state": "cancelled"})
-        return Outcome(EXIT.failed, screens.update(k, replace(base, state="failed", code=e.code), verb), {**data, "state": "error", "error": e.code})
+        return Outcome(EXIT.failed, screens.update(k, replace(base, state="failed", code=_code_of(client, e)), verb), {**data, "state": "error", "error": _code_of(client, e)})
     if unsupported_check and getattr(out, "kind", None) == "unsupported":
         return _error_outcome(t, "unsupported", verb)
     size = fmt.size(bar.total, k.copy.locale) if bar.total else None
@@ -833,12 +880,22 @@ def update(client: Any, t: Terminal, words: Sequence[str], *, channel: Optional[
     current = getattr(getattr(client, "core", None), "version", None)
     try:
         if not client.update.configured:
+            # No signed updates: the unsigned version check says what is out and where to get it.
             if action != "check":
-                return Outcome(EXIT.failed, screens.diagnostic(k, verb, [("", "This build configures no signed updates (UpdateClientOptions).")], ok=False), {"error": "not-configured"})
+                # Say it is not set up; the release link is a courtesy that may not be reachable.
+                try:
+                    vc = client.update.check(channel=channel)
+                except PolarisError:
+                    vc = None
+                url = (vc.url or None) if vc else None
+                version = vc.version if vc and vc.updateAvailable else None
+                view = UpdateView("UpdatePrompt", "not-configured", version, current, notes_url=url, installable=False)
+                return Outcome(EXIT.failed, screens.update(k, view, verb), {"error": "not-configured", "version": version, "url": url})
             vc = client.update.check(channel=channel)
             state = "available" if vc.updateAvailable else "up-to-date"
-            view = UpdateView("UpdatePrompt", state, vc.version if vc.updateAvailable else None, current, notes_url=vc.url or None, installable=False)
-            return Outcome(EXIT.ok, screens.update(k, view, verb), {"state": state, "version": vc.version, "updateAvailable": vc.updateAvailable})
+            url = vc.url or None
+            view = UpdateView("UpdatePrompt", state, vc.version if vc.updateAvailable else None, current, notes_url=url, installable=False)
+            return Outcome(EXIT.ok, screens.update(k, view, verb), {"state": state, "version": vc.version, "updateAvailable": vc.updateAvailable, "url": url})
         check = client.update.decide(channel=channel)
         d = check.decision
         # The download's size, as the release gave it ("61 MB"), for "2.5.0 is available · 61 MB".
@@ -863,7 +920,7 @@ def update(client: Any, t: Terminal, words: Sequence[str], *, channel: Optional[
 
             return _fetch(client, t, view, current, verb, data, lambda bar: client.update.install(check, on_progress=bar), finish, unsupported_check=True)
     except PolarisError as e:
-        return _error_outcome(t, e.code, verb)
+        return _error_outcome(t, _code_of(client, e), verb)
     return usage(t, "update [check | download --to <path> | apply]")
 
 
@@ -872,7 +929,7 @@ def changelog(client: Any, t: Terminal, *, limit: Optional[int] = None) -> Outco
         entries = client.release.changelog()
     except PolarisError as e:
         view = release_notes_view(None, error=True)
-        return Outcome(EXIT.failed, screens.release_notes(t.kit, view, t.verb or "changelog"), {"error": e.code})
+        return Outcome(EXIT.failed, screens.release_notes(t.kit, view, t.verb or "changelog"), {"error": _code_of(client, e)})
     if isinstance(limit, int) and limit > 0:
         entries = entries[:limit]
     view = release_notes_view(entries)
@@ -908,8 +965,8 @@ def packs(client: Any, t: Terminal, words: Sequence[str]) -> Outcome:
             view = ProgressView("UpdateProgress", "done", name)
             return Outcome(EXIT.ok, screens.update_progress(k, view, verb), {"packs": [{"pack": i["packId"], "version": i["version"]} for i in done]})
     except PolarisError as e:
-        view = ProgressView("UpdateProgress", "failed", ", ".join(words[1:]) or None, code=e.code)
-        return Outcome(EXIT.failed, screens.update_progress(k, view, verb), {"error": e.code})
+        view = ProgressView("UpdateProgress", "failed", ", ".join(words[1:]) or None, code=_code_of(client, e))
+        return Outcome(EXIT.failed, screens.update_progress(k, view, verb), {"error": _code_of(client, e)})
     return usage(t, "packs [status | ensure <pack…>]")
 
 

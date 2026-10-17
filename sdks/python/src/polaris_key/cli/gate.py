@@ -49,11 +49,14 @@ class GateTarget:
     client: Optional[Callable[[], Any]]
     #: Whether the gate closes the client it built (not one the host handed in).
     owns_client: bool
-    #: What a person types before a verb (``tidewater``, or ``tidewater license`` under a namespace).
-    prog: str
+    #: What a person types before a verb (``tidewater``, or ``tidewater license`` under a namespace),
+    #: or ``None`` to read it from click's context when a command runs.
+    prog: Optional[str]
     #: The verb ids the mount offers: a fix for a verb that is not mounted is left out.
     mounted: Optional[Sequence[str]] = None
     theme: Any = None
+    #: The group the verbs sit under (click and typer), for the program name read at run time.
+    namespace: Optional[str] = None
 
 
 _latest: Optional[GateTarget] = None
@@ -68,6 +71,9 @@ def bind_gate(target: GateTarget) -> None:
 def _refusal(status: str, usable: bool, mounted: Optional[Sequence[str]]) -> Tuple[str, str, str, List[str]]:
     """``(error, title_key, message_key, fix verbs)`` for a status the command cannot run on."""
     not_entitled = usable or status == "channel-not-entitled"
+    if status == "error":
+        # The check itself failed: say so, never "signed out".
+        return "license_required", "core.codes.sync-failed.title", "core.codes.sync-failed.message", [v for v in ["status"] if mounted is None or v in mounted]
     if usable:
         title, message = "core.codes.not_entitled.title", "core.codes.not_entitled.message"
     else:
@@ -143,26 +149,77 @@ def _run_gate(
     t = make(command)
     # A license that is not usable may be one sync away from it (an expired document, a renewal).
     if not usable:
-        try:
-            client.sync()
-        except Exception:
-            pass
+        with _checking(t):
+            try:
+                client.sync()
+            except Exception:
+                pass
         status, usable, entitled = check()
         if usable and entitled:
             return None
+    flow_exit: Optional[int] = None
     if not usable and t.env.interactive and status in INLINE_FLOW:
         at = make("activate")
-        out = flows.activate(client, at, None)
+        out = flows.activate(client, at, None, reason=at.kit.t("cli.gate.needs", command=command))
         at.finish(out)
         if out.code != EXIT.ok:
-            return out.code
-        status, usable, entitled = check()
-        if usable and entitled:
-            return None
+            # Ctrl-C ends quietly; Esc leaves the command unrun, so say so and show the way back.
+            if at.interrupted or out.data.get("kind") != "cancelled":
+                return out.code
+            flow_exit = out.code
+        else:
+            status, usable, entitled = check()
+            if usable and entitled:
+                return None
         t = make(command)
     out = refusal_outcome(t, command, status, usable, mounted)
     t.finish(out)
-    return EXIT.license_required
+    return flow_exit if flow_exit is not None else EXIT.license_required
+
+
+#: How long a license check runs before the gate says it is checking.
+CHECKING_AFTER_SECONDS = 0.4
+
+
+class _checking:
+    """``Checking your license…`` on stderr when a check outlasts ``CHECKING_AFTER_SECONDS``; erased
+    on a terminal once it ends. Nothing under ``--json``."""
+
+    def __init__(self, t: Any) -> None:
+        self.t = t
+        self.timer: Any = None
+        self.shown = False
+
+    def _show(self) -> None:
+        try:
+            from ..ui.terminal.text import Line
+
+            self.shown = True
+            self.t._stderr_device().print([Line([self.t.kit.t("gate.checking", "muted")])])
+        except Exception:
+            pass
+
+    def __enter__(self) -> "_checking":
+        if not self.t.env.json:
+            import threading
+
+            self.timer = threading.Timer(CHECKING_AFTER_SECONDS, self._show)
+            self.timer.daemon = True
+            self.timer.start()
+        return self
+
+    def __exit__(self, *exc: Any) -> None:
+        if self.timer is not None:
+            self.timer.cancel()
+            self.timer.join()
+        if self.shown:
+            stream = self.t.err if self.t.err is not None else sys.stderr
+            try:
+                if stream.isatty():
+                    stream.write("\x1b[1A\x1b[2K\r")
+                    stream.flush()
+            except Exception:
+                pass
 
 
 def run_gate(client: Any, **kw: Any) -> Optional[int]:
@@ -216,8 +273,15 @@ def _run_refusal(
 
     t = terminal
     if t is None:
+        try:
+            from ..ui.core.identity import presentation_source
+
+            presentation_source(client)
+            source_client = client
+        except Exception:
+            source_client = None
         t = Terminal.create(
-            product=getattr(client, "product", None), client=None, theme=theme, prog=prog, verb=command, json=json,
+            product=getattr(client, "product", None), client=source_client, theme=theme, prog=prog, verb=command, json=json,
             no_color=no_color, ascii=ascii, env=env, stdout=stdout, stdin=stdin,
         )
         if stderr is not None:
@@ -227,8 +291,9 @@ def _run_refusal(
 
 
 def refusal_outcome(t: Any, command: str, status: str, usable: bool, mounted: Optional[Sequence[str]] = None) -> Any:
-    """The refusal for ``command`` on ``status``: a triangle, the title and message, and the commands
-    that fix it, for stderr; under ``--json`` the result's fields only. Exit 4."""
+    """The refusal for ``command`` on ``status``, in the Node kit's frame: a triangle with the title,
+    the message, and the commands that fix it, ending on the last of them; no header, no chip. Under
+    ``--json`` the result's fields only. Exit 4."""
     from ..ui.terminal import screens
     from ..ui.terminal.flows import Outcome
 
@@ -236,11 +301,11 @@ def refusal_outcome(t: Any, command: str, status: str, usable: bool, mounted: Op
     k = t.kit
     if t.env.json:
         return Outcome(EXIT.license_required, [], {"error": error})
-    lines = [k.header(command)] + ([k.rail()] if k.decor else []) + k.step("warn", [k.t(title_key, "strong")]) + k.body([k.t(message_key)])
+    lines = k.step("warn", [k.t(title_key, "strong")]) + k.body([k.t(message_key)])
     if fixes:
-        lines += screens._gap(k) + screens._fixes(k, [(v, FIX_COPY[v]) for v in fixes])
+        lines += screens._gap(k) + screens._fixes(k, [(v, FIX_COPY[v]) for v in fixes], dim=False)
     lines += k.end()
-    return Outcome(EXIT.license_required, lines, {"error": error}, stream="stderr")
+    return Outcome(EXIT.license_required, screens._close(k, lines), {"error": error}, stream="stderr")
 
 
 def _flags(args: Tuple[Any, ...], kwargs: Dict[str, Any]) -> Dict[str, Any]:
@@ -289,7 +354,14 @@ def require_license(
             flags = _flags(args, kwargs)
             own = client is None and target is not None and target.owns_client
             command = fn.__name__.replace("_", "-")
-            gate_prog = prog or (target.prog if target else None) or "polaris-key"
+            from .mount import runtime_prog
+
+            gate_prog = (
+                prog
+                or (target.prog if target else None)
+                or runtime_prog(target.namespace if target else None)
+                or str(getattr(client, "product", None) or "polaris-key")
+            )
             try:
                 c = client if client is not None else target.client()  # type: ignore[union-attr]
             except Exception:
@@ -308,7 +380,7 @@ def require_license(
                     json=bool(flags.get("json")),
                     no_color=bool(flags.get("no_color")),
                     ascii=bool(flags.get("ascii")),
-                    prog=prog or (target.prog if target else None) or str(getattr(c, "product", None) or "polaris-key"),
+                    prog=gate_prog,
                     mounted=target.mounted if target else None,
                     theme=theme or (target.theme if target else None),
                 )

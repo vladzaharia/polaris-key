@@ -16,6 +16,7 @@ import pytest
 from polaris_key.cli import gate
 from polaris_key.cli.argparse_cli import GroupedHelpParser, register_argparse
 from polaris_key.core.errors import PolarisError
+from polaris_key.license.endpoints import ActivationError
 from polaris_key.ui.terminal import flows
 from polaris_key.ui.terminal.device import Device
 from polaris_key.ui.terminal.flows import Terminal
@@ -50,6 +51,32 @@ def _offline(*a: Any, **k: Any) -> Any:
     raise PolarisError("network", "offline")
 
 
+class _OfflineDiscovery:
+    kind = "error"
+
+
+class _OfflineUpdate:
+    configured = True
+
+    def decide(self, channel: Any = None) -> Any:
+        raise PolarisError("network", "offline")
+
+    def check(self, channel: Any = None) -> Any:
+        raise PolarisError("service-unavailable", "discovery failed")
+
+
+_OFFLINE = SimpleNamespace(
+    product="tidewater",
+    core=SimpleNamespace(version="2.4.1", channel="stable", local_only=False),
+    try_discover=lambda: _OfflineDiscovery(),
+    license=SimpleNamespace(activate_with_key=lambda key: ActivationError(message="offline"), deactivate=_offline),
+    identity=SimpleNamespace(begin_sign_in=_offline, sign_out=_offline),
+    update=_OfflineUpdate(),
+    list_devices=_offline,
+)
+_OFFLINE.update.configured = False  # type: ignore[attr-defined]
+
+
 _CLIENT = SimpleNamespace(
     product="tidewater",
     core=SimpleNamespace(version="2.4.1", channel="stable"),
@@ -71,12 +98,28 @@ SCENES: Tuple[Tuple[str, Callable[[Any], List[Line]]], ...] = (
     ("update-check-unconfigured", _outcome(lambda t: flows.update(_CLIENT, t, ["check"]), "update")),
     ("update-apply-unconfigured", _outcome(lambda t: flows.update(_CLIENT, t, ["apply"]), "update")),
     ("devices-offline", _outcome(lambda t: flows.devices(_CLIENT, t, ["list"]), "devices")),
+    ("activate-offline", _outcome(lambda t: flows.activate(_OFFLINE, t, "pkey_tidewater_7Q2MzK8vRb1xLp4n3WPLDA"), "activate")),
+    ("login-offline", _outcome(lambda t: flows.sign_in(_OFFLINE, t), "login")),
+    ("logout-offline", _outcome(lambda t: flows.sign_out(_OFFLINE, t, yes=True), "logout")),
+    ("deactivate-offline", _outcome(lambda t: flows.deactivate(_OFFLINE, t), "deactivate")),
+    ("update-check-offline", _outcome(lambda t: flows.update(_OFFLINE, t, ["check"]), "update")),
+    ("update-apply-offline", _outcome(lambda t: flows.update(_OFFLINE, t, ["apply"]), "update")),
+    ("gate-cannot-check", lambda e: gate.refusal_outcome(_terminal(e, "export"), "export", "error", False, None).lines),
+    ("activate-empty-key-file", _outcome(lambda t: flows.key_file_problem(t, "~/.config/tidewater/license.key", True), "activate")),
 )
+
+
+def _variants(theme: str) -> List[Tuple[str, Any]]:
+    """The fixture variants, plus the narrow terminals the gate is held to: 40 and 32 columns."""
+    from .golden_support import env
+
+    narrow = [(f"{name} · {w}", env(color, sym, w, theme)) for w in (40, 32) for name, color, sym in (("truecolor", "truecolor", "unicode"), ("no-color", "none", "unicode"))]
+    return variants(theme) + narrow
 
 
 def _document(draw: Callable[[Any], List[Line]], theme: str) -> str:
     parts = []
-    for label, e in variants(theme):
+    for label, e in _variants(theme):
         k = kit(e)
         pal = k.palette()
         parts.append(f"── {label} ──\n" + "\n".join(to_ansi(ln, pal) for ln in draw(e)) + "\n")

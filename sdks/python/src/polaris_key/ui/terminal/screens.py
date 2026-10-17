@@ -85,13 +85,13 @@ def _gap(k: Kit, tier: int = DROP["blank_prose"]) -> Lines:
     return k.gap(tier)
 
 
-def _fixes(k: Kit, fixes: Sequence[Tuple[str, str]]) -> Lines:
+def _fixes(k: Kit, fixes: Sequence[Tuple[str, str]], dim: bool = True) -> Lines:
     """Fix commands, aligned: ``polaris-key activate   Use a different key``. Below 50 columns, or
     when a row would not fit its line, each command stacks above its label."""
     if not fixes:
         return []
     width = max(len(f"{k.prog} {w}") for w, _ in fixes)
-    rows = [k.command(w, label, width) for w, label in fixes]
+    rows = [k.command(w, label, width, dim) for w, label in fixes]
     if k.env.width >= STACK_COLUMNS and all(k.fits(r) for r in rows):
         return [Line(k._prefix("rail") + r) for r in rows]
     out: Lines = []
@@ -101,7 +101,7 @@ def _fixes(k: Kit, fixes: Sequence[Tuple[str, str]]) -> Lines:
         for i, ln in enumerate(wrap(k.command(w), max(1, k.body_width - 4))):
             out.append(Line(k._prefix("rail") + ([Span("    ")] if i else []) + ln))
         if label:
-            out += k.body([k.t(label, "muted")], 2)
+            out += k.body([k.t(label, *(("muted",) if dim else ()))], 2)
     return out
 
 
@@ -208,10 +208,10 @@ def gate(k: Kit, v: GateView, verb: str = "status") -> Lines:
 # ── Activate, DeviceLimit ────────────────────────────────────────────────────────────────────
 
 
-def _masked(k: Kit, raw: str, verdict: KeyVerdict) -> List[Span]:
+def _masked(k: Kit, raw: str, verdict: KeyVerdict, cursor: bool = False) -> List[Span]:
     """The key as typed, masked: the public ``pkey_<product>_`` prefix, then bullets, never a
-    character of the secret (the Node kit's rule)."""
-    return [k.key_mask(raw)]
+    character of the secret (the Node kit's rule). The cursor cell is part of the line's width."""
+    return [k.key_mask(raw, width=k.body_width - 1 if cursor else None)]
 
 
 def other_product(k: Kit, verdict: KeyVerdict) -> bool:
@@ -228,14 +228,17 @@ def key_entry(
     frame: int = 0,
     show_empty: bool = False,
     verb: str = "activate",
+    reason: Optional[Span] = None,
 ) -> Lines:
     """The masked key field with its live verdict (Activate ``empty``, ``typing``, ``parsed``,
-    ``cut-short``, ``rejected`` and ``busy``)."""
+    ``cut-short``, ``rejected`` and ``busy``). ``reason`` is why it is asked (a gated command)."""
     body: Lines = []
+    if reason is not None:
+        body += k.body([reason]) + _gap(k)
     body += k.step("active", [k.t("part.keyField.label", "strong"), Span("  "), k.t("activate.lede", "muted")])
     cursor = Span(" ", ("code",), None, "symbol") if k.decor and not busy else Span("")
     if raw:
-        body += [Line(k._prefix("rail") + _masked(k, raw, verdict) + [cursor])]
+        body += [Line(k._prefix("rail") + _masked(k, raw, verdict, bool(cursor.text)) + [cursor])]
     else:
         body += [Line(k._prefix("rail") + [k.t("part.keyField.placeholder", "muted"), cursor])]
     if busy:
@@ -410,9 +413,11 @@ def sign_in(k: Kit, v: SignInView, verb: str = "sign-in", *, frame: int = 0) -> 
             body += k.step("fail", [k.t("cli.identityOff.notice", "strong", product=k.inline_product)])
             body += k.body([k.t("cli.identityOff.fix", command=f"{k.prog} activate")])
         else:
-            title, _ = _code_title_message(k, code, group="codes")
+            title, message = _code_title_message(k, code, group="codes")
             body += k.step("fail", [title])
-            if v.state in ("expired", "denied", "cancelled"):
+            if code == "network":
+                body += k.body([message])
+            if v.state in ("expired", "denied", "cancelled") or code == "network":
                 body += _again(k, verb)
     return _frame(k, verb, body, end, hints)
 
@@ -607,6 +612,13 @@ def _progress_line(
     return out + [Line(k._prefix("rail") + [long])]
 
 
+def _download_rows(k: Kit, v: UpdateView) -> Lines:
+    """Where to get a version this build cannot install itself: the release link, else the words."""
+    if v.notes_url:
+        return k.body([k.t("cli.update.download", "muted")]) + k.body([k.link(v.notes_url)])
+    return k.body([k.t("cli.update.downloadNoLink", product=k.inline_product)])
+
+
 def update(k: Kit, v: UpdateView, verb: str = "update") -> Lines:
     body: Lines = []
     end: List[Span] = []
@@ -618,6 +630,10 @@ def update(k: Kit, v: UpdateView, verb: str = "update") -> Lines:
     elif v.state == "blocked":
         body += k.step("warn", [k.t("update.blockedTitle", "strong")])
         body += k.body([k.t("update.blockedBody", product=k.inline_product)])
+    elif v.state == "not-configured":
+        # A build without signed updates can only point at the release.
+        body += k.step("warn", [k.t("cli.update.notConfiguredTitle", "strong")])
+        body += _download_rows(k, v)
     elif v.state == "revoked-required-content":
         body += k.step("fail", [k.t("core.codes.pack-revoked.title", "strong")])
         body += k.body([k.t("update.revokedContent", product=k.inline_product)])
@@ -667,6 +683,8 @@ def update(k: Kit, v: UpdateView, verb: str = "update") -> Lines:
             if v.critical:
                 body += k.body([*k.icon("warn", "warning"), k.t("update.critical")])
             body += _gap(k)
+            if not v.installable:
+                body += _download_rows(k, v)
             body += _fixes(k, ([("update apply", "cli.update.install")] if v.installable else []) + [("changelog", "update.whatsNew")])
     return _frame(k, verb, body, end, hints)
 

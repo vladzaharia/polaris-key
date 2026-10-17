@@ -1,0 +1,104 @@
+── truecolor · 80 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · deactivate[0m
+[2m│[0m
+[31m✗[0m  [1mCan't connect[0m
+[2m│[0m  Can't reach Polaris Key. Check your connection and try again.
+[2m│[0m
+[2m└[0m  [1mtidewater deactivate[0m   [2mTry again[0m
+── ansi16 · 80 ──
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · deactivate[0m
+[2m│[0m
+[31m✗[0m  [1mCan't connect[0m
+[2m│[0m  Can't reach Polaris Key. Check your connection and try again.
+[2m│[0m
+[2m└[0m  [1mtidewater deactivate[0m   [2mTry again[0m
+── no-color · 80 ──
+┌  [7m Tidewater Studio [0m · deactivate
+│
+✗  [1mCan't connect[0m
+│  Can't reach Polaris Key. Check your connection and try again.
+│
+└  [1mtidewater deactivate[0m   Try again
+── ascii · 80 ──
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - deactivate[0m
+[2m|[0m
+[31mx[0m  [1mCan't connect[0m
+[2m|[0m  Can't reach Polaris Key. Check your connection and try again.
+[2m|[0m
+[2m`[0m  [1mtidewater deactivate[0m   [2mTry again[0m
+── truecolor · 60 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · deactivate[0m
+[2m│[0m
+[31m✗[0m  [1mCan't connect[0m
+[2m│[0m  Can't reach Polaris Key. Check your connection and
+[2m│[0m  try again.
+[2m│[0m
+[2m└[0m  [1mtidewater deactivate[0m   [2mTry again[0m
+── ansi16 · 60 ──
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · deactivate[0m
+[2m│[0m
+[31m✗[0m  [1mCan't connect[0m
+[2m│[0m  Can't reach Polaris Key. Check your connection and
+[2m│[0m  try again.
+[2m│[0m
+[2m└[0m  [1mtidewater deactivate[0m   [2mTry again[0m
+── no-color · 60 ──
+┌  [7m Tidewater Studio [0m · deactivate
+│
+✗  [1mCan't connect[0m
+│  Can't reach Polaris Key. Check your connection and
+│  try again.
+│
+└  [1mtidewater deactivate[0m   Try again
+── ascii · 60 ──
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - deactivate[0m
+[2m|[0m
+[31mx[0m  [1mCan't connect[0m
+[2m|[0m  Can't reach Polaris Key. Check your connection and
+[2m|[0m  try again.
+[2m|[0m
+[2m`[0m  [1mtidewater deactivate[0m   [2mTry again[0m
+── pipe · 80 ──
+Tidewater Studio · deactivate
+Can't connect
+Can't reach Polaris Key. Check your connection and try again.
+
+tidewater deactivate   Try again
+── truecolor · 40 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · deactivate[0m
+[2m│[0m
+[31m✗[0m  [1mCan't connect[0m
+[2m│[0m  Can't reach Polaris Key. Check your
+[2m│[0m  connection and try again.
+[2m│[0m
+[2m│[0m  [1mtidewater deactivate[0m
+[2m└[0m    [2mTry again[0m
+── no-color · 40 ──
+┌  [7m Tidewater Studio [0m · deactivate
+│
+✗  [1mCan't connect[0m
+│  Can't reach Polaris Key. Check your
+│  connection and try again.
+│
+│  [1mtidewater deactivate[0m
+└    Try again
+── truecolor · 32 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m
+[2m│[0m
+[31m✗[0m  [1mCan't connect[0m
+[2m│[0m  Can't reach Polaris Key.
+[2m│[0m  Check your connection and
+[2m│[0m  try again.
+[2m│[0m
+[2m│[0m  [1mtidewater deactivate[0m
+[2m└[0m    [2mTry again[0m
+── no-color · 32 ──
+┌  [7m Tidewater Studio [0m
+│
+✗  [1mCan't connect[0m
+│  Can't reach Polaris Key.
+│  Check your connection and
+│  try again.
+│
+│  [1mtidewater deactivate[0m
+└    Try again
