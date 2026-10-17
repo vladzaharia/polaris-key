@@ -141,7 +141,7 @@ Corrections to the brief, from the code:
 - `update download` is Python's own verb and is in neither corpus list. It mounts only when named
   (`verbs=["update"]` or `"update download"`) and a partly mounted `update` refuses it. The corpus is
   unchanged.
-- `--json` enums are kebab-case in Python (`signed-in`); the Node kit still writes `signedIn`
+- `--json` keeps `signedIn` (lead ruling: the machine contract is shared with Node).
   (follow-up: UK-46's owner aligns Node).
 - Not done, and why: the `<Product> sign-in` copy and the bundle name from package metadata have no
   copy key or HA-13 seam to build on yet; the locale for the host's help is `en` until the theme

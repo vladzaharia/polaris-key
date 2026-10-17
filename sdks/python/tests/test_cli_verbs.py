@@ -116,7 +116,7 @@ def test_sign_in_json_prints_pending_then_the_result(capsys) -> None:
     pending, result = [json.loads(ln) for ln in out.strip().splitlines()]
     assert pending["event"] == "pending" and pending["userCode"] == "ABCD-EFGH"
     assert pending["verificationUri"] == "https://k/d"
-    assert result["event"] == "result" and result["state"] == "signed-in" and result["email"] == "ada@example.com"
+    assert result["event"] == "result" and result["state"] == "signedIn" and result["email"] == "ada@example.com"
 
 
 def _argparse_err(argv, factory, capsys):

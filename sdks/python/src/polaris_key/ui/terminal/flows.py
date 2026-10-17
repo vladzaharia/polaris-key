@@ -484,7 +484,7 @@ def sign_in(
         return Outcome(EXIT.failed, screens.sign_in(k, model.view, verb), {"state": "error", "error": model.view.code})
     result = worker.result
     final = model.finished(result)
-    data: Dict[str, Any] = {"state": "signed-in" if final.state == "done" else final.state}
+    data: Dict[str, Any] = {"state": "signedIn" if final.state == "done" else final.state}
     if final.state == "done":
         data.update(name=final.name, email=final.email, attached=getattr(result, "attached", None))
         try:
