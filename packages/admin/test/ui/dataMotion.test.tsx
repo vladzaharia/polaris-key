@@ -29,7 +29,7 @@ import { StatusPill } from "../../src/ui/StatusPill.js";
 import { SignedBadge } from "../../src/ui/SignedBadge.js";
 import { PageSkeleton, Skeleton } from "../../src/ui/Skeleton.js";
 import { RefetchBar } from "../../src/ui/loading.js";
-import { Stepper } from "../../src/ui/Stepper.js";
+import { Stepper } from "../../src/ui/wizard/index.js";
 import { BarList } from "../../src/ui/charts/BarList.js";
 import { Funnel } from "../../src/ui/charts/Funnel.js";
 import { Meter } from "../../src/ui/charts/Meter.js";

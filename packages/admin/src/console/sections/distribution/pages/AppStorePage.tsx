@@ -44,7 +44,7 @@ import { Select } from "../../../../ui/Select.js";
 import { Skeleton } from "../../../../ui/Skeleton.js";
 import { Spinner } from "../../../../ui/Spinner.js";
 import { StatusPill } from "../../../../ui/StatusPill.js";
-import { Stepper, type Step } from "../../../../ui/Stepper.js";
+import { Stepper, type WizardStep } from "../../../../ui/wizard/index.js";
 import { Textarea } from "../../../../ui/Textarea.js";
 import { Timestamp } from "../../../../ui/Timestamp.js";
 import { PageHeader } from "../../../../ui/PageHeader.js";
@@ -84,7 +84,7 @@ export const DISTRIBUTE_STEPS = [
 ] as const;
 export type DistributeStep = (typeof DISTRIBUTE_STEPS)[number];
 
-const STEPS: Step[] = [
+const STEPS: WizardStep[] = [
   { id: "build", label: "Build" },
   { id: "compliance", label: "Export compliance" },
   { id: "notes", label: "Release notes" },
@@ -339,7 +339,7 @@ function DistributeFlow({ slug, asc, appleId }: FlowProps): React.ReactElement {
         label="Distribute steps"
         steps={STEPS}
         current={step}
-        completed={[...done]}
+        done={[...done]}
         onStep={(id) => setStep(id as DistributeStep)}
       />
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">

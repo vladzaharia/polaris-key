@@ -397,6 +397,49 @@ describe("Distribution → Storefronts", () => {
     );
   });
 
+  it("Skip this step is saved as a core.setup choice and the stepper says Skipped", async () => {
+    const empty = {
+      integrationHidden: null,
+      notUsing: [],
+      runnerConsent: null,
+      skipped: [],
+    };
+    const { calls } = bootWith(
+      `${PAGE}?flow=add&step=listing&stores=google-play`,
+      routes({
+        [P("/settings/effective")]: {
+          settings: [{ key: "core.setup", value: empty, version: 0 }],
+        },
+        [`PATCH ${P("/settings/core.setup")}`]: {
+          ok: true,
+          claimed: false,
+          setting: {
+            key: "core.setup",
+            value: { ...empty, skipped: ["storefronts.listing"] },
+            version: 1,
+          },
+        },
+      }),
+    );
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Skip this step" }),
+    );
+    await waitFor(() =>
+      expect(writes(calls)).toEqual([
+        expect.objectContaining({
+          path: P("/settings/core.setup"),
+          method: "PATCH",
+          body: {
+            value: { ...empty, skipped: ["storefronts.listing"] },
+            expectedVersion: 0,
+          },
+        }),
+      ]),
+    );
+    // On to Assets; the skipped Listing step stays reachable and is named.
+    await waitFor(() => expect(window.location.hash).toContain("step=assets"));
+  });
+
   it("the plan lists every step with its mode and every external write before anything runs", async () => {
     const { calls } = bootWith(
       `${PAGE}?flow=add&step=plan&stores=google-play`,

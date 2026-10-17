@@ -8,6 +8,7 @@ import { stories as data } from "./data.js";
 import { stories as values } from "./values.js";
 import { stories as charts } from "./charts.js";
 import { stories as templates } from "./templates.js";
+import { stories as wizard } from "./wizard.js";
 
 /** Every story, grouped in `KIT_GROUPS` order. */
 export const STORIES: Story[] = [
@@ -20,4 +21,5 @@ export const STORIES: Story[] = [
   ...values,
   ...charts,
   ...templates,
+  ...wizard,
 ].sort((a, b) => KIT_GROUPS.indexOf(a.group) - KIT_GROUPS.indexOf(b.group));
