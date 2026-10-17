@@ -8,7 +8,13 @@ sidebar:
   order: 4
 ---
 
-Who to ask depends on the problem: the app's developer, the store you bought from, or Polaris Key.
+Who to ask depends on the problem.
+
+| Who                      | Ask them about                                                                     |
+| ------------------------ | ---------------------------------------------------------------------------------- |
+| The app's developer      | The app, its license, downloads, and billing or a refund when you bought from them |
+| The store                | Payment, billing, and refunds for a store purchase                                 |
+| Polaris Key (self-serve) | Your account, signing in, and privacy: see below                                   |
 
 ## Start with the app's help card
 
@@ -33,12 +39,15 @@ the app directly from the developer, ask them about billing or a refund too.
 If you bought the app through a store, use that store's purchase help for payment, billing, or a
 refund.
 
-## Contact Polaris Key
+## Problems with your Polaris Key account
 
-Polaris Key handles your account, signing in, and privacy. It does not have a published public help
-address. If your sign-in code did not arrive or has expired, select **Send a new code** on the code
-screen. If a security email worries you, choose **Secure your account** in it. For an app's
-features, billing, or refund, use the developer or store.
+Polaris Key does not have a published public help address. Fix these yourself:
+
+- A sign-in code that did not arrive or has expired: [Your sign-in code didn't arrive](/docs/help/code-didnt-arrive/).
+- A security email that worries you: [Secure your account](/docs/help/secure-your-account/).
+- Erase your account: [Delete your account](/docs/help/delete-account/).
+
+For an app's features, billing, or refund, use the developer or store.
 
 ## Include only what is needed
 

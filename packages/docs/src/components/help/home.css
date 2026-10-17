@@ -1,0 +1,75 @@
+/*
+ * The Help home (HelpTasks.astro, HelpTopics.astro). Tokens only, so dark and light come with them. The cards stack
+ * on a phone and sit two across when the content column is wide. Starlight styles (`not-content`) stay off.
+ */
+.pk-help-home__tasks,
+.pk-help-home__topics ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.pk-help-home__tasks {
+  display: grid;
+  gap: var(--pk-space-3);
+  grid-template-columns: 1fr;
+  margin-top: var(--pk-space-4);
+}
+
+.pk-help-home__tasks a {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pk-space-1);
+  height: 100%;
+  min-height: 3rem;
+  padding: var(--pk-space-3) var(--pk-space-4);
+  border: 1px solid var(--sl-color-hairline);
+  border-radius: var(--pk-radius-lg);
+  color: var(--pk-text);
+  text-decoration: none;
+}
+
+.pk-help-home__tasks a strong {
+  color: var(--pk-text-strong);
+}
+
+.pk-help-home__tasks a:hover {
+  border-color: var(--pk-border-strong);
+  background-color: var(--pk-accent-subtle);
+}
+
+.pk-help-home__topics {
+  display: grid;
+  gap: var(--pk-space-4);
+  grid-template-columns: 1fr;
+  margin-top: var(--pk-space-4);
+}
+
+.pk-help-home__topics section {
+  padding: var(--pk-space-3) var(--pk-space-4);
+  border: 1px solid var(--sl-color-hairline);
+  border-radius: var(--pk-radius-lg);
+}
+
+.pk-help-home__topics h3 {
+  margin: 0 0 var(--pk-space-2);
+  font-size: var(--sl-text-base);
+}
+
+.pk-help-home__topics li {
+  margin: 0;
+}
+
+.pk-help-home__topics li a {
+  display: inline-block;
+  padding-block: var(--pk-space-1);
+}
+
+@media (min-width: 50rem) {
+  .pk-help-home__tasks {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .pk-help-home__topics {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

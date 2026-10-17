@@ -1,0 +1,26 @@
+---
+/**
+ * The Help home's popular tasks as cards: a title and one line each, two across on a wide screen
+ * and one on a phone. Colours are tokens, so dark and light come with them.
+ */
+import "./home.css";
+
+export interface Props {
+  tasks: { title: string; description: string; href: string }[];
+}
+
+const { tasks } = Astro.props;
+---
+
+<ul class="pk-help-home__tasks not-content">
+  {
+    tasks.map((task) => (
+      <li>
+        <a href={task.href}>
+          <strong>{task.title}</strong>
+          <span>{task.description}</span>
+        </a>
+      </li>
+    ))
+  }
+</ul>
