@@ -310,9 +310,8 @@ export async function revokeAccountToken(
   return getAccountToken(db, accountId, id, now);
 }
 
-/** A token as a Superadmin lists it: the view plus whose it is. Never the plaintext or the hash. */
+/** A token as a Superadmin lists it: the view plus the account's email (never its id). Never the plaintext or the hash. */
 export interface PersonalTokenAdminView extends PersonalTokenView {
-  readonly accountId: string;
   /** The account's primary email, `null` once it is erased or has none. */
   readonly email: string | null;
 }
@@ -334,7 +333,6 @@ export async function listAllAccountTokens(
   );
   return rows.map((r) => ({
     ...viewOf(r, now),
-    accountId: r.account_id,
     email: r.email,
   }));
 }
@@ -361,9 +359,7 @@ export async function revokeAccountTokenAsAdmin(
        FROM account_tokens t LEFT JOIN accounts a ON a.id = t.account_id WHERE t.id = ?`,
     id,
   );
-  return row
-    ? { ...viewOf(row, now), accountId: row.account_id, email: row.email }
-    : null;
+  return row ? { ...viewOf(row, now), email: row.email } : null;
 }
 
 /** Revoke every live token of the account; answers how many. */

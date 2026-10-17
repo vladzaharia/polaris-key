@@ -8,7 +8,6 @@ import { boot, resetConsole } from "./consoleHarness.js";
 
 const base: AdminPersonalToken = {
   id: "pt_a",
-  accountId: "acc_1",
   email: "ada@example.com",
   label: "Ada laptop",
   hint: "Hq2a",

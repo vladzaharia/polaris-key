@@ -2,14 +2,14 @@
  * The Superadmin's roster of people's personal tokens (F-33): `/manage/api/account-tokens[/<id>]`.
  *
  *   GET    /account-tokens        every account's `pkeyp_` tokens: label, last four, scope, times,
- *                                 status and whose they are. Never a token or a hash.
+ *                                 status and whose they are (the account's email, never its id). Never a token or a hash.
  *   DELETE /account-tokens/<id>   revoke one (reason `admin`).
  *
  * Platform rows (`./routes.ts`, area `platform`), reachable only by a SESSION: the rows name no
  * `tokenScope`, so a token principal is refused before any of this runs. A Superadmin cannot MINT
  * a person's token; the person does, in Account → Packages. Revoke is immediate on this isolate
  * and within 30 seconds on the others (the registry host's resolution cache). Audited in
- * `platform_audit` as `account_token.revoke`, naming the token's label, last four and account id,
+ * `platform_audit` as `account_token.revoke`, naming the token's label and last four characters,
  * never the token.
  */
 
@@ -44,7 +44,7 @@ export async function handleAccountTokenRevoke(c: AdminCtx): Promise<Response> {
       c.now,
       "account_token.revoke",
       { kind: "account_token", id },
-      `Revoked personal token “${view.label}” (…${view.hint}) of account ${view.accountId}`,
+      `Revoked personal token “${view.label}” (…${view.hint})`,
     );
   return adminJson({ ok: true, token: view });
 }

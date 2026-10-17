@@ -235,7 +235,6 @@ export const MAX_TOKEN_DAYS = 365;
 /** A person's `pkeyp_` token as a Superadmin lists it (F-33): never the token or its hash. */
 export interface AdminPersonalToken {
   id: string;
-  accountId: string;
   /** The account's primary email; `null` once erased. */
   email: string | null;
   label: string;

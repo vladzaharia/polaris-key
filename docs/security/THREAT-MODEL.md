@@ -1755,10 +1755,10 @@ replayed against a publisher check.
 **The Superadmin roster is read and revoke only.** `GET /manage/api/account-tokens` and
 `DELETE /manage/api/account-tokens/:id` (`console/handlers/accountTokens.ts`, Platform area, session
 only: a token principal is refused before the handler, so a token cannot revoke or list tokens).
-The list carries each token's label, last four characters, scope, times and the account's id and
-primary email, never the token or its hash, so a Superadmin sees whose token it is and nothing that
+The list carries each token's label, last four characters, scope, times and the account's
+primary email (never its id), never the token or its hash, so a Superadmin sees whose token it is and nothing that
 authenticates. There is no admin mint: a person's credential is made by that person. A revoke is
-audited in `platform_audit` as `account_token.revoke` (label, last four, account id) and stores
+audited in `platform_audit` as `account_token.revoke` (label and last four characters) and stores
 `revoked_by = admin`, with no operator subject, because the portal shows `revokedBy` to the
 account's owner. Tests: `test/accountTokensAdmin.test.ts`.
 

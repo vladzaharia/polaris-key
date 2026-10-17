@@ -85,7 +85,6 @@ describe("account tokens roster (Superadmin)", () => {
     expect(body.tokens[0]).toMatchObject({
       id: t.view.id,
       label: "laptop",
-      accountId: ada,
       email: "ada@example.com",
       status: "active",
     });

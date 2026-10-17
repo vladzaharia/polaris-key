@@ -17444,7 +17444,7 @@ paths:
       summary: List people's personal tokens
       description: >
         F-33. Every account's `pkeyp_` tokens, live first, then newest (at most 500): label, the
-        last four characters, scope, times, status, and whose they are (`accountId`, `email`).
+        last four characters, scope, times, status, and whose they are (`email`).
         Never a token or a hash. Platform admins only; admin session cookie. A token cannot call
         it.
       security:
@@ -22419,9 +22419,8 @@ components:
       allOf:
         - { $ref: "#/components/schemas/AccountToken" }
         - type: object
-          required: [accountId, email]
+          required: [email]
           properties:
-            accountId: { type: string }
             email: { type: [string, "null"] }
     FlatError:
       type: object
