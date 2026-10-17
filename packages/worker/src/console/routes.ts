@@ -162,6 +162,16 @@ export const ADMIN_ROUTES: readonly AdminRoute[] = [
   ...rows(["GET"], "/platform/settings", "platform", platform),
   ...rows(["PATCH", "DELETE"], "/platform/settings/:key", "platform", platform),
   ...rows(["GET", "POST"], "/platform/settings/backfill", "platform", platform),
+  // P0-49: the data-migration runner. Apply and down are step-up writes.
+  ...rows(["GET"], "/platform/migrations", "platform", platform),
+  ...rows(["GET"], "/platform/migrations/runs/:id", "platform", platform),
+  ...rows(["POST"], "/platform/migrations/dry-run", "platform", platform),
+  ...rows(["POST"], "/platform/migrations/apply", "platform", platform, {
+    stepUp: true,
+  }),
+  ...rows(["POST"], "/platform/migrations/down", "platform", platform, {
+    stepUp: true,
+  }),
   ...rows(["GET"], "/platform/override-migration", "platform", platform),
   ...rows(
     ["PUT"],
