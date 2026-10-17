@@ -13,12 +13,7 @@ import type { DbStatement } from "../../db/types.js";
 import {
   getActiveSchema,
   nextSchemaVersion,
-  stmtDeleteManifestProfile,
-  stmtDeleteOrphanEdgeMintApprovals,
-  stmtInsertEdgeMint,
-  stmtInsertProfile,
   stmtInsertSchema,
-  stmtUpsertManifestProfile,
 } from "../../core/products/store.js";
 import {
   CLAIMED_SQL,
@@ -392,3 +387,115 @@ async function finalizeProfiles(ctx: IngestContext, state: CatalogState) {
 }
 
 export const configManifest: ManifestContributor = { checks, prepare };
+
+// ── statement builders (moved from core/products/store.ts, P0-26) ──────────────
+
+export interface EdgeMintInput {
+  product: string;
+  id: string;
+  alg: string;
+  signingKeySecret: string;
+  kid?: string;
+  claimsTemplate: Record<string, unknown>;
+  ttlSeconds: number;
+  audience?: string | null;
+  /** Who may mint this recipe. Omitted persists as `licensed`: fail closed. */
+  requires?: "none" | "registered" | "licensed";
+  /** A catalog flag the caller's merged payload must carry, truthy. */
+  requiredEntitlement?: string | null;
+}
+
+export function stmtInsertEdgeMint(e: EdgeMintInput): DbStatement {
+  return {
+    sql: `INSERT INTO edge_mint_config (product, id, alg, signing_key_secret, kid, claims_template_json, ttl_seconds, audience, auth_page_template, requires, required_entitlement)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?)`,
+    params: [
+      e.product,
+      e.id,
+      e.alg,
+      e.signingKeySecret,
+      e.kid ?? null,
+      JSON.stringify(e.claimsTemplate),
+      e.ttlSeconds,
+      e.audience ?? null,
+      // The `??` restates the column's own fail-closed default, so a caller that builds an
+      // `EdgeMintInput` by hand (a test, a future admin path) does not rely on the DDL to decide
+      // its authorization posture.
+      e.requires ?? "licensed",
+      e.requiredEntitlement ?? null,
+    ],
+  };
+}
+
+/**
+ * Drop the edge-mint approvals whose recipe id the product no longer declares (P0-12). Pushed
+ * into the link/resync batch AFTER the `edge_mint_config` re-insert, so the sub-select sees the
+ * manifest's new recipe set. The ingest path only ever DELETES approvals: an approval is an
+ * operator decision and is written by the Config admin API alone, never from a manifest.
+ */
+export function stmtDeleteOrphanEdgeMintApprovals(
+  product: string,
+): DbStatement {
+  return {
+    sql: `DELETE FROM edge_mint_approvals
+           WHERE product = ?
+             AND id NOT IN (SELECT id FROM edge_mint_config WHERE product = ?)`,
+    params: [product, product],
+  };
+}
+
+export interface ProfileInput {
+  product: string;
+  id: string;
+  name: string;
+  description?: string | null;
+  payloadJson: string;
+  modifiedAt: number;
+}
+
+export function stmtInsertProfile(p: ProfileInput): DbStatement {
+  return {
+    sql: `INSERT INTO profiles (product, id, name, description, payload_json, modified_by, modified_at)
+          VALUES (?, ?, ?, ?, ?, NULL, ?)`,
+    params: [
+      p.product,
+      p.id,
+      p.name,
+      p.description ?? null,
+      p.payloadJson,
+      p.modifiedAt,
+    ],
+  };
+}
+
+/** ST-01b: the resync's write of one manifest-declared profile, under the same guard. */
+export function stmtUpsertManifestProfile(p: ProfileInput): DbStatement {
+  return {
+    sql: `INSERT INTO profiles (product, id, name, description, payload_json, modified_by, modified_at, source)
+          VALUES (?, ?, ?, ?, ?, NULL, ?, 'manifest')
+          ON CONFLICT(product, id) DO UPDATE SET
+            name = excluded.name, description = excluded.description,
+            payload_json = excluded.payload_json, modified_by = NULL,
+            modified_at = excluded.modified_at
+          WHERE profiles.source = 'manifest'`,
+    params: [
+      p.product,
+      p.id,
+      p.name,
+      p.description ?? null,
+      p.payloadJson,
+      p.modifiedAt,
+    ],
+  };
+}
+
+/** ST-01b: drop a manifest profile the manifest no longer declares (never a console row). */
+export function stmtDeleteManifestProfile(
+  product: string,
+  id: string,
+): DbStatement {
+  return {
+    sql: "DELETE FROM profiles WHERE product = ? AND id = ? AND source = 'manifest'",
+    params: [product, id],
+  };
+}

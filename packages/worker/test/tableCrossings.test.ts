@@ -85,14 +85,8 @@ const WRITE_SEAMS: readonly (readonly [string, string, RemovedBy])[] = [
   ["core/licensing/store.ts", "profiles", "P0-26"],
   // deleteProduct's cascade: each service erases its own rows (`contributes.productDeletion`).
   // Product registration's statement-builders write rows other owners hold.
-  ["core/products/store.ts", "edge_mint_approvals", "P0-26"],
-  ["core/products/store.ts", "edge_mint_config", "P0-26"],
-  ["core/products/store.ts", "oidc_config", "P0-26"],
   ["core/products/store.ts", "product_schema", "P0-26"],
   ["core/products/store.ts", "profiles", "ST-43"],
-  ["core/products/store.ts", "provisioning_config", "P0-26"],
-  ["core/products/store.ts", "release_config", "P0-26"],
-  ["core/products/store.ts", "tiers", "P0-26"],
   // Core's storefront columns on Identity's table: the `storefront.*` entries are Core's slice,
   // so moving the adapters means moving the entries (and the generated settings pages) to
   // Identity. P0-19 did not take that move; the lead retags this row to the package that does.

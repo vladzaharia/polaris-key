@@ -12,7 +12,6 @@ import {
   parseJsonArray,
   parseJsonColumn,
 } from "../../platform/json.js";
-import { stmtInsertReleaseConfig } from "../../core/products/store.js";
 import {
   manifestOwned,
   settingAuditor,
@@ -397,3 +396,60 @@ export const releaseManifest: ManifestContributor = {
   prepare: (ctx) =>
     ctx.mode === "create" ? prepareCreate(ctx) : prepareApply(ctx),
 };
+
+// ── statement builders (moved from core/products/store.ts, P0-26) ──────────────
+
+export interface ReleaseConfigInput {
+  product: string;
+  ghOwner: string;
+  ghRepo: string;
+  /** NULL for the system product, linked by the deploy hook rather than through the App. */
+  ghInstallationId: number | null;
+  channelWorkflow: string | null;
+  betaBranch: string;
+  binaryName: string;
+  sparkleEd25519Pub: string | null;
+  summaryMarker: string;
+  manualChannelsJson?: string | null;
+  artifactPolicyJson?: string | null;
+  metadataAccess?: string;
+  artifactsAccess?: string;
+  /** Owner of the two access modes (0022_b). A freshly linked row is manifest-owned. */
+  accessSource?: "manifest" | "admin" | null;
+  /** The operator-only artifact policy (0022_c). No manifest path supplies it; link leaves it NULL. */
+  operatorPolicyJson?: string | null;
+  stableTagPattern?: string | null;
+  ignoreTagsJson?: string | null;
+  /** `release.releaseKeys` (0044, P3-03); NULL when none or refused at link. */
+  releaseKeysJson?: string | null;
+}
+
+export function stmtInsertReleaseConfig(r: ReleaseConfigInput): DbStatement {
+  return {
+    sql: `INSERT INTO release_config (product, gh_owner, gh_repo, gh_installation_id, channel_workflow, beta_branch,
+            manual_channels_json, binary_name, install_template, sparkle_ed25519_pub, summary_marker, artifact_policy_json,
+            metadata_access, artifacts_access, access_source, operator_policy_json,
+            stable_tag_pattern, ignore_tags_json, release_keys_json)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    params: [
+      r.product,
+      r.ghOwner,
+      r.ghRepo,
+      r.ghInstallationId,
+      r.channelWorkflow,
+      r.betaBranch,
+      r.manualChannelsJson ?? null,
+      r.binaryName,
+      r.sparkleEd25519Pub,
+      r.summaryMarker,
+      r.artifactPolicyJson ?? null,
+      r.metadataAccess ?? "public",
+      r.artifactsAccess ?? "public",
+      r.accessSource ?? null,
+      r.operatorPolicyJson ?? null,
+      r.stableTagPattern ?? null,
+      r.ignoreTagsJson ?? null,
+      r.releaseKeysJson ?? null,
+    ],
+  };
+}

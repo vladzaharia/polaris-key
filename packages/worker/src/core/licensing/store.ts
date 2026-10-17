@@ -809,3 +809,103 @@ export async function deleteTier(
 ): Promise<void> {
   await db.run("DELETE FROM tiers WHERE product = ? AND id = ?", product, id);
 }
+
+// ── Tier statement-builders (moved from core/products/store.ts, P0-26) ──────────
+// The ingest's License contributor and the create defaults compose these into a batch.
+
+export interface TierInput {
+  product: string;
+  id: string;
+  label: string;
+  profileId: string | null;
+  policyExpiryDays: number | null;
+  policyDeviceLimit: number | null;
+  policyFingerprint?: string | null;
+  channels?: string[] | null;
+  minVersion?: string | null;
+  maxVersion?: string | null;
+  /** LX-08: `licensing.tiers[].rank` (0 when omitted). */
+  rank?: number;
+  /** LX-08: `licensing.tiers[].policyOfflineGraceDays` (null when omitted). */
+  policyOfflineGraceDays?: number | null;
+  modifiedAt: number;
+}
+
+/** `stmtInsertTier`'s params from `label` to `policy_offline_grace_days`: the manifest-owned
+ *  columns a resync and the settings backfill compare (`slice(...TIER_COMPARED_PARAMS)`). */
+export const TIER_COMPARED_PARAMS = [2, 12] as const;
+
+export function stmtInsertTier(t: TierInput): DbStatement {
+  return {
+    sql: `INSERT INTO tiers (product, id, label, profile_id, policy_expiry_days, policy_device_limit,
+             channels_json, min_version, max_version, policy_fingerprint, rank,
+             policy_offline_grace_days, modified_by, modified_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?)`,
+    params: [
+      t.product,
+      t.id,
+      t.label,
+      t.profileId,
+      t.policyExpiryDays,
+      t.policyDeviceLimit,
+      t.channels && t.channels.length > 0 ? JSON.stringify(t.channels) : null,
+      t.minVersion ?? null,
+      t.maxVersion ?? null,
+      t.policyFingerprint ?? null,
+      t.rank ?? 0,
+      t.policyOfflineGraceDays ?? null,
+      t.modifiedAt,
+    ],
+  };
+}
+
+/** ST-42: the starter tier the console's create adds (rank 0, the product's limits). */
+export function stmtInsertConsoleTier(t: {
+  product: string;
+  id: string;
+  label: string;
+  profileId: string;
+  author: string;
+  now: number;
+}): DbStatement {
+  return {
+    sql: `INSERT INTO tiers (product, id, label, profile_id, rank, modified_by, modified_at, source)
+          VALUES (?, ?, ?, ?, 0, ?, ?, 'console')`,
+    params: [t.product, t.id, t.label, t.profileId, t.author, t.now],
+  };
+}
+
+/**
+ * ST-01b: the resync's write of one manifest-declared tier. Inserts it as a `manifest` row, or
+ * updates the stored row only while it is still manifest-owned — the guard is the upsert's own
+ * WHERE, so a console edit that lands after the resync's reads is never overwritten.
+ */
+export function stmtUpsertManifestTier(t: TierInput): DbStatement {
+  return {
+    sql: `INSERT INTO tiers (product, id, label, profile_id, policy_expiry_days, policy_device_limit,
+             channels_json, min_version, max_version, policy_fingerprint, rank,
+             policy_offline_grace_days, modified_by, modified_at, source)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, 'manifest')
+          ON CONFLICT(product, id) DO UPDATE SET
+            label = excluded.label, profile_id = excluded.profile_id,
+            policy_expiry_days = excluded.policy_expiry_days,
+            policy_device_limit = excluded.policy_device_limit,
+            channels_json = excluded.channels_json, min_version = excluded.min_version,
+            max_version = excluded.max_version, policy_fingerprint = excluded.policy_fingerprint,
+            rank = excluded.rank, policy_offline_grace_days = excluded.policy_offline_grace_days,
+            modified_by = NULL, modified_at = excluded.modified_at
+          WHERE tiers.source = 'manifest'`,
+    params: stmtInsertTier(t).params,
+  };
+}
+
+/** ST-01b: drop a manifest tier the manifest no longer declares (never a console row). */
+export function stmtDeleteManifestTier(
+  product: string,
+  id: string,
+): DbStatement {
+  return {
+    sql: "DELETE FROM tiers WHERE product = ? AND id = ? AND source = 'manifest'",
+    params: [product, id],
+  };
+}

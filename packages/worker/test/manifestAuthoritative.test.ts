@@ -191,14 +191,7 @@ async function call(
 }
 
 async function resync(ctx: Ctx, d: Decl = {}, at = NOW + 60) {
-  return resyncRepo(
-    ctx.env,
-    ctx.db,
-    SLUG,
-    at,
-    github(d),
-    ingestFor(SERVICES),
-  );
+  return resyncRepo(ctx.env, ctx.db, SLUG, at, github(d), ingestFor(SERVICES));
 }
 
 async function okResync(ctx: Ctx, d: Decl = {}, at = NOW + 60) {

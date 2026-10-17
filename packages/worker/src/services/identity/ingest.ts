@@ -6,10 +6,6 @@
 
 import type { DbParam, DbStatement } from "../../db/types.js";
 import {
-  stmtInsertOidcConfig,
-  stmtInsertProvisioning,
-} from "../../core/products/store.js";
-import {
   issuerChangeRefusal,
   manifestIssuerRefusal,
   settingAuditor,
@@ -243,3 +239,60 @@ export const identityManifest: ManifestContributor = {
   ],
   prepare,
 };
+
+// ── statement builders (moved from core/products/store.ts, P0-26) ──────────────
+
+export interface OidcConfigInput {
+  product: string;
+  provider?: "platform" | "custom";
+  issuer?: string;
+  clientId?: string;
+  clientSecretSecret?: string;
+  redirectUris: string[];
+  groupRoleMap: Record<string, unknown>;
+}
+
+export function stmtInsertOidcConfig(o: OidcConfigInput): DbStatement {
+  const provider = o.provider ?? "platform";
+  return {
+    sql: `INSERT INTO oidc_config (product, provider, issuer, client_id, client_secret_secret, redirect_uris_json, group_role_map_json)
+          VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    params: [
+      o.product,
+      provider,
+      provider === "custom" ? (o.issuer ?? "") : "",
+      provider === "custom" ? (o.clientId ?? "") : "",
+      provider === "custom" ? (o.clientSecretSecret ?? "") : "",
+      JSON.stringify(o.redirectUris),
+      JSON.stringify(o.groupRoleMap),
+    ],
+  };
+}
+
+export interface ProvisioningInput {
+  product: string;
+  claim: string;
+  entitlementKey?: string;
+  entitlementValue?: unknown;
+  secretKey?: string;
+  secretUrlTemplate?: string;
+  allowedHosts?: string[];
+}
+
+export function stmtInsertProvisioning(h: ProvisioningInput): DbStatement {
+  return {
+    sql: `INSERT INTO provisioning_config (product, claim, entitlement_key, entitlement_value_json, secret_key, secret_url_template, allowed_hosts_json)
+          VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    params: [
+      h.product,
+      h.claim,
+      h.entitlementKey ?? null,
+      h.entitlementValue !== undefined
+        ? JSON.stringify(h.entitlementValue)
+        : null,
+      h.secretKey ?? null,
+      h.secretUrlTemplate ?? null,
+      h.allowedHosts ? JSON.stringify(h.allowedHosts) : null,
+    ],
+  };
+}

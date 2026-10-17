@@ -25,28 +25,13 @@ import {
   isReservedProductSlug,
   type ManifestDocumentName,
 } from "@polaris-key/manifest";
-import { generateEd25519, seal } from "../../platform/keyvault.js";
-import { secret, type Env } from "../../platform/env.js";
+import { type Env } from "../../platform/env.js";
 import { sha256Hex } from "../../platform/hash.js";
-import type { Db, DbStatement } from "../../db/types.js";
-import {
-  getProduct,
-  setAutoIssuePolicy,
-  setFingerprintPolicy,
-  stmtInsertEdgeMint,
-  stmtInsertOidcConfig,
-  stmtInsertProduct,
-  stmtInsertProductKey,
-  stmtInsertProfile,
-  stmtInsertProvisioning,
-  stmtInsertReleaseConfig,
-  stmtInsertSchema,
-  stmtInsertTier,
-} from "../../core/products/store.js";
+import type { Db } from "../../db/types.js";
+import { getProduct } from "../../core/products/store.js";
 import {
   GH_SLUG_RE,
   parseManifest,
-  type ManifestProfile,
   type ParsedManifest,
 } from "@polaris-key/manifest";
 import {
@@ -58,26 +43,11 @@ import { fetchRepoFile, getRepoIdentity } from "./github.js";
 import { isSafeBinaryName } from "./install.js";
 import { fetchPinnedManifestFiles } from "./manifestFetch.js";
 import {
-  managedSecretKeyPredicate,
-  sealedProfilePayload,
-} from "./manifestSecrets.js";
-import { syncReleaseStore } from "./sync.js";
-import { manifestDeliverableStatements } from "./deliverables.js";
-import { releaseKeysForSync } from "./records.js";
-import { SERVICE_SLUGS, serializeServices } from "../../core/services.js";
-import {
-  planCreateDefaults,
-  resolveServices,
   type CreateChoices,
   type CreatedDefaults,
 } from "../../core/products/createDefaults.js";
 import { BOUND_INGEST } from "../../core/ingest/pipeline.js";
 import type { Ingest } from "../../core/ingest/types.js";
-import { serializeWebOrigins } from "../../core/cors.js";
-import { serializePresentation } from "../../core/products.js";
-import { stmtUpsertManifestPublisher } from "../../core/publisher.js";
-import { manifestSnapshotStatement } from "../../core/manifestSnapshot.js";
-import { syncHostedAssets } from "../../core/assets/hostedAssetPulls.js";
 import { repoBlobLookup } from "./assetSource.js";
 import { reservedNamesMode } from "../../core/licensing/reservedNames.js";
 import type { LinkCheck } from "./linkExisting.js";

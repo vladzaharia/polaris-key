@@ -27,6 +27,7 @@
  * rows and Distribution's feed rows in one batch, which Core itself may not (rule 6).
  */
 
+import { stmtInsertReleaseConfig } from "../services/release/public.js";
 import { type AuditActor, SYSTEM_ACTORS } from "../core/audit.js";
 import {
   SYSTEM_PRODUCT_SLUG,
@@ -50,7 +51,6 @@ import {
   stmtDeleteManifestPublisher,
   stmtUpsertManifestPublisher,
 } from "../core/publisher.js";
-import { stmtInsertReleaseConfig } from "../core/products/store.js";
 import { manifestDeliverableStatements } from "../services/release/public.js";
 import { manifestSnapshotStatement } from "../core/manifestSnapshot.js";
 import {

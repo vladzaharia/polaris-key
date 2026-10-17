@@ -21,7 +21,6 @@
  * key or overwrite an already-sealed profile secret: `sparkleKeyRefusal`, `manifestSecrets.ts`.
  */
 
-import { Catalog } from "@polaris-key/catalog";
 import type { Db } from "../../db/types.js";
 import type { Env } from "../../platform/env.js";
 import { systemResyncRefusal } from "../../core/settingsClaims.js";

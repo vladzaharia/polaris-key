@@ -55,7 +55,6 @@ const MANIFEST_WRITERS: Readonly<
     functions: [
       "insertProduct",
       "stmtInsertProduct",
-      "stmtInsertReleaseConfig",
       "setFingerprintPolicy",
       "stmtSetFingerprintPolicy",
       "setAutoIssuePolicy",

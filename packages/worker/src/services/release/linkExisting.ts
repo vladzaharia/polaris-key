@@ -46,11 +46,7 @@ import {
   listProfiles,
   listTiers,
 } from "../../core/licensing/store.js";
-import {
-  getActiveSchema,
-  getProduct,
-  stmtInsertReleaseConfig,
-} from "../../core/products/store.js";
+import { getActiveSchema, getProduct } from "../../core/products/store.js";
 import { getManifestSnapshot } from "../../core/manifestSnapshot.js";
 import { liveRowClaimKeys } from "../../core/rowSettings.js";
 import { parseServices } from "../../core/services.js";
@@ -82,8 +78,8 @@ import {
   unsafeBinaryNameRefusal,
   type ResyncResult,
 } from "./resync.js";
-import { BOUND_INGEST } from "../../core/ingest/pipeline.js";
 import type { Ingest } from "../../core/ingest/types.js";
+import { stmtInsertReleaseConfig } from "./ingest.js";
 import { getRepoIdentity } from "./github.js";
 
 /** Which check a refusal belongs to: the console marks the rows before it passed. */

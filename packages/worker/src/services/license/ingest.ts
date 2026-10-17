@@ -5,12 +5,12 @@
  */
 
 import type { DbStatement } from "../../db/types.js";
-import { countLicensesUsingTier } from "../../core/licensing/store.js";
 import {
+  countLicensesUsingTier,
   stmtDeleteManifestTier,
   stmtInsertTier,
   stmtUpsertManifestTier,
-} from "../../core/products/store.js";
+} from "../../core/licensing/store.js";
 import { manifestRowSettingStatements } from "../../core/rowSettings.js";
 import { rowAudit, tierShape } from "../../core/ingest/shared.js";
 import type {

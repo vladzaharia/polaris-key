@@ -1356,16 +1356,8 @@ describe("link and resync with a repo-path icon", () => {
     };
     const gh = github(state);
     expect(
-      (
-        await linkRepo(
-          e,
-          db,
-          "acme-org/acme-app",
-          NOW,
-          gh,
-          ingestFor(SERVICES),
-        )
-      ).ok,
+      (await linkRepo(e, db, "acme-org/acme-app", NOW, gh, ingestFor(SERVICES)))
+        .ok,
     ).toBe(true);
     // The file is not an image: refused, nothing served.
     state.bytes = new TextEncoder().encode("<svg></svg>");

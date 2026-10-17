@@ -11,9 +11,8 @@ import { catalogDeliveryIssues } from "../configDelivery.js";
 import type { Db, DbParam, DbStatement } from "../../db/types.js";
 import type { Env } from "../../platform/env.js";
 import { secret } from "../../platform/env.js";
-import { listProfiles } from "../licensing/store.js";
+import { listProfiles, TIER_COMPARED_PARAMS } from "../licensing/store.js";
 import { type TierRow } from "../repo.js";
-import { TIER_COMPARED_PARAMS, stmtInsertTier } from "../products/store.js";
 import {
   auditValue,
   stmtSettingAudit,
