@@ -136,7 +136,9 @@ function routes(
 
 async function openFromHeader(): Promise<HTMLElement> {
   await userEvent.click(
-    await screen.findByRole("button", { name: "Activate license" }),
+    await within(await screen.findByRole("banner")).findByRole("button", {
+      name: "Activate license",
+    }),
   );
   return screen.findByRole("dialog", { name: "Activate a license" });
 }

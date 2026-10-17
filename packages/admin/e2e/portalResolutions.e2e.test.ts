@@ -346,53 +346,59 @@ describe("the tablet and short-screen rules (PORTAL.md §8)", () => {
         .filter(Boolean),
     );
 
-  it("Needs attention: three columns from 900 px, one-line actions that line up", async ({
+  it("Needs attention: one card, a row per item, one-line actions right-aligned", async ({
     expect,
   }) => {
     const o = await portal.open("twelve", "/", { width: 900 });
     try {
       await h1(o.page, "Your library");
       await o.page.getByRole("region", { name: /Needs attention/ }).waitFor();
-      const SHELF = "section[aria-labelledby=attention-h] > ul";
-      for (const width of [900, 1024, 1280, 1440, 1920, 2560]) {
+      const SHELF = "section[aria-labelledby=attention-h]";
+      for (const width of [390, 768, 900, 1280, 1440, 2560]) {
         await o.page.setViewportSize({ width, height: 900 });
-        const grid = await rowsOf(o.page, SHELF, "a.w-full");
-        // A truncated label shows in full on hover.
-        expect
-          .soft(
-            await o.page.evaluate(
-              (sel) =>
-                [...document.querySelectorAll(`${sel} a.w-full`)].every(
-                  (a) => a.getAttribute("title") === a.textContent?.trim(),
-                ),
-              SHELF,
-            ),
-            `action titles at ${width}`,
-          )
-          .toBe(true);
-        expect.soft(grid.columns, `columns at ${width}`).toBe(3);
-        expect.soft(grid.items.length).toBe(3);
-        for (const [i, it] of grid.items.entries()) {
+        const shelf = await o.page.evaluate((sel) => {
+          const card = document.querySelector(sel)!;
+          const c = card.getBoundingClientRect();
+          const rows = [...card.querySelectorAll(":scope > ul > li")].map(
+            (li) => {
+              const r = li.getBoundingClientRect();
+              const a = li.querySelector<HTMLElement>("a.w-full, a[title]")!;
+              const ar = a.getBoundingClientRect();
+              return {
+                top: r.top,
+                width: r.width,
+                actionHeight: ar.height,
+                actionRight: ar.right,
+                title: a.getAttribute("title") === a.textContent?.trim(),
+                fits: a.scrollWidth <= a.clientWidth + 1,
+              };
+            },
+          );
+          return { width: c.width, rows };
+        }, SHELF);
+        // One card: the rows stack in a single column, each as wide as the card.
+        expect.soft(shelf.rows.length, `rows at ${width}`).toBe(3);
+        for (const [i, r] of shelf.rows.entries()) {
           expect
-            .soft(it.action!.height, `action ${i} height at ${width}`)
+            .soft(r.width, `row ${i} width at ${width}`)
+            .toBeCloseTo(shelf.width - 2, 0);
+          expect
+            .soft(r.actionHeight, `action ${i} height at ${width}`)
             .toBeLessThanOrEqual(40);
-          expect
-            .soft(it.action!.fits, `action ${i} label at ${width}`)
-            .toBe(true);
+          expect.soft(r.title, `action ${i} title at ${width}`).toBe(true);
+          expect.soft(r.fits, `action ${i} label at ${width}`).toBe(true);
+          if (width >= 768)
+            expect
+              .soft(
+                Math.abs(r.actionRight - shelf.rows[0]!.actionRight),
+                `action ${i} right edge at ${width}`,
+              )
+              .toBeLessThanOrEqual(1);
         }
-        const tops = grid.items.map((it) => it.action!.top);
-        expect
-          .soft(
-            Math.max(...tops) - Math.min(...tops),
-            `action tops at ${width}`,
-          )
-          .toBeLessThanOrEqual(1);
+        expect(
+          shelf.rows.every((r, i) => i === 0 || r.top > shelf.rows[i - 1]!.top),
+        ).toBe(true);
       }
-      // Two columns at 761–899 px: the odd third card spans both.
-      await o.page.setViewportSize({ width: 768, height: 1024 });
-      const tablet = await rowsOf(o.page, SHELF, "");
-      expect(tablet.columns).toBe(2);
-      expect(tablet.items[2]!.width).toBeCloseTo(tablet.width, 0);
     } finally {
       await o.close();
     }

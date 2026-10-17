@@ -68,7 +68,7 @@ export function LibraryToolbar({
       dot: true,
     },
   ];
-  const label = `Search ${total} products`;
+  const label = "Search your library";
 
   return (
     <div className="flex flex-col gap-3 wide:flex-row wide:items-center">

@@ -51,18 +51,26 @@ import { returnUrl, stashCarriedKey } from "../carriedKey.js";
  *   as `/activate#key=…`).
  * - **SsoStep** (I-30, mockup `identity.sign-in-routes` pins 1 and 2): the address's domain is
  *   DNS-verified by a connection, so the email start sent nothing and answered `next`. The
- *   address as a chip with **Change**, the organization's name as the heading, **Continue to
- *   <Organization>** (`/login/sso/<id>` with the address as `login_hint`) and, unless the domain
- *   requires the connection, **Email me a code instead** (the resend sends the first code). An
- *   enforced refusal later (a code sent before the domain was enforced) lands here too.
- * - The methods step lists the Worker's other platform connections (`auth.connections`) as
- *   "Continue with <label>" buttons.
+ *   address as a chip with **Change** (back to the email step with the address kept and the field
+ *   focused), "Sign in with <Organization>", **Continue** (`/login/sso/<id>` with the address as
+ *   `login_hint`) and, unless the domain requires the connection ("Required for <domain>
+ *   addresses."), **Email me a code instead** (the resend sends the first code; a 429 with a wait
+ *   counts down on the button). An enforced refusal later (a code sent before the domain was
+ *   enforced) lands here too.
+ * - A card with no email field lists the Worker's platform connections (`auth.connections`) as
+ *   "Continue with <label>" buttons; with the field, the address routes to its connection.
  *
  * Copy is the kit copy catalog's `signin.*` strings (§5.2) through `t()`; the few sentences it does
  * not word yet are written here under the key they will take.
  */
 type Step =
-  | { kind: "methods"; email?: string; notice?: string }
+  | {
+      kind: "methods";
+      email?: string;
+      notice?: string;
+      /** Change on a routed step: the typed address stays and the field takes focus. */
+      focusEmail?: boolean;
+    }
   | { kind: "code"; email: string; resendIn: number }
   /** The code was right but its account can't sign in (§3.13, Account disabled): a dead end
    *  for that address, so the step ends here (PS-05 review M3). */
@@ -185,7 +193,9 @@ export function SignInPage(): React.ReactElement {
         <SsoStep
           email={step.email}
           next={step.next}
-          onChangeEmail={() => go({ kind: "methods" }, "back")}
+          onChangeEmail={() =>
+            go({ kind: "methods", email: step.email, focusEmail: true }, "back")
+          }
           onCode={(resendIn) =>
             go({ kind: "code", email: step.email, resendIn })
           }
@@ -220,6 +230,7 @@ export function SignInPage(): React.ReactElement {
           caps={caps.data}
           context={ctx ?? null}
           initialEmail={step.email}
+          focusEmail={step.focusEmail}
           notice={step.notice}
           onSent={(email, sent) =>
             go(
@@ -349,6 +360,7 @@ function MethodsStep({
   caps,
   context,
   initialEmail,
+  focusEmail,
   notice,
   onSent,
   onKey,
@@ -357,6 +369,8 @@ function MethodsStep({
   context: { slug: string; name: string; developerName?: string | null } | null;
   /** The address to start from: kept when an expired sign-in comes back here. */
   initialEmail?: string;
+  /** Focus and select the address (Change on a routed step), not the heading. */
+  focusEmail?: boolean;
   /** Why the card came back here (an expired sign-in), shown under the title. */
   notice?: string;
   /** The start's answer: a code was sent, or (`next`) the domain routes to a connection. */
@@ -368,10 +382,21 @@ function MethodsStep({
   const [error, setError] = React.useState<string | null>(null);
   const [sending, setSending] = React.useState(false);
   const errorId = React.useId();
+  // After the card's own heading focus (a layout effect), so the field wins.
+  React.useEffect(() => {
+    if (!focusEmail) return;
+    const el = document.getElementById("pk-signin-email");
+    if (el instanceof HTMLInputElement) {
+      el.focus({ preventScroll: true });
+      el.select();
+    }
+  }, [focusEmail]);
   const carried = useCarriedKey();
   const providers = caps.auth.providers ?? [];
-  const connections = caps.auth.connections ?? [];
   const magic = caps.auth.magic;
+  // With the email field, the address routes to its connection (identifier-first); the buttons
+  // are for a card with no field to route through.
+  const connections = magic ? [] : (caps.auth.connections ?? []);
   const oidc = caps.auth.oidc;
   const ssoLabel = t("signin.provider.continue", {
     provider: caps.auth.oidcName ?? "single sign-on",
@@ -481,20 +506,7 @@ function MethodsStep({
           </Button>
         </form>
       ) : null}
-      {(providers.length > 0 || oidc || connections.length > 0) && magic ? (
-        <Divider />
-      ) : null}
-      {connections.length > 0 ? (
-        <div className="space-y-3">
-          {connections.map((c) => (
-            <ConnectionButton
-              key={c.id}
-              connection={c}
-              href={connectionHref(c.id, email.trim())}
-            />
-          ))}
-        </div>
-      ) : null}
+      {(providers.length > 0 || oidc) && magic ? <Divider /> : null}
       <ProviderRow
         providers={providers}
         // I-06's start route is GET /login/<provider>; the row renders only once the Worker
@@ -520,6 +532,14 @@ function MethodsStep({
           </a>
         </Button>
       ) : null}
+      {connections.map((c) => (
+        <ConnectionButton
+          key={c.id}
+          connection={c}
+          href={connectionHref(c.id)}
+          primary={!oidc && providers.length === 0 && c === connections[0]}
+        />
+      ))}
       {carried ? (
         <QuietLinks>
           <QuietLink
@@ -545,28 +565,38 @@ function MethodsStep({
 }
 
 /**
- * A platform connection on the methods step (I-30): one labelled, full-width button, drawn like
- * the provider row's buttons (mockup `identity.sign-in`'s store-account button). A long name wraps.
+ * A platform connection on a card with no email field to route through (I-30): drawn like the
+ * single sign-on button. With an email field, the address reaches its connection by itself.
  */
 function ConnectionButton({
   connection,
   href,
+  primary,
 }: {
   connection: PortalConnection;
   href: string;
+  primary: boolean;
 }): React.ReactElement {
   return (
-    <a
-      href={href}
-      onClick={() => stashCarriedKey()}
-      data-connection={connection.id}
-      className="pk-pressable flex min-h-[3.25rem] w-full items-center justify-center gap-2.5 rounded-md border border-border bg-hover px-4 py-2 text-center font-medium text-fg-strong hover:border-border-strong focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface-page"
+    <Button
+      asChild
+      variant={primary ? "primary" : "secondary"}
+      size="lg"
+      className="h-auto min-h-12 w-full whitespace-normal py-2 text-center"
     >
-      <Building2 aria-hidden className="size-5 shrink-0 text-fg-muted" />
-      <span className="min-w-0 break-words">
-        {t("signin.provider.continue", { provider: connection.label })}
-      </span>
-    </a>
+      <a
+        href={href}
+        onClick={() => stashCarriedKey()}
+        data-connection={connection.id}
+      >
+        <Building2 aria-hidden />
+        <span className="min-w-0 break-words">
+          <bdi>
+            {t("signin.provider.continue", { provider: connection.label })}
+          </bdi>
+        </span>
+      </a>
+    </Button>
   );
 }
 
@@ -834,11 +864,16 @@ function IdChip({
   email: string;
   onChange: () => void;
 }): React.ReactElement {
+  // The domain decided the route, so it never truncates; the local part gives way.
+  const at = email.lastIndexOf("@");
+  const local = at > 0 ? email.slice(0, at) : email;
+  const host = at > 0 ? email.slice(at) : "";
   return (
     <div className="flex">
       <div className="inline-flex min-w-0 max-w-full items-center gap-1 rounded-full border border-border py-0.5 pl-3 pr-1 text-sm text-fg">
-        <span className="min-w-0 truncate" title={email}>
-          {email}
+        <span className="flex min-w-0 max-w-full" title={email}>
+          <bdi className="min-w-0 truncate">{local}</bdi>
+          <bdi className="shrink-0">{host}</bdi>
         </span>
         <button
           type="button"
@@ -878,9 +913,19 @@ function SsoStep({
   const domain = email.slice(email.lastIndexOf("@") + 1);
   const [sending, setSending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  /** Seconds before another code may be asked for (the Worker's 429 `retryAfter`). */
+  const [wait, setWait] = React.useState(0);
+  const errorId = React.useId();
+  const codeRef = React.useRef<HTMLButtonElement>(null);
+  React.useEffect(() => {
+    if (wait <= 0) return;
+    const id = window.setTimeout(() => setWait((w) => w - 1), 1000);
+    return () => window.clearTimeout(id);
+  }, [wait]);
+  const clock = `${Math.floor(wait / 60)}:${String(wait % 60).padStart(2, "0")}`;
 
   const sendCode = async (): Promise<void> => {
-    if (sending) return;
+    if (sending || wait > 0) return;
     setSending(true);
     setError(null);
     try {
@@ -894,9 +939,20 @@ function SsoStep({
         onExpired();
         return;
       }
-      setError(startErrorText(err));
+      if (
+        err instanceof PortalApiError &&
+        err.status === 429 &&
+        err.retryAfter !== undefined
+      ) {
+        // Too soon: the button counts down, no error line.
+        setWait(Math.max(1, Math.ceil(err.retryAfter)));
+      } else {
+        setError(startErrorText(err));
+      }
     } finally {
       setSending(false);
+      // The button was disabled while the request ran: put the place back.
+      window.requestAnimationFrame(() => codeRef.current?.focus());
     }
   };
 
@@ -911,48 +967,53 @@ function SsoStep({
           >
             <Building2 className="size-5" />
           </span>
-          <Title>{connection.label}</Title>
+          <Title>
+            {/* signin.sso.title (I-30): no catalog key yet */}
+            Sign in with <bdi>{connection.label}</bdi>
+          </Title>
         </div>
-        <p className="text-fg-muted">
-          {enforced
-            ? // signin.sso.required (I-30): no catalog key yet
-              `${connection.label} requires its own sign-in for ${domain} addresses.`
-            : // signin.sso.first (I-30): no catalog key yet
-              `${domain} signs in through ${connection.label}.`}
-        </p>
+        {enforced ? (
+          <p className="text-fg-muted">
+            {/* signin.sso.required (I-30): no catalog key yet */}
+            Required for <bdi>{domain}</bdi> addresses.
+          </p>
+        ) : null}
       </div>
       <div className="space-y-3">
         <Button
           asChild
           size="lg"
-          className="h-auto min-h-12 w-full whitespace-normal py-2 text-center text-base font-semibold"
+          className="h-12 w-full text-base font-semibold"
         >
           <a
             href={connectionHref(connection.id, email)}
             onClick={() => stashCarriedKey()}
           >
-            {/* signin.sso.continue (I-30): no catalog key yet */}
-            <span className="min-w-0 break-words">
-              Continue to {connection.label}
-            </span>
+            {t("signin.continue")}
             <ArrowRight aria-hidden />
           </a>
         </Button>
         {enforced ? null : (
           <Button
+            ref={codeRef}
             variant="outline"
             size="lg"
             className="h-12 w-full text-base font-semibold"
             loading={sending}
+            disabledReason={wait > 0 ? `Wait ${clock}` : undefined}
+            aria-describedby={error ? errorId : undefined}
             iconStart={<Mail aria-hidden />}
             onClick={() => void sendCode()}
           >
-            {/* signin.sso.code (I-30): no catalog key yet */}
-            Email me a code instead
+            {wait > 0
+              ? // signin.sso.codeIn (I-30): no catalog key yet
+                `Email me a code in ${clock}`
+              : // signin.sso.code (I-30): no catalog key yet
+                "Email me a code instead"}
           </Button>
         )}
         {error ? (
-          <p role="alert" className="text-sm text-danger">
+          <p id={errorId} role="alert" className="text-sm text-danger">
             {error}
           </p>
         ) : null}

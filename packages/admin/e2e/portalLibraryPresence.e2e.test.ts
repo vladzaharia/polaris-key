@@ -106,7 +106,7 @@ async function geometry(page: Page) {
       return { inside: r.left >= a.left - 1 && r.right <= a.right + 1 };
     });
     const title = getComputedStyle(document.querySelector("h1")!);
-    const key = document.querySelector("aside[aria-labelledby='key-tile-h']");
+    const key = document.querySelector("li[aria-labelledby='key-tile-h']");
     const strip = document.querySelector(
       "section[aria-labelledby='missing-h']",
     );
@@ -117,7 +117,7 @@ async function geometry(page: Page) {
       titleSize: title.fontSize,
       titleLine: title.lineHeight,
       key: Boolean(key),
-      keyLast: key ? grid.lastElementChild?.contains(key) === true : false,
+      keyLast: key ? grid.lastElementChild === key : false,
       strip: Boolean(strip),
       stripAfter: strip
         ? Boolean(
@@ -128,6 +128,48 @@ async function geometry(page: Page) {
     };
   });
 }
+
+/** The header lockup's wordmark, in px: the mockup's 18 px brand is about 96 px wide. */
+async function wordmarkWidth(page: Page): Promise<number> {
+  return page.evaluate(() => {
+    const svg = [
+      ...document.querySelectorAll("header a[aria-label^='Polaris Key'] svg"),
+    ].find((el) => el.getBoundingClientRect().width > 0)!;
+    return svg.querySelectorAll("g")[1]!.getBoundingClientRect().width;
+  });
+}
+
+describe.concurrent("discover grid presence", () => {
+  // From 1180 px, three columns: two or four tiles take two, so no row is mostly empty.
+  for (const width of [1280, 1440, 1920]) {
+    it(`no row has an empty cell at ${width}`, async ({ expect }) => {
+      const o = await portal.open("three", "/#/discover", {
+        width,
+        height: 900,
+      });
+      try {
+        await h1(o.page, "Discover");
+        const cells = await o.page.evaluate(() => {
+          const grid = document.querySelector(
+            "section[aria-labelledby='offers-h'] ul",
+          )!;
+          const cols = getComputedStyle(grid)
+            .gridTemplateColumns.split(" ")
+            .filter(Boolean).length;
+          return { cols, count: grid.children.length };
+        });
+        expect
+          .soft(
+            cells.count % cells.cols,
+            `${cells.count} tiles in ${cells.cols} columns`,
+          )
+          .toBe(0);
+      } finally {
+        await o.close();
+      }
+    });
+  }
+});
 
 describe.concurrent("library 2-7 grid presence", () => {
   for (const variant of ["art", "noart", "long", "rtl"] as const) {
@@ -145,9 +187,7 @@ describe.concurrent("library 2-7 grid presence", () => {
             });
             try {
               await h1(o.page, "Your library");
-              await o.page.waitForSelector(
-                "aside[aria-labelledby='key-tile-h']",
-              );
+              await o.page.waitForSelector("li[aria-labelledby='key-tile-h']");
               await o.page.waitForTimeout(300);
               await shoot(
                 o.page,
@@ -178,6 +218,10 @@ describe.concurrent("library 2-7 grid presence", () => {
               expect
                 .soft(await horizontalOverflow(o.page), "horizontal scroll")
                 .toBeLessThanOrEqual(0);
+              if (size.label === "1440" || size.label === "390")
+                expect
+                  .soft(await wordmarkWidth(o.page), "header wordmark width")
+                  .toBeCloseTo(96, -1);
             } finally {
               await o.close();
             }

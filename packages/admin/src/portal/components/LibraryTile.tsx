@@ -58,7 +58,7 @@ export function LibraryTile({
   const confirming = ask > 0;
   const menuButton = React.useRef<HTMLButtonElement>(null);
   const entry = product.kind === "entry";
-  // No hosted cover: the stored tint over a short field, the icon centred on it.
+  // No hosted cover: the stored tint over the same field, the icon large and centred on it.
   const noArt = !pres.headerUrl;
   return (
     <div ref={cue.ref} className="pk-lift pk-pressable-card grid rounded-xl">
@@ -86,10 +86,8 @@ export function LibraryTile({
           // contained over a blurred copy of itself where the cap (280 px tall) is lower than the
           // column's 16:9, so a single wide column never crops it.
           fit="contain"
-          className={cn(
-            "w-full",
-            noArt ? "h-32" : "aspect-video max-h-[17.5rem]",
-          )}
+          // The same 16:9 box with or without a cover, so names and pills line up across a row.
+          className="aspect-video max-h-[17.5rem] w-full"
         >
           {noArt && pres.iconUrl ? (
             <ProductIcon

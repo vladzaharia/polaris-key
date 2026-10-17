@@ -84,8 +84,8 @@ export function PortalShell({
             aria-label="Polaris Key: your library"
             className="flex shrink-0 items-center rounded-md"
           >
-            <Lockup height={64} className="hidden mid:block" />
-            <Lockup height={52} className="mid:hidden" />
+            <Lockup height={44} className="hidden mid:block" />
+            <Lockup height={44} className="mid:hidden" />
           </a>
           <nav
             aria-label="Main"
@@ -218,9 +218,7 @@ export function PortalShell({
               </span>
               Discover
               {discoverCount ? (
-                <span className="sr-only">
-                  , {discoverCount} {discoverCount === 1 ? "offer" : "offers"}
-                </span>
+                <span className="sr-only">, {discoverCount} to add</span>
               ) : null}
             </a>
           ) : (

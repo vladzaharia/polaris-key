@@ -85,7 +85,9 @@ describe("Library on today's data (PX-02)", () => {
     // The subtitle names the email; the card's "this email" refers back to it.
     expect(screen.getAllByText(/mara@fennick\.studio/)).toHaveLength(1);
     await userEvent.click(
-      screen.getByRole("button", { name: "Activate a license" }),
+      within(
+        screen.getByRole("region", { name: "Nothing here yet" }),
+      ).getByRole("button", { name: "Activate license" }),
     );
     expect(
       await screen.findByRole("dialog", { name: "Activate a license" }),
@@ -152,8 +154,9 @@ describe("Library on today's data (PX-02)", () => {
     renderPortal();
     await library();
     expect(
-      await screen.findByText("3 products ·", { exact: false }),
+      await screen.findByText("Signed in as", { exact: false }),
     ).toBeTruthy();
+    expect(screen.queryByText("3 products ·", { exact: false })).toBeNull();
     const tiles = await screen.findAllByRole("article");
     expect(
       tiles.map(
@@ -164,9 +167,10 @@ describe("Library on today's data (PX-02)", () => {
     expect(within(emberTile).getByText("Expired")).toBeTruthy();
     expect(within(emberTile).getByText(/^Ended /)).toBeTruthy();
     // No cover art: a short tint field with the letter once, in the art; no icon row over it.
-    const banner = emberTile.querySelector("[data-art='fallback'].h-32");
+    // The same 16:9 field as a tile with art, so names line up across a row.
+    const banner = emberTile.querySelector("[data-art='fallback']");
     expect(banner).not.toBeNull();
-    expect(banner!.className).not.toContain("aspect-video");
+    expect(banner!.className).toContain("aspect-video");
     expect(
       [...emberTile.querySelectorAll("span[aria-hidden]")].filter(
         (el) => el.textContent === "E",
@@ -272,22 +276,32 @@ describe("Library on today's data (PX-02)", () => {
     mockFetch(signedIn([nightfall, tidewater, ember]));
     renderPortal();
     await library();
-    const tile = await screen.findByRole("complementary", {
+    const tile = await screen.findByRole("listitem", {
       name: "Have a license key?",
     });
     expect(
       within(tile).getByText("Activate it to add its product here."),
     ).toBeTruthy();
     // Three products: it fills the fourth place at two columns and spans the row at three.
-    expect(tile.parentElement!.className).toMatch(/desk:col-span-1/);
-    expect(tile.parentElement!.className).toMatch(/wide:col-span-3/);
-    expect(tile.className).toContain("border-dashed");
-    const strip = screen.getByRole("region", { name: "Missing a license?" });
+    expect(tile.className).toMatch(/desk:col-span-1/);
+    expect(tile.className).toMatch(/wide:col-span-3/);
+    expect(tile.firstElementChild!.className).toContain("border-dashed");
     expect(
-      within(strip)
-        .getByRole("link", { name: "Sign-in methods" })
-        .getAttribute("href"),
-    ).toMatch(/methods/);
+      within(tile).getByRole("heading", {
+        level: 3,
+        name: "Have a license key?",
+      }),
+    ).toBeTruthy();
+    const strip = screen.getByRole("region", { name: "Missing a license?" });
+    // Both rows link it (the Steam one too), underlined: colour alone is not a link (WCAG 1.4.1).
+    const methods = within(strip).getAllByRole("link", {
+      name: "Sign-in methods",
+    });
+    expect(methods).toHaveLength(2);
+    for (const a of methods) {
+      expect(a.getAttribute("href")).toMatch(/methods/);
+      expect(a.className).toContain("underline");
+    }
     expect(within(strip).getByText("Sent to another email?")).toBeTruthy();
     expect(within(strip).getByText("Bought in a store?")).toBeTruthy();
     await userEvent.click(
@@ -302,7 +316,7 @@ describe("Library on today's data (PX-02)", () => {
     renderPortal();
     await screen.findByRole("article", { name: "Nightfall" });
     expect(
-      screen.queryByRole("complementary", { name: "Have a license key?" }),
+      screen.queryByRole("listitem", { name: "Have a license key?" }),
     ).toBeNull();
     expect(
       screen.getByRole("region", { name: "Missing a license?" }),

@@ -92,7 +92,8 @@ const WITH_CONNECTION = {
   body: {
     auth: {
       oidc: false,
-      magic: true,
+      // No email field to route through: the connection is a button below the provider row.
+      magic: false,
       providers: ["apple", "google"],
       connections: [LAKESIDE],
     },
@@ -318,10 +319,8 @@ export const SHIPPED: ShippedState[] = [
     routes: routedStart(true),
     ready: async (p) => {
       await typeEmail(p, "dana@example.edu");
-      await h1(p, "Lakeside University");
-      await p
-        .getByRole("link", { name: "Continue to Lakeside University" })
-        .waitFor();
+      await h1(p, "Sign in with Lakeside University");
+      await p.getByRole("link", { name: "Continue", exact: true }).waitFor();
     },
   },
   {
@@ -333,7 +332,7 @@ export const SHIPPED: ShippedState[] = [
     routes: routedStart(false),
     ready: async (p) => {
       await typeEmail(p, "sam.ito@students.example.edu");
-      await h1(p, "Lakeside University");
+      await h1(p, "Sign in with Lakeside University");
       await p
         .getByRole("button", { name: "Email me a code instead" })
         .waitFor();
@@ -342,7 +341,7 @@ export const SHIPPED: ShippedState[] = [
   {
     section: "4.1",
     id: "signin-connections",
-    title: "Login card with a connection and the provider row",
+    title: "Login card with no email field: the provider row and a connection",
     scenario: "signedOut",
     path: "/",
     routes: { "/api/capabilities": WITH_CONNECTION },
