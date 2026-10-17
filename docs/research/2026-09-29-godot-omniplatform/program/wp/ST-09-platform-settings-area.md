@@ -148,3 +148,21 @@ inventory and a test against it); Product defaults and the product policies matr
 the defaults; ST-11/12 add sections); moving the feeds policy editor into the page (still on the
 Package feeds page); `useCan`/`useWriteGate` on the rows (the engine's own gate applies);
 `@modified`/search and phone shell search icon (shell, not this page).
+
+### Slice 2 (2026-10-17)
+
+Done: the Worker limits inventory (`packages/worker/src/limits.ts`, 49 rows imported from their
+owners; `test/limits.test.ts` fails when a limit-shaped numeric export in Core, platform, console
+or the top-level modules has neither a row nor an `INTERNAL` entry) and the Limits section driven
+by it (grouped Access, Email, Retention, Storage and delivery, Licensing, Requests); the feeds
+policy editor moved from the Package feeds page into Storefront and hosting as settings-engine
+rows (`platformFeedPolicy.tsx`; the overview carries `policies` at platform scope; the feed's
+Settings page keeps a pointer); `useWriteGate("platform")` on every editable row; keyboard and
+screen-reader tests (Escape returns focus to the switch, one h1, axe clean with Limits open).
+Item 4 (cold-start flake) was fixed on the integration branch and dropped from this slice.
+
+Correction to the brief: services' constants are not in the inventory (the console reads a service
+only through `public.ts`); a service limit an operator needs is a follow-up that exposes it there.
+
+Still open: Product defaults and the product-policies matrix rows (ST-16), SQL-only and API-only
+rows (ST-11, ST-12), `@modified`/search and the phone shell search icon (shell).
