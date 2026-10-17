@@ -173,6 +173,25 @@ describe("/login/sso/<id>", () => {
     expect(u.searchParams.get("nonce")).toBeTruthy();
   });
 
+  it("an unreachable connection is named; an enforced domain says there is no other way in", async () => {
+    const w = await seededWorld();
+    await workConnection(w, ["corp.example"]);
+    await w.db.run("UPDATE identity_connection_domains SET enforce = 1");
+    vi.stubGlobal("fetch", async () => new Response("down", { status: 503 }));
+    const path = `/login/sso/${CONN}?login_hint=ada%40corp.example`;
+    const enforced = await new Device(w).send("GET", path);
+    expect(enforced.status).toBe(502);
+    const html = await enforced.text();
+    expect(html).toContain("Can&#x27;t reach Work");
+    expect(html).toContain("corp.example addresses sign in only through Work");
+    expect(html).toContain("Try again");
+    expect(html).toContain("login_hint=ada%40corp.example");
+    await w.db.run("UPDATE identity_connection_domains SET enforce = 0");
+    const open = await (await new Device(w).send("GET", path)).text();
+    expect(open).toContain("Use a different email");
+    expect(open).not.toContain("only through");
+  });
+
   it("an unknown, disabled, operators-only or product connection is not offered", async () => {
     const w = await seededWorld();
     await insertConnection(w.db, { id: "c_off", status: "disabled" });

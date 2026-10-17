@@ -54,6 +54,7 @@ import {
   platformEnvConnection,
 } from "../connections/seed.js";
 import { accountDisabledPage } from "../card/http.js";
+import { emailDomain, routeForDomain } from "../../../core/oidc/connections.js";
 import { buildPortalClearCookie, portalSessionFromRequest } from "./session.js";
 import { revokeSessionByHash, sessionIdHash } from "./accountSessions.js";
 import {
@@ -117,7 +118,13 @@ interface FlowRecord {
 export function htmlError(
   status: number,
   heading: string,
-  opts: { body?: string; retry?: boolean } = {},
+  opts: {
+    body?: string;
+    retry?: boolean;
+    /** Where the button goes (default the sign-in page) and what it says. */
+    retryHref?: string;
+    retryLabel?: string;
+  } = {},
 ): Response {
   const retry =
     opts.retry ?? (status === 400 || status === 401 || status === 502);
@@ -128,7 +135,7 @@ export function htmlError(
       body:
         (opts.body ?? "") +
         (retry
-          ? `<p class="actions"><a class="button" href="${escapeHtml("/")}">Sign in again</a></p>` // signin.again
+          ? `<p class="actions"><a class="button" href="${escapeHtml(opts.retryHref ?? "/")}">${escapeHtml(opts.retryLabel ?? "Sign in again")}</a></p>` // signin.again
           : ""),
     }),
     {
@@ -169,6 +176,23 @@ export const signInPage = {
         : "Sign-in isn't working right now",
       { body: "<p>Try another way to sign in.</p>" },
     ),
+  /**
+   * A connection's discovery failed. The heading names the organization. Where the address's
+   * domain is enforced there is no other way in: say so and retry the same route; otherwise the
+   * button returns to the card.
+   */
+  connectionUnreachable: (
+    label: string,
+    opts: { enforcedDomain: string | null; retryHref: string },
+  ): Response =>
+    htmlError(502, `Can't reach ${label}`, {
+      body: opts.enforcedDomain
+        ? `<p>${escapeHtml(opts.enforcedDomain)} addresses sign in only through ${escapeHtml(label)}. If it keeps failing, contact its IT help desk.</p>`
+        : "<p>Try again, or use a different email.</p>",
+      retry: true,
+      retryHref: opts.enforcedDomain ? opts.retryHref : "/",
+      retryLabel: opts.enforcedDomain ? "Try again" : "Use a different email",
+    }),
   /** The identity could not be verified. */
   unverified: (): Response =>
     htmlError(401, "We couldn't confirm that sign-in"),
@@ -273,7 +297,15 @@ export async function handleConnectionLogin(
   try {
     discovered = await discover(rp);
   } catch {
-    return signInPage.unavailable();
+    const hintDomain = loginHint ? emailDomain(loginHint) : null;
+    const route = hintDomain
+      ? await routeForDomain(db, hintDomain, ["platform"], "customers")
+      : null;
+    return signInPage.connectionUnreachable(conn.label, {
+      enforcedDomain:
+        route?.enforced && route.connection.id === conn.id ? hintDomain : null,
+      retryHref: `${url.pathname}${url.search}`,
+    });
   }
   const { state, nonce, verifier, challenge } = await newFlowSecrets();
   const redirectUri = `${url.origin}/callback`;

@@ -761,17 +761,17 @@ describe("Connections on the card (I-30; mockup identity.sign-in-routes)", () =>
     await typeAndContinue("dana@example.edu");
     const h1 = await screen.findByRole("heading", {
       level: 1,
-      name: "Lakeside University",
+      name: "Sign in with Lakeside University",
     });
     await waitFor(() => expect(document.activeElement).toBe(h1));
     expect(
       screen.getByText(
-        "Lakeside University requires its own sign-in for example.edu addresses.",
+        (_, el) =>
+          el?.tagName === "P" &&
+          el.textContent === "Required for example.edu addresses.",
       ),
     ).toBeTruthy();
-    const go = screen.getByRole("link", {
-      name: "Continue to Lakeside University",
-    });
+    const go = screen.getByRole("link", { name: "Continue" });
     const href = new URL(go.getAttribute("href")!, "http://localhost");
     expect(href.pathname).toBe("/login/sso/conn_lakeside");
     expect(href.searchParams.get("login_hint")).toBe("dana@example.edu");
@@ -780,10 +780,12 @@ describe("Connections on the card (I-30; mockup identity.sign-in-routes)", () =>
     expect(
       screen.queryByRole("button", { name: "Email me a code instead" }),
     ).toBeNull();
-    expect(screen.getByText("dana@example.edu")).toBeTruthy();
+    expect(screen.getByTitle("dana@example.edu").textContent).toBe(
+      "dana@example.edu",
+    );
     expect(document.title).toBe("Lakeside University · Polaris Key");
     expect(await axeViolations()).toEqual([]);
-    // Change goes back to the email step.
+    // Change goes back to the email step, with the address kept and the field focused.
     await userEvent.click(screen.getByRole("button", { name: "Change email" }));
     expect(
       await screen.findByRole("heading", {
@@ -791,6 +793,9 @@ describe("Connections on the card (I-30; mockup identity.sign-in-routes)", () =>
         name: "Sign in to Polaris Key",
       }),
     ).toBeTruthy();
+    const field = screen.getByRole("textbox", { name: "Email" });
+    expect((field as HTMLInputElement).value).toBe("dana@example.edu");
+    await waitFor(() => expect(document.activeElement).toBe(field));
   });
 
   it("a domain that allows the code: the connection first, Email me a code instead through the resend", async () => {
@@ -807,16 +812,10 @@ describe("Connections on the card (I-30; mockup identity.sign-in-routes)", () =>
     await typeAndContinue("sam.ito@students.example.edu");
     await screen.findByRole("heading", {
       level: 1,
-      name: "Lakeside University",
+      name: "Sign in with Lakeside University",
     });
-    expect(
-      screen.getByText(
-        "students.example.edu signs in through Lakeside University.",
-      ),
-    ).toBeTruthy();
-    expect(
-      screen.getByRole("link", { name: "Continue to Lakeside University" }),
-    ).toBeTruthy();
+    expect(screen.queryByText(/Required for/)).toBeNull();
+    expect(screen.getByRole("link", { name: "Continue" })).toBeTruthy();
     expect(await axeViolations()).toEqual([]);
     await userEvent.click(
       screen.getByRole("button", { name: "Email me a code instead" }),
@@ -851,7 +850,7 @@ describe("Connections on the card (I-30; mockup identity.sign-in-routes)", () =>
     expect(
       await screen.findByRole("heading", {
         level: 1,
-        name: "Lakeside University",
+        name: "Sign in with Lakeside University",
       }),
     ).toBeTruthy();
     expect(
@@ -880,25 +879,38 @@ describe("Connections on the card (I-30; mockup identity.sign-in-routes)", () =>
     ).toBeTruthy();
   });
 
-  it("lists the other connections as Continue with <label>, with the typed address as the hint", async () => {
+  it("an email field routes by address: the connections are not listed as buttons", async () => {
     signedOut({
       ...CAPS_ALL,
       auth: { ...CAPS_ALL.auth, connections: [LAKESIDE] },
     });
     renderPortal();
-    const link = await screen.findByRole("link", {
-      name: "Continue with Lakeside University",
+    await screen.findByRole("textbox", { name: "Email" });
+    expect(
+      screen.queryByRole("link", { name: "Continue with Lakeside University" }),
+    ).toBeNull();
+  });
+
+  it("a code that cannot be asked for yet counts down on the button, with no error line", async () => {
+    signedOut(CAPS_ALL, {
+      "POST /api/signin/email/start": routed(false),
+      "POST /api/signin/email/resend": {
+        status: 429,
+        body: { error: "rate_limited", message: "Wait", retryAfter: 59 },
+      },
     });
-    expect(link.getAttribute("href")).toMatch(
-      /^\/login\/sso\/conn_lakeside\?return_to=/,
-    );
-    await userEvent.type(
-      screen.getByRole("textbox", { name: "Email" }),
-      "dana@example.edu",
-    );
-    const hinted = new URL(link.getAttribute("href")!, "http://localhost");
-    expect(hinted.searchParams.get("login_hint")).toBe("dana@example.edu");
-    expect(await axeViolations()).toEqual([]);
+    renderPortal();
+    await typeAndContinue("sam@students.example.edu");
+    const btn = await screen.findByRole("button", {
+      name: "Email me a code instead",
+    });
+    await userEvent.click(btn);
+    const counting = await screen.findByRole("button", {
+      name: /Email me a code in 0:59/,
+    });
+    expect(counting.getAttribute("aria-disabled")).toBe("true");
+    expect(screen.queryByRole("alert")).toBeNull();
+    await waitFor(() => expect(document.activeElement).toBe(counting));
   });
 
   it("a card with only a connection is not turned off", async () => {
@@ -907,6 +919,12 @@ describe("Connections on the card (I-30; mockup identity.sign-in-routes)", () =>
       auth: { oidc: false, magic: false, connections: [LAKESIDE] },
     });
     renderPortal();
+    const link = await screen.findByRole("link", {
+      name: "Continue with Lakeside University",
+    });
+    expect(link.getAttribute("href")).toMatch(
+      /^\/login\/sso\/conn_lakeside\?return_to=/,
+    );
     expect(
       await screen.findByRole("link", {
         name: "Continue with Lakeside University",
