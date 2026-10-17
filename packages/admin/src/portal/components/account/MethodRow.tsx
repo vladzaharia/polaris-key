@@ -161,12 +161,12 @@ export function MethodRow({
           {meta ? <p className="text-sm text-fg-muted">{meta}</p> : null}
         </div>
         {open ? null : (
-          <div className="ml-auto flex flex-wrap items-center gap-1">
+          <div className="ml-13 flex flex-wrap items-center gap-2 sm:ml-auto">
             {actions}
             <Button
               ref={buttonRef}
-              variant="ghost"
-              className="h-10 font-medium"
+              variant="outline"
+              className="h-11 font-medium"
               aria-disabled={guarded || undefined}
               aria-describedby={guarded ? reasonId : undefined}
               aria-expanded={guarded ? undefined : false}

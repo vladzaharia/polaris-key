@@ -958,11 +958,13 @@ describe("GET /api/me/export", () => {
         { label: null, status: "active", createdAt: NOW, lastUsedAt: null },
       ],
     });
-    // A device signed in as somebody else is theirs: it is listed (it is on her licence) unnamed.
+    // A device signed in as somebody else is theirs: it is on her licence but nothing of it is exported.
     const devices = Object.fromEntries(
       djdl.licenses[0].devices.map((d: any) => [d.deviceId, d.label]),
     );
-    expect(devices).toEqual({ "dev-ada-1": "Ada's Mac", "dev-shared": null });
+    expect(devices).toEqual({ "dev-ada-1": "Ada's Mac" });
+    expect(JSON.stringify(djdl)).not.toContain("dev-shared");
+    expect(JSON.stringify(djdl)).not.toContain("Bob's laptop");
     expect(Object.keys(djdl.stores).sort()).toEqual([
       "config.accountOverrides",
       "core.entitlementEvents",

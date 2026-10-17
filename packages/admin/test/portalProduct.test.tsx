@@ -152,7 +152,7 @@ describe("product page on today's data (PX-04)", () => {
         within(nav)
           .getAllByRole("link")
           .map((a) => a.textContent),
-      ).toEqual(["Get it", "License", "Devices 2", "What's new"]);
+      ).toEqual(["Get it", "License", "Devices 2", "What's new", "Your data"]);
     // The device count is a small neutral pill, and the link still reads as one name.
     for (const nav of navs) {
       const devicesLink = within(nav).getByRole("link", { name: "Devices 2" });
@@ -1740,7 +1740,7 @@ describe("the section nav follows the page as it scrolls (owner polish 2026-10-0
     ).toBe("two");
   });
 
-  it("Help closes the main column, so the nav ends with it on every width", async () => {
+  it("Help closes the main column, so the nav ends with it and Your data on every width", async () => {
     mockFetch(
       routes({
         "/api/library": libraryFor([nightfall], undefined, {
@@ -1762,7 +1762,7 @@ describe("the section nav follows the page as it scrolls (owner polish 2026-10-0
         within(screen.getByRole("navigation", { name: nav }))
           .getAllByRole("link")
           .map((a) => a.textContent)
-          .at(-1),
+          .at(-2),
       ).toBe("Help");
   });
 });
