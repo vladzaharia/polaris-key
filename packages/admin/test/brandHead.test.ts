@@ -52,10 +52,9 @@ describe("the brand head snippet", () => {
         "..",
         "worker",
         "src",
-        "services",
-        "identity",
-        "portal",
-        "email.ts",
+        "core",
+        "notify",
+        "render.ts",
       ),
       "utf8",
     );
