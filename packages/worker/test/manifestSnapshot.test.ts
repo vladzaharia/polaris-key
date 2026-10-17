@@ -378,6 +378,7 @@ describe("snapshot size (ST-01a, D1's value limit)", () => {
       files,
       files,
       NOW,
+      () => false,
     );
     // D1 caps a string, BLOB or row at 2,000,000 bytes; the largest snapshot stays well under.
     const bytes = new TextEncoder().encode(
@@ -402,5 +403,152 @@ describe("snapshot size (ST-01a, D1's value limit)", () => {
       await manifestFilesSha256({ a: "1", bc: "" }),
     );
     expect(await manifestFilesSha256({ a: "x" })).toMatch(/^[0-9a-f]{64}$/);
+  });
+});
+
+// ── secrets never reach manifest_json ───────────────────────────────────────────────────────
+
+const SECRET = "s3cret-value";
+const secretEntry = (key: string, kind: "secret" | "config") => ({
+  key,
+  kind,
+  category: "api",
+  label: key,
+  description: "",
+  schema: { type: "string" },
+});
+const SECRET_SCHEMA = JSON.stringify({
+  schemaVersion: 1,
+  entries: [secretEntry("api.key", "secret"), secretEntry("api.url", "config")],
+});
+/** Same keys, `api.key` demoted to a plain config entry. */
+const DEMOTED_SCHEMA = JSON.stringify({
+  schemaVersion: 1,
+  entries: [secretEntry("api.key", "config"), secretEntry("api.url", "config")],
+});
+const entryOf = (value: string) => ({ state: "enforced", value, updatedAt: 0 });
+const secretProduct = (value: string, extra = false) =>
+  JSON.stringify({
+    slug: SLUG,
+    name: "Snap",
+    tiers: [{ id: "pro", label: "Pro" }],
+    profiles: [
+      {
+        id: "pro",
+        name: "Pro",
+        payload: {
+          config: {
+            "api.key": entryOf(value),
+            "api.url": entryOf("https://ok.example"),
+          },
+          secrets: { "extra.token": entryOf(extra ? value : "x-1") },
+        },
+      },
+    ],
+  });
+const snapshotText = async (db: Db) =>
+  (await getManifestSnapshot(db, SLUG))!.manifest_json;
+
+describe("a snapshot holds no secret value", () => {
+  it("link and resync scrub the secrets bucket and catalog-secret config keys", async () => {
+    const base = makeTestDb();
+    const env = envFor();
+    env.PLATFORM_KEK = TEST_KEK;
+    const docs = { schema: SECRET_SCHEMA, product: secretProduct(SECRET) };
+    expect(
+      (await linkRepo(env, base, "acme/snap", NOW, serving(docs).fetchImpl)).ok,
+    ).toBe(true);
+    const first = await getManifestSnapshot(base, SLUG);
+    expect(first!.manifest_json).not.toContain(SECRET);
+    expect(first!.manifest_json).toContain("[redacted]");
+    // Non-secret config survives.
+    expect(first!.manifest_json).toContain("https://ok.example");
+
+    const next = {
+      schema: SECRET_SCHEMA,
+      product: secretProduct(SECRET).replace("Snap", "Snap Two"),
+    };
+    const res = await resyncRepo(
+      env,
+      base,
+      SLUG,
+      NOW + 10,
+      serving(next).fetchImpl,
+    );
+    expect(res.ok).toBe(true);
+    const second = await getManifestSnapshot(base, SLUG);
+    expect(second!.manifest_json).not.toContain(SECRET);
+    // Drift detection still sees the change.
+    expect(second!.files_sha256).not.toBe(first!.files_sha256);
+    expect(second!.files_sha256).toBe(await manifestFilesSha256(next));
+  });
+
+  it("a key demoted by the incoming catalog but secret in the stored one is still scrubbed", async () => {
+    const base = makeTestDb();
+    const env = envFor();
+    env.PLATFORM_KEK = TEST_KEK;
+    const first = { schema: SECRET_SCHEMA, product: secretProduct(SECRET) };
+    expect(
+      (await linkRepo(env, base, "acme/snap", NOW, serving(first).fetchImpl))
+        .ok,
+    ).toBe(true);
+    const demoted = { schema: DEMOTED_SCHEMA, product: first.product };
+    const res = await resyncRepo(
+      env,
+      base,
+      SLUG,
+      NOW + 10,
+      serving(demoted).fetchImpl,
+    );
+    expect(res.ok).toBe(true);
+    expect(await snapshotText(base)).not.toContain(SECRET);
+  });
+
+  it("the deploy hook's snapshot is scrubbed too", async () => {
+    const base = makeTestDb();
+    const env = envFor();
+    env.PLATFORM_KEK = TEST_KEK;
+    expect((await ensureSystemProduct(env, base, "u1", NOW)).ok).toBe(true);
+    const root = join(
+      fileURLToPath(new URL(".", import.meta.url)),
+      "..",
+      "..",
+      "..",
+      ".pkey",
+    );
+    const files = {
+      product: readFileSync(join(root, "product.yaml"), "utf8"),
+      schema: readFileSync(join(root, "schema.yaml"), "utf8"),
+      release: readFileSync(join(root, "release.yaml"), "utf8"),
+    };
+    const parsed = parseManifest(files);
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    const manifest = {
+      ...parsed.manifest,
+      profiles: [
+        ...parsed.manifest.profiles,
+        {
+          id: "leaky",
+          name: "Leaky",
+          payload: { secrets: { "x.token": entryOf(SECRET) } },
+        },
+      ],
+    };
+    const res = await linkSystemProduct(
+      base,
+      manifest as typeof parsed.manifest,
+      {
+        repository: "vladzaharia/polaris-key",
+        repositoryId: 1,
+        repositoryOwnerId: 2,
+      },
+      { files, sha: "c".repeat(40) },
+      NOW + 1,
+    );
+    expect(res.ok).toBe(true);
+    expect(
+      (await getManifestSnapshot(base, SYSTEM_PRODUCT_SLUG))!.manifest_json,
+    ).not.toContain(SECRET);
   });
 });

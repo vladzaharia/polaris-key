@@ -57,6 +57,8 @@ import {
   runSettingsBackfill,
   type BackfillRunOptions,
 } from "../src/console/settingsBackfill.js";
+import { SNAPSHOT_REDACTED } from "../src/core/manifestSnapshot.js";
+import { sealManagedValue } from "../src/core/managedSecrets.js";
 import {
   planBackfill,
   REDACTED,
@@ -1606,6 +1608,72 @@ describe("the system product (its manifest is the deploy hook's snapshot)", () =
     );
   });
 
+  it("a scrubbed snapshot's redaction marker never replaces a sealed profile secret", async () => {
+    const ctx = await deployed();
+    const sealed = await sealManagedValue(
+      ctx.env,
+      SYSTEM_PRODUCT_SLUG,
+      "api.key",
+      "s3cret-value",
+    );
+    const payload = JSON.stringify({
+      config: {
+        "api.key": { state: "enforced", value: sealed, updatedAt: 0 },
+      },
+    });
+    await ctx.db.run(
+      `INSERT INTO profiles (product, id, name, description, payload_json, modified_by, modified_at, source)
+         VALUES (?, 'leaky', 'Leaky', NULL, ?, 'u1', ?, 'manifest')`,
+      SYSTEM_PRODUCT_SLUG,
+      payload,
+      NOW,
+    );
+    // The snapshot as the scrub leaves it: the catalog names the secret, the profile holds the marker.
+    const row = await ctx.db.first<{ manifest_json: string }>(
+      "SELECT manifest_json FROM product_manifest_snapshot WHERE product = ?",
+      SYSTEM_PRODUCT_SLUG,
+    );
+    const m = JSON.parse(row!.manifest_json) as {
+      catalog: { entries: unknown[] };
+      profiles: unknown[];
+    };
+    m.catalog.entries.push({
+      key: "api.key",
+      kind: "secret",
+      category: "a",
+      label: "k",
+      description: "",
+      schema: { type: "string" },
+    });
+    m.profiles.push({
+      id: "leaky",
+      name: "Leaky",
+      payload: {
+        config: {
+          "api.key": {
+            state: "enforced",
+            value: SNAPSHOT_REDACTED,
+            updatedAt: 0,
+          },
+        },
+      },
+    });
+    await ctx.db.run(
+      "UPDATE product_manifest_snapshot SET manifest_json = ? WHERE product = ?",
+      JSON.stringify(m),
+      SYSTEM_PRODUCT_SLUG,
+    );
+    const report = await okRun(ctx, {}, SYSTEM_PRODUCT_SLUG);
+    // Not refused for "replacing a sealed secret": the marker is no value at all.
+    expect(report.outcome).not.toBe("refused");
+    const after = await ctx.db.first<{ payload_json: string }>(
+      "SELECT payload_json FROM profiles WHERE product = ? AND id = 'leaky'",
+      SYSTEM_PRODUCT_SLUG,
+    );
+    expect(after!.payload_json).not.toContain(SNAPSHOT_REDACTED);
+    expect(JSON.parse(after!.payload_json)).toEqual(JSON.parse(payload));
+  });
+
   it("bootstrapped but never deployed: unlinked; linked with no snapshot: cannot read .pkey/", async () => {
     const fresh = await deployed({ link: false });
     expect((await okRun(fresh, {}, SYSTEM_PRODUCT_SLUG)).outcome).toBe(
@@ -1771,5 +1839,38 @@ describe("the migration", () => {
       .filter(Boolean))
       await ctx.db.run(stmt);
     expect(await reportRows(ctx.db)).toHaveLength(1);
+  });
+});
+
+describe("the backfill's snapshot holds no secret value", () => {
+  it("scrubs a secret declared in a profile payload", async () => {
+    const SECRET = "s3cret-value";
+    const secretSchema = JSON.stringify({
+      schemaVersion: 1,
+      entries: [{ ...entry("run.name"), kind: "secret" }],
+    });
+    const d: Decl = {
+      schema: secretSchema,
+      payloads: {
+        standard: {
+          secrets: { t: { state: "enforced", value: SECRET, updatedAt: 0 } },
+          config: {
+            "run.name": { state: "enforced", value: SECRET, updatedAt: 0 },
+          },
+        },
+      },
+    };
+    const ctx = await linked(d);
+    await ctx.db.run(
+      "DELETE FROM product_manifest_snapshot WHERE product = ?",
+      SLUG,
+    );
+    await okRun(ctx, { github: { head: d } });
+    const row = await ctx.db.first<{ manifest_json: string; origin: string }>(
+      "SELECT manifest_json, origin FROM product_manifest_snapshot WHERE product = ?",
+      SLUG,
+    );
+    expect(row!.origin).toBe("backfill");
+    expect(row!.manifest_json).not.toContain(SECRET);
   });
 });
