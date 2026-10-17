@@ -190,6 +190,10 @@ func _content_wanted() -> float:
 
 
 func _apply_width(_width: float) -> void:
+	if side_bleed():
+		var side_room := content_room()
+		_card.custom_minimum_size = Vector2(maxf(side_room.x - card_padding_x(), 0.0), 0.0)
+		return
 	if phone_bleed():
 		var room := content_room()
 		_card.custom_minimum_size = Vector2(maxf(room.x - card_padding_x(), 0.0), room.y)
@@ -233,7 +237,7 @@ func _arrange(m: Dictionary) -> void:
 	_spacer.visible = bleed and not _activation_owns_screen() and not docked_form
 	# A dialog the gate holds fills the page on a phone, docking its own actions to the bottom.
 	activation.size_flags_vertical = Control.SIZE_EXPAND_FILL if bleed and _activation_owns_screen() else Control.SIZE_FILL
-	if bleed:
+	if bleed or side_bleed():
 		_card.theme_type_variation = &""
 		if not _card.has_theme_stylebox_override("panel"):
 			_card.add_theme_stylebox_override("panel", StyleBoxEmpty.new())

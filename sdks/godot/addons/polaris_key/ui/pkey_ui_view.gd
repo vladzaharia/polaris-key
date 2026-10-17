@@ -1265,7 +1265,7 @@ func _card_shown() -> bool:
 
 ## The card's left plus right padding while it shows, else 0.
 func card_padding_x() -> float:
-	if _card_box == null or not _card_shown() or (phone_bleed() and not phone_sheet()):
+	if _card_box == null or not _card_shown() or ((phone_bleed() or side_bleed()) and not phone_sheet()):
 		return 0.0
 	return side_padding(_card_box) + scrollbar_width()
 
@@ -1332,7 +1332,7 @@ func _style_card() -> void:
 				var box := (base as StyleBoxFlat).duplicate() as StyleBoxFlat
 				box.set_content_margin_all(pad)
 				_card_box.add_theme_stylebox_override("panel", box)
-	elif _card_shown() and phone_bleed():
+	elif _card_shown() and (phone_bleed() or side_bleed()):
 		_card_box.size_flags_vertical = Control.SIZE_FILL
 		# Full-bleed: the page is the card, at the page margin from the (safe) edges.
 		var pad := maxf(0.0, role("page_margin") - side_padding(outer_view()) / 2.0)
@@ -1362,6 +1362,13 @@ func phone_bleed() -> bool:
 
 func _bleeds() -> bool:
 	return false
+
+
+## Whether the outermost view, a scene that bleeds, is on a phone held sideways: the page is the
+## card there too (no chrome, the page margin from the safe edges), its two columns kept, because a
+## phone's 390 pt of height cannot spare a card's padding.
+func side_bleed() -> bool:
+	return outer_view() == self and _bleeds() and bool(layout_metrics().get("landscape", false)) and is_phone_device()
 
 
 ## Whether this view, the outermost one, is a dialog over the game on a phone: it sits on an opaque

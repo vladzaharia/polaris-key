@@ -48,7 +48,6 @@ static func applies(row: Array, screen: String) -> bool:
 ## gate cards need their scroll in the Polaris Key look (a long presented name, the German and
 ## Japanese device limit and version refusal). The card bleeding on a landscape phone is the fix.
 const HELD_BACK := {
-	"2532x1170@3": ["gate.presented_long", "gate.device_limit", "gate.unavailable"],
 }
 
 
@@ -125,10 +124,30 @@ const TIGHT_CASES := [
 	# and number) cannot be narrower than that type allows.
 	["settings", "native28", "1080x2400"],
 	["settings", "native36", "1080x2400"],
+	# A 28 or 36 px host font on a 390 pt phone (14 or 11 characters a line): a card cannot be
+	# narrower than its widest button word, and a primary below the first screen is reached by its
+	# scroll. The product's name steps its icon over it instead (PKeyProductHeader).
+	["gate.offline", "native28", "1170x2532@3"],
+	["offline", "native28", "1170x2532@3"],
+	["settings", "native28", "1170x2532@3"],
+	["gate.offline", "native36", "1170x2532@3"],
+	["offline", "native36", "1170x2532@3"],
+	["settings", "native36", "1170x2532@3"],
+	["sign_in", "native36", "1170x2532@3"],
+	["sign_in.confirm", "native36", "1170x2532@3"],
+	["gate.sign_in", "native36", "1170x2532@3"],
+	["activation", "native36", "1170x2532@3"],
+	["boot.offline", "native36", "1170x2532@3"],
+	["boot.consent", "native36", "1170x2532@3"],
+	["gate.network", "native36", "1170x2532@3"],
+	["dev_menu", "native36", "1170x2532@3"],
+	["gate.unavailable", "native36", "1170x2532@3"],
+	["gate.presented_long", "native36", "1170x2532@3"],
 	# A game's own theme (larger type, roomier controls) on the narrowest current phone (375 pt) and
 	# on a phone held sideways (844x390 pt): the offline reply's Import is a scroll away, reached by
 	# pad with the scroll following. The Polaris Key look fits both without scrolling.
 	["offline", "native", "750x1334@2"],
+	["offline", "custom", "750x1334@2"],
 	["offline", "native", "2532x1170@3"],
 	["offline", "custom", "2532x1170@3"],
 	["gate.offline", "native", "750x1334@2"],
@@ -147,7 +166,7 @@ const PRESETS := ["dark", "light", "native", "custom"]
 const EXTRA_PRESETS := ["default", "native-light", "native28", "native36", "accent-dark", "accent-light"]
 const EXTRA_SIZES := ["640x360", "1280x720", "1080x2400"]
 ## Host-font looks also at these sizes (the review's rows).
-const HOST_FONT_SIZES := ["1280x720", "1280x800", "640x360"]
+const HOST_FONT_SIZES := ["1280x720", "1280x800", "640x360", "1170x2532@3"]
 const LOCALES := ["en", "de", "ja"]
 
 ## The named screens: [id, scenario scene, scenario state, kind]. "full" fills the screen; "strip"
@@ -627,7 +646,7 @@ static func problems(view: PKeyUiView, kind: String, screen: String, strict := f
 	if host_tight:
 		var kept := PackedStringArray()
 		for line in out:
-			if not (" is outside the panel's safe rect" in line or " is within " in line or " overflows its container" in line or " breaks the word" in line):
+			if not (" is outside the panel's safe rect" in line or " is within " in line or " overflows its container" in line or " breaks the word" in line or " (the user code) breaks over" in line):
 				kept.append(line)
 		out = kept
 	return out

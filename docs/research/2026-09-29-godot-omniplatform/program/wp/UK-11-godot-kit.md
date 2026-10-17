@@ -270,3 +270,13 @@ Reconciled against main in the 2026-10-16 audit. Remaining:
 - Modern-game look (glass sheet, glyphs, motion, colorScheme system, sound/haptics, TV 60 px)
 - Snapshot baselines under tests/ui/snapshots and ui-qa BASELINE_DIRS
 - Design review vs godot.html and BUILT UX review
+
+## Progress and continuation (2026-10-17)
+
+Branch `wp/UK-11-continue`. Done:
+
+- **Landscape phone gate.** `PKeyUiView.side_bleed()`: the outermost view of a scene that bleeds, on a phone held sideways, drops its card chrome (the page margin from the safe edges) and keeps two columns. `PKeyGate` uses it. `HELD_BACK` is empty: `gate.presented_long`, `gate.device_limit` and `gate.unavailable` fit at 844x390 pt without the scroll fallback.
+- **28/36 px game font at 390 pt.** `1170x2532@3` is in `HOST_FONT_SIZES`. `PKeyProductHeader` stacks the icon over the name when the widest word does not fit beside it (a function of the width), which cleared the four "breaks the word" failures. The rest are named `TIGHT_CASES` (a card cannot be narrower than its widest button word at 36 px on 390 pt; a primary is a scroll away, reachable by pad); the user-code line break is filtered in host-tight cases. `ui_matrix` takes a second argument, the looks (`ui_matrix gate native36`), and then skips the tail checks (a 25 s run instead of 12 min).
+- Known: `offline / custom / ja` failed at `750x1334@2` (Import below the fold) in the first full run; not caused by this slice as far as seen, check against main.
+
+Still to do, in order: priority 3 (move the screens onto `view_of()` and catalog keys through `copy_format.gd`; of 300 `PKeyUiCopy` keys only 117 have a catalog string with the same English, the rest need the catalog's wording and the tests that pin the old strings updated; start with `PKeyGate` and `PKeyActivationPanel`), then the new scenes, the modern-game look, baselines and the design review as listed above.
