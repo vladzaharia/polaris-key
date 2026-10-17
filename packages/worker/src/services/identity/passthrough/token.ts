@@ -36,7 +36,11 @@
  * `retryAfter`), the shape `license/activate` answers.
  */
 
-import type { TokenResponse } from "@polaris-key/protocol/identity";
+import {
+  CHOICE_GRANT_TTL_SECONDS,
+  type PendingSignIn,
+  type TokenResponse,
+} from "@polaris-key/protocol/identity";
 import { HEADER_DEVICE } from "@polaris-key/protocol/core";
 import { normalizeDeviceLabel } from "@polaris-key/client-core";
 import { bearer } from "../../../platform/http.js";
@@ -69,16 +73,16 @@ import {
   validateDeviceToken,
 } from "../../../core/devices.js";
 import { getDevice } from "../../../core/devices/store.js";
+import type { DeviceRow } from "../../../core/repo.js";
 import { getLicense } from "../../../core/licensing/store.js";
-import {
-  bindSignedInDevice,
-  rankAnchorCandidates,
-} from "../../../core/licensing/anchor.js";
-import { buildManageUrl } from "../../../core/licensing/manageUrl.js";
+import { rankAnchorCandidates } from "../../../core/licensing/anchor.js";
 import { appendAudit } from "../../../core/audit.js";
 import { randomId } from "../../../platform/crypto.js";
 import { getAccountRow } from "../accounts/repo.js";
 import { redeemAuthorizationCode } from "./code.js";
+import { acceptsKeys, licenseChoiceView, offerFor } from "./choice.js";
+import { issueGrant } from "./grant.js";
+import { bindChoice, type BindRefusal, type BindResult } from "./bind.js";
 
 /** The token endpoint: 30 a minute per client network, 10 per device id; both fail closed. */
 export const TOKEN_RATE = { bucket: "identityToken", limit: 30, windowSec: 60 };
@@ -235,113 +239,92 @@ export async function handleToken(ctx: {
   const label = normalizeDeviceLabel(form.get("device_name") ?? undefined);
 
   // A device that presents its own live token proves it holds the device. Only then may a sign-in
-  // keep the licence the device runs on: the binding is written on the existing row and the token
-  // it already holds is the answer. Without the proof a licensed device id is never touched.
+  // keep the licence the device runs on, or take over a device id that already has a credential:
+  // the binding is written on the existing row and the token it already holds is the answer.
+  // Without the proof an existing device id is never touched.
   const presented = bearer(req);
   const held = presented
     ? await validateDeviceToken(env, db, product, presented, now, { deviceId })
     : null;
+  const proven = held && !("error" in held) ? held : null;
   const keepable =
-    held &&
-    !("error" in held) &&
-    held.device.license_id !== NO_LICENSE_ID &&
-    held.license !== null &&
-    licenseUsable(held.license, now)
-      ? held
+    proven &&
+    proven.device.license_id !== NO_LICENSE_ID &&
+    proven.license !== null &&
+    licenseUsable(proven.license, now)
+      ? proven
       : null;
 
-  let token: string;
-  let deviceRow: Awaited<ReturnType<typeof registerDeviceBinding>>["device"];
-  let licenseId: string;
-  if (!record.choice && keepable && presented) {
-    const kept = await bindSignedInDevice(env, db, product, {
-      accountId: account.id,
-      subject,
-      deviceId,
-      choice: { kind: "keep" },
-      now,
+  const cx = { req, env, db, product, now };
+  const who = { accountId: account.id, subject, email: account.primary_email };
+  const deviceArgs = {
+    id: deviceId,
+    metadata,
+    label,
+    held:
+      keepable && presented ? { token: presented, row: keepable.device } : null,
+  };
+
+  let bound: BindResult;
+  if (record.choice) {
+    // The person chose at Continue (a licence, a replace, or the one Continue minted for them).
+    bound = await bindChoice(cx, who, deviceArgs, {
+      kind: "license",
+      licenseId: record.choice.licenseId,
+      ...(record.choice.replaceDeviceId !== undefined
+        ? { replaceDeviceId: record.choice.replaceDeviceId }
+        : {}),
     });
-    if (!kept.ok) return oauth(409, ErrorCode.LicenseChoiceRequired);
-    token = presented;
-    deviceRow = keepable.device;
-    licenseId = kept.licenseId;
-  } else if (record.choice) {
-    const bound = await bindSignedInDevice(env, db, product, {
-      accountId: account.id,
-      subject,
-      deviceId,
-      choice: { kind: "license", licenseId: record.choice.licenseId },
-      now,
-      authorize: { ...metadata, label },
-    });
-    if (!bound.ok) {
-      if (bound.reason === "authz") {
-        const e = bound.error;
-        if (e.error === "device_limit") {
-          const lic = await getLicense(
-            db,
-            product.slug,
-            record.choice.licenseId,
-          );
-          const manageUrl = lic
-            ? await buildManageUrl(env, db, req, product, {
-                kind: "device_limit",
-                license: lic,
-              })
-            : undefined;
-          return withNoStore(
-            errorResponse(403, "device_limit", "device limit reached", {
-              limit: e.limit,
-              deviceCount: e.deviceCount,
-              ...(manageUrl !== undefined ? { manageUrl } : {}),
-            }),
-          );
-        }
-        if (e.error === "fingerprint_required")
-          return oauth(403, "fingerprint_required");
-        if (e.error === "hardware_mismatch")
-          return oauth(409, "hardware_mismatch");
-        return oauth(403, "not_entitled");
-      }
-      if (bound.reason === "not_bindable") return oauth(403, "not_entitled");
-      return oauth(409, ErrorCode.LicenseChoiceRequired);
+  } else if (
+    record.licenseChoice === "app" &&
+    product.services.license.enabled
+  ) {
+    // App mode: the app runs the choice. If one is due, hand over the grant instead of a token.
+    const choiceCx = { env, db, product, now };
+    const offer = await offerFor(choiceCx, account.id, deviceId);
+    const due =
+      offer.candidates.length > 0 ||
+      offer.keep ||
+      (!offer.granted && acceptsKeys(product));
+    if (due) {
+      const grant = await issueGrant(
+        env,
+        {
+          product: product.slug,
+          accountId: account.id,
+          subject,
+          deviceId,
+          scope: record.scope,
+        },
+        now,
+      );
+      const pending: PendingSignIn = {
+        status: "choose",
+        grant,
+        expiresIn: CHOICE_GRANT_TTL_SECONDS,
+        choices: await licenseChoiceView(choiceCx, req, account.id, {
+          deviceId,
+        }),
+      };
+      return withNoStore(json(pending));
     }
-    if (!bound.token || !bound.device)
-      return oauth(409, ErrorCode.LicenseChoiceRequired);
-    token = bound.token;
-    deviceRow = bound.device;
-    licenseId = bound.licenseId;
-  } else {
-    // Nothing was chosen at Continue. If the account now holds a licence the person has not
-    // chosen, or the device id already runs on one, the choice is still owed: never silent.
-    if (product.services.license.enabled) {
-      const offer = await rankAnchorCandidates(db, product, account.id, now, {
-        deviceId,
-      });
-      if (offer.candidates.length > 0 || offer.keep)
-        return oauth(409, ErrorCode.LicenseChoiceRequired);
-    }
-    const existing = await getDevice(db, product.slug, deviceId);
-    if (existing && existing.license_id !== NO_LICENSE_ID)
-      return oauth(409, ErrorCode.LicenseChoiceRequired);
-    const registered = await registerDeviceBinding(
-      env,
-      db,
-      product,
-      deviceId,
-      now,
-      {
-        existing,
-        presented: null,
-        metadata: { ...metadata, label },
-        boundBy: "signin",
-        subject,
-      },
+    bound = await bindWithoutChoice(
+      cx,
+      who,
+      deviceArgs,
+      keepable !== null,
+      proven !== null,
     );
-    token = registered.token;
-    deviceRow = registered.device;
-    licenseId = NO_LICENSE_ID;
+  } else {
+    bound = await bindWithoutChoice(
+      cx,
+      who,
+      deviceArgs,
+      keepable !== null,
+      proven !== null,
+    );
   }
+  if (!bound.ok) return flatRefusal(bound.refusal);
 
   await appendAudit(db, {
     product: product.slug,
@@ -353,22 +336,123 @@ export async function handleToken(ctx: {
     action: "signin.token",
     target_kind: "device",
     target_id: deviceId,
-    parent_id: licenseId === NO_LICENSE_ID ? null : licenseId,
+    parent_id: bound.licenseId === NO_LICENSE_ID ? null : bound.licenseId,
     summary: "Signed in a device through authorize",
   });
+  return withNoStore(
+    json(await tokenBody(db, product, deviceId, record.scope, subject, bound)),
+  );
+}
 
+/**
+ * The cases where no choice rides on the code. In card mode Continue refused the press if a choice
+ * was owed, so one still owed here means the offer changed since (a licence appeared): never
+ * silent. The device's own proof keeps its licence; with none to choose, the device is bound
+ * licence-less.
+ */
+async function bindWithoutChoice(
+  cx: { req: Request; env: Env; db: Db; product: Product; now: number },
+  who: { accountId: string; subject: string; email: string | null },
+  device: {
+    id: string;
+    metadata: ReturnType<typeof deviceMetadata>;
+    label: string | null;
+    held: { token: string; row: DeviceRow } | null;
+  },
+  keepable: boolean,
+  proven: boolean,
+): Promise<BindResult> {
+  const { env, db, product, now } = cx;
+  if (keepable && device.held)
+    return bindChoice(cx, who, device, { kind: "keep" });
+  if (product.services.license.enabled) {
+    const offer = await rankAnchorCandidates(db, product, who.accountId, now, {
+      deviceId: device.id,
+    });
+    if (offer.candidates.length > 0 || offer.keep)
+      return { ok: false, refusal: { reason: "license_choice_required" } };
+  }
+  const existing = await getDevice(db, product.slug, device.id);
+  if (existing && existing.license_id !== NO_LICENSE_ID)
+    return { ok: false, refusal: { reason: "license_choice_required" } };
+  // A licence-less device id that already holds a credential is taken over only by the device
+  // that presents it: registering rotates the token, so without the proof a person with any
+  // account could bind someone else's device id to theirs.
+  if (existing?.token_hash && !proven)
+    return { ok: false, refusal: { reason: "not_entitled" } };
+  const registered = await registerDeviceBinding(
+    env,
+    db,
+    product,
+    device.id,
+    now,
+    {
+      existing,
+      presented: null,
+      metadata: { ...device.metadata, label: device.label },
+      boundBy: "signin",
+      subject: who.subject,
+    },
+  );
+  return {
+    ok: true,
+    token: registered.token,
+    device: registered.device,
+    licenseId: NO_LICENSE_ID,
+  };
+}
+
+/** The `200` of `token` and of `choice/complete`: one shape (§12.5, §12.5.1). */
+export async function tokenBody(
+  db: Db,
+  product: Product,
+  deviceId: string,
+  scope: string[],
+  subject: string,
+  bound: Extract<BindResult, { ok: true }>,
+): Promise<TokenResponse> {
   const license =
-    licenseId === NO_LICENSE_ID
+    bound.licenseId === NO_LICENSE_ID
       ? null
-      : await getLicense(db, product.slug, licenseId);
-  const body: TokenResponse = {
-    access_token: token,
+      : await getLicense(db, product.slug, bound.licenseId);
+  return {
+    access_token: bound.token,
     token_type: "Bearer",
-    scope: record.scope.join(" "),
+    scope: scope.join(" "),
     schemaVersion: product.schemaVersion,
-    device: shapeDevice(deviceRow, deviceId),
+    device: shapeDevice(bound.device, deviceId),
     license: license ? shapeLicense(license) : null,
     subject,
+    ...(bound.keyEntries ? { keyEntries: bound.keyEntries } : {}),
   };
-  return withNoStore(json(body));
+}
+
+/** A bind refusal as `token` answers it: flat, the shape `license/activate` answers. */
+function flatRefusal(r: BindRefusal): Response {
+  switch (r.reason) {
+    case "device_limit":
+      return withNoStore(
+        errorResponse(403, "device_limit", "device limit reached", {
+          limit: r.limit,
+          deviceCount: r.deviceCount,
+          ...(r.manageUrl !== undefined ? { manageUrl: r.manageUrl } : {}),
+        }),
+      );
+    case "fingerprint_required":
+      return oauth(403, "fingerprint_required");
+    case "hardware_mismatch":
+      return oauth(409, "hardware_mismatch");
+    case "rate_limited":
+      return oauth(429, "rate_limited", undefined, {
+        retryAfter: r.retryAfter,
+      });
+    case "license_owned":
+    case "key_entry_limit":
+    case "unauthorized":
+    case "not_entitled":
+      return oauth(403, "not_entitled");
+    case "not_found":
+    case "license_choice_required":
+      return oauth(409, ErrorCode.LicenseChoiceRequired);
+  }
 }

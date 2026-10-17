@@ -319,6 +319,11 @@ export interface IdentityDiscovery {
     authorize?: string;
     /** I-08 (§12.5): the OAuth-shaped token endpoint (form-encoded, CORS for `web.origins`). */
     token?: string;
+    /** I-08b (§12.5): the pending sign-in grant's four routes. Present only when the licence choice is served. */
+    choiceLicenses?: string;
+    choiceDevices?: string;
+    choiceComplete?: string;
+    choiceCancel?: string;
     attach?: string;
     subject?: string;
     signout?: string;
@@ -385,6 +390,8 @@ export interface TokenResponse {
   license: Record<string, unknown> | null;
   /** The pairwise subject ({@link PAIRWISE_SUBJECT_PATTERN}) of the account signed in on the device. */
   subject: string;
+  /** I-08b (§12.5.1): the licence's key-entry count after a key entered through `choice/complete`. */
+  keyEntries?: { used: number; limit: number };
 }
 
 /** §12.5: the flat RFC 6749 §5.2 body, and the Polaris refusals that are flat beside it. */
@@ -410,8 +417,8 @@ export interface TokenError {
 export interface SignInContinueRequest {
   /** The consent the person gave: the claims granted (a subset of the request's scope). Absent grants all of it. */
   consent?: { claims: string[] };
-  /** The licence the device runs on after sign-in. Required when the account holds licences for the product. */
-  choice?: { licenseId: string };
+  /** The licence the device runs on after sign-in. Required when the account holds licences for the product and the card chooses (I-08b: {@link LicenseChoiceInput}; `key` is not accepted here). */
+  choice?: LicenseChoiceInput;
   /** The product's terms version the person accepted, when the product requires them. */
   terms?: string;
 }
@@ -419,4 +426,110 @@ export interface SignInContinueRequest {
 /** §12.4: the answer of Continue and Cancel; the card navigates to `redirect`. */
 export interface SignInRedirect {
   redirect: string;
+}
+
+// ── I-08b: the licence choice (§12.4.1, §12.5.1; plans/I-04.md §C, §G) ───────────────────────────
+
+/** How a licence reached the account, as the choice rows word it. */
+export type LicenseChoiceOrigin =
+  | "purchase"
+  | "store"
+  | "key"
+  | "free"
+  | "developer"
+  | "signin";
+
+/** One licence row of {@link LicenseChoiceView}. Display data: it authorises nothing. */
+export interface LicenseChoice {
+  id: string;
+  tierName: string;
+  name: string | null;
+  origin: LicenseChoiceOrigin;
+  /** `account` for a licence issued by signing in (no key); never a displayed type. */
+  access: "seats" | "account";
+  seats: { used: number; limit: number | null };
+  /** The licence this device runs on ("On this device"). */
+  current: boolean;
+  /** Epoch seconds; `null` is perpetual. */
+  expiresAt: number | null;
+  state: "free" | "full" | "blocked";
+  blockedReason?: "fingerprint_required";
+  /** On a full row: whether Replace is offered. `null` on a row that is not full. */
+  replace: { allowed: boolean; retryAfter: number | null } | null;
+  /** The portal's focused flow, on the card only; `null` in app mode. */
+  freeDeviceUrl: string | null;
+}
+
+/** `GET /api/signin/requests/:handle/licenses` and `POST /<p>/identity/choice/licenses`. */
+export interface LicenseChoiceView {
+  state: "choose" | "autoIssue" | "none";
+  choices: LicenseChoice[];
+  /** True only when the device runs on a usable licence that is not in `choices`. */
+  keep: boolean;
+  /** A licence id, `"keep"`, `"create"`, or `null`. */
+  preselected: string | null;
+  /** The explicit "Create a new license" row: offered only when every candidate is full. */
+  create: { tierName: string; access: "account" } | null;
+  /** The no-licence state: where to add a key or get one. */
+  getLicense: {
+    activateUrl: string;
+    purchaseUrl: string | null;
+    keyEntry: boolean;
+  } | null;
+}
+
+/** `GET …/licenses/:licenseId/devices` and `POST /<p>/identity/choice/devices`. */
+export interface ReplaceView {
+  licenseId: string;
+  seats: { used: number; limit: number | null };
+  devices: {
+    id: string;
+    label: string | null;
+    platform: string | null;
+    deviceType: string | null;
+    lastSeen: number;
+    leastRecent: boolean;
+    activeNow: boolean;
+    thisBrowser: boolean;
+  }[];
+  replace: { allowed: boolean; retryAfter: number | null };
+}
+
+/** The person's explicit choice. `key` is accepted by `choice/complete` only (never by Continue). */
+export type LicenseChoiceInput =
+  | { kind: "license"; licenseId: string; replaceDeviceId?: string }
+  | { kind: "keep" }
+  | { kind: "create" }
+  | { kind: "key"; key: string };
+
+/** §12.5.1: the `200` of `POST /<p>/identity/token` when `license_choice=app` and a choice is due. */
+export interface PendingSignIn {
+  status: "choose";
+  /** `sg_` + 43 base64url characters. Travels in a body, never a URL. */
+  grant: string;
+  expiresIn: number;
+  choices: LicenseChoiceView;
+}
+
+/** Lifetime of a pending sign-in grant, seconds (§12.5.1). */
+export const CHOICE_GRANT_TTL_SECONDS = 300;
+/** View and device reads one grant answers (§12.5.1). */
+export const CHOICE_GRANT_READS = 30;
+/** `sg_` and 32 random bytes in base64url. */
+export const CHOICE_GRANT_PATTERN = "^sg_[A-Za-z0-9_-]{43}$";
+
+/** §12.5.1: the bodies of the four grant routes. */
+export interface ChoiceLicensesRequest {
+  grant: string;
+}
+export interface ChoiceDevicesRequest {
+  grant: string;
+  licenseId: string;
+}
+export interface ChoiceCompleteRequest {
+  grant: string;
+  choice: LicenseChoiceInput;
+}
+export interface ChoiceCancelRequest {
+  grant: string;
 }

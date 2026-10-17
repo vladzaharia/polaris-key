@@ -111,7 +111,12 @@ import {
   libraryView,
   productView,
 } from "./library.js";
-import { signInConsentView, signInRequestView } from "../passthrough/routes.js";
+import {
+  signInConsentView,
+  signInLicensesView,
+  signInReplaceView,
+  signInRequestView,
+} from "../passthrough/routes.js";
 import {
   handleSignInCancel,
   handleSignInContinue,
@@ -1759,6 +1764,37 @@ async function dispatchPortalApi(
       now,
       settings,
     );
+    return view.status === 200 ? portalJson(view.body) : notFound();
+  }
+  // I-08b (§12.4.1): the licence choice and a full licence's devices, for the signed-in account.
+  if (
+    head === "signin" &&
+    rest[0] === "requests" &&
+    rest[1] &&
+    rest[2] === "licenses" &&
+    (rest.length === 3 ||
+      (rest.length === 5 && rest[3] && rest[4] === "devices"))
+  ) {
+    if (req.method !== "GET") return err(405, "method_not_allowed");
+    const view =
+      rest.length === 3
+        ? await signInLicensesView(
+            env,
+            db,
+            req,
+            rest[1],
+            session.accountId,
+            now,
+          )
+        : await signInReplaceView(
+            env,
+            db,
+            req,
+            rest[1],
+            rest[3]!,
+            session.accountId,
+            now,
+          );
     return view.status === 200 ? portalJson(view.body) : notFound();
   }
   // I-08 (§12.4): Continue and Cancel. The dispatcher above has checked the CSRF header for

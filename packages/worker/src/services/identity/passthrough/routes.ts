@@ -34,6 +34,7 @@ import type { PortalHooksFor } from "../portal/api.js";
 import { getPortalAccount } from "../portal/repo.js";
 import { avatarUrl } from "../card/avatars.js";
 import { licenseConsentItem } from "./anchor.js";
+import { licenseChoiceView, replaceView } from "./choice.js";
 import { clientRecordFor, cloudSyncOn } from "./client.js";
 import { readSignInRequest } from "./request.js";
 
@@ -172,4 +173,56 @@ export async function signInConsentView(
     changed: grant !== null && grant.scope_hash !== scopeHash,
   };
   return { status: 200, body: view };
+}
+
+/**
+ * `GET /api/signin/requests/:handle/licenses` (I-08b, §12.4.1): the licence choice for the signed-in
+ * account, as the card renders it. A browser has no device yet, so `keep` is never offered here.
+ */
+export async function signInLicensesView(
+  env: Env,
+  db: Db,
+  req: Request,
+  handle: string,
+  accountId: string,
+  now: number,
+): Promise<Reply> {
+  const live = await liveRequest(env, db, req, handle, now);
+  if (!live) return { status: 404 };
+  const account = await getPortalAccount(db, accountId, now);
+  if (!account) return { status: 404 };
+  const cx = { env, db, product: live.product, now };
+  return {
+    status: 200,
+    body: await licenseChoiceView(cx, req, accountId, {
+      deviceId: null,
+      card: { handle, deviceLabel: live.record.deviceLabel },
+    }),
+  };
+}
+
+/**
+ * `GET /api/signin/requests/:handle/licenses/:licenseId/devices` (I-08b, §12.4.1): the seat-holding
+ * devices Replace could free. One `404` for every licence that is not a full one of this account's.
+ */
+export async function signInReplaceView(
+  env: Env,
+  db: Db,
+  req: Request,
+  handle: string,
+  licenseId: string,
+  accountId: string,
+  now: number,
+): Promise<Reply> {
+  const live = await liveRequest(env, db, req, handle, now);
+  if (!live) return { status: 404 };
+  const account = await getPortalAccount(db, accountId, now);
+  if (!account) return { status: 404 };
+  const view = await replaceView(
+    { env, db, product: live.product, now },
+    accountId,
+    licenseId,
+    { deviceId: null },
+  );
+  return view ? { status: 200, body: view } : { status: 404 };
 }

@@ -37,8 +37,12 @@ export interface SignInCodeRecord {
   /** The account's pairwise subject for the product (`subjectFor`). */
   subject: string;
   scope: string[];
-  /** The licence the person chose at Continue (I-08b adds the other answers); `null`: none offered. */
-  choice: { licenseId: string } | null;
+  /**
+   * The licence the person chose at Continue, or the one Continue minted for them (the "New" row,
+   * I-08b); `replaceDeviceId` names the seat-holding device they chose to replace. `null`: none
+   * was due, or (app mode) the app chooses through a pending sign-in grant at `token`.
+   */
+  choice: { licenseId: string; replaceDeviceId?: string } | null;
   nonce: string | null;
   licenseChoice: AuthorizeLicenseChoice;
 }

@@ -45,7 +45,7 @@ import type {
 import { PAIRWISE_SUBJECT_PATTERN } from "@polaris-key/protocol/core";
 import type { ManagedPayload } from "./payload.js";
 import type { Env } from "../../platform/env.js";
-import type { Db } from "../../db/types.js";
+import type { Db, DbStatement } from "../../db/types.js";
 import type { Product, ProductPublic } from "../products.js";
 import {
   type DeviceBoundBy,
@@ -90,7 +90,17 @@ import { stmtRecordDeviceKeyEntry } from "./keyEntries.js";
 
 export type AuthzError =
   | { error: "unauthorized" }
-  | { error: "device_limit"; limit: number; deviceCount: number }
+  | {
+      error: "device_limit";
+      limit: number;
+      deviceCount: number;
+      /**
+       * I-08b: a Replace's removal committed but its seat claim could not join the batch (the
+       * device row changed hands in between). The caller finishes the removal (audit, email) and
+       * tells the person someone took the seat first.
+       */
+      racedAfterFree?: true;
+    }
   | { error: "fingerprint_required" }
   | {
       error: "hardware_mismatch";
@@ -419,8 +429,15 @@ export async function authorizeDevice(
     keyEntry?: { surface: "app" | "browser" };
     /** Set only by the account sign-in (device-code) flow; see `provesOwnership`. */
     adoptAnonymousEnrolled?: boolean;
+    /**
+     * I-08b (Replace a device, plans/I-04.md §F.3): `freed` is a seat-holding device of this
+     * licence that leaves in the same batch as this device's seat claim. Its `statements` are the
+     * caller's deauthorisation (`stmtsDeauthorizeDevice`); the caller has already proven the
+     * account owns the licence and the device, and charged the shared rate limit.
+     */
+    replace?: { freedDeviceId: string; statements: DbStatement[] };
   } = {},
-): Promise<{ token: string; device: DeviceRow } | AuthzError> {
+): Promise<{ token: string; device: DeviceRow; replaced?: true } | AuthzError> {
   // UX-15: every refusal below is logged (`core/licensing/refusals.ts`) for the console's licence Status
   // health line, the Refusing devices facet and the attention model. Logging never changes the
   // error returned, and with a `waitUntil` it is not on the response path at all.
@@ -514,7 +531,18 @@ export async function authorizeDevice(
       license.id,
       seatActiveSince(now),
     );
-    if (limit <= 0 || count >= limit) {
+    // A Replace's departing device still shows in the count until the batch commits.
+    const departing = opts.replace
+      ? await getDevice(db, product.slug, opts.replace.freedDeviceId)
+      : null;
+    const leaves =
+      departing !== null &&
+      departing.license_id === license.id &&
+      departing.status === "authorized" &&
+      departing.last_seen > seatActiveSince(now)
+        ? 1
+        : 0;
+    if (limit <= 0 || count - leaves >= limit) {
       return refuse("device_limit", {
         error: "device_limit",
         limit,
@@ -532,6 +560,14 @@ export async function authorizeDevice(
         now,
         {
           ...(adoptFrom !== undefined ? { adoptFrom } : {}),
+          ...(opts.replace
+            ? {
+                freeing: {
+                  deviceId: opts.replace.freedDeviceId,
+                  statements: opts.replace.statements,
+                },
+              }
+            : {}),
           ...(keyEntry
             ? {
                 withClaim: () =>
@@ -556,6 +592,10 @@ export async function authorizeDevice(
         current.status === "authorized"
       )
         return { error: "unauthorized" };
+      const freedNow =
+        opts.replace !== undefined &&
+        (await getDevice(db, product.slug, opts.replace.freedDeviceId))
+          ?.status !== "authorized";
       return refuse("device_limit", {
         error: "device_limit",
         limit,
@@ -565,6 +605,7 @@ export async function authorizeDevice(
           license.id,
           seatActiveSince(now),
         ),
+        ...(freedNow ? { racedAfterFree: true as const } : {}),
       });
     }
   }
@@ -599,7 +640,9 @@ export async function authorizeDevice(
       opts.waitUntil,
     );
   }
-  return bound;
+  return opts.replace && isNewAuthorization
+    ? { ...bound, replaced: true }
+    : bound;
 }
 
 /** Does any device other than `deviceId` name this licence, in any status (`idx_devices_license`)? */

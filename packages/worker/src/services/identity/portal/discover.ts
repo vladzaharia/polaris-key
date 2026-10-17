@@ -85,6 +85,8 @@ import {
   type StorefrontListing,
 } from "../../../core/storefront/polarisKeyListing.js";
 import { activateFromIdentity } from "../oidc.js";
+import { rankAnchorCandidates } from "../../../core/licensing/anchor.js";
+import { withMintClaim } from "../passthrough/mint.js";
 import {
   err,
   notFound,
@@ -468,15 +470,44 @@ async function issueIdentityLicense(
   const { product } = target;
   let licenseId: string;
   try {
-    // `env` seals provisioned secrets (the licence's column, then the owner's account
-    // overrides). The mint is audited below (`license.create`, with the Discover path and reason),
-    // so the sign-in's own `license.mint.oidc` row is left off: one claim, one row.
-    const result = await activateFromIdentity(db, product, identity, now, {
+    // I-08b: the same claim the sign-in card's mint holds (`passthrough/mint.ts`), so a Discover
+    // add that races a Continue mints once. Inside it the account is re-read: a licence the other
+    // press just created is this add's answer, not a second licence. An unreachable store throws
+    // and mints nothing.
+    const claim = await withMintClaim(
       env,
-      mintAudit: false,
-    });
-    if ("error" in result) return { error: "not_eligible" };
-    licenseId = result.licenseId;
+      product,
+      account.accountId,
+      async () => {
+        const held = await rankAnchorCandidates(
+          db,
+          product,
+          account.accountId,
+          now,
+        );
+        const first = held.candidates[0];
+        if (first)
+          return { licenseId: first.licenseId, existing: true as const };
+        // `env` seals provisioned secrets (the licence's column, then the owner's account
+        // overrides). The mint is audited below (`license.create`, with the Discover path and
+        // reason), so the sign-in's own `license.mint.oidc` row is left off: one claim, one row.
+        const result = await activateFromIdentity(db, product, identity, now, {
+          env,
+          mintAudit: false,
+        });
+        return "error" in result
+          ? null
+          : { licenseId: result.licenseId, existing: false as const };
+      },
+    );
+    if (!claim.won || claim.value === null) return { error: "not_eligible" };
+    if (claim.value.existing) {
+      const held = await getLicense(db, product.slug, claim.value.licenseId);
+      return held
+        ? { kind: "license", added: false, license: held }
+        : { error: "not_eligible" };
+    }
+    licenseId = claim.value.licenseId;
   } catch (e) {
     // Two submits raced past the evaluation and the other inserted first
     // (`idx_licenses_sub`): its licence is this account's, so answer it.
