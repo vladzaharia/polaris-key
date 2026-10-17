@@ -28,7 +28,7 @@ export function fetchPlatformKek(): Promise<PlatformKekStatus> {
 const KEK_GROUPS: Record<string, string> = {
   keys: "Signing keys",
   secrets: "Product secrets",
-  outletCredentials: "Outlet credentials",
+  outletCredentials: "Channel credentials",
   managed: "Managed secret values",
   platformCredentials: "Store connection credentials",
 };

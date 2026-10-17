@@ -22,7 +22,7 @@
     {
       "rule": "capability",
       "file": "console/sections/distribution/pages/OutletsPage.tsx",
-      "text": "Narrow {…}'s capabilities?",
+      "text": "Narrow {\u2026}'s capabilities?",
       "count": 1
     },
     {
@@ -34,31 +34,31 @@
     {
       "rule": "capability",
       "file": "console/sections/distribution/pages/OutletsPage.tsx",
-      "text": "Narrow capabilities…",
+      "text": "Narrow capabilities\u2026",
       "count": 1
     },
     {
       "rule": "capability",
       "file": "console/sections/distribution/pages/OutletsPage.tsx",
-      "text": "Narrowed {…}'s capabilities",
+      "text": "Narrowed {\u2026}'s capabilities",
       "count": 1
     },
     {
       "rule": "capability",
       "file": "console/sections/distribution/pages/OutletsPage.tsx",
-      "text": "Revert {…}'s capabilities to the manifest?",
+      "text": "Revert {\u2026}'s capabilities to the manifest?",
       "count": 1
     },
     {
       "rule": "capability",
       "file": "console/sections/distribution/pages/OutletsPage.tsx",
-      "text": "Reverted {…}'s capabilities to the manifest",
+      "text": "Reverted {\u2026}'s capabilities to the manifest",
       "count": 1
     },
     {
       "rule": "capability",
       "file": "console/sections/storefronts/pages/StorefrontsPage.tsx",
-      "text": "{…} capabilities",
+      "text": "{\u2026} capabilities",
       "count": 2
     },
     {
@@ -250,7 +250,7 @@
     {
       "rule": "outlet",
       "file": "console/sections/distribution/components/RolloutDialogs.tsx",
-      "text": "Resume per outlet from Rollouts, or roll back to {…}.",
+      "text": "Resume per outlet from Rollouts, or roll back to {\u2026}.",
       "count": 1
     },
     {
@@ -298,13 +298,13 @@
     {
       "rule": "outlet",
       "file": "console/sections/distribution/pages/CredentialsPage.tsx",
-      "text": "Delete the outlet credential “{…}”?",
+      "text": "Delete the outlet credential \u201c{\u2026}\u201d?",
       "count": 1
     },
     {
       "rule": "outlet",
       "file": "console/sections/distribution/pages/CredentialsPage.tsx",
-      "text": "Deleted the outlet credential “{…}”",
+      "text": "Deleted the outlet credential \u201c{\u2026}\u201d",
       "count": 1
     },
     {
@@ -370,7 +370,7 @@
     {
       "rule": "outlet",
       "file": "console/sections/distribution/pages/MatrixPage.tsx",
-      "text": "{…} release × outlet {…} recomputed. Holds follow the new answer.",
+      "text": "{\u2026} release \u00d7 outlet {\u2026} recomputed. Holds follow the new answer.",
       "count": 1
     },
     {
@@ -382,7 +382,7 @@
     {
       "rule": "outlet",
       "file": "console/sections/distribution/pages/MatrixPage.tsx",
-      "text": "Distribution matrix of {…}: releases by outlet",
+      "text": "Distribution matrix of {\u2026}: releases by outlet",
       "count": 1
     },
     {
@@ -406,7 +406,7 @@
     {
       "rule": "outlet",
       "file": "console/sections/distribution/pages/OutletsPage.tsx",
-      "text": "No outlet {…}",
+      "text": "No outlet {\u2026}",
       "count": 1
     },
     {
@@ -483,14 +483,8 @@
     },
     {
       "rule": "outlet",
-      "file": "console/sections/platform/pages/platformSettings.tsx",
-      "text": "Outlet credentials",
-      "count": 1
-    },
-    {
-      "rule": "outlet",
       "file": "console/sections/platform/pages/platformStores.tsx",
-      "text": "This product holds a {…} key of its own from a different {…} account than the team credential. Assigning would point the two keys at different accounts, so nothing was changed. Re-pin or delete that key under the product's outlet credentials, then assign again.",
+      "text": "This product holds a {\u2026} key of its own from a different {\u2026} account than the team credential. Assigning would point the two keys at different accounts, so nothing was changed. Re-pin or delete that key under the product's outlet credentials, then assign again.",
       "count": 1
     },
     {
@@ -514,13 +508,13 @@
     {
       "rule": "outlet",
       "file": "console/sections/release/pages/CompatibilityPage.tsx",
-      "text": "Outlets: {…}",
+      "text": "Outlets: {\u2026}",
       "count": 1
     },
     {
       "rule": "outlet",
       "file": "console/sections/release/pages/ReleaseRecord.tsx",
-      "text": "No channel or outlet offers {…}.",
+      "text": "No channel or outlet offers {\u2026}.",
       "count": 1
     },
     {
@@ -544,7 +538,7 @@
     {
       "rule": "outlet",
       "file": "console/settings.generated.ts",
-      "text": "Distribution → Outlets & feeds",
+      "text": "Distribution \u2192 Outlets & feeds",
       "count": 1
     },
     {
@@ -610,25 +604,19 @@
     {
       "rule": "storefront-feed",
       "file": "console/sections/distribution/components/RolloutDialogs.tsx",
-      "text": "The signed feed, the updater feeds, the storefront feeds and the download page stop offering {…} on {…}.",
+      "text": "The signed feed, the updater feeds, the storefront feeds and the download page stop offering {\u2026} on {\u2026}.",
       "count": 1
     },
     {
       "rule": "storefront-feed",
       "file": "console/sections/distribution/components/RolloutDialogs.tsx",
-      "text": "The storefront feeds and the download page stop listing {…} on {…}.",
+      "text": "The storefront feeds and the download page stop listing {\u2026} on {\u2026}.",
       "count": 1
     },
     {
       "rule": "storefront-feed",
       "file": "console/sections/distribution/pages/MatrixPage.tsx",
       "text": "Outlets are the places a release reaches: Polaris Key downloads, the stores, the storefront feeds. Declare them in .pkey/distribution and resync.",
-      "count": 1
-    },
-    {
-      "rule": "storefront-feed",
-      "file": "console/sections/platform/pages/platformSettings.tsx",
-      "text": "Where download pages link storefront feeds.",
       "count": 1
     }
   ]

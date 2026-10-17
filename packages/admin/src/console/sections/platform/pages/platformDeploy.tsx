@@ -94,7 +94,7 @@ const DEPLOY_LABELS: Record<
   },
   CONSOLE_ORIGIN: {
     label: "Console origin",
-    help: "Where download pages link storefront feeds.",
+    help: "Where download pages link install sources.",
     unset: "Not set",
   },
   BLOBS_BUCKET_NAME: {
