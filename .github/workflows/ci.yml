@@ -981,7 +981,7 @@ jobs:
         run: |
           ./gradlew --no-daemon :platform:checkStandalone :godot:checkPlatformOnly \
             :platform:publishAllPublicationsToLocalRepository :godot:publishAllPublicationsToLocalRepository \
-            :ui:publishUiPublicationToLocalRepository :android:publishAllPublicationsToLocalRepository
+            :ui:publishAllPublicationsToLocalRepository :android:publishAllPublicationsToLocalRepository
           tools/check_publication.sh
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
