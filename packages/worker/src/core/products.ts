@@ -18,6 +18,7 @@ import {
   getProductSecret,
   listVerificationProductKeys,
 } from "./products/store.js";
+import type { ProductRow } from "./repo.js";
 import { open } from "../platform/keyvault.js";
 import {
   parseAutoIssue,
@@ -218,16 +219,15 @@ function productFields(
   };
 }
 
-/** Load a product with a lazy accessor for its sealed signing key. Returns null for an unknown
- *  product or one with no active key. An unreadable sealed key remains a product-level signing
+/** Build a product from a row already read, with a lazy accessor for its sealed signing key.
+ *  `null` when it has no active key. An unreadable sealed key remains a product-level signing
  *  refusal rather than making unrelated product routes unavailable. */
-export async function loadProduct(
+async function productFromRow(
   env: Env,
   db: Db,
-  slug: string,
+  row: ProductRow,
 ): Promise<Product | null> {
-  const row = await getProduct(db, slug);
-  if (!row) return null;
+  const slug = row.slug;
   const keyRow = await getActiveProductKey(db, slug);
   if (!keyRow) return null;
   try {
@@ -248,6 +248,42 @@ export async function loadProduct(
   } catch {
     return null;
   }
+}
+
+/** Load a product with a lazy accessor for its sealed signing key. Returns null for an unknown
+ *  product or one with no active key. */
+export async function loadProduct(
+  env: Env,
+  db: Db,
+  slug: string,
+): Promise<Product | null> {
+  const row = await getProduct(db, slug);
+  return row ? productFromRow(env, db, row) : null;
+}
+
+/**
+ * One product, for the length of one request (P0-22). The dispatcher reads the row once to route
+ * and check the area; everything after it asks the context, so a request reads the product row
+ * once and, if a handler needs the full `Product`, loads it once (`load()` memoises, and the
+ * sealed signing key stays lazy inside it: nothing is unsealed until `signingKey()` is called).
+ */
+export interface ProductContext {
+  /** The row the dispatcher read. */
+  readonly row: ProductRow;
+  /** The full product, loaded at most once per context. `null` when it has no active key. */
+  load(): Promise<Product | null>;
+}
+
+export function loadProductContext(
+  env: Env,
+  db: Db,
+  row: ProductRow,
+): ProductContext {
+  let loaded: Promise<Product | null> | undefined;
+  return {
+    row,
+    load: () => (loaded ??= productFromRow(env, db, row)),
+  };
 }
 
 /**

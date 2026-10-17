@@ -28,7 +28,7 @@ import {
   parseVariants,
 } from "../../core/assets/hostedAssets.js";
 import { IMG_ALIASES, IMG_HOST_TYPES } from "../../core/assets/imgHost.js";
-import { imgOrigin, imgUrl } from "../../core/assets/imgHostname.js";
+import { imgOrigin, imgUrl } from "../../core/hosts.js";
 
 /** One product's icon as the console draws it. */
 export interface ProductIconView {

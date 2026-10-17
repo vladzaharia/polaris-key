@@ -33,7 +33,7 @@ import type {
   ReleaseCatalog,
 } from "../../../../core/hooks.js";
 import { blobKey, blobResponse } from "../../../../core/assets/blobs.js";
-import { registryOrigin } from "../../../../core/registry/registryHostname.js";
+import { registryOrigin } from "../../../../core/hosts.js";
 import {
   registryNotFound,
   type RegistryRoute,

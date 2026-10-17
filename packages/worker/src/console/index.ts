@@ -21,7 +21,7 @@ import {
 } from "./auth.js";
 import { handleAdminApi } from "./api.js";
 import { appSecurityHeaders } from "../core/securityHeaders.js";
-import { imgOrigin } from "../core/assets/imgHostname.js";
+import { imgOrigin } from "../core/hosts.js";
 import { isPublicSpaAssetPath } from "../platform/http.js";
 
 /** Minimal SPA placeholder for tests/local configurations without an assets binding. */

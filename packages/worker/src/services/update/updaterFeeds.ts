@@ -72,7 +72,7 @@ import {
   DOWNLOAD_TICKET_PARAM,
   mintDownloadTicket,
 } from "../../core/downloadTicket.js";
-import { isBytesHost } from "../../core/assets/bytesHostname.js";
+import { isBytesHost } from "../../core/hosts.js";
 import type { ReleaseAccess } from "@polaris-key/protocol/release";
 import { clientNetwork, rateLimitOk } from "../../core/rateLimit.js";
 import {

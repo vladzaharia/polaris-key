@@ -46,6 +46,13 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 - Working id **CQW-08**; DX consolidation B: Foundations (code quality the feature tracks build on).
 - No new copies (tracks.md rule 4): build on the one mechanism this plan names, never beside it.
 
+## Corrections to the brief (2026-10-17, verified against the code)
+
+- `signingKeyPem` was already gone from `Product` and the signer was already lazy (`Product.signingKey()`, memoised); only the product-context half was missing. The accessor keeps its name `signingKey`.
+- The dispatcher (`console/api.ts`) already read the row once; the repeats were inside handlers. `loadProductContext(env, db, row)` (core/products.ts) now builds a request-scoped `ProductContext` (`row`, memoised `load()`), passed as `AdminCtx.productCtx`. `productScoped.ts`, `handlers/users.ts` and `handlers/trustPolicy.ts` use it. Still re-reading by slug (follow-up): feeds and registry-token handlers (`ownerSlug`), the other slug-taking handlers.
+- `/me`: `activeSchemaVersions(db)` (one `GROUP BY` query) replaces N `getActiveSchema` calls.
+- `core/hosts.ts` is the one table (`HOSTS`, `hostname/isHost/hostOrigin`, plus the named forms callers use, `imgUrl`); the three `*Hostname.ts` modules are deleted and importers rewritten. A uniform host-dispatch signature for `dispatch.ts` is not done (follow-up).
+
 ## Steps
 
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
@@ -53,9 +60,9 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 
 ## Acceptance criteria
 
-- [ ] One product load per admin request (test)
-- [ ] /me issues one catalog query
-- [ ] Transcripts byte-identical
+- [x] One product load per admin request (test: `test/productContext.test.ts`)
+- [x] /me issues one catalog query
+- [x] Transcripts byte-identical
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

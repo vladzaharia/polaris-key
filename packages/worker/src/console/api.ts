@@ -42,6 +42,7 @@ import { constantTimeEqual } from "../platform/compare.js";
 import type { Env } from "../platform/env.js";
 import type { Db } from "../db/types.js";
 import { getProduct } from "../core/products/store.js";
+import { loadProductContext, type ProductContext } from "../core/products.js";
 import { rateLimitOk } from "../core/rateLimit.js";
 import { audit } from "../core/audit.js";
 import {
@@ -327,10 +328,12 @@ export async function handleAdminApi(
   // 6. One product load for a product-scoped row.
   let scope: Scope = PLATFORM;
   let product = null;
+  let productCtx: ProductContext | null = null;
   if (isProductRoute(route)) {
     product = await getProduct(db, match.params.slug ?? "");
     if (!product) return notFound();
     scope = productScope(product);
+    productCtx = loadProductContext(env, db, product);
   }
 
   // 7. The area.
@@ -376,6 +379,7 @@ export async function handleAdminApi(
       params: match.params,
       rest: match.rest,
       product,
+      productCtx,
     });
   } catch (e) {
     if (e instanceof AdminBodyError)

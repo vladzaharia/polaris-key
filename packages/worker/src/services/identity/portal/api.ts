@@ -12,7 +12,7 @@ import { constantTimeEqual } from "../../../platform/compare.js";
 import type { SettingsRegistry } from "../../../core/settings/registry.js";
 import { CHANNEL_STABLE } from "@polaris-key/protocol";
 import type { ReleaseAccess } from "@polaris-key/protocol/release";
-import { isAllowedDownloadRedirectHost } from "../../../core/assets/bytesHostname.js";
+import { isAllowedDownloadRedirectHost } from "../../../core/hosts.js";
 import { isAllowedStorageHost } from "../../../platform/http.js";
 import { parseJsonOr } from "../../../platform/json.js";
 import { platformOidcConfig } from "../../../platform/platformOidc.js";
@@ -24,7 +24,7 @@ import {
   type ProductPublic,
 } from "../../../core/products.js";
 import { licenseEntitled } from "../../../core/licensing/entitledAccess.js";
-import { isBytesHost } from "../../../core/assets/bytesHostname.js";
+import { isBytesHost } from "../../../core/hosts.js";
 import {
   DOWNLOAD_TICKET_PARAM,
   downloadTicketsEnabled,
@@ -34,7 +34,7 @@ import { ErrorCode } from "../../../core/errors.js";
 import { getProduct } from "../../../core/products/store.js";
 import { licenseUsable } from "../../../core/devices.js";
 import { rateLimitOk } from "../../../core/rateLimit.js";
-import { registryOrigin } from "../../../core/registry/registryHostname.js";
+import { registryOrigin } from "../../../core/hosts.js";
 import {
   MAX_LIVE_TOKENS_PER_LICENSE,
   REGISTRY_TOKEN_DEFAULT_DAYS,

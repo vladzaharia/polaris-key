@@ -119,7 +119,7 @@ export interface ByteRoute {
   handle(req: Request, ctx: ByteRouteContext): Promise<Response>;
 }
 
-export { bytesHostname, isBytesHost } from "./bytesHostname.js";
+export { bytesHostname, isBytesHost } from "../hosts.js";
 
 /** Refused on the bytes host whatever the status or the allowlist says: anything a browser may
  *  execute or render as an active document. */

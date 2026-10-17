@@ -33,7 +33,7 @@ import type {
 } from "../../../../core/registry/registryHost.js";
 import type { CatalogPackageDeliverable } from "../../../../core/hooks.js";
 import { registryNotFound } from "../../../../core/registry/registryHost.js";
-import { registryOrigin } from "../../../../core/registry/registryHostname.js";
+import { registryOrigin } from "../../../../core/hosts.js";
 import {
   blobKey,
   blobResponse,

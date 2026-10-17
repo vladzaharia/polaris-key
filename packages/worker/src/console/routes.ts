@@ -25,6 +25,7 @@
  * every row with eight principals against a hand-written oracle.
  */
 
+import type { ProductContext } from "../core/products.js";
 import type { Db } from "../db/types.js";
 import type { Env } from "../platform/env.js";
 import { SERVICE_SLUGS, type ServiceSlug } from "../core/services.js";
@@ -64,6 +65,8 @@ export interface AdminCtx {
   rest: readonly string[];
   /** The product, loaded once for a `/products/:slug` route; `null` elsewhere. */
   product: ProductRow | null;
+  /** The same product as a request-scoped context: `load()` is the full `Product`, once. */
+  productCtx: ProductContext | null;
 }
 
 export type AdminHandler = (ctx: AdminCtx) => Promise<Response>;

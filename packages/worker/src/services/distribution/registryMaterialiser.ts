@@ -20,7 +20,7 @@ import type {
   ScheduledServiceContext,
 } from "../../core/registry.js";
 import type { QueuedRender } from "../../core/registry/registryQueue.js";
-import { registryOrigin } from "../../core/registry/registryHostname.js";
+import { registryOrigin } from "../../core/hosts.js";
 import { catalogPackageSource } from "./registry/catalogSource.js";
 import { RENDERERS } from "./registry/index.js";
 import {

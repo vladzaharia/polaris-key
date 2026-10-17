@@ -68,7 +68,7 @@ import {
   uploadSlotMaxBytes,
 } from "../../core/assets/hostedAssetUploads.js";
 import { IMG_HOST_TYPES } from "../../core/assets/imgHost.js";
-import { imgUrl } from "../../core/assets/imgHostname.js";
+import { imgUrl } from "../../core/hosts.js";
 import { listingSlotMirror } from "../../services/distribution/public.js";
 import { mirrorNow } from "../../services/release/public.js";
 import { assetHostingEnabled } from "../../core/assets/assetHosting.js";

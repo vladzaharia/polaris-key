@@ -16438,7 +16438,12 @@ paths:
                     future second scope cannot silently widen tokens minted by an older console.
             examples:
               ci:
-                value: { label: CI bundle minter, expiresInDays: 90, scopes: [bundles:mint] }
+                value:
+                  {
+                    label: CI bundle minter,
+                    expiresInDays: 90,
+                    scopes: [bundles:mint],
+                  }
       responses:
         "201":
           description: Minted. `secret` appears here and in no other response.
@@ -16487,7 +16492,12 @@ paths:
               examples:
                 badExpiry:
                   value:
-                    error: { code: bad_request, message: invalid token request, fields: [expiresInDays] }
+                    error:
+                      {
+                        code: bad_request,
+                        message: invalid token request,
+                        fields: [expiresInDays],
+                      }
                     code: bad_request
                     message: invalid token request
                     fields: [expiresInDays]
@@ -18171,7 +18181,11 @@ components:
           examples:
             outOfScope:
               value:
-                error: { code: forbidden, message: token is not scoped for this route }
+                error:
+                  {
+                    code: forbidden,
+                    message: token is not scoped for this route,
+                  }
                 code: forbidden
                 message: token is not scoped for this route
     AdminRateLimited:
@@ -18185,7 +18199,8 @@ components:
           examples:
             limited:
               value:
-                error: { code: rate_limited, message: too many admin API requests }
+                error:
+                  { code: rate_limited, message: too many admin API requests }
                 code: rate_limited
                 message: too many admin API requests
     IdentityDisabledRedirect:
@@ -18711,7 +18726,8 @@ components:
         A token as the console sees it. Note what is ABSENT: the plaintext (returned once, at
         mint) and `token_hash` (not a secret, but it is the lookup key, and echoing it invites
         somebody to treat it as an id).
-      required: [id, label, scopes, createdAt, expiresAt, lastUsedAt, revokedAt, status]
+      required:
+        [id, label, scopes, createdAt, expiresAt, lastUsedAt, revokedAt, status]
       properties:
         id: { type: string, pattern: "^apitok_[A-Za-z0-9_-]+$" }
         label: { type: string }
@@ -18719,7 +18735,11 @@ components:
           type: array
           items: { $ref: "#/components/schemas/AdminApiScope" }
         createdAt: { type: integer, description: Epoch seconds. }
-        expiresAt: { type: integer, description: "Epoch seconds. Never null: expiry is mandatory." }
+        expiresAt:
+          {
+            type: integer,
+            description: "Epoch seconds. Never null: expiry is mandatory.",
+          }
         lastUsedAt:
           type: [integer, "null"]
           description: >

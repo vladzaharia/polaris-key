@@ -50,7 +50,7 @@
 import { BRAND, FONT, SERVICE_ACCENTS, THEME_TOKENS } from "@polaris-key/brand";
 import { lockupMetrics, markParts } from "@polaris-key/brand/svg";
 import type { Env } from "../../platform/env.js";
-import { bytesHostname, normalizeHostname } from "./bytesHostname.js";
+import { bytesHostname, normalizeHostname } from "../hosts.js";
 import { escapeHtml } from "../../platform/html.js";
 import { sha256Base64 } from "../../platform/hash.js";
 

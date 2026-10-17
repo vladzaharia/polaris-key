@@ -594,7 +594,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/cq-worker-core.md"
       ],
       "brief": "wp/P0-22-request-scoped-product-context-lazy.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "P0-23",
