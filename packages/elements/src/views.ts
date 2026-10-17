@@ -511,8 +511,13 @@ function withBase(c: RenderCtx): View {
         "common.cancel",
         ...(keyInstead ? ["signin.choice.keyInstead"] : []),
       );
+      // One lede: the browser's, where the form runs in one (the model's own names the desktop).
+      const one = (v: View): View =>
+        v.copy.includes("signin.choice.ledeBrowser")
+          ? { ...v, copy: v.copy.filter((k) => k !== "signin.choice.lede") }
+          : v;
       if (rowReplace)
-        return {
+        return one({
           ...base,
           copy: base.copy.filter((k) => k !== "signin.replace.open"),
           decisions: {
@@ -522,16 +527,16 @@ function withBase(c: RenderCtx): View {
                 ? null
                 : base.decisions.primary,
           },
-        };
+        });
       // Keep and Create are rows of the list, not buttons, wherever the list can be chosen from.
       return view.state === "all-full"
-        ? base
-        : {
+        ? one(base)
+        : one({
             ...base,
             copy: base.copy.filter(
               (k) => k !== "signin.choice.keep" && k !== "signin.choice.create",
             ),
-          };
+          });
     }
     case "SignIn": {
       // The form ends on a heading and one Start; every other step can be backed out of (DL2).

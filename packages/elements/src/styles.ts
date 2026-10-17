@@ -1075,12 +1075,21 @@ dialog.sheet .card,
   grid-template-columns: none;
   border-radius: var(--pk-kit-radius-card);
   padding: var(--pk-kit-card-pad);
-  box-shadow:
-    inset 0 0 0 1px var(--pk-border-subtle),
-    var(--pk-elevation-3);
+  /* The dialog box clips an outer shadow into a lighter square at the corners; the scrim already
+     lifts the card. */
+  box-shadow: inset 0 0 0 1px var(--pk-border-subtle);
 }
-dialog.sheet .passport {
+.pk-root[data-shape] dialog.sheet .stage[data-split] .passport {
   display: contents;
+}
+/* In the sheet the identity is the compact header over the title, never the wide panel. */
+.pk-root[data-shape] dialog.sheet .stage[data-split] .passport .identity {
+  display: flex;
+  justify-content: start;
+  text-align: start;
+}
+.pk-root[data-shape] dialog.sheet .stage[data-split] .passport .icon {
+  --pk-icon-size: 2rem;
 }
 /* Under 35rem the sheet docks to the bottom edge, past the home indicator (DL2, DL17). */
 @media (max-width: 35rem) {

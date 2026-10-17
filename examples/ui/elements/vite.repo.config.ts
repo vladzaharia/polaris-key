@@ -17,4 +17,9 @@ export default {
     ],
   },
   server: { fs: { allow: [at("../../../")] } },
+  build: {
+    rollupOptions: {
+      input: { index: at("./index.html"), states: at("./states.html") },
+    },
+  },
 };

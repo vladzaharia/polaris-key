@@ -11,7 +11,13 @@ import { defineElements } from "./components.js";
 import { setFontBase } from "./fonts.js";
 import { setTheme, type ElementsTheme } from "./theme.js";
 
-export { defineElements, ELEMENTS, PkGate, PkProvider } from "./components.js";
+export {
+  defineElements,
+  ELEMENTS,
+  PkGate,
+  PkProvider,
+  PkUpdatePrompt,
+} from "./components.js";
 export { PkElement, type PkActionDetail } from "./element.js";
 export {
   PkSignIn,
