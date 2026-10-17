@@ -13,9 +13,9 @@ it, and **Add to library** puts it in their library. Its page in the console is
 **Distribution → Storefronts → Polaris Key** (`#/p/<slug>/distribution/storefronts/polaris-key`),
 for platform admins.
 
-On the [Storefronts](/docs/admin/storefronts/) page its tile reads **Built in: always connected**.
+On the [Storefronts](/docs/features/ship-builds/channels/storefronts/) page its tile reads **Built in: always connected**.
 There is nothing to connect: no credential, no app to assign, and nothing in
-[Store connections](/docs/admin/store-connections/). Every operation it performs is marked
+Store connections. Every operation it performs is marked
 **Built in**, and the ones it does not perform say what applies instead (a listed product is
 obtained without payment, for example). **Manage** opens this page. Add to storefronts leaves
 Polaris Key out, because it is always on.
@@ -30,7 +30,7 @@ Five checks, each **Ready**, **Ready, with a note** or **Needs a fix**, with the
 | Listing         | The listing has a name, an icon and a short description that fit Polaris Key in its default locale |
 | A way to add it | At least one way to add it is offered, or the audience is everyone (a note)                        |
 | Get it          | A release download or a live store link; the developer's website alone is a note                   |
-| Licence tiers   | Every tier a way to add it issues exists and has a device limit                                    |
+| License tiers   | Every tier a way to add it issues exists and has a device limit                                    |
 
 For a product that is not listed, the third check counts the ways it would offer once listed.
 
@@ -38,7 +38,7 @@ For a product that is not listed, the third check counts the ways it would offer
 
 - **Listing.** **Automatic** (the default) shows the product to the people auto-issue or a mapped
   group would give it to, as Discover always has. **Listed** also shows it through every other way
-  to add it. **Not listed** shows it to no one in the portal; sign-in, auto-issue and every licence
+  to add it. **Not listed** shows it to no one in the portal; sign-in, auto-issue and every license
   keep working. A change asks you to confirm.
 - **Audience.** **People who can add it** (the default) or **Everyone signed in**. Everyone signed
   in shows a Listed product to every signed-in person; someone who cannot add it gets a link to
@@ -47,7 +47,7 @@ For a product that is not listed, the third check counts the ways it would offer
   can add it saves at once.
 
 These are the settings `storefront.polarisKey.listed` and `storefront.polarisKey.audience`
-([Polaris Key listing](/docs/services/identity/portal/#polaris-key-listing)). The deployment switch
+([Polaris Key listing](/docs/features/sign-in/customer-portal/#polaris-key-listing)). The deployment switch
 `storefront.polarisKey.enabled` hides every listing when a platform admin turns it off; the page
 then says so.
 
@@ -62,10 +62,10 @@ configured is not listed at all:
 | Free with an account      | The product auto-issues to everyone signed in (`autoIssue`, mode `oidcDefault` or `both`) |
 | Free to use               | License is off and every download is public or for signed-in people (nothing to license)  |
 
-The first two need the product's sign-in to use the Polaris Key sign-in with automatic licence
+The first two need the product's sign-in to use the Polaris Key sign-in with automatic license
 linking on. Automatic counts only those two; the rest count once the product is Listed. Turning a
 way off asks you to confirm and removes it from Discover and from **Add to library**, so a person
-whose only way it was no longer sees the product. Licences already added keep working.
+whose only way it was no longer sees the product. Licenses already added keep working.
 
 ## Group labels
 
@@ -95,11 +95,11 @@ Impressions, adds and first activations, with the activation rate, in total and 
 - An **impression** is the product shown to one signed-in person on Discover or its product page,
   once per person per day. A deployment without `KEY_HASH_PEPPER` counts no impressions, and the
   card says so.
-- An **add** is **Add to library** creating what its way implies (a licence, or a library entry).
-- A **first activation** is the licence's first device, within 7 days of the add, counted on the
+- An **add** is **Add to library** creating what its way implies (a license, or a library entry).
+- A **first activation** is the license's first device, within 7 days of the add, counted on the
   add's day. The newest week's activations are still arriving.
 
-## The console API
+## The readiness and audience API
 
 Narrative-only, under `/manage/api/products/<slug>/storefronts/polaris-key`. None of them writes.
 
@@ -129,14 +129,14 @@ changes the shared listing. Nothing in it is signed or sent to devices.
 - **Text**: the app's fields and each locale's (switch locale, or add one), saved together, and the
   import with its field-by-field diff;
 - **Fit report**: every store's fit, with **Override…** on each field that does not fit;
-- **Images**: the [slot board](/docs/admin/storefronts/#the-slot-board), where every derived or
+- **Images**: the [slot board](/docs/features/ship-builds/channels/storefronts/#the-slot-board), where every derived or
   composed image is accepted before any store receives it;
 - **Release notes**: each release's store notes per locale, with the proposed short form;
 - **Push**: **Push listing** for each store whose adapter writes listings (see
-  [Storefronts](/docs/admin/storefronts/#listing-push)).
+  [Storefronts](/docs/features/ship-builds/channels/storefronts/#listing-push)).
 
 The same fit report, import and slot board are steps of
-[Add to storefronts](/docs/admin/storefronts/).
+[Add to storefronts](/docs/features/ship-builds/channels/storefronts/).
 
 ## What it holds
 
@@ -240,10 +240,13 @@ mismatch is visible.
 
 ### From a Godot project
 
-```sh
-export PKEY_ADMIN_COOKIE='__Host-pkey_admin=<value>'   # the console session: pkey bundle's admin API token cannot reach the import
-pkey listing import --godot path/to/project --product <slug>           # prints the diff
-pkey listing import --godot path/to/project --product <slug> --apply   # writes it
+```sh title="Terminal"
+# the console session: pkey bundle's admin API token cannot reach the import
+export PKEY_ADMIN_COOKIE='__Host-pkey_admin=<value>'
+# prints the diff
+pkey listing import --godot path/to/project --product <slug>
+# writes it
+pkey listing import --godot path/to/project --product <slug> --apply
 ```
 
 `pkey listing import` reads `project.godot` and `export_presets.cfg` itself, so no Godot editor is
@@ -288,7 +291,7 @@ declaration. A screenshot fitted for a
 store is stored as `<store>:screenshot:<class>:<n>`, and each store's ZIP pack as `pack:<store>`.
 An image you upload yourself is never replaced by CI.
 
-## The console API
+## The storefront listing API
 
 Narrative-only (not in the wire spec), under `/manage/api/products/<slug>/distribution/listing`.
 Every write is audited with the fields it changed, never their text.

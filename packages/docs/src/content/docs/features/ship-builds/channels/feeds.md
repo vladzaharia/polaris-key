@@ -41,10 +41,10 @@ For channel O and release track C, a feed lists the releases that pass all five 
 3. **They are live on O.** A self-hosted channel (`altstore`, `obtainium`, `fdroid-repo`,
    the Polaris Key channel `direct`) is live by derivation once its bytes are stored. A store channel (`altstore-pal`)
    is live only once it has been reported live — see
-   [Availability](/docs/services/distribution/availability/). Flathub is the exception: its checker
+   [Availability](/docs/features/ship-builds/channels/availability/). Flathub is the exception: its checker
    tells Flathub where Polaris Key's bytes are, so the test there is that the bytes are served.
 4. **They are not held back on O.** These clients cannot bucket installs, so a release whose
-   [channel rollout](/docs/services/distribution/rollouts/) is paused, halted, or active below
+   [channel rollout](/docs/features/ship-builds/channels/rollouts/) is paused, halted, or active below
    10000 bp is left out until the rollout completes. The previous release is listed instead.
 5. **Their payload has an immutable delivery URL**, `files/<releaseId>/<name>`, on the bytes host
    when there is one.
@@ -52,7 +52,7 @@ For channel O and release track C, a feed lists the releases that pass all five 
 A feed lists at most 20 versions. Scoop and Flathub list only the newest version.
 
 **Access.** None of these clients can authenticate. A feed therefore exists only while the app's
-[delivery access](/docs/services/distribution/delivery/) is `public`. Under `authenticated`,
+[delivery access](/docs/features/ship-builds/channels/delivery/) is `public`. Under `authenticated`,
 `licensed` or `entitled`, every feed route, the F-Droid relay included, answers not-found.
 Release notes appear only when the product's metadata access is public too.
 
@@ -150,7 +150,7 @@ Grant `distribution:feeds` to the product's CI token deliberately. Like `distrib
 it is not in the default grant.
 
 The repository URL users add needs the repo key's fingerprint. Record the key in the
-[key inventory](/docs/services/distribution/availability/) under the `fdroid-repo` purpose. The
+[key inventory](/docs/features/ship-builds/channels/availability/) under the `fdroid-repo` purpose. The
 CI read route returns it, and the download page shows
 `fdroidrepos://<host>/<product>/distribution/fdroid/<channel>/repo?fingerprint=<sha256>`. Keep
 `versionCode` strictly increasing across release tracks, and keep one repo key per product: rotating the
@@ -168,7 +168,7 @@ Key channel (`direct`). It contains:
 
 A bucket can track it, or a user can run `scoop install <url>` directly.
 
-```yaml
+```yaml title=".pkey/distribution"
 outlets:
   direct:
     platforms: [macos, windows, linux]
@@ -185,7 +185,7 @@ A `direct` channel that declares `platforms` must include `windows` before it ma
 Linux release. It is the JSON that a Flathub manifest's `x-checker-data` (`type: json`) reads for
 an extra-data source:
 
-```yaml
+```yaml title="Flatpak manifest"
 x-checker-data:
   type: json
   url: https://key.plrs.im/<product>/distribution/flathub/stable.json

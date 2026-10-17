@@ -2,7 +2,7 @@
 sidebar:
   order: 3
 title: "Rollouts and halts"
-description: "Channel-scoped rollout percentage, pause, resume, halt and completion — the states, the CI and console controls, mirrored store rollouts, and what a halt does today."
+description: "Channel-scoped rollout percentage, pause, resume, halt and completion — the states, the CI and console controls, mirrored store rollouts, and what a halt reaches."
 type: "reference"
 lastReviewed: "2026-10-16"
 ---
@@ -13,21 +13,18 @@ channel and release track**; the release track pointer, floor, `critical` flag a
 per deliverable. Apple's phased release, Play's staged rollout and Polaris Key's own buckets
 are all per channel, which is why the split falls there.
 
-:::note[What a halt reaches]
-A pause or halt stops offering the release on that channel in the signed release track feed, the
-[app-updater feeds](/docs/services/update/updater-feeds/) (the Sparkle appcast, `/update/version`
-and the rest), the [storefront feeds](/docs/services/distribution/feeds/) and the public
-[download page](/docs/users/downloads/); they list the previous release instead. (The appcast
-of a product that publishes no release records keeps its GitHub-resolved path and does not read
-rollouts.) The storefront
-feeds that list releases (AltStore, AltStore PAL, F-Droid, Scoop and Flathub) also leave out a
-release whose rollout is below 100%. **Obtainium does not follow holds.** Its config is a
-pointer, not a release: in F-Droid repository mode it follows the `fdroid-repo` channel's holds,
-and in direct-link mode it follows the moving `builds/<channel>/<buildId>` download, which
-applies yanks and pins but not holds. To take a release off every surface, moving downloads
-included, **yank it** or **pin the release track** to an earlier release
-([Channels and policy](/docs/services/release/channels/)).
-:::
+## What a halt reaches
+
+A pause or halt stops offering the release on that channel in:
+
+- the signed release track feed;
+- the [app-updater feeds](/docs/features/ship-builds/updates/updater-feeds/), including the Sparkle appcast and `/update/version`;
+- the [storefront feeds](/docs/features/ship-builds/channels/feeds/);
+- the public [download page](/docs/help/download/).
+
+They list the previous release instead. The appcast of a product that publishes no release records keeps its GitHub-resolved path and does not read rollouts. The storefront feeds that list releases (AltStore, AltStore PAL, F-Droid, Scoop and Flathub) also leave out a release whose rollout is below 100%.
+
+**Obtainium does not follow holds.** Its config is a pointer, not a release. In F-Droid repository mode it follows the `fdroid-repo` channel's holds, and in direct-link mode it follows the moving `builds/<channel>/<buildId>` download, which applies yanks and pins but not holds. To take a release off every surface, moving downloads included, yank it or pin the release track to an earlier release ([Release tracks and policy](/docs/features/ship-builds/releases/channels/)).
 
 ## The rollout record
 
@@ -76,17 +73,19 @@ rollout that replaced it.
 publisher deliberately. The CLI drives the routes on the same credential as
 `pkey release publish` ([Publishing from CI](/docs/build/ci/)):
 
-```sh
-pkey distribution rollout --product your-product --outlet direct --channel stable \
+```sh title="Terminal"
+pkey distribution rollout --product your-product --outlet direct \
+  --channel stable \
   --release v1.4.0 --bp 2500            # 25%
-pkey distribution halt --product your-product --outlet direct --channel stable --release v1.4.0
+pkey distribution halt --product your-product --outlet direct \
+  --channel stable --release v1.4.0
 pkey distribution resume --product your-product --outlet direct --channel stable
 # also: pause, complete; --deliverable for a pack
 ```
 
 The routes underneath:
 
-```
+```text title="Request"
 POST /<product>/distribution/rollouts/<outlet>/<channel>          { deliverable?, releaseId, bp }
 POST /<product>/distribution/rollouts/<outlet>/<channel>/pause    { deliverable?, releaseId? }
 POST /<product>/distribution/rollouts/<outlet>/<channel>/resume
@@ -102,19 +101,19 @@ No CORS: these are CI routes.
 
 **From the console** — the same verbs under the admin API (narrative-only), plus a list:
 
-```
+```text title="Request"
 /manage/api/products/<slug>/distribution/rollouts (GET)
 /manage/api/products/<slug>/distribution/rollouts/<outlet>/<channel> (POST)[/<verb>]
 ```
 
 **Distribution → Rollouts** in the console lists every rollout, halted ones first, with the same
-moves in each row's menu; the [matrix](/docs/admin/distribution-matrix/) cell drawer carries them
+moves in each row's menu; the [matrix](/docs/features/ship-builds/channels/) cell drawer carries them
 too, with **Set percentage…** and **Start rollout…**.
 
 Every change, from either door, is audited as `distribution.rollout.<verb>` (`set`, `pause`,
 `resume`, `halt`, `complete`), with the session's subject or `ci:<subject>`.
 
-**Automatically** — the [telemetry auto-halt](/docs/services/distribution/update-health/#the-auto-halt),
+**Automatically** — the [telemetry auto-halt](/docs/features/ship-builds/channels/update-health/#the-auto-halt),
 when an operator turns it on, halts an active self-hosted rollout whose devices report too many
 reverts or boot rollbacks. It goes through the same implementation with a third, automatic actor
 that may **only halt**: every other verb is refused with `reason: system_halt_only`. Its halt
@@ -149,17 +148,17 @@ A store's own staged rollout — Apple's seven-day phased release, Play's `userF
 **mirrored** from the store by its connector, and controlled through the connector, not here.
 Such a row has `mirrored = 1` and its connector's kind as `source`, and every direct edit is
 refused with `rollout_mirrored`. Apple's phased release is mirrored by the
-[App Store Connect connector](/docs/services/distribution/app-store-connect/#phased-release) and
+[App Store Connect connector](/docs/features/ship-builds/channels/app-store/#phased-release) and
 each Play track's staged rollout by the
-[Google Play connector](/docs/services/distribution/google-play/#how-play-maps), both audited as
+[Google Play connector](/docs/features/ship-builds/channels/google-play/#how-play-maps), both audited as
 `distribution.rollout.mirror`. The Play connector's halt is also the one an opt-in vitals
 auto-halt uses (`connector:play-vitals`). The telemetry auto-halt never halts a mirrored rollout:
 it raises an alert for you to act on with the connector's own control.
 
 ## See also
 
-- [Byte delivery and delivery access](/docs/services/distribution/delivery/)
-- [Update health](/docs/services/distribution/update-health/) — the funnel, the auto-halt and
+- [Byte delivery and delivery access](/docs/features/ship-builds/channels/delivery/)
+- [Update health](/docs/features/ship-builds/channels/update-health/) — the funnel, the auto-halt and
   Sentry halt candidates.
-- [Channels and policy](/docs/services/release/channels/) — yanks and pins, today's
+- [Release tracks and policy](/docs/features/ship-builds/releases/channels/) — yanks and pins, today's
   emergency stop.

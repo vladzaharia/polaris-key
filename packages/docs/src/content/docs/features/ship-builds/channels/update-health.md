@@ -19,7 +19,7 @@ Devices send events in the `updates` key of the ordinary device report,
 `POST /<product>/devices/report` (the same request that carries the software snapshot). It is an
 array of at most 16 entries:
 
-```json
+```json title="Response"
 {
   "updates": [
     {
@@ -95,7 +95,7 @@ what the deployment allows, and is part of the page's URL (`?window=6`). The pag
 auto-halt's last reading, its settings, the rollouts it halted and the store rollouts it alerted
 on, and the Sentry candidates, open and decided. The admin API behind it is narrative-only:
 
-```
+```text title="Request"
 /manage/api/products/<slug>/distribution/update-health (GET)[?windowHours=N]   # N ≤ 720
 /manage/api/products/<slug>/distribution/update-health/settings (POST)
 /manage/api/products/<slug>/distribution/update-health/candidates/<id>/confirm (POST)
@@ -142,7 +142,7 @@ to save. No `.pkey/` manifest, resync or CI token can change them,
 so a push to the product's repository can never switch on an automatic halt.
 
 What a halt does to devices is what any halt does: see
-[Rollouts and halts](/docs/services/distribution/rollouts/).
+[Rollouts and halts](/docs/features/ship-builds/channels/rollouts/).
 
 ## Sentry alerts
 
@@ -150,7 +150,7 @@ A Sentry alert can open a **halt candidate**. A candidate halts nothing: you con
 halts the rollout, audited as you) or dismiss it, on the Health page. Confirming is marked as the
 stronger action: it halts the rollout at once.
 
-To connect a Sentry organisation:
+To connect a Sentry organization:
 
 1. In Sentry, create an **internal integration** with the **Alert Rule Action** and webhooks
    enabled, and set its webhook URL to `https://key.plrs.im/<product>/distribution/hooks/sentry`.

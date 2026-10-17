@@ -58,6 +58,23 @@ The pre-suite module names (`licensing`, `releases`, `oidc`, `edgeMint`) are tra
 
 The transition rules, including the cascade when a requirement is turned off, live in `servicesTransitions.ts`.
 
+## Descriptor hooks
+
+A service may import only Core and itself — `update → release` is the single historical
+exception — so services read one another through **descriptor hooks** that Core declares and
+gates. Distribution consumes one and provides two:
+
+| Hook                 | Provided by  | Read by            | Answers                                                                                                                                                                      |
+| -------------------- | ------------ | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `releaseCatalog`     | Release      | Distribution       | deliverables, releases, builds, artifact records, release track policy, yanks; resolution, the metadata access mode, the installer and GitHub-held bytes for the byte routes |
+| `delivery`           | Distribution | Update, the portal | the default transport, availability and submissions, channel rollouts, delivery access, delivery URLs and the key inventory                                                  |
+| `outletCapabilities` | Distribution | Update             | what one declared channel permits: its kind's default, narrowed by an operator                                                                                               |
+
+Every accessor **fails closed**: while the providing service is off for the product it answers
+`null`, the provider's code never runs, and the consumer degrades explicitly — Update without a
+delivery hook serves no per-channel state. Hooks are read-only; a cross-service write would be an
+import in disguise.
+
 ## If you add a service
 
 [Monorepo layout](/docs/contribute/layout/) has the checklist, starting from a row in `tools/services.json`. The coherence codes come from the `requires` field of that row, so the parser, the manifest validator and the console follow without further edits.

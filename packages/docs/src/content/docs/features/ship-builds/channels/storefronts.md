@@ -1,5 +1,5 @@
 ---
-title: "Storefronts: Add to storefronts"
+title: "Storefronts"
 description: "Distribution → Storefronts: every store's capabilities from its adapter, and the Add to storefronts flow (prerequisites, listing, assets, plan, run, submit and release) that provisions a product onto them, resumably from the ledger."
 type: "reference"
 lastReviewed: "2026-10-16"
@@ -21,7 +21,7 @@ code, so a store added to the Worker appears here once its adapter is registered
 One tile per store, with:
 
 - the product's app on that store, assigned in
-  [Platform → Store connections](/docs/admin/store-connections/), or "Published from CI" for a
+  Platform → Store connections, or "Published from CI" for a
   store with no team connection (itch.io, Snap);
 - a capability strip, one row per operation with its badge: **API**, **CI**, **PR**, **Link**,
   **Built in**, or **Not offered** with the reason (Steam's store page, for example, is links
@@ -36,7 +36,7 @@ does the same.
 **Polaris Key**, the storefront built into Polaris Key (the customer portal's Discover and
 Library), has a tile like the others, rendered from its adapter the same way. It reads **Built in:
 always connected**, its operations are marked **Built in**, and **Manage** opens
-[its own page](/docs/admin/polaris-key-storefront/): the listing, who sees it, the ways to add it,
+[its own page](/docs/features/ship-builds/channels/polaris-key/): the listing, who sees it, the ways to add it,
 a persona preview and its analytics. It is not part of Add to storefronts, because there is
 nothing to connect or run.
 
@@ -50,7 +50,7 @@ another, and it shows where each store stands.
 2. **Prerequisites.** Per store: the team connection, the product's app, and the write
    permissions. A missing permission only shows when a step runs, so it reads "Shown by the first
    write" until one succeeds.
-3. **Listing.** The [fit report](/docs/admin/storefront-listing/#the-fit-report) for the chosen
+3. **Listing.** The [fit report](/docs/features/ship-builds/channels/polaris-key/#the-fit-report) for the chosen
    stores, with **Override…** on each field that does not fit, and the import: pick App Store,
    Google Play, Microsoft Store, `.pkey/distribution` or `.pkey/product`, see every field that
    would change, then apply exactly that diff. The Godot project is read by
@@ -84,7 +84,7 @@ a listing, an image, a user, a payment or a signing key on any store.
 | Microsoft Store | staging the listing in the app's pending submission (left uncommitted); committing it to certification (typed)                           | reserving the name; the age rating questionnaire                                                                         |
 | itch.io, Snap   | none: their steps run in CI                                                                                                              | the store page                                                                                                           |
 
-Google Play's release and staged rollout stay on the [Rollouts](/docs/services/distribution/rollouts/)
+Google Play's release and staged rollout stay on the [Rollouts](/docs/features/ship-builds/channels/rollouts/)
 page. Replacing Play images never deletes the old ones. After the image step or a listing push,
 the card says how many older images Google Play still holds and links the Play Console's main store
 listing, where you remove them. Until the product has the Play Console's developer and app ids, the

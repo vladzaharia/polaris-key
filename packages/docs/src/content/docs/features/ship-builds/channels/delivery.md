@@ -26,7 +26,7 @@ access**: one answer that the downloads, the Sparkle appcast and the customer po
 What each one does — selector resolution, the location order (R2, then GitHub, then an
 external URL), `?checksum=sha256`, `?redirect=1`, `Range`, cache headers — is unchanged from
 when Release served them, and is described on
-[Artifacts, changelog & install](/docs/services/release/artifacts/). The bytes on GitHub are
+[Artifacts, changelog & install](/docs/features/ship-builds/releases/artifacts/). The bytes on GitHub are
 still fetched by Release, with its own installation token and its SSRF guard, through the
 `releaseCatalog` hook: Distribution holds no GitHub token. R2-held bytes come from the core
 blob store. `builds` and `files` serve the **app** deliverable only and never a `gated/`
@@ -97,15 +97,15 @@ Who may download a deliverable is stored per deliverable in `dist_access`:
 | Mode            | Who may download                                                          |
 | --------------- | ------------------------------------------------------------------------- |
 | `public`        | anyone                                                                    |
-| `authenticated` | a device whose licence is usable                                          |
-| `licensed`      | a device whose licence is usable (identical to `authenticated` today)     |
-| `entitled`      | a device whose own licence covers the requested release track and version |
+| `authenticated` | a device whose license is usable                                          |
+| `licensed`      | a device whose license is usable (identical to `authenticated` today)     |
+| `entitled`      | a device whose own license covers the requested release track and version |
 
 A deliverable with no row of its own inherits the `app` row; a product with no `app` row reads
 as `entitled` (fail-closed). The refusals are exactly the ones Release answered with: the flat
 `download_auth_required` under `authenticated`/`licensed`, the nested `unauthorized`,
 `channel_not_allowed` and `version_blocked` under `entitled`
-([Eligibility](/docs/services/update/eligibility/) has the full decision).
+([Eligibility](/docs/features/ship-builds/updates/eligibility/) has the full decision).
 
 ### One answer for every surface
 
@@ -114,14 +114,14 @@ The appcast, the download routes and the portal's download mint all read the sam
 could offer what the download then refused.
 
 - **Downloads.** `dl` and `builds` check their selector; `files` checks the release's stored
-  version as one fixed, pinned version, never as a moving release track; `blobs` authorises the
+  version as one fixed, pinned version, never as a moving release track; `blobs` authorizes the
   object's holders: an app artifact is served under `entitled` only if a release of this
   product carrying that digest passes the `files` check, under the strictest mode of the
   deliverables whose releases carry it, and a pack's object under the pack's own access and
   gate ([Pack bytes](#pack-bytes)).
 - **The appcast** is gated by the `app` deliverable's delivery access.
-- **The portal.** A customer has licences, not a device token, so each mode is asked of the
-  account's linked licences: `licensed` needs a usable one, `entitled` one whose grant holds the
+- **The portal.** A customer has licenses, not a device token, so each mode is asked of the
+  account's linked licenses: `licensed` needs a usable one, `entitled` one whose grant holds the
   release's release track (stable for a GitHub-derived release) and whose window holds its version.
   A public artifact with no GitHub download URL is redirected to its bytes-host URL; a
   non-public one never is, because the browser has no device token to present there.
@@ -153,7 +153,7 @@ the wire spec):
 | POST   | `/manage/api/products/<slug>/distribution/access/revert` | hand the `app` row back to the manifest                     |
 
 Writes are audited as `distribution.access.update` and `distribution.access.revert`.
-A pack row's `entitlement` is the pack's **gate**: the licence flag the blob route demands for
+A pack row's `entitlement` is the pack's **gate**: the license flag the blob route demands for
 its gated objects ([Pack bytes](#pack-bytes)); the app row's is stored and not enforced.
 `update/settings` no longer accepts `artifactsAccess` and refuses it by name.
 
@@ -197,15 +197,15 @@ product's copy never counts):
 
 | The object                                     | Requires                                                                         |
 | ---------------------------------------------- | -------------------------------------------------------------------------------- |
-| under `gated/`, while its pack is gated        | a device whose licence holds the pack's **current** gate flag                    |
-| under `blobs/`, or a pack un-gated since       | the pack's mode: `public` anyone; `authenticated` or `licensed` a usable licence |
+| under `gated/`, while its pack is gated        | a device whose license holds the pack's **current** gate flag                    |
+| under `blobs/`, or a pack un-gated since       | the pack's mode: `public` anyone; `authenticated` or `licensed` a usable license |
 | the same, pack mode `entitled` with a gate     | the gate's flag                                                                  |
 | the same, pack mode `entitled` and **no gate** | nobody: `403 delivery_gate_missing` until a gate or a looser mode is set         |
 
 The gate is the `entitlement` of the pack's own access row, read at each request: renaming the
 flag moves who may download at once. Neither the manifest's assertion nor a record's
 `entitlement` (a publish-time snapshot) decides it, and the app's version window never applies
-to a pack. Refusals are `401 unauthorized` without a usable licence and `403 not_entitled`
+to a pack. Refusals are `401 unauthorized` without a usable license and `403 not_entitled`
 without the flag. Only an object whose every holder is `public` is cached publicly
 (a pack object `public, max-age=31536000, immutable`, an app artifact
 `public, max-age=3600`); anything else, and everything under `gated/`, is `private, no-store`.
@@ -241,7 +241,7 @@ stay intact); a browser, though, keeps a response as a dictionary after decoding
 
 Who may fetch is the blob route's decision for the `full` object and, for `dcz`, for the delta
 artifact. Caching follows it, with one difference: an ungated payload that is not public (the
-pack needs a licence) is `private, max-age=31536000, immutable`, so the authorised browser may
+pack needs a license) is `private, max-age=31536000, immutable`, so the authorized browser may
 keep it as a dictionary and no shared cache may. A **gated** payload is `private, no-store` and
 never a dictionary: gated packs always take the WASM path. The payload is found among the pack's
 200 newest releases; an older one, a tree variant or an unknown hash is the plain not-found.
@@ -262,7 +262,7 @@ stored and listed with `supported: false` — the console's matrix labels it "no
 Polaris Key" — and nothing is derived or served for it. A device that
 has no transport for a pack's binding (an unsupported transport, or a store plugin the build does
 not carry) plans nothing for that pack (`plan.transport_unsupported`), never a silent CDN
-fallback. [Availability](/docs/services/distribution/availability/) has
+fallback. [Availability](/docs/features/ship-builds/channels/availability/) has
 when each is live.
 
 ## Garbage collection
@@ -294,21 +294,13 @@ indexes still read). A pack's chunk bundles are blobs, so a bundle stays as long
 release's chunk index names it, even after the release that uploaded it is dead; a live variant
 whose chunk index cannot be read keeps every `pack-upload` ref that night.
 
-## See also
-
-- [Rollouts and halts](/docs/services/distribution/rollouts/) — the channel-scoped rollout
-  controls.
-- [Artifacts, changelog & install](/docs/services/release/artifacts/) — what each byte route
-  resolves and serves.
-- [Public route table](/docs/reference/routes/) — every canonical route and alias.
-
 ## Package feeds switch
 
 Each product has an operator-owned **package feeds** switch: on, its
 [package feeds](/docs/start/concepts/#packages) answer on `pkg.plrs.im`; off, every feed read
 for that product stops at once and looks like an unknown owner. A manifest never sets it.
 
-```http
+```http title="Request"
 /manage/api/products/<product>/distribution/package-feeds (GET)
 /manage/api/products/<product>/distribution/package-feeds (PUT)   {"enabled": true, "expectedVersion": 0}
 ```
@@ -316,3 +308,11 @@ for that product stops at once and looks like an unknown owner. A manifest never
 `expectedVersion` is the version the operator read (0 before it was ever set); a stale one is a
 409 (`version_conflict`) carrying the current state. Turning it on queues a full render of the
 product's feeds. Each change is audited as `distribution.package_feeds.update`.
+
+## See also
+
+- [Rollouts and halts](/docs/features/ship-builds/channels/rollouts/) — the channel-scoped rollout
+  controls.
+- [Artifacts, changelog & install](/docs/features/ship-builds/releases/artifacts/) — what each byte route
+  resolves and serves.
+- [Public route table](/docs/reference/routes/) — every canonical route and alias.

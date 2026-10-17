@@ -299,6 +299,7 @@ export const DOOR_TREES: readonly DoorTree[] = [
         collapsed: true,
         items: [
           leaf("features/ship-builds/index"),
+          leaf("features/ship-builds/publish-first-release"),
           leaf("features/ship-builds/ci"),
           leaf("features/ship-builds/ci-stores"),
           {
@@ -318,6 +319,7 @@ export const DOOR_TREES: readonly DoorTree[] = [
             collapsed: true,
             items: leaves(
               "features/ship-builds/channels/index",
+              "features/ship-builds/channels/distribution-matrix",
               "features/ship-builds/channels/delivery",
               "features/ship-builds/channels/rollouts",
               "features/ship-builds/channels/availability",

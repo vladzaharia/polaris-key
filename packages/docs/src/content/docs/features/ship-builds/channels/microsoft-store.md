@@ -13,14 +13,14 @@ submission API with the product's Partner Center app and keeps three things curr
 
 - the **submission** of each release on your `ms-store` channel — committed, in certification,
   certified, published, or rejected with the reasons — with when it was submitted and reviewed
-  (see [Availability, submissions and keys](/docs/services/distribution/availability/)), written
+  (see [Availability, submissions and keys](/docs/features/ship-builds/channels/availability/)), written
   with `source: ms-store`;
 - **availability** of each release's MSIX builds on the channel;
 - each submission's **gradual package rollout**, mirrored as a channel rollout (see
-  [Rollouts and halts](/docs/services/distribution/rollouts/#store-rollouts)).
+  [Rollouts and halts](/docs/features/ship-builds/channels/rollouts/#store-rollouts)).
 
 **It only reads.** It never creates, updates, commits or deletes a submission, never edits a
-listing, and never changes a rollout (increase, halt or finalise). Publishing stays with CI —
+listing, and never changes a rollout (increase, halt or finalize). Publishing stays with CI —
 the `msstore` CLI or Microsoft's GitHub Action — and with Partner Center. The Store sends no
 webhooks, so the connector reads on the connector cron, every 15 minutes. Certification can take
 up to three business days; the submission's `submittedAt` and `reviewedAt` let the console show
@@ -35,7 +35,7 @@ The connector runs for a product when all of these hold:
    identity), and, if you use package flights, a **flight map** — your release track on the left, the
    flight's Partner Center name (or its flight id) on the right:
 
-   ```yaml
+   ```yaml title=".pkey/distribution"
    outlets:
      ms-store:
        productId: 9NBLGGH4R315
@@ -52,7 +52,7 @@ The connector runs for a product when all of these hold:
 2. An **`ms-partner-center` channel credential** is stored under Distribution, on **Outlet credentials** — the Entra ID app's
    tenant id, client id, client secret and seller id — **pinned** to this product's app: the same
    Store ID as the `productId` above (see [Pinning the app](#pinning-the-app)). See
-   [Channel credentials](/docs/admin/secrets-and-keys/#outlet-credentials). A credential bound to
+   [Channel credentials](/docs/operate/console/keys-and-secrets/#outlet-credentials). A credential bound to
    the `ms-store` channel (`outletId`) is preferred over an unbound one.
 
 3. **The first submission is made by hand** in Partner Center, including the age-ratings
@@ -66,7 +66,7 @@ any request. `GET …/distribution/connectors/ms-store` says why in `inert` (`no
 **The platform's team key.** A product with no `ms-partner-center` credential of its own falls back to the platform's
 team-level credential for this store, only for the app a platform admin assigned to the product
 (the same `pin_missing` / `pin_mismatch` reasons, with `credentialSource: "platform"`). A key of
-the product's own always wins. See [Store connections](/docs/admin/store-connections/).
+the product's own always wins. A platform admin connects the store.
 
 ### The Partner Center app
 
@@ -99,7 +99,7 @@ for in this product. The connector runs only while the manifest's `productId` eq
 - **Set it with the credential.** **Outlet credentials** under Distribution asks for the Store ID with the other fields.
   Over the API, send it as `pin`:
 
-  ```http
+  ```http title="Request"
   /manage/api/products/<slug>/outlet-credentials/partner-center (PUT)
   {"kind": "ms-partner-center", "value": {"tenantId": "…", "clientId": "…", "clientSecret": "…", "sellerId": "…"}, "pin": "9NBLGGH4R315"}
   ```
@@ -118,7 +118,7 @@ app** and re-pin.
 Every tick sends only these GETs, to `https://manage.devcenter.microsoft.com`, plus the
 fallback submission of a published one whose gradual rollout is partial:
 
-```http
+```http title="Request"
 /v1.0/my/applications/{productId} (GET)
 /v1.0/my/applications/{productId}/submissions/{pending (GET) and last published}
 /v1.0/my/applications/{productId}/listflights (GET)

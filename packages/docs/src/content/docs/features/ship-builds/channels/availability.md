@@ -14,10 +14,10 @@ of the signing keys a download is checked against.
 
 CI reports what each store says with `pkey distribution report`, and a store connector writes
 it directly — the App Store and TestFlight through the
-[App Store Connect connector](/docs/services/distribution/app-store-connect/), Google Play
-tracks through the [Google Play connector](/docs/services/distribution/google-play/), and
+[App Store Connect connector](/docs/features/ship-builds/channels/app-store/), Google Play
+tracks through the [Google Play connector](/docs/features/ship-builds/channels/google-play/), and
 Microsoft Store submissions through the
-[Microsoft Store connector](/docs/services/distribution/microsoft-store/). Self-hosted channels need no report: their availability follows from
+[Microsoft Store connector](/docs/features/ship-builds/channels/microsoft-store/). Self-hosted channels need no report: their availability follows from
 what Release already knows.
 
 ## Availability
@@ -127,7 +127,7 @@ be reused, so Polaris Key only lists candidates: archive them in App Store Conne
 The hold is computed on every read, so a new app release is held from its first request.
 `dist_readiness` keeps the snapshot the console reads: an availability report refreshes the app
 releases it can affect, and the connector cron refreshes all live ones (every state change is
-audited as `distribution.readiness.<state>`). The [matrix](/docs/admin/distribution-matrix/) shows each
+audited as `distribution.readiness.<state>`). The [matrix](/docs/features/ship-builds/channels/) shows each
 app release's readiness per cell.
 
 An operator can **override** a hold (`POST …/readiness/<appReleaseId>/<outletId>/override` with a
@@ -154,18 +154,22 @@ One record per (release, channel), in `dist_submissions`:
 
 ## Reporting from CI
 
-```sh
+```sh title="Terminal"
 # Availability of one build (or omit --build for the whole release).
-pkey distribution report availability --product your-product --outlet app-store \
-  --release v1.4.0 --build ios --state in-review --platform-ref '{"ascBuildId":"abc-123"}'
+pkey distribution report availability --product your-product \
+  --outlet app-store \
+  --release v1.4.0 --build ios --state in-review \
+    --platform-ref '{"ascBuildId":"abc-123"}'
 
 # By version instead of release id (--deliverable defaults to the app).
 pkey distribution report submission --product your-product --outlet app-store \
   --version 1.4.0 --state submitted
 
 # The fingerprint this job signed with.
-pkey distribution report key --product your-product --purpose android-app-signing \
-  --sha256 "$SIGNING_CERT_SHA256" --outlet play   # colons and upper case are accepted
+pkey distribution report key --product your-product \
+  --purpose android-app-signing \
+  # colons and upper case are accepted
+  --sha256 "$SIGNING_CERT_SHA256" --outlet play
 ```
 
 The commands use the same credential as `pkey release publish` — see
@@ -261,7 +265,7 @@ observations. With Distribution off the hook is `null` and the report route is n
 
 ## See also
 
-- [Rollouts and halts](/docs/services/distribution/rollouts/) — the other CI control, with its own
+- [Rollouts and halts](/docs/features/ship-builds/channels/rollouts/) — the other CI control, with its own
   opt-in scope.
 - [Distribution: channels, transports and listing](/docs/build/manifest/distribution/) — declaring
   the channels these records are about.
