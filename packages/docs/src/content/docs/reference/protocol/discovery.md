@@ -120,7 +120,7 @@ entitlement or trust decision reads it, in the Worker or in any SDK.
   only when their SHA-256 matches. The manifest's own icon reference, a developer's host and the
   portal's `/media` proxy never appear.
 
-Which icon discovery names, slot by slot (the [Presentation](/docs/admin/presentation/) page
+Which icon discovery names, slot by slot (the [Presentation](/docs/operate/console/presentation/) page
 shows the same slots):
 
 | Slot state                                                                    | `icon` in discovery                           |

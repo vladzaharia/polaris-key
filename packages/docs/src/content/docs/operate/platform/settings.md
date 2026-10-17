@@ -12,7 +12,7 @@ deploy-time: they live in `wrangler.toml` or as Worker secrets and change only w
 Eight can also be changed at runtime, without a deploy: four background-job settings, the two
 reserved-name settings, the key-entry refusal switch and the hosted-assets switch. Every change is
 recorded in the
-[platform trail](/docs/admin/activity/#the-platform-trail).
+[platform trail](/docs/operate/console/activity/#the-platform-trail).
 
 In the console this is **Platform → Settings** (`#/platform/settings`; `#/platform` opens it).
 
@@ -69,7 +69,7 @@ files already copied keep serving from their copies, and image URLs already hand
 working. It is not a security gate, so it uses runtime precedence:
 an unreadable settings store does not turn it off. It sits under Delivery in the console. Each
 product's quotas and its own mirroring switch are on its
-[Presentation page](/docs/admin/presentation/#hosting-and-quotas).
+[Presentation page](/docs/operate/console/presentation/#hosting-and-quotas).
 
 `identity.platformTerms` is Polaris Key's own terms: `{version, termsUrl, privacyUrl}`, with
 https URLs. It is unset, so no new account is asked to accept anything of Polaris Key's and nothing
@@ -149,7 +149,7 @@ Platform → Settings has these sections, top to bottom.
   _Legacy, open only_, and a **Legacy key** row says how many values (and which sealed Worker
   secrets) are still under it, or _Safe to delete PLATFORM_KEK_ once none are. When the ring does
   not parse, the section says the keyring is unusable. Rotation and the re-seal sweep follow the
-  [KEK runbook](/docs/admin/kek/).
+  [KEK runbook](/docs/operate/platform/runbook/rotate-the-kek/).
 - **Secrets.** Each platform secret as _Set_ or _Not set_, with what it is for and what being
   unset means.
 - **History.** Each settings change from the platform trail, with who made it and the value
@@ -232,6 +232,6 @@ name, with its `catalogVersion` and one `declarations` entry per declared name
 
 ## Reference
 
-- [KEK runbook](/docs/admin/kek/): the keyring the Keyring section reads.
-- [Activity](/docs/admin/activity/#the-platform-trail): the platform trail these changes write.
-- [Deploying to production](/docs/admin/deploy/): where the deploy-time values are set.
+- [KEK runbook](/docs/operate/platform/runbook/rotate-the-kek/): the keyring the Keyring section reads.
+- [Activity](/docs/operate/console/activity/#the-platform-trail): the platform trail these changes write.
+- [Deploying to production](/docs/operate/platform/deploy/): where the deploy-time values are set.

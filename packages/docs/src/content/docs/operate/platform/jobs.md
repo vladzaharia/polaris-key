@@ -66,7 +66,7 @@ their size and the age of the oldest. The figures come from the queues' own metr
 
 - A backlog in the delta queue is normal while deltas are being encoded.
 - Any message in the dead-letter queue is Degraded. It failed every retry (three) and waits for a
-  decision. See [Operating](/docs/admin/kek/) for how lazy deltas are run and turned off.
+  decision. See [Operating](/docs/operate/platform/runbook/rotate-the-kek/) for how lazy deltas are run and turned off.
 - A queue whose metrics could not be read is Degraded, with the reason.
 
 ## Storage and indexes
@@ -76,7 +76,7 @@ their size and the age of the oldest. The figures come from the queues' own metr
   in staging expire after a day and are not counted.
 - **Required indexes** compares the database with the indexes this build needs. Each missing
   index is listed by name and the section is Degraded. The cause is almost always a migration that
-  has not been applied: check [Platform → Deployment](/docs/admin/deploy/).
+  has not been applied: check [Platform → Deployment](/docs/operate/platform/deploy/).
 
 ## Store connectors
 
@@ -84,7 +84,7 @@ One row per store connector, aggregated across every product that uses it: how m
 configured it, how many store objects it tracks, its last poll, its last webhook and the webhook
 deliveries that failed in the last 24 hours. A connector no product uses reads **Not configured**.
 Failed deliveries, or a failed poll step, make the section Degraded. Store credentials are never
-shown. See [Store connections](/docs/admin/store-connections/).
+shown. See [Store connections](/docs/operate/platform/connections/).
 
 ## Bindings and delta refusals
 

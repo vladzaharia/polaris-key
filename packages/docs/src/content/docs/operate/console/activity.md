@@ -70,7 +70,7 @@ place of initials:
   stale sibling was retired so one machine holds one seat.
 - `license.enroll` — a keyless auto-issued license was minted.
 
-See [Fingerprints](/docs/services/core/fingerprints/) for what triggers the first three.
+See [Fingerprints](/docs/features/licensing/fingerprints/) for what triggers the first three.
 
 ### `access.denied`
 
@@ -88,7 +88,7 @@ Customer-facing portal events — a magic-link or OIDC sign-in, a license claime
 disconnected from the portal — are audited too, but into a **separate** table (`portal_audit`,
 keyed by the customer's account rather than an admin session) that this tab does not read. The
 one portal-related action that _does_ show up here is `portal.settings.update` — an operator
-changing the module toggles on [Identity](/docs/admin/console-tour/#identity), which is a console
+changing the module toggles on [Identity](/docs/operate/console/tour/#identity), which is a console
 mutation like any other.
 
 ## Reading the log
@@ -146,7 +146,7 @@ Actions on the platform as a whole, which belong to no product, are recorded in 
 table, `platform_audit`. The KEK re-seal sweep writes one row there per run, with the
 remaining-row counts before and after as JSON; it still writes its per-product `kek.reseal` row
 into each product it touched, so a product's own log keeps showing it. Every change to a
-[runtime platform setting](/docs/admin/platform-settings/) writes a `platform.setting.set` or
+runtime platform setting (platform admins) writes a `platform.setting.set` or
 `platform.setting.revert` row there too, with the stored and effective value before and after.
 Each row has the same actor, action, target and summary
 fields as `audit`, plus `before` and `after` values, which never hold a secret. The same
@@ -164,4 +164,4 @@ console's Platform section does not show it; call it directly.
 ## Reference
 
 - [D1 data model](/docs/reference/data-model/) — the `audit` table's columns, under `core`.
-- [Console tour](/docs/admin/console-tour/) — where Activity sits in the nav.
+- [Console tour](/docs/operate/console/tour/) — where Activity sits in the nav.
