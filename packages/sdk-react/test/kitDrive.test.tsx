@@ -17,6 +17,7 @@ import {
 import { PolarisKeyProvider } from "@polaris-key/react";
 import {
   About,
+  ChannelPicker,
   Devices,
   PolarisKeyGate,
   Settings,
@@ -402,5 +403,55 @@ describe("the parts run themselves inside the provider", () => {
     // No part takes focus from the page on mount.
     expect(document.activeElement).toBe(document.body);
     adapter.dispose();
+  });
+});
+
+describe("a host-fed part reports the payloads a host needs", () => {
+  it("Devices names the device id on its row actions", () => {
+    const onAction = vi.fn();
+    const { container } = render(
+      <Devices
+        onAction={onAction}
+        input={{
+          devices: [
+            {
+              id: "dev-9",
+              name: "Desk",
+              platform: "windows",
+              formFactor: "computer",
+              lastSeenDays: 2,
+              current: false,
+            },
+          ],
+        }}
+      />,
+    );
+    fireEvent.click(
+      container.querySelector('button[data-key="devices.rename"]')!,
+    );
+    expect(onAction).toHaveBeenCalledWith(
+      expect.objectContaining({ key: "devices.rename", deviceId: "dev-9" }),
+    );
+  });
+
+  it("ChannelPicker draws the channels as a radio group and reports the pick", () => {
+    const onSelect = vi.fn();
+    const { container } = render(
+      <ChannelPicker
+        onSelect={onSelect}
+        input={{
+          channel: {
+            locked: false,
+            current: "stable",
+            options: ["stable", "beta"],
+          },
+        }}
+      />,
+    );
+    const rows = container.querySelectorAll('[role="radio"]');
+    expect(rows).toHaveLength(2);
+    expect(rows[0]!.getAttribute("aria-checked")).toBe("true");
+    fireEvent.click(rows[1]!);
+    expect(onSelect).toHaveBeenCalledWith("beta");
   });
 });

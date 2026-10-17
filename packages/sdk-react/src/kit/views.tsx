@@ -148,6 +148,8 @@ function contentFor(c: KitCtx): ReactNode {
       ) : null;
     case "AccountAndLicense":
       return accountRows(c);
+    case "ChannelPicker":
+      return channelRows(c);
     default:
       return null;
   }
@@ -1292,5 +1294,43 @@ function accountRows(c: KitCtx): ReactNode {
         </li>
       ))}
     </ul>
+  );
+}
+
+/** The release channels on offer as one radio group: the one in use is checked, a pick is reported
+ *  through `onSelect` (the channel's own name, which is the product's, never the catalog's). */
+function channelRows(c: KitCtx): ReactNode {
+  const ch = c.input.channel;
+  const options = ch?.options ?? [];
+  if (c.view.state !== "default" || options.length === 0) return null;
+  const on = c.input.selected ?? ch?.current ?? options[0];
+  return (
+    <div
+      className="list"
+      role="radiogroup"
+      aria-labelledby="pk-title"
+      data-part="channel-list"
+    >
+      {options.map((o, i) => (
+        <div
+          key={o}
+          className="row"
+          role="radio"
+          data-part="channel-row"
+          tabIndex={o === on ? 0 : -1}
+          aria-checked={o === on ? "true" : "false"}
+          onClick={() => c.pick(o)}
+          onKeyDown={(e) =>
+            radioKeys(e, c, i, options.length, (n) => options[n]!)
+          }
+        >
+          <span />
+          <span className="row-title">
+            <bdi>{o}</bdi>
+          </span>
+          {o === on ? GLYPHS.check() : <span />}
+        </div>
+      ))}
+    </div>
   );
 }

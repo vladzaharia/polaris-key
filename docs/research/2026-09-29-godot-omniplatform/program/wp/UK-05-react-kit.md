@@ -336,6 +336,12 @@ Review: `_lead/reviews/2026-10-16/ux-UK-05.json` (fail, 6 blockers). Scope: `pac
   in as the primary and drops Sign out; devices rows name the unnamed device in their buttons and
   say "This Mac" with no platform; the pane's product header is dropped where the title names it.
 
+- Host-fed parts report the payloads a host needs: row actions carry `deviceId` and `index`, the
+  typed name and a setting's value arrive through `onInput` (`rename`, `config:<key>`), and
+  `ChannelPicker` draws `input.channel.options` as a radio group reporting through `onSelect`.
+  UK-04's `LAYOUTS.Activate` gaining `common.back` is compatible: the gate adds its own Back only
+  when the view's copy lacks the key.
+
 **Remaining:**
 
 - Visual, in the shared stylesheet (`packages/elements`, UK-04's): the gate's two-pane row pinned at
