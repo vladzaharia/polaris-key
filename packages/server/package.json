@@ -1,7 +1,6 @@
 {
   "name": "@polaris-key/server",
   "version": "0.0.0",
-  "private": true,
   "description": "Gate a server route with the app's signed Polaris Key license, verified offline: a Fetch core plus Express, Hono and Next.js drop-ins.",
   "keywords": [
     "polaris-key",
