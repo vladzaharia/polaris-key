@@ -42,6 +42,8 @@ export interface Scenario {
   name: string;
   opts?: Omit<RunOptions, "variant">;
   data: string[];
+  /** Also record at 40 and 32 columns (the host-help and gate scenarios). */
+  narrow?: boolean;
   run(h: Harness): Promise<unknown>;
 }
 
@@ -111,6 +113,13 @@ const HOST_HELP_DATA = [
   "Build the project",
   "Export the project",
   "Import a project",
+  "publish",
+  "<target>",
+  "[channel]",
+  "Publish the project",
+  "-v, --verbose <level>",
+  "<level>",
+  "Print more while working",
   "update apply",
   "devices list",
   "devices rename",
@@ -132,14 +141,16 @@ const hostHelp = (
   mount: Partial<CommanderAdapterOptions> = {},
 ): Scenario => ({
   name,
+  narrow: true,
   data: HOST_HELP_DATA,
   run: async (h) => {
     const program = new Command("tidewater");
     program.configureHelp({ helpWidth: h.ctx.caps.columns });
+    program.option("-v, --verbose <level>", "Print more while working");
     program
       .command("build")
       .description("Build the project")
-      .helpGroup("Build")
+      .helpGroup("Build:")
       .action(() => undefined);
     program
       .command("export")
@@ -148,6 +159,10 @@ const hostHelp = (
     program
       .command("import")
       .description("Import a project")
+      .action(() => undefined);
+    program
+      .command("publish <target> [channel]")
+      .description("Publish the project")
       .action(() => undefined);
     registerPolarisCommands(program, async () => stubClient(), {
       pinnedKeys: {},
@@ -169,6 +184,7 @@ const gateRefusal = (
   data: string[],
 ): Scenario => ({
   name,
+  narrow: true,
   opts: { capture: "stderr" },
   data: [...COMMON, ...data],
   run: async (h) => {

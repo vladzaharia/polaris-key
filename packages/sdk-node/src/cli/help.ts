@@ -68,6 +68,8 @@ function twoColumns(
   indent = 2,
   /** One column for the whole page, so every group lines up. */
   column?: number,
+  /** Inside a host's page the terms follow the host's styling (plain, or its own): this formats one. */
+  hostTerm?: (term: string) => string,
 ): string[] {
   const termWidth =
     column ?? Math.min(24, Math.max(0, ...rows.map((r) => cellWidth(r.term))));
@@ -78,21 +80,27 @@ function twoColumns(
   const width = Math.max(1, columns - descCol);
   const out: string[] = [];
   for (const r of rows) {
-    const term = ctx.painter.style(r.term, ["strong"]);
+    const term = hostTerm
+      ? hostTerm(r.term)
+      : ctx.painter.style(r.term, ["strong"]);
     const fits = !stacked && cellWidth(r.term) <= termWidth;
     // A term wider than the line wraps at its spaces, continued two cells further in; a stacked
     // command that wrapped indents its description by four, so the two read apart without bold.
     const termLines = fits
       ? []
       : wrapSpans(
-          [{ text: r.term, style: ["strong"] }],
+          [{ text: r.term, ...(hostTerm ? {} : { style: ["strong"] }) }],
           Math.max(1, columns - indent - 2),
         );
     const col = stacked && termLines.length > 1 ? indent + 4 : descCol;
     const lines = wrapSpans([{ text: r.text }], Math.max(1, columns - col));
     termLines.forEach((l, i) =>
       out.push(
-        `${" ".repeat(i === 0 ? indent : indent + 2)}${ctx.painter.line(l)}`,
+        `${" ".repeat(i === 0 ? indent : indent + 2)}${
+          hostTerm
+            ? hostTerm(l.map((x) => x.text).join(""))
+            : ctx.painter.line(l)
+        }`,
       ),
     );
     lines.forEach((l, i) =>
@@ -132,35 +140,71 @@ export function describeVerb(ctx: KitContext, v: CliVerb): string {
   return ctx.copy.t(v.describeKey, { product: ctx.product.name });
 }
 
+/** How a host page styles what the kit's section adds to it (commander's `Help` styles). */
+export interface HostStyle {
+  /** The host's own column: its `padWidth`, so descriptions line up with the host's. */
+  column?: number;
+  /** Styles a heading (`styleTitle`). */
+  title?: (text: string) => string;
+  /** Styles a command term (`styleSubcommandTerm`). */
+  term?: (text: string) => string;
+  /** One section per kit group, for a mount that goes past the end-user set. */
+  grouped?: boolean;
+}
+
 /**
- * The Polaris Key section of a host program's help: one heading (`cli.help.group`) and its
- * commands in two columns, to follow the host's own sections. Under a `namespace` the section is
- * one entry that points at the namespace's own help. Returns the lines, no trailing newline.
+ * The Polaris Key sections of a host program's help: a heading (`cli.help.group`) and its commands
+ * in two columns, to follow the host's own sections, in the host's styling and on the host's
+ * description column. Under a `namespace` the section is one entry that says what the namespace
+ * holds. A mount that goes past the end-user set gets one section per kit group (License,
+ * Account, Devices, …). Returns the lines, no trailing newline.
  */
 export function renderMountSection(
   ctx: KitContext,
   verbs: readonly CliVerb[],
   namespace?: string,
+  host: HostStyle = {},
 ): string[] {
   if (!verbs.length) return [];
   const t = ctx.copy.t.bind(ctx.copy);
-  const heading = ctx.painter.line([{ text: `${t("cli.help.group")}:` }]);
-  const rows =
-    namespace !== undefined
-      ? [
-          {
-            term: `${namespace} <command>`,
-            text: t("cli.help.more", {
-              command: `${ctx.bin} ${namespace} --help`,
-            }),
-          },
-        ]
-      : verbs.map((v) => ({ term: verbUsage(v), text: describeVerb(ctx, v) }));
-  const column = Math.min(
-    ctx.caps.columns < 70 ? 16 : 24,
-    Math.max(...rows.map((r) => cellWidth(r.term)).filter((w) => w <= 24), 0),
-  );
-  return [heading, ...twoColumns(ctx, rows, 2, column)];
+  const title = host.title ?? ((x: string) => x);
+  const term = host.term ?? ((x: string) => x);
+  const own = (
+    heading: string,
+    rows: Array<{ term: string; text: string }>,
+  ): string[] => {
+    const column =
+      host.column ??
+      Math.min(
+        ctx.caps.columns < 70 ? 16 : 24,
+        Math.max(
+          ...rows.map((r) => cellWidth(r.term)).filter((w) => w <= 24),
+          0,
+        ),
+      );
+    return [
+      ctx.painter.line([{ text: title(`${heading}:`) }]),
+      ...twoColumns(ctx, rows, 2, column, term),
+    ];
+  };
+  if (namespace !== undefined)
+    return own(t("cli.help.group"), [
+      { term: namespace, text: t("cli.help.namespace") },
+    ]);
+  const toRow = (v: CliVerb) => ({
+    term: verbUsage(v),
+    text: describeVerb(ctx, v),
+  });
+  if (!host.grouped) return own(t("cli.help.group"), verbs.map(toRow));
+  return GROUP_HEADINGS.flatMap(([group, key], i, all) => {
+    const inGroup = verbs.filter((v) => v.group === group);
+    if (!inGroup.length) return [];
+    // One blank line between sections, none before the first.
+    const before = all
+      .slice(0, i)
+      .some(([g]) => verbs.some((v) => v.group === g));
+    return [...(before ? [""] : []), ...own(t(key), inGroup.map(toRow))];
+  });
 }
 
 /** The whole help page, grouped (the terminal board's help shot). */

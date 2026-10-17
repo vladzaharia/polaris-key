@@ -2,288 +2,557 @@
 Usage: tidewater [options] [command]
 
 Options:
-  -h, --help      display help for command
+  -v, --verbose <level>       Print more while working
+  -h, --help                  display help for command
 
-Build
-  build           Build the project
+Build:
+  build                       Build the project
 
 Commands:
-  export          Export the project
-  import          Import a project
-  help [command]  display help for command
+  export                      Export the project
+  import                      Import a project
+  publish <target> [channel]  Publish the project
+  help [command]              display help for command
 
 License:
-  activate [key]  Add a license key (prompted, or piped on stdin)
-  status          License, devices and offline time
-  deactivate      Stop using your license on this device and free its seat
-  login           Sign in with your account in the browser
-  logout          Sign out on this device
-  devices list    List the devices using your license
+  activate [key]              Add a license key (prompted, or piped on stdin)
+  status                      Show your license, devices and offline time
+  deactivate                  Stop using your license on this device and free
+                              its seat
+  login                       Sign in with your account in the browser
+  logout                      Sign out on this device
+  devices list                List the devices using your license
   devices rename <deviceId> [label...]
-                  Rename a device (no name clears it)
+                              Rename a device (no name clears it)
   devices deauthorize <deviceId>
-                  Remove a device and free its seat
-  update check    Check for a newer version
-  update apply    Download and install the newer version
+                              Remove a device and free its seat
+  update check                Check for a newer version
+  update apply                Download and install the newer version
 
 #### truecolor-80-light
 Usage: tidewater [options] [command]
 
 Options:
-  -h, --help      display help for command
+  -v, --verbose <level>       Print more while working
+  -h, --help                  display help for command
 
-Build
-  build           Build the project
+Build:
+  build                       Build the project
 
 Commands:
-  export          Export the project
-  import          Import a project
-  help [command]  display help for command
+  export                      Export the project
+  import                      Import a project
+  publish <target> [channel]  Publish the project
+  help [command]              display help for command
 
 License:
-  activate [key]  Add a license key (prompted, or piped on stdin)
-  status          License, devices and offline time
-  deactivate      Stop using your license on this device and free its seat
-  login           Sign in with your account in the browser
-  logout          Sign out on this device
-  devices list    List the devices using your license
+  activate [key]              Add a license key (prompted, or piped on stdin)
+  status                      Show your license, devices and offline time
+  deactivate                  Stop using your license on this device and free
+                              its seat
+  login                       Sign in with your account in the browser
+  logout                      Sign out on this device
+  devices list                List the devices using your license
   devices rename <deviceId> [label...]
-                  Rename a device (no name clears it)
+                              Rename a device (no name clears it)
   devices deauthorize <deviceId>
-                  Remove a device and free its seat
-  update check    Check for a newer version
-  update apply    Download and install the newer version
+                              Remove a device and free its seat
+  update check                Check for a newer version
+  update apply                Download and install the newer version
 
 #### ansi16-80
 Usage: tidewater [options] [command]
 
 Options:
-  -h, --help      display help for command
+  -v, --verbose <level>       Print more while working
+  -h, --help                  display help for command
 
-Build
-  build           Build the project
+Build:
+  build                       Build the project
 
 Commands:
-  export          Export the project
-  import          Import a project
-  help [command]  display help for command
+  export                      Export the project
+  import                      Import a project
+  publish <target> [channel]  Publish the project
+  help [command]              display help for command
 
 License:
-  activate [key]  Add a license key (prompted, or piped on stdin)
-  status          License, devices and offline time
-  deactivate      Stop using your license on this device and free its seat
-  login           Sign in with your account in the browser
-  logout          Sign out on this device
-  devices list    List the devices using your license
+  activate [key]              Add a license key (prompted, or piped on stdin)
+  status                      Show your license, devices and offline time
+  deactivate                  Stop using your license on this device and free
+                              its seat
+  login                       Sign in with your account in the browser
+  logout                      Sign out on this device
+  devices list                List the devices using your license
   devices rename <deviceId> [label...]
-                  Rename a device (no name clears it)
+                              Rename a device (no name clears it)
   devices deauthorize <deviceId>
-                  Remove a device and free its seat
-  update check    Check for a newer version
-  update apply    Download and install the newer version
+                              Remove a device and free its seat
+  update check                Check for a newer version
+  update apply                Download and install the newer version
 
 #### no-color-80
 Usage: tidewater [options] [command]
 
 Options:
-  -h, --help      display help for command
+  -v, --verbose <level>       Print more while working
+  -h, --help                  display help for command
 
-Build
-  build           Build the project
+Build:
+  build                       Build the project
 
 Commands:
-  export          Export the project
-  import          Import a project
-  help [command]  display help for command
+  export                      Export the project
+  import                      Import a project
+  publish <target> [channel]  Publish the project
+  help [command]              display help for command
 
 License:
-  activate [key]  Add a license key (prompted, or piped on stdin)
-  status          License, devices and offline time
-  deactivate      Stop using your license on this device and free its seat
-  login           Sign in with your account in the browser
-  logout          Sign out on this device
-  devices list    List the devices using your license
+  activate [key]              Add a license key (prompted, or piped on stdin)
+  status                      Show your license, devices and offline time
+  deactivate                  Stop using your license on this device and free
+                              its seat
+  login                       Sign in with your account in the browser
+  logout                      Sign out on this device
+  devices list                List the devices using your license
   devices rename <deviceId> [label...]
-                  Rename a device (no name clears it)
+                              Rename a device (no name clears it)
   devices deauthorize <deviceId>
-                  Remove a device and free its seat
-  update check    Check for a newer version
-  update apply    Download and install the newer version
+                              Remove a device and free its seat
+  update check                Check for a newer version
+  update apply                Download and install the newer version
 
 #### ascii-80
 Usage: tidewater [options] [command]
 
 Options:
-  -h, --help      display help for command
+  -v, --verbose <level>       Print more while working
+  -h, --help                  display help for command
 
-Build
-  build           Build the project
+Build:
+  build                       Build the project
 
 Commands:
-  export          Export the project
-  import          Import a project
-  help [command]  display help for command
+  export                      Export the project
+  import                      Import a project
+  publish <target> [channel]  Publish the project
+  help [command]              display help for command
 
 License:
-  activate [key]  Add a license key (prompted, or piped on stdin)
-  status          License, devices and offline time
-  deactivate      Stop using your license on this device and free its seat
-  login           Sign in with your account in the browser
-  logout          Sign out on this device
-  devices list    List the devices using your license
+  activate [key]              Add a license key (prompted, or piped on stdin)
+  status                      Show your license, devices and offline time
+  deactivate                  Stop using your license on this device and free
+                              its seat
+  login                       Sign in with your account in the browser
+  logout                      Sign out on this device
+  devices list                List the devices using your license
   devices rename <deviceId> [label...]
-                  Rename a device (no name clears it)
+                              Rename a device (no name clears it)
   devices deauthorize <deviceId>
-                  Remove a device and free its seat
-  update check    Check for a newer version
-  update apply    Download and install the newer version
+                              Remove a device and free its seat
+  update check                Check for a newer version
+  update apply                Download and install the newer version
 
 #### truecolor-60-dark
 Usage: tidewater [options] [command]
 
 Options:
-  -h, --help      display help for command
+  -v, --verbose <level>       Print more while working
+  -h, --help                  display help for command
 
-Build
-  build           Build the project
+Build:
+  build                       Build the project
 
 Commands:
-  export          Export the project
-  import          Import a project
-  help [command]  display help for command
+  export                      Export the project
+  import                      Import a project
+  publish <target> [channel]  Publish the project
+  help [command]              display help for command
 
 License:
-  activate [key]  Add a license key (prompted, or piped
-                  on stdin)
-  status          License, devices and offline time
-  deactivate      Stop using your license on this device and
-                  free its seat
-  login           Sign in with your account in the browser
-  logout          Sign out on this device
-  devices list    List the devices using your license
+  activate [key]              Add a license key (prompted,
+                              or piped on stdin)
+  status                      Show your license, devices and
+                              offline time
+  deactivate                  Stop using your license on
+                              this device and free its seat
+  login                       Sign in with your account in
+                              the browser
+  logout                      Sign out on this device
+  devices list                List the devices using
+                              your license
   devices rename <deviceId> [label...]
-                  Rename a device (no name clears it)
+                              Rename a device (no name
+                              clears it)
   devices deauthorize <deviceId>
-                  Remove a device and free its seat
-  update check    Check for a newer version
-  update apply    Download and install the newer version
+                              Remove a device and free
+                              its seat
+  update check                Check for a newer version
+  update apply                Download and install the
+                              newer version
 
 #### truecolor-60-light
 Usage: tidewater [options] [command]
 
 Options:
-  -h, --help      display help for command
+  -v, --verbose <level>       Print more while working
+  -h, --help                  display help for command
 
-Build
-  build           Build the project
+Build:
+  build                       Build the project
 
 Commands:
-  export          Export the project
-  import          Import a project
-  help [command]  display help for command
+  export                      Export the project
+  import                      Import a project
+  publish <target> [channel]  Publish the project
+  help [command]              display help for command
 
 License:
-  activate [key]  Add a license key (prompted, or piped
-                  on stdin)
-  status          License, devices and offline time
-  deactivate      Stop using your license on this device and
-                  free its seat
-  login           Sign in with your account in the browser
-  logout          Sign out on this device
-  devices list    List the devices using your license
+  activate [key]              Add a license key (prompted,
+                              or piped on stdin)
+  status                      Show your license, devices and
+                              offline time
+  deactivate                  Stop using your license on
+                              this device and free its seat
+  login                       Sign in with your account in
+                              the browser
+  logout                      Sign out on this device
+  devices list                List the devices using
+                              your license
   devices rename <deviceId> [label...]
-                  Rename a device (no name clears it)
+                              Rename a device (no name
+                              clears it)
   devices deauthorize <deviceId>
-                  Remove a device and free its seat
-  update check    Check for a newer version
-  update apply    Download and install the newer version
+                              Remove a device and free
+                              its seat
+  update check                Check for a newer version
+  update apply                Download and install the
+                              newer version
 
 #### ansi16-60
 Usage: tidewater [options] [command]
 
 Options:
-  -h, --help      display help for command
+  -v, --verbose <level>       Print more while working
+  -h, --help                  display help for command
 
-Build
-  build           Build the project
+Build:
+  build                       Build the project
 
 Commands:
-  export          Export the project
-  import          Import a project
-  help [command]  display help for command
+  export                      Export the project
+  import                      Import a project
+  publish <target> [channel]  Publish the project
+  help [command]              display help for command
 
 License:
-  activate [key]  Add a license key (prompted, or piped
-                  on stdin)
-  status          License, devices and offline time
-  deactivate      Stop using your license on this device and
-                  free its seat
-  login           Sign in with your account in the browser
-  logout          Sign out on this device
-  devices list    List the devices using your license
+  activate [key]              Add a license key (prompted,
+                              or piped on stdin)
+  status                      Show your license, devices and
+                              offline time
+  deactivate                  Stop using your license on
+                              this device and free its seat
+  login                       Sign in with your account in
+                              the browser
+  logout                      Sign out on this device
+  devices list                List the devices using
+                              your license
   devices rename <deviceId> [label...]
-                  Rename a device (no name clears it)
+                              Rename a device (no name
+                              clears it)
   devices deauthorize <deviceId>
-                  Remove a device and free its seat
-  update check    Check for a newer version
-  update apply    Download and install the newer version
+                              Remove a device and free
+                              its seat
+  update check                Check for a newer version
+  update apply                Download and install the
+                              newer version
 
 #### no-color-60
 Usage: tidewater [options] [command]
 
 Options:
-  -h, --help      display help for command
+  -v, --verbose <level>       Print more while working
+  -h, --help                  display help for command
 
-Build
-  build           Build the project
+Build:
+  build                       Build the project
 
 Commands:
-  export          Export the project
-  import          Import a project
-  help [command]  display help for command
+  export                      Export the project
+  import                      Import a project
+  publish <target> [channel]  Publish the project
+  help [command]              display help for command
 
 License:
-  activate [key]  Add a license key (prompted, or piped
-                  on stdin)
-  status          License, devices and offline time
-  deactivate      Stop using your license on this device and
-                  free its seat
-  login           Sign in with your account in the browser
-  logout          Sign out on this device
-  devices list    List the devices using your license
+  activate [key]              Add a license key (prompted,
+                              or piped on stdin)
+  status                      Show your license, devices and
+                              offline time
+  deactivate                  Stop using your license on
+                              this device and free its seat
+  login                       Sign in with your account in
+                              the browser
+  logout                      Sign out on this device
+  devices list                List the devices using
+                              your license
   devices rename <deviceId> [label...]
-                  Rename a device (no name clears it)
+                              Rename a device (no name
+                              clears it)
   devices deauthorize <deviceId>
-                  Remove a device and free its seat
-  update check    Check for a newer version
-  update apply    Download and install the newer version
+                              Remove a device and free
+                              its seat
+  update check                Check for a newer version
+  update apply                Download and install the
+                              newer version
 
 #### ascii-60
 Usage: tidewater [options] [command]
 
 Options:
-  -h, --help      display help for command
+  -v, --verbose <level>       Print more while working
+  -h, --help                  display help for command
 
-Build
-  build           Build the project
+Build:
+  build                       Build the project
 
 Commands:
-  export          Export the project
-  import          Import a project
-  help [command]  display help for command
+  export                      Export the project
+  import                      Import a project
+  publish <target> [channel]  Publish the project
+  help [command]              display help for command
 
 License:
-  activate [key]  Add a license key (prompted, or piped
-                  on stdin)
-  status          License, devices and offline time
-  deactivate      Stop using your license on this device and
-                  free its seat
-  login           Sign in with your account in the browser
-  logout          Sign out on this device
-  devices list    List the devices using your license
+  activate [key]              Add a license key (prompted,
+                              or piped on stdin)
+  status                      Show your license, devices and
+                              offline time
+  deactivate                  Stop using your license on
+                              this device and free its seat
+  login                       Sign in with your account in
+                              the browser
+  logout                      Sign out on this device
+  devices list                List the devices using
+                              your license
   devices rename <deviceId> [label...]
-                  Rename a device (no name clears it)
+                              Rename a device (no name
+                              clears it)
   devices deauthorize <deviceId>
-                  Remove a device and free its seat
-  update check    Check for a newer version
-  update apply    Download and install the newer version
+                              Remove a device and free
+                              its seat
+  update check                Check for a newer version
+  update apply                Download and install the
+                              newer version
+
+#### truecolor-40-dark
+Usage: tidewater [options] [command]
+
+Options:
+  -v, --verbose <level>
+    Print more while working
+  -h, --help
+    display help for command
+
+Build:
+  build
+    Build the project
+
+Commands:
+  export
+    Export the project
+  import
+    Import a project
+  publish <target> [channel]
+    Publish the project
+  help [command]
+    display help for command
+
+License:
+  activate [key]
+    Add a license key (prompted, or
+    piped on stdin)
+  status
+    Show your license, devices and
+    offline time
+  deactivate
+    Stop using your license on this
+    device and free its seat
+  login
+    Sign in with your account in
+    the browser
+  logout
+    Sign out on this device
+  devices list
+    List the devices using your license
+  devices rename <deviceId> [label...]
+    Rename a device (no name clears it)
+  devices deauthorize <deviceId>
+    Remove a device and free its seat
+  update check
+    Check for a newer version
+  update apply
+    Download and install the
+    newer version
+
+#### no-color-40
+Usage: tidewater [options] [command]
+
+Options:
+  -v, --verbose <level>
+    Print more while working
+  -h, --help
+    display help for command
+
+Build:
+  build
+    Build the project
+
+Commands:
+  export
+    Export the project
+  import
+    Import a project
+  publish <target> [channel]
+    Publish the project
+  help [command]
+    display help for command
+
+License:
+  activate [key]
+    Add a license key (prompted, or
+    piped on stdin)
+  status
+    Show your license, devices and
+    offline time
+  deactivate
+    Stop using your license on this
+    device and free its seat
+  login
+    Sign in with your account in
+    the browser
+  logout
+    Sign out on this device
+  devices list
+    List the devices using your license
+  devices rename <deviceId> [label...]
+    Rename a device (no name clears it)
+  devices deauthorize <deviceId>
+    Remove a device and free its seat
+  update check
+    Check for a newer version
+  update apply
+    Download and install the
+    newer version
+
+#### truecolor-32-dark
+Usage: tidewater [options]
+  [command]
+
+Options:
+  -v, --verbose <level>
+    Print more while working
+  -h, --help
+    display help for command
+
+Build:
+  build
+    Build the project
+
+Commands:
+  export
+    Export the project
+  import
+    Import a project
+  publish <target> [channel]
+    Publish the project
+  help [command]
+    display help for command
+
+License:
+  activate [key]
+    Add a license key (prompted,
+    or piped on stdin)
+  status
+    Show your license, devices
+    and offline time
+  deactivate
+    Stop using your license on
+    this device and free
+    its seat
+  login
+    Sign in with your account in
+    the browser
+  logout
+    Sign out on this device
+  devices list
+    List the devices using
+    your license
+  devices rename
+    <deviceId> [label...]
+      Rename a device (no name
+      clears it)
+  devices
+    deauthorize <deviceId>
+      Remove a device and free
+      its seat
+  update check
+    Check for a newer version
+  update apply
+    Download and install the
+    newer version
+
+#### no-color-32
+Usage: tidewater [options]
+  [command]
+
+Options:
+  -v, --verbose <level>
+    Print more while working
+  -h, --help
+    display help for command
+
+Build:
+  build
+    Build the project
+
+Commands:
+  export
+    Export the project
+  import
+    Import a project
+  publish <target> [channel]
+    Publish the project
+  help [command]
+    display help for command
+
+License:
+  activate [key]
+    Add a license key (prompted,
+    or piped on stdin)
+  status
+    Show your license, devices
+    and offline time
+  deactivate
+    Stop using your license on
+    this device and free
+    its seat
+  login
+    Sign in with your account in
+    the browser
+  logout
+    Sign out on this device
+  devices list
+    List the devices using
+    your license
+  devices rename
+    <deviceId> [label...]
+      Rename a device (no name
+      clears it)
+  devices
+    deauthorize <deviceId>
+      Remove a device and free
+      its seat
+  update check
+    Check for a newer version
+  update apply
+    Download and install the
+    newer version

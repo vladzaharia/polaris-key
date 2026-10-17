@@ -2,22 +2,22 @@
 [33m▲[39m  [1mActivate[22m
 [2m│[22m  Enter a license key or sign in to continue.
 [2m│[22m
-[2m│[22m  [1mtidewater activate[22m   [2mUse a license key[22m
-[2m└[22m  [1mtidewater login[22m      [2mSign in[22m
+[2m│[22m  [1mtidewater activate[22m   Use a license key
+[2m└[22m  [1mtidewater login[22m      Sign in
 
 #### truecolor-80-light
 [33m▲[39m  [1mActivate[22m
 [2m│[22m  Enter a license key or sign in to continue.
 [2m│[22m
-[2m│[22m  [1mtidewater activate[22m   [2mUse a license key[22m
-[2m└[22m  [1mtidewater login[22m      [2mSign in[22m
+[2m│[22m  [1mtidewater activate[22m   Use a license key
+[2m└[22m  [1mtidewater login[22m      Sign in
 
 #### ansi16-80
 [33m▲[39m  [1mActivate[22m
 [2m│[22m  Enter a license key or sign in to continue.
 [2m│[22m
-[2m│[22m  [1mtidewater activate[22m   [2mUse a license key[22m
-[2m└[22m  [1mtidewater login[22m      [2mSign in[22m
+[2m│[22m  [1mtidewater activate[22m   Use a license key
+[2m└[22m  [1mtidewater login[22m      Sign in
 
 #### no-color-80
 ▲  [1mActivate[22m
@@ -30,29 +30,29 @@
 [33m![39m  [1mActivate[22m
 [2m|[22m  Enter a license key or sign in to continue.
 [2m|[22m
-[2m|[22m  [1mtidewater activate[22m   [2mUse a license key[22m
-[2m`[22m  [1mtidewater login[22m      [2mSign in[22m
+[2m|[22m  [1mtidewater activate[22m   Use a license key
+[2m`[22m  [1mtidewater login[22m      Sign in
 
 #### truecolor-60-dark
 [33m▲[39m  [1mActivate[22m
 [2m│[22m  Enter a license key or sign in to continue.
 [2m│[22m
-[2m│[22m  [1mtidewater activate[22m   [2mUse a license key[22m
-[2m└[22m  [1mtidewater login[22m      [2mSign in[22m
+[2m│[22m  [1mtidewater activate[22m   Use a license key
+[2m└[22m  [1mtidewater login[22m      Sign in
 
 #### truecolor-60-light
 [33m▲[39m  [1mActivate[22m
 [2m│[22m  Enter a license key or sign in to continue.
 [2m│[22m
-[2m│[22m  [1mtidewater activate[22m   [2mUse a license key[22m
-[2m└[22m  [1mtidewater login[22m      [2mSign in[22m
+[2m│[22m  [1mtidewater activate[22m   Use a license key
+[2m└[22m  [1mtidewater login[22m      Sign in
 
 #### ansi16-60
 [33m▲[39m  [1mActivate[22m
 [2m│[22m  Enter a license key or sign in to continue.
 [2m│[22m
-[2m│[22m  [1mtidewater activate[22m   [2mUse a license key[22m
-[2m└[22m  [1mtidewater login[22m      [2mSign in[22m
+[2m│[22m  [1mtidewater activate[22m   Use a license key
+[2m└[22m  [1mtidewater login[22m      Sign in
 
 #### no-color-60
 ▲  [1mActivate[22m
@@ -65,5 +65,45 @@
 [33m![39m  [1mActivate[22m
 [2m|[22m  Enter a license key or sign in to continue.
 [2m|[22m
-[2m|[22m  [1mtidewater activate[22m   [2mUse a license key[22m
-[2m`[22m  [1mtidewater login[22m      [2mSign in[22m
+[2m|[22m  [1mtidewater activate[22m   Use a license key
+[2m`[22m  [1mtidewater login[22m      Sign in
+
+#### truecolor-40-dark
+[33m▲[39m  [1mActivate[22m
+[2m│[22m  Enter a license key or sign in
+[2m│[22m  to continue.
+[2m│[22m
+[2m│[22m  [1mtidewater activate[22m
+[2m│[22m    Use a license key
+[2m│[22m  [1mtidewater login[22m
+[2m└[22m    Sign in
+
+#### no-color-40
+▲  [1mActivate[22m
+│  Enter a license key or sign in
+│  to continue.
+│
+│  [1mtidewater activate[22m
+│    Use a license key
+│  [1mtidewater login[22m
+└    Sign in
+
+#### truecolor-32-dark
+[33m▲[39m  [1mActivate[22m
+[2m│[22m  Enter a license key or sign
+[2m│[22m  in to continue.
+[2m│[22m
+[2m│[22m  [1mtidewater activate[22m
+[2m│[22m    Use a license key
+[2m│[22m  [1mtidewater login[22m
+[2m└[22m    Sign in
+
+#### no-color-32
+▲  [1mActivate[22m
+│  Enter a license key or sign
+│  in to continue.
+│
+│  [1mtidewater activate[22m
+│    Use a license key
+│  [1mtidewater login[22m
+└    Sign in

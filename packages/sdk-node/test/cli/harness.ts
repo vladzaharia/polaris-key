@@ -19,7 +19,7 @@ export interface Variant {
   id: string;
   color: "truecolor" | "ansi16" | "none";
   ascii: boolean;
-  columns: 80 | 60 | 32;
+  columns: 80 | 60 | 40 | 32;
   scheme: "dark" | "light";
 }
 
@@ -82,6 +82,38 @@ export const VARIANTS: readonly Variant[] = [
     scheme: "dark",
   },
   { id: "ascii-60", color: "ansi16", ascii: true, columns: 60, scheme: "dark" },
+];
+
+/** The narrow renders the host-help and gate scenarios add (`Scenario.narrow`): 40 and 32 columns. */
+export const NARROW_VARIANTS: readonly Variant[] = [
+  {
+    id: "truecolor-40-dark",
+    color: "truecolor",
+    ascii: false,
+    columns: 40,
+    scheme: "dark",
+  },
+  {
+    id: "no-color-40",
+    color: "none",
+    ascii: false,
+    columns: 40,
+    scheme: "dark",
+  },
+  {
+    id: "truecolor-32-dark",
+    color: "truecolor",
+    ascii: false,
+    columns: 32,
+    scheme: "dark",
+  },
+  {
+    id: "no-color-32",
+    color: "none",
+    ascii: false,
+    columns: 32,
+    scheme: "dark",
+  },
 ];
 
 /** 2026-10-05 12:00 UTC: every date and countdown in the goldens is relative to it. */
