@@ -1,4 +1,5 @@
 // @pkey-feature ui.cli.contract
+// @pkey-feature ui.cli.mount
 // The gate beyond the corpus rows (cliMount.test.ts): polarisGate over a commander program, a yargs
 // handler, an explicit client, frame: false, the namespace in the fix line, and the compile check
 // for a project that has commander and not yargs.
