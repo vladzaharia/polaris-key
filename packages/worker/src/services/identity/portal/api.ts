@@ -6,7 +6,11 @@ import {
   PLATFORM_ENV_CONNECTION_ID,
   platformEnvConnection,
 } from "../connections/seed.js";
-import { RELEASE_PLATFORMS, platformFromFileName } from "@polaris-key/manifest";
+import {
+  RELEASE_PLATFORMS,
+  SYSTEM_PRODUCT_SLUG,
+  platformFromFileName,
+} from "@polaris-key/manifest";
 import { licenseAccess } from "../../../core/licensing/anchor.js";
 import { constantTimeEqual } from "../../../platform/compare.js";
 import type { SettingsRegistry } from "../../../core/settings/registry.js";
@@ -43,7 +47,6 @@ import {
   REGISTRY_TOKEN_USERNAME,
   REGISTRY_URL_TOKEN_DEFAULT_DAYS,
   listRegistryTokens,
-  mintRegistryToken,
   revokeRegistryToken,
 } from "../../../core/registry/registryTokens.js";
 import { PACKAGE_ECOSYSTEMS } from "@polaris-key/manifest";
@@ -859,6 +862,42 @@ async function nonPublicFeeds(
   return out;
 }
 
+/** One private feed the account may read, with its product: Account → Packages' setup list. */
+export interface ReadableFeed extends PackageAccessFeed {
+  product: string;
+  productName: string;
+}
+
+/**
+ * The private feeds a person's usable licences reach, one entry per product and ecosystem
+ * (F-33). The system product never appears: a customer's licence there grants nothing
+ * (`personMayRead`). A product whose licences are all unusable is left out.
+ */
+export async function readableFeeds(
+  db: Db,
+  hooksFor: PortalHooksFor | undefined,
+  accountId: string,
+  now: number,
+): Promise<ReadableFeed[]> {
+  const rows = await listPortalLicenses(db, accountId);
+  const seen = new Set<string>();
+  const out: ReadableFeed[] = [];
+  for (const row of rows) {
+    if (seen.has(row.product) || row.product === SYSTEM_PRODUCT_SLUG) continue;
+    if (!licenseUsable(row, now)) continue;
+    seen.add(row.product);
+    const settings = await getPortalProductSettings(db, row.product);
+    if (settings.portal_enabled !== 1) continue;
+    for (const feed of await nonPublicFeeds(db, hooksFor, row.product, now))
+      out.push({
+        ...feed,
+        product: row.product,
+        productName: row.product_name,
+      });
+  }
+  return out;
+}
+
 /**
  * Package access (F-21, plans/F-20.md §6.5, PORTAL.md's "Package access" card): a licensee's own
  * registry tokens for one linked licence.
@@ -866,13 +905,12 @@ async function nonPublicFeeds(
  *   GET    /portal/api/licenses/:product/:licenseId/registry-tokens           the card's state:
  *          `available` (an enabled non-public feed exists), those feeds with their base URLs,
  *          the tokens this account minted for this licence, the username and the limits
- *   POST   …/registry-tokens  {label, ecosystem?, presentation?, expiresInDays?}   mint a
- *          licence-bound read token; the plaintext is in this answer only
+ *   POST   …/registry-tokens   410 `gone` since F-33: the person's one `pkeyp_` token, made in
+ *          Account → Packages (`/api/me/tokens`), reads every feed their licenses reach
  *   DELETE …/registry-tokens/:tokenId                                         revoke one
  *
- * Minting needs the session, the CSRF header (checked for every mutation by the router), a
- * usable linked licence and an available feed; it spends `portalRegistryToken` (per account,
- * fail closed). Audited `portal.registry_token.create` and `.revoke`.
+ * Tokens minted here before F-33 stay listed, honoured and revocable until they expire.
+ * Audited `portal.registry_token.revoke`.
  */
 async function handleRegistryTokens(
   req: Request,
@@ -937,82 +975,14 @@ async function handleRegistryTokens(
       },
     });
   if (req.method !== "POST") return err(405, "method_not_allowed");
-  const stale = portalStepUpGate(session, now);
-  if (stale) return stale;
-  const limited = await requireActionRateLimit(
-    req,
-    env,
-    session,
-    "portalRegistryToken",
-    now,
-    20,
-    product,
-    3600,
+  // F-33: the portal no longer mints licence-bound tokens. One `pkeyp_` token per computer, made
+  // in Account → Packages (`/api/me/tokens`), reads every feed the account's licenses reach.
+  // Tokens already minted here stay listed, honoured and revocable until they expire.
+  return err(
+    410,
+    "gone",
+    "licence tokens are retired: create a personal token in Account → Packages",
   );
-  if (limited) return limited;
-  if (!licenseUsable(license, now))
-    return err(403, ErrorCode.Forbidden, "this licence is not active");
-  if (feeds.length === 0)
-    return err(
-      409,
-      ErrorCode.BadRequest,
-      "this product has no private package feed",
-    );
-  const body = await readBody(req);
-  const presentation = body.presentation === "url" ? "url" : "header";
-  const ecosystem =
-    body.ecosystem === undefined || body.ecosystem === null
-      ? null
-      : body.ecosystem;
-  const offered = feeds.map((f) => f.ecosystem);
-  if (
-    (ecosystem !== null &&
-      (typeof ecosystem !== "string" || !offered.includes(ecosystem))) ||
-    (presentation === "url" && !offered.includes("godot"))
-  )
-    return err(
-      422,
-      ErrorCode.BadRequest,
-      "choose one of the product's private feeds",
-    );
-  const res = await mintRegistryToken(
-    env,
-    db,
-    {
-      product,
-      label: typeof body.label === "string" ? body.label : "",
-      ecosystems: ecosystem === null ? null : [ecosystem as string],
-      ...(typeof body.expiresInDays === "number"
-        ? { expiresInDays: body.expiresInDays }
-        : {}),
-      binding: "license",
-      licenseId,
-      presentation,
-      createdBy: by,
-      portalAccountId: session.accountId,
-    },
-    now,
-  );
-  if (!res.ok)
-    return portalJson(
-      {
-        error: res.status === 404 ? ErrorCode.NotFound : ErrorCode.BadRequest,
-        message: res.message,
-        reason: res.reason,
-        ...(res.fields ? { fields: res.fields } : {}),
-      },
-      res.status,
-    );
-  await portalAudit(db, {
-    accountId: session.accountId,
-    action: "portal.registry_token.create",
-    product,
-    targetKind: "registry_token",
-    targetId: res.view.tokenId,
-    summary: `Created registry token “${res.view.label}” (…${res.view.hint}) for licence ${licenseId}`,
-    now,
-  });
-  return portalJson({ ok: true, token: res.token, view: res.view }, 201);
 }
 
 async function handleDeviceDelete(
@@ -1618,7 +1588,15 @@ async function dispatchPortalApi(
   }
   // F-33: Account → Packages, the person's own `pkeyp_` tokens (`personalTokens.ts`).
   if (segments[0] === "me" && segments[1] === "tokens")
-    return handlePersonalTokens(req, env, db, session, segments.slice(2), now);
+    return handlePersonalTokens(
+      req,
+      env,
+      db,
+      session,
+      segments.slice(2),
+      now,
+      () => readableFeeds(db, hooksFor, session.accountId, now),
+    );
   await syncAccountLicenseLinks(db, session.accountId, now);
 
   const [head, ...rest] = segments;

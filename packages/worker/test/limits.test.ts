@@ -35,6 +35,7 @@ const INTERNAL: Record<string, string[]> = {
     "PERSONAL_TOKEN_MIN_DAYS",
     "PERSONAL_TOKEN_LABEL_MAX",
     "PERSONAL_TOKEN_RETENTION_SECONDS",
+    "ADMIN_TOKEN_LIST_LIMIT",
   ],
   "core/ascProvisioning.ts": [
     "MAX_BUNDLE_PAGES",
