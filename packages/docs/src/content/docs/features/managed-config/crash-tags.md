@@ -1,5 +1,5 @@
 ---
-title: "Crash tags"
+title: "Tag crash reports with the release"
 description: "Tag crash reports with the release, track and install source so a Sentry alert maps to a staged rollout."
 type: "how-to"
 lastReviewed: "2026-10-16"

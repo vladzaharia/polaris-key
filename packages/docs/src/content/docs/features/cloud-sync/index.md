@@ -9,7 +9,7 @@ sidebar:
 
 Cloud Sync (service slug `sync`) keeps what one person chose or made in one product and syncs it across their devices. It holds synced settings, which are the product's `config` keys a person sets, and records in declared collections, such as save slots. A record may carry one file. Together these are Cloud Sync data.
 
-:::note[Nothing syncs yet]
+:::note[Nothing syncs]
 Declarations validate in `pkey validate`, in manifest ingest and in the console's catalog publish. You can turn the service on, and the **Data** page shows what a product declares. The sync routes aren't served: the service has no routes, and discovery names an endpoint only from a release that serves it, so `pull`, `push` and `files` are all `null`. The rest of this page describes the declarations the Worker accepts and the limits they carry.
 :::
 
@@ -63,19 +63,19 @@ A product declares collections in the catalog's `cloudSync` block, authored in `
 
 A collection has a `name` (the key charset `[A-Za-z0-9._:-]`, a trailing `.*` makes a pattern), `label`, `template`, `conflict`, `conflictField`, `schema`, `maxRecords` (at most 10,000), `files` (`maxBytes` up to 1 GiB, `keepRevisions`) and `requires`, an entitlement the person's license must grant. A product declares at most 32 collections. `migrations` apply renames, value maps and drops to synced values when the catalog reaches `toSchemaVersion`. A record is at most 64 KiB.
 
-`template: "saves"` declares 16 save slots per player, which nothing raises. A save holds `playtime`, `progress`, `chapter`, `formatVersion` and a `thumbnail`, plus one file of up to 32 MiB, and the last 5 versions of the file are kept. Two devices' saves of one slot never overwrite each other: the app shows both and the person picks. `template: "session"` is 16 records, last write wins, one 8 MiB file.
+`template: "saves"` declares 16 save slots per player, which nothing raises. A save holds `playtime`, `progress`, `chapter`, `formatVersion` and a `thumbnail`, plus one file of up to 32 MiB, and the last 5 versions of the file are kept. `template: "session"` is 16 records, last write wins, one 8 MiB file.
 
 ## Conflicts
 
-Both stores use one vocabulary, which the server applies.
+You declare a conflict policy per setting and per collection. Both stores use one vocabulary.
 
-| Policy       | Settings                    | Records                                | The server keeps                                    |
-| ------------ | --------------------------- | -------------------------------------- | --------------------------------------------------- |
-| `lastWrite`  | The default                 | Yes                                    | The latest edit                                     |
-| `max`, `min` | A number                    | With a `conflictField` naming a number | The larger or smaller value, a tie keeps the latest |
-| `merge`      | An object, member by member | Field by field                         | Each member's latest edit                           |
-| `union`      | No                          | A list with `uniqueItems`              | Every element added and not removed                 |
-| `revision`   | No                          | The default for records and `saves`    | Both copies: the app asks the person                |
+| Policy       | Settings                    | Records                                | What you declare                         |
+| ------------ | --------------------------- | -------------------------------------- | ---------------------------------------- |
+| `lastWrite`  | The default                 | Yes                                    | Keep the latest edit                     |
+| `max`, `min` | A number                    | With a `conflictField` naming a number | Keep the larger or smaller value         |
+| `merge`      | An object, member by member | Field by field                         | Keep each member's latest edit           |
+| `union`      | No                          | A list with `uniqueItems`              | Keep every element added and not removed |
+| `revision`   | No                          | The default for records and `saves`    | Keep both copies for the person to pick  |
 
 `max` and `min` are not anti-cheat: a device can claim a larger value.
 
@@ -83,7 +83,7 @@ Both stores use one vocabulary, which the server applies.
 
 A person's quota is the entitlement `pkey.cloudSync.bytes`, set by a tier, a license override or an add-on and read from the license of the device that writes. When nothing sets it, the platform default applies: 256 MiB. No quota passes the per-person ceiling of about 1.06 GiB.
 
-The operator controls three settings: the platform default (`cloudSync.quota.defaultBytes`), a product ceiling (`cloudSync.ceiling.bytes`, 50 GiB) and a switch that pauses every write (`cloudSync.writesPaused`). The settings exist and can be edited, but no reader enforces them yet, because nothing syncs. The design is that lowering a quota deletes nothing: a person over it can read, clear and delete, but not add. Pausing deletes nothing either.
+A platform admin controls three settings: the platform default (`cloudSync.quota.defaultBytes`), a product ceiling (`cloudSync.ceiling.bytes`, 50 GiB) and a switch that pauses every write (`cloudSync.writesPaused`). The settings can be edited, and nothing enforces them because nothing syncs.
 
 ## Validation
 

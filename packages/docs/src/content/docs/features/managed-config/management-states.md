@@ -1,6 +1,6 @@
 ---
 title: "Management states"
-description: "How Default, Enforced and Hidden are seeded, merged across layers and resolved on the client."
+description: "How Editable, Read-only and Hidden are seeded, merged across layers and resolved on the client."
 type: "concept"
 lastReviewed: "2026-10-16"
 sidebar:

@@ -13,11 +13,11 @@ A product's catalog is data: one JSON document with a `schemaVersion` and an `en
 
 The console names an entry's **type**. The catalog JSON keeps `kind` and `delivery`, so the served documents and every SDK are unchanged.
 
-| Type (console)   | In the catalog                           | The app reads it with                | Visible in the app                                                                     | Syncs                     |
-| ---------------- | ---------------------------------------- | ------------------------------------ | -------------------------------------------------------------------------------------- | ------------------------- |
-| **Setting**      | `kind: "config"`                         | `config.get` / `config.setting(key)` | Editable, Read-only or Hidden ([In the app](/docs/services/config/management-states/)) | Editable ones, by default |
-| **Secret**       | `kind: "secret"`                         | `getSecret(key)`                     | Never listed; write-only here                                                          | No: the server holds it   |
-| **Minted token** | `kind: "secret"`, `delivery: "edgeMint"` | `mintToken(key)`                     | Never listed                                                                           | No                        |
+| Type (console)   | In the catalog                           | The app reads it with                | Visible in the app                                                                             | Syncs                     |
+| ---------------- | ---------------------------------------- | ------------------------------------ | ---------------------------------------------------------------------------------------------- | ------------------------- |
+| **Setting**      | `kind: "config"`                         | `config.get` / `config.setting(key)` | Editable, Read-only or Hidden ([In the app](/docs/features/managed-config/management-states/)) | Editable ones, by default |
+| **Secret**       | `kind: "secret"`                         | `getSecret(key)`                     | Never listed; write-only here                                                                  | No: the server holds it   |
+| **Minted token** | `kind: "secret"`, `delivery: "edgeMint"` | `mintToken(key)`                     | Never listed                                                                                   | No                        |
 
 A `flag` is the odd one out: an entitlement, owned by Licensing. It has a schema in the catalog like the others, but its resolved value rides the license document's `entitlements` map (read with `isEntitled` and `getEntitlements`), so a config-only product can declare flags yet has no document to deliver them on.
 
