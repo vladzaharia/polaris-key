@@ -158,7 +158,7 @@
     {
       "slug": "commerce",
       "label": "Commerce",
-      "summary": "Storefronts, offers and store purchases that grant licences and add-ons.",
+      "summary": "Storefronts, offers and store purchases that give licenses and add-ons.",
       "defaultEnabled": false,
       "requires": ["license"],
       "legacyModules": [],

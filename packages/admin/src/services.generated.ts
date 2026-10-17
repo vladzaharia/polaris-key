@@ -183,7 +183,7 @@ export const SERVICE_TABLE: readonly ServiceTableRow[] = [
     slug: "commerce",
     label: "Commerce",
     summary:
-      "Storefronts, offers and store purchases that grant licences and add-ons.",
+      "Storefronts, offers and store purchases that give licenses and add-ons.",
     accent: "commerce",
     icon: "ShoppingBag",
     docs: "/docs/services/commerce/",

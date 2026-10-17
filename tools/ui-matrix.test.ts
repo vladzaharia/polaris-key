@@ -177,6 +177,7 @@ describe("ui-matrix.json", () => {
       "config",
       "identity",
       "sync",
+      "commerce",
     ]);
     expect(servicesWithout(S.services, "config")).not.toContain("sync");
     expect(servicesWithout(S.services, "identity")).not.toContain("sync");

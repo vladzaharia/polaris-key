@@ -101,6 +101,7 @@ function services(licenseOn: boolean): ServicesMap {
     update: { enabled: false },
     identity: { enabled: false },
     sync: { enabled: false },
+    commerce: { enabled: false },
   } as ServicesMap;
 }
 
