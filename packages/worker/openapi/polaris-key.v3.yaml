@@ -15789,7 +15789,7 @@ paths:
                       email: { type: string, enum: [sent, queued, failed] }
                       reason:
                         type: string
-                        enum: [no_mail_binding, suppressed, provider_refused]
+                        enum: [no_mail_binding, address_unusable, suppressed, daily_cap, provider_refused]
                         description: "Present when `email` is `failed`."
                   key:
                     {
@@ -16404,7 +16404,7 @@ paths:
                       email: { type: string, enum: [sent, queued, failed] }
                       reason:
                         type: string
-                        enum: [no_mail_binding, suppressed, provider_refused]
+                        enum: [no_mail_binding, address_unusable, suppressed, daily_cap, provider_refused]
                         description: "Present when `email` is `failed`."
                   revoked: { type: integer, description: "Other keys revoked." }
         "400":
@@ -16413,7 +16413,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
         "409":
-          description: "Refused before a key is minted: the licence is disabled or expired (`reason: license_not_active`), mail is not set up (`no_mail_binding`) or the address cannot receive our mail (`suppressed`)."
+          description: "Refused before a key is minted: the licence is disabled (`reason: license_not_active`) or expired (`license_expired`, with `expiresAt`), mail is not set up (`no_mail_binding`), the address is unusable (`address_unusable`) or cannot receive our mail (`suppressed`), or the product's daily email cap is spent (`daily_cap`)."
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }

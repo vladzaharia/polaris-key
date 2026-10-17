@@ -190,3 +190,11 @@ Not done (follow-ups): the Identity-default **invitation** (sign-in link, no key
 optional) from the 2026-10-07 consolidation section, and the "From <developer>" library notice for an
 association at first email verification (LX-26 N1). Both belong with the wizard (LX-29) and
 `onAccountEmailVerified`.
+
+## Polish after the UX re-review (LX-27b, 2026-10-17)
+
+N1-N10 of `_mockups/review/LX-27/ux-review-2.md`:
+
+- Worker: send-key answers 409 `license_expired` for an expired licence (the console hides the item too). `delivered.reason` and the 409 `reason` gain `address_unusable` (bad address, unregistered Apple relay) and `daily_cap`; `no_mail_binding` also covers a missing sender. All four are refused before a key is minted, and `emailLicenseKey` checks them first. The cap is read with a new `peek` mode of the rate-limit counter (no charge). Only `provider_refused` offers Try again.
+- Console: refusal copy per reason, 429 as a warning from `retryAfter`, "No key was made" on 409 and 429 only, one "failed" in the result, Send key off after a permanent 409 with a "Mint key…" button, Copy details stacked.
+- Email: `<wbr>` after each `_`, `overflow-wrap:anywhere`, 14 px key below 480 px.

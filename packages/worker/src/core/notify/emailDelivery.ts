@@ -243,6 +243,31 @@ function providerCode(err: unknown): string | null {
   return typeof code === "string" ? code : null;
 }
 
+/**
+ * Whether the product may send one more passthrough email today. Counts the call; with `peek`
+ * it only reads (a console check before minting a key it could not email).
+ */
+export async function productEmailCapOk(
+  env: Env,
+  db: Db,
+  product: string,
+  now: number,
+  peek = false,
+): Promise<boolean> {
+  return rateLimitOk(
+    env,
+    product,
+    {
+      bucket: "emailSendProductDay",
+      id: product,
+      limit: await productDailyEmailCap(env, db, product),
+      windowSec: DAY,
+    },
+    now,
+    peek,
+  );
+}
+
 /** Send one message through every I-18 control; see the header comment for the order. */
 export async function deliverEmail(
   env: Env,
@@ -277,19 +302,8 @@ export async function deliverEmail(
   }
 
   if (msg.sender.kind === "passthrough") {
-    const product = msg.sender.product;
-    const allowed = await rateLimitOk(
-      env,
-      product,
-      {
-        bucket: "emailSendProductDay",
-        id: product,
-        limit: await productDailyEmailCap(env, db, product),
-        windowSec: DAY,
-      },
-      now,
-    );
-    if (!allowed) return unavailable;
+    if (!(await productEmailCapOk(env, db, msg.sender.product, now)))
+      return unavailable;
   }
 
   try {
