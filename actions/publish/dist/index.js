@@ -45499,6 +45499,10 @@ ${setup.start.code}
 ${SDK_CONFIG_USAGE}`
     );
   const expect = add5 ? parseExpect(flagString(parsed, "expect")) : null;
+  if (!add5 && flagString(parsed, "expect") !== void 0)
+    throw new Error(
+      "--expect is only for pkey sdk add <lang>; it checks the served pins before writing."
+    );
   let local = null;
   try {
     const m = descriptorManifestOf(await loadManifest(cwd));

@@ -447,6 +447,18 @@ describe("pkey sdk add (D30: no trust on first use)", () => {
     expect(
       await run(["sdk", "add", "node", "--product", "acme", "--expect", "kid"]),
     ).toContain("<kid>@sha256:");
+    // Outside `add` nothing checks the pins, so --expect there is refused rather than ignored.
+    expect(
+      await run([
+        "sdk",
+        "--lang",
+        "node",
+        "--product",
+        "acme",
+        "--expect",
+        expectArg,
+      ]),
+    ).toContain("--expect is only for pkey sdk add");
   });
 });
 

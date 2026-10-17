@@ -39,8 +39,8 @@ interface Installed {
 
 const installed = new WeakMap<Request, Installed>();
 
-/** Authenticate the request and set `c.var.polaris`. On Workers the trust refresh runs through
- *  `waitUntil` automatically. */
+/** Authenticate the request and set `c.var.polaris`. On Workers, pass `waitUntil` in the options
+ *  so the trust refresh outlives the response; nothing wires it automatically. */
 export function polarisKey(
   options: PolarisKeyHonoOptions,
 ): MiddlewareHandler<PolarisEnv> {
