@@ -18,6 +18,8 @@ export interface WizardFooter {
   skipLoading?: boolean;
   /** Back one step. Absent on the first step. */
   onBack?: () => void;
+  /** Back stays in place but does nothing (a request is running). */
+  backDisabled?: boolean;
   /**
    * The one filled primary of the step; its label names the action, not "Next". Absent when the
    * step's own typed action is the action (Submit): the footer then has Do this later and Back only.
@@ -53,6 +55,12 @@ export interface WizardProps {
   footer: WizardFooter;
   /** Focus the step's heading on first render too (the page just routed into the flow). */
   focusOnMount?: boolean;
+  /**
+   * The wizard's result: the last step is the answer, not a step. The heading drops "Step n of m",
+   * the stepper shows every step done, and `titleIcon` leads the heading.
+   */
+  result?: boolean;
+  titleIcon?: React.ReactNode;
   /** Centre the page host in a 960 px column (default). */
   centered?: boolean;
   /** The drawer host's open state and title. */
@@ -65,6 +73,8 @@ export interface WizardProps {
     discard?: DiscardWords;
     /** False while busy, or while a one-time value must be kept first. */
     dismissible?: boolean;
+    /** A line above the drawer's title ("DJDL · Licenses"). */
+    eyebrow?: React.ReactNode;
   };
   className?: string;
 }
@@ -95,6 +105,8 @@ export function Wizard({
   footer,
   centered = true,
   focusOnMount = false,
+  result = false,
+  titleIcon,
   drawer,
   className,
 }: WizardProps): React.ReactElement {
@@ -110,7 +122,11 @@ export function Wizard({
     const skipFocus = first.current && !focusOnMount;
     first.current = false;
     // The live line says where the operator is: "Add to storefronts, step 2 of 7, Check the prerequisites".
-    setAnnounced(`${label}, step ${index + 1} of ${steps.length}, ${title}`);
+    setAnnounced(
+      result
+        ? `${label}, ${title}`
+        : `${label}, step ${index + 1} of ${steps.length}, ${title}`,
+    );
     if (!skipFocus) headingRef.current?.focus();
     // Only a change of step moves focus.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -128,8 +144,13 @@ export function Wizard({
           tabIndex={-1}
           className="text-lg font-semibold text-fg-strong outline-none"
         >
-          {isDrawer ? (
-            <span className="font-normal text-fg-muted">
+          {titleIcon ? (
+            <span className="mr-2 inline-flex align-text-bottom">
+              {titleIcon}
+            </span>
+          ) : null}
+          {isDrawer && !result ? (
+            <span className="font-normal text-fg-muted max-sm:sr-only">
               Step {index + 1} of {steps.length} ·{" "}
             </span>
           ) : null}
@@ -146,7 +167,9 @@ export function Wizard({
 
   const footRow = (
     <>
-      {footer.later}
+      {footer.later ? (
+        <div className={cn(isDrawer && "max-sm:order-1")}>{footer.later}</div>
+      ) : null}
       {footer.onSkip ? (
         <Button
           variant="ghost"
@@ -162,20 +185,38 @@ export function Wizard({
           {footer.reason}
         </span>
       ) : null}
-      <div className="ml-auto flex flex-wrap items-center gap-2">
+      <div
+        className={cn(
+          "ml-auto flex flex-wrap items-center gap-2",
+          isDrawer && "max-sm:contents",
+        )}
+      >
         {footer.onBack ? (
-          <Button variant="outline" onClick={footer.onBack}>
+          <Button
+            variant="outline"
+            className={cn(isDrawer && "max-sm:order-2 max-sm:ml-auto")}
+            disabled={footer.backDisabled}
+            onClick={footer.onBack}
+          >
             <ArrowLeft aria-hidden />
             Back
           </Button>
         ) : null}
         {React.isValidElement<{ "aria-describedby"?: string }>(footer.primary)
-          ? React.cloneElement(footer.primary, {
-              "aria-describedby":
-                [footer.primary.props["aria-describedby"], reasonId]
-                  .filter((x) => x && footer.reason)
-                  .join(" ") || undefined,
-            })
+          ? React.cloneElement(
+              footer.primary as React.ReactElement<Record<string, unknown>>,
+              {
+                className: cn(
+                  (footer.primary.props as { className?: string }).className,
+                  isDrawer &&
+                    "max-sm:order-3 max-sm:w-full min-w-0 max-w-full whitespace-normal",
+                ),
+                "aria-describedby":
+                  [footer.primary.props["aria-describedby"], reasonId]
+                    .filter((x) => x && footer.reason)
+                    .join(" ") || undefined,
+              },
+            )
           : footer.primary}
       </div>
     </>
@@ -196,6 +237,8 @@ export function Wizard({
         unsaved={drawer.unsaved}
         discard={drawer.discard}
         dismissible={drawer.dismissible}
+        eyebrow={drawer.eyebrow}
+        closeStyle="close"
       >
         <DrawerBody className={className} data-wizard="drawer">
           <div className="space-y-4">
@@ -203,8 +246,8 @@ export function Wizard({
               variant="segments"
               label={label}
               steps={steps}
-              current={current}
-              done={done}
+              current={result ? "" : current}
+              done={result ? steps.map((s) => s.id) : done}
               skipped={skipped}
               unmet={unmet}
               visited={visited}

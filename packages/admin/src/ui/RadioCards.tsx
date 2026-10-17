@@ -89,9 +89,9 @@ export function RadioCards<V extends string = string>({
           >
             <span
               aria-hidden
-              className="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border border-border-strong transition-colors duration-(--pk-duration-micro) ease-standard group-data-[state=checked]:border-accent"
+              className="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border border-border-strong forced-colors:border-[ButtonText] transition-colors duration-(--pk-duration-micro) ease-standard group-data-[state=checked]:border-accent"
             >
-              <span className="size-2 scale-50 rounded-full bg-accent opacity-0 transition-[opacity,scale] duration-(--pk-duration-micro) ease-standard group-data-[state=checked]:scale-100 group-data-[state=checked]:opacity-100" />
+              <span className="size-2 scale-50 rounded-full bg-accent forced-color-adjust-none forced-colors:bg-[Highlight] opacity-0 transition-[opacity,scale] duration-(--pk-duration-micro) ease-standard group-data-[state=checked]:scale-100 group-data-[state=checked]:opacity-100" />
             </span>
             <span className="min-w-0">
               <span className="flex items-center gap-1.5 text-sm font-medium text-fg-strong">

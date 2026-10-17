@@ -26,9 +26,13 @@ async function createOne(name: string): Promise<HTMLElement> {
   await userEvent.type(within(dialog).getByLabelText(/^Email/), "a@x.io");
   await next();
   await next();
+  // Show it once: this screen holds the only copy, so everything waits for it.
+  await userEvent.click(
+    within(dialog).getByRole("radio", { name: /^Show it once/ }),
+  );
   await next();
   await userEvent.click(
-    within(dialog).getByRole("button", { name: "Create and email license" }),
+    within(dialog).getByRole("button", { name: "Create license" }),
   );
   await within(dialog).findByText("PK-NEWKEY-ONESHOT");
   return dialog;

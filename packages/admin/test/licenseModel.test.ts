@@ -198,7 +198,7 @@ describe("license bodies", () => {
   it("makes a floating key or a labelled batch, and a batch needs a tier", () => {
     const anyone = { ...NEW_EMPTY, who: "anyone" as const };
     expect(createBody(anyone)).toEqual({ expiresAt: null });
-    expect(deliveriesFor(anyone)).toEqual(["show", "csv"]);
+    expect(deliveriesFor(anyone)).toEqual(["show"]);
     const many = { ...anyone, count: 50, label: " Steam, Oct " };
     expect(deliveriesFor(many)).toEqual(["csv"]);
     expect(deliveryOf({ ...many, delivery: "show" })).toBe("csv");

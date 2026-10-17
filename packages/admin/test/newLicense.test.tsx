@@ -72,7 +72,7 @@ describe("New license wizard", () => {
   it("opens in the URL on the first step, and Escape asks before dropping a draft (C-17)", async () => {
     const { dialog } = await open();
     expect(window.location.hash).toContain("setup=new-license&step=tier");
-    expect(heading(dialog).textContent).toContain("Step 1 of 6");
+    expect(heading(dialog).textContent).toContain("Step 1 of 5");
     await choose(dialog, /^Pro/);
     await press(dialog, "Continue");
     await waitFor(() =>
@@ -151,8 +151,7 @@ describe("New license wizard", () => {
     ).toHaveProperty("ariaChecked", "true");
     expect(within(dialog).getByLabelText("Email preview")).toBeTruthy();
     await press(dialog, "Continue");
-    const review = within(dialog).getByText("g@x.io · Grace");
-    expect(review).toBeTruthy();
+    expect(within(dialog).getByText("Grace")).toBeTruthy();
     await press(dialog, "Create and email license");
     expect(await within(dialog).findByText("PK-NEWKEY-ONESHOT")).toBeTruthy();
     expect(GOT(log, "/license/licenses")[0]!.body).toEqual({
@@ -166,12 +165,15 @@ describe("New license wizard", () => {
     await waitFor(() =>
       expect(heading(dialog).textContent).toContain("License created"),
     );
-    expect(within(dialog).getByText("Shown once. Copy it now.")).toBeTruthy();
+    expect(
+      within(dialog).getByText("Shown once. It is in their email too."),
+    ).toBeTruthy();
     expect(within(dialog).getAllByText(/shown once/i)).toHaveLength(1);
-    // Ways out wait for the key to be stored.
-    const open_ = primary(dialog, "Open license");
-    expect(open_.getAttribute("aria-disabled")).toBe("true");
-    await userEvent.click(within(dialog).getByLabelText(/I've stored it/));
+    // The email went out: the key is a courtesy, nothing waits and nothing asks.
+    expect(within(dialog).queryByLabelText(/I've stored it/)).toBeNull();
+    expect(
+      primary(dialog, "Open license").getAttribute("aria-disabled"),
+    ).toBeNull();
     await userEvent.click(primary(dialog, "Open license"));
     await waitFor(() =>
       expect(window.location.hash).toBe("#/p/djdl/license/licenses/lic_new"),
@@ -201,9 +203,11 @@ describe("New license wizard", () => {
     expect(
       within(dialog).getByText(/The email provider didn't accept it/),
     ).toBeTruthy();
-    expect(primary(dialog, "Try again").getAttribute("aria-disabled")).toBe(
-      "true",
-    );
+    expect(primary(dialog, "Try again")).toHaveProperty("disabled", true);
+    expect(
+      within(dialog).getByText("Tick “I've stored it” first."),
+    ).toBeTruthy();
+    expect(primary(dialog, "Done").getAttribute("aria-disabled")).toBe("true");
     await userEvent.click(within(dialog).getByLabelText(/I've stored it/));
     await userEvent.click(primary(dialog, "Try again"));
     await waitFor(() => expect(GOT(log, "/send-key")).toHaveLength(1));
@@ -212,21 +216,27 @@ describe("New license wizard", () => {
     );
   });
 
-  it("creates one floating key without an email and shows it once", async () => {
+  it("creates one floating key without an email, skipping Delivery, and shows it once", async () => {
     const { log, dialog } = await open();
     await choose(dialog, /^Pro/);
     await press(dialog, "Continue");
     await choose(dialog, /Anyone with the key/);
-    await press(dialog, "Continue");
-    await press(dialog, "Continue");
     expect(
       within(dialog).getByText(/Floating keys aren't emailed/),
     ).toBeTruthy();
-    await choose(dialog, /^Show it once/);
     await press(dialog, "Continue");
+    await press(dialog, "Continue");
+    // Delivery had one answer, so Review is next, and says how the key comes.
+    await within(dialog).findByText("Polaris Key will");
+    expect(within(dialog).getByText("Show it once")).toBeTruthy();
+    expect(
+      within(dialog).queryByRole("button", { name: "Change delivery" }),
+    ).toBeNull();
     await press(dialog, "Create license");
     await within(dialog).findByText("PK-NEWKEY-ONESHOT");
     expect(GOT(log, "/license/licenses")[0]!.body).toEqual({ tier: "pro" });
+    // Show it once: this screen holds the only copy, so leaving waits.
+    expect(primary(dialog, "Done").getAttribute("aria-disabled")).toBe("true");
   });
 
   it("creates a labelled batch, offers the CSV, and will not close until it is kept", async () => {
@@ -263,8 +273,7 @@ describe("New license wizard", () => {
     );
     await press(dialog, "Continue");
     await press(dialog, "Continue");
-    expect(within(dialog).getByText(/shown once, as a file/i)).toBeTruthy();
-    await press(dialog, "Continue");
+    expect(within(dialog).getByText("Download a CSV")).toBeTruthy();
     await press(dialog, "Create 2 keys");
     await waitFor(() =>
       expect(heading(dialog).textContent).toContain("2 keys created"),
@@ -274,13 +283,21 @@ describe("New license wizard", () => {
       count: 2,
       tier: "pro",
     });
-    // No Close, Escape does nothing, and every way out waits.
-    expect(within(dialog).queryByRole("button", { name: "Close" })).toBeNull();
+    // One primary until something is kept; Escape asks, in place, before the keys are lost.
+    expect(within(dialog).getByText("These keys are shown once")).toBeTruthy();
     fireEvent.keyDown(dialog, { key: "Escape" });
-    expect(screen.getByRole("dialog", { name: "New license" })).toBeTruthy();
+    expect((await within(dialog).findByRole("alert")).textContent).toContain(
+      "The 2 keys can't be shown again",
+    );
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Keep it open" }),
+    );
     expect(primary(dialog, "Done").getAttribute("aria-disabled")).toBe("true");
     expect(
       within(dialog).getByRole("button", { name: "Download CSV" }),
+    ).toBeTruthy();
+    expect(
+      within(dialog).getByRole("button", { name: "Copy all keys" }),
     ).toBeTruthy();
     await userEvent.click(within(dialog).getByLabelText(/I've stored them/));
     await userEvent.click(primary(dialog, "Open batch"));
@@ -328,7 +345,7 @@ describe("New license wizard", () => {
     await toReview(dialog);
     await press(dialog, "Create and email license");
     expect(
-      await within(dialog).findByText("The license wasn't created"),
+      await within(dialog).findByText("Nothing was created. Try again."),
     ).toBeTruthy();
     expect(heading(dialog).textContent).toContain("Review");
     expect(within(dialog).getByText("grace@x.io")).toBeTruthy();
@@ -369,11 +386,90 @@ describe("New license wizard", () => {
     expect(await within(dialog).findByText("Couldn't load tiers")).toBeTruthy();
   });
 
+  it("preselects the first tier, so a batch never dead-ends on a missing one (F1)", async () => {
+    const { dialog } = await open();
+    expect(within(dialog).getByRole("radio", { name: /^Pro/ })).toHaveProperty(
+      "ariaChecked",
+      "true",
+    );
+    await choose(dialog, /^No tier/);
+    await press(dialog, "Continue");
+    await press(dialog, "Back");
+    // "No tier" on purpose stays chosen.
+    expect(
+      within(dialog).getByRole("radio", { name: /^No tier/ }),
+    ).toHaveProperty("ariaChecked", "true");
+  });
+
+  it("Change returns to Review with one press, and the header control is Close (F9, F10)", async () => {
+    const { dialog } = await open();
+    await toReview(dialog);
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Change who it's for" }),
+    );
+    await userEvent.clear(within(dialog).getByLabelText(/^Email/));
+    await userEvent.type(within(dialog).getByLabelText(/^Email/), "new@x.io");
+    await press(dialog, "Back to review");
+    await within(dialog).findByText("Polaris Key will");
+    expect(within(dialog).getAllByText(/new@x\.io/).length).toBeGreaterThan(0);
+    expect(
+      within(dialog).queryByRole("button", { name: "Back" }),
+    ).not.toBeNull();
+    expect(
+      within(dialog).getAllByRole("button", { name: "Close" }),
+    ).toHaveLength(1);
+  });
+
+  it("a refused value goes back to its own step, in words (F13)", async () => {
+    const { dialog } = await open({
+      [`POST ${API}/license/licenses`]: new Response(
+        JSON.stringify({ error: "bad_request", fields: ["maxVersion"] }),
+        { status: 422, headers: { "content-type": "application/json" } },
+      ),
+    });
+    await toReview(dialog);
+    await press(dialog, "Create and email license");
+    await waitFor(() =>
+      expect(heading(dialog).textContent).toContain("Limits"),
+    );
+    expect(
+      within(dialog).getByText(
+        "This value isn't accepted. Check it and try again.",
+      ),
+    ).toBeTruthy();
+  });
+
+  it("a deep link to Review with an empty draft lands on its first invalid step (F14)", async () => {
+    bootLicense("#/p/djdl/license/licenses?setup=new-license&step=review");
+    const dialog = await screen.findByRole("dialog", { name: "New license" });
+    await waitFor(() => expect(window.location.hash).toContain("step=holder"));
+    expect(within(dialog).getByLabelText(/^Email/)).toBeTruthy();
+  });
+
+  it("focus goes to the page title when the opener is gone (F7)", async () => {
+    bootLicense("#/p/djdl/license/licenses?setup=new-license&step=tier");
+    const dialog = await screen.findByRole("dialog", { name: "New license" });
+    await within(dialog).findByRole("radio", { name: /Pro/ });
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Cancel" }),
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog", { name: "New license" })).toBeNull(),
+    );
+    await waitFor(() => expect(document.activeElement?.tagName).toBe("H1"));
+  });
+
   it("passes axe on its steps", async () => {
     const { dialog } = await open();
     expect((await axe(document.body)).violations.map((v) => v.id)).toEqual([]);
     await choose(dialog, /^Pro/);
     await press(dialog, "Continue");
+    expect((await axe(document.body)).violations.map((v) => v.id)).toEqual([]);
+    await userEvent.type(within(dialog).getByLabelText(/^Email/), "g@x.io");
+    await press(dialog, "Continue");
+    await press(dialog, "Continue");
+    await press(dialog, "Continue");
+    await within(dialog).findByText("Polaris Key will");
     expect((await axe(document.body)).violations.map((v) => v.id)).toEqual([]);
   });
 });

@@ -23,6 +23,14 @@
  * HTML escaping is `renderEmail`'s job and still applies on top.
  */
 
+import {
+  KEY_EMAIL_AFTER,
+  KEY_FOOTERS,
+  keyEmailIntro,
+  keyEmailPrimaryLabel,
+  keyEmailSubject,
+  type KeyEmailContext,
+} from "./keyEmailCopy.js";
 import { platformLabel } from "@polaris-key/manifest";
 import { renderEmail, emailAssetOrigin, type EmailContent } from "./render.js";
 
@@ -214,15 +222,7 @@ export function downloadLinkEmail(input: {
 }
 
 /** Why the key email was sent: it picks the footer, which must be true for each path. */
-export type KeyEmailContext = "created" | "sent" | "assigned";
-
-const KEY_FOOTERS: Record<KeyEmailContext, string> = {
-  created:
-    "You are receiving this because a license was created for this address.",
-  sent: "You are receiving this because a new key was sent for your license.",
-  assigned:
-    "You are receiving this because a license was assigned to this address.",
-};
+export type { KeyEmailContext };
 
 /**
  * LX-27 (S-24 §8.4, D11/D12): the key an operator emailed to a licence's holder, sent as
@@ -246,20 +246,15 @@ export function licenseKeyEmail(input: {
 }): NoticeMessage {
   const name = displayValue(input.productName, "");
   const holder = displayValue(input.holderName, "");
-  const subject = name ? `Your ${name} license` : "Your license";
+  const subject = keyEmailSubject(name);
   const footer = KEY_FOOTERS[input.context ?? "created"];
-  const intro = [
-    ...(holder ? [`Hi ${holder},`] : []),
-    "Here is your license key.",
-  ];
-  const after = [
-    "Enter it in the app to activate. Keep it private: anyone with the key can use it.",
-  ];
+  const intro = keyEmailIntro(holder);
+  const after = [KEY_EMAIL_AFTER];
   const primary = input.downloadUrl
-    ? { label: "Download", url: input.downloadUrl }
-    : { label: "Open in Polaris Key", url: input.signInUrl };
+    ? { label: keyEmailPrimaryLabel(true), url: input.downloadUrl }
+    : { label: keyEmailPrimaryLabel(false), url: input.signInUrl };
   const secondary = input.downloadUrl
-    ? { label: "Open in Polaris Key", url: input.signInUrl }
+    ? { label: keyEmailPrimaryLabel(false), url: input.signInUrl }
     : undefined;
   const text = [
     ...(name ? [name] : []),

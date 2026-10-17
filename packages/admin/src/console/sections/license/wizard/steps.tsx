@@ -74,12 +74,13 @@ export function TierStep({
   error: unknown;
   onRetry: () => void;
 }): React.ReactElement {
-  if (error)
-    return <InlineFailure what="tiers" error={error} onRetry={onRetry} />;
   if (loading) return <p className="text-sm text-fg-muted">Loading tiers…</p>;
   return (
     <div className="space-y-3">
-      {tiers.length === 0 ? (
+      {error ? (
+        <InlineFailure what="tiers" error={error} onRetry={onRetry} />
+      ) : null}
+      {tiers.length === 0 && !error ? (
         <Callout tone="info" title="No tiers yet">
           A tier sets a device limit, a term and channels once, for every
           license on it.{" "}
@@ -91,8 +92,13 @@ export function TierStep({
       <ChoiceStep
         legend="Tier"
         columns={1}
-        value={draft.tier ?? NO_TIER}
-        onChange={(v) => set("tier", v === NO_TIER ? null : v)}
+        value={
+          draft.tier ?? (draft.noTier || tiers.length === 0 ? NO_TIER : null)
+        }
+        onChange={(v) => {
+          set("tier", v === NO_TIER ? null : v);
+          set("noTier", v === NO_TIER);
+        }}
         choices={[
           ...tiers.map((t) => ({
             value: t.id,
@@ -176,13 +182,17 @@ export function HolderStep({
         </div>
       ) : (
         <div className="space-y-4">
+          <p className="text-sm text-fg-muted">
+            Floating keys aren&apos;t emailed: there&apos;s nobody to send them
+            to.
+          </p>
           <div data-create-field="count">
             <FormField
               name="count"
               label="How many keys"
               value={draft.count}
               onChange={(v: number | null) => set("count", v)}
-              error={errors.count}
+              error={errors.count ?? errors.tier}
               announceError
               help={`1 to ${MAX_BATCH}.`}
             >
@@ -206,7 +216,7 @@ export function HolderStep({
                 required
                 value={draft.label}
                 onChange={(v: string) => set("label", v)}
-                error={errors.label ?? errors.tier}
+                error={errors.label}
                 announceError
                 help="Names the batch in the list, e.g. Steam keys, October."
               >
@@ -294,7 +304,7 @@ export function LimitsStep({
             ? `${tierTerm} days from today`
             : "Never",
     source: expiryMode === "tier" ? ("tier" as const) : ("license" as const),
-    from: expiryMode === "tier" ? `tier “${tierName(tier)}”` : "this license",
+    from: expiryMode === "tier" ? `from ${tierName(tier)}` : "this license",
   };
   const moreErrors = Boolean(errors.minVersion || errors.maxVersion);
 
@@ -311,6 +321,7 @@ export function LimitsStep({
           {(f) => (
             <SegmentedControl
               {...f}
+              wrap
               options={[
                 {
                   value: "inherit",
@@ -356,7 +367,7 @@ export function LimitsStep({
           value={expiryMode}
           onChange={(v: ExpiryMode) => set("expiryMode", v)}
         >
-          {(f) => <SegmentedControl {...f} options={expiryOptions} />}
+          {(f) => <SegmentedControl {...f} wrap options={expiryOptions} />}
         </FormField>
         {expiryMode === "date" ? (
           <FormField
@@ -378,7 +389,7 @@ export function LimitsStep({
           name="maxOfflineDays"
           label="Offline days"
           optional
-          help={`How long a device works without reaching Polaris Key. Blank: the product's ${product?.defaultMaxOfflineDays ?? "—"} days.`}
+          help="How long a device works without reaching Polaris Key. Blank: the product's."
           value={draft.maxOfflineDays}
           onChange={(v: number | null) => set("maxOfflineDays", v)}
           error={errors.maxOfflineDays}
@@ -390,6 +401,7 @@ export function LimitsStep({
               nullable
               integer
               unit="days"
+              placeholder={`${product?.defaultMaxOfflineDays ?? "—"} · product default`}
               className="sm:max-w-48"
             />
           )}

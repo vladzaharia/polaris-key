@@ -192,3 +192,19 @@ Not done (follow-ups):
 - The auto-link-off line under Email (needs the product's resolved auto-link setting in the create context).
 - The mockup frames (docs/design/licenses/\_src) still show five steps without Done-as-step and without
   "Key not emailed" / "Assign and email key"; LX-31 or a design pass updates them.
+
+## Fix round after the UX review (2026-10-17)
+
+`_mockups/review/LX-29/ux-review.md`; every finding is addressed except as noted.
+
+- **Partial batch?** No. `POST …/license/batches` writes the batch row, every licence, every key and the
+  audit row in one `db.batch` (`batches.ts`): it all commits or none does, so there is no partial-batch state
+  to build. The one gap is a lost response after commit (keys made, never seen); the batch is then in the list
+  and its keys cannot be shown again (the Worker keeps only hashes).
+- Done is the result, not a step: the stepper shows the five steps all done, the heading is a check, the title
+  and "Pro · 3 devices · for Lena Ortiz". Only a screen holding the only copy gates leaving (Show it once, a
+  failed email, a batch); an email that went out leaves Done free and the key optional.
+- A single floating key and a batch have one way to get the keys, so Delivery is skipped for both
+  ("Download a CSV" for one key is gone).
+- The email preview is built from `core/notify/keyEmailCopy.ts`, the template's own strings (pure, shared by
+  `templates.ts` and the console).

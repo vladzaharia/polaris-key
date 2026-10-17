@@ -224,7 +224,7 @@ describe("New license (C-17)", () => {
         await dialog.getByRole("radio", { name: /Standard/ }).waitFor();
         await page.waitForTimeout(200);
         expect(
-          await dialog.locator("h2", { hasText: "Step 1 of 6" }).count(),
+          await dialog.locator("h2", { hasText: "Step 1 of 5" }).count(),
         ).toBe(1);
         await shot(page, `new-license-tier-${theme}-${width}`);
         await dialog.getByRole("radio", { name: /Standard/ }).click();
@@ -234,7 +234,7 @@ describe("New license (C-17)", () => {
           .first()
           .waitFor();
         await page.waitForTimeout(150);
-        expect(await focused(page)).toMatch(/^h2:Step 2 of 6/);
+        expect(await focused(page)).toMatch(/^h2:Step 2 of 5/);
         await dialog.getByLabel(/^Email/).fill("grace@example.com");
         await shot(page, `new-license-holder-${theme}-${width}`);
 
@@ -261,13 +261,13 @@ describe("New license (C-17)", () => {
           .click();
         await page.getByText("PK-7Q2M-9XKD-4HRW-C3VA").waitFor();
         await page.waitForTimeout(150);
-        expect(await focused(page)).toMatch(/^h2:Step 6 of 6/);
+        expect(await focused(page)).toMatch(/^h2:License created/);
         expect(
           await page
             .getByRole("dialog")
             .getByText(/shown once/i)
             .allInnerTexts(),
-        ).toEqual(["Shown once. Copy it now."]);
+        ).toEqual(["Shown once. It is in their email too."]);
         await shot(page, `new-license-result-${theme}-${width}`);
         expect(await violations(page)).toEqual([]);
         expect(errors).toEqual([]);

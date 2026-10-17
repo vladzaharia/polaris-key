@@ -9,6 +9,14 @@ import {
   ChoiceStep,
   type AutoItem,
 } from "../../../../ui/wizard/index.js";
+// The email's own words (pure, import-free): the preview cannot drift from the template.
+import {
+  KEY_EMAIL_AFTER,
+  KEY_FOOTERS,
+  keyEmailIntro,
+  keyEmailPrimaryLabel,
+  keyEmailSubject,
+} from "../../../../../../worker/src/core/notify/keyEmailCopy.js";
 import {
   deliveriesFor,
   deliveryOf,
@@ -17,8 +25,6 @@ import {
   type StepId,
 } from "./draft.js";
 import type { StepProps } from "./steps.js";
-
-// ── Delivery ───────────────────────────────────────────────────────────────────────────────────
 
 const DELIVERY_COPY: Record<
   Delivery,
@@ -49,28 +55,18 @@ export function DeliveryStep({
   const to = draft.name.trim() || draft.email.trim() || "They";
   return (
     <div className="space-y-4">
-      {fits.length > 1 ? (
-        <ChoiceStep<Delivery>
-          legend="Delivery"
-          columns={1}
-          value={current}
-          onChange={(v) => set("delivery", v)}
-          choices={fits.map((d, i) => ({
-            value: d,
-            label: DELIVERY_COPY[d].label,
-            description: DELIVERY_COPY[d].hint(to),
-            ...(i === 0 && draft.who === "person" ? { recommended: "" } : {}),
-          }))}
-        />
-      ) : (
-        <p className="text-sm text-fg">{DELIVERY_COPY[current].hint(to)}</p>
-      )}
-      {draft.who === "anyone" ? (
-        <p className="text-sm text-fg-muted">
-          Floating keys aren&apos;t emailed: there&apos;s nobody to send them
-          to.
-        </p>
-      ) : null}
+      <ChoiceStep<Delivery>
+        legend="Delivery"
+        columns={1}
+        value={current}
+        onChange={(v) => set("delivery", v)}
+        choices={fits.map((d, i) => ({
+          value: d,
+          label: DELIVERY_COPY[d].label,
+          description: DELIVERY_COPY[d].hint(to),
+          ...(i === 0 && draft.who === "person" ? { recommended: "" } : {}),
+        }))}
+      />
       {emailsKey(draft) ? (
         <EmailPreview
           productName={productName}
@@ -82,7 +78,7 @@ export function DeliveryStep({
   );
 }
 
-/** What the email looks like, with the key masked (it does not exist yet). */
+/** What the email looks like, from the template's own strings, with the key masked. */
 function EmailPreview({
   productName,
   to,
@@ -102,22 +98,28 @@ function EmailPreview({
           {productName} via Polaris Key
         </p>
         <p className="break-all text-xs text-fg-muted">
-          To {to} · Your {productName} license
+          To <bdi>{to}</bdi> · {keyEmailSubject(productName)}
         </p>
       </figcaption>
       <div className="space-y-2 px-3 py-3">
-        <p>
-          {name ? `Hi ${name}, here` : "Here"} is your {productName} license.
-        </p>
+        <p className="font-semibold text-fg-strong">{productName}</p>
+        {keyEmailIntro(name).map((line) => (
+          <p key={line}>{line}</p>
+        ))}
         <p
           aria-hidden
           className="rounded-md bg-surface-overlay px-2 py-1.5 font-mono text-xs text-fg-muted"
         >
           pkey_{"•".repeat(20)}
         </p>
-        <p className="text-xs text-fg-muted">
-          Paste it into {productName} when it asks, or sign in with this email.
+        <p className="text-xs text-fg-muted">{KEY_EMAIL_AFTER}</p>
+        <p
+          aria-hidden
+          className="inline-block rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-accent-on"
+        >
+          {keyEmailPrimaryLabel(false)}
         </p>
+        <p className="text-xs text-fg-muted">{KEY_FOOTERS.created}</p>
       </div>
     </figure>
   );
@@ -127,8 +129,11 @@ function EmailPreview({
 
 export interface ReviewRow {
   label: string;
-  value: string;
-  step: StepId;
+  value: React.ReactNode;
+  /** The step Change goes to; absent when nothing can change (a single way to deliver). */
+  step?: StepId;
+  /** Names the button: "Change " + noun ("who it's for", "expiry"). */
+  noun: string;
 }
 
 export function ReviewStep({
@@ -151,22 +156,26 @@ export function ReviewStep({
             key={row.label}
             className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-3 py-2"
           >
-            <dt className="w-24 shrink-0 text-xs text-fg-muted">{row.label}</dt>
-            <dd className="min-w-0 flex-1 break-words text-sm text-fg-strong">
-              {row.value}
+            <dt className="basis-full text-xs text-fg-muted sm:w-24 sm:basis-auto sm:shrink-0">
+              {row.label}
+            </dt>
+            <dd className="flex min-w-0 flex-1 items-baseline justify-between gap-3 text-sm text-fg-strong">
+              <span className="min-w-0 break-words">{row.value}</span>
+              {row.step ? (
+                <button
+                  type="button"
+                  onClick={() => onChange(row.step!)}
+                  aria-label={`Change ${row.noun}`}
+                  className="min-h-6 shrink-0 rounded-md px-1 text-sm font-normal text-fg underline underline-offset-2 hover:text-fg-strong focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
+                >
+                  Change
+                </button>
+              ) : null}
             </dd>
-            <button
-              type="button"
-              onClick={() => onChange(row.step)}
-              aria-label={`Change ${row.label.toLowerCase()}`}
-              className="min-h-6 rounded-md px-1 text-sm text-fg underline underline-offset-2 hover:text-fg-strong focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
-            >
-              Change
-            </button>
           </div>
         ))}
       </dl>
-      <AutoList title="Polaris Key will" items={items} />
+      <AutoList title="Polaris Key will" items={items} hideIdle />
     </div>
   );
 }

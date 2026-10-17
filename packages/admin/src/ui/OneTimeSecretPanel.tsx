@@ -80,10 +80,13 @@ export function SecretValue({
   hint = "Shown once. Polaris Key stores only its hash.",
   acknowledged,
   onAcknowledgedChange,
+  hideAck = false,
 }: {
   label: string;
   value: string;
   hint?: React.ReactNode;
+  /** The screen does not hold the only copy: no "I've stored it" box. */
+  hideAck?: boolean;
   acknowledged: boolean;
   onAcknowledgedChange: (acknowledged: boolean) => void;
 }): React.ReactElement {
@@ -112,19 +115,21 @@ export function SecretValue({
         </div>
         <p className="text-xs text-fg-muted">{hint}</p>
       </div>
-      <label
-        htmlFor={ackId}
-        className="flex items-center gap-2 text-sm text-fg"
-      >
-        <input
-          id={ackId}
-          type="checkbox"
-          checked={acknowledged}
-          onChange={(e) => onAcknowledgedChange(e.target.checked)}
-          className="size-4 accent-(--pk-accent)"
-        />
-        I&apos;ve stored it
-      </label>
+      {hideAck ? null : (
+        <label
+          htmlFor={ackId}
+          className="flex min-h-6 items-center gap-2 text-sm text-fg"
+        >
+          <input
+            id={ackId}
+            type="checkbox"
+            checked={acknowledged}
+            onChange={(e) => onAcknowledgedChange(e.target.checked)}
+            className="size-4 accent-(--pk-accent)"
+          />
+          I&apos;ve stored it
+        </label>
+      )}
     </>
   );
 }

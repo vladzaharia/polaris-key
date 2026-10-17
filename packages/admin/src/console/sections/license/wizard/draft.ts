@@ -35,6 +35,8 @@ export const MAX_DEVICE_LIMIT = 1000;
 
 export interface Draft {
   tier: string | null;
+  /** "No tier" was chosen on purpose, so the first tier is not preselected again. */
+  noTier: boolean;
   who: Who;
   name: string;
   email: string;
@@ -57,6 +59,7 @@ export interface Draft {
 
 export const EMPTY: Draft = {
   tier: null,
+  noTier: false,
   who: "person",
   name: "",
   email: "",
@@ -81,8 +84,40 @@ export const isBatch = (d: Draft): boolean =>
 /** The deliveries that fit, in the order they are offered; the first is the default. */
 export function deliveriesFor(d: Draft): Delivery[] {
   if (d.who === "person") return ["email-show", "email", "show"];
-  return isBatch(d) ? ["csv"] : ["show", "csv"];
+  // One floating key is shown; a batch is a file. Neither has a choice to make.
+  return isBatch(d) ? ["csv"] : ["show"];
 }
+
+/** Delivery asks nothing when there is one way to get the keys: the step is skipped. */
+export const deliverySkipped = (d: Draft): boolean =>
+  deliveriesFor(d).length === 1;
+
+const ORDER = STEP_IDS;
+/** The step after `from`, skipping Delivery when it has no choice. */
+export function stepAfter(from: StepId, d: Draft): StepId {
+  const next = ORDER[ORDER.indexOf(from) + 1] ?? "review";
+  return next === "delivery" && deliverySkipped(d) ? "review" : next;
+}
+export function stepBefore(from: StepId, d: Draft): StepId {
+  const prev = ORDER[Math.max(0, ORDER.indexOf(from) - 1)]!;
+  return prev === "delivery" && deliverySkipped(d) ? "limits" : prev;
+}
+
+/** The step a refused field belongs to (a 422's `fields`). */
+export const FIELD_STEP: Record<string, StepId> = {
+  tier: "tier",
+  email: "holder",
+  name: "holder",
+  count: "holder",
+  label: "holder",
+  deviceLimit: "limits",
+  expiresAt: "limits",
+  maxOfflineDays: "limits",
+  channels: "limits",
+  minVersion: "limits",
+  maxVersion: "limits",
+  delivery: "delivery",
+};
 
 export const deliveryOf = (d: Draft): Delivery => {
   const fits = deliveriesFor(d);
@@ -256,6 +291,7 @@ export function loadDraft(slug: string): Draft {
     ): T => (allowed.includes(v as T) ? (v as T) : fallback);
     return {
       tier: typeof p.tier === "string" ? p.tier : null,
+      noTier: p.noTier === true,
       who: pick(p.who, ["person", "anyone"], "person"),
       name: str(p.name, ""),
       email: str(p.email, ""),
@@ -287,16 +323,16 @@ export function loadDraft(slug: string): Draft {
 
 export function saveDraft(slug: string, d: Draft): void {
   try {
-    if (JSON.stringify(d) === JSON.stringify(EMPTY))
-      sessionStorage.removeItem(storeKey(slug));
+    if (!dirty(d)) sessionStorage.removeItem(storeKey(slug));
     else sessionStorage.setItem(storeKey(slug), JSON.stringify(d));
   } catch {
     // Storage is a convenience; a refused write only loses the resume.
   }
 }
 
+/** Whether the draft holds input worth asking about: the tier alone (preselected) is not. */
 export const dirty = (d: Draft): boolean =>
-  JSON.stringify(d) !== JSON.stringify(EMPTY);
+  JSON.stringify({ ...d, tier: null, noTier: false }) !== JSON.stringify(EMPTY);
 
 /** The expiry in words, for Review. */
 export function expiryWords(d: Draft, tierTerm: number | null): string {
