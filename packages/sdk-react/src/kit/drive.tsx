@@ -47,6 +47,7 @@ const FORM_FACTOR: Record<string, string> = {
 function deviceInputs(list: readonly DeviceInfo[]): UiInput["devices"] {
   const now = Date.now() / 1000;
   return list.map((d) => ({
+    id: d.id,
     name: d.label ?? null,
     platform: d.platform ?? null,
     formFactor: (d.platform && FORM_FACTOR[d.platform]) ?? "computer",

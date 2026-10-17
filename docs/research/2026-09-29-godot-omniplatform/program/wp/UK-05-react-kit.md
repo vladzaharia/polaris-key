@@ -304,3 +304,55 @@ as PNGs, pending the lead's storage decision (about 250 KB each at 1440). The cr
 needs UK-04's baselines. `packages/sdk-react/README.md` still carries the update-driver and boot-guard
 sections, which have no docs page yet: move them before cutting the README to install + one line +
 link. UX review (`pkey-ux-reviewer`, BUILT mode) not yet run.
+
+## Progress and continuation (2026-10-17, `wp/UK-05-ux`, driven by the BUILT UX review)
+
+Review: `_lead/reviews/2026-10-16/ux-UK-05.json` (fail, 6 blockers). Scope: `packages/sdk-react` and
+`examples/ui/react-*` only; ui-core got the additive `DeviceInput.id` inputs by cherry-pick from
+`wp/UK-04-ux` (`c1d7a99a7`), `packages/elements` is untouched.
+
+**Fixed (all 6 blockers):**
+
+- Gate navigation. Back (chevron and label) on every step past Welcome, bound to the Escape action;
+  each step is one history entry, so the platform Back steps back; focus returns to the opener. A
+  refusal is dropped when the person leaves the step or edits the key; the device limit offers "Use a
+  different key" and the refused key stays in the field. Paste works.
+- Activate keeps title, lede, field and Paste while typing, parsed, cut short, refused and busy; a
+  refusal shows once under the field with `aria-invalid` and `aria-describedby`. The change is the
+  drop-in's (`kit/adapt.ts`), applied only when the gate drives itself, so fixture states still draw
+  the corpus's keys.
+- Devices, Settings, UpdatePrompt and About run themselves inside `<PolarisKeyProvider>` given no
+  `input` (`kit/drive.tsx`): rename with a field, remove with an inline confirm under the row (list
+  and title kept), switches, choices and number fields from the catalog (`fetchSchema`), update,
+  copy diagnostics. Both samples use them and hold no data code; the Vite fixture now answers
+  rename, deauthorize, `config.set` and `fetchSchema` like the Next one.
+- A driven line whose argument the input lacks is left out, never drawn as `{version}`; the app
+  version comes from the provider's `config.version` (now on the context with `productSlug`).
+  `UpdateInput.size` has no source in `checkUpdate()`, so "You have {version} · {size}" is dropped.
+- Embedded panes draw h2 (`headingLevel` prop; pane form default 2, screen form 1); `embedded` draws
+  UpdatePrompt as a pane; the gate stage is `<main>`.
+- Shoulds: no part takes focus from the page on mount (only `fill`, `autoFocus` or a part already
+  holding focus); a text field is not focused on appear under a coarse pointer; revoked offers Sign
+  in as the primary and drops Sign out; devices rows name the unnamed device in their buttons and
+  say "This Mac" with no platform; the pane's product header is dropped where the title names it.
+
+**Remaining:**
+
+- Visual, in the shared stylesheet (`packages/elements`, UK-04's): the gate's two-pane row pinned at
+  the top with an empty lower half and a 45 % identity pane; Welcome links wrapping 3 + 1; lavender
+  light-scheme surfaces; the pane form's actions aligned to the end; the baseline of the Copy
+  button against the code.
+- SignIn: the code step's countdown and "Waiting" status; the methods step's "Or continue with"
+  divider, full-width Cancel, "Sign in…" link and method order (`signin.tsx`, not touched this slice).
+- Copy, from the catalog and ui-core's copy lists (corpus-fixed): Expired's body repeats its title;
+  Device limit states the count three times and the confirm callout runs four sentences; the grace
+  banner says Offline and reconnect twice; raw setting values in a host-fed Settings (the driven part
+  formats them).
+- Versus mockup: tier in the Activate header, the parsed-license line, the Help/Privacy/version
+  footer, Settings toggles beyond the driven part.
+- Fixture-fed (non-driven) parts still draw `{size}`-style gaps where the corpus rows omit the
+  argument (the UK-04 renderer drops them; the React renderer drops them only when driven, because
+  `kitMatrix` requires each listed key on screen). Decide with UK-02b whether the rows carry the
+  value.
+- Pixel baselines for the changed driven states and the new Back control are not recorded (the
+  committed rows are the fixture states, unchanged); re-record with the lead's storage decision.

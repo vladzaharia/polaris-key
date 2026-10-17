@@ -988,13 +988,13 @@ function deviceRows(c: KitCtx): ReactNode {
               <span className="row-actions">
                 {button(c, "devices.rename", "link", {
                   label: plain(c, "a11y.renameDevice", { device: label }),
-                  detail: { index: i },
+                  detail: { index: i, ...(d.id ? { deviceId: d.id } : {}) },
                 })}
                 {d.current
                   ? null
                   : button(c, "devices.remove", "link", {
                       label: plain(c, "a11y.removeDevice", { device: label }),
-                      detail: { index: i },
+                      detail: { index: i, ...(d.id ? { deviceId: d.id } : {}) },
                     })}
               </span>
             </li>
