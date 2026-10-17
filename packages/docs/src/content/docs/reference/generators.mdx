@@ -218,6 +218,17 @@ Omniplatform program INDEX.md from workpackages.json.
 - Reads: `docs/research/2026-09-29-godot-omniplatform/program/workpackages.json`, `docs/research/2026-09-29-godot-omniplatform/program/check.mjs`, `docs/research/2026-09-29-godot-omniplatform/program/wp/*.md`.
 - Writes: `docs/research/2026-09-29-godot-omniplatform/program/INDEX.md`.
 
+### integration
+
+Integration content goldens: every renderUsage block, per SDK, lane and feature.
+
+- Run: default.
+- Regenerate: `pnpm gen integration`.
+- Check: `pnpm gen integration --check`.
+- Underlying: `pnpm exec tsx tools/gen-integration.ts`.
+- Reads: `tools/gen-integration.ts`, `packages/shared-manifest/src/integration/**`, `packages/shared-manifest/src/feedSetup.ts`.
+- Writes: `packages/shared-manifest/test/fixtures/integration/**`.
+
 ### mirrors
 
 Typed config mirrors for a product catalog, in five languages.
@@ -239,7 +250,7 @@ Typed config mirrors for a product catalog, in five languages.
 - Check: `pnpm gen sdk-samples --check`.
 - Underlying: `PKEY_UPDATE_SAMPLES=1 pnpm --filter @polaris-key/cli exec vitest run test/sdkConfig.test.ts`.
 - Why not default: written and checked by the CLI suite (packages/cli/test/sdkConfig.test.ts).
-- Reads: `packages/cli/src/sdkConfig.ts`, `packages/cli/test/sdkConfig.test.ts`.
+- Reads: `packages/cli/src/sdkConfig.ts`, `packages/shared-manifest/src/integration/sdkConfig.ts`, `packages/cli/test/sdkConfig.test.ts`.
 - Writes: `conformance/runners/node/sdkConfigSample.ts`, `packages/sdk-react/test/sdkConfigSample.ts`, `sdks/python/tests/sdk_config_sample.py`, `sdks/swift/Tests/PolarisKeyTests/SdkConfigSample.swift`, `sdks/kotlin/sdk/src/test/kotlin/polaris/generated/PolarisConfig.kt`, `sdks/godot/tests/sdk_config/polaris_key_config.gd`.
 
 ### docs-csp

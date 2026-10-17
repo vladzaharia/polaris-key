@@ -47,8 +47,6 @@ import {
   loadManifest,
   normalizeModules,
   outletIdsFor,
-  sdkSnippet,
-  trustSnippet,
   validateLoadedManifest,
   type LoadedManifest,
   type ProductModule,
@@ -71,8 +69,10 @@ import {
   publishRelease,
   type PublishSource,
 } from "./publish.js";
+import { renderSdkSetup } from "@polaris-key/manifest/integration";
 import {
   factsSummary,
+  fingerprintOf,
   isSdkLang,
   parseReleaseKeyFlags,
   renderSdkConfig,
@@ -82,6 +82,8 @@ import {
   SDK_CONFIG_USAGE,
   SDK_LANGS,
   type DeclaredReleaseKey,
+  type SdkConfigFacts,
+  type SdkLang,
 } from "./sdkConfig.js";
 import { MIRROR_USAGE, writeMirrors } from "./mirrors.js";
 import { parseRemoves } from "./saveCompat.js";
@@ -461,8 +463,6 @@ export {
   loadManifest,
   normalizeModules,
   outletIdsFor,
-  sdkSnippet,
-  trustSnippet,
   validateLoadedManifest,
   type InitOptions,
   type InitResult,
@@ -1306,7 +1306,17 @@ function cmdTrust(
   const publicKey = flagString(parsed, "public-key") ?? parsed.positional[1];
   if (!kid || !publicKey)
     throw new Error("Usage: pkey trust --kid <kid> --public-key <base64url>");
-  stdout.write(`${trustSnippet(kid, publicKey)}\n`);
+  // The pin as every SDK's config module holds it: the same renderer `pkey sdk` writes with.
+  for (const lang of SDK_LANGS) {
+    const setup = renderSdkSetup(lang, {
+      slug: "<slug>",
+      pins: [{ kid, publicKey }],
+      services: [],
+    });
+    stdout.write(
+      `--- ${lang}: ${setup.config.filename}\n${setup.config.code}\n`,
+    );
+  }
   return 0;
 }
 
@@ -1358,27 +1368,33 @@ async function cmdSdk(
   stderr: Pick<NodeJS.WriteStream, "write">,
   fetchImpl?: typeof fetch,
 ): Promise<number> {
-  const lang = flagString(parsed, "lang");
-  if (lang === undefined) {
-    // The original snippet mode: a Node example with whatever pins were given, against the
+  const add = parsed.positional[0] === "add";
+  const lang = add ? parsed.positional[1] : flagString(parsed, "lang");
+  if (lang === undefined && !add) {
+    // The original snippet mode: the Node setup with whatever pins were given, against the
     // production origin unless `--base-url` names another (the default every other command uses).
     const product = flagString(parsed, "product") ?? parsed.positional[0];
     const baseUrl = flagString(parsed, "base-url") ?? DEFAULT_BASE_URL;
     if (!product) throw new Error(SDK_CONFIG_USAGE);
-    stdout.write(
-      `${sdkSnippet({
-        baseUrl,
-        product,
-        kid: flagString(parsed, "kid"),
-        publicKey: flagString(parsed, "public-key"),
-      })}\n`,
-    );
+    const kid = flagString(parsed, "kid");
+    const publicKey = flagString(parsed, "public-key");
+    const setup = renderSdkSetup("node", {
+      slug: product,
+      origin: baseUrl,
+      pins: kid && publicKey ? [{ kid, publicKey }] : [],
+      services: [],
+    });
+    stdout.write(`${setup.config.code}\n${setup.start.code}\n`);
     return 0;
   }
-  if (!isSdkLang(lang))
+  if (lang === undefined || !isSdkLang(lang))
     throw new Error(
-      `--lang must be one of ${SDK_LANGS.join(", ")}.\n${SDK_CONFIG_USAGE}`,
+      add
+        ? `pkey sdk add needs the SDK first: pkey sdk add ${SDK_LANGS.join("|")} --expect <kid>@sha256:<fingerprint>[,...]`
+        : `--lang must be one of ${SDK_LANGS.join(", ")}.\n${SDK_CONFIG_USAGE}`,
     );
+  // `sdk add` pins nothing it was not told to: no trust on first use (SETUP.md D30).
+  const expect = add ? parseExpect(flagString(parsed, "expect")) : null;
 
   // The product repo's .pkey/, when there is one: the slug and the declared release keys.
   let local: { slug: string; releaseKeys: DeclaredReleaseKey[] } | null = null;
@@ -1400,10 +1416,15 @@ async function cmdSdk(
   }
   const product =
     flagString(parsed, "product") ??
-    parsed.positional[0] ??
+    (add ? undefined : parsed.positional[0]) ??
     devFacts?.product ??
     local?.slug;
-  if (!product) throw new Error(SDK_CONFIG_USAGE);
+  if (!product)
+    throw new Error(
+      add
+        ? "pkey sdk add needs --product <slug> (or run it in the product repo, where .pkey/ names it)."
+        : SDK_CONFIG_USAGE,
+    );
   if (local && !devFacts && local.slug !== product)
     throw new Error(
       `The .pkey/ in ${cwd} is product ${local.slug}, not ${product}; run pkey sdk from ${product}'s repo or drop --product.`,
@@ -1428,6 +1449,7 @@ async function cmdSdk(
       : {}),
     ...(fetchImpl ? { fetchImpl } : {}),
   });
+  if (expect) checkExpected(expect, facts);
   // With one pinned key there is no remote recovery from its compromise.
   if (!devFacts && Object.keys(facts.pinnedKeys).length === 1)
     stderr.write(
@@ -1439,7 +1461,7 @@ async function cmdSdk(
     ...(out !== undefined ? { out } : {}),
     ...(pkg !== undefined ? { kotlinPackage: pkg } : {}),
   });
-  if (!flagBool(parsed, "write")) {
+  if (!add && !flagBool(parsed, "write")) {
     stdout.write(content);
     return 0;
   }
@@ -1456,7 +1478,77 @@ async function cmdSdk(
   await mkdir(path.dirname(target), { recursive: true });
   await writeFile(target, content, "utf8");
   stdout.write(`${factsSummary(facts)}\nWrote ${target}\n`);
+  if (add) stdout.write(addNextSteps(lang, facts));
   return 0;
+}
+
+/** `--expect kid@sha256:<hex>[,kid@sha256:<hex>...]`: the pins the developer saw in the console. */
+function parseExpect(raw: string | undefined): Map<string, string> {
+  if (raw === undefined)
+    throw new Error(
+      "pkey sdk add needs --expect <kid>@sha256:<fingerprint>[,...]: the pin fingerprints on the console's Integration page. It never trusts what discovery says first.",
+    );
+  const out = new Map<string, string>();
+  for (const part of raw.split(",").filter(Boolean)) {
+    const m = /^(.+)@sha256:([0-9a-f]{64})$/i.exec(part.trim());
+    if (!m)
+      throw new Error(
+        `--expect takes <kid>@sha256:<64 hex digits>; got ${part}.`,
+      );
+    out.set(m[1] as string, (m[2] as string).toLowerCase());
+  }
+  if (out.size === 0) throw new Error("--expect lists no pin.");
+  return out;
+}
+
+/** Refuse unless discovery serves exactly the pins that were expected, fingerprint for fingerprint. */
+function checkExpected(
+  expect: ReadonlyMap<string, string>,
+  facts: SdkConfigFacts,
+): void {
+  const served = new Map(
+    Object.entries(facts.pinnedKeys).map(([kid, key]) => [
+      kid,
+      fingerprintOf(key),
+    ]),
+  );
+  const wrong = [...expect].filter(([kid, fp]) => served.get(kid) !== fp);
+  const extra = [...served.keys()].filter((kid) => !expect.has(kid));
+  if (wrong.length > 0 || extra.length > 0)
+    throw new Error(
+      `Discovery does not serve the pins you expected; nothing was written. ` +
+        (wrong.length > 0
+          ? `Missing or different: ${wrong.map(([kid]) => kid).join(", ")}. `
+          : "") +
+        (extra.length > 0 ? `Not in --expect: ${extra.join(", ")}. ` : "") +
+        `Compare the console's signing keys with ${facts.discoveryUrl}.`,
+    );
+}
+
+/** What `pkey sdk add` prints after it writes the file: install from our feeds, then the start. */
+function addNextSteps(lang: SdkLang, facts: SdkConfigFacts): string {
+  const setup = renderSdkSetup(lang, {
+    slug: facts.product,
+    origin: facts.baseUrl,
+    pins: Object.entries(facts.pinnedKeys).map(([kid, publicKey]) => ({
+      kid,
+      publicKey,
+    })),
+    releaseKeys: Object.entries(facts.pinnedReleaseKeys).map(
+      ([kid, publicKey]) => ({ kid, publicKey }),
+    ),
+    services: facts.services,
+  });
+  const lines = ["", "Install from pkg.plrs.im, routing the name to it first:"];
+  for (const snip of setup.install)
+    lines.push(
+      "",
+      `${snip.filename ? `# ${snip.filename}\n` : ""}${snip.code}`,
+    );
+  if (setup.installNote) lines.push("", setup.installNote);
+  lines.push("", `Start (${setup.start.filename}):`, "", setup.start.code);
+  for (const w of setup.warnings) lines.push(`warning: ${w}`);
+  return `${lines.join("\n")}\n`;
 }
 
 async function cmdMirror(

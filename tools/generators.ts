@@ -406,6 +406,19 @@ export const GENERATORS: Generator[] = [
       },
     ],
   },
+  {
+    id: "integration",
+    title:
+      "Integration content goldens: every renderUsage block, per SDK, lane and feature",
+    order: 150,
+    inputs: [
+      "tools/gen-integration.ts",
+      "packages/shared-manifest/src/integration/**",
+      "packages/shared-manifest/src/feedSetup.ts",
+    ],
+    outputs: ["packages/shared-manifest/test/fixtures/integration/**"],
+    write: [tsx("tools/gen-integration.ts")],
+  },
   // Families below are declared so every GENERATED banner has an owner. A plain run skips them.
   {
     id: "mirrors",
@@ -428,6 +441,7 @@ export const GENERATORS: Generator[] = [
       "written and checked by the CLI suite (packages/cli/test/sdkConfig.test.ts)",
     inputs: [
       "packages/cli/src/sdkConfig.ts",
+      "packages/shared-manifest/src/integration/sdkConfig.ts",
       "packages/cli/test/sdkConfig.test.ts",
     ],
     outputs: [

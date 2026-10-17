@@ -85,10 +85,11 @@ Print an SDK snippet, or one SDK's config file.
 
 ```text
 pkey sdk --product slug [--base-url url] [--kid kid --public-key key]
+pkey sdk add node|react|python|swift|kotlin|godot --expect kid@sha256:fingerprint[,...] [--product slug] [--base-url url] [--out path] [--force] [--release-key kid=key ...] [--package kotlin.package]
 pkey sdk --lang node|react|python|swift|kotlin|godot [--product slug] [--base-url url] [--write [--out path] [--force]] [--kid kid --public-key key] [--release-key kid=key ...] [--package kotlin.package] [--dev [--url origin]]
 ```
 
-Without --lang, pkey sdk prints a Node example with the pins given. With --lang it reads the product's discovery (and, in the product's repo, .pkey/release's releaseKeys) and prints that SDK's config file; --write writes it to the SDK's default path or --out, and --force replaces a file pkey sdk did not write. --dev reads the product, origin and release keys from a running pkey dev (--url, else ./polaris-key.json) instead.
+pkey sdk add writes the SDK's config file and prints the install and the start. It refuses unless discovery serves exactly the pins --expect names, by fingerprint (copy them from the console's Integration page): it never trusts discovery first. Without --lang, pkey sdk prints a Node example with the pins given. With --lang it reads the product's discovery (and, in the product's repo, .pkey/release's releaseKeys) and prints that SDK's config file; --write writes it to the SDK's default path or --out, and --force replaces a file pkey sdk did not write. --dev reads the product, origin and release keys from a running pkey dev (--url, else ./polaris-key.json) instead.
 
 No `--json`: the answer is text.
 
@@ -111,7 +112,7 @@ pkey dev runs the Worker's real router in this process (Node 22.13 or newer; no 
 
 ### `pkey trust`
 
-Format a signing key for every SDK's pinned keys.
+Show a signing key pinned in every SDK's config file.
 
 ```text
 pkey trust --kid kid --public-key key
