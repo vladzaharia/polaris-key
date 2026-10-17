@@ -642,7 +642,8 @@ describe("HTTP transcripts: @polaris-key/react", () => {
     // (and discovery-identity); React's port is I-10a. identity.redirect.web and
     // identity.signin.hints are I-08's redirect-web-* and identity-request-hints transcripts
     // (the browser's `authorize` and Continue are `browser` steps no SDK asserts); React's port
-    // is I-10a.
+    // is I-10a. identity.choice is I-08b's redirect-web-choose*, choice-* transcripts (the choice.*
+    // primitives); React's port is I-10a.
     const plannedHere = [
       "identity.toggle",
       "identity.keyentry",
@@ -650,6 +651,7 @@ describe("HTTP transcripts: @polaris-key/react", () => {
       "identity.account",
       "identity.redirect.web",
       "identity.signin.hints",
+      "identity.choice",
     ];
     const expected = TRANSCRIPTS.filter(
       (t) => !t.features.some((f) => plannedHere.includes(f)),
