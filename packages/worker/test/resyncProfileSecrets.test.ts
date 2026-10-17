@@ -834,6 +834,7 @@ describe("a manifest never replaces a sealed secret", () => {
           { id: "standard", payload: apiKeyPayload("from-the-manifest") },
         ]),
       ),
+      ingestFor(SERVICES),
     );
 
     expect(plan.ok).toBe(true);

@@ -55,7 +55,9 @@ async function prepare(ctx: IngestContext): Promise<ManifestContribution> {
   const statements: DbStatement[] = [];
   const audits: DbStatement[] = [];
   const updated: string[] = [];
-  if (ctx.mode === "create") {
+  if (ctx.scope === "system") {
+    // The deploy hook's subset: the row settings only (never tiers).
+  } else if (ctx.mode === "create") {
     for (const t of manifest.tiers)
       statements.push(stmtInsertTier(tierInput(ctx, t)));
   } else {
@@ -88,6 +90,8 @@ export const licenseManifest: ManifestContributor = {
     ctx.mode === "apply"
       ? [
           {
+            // The dry run words this conflict from its own plan (`core/ingest/plan.ts`).
+            applyOnly: true,
             check: "tier-drop",
             run: async () => {
               const { plan } = await ctx.rows();

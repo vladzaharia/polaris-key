@@ -23,6 +23,10 @@
  *     4, 5, 8, 9-*), and a resync's edge-mint DELETE and INSERT carry U-31's
  *     `config.catalog` claim guard (3, 4, 5, 6a, 8, 9-*, 10a; 5's end state
  *     keeps the console's recipe).
+ *   - 14a/14b/14c (plans/P0-26.md D5, deltas 2 and 3): the create dry run parses with
+ *     reservedDisplayNames, and the resync and link dry runs list every policy refusal, not
+ *     only the first. Captured from the pipeline's plan when the deltas landed; the pre-delta
+ *     behaviour had no scenario.
  *   - 11a/11b: the deploy hook's snapshot scrub reads the active schema, one more D1 round trip
  *     (sec/manifest-snapshot-redact); only the trip count moved.
  *   - CM-29 (integration, 2026-10-17): the service table gained `commerce` (off by default), so
@@ -67,7 +71,6 @@ import {
   issueStaticCiToken,
 } from "../../src/core/publisher.js";
 import { ingestFor } from "../../src/core/ingest/pipeline.js";
-import { manifestIngestFor } from "../../src/core/registry.js";
 import { SERVICES } from "../../src/mount.js";
 import {
   linkRepo,
@@ -100,8 +103,6 @@ interface Captured {
 }
 
 const ingest = ingestFor(SERVICES);
-/** The deploy hook still runs the descriptor hooks (P0-26b moves it onto the pipeline). */
-const hooks = manifestIngestFor(SERVICES);
 
 /** Deep-mask a result: strings through `mask`, key order kept. */
 function maskDeep(v: unknown): unknown {
@@ -493,6 +494,7 @@ describe("ingest golden: link existing", () => {
       URL_,
       NOW,
       ok.remote.fetch,
+      ingestFor(SERVICES),
     );
     expect(check1.ok).toBe(true);
     if (!check1.ok) return;
@@ -521,6 +523,7 @@ describe("ingest golden: link existing", () => {
       URL_,
       NOW,
       bad.remote.fetch,
+      ingestFor(SERVICES),
     );
     expect(check2.ok).toBe(true);
     if (!check2.ok) return;
@@ -568,12 +571,13 @@ describe("ingest golden: the deploy hook", () => {
       "11a-deploy-first",
       await record(w, (rdb) =>
         linkSystemProduct(
+          env,
           rdb,
           parsed.manifest,
           repo,
           { files, sha },
           NOW + 1,
-          hooks,
+          ingest,
         ),
       ),
     );
@@ -606,12 +610,13 @@ describe("ingest golden: the deploy hook", () => {
       "11b-deploy-relink",
       await record(w, (rdb) =>
         linkSystemProduct(
+          env,
           rdb,
           parsed.manifest,
           repo,
           { files, sha },
           NOW + 100,
-          hooks,
+          ingest,
         ),
       ),
     );
@@ -624,7 +629,14 @@ describe("ingest golden: the dry runs", () => {
     check(
       "12a-dry-create",
       await record(c, (db) =>
-        prepareCreate(c.env, db, URL_, NOW, c.remote.fetch),
+        prepareCreate(
+          c.env,
+          db,
+          URL_,
+          NOW,
+          c.remote.fetch,
+          ingestFor(SERVICES),
+        ),
       ),
     );
 
@@ -633,12 +645,27 @@ describe("ingest golden: the dry runs", () => {
     check(
       "12b-dry-link",
       await record(m, (db) =>
-        prepareLink(m.env, db, SLUG, URL_, NOW, m.remote.fetch),
+        prepareLink(
+          m.env,
+          db,
+          SLUG,
+          URL_,
+          NOW,
+          m.remote.fetch,
+          ingestFor(SERVICES),
+        ),
       ),
     );
 
     const plan = (w: Linked) => (db: RecordingDb) =>
-      planResync(w.env, db, SLUG, NOW + 60, w.remote.fetch);
+      planResync(
+        w.env,
+        db,
+        SLUG,
+        NOW + 60,
+        w.remote.fetch,
+        ingestFor(SERVICES),
+      );
     const same = await linked(full());
     check("12c-plan-unchanged", await record(same, plan(same)));
     const changed = await linked(full());
@@ -649,5 +676,64 @@ describe("ingest golden: the dry runs", () => {
       release: { sparkleEd25519Pub: "SWAPPED22" },
     });
     check("12e-plan-refused", await record(refused, plan(refused)));
+  });
+});
+
+describe("ingest golden: the dry runs, D5 deltas 2 and 3 (plans/P0-26.md)", () => {
+  it("14a. the create dry run parses with reservedDisplayNames", async () => {
+    const c = fresh(full({ product: { name: "Steam Companion" } }));
+    c.env.IDENTITY_RESERVED_DISPLAY_NAMES = "error";
+    check(
+      "14a-dry-create-reserved-name",
+      await record(c, (db) =>
+        prepareCreate(c.env, db, URL_, NOW, c.remote.fetch, ingest),
+      ),
+    );
+  });
+
+  it("14b. the resync dry run lists every policy refusal", async () => {
+    const w = await linked(full());
+    w.remote.files = full({
+      release: { sparkleEd25519Pub: "SWAPPED22" },
+      product: {
+        oidc: {
+          provider: "custom",
+          issuer: "https://evil.example",
+          clientId: "acme-client",
+          clientSecretSecret: "OIDC_SECRET__ACME",
+          redirectUris: ["https://acme.example/cb"],
+        },
+      },
+    });
+    check(
+      "14b-plan-every-refusal",
+      await record(w, (db) =>
+        planResync(w.env, db, SLUG, NOW + 60, w.remote.fetch, ingest),
+      ),
+    );
+  });
+
+  it("14c. the link dry run lists every policy refusal", async () => {
+    const m = fresh(
+      full({
+        entries: [ENTRIES[0]!, { ...ENTRIES[1]!, default: "hunter22hunter22" }],
+        product: {
+          oidc: {
+            provider: "custom",
+            issuer: "https://evil.example",
+            clientId: "acme-client",
+            clientSecretSecret: "OIDC_SECRET__ACME",
+            redirectUris: ["https://acme.example/cb"],
+          },
+        },
+      }),
+    );
+    await seedProduct(m.db, SLUG);
+    check(
+      "14c-dry-link-every-refusal",
+      await record(m, (db) =>
+        prepareLink(m.env, db, SLUG, URL_, NOW, m.remote.fetch, ingest),
+      ),
+    );
   });
 });

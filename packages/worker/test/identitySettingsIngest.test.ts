@@ -9,7 +9,7 @@ import { parseManifest, type ParsedManifest } from "@polaris-key/manifest";
 import { makeTestDb } from "./helpers.js";
 import { NOW, seedProduct, setClaimByKey } from "./seed.js";
 import type { Db } from "../src/db/types.js";
-import { identityService } from "../src/services/identity/index.js";
+import { identityHookStatements } from "../src/services/identity/ingest.js";
 
 const SCHEMA = JSON.stringify({ schemaVersion: 1, entries: [] });
 
@@ -33,11 +33,14 @@ function parsed(identity: unknown, modules?: unknown): ParsedManifest {
 
 /** What Core runs at an ingest: every service's always-statements, then the enabled ones'. */
 async function ingest(db: Db, m: ParsedManifest, at = NOW): Promise<void> {
-  const always = identityService.manifestIngestAlways?.(m, "acme", at) ?? [];
-  const enabled = m.services.identity.enabled
-    ? (identityService.manifestIngest?.(m, "acme", at) ?? [])
-    : [];
-  await db.batch([...always, ...enabled]);
+  await db.batch(
+    identityHookStatements({
+      manifest: m,
+      slug: "acme",
+      now: at,
+      enabled: m.services.identity.enabled,
+    }),
+  );
 }
 
 async function row(db: Db, key: string) {

@@ -55,30 +55,23 @@ interface ServiceDescriptor {
   adminHandle?(
     ctx: ServiceContext & { session: AdminSession },
   ): Promise<Response | null>;
-  manifestIngest?(
-    parsed: ParsedManifest,
-    product: string,
-    now: number,
-  ): DbStatement[];
-  manifestIngestAlways?(
-    parsed: ParsedManifest,
-    product: string,
-    now: number,
-  ): DbStatement[];
+  contributes?: {
+    manifest?: ManifestContributor;
+    // …and the other contributions (productDeletion, maintenance, integration, …)
+  };
   authorizeRegistration?(ctx: RegistrationAuthContext): Promise<boolean>;
 }
 ```
 
-| Member                   | What it is                                                                                                                                                                                                                          |
-| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `slug`                   | the one word used as the directory, the route namespace, the SDK sub-client and the console section.                                                                                                                                |
-| `handle`                 | handles a product-scoped request. `ctx.rest` is the path _after_ `/<product>/<service>`, already split; the service owns its sub-routing from there.                                                                                |
-| `discoveryFragment`      | this service's slice of `/<product>/.well-known/polaris.json`. **Only called when enabled** — Core emits `{"enabled": false}` and nothing else for the rest.                                                                        |
-| `adminHandle?`           | handles `/manage/api/products/<slug>/<service>/…`. Every service implements it.                                                                                                                                                     |
-| `manifestIngest?`        | rows this service wants written when a product manifest is ingested (link or resync). **Run only while the service is enabled.** Distribution implements it (P2b-02).                                                               |
-| `manifestIngestAlways?`  | rows kept current on every ingest **whatever the enablement**, for a record that must already be right when the service is turned on. Distribution's `app` delivery-access row is its one user (P2b-04).                            |
-| `authorizeRegistration?` | may this caller be given a device credential? Only Identity implements it.                                                                                                                                                          |
-| descriptor hooks         | `releaseCatalog?` (Release), `delivery?` and `outletCapabilities?` (Distribution), `licenseProvenance?` (License): read-only views another service reads through `ctx.hooks`, gated on the provider's enablement (`core/hooks.ts`). |
+| Member                   | What it is                                                                                                                                                                                                                                                                                |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `slug`                   | the one word used as the directory, the route namespace, the SDK sub-client and the console section.                                                                                                                                                                                      |
+| `handle`                 | handles a product-scoped request. `ctx.rest` is the path _after_ `/<product>/<service>`, already split; the service owns its sub-routing from there.                                                                                                                                      |
+| `discoveryFragment`      | this service's slice of `/<product>/.well-known/polaris.json`. **Only called when enabled** — Core emits `{"enabled": false}` and nothing else for the rest.                                                                                                                              |
+| `adminHandle?`           | handles `/manage/api/products/<slug>/<service>/…`. Every service implements it.                                                                                                                                                                                                           |
+| `contributes.manifest?`  | this service's part of a `.pkey/` ingest (link, resync, the deploy hook and the dry runs): lazy `checks`, then `prepare` returns statements for **its own tables**, audit rows and after-commit steps. **Runs whatever the enablement**; the contributor reads `ctx.enabled` and decides. |
+| `authorizeRegistration?` | may this caller be given a device credential? Only Identity implements it.                                                                                                                                                                                                                |
+| descriptor hooks         | `releaseCatalog?` (Release), `delivery?` and `outletCapabilities?` (Distribution), `licenseProvenance?` (License): read-only views another service reads through `ctx.hooks`, gated on the provider's enablement (`core/hooks.ts`).                                                       |
 
 Three details in that interface are load-bearing:
 
@@ -87,14 +80,29 @@ whether "no match" should be a `404`, a fall-through to the alias table, or a re
 centralising that decision is what keeps the not-found response byte-identical whether a service is
 disabled, absent, or has no such route.
 
-**`manifestIngest` runs inside Release's link and resync batch.** Core's pipeline
-(`manifestIngestStatements`) runs each enabled service's hook and hands the statements to the
-ingest, so a service's rows land atomically with the rest without Release importing the service.
-A disabled service's hook does not run. `manifestIngestAlways` is the one exception: Core runs it
-whatever the enablement, because turning a service on in the console runs no ingest. It may write
-only a record that does nothing until its service is on. Both return the repo's own `DbStatement`,
-not a `D1PreparedStatement`, because every batch site in the worker goes through the `Db`
-abstraction so the same code runs on D1 and on the in-memory SQLite the tests use.
+**`contributes.manifest` runs inside Core's ingest pipeline** (`core/ingest/pipeline.ts`), not
+inside Release. Release is the GitHub source adapter: it reads the repository and hands the
+pipeline a parsed manifest. Core runs every contributor's `checks` in a fixed order and stops at
+the first refusal, so nothing is written for a refused push. It then calls `prepare` on Core's own
+contributor first and on each mounted service in canonical order, and writes everything in **one
+batch**: the statements, the create defaults, the audit rows and the manifest snapshot. A service's
+rows therefore land atomically with the rest, without Release importing the service. After the
+batch, service steps run (the release store sync, pack sets, mirrors) and then Core's (service
+transitions, hosted assets); they never throw. The dry runs call the same checks through
+`plan`, which lists every refusal instead of stopping at the first.
+
+A contributor keeps five rules: read only in `checks`, `prepare` and `finalize`; write only your own
+tables (`tableCrossings.test.ts` proves it); be idempotent; never write an operator-owned column; and
+put each claim guard in the SQL, not only in an earlier read. It returns the repo's own
+`DbStatement`, not a `D1PreparedStatement`, because every batch site in the worker goes through the
+`Db` abstraction so the same code runs on D1 and on the in-memory SQLite the tests use.
+
+A contributor writes rows whatever the service's enablement, because turning a service on in the
+console runs no ingest: a product that later turns License on would otherwise have no tiers until
+its next push. The exceptions are rows that only matter while the service answers, such as
+Distribution's outlets and Identity's `claimByKey`, which check `ctx.enabled`. The deploy hook runs
+the same pipeline with `scope: "system"`, which writes only the subset the system product's
+manifest owns.
 
 **`authorizeRegistration` is the one place Core delegates an authorization decision to a service.**
 It exists because one of the three registration policies is named after a service:

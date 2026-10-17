@@ -15,9 +15,12 @@ import { accessIngestStatements } from "./access.js";
 import { releaseKeyObservationStatements } from "./availability.js";
 import { manifestIngestStatements as outletIngestStatements } from "./outlets.js";
 
-async function prepare(ctx: IngestContext): Promise<ManifestContribution> {
+/** Distribution's ingest rows: outlets and key observations while on, the access row always. */
+export function distributionStatements(
+  ctx: Pick<IngestContext, "manifest" | "slug" | "now" | "enabled">,
+): DbStatement[] {
   const { manifest, slug, now } = ctx;
-  const statements: DbStatement[] = [
+  return [
     ...(ctx.enabled
       ? [
           ...outletIngestStatements(manifest, slug, now),
@@ -26,6 +29,10 @@ async function prepare(ctx: IngestContext): Promise<ManifestContribution> {
       : []),
     ...accessIngestStatements(manifest, slug, now),
   ];
+}
+
+async function prepare(ctx: IngestContext): Promise<ManifestContribution> {
+  const statements = distributionStatements(ctx);
   return {
     statements,
     audits: [],

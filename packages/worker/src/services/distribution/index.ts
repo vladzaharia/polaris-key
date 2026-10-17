@@ -20,7 +20,7 @@
  *     (`DISTRIBUTION_BYTE_ROUTES`, registered in `mount.ts`). It also serves the CI rollout
  *     routes (`pkeyci_` + `distribution:rollout`).
  *   - its discovery fragment advertises the download, install, builds and blobs URLs.
- *   - `manifestIngest` applies `.pkey/distribution` — outlets and transports (P2b-02,
+ *   - its manifest contributor (`ingest.ts`) applies `.pkey/distribution` — outlets and transports (P2b-02,
  *     `outlets.ts`) — and the manifest's `release.access.artifacts` into the `app` row of
  *     `dist_access` unless an operator owns it (P2b-04, `access.ts`).
  *   - it implements two of Core's descriptor hooks (`core/hooks.ts`): `delivery` (`delivery.ts`:
@@ -51,24 +51,19 @@ import type {
   ScheduledServiceContext,
   ServiceDescriptor,
 } from "../../core/registry.js";
-import type { ParsedManifest } from "@polaris-key/manifest";
+import type {} from "@polaris-key/manifest";
 import { parseJsonColumn } from "../../platform/json.js";
-import type { DbStatement } from "../../db/types.js";
+import type {} from "../../db/types.js";
 import { bytesHostname } from "../../core/assets/bytesHost.js";
 import { handleDistributionAdmin } from "./admin.js";
 import { registryMaterialiser } from "./registryMaterialiser.js";
 import { defaultCapabilities, effectiveCapabilities } from "./capabilities.js";
 import { delivery } from "./delivery.js";
-import { accessIngestStatements } from "./access.js";
-import { releaseKeyObservationStatements } from "./availability.js";
 import { handleDistributionRoutes } from "./routes.js";
 import { refreshReadiness } from "./readiness.js";
 import { pollConnectors } from "./connectors/index.js";
 import { runAutoHalt, type AutoHaltOutcome } from "./autoHalt.js";
-import {
-  getOutlet,
-  manifestIngestStatements as outletIngestStatements,
-} from "./outlets.js";
+import { getOutlet } from "./outlets.js";
 import { DISTRIBUTION_SETTINGS_SLICE } from "./settings.js";
 import {
   syncManifestListingAssets,
@@ -94,19 +89,6 @@ async function outletCapabilities(
       ? parseJsonColumn(row.capabilities_json)
       : null;
   return { outletId, ...effectiveCapabilities(defaults, override) };
-}
-
-/** Distribution's `manifestIngest` (enabled only): outlets and transports, and the declared
- *  release keys as key-inventory observations (P3-03). */
-function manifestIngest(
-  parsed: ParsedManifest,
-  product: string,
-  now: number,
-): DbStatement[] {
-  return [
-    ...outletIngestStatements(parsed, product, now),
-    ...releaseKeyObservationStatements(parsed, product, now),
-  ];
 }
 
 /**
@@ -329,16 +311,6 @@ export const distributionService: ServiceDescriptor = {
   delivery,
   /** `core/hooks.ts` `OutletCapabilities` (P2b-02). */
   outletCapabilities,
-  /** `.pkey/distribution` → `dist_outlets` / `dist_transports`, while Distribution is on. */
-  manifestIngest,
-  /**
-   * `release.access.artifacts` → the `app` row of `dist_access`, on every link and resync
-   * WHATEVER Distribution's enablement (`core/registry.ts` `manifestIngestAlways`): turning
-   * Distribution on runs no ingest, so the row must already hold the manifest's answer then, or
-   * a Release-only product's `licensed` downloads would open (or, with no row, close) the moment
-   * an operator enables Distribution.
-   */
-  manifestIngestAlways: accessIngestStatements,
   /** `/manage/api/products/<slug>/distribution/…` (`admin.ts`). */
   adminHandle: handleDistributionAdmin,
   /** The store-connector poll, on the connector cron (`connectors/`). */

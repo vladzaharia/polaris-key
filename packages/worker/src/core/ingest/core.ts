@@ -174,7 +174,15 @@ function checks(ctx: IngestContext): IngestCheck[] {
       check: "publisher",
       run: async () => {
         const r = await publisher(ctx);
-        return r.ok ? null : { check: "publisher", message: r.error };
+        return r.ok
+          ? null
+          : {
+              check: "publisher",
+              message: r.error,
+              area: "publisher",
+              file: "release",
+              path: "/release/publishing/trustedPublisher",
+            };
       },
     },
   ];
@@ -213,6 +221,7 @@ function checks(ctx: IngestContext): IngestCheck[] {
 }
 
 async function prepare(ctx: IngestContext): Promise<ManifestContribution> {
+  if (ctx.scope === "system") return prepareSystem(ctx);
   return ctx.mode === "create" ? prepareCreate(ctx) : prepareApply(ctx);
 }
 
@@ -603,6 +612,127 @@ async function prepareApply(ctx: IngestContext): Promise<ManifestContribution> {
     claimed,
     conflicts: rows.conflicts,
     afterCommit: () => afterCommit(ctx),
+  };
+}
+
+// ── system (the deploy hook, plans/P0-26.md D3) ──────────────────────────────────────────
+
+async function prepareSystem(
+  ctx: IngestContext,
+): Promise<ManifestContribution> {
+  const { manifest, slug, now, db } = ctx;
+  const rel = manifest.release!;
+  const repo = ctx.source.repo!;
+  const stmts: DbStatement[] = [
+    {
+      // `presentation_json` (HA-12): the manifest's `presentation`, manifest-only, NULL when the
+      // platform's own `.pkey/product` declares none.
+      sql: `UPDATE products SET release_source = 'github', presentation_json = ?, modified_at = ?
+             WHERE slug = ? AND system = 1`,
+      params: [serializePresentation(manifest.presentation), now, slug],
+    },
+  ];
+  const current = await getPublisherPolicy(db, slug);
+  const claimed = current?.source === "admin";
+  const declared = rel.trustedPublisher ?? null;
+  const identity = declared ? await repo.identity() : null;
+  const next =
+    declared && identity
+      ? {
+          repositoryId: identity.id,
+          repositoryOwnerId: identity.ownerId,
+          repository: identity.fullName,
+          workflow: declared.workflow,
+          environment: declared.environment,
+        }
+      : null;
+  // The system product's policy is manifest-authoritative and the console can no longer claim
+  // it. A claim found here (a pre-fix one, or a direct D1 write) is replaced by the manifest's
+  // policy, and every live static CI token on the product is revoked with its open tickets: the
+  // platform publishes through GitHub OIDC only.
+  const publisherChanged = manifestPublisherChanged(current, next);
+  if (claimed)
+    stmts.push({
+      sql: "DELETE FROM ci_publishers WHERE product = ? AND source = 'admin'",
+      params: [slug],
+    });
+  stmts.push(
+    next
+      ? stmtUpsertManifestPublisher({ product: slug, ...next, now })
+      : stmtDeleteManifestPublisher(slug),
+  );
+  const staticTokensRevoked =
+    (
+      await db.first<{ n: number }>(
+        `SELECT COUNT(*) AS n FROM ci_tokens
+          WHERE product = ? AND kind = 'static' AND revoked_at IS NULL`,
+        slug,
+      )
+    )?.n ?? 0;
+  // Unconditional: the statements are no-ops when nothing matches, and a token minted between
+  // the count above and the batch is revoked too.
+  stmts.push(
+    {
+      sql: `UPDATE ci_upload_tickets SET expires_at = MIN(expires_at, ?)
+               WHERE redeemed_at IS NULL AND token_hash IN
+                 (SELECT token_hash FROM ci_tokens
+                   WHERE product = ? AND kind = 'static' AND revoked_at IS NULL)`,
+      params: [now, slug],
+    },
+    {
+      sql: `UPDATE ci_tokens SET revoked_at = ?
+               WHERE product = ? AND kind = 'static' AND revoked_at IS NULL`,
+      params: [now, slug],
+    },
+  );
+
+  // ST-20: break-glass claims, compared against the snapshot this batch replaces (read first).
+  // Written after every service's rows (`tail`), as the hook always did. F-03: the system
+  // product keeps its name, so an ended `core.name` claim (none can be made: the console never
+  // claims its name) never writes the manifest's name.
+  const claims = await ctx.claims();
+  const ended = (name: boolean) =>
+    claims.ended.filter((e) => (e.key === "core.name") === name);
+  const tail = [
+    ...(await endBreakGlassStatements(db, slug, ended(false), {
+      actor: SYSTEM_ACTORS.deploy,
+      sha: ctx.source.sha,
+      now,
+      apply: manifest,
+    })),
+    ...(await endBreakGlassStatements(db, slug, ended(true), {
+      actor: SYSTEM_ACTORS.deploy,
+      sha: ctx.source.sha,
+      now,
+    })),
+  ];
+  return {
+    statements: stmts,
+    tail,
+    audits: [],
+    updated: [],
+    facts: {
+      system: {
+        packages: rel.packageDeliverables.map((p) => p.id).sort(),
+        publisher: declared
+          ? { workflow: declared.workflow, environment: declared.environment }
+          : null,
+        publisherClaimed: claimed,
+        publisherChanged: publisherChanged || claimed,
+        staticTokensRevoked,
+        replacedClaim:
+          claimed && current
+            ? {
+                source: current.source,
+                repository: current.repository,
+                workflow: current.workflow,
+                environment: current.environment,
+                scopes: current.scopes,
+                modifiedBy: current.modifiedBy ?? null,
+              }
+            : null,
+      },
+    },
   };
 }
 

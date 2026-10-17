@@ -12768,5 +12768,114 @@
       ]
     },
     "trips": 7
+  },
+  "14a-dry-create-reserved-name": {
+    "writes": {},
+    "state": {},
+    "result": {
+      "ok": true,
+      "repository": "acme-org/acme-app",
+      "installationId": 4242,
+      "commit": "0123456789abcdef0123456789abcdef01234567",
+      "manifestDigest": "<blob>",
+      "releaseWorkflow": false,
+      "ready": false,
+      "product": null,
+      "slug": null,
+      "registeredAs": null,
+      "services": [],
+      "catalog": null,
+      "platforms": {
+        "values": [],
+        "source": "none"
+      },
+      "secrets": [],
+      "problems": [
+        {
+          "check": "manifest",
+          "file": "product",
+          "path": "/product/name",
+          "message": "product.name uses a reserved platform or store name (Polaris Key, Apple, Google Play, Steam and others); an app may not present itself as one. Rename it, or ask the platform operator to approve it."
+        }
+      ]
+    },
+    "trips": 2
+  },
+  "14b-plan-every-refusal": {
+    "writes": {},
+    "state": {},
+    "result": {
+      "ok": true,
+      "repository": "acme-org/acme-app",
+      "commit": "0123456789abcdef0123456789abcdef01234567",
+      "plan": {
+        "apply": [
+          {
+            "area": "tiers",
+            "id": "pro",
+            "summary": "Tier pro replaced from the manifest"
+          },
+          {
+            "area": "tiers",
+            "id": "free",
+            "summary": "Tier free replaced from the manifest"
+          },
+          {
+            "area": "profiles",
+            "id": "standard",
+            "summary": "Profile standard replaced from the manifest (secret values set in the console are kept)"
+          },
+          {
+            "area": "oidc",
+            "summary": "Sign-in provider https://evil.example"
+          },
+          {
+            "area": "release",
+            "summary": "Release settings from .pkey/release"
+          },
+          {
+            "area": "publisher",
+            "summary": "Trusted publisher .github/workflows/release.yml"
+          },
+          {
+            "area": "edgeMint",
+            "summary": "Token recipes applemusic (each waits for approval)"
+          },
+          {
+            "area": "provisioning",
+            "summary": "1 provisioning hook"
+          }
+        ],
+        "skipClaimed": [],
+        "delete": [],
+        "conflicts": [
+          {
+            "area": "oidc",
+            "summary": "oidc.issuer \"https://evil.example\" is not in OIDC_ISSUER_ALLOWLIST; a platform operator must allowlist that host before a repo manifest can point this product's identity provider at it"
+          },
+          {
+            "area": "release",
+            "summary": "manifest replaces the stored Sparkle public key for acme; a repo push may not swap the key that authenticates this product's builds in one step. To rotate it on purpose, push .pkey/release with sparkleEd25519Pub removed (the update feed fails closed while no key is set), then push the new key"
+          }
+        ]
+      },
+      "breakGlass": []
+    },
+    "trips": 20
+  },
+  "14c-dry-link-every-refusal": {
+    "writes": {},
+    "state": {},
+    "result": {
+      "ok": false,
+      "status": 422,
+      "check": "policy",
+      "error": "oidc.issuer \"https://evil.example\" is not in OIDC_ISSUER_ALLOWLIST; a platform operator must allowlist that host before a repo manifest can point this product's identity provider at it",
+      "errors": [
+        "oidc.issuer \"https://evil.example\" is not in OIDC_ISSUER_ALLOWLIST; a platform operator must allowlist that host before a repo manifest can point this product's identity provider at it",
+        "invalid catalog in manifest: api.key: a secret entry cannot carry default or examples"
+      ]
+    },
+    "trips": 18
   }
 }

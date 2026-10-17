@@ -121,7 +121,9 @@ async function prepare(ctx: IngestContext): Promise<ManifestContribution> {
   const updated: string[] = [];
   const { audits, auditSetting } = settingAuditor(slug, now, ctx.source.sha);
 
-  if (ctx.mode === "apply") {
+  if (ctx.scope === "system") {
+    // The deploy hook's subset: the row settings only (never OIDC or provisioning).
+  } else if (ctx.mode === "apply") {
     // The manifest-owned rows this apply replaces whole, as they stand now: the "before" of the
     // `identity.oidc` and `identity.provisioning` audit rows below.
     const storedOidc = await ctx.db.first<OidcColumns>(
@@ -233,7 +235,15 @@ export const identityManifest: ManifestContributor = {
                 ctx.slug,
                 ctx.manifest,
               );
-        return message ? { check: "issuer", message } : null;
+        return message
+          ? {
+              check: "issuer",
+              message,
+              area: "oidc",
+              file: "product",
+              path: "/oidc/issuer",
+            }
+          : null;
       },
     },
   ],

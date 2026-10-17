@@ -1,3 +1,5 @@
+import { ingestFor } from "../src/core/ingest/pipeline.js";
+import { SERVICES } from "../src/mount.js";
 /**
  * P2-02 — trusted publishing through the real dispatcher: the three routes, and the publisher
  * policy's ingest in link and resync.
@@ -1053,6 +1055,7 @@ describe("publisher policy ingest", () => {
       `${OWNER}/${REPO}`,
       NOW,
       githubStub(),
+      ingestFor(SERVICES),
     );
     expect(res).toMatchObject({ ok: true });
     expect(await getPublisherPolicy(fresh, SLUG)).toMatchObject({
@@ -1086,6 +1089,7 @@ describe("publisher policy ingest", () => {
         SLUG,
         NOW + 10,
         githubStub({ releaseDoc: moved, repoId: 556 }),
+        ingestFor(SERVICES),
       ),
     ).toMatchObject({ ok: true });
     expect(await getPublisherPolicy(db, SLUG)).toMatchObject({
@@ -1102,7 +1106,14 @@ describe("publisher policy ingest", () => {
     // Dropping the declaration drops the manifest-owned policy.
     const none = structuredClone(RELEASE_DOC) as any;
     delete none.release.publishing;
-    await resyncRepo(env, db, SLUG, NOW + 20, githubStub({ releaseDoc: none }));
+    await resyncRepo(
+      env,
+      db,
+      SLUG,
+      NOW + 20,
+      githubStub({ releaseDoc: none }),
+      ingestFor(SERVICES),
+    );
     expect(await getPublisherPolicy(db, SLUG)).toBeNull();
   });
 
@@ -1128,6 +1139,7 @@ describe("publisher policy ingest", () => {
         SLUG,
         NOW + 10,
         githubStub({ releaseDoc: hostile, repoId: 999 }),
+        ingestFor(SERVICES),
       ),
     ).toMatchObject({ ok: true });
     expect(await getPublisherPolicy(db, SLUG)).toEqual(before);
@@ -1139,6 +1151,7 @@ describe("publisher policy ingest", () => {
       SLUG,
       NOW + 20,
       githubStub({ releaseDoc: removed }),
+      ingestFor(SERVICES),
     );
     expect(await getPublisherPolicy(db, SLUG)).toEqual(before);
   });
@@ -1149,7 +1162,14 @@ describe("publisher policy ingest", () => {
       String(input) === `https://api.github.com/repos/${OWNER}/${REPO}`
         ? new Response("boom", { status: 500 })
         : githubStub()(input);
-    const res = await resyncRepo(env, db, SLUG, NOW + 10, failing);
+    const res = await resyncRepo(
+      env,
+      db,
+      SLUG,
+      NOW + 10,
+      failing,
+      ingestFor(SERVICES),
+    );
     expect(res).toMatchObject({ ok: false });
   });
 });

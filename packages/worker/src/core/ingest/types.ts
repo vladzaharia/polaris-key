@@ -58,7 +58,7 @@ export interface RepoHandle {
 
 /** Where a manifest came from. Core never reads GitHub itself; the adapter closes over it. */
 export interface ManifestSource {
-  origin: "link" | "resync";
+  origin: "link" | "resync" | "deploy-hook";
   /** The commit every document was read at. */
   sha: string | null;
   /** The raw `.pkey/` documents (the snapshot records them). */
@@ -76,8 +76,18 @@ export interface CreateRequest {
   author?: string;
 }
 
+/**
+ * `full` applies every owner's rows. `system` is the deploy hook's subset for the system product
+ * (plans/P0-26.md D3): the release block and deliverables, the manifest-authoritative publisher
+ * (an admin claim replaced, static CI tokens revoked), the row settings, Distribution's rows and
+ * the ended break-glass claims; never the services, catalog, tiers, profiles, OIDC or recipes.
+ */
+export type IngestScope = "full" | "system";
+
 export interface IngestInput {
   mode: IngestMode;
+  /** Absent: `full`. `system` needs `mode: "apply"`. */
+  scope?: IngestScope;
   product: string;
   manifest: ParsedManifest;
   now: number;
@@ -93,6 +103,11 @@ export interface IngestProblem {
   message: string;
   /** Extra fields for the failure answer (`reason`, `fields`, `codes`). */
   extra?: { reason?: string; fields?: string[]; codes?: string[] };
+  /** Where the dry runs place it: the plan area, the `.pkey/` document and JSON path, a row id. */
+  area?: string;
+  file?: "product" | "schema" | "release" | "distribution";
+  path?: string;
+  id?: string;
 }
 
 export interface RowPlanTier {
@@ -169,6 +184,7 @@ export interface IngestContext {
   env: Env;
   db: Db;
   mode: IngestMode;
+  scope: IngestScope;
   slug: string;
   manifest: ParsedManifest;
   now: number;
@@ -205,6 +221,10 @@ export interface IngestCheck {
   /** Orders the check (`REFUSAL_ORDER`). */
   check: string;
   run(): Promise<IngestProblem | null>;
+  /** Only the dry run asks (the apply does it later, in `finalize`). */
+  planOnly?: boolean;
+  /** Only the apply asks (the dry run words this conflict from its own plan). */
+  applyOnly?: boolean;
 }
 
 export interface ManifestContributor {
@@ -249,7 +269,59 @@ export interface IngestFail {
 
 export type IngestResult = IngestOk | IngestFail;
 
+/** The dry run's answer (`Ingest.plan`): every refusal, and what an apply would do. */
+export interface IngestPlan {
+  /** Every refusal that applies, in the dry run's order (not only the first). */
+  problems: IngestProblem[];
+  /** Apply mode only: the rows the apply would write, keep and delete. */
+  plan: ManifestPlan | null;
+  /** The break-glass claims an apply would keep. */
+  breakGlass: BreakGlassClaim[];
+}
+
+export interface PlanItem {
+  area:
+    | "source"
+    | "product"
+    | "compat"
+    | "services"
+    | "presentation"
+    | "fingerprint"
+    | "autoIssue"
+    | "catalog"
+    | "tiers"
+    | "profiles"
+    | "oidc"
+    | "release"
+    | "access"
+    | "publisher"
+    | "edgeMint"
+    | "provisioning"
+    | "settings";
+  id?: string;
+  summary: string;
+}
+
+/** What applying a manifest to a product will do (S-18 §4.5's dry-run shape). */
+export interface ManifestPlan {
+  /** Values and rows the manifest writes. */
+  apply: PlanItem[];
+  /** Values the manifest declares but an operator set in the console: they stay. */
+  skipClaimed: PlanItem[];
+  /** Rows the product has that the manifest does not declare: they go. */
+  delete: PlanItem[];
+  /** What blocks the apply. Non-empty refuses the link. */
+  conflicts: PlanItem[];
+}
+
 export interface Ingest {
+  /** The dry run: runs no write and stops at no refusal. */
+  plan(
+    env: Env,
+    db: Db,
+    input: IngestInput,
+    opts?: { skip?: readonly string[] },
+  ): Promise<IngestPlan>;
   /** (Not named `apply`: a plain function already has one, and would type-check as an `Ingest`.) */
   run(env: Env, db: Db, input: IngestInput): Promise<IngestResult>;
 }
