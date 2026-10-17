@@ -6,7 +6,7 @@
  *
  *   node tools/feed-drift.mjs --origin https://pkg.plrs.im --version 0.9.1-main.4 \
  *     --pep440 0.9.1.dev4 --channel main [--owner polaris-key] [--root .] [--timeout 600] \
- *     [--only npm,maven] [--skip npm.ui-core,npm.server,maven.ui-core,maven.server,maven.server-ktor]
+ *     [--only npm,maven] [--skip npm.ui-core,npm.server,maven.ui-android,maven.ui-core,maven.server,maven.server-ktor]
  *
  * `--skip` names deliverable ids a build does not publish (publish-sdks.yml publishes the
  * `npm.ui-core`, `npm.server`, `maven.ui-core`, `maven.server` and `maven.server-ktor` deliverables, and so the packages that pin it, on v* tag builds only); they are not read.

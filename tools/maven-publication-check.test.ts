@@ -68,6 +68,28 @@ describe("maven publication check", () => {
     );
   });
 
+  it("the ui-android glob takes only ui-android's files, and the ui and ui-core globs do not", () => {
+    const ds = mavenDeliverables(RELEASE);
+    const android = ds.find((d) => d.id === "maven.ui-android")!;
+    const ui = ds.find((d) => d.id === "maven.ui")!;
+    const core = ds.find((d) => d.id === "maven.ui-core")!;
+    for (const f of [
+      "polaris-key-ui-android-0.1.0.aar",
+      "polaris-key-ui-android-0.1.0.module",
+      "polaris-key-ui-android-0.1.0-sources.jar",
+    ]) {
+      expect(globMatches(android.match!, f)).toBe(true);
+      expect(globMatches(ui.match!, f)).toBe(false);
+      expect(globMatches(core.match!, f)).toBe(false);
+    }
+    for (const f of [
+      "polaris-key-ui-0.1.0.jar",
+      "polaris-key-ui-core-0.1.0.pom",
+    ]) {
+      expect(globMatches(android.match!, f)).toBe(false);
+    }
+  });
+
   it("the server glob does not take polaris-key-server-ktor's files", () => {
     const server = mavenDeliverables(RELEASE).find(
       (d) => d.id === "maven.server",

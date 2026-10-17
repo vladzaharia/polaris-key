@@ -500,7 +500,7 @@ jobs:
           VERSION: ${{ needs.version.outputs.version }}
         run: |
           tools/check_publication.sh
-          expected="android-direct android-play billing config core desktop godot-direct godot-play identity license packs platform-direct platform-play release sdk server server-ktor ui ui-core update zstd"
+          expected="android-direct android-play billing config core desktop godot-direct godot-play identity license packs platform-direct platform-play release sdk server server-ktor ui ui-android ui-core update zstd"
           repo=build/repo/im/plrs/key
           actual="$(find "$repo" -mindepth 1 -maxdepth 1 -type d -name 'polaris-key-*' -printf '%f\n' | sed 's/^polaris-key-//' | LC_ALL=C sort | tr '\n' ' ' | sed 's/ $//')"
           if [ "$actual" != "$expected" ]; then
@@ -577,6 +577,20 @@ jobs:
   # rejects maven.ui-core with `unknown_deliverable` until a v* tag deploy (deploy.yml) registers
   # the deliverable. Remove the `if` once the first release that deploys it has shipped, and move
   # `ui-core` into the matrix.
+  maven-ui-android:
+    name: Maven feed (ui-android)
+    needs: [version, kotlin-build]
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/publish-package.yml
+    with:
+      deliverable: maven.ui-android
+      artifact: maven-repo
+      version: ${{ needs.version.outputs.version }}
+      channel: ${{ needs.version.outputs.channel }}
+
   maven-ui-core:
     name: Maven feed (ui-core)
     needs: [version, kotlin-build]
@@ -591,6 +605,7 @@ jobs:
       version: ${{ needs.version.outputs.version }}
       channel: ${{ needs.version.outputs.channel }}
 
+  # maven.ui-android is a job of its own for the same reason as maven-ui-core below.
   # maven.server and maven.server-ktor are jobs of their own, for the same reason as maven-ui-core
   # above: the live product rejects them with `unknown_deliverable` until a v* tag deploy
   # (deploy.yml) registers them. Remove the `if` once the first release that deploys them has
@@ -817,6 +832,7 @@ jobs:
         python,
         swift,
         maven,
+        maven-ui-android,
         maven-ui-core,
         maven-server,
         maven-server-ktor,
@@ -845,7 +861,7 @@ jobs:
           CHANNEL: ${{ needs.version.outputs.channel }}
           # What a build of main does not publish (see npm-tier-3): the ui-core, npm.server, maven.server and server-ktor deliverables and
           # the npm packages that pin ui-core. A tag build publishes them all.
-          SKIP: ${{ !startsWith(github.ref, 'refs/tags/') && 'npm.ui-core,npm.server,npm.node,npm.react,npm.cli,maven.ui-core,maven.server,maven.server-ktor' || '' }}
+          SKIP: ${{ !startsWith(github.ref, 'refs/tags/') && 'npm.ui-core,npm.server,npm.node,npm.react,npm.cli,maven.ui-android,maven.ui-core,maven.server,maven.server-ktor' || '' }}
         run: >-
           node tools/feed-drift.mjs --origin https://pkg.plrs.im --owner polaris-key
           --version "$VERSION" --pep440 "$PEP440" --channel "$CHANNEL" --timeout 600
@@ -891,6 +907,7 @@ jobs:
         python,
         swift,
         maven,
+        maven-ui-android,
         maven-ui-core,
         maven-server,
         maven-server-ktor,
