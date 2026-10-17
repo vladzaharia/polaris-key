@@ -199,6 +199,21 @@ release:
       name: "im.plrs.key:polaris-key-ui-core"
       artifacts:
         files: { match: "polaris-key-ui-core-*" }
+    maven.server:
+      kind: package
+      ecosystem: maven
+      name: "im.plrs.key:polaris-key-server"
+      artifacts:
+        # Same single-digit-major glob as maven.ui, for the same reason: it must not also take
+        # polaris-key-server-ktor-*. A two-digit major (10.x) will not match: change this glob,
+        # and keep it apart from server-ktor, when that release comes.
+        files: { match: "polaris-key-server-?.*" }
+    maven.server-ktor:
+      kind: package
+      ecosystem: maven
+      name: "im.plrs.key:polaris-key-server-ktor"
+      artifacts:
+        files: { match: "polaris-key-server-ktor-*" }
     maven.billing:
       kind: package
       ecosystem: maven

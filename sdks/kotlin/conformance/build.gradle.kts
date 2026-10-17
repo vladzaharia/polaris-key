@@ -51,6 +51,8 @@ if (liveDevConfig != null) {
 
 dependencies {
     testImplementation(project(":sdk"))
+    // SP-57: the server core replays backend-matrix.json.
+    testImplementation(project(":server"))
     // The pack corpus decodes zstd: the opt-in decoder (SP-50), as an app that uses packs adds it.
     testImplementation(project(":zstd"))
     testImplementation(libs.junit)

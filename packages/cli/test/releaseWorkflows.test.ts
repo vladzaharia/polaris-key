@@ -309,6 +309,8 @@ describe("publishing is automatic and in lockstep (owner decision 2026-10-04)", 
         "godot",
         "image",
         "maven",
+        "maven-server",
+        "maven-server-ktor",
         "maven-ui-core",
         ...NPM_TIERS,
         "python",
@@ -332,6 +334,12 @@ describe("publishing is automatic and in lockstep (owner decision 2026-10-04)", 
     expect(wf.jobs["npm-tier-3"]!.if).toBe(gate);
     expect(wf.jobs["maven-ui-core"]!.if).toBe(gate);
     expect(wf.jobs["maven-ui-core"]!.with?.deliverable).toBe("maven.ui-core");
+    expect(wf.jobs["maven-server"]!.if).toBe(gate);
+    expect(wf.jobs["maven-server"]!.with?.deliverable).toBe("maven.server");
+    expect(wf.jobs["maven-server-ktor"]!.if).toBe(gate);
+    expect(wf.jobs["maven-server-ktor"]!.with?.deliverable).toBe(
+      "maven.server-ktor",
+    );
     const check = (wf.jobs.drift!.steps ?? []).find((s) =>
       s.run?.includes("tools/feed-drift.mjs"),
     );
@@ -339,7 +347,7 @@ describe("publishing is automatic and in lockstep (owner decision 2026-10-04)", 
     // Tiers 4 and 5 (node, react, cli) pin ui-core and so skip with tier 3; the drift check
     // skips exactly those and the ui-core deliverables.
     expect(String(check?.env?.SKIP)).toBe(
-      "${{ !startsWith(github.ref, 'refs/tags/') && 'npm.ui-core,npm.node,npm.react,npm.cli,maven.ui-core' || '' }}",
+      "${{ !startsWith(github.ref, 'refs/tags/') && 'npm.ui-core,npm.node,npm.react,npm.cli,maven.ui-core,maven.server,maven.server-ktor' || '' }}",
     );
   });
 
@@ -479,6 +487,8 @@ describe("the backstop prune after a stable tag (P0-48, feed retention)", () => 
         "godot",
         "image",
         "maven",
+        "maven-server",
+        "maven-server-ktor",
         "maven-ui-core",
         ...NPM_TIERS,
         "python",

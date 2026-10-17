@@ -3,17 +3,41 @@
 | Field          | Value                                                                                                                                                                                                                                 |
 | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Brief          | None yet. This is an unowned security finding; approval creates the implementation work package(s).                                                                                                                                   |
-| Status         | awaiting approval: merging this plan is the approval                                                                                                                                                                                  |
-| Basis          | `main` at `d27467ef8`; `packages/worker/src/platform/crypto.ts:86-90`, `core/configGuard.ts:17-30`, `docs/DEPLOYMENT.md:39-46`, and `docs/security/arch/operational-resilience.md` §1.4.                                              |
+| Status         | Approved 2026-10-16 (lead, delegated); implement after SEC-adminsession                                                                                                                                                               |
+| Basis          | `main` at `d27467ef8`; `packages/worker/src/platform/crypto.ts:117-120`, `core/configGuard.ts:17-30`, `docs/DEPLOYMENT.md:39-46`, and `docs/security/arch/operational-resilience.md` §1.4.                                            |
 | Wire change    | **None.** Credential text (`pkey_`, `pkeyt_`, `pkeyci_`, `pkeyr_`) remains byte-for-byte unchanged. No device route, signed document, claim, SDK API, `PROTOCOL_VERSION`, `corpusVersion`, `shared-protocol`, or `shared-jws` change. |
 | Corpus / SDKs  | None. The Worker changes its at-rest lookup implementation only. Existing SDKs continue sending the same opaque credentials.                                                                                                          |
 | Migration lane | D1. Every file uses an `00XX_` placeholder name; the lead numbers it during rebase. One `ALTER TABLE` per file, plus one fence migration (§7.1). Down scripts under `scripts/rollback/` abort once the fence closes.                  |
 | Rotation fence | A deployment and data fence precedes any rotation (§7.1); a compromised pepper follows §7.3, not lazy rehash; Appendix A withdraws the optional `product_keys` rebuild.                                                               |
 
+## Decisions (lead, 2026-10-16)
+
+Delegated by the owner; rulings on §8 as numbered there.
+
+1. **Pepper at first credential:** treat as unknown; add the verify-only `unkeyed` candidate until a known-credential probe proves otherwise.
+2. **Credential ring** (`KEY_HASH_PEPPERS` + `KEY_HASH_PEPPER_ACTIVE`, scalar retained): yes.
+3. **Stable derivation secret** for `mbr_` and durable asset ids: yes.
+4. **Retirement:** retain the old pepper until the straggler report is zero; no time-based retirement.
+5. **Per-product HKDF:** deferred.
+6. **Fail closed** outside an explicit test environment: yes.
+7. **Rotation fence (§7.1):** yes, but only once a deployable non-production environment exists; until then ship only the compat deploy (§7.2 steps 1 and 3).
+8. **Compromise policy §7.3:** yes.
+9. **Replacement capacity:** decided later from the licence census.
+10. **A-1 native CHECK on `product_keys.status`:** no. The triggers in `migrations/0015_data_integrity.sql` already enforce it.
+
+Amendments: the `pkeya_` admin API token family (`admin_api_tokens.token_hash`, migration 0119) joins the §5, §6.2, §6.5 and §7.3 inventories (stamp column `00XX_g`, fence trigger in `00XX_f`, revoke by token id). Ordering with SEC-adminsession on `core/console/sessionRevocation.ts` is in §6.3. Drifted cites re-anchored to `main@23534d886`: `platform/crypto.ts:117-120`; `docs/RUNBOOK.md` rollback `:579-583`, KEK compromise `:587-598`, keyring steps `:448-463`, `:517-521`, `:676-693`; `docs/DEPLOYMENT.md` placeholders `:997-999`, `:1311-1313`.
+
+Owner preconditions (also in the owner-steps checklist):
+
+1. Answer whether `KEY_HASH_PEPPER` was set before the first production credential (decision 1).
+2. Provision a deployable non-production environment (staging/dev still carry `REPLACE_ME_*`), or name a disposable one.
+3. Name the incident lead and the approver of A1 to A5 before the first production rotation.
+4. Count licences for the replacement-capacity decision (decision 9).
+
 ## 1. Summary and scope
 
 `hashKey(value, pepper?)` currently returns unkeyed SHA-256 when its optional pepper is absent and
-HMAC-SHA-256 when present (`platform/crypto.ts:86-90`). Both outputs are indistinguishable
+HMAC-SHA-256 when present (`platform/crypto.ts:117-120`). Both outputs are indistinguishable
 64-character hex strings. `configGuard` now fails closed for a missing/short pepper only when
 `PKEY_ENVIRONMENT` is `prod`, `staging`, or `dev`; changing the secret nevertheless invalidates
 every persisted hash at once.
@@ -81,12 +105,13 @@ byte-identical; an unexpected transcript change is a regression.
 
 None. Every client continues presenting the same opaque values:
 
-| Family         | External spelling | At-rest consequence                                                  |
-| -------------- | ----------------- | -------------------------------------------------------------------- |
-| licence key    | `pkey_`           | `keys_index` lookup dual-reads and lazily rehashes on presentation   |
-| device token   | `pkeyt_`          | device token D1/KV lookup dual-reads; active devices converge on use |
-| CI token       | `pkeyci_`         | token lookup dual-reads; finite expiry bounds the tail               |
-| registry token | `pkeyr_`          | token lookup dual-reads; finite expiry bounds the tail               |
+| Family          | External spelling | At-rest consequence                                                                                                                |
+| --------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| licence key     | `pkey_`           | `keys_index` lookup dual-reads and lazily rehashes on presentation                                                                 |
+| device token    | `pkeyt_`          | device token D1/KV lookup dual-reads; active devices converge on use                                                               |
+| CI token        | `pkeyci_`         | token lookup dual-reads; finite expiry bounds the tail                                                                             |
+| registry token  | `pkeyr_`          | token lookup dual-reads; finite expiry bounds the tail                                                                             |
+| admin API token | `pkeya_`          | `admin_api_tokens.token_hash` lookup (`console/apiTokens.ts:256-258`) dual-reads; `expires_at` is NOT NULL, so the tail is bounded |
 
 No SDK release is required. Server errors remain existing unauthorized/misconfigured behavior;
 the implementation must never expose “old pepper matched” to a caller.
@@ -125,8 +150,8 @@ Rules:
   scalar-only revision and a ring-aware revision write byte-identical rows.
 - **Member states.** `KEY_HASH_PEPPER_STATES` is strict JSON mapping an id to `quarantined` or
   `disabled`; an id it does not name is verify-only (or active, when `KEY_HASH_PEPPER_ACTIVE` names
-  it). A *quarantined* id still verifies, is never rehashed forward, and every match emits a
-  security event. A *disabled* id never verifies a credential or session; it stays a deny-only
+  it). A _quarantined_ id still verifies, is never rehashed forward, and every match emits a
+  security event. A _disabled_ id never verifies a credential or session; it stays a deny-only
   candidate for security state (revocation, lockout and replay markers) until their maximum TTL has
   drained (§6.3), so its secret is deleted only after that, and its name stays so the report counts
   its rows as `disabled` rather than `unopenable`. The active id can be neither. These states are
@@ -151,14 +176,17 @@ Rules:
 Use a nullable `hash_pepper_id` column. It makes progress queryable without changing the 64-hex
 hash format or breaking existing admin URLs that currently name a hash.
 
-| Placeholder migration                               | Table/family               | Meaning of existing `NULL`                             | New write |
-| --------------------------------------------------- | -------------------------- | ------------------------------------------------------ | --------- |
-| `00XX_a_keys_index_hash_pepper_id.sql`              | licence keys (`pkey_`)     | historical/unknown; resolve by candidates at first use | active id |
-| `00XX_b_devices_token_hash_pepper_id.sql`           | device tokens (`pkeyt_`)   | historical/unknown                                     | active id |
-| `00XX_c_ci_tokens_hash_pepper_id.sql`               | CI tokens (`pkeyci_`)      | historical/unknown                                     | active id |
-| `00XX_d_registry_tokens_hash_pepper_id.sql`         | registry tokens (`pkeyr_`) | historical/unknown                                     | active id |
-| `00XX_e_release_download_tokens_hash_pepper_id.sql` | portal download tokens     | historical/unknown                                     | active id |
-| `00XX_f_credential_pepper_fence.sql`                | fence for the tables above | n/a                                                    | n/a       |
+| Placeholder migration                               | Table/family                                                               | Meaning of existing `NULL`                             | New write |
+| --------------------------------------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------ | --------- |
+| `00XX_a_keys_index_hash_pepper_id.sql`              | licence keys (`pkey_`)                                                     | historical/unknown; resolve by candidates at first use | active id |
+| `00XX_b_devices_token_hash_pepper_id.sql`           | device tokens (`pkeyt_`)                                                   | historical/unknown                                     | active id |
+| `00XX_c_ci_tokens_hash_pepper_id.sql`               | CI tokens (`pkeyci_`)                                                      | historical/unknown                                     | active id |
+| `00XX_d_registry_tokens_hash_pepper_id.sql`         | registry tokens (`pkeyr_`)                                                 | historical/unknown                                     | active id |
+| `00XX_e_release_download_tokens_hash_pepper_id.sql` | portal download tokens                                                     | historical/unknown                                     | active id |
+| `00XX_g_admin_api_tokens_hash_pepper_id.sql`        | admin API tokens (`pkeya_`, `admin_api_tokens.token_hash`, migration 0119) | historical/unknown                                     | active id |
+| `00XX_f_credential_pepper_fence.sql`                | fence for the tables above, `00XX_g` included                              | n/a                                                    | n/a       |
+
+`00XX_g` adds the `hash_pepper_id` stamp column to `admin_api_tokens`; `00XX_f` carries its fence insert trigger like every other row of this table (the letters are placeholders, the lead numbers them; `_f` still closes the set).
 
 The implementer inventories every remaining D1 hash column before the migration lands. If a table
 is not a credential lookup (for example an audit/derived identifier), it must not receive a
@@ -193,7 +221,7 @@ mutation; it must not claim a stale hash URL still names the same record.
 row's current value. Nothing rewrites a hash from a row snapshot read earlier.
 
 - Rehash: `UPDATE <table> SET <hash> = :new, hash_pepper_id = :active WHERE <existing key> AND
-  <hash> = :old AND hash_pepper_id IS :oldStamp`. It writes no other column: `status`,
+<hash> = :old AND hash_pepper_id IS :oldStamp`. It writes no other column: `status`,
   `expires_at`, `revoked_at`, `used_at`, `last_used_at`, `last_seen`, `seat_no`, labels, scopes and
   every other metadata column are untouched, so a revoked or expired row stays revoked or expired.
 - Models already in the repository: `rotateDeviceToken`'s compare-and-set
@@ -236,6 +264,8 @@ KEY_HASH_PEPPER)` (`core/console/sessionRevocation.ts:24-53`). During a rotation
 accepted candidates until its one-hour TTL drains; otherwise changing peppers can accidentally
 make a logged-out cookie valid again.
 
+**Cross-plan ordering.** SEC-adminsession lands first and changes this same file (`core/console/sessionRevocation.ts`: the targeted-revoke route and keep-max mark). The ring change here is then made on top of it, and the reader checks every accepted candidate for both the logout mark and the targeted-revoke mark.
+
 ### 6.4 Stable derivations are a prerequisite, not a hidden exception
 
 A rotating credential key must not silently rotate durable identities. Before the first real
@@ -252,13 +282,14 @@ before retiring a credential pepper; it is not permission to leave unreviewed di
 
 ### 6.5 Family-specific retirement policy
 
-| Family                   | Tail                                          | Retirement rule                                                                                                                             |
-| ------------------------ | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `pkey_` licence keys     | potentially years; plaintext shown once       | retain old verify-only pepper until report is zero, or make an explicit owner-approved reissue/stranding decision; never silently retire it |
-| `pkeyt_` device tokens   | active devices converge; dormant/offline tail | retain through the documented dormancy/offline window plus a report of remaining rows                                                       |
-| `pkeyci_` CI tokens      | bounded by token expiry                       | retain through maximum static-token lifetime plus grace; report zero active old-id rows                                                     |
-| `pkeyr_` registry tokens | bounded by maximum expiry                     | retain through maximum token lifetime plus grace; report zero active old-id rows                                                            |
-| flows/codes              | minutes/hours                                 | keep candidate only through maximum TTL; then remove it                                                                                     |
+| Family                    | Tail                                          | Retirement rule                                                                                                                             |
+| ------------------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pkey_` licence keys      | potentially years; plaintext shown once       | retain old verify-only pepper until report is zero, or make an explicit owner-approved reissue/stranding decision; never silently retire it |
+| `pkeyt_` device tokens    | active devices converge; dormant/offline tail | retain through the documented dormancy/offline window plus a report of remaining rows                                                       |
+| `pkeyci_` CI tokens       | bounded by token expiry                       | retain through maximum static-token lifetime plus grace; report zero active old-id rows                                                     |
+| `pkeyr_` registry tokens  | bounded by maximum expiry                     | retain through maximum token lifetime plus grace; report zero active old-id rows                                                            |
+| `pkeya_` admin API tokens | bounded by `expires_at` (NOT NULL)            | retain through maximum token lifetime plus grace; report zero live old-id rows                                                              |
+| flows/codes               | minutes/hours                                 | keep candidate only through maximum TTL; then remove it                                                                                     |
 
 **Dormant rows.** Rehash-on-use cannot reach a credential nobody presents, so in a planned
 rotation the old id stays verify-only for those rows (the table above). The only existing bound on
@@ -267,7 +298,7 @@ a dormant device token is `releaseDormantSeats`, which nulls `token_hash` after
 not a general bound. An exposed pepper gets no such grace (§7.3).
 
 The admin/deployment report displays counts grouped by table and pepper id, `NULL` legacy rows,
-last old-id match, and blockers. A row is *required* while its credential is live (the predicates
+last old-id match, and blockers. A row is _required_ while its credential is live (the predicates
 are in §7.3); a row whose hash column is `NULL` holds no credential and is excluded. A row stamped
 with an id missing from the ring is reported as `unopenable`, as the KEK report does
 (`console/handlers/products.ts:854-862`), and a row of a `disabled` id as `disabled`. A retirement
@@ -332,7 +363,7 @@ model/runbook.
 ### 7.1 Compatibility fence (mandatory sequencing)
 
 **S0** is any scalar-only revision: `hashKey(value, env.KEY_HASH_PEPPER)` as of `main@d27467ef8`
-(`platform/crypto.ts:87-90`). **R1** is the first ring-aware revision this plan ships. A rotation is
+(`platform/crypto.ts:118-120`). **R1** is the first ring-aware revision this plan ships. A rotation is
 an irreversible data transition: a rehash replaces a hash that only the plaintext can recompute, so
 no rollback can restore it.
 
@@ -347,10 +378,10 @@ Why a fence is needed:
   migrations first (`:150-157`), so every deploy already runs the previous revision against the new
   schema.
 - A rollback restores that version's own bindings, secrets included, so it can also restore a
-  pre-rotation ring (`docs/RUNBOOK.md:545-549`).
+  pre-rotation ring (`docs/RUNBOOK.md:579-583`).
 - S0 cannot find a row rehashed under a new id. With no scalar it refuses every request on a
   deployed label (`core/configGuard.ts:15,46-59`) and, under any other `PKEY_ENVIRONMENT`, writes
-  unkeyed SHA-256 (`platform/crypto.ts:87-88`).
+  unkeyed SHA-256 (`platform/crypto.ts:118-119`).
 
 The fence has four parts. All four are required before the first write under a non-`default` id.
 
@@ -407,7 +438,7 @@ The fence has four parts. All four are required before the first write under a n
   too.
 - After the first non-`default` write the only supported code recovery is a forward fix: build the
   previous ring-aware commit and `wrangler deploy` it as a new version, which takes the current
-  secrets. A rollback restores a version's captured bindings (`docs/RUNBOOK.md:545-549`), which may
+  secrets. A rollback restores a version's captured bindings (`docs/RUNBOOK.md:579-583`), which may
   omit a ring member that already stamps rows. A ring that lost such a member shows up as
   `unopenable` in the report (the KEK report's own signal, `console/handlers/products.ts:854-862`)
   and as denied credentials, never as a silent downgrade.
@@ -442,7 +473,7 @@ The fence has four parts. All four are required before the first write under a n
 6. **G2: rotation.** Preconditions: the fence is closed (the guard enforces it), §6.4's stable
    derivations have shipped, and the baseline report and one known canary credential per family are
    captured. Add the new member to the ring **without activating it** (one `wrangler secret bulk`
-   call), confirm the ring loads, then activate it in a second call, as `docs/RUNBOOK.md:421-436`
+   call), confirm the ring loads, then activate it in a second call, as `docs/RUNBOOK.md:448-463`
    does for the KEK; two `put`s would deploy an intermediate version that names a missing id. The
    old scalar stays bound and mandatory. Rehash on use. Never remove the old value merely because
    a deploy succeeded.
@@ -460,15 +491,15 @@ Until R1 ships there is no safe response to an exposed pepper: changing the secr
 every stored hash at once (`docs/DEPLOYMENT.md:40-42`). Shipping §7.2 steps 1 to 4 is therefore the
 first containment step, and no later step here may start before the fence is closed. Unlike a KEK
 compromise, which re-sealing undoes in place because the Worker can open every blob
-(`docs/RUNBOOK.md:551-562`), nothing stored under a pepper can be re-keyed unless its holder
+(`docs/RUNBOOK.md:587-598`), nothing stored under a pepper can be re-keyed unless its holder
 presents the credential.
 
 **What an exposed pepper is worth.** Credentials are high-entropy: licence keys carry 128 random
-bits (`platform/crypto.ts:12-15`), device and opaque tokens 256 (`:24-27`, `:50-52`), so a hash plus
+bits (`platform/crypto.ts:12-15`), device and opaque tokens 256 (`:24-27`; the `pkeya_` admin token is `:50-52`), so a hash plus
 the pepper does not yield a credential. The pepper protects (a) low-entropy inputs that are also
 hashed under it and (b) lookup integrity against anyone who can write to D1, KV or a Durable
 Object. The KEK runbook states the same split for a leaked key that a writer can exploit
-(`docs/RUNBOOK.md:558-562`).
+(`docs/RUNBOOK.md:594-598`).
 
 | Class                                                         | Evidence                                                                                          | What the holder can do                                                                                      | Exposed id during the window                                    | Rehash                                     |
 | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- | ------------------------------------------ |
@@ -485,7 +516,7 @@ C2 is a platform incident: every Worker secret and the KEK are in scope, and the
 necessary but not sufficient. Unknown capability is treated as C2. Each state names the exposed
 ids; a `NULL` stamp counts as exposed when the historical scalar is.
 
-**What must be replaced or revoked.** The scope is every *required* row: live, and stamped with an
+**What must be replaced or revoked.** The scope is every _required_ row: live, and stamped with an
 exposed id (or `NULL`), including the dormant rows that rehash-on-use would never reach.
 
 | Family                                 | Required row (live)                                                          | Revoke by stable key, never by hash                                                                                                                                                                                                              | Replace through                                            |
@@ -494,6 +525,7 @@ exposed id (or `NULL`), including the dormant rows that rehash-on-use would neve
 | `pkeyt_` device token                  | `devices.status = 'authorized' AND token_hash IS NOT NULL`                   | `UPDATE devices SET token_hash = NULL WHERE product = ? AND status = 'authorized' AND <stamp predicate>`, the form `releaseDormantSeats` uses (`core/repo.ts:1406-1408`)                                                                         | Re-activation with a valid licence key (note 2)            |
 | `pkeyci_` CI token                     | `ci_tokens.revoked_at IS NULL AND expires_at > now`                          | `revokeCiToken`'s statements keyed by `token_id`, with `<stamp predicate>` (note 3)                                                                                                                                                              | Operator mints a static token; OIDC tokens re-mint per run |
 | `pkeyr_` registry token                | `registry_tokens.revoked_at IS NULL AND expires_at > now` (at most 365 days) | By `(product, token_id)` with `<stamp predicate>`, as `stmtRevokeProductRegistryTokens` does by product (`core/registry/registryTokens.ts:509`)                                                                                                  | Console or portal mint                                     |
+| `pkeya_` admin API token               | `admin_api_tokens.revoked_at IS NULL AND expires_at > now`                   | `UPDATE admin_api_tokens SET revoked_at = :now WHERE id = :token_id AND revoked_at IS NULL AND <stamp predicate>`, by token id, never by hash                                                                                                    | Operator mints a new token (`pkey` admin API token roster) |
 | Tickets, flows, codes, download tokens | Unexpired                                                                    | None: they expire by their own TTL (upload tickets at most 1 hour, `core/publisher.ts:109-110`)                                                                                                                                                  | The user restarts the flow                                 |
 | Sessions                               | `account_sessions` unrevoked and unexpired; KV browser sessions              | Per account, or by disabling the id (note 4)                                                                                                                                                                                                     | The user signs in again                                    |
 
@@ -536,7 +568,7 @@ the historical scalar is exposed, evaluated inside the same statement.
    platform-wide credential outage until replacements land.
 4. **Mint the replacement.** A new id, never a reused one; 32 random bytes from a CSPRNG, generated
    off the Worker and delivered through `wrangler secret bulk` over stdin, never a command line
-   (the pattern of `docs/RUNBOOK.md:640-657`), added to the ring inactive and confirmed loaded, as
+   (the pattern of `docs/RUNBOOK.md:676-693`), added to the ring inactive and confirmed loaded, as
    in §7.2 step 6. First mint one canary credential per family under the exposed id, or keep an
    owner-held one stamped with it, and keep its plaintext (V2).
 5. **Activate and set states in one `wrangler secret bulk` call.** The new id becomes active. The
@@ -558,7 +590,7 @@ the historical scalar is exposed, evaluated inside the same statement.
      `disabled`.
    - **(c) Forget.** When the report shows no live row under it and the longest security-state
      TTL (§6.3) has passed since (b), deploy a ring without its secret and delete the scalar in
-     the same call (`null` deletes a secret in `wrangler secret bulk`, `docs/RUNBOOK.md:489-493`;
+     the same call (`null` deletes a secret in `wrangler secret bulk`, `docs/RUNBOOK.md:517-521`;
      containment is not complete while the leaked scalar stays bound, `:558-562`). Only the id's
      name remains in `KEY_HASH_PEPPER_STATES`.
    - **Why this order.** Revoking first means no row is both `active` and unverifiable, and a
@@ -612,9 +644,9 @@ one is exposed too, it is a separate incident.
 7. **Rotation fence.** Approve §7.1: compat mode, the drain attestation, the D1 fence record with
    its insert triggers, no rollback to a scalar-only revision after closure, and forward-fix-only
    recovery after rotation. **Recommend yes.** The fence record is the only control that survives
-   a `wrangler rollback`, which restores a version's own bindings (`docs/RUNBOOK.md:545-549`). It
+   a `wrangler rollback`, which restores a version's own bindings (`docs/RUNBOOK.md:579-583`). It
    needs a deployable non-production environment for G0: `staging` and `dev` still carry
-   `REPLACE_ME_*` placeholders and cannot deploy (`docs/DEPLOYMENT.md:907-909,1195-1197`), and the
+   `REPLACE_ME_*` placeholders and cannot deploy (`docs/DEPLOYMENT.md:997-999,1311-1313`), and the
    deployment is production-only by design (`docs/DEPLOYMENT.md:3-6`). The owner provisions one
    first, or names another disposable environment. If the owner declines the fence, ship only the
    compat deploy (§7.2 steps 1 and 3): the ring primitive, stamps and candidate reads, with no

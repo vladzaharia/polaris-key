@@ -140,10 +140,23 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+      # The docs snippet lane compiles every Python block on a covered page against the SDK with
+      # mypy, so `pnpm test` needs the SDK's own venv, as in ci.yml's JS/TS job.
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.12"
+      - name: Python venv for the docs snippet lane
+        run: |
+          python -m venv sdks/python/.venv
+          sdks/python/.venv/bin/pip install -e "sdks/python[dev]"
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
       - run: pnpm typecheck
+      # As in ci.yml's JS/TS job: the Swift, Kotlin and GDScript snippet lanes run in CI's own
+      # docs-snippets jobs on their toolchains; a runner's preinstalled JDK must not start them here.
       - run: pnpm test
+        env:
+          PKEY_DOCS_SKIP_LANES: swift,kotlin,gdscript
       - run: pnpm lint
 
   deploy-worker:

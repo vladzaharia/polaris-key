@@ -11,24 +11,26 @@ attestation, commerce, update-health events and the typed activation results; th
 planned are `identity.oidc` (native browser sign-in waits on I-15) and `packs.transport.steam`,
 each with a note.
 
-| Module         | Kind                  | What                                                                                                                                                                      |
-| -------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `:core`        | JVM library (JAR)     | JWS + Ed25519, the signed documents, trust, the verified cache and clock floor, transport, discovery, sync, capabilities, the boot stage machine, the generated constants |
-| `:license`     | JVM library (JAR)     | the licence gate, activation, enrolment, entitlements, channels, deactivation                                                                                             |
-| `:config`      | JVM library (JAR)     | layered config resolution, the user-visible list, secrets, the catalog fetch, edge-mint                                                                                   |
-| `:identity`    | JVM library (JAR)     | RFC 8628 device-code sign-in (the OIDC redirect stays a host-supplied closure)                                                                                            |
-| `:release`     | JVM library (JAR)     | the changelog, download and install URLs, release-record verification                                                                                                     |
-| `:update`      | JVM library (JAR)     | the version check, the signed channel feed and the v4 update decision (content included), the boot guard, the `InstallDriver` port                                        |
-| `:packs`       | JVM library (JAR)     | the pack engine: planner, full / file / chunk / delta appliers (zstd-jni), install state, `DirPackStorage`, revocations, delegation, handlers, provides, feed deltas      |
-| `:sdk`         | JVM library (JAR)     | `PolarisKeyClient`, the umbrella; re-exports `:core` and every service module (`api`)                                                                                     |
-| `:ui-core`     | JVM library (JAR)     | the Compose-free UI layer (UK-09): state holders and the presentation core of the Kotlin UI kits; no Compose or AndroidX; `:ui` exposes it (`api`)                        |
-| `:conformance` | tests only            | the corpus and HTTP-transcript runner (never published)                                                                                                                   |
-| `:platform`    | Android library (AAR) | install source, Keystore, Play Integrity, Play In-App Updates / Play Asset Delivery or PackageInstaller self-update (flavours `play`, `direct`); standalone               |
-| `:android`     | Android library (AAR) | the Android glue, the only module that sees both `:sdk` and `:platform`: Keystore store, device inputs, outlet readers, install drivers, the PAD transport (P6-12)        |
-| `:godot`       | Android library (AAR) | the Godot Android plugin (v2) over `:platform` ONLY, singleton `PolarisKeyAndroid` (`../godot/native/android/`); `checkPlatformOnly`                                      |
-| `:boundary`    | Android app (probe)   | an empty app per flavour; `tools/check_flavours.sh` proves the flavour boundary on its release                                                                            |
-| `:ui`          | Android library (AAR) | the Jetpack Compose UI kit (P6-11): boot shell, gate, activation, sign-in with QR, settings, devices, update banner and prompt, pack progress; see `ui/README.md`         |
-| `:billing`     | Android library (AAR) | Play Billing as licence flags (SP-K05): `PolarisPlayBilling` buys with the licence binding as `obfuscatedAccountId`, claims, acknowledges after the claim, restores       |
+| Module         | Kind                  | What                                                                                                                                                                                                          |
+| -------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `:core`        | JVM library (JAR)     | JWS + Ed25519, the signed documents, trust, the verified cache and clock floor, transport, discovery, sync, capabilities, the boot stage machine, the generated constants                                     |
+| `:license`     | JVM library (JAR)     | the licence gate, activation, enrolment, entitlements, channels, deactivation                                                                                                                                 |
+| `:config`      | JVM library (JAR)     | layered config resolution, the user-visible list, secrets, the catalog fetch, edge-mint                                                                                                                       |
+| `:identity`    | JVM library (JAR)     | RFC 8628 device-code sign-in (the OIDC redirect stays a host-supplied closure)                                                                                                                                |
+| `:release`     | JVM library (JAR)     | the changelog, download and install URLs, release-record verification                                                                                                                                         |
+| `:update`      | JVM library (JAR)     | the version check, the signed channel feed and the v4 update decision (content included), the boot guard, the `InstallDriver` port                                                                            |
+| `:packs`       | JVM library (JAR)     | the pack engine: planner, full / file / chunk / delta appliers (zstd-jni), install state, `DirPackStorage`, revocations, delegation, handlers, provides, feed deltas                                          |
+| `:sdk`         | JVM library (JAR)     | `PolarisKeyClient`, the umbrella; re-exports `:core` and every service module (`api`)                                                                                                                         |
+| `:ui-core`     | JVM library (JAR)     | the Compose-free UI layer (UK-09): state holders and the presentation core of the Kotlin UI kits; no Compose or AndroidX; `:ui` exposes it (`api`)                                                            |
+| `:server`      | JVM library (JAR)     | `polaris-key-server` (SP-57): gate a server route with the app's signed licence document, offline: the six-step verdict, the problem body (eight locales), the trust refresh; no framework, over `:core` only |
+| `:server-ktor` | JVM library (JAR)     | `polaris-key-server-ktor` (SP-57): the Ktor plugin over `:server`: `polarisKey { }`, `requireLicense`, `requireEntitlement`, `requireSignIn`; see `server-ktor/README.md`                                     |
+| `:conformance` | tests only            | the corpus and HTTP-transcript runner (never published)                                                                                                                                                       |
+| `:platform`    | Android library (AAR) | install source, Keystore, Play Integrity, Play In-App Updates / Play Asset Delivery or PackageInstaller self-update (flavours `play`, `direct`); standalone                                                   |
+| `:android`     | Android library (AAR) | the Android glue, the only module that sees both `:sdk` and `:platform`: Keystore store, device inputs, outlet readers, install drivers, the PAD transport (P6-12)                                            |
+| `:godot`       | Android library (AAR) | the Godot Android plugin (v2) over `:platform` ONLY, singleton `PolarisKeyAndroid` (`../godot/native/android/`); `checkPlatformOnly`                                                                          |
+| `:boundary`    | Android app (probe)   | an empty app per flavour; `tools/check_flavours.sh` proves the flavour boundary on its release                                                                                                                |
+| `:ui`          | Android library (AAR) | the Jetpack Compose UI kit (P6-11): boot shell, gate, activation, sign-in with QR, settings, devices, update banner and prompt, pack progress; see `ui/README.md`                                             |
+| `:billing`     | Android library (AAR) | Play Billing as licence flags (SP-K05): `PolarisPlayBilling` buys with the licence binding as `obfuscatedAccountId`, claims, acknowledges after the claim, restores                                           |
 
 `:ui` sees `:sdk` and never `:platform` or `:android`. No JVM module has an Android
 dependency, each service module depends on `:core` only (never on a sibling; `:sdk` is the one
@@ -541,7 +543,7 @@ Its test drives every command against a scripted Worker, so it builds and runs w
 cd sdks/kotlin
 # JVM modules (JDK 17; no Android SDK needed with -Ppkey.jvmOnly=true)
 ./gradlew -Ppkey.jvmOnly=true :core:test :license:test :config:test :identity:test :release:test \
-          :update:test :packs:test :sdk:test :ui-core:test :conformance:test :sample-cli:test checkModuleBoundaries
+          :update:test :packs:test :sdk:test :ui-core:test :server:test :server-ktor:test :conformance:test :sample-cli:test checkModuleBoundaries
 python3 tools/check_16k_alignment.py   # zstd-jni's Android natives are 16 KB page aligned
 # Android modules
 ./gradlew :platform:testPlayDebugUnitTest :platform:testDirectDebugUnitTest \

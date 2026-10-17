@@ -28,6 +28,8 @@ androidxTestCore = "1.6.1"
 coroutines = "1.11.0"
 serialization = "1.8.1"
 okhttp = "4.12.0"
+# The Ktor server plugin (:server-ktor, SP-57): 3.2.x is built with Kotlin 2.1.x.
+ktor = "3.2.3"
 tink = "1.23.0"
 # zstd for pack deltas, chunks and zstd-coded objects (P6-08, notes/E9): the JNI binding to libzstd
 # 1.5.7. The JAR carries the desktop natives. :android links the Android AAR instead (16 KB page
@@ -75,6 +77,10 @@ kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serializa
 okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
 okhttp-mockwebserver = { module = "com.squareup.okhttp3:mockwebserver", version.ref = "okhttp" }
 tink = { module = "com.google.crypto.tink:tink", version.ref = "tink" }
+ktor-server-core = { module = "io.ktor:ktor-server-core-jvm", version.ref = "ktor" }
+ktor-server-auth = { module = "io.ktor:ktor-server-auth-jvm", version.ref = "ktor" }
+ktor-server-status-pages = { module = "io.ktor:ktor-server-status-pages-jvm", version.ref = "ktor" }
+ktor-server-test-host = { module = "io.ktor:ktor-server-test-host-jvm", version.ref = "ktor" }
 compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }
 compose-ui = { module = "androidx.compose.ui:ui" }
 compose-ui-graphics = { module = "androidx.compose.ui:ui-graphics" }

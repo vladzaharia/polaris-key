@@ -6986,7 +6986,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/feeds-updates-packs.md"
       ],
       "brief": "wp/F-36-feed-cleanup-on-default-dev-main.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "F-37",
@@ -11987,7 +11987,7 @@
         "docs/research/2026-10-08-sdk-usability/README.md §10.2 (the Python terminal kit signed-in finding)"
       ],
       "brief": "wp/SP-54b-native-signed-in-user-readers.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "SP-55",
@@ -12047,7 +12047,7 @@
         "docs/research/2026-10-08-framework-drop-ins/README.md §12 (SP-57)"
       ],
       "brief": "wp/SP-57-kotlin-server-drop-ins-ktor.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "SP-58",
