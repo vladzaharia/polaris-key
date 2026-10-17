@@ -17,6 +17,14 @@
  *
  *   - audit rows in the end-state dump are sorted (D4: audit is a multiset; the pipeline writes
  *     them in its own order). Every entry's `state.audit` was re-sorted in place, nothing else.
+ *   - P0-26a merged the sec snapshot scrub (sec/manifest-snapshot-redact) and main's U-31, and
+ *     those entries were re-captured deliberately, each for exactly these differences:
+ *     the snapshot's `manifest_json` holds `[redacted]` where a profile secret value was (1, 3,
+ *     4, 5, 8, 9-*), and a resync's edge-mint DELETE and INSERT carry U-31's
+ *     `config.catalog` claim guard (3, 4, 5, 6a, 8, 9-*, 10a; 5's end state
+ *     keeps the console's recipe).
+ *   - 11a/11b: the deploy hook's snapshot scrub reads the active schema, one more D1 round trip
+ *     (sec/manifest-snapshot-redact); only the trip count moved.
  *   - 13-link-secret-default (plans/P0-26.md D5, delta 1): link screens the catalog for delivery
  *     issues, as resync and the console do. Captured from the pre-pipeline code (the link
  *     succeeded), then re-captured from the pipeline when the delta landed (the link refuses).

@@ -18,6 +18,10 @@
  *     /identity/auth/device/poll            POST  poll a confirmed device flow
  *     /identity/auth/choose                 GET   the legacy sign-in's licence chooser (I-26)
  *                                           POST  record a step of it, or the choice
+ *     /identity/authorize                   GET   the OAuth-shaped sign-in entry of an app (I-08;
+ *                                                 303 to the login card, 302 errors to the app)
+ *     /identity/token                       POST  the code for a device token (I-08; form body,
+ *                                                 CORS for the product's web origins)
  *     /identity/attach                      POST  add the device's licence to the signed-in
  *                                                 account (I-09; device bearer)
  *     /identity/subject                     GET   the pairwise subject signed in on the device
@@ -56,6 +60,8 @@ import {
   handleBrowserSession,
   handleBrowserSessionLicense,
 } from "./browserSession.js";
+import { handleAuthorize } from "./passthrough/authorize.js";
+import { handleToken } from "./passthrough/token.js";
 import {
   handleIdentityAttach,
   handleIdentitySignOut,
@@ -71,6 +77,18 @@ export async function handleIdentityRoutes(
     switch (rest[0]) {
       case "session":
         return handleBrowserSession(req, env, db, product, now, settings);
+      // I-08 (WIRE-CONTRACT-V4 §12.4, §12.5): the app passthrough.
+      case "authorize":
+        return handleAuthorize({
+          req,
+          env,
+          db,
+          product,
+          now,
+          ...(settings ? { settings } : {}),
+        });
+      case "token":
+        return handleToken({ req, env, db, product, now });
       // I-09 (WIRE-CONTRACT-V4 §12.3): the account on the device wire.
       case "attach":
         return handleIdentityAttach(req, env, db, product, now);

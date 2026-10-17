@@ -22,7 +22,9 @@
  *              code and `state` stay in their own records.
  *
  * PX-W13 adds no public creation route. The device-code confirmation page creates handles
- * (`oidc.ts`); I-08's `authorize` and the I-13 and I-15 entries will too.
+ * (`oidc.ts`); I-08's `authorize` creates them too, carrying the validated request in `authz`
+ * (`authorize.ts`), and the I-13 and I-15 entries will. Continue and Cancel TAKE the record
+ * (`takeSignInRequest`): one atomic consume, so a handle yields one code or one refusal.
  */
 
 import {
@@ -35,6 +37,7 @@ import { randomToken } from "../../../platform/random.js";
 import type { Env } from "../../../platform/env.js";
 import {
   artefactRef,
+  consumeArtefact,
   getArtefact,
   putArtefact,
   type ArtefactRef,
@@ -45,6 +48,25 @@ export const REQUEST_BINDER_COOKIE = "__Host-pk_req";
 
 const HANDLE_RE = new RegExp(REQUEST_HANDLE_PATTERN);
 
+/**
+ * The validated `authorize` request a handle carries (WIRE-CONTRACT-V4 §12.4). Hints prefill the
+ * card and verify nothing. `state` and the PKCE challenge live here, in the single-use store, and
+ * come back only in the redirect to the registered URI.
+ */
+export interface AuthzRecord {
+  clientId: string;
+  redirectUri: string;
+  state: string;
+  codeChallenge: string;
+  /** The scope the app asked for, resolved against what the product grants. */
+  scope: string[];
+  nonce: string | null;
+  licenseChoice: "card" | "app";
+  purpose: "signin" | "attach";
+  loginHint: string | null;
+  nameHint: string | null;
+}
+
 /** What a handle's record holds. */
 export interface SignInRequestRecord {
   product: string;
@@ -54,6 +76,8 @@ export interface SignInRequestRecord {
   origin: string | null;
   /** An opaque reference to the flow the request belongs to (the device flow's store id). */
   flowRef: string;
+  /** The `authorize` request behind a web (or later native) sign-in; absent on a device-code request. */
+  authz?: AuthzRecord;
   /** The binder's peppered hash. */
   binder: string;
   /** Epoch seconds. */
@@ -106,6 +130,7 @@ export async function createSignInRequest(
     userCode?: string | null;
     origin?: string | null;
     flowRef: string;
+    authz?: AuthzRecord;
   },
   now: number,
 ): Promise<{ handle: string; setCookie: string | null }> {
@@ -119,6 +144,7 @@ export async function createSignInRequest(
     userCode: init.userCode ?? null,
     origin: init.origin ?? null,
     flowRef: init.flowRef,
+    ...(init.authz ? { authz: init.authz } : {}),
     binder: await hashKey(binder, env.KEY_HASH_PEPPER),
     expiresAt: now + REQUEST_HANDLE_TTL_SECONDS,
   };
@@ -158,4 +184,27 @@ export async function readSignInRequest(
   if (record.binder !== (await hashKey(binder, env.KEY_HASH_PEPPER)))
     return null;
   return record;
+}
+
+/**
+ * Take the request out of the store (Continue and Cancel): the record behind `handle` for the
+ * browser holding its binder, removed in one atomic consume so two presses cannot both succeed.
+ * `null` when it is unknown, expired, bound to another browser, or already taken.
+ */
+export async function takeSignInRequest(
+  env: Env,
+  req: Request,
+  handle: string,
+  now: number,
+): Promise<SignInRequestRecord | null> {
+  // The same checks as a read, before anything is removed: a stranger cannot burn a handle.
+  if (!(await readSignInRequest(env, req, handle, now))) return null;
+  const raw = await consumeArtefact(env, await requestRef(env, handle));
+  if (!raw) return null;
+  try {
+    const record = JSON.parse(raw) as SignInRequestRecord;
+    return record.expiresAt > now ? record : null;
+  } catch {
+    return null;
+  }
 }

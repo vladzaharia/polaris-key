@@ -45,6 +45,36 @@ export function schemaIssue(schema: unknown): string | null {
   }
 }
 
+/**
+ * A minted token's `mint` block, checked as the publish route does (the manifest's own rules):
+ * the signing secret is a stable uppercase name, the key is the recipe id in the mint route's
+ * alphabet, and the lifetime is at most an hour. `null` when there is no block or it is fine.
+ */
+function mintIssue(
+  entry: Record<string, unknown>,
+  key: string | undefined,
+): string | null {
+  const mint = entry.mint;
+  if (mint === undefined) return null;
+  if (!isObject(mint)) return "The recipe must be an object.";
+  if (key !== undefined && !/^[a-z0-9-]{1,64}$/.test(key))
+    return "A minted token's key is its recipe id: lowercase letters, digits and hyphens, up to 64.";
+  if (
+    typeof mint.signingKeySecret !== "string" ||
+    !/^[A-Z0-9][A-Z0-9_:-]{1,127}$/.test(mint.signingKeySecret)
+  )
+    return "The signing secret is a stable uppercase name, such as APPLE_MUSIC_KEY.";
+  if (!["ES256", "RS256", "EdDSA"].includes(String(mint.alg)))
+    return "The algorithm is ES256, RS256 or EdDSA.";
+  const ttl = mint.ttlSeconds;
+  if (
+    ttl !== undefined &&
+    (typeof ttl !== "number" || !Number.isInteger(ttl) || ttl < 1 || ttl > 3600)
+  )
+    return "The lifetime is a whole number of seconds, at most 3600.";
+  return null;
+}
+
 /** Every problem in a catalog document, in entry order. Empty means it would publish. */
 export function catalogIssues(doc: unknown): CatalogIssue[] {
   if (!isObject(doc))
@@ -85,6 +115,8 @@ export function catalogIssues(doc: unknown): CatalogIssue[] {
     }
     const schema = schemaIssue(raw.schema);
     if (schema) issues.push({ ...at, field: "schema", message: schema });
+    const mint = mintIssue(raw, key);
+    if (mint) issues.push({ ...at, field: "mint", message: mint });
     // A synced setting's block (Cloud Sync rules 1–5): the same check the publish route runs.
     // A warning never blocks; `catalogNotes` carries it.
     for (const u of userSettingIssues(raw)) {

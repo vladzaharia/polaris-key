@@ -52,6 +52,14 @@ export interface ConfigEntry {
    *  into a device document. `edgeMint` marks the
    *  Config-service capability that mints short-lived third-party tokens (D-19). */
   delivery?: SecretDelivery;
+  /**
+   * A Minted token's recipe (`kind: "secret"`, `delivery: "edgeMint"`; U-31). The entry's key is
+   * the recipe id. Authoring only: the manifest and the console's publish lift it out into the
+   * product's recipes, which an operator approves, so the served catalog never carries it. The
+   * console reads it back from the recipes, and an entry published without one leaves the
+   * product's recipe as it is.
+   */
+  mint?: MintBlock;
   /** State a freshly-minted key gets if the admin doesn't override it. CONFIG only. */
   managementDefault?: ManagementState;
   /** A `flag` surfaced to the user as an included capability ("Included with your license"). */
@@ -70,6 +78,23 @@ export interface ConfigEntry {
    *  a settings panel lists it. The operator can still lock the key (`managementDefault` stays the
    *  operator's), and a block on a locked key is a no-op. */
   user?: UserSettingPolicy;
+}
+
+/** A Minted token's recipe: what the Worker signs when the app calls `mintToken(key)`. */
+export interface MintBlock {
+  /** `ES256`, `RS256` or `EdDSA`. */
+  alg: string;
+  /** The product secret holding the signing key: a stable uppercase name. */
+  signingKeySecret: string;
+  kid?: string;
+  claimsTemplate?: Record<string, unknown>;
+  /** Seconds, at most one hour; omitted means one hour. */
+  ttlSeconds?: number;
+  audience?: string | null;
+  /** Who may mint: `none`, `registered` or `licensed` (omitted means `licensed`). */
+  requires?: "none" | "registered" | "licensed";
+  /** A catalog flag the caller's payload must carry, truthy. */
+  requiredEntitlement?: string | null;
 }
 
 /** Where a synced setting's value roams. `user` roams to every device of the person; `platform`

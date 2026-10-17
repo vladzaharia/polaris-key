@@ -31,12 +31,14 @@ import { RELEASE_SETTINGS_SLICE } from "./settings.js";
 import { releaseIntegration } from "./integration.js";
 import { releaseMaintenance } from "./maintenance.js";
 
+import { scrubManifestSnapshotsJob } from "./snapshotScrub.js";
 export const releaseService: ServiceDescriptor = {
   slug: "release",
   contributes: {
     manifest: releaseManifest,
     integration: releaseIntegration,
     maintenance: releaseMaintenance,
+    migrations: [scrubManifestSnapshotsJob],
   },
   /** ST-03: this service's settings registry slice (`settings.ts`). */
   settings: RELEASE_SETTINGS_SLICE,

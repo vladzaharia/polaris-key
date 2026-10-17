@@ -34,9 +34,18 @@ import {
   catalogDeliveryIssues,
   declassifyRefusal,
 } from "../../../core/configDelivery.js";
-import { validateCatalogCloudSync } from "@polaris-key/manifest";
+import {
+  type ManifestEdgeMint,
+  splitCatalogMint,
+  validateCatalogCloudSync,
+  validateConsoleMintBlocks,
+} from "@polaris-key/manifest";
 import { ErrorCode } from "../../../core/errors.js";
 import { getActiveSchema } from "../../../core/products/store.js";
+import {
+  stmtRemoveEdgeMintGuarded,
+  stmtSaveEdgeMintGuarded,
+} from "../ingest.js";
 import { writeSetting } from "../../../core/settings/write.js";
 import {
   catalogRepresentabilityResponse,
@@ -102,7 +111,28 @@ async function handleActive(ctx: ConfigAdminContext): Promise<Response> {
   }
   if (req.method === "PUT") {
     const body = await readBody(req);
-    const catalogJson = body.catalog ?? body;
+    let catalogJson = body.catalog ?? body;
+    // U-31: a Minted token carries its recipe in the entry's `mint` block. The recipe is checked
+    // with the manifest's own rules and lifted out of the catalog, which is public; it is stored
+    // beside the entry in the publish's batch and still waits for an operator's approval.
+    const rawEntries =
+      typeof catalogJson === "object" &&
+      catalogJson !== null &&
+      Array.isArray((catalogJson as { entries?: unknown }).entries)
+        ? (catalogJson as { entries: unknown[] }).entries
+        : null;
+    const lifted = rawEntries ? splitCatalogMint(rawEntries) : null;
+    if (rawEntries && lifted) {
+      const mintIssues = validateConsoleMintBlocks(rawEntries);
+      if (mintIssues.length > 0)
+        return err(422, ErrorCode.BadRequest, "invalid catalog", {
+          fields: mintIssues,
+        });
+      catalogJson = {
+        ...(catalogJson as Record<string, unknown>),
+        entries: lifted.entries,
+      };
+    }
     let catalog: Catalog;
     try {
       catalog = new Catalog(catalogJson as never);
@@ -191,6 +221,15 @@ async function handleActive(ctx: ConfigAdminContext): Promise<Response> {
     // (`breakGlass: { reason }`), which expires in 7 days or at the first apply that changes it.
     // `writeSetting()` decides both, in the same batch as the new active version.
     const version = await nextSchemaVersion(db, slug);
+    // The recipes this publish saves (only those that differ from what is stored) and removes
+    // (the entry is gone, or no longer a Minted token): both ride the catalog's claim.
+    const { saved, removed } = await mintChanges(
+      db,
+      slug,
+      lifted?.recipes ?? [],
+      active?.catalog_json,
+      catalog.entries,
+    );
     const published = {
       schemaVersion: version,
       entries: catalog.entries,
@@ -206,6 +245,12 @@ async function handleActive(ctx: ConfigAdminContext): Promise<Response> {
         key: "config.catalog",
         value: published,
         statements: (guard) => [
+          ...saved.map((e) =>
+            stmtSaveEdgeMintGuarded({ ...e, product: slug }, guard),
+          ),
+          ...removed.flatMap((id) =>
+            stmtRemoveEdgeMintGuarded(slug, id, guard),
+          ),
           {
             sql: `UPDATE product_schema SET active = 0 WHERE product = ? AND (${guard.sql})`,
             params: [slug, ...guard.params],
@@ -246,6 +291,26 @@ async function handleActive(ctx: ConfigAdminContext): Promise<Response> {
       },
     );
     if (!written.ok) return settingRefused(written);
+    for (const e of saved)
+      await audit(
+        db,
+        slug,
+        session,
+        now,
+        "config.mint.save",
+        { kind: "edgeMint", id: e.id },
+        `Saved the recipe of minted token ${e.id} (${e.alg}, signs with ${e.signingKeySecret}, requires ${e.requires}); it needs approval`,
+      );
+    for (const id of removed)
+      await audit(
+        db,
+        slug,
+        session,
+        now,
+        "config.mint.remove",
+        { kind: "edgeMint", id },
+        `Removed the recipe and approval of minted token ${id}`,
+      );
     const breakGlass = written.written[0]?.breakGlass;
     return adminJson({
       ok: true,
@@ -256,6 +321,79 @@ async function handleActive(ctx: ConfigAdminContext): Promise<Response> {
     });
   }
   return err(405, ErrorCode.BadRequest, "method not allowed");
+}
+
+/** The minting entries (`kind: secret`, `delivery: edgeMint`) of a catalog, by key. */
+function mintingKeys(entries: readonly unknown[]): Set<string> {
+  const keys = new Set<string>();
+  for (const e of entries) {
+    const r = e as { key?: unknown; kind?: unknown; delivery?: unknown };
+    if (
+      r?.kind === "secret" &&
+      r.delivery === "edgeMint" &&
+      typeof r.key === "string"
+    )
+      keys.add(r.key);
+  }
+  return keys;
+}
+
+/**
+ * What a console publish does to the product's recipes. `saved`: the `mint` blocks whose recipe
+ * differs from the stored one (an unchanged recipe is not rewritten, so it keeps its approval and
+ * writes no audit row). `removed`: recipes of entries the previous catalog had as Minted tokens
+ * and this one does not. An entry with no `mint` block leaves its recipe alone: the served
+ * catalog never carries one, so a round-tripped entry must not lose it.
+ */
+async function mintChanges(
+  db: ConfigAdminContext["db"],
+  slug: string,
+  recipes: readonly ManifestEdgeMint[],
+  previousJson: string | undefined,
+  entries: readonly unknown[],
+): Promise<{ saved: ManifestEdgeMint[]; removed: string[] }> {
+  const stored = new Map(
+    (
+      await db.all<{
+        id: string;
+        alg: string;
+        signing_key_secret: string;
+        kid: string | null;
+        claims_template_json: string | null;
+        ttl_seconds: number;
+        audience: string | null;
+        requires: string;
+        required_entitlement: string | null;
+      }>("SELECT * FROM edge_mint_config WHERE product = ?", slug)
+    ).map((r) => [r.id, r]),
+  );
+  const saved = recipes.filter((e) => {
+    const r = stored.get(e.id);
+    return (
+      !r ||
+      r.alg !== e.alg ||
+      r.signing_key_secret !== e.signingKeySecret ||
+      (r.kid ?? null) !== (e.kid ?? null) ||
+      (r.claims_template_json ?? null) !==
+        JSON.stringify(e.claimsTemplate ?? {}) ||
+      r.ttl_seconds !== e.ttlSeconds ||
+      (r.audience ?? null) !== (e.audience ?? null) ||
+      r.requires !== (e.requires ?? "licensed") ||
+      (r.required_entitlement ?? null) !== (e.requiredEntitlement ?? null)
+    );
+  });
+  let previous: unknown[] = [];
+  try {
+    const parsed = JSON.parse(previousJson ?? "{}") as { entries?: unknown };
+    if (Array.isArray(parsed.entries)) previous = parsed.entries;
+  } catch {
+    // an unreadable previous catalog has no minting entries to compare
+  }
+  const now = mintingKeys(entries);
+  const removed = [...mintingKeys(previous)].filter(
+    (k) => !now.has(k) && stored.has(k),
+  );
+  return { saved, removed };
 }
 
 /** The `cloudSync` block of a stored catalog, or `undefined`. */

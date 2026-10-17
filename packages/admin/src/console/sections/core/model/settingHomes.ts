@@ -152,6 +152,7 @@ export const SETTING_HOMES: Readonly<Record<string, SettingHome>> = {
 
   // ── Distribution ───────────────────────────────────────────────────────────────────────────
   "distribution.access": at("access"),
+  "distribution.feeds": at("package-feeds"),
   // Operator-owned and written by the Worker's commerce routes; the Commerce page only drives
   // App Store Connect.
   "distribution.commerce": API,
@@ -167,6 +168,8 @@ export const SETTING_HOMES: Readonly<Record<string, SettingHome>> = {
   // Sign-in shows it read-only and links to Portal, where the switch is.
   "identity.keyEntry.claimByKey": at("portal", "License keys"),
   "identity.terms": manifest("product"),
+  // The paths a web app's sign-in may return to (I-08's `authorize` reads them).
+  "identity.redirectPaths": manifest("product"),
   // Sign-in reads the provider and the group map; the page's one action is a resync.
   "identity.oidc": manifest("product"),
   "identity.provisioning": manifest("product"),

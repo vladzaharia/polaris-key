@@ -56,6 +56,12 @@ import {
   identitySubjectSignout,
 } from "./account.js";
 
+import {
+  identityRequestHints,
+  redirectWebErrors,
+  redirectWebHappy,
+} from "./redirect.js";
+
 export const SCENARIOS: Scenario[] = [
   discoveryCapabilities,
   discoveryFailure,
@@ -95,4 +101,7 @@ export const SCENARIOS: Scenario[] = [
   identityAttach,
   identityAttachErrors,
   identitySubjectSignout,
+  redirectWebHappy,
+  redirectWebErrors,
+  identityRequestHints,
 ];

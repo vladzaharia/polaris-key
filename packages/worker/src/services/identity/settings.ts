@@ -196,7 +196,7 @@ const TERMS: SettingDef = setting({
 /**
  * I-09: `identity.redirectPaths`, the web redirect's callback paths (a redirect URI is a
  * `web.origins` origin plus one of them, matched exactly). Security-widening on any change. I-08's
- * `authorize` is its reader, so it stays pending on I-08; link and resync already write its row.
+ * `authorize` is its reader (`passthrough/redirectUri.ts`); link and resync write its row.
  */
 const REDIRECT_PATHS: SettingDef = setting({
   key: "identity.redirectPaths",
@@ -228,8 +228,8 @@ const REDIRECT_PATHS: SettingDef = setting({
   confirm: { change: "L1" },
   visibleWhen: VISIBLE,
   storage: { kind: "scalar" },
+  readers: ["services/identity/passthrough/redirectUri.ts"],
   since: "I-09",
-  pending: { wp: "I-08" },
 });
 
 /** `browserSession.ts`'s 30-day browser session: a product may only shorten it (rule 3). */

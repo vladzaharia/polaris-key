@@ -43,6 +43,7 @@ import { handleGithub } from "./handlers/github.js";
 import { handlePlatformStoreConnections } from "./handlers/platformStoreConnections.js";
 import { handlePlatform } from "./handlers/platform.js";
 import { handleProducts } from "./handlers/products.js";
+import { handleIntegration } from "./handlers/integration.js";
 import { handleProductScoped } from "./productScoped.js";
 import {
   handleApiTokenList,
@@ -162,6 +163,16 @@ export const ADMIN_ROUTES: readonly AdminRoute[] = [
   ...rows(["GET"], "/platform/settings", "platform", platform),
   ...rows(["PATCH", "DELETE"], "/platform/settings/:key", "platform", platform),
   ...rows(["GET", "POST"], "/platform/settings/backfill", "platform", platform),
+  // P0-49: the data-migration runner. Apply and down are step-up writes.
+  ...rows(["GET"], "/platform/migrations", "platform", platform),
+  ...rows(["GET"], "/platform/migrations/runs/:id", "platform", platform),
+  ...rows(["POST"], "/platform/migrations/dry-run", "platform", platform),
+  ...rows(["POST"], "/platform/migrations/apply", "platform", platform, {
+    stepUp: true,
+  }),
+  ...rows(["POST"], "/platform/migrations/down", "platform", platform, {
+    stepUp: true,
+  }),
   ...rows(["GET"], "/platform/override-migration", "platform", platform),
   ...rows(
     ["PUT"],
@@ -213,6 +224,11 @@ export const ADMIN_ROUTES: readonly AdminRoute[] = [
   ...rows(["DELETE"], P, "settings", registry, { stepUp: true }),
 
   // ── One product: the services, by prefix ──────────────────────────────────────────────────
+  // Approving a minted token's recipe lets the product's signing key mint for every device it
+  // names (P0-12, U-31): a sign-in proven in the last five minutes, ahead of Config's prefix.
+  ...rows(["POST"], `${P}/config/mint/:id/approve`, "config", product, {
+    stepUp: true,
+  }),
   ...SERVICE_SLUGS.flatMap(serviceRows),
   // Commerce's surface is `commerce` ahead of Distribution's prefix (CM-29 moves the path, not
   // the area); the Feeds admin is Ship builds, composed in the console layer.
@@ -239,6 +255,7 @@ export const ADMIN_ROUTES: readonly AdminRoute[] = [
   ...rows(["GET", "PATCH"], `${P}/services`, "core", product),
   ...rows(["POST"], `${P}/services/revert`, "core", product),
   ...rows(["GET"], `${P}/activity`, "core", product),
+  ...rows(["GET"], `${P}/integration`, "core", handleIntegration),
   ...rows(["GET"], `${P}/refusals`, "core", product),
   ...rows(["GET"], `${P}/blob-gc`, "core", product),
   ...rows(["GET"], `${P}/blob-gc/bundles`, "core", product),

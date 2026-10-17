@@ -205,6 +205,7 @@ describe("no page pulses", () => {
       "console/sections/platform/pages/platformStores.tsx",
       "console/sections/global/pages/Home.tsx",
     ])
-      expect(read(f), f).toContain("pk-skeleton");
+      // `PageSkeleton` is a `pk-skeleton-group` (ui/Skeleton.tsx).
+      expect(read(f), f).toMatch(/pk-skeleton|PageSkeleton/);
   });
 });

@@ -48,7 +48,6 @@ const OVER_BUDGET: Record<string, number> = {
   "sections/platform/index.tsx": 707,
   "sections/platform/pages/platformOperations.tsx": 1214,
   "sections/platform/pages/platformOverrideMigration.tsx": 1183,
-  "sections/platform/pages/platformSettings.tsx": 1130,
   "sections/platform/pages/platformStores.tsx": 1790,
   "sections/release/components/PolicyDialog.tsx": 655,
   "sections/release/pages/CompatibilityPage.tsx": 753,

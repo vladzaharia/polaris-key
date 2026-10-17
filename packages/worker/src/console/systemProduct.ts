@@ -37,6 +37,7 @@ import type { Env } from "../platform/env.js";
 import type { Db, DbStatement } from "../db/types.js";
 import { generateEd25519, seal } from "../platform/keyvault.js";
 import {
+  getActiveSchema,
   getProduct,
   stmtInsertProduct,
   stmtInsertProductKey,
@@ -51,7 +52,12 @@ import {
   stmtDeleteManifestPublisher,
   stmtUpsertManifestPublisher,
 } from "../core/publisher.js";
-import { manifestDeliverableStatements } from "../services/release/public.js";
+import {
+  manifestDeliverableStatements,
+  managedSecretKeyPredicate,
+  parseStoredCatalog,
+} from "../services/release/public.js";
+import { Catalog } from "@polaris-key/catalog";
 import { manifestSnapshotStatement } from "../core/manifestSnapshot.js";
 import {
   claimsForApply,
@@ -482,6 +488,12 @@ export async function linkSystemProduct(
       applied.files,
       manifest,
       now,
+      managedSecretKeyPredicate(
+        [
+          new Catalog(manifest.catalog as never),
+          parseStoredCatalog((await getActiveSchema(db, slug))?.catalog_json),
+        ].filter((c): c is Catalog => c !== null),
+      ),
     ),
   );
   await db.batch(stmts);

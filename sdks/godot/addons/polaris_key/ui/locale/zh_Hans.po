@@ -4117,6 +4117,76 @@ msgstr "登录不可用"
 msgid "core.codes.identity_disabled.message"
 msgstr "已关闭通过此应用登录。你的安装和许可证仍可正常使用。"
 
+#. Sign-in request invalid
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid_request.title"
+msgstr "登录请求无效"
+
+#. The app sent a sign-in request we can't read. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid_request.message"
+msgstr "应用发送了我们无法读取的请求。请重试。"
+
+#. App not recognised
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid_client.title"
+msgstr "无法识别该应用"
+
+#. This app isn't set up for sign-in. Contact its developer.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid_client.message"
+msgstr "该应用尚未设置登录。请联系其开发者。"
+
+#. Sign-in no longer valid
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid_grant.title"
+msgstr "登录已失效"
+
+#. That sign-in has expired or was already used. Sign in again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid_grant.message"
+msgstr "此次登录已过期或已被使用。请重新登录。"
+
+#. Sign-in request invalid
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.unsupported_grant_type.title"
+msgstr "登录请求无效"
+
+#. The app asked for a sign-in type we don't support. Contact its developer.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.unsupported_grant_type.message"
+msgstr "应用请求了我们不支持的登录方式。请联系其开发者。"
+
+#. Access not available
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid_scope.title"
+msgstr "无法访问"
+
+#. The app asked for access this sign-in doesn't offer. Contact its developer.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid_scope.message"
+msgstr "应用请求的访问权限此次登录不提供。请联系其开发者。"
+
+#. Return address not allowed
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.redirect_uri_mismatch.title"
+msgstr "返回地址不被允许"
+
+#. This app's return address isn't registered, so we didn't send you back. Contact its developer.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.redirect_uri_mismatch.message"
+msgstr "该应用的返回地址未登记，因此我们没有跳转。请联系其开发者。"
+
+#. Choose a license
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.license_choice_required.title"
+msgstr "选择许可证"
+
+#. Choose which license this device uses, then continue.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.license_choice_required.message"
+msgstr "选择此设备使用的许可证，然后继续。"
+
 #. Sign-in method unavailable
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.auth_method_disabled.title"

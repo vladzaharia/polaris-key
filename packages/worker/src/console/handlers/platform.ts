@@ -31,6 +31,8 @@
  *                                   platform packages (F-03, `../systemProduct.ts`); idempotent,
  *                                   audited `feed.bootstrap` in `platform_audit`.
  *   /api/platform/feeds/…         — the Feeds admin API in platform scope (F-11, `feeds.ts`).
+ *   /api/platform/migrations/…    — the data-migration runner: dry run, report, apply, down
+ *                                   (P0-49, `migrations.ts`; in the OpenAPI spec, rule 10).
  *   /api/platform/override-migration/… — the licence-override migration: prerequisites, notice,
  *                                   inventory, dry run, run and report (U-03,
  *                                   `overrideMigration.ts`; in the OpenAPI spec, rule 10).
@@ -72,6 +74,7 @@ import { operationsSnapshot } from "../../core/ops/operations.js";
 import { adminOidcIsDedicated } from "../../platform/platformOidc.js";
 import { platformMigrationReport } from "../../services/identity/public.js";
 import { handleOverrideMigration } from "./overrideMigration.js";
+import { handleMigrations } from "./migrations.js";
 import { parseJsonColumn } from "../../platform/json.js";
 
 /** The bindings the Deployment page lists. Presence only. */
@@ -220,6 +223,16 @@ export async function handlePlatform(
         rest.slice(1),
         now,
       );
+    } catch (e) {
+      if (e instanceof AdminBodyError)
+        return err(e.status, e.code, e.message, e.extra);
+      throw e;
+    }
+  }
+  // P0-49: the data-migration runner (dry run, report, apply, down).
+  if (rest[0] === "migrations") {
+    try {
+      return await handleMigrations(req, env, db, session, rest.slice(1), now);
     } catch (e) {
       if (e instanceof AdminBodyError)
         return err(e.status, e.code, e.message, e.extra);

@@ -9,7 +9,7 @@ import { Catalog } from "@polaris-key/catalog";
 import { SYSTEM_ACTORS } from "../../core/audit.js";
 import { declassifyRefusal } from "../../core/configDelivery.js";
 import { listProfiles } from "../../core/licensing/store.js";
-import type { DbStatement } from "../../db/types.js";
+import type { DbParam, DbStatement } from "../../db/types.js";
 import {
   getActiveSchema,
   nextSchemaVersion,
@@ -71,7 +71,9 @@ function catalogState(ctx: IngestContext): Promise<CatalogState> {
     // so it is not in `claims` and the field applies like any other.
     const claims = (await ctx.claims()).claimed;
     const nextJson = JSON.stringify(ctx.manifest.catalog);
-    const active = await getActiveSchema(ctx.db, ctx.slug);
+    const active = await ctx.read.memo("activeSchema", () =>
+      getActiveSchema(ctx.db, ctx.slug),
+    );
     const catalogClaimed = claims.has("config.catalog");
     const catalogChanged = !catalogClaimed && active?.catalog_json !== nextJson;
     const screened = screenCatalog(ctx.manifest, catalogChanged);
@@ -295,11 +297,19 @@ async function prepare(ctx: IngestContext): Promise<ManifestContribution> {
   }
   updated.push("profiles");
 
+  // U-31: recipes live in the catalog entries' `mint` blocks, so they ride `config.catalog`'s
+  // claim: once the console has published the catalog, the recipes it saved are the console's
+  // and a resync leaves them (and their approvals) exactly as they are. Guarded in SQL as well:
+  // a console publish that claims the catalog after `claims` was read keeps its recipes.
   statements.push({
-    sql: "DELETE FROM edge_mint_config WHERE product = ?",
-    params: [slug],
+    sql: `DELETE FROM edge_mint_config WHERE product = ? AND NOT ${CLAIMED_SQL}`,
+    params: [slug, ...claimGuardParams(slug, "config.catalog", now)],
   });
-  statements.push(...edgeMintStatements(ctx));
+  statements.push(
+    ...edgeMintStatements(ctx).map((st) =>
+      unlessClaimed(st, slug, "config.catalog", now),
+    ),
+  );
   // P0-12: approvals are the operator's, so a resync never WRITES one: the re-inserted rows above
   // stay approved only where they are column-for-column what an operator approved. What a resync
   // does own is cleanup: a recipe id the manifest no longer declares takes its approval with it.
@@ -498,4 +508,47 @@ export function stmtDeleteManifestProfile(
     sql: "DELETE FROM profiles WHERE product = ? AND id = ? AND source = 'manifest'",
     params: [product, id],
   };
+}
+
+/**
+ * Save a recipe the console published in a catalog entry's `mint` block (U-31), inside the
+ * publish's batch: `guard` is the publish's all-or-nothing condition, so a lost claim or a
+ * refused publish writes no recipe. It replaces the recipe's fields and leaves the approval
+ * alone: an approval written for other fields stops matching, and the recipe answers 404 until
+ * an operator approves it as it now stands (P0-12).
+ */
+export function stmtSaveEdgeMintGuarded(
+  e: EdgeMintInput,
+  guard: { sql: string; params: DbParam[] },
+): DbStatement {
+  const insert = stmtInsertEdgeMint(e);
+  return {
+    // The page-template column is not named here: no second statement may bind it (R9-injection).
+    sql: `INSERT INTO edge_mint_config (product, id, alg, signing_key_secret, kid, claims_template_json, ttl_seconds, audience, requires, required_entitlement)
+          SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE (${guard.sql})
+          ON CONFLICT (product, id) DO UPDATE SET
+            alg = excluded.alg, signing_key_secret = excluded.signing_key_secret,
+            kid = excluded.kid, claims_template_json = excluded.claims_template_json,
+            ttl_seconds = excluded.ttl_seconds, audience = excluded.audience,
+            requires = excluded.requires, required_entitlement = excluded.required_entitlement`,
+    params: [...insert.params, ...guard.params],
+  };
+}
+
+/** Remove recipes (and their approvals) whose catalog entry the console publish dropped (U-31). */
+export function stmtRemoveEdgeMintGuarded(
+  product: string,
+  id: string,
+  guard: { sql: string; params: DbParam[] },
+): DbStatement[] {
+  return [
+    {
+      sql: `DELETE FROM edge_mint_approvals WHERE product = ? AND id = ? AND (${guard.sql})`,
+      params: [product, id, ...guard.params],
+    },
+    {
+      sql: `DELETE FROM edge_mint_config WHERE product = ? AND id = ? AND (${guard.sql})`,
+      params: [product, id, ...guard.params],
+    },
+  ];
 }

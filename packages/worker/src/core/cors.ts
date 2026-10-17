@@ -87,7 +87,7 @@ export const CORS_MAX_AGE = "600";
  *
  * Deliberately absent (cookie-bearing or navigation-only; they stay first-party):
  * `identity/session`, `identity/session/license`, `identity/auth/start`,
- * `identity/auth/callback`, `identity/auth/logout`, `identity/auth/device`,
+ * `identity/authorize` (I-08, a navigation), `identity/auth/callback`, `identity/auth/logout`, `identity/auth/device`,
  * `identity/auth/device/verify`, `identity/auth/choose` (I-26), `config/mint/{mintId}/auth`,
  * and the CI routes — Release's
  * policy routes (`release/channels/{channel}/{promote,pin,unpin}`,
@@ -149,6 +149,9 @@ export const CORS_SERVICE_PATHS: readonly string[] = [
   "update/version",
   "identity/auth/device/start",
   "identity/auth/device/poll",
+  // I-08: the token endpoint takes a form body from a listed page, never with credentials: the
+  // code and the PKCE verifier are the only proof, and the answer is a device token the page holds.
+  "identity/token",
   // I-09: the account on the device wire. Each takes the device bearer (never ambient), so a
   // listed origin reaches only what that page's own device token already can.
   "identity/attach",

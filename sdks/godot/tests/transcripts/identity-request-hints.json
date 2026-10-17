@@ -1,0 +1,168 @@
+{
+  "transcriptVersion": 1,
+  "id": "identity-request-hints",
+  "description": "Hints on authorize (I-08, WIRE-CONTRACT-V4 §12.4; absorbs PX-W18). login_hint, name_hint and purpose ride on the authorize request and reach the card through the request view, which carries them beside the scope and the licence-choice mode. A hint prefills the card and verifies nothing; a login_hint that is not an email is dropped.",
+  "features": ["identity.signin.hints"],
+  "requires": [],
+  "product": "djdl",
+  "baseUrl": "https://key.plrs.im",
+  "now": 1700000000,
+  "trust": {
+    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+  },
+  "initial": {
+    "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+    "version": "1.0.0"
+  },
+  "steps": [
+    {
+      "action": "browser",
+      "note": "authorize with the hints.",
+      "args": {
+        "loginHint": "Ada@Example.com",
+        "nameHint": "Ada",
+        "purpose": "attach"
+      },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/identity/authorize?response_type=code&client_id=djdl&redirect_uri=https%3A%2F%2Fapp.example%2Fauth%2Fcallback&state=tidewater-state-0123456789&code_challenge=-583Jx3Gn4AKAj7xr5NSDQ3V6snyKHhZUDKua28Tp10&code_challenge_method=S256&scope=profile+email&login_hint=Ada%40Example.com&name_hint=Ada&purpose=attach",
+              "headers": {},
+              "requiredHeaders": [],
+              "body": null
+            },
+            "response": {
+              "status": 303,
+              "headers": {
+                "cache-control": "no-store",
+                "location": "https://key.plrs.im/signin?request=rq_00grpqAMFyVw_rD_Y7Gtmw"
+              },
+              "body": ""
+            }
+          }
+        ]
+      },
+      "expect": { "navigated": "card" }
+    },
+    {
+      "action": "browser",
+      "note": "The card reads the request: the hints, normalised, and nothing verified.",
+      "args": {},
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/api/signin/requests/rq_00grpqAMFyVw_rD_Y7Gtmw",
+              "headers": {},
+              "requiredHeaders": [],
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json; charset=utf-8"
+              },
+              "body": {
+                "request": "rq_00grpqAMFyVw_rD_Y7Gtmw",
+                "client": {
+                  "product": "djdl",
+                  "kind": "web",
+                  "appName": "djdl",
+                  "developerName": null,
+                  "iconUrl": null,
+                  "origins": ["https://app.example"],
+                  "services": { "license": true, "cloudSync": false },
+                  "nameVerified": true
+                },
+                "deviceLabel": null,
+                "userCode": null,
+                "expiresAt": 1700000600,
+                "purpose": "attach",
+                "licenseChoice": "card",
+                "scope": ["profile", "email"],
+                "loginHint": "ada@example.com",
+                "nameHint": "Ada"
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "navigated": "card",
+        "loginHint": "ada@example.com",
+        "purpose": "attach"
+      }
+    },
+    {
+      "action": "browser",
+      "note": "A login_hint that is not an email is dropped, never an error.",
+      "args": { "loginHint": "not an email" },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/identity/authorize?response_type=code&client_id=djdl&redirect_uri=https%3A%2F%2Fapp.example%2Fauth%2Fcallback&state=tidewater-state-0123456789&code_challenge=-583Jx3Gn4AKAj7xr5NSDQ3V6snyKHhZUDKua28Tp10&code_challenge_method=S256&scope=profile+email&login_hint=not+an+email",
+              "headers": {},
+              "requiredHeaders": [],
+              "body": null
+            },
+            "response": {
+              "status": 303,
+              "headers": {
+                "cache-control": "no-store",
+                "location": "https://key.plrs.im/signin?request=rq_iA7PdFFi9m3F-Lvencb-cQ"
+              },
+              "body": ""
+            }
+          },
+          {
+            "request": {
+              "method": "GET",
+              "path": "/api/signin/requests/rq_iA7PdFFi9m3F-Lvencb-cQ",
+              "headers": {},
+              "requiredHeaders": [],
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json; charset=utf-8"
+              },
+              "body": {
+                "request": "rq_iA7PdFFi9m3F-Lvencb-cQ",
+                "client": {
+                  "product": "djdl",
+                  "kind": "web",
+                  "appName": "djdl",
+                  "developerName": null,
+                  "iconUrl": null,
+                  "origins": ["https://app.example"],
+                  "services": { "license": true, "cloudSync": false },
+                  "nameVerified": true
+                },
+                "deviceLabel": null,
+                "userCode": null,
+                "expiresAt": 1700000600,
+                "purpose": "signin",
+                "licenseChoice": "card",
+                "scope": ["profile", "email"],
+                "loginHint": null,
+                "nameHint": null
+              }
+            }
+          }
+        ]
+      },
+      "expect": { "navigated": "card", "loginHint": null }
+    }
+  ]
+}

@@ -89,7 +89,7 @@ export function applicableEntry(
     drop("default", "managementDefault", "user", "userGrant", "grantLabel");
   if (entry.kind === "flag") drop("managementDefault", "user");
   if (entry.kind === "config") drop("userGrant", "grantLabel");
-  if (!isMinted(entry)) drop("delivery");
+  if (!isMinted(entry)) drop("delivery", "mint");
   else {
     next.schema = { type: "string" };
     drop("ui");
@@ -136,3 +136,7 @@ export function newEntry(
     schema: { type: "string" },
   };
 }
+
+/** The draft's flag keys: what a minted token's Required flag may name. */
+export const flagKeysOf = (entries: ConfigEntry[]): string[] =>
+  entries.filter((e) => e.kind === "flag").map((e) => e.key);

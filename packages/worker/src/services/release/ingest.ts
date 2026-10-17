@@ -170,7 +170,9 @@ async function prepareCreate(
 
 async function prepareApply(ctx: IngestContext): Promise<ManifestContribution> {
   const { manifest, slug, now, db, env } = ctx;
-  const cfg = (await releaseConfig(ctx))!;
+  const cfg = await releaseConfig(ctx);
+  // Refused by the `sparkle` check before this runs; kept defensive rather than asserted.
+  if (!cfg) throw new Error("release: no release_config for an apply");
   const rel = manifest.release;
   const appliedSha = ctx.source.sha;
   const repoName = ctx.source.repo?.name ?? cfg.gh_repo ?? "";
@@ -367,12 +369,11 @@ export const releaseManifest: ManifestContributor = {
       check: "binary",
       run: async () => {
         const rel = ctx.manifest.release;
-        // R6-01 defence in depth: the repo-name fallback bypasses the manifest boundary. An
-        // apply with no release block has no binary to check.
-        if (ctx.mode === "apply" && !rel) return null;
-        const message = binaryNameRefusal(
-          rel?.binaryName || (ctx.source.repo?.name ?? ""),
-        );
+        // R6-01 defence in depth: the repo-name fallback bypasses the manifest boundary. With no
+        // release block and no repository (documents only, D8) there is no binary to check.
+        const name = rel?.binaryName || ctx.source.repo?.name;
+        if (!name || (ctx.mode === "apply" && !rel)) return null;
+        const message = binaryNameRefusal(name);
         return message ? { check: "binary", message } : null;
       },
     },
@@ -382,6 +383,11 @@ export const releaseManifest: ManifestContributor = {
             check: "sparkle",
             run: async () => {
               const cfg = await releaseConfig(ctx);
+              if (!cfg)
+                return {
+                  check: "sparkle",
+                  message: "product has no linked repo coordinates",
+                };
               const message = sparkleKeyRefusal(
                 ctx.manifest,
                 cfg?.sparkle_ed25519_pub,

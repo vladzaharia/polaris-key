@@ -65,8 +65,23 @@ export const STEP_UP_ROUTES: readonly StepUpRoute[] = [
   },
   {
     method: "POST",
+    path: "/platform/migrations/apply",
+    why: "changes stored data through a data-migration job",
+  },
+  {
+    method: "POST",
+    path: "/platform/migrations/down",
+    why: "undoes a data-migration job's changes",
+  },
+  {
+    method: "POST",
     path: "/platform/override-migration/run",
     why: "rewrites every product's licence overrides",
+  },
+  {
+    method: "POST",
+    path: "/products/:slug/config/mint/:id/approve",
+    why: "lets the product's signing key mint tokens for its devices",
   },
   {
     method: "POST",

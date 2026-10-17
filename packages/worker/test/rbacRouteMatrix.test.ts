@@ -350,6 +350,8 @@ describe("negative controls", () => {
       [
         "DELETE /products/:slug",
         "POST /products/kek",
+        "POST /platform/migrations/apply",
+        "POST /platform/migrations/down",
         "POST /platform/override-migration/run",
         "POST /tokens",
         "GET /products/:slug/users/:subject/export",
@@ -359,6 +361,7 @@ describe("negative controls", () => {
         "POST /products/:slug/users/licenses/:id/make-floating",
         "POST /products/:slug/users/licenses/:id/reassign",
         "POST /products/:slug/users/relinks/:id/undo",
+        "POST /products/:slug/config/mint/:id/approve",
       ].sort(),
     );
     for (const r of steps) {

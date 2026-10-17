@@ -27,7 +27,10 @@ The console says Setting, Secret or Minted token; the catalog keeps `kind` and `
       `pkey validate --fix` removes it. A value people change themselves is a Setting with
       `ui.widget: "password"`, not a Secret.
 - [ ] **Minted token** (`kind: "secret"`, `delivery: "edgeMint"`) — never stored or listed; the app
-      calls `mintToken(key)`. The key must equal an `edgeMint` recipe's `id`, or the validator warns.
+      calls `mintToken(key)`. The recipe is the entry's `mint` block (`alg`, `signingKeySecret`,
+      optional `kid`, `audience`, `ttlSeconds`, `claimsTemplate`, `requires`, `requiredEntitlement`);
+      the key is the recipe id. No block and no legacy recipe: the validator warns. A top-level
+      `edgeMint[]` recipe still reads, and `pkey validate --fix` moves it into its entry.
 - [ ] **`flag`** — an entitlement. Flags ride the **license** document only and are read with
       `isEntitled` / `getEntitlements`; they are not "managed config". A config-only product has
       no flags in play.
@@ -132,7 +135,7 @@ tuning; without one the key behaves as `{ "sync": "user", "conflict": "lastWrite
 - [ ] `clientScoped` — delivered to the device in the signed config document.
 - [ ] `edgeMint` — minted on demand at `/<product>/config/mint/<id>/{token,auth}`. Edge-minting
       is a Config **capability**, not a service; the recipe (alg, claims template, key, audience)
-      lives in `.pkey/release`.
+      lives in the entry's `mint` block, and an operator approves it (step-up) before it mints.
 - [ ] `delivery` on a non-`secret` entry is a validation error. `managementDefault` and `delivery`
       are not interchangeable — one is enforcement, the other is transport.
 

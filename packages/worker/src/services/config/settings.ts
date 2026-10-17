@@ -22,7 +22,7 @@ export const CONFIG_SETTINGS_SLICE: ServiceSettingsSlice = {
       area: "config.catalog",
       label: "Config catalog",
       description:
-        "The product's catalog of config keys, flags and secrets, claimed as one unit: a console edit claims the whole catalog.",
+        "The product's catalog of settings, secrets, minted tokens and flags, claimed as one unit: a console edit claims the whole catalog, with the recipes its minted tokens carry (`config.edgeMint.recipes`).",
       keywords: ["schema", "flags", "keys"],
       docs: "/docs/features/managed-config/catalog/",
       value: { kind: "json", schema: "schema.schema.json" },
@@ -63,7 +63,7 @@ export const CONFIG_SETTINGS_SLICE: ServiceSettingsSlice = {
       area: "config.edgeMint",
       label: "Edge-mint recipes",
       description:
-        "Recipes that mint short-lived third-party credentials at the edge for licensed devices. Each recipe still needs an operator approval.",
+        "The recipes a minted token carries (the `mint` block of its catalog entry): short-lived third-party credentials signed at the edge for licensed devices. A console catalog publish saves them and claims them with the catalog; each recipe still needs an operator approval.",
       docs: "/docs/features/managed-config/edge-mint/",
       value: { kind: "json", schema: "edgeMint (product.schema.json)" },
       defaultValue: null,

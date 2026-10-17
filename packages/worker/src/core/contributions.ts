@@ -33,6 +33,7 @@
 
 import type { Db, DbStatement } from "../db/types.js";
 import type { Env } from "../platform/env.js";
+import type { MigrationJob } from "./migrate/job.js";
 import type { AuthorizationListener } from "./authorizationListeners.js";
 import type { SubjectStore } from "./accounts/subjectHooks.js";
 import type { LicenseHolderHooks } from "./licensing/licenseHolders.js";
@@ -163,6 +164,11 @@ export interface ServiceContributions {
   manifest?: ManifestContributor;
   integration?: IntegrationContributor;
   maintenance?: MaintenanceContribution;
+  /**
+   * Data-migration jobs (P0-49): run only by an operator's request through the runner
+   * (`core/migrate/runner.ts`), never by a deploy or a tick. Ids are unique across services.
+   */
+  migrations?: readonly MigrationJob[];
   /** Stores of account × product data, by their stable registry name. */
   subjectStores?: Readonly<Record<string, SubjectStore>>;
   licenseHolders?: LicenseHolderHooks;
@@ -254,6 +260,18 @@ export function maintenanceContributions(): MaintenanceContribution[] {
   return contributionsOf().flatMap(([, c]) =>
     c.maintenance ? [c.maintenance] : [],
   );
+}
+
+/** Every mounted service's data-migration jobs. An id claimed twice throws. */
+export function migrationJobs(): MigrationJob[] {
+  const out = new Map<string, MigrationJob>();
+  for (const [slug, c] of contributionsOf())
+    for (const job of c.migrations ?? []) {
+      if (out.has(job.id))
+        throw new Error(`migration job "${job.id}" is claimed twice (${slug})`);
+      out.set(job.id, job);
+    }
+  return [...out.values()];
 }
 
 /**

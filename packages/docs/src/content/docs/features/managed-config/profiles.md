@@ -76,7 +76,7 @@ A value under a `secret` entry (or a `config` entry still carrying the retired `
 
 A read never echoes a stored secret. Each `secrets` entry reduces to `{ state, configured, updatedAt }`, and a `config` entry the catalog flags secret is blanked. Redaction fails closed: an entry it can't positively classify as non-secret is redacted anyway.
 
-On a repo-linked product the profiles come from `.pkey/product`, and each resync replaces them, except for secret values. A manifest can't carry a secret, so a secret set here is carried forward, still sealed, while the manifest still lists the profile, its payload doesn't declare that key and the catalog still marks the key secret. A plain value you edit here lasts only until the next push.
+On a repo-linked product the profiles come from `.pkey/product`, and each resync replaces them, except for secret values. A manifest can declare a secret value: it is sealed on ingest, and the repo still holds it, so prefer setting secrets here. A secret set here is carried forward, still sealed, while the manifest still lists the profile, its payload doesn't declare that key and the catalog still marks the key secret. A plain value you edit here lasts only until the next push.
 
 The per-license override editor rebuilds the layers below the license client-side, in the server's precedence, so a key inherited as Enforced from a tier's profile doesn't read as "not set".
 

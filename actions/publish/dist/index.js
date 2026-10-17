@@ -3948,7 +3948,8 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
             "listed": { "type": "boolean" }
           },
           "additionalProperties": false
-        }
+        },
+        "mint": { "$ref": "#/$defs/mintBlock" }
       },
       "required": ["key", "kind", "category", "label", "description", "schema"],
       "allOf": [
@@ -3977,6 +3978,17 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
           "then": { "properties": { "secret": { "const": false } } }
         },
         {
+          "$comment": "mint is only valid on a secret entry with delivery: edgeMint (catalog_mint_not_minted).",
+          "if": { "required": ["mint"] },
+          "then": {
+            "properties": {
+              "kind": { "const": "secret" },
+              "delivery": { "const": "edgeMint" }
+            },
+            "required": ["kind", "delivery"]
+          }
+        },
+        {
           "$comment": "user is only valid on config entries (user_setting_wrong_kind). On a key whose managementDefault is enforced or hidden it has no effect, which the validator reports as a warning (user_setting_locked_default).",
           "if": { "required": ["user"] },
           "then": {
@@ -3985,6 +3997,52 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
           }
         }
       ]
+    },
+    "mintBlock": {
+      "description": "A Minted token's recipe (delivery: edgeMint): what the Worker signs when the app calls mintToken(key). The entry's key is the recipe id, so it must match ^[a-z0-9-]{1,64}$. Authoring only: ingest lifts the block into the product's edge-mint recipes, behind an operator's approval, and the served catalog never carries it.",
+      "type": "object",
+      "properties": {
+        "alg": { "enum": ["ES256", "RS256", "EdDSA"] },
+        "signingKeySecret": {
+          "description": "Stable uppercase secret name: ^[A-Z0-9][A-Z0-9_:-]{1,127}$.",
+          "type": "string",
+          "pattern": "^[A-Z0-9][A-Z0-9_:-]{1,127}$"
+        },
+        "kid": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "claimsTemplate": { "type": "object" },
+        "ttlSeconds": {
+          "description": "Lifetime of a minted token, in seconds. Capped at one hour.",
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 3600
+        },
+        "audience": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "pattern": "^[^\\\\u0000-\\\\u001f\\\\u007f]*$"
+            },
+            { "type": "null" }
+          ]
+        },
+        "requires": {
+          "description": "Who may mint: none (any device of this product) · registered · licensed. Omitted means licensed.",
+          "enum": ["none", "registered", "licensed"]
+        },
+        "requiredEntitlement": {
+          "description": "A catalog key that must be present and truthy in the caller's merged payload before this token may be minted.",
+          "anyOf": [
+            { "type": "string", "pattern": "^[A-Za-z0-9._:-]{1,64}$" },
+            { "type": "null" }
+          ]
+        }
+      },
+      "required": ["alg", "signingKeySecret"]
     },
     "cloudSync": {
       "description": "The data shape of the product's Cloud Sync records (the Cloud Sync service): its collections and the migrations the server applies to synced values. A person's quota is not here: it is the pkey.cloudSync.bytes entitlement a tier, a licence override or an add-on sets.",
@@ -12369,10 +12427,10 @@ var LiveRegion = class {
    * Replace the region with its final screen (it stays) and stop. Without animation the first
    * frame was already printed once, so only `plain` (the result, no header) prints.
    */
-  commit(screen = [], plain) {
+  commit(screen = [], plain2) {
     const animate2 = this.host.caps.animate;
     const extra = this.pendingRestore();
-    const rows = animate2 || plain === void 0 ? this.rows(screen) : rowsOf(plain);
+    const rows = animate2 || plain2 === void 0 ? this.rows(screen) : rowsOf(plain2);
     const s = animate2 ? this.erase(extra) : "";
     const show3 = this.stop();
     const lines4 = this.host.render(rows);
@@ -14653,7 +14711,7 @@ init_define_PKEY_EMBEDDED_SCHEMAS();
 // ../shared-protocol/dist/identity.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
 
-// ../shared-protocol/dist/chunk-BKQW4WYJ.js
+// ../shared-protocol/dist/chunk-LINWOCWU.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
 var DISPLAY_TEXT_STRIP = [
   [0, 31],
@@ -19531,71 +19589,13 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
       MINT_ID_RE,
       "Edge mint ids must match ^[a-z0-9-]{1,64}$ (the mint route's own alphabet)."
     );
-    constrained(
-      errors,
-      "release",
-      raw.kid,
-      `/edgeMint/${i}/kid`,
-      "invalid_edge_mint_kid",
-      KID_RE,
-      "Edge mint kid must match ^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$."
-    );
-    boundedText(
-      errors,
-      "release",
-      raw.audience,
-      `/edgeMint/${i}/audience`,
-      "invalid_edge_mint_audience",
-      MAX_LABEL_LENGTH,
-      "Edge mint audience"
-    );
-    if (!["ES256", "RS256", "EdDSA"].includes(String(raw.alg ?? ""))) {
-      add4(
-        errors,
-        "release",
-        `/edgeMint/${i}/alg`,
-        "invalid_edge_mint_alg",
-        "Edge mint alg must be ES256, RS256, or EdDSA."
-      );
+    validateEdgeMintFields(errors, "release", raw, `/edgeMint/${i}`);
+  }
+  if (manifest.schema !== void 0 && modules.includes("config")) {
+    const catalog = normalizeCatalog(manifest.schema);
+    if (catalog) {
+      validateCatalogMintBlocks(catalog.entries, edgeMint, errors);
     }
-    const ref = raw.signingKeySecret;
-    if (typeof ref !== "string" || !SECRET_RE.test(ref)) {
-      add4(
-        errors,
-        "release",
-        `/edgeMint/${i}/signingKeySecret`,
-        "invalid_secret_ref",
-        "Edge mint signing key refs must be stable uppercase names."
-      );
-    }
-    const ttl = raw.ttlSeconds;
-    if (ttl !== void 0 && (!positiveInteger2(ttl) || typeof ttl === "number" && ttl > MAX_EDGE_MINT_TTL_SECONDS)) {
-      add4(
-        errors,
-        "release",
-        `/edgeMint/${i}/ttlSeconds`,
-        "invalid_ttl",
-        `Edge mint TTL must be a positive integer of at most ${MAX_EDGE_MINT_TTL_SECONDS} seconds.`
-      );
-    }
-    if (raw.requires !== void 0 && !isOneOf2(raw.requires, EDGE_MINT_REQUIRES_VALUES)) {
-      add4(
-        errors,
-        "release",
-        `/edgeMint/${i}/requires`,
-        "invalid_edge_mint_requires",
-        "Edge mint requires must be none, registered, or licensed."
-      );
-    }
-    constrained(
-      errors,
-      "release",
-      raw.requiredEntitlement,
-      `/edgeMint/${i}/requiredEntitlement`,
-      "invalid_edge_mint_entitlement",
-      ID_RE,
-      "Edge mint requiredEntitlement must be a catalog key matching ^[A-Za-z0-9._:-]{1,64}$."
-    );
   }
   if (productRoot.fingerprint !== void 0 && !isRecord6(productRoot.fingerprint)) {
     add4(
@@ -19742,10 +19742,8 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
   if (manifest.schema !== void 0 && modules.includes("config")) {
     const catalog = normalizeCatalog(manifest.schema);
     if (catalog) {
-      const recipeIds = new Set(
-        (arrayAt(productRoot, "edgeMint") ?? arrayAt(asRecord(manifest.release), "edgeMint") ?? []).map((r) => asRecord(r).id)
-      );
-      warnRetiredCatalogFields(catalog.entries, recipeIds, warnings);
+      const legacy = arrayAt(productRoot, "edgeMint") ?? arrayAt(asRecord(manifest.release), "edgeMint") ?? [];
+      warnRetiredCatalogFields(catalog.entries, legacy, warnings);
     }
   }
   {
@@ -19863,7 +19861,8 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
   const requiredSecrets = collectRequiredSecrets(
     secrets,
     productRoot,
-    manifest.release
+    manifest.release,
+    modules.includes("config") && manifest.schema !== void 0 ? normalizeCatalog(manifest.schema)?.entries ?? [] : []
   );
   if (modules.includes("config") && !modules.includes("license") && !modules.includes("identity")) {
     add4(
@@ -21181,9 +21180,11 @@ function parseManifest(files, opts = {}) {
   const productRoot = docs.product;
   const prod = nestedProductDoc(productRoot);
   const licensing = asRecord(productRoot.licensing);
-  const catalog = dropRedundantSecretFlags(
+  const rawCatalog = dropRedundantSecretFlags(
     normalizeCatalog(docs.schema)
   );
+  const split = splitCatalogMint(rawCatalog.entries);
+  const catalog = { ...rawCatalog, entries: split.entries };
   const releaseDoc = releaseRoot(docs.release) ?? releaseRoot(productRoot.release);
   const oidcRoot = asRecord(productRoot.oidc);
   const rawProfiles = arrayAt(productRoot, "profiles") ?? arrayAt(licensing, "profiles") ?? [];
@@ -21208,7 +21209,10 @@ function parseManifest(files, opts = {}) {
     profiles: rawProfiles.map(normalizeProfile).filter(notNull),
     tiers: rawTiers.map(normalizeTier).filter(notNull),
     provisioning: rawProvisioning.map(normalizeProvisioning).filter(notNull),
-    edgeMint: rawEdgeMint.map(normalizeEdgeMint).filter(notNull),
+    edgeMint: [
+      ...rawEdgeMint.map(normalizeEdgeMint).filter(notNull),
+      ...validation.enabledModules.includes("config") ? split.recipes : []
+    ],
     // The enablement set finally survives parsing. `validation` above already ran the
     // coherence rules over the same list, so this cannot carry an inapplicable combination.
     services: servicesFromModules(validation.enabledModules),
@@ -21606,6 +21610,73 @@ function normalizeProvisioning(raw) {
     allowedHosts: arrayAt(raw, "allowedHosts")?.filter(isString)
   };
 }
+function validateEdgeMintFields(errors, section, raw, at) {
+  constrained(
+    errors,
+    section,
+    raw.kid,
+    `${at}/kid`,
+    "invalid_edge_mint_kid",
+    KID_RE,
+    "Edge mint kid must match ^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$."
+  );
+  boundedText(
+    errors,
+    section,
+    raw.audience,
+    `${at}/audience`,
+    "invalid_edge_mint_audience",
+    MAX_LABEL_LENGTH,
+    "Edge mint audience"
+  );
+  if (!["ES256", "RS256", "EdDSA"].includes(String(raw.alg ?? ""))) {
+    add4(
+      errors,
+      section,
+      `${at}/alg`,
+      "invalid_edge_mint_alg",
+      "Edge mint alg must be ES256, RS256, or EdDSA."
+    );
+  }
+  const ref = raw.signingKeySecret;
+  if (typeof ref !== "string" || !SECRET_RE.test(ref)) {
+    add4(
+      errors,
+      section,
+      `${at}/signingKeySecret`,
+      "invalid_secret_ref",
+      "Edge mint signing key refs must be stable uppercase names."
+    );
+  }
+  const ttl = raw.ttlSeconds;
+  if (ttl !== void 0 && (!positiveInteger2(ttl) || typeof ttl === "number" && ttl > MAX_EDGE_MINT_TTL_SECONDS)) {
+    add4(
+      errors,
+      section,
+      `${at}/ttlSeconds`,
+      "invalid_ttl",
+      `Edge mint TTL must be a positive integer of at most ${MAX_EDGE_MINT_TTL_SECONDS} seconds.`
+    );
+  }
+  if (raw.requires !== void 0 && !isOneOf2(raw.requires, EDGE_MINT_REQUIRES_VALUES)) {
+    add4(
+      errors,
+      section,
+      `${at}/requires`,
+      "invalid_edge_mint_requires",
+      "Edge mint requires must be none, registered, or licensed."
+    );
+  }
+  constrained(
+    errors,
+    section,
+    raw.requiredEntitlement,
+    `${at}/requiredEntitlement`,
+    "invalid_edge_mint_entitlement",
+    ID_RE,
+    "Edge mint requiredEntitlement must be a catalog key matching ^[A-Za-z0-9._:-]{1,64}$."
+  );
+}
 function normalizeEdgeMint(raw) {
   if (!isRecord6(raw) || typeof raw.id !== "string" || raw.id.length === 0)
     return null;
@@ -21629,8 +21700,12 @@ function normalizeEdgeMint(raw) {
     requiredEntitlement: typeof raw.requiredEntitlement === "string" && raw.requiredEntitlement ? raw.requiredEntitlement : null
   };
 }
-function collectRequiredSecrets(secrets, product, release) {
+function collectRequiredSecrets(secrets, product, release, catalogEntries = []) {
   const names = /* @__PURE__ */ new Set();
+  for (const entry of catalogEntries) {
+    const ref = asRecord(asRecord(entry).mint).signingKeySecret;
+    if (typeof ref === "string" && ref) names.add(ref);
+  }
   const required = arrayAt(secrets, "required") ?? [];
   for (const item of required) {
     if (isRecord6(item) && typeof item.name === "string" && item.name) {
@@ -21721,6 +21796,68 @@ function normalizeCatalog(parsed) {
   }
   return null;
 }
+function isMintingEntry(entry) {
+  return entry.kind === "secret" && entry.delivery === "edgeMint";
+}
+function validateCatalogMintBlocks(entries, legacyRecipes, errors) {
+  const legacyIds = new Set(legacyRecipes.map((r) => asRecord(r).id));
+  for (const [i, raw] of entries.entries()) {
+    if (!isRecord6(raw) || raw.mint === void 0) continue;
+    const at = `/entries/${i}`;
+    if (!isRecord6(raw.mint)) {
+      add4(
+        errors,
+        "schema",
+        `${at}/mint`,
+        "invalid_catalog_mint",
+        "`mint` must be an object: alg, signingKeySecret and, optionally, kid, audience, ttlSeconds, claimsTemplate, requires, requiredEntitlement."
+      );
+      continue;
+    }
+    if (!isMintingEntry(raw)) {
+      add4(
+        errors,
+        "schema",
+        `${at}/mint`,
+        "catalog_mint_not_minted",
+        "`mint` belongs on a secret entry with `delivery: edgeMint`."
+      );
+      continue;
+    }
+    constrained(
+      errors,
+      "schema",
+      raw.key,
+      `${at}/key`,
+      "invalid_edge_mint_id",
+      MINT_ID_RE,
+      "A minted token's key is its recipe id and must match ^[a-z0-9-]{1,64}$ (the mint route's own alphabet)."
+    );
+    if (legacyIds.has(raw.key)) {
+      add4(
+        errors,
+        "schema",
+        `${at}/mint`,
+        "edge_mint_recipe_duplicate",
+        `${String(raw.key)} has a \`mint\` block and an edgeMint[] recipe. Keep the \`mint\` block and delete the recipe.`
+      );
+    }
+    validateEdgeMintFields(errors, "schema", raw.mint, `${at}/mint`);
+  }
+}
+function splitCatalogMint(entries) {
+  const recipes = [];
+  const kept = entries.map((e) => {
+    if (!isRecord6(e) || !("mint" in e)) return e;
+    const { mint, ...rest } = e;
+    if (isMintingEntry(rest) && isRecord6(mint) && typeof rest.key === "string") {
+      const recipe = normalizeEdgeMint({ ...mint, id: rest.key });
+      if (recipe) recipes.push(recipe);
+    }
+    return rest;
+  });
+  return { entries: kept, recipes };
+}
 function dropRedundantSecretFlags(catalog) {
   return {
     ...catalog,
@@ -21731,7 +21868,22 @@ function dropRedundantSecretFlags(catalog) {
     })
   };
 }
-function warnRetiredCatalogFields(entries, recipeIds, warnings) {
+function warnRetiredCatalogFields(entries, legacyRecipes, warnings) {
+  const legacyIds = new Set(legacyRecipes.map((r) => asRecord(r).id));
+  const mintingKeys = new Set(
+    entries.map(asRecord).filter((e) => e.kind === "secret" && e.delivery === "edgeMint").map((e) => e.key)
+  );
+  for (const [i, recipe] of legacyRecipes.entries()) {
+    const id = asRecord(recipe).id;
+    if (!mintingKeys.has(id)) continue;
+    add4(
+      warnings,
+      "release",
+      `/edgeMint/${i}`,
+      "catalog_edge_mint_legacy",
+      `The edgeMint[] recipe ${String(id)} moves into the \`mint\` block of the catalog entry ${String(id)} (\`pkey validate --fix\`).`
+    );
+  }
   for (const [i, raw] of entries.entries()) {
     if (!isRecord6(raw)) continue;
     const at = `/entries/${i}`;
@@ -21761,13 +21913,13 @@ function warnRetiredCatalogFields(entries, recipeIds, warnings) {
         "`delivery: serverOnly` has no consumer. Keep a secret only the Worker reads in the product's secrets (Keys and secrets), not the catalog."
       );
     }
-    if (raw.delivery === "edgeMint" && typeof raw.key === "string" && !recipeIds.has(raw.key)) {
+    if (raw.delivery === "edgeMint" && typeof raw.key === "string" && raw.mint === void 0 && !legacyIds.has(raw.key)) {
       add4(
         warnings,
         "schema",
         `${at}/delivery`,
         "catalog_edge_mint_without_recipe",
-        `\`delivery: edgeMint\` on ${raw.key} has no edgeMint recipe with id ${raw.key}, so nothing can be minted.`
+        `\`delivery: edgeMint\` on ${raw.key} has no \`mint\` block, so nothing can be minted. Add one: alg, signingKeySecret and, optionally, kid, audience, ttlSeconds, claimsTemplate, requires, requiredEntitlement.`
       );
     }
   }
@@ -24932,8 +25084,7 @@ function jsonEditable(value) {
   const walk3 = (p) => {
     let cur = value;
     for (const k of p) {
-      if (cur === null || typeof cur !== "object" || Array.isArray(cur))
-        return void 0;
+      if (cur === null || typeof cur !== "object") return void 0;
       cur = cur[k];
     }
     return cur;
@@ -24945,15 +25096,15 @@ function jsonEditable(value) {
       let cur = value;
       for (const k of p.slice(0, -1)) {
         const next = cur[k];
-        if (next === null || typeof next !== "object" || Array.isArray(next))
-          cur[k] = {};
+        if (next === null || typeof next !== "object") cur[k] = {};
         cur = cur[k];
       }
       cur[p.at(-1)] = v;
     },
     remove(p) {
       const parent = walk3(p.slice(0, -1));
-      if (parent && typeof parent === "object")
+      if (Array.isArray(parent)) parent.splice(Number(p.at(-1)), 1);
+      else if (parent && typeof parent === "object")
         delete parent[p.at(-1)];
     },
     text: () => `${JSON.stringify(value, null, 2)}
@@ -24971,6 +25122,40 @@ function yamlEditable(doc) {
     text: () => doc.toString()
   };
 }
+var plain = (v) => v !== null && typeof v === "object" && "toJSON" in v ? v.toJSON() : v;
+var lengthOf = (v) => Array.isArray(v) ? v.length : v?.items?.length ?? 0;
+function moveLegacyRecipes(docs, cwd, moves) {
+  const schema = docs.schema;
+  if (!schema) return;
+  for (const name of ["product", "release"]) {
+    const doc = docs[name];
+    if (!doc) continue;
+    for (let i = lengthOf(doc.edit.get(["edgeMint"])) - 1; i >= 0; i--) {
+      const recipe = plain(doc.edit.get(["edgeMint", String(i)]));
+      const id = recipe?.id;
+      if (typeof id !== "string") continue;
+      for (const list2 of ["entries", "catalog"]) {
+        const n = lengthOf(schema.edit.get([list2]));
+        for (let j = 0; j < n; j++) {
+          const at = [list2, String(j)];
+          if (schema.edit.get([...at, "key"]) !== id || schema.edit.get([...at, "kind"]) !== "secret" || schema.edit.get([...at, "delivery"]) !== "edgeMint" || isSet(schema.edit.get([...at, "mint"])))
+            continue;
+          const { id: _id, ...block } = recipe;
+          schema.edit.set([...at, "mint"], block);
+          doc.edit.remove(["edgeMint", String(i)]);
+          if (lengthOf(doc.edit.get(["edgeMint"])) === 0)
+            doc.edit.remove(["edgeMint"]);
+          schema.changed = doc.changed = true;
+          moves.push({
+            file: path5.relative(cwd, doc.file),
+            from: `/edgeMint/${i}`,
+            to: `${path5.relative(cwd, schema.file)}#/${list2}/${j}/mint`
+          });
+        }
+      }
+    }
+  }
+}
 async function fixManifest(manifest, cwd) {
   const files = {
     product: manifest.productPath,
@@ -24979,11 +25164,13 @@ async function fixManifest(manifest, cwd) {
     distribution: manifest.distributionPath
   };
   const moves = [];
+  const open2 = {};
   for (const [name, file] of Object.entries(files)) {
     if (!file) continue;
     const raw = await readFile4(file, "utf8");
     const edit = file.endsWith(".json") ? jsonEditable(JSON.parse(raw)) : yamlEditable((0, import_yaml3.parseDocument)(raw));
-    let changed = false;
+    const doc = { file, edit, changed: false };
+    open2[name] = doc;
     for (const s of fixableSpellings().filter((x) => x.doc === name)) {
       const from = segments(s.pointer);
       const to = segments(s.canonicalPointer.pointer);
@@ -24991,7 +25178,7 @@ async function fixManifest(manifest, cwd) {
       const value = edit.take(from);
       edit.set(to, value);
       edit.remove(from);
-      changed = true;
+      doc.changed = true;
       moves.push({
         file: path5.relative(cwd, file),
         from: s.pointer,
@@ -25006,7 +25193,7 @@ async function fixManifest(manifest, cwd) {
           if (edit.get([list2, String(i), "kind"]) !== "secret" || edit.get([list2, String(i), "secret"]) !== true)
             continue;
           edit.remove([list2, String(i), "secret"]);
-          changed = true;
+          doc.changed = true;
           moves.push({
             file: path5.relative(cwd, file),
             from: `/${list2}/${i}/secret`,
@@ -25015,8 +25202,10 @@ async function fixManifest(manifest, cwd) {
         }
       }
     }
-    if (changed) await writeFile3(file, edit.text());
   }
+  moveLegacyRecipes(open2, cwd, moves);
+  for (const doc of Object.values(open2))
+    if (doc.changed) await writeFile3(doc.file, doc.edit.text());
   return moves;
 }
 

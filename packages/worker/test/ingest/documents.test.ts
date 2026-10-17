@@ -65,6 +65,13 @@ describe("create from documents (D8)", () => {
     ).toBe(1);
   });
 
+  it("accepts documents with no release block", async () => {
+    const files = minimal();
+    delete files[".pkey/release.json"];
+    const { res } = await create(files);
+    expect(res.ok, JSON.stringify(res)).toBe(true);
+  });
+
   it("refuses a declared trustedPublisher, failing closed", async () => {
     const { db, res } = await create(full());
     expect(res.ok).toBe(false);

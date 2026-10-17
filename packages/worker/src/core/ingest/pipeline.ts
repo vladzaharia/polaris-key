@@ -29,7 +29,12 @@ import {
 import type { ServicesMap } from "../services.js";
 import type { Db, DbStatement } from "../../db/types.js";
 import type { Env } from "../../platform/env.js";
-import { getProduct } from "../products/store.js";
+import { Catalog } from "@polaris-key/catalog";
+import { getActiveSchema, getProduct } from "../products/store.js";
+import {
+  managedSecretKeyPredicate,
+  parseStoredCatalog,
+} from "./manifestSecrets.js";
 import { claimsForApply } from "../settingsClaims.js";
 import {
   getManifestSnapshot,
@@ -298,6 +303,24 @@ async function run(
   }
 
   // ── 6. Batch ─────────────────────────────────────────────────────────────────
+  // The snapshot records the parsed (pre-seal) manifest, so it is scrubbed of secret values: by
+  // the UNION of the incoming and the stored catalog on apply (kept even when `config.catalog`
+  // is claimed, as sealing does), by the manifest's own on create.
+  const catalogs: Catalog[] = [];
+  try {
+    catalogs.push(new Catalog(manifest.catalog as never));
+  } catch {
+    /* a catalog that does not build was refused by Config's check */
+  }
+  if (mode === "apply") {
+    const stored = parseStoredCatalog(
+      (await lazy("activeSchema", () => getActiveSchema(db, slug)))
+        ?.catalog_json,
+    );
+    if (stored) catalogs.push(stored);
+  }
+  const isSecretKey = managedSecretKeyPredicate(catalogs);
+
   const statements: DbStatement[] = [
     ...parts.flatMap(({ part }) => part.statements),
     ...late.flatMap((f) => f.statements),
@@ -311,6 +334,7 @@ async function run(
       source.files,
       manifest,
       now,
+      isSecretKey,
     ),
   ];
   await db.batch(statements);

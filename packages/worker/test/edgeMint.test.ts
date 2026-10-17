@@ -321,10 +321,19 @@ async function admin(
   method: string,
   path: string,
   body?: unknown,
+  opts: { stepUp?: boolean } = {},
 ): Promise<{ status: number; body: Record<string, unknown> }> {
+  // Approving a recipe needs a sign-in proven in the last five minutes (U-31); every call here
+  // has one unless it says otherwise.
   const { token, session } = await issueSession(
     env,
-    { sub: "op-1", name: "Op", email: "op@x.io", groups: [PLATFORM_GROUP] },
+    {
+      sub: "op-1",
+      name: "Op",
+      email: "op@x.io",
+      groups: [PLATFORM_GROUP],
+      ...(opts.stepUp === false ? {} : { authTime: NOW, stepUp: true }),
+    },
     NOW,
   );
   const headers: Record<string, string> = {
@@ -2046,5 +2055,126 @@ describe("per-recipe mint authorization", () => {
       // The message never quotes the exception: it is derived from the key.
       expect(body).not.toMatch(/atob|InvalidCharacter|DataError|SyntaxError/i);
     });
+  });
+});
+
+describe("U-31 a minted token carries its recipe in the catalog entry", () => {
+  let db: SqliteDb;
+  let env: Env;
+
+  beforeEach(async () => {
+    db = makeTestDb();
+    env = adminEnv();
+    await seedProduct(db, "djdl");
+    await seedProductSecret(
+      db,
+      "djdl",
+      "APPLEMUSIC_DEVKEY",
+      ES_PEM,
+      "edge-mint",
+    );
+  });
+
+  const block = (over: Record<string, unknown> = {}) => ({
+    alg: "ES256",
+    signingKeySecret: "APPLEMUSIC_DEVKEY",
+    kid: "KEYID00000",
+    claimsTemplate: { iss: "TEAM000000" },
+    ttlSeconds: 3600,
+    ...over,
+  });
+  const entry = (mint?: Record<string, unknown>, key = "applemusic") => ({
+    key,
+    kind: "secret",
+    category: "Tokens",
+    label: "Apple Music",
+    description: "A MusicKit developer token.",
+    schema: { type: "string" },
+    delivery: "edgeMint",
+    ...(mint ? { mint } : {}),
+  });
+  const publish = (entries: unknown[]) =>
+    admin(env, db, "PUT", "/api/products/djdl/config/catalog", {
+      catalog: { schemaVersion: 1, entries },
+    });
+  const approve = async (opts?: { stepUp?: boolean }) => {
+    const r = (await listRecipes(env, db)).recipes[0]!;
+    return admin(
+      env,
+      db,
+      "POST",
+      "/api/products/djdl/config/mint/applemusic/approve",
+      echoOf(r),
+      opts,
+    );
+  };
+
+  it("saves the recipe pending beside the entry, and the served catalog never carries it", async () => {
+    const res = await publish([entry(block())]);
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    const listed = await listRecipes(env, db);
+    expect(listed.recipes).toHaveLength(1);
+    expect(listed.recipes[0]).toMatchObject({
+      id: "applemusic",
+      alg: "ES256",
+      signingKeySecret: "APPLEMUSIC_DEVKEY",
+      requires: "licensed",
+      status: "pending",
+    });
+    const served = await admin(
+      env,
+      db,
+      "GET",
+      "/api/products/djdl/config/catalog",
+    );
+    expect(JSON.stringify(served.body)).not.toContain('mint"');
+    expect(JSON.stringify(served.body)).not.toContain("APPLEMUSIC_DEVKEY");
+    const actions = (await listAudit(db, "djdl")).map((r) => r.action);
+    expect(actions).toContain("config.mint.save");
+  });
+
+  it("refuses an invalid block with the manifest's own rules, writing nothing", async () => {
+    const res = await publish([
+      entry(block({ alg: "HS256", ttlSeconds: 9999 })),
+    ]);
+    expect(res.status).toBe(422);
+    expect(JSON.stringify(res.body)).toContain("/entries/0/mint");
+    expect((await listRecipes(env, db)).recipes).toEqual([]);
+  });
+
+  it("approves only under step-up, and an unchanged republish keeps the approval", async () => {
+    await publish([entry(block())]);
+    const refused = await approve({ stepUp: false });
+    expect(refused.status).toBe(403);
+    expect(refused.body.code).toBe("step_up_required");
+    expect((await approve()).status).toBe(200);
+    await publish([entry(block())]);
+    expect((await listRecipes(env, db)).recipes[0]!.status).toBe("approved");
+  });
+
+  it("a changed recipe goes inert until approved again", async () => {
+    await publish([entry(block())]);
+    await approve();
+    await publish([entry(block({ ttlSeconds: 600 }))]);
+    const r = (await listRecipes(env, db)).recipes[0]!;
+    expect(r.status).toBe("changed");
+    expect(r.changedFields).toContain("ttlSeconds");
+  });
+
+  it("an entry round-tripped without its block keeps the recipe; dropping the entry removes recipe and approval", async () => {
+    await publish([entry(block())]);
+    await approve();
+    // The console edits entries it read from the served catalog, which has no `mint`.
+    await publish([entry()]);
+    expect((await listRecipes(env, db)).recipes[0]!.status).toBe("approved");
+    await publish([]);
+    expect((await listRecipes(env, db)).recipes).toEqual([]);
+    const left = await db.first<{ n: number }>(
+      "SELECT COUNT(*) AS n FROM edge_mint_approvals WHERE product = ?",
+      "djdl",
+    );
+    expect(left?.n).toBe(0);
+    const actions = (await listAudit(db, "djdl")).map((r) => r.action);
+    expect(actions).toContain("config.mint.remove");
   });
 });
