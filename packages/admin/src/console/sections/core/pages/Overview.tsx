@@ -169,21 +169,13 @@ function OverviewBody({
   // Show Integration puts the card back and the card takes focus; nothing else moves it.
   const [justShown, setJustShown] = React.useState(false);
   const cardShown = enabled.length > 0 && !hidden;
-  const attention = useAttention(
-    slug,
-    p,
-    licenses.data?.licenses,
-    // The next step already says it. Until the read model answers nobody knows which: the items
-    // wait for it, so the first-load stagger never lifts an item the step then takes back.
-    {
-      signing:
-        cardShown && (integration.isPending || next?.to === r.keys(slug)),
-      recipes:
-        cardShown &&
-        (integration.isPending ||
-          (next !== null && next.to === reviewHref(slug, pendingRecipes(p)))),
-    },
-  );
+  const attention = useAttention(slug, p, licenses.data?.licenses, {
+    signing: cardShown && (integration.isPending || next?.to === r.keys(slug)),
+    recipes:
+      cardShown &&
+      (integration.isPending ||
+        next?.to === reviewHref(slug, pendingRecipes(p))),
+  });
 
   const fallback = on(p, "license") ? (
     <Button asChild>

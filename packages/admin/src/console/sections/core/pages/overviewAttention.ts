@@ -11,6 +11,11 @@ import { pendingRecipes } from "../../config/model/pending.js";
 
 const DAY = 86_400;
 
+/**
+ * `skip` drops the signing-key and recipe items the Integration card's next step already says.
+ * The caller also skips them while that read is pending, so the first-load stagger never lifts
+ * an item the next step then takes back.
+ */
 export function useAttention(
   slug: string,
   p: ProductDetail,
