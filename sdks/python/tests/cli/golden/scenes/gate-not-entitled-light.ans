@@ -4,7 +4,7 @@
 [33m▲[0m  [1mNot included[0m
 [2m│[0m  Your license doesn't include this.
 [2m│[0m
-[2m│[0m  [1mtidewater status[0m   [2mLicense, devices and offline time[0m
+[2m│[0m  [1mtidewater status[0m   [2mShow your license, devices and offline time[0m
 [2m└[0m
 ── ansi16 · 80 ──
 [2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · export[0m
@@ -12,7 +12,7 @@
 [33m▲[0m  [1mNot included[0m
 [2m│[0m  Your license doesn't include this.
 [2m│[0m
-[2m│[0m  [1mtidewater status[0m   [2mLicense, devices and offline time[0m
+[2m│[0m  [1mtidewater status[0m   [2mShow your license, devices and offline time[0m
 [2m└[0m
 ── no-color · 80 ──
 ┌  [7m Tidewater Studio [0m · export
@@ -20,7 +20,7 @@
 ▲  [1mNot included[0m
 │  Your license doesn't include this.
 │
-│  [1mtidewater status[0m   License, devices and offline time
+│  [1mtidewater status[0m   Show your license, devices and offline time
 └
 ── ascii · 80 ──
 [2m+[0m  [1;7;36m Tidewater Studio [0m[2m - export[0m
@@ -28,7 +28,7 @@
 [33m![0m  [1mNot included[0m
 [2m|[0m  Your license doesn't include this.
 [2m|[0m
-[2m|[0m  [1mtidewater status[0m   [2mLicense, devices and offline time[0m
+[2m|[0m  [1mtidewater status[0m   [2mShow your license, devices and offline time[0m
 [2m`[0m
 ── truecolor · 60 ──
 [2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · export[0m
@@ -36,7 +36,8 @@
 [33m▲[0m  [1mNot included[0m
 [2m│[0m  Your license doesn't include this.
 [2m│[0m
-[2m│[0m  [1mtidewater status[0m   [2mLicense, devices and offline time[0m
+[2m│[0m  [1mtidewater status[0m
+[2m│[0m    [2mShow your license, devices and offline time[0m
 [2m└[0m
 ── ansi16 · 60 ──
 [2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · export[0m
@@ -44,7 +45,8 @@
 [33m▲[0m  [1mNot included[0m
 [2m│[0m  Your license doesn't include this.
 [2m│[0m
-[2m│[0m  [1mtidewater status[0m   [2mLicense, devices and offline time[0m
+[2m│[0m  [1mtidewater status[0m
+[2m│[0m    [2mShow your license, devices and offline time[0m
 [2m└[0m
 ── no-color · 60 ──
 ┌  [7m Tidewater Studio [0m · export
@@ -52,7 +54,8 @@
 ▲  [1mNot included[0m
 │  Your license doesn't include this.
 │
-│  [1mtidewater status[0m   License, devices and offline time
+│  [1mtidewater status[0m
+│    Show your license, devices and offline time
 └
 ── ascii · 60 ──
 [2m+[0m  [1;7;36m Tidewater Studio [0m[2m - export[0m
@@ -60,11 +63,12 @@
 [33m![0m  [1mNot included[0m
 [2m|[0m  Your license doesn't include this.
 [2m|[0m
-[2m|[0m  [1mtidewater status[0m   [2mLicense, devices and offline time[0m
+[2m|[0m  [1mtidewater status[0m
+[2m|[0m    [2mShow your license, devices and offline time[0m
 [2m`[0m
 ── pipe · 80 ──
 Tidewater Studio · export
 Not included
 Your license doesn't include this.
 
-tidewater status   License, devices and offline time
+tidewater status   Show your license, devices and offline time

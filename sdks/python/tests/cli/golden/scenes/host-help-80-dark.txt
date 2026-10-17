@@ -17,7 +17,7 @@ License
   devices rename         Rename a device (no name clears it)
   login                  Sign in with your account in the browser
   logout                 Sign out on this device
-  status                 License, devices and offline time
+  status                 Show your license, devices and offline time
   update apply           Download and install the newer version
   update check           Check for a newer version
 

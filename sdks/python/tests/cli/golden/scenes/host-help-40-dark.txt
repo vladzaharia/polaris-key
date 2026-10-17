@@ -31,7 +31,8 @@ License
   logout
     Sign out on this device
   status
-    License, devices and offline time
+    Show your license, devices and
+    offline time
   update apply
     Download and install the
     newer version
