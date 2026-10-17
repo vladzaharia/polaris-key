@@ -153,32 +153,16 @@ export abstract class PkElement extends LitElement {
       }
     }
     if (typeof ResizeObserver === "function") {
-      this.resize = new ResizeObserver(([entry]) => {
-        if (!entry) return;
-        const { inlineSize: w, blockSize: h } = entry.contentBoxSize[0] ?? {
-          inlineSize: entry.contentRect.width,
-          blockSize: entry.contentRect.height,
-        };
-        const rem =
-          Number.parseFloat(
-            getComputedStyle(document.documentElement).fontSize,
-          ) || 16;
-        // DL1: two panes from 52.5rem in a landscape box (1.4:1); under 30rem tall is short.
-        const next =
-          h > 0 && h / rem < 30 && w > h
-            ? "short"
-            : w / rem >= 52.5 && h > 0 && w / h >= 1.4
-              ? "landscape"
-              : "portrait";
-        if (next !== this.shape)
-          // After this frame's layout: a shape change never re-enters the observer's loop.
-          requestAnimationFrame(() => {
-            if (next === this.shape) return;
-            this.shape = next;
-            this.requestUpdate();
-          });
-      });
+      this.resize = new ResizeObserver(() => this.measure());
       this.resize.observe(this);
+    }
+    // The box a screen can use is the window's, not the host's own: a host whose minimum height
+    // is the window grows to fit its content, which would never read as a short landscape.
+    const vv = typeof visualViewport !== "undefined" ? visualViewport : null;
+    if (vv) {
+      const l = () => this.measure();
+      vv.addEventListener("resize", l);
+      this.unsubs.push(() => vv.removeEventListener("resize", l));
     }
     this.restartIdentity();
   }
@@ -193,6 +177,30 @@ export abstract class PkElement extends LitElement {
     this.model?.dispose();
     this.model = null;
     if (this.iconUrl?.startsWith("blob:")) URL.revokeObjectURL(this.iconUrl);
+  }
+
+  /** DL1: two panes from 52.5rem in a landscape box (1.4:1); under 30rem tall is short. */
+  private measure(): void {
+    const box = this.getBoundingClientRect();
+    const vv = typeof visualViewport !== "undefined" ? visualViewport : null;
+    const w = Math.min(box.width, vv?.width ?? Number.POSITIVE_INFINITY);
+    const h = Math.min(box.height, vv?.height ?? Number.POSITIVE_INFINITY);
+    const rem =
+      Number.parseFloat(getComputedStyle(document.documentElement).fontSize) ||
+      16;
+    const next =
+      h > 0 && h / rem < 30 && w > h
+        ? "short"
+        : w / rem >= 52.5 && h > 0 && w / h >= 1.4
+          ? "landscape"
+          : "portrait";
+    if (next !== this.shape)
+      // After this frame's layout: a shape change never re-enters the observer's loop.
+      requestAnimationFrame(() => {
+        if (next === this.shape) return;
+        this.shape = next;
+        this.requestUpdate();
+      });
   }
 
   /** The theme layers merged: global, the nearest provider, this element. */
@@ -325,6 +333,7 @@ export abstract class PkElement extends LitElement {
       view,
       copy,
       resolved,
+      fill: this.fillsWindow(view.state),
       input: this.modelInput(),
       act: (key, extra = {}) => {
         const detail: PkActionDetail = {

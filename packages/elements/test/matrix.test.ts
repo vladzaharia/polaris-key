@@ -172,6 +172,7 @@ for (const family of COMPONENT_FAMILIES) {
             : []),
           // The form's Done step always offers Start.
           ...(view.component === "SignIn" ? ["signin.done.start"] : []),
+          ...(view.component === "Activate" ? ["common.done"] : []),
         ]).toContain(filled[0]!.getAttribute("data-key"));
       // DL4/DL6: a view with a primary draws it as the one filled control (a destructive
       // confirm's is the danger fill).

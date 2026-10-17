@@ -235,6 +235,7 @@ function screen(c: RenderCtx, layout: Layout): TemplateResult {
     class="stage"
     part="stage"
     data-part="stage"
+    role=${ifDefined(c.fill ? "main" : undefined)}
     data-kind="screen"
     ?data-split=${layout.split === true}
   >
@@ -262,7 +263,8 @@ function screen(c: RenderCtx, layout: Layout): TemplateResult {
         ${showIdentity
           ? productHeader(c, layout.header, {
               name: !titleNames,
-              developer: view.copy.includes("common.byDeveloper"),
+              // The hero reads icon, title, then "by Developer" (below the title).
+              developer: !heroTitle && view.copy.includes("common.byDeveloper"),
             })
           : nothing}
       </div>
@@ -276,6 +278,15 @@ function screen(c: RenderCtx, layout: Layout): TemplateResult {
           heroTitle ? "display" : "title",
           layout.subtitles,
         )}
+        ${heroTitle && view.copy.includes("common.byDeveloper")
+          ? html`<p
+              class="by"
+              data-part="developer"
+              data-key="common.byDeveloper"
+            >
+              ${text(c, "common.byDeveloper")}
+            </p>`
+          : nothing}
         ${paragraphs(
           c,
           body.filter((k) => k !== "common.byDeveloper"),
@@ -536,6 +547,30 @@ function withBase(c: RenderCtx): View {
       }
       const sheet = input.signIn?.presentation === "sheet";
       return view.state === "methods" && !sheet ? view : add("common.cancel");
+    }
+    case "Activate": {
+      if (
+        ["empty", "typing", "parsed", "cut-short", "rejected"].includes(
+          view.state,
+        )
+      )
+        return add(
+          "activate.title",
+          "activate.lede",
+          "part.keyField.placeholder",
+          "common.paste",
+          "activate.submit",
+          "common.back",
+        );
+      if (view.state === "device-limit") return add("common.back");
+      if (view.state === "done") {
+        const done = add("common.done");
+        return {
+          ...done,
+          decisions: { ...done.decisions, primary: "common.done" },
+        };
+      }
+      return view;
     }
     case "Devices": {
       if (
@@ -825,7 +860,10 @@ function deviceLimitContent(c: RenderCtx): TemplateResult | typeof nothing {
                 ${GLYPHS.device(d.formFactor)}
               </span>
               <span>
-                <span class="row-title"><bdi>${d.name ?? ""}</bdi></span
+                <span class="row-title"
+                  >${d.name
+                    ? html`<bdi>${d.name}</bdi>`
+                    : text(c, "devices.unnamed")}</span
                 ><br />
                 <span class="meta">
                   ${text(c, "signin.replace.meta", {

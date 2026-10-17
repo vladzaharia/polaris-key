@@ -56,12 +56,12 @@ const KIT_CSS = String.raw`
 /* native (§3.4): the host's font, Canvas neutrals, the host's accent, no ambient. */
 .pk-root[data-preset="native"] {
   font-family: inherit;
-  --pk-kit-type-body-family: inherit;
-  --pk-kit-type-title-family: inherit;
-  --pk-kit-type-display-family: inherit;
-  --pk-kit-type-label-family: inherit;
-  --pk-kit-type-button-family: inherit;
-  --pk-kit-type-meta-family: inherit;
+  --pk-kit-type-body-family: initial;
+  --pk-kit-type-title-family: initial;
+  --pk-kit-type-display-family: initial;
+  --pk-kit-type-label-family: initial;
+  --pk-kit-type-button-family: initial;
+  --pk-kit-type-meta-family: initial;
   --pk-surface-page: Canvas;
   --pk-surface-raised: Canvas;
   --pk-surface-overlay: Canvas;
