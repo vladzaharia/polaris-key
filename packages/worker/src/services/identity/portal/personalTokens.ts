@@ -54,6 +54,8 @@ export async function handlePersonalTokens(
   now: number,
   /** The private feeds the account's licences reach (the router's `readableFeeds`). */
   feeds: () => Promise<readonly unknown[]>,
+  /** The account's licence-bound `pkeyr_` tokens (per-app group). */
+  legacy: () => Promise<readonly unknown[]>,
 ): Promise<Response> {
   const accountId = session.accountId;
   if (rest.length > 1) return notFound();
@@ -86,6 +88,7 @@ export async function handlePersonalTokens(
       username: REGISTRY_TOKEN_USERNAME,
       tokens: await listAccountTokens(db, accountId, now),
       feeds: await feeds(),
+      legacy: await legacy(),
       limits: {
         minDays: PERSONAL_TOKEN_MIN_DAYS,
         maxDays: PERSONAL_TOKEN_DAYS[PACKAGES_READ_SCOPE].max,

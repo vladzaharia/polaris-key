@@ -47,6 +47,7 @@ import {
   REGISTRY_TOKEN_USERNAME,
   REGISTRY_URL_TOKEN_DEFAULT_DAYS,
   listRegistryTokens,
+  mintRegistryToken,
   revokeRegistryToken,
 } from "../../../core/registry/registryTokens.js";
 import { PACKAGE_ECOSYSTEMS } from "@polaris-key/manifest";
@@ -827,6 +828,8 @@ interface PackageAccessFeed {
   ecosystem: string;
   accessMode: string;
   baseUrl: string | null;
+  /** The feed's namespace settings (npm's `scope`), which the setup snippets name. */
+  namespace: Record<string, unknown>;
 }
 
 /**
@@ -857,6 +860,7 @@ async function nonPublicFeeds(
       ecosystem: eco,
       accessMode: feed.accessMode!,
       baseUrl: feed.baseUrl ?? null,
+      namespace: feed.namespace ?? {},
     });
   }
   return out;
@@ -866,6 +870,8 @@ async function nonPublicFeeds(
 export interface ReadableFeed extends PackageAccessFeed {
   product: string;
   productName: string;
+  /** A usable licence of the account in this product: the Godot URL token is bound to it. */
+  licenseId: string;
 }
 
 /**
@@ -893,9 +899,61 @@ export async function readableFeeds(
         ...feed,
         product: row.product,
         productName: row.product_name,
+        licenseId: row.id,
       });
   }
   return out;
+}
+
+/** One licence-bound registry token of the account, for Account → Packages' per-app group. */
+export interface LegacyRegistryToken {
+  product: string;
+  productName: string;
+  licenseId: string;
+  tokenId: string;
+  label: string;
+  hint: string;
+  ecosystems: string[] | null;
+  presentation: string;
+  createdAt: number;
+  expiresAt: number;
+  lastUsedAt: number | null;
+  revokedAt: number | null;
+  status: string;
+}
+
+/**
+ * The licence-bound `pkeyr_` tokens this account minted (the ones made before F-33, and the Godot
+ * editor URL tokens), across its licences, so their owner can see and revoke them in one place.
+ */
+export async function accountRegistryTokens(
+  db: Db,
+  accountId: string,
+  now: number,
+): Promise<LegacyRegistryToken[]> {
+  const out: LegacyRegistryToken[] = [];
+  for (const row of await listPortalLicenses(db, accountId)) {
+    for (const t of await listRegistryTokens(db, row.product, now, {
+      licenseId: row.id,
+      portalAccountId: accountId,
+    }))
+      out.push({
+        product: row.product,
+        productName: row.product_name,
+        licenseId: row.id,
+        tokenId: t.tokenId,
+        label: t.label,
+        hint: t.hint,
+        ecosystems: t.ecosystems ? [...t.ecosystems] : null,
+        presentation: t.presentation,
+        createdAt: t.createdAt,
+        expiresAt: t.expiresAt,
+        lastUsedAt: t.lastUsedAt,
+        revokedAt: t.revokedAt,
+        status: t.status,
+      });
+  }
+  return out.sort((a, b) => b.createdAt - a.createdAt);
 }
 
 /**
@@ -905,12 +963,13 @@ export async function readableFeeds(
  *   GET    /portal/api/licenses/:product/:licenseId/registry-tokens           the card's state:
  *          `available` (an enabled non-public feed exists), those feeds with their base URLs,
  *          the tokens this account minted for this licence, the username and the limits
- *   POST   …/registry-tokens   410 `gone` since F-33: the person's one `pkeyp_` token, made in
- *          Account → Packages (`/api/me/tokens`), reads every feed their licenses reach
+ *   POST   …/registry-tokens  {label, ecosystem: "godot", expiresInDays?}   mint the licence-bound
+ *          Godot editor URL token (the only per-app mint since F-33; every other feed is read with
+ *          the person's `pkeyp_` token, Account → Packages); the plaintext is in this answer only
  *   DELETE …/registry-tokens/:tokenId                                         revoke one
  *
  * Tokens minted here before F-33 stay listed, honoured and revocable until they expire.
- * Audited `portal.registry_token.revoke`.
+ * Audited `portal.registry_token.create` and `.revoke`.
  */
 async function handleRegistryTokens(
   req: Request,
@@ -975,14 +1034,72 @@ async function handleRegistryTokens(
       },
     });
   if (req.method !== "POST") return err(405, "method_not_allowed");
-  // F-33: the portal no longer mints licence-bound tokens. One `pkeyp_` token per computer, made
-  // in Account → Packages (`/api/me/tokens`), reads every feed the account's licenses reach.
-  // Tokens already minted here stay listed, honoured and revocable until they expire.
-  return err(
-    410,
-    "gone",
-    "licence tokens are retired: create a personal token in Account → Packages",
+  // F-33: the portal mints no licence-bound token except the Godot editor's URL token. One
+  // `pkeyp_` token per computer (Account → Packages, `/api/me/tokens`) reads every other feed. The
+  // Godot editor sends no credentials, so its feed is reached through a URL holding a token, and
+  // a `pkeyp_` token (a year, every product) must never be put in a URL: this one is bound to the
+  // licence, read-only, narrowed to Godot and short-lived. Tokens minted here earlier stay listed,
+  // honoured and revocable until they expire.
+  const stale = portalStepUpGate(session, now);
+  if (stale) return stale;
+  const limited = await requireActionRateLimit(
+    req,
+    env,
+    session,
+    "portalRegistryToken",
+    now,
+    20,
+    product,
+    3600,
   );
+  if (limited) return limited;
+  if (!licenseUsable(license, now))
+    return err(403, ErrorCode.Forbidden, "this licence is not active");
+  const body = await readBody(req);
+  if (body.ecosystem !== "godot" || !feeds.some((f) => f.ecosystem === "godot"))
+    return err(
+      422,
+      ErrorCode.BadRequest,
+      "only the Godot editor URL is made per app: create a personal token in Account → Packages",
+    );
+  const res = await mintRegistryToken(
+    env,
+    db,
+    {
+      product,
+      label: typeof body.label === "string" ? body.label : "",
+      ecosystems: ["godot"],
+      ...(typeof body.expiresInDays === "number"
+        ? { expiresInDays: body.expiresInDays }
+        : {}),
+      binding: "license",
+      licenseId,
+      presentation: "url",
+      createdBy: by,
+      portalAccountId: session.accountId,
+    },
+    now,
+  );
+  if (!res.ok)
+    return portalJson(
+      {
+        error: res.status === 404 ? ErrorCode.NotFound : ErrorCode.BadRequest,
+        message: res.message,
+        reason: res.reason,
+        ...(res.fields ? { fields: res.fields } : {}),
+      },
+      res.status,
+    );
+  await portalAudit(db, {
+    accountId: session.accountId,
+    action: "portal.registry_token.create",
+    product,
+    targetKind: "registry_token",
+    targetId: res.view.tokenId,
+    summary: `Created Godot editor URL token “${res.view.label}” (…${res.view.hint}) for licence ${licenseId}`,
+    now,
+  });
+  return portalJson({ ok: true, token: res.token, view: res.view }, 201);
 }
 
 async function handleDeviceDelete(
@@ -1596,6 +1713,7 @@ async function dispatchPortalApi(
       segments.slice(2),
       now,
       () => readableFeeds(db, hooksFor, session.accountId, now),
+      () => accountRegistryTokens(db, session.accountId, now),
     );
   await syncAccountLicenseLinks(db, session.accountId, now);
 
