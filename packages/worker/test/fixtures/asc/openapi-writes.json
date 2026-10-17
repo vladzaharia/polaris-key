@@ -25,7 +25,9 @@
         "supportsVoiceControl",
         "supportsVoiceover"
       ],
-      "relationships": ["app"],
+      "relationships": [
+        "app"
+      ],
       "linkage": false,
       "included": false
     },
@@ -110,7 +112,10 @@
       "operationId": "alternativeDistributionDomains_createInstance",
       "requestSchema": "AlternativeDistributionDomainCreateRequest",
       "type": "alternativeDistributionDomains",
-      "attributes": ["domain", "referenceName"],
+      "attributes": [
+        "domain",
+        "referenceName"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -132,8 +137,12 @@
       "operationId": "alternativeDistributionKeys_createInstance",
       "requestSchema": "AlternativeDistributionKeyCreateRequest",
       "type": "alternativeDistributionKeys",
-      "attributes": ["publicKey"],
-      "relationships": ["app"],
+      "attributes": [
+        "publicKey"
+      ],
+      "relationships": [
+        "app"
+      ],
       "linkage": false,
       "included": false
     },
@@ -155,7 +164,9 @@
       "requestSchema": "AlternativeDistributionPackageCreateRequest",
       "type": "alternativeDistributionPackages",
       "attributes": [],
-      "relationships": ["appStoreVersion"],
+      "relationships": [
+        "appStoreVersion"
+      ],
       "linkage": false,
       "included": false
     },
@@ -165,8 +176,12 @@
       "operationId": "analyticsReportRequests_createInstance",
       "requestSchema": "AnalyticsReportRequestCreateRequest",
       "type": "analyticsReportRequests",
-      "attributes": ["accessType"],
-      "relationships": ["app"],
+      "attributes": [
+        "accessType"
+      ],
+      "relationships": [
+        "app"
+      ],
       "linkage": false,
       "included": false
     },
@@ -191,7 +206,9 @@
         "appSigningKeyPublicCertificateSha256Fingerprints",
         "packageName"
       ],
-      "relationships": ["app"],
+      "relationships": [
+        "app"
+      ],
       "linkage": false,
       "included": false
     },
@@ -226,7 +243,10 @@
       "operationId": "appClipAdvancedExperienceImages_createInstance",
       "requestSchema": "AppClipAdvancedExperienceImageCreateRequest",
       "type": "appClipAdvancedExperienceImages",
-      "attributes": ["fileName", "fileSize"],
+      "attributes": [
+        "fileName",
+        "fileSize"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -237,7 +257,10 @@
       "operationId": "appClipAdvancedExperienceImages_updateInstance",
       "requestSchema": "AppClipAdvancedExperienceImageUpdateRequest",
       "type": "appClipAdvancedExperienceImages",
-      "attributes": ["sourceFileChecksum", "uploaded"],
+      "attributes": [
+        "sourceFileChecksum",
+        "uploaded"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -256,7 +279,11 @@
         "link",
         "place"
       ],
-      "relationships": ["appClip", "headerImage", "localizations"],
+      "relationships": [
+        "appClip",
+        "headerImage",
+        "localizations"
+      ],
       "linkage": false,
       "included": true
     },
@@ -274,7 +301,11 @@
         "place",
         "removed"
       ],
-      "relationships": ["appClip", "headerImage", "localizations"],
+      "relationships": [
+        "appClip",
+        "headerImage",
+        "localizations"
+      ],
       "linkage": false,
       "included": true
     },
@@ -284,8 +315,12 @@
       "operationId": "appClipAppStoreReviewDetails_createInstance",
       "requestSchema": "AppClipAppStoreReviewDetailCreateRequest",
       "type": "appClipAppStoreReviewDetails",
-      "attributes": ["invocationUrls"],
-      "relationships": ["appClipDefaultExperience"],
+      "attributes": [
+        "invocationUrls"
+      ],
+      "relationships": [
+        "appClipDefaultExperience"
+      ],
       "linkage": false,
       "included": false
     },
@@ -295,7 +330,9 @@
       "operationId": "appClipAppStoreReviewDetails_updateInstance",
       "requestSchema": "AppClipAppStoreReviewDetailUpdateRequest",
       "type": "appClipAppStoreReviewDetails",
-      "attributes": ["invocationUrls"],
+      "attributes": [
+        "invocationUrls"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -306,8 +343,13 @@
       "operationId": "appClipDefaultExperienceLocalizations_createInstance",
       "requestSchema": "AppClipDefaultExperienceLocalizationCreateRequest",
       "type": "appClipDefaultExperienceLocalizations",
-      "attributes": ["locale", "subtitle"],
-      "relationships": ["appClipDefaultExperience"],
+      "attributes": [
+        "locale",
+        "subtitle"
+      ],
+      "relationships": [
+        "appClipDefaultExperience"
+      ],
       "linkage": false,
       "included": false
     },
@@ -328,7 +370,9 @@
       "operationId": "appClipDefaultExperienceLocalizations_updateInstance",
       "requestSchema": "AppClipDefaultExperienceLocalizationUpdateRequest",
       "type": "appClipDefaultExperienceLocalizations",
-      "attributes": ["subtitle"],
+      "attributes": [
+        "subtitle"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -339,7 +383,9 @@
       "operationId": "appClipDefaultExperiences_createInstance",
       "requestSchema": "AppClipDefaultExperienceCreateRequest",
       "type": "appClipDefaultExperiences",
-      "attributes": ["action"],
+      "attributes": [
+        "action"
+      ],
       "relationships": [
         "appClip",
         "appClipDefaultExperienceTemplate",
@@ -365,8 +411,12 @@
       "operationId": "appClipDefaultExperiences_updateInstance",
       "requestSchema": "AppClipDefaultExperienceUpdateRequest",
       "type": "appClipDefaultExperiences",
-      "attributes": ["action"],
-      "relationships": ["releaseWithAppStoreVersion"],
+      "attributes": [
+        "action"
+      ],
+      "relationships": [
+        "releaseWithAppStoreVersion"
+      ],
       "linkage": false,
       "included": false
     },
@@ -387,8 +437,13 @@
       "operationId": "appClipHeaderImages_createInstance",
       "requestSchema": "AppClipHeaderImageCreateRequest",
       "type": "appClipHeaderImages",
-      "attributes": ["fileName", "fileSize"],
-      "relationships": ["appClipDefaultExperienceLocalization"],
+      "attributes": [
+        "fileName",
+        "fileSize"
+      ],
+      "relationships": [
+        "appClipDefaultExperienceLocalization"
+      ],
       "linkage": false,
       "included": false
     },
@@ -409,7 +464,10 @@
       "operationId": "appClipHeaderImages_updateInstance",
       "requestSchema": "AppClipHeaderImageUpdateRequest",
       "type": "appClipHeaderImages",
-      "attributes": ["sourceFileChecksum", "uploaded"],
+      "attributes": [
+        "sourceFileChecksum",
+        "uploaded"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -420,8 +478,13 @@
       "operationId": "appCustomProductPageLocalizations_createInstance",
       "requestSchema": "AppCustomProductPageLocalizationCreateRequest",
       "type": "appCustomProductPageLocalizations",
-      "attributes": ["locale", "promotionalText"],
-      "relationships": ["appCustomProductPageVersion"],
+      "attributes": [
+        "locale",
+        "promotionalText"
+      ],
+      "relationships": [
+        "appCustomProductPageVersion"
+      ],
       "linkage": false,
       "included": false
     },
@@ -442,7 +505,9 @@
       "operationId": "appCustomProductPageLocalizations_updateInstance",
       "requestSchema": "AppCustomProductPageLocalizationUpdateRequest",
       "type": "appCustomProductPageLocalizations",
-      "attributes": ["promotionalText"],
+      "attributes": [
+        "promotionalText"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -475,7 +540,9 @@
       "operationId": "appCustomProductPages_createInstance",
       "requestSchema": "AppCustomProductPageCreateRequest",
       "type": "appCustomProductPages",
-      "attributes": ["name"],
+      "attributes": [
+        "name"
+      ],
       "relationships": [
         "app",
         "appCustomProductPageVersions",
@@ -502,7 +569,10 @@
       "operationId": "appCustomProductPages_updateInstance",
       "requestSchema": "AppCustomProductPageUpdateRequest",
       "type": "appCustomProductPages",
-      "attributes": ["name", "visible"],
+      "attributes": [
+        "name",
+        "visible"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -513,7 +583,9 @@
       "operationId": "appCustomProductPageVersions_createInstance",
       "requestSchema": "AppCustomProductPageVersionCreateRequest",
       "type": "appCustomProductPageVersions",
-      "attributes": ["deepLink"],
+      "attributes": [
+        "deepLink"
+      ],
       "relationships": [
         "appCustomProductPage",
         "appCustomProductPageLocalizations"
@@ -527,7 +599,9 @@
       "operationId": "appCustomProductPageVersions_updateInstance",
       "requestSchema": "AppCustomProductPageVersionUpdateRequest",
       "type": "appCustomProductPageVersions",
-      "attributes": ["deepLink"],
+      "attributes": [
+        "deepLink"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -538,8 +612,13 @@
       "operationId": "appEncryptionDeclarationDocuments_createInstance",
       "requestSchema": "AppEncryptionDeclarationDocumentCreateRequest",
       "type": "appEncryptionDeclarationDocuments",
-      "attributes": ["fileName", "fileSize"],
-      "relationships": ["appEncryptionDeclaration"],
+      "attributes": [
+        "fileName",
+        "fileSize"
+      ],
+      "relationships": [
+        "appEncryptionDeclaration"
+      ],
       "linkage": false,
       "included": false
     },
@@ -549,7 +628,10 @@
       "operationId": "appEncryptionDeclarationDocuments_updateInstance",
       "requestSchema": "AppEncryptionDeclarationDocumentUpdateRequest",
       "type": "appEncryptionDeclarationDocuments",
-      "attributes": ["sourceFileChecksum", "uploaded"],
+      "attributes": [
+        "sourceFileChecksum",
+        "uploaded"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -566,7 +648,9 @@
         "containsProprietaryCryptography",
         "containsThirdPartyCryptography"
       ],
-      "relationships": ["app"],
+      "relationships": [
+        "app"
+      ],
       "linkage": false,
       "included": false
     },
@@ -587,8 +671,15 @@
       "operationId": "appEventLocalizations_createInstance",
       "requestSchema": "AppEventLocalizationCreateRequest",
       "type": "appEventLocalizations",
-      "attributes": ["locale", "longDescription", "name", "shortDescription"],
-      "relationships": ["appEvent"],
+      "attributes": [
+        "locale",
+        "longDescription",
+        "name",
+        "shortDescription"
+      ],
+      "relationships": [
+        "appEvent"
+      ],
       "linkage": false,
       "included": false
     },
@@ -609,7 +700,11 @@
       "operationId": "appEventLocalizations_updateInstance",
       "requestSchema": "AppEventLocalizationUpdateRequest",
       "type": "appEventLocalizations",
-      "attributes": ["longDescription", "name", "shortDescription"],
+      "attributes": [
+        "longDescription",
+        "name",
+        "shortDescription"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -630,7 +725,9 @@
         "referenceName",
         "territorySchedules"
       ],
-      "relationships": ["app"],
+      "relationships": [
+        "app"
+      ],
       "linkage": false,
       "included": false
     },
@@ -671,8 +768,14 @@
       "operationId": "appEventScreenshots_createInstance",
       "requestSchema": "AppEventScreenshotCreateRequest",
       "type": "appEventScreenshots",
-      "attributes": ["appEventAssetType", "fileName", "fileSize"],
-      "relationships": ["appEventLocalization"],
+      "attributes": [
+        "appEventAssetType",
+        "fileName",
+        "fileSize"
+      ],
+      "relationships": [
+        "appEventLocalization"
+      ],
       "linkage": false,
       "included": false
     },
@@ -693,7 +796,9 @@
       "operationId": "appEventScreenshots_updateInstance",
       "requestSchema": "AppEventScreenshotUpdateRequest",
       "type": "appEventScreenshots",
-      "attributes": ["uploaded"],
+      "attributes": [
+        "uploaded"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -710,7 +815,9 @@
         "fileSize",
         "previewFrameTimeCode"
       ],
-      "relationships": ["appEventLocalization"],
+      "relationships": [
+        "appEventLocalization"
+      ],
       "linkage": false,
       "included": false
     },
@@ -731,7 +838,10 @@
       "operationId": "appEventVideoClips_updateInstance",
       "requestSchema": "AppEventVideoClipUpdateRequest",
       "type": "appEventVideoClips",
-      "attributes": ["previewFrameTimeCode", "uploaded"],
+      "attributes": [
+        "previewFrameTimeCode",
+        "uploaded"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -750,7 +860,9 @@
         "privacyPolicyUrl",
         "subtitle"
       ],
-      "relationships": ["appInfo"],
+      "relationships": [
+        "appInfo"
+      ],
       "linkage": false,
       "included": false
     },
@@ -812,7 +924,9 @@
         "mimeType",
         "previewFrameTimeCode"
       ],
-      "relationships": ["appPreviewSet"],
+      "relationships": [
+        "appPreviewSet"
+      ],
       "linkage": false,
       "included": false
     },
@@ -833,7 +947,11 @@
       "operationId": "appPreviews_updateInstance",
       "requestSchema": "AppPreviewUpdateRequest",
       "type": "appPreviews",
-      "attributes": ["previewFrameTimeCode", "sourceFileChecksum", "uploaded"],
+      "attributes": [
+        "previewFrameTimeCode",
+        "sourceFileChecksum",
+        "uploaded"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -844,7 +962,9 @@
       "operationId": "appPreviewSets_createInstance",
       "requestSchema": "AppPreviewSetCreateRequest",
       "type": "appPreviewSets",
-      "attributes": ["previewType"],
+      "attributes": [
+        "previewType"
+      ],
       "relationships": [
         "appCustomProductPageLocalization",
         "appStoreVersionExperimentTreatmentLocalization",
@@ -882,7 +1002,11 @@
       "requestSchema": "AppPriceScheduleCreateRequest",
       "type": "appPriceSchedules",
       "attributes": [],
-      "relationships": ["app", "baseTerritory", "manualPrices"],
+      "relationships": [
+        "app",
+        "baseTerritory",
+        "manualPrices"
+      ],
       "linkage": false,
       "included": true
     },
@@ -935,8 +1059,13 @@
       "operationId": "appScreenshots_createInstance",
       "requestSchema": "AppScreenshotCreateRequest",
       "type": "appScreenshots",
-      "attributes": ["fileName", "fileSize"],
-      "relationships": ["appScreenshotSet"],
+      "attributes": [
+        "fileName",
+        "fileSize"
+      ],
+      "relationships": [
+        "appScreenshotSet"
+      ],
       "linkage": false,
       "included": false
     },
@@ -957,7 +1086,10 @@
       "operationId": "appScreenshots_updateInstance",
       "requestSchema": "AppScreenshotUpdateRequest",
       "type": "appScreenshots",
-      "attributes": ["sourceFileChecksum", "uploaded"],
+      "attributes": [
+        "sourceFileChecksum",
+        "uploaded"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -968,7 +1100,9 @@
       "operationId": "appScreenshotSets_createInstance",
       "requestSchema": "AppScreenshotSetCreateRequest",
       "type": "appScreenshotSets",
-      "attributes": ["screenshotDisplayType"],
+      "attributes": [
+        "screenshotDisplayType"
+      ],
       "relationships": [
         "appCustomProductPageLocalization",
         "appStoreVersionExperimentTreatmentLocalization",
@@ -1005,8 +1139,13 @@
       "operationId": "appStoreReviewAttachments_createInstance",
       "requestSchema": "AppStoreReviewAttachmentCreateRequest",
       "type": "appStoreReviewAttachments",
-      "attributes": ["fileName", "fileSize"],
-      "relationships": ["appStoreReviewDetail"],
+      "attributes": [
+        "fileName",
+        "fileSize"
+      ],
+      "relationships": [
+        "appStoreReviewDetail"
+      ],
       "linkage": false,
       "included": false
     },
@@ -1027,7 +1166,10 @@
       "operationId": "appStoreReviewAttachments_updateInstance",
       "requestSchema": "AppStoreReviewAttachmentUpdateRequest",
       "type": "appStoreReviewAttachments",
-      "attributes": ["sourceFileChecksum", "uploaded"],
+      "attributes": [
+        "sourceFileChecksum",
+        "uploaded"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -1048,7 +1190,9 @@
         "demoAccountRequired",
         "notes"
       ],
-      "relationships": ["appStoreVersion"],
+      "relationships": [
+        "appStoreVersion"
+      ],
       "linkage": false,
       "included": false
     },
@@ -1078,8 +1222,13 @@
       "operationId": "appStoreVersionExperiments_createInstance",
       "requestSchema": "AppStoreVersionExperimentCreateRequest",
       "type": "appStoreVersionExperiments",
-      "attributes": ["name", "trafficProportion"],
-      "relationships": ["appStoreVersion"],
+      "attributes": [
+        "name",
+        "trafficProportion"
+      ],
+      "relationships": [
+        "appStoreVersion"
+      ],
       "linkage": false,
       "included": false
     },
@@ -1100,7 +1249,11 @@
       "operationId": "appStoreVersionExperiments_updateInstance",
       "requestSchema": "AppStoreVersionExperimentUpdateRequest",
       "type": "appStoreVersionExperiments",
-      "attributes": ["name", "started", "trafficProportion"],
+      "attributes": [
+        "name",
+        "started",
+        "trafficProportion"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -1111,8 +1264,12 @@
       "operationId": "appStoreVersionExperimentTreatmentLocalizations_createInstance",
       "requestSchema": "AppStoreVersionExperimentTreatmentLocalizationCreateRequest",
       "type": "appStoreVersionExperimentTreatmentLocalizations",
-      "attributes": ["locale"],
-      "relationships": ["appStoreVersionExperimentTreatment"],
+      "attributes": [
+        "locale"
+      ],
+      "relationships": [
+        "appStoreVersionExperimentTreatment"
+      ],
       "linkage": false,
       "included": false
     },
@@ -1133,7 +1290,10 @@
       "operationId": "appStoreVersionExperimentTreatments_createInstance",
       "requestSchema": "AppStoreVersionExperimentTreatmentCreateRequest",
       "type": "appStoreVersionExperimentTreatments",
-      "attributes": ["appIconName", "name"],
+      "attributes": [
+        "appIconName",
+        "name"
+      ],
       "relationships": [
         "appStoreVersionExperiment",
         "appStoreVersionExperimentV2"
@@ -1158,7 +1318,10 @@
       "operationId": "appStoreVersionExperimentTreatments_updateInstance",
       "requestSchema": "AppStoreVersionExperimentTreatmentUpdateRequest",
       "type": "appStoreVersionExperimentTreatments",
-      "attributes": ["appIconName", "name"],
+      "attributes": [
+        "appIconName",
+        "name"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -1178,7 +1341,9 @@
         "supportUrl",
         "whatsNew"
       ],
-      "relationships": ["appStoreVersion"],
+      "relationships": [
+        "appStoreVersion"
+      ],
       "linkage": false,
       "included": false
     },
@@ -1239,8 +1404,12 @@
       "operationId": "appStoreVersionPhasedReleases_createInstance",
       "requestSchema": "AppStoreVersionPhasedReleaseCreateRequest",
       "type": "appStoreVersionPhasedReleases",
-      "attributes": ["phasedReleaseState"],
-      "relationships": ["appStoreVersion"],
+      "attributes": [
+        "phasedReleaseState"
+      ],
+      "relationships": [
+        "appStoreVersion"
+      ],
       "linkage": false,
       "included": false
     },
@@ -1261,7 +1430,9 @@
       "operationId": "appStoreVersionPhasedReleases_updateInstance",
       "requestSchema": "AppStoreVersionPhasedReleaseUpdateRequest",
       "type": "appStoreVersionPhasedReleases",
-      "attributes": ["phasedReleaseState"],
+      "attributes": [
+        "phasedReleaseState"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -1287,7 +1458,9 @@
       "requestSchema": "AppStoreVersionReleaseRequestCreateRequest",
       "type": "appStoreVersionReleaseRequests",
       "attributes": [],
-      "relationships": ["appStoreVersion"],
+      "relationships": [
+        "appStoreVersion"
+      ],
       "linkage": false,
       "included": false
     },
@@ -1306,7 +1479,11 @@
         "usesIdfa",
         "versionString"
       ],
-      "relationships": ["app", "appStoreVersionLocalizations", "build"],
+      "relationships": [
+        "app",
+        "appStoreVersionLocalizations",
+        "build"
+      ],
       "linkage": false,
       "included": false
     },
@@ -1336,7 +1513,10 @@
         "usesIdfa",
         "versionString"
       ],
-      "relationships": ["appClipDefaultExperience", "build"],
+      "relationships": [
+        "appClipDefaultExperience",
+        "build"
+      ],
       "linkage": false,
       "included": false
     },
@@ -1379,7 +1559,9 @@
       "operationId": "appTags_updateInstance",
       "requestSchema": "AppTagUpdateRequest",
       "type": "appTags",
-      "attributes": ["visibleInAppStore"],
+      "attributes": [
+        "visibleInAppStore"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -1390,8 +1572,12 @@
       "operationId": "backgroundAssets_createInstance",
       "requestSchema": "BackgroundAssetCreateRequest",
       "type": "backgroundAssets",
-      "attributes": ["assetPackIdentifier"],
-      "relationships": ["app"],
+      "attributes": [
+        "assetPackIdentifier"
+      ],
+      "relationships": [
+        "app"
+      ],
       "linkage": false,
       "included": false
     },
@@ -1401,7 +1587,9 @@
       "operationId": "backgroundAssets_updateInstance",
       "requestSchema": "BackgroundAssetUpdateRequest",
       "type": "backgroundAssets",
-      "attributes": ["archived"],
+      "attributes": [
+        "archived"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -1412,8 +1600,14 @@
       "operationId": "backgroundAssetUploadFiles_createInstance",
       "requestSchema": "BackgroundAssetUploadFileCreateRequest",
       "type": "backgroundAssetUploadFiles",
-      "attributes": ["assetType", "fileName", "fileSize"],
-      "relationships": ["backgroundAssetVersion"],
+      "attributes": [
+        "assetType",
+        "fileName",
+        "fileSize"
+      ],
+      "relationships": [
+        "backgroundAssetVersion"
+      ],
       "linkage": false,
       "included": false
     },
@@ -1423,7 +1617,11 @@
       "operationId": "backgroundAssetUploadFiles_updateInstance",
       "requestSchema": "BackgroundAssetUploadFileUpdateRequest",
       "type": "backgroundAssetUploadFiles",
-      "attributes": ["sourceFileChecksum", "sourceFileChecksums", "uploaded"],
+      "attributes": [
+        "sourceFileChecksum",
+        "sourceFileChecksums",
+        "uploaded"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -1435,7 +1633,9 @@
       "requestSchema": "BackgroundAssetVersionCreateRequest",
       "type": "backgroundAssetVersions",
       "attributes": [],
-      "relationships": ["backgroundAsset"],
+      "relationships": [
+        "backgroundAsset"
+      ],
       "linkage": false,
       "included": false
     },
@@ -1445,8 +1645,13 @@
       "operationId": "betaAppClipInvocationLocalizations_createInstance",
       "requestSchema": "BetaAppClipInvocationLocalizationCreateRequest",
       "type": "betaAppClipInvocationLocalizations",
-      "attributes": ["locale", "title"],
-      "relationships": ["betaAppClipInvocation"],
+      "attributes": [
+        "locale",
+        "title"
+      ],
+      "relationships": [
+        "betaAppClipInvocation"
+      ],
       "linkage": false,
       "included": false
     },
@@ -1467,7 +1672,9 @@
       "operationId": "betaAppClipInvocationLocalizations_updateInstance",
       "requestSchema": "BetaAppClipInvocationLocalizationUpdateRequest",
       "type": "betaAppClipInvocationLocalizations",
-      "attributes": ["title"],
+      "attributes": [
+        "title"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -1478,8 +1685,13 @@
       "operationId": "betaAppClipInvocations_createInstance",
       "requestSchema": "BetaAppClipInvocationCreateRequest",
       "type": "betaAppClipInvocations",
-      "attributes": ["url"],
-      "relationships": ["betaAppClipInvocationLocalizations", "buildBundle"],
+      "attributes": [
+        "url"
+      ],
+      "relationships": [
+        "betaAppClipInvocationLocalizations",
+        "buildBundle"
+      ],
       "linkage": false,
       "included": true
     },
@@ -1500,7 +1712,9 @@
       "operationId": "betaAppClipInvocations_updateInstance",
       "requestSchema": "BetaAppClipInvocationUpdateRequest",
       "type": "betaAppClipInvocations",
-      "attributes": ["url"],
+      "attributes": [
+        "url"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -1519,7 +1733,9 @@
         "privacyPolicyUrl",
         "tvOsPrivacyPolicy"
       ],
-      "relationships": ["app"],
+      "relationships": [
+        "app"
+      ],
       "linkage": false,
       "included": false
     },
@@ -1578,7 +1794,9 @@
       "requestSchema": "BetaAppReviewSubmissionCreateRequest",
       "type": "betaAppReviewSubmissions",
       "attributes": [],
-      "relationships": ["build"],
+      "relationships": [
+        "build"
+      ],
       "linkage": false,
       "included": false
     },
@@ -1588,8 +1806,13 @@
       "operationId": "betaBuildLocalizations_createInstance",
       "requestSchema": "BetaBuildLocalizationCreateRequest",
       "type": "betaBuildLocalizations",
-      "attributes": ["locale", "whatsNew"],
-      "relationships": ["build"],
+      "attributes": [
+        "locale",
+        "whatsNew"
+      ],
+      "relationships": [
+        "build"
+      ],
       "linkage": false,
       "included": false
     },
@@ -1610,7 +1833,9 @@
       "operationId": "betaBuildLocalizations_updateInstance",
       "requestSchema": "BetaBuildLocalizationUpdateRequest",
       "type": "betaBuildLocalizations",
-      "attributes": ["whatsNew"],
+      "attributes": [
+        "whatsNew"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -1652,7 +1877,11 @@
         "publicLinkLimit",
         "publicLinkLimitEnabled"
       ],
-      "relationships": ["app", "betaTesters", "builds"],
+      "relationships": [
+        "app",
+        "betaTesters",
+        "builds"
+      ],
       "linkage": false,
       "included": false
     },
@@ -1736,7 +1965,9 @@
       "operationId": "betaLicenseAgreements_updateInstance",
       "requestSchema": "BetaLicenseAgreementUpdateRequest",
       "type": "betaLicenseAgreements",
-      "attributes": ["agreementText"],
+      "attributes": [
+        "agreementText"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -1747,8 +1978,12 @@
       "operationId": "betaRecruitmentCriteria_createInstance",
       "requestSchema": "BetaRecruitmentCriterionCreateRequest",
       "type": "betaRecruitmentCriteria",
-      "attributes": ["deviceFamilyOsVersionFilters"],
-      "relationships": ["betaGroup"],
+      "attributes": [
+        "deviceFamilyOsVersionFilters"
+      ],
+      "relationships": [
+        "betaGroup"
+      ],
       "linkage": false,
       "included": false
     },
@@ -1769,7 +2004,9 @@
       "operationId": "betaRecruitmentCriteria_updateInstance",
       "requestSchema": "BetaRecruitmentCriterionUpdateRequest",
       "type": "betaRecruitmentCriteria",
-      "attributes": ["deviceFamilyOsVersionFilters"],
+      "attributes": [
+        "deviceFamilyOsVersionFilters"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -1781,7 +2018,10 @@
       "requestSchema": "BetaTesterInvitationCreateRequest",
       "type": "betaTesterInvitations",
       "attributes": [],
-      "relationships": ["app", "betaTester"],
+      "relationships": [
+        "app",
+        "betaTester"
+      ],
       "linkage": false,
       "included": false
     },
@@ -1791,8 +2031,15 @@
       "operationId": "betaTesters_createInstance",
       "requestSchema": "BetaTesterCreateRequest",
       "type": "betaTesters",
-      "attributes": ["email", "firstName", "lastName"],
-      "relationships": ["betaGroups", "builds"],
+      "attributes": [
+        "email",
+        "firstName",
+        "lastName"
+      ],
+      "relationships": [
+        "betaGroups",
+        "builds"
+      ],
       "linkage": false,
       "included": false
     },
@@ -1868,7 +2115,9 @@
       "operationId": "buildBetaDetails_updateInstance",
       "requestSchema": "BuildBetaDetailUpdateRequest",
       "type": "buildBetaDetails",
-      "attributes": ["autoNotifyEnabled"],
+      "attributes": [
+        "autoNotifyEnabled"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -1880,7 +2129,9 @@
       "requestSchema": "BuildBetaNotificationCreateRequest",
       "type": "buildBetaNotifications",
       "attributes": [],
-      "relationships": ["build"],
+      "relationships": [
+        "build"
+      ],
       "linkage": false,
       "included": false
     },
@@ -1890,8 +2141,13 @@
       "operationId": "builds_updateInstance",
       "requestSchema": "BuildUpdateRequest",
       "type": "builds",
-      "attributes": ["expired", "usesNonExemptEncryption"],
-      "relationships": ["appEncryptionDeclaration"],
+      "attributes": [
+        "expired",
+        "usesNonExemptEncryption"
+      ],
+      "relationships": [
+        "appEncryptionDeclaration"
+      ],
       "linkage": false,
       "included": false
     },
@@ -1956,8 +2212,15 @@
       "operationId": "buildUploadFiles_createInstance",
       "requestSchema": "BuildUploadFileCreateRequest",
       "type": "buildUploadFiles",
-      "attributes": ["assetType", "fileName", "fileSize", "uti"],
-      "relationships": ["buildUpload"],
+      "attributes": [
+        "assetType",
+        "fileName",
+        "fileSize",
+        "uti"
+      ],
+      "relationships": [
+        "buildUpload"
+      ],
       "linkage": false,
       "included": false
     },
@@ -1967,7 +2230,10 @@
       "operationId": "buildUploadFiles_updateInstance",
       "requestSchema": "BuildUploadFileUpdateRequest",
       "type": "buildUploadFiles",
-      "attributes": ["sourceFileChecksums", "uploaded"],
+      "attributes": [
+        "sourceFileChecksums",
+        "uploaded"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -1983,7 +2249,9 @@
         "cfBundleVersion",
         "platform"
       ],
-      "relationships": ["app"],
+      "relationships": [
+        "app"
+      ],
       "linkage": false,
       "included": false
     },
@@ -2004,8 +2272,13 @@
       "operationId": "bundleIdCapabilities_createInstance",
       "requestSchema": "BundleIdCapabilityCreateRequest",
       "type": "bundleIdCapabilities",
-      "attributes": ["capabilityType", "settings"],
-      "relationships": ["bundleId"],
+      "attributes": [
+        "capabilityType",
+        "settings"
+      ],
+      "relationships": [
+        "bundleId"
+      ],
       "linkage": false,
       "included": false
     },
@@ -2026,7 +2299,10 @@
       "operationId": "bundleIdCapabilities_updateInstance",
       "requestSchema": "BundleIdCapabilityUpdateRequest",
       "type": "bundleIdCapabilities",
-      "attributes": ["capabilityType", "settings"],
+      "attributes": [
+        "capabilityType",
+        "settings"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -2037,7 +2313,12 @@
       "operationId": "bundleIds_createInstance",
       "requestSchema": "BundleIdCreateRequest",
       "type": "bundleIds",
-      "attributes": ["identifier", "name", "platform", "seedId"],
+      "attributes": [
+        "identifier",
+        "name",
+        "platform",
+        "seedId"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -2059,7 +2340,9 @@
       "operationId": "bundleIds_updateInstance",
       "requestSchema": "BundleIdUpdateRequest",
       "type": "bundleIds",
-      "attributes": ["name"],
+      "attributes": [
+        "name"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -2070,8 +2353,14 @@
       "operationId": "certificates_createInstance",
       "requestSchema": "CertificateCreateRequest",
       "type": "certificates",
-      "attributes": ["certificateType", "csrContent"],
-      "relationships": ["merchantId", "passTypeId"],
+      "attributes": [
+        "certificateType",
+        "csrContent"
+      ],
+      "relationships": [
+        "merchantId",
+        "passTypeId"
+      ],
       "linkage": false,
       "included": false
     },
@@ -2092,7 +2381,9 @@
       "operationId": "certificates_updateInstance",
       "requestSchema": "CertificateUpdateRequest",
       "type": "certificates",
-      "attributes": ["activated"],
+      "attributes": [
+        "activated"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -2103,7 +2394,9 @@
       "operationId": "ciBuildRuns_createInstance",
       "requestSchema": "CiBuildRunCreateRequest",
       "type": "ciBuildRuns",
-      "attributes": ["clean"],
+      "attributes": [
+        "clean"
+      ],
       "relationships": [
         "buildRun",
         "pullRequest",
@@ -2188,7 +2481,10 @@
         "scheduledStartCondition",
         "tagStartCondition"
       ],
-      "relationships": ["macOsVersion", "xcodeVersion"],
+      "relationships": [
+        "macOsVersion",
+        "xcodeVersion"
+      ],
       "linkage": false,
       "included": false
     },
@@ -2198,8 +2494,12 @@
       "operationId": "customerReviewResponses_createInstance",
       "requestSchema": "CustomerReviewResponseV1CreateRequest",
       "type": "customerReviewResponses",
-      "attributes": ["responseBody"],
-      "relationships": ["review"],
+      "attributes": [
+        "responseBody"
+      ],
+      "relationships": [
+        "review"
+      ],
       "linkage": false,
       "included": false
     },
@@ -2220,7 +2520,11 @@
       "operationId": "devices_createInstance",
       "requestSchema": "DeviceCreateRequest",
       "type": "devices",
-      "attributes": ["name", "platform", "udid"],
+      "attributes": [
+        "name",
+        "platform",
+        "udid"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -2231,7 +2535,10 @@
       "operationId": "devices_updateInstance",
       "requestSchema": "DeviceUpdateRequest",
       "type": "devices",
-      "attributes": ["name", "status"],
+      "attributes": [
+        "name",
+        "status"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -2243,7 +2550,9 @@
       "requestSchema": "EndAppAvailabilityPreOrderCreateRequest",
       "type": "endAppAvailabilityPreOrders",
       "attributes": [],
-      "relationships": ["territoryAvailabilities"],
+      "relationships": [
+        "territoryAvailabilities"
+      ],
       "linkage": false,
       "included": false
     },
@@ -2253,8 +2562,13 @@
       "operationId": "endUserLicenseAgreements_createInstance",
       "requestSchema": "EndUserLicenseAgreementCreateRequest",
       "type": "endUserLicenseAgreements",
-      "attributes": ["agreementText"],
-      "relationships": ["app", "territories"],
+      "attributes": [
+        "agreementText"
+      ],
+      "relationships": [
+        "app",
+        "territories"
+      ],
       "linkage": false,
       "included": false
     },
@@ -2275,8 +2589,12 @@
       "operationId": "endUserLicenseAgreements_updateInstance",
       "requestSchema": "EndUserLicenseAgreementUpdateRequest",
       "type": "endUserLicenseAgreements",
-      "attributes": ["agreementText"],
-      "relationships": ["territories"],
+      "attributes": [
+        "agreementText"
+      ],
+      "relationships": [
+        "territories"
+      ],
       "linkage": false,
       "included": false
     },
@@ -2286,8 +2604,13 @@
       "operationId": "gameCenterAchievementImages_createInstance",
       "requestSchema": "GameCenterAchievementImageCreateRequest",
       "type": "gameCenterAchievementImages",
-      "attributes": ["fileName", "fileSize"],
-      "relationships": ["gameCenterAchievementLocalization"],
+      "attributes": [
+        "fileName",
+        "fileSize"
+      ],
+      "relationships": [
+        "gameCenterAchievementLocalization"
+      ],
       "linkage": false,
       "included": false
     },
@@ -2308,7 +2631,9 @@
       "operationId": "gameCenterAchievementImages_updateInstance",
       "requestSchema": "GameCenterAchievementImageUpdateRequest",
       "type": "gameCenterAchievementImages",
-      "attributes": ["uploaded"],
+      "attributes": [
+        "uploaded"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -2325,7 +2650,9 @@
         "locale",
         "name"
       ],
-      "relationships": ["gameCenterAchievement"],
+      "relationships": [
+        "gameCenterAchievement"
+      ],
       "linkage": false,
       "included": false
     },
@@ -2362,7 +2689,10 @@
       "requestSchema": "GameCenterAchievementReleaseCreateRequest",
       "type": "gameCenterAchievementReleases",
       "attributes": [],
-      "relationships": ["gameCenterAchievement", "gameCenterDetail"],
+      "relationships": [
+        "gameCenterAchievement",
+        "gameCenterDetail"
+      ],
       "linkage": false,
       "included": false
     },
@@ -2391,7 +2721,10 @@
         "showBeforeEarned",
         "vendorIdentifier"
       ],
-      "relationships": ["gameCenterDetail", "gameCenterGroup"],
+      "relationships": [
+        "gameCenterDetail",
+        "gameCenterGroup"
+      ],
       "linkage": false,
       "included": false
     },
@@ -2461,7 +2794,11 @@
         "supportsPartyCode",
         "vendorIdentifier"
       ],
-      "relationships": ["gameCenterDetail", "gameCenterGroup", "versions"],
+      "relationships": [
+        "gameCenterDetail",
+        "gameCenterGroup",
+        "versions"
+      ],
       "linkage": false,
       "included": true
     },
@@ -2589,8 +2926,14 @@
       "operationId": "gameCenterActivityImages_createInstance",
       "requestSchema": "GameCenterActivityImageCreateRequest",
       "type": "gameCenterActivityImages",
-      "attributes": ["fileName", "fileSize"],
-      "relationships": ["localization", "version"],
+      "attributes": [
+        "fileName",
+        "fileSize"
+      ],
+      "relationships": [
+        "localization",
+        "version"
+      ],
       "linkage": false,
       "included": false
     },
@@ -2611,7 +2954,9 @@
       "operationId": "gameCenterActivityImages_updateInstance",
       "requestSchema": "GameCenterActivityImageUpdateRequest",
       "type": "gameCenterActivityImages",
-      "attributes": ["uploaded"],
+      "attributes": [
+        "uploaded"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -2622,8 +2967,14 @@
       "operationId": "gameCenterActivityLocalizations_createInstance",
       "requestSchema": "GameCenterActivityLocalizationCreateRequest",
       "type": "gameCenterActivityLocalizations",
-      "attributes": ["description", "locale", "name"],
-      "relationships": ["version"],
+      "attributes": [
+        "description",
+        "locale",
+        "name"
+      ],
+      "relationships": [
+        "version"
+      ],
       "linkage": false,
       "included": false
     },
@@ -2644,7 +2995,10 @@
       "operationId": "gameCenterActivityLocalizations_updateInstance",
       "requestSchema": "GameCenterActivityLocalizationUpdateRequest",
       "type": "gameCenterActivityLocalizations",
-      "attributes": ["description", "name"],
+      "attributes": [
+        "description",
+        "name"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -2656,7 +3010,10 @@
       "requestSchema": "GameCenterActivityVersionReleaseCreateRequest",
       "type": "gameCenterActivityVersionReleases",
       "attributes": [],
-      "relationships": ["gameCenterDetail", "version"],
+      "relationships": [
+        "gameCenterDetail",
+        "version"
+      ],
       "linkage": false,
       "included": false
     },
@@ -2677,8 +3034,12 @@
       "operationId": "gameCenterActivityVersions_createInstance",
       "requestSchema": "GameCenterActivityVersionCreateRequest",
       "type": "gameCenterActivityVersions",
-      "attributes": ["fallbackUrl"],
-      "relationships": ["activity"],
+      "attributes": [
+        "fallbackUrl"
+      ],
+      "relationships": [
+        "activity"
+      ],
       "linkage": false,
       "included": false
     },
@@ -2688,7 +3049,9 @@
       "operationId": "gameCenterActivityVersions_updateInstance",
       "requestSchema": "GameCenterActivityVersionUpdateRequest",
       "type": "gameCenterActivityVersions",
-      "attributes": ["fallbackUrl"],
+      "attributes": [
+        "fallbackUrl"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -2700,7 +3063,9 @@
       "requestSchema": "GameCenterAppVersionCreateRequest",
       "type": "gameCenterAppVersions",
       "attributes": [],
-      "relationships": ["appStoreVersion"],
+      "relationships": [
+        "appStoreVersion"
+      ],
       "linkage": false,
       "included": false
     },
@@ -2710,7 +3075,9 @@
       "operationId": "gameCenterAppVersions_updateInstance",
       "requestSchema": "GameCenterAppVersionUpdateRequest",
       "type": "gameCenterAppVersions",
-      "attributes": ["enabled"],
+      "attributes": [
+        "enabled"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -2743,8 +3110,14 @@
       "operationId": "gameCenterChallengeImages_createInstance",
       "requestSchema": "GameCenterChallengeImageCreateRequest",
       "type": "gameCenterChallengeImages",
-      "attributes": ["fileName", "fileSize"],
-      "relationships": ["localization", "version"],
+      "attributes": [
+        "fileName",
+        "fileSize"
+      ],
+      "relationships": [
+        "localization",
+        "version"
+      ],
       "linkage": false,
       "included": false
     },
@@ -2765,7 +3138,9 @@
       "operationId": "gameCenterChallengeImages_updateInstance",
       "requestSchema": "GameCenterChallengeImageUpdateRequest",
       "type": "gameCenterChallengeImages",
-      "attributes": ["uploaded"],
+      "attributes": [
+        "uploaded"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -2776,8 +3151,14 @@
       "operationId": "gameCenterChallengeLocalizations_createInstance",
       "requestSchema": "GameCenterChallengeLocalizationCreateRequest",
       "type": "gameCenterChallengeLocalizations",
-      "attributes": ["description", "locale", "name"],
-      "relationships": ["version"],
+      "attributes": [
+        "description",
+        "locale",
+        "name"
+      ],
+      "relationships": [
+        "version"
+      ],
       "linkage": false,
       "included": false
     },
@@ -2798,7 +3179,10 @@
       "operationId": "gameCenterChallengeLocalizations_updateInstance",
       "requestSchema": "GameCenterChallengeLocalizationUpdateRequest",
       "type": "gameCenterChallengeLocalizations",
-      "attributes": ["description", "name"],
+      "attributes": [
+        "description",
+        "name"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -2842,8 +3226,15 @@
       "operationId": "gameCenterChallenges_updateInstance",
       "requestSchema": "GameCenterChallengeUpdateRequest",
       "type": "gameCenterChallenges",
-      "attributes": ["archived", "referenceName", "repeatable"],
-      "relationships": ["leaderboard", "leaderboardV2"],
+      "attributes": [
+        "archived",
+        "referenceName",
+        "repeatable"
+      ],
+      "relationships": [
+        "leaderboard",
+        "leaderboardV2"
+      ],
       "linkage": false,
       "included": false
     },
@@ -2876,7 +3267,10 @@
       "requestSchema": "GameCenterChallengeVersionReleaseCreateRequest",
       "type": "gameCenterChallengeVersionReleases",
       "attributes": [],
-      "relationships": ["gameCenterDetail", "version"],
+      "relationships": [
+        "gameCenterDetail",
+        "version"
+      ],
       "linkage": false,
       "included": false
     },
@@ -2898,7 +3292,9 @@
       "requestSchema": "GameCenterChallengeVersionCreateRequest",
       "type": "gameCenterChallengeVersions",
       "attributes": [],
-      "relationships": ["challenge"],
+      "relationships": [
+        "challenge"
+      ],
       "linkage": false,
       "included": false
     },
@@ -2908,7 +3304,10 @@
       "operationId": "gameCenterDetailPlayers_updateInstance",
       "requestSchema": "GameCenterDetailPlayerUpdateRequest",
       "type": "gameCenterDetailPlayers",
-      "attributes": ["blocked", "bundleId"],
+      "attributes": [
+        "blocked",
+        "bundleId"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -2919,8 +3318,12 @@
       "operationId": "gameCenterDetails_createInstance",
       "requestSchema": "GameCenterDetailCreateRequest",
       "type": "gameCenterDetails",
-      "attributes": ["challengeEnabled"],
-      "relationships": ["app"],
+      "attributes": [
+        "challengeEnabled"
+      ],
+      "relationships": [
+        "app"
+      ],
       "linkage": false,
       "included": false
     },
@@ -2930,7 +3333,9 @@
       "operationId": "gameCenterDetails_updateInstance",
       "requestSchema": "GameCenterDetailUpdateRequest",
       "type": "gameCenterDetails",
-      "attributes": ["challengeEnabled"],
+      "attributes": [
+        "challengeEnabled"
+      ],
       "relationships": [
         "defaultGroupLeaderboard",
         "defaultGroupLeaderboardV2",
@@ -3057,7 +3462,9 @@
       "operationId": "gameCenterGroups_createInstance",
       "requestSchema": "GameCenterGroupCreateRequest",
       "type": "gameCenterGroups",
-      "attributes": ["referenceName"],
+      "attributes": [
+        "referenceName"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -3079,7 +3486,9 @@
       "operationId": "gameCenterGroups_updateInstance",
       "requestSchema": "GameCenterGroupUpdateRequest",
       "type": "gameCenterGroups",
-      "attributes": ["referenceName"],
+      "attributes": [
+        "referenceName"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -3176,8 +3585,13 @@
       "operationId": "gameCenterLeaderboardImages_createInstance",
       "requestSchema": "GameCenterLeaderboardImageCreateRequest",
       "type": "gameCenterLeaderboardImages",
-      "attributes": ["fileName", "fileSize"],
-      "relationships": ["gameCenterLeaderboardLocalization"],
+      "attributes": [
+        "fileName",
+        "fileSize"
+      ],
+      "relationships": [
+        "gameCenterLeaderboardLocalization"
+      ],
       "linkage": false,
       "included": false
     },
@@ -3198,7 +3612,9 @@
       "operationId": "gameCenterLeaderboardImages_updateInstance",
       "requestSchema": "GameCenterLeaderboardImageUpdateRequest",
       "type": "gameCenterLeaderboardImages",
-      "attributes": ["uploaded"],
+      "attributes": [
+        "uploaded"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -3217,7 +3633,9 @@
         "locale",
         "name"
       ],
-      "relationships": ["gameCenterLeaderboard"],
+      "relationships": [
+        "gameCenterLeaderboard"
+      ],
       "linkage": false,
       "included": false
     },
@@ -3256,7 +3674,10 @@
       "requestSchema": "GameCenterLeaderboardReleaseCreateRequest",
       "type": "gameCenterLeaderboardReleases",
       "attributes": [],
-      "relationships": ["gameCenterDetail", "gameCenterLeaderboard"],
+      "relationships": [
+        "gameCenterDetail",
+        "gameCenterLeaderboard"
+      ],
       "linkage": false,
       "included": false
     },
@@ -3373,8 +3794,13 @@
       "operationId": "gameCenterLeaderboardSetImages_createInstance",
       "requestSchema": "GameCenterLeaderboardSetImageCreateRequest",
       "type": "gameCenterLeaderboardSetImages",
-      "attributes": ["fileName", "fileSize"],
-      "relationships": ["gameCenterLeaderboardSetLocalization"],
+      "attributes": [
+        "fileName",
+        "fileSize"
+      ],
+      "relationships": [
+        "gameCenterLeaderboardSetLocalization"
+      ],
       "linkage": false,
       "included": false
     },
@@ -3395,7 +3821,9 @@
       "operationId": "gameCenterLeaderboardSetImages_updateInstance",
       "requestSchema": "GameCenterLeaderboardSetImageUpdateRequest",
       "type": "gameCenterLeaderboardSetImages",
-      "attributes": ["uploaded"],
+      "attributes": [
+        "uploaded"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -3406,8 +3834,13 @@
       "operationId": "gameCenterLeaderboardSetLocalizations_createInstance",
       "requestSchema": "GameCenterLeaderboardSetLocalizationCreateRequest",
       "type": "gameCenterLeaderboardSetLocalizations",
-      "attributes": ["locale", "name"],
-      "relationships": ["gameCenterLeaderboardSet"],
+      "attributes": [
+        "locale",
+        "name"
+      ],
+      "relationships": [
+        "gameCenterLeaderboardSet"
+      ],
       "linkage": false,
       "included": false
     },
@@ -3428,7 +3861,9 @@
       "operationId": "gameCenterLeaderboardSetLocalizations_updateInstance",
       "requestSchema": "GameCenterLeaderboardSetLocalizationUpdateRequest",
       "type": "gameCenterLeaderboardSetLocalizations",
-      "attributes": ["name"],
+      "attributes": [
+        "name"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -3439,8 +3874,14 @@
       "operationId": "gameCenterLeaderboardSetMemberLocalizations_createInstance",
       "requestSchema": "GameCenterLeaderboardSetMemberLocalizationCreateRequest",
       "type": "gameCenterLeaderboardSetMemberLocalizations",
-      "attributes": ["locale", "name"],
-      "relationships": ["gameCenterLeaderboard", "gameCenterLeaderboardSet"],
+      "attributes": [
+        "locale",
+        "name"
+      ],
+      "relationships": [
+        "gameCenterLeaderboard",
+        "gameCenterLeaderboardSet"
+      ],
       "linkage": false,
       "included": false
     },
@@ -3461,7 +3902,9 @@
       "operationId": "gameCenterLeaderboardSetMemberLocalizations_updateInstance",
       "requestSchema": "GameCenterLeaderboardSetMemberLocalizationUpdateRequest",
       "type": "gameCenterLeaderboardSetMemberLocalizations",
-      "attributes": ["name"],
+      "attributes": [
+        "name"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -3473,7 +3916,10 @@
       "requestSchema": "GameCenterLeaderboardSetReleaseCreateRequest",
       "type": "gameCenterLeaderboardSetReleases",
       "attributes": [],
-      "relationships": ["gameCenterDetail", "gameCenterLeaderboardSet"],
+      "relationships": [
+        "gameCenterDetail",
+        "gameCenterLeaderboardSet"
+      ],
       "linkage": false,
       "included": false
     },
@@ -3494,7 +3940,10 @@
       "operationId": "gameCenterLeaderboardSets_createInstance",
       "requestSchema": "GameCenterLeaderboardSetCreateRequest",
       "type": "gameCenterLeaderboardSets",
-      "attributes": ["referenceName", "vendorIdentifier"],
+      "attributes": [
+        "referenceName",
+        "vendorIdentifier"
+      ],
       "relationships": [
         "gameCenterDetail",
         "gameCenterGroup",
@@ -3520,7 +3969,9 @@
       "operationId": "gameCenterLeaderboardSets_updateInstance",
       "requestSchema": "GameCenterLeaderboardSetUpdateRequest",
       "type": "gameCenterLeaderboardSets",
-      "attributes": ["referenceName"],
+      "attributes": [
+        "referenceName"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -3575,8 +4026,14 @@
       "operationId": "gameCenterMatchmakingQueues_createInstance",
       "requestSchema": "GameCenterMatchmakingQueueCreateRequest",
       "type": "gameCenterMatchmakingQueues",
-      "attributes": ["classicMatchmakingBundleIds", "referenceName"],
-      "relationships": ["experimentRuleSet", "ruleSet"],
+      "attributes": [
+        "classicMatchmakingBundleIds",
+        "referenceName"
+      ],
+      "relationships": [
+        "experimentRuleSet",
+        "ruleSet"
+      ],
       "linkage": false,
       "included": false
     },
@@ -3597,8 +4054,13 @@
       "operationId": "gameCenterMatchmakingQueues_updateInstance",
       "requestSchema": "GameCenterMatchmakingQueueUpdateRequest",
       "type": "gameCenterMatchmakingQueues",
-      "attributes": ["classicMatchmakingBundleIds"],
-      "relationships": ["experimentRuleSet", "ruleSet"],
+      "attributes": [
+        "classicMatchmakingBundleIds"
+      ],
+      "relationships": [
+        "experimentRuleSet",
+        "ruleSet"
+      ],
       "linkage": false,
       "included": false
     },
@@ -3615,7 +4077,9 @@
         "type",
         "weight"
       ],
-      "relationships": ["ruleSet"],
+      "relationships": [
+        "ruleSet"
+      ],
       "linkage": false,
       "included": false
     },
@@ -3636,7 +4100,11 @@
       "operationId": "gameCenterMatchmakingRules_updateInstance",
       "requestSchema": "GameCenterMatchmakingRuleUpdateRequest",
       "type": "gameCenterMatchmakingRules",
-      "attributes": ["description", "expression", "weight"],
+      "attributes": [
+        "description",
+        "expression",
+        "weight"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -3674,7 +4142,10 @@
       "operationId": "gameCenterMatchmakingRuleSets_updateInstance",
       "requestSchema": "GameCenterMatchmakingRuleSetUpdateRequest",
       "type": "gameCenterMatchmakingRuleSets",
-      "attributes": ["maxPlayers", "minPlayers"],
+      "attributes": [
+        "maxPlayers",
+        "minPlayers"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -3686,7 +4157,10 @@
       "requestSchema": "GameCenterMatchmakingRuleSetTestCreateRequest",
       "type": "gameCenterMatchmakingRuleSetTests",
       "attributes": [],
-      "relationships": ["matchmakingRequests", "matchmakingRuleSet"],
+      "relationships": [
+        "matchmakingRequests",
+        "matchmakingRuleSet"
+      ],
       "linkage": false,
       "included": true
     },
@@ -3696,8 +4170,14 @@
       "operationId": "gameCenterMatchmakingTeams_createInstance",
       "requestSchema": "GameCenterMatchmakingTeamCreateRequest",
       "type": "gameCenterMatchmakingTeams",
-      "attributes": ["maxPlayers", "minPlayers", "referenceName"],
-      "relationships": ["ruleSet"],
+      "attributes": [
+        "maxPlayers",
+        "minPlayers",
+        "referenceName"
+      ],
+      "relationships": [
+        "ruleSet"
+      ],
       "linkage": false,
       "included": false
     },
@@ -3718,7 +4198,10 @@
       "operationId": "gameCenterMatchmakingTeams_updateInstance",
       "requestSchema": "GameCenterMatchmakingTeamUpdateRequest",
       "type": "gameCenterMatchmakingTeams",
-      "attributes": ["maxPlayers", "minPlayers"],
+      "attributes": [
+        "maxPlayers",
+        "minPlayers"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -3748,7 +4231,9 @@
       "operationId": "gameCenterScoreModerations_updateInstance",
       "requestSchema": "GameCenterScoreModerationUpdateRequest",
       "type": "gameCenterScoreModerations",
-      "attributes": ["blocked"],
+      "attributes": [
+        "blocked"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -3759,8 +4244,13 @@
       "operationId": "inAppPurchaseAppStoreReviewScreenshots_createInstance",
       "requestSchema": "InAppPurchaseAppStoreReviewScreenshotCreateRequest",
       "type": "inAppPurchaseAppStoreReviewScreenshots",
-      "attributes": ["fileName", "fileSize"],
-      "relationships": ["inAppPurchaseV2"],
+      "attributes": [
+        "fileName",
+        "fileSize"
+      ],
+      "relationships": [
+        "inAppPurchaseV2"
+      ],
       "linkage": false,
       "included": false
     },
@@ -3781,7 +4271,10 @@
       "operationId": "inAppPurchaseAppStoreReviewScreenshots_updateInstance",
       "requestSchema": "InAppPurchaseAppStoreReviewScreenshotUpdateRequest",
       "type": "inAppPurchaseAppStoreReviewScreenshots",
-      "attributes": ["sourceFileChecksum", "uploaded"],
+      "attributes": [
+        "sourceFileChecksum",
+        "uploaded"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -3792,8 +4285,13 @@
       "operationId": "inAppPurchaseAvailabilities_createInstance",
       "requestSchema": "InAppPurchaseAvailabilityCreateRequest",
       "type": "inAppPurchaseAvailabilities",
-      "attributes": ["availableInNewTerritories"],
-      "relationships": ["availableTerritories", "inAppPurchase"],
+      "attributes": [
+        "availableInNewTerritories"
+      ],
+      "relationships": [
+        "availableTerritories",
+        "inAppPurchase"
+      ],
       "linkage": false,
       "included": false
     },
@@ -3803,8 +4301,13 @@
       "operationId": "inAppPurchaseImages_createInstance",
       "requestSchema": "InAppPurchaseImageCreateRequest",
       "type": "inAppPurchaseImages",
-      "attributes": ["fileName", "fileSize"],
-      "relationships": ["inAppPurchase"],
+      "attributes": [
+        "fileName",
+        "fileSize"
+      ],
+      "relationships": [
+        "inAppPurchase"
+      ],
       "linkage": false,
       "included": false
     },
@@ -3825,7 +4328,10 @@
       "operationId": "inAppPurchaseImages_updateInstance",
       "requestSchema": "InAppPurchaseImageUpdateRequest",
       "type": "inAppPurchaseImages",
-      "attributes": ["sourceFileChecksum", "uploaded"],
+      "attributes": [
+        "sourceFileChecksum",
+        "uploaded"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -3836,8 +4342,14 @@
       "operationId": "inAppPurchaseLocalizations_createInstance",
       "requestSchema": "InAppPurchaseLocalizationCreateRequest",
       "type": "inAppPurchaseLocalizations",
-      "attributes": ["description", "locale", "name"],
-      "relationships": ["inAppPurchaseV2"],
+      "attributes": [
+        "description",
+        "locale",
+        "name"
+      ],
+      "relationships": [
+        "inAppPurchaseV2"
+      ],
       "linkage": false,
       "included": false
     },
@@ -3858,7 +4370,10 @@
       "operationId": "inAppPurchaseLocalizations_updateInstance",
       "requestSchema": "InAppPurchaseLocalizationUpdateRequest",
       "type": "inAppPurchaseLocalizations",
-      "attributes": ["description", "name"],
+      "attributes": [
+        "description",
+        "name"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -3869,8 +4384,14 @@
       "operationId": "inAppPurchaseOfferCodeCustomCodes_createInstance",
       "requestSchema": "InAppPurchaseOfferCodeCustomCodeCreateRequest",
       "type": "inAppPurchaseOfferCodeCustomCodes",
-      "attributes": ["customCode", "expirationDate", "numberOfCodes"],
-      "relationships": ["offerCode"],
+      "attributes": [
+        "customCode",
+        "expirationDate",
+        "numberOfCodes"
+      ],
+      "relationships": [
+        "offerCode"
+      ],
       "linkage": false,
       "included": false
     },
@@ -3880,7 +4401,9 @@
       "operationId": "inAppPurchaseOfferCodeCustomCodes_updateInstance",
       "requestSchema": "InAppPurchaseOfferCodeCustomCodeUpdateRequest",
       "type": "inAppPurchaseOfferCodeCustomCodes",
-      "attributes": ["active"],
+      "attributes": [
+        "active"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -3891,8 +4414,14 @@
       "operationId": "inAppPurchaseOfferCodeOneTimeUseCodes_createInstance",
       "requestSchema": "InAppPurchaseOfferCodeOneTimeUseCodeCreateRequest",
       "type": "inAppPurchaseOfferCodeOneTimeUseCodes",
-      "attributes": ["environment", "expirationDate", "numberOfCodes"],
-      "relationships": ["offerCode"],
+      "attributes": [
+        "environment",
+        "expirationDate",
+        "numberOfCodes"
+      ],
+      "relationships": [
+        "offerCode"
+      ],
       "linkage": false,
       "included": false
     },
@@ -3902,7 +4431,9 @@
       "operationId": "inAppPurchaseOfferCodeOneTimeUseCodes_updateInstance",
       "requestSchema": "InAppPurchaseOfferCodeOneTimeUseCodeUpdateRequest",
       "type": "inAppPurchaseOfferCodeOneTimeUseCodes",
-      "attributes": ["active"],
+      "attributes": [
+        "active"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -3913,8 +4444,14 @@
       "operationId": "inAppPurchaseOfferCodes_createInstance",
       "requestSchema": "InAppPurchaseOfferCodeCreateRequest",
       "type": "inAppPurchaseOfferCodes",
-      "attributes": ["customerEligibilities", "name"],
-      "relationships": ["inAppPurchase", "prices"],
+      "attributes": [
+        "customerEligibilities",
+        "name"
+      ],
+      "relationships": [
+        "inAppPurchase",
+        "prices"
+      ],
       "linkage": false,
       "included": true
     },
@@ -3924,7 +4461,9 @@
       "operationId": "inAppPurchaseOfferCodes_updateInstance",
       "requestSchema": "InAppPurchaseOfferCodeUpdateRequest",
       "type": "inAppPurchaseOfferCodes",
-      "attributes": ["active"],
+      "attributes": [
+        "active"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -3936,7 +4475,11 @@
       "requestSchema": "InAppPurchasePriceScheduleCreateRequest",
       "type": "inAppPurchasePriceSchedules",
       "attributes": [],
-      "relationships": ["baseTerritory", "inAppPurchase", "manualPrices"],
+      "relationships": [
+        "baseTerritory",
+        "inAppPurchase",
+        "manualPrices"
+      ],
       "linkage": false,
       "included": true
     },
@@ -3947,7 +4490,9 @@
       "requestSchema": "InAppPurchaseSubmissionCreateRequest",
       "type": "inAppPurchaseSubmissions",
       "attributes": [],
-      "relationships": ["inAppPurchaseV2"],
+      "relationships": [
+        "inAppPurchaseV2"
+      ],
       "linkage": false,
       "included": false
     },
@@ -3958,7 +4503,9 @@
       "requestSchema": "InAppPurchaseVersionCreateRequest",
       "type": "inAppPurchaseVersions",
       "attributes": [],
-      "relationships": ["inAppPurchase"],
+      "relationships": [
+        "inAppPurchase"
+      ],
       "linkage": false,
       "included": false
     },
@@ -3968,8 +4515,12 @@
       "operationId": "marketplaceSearchDetails_createInstance",
       "requestSchema": "MarketplaceSearchDetailCreateRequest",
       "type": "marketplaceSearchDetails",
-      "attributes": ["catalogUrl"],
-      "relationships": ["app"],
+      "attributes": [
+        "catalogUrl"
+      ],
+      "relationships": [
+        "app"
+      ],
       "linkage": false,
       "included": false
     },
@@ -3990,7 +4541,9 @@
       "operationId": "marketplaceSearchDetails_updateInstance",
       "requestSchema": "MarketplaceSearchDetailUpdateRequest",
       "type": "marketplaceSearchDetails",
-      "attributes": ["catalogUrl"],
+      "attributes": [
+        "catalogUrl"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -4001,7 +4554,10 @@
       "operationId": "marketplaceWebhooks_createInstance",
       "requestSchema": "MarketplaceWebhookCreateRequest",
       "type": "marketplaceWebhooks",
-      "attributes": ["endpointUrl", "secret"],
+      "attributes": [
+        "endpointUrl",
+        "secret"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -4023,7 +4579,10 @@
       "operationId": "marketplaceWebhooks_updateInstance",
       "requestSchema": "MarketplaceWebhookUpdateRequest",
       "type": "marketplaceWebhooks",
-      "attributes": ["endpointUrl", "secret"],
+      "attributes": [
+        "endpointUrl",
+        "secret"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -4034,7 +4593,10 @@
       "operationId": "merchantIds_createInstance",
       "requestSchema": "MerchantIdCreateRequest",
       "type": "merchantIds",
-      "attributes": ["identifier", "name"],
+      "attributes": [
+        "identifier",
+        "name"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -4056,7 +4618,9 @@
       "operationId": "merchantIds_updateInstance",
       "requestSchema": "MerchantIdUpdateRequest",
       "type": "merchantIds",
-      "attributes": ["name"],
+      "attributes": [
+        "name"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -4082,7 +4646,11 @@
         "supplementalMaterialsUris",
         "type"
       ],
-      "relationships": ["inAppEvents", "relatedApps", "supportedTerritories"],
+      "relationships": [
+        "inAppEvents",
+        "relatedApps",
+        "supportedTerritories"
+      ],
       "linkage": false,
       "included": false
     },
@@ -4119,7 +4687,11 @@
         "supplementalMaterialsUris",
         "type"
       ],
-      "relationships": ["inAppEvents", "relatedApps", "supportedTerritories"],
+      "relationships": [
+        "inAppEvents",
+        "relatedApps",
+        "supportedTerritories"
+      ],
       "linkage": false,
       "included": false
     },
@@ -4129,7 +4701,10 @@
       "operationId": "passTypeIds_createInstance",
       "requestSchema": "PassTypeIdCreateRequest",
       "type": "passTypeIds",
-      "attributes": ["identifier", "name"],
+      "attributes": [
+        "identifier",
+        "name"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -4151,7 +4726,9 @@
       "operationId": "passTypeIds_updateInstance",
       "requestSchema": "PassTypeIdUpdateRequest",
       "type": "passTypeIds",
-      "attributes": ["name"],
+      "attributes": [
+        "name"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -4162,8 +4739,15 @@
       "operationId": "profiles_createInstance",
       "requestSchema": "ProfileCreateRequest",
       "type": "profiles",
-      "attributes": ["name", "profileType"],
-      "relationships": ["bundleId", "certificates", "devices"],
+      "attributes": [
+        "name",
+        "profileType"
+      ],
+      "relationships": [
+        "bundleId",
+        "certificates",
+        "devices"
+      ],
       "linkage": false,
       "included": false
     },
@@ -4184,8 +4768,15 @@
       "operationId": "promotedPurchases_createInstance",
       "requestSchema": "PromotedPurchaseCreateRequest",
       "type": "promotedPurchases",
-      "attributes": ["enabled", "visibleForAllUsers"],
-      "relationships": ["app", "inAppPurchaseV2", "subscription"],
+      "attributes": [
+        "enabled",
+        "visibleForAllUsers"
+      ],
+      "relationships": [
+        "app",
+        "inAppPurchaseV2",
+        "subscription"
+      ],
       "linkage": false,
       "included": false
     },
@@ -4206,7 +4797,10 @@
       "operationId": "promotedPurchases_updateInstance",
       "requestSchema": "PromotedPurchaseUpdateRequest",
       "type": "promotedPurchases",
-      "attributes": ["enabled", "visibleForAllUsers"],
+      "attributes": [
+        "enabled",
+        "visibleForAllUsers"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -4255,7 +4849,10 @@
       "operationId": "reviewSubmissionItems_updateInstance",
       "requestSchema": "ReviewSubmissionItemUpdateRequest",
       "type": "reviewSubmissionItems",
-      "attributes": ["removed", "resolved"],
+      "attributes": [
+        "removed",
+        "resolved"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -4266,8 +4863,12 @@
       "operationId": "reviewSubmissions_createInstance",
       "requestSchema": "ReviewSubmissionCreateRequest",
       "type": "reviewSubmissions",
-      "attributes": ["platform"],
-      "relationships": ["app"],
+      "attributes": [
+        "platform"
+      ],
+      "relationships": [
+        "app"
+      ],
       "linkage": false,
       "included": false
     },
@@ -4277,7 +4878,11 @@
       "operationId": "reviewSubmissions_updateInstance",
       "requestSchema": "ReviewSubmissionUpdateRequest",
       "type": "reviewSubmissions",
-      "attributes": ["canceled", "platform", "submitted"],
+      "attributes": [
+        "canceled",
+        "platform",
+        "submitted"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -4288,8 +4893,13 @@
       "operationId": "routingAppCoverages_createInstance",
       "requestSchema": "RoutingAppCoverageCreateRequest",
       "type": "routingAppCoverages",
-      "attributes": ["fileName", "fileSize"],
-      "relationships": ["appStoreVersion"],
+      "attributes": [
+        "fileName",
+        "fileSize"
+      ],
+      "relationships": [
+        "appStoreVersion"
+      ],
       "linkage": false,
       "included": false
     },
@@ -4310,7 +4920,10 @@
       "operationId": "routingAppCoverages_updateInstance",
       "requestSchema": "RoutingAppCoverageUpdateRequest",
       "type": "routingAppCoverages",
-      "attributes": ["sourceFileChecksum", "uploaded"],
+      "attributes": [
+        "sourceFileChecksum",
+        "uploaded"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -4321,8 +4934,13 @@
       "operationId": "subscriptionAppStoreReviewScreenshots_createInstance",
       "requestSchema": "SubscriptionAppStoreReviewScreenshotCreateRequest",
       "type": "subscriptionAppStoreReviewScreenshots",
-      "attributes": ["fileName", "fileSize"],
-      "relationships": ["subscription"],
+      "attributes": [
+        "fileName",
+        "fileSize"
+      ],
+      "relationships": [
+        "subscription"
+      ],
       "linkage": false,
       "included": false
     },
@@ -4343,7 +4961,10 @@
       "operationId": "subscriptionAppStoreReviewScreenshots_updateInstance",
       "requestSchema": "SubscriptionAppStoreReviewScreenshotUpdateRequest",
       "type": "subscriptionAppStoreReviewScreenshots",
-      "attributes": ["sourceFileChecksum", "uploaded"],
+      "attributes": [
+        "sourceFileChecksum",
+        "uploaded"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -4354,8 +4975,13 @@
       "operationId": "subscriptionAvailabilities_createInstance",
       "requestSchema": "SubscriptionAvailabilityCreateRequest",
       "type": "subscriptionAvailabilities",
-      "attributes": ["availableInNewTerritories"],
-      "relationships": ["availableTerritories", "subscription"],
+      "attributes": [
+        "availableInNewTerritories"
+      ],
+      "relationships": [
+        "availableTerritories",
+        "subscription"
+      ],
       "linkage": false,
       "included": false
     },
@@ -4365,7 +4991,12 @@
       "operationId": "subscriptionGracePeriods_updateInstance",
       "requestSchema": "SubscriptionGracePeriodUpdateRequest",
       "type": "subscriptionGracePeriods",
-      "attributes": ["duration", "optIn", "renewalType", "sandboxOptIn"],
+      "attributes": [
+        "duration",
+        "optIn",
+        "renewalType",
+        "sandboxOptIn"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -4376,8 +5007,14 @@
       "operationId": "subscriptionGroupLocalizations_createInstance",
       "requestSchema": "SubscriptionGroupLocalizationCreateRequest",
       "type": "subscriptionGroupLocalizations",
-      "attributes": ["customAppName", "locale", "name"],
-      "relationships": ["subscriptionGroup"],
+      "attributes": [
+        "customAppName",
+        "locale",
+        "name"
+      ],
+      "relationships": [
+        "subscriptionGroup"
+      ],
       "linkage": false,
       "included": false
     },
@@ -4398,7 +5035,10 @@
       "operationId": "subscriptionGroupLocalizations_updateInstance",
       "requestSchema": "SubscriptionGroupLocalizationUpdateRequest",
       "type": "subscriptionGroupLocalizations",
-      "attributes": ["customAppName", "name"],
+      "attributes": [
+        "customAppName",
+        "name"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -4409,8 +5049,12 @@
       "operationId": "subscriptionGroups_createInstance",
       "requestSchema": "SubscriptionGroupCreateRequest",
       "type": "subscriptionGroups",
-      "attributes": ["referenceName"],
-      "relationships": ["app"],
+      "attributes": [
+        "referenceName"
+      ],
+      "relationships": [
+        "app"
+      ],
       "linkage": false,
       "included": false
     },
@@ -4431,7 +5075,9 @@
       "operationId": "subscriptionGroups_updateInstance",
       "requestSchema": "SubscriptionGroupUpdateRequest",
       "type": "subscriptionGroups",
-      "attributes": ["referenceName"],
+      "attributes": [
+        "referenceName"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -4443,7 +5089,9 @@
       "requestSchema": "SubscriptionGroupSubmissionCreateRequest",
       "type": "subscriptionGroupSubmissions",
       "attributes": [],
-      "relationships": ["subscriptionGroup"],
+      "relationships": [
+        "subscriptionGroup"
+      ],
       "linkage": false,
       "included": false
     },
@@ -4454,7 +5102,9 @@
       "requestSchema": "SubscriptionGroupVersionCreateRequest",
       "type": "subscriptionGroupVersions",
       "attributes": [],
-      "relationships": ["subscriptionGroup"],
+      "relationships": [
+        "subscriptionGroup"
+      ],
       "linkage": false,
       "included": false
     },
@@ -4464,8 +5114,13 @@
       "operationId": "subscriptionImages_createInstance",
       "requestSchema": "SubscriptionImageCreateRequest",
       "type": "subscriptionImages",
-      "attributes": ["fileName", "fileSize"],
-      "relationships": ["subscription"],
+      "attributes": [
+        "fileName",
+        "fileSize"
+      ],
+      "relationships": [
+        "subscription"
+      ],
       "linkage": false,
       "included": false
     },
@@ -4486,7 +5141,10 @@
       "operationId": "subscriptionImages_updateInstance",
       "requestSchema": "SubscriptionImageUpdateRequest",
       "type": "subscriptionImages",
-      "attributes": ["sourceFileChecksum", "uploaded"],
+      "attributes": [
+        "sourceFileChecksum",
+        "uploaded"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -4505,7 +5163,11 @@
         "startDate",
         "targetSubscriptionPlanType"
       ],
-      "relationships": ["subscription", "subscriptionPricePoint", "territory"],
+      "relationships": [
+        "subscription",
+        "subscriptionPricePoint",
+        "territory"
+      ],
       "linkage": false,
       "included": true
     },
@@ -4526,7 +5188,9 @@
       "operationId": "subscriptionIntroductoryOffers_updateInstance",
       "requestSchema": "SubscriptionIntroductoryOfferUpdateRequest",
       "type": "subscriptionIntroductoryOffers",
-      "attributes": ["endDate"],
+      "attributes": [
+        "endDate"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -4537,8 +5201,14 @@
       "operationId": "subscriptionLocalizations_createInstance",
       "requestSchema": "SubscriptionLocalizationCreateRequest",
       "type": "subscriptionLocalizations",
-      "attributes": ["description", "locale", "name"],
-      "relationships": ["subscription"],
+      "attributes": [
+        "description",
+        "locale",
+        "name"
+      ],
+      "relationships": [
+        "subscription"
+      ],
       "linkage": false,
       "included": false
     },
@@ -4559,7 +5229,10 @@
       "operationId": "subscriptionLocalizations_updateInstance",
       "requestSchema": "SubscriptionLocalizationUpdateRequest",
       "type": "subscriptionLocalizations",
-      "attributes": ["description", "name"],
+      "attributes": [
+        "description",
+        "name"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -4570,8 +5243,14 @@
       "operationId": "subscriptionOfferCodeCustomCodes_createInstance",
       "requestSchema": "SubscriptionOfferCodeCustomCodeCreateRequest",
       "type": "subscriptionOfferCodeCustomCodes",
-      "attributes": ["customCode", "expirationDate", "numberOfCodes"],
-      "relationships": ["offerCode"],
+      "attributes": [
+        "customCode",
+        "expirationDate",
+        "numberOfCodes"
+      ],
+      "relationships": [
+        "offerCode"
+      ],
       "linkage": false,
       "included": false
     },
@@ -4581,7 +5260,9 @@
       "operationId": "subscriptionOfferCodeCustomCodes_updateInstance",
       "requestSchema": "SubscriptionOfferCodeCustomCodeUpdateRequest",
       "type": "subscriptionOfferCodeCustomCodes",
-      "attributes": ["active"],
+      "attributes": [
+        "active"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -4592,8 +5273,14 @@
       "operationId": "subscriptionOfferCodeOneTimeUseCodes_createInstance",
       "requestSchema": "SubscriptionOfferCodeOneTimeUseCodeCreateRequest",
       "type": "subscriptionOfferCodeOneTimeUseCodes",
-      "attributes": ["environment", "expirationDate", "numberOfCodes"],
-      "relationships": ["offerCode"],
+      "attributes": [
+        "environment",
+        "expirationDate",
+        "numberOfCodes"
+      ],
+      "relationships": [
+        "offerCode"
+      ],
       "linkage": false,
       "included": false
     },
@@ -4603,7 +5290,9 @@
       "operationId": "subscriptionOfferCodeOneTimeUseCodes_updateInstance",
       "requestSchema": "SubscriptionOfferCodeOneTimeUseCodeUpdateRequest",
       "type": "subscriptionOfferCodeOneTimeUseCodes",
-      "attributes": ["active"],
+      "attributes": [
+        "active"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -4624,7 +5313,10 @@
         "offerMode",
         "targetSubscriptionPlanType"
       ],
-      "relationships": ["prices", "subscription"],
+      "relationships": [
+        "prices",
+        "subscription"
+      ],
       "linkage": false,
       "included": true
     },
@@ -4634,7 +5326,9 @@
       "operationId": "subscriptionOfferCodes_updateInstance",
       "requestSchema": "SubscriptionOfferCodeUpdateRequest",
       "type": "subscriptionOfferCodes",
-      "attributes": ["active"],
+      "attributes": [
+        "active"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -4645,8 +5339,14 @@
       "operationId": "subscriptionPlanAvailabilities_createInstance",
       "requestSchema": "SubscriptionPlanAvailabilityCreateRequest",
       "type": "subscriptionPlanAvailabilities",
-      "attributes": ["availableInNewTerritories", "planType"],
-      "relationships": ["availableTerritories", "subscription"],
+      "attributes": [
+        "availableInNewTerritories",
+        "planType"
+      ],
+      "relationships": [
+        "availableTerritories",
+        "subscription"
+      ],
       "linkage": false,
       "included": false
     },
@@ -4656,8 +5356,12 @@
       "operationId": "subscriptionPlanAvailabilities_updateInstance",
       "requestSchema": "SubscriptionPlanAvailabilityUpdateRequest",
       "type": "subscriptionPlanAvailabilities",
-      "attributes": ["availableInNewTerritories"],
-      "relationships": ["availableTerritories"],
+      "attributes": [
+        "availableInNewTerritories"
+      ],
+      "relationships": [
+        "availableTerritories"
+      ],
       "linkage": false,
       "included": false
     },
@@ -4678,8 +5382,16 @@
       "operationId": "subscriptionPrices_createInstance",
       "requestSchema": "SubscriptionPriceCreateRequest",
       "type": "subscriptionPrices",
-      "attributes": ["planType", "preserveCurrentPrice", "startDate"],
-      "relationships": ["subscription", "subscriptionPricePoint", "territory"],
+      "attributes": [
+        "planType",
+        "preserveCurrentPrice",
+        "startDate"
+      ],
+      "relationships": [
+        "subscription",
+        "subscriptionPricePoint",
+        "territory"
+      ],
       "linkage": false,
       "included": false
     },
@@ -4708,7 +5420,10 @@
         "offerMode",
         "targetSubscriptionPlanType"
       ],
-      "relationships": ["prices", "subscription"],
+      "relationships": [
+        "prices",
+        "subscription"
+      ],
       "linkage": false,
       "included": true
     },
@@ -4730,7 +5445,9 @@
       "requestSchema": "SubscriptionPromotionalOfferUpdateRequest",
       "type": "subscriptionPromotionalOffers",
       "attributes": [],
-      "relationships": ["prices"],
+      "relationships": [
+        "prices"
+      ],
       "linkage": false,
       "included": true
     },
@@ -4748,7 +5465,9 @@
         "reviewNote",
         "subscriptionPeriod"
       ],
-      "relationships": ["group"],
+      "relationships": [
+        "group"
+      ],
       "linkage": false,
       "included": false
     },
@@ -4778,7 +5497,11 @@
         "reviewNote",
         "subscriptionPeriod"
       ],
-      "relationships": ["introductoryOffers", "prices", "promotionalOffers"],
+      "relationships": [
+        "introductoryOffers",
+        "prices",
+        "promotionalOffers"
+      ],
       "linkage": false,
       "included": true
     },
@@ -4811,7 +5534,9 @@
       "requestSchema": "SubscriptionSubmissionCreateRequest",
       "type": "subscriptionSubmissions",
       "attributes": [],
-      "relationships": ["subscription"],
+      "relationships": [
+        "subscription"
+      ],
       "linkage": false,
       "included": false
     },
@@ -4822,7 +5547,9 @@
       "requestSchema": "SubscriptionVersionCreateRequest",
       "type": "subscriptionVersions",
       "attributes": [],
-      "relationships": ["subscription"],
+      "relationships": [
+        "subscription"
+      ],
       "linkage": false,
       "included": false
     },
@@ -4832,7 +5559,11 @@
       "operationId": "territoryAvailabilities_updateInstance",
       "requestSchema": "TerritoryAvailabilityUpdateRequest",
       "type": "territoryAvailabilities",
-      "attributes": ["available", "preOrderEnabled", "releaseDate"],
+      "attributes": [
+        "available",
+        "preOrderEnabled",
+        "releaseDate"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -4851,7 +5582,9 @@
         "provisioningAllowed",
         "roles"
       ],
-      "relationships": ["visibleApps"],
+      "relationships": [
+        "visibleApps"
+      ],
       "linkage": false,
       "included": false
     },
@@ -4883,8 +5616,14 @@
       "operationId": "users_updateInstance",
       "requestSchema": "UserUpdateRequest",
       "type": "users",
-      "attributes": ["allAppsVisible", "provisioningAllowed", "roles"],
-      "relationships": ["visibleApps"],
+      "attributes": [
+        "allAppsVisible",
+        "provisioningAllowed",
+        "roles"
+      ],
+      "relationships": [
+        "visibleApps"
+      ],
       "linkage": false,
       "included": false
     },
@@ -4928,7 +5667,9 @@
       "requestSchema": "WebhookDeliveryCreateRequest",
       "type": "webhookDeliveries",
       "attributes": [],
-      "relationships": ["template"],
+      "relationships": [
+        "template"
+      ],
       "linkage": false,
       "included": false
     },
@@ -4939,7 +5680,9 @@
       "requestSchema": "WebhookPingCreateRequest",
       "type": "webhookPings",
       "attributes": [],
-      "relationships": ["webhook"],
+      "relationships": [
+        "webhook"
+      ],
       "linkage": false,
       "included": false
     },
@@ -4949,8 +5692,16 @@
       "operationId": "webhooks_createInstance",
       "requestSchema": "WebhookCreateRequest",
       "type": "webhooks",
-      "attributes": ["enabled", "eventTypes", "name", "secret", "url"],
-      "relationships": ["app"],
+      "attributes": [
+        "enabled",
+        "eventTypes",
+        "name",
+        "secret",
+        "url"
+      ],
+      "relationships": [
+        "app"
+      ],
       "linkage": false,
       "included": false
     },
@@ -4971,7 +5722,13 @@
       "operationId": "webhooks_updateInstance",
       "requestSchema": "WebhookUpdateRequest",
       "type": "webhooks",
-      "attributes": ["enabled", "eventTypes", "name", "secret", "url"],
+      "attributes": [
+        "enabled",
+        "eventTypes",
+        "name",
+        "secret",
+        "url"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -4997,7 +5754,10 @@
         "startDate",
         "targetSubscriptionPlanType"
       ],
-      "relationships": ["prices", "subscription"],
+      "relationships": [
+        "prices",
+        "subscription"
+      ],
       "linkage": false,
       "included": true
     },
@@ -5037,8 +5797,13 @@
       "operationId": "appAvailabilitiesV2_createInstance",
       "requestSchema": "AppAvailabilityV2CreateRequest",
       "type": "appAvailabilities",
-      "attributes": ["availableInNewTerritories"],
-      "relationships": ["app", "territoryAvailabilities"],
+      "attributes": [
+        "availableInNewTerritories"
+      ],
+      "relationships": [
+        "app",
+        "territoryAvailabilities"
+      ],
       "linkage": false,
       "included": true
     },
@@ -5048,8 +5813,14 @@
       "operationId": "appStoreVersionExperimentsV2_createInstance",
       "requestSchema": "AppStoreVersionExperimentV2CreateRequest",
       "type": "appStoreVersionExperiments",
-      "attributes": ["name", "platform", "trafficProportion"],
-      "relationships": ["app"],
+      "attributes": [
+        "name",
+        "platform",
+        "trafficProportion"
+      ],
+      "relationships": [
+        "app"
+      ],
       "linkage": false,
       "included": false
     },
@@ -5070,7 +5841,11 @@
       "operationId": "appStoreVersionExperimentsV2_updateInstance",
       "requestSchema": "AppStoreVersionExperimentV2UpdateRequest",
       "type": "appStoreVersionExperiments",
-      "attributes": ["name", "started", "trafficProportion"],
+      "attributes": [
+        "name",
+        "started",
+        "trafficProportion"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -5081,8 +5856,13 @@
       "operationId": "gameCenterAchievementImagesV2_createInstance",
       "requestSchema": "GameCenterAchievementImageV2CreateRequest",
       "type": "gameCenterAchievementImages",
-      "attributes": ["fileName", "fileSize"],
-      "relationships": ["localization"],
+      "attributes": [
+        "fileName",
+        "fileSize"
+      ],
+      "relationships": [
+        "localization"
+      ],
       "linkage": false,
       "included": false
     },
@@ -5103,7 +5883,9 @@
       "operationId": "gameCenterAchievementImagesV2_updateInstance",
       "requestSchema": "GameCenterAchievementImageV2UpdateRequest",
       "type": "gameCenterAchievementImages",
-      "attributes": ["uploaded"],
+      "attributes": [
+        "uploaded"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -5120,7 +5902,9 @@
         "locale",
         "name"
       ],
-      "relationships": ["version"],
+      "relationships": [
+        "version"
+      ],
       "linkage": false,
       "included": false
     },
@@ -5164,7 +5948,11 @@
         "showBeforeEarned",
         "vendorIdentifier"
       ],
-      "relationships": ["gameCenterDetail", "gameCenterGroup", "versions"],
+      "relationships": [
+        "gameCenterDetail",
+        "gameCenterGroup",
+        "versions"
+      ],
       "linkage": false,
       "included": true
     },
@@ -5215,7 +6003,9 @@
       "requestSchema": "GameCenterAchievementVersionV2CreateRequest",
       "type": "gameCenterAchievementVersions",
       "attributes": [],
-      "relationships": ["achievement"],
+      "relationships": [
+        "achievement"
+      ],
       "linkage": false,
       "included": false
     },
@@ -5225,8 +6015,13 @@
       "operationId": "gameCenterLeaderboardImagesV2_createInstance",
       "requestSchema": "GameCenterLeaderboardImageV2CreateRequest",
       "type": "gameCenterLeaderboardImages",
-      "attributes": ["fileName", "fileSize"],
-      "relationships": ["localization"],
+      "attributes": [
+        "fileName",
+        "fileSize"
+      ],
+      "relationships": [
+        "localization"
+      ],
       "linkage": false,
       "included": false
     },
@@ -5247,7 +6042,9 @@
       "operationId": "gameCenterLeaderboardImagesV2_updateInstance",
       "requestSchema": "GameCenterLeaderboardImageV2UpdateRequest",
       "type": "gameCenterLeaderboardImages",
-      "attributes": ["uploaded"],
+      "attributes": [
+        "uploaded"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -5266,7 +6063,9 @@
         "locale",
         "name"
       ],
-      "relationships": ["version"],
+      "relationships": [
+        "version"
+      ],
       "linkage": false,
       "included": false
     },
@@ -5390,8 +6189,13 @@
       "operationId": "gameCenterLeaderboardSetImagesV2_createInstance",
       "requestSchema": "GameCenterLeaderboardSetImageV2CreateRequest",
       "type": "gameCenterLeaderboardSetImages",
-      "attributes": ["fileName", "fileSize"],
-      "relationships": ["localization"],
+      "attributes": [
+        "fileName",
+        "fileSize"
+      ],
+      "relationships": [
+        "localization"
+      ],
       "linkage": false,
       "included": false
     },
@@ -5412,7 +6216,9 @@
       "operationId": "gameCenterLeaderboardSetImagesV2_updateInstance",
       "requestSchema": "GameCenterLeaderboardSetImageV2UpdateRequest",
       "type": "gameCenterLeaderboardSetImages",
-      "attributes": ["uploaded"],
+      "attributes": [
+        "uploaded"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -5423,8 +6229,13 @@
       "operationId": "gameCenterLeaderboardSetLocalizationsV2_createInstance",
       "requestSchema": "GameCenterLeaderboardSetLocalizationV2CreateRequest",
       "type": "gameCenterLeaderboardSetLocalizations",
-      "attributes": ["locale", "name"],
-      "relationships": ["version"],
+      "attributes": [
+        "locale",
+        "name"
+      ],
+      "relationships": [
+        "version"
+      ],
       "linkage": false,
       "included": false
     },
@@ -5445,7 +6256,9 @@
       "operationId": "gameCenterLeaderboardSetLocalizationsV2_updateInstance",
       "requestSchema": "GameCenterLeaderboardSetLocalizationV2UpdateRequest",
       "type": "gameCenterLeaderboardSetLocalizations",
-      "attributes": ["name"],
+      "attributes": [
+        "name"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -5456,7 +6269,10 @@
       "operationId": "gameCenterLeaderboardSetsV2_createInstance",
       "requestSchema": "GameCenterLeaderboardSetV2CreateRequest",
       "type": "gameCenterLeaderboardSets",
-      "attributes": ["referenceName", "vendorIdentifier"],
+      "attributes": [
+        "referenceName",
+        "vendorIdentifier"
+      ],
       "relationships": [
         "gameCenterDetail",
         "gameCenterGroup",
@@ -5483,7 +6299,9 @@
       "operationId": "gameCenterLeaderboardSetsV2_updateInstance",
       "requestSchema": "GameCenterLeaderboardSetV2UpdateRequest",
       "type": "gameCenterLeaderboardSets",
-      "attributes": ["referenceName"],
+      "attributes": [
+        "referenceName"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -5528,7 +6346,9 @@
       "requestSchema": "GameCenterLeaderboardSetVersionV2CreateRequest",
       "type": "gameCenterLeaderboardSetVersions",
       "attributes": [],
-      "relationships": ["leaderboardSet"],
+      "relationships": [
+        "leaderboardSet"
+      ],
       "linkage": false,
       "included": false
     },
@@ -5539,7 +6359,9 @@
       "requestSchema": "GameCenterLeaderboardVersionV2CreateRequest",
       "type": "gameCenterLeaderboardVersions",
       "attributes": [],
-      "relationships": ["leaderboard"],
+      "relationships": [
+        "leaderboard"
+      ],
       "linkage": false,
       "included": false
     },
@@ -5549,8 +6371,13 @@
       "operationId": "inAppPurchaseImagesV2_createInstance",
       "requestSchema": "InAppPurchaseImageV2CreateRequest",
       "type": "inAppPurchaseImages",
-      "attributes": ["fileName", "fileSize"],
-      "relationships": ["version"],
+      "attributes": [
+        "fileName",
+        "fileSize"
+      ],
+      "relationships": [
+        "version"
+      ],
       "linkage": false,
       "included": false
     },
@@ -5571,7 +6398,9 @@
       "operationId": "inAppPurchaseImagesV2_updateInstance",
       "requestSchema": "InAppPurchaseImageV2UpdateRequest",
       "type": "inAppPurchaseImages",
-      "attributes": ["uploaded"],
+      "attributes": [
+        "uploaded"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -5582,8 +6411,14 @@
       "operationId": "inAppPurchaseLocalizationsV2_createInstance",
       "requestSchema": "InAppPurchaseLocalizationV2CreateRequest",
       "type": "inAppPurchaseLocalizations",
-      "attributes": ["description", "locale", "name"],
-      "relationships": ["version"],
+      "attributes": [
+        "description",
+        "locale",
+        "name"
+      ],
+      "relationships": [
+        "version"
+      ],
       "linkage": false,
       "included": false
     },
@@ -5604,7 +6439,10 @@
       "operationId": "inAppPurchaseLocalizationsV2_updateInstance",
       "requestSchema": "InAppPurchaseLocalizationV2UpdateRequest",
       "type": "inAppPurchaseLocalizations",
-      "attributes": ["description", "name"],
+      "attributes": [
+        "description",
+        "name"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -5622,7 +6460,9 @@
         "productId",
         "reviewNote"
       ],
-      "relationships": ["app"],
+      "relationships": [
+        "app"
+      ],
       "linkage": false,
       "included": false
     },
@@ -5643,7 +6483,11 @@
       "operationId": "inAppPurchasesV2_updateInstance",
       "requestSchema": "InAppPurchaseV2UpdateRequest",
       "type": "inAppPurchases",
-      "attributes": ["familySharable", "name", "reviewNote"],
+      "attributes": [
+        "familySharable",
+        "name",
+        "reviewNote"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -5670,7 +6514,9 @@
       "requestSchema": "SandboxTestersClearPurchaseHistoryRequestV2CreateRequest",
       "type": "sandboxTestersClearPurchaseHistoryRequest",
       "attributes": [],
-      "relationships": ["sandboxTesters"],
+      "relationships": [
+        "sandboxTesters"
+      ],
       "linkage": false,
       "included": false
     },
@@ -5680,8 +6526,14 @@
       "operationId": "subscriptionGroupLocalizationsV2_createInstance",
       "requestSchema": "SubscriptionGroupLocalizationV2CreateRequest",
       "type": "subscriptionGroupLocalizations",
-      "attributes": ["customAppName", "locale", "name"],
-      "relationships": ["version"],
+      "attributes": [
+        "customAppName",
+        "locale",
+        "name"
+      ],
+      "relationships": [
+        "version"
+      ],
       "linkage": false,
       "included": false
     },
@@ -5702,7 +6554,10 @@
       "operationId": "subscriptionGroupLocalizationsV2_updateInstance",
       "requestSchema": "SubscriptionGroupLocalizationV2UpdateRequest",
       "type": "subscriptionGroupLocalizations",
-      "attributes": ["customAppName", "name"],
+      "attributes": [
+        "customAppName",
+        "name"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -5713,8 +6568,13 @@
       "operationId": "subscriptionImagesV2_createInstance",
       "requestSchema": "SubscriptionImageV2CreateRequest",
       "type": "subscriptionImages",
-      "attributes": ["fileName", "fileSize"],
-      "relationships": ["version"],
+      "attributes": [
+        "fileName",
+        "fileSize"
+      ],
+      "relationships": [
+        "version"
+      ],
       "linkage": false,
       "included": false
     },
@@ -5735,7 +6595,9 @@
       "operationId": "subscriptionImagesV2_updateInstance",
       "requestSchema": "SubscriptionImageV2UpdateRequest",
       "type": "subscriptionImages",
-      "attributes": ["uploaded"],
+      "attributes": [
+        "uploaded"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
@@ -5746,8 +6608,14 @@
       "operationId": "subscriptionLocalizationsV2_createInstance",
       "requestSchema": "SubscriptionLocalizationV2CreateRequest",
       "type": "subscriptionLocalizations",
-      "attributes": ["description", "locale", "name"],
-      "relationships": ["version"],
+      "attributes": [
+        "description",
+        "locale",
+        "name"
+      ],
+      "relationships": [
+        "version"
+      ],
       "linkage": false,
       "included": false
     },
@@ -5768,7 +6636,10 @@
       "operationId": "subscriptionLocalizationsV2_updateInstance",
       "requestSchema": "SubscriptionLocalizationV2UpdateRequest",
       "type": "subscriptionLocalizations",
-      "attributes": ["description", "name"],
+      "attributes": [
+        "description",
+        "name"
+      ],
       "relationships": [],
       "linkage": false,
       "included": false
