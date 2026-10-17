@@ -64,9 +64,7 @@ export function MintApiTokenFlow({
   const { fresh, markStale } = useStepUp(true);
   const [label, setLabel] = React.useState("");
   const [days, setDays] = React.useState<number | null>(null);
-  const [scopes, setScopes] = React.useState<AdminApiScope[]>([
-    "bundles:mint",
-  ]);
+  const [scopes, setScopes] = React.useState<AdminApiScope[]>(["bundles:mint"]);
   const [secret, setSecret] = React.useState<string | null>(null);
   const [saving, setSaving] = React.useState(false);
   const [failure, setFailure] = React.useState<unknown>(null);
