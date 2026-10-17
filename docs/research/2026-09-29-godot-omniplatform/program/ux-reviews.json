@@ -214,6 +214,11 @@
       "verdict": "pass",
       "date": "2026-10-17",
       "evidence": "_mockups/review/UK-04-05/ux-review-2.md (second re-review: pass-with-fixes; polish on wp/UK-kits-polish)"
+    },
+    "ST-09": {
+      "verdict": "pass",
+      "date": "2026-10-17",
+      "evidence": "_mockups/review/ST-09/ux-review-2.md (re-review pass-with-fixes after one fix round; N1-N10 + Advanced folded in wp/ST-09-fix 56fe9ad34)"
     }
   }
 }
