@@ -8,6 +8,7 @@ sidebar:
 ---
 
 import { Content as Deployment } from "../../../../../../../docs/DEPLOYMENT.md";
+import ImportedFile from "../../../../components/docs/ImportedFile.astro";
 
 **Role required:** Platform admin with Cloudflare, GitHub and identity provider access.
 
@@ -19,7 +20,7 @@ The page below is `docs/DEPLOYMENT.md`, rendered in full, including the real acc
 
 In the console, **Platform → Deployment** shows the build this instance runs, the D1 migrations it has applied against the build's newest, the required indexes, which bindings are present and the platform activity log. Check it first when every product goes dark after a deploy.
 
-<Deployment />
+<ImportedFile><Deployment /></ImportedFile>
 
 ## Verify
 

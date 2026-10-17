@@ -155,4 +155,10 @@ export const DOCS_COMPONENTS: readonly DocsComponent[] = [
     summary: "One H2 section of docs/RUNBOOK.md or docs/DEPLOYMENT.md.",
     props: ['file: "RUNBOOK" | "DEPLOYMENT"', "heading: string"],
   },
+  {
+    name: "ImportedFile",
+    file: "ImportedFile.astro",
+    summary: "Wraps a whole imported repo file and drops its own h1.",
+    props: ['slots: "default"'],
+  },
 ];

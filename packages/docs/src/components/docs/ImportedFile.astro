@@ -1,0 +1,11 @@
+---
+/**
+ * Wraps a repo Markdown file a page imports whole (`docs/DEPLOYMENT.md`, `docs/PRIVACY.md`, the
+ * style guide). The file opens with its own `# Title`; the page title replaces it, so the first
+ * h1 is dropped from the rendered output and the page keeps exactly one.
+ */
+const html = await Astro.slots.render("default");
+const withoutTitle = html.replace(/<h1\b[^>]*>[\s\S]*?<\/h1>/, "");
+---
+
+<Fragment set:html={withoutTitle} />
