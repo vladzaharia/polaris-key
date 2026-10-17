@@ -8284,6 +8284,78 @@ privacyUrl}` with https URLs reads as unset, and an unreadable store fails the s
   account always opens it), so only the legacy product callback still creates accounts without
   the step until I-32b retires it, and publishing waits for that (docs/RUNBOOK.md).
 
+### App passthrough on authorize and token (I-08)
+
+plans/I-08.md §6, WIRE-CONTRACT-V4 §12.4 and §12.5. An app sends a person's browser to
+`GET /<p>/identity/authorize`, the card asks them (Continue, Cancel), and the app redeems the code
+at `POST /<p>/identity/token` for a device token. One row per threat; tests are in
+`test/identityAuthorize.test.ts` and the transcripts `redirect-web-*.json`.
+
+- **Code interception and replay (PKCE, RFC 7636 / 9700).** The code is useless without the
+  verifier: `S256` is the only method (`plain` and an absent method are `invalid_request`), the
+  challenge is stored hashed as the code's proof, and `token` derives the challenge from the
+  presented verifier and redeems in one atomic operation in I-02's store. Match or mismatch, the
+  code ends: a wrong verifier burns it (no guessing), a second redemption finds nothing, and the
+  code lives 60 seconds. The code is addressed by the product and a peppered hash, bound to the
+  `client_id`, `redirect_uri`, account and granted scope, and a mismatch of either is
+  `invalid_grant`. Never a token in a URL or fragment: the device token is in the body of the
+  `token` response only. Residual: a code stolen from the redirect together with the verifier
+  (which never leaves the app) is the app's own compromise.
+- **Open redirect and redirect-URI confusion.** A `redirect_uri` must equal the canonical
+  `origin + path` built from a registered `web.origins` entry and an `identity.redirectPaths`
+  entry, both exact: the URI the app sent must equal the parsed form, so a query, fragment,
+  userinfo, port, dot segment, encoded dot, backslash, prefix, suffix or sibling or sub-domain
+  never matches (`validateRedirectUri`, tests). `client_id` and `redirect_uri` are checked before
+  anything else, and until both are valid the answer is a branded page and never a redirect; every
+  later error redirects only to the validated URI. The product's own manifest is the only source of
+  both lists.
+- **Login CSRF and a forwarded authorize URL (R1-07 for the web redirect).** An attacker who starts
+  `authorize` and sends the card URL to a victim gets nothing: the request handle is bound to the
+  browser that started it by the `__Host-pk_req` cookie (HttpOnly, Secure, SameSite=Lax), and
+  Continue and Cancel need that binder, the account session and the portal CSRF header; a victim
+  without the attacker's binder gets `404 not_found`, the same shape as an unknown handle. The code
+  is delivered only by the response to the press and only to the URI the product registered, so the
+  attacker never receives it. The other direction (an attacker starts a flow and the victim's
+  browser lands on the app with the attacker's code) is the app's `state` check, the contract's
+  duty: the attacker's `state` is not the victim session's. A cross-site POST is refused by
+  Fetch Metadata. Refused Continues (terms, licence choice, bad consent) consume nothing, and a
+  stranger cannot burn a handle.
+- **Mix-up (RFC 9207).** `iss` is on every redirect, success and error, and in discovery; the SDK
+  compares it with the issuer it started the flow with.
+- **No silent grants (D22).** Continue is always shown and records the claims granted (a subset of
+  the request's scope; an unknown claim is `invalid_request`) and the hash of what the product
+  asked, so a changed ask is asked again. The product's terms are enforced at Continue as well as
+  at the email gate: a session that never went through the gate for this product accepts the
+  version it was shown or is refused (`terms_required`). The licence choice is never silent: an
+  account holding licences for the product must name one (`license_choice_required`).
+- **Device takeover at `token`.** `token` takes `X-PKey-Device` and no device credential, so a
+  device id is a bearer-less identifier as on `license/activate` and `devices/register`. The
+  rules are the same: a device id that already runs on a licence is never taken over without a
+  choice; keeping the licence it runs on needs the device's own live token in `Authorization`; a
+  seat claim is seat-checked and refuses a device another licence holds. A code holder (a PKCE-
+  proven account holder) can therefore bind only their own account to a device id, claim a seat on
+  a licence they chose from their own account, or register a licence-less device; they cannot read
+  or rotate another device's token. Residual: a licence-less device id that someone else guesses
+  can be re-registered by a code holder (as `register` allows); device ids are 128 random bits
+  chosen by the SDK.
+- **Brute force and enumeration.** `authorize` 60 a minute per client network; `token` 30 a minute
+  per network and 10 a minute per device id, both failing closed, Continue and Cancel 30 a minute
+  per account; a malformed code or verifier is refused before the store is touched. Every "no" at
+  `token` for a code is one `invalid_grant`. Audit rows (`signin.continue`, `signin.token`) hold the
+  subject and device, never a code, verifier, `state`, challenge or hint.
+- **Hints.** `login_hint` and `name_hint` prefill the card and verify nothing; they are normalised
+  or dropped and never become a session, a verified address or a displayed name the card trusts
+  over the account's. The card's app name and icon come from the client record and never from a
+  query parameter (PX-W13).
+- **The picture and the profile.** The `token` response carries no profile; the claims the person
+  consented to are recorded for the ID token of I-21. Nothing here hands an app an account
+  session: the first-party session cookie is never accepted on `token` or on any Cloud Sync route.
+- **Replace and the choice grant (I-08b).** Not built here. I-08b's rows (the pending-sign-in
+  grant, its device and account binding, Replace) are written by that package; the licence choice
+  in this one is the single licence named at Continue and re-checked at `token`.
+- **R1-07 for device code.** Device code's own binding is I-37's (it fails closed under D1.A);
+  this section covers the web redirect only.
+
 ### Product backends: `X-PKey-License` (SP-53)
 
 An app can send its signed licence document to its developer's own backend, which decides the
