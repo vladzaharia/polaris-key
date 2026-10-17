@@ -16,7 +16,12 @@
  * The snapshot never decides what is applied; it records what was. `applied_sha` is the commit the
  * documents were fetched AT, resolved by GitHub from the DB-configured repository's default branch
  * (`services/release/manifestFetch.ts`) or, for the deploy hook, the deploy's own `PKEY_GIT_SHA`.
- * Manifests carry secret NAMES only, so `manifest_json` holds no secret material.
+ * A manifest profile CAN carry secret values (`payload.secrets.*`, and `payload.config.<key>` for a
+ * catalog-secret key); the apply seals them, but the parsed manifest handed to the snapshot is the
+ * pre-seal one. So the snapshot scrubs before it stores (`scrubManifestSecrets`): `manifest_json`
+ * holds a fixed marker where a secret value was, and nothing that can be restored. The values
+ * stay in the linked repository and, sealed, in the profile row. `files_sha256` is taken over the
+ * raw documents and is untouched, so drift detection is unchanged.
  */
 
 import type { Db, DbStatement } from "../db/types.js";
@@ -66,6 +71,53 @@ export async function manifestFilesSha256(
   return sha256Hex(JSON.stringify(pairs));
 }
 
+/** What a scrubbed snapshot holds where a secret value was. */
+export const SNAPSHOT_REDACTED = "[redacted]";
+
+function isObj(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null && !Array.isArray(v);
+}
+
+function redactEntry(entry: unknown): unknown {
+  if (isObj(entry) && "value" in entry)
+    return entry.value === null ||
+      entry.value === undefined ||
+      entry.value === SNAPSHOT_REDACTED
+      ? entry
+      : { ...entry, value: SNAPSHOT_REDACTED };
+  return entry === null || entry === undefined ? entry : SNAPSHOT_REDACTED;
+}
+
+/**
+ * A copy of the parsed manifest with every secret value replaced by `SNAPSHOT_REDACTED`: the
+ * whole `secrets` bucket of each profile payload, and the `config` entries under a key
+ * `isSecretKey` names. Everything else is carried as it is. Idempotent. A manifest of another
+ * shape is returned unchanged.
+ */
+export function scrubManifestSecrets(
+  manifest: unknown,
+  isSecretKey: (key: string) => boolean,
+): unknown {
+  if (!isObj(manifest) || !Array.isArray(manifest.profiles)) return manifest;
+  const profiles = manifest.profiles.map((profile: unknown) => {
+    if (!isObj(profile) || !isObj(profile.payload)) return profile;
+    const payload: Record<string, unknown> = { ...profile.payload };
+    if (isObj(payload.secrets))
+      payload.secrets = Object.fromEntries(
+        Object.entries(payload.secrets).map(([k, v]) => [k, redactEntry(v)]),
+      );
+    if (isObj(payload.config))
+      payload.config = Object.fromEntries(
+        Object.entries(payload.config).map(([k, v]) => [
+          k,
+          isSecretKey(k) ? redactEntry(v) : v,
+        ]),
+      );
+    return { ...profile, payload };
+  });
+  return { ...manifest, profiles };
+}
+
 /** What an apply path hands to `stmtUpsertManifestSnapshot`. */
 export interface ManifestSnapshotInput {
   product: string;
@@ -103,7 +155,10 @@ export function stmtUpsertManifestSnapshot(
   };
 }
 
-/** Build the snapshot statement straight from the raw documents and the parsed manifest. */
+/**
+ * Build the snapshot statement straight from the raw documents and the parsed manifest, scrubbed
+ * of secret values by `isSecretKey` (the union of the incoming and stored catalogs, as sealing).
+ */
 export async function manifestSnapshotStatement(
   product: string,
   origin: SnapshotOrigin,
@@ -111,6 +166,7 @@ export async function manifestSnapshotStatement(
   files: Readonly<Record<string, string>>,
   manifest: unknown,
   now: number,
+  isSecretKey: (key: string) => boolean,
 ): Promise<DbStatement> {
   return stmtUpsertManifestSnapshot({
     product,
@@ -118,7 +174,7 @@ export async function manifestSnapshotStatement(
     appliedAt: now,
     origin,
     filesSha256: await manifestFilesSha256(files),
-    manifest,
+    manifest: scrubManifestSecrets(manifest, isSecretKey),
   });
 }
 

@@ -531,6 +531,7 @@ export async function runSettingsBackfill(
         source.files,
         manifest,
         opts.now,
+        sealKey,
       );
   }
 

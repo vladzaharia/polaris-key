@@ -1773,3 +1773,36 @@ describe("the migration", () => {
     expect(await reportRows(ctx.db)).toHaveLength(1);
   });
 });
+
+describe("the backfill's snapshot holds no secret value", () => {
+  it("scrubs a secret declared in a profile payload", async () => {
+    const SECRET = "s3cret-value";
+    const secretSchema = JSON.stringify({
+      schemaVersion: 1,
+      entries: [{ ...entry("run.name"), kind: "secret" }],
+    });
+    const d: Decl = {
+      schema: secretSchema,
+      payloads: {
+        standard: {
+          secrets: { t: { state: "enforced", value: SECRET, updatedAt: 0 } },
+          config: {
+            "run.name": { state: "enforced", value: SECRET, updatedAt: 0 },
+          },
+        },
+      },
+    };
+    const ctx = await linked(d);
+    await ctx.db.run(
+      "DELETE FROM product_manifest_snapshot WHERE product = ?",
+      SLUG,
+    );
+    await okRun(ctx, { github: { head: d } });
+    const row = await ctx.db.first<{ manifest_json: string; origin: string }>(
+      "SELECT manifest_json, origin FROM product_manifest_snapshot WHERE product = ?",
+      SLUG,
+    );
+    expect(row!.origin).toBe("backfill");
+    expect(row!.manifest_json).not.toContain(SECRET);
+  });
+});

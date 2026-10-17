@@ -1183,6 +1183,7 @@ export async function registerFromManifest(
       applied.files,
       manifest,
       now,
+      isSecretKey,
     ),
   );
 
