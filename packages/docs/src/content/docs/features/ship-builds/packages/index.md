@@ -116,19 +116,19 @@ A version row offers only what the protocol can express. A yank needs a reason a
 
 ### Personal tokens
 
-A personal token (`pkeyp_…`) belongs to a person, not a product. One token installs every package the account may read, across products. A person creates it in the portal under **Account → Packages**: a name, 1 to 365 days (90 by default), at most 25 live, `packages:read` only. Creating one needs a sign-in from the last 5 minutes. The token is shown once and stored only as a keyed hash; the list shows its name, last four characters, last use and expiry.
+A personal token (`pkeyp_…`) belongs to a person, not a product: one token installs every package the account may read, across products. A person creates it in the portal under **Account → Packages**: a name, 1 to 365 days (90 by default), at most 25 live, `packages:read` only, after a sign-in from the last 5 minutes. It is shown once.
 
-The registry host works out what the token may read for each owner on every request:
+The registry host judges it per owner on every request:
 
-- The account's active licenses in the owner's product, judged exactly as a license-bound token is: usable for Customers, and for Entitled also holding the package's gate flag.
-- The platform's own product (`system`) is never readable by a customer's token, whatever licenses the account holds.
-- A personal token never publishes, and is never a Godot editor URL token.
+- The account's active licenses in the owner's product count as a license-bound token's do: usable for Customers, and for Entitled also holding the package's gate flag.
+- The platform's own product is never readable by a customer's token.
+- It never publishes and is never a Godot editor URL.
 
-A person revokes their own tokens. A platform admin lists every personal token under **Personal tokens** in the console and can revoke one; they cannot create one. Revoking takes effect within 30 seconds. An erased account's tokens are revoked first; merging two accounts moves the tokens to the one that stays.
+A person revokes their own. A platform admin lists and revokes any under **Personal tokens**, but cannot create one. Erasing an account revokes its tokens; a merge moves them to the account that stays.
 
 ### Registry tokens
 
-**Tokens** lists the owner's `pkeyr_…` tokens: label, last four characters, feeds, binding, creator, expiry, last use and status. **New token** asks for a label, the feeds, an expiry of 1 to 365 days (90 by default), a binding (the product, or one license), and **Godot editor URL**, a read-only token for the Godot feed that lasts 30 days by default. The token is shown once. **Access** chooses **Read** or **Read and publish**. A publish token is bound to the product, names its feeds explicitly and lasts 1 to 30 days (7 by default). Revoking is a danger confirmation and takes effect within 30 seconds. **Revoke all** revokes every active token of the owner, including those licensees minted. A license's **Keys** tab has a **Registry tokens** panel for the tokens bound to it. The portal no longer mints license-bound tokens: licensees create a personal token instead. The license-bound tokens already minted keep working until they expire and can still be revoked.
+**Tokens** lists the owner's `pkeyr_…` tokens: label, last four characters, feeds, binding, creator, expiry, last use and status. **New token** asks for a label, the feeds, an expiry of 1 to 365 days (90 by default), a binding (the product, or one license), and **Godot editor URL**, a read-only token for the Godot feed that lasts 30 days by default. The token is shown once. **Access** chooses **Read** or **Read and publish**. A publish token is bound to the product, names its feeds explicitly and lasts 1 to 30 days (7 by default). Revoking is a danger confirmation and takes effect within 30 seconds. **Revoke all** revokes every active token of the owner, including those licensees minted. A license's **Keys** tab has a **Registry tokens** panel for the tokens bound to it. The portal no longer mints license-bound tokens; those already minted work until they expire.
 
 ### Retention
 

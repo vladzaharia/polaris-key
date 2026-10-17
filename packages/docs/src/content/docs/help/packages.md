@@ -1,6 +1,6 @@
 ---
 title: "Install an app's packages"
-description: "Create a token, find the setup for an app's packages, and what to do when a development build is gone."
+description: "Create an access code, find the setup for an app's packages, and what to do when a development build is gone."
 type: "help"
 status: "shipped"
 lastReviewed: "2026-10-17"
@@ -8,33 +8,28 @@ sidebar:
   order: 7
 ---
 
-Some apps publish packages for people whose license includes them: a library, a command-line tool, a container image or an add-on. You install one with a package manager such as npm, pip or Docker. This page shows how to create a token, where to find the setup and which versions stay available.
+Some apps publish packages for people whose license includes them: a library, a command-line tool, a container image or an add-on. You install one with a package manager such as npm, pip or Docker. This page shows how to create an access code, where to find the setup and which versions stay available.
 
 ## Find the setup
 
-Open **Account → Packages** at key.plrs.im. It lists the private packages your licenses include, with the setup for each package manager. Choose a product if you have more than one.
+Open **Account → Packages** at key.plrs.im. It shows the setup for each package manager, for each app whose license includes private packages.
 
-A product's page in your library has a **Packages** row that links there.
+## Create an access code
 
-## Create a token
+One access code installs every package your licenses include. Make one per computer.
 
-One token installs every package your licenses include. Create one for each computer or build server.
+1. Choose **Create access code**, name it, and pick how long it lasts, up to a year.
+2. If asked, confirm it's you.
+3. Copy the code. It is shown once. If you lose it, revoke it and make another.
+4. Set the environment variable `PKEY_REGISTRY_TOKEN` to the code, then follow the setup on the page.
 
-1. Open **Account → Packages** and choose **Create token**.
-2. Name it, for example "Work laptop". Choose how long it lasts, up to a year. The default is 90 days.
-3. If asked, confirm it's you. You can create a token for 5 minutes after you sign in.
-4. Copy the token. It is shown once. If you lose it, revoke it and create another.
-5. Set the environment variable `PKEY_REGISTRY_TOKEN` to the token, then follow the setup on the page.
+**Check it worked.** The code is in your list. After your first install it shows its last use.
 
-**Check it worked.** The token appears in your list with "never used". After your first install it shows when it was last used.
+A code only reads. It works while a license that includes the package is active.
 
-A token only reads. It works while a license that includes the package is active, and stops when the token expires or you revoke it.
+## Revoke an access code
 
-## Revoke a token
-
-Choose **Revoke** next to the token, then confirm. Anything installing with it stops at once. Removing a token you no longer use is always safe: create a new one when you need it.
-
-Tokens you made on a product's page before this change keep working until they expire. Revoke them from that product's page, or let them expire.
+Choose **Revoke** next to the code, then confirm. Anything using it stops at once. Older codes keep working until they expire.
 
 ## Which versions stay available
 
