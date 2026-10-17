@@ -618,7 +618,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/cq-worker-services.md"
       ],
       "brief": "wp/P0-23-portal-off-release-tables.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "P0-24",
@@ -4124,7 +4124,7 @@
         "plans/I-27.md §2.2"
       ],
       "brief": "wp/I-08b-licence-choice-api.md",
-      "status": "in-review",
+      "status": "done",
       "planRef": "I-08"
     },
     {
