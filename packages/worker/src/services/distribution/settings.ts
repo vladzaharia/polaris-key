@@ -3,6 +3,7 @@
  * through the descriptor (`distributionService.settings`), never imported by Core (rule 6).
  */
 
+import { RELEASE_PLATFORMS } from "@polaris-key/manifest";
 import { setting } from "../../core/settings/define.js";
 import type { ServiceSettingsSlice } from "../../core/settings/types.js";
 
@@ -38,6 +39,34 @@ export const DISTRIBUTION_SETTINGS_SLICE: ServiceSettingsSlice = {
         "services/distribution/bytes.ts",
       ],
       storage: { kind: "rich", adapter: "dist_access" },
+    }),
+    // ST-42 (SETUP W5): the platforms the operator plans to ship, answered at create ("What do
+    // you ship?") before any build exists. Console-owned; a platform that has builds is shown
+    // whether or not it is listed here. Unset means no answer yet.
+    setting({
+      key: "distribution.intendedPlatforms",
+      scope: "product",
+      service: "distribution",
+      area: "distribution.outlets",
+      label: "Planned platforms",
+      description:
+        "The platforms the product will ship on, before any build exists. Storefronts that do not fit them are left out of the catalogue.",
+      keywords: ["platforms", "macos", "ios", "android", "windows", "linux"],
+      docs: "/docs/features/ship-builds/channels/",
+      value: {
+        kind: "list",
+        of: { kind: "enum", values: RELEASE_PLATFORMS },
+        max: RELEASE_PLATFORMS.length,
+      },
+      defaultValue: null,
+      allowUnset: true,
+      merge: "cascade",
+      ownership: "operator",
+      confirm: { change: "L0" },
+      visibleWhen: VISIBLE,
+      readers: ["core/products/createDefaults.ts"],
+      storage: { kind: "scalar" },
+      since: "ST-42",
     }),
     setting({
       key: "distribution.capabilities",

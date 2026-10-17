@@ -58,6 +58,12 @@ import {
 } from "../../core/products/store.js";
 import { getTier } from "../../core/licensing/store.js";
 import { mintKid } from "../../core/keys.js";
+import {
+  parseCreateChoices,
+  planCreateDefaults,
+  resolveServices,
+} from "../../core/products/createDefaults.js";
+import { DEFAULT_SERVICES, serializeServices } from "../../core/services.js";
 import { deleteTokenRecord } from "../../platform/kv.js";
 import { deleteProduct } from "../../core/products/store.js";
 import { listDevicesByProduct } from "../../core/devices/store.js";
@@ -219,6 +225,9 @@ export async function handleProducts(
       return err(422, ErrorCode.BadRequest, "manifestDigest must be a string", {
         fields: ["manifestDigest"],
       });
+    // ST-42: the create choices; the requirement rule runs over the manifest's own set.
+    const parsed = parseCreateChoices(body);
+    if (!parsed.ok) return createRefusal(parsed);
     const result = await linkRepo(
       env,
       db,
@@ -226,9 +235,19 @@ export async function handleProducts(
       now,
       fetch,
       manifestIngestFor(SERVICES),
-      digest === undefined ? {} : { manifestDigest: digest },
+      {
+        ...(digest === undefined ? {} : { manifestDigest: digest }),
+        create: { choices: parsed.choices, author: session.sub },
+      },
     );
     if (!result.ok) {
+      if (result.reason)
+        return createRefusal({
+          message: result.error,
+          fields: result.fields ?? [],
+          reason: result.reason,
+          codes: result.codes,
+        });
       if (result.status === 409)
         return err(409, ErrorCode.BadRequest, result.error, {
           reason: "manifest",
@@ -263,6 +282,7 @@ export async function handleProducts(
         },
         install: result.install,
         remainingSecrets: result.remainingSecrets,
+        defaults: result.defaults,
         // C-2: the created product (its name), which the console's `LinkRepoResult` already
         // promises, so "<Name> is ready" never has to fall back to the slug.
         product: await (async () => {
@@ -616,6 +636,33 @@ async function manualCreate(
     );
   }
 
+  // ST-42: the create choices (services, planned platforms, the starter tier). Licence defaults
+  // and the compatibility window are not create fields: tiers and platform defaults own the
+  // first, `release.compatWindow` the second.
+  const parsed = parseCreateChoices(body);
+  if (!parsed.ok) return createRefusal(parsed);
+  const { choices } = parsed;
+  if (choices.trustReleaseWorkflow)
+    return err(
+      422,
+      ErrorCode.BadRequest,
+      "a release workflow is trusted through a linked repository",
+      { fields: ["trustReleaseWorkflow"], reason: "trust_requires_repository" },
+    );
+  let services = DEFAULT_SERVICES;
+  if (choices.services) {
+    const resolved = resolveServices(choices.services, null);
+    if (!resolved.ok) return createRefusal(resolved);
+    services = resolved.services;
+  }
+  if (choices.starterTier === "free" && !services.license.enabled)
+    return err(
+      422,
+      ErrorCode.BadRequest,
+      "the Free tier needs the License service",
+      { fields: ["starterTier"], reason: "starter_tier_requires_license" },
+    );
+
   // A schema is now required so the product gets a real, usable catalog. If none is supplied,
   // seed the empty catalog (still mints a signing key).
   const supplied = body.schema;
@@ -649,21 +696,32 @@ async function manualCreate(
     id: kid,
   });
 
-  // Atomic: product + signing key + active catalog in ONE batch, so a product can never
-  // exist without a usable signing key (matches the link-repo invariant).
+  const plan = planCreateDefaults({
+    product: slug,
+    now,
+    services,
+    choices,
+    author: session.sub,
+  });
+
+  // Atomic: product + signing key + active catalog + the defaults (Default profile, Free tier,
+  // planned platforms) in ONE batch, so a product can never exist without a usable signing key
+  // or half its defaults (matches the link-repo invariant).
   await db.batch([
     stmtInsertProduct({
       slug,
       name: String(body.name ?? slug),
       signing_kid: kid,
       signing_pub: publicRawB64url,
-      compat_min: String(body.compatMin ?? "0.0.0"),
-      compat_max: String(body.compatMax ?? "99.0.0"),
+      compat_min: "0.0.0",
+      compat_max: "99.0.0",
       default_max_offline_days: Number(body.defaultMaxOfflineDays ?? 30),
       default_device_limit: deviceLimit,
       admin_group: typeof body.adminGroup === "string" ? body.adminGroup : null,
       branding_json: null,
       release_source: null,
+      services_json: choices.services ? serializeServices({ services }) : null,
+      services_source: choices.services ? "admin" : null,
       created_at: now,
       modified_at: now,
     }),
@@ -685,6 +743,7 @@ async function manualCreate(
       active: 1,
       created_at: now,
     }),
+    ...plan.statements,
   ]);
   await audit(
     db,
@@ -708,10 +767,25 @@ async function manualCreate(
         jwksUrl: `/${slug}/.well-known/jwks.json`,
         trustKeys: { [kid]: publicRawB64url },
       },
+      defaults: plan.created,
       product: created ? await productView(env, db, created) : null,
     },
     201,
   );
+}
+
+/** A create choice the request got wrong (ST-42): 422 with the stable reason. */
+function createRefusal(r: {
+  message: string;
+  fields: string[];
+  reason: string;
+  codes?: string[];
+}): Response {
+  return err(422, ErrorCode.BadRequest, r.message, {
+    fields: r.fields,
+    reason: r.reason,
+    ...(r.codes ? { codes: r.codes } : {}),
+  });
 }
 
 // ── platform KEK keyring + re-seal sweep (R2-09) ───────────────────────────────────────────

@@ -157,6 +157,8 @@ export const SETTING_HOMES: Readonly<Record<string, SettingHome>> = {
   "distribution.commerce": API,
   // Narrow-only, in the drawer of each channel on the page.
   "distribution.capabilities": at("outlets"),
+  // Answered at create (ST-42); the storefronts page's platform chips take it over (UX-53).
+  "distribution.intendedPlatforms": API,
   "distribution.outlets": manifest("distribution"),
   "distribution.transports": manifest("distribution"),
 

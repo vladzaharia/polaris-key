@@ -202,7 +202,7 @@ const ADMIN_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
   // `/manage/api/products[/…]` routes as its own kind (the product registry), narrative too.
   products: [
     // The registry read, with the console logo's `presentation.icon` (console product card).
-    ["/manage/api/products", ["get"]],
+    ["/manage/api/products", ["get", "post"]],
     ["/manage/api/products/link-repo", ["post"]],
     ["/manage/api/products/slug-check", ["get"]],
     // HA-05: the hosted-asset status read the console's Presentation page uses.

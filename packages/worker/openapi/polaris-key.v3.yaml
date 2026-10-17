@@ -14720,6 +14720,67 @@ paths:
               schema: { $ref: "#/components/schemas/AdminProductList" }
         "401": { $ref: "#/components/responses/AdminUnauthorized" }
         "403": { $ref: "#/components/responses/AdminForbidden" }
+    post:
+      operationId: createAdminProduct
+      tags: [admin]
+      summary: Create a product by hand, ready for an SDK in one call
+      description: >
+        Manual create (no repository). In one batch, rolled back whole on any failure: the
+        product, its sealed Ed25519 signing key, catalog v1 (empty, or the supplied `schema`), the
+        Default profile (`default`, reserved), the Free tier, the planned platforms and the
+        services, from the `AdminCreateChoices` below. The licence defaults and the compatibility
+        window are not create fields: tiers and platform defaults own the first, `release.compatWindow`
+        the second (`compatMin`, `compatMax` and the like are ignored). The slug rules are
+        `GET /manage/api/products/slug-check`'s. Platform admin; admin session cookie and CSRF
+        header.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [slug]
+              allOf:
+                - { $ref: "#/components/schemas/AdminCreateChoices" }
+              properties:
+                slug: { type: string }
+                name: { type: string }
+                schema:
+                  description: A catalog as a JSON/YAML string or object; omitted, an empty catalog.
+                signingKid: { type: string }
+                defaultMaxOfflineDays:
+                  { type: integer, minimum: 1, maximum: 365 }
+                defaultDeviceLimit: { type: integer, minimum: 1 }
+                adminGroup: { type: string }
+            examples:
+              defaults:
+                value:
+                  slug: tonebox
+                  name: Tonebox
+                  services: [license, config, release, distribution]
+                  intendedPlatforms: [macos, ios]
+                  starterTier: free
+      responses:
+        "201":
+          description: The product was created.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminProductCreated" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "409":
+          description: The slug is taken.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "422":
+          description: >
+            A refusal; `reason` is `invalid_slug`, `reserved_slug`, `unknown_service`,
+            `<slug>_requires_<requirement>`, `invalid_platforms`, `invalid_starter_tier`,
+            `starter_tier_requires_license` or `trust_requires_repository`.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
   /manage/api/products/link-repo:
     post:
       operationId: createAdminProductFromRepository
@@ -14734,7 +14795,10 @@ paths:
         with its `.pkey/` file and JSON path. It writes nothing. A refusal before the manifest
         could be read (the URL, the App installation, the fetch) is a `422` whose `reason` names
         that check. Without it the product is created: the signing key, catalog, release
-        configuration and the manifest's rows in one batch. `manifestDigest` is the dry run's;
+        configuration and the manifest's rows in one batch, with the Default profile, the Free
+        tier, the planned platforms and the release-workflow trust policy (ST-42: see
+        `AdminCreateChoices`; the response's `defaults` names what was written). `manifestDigest`
+        is the dry run's;
         when given, a `.pkey/` that changed since refuses with `409` (`reason: manifest`). The
         create answers the created `product`. Platform admin; admin session cookie and CSRF
         header.
@@ -14753,6 +14817,8 @@ paths:
             schema:
               type: object
               required: [repoUrl]
+              allOf:
+                - { $ref: "#/components/schemas/AdminCreateChoices" }
               properties:
                 repoUrl:
                   type: string
@@ -14839,7 +14905,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
         "422":
-          description: "A refusal. On the dry run `reason` is `repository`, `app` or `manifest`; on the create, the message names the problem (`errors` lists manifest validation failures)."
+          description: "A refusal. On the dry run `reason` is `repository`, `app` or `manifest`; on the create, the message names the problem (`errors` lists manifest validation failures; a wrong create choice carries its `reason`: see `POST /manage/api/products` and `release_workflow_missing`)."
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
@@ -19714,9 +19780,89 @@ components:
         problems:
           type: array
           items: { $ref: "#/components/schemas/AdminManifestProblem" }
+    AdminCreateChoices:
+      type: object
+      description: >
+        ST-42 (FLOWS.md W25): the choices both create routes take, all optional. The product,
+        its signing key, catalog v1 and these are written in one batch, rolled back whole.
+      properties:
+        services:
+          type: array
+          maxItems: 16
+          items: { type: string }
+          description: >
+            The service slugs the product runs, through the requirement rule (Distribution needs
+            Release, Update needs Distribution, Cloud Sync needs Config and Identity): a slug whose
+            requirement is off is refused `422` with its `<slug>_requires_<requirement>` code, and
+            nothing is pulled on with it. On `POST /manage/api/products` the list is the whole
+            set (omitted: License and Config). On link-repo it adds to what `.pkey/` enables and
+            the product's enablement is then the operator's. The console turns a feature into its
+            slugs.
+        intendedPlatforms:
+          type: array
+          maxItems: 6
+          uniqueItems: true
+          items:
+            { type: string, enum: [macos, ios, android, windows, linux, web] }
+          description: >
+            The platforms the product will ship, stored as the console-owned
+            `distribution.intendedPlatforms` setting (SETUP.md W5).
+        starterTier:
+          type: string
+          enum: ["free", "none"]
+          description: >
+            `free` creates the Free tier (rank 0, the Default profile, the product's limits);
+            `none` creates none. Omitted: Free when License is on and `.pkey/` declares no tier.
+            `free` with License off is `422` (`starter_tier_requires_license`).
+        trustReleaseWorkflow:
+          type: boolean
+          description: >
+            Link-repo only: trust `.github/workflows/release.yml` as the product's CI publisher.
+            `422` `release_workflow_missing` when the file is not at the checked commit;
+            `422` `trust_requires_repository` on the manual route. A `.pkey/` that declares
+            `publishing.trustedPublisher` owns the policy and this is ignored.
+    AdminCreatedDefaults:
+      type: object
+      required: [services, profile, tier, intendedPlatforms, trustedWorkflow]
+      description: What the create wrote beyond the product, key and catalog.
+      properties:
+        services: { type: array, items: { type: string } }
+        profile:
+          type: [string, "null"]
+          description: "`default`, the reserved Default profile; null when `.pkey/` declares its own."
+        tier:
+          type: [string, "null"]
+          description: "`free` when the Free tier was created."
+        intendedPlatforms: { type: array, items: { type: string } }
+        trustedWorkflow:
+          type: [string, "null"]
+          description: The workflow path trusted as the CI publisher.
+    AdminProductCreated:
+      type: object
+      required: [ok, slug, kid, signing, defaults, product]
+      properties:
+        ok: { type: boolean, const: true }
+        slug: { type: string }
+        kid: { type: string }
+        signing:
+          type: object
+          required: [kid, alg, publicKey, jwksUrl, trustKeys]
+          properties:
+            kid: { type: string }
+            alg: { type: string, const: Ed25519 }
+            publicKey: { type: string }
+            jwksUrl: { type: string }
+            trustKeys:
+              type: object
+              additionalProperties: { type: string }
+        defaults: { $ref: "#/components/schemas/AdminCreatedDefaults" }
+        product:
+          type: [object, "null"]
+          additionalProperties: true
     AdminLinkRepoCreated:
       type: object
-      required: [ok, slug, kid, signing, install, remainingSecrets, product]
+      required:
+        [ok, slug, kid, signing, install, remainingSecrets, defaults, product]
       properties:
         ok: { type: boolean, const: true }
         slug: { type: string }
@@ -19734,6 +19880,7 @@ components:
               additionalProperties: { type: string }
         install: { type: string }
         remainingSecrets: { type: array, items: { type: string } }
+        defaults: { $ref: "#/components/schemas/AdminCreatedDefaults" }
         product:
           type: [object, "null"]
           description: The created product as `GET /manage/api/products/{slug}` shows it (its `name` included).

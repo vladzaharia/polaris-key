@@ -50,6 +50,7 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | POST | `/manage/api/products/link-repo` | admin | Create a product from a repository's `.pkey/`, or dry-run it |
 | GET | `/manage/api/products/slug-check` | admin | Is a slug free for a new product |
 | GET | `/manage/api/products` | admin | Every registered product, as the console's registry, Home and switcher read it |
+| POST | `/manage/api/products` | admin | Create a product by hand, ready for an SDK in one call |
 | GET | `/manage/api/summary` | admin | One fact per service for every product, for Home's product cards |
 | DELETE | `/manage/api/tokens/{tokenId}` | admin | Revoke an admin API token |
 | GET | `/manage/api/tokens` | admin | List admin API tokens |
