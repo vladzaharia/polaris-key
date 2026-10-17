@@ -214,6 +214,14 @@
       "status": "planned",
       "wp": "I-10a"
     },
+    "identity.redirect.web": {
+      "status": "planned",
+      "wp": "I-10a"
+    },
+    "identity.signin.hints": {
+      "status": "planned",
+      "wp": "I-10a"
+    },
     "identity.keyentry": {
       "status": "planned",
       "wp": "PX-W9b"

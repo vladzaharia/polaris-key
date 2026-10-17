@@ -1,7 +1,7 @@
 {
   "transcriptVersion": 1,
   "id": "identity-attach",
-  "description": "Attach (I-09, WIRE-CONTRACT-V4 §12.3). The device activates by key, then the person signs in on it (seeded here: the account, its verified email and the device's sign-in binding; I-08 re-records this with its device-code sign-in). attach({confirm:false}) previews the device's own licence and writes nothing; attach({confirm:true}) adds it to the signed-in account, rotates the device token and answers the activation result with subject and attached: claimed; the licence and its document are unchanged. Repeating it is idempotent: the same answer without attached.",
+  "description": "Attach (I-09, WIRE-CONTRACT-V4 §12.3). The device activates by key, then the person signs in on it (through authorize and token, I-08: the account, its verified email and the sign-in the device made, presenting its own token). attach({confirm:false}) previews the device's own licence and writes nothing; attach({confirm:true}) adds it to the signed-in account, rotates the device token and answers the activation result with subject and attached: claimed; the licence and its document are unchanged. Repeating it is idempotent: the same answer without attached.",
   "features": ["identity.attach"],
   "requires": ["license.activate"],
   "product": "djdl",
@@ -324,7 +324,7 @@
                 "content-type": "application/json"
               },
               "body": {
-                "token": "pkeyt_vDIu1Uaa5_FsajAe7eMP427H34cme2dhqclgjMf0KJE",
+                "token": "pkeyt_mmoF-A46owMePDNcZ6EVuU9M8KtKKSb_vH34Z_Q7y-0",
                 "schemaVersion": 1,
                 "device": {
                   "id": "TRANSCRIPTDEVICE0000000000000001",
@@ -405,7 +405,7 @@
                 "content-type": "application/json"
               },
               "body": {
-                "token": "pkeyt_gRjTH5vV61wZ8TIs4Q8-ZqoH3UGDfyILnr4zN6Gs3pw",
+                "token": "pkeyt_DmpiLBkYR8oNQDgUt9zb0bFsWj6TBdJLXTECP2RLBdY",
                 "schemaVersion": 1,
                 "device": {
                   "id": "TRANSCRIPTDEVICE0000000000000001",

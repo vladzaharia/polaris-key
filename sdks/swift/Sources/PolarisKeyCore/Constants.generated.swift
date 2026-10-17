@@ -582,6 +582,8 @@ public enum Feature {
     public static let identityKeyentry = "identity.keyentry"
     public static let identityAttach = "identity.attach"
     public static let identityAccount = "identity.account"
+    public static let identityRedirectWeb = "identity.redirect.web"
+    public static let identitySigninHints = "identity.signin.hints"
     public static let releaseChangelog = "release.changelog"
     public static let releaseDownload = "release.download"
     public static let releaseRecord = "release.record"
@@ -697,6 +699,8 @@ public let FEATURE_VALUES: [String] = [
     "identity.keyentry",
     "identity.attach",
     "identity.account",
+    "identity.redirect.web",
+    "identity.signin.hints",
     "release.changelog",
     "release.download",
     "release.record",
@@ -1586,6 +1590,8 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "identity.keyentry": CapabilityRow(status: "planned", service: "identity", na: []),
     "identity.attach": CapabilityRow(status: "planned", service: "identity", na: []),
     "identity.account": CapabilityRow(status: "planned", service: "identity", na: []),
+    "identity.redirect.web": CapabilityRow(status: "planned", service: "identity", na: []),
+    "identity.signin.hints": CapabilityRow(status: "planned", service: "identity", na: []),
     "release.changelog": CapabilityRow(status: "implemented", service: "release", na: []),
     "release.download": CapabilityRow(status: "implemented", service: "release", na: []),
     "release.record": CapabilityRow(status: "implemented", service: "release", na: []),
@@ -1651,4 +1657,4 @@ public let CAPABILITIES: [String: CapabilityRow] = [
 ]
 
 /// SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-public let CAPABILITY_DIGEST = "1d3e59237b393c0b6fd39a45042bb4ef0b09477ce9ab5b070efbf0a4ca765c66"
+public let CAPABILITY_DIGEST = "35b8d5342320377cba501b43aadc42405f82ce1cf5f45c96e16973951f49126a"
