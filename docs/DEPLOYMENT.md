@@ -21,7 +21,7 @@ Target account and fixed values:
 | Platform admin group | `admins`                                        |
 | GitHub App           | `polaris-key`                                   |
 | First product        | `djdl` (linked from its own product repository) |
-| Portal email sender  | `Polaris Key <noreply@auth.plrs.im>`     |
+| Portal email sender  | `Polaris Key <noreply@auth.plrs.im>`            |
 
 Do not change the production hostname as a deployment-time tweak. The SDK defaults,
 signed-config issuer, tests, docs, and product examples assume `key.plrs.im`; using a
@@ -457,7 +457,7 @@ Rules for the bucket, each one load-bearing:
   `BLOB_ORIGIN` naming the console's own hostname makes every console path answer not-found.
   Add or remove the `[[env.<env>.routes]]` `dl*` entry and the `BLOB_ORIGIN` var in the same
   change; `test/bytesHost.test.ts` refuses a committed `wrangler.toml` that breaks either rule
- .
+  .
 - **`CONSOLE_ORIGIN` names the console host** (`https://key.plrs.im`, `key-staging`, `key-dev`)
   beside each `BLOB_ORIGIN` (P2b-06). The public download page renders on the bytes host and
   links the storefront feeds, which are served on the console host; without the var (or with it

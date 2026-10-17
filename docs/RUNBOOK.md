@@ -8,19 +8,19 @@ DJDL onboarding, use [DEPLOYMENT.md](./DEPLOYMENT.md).
 
 ## Production shape
 
-| Item                 | Value                                                                                |
-| -------------------- | ------------------------------------------------------------------------------------ |
-| Cloudflare account   | `Polaris` / `07a2eb0d4916b220da1f9c1387b5f6d8`                                       |
-| Worker env           | `prod`                                                                               |
-| Public origin        | `https://key.plrs.im`                                                                |
-| Admin                | `https://key.plrs.im/manage`                                                         |
-| Customer portal      | `https://key.plrs.im`                                                                |
-| D1 database          | `polaris_key_prod`                                                                   |
-| KV namespace         | `POLARIS_HOT_prod`                                                                   |
-| PocketID issuer      | `https://id.plrs.im`                                                                 |
-| Platform admin group | `admins`                                                                             |
-| GitHub App           | `polaris-key`                                                                        |
-| Email sender         | `Polaris Key <noreply@auth.plrs.im>` |
+| Item                 | Value                                          |
+| -------------------- | ---------------------------------------------- |
+| Cloudflare account   | `Polaris` / `07a2eb0d4916b220da1f9c1387b5f6d8` |
+| Worker env           | `prod`                                         |
+| Public origin        | `https://key.plrs.im`                          |
+| Admin                | `https://key.plrs.im/manage`                   |
+| Customer portal      | `https://key.plrs.im`                          |
+| D1 database          | `polaris_key_prod`                             |
+| KV namespace         | `POLARIS_HOT_prod`                             |
+| PocketID issuer      | `https://id.plrs.im`                           |
+| Platform admin group | `admins`                                       |
+| GitHub App           | `polaris-key`                                  |
+| Email sender         | `Polaris Key <noreply@auth.plrs.im>`           |
 
 Reserved platform routes:
 
@@ -420,7 +420,7 @@ Five classes of value are covered, and all five are counted and swept together:
 | `secrets`             | `product_secrets.enc_value_json` — per-product secrets                                                                                                |
 | `outletCredentials`   | `outlet_credentials.enc_value_json` — store credentials (App Store Connect, Google Play, Partner Center; P5-01)                                       |
 | `managed`             | catalog-declared managed secrets sealed inside `profiles.payload_json`, `licenses.overrides_json` and `account_overrides.payload_json` (R12-02, U-03) |
-| `platformCredentials` | `platform_credentials.enc_value_json` — team store credentials stored in the console                                                           |
+| `platformCredentials` | `platform_credentials.enc_value_json` — team store credentials stored in the console                                                                  |
 
 ### Rotating PLATFORM_KEK
 
