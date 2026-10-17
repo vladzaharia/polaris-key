@@ -74,6 +74,7 @@ public enum ErrorCode {
     public static let serviceUnavailable = "service-unavailable"
     public static let serviceDisabled = "service-disabled"
     public static let localOnly = "local-only"
+    public static let backendOriginNotAllowed = "backend-origin-not-allowed"
     public static let insecureBaseUrl = "insecure-base-url"
     public static let bundleJwsRejected = "bundle-jws-rejected"
     public static let bundleClaimsRejected = "bundle-claims-rejected"
@@ -240,6 +241,7 @@ public let ERROR_CODE_VALUES: [String] = [
     "service-unavailable",
     "service-disabled",
     "local-only",
+    "backend-origin-not-allowed",
     "insecure-base-url",
     "bundle-jws-rejected",
     "bundle-claims-rejected",
@@ -406,6 +408,7 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "service-unavailable": "client",
     "service-disabled": "client",
     "local-only": "client",
+    "backend-origin-not-allowed": "client",
     "insecure-base-url": "client",
     "bundle-jws-rejected": "client",
     "bundle-claims-rejected": "client",

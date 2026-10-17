@@ -1669,6 +1669,10 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_local_only_message">This app is running offline, so it didn't connect.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_backend_origin_not_allowed_title">Request not sent</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_backend_origin_not_allowed_message">The app can send your license only to its own servers.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_insecure_base_url_title">Insecure connection</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_insecure_base_url_message">The app refused an insecure connection. Contact the developer.</string>

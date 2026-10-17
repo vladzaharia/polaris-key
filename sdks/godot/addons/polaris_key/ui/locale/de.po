@@ -4397,6 +4397,16 @@ msgstr "Offline-Modus"
 msgid "core.codes.local-only.message"
 msgstr "Diese App läuft offline und hat daher keine Verbindung hergestellt."
 
+#. Request not sent
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.backend-origin-not-allowed.title"
+msgstr "Anfrage nicht gesendet"
+
+#. The app can send your license only to its own servers.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.backend-origin-not-allowed.message"
+msgstr "Die App darf Ihre Lizenz nur an ihre eigenen Server senden."
+
 #. Insecure connection
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.insecure-base-url.title"

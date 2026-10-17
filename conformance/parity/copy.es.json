@@ -261,6 +261,10 @@
       "title": "Modo sin conexión",
       "message": "Esta app funciona sin conexión, así que no se conectó."
     },
+    "backend-origin-not-allowed": {
+      "title": "Solicitud no enviada",
+      "message": "La app solo puede enviar tu licencia a sus propios servidores."
+    },
     "insecure-base-url": {
       "title": "Conexión no segura",
       "message": "La app rechazó una conexión no segura. Contacta con el desarrollador."

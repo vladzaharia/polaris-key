@@ -932,6 +932,9 @@ export const KIT_COPY: Readonly<
     "core.codes.local-only.title": "Offline mode",
     "core.codes.local-only.message":
       "This app is running offline, so it didn't connect.",
+    "core.codes.backend-origin-not-allowed.title": "Request not sent",
+    "core.codes.backend-origin-not-allowed.message":
+      "The app can send your license only to its own servers.",
     "core.codes.insecure-base-url.title": "Insecure connection",
     "core.codes.insecure-base-url.message":
       "The app refused an insecure connection. Contact the developer.",
@@ -2261,6 +2264,9 @@ export const KIT_COPY: Readonly<
     "core.codes.local-only.title": "Offline-Modus",
     "core.codes.local-only.message":
       "Diese App läuft offline und hat daher keine Verbindung hergestellt.",
+    "core.codes.backend-origin-not-allowed.title": "Anfrage nicht gesendet",
+    "core.codes.backend-origin-not-allowed.message":
+      "Die App darf Ihre Lizenz nur an ihre eigenen Server senden.",
     "core.codes.insecure-base-url.title": "Unsichere Verbindung",
     "core.codes.insecure-base-url.message":
       "Die App hat eine unsichere Verbindung abgelehnt. Wenden Sie sich an den Entwickler.",
@@ -3583,6 +3589,9 @@ export const KIT_COPY: Readonly<
     "core.codes.local-only.title": "Offline mode",
     "core.codes.local-only.message":
       "This app is running offline, so it didn't connect.",
+    "core.codes.backend-origin-not-allowed.title": "Request not sent",
+    "core.codes.backend-origin-not-allowed.message":
+      "The app can send your license only to its own servers.",
     "core.codes.insecure-base-url.title": "Insecure connection",
     "core.codes.insecure-base-url.message":
       "The app refused an insecure connection. Contact the developer.",
@@ -4890,6 +4899,9 @@ export const KIT_COPY: Readonly<
     "core.codes.local-only.title": "Modo sin conexión",
     "core.codes.local-only.message":
       "Esta app funciona sin conexión, así que no se conectó.",
+    "core.codes.backend-origin-not-allowed.title": "Solicitud no enviada",
+    "core.codes.backend-origin-not-allowed.message":
+      "La app solo puede enviar tu licencia a sus propios servidores.",
     "core.codes.insecure-base-url.title": "Conexión no segura",
     "core.codes.insecure-base-url.message":
       "La app rechazó una conexión no segura. Contacta con el desarrollador.",
@@ -6198,6 +6210,9 @@ export const KIT_COPY: Readonly<
     "core.codes.local-only.title": "Modo offline",
     "core.codes.local-only.message":
       "Este app está funcionando offline, então não se conectou.",
+    "core.codes.backend-origin-not-allowed.title": "Solicitação não enviada",
+    "core.codes.backend-origin-not-allowed.message":
+      "O app só pode enviar sua licença aos próprios servidores.",
     "core.codes.insecure-base-url.title": "Conexão insegura",
     "core.codes.insecure-base-url.message":
       "O app recusou uma conexão insegura. Contate o desenvolvedor.",
@@ -7505,6 +7520,9 @@ export const KIT_COPY: Readonly<
     "core.codes.local-only.title": "Modalità offline",
     "core.codes.local-only.message":
       "Questa app è in modalità offline, quindi non si è connessa.",
+    "core.codes.backend-origin-not-allowed.title": "Richiesta non inviata",
+    "core.codes.backend-origin-not-allowed.message":
+      "L'app può inviare la tua licenza solo ai propri server.",
     "core.codes.insecure-base-url.title": "Connessione non sicura",
     "core.codes.insecure-base-url.message":
       "L'app ha rifiutato una connessione non sicura. Contatta lo sviluppatore.",
@@ -8822,6 +8840,10 @@ export const KIT_COPY: Readonly<
     "core.codes.local-only.title": "オフラインモード",
     "core.codes.local-only.message":
       "このアプリはオフラインで動作しているため、接続しませんでした。",
+    "core.codes.backend-origin-not-allowed.title":
+      "リクエストを送信しませんでした",
+    "core.codes.backend-origin-not-allowed.message":
+      "アプリはライセンスを自身のサーバーにのみ送信できます。",
     "core.codes.insecure-base-url.title": "安全でない接続",
     "core.codes.insecure-base-url.message":
       "アプリは安全でない接続を拒否しました。開発者に問い合わせてください。",
@@ -10101,6 +10123,9 @@ export const KIT_COPY: Readonly<
     "core.codes.local-only.title": "오프라인 모드",
     "core.codes.local-only.message":
       "이 앱은 오프라인으로 실행 중이라 연결하지 않았어요.",
+    "core.codes.backend-origin-not-allowed.title": "요청을 보내지 않았습니다",
+    "core.codes.backend-origin-not-allowed.message":
+      "앱은 자체 서버로만 라이선스를 보낼 수 있습니다.",
     "core.codes.insecure-base-url.title": "안전하지 않은 연결",
     "core.codes.insecure-base-url.message":
       "앱이 안전하지 않은 연결을 거부했어요. 개발자에게 문의하세요.",
@@ -11302,6 +11327,9 @@ export const KIT_COPY: Readonly<
     "core.codes.service-disabled.message": "此应用已关闭此服务。",
     "core.codes.local-only.title": "离线模式",
     "core.codes.local-only.message": "此应用正以离线模式运行，因此未连接。",
+    "core.codes.backend-origin-not-allowed.title": "请求未发送",
+    "core.codes.backend-origin-not-allowed.message":
+      "应用只能将你的许可证发送到它自己的服务器。",
     "core.codes.insecure-base-url.title": "连接不安全",
     "core.codes.insecure-base-url.message":
       "应用拒绝了不安全的连接。请联系开发者。",

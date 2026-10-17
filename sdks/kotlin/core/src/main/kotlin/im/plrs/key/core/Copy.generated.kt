@@ -87,6 +87,7 @@ public val COPY_CODES: Map<String, CopyEntry> = mapOf(
     "service-unavailable" to CopyEntry("Not available", "This app doesn't use this service."),
     "service-disabled" to CopyEntry("Not available", "This service is turned off for this app."),
     "local-only" to CopyEntry("Offline mode", "This app is running offline, so it didn't connect."),
+    "backend-origin-not-allowed" to CopyEntry("Request not sent", "The app can send your license only to its own servers."),
     "insecure-base-url" to CopyEntry("Insecure connection", "The app refused an insecure connection. Contact the developer."),
     "bundle-jws-rejected" to CopyEntry("Activation file not valid", "The activation file's signature isn't valid."),
     "bundle-claims-rejected" to CopyEntry("Activation file not valid", "The activation file is for another product or device, or it has expired."),

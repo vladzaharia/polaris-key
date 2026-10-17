@@ -1659,6 +1659,10 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_local_only_message">此应用正以离线模式运行，因此未连接。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_backend_origin_not_allowed_title">请求未发送</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_backend_origin_not_allowed_message">应用只能将你的许可证发送到它自己的服务器。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_insecure_base_url_title">连接不安全</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_insecure_base_url_message">应用拒绝了不安全的连接。请联系开发者。</string>

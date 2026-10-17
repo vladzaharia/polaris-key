@@ -4396,6 +4396,16 @@ msgstr ""
 msgid "core.codes.local-only.message"
 msgstr ""
 
+#. Request not sent
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.backend-origin-not-allowed.title"
+msgstr ""
+
+#. The app can send your license only to its own servers.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.backend-origin-not-allowed.message"
+msgstr ""
+
 #. Insecure connection
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.insecure-base-url.title"

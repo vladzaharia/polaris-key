@@ -755,6 +755,8 @@
   "core.codes.service-disabled.message": "This service is turned off for this app.",
   "core.codes.local-only.title": "Offline mode",
   "core.codes.local-only.message": "This app is running offline, so it didn't connect.",
+  "core.codes.backend-origin-not-allowed.title": "Request not sent",
+  "core.codes.backend-origin-not-allowed.message": "The app can send your license only to its own servers.",
   "core.codes.insecure-base-url.title": "Insecure connection",
   "core.codes.insecure-base-url.message": "The app refused an insecure connection. Contact the developer.",
   "core.codes.bundle-jws-rejected.title": "Activation file not valid",

@@ -103,6 +103,7 @@ COPY_CODES: Mapping[str, CopyEntry] = MappingProxyType(
         "service-unavailable": CopyEntry("Not available", "This app doesn't use this service."),
         "service-disabled": CopyEntry("Not available", "This service is turned off for this app."),
         "local-only": CopyEntry("Offline mode", "This app is running offline, so it didn't connect."),
+        "backend-origin-not-allowed": CopyEntry("Request not sent", "The app can send your license only to its own servers."),
         "insecure-base-url": CopyEntry("Insecure connection", "The app refused an insecure connection. Contact the developer."),
         "bundle-jws-rejected": CopyEntry("Activation file not valid", "The activation file's signature isn't valid."),
         "bundle-claims-rejected": CopyEntry("Activation file not valid", "The activation file is for another product or device, or it has expired."),

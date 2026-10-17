@@ -755,6 +755,8 @@
   "core.codes.service-disabled.message": "このアプリではこのサービスが無効になっています。",
   "core.codes.local-only.title": "オフラインモード",
   "core.codes.local-only.message": "このアプリはオフラインで動作しているため、接続しませんでした。",
+  "core.codes.backend-origin-not-allowed.title": "リクエストを送信しませんでした",
+  "core.codes.backend-origin-not-allowed.message": "アプリはライセンスを自身のサーバーにのみ送信できます。",
   "core.codes.insecure-base-url.title": "安全でない接続",
   "core.codes.insecure-base-url.message": "アプリは安全でない接続を拒否しました。開発者に問い合わせてください。",
   "core.codes.bundle-jws-rejected.title": "アクティベーションファイルが無効です",

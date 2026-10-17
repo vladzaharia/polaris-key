@@ -261,6 +261,10 @@
       "title": "Modo offline",
       "message": "Este app está funcionando offline, então não se conectou."
     },
+    "backend-origin-not-allowed": {
+      "title": "Solicitação não enviada",
+      "message": "O app só pode enviar sua licença aos próprios servidores."
+    },
     "insecure-base-url": {
       "title": "Conexão insegura",
       "message": "O app recusou uma conexão insegura. Contate o desenvolvedor."

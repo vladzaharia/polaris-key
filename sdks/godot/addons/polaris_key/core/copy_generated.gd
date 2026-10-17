@@ -81,6 +81,7 @@ const COPY_CODES := {
 	"service-unavailable": {"title": "Not available", "message": "This app doesn't use this service."},
 	"service-disabled": {"title": "Not available", "message": "This service is turned off for this app."},
 	"local-only": {"title": "Offline mode", "message": "This app is running offline, so it didn't connect."},
+	"backend-origin-not-allowed": {"title": "Request not sent", "message": "The app can send your license only to its own servers."},
 	"insecure-base-url": {"title": "Insecure connection", "message": "The app refused an insecure connection. Contact the developer."},
 	"bundle-jws-rejected": {"title": "Activation file not valid", "message": "The activation file's signature isn't valid."},
 	"bundle-claims-rejected": {"title": "Activation file not valid", "message": "The activation file is for another product or device, or it has expired."},

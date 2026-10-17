@@ -769,6 +769,8 @@ export type KitCopyKey =
   | "core.codes.service-disabled.message"
   | "core.codes.local-only.title"
   | "core.codes.local-only.message"
+  | "core.codes.backend-origin-not-allowed.title"
+  | "core.codes.backend-origin-not-allowed.message"
   | "core.codes.insecure-base-url.title"
   | "core.codes.insecure-base-url.message"
   | "core.codes.bundle-jws-rejected.title"

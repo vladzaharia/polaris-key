@@ -76,6 +76,7 @@ public object ErrorCode {
     public const val serviceUnavailable: String = "service-unavailable"
     public const val serviceDisabled: String = "service-disabled"
     public const val localOnly: String = "local-only"
+    public const val backendOriginNotAllowed: String = "backend-origin-not-allowed"
     public const val insecureBaseUrl: String = "insecure-base-url"
     public const val bundleJwsRejected: String = "bundle-jws-rejected"
     public const val bundleClaimsRejected: String = "bundle-claims-rejected"
@@ -242,6 +243,7 @@ public val ERROR_CODE_VALUES: List<String> = listOf(
     "service-unavailable",
     "service-disabled",
     "local-only",
+    "backend-origin-not-allowed",
     "insecure-base-url",
     "bundle-jws-rejected",
     "bundle-claims-rejected",
@@ -408,6 +410,7 @@ public val ERROR_CODE_KINDS: Map<String, String> = mapOf(
     "service-unavailable" to "client",
     "service-disabled" to "client",
     "local-only" to "client",
+    "backend-origin-not-allowed" to "client",
     "insecure-base-url" to "client",
     "bundle-jws-rejected" to "client",
     "bundle-claims-rejected" to "client",

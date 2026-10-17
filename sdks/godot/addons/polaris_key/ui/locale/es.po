@@ -4407,6 +4407,16 @@ msgstr "Modo sin conexión"
 msgid "core.codes.local-only.message"
 msgstr "Esta app funciona sin conexión, así que no se conectó."
 
+#. Request not sent
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.backend-origin-not-allowed.title"
+msgstr "Solicitud no enviada"
+
+#. The app can send your license only to its own servers.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.backend-origin-not-allowed.message"
+msgstr "La app solo puede enviar tu licencia a sus propios servidores."
+
 #. Insecure connection
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.insecure-base-url.title"
