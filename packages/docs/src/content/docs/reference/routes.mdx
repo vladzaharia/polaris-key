@@ -35,6 +35,7 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | GET | `/manage/api/products/{product}/license/batches` | admin | The product's licence batches, newest first, with their used counts |
 | POST | `/manage/api/products/{product}/license/batches` | admin | Create up to 500 floating licences in one labelled batch (keys shown once) |
 | PUT | `/manage/api/products/{product}/license/licenses/{licenseId}/overrides` | admin | Edit a licence's own overrides (entitlements only from the override migration's run) |
+| POST | `/manage/api/products/{product}/license/licenses/{licenseId}/send-key` | admin | Mint a new key and email it to the licence's address |
 | GET | `/manage/api/products/{product}/license/licenses/{licenseId}` | admin | One licence, with its holder, keys, devices and overrides |
 | PATCH | `/manage/api/products/{product}/license/licenses/{licenseId}` | admin | Change a licence's terms or holder |
 | GET | `/manage/api/products/{product}/license/licenses` | admin | The product's licences, each with its derived holder, optionally filtered by holder |
