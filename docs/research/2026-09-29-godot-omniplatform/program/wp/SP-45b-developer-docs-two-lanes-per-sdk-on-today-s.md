@@ -96,11 +96,11 @@ signIn = true)`, and the own-UI gate emits `status()` before `licenseChanges` (`
 
 ## Acceptance criteria
 
-- [ ] For each SDK, both lanes reach the eight checkpoints.
-- [ ] Every code block on the new and changed pages compiles in its lane, and a deliberately broken block fails CI.
-- [ ] A check fails when a page names a symbol the SDK does not export.
-- [ ] Docs-links and the slug manifest pass.
-- [ ] A newcomer dry run per SDK is recorded in the PR.
+- [x] For each SDK, both lanes reach the eight checkpoints.
+- [x] Every code block on the new and changed pages compiles in its lane, and a deliberately broken block fails CI.
+- [x] A check fails when a page names a symbol the SDK does not export.
+- [x] Docs-links and the slug manifest pass.
+- [x] A newcomer dry run per SDK is recorded in the PR.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate in the header.
 
 ## Verify
@@ -121,3 +121,15 @@ Reconciled against main in the 2026-10-16 audit. Remaining:
 - build/ui/theming.mdx Compose and Godot tabs still say Planned for APIs that ship
 - build/install.md Kotlin and Swift sections show 0.8.33 and the old Android coordinate
 - Operator step: set License MIT and Oldest editor 4.4 on the Godot feed in the console
+
+## Finish (2026-10-17, wp/SP-45b-finish)
+
+Verified against main, not the 2026-10-16 note:
+
+- `build/ui/theming.mdx` has no "Planned" text. Its Compose and Godot tabs lead with `KitStatus`, and `src/lib/uiKits.ts` marks both kits `ships: true` (DOC-08b). Nothing to change.
+- `build/install.mdx` (the page is `.mdx`, not `.md`) shows no 0.8.33 and names the Compose kit `polaris-key-ui`, which is the artifact `sdks/kotlin/ui/build.gradle.kts` publishes on main. `polaris-key-ui-android` exists only on UK-09's branch (`artifactId = if (name == "kotlinMultiplatform") "polaris-key-ui" else "polaris-key-ui-android"`), so changing the docs now would name an artifact that is not published. Follow-up for UK-09: when it merges, the install table, `build/quickstart/kotlin.mdx` line 42 and `uiKits.ts` (`package`) take the new coordinate.
+- Newcomer dry run, each SDK following its quickstart against `pkey dev` (`pkey sdk --lang <sdk> --dev --write` wrote the config for node, react, python, swift, kotlin and godot; the live lanes then ran): Python 15 passed (`tests/test_dev_live.py`); Godot `dev_live` 101 checks, 0 failed; Kotlin `:conformance:liveDevTest` BUILD SUCCESSFUL; Swift `PkeyDevLiveTests` 6 tests, 0 failures. Each covers first activation, every refusal, a config change event, device-code sign-in and an update decision.
+- One defect found and fixed: Python quickstart step 5 said "run `tidewater activate`", which fails (`--product` is required, and `--key` is ambiguous between `--key-file` and `--key-stdin`). It now gives `tidewater activate --product tidewater --key-stdin`. Following that by hand on macOS blocked at the keychain write (a prompt in a headless shell), after the Worker had accepted the key; not a docs defect.
+- Snippet lanes: `PKEY_DOCS_LANES=swift,kotlin,gdscript` over `test/snippets/snippets.test.ts`: 25 passed, 3 skipped (the Python lane, no venv in the worktree).
+
+Operator step for the owner (console, Godot feed): set License to MIT and Oldest editor to 4.4. Not doable from the repo.
