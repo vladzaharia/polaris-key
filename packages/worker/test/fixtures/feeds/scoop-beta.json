@@ -13,7 +13,12 @@
     }
   },
   "bin": "Diceroll/diceroll.exe",
-  "shortcuts": [["Diceroll/diceroll.exe", "Diceroll"]],
+  "shortcuts": [
+    [
+      "Diceroll/diceroll.exe",
+      "Diceroll"
+    ]
+  ],
   "checkver": {
     "url": "https://key.example.test/diceroll/distribution/scoop/beta.json",
     "jsonpath": "$.version"
