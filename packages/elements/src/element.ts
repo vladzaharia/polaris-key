@@ -548,6 +548,21 @@ export abstract class PkElement extends LitElement {
   protected override updated(changed: PropertyValues): void {
     super.updated(changed);
     const view = this.view;
+    // A list that scrolls (past six devices) opens on its checked row, not the top of the list.
+    for (const list of (
+      this.renderRoot as ShadowRoot
+    ).querySelectorAll<HTMLElement>(".list[data-scroll]")) {
+      const row = list.querySelector<HTMLElement>('[aria-checked="true"]');
+      if (
+        !row ||
+        list.scrollTop !== 0 ||
+        list.scrollHeight <= list.clientHeight
+      )
+        continue;
+      const top = row.offsetTop - list.offsetTop;
+      if (top + row.offsetHeight > list.clientHeight)
+        list.scrollTop = top - list.clientHeight / 2 + row.offsetHeight / 2;
+    }
     const key = `${view.component}.${view.state}`;
     if (key === this.lastFocusState) return;
     this.lastFocusState = key;

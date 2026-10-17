@@ -345,7 +345,7 @@
     <!-- Devices: the list of devices using the license. -->
     <string name="devices_lede">이 라이선스를 사용하는 기기예요.</string>
     <!-- Devices: the list of devices using the license. Second line of a device row. Arguments: {platform} = the device's platform name (macOS, Windows, iPhone…); {when} = a relative time already formatted by the platform (“2 days ago”). Arguments: 1=platform, 2=when. -->
-    <string name="devices_meta">%1$s · 마지막 접속 %2$s</string>
+    <string name="devices_meta">%1$s · 마지막 사용 %2$s</string>
     <!-- Devices: the list of devices using the license. Arguments: {count} = a number of items. Arguments: 1=count. -->
     <plurals name="devices_count">
         <item quantity="other">기기 %1$d대</item>
@@ -888,6 +888,9 @@
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). -->
     <string name="signin_replace_confirm">교체하고 계속</string>
     <string name="signin_replace_confirm__macos">교체하고 계속</string>
+    <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). The primary once a device is picked, in place of the generic one. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
+    <string name="signin_replace_confirmNamed">%1$s 교체하고 계속</string>
+    <string name="signin_replace_confirmNamed__macos">%1$s 교체하고 계속</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). -->
     <string name="signin_replace_back">뒤로</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). -->

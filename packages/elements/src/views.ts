@@ -550,7 +550,18 @@ function withBase(c: RenderCtx): View {
         };
       }
       const sheet = input.signIn?.presentation === "sheet";
-      return view.state === "methods" && !sheet ? view : add("common.cancel");
+      const step =
+        view.state === "methods" && !sheet ? view : add("common.cancel");
+      // No "or" divider over the providers (DL4), and no "Sign in…" link on the sign-in step.
+      return step.state === "methods" || step.state === "error"
+        ? {
+            ...step,
+            copy: step.copy.filter(
+              (k) =>
+                k !== "signin.provider.group" && k !== "signin.menu.signIn",
+            ),
+          }
+        : step;
     }
     case "Activate": {
       if (

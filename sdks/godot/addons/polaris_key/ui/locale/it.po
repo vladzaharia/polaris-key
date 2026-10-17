@@ -964,10 +964,10 @@ msgstr "I tuoi dispositivi"
 msgid "devices.lede"
 msgstr "Dispositivi che usano questa licenza."
 
-#. {platform} · last seen {when}
+#. {platform} · last used {when}
 #. Devices: the list of devices using the license. Second line of a device row. Arguments: {platform} = the device's platform name (macOS, Windows, iPhone…); {when} = a relative time already formatted by the platform (“2 days ago”).
 msgid "devices.meta"
-msgstr "{platform} · visto l'ultima volta {when}"
+msgstr "{platform} · usato l'ultima volta {when}"
 
 #. {count, plural, one {# device} other {# devices}}
 #. Devices: the list of devices using the license. Arguments: {count} = a number of items.
@@ -2429,6 +2429,16 @@ msgstr "Sostituisci e continua"
 msgctxt "macos"
 msgid "signin.replace.confirm"
 msgstr "Sostituisci e continua"
+
+#. Replace {device} and continue
+#. Replace a device, inline in the license choice (SIGN-IN.md §3.7). The primary once a device is picked, in place of the generic one. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”.
+msgid "signin.replace.confirmNamed"
+msgstr "Sostituisci {device} e continua"
+
+#. macos: Replace {device} and Continue
+msgctxt "macos"
+msgid "signin.replace.confirmNamed"
+msgstr "Sostituisci {device} e continua"
 
 #. Back
 #. Replace a device, inline in the license choice (SIGN-IN.md §3.7).

@@ -351,6 +351,36 @@ export function productHeader(
 }
 
 /** A control. The view's primary is filled; a lone control is the primary too (DL4). */
+/** The device the Replace step has picked (the least recent until the person picks), by name. */
+function pickedDevice(c: RenderCtx): string | null {
+  const unnamed = () => plain(c, "devices.unnamed");
+  const rv = c.input.replaceView;
+  if (rv && rv.devices.length) {
+    const pickId = (c.input as { replacePick?: string }).replacePick;
+    const d =
+      rv.devices.find((x) => x.id === pickId) ??
+      rv.devices.find((x) => x.leastRecent) ??
+      rv.devices[0]!;
+    return d.label?.trim() || unnamed();
+  }
+  const list = c.input.devices ?? [];
+  if (!list.length) return null;
+  const least = list.reduce(
+    (best, d, i) =>
+      (d.lastSeenDays ?? 0) > (list[best]!.lastSeenDays ?? 0) ? i : best,
+    0,
+  );
+  const picked =
+    c.input.selected !== undefined ? Number(c.input.selected) : least;
+  return list[picked]?.name?.trim() || unnamed();
+}
+
+/** The Replace step's primary names the device it replaces ("Replace Work laptop and continue"). */
+const NAMED_PRIMARY: ReadonlySet<string> = new Set([
+  "signin.replace.confirm",
+  "deviceLimit.primary",
+]);
+
 export function button(
   c: RenderCtx,
   key: string,
@@ -364,6 +394,14 @@ export function button(
   } = {},
 ): TemplateResult {
   const external = OPENS.has(key);
+  const device =
+    NAMED_PRIMARY.has(key) && c.copy.has("signin.replace.confirmNamed")
+      ? pickedDevice(c)
+      : null;
+  const label =
+    device !== null
+      ? text(c, "signin.replace.confirmNamed", { device })
+      : text(c, key, extra.args);
   const part =
     variant === "primary"
       ? "primary"
@@ -388,7 +426,7 @@ export function button(
     ${extra.busy
       ? html`<span class="ring" aria-hidden="true"></span>`
       : nothing}
-    <span>${text(c, key, extra.args)}</span>
+    <span>${label}</span>
     ${external
       ? html`${GLYPHS.external()}<span class="visually-hidden"
             >${c.copy.has("a11y.externalLink")

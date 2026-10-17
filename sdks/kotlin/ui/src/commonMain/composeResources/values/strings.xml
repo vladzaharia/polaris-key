@@ -348,7 +348,7 @@
     <!-- Devices: the list of devices using the license. -->
     <string name="devices_lede">Devices using this license.</string>
     <!-- Devices: the list of devices using the license. Second line of a device row. Arguments: {platform} = the device's platform name (macOS, Windows, iPhone…); {when} = a relative time already formatted by the platform (“2 days ago”). Arguments: 1=platform, 2=when. -->
-    <string name="devices_meta">%1$s · last seen %2$s</string>
+    <string name="devices_meta">%1$s · last used %2$s</string>
     <!-- Devices: the list of devices using the license. Arguments: {count} = a number of items. Arguments: 1=count. -->
     <plurals name="devices_count">
         <item quantity="one">%1$d device</item>
@@ -895,6 +895,9 @@
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). -->
     <string name="signin_replace_confirm">Replace and continue</string>
     <string name="signin_replace_confirm__macos">Replace and Continue</string>
+    <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). The primary once a device is picked, in place of the generic one. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
+    <string name="signin_replace_confirmNamed">Replace %1$s and continue</string>
+    <string name="signin_replace_confirmNamed__macos">Replace %1$s and Continue</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). -->
     <string name="signin_replace_back">Back</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). -->

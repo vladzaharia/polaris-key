@@ -362,3 +362,9 @@ Review: `_lead/reviews/2026-10-16/ux-UK-05.json` (fail, 6 blockers). Scope: `pac
   value.
 - Pixel baselines for the changed driven states and the new Back control are not recorded (the
   committed rows are the fixture states, unchanged); re-record with the lead's storage decision.
+
+Note (2026-10-17, UK-04 `wp/UK-04-next`): the stylesheet's visual items above (centred card with 5:7
+panes and a filled identity panel, links that stack whole, neutral light surfaces, pane actions at
+the end, the Copy baseline) are fixed in `packages/elements`; this package picks them up on its
+next build. The code step's countdown, the methods step's divider and "Sign in..." (gone from the
+shared view) and the copy items stay with this package and the catalog.

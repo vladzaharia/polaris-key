@@ -26,6 +26,7 @@ export {
   type FormInput,
   type FormStep,
 } from "./signin.js";
+export { settingLabel } from "./views.js";
 export { LAYOUTS, TAGS, type Kind, type Layout } from "./layout.js";
 export { stylesCss, sharedSheet } from "./styles.js";
 export { tokenCss } from "./tokens.js";

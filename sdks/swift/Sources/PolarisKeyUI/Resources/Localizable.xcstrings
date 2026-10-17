@@ -38372,55 +38372,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ · last seen %2$@"
+            "value": "%1$@ · last used %2$@"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ · zuletzt aktiv %2$@"
+            "value": "%1$@ · zuletzt verwendet %2$@"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ · dernière activité %2$@"
+            "value": "%1$@ · dernière utilisation %2$@"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ · visto por última vez %2$@"
+            "value": "%1$@ · usado por última vez %2$@"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ · visto por último %2$@"
+            "value": "%1$@ · usado por último %2$@"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ · visto l'ultima volta %2$@"
+            "value": "%1$@ · usato l'ultima volta %2$@"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ · 最終確認：%2$@"
+            "value": "%1$@ · 最終使用：%2$@"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ · 마지막 접속 %2$@"
+            "value": "%1$@ · 마지막 사용 %2$@"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ · 上次在线：%2$@"
+            "value": "%1$@ · 上次使用：%2$@"
           }
         }
       }
@@ -58425,6 +58425,78 @@
           "stringUnit": {
             "state": "translated",
             "value": "替换并继续"
+          }
+        }
+      }
+    },
+    "signin.replace.confirmNamed": {
+      "comment": "Replace a device, inline in the license choice (SIGN-IN.md §3.7). The primary once a device is picked, in place of the generic one. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "variations": {
+            "device": {
+              "mac": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Replace %1$@ and Continue"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Replace %1$@ and continue"
+                }
+              }
+            }
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ ersetzen und fortfahren"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remplacer %1$@ et continuer"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reemplazar %1$@ y continuar"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Substituir %1$@ e continuar"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sostituisci %1$@ e continua"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@を置き換えて続ける"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ 교체하고 계속"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "替换%1$@并继续"
           }
         }
       }
