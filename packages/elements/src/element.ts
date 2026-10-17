@@ -33,6 +33,7 @@ import {
   type Resolved,
   type ThemeHost,
 } from "./theme.js";
+import { LAYOUTS } from "./layout.js";
 import { renderView } from "./views.js";
 
 /** DL9: the ring shows only after a key was pressed since load (no ring at rest on a cold start). */
@@ -152,32 +153,16 @@ export abstract class PkElement extends LitElement {
       }
     }
     if (typeof ResizeObserver === "function") {
-      this.resize = new ResizeObserver(([entry]) => {
-        if (!entry) return;
-        const { inlineSize: w, blockSize: h } = entry.contentBoxSize[0] ?? {
-          inlineSize: entry.contentRect.width,
-          blockSize: entry.contentRect.height,
-        };
-        const rem =
-          Number.parseFloat(
-            getComputedStyle(document.documentElement).fontSize,
-          ) || 16;
-        // DL1: two panes from 52.5rem in a landscape box (1.4:1); under 30rem tall is short.
-        const next =
-          h > 0 && h / rem < 30 && w > h
-            ? "short"
-            : w / rem >= 52.5 && h > 0 && w / h >= 1.4
-              ? "landscape"
-              : "portrait";
-        if (next !== this.shape)
-          // After this frame's layout: a shape change never re-enters the observer's loop.
-          requestAnimationFrame(() => {
-            if (next === this.shape) return;
-            this.shape = next;
-            this.requestUpdate();
-          });
-      });
+      this.resize = new ResizeObserver(() => this.measure());
       this.resize.observe(this);
+    }
+    // The box a screen can use is the window's, not the host's own: a host whose minimum height
+    // is the window grows to fit its content, which would never read as a short landscape.
+    const vv = typeof visualViewport !== "undefined" ? visualViewport : null;
+    if (vv) {
+      const l = () => this.measure();
+      vv.addEventListener("resize", l);
+      this.unsubs.push(() => vv.removeEventListener("resize", l));
     }
     this.restartIdentity();
   }
@@ -192,6 +177,30 @@ export abstract class PkElement extends LitElement {
     this.model?.dispose();
     this.model = null;
     if (this.iconUrl?.startsWith("blob:")) URL.revokeObjectURL(this.iconUrl);
+  }
+
+  /** DL1: two panes from 52.5rem in a landscape box (1.4:1); under 30rem tall is short. */
+  private measure(): void {
+    const box = this.getBoundingClientRect();
+    const vv = typeof visualViewport !== "undefined" ? visualViewport : null;
+    const w = Math.min(box.width, vv?.width ?? Number.POSITIVE_INFINITY);
+    const h = Math.min(box.height, vv?.height ?? Number.POSITIVE_INFINITY);
+    const rem =
+      Number.parseFloat(getComputedStyle(document.documentElement).fontSize) ||
+      16;
+    const next =
+      h > 0 && h / rem < 30 && w > h
+        ? "short"
+        : w / rem >= 52.5 && h > 0 && w / h >= 1.4
+          ? "landscape"
+          : "portrait";
+    if (next !== this.shape)
+      // After this frame's layout: a shape change never re-enters the observer's loop.
+      requestAnimationFrame(() => {
+        if (next === this.shape) return;
+        this.shape = next;
+        this.requestUpdate();
+      });
   }
 
   /** The theme layers merged: global, the nearest provider, this element. */
@@ -324,6 +333,7 @@ export abstract class PkElement extends LitElement {
       view,
       copy,
       resolved,
+      fill: this.fillsWindow(view.state),
       input: this.modelInput(),
       act: (key, extra = {}) => {
         const detail: PkActionDetail = {
@@ -334,7 +344,8 @@ export abstract class PkElement extends LitElement {
           ...this.actionDetail(key),
           ...extra,
         };
-        if (key === "activate.submit")
+        if (key === "activate.submit") {
+          detail.value = this.input.keyField?.text ?? "";
           this.input = {
             ...this.input,
             keyField: {
@@ -342,6 +353,8 @@ export abstract class PkElement extends LitElement {
               submitted: true,
             },
           };
+        }
+        if (this.localAction(key, detail, view)) return;
         this.dispatchEvent(
           new CustomEvent<PkActionDetail>("pk-action", {
             detail,
@@ -350,14 +363,135 @@ export abstract class PkElement extends LitElement {
           }),
         );
       },
-      edit: (field, value) =>
-        this.patchInput(
-          field === "key" ? { keyField: { text: value } } : {},
-          "pk-input",
-          { field, value },
-        ),
+      edit: (field, value, extra = {}) =>
+        this.patchInput(this.editPatch(field, value, extra), "pk-input", {
+          field,
+          value,
+          ...extra,
+        }),
       pick: (id) => this.pickRow(id),
     };
+  }
+
+  /** What a typed value, a switch or a choice changes in the input the view reads. */
+  private editPatch(
+    field: string,
+    value: string | number | boolean,
+    extra: Record<string, unknown>,
+  ): Partial<UiInput> {
+    const input = this.input as UiInput & { drafts?: Record<string, unknown> };
+    const draft = (d: Record<string, unknown>) => ({
+      drafts: { ...input.drafts, ...d },
+    });
+    switch (field) {
+      case "key":
+        return { keyField: { text: String(value) } };
+      case "setting":
+        return {
+          config: (input.config ?? []).map((r) =>
+            r.key === extra.key ? { ...r, value } : r,
+          ),
+          edit: { kind: "value" },
+        };
+      case "autoUpdate":
+        return {
+          account: {
+            ...(input.account ?? { signedIn: true }),
+            autoUpdate: value === true,
+          },
+        };
+      case "channel":
+        return {
+          channel: { locked: false, ...input.channel, current: String(value) },
+        };
+      case "response":
+        return {
+          offline: {
+            ...input.offline,
+            response: String(value),
+            file: String(value) !== "",
+          },
+        };
+      case "deviceName":
+        return draft({ deviceName: String(value) }) as Partial<UiInput>;
+      default:
+        return {};
+    }
+  }
+
+  /** Controls the element answers itself (Devices renames and removes in the row): true when the
+   *  press only moved the pane's own state and the host has nothing to do yet. */
+  private localAction(
+    key: string,
+    detail: PkActionDetail,
+    view: View,
+  ): boolean {
+    const input = this.input as UiInput & { drafts?: Record<string, unknown> };
+    const drafts = input.drafts ?? {};
+    if (key === "offlineActivation.submit")
+      detail.response = input.offline?.response ?? "";
+    if (key === "paywall.upgrade" || key === "paywall.portal") {
+      const id = input.selected ?? input.offers?.items?.[0]?.id;
+      if (id) detail.offerId = id;
+      if (input.offers?.url) detail.url = input.offers.url;
+    }
+    if (view.component === "Settings" && key === "common.save")
+      detail.values = Object.fromEntries(
+        (input.config ?? []).map((r) => [r.key, r.value]),
+      );
+    if (key === "settings.advanced") {
+      this.input = {
+        ...input,
+        drafts: { ...drafts, advanced: drafts.advanced !== true },
+      } as UiInput;
+      return true;
+    }
+    if (view.component !== "Devices") return false;
+    const list = input.devices ?? [];
+    const named = (id: unknown) => list.find((d) => d.id === id);
+    if (key === "devices.rename" && detail.deviceId) {
+      const d = named(detail.deviceId);
+      this.input = {
+        ...input,
+        edit: { kind: "rename", device: d?.name ?? "" },
+        drafts: {
+          ...drafts,
+          deviceId: detail.deviceId,
+          deviceName: d?.name ?? "",
+        },
+      } as UiInput;
+      return true;
+    }
+    if (
+      key === "devices.remove" &&
+      view.state !== "confirming" &&
+      detail.deviceId
+    ) {
+      const d = named(detail.deviceId);
+      this.input = {
+        ...input,
+        edit: { kind: "remove", device: d?.name ?? "" },
+        drafts: { ...drafts, deviceId: detail.deviceId },
+      } as UiInput;
+      return true;
+    }
+    if (key === "common.cancel" && input.edit) {
+      this.input = { ...input, edit: undefined, drafts: {} } as UiInput;
+      return true;
+    }
+    if (key === "devices.remove" || key === "common.save") {
+      detail.deviceId = drafts.deviceId;
+      if (key === "common.save")
+        detail.name =
+          (drafts.deviceName as string | undefined) ??
+          named(drafts.deviceId)?.name ??
+          "";
+      // The host answers; the pane returns to its list (a failure sets `error`).
+      queueMicrotask(() => {
+        this.input = { ...this.input, edit: undefined, drafts: {} } as UiInput;
+      });
+    }
+    return false;
   }
 
   /** A row was picked (a device, a license): the input's `selected`, and `pk-select`. */
@@ -414,12 +548,22 @@ export abstract class PkElement extends LitElement {
   private moveFocus(view: View): void {
     const target = view.decisions.focus;
     if (target === null) return;
+    // Only screens and dialogs take focus on mount; a pane, strip or toast sits in a host page.
+    if (LAYOUTS[view.component].kind !== "screen") return;
     const holds =
       this.autofocus ||
       this.matches(":focus-within") ||
       document.activeElement === document.body;
     if (!holds) return;
     const root = this.renderRoot as ShadowRoot;
+    // The license list: the checked row takes focus, then Tab reaches Continue (DL9).
+    const checked = root.querySelector<HTMLElement>(
+      '[data-part="license-list"] [role="radio"][aria-checked="true"]',
+    );
+    if (checked && target === "signin.choice.continue") {
+      checked.focus({ preventScroll: true });
+      return;
+    }
     const el =
       target === "heading"
         ? root.querySelector<HTMLElement>("h1")

@@ -146,7 +146,7 @@ export const LAYOUTS: Readonly<Record<ComponentName, Layout>> = {
     kind: "screen",
     header: "compact",
     split: true,
-    controls: ["activate.submit"],
+    controls: ["activate.submit", "common.back", "common.done"],
     meta: ["activate.busy"],
     content: [
       "part.keyField.label",

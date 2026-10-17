@@ -95,6 +95,11 @@
       "reason": "The long-product-name fixture in the Welcome title (a ProductIdentity value inside a catalog message)."
     },
     {
+      "pattern": "Stable|Beta",
+      "boards": ["elements"],
+      "reason": "A release channel's id as the host names it (data, not copy); the kit capitalises it."
+    },
+    {
       "pattern": "Faster sync\\. Fixes a crash on launch\\.|Fixes the mixer on Windows\\.|<script>alert\\(1\\)</script> Fixes <b>sync</b>\\.",
       "boards": ["elements"],
       "reason": "Fixture release notes, one of them hostile markup the kit must show as text."

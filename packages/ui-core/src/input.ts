@@ -200,6 +200,8 @@ export interface ReplaceView {
 }
 
 export interface DeviceInput {
+  /** The device's id, which a host needs to rename or remove it (the kit's events carry it). */
+  id?: string;
   name: string | null;
   platform: string | null;
   formFactor: string | null;
@@ -288,6 +290,10 @@ export interface UiInput {
     file?: boolean;
     submitted?: boolean;
     verified?: boolean;
+    /** The request code the person sends to whoever issued the license (shown, copied, a QR). */
+    requestCode?: string;
+    /** The activation response the person pasted or loaded. */
+    response?: string;
   };
   signIn?: SignInSession;
   /** The sign-in provider the methods step's row names ("Apple", "Google", "Steam"), and the one a
@@ -307,10 +313,25 @@ export interface UiInput {
   releaseNotes?: ReleaseNoteInput[];
   config?: ConfigRowInput[];
   /** `holder` is the person's display name, `tier` the license's tier name ("Pro"). */
-  account?: { signedIn: boolean; holder?: string; tier?: string };
+  account?: {
+    signedIn: boolean;
+    holder?: string;
+    tier?: string;
+    /** Seats in use and the limit (`null`: no limit), for "2 of 3". */
+    devices?: { used: number; limit: number | null };
+    /** True when the app updates itself. */
+    autoUpdate?: boolean;
+  };
   /** `tier` is the tier that unlocks it ("Pro"), which the paywall and the lock name. */
   entitlement?: { name: string; entitled: boolean; tier?: string };
-  offers?: { available: boolean; purchased?: boolean };
+  offers?: {
+    available: boolean;
+    purchased?: boolean;
+    /** What can be bought, price and term display-ready ("$29", "per year"). */
+    items?: { id: string; name: string; price: string; term?: string }[];
+    /** The https store or portal page that opens when purchases happen outside the app. */
+    url?: string;
+  };
   /** `closesIn` is how long an auto-closing toast stays ("8 seconds"), for the screen reader. */
   toast?: { kind: ToastKind; closesIn?: string };
   error?: { code: string };
@@ -322,7 +343,13 @@ export interface UiInput {
     lastSynced?: string;
   };
   /** `store` is the store that fixes the channel ("App Store", "Google Play", "Steam"). */
-  channel?: { locked: boolean; store?: string };
+  channel?: {
+    locked: boolean;
+    store?: string;
+    /** The channel in use ("stable", "beta") and the ones on offer. */
+    current?: string;
+    options?: string[];
+  };
 }
 
 /** The input with its context resolved once: every model reads these, never the raw members. */

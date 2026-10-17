@@ -18,11 +18,22 @@ import { html, nothing, type PropertyValues } from "lit";
 import { SignInModel, type SignInPrimitives } from "@polaris-key/ui-core";
 
 import { PkElement } from "./element.js";
-import { text, type RenderCtx } from "./render.js";
+import { GLYPHS, text, type RenderCtx } from "./render.js";
 import { renderView } from "./views.js";
 import { FORM_ORDER, formStep, type FormInput, type FormStep } from "./form.js";
 
 export { formStep, type FormInput, type FormStep } from "./form.js";
+
+/** The last pointer target outside any shadow tree: a sheet's opener when focus never moved. */
+let lastPointer: EventTarget | null = null;
+if (typeof document !== "undefined")
+  document.addEventListener(
+    "pointerdown",
+    (e) => {
+      lastPointer = e.composedPath()[0] ?? null;
+    },
+    true,
+  );
 
 const reduced = (el: PkElement): boolean =>
   el.resolved.theme.motion !== "full" ||
@@ -56,6 +67,11 @@ export class PkSignIn extends PkElement {
   private formModel: SignInModel | null = null;
   private stopForm: (() => void) | null = null;
   private replacePick: string | undefined;
+  /** The tier of the license the person chose, for the Done line ("Pro license"). */
+  private pickedTier: string | undefined;
+  private doneSent = false;
+  private opener: HTMLElement | null = null;
+  private pushed = false;
   private lastStep: string | null = null;
   private morphFrom: { height: number; index: number } | null = null;
 
@@ -103,29 +119,59 @@ export class PkSignIn extends PkElement {
       case "common.cancel":
         if (s.session.outcome === undefined && this.sheet) return this.close();
         return m.cancel();
-      case "signin.choice.continue":
+      case "signin.choice.continue": {
+        // Pressed once: a second press while the license is redeemed does nothing.
+        if (s.session.redeeming) return;
+        const id = s.selected ?? s.choices?.preselected ?? null;
+        this.pickedTier = this.tierOf(id);
         return m.continue();
+      }
       case "signin.choice.keyInstead":
         return m.haveKey();
       case "activate.submit":
         return m.submitKey(s.keyField?.text ?? "");
       case "signin.replace.open":
       case "signin.replace.openSystem": {
-        const id = s.selected ?? s.choices?.preselected;
+        // A full license names itself; else the pick, the preselected, or the only full one.
+        const full = (s.choices?.choices ?? []).filter(
+          (r) => r.state !== "free",
+        );
+        const id =
+          (typeof d.licenseId === "string" ? d.licenseId : undefined) ??
+          s.selected ??
+          s.choices?.preselected ??
+          (full.length === 1 ? full[0]!.id : undefined);
         return id ? m.openReplace(id) : undefined;
       }
-      case "signin.replace.confirm":
+      case "signin.replace.confirm": {
+        if (s.session.redeeming) return;
+        this.pickedTier = this.tierOf(s.replaceView?.licenseId ?? null);
         return d.deviceId ? m.confirmReplace(d.deviceId) : undefined;
+      }
       case "signin.replace.back":
         this.replacePick = undefined;
         return m.back();
       case "signin.done.start":
-        this.dispatchEvent(
-          new CustomEvent("pk-done", { bubbles: true, composed: true }),
-        );
-        if (this.sheet) this.open = false;
+        this.finish();
+        if (this.sheet) this.close();
         return;
     }
+  }
+
+  private tierOf(id: string | null): string | undefined {
+    const s = this.formModel?.snapshot;
+    if (!id || !s) return undefined;
+    if (id === "create" || id === "new") return s.choices?.create?.tierName;
+    return s.choices?.choices.find((r) => r.id === id)?.tierName;
+  }
+
+  /** The host hears the sign-in finished, once per sign-in (it can finish its own task). */
+  private finish(): void {
+    if (this.doneSent) return;
+    this.doneSent = true;
+    this.dispatchEvent(
+      new CustomEvent("pk-done", { bubbles: true, composed: true }),
+    );
   }
 
   /** The live form model (ui-core `SignInModel`), once `primitives` are set. */
@@ -175,6 +221,13 @@ export class PkSignIn extends PkElement {
         ...(this.replace ? { replace: this.replace } : {}),
       };
     if (this.replacePick !== undefined) base.replacePick = this.replacePick;
+    // The Done line names the license that was chosen, and the holder the host gave.
+    if (base.signIn?.outcome === "signedIn" && this.pickedTier)
+      base.account = {
+        signedIn: true,
+        ...(base.account ?? {}),
+        tier: base.account?.tier ?? this.pickedTier,
+      };
     return base;
   }
 
@@ -242,7 +295,22 @@ export class PkSignIn extends PkElement {
       aria-labelledby="pk-title"
       @cancel=${this.onDialogCancel}
       @close=${this.onDialogClose}
+      @click=${(e: MouseEvent) => {
+        // A click on the scrim lands on the dialog itself: it backs out like Escape.
+        if (e.target === e.currentTarget) this.close();
+      }}
     >
+      <button
+        type="button"
+        class="sheet-close"
+        data-part="close"
+        aria-label=${c.copy.has("common.close")
+          ? c.copy.format("common.close", {})
+          : "Close"}
+        @click=${() => this.close()}
+      >
+        ${GLYPHS.close()}
+      </button>
       ${announce}${body}
     </dialog>`;
   }
@@ -264,6 +332,14 @@ export class PkSignIn extends PkElement {
 
   /** `sheet`: open the dialog (the opener gets focus back when it closes). */
   show(): void {
+    // Safari does not focus a button on click: the opener is the last pointer target then.
+    const active = (this.getRootNode() as Document | ShadowRoot).activeElement;
+    this.opener =
+      (document.activeElement && document.activeElement !== document.body
+        ? (document.activeElement as HTMLElement)
+        : null) ??
+      (active as HTMLElement | null) ??
+      (lastPointer as HTMLElement | null);
     this.open = true;
   }
 
@@ -275,7 +351,24 @@ export class PkSignIn extends PkElement {
     this.dispatchEvent(
       new CustomEvent("pk-close", { bubbles: true, composed: true }),
     );
+    this.restoreFocus();
   }
+
+  private restoreFocus(): void {
+    const o = this.opener;
+    this.opener = null;
+    if (o?.isConnected) queueMicrotask(() => o.focus({ preventScroll: true }));
+    if (this.pushed) {
+      this.pushed = false;
+      if (history.state?.pkSheet) history.back();
+    }
+  }
+
+  private onPop = (): void => {
+    // Back on a phone closes the sheet (there is no Escape key there).
+    this.pushed = false;
+    if (this.open) this.close();
+  };
 
   protected override update(changed: PropertyValues): void {
     // Measure the card before the body changes, for the height morph (§3.18 morph).
@@ -299,6 +392,13 @@ export class PkSignIn extends PkElement {
     this.morphFrom = null;
     const moved = this.lastStep !== null && key !== this.lastStep;
     this.lastStep = key;
+    const out = this.baseInput().signIn?.outcome;
+    if (out === "signedIn") {
+      this.finish();
+      // An existing license opens the app with the toast: the sheet closes by itself.
+      if (this.sheet && this.open && !this.baseInput().signIn?.issuedNow)
+        this.close();
+    } else this.doneSent = false;
     this.syncDialog();
     if (moved) this.morph(from);
   }
@@ -307,9 +407,14 @@ export class PkSignIn extends PkElement {
     const dialog =
       this.renderRoot.querySelector<HTMLDialogElement>("dialog.sheet");
     if (!dialog) return;
-    if (this.open && !dialog.open && typeof dialog.showModal === "function")
+    if (this.open && !dialog.open && typeof dialog.showModal === "function") {
       dialog.showModal();
-    else if (!this.open && dialog.open) dialog.close();
+      if (!this.pushed && typeof history !== "undefined") {
+        history.pushState({ pkSheet: true }, "");
+        this.pushed = true;
+        window.addEventListener("popstate", this.onPop, { once: true });
+      }
+    } else if (!this.open && dialog.open) dialog.close();
   }
 
   /** The step morph: the card's height from the old step's to the new, the body entering from

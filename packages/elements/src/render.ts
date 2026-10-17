@@ -5,6 +5,7 @@
 
 import { html, nothing, svg, type TemplateResult } from "lit";
 import { ifDefined } from "lit/directives/if-defined.js";
+import { html as staticHtml, unsafeStatic } from "lit/static-html.js";
 import { styleMap } from "lit/directives/style-map.js";
 import {
   countdown,
@@ -26,10 +27,16 @@ export interface RenderCtx {
   copy: Copy;
   resolved: Resolved;
   input: UiInput;
+  /** True where the screen owns the window: it is the page's main landmark. */
+  fill?: boolean;
   /** A control was pressed: the element turns it into a `pk-action` event. */
   act(key: string, detail?: Record<string, unknown>): void;
-  /** The person typed in a field. */
-  edit(field: string, value: string): void;
+  /** The person typed in a field, flipped a switch or chose an option. */
+  edit(
+    field: string,
+    value: string | number | boolean,
+    extra?: Record<string, unknown>,
+  ): void;
   /** The person picked a row. */
   pick(id: string): void;
 }
@@ -51,7 +58,11 @@ function argsOf(
   key: string,
   extra: Record<string, string | number>,
 ): Record<string, string | number> {
-  const args: Record<string, string | number> = { ...c.view.args, ...extra };
+  // A key a state gives its own arguments (`View.keyArgs`) takes only those.
+  const args: Record<string, string | number> = {
+    ...(c.view.keyArgs?.[key] ?? c.view.args),
+    ...extra,
+  };
   const raw = c.copy.raw(key) ?? "";
   const formFactor = c.input.platform?.formFactor ?? "other";
   if (args.thisDevice === undefined && raw.includes("{thisDevice}")) {
@@ -65,9 +76,104 @@ function argsOf(
     c.copy.has("part.thisDevice")
   )
     args.device = c.copy.format("part.thisDevice", { formFactor });
+  // The seat counts the SDK's result carries, for a message that names them.
+  const seats = c.input.replaceView?.seats;
+  const used = c.input.activation?.deviceCount ?? seats?.used;
+  const limit = c.input.activation?.limit ?? seats?.limit ?? undefined;
+  if (args.used === undefined && used !== undefined) args.used = used;
+  if (args.limit === undefined && limit !== undefined) args.limit = limit;
   const developer = c.resolved.identity.developer;
   if (args.developer === undefined && developer) args.developer = developer;
+  fillFromInput(c, key, args);
   return args;
+}
+
+/** The names of a message's own arguments (`{name}`, `{n, plural, …}`), not those nested in a
+ *  plural's or select's branches. */
+export function argNames(raw: string): string[] {
+  const out: string[] = [];
+  let depth = 0;
+  for (let i = 0; i < raw.length; i++) {
+    const ch = raw[i];
+    if (ch === "{") {
+      if (depth === 0) {
+        const m = /^\{\s*([A-Za-z_][\w]*)\s*(,\s*(\w+))?\s*[,}]/.exec(
+          raw.slice(i),
+        );
+        // A select always has an `other` branch: a missing value takes it.
+        if (m && m[3] !== "select") out.push(m[1]!);
+      }
+      depth++;
+    } else if (ch === "}") depth--;
+  }
+  return out;
+}
+
+/** The arguments of `key` the view, the identity and `extra` leave unfilled. */
+export function missingArgs(
+  c: RenderCtx,
+  key: string,
+  extra: Record<string, string | number> = {},
+): string[] {
+  const raw = c.copy.raw(key);
+  if (!raw) return [];
+  const args = argsOf(c, key, extra);
+  return argNames(raw).filter((n) => args[n] === undefined || args[n] === null);
+}
+
+const warned = new Set<string>();
+/** Forget which missing arguments were warned of (tests). */
+export function resetMissingWarnings(): void {
+  warned.clear();
+}
+/** True when `key` has every argument it names; otherwise warns (development) and says no. */
+export function usable(
+  c: RenderCtx,
+  key: string,
+  extra: Record<string, string | number> = {},
+): boolean {
+  const lost = missingArgs(c, key, extra);
+  if (lost.length) warnMissing(key, lost);
+  return lost.length === 0;
+}
+
+export function warnMissing(key: string, names: string[]): void {
+  const id = `${key}:${names.join(",")}`;
+  if (warned.has(id)) return;
+  warned.add(id);
+  console.warn(`[pk] ${key} has no value for ${names.join(", ")}; not drawn`);
+}
+
+/** The facts the SDK result carries that a message may name and the view left out: the holder,
+ *  the tier, the date grace ends, the download's figures, a list's count. */
+function fillFromInput(
+  c: RenderCtx,
+  key: string,
+  args: Record<string, string | number>,
+): void {
+  const i = c.input;
+  const set = (name: string, v: string | number | undefined | null) => {
+    if (args[name] === undefined && v !== undefined && v !== null && v !== "")
+      args[name] = v;
+  };
+  const offer = i.offers?.items?.find((o) => o.id === i.selected);
+  set("name", i.account?.holder);
+  set(
+    "tier",
+    i.account?.tier ??
+      i.entitlement?.tier ??
+      offer?.name ??
+      i.offers?.items?.[0]?.name,
+  );
+  set("date", i.gate?.graceDate);
+  set("store", i.channel?.store ?? i.update?.store);
+  if (key.endsWith(".downloading")) {
+    set("size", i.update?.progress?.size);
+    set("total", i.update?.progress?.total);
+  }
+  set("size", i.update?.size);
+  set("time", i.update?.progress?.timeLeft ?? i.cloudSync?.lastSynced);
+  set("count", i.devices?.length);
 }
 
 export function text(
@@ -75,6 +181,12 @@ export function text(
   key: string,
   extra: Record<string, string | number> = {},
 ): TemplateResult {
+  const lost = missingArgs(c, key, extra);
+  // Never paint braces: a line whose fact is missing is not drawn (development warns).
+  if (lost.length) {
+    warnMissing(key, lost);
+    return html``;
+  }
   const args = argsOf(c, key, extra);
   const isolated = new Set(c.view.isolate);
   const marked: Record<string, string | number> = {};
@@ -101,6 +213,11 @@ export function plain(
   key: string,
   extra: Record<string, string | number> = {},
 ): string {
+  const lost = missingArgs(c, key, extra);
+  if (lost.length) {
+    warnMissing(key, lost);
+    return "";
+  }
   return c.copy.format(key, argsOf(c, key, extra));
 }
 
@@ -122,6 +239,8 @@ const glyph = (d: TemplateResult, cls = "glyph") =>
   </svg>`;
 
 export const GLYPHS = {
+  close: (cls = "glyph") =>
+    glyph(svg`<path d="M18 6 6 18"/><path d="m6 6 12 12"/>`, cls),
   external: () =>
     glyph(
       svg`<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>`,
@@ -238,6 +357,8 @@ export function button(
     busy?: boolean;
     label?: string;
     args?: Record<string, string | number>;
+    /** Extra detail for the `pk-action` this control sends (a row's id). */
+    detail?: Record<string, unknown>;
   } = {},
 ): TemplateResult {
   const external = OPENS.has(key);
@@ -259,7 +380,7 @@ export function button(
     aria-disabled=${ifDefined(extra.busy ? "true" : undefined)}
     aria-label=${ifDefined(extra.label)}
     @click=${() => {
-      if (!extra.busy) c.act(key);
+      if (!extra.busy) c.act(key, extra.detail);
     }}
   >
     ${extra.busy
@@ -314,11 +435,14 @@ export function progressBar(c: RenderCtx, fraction: number): TemplateResult {
   const own = c.view.copy.find(
     (k) => !k.startsWith("a11y.") && !k.startsWith("common."),
   );
-  const label = c.view.copy.includes("a11y.progress")
+  const named = c.view.copy.includes("a11y.progress")
     ? plain(c, "a11y.progress")
-    : own
-      ? plain(c, own)
-      : undefined;
+    : "";
+  const label =
+    named ||
+    (own && plain(c, own)) ||
+    (c.copy.has("common.loading") && plain(c, "common.loading")) ||
+    undefined;
   return html`<div
     class="progress"
     part="progress"
@@ -328,7 +452,7 @@ export function progressBar(c: RenderCtx, fraction: number): TemplateResult {
     aria-valuemax="100"
     aria-valuenow=${pct}
     aria-label=${ifDefined(label)}
-    data-key=${ifDefined(label ? "a11y.progress" : undefined)}
+    data-key=${ifDefined(named ? "a11y.progress" : undefined)}
     style=${styleMap({ "--pk-fraction": String(pct / 100) })}
   >
     <span></span>
@@ -501,9 +625,12 @@ export function copyAddress(c: RenderCtx): TemplateResult | typeof nothing {
 }
 
 export function a11yOnly(c: RenderCtx): TemplateResult | typeof nothing {
-  const keys = c.view.copy.filter(
-    (k) => k === "a11y.busy" || k === "a11y.toastTimer",
-  );
+  const keys = c.view.copy.filter((k) => {
+    if (k !== "a11y.busy" && k !== "a11y.toastTimer") return false;
+    const lost = missingArgs(c, k);
+    if (lost.length) warnMissing(k, lost);
+    return lost.length === 0;
+  });
   if (keys.length === 0) return nothing;
   return html`${keys.map(
     (k) =>
@@ -523,13 +650,18 @@ export function actions(
   c: RenderCtx,
   controls: string[],
   layoutRow = false,
+  primaryLast = false,
 ): TemplateResult | typeof nothing {
   if (controls.length === 0) return nothing;
   const primary = c.view.decisions.primary;
-  const sorted = [...controls].sort(
-    (a, b) => Number(b === primary) - Number(a === primary),
+  const sorted = [...controls].sort((a, b) =>
+    primaryLast
+      ? Number(a === primary) - Number(b === primary)
+      : Number(b === primary) - Number(a === primary),
   );
-  const busy = c.input.pending !== undefined;
+  // Pressed once: while the work runs the primary is busy and ignores further presses.
+  const busy =
+    c.input.pending !== undefined || c.input.signIn?.redeeming === true;
   return html`<div
     class="actions"
     part="actions"
@@ -537,9 +669,16 @@ export function actions(
     data-layout=${layoutRow ? "row" : "stack"}
   >
     ${sorted.map((k) =>
-      button(c, k, k === primary ? "primary" : "secondary", {
-        busy: busy && k === primary,
-      }),
+      button(
+        c,
+        k,
+        k === primary
+          ? "primary"
+          : k === "common.signOut" && c.view.component === "AccountAndLicense"
+            ? "link"
+            : "secondary",
+        { busy: busy && k === primary },
+      ),
     )}
   </div>`;
 }
@@ -560,10 +699,14 @@ export function titles(
   keys: string[],
   size: "display" | "title" | "section" = "title",
   subtitles: readonly string[] = [],
+  level: 1 | 2 = 1,
 ): TemplateResult | typeof nothing {
   if (keys.length === 0) return nothing;
   const [first, ...more] = keys;
-  return html`<h1
+  // An embedded pane heads at h2 (its host page owns the h1); the rest nest one level below.
+  const top = unsafeStatic(`h${level}`);
+  const sub = unsafeStatic(`h${level + 1}`);
+  return staticHtml`<${top}
       id="pk-title"
       class="title"
       part="title"
@@ -573,10 +716,10 @@ export function titles(
       tabindex="-1"
     >
       ${text(c, first!)}
-    </h1>
+    </${top}>
     ${more.map(
       (k) =>
-        html`<h2
+        staticHtml`<${sub}
           class="title"
           data-size=${subtitles.includes(k) ? "sub" : "section"}
           part="heading"
@@ -584,7 +727,7 @@ export function titles(
           data-key=${k}
         >
           ${text(c, k)}
-        </h2>`,
+        </${sub}>`,
     )}`;
 }
 
