@@ -283,6 +283,8 @@ export const GENERATORS: Generator[] = [
     order: 100,
     inputs: [
       "packages/docs/scripts/gen-reference.mjs",
+      "packages/docs/scripts/console-nav.mjs",
+      "packages/admin/src/console/nav.ts",
       "packages/worker/src/**",
       "packages/worker/migrations/**",
       "packages/shared-*/src/**",
@@ -297,6 +299,7 @@ export const GENERATORS: Generator[] = [
       "packages/docs/src/content/docs/reference/{config-entry,error-codes,parity,routes,validation-codes}.mdx",
       "packages/docs/src/content/docs/reference/protocol/{corpus,fingerprint-constants}.mdx",
       "packages/docs/src/content/docs/contribute/data-model.mdx",
+      "packages/docs/src/content/docs/operate/console/tour.mdx",
     ],
     write: [{ argv: ["pnpm", "--filter", "@polaris-key/docs", "gen"] }],
     check: [{ argv: ["pnpm", "--filter", "@polaris-key/docs", "gen:check"] }],
