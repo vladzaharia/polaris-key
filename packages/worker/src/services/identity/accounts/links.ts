@@ -16,11 +16,11 @@ import { erasureVerdict } from "../../../core/accounts/erasureFence.js";
 import type { Env } from "../../../platform/env.js";
 import { onAccountEmailVerified } from "../../../core/licensing/licenseHolders.js";
 import { portalAudit } from "../portal/repo.js";
-import { sendSecurityNotice } from "../portal/email.js";
+import { sendSecurityNotice } from "../../../core/notify/send.js";
 import {
   signInMethodAddedNotice,
   signInMethodRemovedNotice,
-} from "../portal/notices.js";
+} from "../../../core/notify/templates.js";
 import { normalizeIdentity, type VerifiedIdentity } from "./signIn.js";
 import {
   EMAIL_ISSUER,

@@ -50,8 +50,8 @@ import {
   unlinkIdentity,
 } from "../accounts/links.js";
 import { portalAudit, portalAuthCapabilities } from "../portal/repo.js";
-import { sendSecurityNotice } from "../portal/email.js";
-import { signInMethodAddedNotice } from "../portal/notices.js";
+import { sendSecurityNotice } from "../../../core/notify/send.js";
+import { signInMethodAddedNotice } from "../../../core/notify/templates.js";
 import { browserLabel } from "../portal/accountSessions.js";
 import { finishSignIn } from "../card/finish.js";
 import { ACCOUNT_DISABLED_MESSAGE, cardJson } from "../card/http.js";

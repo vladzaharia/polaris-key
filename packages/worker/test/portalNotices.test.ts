@@ -51,11 +51,9 @@ import {
   signInMethodAddedNotice,
   signInMethodRemovedNotice,
   type NoticeMessage,
-} from "../src/services/identity/portal/notices.js";
-import {
-  securityNoticeRecipients,
-  sendSecurityNotice,
-} from "../src/services/identity/portal/email.js";
+} from "../src/core/notify/templates.js";
+import { securityNoticeRecipients } from "../src/core/notify/recipients.js";
+import { sendSecurityNotice } from "../src/core/notify/send.js";
 import { EMAIL_DOWNLOAD_PER_HOUR } from "../src/services/identity/portal/api.js";
 
 const ORIGIN = "https://key.plrs.im";

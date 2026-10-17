@@ -26,8 +26,8 @@ import {
   insertLink,
 } from "../accounts/repo.js";
 import { portalAudit } from "../portal/repo.js";
-import { sendSecurityNotice } from "../portal/email.js";
-import { signInMethodAddedNotice } from "../portal/notices.js";
+import { sendSecurityNotice } from "../../../core/notify/send.js";
+import { signInMethodAddedNotice } from "../../../core/notify/templates.js";
 
 export interface AutoLinkInput {
   connection: Connection;

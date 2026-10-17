@@ -93,7 +93,8 @@ import {
 import { signIn } from "../accounts/signIn.js";
 import { EMAIL_ISSUER } from "../accounts/repo.js";
 import { portalAuthCapabilities } from "../portal/repo.js";
-import { portalEmailConfigured, sendSignInEmail } from "../portal/email.js";
+import { sendSignInEmail } from "../../../core/notify/send.js";
+import { emailConfigured } from "../../../core/notify/destinations.js";
 import { finishSignIn } from "./finish.js";
 import { beginEmailFinish } from "./gate.js";
 import {
@@ -346,7 +347,7 @@ export async function handleSigninEmailStart(
   if (route && body.method !== "code") {
     return openFlow(req, env, db, { email, returnTo, sends: 0 }, now, route);
   }
-  if (!portalEmailConfigured(env)) return emailUnavailable();
+  if (!emailConfigured(env)) return emailUnavailable();
   return openFlow(req, env, db, { email, returnTo, sends: 1 }, now);
 }
 
@@ -534,7 +535,7 @@ export async function handleSigninEmailResend(
     const wait = flow.record.createdAt + EMAIL_RESEND_AFTER_SECONDS - now;
     if (wait > 0) return resendLater(wait);
   }
-  if (!portalEmailConfigured(env)) return emailUnavailable();
+  if (!emailConfigured(env)) return emailUnavailable();
   // Retire the flow atomically: of two racing resends (or a resend and a completion) one wins,
   // and the previous code and link die with it (both are bound to its id).
   if (!(await consumeArtefact(env, flow.ref)))

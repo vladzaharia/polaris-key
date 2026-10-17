@@ -83,13 +83,13 @@ import {
 } from "./repo.js";
 import { notRemovableReason } from "./origin.js";
 import { portalSessionAuthenticatedAt, type PortalSession } from "./session.js";
-import { sendNotice } from "./email.js";
+import { sendNotice } from "../../../core/notify/send.js";
 import { attachLicense, detachLicense } from "../accounts/claim.js";
 import {
   licenseAddedNotice,
   licenseKeyReplacedNotice,
   type NoticeMessage,
-} from "./notices.js";
+} from "../../../core/notify/templates.js";
 import { portalStepUpGate } from "./stepUpGate.js";
 import {
   err,

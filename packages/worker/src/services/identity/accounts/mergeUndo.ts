@@ -74,8 +74,9 @@ import {
   clearDeviceSubjects,
   onLicenseOwnershipEnded,
 } from "../../../core/accounts/subjectHooks.js";
-import { sendNotice, securityNoticeRecipients } from "../portal/email.js";
-import { accountsSeparatedNotice } from "../portal/notices.js";
+import { sendNotice } from "../../../core/notify/send.js";
+import { securityNoticeRecipients } from "../../../core/notify/recipients.js";
+import { accountsSeparatedNotice } from "../../../core/notify/templates.js";
 import { isFresh, type AccountContext, type AccountProof } from "./links.js";
 import { EMAIL_ISSUER, getAccountRow } from "./repo.js";
 

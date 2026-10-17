@@ -97,11 +97,11 @@ import {
   wrongCodeMessage,
 } from "../card/http.js";
 import {
-  portalEmailConfigured,
   sendSecurityNotice,
   sendSignInEmail,
-} from "./email.js";
-import { primaryEmailChangedNotice } from "./notices.js";
+} from "../../../core/notify/send.js";
+import { emailConfigured } from "../../../core/notify/destinations.js";
+import { primaryEmailChangedNotice } from "../../../core/notify/templates.js";
 import { portalAudit, productCountsByEmail } from "./repo.js";
 
 /** Method changes (connect starts, codes, removals) by one account per minute. */
@@ -426,7 +426,7 @@ async function emailStart(
     // Already one of this account's own methods: nothing to prove.
     return cardJson({ status: "connected", already: true, email });
   }
-  if (!portalEmailConfigured(env)) return emailUnavailable();
+  if (!emailConfigured(env)) return emailUnavailable();
   const ref = await methodFlowRef(env, caller.sessionIdHash);
   // Enumeration-safe: the same answer whether the address is free, another account's, or refused
   // a send. Whose it is shows only once the code proved it.

@@ -3,6 +3,7 @@ import {
   mintOpaqueToken,
   randomId,
 } from "../../../platform/crypto.js";
+import { portalAudit } from "../../../core/accounts/portalAudit.js";
 import { normalizeEmail } from "../../../platform/email.js";
 import { parseJsonColumn } from "../../../platform/json.js";
 import type { Db, DbParam, DbStatement } from "../../../db/types.js";
@@ -1353,32 +1354,7 @@ export async function deletePortalAccount(
   return deleteAccount({ db, env, now, origin }, accountId);
 }
 
-export async function portalAudit(
-  db: Db,
-  input: {
-    accountId?: string | null;
-    action: string;
-    product?: string | null;
-    targetKind?: string | null;
-    targetId?: string | null;
-    summary?: string | null;
-    now: number;
-  },
-): Promise<void> {
-  await db.run(
-    `INSERT INTO portal_audit
-       (id, account_id, at, action, product, target_kind, target_id, summary)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    randomId("paud"),
-    input.accountId ?? null,
-    input.now,
-    input.action,
-    input.product ?? null,
-    input.targetKind ?? null,
-    input.targetId ?? null,
-    input.summary ?? null,
-  );
-}
+export { portalAudit };
 
 export async function listLinkedProducts(
   db: Db,

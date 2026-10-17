@@ -41,8 +41,8 @@ import {
   onLicenseOwnershipEnded,
 } from "../../../core/accounts/subjectHooks.js";
 import { getProduct } from "../../../core/products/store.js";
-import { sendNotice } from "../portal/email.js";
-import { licenseAttachedNotice } from "../portal/notices.js";
+import { sendNotice } from "../../../core/notify/send.js";
+import { licenseAttachedNotice } from "../../../core/notify/templates.js";
 import {
   auditLicenseAttach,
   getPortalProductSettings,

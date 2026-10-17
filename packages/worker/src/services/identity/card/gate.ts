@@ -88,7 +88,8 @@ import {
   readCookie,
 } from "../../../core/accounts/accountCookies.js";
 import { portalAudit, recordLinkAssertion } from "../portal/repo.js";
-import { portalEmailConfigured, sendSignInEmail } from "../portal/email.js";
+import { sendSignInEmail } from "../../../core/notify/send.js";
+import { emailConfigured } from "../../../core/notify/destinations.js";
 import { erasureVerdict } from "../../../core/accounts/erasureFence.js";
 import { checkAccountSession } from "../portal/accountSessions.js";
 import {
@@ -851,7 +852,7 @@ async function gateChoose(
     if (!chosen) return gateExpired();
     return gateConfirmed(req, env, db, ref, chosen, now);
   }
-  if (!portalEmailConfigured(env)) return emailUnavailable();
+  if (!emailConfigured(env)) return emailUnavailable();
   // Enumeration-safe: the same answer whether the address is known, unknown or refused a send.
   const { send } = await checkEmailSend(
     env,

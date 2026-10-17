@@ -1740,16 +1740,7 @@ describe("R9-12 escapeHtml coverage", () => {
 
   it("REFUTED (today): portal email escapes into a double-quoted href / text node", () => {
     const src = readFileSync(
-      join(
-        HERE,
-        "..",
-        "..",
-        "src",
-        "services",
-        "identity",
-        "portal",
-        "email.ts",
-      ),
+      join(HERE, "..", "..", "src", "core", "notify", "render.ts"),
       "utf8",
     );
     // Both sinks escape: the action URL into a double-quoted href (and its visible copy), and
@@ -1759,8 +1750,7 @@ describe("R9-12 escapeHtml coverage", () => {
   });
 
   it("REFUTED: the rendered portal email escapes a hostile link, subject and paragraph", async () => {
-    const { renderEmail } =
-      await import("../../src/services/identity/portal/email.js");
+    const { renderEmail } = await import("../../src/core/notify/render.js");
     const html = renderEmail({
       subject: '<img src=x onerror="alert(1)">',
       heading: "</h1><script>alert(1)</script>",
