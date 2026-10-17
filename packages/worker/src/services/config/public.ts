@@ -10,3 +10,9 @@ export {
   mintApprovalBasis,
   type MintPolicyProduct,
 } from "./mint.js";
+
+export {
+  insertSchema,
+  stmtInsertSchema,
+  deactivateSchemas,
+} from "./schemaStore.js";

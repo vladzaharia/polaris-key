@@ -1,4 +1,5 @@
 /// <reference types="@cloudflare/workers-types" />
+import { insertSchema } from "../src/services/config/schemaStore.js";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -9,7 +10,6 @@ import { insertKey, insertLicense } from "../src/core/licensing/store.js";
 import {
   insertProduct,
   insertProductKey,
-  insertSchema,
   upsertProductSecret,
 } from "../src/core/products/store.js";
 import { hashKey, mintLicenseKey } from "../src/platform/crypto.js";

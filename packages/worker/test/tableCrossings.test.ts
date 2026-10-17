@@ -43,10 +43,6 @@ const SEAMS: readonly (readonly [string, string, RemovedBy])[] = [
   ["identity", "release_artifacts", "P0-23"],
   ["identity", "release_builds", "P0-23"],
   ["identity", "release_download_tokens", "P0-23"],
-  // Release's link and resync write other owners' manifest-derived rows.
-  ["release", "oidc_config", "P0-26"],
-  ["release", "provisioning_config", "P0-26"],
-  ["release", "edge_mint_config", "P0-26"],
   // Distribution's commerce reads License's store grants.
   ["distribution", "license_store_grants", "P0-27"],
   // Update reads Release's pack tables inside the sanctioned update → release edge (packParts.ts).
@@ -82,10 +78,8 @@ const WRITE_SEAMS: readonly (readonly [string, string, RemovedBy])[] = [
   ["core/licensing/store.ts", "license_profiles", "permanent"],
   ["core/licensing/store.ts", "licenses", "permanent"],
   ["core/licensing/store.ts", "tiers", "permanent"],
-  ["core/licensing/store.ts", "profiles", "P0-26"],
   // deleteProduct's cascade: each service erases its own rows (`contributes.productDeletion`).
   // Product registration's statement-builders write rows other owners hold.
-  ["core/products/store.ts", "product_schema", "P0-26"],
   ["core/products/store.ts", "profiles", "ST-43"],
   // Core's storefront columns on Identity's table: the `storefront.*` entries are Core's slice,
   // so moving the adapters means moving the entries (and the generated settings pages) to

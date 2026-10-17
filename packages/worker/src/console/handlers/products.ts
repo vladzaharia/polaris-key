@@ -29,6 +29,7 @@
  * gates the per-product key/secret/release operations.
  */
 
+import { stmtInsertSchema } from "../../services/config/public.js";
 import {
   keyTransitionAllowed,
   stmtRetireOrRevokeKey,
@@ -53,7 +54,6 @@ import {
   listProducts,
   stmtInsertProduct,
   stmtInsertProductKey,
-  stmtInsertSchema,
   upsertProductSecret,
 } from "../../core/products/store.js";
 import {} from "../../core/licensing/store.js";

@@ -33,6 +33,7 @@ import {
 } from "@polaris-key/manifest";
 import { BOUND_INGEST } from "../core/ingest/pipeline.js";
 import type { Ingest } from "../core/ingest/types.js";
+import { stmtInsertSchema } from "../services/config/public.js";
 import type { Env } from "../platform/env.js";
 import type { Db, DbStatement } from "../db/types.js";
 import { generateEd25519, seal } from "../platform/keyvault.js";
@@ -40,7 +41,6 @@ import {
   getProduct,
   stmtInsertProduct,
   stmtInsertProductKey,
-  stmtInsertSchema,
 } from "../core/products/store.js";
 import { parseServices, serializeServices } from "../core/services.js";
 import { type BreakGlassClaim, type ClaimKey } from "../core/settingsClaims.js";

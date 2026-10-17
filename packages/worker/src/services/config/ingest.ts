@@ -5,6 +5,7 @@
  * Written WHATEVER Config's enablement (plans/P0-26.md D1).
  */
 
+import { stmtInsertSchema } from "./schemaStore.js";
 import { Catalog } from "@polaris-key/catalog";
 import { SYSTEM_ACTORS } from "../../core/audit.js";
 import { declassifyRefusal } from "../../core/configDelivery.js";
@@ -13,7 +14,6 @@ import type { DbParam, DbStatement } from "../../db/types.js";
 import {
   getActiveSchema,
   nextSchemaVersion,
-  stmtInsertSchema,
 } from "../../core/products/store.js";
 import {
   CLAIMED_SQL,
