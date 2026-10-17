@@ -3,6 +3,8 @@ sidebar:
   order: 2
 title: "GitHub sync"
 description: "Linking a repository, the GitHub App installation, the .pkey/ manifest, the push-webhook resync pipeline, and release-event store refreshes."
+type: "reference"
+lastReviewed: "2026-10-16"
 ---
 
 A Release-enabled product is never configured by filling in a form. It is configured by a
@@ -19,7 +21,7 @@ An operator pastes a repository URL into the console — `https://github.com/<ow
 an SSH remote, or a bare `<owner>/<repo>` all parse the same way. From there:
 
 1. Polaris Key asks GitHub which App installation covers that repository
-   (`GET /repos/<owner>/<repo>/installation`, authenticated as the App itself with a
+   (GitHub's repository installation endpoint, authenticated as the App itself with a
    short-lived JWT). If the App isn't installed there, linking fails with an actionable
    message rather than a generic error.
 2. It mints an installation token scoped to that repository alone (more on scoping below).
@@ -80,8 +82,8 @@ the only way to change it.
 | `manualChannels`  | Named channels beyond `stable` and `beta`, each `{ name, regex }`, matched anchored against release tags. See [Channels and policy](/docs/services/release/channels/).           | none                                             |
 
 The rest of the block is covered elsewhere: `deliverables`, with each channel's `includes`, under
-[Release deliverables](/docs/build/manifest/authoring/#release-deliverables-deliverablesapp-and-the-artifact-map);
-`publishing.trustedPublisher` under [Trusted publishing](/docs/services/release/artifacts/#trusted-publishing);
+[Release deliverables](/docs/build/manifest/release/#release-deliverables-deliverablesapp-and-the-artifact-map);
+`publishing.trustedPublisher` under [Trusted publishing](/docs/features/ship-builds/releases/trusted-publishing/);
 `releaseKeys` under [Release records](/docs/services/update/signed-feed/#release-records); and
 `artifactPolicy` and `access` on [Artifacts, changelog & install](/docs/services/release/artifacts/).
 
@@ -104,7 +106,7 @@ GitHub.
 
 ## The push-webhook resync pipeline
 
-Once a repository is linked, `POST /webhooks/github` is what keeps it current. GitHub
+Once a repository is linked, the `/webhooks/github` endpoint keeps it current. GitHub
 signs every delivery (`X-Hub-Signature-256`, HMAC-SHA256 over the raw body); a delivery
 that doesn't verify is refused before anything else runs. Every delivery also carries a
 GUID (`X-GitHub-Delivery`); Polaris Key remembers processed GUIDs for seven days and
@@ -124,7 +126,7 @@ From there the pipeline narrows the delivery down before it does any real work:
 - **The right installation.** The delivery names an installation id, and it must match the
   id recorded when the repository was linked. One webhook secret covers every installation
   on the platform, so without this check a single secret compromise would let an attacker
-  forge a delivery for _any_ linked product, not just the repository they control.
+  forge a delivery for _any_ linked product, not only the repository they control.
 
 A delivery that clears all three triggers a resync for every product linked to that
 repository (a single repo can back more than one product).
@@ -236,9 +238,9 @@ change an operator made at 3 a.m. to stop an incident.
 
 `POST …/services/revert` (and its equivalents for the other two) hands ownership back to
 the manifest without changing the live value — the setting stays exactly as the operator
-left it until the next resync re-applies whatever the repository currently says.
+left it until the next resync re-applies whatever the repository says.
 
-The product name, the licence defaults, the web origins and the catalog are **claimed** the
+The product name, the license defaults, the web origins and the catalog are **claimed** the
 same way, with one difference: **Revert to manifest** (`DELETE …/claims/<key>`, from the
 setting's source badge in the console) restores the value from the last applied manifest at
 once. A product not applied since the manifest record existed gets it at the next resync
@@ -248,13 +250,13 @@ profile that holds the id of a tier or profile the manifest newly declares is ke
 resync reports the conflict.
 
 A product can be **manifest-authoritative** instead (the switch in Settings → Repository): the
-console then refuses claims on the product name, the licence defaults, the web origins and the
+console then refuses claims on the product name, the license defaults, the web origins and the
 catalog except as expiring break-glass claims, and a resync ends a break-glass claim when it
 changes that field. Tiers, profiles, services and the fingerprint and auto-issue policies are not
 covered yet: a console edit still claims them. The system product is always manifest-authoritative,
 and its only writer is the deploy hook: a push webhook for the platform repository and a console
 Resync of it are refused ("the system product is applied by the deploy hook"). See
-[Manifest-authoritative mode](/docs/admin/products/#manifest-authoritative-mode).
+[Manifest-authoritative mode](/docs/operate/console/product-actions/#manifest-authoritative-mode).
 
 Every check runs before the first write, and the apply is one atomic batch: a refused resync
 changes nothing. Each setting, tier or profile a resync changes gets its own audit row.
@@ -281,9 +283,9 @@ landed, and reads the validation errors verbatim when it didn't. A `release` del
 synchronously, and only for a product whose `release_source` is actually `github`. A
 manually created product has nothing to resync from (the endpoint answers `422`), so its
 Settings page offers **Link repository…** instead: it checks the repository, shows what the
-manifest will apply, keep and remove, then links the product and applies the manifest through
+manifest applies, keeps and removes, then links the product and applies the manifest through
 this same path (see
-[Linking a repository to an existing product](/docs/admin/products/#linking-a-repository-to-an-existing-product)). When the resync finishes, the **Repo sync** drawer lists what it updated,
+[Linking a repository to an existing product](/docs/operate/console/product-actions/#linking-a-repository-to-an-existing-product)). When the resync finishes, the **Repo sync** drawer lists what it updated,
 any part of the manifest it refused (with the manifest path), and the pack-set
 re-resolution it triggered. Use it after linking a repo whose
 `.pkey/` predates the App installation, or any time an operator wants to confirm a change

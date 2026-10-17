@@ -1,0 +1,34 @@
+---
+title: "Set up sign-in email"
+description: "Send sign-in and account email from the shared sender, cap a product, and manage the suppression list."
+type: "runbook"
+lastReviewed: "2026-10-16"
+sidebar:
+  order: 5
+---
+
+import RunbookSection from "../../../../../components/docs/RunbookSection.astro";
+
+**Role required:** Platform admin with Cloudflare access. DNS and Apple private relay setup is the owner's.
+
+**Impact:** Every product's sign-in email leaves one shared sender, so its reputation is shared. A wrong sender setting stops email sign-in for everyone.
+
+Use this when you set up the sending domain, cap a product's daily email, or clear a suppressed address.
+
+<RunbookSection file="RUNBOOK" heading="Sign-in email" />
+
+## Verify
+
+- Send a sign-in to a test Apple account's private relay address and confirm it arrives. Apple must show each sending domain as SPF-verified.
+- Watch Cloudflare's Email Sending analytics: delivery rate over 95 %, hard bounces under 2 %, complaints under 0.1 %.
+- A product that hit its cap shows users "We can't send email right now". Raise or delete its row in `email_product_caps` and the message stops within the sliding 24 hours.
+
+## Roll back
+
+- The Worker sends from `noreply@plrs.im` while `EMAIL_SENDER_ADDRESS` is unset.
+- Delete a product's row in `email_product_caps` to return it to the deployment value.
+- Clear a suppressed address in Cloudflare's list too (**Email Sending**, **Suppressions**). Otherwise the next send adds it back.
+
+## Escalate
+
+Throttling, quota, an unverified sender and provider outages all answer `email_unavailable`, and the login card offers another sign-in method. See [Email delivery](/docs/operate/platform/email/) for the limits and what people see.

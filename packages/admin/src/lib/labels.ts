@@ -47,19 +47,36 @@ export const PROVIDER_LABELS: Record<string, string> = {
   manual: "Manual",
 };
 
-/** Config catalog kinds ("kind", never "type", per the glossary). */
+/**
+ * The catalog's types in the console's one vocabulary (U-30): a Setting, a Secret or a Minted
+ * token. The wire keeps `kind` and `delivery` (a minted token is `kind: "secret"` with
+ * `delivery: "edgeMint"`); only the words change.
+ */
 export const KIND_LABELS: Record<string, string> = {
-  config: "Config",
+  config: "Setting",
   secret: "Secret",
   flag: "Flag",
 };
 
-/** Catalog management states. */
-export const MANAGEMENT_LABELS: Record<string, string> = {
-  default: "Default",
-  enforced: "Enforced",
+/** An entry's type label: a secret delivered as `edgeMint` is a Minted token. */
+export function typeLabel(entry: { kind: string; delivery?: string }): string {
+  if (entry.kind === "secret" && entry.delivery === "edgeMint")
+    return "Minted token";
+  return KIND_LABELS[entry.kind] ?? entry.kind;
+}
+
+/**
+ * A setting's in-app visibility over the stored `managementDefault` (default, enforced, hidden):
+ * Editable people can change it, Read-only they see but cannot, Hidden they never see.
+ */
+export const IN_APP_LABELS: Record<string, string> = {
+  default: "Editable",
+  enforced: "Read-only",
   hidden: "Hidden",
 };
+
+/** Catalog management states, in the In the app words. */
+export const MANAGEMENT_LABELS: Record<string, string> = IN_APP_LABELS;
 
 /**
  * Outlet kinds (Distribution). The `direct` kind reads "Polaris Key" (S-21 §6.8): the id stays
@@ -139,4 +156,23 @@ export function label(
 ): string {
   if (value === null || value === undefined || value === "") return "None";
   return table[value] ?? humanize(value);
+}
+
+/** The facet value of an entry's In the app cell: a setting's visibility, else `code`. */
+export function inAppState(entry: {
+  kind: string;
+  managementDefault?: string;
+}): "default" | "enforced" | "hidden" | "code" {
+  if (entry.kind !== "config") return "code";
+  const m = entry.managementDefault;
+  return m === "enforced" || m === "hidden" ? m : "default";
+}
+
+/** The In the app cell: a setting's visibility, or "Code only" for a secret and a minted token. */
+export function inAppLabel(entry: {
+  kind: string;
+  managementDefault?: string;
+}): string {
+  const state = inAppState(entry);
+  return state === "code" ? "Code only" : IN_APP_LABELS[state]!;
 }

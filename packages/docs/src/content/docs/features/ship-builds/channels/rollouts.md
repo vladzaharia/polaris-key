@@ -2,17 +2,19 @@
 sidebar:
   order: 3
 title: "Rollouts and halts"
-description: "Outlet-scoped rollout percentage, pause, resume, halt and completion — the states, the CI and console controls, mirrored store rollouts, and what a halt does today."
+description: "Channel-scoped rollout percentage, pause, resume, halt and completion — the states, the CI and console controls, mirrored store rollouts, and what a halt does today."
+type: "reference"
+lastReviewed: "2026-10-16"
 ---
 
-A **rollout** offers one release of one deliverable on one outlet's channel to a share of the
+A **rollout** offers one release of one deliverable on one channel's release track to a share of the
 fleet. Rollout percentage, pause, resume, halt and completion belong to Distribution, **per
-outlet and channel**; the channel pointer, floor, `critical` flag and yanks stay with Release,
+channel and release track**; the release track pointer, floor, `critical` flag and yanks stay with Release,
 per deliverable. Apple's phased release, Play's staged rollout and Polaris Key's own buckets
-are all per outlet, which is why the split falls there.
+are all per channel, which is why the split falls there.
 
 :::note[What a halt reaches]
-A pause or halt stops offering the release on that outlet in the signed channel feed, the
+A pause or halt stops offering the release on that channel in the signed release track feed, the
 [app-updater feeds](/docs/services/update/updater-feeds/) (the Sparkle appcast, `/update/version`
 and the rest), the [storefront feeds](/docs/services/distribution/feeds/) and the public
 [download page](/docs/users/downloads/); they list the previous release instead. (The appcast
@@ -20,16 +22,16 @@ of a product that publishes no release records keeps its GitHub-resolved path an
 rollouts.) The storefront
 feeds that list releases (AltStore, AltStore PAL, F-Droid, Scoop and Flathub) also leave out a
 release whose rollout is below 100%. **Obtainium does not follow holds.** Its config is a
-pointer, not a release: in F-Droid repository mode it follows the `fdroid-repo` outlet's holds,
+pointer, not a release: in F-Droid repository mode it follows the `fdroid-repo` channel's holds,
 and in direct-link mode it follows the moving `builds/<channel>/<buildId>` download, which
 applies yanks and pins but not holds. To take a release off every surface, moving downloads
-included, **yank it** or **pin the channel** to an earlier release
+included, **yank it** or **pin the release track** to an earlier release
 ([Channels and policy](/docs/services/release/channels/)).
 :::
 
 ## The rollout record
 
-One row per (deliverable, outlet, channel), in `dist_rollouts`:
+One row per (deliverable, channel, release track), in `dist_rollouts`:
 
 | Field          | Meaning                                                            |
 | -------------- | ------------------------------------------------------------------ |
@@ -92,7 +94,7 @@ POST /<product>/distribution/rollouts/<outlet>/<channel>/halt
 POST /<product>/distribution/rollouts/<outlet>/<channel>/complete
 ```
 
-The outlet must be one the product declares (the Polaris Key outlet, `direct`, when it declares none). Answers are
+The channel must be one the product declares (the Polaris Key channel, `direct`, when it declares none). Answers are
 `{ "ok": true, "rollout": { … } }`; refusals use the platform's flat shape with a `reason`
 (`unknown_outlet`, `unknown_channel`, `unknown_deliverable`, `unknown_release`, `no_rollout`,
 `invalid_body`, `invalid_transition`, `release_yanked`, `rollout_mirrored`, `stale_release`).
@@ -101,8 +103,8 @@ No CORS: these are CI routes.
 **From the console** — the same verbs under the admin API (narrative-only), plus a list:
 
 ```
-GET  /manage/api/products/<slug>/distribution/rollouts
-POST /manage/api/products/<slug>/distribution/rollouts/<outlet>/<channel>[/<verb>]
+/manage/api/products/<slug>/distribution/rollouts (GET)
+/manage/api/products/<slug>/distribution/rollouts/<outlet>/<channel> (POST)[/<verb>]
 ```
 
 **Distribution → Rollouts** in the console lists every rollout, halted ones first, with the same
@@ -122,12 +124,12 @@ resumes, ramps, completes or starts a rollout; lifting the halt is your `resume`
 
 ## Pack rollouts and halts
 
-A pack release rolls out, pauses, resumes and halts per outlet through the same rows and the
+A pack release rolls out, pauses, resumes and halts per channel through the same rows and the
 same controls as the app: pass the pack's id as the deliverable
 (`pkey distribution rollout --deliverable <packId> …`, `{ "deliverable": "<packId>" }` on the
-routes). The signed channel feed carries them as **gates** under
+routes). The signed release track feed carries them as **gates** under
 `packSets.outlets.<outletId>.gates`, keyed by the target release's record hash, for every rollout
-on the feed's channel whose release a stored pack set offers, on an outlet where the pack floats:
+on the feed's release track whose release a stored pack set offers, on a channel where the pack floats:
 
 | Rollout state                    | Gate                                                 |
 | -------------------------------- | ---------------------------------------------------- |
@@ -138,7 +140,7 @@ on the feed's channel whose release a stored pack set offers, on an outlet where
 A device outside the bucket, or on a halted gate, takes `fallback` instead: the release the sets
 name **without** the gated releases (the previous set), or `null` when its rows disagree, in which
 case the device keeps what it has. A device never downgrades a pack it already installed. Other
-outlets carry no gate. A pack whose transport cannot float on an outlet (`pinned` there) gets
+channels carry no gate. A pack whose transport cannot float on a channel (`pinned` there) gets
 none either.
 
 ## Store rollouts

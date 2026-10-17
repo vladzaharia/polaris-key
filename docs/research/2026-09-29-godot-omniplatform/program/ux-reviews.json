@@ -29,6 +29,41 @@
       "verdict": "pass",
       "date": "2026-10-10",
       "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/godot-kit/final5/"
+    },
+    "ST-38": {
+      "verdict": "pass",
+      "date": "2026-10-17",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/ST-38/ (built review 2026-10-16; blocking fixed in fix/ST-07-ST-38-review ae4012cb1; skipped design items in _lead/lead-followups.md)"
+    },
+    "ST-07": {
+      "verdict": "pass",
+      "date": "2026-10-17",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/ST-07/ (built review 2026-10-16; blocking fixed in fix/ST-07-ST-38-review ae4012cb1; skipped design items in _lead/lead-followups.md)"
+    },
+    "I-11": {
+      "verdict": "pass",
+      "date": "2026-10-17",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/I-11/ (built review 2026-10-16; blockers incl. export leak fixed in fix/I-11-PX-W19-review e27ee117c)"
+    },
+    "PX-W19": {
+      "verdict": "pass",
+      "date": "2026-10-17",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/PX-W19/ (built review 2026-10-16; StepUp clipping fixed in e27ee117c)"
+    },
+    "ST-29": {
+      "verdict": "pass",
+      "date": "2026-10-17",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/ST-29/ (built review 2026-10-16; long-name break fixed in fix/ST-29-review 0b3342640; security review 2026-10-10 passed)"
+    },
+    "U-30": {
+      "verdict": "pass",
+      "date": "2026-10-17",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/U-30/ (built review 2026-10-16; both blockers fixed in fix/U-30-review 365da1f8d)"
+    },
+    "UK-46": {
+      "verdict": "pass",
+      "date": "2026-10-17",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/UK-46/ (built review 2026-10-16, pass with fixes; 16/18 fixed in fix/UK-46-review ff27f9790; 3 corpus-pinned items to the UK-51 corpus follow-up)"
     }
   }
 }

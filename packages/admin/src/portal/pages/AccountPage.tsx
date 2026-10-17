@@ -15,14 +15,16 @@ import { SignInMethods } from "../components/account/SignInMethods.js";
 import { SessionsCard } from "../components/account/SessionsCard.js";
 import { SectionCard } from "../components/product/Card.js";
 import { DownloadData } from "../components/DownloadData.js";
+import { DataRow } from "../components/DataRow.js";
+import { StepUpInline } from "../components/account/StepUpInline.js";
 import {
   useCancelAccountDeletion,
   useDeleteAccount,
   useExportAccountData,
   useSessions,
 } from "../data.js";
-import { ACCOUNT_EXPORT_FILE, YOUR_DATA_COPY } from "../copy/yourData.js";
-import { portalErrorCopy } from "../errors.js";
+import { YOUR_DATA_COPY } from "../copy/yourData.js";
+import { isStepUpRequired, portalErrorCopy } from "../errors.js";
 import { focusSectionHeading } from "../focus.js";
 import {
   href,
@@ -305,14 +307,21 @@ function ThemeSwatch({
  * A typed confirmation schedules an erasure after a 14-day grace period; the holder can keep using
  * the account, download their data and cancel until cron claims the due request. The download is
  * the account's own and never a product's: each product page has its own Your data card.
+ *
+ * A stale sign-in (the Worker's `step_up_required`) shows "Confirm it's you first" where the
+ * refusal would be, and confirming runs the request again; the typed email stays. Focus follows the
+ * result: a schedule moves it to the scheduled box's heading, a cancel back to Delete account.
  */
 function YourData({ account }: { account: PortalAccount }): React.ReactElement {
   const [open, setOpen] = React.useState(false);
   const [typed, setTyped] = React.useState("");
+  const [askSchedule, setAskSchedule] = React.useState(false);
+  const [askCancel, setAskCancel] = React.useState(false);
   const exportData = useExportAccountData();
   const del = useDeleteAccount();
   const cancel = useCancelAccountDeletion();
   const headingRef = React.useRef<HTMLHeadingElement>(null);
+  const scheduledRef = React.useRef<HTMLHeadingElement>(null);
   const triggerRef = React.useRef<HTMLButtonElement>(null);
   const inputId = React.useId();
   const target = account.email || account.name;
@@ -330,60 +339,93 @@ function YourData({ account }: { account: PortalAccount }): React.ReactElement {
     if (open) headingRef.current?.focus();
   }, [open]);
 
+  const schedule = (): void =>
+    del.mutate(undefined, {
+      onSuccess: () => {
+        setOpen(false);
+        setTyped("");
+        setAskSchedule(false);
+        // The box mounts once the account is read again: focus its heading then.
+        requestAnimationFrame(() =>
+          requestAnimationFrame(() => scheduledRef.current?.focus()),
+        );
+      },
+      onError: (err) => {
+        if (isStepUpRequired(err)) setAskSchedule(true);
+      },
+    });
+  const cancelDeletion = (): void =>
+    cancel.mutate(undefined, {
+      onSuccess: () => {
+        setAskCancel(false);
+        toast.success("Deletion canceled", { id: "account-deletion" });
+        requestAnimationFrame(() =>
+          requestAnimationFrame(() => triggerRef.current?.focus()),
+        );
+      },
+      onError: (err) => {
+        if (isStepUpRequired(err)) setAskCancel(true);
+      },
+    });
+  const delFailure =
+    del.error && !isStepUpRequired(del.error)
+      ? portalErrorCopy(del.error)
+      : null;
+  const cancelFailure =
+    cancel.error && !isStepUpRequired(cancel.error)
+      ? portalErrorCopy(cancel.error)
+      : null;
+
   return (
-    <SectionCard
-      id="data"
-      title="Your data"
-      subtitle={YOUR_DATA_COPY["yourData.subtitle"]}
-    >
-      <div className="space-y-6">
+    <SectionCard id="data" title="Your data">
+      <div className="space-y-5">
         <DownloadData
           title={YOUR_DATA_COPY["yourData.account.copy.title"]}
           description={YOUR_DATA_COPY["yourData.account.copy.body"]}
           label={YOUR_DATA_COPY["yourData.account.copy.button"]}
-          filename={ACCOUNT_EXPORT_FILE}
           download={exportData}
         />
-        <div className="space-y-3 border-t border-border pt-6">
+        <div className="border-t border-border pt-5">
           {scheduled ? (
             <div
               role="status"
               className="space-y-4 rounded-lg border border-danger-border bg-danger-subtle p-4"
             >
-              <h3 className="font-medium text-fg-strong">
-                Your account is scheduled for deletion
-              </h3>
-              <p className="text-sm text-fg">
+              <h3
+                ref={scheduledRef}
+                tabIndex={-1}
+                className="font-medium text-fg-strong outline-none"
+              >
                 Your account will be erased on{" "}
                 <time dateTime={scheduled.at.toISOString()}>
                   {scheduled.label}
                 </time>
-                . You can cancel the deletion before then.
-              </p>
+              </h3>
               <p className="text-sm text-fg">
-                Until then, you can keep using your account. Your licenses stay
-                with each developer and can be added to a new account later.
+                Until then you can use it and cancel. Licenses stay with each
+                developer.
               </p>
-              {cancel.error ? (
+              {askCancel ? (
+                <StepUpInline
+                  verb="cancel the deletion"
+                  onConfirmed={() => {
+                    setAskCancel(false);
+                    cancelDeletion();
+                  }}
+                  onCancel={() => setAskCancel(false)}
+                />
+              ) : null}
+              {cancelFailure ? (
                 <p role="alert" className="text-sm text-danger">
-                  {portalErrorCopy(cancel.error).title}.{" "}
-                  {portalErrorCopy(cancel.error).description}
+                  {cancelFailure.title}. {cancelFailure.description}
                 </p>
               ) : null}
               <Button
                 variant="outline"
                 loading={cancel.isPending}
-                onClick={() =>
-                  cancel.mutate(undefined, {
-                    onSuccess: () => {
-                      toast.success("Account deletion was cancelled", {
-                        description: "Your account will remain active.",
-                      });
-                    },
-                  })
-                }
+                onClick={cancelDeletion}
               >
-                Cancel scheduled deletion
+                Cancel deletion
               </Button>
             </div>
           ) : open ? (
@@ -397,12 +439,8 @@ function YourData({ account }: { account: PortalAccount }): React.ReactElement {
               </h3>
               <ul className="list-disc space-y-1 pl-5 text-sm text-fg">
                 <li>
-                  Your account will stay active for 14 days, then its data and
-                  links to licenses will be erased.
-                </li>
-                <li>
-                  You can cancel the deletion any time before the 14-day period
-                  ends.
+                  In 14 days your account and its links to licenses are erased.
+                  Until then you can use it and cancel.
                 </li>
                 <li>
                   Licenses stay with each developer. Add them again with a new
@@ -426,10 +464,19 @@ function YourData({ account }: { account: PortalAccount }): React.ReactElement {
                   className="h-11 w-full rounded-md border border-border-strong bg-surface-page px-3 text-fg-strong"
                 />
               </div>
-              {del.error ? (
+              {askSchedule ? (
+                <StepUpInline
+                  verb="schedule deletion"
+                  onConfirmed={() => {
+                    setAskSchedule(false);
+                    schedule();
+                  }}
+                  onCancel={() => setAskSchedule(false)}
+                />
+              ) : null}
+              {delFailure ? (
                 <p role="alert" className="text-sm text-danger">
-                  {portalErrorCopy(del.error).title}.{" "}
-                  {portalErrorCopy(del.error).description}
+                  {delFailure.title}. {delFailure.description}
                 </p>
               ) : null}
               <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
@@ -438,51 +485,41 @@ function YourData({ account }: { account: PortalAccount }): React.ReactElement {
                   onClick={() => {
                     setOpen(false);
                     setTyped("");
+                    setAskSchedule(false);
+                    del.reset();
                     requestAnimationFrame(() => triggerRef.current?.focus());
                   }}
                 >
-                  Keep my account
+                  {t("common.cancel")}
                 </Button>
                 <Button
                   variant="danger"
                   disabled={!matches}
                   loading={del.isPending}
                   iconStart={<Trash2 aria-hidden />}
-                  onClick={() =>
-                    del.mutate(undefined, {
-                      onSuccess: () => {
-                        setOpen(false);
-                        setTyped("");
-                        toast.success(
-                          "Your account is scheduled for deletion",
-                          {
-                            description:
-                              "We sent a confirmation to your email. You can cancel it for 14 days.",
-                          },
-                        );
-                      },
-                    })
-                  }
+                  onClick={schedule}
                 >
                   Schedule deletion
                 </Button>
               </div>
             </div>
           ) : (
-            <>
-              <p className="text-sm text-fg-muted">
-                {YOUR_DATA_COPY["yourData.account.deleteNote"]}
-              </p>
+            <DataRow
+              danger
+              icon={<Trash2 aria-hidden />}
+              title="Delete account"
+              description="Erased 14 days after you confirm. Licenses stay with each developer."
+            >
               <Button
                 ref={triggerRef}
                 variant="outline"
-                className="border-danger-border text-danger"
-                iconStart={<Trash2 aria-hidden />}
+                className="w-full border-danger-border text-danger sm:w-auto"
+                aria-label="Delete account"
                 onClick={() => setOpen(true)}
               >
-                Delete account
+                Delete account…
               </Button>
-            </>
+            </DataRow>
           )}
         </div>
       </div>

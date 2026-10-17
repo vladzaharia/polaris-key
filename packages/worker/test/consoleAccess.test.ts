@@ -9,7 +9,11 @@ import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
 import type { Principal } from "../src/core/rbac/can.js";
 import { handleAdminApi } from "../src/console/api.js";
-import { ADMIN_COOKIE, issueSession } from "../src/core/console/session.js";
+import {
+  ADMIN_COOKIE,
+  CSRF_HEADER,
+  issueSession,
+} from "../src/core/console/session.js";
 import { appendPlatformAudit } from "../src/core/repo.js";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
@@ -156,12 +160,43 @@ describe("/me.permissions", () => {
     }
   });
 
-  it("refuses a session that resolves to no grant, /me included", async () => {
-    const r = await get("nobody", "/me", ["staff"]);
+  it("refuses a session that resolves to no grant everywhere but /me and /logout", async () => {
+    const r = await get("nobody", "/products", ["staff"]);
     expect(r.status).toBe(403);
     expect(r.body).toMatchObject({
       error: { code: "forbidden", reason: "no_access", area: "console" },
     });
+    // Who they are, so the console can say so, and no product listed.
+    const me = await get("nobody", "/me", ["staff"]);
+    expect(me.status).toBe(200);
+    expect(me.body.products).toEqual([]);
+    expect(me.body.platformAdmin).toBe(false);
+  });
+
+  it("lets a session with no grant sign out, behind the CSRF check", async () => {
+    const { token, session } = await issueSession(
+      env,
+      {
+        sub: "nobody",
+        name: "nobody",
+        email: "n@example.test",
+        groups: ["staff"],
+      },
+      NOW,
+    );
+    const post = (headers: Record<string, string>) =>
+      handleAdminApi(
+        new Request("https://key.plrs.im/manage/api/logout", {
+          method: "POST",
+          headers: { cookie: `${ADMIN_COOKIE}=${token}`, ...headers },
+        }),
+        env,
+        db,
+        "/api/logout",
+        NOW,
+      );
+    expect((await post({})).status).toBe(403);
+    expect((await post({ [CSRF_HEADER]: session.csrf })).status).toBe(200);
   });
 });
 

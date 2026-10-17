@@ -174,7 +174,7 @@ describe("license record: Config tab across the migration", () => {
     expect(screen.queryByText("feature.timeout")).toBeNull();
     expect(screen.queryByText("api.token")).toBeNull();
     // Edit the entitlement: the batch carries the flag alone.
-    const radios = screen.getAllByRole("radio", { name: /Enforced/ });
+    const radios = screen.getAllByRole("radio", { name: /Read-only/ });
     await userEvent.click(radios[0]!);
     await userEvent.click(
       await screen.findByRole("button", { name: /Save entitlements/ }),

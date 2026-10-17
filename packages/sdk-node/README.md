@@ -93,7 +93,7 @@ what changed: `license`, `config`, `updateAvailable`, `packs` and `store`.
 | Install an update      | `update.install(decision)` through a driver (below), answering `restartRequired`, `handedOff`, `storeOpened` or `unsupported{reason}`.                                                                                          |
 | Boot guard             | `update.markBootAttempt()` at start-up, `update.confirmBoot()` once healthy; after `MAX_FAILED_BOOTS` the driver's rollback runs, else `boot_rolled_back` is reported and the version is skipped.                               |
 | Update health          | decide, packs, downloads, drivers and the guard journal P6-03 events in the state directory; each device report carries at most 16 and marks them sent.                                                                         |
-| Server-side check      | `verifyLicenseDocument(jws, { trust, product, deviceId })` from `@polaris-key/node/server` for a backend a client presents its license to.                                                                                      |
+| Server-side check      | Moved to `@polaris-key/server` in 0.9 (no alias): `createPolarisKey()` and the Express, Hono and Next.js drop-ins, and `verifyLicenseDocument` there.                                                                           |
 | Crash reporting        | `client.crashTags()` → `{ release, environment, "pkey.outlet" }` for a Sentry init (`release`, `environment`, and a tag).                                                                                                       |
 | Build stamp and outlet | `.polaris_key/build.json` (P1-11) is autoloaded; `readWindowsSignatureKind()` feeds the attested Windows signal.                                                                                                                |
 
@@ -174,11 +174,12 @@ decrypts.
 | `client.update`       | `@polaris-key/node/update`       | `decide` / `feed` / `releaseRecord` (wire v4) / `buildUrl` / `check` (version) / `appcastUrl` (from discovery)              |
 | `…update.packs`       | `@polaris-key/node/packs`        | `ensure` / `state` / `path` / `registerHandler` / `on` / `packSetId` / `confirm` / `rollback` / `bootFetch`; the zstd probe |
 | —                     | `@polaris-key/node/local`        | The transportless profile: every network-requiring call refuses                                                             |
-| —                     | `@polaris-key/node/cli`          | Framework-agnostic commands + commander/yargs adapters                                                                      |
+| —                     | `@polaris-key/node/cli`          | Framework-agnostic commands + the commander adapter, `requireLicense`                                                       |
+| —                     | `@polaris-key/node/cli/yargs`    | The yargs adapter (`polarisCommands`)                                                                                       |
 | `client.commerce`     | `@polaris-key/node/commerce`     | `binding` / `claim` / `claimSteam` / `claimAppStore` / `claimPlay`                                                          |
 | `client.distribution` | `@polaris-key/node/distribution` | `downloadModel` / `thisPlatform`                                                                                            |
 | —                     | `@polaris-key/node/electron`     | `exposePolarisBridge`, `SafeStorageStore`; `/electron/preload` for the renderer side                                        |
-| —                     | `@polaris-key/node/server`       | `verifyLicenseDocument` for a backend                                                                                       |
+| —                     | `@polaris-key/node/server`       | `crashTagsFor` (`verifyLicenseDocument` moved to `@polaris-key/server`)                                                     |
 
 `client.license.entitledChannels()` returns the `channels` entitlement's string grants in order,
 or `["stable"]` when the license carries none — the Worker's own answer, and every SDK's for the
@@ -687,21 +688,21 @@ npm install @polaris-key/node commander   # or yargs
 
 ```ts
 import { Command } from "commander";
-import { PolarisKeyClient } from "@polaris-key/node";
-import { registerPolarisCommands } from "@polaris-key/node/cli";
+import { registerPolarisCommands, requireLicense } from "@polaris-key/node/cli";
 
 const program = new Command("djdl");
-registerPolarisCommands(
-  program,
-  (o) =>
-    PolarisKeyClient.create({
-      productSlug: o.productSlug,
-      trust: { pinnedKeys: o.pinnedKeys },
-    }),
-  { productSlug: "djdl", pinnedKeys: { "pkey-djdl-prod-2026-06": "…" } },
-);
+const config = {
+  productSlug: "djdl",
+  trust: { pinnedKeys: { "pkey-djdl-prod-2026-06": "…" } },
+};
+registerPolarisCommands(program, { config, version: "1.4.2" });
+program.command("export").action(requireLicense(() => undefined));
 await program.parseAsync();
 ```
+
+The end-user verbs mount at the top level; `namespace`, `verbs` and `onCollision` shape the mount, and
+`requireLicense` (or `polarisGate(program)`) gates your own commands: a refused command prints
+the fix and exits 4. yargs is at `@polaris-key/node/cli/yargs` (`polarisCommands`).
 
 The verbs, the styled parts and the `@polaris-key/node/terminal` primitives, the headless views,
 theming, localisation, the `--json` contract and the fallbacks (`NO_COLOR`, `TERM=dumb`,

@@ -49,13 +49,11 @@ import {
 } from "../../../../lib/format.js";
 import { ACCESS_LABELS } from "../../../../lib/labels.js";
 import { Button } from "../../../../ui/Button.js";
-import { CodeBlock } from "../../../../ui/CodeBlock.js";
 import { CopyButton } from "../../../../ui/CopyButton.js";
 import { EmptyState } from "../../../../ui/EmptyState.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
 import { IdChip } from "../../../../ui/IdChip.js";
 import { KeyDisplay } from "../../../../ui/KeyDisplay.js";
-import { Callout } from "../../../../ui/Callout.js";
 import { Select } from "../../../../ui/Select.js";
 import { ServiceGlyph, serviceLabel } from "../../../../ui/ServiceBadge.js";
 import { PageSkeleton, Skeleton } from "../../../../ui/Skeleton.js";
@@ -89,12 +87,11 @@ import { fetchSigningKeys } from "./Keys.js";
 import {
   SDK_OPTIONS,
   SDK_QUICK_START_ID,
-  sdkInit,
-  sdkInstall,
-  sdkInstallNote,
+  sdkSetup,
   trustPins,
   type SdkId,
 } from "../model/sdkQuickStart.js";
+import { SdkSetupBlocks } from "../components/SdkSetupBlocks.js";
 import { useWelcome, WelcomeHeader } from "./Welcome.js";
 
 const DAY = 86_400;
@@ -1218,9 +1215,7 @@ function TrustPanel({
   const services = SERVICE_ORDER.filter((s) => on(p, s));
   const pins = trustPins(keys.data?.keys, { kid, publicKey: pub });
   const staged = pins.length > 1;
-  const install = sdkInstall(sdk);
-  const note = sdkInstallNote(sdk);
-  const init = sdkInit(sdk, { slug, origin, pins, services });
+  const setup = sdkSetup(sdk, { slug, origin, pins, services });
   return (
     <Panel
       title="Trust & SDK"
@@ -1275,46 +1270,7 @@ function TrustPanel({
               options={SDK_OPTIONS}
             />
           </div>
-          <p className="text-sm text-fg-muted">
-            Every Polaris Key SDK installs from pkg.plrs.im, and only from
-            there: route the package name to it before installing.
-          </p>
-          {install.map((s) => (
-            <div key={s.id} className="space-y-1.5">
-              <p className="text-xs font-semibold text-fg-muted">{s.title}</p>
-              {s.warning ? <Callout tone="warning">{s.warning}</Callout> : null}
-              {s.description ? (
-                <p className="text-sm text-fg-muted">{s.description}</p>
-              ) : null}
-              <CodeBlock
-                code={s.code}
-                language={s.language}
-                filename={s.filename}
-                wrap
-              />
-            </div>
-          ))}
-          {note ? <p className="text-sm text-fg-muted">{note}</p> : null}
-          <div className="space-y-1.5">
-            <p className="text-xs font-medium text-fg-muted">
-              Initialise the client
-            </p>
-            {staged ? (
-              <p className="text-sm text-fg-muted">
-                Pins the active key and the key staged to replace it, so this
-                build keeps working after the rotation.
-              </p>
-            ) : null}
-            {init.hint ? (
-              <p className="text-sm text-fg-muted">{init.hint}</p>
-            ) : null}
-            <CodeBlock
-              code={init.code}
-              language={init.language}
-              filename={init.filename}
-              wrap
-            />
-          </div>
+          <SdkSetupBlocks setup={setup} staged={staged} />
         </div>
       </div>
     </Panel>

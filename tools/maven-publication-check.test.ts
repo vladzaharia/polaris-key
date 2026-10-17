@@ -42,10 +42,15 @@ describe("maven publication check", () => {
     expect(ds.length).toBeGreaterThanOrEqual(18);
     for (const d of ds) {
       expect(d.name).toMatch(/^im\.plrs\.key:polaris-key-/);
-      // `ui` is the one narrowed glob: `polaris-key-ui-*` would also take ui-core's files.
+      // `ui` and `server` are the narrowed globs: `polaris-key-ui-*` would also take ui-core's
+      // files, and `polaris-key-server-*` server-ktor's.
+      const narrowed = [
+        "im.plrs.key:polaris-key-ui",
+        "im.plrs.key:polaris-key-server",
+      ];
       expect(d.match).toBe(
-        d.name === "im.plrs.key:polaris-key-ui"
-          ? "polaris-key-ui-?.*"
+        narrowed.includes(d.name!)
+          ? `${d.name!.split(":")[1]}-?.*`
           : `${d.name!.split(":")[1]}-*`,
       );
     }
@@ -61,6 +66,21 @@ describe("maven publication check", () => {
     expect(globMatches(ui.match!, "polaris-key-ui-core-0.9.4.module")).toBe(
       false,
     );
+  });
+
+  it("the server glob does not take polaris-key-server-ktor's files", () => {
+    const server = mavenDeliverables(RELEASE).find(
+      (d) => d.id === "maven.server",
+    )!;
+    expect(globMatches(server.match!, "polaris-key-server-0.9.6.pom")).toBe(
+      true,
+    );
+    expect(
+      globMatches(server.match!, "polaris-key-server-0.9.6-main.7-sources.jar"),
+    ).toBe(true);
+    expect(
+      globMatches(server.match!, "polaris-key-server-ktor-0.9.6.pom"),
+    ).toBe(false);
   });
 
   it("globMatches is the release glob dialect", () => {

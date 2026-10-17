@@ -1,6 +1,8 @@
 ---
 title: "Release"
 description: "GitHub-linked release truth: channels, artifacts, changelog, install script."
+type: "concept"
+lastReviewed: "2026-10-16"
 sidebar:
   order: 1
 ---
@@ -49,7 +51,7 @@ alongside License and Config:
 ```
 
 Older manifests may still use the single pre-split `releases` module name; the parser maps
-it onto both `release` and `update` together, so a product written before the two services
+it onto `release`, `distribution` and `update` together, so a product written before they
 existed as separate slugs keeps working unchanged.
 
 ## Channels, in one paragraph
@@ -65,12 +67,12 @@ releases are candidates, and the highest semver wins rather than the newest by c
 below the highest version a sync has seen it serve. Beyond the built-ins, a
 product may declare **manual channels** — a name bound to an anchored regular expression
 over release tags — for anything project-specific, like a `nightly` or `canary` line:
-`release.manualChannels` in the [release manifest](/docs/build/manifest/authoring/) is the
+`release.manualChannels` in the [release manifest](/docs/build/manifest/release/) is the
 writer, linkRepo/resync persist it, and resolution honours the names everywhere a channel
 can appear. The same
 resolution logic backs the download route, the appcast, and the version check, so the
-three can never disagree about what "beta" currently means. These are the same names a license
-is granted and an SDK sends as `X-PKey-Channel` (WIRE-CONTRACT-V3 §5.1); a manual channel
+three can never disagree about what "beta" means. These are the same names a license
+is granted and an SDK sends as `X-PKey-Channel` (WIRE-CONTRACT-V4 §5.1); a manual channel
 named `staging` takes precedence over the alias. [GitHub sync](/docs/services/release/github-sync/)
 covers where a channel workflow is configured; Update's
 [Eligibility](/docs/services/update/eligibility/) page covers the full selector grammar.

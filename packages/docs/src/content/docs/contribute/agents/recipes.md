@@ -3,13 +3,15 @@ title: "Task recipes"
 description: "Six common Polaris Key tasks as task, steps, and verify — each pointing at the deep page and ending in a real command."
 sidebar:
   order: 2
+type: "reference"
+lastReviewed: "2026-10-16"
 ---
 
 Six things people most often ask an agent to do. Each recipe is the **shortest correct path**,
 not the full explanation — the deep page beside each heading is the explanation, and the command
 at the end is what proves the work.
 
-Read [`AGENTS.md`](/docs/agents/) in the repo first. Everything below assumes its hard rules,
+Read [`AGENTS.md`](/docs/contribute/agents/) in the repo first. Everything below assumes its hard rules,
 especially: products are data, never code; the wire contract is the source of truth; and
 generated files are regenerated, never edited.
 
@@ -26,7 +28,7 @@ Deep page: [The `.pkey/` manifest](/docs/build/manifest/) · Skill: `authoring-p
 | 2   | Get editor help         | The scaffold's `# yaml-language-server: $schema=…` header points at a **path** into `node_modules/@polaris-key/manifest/schemas/v1/` — the canonical `$id` URLs name the schema; the path works offline                              |
 | 3   | Fill in the three roles | `schema` = the config catalog · `product` = metadata, `modules`, OIDC, tiers, profiles, provisioning · `release` = provider coordinates and edge-mint recipes                                                                        |
 | 4   | Avoid a reserved slug   | `docs`, `manage`, `api`, `assets`, `login`, `logout`, `callback`, `magic`, `download`, `webhooks`, `well-known`, `media`, `activate`, `avatar` are refused with `reserved_slug`                                                      |
-| 5   | Validate until clean    | Fix every `error`; read the `warning` lines rather than ignoring them. A `deprecated_spelling` names the canonical spelling to write ([Deprecated spellings](/docs/build/manifest/authoring/#deprecated-spellings))                  |
+| 5   | Validate until clean    | Fix every `error`; read the `warning` lines rather than ignoring them. A `deprecated_spelling` names the canonical spelling to write ([Deprecated spellings](/docs/build/manifest/product/#deprecated-spellings))                    |
 
 ```sh
 pkey validate          # exit 0, no error lines

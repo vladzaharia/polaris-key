@@ -1,6 +1,8 @@
 ---
 title: "Activity"
 description: "What lands in a product's audit log, and how the console pages through it."
+type: "reference"
+lastReviewed: "2026-10-16"
 sidebar:
   order: 10
 ---
@@ -29,7 +31,7 @@ Grouped by what triggers them:
 | Release                   | `release.resync`, `release.channel.floor`                                                                                                       |
 | Update                    | `update.settings.update`                                                                                                                        |
 | Identity                  | `portal.settings.update`, `storefront.polarisKey.update`                                                                                        |
-| Offline bundles           | `bundle.minted` — see [Offline bundles](/docs/admin/bundles/#nothing-is-stored-but-the-audit-row)                                               |
+| Offline bundles           | `bundle.minted` — see [Offline bundles](/docs/features/licensing/offline/#mint-a-file)                                                          |
 | Access                    | `access.denied`                                                                                                                                 |
 
 A customer's own sign-in appends one too when it creates the license: `license.mint.oidc`, with the
@@ -114,7 +116,7 @@ can share:
 
 ### The API
 
-`GET /manage/api/products/<slug>/activity?limit=50&beforeAt=…&beforeId=…` returns newest-first,
+`/manage/api/products/<slug>/activity?limit=50&beforeAt=…&beforeId=…` (GET) returns newest-first,
 and accepts the filters above as `action`, `actor`, `targetKind`, `targetId`, `since` and
 `until` (epoch seconds, inclusive). A malformed filter is refused with `422` naming the field.
 **Load older** re-issues the same call, with the same filters, and the last row's `(at, id)` as
@@ -124,7 +126,7 @@ the cursor, so paging is stable even while new rows are still being written.
 
 Audit rows are product-scoped — there is no cross-product activity view (platform-level
 actions have [their own trail](#the-platform-trail)) — and they **survive** a
-product being disabled: [deleting a product](/docs/admin/products/#what-deleting-a-product-actually-does)
+product being disabled: [deleting a product](/docs/operate/console/product-actions/#what-deleting-a-product-actually-does)
 tombstones the row and scrubs license PII, but never touches `audit`. A scheduled sweep prunes
 rows older than **180 days**, the same cutoff applied to the customer portal's own audit table.
 
@@ -141,7 +143,7 @@ names the product whose ref it dropped), and it carries storage keys, never pers
 ## The platform trail
 
 Actions on the platform as a whole, which belong to no product, are recorded in a separate
-table, `platform_audit` (A-12). The KEK re-seal sweep writes one row there per run, with the
+table, `platform_audit`. The KEK re-seal sweep writes one row there per run, with the
 remaining-row counts before and after as JSON; it still writes its per-product `kek.reseal` row
 into each product it touched, so a product's own log keeps showing it. Every change to a
 [runtime platform setting](/docs/admin/platform-settings/) writes a `platform.setting.set` or
@@ -151,13 +153,13 @@ fields as `audit`, plus `before` and `after` values, which never hold a secret. 
 **180-day** sweep prunes it.
 
 ```http
-GET /manage/api/platform/activity?limit=50&beforeAt=<epoch>&beforeId=<id>
+/manage/api/platform/activity (GET)?limit=50&beforeAt=<epoch>&beforeId=<id>
 ```
 
 The endpoint is for platform admins only (403 otherwise). It pages newest first, with the same
 `(at, id)` cursor as the product feed, and returns
 `{ items: [{ id, at, actor, action, target, summary, before, after }], nextCursor }`. The
-console's Platform section will show it; until then, call it directly.
+console's Platform section does not show it; call it directly.
 
 ## Reference
 

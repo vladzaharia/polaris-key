@@ -20,7 +20,11 @@ import { PageHeader } from "../../ui/PageHeader.js";
 import { Panel } from "../../ui/Section.js";
 import { Skeleton } from "../../ui/Skeleton.js";
 import { mutate } from "../data/mutations.js";
-import { pageOf, type ProductPageId } from "../nav.js";
+import {
+  isPageEnabled,
+  type ProductPageId,
+  type ServiceState,
+} from "../nav.js";
 import { Link } from "../router.js";
 import { productPage } from "../routes.js";
 import {
@@ -55,8 +59,16 @@ interface Destination {
   area: AreaId;
 }
 
-/** Up to two places the member can open: in this product first, then their other products. */
-function destinations(me: Me, slug: string | null): Destination[] {
+/**
+ * Up to two places the member can open: in this product first, then their other products. A page
+ * behind a service the product does not run is no destination (`services` is the current
+ * product's; another product's are not loaded, and its landing page says if a service is off).
+ */
+function destinations(
+  me: Me,
+  slug: string | null,
+  services: ServiceState,
+): Destination[] {
   const name = (s: string) => me.products.find((p) => p.slug === s)?.name ?? s;
   const order = [
     ...(slug ? [slug] : []),
@@ -69,9 +81,12 @@ function destinations(me: Me, slug: string | null): Destination[] {
       ProductPageId,
     ][]) {
       if (!canIn(me, area, s)) continue;
+      if (s === slug && !isPageEnabled(page, services)) continue;
       out.push({
         key: `${s}:${page}`,
-        label: `${name(s)} ${pageOf(page).label.toLowerCase()}`,
+        // The area's name; in another product "Acme → Cloud Sync", as the title reads.
+        label:
+          s === slug ? AREA_NAMES[area] : `${name(s)} → ${AREA_NAMES[area]}`,
         to: productPage(s, page),
         area,
       });
@@ -186,21 +201,30 @@ function WhoCanHelp({
   area,
   slug,
   productName,
-  home,
 }: {
   area: AreaId;
   slug: string | null;
   productName?: string;
-  home: boolean;
 }): React.ReactElement {
   const q = useAccessAdmins(area, slug);
   let body: React.ReactNode;
   if (q.isPending)
     body = (
-      <div aria-busy="true" className="space-y-3">
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-      </div>
+      <ul aria-busy="true" className="divide-y divide-border">
+        {[0, 1, 2].map((i) => (
+          <li
+            key={i}
+            className="flex items-center gap-x-3 py-3 first:pt-0 last:pb-0"
+          >
+            <Skeleton className="size-9 shrink-0 rounded-full" />
+            <span className="min-w-0 flex-1 space-y-2">
+              <Skeleton className="h-4 w-1/3" />
+              <Skeleton className="h-3.5 w-1/4" />
+            </span>
+            <Skeleton className="hidden h-6 w-44 sm:block" />
+          </li>
+        ))}
+      </ul>
     );
   else if (q.isError)
     body = (
@@ -214,28 +238,20 @@ function WhoCanHelp({
   else if (q.data.admins.length === 0)
     body = (
       <p className="text-sm text-fg-muted">
-        No one can be named yet. A Superadmin of this Polaris Key can give you
-        access.
+        Ask a Superadmin of this console for access.
       </p>
     );
   else
     body = (
-      <>
-        {home ? (
-          <p className="mb-3 text-sm text-fg-muted">
-            Superadmins can give you any role.
-          </p>
-        ) : null}
-        <ul className="divide-y divide-border">
-          {q.data.admins.map((person) => (
-            <PersonRow
-              key={person.email}
-              person={person}
-              productName={productName}
-            />
-          ))}
-        </ul>
-      </>
+      <ul className="divide-y divide-border">
+        {q.data.admins.map((person) => (
+          <PersonRow
+            key={person.email}
+            person={person}
+            productName={productName}
+          />
+        ))}
+      </ul>
     );
   return (
     <Panel title="Who can give you access" className="h-full">
@@ -247,11 +263,13 @@ function WhoCanHelp({
 function YouCanOpen({
   me,
   slug,
+  services,
 }: {
   me: Me;
   slug: string | null;
+  services: ServiceState;
 }): React.ReactElement {
-  const places = destinations(me, slug);
+  const places = destinations(me, slug, services);
   return (
     <Panel title="You can open" className="h-full">
       <div className="flex flex-col gap-3">
@@ -260,7 +278,10 @@ function YouCanOpen({
             key={d.key}
             asChild
             variant={i === 0 ? "primary" : "outline"}
-            className={cn("w-full justify-start", i === 0 && INK)}
+            className={cn(
+              "h-auto w-full justify-start whitespace-normal py-2 text-left",
+              i === 0 && INK,
+            )}
             data-service={AREA_ACCENTS[d.area]}
           >
             <Link to={d.to}>{d.label}</Link>
@@ -283,7 +304,7 @@ function LibraryTile(): React.ReactElement {
   return (
     <a
       href="/"
-      className="group flex h-full flex-col gap-3 rounded-lg border border-border bg-surface-raised p-5 shadow-elevation-1 transition-colors hover:border-border-strong focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
+      className="group flex flex-col gap-3 rounded-lg border border-border bg-surface-raised p-5 shadow-elevation-1 transition-colors hover:border-border-strong focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
     >
       <span className="flex size-9 items-center justify-center rounded-md bg-surface-sunken">
         <LayoutGrid aria-hidden className="size-4" />
@@ -303,6 +324,8 @@ export interface NoAccessPageProps {
   /** The product, for a product page; `null` for a platform page. */
   slug: string | null;
   productName?: string;
+  /** The product's services, to leave out a destination behind one it does not run. */
+  services?: ServiceState;
   /** Home for a member who holds no product yet. */
   home?: boolean;
 }
@@ -312,18 +335,14 @@ export function NoAccessPage({
   area,
   slug,
   productName,
+  services = null,
   home = false,
 }: NoAccessPageProps): React.ReactElement {
-  const where =
-    slug === null
-      ? area === "platform"
-        ? "Platform"
-        : `Platform → ${AREA_NAMES[area]}`
-      : `${productName ?? slug} → ${AREA_NAMES[area]}`;
-  const location =
-    typeof window === "undefined"
-      ? ""
-      : `${window.location.host}${window.location.pathname}${window.location.hash}`;
+  // The product (or Platform) wraps anywhere, so a 200-character name stays on screen; only
+  // "→ Area" holds together. The arrow is decoration: a screen reader hears ", Licensing".
+  const subject = slug === null ? "Platform" : (productName ?? slug);
+  const areaName =
+    slug === null && area === "platform" ? null : AREA_NAMES[area];
   return (
     <section
       data-service="core"
@@ -335,10 +354,18 @@ export function NoAccessPage({
           home ? (
             "You don’t have access to any product yet"
           ) : (
-            <>
-              You don’t have access to{" "}
-              <span className="whitespace-nowrap">{where}</span>
-            </>
+            <span className="[overflow-wrap:anywhere]">
+              You don’t have access to {subject}
+              {areaName ? (
+                <>
+                  <span className="sr-only">,</span>{" "}
+                  <span className="whitespace-nowrap">
+                    <span aria-hidden>→ </span>
+                    {areaName}
+                  </span>
+                </>
+              ) : null}
+            </span>
           )
         }
         description={<SignedInLine me={me} />}
@@ -349,16 +376,16 @@ export function NoAccessPage({
             area={home ? "console" : area}
             slug={home ? null : slug}
             productName={productName}
-            home={home}
           />
         </div>
         <div className="lg:col-span-4">
-          {home ? <LibraryTile /> : <YouCanOpen me={me} slug={slug} />}
+          {home ? (
+            <LibraryTile />
+          ) : (
+            <YouCanOpen me={me} slug={slug} services={services} />
+          )}
         </div>
       </div>
-      {!home && location ? (
-        <p className="break-all font-mono text-xs text-fg-muted">{location}</p>
-      ) : null}
     </section>
   );
 }

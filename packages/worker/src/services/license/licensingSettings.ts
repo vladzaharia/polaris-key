@@ -18,13 +18,13 @@
  *
  * The behaviour behind each setting is NOT here. LX-07's grace clamp reads
  * `licensing.clampGraceToExpiry` through ST-04's resolver (`core/licensing/graceClamp.ts`, which the bundle
- * mint and every licence-bearing document share); LX-09 (the model and the holder), LX-10 (anchor
+ * mint and every license-bearing document share); LX-09 (the model and the holder), LX-10 (anchor
  * and re-anchor), LX-12 (refund grace) and LX-23 (billing-retry grace) read theirs through the
  * resolver or `readLicensingSettings` below.
  *
- * Every assumption about how licences, grants and entitlements relate (one licence carrying many
- * entitlements, the anchor licence, the holder) is confined to THIS module: nothing else in the
- * registry encodes a licence ↔ entitlement cardinality, and the account is not a settings scope
+ * Every assumption about how licenses, grants and entitlements relate (one license carrying many
+ * entitlements, the anchor license, the holder) is confined to THIS module: nothing else in the
+ * registry encodes a license ↔ entitlement cardinality, and the account is not a settings scope
  * (S-18 owner decision 5), so `accountMerge` is never declared.
  */
 
@@ -73,7 +73,7 @@ export const LICENSING_SETTINGS: readonly SettingDef[] = [
     area: LICENSING_AREA,
     label: "Entitlement model",
     description:
-      "Whether devices see the combined entitlements of every grant their holder has, or only their own licence's (the legacy model). Products registered before 2026-10-06 start on legacy; newer ones start combined.",
+      "Whether devices see the combined entitlements of every entitlement their holder has, or only their own license's (the legacy model). Products registered before 2026-10-06 start on legacy; newer ones start combined.",
     keywords: ["combined", "legacy", "grants", "holder report"],
     docs: DOCS,
     value: { kind: "enum", values: LICENSING_ENTITLEMENT_MODELS },
@@ -101,7 +101,7 @@ export const LICENSING_SETTINGS: readonly SettingDef[] = [
     area: LICENSING_AREA,
     label: "Entitlement holder",
     description:
-      "Whose entitlements a device sees: the account signed in on that device (device), or the licence owner's whole set (owner). Owner lets anyone with a shared key reach everything the owner holds.",
+      "Whose entitlements a device sees: the account signed in on that device (device), or the license owner's whole set (owner). Owner lets anyone with a shared key reach everything the owner holds.",
     keywords: ["owner", "device", "shared key"],
     docs: DOCS,
     value: { kind: "enum", values: LICENSING_ENTITLEMENT_HOLDERS },
@@ -124,7 +124,7 @@ export const LICENSING_SETTINGS: readonly SettingDef[] = [
     area: LICENSING_AREA,
     label: "Clamp offline grace to expiry",
     description:
-      "Ends a device's offline grace no later than its licence's expiry, so an expired licence cannot keep running offline.",
+      "Ends a device's offline grace no later than its license's expiry, so an expired license cannot keep running offline.",
     keywords: ["grace", "offline", "graceUntil", "expiry"],
     docs: DOCS,
     value: { kind: "boolean" },
@@ -136,7 +136,7 @@ export const LICENSING_SETTINGS: readonly SettingDef[] = [
     confirm: { on: "L0", off: "L1" },
     visibleWhen: VISIBLE,
     wire: ["document"],
-    // LX-07: the clamp itself (licence, config, bundle and browser-session documents).
+    // LX-07: the clamp itself (license, config, bundle and browser-session documents).
     readers: [...READERS, "core/licensing/graceClamp.ts"],
     storage: { kind: "scalar" },
     since: "LX-06",
@@ -146,9 +146,9 @@ export const LICENSING_SETTINGS: readonly SettingDef[] = [
     scope: "product",
     service: "license",
     area: LICENSING_AREA,
-    label: "Anchor licence choice",
+    label: "Anchor license choice",
     description:
-      "Which of a holder's licences a device runs on: the highest-ranked tier, the one with the most free seats, or the oldest.",
+      "Which of a holder's licenses a device runs on: the highest-ranked tier, the one with the most free seats, or the oldest.",
     keywords: ["anchor", "rank", "seats"],
     docs: DOCS,
     value: { kind: "enum", values: LICENSING_ANCHOR_POLICIES },
@@ -169,7 +169,7 @@ export const LICENSING_SETTINGS: readonly SettingDef[] = [
     area: LICENSING_AREA,
     label: "Re-anchor",
     description:
-      "When a device may move to a better anchor licence: never, or on activation. Moving on every refresh is not available yet.",
+      "When a device may move to a better anchor license: never, or on activation. Moving on every refresh is not available yet.",
     keywords: ["anchor", "onActivation"],
     docs: DOCS,
     // `onRefresh` (S-19 §7.5) is refused until LX-21: it is not in the shared vocabulary yet.
@@ -191,7 +191,7 @@ export const LICENSING_SETTINGS: readonly SettingDef[] = [
     area: LICENSING_AREA,
     label: "Refund grace",
     description:
-      "Hours a refunded or charged-back grant keeps working before it is revoked. Zero revokes at once. It only delays the revocation; a refund always revokes.",
+      "Hours a refunded or charged-back purchase keeps working before it is revoked. Zero revokes at once. It only delays the revocation; a refund always revokes.",
     keywords: ["refund", "chargeback", "revoke"],
     docs: DOCS,
     value: {
@@ -217,7 +217,7 @@ export const LICENSING_SETTINGS: readonly SettingDef[] = [
     area: LICENSING_AREA,
     label: "Billing-retry grace",
     description:
-      "Days a subscription grant keeps working while the store retries a failed renewal. Zero follows the store's own billing grace only.",
+      "Days a subscription keeps working while the store retries a failed renewal. Zero follows the store's own billing grace only.",
     keywords: ["dunning", "billing", "subscription"],
     docs: DOCS,
     value: {

@@ -287,53 +287,6 @@ export async function initManifest(opts: InitOptions): Promise<InitResult> {
   return { files };
 }
 
-export function trustSnippet(kid: string, publicKey: string): string {
-  const trust = JSON.stringify({ [kid]: publicKey }, null, 2);
-  return [
-    "JSON trust set:",
-    trust,
-    "",
-    "Node/React:",
-    `trust: { pinnedKeys: ${trust} }`,
-    "",
-    "Python:",
-    `trusted_keys = ${trust}`,
-    "",
-    "Swift:",
-    // Swift dictionary literals use square brackets — emitting the JSON `{…}` form here
-    // produced a snippet that did not compile.
-    `let trustedKeys = [${JSON.stringify(kid)}: ${JSON.stringify(publicKey)}]`,
-    "",
-    "Godot (GDScript; assign to PKeyOptions.pinned_trust_keys):",
-    `const PINNED_TRUST_KEYS := {${JSON.stringify(kid)}: ${JSON.stringify(publicKey)}}`,
-  ].join("\n");
-}
-
-export function sdkSnippet(opts: {
-  baseUrl: string;
-  product: string;
-  kid?: string;
-  publicKey?: string;
-}): string {
-  const trust =
-    opts.kid && opts.publicKey
-      ? `,\n  trust: { pinnedKeys: ${JSON.stringify({ [opts.kid]: opts.publicKey })} }`
-      : "";
-  return `import { PolarisKeyClient } from "@polaris-key/node";
-
-const client = await PolarisKeyClient.create({
-  productSlug: "${opts.product}",
-  baseUrl: "${opts.baseUrl}",
-  version: "1.0.0"${trust}
-});
-
-await client.sync();
-
-const enabled = client.isLicensed();
-const value = client.config.getConfig("your.config.key", "fallback");
-const secret = client.config.getSecret("your.secret.key");`;
-}
-
 function productYaml(opts: InitOptions, services: ServiceSlug[]): string {
   // Canonical service slugs, every one of them, so the scaffold shows what can be turned on.
   const moduleLines = SERVICE_SLUGS.map(
@@ -351,16 +304,17 @@ product:
 ${opts.adminGroup ? `  adminGroup: ${quoteYaml(opts.adminGroup)}\n` : ""}modules:
 ${moduleLines.join("\n")}
 
+profiles:
+  - id: standard-defaults
+    name: Standard defaults
+    payload:
+      config: {}
+      secrets: {}
+      entitlements: {}
+
 licensing:
   defaultDeviceLimit: 5
   defaultMaxOfflineDays: 14
-  profiles:
-    - id: standard-defaults
-      name: Standard defaults
-      payload:
-        config: {}
-        secrets: {}
-        entitlements: {}
   tiers:
     - id: standard
       label: Standard

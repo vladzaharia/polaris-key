@@ -1,6 +1,8 @@
 ---
 title: "Platform settings"
 description: "The instance-wide settings: the eight that can change at runtime, how precedence works, and what the read-only inventory shows."
+type: "reference"
+lastReviewed: "2026-10-16"
 sidebar:
   order: 13
 ---
@@ -19,7 +21,7 @@ In the console this is **Platform → Settings** (`#/platform/settings`; `#/plat
 | Setting                           | What it does                                                                                        | Values                                     |
 | --------------------------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------ |
 | `LAZY_DELTAS`                     | Turns lazy hot-pair deltas on or off, in both Worker scripts.                                       | `on` or `off` (default `off`)              |
-| `LAZY_DELTA_MAX_BYTES`            | The largest payload, on either side of a pair, the delta consumer will encode.                      | 1 MiB to 32 MiB, in bytes (default 32 MiB) |
+| `LAZY_DELTA_MAX_BYTES`            | The largest payload, on either side of a pair, the delta consumer encodes.                          | 1 MiB to 32 MiB, in bytes (default 32 MiB) |
 | `BLOB_GC_MODE`                    | Turns the nightly blob collector on or off.                                                         | `on` or `off` (default `on`)               |
 | `BLOB_GC_GRACE_DAYS`              | How long an object stays unreferenced before the collector may delete it.                           | 1 to 365 days (default 30)                 |
 | `LICENSING_RESERVED_NAMES`        | What happens to a catalog flag that declares a reserved entitlement name with an incompatible type. | `warn` or `error` (default `warn`)         |
@@ -38,7 +40,7 @@ entitlements itself (`channels`, `deviceLimit`, `app.minVersion`, `app.maxVersio
 `license.tier`, `license.tierLabel`) and reserves the `license.`, `app.` and `pkey.` prefixes for
 future ones. A product flag that declares one of these names is always valid when it keeps the
 system key's type and only narrows it (see
-[reserved entitlement names](/docs/build/manifest/authoring/#reserved-entitlement-names)). With
+[reserved entitlement names](/docs/build/manifest/catalog/#reserved-entitlement-names)). With
 `warn`, an incompatible declaration is accepted and reported; with `error`, link, resync and the
 console's catalog publish refuse it. The setting starts at `warn` for a window of two minor
 releases or 60 days, whichever is later, and then moves to `error`. Neither value changes what a
@@ -47,14 +49,14 @@ device is signed: the platform's own value of a system key always wins.
 `IDENTITY_RESERVED_DISPLAY_NAMES` is `identity.reservedDisplayNames`. The sign-in card says
 "<App> wants you to sign in", so a product may not present itself as Polaris Key, Apple, the App
 Store, Google, Google Play, Steam, Valve, Epic Games, Microsoft, Xbox, PlayStation, Nintendo or
-itch.io (see [display names](/docs/build/manifest/authoring/#display-names)). With `warn`, such a
+itch.io (see [display names](/docs/build/manifest/product/#display-names)). With `warn`, such a
 `product.name`, `listing.name` or `listing.developerName` is accepted and reported; with `error`,
 link, resync and the console's listing edits refuse it. Either way the sign-in card shows the
 product slug in a neutral frame instead of a reserved name. The setting starts at `warn` for two
 minor releases or 60 days, whichever is later. It sits under Identity & access in the console.
 
 `KEYENTRY_REFUSALS` is `identity.keyEntryRefusals`, the rollout switch for
-[key entries](/docs/services/identity/#key-entries). Key entries are counted either way. On, a
+[key entries](/docs/features/licensing/activation/#key-entries). Key entries are counted either way. On, a
 product with Identity on refuses a new device a key whose licence is in no account and has used
 every key entry, with a link to add the key to an account; a device already using its key is never
 refused. Turn it on only once the SDKs that show the refusal are released. Turning it either way
@@ -165,8 +167,8 @@ Discard to keep the current one.
 All four routes are for platform admins only (403 otherwise), and the two writes need the CSRF
 header like every console mutation.
 
-```http
-GET /manage/api/platform/settings
+```
+/manage/api/platform/settings (GET)
 ```
 
 Returns:
@@ -193,8 +195,8 @@ Returns:
   flagged); or `PORTAL_SESSION_SECRET` is unset, so the portal signs its sessions with the admin
   secret.
 
-```http
-PATCH /manage/api/platform/settings/<key>
+```
+/manage/api/platform/settings/<key> (PATCH)
 { "value": 14, "expectedVersion": 3 }
 ```
 
@@ -209,8 +211,8 @@ runtime value yet). The answer is the updated setting, or:
 A runtime `on` stored under a deploy-time hard off is accepted, but the answer shows
 `forcedOff: true` and the effective value stays `off`.
 
-```http
-DELETE /manage/api/platform/settings/<key>?expectedVersion=3
+```
+/manage/api/platform/settings/<key> (DELETE)?expectedVersion=3
 ```
 
 Removes the runtime value, so the setting reverts to the deploy-time value or the code default.
@@ -218,8 +220,8 @@ It is version-guarded in the same way, and answers `404` when there is no runtim
 is kept as a tombstone and its version keeps counting up, so a version you loaded before the
 delete can never be accepted afterwards; the next write carries the version the list reports.
 
-```http
-GET /manage/api/platform/reserved-names
+```
+/manage/api/platform/reserved-names (GET)
 ```
 
 Read-only. Returns the `mode` the reserved-names setting resolves to (`warn` or `error`), the

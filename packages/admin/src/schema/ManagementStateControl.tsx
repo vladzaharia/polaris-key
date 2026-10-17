@@ -19,7 +19,7 @@ export function ManagementStateControl({
 }: {
   value: ManagementState;
   onChange: (next: ManagementState) => void;
-  /** Accessible group name, e.g. `Management state for Theme`. */
+  /** Accessible group name, e.g. `In the app for Theme`. */
   label: string;
   disabled?: boolean;
 }): React.ReactElement {
@@ -44,7 +44,7 @@ export function ManagementStateControl({
           href={docsUrl("managementStates")}
           target="_blank"
           rel="noreferrer"
-          aria-label="Management states (docs)"
+          aria-label="In the app (docs)"
           title={help}
           className="rounded-sm text-fg-muted hover:text-fg-strong focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
         >

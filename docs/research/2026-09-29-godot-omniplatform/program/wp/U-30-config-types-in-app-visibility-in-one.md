@@ -54,6 +54,20 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 - Working id **CFG-04**; DX consolidation G: Managed config and Cloud Sync.
 - No new copies (tracks.md rule 4): build on the one mechanism this plan names, never beside it.
 
+## Corrections to the brief (2026-10-16)
+
+- `pkey migrate` does not exist. The rewrites are `pkey validate --fix` (the ST-19 mechanism): it
+  moves `licensing.profiles` to `profiles` and now drops a redundant `secret: true` from a
+  `kind: secret` entry. `secret: true` on a `config` entry is warned, not rewritten (moving it to
+  `kind: secret` changes the SDK read).
+- `licensing.profiles` was the canonical spelling and root `profiles` the alias; the rows are
+  flipped (spellings row 6, the schema, `pkey init`, the docs table).
+- The `user` block on a locked key was already a warning (U-01b), and Editable settings sync by
+  default is U-01b's. The `edgeMint` warning means an entry with `delivery: edgeMint` and no
+  recipe whose `id` equals its key; CFG-05 (U-31) replaces the link with a `mint` block.
+- Worker setting `config.profiles` keeps manifest path `product:licensing.profiles` (read
+  against the parsed document; changing it is a follow-up).
+
 ## Steps
 
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
@@ -67,10 +81,14 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 ## Acceptance criteria
 
-- [ ] Served documents unchanged (enums.json identical)
-- [ ] Nine type x visibility cells reduced to five, documented
-- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/managed-config/{catalog, visibility, minted-tokens, profiles}`; `reference/config-entry`.
-- [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
+- [x] Served documents unchanged (enums.json identical)
+- [x] Nine type x visibility cells reduced to five, documented
+- [x] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/managed-config/{catalog, visibility, minted-tokens, profiles}`; `reference/config-entry`.
+- [x] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
+
+## Review fix round (2026-10-16)
+
+UX review fixes in the console: the In the app facet and CSV use one value (`code` for a non-setting); changing Type keeps the fields the new type does not use until publish (`applicableEntry` in `catalogDraft.ts` drops them in `draftDocument`); Minted token filter, retired-spelling and missing-recipe warnings, the Code only row, labelled review diff and CSV, a Type change on a published key needs the breaking acknowledgement, and the profile editor and empty states use the new words. "Show in settings panels" is removed (Hidden unlists a setting). Skipped: type cards and help button (needs design), phone card meta line, Type control width below 400 px, 880 px form cap, mockup updates.
 
 ## Verify
 

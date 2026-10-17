@@ -115,3 +115,7 @@ sdks/swift/PlatformHostTests/build/
 # A-17a's pinned App Store Connect write operations: written by
 # packages/worker/scripts/asc-spec-writes.mjs from Apple's OpenAPI document (JSON.stringify layout).
 packages/worker/test/fixtures/asc/openapi-writes.json
+packages/docs/src/content/docs/operate/console/tour.mdx
+
+# SP-33a's integration goldens: byte-compared against renderUsage by `pnpm gen integration --check`.
+packages/shared-manifest/test/fixtures/integration/

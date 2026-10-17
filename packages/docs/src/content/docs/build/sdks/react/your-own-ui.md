@@ -3,11 +3,15 @@ title: "Your own UI (React)"
 description: "Build your own screens on @polaris-key/react: the hook for each task, the state table with its words, refresh, the store status, no-React use and tests."
 sidebar:
   order: 2
+type: "reference"
+sdks: ["react"]
+lanes: ["library"]
+lastReviewed: "2026-10-16"
 ---
 
 The hooks return state and actions and draw nothing. This page gives the hook for each task, the
 states it can be in and the words to show. To take the finished screens instead, see the
-[drop-in quickstart](/docs/build/quickstart/react/#drop-in-screens). Everything renders inside
+[drop-in quickstart](/docs/build/quickstart/react/#3-gate-the-app). Everything renders inside
 `<PolarisKeyProvider config={polarisKey}>`, configured as the quickstart does.
 
 ## The hook for each task

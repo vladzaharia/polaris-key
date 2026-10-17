@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "typeRoots": ["../../../node_modules/@types"],
+    "paths": {
+      "@polaris-key/elements": ["../../../packages/elements/dist/index"],
+      "@polaris-key/elements/*": ["../../../packages/elements/dist/*"]
+    }
+  },
+  "include": ["src", "vite.repo.config.ts"]
+}

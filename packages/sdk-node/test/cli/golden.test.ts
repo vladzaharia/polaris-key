@@ -27,7 +27,13 @@ import { describe, expect, it } from "vitest";
 import { KIT_COPY } from "../../src/kitCopy.generated.js";
 import { TERMINAL_SYMBOLS } from "../../src/cli/tokens.generated.js";
 import { cellWidth, stripAnsi } from "../../src/cli/term/width.js";
-import { KEY_SECRET, render, VARIANTS, type Variant } from "./harness.js";
+import {
+  KEY_SECRET,
+  NARROW_VARIANTS,
+  render,
+  VARIANTS,
+  type Variant,
+} from "./harness.js";
 import { SCENARIOS, type Scenario } from "./scenarios.js";
 import { ansiToSvg } from "./svg.js";
 
@@ -45,7 +51,7 @@ async function renderAll(
   s: Scenario,
 ): Promise<Map<string, { text: string; raw: string; stderr: string }>> {
   const out = new Map<string, { text: string; raw: string; stderr: string }>();
-  for (const v of VARIANTS)
+  for (const v of s.narrow ? [...VARIANTS, ...NARROW_VARIANTS] : VARIANTS)
     out.set(v.id, await render({ ...s.opts, variant: v }, s.run));
   return out;
 }
@@ -70,7 +76,8 @@ function check(file: string, actual: string): void {
   ).toBe(readFileSync(file, "utf8"));
 }
 
-const variant = (id: string): Variant => VARIANTS.find((v) => v.id === id)!;
+const variant = (id: string): Variant =>
+  [...VARIANTS, ...NARROW_VARIANTS].find((v) => v.id === id)!;
 const UNICODE_ONLY = new Set(
   Object.values(TERMINAL_SYMBOLS.unicode)
     .join("")
@@ -81,9 +88,11 @@ UNICODE_ONLY.add("▌");
 for (const f of "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏") UNICODE_ONLY.add(f);
 
 describe("the terminal kit's baselines", () => {
-  it("names every scenario after a components.json state (or help)", () => {
+  it("names every scenario after a components.json state (or help, or a gated host command)", () => {
     for (const s of SCENARIOS) {
-      if (s.name.startsWith("help")) continue;
+      // help and gate-* are the cli family's (mount, help, gate rows): a host CLI's screens, not a
+      // component's states.
+      if (s.name.startsWith("help") || s.name.startsWith("gate-")) continue;
       const comp = Object.keys(COMPONENTS.components)
         .filter((c) => s.name === kebab(c) || s.name.startsWith(`${kebab(c)}-`))
         .sort((a, b) => kebab(b).length - kebab(a).length)[0];
@@ -108,7 +117,8 @@ describe("the terminal kit's baselines", () => {
           ansiToSvg(r.text, {
             theme,
             columns: 80,
-            title: "tidewater — 80 × 24",
+            // A page taller than the window titles it by its real row count.
+            title: `tidewater — 80 × ${Math.max(24, r.text.split("\n").length)}`,
           }),
         );
       }

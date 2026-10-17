@@ -9,6 +9,9 @@ import { beforeAll, describe, expect, it } from "vitest";
 import type { UiInput } from "@polaris-key/ui-core";
 
 import { PolarisKey, type PkElement } from "../src/index.js";
+import { Copy } from "@polaris-key/ui-core";
+import { KIT_COPY_EN } from "@polaris-key/brand/kit-copy";
+
 import { OS_LABELS, platformLabel } from "../src/platforms.js";
 import { settingLabel } from "../src/views.js";
 import { readMatrix, withDefaults, type Row } from "./fixtures.js";
@@ -49,6 +52,16 @@ describe("platform names (DL8)", () => {
       expect(label).not.toBe(id);
       expect(label.length).toBeGreaterThan(1);
     }
+  });
+
+  it("the catalog names every platform, and the typed table agrees with it", () => {
+    const copy = new Copy({ tables: { en: KIT_COPY_EN } });
+    for (const [id, label] of Object.entries(OS_LABELS)) {
+      expect(copy.has(`part.platform.${id}`)).toBe(true);
+      expect(platformLabel(id, copy)).toBe(label);
+    }
+    expect(platformLabel("chromeos", copy)).toBe("ChromeOS");
+    expect(platformLabel("Windows 11", copy)).toBe("Windows 11");
   });
 
   it("device rows print the name, never the id", async () => {

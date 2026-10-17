@@ -19,7 +19,7 @@ export interface Variant {
   id: string;
   color: "truecolor" | "ansi16" | "none";
   ascii: boolean;
-  columns: 80 | 60 | 32;
+  columns: 80 | 60 | 40 | 32;
   scheme: "dark" | "light";
 }
 
@@ -84,6 +84,38 @@ export const VARIANTS: readonly Variant[] = [
   { id: "ascii-60", color: "ansi16", ascii: true, columns: 60, scheme: "dark" },
 ];
 
+/** The narrow renders the host-help and gate scenarios add (`Scenario.narrow`): 40 and 32 columns. */
+export const NARROW_VARIANTS: readonly Variant[] = [
+  {
+    id: "truecolor-40-dark",
+    color: "truecolor",
+    ascii: false,
+    columns: 40,
+    scheme: "dark",
+  },
+  {
+    id: "no-color-40",
+    color: "none",
+    ascii: false,
+    columns: 40,
+    scheme: "dark",
+  },
+  {
+    id: "truecolor-32-dark",
+    color: "truecolor",
+    ascii: false,
+    columns: 32,
+    scheme: "dark",
+  },
+  {
+    id: "no-color-32",
+    color: "none",
+    ascii: false,
+    columns: 32,
+    scheme: "dark",
+  },
+];
+
 /** 2026-10-05 12:00 UTC: every date and countdown in the goldens is relative to it. */
 export const NOW = Date.UTC(2026, 9, 5, 12, 0, 0);
 
@@ -138,6 +170,11 @@ export const settle = async (): Promise<void> => {
 export interface Harness {
   ctx: KitContext;
   screen: Screen;
+  /** The error stream and the environment the context was built over, for a flow that builds
+   *  its own (the gate). */
+  err: Screen;
+  env: Record<string, string>;
+  variant: Variant;
   stdin: FakeStdin;
   /** Take the golden now (the screen while the flow is still waiting). */
   snap(): void;
@@ -155,6 +192,8 @@ export interface RunOptions {
   presentation?: ProductPresentation | null;
   /** The OS opener's answer (default: it opened). */
   openUrl?: boolean;
+  /** Take the golden from stderr instead of stdout (a refusal goes there). */
+  capture?: "stderr";
   headless?: boolean;
   copy?: (text: string) => string;
 }
@@ -215,6 +254,9 @@ export async function render(
     await scenario({
       ctx,
       screen,
+      err,
+      env,
+      variant: v,
       stdin,
       snap: () => {
         snapshot = screen.text();
@@ -225,7 +267,7 @@ export async function render(
     ctx.close();
   }
   return {
-    text: snapshot ?? screen.text(),
+    text: o.capture === "stderr" ? err.text() : (snapshot ?? screen.text()),
     raw: screen.raw,
     stderr: err.text(),
   };

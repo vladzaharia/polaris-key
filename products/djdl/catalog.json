@@ -312,7 +312,6 @@
     {
       "key": "proxy.subscriptionUrl",
       "kind": "secret",
-      "secret": true,
       "category": "VPN",
       "label": "VPN subscription URL",
       "description": "VPN subscription URL. Usually auto-provisioned from the IdP.",
@@ -333,7 +332,6 @@
     {
       "key": "serviceA.oauth",
       "kind": "secret",
-      "secret": true,
       "category": "Accounts",
       "label": "Service A OAuth token",
       "description": "Optional Service A credential.",
@@ -350,7 +348,6 @@
     {
       "key": "serviceB.clientId",
       "kind": "secret",
-      "secret": true,
       "category": "Accounts",
       "label": "Service B client ID",
       "description": "Custom Service B app client id (optional).",
@@ -367,7 +364,6 @@
     {
       "key": "serviceB.refreshToken",
       "kind": "secret",
-      "secret": true,
       "category": "Accounts",
       "label": "Service B refresh token",
       "description": "OAuth refresh token for the Service B API.",
@@ -384,7 +380,6 @@
     {
       "key": "identity.acoustidKey",
       "kind": "secret",
-      "secret": true,
       "category": "Identity",
       "label": "AcoustID API key",
       "description": "Enables AcoustID fingerprint verification.",
@@ -405,7 +400,6 @@
     {
       "key": "serviceC.userToken",
       "kind": "secret",
-      "secret": true,
       "category": "Accounts",
       "label": "Service C user token",
       "description": "User token for the Service C API.",

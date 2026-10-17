@@ -1,0 +1,308 @@
+#### truecolor-80-dark
+Usage: tidewater [options] [command]
+
+Options:
+  -v, --verbose <level>       Print more while working
+  -h, --help                  display help for command
+
+Build:
+  build                       Build the project
+
+Commands:
+  export                      Export the project
+  import                      Import a project
+  publish <target> [channel]  Publish the project
+  help [command]              display help for command
+
+License:
+  license                     Activate, sign in, devices and updates
+
+#### truecolor-80-light
+Usage: tidewater [options] [command]
+
+Options:
+  -v, --verbose <level>       Print more while working
+  -h, --help                  display help for command
+
+Build:
+  build                       Build the project
+
+Commands:
+  export                      Export the project
+  import                      Import a project
+  publish <target> [channel]  Publish the project
+  help [command]              display help for command
+
+License:
+  license                     Activate, sign in, devices and updates
+
+#### ansi16-80
+Usage: tidewater [options] [command]
+
+Options:
+  -v, --verbose <level>       Print more while working
+  -h, --help                  display help for command
+
+Build:
+  build                       Build the project
+
+Commands:
+  export                      Export the project
+  import                      Import a project
+  publish <target> [channel]  Publish the project
+  help [command]              display help for command
+
+License:
+  license                     Activate, sign in, devices and updates
+
+#### no-color-80
+Usage: tidewater [options] [command]
+
+Options:
+  -v, --verbose <level>       Print more while working
+  -h, --help                  display help for command
+
+Build:
+  build                       Build the project
+
+Commands:
+  export                      Export the project
+  import                      Import a project
+  publish <target> [channel]  Publish the project
+  help [command]              display help for command
+
+License:
+  license                     Activate, sign in, devices and updates
+
+#### ascii-80
+Usage: tidewater [options] [command]
+
+Options:
+  -v, --verbose <level>       Print more while working
+  -h, --help                  display help for command
+
+Build:
+  build                       Build the project
+
+Commands:
+  export                      Export the project
+  import                      Import a project
+  publish <target> [channel]  Publish the project
+  help [command]              display help for command
+
+License:
+  license                     Activate, sign in, devices and updates
+
+#### truecolor-60-dark
+Usage: tidewater [options] [command]
+
+Options:
+  -v, --verbose <level>       Print more while working
+  -h, --help                  display help for command
+
+Build:
+  build                       Build the project
+
+Commands:
+  export                      Export the project
+  import                      Import a project
+  publish <target> [channel]  Publish the project
+  help [command]              display help for command
+
+License:
+  license                     Activate, sign in, devices
+                              and updates
+
+#### truecolor-60-light
+Usage: tidewater [options] [command]
+
+Options:
+  -v, --verbose <level>       Print more while working
+  -h, --help                  display help for command
+
+Build:
+  build                       Build the project
+
+Commands:
+  export                      Export the project
+  import                      Import a project
+  publish <target> [channel]  Publish the project
+  help [command]              display help for command
+
+License:
+  license                     Activate, sign in, devices
+                              and updates
+
+#### ansi16-60
+Usage: tidewater [options] [command]
+
+Options:
+  -v, --verbose <level>       Print more while working
+  -h, --help                  display help for command
+
+Build:
+  build                       Build the project
+
+Commands:
+  export                      Export the project
+  import                      Import a project
+  publish <target> [channel]  Publish the project
+  help [command]              display help for command
+
+License:
+  license                     Activate, sign in, devices
+                              and updates
+
+#### no-color-60
+Usage: tidewater [options] [command]
+
+Options:
+  -v, --verbose <level>       Print more while working
+  -h, --help                  display help for command
+
+Build:
+  build                       Build the project
+
+Commands:
+  export                      Export the project
+  import                      Import a project
+  publish <target> [channel]  Publish the project
+  help [command]              display help for command
+
+License:
+  license                     Activate, sign in, devices
+                              and updates
+
+#### ascii-60
+Usage: tidewater [options] [command]
+
+Options:
+  -v, --verbose <level>       Print more while working
+  -h, --help                  display help for command
+
+Build:
+  build                       Build the project
+
+Commands:
+  export                      Export the project
+  import                      Import a project
+  publish <target> [channel]  Publish the project
+  help [command]              display help for command
+
+License:
+  license                     Activate, sign in, devices
+                              and updates
+
+#### truecolor-40-dark
+Usage: tidewater [options] [command]
+
+Options:
+  -v, --verbose <level>
+    Print more while working
+  -h, --help
+    display help for command
+
+Build:
+  build
+    Build the project
+
+Commands:
+  export
+    Export the project
+  import
+    Import a project
+  publish <target> [channel]
+    Publish the project
+  help [command]
+    display help for command
+
+License:
+  license
+    Activate, sign in, devices
+    and updates
+
+#### no-color-40
+Usage: tidewater [options] [command]
+
+Options:
+  -v, --verbose <level>
+    Print more while working
+  -h, --help
+    display help for command
+
+Build:
+  build
+    Build the project
+
+Commands:
+  export
+    Export the project
+  import
+    Import a project
+  publish <target> [channel]
+    Publish the project
+  help [command]
+    display help for command
+
+License:
+  license
+    Activate, sign in, devices
+    and updates
+
+#### truecolor-32-dark
+Usage: tidewater [options]
+  [command]
+
+Options:
+  -v, --verbose <level>
+    Print more while working
+  -h, --help
+    display help for command
+
+Build:
+  build
+    Build the project
+
+Commands:
+  export
+    Export the project
+  import
+    Import a project
+  publish <target> [channel]
+    Publish the project
+  help [command]
+    display help for command
+
+License:
+  license
+    Activate, sign in, devices
+    and updates
+
+#### no-color-32
+Usage: tidewater [options]
+  [command]
+
+Options:
+  -v, --verbose <level>
+    Print more while working
+  -h, --help
+    display help for command
+
+Build:
+  build
+    Build the project
+
+Commands:
+  export
+    Export the project
+  import
+    Import a project
+  publish <target> [channel]
+    Publish the project
+  help [command]
+    display help for command
+
+License:
+  license
+    Activate, sign in, devices
+    and updates

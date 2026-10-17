@@ -2,19 +2,21 @@
 sidebar:
   order: 7
 title: "Microsoft Store connector"
-description: "How Distribution follows a product's Microsoft Store submissions — the submission API read on the 15-minute connector cron, submission status and certification outcomes, package flights mapped to channels, gradual package rollouts mirrored as outlet rollouts — and what the read-only connector never does."
+description: "How Distribution follows a product's Microsoft Store submissions — the submission API read on the 15-minute connector cron, submission status and certification outcomes, package flights mapped to release tracks, gradual package rollouts mirrored as channel rollouts — and what the read-only connector never does."
+type: "reference"
+lastReviewed: "2026-10-16"
 ---
 
 For a product that ships on the Microsoft Store, Distribution can follow the Store instead of
 waiting for CI to report it. The **Microsoft Store connector** reads the Microsoft Store
 submission API with the product's Partner Center app and keeps three things current:
 
-- the **submission** of each release on your `ms-store` outlet — committed, in certification,
+- the **submission** of each release on your `ms-store` channel — committed, in certification,
   certified, published, or rejected with the reasons — with when it was submitted and reviewed
   (see [Availability, submissions and keys](/docs/services/distribution/availability/)), written
   with `source: ms-store`;
-- **availability** of each release's MSIX builds on the outlet;
-- each submission's **gradual package rollout**, mirrored as an outlet rollout (see
+- **availability** of each release's MSIX builds on the channel;
+- each submission's **gradual package rollout**, mirrored as a channel rollout (see
   [Rollouts and halts](/docs/services/distribution/rollouts/#store-rollouts)).
 
 **It only reads.** It never creates, updates, commits or deletes a submission, never edits a
@@ -28,9 +30,9 @@ how long it has been in certification.
 
 The connector runs for a product when all of these hold:
 
-1. **Distribution is on**, and `.pkey/distribution` declares an `ms-store` outlet whose identity
+1. **Distribution is on**, and `.pkey/distribution` declares an `ms-store` channel whose identity
    carries the app's **Store ID** (`productId`, 12 characters, from Partner Center → Product
-   identity), and, if you use package flights, a **flight map** — your channel on the left, the
+   identity), and, if you use package flights, a **flight map** — your release track on the left, the
    flight's Partner Center name (or its flight id) on the right:
 
    ```yaml
@@ -43,21 +45,21 @@ The connector runs for a product when all of these hold:
    ```
 
    The non-flighted submission — what everyone gets from the Store — is always the `stable`
-   channel. A flight Partner Center lists that your map does not name is shown as **unmapped**,
+   release track. A flight Partner Center lists that your map does not name is shown as **unmapped**,
    recorded once in the activity log (`distribution.connector.flight_unmapped`), and otherwise
    ignored: the connector does not read its submissions.
 
-2. An **`ms-partner-center` outlet credential** is stored in Distribution → Outlet credentials — the Entra ID app's
+2. An **`ms-partner-center` channel credential** is stored under Distribution, on **Outlet credentials** — the Entra ID app's
    tenant id, client id, client secret and seller id — **pinned** to this product's app: the same
    Store ID as the `productId` above (see [Pinning the app](#pinning-the-app)). See
-   [Outlet credentials](/docs/admin/secrets-and-keys/#outlet-credentials). A credential bound to
-   the `ms-store` outlet (`outletId`) is preferred over an unbound one.
+   [Channel credentials](/docs/admin/secrets-and-keys/#outlet-credentials). A credential bound to
+   the `ms-store` channel (`outletId`) is preferred over an unbound one.
 
 3. **The first submission is made by hand** in Partner Center, including the age-ratings
    questionnaire. Microsoft's API cannot create an app or its first submission.
 
-Without the credential, without an `ms-store` outlet, or with a credential that is not pinned to
-the outlet's Store ID, the connector does not run for the product: the poller skips it before
+Without the credential, without an `ms-store` channel, or with a credential that is not pinned to
+the channel's Store ID, the connector does not run for the product: the poller skips it before
 any request. `GET …/distribution/connectors/ms-store` says why in `inert` (`no_outlet`,
 `no_credential`, `pin_missing` or `pin_mismatch`, with a sentence on what to do).
 
@@ -77,7 +79,7 @@ your Partner Center account:
    wider. Partner Center has no per-app scope for this role, which is why the credential is
    pinned to one app.
 3. On the application's page, copy the **Tenant ID** and **Client ID**, then **Add new key** and
-   copy the key: that is the client secret. You will not see it again. The **Seller ID** is in
+   copy the key: that is the client secret. It is never shown again. The **Seller ID** is in
    Partner Center's account settings, with your organization's legal info.
 4. Store all four as the `ms-partner-center` credential, with the pin.
 
@@ -94,11 +96,11 @@ credential at another app of the account and copy its submissions into this prod
 So the credential carries a **pin** that only a platform admin sets: the Store ID it may be used
 for in this product. The connector runs only while the manifest's `productId` equals the pin.
 
-- **Set it with the credential.** Distribution → Outlet credentials asks for the Store ID with the other fields.
+- **Set it with the credential.** **Outlet credentials** under Distribution asks for the Store ID with the other fields.
   Over the API, send it as `pin`:
 
   ```http
-  PUT /manage/api/products/<slug>/outlet-credentials/partner-center
+  /manage/api/products/<slug>/outlet-credentials/partner-center (PUT)
   {"kind": "ms-partner-center", "value": {"tenantId": "…", "clientId": "…", "clientSecret": "…", "sellerId": "…"}, "pin": "9NBLGGH4R315"}
   ```
 
@@ -117,10 +119,10 @@ Every tick sends only these GETs, to `https://manage.devcenter.microsoft.com`, p
 fallback submission of a published one whose gradual rollout is partial:
 
 ```http
-GET /v1.0/my/applications/{productId}
-GET /v1.0/my/applications/{productId}/submissions/{pending and last published}
-GET /v1.0/my/applications/{productId}/listflights
-GET /v1.0/my/applications/{productId}/flights/{flightId}/submissions/{pending and last published}
+/v1.0/my/applications/{productId} (GET)
+/v1.0/my/applications/{productId}/submissions/{pending (GET) and last published}
+/v1.0/my/applications/{productId}/listflights (GET)
+/v1.0/my/applications/{productId}/flights/{flightId}/submissions/{pending (GET) and last published}
 ```
 
 The last line runs only for the flights your map names. A read that fails (a 5xx, rate limiting
@@ -172,9 +174,9 @@ the connector reported before that no submission carries any more becomes `remov
 
 ### Gradual rollouts
 
-A published submission's gradual package rollout is mirrored on each of its (outlet, channel):
+A published submission's gradual package rollout is mirrored on each of its (channel, release track):
 
-| `packageRolloutStatus`            | Outlet rollout                               | The new submission's builds | The fallback submission's builds |
+| `packageRolloutStatus`            | Channel rollout                              | The new submission's builds | The fallback submission's builds |
 | --------------------------------- | -------------------------------------------- | --------------------------- | -------------------------------- |
 | `PackageRolloutInProgress`        | `active`, at the percentage (25 % = 2500 bp) | `live`                      | `live`                           |
 | `PackageRolloutStopped`           | `halted`                                     | `approved`                  | `live`                           |
@@ -196,7 +198,7 @@ console; it is not an access control.
 ## Security
 
 - The connector calls only `login.microsoftonline.com` (for its token) and
-  `manage.devcenter.microsoft.com`, for the one Store ID your outlet names and your pin allows,
+  `manage.devcenter.microsoft.com`, for the one Store ID your channel names and your pin allows,
   and only with GET; nothing in a response (a `resourceLocation`, a `@nextLink`) can redirect it.
 - The client secret never leaves custody: the connector uses one-hour Entra tokens minted from
   it and cached sealed, every open of the secret is in the activity log, and errors record an

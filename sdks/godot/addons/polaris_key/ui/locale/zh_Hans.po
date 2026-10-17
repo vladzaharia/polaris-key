@@ -207,6 +207,71 @@ msgctxt "tv"
 msgid "part.thisDeviceTitle"
 msgstr "此电视"
 
+#. macOS
+#. A device's platform name in a device list (DL8). A trademark: the same in every locale. Never a raw platform id.
+msgid "part.platform.macos"
+msgstr "macOS"
+
+#. iOS
+#. A device's platform name in a device list (DL8). A trademark: the same in every locale. Never a raw platform id.
+msgid "part.platform.ios"
+msgstr "iOS"
+
+#. iPadOS
+#. A device's platform name in a device list (DL8). A trademark: the same in every locale. Never a raw platform id.
+msgid "part.platform.ipados"
+msgstr "iPadOS"
+
+#. Android
+#. A device's platform name in a device list (DL8). A trademark: the same in every locale. Never a raw platform id.
+msgid "part.platform.android"
+msgstr "Android"
+
+#. Windows
+#. A device's platform name in a device list (DL8). A trademark: the same in every locale. Never a raw platform id.
+msgid "part.platform.windows"
+msgstr "Windows"
+
+#. Linux
+#. A device's platform name in a device list (DL8). A trademark: the same in every locale. Never a raw platform id.
+msgid "part.platform.linux"
+msgstr "Linux"
+
+#. Web
+#. A device's platform name in a device list (DL8). A trademark: the same in every locale. Never a raw platform id.
+msgid "part.platform.web"
+msgstr "Web"
+
+#. tvOS
+#. A device's platform name in a device list (DL8). A trademark: the same in every locale. Never a raw platform id.
+msgid "part.platform.tvos"
+msgstr "tvOS"
+
+#. visionOS
+#. A device's platform name in a device list (DL8). A trademark: the same in every locale. Never a raw platform id.
+msgid "part.platform.visionos"
+msgstr "visionOS"
+
+#. watchOS
+#. A device's platform name in a device list (DL8). A trademark: the same in every locale. Never a raw platform id.
+msgid "part.platform.watchos"
+msgstr "watchOS"
+
+#. ChromeOS
+#. A device's platform name in a device list (DL8). A trademark: the same in every locale. Never a raw platform id.
+msgid "part.platform.chromeos"
+msgstr "ChromeOS"
+
+#. SteamOS
+#. A device's platform name in a device list (DL8). A trademark: the same in every locale. Never a raw platform id.
+msgid "part.platform.steamos"
+msgstr "SteamOS"
+
+#. FreeBSD
+#. A device's platform name in a device list (DL8). A trademark: the same in every locale. Never a raw platform id.
+msgid "part.platform.freebsd"
+msgstr "FreeBSD"
+
 #. License key
 #. Visible label of the license key field.
 msgid "part.keyField.label"
@@ -2296,6 +2361,11 @@ msgstr "替换设备"
 msgid "signin.replace.lede"
 msgstr "选择要退出登录的设备。{thisDevice}将占用其席位。"
 
+#. Replace a device
+#. Replace a device, inline in the license choice (SIGN-IN.md §3.7). The step's heading; the same words as the DeviceLimit title.
+msgid "signin.replace.heading"
+msgstr "替换设备"
+
 #. Replace…
 #. Replace a device in a system dialog (SIGN-IN.md §3.7).
 msgid "signin.replace.openSystem"
@@ -3092,6 +3162,16 @@ msgstr "运行{command}查看单个命令的选项。"
 msgid "cli.help.group"
 msgstr "许可证"
 
+#. Activate, sign in, devices and updates
+#. Terminal help of a host's own command-line tool: what the one namespace command (license) holds, when the license commands are nested under it.
+msgid "cli.help.namespace"
+msgstr "激活、登录、设备和更新"
+
+#. {command} needs a license
+#. Terminal: the first line when a host command that needs a license sends the person to activate. {command} is the command they ran, such as 'export'.
+msgid "cli.gate.needs"
+msgstr "{command}需要许可证"
+
 #. Add a license key (prompted, or piped on stdin)
 #. Terminal help: what the activate command does. The key is typed at a prompt or piped in, never written on the command line.
 msgid "cli.verb.activate"
@@ -3107,7 +3187,7 @@ msgstr "获取免费许可证（如果{product}提供）"
 msgid "cli.verb.deactivate"
 msgstr "停止在此设备上使用你的许可证并释放席位"
 
-#. License, devices and offline time
+#. Show your license, devices and offline time
 #. Terminal help: what the status command shows.
 msgid "cli.verb.status"
 msgstr "许可证、设备和离线时间"

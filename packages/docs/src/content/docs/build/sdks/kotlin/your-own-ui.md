@@ -4,12 +4,14 @@ description: "Draw your own screens on the Kotlin SDK: the state model, each cal
 sidebar:
   order: 2
 type: "reference"
-lastReviewed: "2026-10-11"
+lastReviewed: "2026-10-16"
+sdks: ["kotlin"]
+lanes: ["library"]
 ---
 
 The library returns typed results and draws nothing. This page gives, for each screen you build, the
 call, the states it can answer and the words to show. To take the finished Android screens instead,
-see the [drop-in quickstart](/docs/build/quickstart/kotlin/#drop-in-android). Create the `client`
+see the [drop-in quickstart](/docs/build/quickstart/kotlin/#4-gate-the-app). Create the `client`
 as the quickstart does; every snippet here takes it as a parameter.
 
 ## Threading
@@ -154,7 +156,7 @@ asks the server to free its seat.
 goes through the client: an activation, a deactivation, a bundle import, and a sync that moved the
 documents or the gate (a revoke it saw, a block, grace or expiry as the clock moved). An unchanged
 state is not emitted again, and nothing ticks between syncs, so read `status()` for the present.
-`licenseState` holds the latest as a `StateFlow`, `null` until the first. `events` carries licence,
+`licenseState` holds the latest as a `StateFlow`, `null` until the first. `events` carries license,
 config, update and pack changes to any number of collectors:
 
 ```kotlin
@@ -278,7 +280,7 @@ The words are localised catalog sentences and may change between releases; the s
 There is no Compose Desktop kit (it is planned), so this is a recipe: a window that gates its
 content, with key entry, the refusal copy, Replace a device and sign-in. It is one file over the
 desktop artifact, which brings the OS keyring. Add the feed as the
-[quickstart](/docs/build/quickstart/kotlin/#install) shows.
+[quickstart](/docs/build/quickstart/kotlin/#1-install) shows.
 
 ```kts
 // build.gradle.kts

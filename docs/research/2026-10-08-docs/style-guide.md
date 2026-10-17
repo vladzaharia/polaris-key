@@ -1,6 +1,6 @@
 # Polaris Key docs style guide
 
-How every page on `key.plrs.im/docs` is written. It goes with the plan in [`README.md`](README.md),
+How every page on `key.plrs.im/docs` is written. It goes with the plan in `README.md`,
 which owns the machinery: page types and their budgets (§2), the doors (§3.1), and where code
 comes from and what checks it (§4). This guide is the **only home** for writing rules: the
 voices, the Help voice, copy rules, words, how code is written, admonitions, screenshots and

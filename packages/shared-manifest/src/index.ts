@@ -1796,13 +1796,17 @@ function validateDocuments(
 
   const profiles =
     arrayAt(productRoot, "profiles") ?? arrayAt(licensing, "profiles") ?? [];
+  // The root `profiles` is canonical (U-30); `licensing.profiles` is the alias.
+  const profilesAt = arrayAt(productRoot, "profiles")
+    ? "/profiles"
+    : "/licensing/profiles";
   const profileIds = new Set<string>();
   for (const [i, raw] of profiles.entries()) {
     if (!isRecord(raw) || typeof raw.id !== "string" || !ID_RE.test(raw.id)) {
       add(
         errors,
         "product",
-        `/licensing/profiles/${i}/id`,
+        `${profilesAt}/${i}/id`,
         "invalid_profile_id",
         "Profile ids must be non-empty simple identifiers.",
       );
@@ -1814,7 +1818,7 @@ function validateDocuments(
       add(
         errors,
         "product",
-        `/licensing/profiles/${i}/id`,
+        `${profilesAt}/${i}/id`,
         "duplicate_profile_id",
         "Profile ids must be unique.",
       );
@@ -1824,7 +1828,7 @@ function validateDocuments(
       errors,
       "product",
       record.name ?? record.label,
-      `/licensing/profiles/${i}/name`,
+      `${profilesAt}/${i}/name`,
       "invalid_profile_name",
       MAX_LABEL_LENGTH,
       "Profile name",
@@ -1833,7 +1837,7 @@ function validateDocuments(
       errors,
       "product",
       record.description,
-      `/licensing/profiles/${i}/description`,
+      `${profilesAt}/${i}/description`,
       "invalid_profile_description",
       MAX_TEXT_LENGTH,
       "Profile description",
@@ -1842,7 +1846,7 @@ function validateDocuments(
       add(
         errors,
         "product",
-        `/licensing/profiles/${i}/payload`,
+        `${profilesAt}/${i}/payload`,
         "invalid_payload",
         "Profile payload must be an object.",
       );
@@ -2819,6 +2823,23 @@ function validateDocuments(
       catalogChecked: catalog !== null && modules.includes("config"),
       syncEnabled: modules.includes("sync"),
     });
+  }
+
+  // U-30 (CFG-04): the config vocabulary is Setting, Secret and Minted token. Three catalog
+  // spellings are retired; each is a warning that names its replacement. Judged only while
+  // Config is on, like the rest of the catalog's content.
+  if (manifest.schema !== undefined && modules.includes("config")) {
+    const catalog = normalizeCatalog(manifest.schema);
+    if (catalog) {
+      const recipeIds = new Set(
+        (
+          arrayAt(productRoot, "edgeMint") ??
+          arrayAt(asRecord(manifest.release), "edgeMint") ??
+          []
+        ).map((r) => asRecord(r).id),
+      );
+      warnRetiredCatalogFields(catalog.entries, recipeIds, warnings);
+    }
   }
 
   // PX-W13 (plans/PX-W13.md §3): the names the sign-in card shows an app by. Text with a control,
@@ -4677,7 +4698,9 @@ export function parseManifest(
   const productRoot = docs.product;
   const prod = nestedProductDoc(productRoot);
   const licensing = asRecord(productRoot.licensing);
-  const catalog = normalizeCatalog(docs.schema) as ManifestCatalog;
+  const catalog = dropRedundantSecretFlags(
+    normalizeCatalog(docs.schema) as ManifestCatalog,
+  );
   const releaseDoc =
     releaseRoot(docs.release) ?? releaseRoot(productRoot.release);
   const oidcRoot = asRecord(productRoot.oidc);
@@ -5546,6 +5569,80 @@ function normalizeCatalog(parsed: unknown): ProductCatalog | null {
     } as unknown as ProductCatalog;
   }
   return null;
+}
+
+/** U-30: `secret: true` on a `secret` entry says what `kind` already says. Dropped at ingest. */
+function dropRedundantSecretFlags(catalog: ManifestCatalog): ManifestCatalog {
+  return {
+    ...catalog,
+    entries: catalog.entries.map((e) => {
+      if (!isRecord(e) || e.kind !== "secret" || !("secret" in e)) return e;
+      const { secret: _secret, ...rest } = e as Record<string, unknown>;
+      return rest as typeof e;
+    }),
+  };
+}
+
+/**
+ * U-30 (CFG-04): the retired catalog spellings. Served documents are unchanged: `kind` and
+ * `delivery` keep their wire values, so every one of these is a warning, never an error.
+ *
+ *   - `secret: true` on a `secret` entry is redundant (the kind already says it) and is dropped
+ *     at ingest; on a `config` entry it still seals the value, and the warning says to use
+ *     `kind: "secret"` (the SDK read changes to `getSecret`, so `--fix` leaves it to the author).
+ *   - `delivery: "serverOnly"` has no consumer: a secret only the Worker reads belongs in the
+ *     product's secrets (Keys and secrets).
+ *   - `delivery: "edgeMint"` with no recipe: `mintToken(key)` names the recipe by the entry's
+ *     key, so an entry with no `edgeMint` recipe of that id mints nothing.
+ */
+function warnRetiredCatalogFields(
+  entries: unknown[],
+  recipeIds: ReadonlySet<unknown>,
+  warnings: ValidationMessage[],
+): void {
+  for (const [i, raw] of entries.entries()) {
+    if (!isRecord(raw)) continue;
+    const at = `/entries/${i}`;
+    if (raw.secret === true && raw.kind === "secret") {
+      add(
+        warnings,
+        "schema",
+        `${at}/secret`,
+        "catalog_secret_flag_retired",
+        "`secret: true` is redundant on a secret entry and is dropped: the kind already says it. Remove it (`pkey validate --fix`).",
+      );
+    } else if (raw.secret === true && raw.kind === "config") {
+      add(
+        warnings,
+        "schema",
+        `${at}/secret`,
+        "catalog_secret_flag_retired",
+        'Use `kind: "secret"` instead of `secret: true` on a config entry. The app then reads it with `getSecret`.',
+      );
+    }
+    if (raw.delivery === "serverOnly") {
+      add(
+        warnings,
+        "schema",
+        `${at}/delivery`,
+        "catalog_delivery_server_only",
+        "`delivery: serverOnly` has no consumer. Keep a secret only the Worker reads in the product's secrets (Keys and secrets), not the catalog.",
+      );
+    }
+    if (
+      raw.delivery === "edgeMint" &&
+      typeof raw.key === "string" &&
+      !recipeIds.has(raw.key)
+    ) {
+      add(
+        warnings,
+        "schema",
+        `${at}/delivery`,
+        "catalog_edge_mint_without_recipe",
+        `\`delivery: edgeMint\` on ${raw.key} has no edgeMint recipe with id ${raw.key}, so nothing can be minted.`,
+      );
+    }
+  }
 }
 
 function validateCatalogShape(catalog: ProductCatalog): string[] {

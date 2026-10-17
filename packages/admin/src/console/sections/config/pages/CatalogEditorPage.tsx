@@ -9,18 +9,15 @@ import {
 import { cn } from "../../../../lib/cn.js";
 import { diffSummary } from "../../../../lib/diff.js";
 import { errorCopy } from "../../../../lib/errorCopy.js";
-import { KIND_LABELS } from "../../../../lib/labels.js";
 import {
   UNCATEGORISED,
   categoryLabel,
-  catalogDiagnostics,
   catalogIssues,
   type CatalogIssue,
 } from "../../../../schema/index.js";
 import { Button } from "../../../../ui/Button.js";
 import { Callout } from "../../../../ui/Callout.js";
 import { Checkbox } from "../../../../ui/Checkbox.js";
-import { CodeEditor } from "../../../../ui/CodeEditor.js";
 import { DiffViewer } from "../../../../ui/DiffViewer.js";
 import { Drawer, DrawerBody, DrawerFooter } from "../../../../ui/Drawer.js";
 import { EmptyState } from "../../../../ui/EmptyState.js";
@@ -42,10 +39,12 @@ import { qk } from "../../../data/queries.js";
 import { codecs, navigate, useSearchParam } from "../../../router.js";
 import { r } from "../../../routes.js";
 import { CatalogEntryForm } from "../components/CatalogEntryForm.js";
+import { JsonMode, TypeGlyph } from "../components/EditorParts.js";
 import {
   clearDraft,
   draftDiff,
   draftDocument,
+  draftEntries,
   draftFrom,
   loadDraft,
   newEntry,
@@ -58,10 +57,20 @@ import {
   isNotFound,
   useCatalog,
   useCatalogUsage,
+  useEdgeMint,
 } from "../data.js";
+import {
+  ENTRY_TYPE_LABELS,
+  entryType,
+  type EntryType,
+} from "../components/entryType.js";
+import { entryFieldView, typeChangeNotes } from "../model/diffView.js";
 
 const MODE = codecs.oneOf(["form", "json"] as const, "form");
-const KIND = codecs.oneOf(["all", "config", "secret", "flag"] as const, "all");
+const KIND = codecs.oneOf(
+  ["all", "setting", "secret", "minted", "flag"] as const,
+  "all",
+);
 const CHANGED = codecs.oneOf(["0", "1"] as const, "0");
 
 /**
@@ -175,6 +184,8 @@ function Editor({
   authoritative: boolean;
   onDiscard: () => void;
 }): React.ReactElement {
+  const { data: product } = useProduct(slug);
+  const recipes = useEdgeMint(slug);
   const [mode, setMode] = useSearchParam("mode", MODE);
   const [selectedKey, setSelectedKey] = useSearchParam(
     "entry",
@@ -219,7 +230,7 @@ function Editor({
   const needle = query.trim().toLowerCase();
   const visible = entries
     .map((entry, index) => ({ entry, index }))
-    .filter(({ entry }) => kind === "all" || entry.kind === kind)
+    .filter(({ entry }) => kind === "all" || entryType(entry) === kind)
     .filter(({ entry }) => changedOnly === "0" || changeOf(entry.key) !== null)
     .filter(
       ({ entry }) =>
@@ -339,14 +350,18 @@ function Editor({
         </div>
         <div className={cn("w-40", mode === "json" && "hidden")}>
           <Select
-            aria-label="Kind"
+            aria-label="Type"
             value={kind}
             options={[
-              { value: "all", label: "All kinds" },
-              ...(["config", "secret", "flag"] as const).map((k) => ({
-                value: k,
-                label: KIND_LABELS[k]!,
-              })),
+              { value: "all", label: "All types" },
+              ...(
+                [
+                  "setting",
+                  "secret",
+                  "minted",
+                  ...(entries.some((e) => e.kind === "flag") ? ["flag"] : []),
+                ] as EntryType[]
+              ).map((k) => ({ value: k, label: ENTRY_TYPE_LABELS[k] })),
             ]}
             onChange={(v) => setKind((v ?? "all") as typeof kind)}
           />
@@ -383,7 +398,7 @@ function Editor({
           kind="first-run"
           headingLevel={2}
           title="No entries yet"
-          description="Add the first config, secret or flag entry. Publishing creates the catalog."
+          description="Add the first setting, secret or minted token. Publishing creates the catalog."
           primaryAction={
             <Button iconStart={<Plus aria-hidden />} onClick={addEntry}>
               Add entry
@@ -404,7 +419,7 @@ function Editor({
                 title="No entries match"
                 filters={[
                   needle ? `“${query.trim()}”` : null,
-                  kind !== "all" ? `kind: ${kind}` : null,
+                  kind !== "all" ? `type: ${ENTRY_TYPE_LABELS[kind]}` : null,
                   changedOnly === "1" ? "changed only" : null,
                 ]
                   .filter(Boolean)
@@ -465,6 +480,7 @@ function Editor({
                                   : "text-fg hover:bg-hover",
                               )}
                             >
+                              <TypeGlyph type={entryType(entry)} />
                               <span
                                 className="min-w-0 flex-1 truncate"
                                 title={entry.key || undefined}
@@ -540,6 +556,9 @@ function Editor({
                   issues={issuesAt(selectedIndex)}
                   categories={categories}
                   fresh={!draft.baseEntries.some((e) => e.key === selected.key)}
+                  slug={slug}
+                  syncEnabled={product?.services?.sync?.enabled === true}
+                  recipeIds={recipes.data?.recipes?.map((x) => x.id) ?? null}
                   onChange={(next) => updateEntry(selectedIndex, next)}
                 />
               </div>
@@ -632,64 +651,6 @@ function Editor({
   );
 }
 
-// ── JSON mode (CAT-4) ──────────────────────────────────────────────────────────────────────────
-
-function JsonMode({
-  draft,
-  setDraft,
-}: {
-  draft: CatalogDraft;
-  setDraft: (next: CatalogDraft) => void;
-}): React.ReactElement {
-  const serialised = React.useMemo(
-    () => `${JSON.stringify(draftDocument(draft), null, 2)}\n`,
-    [draft],
-  );
-  const [text, setText] = React.useState(serialised);
-  const emitted = React.useRef(serialised);
-  // Follow the draft when it changes from outside (Undo, a discard), never on our own echo.
-  React.useEffect(() => {
-    if (serialised === emitted.current) return;
-    emitted.current = serialised;
-    setText(serialised);
-  }, [serialised]);
-
-  const labelId = React.useId();
-  return (
-    <div className="space-y-2">
-      <p id={labelId} className="sr-only">
-        The whole catalog as JSON. Changes apply to the draft while the text is
-        valid JSON with an entries array; the version is assigned when you
-        publish.
-      </p>
-      <CodeEditor
-        language="json"
-        value={text}
-        formattable
-        heightClass="h-[32rem]"
-        aria-labelledby={labelId}
-        validate={catalogDiagnostics}
-        onChange={(next) => {
-          setText(next);
-          try {
-            const doc = JSON.parse(next) as { entries?: unknown };
-            if (Array.isArray(doc.entries)) {
-              const updated = {
-                ...draft,
-                entries: doc.entries as ConfigEntry[],
-              };
-              emitted.current = `${JSON.stringify(draftDocument(updated), null, 2)}\n`;
-              setDraft(updated);
-            }
-          } catch {
-            // Not JSON yet: the linter marks it; the draft keeps its last good state.
-          }
-        }}
-      />
-    </div>
-  );
-}
-
 // ── review and publish ─────────────────────────────────────────────────────────────────────────
 
 function ReviewDrawer({
@@ -751,7 +712,9 @@ function ReviewDrawer({
     for (const p of u.profiles) profilesAffected.add(p.id);
     if (refs.length) referencedBy[key] = refs;
   }
-  const breaking = Object.keys(referencedBy).length > 0;
+  const typeNotes = React.useMemo(() => typeChangeNotes(diff.changed), [diff]);
+  const breaking =
+    Object.keys(referencedBy).length > 0 || Object.keys(typeNotes).length > 0;
   const conflict =
     error instanceof ApiError &&
     error.status === 409 &&
@@ -836,9 +799,11 @@ function ReviewDrawer({
               <DiffViewer<ConfigEntry>
                 mode="structured"
                 before={draft.baseEntries}
-                after={draft.entries}
+                after={draftEntries(draft)}
                 entryKey="key"
                 referencedBy={referencedBy}
+                fieldView={entryFieldView}
+                breakingChanged={typeNotes}
               />
               {usage.isFetching ? (
                 <p className="text-sm text-fg-muted">
@@ -892,7 +857,12 @@ function ReviewDrawer({
               ) : null}
               {breaking ? (
                 <Checkbox
-                  label={`I understand removed keys are dropped from ${profilesAffected.size} ${profilesAffected.size === 1 ? "profile's" : "profiles'"} payloads and the licenses and accounts listed above`}
+                  label={
+                    Object.keys(typeNotes).length > 0 &&
+                    Object.keys(referencedBy).length === 0
+                      ? "I understand a changed Type changes how the app reads the key"
+                      : `I understand removed keys are dropped from ${profilesAffected.size} ${profilesAffected.size === 1 ? "profile's" : "profiles'"} payloads and the licenses and accounts listed above`
+                  }
                   checked={ack}
                   onCheckedChange={setAck}
                 />
@@ -935,7 +905,7 @@ function ReviewDrawer({
                 : diff.all.length === 0
                   ? "Nothing has changed yet."
                   : breaking && !ack
-                    ? "Confirm that removed keys are dropped."
+                    ? "Confirm the breaking changes."
                     : authoritative && reason.trim() === ""
                       ? "Give a reason for the break-glass claim."
                       : usage.isFetching

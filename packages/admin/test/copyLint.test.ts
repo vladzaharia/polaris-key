@@ -657,6 +657,12 @@ const SAME_WORDS: Record<string, string> = {
     "same as core.codes.service-unavailable.title",
   "core.codes.mint-unavailable.title":
     "same as core.codes.service-unavailable.title",
+  ...Object.fromEntries(
+    ["windows", "linux", "android"].map((os) => [
+      `part.platform.${os}`,
+      "a platform's trademark, which the portal names as a download target; the kit's key names the current device's platform and is the same in every locale",
+    ]),
+  ),
 };
 
 /** Whole strings that read like a catalog message but are another sentence, each with its reason. */

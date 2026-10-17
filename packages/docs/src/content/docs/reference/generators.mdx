@@ -84,7 +84,7 @@ SDK constants: error codes, headers, enums, feature ids, core copy.
 - Check: `pnpm gen constants --check`.
 - Underlying: `pnpm exec tsx tools/gen-sdk-constants.ts`.
 - Reads: `tools/gen-sdk-constants.ts`, `tools/capabilities.ts`, `tools/services.json`, `conformance/parity/**`, `packages/shared-protocol/src/**`, `packages/worker/src/**`, `sdks/*/parity.json`, `packages/*/parity.json`.
-- Writes: `packages/sdk-node/src/constants.generated.ts`, `packages/sdk-node/src/copy.generated.ts`, `packages/sdk-react/src/constants.generated.ts`, `packages/sdk-react/src/copy.generated.ts`, `sdks/python/src/polaris_key/constants_generated.py`, `sdks/python/src/polaris_key/copy_generated.py`, `sdks/swift/Sources/PolarisKeyCore/Constants.generated.swift`, `sdks/swift/Sources/PolarisKeyCore/Copy.generated.swift`, `sdks/godot/addons/polaris_key/core/constants_generated.gd`, `sdks/godot/addons/polaris_key/core/copy_generated.gd`, `sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/Constants.generated.kt`, `sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/Copy.generated.kt`.
+- Writes: `packages/sdk-node/src/constants.generated.ts`, `packages/sdk-node/src/copy.generated.ts`, `packages/server/src/copy.generated.ts`, `packages/sdk-react/src/constants.generated.ts`, `packages/sdk-react/src/copy.generated.ts`, `sdks/python/src/polaris_key/constants_generated.py`, `sdks/python/src/polaris_key/copy_generated.py`, `sdks/swift/Sources/PolarisKeyCore/Constants.generated.swift`, `sdks/swift/Sources/PolarisKeyCore/Copy.generated.swift`, `sdks/godot/addons/polaris_key/core/constants_generated.gd`, `sdks/godot/addons/polaris_key/core/copy_generated.gd`, `sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/Constants.generated.kt`, `sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/Copy.generated.kt`.
 
 ### platform-inventory
 
@@ -162,8 +162,8 @@ Docs reference pages generated from the validators, routes, migrations and corpu
 - Regenerate: `pnpm gen docs-reference`.
 - Check: `pnpm gen docs-reference --check`.
 - Underlying: `pnpm --filter @polaris-key/docs gen`.
-- Reads: `packages/docs/scripts/gen-reference.mjs`, `packages/worker/src/**`, `packages/worker/migrations/**`, `packages/shared-*/src/**`, `conformance/corpus/v2/**`, `conformance/parity/**`, `sdks/*/parity.json`, `packages/*/parity.json`, `packages/worker/openapi/**`, `conformance/transcripts/**`.
-- Writes: `packages/docs/src/content/docs/reference/{config-entry,error-codes,parity,routes,validation-codes}.mdx`, `packages/docs/src/content/docs/reference/protocol/{corpus,fingerprint-constants}.mdx`, `packages/docs/src/content/docs/contribute/data-model.mdx`.
+- Reads: `packages/docs/scripts/gen-reference.mjs`, `packages/docs/scripts/console-nav.mjs`, `packages/admin/src/console/nav.ts`, `packages/worker/src/**`, `packages/worker/migrations/**`, `packages/shared-*/src/**`, `conformance/corpus/v2/**`, `conformance/parity/**`, `sdks/*/parity.json`, `packages/*/parity.json`, `packages/worker/openapi/**`, `conformance/transcripts/**`.
+- Writes: `packages/docs/src/content/docs/reference/{config-entry,error-codes,parity,routes,validation-codes}.mdx`, `packages/docs/src/content/docs/reference/protocol/{corpus,fingerprint-constants}.mdx`, `packages/docs/src/content/docs/contribute/data-model.mdx`, `packages/docs/src/content/docs/operate/console/tour.mdx`.
 
 ### registry-docs
 
@@ -218,6 +218,17 @@ Omniplatform program INDEX.md from workpackages.json.
 - Reads: `docs/research/2026-09-29-godot-omniplatform/program/workpackages.json`, `docs/research/2026-09-29-godot-omniplatform/program/check.mjs`, `docs/research/2026-09-29-godot-omniplatform/program/wp/*.md`.
 - Writes: `docs/research/2026-09-29-godot-omniplatform/program/INDEX.md`.
 
+### integration
+
+Integration content goldens: every renderUsage block, per SDK, lane and feature.
+
+- Run: default.
+- Regenerate: `pnpm gen integration`.
+- Check: `pnpm gen integration --check`.
+- Underlying: `pnpm exec tsx tools/gen-integration.ts`.
+- Reads: `tools/gen-integration.ts`, `packages/shared-manifest/src/integration/**`, `packages/shared-manifest/src/feedSetup.ts`.
+- Writes: `packages/shared-manifest/test/fixtures/integration/**`.
+
 ### mirrors
 
 Typed config mirrors for a product catalog, in five languages.
@@ -239,7 +250,7 @@ Typed config mirrors for a product catalog, in five languages.
 - Check: `pnpm gen sdk-samples --check`.
 - Underlying: `PKEY_UPDATE_SAMPLES=1 pnpm --filter @polaris-key/cli exec vitest run test/sdkConfig.test.ts`.
 - Why not default: written and checked by the CLI suite (packages/cli/test/sdkConfig.test.ts).
-- Reads: `packages/cli/src/sdkConfig.ts`, `packages/cli/test/sdkConfig.test.ts`.
+- Reads: `packages/cli/src/sdkConfig.ts`, `packages/shared-manifest/src/integration/sdkConfig.ts`, `packages/cli/test/sdkConfig.test.ts`.
 - Writes: `conformance/runners/node/sdkConfigSample.ts`, `packages/sdk-react/test/sdkConfigSample.ts`, `sdks/python/tests/sdk_config_sample.py`, `sdks/swift/Tests/PolarisKeyTests/SdkConfigSample.swift`, `sdks/kotlin/sdk/src/test/kotlin/polaris/generated/PolarisConfig.kt`, `sdks/godot/tests/sdk_config/polaris_key_config.gd`.
 
 ### docs-csp

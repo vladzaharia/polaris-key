@@ -19,6 +19,7 @@ import {
   type SdkLang,
 } from "../src/sdkConfig.js";
 import { renderCliMirror, renderMirror } from "../src/mirrors.js";
+import { fingerprintOf } from "../src/sdkConfig.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(HERE, "../../..");
@@ -342,6 +343,122 @@ describe("pkey sdk --lang", () => {
     });
     expect(js).not.toContain("import type");
     expect(js).toContain("@satisfies");
+  });
+});
+
+describe("pkey sdk add (D30: no trust on first use)", () => {
+  const expectArg = `${TRUST_KID}@sha256:${fingerprintOf(TRUST_KEY)}`;
+  const release = ["--release-key", `${RELEASE_KID}=${RELEASE_KEY}`];
+
+  it("writes the config and prints the install and the start when --expect matches", async () => {
+    const cwd = await tempDir();
+    const io = capture();
+    expect(
+      await runPkey(
+        [
+          "sdk",
+          "add",
+          "python",
+          "--product",
+          "acme",
+          "--expect",
+          expectArg,
+          ...release,
+        ],
+        { cwd, fetchImpl: fakeFetch(DISCOVERY).fetchImpl, ...io },
+      ),
+      io.err(),
+    ).toBe(0);
+    expect(await readFile(path.join(cwd, "polaris_config.py"), "utf8")).toBe(
+      renderSdkConfig("python", await facts()),
+    );
+    expect(io.out()).toContain("https://pkg.plrs.im/pypi/polaris-key/simple/");
+    expect(io.out()).toContain("register_argparse");
+  });
+
+  it("refuses, writing nothing, on a different or missing pin", async () => {
+    const cwd = await tempDir();
+    const wrong = `${TRUST_KID}@sha256:${"0".repeat(64)}`;
+    for (const expect_ of [
+      wrong,
+      `other-kid@sha256:${fingerprintOf(TRUST_KEY)}`,
+    ]) {
+      const io = capture();
+      expect(
+        await runPkey(
+          [
+            "sdk",
+            "add",
+            "node",
+            "--product",
+            "acme",
+            "--expect",
+            expect_,
+            ...release,
+          ],
+          { cwd, fetchImpl: fakeFetch(DISCOVERY).fetchImpl, ...io },
+        ),
+      ).toBe(1);
+    }
+    await expect(
+      readFile(path.join(cwd, "polaris.config.ts"), "utf8"),
+    ).rejects.toThrow();
+  });
+
+  it("refuses a pin discovery serves that --expect does not name", async () => {
+    const cwd = await tempDir();
+    const two = structuredClone(DISCOVERY) as {
+      trust: { pinnedKeys: Record<string, string> };
+    };
+    two.trust.pinnedKeys["acme-backup-2026"] = OTHER_KEY;
+    const io = capture();
+    expect(
+      await runPkey(
+        [
+          "sdk",
+          "add",
+          "node",
+          "--product",
+          "acme",
+          "--expect",
+          expectArg,
+          ...release,
+        ],
+        { cwd, fetchImpl: fakeFetch(two).fetchImpl, ...io },
+      ),
+    ).toBe(1);
+    expect(io.err()).toContain("acme-backup-2026");
+  });
+
+  it("names the missing flags", async () => {
+    const cwd = await tempDir();
+    const run = async (args: string[]): Promise<string> => {
+      const io = capture();
+      expect(await runPkey(args, { cwd, ...io })).toBe(1);
+      return io.err();
+    };
+    expect(await run(["sdk", "add"])).toContain("needs the SDK first");
+    expect(await run(["sdk", "add", "node", "--product", "acme"])).toContain(
+      "--expect",
+    );
+    expect(await run(["sdk", "add", "node", "--expect", expectArg])).toContain(
+      "--product",
+    );
+    expect(
+      await run(["sdk", "add", "node", "--product", "acme", "--expect", "kid"]),
+    ).toContain("<kid>@sha256:");
+    // Outside `add` nothing checks the pins, so --expect there is refused rather than ignored.
+    expect(
+      await run([
+        "sdk",
+        "--lang",
+        "node",
+        "--product",
+        "acme",
+        "--expect",
+        expectArg,
+      ]),
+    ).toContain("--expect is only for pkey sdk add");
   });
 });
 

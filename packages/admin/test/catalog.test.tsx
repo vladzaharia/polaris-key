@@ -94,8 +94,8 @@ describe("Catalog page", () => {
     expect(screen.getByText("v8")).toBeTruthy();
     expect(screen.getByText("4 keys")).toBeTruthy();
     const timeout = within(table()).getByText("network.timeout").closest("tr")!;
-    expect(within(timeout).getByText("Config")).toBeTruthy();
-    expect(within(timeout).getByText("Enforced")).toBeTruthy();
+    expect(within(timeout).getByText("Setting")).toBeTruthy();
+    expect(within(timeout).getByText("Read-only")).toBeTruthy();
     expect(within(timeout).getByText("30")).toBeTruthy();
     const dsn = within(table()).getByText("sentry.dsn").closest("tr")!;
     expect(within(dsn).getByText("(write-only)")).toBeTruthy();
@@ -162,6 +162,19 @@ describe("Catalog page", () => {
     );
     expect(window.location.hash).toContain("kind=flag");
     expect(await screen.findByText(/No .*match/)).toBeTruthy();
+  });
+
+  it("keeps Code only rows out of Editable and offers Code only as a facet", async () => {
+    bootConfig("#/p/djdl/config/catalog?state=code", {
+      [`${P}/config/catalog`]: CATALOG,
+    });
+    await screen.findByText("sentry.dsn");
+    // A secret is code only; the flag has no In the app value either, and is not a setting.
+    expect(screen.queryByText("network.timeout")).toBeNull();
+    expect(screen.queryByText("network.proxy.url")).toBeNull();
+    expect(
+      within(table()).getByText("sentry.dsn").closest("tr")!.textContent,
+    ).toContain("Code only");
   });
 
   it("opens a key drawer with what overrides the key (A-7b)", async () => {
@@ -330,6 +343,48 @@ describe("Catalog editor", () => {
     await waitFor(() =>
       expect(backend.reads(`${P}/config/catalog`)).toBeGreaterThan(1),
     );
+  });
+
+  it("keeps a setting's fields when Type is changed and changed back, and drops them only at publish", async () => {
+    const backend = await openEditor();
+    const spin = await screen.findByRole("spinbutton", { name: /^Default/ });
+    expect((spin as HTMLInputElement).value).toBe("30");
+    await userEvent.click(screen.getByRole("radio", { name: "Secret" }));
+    expect(await screen.findByText(/Code only\. Write-only/)).toBeTruthy();
+    expect(screen.queryByRole("spinbutton", { name: /^Default/ })).toBeNull();
+    await userEvent.click(screen.getByRole("radio", { name: "Setting" }));
+    const back = await screen.findByRole("spinbutton", { name: /^Default/ });
+    expect((back as HTMLInputElement).value).toBe("30");
+    expect(
+      screen
+        .getByRole("radio", { name: "Read-only" })
+        .getAttribute("aria-checked"),
+    ).toBe("true");
+    expect(screen.queryByText(/changed/)).toBeNull();
+    // As a Secret at publish, the fields that do not apply are dropped.
+    await userEvent.click(screen.getByRole("radio", { name: "Secret" }));
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Review changes" }),
+    );
+    const drawer = await screen.findByRole("dialog", {
+      name: "Publish version 9",
+    });
+    expect(within(drawer).getByText("Setting")).toBeTruthy();
+    await userEvent.click(
+      within(drawer).getByRole("checkbox", {
+        name: /changes how the app reads/,
+      }),
+    );
+    await userEvent.click(
+      within(drawer).getByRole("button", { name: "Publish version 9" }),
+    );
+    const put = backend.writes().find((c) => c.method === "PUT")!;
+    const sent = (put.body as { catalog: ProductCatalog }).catalog.entries.find(
+      (e) => e.key === "network.timeout",
+    )!;
+    expect(sent.kind).toBe("secret");
+    expect(sent.default).toBeUndefined();
+    expect(sent.managementDefault).toBeUndefined();
   });
 
   it("keeps the draft in this tab across leaving and coming back (CAT-6)", async () => {
@@ -630,7 +685,7 @@ describe("Catalog entry form", () => {
       expect(await screen.findByRole("textbox", { name })).toBeTruthy();
     // A category suggests the draft's others, so it is a combobox.
     expect(screen.getByRole("combobox", { name: /^Category/ })).toBeTruthy();
-    expect(screen.getByRole("combobox", { name: /^Type/ })).toBeTruthy();
+    expect(screen.getByRole("combobox", { name: /^Value type/ })).toBeTruthy();
     expect(screen.getByRole("textbox", { name: /^Default/ })).toBeTruthy();
     const validation = screen.getByText("Validation").closest("details")!;
     const hints = screen.getByText("Form hints").closest("details")!;
@@ -676,7 +731,7 @@ describe("Catalog entry form", () => {
     await userEvent.type(value, "512");
     expect(await screen.findByText("Guessed from the default.")).toBeTruthy();
     expect(
-      screen.getByRole("combobox", { name: /^Type/ }).textContent,
+      screen.getByRole("combobox", { name: /^Value type/ }).textContent,
     ).toContain("Whole number");
     await userEvent.click(
       screen.getByRole("button", { name: "Review changes" }),

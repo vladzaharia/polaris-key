@@ -1,4 +1,4 @@
-// @pkey-feature ui.kit ui.kit.manage
+// @pkey-feature ui.kit ui.kit.manage ui.theme ui.i18n
 //
 // The React kit (`@polaris-key/react/kit`) in real Chromium. The responsive scenes cover every
 // UI-KITS §7.1 size in dark and light, and the complete fixture state matrix covers the 390 and
@@ -27,6 +27,14 @@ import componentRegistryJson from "../../../../packages/brand/kit-copy/component
 import type { UiInput } from "@polaris-key/ui-core";
 
 import { LAYOUTS } from "@polaris-key/elements/contract";
+import de from "../../../brand/kit-copy/de.json" with { type: "json" };
+import es from "../../../brand/kit-copy/es.json" with { type: "json" };
+import fr from "../../../brand/kit-copy/fr.json" with { type: "json" };
+import it_ from "../../../brand/kit-copy/it.json" with { type: "json" };
+import ja from "../../../brand/kit-copy/ja.json" with { type: "json" };
+import ko from "../../../brand/kit-copy/ko.json" with { type: "json" };
+import ptBR from "../../../brand/kit-copy/pt-BR.json" with { type: "json" };
+import zhHans from "../../../brand/kit-copy/zh-Hans.json" with { type: "json" };
 
 import * as Kit from "@polaris-key/react/kit";
 import {
@@ -250,6 +258,7 @@ async function mount(
   scheme: Scheme,
   preset: "polaris-key" | "native",
   rootPx = 16,
+  locale?: string,
 ): Promise<HTMLElement> {
   const fixture = fixtureFor(scene);
   document.documentElement.style.fontSize = `${rootPx}px`;
@@ -276,6 +285,7 @@ async function mount(
         product: PRODUCT,
         colorScheme: preset === "native" ? "system" : scheme,
         preset,
+        ...(locale === undefined ? {} : { locale }),
       }}
     >
       <main data-host-content="">
@@ -285,6 +295,15 @@ async function mount(
   );
   for (let i = 0; i < 100 && !host.querySelector(".pk-root"); i++)
     await new Promise((r) => setTimeout(r, 20));
+  // A launch locale's copy pack loads on demand: wait for the kit to redraw in it.
+  if (locale !== undefined)
+    for (
+      let i = 0;
+      i < 150 &&
+      host.querySelector(".pk-root")?.getAttribute("lang") !== locale;
+      i++
+    )
+      await new Promise((r) => setTimeout(r, 20));
   await document.fonts.ready;
   await frame();
   // The step's entrance runs to its end before anything is measured (a fade blends colours).
@@ -413,12 +432,13 @@ async function check(
   scheme: Scheme,
   size: Size,
   preset: "polaris-key" | "native",
+  locale?: string,
 ): Promise<void> {
   await page.viewport(size.width, size.height);
-  await mount(scene, scheme, preset, size.rootPx);
+  await mount(scene, scheme, preset, size.rootPx, locale);
   if (__PKEY_KIT_SHOTS__)
     await commands.kitShot(
-      `${__PKEY_KIT_SHOTS__}/react.${scene.id}/${size.label}-${scheme}${preset === "native" ? "-native" : ""}.png`,
+      `${__PKEY_KIT_SHOTS__}/react.${scene.id}${locale === undefined ? "" : `.${locale}`}/${size.label}-${scheme}${preset === "native" ? "-native" : ""}.png`,
     );
   if (
     __PKEY_KIT_BASELINES__ &&
@@ -485,4 +505,48 @@ describe("the complete fixture baseline matrix", () => {
       for (const scene of BASELINE_SCENES)
         it(`${scene.id} at ${size.label} ${scheme}`, () =>
           check(scene, scheme, size, "polaris-key"));
+});
+
+/** UI-KITS §7.1's variants: the launch locales at the phone-portrait and desktop rows. DL12: the
+ *  CJK fallback has its own 600 face, so a heading stays a heading in `ja`, `ko` and `zh-Hans`. */
+/** Chromium's dev server cannot serve the packs' lazy JSON imports, so the suite registers them. */
+const PACKS: Record<string, { messages: Record<string, string> }> = {
+  de,
+  es,
+  fr,
+  it: it_,
+  ja,
+  ko,
+  "pt-BR": ptBR,
+  "zh-Hans": zhHans,
+};
+beforeAll(() => {
+  for (const [locale, pack] of Object.entries(PACKS))
+    Kit.provideKitCopy(locale, pack.messages);
+});
+
+const LOCALES = ["de", "fr", "es", "pt-BR", "it", "ja", "ko", "zh-Hans"];
+const LOCALE_SCENES = SCENES.filter((s) =>
+  [
+    "Welcome.default",
+    "Activate.parsed",
+    "Devices.list",
+    "Settings.list",
+  ].includes(s.id),
+);
+
+describe("the React kit in the launch locales", () => {
+  for (const locale of LOCALES)
+    for (const scene of LOCALE_SCENES)
+      for (const scheme of SCHEMES)
+        for (const size of SIZES.filter((s) =>
+          ["390", "1440"].includes(s.label),
+        ))
+          it(`${scene.id} ${locale} at ${size.label} ${scheme}`, async () => {
+            await check(scene, scheme, size, "polaris-key", locale);
+            const kit = document.querySelector<HTMLElement>(".pk-root")!;
+            expect(kit.closest("[lang]")?.getAttribute("lang")).toBe(locale);
+            const h1 = kit.querySelector("h1");
+            if (h1) expect(getComputedStyle(h1).fontWeight).toBe("600");
+          });
 });

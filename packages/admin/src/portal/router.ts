@@ -44,6 +44,7 @@ export const PRODUCT_SECTIONS = [
   "devices",
   "package",
   "help",
+  "data",
 ] as const;
 export type ProductSection = (typeof PRODUCT_SECTIONS)[number];
 

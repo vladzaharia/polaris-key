@@ -48,10 +48,10 @@ The owner asked for "first class documentation, thorough but not overly so" on o
 
 ## Acceptance criteria
 
-- [ ] The common definition of done in the docs plan §6.3 holds.
-- [ ] No "outlet" in prose (the code word only, in code spans).
+- [x] The common definition of done in the docs plan §6.3 holds.
+- [x] No "outlet" in prose (the code word only, in code spans).
 - [ ] `pkey-wp-reviewer` passes the package.
-- [ ] The green gate passes (`AGENTS.md`), including every drift gate in the header.
+- [x] The green gate passes (lead gate on wp/DOC-lane-C, 2026-10-16; step 6 retried once under machine load 300 to 550) (`AGENTS.md`), including every drift gate in the header.
 
 ## Verify
 
@@ -66,3 +66,11 @@ mise exec node@22 -- pnpm --filter @polaris-key/docs check:links
 
 The role agent sets `--set DOC-10b in-review` when it hands off. After review, the lead adds the last commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set DOC-10b done`.
+
+## Verification notes (2026-10-16)
+
+- Vocabulary pass on `channels/*`, `commerce` and `build/manifest/distribution`: prose "outlet" became "channel" (a place builds reach customers), and the release-track sense of "channel" became "release track" first, so the two never share a word. Console labels are quoted as the screen shows them (**Outlet credentials**), in bold. Code identifiers, routes and file names keep `outlet`.
+- `channels/app-store` ran over its type budget: Distribute, Pushing the listing, In-app purchases and the App Store page moved to `channels/app-store-distribute`. Anchors that changed (`#channel-capabilities`, `#channel-readiness`) were updated site-wide.
+- `channels/feeds` is titled Install sources (the glossary word). `channels/index` gained **Choose a channel**, built from `OUTLET_KINDS` in `shared-protocol/src/distribution.ts`; the Distribution matrix section was already there.
+- HTTP lines the lint could not match (store APIs, manage-API routes outside the OpenAPI spec) are written as path then method, for example `/v1/webhooks` (POST). The routes were checked against `worker/src/console/routes.ts`.
+- Not done: a per-claim file:line list for the unchanged body text (carried over from the services pages); the Windows and Linux store pages (`channels/*` for itch, Snap, winget live in `ci-stores` and `storefronts`).

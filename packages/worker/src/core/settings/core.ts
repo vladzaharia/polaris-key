@@ -120,7 +120,7 @@ export const CORE_SLICE: readonly SettingDef[] = [
     area: "general",
     label: "Manifest-authoritative",
     description:
-      "The product's .pkey/ is the only writer of its display name, licence defaults, web origins, catalog and licensing settings: a console edit to one is refused unless it is a break-glass claim, which needs a reason and expires after 7 days or at the first resync or deploy that changes that field, whichever comes first. Settings claimed through their older markers (services, the compatibility window, update access, the device policies) are not refused yet. Off by default; always on, and locked, for the system product.",
+      "The product's .pkey/ is the only writer of its display name, license defaults, web origins, catalog and licensing settings: a console edit to one is refused unless it is a break-glass claim, which needs a reason and expires after 7 days or at the first resync or deploy that changes that field, whichever comes first. Settings claimed through their older markers (services, the compatibility window, update access, the device policies) are not refused yet. Off by default; always on, and locked, for the system product.",
     keywords: ["break-glass", "gitops", "claims", "lock", "single writer"],
     docs: "/docs/operate/console/products/",
     value: { kind: "boolean" },
@@ -213,7 +213,7 @@ export const CORE_SLICE: readonly SettingDef[] = [
     area: "keys",
     label: "Signing keys",
     description:
-      "The product's Ed25519 signing keys: one active key signs licences, config and the feed, retired keys stay published so older documents still verify. The private half is sealed and never shown. Rotating or retiring a key changes what devices accept.",
+      "The product's Ed25519 signing keys: one active key signs licenses, config and the feed, retired keys stay published so older documents still verify. The private half is sealed and never shown. Rotating or retiring a key changes what devices accept.",
     keywords: ["signing", "kid", "rotate", "keyring", "ed25519", "retire"],
     docs: "/docs/operate/console/keys-and-secrets/",
     value: {

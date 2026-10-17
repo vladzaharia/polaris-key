@@ -574,7 +574,7 @@ describe("license record: Config overrides", () => {
     const log = bootLicense(`${REC}/config`);
     expect(await screen.findByText("feature.timeout")).toBeTruthy();
     // The secret's and the flag's states (a badge and the selected radio each; chunk 7's editor).
-    expect(screen.getAllByText("Enforced").length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText("Read-only").length).toBeGreaterThanOrEqual(2);
     expect(screen.getAllByText("Hidden").length).toBeGreaterThanOrEqual(2);
     expect(screen.queryByRole("button", { name: /Save overrides/ })).toBeNull();
     const timeout = screen.getByLabelText(/^Timeout/);

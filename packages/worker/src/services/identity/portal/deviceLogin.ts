@@ -72,7 +72,7 @@ import {
   formatUserCode,
   generateUserCode,
   normalizeUserCode,
-} from "../oidc.js";
+} from "../productOidc/userCode.js";
 import { STEP_UP_MAX_AGE_SECONDS, isFresh } from "../accounts/links.js";
 import {
   getPortalAccount,

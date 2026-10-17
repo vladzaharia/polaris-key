@@ -71,6 +71,32 @@
     <string name="part_thisDeviceTitle__tablet">이 태블릿</string>
     <string name="part_thisDeviceTitle__computer">이 컴퓨터</string>
     <string name="part_thisDeviceTitle__tv">이 TV</string>
+    <!-- A device's platform name in a device list (DL8). A trademark: the same in every locale. Never a raw platform id. -->
+    <string name="part_platform_macos">macOS</string>
+    <!-- A device's platform name in a device list (DL8). A trademark: the same in every locale. Never a raw platform id. -->
+    <string name="part_platform_ios">iOS</string>
+    <!-- A device's platform name in a device list (DL8). A trademark: the same in every locale. Never a raw platform id. -->
+    <string name="part_platform_ipados">iPadOS</string>
+    <!-- A device's platform name in a device list (DL8). A trademark: the same in every locale. Never a raw platform id. -->
+    <string name="part_platform_android">Android</string>
+    <!-- A device's platform name in a device list (DL8). A trademark: the same in every locale. Never a raw platform id. -->
+    <string name="part_platform_windows">Windows</string>
+    <!-- A device's platform name in a device list (DL8). A trademark: the same in every locale. Never a raw platform id. -->
+    <string name="part_platform_linux">Linux</string>
+    <!-- A device's platform name in a device list (DL8). A trademark: the same in every locale. Never a raw platform id. -->
+    <string name="part_platform_web">Web</string>
+    <!-- A device's platform name in a device list (DL8). A trademark: the same in every locale. Never a raw platform id. -->
+    <string name="part_platform_tvos">tvOS</string>
+    <!-- A device's platform name in a device list (DL8). A trademark: the same in every locale. Never a raw platform id. -->
+    <string name="part_platform_visionos">visionOS</string>
+    <!-- A device's platform name in a device list (DL8). A trademark: the same in every locale. Never a raw platform id. -->
+    <string name="part_platform_watchos">watchOS</string>
+    <!-- A device's platform name in a device list (DL8). A trademark: the same in every locale. Never a raw platform id. -->
+    <string name="part_platform_chromeos">ChromeOS</string>
+    <!-- A device's platform name in a device list (DL8). A trademark: the same in every locale. Never a raw platform id. -->
+    <string name="part_platform_steamos">SteamOS</string>
+    <!-- A device's platform name in a device list (DL8). A trademark: the same in every locale. Never a raw platform id. -->
+    <string name="part_platform_freebsd">FreeBSD</string>
     <!-- Visible label of the license key field. -->
     <string name="part_keyField_label">라이선스 키</string>
     <!-- Placeholder inside the empty license key field. Carries no information the label lacks. -->
@@ -841,6 +867,8 @@
     <string name="signin_replace_open__macos">기기 교체</string>
     <!-- Replace a device, as a step in the in-app form (SIGN-IN.md §3.7). Arguments: {thisDevice} = the platform phrase for the current device (part.thisDevice). Arguments: 1=thisDevice. -->
     <string name="signin_replace_lede">로그아웃할 기기를 선택하세요. %1$s이(가) 그 자리를 사용해요.</string>
+    <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). The step's heading; the same words as the DeviceLimit title. -->
+    <string name="signin_replace_heading">기기 교체</string>
     <!-- Replace a device in a system dialog (SIGN-IN.md §3.7). -->
     <string name="signin_replace_openSystem">교체…</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {platform} = the device's platform name (macOS, Windows, iPhone…); {when} = a relative time already formatted by the platform (“2 days ago”). Arguments: 1=platform, 2=when. -->
@@ -1140,6 +1168,10 @@
     <string name="cli_help_more">명령별 옵션을 보려면 다음을 실행하세요: %1$s</string>
     <!-- Terminal help of a host's own command-line tool: the one heading over the license commands it mounted (activate, status, login…), after the tool's own headings. -->
     <string name="cli_help_group">라이선스</string>
+    <!-- Terminal help of a host's own command-line tool: what the one namespace command (license) holds, when the license commands are nested under it. -->
+    <string name="cli_help_namespace">활성화, 로그인, 기기 및 업데이트</string>
+    <!-- Terminal: the first line when a host command that needs a license sends the person to activate. {command} is the command they ran, such as 'export'. Arguments: 1=command. -->
+    <string name="cli_gate_needs">%1$s에는 라이선스가 필요합니다</string>
     <!-- Terminal help: what the activate command does. The key is typed at a prompt or piped in, never written on the command line. -->
     <string name="cli_verb_activate">라이선스 키 추가 (입력하거나 stdin으로)</string>
     <!-- Terminal help: what the enroll command does. Arguments: 1=product. -->

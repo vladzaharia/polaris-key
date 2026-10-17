@@ -48,11 +48,20 @@ The owner asked for "first class documentation, thorough but not overly so" on o
 
 ## Acceptance criteria
 
-- [ ] The common definition of done in the docs plan §6.3 holds.
-- [ ] Every kit claim has a shipped package or a badge.
-- [ ] No page exists for a component no kit ships.
+- [x] The common definition of done in the docs plan §6.3 holds.
+- [x] Every kit claim has a shipped package or a badge.
+- [x] No page exists for a component no kit ships.
 - [ ] `pkey-wp-reviewer` passes the package.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate in the header.
+
+## Corrections and notes (2026-10-16)
+
+- The brief's list of seven components to delete is wrong for five of them. SwiftUI ships `WelcomeView`, `LicenseChoiceView`, `PaywallView`, `EntitlementGate` and `ToastView`, so those pages stay. Only `ChannelPicker` and `CloudSyncStatus` have no code in any kit; their pages are deleted (site-map rows applied) and they are `COMPONENTS_NOT_BUILT` in `src/lib/uiKits.ts`, rendered as **Not built yet** rows of the components index. The other five rows were removed from `site-map.json`.
+- The kit badge reads **Shipped** or **Not built yet**. It no longer prints programme ids ("Planned in UK-xx"); the owning package stays in `uiKits.ts` for the lead.
+- `build/ui/recipes` was already gone; recipes are rows on `frameworks/index`, with the should-tier kits as **Parked kits**.
+- `build/ui/index` is trimmed to the must tier. Rows for kits that are not built have no names. The contributor section ("Writing into this section") and the component and framework page templates' prose moved out of the public pages; DOC-12b should carry them to `contribute/`.
+- Not done: the `<StatesToHandle>` data for the six own-UI guides. Those pages are `.md` and need each SDK's state-to-copy-key map; the component template now carries the block. Follow-up for the package that owns the own-UI guides' next pass.
+- `web-apps` is a reference page with a lead that ties it to the React quickstart's cross-origin use; the old title "Web clients and CORS" is now "Web apps and CORS".
 
 ## Verify
 

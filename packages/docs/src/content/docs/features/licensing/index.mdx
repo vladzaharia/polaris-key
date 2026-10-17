@@ -1,0 +1,44 @@
+---
+title: "Licensing"
+description: "Decide which devices may run your app, on which tier, and for how long, with a signed license the app checks offline."
+type: "overview"
+lastReviewed: "2026-10-16"
+sidebar:
+  order: 1
+---
+
+import Requires from "../../../../components/docs/Requires.astro";
+
+Licensing issues licenses, redeems keys for per-device tokens and signs what each device may do. Your app gates on the signed license document, so it keeps working offline until the document's grace window ends.
+
+<Requires features={["licensing"]} role="Product admin" />
+
+## Get started
+
+| Page                                                                 | What you get                                           |
+| -------------------------------------------------------------------- | ------------------------------------------------------ |
+| [Add licensing to your app](/docs/features/licensing/add-licensing/) | A gated app, checked against the dev server            |
+| [Manage licenses](/docs/features/licensing/manage-licenses/)         | Create, disable and inspect licenses, keys and devices |
+
+## Concepts
+
+| Page                                                          | What you get                                          |
+| ------------------------------------------------------------- | ----------------------------------------------------- |
+| [The license model](/docs/features/licensing/model/)          | License, key, device, tier and entitlement            |
+| [Activation](/docs/features/licensing/activation/)            | How a key becomes a device token                      |
+| [Enrollment and policy](/docs/features/licensing/access/)     | Keyless licenses and who owns the policy              |
+| [Re-licensing](/docs/features/licensing/relicensing/)         | Change a tier and running apps pick it up             |
+| [Going offline](/docs/features/licensing/offline/)            | Grace, offline activation files and local-only builds |
+| [Fingerprints](/docs/features/licensing/fingerprints/)        | What a device hashes, and how drift is counted        |
+| [Device trust levels](/docs/features/licensing/device-trust/) | Basic and attested devices                            |
+
+## Guides
+
+| Page                                                                            | What you get                                 |
+| ------------------------------------------------------------------------------- | -------------------------------------------- |
+| [Handle the device limit](/docs/features/licensing/device-limit/)               | A recovery path when activation is refused   |
+| [Require attested devices](/docs/features/licensing/attestation/)               | What an app does when attestation is refused |
+| [Verify licenses on your server](/docs/features/licensing/server-verification/) | Check a device's document on your backend    |
+| [Troubleshoot licensing](/docs/features/licensing/troubleshooting/)             | Causes and fixes by error code               |
+
+Reference: [error codes](/docs/reference/error-codes/), [public routes](/docs/reference/routes/) and [fingerprint constants](/docs/reference/protocol/fingerprint-constants/).

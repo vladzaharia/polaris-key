@@ -712,6 +712,54 @@ describe("Background jobs", () => {
     expect(writes(log, "DELETE")[0]!.query).toBe("expectedVersion=1");
   });
 
+  it("a switch flipped while the write fails shows the value in force, plus the error", async () => {
+    const log = boot("#/platform/settings", {
+      extra: routes({
+        "/manage/api/platform/settings": writable(
+          () => new Response("{}", { status: 500 }),
+          () => view(),
+        ),
+      }),
+    });
+    const jobs = await section("Background jobs");
+    const sw = within(jobs).getByRole("switch", { name: "Blob collector" });
+    expect(sw.getAttribute("aria-checked")).toBe("true");
+    await userEvent.click(sw);
+    await waitFor(() => expect(writes(log, "PATCH")).toHaveLength(1));
+    await waitFor(() =>
+      expect(
+        within(jobs)
+          .getByRole("switch", { name: "Blob collector" })
+          .getAttribute("aria-checked"),
+      ).toBe("true"),
+    );
+    expect(await within(jobs).findAllByRole("alert")).not.toHaveLength(0);
+  });
+
+  it("a switch refused with a 409 goes back to the value in force", async () => {
+    const log = boot("#/platform/settings", {
+      extra: routes({
+        "/manage/api/platform/settings": writable(
+          () => conflict(),
+          () => view(),
+        ),
+      }),
+    });
+    const jobs = await section("Background jobs");
+    await userEvent.click(
+      within(jobs).getByRole("switch", { name: "Blob collector" }),
+    );
+    await waitFor(() => expect(writes(log, "PATCH")).toHaveLength(1));
+    expect(
+      await within(jobs).findByText("This setting changed since you loaded it"),
+    ).toBeTruthy();
+    expect(
+      within(jobs)
+        .getByRole("switch", { name: "Blob collector" })
+        .getAttribute("aria-checked"),
+    ).toBe("true");
+  });
+
   it("asks before turning lazy deltas on (L1), and cancelling sends nothing", async () => {
     const log = boot("#/platform/settings", {
       extra: routes({

@@ -1,0 +1,199 @@
+---
+title: "Kotlin quickstart"
+description: "Add the Kotlin SDK, generate PolarisConfig.kt, create the client and gate an Android app with Compose or a desktop or JVM tool with your own UI."
+type: "quickstart"
+sdks: ["kotlin"]
+lanes: ["kit", "library"]
+lastReviewed: "2026-10-16"
+sidebar:
+  order: 5
+---
+
+import Requires from "../../../../components/docs/Requires.astro";
+import InstallSteps from "../../../../components/docs/InstallSteps.astro";
+import Lanes from "../../../../components/docs/Lanes.astro";
+import CardGrid from "../../../../components/docs/CardGrid.astro";
+import { LinkCard } from "@astrojs/starlight/components";
+
+You end with a Kotlin app that creates a client from your product's config and gates on the license.
+
+<Requires
+  features={["licensing"]}
+  sdk={["JDK 17", "Android API 24 or later"]}
+/>
+
+## Before you start
+
+1. A product with License on, and its slug. [Your first product](/docs/start/first-product/) creates one.
+2. An Android app, a Compose Desktop app or a JVM tool.
+
+## 1. Install
+
+**CLI** Send the `im.plrs.key` group to Polaris Key's Maven feed alone, then add the artifacts for your host. Every artifact carries the server's version, in lockstep: use one version for all of them. Each artifact's `maven-metadata.xml` on the feed lists the versions.
+
+<InstallSteps sdk="kotlin" />
+
+Then add the artifact for your host. `polaris-key-sdk` comes with each. Add `im.plrs.key:polaris-key-zstd` only if the app installs packs.
+
+```kts title="build.gradle.kts"
+dependencies {
+    // Android: one flavour per build, play for Google Play or direct for a build you distribute yourself
+    implementation("im.plrs.key:polaris-key-android-direct:<version>")
+    implementation("im.plrs.key:polaris-key-ui:<version>") // the Compose screens, Android only
+    // Compose Desktop and JVM tools: the OS keyring is included
+    implementation("im.plrs.key:polaris-key-desktop:<version>")
+}
+```
+
+Replace `<version>` with the version the feed lists. You should see the artifacts resolve in a Gradle sync.
+
+## 2. Generate the config
+
+**CLI** Write `PolarisConfig.kt` into your package.
+
+```sh title="Terminal"
+pkey sdk --lang kotlin --product <slug> --write --package com.acme.polaris \
+  --out app/src/main/kotlin/com/acme/polaris/PolarisConfig.kt
+```
+
+Without Node, run the same command from the `pkey` image, in the project directory:
+
+```sh title="Terminal"
+docker run --rm -v "$PWD:/work" pkg.plrs.im/polaris-key/pkey:latest sdk --lang kotlin \
+  --product <slug> --write --package com.acme.polaris \
+  --out app/src/main/kotlin/com/acme/polaris/PolarisConfig.kt
+```
+
+The file holds `PolarisConfig`: the slug, base URL, trust pins, advertised services and, when the product has release keys, `pinnedReleaseKeys`. To try this without a registered product, [run Polaris Key locally](/docs/build/local/).
+
+You should see the file written and each pin's key id and SHA-256 fingerprint. Compare the fingerprints with the console before you ship.
+
+## 3. Create the client
+
+**App** `clientOptions(version)` carries everything the client needs; `version` is your app's own. Each host has one start, and none touches the network. The Android start returns a usable client at once and loads its state in the background. The desktop start is `suspend` and returns once the token and the cached documents are loaded.
+
+```kotlin android title="App.kt"
+import android.app.Application
+import com.acme.polaris.PolarisConfig
+import im.plrs.key.android.PolarisKeyAndroid
+import im.plrs.key.android.PolarisKeyLifecycle
+import im.plrs.key.sdk.PolarisKeyClient
+
+class App : Application() {
+    lateinit var client: PolarisKeyClient
+        private set
+
+    override fun onCreate() {
+        super.onCreate()
+        val version = packageManager.getPackageInfo(packageName, 0).versionName ?: "0"
+        client = PolarisKeyAndroid.client(this, PolarisConfig.clientOptions(version))
+        PolarisKeyLifecycle.install(this, client) // syncs when the app comes to the foreground
+    }
+}
+```
+
+On Android, build the client with `PolarisKeyAndroid.client`. It supplies the Keystore store, and a client built without a store throws `invalid-options`. It does no file work before it returns, so it is safe on the main thread. Its `suspend` twin, `PolarisKeyAndroid.create`, returns once the state is loaded. Name `App` as `android:name` on `<application>` in the manifest.
+
+```kotlin title="Main.kt"
+import com.acme.polaris.PolarisConfig
+import im.plrs.key.desktop.PolarisKeyDesktop
+
+suspend fun start() {
+    val client = PolarisKeyDesktop.create(PolarisConfig.clientOptions("1.4.2"))
+    println(client.status())
+    client.close() // ends the client's threads so a JVM main can exit
+}
+```
+
+`PolarisKeyDesktop.create` keeps the token in the OS keyring, or in a `0600` file when the keyring is unreachable. When the options carry `UpdateClientOptions`, which the generated config does if the product has release keys, it installs the desktop update driver.
+
+You should see the client create with no network request.
+
+## 4. Gate the app
+
+**App** The host decides the lane. Android has the Compose kit. Compose Desktop and a JVM tool use the library.
+
+<Lanes intro="The Compose kit gates an Android app and runs activation and the update banner. Your own UI calls the client and draws its own, on Android, Compose Desktop or the JVM.">
+  <Fragment slot="kit">
+
+`PolarisKeyApp` starts from the client, gates your content, and runs activation and the update banner over it. `signIn = true` adds the device-code sign-in to the gate.
+
+```kotlin android title="MainActivity.kt"
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import im.plrs.key.ui.PolarisKeyApp
+
+class MainActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContent {
+            MaterialTheme {
+                PolarisKeyApp(client, signIn = true) { Text("Licensed") }
+            }
+        }
+    }
+}
+```
+
+Here `client` is the one `App` built: `(application as App).client`. Screens, branding and copy are on [Compose](/docs/build/ui/frameworks/compose/).
+
+  </Fragment>
+  <Fragment slot="library">
+
+Call the client and handle each state yourself. Activate with `client.activate(key)`, read the state with `client.status()` and then `client.licenseChanges`, and sign in with `client.identity.beginSignIn()` and `waitForSignIn(prompt)`. [Your own UI](/docs/build/sdks/kotlin/your-own-ui/) gives each call with its states and words, for [Compose Desktop](/docs/build/sdks/kotlin/your-own-ui/#compose-desktop) and [a command-line tool](/docs/build/sdks/kotlin/your-own-ui/#a-command-line-tool).
+
+  </Fragment>
+</Lanes>
+
+You should see the app locked, with an activation prompt, until a key is entered.
+
+## 5. Activate a test license
+
+**CLI** Start a local server and copy its `ok` key. [Run Polaris Key locally](/docs/build/local/) lists the key for each state and the emulator forwarding.
+
+```sh title="Terminal"
+pkey dev
+```
+
+**App** Enter the `ok` key in the activation prompt.
+
+You should see the app unlock.
+
+## What you built
+
+A client that verifies signed documents against your pins, and an app that gates on the license.
+
+## If it isn't working
+
+- `invalid-options` on Android: the client was built without a store. Use `PolarisKeyAndroid.client`.
+- The emulator can't reach the dev server: forward the port, as [Run Polaris Key locally](/docs/build/local/#emulators-and-simulators) shows.
+- [Troubleshoot your integration](/docs/build/troubleshooting/): each status and error code.
+- [Install the SDKs and the CLI](/docs/build/install/): other coordinates and age gates.
+
+## Next steps
+
+<CardGrid>
+  <LinkCard
+    title="Your own UI"
+    href="/docs/build/sdks/kotlin/your-own-ui/"
+    description="Every call, its states and words."
+  />
+  <LinkCard
+    title="Kotlin SDK reference"
+    href="/docs/build/sdks/kotlin/"
+    description="The whole API."
+  />
+  <LinkCard
+    title="Test your integration"
+    href="/docs/build/test-your-integration/"
+    description="Every license state, offline and grace."
+  />
+  <LinkCard
+    title="Go live"
+    href="/docs/build/go-live/"
+    description="Pins, signing and CI."
+  />
+</CardGrid>

@@ -46,6 +46,13 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 - Working id **CQW-06**; DX consolidation B: Foundations (code quality the feature tracks build on).
 - No new copies (tracks.md rule 4): build on the one mechanism this plan names, never beside it.
 
+## Corrections after verifying against the code (2026-10-16)
+
+- `core/grants.ts` is `core/licensing/grants.ts`. It has no account- or store-holder _branches_ to delete and nothing _reads_ `holder_versions` or `device_store_identities`: the only references are the erasure `DELETE`s in `licenseErasureStatements` and `productGrantErasureStatements`, and `licensingExpand.test.ts` asserts them. Removing them would change erasure behaviour, so they stay; LX-16b drops the tables and these statements together.
+- `grantAddOn(licence, addon, source)` is not extracted: no add-on exists before LX-35, so there is nothing to move. LX-35 adds it to `issue.ts`.
+- `issueLicense(db, product, holder, via, target, now, device?)` takes the `syncTierOnSignIn` reader in `via.readSyncTier`, because the setting is Identity's and core may not import it. `productOidc/activate.ts` (`activateFromIdentity`) is the adapter every caller still uses.
+- `oidc.ts` stays as a 69-line barrel re-exporting the old public surface, so callers and tests are untouched. `portal/deviceLogin.ts` now imports the user-code functions from `productOidc/userCode.ts`.
+
 ## Steps
 
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.

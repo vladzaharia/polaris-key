@@ -71,6 +71,32 @@
     <string name="part_thisDeviceTitle__tablet">Dieses Tablet</string>
     <string name="part_thisDeviceTitle__computer">Dieser Computer</string>
     <string name="part_thisDeviceTitle__tv">Dieser Fernseher</string>
+    <!-- A device's platform name in a device list (DL8). A trademark: the same in every locale. Never a raw platform id. -->
+    <string name="part_platform_macos">macOS</string>
+    <!-- A device's platform name in a device list (DL8). A trademark: the same in every locale. Never a raw platform id. -->
+    <string name="part_platform_ios">iOS</string>
+    <!-- A device's platform name in a device list (DL8). A trademark: the same in every locale. Never a raw platform id. -->
+    <string name="part_platform_ipados">iPadOS</string>
+    <!-- A device's platform name in a device list (DL8). A trademark: the same in every locale. Never a raw platform id. -->
+    <string name="part_platform_android">Android</string>
+    <!-- A device's platform name in a device list (DL8). A trademark: the same in every locale. Never a raw platform id. -->
+    <string name="part_platform_windows">Windows</string>
+    <!-- A device's platform name in a device list (DL8). A trademark: the same in every locale. Never a raw platform id. -->
+    <string name="part_platform_linux">Linux</string>
+    <!-- A device's platform name in a device list (DL8). A trademark: the same in every locale. Never a raw platform id. -->
+    <string name="part_platform_web">Web</string>
+    <!-- A device's platform name in a device list (DL8). A trademark: the same in every locale. Never a raw platform id. -->
+    <string name="part_platform_tvos">tvOS</string>
+    <!-- A device's platform name in a device list (DL8). A trademark: the same in every locale. Never a raw platform id. -->
+    <string name="part_platform_visionos">visionOS</string>
+    <!-- A device's platform name in a device list (DL8). A trademark: the same in every locale. Never a raw platform id. -->
+    <string name="part_platform_watchos">watchOS</string>
+    <!-- A device's platform name in a device list (DL8). A trademark: the same in every locale. Never a raw platform id. -->
+    <string name="part_platform_chromeos">ChromeOS</string>
+    <!-- A device's platform name in a device list (DL8). A trademark: the same in every locale. Never a raw platform id. -->
+    <string name="part_platform_steamos">SteamOS</string>
+    <!-- A device's platform name in a device list (DL8). A trademark: the same in every locale. Never a raw platform id. -->
+    <string name="part_platform_freebsd">FreeBSD</string>
     <!-- Visible label of the license key field. -->
     <string name="part_keyField_label">Lizenzschlüssel</string>
     <!-- Placeholder inside the empty license key field. Carries no information the label lacks. -->
@@ -848,6 +874,8 @@
     <string name="signin_replace_open__macos">Gerät ersetzen</string>
     <!-- Replace a device, as a step in the in-app form (SIGN-IN.md §3.7). Arguments: {thisDevice} = the platform phrase for the current device (part.thisDevice). Arguments: 1=thisDevice. -->
     <string name="signin_replace_lede">Wählen Sie ein Gerät zum Abmelden. %1$s übernimmt seinen Platz.</string>
+    <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). The step's heading; the same words as the DeviceLimit title. -->
+    <string name="signin_replace_heading">Gerät ersetzen</string>
     <!-- Replace a device in a system dialog (SIGN-IN.md §3.7). -->
     <string name="signin_replace_openSystem">Ersetzen…</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {platform} = the device's platform name (macOS, Windows, iPhone…); {when} = a relative time already formatted by the platform (“2 days ago”). Arguments: 1=platform, 2=when. -->
@@ -1150,6 +1178,10 @@
     <string name="cli_help_more">Führen Sie %1$s aus, um die Optionen eines Befehls zu sehen.</string>
     <!-- Terminal help of a host's own command-line tool: the one heading over the license commands it mounted (activate, status, login…), after the tool's own headings. -->
     <string name="cli_help_group">Lizenz</string>
+    <!-- Terminal help of a host's own command-line tool: what the one namespace command (license) holds, when the license commands are nested under it. -->
+    <string name="cli_help_namespace">Aktivieren, anmelden, Geräte und Updates</string>
+    <!-- Terminal: the first line when a host command that needs a license sends the person to activate. {command} is the command they ran, such as 'export'. Arguments: 1=command. -->
+    <string name="cli_gate_needs">%1$s erfordert eine Lizenz</string>
     <!-- Terminal help: what the activate command does. The key is typed at a prompt or piped in, never written on the command line. -->
     <string name="cli_verb_activate">Lizenzschlüssel hinzufügen (Eingabe oder über stdin)</string>
     <!-- Terminal help: what the enroll command does. Arguments: 1=product. -->

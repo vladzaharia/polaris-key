@@ -30,6 +30,9 @@ packages/
                                                the mirror renderers live in src/mirrors.ts)
   sdk-node/          @polaris-key/node         full client + CLI adapters
   sdk-react/         @polaris-key/react        browser-OIDC + desktop-over-node + login UI
+  server/            @polaris-key/server       gate a server route with the app's licence: Fetch core
+                                               (the verdict, trust fetch, cache) + ./express ./hono ./next
+                                               ./testing; private until released
   docs/              @polaris-key/docs         the Astro Starlight docs site served at /docs
   brand/             @polaris-key/brand        design system: tokens, Rubik fonts, marks, launch-kit assets
                                                (spec: docs/design/BRAND.md)
@@ -227,6 +230,7 @@ Godot, and Kotlin for the features its parity manifest has implemented).
 | `parity`             | `pnpm gen parity`             | Parity gate: every SDK's parity.json against the feature registry                 |
 | `ux-rows`            | `pnpm gen ux-rows`            | UX-row gate: every UX-\* id in the design specs is mapped and marked from uxRows  |
 | `graph-index`        | `pnpm gen graph-index`        | Omniplatform program INDEX.md from workpackages.json                              |
+| `integration`        | `pnpm gen integration`        | Integration content goldens: every renderUsage block, per SDK, lane and feature   |
 | `mirrors`            | `pnpm gen mirrors`            | Typed config mirrors for a product catalog, in five languages                     |
 | `sdk-samples`        | `pnpm gen sdk-samples`        | `pkey sdk` configuration samples, one per SDK                                     |
 | `docs-csp`           | `pnpm gen docs-csp`           | Docs-site CSP hashes                                                              |

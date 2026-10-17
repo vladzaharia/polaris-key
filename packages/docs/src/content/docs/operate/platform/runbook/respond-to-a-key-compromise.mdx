@@ -1,0 +1,35 @@
+---
+title: "Respond to a key compromise"
+description: "Rotate a leaked session secret, key pepper, GitHub webhook secret or product signing key from a trusted workstation."
+type: "runbook"
+lastReviewed: "2026-10-16"
+sidebar:
+  order: 3
+---
+
+import RunbookSection from "../../../../../components/docs/RunbookSection.astro";
+
+**Role required:** Platform admin with Cloudflare and GitHub App access.
+
+**Impact:** Rotating the session secret signs every console user out. Rotating the pepper invalidates every issued license key hash until keys are reissued. Revoking a product key removes it from the JWKS.
+
+Use this when a secret or a signing key may have been exposed.
+
+<RunbookSection file="RUNBOOK" heading="Key compromise" />
+
+## Verify
+
+- Session secret: a saved old `__Host-pkey_admin` cookie gets 401 from `/manage/api/me`, and a fresh sign-in gets 200.
+- Pepper: a stale session answers 401, a new sign-out holds (`"revoked":true`), and `/api/capabilities` answers without `server_misconfigured`.
+- GitHub webhook secret: a new delivery from the App verifies, then `_PREVIOUS` is deleted.
+- Product signing key: the Keys listing, `/<slug>/.well-known/jwks.json` and `/<slug>/.well-known/polaris-trust.jws` show the replacement and no longer list the revoked kid. The product's activity log has `key.prepare`, `key.activate` and `key.revoke`.
+
+## Roll back
+
+- Do not use a Worker rollback as containment. It can restore a leaked secret value while D1 and KV keep their data.
+- If a rollback is unavoidable, re-apply every secret rotated after the target version from escrow, then run the secret's own verification.
+- Never re-apply an earlier `ADMIN_SESSION_SECRET`: generate another. Re-apply `KEY_HASH_PEPPER` only together with that new value, in one `wrangler secret bulk`.
+
+## Escalate
+
+Record the first plausible exposure time and keep the GitHub and Cloudflare audit evidence before you rotate. For a product key that was the only pin an app shipped with, a revoked kid cannot be repaired remotely: ship builds that pin a clean standby key. Where the security material lives is in [Security material](/docs/operate/platform/security/).

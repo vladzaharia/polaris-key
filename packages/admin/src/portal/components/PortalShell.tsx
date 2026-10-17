@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Compass, KeyRound, Library } from "lucide-react";
+import { Compass, KeyRound, Library, TriangleAlert } from "lucide-react";
 import { Button } from "../../ui/Button.js";
 import { TOAST_BOTTOM_INSET_VAR } from "../../ui/toast.js";
 import { cn } from "../../lib/cn.js";
@@ -134,6 +134,30 @@ export function PortalShell({
           </div>
         </div>
       </header>
+      {/* A scheduled account deletion (I-11): said on every page, with the way back. */}
+      {account.deletion ? (
+        <div
+          role="status"
+          className="border-b border-warning-border bg-warning-subtle"
+        >
+          <p className="mx-auto flex w-full max-w-[82rem] flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2 text-sm text-fg desk:px-8">
+            <TriangleAlert aria-hidden className="size-4 shrink-0" />
+            <span>
+              Your account will be erased on{" "}
+              {new Intl.DateTimeFormat(undefined, {
+                dateStyle: "medium",
+              }).format(new Date(account.deletion.dueAt * 1000))}
+              .
+            </span>
+            <a
+              href={href.account("data")}
+              className="inline-flex min-h-6 items-center font-medium text-fg-strong underline underline-offset-2"
+            >
+              Cancel deletion
+            </a>
+          </p>
+        </div>
+      ) : null}
       <main
         id="content"
         ref={mainRef}

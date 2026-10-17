@@ -143,6 +143,7 @@ export const GENERATORS: Generator[] = [
     outputs: [
       "packages/sdk-node/src/constants.generated.ts",
       "packages/sdk-node/src/copy.generated.ts",
+      "packages/server/src/copy.generated.ts",
       "packages/sdk-react/src/constants.generated.ts",
       "packages/sdk-react/src/copy.generated.ts",
       "sdks/python/src/polaris_key/constants_generated.py",
@@ -282,6 +283,8 @@ export const GENERATORS: Generator[] = [
     order: 100,
     inputs: [
       "packages/docs/scripts/gen-reference.mjs",
+      "packages/docs/scripts/console-nav.mjs",
+      "packages/admin/src/console/nav.ts",
       "packages/worker/src/**",
       "packages/worker/migrations/**",
       "packages/shared-*/src/**",
@@ -296,6 +299,7 @@ export const GENERATORS: Generator[] = [
       "packages/docs/src/content/docs/reference/{config-entry,error-codes,parity,routes,validation-codes}.mdx",
       "packages/docs/src/content/docs/reference/protocol/{corpus,fingerprint-constants}.mdx",
       "packages/docs/src/content/docs/contribute/data-model.mdx",
+      "packages/docs/src/content/docs/operate/console/tour.mdx",
     ],
     write: [{ argv: ["pnpm", "--filter", "@polaris-key/docs", "gen"] }],
     check: [{ argv: ["pnpm", "--filter", "@polaris-key/docs", "gen:check"] }],
@@ -406,6 +410,19 @@ export const GENERATORS: Generator[] = [
       },
     ],
   },
+  {
+    id: "integration",
+    title:
+      "Integration content goldens: every renderUsage block, per SDK, lane and feature",
+    order: 150,
+    inputs: [
+      "tools/gen-integration.ts",
+      "packages/shared-manifest/src/integration/**",
+      "packages/shared-manifest/src/feedSetup.ts",
+    ],
+    outputs: ["packages/shared-manifest/test/fixtures/integration/**"],
+    write: [tsx("tools/gen-integration.ts")],
+  },
   // Families below are declared so every GENERATED banner has an owner. A plain run skips them.
   {
     id: "mirrors",
@@ -428,6 +445,7 @@ export const GENERATORS: Generator[] = [
       "written and checked by the CLI suite (packages/cli/test/sdkConfig.test.ts)",
     inputs: [
       "packages/cli/src/sdkConfig.ts",
+      "packages/shared-manifest/src/integration/sdkConfig.ts",
       "packages/cli/test/sdkConfig.test.ts",
     ],
     outputs: [

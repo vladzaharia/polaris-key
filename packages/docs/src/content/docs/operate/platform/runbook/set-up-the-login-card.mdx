@@ -1,0 +1,35 @@
+---
+title: "Set up the login card"
+description: "Turn on Turnstile and avatars for the login card, and add Google, Apple and Steam sign-in."
+type: "runbook"
+lastReviewed: "2026-10-16"
+sidebar:
+  order: 6
+---
+
+import RunbookSection from "../../../../../components/docs/RunbookSection.astro";
+
+**Role required:** Platform admin with Cloudflare access. Provider consoles and secrets are the owner's.
+
+**Impact:** A provider appears on every product's login card once all its values are set. Setting the Turnstile secret before the portal renders the widget makes email sign-in fail with `403 turnstile_failed`.
+
+Use this when you add or rotate a sign-in provider, or change the card's checks.
+
+<RunbookSection file="RUNBOOK" heading="Login card" />
+
+<RunbookSection file="RUNBOOK" heading="Login-card providers" />
+
+## Verify
+
+- Set the providers on staging first, then sign in with each one in a private window before you repeat it on production.
+- A provider appears only once all its values are set and its sealed secret opens. Until then `/login/<provider>` answers that sign-in is not available, and the rest of the card works.
+- A sign-in that answers that a provider is unavailable right now means the provider's endpoint failed or answered from a host outside the allowlist.
+
+## Roll back
+
+- Turn a provider off with `wrangler secret delete` on its client id (or Steam's key). People who signed in with it keep their account and use another method.
+- A secret sealed under another environment's KEK, or for another provider's slot, does not open, and that provider stays off.
+
+## Escalate
+
+Rotating `PLATFORM_KEK` also means re-sealing these secrets. `legacy.workerSecrets` in `/manage/api/products/kek` names any still under a legacy key; see [Rotate the KEK](/docs/operate/platform/runbook/rotate-the-kek/).

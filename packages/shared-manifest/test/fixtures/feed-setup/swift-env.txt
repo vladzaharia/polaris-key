@@ -23,3 +23,7 @@ swift package-registry login https://pkg.plrs.im/swift/acme --token "$PKEY_REGIS
 
 # Depend on the package (Package.swift)
 .package(id: "acme.<Package>", from: "1.0.0")
+
+# Add it in an Xcode project
+# With the registries file above in place: File, Add Package Dependencies, then search for the package by its identity. Choose the products you use.
+acme.<Package>

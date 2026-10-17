@@ -3,6 +3,8 @@ sidebar:
   order: 7
 title: "Compatibility and the device simulator"
 description: "The console's Compatibility page: the matrix of app releases against pack releases with each cell's state, the live contentApi levels and per-outlet liveness, and the simulator that shows what a device running one app release on one outlet gets."
+type: "concept"
+lastReviewed: "2026-10-16"
 ---
 
 Floors, holds, pack channels, store lag and transports interact. Without a view of them an
@@ -10,20 +12,20 @@ operator learns what a device gets only when the device gets it. The **Compatibi
 Release section answers it before then, in two read-only views: **Matrix** and **Simulator**. Nothing here edits a floor, a
 hold, a pin or a yank: floors and yanks are set under
 [Channels](/docs/services/release/channels/), pins and holds in `.pkey/release`
-([Packs](/docs/services/release/packs/#app-releases-content-pins-and-embeds)).
+([Packs](/docs/features/ship-builds/packs/#app-releases-pins-holds-and-embeds)).
 
 ## The matrix
 
 Rows are app releases, columns are pack releases grouped by pack. Each cell takes the first state
 that applies:
 
-| State          | Meaning                                                                                                                                                                                                                                                                                                                      |
-| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `revoked`      | a revocation record names the pack release ([Revocations](/docs/services/release/packs/#revocations)), or the content-key delegation it was signed under was revoked (the reason names the delegation). The cell still says when the app release pins or holds it, because those devices are the ones the revocation reaches |
-| `pinned`       | the app release pins it                                                                                                                                                                                                                                                                                                      |
-| `held`         | the app release holds it                                                                                                                                                                                                                                                                                                     |
-| `compatible`   | a variant of it admits the app release: for a `compatible` pack, its `requires.contentApi.app` range holds the app release's level and it runs on an engine the app release's builds declare; for a `standalone` pack, the engine alone                                                                                      |
-| `incompatible` | otherwise. A `pinned` pack reaches a device only through a pin, so every other cell of it is incompatible                                                                                                                                                                                                                    |
+| State          | Meaning                                                                                                                                                                                                                                                                                                                                           |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `revoked`      | a revocation record names the pack release ([Revocations](/docs/features/ship-builds/packs/#revocations-and-content-keys)), or the content-key delegation it was signed under was revoked (the reason names the delegation). The cell still says when the app release pins or holds it, because those devices are the ones the revocation reaches |
+| `pinned`       | the app release pins it                                                                                                                                                                                                                                                                                                                           |
+| `held`         | the app release holds it                                                                                                                                                                                                                                                                                                                          |
+| `compatible`   | a variant of it admits the app release: for a `compatible` pack, its `requires.contentApi.app` range holds the app release's level and it runs on an engine the app release's builds declare; for a `standalone` pack, the engine alone                                                                                                           |
+| `incompatible` | otherwise. A `pinned` pack reaches a device only through a pin, so every other cell of it is incompatible                                                                                                                                                                                                                                         |
 
 Two markers ride on top of the state:
 
@@ -50,7 +52,7 @@ Each app release's row header carries the per-outlet liveness overlay. It comes 
 never reads Distribution. An outlet is listed when the app release is live there, marked **held**
 when outlet readiness holds the release because a pack it needs is not live on that outlet yet, and
 **not ready** on a store outlet Polaris Key cannot hold
-([Outlet readiness](/docs/services/distribution/availability/#outlet-readiness)). Distribution
+([Outlet readiness](/docs/services/distribution/availability/#channel-readiness)). Distribution
 tracks its newest 50 releases; an older row says it is not tracked there rather than unserved. When
 Distribution is off or does not answer, the overlay is left out and the matrix still renders.
 

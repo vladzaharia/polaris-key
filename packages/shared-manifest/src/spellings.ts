@@ -200,7 +200,7 @@ export const DEPRECATED_SPELLINGS: readonly DeprecatedSpelling[] = [
     "deprecated",
     { shadowedBy: "/product/defaultMaxOfflineDays" },
   ),
-  // 5–6. Tiers and profiles at the root.
+  // 5. Tiers at the root.
   row(
     5,
     P,
@@ -210,13 +210,15 @@ export const DEPRECATED_SPELLINGS: readonly DeprecatedSpelling[] = [
     "deprecated",
     { present: "array" },
   ),
+  // 6. Profiles are not a licensing concept (U-30, CFG-04): the root `profiles` is canonical and
+  // `licensing.profiles` is the alias. The root one wins when both are set.
   row(
     6,
     P,
-    "/profiles",
-    "product:licensing.profiles",
-    { doc: P, pointer: "/licensing/profiles" },
-    "deprecated",
+    "/licensing/profiles",
+    "product:profiles",
+    { doc: P, pointer: "/profiles" },
+    "canonical",
     { present: "array" },
   ),
   // 7. Tier `profile` (Q2b: `profileId` is canonical), wherever the tiers are.
@@ -258,7 +260,7 @@ export const DEPRECATED_SPELLINGS: readonly DeprecatedSpelling[] = [
     9,
     P,
     "/licensing/profiles/*/label",
-    "product:licensing.profiles[].name",
+    "product:profiles[].name",
     { doc: P, pointer: "/licensing/profiles/*/name" },
     "canonical",
   ),
@@ -266,7 +268,7 @@ export const DEPRECATED_SPELLINGS: readonly DeprecatedSpelling[] = [
     9,
     P,
     "/profiles/*/label",
-    "product:licensing.profiles[].name",
+    "product:profiles[].name",
     { doc: P, pointer: "/profiles/*/name" },
     "canonical",
   ),

@@ -287,9 +287,7 @@ describe("Core → Overview", () => {
       text().indexOf("npm install @polaris-key/node"),
     );
     // The app's own version is a placeholder, never the latest release's (2.4.0).
-    expect(text()).toContain(
-      `version: "1.0.0", // your app's version, not Polaris Key's`,
-    );
+    expect(text()).toContain(`version: "1.4.2",`);
     expect(text()).not.toContain('version: "2.4.0"');
     expect(text()).toContain('"djdl-a": "PUBKEY-A"');
     expect(text()).not.toContain("PUBKEY-OLD");
@@ -331,9 +329,8 @@ describe("Core → Overview", () => {
     expect(text()).toContain("https://pkg.plrs.im/maven/polaris-key/");
     expect(text()).toContain('"djdl-a" to "PUBKEY-A"');
     await pick("Godot");
-    expect(text()).toContain(
-      '[gd_resource type="Resource" script_class="PKeyOptions" load_steps=2 format=3]',
-    );
+    expect(text()).toContain("const PINNED_TRUST_KEYS := {");
+    expect(text()).toContain("await PolarisKey.boot(");
     expect(text()).toContain("https://pkg.plrs.im/godot/polaris-key/");
   });
 

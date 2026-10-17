@@ -108,13 +108,12 @@ export function EntryProductBody({
       <div className="flex flex-col gap-6 desk:grid desk:grid-cols-[minmax(0,1fr)_21.25rem] desk:items-start wide:grid-cols-[minmax(0,1fr)_24rem]">
         <div className="flex min-w-0 flex-col gap-6">
           <EntryGetIt product={product} device={here} />
+        </div>
+        {/* Your data sits after Help, never directly under Get. */}
+        <div className="flex min-w-0 flex-col gap-6">
+          {help ? <HelpCard product={product} /> : null}
           <ProductDataCard product={product} />
         </div>
-        {help ? (
-          <div className="flex min-w-0 flex-col gap-6">
-            <HelpCard product={product} />
-          </div>
-        ) : null}
       </div>
     </div>
   );

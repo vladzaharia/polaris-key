@@ -8,7 +8,7 @@ import { getCollection } from "astro:content";
 import catalog from "../../../../brand/kit-copy/components.json";
 import { BASELINES } from "../../lib/baselines";
 import { kebab } from "../../lib/shots";
-import { UI_KITS } from "../../lib/uiKits";
+import { COMPONENTS_NOT_BUILT, UI_KITS } from "../../lib/uiKits";
 
 const pages = new Map(
   (
@@ -29,6 +29,21 @@ const components = (
 const rows = Object.entries(components).map(([name, c]) => {
   const id = `build/ui/components/${kebab(name)}`;
   const page = pages.get(id);
+  if (COMPONENTS_NOT_BUILT.includes(name)) {
+    if (page !== undefined) {
+      throw new Error(
+        `ComponentIndex: "${name}" is listed as not built but has a page (${id}); take it off COMPONENTS_NOT_BUILT`,
+      );
+    }
+    return {
+      name,
+      href: null,
+      description: "—",
+      priority: c.priority,
+      states: Object.keys(c.states).length,
+      kits: [] as string[],
+    };
+  }
   if (page === undefined) {
     throw new Error(
       `ComponentIndex: no page for catalog component "${name}" (expected src/content/docs/${id}.mdx)`,
@@ -63,14 +78,14 @@ const rows = Object.entries(components).map(([name, c]) => {
       rows.map((row) => (
         <tr>
           <td>
-            <a href={row.href}>{row.name}</a>
+            {row.href === null ? row.name : <a href={row.href}>{row.name}</a>}
           </td>
           <td>{row.description}</td>
           <td>{row.priority}</td>
           <td>{row.states}</td>
           <td>
             {row.kits.length === 0 ? (
-              <span class="pk-ui-muted">No kit yet</span>
+              <span class="pk-ui-muted">Not built yet</span>
             ) : (
               row.kits.join(", ")
             )}

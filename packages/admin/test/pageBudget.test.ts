@@ -21,13 +21,13 @@ const SECTIONS = join(import.meta.dirname, "../src/console/sections");
  * replaced lucide-react's removed `Github` brand glyph (lucide 1.x).
  */
 const OVER_BUDGET: Record<string, number> = {
-  "sections/config/components/CatalogEntryForm.tsx": 1004,
-  "sections/config/pages/CatalogEditorPage.tsx": 953,
-  "sections/config/pages/CatalogPage.tsx": 698,
+  "sections/config/components/CatalogEntryForm.tsx": 819,
+  "sections/config/pages/CatalogEditorPage.tsx": 923,
+  "sections/config/pages/CatalogPage.tsx": 622,
   "sections/config/pages/EdgeMintPage.tsx": 752,
   "sections/core/pages/Keys.tsx": 870,
   "sections/core/pages/KeysCi.tsx": 714,
-  "sections/core/pages/Overview.tsx": 1371,
+  "sections/core/pages/Overview.tsx": 1327,
   "sections/core/pages/Presentation.tsx": 814,
   "sections/core/pages/Settings.tsx": 671,
   "sections/core/pages/UserRecord.tsx": 686,

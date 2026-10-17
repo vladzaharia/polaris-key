@@ -1,0 +1,151 @@
+---
+title: "Godot quickstart"
+description: "Install the Godot addon from the feed, generate polaris_key_config.gd, then boot with the drop-in screens or draw your own on the controllers."
+type: "quickstart"
+sdks: ["godot"]
+lanes: ["kit", "library"]
+lastReviewed: "2026-10-16"
+sidebar:
+  order: 6
+---
+
+import Requires from "../../../../components/docs/Requires.astro";
+import InstallSteps from "../../../../components/docs/InstallSteps.astro";
+import Lanes from "../../../../components/docs/Lanes.astro";
+import CardGrid from "../../../../components/docs/CardGrid.astro";
+import { LinkCard } from "@astrojs/starlight/components";
+
+You end with a Godot game that boots through the license gate and loads its first scene only when the license is usable.
+
+<Requires features={["licensing"]} sdk={["Godot 4.4 or later"]} />
+
+## Before you start
+
+1. A product with License on, and its slug. [Your first product](/docs/start/first-product/) creates one.
+2. A Godot 4.4 or later project. The addon supports every Godot 4 export target; 4.6 or later is recommended.
+
+## 1. Install
+
+**Editor** Add Polaris Key's Godot feed to the editor, with no trailing slash. The setting depends on your Godot version.
+
+<InstallSteps sdk="godot" />
+
+Search for "Polaris Key" in the AssetLib tab and install it. On Godot 4.4 to 4.6, untick **Ignore asset root** in the install dialog: it is ticked by default and installs the addon at `res://polaris_key/` instead of `res://addons/polaris_key/`. Then enable **Polaris Key** under Project → Project Settings → Plugins.
+
+You should see the `PolarisKey` autoload registered and the setup dock open.
+
+## 2. Generate the config
+
+**CLI** Write `polaris_key_config.gd` beside `project.godot`. The setup dock's **Generate config** runs the same command.
+
+```sh title="Terminal"
+pkey sdk --lang godot --product <slug> --write
+```
+
+Without Node, run the image from the project directory:
+
+```sh title="Terminal"
+docker run --rm -v "$PWD:/work" pkg.plrs.im/polaris-key/pkey:latest \
+  sdk --lang godot --product <slug> --write
+```
+
+The file holds the slug, base URL, trust pins, advertised services and, when the product has release keys, the pinned release keys. To try this without a registered product, [run Polaris Key locally](/docs/build/local/).
+
+You should see the file written and each pin's key id and SHA-256 fingerprint. Compare the fingerprints with the console before you ship.
+
+## 3. Gate the game
+
+**App** Pick a lane.
+
+<Lanes intro="The drop-in boot runs every screen the license needs above your game. Your own UI draws the screens from the headless controllers.">
+  <Fragment slot="kit">
+
+`boot()` configures the SDK, starts offline from the verified cache, syncs, gates on the license and checks for an update, with the addon's own screens above the game. It returns once the player is through. Make it your main scene's script.
+
+```gdscript title="boot.gd"
+extends Node
+
+const PolarisConfig := preload("res://polaris_key_config.gd")
+
+
+func _ready() -> void:
+	await PolarisKey.boot({options = PolarisConfig.options()})
+	get_tree().change_scene_to_file("res://game/title.tscn")
+```
+
+A stop on the way, such as offline or a blocked build, keeps its card with **Try again** on screen, and the await waits through the retries. `{resolve_on_stop = true}` resolves at the first stop instead. `options()` returns a `PKeyOptions` with the product facts. The version comes from `application/config/version`, which must be SemVer. To keep the setup dock's `res://polaris_key.tres` for your own channel, theme or update settings, load it and call `PolarisConfig.apply(opts)` instead.
+
+The screens are neutral over the game's theme by default. [Godot](/docs/build/ui/frameworks/godot/) has the scenes you can place yourself, theming and the one-line settings panel.
+
+  </Fragment>
+  <Fragment slot="library">
+
+Four headless controllers return the screen, the copy keys and the controls, and the game draws the nodes. Start the SDK yourself with `configure()`, `start()`, `discover()` and `sync()`, as [Your own UI](/docs/build/sdks/godot/your-own-ui/) shows, then render from its state:
+
+```gdscript title="gate.gd"
+extends Node
+
+
+func _ready() -> void:
+	PolarisKey.state_changed.connect(_on_state_changed)
+
+
+func _on_state_changed(state: Dictionary) -> void:
+	var screen := PKeyGateController.screen_for(String(state["status"]))
+	print(screen)  # usable, grace, activation, revoked, expired, ...
+```
+
+Activate with `PolarisKey.license.activate_with_key(key)` and read the state with `PolarisKey.status()`.
+
+  </Fragment>
+</Lanes>
+
+You should see the game hold on the activation card until a key is entered.
+
+## 4. Activate a test license
+
+**CLI** Start a local server and copy its `ok` key. [Run Polaris Key locally](/docs/build/local/) lists the key for each state.
+
+```sh title="Terminal"
+pkey dev
+```
+
+**App** Enter the `ok` key in the activation panel.
+
+You should see the game load its title scene.
+
+## What you built
+
+A game that verifies signed documents against your pins and loads its first scene only when the license is usable.
+
+## If it isn't working
+
+- The addon installs at `res://polaris_key/`: reinstall with **Ignore asset root** unticked.
+- `boot()` reports a bad version: set `application/config/version` to a SemVer string.
+- [Troubleshoot your integration](/docs/build/troubleshooting/): each status and error code.
+- [Install the SDKs and the CLI](/docs/build/install/): GodotEnv and scripted installs.
+
+## Next steps
+
+<CardGrid>
+  <LinkCard
+    title="Your own UI"
+    href="/docs/build/sdks/godot/your-own-ui/"
+    description="Every controller, its states and words."
+  />
+  <LinkCard
+    title="Godot SDK reference"
+    href="/docs/build/sdks/godot/"
+    description="The whole API."
+  />
+  <LinkCard
+    title="Test your integration"
+    href="/docs/build/test-your-integration/"
+    description="Every license state, offline and grace."
+  />
+  <LinkCard
+    title="Go live"
+    href="/docs/build/go-live/"
+    description="Pins, signing and CI."
+  />
+</CardGrid>

@@ -3,10 +3,12 @@ title: "The config document"
 description: "GET /<product>/config/document: the pkey-config+jws envelope, its ETag, its grace window, and why it carries no build gate."
 sidebar:
   order: 4
+type: "reference"
+lastReviewed: "2026-10-16"
 ---
 
 `GET /<product>/config/document` returns the signed **config document** —
-`typ: "pkey-config+jws"`, wire contract v3 §2.2. It is the other half of what used to be one
+`typ: "pkey-config+jws"`, wire contract v4 §2.2. It is the other half of what used to be one
 fused v2 document at `/<product>/config`; that route is gone rather than aliased, because a route
 that used to return a signed document must not quietly start returning half of one.
 
@@ -20,9 +22,9 @@ GET /<product>/config/document
 Authorization: Bearer pkeyt_…
 ```
 
-This is the wire-level proof of D-08, service independence: a product can run Config with License
+This is the wire-level proof of service independence: a product can run Config with License
 **disabled**, its devices register and hold real `pkeyt_` tokens, and every one of them still gets
-a config document. See [the device principal](/docs/services/core/device-principal/) for exactly
+a config document. See [the device principal](/docs/reference/protocol/device-principal/) for exactly
 what `validateDeviceToken` checks.
 
 On a product that **runs** License, a device bound to a license that is no longer usable is
@@ -37,7 +39,7 @@ fetches config documents: there is no license to have lapsed. This is narrower t
 `/devices` surfaces and the [edge-mint guard](/docs/services/config/edge-mint/), which on a
 licensed product require a usable license of every device.
 
-It is a `401`, like the one [`GET /<product>/license/document`](/docs/services/license/document/)
+It is a `401`, like the one [`GET /<product>/license/document`](/docs/reference/protocol/license-document/)
 answers for the same license, and not a `403`: a `403` on a document is the build gate's status,
 which a client reads as a version or channel block. On the `401` a client makes its single
 `POST /<product>/license/token` re-acquire, which an unusable license fails too, and its license
@@ -99,10 +101,10 @@ forces a license re-download: the two documents' ETags are computed independentl
 
 ## No build gate
 
-Wire contract v3 names exactly one enforcement point for version and channel blocking: the license
-document, because that gate is a **license grant** (D-20). This route has none. A product with no
+wire contract v4 names exactly one enforcement point for version and channel blocking: the license
+document, because that gate is a **license grant**. This route has none. A product with no
 License service has no version window to be outside of in the first place, and gating settings
-delivery on a license policy would re-couple two services the whole split exists to keep
+delivery on a license policy would re-couple the services the whole split exists to keep
 apart. A device that is `version-too-old` or `channel-not-entitled` on its license document still
 gets its config document — "should this build even run" and "what are its settings" are answered
 independently.
@@ -124,7 +126,7 @@ which source set the day count.
 
 For a device bound to a license on a product that runs License, the window also ends no later
 than that license's expiry while the product clamps grace (`licensing.clampGraceToExpiry`, on by
-default; see [the license document](/docs/services/license/document/)). Such a device stops
+default; see [the license document](/docs/reference/protocol/license-document/)). Such a device stops
 receiving the document's secrets once the license lapses, so its offline copy stops with the
 license too. A config-only product and a keyless device have no license and are never clamped.
 
@@ -188,7 +190,7 @@ disabled contributes `enabled: false` and no `endpoints` at all.
 `/config/report` is gone from this namespace. Device telemetry — OS, runtime, hardware summary,
 probe results — lives at `POST /<product>/devices/report`, a Core surface: it was always anti-fraud
 data that had merely been living under a config path. See
-[the device principal](/docs/services/core/device-principal/).
+[the device principal](/docs/reference/protocol/device-principal/).
 
 ## See also
 
