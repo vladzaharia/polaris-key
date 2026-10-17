@@ -36,17 +36,17 @@ Each is a validator warning that names its replacement. Nothing is refused.
 
 ## Fields you author
 
-| Field                              | Notes                                                                      |
-| ---------------------------------- | -------------------------------------------------------------------------- |
-| `key`                              | A dotted identifier, unique in the catalog, such as `run.concurrency`      |
-| `category`, `label`, `description` | Grouping and copy for the console and generated settings screens           |
-| `examples`                         | Sample values for a generated form. Never validated against `schema`       |
-| `default`                          | The schema-level fallback, and the value Default seeding uses              |
-| `secret`                           | Retired: see the table above                                               |
+| Field                              | Notes                                                                                                                                                |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `key`                              | A dotted identifier, unique in the catalog, such as `run.concurrency`                                                                                |
+| `category`, `label`, `description` | Grouping and copy for the console and generated settings screens                                                                                     |
+| `examples`                         | Sample values for a generated form. Never validated against `schema`                                                                                 |
+| `default`                          | The schema-level fallback, and the value Default seeding uses                                                                                        |
+| `secret`                           | Retired: see the table above                                                                                                                         |
 | `managementDefault`                | `config` kind only. The in-app visibility a fresh key gets until an admin overrides it: `default` is Editable, `enforced` Read-only, `hidden` Hidden |
-| `userGrant`, `grantLabel`          | `flag` only. Shows the entitlement to the user as an included capability   |
-| `appliesTo`                        | Optional `cli` or `app` narrowing                                          |
-| `deprecated`, `since`              | Metadata. Never affects validation                                         |
+| `userGrant`, `grantLabel`          | `flag` only. Shows the entitlement to the user as an included capability                                                                             |
+| `appliesTo`                        | Optional `cli` or `app` narrowing                                                                                                                    |
+| `deprecated`, `since`              | Metadata. Never affects validation                                                                                                                   |
 
 Publishing refuses two mistakes. A key declared twice would shadow itself, so a value could be screened against one entry and delivered under the other. A `flag` with `secret: true` is refused, because entitlements are read in the clear and never sealed.
 
