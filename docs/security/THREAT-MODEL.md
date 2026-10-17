@@ -56,7 +56,7 @@ holds, and is indistinguishable in the audit log from the human clicking in the 
 365 days at mint. Its blast radius is bounded by **default deny**: a row of the admin route table
 (`console/routes.ts`) reaches a token only through its `tokenScope`, and every other row, path
 and method refuses with one 403, so adding an admin route does not silently widen every existing
-token. The scope vocabulary is exactly one entry (`bundles:mint`), and the token routes
+token. The scope vocabulary is two entries (`bundles:mint`; `migrations:report`, which reaches the data-migration runner's job list, run report and dry run, never apply or down: those need a step-up a token cannot have), and the token routes
 themselves name no scope, so a token cannot mint, list or revoke a token, including itself.
 Minting needs a console step-up, so a stolen session cannot leave a year-long credential behind
 it. The token is stored only as `hashKey(token, KEY_HASH_PEPPER)` and shown once. It is exempt

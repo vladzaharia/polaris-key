@@ -297,7 +297,7 @@ export async function mintBundle(
 }
 
 /** The bearer token, or an error that says exactly what is wrong and how to get a good one. */
-function adminToken(raw: string | undefined): string {
+export function adminToken(raw: string | undefined): string {
   const value = raw?.trim();
   if (!value) {
     throw new Error(
