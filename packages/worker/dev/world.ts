@@ -18,6 +18,8 @@ import type { Db } from "../src/db/types.js";
 import { generateEd25519 } from "../src/platform/keyvault.js";
 import { hashKey, mintLicenseKey } from "../src/platform/crypto.js";
 import { insertKey, insertLicense } from "../src/core/licensing/store.js";
+import { ingestFor } from "../src/core/ingest/pipeline.js";
+import { SERVICES } from "../src/mount.js";
 import { registerFromManifest } from "../src/services/release/linkRepo.js";
 import { KvMock, asKv } from "../test/kvMock.js";
 import { makeRlNamespace } from "../test/rlMock.js";
@@ -167,7 +169,7 @@ export async function createWorld(opts: WorldOptions): Promise<World> {
     { sha: "0".repeat(40), files: files as Record<string, string> },
     started,
     noNetwork,
-    undefined,
+    ingestFor(SERVICES),
   );
   if (!registered.ok)
     throw new Error(

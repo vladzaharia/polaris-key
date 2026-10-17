@@ -50,7 +50,7 @@ import { TEST_RSA_PKCS8 } from "./releaseFixtures.js";
 import { HEAD_SHA, withDefaultHead } from "./githubHead.js";
 import { linkRepo } from "../src/services/release/linkRepo.js";
 import { resyncRepo } from "../src/services/release/resync.js";
-import { manifestIngestFor } from "../src/core/registry.js";
+import { ingestFor } from "../src/core/ingest/pipeline.js";
 import { SERVICES } from "../src/mount.js";
 import { handleAdmin } from "../src/console/index.js";
 import { ADMIN_COOKIE, issueSession } from "../src/core/console/session.js";
@@ -1287,7 +1287,7 @@ describe("link and resync with a repo-path icon", () => {
       "acme-org/acme-app",
       NOW,
       gh,
-      manifestIngestFor(SERVICES),
+      ingestFor(SERVICES),
     );
     expect(link.ok).toBe(true);
     expect(q.sent.map((m) => [m.slot, m.commit, m.blob])).toEqual([
@@ -1363,7 +1363,7 @@ describe("link and resync with a repo-path icon", () => {
           "acme-org/acme-app",
           NOW,
           gh,
-          manifestIngestFor(SERVICES),
+          ingestFor(SERVICES),
         )
       ).ok,
     ).toBe(true);

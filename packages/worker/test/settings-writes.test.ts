@@ -68,8 +68,12 @@ const MANIFEST_WRITERS: Readonly<
     why: "the operator's create answers (planned platforms) go in the create batch, with the product they reference (ST-42)",
     functions: ["planCreateDefaults"],
   },
-  "services/release/resync.ts": {
-    why: "the resync apply: claim-guarded in SQL (ST-01b), one `setting.resync` audit row per field",
+  // P0-26: the resync apply moved into Core's ingest pipeline, one contributor per owner.
+  "core/ingest/core.ts": {
+    why: "the ingest's product-row writes: claim-guarded in SQL (ST-01b), one `setting.resync` audit row per field",
+  },
+  "services/release/ingest.ts": {
+    why: "the ingest's release_config writes: claim-guarded in SQL (ST-01b), one `setting.resync` audit row per field",
   },
   "console/systemProduct.ts": {
     why: "the deploy hook's bootstrap of the system product (S-18 §4.5 item 8)",

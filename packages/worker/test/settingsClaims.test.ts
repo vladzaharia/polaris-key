@@ -36,7 +36,7 @@ import {
 } from "../src/core/console/session.js";
 import { linkRepo } from "../src/services/release/linkRepo.js";
 import { resyncRepo } from "../src/services/release/resync.js";
-import { manifestIngestFor } from "../src/core/registry.js";
+import { ingestFor } from "../src/core/ingest/pipeline.js";
 import { SERVICES } from "../src/mount.js";
 import { stmtClaim } from "../src/core/settingsClaims.js";
 import { withDefaultHead } from "./githubHead.js";
@@ -155,7 +155,7 @@ async function linked(d: Decl = {}) {
     "acme-org/acme-app",
     NOW,
     github(d),
-    manifestIngestFor(SERVICES),
+    ingestFor(SERVICES),
   );
   expect(res.ok).toBe(true);
   const { token, session } = await issueSession(
@@ -196,7 +196,7 @@ async function resync(ctx: Ctx, d: Decl = {}, at = NOW + 60) {
     SLUG,
     at,
     github(d),
-    manifestIngestFor(SERVICES),
+    ingestFor(SERVICES),
   );
 }
 
@@ -383,7 +383,7 @@ describe("a console edit to a claimable field survives a following resync (ST-01
       SLUG,
       NOW + 60,
       racing,
-      manifestIngestFor(SERVICES),
+      ingestFor(SERVICES),
     );
     expect(res.ok).toBe(true);
     expect(raced).toBe(true);

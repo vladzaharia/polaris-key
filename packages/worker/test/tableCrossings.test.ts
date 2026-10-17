@@ -47,9 +47,6 @@ const SEAMS: readonly (readonly [string, string, RemovedBy])[] = [
   ["release", "oidc_config", "P0-26"],
   ["release", "provisioning_config", "P0-26"],
   ["release", "edge_mint_config", "P0-26"],
-  ["release", "edge_mint_approvals", "P0-26"],
-  ["release", "product_schema", "P0-26"],
-  ["release", "license_profiles", "P0-26"],
   // Distribution's commerce reads License's store grants.
   ["distribution", "license_store_grants", "P0-27"],
   // Update reads Release's pack tables inside the sanctioned update → release edge (packParts.ts).

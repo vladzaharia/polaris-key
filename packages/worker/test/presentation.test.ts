@@ -44,7 +44,7 @@ import { resolvePresentation } from "../src/core/presentation.js";
 import { hostedImages } from "../src/core/assets/hostedImages.js";
 import { IMG_HOST_TYPES } from "../src/core/assets/imgHost.js";
 import { SERVICES, SETTINGS } from "../src/mount.js";
-import { manifestIngestFor } from "../src/core/registry.js";
+import { ingestFor } from "../src/core/ingest/pipeline.js";
 import { writeSetting } from "../src/core/settings/write.js";
 import { presentationFor } from "../src/services/identity/portal/library.js";
 import { clientRecordFor } from "../src/services/identity/passthrough/client.js";
@@ -582,7 +582,7 @@ describe("link and resync write products.presentation_json", () => {
     const env = makeEnv(new KvMock(), []);
     env.GITHUB_APP_ID = "12345";
     env.GITHUB_APP_PRIVATE_KEY = TEST_RSA_PKCS8;
-    const ingest = manifestIngestFor(SERVICES);
+    const ingest = ingestFor(SERVICES);
     const stored = async () =>
       (
         await db.first<{ p: string | null }>(

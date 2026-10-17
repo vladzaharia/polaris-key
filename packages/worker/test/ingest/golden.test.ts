@@ -49,6 +49,7 @@ import {
   claimPublisherPolicy,
   issueStaticCiToken,
 } from "../../src/core/publisher.js";
+import { ingestFor } from "../../src/core/ingest/pipeline.js";
 import { manifestIngestFor } from "../../src/core/registry.js";
 import { SERVICES } from "../../src/mount.js";
 import {
@@ -81,7 +82,9 @@ interface Captured {
   trips: number;
 }
 
-const ingest = manifestIngestFor(SERVICES);
+const ingest = ingestFor(SERVICES);
+/** The deploy hook still runs the descriptor hooks (P0-26b moves it onto the pipeline). */
+const hooks = manifestIngestFor(SERVICES);
 
 /** Deep-mask a result: strings through `mask`, key order kept. */
 function maskDeep(v: unknown): unknown {
@@ -117,6 +120,11 @@ function check(name: string, got: Captured): void {
     return;
   }
   const norm = JSON.parse(JSON.stringify(got)) as Captured;
+  if (process.env.INGEST_GOLDEN_DUMP)
+    writeFileSync(
+      `${process.env.INGEST_GOLDEN_DUMP}/${name}.json`,
+      JSON.stringify(norm, null, 1),
+    );
   expect(norm.writes).toEqual(want.writes);
   expect(norm.state).toEqual(want.state);
   expect(norm.result).toEqual(want.result);
@@ -539,7 +547,7 @@ describe("ingest golden: the deploy hook", () => {
           repo,
           { files, sha },
           NOW + 1,
-          ingest,
+          hooks,
         ),
       ),
     );
@@ -577,7 +585,7 @@ describe("ingest golden: the deploy hook", () => {
           repo,
           { files, sha },
           NOW + 100,
-          ingest,
+          hooks,
         ),
       ),
     );

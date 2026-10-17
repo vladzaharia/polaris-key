@@ -429,9 +429,7 @@
       "slug": "acme",
       "kid": "acme-2023",
       "publicKey": "<blob>",
-      "trustKeys": {
-        "acme-2023": "<blob>"
-      },
+      "trustKeys": { "acme-2023": "<blob>" },
       "install": "Linked acme-org/acme-app. No additional secrets required.",
       "remainingSecrets": [],
       "defaults": {
@@ -1695,14 +1693,14 @@
           "actor_email": null,
           "action": "setting.resync",
           "target_kind": "setting",
-          "target_id": "distribution.access",
+          "target_id": "config.catalog",
           "parent_id": null,
-          "summary": "distribution.access set from the manifest: \"public\" → \"licensed\"",
-          "before_json": "{\"effective\":\"public\"}",
-          "after_json": "{\"effective\":\"licensed\"}",
+          "summary": "config.catalog published from the manifest as v2 at 0123456789ab",
+          "before_json": null,
+          "after_json": null,
           "origin": "resync",
           "reason": null,
-          "setting_key": "distribution.access"
+          "setting_key": "config.catalog"
         },
         {
           "product": "acme",
@@ -1731,14 +1729,50 @@
           "actor_email": null,
           "action": "setting.resync",
           "target_kind": "setting",
-          "target_id": "license.defaults.maxOfflineDays",
+          "target_id": "distribution.access",
           "parent_id": null,
-          "summary": "license.defaults.maxOfflineDays set from the manifest at 0123456789ab: 14 → 21",
-          "before_json": "{\"effective\":14}",
-          "after_json": "{\"effective\":21}",
+          "summary": "distribution.access set from the manifest: \"public\" → \"licensed\"",
+          "before_json": "{\"effective\":\"public\"}",
+          "after_json": "{\"effective\":\"licensed\"}",
           "origin": "resync",
           "reason": null,
-          "setting_key": "license.defaults.maxOfflineDays"
+          "setting_key": "distribution.access"
+        },
+        {
+          "product": "acme",
+          "id": "aud_<id>",
+          "at": 1700000060,
+          "actor_sub": "resync",
+          "actor_name": "Manifest resync",
+          "actor_email": null,
+          "action": "setting.resync",
+          "target_kind": "setting",
+          "target_id": "identity.oidc",
+          "parent_id": null,
+          "summary": "identity.oidc set from the manifest at 0123456789ab: {\"provider\":\"custom\",\"issuer\":\"https://id.example\",\"clientId\":\"acme-client\",\"clientSecretSecret\":\"OIDC_SECRET__ACME\",\"redirectUris\":[\"https://acme.example/cb\"],\"groupRoleMap\":{\"acme-admins\":{\"role\"... → {\"provider\":\"custom\",\"issuer\":\"https://id.example\",\"clientId\":\"acme-client-2\",\"clientSecretSecret\":\"OIDC_SECRET__ACME\",\"redirectUris\":[\"https://acme.example/cb\",\"https://acme.example/cb2\"],\"groupRo...",
+          "before_json": "{\"effective\":{\"provider\":\"custom\",\"issuer\":\"https://id.example\",\"clientId\":\"acme-client\",\"clientSecretSecret\":\"OIDC_SECRET__ACME\",\"redirectUris\":[\"https://acme.example/cb\"],\"groupRoleMap\":{\"acme-admins\":{\"role\":\"admin\"}}}}",
+          "after_json": "{\"effective\":{\"provider\":\"custom\",\"issuer\":\"https://id.example\",\"clientId\":\"acme-client-2\",\"clientSecretSecret\":\"OIDC_SECRET__ACME\",\"redirectUris\":[\"https://acme.example/cb\",\"https://acme.example/cb2\"],\"groupRoleMap\":{\"acme-admins\":{\"role\":\"admin\"}}}}",
+          "origin": "resync",
+          "reason": null,
+          "setting_key": "identity.oidc"
+        },
+        {
+          "product": "acme",
+          "id": "aud_<id>",
+          "at": 1700000060,
+          "actor_sub": "resync",
+          "actor_name": "Manifest resync",
+          "actor_email": null,
+          "action": "setting.resync",
+          "target_kind": "setting",
+          "target_id": "identity.provisioning",
+          "parent_id": null,
+          "summary": "identity.provisioning set from the manifest at 0123456789ab: [{\"claim\":\"plan\",\"entitlementKey\":\"pro\",\"entitlementValue\":true,\"secretKey\":null,\"secretUrlTemplate\":null,\"allowedHosts\":null}] → [{\"claim\":\"plan\",\"entitlementKey\":\"pro\",\"entitlementValue\":false,\"secretKey\":null,\"secretUrlTemplate\":null,\"allowedHosts\":null}]",
+          "before_json": "{\"effective\":[{\"claim\":\"plan\",\"entitlementKey\":\"pro\",\"entitlementValue\":true,\"secretKey\":null,\"secretUrlTemplate\":null,\"allowedHosts\":null}]}",
+          "after_json": "{\"effective\":[{\"claim\":\"plan\",\"entitlementKey\":\"pro\",\"entitlementValue\":false,\"secretKey\":null,\"secretUrlTemplate\":null,\"allowedHosts\":null}]}",
+          "origin": "resync",
+          "reason": null,
+          "setting_key": "identity.provisioning"
         },
         {
           "product": "acme",
@@ -1767,32 +1801,14 @@
           "actor_email": null,
           "action": "setting.resync",
           "target_kind": "setting",
-          "target_id": "release.compatWindow",
+          "target_id": "license.defaults.maxOfflineDays",
           "parent_id": null,
-          "summary": "release.compatWindow set from the manifest at 0123456789ab: {\"min\":\"1.0.0\",\"max\":\"9.0.0\"} → {\"min\":\"1.1.0\",\"max\":\"9.0.0\"}",
-          "before_json": "{\"effective\":{\"min\":\"1.0.0\",\"max\":\"9.0.0\"}}",
-          "after_json": "{\"effective\":{\"min\":\"1.1.0\",\"max\":\"9.0.0\"}}",
+          "summary": "license.defaults.maxOfflineDays set from the manifest at 0123456789ab: 14 → 21",
+          "before_json": "{\"effective\":14}",
+          "after_json": "{\"effective\":21}",
           "origin": "resync",
           "reason": null,
-          "setting_key": "release.compatWindow"
-        },
-        {
-          "product": "acme",
-          "id": "aud_<id>",
-          "at": 1700000060,
-          "actor_sub": "resync",
-          "actor_name": "Manifest resync",
-          "actor_email": null,
-          "action": "setting.resync",
-          "target_kind": "setting",
-          "target_id": "config.catalog",
-          "parent_id": null,
-          "summary": "config.catalog published from the manifest as v2 at 0123456789ab",
-          "before_json": null,
-          "after_json": null,
-          "origin": "resync",
-          "reason": null,
-          "setting_key": "config.catalog"
+          "setting_key": "license.defaults.maxOfflineDays"
         },
         {
           "product": "acme",
@@ -1839,6 +1855,24 @@
           "actor_email": null,
           "action": "setting.resync",
           "target_kind": "setting",
+          "target_id": "release.compatWindow",
+          "parent_id": null,
+          "summary": "release.compatWindow set from the manifest at 0123456789ab: {\"min\":\"1.0.0\",\"max\":\"9.0.0\"} → {\"min\":\"1.1.0\",\"max\":\"9.0.0\"}",
+          "before_json": "{\"effective\":{\"min\":\"1.0.0\",\"max\":\"9.0.0\"}}",
+          "after_json": "{\"effective\":{\"min\":\"1.1.0\",\"max\":\"9.0.0\"}}",
+          "origin": "resync",
+          "reason": null,
+          "setting_key": "release.compatWindow"
+        },
+        {
+          "product": "acme",
+          "id": "aud_<id>",
+          "at": 1700000060,
+          "actor_sub": "resync",
+          "actor_name": "Manifest resync",
+          "actor_email": null,
+          "action": "setting.resync",
+          "target_kind": "setting",
           "target_id": "release.keys",
           "parent_id": null,
           "summary": "release.keys set from the manifest at 0123456789ab: [\"djdl-release-test-2026\"] → [\"djdl-release-test-2026\",\"djdl-release-test-2027\"]",
@@ -1865,24 +1899,6 @@
           "origin": "resync",
           "reason": null,
           "setting_key": "update.metadataAccess"
-        },
-        {
-          "product": "acme",
-          "id": "aud_<id>",
-          "at": 1700000060,
-          "actor_sub": "resync",
-          "actor_name": "Manifest resync",
-          "actor_email": null,
-          "action": "setting.resync",
-          "target_kind": "setting",
-          "target_id": "identity.oidc",
-          "parent_id": null,
-          "summary": "identity.oidc set from the manifest at 0123456789ab: {\"provider\":\"custom\",\"issuer\":\"https://id.example\",\"clientId\":\"acme-client\",\"clientSecretSecret\":\"OIDC_SECRET__ACME\",\"redirectUris\":[\"https://acme.example/cb\"],\"groupRoleMap\":{\"acme-admins\":{\"role\"... → {\"provider\":\"custom\",\"issuer\":\"https://id.example\",\"clientId\":\"acme-client-2\",\"clientSecretSecret\":\"OIDC_SECRET__ACME\",\"redirectUris\":[\"https://acme.example/cb\",\"https://acme.example/cb2\"],\"groupRo...",
-          "before_json": "{\"effective\":{\"provider\":\"custom\",\"issuer\":\"https://id.example\",\"clientId\":\"acme-client\",\"clientSecretSecret\":\"OIDC_SECRET__ACME\",\"redirectUris\":[\"https://acme.example/cb\"],\"groupRoleMap\":{\"acme-admins\":{\"role\":\"admin\"}}}}",
-          "after_json": "{\"effective\":{\"provider\":\"custom\",\"issuer\":\"https://id.example\",\"clientId\":\"acme-client-2\",\"clientSecretSecret\":\"OIDC_SECRET__ACME\",\"redirectUris\":[\"https://acme.example/cb\",\"https://acme.example/cb2\"],\"groupRoleMap\":{\"acme-admins\":{\"role\":\"admin\"}}}}",
-          "origin": "resync",
-          "reason": null,
-          "setting_key": "identity.oidc"
         },
         {
           "product": "acme",
@@ -1937,24 +1953,6 @@
           "origin": "resync",
           "reason": null,
           "setting_key": "license.tiers"
-        },
-        {
-          "product": "acme",
-          "id": "aud_<id>",
-          "at": 1700000060,
-          "actor_sub": "resync",
-          "actor_name": "Manifest resync",
-          "actor_email": null,
-          "action": "setting.resync",
-          "target_kind": "setting",
-          "target_id": "identity.provisioning",
-          "parent_id": null,
-          "summary": "identity.provisioning set from the manifest at 0123456789ab: [{\"claim\":\"plan\",\"entitlementKey\":\"pro\",\"entitlementValue\":true,\"secretKey\":null,\"secretUrlTemplate\":null,\"allowedHosts\":null}] → [{\"claim\":\"plan\",\"entitlementKey\":\"pro\",\"entitlementValue\":false,\"secretKey\":null,\"secretUrlTemplate\":null,\"allowedHosts\":null}]",
-          "before_json": "{\"effective\":[{\"claim\":\"plan\",\"entitlementKey\":\"pro\",\"entitlementValue\":true,\"secretKey\":null,\"secretUrlTemplate\":null,\"allowedHosts\":null}]}",
-          "after_json": "{\"effective\":[{\"claim\":\"plan\",\"entitlementKey\":\"pro\",\"entitlementValue\":false,\"secretKey\":null,\"secretUrlTemplate\":null,\"allowedHosts\":null}]}",
-          "origin": "resync",
-          "reason": null,
-          "setting_key": "identity.provisioning"
         }
       ],
       "ci_publishers": [
@@ -2708,6 +2706,42 @@
           "actor_email": null,
           "action": "setting.resync",
           "target_kind": "setting",
+          "target_id": "identity.oidc",
+          "parent_id": null,
+          "summary": "identity.oidc set from the manifest at 0123456789ab: {\"provider\":\"custom\",\"issuer\":\"https://id.example\",\"clientId\":\"acme-client\",\"clientSecretSecret\":\"OIDC_SECRET__ACME\",\"redirectUris\":[\"https://acme.example/cb\"],\"groupRoleMap\":{\"acme-admins\":{\"role\"... → {\"provider\":\"custom\",\"issuer\":\"https://id.example\",\"clientId\":\"acme-client-2\",\"clientSecretSecret\":\"OIDC_SECRET__ACME\",\"redirectUris\":[\"https://acme.example/cb\",\"https://acme.example/cb2\"],\"groupRo...",
+          "before_json": "{\"effective\":{\"provider\":\"custom\",\"issuer\":\"https://id.example\",\"clientId\":\"acme-client\",\"clientSecretSecret\":\"OIDC_SECRET__ACME\",\"redirectUris\":[\"https://acme.example/cb\"],\"groupRoleMap\":{\"acme-admins\":{\"role\":\"admin\"}}}}",
+          "after_json": "{\"effective\":{\"provider\":\"custom\",\"issuer\":\"https://id.example\",\"clientId\":\"acme-client-2\",\"clientSecretSecret\":\"OIDC_SECRET__ACME\",\"redirectUris\":[\"https://acme.example/cb\",\"https://acme.example/cb2\"],\"groupRoleMap\":{\"acme-admins\":{\"role\":\"admin\"}}}}",
+          "origin": "resync",
+          "reason": null,
+          "setting_key": "identity.oidc"
+        },
+        {
+          "product": "acme",
+          "id": "aud_<id>",
+          "at": 1700000060,
+          "actor_sub": "resync",
+          "actor_name": "Manifest resync",
+          "actor_email": null,
+          "action": "setting.resync",
+          "target_kind": "setting",
+          "target_id": "identity.provisioning",
+          "parent_id": null,
+          "summary": "identity.provisioning set from the manifest at 0123456789ab: [{\"claim\":\"plan\",\"entitlementKey\":\"pro\",\"entitlementValue\":true,\"secretKey\":null,\"secretUrlTemplate\":null,\"allowedHosts\":null}] → [{\"claim\":\"plan\",\"entitlementKey\":\"pro\",\"entitlementValue\":false,\"secretKey\":null,\"secretUrlTemplate\":null,\"allowedHosts\":null}]",
+          "before_json": "{\"effective\":[{\"claim\":\"plan\",\"entitlementKey\":\"pro\",\"entitlementValue\":true,\"secretKey\":null,\"secretUrlTemplate\":null,\"allowedHosts\":null}]}",
+          "after_json": "{\"effective\":[{\"claim\":\"plan\",\"entitlementKey\":\"pro\",\"entitlementValue\":false,\"secretKey\":null,\"secretUrlTemplate\":null,\"allowedHosts\":null}]}",
+          "origin": "resync",
+          "reason": null,
+          "setting_key": "identity.provisioning"
+        },
+        {
+          "product": "acme",
+          "id": "aud_<id>",
+          "at": 1700000060,
+          "actor_sub": "resync",
+          "actor_name": "Manifest resync",
+          "actor_email": null,
+          "action": "setting.resync",
+          "target_kind": "setting",
           "target_id": "release.betaBranch",
           "parent_id": null,
           "summary": "release.betaBranch set from the manifest at 0123456789ab: \"main\" → \"dev\"",
@@ -2761,24 +2795,6 @@
           "actor_name": "Manifest resync",
           "actor_email": null,
           "action": "setting.resync",
-          "target_kind": "setting",
-          "target_id": "identity.oidc",
-          "parent_id": null,
-          "summary": "identity.oidc set from the manifest at 0123456789ab: {\"provider\":\"custom\",\"issuer\":\"https://id.example\",\"clientId\":\"acme-client\",\"clientSecretSecret\":\"OIDC_SECRET__ACME\",\"redirectUris\":[\"https://acme.example/cb\"],\"groupRoleMap\":{\"acme-admins\":{\"role\"... → {\"provider\":\"custom\",\"issuer\":\"https://id.example\",\"clientId\":\"acme-client-2\",\"clientSecretSecret\":\"OIDC_SECRET__ACME\",\"redirectUris\":[\"https://acme.example/cb\",\"https://acme.example/cb2\"],\"groupRo...",
-          "before_json": "{\"effective\":{\"provider\":\"custom\",\"issuer\":\"https://id.example\",\"clientId\":\"acme-client\",\"clientSecretSecret\":\"OIDC_SECRET__ACME\",\"redirectUris\":[\"https://acme.example/cb\"],\"groupRoleMap\":{\"acme-admins\":{\"role\":\"admin\"}}}}",
-          "after_json": "{\"effective\":{\"provider\":\"custom\",\"issuer\":\"https://id.example\",\"clientId\":\"acme-client-2\",\"clientSecretSecret\":\"OIDC_SECRET__ACME\",\"redirectUris\":[\"https://acme.example/cb\",\"https://acme.example/cb2\"],\"groupRoleMap\":{\"acme-admins\":{\"role\":\"admin\"}}}}",
-          "origin": "resync",
-          "reason": null,
-          "setting_key": "identity.oidc"
-        },
-        {
-          "product": "acme",
-          "id": "aud_<id>",
-          "at": 1700000060,
-          "actor_sub": "resync",
-          "actor_name": "Manifest resync",
-          "actor_email": null,
-          "action": "setting.resync",
           "target_kind": "tier",
           "target_id": "free",
           "parent_id": null,
@@ -2788,24 +2804,6 @@
           "origin": "resync",
           "reason": null,
           "setting_key": "license.tiers"
-        },
-        {
-          "product": "acme",
-          "id": "aud_<id>",
-          "at": 1700000060,
-          "actor_sub": "resync",
-          "actor_name": "Manifest resync",
-          "actor_email": null,
-          "action": "setting.resync",
-          "target_kind": "setting",
-          "target_id": "identity.provisioning",
-          "parent_id": null,
-          "summary": "identity.provisioning set from the manifest at 0123456789ab: [{\"claim\":\"plan\",\"entitlementKey\":\"pro\",\"entitlementValue\":true,\"secretKey\":null,\"secretUrlTemplate\":null,\"allowedHosts\":null}] → [{\"claim\":\"plan\",\"entitlementKey\":\"pro\",\"entitlementValue\":false,\"secretKey\":null,\"secretUrlTemplate\":null,\"allowedHosts\":null}]",
-          "before_json": "{\"effective\":[{\"claim\":\"plan\",\"entitlementKey\":\"pro\",\"entitlementValue\":true,\"secretKey\":null,\"secretUrlTemplate\":null,\"allowedHosts\":null}]}",
-          "after_json": "{\"effective\":[{\"claim\":\"plan\",\"entitlementKey\":\"pro\",\"entitlementValue\":false,\"secretKey\":null,\"secretUrlTemplate\":null,\"allowedHosts\":null}]}",
-          "origin": "resync",
-          "reason": null,
-          "setting_key": "identity.provisioning"
         }
       ],
       "dist_access": [
@@ -4847,14 +4845,8 @@
         }
       ],
       "breakGlassEnded": [
-        {
-          "key": "core.web.origins",
-          "why": "expired"
-        },
-        {
-          "key": "license.defaults.deviceLimit",
-          "why": "changed"
-        }
+        { "key": "core.web.origins", "why": "expired" },
+        { "key": "license.defaults.deviceLimit", "why": "changed" }
       ]
     },
     "trips": 27
@@ -8144,50 +8136,14 @@
           "actor_email": null,
           "action": "setting.resync",
           "target_kind": "setting",
-          "target_id": "core.name",
+          "target_id": "config.catalog",
           "parent_id": null,
-          "summary": "core.name set from the manifest at 0123456789ab: \"acme\" → \"Acme\"",
-          "before_json": "{\"effective\":\"acme\"}",
-          "after_json": "{\"effective\":\"Acme\"}",
+          "summary": "config.catalog published from the manifest as v2 at 0123456789ab",
+          "before_json": null,
+          "after_json": null,
           "origin": "resync",
           "reason": null,
-          "setting_key": "core.name"
-        },
-        {
-          "product": "acme",
-          "id": "aud_<id>",
-          "at": 1700000000,
-          "actor_sub": "resync",
-          "actor_name": "Manifest resync",
-          "actor_email": null,
-          "action": "setting.resync",
-          "target_kind": "setting",
-          "target_id": "license.defaults.maxOfflineDays",
-          "parent_id": null,
-          "summary": "license.defaults.maxOfflineDays set from the manifest at 0123456789ab: 30 → 14",
-          "before_json": "{\"effective\":30}",
-          "after_json": "{\"effective\":14}",
-          "origin": "resync",
-          "reason": null,
-          "setting_key": "license.defaults.maxOfflineDays"
-        },
-        {
-          "product": "acme",
-          "id": "aud_<id>",
-          "at": 1700000000,
-          "actor_sub": "resync",
-          "actor_name": "Manifest resync",
-          "actor_email": null,
-          "action": "setting.resync",
-          "target_kind": "setting",
-          "target_id": "license.defaults.deviceLimit",
-          "parent_id": null,
-          "summary": "license.defaults.deviceLimit set from the manifest at 0123456789ab: 5 → 3",
-          "before_json": "{\"effective\":5}",
-          "after_json": "{\"effective\":3}",
-          "origin": "resync",
-          "reason": null,
-          "setting_key": "license.defaults.deviceLimit"
+          "setting_key": "config.catalog"
         },
         {
           "product": "acme",
@@ -8216,14 +8172,14 @@
           "actor_email": null,
           "action": "setting.resync",
           "target_kind": "setting",
-          "target_id": "release.compatWindow",
+          "target_id": "core.name",
           "parent_id": null,
-          "summary": "release.compatWindow set from the manifest at 0123456789ab: {\"min\":\"0.0.0\",\"max\":\"99.0.0\"} → {\"min\":\"1.0.0\",\"max\":\"9.0.0\"}",
-          "before_json": "{\"effective\":{\"min\":\"0.0.0\",\"max\":\"99.0.0\"}}",
-          "after_json": "{\"effective\":{\"min\":\"1.0.0\",\"max\":\"9.0.0\"}}",
+          "summary": "core.name set from the manifest at 0123456789ab: \"acme\" → \"Acme\"",
+          "before_json": "{\"effective\":\"acme\"}",
+          "after_json": "{\"effective\":\"Acme\"}",
           "origin": "resync",
           "reason": null,
-          "setting_key": "release.compatWindow"
+          "setting_key": "core.name"
         },
         {
           "product": "acme",
@@ -8234,14 +8190,50 @@
           "actor_email": null,
           "action": "setting.resync",
           "target_kind": "setting",
-          "target_id": "config.catalog",
+          "target_id": "license.defaults.deviceLimit",
           "parent_id": null,
-          "summary": "config.catalog published from the manifest as v2 at 0123456789ab",
-          "before_json": null,
-          "after_json": null,
+          "summary": "license.defaults.deviceLimit set from the manifest at 0123456789ab: 5 → 3",
+          "before_json": "{\"effective\":5}",
+          "after_json": "{\"effective\":3}",
           "origin": "resync",
           "reason": null,
-          "setting_key": "config.catalog"
+          "setting_key": "license.defaults.deviceLimit"
+        },
+        {
+          "product": "acme",
+          "id": "aud_<id>",
+          "at": 1700000000,
+          "actor_sub": "resync",
+          "actor_name": "Manifest resync",
+          "actor_email": null,
+          "action": "setting.resync",
+          "target_kind": "setting",
+          "target_id": "license.defaults.maxOfflineDays",
+          "parent_id": null,
+          "summary": "license.defaults.maxOfflineDays set from the manifest at 0123456789ab: 30 → 14",
+          "before_json": "{\"effective\":30}",
+          "after_json": "{\"effective\":14}",
+          "origin": "resync",
+          "reason": null,
+          "setting_key": "license.defaults.maxOfflineDays"
+        },
+        {
+          "product": "acme",
+          "id": "aud_<id>",
+          "at": 1700000000,
+          "actor_sub": "resync",
+          "actor_name": "Manifest resync",
+          "actor_email": null,
+          "action": "setting.resync",
+          "target_kind": "setting",
+          "target_id": "release.compatWindow",
+          "parent_id": null,
+          "summary": "release.compatWindow set from the manifest at 0123456789ab: {\"min\":\"0.0.0\",\"max\":\"99.0.0\"} → {\"min\":\"1.0.0\",\"max\":\"9.0.0\"}",
+          "before_json": "{\"effective\":{\"min\":\"0.0.0\",\"max\":\"99.0.0\"}}",
+          "after_json": "{\"effective\":{\"min\":\"1.0.0\",\"max\":\"9.0.0\"}}",
+          "origin": "resync",
+          "reason": null,
+          "setting_key": "release.compatWindow"
         },
         {
           "product": "acme",
@@ -8467,11 +8459,7 @@
             "area": "catalog",
             "summary": "Publishes a new catalog version: adds run.name, api.key"
           },
-          {
-            "area": "tiers",
-            "id": "pro",
-            "summary": "Tier pro added"
-          },
+          { "area": "tiers", "id": "pro", "summary": "Tier pro added" },
           {
             "area": "release",
             "summary": "Release settings from .pkey/release"
@@ -11540,12 +11528,7 @@
         "modifiedBy": "u1"
       },
       "breakGlass": [],
-      "breakGlassEnded": [
-        {
-          "key": "core.web.origins",
-          "why": "expired"
-        }
-      ]
+      "breakGlassEnded": [{ "key": "core.web.origins", "why": "expired" }]
     },
     "trips": 6
   },
@@ -11560,24 +11543,12 @@
       "manifestDigest": "<blob>",
       "releaseWorkflow": false,
       "ready": true,
-      "product": {
-        "slug": "acme",
-        "name": "Acme",
-        "presentation": null
-      },
-      "slug": {
-        "slug": "acme",
-        "status": "available"
-      },
+      "product": { "slug": "acme", "name": "Acme", "presentation": null },
+      "slug": { "slug": "acme", "status": "available" },
       "registeredAs": null,
       "services": ["license", "config", "release", "distribution", "identity"],
-      "catalog": {
-        "entries": 2
-      },
-      "platforms": {
-        "values": [],
-        "source": "none"
-      },
+      "catalog": { "entries": 2 },
+      "platforms": { "values": [], "source": "none" },
       "secrets": ["OIDC_SECRET__ACME", "MINT_KEY__ACME"],
       "problems": []
     },
@@ -11613,9 +11584,7 @@
               "category": "general",
               "label": "Name",
               "description": "",
-              "schema": {
-                "type": "string"
-              }
+              "schema": { "type": "string" }
             },
             {
               "key": "api.key",
@@ -11623,10 +11592,7 @@
               "category": "api",
               "label": "API key",
               "description": "",
-              "schema": {
-                "type": "string",
-                "minLength": 8
-              }
+              "schema": { "type": "string", "minLength": 8 }
             }
           ]
         },
@@ -11649,27 +11615,13 @@
         "provisioning": [],
         "edgeMint": [],
         "services": {
-          "license": {
-            "enabled": true
-          },
-          "config": {
-            "enabled": true
-          },
-          "release": {
-            "enabled": false
-          },
-          "distribution": {
-            "enabled": false
-          },
-          "update": {
-            "enabled": false
-          },
-          "identity": {
-            "enabled": false
-          },
-          "sync": {
-            "enabled": false
-          }
+          "license": { "enabled": true },
+          "config": { "enabled": true },
+          "release": { "enabled": false },
+          "distribution": { "enabled": false },
+          "update": { "enabled": false },
+          "identity": { "enabled": false },
+          "sync": { "enabled": false }
         },
         "webOrigins": [],
         "release": {
@@ -11684,10 +11636,7 @@
           "stableTagPattern": null,
           "ignoreTags": [],
           "artifactPolicy": null,
-          "access": {
-            "metadata": "public",
-            "artifacts": "public"
-          },
+          "access": { "metadata": "public", "artifacts": "public" },
           "app": null,
           "trustedPublisher": null,
           "releaseKeys": [],
@@ -11713,11 +11662,7 @@
             "area": "catalog",
             "summary": "Publishes a new catalog version: adds run.name, api.key"
           },
-          {
-            "area": "tiers",
-            "id": "pro",
-            "summary": "Tier pro added"
-          },
+          { "area": "tiers", "id": "pro", "summary": "Tier pro added" },
           {
             "area": "release",
             "summary": "Release settings from .pkey/release"
@@ -11755,10 +11700,7 @@
             "id": "standard",
             "summary": "Profile standard replaced from the manifest (secret values set in the console are kept)"
           },
-          {
-            "area": "oidc",
-            "summary": "Sign-in provider https://id.example"
-          },
+          { "area": "oidc", "summary": "Sign-in provider https://id.example" },
           {
             "area": "release",
             "summary": "Release settings from .pkey/release"
@@ -11771,10 +11713,7 @@
             "area": "edgeMint",
             "summary": "Token recipes applemusic (each waits for approval)"
           },
-          {
-            "area": "provisioning",
-            "summary": "1 provisioning hook"
-          }
+          { "area": "provisioning", "summary": "1 provisioning hook" }
         ],
         "skipClaimed": [],
         "delete": [],
@@ -11810,20 +11749,13 @@
             "id": "pro",
             "summary": "Tier pro replaced from the manifest"
           },
-          {
-            "area": "tiers",
-            "id": "team",
-            "summary": "Tier team added"
-          },
+          { "area": "tiers", "id": "team", "summary": "Tier team added" },
           {
             "area": "profiles",
             "id": "standard",
             "summary": "Profile standard replaced from the manifest (secret values set in the console are kept)"
           },
-          {
-            "area": "oidc",
-            "summary": "Sign-in provider https://id.example"
-          },
+          { "area": "oidc", "summary": "Sign-in provider https://id.example" },
           {
             "area": "release",
             "summary": "Release settings from .pkey/release"
@@ -11836,19 +11768,10 @@
             "area": "edgeMint",
             "summary": "Token recipes applemusic (each waits for approval)"
           },
-          {
-            "area": "provisioning",
-            "summary": "1 provisioning hook"
-          }
+          { "area": "provisioning", "summary": "1 provisioning hook" }
         ],
         "skipClaimed": [],
-        "delete": [
-          {
-            "area": "tiers",
-            "id": "free",
-            "summary": "Tier free"
-          }
-        ],
+        "delete": [{ "area": "tiers", "id": "free", "summary": "Tier free" }],
         "conflicts": []
       },
       "breakGlass": []
@@ -11879,10 +11802,7 @@
             "id": "standard",
             "summary": "Profile standard replaced from the manifest (secret values set in the console are kept)"
           },
-          {
-            "area": "oidc",
-            "summary": "Sign-in provider https://id.example"
-          },
+          { "area": "oidc", "summary": "Sign-in provider https://id.example" },
           {
             "area": "release",
             "summary": "Release settings from .pkey/release"
@@ -11895,10 +11815,7 @@
             "area": "edgeMint",
             "summary": "Token recipes applemusic (each waits for approval)"
           },
-          {
-            "area": "provisioning",
-            "summary": "1 provisioning hook"
-          }
+          { "area": "provisioning", "summary": "1 provisioning hook" }
         ],
         "skipClaimed": [],
         "delete": [],
@@ -12709,9 +12626,7 @@
       "slug": "acme",
       "kid": "acme-2023",
       "publicKey": "<blob>",
-      "trustKeys": {
-        "acme-2023": "<blob>"
-      },
+      "trustKeys": { "acme-2023": "<blob>" },
       "install": "Linked acme-org/acme-app. Supply these secrets via PUT /api/products/acme/secrets/<name>: OIDC_SECRET__ACME, MINT_KEY__ACME.",
       "remainingSecrets": ["OIDC_SECRET__ACME", "MINT_KEY__ACME"],
       "defaults": {

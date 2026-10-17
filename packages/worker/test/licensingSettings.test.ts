@@ -32,7 +32,7 @@ import { linkRepo } from "../src/services/release/linkRepo.js";
 import { resyncRepo } from "../src/services/release/resync.js";
 import { planRepoManifest } from "../src/services/release/linkExisting.js";
 import { parseManifest } from "@polaris-key/manifest";
-import { manifestIngestFor } from "../src/core/registry.js";
+import { ingestFor } from "../src/core/ingest/pipeline.js";
 import { SERVICES, SETTINGS } from "../src/mount.js";
 import {
   COMBINED_ENTITLEMENT_MODEL_SINCE,
@@ -131,7 +131,7 @@ async function linked(d: Decl = {}, at = NOW) {
     "acme-org/acme-app",
     at,
     github(d),
-    manifestIngestFor(SERVICES),
+    ingestFor(SERVICES),
   );
   expect(res.ok).toBe(true);
   const { token, session } = await issueSession(
@@ -185,7 +185,7 @@ async function resync(ctx: Ctx, d: Decl = {}, offset = 60) {
     SLUG,
     ctx.at + offset,
     github(d),
-    manifestIngestFor(SERVICES),
+    ingestFor(SERVICES),
   );
   if (!res.ok) throw new Error(`resync refused: ${res.error}`);
   return res;

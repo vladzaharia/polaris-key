@@ -13,7 +13,7 @@ import {
   listProductsByGithubRepo,
   upsertProductSyncState,
 } from "./core/products/store.js";
-import { manifestIngestFor } from "./core/registry.js";
+import { ingestFor } from "./core/ingest/pipeline.js";
 import { systemResyncRefusal } from "./core/settingsClaims.js";
 import { SERVICES } from "./mount.js";
 import {
@@ -398,7 +398,7 @@ export async function handleGithubWebhook(
         product.slug,
         now,
         fetchImpl,
-        manifestIngestFor(SERVICES),
+        ingestFor(SERVICES),
       );
       if (result.ok) {
         await upsertProductSyncState(db, {

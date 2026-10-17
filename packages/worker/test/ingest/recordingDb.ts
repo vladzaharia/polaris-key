@@ -105,7 +105,7 @@ export class RecordingDb implements Db {
     return sorted;
   }
 
-  /** A dump of every table written, masked, in rowid order. */
+  /** A dump of every table written, masked, in rowid order (audit rows sorted: a multiset). */
   async dump(): Promise<Record<string, unknown[]>> {
     const tables = [...new Set(this.writes.map((w) => w.table))].sort();
     const out: Record<string, unknown[]> = {};
@@ -113,7 +113,7 @@ export class RecordingDb implements Db {
       const rows = await this.inner.all<Record<string, unknown>>(
         `SELECT * FROM ${t} ORDER BY rowid`,
       );
-      out[t] = rows.map((r) =>
+      const masked = rows.map((r) =>
         Object.fromEntries(
           Object.entries(r).map(([k, v]) => [
             k,
@@ -121,6 +121,13 @@ export class RecordingDb implements Db {
           ]),
         ),
       );
+      // Audit rows are a multiset (D4): the pipeline writes them in its own order.
+      out[t] =
+        t === "audit"
+          ? masked.sort((a, b) =>
+              JSON.stringify(a) < JSON.stringify(b) ? -1 : 1,
+            )
+          : masked;
     }
     return out;
   }

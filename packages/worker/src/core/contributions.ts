@@ -38,6 +38,7 @@ import type { SubjectStore } from "./accounts/subjectHooks.js";
 import type { LicenseHolderHooks } from "./licensing/licenseHolders.js";
 import type { ProductPublic } from "./products.js";
 import type { ServiceHooks } from "./hooks.js";
+import type { ManifestContributor } from "./ingest/types.js";
 import type { ServiceRegistry } from "./registry.js";
 import {
   SERVICE_SLUGS,
@@ -154,6 +155,12 @@ export type ProductDeletionContributor = (
 
 export interface ServiceContributions {
   productDeletion?: ProductDeletionContributor;
+  /**
+   * The service's rows of a `.pkey/` ingest (P0-26): checks, statements for its OWN tables,
+   * audit rows and after-commit steps, run by Core's pipeline (`core/ingest/pipeline.ts`) for
+   * every mounted service WHATEVER its enablement (a contributor reads `ctx.enabled`).
+   */
+  manifest?: ManifestContributor;
   integration?: IntegrationContributor;
   maintenance?: MaintenanceContribution;
   /** Stores of account × product data, by their stable registry name. */
@@ -173,7 +180,7 @@ export function bindServiceRegistry(registry: ServiceRegistry): void {
 }
 
 /** The bound registry, or an empty one before `mount.ts` has run. */
-function bound(): ServiceRegistry {
+export function bound(): ServiceRegistry {
   return BOUND ?? new Map();
 }
 
