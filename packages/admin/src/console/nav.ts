@@ -29,6 +29,7 @@ import {
   Blocks,
   Box,
   Boxes,
+  Cable,
   CircleArrowUp,
   Cloud,
   CloudUpload,
@@ -105,6 +106,7 @@ export type GlobalPageId =
 export type ProductPageId =
   // core
   | "overview"
+  | "integration"
   | "services"
   | "devices"
   | "users"
@@ -268,6 +270,15 @@ export const SECTIONS: NavSection[] = [
         docs: "/docs/operate/console/products/",
         inNav: true,
         shortcut: "o",
+      },
+      {
+        // ST-41: per feature, what the app needs and where it was seen working.
+        page: "integration",
+        label: "Integration",
+        path: "integration",
+        icon: Cable,
+        docs: "/docs/build/test-your-integration/",
+        inNav: true,
       },
       {
         page: "services",

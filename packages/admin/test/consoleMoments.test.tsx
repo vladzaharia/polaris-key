@@ -45,6 +45,8 @@ const fns = vi.hoisted(() => ({
   activity: vi.fn(),
   productKeys: vi.fn(),
   productSecrets: vi.fn(),
+  integration: vi.fn(),
+  productSettings: vi.fn(),
   ciPublisher: vi.fn(),
   ciTokens: vi.fn(),
   storefronts: vi.fn(),
@@ -127,6 +129,29 @@ function release(over: Record<string, unknown> = {}) {
   };
 }
 
+/** The Integration read model with one licensing feature in the given state. */
+function integrationOf(status: "verified" | "not_seen") {
+  return {
+    product: "djdl",
+    now: NOW,
+    snippet: { slug: "djdl", services: ["license"], pins: [] },
+    features: [
+      {
+        id: "licensing",
+        service: "license",
+        prerequisites: [{ id: "tiers", met: true }],
+        unavailable: false,
+        facts: {},
+        status,
+        verifiedOn: [],
+      },
+    ],
+    server: [],
+    sightings: [],
+    verified: status === "verified",
+  };
+}
+
 /** The test's own localStorage view of a moment. */
 const seen = (key: string): boolean =>
   window.localStorage.getItem(`pk-moment:${key}`) !== null;
@@ -194,6 +219,8 @@ beforeEach(() => {
   fns.activity.mockResolvedValue({ items: [], nextCursor: null });
   fns.productKeys.mockResolvedValue({ keys: [], now: NOW });
   fns.productSecrets.mockResolvedValue({ secrets: [] });
+  fns.integration.mockResolvedValue(integrationOf("verified"));
+  fns.productSettings.mockResolvedValue({ settings: [] });
   fns.ciPublisher.mockResolvedValue({ publisher: null });
   fns.ciTokens.mockResolvedValue({ tokens: [] });
   fns.storefronts.mockResolvedValue({ stores: [] });
@@ -495,30 +522,15 @@ describe("moments with no time of their own count when the console saw the produ
     ).toBeTruthy();
   });
 
-  it("product launched: the setup checklist finishing is one '<Product> is launched' line", async () => {
-    fns.product.mockResolvedValue({
-      product: product({
-        setup: {
-          secrets: [{ name: "HOOK", configured: false, sources: ["Webhook"] }],
-          warnings: [],
-        },
-      }),
-    });
+  it("product launched: every feature seen working is one '<Product> is launched' line", async () => {
+    fns.integration.mockResolvedValue(integrationOf("not_seen"));
     overview();
-    await screen.findByText("Set secret HOOK");
     await waitFor(() =>
       expect(
         window.localStorage.getItem("pk-moment-before:product-launched:djdl"),
       ).not.toBeNull(),
     );
-    fns.product.mockResolvedValue({
-      product: product({
-        setup: {
-          secrets: [{ name: "HOOK", configured: true, sources: ["Webhook"] }],
-          warnings: [],
-        },
-      }),
-    });
+    fns.integration.mockResolvedValue(integrationOf("verified"));
     await refetch();
     expect(await screen.findByText("DJDL is launched")).toBeTruthy();
     expect(seen("product-launched:djdl")).toBe(true);
@@ -531,8 +543,8 @@ describe("moments with no time of their own count when the console saw the produ
     expect(screen.queryByText("DJDL is launched")).toBeNull();
   });
 
-  it("while a list the checklist reads is loading, launched is not judged", async () => {
-    fns.licenses.mockReturnValue(new Promise(() => undefined));
+  it("while the Integration read is loading, launched is not judged", async () => {
+    fns.integration.mockReturnValue(new Promise(() => undefined));
     overview();
     await screen.findByRole("heading", { level: 1, name: "DJDL" });
     await act(async () => undefined);

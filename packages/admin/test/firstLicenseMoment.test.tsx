@@ -66,7 +66,7 @@ describe("the first license (EXPERIENCE §0.7)", () => {
     expect(within(again).queryByRole("button", { name: "Try it" })).toBeNull();
   });
 
-  it("Try it opens Overview, where the SDK quick start is", async () => {
+  it("Try it opens Integration, where the SDK picker is", async () => {
     bootLicense("#/p/djdl/license/licenses", {
       routes: { [`${API}/license/licenses`]: { licenses: [] } },
     });
@@ -76,10 +76,12 @@ describe("the first license (EXPERIENCE §0.7)", () => {
     await userEvent.click(
       within(dialog).getByRole("button", { name: "Try it" }),
     );
-    await waitFor(() => expect(window.location.hash).toBe("#/p/djdl"));
-    // …and lands on the SDK chooser, as the palette's "SDK quick start" does.
     await waitFor(() =>
-      expect(document.activeElement?.id).toBe("sdk-quick-start"),
+      expect(window.location.hash).toBe("#/p/djdl/integration"),
+    );
+    // …and lands on the SDK picker, as the palette's "SDK quick start" does.
+    await waitFor(() =>
+      expect(document.activeElement?.id).toBe("sdk-quick-start-tab-node"),
     );
   });
 

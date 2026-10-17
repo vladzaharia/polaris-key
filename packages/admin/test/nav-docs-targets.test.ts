@@ -32,6 +32,8 @@ const FEATURE_OF: Record<string, string> = {
 const SUBJECT_EXCEPTIONS: Record<string, string> = {
   // Core -> Devices is the license list.
   devices: "/docs/features/licensing/",
+  // Core -> Integration is the developer guide to checking an integration.
+  integration: "/docs/build/",
   // Platform -> Package feeds is Ship builds -> Packages.
   "platform-feeds": "/docs/features/ship-builds/packages/",
   // Platform -> Override migration is Managed config.

@@ -60,6 +60,7 @@ export const DOCS_LINKS = {
   // The Integration page (ST-41): one drop-in per host, then these two links. "Customise the
   // screens" opens the kit's page, "Integrate directly with the library" the SDK's own-UI page.
   // A path may end in a #fragment; the docs build's slug manifest checks it names a heading.
+  notSeenYet: "/docs/build/troubleshooting/#not-seen-yet",
   nodeCustomiseCli: "/docs/build/ui/frameworks/terminal-node/#piecemeal",
   nodeOwnUiCli: "/docs/build/sdks/node/your-own-ui/#cli",
   nodeCustomiseElectron: "/docs/build/ui/frameworks/react/",

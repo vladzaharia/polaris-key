@@ -2,21 +2,16 @@
  * Core → Overview (T1; docs/design/ADMIN.md §6.2): "is this product healthy, and what is it
  * running?"
  *
- * - The header's primary action follows enablement: Create license with License on, else
- *   Publish catalog with Config on, else Enable services (OVR-1).
- * - Needs attention lists operational problems only; setup steps live in the checklist, so
- *   nothing shows twice (OVR-2).
+ * - The header's primary action is the Integration card's computed next step (ST-41); with none
+ *   left it follows enablement: Create license with License on, else Publish catalog with Config
+ *   on, else Enable services (OVR-1).
+ * - Needs attention lists operational problems: a missing signing key, unset secrets, failed
+ *   syncs, recipes awaiting approval, expiring licenses (OVR-2).
  * - One tile per **enabled** service, each its section's accent, numbers from that service's own
  *   queries, loaded per tile (one failing never blanks the page; OVR-1, OVR-5).
- * - The setup checklist derives from the product's setup state and real data ("Issue a first
- *   license" is done once a license exists), links only elsewhere, never truncates silently and
- *   hides once complete; the header's "Setup checklist" action reopens it (healthy states get no
- *   pill, ADMIN.md §5.11). Each item states its status in
- *   words (OVR-2, OVR-7).
- * - Trust & SDK: the signing key in gold with copy, the JWKS URL, and a quick start per SDK
- *   (`sdkQuickStart.ts`, UX-59): the install from pkg.plrs.im with its registry line first, and
- *   an initialisation pinning every active and staged key, with a placeholder for the app's own
- *   version (OVR-3).
+ * - The Integration card (`components/IntegrationCard.tsx`) replaces the setup checklist, Trust &
+ *   SDK and the welcome: features Verified, per platform, the next step; the install and the
+ *   pins moved to the Integration page.
  * - Moments (EXPERIENCE.md §0.7; MO-11): the first catalog publish, the first release, the first
  *   store connected and the product launched each show once per product, as one line with the
  *   success check and sparks (`components/Moment.tsx`); the attention list staggers in on the
@@ -25,14 +20,7 @@
 
 import * as React from "react";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
-import {
-  AlertTriangle,
-  ArrowRight,
-  CheckCircle2,
-  Circle,
-  ListChecks,
-  Settings as SettingsIcon,
-} from "lucide-react";
+import { ArrowRight, Settings as SettingsIcon } from "lucide-react";
 import {
   ApiError,
   api,
@@ -41,7 +29,6 @@ import {
   type ReleaseDto,
   type ServiceSlug,
 } from "../../../../api.js";
-import { cn } from "../../../../lib/cn.js";
 import {
   formatCount,
   formatDate,
@@ -49,12 +36,9 @@ import {
 } from "../../../../lib/format.js";
 import { ACCESS_LABELS } from "../../../../lib/labels.js";
 import { Button } from "../../../../ui/Button.js";
-import { CopyButton } from "../../../../ui/CopyButton.js";
 import { EmptyState } from "../../../../ui/EmptyState.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
 import { IdChip } from "../../../../ui/IdChip.js";
-import { KeyDisplay } from "../../../../ui/KeyDisplay.js";
-import { Select } from "../../../../ui/Select.js";
 import { ServiceGlyph, serviceLabel } from "../../../../ui/ServiceBadge.js";
 import { PageSkeleton, Skeleton } from "../../../../ui/Skeleton.js";
 import { StatusPill } from "../../../../ui/StatusPill.js";
@@ -83,16 +67,8 @@ import { ActivityTarget, actorName, useActivityFeed } from "./Activity.js";
 import { verbFor } from "../model/activityVerbs.js";
 import { fetchDeviceSummary } from "./Devices.js";
 import { declaresSaves, noCatalog, userSettings } from "../../sync/data.js";
-import { fetchSigningKeys } from "./Keys.js";
-import {
-  SDK_OPTIONS,
-  SDK_QUICK_START_ID,
-  sdkSetup,
-  trustPins,
-  type SdkId,
-} from "../model/sdkQuickStart.js";
-import { SdkSetupBlocks } from "../components/SdkSetupBlocks.js";
-import { useWelcome, WelcomeHeader } from "./Welcome.js";
+import { IntegrationCard } from "../components/IntegrationCard.js";
+import { nextStep } from "../model/integration.js";
 
 const DAY = 86_400;
 const SERVICE_ORDER: ServiceSlug[] = [
@@ -164,28 +140,33 @@ function OverviewBody({
     queryFn: () => api.licenses(slug),
     enabled: on(p, "license"),
   });
-  const { items: checklist, settled } = useChecklist(
-    slug,
-    p,
-    licenses.data?.licenses.length,
-  );
-  const [showChecklist, setShowChecklist] = React.useState(false);
-  const complete = checklist.every((i) => i.state === "done");
-  // Launched: every setup step done, judged only once every input has loaded (a list still
-  // loading is not a step done, and the products list's row is not the product's own read).
+  const integration = useQuery({
+    queryKey: qk.integration(slug),
+    queryFn: () => api.integration(slug),
+    enabled: enabled.length > 0,
+  });
+  const view = integration.data;
+  // Launched: every enabled feature has been seen working, judged only once the read model has
+  // answered (and not from the products list's row standing in for the product).
   const launched: MomentObservation =
-    enabled.length > 0 &&
-    !placeholder &&
-    settled &&
-    (!on(p, "license") || licenses.data !== undefined)
-      ? { state: complete ? "after" : "before" }
+    enabled.length > 0 && !placeholder && view && view.features.length > 0
+      ? {
+          state: view.features.every((f) => f.status === "verified")
+            ? "after"
+            : "before",
+        }
       : UNKNOWN;
   const attention = useAttention(slug, p, licenses.data?.licenses);
   const sync = p.setup?.sync;
-  // A product created a moment ago lands here with a one-time welcome (UX-20, EXPERIENCE.md S1).
-  const [welcome, dismissWelcome] = useWelcome(slug);
+  const next = view
+    ? nextStep(slug, view, Boolean(p.signing?.publicKey))
+    : null;
 
-  const primary = on(p, "license") ? (
+  const primary = next ? (
+    <Button asChild>
+      <Link to={next.to}>{next.text}</Link>
+    </Button>
+  ) : on(p, "license") ? (
     <Button asChild>
       <Link to={r.licenses(slug)}>Create license</Link>
     </Button>
@@ -223,26 +204,11 @@ function OverviewBody({
               icon: <SettingsIcon aria-hidden />,
               onSelect: () => navigate(r.settings(slug)),
             },
-            // A finished checklist is hidden, and healthy states get no pill (pills mean
-            // attention, ADMIN.md §5.11): it comes back from here instead of a "Setup
-            // complete" chip.
-            ...(complete && !showChecklist
-              ? [
-                  {
-                    label: "Setup checklist",
-                    icon: <ListChecks aria-hidden />,
-                    onSelect: () => setShowChecklist(true),
-                  },
-                ]
-              : []),
           ]}
         />
       }
       attention={
         <>
-          {welcome ? (
-            <WelcomeHeader welcome={welcome} onDismiss={dismissWelcome} />
-          ) : null}
           <OverviewMoments slug={slug} product={p} launched={launched} />
           <AttentionList items={attention} stagger={firstLoad} />
         </>
@@ -274,20 +240,14 @@ function OverviewBody({
         </div>
       }
       primary={
-        !complete || showChecklist ? (
-          <ChecklistPanel
-            items={checklist}
-            onHide={complete ? () => setShowChecklist(false) : undefined}
-          />
+        enabled.length > 0 ? (
+          <IntegrationCard slug={slug} query={integration} next={next} />
         ) : (
           <RecentActivity slug={slug} />
         )
       }
     >
-      {/* Trust & SDK carries a code sample and is far taller than the checklist or the activity
-          feed: it takes its own full-width row, so no card stretches to match it. */}
-      <TrustPanel slug={slug} product={p} />
-      {!complete || showChecklist ? <RecentActivity slug={slug} /> : null}
+      {enabled.length > 0 ? <RecentActivity slug={slug} /> : null}
     </DashboardTemplate>
   );
 }
@@ -301,6 +261,25 @@ function useAttention(
 ): AttentionItem[] {
   const items: AttentionItem[] = [];
   const setup = p.setup;
+  if (!p.signing?.publicKey) {
+    items.push({
+      id: "signing",
+      tone: "warning",
+      object: "Signing key",
+      reason: "Nothing can be signed until one is activated.",
+      action: { label: "Keys & secrets", href: r.keys(slug) },
+    });
+  }
+  for (const sec of setup?.secrets ?? []) {
+    if (sec.configured) continue;
+    items.push({
+      id: `secret-${sec.name}`,
+      tone: "warning",
+      object: `Secret ${sec.name}`,
+      reason: "Not set.",
+      action: { label: "Set", href: r.keys(slug) },
+    });
+  }
   if (setup?.sync?.status === "error") {
     items.push({
       id: "sync",
@@ -601,213 +580,6 @@ function moduleOf(
   return modules.find((m) => m.id === id) as
     | Record<string, unknown>
     | undefined;
-}
-
-// ── Checklist ──────────────────────────────────────────────────────────────────────────────────
-
-type ItemState = "done" | "todo" | "problem";
-
-interface ChecklistItem {
-  id: string;
-  label: string;
-  state: ItemState;
-  action?: { label: string; href: string };
-}
-
-function useChecklist(
-  slug: string,
-  p: ProductDetail,
-  licenseCount: number | undefined,
-): {
-  items: ChecklistItem[];
-  /** Every query the items read has answered (a 404 catalog is an answer: unpublished). */
-  settled: boolean;
-} {
-  const catalog = useQuery({
-    queryKey: qk.catalog(slug),
-    queryFn: () => api.schema(slug),
-    enabled: on(p, "config"),
-    retry: false,
-  });
-  const items: ChecklistItem[] = [];
-  const signing = Boolean(p.signing?.publicKey);
-  items.push({
-    id: "signing",
-    label: signing
-      ? "Signing key active"
-      : "Prepare and activate a signing key",
-    state: signing ? "done" : "problem",
-    action: signing
-      ? undefined
-      : { label: "Keys & secrets", href: r.keys(slug) },
-  });
-  for (const s of p.setup?.secrets ?? []) {
-    items.push({
-      id: `secret-${s.name}`,
-      label: s.configured ? `Secret ${s.name} set` : `Set secret ${s.name}`,
-      state: s.configured ? "done" : "problem",
-      action: s.configured ? undefined : { label: "Set", href: r.keys(slug) },
-    });
-  }
-  // A catalog that failed to load is unknown, not unpublished: say nothing rather than "To do".
-  const catalogUnknown =
-    catalog.isError &&
-    !(catalog.error instanceof ApiError && catalog.error.status === 404);
-  if (on(p, "config") && !catalogUnknown) {
-    const published =
-      catalog.data !== undefined && (catalog.data.entries?.length ?? 0) > 0;
-    items.push({
-      id: "catalog",
-      label: published ? "Catalog published" : "Publish a catalog",
-      state: published ? "done" : "todo",
-      action: published
-        ? undefined
-        : { label: "Catalog", href: r.catalog(slug) },
-    });
-  }
-  if (on(p, "license") && licenseCount !== undefined) {
-    items.push({
-      id: "license",
-      label:
-        licenseCount > 0 ? "First license issued" : "Issue a first license",
-      state: licenseCount > 0 ? "done" : "todo",
-      action:
-        licenseCount > 0
-          ? undefined
-          : { label: "Create", href: r.licenses(slug) },
-    });
-  }
-  const release = moduleOf(p, "release");
-  if (on(p, "release") && release && release.status !== "not-configured") {
-    const ok = release.configured === true;
-    items.push({
-      id: "release",
-      label: ok
-        ? "Release source configured"
-        : `Finish release setup: ${((release.missing as string[]) ?? []).join(", ")}`,
-      state: ok ? "done" : "problem",
-      action: ok ? undefined : { label: "Releases", href: r.releases(slug) },
-    });
-  }
-  const edge = moduleOf(p, "edgeMint");
-  if (on(p, "config") && edge && edge.status !== "not-configured") {
-    const ok = edge.configured === true;
-    items.push({
-      id: "edge",
-      label: ok ? "Edge-mint recipes approved" : "Approve edge-mint recipes",
-      state: ok ? "done" : "todo",
-      action: ok ? undefined : { label: "Edge mint", href: r.edgeMint(slug) },
-    });
-  }
-  const settled =
-    !on(p, "config") ||
-    catalog.data !== undefined ||
-    (catalog.isError && !catalogUnknown);
-  return { items, settled };
-}
-
-const ITEM_STATE: Record<
-  ItemState,
-  { word: string; icon: React.ReactNode; className: string }
-> = {
-  done: {
-    word: "Done",
-    icon: <CheckCircle2 aria-hidden className="size-4" />,
-    className: "text-success",
-  },
-  todo: {
-    word: "To do",
-    icon: <Circle aria-hidden className="size-4" />,
-    className: "text-fg-muted",
-  },
-  problem: {
-    word: "Needs attention",
-    icon: <AlertTriangle aria-hidden className="size-4" />,
-    className: "text-warning",
-  },
-};
-
-const VISIBLE_ITEMS = 5;
-
-function ChecklistPanel({
-  items,
-  onHide,
-}: {
-  items: ChecklistItem[];
-  onHide?: () => void;
-}): React.ReactElement {
-  const [all, setAll] = React.useState(false);
-  // Open items first, so "Show more" never hides one that needs doing.
-  const sorted = [...items].sort(
-    (a, b) => Number(a.state === "done") - Number(b.state === "done"),
-  );
-  const shown = all ? sorted : sorted.slice(0, VISIBLE_ITEMS);
-  const done = items.filter((i) => i.state === "done").length;
-  return (
-    <Panel
-      title="Setup"
-      action={
-        <span className="flex items-center gap-2">
-          {done === items.length ? (
-            <span className="text-xs text-fg-muted">All done</span>
-          ) : (
-            <StatusPill tone="warning" icon={false} size="sm">
-              {done} of {items.length} done
-            </StatusPill>
-          )}
-          {onHide ? (
-            <Button variant="ghost" size="sm" onClick={onHide}>
-              Hide
-            </Button>
-          ) : null}
-        </span>
-      }
-    >
-      <ul className="divide-y divide-border">
-        {shown.map((item) => {
-          const st = ITEM_STATE[item.state];
-          return (
-            <li
-              key={item.id}
-              className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2 first:pt-0 last:pb-0"
-            >
-              <span
-                className={cn(
-                  "inline-flex items-center gap-1.5 text-xs font-medium",
-                  st.className,
-                )}
-              >
-                {st.icon}
-                {st.word}
-              </span>
-              <span className="min-w-0 flex-1 text-sm text-fg">
-                {item.label}
-              </span>
-              {item.action ? (
-                <Link
-                  to={item.action.href}
-                  className="inline-flex items-center gap-1 text-sm text-accent-fg underline-offset-4 hover:underline"
-                >
-                  {item.action.label}
-                  <ArrowRight aria-hidden className="size-3.5" />
-                </Link>
-              ) : null}
-            </li>
-          );
-        })}
-      </ul>
-      {sorted.length > VISIBLE_ITEMS ? (
-        <Button
-          variant="link"
-          size="sm"
-          className="mt-2"
-          onClick={() => setAll((v) => !v)}
-        >
-          {all ? "Show fewer" : `Show ${sorted.length - VISIBLE_ITEMS} more`}
-        </Button>
-      ) : null}
-    </Panel>
-  );
 }
 
 // ── Service tiles ──────────────────────────────────────────────────────────────────────────────
@@ -1190,90 +962,6 @@ function SyncTile({ slug }: { slug: string }): React.ReactElement {
         </>
       ) : null}
     </TileFrame>
-  );
-}
-
-// ── Trust & SDK ────────────────────────────────────────────────────────────────────────────────
-
-function TrustPanel({
-  slug,
-  product: p,
-}: {
-  slug: string;
-  product: ProductDetail;
-}): React.ReactElement {
-  const [sdk, setSdk] = React.useState<SdkId>("node");
-  // Every key an app pins: active plus staged, from the authenticated admin API (D16).
-  const keys = useQuery({
-    queryKey: qk.keys(slug),
-    queryFn: () => fetchSigningKeys(slug),
-  });
-  const origin = typeof window !== "undefined" ? window.location.origin : "";
-  const jwks = p.jwksUrl ? `${origin}${p.jwksUrl}` : undefined;
-  const kid = p.signing?.kid ?? p.signingKid;
-  const pub = p.signing?.publicKey;
-  const services = SERVICE_ORDER.filter((s) => on(p, s));
-  const pins = trustPins(keys.data?.keys, { kid, publicKey: pub });
-  const staged = pins.length > 1;
-  const setup = sdkSetup(sdk, { slug, origin, pins, services });
-  return (
-    <Panel
-      title="Trust & SDK"
-      action={
-        <Link
-          to={r.keys(slug)}
-          className="inline-flex items-center gap-1 text-sm text-accent-fg underline-offset-4 hover:underline"
-        >
-          Keys & secrets
-          <ArrowRight aria-hidden className="size-3.5" />
-        </Link>
-      }
-    >
-      <div className="space-y-4">
-        {pub ? (
-          <KeyDisplay
-            label="Signing key"
-            kind="signing"
-            kid={kid}
-            status="active"
-            value={pub}
-          />
-        ) : (
-          <p className="text-sm text-fg-muted">
-            No active signing key: nothing can be signed until one is activated.
-          </p>
-        )}
-        {jwks ? (
-          <div className="space-y-1">
-            <p className="text-xs font-medium text-fg-muted">JWKS</p>
-            <p className="flex items-center gap-1">
-              <code className="min-w-0 flex-1 font-mono text-xs text-fg [overflow-wrap:anywhere]">
-                {jwks}
-              </code>
-              <CopyButton value={jwks} label="Copy the JWKS URL" />
-            </p>
-          </div>
-        ) : null}
-        <div className="space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <label
-              htmlFor={SDK_QUICK_START_ID}
-              className="text-xs font-medium text-fg-muted"
-            >
-              SDK quick start
-            </label>
-            <Select
-              id={SDK_QUICK_START_ID}
-              className="w-auto min-w-44"
-              value={sdk}
-              onChange={(v) => v && setSdk(v as SdkId)}
-              options={SDK_OPTIONS}
-            />
-          </div>
-          <SdkSetupBlocks setup={setup} staged={staged} />
-        </div>
-      </div>
-    </Panel>
   );
 }
 

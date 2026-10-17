@@ -48,6 +48,7 @@ export const AREA_ACCENTS: Partial<Record<AreaId, string>> = {
 /** The area of every product page. */
 const PRODUCT_PAGE_AREAS: Record<ProductPageId, AreaId> = {
   overview: "core",
+  integration: "core",
   services: "core",
   devices: "core",
   users: "core",

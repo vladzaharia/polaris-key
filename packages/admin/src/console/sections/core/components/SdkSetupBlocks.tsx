@@ -1,5 +1,5 @@
 /**
- * The install, configuration and start blocks of Overview's SDK quick start, from `renderSdkSetup`
+ * The install, configuration and start blocks of the Integration page, from `renderSdkSetup`
  * (SP-33a). Install comes first with its registry line; the configuration carries the trust pins;
  * the start is the drop-in only.
  */
@@ -13,9 +13,12 @@ import { codeLanguage } from "../model/sdkQuickStart.js";
 export function SdkSetupBlocks({
   setup,
   staged,
+  showStart = true,
 }: {
   setup: SdkSetup;
   staged: boolean;
+  /** The drop-in start; the Integration page shows it per feature instead. */
+  showStart?: boolean;
 }): React.ReactElement {
   const { install, installNote, config, start, warnings } = setup;
   return (
@@ -64,15 +67,17 @@ export function SdkSetupBlocks({
           wrap
         />
       </div>
-      <div className="space-y-1.5">
-        <p className="text-xs font-medium text-fg-muted">{start.title}</p>
-        <CodeBlock
-          code={start.code}
-          language={codeLanguage(start.language)}
-          filename={start.filename}
-          wrap
-        />
-      </div>
+      {showStart ? (
+        <div className="space-y-1.5">
+          <p className="text-xs font-medium text-fg-muted">{start.title}</p>
+          <CodeBlock
+            code={start.code}
+            language={codeLanguage(start.language)}
+            filename={start.filename}
+            wrap
+          />
+        </div>
+      ) : null}
     </>
   );
 }

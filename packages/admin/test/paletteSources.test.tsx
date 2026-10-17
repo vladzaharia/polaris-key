@@ -347,7 +347,7 @@ describe("the palette in the console", () => {
     expect(updates.getAttribute("aria-disabled")).toBe("true");
   });
 
-  it("“sdk” finds the SDK quick start, which opens Overview on the SDK chooser (UX-59)", async () => {
+  it("“sdk” finds the SDK quick start, which opens Integration on the SDK picker (UX-59)", async () => {
     boot("#/p/djdl/activity", { services: ALL_ON });
     await screen.findByRole("navigation", { name: "Console" });
     const dialog = await openPalette();
@@ -356,9 +356,11 @@ describe("the palette in the console", () => {
       expect(groupLabels(dialog, "Actions")[0]).toMatch(/^SDK quick start/),
     );
     await userEvent.keyboard("{Enter}");
-    await waitFor(() => expect(window.location.hash).toBe("#/p/djdl"));
     await waitFor(() =>
-      expect(document.activeElement?.id).toBe("sdk-quick-start"),
+      expect(window.location.hash).toBe("#/p/djdl/integration"),
+    );
+    await waitFor(() =>
+      expect(document.activeElement?.id).toBe("sdk-quick-start-tab-node"),
     );
   });
 

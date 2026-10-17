@@ -1,6 +1,7 @@
 import * as React from "react";
 import { ActivityPage } from "./pages/Activity.js";
 import { DevicesPage } from "./pages/Devices.js";
+import { IntegrationPage } from "./pages/Integration.js";
 import { KeysPage } from "./pages/Keys.js";
 import { OverviewPage } from "./pages/Overview.js";
 import { PresentationPage } from "./pages/Presentation.js";
@@ -28,6 +29,8 @@ export default function CorePages({
   switch (route.page) {
     case "overview":
       return <OverviewPage slug={slug} />;
+    case "integration":
+      return <IntegrationPage slug={slug} />;
     case "devices":
       return <DevicesPage slug={slug} deviceId={route.id} />;
     case "users":

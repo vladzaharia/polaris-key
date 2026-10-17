@@ -20,6 +20,7 @@ const SHOTS = process.env.PK_SHOTS_DIR;
 
 const PAGES: { name: string; hash: string; title: string }[] = [
   { name: "overview", hash: "#/p/djdl", title: "DJDL" },
+  { name: "integration", hash: "#/p/djdl/integration", title: "Integration" },
   { name: "services", hash: "#/p/djdl/settings/features", title: "Settings" },
   { name: "devices", hash: "#/p/djdl/devices", title: "Devices" },
   {
@@ -204,6 +205,9 @@ describe("Core pages under the Worker's CSP", () => {
       ["#/p/djdl", "DJDL", { width: 1440, height: 900 }],
       ["#/p/djdl/settings/features", "Settings", { width: 1440, height: 900 }],
       ["#/p/djdl/settings", "Settings", { width: 1440, height: 900 }],
+      ["#/p/djdl/integration", "Integration", { width: 1440, height: 900 }],
+      ["#/p/djdl/integration", "Integration", { width: 390, height: 844 }],
+      ["#/p/djdl/integration", "Integration", { width: 360, height: 740 }],
       ["#/p/djdl/activity", "Activity", { width: 1440, height: 900 }],
       ["#/p/djdl/settings/features", "Settings", { width: 390, height: 844 }],
       ["#/p/djdl/devices", "Devices", { width: 390, height: 844 }],

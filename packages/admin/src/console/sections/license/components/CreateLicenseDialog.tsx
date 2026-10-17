@@ -10,7 +10,7 @@
  *   heading that takes focus on every step change, each step and the result announced once,
  *   primaries that name their action, and a draft that Escape cannot drop without asking.
  * - The product's first license (EXPERIENCE.md §0.7; MO-11) is a moment: Done carries the success
- *   check and sparks, once per product, and a **Try it** that opens the SDK quick start on Overview.
+ *   check and sparks, once per product, and a **Try it** that opens Integration.
  */
 
 import * as React from "react";
@@ -637,8 +637,8 @@ export function CreateLicenseDialog({
                 title={`${product?.name ?? slug}'s first license`}
                 className="rounded-md border border-border bg-surface-raised p-3"
               >
-                Try it in your app: the SDK quick start on Overview installs the
-                SDK and pins your signing key.
+                Try it in your app: Integration installs the SDK and pins your
+                signing key.
               </MomentLine>
             ) : undefined
           }
@@ -652,9 +652,9 @@ export function CreateLicenseDialog({
                   }
                   onClick={() => {
                     close();
-                    navigate(r.overview(slug));
-                    // Lands on the SDK chooser, as the palette's "SDK quick start" does.
-                    focusWhenReady(SDK_QUICK_START_ID);
+                    navigate(r.integration(slug));
+                    // Lands on the SDK picker, as the palette's "SDK quick start" does.
+                    focusWhenReady(`${SDK_QUICK_START_ID}-tab-node`);
                   }}
                 >
                   Try it
