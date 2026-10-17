@@ -68,6 +68,8 @@ export const SETTING_HOMES: Readonly<Record<string, SettingHome>> = {
   "core.presentation": manifest("product"),
   // `PUT …/trust-policy` exists in the Worker; no console page calls it.
   "core.trustPolicy": API,
+  // The wizards' saved choices (ST-39): written by their own steps, never a settings control.
+  "core.setup": API,
   "core.services": at("services", "Enabled services"),
   "core.keys": at("keys", "Signing keys"),
   // The manifest names the secrets and the console sets each value, sealed.
