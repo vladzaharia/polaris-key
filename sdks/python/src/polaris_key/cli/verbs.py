@@ -19,8 +19,8 @@ state, the last one ``"event": "result"``; never prompts), ``--no-color`` and ``
 ``devices``         ``list`` (default) · ``rename <id> <label>`` · ``deauthorize <id>``
 ``config``          ``list`` · ``get <key>`` · ``set <key> <value>`` · ``reset <key>`` (and the
                     v3 shorthand ``config <key>``)
-``secret``          ``secret <key>``: whether a managed secret is present (never printed)
-``mint``            ``mint <recipe>``: an edge-minted token's expiry (never printed)
+``secret``          ``secret <key>``: whether a managed secret is present; ``--reveal`` prints it
+``mint``            ``mint <recipe>``: an edge-minted token; ``--reveal`` prints it
 ``update``          ``check`` (default) · ``download --to <path>`` · ``apply``, with progress
 ``changelog``       the published releases, newest first
 ``packs``           ``status`` (default) · ``ensure <pack…>`` with progress
@@ -116,9 +116,20 @@ def activate(client: Any, ns: Dict[str, Any]) -> CommandResult:
             stdin=_NoPrompt(),
         )
     except ValueError as e:
-        if not t.env.interactive:
+        if ns.get("key_stdin"):
             return _done(_flows().usage(t, f"activate --key-stdin  ({e})"), ns)
-        key = None  # masked entry (UI-KITS §4.3)
+        # No source named: a piped stdin is read without --key-stdin, within a bound; a terminal
+        # prompts; anything else says there is no key.
+        stdin = t.device.inp
+        kind = core.stdin_kind(stdin)
+        if kind in ("file", "fifo", "socket"):
+            key = core.read_piped_key(stdin)
+            if key is None:
+                return _done(_flows().no_key(t, piped=True), ns)
+        elif t.env.interactive:
+            key = None  # masked entry (UI-KITS §4.3)
+        else:
+            return _done(_flows().no_key(t, piped=kind != "tty"), ns)
     except OSError as e:
         return _done(_flows().usage(t, f"activate --key-file <path>  ({e})"), ns)
     return _done(_flows().activate(client, t, key), ns)
@@ -168,12 +179,18 @@ def config(client: Any, ns: Dict[str, Any]) -> CommandResult:
 
 def secret(client: Any, ns: Dict[str, Any]) -> CommandResult:
     t = _term(client, ns, "secret")
-    return _done(_flows().secret(client, t, list(ns.get("words") or [])), ns)
+    out = _flows().secret(
+        client, t, list(ns.get("words") or []), reveal=bool(ns.get("reveal")), allow_workflow_commands=bool(ns.get("allow_workflow_commands"))
+    )
+    return _done(out, ns)
 
 
 def mint(client: Any, ns: Dict[str, Any]) -> CommandResult:
     t = _term(client, ns, "mint")
-    return _done(_flows().mint(client, t, list(ns.get("words") or [])), ns)
+    out = _flows().mint(
+        client, t, list(ns.get("words") or []), reveal=bool(ns.get("reveal")), allow_workflow_commands=bool(ns.get("allow_workflow_commands"))
+    )
+    return _done(out, ns)
 
 
 # ── release / update ─────────────────────────────────────────────────────────────────
@@ -277,6 +294,10 @@ _SIGN_IN = (
     Opt("attach", "flag", "Offer to attach this device's free license to the account."),
     Opt("no-qr", "flag", "Accepted for compatibility; sign-in shows no QR in a terminal."),
 )
+_REVEAL = (
+    Opt("reveal", "flag", "Print the value."),
+    Opt("allow-workflow-commands", "flag", "Print the value even if a CI log would run a line of it as a command."),
+)
 _YES = (Opt("yes", "flag", "Do not ask for confirmation."),)
 
 #: Every verb. ``login`` and ``logout`` are ``sign-in`` and ``sign-out`` (SIGN-IN.md §4.15).
@@ -294,8 +315,8 @@ VERBS: Tuple[Verb, ...] = (
     Verb("devices", "devices", "list | rename <id> <label> | deauthorize <id>", devices, words=True, opts=_YES),
     Verb("config", "config", "list | get <key> | set <key> <value> | reset <key>", config, words=True,
          opts=(Opt("fallback", "str", "Value if the key is unset (get)."),)),
-    Verb("secret", "config", "Whether a managed secret is present (never printed).", secret, words=True),
-    Verb("mint", "config", "Mint an edge token through a recipe (never printed).", mint, words=True),
+    Verb("secret", "config", "A managed secret; --reveal prints it.", secret, words=True, opts=_REVEAL),
+    Verb("mint", "config", "Mint an edge token through a recipe; --reveal prints it.", mint, words=True, opts=_REVEAL),
     Verb("update", "update", "check | download --to <path> | apply", update, words=True,
          opts=(Opt("channel", "str", "The channel to check."), Opt("to", "str", "Where to download the build."))),
     Verb("changelog", "release", "The published releases, newest first.", changelog,

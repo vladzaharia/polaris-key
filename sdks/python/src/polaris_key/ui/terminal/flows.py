@@ -15,6 +15,8 @@ example ``"pending"`` or ``"progress"``), and the last line is always ``"event":
 from __future__ import annotations
 
 import json as _json
+import os
+import re
 import sys
 import threading
 import time
@@ -47,7 +49,7 @@ from .device import Device, Worker, run_in_thread
 from .env import TermEnv, detect
 from .exit import EXIT
 from .parts import Kit
-from .text import Line, Span, plain
+from .text import Line, Palette, Span, clean, plain
 
 __all__ = ["JSON_VERSION", "Outcome", "Terminal"]
 
@@ -62,6 +64,9 @@ class Outcome:
     code: int = 0
     lines: List[Line] = field(default_factory=list)
     data: Dict[str, Any] = field(default_factory=dict)
+    #: Where the lines go: ``"stdout"``, or ``"stderr"`` for a refusal that must leave stdout empty
+    #: (a script's ``$(...)`` captures stdout; ``--json`` always prints its result on stdout).
+    stream: str = "stdout"
 
     @property
     def text(self) -> List[str]:
@@ -78,6 +83,10 @@ class Terminal:
         self.verb = verb
         #: Ctrl-C ended an interactive step (exit 130, as Node's INTERRUPT); Esc is a plain cancel.
         self.interrupted = False
+        #: Where a ``stream="stderr"`` outcome is drawn (default: ``sys.stderr``).
+        self.err: Optional[IO[str]] = None
+        #: The environment ``--reveal`` reads to know whether a CI log obeys commands.
+        self.log_env: Mapping[str, str] = os.environ
         # A resize (SIGWINCH, read by a live region) lays the kit's screens out at the new width.
         device.on_resize(self._resized)
 
@@ -136,12 +145,30 @@ class Terminal:
             self.device.emit(
                 {"v": JSON_VERSION, "command": self.verb, "event": "result", "ok": outcome.code == 0, "exit": outcome.code, **outcome.data}
             )
+        elif outcome.stream == "stderr":
+            self._stderr_device().print(outcome.lines)
         else:
             self.device.print(outcome.lines)
         return outcome.code
 
+    def _stderr_device(self) -> Device:
+        """A device on stderr: coloured only when stderr is a terminal itself."""
+        stream = self.err if self.err is not None else sys.stderr
+        env = self.env
+        if not _stream_tty(stream) and env.color != "none":
+            env = env.but(color="none", hyperlinks=False)
+        pal = self.kit.palette() if env is self.env else Palette(color="none")
+        return Device(env, pal, stdout=stream, use_rich=False)
+
     def plain(self, outcome: Outcome) -> List[str]:
         return outcome.text
+
+
+def _stream_tty(stream: Any) -> bool:
+    try:
+        return bool(stream.isatty())
+    except Exception:
+        return False
 
 
 def _now() -> int:
@@ -547,6 +574,15 @@ def usage(t: Terminal, text: str) -> Outcome:
     return Outcome(EXIT.usage, lines, {"error": "usage", "usage": f"{k.prog} {text}"})
 
 
+def no_key(t: Terminal, piped: bool) -> Outcome:
+    """``activate`` with no key to read: a terminal that cannot prompt says how to give one; a pipe
+    that held none says so. Exit 2, ``"error": "usage"``."""
+    k = t.kit
+    msg = k.t("cli.activate.noKeyPiped") if piped else k.t("cli.activate.noKey", command=f"{k.prog} activate")
+    lines = [k.header(t.verb)] + ([k.rail()] if k.decor else []) + k.step("warn", [msg]) + k.end()
+    return Outcome(EXIT.usage, lines, {"error": "usage"})
+
+
 # ── config ───────────────────────────────────────────────────────────────────────────────────
 
 
@@ -593,31 +629,86 @@ def _one_setting(client: Any, t: Terminal, key: str, *, saved: bool = False, fal
     return Outcome(EXIT.ok, screens.settings(t.kit, view, t.verb or "config"), {"key": key, "value": value, "source": source})
 
 
-# ``secret`` and ``mint`` say whether a value is there and when a token expires; they never print
-# the value or the token, on a terminal, in a pipe or under ``--json``. That is also why neither
-# needs the Node kit's CI guard (UK-14): a raw value printed inside GitHub Actions, Azure
-# Pipelines or TeamCity could carry a line the runner obeys (``::add-mask::``, ``##vso[``), so the
-# Node kit withholds such a value unless ``--allow-workflow-commands``. A change that makes these
-# verbs print a value must take that guard with it (tests/test_cli_verbs.py pins the rule).
+# ``secret`` and ``mint`` print a value only with ``--reveal`` (the ``cli`` family's ``secret-hidden``
+# and ``mint-hidden`` rows): without it they print a warning on stderr, nothing on stdout, and exit 2,
+# so a script that captured the value before cannot read an empty one as success. ``--json`` never
+# carries the value. With ``--reveal`` the value alone goes to stdout, byte for byte for a script, and
+# cleaned of control characters on a terminal. A CI runner that obeys commands in its log (GitHub
+# Actions, Azure Pipelines, TeamCity) would run a line of such a value (``::add-mask::``, ``##vso[``),
+# so there it is withheld unless ``--allow-workflow-commands`` (the Node kit's UK-14 guard).
+
+_LOG_COMMAND_START = re.compile(r"^[\s\u0085]*::")
+_LOG_COMMAND_ANYWHERE = re.compile(r"##(?:vso|teamcity)?\[", re.IGNORECASE)
 
 
-def secret(client: Any, t: Terminal, words: Sequence[str]) -> Outcome:
+def has_log_command(text: str) -> bool:
+    """Whether a line of ``text`` would run as a command in a CI log: one starting with GitHub's
+    ``::`` (after whitespace, NEL included), or holding ``##[``, ``##vso[`` or ``##teamcity[``."""
+    return any(_LOG_COMMAND_START.search(ln) or _LOG_COMMAND_ANYWHERE.search(ln) for ln in re.split(r"\r\n|\r|\n", text))
+
+
+def _reads_log_commands(env: Mapping[str, str]) -> bool:
+    return any(str(env.get(k, "")).strip().lower() not in ("", "0", "false") for k in ("GITHUB_ACTIONS", "TF_BUILD", "TEAMCITY_VERSION"))
+
+
+def _problem(t: Terminal, kind: str, title: Span, message: Optional[Span], code: int, data: Dict[str, Any], fixes: Sequence[Tuple[str, str]] = ()) -> Outcome:
+    """A warning or failure on stderr: stdout stays empty."""
+    k = t.kit
+    lines = [k.header(t.verb)] + ([k.rail()] if k.decor else []) + k.step(kind, [title])
+    if message is not None:
+        lines += k.body([message])
+    lines += screens._fixes(k, fixes) + k.end()
+    return Outcome(code, lines, data, stream="stderr")
+
+
+def _hidden(t: Terminal, title_key: str, command: str, data: Dict[str, Any], **args: Any) -> Outcome:
+    k = t.kit
+    return _problem(t, "warn", k.t(title_key, "strong", **args), None, EXIT.usage, data, [(command, "cli.option.reveal")])
+
+
+def _print_value(t: Terminal, verb: str, arg: str, value: str, data: Dict[str, Any], allow: bool) -> Outcome:
+    k = t.kit
+    tty = t.env.tty
+    if not tty and not allow and _reads_log_commands(t.log_env) and has_log_command(value):
+        command = f"{k.prog} {verb} {arg} --reveal --allow-workflow-commands"
+        return _problem(t, "fail", k.t("cli.output.workflowCommand", command=command), None, EXIT.failed, data)
+    t.device.out.write((clean(value) if tty else value) + "\n")
+    return Outcome(EXIT.ok, [], data)
+
+
+def secret(client: Any, t: Terminal, words: Sequence[str], *, reveal: bool = False, allow_workflow_commands: bool = False) -> Outcome:
     if len(words) != 1:
         return usage(t, "secret <key>")
-    present = client.config.get_secret(words[0]) is not None
-    lines = screens.diagnostic(t.kit, t.verb, [(words[0], ("present" if present else "absent") + " (values are never printed)")])
-    return Outcome(EXIT.ok if present else EXIT.failed, lines, {"key": words[0], "present": present})
+    key = words[0]
+    value = client.config.get_secret(key)
+    data = {"key": key, "present": value is not None}
+    if value is None:
+        message = t.kit.t("cli.secret.none", name=key)
+        if t.env.json:
+            return Outcome(EXIT.failed, [], data)
+        return _problem(t, "fail", message, None, EXIT.failed, data)
+    if t.env.json:
+        return Outcome(EXIT.ok, [], data)
+    if not reveal:
+        return _hidden(t, "cli.secret.hidden", f"{t.kit.prog} secret {key} --reveal", data, name=key)
+    return _print_value(t, "secret", key, value, data, allow_workflow_commands)
 
 
-def mint(client: Any, t: Terminal, words: Sequence[str]) -> Outcome:
+def mint(client: Any, t: Terminal, words: Sequence[str], *, reveal: bool = False, allow_workflow_commands: bool = False) -> Outcome:
     if len(words) != 1:
         return usage(t, "mint <recipe>")
+    recipe = words[0]
+    if not reveal and not t.env.json:
+        # Minting prints a token and nothing else, so without --reveal it asks the server for none.
+        return _hidden(t, "cli.mint.hidden", f"{t.kit.prog} mint {recipe} --reveal", {"recipe": recipe})
     try:
-        tok = client.config.mint_token(words[0])
+        tok = client.config.mint_token(recipe)
     except PolarisError as e:
         return _error_outcome(t, e.code, t.verb or "mint")
-    lines = screens.diagnostic(t.kit, t.verb, [(words[0], f"expires at {tok.expiresAt} (the token is never printed)")])
-    return Outcome(EXIT.ok, lines, {"recipe": words[0], "expiresAt": tok.expiresAt})
+    data = {"recipe": recipe, "expiresAt": tok.expiresAt}
+    if t.env.json:
+        return Outcome(EXIT.ok, [], data)
+    return _print_value(t, "mint", recipe, tok.token, data, allow_workflow_commands)
 
 
 # ── release / update ─────────────────────────────────────────────────────────────────────────

@@ -249,6 +249,87 @@ def resolve_activation_key(
     )
 
 
+#: How long ``activate`` waits for a piped key before it gives up (the ``cli`` family's ``withinMs``).
+PIPED_KEY_SECONDS = 1.5
+
+
+def stdin_kind(stream: Any) -> str:
+    """What ``stream`` is: ``tty``, ``file``, ``fifo``, ``socket``, ``char`` (``/dev/null``) or ``none``
+    (no descriptor)."""
+    import stat
+
+    try:
+        if stream.isatty():
+            return "tty"
+    except Exception:
+        pass
+    try:
+        mode = os.fstat(stream.fileno()).st_mode
+    except Exception:
+        return "none"
+    if stat.S_ISREG(mode):
+        return "file"
+    if stat.S_ISFIFO(mode):
+        return "fifo"
+    if stat.S_ISSOCK(mode):
+        return "socket"
+    return "char" if stat.S_ISCHR(mode) else "none"
+
+
+def read_piped_key(stream: Any, timeout: float = PIPED_KEY_SECONDS) -> Optional[str]:
+    """The first non-empty line of a piped stdin: a file, a FIFO or a socket. Stops at that line, at
+    the end of input or after ``timeout`` seconds, so a writer that keeps its end open cannot hold the
+    process; a character device and a terminal are never read. ``None`` when no key arrived."""
+    kind = stdin_kind(stream)
+    if kind not in ("file", "fifo", "socket"):
+        return None
+    fd = stream.fileno()
+    if kind == "file":
+        with os.fdopen(os.dup(fd), "rb") as f:
+            for raw in f:
+                line = raw.decode("utf-8", "replace").strip()
+                if line:
+                    return line
+        return None
+    import time
+
+    deadline = time.monotonic() + timeout
+    buf = b""
+    if os.name != "posix":  # pragma: no cover - select() takes no pipe on Windows
+        import threading
+
+        box: List[str] = []
+        th = threading.Thread(target=lambda: box.append(stream.readline()), daemon=True)
+        th.start()
+        th.join(timeout)
+        return (box[0].strip() or None) if box else None
+    import select
+
+    while True:
+        left = deadline - time.monotonic()
+        if left <= 0:
+            return None
+        ready, _, _ = select.select([fd], [], [], left)
+        if not ready:
+            return None
+        chunk = os.read(fd, 4096)
+        if not chunk:
+            break
+        buf += chunk
+        done = buf.split(b"\n")
+        # every complete line, and the last when the writer is still going, is a candidate only once
+        # its newline arrived
+        for line in done[:-1]:
+            text = line.decode("utf-8", "replace").strip()
+            if text:
+                return text
+    for line in buf.split(b"\n"):
+        text = line.decode("utf-8", "replace").strip()
+        if text:
+            return text
+    return None
+
+
 def build_client(opts: ClientOptions) -> "PolarisKeyClient":
     """Construct + initialise a client from collected :class:`ClientOptions`."""
     from ..client import PolarisKeyClient

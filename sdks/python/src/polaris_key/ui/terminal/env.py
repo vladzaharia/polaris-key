@@ -13,7 +13,7 @@
 * **Scheme.** The theme's ``color_scheme``, then ``PKEY_THEME``, then the terminal's background
   (OSC 11, asked only on an interactive terminal and only when the answer matters: truecolor, or
   no colour, where the QR inverts), then ``COLORFGBG``, then dark.
-* **Motion.** Spinners animate only on an interactive terminal, never with ``CI`` set, ``TERM=dumb``
+* **Motion.** Spinners animate on a terminal stdout (stdin does not matter), never with ``CI`` set, ``TERM=dumb``
   or ``theme.motion`` reduced or none (UI-KITS §4.8).
 * **TERM=dumb** (SIGN-IN.md D-77) is plain lines: no escapes, rails or glyphs, no prompts, no
   cursor control and no bracketed paste; a headless sign-in prints its code once.
@@ -197,6 +197,12 @@ def query_osc11(timeout: float = 0.12) -> Optional[str]:
         os.close(fd)
 
 
+def _is_ci(e: Mapping[str, str]) -> bool:
+    """CI is truthy for a value other than empty, ``0`` and ``false``, in ``CI``, ``GITHUB_ACTIONS``
+    or ``BUILDKITE`` (the ``cli`` family's capability rows)."""
+    return any(e.get(k, "").strip().lower() not in ("", "0", "false") for k in ("CI", "GITHUB_ACTIONS", "BUILDKITE"))
+
+
 def _isatty(stream: Any) -> bool:
     try:
         return bool(stream.isatty())
@@ -227,7 +233,7 @@ def detect(
     plat = sys.platform if platform is None else platform
     term = e.get("TERM", "")
     dumb = term == "dumb"
-    ci = bool(e.get("CI"))
+    ci = _is_ci(e)
     forced = bool(e.get("FORCE_COLOR")) and e.get("FORCE_COLOR") != "0"
     out_tty = _isatty(out)
     tty = out_tty or forced
@@ -278,9 +284,9 @@ def detect(
         width=width,
         height=rows if out_tty else 24,
         scheme=scheme,
-        hyperlinks=tty and not dumb and not ci and not json,
+        hyperlinks=out_tty and not dumb and not ci and not json,
         clipboard=interactive and not dumb,
-        motion=interactive and not dumb and motion == "system",
+        motion=out_tty and not dumb and not ci and not json and motion == "system",
         headless=headless,
         json=json,
         dumb=dumb,
