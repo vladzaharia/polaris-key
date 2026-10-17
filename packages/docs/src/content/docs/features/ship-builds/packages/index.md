@@ -87,7 +87,7 @@ Every feed routes only its own names to itself, so no other name can resolve the
 
 ## Manage feeds in the console
 
-Role required: platform admin. Both scopes use the same pages: **Platform → Package feeds** for the platform's own packages, and **Distribution → Package feeds** for one product's feeds. The product page appears while the **Packages** switch under **Ship builds** on **Core → Services** is on. The platform scope also holds the platform policy: each ecosystem's switch and size ceiling above every product's own settings.
+Role required: platform admin. Both scopes use the same pages: **Platform → Package feeds** for the platform's own packages, and **Distribution → Package feeds** for one product's feeds. The product page appears while the **Packages** switch under **Ship builds** on **Core → Services** is on. The platform policy, each ecosystem's switch and size ceiling above every product's own settings, is under **Platform → Settings → Storefront and hosting**; a feed's Settings page links to it.
 
 The **Overview** has one row per ecosystem with its status, packages, versions, last publish, access mode and registry URL. A status is **Enabled**, **Off** (with the reason) or **Not available** (the platform policy switched the ecosystem off). Before the platform's feeds exist, **Set up platform feeds** creates the system product and one feed per ecosystem. Running it again changes nothing a member set.
 

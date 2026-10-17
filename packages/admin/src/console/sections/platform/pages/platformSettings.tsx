@@ -44,6 +44,7 @@ import {
   IDENTITY_VARS,
   LimitsSection,
 } from "./platformDeploy.js";
+import { FeedPolicySection } from "./platformFeedPolicy.js";
 import { HistorySection } from "./platformHistory.js";
 import { KeyringSection, SecretsSection } from "./platformKeyring.js";
 import { LicensingSection } from "./platformLicensing.js";
@@ -229,6 +230,7 @@ export function PlatformSettingsPage(): React.ReactElement {
           {DELIVERY_VARS.map((n) => (
             <DeployRow key={n} item={deploy.get(n)} />
           ))}
+          <FeedPolicySection />
         </SettingsSection>
       ) : null}
 

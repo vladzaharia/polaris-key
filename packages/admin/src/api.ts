@@ -387,7 +387,15 @@ export interface PlatformSettingsView {
   /** Presence only: never a value, a length or a hash. */
   secrets: { name: string; set: boolean }[];
   /** Code constants that act as policy. */
-  constants: { name: string; area: string; value: number; unit: string }[];
+  constants: {
+    name: string;
+    /** The group the Limits section files it under. */
+    area: string;
+    label: string;
+    help: string;
+    value: number;
+    unit: string;
+  }[];
   warnings: { code: string; message: string; names: string[] }[];
 }
 
@@ -4052,6 +4060,12 @@ export interface FeedsOverviewDto extends FeedsHead {
     versions: number;
     lastPublishedAt: number | null;
   };
+  /** Platform scope: each ecosystem's kill switch and size ceiling (`null` before its row exists). */
+  policies?: {
+    ecosystem: FeedEcosystem;
+    label: string;
+    policy: FeedPolicy | null;
+  }[];
   /** Platform scope: every owner with a packageFeeds row. */
   owners?: {
     slug: string;

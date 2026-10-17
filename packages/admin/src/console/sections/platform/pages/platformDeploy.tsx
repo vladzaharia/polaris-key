@@ -22,6 +22,7 @@ import { Section } from "../../../../ui/Section.js";
 import { SettingsRow } from "../../../templates/Settings.js";
 
 const MIB = 1_048_576;
+const GIB = 1_073_741_824;
 
 export const IDENTITY_VARS = [
   "PLATFORM_ADMIN_GROUP",
@@ -194,39 +195,23 @@ export function DeployRow({
   );
 }
 
-const CONSTANT_LABELS: Record<string, { label: string; help: string }> = {
-  ADMIN_SESSION_TTL_SECONDS: {
-    label: "Console session length",
-    help: "A console session ends after this, however active it is.",
-  },
-  AUDIT_RETENTION_SECONDS: {
-    label: "Audit retention",
-    help: "Audit and platform trail rows older than this are deleted nightly.",
-  },
-  BLOB_LOCK_AGE_SECONDS: {
-    label: "Blob bucket age lock",
-    help: "No object younger than this can be deleted. It must match the bucket's lock rule.",
-  },
-  MIN_GC_GRACE_SECONDS: {
-    label: "Shortest collector grace",
-    help: "The collector never deletes an object unreferenced for less than this.",
-  },
-  LAZY_DELTA_MAX_BYTES_CEILING: {
-    label: "Lazy delta size ceiling",
-    help: "The measured largest payload the delta consumer can encode.",
-  },
-};
-
 function formatConstant(value: number, unit: string): string {
-  if (unit === "seconds") {
+  if (unit === "seconds" || unit === "ms") {
+    const ms = unit === "ms" ? value : value * 1000;
     // Whole days stay in days ("180 days", not "6 months"): retention is promised in days.
-    if (value >= 86_400 && value % 86_400 === 0) {
-      const days = value / 86_400;
+    if (ms >= 86_400_000 && ms % 86_400_000 === 0) {
+      const days = ms / 86_400_000;
       return `${formatCount(days)} ${days === 1 ? "day" : "days"}`;
     }
-    return formatSpan(value * 1000);
+    return formatSpan(ms);
   }
-  if (unit === "bytes") return `${formatNumber(value / MIB, 2)} MiB`;
+  if (unit === "bytes") {
+    if (value >= GIB) return `${formatNumber(value / GIB, 2)} GiB`;
+    if (value >= MIB) return `${formatNumber(value / MIB, 2)} MiB`;
+    return `${formatNumber(value / 1024, 2)} KiB`;
+  }
+  if (unit === "days")
+    return `${formatCount(value)} ${value === 1 ? "day" : "days"}`;
   return `${formatCount(value)} ${unit}`;
 }
 
@@ -238,14 +223,18 @@ export function ConstantRow({
   name: string;
 }): React.ReactElement | null {
   const c = view.constants.find((x) => x.name === name);
-  if (!c) return null;
-  const meta = CONSTANT_LABELS[c.name] ?? { label: c.name, help: "" };
+  return c ? <LimitRow limit={c} /> : null;
+}
+
+type Limit = PlatformSettingsView["constants"][number];
+
+function LimitRow({ limit: c }: { limit: Limit }): React.ReactElement {
   return (
     <SettingsRow
-      label={meta.label}
+      label={c.label}
       help={
         <>
-          {meta.help}
+          {c.help}
           <span className="mt-1 block font-mono text-xs">{c.name}</span>
         </>
       }
@@ -264,6 +253,11 @@ export function LimitsSection({
   const shown = view.constants.filter(
     (c) => c.name !== "ADMIN_SESSION_TTL_SECONDS",
   );
+  const groups = React.useMemo(() => {
+    const by = new Map<string, Limit[]>();
+    for (const c of shown) by.set(c.area, [...(by.get(c.area) ?? []), c]);
+    return [...by];
+  }, [shown]);
   if (shown.length === 0) return null;
   return (
     <Section
@@ -286,11 +280,27 @@ export function LimitsSection({
     >
       <div id="platform-limits-list" hidden={!open}>
         {open
-          ? shown.map((c) => (
-              <ConstantRow key={c.name} view={view} name={c.name} />
+          ? groups.map(([area, rows]) => (
+              <div
+                key={area}
+                role="group"
+                aria-labelledby={`platform-limits-${slugOf(area)}`}
+              >
+                <h4
+                  id={`platform-limits-${slugOf(area)}`}
+                  className="px-5 pt-4 text-sm font-semibold text-fg-strong"
+                >
+                  {area}
+                </h4>
+                {rows.map((c) => (
+                  <LimitRow key={c.name} limit={c} />
+                ))}
+              </div>
             ))
           : null}
       </div>
     </Section>
   );
 }
+
+const slugOf = (s: string): string => s.toLowerCase().replace(/\W+/g, "-");
