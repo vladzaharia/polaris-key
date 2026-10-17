@@ -368,7 +368,7 @@ export async function revokeAccountTokenAsAdmin(
        FROM account_tokens t LEFT JOIN accounts a ON a.id = t.account_id WHERE t.id = ?`,
     id,
   );
-  return row ? { ...viewOf(row, now), email: row.email } : null;
+  return row ? adminViewOf(row, now) : null;
 }
 
 /** Revoke every live token of the account; answers how many. */
