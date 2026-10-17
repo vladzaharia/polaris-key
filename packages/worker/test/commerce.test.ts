@@ -106,9 +106,7 @@ describe("commerce: binding and the licence-document grant layer", () => {
       error: { code: "not_entitled" },
       reason: "no_license",
     });
-    expect(
-      (await route(cw, "GET", "/commerce/binding")).status,
-    ).toBe(401);
+    expect((await route(cw, "GET", "/commerce/binding")).status).toBe(401);
   });
 
   it("a grant appears in the next licence document, and an operator override of the flag wins", async () => {

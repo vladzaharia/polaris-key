@@ -12,7 +12,11 @@ import { run, svgTree } from "../scripts/gen.js";
 import { SERVICE_ACCENTS, THEME_TOKENS } from "../src/generated/tokens.js";
 import { KIT_MOTION, KIT_MOTION_MEASURES } from "../src/tokens/kit.js";
 import { MOTION } from "../src/tokens/scales.js";
-import { SERVICE_ALIAS, SERVICE_IDS, STATUS_IDS } from "../src/tokens/source.js";
+import {
+  SERVICE_ALIAS,
+  SERVICE_IDS,
+  STATUS_IDS,
+} from "../src/tokens/source.js";
 
 const PKG = join(import.meta.dirname, "..");
 const css = readFileSync(join(PKG, "css", "tokens.css"), "utf8");
