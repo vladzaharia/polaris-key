@@ -37,11 +37,16 @@ export interface BackendDeps {
   sync(opts: { force: boolean }): Promise<SyncResult>;
   /** The bare transport (no Polaris redirect policy: this one follows its own). */
   fetcher(): typeof fetch;
+  /** A monotonic clock in milliseconds (tests). Default `performance.now()`. */
+  monotonic?(): number;
 }
 
 const LOOPBACK = new Set(["localhost", "127.0.0.1", "[::1]"]);
 const REDIRECTS = new Set([301, 302, 303, 307, 308]);
 const MAX_REDIRECTS = 5;
+/** The least time between two forced syncs: a backend that answers `license_stale` to every
+ *  request cannot make the client ask the Worker for a document per request. */
+export const FORCED_SYNC_MIN_INTERVAL_MS = 10_000;
 
 /** One exact origin, or a thrown `invalid-options`. */
 export function normalizeBackendOrigin(origin: string): string {
@@ -79,6 +84,7 @@ const FORBIDDEN = (url: string): PolarisError =>
 export class BackendClient {
   private readonly allowed: ReadonlySet<string>;
   private inflight: { force: boolean; promise: Promise<boolean> } | null = null;
+  private lastForced: number | null = null;
 
   constructor(
     private readonly deps: BackendDeps,
@@ -170,6 +176,15 @@ export class BackendClient {
   private shared(force: boolean): Promise<boolean> {
     const live = this.inflight;
     if (live && (live.force || !force)) return live.promise;
+    if (force) {
+      const at = this.deps.monotonic?.() ?? performance.now();
+      if (
+        this.lastForced !== null &&
+        at - this.lastForced < FORCED_SYNC_MIN_INTERVAL_MS
+      )
+        return Promise.resolve(false);
+      this.lastForced = at;
+    }
     const promise = this.deps
       .sync({ force })
       .then(

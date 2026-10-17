@@ -8330,6 +8330,22 @@ core (SP-55 to SP-57, SP-62).
   duplicate-key refusal and verify-before-parse then apply unchanged.
 - **Browser storage.** A web app keeps the document in IndexedDB beside its device token, so an XSS
   that reads one reads both; the docs say so.
+- **The client half sends the document only where the app says (SP-58).** `client.backend` refuses
+  any origin outside `backend.origins` with `backend-origin-not-allowed`, before anything is sent,
+  and names the origin only, never a path or query. A redirect cannot carry the headers elsewhere:
+  Node follows redirects itself and checks each hop; `requests` is checked before each hop, the
+  retried response included; for `httpx` the per-hop guard (`httpx_client()` or
+  `httpx_event_hooks()`) refuses before the hop is sent, and `httpx_auth()` alone is safe only with
+  `follow_redirects=False`; the browser fetch never follows a redirect. A backend that answers
+  `license_stale` to everything cannot make the client ask the Worker per request: forced syncs
+  are at least 10 s apart in every SDK.
+- **The JWS reaches the Electron renderer (SP-58).** The bridge verb `core.backendHeaders` hands the
+  licence document to the renderer, so a compromised renderer holds a bearer credential for the
+  freshness window (the replay row above). It never gets the device token or the config document.
+  When the host sets `backend.origins`, the verb answers only a request that names one of them
+  (`backend-origin-not-allowed` otherwise), so injected script cannot ask for headers for a host
+  of its choosing. Without `backend.origins` the verb answers any renderer the bridge already
+  trusts; hosts that call a backend should set it.
 
 ### Boundaries that are weaker than they look
 

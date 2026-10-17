@@ -448,6 +448,7 @@ const V4_VERBS = [
   "devices.id",
   "core.boot",
   "core.crashTags",
+  "core.backendHeaders",
   "release.fetch",
   "distribution.downloadModel",
   "distribution.thisPlatform",
@@ -796,6 +797,39 @@ const ROWS: V4Row[] = [
       environment: "stable",
       "pkey.outlet": "unknown",
     } satisfies CrashTags,
+  },
+  {
+    verb: "core.backendHeaders",
+    what: "{X-PKey-License, X-PKey-Device}; with no backend.origins any origin may ask",
+    args: { origin: "https://anywhere.test" },
+    result: {
+      "X-PKey-License": expect.any(String),
+      "X-PKey-Device": expect.any(String),
+    },
+  },
+  {
+    verb: "core.backendHeaders",
+    what: "an origin in backend.origins gets the headers",
+    args: { origin: "https://api.test" },
+    options: { extra: { backend: { origins: ["https://api.test"] } } },
+    result: {
+      "X-PKey-License": expect.any(String),
+      "X-PKey-Device": expect.any(String),
+    },
+  },
+  {
+    verb: "core.backendHeaders",
+    what: "an origin outside backend.origins, or none, rejects backend-origin-not-allowed",
+    args: { origin: "https://evil.test" },
+    options: { extra: { backend: { origins: ["https://api.test"] } } },
+    rejects: "backend-origin-not-allowed",
+  },
+  {
+    verb: "core.backendHeaders",
+    what: "no origin named while backend.origins is set rejects the same",
+    args: {},
+    options: { extra: { backend: { origins: ["https://api.test"] } } },
+    rejects: "backend-origin-not-allowed",
   },
   {
     verb: "distribution.downloadModel",

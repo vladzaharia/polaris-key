@@ -382,3 +382,37 @@ describe("through a real client", () => {
     expect(((await res.json()) as { jws: string }).jws).toBe(fresh);
   });
 });
+
+describe("forced syncs are rate limited", () => {
+  it("a second forced sync inside the interval is refused, so the backend's answer stands", async () => {
+    let clock = 1000;
+    const syncs: boolean[] = [];
+    const backend = new BackendClient(
+      {
+        held: () => ({
+          jws: "a.b.c",
+          issuedAt: 1_700_000_000,
+          expiresAt: 1_700_003_600,
+        }),
+        deviceId: () => DEVICE,
+        now: () => 1_700_001_000,
+        sync: async ({ force }) => {
+          syncs.push(force);
+          return APPLIED;
+        },
+        fetcher: () =>
+          (async () =>
+            problem(401, "license_stale")) as unknown as typeof fetch,
+        monotonic: () => clock,
+      },
+      { origins: [ORIGIN] },
+    );
+    expect((await backend.fetch(`${ORIGIN}/a`)).status).toBe(401);
+    clock += 5000;
+    expect((await backend.fetch(`${ORIGIN}/b`)).status).toBe(401);
+    expect(syncs).toEqual([true]);
+    clock += 6000;
+    await backend.fetch(`${ORIGIN}/c`);
+    expect(syncs).toEqual([true, true]);
+  });
+});
