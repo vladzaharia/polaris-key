@@ -142,6 +142,7 @@ def register_argparse(
         target = holder.add_subparsers(dest="polaris_command", required=True)
         target._pk_mount = MountInfo(plan=plan, bound=binding.bound, legacy=False, prog=shown, nested=True)  # type: ignore[attr-defined]
     legacy = verbs == "all" and namespace is None
+    _match_modern_argparse(subparsers)
     if getattr(target, "metavar", None) is None:
         target.metavar = "<command>"
     product = binding.product or host_prog
@@ -163,7 +164,9 @@ def register_argparse(
         if verb.arg:
             p.add_argument(verb.arg, nargs="?", default=None, help=verb.help)
         elif verb.words:
-            p.add_argument("words", nargs="*", metavar="ARG", help=argparse.SUPPRESS if not legacy else verb.help)
+            # ``default=None``: before Python 3.13 a bare ``nargs="*"`` positional is *required* (it is only
+            # optional with a default), so 3.9 listed it as a required argument of every verb.
+            p.add_argument("words", nargs="*", default=None, metavar="ARG", help=argparse.SUPPRESS if not legacy else verb.help)
         for o in verb.opts:
             flag = f"--{o.name}"
             hide = (not legacy) and bool(allowed) and o.name == "to" and "download" not in allowed
@@ -183,6 +186,56 @@ def register_argparse(
 
         bind_gate(GateTarget(build, binding.close, shown, plan.ids, theme))
     return subparsers
+
+
+class _IndentedWidths:
+    """Python 3.9's ``HelpFormatter.add_argument`` measures a subcommand's name *before* the
+    indent it is printed at, so the description column sits two cells to the left of where 3.10+
+    puts it. This mixin measures it where it is printed, as newer Pythons do."""
+
+    def add_argument(self, action: argparse.Action) -> None:
+        if action.help is argparse.SUPPRESS:
+            return
+        width = len(self._format_action_invocation(action)) + self._current_indent  # type: ignore[attr-defined]
+        for sub in self._iter_indented_subactions(action):  # type: ignore[attr-defined]
+            width = max(width, len(self._format_action_invocation(sub)) + self._current_indent)  # type: ignore[attr-defined]
+        self._action_max_length = max(self._action_max_length, width)  # type: ignore[attr-defined]
+        self._add_item(self._format_action, [action])  # type: ignore[attr-defined]
+
+
+def _match_modern_argparse(subparsers: "argparse._SubParsersAction") -> None:
+    """Make the host's help read the same on Python 3.9 as on 3.10+: 3.9 titles the flag section
+    "optional arguments:" (3.10 renamed it "options:") and misaligns the subcommand column
+    (see :class:`_IndentedWidths`). argparse keeps no link from a subparsers action to its parser,
+    so the parser is found through the action list they share. Nothing happens on 3.10+."""
+    if sys.version_info >= (3, 10):
+        return
+    import gc
+
+    for holder in gc.get_referrers(subparsers):
+        if not isinstance(holder, list):
+            continue
+        for d in gc.get_referrers(holder):
+            if not isinstance(d, dict):
+                continue
+            for owner in gc.get_referrers(d):
+                if not isinstance(owner, argparse.ArgumentParser) or owner._actions is not holder and subparsers not in owner._actions:
+                    continue
+                group = getattr(owner, "_optionals", None)
+                if getattr(group, "title", None) == "optional arguments":
+                    group.title = "options"
+                make = owner.formatter_class
+                if not getattr(make, "_pk_indented", False):
+
+                    def indented(*args: Any, __make: Any = make, **kwargs: Any) -> Any:
+                        fmt = __make(*args, **kwargs)
+                        if not isinstance(fmt, _IndentedWidths):
+                            fmt.__class__ = type(fmt.__class__.__name__, (_IndentedWidths, fmt.__class__), {})
+                        return fmt
+
+                    indented._pk_indented = True  # type: ignore[attr-defined]
+                    owner.formatter_class = indented  # type: ignore[assignment]
+                return
 
 
 def verbs_table() -> Any:
