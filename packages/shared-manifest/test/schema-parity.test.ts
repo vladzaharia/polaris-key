@@ -583,6 +583,32 @@ type Mutation = {
 const p = (d: Docs) => d.product as Record<string, any>;
 const rel = (d: Docs) => (d.release as Record<string, any>).release;
 const mint = (d: Docs) => p(d).edgeMint[0];
+/** U-31: a valid `mint` block (the legacy recipe minus its id). */
+const MINT_BLOCK = {
+  alg: "ES256",
+  signingKeySecret: "APPLE_MUSIC_KEY",
+  kid: "ABC123",
+  claimsTemplate: { iss: "TEAMID" },
+  ttlSeconds: 3600,
+  requires: "licensed",
+  requiredEntitlement: "acmeVpn",
+};
+/**
+ * Make the base secret entry (entries[1]) a minted token keyed `key`, carrying a `mint` block.
+ * `legacy: false` also drops the base fixture's legacy `edgeMint[]` recipe, so only the block
+ * remains.
+ */
+function mintedEntry(
+  d: Docs,
+  key: string,
+  opts: { legacy?: boolean; mint?: Record<string, unknown> } = {},
+): void {
+  const entry = (d.schema as any).entries[1];
+  entry.key = key;
+  entry.delivery = "edgeMint";
+  entry.mint = { ...MINT_BLOCK, ...opts.mint };
+  if (opts.legacy === false) delete p(d).edgeMint;
+}
 const app = (d: Docs) => rel(d).deliverables.app;
 const core3d = (d: Docs) => rel(d).deliverables["acme.core3d"];
 const l10n = (d: Docs) => rel(d).deliverables["acme.l10n"];
@@ -844,6 +870,71 @@ const MUTATIONS: Mutation[] = [
     file: "schema",
     schema: "accepts",
     mutate: (d) => ((d.schema as any).entries[1].delivery = "edgeMint"),
+  },
+  {
+    // U-31: a Minted token's recipe is a `mint` block on the entry. The base entries[1] is a
+    // clientScoped secret, so a block there belongs to no minted token; the schema's allOf says so.
+    code: "catalog_mint_not_minted",
+    file: "schema",
+    schema: "rejects",
+    mutate: (d) => ((d.schema as any).entries[1].mint = MINT_BLOCK),
+  },
+  {
+    code: "invalid_catalog_mint",
+    file: "schema",
+    schema: "rejects",
+    mutate: (d) => {
+      (d.schema as any).entries[1].delivery = "edgeMint";
+      (d.schema as any).entries[1].mint = "ES256";
+    },
+  },
+  {
+    // The block and a legacy edgeMint[] recipe of one id: refused, the block is the one location.
+    code: "edge_mint_recipe_duplicate",
+    file: "schema",
+    schema: "accepts",
+    mutate: (d) => mintedEntry(d, "applemusic"),
+  },
+  {
+    // The migration warning: a legacy recipe whose id is a minting entry moves into its block.
+    code: "catalog_edge_mint_legacy",
+    file: "schema",
+    schema: "accepts",
+    mutate: (d) => {
+      (d.schema as any).entries[1].key = "applemusic";
+      (d.schema as any).entries[1].delivery = "edgeMint";
+    },
+  },
+  {
+    // The entry key is the recipe id, held to the mint route's alphabet.
+    code: "invalid_edge_mint_id",
+    file: "schema",
+    schema: "accepts",
+    mutate: (d) => mintedEntry(d, "Apple.Music", { legacy: false }),
+  },
+  {
+    code: "invalid_edge_mint_alg",
+    file: "schema",
+    schema: "rejects",
+    mutate: (d) =>
+      mintedEntry(d, "tokens", { legacy: false, mint: { alg: "HS256" } }),
+  },
+  {
+    code: "invalid_ttl",
+    file: "schema",
+    schema: "rejects",
+    mutate: (d) =>
+      mintedEntry(d, "tokens", { legacy: false, mint: { ttlSeconds: 7200 } }),
+  },
+  {
+    code: "invalid_secret_ref",
+    file: "schema",
+    schema: "rejects",
+    mutate: (d) =>
+      mintedEntry(d, "tokens", {
+        legacy: false,
+        mint: { signingKeySecret: "lower" },
+      }),
   },
   {
     // P0-04: a name `CHANNEL_RE` accepts but the canonical alphabet (WIRE-CONTRACT-V3 §5.1)
@@ -3374,6 +3465,31 @@ describe("valid manifests pass both validators", () => {
       release: true,
       distribution: true,
     });
+  });
+
+  it("a Minted token carries its recipe in the entry's mint block (U-31)", () => {
+    const docs = base();
+    delete p(docs).edgeMint;
+    mintedEntry(docs, "applemusic", { legacy: false });
+    expect(tsCodes(docs)).toEqual([]);
+    expect(schemaAccepts(docs)).toEqual({
+      product: true,
+      schema: true,
+      release: true,
+      distribution: true,
+    });
+    const manifest = parsedOf(docs);
+    // Lifted out of the catalog, which is public, into the one recipe list.
+    expect(manifest.edgeMint.map((e) => e.id)).toEqual(["applemusic"]);
+    expect(manifest.edgeMint[0]).toMatchObject({
+      alg: "ES256",
+      signingKeySecret: "APPLE_MUSIC_KEY",
+      requires: "licensed",
+      requiredEntitlement: "acmeVpn",
+    });
+    expect(JSON.stringify(manifest.catalog.entries).includes('"mint"')).toBe(
+      false,
+    );
   });
 
   it("an architecture longer than 32 characters (the validator's CHANNEL_RE bound, P0-01)", () => {
