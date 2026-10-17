@@ -391,6 +391,7 @@
     "signin.replace.consequence": "{device}将退出登录{product}，{thisDevice}将占用它的席位。如有空余席位，{device}之后可以重新登录。我们会通过电子邮件通知你。",
     "signin.replace.inUse": "{device}正在使用中。",
     "signin.replace.confirm": "替换并继续",
+    "signin.replace.confirmNamed": "替换{device}并继续",
     "signin.replace.back": "返回",
     "signin.replace.gone": "该设备已被移除。请重新选择。",
     "signin.replace.rateLimited": "设备更改次数过多。请在{seconds, plural, other {#秒}}后重试。",

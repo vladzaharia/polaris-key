@@ -79,6 +79,11 @@ function colours(scheme: Scheme): Record<string, string> {
     "--pk-border-subtle": t.border.subtle,
     "--pk-border-strong": t.border.strong,
   };
+  // The brand's light sunken ground is a lavender that fights an accent and a host's greys: the
+  // kit's fields, rows and callouts take a neutral lift of the text colour instead.
+  if (scheme === "light")
+    out["--pk-surface-sunken"] =
+      "color-mix(in srgb, var(--pk-text-strong) 5%, var(--pk-surface-raised))";
   for (const [k, s] of Object.entries(t.status)) {
     out[`--pk-${k}`] = s.fg;
     out[`--pk-${k}-on`] = s.on;

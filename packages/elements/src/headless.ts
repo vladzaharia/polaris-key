@@ -7,4 +7,9 @@ export {
   type UiInput,
   type View,
   type ComponentName,
+  type ActivationInput,
+  type LicenseChoiceView,
+  type ReplaceView,
+  type SignInPrimitives,
+  type SignInWait,
 } from "@polaris-key/ui-core";
