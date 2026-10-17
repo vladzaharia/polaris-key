@@ -6,7 +6,7 @@
     "start": "tsx server.ts"
   },
   "dependencies": {
-    "@polaris-key/node": "^0.0.0",
+    "@polaris-key/server": "^0.0.0",
     "express": "^5.1.0"
   },
   "devDependencies": {
