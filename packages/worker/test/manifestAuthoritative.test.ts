@@ -469,7 +469,14 @@ describe("a break-glass claim (ST-20)", () => {
   it("the dry run plans the ending and lists the live claims", async () => {
     const ctx = await authoritative();
     await breakGlass(ctx);
-    const keep = await planResync(ctx.env, ctx.db, SLUG, NOW + 60, github());
+    const keep = await planResync(
+      ctx.env,
+      ctx.db,
+      SLUG,
+      NOW + 60,
+      github(),
+      ingestFor(SERVICES),
+    );
     if (!keep.ok) throw new Error(keep.error);
     expect(keep.breakGlass.map((b) => b.key)).toEqual([KEY]);
     const end = await planResync(
@@ -478,6 +485,7 @@ describe("a break-glass claim (ST-20)", () => {
       SLUG,
       NOW + 60,
       github({ devices: 4 }),
+      ingestFor(SERVICES),
     );
     if (!end.ok) throw new Error(end.error);
     expect(end.breakGlass).toEqual([]);

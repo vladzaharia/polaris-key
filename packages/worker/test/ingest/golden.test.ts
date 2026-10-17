@@ -489,6 +489,7 @@ describe("ingest golden: link existing", () => {
       URL_,
       NOW,
       ok.remote.fetch,
+      ingestFor(SERVICES),
     );
     expect(check1.ok).toBe(true);
     if (!check1.ok) return;
@@ -517,6 +518,7 @@ describe("ingest golden: link existing", () => {
       URL_,
       NOW,
       bad.remote.fetch,
+      ingestFor(SERVICES),
     );
     expect(check2.ok).toBe(true);
     if (!check2.ok) return;
@@ -622,7 +624,14 @@ describe("ingest golden: the dry runs", () => {
     check(
       "12a-dry-create",
       await record(c, (db) =>
-        prepareCreate(c.env, db, URL_, NOW, c.remote.fetch),
+        prepareCreate(
+          c.env,
+          db,
+          URL_,
+          NOW,
+          c.remote.fetch,
+          ingestFor(SERVICES),
+        ),
       ),
     );
 
@@ -631,12 +640,27 @@ describe("ingest golden: the dry runs", () => {
     check(
       "12b-dry-link",
       await record(m, (db) =>
-        prepareLink(m.env, db, SLUG, URL_, NOW, m.remote.fetch),
+        prepareLink(
+          m.env,
+          db,
+          SLUG,
+          URL_,
+          NOW,
+          m.remote.fetch,
+          ingestFor(SERVICES),
+        ),
       ),
     );
 
     const plan = (w: Linked) => (db: RecordingDb) =>
-      planResync(w.env, db, SLUG, NOW + 60, w.remote.fetch);
+      planResync(
+        w.env,
+        db,
+        SLUG,
+        NOW + 60,
+        w.remote.fetch,
+        ingestFor(SERVICES),
+      );
     const same = await linked(full());
     check("12c-plan-unchanged", await record(same, plan(same)));
     const changed = await linked(full());

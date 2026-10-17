@@ -46,7 +46,6 @@ import {
   type CreateChoices,
   type CreatedDefaults,
 } from "../../core/products/createDefaults.js";
-import { BOUND_INGEST } from "../../core/ingest/pipeline.js";
 import type { Ingest } from "../../core/ingest/types.js";
 import { repoBlobLookup } from "./assetSource.js";
 import { reservedNamesMode } from "../../core/licensing/reservedNames.js";
@@ -115,7 +114,6 @@ export function parseRepoUrl(
   return { owner: m[1], repo: m[2] };
 }
 
-export { manifestIssuerRefusal } from "../../core/ingest/shared.js";
 import {} from "../../core/ingest/shared.js";
 
 // ── create probes (UX-72: FLOWS.md §3.11 W23, W24) ─────────────────────────────────────────
@@ -509,7 +507,7 @@ export async function prepareCreate(
   repoUrl: string,
   now: number,
   fetchImpl: FetchImpl = fetch,
-  ingest?: Ingest,
+  ingest: Ingest,
 ): Promise<CreateDryRun | CreateRefusal> {
   const read = await readRepoForCreate(env, repoUrl, now, fetchImpl);
   if (!read.ok) return read;
@@ -572,7 +570,7 @@ export async function prepareCreate(
   // outside the allowlist, a catalog the validator refuses), and the trusted publisher's numeric
   // ids, resolved at create: a lookup that fails would refuse the create, so it is a problem now
   // rather than a surprise then. The pipeline's dry run lists every one.
-  const dry = await (ingest ?? BOUND_INGEST).plan(env, db, {
+  const dry = await ingest.plan(env, db, {
     mode: "create",
     product: slug,
     manifest,
@@ -641,7 +639,7 @@ export async function linkRepo(
   repoUrl: string,
   now: number,
   fetchImpl: FetchImpl = fetch,
-  ingest?: Ingest,
+  ingest: Ingest,
   opts: { manifestDigest?: string; create?: LinkCreate } = {},
 ): Promise<LinkRepoResult> {
   const read = await readRepoForCreate(env, repoUrl, now, fetchImpl);
@@ -703,11 +701,11 @@ export async function registerFromManifest(
   applied: { sha: string; files: Record<string, string> },
   now: number,
   fetchImpl: FetchImpl,
-  ingest?: Ingest,
+  ingest: Ingest,
   create?: LinkCreate,
 ): Promise<LinkRepoResult> {
   const slug = manifest.product.slug;
-  const result = await (ingest ?? BOUND_INGEST).run(env, db, {
+  const result = await ingest.run(env, db, {
     mode: "create",
     product: slug,
     manifest,

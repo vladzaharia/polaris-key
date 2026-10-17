@@ -51,7 +51,6 @@ import { digestManifestFiles, parseRepoUrl } from "./linkRepo.js";
 import { fetchPinnedManifestFiles } from "./manifestFetch.js";
 import { readLinkedManifest, resyncRepo, type ResyncResult } from "./resync.js";
 import type { Ingest } from "../../core/ingest/types.js";
-import { BOUND_INGEST } from "../../core/ingest/pipeline.js";
 import { stmtInsertReleaseConfig } from "./ingest.js";
 import { getRepoIdentity } from "./github.js";
 
@@ -134,7 +133,7 @@ export async function prepareLink(
   repoUrl: string,
   now: number,
   fetchImpl: FetchImpl = fetch,
-  ingest?: Ingest,
+  ingest: Ingest,
 ): Promise<PreparedLink> {
   const product = await getProduct(db, slug);
   if (!product) return refuse("product", "unknown product");
@@ -214,7 +213,7 @@ export async function prepareLink(
   // The refusals the apply would answer with, asked up front and all of them (plans/P0-26.md D5):
   // a link either applies whole or not at all. The publisher lookup is the apply's own, after
   // the coordinates are written, so it is not asked here.
-  const dry = await (ingest ?? BOUND_INGEST).plan(
+  const dry = await ingest.plan(
     env,
     db,
     {
@@ -291,7 +290,7 @@ export async function linkExistingProduct(
   manifestDigest: string,
   now: number,
   fetchImpl: FetchImpl = fetch,
-  ingest?: Ingest,
+  ingest: Ingest,
 ): Promise<LinkExistingResult> {
   const prepared = await prepareLink(
     env,
@@ -431,7 +430,7 @@ export async function planResync(
   slug: string,
   now: number,
   fetchImpl: FetchImpl = fetch,
-  ingest?: Ingest,
+  ingest: Ingest,
 ): Promise<PlannedResync> {
   const read = await readLinkedManifest(env, db, slug, now, fetchImpl);
   if (!read.ok) return refuse(read.check, read.error, read.errors);
@@ -439,7 +438,7 @@ export async function planResync(
 
   // Every refusal the resync would answer with, and the plan: the policy ones and a publisher
   // lookup GitHub cannot answer are `conflicts`, since that is what blocks the resync.
-  const dry = await (ingest ?? BOUND_INGEST).plan(env, db, {
+  const dry = await ingest.plan(env, db, {
     mode: "apply",
     product: slug,
     manifest,

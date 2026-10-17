@@ -1542,6 +1542,7 @@ describe("the system product (its manifest is the deploy hook's snapshot)", () =
         },
         { files: rootFiles(), sha: "c".repeat(40) },
         NOW + 1,
+        ingestFor(SERVICES),
       );
       expect(res.ok).toBe(true);
     }

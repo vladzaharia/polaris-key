@@ -28,10 +28,7 @@ import {
 } from "../src/core/console/session.js";
 import { SERVICES } from "../src/mount.js";
 import { ingestFor } from "../src/core/ingest/pipeline.js";
-import {
-  manifestIngestStatements,
-  type ServiceRegistry,
-} from "../src/core/registry.js";
+import { type ServiceRegistry } from "../src/core/registry.js";
 import { buildHooks } from "../src/core/hooks.js";
 import { loadProduct } from "../src/core/products.js";
 import { setServices } from "../src/core/products/store.js";
@@ -480,14 +477,29 @@ describe("the document's own listing (PX-W1, dist_listing and delivery().listing
   });
 });
 
+/** A registry whose `slug` facet is the real one wrapped to record the `enabled` it is told. */
+function watching(slug: "distribution", seen: boolean[]): ServiceRegistry {
+  const registry: ServiceRegistry = new Map(SERVICES);
+  const real = distributionService.contributes!.manifest!;
+  registry.set(slug, {
+    ...distributionService,
+    contributes: {
+      ...distributionService.contributes,
+      manifest: {
+        ...real,
+        prepare: (ctx) => {
+          seen.push(ctx.enabled);
+          return real.prepare(ctx);
+        },
+      },
+    },
+  });
+  return registry;
+}
+
 describe("enablement gates the ingest and the hook", () => {
-  it("with Distribution disabled its manifestIngest does not run (spy) and the hook answers null", async () => {
-    const spy = vi.fn(distributionService.manifestIngest!);
-    const registry: ServiceRegistry = new Map(SERVICES);
-    registry.set("distribution", {
-      ...distributionService,
-      manifestIngest: spy,
-    });
+  it("with Distribution disabled it is told so and writes no outlets, and the hook answers null", async () => {
+    const seen: boolean[] = [];
     const db = makeTestDb();
     const env = envFor();
     const res = await linkRepo(
@@ -503,16 +515,16 @@ describe("enablement gates the ingest and the hook", () => {
           }),
         }),
       ),
-      ingestFor(registry),
+      ingestFor(watching("distribution", seen)),
     );
     expect(res.ok).toBe(true);
-    expect(spy).not.toHaveBeenCalled();
+    expect(seen).toEqual([false]);
     expect(await db.all("SELECT * FROM dist_outlets")).toEqual([]);
     const hooks = await hooksFor(env, db);
     expect(await hooks.outletCapabilities("direct")).toBeNull();
   });
 
-  it("resync follows the STORED enablement: an operator's live off keeps the hook from running", async () => {
+  it("resync follows the STORED enablement: an operator's live off tells the contributor so", async () => {
     const { db, env } = await linked();
     await setServices(
       db,
@@ -525,97 +537,59 @@ describe("enablement gates the ingest and the hook", () => {
       "admin",
       NOW + 5,
     );
-    const spy = vi.fn(distributionService.manifestIngest!);
-    const registry: ServiceRegistry = new Map(SERVICES);
-    registry.set("distribution", {
-      ...distributionService,
-      manifestIngest: spy,
-    });
+    const seen: boolean[] = [];
     const res = await resyncRepo(
       env,
       db,
       SLUG,
       NOW + 10,
       github(files({ ".pkey/distribution.yaml": "outlets: { web: {} }\n" })),
-      ingestFor(registry),
+      ingestFor(watching("distribution", seen)),
     );
     expect(res.ok).toBe(true);
-    expect(spy).not.toHaveBeenCalled();
+    expect(seen).toEqual([false]);
     expect((await outlets(db)).every((r) => r.removed_at === null)).toBe(true);
   });
 
-  it("Core runs only enabled services' hooks, in canonical order", () => {
-    const calls: string[] = [];
+  it("Core runs every mounted contributor in canonical order, each told its enablement", async () => {
+    const calls: [string, boolean][] = [];
     const registry: ServiceRegistry = new Map(SERVICES);
     for (const slug of ["identity", "distribution", "license"] as const)
       registry.set(slug, {
         ...SERVICES.get(slug)!,
-        manifestIngest: () => {
-          calls.push(slug);
-          return [{ sql: "SELECT 1", params: [] }];
+        contributes: {
+          ...SERVICES.get(slug)!.contributes,
+          manifest: {
+            prepare: async (ctx) => {
+              calls.push([slug, ctx.enabled]);
+              return { statements: [], audits: [], updated: [] };
+            },
+          },
         },
       });
-    const services = {
-      license: { enabled: true },
-      config: { enabled: true },
-      release: { enabled: true },
-      distribution: { enabled: true },
-      update: { enabled: false },
-      identity: { enabled: false },
-      sync: { enabled: false },
-    };
-    const out = manifestIngestStatements(
-      registry,
-      {} as never,
-      SLUG,
-      services,
+    const res = await linkRepo(
+      envFor(),
+      makeTestDb(),
+      "https://github.com/vlad/dice",
       NOW,
+      github(
+        files({
+          ".pkey/product.json": PRODUCT({
+            license: { enabled: true },
+            release: { enabled: true },
+            distribution: { enabled: true },
+          }),
+        }),
+      ),
+      ingestFor(registry),
     );
-    expect(calls).toEqual(["license", "distribution"]);
-    // Identity is off, so its `manifestIngest` never ran; it is listed for its
-    // `manifestIngestAlways` (LX-06's row-backed settings), which is not behind enablement.
-    expect(out.slugs).toEqual(["license", "distribution", "identity"]);
-    // The two `manifestIngest` statements ran; identity's did not.
-    expect(out.statements.filter((st) => st.sql === "SELECT 1")).toHaveLength(
-      2,
-    );
-  });
-
-  it("manifestIngestAlways runs whatever the enablement; manifestIngest does not", () => {
-    const calls: string[] = [];
-    const registry: ServiceRegistry = new Map(SERVICES);
-    registry.set("distribution", {
-      ...distributionService,
-      manifestIngest: () => {
-        calls.push("ingest");
-        return [{ sql: "SELECT 1", params: [] }];
-      },
-      manifestIngestAlways: () => {
-        calls.push("always");
-        return [{ sql: "SELECT 2", params: [] }];
-      },
-    });
-    const services = {
-      license: { enabled: true },
-      config: { enabled: true },
-      release: { enabled: true },
-      distribution: { enabled: false },
-      update: { enabled: false },
-      identity: { enabled: false },
-      sync: { enabled: false },
-    };
-    const out = manifestIngestStatements(
-      registry,
-      {} as never,
-      SLUG,
-      services,
-      NOW,
-    );
-    expect(calls).toEqual(["always"]);
-    // License's and Identity's `manifestIngestAlways` (LX-06's row-backed settings) run too.
-    expect(out.slugs).toEqual(["license", "distribution", "identity"]);
-    expect(out.statements).toContainEqual({ sql: "SELECT 2", params: [] });
-    expect(out.statements).not.toContainEqual({ sql: "SELECT 1", params: [] });
+    expect(res.ok).toBe(true);
+    // Whatever the enablement, in the service table's order; Identity is off, and says so.
+    expect(calls).toEqual([
+      ["license", true],
+      ["distribution", true],
+      ["identity", false],
+    ]);
   });
 });
 

@@ -42,7 +42,6 @@ import {
 } from "../manifestSnapshot.js";
 import { invalidateWidenedEdgeMintApprovals } from "../edgeMintApproval.js";
 import type { ServiceRegistry } from "../registry.js";
-import { bound } from "../contributions.js";
 import { resolveServices } from "../products/createDefaults.js";
 import { coreContributor } from "./core.js";
 import { planRows } from "./rows.js";
@@ -134,16 +133,6 @@ export function ingestFor(registry: ServiceRegistry): Ingest {
     plan: (env, db, input, opts) => plan(registry, env, db, input, opts),
   };
 }
-
-/**
- * The pipeline over the registry `mount.ts` bound: what an ingest entry point uses when its
- * caller hands none. A caller that cares passes `ingestFor(SERVICES)` (P0-26b makes that
- * required, plans/P0-26.md D2).
- */
-export const BOUND_INGEST: Ingest = {
-  run: (env, db, input) => run(bound(), env, db, input),
-  plan: (env, db, input, opts) => plan(bound(), env, db, input, opts),
-};
 
 /** Phase 1: the product row, the effective service set and the contributors' contexts. */
 async function setup(

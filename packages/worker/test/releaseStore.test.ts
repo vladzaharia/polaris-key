@@ -1,3 +1,5 @@
+import { ingestFor } from "../src/core/ingest/pipeline.js";
+import { SERVICES } from "../src/mount.js";
 /**
  * The release truth store, from the writer that finally exists (P2.T2) — and the finding that
  * writer arms.
@@ -233,7 +235,14 @@ describe("resync populates the release truth store", () => {
     await seedLinkedProduct(db);
     const { fetchImpl } = stubFetch(RELEASES);
 
-    const result = await resyncRepo(envFor(), db, SLUG, NOW, fetchImpl);
+    const result = await resyncRepo(
+      envFor(),
+      db,
+      SLUG,
+      NOW,
+      fetchImpl,
+      ingestFor(SERVICES),
+    );
     expect(result).toMatchObject({ ok: true });
     expect(result.ok && result.updated).toContain("releases");
 
@@ -314,14 +323,21 @@ describe("resync populates the release truth store", () => {
     await seedLinkedProduct(db);
     const { fetchImpl } = stubFetch(RELEASES);
 
-    await resyncRepo(envFor(), db, SLUG, NOW, fetchImpl);
+    await resyncRepo(envFor(), db, SLUG, NOW, fetchImpl, ingestFor(SERVICES));
     const first = {
       metadata: await listReleaseMetadata(db, SLUG),
       artifacts: await listReleaseArtifacts(db, SLUG, "v1.2.3"),
       channels: await listReleaseChannels(db, SLUG),
     };
 
-    await resyncRepo(envFor(), db, SLUG, NOW + 60, fetchImpl);
+    await resyncRepo(
+      envFor(),
+      db,
+      SLUG,
+      NOW + 60,
+      fetchImpl,
+      ingestFor(SERVICES),
+    );
     const second = {
       metadata: await listReleaseMetadata(db, SLUG),
       artifacts: await listReleaseArtifacts(db, SLUG, "v1.2.3"),
@@ -339,7 +355,14 @@ describe("resync populates the release truth store", () => {
   it("follows a moved channel head rather than pinning the first answer", async () => {
     const db = makeTestDb();
     await seedLinkedProduct(db);
-    await resyncRepo(envFor(), db, SLUG, NOW, stubFetch(RELEASES).fetchImpl);
+    await resyncRepo(
+      envFor(),
+      db,
+      SLUG,
+      NOW,
+      stubFetch(RELEASES).fetchImpl,
+      ingestFor(SERVICES),
+    );
     expect(
       (await listReleaseChannels(db, SLUG)).find((c) => c.channel === "stable")!
         .release_id,
@@ -355,6 +378,7 @@ describe("resync populates the release truth store", () => {
       SLUG,
       NOW + 60,
       stubFetch(withNewer).fetchImpl,
+      ingestFor(SERVICES),
     );
     expect(
       (await listReleaseChannels(db, SLUG)).find((c) => c.channel === "stable")!
@@ -372,7 +396,14 @@ describe("resync populates the release truth store", () => {
     await seedLinkedProduct(db);
     const { fetchImpl } = stubFetch([], { releasesStatus: 502 });
 
-    const result = await resyncRepo(envFor(), db, SLUG, NOW, fetchImpl);
+    const result = await resyncRepo(
+      envFor(),
+      db,
+      SLUG,
+      NOW,
+      fetchImpl,
+      ingestFor(SERVICES),
+    );
     // The manifest half still applied; the truth store simply did not run, and says so by
     // omission rather than by taking the whole sync down with it.
     expect(result.ok).toBe(true);
@@ -519,6 +550,7 @@ describe("resync and the release model v2 columns (P2-03)", () => {
       SLUG,
       NOW,
       stubFetch([V110, V100]).fetchImpl,
+      ingestFor(SERVICES),
     );
     expect(await listDeliverables(db, SLUG)).toEqual([
       expect.objectContaining({ deliverable_id: "app", kind: "app" }),
@@ -540,6 +572,7 @@ describe("resync and the release model v2 columns (P2-03)", () => {
       SLUG,
       NOW + 60,
       stubFetch([backport, V110, V100]).fetchImpl,
+      ingestFor(SERVICES),
     );
     expect(await seqOf()).toEqual({ "v1.0.0": 1, "v1.1.0": 2, "v1.0.1": 3 });
     expect(
@@ -565,7 +598,7 @@ describe("resync and the release model v2 columns (P2-03)", () => {
     const db = makeTestDb();
     await seedLinkedProduct(db);
     const { fetchImpl } = stubFetch([V100]);
-    await resyncRepo(envFor(), db, SLUG, NOW, fetchImpl);
+    await resyncRepo(envFor(), db, SLUG, NOW, fetchImpl, ingestFor(SERVICES));
 
     // What P2-04's descriptor ingest writes through model.ts.
     const hash = "b".repeat(64);
@@ -612,7 +645,14 @@ describe("resync and the release model v2 columns (P2-03)", () => {
     );
     const seqBefore = (await listReleaseMetadata(db, SLUG))[0]!.seq;
 
-    await resyncRepo(envFor(), db, SLUG, NOW + 60, fetchImpl);
+    await resyncRepo(
+      envFor(),
+      db,
+      SLUG,
+      NOW + 60,
+      fetchImpl,
+      ingestFor(SERVICES),
+    );
 
     const dmg = (await listReleaseArtifacts(db, SLUG, "v1.0.0")).find(
       (a) => a.artifact_id === "41",
@@ -642,7 +682,7 @@ describe("resync and the release model v2 columns (P2-03)", () => {
     const db = makeTestDb();
     await seedLinkedProduct(db);
     const { fetchImpl } = stubFetch([V110, V100]);
-    await resyncRepo(envFor(), db, SLUG, NOW, fetchImpl);
+    await resyncRepo(envFor(), db, SLUG, NOW, fetchImpl, ingestFor(SERVICES));
 
     const STABLE = { product: SLUG, deliverableId: "app", channel: "stable" };
     await setChannelPolicy(
@@ -660,7 +700,14 @@ describe("resync and the release model v2 columns (P2-03)", () => {
     const claimed = await getChannelPolicy(db, STABLE);
     expect(claimed).toMatchObject({ source: "admin", pinned: 1 });
 
-    await resyncRepo(envFor(), db, SLUG, NOW + 60, fetchImpl);
+    await resyncRepo(
+      envFor(),
+      db,
+      SLUG,
+      NOW + 60,
+      fetchImpl,
+      ingestFor(SERVICES),
+    );
     expect(await getChannelPolicy(db, STABLE)).toEqual(claimed);
     // A manifest-sourced write (what a resync of `deliverables.app.channels` will do) is refused.
     expect(
@@ -702,9 +749,16 @@ describe("resync and the release model v2 columns (P2-03)", () => {
     const db = makeTestDb();
     await seedLinkedProduct(db);
     const { fetchImpl } = stubFetch([V100]);
-    await resyncRepo(envFor(), db, SLUG, NOW, fetchImpl);
+    await resyncRepo(envFor(), db, SLUG, NOW, fetchImpl, ingestFor(SERVICES));
     await yankRelease(db, SLUG, "v1.0.0", "bad build", "admin:ops", NOW);
-    await resyncRepo(envFor(), db, SLUG, NOW + 60, fetchImpl);
+    await resyncRepo(
+      envFor(),
+      db,
+      SLUG,
+      NOW + 60,
+      fetchImpl,
+      ingestFor(SERVICES),
+    );
     expect(await isYanked(db, SLUG, "v1.0.0")).toBe(true);
     expect(
       (await listReleaseMetadata(db, SLUG)).map((r) => r.release_id),
@@ -728,6 +782,7 @@ describe("the portal serves the populated store", () => {
       stubFetch([
         release({ assets: [asset("djdl-1.2.3-arm64.dmg", 21, 4096)] }),
       ]).fetchImpl,
+      ingestFor(SERVICES),
     );
 
     const rows = await listReleaseMetadata(db, SLUG);

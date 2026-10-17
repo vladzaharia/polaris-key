@@ -10,6 +10,8 @@
  *   - a snapshot built from four maximum-size documents is stored and read back.
  */
 
+import { ingestFor } from "../src/core/ingest/pipeline.js";
+import { SERVICES } from "../src/mount.js";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -143,6 +145,7 @@ async function linked() {
     "acme/snap",
     NOW,
     serving(DOCS).fetchImpl,
+    ingestFor(SERVICES),
   );
   expect(linkedRes.ok).toBe(true);
   return { env, ...rec, base };
@@ -187,6 +190,7 @@ describe("the manifest snapshot: one row per apply, in the apply's batch (ST-01a
       SLUG,
       NOW + 10,
       serving(next).fetchImpl,
+      ingestFor(SERVICES),
     );
     expect(first.ok).toBe(true);
     // Bookkeeping, not a manifest section: `updated` is unchanged by the snapshot.
@@ -212,6 +216,7 @@ describe("the manifest snapshot: one row per apply, in the apply's batch (ST-01a
       SLUG,
       NOW + 20,
       serving(next).fetchImpl,
+      ingestFor(SERVICES),
     );
     expect(second.ok).toBe(true);
     expect(snapshotBatches(batches)).toHaveLength(2);
@@ -253,6 +258,7 @@ describe("the manifest snapshot: one row per apply, in the apply's batch (ST-01a
       repo,
       { files, sha: deploySha },
       NOW + 1,
+      ingestFor(SERVICES),
     );
     expect(res.ok).toBe(true);
     const written = snapshotBatches(rec.batches);
@@ -284,6 +290,7 @@ describe("the manifest snapshot: one row per apply, in the apply's batch (ST-01a
         repo,
         { files, sha },
         NOW + 2,
+        ingestFor(SERVICES),
       );
       expect(again.ok).toBe(true);
       expect(
@@ -314,7 +321,14 @@ describe("the pinned fetch: one commit per apply (ST-01a)", () => {
       () => heads.shift() ?? SHA_B,
     );
 
-    const first = await resyncRepo(env, db, SLUG, NOW + 10, stub.fetchImpl);
+    const first = await resyncRepo(
+      env,
+      db,
+      SLUG,
+      NOW + 10,
+      stub.fetchImpl,
+      ingestFor(SERVICES),
+    );
     expect(first.ok).toBe(true);
     expect(stub.contentRefs.length).toBeGreaterThan(1);
     expect(stub.contentRefs.every((r) => r === SHA_A)).toBe(true);
@@ -323,7 +337,14 @@ describe("the pinned fetch: one commit per apply (ST-01a)", () => {
 
     // The branch has moved: the next apply resolves the new head and reads everything there.
     stub.contentRefs.length = 0;
-    const second = await resyncRepo(env, db, SLUG, NOW + 20, stub.fetchImpl);
+    const second = await resyncRepo(
+      env,
+      db,
+      SLUG,
+      NOW + 20,
+      stub.fetchImpl,
+      ingestFor(SERVICES),
+    );
     expect(second.ok).toBe(true);
     expect(stub.contentRefs.every((r) => r === SHA_B)).toBe(true);
     expect((await getProduct(db, SLUG))!.name).toBe("Snap B");
@@ -338,7 +359,14 @@ describe("the pinned fetch: one commit per apply (ST-01a)", () => {
       isHeadLookup(String(input))
         ? new Response("not found", { status: 404 })
         : inner.fetchImpl(input, init);
-    const res = await resyncRepo(env, db, SLUG, NOW + 10, noHead);
+    const res = await resyncRepo(
+      env,
+      db,
+      SLUG,
+      NOW + 10,
+      noHead,
+      ingestFor(SERVICES),
+    );
     expect(res).toMatchObject({
       ok: false,
       error: "default branch head lookup failed: 404",
@@ -352,7 +380,14 @@ describe("the pinned fetch: one commit per apply (ST-01a)", () => {
   it("a malformed head answer is refused the same way", async () => {
     const { env, db } = await linked();
     const stub = github(() => undefined, "refs/heads/main");
-    const res = await resyncRepo(env, db, SLUG, NOW + 10, stub.fetchImpl);
+    const res = await resyncRepo(
+      env,
+      db,
+      SLUG,
+      NOW + 10,
+      stub.fetchImpl,
+      ingestFor(SERVICES),
+    );
     expect(res).toMatchObject({
       ok: false,
       error: "default branch head: unexpected shape",
@@ -458,7 +493,16 @@ describe("a snapshot holds no secret value", () => {
     env.PLATFORM_KEK = TEST_KEK;
     const docs = { schema: SECRET_SCHEMA, product: secretProduct(SECRET) };
     expect(
-      (await linkRepo(env, base, "acme/snap", NOW, serving(docs).fetchImpl)).ok,
+      (
+        await linkRepo(
+          env,
+          base,
+          "acme/snap",
+          NOW,
+          serving(docs).fetchImpl,
+          ingestFor(SERVICES),
+        )
+      ).ok,
     ).toBe(true);
     const first = await getManifestSnapshot(base, SLUG);
     expect(first!.manifest_json).not.toContain(SECRET);
@@ -476,6 +520,7 @@ describe("a snapshot holds no secret value", () => {
       SLUG,
       NOW + 10,
       serving(next).fetchImpl,
+      ingestFor(SERVICES),
     );
     expect(res.ok).toBe(true);
     const second = await getManifestSnapshot(base, SLUG);
@@ -491,8 +536,16 @@ describe("a snapshot holds no secret value", () => {
     env.PLATFORM_KEK = TEST_KEK;
     const first = { schema: SECRET_SCHEMA, product: secretProduct(SECRET) };
     expect(
-      (await linkRepo(env, base, "acme/snap", NOW, serving(first).fetchImpl))
-        .ok,
+      (
+        await linkRepo(
+          env,
+          base,
+          "acme/snap",
+          NOW,
+          serving(first).fetchImpl,
+          ingestFor(SERVICES),
+        )
+      ).ok,
     ).toBe(true);
     const demoted = { schema: DEMOTED_SCHEMA, product: first.product };
     const res = await resyncRepo(
@@ -501,6 +554,7 @@ describe("a snapshot holds no secret value", () => {
       SLUG,
       NOW + 10,
       serving(demoted).fetchImpl,
+      ingestFor(SERVICES),
     );
     expect(res.ok).toBe(true);
     expect(await snapshotText(base)).not.toContain(SECRET);
@@ -548,6 +602,7 @@ describe("a snapshot holds no secret value", () => {
       },
       { files, sha: "c".repeat(40) },
       NOW + 1,
+      ingestFor(SERVICES),
     );
     expect(res.ok).toBe(true);
     expect(

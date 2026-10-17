@@ -99,12 +99,25 @@ Done on `wp/P0-26-ingest` (plan commit order):
   (the old link insert omitted them, so a first link lost them until the next resync), and
   `ingest` stays optional, falling back to the registry `mount.ts` bound (`BOUND_INGEST`).
 
-Left for P0-26b: the deploy hook on the pipeline (`scope: "system"`), the three dry runs and
-D5 deltas 2 and 3, deleting the old hooks and `NO_INGEST`, `ingest` required (D2), the five
-remaining seam rows (`release` -> `oidc_config` / `provisioning_config` / `edge_mint_config`
-reads in the dry run; `core/licensing/store.ts` and `core/products/store.ts` profile and schema
-writers), `settings-writes` / `settings-registry` cleanup (`setFingerprintPolicy`,
-`setAutoIssuePolicy`, `setServices` callers), and the architecture docs rewrite.
+**P0-26b (2026-10-17, branch `wp/P0-26b`).**
+
+1. The deploy hook runs on the pipeline (`scope: "system"`, D3): Core writes the product's
+   presentation, the manifest-authoritative publisher and the ended break-glass claims (as `tail`),
+   Release the `release_config` upsert and deliverables, License/Identity/Distribution only their
+   row settings, Config nothing. `linkSystemProduct` takes `env` first. Goldens 11a/11b identical.
+2. The dry runs call `Ingest.plan` (`core/ingest/plan.ts` holds `planRepoManifest`'s body, now
+   `planManifest`; the refusals are the contributors' own checks, run without stopping). D5 deltas
+   2 and 3 are goldens 14a-14c (listed in the golden header).
+3. The old hooks (`manifestIngest`, `manifestIngestAlways`, `manifestIngestFor`, the registry types),
+   `NO_INGEST` and `BOUND_INGEST` are gone; `ingest` is required (D2) in `linkRepo`, `resyncRepo`,
+   `linkExistingProduct`, `prepareCreate`, `prepareLink`, `planResync` and `linkSystemProduct`.
+4. No `P0-26` row remains in `tableCrossings`. Config owns `schemaStore.ts` and `profileStore.ts`.
+   `setFingerprintPolicy`, `setAutoIssuePolicy` and `setServices` stay: about 25 test files call
+   them, and they are not production callers; `settings-writes` lists them as before.
+5. `contribute/architecture.md` describes `contributes.manifest`.
+6. The shims are removed (`release/manifestSecrets.ts`, the `resync.ts` and `linkRepo.ts`
+   re-exports). `release/public.ts` re-exports `screenCatalog` / `withStoredSecrets` from Core for
+   the console's backfill.
 
 ## Verify
 

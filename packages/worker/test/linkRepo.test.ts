@@ -1,3 +1,5 @@
+import { ingestFor } from "../src/core/ingest/pipeline.js";
+import { SERVICES } from "../src/mount.js";
 import { stmtClaim } from "../src/core/settingsClaims.js";
 import { describe, expect, it } from "vitest";
 import { parseServices } from "../src/core/services.js";
@@ -312,6 +314,7 @@ describe("linkRepo (GitHub-forward product creation)", () => {
       "https://github.com/acme-org/acme-app",
       NOW,
       fetchImpl,
+      ingestFor(SERVICES),
     );
     expect(result.ok).toBe(true);
 
@@ -328,7 +331,14 @@ describe("linkRepo (GitHub-forward product creation)", () => {
       ".pkey/product.json": PRODUCT_JSON,
       ".pkey/release.json": releaseWith([canary]),
     });
-    const resynced = await resyncRepo(env, db, "acme", NOW + 60, fetchImpl2);
+    const resynced = await resyncRepo(
+      env,
+      db,
+      "acme",
+      NOW + 60,
+      fetchImpl2,
+      ingestFor(SERVICES),
+    );
     expect(resynced.ok).toBe(true);
     const after = await getReleaseConfig(db, "acme");
     expect(parseManualChannels(after?.manual_channels_json)).toEqual([canary]);
@@ -346,7 +356,16 @@ describe("linkRepo (GitHub-forward product creation)", () => {
       }),
     });
     expect(
-      (await linkRepo(env, db, "acme-org/acme-app", NOW, linked.fetchImpl)).ok,
+      (
+        await linkRepo(
+          env,
+          db,
+          "acme-org/acme-app",
+          NOW,
+          linked.fetchImpl,
+          ingestFor(SERVICES),
+        )
+      ).ok,
     ).toBe(true);
     expect((await getProduct(db, "acme"))?.web_origins_json).toBe(
       JSON.stringify(["https://play.acme.example", "http://localhost:8060"]),
@@ -357,7 +376,16 @@ describe("linkRepo (GitHub-forward product creation)", () => {
       ".pkey/product.json": productWith({ origins: ["https://acme.example"] }),
     });
     expect(
-      (await resyncRepo(env, db, "acme", NOW + 1, moved.fetchImpl)).ok,
+      (
+        await resyncRepo(
+          env,
+          db,
+          "acme",
+          NOW + 1,
+          moved.fetchImpl,
+          ingestFor(SERVICES),
+        )
+      ).ok,
     ).toBe(true);
     expect((await getProduct(db, "acme"))?.web_origins_json).toBe(
       JSON.stringify(["https://acme.example"]),
@@ -369,7 +397,16 @@ describe("linkRepo (GitHub-forward product creation)", () => {
       ".pkey/product.json": PRODUCT_JSON,
     });
     expect(
-      (await resyncRepo(env, db, "acme", NOW + 2, dropped.fetchImpl)).ok,
+      (
+        await resyncRepo(
+          env,
+          db,
+          "acme",
+          NOW + 2,
+          dropped.fetchImpl,
+          ingestFor(SERVICES),
+        )
+      ).ok,
     ).toBe(true);
     expect((await getProduct(db, "acme"))?.web_origins_json).toBeNull();
 
@@ -380,9 +417,18 @@ describe("linkRepo (GitHub-forward product creation)", () => {
         origins: ["https://*.acme.example"],
       }),
     });
-    expect((await resyncRepo(env, db, "acme", NOW + 3, bad.fetchImpl)).ok).toBe(
-      false,
-    );
+    expect(
+      (
+        await resyncRepo(
+          env,
+          db,
+          "acme",
+          NOW + 3,
+          bad.fetchImpl,
+          ingestFor(SERVICES),
+        )
+      ).ok,
+    ).toBe(false);
     expect((await getProduct(db, "acme"))?.web_origins_json).toBeNull();
   });
 
@@ -401,6 +447,7 @@ describe("linkRepo (GitHub-forward product creation)", () => {
       "https://github.com/acme-org/acme-app",
       NOW,
       fetchImpl,
+      ingestFor(SERVICES),
     );
     expect(result.ok).toBe(true);
     if (!result.ok) return;
@@ -473,7 +520,14 @@ describe("linkRepo (GitHub-forward product creation)", () => {
       ".pkey/product.yaml": PRODUCT_YAML,
     });
 
-    const result = await linkRepo(env, db, "yaml-org/yaml-app", NOW, fetchImpl);
+    const result = await linkRepo(
+      env,
+      db,
+      "yaml-org/yaml-app",
+      NOW,
+      fetchImpl,
+      ingestFor(SERVICES),
+    );
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.slug).toBe("yamlprod");
@@ -507,7 +561,14 @@ describe("linkRepo (GitHub-forward product creation)", () => {
       ".pkey/schema.json": SCHEMA_JSON,
     });
 
-    const result = await linkRepo(env, db, "broken-org/broken", NOW, fetchImpl);
+    const result = await linkRepo(
+      env,
+      db,
+      "broken-org/broken",
+      NOW,
+      fetchImpl,
+      ingestFor(SERVICES),
+    );
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.error).toContain("manifest");
@@ -559,6 +620,7 @@ describe("linkRepo (GitHub-forward product creation)", () => {
       "acme-org/acme-app",
       NOW,
       stubFetch(files).fetchImpl,
+      ingestFor(SERVICES),
     );
     expect(refused.ok).toBe(false);
     if (refused.ok) return;
@@ -580,6 +642,7 @@ describe("linkRepo (GitHub-forward product creation)", () => {
           "acme-org/acme-app",
           NOW,
           stubFetch(files).fetchImpl,
+          ingestFor(SERVICES),
         )
       ).ok,
     ).toBe(true);
@@ -589,6 +652,7 @@ describe("linkRepo (GitHub-forward product creation)", () => {
       "acme",
       NOW + 1,
       stubFetch(files).fetchImpl,
+      ingestFor(SERVICES),
     );
     expect(resync.ok).toBe(false);
     if (resync.ok) return;
@@ -620,6 +684,7 @@ describe("linkRepo (GitHub-forward product creation)", () => {
       "acme-org/acme-app",
       NOW,
       stubFetch(files).fetchImpl,
+      ingestFor(SERVICES),
     );
     expect(refused.ok).toBe(false);
     if (refused.ok) return;
@@ -633,6 +698,7 @@ describe("linkRepo (GitHub-forward product creation)", () => {
       "acme-org/acme-app",
       NOW,
       stubFetch(files).fetchImpl,
+      ingestFor(SERVICES),
     );
     expect(linked.ok).toBe(true);
 
@@ -648,6 +714,7 @@ describe("linkRepo (GitHub-forward product creation)", () => {
           name: "Acme \u202eexe.png",
         }),
       }).fetchImpl,
+      ingestFor(SERVICES),
     );
     expect(bidi.ok).toBe(false);
   });
@@ -674,7 +741,14 @@ describe("linkRepo (GitHub-forward product creation)", () => {
       ".pkey/release.json": RELEASE_JSON,
     });
 
-    const result = await linkRepo(env, db, "acme-org/acme-app", NOW, fetchImpl);
+    const result = await linkRepo(
+      env,
+      db,
+      "acme-org/acme-app",
+      NOW,
+      fetchImpl,
+      ingestFor(SERVICES),
+    );
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.error).toContain("invalid catalog in manifest");
@@ -695,9 +769,25 @@ describe("linkRepo (GitHub-forward product creation)", () => {
       ".pkey/release.json": RELEASE_JSON,
     });
     expect(
-      (await linkRepo(env, db, "acme-org/acme-app", NOW, good.fetchImpl)).ok,
+      (
+        await linkRepo(
+          env,
+          db,
+          "acme-org/acme-app",
+          NOW,
+          good.fetchImpl,
+          ingestFor(SERVICES),
+        )
+      ).ok,
     ).toBe(true);
-    const resync = await resyncRepo(env, db, "acme", NOW + 1, fetchImpl);
+    const resync = await resyncRepo(
+      env,
+      db,
+      "acme",
+      NOW + 1,
+      fetchImpl,
+      ingestFor(SERVICES),
+    );
     expect(resync.ok).toBe(false);
     if (resync.ok) return;
     expect(resync.error).toContain("invalid catalog in manifest");
@@ -739,7 +829,16 @@ describe("linkRepo (GitHub-forward product creation)", () => {
       });
 
       expect(
-        (await linkRepo(env, db, "acme-org/acme-app", NOW, fetchImpl)).ok,
+        (
+          await linkRepo(
+            env,
+            db,
+            "acme-org/acme-app",
+            NOW,
+            fetchImpl,
+            ingestFor(SERVICES),
+          )
+        ).ok,
       ).toBe(true);
 
       const row = await getProduct(db, "acme");
@@ -766,7 +865,16 @@ describe("linkRepo (GitHub-forward product creation)", () => {
       });
 
       expect(
-        (await linkRepo(env, db, "acme-org/acme-app", NOW, fetchImpl)).ok,
+        (
+          await linkRepo(
+            env,
+            db,
+            "acme-org/acme-app",
+            NOW,
+            fetchImpl,
+            ingestFor(SERVICES),
+          )
+        ).ok,
       ).toBe(true);
 
       expect(
@@ -792,8 +900,16 @@ describe("linkRepo (GitHub-forward product creation)", () => {
         ".pkey/release.json": RELEASE_JSON,
       });
       expect(
-        (await linkRepo(env, db, "acme-org/acme-app", NOW, linkFetch.fetchImpl))
-          .ok,
+        (
+          await linkRepo(
+            env,
+            db,
+            "acme-org/acme-app",
+            NOW,
+            linkFetch.fetchImpl,
+            ingestFor(SERVICES),
+          )
+        ).ok,
       ).toBe(true);
 
       // The repo now declares the full module set.
@@ -802,7 +918,14 @@ describe("linkRepo (GitHub-forward product creation)", () => {
         ".pkey/product.json": MODULES_PRODUCT_JSON,
         ".pkey/release.json": RELEASE_JSON,
       });
-      const resync = await resyncRepo(env, db, "acme", NOW + 1, fetchImpl);
+      const resync = await resyncRepo(
+        env,
+        db,
+        "acme",
+        NOW + 1,
+        fetchImpl,
+        ingestFor(SERVICES),
+      );
       expect(resync.ok).toBe(true);
       if (!resync.ok) return;
       expect(resync.updated).toContain("services");
@@ -823,8 +946,16 @@ describe("linkRepo (GitHub-forward product creation)", () => {
         ".pkey/release.json": RELEASE_JSON,
       });
       expect(
-        (await linkRepo(env, db, "acme-org/acme-app", NOW, linkFetch.fetchImpl))
-          .ok,
+        (
+          await linkRepo(
+            env,
+            db,
+            "acme-org/acme-app",
+            NOW,
+            linkFetch.fetchImpl,
+            ingestFor(SERVICES),
+          )
+        ).ok,
       ).toBe(true);
 
       // An operator turns Config off in the admin API, claiming the row.
@@ -850,7 +981,14 @@ describe("linkRepo (GitHub-forward product creation)", () => {
         ".pkey/product.json": MODULES_PRODUCT_JSON,
         ".pkey/release.json": RELEASE_JSON,
       });
-      const resync = await resyncRepo(env, db, "acme", NOW + 2, fetchImpl);
+      const resync = await resyncRepo(
+        env,
+        db,
+        "acme",
+        NOW + 2,
+        fetchImpl,
+        ingestFor(SERVICES),
+      );
       expect(resync.ok).toBe(true);
 
       const row = await getProduct(db, "acme");
@@ -877,7 +1015,16 @@ describe("linkRepo (GitHub-forward product creation)", () => {
         ".pkey/release.json": RELEASE_JSON,
       });
       expect(
-        (await linkRepo(env, db, "acme-org/acme-app", NOW, fetchImpl)).ok,
+        (
+          await linkRepo(
+            env,
+            db,
+            "acme-org/acme-app",
+            NOW,
+            fetchImpl,
+            ingestFor(SERVICES),
+          )
+        ).ok,
       ).toBe(true);
       expect((await getProduct(db, "acme"))?.name).toBe("Acme");
     });
@@ -893,7 +1040,16 @@ describe("linkRepo (GitHub-forward product creation)", () => {
         ".pkey/schema.yaml": "schemaVersion: 1\nentries: []\n",
       });
       expect(
-        (await linkRepo(env, db, "acme-org/acme-app", NOW, fetchImpl)).ok,
+        (
+          await linkRepo(
+            env,
+            db,
+            "acme-org/acme-app",
+            NOW,
+            fetchImpl,
+            ingestFor(SERVICES),
+          )
+        ).ok,
       ).toBe(true);
       expect((await getProduct(db, "acme"))?.name).toBe("Acme");
       expect((await getActiveSchema(db, "acme"))?.catalog_version).toBe(1);
@@ -907,7 +1063,16 @@ describe("linkRepo (GitHub-forward product creation)", () => {
         ".pkey/schema.json": SCHEMA_JSON,
       });
       expect(
-        (await linkRepo(env, db, "acme-org/acme-app", NOW, fetchImpl)).ok,
+        (
+          await linkRepo(
+            env,
+            db,
+            "acme-org/acme-app",
+            NOW,
+            fetchImpl,
+            ingestFor(SERVICES),
+          )
+        ).ok,
       ).toBe(true);
       expect((await getProduct(db, "acme"))?.name).toBe("Yaml Wins");
     });
@@ -921,7 +1086,16 @@ describe("linkRepo (GitHub-forward product creation)", () => {
         ".pkey/release.json": RELEASE_JSON,
       });
       expect(
-        (await linkRepo(env, db, "acme-org/acme-app", NOW, link.fetchImpl)).ok,
+        (
+          await linkRepo(
+            env,
+            db,
+            "acme-org/acme-app",
+            NOW,
+            link.fetchImpl,
+            ingestFor(SERVICES),
+          )
+        ).ok,
       ).toBe(true);
 
       // The repo then rewrites product services. Registration is derived from this set.
@@ -934,7 +1108,14 @@ describe("linkRepo (GitHub-forward product creation)", () => {
         ".pkey/schema.json": SCHEMA_JSON,
         ".pkey/release.json": RELEASE_JSON,
       });
-      const resync = await resyncRepo(env, db, "acme", NOW + 1, fetchImpl);
+      const resync = await resyncRepo(
+        env,
+        db,
+        "acme",
+        NOW + 1,
+        fetchImpl,
+        ingestFor(SERVICES),
+      );
       expect(resync.ok).toBe(true);
 
       const parsed = parseServices(
@@ -954,7 +1135,16 @@ describe("linkRepo (GitHub-forward product creation)", () => {
         ".pkey/release.json": RELEASE_JSON,
       });
       expect(
-        (await linkRepo(env, db, "acme-org/acme-app", NOW, fetchImpl)).ok,
+        (
+          await linkRepo(
+            env,
+            db,
+            "acme-org/acme-app",
+            NOW,
+            fetchImpl,
+            ingestFor(SERVICES),
+          )
+        ).ok,
       ).toBe(true);
 
       const push = async (
@@ -1006,15 +1196,36 @@ describe("linkRepo (GitHub-forward product creation)", () => {
       ".pkey/product.json": PRODUCT_JSON,
       ".pkey/release.json": RELEASE_JSON,
     });
-    const linked = await linkRepo(env, db, "acme-org/acme-app", NOW, fetchImpl);
+    const linked = await linkRepo(
+      env,
+      db,
+      "acme-org/acme-app",
+      NOW,
+      fetchImpl,
+      ingestFor(SERVICES),
+    );
     expect(linked.ok).toBe(true);
 
-    const first = await resyncRepo(env, db, "acme", NOW + 1, fetchImpl);
+    const first = await resyncRepo(
+      env,
+      db,
+      "acme",
+      NOW + 1,
+      fetchImpl,
+      ingestFor(SERVICES),
+    );
     expect(first.ok).toBe(true);
     if (!first.ok) return;
     expect(first.updated).not.toContain("schema");
 
-    const second = await resyncRepo(env, db, "acme", NOW + 2, fetchImpl);
+    const second = await resyncRepo(
+      env,
+      db,
+      "acme",
+      NOW + 2,
+      fetchImpl,
+      ingestFor(SERVICES),
+    );
     expect(second.ok).toBe(true);
     if (!second.ok) return;
     expect(second.updated).not.toContain("schema");
@@ -1034,7 +1245,14 @@ describe("linkRepo (GitHub-forward product creation)", () => {
       ".pkey/product.json": PRODUCT_JSON,
       ".pkey/release.json": RELEASE_JSON,
     });
-    const linked = await linkRepo(env, db, "acme-org/acme-app", NOW, fetchImpl);
+    const linked = await linkRepo(
+      env,
+      db,
+      "acme-org/acme-app",
+      NOW,
+      fetchImpl,
+      ingestFor(SERVICES),
+    );
     expect(linked.ok).toBe(true);
     calls.length = 0;
 
@@ -1144,7 +1362,14 @@ describe("linkRepo (GitHub-forward product creation)", () => {
       ".pkey/product.json": PRODUCT_JSON,
       ".pkey/release.json": RELEASE_JSON,
     });
-    const linked = await linkRepo(env, db, "acme-org/acme-app", NOW, fetchImpl);
+    const linked = await linkRepo(
+      env,
+      db,
+      "acme-org/acme-app",
+      NOW,
+      fetchImpl,
+      ingestFor(SERVICES),
+    );
     expect(linked.ok).toBe(true);
 
     const failingFetch: FetchImpl = withDefaultHead(async (input) => {
@@ -1161,7 +1386,14 @@ describe("linkRepo (GitHub-forward product creation)", () => {
         return new Response("forbidden", { status: 403 });
       return new Response("not found", { status: 404 });
     });
-    const result = await resyncRepo(env, db, "acme", NOW + 1, failingFetch);
+    const result = await resyncRepo(
+      env,
+      db,
+      "acme",
+      NOW + 1,
+      failingFetch,
+      ingestFor(SERVICES),
+    );
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.error).toContain("repo file fetch failed: 403");
@@ -1223,6 +1455,7 @@ describe("edge-mint approvals across link and resync (P0-12)", () => {
       "https://github.com/acme-org/acme-app",
       NOW,
       filesWith([]),
+      ingestFor(SERVICES),
     );
     expect(link.ok).toBe(true);
     await seedProductSecret(db, "acme", "MINT_KEY__ACME", ES_PEM, "edge-mint");
@@ -1249,6 +1482,7 @@ describe("edge-mint approvals across link and resync (P0-12)", () => {
           "acme",
           NOW + ++tick,
           filesWith(edgeMint, productJson),
+          ingestFor(SERVICES),
         );
         expect(res.ok).toBe(true);
       },
@@ -1275,6 +1509,7 @@ describe("edge-mint approvals across link and resync (P0-12)", () => {
       "https://github.com/acme-org/acme-app",
       NOW,
       filesWith([BASE_RECIPE]),
+      ingestFor(SERVICES),
     );
     expect(link.ok).toBe(true);
     const n = await db.first<{ n: number }>(
@@ -1594,6 +1829,7 @@ describe("edge-mint approvals across link and resync (P0-12)", () => {
         ".pkey/product.json": PRODUCT_JSON,
         ".pkey/release.json": releaseWith([BASE_RECIPE]),
       }).fetchImpl,
+      ingestFor(SERVICES),
     );
     expect(res.ok).toBe(false);
     expect(before).not.toBe("open");
@@ -1624,6 +1860,7 @@ describe("edge-mint approvals across link and resync (P0-12)", () => {
         }),
         ".pkey/release.json": releaseWith([BASE_RECIPE]),
       }).fetchImpl,
+      ingestFor(SERVICES),
     );
     expect(res.ok).toBe(false);
     expect(JSON.stringify(res)).toContain("devices.registration is removed");
@@ -1655,6 +1892,7 @@ describe("edge-mint approvals across link and resync (P0-12)", () => {
             autoIssue: { enabled: true, tierId: "pro", mode: "anonymous" },
           }),
         ),
+        ingestFor(SERVICES),
       ),
     ).rejects.toThrow(/UNIQUE/);
     expect(mintIsPublic((await loadProduct(w.env, w.db, "acme"))!)).toBe(false);

@@ -31,7 +31,6 @@ import {
   SYSTEM_PRODUCT_SLUG,
   type ParsedManifest,
 } from "@polaris-key/manifest";
-import { BOUND_INGEST } from "../core/ingest/pipeline.js";
 import type { Ingest } from "../core/ingest/types.js";
 import { stmtInsertSchema } from "../services/config/public.js";
 import type { Env } from "../platform/env.js";
@@ -299,7 +298,7 @@ export async function linkSystemProduct(
     sha: string | null;
   },
   now: number,
-  ingest?: Ingest,
+  ingest: Ingest,
 ): Promise<LinkSystemProduct> {
   const slug = SYSTEM_PRODUCT_SLUG;
   const product = await getProduct(db, slug);
@@ -315,7 +314,7 @@ export async function linkSystemProduct(
 
   // The deploy hook is the pipeline's `system` scope (plans/P0-26.md D3): today's subset, in one
   // batch, with the manifest snapshot (origin `deploy-hook`, `applied_sha` = the deploy's commit).
-  const result = await (ingest ?? BOUND_INGEST).run(env, db, {
+  const result = await ingest.run(env, db, {
     mode: "apply",
     scope: "system",
     product: slug,

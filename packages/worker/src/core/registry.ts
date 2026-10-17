@@ -14,7 +14,7 @@
 
 /// <reference types="@cloudflare/workers-types" />
 
-import type { ParsedManifest } from "@polaris-key/manifest";
+import type {} from "@polaris-key/manifest";
 import type { Env } from "../platform/env.js";
 import type { Product, ProductPublic } from "./products.js";
 import type { Db, DbStatement } from "../db/types.js";
@@ -90,10 +90,10 @@ export interface ServiceContext {
    */
   hooks: ServiceHooks;
   /**
-   * Core's manifest-ingest pipeline, bound to the registry (P2b-02): the statements every enabled
-   * service's `manifestIngest` contributes to an ingest batch. Handed to the one service that
-   * runs an ingest (Release's resync, behind its admin route) so it can put them in ITS batch
-   * without ever seeing — or importing — the services that answer. Built by Core like `hooks`.
+   * Core's manifest-ingest pipeline, bound to the registry (P0-26): every mounted service's
+   * `contributes.manifest` runs inside it. Handed to the one service that runs an ingest
+   * (Release's link and resync, behind its admin routes) without it ever seeing, or importing,
+   * the services that answer. Built by Core like `hooks`.
    */
   ingest: Ingest;
   /**
@@ -265,45 +265,6 @@ export interface ServiceDescriptor extends DescriptorHooks {
     ctx: ServiceContext & { session: AdminSession },
   ): Promise<Response | null>;
   /**
-   * Rows this service wants written when a product manifest is ingested (link or resync).
-   *
-   * Returns this repo's `DbStatement`, not `D1PreparedStatement`: every batch site in the
-   * worker goes through the `Db` abstraction so the same code runs on D1 and on the in-memory
-   * SQLite the tests use. A descriptor that emitted real D1 statements could not be tested and
-   * could not be batched with the rest of the ingest.
-   *
-   * Run by Core (`manifestIngestStatements`) for ENABLED services only, inside the link or
-   * resync batch; `now` is that ingest's epoch. Statements only, so a hook cannot read: write
-   * it as an idempotent upsert, and never touch a column an operator owns.
-   */
-  manifestIngest?(
-    parsed: ParsedManifest,
-    product: string,
-    now: number,
-  ): DbStatement[];
-  /**
-   * Rows this service keeps current on every link and resync WHATEVER its enablement (P2b-04).
-   *
-   * The narrow exception to "enabled services only", for a record that must already be right
-   * the moment an operator turns the service on — because turning a service on runs no ingest
-   * (`console/handlers/servicesAdmin.ts`), and the record governs access the instant the service answers. A
-   * missing record would have to read fail-closed (refusing every caller until the next push) and
-   * a stale one would govern with the manifest's old answer. Distribution's `app` delivery-access
-   * row (`dist_access`) is the one user: the manifest's `release.access.artifacts` reaches it
-   * even while Distribution is off, so a Release-only product whose manifest says `licensed`
-   * stays `licensed` when Distribution is switched on.
-   *
-   * The same contract as `manifestIngest` otherwise — statements only, idempotent, never an
-   * operator-owned column — and it must write only records that do nothing on their own: no
-   * request reaches a disabled service, so a row it keeps is read only once the service is on.
-   * Keep it to that; anything else belongs in `manifestIngest`, behind enablement.
-   */
-  manifestIngestAlways?(
-    parsed: ParsedManifest,
-    product: string,
-    now: number,
-  ): DbStatement[];
-  /**
    * May this caller be given a device credential? (wire v3 §6, spec §2.3.)
    *
    * The one place Core delegates an AUTHORIZATION decision to a service, and it exists because
@@ -333,7 +294,7 @@ export interface ServiceDescriptor extends DescriptorHooks {
   /**
    * LX-03 (`core/licensing/licenseMerge.ts`): the statements re-keying this service's rows from a licence
    * being retired into another (`change.fromLicenseId` → `change.toLicenseId`). Run by Core for
-   * every registered service WHATEVER its enablement, like `manifestIngestAlways`, and only into
+   * every registered service WHATEVER its enablement, like its manifest contributor, and only into
    * the merge's own batch: statements only, idempotent, touching this service's own tables.
    */
   licenseMerge?: LicenseMergeContributor;
@@ -562,72 +523,6 @@ export async function authorizeRegistration(
   const descriptor = registry.get(slug);
   if (!descriptor?.authorizeRegistration) return false;
   return descriptor.authorizeRegistration(ctx);
-}
-
-/**
- * Core's manifest-ingest pipeline (P2b-02): what a link or resync hands every service.
- *
- * `services` is the enablement the ingest has just settled on — for a link, the manifest's own
- * set; for a resync, the product's stored set AFTER the manifest's write, so an operator who
- * turned a service off live keeps its ingest from running even though the manifest says on.
- */
-export type ManifestIngest = (
-  parsed: ParsedManifest,
-  product: string,
-  services: ServicesMap,
-  now: number,
-) => ManifestIngestResult;
-
-/** What the ingest pipeline produced: the statements, and which services contributed any. */
-export interface ManifestIngestResult {
-  /** The services whose hook returned at least one statement, in canonical order. */
-  slugs: ServiceSlug[];
-  statements: DbStatement[];
-}
-
-/**
- * Every ENABLED service's `manifestIngest` statements, in canonical `SERVICE_SLUGS` order (so a
- * batch is the same whatever order `mount.ts` registers in). A disabled service's hook never
- * runs — the same fail-closed rule as `dispatchService` and the descriptor hooks — and a service
- * that implements none contributes nothing. Statements only: the caller puts them in its own
- * batch, so the service rows land atomically with the rest of the ingest.
- *
- * The one exception is `manifestIngestAlways` (P2b-04), which runs for every registered service
- * whatever its enablement, after that service's `manifestIngest`: records that must already be
- * right when the service is turned on (see the descriptor's comment).
- *
- * This is the registry comment's promised pattern, made real. Release keeps its own ingest
- * (`services/release/{linkRepo,resync}.ts`) as it is; it runs this beside it, and so never
- * imports the services that answer (AGENTS rule 6).
- */
-export function manifestIngestStatements(
-  registry: ServiceRegistry,
-  parsed: ParsedManifest,
-  product: string,
-  services: ServicesMap,
-  now: number,
-): ManifestIngestResult {
-  const out: ManifestIngestResult = { slugs: [], statements: [] };
-  for (const slug of SERVICE_SLUGS) {
-    const descriptor = registry.get(slug);
-    if (!descriptor) continue;
-    const statements: DbStatement[] = [];
-    if (services[slug]?.enabled && descriptor.manifestIngest)
-      statements.push(...descriptor.manifestIngest(parsed, product, now));
-    if (descriptor.manifestIngestAlways)
-      statements.push(...descriptor.manifestIngestAlways(parsed, product, now));
-    if (statements.length === 0) continue;
-    out.slugs.push(slug);
-    out.statements.push(...statements);
-  }
-  return out;
-}
-
-/** {@link manifestIngestStatements}, bound to one registry: what the composition root hands an
- *  ingest path (the webhook, the admin link and resync routes). */
-export function manifestIngestFor(registry: ServiceRegistry): ManifestIngest {
-  return (parsed, product, services, now) =>
-    manifestIngestStatements(registry, parsed, product, services, now);
 }
 
 /**

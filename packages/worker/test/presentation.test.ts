@@ -692,6 +692,7 @@ describe("linkSystemProduct writes products.presentation_json", () => {
       repo,
       { files, sha: null },
       NOW + 1,
+      ingestFor(SERVICES),
     );
     expect(linked.ok).toBe(true);
     expect(parseStoredPresentation(await stored())).toEqual(declared);
@@ -704,6 +705,7 @@ describe("linkSystemProduct writes products.presentation_json", () => {
       repo,
       { files, sha: null },
       NOW + 2,
+      ingestFor(SERVICES),
     );
     expect(again.ok).toBe(true);
     expect(await stored()).toBeNull();

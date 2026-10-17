@@ -42,24 +42,7 @@ import { reservedNamesMode } from "../../core/licensing/reservedNames.js";
 import { reservedDisplayNamesMode } from "../../core/accounts/reservedDisplayNames.js";
 import { type AssetWarning } from "../../core/assets/hostedAssetPulls.js";
 import { repoBlobLookup } from "./assetSource.js";
-import { BOUND_INGEST } from "../../core/ingest/pipeline.js";
 import type { Ingest } from "../../core/ingest/types.js";
-
-// P0-26: the pure checks and carry-forward helpers live in Core's ingest now (the Config, Identity
-// and Release contributors and the dry runs all reach them); re-exported for the dry runs and the
-// console's backfill until P0-26b removes the duplicates.
-export {
-  countLicensesListingProfile,
-  issuerChangeRefusal,
-  profileSecretsRefusal,
-  resolveManifestPublisher,
-  screenCatalog,
-  snapshotRowIds,
-  sparkleKeyRefusal,
-  unsafeBinaryNameRefusal,
-  withStoredSecrets,
-  type ManifestPublisher,
-} from "../../core/ingest/shared.js";
 
 export type ResyncResult =
   | {
@@ -163,7 +146,7 @@ export async function resyncRepo(
   slug: string,
   now: number,
   fetchImpl: FetchImpl = fetch,
-  ingest?: Ingest,
+  ingest: Ingest,
 ): Promise<ResyncResult> {
   // ST-20 (S-18 §4.5 item 8): the system product has one writer, the deploy hook, which applies
   // the root `.pkey/` at the deployed commit. A webhook push or a console resync would apply the
@@ -204,7 +187,7 @@ async function applyRepoManifest(
   slug: string,
   now: number,
   fetchImpl: FetchImpl,
-  ingest?: Ingest,
+  ingest: Ingest,
 ): Promise<ResyncResult> {
   const read = await readLinkedManifest(env, db, slug, now, fetchImpl);
   if (!read.ok)
@@ -224,7 +207,7 @@ async function applyRepoManifest(
     manifest,
   } = read;
 
-  const result = await (ingest ?? BOUND_INGEST).run(env, db, {
+  const result = await ingest.run(env, db, {
     mode: "apply",
     product: slug,
     manifest,
