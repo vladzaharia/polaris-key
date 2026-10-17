@@ -21,7 +21,7 @@ from polaris_key.core.models import TYP_LICENSE
 from polaris_key.server import PolarisKey, PolarisKeyError, backend_verdict
 from polaris_key.server._copy import COPY
 from polaris_key.server._problem import LOCALES
-from tests.helpers import (
+from helpers import (
     KID,
     NOW,
     PRIVATE_PEM,
