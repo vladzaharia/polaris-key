@@ -64,13 +64,52 @@ export function draftFrom(catalog: ProductCatalog | null): CatalogDraft {
   };
 }
 
+const isMinted = (e: ConfigEntry): boolean =>
+  e.kind === "secret" && e.delivery === "edgeMint";
+
+/** The entry's type as the console reads it; a change of it drops what no longer applies. */
+const typeOf = (e: ConfigEntry): string => (isMinted(e) ? "minted" : e.kind);
+
+/**
+ * The entry as published. While a draft is open, changing an entry's Type keeps the fields the
+ * new type does not use (so picking the earlier type again puts them back); they are dropped
+ * here, and only for an entry whose type differs from its published one (or is new), so a
+ * legacy entry that is not touched never shows a change it did not make.
+ */
+export function applicableEntry(
+  entry: ConfigEntry,
+  base: ConfigEntry | undefined,
+): ConfigEntry {
+  if (base !== undefined && typeOf(base) === typeOf(entry)) return entry;
+  const next: Record<string, unknown> = { ...entry };
+  const drop = (...fields: string[]): void => {
+    for (const f of fields) delete next[f];
+  };
+  if (entry.kind === "secret")
+    drop("default", "managementDefault", "user", "userGrant", "grantLabel");
+  if (entry.kind === "flag") drop("managementDefault", "user");
+  if (entry.kind === "config") drop("userGrant", "grantLabel");
+  if (!isMinted(entry)) drop("delivery");
+  else {
+    next.schema = { type: "string" };
+    drop("ui");
+  }
+  return next as unknown as ConfigEntry;
+}
+
+/** The draft's entries as published (see `applicableEntry`). */
+export function draftEntries(draft: CatalogDraft): ConfigEntry[] {
+  const base = new Map(draft.baseEntries.map((e) => [e.key, e]));
+  return draft.entries.map((e) => applicableEntry(e, base.get(e.key)));
+}
+
 /** The draft as the document a publish sends. The server assigns the version. */
 export function draftDocument(draft: CatalogDraft): ProductCatalog {
-  return { schemaVersion: draft.baseVersion + 1, entries: draft.entries };
+  return { schemaVersion: draft.baseVersion + 1, entries: draftEntries(draft) };
 }
 
 export function draftDiff(draft: CatalogDraft): StructuredDiff<ConfigEntry> {
-  return structuredDiff(draft.baseEntries, draft.entries, "key");
+  return structuredDiff(draft.baseEntries, draftEntries(draft), "key");
 }
 
 /** A key not yet in the draft: `new.key`, `new.key.2`, … */

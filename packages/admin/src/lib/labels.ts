@@ -75,12 +75,8 @@ export const IN_APP_LABELS: Record<string, string> = {
   hidden: "Hidden",
 };
 
-/** Catalog management states. */
-export const MANAGEMENT_LABELS: Record<string, string> = {
-  default: "Default",
-  enforced: "Enforced",
-  hidden: "Hidden",
-};
+/** Catalog management states, in the In the app words. */
+export const MANAGEMENT_LABELS: Record<string, string> = IN_APP_LABELS;
 
 /**
  * Outlet kinds (Distribution). The `direct` kind reads "Polaris Key" (S-21 §6.8): the id stays
@@ -162,11 +158,21 @@ export function label(
   return table[value] ?? humanize(value);
 }
 
+/** The facet value of an entry's In the app cell: a setting's visibility, else `code`. */
+export function inAppState(entry: {
+  kind: string;
+  managementDefault?: string;
+}): "default" | "enforced" | "hidden" | "code" {
+  if (entry.kind !== "config") return "code";
+  const m = entry.managementDefault;
+  return m === "enforced" || m === "hidden" ? m : "default";
+}
+
 /** The In the app cell: a setting's visibility, or "Code only" for a secret and a minted token. */
 export function inAppLabel(entry: {
   kind: string;
   managementDefault?: string;
 }): string {
-  if (entry.kind !== "config") return "Code only";
-  return IN_APP_LABELS[entry.managementDefault ?? "default"] ?? "Editable";
+  const state = inAppState(entry);
+  return state === "code" ? "Code only" : IN_APP_LABELS[state]!;
 }

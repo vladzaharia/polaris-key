@@ -6,6 +6,7 @@ import {
   lineDiff,
   structuredDiff,
   type EntryChange,
+  type FieldChange,
   type LineRow,
   type StructuredDiff,
 } from "../lib/diff.js";
@@ -34,6 +35,15 @@ export interface StructuredDiffViewerProps<T extends object> {
   referencedBy?: Record<string, readonly string[]>;
   /** The entry noun for the summary ("key"). */
   noun?: string;
+  /** Reword a changed entry's fields (names and values in the reader's words). */
+  fieldView?: (change: {
+    key: string;
+    before: T;
+    after: T;
+    fields: FieldChange[];
+  }) => { field: string; before: string; after: string }[];
+  /** A breaking-change note on a changed entry, by key. */
+  breakingChanged?: Record<string, string>;
   className?: string;
 }
 
@@ -96,13 +106,18 @@ function StructuredView<T extends object>({
   structure,
   referencedBy = {},
   noun = "key",
+  fieldView,
+  breakingChanged = {},
   className,
 }: StructuredDiffViewerProps<T>): React.ReactElement {
   const model = React.useMemo(
     () => structure ?? structuredDiff(before, after, entryKey),
     [structure, before, after, entryKey],
   );
-  const breaking = model.removed.filter((r) => referencedBy[r.key]?.length);
+  const breaking = [
+    ...model.removed.filter((r) => referencedBy[r.key]?.length),
+    ...model.changed.filter((c) => breakingChanged[c.key]),
+  ];
   return (
     <div className={cn("space-y-3", className)}>
       <p className="text-sm font-medium text-fg-strong">
@@ -123,6 +138,8 @@ function StructuredView<T extends object>({
               key={`${c.kind}:${c.key}`}
               change={c}
               refs={referencedBy[c.key]}
+              note={breakingChanged[c.key]}
+              fieldView={fieldView as never}
             />
           ))}
         </ul>
@@ -134,9 +151,17 @@ function StructuredView<T extends object>({
 function ChangeRow<T>({
   change,
   refs,
+  note,
+  fieldView,
 }: {
   change: EntryChange<T>;
   refs?: readonly string[];
+  note?: string;
+  fieldView?: (c: Extract<EntryChange<T>, { kind: "changed" }>) => {
+    field: string;
+    before: string;
+    after: string;
+  }[];
 }): React.ReactElement {
   const k = KIND[change.kind];
   const Icon = k.icon;
@@ -156,8 +181,33 @@ function ChangeRow<T>({
             Breaking: referenced by {refs.join(", ")}
           </span>
         ) : null}
+        {change.kind === "changed" && note ? (
+          <span className="inline-flex items-center gap-1 text-xs text-danger">
+            <TriangleAlert aria-hidden className="size-3.5" />
+            Breaking: {note}
+          </span>
+        ) : null}
       </div>
-      {change.kind === "changed" ? (
+      {change.kind === "changed" && fieldView ? (
+        <dl className="mt-1 grid grid-cols-[max-content_minmax(0,1fr)] gap-x-3 gap-y-0.5 text-xs">
+          {fieldView(change).map((f) => (
+            <React.Fragment key={f.field}>
+              <dt className="text-fg-muted">{f.field}</dt>
+              <dd className="min-w-0 break-words text-fg">
+                <span className="text-fg-muted line-through">
+                  <span className="sr-only">was </span>
+                  {f.before}
+                </span>
+                <span aria-hidden className="mx-1 text-fg-subtle">
+                  →
+                </span>
+                <span className="sr-only"> now </span>
+                <span className="text-fg-strong">{f.after}</span>
+              </dd>
+            </React.Fragment>
+          ))}
+        </dl>
+      ) : change.kind === "changed" ? (
         <dl className="mt-1 grid grid-cols-[max-content_minmax(0,1fr)] gap-x-3 gap-y-0.5 text-xs">
           {change.fields.map((f) => (
             <React.Fragment key={f.field}>

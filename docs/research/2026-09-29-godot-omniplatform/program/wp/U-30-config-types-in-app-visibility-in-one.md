@@ -86,6 +86,10 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 - [x] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/managed-config/{catalog, visibility, minted-tokens, profiles}`; `reference/config-entry`.
 - [x] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
+## Review fix round (2026-10-16)
+
+UX review fixes in the console: the In the app facet and CSV use one value ( for a non-setting); changing Type keeps the fields the new type does not use until publish ( in drops them in ); Minted token filter, retired-spelling and missing-recipe warnings, the Code only row, labelled review diff and CSV, a Type change on a published key needs the breaking acknowledgement, and the profile editor and empty states use the new words. "Show in settings panels" is removed (Hidden unlists a setting). Skipped: type cards and help button (needs design), icon In the app column kept as icon plus text only, phone card meta line, Type control width below 400 px, 880 px form cap, mockup updates.
+
 ## Verify
 
 ```sh
