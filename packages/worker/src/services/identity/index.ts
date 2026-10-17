@@ -60,6 +60,7 @@ import {
 } from "./portal/store/analytics.js";
 import { identityIntegration } from "./integration.js";
 import { identityMaintenance } from "./maintenance.js";
+import { platformConnectionSeedJob } from "./connections/seed.js";
 
 import { identityProductDeletion } from "./productDeletion.js";
 
@@ -89,6 +90,8 @@ export const identityService: ServiceDescriptor = {
       [STOREFRONT_ACTIVATIONS_LISTENER]: recordFirstActivation,
     },
     maintenance: identityMaintenance,
+    // P0-49: run by an operator through the migration runner, never by a tick.
+    migrations: [platformConnectionSeedJob],
     integration: identityIntegration,
   },
   /**

@@ -29,6 +29,9 @@ export const TABLE_OWNERS: Readonly<Record<string, readonly string[]>> = {
     "product_manifest_snapshot",
     "product_settings",
     "settings_backfill_reports",
+    // P0-49: the data-migration runner (core/migrate/).
+    "data_migration_runs",
+    "data_migration_units",
     "schema_index_assertion",
     "blob_objects",
     "blob_refs",

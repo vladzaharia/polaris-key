@@ -188,6 +188,12 @@ const ADMIN_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     // Home's product cards: one fact per service for every product (A-8, sliced).
     ["/manage/api/summary", ["get"]],
     // U-03: the licence-override migration (notes/S-17 §5.12, decision 21).
+    // P0-49: the data-migration runner.
+    ["/manage/api/platform/migrations", ["get"]],
+    ["/manage/api/platform/migrations/runs/{runId}", ["get"]],
+    ["/manage/api/platform/migrations/dry-run", ["post"]],
+    ["/manage/api/platform/migrations/apply", ["post"]],
+    ["/manage/api/platform/migrations/down", ["post"]],
     ["/manage/api/platform/override-migration", ["get"]],
     ["/manage/api/platform/override-migration/prerequisites", ["put"]],
     ["/manage/api/platform/override-migration/notice", ["post", "delete"]],
@@ -765,6 +771,7 @@ function concrete(template: string): string {
     methodId: "lnk_AAAAAAAAAAAA",
     subject: `ps_${"A".repeat(22)}`,
     tokenId: "apitok_AAAAAAAAAAAA",
+    runId: "mig_AAAAAAAAAAAA",
   };
   return template.replace(/\{(\w+)\}/g, (_, name: string) => {
     const value = samples[name];

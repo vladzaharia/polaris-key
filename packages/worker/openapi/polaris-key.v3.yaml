@@ -16935,6 +16935,196 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
+  /manage/api/platform/migrations:
+    get:
+      operationId: listAdminMigrations
+      tags: [admin]
+      summary: The data-migration jobs and their latest runs
+      description: >
+        Every job a mounted service contributes, each with its five newest runs (without units).
+        Nothing runs by itself: a job runs only when an operator calls dry-run, apply or down.
+        Platform admins only; admin session cookie.
+      responses:
+        "200":
+          description: The jobs.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [jobs]
+                properties:
+                  jobs:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, summary, runs]
+                      properties:
+                        id: { type: string }
+                        summary: { type: string }
+                        runs:
+                          type: array
+                          items:
+                            { $ref: "#/components/schemas/AdminMigrationRun" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+  /manage/api/platform/migrations/runs/{runId}:
+    get:
+      operationId: getAdminMigrationRun
+      tags: [admin]
+      summary: One run with its units (the report)
+      description: Platform admins only; admin session cookie.
+      parameters:
+        - { name: runId, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: The run.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [run]
+                properties:
+                  run: { $ref: "#/components/schemas/AdminMigrationRun" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such run.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+  /manage/api/platform/migrations/dry-run:
+    post:
+      operationId: dryRunAdminMigration
+      tags: [admin]
+      summary: Plan a job and store the report, changing no data
+      description: >
+        Plans every unit of the job and stores the report (`changes` is the diff count; zero means
+        the data is already migrated). Audited. Platform admins only; admin session cookie and
+        CSRF header.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [job]
+              properties:
+                job: { type: string }
+      responses:
+        "200":
+          description: The report.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [run]
+                properties:
+                  run: { $ref: "#/components/schemas/AdminMigrationRun" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such job.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+  /manage/api/platform/migrations/apply:
+    post:
+      operationId: applyAdminMigration
+      tags: [admin]
+      summary: Apply a job against a report, resumably
+      description: >
+        Applies the units of a dry run's report, one by one, up to `limit`. Call again with the
+        same report until `remaining` is 0: finished units are skipped and a finished apply
+        answers `noop`. A running call holds a lease (409 `busy` while it lasts). Audited. Needs
+        a fresh sign-in (step-up). Platform admins only; admin session cookie and CSRF header.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [job, report]
+              properties:
+                job: { type: string }
+                report: { type: string }
+                limit: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: The apply run so far.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [run, noop]
+                properties:
+                  run: { $ref: "#/components/schemas/AdminMigrationRun" }
+                  noop: { type: boolean }
+        "400":
+          description: A missing or invalid field.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such job or report.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "409":
+          description: >
+            `busy`, `lease_lost`, `reverting` (a down exists for this apply), `report_incomplete` (a unit could not be planned), `report_stale` (the report is over 24 hours old; dry-run again) or `reverted` (dry-run again).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+  /manage/api/platform/migrations/down:
+    post:
+      operationId: downAdminMigration
+      tags: [admin]
+      summary: Undo an apply, resumably
+      description: >
+        Runs the job's down path over the units the apply finished, up to `limit`; call again
+        until `remaining` is 0. Audited. Needs a fresh sign-in (step-up). Platform admins only;
+        admin session cookie and CSRF header.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [job, run]
+              properties:
+                job: { type: string }
+                run: { type: string, description: The apply run's id. }
+                limit: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: The down run so far.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [run, noop]
+                properties:
+                  run: { $ref: "#/components/schemas/AdminMigrationRun" }
+                  noop: { type: boolean }
+        "400":
+          description: A missing or invalid field.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such job or apply.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "409":
+          description: "`busy`, `lease_lost` or `nothing_applied` (the apply changed nothing)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
   # ── Admin API tokens ──
   /manage/api/tokens:
     get:
@@ -20113,6 +20303,34 @@ components:
           oneOf:
             - { type: "null" }
             - { $ref: "#/components/schemas/AdminOverrideInventory" }
+    AdminMigrationRun:
+      type: object
+      required: [id, job, mode, status, startedAt, changes, units, remaining]
+      properties:
+        id: { type: string }
+        job: { type: string }
+        mode: { type: string, enum: [dry-run, apply, down] }
+        status:
+          type: string
+          enum: [reported, running, failed, applied, reverted]
+        sourceId: { type: [string, "null"] }
+        requestedBy: { type: [string, "null"] }
+        startedAt: { type: integer }
+        finishedAt: { type: [integer, "null"] }
+        changes: { type: integer }
+        remaining: { type: integer }
+        units:
+          type: array
+          items:
+            type: object
+            required: [unit, status, planned, changes]
+            properties:
+              unit: { type: string }
+              status: { type: string, enum: [pending, done, failed] }
+              planned: { type: integer }
+              changes: { type: integer }
+              detail: {}
+              error: { type: [string, "null"] }
     AdminOverrideReportRow:
       type: object
       description: >
