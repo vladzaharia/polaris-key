@@ -26,7 +26,7 @@ junit = "4.13.2"
 robolectric = "4.14.1"
 androidxTestCore = "1.6.1"
 coroutines = "1.11.0"
-serialization = "1.8.1"
+serialization = "1.11.0"
 okhttp = "4.12.0"
 # The Ktor server plugin (:server-ktor, SP-57): 3.2.x is built with Kotlin 2.1.x.
 ktor = "3.2.3"
