@@ -58,12 +58,8 @@ import {
   useLicenseHolderMoves,
 } from "../components/holders.js";
 import { DeleteLicenseDialog, deletionBlockedReason } from "./LicenseDelete.js";
-import {
-  LicenseKeys,
-  MintKeyDialog,
-  SendKeyDialog,
-  type UnsentKey,
-} from "./LicenseKeys.js";
+import { LicenseKeys, MintKeyDialog } from "./LicenseKeys.js";
+import { SendKeyDialog, type UnsentKey } from "../components/SendKeyDialog.js";
 import { LicenseTerms } from "./LicenseTerms.js";
 import {
   actorName,

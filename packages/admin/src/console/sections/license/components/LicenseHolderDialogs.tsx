@@ -47,7 +47,7 @@ import {
   useStepUp,
 } from "../../core/pages/UserRelink.js";
 import { holderConfirmValue, holderOf } from "./holders.js";
-import { sendKeyRefusal, type UnsentKey } from "../pages/LicenseKeys.js";
+import { sendKeyRefusal, type UnsentKey } from "./SendKeyDialog.js";
 import { EMAIL_RE } from "./shared.js";
 
 /** "When ada@example.com signs in with that email, it's in their library." (S-24 D4) */
