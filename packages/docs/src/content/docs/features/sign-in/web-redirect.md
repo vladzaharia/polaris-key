@@ -68,14 +68,40 @@ grant_type=authorization_code&client_id=<product>&code=<code>&code_verifier=<ver
 
 A device that already holds a token sends it as `Authorization: Bearer` to keep its license; without it, a device that already runs on a license is refused with `license_choice_required`.
 
-| Error                          | Meaning                                                            |
-| ------------------------------ | ------------------------------------------------------------------ |
-| `invalid_request`              | Not a form, or a parameter is missing or repeated                  |
-| `invalid_client`               | `client_id` is not the product slug                                |
-| `invalid_grant`                | The code is unknown, used, expired, or does not match the verifier |
-| `unsupported_grant_type`       | Only `authorization_code` is served                                |
-| `license_choice_required`      | The person has licenses and none was chosen                        |
-| `not_entitled`, `device_limit` | The chosen license refuses this device                             |
-| `rate_limited`                 | Wait `retryAfter` seconds                                          |
+| Error                          | Meaning                                                                           |
+| ------------------------------ | --------------------------------------------------------------------------------- |
+| `invalid_request`              | Not a form, or a parameter is missing or repeated                                 |
+| `invalid_client`               | `client_id` is not the product slug                                               |
+| `invalid_grant`                | The code is unknown, used, expired, or does not match the verifier                |
+| `unsupported_grant_type`       | Only `authorization_code` is served                                               |
+| `license_choice_required`      | The person has licenses and none was chosen, or the device id already runs on one |
+| `not_entitled`, `device_limit` | The chosen license refuses this device                                            |
+| `rate_limited`                 | Wait `retryAfter` seconds                                                         |
 
 A wrong verifier ends the code. Start again from `authorize`.
+
+## Choose a license
+
+When the account holds licenses for the product, the card asks which one this device runs on, and **Continue** needs the answer. A full license offers **Replace a device**: the person picks a device that signs out, and this one takes its seat in the same step. With no license, and a product that grants one to everyone who signs in, **Continue** creates it once.
+
+To run the choice in your own form instead, add `license_choice=app` to `authorize`. Send it only when discovery lists `choiceLicenses`, `choiceDevices`, `choiceComplete` and `choiceCancel`. The card skips the choice, and `token` answers a pending sign-in when one is due:
+
+```json
+{
+  "status": "choose",
+  "grant": "sg_…",
+  "expiresIn": 300,
+  "choices": { "state": "choose", "choices": [] }
+}
+```
+
+The grant lives five minutes and answers only the device that redeemed the code. Send it in a JSON body, with the same `X-PKey-Device`, to the four routes:
+
+| Route      | Body                 | Answer                        |
+| ---------- | -------------------- | ----------------------------- |
+| `licenses` | `grant`              | A fresh list of licenses      |
+| `devices`  | `grant`, `licenseId` | The devices on a full license |
+| `complete` | `grant`, `choice`    | The same body `token` answers |
+| `cancel`   | `grant`              | `204`. Nothing is bound       |
+
+A `choice` is `license` (with `replaceDeviceId` on a full license), `keep` (the device sends its own token), `create` or `key`. A key entered here counts as one key entry. A refusal you can fix, such as `device_limit`, leaves the grant open.

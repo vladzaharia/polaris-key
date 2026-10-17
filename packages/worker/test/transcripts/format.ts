@@ -67,6 +67,13 @@
 // | "rate-limited" | "error", then `scope`, `subject`, `licenseId` (null on a licence-less device)
 // and `tokenHeld` on "ok".
 //
+// `redirectComplete` also reports result "choose" (I-08b, §12.5.1): `token` answered a pending
+// sign-in grant instead of a device token, and the SDK holds no token yet. The `choice*` steps
+// report `result` "ok" | "refused" (with `code`, the nested error's code); `choiceLicenses`
+// adds `state` and `licenses` (the row ids, sorted); `choiceDevices` the device ids in order;
+// `choiceComplete` on "ok" adds `licenseId`, `subject`, `tokenHeld` and, after a key,
+// `keyEntries` {used, limit}.
+//
 // ── THE `expect` VOCABULARY ─────────────────────────────────────────────────────────────────
 //
 //   result          discover: "ok" | "not-found" | "invalid" | "error"
@@ -299,7 +306,16 @@ export type Action =
    * redeemed at `token` with the PKCE verifier the SDK kept. `args.codeVerifier` is the verifier
    * the replayer feeds the SDK so the request is reproducible.
    */
-  | "redirectComplete";
+  | "redirectComplete"
+  /**
+   * I-08b (§12.5.1): `choice.licenses(grant)`, `choice.devices(grant, licenseId)`,
+   * `choice.complete(grant, choice)` and `choice.cancel(grant)` (`identity.choice`). `args.grant`
+   * is the grant the exchange answered (and `args.licenseId` for `choiceDevices`).
+   */
+  | "choiceLicenses"
+  | "choiceDevices"
+  | "choiceComplete"
+  | "choiceCancel";
 
 export interface Step {
   action: Action;

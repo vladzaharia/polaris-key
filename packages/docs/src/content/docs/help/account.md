@@ -56,3 +56,7 @@ you, read [Your data and privacy](/docs/help/your-data/).
 - If you bought an app with a different email, read
   [Bought with a different email or on Steam?](/docs/help/join-accounts/).
 - For anything else, read [Get help with an app](/docs/help/contact/).
+
+## Signing in to an app
+
+When you sign in to an app, Polaris Key asks which license that device should use. A license with no free device shows **Replace a device**: pick the device to sign out. It gets an email, and it can sign in again when a spot is free. If you hold no license and the app gives one to everyone, **Continue** creates it.

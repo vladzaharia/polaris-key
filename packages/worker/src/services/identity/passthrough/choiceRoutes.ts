@@ -235,11 +235,16 @@ export async function handleChoice(
   }
 
   // ── complete ──────────────────────────────────────────────────────────────────────────────────
-  const choice = parseChoice((body as Partial<ChoiceCompleteRequest>).choice);
+  const raw = (body as Partial<ChoiceCompleteRequest>).choice;
+  const choice = raw === undefined ? null : parseChoice(raw);
   if (!choice) {
-    // A malformed choice is the caller's mistake and burns nothing.
+    // No choice is a choice still owed (409); a malformed one is the caller's mistake (400).
+    // Neither burns the grant.
     const peek = await peekGrant(env, product.slug, grant, deviceId);
-    return peek.ok ? fail(400, ErrorCode.BadRequest) : invalidGrant();
+    if (!peek.ok) return invalidGrant();
+    return raw === undefined
+      ? fail(409, ErrorCode.LicenseChoiceRequired)
+      : fail(400, ErrorCode.BadRequest);
   }
   // A key is an online oracle for licence keys: each attempt is a read of the grant's budget.
   if (choice.kind === "key") {

@@ -147,9 +147,11 @@ export async function peekGrant(
 export async function spendRead(
   env: Env,
   product: string,
-  grant: string,
+  grant: unknown,
   deviceId: string,
 ): Promise<GrantLookup> {
+  if (typeof grant !== "string" || !GRANT_RE.test(grant))
+    return { ok: false, reason: "invalid" };
   const ref = await grantRef(env, product, grant);
   // A few compare-and-set rounds: only a concurrent read of the same grant can make one fail.
   for (let attempt = 0; attempt < 6; attempt++) {

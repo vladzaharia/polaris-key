@@ -137,6 +137,10 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | POST | `/{product}/identity/auth/logout` | identity | End the browser session |
 | GET | `/{product}/identity/auth/start` | identity | Begin browser OIDC (PKCE) — 302 to the IdP |
 | GET | `/{product}/identity/authorize` | identity | Send a person to the sign-in card for an app (OAuth-shaped authorize) |
+| POST | `/{product}/identity/choice/cancel` | identity | End the pending sign-in; nothing is bound |
+| POST | `/{product}/identity/choice/complete` | identity | Finish the sign-in with the person's choice |
+| POST | `/{product}/identity/choice/devices` | identity | The seat-holding devices of a full licence (Replace) |
+| POST | `/{product}/identity/choice/licenses` | identity | A fresh licence choice for the pending sign-in |
 | POST | `/{product}/identity/session/license` | identity | Mint a browser session from a license key |
 | GET | `/{product}/identity/session` | identity | The browser session's fused document |
 | POST | `/{product}/identity/signout` | identity | Sign the device out of its account |
@@ -215,6 +219,8 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | POST | `/api/signin/requests/{request}/cancel` | portal | Cancel the app's sign-in request |
 | GET | `/api/signin/requests/{request}/consent` | portal | What the app gets if the signed-in person continues (app consent) |
 | POST | `/api/signin/requests/{request}/continue` | portal | Continue to the app (issues the authorization code) |
+| GET | `/api/signin/requests/{request}/licenses/{licenseId}/devices` | portal | The seat-holding devices of a full licence (Replace a device) |
+| GET | `/api/signin/requests/{request}/licenses` | portal | The licence choice for the signed-in account (the card's step) |
 | GET | `/api/signin/requests/{request}` | portal | One app sign-in request, as the sign-in card renders it |
 | GET | `/media/{product}/{asset}` | portal | A product's art, as a redirect to its hosted copy |
 | GET | `/media/avatar/{asset}` | portal | An account picture, re-encoded and served same-origin |

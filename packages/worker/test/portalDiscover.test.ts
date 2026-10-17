@@ -55,6 +55,7 @@ import {
   discoverOffers,
 } from "../src/services/identity/portal/discover.js";
 import { handlePortalApi } from "./portalHarness.js";
+import { withMintClaim } from "../src/services/identity/passthrough/mint.js";
 
 const ISSUER = "https://id.plrs.im";
 const SUB = "user-mara";
@@ -612,6 +613,35 @@ describe("POST /api/discover/<p>/claim (G25)", () => {
     expect(await db.all("SELECT * FROM license_auto_attach_blocks")).toEqual(
       [],
     );
+  });
+
+  it("takes the sign-in card's mint claim: a claim racing a Continue mints nothing, and one after it answers the winner's licence (I-08b)", async () => {
+    const env = portalEnv();
+    const db = makeTestDb();
+    await freeProduct(db, "mossgarden");
+    const who = await platformAccount(env, db);
+    const count = async () =>
+      (
+        await db.first<{ n: number }>(
+          "SELECT COUNT(*) AS n FROM licenses WHERE product = ?",
+          "mossgarden",
+        )
+      )?.n ?? 0;
+    const lost = await withMintClaim(
+      env,
+      { slug: "mossgarden" },
+      who.accountId,
+      () => claim(env, db, who, "mossgarden"),
+    );
+    expect(lost.won && lost.value.status).toBe(409);
+    expect(await count()).toBe(0);
+    // The licence another press created is this claim's answer, not a second licence.
+    const winner = await claim(env, db, who, "mossgarden");
+    expect(winner.status).toBe(200);
+    expect(winner.body.added).toBe(true);
+    const again = await claim(env, db, who, "mossgarden");
+    expect(again.body.added).toBe(false);
+    expect(await count()).toBe(1);
   });
 
   it("mints, links into the library, and audits with source discover", async () => {

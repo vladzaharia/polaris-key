@@ -8450,9 +8450,7 @@ at `POST /<p>/identity/token` for a device token. One row per threat; tests are 
   seat claim is seat-checked and refuses a device another licence holds. A code holder (a PKCE-
   proven account holder) can therefore bind only their own account to a device id, claim a seat on
   a licence they chose from their own account, or register a licence-less device; they cannot read
-  or rotate another device's token. Residual: a licence-less device id that someone else guesses
-  can be re-registered by a code holder (as `register` allows); device ids are 128 random bits
-  chosen by the SDK.
+  or rotate another device's token. A licence-less device id that already holds a credential is re-registered only with that credential in `Authorization: Bearer` (I-08b); device ids are 128 random bits chosen by the SDK.
 - **Brute force and enumeration.** `authorize` 60 a minute per client network; `token` 30 a minute
   per network and 10 a minute per device id, both failing closed, Continue and Cancel 30 a minute
   per account; a malformed code or verifier is refused before the store is touched. Every "no" at
@@ -8465,9 +8463,69 @@ at `POST /<p>/identity/token` for a device token. One row per threat; tests are 
 - **The picture and the profile.** The `token` response carries no profile; the claims the person
   consented to are recorded for the ID token of I-21. Nothing here hands an app an account
   session: the first-party session cookie is never accepted on `token` or on any Cloud Sync route.
-- **Replace and the choice grant (I-08b).** Not built here. I-08b's rows (the pending-sign-in
-  grant, its device and account binding, Replace) are written by that package; the licence choice
-  in this one is the single licence named at Continue and re-checked at `token`.
+- **Replace and the choice grant (I-08b).** See the next section.
+
+### Licence choice at sign-in (I-08b)
+
+plans/I-08.md D2, D5, plans/I-04.md §B, §F.3, §G, plans/I-27.md §2.2, WIRE-CONTRACT-V4 §12.4.1 and
+§12.5.1. The account's licences for the product are listed on the card, or in the app through a
+pending sign-in grant; the person replaces a device, enters a key, or gets the first automatic
+licence. Tests are in `test/identityChoice.test.ts` and the transcripts `redirect-web-choose*.json`
+and `choice-*.json`.
+
+- **The grant (a capability to read and finish a sign-in).** `sg_` and 32 random bytes; only a
+  peppered hash is an address in I-02's store (`signin-grant`), so a listing yields nothing
+  presentable. 300 seconds, inside the fresh sign-in that Replace treats as its step-up. It exists
+  only after `token` redeemed a code with its PKCE verifier, so it is bound to the verifier's
+  holder, and it answers only the `X-PKey-Device` that redeemed the code: any other device id is
+  `invalid_grant` and does not burn it. It travels in a JSON body, never a URL, and the routes are
+  device-facing (no ambient credential for a page to ride on; CORS answers `web.origins` without
+  credentials). One grant per code; `complete` takes it atomically, so two concurrent completes
+  cannot both bind (of any number, one wins), and `cancel` ends it. A refusal the person can retry
+  (a full licence, a lost mint, a wrong key, a budget) puts it back for the time it has left and
+  never extends it. 30 view, device and key reads per grant, counted in the store by
+  compare-and-set; 60 a minute per client network. Device code never issues a grant: it is the
+  cross-device channel that can be phished (R1-07), and a grant there would hand whoever holds the
+  code the account's licence and device lists and a Replace the person never sees. Residual: a
+  stolen grant is useless without the device id (128 random bits the SDK chose) and expires in five
+  minutes; what it shows the app is what the card already showed the person.
+- **Enumeration.** The views list only the signed-in account's own licences
+  (`licenses.account_id`), never the device's floating licence; the Keep row names no licence.
+  `choice/devices` and the card's devices read answer one `404 not_found` for a licence that is
+  unknown, another account's, not full, or whose portal is off. Nothing is looked up by a licence
+  key except the explicit key choice.
+- **Replace (a device leaves, another takes its seat).** The same operation as the portal's Remove
+  (`planFreeAccountDevice`): the portal is on, the account owns the licence, the device holds a
+  seat on it, the `portalDeviceDisconnect` budget (20 per 60 s per product, account and network) is
+  charged after ownership is proven and shared by both surfaces (a blocked Replace is `429` with
+  `retryAfter`), the audit row `portal.device.disconnect` reads "to sign in <label>", and the
+  `deviceRemovedNotice` security email goes to every verified address. The removal and the new
+  device's seat claim commit in one D1 batch, so a lost race leaves both undone; only if the claim
+  cannot join the batch does the freed device stay freed (audited, emailed, `racedAfterFree`). The
+  card's Continue records the intent, validates it dry (no budget spent), and `token` executes it,
+  so a stolen code (60 s, PKCE) cannot Replace without the verifier.
+- **The first automatic licence.** Minted by Continue (card) or `choice/complete` `create` (app),
+  never by sign-in alone: a usable licence in the account forbids it, except the explicit create
+  offered when every candidate is full. Uniqueness is the `license-mint` claim in I-02's store
+  (`<product>:` and a peppered hash of the account id, 30 s, written if absent): of two concurrent
+  presses one wins, re-reads the offer inside the claim and mints, the other mints nothing and
+  answers `409 license_choice_required`; an unreachable store fails closed (`503 unavailable`,
+  nothing minted). Discover's claim takes the same claim, so an add racing a Continue mints once.
+  LX-38's unique index on `licenses(product, account_id)` replaces the claim and re-runs its test.
+  The licence is an account licence (origin `oidc`, `account_id` set in the insert's batch, no
+  `sub`, no key), under the same policy (`identityTier`) and provisioning as a sign-in mint.
+- **Key entry in the app.** `choice/complete` `key` is PX-W9's key entry on the `app` surface:
+  counted exactly once, in the seat claim's own batch, refused with `license_owned` or
+  `key_entry_limit` when the licence is in an account or past its limit (while
+  `identity.keyEntryRefusals` is on), and the device stays key-bound (a sign-out does not release
+  it). The route is a key-guessing oracle, so every attempt spends one of the grant's 30 reads and
+  the network's 60 a minute; a wrong key is `401 unauthorized` and keeps the grant. A key is never
+  stored on a code (Continue refuses `key`), only presented to the request that binds it.
+- **Licence-less takeover at `token`.** A licence-less device id that already holds a credential is
+  re-registered only by the device that presents it in `Authorization: Bearer`; without the proof
+  `token` answers `403 not_entitled`. Registering rotates the token, so without this a code holder
+  could have bound their own account to someone else's licence-less device row.
+
 - **R1-07 for device code.** Device code's own binding is I-37's (it fails closed under D1.A);
   this section covers the web redirect only.
 

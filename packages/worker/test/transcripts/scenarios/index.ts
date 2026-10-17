@@ -62,6 +62,8 @@ import {
   redirectWebHappy,
 } from "./redirect.js";
 
+import { CHOICE_SCENARIOS } from "./choice.js";
+
 export const SCENARIOS: Scenario[] = [
   discoveryCapabilities,
   discoveryFailure,
@@ -104,4 +106,5 @@ export const SCENARIOS: Scenario[] = [
   redirectWebHappy,
   redirectWebErrors,
   identityRequestHints,
+  ...CHOICE_SCENARIOS,
 ];

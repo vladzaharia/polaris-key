@@ -22,6 +22,7 @@ import {
   type World,
 } from "../recorder.js";
 import { DEVICE, T0, VERSION } from "../client.js";
+import type { JsonValue } from "../format.js";
 import {
   pinned,
   PRODUCT,
@@ -43,7 +44,7 @@ const ISSUER = `https://key.plrs.im/${PRODUCT}/identity`;
 const IDENTITY_ON = servicesOn("license", "config", "identity");
 
 /** The product registers its web origin and callback path; an account signs in. */
-async function world(): Promise<{
+export async function world(): Promise<{
   w: World;
   cookie: string;
   csrf: string;
@@ -66,7 +67,9 @@ async function world(): Promise<{
   };
 }
 
-function authorizePath(over: Record<string, string | null> = {}): string {
+export function authorizePath(
+  over: Record<string, string | null> = {},
+): string {
   const q = new URLSearchParams({
     response_type: "code",
     client_id: PRODUCT,
@@ -84,26 +87,27 @@ function authorizePath(over: Record<string, string | null> = {}): string {
 }
 
 /** The browser navigates to authorize. */
-function navigate(s: StepRecorder, path: string): Promise<Response> {
+export function navigate(s: StepRecorder, path: string): Promise<Response> {
   return s.send({ method: "GET", path, metadata: false });
 }
 
 /** The binder cookie a 303 from authorize set. */
-function binderOf(res: Response): string {
+export function binderOf(res: Response): string {
   return res.headers.get("set-cookie")!.split(";")[0]!;
 }
 
-function handleOf(res: Response): string {
+export function handleOf(res: Response): string {
   return new URL(res.headers.get("location")!).searchParams.get("request")!;
 }
 
 /** The card's Continue or Cancel: the portal session, its CSRF header and the binder. */
-function press(
+export function press(
   s: StepRecorder,
   who: { cookie: string; csrf: string },
   binder: string,
   handle: string,
   verb: "continue" | "cancel",
+  body?: Record<string, JsonValue>,
 ): Promise<Response> {
   return s.send({
     method: "POST",
@@ -113,11 +117,14 @@ function press(
       cookie: `${who.cookie}; ${binder}`,
       [PORTAL_CSRF_HEADER]: who.csrf,
     },
+    ...(body
+      ? { body, expectBody: { json: body, match: "exact" as const } }
+      : {}),
   });
 }
 
 /** `POST /<p>/identity/token` as the SDK sends it: a form, the device id and the metadata. */
-function token(
+export function token(
   s: StepRecorder,
   code: string,
   verifier: string,
@@ -141,7 +148,7 @@ function token(
   });
 }
 
-const codeOfRedirect = (redirect: string): string =>
+export const codeOfRedirect = (redirect: string): string =>
   new URL(redirect).searchParams.get("code")!;
 
 export const redirectWebHappy: Scenario = {
