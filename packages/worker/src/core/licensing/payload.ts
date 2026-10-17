@@ -41,7 +41,13 @@ import { storeGrantLayer } from "./storeGrants.js";
 import { oidcGrantLayer } from "./grants.js";
 import { accountOverrideLayer } from "../accounts/accountOverrides.js";
 import { licenseConfigOverridesRetired } from "../ops/overrideMigration.js";
-import { type DeviceRow, type LicenseRow, type TierRow } from "../repo.js";
+import {
+  type DeviceRow,
+  type LicenseProfileRow,
+  type LicenseRow,
+  type ProfileRow,
+  type TierRow,
+} from "../repo.js";
 import { getProfile, getTier, listLicenseProfiles } from "./store.js";
 
 /**
@@ -68,7 +74,7 @@ export interface MergedPayload {
 }
 
 /** The catalog's own declared defaults, the bottom layer of every merge. */
-async function catalogDefaultPayload(
+export async function catalogDefaultPayload(
   db: Db,
   product: string,
   now: number,
@@ -121,6 +127,37 @@ async function licenseOverrideLayer(
 }
 
 /**
+ * Where the merge reads its stored layers. The default reads one row set per call
+ * ({@link dbLayerSource}); a licence list's page passes one that answers from rows read once for
+ * the whole page (`core/licensing/payloadPrefetch.ts`), so the merge itself is the same code.
+ */
+export interface PayloadLayerSource {
+  catalogDefault(): Promise<string | null>;
+  tier(id: string): Promise<TierRow | null>;
+  profile(id: string): Promise<ProfileRow | null>;
+  licenseProfiles(licenseId: string): Promise<LicenseProfileRow[]>;
+  storeGrant(licenseId: string): Promise<string | null>;
+  oidcGrant(licenseId: string, overridesJson: string | null): Promise<string | null>;
+}
+
+/** The layers read straight from the database, one query set per call. */
+export function dbLayerSource(
+  db: Db,
+  product: string,
+  now: number,
+): PayloadLayerSource {
+  return {
+    catalogDefault: () => catalogDefaultPayload(db, product, now),
+    tier: (id) => getTier(db, product, id),
+    profile: (id) => getProfile(db, product, id),
+    licenseProfiles: (licenseId) => listLicenseProfiles(db, product, licenseId),
+    storeGrant: (licenseId) => storeGrantLayer(db, product, licenseId),
+    oidcGrant: (licenseId, overridesJson) =>
+      oidcGrantLayer(db, product, licenseId, overridesJson, now),
+  };
+}
+
+/**
  * Walk every managed-payload layer for one device into a single effective payload.
  *
  * `license` is NULLABLE, and that is the D-08 case on the wire: a product that runs Config with
@@ -146,31 +183,35 @@ export async function resolveMergedPayload(
   license: LicenseRow | null,
   device: DeviceRow | null | undefined,
   now: number,
-  opts: { entitlementsOnly?: boolean; withoutOidcGrant?: boolean } = {},
+  opts: {
+    entitlementsOnly?: boolean;
+    withoutOidcGrant?: boolean;
+    /** Answers the stored layers; default: the database, read per call. */
+    source?: PayloadLayerSource;
+  } = {},
 ): Promise<MergedPayload> {
-  const layers: (string | null | undefined)[] = [
-    await catalogDefaultPayload(db, product, now),
-  ];
+  const source = opts.source ?? dbLayerSource(db, product, now);
+  const layers: (string | null | undefined)[] = [await source.catalogDefault()];
 
   let tier: TierRow | null = null;
   if (license?.tier_id) {
-    tier = await getTier(db, product, license.tier_id);
+    tier = await source.tier(license.tier_id);
     if (tier?.profile_id) {
-      const p = await getProfile(db, product, tier.profile_id);
+      const p = await source.profile(tier.profile_id);
       layers.push(p?.payload_json ?? null);
     }
   }
 
   if (license) {
-    const profiles = await listLicenseProfiles(db, product, license.id);
+    const profiles = await source.licenseProfiles(license.id);
     for (const ref of profiles) {
-      const p = await getProfile(db, product, ref.profile_id);
+      const p = await source.profile(ref.profile_id);
       layers.push(p?.payload_json ?? null);
     }
     // P6-01: the licence's active store grants (a verified purchase's flag), after the profiles
     // and BEFORE the licence's own overrides, so an operator's override of the same flag wins
     // (`core/licensing/storeGrants.ts`).
-    layers.push(await storeGrantLayer(db, product, license.id));
+    layers.push(await source.storeGrant(license.id));
     layers.push(
       opts.entitlementsOnly
         ? license.overrides_json
@@ -184,13 +225,7 @@ export async function resolveMergedPayload(
     // passes `withoutOidcGrant`, so the stored grant is not read twice.
     if (!opts.withoutOidcGrant)
       layers.push(
-        await oidcGrantLayer(
-          db,
-          product,
-          license.id,
-          license.overrides_json,
-          now,
-        ),
+        await source.oidcGrant(license.id, license.overrides_json),
       );
   }
 

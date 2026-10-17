@@ -104,6 +104,13 @@ export async function storeGrantLayer(
     product,
     licenseId,
   );
+  return storeGrantLayerOf(rows);
+}
+
+/** {@link storeGrantLayer}'s layer out of one licence's active rows. */
+export function storeGrantLayerOf(
+  rows: readonly ActiveStoreGrant[],
+): string | null {
   if (rows.length === 0) return null;
   const entitlements: Record<
     string,
@@ -116,4 +123,35 @@ export async function storeGrantLayer(
       updatedAt: r.granted_at,
     };
   return JSON.stringify({ entitlements });
+}
+
+/** D1 binds at most 100 parameters per statement; one is the product. */
+const GRANT_IDS_PER_QUERY = 90;
+
+/**
+ * The active grants of many licences in one read per 90 ids (a licence list's page): licence id →
+ * the rows `storeGrantLayer` reads for it, in the same order.
+ */
+export async function storeGrantRowsFor(
+  db: Db,
+  product: string,
+  licenseIds: readonly string[],
+): Promise<Map<string, ActiveStoreGrant[]>> {
+  const out = new Map<string, ActiveStoreGrant[]>();
+  for (let i = 0; i < licenseIds.length; i += GRANT_IDS_PER_QUERY) {
+    const ids = licenseIds.slice(i, i + GRANT_IDS_PER_QUERY);
+    const rows = await db.all<ActiveStoreGrant & { license_id: string }>(
+      `SELECT license_id, flag, MAX(granted_at) AS granted_at FROM license_store_grants
+        WHERE product = ? AND state = 'active' AND license_id IN (${ids.map(() => "?").join(", ")})
+        GROUP BY license_id, flag ORDER BY license_id, flag`,
+      product,
+      ...ids,
+    );
+    for (const r of rows) {
+      const list = out.get(r.license_id) ?? [];
+      list.push({ flag: r.flag, granted_at: r.granted_at });
+      out.set(r.license_id, list);
+    }
+  }
+  return out;
 }

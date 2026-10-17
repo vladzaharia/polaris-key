@@ -54,11 +54,15 @@ import {
 import { audit } from "../../../core/audit.js";
 import {
   keyEntryListContext,
-  licenseSummary,
+  licenseSummaries,
   type KeyEntryListContext,
 } from "../../../core/licensing/summary.js";
 import {
-  listLicenses,
+  decodeLicenseCursor,
+  LICENSE_PAGE_DEFAULT,
+  LICENSE_PAGE_MAX,
+  listLicensePage,
+  type LicenseCursor,
   listProfiles,
   listTiers,
   patchLicense,
@@ -98,8 +102,9 @@ import {
 } from "../../../core/licensing/licenseHolders.js";
 import {
   licenseDeviceLimit,
-  licenseTerms,
+  licenseTermsMany,
 } from "../../../core/licensing/authz.js";
+import type { LicenseTerms } from "../../../core/licensing/terms.js";
 import {
   licenseEndedReasonOf,
   licenseStatusOf,
@@ -206,11 +211,10 @@ export function licenseDeviceLimitRefusal(): Response {
 /** The device-limit fields every licence read carries (LX-14a): the stored value, the limit
  *  `authorizeDevice` enforces and where it comes from, and the inherited value the console's
  *  **Device limit…** sheet offers as its placeholder. */
-async function deviceLimitView(
-  ctx: LicenseAdminContext,
+function deviceLimitFields(
   license: LicenseRow,
-): Promise<Record<string, unknown>> {
-  const terms = await licenseTerms(ctx.db, ctx.product, license, ctx.now);
+  terms: LicenseTerms,
+): Record<string, unknown> {
   return {
     deviceLimit: license.device_limit ?? null,
     effectiveDeviceLimit: terms.deviceLimit.value,
@@ -227,21 +231,31 @@ function keyEntrySettings(ctx: LicenseAdminContext) {
   return { env: ctx.env, db: ctx.db, registry: ctx.settings };
 }
 
+/** The summaries of a set of licences: the page's reads are grouped over the set (P0-29). */
+async function summarizeMany(
+  ctx: LicenseAdminContext,
+  licenses: readonly LicenseRow[],
+  keyEntryContext?: KeyEntryListContext,
+): Promise<Record<string, unknown>[]> {
+  const context =
+    keyEntryContext ??
+    (await keyEntryListContext(keyEntrySettings(ctx), ctx.product.slug));
+  const [summaries, terms] = await Promise.all([
+    licenseSummaries(ctx.db, ctx.product.slug, licenses, context),
+    licenseTermsMany(ctx.db, ctx.product, licenses, ctx.now),
+  ]);
+  return licenses.map((l, i) => ({
+    ...summaries[i],
+    ...deviceLimitFields(l, terms.get(l.id)!),
+  }));
+}
+
 async function summarize(
   ctx: LicenseAdminContext,
   license: LicenseRow,
   keyEntryContext?: KeyEntryListContext,
 ): Promise<Record<string, unknown>> {
-  return {
-    ...(await licenseSummary(
-      ctx.db,
-      ctx.product.slug,
-      license,
-      keyEntryContext ??
-        (await keyEntryListContext(keyEntrySettings(ctx), ctx.product.slug)),
-    )),
-    ...(await deviceLimitView(ctx, license)),
-  };
+  return (await summarizeMany(ctx, [license], keyEntryContext))[0]!;
 }
 
 async function validateRefs(
@@ -328,23 +342,53 @@ export async function handleLicenses(
         );
       // LX-28: `?batch=<id>` lists one batch's licences (an unknown id lists none).
       const batch = new URL(req.url).searchParams.get("batch");
-      const rows = await listLicenses(db, slug, {
-        ...(holder ? { holder } : {}),
-        ...(batch ? { batch } : {}),
-      });
+      const params = new URL(req.url).searchParams;
+      const rawLimit = params.get("limit");
+      const rawCursor = params.get("cursor");
+      let limit = LICENSE_PAGE_DEFAULT;
+      if (rawLimit !== null) {
+        const n = Number(rawLimit);
+        if (!/^\d+$/.test(rawLimit) || n < 1 || n > LICENSE_PAGE_MAX)
+          return err(
+            400,
+            ErrorCode.BadRequest,
+            `limit must be an integer from 1 to ${LICENSE_PAGE_MAX}`,
+            { fields: ["limit"] },
+          );
+        limit = n;
+      }
+      let after: LicenseCursor | undefined;
+      if (rawCursor !== null && rawCursor !== "") {
+        const decoded = decodeLicenseCursor(rawCursor);
+        if (!decoded)
+          return err(400, ErrorCode.BadRequest, "cursor is not valid", {
+            fields: ["cursor"],
+          });
+        after = decoded;
+      }
+      const page = await listLicensePage(
+        db,
+        slug,
+        {
+          ...(holder ? { holder } : {}),
+          ...(batch ? { batch } : {}),
+        },
+        { limit, ...(after ? { after } : {}) },
+      );
+      const rows = page.licenses;
       const verdicts = await deletionVerdicts(ctx, rows);
-      // PX-W9: the Identity toggle and the key-entry limit, read once for the whole list.
+      // PX-W9: the Identity toggle and the key-entry limit, read once for the whole page.
       const keyEntryContext = await keyEntryListContext(
         keyEntrySettings(ctx),
         slug,
       );
-      const licenses = await Promise.all(
-        rows.map(async (r) => ({
-          ...(await summarize(ctx, r, keyEntryContext)),
-          deletion: verdicts.get(r.id),
-        })),
-      );
-      return adminJson({ licenses });
+      const summaries = await summarizeMany(ctx, rows, keyEntryContext);
+      const licenses = rows.map((r, i) => ({
+        ...summaries[i],
+        deletion: verdicts.get(r.id),
+      }));
+      return adminJson({ licenses, nextCursor: page.nextCursor });
+
     }
     if (req.method === "POST") {
       const body = await readBody(req);
