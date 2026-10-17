@@ -52,6 +52,15 @@ export interface SettingRowProps extends Omit<SettingWriteOptions, "commit"> {
   reloadedBy?: string;
   /** Loads this setting's past changes; adds a History button. */
   history?: () => Promise<SettingHistoryEntry[]>;
+  /** What the History drawer says about the setting before its changes (deploy var, default). */
+  details?: React.ReactNode;
+  /** The registry key, as a quiet chip on the title line. */
+  chip?: string;
+  /**
+   * The member may read this row but not change it. The value shows as full-contrast text with a
+   * lock glyph, the reason is its description, and Revert is gone. The page says why once.
+   */
+  readOnly?: string;
   align?: "end" | "stretch" | "block";
 }
 
@@ -79,6 +88,9 @@ export function SettingRow(props: SettingRowProps): React.ReactElement {
     bounds,
     reloadedBy,
     history,
+    details,
+    chip,
+    readOnly,
     align,
     spec,
     label,
@@ -94,7 +106,8 @@ export function SettingRow(props: SettingRowProps): React.ReactElement {
       : "explicit");
   const w = useSettingWrite({ ...props, commit });
   const fmt = (v: unknown) => formatSettingValue(spec, v, labels);
-  const off = disabled || locked !== undefined || w.busy;
+  const viewOnly = readOnly !== undefined;
+  const off = disabled || locked !== undefined || viewOnly || w.busy;
   const errId = `${id}-error`;
   const hintId = `${id}-hint`;
   const unit = fieldUnit(spec);
@@ -108,8 +121,21 @@ export function SettingRow(props: SettingRowProps): React.ReactElement {
           ? "changed"
           : "default";
 
+  const reasonId = `${id}-readonly`;
+  const asText = viewOnly && spec.kind !== "switch" && spec.kind !== "boolean";
   let control: React.ReactNode;
-  if (display === "text")
+  if (asText)
+    control = (
+      <span
+        id={id}
+        className="inline-flex items-center gap-1.5 text-sm font-medium text-fg-strong"
+        aria-describedby={reasonId}
+      >
+        <Lock aria-hidden className="size-3.5 shrink-0 text-fg-muted" />
+        {fmt(value)}
+      </span>
+    );
+  else if (display === "text")
     control = <span className="text-sm text-fg-muted">{fmt(value)}</span>;
   else if (spec.kind === "switch" || spec.kind === "boolean") {
     const on = spec.kind === "boolean" ? w.draft === true : w.draft === "on";
@@ -118,7 +144,8 @@ export function SettingRow(props: SettingRowProps): React.ReactElement {
         id={id}
         checked={on}
         // Busy is not disabled: a disabled control drops focus, and the write keeps it.
-        disabled={disabled || locked !== undefined}
+        disabled={disabled || locked !== undefined || viewOnly}
+        aria-describedby={viewOnly ? reasonId : undefined}
         readOnly={w.busy}
         aria-busy={w.busy || undefined}
         onCheckedChange={(next) =>
@@ -209,7 +236,7 @@ export function SettingRow(props: SettingRowProps): React.ReactElement {
     </>
   );
 
-  const canRevert = props.revertPlan?.() != null;
+  const canRevert = !viewOnly && props.revertPlan?.() != null;
   const draftText = changed && w.draft !== null ? fmt(w.draft) : undefined;
 
   const footer = (
@@ -282,8 +309,9 @@ export function SettingRow(props: SettingRowProps): React.ReactElement {
     <SettingsRow
       label={label}
       help={help}
-      htmlFor={display === "text" ? undefined : id}
+      htmlFor={display === "text" || asText ? undefined : id}
       source={sourceSlot}
+      chip={chip}
       align={align}
       state={state}
       footer={footer}
@@ -300,7 +328,17 @@ export function SettingRow(props: SettingRowProps): React.ReactElement {
           Revert…
         </Button>
       ) : null}
-      {history ? <SettingHistory label={label} load={history} /> : null}
+      {history ? (
+        <SettingHistory label={label} load={history} details={details} />
+      ) : null}
+      {viewOnly ? (
+        <span id={reasonId} className="sr-only">
+          Read-only. {readOnly}
+        </span>
+      ) : null}
+      {viewOnly && !asText ? (
+        <Lock aria-hidden className="size-3.5 shrink-0 text-fg-muted" />
+      ) : null}
       {control}
     </SettingsRow>
   );

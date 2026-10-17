@@ -21,6 +21,7 @@ export function SettingsRow({
   help,
   htmlFor,
   source,
+  chip,
   align = "end",
   aside,
   children,
@@ -32,6 +33,8 @@ export function SettingsRow({
   htmlFor?: string;
   /** A `SourceBadge` for this one value (Platform → Settings). */
   source?: React.ReactNode;
+  /** A quiet mono chip after the title: the registry key. */
+  chip?: React.ReactNode;
   align?: "end" | "stretch" | "block";
   aside?: React.ReactNode;
   children: React.ReactNode;
@@ -53,6 +56,11 @@ export function SettingsRow({
         ) : (
           <span className="text-sm font-medium text-fg-strong">{label}</span>
         )}
+        {chip ? (
+          <code className="rounded border border-border px-1.5 py-px font-mono text-[0.6875rem] leading-4 text-fg-muted [overflow-wrap:anywhere]">
+            {chip}
+          </code>
+        ) : null}
         {source}
       </div>
       {help ? (

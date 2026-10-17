@@ -280,7 +280,8 @@ function HardOff({
   );
 }
 
-function SettingHelp({
+/** The facts the History drawer opens with: deploy var, default and who reads the setting. */
+function SettingDetails({
   setting,
 }: {
   setting: PlatformSetting;
@@ -289,12 +290,14 @@ function SettingHelp({
     setting.deployValue === null ? "unset" : `"${setting.deployValue}"`;
   return (
     <>
-      {setting.description}
-      <span className="mt-1 block text-xs">
-        <code className="font-mono">{setting.key}</code> · deploy var {deploy} ·
-        default {formatPlatformValue(setting, setting.default)} · read by{" "}
+      <p>
+        <code className="font-mono text-xs">{setting.key}</code>
+      </p>
+      <p>
+        Deploy var {deploy} · default{" "}
+        {formatPlatformValue(setting, setting.default)} · read by{" "}
         {setting.scripts.length > 1 ? "both Worker scripts" : "the main Worker"}
-      </span>
+      </p>
     </>
   );
 }
@@ -380,7 +383,14 @@ export function EditableRow({
       id={`platform-setting-${setting.key}`}
       settingKey={setting.key}
       label={setting.label}
-      help={<SettingHelp setting={setting} />}
+      help={setting.description}
+      chip={setting.key}
+      details={<SettingDetails setting={setting} />}
+      readOnly={
+        write.allowed
+          ? undefined
+          : (write.disabledReason ?? "You can't edit this.")
+      }
       spec={specOf(setting)}
       confirm={confirmOf(setting)}
       labels={labelsOf(setting)}
@@ -389,13 +399,7 @@ export function EditableRow({
       commit={setting.kind === "integer" ? "explicit" : "immediate"}
       source={<SettingSource setting={setting} />}
       disabled={!storeAvailable}
-      locked={
-        setting.forcedOff ? (
-          <HardOff setting={setting} />
-        ) : write.allowed ? undefined : (
-          write.disabledReason
-        )
-      }
+      locked={setting.forcedOff ? <HardOff setting={setting} /> : undefined}
       notes={notes.length > 0 ? notes : undefined}
       footnote={
         bytes
@@ -440,7 +444,7 @@ export function EditableRow({
         else toast.success(text);
       }}
       revertPlan={() => {
-        if (!stored) return null;
+        if (!stored || !write.allowed) return null;
         const after = afterRevert(setting);
         const computed = confirmLevel(
           specOf(setting),

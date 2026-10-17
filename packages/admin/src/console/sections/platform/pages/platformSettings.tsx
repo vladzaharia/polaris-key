@@ -25,11 +25,12 @@ import {
   type PlatformSetting,
   type PlatformSettingsView,
 } from "../../../../api.js";
+import { Button } from "../../../../ui/Button.js";
 import { Callout } from "../../../../ui/Callout.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
 import { PageHeader } from "../../../../ui/PageHeader.js";
 import { PageSkeleton } from "../../../../ui/Skeleton.js";
-import { StatusPill } from "../../../../ui/StatusPill.js";
+import { useWriteGate } from "../../../access/useCan.js";
 import { qk } from "../../../data/queries.js";
 import {
   SettingsRow,
@@ -98,13 +99,36 @@ const WARNING_TITLES: Record<string, string> = {
   kek_id_set: "PLATFORM_KEK_ID is set",
   kek_keyring_unusable: "The KEK keyring does not load",
   kek_legacy_open_only: "PLATFORM_KEK is kept as a legacy key",
-  portal_session_secret_unset: "Portal sessions share the admin secret",
+  portal_session_secret_unset: "Customer portal sessions cannot be signed",
+};
+
+/** Where each Worker warning is fixed. */
+const WARNING_TARGETS: Record<
+  string,
+  SectionId | "platform-keyring" | "platform-secrets"
+> = {
+  console_oidc_shared: "platform-signin",
+  kek_id_set: "platform-keyring",
+  kek_keyring_unusable: "platform-keyring",
+  kek_legacy_open_only: "platform-keyring",
+  portal_session_secret_unset: "platform-secrets",
 };
 
 function jump(id: string): void {
   const el = document.getElementById(id);
   el?.scrollIntoView({ block: "start" });
   el?.focus({ preventScroll: true });
+}
+
+/** One notice for the whole page: a member with view and no edit. Each row shows only a lock. */
+function ViewOnlyNotice(): React.ReactElement | null {
+  const write = useWriteGate("platform");
+  if (write.allowed || !write.canView) return null;
+  return (
+    <Callout tone="info" title="You can view these settings">
+      {write.disabledReason}
+    </Callout>
+  );
 }
 
 export function PlatformSettingsPage(): React.ReactElement {
@@ -178,7 +202,9 @@ export function PlatformSettingsPage(): React.ReactElement {
   const showEmail = rowsIn("platform-email").length > 0 || has(EMAIL_VARS);
   const showDefaults = rowsIn("platform-defaults").length > 0;
   const showLicensing = true;
+  const ready = readyItems(view, deploy);
   const hidden = new Set<SectionId>([
+    ...(ready.length > 0 ? [] : (["platform-ready"] as const)),
     ...(showDefaults ? [] : (["platform-defaults"] as const)),
     ...(showSignin ? [] : (["platform-signin"] as const)),
     ...(showHosting ? [] : (["platform-hosting"] as const)),
@@ -190,7 +216,8 @@ export function PlatformSettingsPage(): React.ReactElement {
       header={header}
       sections={SECTIONS.filter((s) => !hidden.has(s.id))}
     >
-      <ReadySection view={view} deploy={deploy} />
+      <ViewOnlyNotice />
+      <ReadySection items={ready} />
 
       {showDefaults ? (
         <SettingsSection
@@ -222,7 +249,7 @@ export function PlatformSettingsPage(): React.ReactElement {
           title="Storefront and hosting"
           description={
             rowsIn("platform-hosting").length > 0
-              ? "The storefront and hosted assets save on their own; the hosts themselves are deploy-time."
+              ? "Hosted assets and package feeds save on their own; the hosts themselves are deploy-time."
               : undefined
           }
         >
@@ -292,7 +319,7 @@ interface ReadyItem {
   tone: "danger" | "warning";
   title: string;
   detail: string;
-  to?: SectionId;
+  to?: string;
 }
 
 /** What still needs doing before the platform is ready, from what the Worker already reports. */
@@ -316,7 +343,7 @@ export function readyItems(
       tone: w.code === "kek_keyring_unusable" ? "danger" : "warning",
       title: WARNING_TITLES[w.code] ?? w.code,
       detail: w.message,
-      to: "platform-advanced",
+      to: WARNING_TARGETS[w.code] ?? "platform-advanced",
     });
   if (
     deploy.has("PLATFORM_ADMIN_GROUP") &&
@@ -341,57 +368,90 @@ export function readyItems(
         "Product repositories cannot be linked until GITHUB_APP_ID is set.",
       to: "platform-hosting",
     });
-  return items;
+  // The most severe first: the banner shows only that one until it is expanded.
+  return items
+    .map((item, i) => ({ item, i }))
+    .sort(
+      (a, b) =>
+        Number(b.item.tone === "danger") - Number(a.item.tone === "danger") ||
+        a.i - b.i,
+    )
+    .map((x) => x.item);
 }
 
 function ReadySection({
-  view,
-  deploy,
+  items,
 }: {
-  view: PlatformSettingsView;
-  deploy: Map<string, PlatformDeployValue>;
-}): React.ReactElement {
-  const items = readyItems(view, deploy);
+  items: ReadyItem[];
+}): React.ReactElement | null {
+  const [all, setAll] = React.useState(false);
+  if (items.length === 0) return null;
+  const worst = items[0]!;
+  const tone = items.some((i) => i.tone === "danger") ? "danger" : "warning";
+  const goTo = (i: ReadyItem) =>
+    i.to ? (
+      <>
+        {" "}
+        <a
+          href={`#${i.to}`}
+          className="underline underline-offset-4"
+          onClick={(e) => {
+            e.preventDefault();
+            jump(i.to!);
+          }}
+        >
+          Go to{" "}
+          {SECTIONS.find((s) => s.id === i.to)?.title ?? sectionName(i.to)}
+        </a>
+      </>
+    ) : null;
   return (
-    <SettingsSection
+    <section
       id="platform-ready"
-      title="Platform ready"
-      actions={
-        items.length === 0 ? (
-          <StatusPill tone="success">Ready</StatusPill>
-        ) : (
-          <StatusPill tone="warning">{`${items.length} to fix`}</StatusPill>
-        )
-      }
+      aria-label="Platform ready"
+      tabIndex={-1}
+      className="space-y-3 outline-none"
     >
-      {items.length === 0 ? (
-        <SettingsRow label="Nothing needs attention">
-          <span className="text-fg-muted">Sign-in, storage and keys load.</span>
-        </SettingsRow>
-      ) : (
-        <div className="space-y-3 px-5 py-4" aria-label="To fix" role="region">
-          {items.map((i) => (
-            <Callout key={i.id} tone={i.tone} title={i.title}>
-              {i.detail}
-              {i.to ? (
-                <>
-                  {" "}
-                  <a
-                    href={`#${i.to}`}
-                    className="underline underline-offset-4"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      jump(i.to!);
-                    }}
-                  >
-                    Go to {SECTIONS.find((s) => s.id === i.to)?.title}
-                  </a>
-                </>
-              ) : null}
-            </Callout>
+      <Callout
+        tone={tone}
+        title={`${items.length} to fix: ${worst.title}`}
+        action={
+          items.length > 1 ? (
+            <Button
+              size="sm"
+              variant="outline"
+              aria-expanded={all}
+              aria-controls="platform-ready-all"
+              onClick={() => setAll((v) => !v)}
+            >
+              {all ? "Hide" : `Show all ${items.length}`}
+            </Button>
+          ) : undefined
+        }
+      >
+        {worst.detail}
+        {goTo(worst)}
+      </Callout>
+      {all ? (
+        <ul id="platform-ready-all" className="space-y-2">
+          {items.slice(1).map((i) => (
+            <li key={i.id}>
+              <Callout tone={i.tone} title={i.title}>
+                {i.detail}
+                {goTo(i)}
+              </Callout>
+            </li>
           ))}
-        </div>
-      )}
-    </SettingsSection>
+        </ul>
+      ) : null}
+    </section>
   );
+}
+
+function sectionName(id: string): string {
+  return id === "platform-keyring"
+    ? "Keyring"
+    : id === "platform-secrets"
+      ? "Secrets"
+      : "Advanced";
 }

@@ -483,8 +483,12 @@ describe("the sections, ordered by use (ST-09)", () => {
     const titles = within(page)
       .getAllByRole("heading", { level: 2 })
       .map((h) => h.textContent);
+    const banner = within(page).getByRole("region", { name: "Platform ready" });
+    const signin = within(page).getByRole("region", { name: "Sign-in" });
+    expect(
+      banner.compareDocumentPosition(signin) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
     const order = [
-      "Platform ready",
       "Sign-in",
       "Storefront and hosting",
       "Email and alerts",
@@ -522,9 +526,12 @@ describe("the sections, ordered by use (ST-09)", () => {
         "/manage/api/platform/settings": view({ warnings: [] }),
       }),
     });
-    const ready = await section("Platform ready");
-    expect(within(ready).getByText("Ready")).toBeTruthy();
-    expect(within(ready).queryByRole("region", { name: "To fix" })).toBeNull();
+    await settingsPage();
+    await section("Sign-in");
+    // Complete: the banner goes.
+    expect(
+      within(main()).queryByRole("region", { name: "Platform ready" }),
+    ).toBeNull();
   });
 
   it("the header's History button jumps to the trail", async () => {
@@ -1117,15 +1124,24 @@ describe("the read-only inventory", () => {
     expect(within(email).getByText("noreply@auth.example.com")).toBeTruthy();
     expect(within(email).getByText("Not set: 500")).toBeTruthy();
     expect(within(email).getByText("Not registered")).toBeTruthy();
-    const warnings = within(main()).getByRole("region", { name: "To fix" });
+    const warnings = within(main()).getByRole("region", {
+      name: "Platform ready",
+    });
+    await userEvent.click(
+      within(warnings).getByRole("button", { name: /^Show all/ }),
+    );
     expect(
-      within(warnings).getByText("Portal sessions share the admin secret"),
+      within(warnings).getByText("Customer portal sessions cannot be signed"),
     ).toBeTruthy();
     expect(
-      within(warnings).getByText(
-        "The console shares the customer sign-in client",
-      ),
+      within(warnings).getByText(/The console shares the customer sign-in/),
     ).toBeTruthy();
+    // Each warning goes where it is fixed.
+    expect(
+      within(warnings)
+        .getAllByRole("link")
+        .map((a) => a.textContent),
+    ).toEqual(expect.arrayContaining(["Go to Sign-in", "Go to Secrets"]));
   });
 
   it("collapses the code limits until asked", async () => {
@@ -1380,10 +1396,14 @@ describe("Package feeds policy in Storefront and hosting (ST-09)", () => {
       within(hosting).getByRole("switch", { name: "Serve npm" }),
     );
     const dialog = await screen.findByRole("alertdialog");
-    expect(within(dialog).getByText(/Every product.s npm feed/)).toBeTruthy();
+    expect(
+      within(dialog).getByText("Stop serving npm for every product?"),
+    ).toBeTruthy();
+    expect(within(dialog).getByText(/feeds of 2 products answer/)).toBeTruthy();
     expect(policyPut(log)).toHaveLength(0);
-    const buttons = within(dialog).getAllByRole("button");
-    await userEvent.click(buttons[buttons.length - 1]!);
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Stop serving npm" }),
+    );
     await waitFor(() => expect(policyPut(log)).toHaveLength(1));
     expect(JSON.parse(policyPut(log)[0]!.body!)).toEqual({
       expectedVersion: 1,
@@ -1428,9 +1448,17 @@ describe("Package feeds policy in Storefront and hosting (ST-09)", () => {
         }) as HTMLButtonElement
       ).disabled,
     ).toBe(true);
+    // One notice for the page, not one reason per row; the row keeps a lock.
+    const notice = within(main()).getByText("You can view these settings");
+    expect(notice).toBeTruthy();
     expect(
-      within(hosting).getAllByText(/Platform access/).length,
-    ).toBeGreaterThan(0);
+      within(notice.closest("[data-tone]") as HTMLElement).getByText(
+        /Platform edit access/,
+      ),
+    ).toBeTruthy();
+    expect(
+      within(main()).queryByRole("button", { name: /^Revert/ }),
+    ).toBeNull();
   });
 });
 
@@ -1449,5 +1477,73 @@ describe("Limits (ST-09)", () => {
     await userEvent.click(within(limits).getByRole("button", { name: /Show/ }));
     for (const name of ["Retention", "Storage and delivery"])
       expect(within(limits).getByRole("group", { name })).toBeTruthy();
+  });
+});
+
+describe("fix round (ST-09 UX review)", () => {
+  it("a ceiling is checked as you type and Save waits for a valid one", async () => {
+    boot("#/platform/settings", { extra: routes() });
+    const hosting = await section("Storefront and hosting");
+    const input = within(hosting).getByLabelText("npm size ceiling (MiB)");
+    await userEvent.clear(input);
+    await userEvent.type(input, "6000");
+    expect(within(hosting).getByText("Enter 5,120 MiB or less.")).toBeTruthy();
+    expect(
+      (
+        within(hosting).getByRole("button", {
+          name: "Save",
+        }) as HTMLButtonElement
+      ).disabled,
+    ).toBe(true);
+    await userEvent.clear(input);
+    await userEvent.type(input, "0");
+    expect(within(hosting).getByText("Enter at least 1 MiB.")).toBeTruthy();
+  });
+
+  it("Platform ready leads with the most severe item and uses the danger tone", async () => {
+    boot("#/platform/settings", {
+      extra: routes({
+        "/manage/api/platform/settings": view({
+          warnings: [
+            {
+              code: "portal_session_secret_unset",
+              message: "PORTAL_SESSION_SECRET is not set.",
+              names: [],
+            },
+            {
+              code: "kek_keyring_unusable",
+              message: "The keyring does not load.",
+              names: [],
+            },
+          ],
+        }),
+      }),
+    });
+    const banner = await section("Platform ready");
+    const callout = banner.querySelector("[data-tone]")!;
+    expect(callout.getAttribute("data-tone")).toBe("danger");
+    expect(callout.textContent).toContain("The KEK keyring does not load");
+    expect(within(banner).getByText(/^2 to fix/)).toBeTruthy();
+    expect(
+      within(banner).getByRole("link", { name: "Go to Keyring" }),
+    ).toBeTruthy();
+  });
+
+  it("a viewer's page has no Revert, shows values as text, and passes axe", async () => {
+    boot("#/platform/settings", {
+      extra: routes(),
+      me: {
+        platformAdmin: false,
+        permissions: {
+          roles: [],
+          platform: { view: ["console", "platform"], edit: ["console"] },
+          products: {},
+        },
+      },
+    });
+    const jobs = await section("Jobs");
+    expect(within(jobs).queryByRole("button", { name: /^Revert/ })).toBeNull();
+    expect(within(jobs).queryByLabelText(/\(days\)$/)).toBeNull();
+    expect((await axe(main())).violations.map((v) => v.id)).toEqual([]);
   });
 });
