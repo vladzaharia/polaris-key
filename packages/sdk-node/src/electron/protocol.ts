@@ -63,6 +63,8 @@ export const DEFAULT_INVOKE_VERBS = [
   // v4 (SP-12)
   "core.boot",
   "core.crashTags",
+  // v4 (SP-58): `client.backend.headers()`, the licence and device headers for the app's own backend
+  "core.backendHeaders",
   "release.fetch",
   "distribution.downloadModel",
   "distribution.thisPlatform",

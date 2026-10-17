@@ -616,6 +616,9 @@ export function exposePolarisBridge(
           : {}),
       });
     },
+    // SP-58: the pre-synced X-PKey-License and X-PKey-Device. The renderer decides which
+    // origins get them; the host only hands them over.
+    "core.backendHeaders": async () => client.backend.headers(),
     "release.fetch": async (a) => {
       const b = bag(a);
       if (!opts.downloadDir)

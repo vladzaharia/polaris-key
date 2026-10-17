@@ -59,8 +59,8 @@
       "note": "copy.message/title/activation over src/copy.generated.ts (pnpm gen constants, from conformance/parity/copy.en.json): the error-code, gate and activation tables, COPY_FALLBACK naming an unknown code; registerCopy adds a locale that falls back to the generated English per key."
     },
     "core.backend": {
-      "status": "planned",
-      "wp": "SP-58"
+      "status": "implemented",
+      "note": "client.backend (packages/sdk-node/src/backend/client.ts): fetch() and headers() send X-PKey-License and X-PKey-Device only; backend.origins (exact, HTTPS except loopback) is checked on every hop, so a redirect cannot carry the licence elsewhere; the freshness pre-sync, one shared concurrent sync, one retry on license_stale/license_invalid, and not_entitled/sign_in_required thrown typed. Bridge v4 host verb core.backendHeaders. test/backend.test.ts replays backend-matrix.json's client rows."
     },
     "license.gate": {
       "status": "implemented"
