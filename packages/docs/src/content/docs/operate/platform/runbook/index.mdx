@@ -1,36 +1,66 @@
 ---
-title: "Operating: the KEK keyring"
-description: "The full production operations runbook — deploy, secrets, the platform KEK, product operations, CI gates, and troubleshooting — imported verbatim from docs/RUNBOOK.md."
+title: "Runbook"
+description: "Operate a live instance: deploy, rotate the KEK, respond to a key compromise, and run product, email, license and storage procedures."
+type: "overview"
+lastReviewed: "2026-10-16"
 sidebar:
-  order: 7
+  order: 6
 ---
 
-import { Content as Runbook } from "../../../../../../../../docs/RUNBOOK.md";
+import CardGrid from "../../../../../components/docs/CardGrid.astro";
+import RunbookSection from "../../../../../components/docs/RunbookSection.astro";
+import { LinkCard } from "@astrojs/starlight/components";
 
-`PLATFORM_KEK` is the one piece of configuration on this platform whose misconfiguration is
-**silent**: every sealed value — a product's signing key, its secrets — fails to open,
-`loadProduct` returns `null`, and every route for that product serves a plain `404` with no log
-line, indistinguishable from a product that was never registered. The admin console itself does
-not depend on the KEK, so a bad keyring can leave `/manage` looking completely healthy while
-every product's public routes are dark. Read the rotation procedure below before you touch it,
-and if products are 404ing at once with nothing else broken, start at _Troubleshooting_ at the
-bottom of this page.
+The runbook is `docs/RUNBOOK.md`, shown one procedure per page. Each page has Verify, Roll back and Escalate. For a first deployment, use [Deploying to production](/docs/operate/platform/deploy/).
 
-In the console, **Platform → Settings → Keyring** (`#/platform/settings`) shows the keyring
-read-only: which KEK secrets are set, the active kid, every kid in the ring with how many values it
-seals, and how many values are still on an older key or under a key that has left the ring (those
-cannot be opened). A `PLATFORM_KEK` kept beside `PLATFORM_KEK_KEYS` is marked as the legacy key,
-open only, with what is still under it and when it is safe to delete: that is the rotation for an
-environment whose current KEK nobody holds (_Rotating when the old KEK is unknown_, below). It
-also says when the ring does not parse. **Platform → Deployment**
-(`#/platform/deployment`) shows the build this instance
-runs, the D1 migrations it has applied against the build's newest, the required indexes, which
-bindings are present, and the **Platform activity** log, where every re-seal sweep is recorded with
-who ran it and how many values it re-sealed. Check it first when every product goes dark after a
-deploy. The re-seal sweep itself is the `POST /manage/api/products/kek` call in the runbook below.
+**Requires** a platform admin's console session.
 
-What follows is the operations runbook for an already-deployed instance, rendered here in full
-from `docs/RUNBOOK.md` so it can never drift from what this page says. For first-time production
-bootstrap, see [Deploying to production](/docs/admin/deploy/) instead.
+<CardGrid>
+  <LinkCard
+    title="Deploy a release"
+    href="/docs/operate/platform/runbook/deploy-a-release/"
+    description="Migrate, deploy and smoke-check."
+  />
+  <LinkCard
+    title="Rotate the KEK"
+    href="/docs/operate/platform/runbook/rotate-the-kek/"
+    description="Re-key sealed values while serving."
+  />
+  <LinkCard
+    title="Respond to a key compromise"
+    href="/docs/operate/platform/runbook/respond-to-a-key-compromise/"
+    description="Rotate a leaked secret or key."
+  />
+  <LinkCard
+    title="Run product operations"
+    href="/docs/operate/platform/runbook/run-product-operations/"
+    description="Feeds, tokens, packs and back-fills."
+  />
+  <LinkCard
+    title="Set up sign-in email"
+    href="/docs/operate/platform/runbook/set-up-sign-in-email/"
+    description="The shared sender and its caps."
+  />
+  <LinkCard
+    title="Set up the login card"
+    href="/docs/operate/platform/runbook/set-up-the-login-card/"
+    description="Turnstile, avatars and providers."
+  />
+  <LinkCard
+    title="Change licensing data"
+    href="/docs/operate/platform/runbook/change-licensing-data/"
+    description="Migrations and reports."
+  />
+  <LinkCard
+    title="Restore data and run storage jobs"
+    href="/docs/operate/platform/runbook/restore-data-and-run-storage-jobs/"
+    description="D1 restore, blob collector, mirroring, deltas."
+  />
+  <LinkCard
+    title="Troubleshoot the platform"
+    href="/docs/operate/platform/runbook/troubleshooting/"
+    description="Sign-in, email, sync and dark products."
+  />
+</CardGrid>
 
-<Runbook />
+<RunbookSection file="RUNBOOK" heading="Production shape" />

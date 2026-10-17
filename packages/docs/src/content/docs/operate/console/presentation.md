@@ -1,11 +1,13 @@
 ---
 title: "Presentation"
 description: "The images Polaris Key hosts for a product: the product icon, the listing's icon, header and screenshots, and store slots. Upload, Revert to manifest, Delete copy."
+type: "reference"
+lastReviewed: "2026-10-16"
 sidebar:
   order: 6
 ---
 
-**Core → Presentation** lists every image Polaris Key hosts for the product. Polaris Key keeps its
+**Settings → Presentation** lists every image Polaris Key hosts for the product. Polaris Key keeps its
 own copy of each file and serves it from its image host (`img.plrs.im`); the developer's original,
 wherever it lives, is never changed.
 
@@ -60,7 +62,7 @@ row when that row holds the same file.
 ## From CI
 
 `pkey assets push <file> --slot <slot>` and the publish Action's `assets` input send files from a
-CI job; see [Hosted assets](/docs/build/ci/#hosted-assets). The CI token needs the opt-in
+CI job; see [Hosted assets](/docs/features/ship-builds/ci-stores/#hosted-assets). The CI token needs the opt-in
 `assets:write` scope, which you grant on **Keys & secrets → CI publishing**.
 
 ## Hosting and quotas

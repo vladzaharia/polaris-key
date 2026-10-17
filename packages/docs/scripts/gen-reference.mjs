@@ -19,6 +19,8 @@ import {
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { CORE_SCHEMA, load as loadYaml } from "js-yaml";
+import { readGlobalShortcuts, readNav } from "./console-nav.mjs";
+import { fileFor, splitFrontmatter } from "./site-map.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const docsRoot = join(here, "..");
@@ -1075,6 +1077,100 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
   );
 }
 
+// ── 9. Console tour ────────────────────────────────────────────────────────────
+// The console's pages, from `SECTIONS`, `GLOBAL_PAGES` and the Platform group in
+// packages/admin/src/console/nav.ts, and its shortcuts from shortcuts.tsx. test/consoleDocsTargets
+// holds each page's Docs target to a docs page that names the screen.
+function consoleTour() {
+  const nav = readNav();
+  const titleOf = (href) => {
+    const id = href
+      .replace(/#.*$/, "")
+      .replace(/^\/docs\//, "")
+      .replace(/\/$/, "");
+    const file = fileFor(id) ?? fileFor(`${id}/index`);
+    const title = file
+      ? splitFrontmatter(readFileSync(file, "utf8")).data.title
+      : undefined;
+    return title
+      ? `[${title}](${href.replace(/#.*$/, "")}${href.includes("#") ? "#" + href.split("#")[1] : ""})`
+      : `\`${href}\``;
+  };
+  const row = (p, url) => [
+    `**${p.label}**`,
+    `\`${url}\``,
+    p.inNav ? "Sidebar" : "Tab or sub-page",
+    titleOf(p.docs),
+  ];
+  const cols = ["Page", "URL", "Where", "Docs"];
+  const productUrl = (p) => `#/p/<slug>${p.path ? "/" + p.path : ""}`;
+  const parts = [];
+  parts.push(
+    "## Home, Products and API tokens",
+    "",
+    "These pages belong to no product.",
+    "",
+    table(
+      cols,
+      nav.globals.map((p) => row(p, `#/${p.path}`)),
+    ),
+    "",
+    `## Platform`,
+    "",
+    `Instance-wide pages. The group shows only off a product. Its Docs section is ${titleOf(nav.platformDocs)}.`,
+    "",
+    table(
+      cols,
+      nav.platform.map((p) => row(p, `#/${p.path}`)),
+    ),
+  );
+  for (const s of nav.sections) {
+    parts.push(
+      "",
+      `## ${s.label}`,
+      "",
+      s.service
+        ? `Shown when the product runs ${s.label}.`
+        : "Always shown. It has no owning service.",
+      "",
+      table(
+        cols,
+        s.items.map((p) => row(p, productUrl(p))),
+      ),
+    );
+  }
+  const keys = nav.sections
+    .flatMap((s) => s.items)
+    .filter((p) => p.shortcut)
+    .map((p) => [`\`g ${p.shortcut}\``, `Go to ${p.shortcutLabel ?? p.label}`]);
+  parts.push(
+    "",
+    "## Keyboard",
+    "",
+    "Shortcuts never fire while you type in a field. Press `?` for the sheet in the console.",
+    "",
+    table(
+      ["Keys", "Action"],
+      [
+        ...readGlobalShortcuts().map((s) => [`\`${s.keys}\``, s.label]),
+        ...keys,
+      ],
+    ),
+  );
+  return `---
+title: "Console tour"
+description: "Every console page by section: its address, whether the sidebar lists it, and the docs page it opens."
+---
+
+{/* GENERATED PAGE — do not edit. Regenerate with \`pnpm --filter @polaris-key/docs gen\`.
+    Source of truth and emitter: packages/docs/scripts/gen-reference.mjs. */}
+
+The console at \`/manage\` has a sidebar with one section per service the product runs, after Core. A section's page list below is \`SECTIONS\` in \`packages/admin/src/console/nav.ts\`. A product page's address is \`#/p/<slug>/<path>\`, with a record id and tab after it where the page has one. The session lasts 8 hours, and the account menu shows when it ends.
+
+${parts.join("\n")}
+`;
+}
+
 // ── driver ─────────────────────────────────────────────────────────────────────
 export const EMITTERS = {
   "reference/validation-codes.mdx": manifestValidationCodes,
@@ -1085,6 +1181,7 @@ export const EMITTERS = {
   "contribute/data-model.mdx": dataModel,
   "reference/protocol/corpus.mdx": corpusInventory,
   "reference/parity.mdx": parityMatrix,
+  "operate/console/tour.mdx": consoleTour,
 };
 
 const check = process.argv.includes("--check");

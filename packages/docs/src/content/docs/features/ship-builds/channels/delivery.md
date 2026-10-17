@@ -3,6 +3,8 @@ sidebar:
   order: 2
 title: "Byte delivery and delivery access"
 description: "Every download Distribution serves — the installer, the direct download, builds, files and blobs — their permanent aliases, the bytes host, and the one delivery-access answer."
+type: "reference"
+lastReviewed: "2026-10-16"
 ---
 
 Release writes the records; **Distribution serves the bytes**. Every download a product
@@ -92,12 +94,12 @@ applies it in its own dispatcher.
 
 Who may download a deliverable is stored per deliverable in `dist_access`:
 
-| Mode            | Who may download                                                      |
-| --------------- | --------------------------------------------------------------------- |
-| `public`        | anyone                                                                |
-| `authenticated` | a device whose licence is usable                                      |
-| `licensed`      | a device whose licence is usable (identical to `authenticated` today) |
-| `entitled`      | a device whose own licence covers the requested channel and version   |
+| Mode            | Who may download                                                          |
+| --------------- | ------------------------------------------------------------------------- |
+| `public`        | anyone                                                                    |
+| `authenticated` | a device whose licence is usable                                          |
+| `licensed`      | a device whose licence is usable (identical to `authenticated` today)     |
+| `entitled`      | a device whose own licence covers the requested release track and version |
 
 A deliverable with no row of its own inherits the `app` row; a product with no `app` row reads
 as `entitled` (fail-closed). The refusals are exactly the ones Release answered with: the flat
@@ -112,7 +114,7 @@ The appcast, the download routes and the portal's download mint all read the sam
 could offer what the download then refused.
 
 - **Downloads.** `dl` and `builds` check their selector; `files` checks the release's stored
-  version as one fixed, pinned version, never as a moving channel; `blobs` authorises the
+  version as one fixed, pinned version, never as a moving release track; `blobs` authorises the
   object's holders: an app artifact is served under `entitled` only if a release of this
   product carrying that digest passes the `files` check, under the strictest mode of the
   deliverables whose releases carry it, and a pack's object under the pack's own access and
@@ -120,7 +122,7 @@ could offer what the download then refused.
 - **The appcast** is gated by the `app` deliverable's delivery access.
 - **The portal.** A customer has licences, not a device token, so each mode is asked of the
   account's linked licences: `licensed` needs a usable one, `entitled` one whose grant holds the
-  release's channel (stable for a GitHub-derived release) and whose window holds its version.
+  release's release track (stable for a GitHub-derived release) and whose window holds its version.
   A public artifact with no GitHub download URL is redirected to its bytes-host URL; a
   non-public one never is, because the browser has no device token to present there.
 
@@ -168,10 +170,10 @@ URL of one release file or of a build's payload: on the bytes host when `BLOB_OR
 otherwise a path on this origin. Both are minted as `…/distribution/files/<releaseId>/<name>`,
 pinned to the release by its id, so the URL is immutable. A build URL is never minted from the
 release's stored version: a release synced from a GitHub tag such as `latest` or `beta` stores
-that tag as its version, and `builds/latest/…` would serve whatever the channel points at now. It
+that tag as its version, and `builds/latest/…` would serve whatever the release track points at now. It
 answers `null` for a release, file, build or build payload that does not exist, for a release
 that is not the app's (a pack's objects are reached by SHA-256 on the blob route), and for an
-outlet that delivers the deliverable by a transport other than `pkey-cdn`. Storefront feeds, the
+channel that delivers the deliverable by a transport other than `pkey-cdn`. Storefront feeds, the
 download page and the updater feeds link through it.
 
 ## Pack bytes
@@ -248,11 +250,11 @@ a delta itself.
 
 ## Pack transports
 
-`.pkey/distribution`'s `transports` resolve to one stored transport per (deliverable, outlet),
+`.pkey/distribution`'s `transports` resolve to one stored transport per (deliverable, channel),
 packs included: a deliverable's own entry, else `transports.packs` for a pack, else the
 default. Polaris Key delivers three: `pkey-cdn` and `web` (the blob route above) and `embedded`
 (a baseline inside the app build). It also acts on the store transports `apple-ba`, `play-pad`
-and `steam-depot` (P5-08): the store moves the bytes, CI reports and the App Store Connect
+and `steam-depot`: the store moves the bytes, CI reports and the App Store Connect
 connector give their availability, readiness gates on it, and the Godot SDK plans the
 `platform` strategy through the store's plugin ([Platform pack transports](/docs/build/pack-transports/));
 nothing is derived or served for them. Any other transport (`msix-optional`, `flatpak-ext`) is
@@ -271,7 +273,7 @@ collector runs on the nightly maintenance cron:
 1. **Per product**, it drops the refs no live reference needs: a dead pack release's
    `pack-object` refs, and `pack-upload` refs to keys no live release's record, files index or
    chunk index names. Live means pinned or held by a live app release, in a current pack set,
-   the previous release of a set member, a pack pointer, named by a rollout, listed on an outlet,
+   the previous release of a set member, a pack pointer, named by a rollout, listed on a channel,
    a revocation's replacement, newer than every live release, or one of the three newest.
    While a pack rollout is not complete, every release of that pack below its target is live
    too (a gate's fallback). Revoked releases are never live. `artifact` and `feed` refs are never
@@ -286,7 +288,7 @@ collector runs on the nightly maintenance cron:
 
 `BLOB_GC_MODE=off` stops it. Every dropped or restored ref and every deletion is logged in
 `blob_gc_log`, and each product's drops are audited (`core.blob_gc.refs_dropped`). The console's
-dry run is `GET /manage/api/products/<slug>/blob-gc`, and `…/blob-gc/bundles` shows each chunk
+dry run is `/manage/api/products/<slug>/blob-gc` (GET), and `…/blob-gc/bundles` shows each chunk
 bundle a live release's index names with its live-data ratio (the share of its bytes live
 indexes still read). A pack's chunk bundles are blobs, so a bundle stays as long as any live
 release's chunk index names it, even after the release that uploaded it is dead; a live variant
@@ -294,7 +296,7 @@ whose chunk index cannot be read keeps every `pack-upload` ref that night.
 
 ## See also
 
-- [Rollouts and halts](/docs/services/distribution/rollouts/) — the outlet-scoped rollout
+- [Rollouts and halts](/docs/services/distribution/rollouts/) — the channel-scoped rollout
   controls.
 - [Artifacts, changelog & install](/docs/services/release/artifacts/) — what each byte route
   resolves and serves.
@@ -302,13 +304,13 @@ whose chunk index cannot be read keeps every `pack-upload` ref that night.
 
 ## Package feeds switch
 
-Each product has an operator-owned **package feeds** switch (F-03): on, its
+Each product has an operator-owned **package feeds** switch: on, its
 [package feeds](/docs/start/concepts/#packages) answer on `pkg.plrs.im`; off, every feed read
 for that product stops at once and looks like an unknown owner. A manifest never sets it.
 
 ```http
-GET /manage/api/products/<product>/distribution/package-feeds
-PUT /manage/api/products/<product>/distribution/package-feeds   {"enabled": true, "expectedVersion": 0}
+/manage/api/products/<product>/distribution/package-feeds (GET)
+/manage/api/products/<product>/distribution/package-feeds (PUT)   {"enabled": true, "expectedVersion": 0}
 ```
 
 `expectedVersion` is the version the operator read (0 before it was ever set); a stale one is a

@@ -1,19 +1,34 @@
 ---
 title: "Deploying to production"
-description: "The full production bootstrap — external providers, Cloudflare resources, secrets, first deploy, and DJDL onboarding — imported verbatim from docs/DEPLOYMENT.md."
+description: "Bootstrap a production instance: external providers, Cloudflare resources, secrets, the first deploy and the first product."
+type: "runbook"
+lastReviewed: "2026-10-16"
 sidebar:
-  order: 8
+  order: 7
 ---
 
 import { Content as Deployment } from "../../../../../../../docs/DEPLOYMENT.md";
 
-This is the complete first-time bootstrap for a production Polaris Key instance, rendered below
-in full from `docs/DEPLOYMENT.md` — not a summary, and including the real account, zone and
-service identifiers the source document carries. That's intentional rather than an oversight:
-Operate → Platform pages sit behind a platform admin's console session, the same one `/manage` checks
-(see [Administering Polaris Key](/docs/admin/) and [Where the security material
-lives](/docs/admin/security-pointers/)), so there is no lower-privilege reader this page could
-leak real values to. If you're operating an instance that's already live, see [Operating: the KEK
-keyring](/docs/admin/kek/) instead — this page is for standing one up.
+**Role required:** Platform admin with Cloudflare, GitHub and identity provider access.
+
+**Impact:** This stands up a new instance. It creates Cloudflare resources and loads secrets.
+
+Use this when you set up an instance for the first time. For one that is already live, use [Deploy a release](/docs/operate/platform/runbook/deploy-a-release/).
+
+The page below is `docs/DEPLOYMENT.md`, rendered in full, including the real account, zone and service identifiers it carries. That is deliberate: Operate → Platform pages need a platform admin's console session, the same one `/manage` checks, so no lower-privilege reader can reach them. What stays out even of this gate is in [Security material](/docs/operate/platform/security/).
+
+In the console, **Platform → Deployment** shows the build this instance runs, the D1 migrations it has applied against the build's newest, the required indexes, which bindings are present and the platform activity log. Check it first when every product goes dark after a deploy.
 
 <Deployment />
+
+## Verify
+
+Run section 11, _Acceptance checklist_, above. It covers the portal and `/manage`, the sign-in redirect, D1 migrations, the KV, Durable Object and R2 bindings, the image, download and registry hosts, the Email Service binding, the GitHub App webhook and the first product's secrets and trust key. The smoke checks in section 6 (`/manage` and `/api/capabilities`) are the quick version.
+
+## Roll back
+
+A first deploy has nothing to return to. Fix the step that failed and run it again. Do not use `wrangler rollback` to undo a secret change: a Worker version captures its secrets with it. Section 12, _Common failure modes_, lists what goes wrong at each step.
+
+## Escalate
+
+If the first deploy fails after the secrets are loaded, keep the failing command's output and the Cloudflare request id. See [Troubleshoot the platform](/docs/operate/platform/runbook/troubleshooting/) for the checks that apply once the instance is running.

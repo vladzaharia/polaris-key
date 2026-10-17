@@ -1,0 +1,32 @@
+---
+title: "Troubleshoot the platform"
+description: "Find the cause of a console sign-in failure, missing email, failed repository sync or dark products."
+type: "runbook"
+lastReviewed: "2026-10-16"
+sidebar:
+  order: 9
+---
+
+import RunbookSection from "../../../../../components/docs/RunbookSection.astro";
+
+**Role required:** Platform admin.
+
+**Impact:** Read-only checks, except where a step names a change.
+
+Use this when the console, a sign-in method, email, a repository sync or a product's routes stop working.
+
+<RunbookSection file="RUNBOOK" heading="Troubleshooting" />
+
+## Verify
+
+- After a fix, repeat the check that failed: the console sign-in, the email send, the repository resync or the product's JWKS route.
+- If products return 404 together, `/manage/api/products/kek` shows whether a kid is `unopenable`.
+
+## Roll back
+
+- Put back what you changed. The checks in the section only read, but a fix such as a restored kid or a secret is a change, and the page that owns it says how to undo it.
+- A `wrangler rollback` may have restored a pre-rotation keyring. Check that first when products go dark after one.
+
+## Escalate
+
+Go to [Incidents](/docs/operate/platform/incidents/) for the list of things that go wrong together. If the cause is not in the section, keep the request ids and the time, and escalate to the owner.

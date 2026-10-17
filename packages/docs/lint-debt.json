@@ -7,12 +7,6 @@
       "frontmatter-last-reviewed": 1,
       "count": 4
     },
-    "build/manifest/distribution": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "time-word": 1,
-      "future-tense": 2
-    },
     "build/manifest/index": {
       "frontmatter-type": 1,
       "frontmatter-last-reviewed": 1
@@ -400,85 +394,6 @@
       "banned-word": 2,
       "time-word": 1
     },
-    "features/ship-builds/channels/app-store": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "http-path": 22,
-      "time-word": 2
-    },
-    "features/ship-builds/channels/availability": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1
-    },
-    "features/ship-builds/channels/delivery": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "programme-id": 2,
-      "http-path": 3
-    },
-    "features/ship-builds/channels/feeds": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "time-word": 1,
-      "programme-id": 1
-    },
-    "features/ship-builds/channels/google-play": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "http-path": 4
-    },
-    "features/ship-builds/channels/index": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "count": 1,
-      "time-word": 1
-    },
-    "features/ship-builds/channels/microsoft-store": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "future-tense": 1,
-      "http-path": 5
-    },
-    "features/ship-builds/channels/polaris-key": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "http-path": 1,
-      "time-word": 1
-    },
-    "features/ship-builds/channels/rollouts": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "http-path": 2
-    },
-    "features/ship-builds/channels/steam": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "future-tense": 2,
-      "count": 1,
-      "time-word": 1
-    },
-    "features/ship-builds/channels/storefronts": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "time-word": 1,
-      "future-tense": 1
-    },
-    "features/ship-builds/channels/update-health": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "time-word": 1,
-      "http-path": 4
-    },
-    "features/ship-builds/ci": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "time-word": 1
-    },
-    "features/ship-builds/commerce": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "http-path": 2
-    },
     "features/ship-builds/packages/index": {
       "frontmatter-type": 1,
       "frontmatter-last-reviewed": 1,
@@ -499,82 +414,6 @@
       "frontmatter-last-reviewed": 1,
       "count": 1,
       "programme-id": 1
-    },
-    "features/ship-builds/releases/artifacts": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "future-tense": 2,
-      "banned-word": 4,
-      "time-word": 1,
-      "http-path": 1,
-      "programme-id": 1
-    },
-    "features/ship-builds/releases/channels": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "future-tense": 2,
-      "time-word": 3,
-      "http-path": 2
-    },
-    "features/ship-builds/releases/compatibility": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1
-    },
-    "features/ship-builds/releases/github-sync": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "http-path": 2,
-      "banned-word": 1,
-      "time-word": 1,
-      "future-tense": 1
-    },
-    "features/ship-builds/releases/index": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "count": 1,
-      "time-word": 1
-    },
-    "features/ship-builds/updates/appcast": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "time-word": 1,
-      "banned-word": 2
-    },
-    "features/ship-builds/updates/eligibility": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "time-word": 2,
-      "http-path": 3,
-      "banned-word": 2
-    },
-    "features/ship-builds/updates/godot-desktop": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "programme-id": 2
-    },
-    "features/ship-builds/updates/index": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "future-tense": 1,
-      "time-word": 1,
-      "banned-word": 1,
-      "count": 1
-    },
-    "features/ship-builds/updates/signed-feed": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "programme-id": 2,
-      "banned-word": 1
-    },
-    "features/ship-builds/updates/sparkle": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "banned-word": 4,
-      "future-tense": 1
-    },
-    "features/ship-builds/updates/updater-feeds": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1
     },
     "features/sign-in/customer-portal": {
       "frontmatter-type": 1,
@@ -612,77 +451,6 @@
       "frontmatter-last-reviewed": 1,
       "help-word": 6,
       "time-word": 1
-    },
-    "operate/console/activity": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "http-path": 2,
-      "programme-id": 1,
-      "future-tense": 1
-    },
-    "operate/console/keys-and-secrets": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "http-path": 7,
-      "time-word": 1
-    },
-    "operate/console/presentation": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1
-    },
-    "operate/console/products": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "time-word": 1,
-      "count": 4,
-      "http-path": 6,
-      "banned-word": 1,
-      "future-tense": 2,
-      "programme-id": 3
-    },
-    "operate/console/tour": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "banned-word": 1
-    },
-    "operate/console/users": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "http-path": 1
-    },
-    "operate/index": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1
-    },
-    "operate/platform/connections": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "future-tense": 1,
-      "http-path": 6
-    },
-    "operate/platform/deploy": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1
-    },
-    "operate/platform/jobs": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "http-path": 1
-    },
-    "operate/platform/runbook/index": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "http-path": 1
-    },
-    "operate/platform/security": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1
-    },
-    "operate/platform/settings": {
-      "frontmatter-type": 1,
-      "frontmatter-last-reviewed": 1,
-      "future-tense": 1,
-      "http-path": 4
     },
     "reference/http-api": {
       "frontmatter-type": 1,

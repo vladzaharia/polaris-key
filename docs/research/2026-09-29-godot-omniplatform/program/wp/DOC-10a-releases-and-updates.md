@@ -48,10 +48,10 @@ The owner asked for "first class documentation, thorough but not overly so" on o
 
 ## Acceptance criteria
 
-- [ ] The common definition of done in the docs plan §6.3 holds.
-- [ ] The release example passes the validator.
+- [x] The common definition of done in the docs plan §6.3 holds.
+- [x] The release example passes the validator.
 - [ ] `pkey-wp-reviewer` passes the package.
-- [ ] The green gate passes (`AGENTS.md`), including every drift gate in the header.
+- [x] The green gate passes (lead gate on wp/DOC-lane-C, 2026-10-16; step 6 retried once under machine load 300 to 550) (`AGENTS.md`), including every drift gate in the header.
 
 ## Verify
 
@@ -66,3 +66,11 @@ mise exec node@22 -- pnpm --filter @polaris-key/docs check:links
 
 The role agent sets `--set DOC-10a in-review` when it hands off. After review, the lead adds the last commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set DOC-10a done`.
+
+## Verification notes (2026-10-16)
+
+- The ci and artifacts pages ran over their type budgets. `ci` split into `ci` and `ci-stores` (store feeds, listing assets, hosted assets, itch.io and Snap, package-manager pull requests); the trusted-publishing section of `artifacts` became `releases/trusted-publishing`. Links to the old anchors were updated. Both new pages are in the sidebar tree (`src/lib/doors.ts`).
+- Corrected against the code: `releases` module maps to release, distribution and update (shared-manifest `index.ts`), not release and update; the wire contract reference is V4.
+- Verified: publish routes, 30-minute token, scopes (`core/publisher.ts`, `core/ciVocabulary.ts`), publish action inputs (`actions/publish/action.yml`), manage-API routes named in prose.
+- "The release example passes the validator": `packages/docs/test/releaseExamples.test.ts` runs every release-document yaml fence on these pages through `parseManifest` and `validateManifestDocuments`.
+- Not done: per-claim file:line list for the unchanged body text of the existing pages (carried over from the services pages); prose "outlet" in the Update pages (DOC-10b owns the vocabulary pass for Channels).

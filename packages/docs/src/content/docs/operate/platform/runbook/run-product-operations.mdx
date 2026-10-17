@@ -1,0 +1,35 @@
+---
+title: "Run product operations"
+description: "Back-fill settings, run package feeds and registry tokens, rotate download tickets, revoke packs and recover update feeds."
+type: "runbook"
+lastReviewed: "2026-10-16"
+sidebar:
+  order: 4
+---
+
+import RunbookSection from "../../../../../components/docs/RunbookSection.astro";
+
+**Role required:** Platform admin. Some steps also need Cloudflare access.
+
+**Impact:** Most procedures here change what every device of a product is offered. Revocations are permanent for devices that learned them.
+
+Use this when you operate one product's settings, feeds, tokens, packs or content keys.
+
+<RunbookSection file="RUNBOOK" heading="Product operations" />
+
+## Verify
+
+- Settings back-fill: after the apply, a fresh dry run lists no `revert`, `release-claim` or `mark-console` item.
+- Package feeds: switching a feed back to `public` reopens it within 30 seconds.
+- Download tickets: after a key rotation, tickets minted shortly before it keep verifying under `DOWNLOAD_TICKET_KEY_PREVIOUS`.
+- Each procedure names its own check. Run it before you move on.
+
+## Roll back
+
+- Read the three notes in the section that start with _Do not roll back_. They name the migrations that code must not be rolled back past, and what to check first.
+- A revoked pack stays revoked for devices that already learned the revocation. The section describes the yank that goes with it.
+- Switching a package feed back to `public` undoes a private switch. Put a fresh download ticket key in place to turn tickets back on.
+
+## Escalate
+
+If an update feed is wrong after a signer compromise, follow _Recovering the update feeds after a signer compromise_ in the section. Otherwise start at [Troubleshoot the platform](/docs/operate/platform/runbook/troubleshooting/).

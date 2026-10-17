@@ -1,6 +1,8 @@
 ---
 title: "Signed feed"
 description: "The signed channel feed (pkey-feed+jws), the CI-signed release records it pins, floors that prompt, and the seq ceiling recovery."
+type: "concept"
+lastReviewed: "2026-10-16"
 sidebar:
   order: 3
 ---
@@ -56,10 +58,10 @@ platform at once:
   answers an empty feed at `seq` 1 and is not stored.
 
 Nothing in the feed is device-specific: rollout buckets are computed on the device, and the
-feed carries no device, licence or bucket.
+feed carries no device, license or bucket.
 
-The feed can also carry **content members** (`packSets`, `packFloors`, `revocations`, P4-13) and
-a **delta menu** (`deltas`, P4-29): per target pack payload, the lazy deltas the Worker generated
+The feed can also carry **content members** (`packSets`, `packFloors`, `revocations`) and
+a **delta menu** (`deltas`): per target pack payload, the lazy deltas the Worker generated
 for devices on an older payload. Each is read beside the claims, so a malformed one is unusable
 and never refuses the feed. The menu is added last, into whatever room is left under the
 65,536-byte cap, and is trimmed first; it never turns the channel-wide document into a
@@ -96,14 +98,14 @@ A floor — the channel's `min_supported`, a release published with
 platform below it as an update prompt **the player cannot dismiss**. Play continues: no floor
 stops an app from running, even on an outlet that has nothing newer to offer. When an old build
 must stop working, use License's [compatibility window](/docs/services/license/document/), which
-the licence document enforces on the device.
+the license document enforces on the device.
 
 One answer does stop play: a CI-signed revocation of a **required** pack with no usable
 replacement (`pkey release revoke`). The decision then answers `blocked {revoked-content}` (or
 makes an offer mandatory with `contentBlock: revoked-content`), and the boot value is
 `required`: the boot stops at a confirmed `blocked`, with the host's own copy — "Some of this
 game's content was withdrawn by its developer and can't be used. Update the app to keep
-playing." A revoked optional pack is simply unmounted.
+playing." A revoked optional pack is unmounted.
 
 | Answer                                                                            | Boot value |
 | --------------------------------------------------------------------------------- | ---------- |

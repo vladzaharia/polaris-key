@@ -3,6 +3,8 @@ sidebar:
   order: 9
 title: "Commerce bridge"
 description: "Store purchases on the App Store, Google Play and Steam become licence flags per deliverable: the store-product map, the purchase binding, verification with each store, refunds and revocations, and what to set up in each store."
+type: "reference"
+lastReviewed: "2026-10-16"
 ---
 
 A player who buys a store product you mapped to a licence flag — say the product that unlocks
@@ -44,8 +46,8 @@ any other (`bound_elsewhere`), and a purchase made without a binding is refused 
 
 App Store guideline 3.1.3(b) lets content bought elsewhere unlock in an iOS or macOS App Store
 build only if the same content is also sold there as an in-app purchase. The licence document
-stays the same on every outlet; the Godot SDK applies the rule: on an `app-store` or `testflight`
-outlet, `PolarisKey.commerce.hidden_here(flag)` is true for a flag you sell on Play or Steam but
+stays the same on every channel; the Godot SDK applies the rule: on an `app-store` or `testflight`
+channel, `PolarisKey.commerce.hidden_here(flag)` is true for a flag you sell on Play or Steam but
 not on the App Store, and `is_unlocked(flag)` combines it with the licence. Map an App Store
 product to the same flag to unlock it there. A flag you grant without selling it (a profile, an
 override) is never hidden.
@@ -61,14 +63,14 @@ mappings (`409`, `commerce_requires_license`).
 Everything is operator-owned: no `.pkey/` manifest field reaches it, so a repo push cannot decide
 what a payment unlocks or whose purchases are believed. As a platform admin:
 
-1. **Store the store's credential** in Distribution → Outlet credentials ([Outlet credentials](/docs/admin/secrets-and-keys/#outlet-credentials)),
+1. **Store the store's credential** under Distribution, on **Outlet credentials** ([Channel credentials](/docs/admin/secrets-and-keys/#outlet-credentials)),
    pinned to the app: an `app-store-server-key` pinned to the bundle id, a
    `google-service-account` pinned to the package name (the Google Play connector's), a
    `steam-publisher-key` pinned to the game's app id.
 2. **Set the commerce settings**, one block per store you sell on:
 
    ```http
-   PUT /manage/api/products/<slug>/distribution/commerce/settings
+   /manage/api/products/<slug>/distribution/commerce/settings (PUT)
    {
      "appStore": { "bundleId": "gg.vlad.diceroll", "appAppleId": 1234567890 },
      "play": {
@@ -94,7 +96,7 @@ what a payment unlocks or whose purchases are believed. As a platform admin:
    knows):
 
    ```http
-   PUT /manage/api/products/<slug>/distribution/commerce/products
+   /manage/api/products/<slug>/distribution/commerce/products (PUT)
    { "store": "app-store", "productId": "gg.vlad.diceroll.skins", "flag": "extras.diceSkins", "deliverable": "app" }
    ```
 
@@ -135,7 +137,7 @@ down the hook answers `503` and Apple redelivers.
 
 - the in-app purchases themselves (non-consumable), in a cleared agreements/tax/banking state.
   The App Store Connect connector can create them from this map, with their localizations, price
-  and availability ([In-app purchases](/docs/services/distribution/app-store-connect/#in-app-purchases);
+  and availability ([In-app purchases](/docs/features/ship-builds/channels/app-store-distribute/#in-app-purchases);
   in the console, **Distribution → Commerce**, see
   [App Store products](/docs/admin/app-store/#app-store-products-in-commerce));
   the app's first purchase is still submitted in App Store Connect, with an app version;

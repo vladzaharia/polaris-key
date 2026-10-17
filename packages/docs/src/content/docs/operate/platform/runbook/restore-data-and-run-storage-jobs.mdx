@@ -1,0 +1,43 @@
+---
+title: "Restore data and run storage jobs"
+description: "Run the blob collector, restore D1 without bringing erased accounts back, mirror release files and manage lazy deltas."
+type: "runbook"
+lastReviewed: "2026-10-16"
+sidebar:
+  order: 8
+---
+
+import RunbookSection from "../../../../../components/docs/RunbookSection.astro";
+
+**Role required:** Platform admin with Cloudflare access.
+
+**Impact:** A D1 restore is in place and destructive. The blob collector deletes objects that nothing references. Erasures replay after a restore.
+
+Use this when you restore D1, stop or tune a storage job, or check why a file is not mirrored.
+
+<RunbookSection file="RUNBOOK" heading="The blob collector" />
+
+<RunbookSection
+  file="RUNBOOK"
+  heading="Account erasure ledger and D1 restore"
+/>
+
+<RunbookSection file="RUNBOOK" heading="Release-file mirroring" />
+
+<RunbookSection file="RUNBOOK" heading="Lazy deltas" />
+
+## Verify
+
+- After a D1 restore, check the `erasureLedger` rows in `platform_job_runs` that started after the restore time. Expect a count above 0 on the first tick that re-erases accounts, then 0.
+- Blob collector: read the product's dry run (`/manage/api/products/<slug>/blob-gc`, GET) before trusting it, then `blob_gc_log` after a night.
+- Mirroring: `release_mirrors` shows `ready`, or the reason code of a failed file. A failed file keeps serving from GitHub.
+
+## Roll back
+
+- Blob collector: turn it off in **Platform**, **Settings**, **Blob collector**. Nothing is deleted while it is off, and turning it on resumes where it stopped.
+- Lazy deltas: set `enabled` to 0 for one product, or switch lazy deltas off in **Platform**, **Settings**. Stored deltas stay until they go cold.
+- D1 restore: capture the current bookmark first. Restoring to that undo bookmark afterwards is safe for erasures too.
+
+## Escalate
+
+An R2 lock refusal during the sweep means an object was tried before its lock age: stop the collector and escalate. Never shorten the bucket lock. A `verify` refusal on a lazy delta also goes to the owner.

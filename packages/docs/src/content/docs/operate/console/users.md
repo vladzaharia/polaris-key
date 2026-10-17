@@ -1,6 +1,8 @@
 ---
 title: "Users"
 description: "A product's users by their per-product id: their licenses, devices, sign-ins and data, export and data deletion, and the relink tool."
+type: "reference"
+lastReviewed: "2026-10-16"
 sidebar:
   order: 5
 ---
@@ -133,7 +135,7 @@ The routes, for scripts that use the admin session:
 | `POST /manage/api/products/<slug>/users/licenses/<id>/make-floating` | `reason`, `confirm`, optional `signOutDevices` |
 | `POST /manage/api/products/<slug>/users/licenses/<id>/reassign`      | `email`, optional `name`, `reason`, `confirm`  |
 | `GET /manage/api/products/<slug>/users/licenses/<id>/relinks`        | the license's moves, newest first              |
-| `POST /manage/api/products/<slug>/users/relinks/<relinkId>/undo`     | `reason`                                       |
+| `/manage/api/products/<slug>/users/relinks/<relinkId>/undo` (POST)   | `reason`                                       |
 
 ## Sign-in settings
 
