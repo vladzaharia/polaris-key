@@ -98,6 +98,36 @@
       "pattern": "Faster sync\\. Fixes a crash on launch\\.|Fixes the mixer on Windows\\.|<script>alert\\(1\\)</script> Fixes <b>sync</b>\\.",
       "boards": ["elements"],
       "reason": "Fixture release notes, one of them hostile markup the kit must show as text."
+    },
+    {
+      "pattern": "\\$ (echo \\$\\?|cat refusal\\.txt|tidewater export 2>refusal\\.txt)|[0-9]",
+      "boards": ["terminal"],
+      "reason": "The shell around the output: the command the person typed and the exit code it left (the gate rows pin 4 for a refusal)."
+    },
+    {
+      "pattern": "([|`] )?tidewater (activate|login|import-bundle <file>) (Use a license key|Sign in|Use a different key|Use the license on your account|Activate from an offline activation file)",
+      "boards": ["terminal"],
+      "reason": "A fix row: the command the person types beside its catalog verb copy (welcome.useKey, welcome.signIn, cli.fix.*), in the kit's two-column layout and its ASCII rendering."
+    },
+    {
+      "pattern": "! Activate|\\| Enter a license key or sign in to continue\\.",
+      "boards": ["terminal"],
+      "reason": "The ASCII-symbols rendering of the needs-activation refusal: the catalog title and message after the kit's symbol table swaps the mark."
+    },
+    {
+      "pattern": "(Tidewater Studio Pro · Ready|License Pro · mara@fennick\\.studio|Offline until Oct 19|License key · pkey_tidewater_•+|License key You'll find it in your purchase email\\.)",
+      "boards": ["terminal"],
+      "reason": "Node goldens (boot, status, activate): the fixture product and person and the kit's own lines, as the golden prints them."
+    },
+    {
+      "pattern": "Exported mix\\.wav",
+      "boards": ["terminal"],
+      "reason": "The host command's own output after the gate lets it run (host content, not kit copy)."
+    },
+    {
+      "pattern": "Usage: tidewater \\[options\\] \\[command\\]|Options:|Build:|Commands:|License:|(-v, --verbose <level>|-h, --help|build|export|import|publish <target> \\[channel\\]|activate \\[key\\]|status|deactivate|login|devices list|update check|update apply) .+|its seat",
+      "boards": ["terminal"],
+      "reason": "Host CLI help as the Node golden help-host prints it: the host's commander lines and headings, with the kit's verbs under License."
     }
   ]
 }

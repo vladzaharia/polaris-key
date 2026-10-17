@@ -110,3 +110,25 @@ mise exec node@22 -- pnpm <the package's own tests>
 ## Hand-off
 
 What downstream packages rely on from this one is listed in its Unblocks row. The role agent sets `--set UK-59 in-review` when it hands off; after review the lead adds the last commit `--set UK-59 done`.
+
+## Progress and continuation (2026-10-17)
+
+Slice 1 done (UK-59 builder; the boards in docs/design/ui-kits are hand-authored HTML, not built
+from `_src`; `pnpm gen design-mockups` covers only console-product-card and the sign-in prototype):
+
+- terminal.html: revoked status is a ▲ block with exit 1 (golden status-screen-revoked); boot, status
+  and network-failure frames follow the Node goldens (no invented `exit N` footers); offline request
+  draws the QR under the code as the kit does (not beside it); the fallbacks strip is the gate
+  refusal in five quadrants incl. the pipe quadrant (Python scene gate-needs-activation); three new
+  shots from UK-46: host-mounted help, stderr refusal with exit 4, inline gate flow.
+- web.html: publishableKey example replaced by `config={polarisKey}` (SETUP D18); QR removed from
+  the sign-in hand-off at 1440 and 390 (D-67); captions say Built today.
+- ios.html: the Live Activity is a content-pack download (catalog "Downloading content").
+- ui-qa: strings.allow.json gains terminal fixture entries; strings.debt.json shrank by 38.
+
+Left for a continuation (not started): web shape rows 844x390, 640x360, 1180x820, 1920x1080 and the
+identity pane (DL1); iOS inline one-form activation and neutral boot indicator; apple.html iPad
+from the built SwiftUI renders; Android states/settings/tablet list-detail, expired with product
+icon, extra window shapes, sdk.compose-activate and sdk.compose-sign-in mockups; Godot two tiers per
+frame, QR only on pad-only and offline, host-owns-pause note, DL7 loading; terminal 40/32-column
+gate and refusal frames; "Built today" / "UK-11 target" captions on the remaining frames.

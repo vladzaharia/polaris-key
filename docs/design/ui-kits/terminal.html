@@ -190,14 +190,17 @@
       }
       .strip {
         display: grid;
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: repeat(3, 1fr);
         gap: 0;
       }
       .strip > div {
         border-top: 1px solid var(--t-frame);
       }
-      .strip > div:nth-child(odd) {
+      .strip > div:not(:nth-child(3n)):not(:last-child) {
         border-inline-end: 1px solid var(--t-frame);
+      }
+      .strip > div:last-child {
+        border-inline-end: 0;
       }
       .strip .lbl {
         font: 500 11px/1 var(--pk-font-sans);
@@ -304,7 +307,7 @@
       </figure>
       <figure>
         <figcaption>
-          terminal · blocked status with the fix as a command
+          terminal · a revoked license: ▲ with the fix as commands, exit 1
         </figcaption>
         <div class="shot cols80" data-shot="status-error">
           <div class="tbar"><i></i><i></i><i></i>tidewater — 80 × 24</div>
@@ -313,8 +316,8 @@
       </figure>
       <figure>
         <figcaption>
-          terminal · boot (spinner, then the result), healthy status and the
-          offline error
+          terminal · boot (spinner, then the result), healthy status and a
+          network failure (✗, exit 1)
         </figcaption>
         <div class="shot cols80" data-shot="states">
           <div class="tbar"><i></i><i></i><i></i>tidewater — 80 × 24</div>
@@ -333,14 +336,17 @@
       </figure>
       <figure>
         <figcaption>
-          terminal · fallbacks: truecolor, ANSI-16, NO_COLOR, ascii symbols
+          terminal · a gate refusal five ways: truecolor, ANSI-16, NO_COLOR,
+          ascii symbols and pipe (no TTY). Built today (Node and Python goldens)
         </figcaption>
         <div
           class="shot"
           data-shot="fallbacks"
-          style="width: calc(160 * 8.4px + 67px)"
+          style="width: calc(3 * (48 * 8.4px + 34px) + 2px)"
         >
-          <div class="tbar"><i></i><i></i><i></i>the same output four ways</div>
+          <div class="tbar">
+            <i></i><i></i><i></i>the same refusal five ways
+          </div>
           <div class="strip">
             <div>
               <div class="lbl">truecolor (COLORTERM=truecolor)</div>
@@ -357,6 +363,12 @@
             <div class="ansi16">
               <div class="lbl">ascii symbols (--ascii, ANSI-16)</div>
               <pre class="fb ascii"></pre>
+            </div>
+            <div class="nocolor">
+              <div class="lbl">
+                pipe (stderr, not a TTY: plain text, no escapes)
+              </div>
+              <pre id="pipeq" class="fbp"></pre>
             </div>
           </div>
         </div>
@@ -403,12 +415,45 @@
       </figure>
       <figure>
         <figcaption>
-          terminal · offline request on a wide window (120 × 24): the QR beside
-          the text, the rail closed on the command
+          terminal · offline request (80 × 24): the QR under the code, the one
+          QR a terminal draws
         </figcaption>
-        <div class="shot cols120" data-shot="offline-landscape">
-          <div class="tbar"><i></i><i></i><i></i>tidewater — 120 × 24</div>
+        <div class="shot cols80" data-shot="offline-landscape">
+          <div class="tbar"><i></i><i></i><i></i>tidewater — 80 × 24</div>
           <pre id="offlineWide"></pre>
+        </div>
+      </figure>
+      <figure>
+        <figcaption>
+          terminal · a host CLI with the kit mounted: the host's commands first,
+          the kit's under License, cut to 24 rows. Built today (Node golden
+          help-host)
+        </figcaption>
+        <div class="shot cols80" data-shot="host-help">
+          <div class="tbar"><i></i><i></i><i></i>tidewater — 80 × 24</div>
+          <pre id="hosthelp"></pre>
+        </div>
+      </figure>
+      <figure>
+        <figcaption>
+          terminal · a host command behind the gate, no license: the refusal on
+          stderr, exit 4, and the host's stdout stays clean. Built today (Node
+          golden gate-refused-needs-activation)
+        </figcaption>
+        <div class="shot cols80" data-shot="gate-refusal">
+          <div class="tbar"><i></i><i></i><i></i>tidewater — 80 × 24</div>
+          <pre id="gaterefusal"></pre>
+        </div>
+      </figure>
+      <figure>
+        <figcaption>
+          terminal · the same command at a terminal: the activate flow runs
+          inline, then the host's command. Built today (Node goldens
+          activate-parsed, activate-done)
+        </figcaption>
+        <div class="shot cols80" data-shot="gate-inline">
+          <div class="tbar"><i></i><i></i><i></i>tidewater — 80 × 24</div>
+          <pre id="gateinline"></pre>
         </div>
       </figure>
       <figure>
@@ -457,6 +502,7 @@
       const R = (...segs) => L(["m", "│"], ["", "  "], ...segs);
       const put = (id, lines) =>
         (document.getElementById(id).innerHTML = lines
+          .map((l) => (Array.isArray(l) ? L(...l) : l))
           .map((l) => (typeof l === "string" ? l : l.html))
           .join("\n"));
       const keys = (...pairs) =>
@@ -570,46 +616,34 @@
             return L([c, first], ["", rest]);
           }),
         );
-      // The offline request beside its QR: columns 80 and on are the QR's white cells.
-      put(
-        "offlineWide",
-        [
-          "┌   Tidewater Studio  · offline-request",
-          "│",
-          "◆  Offline activation",
-          "│  Send this request code to whoever gave you your license.                     █▀▀▀▀▀█  ▄▄▀█ █▀▀▀▀▀█",
-          "│                                                                               █ ███ █  █▄▀▀ █ ███ █",
-          "│      dev_9fK2Lw7QmZ                                                           █ ▀▀▀ █ ▄▀▄ ▀ █ ▀▀▀ █",
-          "│                                                                               ▀▀▀▀▀▀▀ ▀ █▄█ ▀▀▀▀▀▀▀",
-          "└  tidewater import-bundle <file>   Activate from an offline activation file    █  ▀ █▀ █▄█▀ █ ▀▄  ▄▄",
-          "                                                                                █▀█▄▄▄▀█ ███▀▀▄ ▄█▀▄█",
-          "                                                                                ▀▀▀▀ ▀▀▀█ ██▄▄█▄▄▀ ▀█",
-          "                                                                                █▀▀▀▀▀█ ▄▄▀ ▀  ██▀ █▄",
-          "                                                                                █ ███ █ ▄▄█▄▀ ▄█▄██▄▄",
-          "                                                                                █ ▀▀▀ █  ▄█▀█▀ ▀██  ▀",
-          "                                                                                ▀▀▀▀▀▀▀ ▀▀  ▀▀▀    ▀",
-        ].map((line) => {
-          const text = line.padEnd(80);
-          const left = text.slice(0, 80);
-          const qr = line.slice(80);
-          const first = [...left][0];
-          const c = glyphClass[first];
-          const body = [...left].slice(1).join("");
-          const chip = /^(\s*)( Tidewater Studio )(.*)$/.exec(body);
-          const segs = chip
-            ? [
-                [c, first],
-                ["", chip[1]],
-                ["chip", chip[2]],
-                ["m", chip[3]],
-              ]
-            : [
-                [c ?? "", first ?? ""],
-                [first === "└" && /tidewater/.test(body) ? "s" : "", body],
-              ];
-          return L(...segs, ...(qr ? [["qr", " " + qr + " "]] : []));
-        }),
-      );
+      // The offline request (golden offline-activation-default): the QR sits under the code.
+      put("offlineWide", [
+        L(["m", "$ "], ["", "tidewater offline-request"]),
+        head("offline-request"),
+        L(["m", "│"]),
+        L(["cy", "◆"], ["", "  "], ["s", "Offline activation"]),
+        R(["", "Send this request code to whoever gave you your license."]),
+        L(["m", "│"]),
+        R(["", "   "], ["rev", " dev_9fK2Lw7QmZ "]),
+        L(["m", "│"]),
+        L(["m", "│"], ["", "   "], ["qr", " █▀▀▀▀▀█  ▄▄▀█ █▀▀▀▀▀█ "]),
+        L(["m", "│"], ["", "   "], ["qr", " █ ███ █  █▄▀▀ █ ███ █ "]),
+        L(["m", "│"], ["", "   "], ["qr", " █ ▀▀▀ █ ▄▀▄ ▀ █ ▀▀▀ █ "]),
+        L(["m", "│"], ["", "   "], ["qr", " ▀▀▀▀▀▀▀ ▀ █▄█ ▀▀▀▀▀▀▀ "]),
+        L(["m", "│"], ["", "   "], ["qr", " █  ▀ █▀ █▄█▀ █ ▀▄  ▄▄ "]),
+        L(["m", "│"], ["", "   "], ["qr", " █▀█▄▄▄▀█ ███▀▀▄ ▄█▀▄█ "]),
+        L(["m", "│"], ["", "   "], ["qr", " ▀▀▀▀ ▀▀▀█ ██▄▄█▄▄▀ ▀█ "]),
+        L(["m", "│"], ["", "   "], ["qr", " █▀▀▀▀▀█ ▄▄▀ ▀  ██▀ █▄ "]),
+        L(["m", "│"], ["", "   "], ["qr", " █ ███ █ ▄▄█▄▀ ▄█▄██▄▄ "]),
+        L(["m", "│"], ["", "   "], ["qr", " █ ▀▀▀ █  ▄█▀█▀ ▀██  ▀ "]),
+        L(["m", "│"], ["", "   "], ["qr", " ▀▀▀▀▀▀▀ ▀▀  ▀▀▀    ▀ "]),
+        L(["m", "│"]),
+        L(
+          ["m", "└  "],
+          ["s", "tidewater import-bundle <file>"],
+          ["m", "   Activate from an offline activation file"],
+        ),
+      ]);
       plain(
         "short",
         [
@@ -790,77 +824,73 @@
         ].map((x) => (Array.isArray(x) ? L(...x) : x)),
       );
 
-      // 5. Status error
+      // 5. A revoked license (golden status-screen-revoked): ▲ with the fix commands, exit 1.
       put("err", [
         L(["m", "$ "], ["", "tidewater status"]),
-        L(
-          ["err", "✗"],
-          ["", "  "],
-          ["s", "Tidewater Studio"],
-          ["", " · license revoked"],
-        ),
-        R(["", "Harbor Audio revoked this key on Oct 2, after a refund."]),
+        head("status"),
+        L(["m", "│"]),
+        L(["warn", "▲"], ["", "  "], ["s", "Signed out"]),
+        R([
+          "",
+          "This device was signed out. Sign in or activate again to continue.",
+        ]),
         L(["m", "│"]),
         R(["", "To keep using Tidewater Studio:"]),
-        R(["s", "tidewater activate"], ["m", "   add a different key"]),
-        R(
+        R(["s", "tidewater activate"], ["m", "   Use a different key"]),
+        L(
+          ["m", "└  "],
           ["s", "tidewater login   "],
-          ["m", "   use the license on your account"],
+          ["m", "   Use the license on your account"],
         ),
-        L(["m", "└  "], ["m", "exit 3 · --json for scripts"]),
+        "",
+        L(["m", "$ "], ["", "echo $?"]),
+        L(["", "1"]),
       ]);
 
-      // 5b. Boot, healthy status, offline error
+      // 5b. Boot, healthy status and a network failure (goldens boot-progress,
+      // polaris-key-gate-licensed-boot, account-and-license-signed-in, activate-rejected-offline)
       put("states", [
         L(["m", "$ "], ["", "tidewater"]),
-        L(["m", "⠹"], ["", "  Checking your license"], ["m", " …"]),
+        L(["m", "⠋"], ["", "  Checking your license…"]),
         L(
           ["ok", "✓"],
           ["", "  "],
           ["s", "Tidewater Studio Pro"],
-          ["m", " · ready"],
+          ["m", " · Ready"],
         ),
         "",
         L(["m", "$ "], ["", "tidewater status"]),
-        L(["m", "┌  "], ["chip", " Tidewater Studio "], ["m", " · status"]),
+        head("status"),
         L(["m", "│"]),
-        R(
+        L(
           ["ok", "✓"],
-          ["", " License   "],
+          ["", "  License   "],
           ["s", "Pro"],
-          ["m", " · Lifetime · mara@fennick.studio"],
+          ["m", " · mara@fennick.studio"],
         ),
-        R(
+        L(["ok", "✓"], ["", "  Offline   "], ["", "until Oct 19"]),
+        L(
           ["ok", "✓"],
-          ["", " Devices   "],
-          ["s", "2 of 3"],
-          ["m", " · this Mac, MacBook Pro"],
-        ),
-        R(
-          ["ok", "✓"],
-          ["", " Offline   "],
-          ["s", "14 days"],
-          ["m", " before it needs to check in"],
-        ),
-        R(
-          ["ok", "✓"],
-          ["", " Version   "],
+          ["", "  Version   "],
           ["s", "2.4.1"],
-          ["m", " · up to date on stable"],
+          ["m", " · stable"],
         ),
-        L(["m", "└  "], ["m", "exit 0 · --json for scripts"]),
+        L(["m", "└"]),
         "",
-        L(["m", "$ "], ["", "tidewater update"]),
-        L(["warn", "▲"], ["", "  "], ["s", "Can’t reach Harbor Audio"]),
-        R([
-          "",
-          "Check your connection. Tidewater Studio keeps working offline",
-        ]),
-        R(["", "for "], ["warn", "3 more days"], ["", "."]),
+        L(["m", "$ "], ["", "tidewater activate"]),
+        head("activate"),
+        L(["m", "│"]),
+        L(
+          ["m", "◇"],
+          ["", "  "],
+          ["s", "License key"],
+          ["m", " · pkey_tidewater_"],
+          ["", "••••••"],
+        ),
+        L(["err", "✗"], ["", "  "], ["s", "Can't connect"]),
         L(
           ["m", "└  "],
-          ["s", "tidewater update --retry"],
-          ["m", "   try again · exit 4"],
+          ["", "Can't reach Polaris Key. Check your connection and try again."],
         ),
       ]);
 
@@ -905,17 +935,159 @@
         L(["m", "Run tidewater <command> --help for one command's options."]),
       ]);
 
-      // 7. Fallbacks: the device limit (golden device-limit-browser-mode) in truecolor-80-dark,
-      // ansi16-80, no-color-80 and ascii-80. The quadrant's class sets the colour level.
+      // 7. Fallbacks: the gate refusal (goldens gate-refused-needs-activation; Python scene
+      // gate-needs-activation, including its pipe row) in truecolor-80, ansi16-80, no-color-80,
+      // ascii-80 and pipe-80. The quadrant's class sets the colour level.
+      const refusal = [
+        [
+          ["warn", "▲"],
+          ["", "  "],
+          ["s", "Activate"],
+        ],
+        rail(["", "Enter a license key or sign in to continue."]),
+        [["m", "│"]],
+        rail(["s", "tidewater activate"], ["m", "   Use a license key"]),
+        [
+          ["m", "└  "],
+          ["s", "tidewater login   "],
+          ["m", "   Sign in"],
+        ],
+      ];
       document.querySelectorAll(".fb").forEach(
         (p) =>
-          (p.innerHTML = draw(
-            deviceLimit({ prompt: false }),
-            p.classList.contains("ascii"),
-          )
+          (p.innerHTML = draw(refusal, p.classList.contains("ascii"))
             .map((l) => l.html)
             .join("\n")),
       );
+      put("pipeq", [
+        L(["", "Activate"]),
+        L(["", "Enter a license key or sign in to continue."]),
+        L(["", ""]),
+        L(["", "tidewater activate   Use a license key"]),
+        L(["", "tidewater login      Sign in"]),
+      ]);
+      // The gate on stderr, then the exit code (cliGate.test.ts: exit 4, host stdout empty).
+      put("gaterefusal", [
+        L(["m", "$ "], ["", "tidewater export 2>refusal.txt"]),
+        L(["m", "$ "], ["", "echo $?"]),
+        L(["", "4"]),
+        L(["m", "$ "], ["", "cat refusal.txt"]),
+        ...draw(refusal),
+      ]);
+      // The gate at a terminal: the kit's activate flow, then the host's command.
+      put("gateinline", [
+        L(["m", "$ "], ["", "tidewater export"]),
+        head("activate"),
+        L(["m", "│"]),
+        L(
+          ["cy", "◆"],
+          ["", "  "],
+          ["s", "License key"],
+          ["m", "  You'll find it in your purchase email."],
+        ),
+        rail(["m", "pkey_tidewater_"], ["", "•".repeat(22)], ["cy", "▌"]),
+        L(["ok", "✓"], ["", "  Key for Tidewater Studio"]),
+        L(["m", "└  "], ...keys(["Enter", "activate"], ["Esc", "cancel"])),
+        "",
+        L(["ok", "✓"], ["", "  "], ["s", "Activated"], ["m", " · Pro license"]),
+        L(["", "Exported mix.wav"]),
+        "",
+        L(["m", "$ "], ["", "echo $?"]),
+        L(["", "0"]),
+      ]);
+      // Host-mounted help (golden help-host, 80 columns): host commands first, the kit's under
+      // License; cut to 24 rows (devices rename and deauthorize, and help, left out).
+      put("hosthelp", [
+        L(["", "Usage: tidewater [options] [command]"]),
+        "",
+        L(["s", "Options:"]),
+        L(
+          ["", "  "],
+          ["s", "-v, --verbose <level>"],
+          ["", "       Print more while working"],
+        ),
+        L(
+          ["", "  "],
+          ["s", "-h, --help"],
+          ["", "                  display help for command"],
+        ),
+        "",
+        L(["s", "Build:"]),
+        L(
+          ["", "  "],
+          ["s", "build"],
+          ["", "                       Build the project"],
+        ),
+        "",
+        L(["s", "Commands:"]),
+        L(
+          ["", "  "],
+          ["s", "export"],
+          ["", "                      Export the project"],
+        ),
+        L(
+          ["", "  "],
+          ["s", "import"],
+          ["", "                      Import a project"],
+        ),
+        L(
+          ["", "  "],
+          ["s", "publish <target> [channel]"],
+          ["", "  Publish the project"],
+        ),
+        "",
+        L(["s", "License:"]),
+        L(
+          ["", "  "],
+          ["s", "activate [key]"],
+          ["", "              Add a license key (prompted, or piped on stdin)"],
+        ),
+        L(
+          ["", "  "],
+          ["s", "status"],
+          [
+            "",
+            "                      Show your license, devices and offline time",
+          ],
+        ),
+        L(
+          ["", "  "],
+          ["s", "deactivate"],
+          [
+            "",
+            "                  Stop using your license on this device and free",
+          ],
+        ),
+        L(["", "                              its seat"]),
+        L(
+          ["", "  "],
+          ["s", "login"],
+          [
+            "",
+            "                       Sign in with your account in the browser",
+          ],
+        ),
+        L(
+          ["", "  "],
+          ["s", "logout"],
+          ["", "                      Sign out on this device"],
+        ),
+        L(
+          ["", "  "],
+          ["s", "devices list"],
+          ["", "                List the devices using your license"],
+        ),
+        L(
+          ["", "  "],
+          ["s", "update check"],
+          ["", "                Check for a newer version"],
+        ),
+        L(
+          ["", "  "],
+          ["s", "update apply"],
+          ["", "                Download and install the newer version"],
+        ),
+      ]);
 
       // 8. Textual main pane
       document.getElementById("txmain").innerHTML = [
