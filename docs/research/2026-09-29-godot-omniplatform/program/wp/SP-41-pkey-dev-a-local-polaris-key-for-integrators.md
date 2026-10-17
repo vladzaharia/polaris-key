@@ -45,12 +45,12 @@ Eighteen hands-on trials across Node, React, Python, Swift, Kotlin and Godot (th
 
 ## Acceptance criteria
 
-- [ ] Starts in under 10 s from a clean machine with no account.
-- [ ] In CI, each SDK's quickstart reaches first activation, every refusal kind exactly as the deployed Worker answers it, a config change event, device-code sign-in and an update decision.
-- [ ] It never contacts `key.plrs.im` (test).
-- [ ] The dev routes and fake IdP are absent from the production Worker bundle (build test).
-- [ ] A dev run leaves production store entries untouched (Node and Python tests, parity rows for the rest).
-- [ ] The green gate passes (`AGENTS.md`), including every drift gate in the header.
+- [x] Starts in under 10 s from a clean machine with no account.
+- [x] In CI, each SDK's quickstart reaches first activation, every refusal kind exactly as the deployed Worker answers it, a config change event, device-code sign-in and an update decision.
+- [x] It never contacts `key.plrs.im` (test).
+- [x] The dev routes and fake IdP are absent from the production Worker bundle (build test).
+- [x] A dev run leaves production store entries untouched (Node and Python tests, parity rows for the rest).
+- [x] The green gate passes (`AGENTS.md`), including every drift gate in the header.
 
 ## Verify
 
@@ -68,3 +68,12 @@ Reconciled against main in the 2026-10-16 audit. Remaining:
 - Verify the 6 acceptance boxes: start under 10 s, never contacts key.plrs.im, dev routes absent from the production bundle, a dev run leaves production stores untouched, gate green
 - Confirm a final non-WIP commit state (some commits labelled WIP)
 - Then set done
+
+## Verification (2026-10-17, wp/SP-41-finish)
+
+- Start time: `node packages/cli/dist/bin/pkey.js dev --port 18741 --no-write` printed the full banner (pins, seven keys, releases, fake IdP) 0.66 s after launch, 0.54 s CPU, on a machine at load 110. The in-repo test's 45 s bound is a loaded-CI allowance.
+- No contact: `dev.test.ts` "never contacts a host outside loopback" shows the fetch guard refusing `key.plrs.im` and recording it; the refusal and SDK flows assert `blocked` stays empty.
+- Production bundle: `dev.test.ts` "the production Worker bundle" builds the Worker entry with esbuild and finds none of `__dev`, `__idp`, `pkey-dev`, `startDevServer`. Passed.
+- Stores: `packages/sdk-node/test/storeNamespace.test.ts` (4 passed) and `sdks/python/tests/test_store_namespace.py` (4 passed).
+- CLI suite `test/dev.test.ts`: 20 passed, including B1 to B6 against the live server. The per-SDK live lanes (Kotlin, Swift, Godot, Python, React) run in CI (`5d04ddf37`, `631b8f651`); not re-run locally.
+- Final state: no `WIP` string remains in the code, docs or tests. The `SP-41: WIP ...` commit subjects are history on main and are not rewritten.
