@@ -40,7 +40,7 @@ import type { Env } from "../../platform/env.js";
 import { notFound } from "../errors.js";
 import { base64Encode, hexDecode, hexEncode } from "../../platform/bytes.js";
 import { sha256Hex } from "../../platform/hash.js";
-import { isBytesHost } from "./bytesHostname.js";
+import { isBytesHost } from "../hosts.js";
 import { peekStream, sniffContentType, SNIFF_BYTES } from "./sniff.js";
 
 // ── Key builders ────────────────────────────────────────────────────────────────────────────

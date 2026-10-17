@@ -10,7 +10,10 @@
 
 import type { Env } from "../../platform/env.js";
 import type { Db } from "../../db/types.js";
-import { listProducts, getActiveSchema } from "../../core/products/store.js";
+import {
+  listProducts,
+  activeSchemaVersions,
+} from "../../core/products/store.js";
 import {
   AREAS,
   can,
@@ -49,16 +52,12 @@ export async function handleMe(
   const products = await listProducts(db);
   // Only the products the principal holds an area of; the rest are absent, not listed as locked.
   const visible = products.filter((p) => canSeeProduct(principal, p));
-  const adminProducts = await Promise.all(
-    visible.map(async (p) => {
-      const schema = await getActiveSchema(db, p.slug);
-      return {
-        slug: p.slug,
-        name: p.name,
-        schemaVersion: schema?.catalog_version ?? 0,
-      };
-    }),
-  );
+  const versions = await activeSchemaVersions(db);
+  const adminProducts = visible.map((p) => ({
+    slug: p.slug,
+    name: p.name,
+    schemaVersion: versions.get(p.slug) ?? 0,
+  }));
   return adminJson({
     sub: session.sub,
     name: session.name,

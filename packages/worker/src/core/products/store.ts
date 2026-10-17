@@ -250,6 +250,17 @@ export async function getActiveSchema(
   );
 }
 
+/** The active catalog version of every product that has one, in ONE query: the same answer as
+ *  `getActiveSchema(slug)?.catalog_version` per product (highest active version), for a listing. */
+export async function activeSchemaVersions(
+  db: Db,
+): Promise<Map<string, number>> {
+  const rows = await db.all<{ product: string; v: number }>(
+    "SELECT product, MAX(catalog_version) AS v FROM product_schema WHERE active = 1 GROUP BY product",
+  );
+  return new Map(rows.map((r) => [r.product, r.v]));
+}
+
 export async function insertSchema(db: Db, row: SchemaRow): Promise<void> {
   await db.run(
     "INSERT INTO product_schema (product, catalog_version, catalog_json, active, created_at) VALUES (?, ?, ?, ?, ?)",

@@ -46,7 +46,7 @@ import { ErrorCode } from "../../core/errors.js";
 import { getLicense } from "../../core/licensing/store.js";
 import { listDevicesByLicense } from "../../core/devices/store.js";
 import { deauthorizeDeviceAsAdmin } from "../../core/console/deviceAdmin.js";
-import { loadProduct } from "../../core/products.js";
+import type { ProductContext } from "../../core/products.js";
 import { appendPlatformEvent } from "../../core/ops/platformEvents.js";
 import {
   RELINK_DAILY_ALERT_COUNT,
@@ -154,11 +154,12 @@ export async function handleProductUsers(
   env: Env,
   db: Db,
   session: AdminSession,
-  slug: string,
+  productCtx: ProductContext,
   rest: string[],
   now: number,
 ): Promise<Response> {
-  const product = await loadProduct(env, db, slug);
+  const slug = productCtx.row.slug;
+  const product = await productCtx.load();
   if (!product) return notFound();
   const identityOn = product.services.identity?.enabled === true;
   const ctx: AccountContext = {

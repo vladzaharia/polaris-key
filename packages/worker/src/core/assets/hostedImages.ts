@@ -43,7 +43,7 @@ import type { Db } from "../../db/types.js";
 import { blobKey } from "./blobs.js";
 import { HOSTED_ASSET_REF, parseVariants, slotClass } from "./hostedAssets.js";
 import { IMG_ALIASES, IMG_HOST_TYPES } from "./imgHost.js";
-import { imgOrigin, imgUrl } from "./imgHostname.js";
+import { imgOrigin, imgUrl } from "../hosts.js";
 import { assetHostingEnabled } from "./assetHosting.js";
 
 /** The image host's origins, and the kill switch's `[vars]` value. */

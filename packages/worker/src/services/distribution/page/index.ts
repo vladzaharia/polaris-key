@@ -54,7 +54,7 @@ import type {
   ByteRouteContext,
 } from "../../../core/assets/bytesHost.js";
 import { bytesHostname } from "../../../core/assets/bytesHost.js";
-import { normalizeHostname } from "../../../core/assets/bytesHostname.js";
+import { normalizeHostname } from "../../../core/hosts.js";
 import { cspImageOrigin } from "../../../core/securityHeaders.js";
 import { sha256Base64 } from "../../../platform/hash.js";
 import type { Db } from "../../../db/types.js";

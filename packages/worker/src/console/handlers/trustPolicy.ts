@@ -25,7 +25,7 @@ import {
   validateTrustPolicy,
   type TrustPolicy,
 } from "../../core/trust/deviceTrust.js";
-import { getProduct } from "../../core/products/store.js";
+import type { ProductRow } from "../../core/repo.js";
 import { SETTINGS } from "../../mount.js";
 import {
   writeSetting,
@@ -53,14 +53,13 @@ export async function handleTrustPolicy(
   env: Env,
   db: Db,
   session: AdminSession,
-  slug: string,
+  row: ProductRow,
   id: string | undefined,
   now: number,
 ): Promise<Response> {
   // ST-29: the dispatcher checked the `keys` area on this product before routing here.
   if (id !== undefined) return notFound();
-  const row = await getProduct(db, slug);
-  if (!row) return notFound();
+  const slug = row.slug;
   const current = parseTrustPolicy(row.trust_policy_json);
   const source = row.trust_policy_source ?? "default";
 

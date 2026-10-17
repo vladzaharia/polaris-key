@@ -75,7 +75,7 @@ import {
 } from "./hostedAssets.js";
 import { IMAGE_TYPES } from "./sniff.js";
 import { clientNetwork, rateLimitOk } from "../rateLimit.js";
-import { IMG_MAX_WIDTH, imgOrigin } from "./imgHostname.js";
+import { IMG_MAX_WIDTH, imgOrigin } from "../hosts.js";
 
 export {
   IMG_MAX_WIDTH,
@@ -83,7 +83,7 @@ export {
   imgOrigin,
   imgUrl,
   isImgHost,
-} from "./imgHostname.js";
+} from "../hosts.js";
 
 /** The policy every image-host answer carries. */
 export const IMG_CSP = "default-src 'none'; sandbox";

@@ -10,7 +10,6 @@
  * path.
  */
 
-import { getProduct } from "../core/products/store.js";
 import { notFound } from "../core/console/respond.js";
 import { handleFeedsAdmin } from "./handlers/feeds.js";
 import { handleProductScopedResource } from "./handlers/products.js";
@@ -26,7 +25,6 @@ import { handleProductSettings } from "./handlers/productSettings.js";
 import { handleServicesAdmin } from "./handlers/servicesAdmin.js";
 import { handleBundleMint } from "./handlers/bundles.js";
 import { handleBlobGcAdmin } from "../core/assets/blobGc.js";
-import { loadProduct } from "../core/products.js";
 import { handleProductStorefronts } from "./handlers/polarisKeyStorefront.js";
 import { serviceContext } from "../core/registry.js";
 import { SERVICES, SETTINGS } from "../mount.js";
@@ -63,8 +61,7 @@ export async function handleProductScoped(c: AdminCtx): Promise<Response> {
   if (resource === "distribution" && rest[1] === "feeds") {
     // The system product's feeds are the platform's: reachable only from Platform → Package feeds
     // (`/manage/api/platform/feeds/…`), never as a product scope.
-    const owner = await getProduct(db, slug);
-    if (!owner || owner.system === 1) return notFound();
+    if (product.system === 1) return notFound();
     return handleFeedsAdmin(
       req,
       env,
@@ -79,7 +76,7 @@ export async function handleProductScoped(c: AdminCtx): Promise<Response> {
   if (resource && SERVICES.has(resource as ServiceSlug)) {
     const descriptor = SERVICES.get(resource as ServiceSlug)!;
     if (descriptor.adminHandle) {
-      const loaded = await loadProduct(env, db, slug);
+      const loaded = await c.productCtx!.load();
       if (!loaded) return notFound();
       const res = await descriptor.adminHandle({
         req,
@@ -172,7 +169,7 @@ export async function handleProductScoped(c: AdminCtx): Promise<Response> {
   // log-only, and the App Attest / Play Integrity settings. CORE, like the device trust level.
   //   GET|PUT|DELETE /products/<slug>/trust-policy
   if (resource === "trust-policy")
-    return handleTrustPolicy(req, env, db, session, slug, id, now);
+    return handleTrustPolicy(req, env, db, session, product, id, now);
 
   // Which Polaris Key services this product runs (plan §R4). A CORE resource, not a per-service
   // one: a service cannot own its own off switch, because it would have to be running to be
@@ -192,7 +189,7 @@ export async function handleProductScoped(c: AdminCtx): Promise<Response> {
   // store itself: liveness is read through the product's hooks, as the nightly collector reads it.
   //   GET /products/<slug>/blob-gc, GET /products/<slug>/blob-gc/bundles
   if (resource === "blob-gc") {
-    const loaded = await loadProduct(env, db, slug);
+    const loaded = await c.productCtx!.load();
     if (!loaded) return notFound();
     const hooks = serviceContext("host", SERVICES, loaded.services, {
       env,
@@ -261,7 +258,15 @@ export async function handleProductScoped(c: AdminCtx): Promise<Response> {
   // The product's users, keyed by pairwise subject (I-12). CORE: the account is platform-level,
   // so a product with Identity off still has users (its licence owners).
   if (resource === "users") {
-    return handleProductUsers(req, env, db, session, slug, rest.slice(1), now);
+    return handleProductUsers(
+      req,
+      env,
+      db,
+      session,
+      c.productCtx!,
+      rest.slice(1),
+      now,
+    );
   }
 
   return notFound();

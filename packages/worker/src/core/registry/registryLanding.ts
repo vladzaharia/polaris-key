@@ -21,14 +21,14 @@
 
 import { THEME_TOKENS } from "@polaris-key/brand";
 import type { Env } from "../../platform/env.js";
-import { normalizeHostname } from "../assets/bytesHostname.js";
+import { normalizeHostname } from "../hosts.js";
 import {
   LANDING_CACHE,
   LANDING_CSS,
   landingArt,
   landingCsp,
 } from "../assets/bytesLanding.js";
-import { registryHostname } from "./registryHostname.js";
+import { registryHostname } from "../hosts.js";
 import { escapeHtml } from "../../platform/html.js";
 
 /** The console origin to link when `CONSOLE_ORIGIN` is unset or unusable: the platform's own. */

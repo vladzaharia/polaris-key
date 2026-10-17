@@ -19,7 +19,7 @@
 import type { Db } from "../../../db/types.js";
 import type { Env } from "../../../platform/env.js";
 import { ErrorCode } from "../../../core/errors.js";
-import { registryOrigin } from "../../../core/registry/registryHostname.js";
+import { registryOrigin } from "../../../core/hosts.js";
 import {
   MAX_LIVE_PERSONAL_TOKENS,
   PACKAGES_READ_SCOPE,

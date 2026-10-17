@@ -87,13 +87,9 @@ import {
   verifyPullToken,
 } from "./registryTokens.js";
 
-import { registryHostname, registryOrigin } from "./registryHostname.js";
+import { registryHostname, registryOrigin } from "../hosts.js";
 
-export {
-  isRegistryHost,
-  registryHostname,
-  registryOrigin,
-} from "./registryHostname.js";
+export { isRegistryHost, registryHostname, registryOrigin } from "../hosts.js";
 
 // ── The closed lists ─────────────────────────────────────────────────────────────────────────
 

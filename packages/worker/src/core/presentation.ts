@@ -55,7 +55,7 @@ import {
   hostedImageOrigin,
   hostedImages,
 } from "./assets/hostedImages.js";
-import { imgUrl } from "./assets/imgHostname.js";
+import { imgUrl } from "./hosts.js";
 
 /** The text half: what the portal shares with discovery (it draws its own art, HA-07). */
 export interface PresentationText {

@@ -39,7 +39,7 @@
 
 import type { Env } from "../platform/env.js";
 import { secret } from "../platform/env.js";
-import { bytesHostname, normalizeHostname } from "./assets/bytesHostname.js";
+import { bytesHostname, normalizeHostname } from "./hosts.js";
 import {
   b64urlDecodeStrict,
   b64urlEncode,

@@ -61,7 +61,7 @@ import { feedStateStamp } from "./feeds/cache.js";
 import { readinessReader, type ReadinessReader } from "./readiness.js";
 import { packageFeedOf } from "./registryFeeds.js";
 import { feedAdapter } from "./registry/index.js";
-import { registryOrigin } from "../../core/registry/registryHostname.js";
+import { registryOrigin } from "../../core/hosts.js";
 import { resolvePlaySetup } from "./connectors/play/setup.js";
 import { customerDownloads } from "./page/customer.js";
 import { listingLegalUrls } from "./listing/store.js";
