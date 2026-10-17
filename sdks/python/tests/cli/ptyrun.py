@@ -37,7 +37,9 @@ class PtyRun:
         self._decoder = codecs.getincrementaldecoder("utf-8")("replace")
         self.t0 = time.monotonic()
         child_env = dict(os.environ, TERM="xterm-256color", COLORTERM="truecolor", LANG="en_US.UTF-8", DISPLAY=":0")
-        for name in ("PKEY_THEME", "CI", "NO_COLOR", "SSH_CONNECTION", "SSH_TTY"):
+        # Every variable the kit reads as "this is CI" (env.py ci(), flows.py): a runner sets GITHUB_ACTIONS too,
+        # and the kit then drops the interactive Esc watcher the tests are about.
+        for name in ("PKEY_THEME", "CI", "GITHUB_ACTIONS", "BUILDKITE", "TF_BUILD", "TEAMCITY_VERSION", "NO_COLOR", "SSH_CONNECTION", "SSH_TTY"):
             child_env.pop(name, None)
         child_env.update(env or {})
         with warnings.catch_warnings():
