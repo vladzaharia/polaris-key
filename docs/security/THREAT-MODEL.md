@@ -8464,6 +8464,12 @@ core (SP-55 to SP-57, SP-62).
   `follow_redirects=False`; the browser fetch never follows a redirect. A backend that answers
   `license_stale` to everything cannot make the client ask the Worker per request: forced syncs
   are at least 10 s apart in every SDK.
+- **The native client halves check every hop too (SP-59).** Swift's `data(for:)` refuses a redirect
+  to another origin in the task delegate before the hop is sent; Kotlin's network interceptor
+  checks each hop and attaches the headers there, because OkHttp keeps custom headers across a
+  redirect (an application interceptor alone sends no licence and fails with `not-configured`);
+  Godot's `request()` follows redirects by hand and checks each hop, while the raw `headers()` is
+  safe only with `max_redirects = 0` (`headers_for(url)` checks the origin).
 - **The JWS reaches the Electron renderer (SP-58).** The bridge verb `core.backendHeaders` hands the
   licence document to the renderer, so a compromised renderer holds a bearer credential for the
   freshness window (the replay row above). It never gets the device token or the config document.

@@ -9,6 +9,13 @@ as the GitHub Release notes, and the same text is the Asset Store version's chan
 
 ## Unreleased
 
+- **Client backend (`core.backend`, SP-59).** `PolarisKey.backend.headers()` (raw lines for
+  `HTTPRequest`; set `max_redirects = 0`), `headers_for(url)` and `request()` send `X-PKey-License` and
+  `X-PKey-Device` to the app's own backend, only to `PKeyOptions.backend_origins`; `request()` checks
+  every redirect hop before it is sent. Pre-sync, one forced retry at least 10 s apart, typed
+  `not_entitled` and `sign_in_required`. `PKeyTransport.request` takes a per-call
+  `follow_redirects: false`.
+
 Hostile-input fixes.
 
 - **A `blocked` hint outside the block vocabulary reads as the strictest block at the gate.** The
