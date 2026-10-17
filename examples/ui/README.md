@@ -16,7 +16,7 @@ Every sample:
 | Kit               | Sample                                                                                                    | Folder                                 | Status                                       |
 | ----------------- | --------------------------------------------------------------------------------------------------------- | -------------------------------------- | -------------------------------------------- |
 | Web components    | One static HTML page using the CDN module; an htmx page                                                   | `elements/`                            | Static page: fixtures; htmx and CDN: not yet |
-| React             | A Vite app with the whole flow; a Next.js App Router app with a `"use client"` boundary and settings page | `react-vite/`, `react-next/`           | Vite: ships; Next.js: not yet                |
+| React             | A Vite app with the whole flow; a Next.js App Router app with a `"use client"` boundary and settings page | `react-vite/`, `react-next/`           | Vite: ships; Next.js: ships (own npm install)                |
 | Electron          | An Electron Forge app using `registerPolarisKey`, `exposePolarisKey` and the React kit                    | `electron/`                            | Not yet                                      |
 | Vue               | A Nuxt app                                                                                                | `vue/`                                 | Not yet                                      |
 | Svelte            | A SvelteKit app                                                                                           | `svelte/`                              | Not yet                                      |

@@ -251,8 +251,10 @@ function screen(c: KitCtx, layout: Layout): ReactNode {
   const titleNames =
     p.titles.length > 0 && name !== "" && plain(c, p.titles[0]!).includes(name);
   const loading = isLoading(view);
+  // A stage that owns the window is the page's main landmark.
+  const Stage = c.fill ? "main" : "section";
   return (
-    <section
+    <Stage
       className="stage"
       data-part="stage"
       data-kind="screen"
@@ -308,7 +310,7 @@ function screen(c: KitCtx, layout: Layout): ReactNode {
         {a11yOnly(c)}
         {p.footnote.length ? paragraphs(c, p.footnote, "footnote") : null}
       </div>
-    </section>
+    </Stage>
   );
 }
 

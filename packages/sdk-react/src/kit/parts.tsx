@@ -23,6 +23,8 @@ export interface KitCtx {
   headingLevel?: number;
   /** True when the host handles `onInput`: settings rows draw as real controls. */
   interactive?: boolean;
+  /** The part owns the window: its stage is the page's `main`. */
+  fill?: boolean;
   /** The drop-in drives this part: lines with a missing argument are left out. */
   driven?: boolean;
   /** A screen-form component drawn as an embedded pane. */

@@ -421,6 +421,7 @@ export function useKit(
       props.headingLevel ??
       (props.embedded || LAYOUTS[v.component].kind === "pane" ? 2 : 1),
     interactive: props.onInput !== undefined,
+    ...(props.fill ? { fill: true } : {}),
     ...(props.driven ? { driven: true } : {}),
     ...(props.embedded ? { embedded: true } : {}),
     ...(chrome ? { chrome } : {}),
