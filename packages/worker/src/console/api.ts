@@ -41,9 +41,9 @@
 import { constantTimeEqual } from "../platform/compare.js";
 import type { Env } from "../platform/env.js";
 import type { Db } from "../db/types.js";
-import { getProduct } from "../core/repo.js";
+import { getProduct } from "../core/products/store.js";
 import { rateLimitOk } from "../core/rateLimit.js";
-import { audit } from "../core/console/audit.js";
+import { audit } from "../core/audit.js";
 import {
   CSRF_HEADER,
   sessionFromRequest,

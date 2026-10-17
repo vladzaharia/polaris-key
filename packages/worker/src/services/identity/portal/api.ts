@@ -31,7 +31,7 @@ import {
   mintDownloadTicket,
 } from "../../../core/downloadTicket.js";
 import { ErrorCode } from "../../../core/errors.js";
-import { getProduct } from "../../../core/repo.js";
+import { getProduct } from "../../../core/products/store.js";
 import { licenseUsable } from "../../../core/devices.js";
 import { rateLimitOk } from "../../../core/rateLimit.js";
 import { registryOrigin } from "../../../core/registry/registryHostname.js";

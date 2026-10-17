@@ -49,7 +49,7 @@ import type { Env } from "../platform/env.js";
 import type { Db } from "../db/types.js";
 import { bearer } from "../platform/http.js";
 import { hashKey, isAdminApiToken } from "../platform/crypto.js";
-import { audit, platformAudit } from "../core/console/audit.js";
+import { audit, platformAudit } from "../core/audit.js";
 import type { AdminSession } from "../core/console/session.js";
 
 /** The scope vocabulary. One entry, deliberately: see the header. */

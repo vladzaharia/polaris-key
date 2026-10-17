@@ -22,8 +22,8 @@ import {
   prepareCreate,
   slugFromName,
 } from "../src/services/release/linkRepo.js";
-import { stmtInsertReleaseConfig } from "../src/core/repo.js";
-import { getProduct } from "../src/core/repo.js";
+import { stmtInsertReleaseConfig } from "../src/core/products/store.js";
+import { getProduct } from "../src/core/products/store.js";
 import { handleAdmin } from "../src/console/index.js";
 import { resetGithubRepositoryCache } from "../src/console/handlers/github.js";
 import {

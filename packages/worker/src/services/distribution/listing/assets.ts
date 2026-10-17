@@ -52,7 +52,7 @@ import {
   type CiTokenRecord,
 } from "../../../core/publisher.js";
 import { ciActor, type CiPrincipal } from "../../../core/ciScope.js";
-import { appendAudit } from "../../../core/repo.js";
+import { appendAudit } from "../../../core/audit.js";
 import {
   assetProblems,
   TEXT_ALLOWED,

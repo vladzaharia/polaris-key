@@ -24,9 +24,9 @@ import {
   getDevice,
   releaseDormantSeats,
   setDeviceStatus,
-} from "../src/core/repo.js";
+} from "../src/core/devices/store.js";
 import { claimOnce } from "../src/core/atomicClaim.js";
-import { SEAT_DORMANCY_SECONDS } from "../src/core/repo.js";
+import { SEAT_DORMANCY_SECONDS } from "../src/core/devices/store.js";
 
 describe("atomic read-modify-write", () => {
   let db: SqliteDb;

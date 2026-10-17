@@ -17,7 +17,7 @@ import {
   dispatchRegistryHost,
 } from "../src/core/registry/registryHost.js";
 import { serializeServices, type ServicesMap } from "../src/core/services.js";
-import { setServices } from "../src/core/repo.js";
+import { setServices } from "../src/core/products/store.js";
 import { REGISTRY_ROUTES, SERVICES } from "../src/mount.js";
 import {
   IMMUTABLE_CACHE_CONTROL,

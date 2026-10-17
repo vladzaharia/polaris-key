@@ -20,7 +20,7 @@ import {
 } from "../src/core/outletCredentials.js";
 import { buildHooks } from "../src/core/hooks.js";
 import { loadProductPublic } from "../src/core/products.js";
-import { setServices } from "../src/core/repo.js";
+import { setServices } from "../src/core/products/store.js";
 import { serializeServices } from "../src/core/services.js";
 import { SERVICES } from "../src/mount.js";
 import {

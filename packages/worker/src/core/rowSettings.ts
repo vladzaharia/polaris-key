@@ -30,15 +30,19 @@
  * ST-05's generic API replaces `readRowSettings` with the resolver.
  */
 
+import {
+  SYSTEM_ACTORS,
+  type AuditActor,
+  auditStatement,
+  sql,
+  actorColumns,
+} from "./audit.js";
 import type { Db, DbStatement } from "../db/types.js";
-import { randomId } from "../platform/crypto.js";
 import { getManifestSnapshot } from "./manifestSnapshot.js";
 import {
   auditValue,
   claimsApply,
   isClaimKey,
-  RESYNC_ACTOR,
-  type AuditActor,
   type ProductSettingRow,
 } from "./settingsClaims.js";
 import { fitsValueSpec } from "./settings/rules.js";
@@ -212,7 +216,7 @@ export function manifestRowSettingStatements(
   defs: readonly SettingDef[],
   parsed: unknown,
   now: number,
-  actor: AuditActor = RESYNC_ACTOR,
+  actor: AuditActor = SYSTEM_ACTORS.resync,
 ): DbStatement[] {
   const out: DbStatement[] = [];
   const undeclared: string[] = [];
@@ -226,36 +230,35 @@ export function manifestRowSettingStatements(
     if (!fitsValueSpec(def.value, value)) continue;
     const json = JSON.stringify(value);
     out.push(
-      {
-        sql: `INSERT INTO audit
-                (product, id, at, actor_sub, actor_name, actor_email, action, target_kind,
-                 target_id, parent_id, summary)
-              SELECT ?, ?, ?, ?, ?, ?, 'setting.resync', 'setting', ?, NULL,
-                     ? || COALESCE((SELECT value_json FROM product_settings
-                                     WHERE product = ? AND key = ?), 'unset') || ' → ' || ?
-              WHERE NOT ${CLAIMED}
-                AND (SELECT value_json FROM product_settings WHERE product = ? AND key = ?)
-                    IS NOT ?`,
-        params: [
+      auditStatement(
+        {
           product,
-          randomId("aud"),
-          now,
-          actor.sub,
-          actor.name,
-          actor.email,
+          at: now,
+          ...actorColumns(actor),
+          action: "setting.resync",
+          target_kind: "setting",
+          target_id: def.key,
+          summary: sql(
+            `? || COALESCE((SELECT value_json FROM product_settings
+                             WHERE product = ? AND key = ?), 'unset') || ' → ' || ?`,
+            `${def.key} set from the manifest: `,
+            product,
+            def.key,
+            json,
+          ),
+        },
+        sql(
+          `WHERE NOT ${CLAIMED}
+             AND (SELECT value_json FROM product_settings WHERE product = ? AND key = ?)
+                 IS NOT ?`,
+          product,
           def.key,
-          `${def.key} set from the manifest: `,
+          now,
           product,
           def.key,
           json,
-          product,
-          def.key,
-          now,
-          product,
-          def.key,
-          json,
-        ],
-      },
+        ),
+      ),
       {
         sql: `INSERT INTO product_settings
                 (product, key, value_json, source, version, updated_at, updated_by, reason, expires_at)
@@ -274,24 +277,26 @@ export function manifestRowSettingStatements(
   if (undeclared.length > 0) {
     const inList = jsonList();
     out.push(
-      {
-        sql: `INSERT INTO audit
-                (product, id, at, actor_sub, actor_name, actor_email, action, target_kind,
-                 target_id, parent_id, summary)
-              SELECT product, 'aud_' || lower(hex(randomblob(9))), ?, ?, ?, ?,
-                     'setting.resync', 'setting', key, NULL,
-                     key || ' cleared from the manifest: ' || value_json || ' → default'
-                FROM product_settings
-               WHERE product = ? AND source = 'manifest' AND key IN ${inList}`,
-        params: [
-          now,
-          actor.sub,
-          actor.name,
-          actor.email,
+      auditStatement(
+        {
+          product: sql("product"),
+          id: sql("'aud_' || lower(hex(randomblob(9)))"),
+          at: now,
+          ...actorColumns(actor),
+          action: "setting.resync",
+          target_kind: "setting",
+          target_id: sql("key"),
+          summary: sql(
+            "key || ' cleared from the manifest: ' || value_json || ' → default'",
+          ),
+        },
+        sql(
+          `FROM product_settings
+            WHERE product = ? AND source = 'manifest' AND key IN ${inList}`,
           product,
           jsonListArg(undeclared),
-        ],
-      },
+        ),
+      ),
       {
         sql: `DELETE FROM product_settings
                WHERE product = ? AND source = 'manifest' AND key IN ${inList}`,

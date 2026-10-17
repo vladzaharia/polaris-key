@@ -45,7 +45,7 @@ import {
   type CiTokenRecord,
   type TicketRecord,
 } from "../../../core/publisher.js";
-import { appendAudit } from "../../../core/repo.js";
+import { appendAudit } from "../../../core/audit.js";
 import { randomId } from "../../../platform/crypto.js";
 import { sha256Hex } from "../../../platform/hash.js";
 import type { DbStatement } from "../../../db/types.js";

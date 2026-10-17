@@ -22,12 +22,9 @@
 import { deleteTokenRecord } from "../../../platform/kv.js";
 import type { Db } from "../../../db/types.js";
 import type { Env } from "../../../platform/env.js";
-import {
-  getDevice,
-  getProduct,
-  setDeviceStatus,
-  type DeviceRow,
-} from "../../../core/repo.js";
+import { type DeviceRow } from "../../../core/repo.js";
+import { getDevice, setDeviceStatus } from "../../../core/devices/store.js";
+import { getProduct } from "../../../core/products/store.js";
 import {
   clientNetwork,
   rateLimitOk,

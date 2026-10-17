@@ -33,7 +33,8 @@ import { identityService } from "../src/services/identity/index.js";
 import { handleActivate } from "../src/services/license/activation.js";
 import { hashKey, mintDeviceToken } from "../src/platform/crypto.js";
 import { putTokenRecord } from "../src/platform/kv.js";
-import { setServices, upsertDevice } from "../src/core/repo.js";
+import { setServices } from "../src/core/products/store.js";
+import { upsertDevice } from "../src/core/devices/store.js";
 import type { Env } from "../src/platform/env.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
 

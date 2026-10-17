@@ -27,7 +27,8 @@ import type { Db } from "../src/db/types.js";
 import { handleActivate } from "../src/services/license/activation.js";
 import { loadProduct, loadProductPublic } from "../src/core/products.js";
 import { serializeServices } from "../src/core/services.js";
-import { getDevice, setServices } from "../src/core/repo.js";
+import { getDevice } from "../src/core/devices/store.js";
+import { setServices } from "../src/core/products/store.js";
 import {
   resolveSyncPrincipal,
   subjectFor,

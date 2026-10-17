@@ -35,7 +35,7 @@ import type { SettingDef } from "../src/core/settings/types.js";
 import { SETTINGS } from "../src/mount.js";
 import { lazyDeltasOn } from "../src/core/assets/deltaDemand.js";
 import { effectiveBlobGcSettings } from "../src/core/assets/blobGc.js";
-import { listPlatformAudit } from "../src/core/repo.js";
+import { listPlatformAudit } from "../src/core/audit.js";
 import { makeTestDb } from "./helpers.js";
 import { PLATFORM_INVENTORY } from "../src/platformInventory.generated.js";
 import { KvMock } from "./kvMock.js";

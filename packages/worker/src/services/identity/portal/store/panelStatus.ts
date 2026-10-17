@@ -19,7 +19,7 @@ import type { Db } from "../../../../db/types.js";
 import type { Env } from "../../../../platform/env.js";
 import type { ProductPublic } from "../../../../core/products.js";
 import type { Delivery } from "../../../../core/hooks.js";
-import { getTier } from "../../../../core/repo.js";
+import { getTier } from "../../../../core/licensing/store.js";
 import { licenseTermsOf } from "../../../../core/licensing/entitlements.js";
 import { polarisKeyStorefrontEnabled } from "../../../../core/storefrontSwitch.js";
 import type { FitStatus } from "../../../../core/storefront/projection.js";

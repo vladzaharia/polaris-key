@@ -69,7 +69,7 @@ import type { BundleDoc } from "@polaris-key/protocol/core";
 import type { Env } from "../../platform/env.js";
 import type { Db } from "../../db/types.js";
 import type { AdminSession } from "../../core/console/session.js";
-import { audit } from "../../core/console/audit.js";
+import { audit } from "../../core/audit.js";
 import {
   adminJson,
   err,
@@ -77,7 +77,8 @@ import {
   readBody,
 } from "../../core/console/respond.js";
 import { ErrorCode } from "../../core/errors.js";
-import { getDevice, getLicense } from "../../core/repo.js";
+import { getDevice } from "../../core/devices/store.js";
+import { getLicense } from "../../core/licensing/store.js";
 import type { LicenseRow } from "../../core/repo.js";
 import { licenseUsable } from "../../core/devices.js";
 import { docProfile, resolveEntitlements } from "../../core/licensing/authz.js";

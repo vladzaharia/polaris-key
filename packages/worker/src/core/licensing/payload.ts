@@ -41,14 +41,8 @@ import { storeGrantLayer } from "./storeGrants.js";
 import { oidcGrantLayer } from "./grants.js";
 import { accountOverrideLayer } from "../accounts/accountOverrides.js";
 import { licenseConfigOverridesRetired } from "../ops/overrideMigration.js";
-import {
-  getProfile,
-  getTier,
-  listLicenseProfiles,
-  type DeviceRow,
-  type LicenseRow,
-  type TierRow,
-} from "../repo.js";
+import { type DeviceRow, type LicenseRow, type TierRow } from "../repo.js";
+import { getProfile, getTier, listLicenseProfiles } from "./store.js";
 
 /**
  * The three managed-entry maps as the CONTROL PLANE stores them, in one object.

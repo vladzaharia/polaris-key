@@ -19,7 +19,7 @@ import type { Db } from "../../../db/types.js";
 import { type Product } from "../../../core/products.js";
 import { errorResponse } from "../../../core/errors.js";
 import { clientNetwork } from "../../../core/rateLimit.js";
-import { getLicense } from "../../../core/repo.js";
+import { getLicense } from "../../../core/licensing/store.js";
 import {
   createBrowserSession,
   type BrowserSessionSubject,

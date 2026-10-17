@@ -44,7 +44,7 @@
 
 import type { Db, DbStatement } from "../../../db/types.js";
 import { randomId } from "../../../platform/crypto.js";
-import { appendAudit } from "../../../core/repo.js";
+import { appendAudit } from "../../../core/audit.js";
 import { blobKey } from "../../../core/assets/blobs.js";
 import { HOSTED_ASSET_REF } from "../../../core/assets/hostedAssets.js";
 import { IMG_HOST_TYPES } from "../../../core/assets/imgHost.js";

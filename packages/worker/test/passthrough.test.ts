@@ -22,7 +22,7 @@ import {
   type Product,
 } from "../src/core/products.js";
 import { serializeServices, type ServicesMap } from "../src/core/services.js";
-import { setServices } from "../src/core/repo.js";
+import { setServices } from "../src/core/products/store.js";
 import {
   handleAuthDeviceEntry,
   handleAuthDeviceStart,

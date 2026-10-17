@@ -22,7 +22,8 @@
  */
 
 import type { Db } from "../../db/types.js";
-import { getLicense, type DeviceRow } from "../repo.js";
+import { type DeviceRow } from "../repo.js";
+import { getLicense } from "../licensing/store.js";
 import { resolveSyncPrincipal } from "./accountSubjects.js";
 import { licenseUsable } from "../devices.js";
 import {

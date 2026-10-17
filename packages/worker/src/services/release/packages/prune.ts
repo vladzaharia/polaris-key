@@ -69,7 +69,12 @@ import { SYSTEM_PRODUCT_SLUG } from "@polaris-key/manifest";
 import type { Db, DbStatement } from "../../../db/types.js";
 import type { Env } from "../../../platform/env.js";
 import { randomId } from "../../../platform/crypto.js";
-import { appendAudit, auditStatement } from "../../../core/repo.js";
+import {
+  appendAudit,
+  auditStatement,
+  type AuditActor,
+  sql,
+} from "../../../core/audit.js";
 import {
   PACKAGE_FILE_REF,
   heldObjects,
@@ -81,7 +86,6 @@ import { stmtEnqueuePackageRender } from "../../../core/registry/registryQueue.j
 import { bumpReleaseGeneration } from "../ghCache.js";
 import {
   writeSetting,
-  type AuditActor,
   type SettingsWriteContext,
   type WriteRefusal,
 } from "../../../core/settings/write.js";
@@ -1032,24 +1036,25 @@ export async function noticePruneRetention(
         notice.freedBytes,
       ],
     },
-    {
-      // Only the call whose insert won writes its audit row: `changes()` is the count of the
-      // statement just before this one in the batch's transaction, 0 when the product already
-      // had its notice (the primary key is the product). Proven on D1 in
-      // `test-workerd/pruneNotice.test.ts`.
-      sql: `INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action,
-              target_kind, target_id, parent_id, summary)
-            SELECT ?, ?, ?, ?, ?, NULL, 'package.prune.notice', 'feed', 'retention', NULL, ?
-             WHERE changes() > 0`,
-      params: [
+    // Only the call whose insert won writes its audit row: `changes()` is the count of the
+    // statement just before this one in the batch's transaction, 0 when the product already
+    // had its notice (the primary key is the product). Proven on D1 in
+    // `test-workerd/pruneNotice.test.ts`.
+    auditStatement(
+      {
         product,
-        auditId,
-        now,
-        PRUNE_ACTOR,
-        SYSTEM_PRUNE_ACTOR.name,
-        `Cleanup of builds of main and dev turns on ${day}: ${notice.versions} version${notice.versions === 1 ? "" : "s"} across ${notice.packages} package${notice.packages === 1 ? "" : "s"} (${notice.bytes} bytes) would be deleted at the next stable release. Nothing is deleted before then; turn cleanup off in the feed settings to keep them.`,
-      ],
-    },
+        id: auditId,
+        at: now,
+        actor_sub: PRUNE_ACTOR,
+        actor_name: SYSTEM_PRUNE_ACTOR.name,
+        actor_email: null,
+        action: "package.prune.notice",
+        target_kind: "feed",
+        target_id: "retention",
+        summary: `Cleanup of builds of main and dev turns on ${day}: ${notice.versions} version${notice.versions === 1 ? "" : "s"} across ${notice.packages} package${notice.packages === 1 ? "" : "s"} (${notice.bytes} bytes) would be deleted at the next stable release. Nothing is deleted before then; turn cleanup off in the feed settings to keep them.`,
+      },
+      sql("WHERE changes() > 0"),
+    ),
   ];
   let raised: boolean;
   if (db.batchChanges) {

@@ -52,7 +52,7 @@ import {
   settingRefused,
 } from "../../core/console/respond.js";
 import { ErrorCode } from "../../core/errors.js";
-import { getProduct } from "../../core/repo.js";
+import { getProduct } from "../../core/products/store.js";
 import type { SettingsRegistry } from "../../core/settings/registry.js";
 import { writeSetting, type WriteOptions } from "../../core/settings/write.js";
 import { invalidateWidenedEdgeMintApprovals } from "../../core/edgeMintApproval.js";

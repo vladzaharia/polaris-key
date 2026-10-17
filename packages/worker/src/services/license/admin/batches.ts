@@ -20,14 +20,14 @@
 import { ErrorCode } from "../../../core/errors.js";
 import { deleteTokenRecord } from "../../../platform/kv.js";
 import { hashKey, mintLicenseKey, randomId } from "../../../platform/crypto.js";
-import { getTier } from "../../../core/repo.js";
+import { getTier } from "../../../core/licensing/store.js";
 import {
   adminJson,
   notFound as adminNotFound,
   err,
   readBody,
 } from "../../../core/console/respond.js";
-import { auditStatementFor } from "../../../core/console/audit.js";
+import { auditStatementFor } from "../../../core/audit.js";
 import { WriteChecks } from "../../../core/console/writeChecks.js";
 import type { AdminSession } from "../../../core/console/session.js";
 import type { Db, DbStatement } from "../../../db/types.js";

@@ -40,27 +40,22 @@
  * are still the dry run's, so the operator applies exactly what they read.
  */
 
+import { type AuditActor, auditStatement, actorColumns } from "../audit.js";
 import type {
   ManifestProfile,
   ManifestTier,
   ParsedManifest,
 } from "@polaris-key/manifest";
 import type { Db, DbStatement } from "../../db/types.js";
-import type {
-  AuditRow,
-  ProductRow,
-  ProfileRow,
-  SchemaRow,
-  TierRow,
-} from "../repo.js";
-import { stmtInsertTier, TIER_COMPARED_PARAMS } from "../repo.js";
+import type { ProductRow, ProfileRow, SchemaRow, TierRow } from "../repo.js";
+import type { AuditRow } from "../audit.js";
+import { stmtInsertTier, TIER_COMPARED_PARAMS } from "../products/store.js";
 import { randomId } from "../../platform/crypto.js";
 import { parseWebOrigins, serializeWebOrigins } from "../cors.js";
 import { parseServices } from "../services.js";
 import { isSealedEnvelope } from "../managedSecrets.js";
 import {
   auditValue,
-  type AuditActor,
   type ClaimKey,
   type ProductSettingRow,
 } from "../settingsClaims.js";
@@ -1414,20 +1409,13 @@ export function stmtBackfillAudit(
   }
   const more =
     shown < changed.length ? `; and ${changed.length - shown} more` : "";
-  return {
-    sql: `INSERT INTO audit
-            (product, id, at, actor_sub, actor_name, actor_email, action, target_kind,
-             target_id, parent_id, summary)
-          VALUES (?, ?, ?, ?, ?, ?, 'setting.backfill', 'product', ?, NULL, ?)`,
-    params: [
-      report.product,
-      randomId("aud"),
-      report.at,
-      actor.sub,
-      actor.name,
-      actor.email,
-      report.product,
-      `${head}${body}${more}${tail}`,
-    ],
-  };
+  return auditStatement({
+    product: report.product,
+    at: report.at,
+    ...actorColumns(actor),
+    action: "setting.backfill",
+    target_kind: "product",
+    target_id: report.product,
+    summary: `${head}${body}${more}${tail}`,
+  });
 }

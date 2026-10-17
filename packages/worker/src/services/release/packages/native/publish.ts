@@ -39,7 +39,7 @@ import {
   putVerified,
   stagingKey,
 } from "../../../../core/assets/blobs.js";
-import { appendAudit } from "../../../../core/repo.js";
+import { appendAudit } from "../../../../core/audit.js";
 import { bumpReleaseGeneration } from "../../ghCache.js";
 import {
   ingestPackageDescriptor,

@@ -658,7 +658,7 @@ describe("holder moves count towards the operator's daily relink alert", () => {
 
 describe("a product deletion takes its relink history", () => {
   it("leaves no license_relinks row (names, emails, accounts) behind", async () => {
-    const { deleteProduct } = await import("../src/core/console/repo.js");
+    const { deleteProduct } = await import("../src/core/products/store.js");
     await account("ada@example.com");
     const id = await create({ name: "Studio Pro", email: "ada@example.com" });
     expect(

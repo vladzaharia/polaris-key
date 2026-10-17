@@ -17,7 +17,8 @@ import {
 } from "../src/services/license/activation.js";
 import { handleLicenseDocument } from "../src/services/license/document.js";
 import { handleReport } from "../src/core/devices.js";
-import { getDevice, setKeyStatus } from "../src/core/repo.js";
+import { getDevice } from "../src/core/devices/store.js";
+import { setKeyStatus } from "../src/core/licensing/store.js";
 import type { Env } from "../src/platform/env.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
 

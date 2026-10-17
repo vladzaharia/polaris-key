@@ -56,7 +56,7 @@ import {
 } from "../../../core/products.js";
 import { existingSubjectFor } from "../../../core/accounts/accountSubjects.js";
 import { licenseDeviceLimit } from "../../../core/licensing/authz.js";
-import { seatActiveSince } from "../../../core/repo.js";
+import { seatActiveSince } from "../../../core/devices/store.js";
 import type { DeviceRow } from "../../../core/repo.js";
 import {
   PRESENTATION_HEADER_SLOTS,

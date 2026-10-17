@@ -17,7 +17,7 @@ import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
 import { generateEd25519 } from "../src/platform/keyvault.js";
 import { hashKey, mintLicenseKey } from "../src/platform/crypto.js";
-import { insertKey, insertLicense } from "../src/core/repo.js";
+import { insertKey, insertLicense } from "../src/core/licensing/store.js";
 import { registerFromManifest } from "../src/services/release/linkRepo.js";
 import { KvMock, asKv } from "../test/kvMock.js";
 import { makeRlNamespace } from "../test/rlMock.js";

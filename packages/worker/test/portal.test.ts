@@ -13,7 +13,8 @@ import {
 } from "./seed.js";
 import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
-import { insertLicense, setServices } from "../src/core/repo.js";
+import { insertLicense } from "../src/core/licensing/store.js";
+import { setServices } from "../src/core/products/store.js";
 import { authorizeAndMint } from "../src/services/identity/oidc.js";
 import { serializeServices } from "../src/core/services.js";
 import { handleActivate } from "../src/services/license/activation.js";

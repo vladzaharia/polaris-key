@@ -69,7 +69,8 @@ import {
   loadProductPublic,
   type ProductPublic,
 } from "../../../../core/products.js";
-import { getTier, type LicenseRow } from "../../../../core/repo.js";
+import { type LicenseRow } from "../../../../core/repo.js";
+import { getTier } from "../../../../core/licensing/store.js";
 import { licenseDeviceLimit } from "../../../../core/licensing/authz.js";
 import type { Delivery } from "../../../../core/hooks.js";
 import { polarisKeyStorefrontEnabled } from "../../../../core/storefrontSwitch.js";

@@ -40,7 +40,9 @@ import {
   runSubjectExport,
   subjectDataSize,
 } from "../../../core/accounts/subjectHooks.js";
-import { getLicense, getProduct, type LicenseRow } from "../../../core/repo.js";
+import { type LicenseRow } from "../../../core/repo.js";
+import { getLicense, setLicenseHolder } from "../../../core/licensing/store.js";
+import { getProduct } from "../../../core/products/store.js";
 import {
   b64urlDecodeBinary,
   b64urlEncodeBinary,
@@ -1344,15 +1346,16 @@ export async function makeLicenseFloating(
       return { ok: false, reason: "conflict" };
   }
   // Compare-and-set: still in no account and still carrying the address read above.
-  const cleared = await db.runChanges(
-    `UPDATE licenses SET name = NULL, email = NULL, modified_by = ?, modified_at = ?
-      WHERE product = ? AND id = ? AND account_id IS NULL AND COALESCE(email, '') = ?`,
-    args.actor.sub,
+  const cleared = await setLicenseHolder(db, {
+    product: args.product,
+    licenseId: args.licenseId,
+    name: null,
+    email: null,
+    expectedAccountId: null,
+    expectedEmail: license.email ?? "",
+    by: args.actor.sub,
     now,
-    args.product,
-    args.licenseId,
-    license.email ?? "",
-  );
+  });
   if (cleared !== 1) return { ok: false, reason: "conflict" };
 
   const recorded = await recordHolderMove(ctx, {
@@ -1474,17 +1477,16 @@ export async function reassignLicenseHolder(
     if (!moved.ok || moved.previousAccountId !== owner)
       return { ok: false, reason: "conflict" };
   }
-  const set = await db.runChanges(
-    `UPDATE licenses SET name = ?, email = ?, modified_by = ?, modified_at = ?
-      WHERE product = ? AND id = ? AND account_id IS NULL AND COALESCE(email, '') = ?`,
+  const set = await setLicenseHolder(db, {
+    product: args.product,
+    licenseId: args.licenseId,
     name,
     email,
-    args.actor.sub,
+    expectedAccountId: null,
+    expectedEmail: license.email ?? "",
+    by: args.actor.sub,
     now,
-    args.product,
-    args.licenseId,
-    license.email ?? "",
-  );
+  });
   if (set !== 1) return { ok: false, reason: "conflict" };
   // S-24 D3: the account that verified the new address, if one did and the pair is not blocked.
   await associateLicenseHolder(
@@ -1562,18 +1564,16 @@ async function undoHolderMove(
     if (!moved.ok || moved.previousAccountId !== owner)
       return { ok: false, reason: "conflict" };
   }
-  const restored = await db.runChanges(
-    `UPDATE licenses SET name = ?, email = ?, modified_by = ?, modified_at = ?
-      WHERE product = ? AND id = ? AND account_id IS ? AND COALESCE(email, '') = ?`,
-    holder.from.name,
-    holder.from.email,
-    actor.sub,
+  const restored = await setLicenseHolder(db, {
+    product: r.product,
+    licenseId: r.license_id,
+    name: holder.from.name,
+    email: holder.from.email,
+    expectedAccountId: r.from_account_id,
+    expectedEmail: license.email ?? "",
+    by: actor.sub,
     now,
-    r.product,
-    r.license_id,
-    r.from_account_id,
-    license.email ?? "",
-  );
+  });
   if (restored !== 1) return { ok: false, reason: "conflict" };
   if (r.from_account_id === null && holder.from.email !== null)
     await associateLicenseHolder(

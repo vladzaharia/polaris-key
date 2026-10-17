@@ -7,6 +7,27 @@ import { ErrorCode } from "../errors.js";
 import type { WriteRefusal } from "../settings/write.js";
 import { appSecurityHeaders } from "../securityHeaders.js";
 
+/**
+ * An audit export (ST-24): newline-delimited JSON, one row per line, as a download. `truncated`
+ * (more rows than one export returns) is announced in `x-pkey-truncated`.
+ */
+export function adminNdjson(
+  body: string,
+  filename: string,
+  truncated: boolean,
+): Response {
+  return new Response(body, {
+    headers: appSecurityHeaders(
+      new Headers({
+        "content-type": "application/x-ndjson; charset=utf-8",
+        "content-disposition": `attachment; filename="${filename}"`,
+        "cache-control": "no-store",
+        ...(truncated ? { "x-pkey-truncated": "1" } : {}),
+      }),
+    ),
+  });
+}
+
 /** JSON response with the admin defaults (no-store, charset). */
 export function adminJson(
   body: unknown,

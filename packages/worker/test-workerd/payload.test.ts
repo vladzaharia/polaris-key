@@ -17,7 +17,7 @@ import {
   recordObject,
 } from "../src/core/assets/blobs.js";
 import { D1Db } from "../src/db/d1.js";
-import { setServices } from "../src/core/repo.js";
+import { setServices } from "../src/core/products/store.js";
 import { serializeServices } from "../src/core/services.js";
 import { packReleaseStatements } from "../src/services/release/packs/ingest.js";
 import { NOW, seedProduct } from "./seed.js";

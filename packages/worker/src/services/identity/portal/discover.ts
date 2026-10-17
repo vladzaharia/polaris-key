@@ -32,7 +32,7 @@
  * `previewIdentityIssue` (the same policy function, `identityTier`, plus the read-only
  * provisioning step, and nothing written) and the claim through `activateFromIdentity` itself.
  * No other service's internals are read (rule 6): tiers, licences and seats come from Core
- * (`core/repo.ts`, `core/licensing/authz.ts`), presentation, platforms and `openAccess` through the
+ * (`core/products/store.ts`, `core/licensing/authz.ts`), presentation, platforms and `openAccess` through the
  * descriptor hooks. License's own auto-issue (`POST /<p>/license/enroll`, the `anonymous` mode) is
  * per MACHINE and keyed by a hardware id, so it is not an account's offer and is never listed.
  *
@@ -71,13 +71,13 @@ import { randomId } from "../../../platform/crypto.js";
 import type { Db } from "../../../db/types.js";
 import type { Env } from "../../../platform/env.js";
 import type { ProductPublic } from "../../../core/products.js";
+import { type LicenseRow } from "../../../core/repo.js";
 import {
-  appendAudit,
   getLicense,
   getLicenseBySub,
   getTier,
-  type LicenseRow,
-} from "../../../core/repo.js";
+} from "../../../core/licensing/store.js";
+import { appendAudit } from "../../../core/audit.js";
 import { licenseDeviceLimit } from "../../../core/licensing/authz.js";
 import { licenseUsable } from "../../../core/devices.js";
 import {

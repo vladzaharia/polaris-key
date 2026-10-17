@@ -29,25 +29,26 @@
  * stores an empty report and no audit row, so a second apply is a no-op.
  */
 
+import { type AuditActor } from "../core/audit.js";
 import { Catalog } from "@polaris-key/catalog";
 import { MAX_DEVICE_LIMIT, type ParsedManifest } from "@polaris-key/manifest";
 import type { Env } from "../platform/env.js";
 import type { Db, DbStatement } from "../db/types.js";
+import { type ProductRow } from "../core/repo.js";
 import {
   getActiveSchema,
   getProduct,
   getProductSyncState,
   listProducts,
-  type ProductRow,
-} from "../core/repo.js";
-import { listProfiles, listTiers } from "../core/console/repo.js";
+} from "../core/products/store.js";
+import { listProfiles, listTiers } from "../core/licensing/store.js";
 import {
   getManifestSnapshot,
   gitShaOrNull,
   manifestFilesSha256,
   manifestSnapshotStatement,
 } from "../core/manifestSnapshot.js";
-import type { AuditActor, ProductSettingRow } from "../core/settingsClaims.js";
+import type { ProductSettingRow } from "../core/settingsClaims.js";
 import {
   getReport,
   listBatchReports,

@@ -11,7 +11,7 @@ import { type Product } from "../../../core/products.js";
 import { renderBrandPage } from "../../../core/brandHtml.js";
 import { errorResponse, methodNotAllowed } from "../../../core/errors.js";
 import { clientNetwork } from "../../../core/rateLimit.js";
-import { appendAudit } from "../../../core/repo.js";
+import { appendAudit } from "../../../core/audit.js";
 import type { ServiceHooks } from "../../../core/hooks.js";
 import {
   binderClearCookie,

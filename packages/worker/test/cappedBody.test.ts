@@ -18,7 +18,8 @@ import {
   deviceMetadata,
   touchDeviceMetadata,
 } from "../src/core/devices.js";
-import { listAudit, type DeviceRow } from "../src/core/repo.js";
+import { type DeviceRow } from "../src/core/repo.js";
+import { listAudit } from "../src/core/audit.js";
 import { handleActivity } from "../src/console/handlers/activity.js";
 import { RateLimitDO } from "../src/rateLimitDo.js";
 import { SingleUseDO } from "../src/singleUseDo.js";

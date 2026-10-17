@@ -69,7 +69,7 @@ import { handleRegister } from "../src/core/register.js";
 import { SERVICES } from "../src/mount.js";
 import { handleReport } from "../src/core/devices.js";
 import { serializeServices, type ServicesMap } from "../src/core/services.js";
-import { setServices } from "../src/core/repo.js";
+import { setServices } from "../src/core/products/store.js";
 import type { Env } from "../src/platform/env.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
 

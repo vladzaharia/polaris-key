@@ -14,7 +14,7 @@ import {
   getDeviceFacts,
   getFingerprint,
   listDevicesByLicense,
-} from "../../../core/repo.js";
+} from "../../../core/devices/store.js";
 import {
   adminJson,
   notFound as adminNotFound,

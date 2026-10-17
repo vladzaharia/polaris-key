@@ -8,7 +8,8 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { listAudit, setServices } from "../src/core/repo.js";
+import { setServices } from "../src/core/products/store.js";
+import { listAudit } from "../src/core/audit.js";
 import { serializeServices } from "../src/core/services.js";
 import { ASC_WEBHOOK_EVENT_TYPES } from "../src/services/distribution/connectors/asc/map.js";
 import type { AscResource } from "../src/core/asc/client.js";

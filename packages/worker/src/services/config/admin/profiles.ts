@@ -25,14 +25,14 @@ import {
   applyOverrides,
   type OverrideUpdate,
 } from "../../../core/console/overrides.js";
-import { audit } from "../../../core/console/audit.js";
+import { audit } from "../../../core/audit.js";
 import {
   countLicensesUsingProfile,
   deleteProfile,
   listProfileReferences,
   listProfiles,
   upsertProfile,
-} from "../../../core/console/repo.js";
+} from "../../../core/licensing/store.js";
 import { isManagedSecretKey } from "../../../core/managedSecrets.js";
 import { loadCatalog } from "../../../core/activeCatalog.js";
 import { parsePayload, redactPayload } from "../../../core/console/redact.js";

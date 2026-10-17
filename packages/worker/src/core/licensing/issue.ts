@@ -6,19 +6,16 @@ import { type Env } from "../../platform/env.js";
 import { tryParseJson } from "../../platform/json.js";
 import type { Db } from "../../db/types.js";
 import { type Product, type ProductPublic } from "../products.js";
+import { type LicenseRow, type ProductRow, type TierRow } from "../repo.js";
+import { appendAudit, auditStatement } from "../audit.js";
 import {
-  appendAudit,
-  auditStatement,
   claimEnrolledLicense,
   getLicense,
   getLicenseBySub,
-  getProduct,
   getTier,
   stmtInsertLicense,
-  type LicenseRow,
-  type ProductRow,
-  type TierRow,
-} from "../repo.js";
+} from "./store.js";
+import { getProduct } from "../products/store.js";
 import { guardedInsert, guardedWrite, oidcGrantStatements } from "./grants.js";
 import { licenseTransitionStatement } from "./lifecycleWrites.js";
 import { mergeLicenseInto, type LicenseMerge } from "./licenseMerge.js";

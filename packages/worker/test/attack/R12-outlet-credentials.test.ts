@@ -36,7 +36,7 @@ import {
 } from "../../src/core/outletCredentials.js";
 import { handleMintToken } from "../../src/services/config/mint.js";
 import { handleActivate } from "../../src/services/license/activation.js";
-import { upsertProductSecret } from "../../src/core/repo.js";
+import { upsertProductSecret } from "../../src/core/products/store.js";
 
 const P8 = (
   generateKeyPairSync("ec", { namedCurve: "P-256" }).privateKey.export({

@@ -30,11 +30,9 @@
 
 import { ErrorCode } from "../../../core/errors.js";
 import { deleteTokenRecord } from "../../../platform/kv.js";
-import {
-  getLicense,
-  listDevicesByLicense,
-  type LicenseRow,
-} from "../../../core/repo.js";
+import { type LicenseRow } from "../../../core/repo.js";
+import { getLicense } from "../../../core/licensing/store.js";
+import { listDevicesByLicense } from "../../../core/devices/store.js";
 import { licenseUsable } from "../../../core/devices.js";
 import {
   existingSubjectFor,
@@ -53,7 +51,7 @@ import {
   err,
   readBody,
 } from "../../../core/console/respond.js";
-import { auditStatementFor } from "../../../core/console/audit.js";
+import { auditStatementFor } from "../../../core/audit.js";
 import type { LicenseAdminContext } from "./index.js";
 
 /** Origins a licence may be deleted from while still active: minted by a flow, not by a person. */

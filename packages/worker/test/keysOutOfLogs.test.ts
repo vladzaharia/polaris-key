@@ -24,7 +24,7 @@ import { makeEnv, NOW, seedLicenseWithKey, seedProduct } from "./seed.js";
 import { dispatchWith } from "../src/dispatch.js";
 import { secureResponse } from "../src/core/securityHeaders.js";
 import { DEFAULT_SERVICES, serializeServices } from "../src/core/services.js";
-import { setServices } from "../src/core/repo.js";
+import { setServices } from "../src/core/products/store.js";
 import type { Env } from "../src/platform/env.js";
 
 const BASE = "https://key.plrs.im";

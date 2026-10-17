@@ -36,7 +36,8 @@ import {
   issueSession,
 } from "../src/core/console/session.js";
 import { loadProduct } from "../src/core/products.js";
-import { getProduct, listAudit } from "../src/core/repo.js";
+import { getProduct } from "../src/core/products/store.js";
+import { listAudit } from "../src/core/audit.js";
 import { linkRepo } from "../src/services/release/linkRepo.js";
 import { resyncRepo } from "../src/services/release/resync.js";
 import { manifestIngestFor } from "../src/core/registry.js";

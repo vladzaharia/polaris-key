@@ -35,7 +35,7 @@ import {
 } from "../src/core/licensing/grants.js";
 import { runLicensingCatchUp } from "../src/core/licensing/licensingCatchUp.js";
 import { resolveMergedPayload } from "../src/core/licensing/payload.js";
-import { getLicense } from "../src/core/repo.js";
+import { getLicense } from "../src/core/licensing/store.js";
 import { SERVICES } from "../src/mount.js";
 import {
   activateFromIdentity,
@@ -45,7 +45,7 @@ import {
 } from "../src/services/identity/oidc.js";
 import { handleLicenseDocument } from "../src/services/license/document.js";
 import { licenseDeleteFor } from "../src/core/licensing/licenseDelete.js";
-import { deleteProduct } from "../src/core/console/repo.js";
+import { deleteProduct } from "../src/core/products/store.js";
 import { entitlementEventStore } from "../src/core/licensing/entitlementEvents.js";
 import { subjectStores } from "../src/core/accounts/subjectHooks.js";
 import type { Env } from "../src/platform/env.js";

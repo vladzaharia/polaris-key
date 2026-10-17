@@ -30,7 +30,7 @@ import {
 import { docProfile } from "../src/core/licensing/authz.js";
 import type { LicenseRow } from "../src/core/repo.js";
 import { loadProduct } from "../src/core/products.js";
-import { setServices } from "../src/core/repo.js";
+import { setServices } from "../src/core/products/store.js";
 import { DEFAULT_SERVICES, serializeServices } from "../src/core/services.js";
 import { setDeviceSubject } from "../src/core/accounts/accountSubjects.js";
 import { clearDeviceSubjects } from "../src/core/accounts/subjectHooks.js";

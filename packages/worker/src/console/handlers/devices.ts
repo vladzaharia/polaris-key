@@ -13,7 +13,7 @@
  *   POST devices/<id>/deauthorize
  *   POST devices/<id>/fingerprint/reset
  *
- * Reads and writes go through `core/repo.ts`; nothing here imports a service.
+ * Reads and writes go through `core/devices/store.ts`; nothing here imports a service.
  *
  * Privacy: only what the license view already shows. Raw hardware values never exist server-side
  * (rule 7), and `lastSeen` is "last seen", not "online".
@@ -23,7 +23,11 @@ import type { Env } from "../../platform/env.js";
 import type { Db } from "../../db/types.js";
 import type { DeviceRow } from "../../core/repo.js";
 import { ErrorCode } from "../../core/errors.js";
-import { getDevice, getDeviceFacts, getFingerprint } from "../../core/repo.js";
+import {
+  getDevice,
+  getDeviceFacts,
+  getFingerprint,
+} from "../../core/devices/store.js";
 import {
   deauthorizeDeviceAsAdmin,
   resetDeviceFingerprintAsAdmin,
@@ -33,7 +37,7 @@ import {
   shapeFingerprint,
 } from "../../core/console/deviceShape.js";
 import { adminJson, err, notFound } from "../../core/console/respond.js";
-import { deviceSummary, listDevicesPage } from "../../core/console/repo.js";
+import { deviceSummary, listDevicesPage } from "../../core/devices/store.js";
 import type { AdminSession } from "../../core/console/session.js";
 import {
   b64urlDecodeBinaryUnpadded,

@@ -27,6 +27,7 @@
  * rows and Distribution's feed rows in one batch, which Core itself may not (rule 6).
  */
 
+import { type AuditActor, SYSTEM_ACTORS } from "../core/audit.js";
 import {
   SYSTEM_PRODUCT_SLUG,
   type ParsedManifest,
@@ -39,7 +40,7 @@ import {
   stmtInsertProduct,
   stmtInsertProductKey,
   stmtInsertSchema,
-} from "../core/repo.js";
+} from "../core/products/store.js";
 import { parseServices, serializeServices } from "../core/services.js";
 import { serializePresentation } from "../core/products.js";
 import type { ManifestIngest } from "../core/registry.js";
@@ -49,13 +50,12 @@ import {
   stmtDeleteManifestPublisher,
   stmtUpsertManifestPublisher,
 } from "../core/publisher.js";
-import { stmtInsertReleaseConfig } from "../core/repo.js";
+import { stmtInsertReleaseConfig } from "../core/products/store.js";
 import { manifestDeliverableStatements } from "../services/release/public.js";
 import { manifestSnapshotStatement } from "../core/manifestSnapshot.js";
 import {
   claimsForApply,
   endBreakGlassStatements,
-  type AuditActor,
   type BreakGlassClaim,
   type ClaimKey,
 } from "../core/settingsClaims.js";
@@ -463,13 +463,13 @@ export async function linkSystemProduct(
     claims.ended.filter((e) => (e.key === "core.name") === name);
   stmts.push(
     ...(await endBreakGlassStatements(db, slug, ended(false), {
-      actor: DEPLOY_ACTOR,
+      actor: SYSTEM_ACTORS.deploy,
       sha: applied.sha,
       now,
       apply: manifest,
     })),
     ...(await endBreakGlassStatements(db, slug, ended(true), {
-      actor: DEPLOY_ACTOR,
+      actor: SYSTEM_ACTORS.deploy,
       sha: applied.sha,
       now,
     })),
@@ -510,10 +510,3 @@ export async function linkSystemProduct(
     breakGlassEnded: claims.ended.map((e) => ({ key: e.key, why: e.why })),
   };
 }
-
-/** The actor of the deploy hook's settings audit rows. */
-export const DEPLOY_ACTOR: AuditActor = {
-  sub: "deploy",
-  name: "Deploy hook",
-  email: null,
-};

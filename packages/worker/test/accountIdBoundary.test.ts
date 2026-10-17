@@ -23,7 +23,7 @@ import {
   CSRF_HEADER,
   issueSession,
 } from "../src/core/console/session.js";
-import { setServices } from "../src/core/repo.js";
+import { setServices } from "../src/core/products/store.js";
 import { DEFAULT_SERVICES, serializeServices } from "../src/core/services.js";
 import {
   setDeviceSubject,

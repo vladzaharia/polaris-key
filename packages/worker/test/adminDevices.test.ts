@@ -15,14 +15,14 @@ import {
   issueSession,
   type SessionIdentity,
 } from "../src/core/console/session.js";
+import { type DeviceRow } from "../src/core/repo.js";
 import {
   getDevice,
   getFingerprint,
-  listAudit,
   upsertDevice,
   upsertFingerprint,
-  type DeviceRow,
-} from "../src/core/repo.js";
+} from "../src/core/devices/store.js";
+import { listAudit } from "../src/core/audit.js";
 import { getTokenRecord, putTokenRecord } from "../src/platform/kv.js";
 
 const PLATFORM_GROUP = "platform-admins";

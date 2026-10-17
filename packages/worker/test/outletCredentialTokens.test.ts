@@ -20,7 +20,7 @@ import { makeEnv, NOW, seedProduct } from "./seed.js";
 import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
 import { open } from "../src/platform/keyvault.js";
-import { listAudit } from "../src/core/repo.js";
+import { listAudit } from "../src/core/audit.js";
 import {
   GOOGLE_TOKEN_URI,
   listOutletCredentials,

@@ -64,7 +64,7 @@ import {
   releaseKeyBytes,
   type ParsedManifest,
 } from "@polaris-key/manifest";
-import { appendAudit } from "../../core/repo.js";
+import { appendAudit } from "../../core/audit.js";
 import { ciActor, type CiPrincipal } from "../../core/ciScope.js";
 import {
   DEFAULT_TRANSPORT,

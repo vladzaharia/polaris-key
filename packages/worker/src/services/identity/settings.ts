@@ -28,6 +28,12 @@
  */
 
 import {
+  SYSTEM_ACTORS,
+  auditStatement,
+  sql,
+  actorColumns,
+} from "../../core/audit.js";
+import {
   MAX_IDENTITY_REDIRECT_PATH_LENGTH,
   MAX_IDENTITY_REDIRECT_PATHS,
   OIDC_SYNC_TIER_ON_SIGN_IN_VALUES,
@@ -35,12 +41,11 @@ import {
   type ParsedManifest,
 } from "@polaris-key/manifest";
 import type { Db, DbStatement } from "../../db/types.js";
-import { randomId } from "../../platform/crypto.js";
 import {
   manifestRowSettingStatements,
   manifestValueAt,
 } from "../../core/rowSettings.js";
-import { RESYNC_ACTOR } from "../../core/settingsClaims.js";
+
 import {
   readRowSettings,
   type RowSettingProduct,
@@ -399,28 +404,25 @@ export function manifestClaimByKeyStatements(
         AND (expires_at IS NULL OR expires_at > ?))`;
   const was = `(SELECT claim_by_key FROM portal_product_settings WHERE product = ?)`;
   return [
-    {
-      sql: `INSERT INTO audit
-              (product, id, at, actor_sub, actor_name, actor_email, action, target_kind,
-               target_id, parent_id, summary)
-            SELECT ?, ?, ?, ?, ?, ?, 'setting.resync', 'setting', ?, NULL, ?
-            WHERE NOT ${claimed} AND COALESCE(${was}, 0) <> ?`,
-      params: [
+    auditStatement(
+      {
         product,
-        randomId("aud"),
-        now,
-        RESYNC_ACTOR.sub,
-        RESYNC_ACTOR.name,
-        RESYNC_ACTOR.email,
-        CLAIM_BY_KEY_SETTING,
-        `${CLAIM_BY_KEY_SETTING} set from the manifest: ${declared}`,
+        at: now,
+        ...actorColumns(SYSTEM_ACTORS.resync),
+        action: "setting.resync",
+        target_kind: "setting",
+        target_id: CLAIM_BY_KEY_SETTING,
+        summary: `${CLAIM_BY_KEY_SETTING} set from the manifest: ${declared}`,
+      },
+      sql(
+        `WHERE NOT ${claimed} AND COALESCE(${was}, 0) <> ?`,
         product,
         CLAIM_BY_KEY_SETTING,
         now,
         product,
         value,
-      ],
-    },
+      ),
+    ),
     {
       sql: `INSERT INTO portal_product_settings (product, claim_by_key, created_at, modified_at)
             SELECT ?, ?, ?, ? WHERE NOT ${claimed}

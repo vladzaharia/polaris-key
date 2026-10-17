@@ -11,7 +11,7 @@
 import type { Db } from "../../db/types.js";
 import type { Env } from "../../platform/env.js";
 import { open } from "../../platform/keyvault.js";
-import { listVerificationProductKeys } from "../repo.js";
+import { listVerificationProductKeys } from "../products/store.js";
 
 export interface TrustSigner {
   kid: string;

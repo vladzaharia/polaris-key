@@ -20,7 +20,7 @@
 
 import { SECONDS_PER_DAY } from "@polaris-key/protocol";
 import { ErrorCode } from "../../core/errors.js";
-import { platformAudit } from "../../core/console/audit.js";
+import { platformAudit } from "../../core/audit.js";
 import {
   adminJson,
   err,

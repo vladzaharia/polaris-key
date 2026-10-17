@@ -27,11 +27,15 @@
  * bytes to anyone.
  */
 
+import {
+  SYSTEM_ACTORS,
+  auditStatement,
+  sql,
+  actorColumns,
+} from "../../core/audit.js";
 import { APP_DELIVERABLE_ID, type ParsedManifest } from "@polaris-key/manifest";
 import type { ReleaseAccess } from "@polaris-key/protocol/release";
 import type { Db, DbStatement } from "../../db/types.js";
-import { RESYNC_ACTOR } from "../../core/settingsClaims.js";
-import { randomId } from "../../platform/crypto.js";
 
 /** The registry key the delivery-access audit rows are written under. */
 const DISTRIBUTION_ACCESS_SETTING = "distribution.access";
@@ -296,29 +300,30 @@ function accessIngestAudit(
   mode: ReleaseAccess,
   now: number,
 ): DbStatement {
-  return {
-    sql: `INSERT INTO audit
-            (product, id, at, actor_sub, actor_name, actor_email, action, target_kind,
-             target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key)
-          SELECT ?, ?, ?, ?, ?, ?, 'setting.resync', 'setting', ?, NULL,
-                 ? || json_quote(mode) || ?, json_object('effective', mode), ?, 'resync', NULL, ?
-            FROM dist_access
-           WHERE product = ? AND deliverable_id = ? AND source = 'manifest' AND mode IS NOT ?`,
-    params: [
+  return auditStatement(
+    {
       product,
-      randomId("aud"),
-      now,
-      RESYNC_ACTOR.sub,
-      RESYNC_ACTOR.name,
-      RESYNC_ACTOR.email,
-      DISTRIBUTION_ACCESS_SETTING,
-      `${DISTRIBUTION_ACCESS_SETTING} set from the manifest: `,
-      ` → ${JSON.stringify(mode)}`,
-      JSON.stringify({ effective: mode }),
-      DISTRIBUTION_ACCESS_SETTING,
+      at: now,
+      ...actorColumns(SYSTEM_ACTORS.resync),
+      action: "setting.resync",
+      target_kind: "setting",
+      target_id: DISTRIBUTION_ACCESS_SETTING,
+      summary: sql(
+        "? || json_quote(mode) || ?",
+        `${DISTRIBUTION_ACCESS_SETTING} set from the manifest: `,
+        ` → ${JSON.stringify(mode)}`,
+      ),
+      before_json: sql("json_object('effective', mode)"),
+      after_json: JSON.stringify({ effective: mode }),
+      origin: "resync",
+      setting_key: DISTRIBUTION_ACCESS_SETTING,
+    },
+    sql(
+      `FROM dist_access
+        WHERE product = ? AND deliverable_id = ? AND source = 'manifest' AND mode IS NOT ?`,
       product,
       APP_DELIVERABLE_ID,
       mode,
-    ],
-  };
+    ),
+  );
 }

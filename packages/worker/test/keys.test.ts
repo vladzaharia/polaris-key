@@ -10,7 +10,7 @@
 import { describe, expect, it } from "vitest";
 import { KID_RE } from "@polaris-key/manifest";
 import { kidSuffix, mintKid } from "../src/core/keys.js";
-import { insertProductKeyIfAbsent } from "../src/core/repo.js";
+import { insertProductKeyIfAbsent } from "../src/core/products/store.js";
 import { makeTestDb } from "./helpers.js";
 import { NOW, seedProduct } from "./seed.js";
 

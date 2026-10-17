@@ -16,12 +16,12 @@
  *   - the MANIFEST writer: product creation and the `.pkey/` apply (link, resync, the system
  *     product's deploy hook), which writes manifest-owned values under the claim guards ST-01b put
  *     in its SQL and audits each field (`setting.resync`); ST-17 turns it into one plan. In the
- *     shared `repo.ts` only the named builders count: any other function there that writes one
+ *     shared product store only the named builders count: any other function there that writes one
  *     fails, so a new setter cannot hide beside them;
  *   - a fixture writer: a named function kept for tests that NO module under `src/` calls.
  *
  * And every call of the manifest writer's dual builders (`setServices`, `setFingerprintPolicy`,
- * …, which can also spell a console claim) outside `repo.ts` passes the literal `"manifest"` as
+ * …, which can also spell a console claim) outside the product store passes the literal `"manifest"` as
  * its source: a console write of those keys is `writeSetting()`'s.
  */
 
@@ -50,7 +50,7 @@ const WRITE_PATH = [
 const MANIFEST_WRITERS: Readonly<
   Record<string, { why: string; functions?: readonly string[] }>
 > = {
-  "core/repo.ts": {
+  "core/products/store.ts": {
     why: 'product creation, the release_config insert at link, and the ingest\'s statement builders, called with "manifest" (checked below)',
     functions: [
       "insertProduct",
@@ -100,9 +100,12 @@ const OPTIONAL_WRITERS: ReadonlySet<string> = new Set([
 
 /** Writers kept for tests, by module: no module under `src/` may call them. */
 const FIXTURE_WRITERS: Readonly<Record<string, readonly string[]>> = {
-  "core/console/repo.ts": ["updateProduct", "stmtUpdateProduct"],
+  "core/products/store.ts": [
+    "updateProduct",
+    "stmtUpdateProduct",
+    "setTrustPolicy",
+  ],
   "core/settingsClaims.ts": ["stmtClaim", "stmtDeleteClaim"],
-  "core/repo.ts": ["setTrustPolicy"],
 };
 
 /**
@@ -266,13 +269,13 @@ function callArgs(name: string, text: string): string[][] {
   return out;
 }
 
-/** Every dual-builder call outside `repo.ts` whose source is not the literal `"manifest"`. */
+/** Every dual-builder call outside the product store whose source is not the literal `"manifest"`. */
 export function nonManifestDualCalls(
   files: ReadonlyMap<string, string>,
 ): string[] {
   const out: string[] = [];
   for (const [file, text] of files) {
-    if (file === "core/repo.ts") continue;
+    if (file === "core/products/store.ts") continue;
     for (const [name, index] of Object.entries(DUAL_BUILDERS))
       for (const args of callArgs(name, text))
         if (args[index] !== '"manifest"')
@@ -324,14 +327,16 @@ describe("settings writes go through writeSetting() (ST-04)", () => {
       settingWrites("`UPDATE products SET branding_json = ? WHERE slug = ?`"),
     ).toEqual([]);
 
-    // A new setter beside the manifest writer's builders in `repo.ts` is caught by name.
-    const repo = `${FILES.get("core/repo.ts")!}
+    // A new setter beside the manifest writer's builders in the product store is caught by name.
+    const repo = `${FILES.get("core/products/store.ts")!}
 export async function revertServicesToManifest(db: Db, product: string, at: number) {
   await db.run(\`UPDATE products SET services_source = 'manifest', modified_at = ? WHERE slug = ?\`, at, product);
 }
 `;
-    expect(offendingWrites(new Map([["core/repo.ts", repo]]))).toEqual([
-      "core/repo.ts revertServicesToManifest: products.services_source",
+    expect(
+      offendingWrites(new Map([["core/products/store.ts", repo]])),
+    ).toEqual([
+      "core/products/store.ts revertServicesToManifest: products.services_source",
     ]);
     // A handler handing a dual builder a non-literal (or console) source is caught too.
     expect(
@@ -404,11 +409,11 @@ export async function revertServicesToManifest(db: Db, product: string, at: numb
       }
   });
 
-  it('passes the literal "manifest" to every dual builder outside repo.ts', () => {
+  it('passes the literal "manifest" to every dual builder outside the product store', () => {
     expect(nonManifestDualCalls(FILES)).toEqual([]);
     // And there are such calls to check (the ingest, link and resync).
     const calls = [...FILES]
-      .filter(([file]) => file !== "core/repo.ts")
+      .filter(([file]) => file !== "core/products/store.ts")
       .flatMap(([, text]) =>
         Object.keys(DUAL_BUILDERS).flatMap((n) => callArgs(n, text)),
       );

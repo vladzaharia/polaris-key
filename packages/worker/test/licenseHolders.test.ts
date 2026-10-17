@@ -29,7 +29,7 @@ import {
   CSRF_HEADER,
   issueSession,
 } from "../src/core/console/session.js";
-import { listAudit } from "../src/core/repo.js";
+import { listAudit } from "../src/core/audit.js";
 import {
   isFloatingLicense,
   floatingLicenseSql,
@@ -59,7 +59,7 @@ import {
   insertLink,
   verifiedAccountEmails,
 } from "../src/services/identity/accounts/repo.js";
-import { deleteProduct } from "../src/core/console/repo.js";
+import { deleteProduct } from "../src/core/products/store.js";
 import type { Db, DbStatement } from "../src/db/types.js";
 import {
   syncAccountLicenseLinks,

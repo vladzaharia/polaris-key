@@ -66,7 +66,7 @@ import { clientNetwork, rateLimitOk } from "../../core/rateLimit.js";
 import { bearer } from "../../platform/http.js";
 import { resolvedReleaseRefusal } from "../../core/licensing/entitledAccess.js";
 import { signDoc } from "../../core/signing.js";
-import { appendAudit } from "../../core/repo.js";
+import { appendAudit } from "../../core/audit.js";
 import {
   accessModeFor,
   artifactPolicy,

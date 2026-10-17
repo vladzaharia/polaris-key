@@ -24,7 +24,7 @@ import { buildHooks } from "../src/core/hooks.js";
 import { loadProductPublic } from "../src/core/products.js";
 import { serializeServices, type ServicesMap } from "../src/core/services.js";
 import { SERVICES } from "../src/mount.js";
-import { setServices } from "../src/core/repo.js";
+import { setServices } from "../src/core/products/store.js";
 import { applyStoreGrant } from "../src/services/license/storeGrants.js";
 import {
   originSource,

@@ -99,7 +99,7 @@
 
 import type { Db, DbParam, DbStatement } from "../../db/types.js";
 import type { Env } from "../../platform/env.js";
-import { auditStatement } from "../repo.js";
+import { auditStatement, sql, SYSTEM_ACTORS, actorColumns } from "../audit.js";
 import { randomId } from "../../platform/crypto.js";
 import {
   blobKey,
@@ -401,7 +401,6 @@ export function isHostedAssetLocale(locale: unknown): locale is string {
   return typeof locale === "string" && LOCALE_RE.test(locale);
 }
 
-const SYSTEM_ACTOR: IngestActor = { sub: null, name: "Polaris Key" };
 const PULL_USER_AGENT = "polaris-key-asset-puller/1";
 
 /** Read a (capped) stream into one buffer. */
@@ -1087,21 +1086,20 @@ export async function rebuildLadder(
     })),
   ];
   if (variants.length > 0)
-    statements.push({
-      sql: `INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action,
-              target_kind, target_id, parent_id, summary)
-            SELECT ?, ?, ?, ?, ?, NULL, 'assets.variants', 'hosted-asset', ?, NULL, ? WHERE ${guard}`,
-      params: [
-        product,
-        randomId("aud"),
-        ctx.now,
-        SYSTEM_ACTOR.sub,
-        SYSTEM_ACTOR.name,
-        refId,
-        `${slot}: sizes ${variants.map((v) => v.w).join(", ")} from ${source}`,
-        ...guardParams,
-      ],
-    });
+    statements.push(
+      auditStatement(
+        {
+          product,
+          at: ctx.now,
+          ...actorColumns(SYSTEM_ACTORS.platform),
+          action: "assets.variants",
+          target_kind: "hosted-asset",
+          target_id: refId,
+          summary: `${slot}: sizes ${variants.map((v) => v.w).join(", ")} from ${source}`,
+        },
+        sql(`WHERE ${guard}`, ...guardParams),
+      ),
+    );
   statements.push({
     sql: `UPDATE hosted_assets SET variants_json = ?, width = COALESCE(width, ?),
             height = COALESCE(height, ?), modified_at = ?
@@ -1215,7 +1213,7 @@ export async function ingest(
       await input.body.cancel().catch(() => undefined);
     return { ok: false, reason: "unavailable" };
   }
-  const actor = input.actor ?? SYSTEM_ACTOR;
+  const actor = input.actor ?? SYSTEM_ACTORS.platform;
   const prev = await getHostedAsset(ctx.db, product, slot, locale);
   const yieldsTo = input.yieldsTo ?? [];
   // A source this ingest yields to holds the slot: nothing is read, written or audited (the
@@ -1492,22 +1490,18 @@ export async function ingest(
         ...guardParams,
       ],
     })),
-    {
-      sql: `INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action,
-              target_kind, target_id, parent_id, summary)
-            SELECT ?, ?, ?, ?, ?, ?, 'assets.ingest', 'hosted-asset', ?, NULL, ?${where}`,
-      params: [
+    auditStatement(
+      {
         product,
-        randomId("aud"),
-        ctx.now,
-        actor.sub,
-        actor.name,
-        actor.email ?? null,
-        refId,
+        at: ctx.now,
+        ...actorColumns({ ...actor, email: actor.email ?? null }),
+        action: "assets.ingest",
+        target_kind: "hosted-asset",
+        target_id: refId,
         summary,
-        ...guardParams,
-      ],
-    },
+      },
+      sql(where.trimStart(), ...guardParams),
+    ),
     row,
   ];
   let applied: boolean;

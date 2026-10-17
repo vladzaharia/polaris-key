@@ -320,7 +320,7 @@ What the sections above do not promise, stated plainly:
   30 days.
 
 Deauthorizing a device — from the app, the admin panel, or the customer portal — routes
-through `setDeviceStatus()` in `packages/worker/src/core/repo.ts`, which purges both tables in the
+through `setDeviceStatus()` in `packages/worker/src/core/devices/store.ts`, which purges both tables in the
 same operation. Disabling or deleting a license does not purge its devices' data; only deauthorizing a device does. This is why the nightly job
 (below) has no step for these two tables: there is no orphaned data for one to collect. The update
 outcome counters are the exception: they are aggregates per release, not per device, so they are

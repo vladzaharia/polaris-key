@@ -35,7 +35,7 @@
 import type { ManagedEntry } from "@polaris-key/protocol";
 import type { Db, DbStatement } from "../../db/types.js";
 import type { Env } from "../../platform/env.js";
-import { getActiveSchema } from "../repo.js";
+import { getActiveSchema } from "../products/store.js";
 import { sealManagedValue } from "../managedSecrets.js";
 import {
   existingSubjectFor,

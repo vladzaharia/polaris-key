@@ -41,9 +41,9 @@ import {
 import {
   claimEnrolledLicense,
   getLicense,
-  listAudit,
-  SEAT_DORMANCY_SECONDS,
-} from "../src/core/repo.js";
+} from "../src/core/licensing/store.js";
+import { SEAT_DORMANCY_SECONDS } from "../src/core/devices/store.js";
+import { listAudit } from "../src/core/audit.js";
 
 const TRUST = { [TEST_KID]: TEST_PUB };
 const PLATFORM_GROUP = "admins";

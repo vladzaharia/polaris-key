@@ -42,7 +42,7 @@
 import type { Env } from "../platform/env.js";
 import type { Db, DbStatement } from "../db/types.js";
 import { open, seal, type SealContext } from "../platform/keyvault.js";
-import { appendAudit } from "./repo.js";
+import { appendAudit } from "./audit.js";
 import { randomId } from "../platform/crypto.js";
 import { sha256Hex } from "../platform/hash.js";
 import { importEs256PrivateKey, importRs256PrivateKey } from "./jwt.js";

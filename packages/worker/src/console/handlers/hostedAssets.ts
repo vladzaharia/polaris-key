@@ -86,7 +86,7 @@ import type {
 } from "../../core/settings/types.js";
 import { writeSetting } from "../../core/settings/write.js";
 import { SETTINGS } from "../../mount.js";
-import { audit } from "../../core/console/audit.js";
+import { audit } from "../../core/audit.js";
 import {
   adminJson,
   err,

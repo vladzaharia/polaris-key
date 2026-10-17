@@ -37,7 +37,7 @@ import {
 } from "../src/core/console/session.js";
 import { seal } from "../src/platform/keyvault.js";
 import { SqliteDb } from "../src/db/sqlite.js";
-import { listAudit } from "../src/core/repo.js";
+import { listAudit } from "../src/core/audit.js";
 import { invalidateWidenedEdgeMintApprovals } from "../src/core/edgeMintApproval.js";
 import type { Env } from "../src/platform/env.js";
 

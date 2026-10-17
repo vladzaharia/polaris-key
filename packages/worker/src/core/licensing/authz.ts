@@ -48,16 +48,18 @@ import type { Env } from "../../platform/env.js";
 import type { Db } from "../../db/types.js";
 import type { Product, ProductPublic } from "../products.js";
 import {
-  claimDeviceSeat,
-  countActiveDevices,
-  getDevice,
-  getTier,
-  seatActiveSince,
   type DeviceBoundBy,
   type DeviceRow,
   type LicenseRow,
   type TierRow,
 } from "../repo.js";
+import {
+  claimDeviceSeat,
+  countActiveDevices,
+  getDevice,
+  seatActiveSince,
+} from "../devices/store.js";
+import { getTier } from "./store.js";
 import type { PresentedFingerprint } from "../fingerprint.js";
 import {
   bindDevice,

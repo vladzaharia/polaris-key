@@ -59,7 +59,7 @@ import {
   type PublisherPolicy,
 } from "../src/core/publisher.js";
 import { requireCiScope } from "../src/core/ciScope.js";
-import { deleteProduct } from "../src/core/console/repo.js";
+import { deleteProduct } from "../src/core/products/store.js";
 
 const SLUG = "diceroll";
 const ORIGIN = "https://key.example.test";

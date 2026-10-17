@@ -35,7 +35,7 @@
 
 import type { Env } from "../../platform/env.js";
 import type { Db, DbStatement } from "../../db/types.js";
-import { auditStatement } from "../../core/repo.js";
+import { auditStatement } from "../../core/audit.js";
 import { randomId } from "../../platform/crypto.js";
 import { ErrorCode } from "../../core/errors.js";
 import {
@@ -57,7 +57,7 @@ import {
   platformCredentialForKind,
   platformPinHolder,
 } from "../../core/platformCredentials.js";
-import { audit } from "../../core/console/audit.js";
+import { audit } from "../../core/audit.js";
 import type { AdminSession } from "../../core/console/session.js";
 import {
   adminJson,

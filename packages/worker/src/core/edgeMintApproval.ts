@@ -25,9 +25,9 @@
  * recipe.
  */
 
+import { auditStatement } from "./audit.js";
 import type { Db, DbStatement } from "../db/types.js";
-import { randomId } from "../platform/crypto.js";
-import { getProduct } from "./repo.js";
+import { getProduct } from "./products/store.js";
 import {
   allowsAnonymousEnroll,
   allowsOidcDefault,
@@ -320,20 +320,22 @@ export async function invalidateWidenedEdgeMintApprovals(
              WHERE product = ? AND id = ? AND approved_at = ? AND approved_by = ?`,
       params: [slug, approval.id, approval.approved_at, approval.approved_by],
     });
-    stmts.push({
-      sql: `INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action,
-              target_kind, target_id, parent_id, summary)
-            VALUES (?, ?, ?, NULL, NULL, NULL, 'config.mint.invalidate', 'edgeMint', ?, NULL, ?)`,
-      params: [
-        slug,
-        randomId("aud"),
-        now,
-        approval.id,
-        `Dropped the approval of edge-mint recipe ${approval.id} (${cause}): ` +
+    stmts.push(
+      auditStatement({
+        product: slug,
+        at: now,
+        actor_sub: null,
+        actor_name: null,
+        actor_email: null,
+        action: "config.mint.invalidate",
+        target_kind: "edgeMint",
+        target_id: approval.id,
+        summary:
+          `Dropped the approval of edge-mint recipe ${approval.id} (${cause}): ` +
           widened.map((w) => WIDENING_TEXT[w]).join("; ") +
           ". Review the licences and devices issued since, then re-approve.",
-      ],
-    });
+      }),
+    );
   }
   if (stmts.length > 0) await db.batch(stmts);
   return dropped;

@@ -26,7 +26,7 @@ import { handlePortalApi, portalHooksFor } from "./portalHarness.js";
 import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
 import { serializeServices, type ServicesMap } from "../src/core/services.js";
-import { setServices } from "../src/core/repo.js";
+import { setServices } from "../src/core/products/store.js";
 import { loadProductPublic } from "../src/core/products.js";
 import { activateFromIdentity } from "../src/services/identity/oidc.js";
 import type { CustomerDownloads, Delivery } from "../src/core/hooks.js";

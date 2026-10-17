@@ -7,11 +7,8 @@
 import { claimsView } from "../../core/settingsClaims.js";
 import type { Db } from "../../db/types.js";
 import type { Env } from "../../platform/env.js";
-import {
-  getProductSyncState,
-  type ProductRow,
-  type ProductSyncStateRow,
-} from "../../core/repo.js";
+import { type ProductRow, type ProductSyncStateRow } from "../../core/repo.js";
+import { getProductSyncState } from "../../core/products/store.js";
 import { loadPublicSigningKey } from "../../core/products.js";
 import { serviceStateOf } from "../../core/services.js";
 import {

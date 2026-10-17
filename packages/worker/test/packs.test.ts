@@ -44,7 +44,7 @@ import type { Env } from "../src/platform/env.js";
 import type { FetchImpl } from "../src/services/release/githubApp.js";
 import { issueStaticCiToken } from "../src/core/publisher.js";
 import { manifestDeliverableStatements } from "../src/services/release/deliverables.js";
-import { setServices } from "../src/core/repo.js";
+import { setServices } from "../src/core/products/store.js";
 import { serializeServices } from "../src/core/services.js";
 import { loadProduct } from "../src/core/products.js";
 import { buildHooks } from "../src/core/hooks.js";

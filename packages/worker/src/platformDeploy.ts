@@ -74,7 +74,7 @@ import {
   uploadsMissing,
 } from "./core/publisher.js";
 import { randomId } from "./platform/crypto.js";
-import { appendPlatformAudit } from "./core/repo.js";
+import { appendPlatformAudit } from "./core/audit.js";
 import { manifestIngestFor } from "./core/registry.js";
 import { SERVICES } from "./mount.js";
 import {

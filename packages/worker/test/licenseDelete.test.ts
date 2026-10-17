@@ -26,10 +26,10 @@ import {
 import { loadProduct } from "../src/core/products.js";
 import { handleActivate } from "../src/services/license/activation.js";
 import { getTokenRecord, putTokenRecord } from "../src/platform/kv.js";
-import { listAudit } from "../src/core/repo.js";
+import { listAudit } from "../src/core/audit.js";
 import { licenseDeleteFor } from "../src/core/licensing/licenseDelete.js";
 import { SERVICES } from "../src/mount.js";
-import { auditStatementFor } from "../src/core/console/audit.js";
+import { auditStatementFor } from "../src/core/audit.js";
 
 const SLUG = "djdl";
 const PLATFORM_GROUP = "admins";

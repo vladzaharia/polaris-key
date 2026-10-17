@@ -10,14 +10,14 @@ import {
   insertKey,
   listKeysByLicense,
   setKeyStatus,
-} from "../../../core/repo.js";
+} from "../../../core/licensing/store.js";
 import {
   adminJson,
   notFound as adminNotFound,
   err,
   readBody,
 } from "../../../core/console/respond.js";
-import { audit } from "../../../core/console/audit.js";
+import { audit } from "../../../core/audit.js";
 import type { LicenseAdminContext } from "./index.js";
 
 export async function handleKeys(

@@ -15,7 +15,7 @@ import {
   issueSession,
   type AdminSession,
 } from "../src/core/console/session.js";
-import { platformAudit } from "../src/core/console/audit.js";
+import { platformAudit } from "../src/core/audit.js";
 import {
   appliedMigrations,
   deployIdentity,
@@ -26,7 +26,7 @@ import {
   runScheduledMaintenance,
   AUDIT_RETENTION_SECONDS,
 } from "../src/scheduled.js";
-import { listPlatformAudit } from "../src/core/repo.js";
+import { listPlatformAudit } from "../src/core/audit.js";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW } from "./seed.js";
@@ -44,12 +44,12 @@ function adminEnv(extra: Record<string, unknown> = {}): Env {
   }) as Env;
 }
 
-async function call(
+async function fetchRaw(
   env: Env,
   db: Db,
   path: string,
   opts: { method?: string; groups?: string[] } = {},
-): Promise<{ status: number; body: Record<string, any> }> {
+): Promise<Response> {
   const { token, session } = await issueSession(
     env,
     {
@@ -69,9 +69,16 @@ async function call(
     method,
     headers,
   }) as unknown as Request;
-  const res = await handleAdmin(req, env, db, path.split("?")[0]!, {
-    now: NOW,
-  });
+  return handleAdmin(req, env, db, path.split("?")[0]!, { now: NOW });
+}
+
+async function call(
+  env: Env,
+  db: Db,
+  path: string,
+  opts: { method?: string; groups?: string[] } = {},
+): Promise<{ status: number; body: Record<string, any> }> {
+  const res = await fetchRaw(env, db, path, opts);
   return {
     status: res.status,
     body: (await res.json()) as Record<string, any>,
@@ -389,6 +396,21 @@ describe("platform audit (A-12)", () => {
       "a.0",
     ]);
     expect(second.body.nextCursor).toBeNull();
+  });
+
+  it("GET /api/platform/activity?format=ndjson downloads the trail (ST-24)", async () => {
+    const db = makeTestDb();
+    for (let i = 0; i < 2; i++)
+      await platformAudit(db, session, NOW + i, `a.${i}`, null, `s${i}`);
+    const res = await fetchRaw(
+      adminEnv(),
+      db,
+      "/api/platform/activity?format=ndjson",
+    );
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toContain("application/x-ndjson");
+    const lines = (await res.text()).trimEnd().split("\n");
+    expect(lines.map((l) => JSON.parse(l).action)).toEqual(["a.1", "a.0"]);
   });
 
   it("the nightly sweep prunes platform_audit past the audit retention", async () => {

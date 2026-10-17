@@ -49,8 +49,8 @@ import type {
   RolloutState,
   ServiceHooks,
 } from "../../core/hooks.js";
-import { appendAudit } from "../../core/repo.js";
-import { audit } from "../../core/console/audit.js";
+import { appendAudit } from "../../core/audit.js";
+import { audit } from "../../core/audit.js";
 import type { AdminSession } from "../../core/console/session.js";
 import { ciActor, type CiPrincipal } from "../../core/ciScope.js";
 import { getOutlet } from "./outlets.js";

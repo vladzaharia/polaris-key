@@ -39,7 +39,7 @@ import { ErrorCode } from "../../../../core/errors.js";
 import type { ServiceContext } from "../../../../core/registry.js";
 import type { AdminSession } from "../../../../core/console/session.js";
 import { adminJson, err, readBody } from "../../../../core/console/respond.js";
-import { audit } from "../../../../core/console/audit.js";
+import { audit } from "../../../../core/audit.js";
 import { blobResponse, hasRef } from "../../../../core/assets/blobs.js";
 import { storefrontAdapter } from "../../../../core/storefront/adapter.js";
 import {

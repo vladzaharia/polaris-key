@@ -17,7 +17,7 @@ import {
   getProduct,
   getProductSecret,
   listVerificationProductKeys,
-} from "./repo.js";
+} from "./products/store.js";
 import { open } from "../platform/keyvault.js";
 import {
   parseAutoIssue,

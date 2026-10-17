@@ -14,7 +14,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { CONSOLE, SLUG } from "./releaseRoutesFixture.js";
 import { dispatchWith } from "../src/dispatch.js";
 import { NOW, setDeliverableAccess } from "./seed.js";
-import { setServices, setTrustPolicy } from "../src/core/repo.js";
+import { setServices, setTrustPolicy } from "../src/core/products/store.js";
 import { serializeServices } from "../src/core/services.js";
 import {
   APPLE_PRODUCT,

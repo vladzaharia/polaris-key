@@ -12,7 +12,7 @@
 
 import type { Db } from "../../db/types.js";
 import { randomId } from "../../platform/crypto.js";
-import { appendPlatformAudit } from "../repo.js";
+import { appendPlatformAudit } from "../audit.js";
 
 export interface PlatformEventActor {
   sub: string;

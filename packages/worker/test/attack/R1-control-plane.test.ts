@@ -31,7 +31,7 @@ import {
 } from "../../src/services/identity/portal/session.js";
 import { can, PLATFORM, resolvePrincipal } from "../../src/console/authz.js";
 import { hashKey } from "../../src/platform/crypto.js";
-import { listAudit } from "../../src/core/repo.js";
+import { listAudit } from "../../src/core/audit.js";
 import { handleMintAuth } from "../../src/services/config/mint.js";
 import { secureResponse } from "../../src/core/securityHeaders.js";
 import { loadProduct } from "../../src/core/products.js";
@@ -608,7 +608,8 @@ describe("R1-05 /<product>/mint/<id>/auth renders stored HTML with no CSP and no
     await seedProduct(db, "djdl");
     // `stmtInsertEdgeMint` (the only writer, used by link-repo, resync and the webhook)
     // hard-codes NULL, and there is no admin API route for the column.
-    const { stmtInsertEdgeMint } = await import("../../src/core/repo.js");
+    const { stmtInsertEdgeMint } =
+      await import("../../src/core/products/store.js");
     const stmt = stmtInsertEdgeMint({
       product: "djdl",
       id: "music",

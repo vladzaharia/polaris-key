@@ -9,12 +9,11 @@ import type { Db } from "../../../db/types.js";
 import { type Product } from "../../../core/products.js";
 import { errorResponse, json, methodNotAllowed } from "../../../core/errors.js";
 import { clientNetwork } from "../../../core/rateLimit.js";
+import { getLicense, getLicenseBySub } from "../../../core/licensing/store.js";
 import {
-  getLicense,
   countActiveDevices,
-  getLicenseBySub,
   seatActiveSince,
-} from "../../../core/repo.js";
+} from "../../../core/devices/store.js";
 import { type LicenseMerge } from "../../../core/licensing/licenseMerge.js";
 import {
   authorizeDevice,

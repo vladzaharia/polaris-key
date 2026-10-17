@@ -73,13 +73,13 @@ import {
   type Product,
 } from "../../src/core/products.js";
 import { upsertPortalProductSettings } from "../../src/services/identity/portal/repo.js";
+import { getLicense } from "../../src/core/licensing/store.js";
 import {
-  getLicense,
   insertSchema,
-  upsertDevice,
   upsertProductSecret,
-} from "../../src/core/repo.js";
-import { deactivateSchemas } from "../../src/core/console/repo.js";
+} from "../../src/core/products/store.js";
+import { upsertDevice } from "../../src/core/devices/store.js";
+import { deactivateSchemas } from "../../src/core/products/store.js";
 import { verifyJws, signJws } from "@polaris-key/jws";
 import type { ConfigDoc } from "@polaris-key/protocol/config";
 import {

@@ -28,13 +28,9 @@ import {
   json,
   methodNotAllowed,
 } from "../../core/errors.js";
-import {
-  getKey,
-  getLicense,
-  setDeviceStatus,
-  touchKey,
-  type LicenseRow,
-} from "../../core/repo.js";
+import { type LicenseRow } from "../../core/repo.js";
+import { getKey, getLicense, touchKey } from "../../core/licensing/store.js";
+import { setDeviceStatus } from "../../core/devices/store.js";
 import { clientNetwork, rateLimitOk } from "../../core/rateLimit.js";
 import {
   deviceMetadata,

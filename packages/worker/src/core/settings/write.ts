@@ -31,6 +31,13 @@
  * Keys with a legacy ownership marker (`services_source`, …) are claimed by their adapter too.
  */
 
+import {
+  auditStatement,
+  platformAuditStatement,
+  sql,
+  actorColumns,
+} from "../audit.js";
+import type { AuditActor } from "../audit.js";
 import type { Db, DbStatement } from "../../db/types.js";
 import { randomId } from "../../platform/crypto.js";
 import {
@@ -65,13 +72,6 @@ import {
   type SettingOrigin,
   type SqlGuard,
 } from "./types.js";
-
-/** Who a settings audit row names: the verified admin session, or a system actor. */
-export interface AuditActor {
-  sub: string | null;
-  name: string | null;
-  email: string | null;
-}
 
 /** One key to write. */
 export interface SettingWrite {
@@ -356,46 +356,42 @@ function productAuditStmt(
     w.audit?.target === undefined
       ? { kind: "setting", id: def.key }
       : w.audit.target;
-  return {
-    sql: `INSERT INTO audit
-            (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id,
-             parent_id, summary, before_json, after_json, origin, reason, setting_key)
-          SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ? WHERE (${when.sql})`,
-    params: [
+  return auditStatement(
+    {
       product,
       id,
-      opts.now,
-      opts.actor.sub,
-      opts.actor.name,
-      opts.actor.email,
-      w.audit?.action ??
+      at: opts.now,
+      ...actorColumns(opts.actor),
+      action:
+        w.audit?.action ??
         (op === "set"
           ? "setting.update"
           : opts.origin === "revert"
             ? "setting.revert"
             : "setting.reset"),
-      target?.kind ?? null,
-      target?.id ?? null,
-      summaryOf(w, breakGlass ? { breakGlass } : {}) ??
+      target_kind: target?.kind ?? null,
+      target_id: target?.id ?? null,
+      summary:
+        summaryOf(w, breakGlass ? { breakGlass } : {}) ??
         defaultSummary(def, op, opts.origin, before.value, after.value),
-      snapshot(def, {
+      before_json: snapshot(def, {
         value: before.value,
         source: before.source,
         version: before.version,
         stored: storedBefore,
       }),
-      snapshot(def, {
+      after_json: snapshot(def, {
         value: after.value,
         source: after.source,
         version: versionAfter,
         stored: storedAfter,
       }),
-      opts.origin,
-      w.reason ?? null,
-      def.key,
-      ...when.params,
-    ],
-  };
+      origin: opts.origin,
+      reason: w.reason ?? null,
+      setting_key: def.key,
+    },
+    sql(`WHERE (${when.sql})`, ...when.params),
+  );
 }
 
 // ── The write ────────────────────────────────────────────────────────────────────────────────
@@ -1070,45 +1066,51 @@ async function writePlatform(
     params: [ids[0]!],
   };
   const by = authorOf(opts);
-  const stmts: DbStatement[] = plans.map((p, i) => ({
-    sql: `INSERT INTO platform_audit
-            (id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, summary,
-             before_json, after_json, origin, reason, setting_key)
-          SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE (${when.sql})`,
-    params: [
-      ids[i]!,
-      opts.now,
-      opts.actor.sub,
-      opts.actor.name,
-      opts.actor.email,
-      p.w.audit?.action ??
-        (p.op === "set" ? "platform.setting.set" : "platform.setting.revert"),
-      p.w.audit?.target === undefined
-        ? "setting"
-        : (p.w.audit.target?.kind ?? null),
-      p.w.audit?.target === undefined
-        ? p.def.key
-        : (p.w.audit.target?.id ?? null),
-      summaryOf(p.w, {}) ??
-        defaultSummary(p.def, p.op, opts.origin, p.before.value, p.after.value),
-      snapshot(p.def, {
-        value: p.before.value,
-        source: p.before.source,
-        version: p.before.version,
-        stored: p.stored,
-      }),
-      snapshot(p.def, {
-        value: p.after.value,
-        source: p.after.source,
-        version: p.before.version + 1,
-        stored: p.op === "set" ? p.w.value : undefined,
-      }),
-      opts.origin,
-      p.w.reason ?? null,
-      p.def.key,
-      ...when.params,
-    ],
-  }));
+  const stmts: DbStatement[] = plans.map((p, i) =>
+    platformAuditStatement(
+      {
+        id: ids[i]!,
+        at: opts.now,
+        ...actorColumns(opts.actor),
+        action:
+          p.w.audit?.action ??
+          (p.op === "set" ? "platform.setting.set" : "platform.setting.revert"),
+        target_kind:
+          p.w.audit?.target === undefined
+            ? "setting"
+            : (p.w.audit.target?.kind ?? null),
+        target_id:
+          p.w.audit?.target === undefined
+            ? p.def.key
+            : (p.w.audit.target?.id ?? null),
+        summary:
+          summaryOf(p.w, {}) ??
+          defaultSummary(
+            p.def,
+            p.op,
+            opts.origin,
+            p.before.value,
+            p.after.value,
+          ),
+        before_json: snapshot(p.def, {
+          value: p.before.value,
+          source: p.before.source,
+          version: p.before.version,
+          stored: p.stored,
+        }),
+        after_json: snapshot(p.def, {
+          value: p.after.value,
+          source: p.after.source,
+          version: p.before.version + 1,
+          stored: p.op === "set" ? p.w.value : undefined,
+        }),
+        origin: opts.origin,
+        reason: p.w.reason ?? null,
+        setting_key: p.def.key,
+      },
+      sql(`WHERE (${when.sql})`, ...when.params),
+    ),
+  );
   for (const p of plans)
     stmts.push(
       p.op === "set"

@@ -55,6 +55,33 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 - Working id **CQW-04**; DX consolidation B: Foundations (code quality the feature tracks build on).
 - No new copies (tracks.md rule 4): build on the one mechanism this plan names, never beside it.
 
+## Corrections after verifying against the code (2026-10-16)
+
+- `TABLE_OWNERS` lived in `packages/docs/scripts/gen-reference.mjs`, with a report-only
+  `test/tableCrossings.test.ts` (P0-48). It is now `packages/worker/src/db/owners.ts`; the docs
+  generator imports it (`pnpm --filter @polaris-key/docs gen` runs under `tsx` for that).
+- There were 16 raw `INSERT INTO audit` sites (and two in `platform_audit`), not 13, and the audit
+  code lived in `core/repo.ts` plus `core/console/audit.ts`; both are now `core/audit.ts`.
+- The crossing test enforces two scans (service crossings, and Core or the console writing a
+  service's table) plus a licences-writers list; allow-lists are `SEAMS`, `WRITE_SEAMS` and
+  `LICENSE_WRITE_SEAMS` in that file, each row tagged with the removing package or `permanent`.
+- ST-24's export is `GET …/activity?format=ndjson` (product) and
+  `GET /api/platform/activity?format=ndjson`, no new route, so rule 10 has nothing to add.
+
+## Hand-off notes (2026-10-16)
+
+Built: `db/owners.ts`, the enforced crossing, writer-location and licence-writer tests, AGENTS.md
+rule 6, `core/audit.ts` (one builder, `actorOf`, `SYSTEM_ACTORS`, retention that keeps each
+setting's latest row, NDJSON export), `core/repo.ts` and `core/console/repo.ts` split into
+`core/{products,licensing,devices}/store.ts` (row types stay in `repo.ts`), Identity's holder-move
+and merge-undo `licenses` writes behind `core/licensing/store.ts`.
+
+Left on the allow-lists for the packages that own them: Identity's `legacy.ts` licence write
+(P0-24); the product-delete cascade and registration builders in
+`core/products/store.ts` writing other owners' tables (P0-19, P0-26). Audit callers that wrap
+`appendAudit` in their own helper (`auditStep`, `auditChange` …) already go through the one
+writer; folding them onto `actorOf` is mechanical cleanup.
+
 ## Steps
 
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
@@ -62,9 +89,9 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 
 ## Acceptance criteria
 
-- [ ] Table-crossing test blocking with a shrinking allow-list
-- [ ] One audit writer (grep test)
-- [ ] ST-24's retention acceptance met
+- [x] Table-crossing test blocking with a shrinking allow-list
+- [x] One audit writer (grep test)
+- [x] ST-24's retention acceptance met
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

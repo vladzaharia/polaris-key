@@ -17,7 +17,7 @@ import {
   CSRF_HEADER,
   issueSession,
 } from "../src/core/console/session.js";
-import { getProduct } from "../src/core/repo.js";
+import { getProduct } from "../src/core/products/store.js";
 import { parseServices, serializeServices } from "../src/core/services.js";
 import { SYSTEM_FEEDS } from "../src/console/systemProduct.js";
 import { open } from "../src/platform/keyvault.js";

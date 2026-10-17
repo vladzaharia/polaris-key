@@ -23,7 +23,7 @@ import { handleGithubWebhook } from "../src/githubWebhook.js";
 import {
   getProductSyncState,
   upsertProductSyncState,
-} from "../src/core/repo.js";
+} from "../src/core/products/store.js";
 import type { FetchImpl } from "../src/services/release/githubApp.js";
 import type { Release, ReleaseAsset } from "../src/services/release/github.js";
 import { syncReleaseStore } from "../src/services/release/sync.js";

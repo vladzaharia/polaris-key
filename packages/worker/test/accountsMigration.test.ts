@@ -22,7 +22,7 @@ import { SqliteDb } from "../src/db/sqlite.js";
 import { KvMock } from "./kvMock.js";
 import { asR2, R2Mock } from "./r2Mock.js";
 import { makeEnv, NOW, seedProduct } from "./seed.js";
-import { insertLicense } from "../src/core/repo.js";
+import { insertLicense } from "../src/core/licensing/store.js";
 import { loadProduct } from "../src/core/products.js";
 import { activateFromIdentity } from "../src/services/identity/oidc.js";
 import { signIn } from "../src/services/identity/accounts/signIn.js";

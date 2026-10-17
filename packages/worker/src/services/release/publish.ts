@@ -82,7 +82,7 @@ import {
   type CiTokenRecord,
   type JwksFetcher,
 } from "../../core/publisher.js";
-import { appendAudit } from "../../core/repo.js";
+import { appendAudit } from "../../core/audit.js";
 import { randomId } from "../../platform/crypto.js";
 import {
   APP_DELIVERABLE_ID,

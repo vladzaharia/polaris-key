@@ -42,7 +42,9 @@ import {
 } from "./seed.js";
 import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
-import { getLicense, getDevice, setServices } from "../src/core/repo.js";
+import { getLicense } from "../src/core/licensing/store.js";
+import { getDevice } from "../src/core/devices/store.js";
+import { setServices } from "../src/core/products/store.js";
 import { serializeServices } from "../src/core/services.js";
 import { loadProduct, type Product } from "../src/core/products.js";
 import {
@@ -80,7 +82,7 @@ import {
   detachLicense,
 } from "../src/services/identity/accounts/claim.js";
 import { handleAdmin } from "../src/console/index.js";
-import { deleteProduct } from "../src/core/console/repo.js";
+import { deleteProduct } from "../src/core/products/store.js";
 import { dryRunOnCopy } from "../scripts/override-migration-dry-run.js";
 import {
   ADMIN_COOKIE,

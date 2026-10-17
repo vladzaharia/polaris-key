@@ -34,10 +34,10 @@ import {
   reportOf,
   type BackfillReportRow,
 } from "../../core/ops/settingsBackfill.js";
-import type { AuditActor } from "../../core/settingsClaims.js";
+
 import type { AdminSession } from "../../core/console/session.js";
 import { adminJson, err, notFound } from "../../core/console/respond.js";
-import { platformAudit } from "../../core/console/audit.js";
+import { platformAudit, type AuditActor } from "../../core/audit.js";
 import {
   runPlatformBackfill,
   runSettingsBackfill,

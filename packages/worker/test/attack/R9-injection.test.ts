@@ -26,7 +26,7 @@ import {
   seedProductSecret,
 } from "../seed.js";
 import type { Db } from "../../src/db/types.js";
-import { setServices } from "../../src/core/repo.js";
+import { setServices } from "../../src/core/products/store.js";
 import type { Env } from "../../src/platform/env.js";
 import type { Product } from "../../src/core/products.js";
 import { loadProduct } from "../../src/core/products.js";
@@ -1674,7 +1674,7 @@ describe("R9-11 edge-mint auth page", () => {
 
   it("REFUTED (today): no code path writes auth_page_template", () => {
     const repoSrc = readFileSync(
-      join(HERE, "..", "..", "src", "core", "repo.ts"),
+      join(HERE, "..", "..", "src", "core", "products", "store.ts"),
       "utf8",
     );
     // The only INSERT that touches the column hardcodes NULL, asserted POSITIONALLY: the same

@@ -14,12 +14,19 @@
  *   until       epoch seconds, inclusive
  *
  * The cursor carries no filter: the caller sends the same filters with every page.
+ *
+ * `format=ndjson` (ST-24) returns the matching history as a download instead, one JSON object
+ * per line, newest first, every column the row has.
  */
 
 import type { Db } from "../../db/types.js";
 import { ErrorCode } from "../../core/errors.js";
-import { listAudit, type AuditFilters } from "../../core/repo.js";
-import { adminJson, err } from "../../core/console/respond.js";
+import {
+  exportAuditNdjson,
+  listAudit,
+  type AuditFilters,
+} from "../../core/audit.js";
+import { adminJson, adminNdjson, err } from "../../core/console/respond.js";
 
 /** The longest filter value accepted: longer than any action, kind, id or email we write. */
 const MAX_FILTER = 200;
@@ -55,6 +62,12 @@ export async function handleActivity(
     return err(422, ErrorCode.BadRequest, "invalid activity filter", {
       fields: bad,
     });
+  }
+
+  // ST-24: `?format=ndjson` downloads the history under the same filters, newest first.
+  if (url.searchParams.get("format") === "ndjson") {
+    const out = await exportAuditNdjson(db, slug, filters);
+    return adminNdjson(out.body, `audit-${slug}.ndjson`, out.truncated);
   }
 
   const rows = await listAudit(db, slug, {

@@ -27,7 +27,7 @@ import { manifestDeliverableStatements } from "../src/services/release/deliverab
 import { releaseCatalog } from "../src/services/release/catalog.js";
 import { digestStream } from "../src/services/release/packages/digests.js";
 import { NO_HOOKS } from "./helpers.js";
-import { getProduct } from "../src/core/repo.js";
+import { getProduct } from "../src/core/products/store.js";
 import { handleAdmin } from "../src/console/index.js";
 import {
   ADMIN_COOKIE,

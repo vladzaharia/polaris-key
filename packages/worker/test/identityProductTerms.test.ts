@@ -16,7 +16,7 @@ import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedProduct } from "./seed.js";
 import { SETTINGS } from "../src/mount.js";
-import { setServices } from "../src/core/repo.js";
+import { setServices } from "../src/core/products/store.js";
 import { EMAIL_GATE_COOKIE } from "../src/core/accounts/accountCookies.js";
 import { getArtefact } from "../src/core/singleUse.js";
 import { SERVICE_SLUGS } from "../src/core/services.js";

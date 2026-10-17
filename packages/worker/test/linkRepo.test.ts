@@ -35,7 +35,7 @@ import {
   getProduct,
   setAutoIssuePolicy,
   setServices,
-} from "../src/core/repo.js";
+} from "../src/core/products/store.js";
 import { getReleaseConfig } from "../src/services/release/index.js";
 import { handleAdmin } from "../src/console/index.js";
 import {

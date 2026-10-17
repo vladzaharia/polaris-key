@@ -6,12 +6,10 @@
 
 import { licenseAccess } from "./anchor.js";
 import type { Db } from "../../db/types.js";
-import {
-  listDevicesByLicense,
-  listLicenseProfiles,
-  type LicenseRow,
-} from "../repo.js";
-import { countKeysByLicense } from "../console/repo.js";
+import { type LicenseRow } from "../repo.js";
+import { listDevicesByLicense } from "../devices/store.js";
+import { listLicenseProfiles } from "./store.js";
+import { countKeysByLicense } from "./store.js";
 import { licenseHolder } from "./licenseHolders.js";
 import { licenseEndedReason } from "./lifecycle.js";
 import {

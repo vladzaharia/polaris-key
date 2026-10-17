@@ -30,8 +30,8 @@ import {
   notFound,
   readBody,
 } from "../../core/console/respond.js";
-import { audit, platformAudit } from "../../core/console/audit.js";
-import { getProduct } from "../../core/repo.js";
+import { audit, platformAudit } from "../../core/audit.js";
+import { getProduct } from "../../core/products/store.js";
 import { registryOrigin } from "../../core/registry/registryHostname.js";
 import {
   MAX_LIVE_TOKENS_PER_LICENSE,

@@ -29,7 +29,7 @@
 import type { Env } from "../../platform/env.js";
 import type { Db } from "../../db/types.js";
 import type { DeviceRow } from "../repo.js";
-import { appendAudit } from "../repo.js";
+import { appendAudit } from "../audit.js";
 import { randomId } from "../../platform/crypto.js";
 import { pk } from "../../platform/kv.js";
 import { errorResponse, wireError } from "../errors.js";

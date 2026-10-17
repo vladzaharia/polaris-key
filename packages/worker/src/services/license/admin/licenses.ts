@@ -30,15 +30,17 @@ import {
   seatActiveSince,
   getDeviceFacts,
   getFingerprint,
+  listDevicesByLicense,
+} from "../../../core/devices/store.js";
+import {
   getLicense,
   getTier,
   insertKey,
   insertLicense,
-  listDevicesByLicense,
   listKeysByLicense,
   listLicenseProfiles,
   setLicenseProfiles,
-} from "../../../core/repo.js";
+} from "../../../core/licensing/store.js";
 import {
   adminJson,
   notFound as adminNotFound,
@@ -49,7 +51,7 @@ import {
   applyOverrides,
   type OverrideUpdate,
 } from "../../../core/console/overrides.js";
-import { audit } from "../../../core/console/audit.js";
+import { audit } from "../../../core/audit.js";
 import {
   keyEntryListContext,
   licenseSummary,
@@ -60,7 +62,7 @@ import {
   listProfiles,
   listTiers,
   patchLicense,
-} from "../../../core/console/repo.js";
+} from "../../../core/licensing/store.js";
 import { loadCatalog } from "../../../core/activeCatalog.js";
 import { parsePayload, redactPayload } from "../../../core/console/redact.js";
 import {

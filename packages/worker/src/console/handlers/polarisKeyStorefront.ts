@@ -61,7 +61,7 @@ import {
   type Persona,
 } from "../../services/identity/public.js";
 import type { AdminSession } from "../../core/console/session.js";
-import { audit } from "../../core/console/audit.js";
+import { audit } from "../../core/audit.js";
 import {
   adminJson,
   err,

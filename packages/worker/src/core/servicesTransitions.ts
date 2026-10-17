@@ -23,7 +23,7 @@
 
 import type { Db } from "../db/types.js";
 import type { Env } from "../platform/env.js";
-import { appendAudit } from "./repo.js";
+import { appendAudit } from "./audit.js";
 import { randomId } from "../platform/crypto.js";
 import type { ServicesMap } from "./services.js";
 import { clearDeviceSubjects } from "./accounts/subjectHooks.js";

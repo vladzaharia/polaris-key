@@ -11,23 +11,23 @@ import { makeTestDb } from "../helpers.js";
 import { NOW, makeEnv, seedProduct } from "../seed.js";
 import { KvMock } from "../kvMock.js";
 import { handlePortalDownload } from "../portalHarness.js";
+import { type DeviceRow, type LicenseRow } from "../../src/core/repo.js";
 import {
   claimDeviceSeat,
   countActiveDevices,
-  getActiveProductKey,
-  insertKey,
-  insertLicense,
-  insertProductKey,
-  listVerificationProductKeys,
   seatActiveSince,
   SEAT_DORMANCY_SECONDS,
   setDeviceStatus,
   upsertDevice,
-  type DeviceRow,
-  type LicenseRow,
-} from "../../src/core/repo.js";
+} from "../../src/core/devices/store.js";
+import {
+  getActiveProductKey,
+  insertProductKey,
+  listVerificationProductKeys,
+} from "../../src/core/products/store.js";
+import { insertKey, insertLicense } from "../../src/core/licensing/store.js";
 import { D1Db } from "../../src/db/d1.js";
-import { deleteProfile, deleteTier } from "../../src/core/console/repo.js";
+import { deleteProfile, deleteTier } from "../../src/core/licensing/store.js";
 import { licenseSummary } from "../../src/core/licensing/summary.js";
 import {
   getOrCreateAccountByEmail,

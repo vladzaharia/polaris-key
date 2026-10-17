@@ -25,7 +25,7 @@ import {
   validateTrustPolicy,
   type TrustPolicy,
 } from "../../core/trust/deviceTrust.js";
-import { getProduct } from "../../core/repo.js";
+import { getProduct } from "../../core/products/store.js";
 import { SETTINGS } from "../../mount.js";
 import {
   writeSetting,

@@ -24,7 +24,8 @@ import {
   CSRF_HEADER,
   issueSession,
 } from "../src/core/console/session.js";
-import { listAudit, type LicenseRow } from "../src/core/repo.js";
+import { type LicenseRow } from "../src/core/repo.js";
+import { listAudit } from "../src/core/audit.js";
 import { isFloatingLicense } from "../src/core/accounts/accountSubjects.js";
 import { licenseHolder } from "../src/core/licensing/licenseHolders.js";
 import { loadProduct, type Product } from "../src/core/products.js";
@@ -34,7 +35,7 @@ import {
   MAX_BATCH_COUNT,
   unusedCountIs,
 } from "../src/services/license/batches.js";
-import { auditStatementFor } from "../src/core/console/audit.js";
+import { auditStatementFor } from "../src/core/audit.js";
 import type { DbStatement } from "../src/db/types.js";
 
 const SLUG = "tonebox";

@@ -45,24 +45,22 @@ import { parse as parseYaml } from "yaml";
 import type { Env } from "../../platform/env.js";
 import type { Db, DbStatement } from "../../db/types.js";
 import { ErrorCode } from "../../core/errors.js";
+import { type ProductRow } from "../../core/repo.js";
 import {
   getProduct,
   getProductSecret,
-  getTier,
   insertProductKeyIfAbsent,
-  type ProductRow,
   listProducts,
   stmtInsertProduct,
   stmtInsertProductKey,
   stmtInsertSchema,
   upsertProductSecret,
-} from "../../core/repo.js";
+} from "../../core/products/store.js";
+import { getTier } from "../../core/licensing/store.js";
 import { mintKid } from "../../core/keys.js";
 import { deleteTokenRecord } from "../../platform/kv.js";
-import {
-  deleteProduct,
-  listDevicesByProduct,
-} from "../../core/console/repo.js";
+import { deleteProduct } from "../../core/products/store.js";
+import { listDevicesByProduct } from "../../core/devices/store.js";
 import {
   claimsApply,
   manifestAuthorityOf,
@@ -93,7 +91,7 @@ import {
   parseAutoIssue,
   parseFingerprintPolicy,
 } from "../../core/fingerprint.js";
-import { audit, platformAudit } from "../../core/console/audit.js";
+import { audit, platformAudit } from "../../core/audit.js";
 import {
   deviceLimitMessage,
   invalidDeviceLimit,

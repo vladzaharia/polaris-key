@@ -16,7 +16,7 @@ import { Catalog } from "@polaris-key/catalog";
 import type { ConfigEntry } from "@polaris-key/catalog";
 import type { ManagedEntry } from "@polaris-key/protocol";
 import type { Db } from "../../../db/types.js";
-import { getActiveSchema } from "../../../core/repo.js";
+import { getActiveSchema } from "../../../core/products/store.js";
 import { resolveEntitlements } from "../../../core/licensing/authz.js";
 import type { PortalLicenseRow } from "./repo.js";
 

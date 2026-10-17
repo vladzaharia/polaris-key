@@ -24,7 +24,8 @@ import { makeEnv, NOW, seedLicenseWithKey, seedProduct } from "./seed.js";
 import { SPEC, validateAgainst } from "./specSchema.js";
 import type { Db } from "../src/db/types.js";
 import type { Env } from "../src/platform/env.js";
-import { insertLicense, upsertDevice } from "../src/core/repo.js";
+import { insertLicense } from "../src/core/licensing/store.js";
+import { upsertDevice } from "../src/core/devices/store.js";
 import {
   registerSubjectStore,
   unregisterSubjectStore,

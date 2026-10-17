@@ -51,7 +51,8 @@ import {
 } from "../../platform/bytes.js";
 import { hmacSha256, importHmacKey } from "../../platform/hash.js";
 import { tryParseJson } from "../../platform/json.js";
-import { getLicense, type LicenseRow } from "../repo.js";
+import { type LicenseRow } from "../repo.js";
+import { getLicense } from "../licensing/store.js";
 import { CI_TOKEN_PREFIX } from "../ciVocabulary.js";
 import { lookupCiToken } from "../publisher.js";
 import { erasureVerdict } from "../accounts/erasureFence.js";

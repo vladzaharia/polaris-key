@@ -16,7 +16,7 @@ import {
   err,
   readBody,
 } from "../../../core/console/respond.js";
-import { audit } from "../../../core/console/audit.js";
+import { audit } from "../../../core/audit.js";
 import {
   deviceLimitMessage,
   invalidDeviceLimit,
@@ -27,7 +27,7 @@ import {
   listProfiles,
   listTiers,
   upsertTier,
-} from "../../../core/console/repo.js";
+} from "../../../core/licensing/store.js";
 import { WriteChecks } from "../../../core/console/writeChecks.js";
 import { withIncludedChannels } from "../../../core/channels.js";
 import type { LicenseAdminContext } from "./index.js";

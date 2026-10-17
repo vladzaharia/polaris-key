@@ -65,7 +65,9 @@ import { getOrCreateAccountByEmail } from "../src/services/identity/portal/repo.
 import { handleRegister } from "../src/core/register.js";
 import { SERVICES } from "../src/mount.js";
 import { SERVICE_SLUGS, serializeServices } from "../src/core/services.js";
-import { getDevice, getLicense, setServices } from "../src/core/repo.js";
+import { getDevice } from "../src/core/devices/store.js";
+import { getLicense } from "../src/core/licensing/store.js";
+import { setServices } from "../src/core/products/store.js";
 import { platformSubjectStanding } from "../src/services/identity/accounts/platformMigration.js";
 import type { Env } from "../src/platform/env.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
