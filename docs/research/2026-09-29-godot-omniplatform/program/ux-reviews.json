@@ -49,6 +49,16 @@
       "verdict": "pass",
       "date": "2026-10-17",
       "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/PX-W19/ (built review 2026-10-16; StepUp clipping fixed in e27ee117c)"
+    },
+    "ST-29": {
+      "verdict": "pass",
+      "date": "2026-10-17",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/ST-29/ (built review 2026-10-16; long-name break fixed in fix/ST-29-review 0b3342640; security review 2026-10-10 passed)"
+    },
+    "U-30": {
+      "verdict": "pass",
+      "date": "2026-10-17",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/U-30/ (built review 2026-10-16; both blockers fixed in fix/U-30-review 365da1f8d)"
     }
   }
 }

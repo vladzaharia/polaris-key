@@ -546,7 +546,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/cq-worker-services.md"
       ],
       "brief": "wp/P0-20-split-identity-oidc-ts-extract-issuance.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "P0-21",
@@ -6092,7 +6092,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/config-cloudsync.md"
       ],
       "brief": "wp/U-30-config-types-in-app-visibility-in-one.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "U-31",
@@ -9589,7 +9589,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/rbac-admin.md"
       ],
       "brief": "wp/ST-29-admin-route-table-can-usecan.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "ST-30",
