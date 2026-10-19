@@ -175,7 +175,7 @@ export function ProductNew(): React.ReactElement {
   // W23: what `.pkey/` says, read when the step opens and again on demand.
   const check = useQuery({
     queryKey: qk.createCheck(repo ?? ""),
-    queryFn: () => api.checkRepoCreate(draft.repo.trim()),
+    queryFn: () => mutate("checkRepoCreate", draft.repo.trim()),
     enabled: via === "github" && current === "check" && repo !== null,
     staleTime: 0,
     gcTime: 0,
