@@ -309,10 +309,6 @@ describe("publishing is automatic and in lockstep (owner decision 2026-10-04)", 
         "godot",
         "image",
         "maven",
-        "maven-server",
-        "maven-server-ktor",
-        "maven-ui-android",
-        "maven-ui-core",
         ...NPM_TIERS,
         "python",
         "swift",
@@ -330,30 +326,29 @@ describe("publishing is automatic and in lockstep (owner decision 2026-10-04)", 
     });
   });
 
-  it("publishes the ui-core deliverables on v* tag builds only, and the drift check skips what a build of main does not publish", () => {
-    const gate = "startsWith(github.ref, 'refs/tags/')";
-    expect(wf.jobs["npm-tier-3"]!.if).toBe(gate);
-    expect(wf.jobs["maven-ui-android"]!.if).toBe(gate);
-    expect(wf.jobs["maven-ui-android"]!.with?.deliverable).toBe(
-      "maven.ui-android",
-    );
-    expect(wf.jobs["maven-ui-core"]!.if).toBe(gate);
-    expect(wf.jobs["maven-ui-core"]!.with?.deliverable).toBe("maven.ui-core");
-    expect(wf.jobs["maven-server"]!.if).toBe(gate);
-    expect(wf.jobs["maven-server"]!.with?.deliverable).toBe("maven.server");
-    expect(wf.jobs["maven-server-ktor"]!.if).toBe(gate);
-    expect(wf.jobs["maven-server-ktor"]!.with?.deliverable).toBe(
-      "maven.server-ktor",
+  it("publishes every deliverable on every build: no tag gate, no drift skip", () => {
+    for (const id of ["npm-tier-3", "maven"])
+      expect(wf.jobs[id]!.if, id).toBeUndefined();
+    for (const id of [
+      "maven-ui-android",
+      "maven-ui-core",
+      "maven-server",
+      "maven-server-ktor",
+    ])
+      expect(wf.jobs[id], id).toBeUndefined();
+    expect(calledDeliverables(wf.jobs.maven!)).toEqual(
+      expect.arrayContaining([
+        "maven.ui-android",
+        "maven.ui-core",
+        "maven.server",
+        "maven.server-ktor",
+      ]),
     );
     const check = (wf.jobs.drift!.steps ?? []).find((s) =>
       s.run?.includes("tools/feed-drift.mjs"),
     );
-    expect(check?.run).toContain('--skip "$SKIP"');
-    // Tiers 4 and 5 (node, react, cli) pin ui-core and so skip with tier 3; the drift check
-    // skips exactly those and the ui-core deliverables.
-    expect(String(check?.env?.SKIP)).toBe(
-      "${{ !startsWith(github.ref, 'refs/tags/') && 'npm.ui-core,npm.server,npm.node,npm.react,npm.cli,maven.ui-android,maven.ui-core,maven.server,maven.server-ktor' || '' }}",
-    );
+    expect(check?.run).not.toContain("--skip");
+    expect(check?.env?.SKIP).toBeUndefined();
   });
 
   it("the legacy release workflows and Changesets are gone", () => {
@@ -492,10 +487,6 @@ describe("the backstop prune after a stable tag (P0-48, feed retention)", () => 
         "godot",
         "image",
         "maven",
-        "maven-server",
-        "maven-server-ktor",
-        "maven-ui-android",
-        "maven-ui-core",
         ...NPM_TIERS,
         "python",
         "swift",
@@ -664,14 +655,7 @@ describe("the npm packages publish in dependency order (P0-52, feed coherence)",
     for (const c of npmCalls) {
       // GitHub ANDs success() into a job with no status function: a failed, cancelled or stuck
       // tier below skips this one. An `if:` (always(), !cancelled()) would undo that.
-      // The one exception: ui-core and server are published on v* tag builds only, until a tag deploy has
-      // registered its deliverables (the live product answers unknown_deliverable before that).
-      // Its dependents skip with it, which is the point of the tier chain.
-      expect(c.job.if, c.id).toBe(
-        c.id === "npm-tier-3"
-          ? "startsWith(github.ref, 'refs/tags/')"
-          : undefined,
-      );
+      expect(c.job.if, c.id).toBeUndefined();
       expect(needsOf(c.job), c.id).toEqual(
         expect.arrayContaining(["version", "npm-pack"]),
       );
