@@ -219,6 +219,11 @@
       "verdict": "pass",
       "date": "2026-10-19",
       "evidence": "_mockups/review/LX-29/ux-review-2.md (re-review pass-with-fixes after one fix round; N1/N2/layering + minors in wp/LX-29-wizard)"
+    },
+    "ST-27": {
+      "verdict": "pass",
+      "date": "2026-10-19",
+      "evidence": "Lead-verified after the final round (2026-10-19): re-review FAIL items B1–B6 + N1–N12 fixed on d2a9e0090; lead checked 1280 light and 390 dark (fixed right control column, clean wrap); builder axe 0 incl. off row, CSP 0, no sideways scroll at 1024/1280/1440/390. Security re-check PASS."
     }
   }
 }
