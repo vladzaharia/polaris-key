@@ -9,6 +9,8 @@ import {
   type ConnectionTestResult,
 } from "../../../../api.js";
 import { Button } from "../../../../ui/Button.js";
+import { SecretInput } from "../../../../ui/SecretInput.js";
+import { FormField } from "../../../../ui/form.js";
 import { Callout } from "../../../../ui/Callout.js";
 import { DescriptionList } from "../../../../ui/DescriptionList.js";
 import { codecs } from "../../../router.js";
@@ -30,7 +32,9 @@ export const DRAFT_ID_RE = /^[A-Za-z0-9_-]{8,64}$/;
 export const CHANNEL = "pkey-connection-test";
 export const STORE_PREFIX = "pkey.connection-draft.";
 
-interface Draft {
+export interface Draft {
+  /** A secret was typed on the Client step (the secret itself is never stored). */
+  hadSecret: boolean;
   label: string;
   issuer: string;
   clientId: string;
@@ -39,6 +43,7 @@ interface Draft {
   name: string;
 }
 export const EMPTY: Draft = {
+  hadSecret: false,
   label: "",
   issuer: "",
   clientId: "",
@@ -81,23 +86,28 @@ export const hostOf = (issuer: string): string => {
   }
 };
 
-export type { Draft };
-
 export function TestStep({
   issuer,
   needsSecret,
-  testing,
   error,
   result,
-  onRun,
+  testing,
+  onTab,
+  onBackToClient,
 }: {
   issuer: string;
   needsSecret: boolean;
-  testing: boolean;
   error: { title: string; description?: string } | null;
   result: ConnectionTestResult | null;
-  onRun: (mode: "popup" | "tab") => void;
+  testing: boolean;
+  onTab: () => void;
+  onBackToClient: () => void;
 }): React.ReactElement {
+  const outcome = React.useRef<HTMLDivElement>(null);
+  // The result (or the failure) arrives after a click; say so by moving focus to it.
+  React.useEffect(() => {
+    if (result || error) outcome.current?.focus();
+  }, [result, error]);
   return (
     <div className="space-y-4">
       <p className="text-sm text-fg-muted">
@@ -106,58 +116,85 @@ export function TestStep({
       </p>
       {needsSecret ? (
         <Callout tone="info" title="No client secret in this tab">
-          Enter it again on the Client step if the provider needs one.
+          Go back to Client and enter it again if the provider needs one.
         </Callout>
       ) : null}
-      <div className="flex flex-wrap gap-2">
-        <Button
-          loading={testing}
-          onClick={() => onRun("popup")}
-          variant="outline"
-        >
-          Test sign-in
-        </Button>
-        <Button variant="ghost" disabled={testing} onClick={() => onRun("tab")}>
-          Use this tab
-        </Button>
+      <div ref={outcome} tabIndex={-1} className="space-y-3 outline-none">
+        {error ? (
+          <Callout tone="danger" title={error.title} live>
+            {error.description}
+          </Callout>
+        ) : null}
+        {result ? <TestResultView result={result} /> : null}
+        {error || (result && !result.ok) ? (
+          <Button variant="outline" size="sm" onClick={onBackToClient}>
+            Back to Client
+          </Button>
+        ) : null}
       </div>
-      {error ? (
-        <Callout tone="danger" title={error.title} live>
-          {error.description}
-        </Callout>
-      ) : null}
-      {result ? <TestResultView result={result} /> : null}
+      <Button variant="ghost" size="sm" disabled={testing} onClick={onTab}>
+        Open in this tab instead
+      </Button>
     </div>
   );
 }
 
 export function ReviewStep({
   draft,
-  hasSecret,
+  secret,
+  onSecret,
   test,
   fresh,
   stepUpHash,
   error,
+  secretMissing,
 }: {
   draft: Draft;
-  hasSecret: boolean;
+  secret: string;
+  onSecret: (v: string) => void;
   test: ConnectionTestResult | null;
   fresh: boolean;
   stepUpHash: string;
   error: { title: string; description?: string } | null;
+  secretMissing: boolean;
 }): React.ReactElement {
+  const failed = React.useRef<HTMLDivElement>(null);
+  // A failed save puts focus on its words.
+  React.useEffect(() => {
+    if (error) failed.current?.focus();
+  }, [error]);
   return (
     <div className="space-y-4">
       {fresh ? null : (
         <StepUpCallout hash={stepUpHash}>
-          Adding a connection needs a sign-in from the last five minutes. Enter
-          the secret again after you return.
+          Adding a connection needs a sign-in from the last five minutes. You
+          come back to this step.
         </StepUpCallout>
       )}
       {error ? (
-        <Callout tone="danger" title={error.title} live>
-          {error.description}
-        </Callout>
+        <div ref={failed} tabIndex={-1} className="outline-none">
+          <Callout tone="danger" title={error.title} live>
+            {error.description}
+          </Callout>
+        </div>
+      ) : null}
+      {secretMissing || draft.hadSecret ? (
+        <FormField
+          name="clientSecret"
+          label={
+            secretMissing ? "Enter the client secret again" : "Client secret"
+          }
+          required={secretMissing}
+          help={
+            secretMissing
+              ? "It is not kept between pages. Sealed when added and never shown again."
+              : "Sealed when added and never shown again."
+          }
+          value={secret}
+          onChange={onSecret}
+        >
+          {(f) => <SecretInput {...f} />}
+        </FormField>
       ) : null}
       <DescriptionList
         items={[
@@ -166,7 +203,7 @@ export function ReviewStep({
           { term: "Client ID", detail: draft.clientId },
           {
             term: "Client secret",
-            detail: hasSecret ? "Sealed when added" : "None",
+            detail: secret ? "Sealed when added" : "None",
           },
           { term: "Who signs in", detail: "Customers" },
           {
@@ -196,7 +233,11 @@ export function TestResultView({
   const p = result.preview;
   return (
     <div className="space-y-3">
-      <Callout tone="success" title="Signed in" live>
+      <Callout
+        tone="success"
+        title={`Signed in as ${p.email ?? p.name ?? "an account with no email"}`}
+        live
+      >
         {p.issuer}
       </Callout>
       <DescriptionList
@@ -218,7 +259,9 @@ export function TestResultView({
               ? p.groups.length
                 ? p.groups.join(", ")
                 : "None"
-              : "Not mapped",
+              : p.claimNames.includes("groups")
+                ? "Not mapped yet"
+                : "Not mapped",
           },
           {
             term: "Other claims",

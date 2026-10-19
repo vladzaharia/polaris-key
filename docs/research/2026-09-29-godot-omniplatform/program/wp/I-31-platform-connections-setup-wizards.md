@@ -158,3 +158,30 @@ Corrections to the brief (the code is the fact):
   the docs lane (DOC-\*).
 - **Operator audiences stay refused** (`audience_not_available`) until ST-32.
 - **Not built:** UX review (BUILT mode) and the mockup comparison; the lead schedules both.
+
+## Fix round (2026-10-19)
+
+The BUILT UX review failed with 4 blockers; fixed here, with the majors and the security-review
+items.
+
+- Blockers: (1) built-in setup shows one exact registration per provider from
+  `providers/config.ts` (`signInRegistration`, the helper the login flow now builds its own callback
+  from); Steam shows the realm. (2) A closed or blocked pop-up, or five minutes of silence, ends the
+  test: "The sign-in window closed", focus back on the button. (3) A refused Change, Require,
+  Stop requiring, Release or Delete keeps its dialog and the typed values; a field refusal shows on
+  the field. (4) The secret entered before a same-tab trip is asked for again on Review and Add is
+  blocked until it is; nothing is held server-side.
+- Majors: field errors on the field with focus; Release of a verified domain confirms and names the
+  effect; the test step has one primary ("Sign in with <name>"), Continue waits for a success,
+  "Back to Client" on failure; focus after Check provider, Check now, the result and a failed save;
+  specific error titles; "Cancel" for "Do this later" and the step-up return keeps the draft; the
+  not-found page has an h1, breadcrumb and Back; Test sign-in on a saved connection, an action on the
+  last-failure callout, the redirect URI; the seal command and runbook links, a next step for email;
+  Add a domain lands on the field; PageHeader wraps at large text and the Stepper collapses by its
+  own width in rem (shared components); the list is columned with quiet status; Email and Turnstile
+  are compact; two columns at 1280 and up; quiet Delete; the wizard head sits in its column.
+- Security review: the test start validates the claim map; domain add, release and enforce are one
+  batch with their audit row; an unverify is audited; an issuer cannot move while people sign in;
+  `hasSecret` is true for a secret reference; two threat-model lines.
+- Not done: session lengths read-only (brief scope, still absent); the unverified-domain Undo is a
+  toast action that claims the domain again with a new TXT record.

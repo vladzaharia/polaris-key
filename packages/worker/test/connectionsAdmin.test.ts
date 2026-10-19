@@ -635,7 +635,124 @@ describe("page", () => {
       "steam",
     ]);
     expect(body.builtIns.every((b: any) => b.configured === false)).toBe(true);
+    // One exact registration per provider; Steam registers a realm.
+    expect(body.builtIns.map((b: any) => b.registration)).toEqual([
+      {
+        kind: "redirect-uri",
+        value: "https://key.plrs.im/login/google/callback",
+      },
+      {
+        kind: "redirect-uri",
+        value: "https://key.plrs.im/login/apple/callback",
+      },
+      { kind: "realm", value: "https://key.plrs.im" },
+    ]);
     expect(typeof body.email.configured).toBe("boolean");
     expect(typeof body.turnstile.enabled).toBe("boolean");
+  });
+});
+
+describe("review fixes", () => {
+  it("audits an unverify, and refuses an issuer move while people sign in", async () => {
+    const w = await world();
+    const id = (await add(w)).body.connection.id as string;
+    const claim = await api(
+      w,
+      "POST",
+      `/platform/connections/${id}/domains`,
+      { domain: "corp.example" },
+      STEP,
+    );
+    dnsToken = (
+      (await claim.json()) as any
+    ).connection.domains[0].record.value.split("=")[1];
+    dns = "present";
+    await api(
+      w,
+      "POST",
+      `/platform/connections/${id}/domains/verify`,
+      { domain: "corp.example" },
+      STEP,
+    );
+    dns = "absent";
+    const lost = await api(
+      w,
+      "POST",
+      `/platform/connections/${id}/domains/verify`,
+      { domain: "corp.example" },
+      STEP,
+    );
+    expect(((await lost.json()) as any).connection.domains[0].verified).toBe(
+      false,
+    );
+    expect(await auditActions(w)).toContain(
+      "identity.connection.domain_unverify",
+    );
+    // A link keyed to the issuer pins it.
+    const { portalIdentityIssuerKey } =
+      await import("../src/services/identity/portal/repo.js");
+    const { insertAccount, insertLink } =
+      await import("../src/services/identity/accounts/repo.js");
+    const acct = await insertAccount(
+      w.db,
+      {
+        primaryEmail: "a@corp.example",
+        primaryEmailVerified: true,
+        displayName: null,
+      },
+      NOW,
+    );
+    await insertLink(
+      w.db,
+      acct.id,
+      {
+        issuerKey: portalIdentityIssuerKey(ISSUER),
+        tenantScope: "",
+        subject: "sub1",
+        kind: "oidc",
+        email: "a@corp.example",
+        emailVerified: true,
+        displayName: null,
+        amr: null,
+      },
+      NOW,
+    );
+    const moved = await api(
+      w,
+      "PATCH",
+      `/platform/connections/${id}`,
+      { issuer: "https://other.corp.example" },
+      STEP,
+    );
+    expect(moved.status).toBe(409);
+    expect(((await moved.json()) as any).code).toBe("has_links");
+  });
+
+  it("test start validates the claim map like a save", async () => {
+    const w = await world();
+    const res = await api(w, "POST", "/platform/connections/test/start", {
+      draftId: "draft-12345678",
+      ...draft,
+      claimMap: { groups: "a b" },
+    });
+    expect(res.status).toBe(422);
+    expect(((await res.json()) as any).code).toBe("invalid_claim_map");
+    expect(fetched).toEqual([]);
+  });
+
+  it("a seeded row that names a secret reference still says it has a secret", async () => {
+    const w = await world();
+    await w.db.run(
+      `INSERT INTO identity_connections (id, scope, label, issuer, client_id, client_secret_ref, audience, status, source, created_at, modified_at)
+       VALUES ('platform-sso', 'platform', 'SSO', 'https://pid.example', 'pid', 'SOME_SECRET', 'customers', 'active', 'env', ?, ?)`,
+      NOW,
+      NOW,
+    );
+    const v = (
+      (await (
+        await api(w, "GET", "/platform/connections/platform-sso")
+      ).json()) as any
+    ).connection;
+    expect(v.hasSecret).toBe(true);
   });
 });

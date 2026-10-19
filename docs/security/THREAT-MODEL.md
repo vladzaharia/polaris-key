@@ -8554,7 +8554,9 @@ operator session, a stolen session, and a hostile issuer an operator is talked i
   Superadmin gate exists. A seeded row keeps its audience; its issuer and client cannot move.
 - **Audit.** Each change is one batch with its `platform_audit` row
   (`identity.connection.create|update|rotate_secret|enable|disable|delete|domain_*`), so a change
-  cannot land unrecorded. No audit field holds a secret.
+  cannot land unrecorded (a domain's add, release and enforce included; a verification that finds
+  the record gone is audited as `domain_unverify`). No audit field holds a secret. An issuer cannot
+  move while people sign in through the connection.
 - **Test sign-in (admin-3-19).** The flow is the portal's own with a `test` record: bound to the
   starting browser by the SSO cookie, and its result is read once, by the starting operator's `sub`
   and the wizard's draft id only (a wrong reader leaves it in place). Claims are shown and never
@@ -8562,6 +8564,18 @@ operator session, a stolen session, and a hostile issuer an operator is talked i
   text, capped at 200 characters, control characters removed and secret-shaped runs redacted. The
   same-tab return is one fixed path. A test runs when the portal is off; an ordinary sign-in still
   needs it on.
+- **The key-set host and the secret.** A connection may name a `jwks_uri` on a second host, and
+  that host joins the gated fetch's allowlist. If the provider's discovery document then names it
+  as `token_endpoint`, the code exchange (which carries the client secret) is sent there. The
+  operator already trusts the issuer's document; an operator who adds a `jwks_uri` trusts that host
+  with the secret too. The console does not offer the field, and the API refuses a non-https or
+  private address.
+- **Enforcement and lockout recovery.** **Require this connection** on a verified domain removes
+  email codes and magic links for its addresses. If the provider is then down or the connection is
+  removed, those people can sign in only with a passkey or another link already on their account.
+  Recovery is an operator's: **Stop requiring** (step-up), or releasing the domain; the console
+  asks for a confirmation that says so. Verification that lapses (the TXT record gone, or 72 hours
+  of resolver errors) stops enforcement by itself; a console check that finds the record gone is audited as `domain_unverify`.
 - **Delete.** Refused while people sign in through a connection (their links are keyed to its
   issuer) and for the seeded row: turn it off instead.
 - **Residual.** An operator with the platform area and a fresh step-up can add a provider whose

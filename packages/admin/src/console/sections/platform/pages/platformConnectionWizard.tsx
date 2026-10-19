@@ -15,13 +15,7 @@
 
 import * as React from "react";
 import { ArrowRight } from "lucide-react";
-import {
-  api,
-  ApiError,
-  type ConnectionDiscovery,
-  type ConnectionTestResult,
-} from "../../../../api.js";
-import { errorCopy } from "../../../../lib/errorCopy.js";
+import { ApiError, type ConnectionDiscovery } from "../../../../api.js";
 import { Button } from "../../../../ui/Button.js";
 import { CopyButton } from "../../../../ui/CopyButton.js";
 import { DescriptionList } from "../../../../ui/DescriptionList.js";
@@ -43,9 +37,15 @@ import { Link, useSearchParam } from "../../../router.js";
 import { r } from "../../../routes.js";
 import { CONNECTION_FLOW } from "../../../wizard/flows.js";
 import { StepUpCallout, useStepUp } from "../../core/pages/UserRelink.js";
-
 import {
-  CHANNEL,
+  PopupBlockedError,
+  PopupClosedError,
+  failureOf,
+  fieldMessage,
+  focusField,
+} from "./connectionErrors.js";
+import { useConnectionTest } from "./useConnectionTest.js";
+import {
   DRAFT_ID_RE,
   STEP_IDS,
   STORE_PREFIX,
@@ -80,7 +80,6 @@ export function AddConnectionPage(): React.ReactElement {
     issuer: string;
     value: ConnectionDiscovery;
   } | null>(null);
-  const [test, setTest] = React.useState<ConnectionTestResult | null>(null);
   const [created, setCreated] = React.useState<string | null>(null);
 
   const setDraft = (patch: Partial<Draft>): void => {
@@ -99,139 +98,65 @@ export function AddConnectionPage(): React.ReactElement {
   const go = (s: StepId): void => setStep(s);
   const discovered = discovery?.issuer === draft.issuer.trim();
   const clientOk = /^[\x21-\x7e]{1,200}$/.test(draft.clientId.trim());
+  const name = draft.label.trim() || hostOf(draft.issuer);
 
-  const steps: WizardStep[] = CONNECTION_FLOW.steps.map((s) => ({
-    id: s.id,
-    label: s.label,
-  }));
+  const t = useConnectionTest({
+    draftId,
+    issuer: draft.issuer,
+    clientId: draft.clientId,
+    secret,
+    claimMap: claimMapOf(draft),
+    returned,
+    onTestStep: step === "test",
+  });
+  const test = t.test;
+
+  // The mapping starts from what the token carried.
+  React.useEffect(() => {
+    if (
+      step === "mapping" &&
+      test?.ok &&
+      !draft.groups &&
+      test.preview?.claimNames.includes("groups")
+    ) {
+      setDraft({ groups: "groups" });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, test]);
+
   const decided: Partial<Record<StepId, string | undefined>> = {
-    provider: discovered
-      ? `${draft.label.trim() || hostOf(draft.issuer)} · ${hostOf(draft.issuer)}`
-      : undefined,
+    provider: discovered ? name : undefined,
     client: clientOk ? draft.clientId.trim() : undefined,
     test: test ? (test.ok ? "Signed in" : "Failed") : undefined,
     mapping: claimMapOf(draft).groups
       ? `Groups from ${claimMapOf(draft).groups}`
       : undefined,
   };
-  const wizardSteps = steps.map((s) => ({
-    ...s,
+  const wizardSteps: WizardStep[] = CONNECTION_FLOW.steps.map((s) => ({
+    id: s.id,
+    label: s.label,
     decided: decided[s.id as StepId],
   }));
   const completed: string[] = [];
   if (index > 0 && discovered) completed.push("provider");
   if (index > 1 && clientOk) completed.push("client");
-  if (index > 2 && test) completed.push("test");
+  if (index > 2 && test?.ok) completed.push("test");
   if (index > 3) completed.push("mapping");
   if (created) completed.push("save");
 
   const titles: Record<StepId, string> = {
     provider: "Which provider?",
-    client: "Register this app at the provider",
+    client: "Register Polaris Key at the provider",
     test: "Sign in once to check it",
     mapping: "Which claims do you need?",
     save: "Add this connection?",
     done: "Connection added",
   };
 
-  // ── the test sign-in ───────────────────────────────────────────────────────────────────────
-  const pending = React.useRef<string | null>(null);
-  const [testing, setTesting] = React.useState(false);
-  const [testError, setTestError] = React.useState<unknown>(null);
-
-  const fetchResult = React.useCallback(
-    async (state: string): Promise<void> => {
-      try {
-        const res = await api.connectionTestResult(state, draftId);
-        setTest(res.result);
-        setTestError(null);
-      } catch (e) {
-        setTestError(e);
-      } finally {
-        setTesting(false);
-      }
-    },
-    [draftId],
-  );
-
-  // The tab that started the test hears the pop-up come back and fetches the result.
-  React.useEffect(() => {
-    if (!draftId || typeof BroadcastChannel === "undefined") return;
-    const ch = new BroadcastChannel(CHANNEL);
-    ch.onmessage = (ev: MessageEvent) => {
-      const m = ev.data as { type?: string; draftId?: string; state?: string };
-      if (
-        m?.type === "back" &&
-        m.draftId === draftId &&
-        m.state &&
-        m.state === pending.current
-      ) {
-        ch.postMessage({ type: "ack", draftId, state: m.state });
-        pending.current = null;
-        void fetchResult(m.state);
-      }
-    };
-    return () => ch.close();
-  }, [draftId, fetchResult]);
-
-  // This page is the pop-up (an opener answers) or the same-tab return (none does).
-  const handled = React.useRef(false);
-  React.useEffect(() => {
-    if (!draftId || !returned || step !== "test" || handled.current) return;
-    handled.current = true;
-    const finish = (): void => void fetchResult(returned);
-    if (typeof BroadcastChannel === "undefined") return finish();
-    const ch = new BroadcastChannel(CHANNEL);
-    let acked = false;
-    ch.onmessage = (ev: MessageEvent) => {
-      const m = ev.data as { type?: string; draftId?: string; state?: string };
-      if (m?.type === "ack" && m.draftId === draftId && m.state === returned) {
-        acked = true;
-        window.close();
-      }
-    };
-    ch.postMessage({ type: "back", draftId, state: returned });
-    const t = window.setTimeout(() => {
-      ch.close();
-      if (!acked) finish();
-    }, 700);
-    return () => window.clearTimeout(t);
-  }, [draftId, returned, step, fetchResult]);
-
-  const runTest = async (mode: "popup" | "tab"): Promise<void> => {
-    setTesting(true);
-    setTestError(null);
-    setTest(null);
-    try {
-      const res = await mutate("startConnectionTest", {
-        draftId,
-        issuer: draft.issuer.trim(),
-        clientId: draft.clientId.trim(),
-        ...(secret ? { clientSecret: secret } : {}),
-        claimMap: claimMapOf(draft),
-      });
-      if (mode === "tab") {
-        window.location.assign(res.url);
-        return;
-      }
-      pending.current = res.state;
-      const win = window.open(res.url, CHANNEL, "popup,width=520,height=720");
-      if (!win) {
-        pending.current = null;
-        setTesting(false);
-        setTestError(
-          new Error("The pop-up was blocked. Use this tab instead."),
-        );
-      }
-    } catch (e) {
-      setTesting(false);
-      setTestError(e);
-    }
-  };
-
-  // ── discovery and save ──────────────────────────────────────────────────────────────────────
+  // ── discovery ──────────────────────────────────────────────────────────────────────────────
   const [checking, setChecking] = React.useState(false);
   const [providerError, setProviderError] = React.useState<unknown>(null);
+  const found = React.useRef<HTMLParagraphElement>(null);
   const check = async (): Promise<void> => {
     setChecking(true);
     setProviderError(null);
@@ -240,23 +165,27 @@ export function AddConnectionPage(): React.ReactElement {
         issuer: draft.issuer.trim(),
       });
       setDiscovery({ issuer: draft.issuer.trim(), value: res.discovery });
+      window.setTimeout(() => found.current?.focus(), 0);
     } catch (e) {
       setDiscovery(null);
       setProviderError(e);
+      if (failureOf(e)?.fields.includes("issuer")) focusField("issuer");
     } finally {
       setChecking(false);
     }
   };
 
+  // ── save ───────────────────────────────────────────────────────────────────────────────────
   const [saving, setSaving] = React.useState(false);
   const [saveError, setSaveError] = React.useState<unknown>(null);
+  const secretMissing = draft.hadSecret && !secret;
   const save = async (): Promise<void> => {
-    if (saving) return;
+    if (saving || secretMissing) return;
     setSaving(true);
     setSaveError(null);
     try {
       const res = await mutate("createPlatformConnection", {
-        label: draft.label.trim() || hostOf(draft.issuer),
+        label: name,
         issuer: draft.issuer.trim(),
         clientId: draft.clientId.trim(),
         ...(secret ? { clientSecret: secret } : {}),
@@ -278,36 +207,88 @@ export function AddConnectionPage(): React.ReactElement {
     }
   };
 
-  const failure = (
-    e: unknown,
-  ): { title: string; description?: string } | null =>
-    e ? errorCopy(e, { thing: "The connection" }) : null;
-
-  const back =
-    index > 0 && step !== "done" ? () => go(STEP_IDS[index - 1]!) : undefined;
-  const footer = {
-    later: (
-      <Button variant="ghost" asChild>
-        <Link to={r.platformConnections()}>
-          {step === "done" ? "Back to Connections" : "Do this later"}
-        </Link>
-      </Button>
-    ),
-    onBack: back,
-  };
-
-  const next = (disabledReason?: string, to?: StepId): React.ReactElement => (
+  const primaryRef = React.useRef<HTMLButtonElement>(null);
+  // A pop-up that closed or never opened: the way to try again gets focus.
+  React.useEffect(() => {
+    if (
+      t.error instanceof PopupClosedError ||
+      t.error instanceof PopupBlockedError
+    )
+      window.setTimeout(() => primaryRef.current?.focus(), 0);
+  }, [t.error]);
+  const providerFailure = failureOf(providerError);
+  const cancel = (
+    <Button variant="ghost" asChild>
+      <Link to={r.platformConnections()}>Cancel</Link>
+    </Button>
+  );
+  const next = (disabledReason?: string): React.ReactElement => (
     <Button
       disabledReason={disabledReason}
-      onClick={() => go(to ?? STEP_IDS[index + 1]!)}
+      onClick={() => go(STEP_IDS[index + 1]!)}
     >
       Continue
       <ArrowRight aria-hidden />
     </Button>
   );
+  const base = {
+    later: cancel,
+    onBack:
+      index > 0 && step !== "done" ? () => go(STEP_IDS[index - 1]!) : undefined,
+  };
+  const providerReason = !gate.allowed
+    ? gate.disabledReason
+    : !discovered
+      ? "Check the provider to continue"
+      : undefined;
+  const footer =
+    step === "provider"
+      ? { ...base, primary: next(providerReason), reason: providerReason }
+      : step === "client"
+        ? {
+            ...base,
+            primary: next(clientOk ? undefined : "Enter the client ID"),
+            reason: clientOk ? undefined : "Enter the client ID",
+          }
+        : step === "test"
+          ? {
+              ...base,
+              primary: test?.ok ? (
+                next()
+              ) : (
+                <Button loading={t.testing} onClick={() => void t.run("popup")}>
+                  {test || t.error ? "Try again" : `Sign in with ${name}`}
+                </Button>
+              ),
+              reason: test?.ok ? undefined : "Sign in to continue",
+            }
+          : step === "mapping"
+            ? { ...base, primary: next() }
+            : step === "save"
+              ? {
+                  ...base,
+                  primary: (
+                    <Button
+                      loading={saving}
+                      disabledReason={
+                        !gate.allowed
+                          ? gate.disabledReason
+                          : !fresh
+                            ? "Sign in again to continue"
+                            : secretMissing
+                              ? "Enter the client secret"
+                              : undefined
+                      }
+                      onClick={() => void save()}
+                    >
+                      Add connection
+                    </Button>
+                  ),
+                }
+              : {};
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto w-full max-w-[60rem] space-y-6">
       <PageHeader
         eyebrow={
           <Breadcrumbs
@@ -321,6 +302,7 @@ export function AddConnectionPage(): React.ReactElement {
         description="People sign in to apps with this provider."
       />
       <Wizard
+        centered={false}
         label="Add a connection"
         steps={wizardSteps}
         current={step}
@@ -329,63 +311,22 @@ export function AddConnectionPage(): React.ReactElement {
         onStep={(id) => id !== "done" && !created && go(id as StepId)}
         title={titles[step]}
         focusOnMount
-        footer={
-          step === "provider"
-            ? {
-                ...footer,
-                primary: next(
-                  !gate.allowed
-                    ? gate.disabledReason
-                    : !discovered
-                      ? "Check the provider to continue"
-                      : undefined,
-                ),
-                reason: !discovered
-                  ? "Check the provider to continue"
-                  : undefined,
-              }
-            : step === "client"
-              ? {
-                  ...footer,
-                  primary: next(clientOk ? undefined : "Enter the client ID"),
-                  reason: clientOk ? undefined : "Enter the client ID",
-                }
-              : step === "test"
-                ? { ...footer, primary: next() }
-                : step === "mapping"
-                  ? { ...footer, primary: next() }
-                  : step === "save"
-                    ? {
-                        ...footer,
-                        primary: (
-                          <Button
-                            loading={saving}
-                            disabledReason={
-                              !gate.allowed
-                                ? gate.disabledReason
-                                : !fresh
-                                  ? "Sign in again to continue"
-                                  : undefined
-                            }
-                            onClick={() => void save()}
-                          >
-                            Add connection
-                          </Button>
-                        ),
-                      }
-                    : { later: footer.later }
-        }
+        footer={footer}
       >
         {step === "provider" ? (
           <FormStep
             formId="connection-provider"
             onSubmit={() => void check()}
-            error={failure(providerError)}
+            error={
+              providerFailure && providerFailure.fields.length === 0
+                ? providerFailure
+                : null
+            }
           >
             {fresh ? null : (
-              <StepUpCallout hash={r.platformConnectionNew()}>
+              <StepUpCallout hash={r.platformConnectionNew({ draft: draftId })}>
                 Adding a connection needs a sign-in from the last five minutes.
-                You come back to this page afterwards.
+                You come back to this page with your entries.
               </StepUpCallout>
             )}
             <FormField
@@ -394,6 +335,8 @@ export function AddConnectionPage(): React.ReactElement {
               required
               help="The provider's https address, as it appears in its discovery document."
               value={draft.issuer}
+              error={fieldMessage(providerFailure, "issuer")}
+              announceError
               onChange={(v: string) => setDraft({ issuer: v })}
             >
               {(f) => (
@@ -429,9 +372,16 @@ export function AddConnectionPage(): React.ReactElement {
                 Check provider
               </Button>
               {discovered ? (
-                <StatusPill tone="success" size="sm">
-                  Found
-                </StatusPill>
+                <p
+                  ref={found}
+                  tabIndex={-1}
+                  role="status"
+                  className="outline-none"
+                >
+                  <StatusPill tone="success" size="sm">
+                    Found
+                  </StatusPill>
+                </p>
               ) : null}
             </div>
             {discovery && discovered ? (
@@ -488,7 +438,10 @@ export function AddConnectionPage(): React.ReactElement {
               optional
               help="Sealed when saved and never shown again. Leave it empty for a public client."
               value={secret}
-              onChange={(v: string) => setSecret(v)}
+              onChange={(v: string) => {
+                setSecret(v);
+                setDraft({ hadSecret: v !== "" });
+              }}
             >
               {(f) => <SecretInput {...f} />}
             </FormField>
@@ -498,11 +451,12 @@ export function AddConnectionPage(): React.ReactElement {
         {step === "test" ? (
           <TestStep
             issuer={draft.issuer}
-            needsSecret={!secret && Boolean(draft.clientId)}
-            testing={testing}
-            error={failure(testError)}
+            needsSecret={!secret && draft.hadSecret}
+            testing={t.testing}
+            error={failureOf(t.error)}
             result={test}
-            onRun={(mode) => void runTest(mode)}
+            onTab={() => void t.run("tab")}
+            onBackToClient={() => go("client")}
           />
         ) : null}
 
@@ -551,26 +505,30 @@ export function AddConnectionPage(): React.ReactElement {
         {step === "save" ? (
           <ReviewStep
             draft={draft}
-            hasSecret={Boolean(secret)}
+            secret={secret}
+            onSecret={setSecret}
+            secretMissing={secretMissing}
             test={test}
             fresh={fresh}
             stepUpHash={r.platformConnectionNew({
               step: "save",
               draft: draftId,
             })}
-            error={failure(saveError)}
+            error={failureOf(saveError)}
           />
         ) : null}
 
         {step === "done" ? (
           <DoneStep
-            result="Connection added"
+            result={`${name} is on the sign-in card`}
             detail="Claim a domain to send its addresses here."
             next={
               created
                 ? [
                     <Button key="open" asChild>
-                      <Link to={r.platformConnection(created)}>
+                      <Link
+                        to={r.platformConnection(created, { add: "domain" })}
+                      >
                         Add a domain
                       </Link>
                     </Button>,

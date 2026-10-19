@@ -794,6 +794,8 @@ export interface PlatformConnectionsPage {
     kind: "google" | "apple" | "steam";
     label: string;
     configured: boolean;
+    /** What to register at the provider: one exact URI, or (Steam) the realm. */
+    registration: { kind: "redirect-uri" | "realm"; value: string };
   }[];
   email: { configured: boolean };
   turnstile: { enabled: boolean };

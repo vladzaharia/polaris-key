@@ -67,9 +67,30 @@ const PAGE = {
   connections: [WORK],
   redirectUri: "https://key.plrs.im/callback",
   builtIns: [
-    { kind: "google", label: "Google", configured: true },
-    { kind: "apple", label: "Apple", configured: false },
-    { kind: "steam", label: "Steam", configured: false },
+    {
+      kind: "google",
+      label: "Google",
+      configured: true,
+      registration: {
+        kind: "redirect-uri",
+        value: "https://key.plrs.im/login/google/callback",
+      },
+    },
+    {
+      kind: "apple",
+      label: "Apple",
+      configured: false,
+      registration: {
+        kind: "redirect-uri",
+        value: "https://key.plrs.im/login/apple/callback",
+      },
+    },
+    {
+      kind: "steam",
+      label: "Steam",
+      configured: false,
+      registration: { kind: "realm", value: "https://key.plrs.im" },
+    },
   ],
   email: { configured: true },
   turnstile: { enabled: false },
@@ -79,8 +100,8 @@ describe("Connections page", () => {
   it("groups by kind, with status as words and no secret", async () => {
     boot("#/platform/connections", { me: ME, extra: { [BASE]: PAGE } });
     await screen.findByRole("heading", { level: 1, name: "Connections" });
-    await within(main()).findByRole("link", { name: "Work" });
-    expect(main().textContent).toContain("0 of 1 domains verified");
+    await within(main()).findByRole("link", { name: /^Work/ });
+    expect(main().textContent).toContain("corp.example (not verified)");
     for (const h of [
       "Single sign-on",
       "Sign-in providers",
@@ -153,6 +174,84 @@ describe("one connection", () => {
   });
 });
 
+describe("built-in providers", () => {
+  it("shows one exact registration each, the realm for Steam, and the seal command", async () => {
+    boot("#/platform/connections", { me: ME, extra: { [BASE]: PAGE } });
+    await screen.findByRole("heading", { level: 1, name: "Connections" });
+    await within(main()).findByText("Set up Apple");
+    expect(main().textContent).toContain(
+      "https://key.plrs.im/login/apple/callback",
+    );
+    expect(main().textContent).not.toContain("https://key.plrs.im/callback");
+    expect(main().textContent).toContain("Realm");
+    expect(main().textContent).toContain(
+      "pnpm --filter @polaris-key/worker signin:seal apple",
+    );
+    expect(
+      main().querySelector(
+        'a[href="/docs/operate/platform/runbook/set-up-the-login-card/"]',
+      ),
+    ).toBeTruthy();
+  });
+});
+
+describe("a refused change", () => {
+  it("keeps the dialog and the typed values, with the words inside it", async () => {
+    boot(`#/platform/connections/conn_work`, {
+      me: ME,
+      extra: {
+        [`${BASE}/conn_work`]: { connection: WORK },
+        [BASE]: PAGE,
+        [`PATCH ${BASE}/conn_work`]: new Response(
+          JSON.stringify({
+            error: {
+              code: "invalid_label",
+              message: "Name it in 1 to 60 characters.",
+              fields: ["label"],
+            },
+          }),
+          { status: 422, headers: { "content-type": "application/json" } },
+        ),
+      },
+    });
+    await screen.findByRole("heading", { level: 1, name: "Work" });
+    await userEvent.click(screen.getByRole("button", { name: "Change" }));
+    const dialog = await screen.findByRole("alertdialog");
+    const secret = within(dialog).getByLabelText(/New client secret/);
+    await userEvent.type(secret, "typed-secret-value");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+    expect(
+      await within(dialog).findByText("Name it in 1 to 60 characters."),
+    ).toBeTruthy();
+    expect(screen.getByRole("alertdialog")).toBeTruthy();
+    expect(
+      (within(dialog).getByLabelText(/New client secret/) as HTMLInputElement)
+        .value,
+    ).toBe("typed-secret-value");
+  });
+
+  it("not-found has a heading and a way back", async () => {
+    boot(`#/platform/connections/nope`, {
+      me: ME,
+      extra: {
+        [`${BASE}/nope`]: new Response(JSON.stringify({ error: "not_found" }), {
+          status: 404,
+        }),
+        [BASE]: PAGE,
+      },
+    });
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "Connection not found",
+      }),
+    ).toBeTruthy();
+    expect(
+      within(main()).getByRole("link", { name: "Back to Connections" }),
+    ).toBeTruthy();
+  });
+});
+
 describe("add wizard", () => {
   it("opens on the provider step and needs a successful check to go on", async () => {
     const log = boot("#/platform/connections/new", {
@@ -192,6 +291,77 @@ describe("add wizard", () => {
           .getAttribute("aria-disabled"),
       ).not.toBe("true"),
     );
+  });
+
+  const plant = (): void =>
+    sessionStorage.setItem(
+      "pkey.connection-draft.aaaaaaaa1111",
+      JSON.stringify({
+        hadSecret: true,
+        label: "Work",
+        issuer: "https://sso.corp.example",
+        clientId: "client-1",
+        groups: "",
+        claims: "",
+        name: "",
+      }),
+    );
+
+  it("blocks Add until a secret entered before a same-tab return is entered again", async () => {
+    plant();
+    boot("#/platform/connections/new?step=save&draft=aaaaaaaa1111", { me: ME });
+    await screen.findByRole("heading", {
+      level: 2,
+      name: "Add this connection?",
+    });
+    expect(
+      await screen.findByLabelText(/Enter the client secret again/),
+    ).toBeTruthy();
+    const add = screen.getByRole("button", { name: "Add connection" });
+    expect(add.getAttribute("aria-disabled")).toBe("true");
+    await userEvent.type(
+      screen.getByLabelText(/Enter the client secret again/),
+      "again-secret",
+    );
+    await waitFor(() =>
+      expect(
+        screen
+          .getByRole("button", { name: "Add connection" })
+          .getAttribute("aria-disabled"),
+      ).not.toBe("true"),
+    );
+  });
+
+  it("the test step has one primary, and a closed pop-up ends the wait", async () => {
+    plant();
+    const log = boot(
+      "#/platform/connections/new?step=test&draft=aaaaaaaa1111",
+      {
+        me: ME,
+        extra: {
+          [`POST ${BASE}/test/start`]: {
+            ok: true,
+            url: "https://sso.corp.example/authorize",
+            state: "s1",
+          },
+        },
+      },
+    );
+    vi.stubGlobal("open", () => ({ closed: true }));
+    const primary = await screen.findByRole("button", {
+      name: "Sign in with Work",
+    });
+    expect(screen.queryByRole("button", { name: /Continue/ })).toBeNull();
+    void log;
+    await userEvent.click(primary);
+    expect(
+      await screen.findByText(
+        "The sign-in window closed",
+        {},
+        { timeout: 3000 },
+      ),
+    ).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Back to Client" })).toBeTruthy();
   });
 
   it("the flow is within the kit's rules", () => {

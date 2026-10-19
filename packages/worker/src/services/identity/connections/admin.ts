@@ -44,6 +44,7 @@ import {
   CONNECTION_ID_RE,
   connectionSecretContext,
   listConnections,
+  normalizeDomain,
   resolveConnection,
   type ClaimMap,
   type Connection,
@@ -51,11 +52,8 @@ import {
 } from "../../../core/oidc/connections.js";
 import { portalIdentityIssuerKey } from "../portal/repo.js";
 import {
-  addConnectionDomain,
   challengeName,
   challengeValue,
-  removeConnectionDomain,
-  setDomainEnforce,
   verifyConnectionDomain,
   type ConnectionDomainRow,
   type VerifyDomainResult,
@@ -103,6 +101,19 @@ interface StatusRow {
   id: string;
   last_success_at: number | null;
   last_error_json: string | null;
+}
+
+async function domainRow(
+  db: Db,
+  connectionId: string,
+  domain: string,
+): Promise<ConnectionDomainRow | null> {
+  return db.first<ConnectionDomainRow>(
+    `SELECT connection_id, scope, domain, token, verified_at, checked_at, enforce
+       FROM identity_connection_domains WHERE connection_id = ? AND domain = ?`,
+    connectionId,
+    domain,
+  );
 }
 
 async function domainRows(db: Db): Promise<ConnectionDomainRow[]> {
@@ -155,7 +166,7 @@ async function viewOf(
     claimMap: c.claimMap,
     status: c.status,
     source: c.source,
-    hasSecret: c.hasSealedSecret,
+    hasSecret: c.hasSealedSecret || c.clientSecretRef !== null,
     domains: domains.filter((d) => d.connection_id === c.id).map(domainView),
     links: n?.n ?? 0,
     lastSuccessAt: status?.last_success_at ?? null,
@@ -259,7 +270,7 @@ export function issuerProblem(issuer: string): string | null {
   return null;
 }
 
-function cleanClaimMap(raw: unknown): ClaimMap | Refusal {
+export function cleanClaimMap(raw: unknown): ClaimMap | Refusal {
   if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
     return refuse(
       422,
@@ -685,6 +696,16 @@ export async function updateConnection(
     );
   }
   if (c.issuer && c.issuer !== before.issuer) {
+    // Links are keyed to the issuer: moving it would orphan every person who signs in through it.
+    const links = (await connectionView(db, id))?.links ?? 0;
+    if (links > 0) {
+      return refuse(
+        409,
+        "has_links",
+        "People sign in through this connection, so its issuer cannot move. Add a new connection instead.",
+        ["issuer"],
+      );
+    }
     const found = await previewDiscovery(
       { issuer: c.issuer, jwksUri: c.jwksUri ?? before.jwksUri },
       "https://example.invalid",
@@ -842,27 +863,6 @@ const DOMAIN_AUDIT: Record<DomainAction["op"], string> = {
   enforce: "identity.connection.domain_enforce",
 };
 
-async function recordDomain(
-  db: Db,
-  actor: AuditActor,
-  now: number,
-  action: DomainAction["op"],
-  id: string,
-  domain: string,
-  summary: string,
-): Promise<void> {
-  const stmt = auditRow(
-    actor,
-    now,
-    DOMAIN_AUDIT[action],
-    id,
-    summary,
-    undefined,
-    { domain },
-  );
-  await db.run(stmt.sql, ...stmt.params);
-}
-
 export async function changeDomain(
   db: Db,
   id: string,
@@ -883,74 +883,89 @@ export async function changeDomain(
     : null;
   if (!conn || conn.scope !== PLATFORM_SCOPE)
     return refuse(404, "not_found", "No such connection.");
+  const audit = (op: DomainAction["op"], domain: string, summary: string) =>
+    auditRow(actor, now, DOMAIN_AUDIT[op], id, summary, undefined, { domain });
   let verify: VerifyDomainResult["status"] | undefined;
   if (action.op === "add") {
-    const r = await addConnectionDomain(
-      db,
-      { connectionId: id, domain: action.domain as string },
-      now,
-    );
-    if (!r.ok) {
+    const domain = normalizeDomain(action.domain);
+    if (!domain) {
       return refuse(
-        r.reason === "invalid_domain" ? 422 : 404,
-        r.reason,
-        r.reason === "invalid_domain"
-          ? "Enter a domain such as example.com. Subdomains need their own entry."
-          : "No such connection.",
+        422,
+        "invalid_domain",
+        "Enter a domain such as example.com. Subdomains need their own entry.",
         ["domain"],
       );
     }
-    await recordDomain(
-      db,
-      actor,
-      now,
-      "add",
-      id,
-      r.domain,
-      `Claimed ${r.domain} for ${conn.label}`,
-    );
+    // Idempotent: a claim that is already there keeps its token and writes no second row.
+    if (!(await domainRow(db, id, domain))) {
+      await db.batch([
+        {
+          sql: `INSERT INTO identity_connection_domains (connection_id, scope, domain, token,
+                  verified_at, checked_at, enforce)
+                VALUES (?, ?, ?, ?, NULL, NULL, 0)
+                ON CONFLICT (connection_id, domain) DO NOTHING`,
+          params: [id, conn.scope, domain, randomToken(32)],
+        },
+        audit("add", domain, `Claimed ${domain} for ${conn.label}`),
+      ]);
+    }
   } else if (action.op === "verify") {
-    const r = await verifyConnectionDomain(db, id, action.domain, now, opts);
+    const domain = normalizeDomain(action.domain);
+    const before = domain ? await domainRow(db, id, domain) : null;
+    if (!domain || !before) return refuse(404, "not_found", "No such domain.");
+    const r = await verifyConnectionDomain(db, id, domain, now, opts);
     if (r.status === "unknown_domain")
       return refuse(404, "not_found", "No such domain.");
     verify = r.status;
-    if (r.status === "verified") {
-      await recordDomain(
-        db,
+    const after = await domainRow(db, id, domain);
+    const was = before.verified_at !== null;
+    const is = after?.verified_at != null;
+    // A verification, and an unverify (the record is gone), both change what the domain does.
+    if (!was && is) {
+      const st = audit(
+        "verify",
+        domain,
+        `Verified ${domain} for ${conn.label}`,
+      );
+      await db.run(st.sql, ...st.params);
+    } else if (was && !is) {
+      const st = auditRow(
         actor,
         now,
-        "verify",
+        "identity.connection.domain_unverify",
         id,
-        action.domain,
-        `Verified ${action.domain} for ${conn.label}`,
+        `${domain} lost its verification for ${conn.label}: the TXT record is gone`,
+        undefined,
+        { domain },
       );
+      await db.run(st.sql, ...st.params);
     }
   } else if (action.op === "remove") {
-    if (!(await removeConnectionDomain(db, id, action.domain))) {
+    const domain = normalizeDomain(action.domain);
+    if (!domain || !(await domainRow(db, id, domain)))
       return refuse(404, "not_found", "No such domain.");
-    }
-    await recordDomain(
-      db,
-      actor,
-      now,
-      "remove",
-      id,
-      action.domain,
-      `Released ${action.domain} from ${conn.label}`,
-    );
+    await db.batch([
+      {
+        sql: "DELETE FROM identity_connection_domains WHERE connection_id = ? AND domain = ?",
+        params: [id, domain],
+      },
+      audit("remove", domain, `Released ${domain} from ${conn.label}`),
+    ]);
   } else {
-    if (!(await setDomainEnforce(db, id, action.domain, action.enforce))) {
+    const domain = normalizeDomain(action.domain);
+    if (!domain || !(await domainRow(db, id, domain)))
       return refuse(404, "not_found", "No such domain.");
-    }
-    await recordDomain(
-      db,
-      actor,
-      now,
-      "enforce",
-      id,
-      action.domain,
-      `${action.enforce ? "Required" : "Stopped requiring"} ${conn.label} for ${action.domain}`,
-    );
+    await db.batch([
+      {
+        sql: "UPDATE identity_connection_domains SET enforce = ? WHERE connection_id = ? AND domain = ?",
+        params: [action.enforce ? 1 : 0, id, domain],
+      },
+      audit(
+        "enforce",
+        domain,
+        `${action.enforce ? "Required" : "Stopped requiring"} ${conn.label} for ${domain}`,
+      ),
+    ]);
   }
   return {
     ok: true,

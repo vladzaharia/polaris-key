@@ -16,7 +16,7 @@
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Plus } from "lucide-react";
+import { ChevronRight, Plus } from "lucide-react";
 import {
   api,
   type PlatformConnection,
@@ -58,6 +58,7 @@ export function ConnectionsRoute({ id }: { id?: string }): React.ReactElement {
 
 // ── the list ─────────────────────────────────────────────────────────────────────────────────
 
+const SEAL = "pnpm --filter @polaris-key/worker signin:seal";
 const SETUP: Record<
   "google" | "apple" | "steam",
   { steps: string[]; env: string }
@@ -66,34 +67,55 @@ const SETUP: Record<
     env: "SIGNIN_GOOGLE_CLIENT_ID, SIGNIN_GOOGLE_CLIENT_SECRET",
     steps: [
       "In Google Cloud, create an OAuth client of type Web application.",
-      "Add the redirect URI shown below as an authorized redirect.",
-      "Set SIGNIN_GOOGLE_CLIENT_ID, then seal the secret and set SIGNIN_GOOGLE_CLIENT_SECRET.",
+      "Add the redirect URI below as an authorized redirect.",
+      `Set SIGNIN_GOOGLE_CLIENT_ID. Seal the secret with ${SEAL} google, then set SIGNIN_GOOGLE_CLIENT_SECRET to the output.`,
     ],
   },
   apple: {
     env: "SIGNIN_APPLE_SERVICES_ID, SIGNIN_APPLE_TEAM_ID, SIGNIN_APPLE_KEY_ID, SIGNIN_APPLE_PRIVATE_KEY",
     steps: [
       "In your Apple Developer account, create a Services ID and a Sign in with Apple key.",
-      "Add the redirect URI shown below to the Services ID.",
-      "Set the Services ID, Team ID and Key ID, then seal the .p8 and set SIGNIN_APPLE_PRIVATE_KEY.",
+      "Add the redirect URI below to the Services ID.",
+      `Set the Services ID, Team ID and Key ID. Seal the .p8 with ${SEAL} apple, then set SIGNIN_APPLE_PRIVATE_KEY to the output.`,
     ],
   },
   steam: {
     env: "SIGNIN_STEAM_WEB_API_KEY",
     steps: [
       "Request a Steam Web API key for your domain.",
-      "Seal it and set SIGNIN_STEAM_WEB_API_KEY.",
+      "Steam takes no redirect URI. It checks the realm below against the domain you gave.",
+      `Seal the key with ${SEAL} steam, then set SIGNIN_STEAM_WEB_API_KEY to the output.`,
     ],
   },
 };
+const RUNBOOK = "/docs/operate/platform/runbook/set-up-the-login-card/";
 
+/** A healthy connection says nothing; Off and a failure get a pill. */
 export function connectionStatus(c: PlatformConnection): {
   tone: "success" | "neutral" | "warning";
   label: string;
+  pill: boolean;
 } {
-  if (c.status === "disabled") return { tone: "neutral", label: "Off" };
-  if (c.lastError) return { tone: "warning", label: "Needs attention" };
-  return { tone: "success", label: "On" };
+  if (c.status === "disabled")
+    return { tone: "neutral", label: "Off", pill: true };
+  if (c.lastError)
+    return { tone: "warning", label: "Needs attention", pill: true };
+  return { tone: "success", label: "On", pill: false };
+}
+
+function Row({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3 py-1">
+      <span className="text-sm text-fg">{label}</span>
+      {children}
+    </div>
+  );
 }
 
 export function ConnectionsPage(): React.ReactElement {
@@ -147,35 +169,59 @@ export function ConnectionsPage(): React.ReactElement {
                 title="No connections yet"
                 description="Add your identity provider to let a company's people sign in with it."
                 primaryAction={add}
-                docs="/docs/operate/platform/connections/"
+                docs="/docs/operate/platform/sign-in-connections/"
               />
             ) : (
               <ul className="divide-y divide-border">
                 {d.connections.map((c) => {
                   const s = connectionStatus(c);
-                  const verified = c.domains.filter((x) => x.verified).length;
+                  const verified = c.domains.filter((x) => x.verified);
                   return (
-                    <li
-                      key={c.id}
-                      className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3"
-                    >
-                      <div className="min-w-0">
-                        <Link
-                          to={r.platformConnection(c.id)}
-                          className="font-medium text-accent-fg underline-offset-4 hover:underline"
-                        >
-                          {c.label}
-                        </Link>
-                        <p className="break-all text-xs text-fg-muted">
-                          {hostOf(c.issuer)} ·{" "}
-                          {c.domains.length === 0
-                            ? "No domains"
-                            : `${verified} of ${c.domains.length} domains verified`}
-                        </p>
-                      </div>
-                      <StatusPill tone={s.tone} size="sm">
-                        {s.label}
-                      </StatusPill>
+                    <li key={c.id}>
+                      <Link
+                        to={r.platformConnection(c.id)}
+                        className="grid items-center gap-x-4 gap-y-1 py-3 hover:bg-hover sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1.5fr)_minmax(0,0.8fr)_auto]"
+                      >
+                        <span className="min-w-0">
+                          <span className="font-medium text-accent-fg">
+                            {c.label}
+                          </span>
+                          <span className="block break-all text-xs text-fg-muted">
+                            {hostOf(c.issuer)}
+                          </span>
+                        </span>
+                        <span className="flex min-w-0 flex-wrap gap-1 text-xs">
+                          {c.domains.length === 0 ? (
+                            <span className="text-fg-muted">No domains</span>
+                          ) : (
+                            c.domains.map((x) => (
+                              <span
+                                key={x.domain}
+                                className="rounded-md bg-surface-sunken px-1.5 py-0.5 text-fg"
+                              >
+                                {x.domain}
+                                {x.verified ? "" : " (not verified)"}
+                              </span>
+                            ))
+                          )}
+                        </span>
+                        <span className="text-xs text-fg-muted">
+                          {verified.length > 0
+                            ? `${verified.length} verified`
+                            : "Button only"}
+                        </span>
+                        <span className="flex items-center justify-end gap-2">
+                          {s.pill ? (
+                            <StatusPill tone={s.tone} size="sm">
+                              {s.label}
+                            </StatusPill>
+                          ) : null}
+                          <ChevronRight
+                            aria-hidden
+                            className="size-4 text-fg-subtle"
+                          />
+                        </span>
+                      </Link>
                     </li>
                   );
                 })}
@@ -197,35 +243,57 @@ export function ConnectionsPage(): React.ReactElement {
                       <span className="font-medium text-fg-strong">
                         {b.label}
                       </span>
-                      <StatusPill
-                        tone={b.configured ? "success" : "neutral"}
-                        size="sm"
-                      >
-                        {b.configured ? "On" : "Not set up"}
-                      </StatusPill>
+                      {b.configured ? (
+                        <span className="text-sm text-fg-muted">Set up</span>
+                      ) : (
+                        <StatusPill tone="neutral" size="sm">
+                          Not set up
+                        </StatusPill>
+                      )}
                     </div>
                     {b.configured ? null : (
                       <details className="text-sm text-fg">
-                        <summary className="cursor-pointer text-accent-fg">
+                        <summary className="inline-flex min-h-6 cursor-pointer items-center text-accent-fg">
                           Set up {b.label}
                         </summary>
                         <ol className="mt-2 list-decimal space-y-1 pl-5">
                           {SETUP[b.kind].steps.map((s) => (
-                            <li key={s}>{s}</li>
+                            <li key={s} className="break-words">
+                              {s}
+                            </li>
                           ))}
                         </ol>
                         <p className="mt-2 break-words text-xs text-fg-muted">
                           Worker values: {SETUP[b.kind].env}
                         </p>
-                        <div className="mt-2 flex items-center gap-2">
-                          <code className="min-w-0 break-all text-xs">
-                            {d.redirectUri}
-                          </code>
-                          <CopyButton
-                            value={d.redirectUri}
-                            label="redirect URI"
-                          />
+                        <div className="mt-2 space-y-1">
+                          <p className="text-xs text-fg-muted">
+                            {b.registration.kind === "realm"
+                              ? "Realm"
+                              : "Redirect URI"}
+                          </p>
+                          <div className="flex items-center gap-2">
+                            <code className="min-w-0 break-all text-xs">
+                              {b.registration.value}
+                            </code>
+                            <CopyButton
+                              value={b.registration.value}
+                              label={
+                                b.registration.kind === "realm"
+                                  ? "realm"
+                                  : "redirect URI"
+                              }
+                            />
+                          </div>
                         </div>
+                        <p className="mt-2 text-xs">
+                          <a
+                            href={RUNBOOK}
+                            className="text-accent-fg underline-offset-4 hover:underline"
+                          >
+                            Set up the login card: the full runbook
+                          </a>
+                        </p>
                       </details>
                     )}
                   </li>
@@ -234,40 +302,47 @@ export function ConnectionsPage(): React.ReactElement {
             )}
           </Section>
 
-          <Section title="Email" description="Codes and links for sign-in.">
-            {d ? (
-              <div className="flex items-center justify-between gap-3">
-                <span>Delivery</span>
-                <StatusPill
-                  tone={d.email.configured ? "success" : "warning"}
-                  size="sm"
-                >
-                  {d.email.configured ? "On" : "Not set up"}
-                </StatusPill>
-              </div>
-            ) : (
-              <Skeleton className="h-6 w-full" />
-            )}
-          </Section>
-
-          <Section
-            title="Turnstile"
-            description="Bot check on the sign-in card."
-          >
-            {d ? (
-              <div className="flex items-center justify-between gap-3">
-                <span>Check</span>
-                <StatusPill
-                  tone={d.turnstile.enabled ? "success" : "neutral"}
-                  size="sm"
-                >
-                  {d.turnstile.enabled ? "On" : "Off"}
-                </StatusPill>
-              </div>
-            ) : (
-              <Skeleton className="h-6 w-full" />
-            )}
-          </Section>
+          <div className="grid gap-6 md:grid-cols-2">
+            <Section title="Email" description="Codes and links for sign-in.">
+              {d ? (
+                <Row label="Delivery">
+                  {d.email.configured ? (
+                    <span className="text-sm text-fg-muted">Set up</span>
+                  ) : (
+                    <StatusPill tone="warning" size="sm">
+                      Not set up
+                    </StatusPill>
+                  )}
+                </Row>
+              ) : (
+                <Skeleton className="h-6 w-full" />
+              )}
+              {d && !d.email.configured ? (
+                <p className="text-xs">
+                  <a
+                    href="/docs/operate/platform/runbook/set-up-sign-in-email/"
+                    className="text-accent-fg underline-offset-4 hover:underline"
+                  >
+                    Set up sign-in email
+                  </a>
+                </p>
+              ) : null}
+            </Section>
+            <Section
+              title="Turnstile"
+              description="Bot check on the sign-in card."
+            >
+              {d ? (
+                <Row label="Check">
+                  <span className="text-sm text-fg-muted">
+                    {d.turnstile.enabled ? "On" : "Off"}
+                  </span>
+                </Row>
+              ) : (
+                <Skeleton className="h-6 w-full" />
+              )}
+            </Section>
+          </div>
         </>
       )}
     </div>

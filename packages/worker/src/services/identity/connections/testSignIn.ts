@@ -45,7 +45,7 @@ import {
 } from "../../../core/singleUse.js";
 import { parseFlowRecord } from "../../../platform/json.js";
 import { mappedClaims, mappedGroups } from "./claims.js";
-import { issuerProblem } from "./admin.js";
+import { cleanClaimMap, issuerProblem } from "./admin.js";
 import { portalFlowKey } from "../portal/flowKey.js";
 
 export const TEST_FLOW_TTL_SECONDS = 600;
@@ -106,7 +106,7 @@ export function plainProviderText(
     .trim();
   for (const s of secrets) if (s.length >= 4) t = t.split(s).join("[redacted]");
   t = t.replace(/[A-Za-z0-9_\-+/=.]{24,}/g, "[redacted]");
-  return t.slice(0, ERROR_TEXT_MAX);
+  return t.length > ERROR_TEXT_MAX ? `${t.slice(0, ERROR_TEXT_MAX - 1)}…` : t;
 }
 
 async function resultRef(env: Env, state: string) {
@@ -140,7 +140,7 @@ export interface StartTestInput {
   clientId?: unknown;
   clientSecret?: unknown;
   jwksUri?: unknown;
-  claimMap?: ClaimMap;
+  claimMap?: unknown;
 }
 
 const DRAFT_ID_RE = /^[A-Za-z0-9_-]{8,64}$/;
@@ -175,7 +175,13 @@ export async function startConnectionTest(
   let issuer: string;
   let clientId: string;
   let jwksUri: string | null = null;
-  let claimMap: ClaimMap = input.claimMap ?? {};
+  // The same validation a saved claim map gets: names only, bounded.
+  const given =
+    input.claimMap === undefined ? undefined : cleanClaimMap(input.claimMap);
+  if (given && "ok" in given) {
+    return fail(422, "invalid_claim_map", given.message, given.fields);
+  }
+  let claimMap: ClaimMap = given ?? {};
   let secretPlain: string | null = null;
   let connectionId: string | undefined;
   if (input.connectionId !== undefined) {
@@ -188,7 +194,7 @@ export async function startConnectionTest(
     issuer = conn.issuer;
     clientId = conn.clientId;
     jwksUri = conn.jwksUri;
-    claimMap = input.claimMap ?? conn.claimMap;
+    claimMap = given ?? conn.claimMap;
     connectionId = conn.id;
     secretPlain = await openConnectionSecret(env, db, conn.id);
   } else {

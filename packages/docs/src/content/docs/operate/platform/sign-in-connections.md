@@ -38,10 +38,11 @@ page says only "Sealed".
    that is private or not https is refused before any request.
 2. **Client.** Register the redirect URI shown (`<origin>/callback`) at the provider, then enter
    the client ID and, if it needs one, the client secret.
-3. **Test sign-in.** **Test sign-in** opens the provider in a pop-up and shows the claims that came
+3. **Test sign-in.** **Sign in with** the provider opens it in a pop-up and shows the claims that came
    back: the email, the groups and claims you map, and the names of every claim in the token.
-   Nothing is saved, and only the operator who started the test sees the result. **Use this tab**
-   does the same without a pop-up and returns to this step. A provider's error is shown as plain
+   Nothing is saved, and only the operator who started the test sees the result. **Open in this tab instead**
+   does the same without a pop-up and returns to this step; the client secret is not kept
+   across that trip, so the last step asks for it again. A provider's error is shown as plain
    text.
 4. **Claims.** Name the claim that lists groups, the other claims access rules may use, and the
    claim for a display name.
@@ -53,11 +54,12 @@ Then open the connection to claim its domains.
 ### One connection
 
 The connection's page shows the provider, and **Change** edits the name, client, claim mapping
-and replaces the sealed secret. **On** turns it off without deleting it. **Delete** is refused
+and replaces the sealed secret. **Show on the sign-in card** turns it off without deleting it. **Test sign-in** on a saved connection
+uses its stored secret. **Delete** is refused
 while people sign in through it, and for the seeded connection.
 
 **Domains.** **Add domain** shows the TXT record to publish (name and value, with copy buttons).
-**Check now** reads it; a verified domain can then be required. **Require this connection** stops
+**Check now** reads it; a verified domain can then be required. **Release** asks first for a verified domain. **Require this connection** stops
 email codes and magic links for that domain's addresses, so it asks you to confirm. **Release**
 drops the claim.
 

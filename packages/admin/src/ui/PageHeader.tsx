@@ -164,13 +164,12 @@ export function PageHeader({
           would keep its gap and stop the actions short of the right edge. */}
       <div
         className={cn(
-          "grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-3",
-          hasCluster &&
-            primaryAction &&
-            "sm:grid-cols-[minmax(0,1fr)_auto_auto]",
+          // Phone: a grid (the primary action takes its own row). From 640 px a wrapping row: at
+          // 200 % text the actions drop under the title instead of overlapping it.
+          "grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-3 sm:flex sm:flex-wrap",
         )}
       >
-        <div className="min-w-0 space-y-1">
+        <div className="min-w-0 space-y-1 sm:flex-1 sm:basis-72">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
             {nested ? (
               <h2 className="text-lg font-medium tracking-tight text-fg-strong">
@@ -200,7 +199,7 @@ export function PageHeader({
         {hasCluster ? (
           <div
             className={cn(
-              "flex shrink-0 items-center justify-end gap-2",
+              "flex shrink-0 items-center justify-end gap-2 sm:ml-auto",
               // With an auto-refresh switch the cluster is too wide to share a phone's title row.
               freshness?.auto && "col-span-2 sm:col-span-1",
             )}
@@ -263,8 +262,8 @@ export function PageHeader({
         {primaryAction ? (
           <div
             className={cn(
-              "col-span-2 sm:col-span-1 sm:row-start-1 [&>:not(.sr-only)]:w-full sm:[&>:not(.sr-only)]:w-auto",
-              hasCluster ? "sm:col-start-3" : "sm:col-start-2",
+              "col-span-2 sm:col-span-1 [&>:not(.sr-only)]:w-full sm:[&>:not(.sr-only)]:w-auto",
+              hasCluster ? "" : "sm:ml-auto",
             )}
           >
             {primaryAction}

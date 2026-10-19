@@ -47,6 +47,7 @@ import {
   previewDiscovery,
   SIGNIN_PROVIDER_KINDS,
   signInProviderConfigured,
+  signInRegistration,
   startConnectionTest,
   takeTestResult,
   turnstileEnabled,
@@ -90,6 +91,9 @@ async function page(c: AdminCtx): Promise<Response> {
       kind,
       label: BUILTIN_LABELS[kind],
       configured: signInProviderConfigured(c.env, kind),
+      // What to register at the provider: one exact URI (Steam: the realm), from the same
+      // helper the login flow builds its own with.
+      registration: signInRegistration(kind, url.origin),
     })),
     email: { configured: emailConfigured(c.env) },
     turnstile: { enabled: turnstileEnabled(c.env) },
@@ -149,9 +153,7 @@ async function route(c: AdminCtx): Promise<Response> {
           clientId: body.clientId,
           clientSecret: body.clientSecret,
           jwksUri: body.jwksUri,
-          ...(typeof body.claimMap === "object" && body.claimMap !== null
-            ? { claimMap: body.claimMap as never }
-            : {}),
+          ...(body.claimMap !== undefined ? { claimMap: body.claimMap } : {}),
         },
         new URL(req.url).origin,
       );

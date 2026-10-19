@@ -89,15 +89,17 @@ export function Stepper({
   const reached = (id: string) =>
     done.has(id) || skipped.has(id) || unmet.has(id) || visited.has(id);
 
+  // The collapse follows the room the stepper has, in rem: at 200 % text the list gives way to
+  // "Step n of m" instead of squeezing every label to a glyph.
   return (
-    <nav aria-label={label} className={className}>
+    <nav aria-label={label} className={cn("@container", className)}>
       {segments ? null : (
         <button
           type="button"
           aria-expanded={open}
           aria-controls={`${uid}-list`}
           onClick={() => setOpen((o) => !o)}
-          className="flex min-h-11 w-full items-center justify-between gap-2 rounded-md border border-border px-3 text-sm font-medium text-fg-strong sm:hidden"
+          className="flex min-h-11 w-full items-center justify-between gap-2 rounded-md border border-border px-3 text-sm font-medium text-fg-strong @3xl:hidden"
         >
           <span>
             Step {currentIndex + 1} of {steps.length}
@@ -115,7 +117,7 @@ export function Stepper({
           segments
             ? "flex items-stretch gap-1"
             : cn(
-                "mt-2 flex-col gap-y-1 sm:mt-0 sm:flex sm:flex-row sm:flex-nowrap sm:items-center sm:gap-x-2 sm:gap-y-2",
+                "mt-2 flex-col gap-y-1 @3xl:mt-0 @3xl:flex @3xl:flex-row @3xl:flex-nowrap @3xl:items-center @3xl:gap-x-2 @3xl:gap-y-2",
                 open ? "flex" : "hidden",
               ),
         )}
@@ -244,7 +246,7 @@ export function Stepper({
               )}
             >
               {i > 0 ? (
-                <span className="hidden min-w-2 shrink sm:inline-flex">
+                <span className="hidden min-w-2 shrink @3xl:inline-flex">
                   <Connector
                     filled={
                       i <= currentIndex ||

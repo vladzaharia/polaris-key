@@ -1,27 +1,19 @@
 /**
- * Platform → Connections → one connection (I-31): the provider, its domains (TXT record, live
- * check, enforcement), the claim mapping, on/off and delete. Every change is a step-up write.
+ * Platform → Connections → one connection (I-31): the provider, its client (redirect URI, test
+ * sign-in), its domains, on/off and delete. Every change is a step-up write. A refused change in
+ * a dialog keeps the dialog and says why inside it; the page-level toggle shows its error beside it.
  */
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import {
-  api,
-  ApiError,
-  type ConnectionDomain,
-  type PlatformConnection,
-} from "../../../../api.js";
-import { errorCopy } from "../../../../lib/errorCopy.js";
+import { api, ApiError, type ConnectionDomain } from "../../../../api.js";
 import { fromSeconds } from "../../../../lib/format.js";
 import { Button } from "../../../../ui/Button.js";
 import { Callout } from "../../../../ui/Callout.js";
 import { ConfirmDialog } from "../../../../ui/ConfirmDialog.js";
 import { CopyButton } from "../../../../ui/CopyButton.js";
 import { DescriptionList } from "../../../../ui/DescriptionList.js";
-import { EmptyState } from "../../../../ui/EmptyState.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
-import { FormField } from "../../../../ui/form.js";
-import { Input } from "../../../../ui/Input.js";
 import { PageHeader } from "../../../../ui/PageHeader.js";
 import { Section } from "../../../../ui/Section.js";
 import { Skeleton } from "../../../../ui/Skeleton.js";
@@ -33,25 +25,29 @@ import { useWriteGate } from "../../../access/useCan.js";
 import { Breadcrumbs } from "../../../components/Breadcrumbs.js";
 import { mutate } from "../../../data/mutations.js";
 import { qk } from "../../../data/queries.js";
+import { Link, useSearchParam } from "../../../router.js";
 import { r } from "../../../routes.js";
 import { StepUpCallout, useStepUp } from "../../core/pages/UserRelink.js";
+import { failureOf } from "./connectionErrors.js";
+import { DomainsSection } from "./platformConnectionDomains.js";
 import { EditDialog } from "./platformConnectionEdit.js";
+import {
+  TestResultView,
+  newDraftId,
+  textCodec,
+} from "./platformConnectionParts.js";
 import {
   connectionStatus,
   fetchPlatformConnections,
   hostOf,
 } from "./platformConnections.js";
-
-// ── one connection ───────────────────────────────────────────────────────────────────────────
-
-function fieldMessage(e: unknown): string | null {
-  return e ? errorCopy(e, { thing: "The connection" }).description : null;
-}
+import { useConnectionTest } from "./useConnectionTest.js";
 
 export function ConnectionPage({ id }: { id: string }): React.ReactElement {
   const q = useQuery({
     queryKey: qk.platformConnection(id),
     queryFn: () => api.platformConnection(id).then((x) => x.connection),
+    retry: (n, e) => !(e instanceof ApiError && e.status === 404) && n < 2,
   });
   const page = useQuery({
     queryKey: qk.platformConnections(),
@@ -59,37 +55,66 @@ export function ConnectionPage({ id }: { id: string }): React.ReactElement {
   });
   const gate = useWriteGate("platform");
   const { fresh, markStale } = useStepUp(true);
+  const [add] = useSearchParam("add", textCodec);
   const c = q.data;
-  const [error, setError] = React.useState<unknown>(null);
-  const [busy, setBusy] = React.useState(false);
   const [confirm, setConfirm] = React.useState<
     null | "delete" | { enforce: ConnectionDomain }
   >(null);
   const [editing, setEditing] = React.useState(false);
+  const [toggleError, setToggleError] = React.useState<unknown>(null);
+  const [toggling, setToggling] = React.useState(false);
+  const draftId = React.useRef(newDraftId());
+  const t = useConnectionTest({
+    draftId: draftId.current,
+    issuer: "",
+    clientId: "",
+    secret: "",
+    claimMap: {},
+    connectionId: id,
+    returned: "",
+    onTestStep: false,
+  });
+  const testBtn = React.useRef<HTMLButtonElement>(null);
 
-  /** Run one write: a stale step-up shows the callout, any other failure shows its words. */
-  const run = async (
-    fn: () => Promise<unknown>,
-    done?: string,
-  ): Promise<boolean> => {
-    setBusy(true);
-    setError(null);
+  /**
+   * One write, then a refresh. A stale step-up shows the sign-in callout and still throws, so
+   * whoever asked (a dialog, a row) keeps its place and shows the words.
+   */
+  const act = async (fn: () => Promise<unknown>): Promise<void> => {
     try {
       await fn();
-      await Promise.all([q.refetch(), page.refetch()]);
-      if (done) toast.success(done);
-      return true;
     } catch (e) {
       if (e instanceof ApiError && e.code === "step_up_required") markStale();
-      else setError(e);
-      return false;
-    } finally {
-      setBusy(false);
+      throw e;
     }
+    await Promise.all([q.refetch(), page.refetch()]);
   };
 
   if (q.isError && !c) {
-    return <ErrorState error={q.error} onRetry={() => void q.refetch()} />;
+    const missing = q.error instanceof ApiError && q.error.status === 404;
+    return missing ? (
+      <div className="space-y-6">
+        <PageHeader
+          eyebrow={
+            <Breadcrumbs
+              items={[
+                { label: "Connections", to: r.platformConnections() },
+                { label: "Not found" },
+              ]}
+            />
+          }
+          title="Connection not found"
+          description="It may have been deleted, or the address is wrong."
+          primaryAction={
+            <Button asChild>
+              <Link to={r.platformConnections()}>Back to Connections</Link>
+            </Button>
+          }
+        />
+      </div>
+    ) : (
+      <ErrorState error={q.error} onRetry={() => void q.refetch()} />
+    );
   }
   const writeReason = !gate.allowed
     ? gate.disabledReason
@@ -97,6 +122,38 @@ export function ConnectionPage({ id }: { id: string }): React.ReactElement {
       ? "Sign in again to continue"
       : undefined;
   const status = c ? connectionStatus(c) : null;
+  const deleteReason = c
+    ? c.source === "env"
+      ? "The seeded connection can only be turned off."
+      : c.links > 0
+        ? `${c.links} ${c.links === 1 ? "person signs" : "people sign"} in through it. Turn it off instead.`
+        : undefined
+    : undefined;
+  const redirectUri = page.data?.redirectUri;
+  const testFailure = failureOf(t.error);
+  React.useEffect(() => {
+    if (t.error) window.setTimeout(() => testBtn.current?.focus(), 0);
+  }, [t.error]);
+
+  const test = (
+    <div className="space-y-3">
+      <Button
+        ref={testBtn}
+        variant="outline"
+        size="sm"
+        loading={t.testing}
+        onClick={() => void t.run("popup")}
+      >
+        Test sign-in
+      </Button>
+      {testFailure ? (
+        <Callout tone="danger" title={testFailure.title} live>
+          {testFailure.description}
+        </Callout>
+      ) : null}
+      {t.test ? <TestResultView result={t.test} /> : null}
+    </div>
+  );
 
   return (
     <div className="space-y-6">
@@ -111,13 +168,20 @@ export function ConnectionPage({ id }: { id: string }): React.ReactElement {
         }
         title={c?.label ?? "Connection"}
         titleAside={
-          status ? (
+          status && status.pill ? (
             <StatusPill tone={status.tone} size="sm">
               {status.label}
             </StatusPill>
           ) : undefined
         }
         description={c ? hostOf(c.issuer) : undefined}
+        meta={
+          c?.source === "env" ? (
+            <StatusPill tone="neutral" size="sm">
+              Seeded from the environment
+            </StatusPill>
+          ) : undefined
+        }
       />
       {!c ? (
         <Skeleton className="h-40 w-full" />
@@ -129,130 +193,155 @@ export function ConnectionPage({ id }: { id: string }): React.ReactElement {
               You come back to this page afterwards.
             </StepUpCallout>
           )}
-          {error ? (
-            <Callout
-              tone="danger"
-              title={errorCopy(error, { thing: "The connection" }).title}
-              live
-            >
-              {fieldMessage(error)}
-            </Callout>
-          ) : null}
           {c.lastError ? (
-            <Callout tone="warning" title="The last sign-in failed">
+            <Callout
+              tone="warning"
+              title="The last sign-in failed"
+              action={
+                <Button
+                  size="sm"
+                  variant="outline"
+                  loading={t.testing}
+                  onClick={() => void t.run("popup")}
+                >
+                  Test sign-in
+                </Button>
+              }
+            >
               <span className="break-words">{c.lastError}</span>
             </Callout>
           ) : null}
-
-          <Section
-            title="Provider"
-            actions={
-              <Button
-                variant="outline"
-                size="sm"
-                disabledReason={writeReason}
-                onClick={() => setEditing(true)}
+          <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
+            <div className="min-w-0 space-y-6">
+              <Section
+                title="Provider"
+                actions={
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabledReason={writeReason}
+                    onClick={() => setEditing(true)}
+                  >
+                    Change
+                  </Button>
+                }
               >
-                Change
-              </Button>
-            }
-          >
-            <DescriptionList
-              items={[
-                {
-                  term: "Issuer",
-                  detail: <span className="break-all">{c.issuer}</span>,
-                },
-                {
-                  term: "Client ID",
-                  detail: <span className="break-all">{c.clientId}</span>,
-                },
-                {
-                  term: "Client secret",
-                  detail: c.hasSecret ? "Sealed" : "None",
-                },
-                {
-                  term: "Who signs in",
-                  detail:
-                    c.audience === "customers"
-                      ? "Customers"
-                      : c.audience === "operators"
-                        ? "Operators"
-                        : "Customers and operators",
-                },
-                {
-                  term: "Groups claim",
-                  detail: c.claimMap.groups ?? "Not mapped",
-                },
-                {
-                  term: "Other claims",
-                  detail: c.claimMap.claims?.join(", ") ?? "None",
-                },
-                {
-                  term: "Last sign-in",
-                  detail: c.lastSuccessAt ? (
-                    <Timestamp at={fromSeconds(c.lastSuccessAt)} />
-                  ) : (
-                    "None yet"
-                  ),
-                },
-                { term: "People", detail: String(c.links) },
-              ]}
-            />
-            <div className="mt-4">
-              <Switch
-                checked={c.status === "active"}
-                label="On"
-                description="Off hides it from the sign-in card. People already signed in stay signed in."
-                disabled={busy || Boolean(writeReason)}
-                onCheckedChange={(on) =>
-                  void run(
-                    () =>
+                <DescriptionList
+                  columns={2}
+                  items={[
+                    {
+                      term: "Issuer",
+                      detail: <span className="break-all">{c.issuer}</span>,
+                    },
+                    {
+                      term: "Client ID",
+                      detail: <span className="break-all">{c.clientId}</span>,
+                    },
+                    {
+                      term: "Client secret",
+                      detail: c.hasSecret ? "Sealed" : "None",
+                    },
+                    {
+                      term: "Who signs in",
+                      detail:
+                        c.audience === "customers"
+                          ? "Customers"
+                          : c.audience === "operators"
+                            ? "Operators"
+                            : "Customers and operators",
+                    },
+                    {
+                      term: "Groups claim",
+                      detail: c.claimMap.groups ?? "Not mapped",
+                    },
+                    {
+                      term: "Other claims",
+                      detail: c.claimMap.claims?.join(", ") ?? "None",
+                    },
+                    {
+                      term: "Last sign-in",
+                      detail: c.lastSuccessAt ? (
+                        <Timestamp at={fromSeconds(c.lastSuccessAt)} />
+                      ) : c.lastError ? (
+                        "Never succeeded"
+                      ) : (
+                        "None yet"
+                      ),
+                    },
+                    { term: "People", detail: String(c.links) },
+                  ]}
+                />
+              </Section>
+              <DomainsSection
+                c={c}
+                writeReason={writeReason}
+                act={act}
+                focusAdd={add === "domain"}
+                onEnforce={(d) => setConfirm({ enforce: d })}
+              />
+            </div>
+            <div className="min-w-0 space-y-6">
+              <Section title="Sign-in card">
+                <Switch
+                  checked={c.status === "active"}
+                  label="Show on the sign-in card"
+                  description="Off hides the button. People already signed in stay signed in."
+                  disabled={toggling || Boolean(writeReason)}
+                  onCheckedChange={(on) => {
+                    setToggling(true);
+                    setToggleError(null);
+                    act(() =>
                       mutate("updatePlatformConnection", c.id, {
                         status: on ? "active" : "disabled",
                       }),
-                    on ? "Turned on" : "Turned off",
-                  )
-                }
-              />
+                    )
+                      .then(() => toast.success(on ? "Shown" : "Hidden"))
+                      .catch(setToggleError)
+                      .finally(() => setToggling(false));
+                  }}
+                />
+                {toggleError ? (
+                  <p role="alert" className="mt-2 text-sm text-danger">
+                    {failureOf(toggleError)?.title}.{" "}
+                    {failureOf(toggleError)?.description}
+                  </p>
+                ) : null}
+              </Section>
+              <Section title="Register at the provider">
+                {redirectUri ? (
+                  <div className="space-y-1">
+                    <p className="text-xs text-fg-muted">Redirect URI</p>
+                    <div className="flex items-center gap-2">
+                      <code className="min-w-0 flex-1 break-all rounded-md bg-surface-sunken px-2 py-1 text-xs">
+                        {redirectUri}
+                      </code>
+                      <CopyButton value={redirectUri} label="redirect URI" />
+                    </div>
+                  </div>
+                ) : null}
+                <div className="mt-4">{test}</div>
+              </Section>
+              <Section title="Delete">
+                <p className="text-sm text-fg-muted">
+                  {deleteReason ?? "Removes the connection and its domains."}
+                </p>
+                <div className="mt-3">
+                  <Button
+                    variant="outline"
+                    disabledReason={writeReason ?? deleteReason}
+                    onClick={() => setConfirm("delete")}
+                  >
+                    Delete connection…
+                  </Button>
+                </div>
+              </Section>
             </div>
-          </Section>
-
-          <DomainsSection
-            c={c}
-            busy={busy}
-            writeReason={writeReason}
-            run={run}
-            onEnforce={(d) => setConfirm({ enforce: d })}
-          />
-
-          <Section title="Delete" tone="danger">
-            <p className="text-sm text-fg-muted">
-              {c.links > 0
-                ? `${c.links} ${c.links === 1 ? "person signs" : "people sign"} in through it. Turn it off instead.`
-                : "Removes the connection and its domains."}
-            </p>
-            <div className="mt-3">
-              <Button
-                variant="danger"
-                disabledReason={
-                  writeReason ??
-                  (c.source === "env"
-                    ? "The seeded connection can only be turned off."
-                    : c.links > 0
-                      ? "People sign in through it."
-                      : undefined)
-                }
-                onClick={() => setConfirm("delete")}
-              >
-                Delete connection
-              </Button>
-            </div>
-          </Section>
+          </div>
 
           <ConfirmDialog
             open={confirm === "delete"}
             onOpenChange={(o) => !o && setConfirm(null)}
+            intent="danger"
             title={`Delete ${c.label}?`}
             consequences={[
               "Its domains are released.",
@@ -263,16 +352,16 @@ export function ConnectionPage({ id }: { id: string }): React.ReactElement {
               value: c.label,
               label: "Type the name to confirm",
             }}
+            describeError={(e) => failureOf(e)!}
             onConfirm={async () => {
-              const ok = await run(() =>
-                mutate("deletePlatformConnection", c.id),
-              );
-              if (ok) window.location.hash = r.platformConnections();
+              await act(() => mutate("deletePlatformConnection", c.id));
+              window.location.hash = r.platformConnections();
             }}
           />
           <ConfirmDialog
             open={typeof confirm === "object" && confirm !== null}
             onOpenChange={(o) => !o && setConfirm(null)}
+            intent="caution"
             title={
               typeof confirm === "object" && confirm
                 ? confirm.enforce.enforce
@@ -285,6 +374,7 @@ export function ConnectionPage({ id }: { id: string }): React.ReactElement {
                 ? [
                     `Addresses at ${confirm.enforce.domain} can no longer get an email code or magic link.`,
                     "Passkeys and links already on an account still sign in.",
+                    "If the provider is down, those people cannot sign in until you stop requiring it.",
                   ]
                 : ["Addresses at this domain can use email codes again."]
             }
@@ -293,10 +383,11 @@ export function ConnectionPage({ id }: { id: string }): React.ReactElement {
                 ? "Stop requiring"
                 : "Require"
             }
+            describeError={(e) => failureOf(e)!}
             onConfirm={async () => {
               if (typeof confirm !== "object" || !confirm) return;
               const d = confirm.enforce;
-              await run(() =>
+              await act(() =>
                 mutate(
                   "setConnectionDomainEnforce",
                   c.id,
@@ -310,182 +401,10 @@ export function ConnectionPage({ id }: { id: string }): React.ReactElement {
             c={c}
             open={editing}
             onClose={() => setEditing(false)}
-            run={run}
+            act={act}
           />
         </>
       )}
-    </div>
-  );
-}
-
-function DomainsSection({
-  c,
-  busy,
-  writeReason,
-  run,
-  onEnforce,
-}: {
-  c: PlatformConnection;
-  busy: boolean;
-  writeReason: string | undefined;
-  run: (fn: () => Promise<unknown>, done?: string) => Promise<boolean>;
-  onEnforce: (d: ConnectionDomain) => void;
-}): React.ReactElement {
-  const [domain, setDomain] = React.useState("");
-  const [checked, setChecked] = React.useState<Record<string, string>>({});
-  const verifiedOnly = c.domains.some((d) => d.verified);
-  return (
-    <Section
-      title="Domains"
-      description="Addresses at a verified domain sign in through this connection. Each domain, subdomains included, is its own entry."
-    >
-      {c.domains.length === 0 ? (
-        <EmptyState
-          kind="first-run"
-          variant="inline"
-          title="No domains"
-          description="Add a domain, then publish the TXT record to prove you own it."
-        />
-      ) : (
-        <ul className="divide-y divide-border">
-          {c.domains.map((d) => (
-            <li key={d.domain} className="space-y-3 py-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="font-medium text-fg-strong">{d.domain}</span>
-                <StatusPill tone={d.verified ? "success" : "warning"} size="sm">
-                  {d.verified ? "Verified" : "Not verified"}
-                </StatusPill>
-              </div>
-              {d.verified ? null : (
-                <div className="space-y-1 text-sm">
-                  <p>Publish this TXT record, then check it.</p>
-                  <RecordLine label="Name" value={d.record.name} />
-                  <RecordLine label="Value" value={d.record.value} />
-                  {checked[d.domain] ? (
-                    <p role="status" className="text-fg-muted">
-                      {checked[d.domain]}
-                    </p>
-                  ) : null}
-                </div>
-              )}
-              <div className="flex flex-wrap items-center gap-2">
-                {d.verified ? (
-                  <Switch
-                    checked={d.enforce}
-                    label="Require this connection"
-                    description="No email codes or magic links for this domain."
-                    disabled={busy || Boolean(writeReason)}
-                    onCheckedChange={() => onEnforce(d)}
-                  />
-                ) : (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    loading={busy}
-                    disabledReason={writeReason}
-                    onClick={() =>
-                      void run(async () => {
-                        const res = await mutate(
-                          "verifyConnectionDomain",
-                          c.id,
-                          d.domain,
-                        );
-                        setChecked((s) => ({
-                          ...s,
-                          [d.domain]:
-                            res.verify === "verified"
-                              ? "Verified."
-                              : res.verify === "taken"
-                                ? "Another connection already owns this domain."
-                                : res.verify === "error"
-                                  ? "The DNS lookup failed. Try again."
-                                  : "Record not found yet. DNS can take a while.",
-                        }));
-                      })
-                    }
-                  >
-                    Check now
-                  </Button>
-                )}
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  disabledReason={writeReason}
-                  onClick={() =>
-                    void run(
-                      () => mutate("removeConnectionDomain", c.id, d.domain),
-                      "Released",
-                    )
-                  }
-                >
-                  Release
-                </Button>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-      <form
-        className="mt-4 flex flex-wrap items-end gap-2"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (!domain.trim()) return;
-          void run(() =>
-            mutate("addConnectionDomain", c.id, domain.trim()),
-          ).then((ok) => {
-            if (ok) setDomain("");
-          });
-        }}
-      >
-        <FormField
-          name="domain"
-          label="Add a domain"
-          className="min-w-[14rem] flex-1"
-          value={domain}
-          onChange={(v: string) => setDomain(v)}
-        >
-          {(f) => (
-            <Input
-              {...f}
-              placeholder="example.com"
-              autoComplete="off"
-              spellCheck={false}
-            />
-          )}
-        </FormField>
-        <Button
-          type="submit"
-          loading={busy}
-          disabledReason={
-            writeReason ?? (domain.trim() ? undefined : "Enter a domain")
-          }
-        >
-          Add domain
-        </Button>
-      </form>
-      {verifiedOnly ? null : (
-        <p className="mt-3 text-xs text-fg-muted">
-          Until a domain is verified, this connection only appears as a button.
-        </p>
-      )}
-    </Section>
-  );
-}
-
-function RecordLine({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}): React.ReactElement {
-  return (
-    <div className="flex items-center gap-2">
-      <span className="w-12 shrink-0 text-xs text-fg-muted">{label}</span>
-      <code className="min-w-0 flex-1 break-all rounded-md bg-surface-sunken px-2 py-1 text-xs">
-        {value}
-      </code>
-      <CopyButton value={value} label={label.toLowerCase()} />
     </div>
   );
 }
