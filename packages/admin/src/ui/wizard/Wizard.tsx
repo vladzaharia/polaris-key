@@ -141,6 +141,31 @@ export function Wizard({
     </div>
   );
 
+  const footRef = React.useRef<HTMLDivElement>(null);
+  // Tell the scroller how much of its bottom the pinned footer covers (styles.css reads it), or
+  // nothing while the footer is in the flow.
+  React.useEffect(() => {
+    const el = footRef.current;
+    if (isDrawer || !el) return;
+    const root = document.documentElement;
+    const measure = () => {
+      const pinned = getComputedStyle(el).position === "sticky";
+      if (pinned)
+        root.style.setProperty("--pk-wizard-foot", `${el.offsetHeight}px`);
+      else root.style.removeProperty("--pk-wizard-foot");
+    };
+    measure();
+    const ro =
+      typeof ResizeObserver === "function" ? new ResizeObserver(measure) : null;
+    ro?.observe(el);
+    window.addEventListener("resize", measure);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener("resize", measure);
+      root.style.removeProperty("--pk-wizard-foot");
+    };
+  }, [isDrawer]);
+
   const back = footer.onBack ? (
     <Button variant="outline" onClick={footer.onBack}>
       <ArrowLeft aria-hidden />
@@ -149,8 +174,15 @@ export function Wizard({
   ) : null;
   const footRow = (
     <>
-      {footer.backAt === "start" ? back : null}
-      {footer.later}
+      {footer.backAt === "start" && (back || footer.later) ? (
+        // Back and "do this later" stay together when the footer wraps.
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+          {back}
+          {footer.later}
+        </div>
+      ) : (
+        footer.later
+      )}
       {footer.onSkip ? (
         <Button
           variant="ghost"
@@ -181,7 +213,11 @@ export function Wizard({
   );
   const foot = (
     // Sticky: on a long step the primary stays on screen (the page scrolls inside `main`).
-    <div className="sticky bottom-0 z-10 -mb-6 flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-border bg-surface-page pb-4 pt-4">
+    <div
+      ref={footRef}
+      data-wizard-foot=""
+      className="pinfoot:sticky pinfoot:bottom-0 pinfoot:z-10 pinfoot:-mb-6 flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-border bg-surface-page pb-4 pt-4"
+    >
       {footRow}
     </div>
   );
