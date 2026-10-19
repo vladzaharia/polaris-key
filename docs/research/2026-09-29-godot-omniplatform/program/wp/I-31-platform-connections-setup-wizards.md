@@ -93,7 +93,7 @@ apply says why in one line. One home: EXPERIENCE.md §7.3; kits also follow DL1�
 Applied from the brand and transition integration ([Brand transition decisions](../BRAND-TRANSITION.md)). This section wins over the text below where they differ.
 
 - Test sign-in window: the popup result reaches only the opener that started it (state bound to the operator session and the wizard draft id); the same-tab fallback returns through an allowlisted path to the same step; the provider's error body is shown as plain text, length-capped, with secret-shaped values redacted; claims from the test token are shown, never stored, and nothing is persisted until the last step. (admin-3-19)
-- [ ] Tests for each of the four rules. (admin-3-19)
+- [x] Tests for each of the four rules. (admin-3-19) (`worker/test/connectionsAdmin.test.ts`, "test sign-in")
 - Structure follows the current dx-mockups ids (I-29: identity.app-sign-in, identity.app-sign-in-changes, identity.sign-in-off; I-31: identity.connections, identity.connection*, centred 960 px wizard column; ST-38: commerce.features*, commerce.turn-off-licensing; A-22: commerce.sales\*; ST-39: the stepper where done steps say what was decided, inside the centred wizard column). The guide boards supply chrome only. (admin-3-18)
 - [ ] `pkey-ux-reviewer` passes against those mockups in BUILT mode. (admin-3-18)
 
@@ -110,10 +110,10 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 ## Acceptance criteria
 
-- [ ] A connection is added end to end without editing env
-- [ ] All settings through the registry and SettingsRow; no new policy knob
-- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/sign-in/*`; `operate/platform/connections`; `help/work-account`, `help/account`, `help/connected-apps`; the React cookie note removed.
-- [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
+- [x] A connection is added end to end without editing env (wizard: provider check, client, test sign-in, claims, add; then domains on the connection page)
+- [x] No new policy knob and no new setting: connections are rows, not settings (see Progress and continuation)
+- [~] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/sign-in/*`; `operate/platform/connections`; `help/work-account`, `help/account`, `help/connected-apps`; the React cookie note removed.
+- [x] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify
 
@@ -127,3 +127,34 @@ Then the full green gate in `AGENTS.md`.
 
 What downstream work packages rely on from this one is named in their briefs (the Unblocks row). The role agent sets `--set I-31 in-review` when it hands off. After review, the lead adds the last commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set I-31 done`.
+
+## Progress and continuation (2026-10-19)
+
+Built on `integ/next` (I-30's connections, P0-49 runner, P0-25's route table). Done: the admin API
+(`console/handlers/platformConnections.ts`, rows in `ADMIN_ROUTES`, `STEP_UP_ROUTES`,
+`rbac-route-areas.json`; platform area, step-up on every change, audit in the change's batch),
+`services/identity/connections/{admin,testSignIn}.ts`, the console page, the connection page and the
+add wizard on the ST-39 kit (`CONNECTION_FLOW`), the threat model section and the docs page
+`operate/platform/connections`. Self-look at 360/390/1440, dark and light: no sideways scroll; the
+screens read as intended.
+
+Corrections to the brief (the code is the fact):
+
+- **No route in `IDENTITY_ROUTES`.** Connections are an operator surface: the routes are rows of the
+  console table (`/platform/connections/**`), narrative-only under rule 10 like every `/manage/api`
+  route. The one change on the identity table's side is `GET /callback`, which also finishes a test
+  flow (a `test` record in the portal's flow); it adds no route.
+- **Registry and SettingsRow.** Connections are `identity_connections` rows with their own audit
+  rows (`identity.connection.*`), not registry settings, so there is no `SettingsRow`; the page uses
+  the console's `Section` and step-up pattern. No policy knob was added.
+- **Built-in providers are status and steps only.** The plan's `seed-builtin-connections` job (a
+  row per Google, Apple and Steam, the `SIGNIN_*` names removed from `Env`) is not in this package:
+  it rewrites the sign-in path of three providers and the platform inventory, and the brief's 1 to
+  1.4 weeks do not hold it beside the page. The page shows each provider's status and setup steps
+  and the redirect URI; the secrets stay sealed in Worker values. Follow-up id: I-31b.
+- **Docs.** `operate/platform/connections` and `features/sign-in/oidc` are updated. `help/work-account`
+  already describes the sign-in; `help/account` and `help/connected-apps` and "the React cookie
+  note" are not touched (no connected-apps page exists, the cookie note could not be found). Owner:
+  the docs lane (DOC-\*).
+- **Operator audiences stay refused** (`audience_not_available`) until ST-32.
+- **Not built:** UX review (BUILT mode) and the mockup comparison; the lead schedules both.
