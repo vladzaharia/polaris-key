@@ -35,11 +35,10 @@ import { Skeleton } from "../../../../ui/Skeleton.js";
 import { useWriteGate } from "../../../access/useCan.js";
 import { useProduct } from "../../../data/hooks.js";
 import { qk } from "../../../data/queries.js";
-import { Link } from "../../../router.js";
+import { Link, navigate } from "../../../router.js";
 import { r } from "../../../routes.js";
 import { focusWhenReady } from "../../../shell/palette/focus.js";
 import { useSetup } from "../../../wizard/useSetup.js";
-import { CreateLicenseDialog } from "../../license/components/CreateLicenseDialog.js";
 import {
   FeatureCard,
   VerifiedOn,
@@ -104,7 +103,6 @@ export function IntegrationPage({
   const setup = useSetup(slug);
   const licenseGate = useWriteGate("license", slug);
   const [q, setQ] = useQueryParams(PARAMS);
-  const [licenseOpen, setLicenseOpen] = React.useState(false);
   useLoadingAnnouncement("integration", view.isPending);
 
   const sdk = isSdkId(q.sdk) ? q.sdk : defaultSdk(data);
@@ -310,7 +308,9 @@ export function IntegrationPage({
                       variant="outline"
                       size="sm"
                       disabledReason={licenseGate.disabledReason}
-                      onClick={() => setLicenseOpen(true)}
+                      onClick={() =>
+                        navigate(r.newLicense(slug), { replace: false })
+                      }
                     >
                       Create a test license
                     </Button>
@@ -396,11 +396,6 @@ export function IntegrationPage({
             : "Hides the Overview card. Search still finds this page."}
         </p>
       ) : null}
-      <CreateLicenseDialog
-        slug={slug}
-        open={licenseOpen}
-        onOpenChange={setLicenseOpen}
-      />
     </div>
   );
 }

@@ -58,6 +58,8 @@ export interface CopyButtonProps {
   size?: ButtonSize;
   /** Render a labelled outline button ("Copy") instead of an icon button. */
   showLabel?: boolean;
+  /** The visible words with `showLabel`, when "Copy" is too little ("Copy all"). */
+  text?: string;
   /** Called after each attempt with whether the clipboard accepted the value. */
   onCopy?: (ok: boolean) => void;
   className?: string;
@@ -72,6 +74,7 @@ export function CopyButton({
   label,
   size = "sm",
   showLabel = false,
+  text = "Copy",
   onCopy,
   className,
 }: CopyButtonProps): React.ReactElement {
@@ -106,7 +109,7 @@ export function CopyButton({
           {state === "copied" ? (
             <span className="pk-pop-in inline-block">Copied</span>
           ) : (
-            "Copy"
+            text
           )}
         </Button>
       ) : (

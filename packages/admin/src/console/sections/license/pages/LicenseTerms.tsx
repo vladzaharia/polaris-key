@@ -29,7 +29,7 @@ import { toast } from "../../../../ui/toast.js";
 import { useUnsavedChangesGuard } from "../../../../ui/useUnsavedChangesGuard.js";
 import { VersionInput } from "../../../../ui/VersionInput.js";
 import { SettingsSection } from "../../../templates/Settings.js";
-import { InlineFailure } from "../components/CreateLicenseDialog.js";
+import { InlineFailure } from "../components/InlineFailure.js";
 import {
   EffectivePolicy,
   MAX_OFFLINE_DAYS,

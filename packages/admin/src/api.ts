@@ -3933,8 +3933,9 @@ export interface LicenseDetail extends LicenseSummary {
 }
 
 export interface CreateLicenseBody {
-  name: string;
-  email: string;
+  /** LX-26: an `email` assigns the licence; without one it is floating. */
+  name?: string;
+  email?: string;
   /** Omitted: the tier's term (`policyExpiryDays` from now). `null`: no expiry. */
   expiresAt?: number | null;
   profile?: string;
@@ -3948,6 +3949,19 @@ export interface CreateLicenseBody {
   deviceLimit?: number;
   /** LX-27: `email: true` mails the first key to `email` in the same request. */
   delivery?: { email: boolean };
+}
+
+/** LX-28: `POST …/license/batches`: up to 500 floating licences under one label. */
+export interface CreateLicenseBatchBody {
+  label: string;
+  count: number;
+  tier: string;
+  deviceLimit?: number | null;
+  expiresAt?: number | null;
+  maxOfflineDays?: number;
+  channels?: string[];
+  minVersion?: string;
+  maxVersion?: string;
 }
 
 /** LX-27: how the key email went. */
@@ -5614,6 +5628,16 @@ const rawApi = {
       `${p(slug)}/license/batches${qs ? `?${qs}` : ""}`,
     );
   },
+  createLicenseBatch: (slug: string, body: CreateLicenseBatchBody) =>
+    call<{
+      batchId: string;
+      licenses: { licenseId: string; key: string }[];
+      batch: LicenseBatch;
+      expiresAt: number | null;
+    }>(`${p(slug)}/license/batches`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
   licenseBatch: (slug: string, id: string) =>
     call<LicenseBatch>(`${p(slug)}/license/batches/${enc(id)}`),
   /** Typed confirmation: `confirm` is the batch label. */

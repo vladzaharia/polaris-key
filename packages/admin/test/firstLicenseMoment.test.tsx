@@ -6,7 +6,7 @@ import { API, bootLicense, LICENSES } from "./licenseFixture.js";
 
 /**
  * The product's first license is a moment (EXPERIENCE.md §0.7, S-24 §8.5; MO-11): the New license
- * dialog's Done step carries the success check and sparks and a **Try it** to the SDK quick start,
+ * wizard's Done step carries the success check and sparks and a **Try it** to the SDK quick start,
  * once per product (a stored key), and only when the product had no license before. Through the
  * whole console, so the license list, the create and the invalidation are the real ones.
  */
@@ -17,13 +17,20 @@ afterEach(cleanup);
 const KEY = "pk-moment:first-license:djdl";
 
 async function createOne(name: string): Promise<HTMLElement> {
-  const dialog = await screen.findByRole("dialog", { name: "Create license" });
+  const dialog = await screen.findByRole("dialog", { name: "New license" });
+  const next = () =>
+    userEvent.click(within(dialog).getByRole("button", { name: "Continue" }));
+  await within(dialog).findByRole("radio", { name: /Pro/ });
+  await next();
   await userEvent.type(within(dialog).getByLabelText(/^Name/), name);
   await userEvent.type(within(dialog).getByLabelText(/^Email/), "a@x.io");
+  await next();
+  await next();
+  // Show it once: this screen holds the only copy, so everything waits for it.
   await userEvent.click(
-    within(dialog).getByRole("button", { name: "Continue to terms" }),
+    within(dialog).getByRole("radio", { name: /^Show it once/ }),
   );
-  await within(dialog).findByText("Effective policy");
+  await next();
   await userEvent.click(
     within(dialog).getByRole("button", { name: "Create license" }),
   );
@@ -35,7 +42,7 @@ async function openDialog(settled = true): Promise<void> {
   // The first read settles first: an empty list moves the primary into its empty state.
   if (settled) await screen.findByText(/No licenses yet|Ada Lovelace/);
   const buttons = await screen.findAllByRole("button", {
-    name: "Create license",
+    name: "New license",
   });
   await userEvent.click(buttons[0]!);
 }

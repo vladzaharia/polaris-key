@@ -148,7 +148,7 @@ export function LicensesFirstRun({
       description="Licenses appear when someone signs in under your Access rules, or when you create one."
       primaryAction={
         <Button iconStart={<Plus />} onClick={onCreate}>
-          Create license
+          New license
         </Button>
       }
       secondaryAction={

@@ -15,6 +15,8 @@ export interface SegmentedControlProps<V extends string = string> {
   value: V;
   onChange?: (value: V) => void;
   size?: "sm" | "md";
+  /** Labels wrap inside their segments instead of running off a narrow screen (200 % text). */
+  wrap?: boolean;
   id?: string;
   name?: string;
   disabled?: boolean;
@@ -129,6 +131,7 @@ export function SegmentedControl<V extends string = string>({
   value,
   onChange,
   size = "md",
+  wrap = false,
   id,
   name,
   disabled,
@@ -162,6 +165,7 @@ export function SegmentedControl<V extends string = string>({
       onValueChange={(v) => onChange?.(v as V)}
       className={cn(
         "group/seg relative inline-flex items-center gap-0.5 rounded-md border border-border bg-surface-sunken p-0.5",
+        wrap && "max-w-full",
         className,
       )}
       {...aria}
@@ -183,8 +187,10 @@ export function SegmentedControl<V extends string = string>({
           disabled={o.disabled}
           className={cn(
             // `relative` keeps every label above the thumb while it slides.
-            "relative inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 text-fg-muted",
-            size === "sm" ? "h-7 text-xs" : "h-8 text-sm",
+            "relative inline-flex items-center justify-center rounded-sm px-3 text-fg-muted",
+            wrap ? "min-h-8 min-w-0 py-1 text-center" : "whitespace-nowrap",
+            !wrap && (size === "sm" ? "h-7" : "h-8"),
+            size === "sm" ? "text-xs" : "text-sm",
             // The text colour eases; the background swaps at once, so the thumb hands over to the
             // checked item's own background without a dip.
             "transition-[color] duration-(--pk-duration-fast) ease-standard hover:text-fg-strong",

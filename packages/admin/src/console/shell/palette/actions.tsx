@@ -25,15 +25,6 @@ import type {
   PaletteSource,
 } from "./types.js";
 
-/** The License area's create dialog, loaded with its chunk only when the action runs. */
-const CreateLicenseDialog = React.lazy(() =>
-  import("../../sections/license/components/CreateLicenseDialog.js").then(
-    (m) => ({
-      default: m.CreateLicenseDialog,
-    }),
-  ),
-);
-
 /**
  * The DOM id of the control that turns `service` on. Update has its own switch inside Ship builds,
  * but it is disabled until Distribution is on and a disabled switch cannot take focus: until then
@@ -141,14 +132,12 @@ export function createActions(
     items.unshift({
       id: "action:create-license",
       group: "Actions",
-      label: "Create license…",
+      label: "New license…",
       detail: "License",
       keywords: "new issue add license key holder",
       icon: <Plus aria-hidden className="size-4" />,
-      perform: (api) =>
-        api.openPanel((props) => (
-          <CreateLicenseDialog slug={slug} {...props} />
-        )),
+      // The wizard is a drawer of the Licenses page, so the URL carries it (LX-29).
+      perform: (api) => api.navigate(r.newLicense(slug)),
     });
   }
   return items;
