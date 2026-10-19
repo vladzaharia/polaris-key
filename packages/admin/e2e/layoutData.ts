@@ -569,6 +569,27 @@ function keyEntryCeiling(over: Setting = {}): Setting {
     },
     version: 2,
     link: "bound",
+    fleet: {
+      kind: "bound",
+      total: 14,
+      count: 2,
+      products: [
+        {
+          product: "djdl",
+          name: "DJDL",
+          set: 50,
+          effective: 20,
+          inherited: false,
+        },
+        {
+          product: "northwind",
+          name: "Northwind",
+          set: 10,
+          effective: 20,
+          inherited: true,
+        },
+      ],
+    },
     confirm: { raise: "L2", lower: "L2" },
     ...over,
   };
@@ -595,6 +616,12 @@ function mediaQuota(over: Setting = {}): Setting {
     stored: null,
     version: 0,
     link: "default",
+    fleet: {
+      kind: "default",
+      total: 14,
+      inheriting: 12,
+      own: [{ product: "djdl", name: "DJDL", value: 8_589_934_592 }],
+    },
     confirm: { raise: "L2", lower: "L2" },
     ...over,
   };
@@ -1778,11 +1805,20 @@ export const DATA_ROUTES: Record<string, unknown> = {
   "/manage/api/platform/settings": view(),
   "/manage/api/platform/settings/identity.keyEntry.limit/reach": {
     kind: "bound",
+    direction: "lower",
     total: 14,
-    reaches: 2,
-    clamped: [
-      { product: "djdl", set: 50, effective: 20 },
-      { product: "northwind", set: 10, effective: 20 },
+    reaches: 4,
+    from: 20,
+    to: 10,
+    products: [
+      { product: "djdl", name: "DJDL", from: 20, to: 10, inherited: false },
+      {
+        product: "northwind",
+        name: "Northwind Broadcast Audio Workstation",
+        from: 10,
+        to: 5,
+        inherited: true,
+      },
     ],
   },
   "/manage/api/platform/override-migration": { state: MIGRATION_STATE },

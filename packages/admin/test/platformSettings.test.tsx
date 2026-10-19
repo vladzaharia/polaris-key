@@ -1710,6 +1710,7 @@ describe("Product defaults (ST-16)", () => {
     stored: null,
     version: 0,
     link: "bound",
+    fleet: { kind: "bound", total: 3, count: 0, products: [] },
     confirm: { raise: "L2", lower: "L2" },
     ...over,
   });
@@ -1732,23 +1733,56 @@ describe("Product defaults (ST-16)", () => {
     stored: null,
     version: 0,
     link: "default",
+    fleet: {
+      kind: "default",
+      total: 14,
+      inheriting: 12,
+      own: [{ product: "acme", name: "Acme", value: 8_589_934_592 }],
+    },
     confirm: { raise: "L2", lower: "L2" },
     ...over,
   });
-  const withDefaults = () =>
-    view({ settings: [lazyDeltas(), keyLimit(), quota()] });
+  const withDefaults = (k: Setting = keyLimit()) =>
+    view({ settings: [lazyDeltas(), k, quota()] });
   const REACH = "/manage/api/platform/settings/identity.keyEntry.limit/reach";
+  const lowerReach = {
+    kind: "bound",
+    direction: "lower",
+    total: 14,
+    reaches: 4,
+    from: 100,
+    to: 10,
+    products: [
+      { product: "acme", name: "Acme", from: 30, to: 10, inherited: false },
+      { product: "tide", name: "Tidewater", from: 10, to: 5, inherited: true },
+    ],
+  };
 
-  it("is a section with its rows, in the pills, and the other sections stay", async () => {
+  async function openKeyDialog(to: string) {
+    const defaults = await section("Product defaults");
+    const input = within(defaults).getByLabelText(/Key-entry limit ceiling/);
+    await userEvent.clear(input);
+    await userEvent.type(input, to);
+    const bar = await within(defaults).findByRole("region", {
+      name: "Unsaved changes in Key-entry limit ceiling",
+    });
+    await userEvent.click(within(bar).getByRole("button", { name: "Save…" }));
+    return screen.findByRole("alertdialog");
+  }
+
+  it("is a section with its rows and pills; a default says who uses it", async () => {
     boot("#/platform/settings", {
-      extra: routes({
-        "/manage/api/platform/settings": withDefaults(),
-        [REACH]: { kind: "bound", total: 3, reaches: 0, clamped: [] },
-      }),
+      extra: routes({ "/manage/api/platform/settings": withDefaults() }),
     });
     const defaults = await section("Product defaults");
     expect(within(defaults).getByText("Key-entry limit ceiling")).toBeTruthy();
-    expect(within(defaults).getByText("Default media quota")).toBeTruthy();
+    expect(
+      within(defaults).getByText(
+        "12 of 14 products use this · Acme sets 8 GiB",
+      ),
+    ).toBeTruthy();
+    expect(within(defaults).getByText("per license")).toBeTruthy();
+    expect(within(defaults).getByText("0 to 1,024 GiB.")).toBeTruthy();
     const pills = screen.getByRole("navigation", { name: "Jump to section" });
     expect(
       within(pills)
@@ -1757,74 +1791,194 @@ describe("Product defaults (ST-16)", () => {
     ).toEqual(expect.arrayContaining(["Product defaults", "Jobs"]));
   });
 
-  it("a changed default says how many products it reaches and needs L2 before it saves", async () => {
+  it("the dialog leads with the count and names, and the button carries the count (L2)", async () => {
     const log = boot("#/platform/settings", {
       extra: routes({
         "/manage/api/platform/settings": writable(
-          () => quota({ value: 1_073_741_824, version: 1 }),
-          withDefaults,
+          () => keyLimit({ value: 10, version: 1 }),
+          () => withDefaults(),
         ),
-        "/manage/api/platform/settings/assets.quota.mediaBytes/reach": {
-          kind: "default",
-          total: 14,
-          reaches: 12,
-          clamped: [],
-        },
+        [REACH]: lowerReach,
       }),
     });
-    const defaults = await section("Product defaults");
-    const input = within(defaults).getByLabelText(/Default media quota.*MiB/);
-    await userEvent.clear(input);
-    await userEvent.type(input, "1024");
-    const bar = await within(defaults).findByRole("region", {
-      name: "Unsaved changes in Default media quota",
-    });
-    await userEvent.click(within(bar).getByRole("button", { name: "Save…" }));
-    const dialog = await screen.findByRole("alertdialog");
+    const dialog = await openKeyDialog("10");
     expect(
-      await within(dialog).findByText(/Reaches 12 of 14 products/),
+      await within(dialog).findByText("Lowers 4 of 14 products to 10:"),
+    ).toBeTruthy();
+    expect(
+      within(dialog).getByText("Tidewater").closest("li")!.textContent,
+    ).toMatch(/10 → 5 \(default\)/);
+    expect(
+      within(dialog).getByText("Each keeps the value it set."),
     ).toBeTruthy();
     expect(writes(log, "PATCH")).toHaveLength(0);
     await userEvent.click(
-      within(dialog).getByRole("button", { name: /^Save/ }),
+      within(dialog).getByRole("button", { name: "Lower 4 products to 10" }),
     );
     await waitFor(() => expect(writes(log, "PATCH")).toHaveLength(1));
-    // L2: the write names the key.
     expect(JSON.parse(writes(log, "PATCH")[0]!.body!)).toEqual({
-      value: 1_073_741_824,
+      value: 10,
       expectedVersion: 0,
-      confirm: "assets.quota.mediaBytes",
+      confirm: "identity.keyEntry.limit",
     });
   });
 
-  it("a clamped product shows what it set and what is in effect", async () => {
+  it("a raise says which products it releases, not that it reaches nothing", async () => {
     boot("#/platform/settings", {
       extra: routes({
-        "/manage/api/platform/settings": withDefaults(),
+        "/manage/api/platform/settings": withDefaults(
+          keyLimit({ value: 20, version: 2, source: "runtime" }),
+        ),
         [REACH]: {
           kind: "bound",
-          total: 3,
-          reaches: 2,
-          clamped: [
-            { product: "alpha", set: 50, effective: 20 },
-            { product: "gamma", set: 10, effective: 20 },
+          direction: "raise",
+          total: 14,
+          reaches: 3,
+          from: 20,
+          to: 60,
+          products: [
+            {
+              product: "djdl",
+              name: "DJDL",
+              from: 20,
+              to: 50,
+              inherited: false,
+            },
           ],
         },
       }),
     });
+    const dialog = await openKeyDialog("60");
+    expect(
+      await within(dialog).findByText(
+        "Raises 3 of 14 products to their own values:",
+      ),
+    ).toBeTruthy();
+    expect(
+      within(dialog).getByRole("button", {
+        name: "Raise the ceiling for 3 products",
+      }),
+    ).toBeTruthy();
+  });
+
+  it("holds Confirm until the count resolves, and Try again retries a failed count", async () => {
+    let fail = true;
+    boot("#/platform/settings", {
+      extra: routes({
+        "/manage/api/platform/settings": withDefaults(),
+        [REACH]: () =>
+          fail
+            ? new Response(JSON.stringify({ error: { code: "internal" } }), {
+                status: 500,
+                headers: { "content-type": "application/json" },
+              })
+            : lowerReach,
+      }),
+    });
+    const dialog = await openKeyDialog("10");
+    expect(
+      await within(dialog).findByText(
+        "Couldn't count the products this reaches.",
+      ),
+    ).toBeTruthy();
+    const confirm = within(dialog).getByRole("button", { name: /^Save/ });
+    expect((confirm as HTMLButtonElement).disabled).toBe(true);
+    fail = false;
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Try again" }),
+    );
+    expect(
+      await within(dialog).findByText("Lowers 4 of 14 products to 10:"),
+    ).toBeTruthy();
+    expect(
+      (
+        within(dialog).getByRole("button", {
+          name: "Lower 4 products to 10",
+        }) as HTMLButtonElement
+      ).disabled,
+    ).toBe(false);
+  });
+
+  it("a revert shows its count too", async () => {
+    boot("#/platform/settings", {
+      extra: routes({
+        "/manage/api/platform/settings": withDefaults(
+          keyLimit({
+            value: 20,
+            version: 2,
+            source: "runtime",
+            stored: { value: 20, valid: true, updatedAt: 1, updatedBy: "ada" },
+          }),
+        ),
+        [REACH]: {
+          kind: "bound",
+          direction: "raise",
+          total: 14,
+          reaches: 3,
+          from: 20,
+          to: 100,
+          products: [],
+        },
+      }),
+    });
+    const defaults = await section("Product defaults");
+    await userEvent.click(
+      within(defaults).getByRole("button", {
+        name: "Revert key-entry limit ceiling…",
+      }),
+    );
+    const dialog = await screen.findByRole("alertdialog");
+    expect(
+      await within(dialog).findByText(/Raises 3 of 14 products/),
+    ).toBeTruthy();
+  });
+
+  it("a clamped product shows what it set and what is in effect, from the list", async () => {
+    boot("#/platform/settings", {
+      extra: routes({
+        "/manage/api/platform/settings": withDefaults(
+          keyLimit({
+            value: 20,
+            fleet: {
+              kind: "bound",
+              total: 3,
+              count: 2,
+              products: [
+                {
+                  product: "alpha",
+                  name: "Alpha",
+                  set: 50,
+                  effective: 20,
+                  inherited: false,
+                },
+                {
+                  product: "gamma",
+                  name: "Gamma",
+                  set: 10,
+                  effective: 20,
+                  inherited: true,
+                },
+              ],
+            },
+          }),
+        ),
+      }),
+    });
     const defaults = await section("Product defaults");
     expect(
-      await within(defaults).findByText(/Clamped by Platform: 2 of 3 products/),
+      within(defaults).getByText("Clamped by Platform: 2 of 3 products"),
     ).toBeTruthy();
-    expect(within(defaults).getByText(/set 50, in effect 20/)).toBeTruthy();
+    expect(
+      within(defaults).getByText("Alpha").closest("li")!.textContent,
+    ).toMatch(/set 50, in effect 20/);
+    expect(
+      within(defaults).getByText("Gamma").closest("li")!.textContent,
+    ).toMatch(/default 10, in effect 20/);
   });
 
   it("a viewer sees the values and no editing", async () => {
     boot("#/platform/settings", {
-      extra: routes({
-        "/manage/api/platform/settings": withDefaults(),
-        [REACH]: { kind: "bound", total: 3, reaches: 0, clamped: [] },
-      }),
+      extra: routes({ "/manage/api/platform/settings": withDefaults() }),
       me: {
         platformAdmin: false,
         permissions: {
@@ -1837,5 +1991,36 @@ describe("Product defaults (ST-16)", () => {
     const defaults = await section("Product defaults");
     expect(within(defaults).queryByRole("spinbutton")).toBeNull();
     expect(within(defaults).queryByRole("textbox")).toBeNull();
+  });
+
+  it("focus returns to the field after a save that unmounts the Save bar", async () => {
+    let saved = false;
+    boot("#/platform/settings", {
+      extra: routes({
+        "/manage/api/platform/settings": writable(
+          () => {
+            saved = true;
+            return keyLimit({ value: 10, version: 1 });
+          },
+          () =>
+            withDefaults(
+              saved ? keyLimit({ value: 10, version: 1 }) : keyLimit(),
+            ),
+        ),
+        [REACH]: lowerReach,
+      }),
+    });
+    const dialog = await openKeyDialog("10");
+    await userEvent.click(
+      await within(dialog).findByRole("button", {
+        name: "Lower 4 products to 10",
+      }),
+    );
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    await waitFor(() =>
+      expect(document.activeElement?.id).toBe(
+        "platform-setting-identity.keyEntry.limit",
+      ),
+    );
   });
 });

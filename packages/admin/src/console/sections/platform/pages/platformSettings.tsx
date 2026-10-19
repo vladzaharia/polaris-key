@@ -318,7 +318,7 @@ export function PlatformSettingsPage(): React.ReactElement {
         <SettingsSection
           id="platform-defaults"
           title="Product defaults"
-          description="What a product starts from when it sets none of its own. A change reaches every product that inherits it."
+          description="Defaults products inherit, and ceilings they can't exceed."
         >
           {rows("platform-defaults")}
         </SettingsSection>

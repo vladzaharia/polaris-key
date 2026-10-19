@@ -312,6 +312,8 @@ interface PlatformSettingBase {
   scripts: string[];
   /** ST-16: `default`: products that set none inherit it; `bound`: it clamps products. */
   link?: "default" | "bound" | null;
+  /** ST-16: what the setting reaches at rest (linked rows only). */
+  fleet?: PlatformFleet;
   /** `ceiling`: a deploy-time `off` is a hard off no runtime value can override. */
   precedence: "runtime" | "ceiling";
   /** The raw `[vars]` string, `null` when unset. */
@@ -395,17 +397,52 @@ export interface PlatformDeployValue {
   value: string | string[] | null;
 }
 
+/** One product a change reaches: its effective value before and after. */
+export interface PlatformReachProduct {
+  product: string;
+  name: string;
+  from: unknown;
+  to: unknown;
+  /** The product sets no value of its own. */
+  inherited: boolean;
+}
+
 /**
- * `GET /manage/api/platform/settings/:key/reach` (ST-16, worker `console/handlers/platformReach.ts`):
- * how many products a change to a product default or bound reaches. A `bound` also lists the
- * products it clamps, each with the value it set and the one in effect.
+ * `GET /manage/api/platform/settings/:key/reach?value=` (ST-16, worker
+ * `console/handlers/platformReach.ts`): the products whose effective value changes when the
+ * platform value goes from `from` to `to`.
  */
 export interface PlatformReach {
   kind: "default" | "bound";
+  direction: "lower" | "raise" | "none";
   total: number;
   reaches: number;
-  clamped: { product: string; set: unknown; effective: unknown }[];
+  from: unknown;
+  to: unknown;
+  /** Up to five. */
+  products: PlatformReachProduct[];
 }
+
+/** What a linked row reaches at rest, sent with the settings list (so never stale). */
+export type PlatformFleet =
+  | {
+      kind: "bound";
+      total: number;
+      count: number;
+      products: {
+        product: string;
+        name: string;
+        set: unknown;
+        effective: unknown;
+        inherited: boolean;
+      }[];
+    }
+  | {
+      kind: "default";
+      total: number;
+      inheriting: number;
+      own: { product: string; name: string; value: unknown }[];
+    };
 
 /** `GET /manage/api/platform/settings` (worker `console/handlers/platformSettings.ts`). */
 export interface PlatformSettingsView {
