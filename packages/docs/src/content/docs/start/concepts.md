@@ -1,11 +1,11 @@
 ---
 title: "Concepts and glossary"
-description: "The words the console, the portal and these docs use, the identifiers they keep in code and on the wire, and the nouns behind documents, devices and keys."
+description: "The words the console, Polaris Locker and these docs use, the identifiers they keep in code and on the wire, and the nouns behind documents, devices and keys."
 type: "concept"
-lastReviewed: "2026-10-10"
+lastReviewed: "2026-10-19"
 ---
 
-This is the canonical glossary. The console, the portal and the docs use one word per concept and one concept per word, spelled in US English and sentence case. A word in the first column is what a reader sees. The identifier in the third column is what code, manifests and the wire call it. Identifiers keep their names when a word changes.
+This is the canonical glossary. The console, Polaris Locker and the docs use one word per concept and one concept per word, spelled in US English and sentence case. A word in the first column is what a reader sees. The identifier in the third column is what code, manifests and the wire call it. Identifiers keep their names when a word changes.
 
 ## UI words and the identifiers they keep
 
@@ -23,7 +23,7 @@ This is the canonical glossary. The console, the portal and the docs use one wor
 | **License in an account** | A license whose holder is an account                                                                                                                 | list filter `inAccount`                                                           | owned, bound                    |
 | **Waiting license**       | A license assigned to an email no account has verified yet. An account that verifies the address takes it in                                         | list filter `waiting`                                                             | pending holder                  |
 | **Floating license**      | A license with no holder: whoever has its key activates devices                                                                                      | list filter `floating`                                                            | unbound                         |
-| **Automatic grant**       | The portal's label for a license the access policy issued. The only use of "grant"                                                                   | origin `oidc`                                                                     | "From signing in"               |
+| **Automatic grant**       | Locker's label for a license the access policy issued. The only use of "grant"                                                                       | origin `oidc`                                                                     | "From signing in"               |
 | **Tier**                  | A named license template                                                                                                                             | `tiers`, `tier_id`                                                                | plan                            |
 | **Add-on**                | A sub-license: an in-app purchase, DLC, feature pack, seat pack or consumable                                                                        | `grants`, `addon_id`                                                              | grant, store mapping            |
 | **Entitlement**           | A named right a device gets from its license                                                                                                         | catalog `flag` entries                                                            | flag                            |
@@ -44,7 +44,7 @@ This is the canonical glossary. The console, the portal and the docs use one wor
 | UI word                            | What it means                                                                                                       | Identifier (kept)                       | Not in the UI                   |
 | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------- | --------------------------------------- | ------------------------------- |
 | **Channel** (distribution channel) | A place builds reach customers: a store, a package manager, a sideload source, the web, Polaris Key's own downloads | `outlet`; `direct` is Polaris Key's own | "outlet"                        |
-| **Storefront**                     | The selling side of a channel: App Store, Google Play, Steam, Microsoft Store, itch.io, Polaris Key                 | store adapters                          | storefront for a delivery place |
+| **Storefront**                     | The selling side of a channel: App Store, Google Play, Steam, Microsoft Store, itch.io, Polaris Locker              | store adapters                          | storefront for a delivery place |
 | **Offer**, **SKU**                 | What is sold; its id on one storefront                                                                              | `dist_store_products`                   | store product mapping           |
 | **Install source**                 | A catalog a customer adds: AltStore, F-Droid, Obtainium, a Scoop bucket, Flathub                                    | storefront feeds                        | storefront feed                 |
 | **Release track**                  | `stable`, `beta`, `dev` and your own lanes a release joins                                                          | `channel`, `X-PKey-Channel`             | update channel                  |
@@ -53,13 +53,14 @@ This is the canonical glossary. The console, the portal and the docs use one wor
 
 ### Sign-in, accounts and the console
 
-| UI word                        | What it means                                                                      | Identifier (kept)                             | Not in the UI   |
-| ------------------------------ | ---------------------------------------------------------------------------------- | --------------------------------------------- | --------------- |
-| **Connection**                 | An upstream sign-in provider, configured once                                      | `PLATFORM_OIDC_*`, `identity.oidc`            | custom issuer   |
-| **Sign-in surface**            | A place a person signs in: the web card, a native redirect, a device code, a store | `/api/signin/*`, `/<product>/identity/auth/*` | sign-in channel |
-| **Screen name**                | The account's public name                                                          | `accounts.display_name`                       | "Your name"     |
-| **Member**, **Role**, **Area** | A console user; a built-in permission set; a stable permission id                  | area ids on admin routes                      | admin group     |
-| **Service token**              | A machine credential                                                               | `pkeyci_`                                     | product token   |
+| UI word                             | What it means                                                                                                                                                         | Identifier (kept)                                                                    | Not in the UI               |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ | --------------------------- |
+| **Polaris Locker**, then **Locker** | The customer site: Library, Discover, Account, the sign-in card, the device page. The Locker name reaches customers when the Worker's `customer.host` switch turns on | `portal*` routes and handlers, `portal_*` tables, `accountPortal`, `CUSTOMER_ORIGIN` | "customer portal", "portal" |
+| **Connection**                      | An upstream sign-in provider, configured once                                                                                                                         | `PLATFORM_OIDC_*`, `identity.oidc`                                                   | custom issuer               |
+| **Sign-in surface**                 | A place a person signs in: the web card, a native redirect, a device code, a store                                                                                    | `/api/signin/*`, `/<product>/identity/auth/*`                                        | sign-in channel             |
+| **Screen name**                     | The account's public name                                                                                                                                             | `accounts.display_name`                                                              | "Your name"                 |
+| **Member**, **Role**, **Area**      | A console user; a built-in permission set; a stable permission id                                                                                                     | area ids on admin routes                                                             | admin group                 |
+| **Service token**                   | A machine credential                                                                                                                                                  | `pkeyci_`                                                                            | product token               |
 
 ### One meaning each
 
@@ -72,16 +73,17 @@ This is the canonical glossary. The console, the portal and the docs use one wor
 
 ### Console copy rules
 
-Four words leave every console string, because the UI names each of those things with another word:
+Six words leave every console string, because the UI names each of those things with another word:
 
-| Leaves the UI     | The UI says                                                                                   |
-| ----------------- | --------------------------------------------------------------------------------------------- |
-| "outlet"          | **Channel**                                                                                   |
-| "storefront feed" | **Install source**                                                                            |
-| "grant"           | **Add-on**, or a plain verb (give, add). The portal's **Automatic grant** is the one kept use |
-| "capability"      | The feature, the switch, or what the channel allows                                           |
+| Leaves the UI               | The UI says                                                                               |
+| --------------------------- | ----------------------------------------------------------------------------------------- |
+| "outlet"                    | **Channel**                                                                               |
+| "storefront feed"           | **Install source**                                                                        |
+| "grant"                     | **Add-on**, or a plain verb (give, add). Locker's **Automatic grant** is the one kept use |
+| "capability"                | The feature, the switch, or what the channel allows                                       |
+| "portal", "customer portal" | **Polaris Locker**, then **Locker**. Developers see it in the console and docs too        |
 
-The identifiers keep them (`outlet`, `dist_outlets`, `grants`, `outletCapabilities`). A code span in copy is an identifier, not a word.
+The identifiers keep them (`outlet`, `dist_outlets`, `grants`, `outletCapabilities`, `portal*`). A code span in copy is an identifier, not a word.
 
 ## Core nouns
 
@@ -94,7 +96,7 @@ The identifiers keep them (`outlet`, `dist_outlets`, `grants`, `outletCapabiliti
 - **keyless activation**: activation with no key, which auto-issues a license under the product's access policy (identifier `enroll`). **Activation** with a key redeems a `pkey_…` key.
 - **origin**: how a license came to exist: `admin`, `oidc` (minted at sign-in) or `enroll`.
 - **re-licensing**: changing a license's tier. Running clients pick up the change at their next license-document refresh. A downgrade below the active device count keeps existing devices and refuses new activations until the count drops.
-- **account**: one person across every product, with a primary verified email and its sign-in methods. Developers see a **pairwise subject** (`ps_…`) instead of the account id.
+- **account**: one person across every product, with a primary verified email and its sign-in methods. Customers know it as their Polaris Locker account. Developers see a **pairwise subject** (`ps_…`) instead of the account id.
 - **fingerprint**: per-component hashes a device reports about its hardware. Raw values are hashed on the device and never sent.
 
 ## Config model
