@@ -169,6 +169,16 @@ export async function startPortal(): Promise<PortalHarness> {
     await ctx.addInitScript((t) => {
       window.localStorage.setItem("pk-admin-theme", t);
       (window as unknown as { __v: string[] }).__v = [];
+      // A toast stays up for the screenshot: `clock.setFixedTime` leaves timers real, so under
+      // load the 4 s / 8 s auto-dismiss (src/ui/toast.tsx TOAST_DURATIONS) could fire first.
+      // Only those two delays are held back; the product's durations are untouched.
+      const realSetTimeout = window.setTimeout.bind(window);
+      window.setTimeout = ((fn: TimerHandler, ms?: number, ...a: unknown[]) =>
+        realSetTimeout(
+          fn,
+          ms === 4000 || ms === 8000 ? 2147483647 : ms,
+          ...a,
+        )) as typeof window.setTimeout;
       document.addEventListener("securitypolicyviolation", (e) =>
         (window as unknown as { __v: string[] }).__v.push(
           `${e.violatedDirective} ${e.blockedURI} ${e.sample}`,
