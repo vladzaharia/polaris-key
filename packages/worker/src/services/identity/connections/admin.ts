@@ -357,11 +357,15 @@ function clean(input: ConnectionInput, creating: boolean): Clean | Refusal {
   if (input.jwksUri !== undefined) {
     if (input.jwksUri === null || input.jwksUri === "") out.jwksUri = null;
     else if (typeof input.jwksUri === "string") {
-      const host = out.issuer ?? undefined;
-      void host;
+      let origin = "";
+      try {
+        origin = new URL(input.jwksUri.trim()).origin;
+      } catch {
+        // Not a URL: refused below.
+      }
       if (
-        !input.jwksUri.startsWith("https://") ||
-        !isSafeIssuerUrl(new URL(input.jwksUri).origin)
+        !input.jwksUri.trim().startsWith("https://") ||
+        !isSafeIssuerUrl(origin)
       ) {
         return refuse(
           422,

@@ -62,6 +62,15 @@ const BUILTIN_LABELS = {
   steam: "Steam",
 } as const;
 
+/** A path segment as text; a malformed escape is a name no domain has. */
+const decoded = (s: string): string => {
+  try {
+    return decodeURIComponent(s);
+  } catch {
+    return "";
+  }
+};
+
 const refusal = (r: ConnectionRefusal): Response =>
   err(r.status, r.code, r.message, r.fields ? { fields: r.fields } : undefined);
 
@@ -214,7 +223,7 @@ async function route(c: AdminCtx): Promise<Response> {
         return tooMany();
       action = { op: "verify", domain: body.domain };
     } else if (rest.length === 3 && method === "DELETE") {
-      action = { op: "remove", domain: decodeURIComponent(d!) };
+      action = { op: "remove", domain: decoded(d!) };
     } else if (rest.length === 3 && method === "PATCH") {
       const body = await readBody(req);
       if (typeof body.enforce !== "boolean") {
@@ -224,7 +233,7 @@ async function route(c: AdminCtx): Promise<Response> {
       }
       action = {
         op: "enforce",
-        domain: decodeURIComponent(d!),
+        domain: decoded(d!),
         enforce: body.enforce,
       };
     }
