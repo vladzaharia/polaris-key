@@ -30,6 +30,9 @@ import { formatPlatformValue } from "./platformSettingRow.js";
 const products = (n: number): string => (n === 1 ? "product" : "products");
 const nameOf = (p: { name: string; product: string }): string =>
   p.name || p.product;
+/** A name inside plain text, isolated so an RTL name cannot reorder the numbers around it. */
+const isolated = (p: { name: string; product: string }): string =>
+  `\u2068${nameOf(p)}\u2069`;
 
 /** "all 14 products", "the product", "3 of 14 products". */
 function countPhrase(n: number, total: number): string {
@@ -43,13 +46,19 @@ export function reachLead(setting: PlatformSetting, r: PlatformReach): string {
   const verb = r.direction === "raise" ? "Raises" : "Lowers";
   const target =
     r.kind === "bound" && r.direction === "raise"
-      ? "their own values"
+      ? r.reaches === 1
+        ? "its own value"
+        : "their own values"
       : formatPlatformValue(setting, r.to);
   return `${verb} ${countPhrase(r.reaches, r.total)} to ${target}`;
 }
 
 /** The button: "Lower 4 products to 10", "Raise the ceiling for 3 products". */
-export function reachLabel(setting: PlatformSetting, r: PlatformReach): string {
+export function reachLabel(
+  setting: PlatformSetting,
+  r: PlatformReach,
+  revert = false,
+): string {
   const n = r.reaches;
   const who =
     r.total === 1
@@ -57,6 +66,11 @@ export function reachLabel(setting: PlatformSetting, r: PlatformReach): string {
       : n === r.total
         ? `all ${n} products`
         : `${n} ${products(n)}`;
+  if (revert) {
+    return r.kind === "bound" && r.direction === "raise"
+      ? `Revert: raise ${who}`
+      : `Revert: ${r.direction} ${who} to ${formatPlatformValue(setting, r.to)}`;
+  }
   if (r.kind === "bound" && r.direction === "raise")
     return `Raise the ceiling for ${who}`;
   return `${r.direction === "raise" ? "Raise" : "Lower"} ${who} to ${formatPlatformValue(setting, r.to)}`;
@@ -73,10 +87,12 @@ function ProductList({
     <ul className="mt-1 space-y-0.5 text-fg">
       {r.products.map((p) => (
         <li key={p.product} className="[overflow-wrap:anywhere]">
-          <span className="font-medium text-fg-strong">{nameOf(p)}</span>:{" "}
-          {formatPlatformValue(setting, p.from)} →{" "}
-          {formatPlatformValue(setting, p.to)}
-          {p.inherited ? " (default)" : ""}
+          <bdi className="font-medium text-fg-strong">{nameOf(p)}</bdi>:{" "}
+          <span className="whitespace-nowrap">
+            {formatPlatformValue(setting, p.from)} →{" "}
+            {formatPlatformValue(setting, p.to)}
+          </span>
+          {p.inherited && r.kind === "bound" ? " (default)" : ""}
         </li>
       ))}
       {r.reaches > r.products.length ? (
@@ -97,6 +113,9 @@ export function useReachPlan(
   tail: string,
 ): ConfirmPlan | undefined {
   const value = typeof target?.value === "number" ? target.value : undefined;
+  // Try again keeps its frame: a refetch with no data resets the query to pending.
+  const [retrying, setRetrying] = React.useState(false);
+  const [retried, setRetried] = React.useState(false);
   const q = useQuery({
     queryKey: qk.platformReach(setting.key, value),
     queryFn: () => api.platformSettingReach(setting.key, value),
@@ -105,37 +124,51 @@ export function useReachPlan(
     staleTime: 0,
     retry: false,
   });
+  React.useEffect(() => {
+    if (!q.isFetching) setRetrying(false);
+  }, [q.isFetching]);
   if (target === null || !setting.link) return undefined;
   const r = q.data;
+  const line = `${tail} Takes effect within ${propagationSeconds} seconds.`;
   const frame = (children: React.ReactNode): React.ReactNode => (
-    <div role="status" aria-live="polite" className="text-sm text-fg">
+    <div role="status" aria-live="polite" className="min-h-16 text-sm text-fg">
       {children}
     </div>
   );
   if (!r) {
-    return q.isError
+    return q.isError || retrying
       ? {
           hold: true,
+          consequences: [line],
           summary: frame(
             <>
               <p className="font-medium text-fg-strong">
-                Couldn&apos;t count the products this reaches.
+                Couldn&apos;t count the products this reaches, so you can&apos;t
+                save yet.
               </p>
               <Button
                 size="sm"
                 variant="outline"
                 className="mt-2"
                 loading={q.isFetching}
-                onClick={() => void q.refetch()}
+                busyFocusable
+                onClick={() => {
+                  setRetrying(true);
+                  setRetried(true);
+                  void q.refetch();
+                }}
               >
                 Try again
               </Button>
             </>,
           ),
         }
-      : { hold: true, summary: frame(<p>Counting products…</p>) };
+      : {
+          hold: true,
+          consequences: [line],
+          summary: frame(<p>Counting products…</p>),
+        };
   }
-  const line = `${tail} Takes effect within ${propagationSeconds} seconds.`;
   if (r.reaches === 0)
     return {
       summary: frame(
@@ -145,26 +178,56 @@ export function useReachPlan(
       ),
       consequences: [line],
     };
-  const label = reachLabel(setting, r);
   const others =
     r.kind === "default" && r.reaches < r.total
       ? `The ${r.total - r.reaches === 1 ? "other keeps its" : `other ${r.total - r.reaches} keep their`} own value.`
-      : r.kind === "bound" && r.direction === "lower"
+      : r.kind === "bound" &&
+          r.direction === "lower" &&
+          r.reaches > 1 &&
+          r.products.every((p) => !p.inherited)
         ? "Each keeps the value it set."
         : null;
+  // A lowered quota refuses new files to a product already over it.
+  const lines =
+    r.direction === "lower" && setting.key.startsWith("assets.quota.")
+      ? [
+          `${tail} A product over ${formatPlatformValue(setting, r.to)} can't add new ones until it's under. Takes effect within ${propagationSeconds} seconds.`,
+        ]
+      : [line];
   return {
-    confirmLabel: target.revert
-      ? `Revert and ${label.charAt(0).toLowerCase()}${label.slice(1)}`
-      : label,
+    confirmLabel: reachLabel(setting, r, target.revert),
     summary: frame(
       <>
-        <p className="font-medium text-fg-strong">{reachLead(setting, r)}:</p>
+        <Lead focus={retried}>{reachLead(setting, r)}:</Lead>
         <ProductList setting={setting} r={r} />
         {others ? <p className="mt-2 text-fg-muted">{others}</p> : null}
       </>,
     ),
-    consequences: [line],
+    consequences: lines,
   };
+}
+
+/** The lead line; after Try again it takes the focus the button leaves. */
+function Lead({
+  focus,
+  children,
+}: {
+  focus: boolean;
+  children: React.ReactNode;
+}): React.ReactElement {
+  const ref = React.useRef<HTMLParagraphElement>(null);
+  React.useEffect(() => {
+    if (focus) ref.current?.focus();
+  }, [focus]);
+  return (
+    <p
+      ref={ref}
+      tabIndex={-1}
+      className="font-medium text-fg-strong focus-visible:outline-hidden"
+    >
+      {children}
+    </p>
+  );
 }
 
 /** The row's standing note: the products a ceiling clamps today. Nothing when none. */
@@ -183,7 +246,7 @@ export function FleetNote({
       <ul className="space-y-0.5">
         {f.products.map((c) => (
           <li key={c.product} className="[overflow-wrap:anywhere]">
-            <span className="font-medium text-fg-strong">{nameOf(c)}</span>{" "}
+            <bdi className="font-medium text-fg-strong">{nameOf(c)}</bdi>{" "}
             {c.inherited ? "default" : "set"}{" "}
             {formatPlatformValue(setting, c.set)}, in effect{" "}
             {formatPlatformValue(setting, c.effective)}
@@ -202,11 +265,13 @@ export function fleetMeta(setting: PlatformSetting): string | undefined {
   const f: PlatformFleet | undefined = setting.fleet;
   if (!f || f.kind !== "default" || f.total === 0) return undefined;
   const use =
-    f.inheriting === f.total && f.total === 1
-      ? "The product uses this"
-      : `${f.inheriting} of ${f.total} ${products(f.total)} use this`;
+    f.inheriting === 0
+      ? "No product uses this"
+      : f.inheriting === f.total && f.total === 1
+        ? "The product uses this"
+        : `${f.inheriting} of ${f.total} ${products(f.total)} use this`;
   const own = f.own.map(
-    (o) => `${nameOf(o)} sets ${formatPlatformValue(setting, o.value)}`,
+    (o) => `${isolated(o)} sets ${formatPlatformValue(setting, o.value)}`,
   );
   return [use, ...own.slice(0, 2)].join(" · ");
 }

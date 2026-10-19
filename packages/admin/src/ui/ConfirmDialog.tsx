@@ -220,6 +220,8 @@ export function ConfirmDialog({
         </Button>
         <Button
           variant={variant}
+          // A long label (a count in it) wraps on a phone rather than spill out of the button.
+          className="max-sm:h-auto max-sm:min-h-9 max-sm:whitespace-normal max-sm:py-2 max-sm:text-balance"
           loading={busy}
           disabled={confirmDisabled}
           disabledReason={
