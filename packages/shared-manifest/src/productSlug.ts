@@ -51,6 +51,8 @@ export const RESERVED_PRODUCT_SLUGS: readonly string[] = [
   // The platform's device-code entry pages, `/device` and `/tv`.
   "device",
   "tv",
+  // The platform sign-in entry, `/signin`.
+  "signin",
 ];
 
 /**
