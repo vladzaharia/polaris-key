@@ -13230,6 +13230,79 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
+  /device:
+    get:
+      operationId: getPlatformDeviceEntry
+      tags: [portal]
+      summary: Device-code entry page (HTML)
+      description: >
+        The platform-level page an app sends people to when it cannot build its product's own
+        device page (a UI kit's fallback link). With no `user_code`: a script-free code-entry form
+        that `GET`s back here. With one: the code is normalised (upper-cased, spaces and hyphens
+        dropped), looked up across all products, and a hit answers `302` to
+        `/{product}/identity/auth/device?user_code=` on the same host, whatever the product's
+        state; that page owns every later state. A miss, an expired code and a malformed code all
+        render the form again with one line and name no product. Lookups are limited per client
+        network (30 per minute). `cache-control: no-store`, `referrer-policy: no-referrer`.
+        `/tv` is the same page with larger type for a TV browser.
+      parameters:
+        - name: user_code
+          in: query
+          required: false
+          description: The code the app shows, in any case, with or without the hyphen.
+          schema: { type: string, maxLength: 64 }
+      responses:
+        "200":
+          description: "The code-entry form. `text/html; charset=utf-8`."
+          content:
+            text/html:
+              schema: { type: string }
+        "302":
+          description: A live code. `Location` is the product's device page, relative to this host.
+          headers:
+            Location: { schema: { type: string } }
+        "404":
+          description: The code matched no live flow. The form again, with one generic line.
+          content:
+            text/html:
+              schema: { type: string }
+        "429":
+          description: Too many lookups from this network. The form with a retry line; `retry-after`.
+          content:
+            text/html:
+              schema: { type: string }
+  /tv:
+    get:
+      operationId: getPlatformDeviceEntryTv
+      tags: [portal]
+      summary: Device-code entry page, TV variant (HTML)
+      description: The same page and flow as `/device`, with larger type and targets for a TV browser. The redirect target is the same product page.
+      parameters:
+        - name: user_code
+          in: query
+          required: false
+          description: The code the app shows.
+          schema: { type: string, maxLength: 64 }
+      responses:
+        "200":
+          description: "The code-entry form. `text/html; charset=utf-8`."
+          content:
+            text/html:
+              schema: { type: string }
+        "302":
+          description: A live code. `Location` is the product's device page.
+          headers:
+            Location: { schema: { type: string } }
+        "404":
+          description: The code matched no live flow.
+          content:
+            text/html:
+              schema: { type: string }
+        "429":
+          description: Too many lookups from this network.
+          content:
+            text/html:
+              schema: { type: string }
   /media/{product}/{asset}:
     get:
       operationId: getPortalMedia

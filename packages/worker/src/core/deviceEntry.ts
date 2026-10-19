@@ -26,9 +26,6 @@ import { clientNetwork, rateLimitOk } from "./rateLimit.js";
 import { renderBrandPage } from "./brandHtml.js";
 import { brandedHtmlSecurityHeaders } from "./securityHeaders.js";
 
-/** Lookups per client network per minute. 20^8 codes over a ten-minute life is what bounds a blind guess. */
-export const DEVICE_ENTRY_LIMIT = 30;
-
 const MISS = "That code didn't match or has expired. Check it and try again.";
 const LIMITED = "Too many tries. Wait a minute and try again.";
 
@@ -83,7 +80,8 @@ export async function handleDeviceEntry(
     {
       bucket: "deviceEntry",
       id: clientNetwork(req),
-      limit: DEVICE_ENTRY_LIMIT,
+      // 30 a minute per network: 20^8 codes over a ten-minute life is what bounds a blind guess.
+      limit: 30,
       windowSec: 60,
     },
     now,
