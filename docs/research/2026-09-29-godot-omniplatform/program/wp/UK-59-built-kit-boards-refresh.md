@@ -132,3 +132,22 @@ from the built SwiftUI renders; Android states/settings/tablet list-detail, expi
 icon, extra window shapes, sdk.compose-activate and sdk.compose-sign-in mockups; Godot two tiers per
 frame, QR only on pad-only and offline, host-owns-pause note, DL7 loading; terminal 40/32-column
 gate and refusal frames; "Built today" / "UK-11 target" captions on the remaining frames.
+
+## Progress and continuation (2026-10-19, slice 2)
+
+The boards under docs/design/ui-kits are hand-authored HTML with no `_src`; `pnpm gen design-mockups`
+does not cover them. Slice 2 edited web.html, then re-rendered with render.cjs under heavy.sh.
+
+- web.html adopts the built-kit changes from the UK-04/05 re-review (ux-review-2): the code step with
+  "Code expires in m:ss" and a separate "Waiting for you to sign in…" status (1440 and 390); the device
+  limit frame in catalog copy with the button naming the device and the consequence line; new frames for
+  a mixed license choice with a row-level Replace, the 12-device replace list (scrolls inside the card,
+  rows size to content, actions docked), the inline replace confirm, the refused key as one danger callout
+  with the Back chevron, and the web update prompt ("An update is available", "You have 2.4.1",
+  "Download 2.5.0 ↗", Later). Each caption says Built today.
+- ui-qa: strings.allow.json gains the 12-device fixtures; strings.debt.json shrank (stale entries gone).
+
+Still left: web shape rows 844x390, 640x360, 1180x820, 1920x1080 and the identity pane (DL1); iOS inline
+one-form activation and neutral boot indicator; apple.html iPad from the built SwiftUI renders; Android
+frames and the two compose mockups; Godot two tiers per frame; terminal 40/32-column frames; Built
+today / UK-11 target captions on the remaining boards.
