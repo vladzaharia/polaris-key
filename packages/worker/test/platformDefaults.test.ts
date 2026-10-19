@@ -94,17 +94,29 @@ describe("the product defaults rows", () => {
 });
 
 describe("GET /manage/api/platform/settings/:key/reach", () => {
-  it("counts the products that inherit a default", async () => {
+  it("counts the products that inherit a default, from the value in force to the proposed one", async () => {
     const db = await fleet();
     await own(db, "alpha", MEDIA, 1_000_000);
-    const r = await call(db, `/api/platform/settings/${MEDIA}/reach`);
+    const r = await call(
+      db,
+      `/api/platform/settings/${MEDIA}/reach?value=1000`,
+    );
     expect(r.status).toBe(200);
-    expect(r.body).toEqual({
+    expect(r.body).toMatchObject({
       kind: "default",
+      direction: "lower",
       total: 3,
       reaches: 2,
-      clamped: [],
+      to: 1000,
     });
+    expect(r.body.products.map((p: any) => p.product)).toEqual([
+      "beta",
+      "gamma",
+    ]);
+    expect(r.body.products[0]).toMatchObject({ name: "beta", inherited: true });
+    // No change, no reach.
+    const same = await call(db, `/api/platform/settings/${MEDIA}/reach`);
+    expect(same.body).toMatchObject({ direction: "none", reaches: 0 });
   });
 
   it("ignores an expired claim, a value of the wrong type and a pending key", async () => {
@@ -115,7 +127,7 @@ describe("GET /manage/api/platform/settings/:key/reach", () => {
       NOW - 1,
     );
     await own(db, "beta", MEDIA, "lots");
-    const r = await call(db, `/api/platform/settings/${MEDIA}/reach`);
+    const r = await call(db, `/api/platform/settings/${MEDIA}/reach?value=5`);
     expect(r.body.reaches).toBe(3);
     const pending = await call(
       db,
@@ -124,7 +136,7 @@ describe("GET /manage/api/platform/settings/:key/reach", () => {
     expect(pending.status).toBe(404);
   });
 
-  it("counts the products a lower bound clamps, with what each set and what is in effect", async () => {
+  it("lowering a ceiling reaches the products it clamps, with from and to", async () => {
     const db = await fleet();
     await own(db, "alpha", KEY_LIMIT, 50);
     await own(db, "beta", KEY_LIMIT, 8);
@@ -133,27 +145,88 @@ describe("GET /manage/api/platform/settings/:key/reach", () => {
       db,
       `/api/platform/settings/${KEY_LIMIT}/reach?value=9`,
     );
-    expect(r.body).toEqual({
+    expect(r.body).toMatchObject({
       kind: "bound",
+      direction: "lower",
       total: 3,
       reaches: 2,
-      clamped: [
-        { product: "alpha", set: 50, effective: 9 },
-        { product: "gamma", set: 10, effective: 9 },
-      ],
+      from: 100,
+      to: 9,
     });
-    // No value: today's bound (100), which clamps nobody.
-    const now = await call(db, `/api/platform/settings/${KEY_LIMIT}/reach`);
-    expect(now.body.reaches).toBe(0);
+    expect(r.body.products).toEqual([
+      { product: "alpha", name: "alpha", from: 50, to: 9, inherited: false },
+      { product: "gamma", name: "gamma", from: 10, to: 9, inherited: true },
+    ]);
   });
 
-  it("is a GET, and platform-admin only", async () => {
+  it("raising a ceiling reaches the products it releases, not nothing", async () => {
+    const db = await fleet();
+    await own(db, "alpha", KEY_LIMIT, 50);
+    await own(db, "beta", KEY_LIMIT, 40);
+    await own(db, "gamma", KEY_LIMIT, 5);
+    const path = `/api/platform/settings/${KEY_LIMIT}`;
+    await call(db, path, {
+      method: "PATCH",
+      body: { value: 20, expectedVersion: 0, confirm: KEY_LIMIT },
+    });
+    const r = await call(db, `${path}/reach?value=60`);
+    expect(r.body).toMatchObject({
+      direction: "raise",
+      from: 20,
+      to: 60,
+      reaches: 2,
+    });
+    expect(r.body.products).toEqual([
+      { product: "alpha", name: "alpha", from: 20, to: 50, inherited: false },
+      { product: "beta", name: "beta", from: 20, to: 40, inherited: false },
+    ]);
+    // A smaller raise releases less: both are still held, now to 25.
+    const mid = await call(db, `${path}/reach?value=25`);
+    expect(mid.body.products.map((p: any) => [p.product, p.to])).toEqual([
+      ["alpha", 25],
+      ["beta", 25],
+    ]);
+  });
+
+  it("is a GET", async () => {
     const db = await fleet();
     const post = await call(db, `/api/platform/settings/${MEDIA}/reach`, {
       method: "POST",
       body: {},
     });
     expect([404, 405]).toContain(post.status);
+  });
+});
+
+describe("the list carries what each linked row reaches at rest", () => {
+  it("lists clamped products with set and effective, fresh after a write", async () => {
+    const db = await fleet();
+    await own(db, "alpha", KEY_LIMIT, 50);
+    const get = async () =>
+      (await call(db, "/api/platform/settings")).body.settings.find(
+        (s: any) => s.key === KEY_LIMIT,
+      );
+    expect(await get()).toMatchObject({ fleet: { kind: "bound", count: 0 } });
+    const w = await call(db, `/api/platform/settings/${KEY_LIMIT}`, {
+      method: "PATCH",
+      body: { value: 20, expectedVersion: 0, confirm: KEY_LIMIT },
+    });
+    expect(w.body.fleet.count).toBe(1);
+    expect((await get()).fleet).toMatchObject({
+      count: 1,
+      total: 3,
+      products: [
+        { product: "alpha", set: 50, effective: 20, inherited: false },
+      ],
+    });
+    const media = (await call(db, "/api/platform/settings")).body.settings.find(
+      (s: any) => s.key === MEDIA,
+    );
+    expect(media.fleet).toMatchObject({
+      kind: "default",
+      inheriting: 3,
+      own: [],
+    });
   });
 });
 

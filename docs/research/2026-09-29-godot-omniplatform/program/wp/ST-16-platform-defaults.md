@@ -150,3 +150,15 @@ Corrections to the brief, from the code:
 - Enforce/delegate per entry and the products-policies matrix were dropped by the 2026-10-07
   consolidation; "per-product audit rows with origin = 'platform'" is not built (the platform
   audit row of the write is the record).
+
+## Fix round (2026-10-19, branch wp/ST-16-fix)
+
+The BUILT UX review failed the fan-out confirm. Fixed: `reachOf` is direction-aware
+(`{product, name, from, to, inherited}` per product whose effective value changes; a raise reaches the
+products it releases); the clamped note and a default's muted line now come with the settings list
+(`fleet`), so they are fresh after every save or revert and never pop in; the dialog leads with the
+count and names, carries the count in the button, holds Confirm until the count resolves (a failed
+count stays held, with Try again: a change to every product is never confirmed blind); Revert shows
+its count; focus returns to the field when the opener is gone (shared engine, only when focus fell
+to the body); quotas read in GiB/TiB; "per license" affix; ConfirmDialog: one line of consequences
+after a lead, title wraps clear of the close button, the sheet scrolls as a whole on a phone.

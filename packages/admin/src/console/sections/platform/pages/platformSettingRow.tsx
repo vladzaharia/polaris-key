@@ -29,6 +29,7 @@ import { SettingRow } from "../../../../ui/settings/SettingRow.js";
 import {
   LEVEL_RANK,
   confirmLevel,
+  fieldUnit,
   formatSettingValue,
   toField,
   type SettingConfirm,
@@ -38,7 +39,7 @@ import {
 import type { SettingHistoryEntry } from "../../../../ui/settings/SettingExtras.js";
 import { useWriteGate } from "../../../access/useCan.js";
 import { mutate } from "../../../data/mutations.js";
-import { ClampedNote, ReachCount } from "./platformReach.js";
+import { FleetNote, fleetMeta, useReachPlan } from "./platformReach.js";
 import { qk } from "../../../data/queries.js";
 
 /** The engine's spec for a platform setting. */
@@ -46,7 +47,15 @@ export function specOf(s: PlatformSetting): SettingSpec {
   if (s.kind === "switch") return { kind: "switch" };
   if (s.kind === "choice")
     return { kind: "enum", values: s.options.map((o) => o.value) };
-  return { kind: "integer", unit: s.unit, min: s.min, max: s.max };
+  // The hosted-asset quotas are gigabytes of images and mirrored files, not megabytes.
+  const gib = s.unit === "bytes" && s.key.startsWith("assets.quota.");
+  return {
+    kind: "integer",
+    unit: s.unit,
+    min: s.min,
+    max: s.max,
+    ...(gib ? { byteUnit: "GiB" as const } : {}),
+  };
 }
 
 /** The engine's confirm vocabulary for a platform setting. */
@@ -380,7 +389,7 @@ export function EditableRow({
 
   // A bound that clamps products says which, with what each set and what is in effect.
   if (setting.link === "bound")
-    notes.push(<ClampedNote key="clamped" setting={setting} />);
+    notes.push(<FleetNote key="clamped" setting={setting} />);
 
   const undo = (prev: PlatformSetting, written: PlatformSetting) => {
     const restore =
@@ -420,14 +429,14 @@ export function EditableRow({
       locked={setting.forcedOff ? <HardOff setting={setting} /> : undefined}
       notes={notes.length > 0 ? notes : undefined}
       footnote={
-        bytes
+        bytes && setting.key === "LAZY_DELTA_MAX_BYTES"
           ? `In effect: ${formatCount(setting.value as number)} bytes.`
           : undefined
       }
       bounds={
         setting.kind === "integer"
           ? bytes
-            ? `${formatNumber(toField(specOf(setting), setting.min))} to ${formatNumber(toField(specOf(setting), setting.max))} MiB.${
+            ? `${formatNumber(toField(specOf(setting), setting.min))} to ${formatNumber(toField(specOf(setting), setting.max))} ${fieldUnit(specOf(setting))}.${
                 setting.key === "LAZY_DELTA_MAX_BYTES"
                   ? ` It can only lower the measured ${formatNumber(toField(specOf(setting), setting.max))} MiB ceiling.`
                   : ""
@@ -446,10 +455,20 @@ export function EditableRow({
           exact: true,
         })
       }
-      confirmExtra={
-        setting.link
-          ? (to) => <ReachCount setting={setting} to={to} />
-          : undefined
+      confirmPlan={(target) =>
+        // eslint-disable-next-line react-hooks/rules-of-hooks -- the same on every render
+        useReachPlan(
+          setting,
+          target,
+          propagationSeconds,
+          setting.key === "identity.keyEntry.limit"
+            ? "Recorded key entries stay."
+            : "Stored files stay.",
+        )
+      }
+      meta={fleetMeta(setting)}
+      unitLabel={
+        setting.key === "identity.keyEntry.limit" ? "per license" : undefined
       }
       consequences={(to) =>
         consequencesOf(setting, to as string | number, propagationSeconds)
@@ -483,6 +502,7 @@ export function EditableRow({
         const next = fmt(after.value);
         return {
           level,
+          to: after.value,
           title: `Revert ${setting.label.toLowerCase()}?`,
           confirmLabel: `Revert to ${next}`,
           consequences: [

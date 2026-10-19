@@ -30,9 +30,23 @@ export interface RevertPlan {
   title: string;
   confirmLabel: string;
   consequences: string[];
+  /** The value Revert returns to, for a page's `confirmPlan`. */
+  to?: unknown;
   run: (ctx: { expectedVersion: number }) => Promise<unknown>;
   /** After it succeeds (a toast). */
   onDone?: (result: unknown) => void;
+}
+
+/** What a page adds to the confirmation of one change. */
+export interface ConfirmPlan {
+  /** Leads the dialog, before the lines. */
+  summary?: React.ReactNode;
+  /** Replaces the default lines. */
+  consequences?: string[];
+  /** Replaces the button's label. */
+  confirmLabel?: string;
+  /** Confirm stays off. */
+  hold?: boolean;
 }
 
 export interface SettingWriteOptions {
@@ -59,8 +73,15 @@ export interface SettingWriteOptions {
   confirmCopy?: (to: unknown) => { title: string; confirmLabel: string };
   /** Extra lines for the confirmation of a change to `to`. */
   consequences?: (to: unknown) => string[];
-  /** Extra content under the consequences of a change to `to` (a live count, a list). */
-  confirmExtra?: (to: unknown) => React.ReactNode;
+  /**
+   * A HOOK (called on every render of the row, so it must be the same on each): what a page
+   * knows about the change being confirmed, such as how many products it reaches. `null` while no
+   * confirmation is open. The plan leads the dialog, replaces its lines and button label, and can
+   * hold Confirm until it resolves.
+   */
+  confirmPlan?: (
+    target: { value: unknown; revert: boolean } | null,
+  ) => ConfirmPlan | undefined;
   /** The confirmation of Revert, or `null` when there is nothing to revert. */
   revertPlan?: () => RevertPlan | null;
   /** Refetch the setting; resolves when the new value is in. */
@@ -213,6 +234,13 @@ export function useSettingWrite(o: SettingWriteOptions) {
   };
 
   const labels = o.labels;
+  const plan = o.confirmPlan?.(
+    pending
+      ? pending.kind === "revert"
+        ? { value: pending.plan.to, revert: true }
+        : { value: pending.value, revert: false }
+      : null,
+  );
   let dialog: React.ReactNode = null;
   if (pending) {
     const isRevert = pending.kind === "revert";
@@ -223,11 +251,13 @@ export function useSettingWrite(o: SettingWriteOptions) {
         }
       : (o.confirmCopy?.(pending.value) ??
         saveCopy(o.label, o.spec, pending.value, labels));
-    const consequences = isRevert
-      ? pending.plan.consequences
-      : (o.consequences?.(pending.value) ?? [
-          `${o.label} changes from ${formatSettingValue(o.spec, o.value, labels)} to ${formatSettingValue(o.spec, pending.value, labels)}.`,
-        ]);
+    const consequences = plan?.consequences
+      ? plan.consequences
+      : isRevert
+        ? pending.plan.consequences
+        : (o.consequences?.(pending.value) ?? [
+            `${o.label} changes from ${formatSettingValue(o.spec, o.value, labels)} to ${formatSettingValue(o.spec, pending.value, labels)}.`,
+          ]);
     const needsReason = !isRevert && o.critical === true;
     dialog = (
       <ConfirmDialog
@@ -237,9 +267,12 @@ export function useSettingWrite(o: SettingWriteOptions) {
         }}
         intent={intentOf(pending.level)}
         title={copy.title}
+        lead={plan?.summary}
         consequences={consequences}
-        confirmLabel={copy.confirmLabel}
-        confirmDisabled={needsReason && reason.trim() === ""}
+        confirmLabel={plan?.confirmLabel ?? copy.confirmLabel}
+        confirmDisabled={
+          (needsReason && reason.trim() === "") || plan?.hold === true
+        }
         typedConfirmation={
           pending.level === "L3"
             ? { value: o.settingKey, label: `Type ${o.settingKey} to confirm` }
@@ -260,7 +293,6 @@ export function useSettingWrite(o: SettingWriteOptions) {
           setPending(null);
         }}
       >
-        {!isRevert ? o.confirmExtra?.(pending.value) : null}
         {needsReason ? (
           <div className="space-y-1 text-sm">
             <label className="block space-y-1">
@@ -305,5 +337,7 @@ export function useSettingWrite(o: SettingWriteOptions) {
     revert,
     reload,
     dialog,
+    /** A confirmation is open. */
+    confirming: pending !== null,
   };
 }

@@ -51,7 +51,7 @@ import {
 import type { ResolvedSetting } from "../../core/settings/resolve.js";
 import type { ConfirmLevel, SettingDef } from "../../core/settings/types.js";
 import { writeSetting } from "../../core/settings/write.js";
-import { reach } from "./platformReach.js";
+import { reachOf, standingOf } from "./platformReach.js";
 import { PLATFORM_INVENTORY } from "../../platformInventory.generated.js";
 import type { InventoryArea } from "../../platformInventory.js";
 
@@ -293,14 +293,30 @@ function settingView(def: SettingDef, r: ResolvedSetting, env: Env) {
   };
 }
 
-async function list(env: Env, db: Db): Promise<Response> {
+/** The view of an entry, with what it reaches at rest when it is linked to product settings. */
+async function viewOf(
+  def: SettingDef,
+  r: ResolvedSetting,
+  env: Env,
+  db: Db,
+  now: number,
+) {
+  const v = settingView(def, r, env);
+  return def.productLink
+    ? { ...v, fleet: await standingOf(db, def, r.value, now) }
+    : v;
+}
+
+async function list(env: Env, db: Db, now: number): Promise<Response> {
   const defs = [...aliasedPlatformEntries(), ...productDefaultEntries()];
   const resolved = await Promise.all(
     defs.map((d) => platformSettingResolved(env, db, d.key, { fresh: true })),
   );
   const storeAvailable = !resolved.some((r) => r.failsafe);
   return adminJson({
-    settings: defs.map((d, i) => settingView(d, resolved[i]!, env)),
+    settings: await Promise.all(
+      defs.map((d, i) => viewOf(d, resolved[i]!, env, db, now)),
+    ),
     storeAvailable,
     propagationSeconds: SETTINGS_CACHE_MS / 1000,
     deployTime: deployValues(env),
@@ -390,7 +406,7 @@ async function write(
   const after = await platformSettingResolved(env, db, def.key, {
     fresh: true,
   });
-  return adminJson(settingView(def, after, env));
+  return adminJson(await viewOf(def, after, env, db, now));
 }
 
 export async function handlePlatformSettings(
@@ -404,7 +420,7 @@ export async function handlePlatformSettings(
   if (rest.length === 0) {
     if (req.method !== "GET")
       return err(405, "method_not_allowed", "method not allowed");
-    return list(env, db);
+    return list(env, db, now);
   }
   if (rest.length === 2 && rest[1] === "reach") {
     const def = servedDef(rest[0]!);
@@ -413,11 +429,18 @@ export async function handlePlatformSettings(
       return err(405, "method_not_allowed", "method not allowed");
     const raw = new URL(req.url).searchParams.get("value");
     const given = raw === null || raw.trim() === "" ? NaN : Number(raw);
-    const value = Number.isFinite(given)
-      ? given
-      : (await platformSettingResolved(env, db, def.key, { fresh: true }))
-          .value;
-    return reach(db, def, value, now);
+    const current = (
+      await platformSettingResolved(env, db, def.key, { fresh: true })
+    ).value;
+    return adminJson(
+      await reachOf(
+        db,
+        def,
+        current,
+        Number.isFinite(given) ? given : current,
+        now,
+      ),
+    );
   }
   if (rest.length !== 1) return notFound();
   const def = servedDef(rest[0]!);
