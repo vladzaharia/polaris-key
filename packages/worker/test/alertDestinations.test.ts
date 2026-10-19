@@ -245,7 +245,9 @@ describe("the platform routes", () => {
         alerts: ["auto_halt"],
       });
       expect(r.status).toBe(422);
-      expect(r.json.error.reason).toBe("url_refused");
+      expect(r.json.error.reason).toBe(
+        target.startsWith("http://") ? "url_not_https" : "url_refused",
+      );
     }
     expect(await listDestinations(db, PLATFORM_SCOPE)).toEqual([]);
   });
@@ -682,7 +684,7 @@ describe("delivery", () => {
       NOW,
       deps,
     );
-    expect(a).toEqual({ ok: true, outcome: "ok" });
+    expect(a).toMatchObject({ ok: true, outcome: "ok" });
     expect(hooks).toHaveLength(1);
     const again = await testDestination(
       env,
@@ -977,5 +979,104 @@ describe("fix round: security review", () => {
       },
     });
     expect(peak).toBe(3);
+  });
+
+  it("only turning a destination on skips the step-up on PATCH", async () => {
+    const env = adminEnv();
+    const db = makeTestDb();
+    const auth = await session(env);
+    const plain = await session(env, false);
+    const c = await call(env, db, auth, "POST", "/api/platform/alerts", {
+      kind: "email",
+      target: "ops@example.com",
+      alerts: ["auto_halt"],
+    });
+    const id = c.json.destination.id as string;
+    const path = `/api/platform/alerts/${id}`;
+    const off = await call(env, db, plain, "PATCH", path, { enabled: false });
+    expect(off.status).toBe(403);
+    expect(off.json.code).toBe("step_up_required");
+    expect(
+      (await call(env, db, auth, "PATCH", path, { enabled: false })).status,
+    ).toBe(200);
+    const on = await call(env, db, plain, "PATCH", path, { enabled: true });
+    expect(on.status).toBe(200);
+    // Anything beyond turning it on needs it, even with enabled: true.
+    expect(
+      (
+        await call(env, db, plain, "PATCH", path, {
+          enabled: true,
+          alerts: ["commerce"],
+        })
+      ).status,
+    ).toBe(403);
+  });
+
+  it("a throttled test says when to retry, and a failure keeps its reason without the path", async () => {
+    const env = adminEnv();
+    const db = makeTestDb();
+    const c = await createDestination(
+      env,
+      db,
+      PLATFORM_SCOPE,
+      ACTOR,
+      { kind: "webhook", target: URL_OK, alerts: ["auto_halt"] },
+      NOW,
+    );
+    if (!c.ok) throw new Error("setup");
+    const deps = { fetchImpl: async () => new Response(null, { status: 404 }) };
+    const first = await testDestination(
+      env,
+      db,
+      PLATFORM_SCOPE,
+      ACTOR,
+      c.destination.id,
+      NOW,
+      deps,
+    );
+    expect(first).toMatchObject({
+      ok: true,
+      outcome: "failed",
+      detail: "HTTP 404 from hooks.example.com",
+    });
+    const again = await testDestination(
+      env,
+      db,
+      PLATFORM_SCOPE,
+      ACTOR,
+      c.destination.id,
+      NOW + 12,
+      deps,
+    );
+    expect(again).toMatchObject({ ok: false, status: 429, retryAfter: 18 });
+    const [row] = await listDestinations(db, PLATFORM_SCOPE);
+    expect(row!.lastError).toBe("HTTP 404 from hooks.example.com");
+    expect(JSON.stringify(row)).not.toContain("TOKENINPATH");
+  });
+
+  it("the product list reports what the platform covers per kind", async () => {
+    const env = adminEnv();
+    const db = makeTestDb();
+    await seedProduct(db, SLUG);
+    const auth = await session(env);
+    await createDestination(
+      env,
+      db,
+      PLATFORM_SCOPE,
+      ACTOR,
+      {
+        kind: "email",
+        target: "p@example.com",
+        alerts: ["auto_halt", "commerce"],
+      },
+      NOW,
+    );
+    const l = await call(env, db, auth, "GET", `/api/products/${SLUG}/alerts`);
+    expect(l.json.inheritedByKind).toMatchObject({
+      auto_halt: 1,
+      commerce: 1,
+      access_changed: 0,
+    });
+    expect(l.json.kinds.find((k: any) => k.id === "commerce").sent).toBe(false);
   });
 });

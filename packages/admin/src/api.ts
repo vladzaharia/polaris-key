@@ -4401,6 +4401,8 @@ export interface AlertDestination {
   version: number;
   lastStatus: "ok" | "failed" | "refused" | null;
   lastAt: number | null;
+  /** Why the last delivery failed: a host or HTTP status, never a path or secret. */
+  lastError: string | null;
   failures: number;
 }
 
@@ -4411,6 +4413,8 @@ export interface AlertDestinationsView {
   emailAvailable: boolean;
   /** Product scope: how many enabled platform destinations apply where this sets none. */
   inherited?: number;
+  /** Product scope: enabled platform destinations that take each kind. */
+  inheritedByKind?: Record<AlertKindId, number>;
 }
 
 export interface AlertDestinationBody {
@@ -4716,7 +4720,7 @@ const rawApi = {
     }),
   /** One test alert; 429 `too_soon` inside 30 seconds of the last send. */
   testAlertDestination: (scope: AlertScope, id: string) =>
-    call<{ outcome: "ok" | "failed" | "refused" }>(
+    call<{ outcome: "ok" | "failed" | "refused"; detail: string | null }>(
       `${alertsBase(scope)}/${enc(id)}/test`,
       { method: "POST" },
     ),

@@ -41,7 +41,24 @@ import {
   updateDestination,
   type Failure,
 } from "../../core/notify/alertDestinations.js";
+import { requireStepUp } from "../stepUp.js";
 import { emailConfigured } from "../../core/notify/destinations.js";
+
+/** What the platform's enabled destinations cover, for a product that sets none of its own. */
+async function inheritedView(db: Db) {
+  const enabled = (await listDestinations(db, PLATFORM_SCOPE)).filter(
+    (d) => d.enabled,
+  );
+  return {
+    inherited: enabled.length,
+    inheritedByKind: Object.fromEntries(
+      ALERT_KINDS.map((k) => [
+        k,
+        enabled.filter((d) => d.alerts.includes(k)).length,
+      ]),
+    ),
+  };
+}
 
 const ID_RE = /^dst_[A-Za-z0-9_-]{6,40}$/;
 
@@ -52,6 +69,9 @@ function refused(f: Failure): Response {
     f.message,
     {
       reason: f.reason,
+      ...(f.retryAfter !== undefined
+        ? { retryAfter: Math.max(1, f.retryAfter) }
+        : {}),
     },
   );
 }
@@ -79,16 +99,11 @@ export async function handleAlertDestinations(
           kinds: ALERT_KINDS.map((id) => ({
             id,
             label: ALERT_KIND_LABELS[id],
+            sent: ALERT_KINDS_SENT.includes(id),
           })),
           max: MAX_DESTINATIONS_PER_SCOPE,
           emailAvailable: emailConfigured(env),
-          ...(scope === PLATFORM_SCOPE
-            ? {}
-            : {
-                inherited: (await listDestinations(db, PLATFORM_SCOPE)).filter(
-                  (d) => d.enabled,
-                ).length,
-              }),
+          ...(scope === PLATFORM_SCOPE ? {} : await inheritedView(db)),
         });
       if (req.method === "POST") {
         const res = await createDestination(
@@ -116,11 +131,24 @@ export async function handleAlertDestinations(
       if (req.method !== "POST")
         return err(405, "method_not_allowed", "method not allowed");
       const res = await testDestination(env, db, scope, actor, id, now);
-      return res.ok ? adminJson({ outcome: res.outcome }) : refused(res);
+      return res.ok
+        ? adminJson({ outcome: res.outcome, detail: res.detail })
+        : refused(res);
     }
     if (rest.length !== 1) return notFound();
     if (req.method === "PATCH") {
       const body = await readBody(req);
+      // Turning a destination on only widens where alerts go back to something already approved;
+      // every other change (off, a new target, kinds, a new secret) can silence or redirect them.
+      const onlyEnable =
+        body.enabled === true &&
+        Object.keys(body).every(
+          (k) => k === "enabled" || k === "expectedVersion",
+        );
+      if (!onlyEnable) {
+        const denied = requireStepUp(session, now);
+        if (denied) return denied;
+      }
       const res = await updateDestination(env, db, scope, actor, id, body, now);
       if (!res.ok) return refused(res);
       return adminJson({

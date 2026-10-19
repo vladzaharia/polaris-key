@@ -19276,7 +19276,7 @@ paths:
           }
         "422":
           {
-            description: "A field is refused: `url_refused`, `target_invalid`, `alerts_required`, `alert_unknown`, `kind_invalid`.",
+            description: "A field is refused: `url_refused`, `url_not_https`, `target_invalid`, `alerts_required`, `alert_unknown`, `kind_invalid`.",
           }
         "401": { $ref: "#/components/responses/AdminUnauthorized" }
         "403": { $ref: "#/components/responses/AdminForbidden" }
@@ -19289,8 +19289,7 @@ paths:
       description: >
         Any of `target` (a webhook's new URL goes through the same guard; email or URL), `label`,
         `alerts`, `enabled`. `rotateSecret: true` issues a new signing secret, returned once. With
-        `expectedVersion`, a destination changed elsewhere answers `409 stale`. Needs a sign-in
-        from the last 5 minutes. Audited. Admin session cookie and CSRF header.
+        `expectedVersion`, a destination changed elsewhere answers `409 stale`. Needs a sign-in from the last 5 minutes (`403 step_up_required`) unless the body only sets `enabled: true`. Audited. Admin session cookie and CSRF header.
       security:
         - adminSession: []
       parameters:
@@ -19340,7 +19339,7 @@ paths:
           }
         "422":
           {
-            description: "A field is refused: `url_refused`, `target_invalid`, `alerts_required`, `alert_unknown`, `kind_invalid`.",
+            description: "A field is refused: `url_refused`, `url_not_https`, `target_invalid`, `alerts_required`, `alert_unknown`, `kind_invalid`.",
           }
         "401": { $ref: "#/components/responses/AdminUnauthorized" }
         "403": { $ref: "#/components/responses/AdminForbidden" }
@@ -19395,6 +19394,11 @@ paths:
                 required: [outcome]
                 properties:
                   outcome: { type: string, enum: [ok, failed, refused] }
+                  detail:
+                    {
+                      type: [string, "null"],
+                      description: "Why it failed, when it did.",
+                    }
         "401": { $ref: "#/components/responses/AdminUnauthorized" }
         "403": { $ref: "#/components/responses/AdminForbidden" }
         "404": { description: No such destination. }
@@ -19438,6 +19442,10 @@ paths:
                             description: "False: defined, but nothing raises it yet.",
                           }
                   max: { type: integer }
+                  inheritedByKind:
+                    type: object
+                    description: "Product scope: enabled platform destinations that take each kind."
+                    additionalProperties: { type: integer }
                   emailAvailable: { type: boolean }
                   inherited:
                     type: integer
@@ -19514,7 +19522,7 @@ paths:
           }
         "422":
           {
-            description: "A field is refused: `url_refused`, `target_invalid`, `alerts_required`, `alert_unknown`, `kind_invalid`.",
+            description: "A field is refused: `url_refused`, `url_not_https`, `target_invalid`, `alerts_required`, `alert_unknown`, `kind_invalid`.",
           }
         "401": { $ref: "#/components/responses/AdminUnauthorized" }
         "403": { $ref: "#/components/responses/AdminForbidden" }
@@ -19527,8 +19535,7 @@ paths:
       description: >
         Any of `target` (a webhook's new URL goes through the same guard; email or URL), `label`,
         `alerts`, `enabled`. `rotateSecret: true` issues a new signing secret, returned once. With
-        `expectedVersion`, a destination changed elsewhere answers `409 stale`. Needs a sign-in
-        from the last 5 minutes. Audited. Admin session cookie and CSRF header.
+        `expectedVersion`, a destination changed elsewhere answers `409 stale`. Needs a sign-in from the last 5 minutes (`403 step_up_required`) unless the body only sets `enabled: true`. Audited. Admin session cookie and CSRF header.
       security:
         - adminSession: []
       parameters:
@@ -19579,7 +19586,7 @@ paths:
           }
         "422":
           {
-            description: "A field is refused: `url_refused`, `target_invalid`, `alerts_required`, `alert_unknown`, `kind_invalid`.",
+            description: "A field is refused: `url_refused`, `url_not_https`, `target_invalid`, `alerts_required`, `alert_unknown`, `kind_invalid`.",
           }
         "401": { $ref: "#/components/responses/AdminUnauthorized" }
         "403": { $ref: "#/components/responses/AdminForbidden" }
@@ -19636,6 +19643,11 @@ paths:
                 required: [outcome]
                 properties:
                   outcome: { type: string, enum: [ok, failed, refused] }
+                  detail:
+                    {
+                      type: [string, "null"],
+                      description: "Why it failed, when it did.",
+                    }
         "401": { $ref: "#/components/responses/AdminUnauthorized" }
         "403": { $ref: "#/components/responses/AdminForbidden" }
         "404": { description: No such destination. }
@@ -20572,6 +20584,11 @@ components:
         lastStatus:
           { type: [string, "null"], enum: [ok, failed, refused, null] }
         lastAt: { type: [integer, "null"] }
+        lastError:
+          {
+            type: [string, "null"],
+            description: "Why the last delivery failed: a host or HTTP status, never a URL path or a secret.",
+          }
         failures: { type: integer }
         createdAt: { type: integer }
         createdBy: { type: string }

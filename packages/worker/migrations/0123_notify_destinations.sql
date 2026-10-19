@@ -18,6 +18,9 @@
 -- `pkey:v2:<product>:notify-destination:<id>`), so a read of the destinations never touches it
 -- and the KEK sweep re-seals it with the other sealed tables. It is never read back to a caller.
 --
+--   last_error   why the last delivery failed, in words with a host or an HTTP status and never a
+--                URL path or a secret ('HTTP 404 from hooks.example.com', 'Timed out after 5 s');
+--
 -- `product` leads the primary key like every product-scoped table (test/attack/R11-data.test.ts).
 --
 -- Expand-only. Core owns both tables (`TABLE_OWNERS.core`). Down: scripts/rollback/0123_notify_destinations.down.sql.
@@ -39,6 +42,7 @@ CREATE TABLE IF NOT EXISTS notify_destinations (
   updated_by TEXT NOT NULL,
   last_status TEXT,
   last_at INTEGER,
+  last_error TEXT,
   failures INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (product, id)
 );

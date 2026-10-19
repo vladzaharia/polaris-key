@@ -367,12 +367,14 @@ export function PlatformSettingsPage(): React.ReactElement {
           ))}
           <div className="border-t border-border">
             <div className="px-5 pt-4">
-              <h3 className="text-sm font-semibold text-fg-strong">
+              <h3 className="flex flex-wrap items-center gap-x-2 text-sm font-semibold text-fg-strong">
                 Alert destinations
+                <code className="rounded border border-border px-1.5 py-px font-mono text-xs font-normal text-fg-muted">
+                  alerts.destinations
+                </code>
               </h3>
               <p className="text-sm text-fg-muted">
-                Where auto-halts, store and commerce problems, access changes
-                and failing destinations are sent.
+                Where the platform&apos;s alerts go.
               </p>
             </div>
             <AlertDestinations

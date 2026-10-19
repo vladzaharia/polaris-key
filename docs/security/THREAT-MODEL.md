@@ -4540,7 +4540,7 @@ URL guard, the signature and the one POST). Tables `notify_destinations` and
   per destination. A receiver verifies and rejects a stale timestamp. SP-66 adopts the same format.
 - **Who can write.** Platform: the `platform` area. Product: the `settings` area of that product
   (a role narrowed to one other area cannot aim a product's alerts). Adding or retargeting a
-  destination (`POST`, `PATCH`) needs the console step-up (`STEP_UP_ROUTES`), so a stolen session
+  destination (`POST`, `PATCH`) needs the console step-up (`STEP_UP_ROUTES`; for `PATCH` the handler checks it, and only a body that just turns a destination on skips it, because turning one off silences alerts), so a stolen session
   cannot redirect alerts to an attacker or exfiltrate through a webhook. Removing one
   (`DELETE`) needs it too, because a stolen session could otherwise silence every alert; only a
   test send does not. Every write appends an audit row (`notify.destination.create|update|rotate|delete|test`,
@@ -4556,6 +4556,8 @@ URL guard, the signature and the one POST). Tables `notify_destinations` and
   alert text (a product name and a rollout reason). Follow-up: a confirmation link to a
   product-scope address, owned by the alerts work in P0-51.
 - **No new data is collected.** Alert content is operator-facing state already in the audit trail.
+
+The last delivery failure is stored as words with a host or an HTTP status (`last_error`), never a URL path or a secret.
 
 Review trigger (section 9): a new alert kind, a new destination kind, any change to the URL guard
 or the redirect rule, and any new reader of `notify_destination_secrets`.

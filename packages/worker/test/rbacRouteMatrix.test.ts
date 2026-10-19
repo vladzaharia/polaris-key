@@ -363,11 +363,9 @@ describe("negative controls", () => {
         "POST /products/:slug/users/relinks/:id/undo",
         "POST /products/:slug/config/mint/:id/approve",
         "POST /platform/alerts",
-        "PATCH /platform/alerts/:id",
         "DELETE /platform/alerts/:id",
         "DELETE /products/:slug/alerts/:id",
         "POST /products/:slug/alerts",
-        "PATCH /products/:slug/alerts/:id",
       ].sort(),
     );
     for (const r of steps) {
@@ -388,7 +386,7 @@ describe("negative controls", () => {
 
   it("enforces exactly the step-up routes STEP_UP_ROUTES lists, but the body-conditional one", () => {
     const listed = STEP_UP_ROUTES.flatMap((r) => {
-      if (r.path.endsWith(" (breakGlass)")) return [];
+      if (/ \((breakGlass|body)\)$/.test(r.path)) return [];
       const alt = /\(([a-z|-]+)\)$/.exec(r.path);
       return alt
         ? alt[1]!

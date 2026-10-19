@@ -1695,6 +1695,14 @@ describe("Advanced is folded (ST-09)", () => {
 describe("Alert destinations in Email and alerts (ST-27)", () => {
   const NOW_S = Math.floor(Date.now() / 1000);
   const FRESH = { authAt: NOW_S - 30, stepUpMaxAgeSeconds: 300 };
+  const STALE = { authAt: NOW_S - 3600, stepUpMaxAgeSeconds: 300 };
+  const ALL = [
+    "auto_halt",
+    "store_connection",
+    "commerce",
+    "access_changed",
+    "notifications_failing",
+  ];
   const WEBHOOK = {
     id: "dst_hook000001",
     scope: "_platform",
@@ -1706,41 +1714,64 @@ describe("Alert destinations in Email and alerts (ST-27)", () => {
     version: 1,
     lastStatus: "failed",
     lastAt: 1_700_000_000,
+    lastError: "HTTP 404 from hooks.example.com",
     failures: 2,
   };
+  const EMAIL = {
+    ...WEBHOOK,
+    id: "dst_mail000001",
+    kind: "email",
+    target: "ops@example.com",
+    label: null,
+    alerts: ALL,
+    lastStatus: "ok",
+    lastError: null,
+    failures: 0,
+  };
+  const listOf = (...destinations: unknown[]) => ({
+    ...ALERTS_NONE,
+    destinations,
+  });
 
-  it("lists a destination by its origin and never a URL or secret", async () => {
+  it("lists rows by name, with the reason a delivery failed and never a URL or secret", async () => {
     boot("#/platform/settings", {
       me: FRESH,
       extra: routes({
-        "/manage/api/platform/alerts": {
-          ...ALERTS_NONE,
-          destinations: [WEBHOOK],
-        },
+        "/manage/api/platform/alerts": listOf(WEBHOOK, EMAIL),
       }),
     });
     const email = await section("Email and alerts");
     const panel = await within(email).findByTestId("alert-destinations");
     expect(within(panel).getByText("Ops channel")).toBeTruthy();
-    expect(
-      within(panel).getByText(/https:\/\/hooks\.example\.com\/…/),
-    ).toBeTruthy();
     expect(within(panel).getByText(/2 in a row/)).toBeTruthy();
+    expect(
+      within(panel).getByText(/HTTP 404 from hooks\.example\.com\./),
+    ).toBeTruthy();
+    expect(within(panel).getByText("All alerts")).toBeTruthy();
+    expect(
+      within(panel).getByRole("switch", { name: "Send alerts to Ops channel" }),
+    ).toBeTruthy();
+    expect(
+      within(panel).getByRole("button", { name: "Actions for Ops channel" }),
+    ).toBeTruthy();
     expect(panel.textContent).not.toContain("whsec_");
+    // No callout until an action needs it.
+    expect(within(panel).queryByText("Sign in again to continue")).toBeNull();
   });
 
-  it("adds a webhook, refuses a bad URL in words and shows the secret once", async () => {
-    let attempts = 0;
+  it("adds a webhook: checks https on the spot, puts the server's refusal under the field, shows the secret once", async () => {
+    let posts = 0;
     const log = boot("#/platform/settings", {
       me: FRESH,
       extra: routes({
         "/manage/api/platform/alerts": ALERTS_NONE,
         "POST /manage/api/platform/alerts": () => {
-          attempts += 1;
-          if (attempts === 1)
+          posts += 1;
+          if (posts === 1)
             return new Response(
               JSON.stringify({
                 error: { code: "bad_request", reason: "url_refused" },
+                reason: "url_refused",
               }),
               { status: 422, headers: { "content-type": "application/json" } },
             );
@@ -1756,41 +1787,73 @@ describe("Alert destinations in Email and alerts (ST-27)", () => {
       await within(email).findByRole("button", { name: "Add destination" }),
     );
     const dialog = await screen.findByRole("dialog");
-    await userEvent.click(within(dialog).getByRole("combobox"));
     await userEvent.click(
-      await screen.findByRole("option", { name: "Webhook" }),
+      within(dialog).getByRole("radio", { name: "Webhook" }),
     );
-    await userEvent.type(
-      within(dialog).getByLabelText(/Webhook URL/),
-      "http://10.0.0.1/x",
-    );
+    const url = within(dialog).getByLabelText(/Webhook URL/);
+    await userEvent.type(url, "http://hooks.example.com/x");
     await userEvent.click(
       within(dialog).getByRole("button", { name: "Add destination" }),
     );
     expect(
       await within(dialog).findByText(
-        "That URL cannot be used. It must be a public https address.",
+        "A webhook URL must start with https://.",
       ),
     ).toBeTruthy();
-    const posted = log.calls.filter((c) => c.method === "POST");
-    expect(posted[0]!.json).toMatchObject({
-      kind: "webhook",
-      target: "http://10.0.0.1/x",
-    });
-    await userEvent.clear(within(dialog).getByLabelText(/Webhook URL/));
-    await userEvent.type(
-      within(dialog).getByLabelText(/Webhook URL/),
-      "https://hooks.example.com/t/abc",
+    expect(url.getAttribute("aria-invalid")).toBe("true");
+    expect(log.calls.filter((c) => c.method === "POST")).toHaveLength(0);
+
+    await userEvent.clear(url);
+    await userEvent.type(url, "https://10.0.0.1/x");
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Add destination" }),
     );
+    expect(
+      await within(dialog).findByText(/That URL cannot be used/),
+    ).toBeTruthy();
+    await userEvent.clear(url);
+    await userEvent.type(url, "https://hooks.example.com/t/abc");
     await userEvent.click(
       within(dialog).getByRole("button", { name: "Add destination" }),
     );
     expect(await screen.findByText("whsec_TESTSECRETVALUE")).toBeTruthy();
+    expect(
+      screen.getByRole("dialog", { name: "Signing secret for Ops channel" }),
+    ).toBeTruthy();
   });
 
-  it("asks for a fresh sign-in before adding", async () => {
-    boot("#/platform/settings", {
-      me: { authAt: NOW_S - 3600, stepUpMaxAgeSeconds: 300 },
+  it("shows one sign-in callout, only when an action needs it, and sends nothing", async () => {
+    const log = boot("#/platform/settings", {
+      me: STALE,
+      extra: routes({
+        "/manage/api/platform/alerts": listOf(WEBHOOK, EMAIL),
+      }),
+    });
+    const email = await section("Email and alerts");
+    const panel = await within(email).findByTestId("alert-destinations");
+    expect(within(panel).queryByText("Sign in again to continue")).toBeNull();
+    // Turning an email destination off is a step-up action too.
+    await userEvent.click(
+      within(panel).getByRole("switch", {
+        name: "Send alerts to ops@example.com",
+      }),
+    );
+    expect(
+      await within(panel).findAllByText("Sign in again to continue"),
+    ).toHaveLength(1);
+    expect(log.calls.filter((c) => c.method === "PATCH")).toHaveLength(0);
+    // The same single callout serves a second action.
+    await userEvent.click(
+      within(panel).getByRole("switch", { name: "Send alerts to Ops channel" }),
+    );
+    expect(
+      within(panel).getAllByText("Sign in again to continue"),
+    ).toHaveLength(1);
+  });
+
+  it("asks for a fresh sign-in on submit, not before", async () => {
+    const log = boot("#/platform/settings", {
+      me: STALE,
       extra: routes({ "/manage/api/platform/alerts": ALERTS_NONE }),
     });
     const email = await section("Email and alerts");
@@ -1798,13 +1861,138 @@ describe("Alert destinations in Email and alerts (ST-27)", () => {
       await within(email).findByRole("button", { name: "Add destination" }),
     );
     const dialog = await screen.findByRole("dialog");
-    expect(within(dialog).getByText("Sign in again to continue")).toBeTruthy();
+    expect(within(dialog).queryByText("Sign in again to continue")).toBeNull();
+    await userEvent.type(
+      within(dialog).getByLabelText(/Email address/),
+      "ops@example.com",
+    );
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Add destination" }),
+    );
     expect(
-      (
-        within(dialog).getByRole("button", {
-          name: "Add destination",
-        }) as HTMLButtonElement
-      ).disabled,
-    ).toBe(true);
+      await within(dialog).findByText("Sign in again to continue"),
+    ).toBeTruthy();
+    expect(log.calls.filter((c) => c.method === "POST")).toHaveLength(0);
+  });
+
+  it("at the limit says why, and a throttled test counts down", async () => {
+    const five = Array.from({ length: 5 }, (_, i) => ({
+      ...WEBHOOK,
+      id: `dst_hook00000${i}`,
+      label: `Hook ${i}`,
+    }));
+    boot("#/platform/settings", {
+      me: FRESH,
+      extra: routes({
+        "/manage/api/platform/alerts": listOf(...five),
+        "POST /manage/api/platform/alerts/dst_hook000000/test": () =>
+          new Response(
+            JSON.stringify({
+              error: { code: "bad_request", reason: "too_soon" },
+              reason: "too_soon",
+              retryAfter: 18,
+            }),
+            { status: 429, headers: { "content-type": "application/json" } },
+          ),
+      }),
+    });
+    const email = await section("Email and alerts");
+    const panel = await within(email).findByTestId("alert-destinations");
+    expect(
+      within(panel).getByText("5 of 5 · Remove one to add another."),
+    ).toBeTruthy();
+    await userEvent.click(
+      within(panel).getByRole("button", { name: "Actions for Hook 0" }),
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: /Send test/ }),
+    );
+    await userEvent.click(
+      within(panel).getByRole("button", { name: "Actions for Hook 0" }),
+    );
+    expect(await screen.findByText("Try again in 18 s")).toBeTruthy();
+  });
+
+  it("edits kinds and label without asking for the URL again", async () => {
+    const log = boot("#/platform/settings", {
+      me: FRESH,
+      extra: routes({
+        "/manage/api/platform/alerts": listOf(WEBHOOK),
+        "PATCH /manage/api/platform/alerts/dst_hook000001": {
+          destination: { ...WEBHOOK, label: "Renamed" },
+        },
+      }),
+    });
+    const email = await section("Email and alerts");
+    const panel = await within(email).findByTestId("alert-destinations");
+    await userEvent.click(
+      within(panel).getByRole("button", { name: "Actions for Ops channel" }),
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: /Edit/ }),
+    );
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).queryByLabelText(/Webhook URL/)).toBeNull();
+    expect(
+      within(dialog).getByRole("button", { name: "Replace URL" }),
+    ).toBeTruthy();
+    const label = within(dialog).getByLabelText(/Label/);
+    await userEvent.clear(label);
+    await userEvent.type(label, "Renamed");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+    await waitFor(() =>
+      expect(log.calls.filter((c) => c.method === "PATCH")).toHaveLength(1),
+    );
+    const sent = log.calls.find((c) => c.method === "PATCH")!.json as Record<
+      string,
+      unknown
+    >;
+    expect(sent.label).toBe("Renamed");
+    expect("target" in sent).toBe(false);
+    expect(sent.expectedVersion).toBe(1);
+  });
+});
+
+describe("A product's alert routing (ST-27)", () => {
+  it("says which alerts go to the product and which to the platform", async () => {
+    boot("#/p/djdl/settings", {
+      me: {
+        authAt: Math.floor(Date.now() / 1000) - 30,
+        stepUpMaxAgeSeconds: 300,
+      },
+      extra: {
+        "/manage/api/products/djdl/alerts": {
+          ...ALERTS_NONE,
+          destinations: [
+            {
+              id: "dst_mail000001",
+              scope: "djdl",
+              kind: "email",
+              target: "team@example.com",
+              label: null,
+              alerts: ["auto_halt"],
+              enabled: true,
+              version: 1,
+              lastStatus: null,
+              lastAt: null,
+              lastError: null,
+              failures: 0,
+            },
+          ],
+          inherited: 2,
+          inheritedByKind: {
+            auto_halt: 2,
+            store_connection: 2,
+            commerce: 2,
+            access_changed: 2,
+            notifications_failing: 0,
+          },
+        },
+      },
+    });
+    const summary = await screen.findByTestId("alert-routing");
+    expect(summary.textContent).toBe(
+      "Auto-halt tripped → this product · Store connection failing (not sent yet), Commerce problem (not sent yet), Access changed (not sent yet) → platform (2) · A destination is failing → the audit trail only",
+    );
   });
 });

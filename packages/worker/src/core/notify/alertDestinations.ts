@@ -46,7 +46,7 @@ import { displayValue } from "./templates.js";
 import {
   newWebhookSecret,
   normaliseWebhookUrl,
-  postWebhook,
+  postWebhookResult,
   webhookDisplay,
   webhookUrlProblem,
   type WebhookDeps,
@@ -109,6 +109,8 @@ export interface DestinationView {
   version: number;
   lastStatus: "ok" | "failed" | "refused" | null;
   lastAt: number | null;
+  /** Why the last delivery failed (a host or HTTP status, never a path or secret). */
+  lastError: string | null;
   failures: number;
   createdAt: number;
   createdBy: string;
@@ -131,17 +133,20 @@ interface Row {
   updated_by: string;
   last_status: string | null;
   last_at: number | null;
+  last_error: string | null;
   failures: number;
 }
 
 const COLUMNS =
-  "id, product, kind, target, label, alerts_json, enabled, version, created_at, created_by, updated_at, updated_by, last_status, last_at, failures";
+  "id, product, kind, target, label, alerts_json, enabled, version, created_at, created_by, updated_at, updated_by, last_status, last_at, last_error, failures";
 
 export type Failure = {
   ok: false;
   status: 400 | 404 | 409 | 422 | 429;
   reason: string;
   message: string;
+  /** Seconds until a 429 clears. */
+  retryAfter?: number;
 };
 
 function fail(
@@ -180,6 +185,7 @@ function view(r: Row): DestinationView {
         ? r.last_status
         : null,
     lastAt: r.last_at,
+    lastError: r.last_error,
     failures: r.failures,
     createdAt: r.created_at,
     createdBy: r.created_by,
@@ -351,13 +357,13 @@ function parseTarget(
   }
   const problem = webhookUrlProblem(raw);
   if (problem !== null)
-    return fail(
-      422,
-      "url_refused",
-      problem === "https-only"
-        ? "A webhook URL must start with https://."
-        : "That URL cannot be used. It must be a public https address.",
-    );
+    return problem === "https-only"
+      ? fail(422, "url_not_https", "A webhook URL must start with https://.")
+      : fail(
+          422,
+          "url_refused",
+          "That URL cannot be used. It must be a public address: no IP address, port or private name.",
+        );
   const stored = normaliseWebhookUrl(raw as string);
   return { stored, shown: webhookDisplay(stored) };
 }
@@ -696,6 +702,11 @@ function webhookPayload(a: Alert, now: number) {
 
 type Outcome = "ok" | "failed" | "refused";
 
+interface Delivered {
+  outcome: Outcome;
+  detail: string | null;
+}
+
 async function deliverOne(
   env: Env,
   db: Db,
@@ -704,25 +715,36 @@ async function deliverOne(
   productName: string | null,
   now: number,
   deps: AlertDeps,
-): Promise<Outcome> {
+): Promise<Delivered> {
   try {
     if (row.kind === "email") {
       const m = alertMessage(env, a, productName);
       if (deps.sendEmail)
         return (await deps.sendEmail(row.target, m.subject, m.text, m.html))
-          ? "ok"
-          : "failed";
+          ? { outcome: "ok", detail: null }
+          : { outcome: "failed", detail: "The email was not sent" };
       const r = await deliverEmail(
         env,
         db,
         { sender: { kind: "platform" }, to: row.target, ...m },
         now,
       );
-      return r.ok ? "ok" : "failed";
+      if (r.ok) return { outcome: "ok", detail: null };
+      return {
+        outcome: "failed",
+        detail:
+          r.reason === "suppressed"
+            ? "This address is suppressed after a bounce"
+            : "Email is not available on this deployment",
+      };
     }
     const p = await openPayload(env, db, row.product, row.id);
-    if (!p) return "failed";
-    return await postWebhook(
+    if (!p)
+      return {
+        outcome: "failed",
+        detail: "The stored URL cannot be read. Enter it again.",
+      };
+    return await postWebhookResult(
       p.url,
       p.secret,
       webhookPayload(a, now),
@@ -730,14 +752,14 @@ async function deliverOne(
       deps,
     );
   } catch {
-    return "failed";
+    return { outcome: "failed", detail: "Delivery failed" };
   }
 }
 
 async function recordOutcome(
   db: Db,
   row: Row,
-  outcome: Outcome,
+  { outcome, detail }: Delivered,
   now: number,
   /** False for a test send: it records what happened but does not move the failure run. */
   counts = true,
@@ -750,10 +772,11 @@ async function recordOutcome(
   try {
     await db.run(
       `UPDATE notify_destinations
-          SET last_status = ?, last_at = ?, failures = ?
+          SET last_status = ?, last_at = ?, last_error = ?, failures = ?
         WHERE product = ? AND id = ?`,
       outcome,
       now,
+      outcome === "ok" ? null : detail,
       next,
       row.product,
       row.id,
@@ -833,7 +856,7 @@ export async function raiseAlert(
     // auto-halt tick). Each destination's own timeout bounds the whole.
     const results = await Promise.all(
       rows.map(async (row) => {
-        const outcome = await deliverOne(
+        const delivered = await deliverOne(
           env,
           db,
           row,
@@ -844,8 +867,8 @@ export async function raiseAlert(
         );
         return {
           row,
-          outcome,
-          failures: await recordOutcome(db, row, outcome, now),
+          outcome: delivered.outcome,
+          failures: await recordOutcome(db, row, delivered, now),
         };
       }),
     );
@@ -918,7 +941,7 @@ export async function testDestination(
   id: string,
   now: number,
   deps: AlertDeps = {},
-): Promise<{ ok: true; outcome: Outcome } | Failure> {
+): Promise<{ ok: true; outcome: Outcome; detail: string | null } | Failure> {
   const row = await getRow(db, scope, id);
   if (!row) return fail(404, "not_found", "No such destination.");
   // A product's email address is unconfirmed: a test would let a product operator send
@@ -932,17 +955,19 @@ export async function testDestination(
   // Counted from the audit trail per scope, so deleting and re-adding a destination resets nothing.
   const tests = await recentTests(db, scope, now - 3600);
   if (tests.length > 0 && now - tests[0]! < TEST_INTERVAL_SECONDS)
-    return fail(
-      429,
-      "too_soon",
-      "Wait a few seconds before sending another test.",
-    );
+    return {
+      ...fail(
+        429,
+        "too_soon",
+        "Wait a few seconds before sending another test.",
+      ),
+      retryAfter: tests[0]! + TEST_INTERVAL_SECONDS - now,
+    };
   if (tests.length >= TESTS_PER_HOUR)
-    return fail(
-      429,
-      "too_many_tests",
-      "Too many test alerts. Try again later.",
-    );
+    return {
+      ...fail(429, "too_many_tests", "Too many test alerts. Try again later."),
+      retryAfter: tests[TESTS_PER_HOUR - 1]! + 3600 - now,
+    };
   const alert: Alert = {
     kind: "notifications_failing",
     product: scope === PLATFORM_SCOPE ? null : scope,
@@ -951,8 +976,17 @@ export async function testDestination(
       "This is a test sent from the Polaris Key admin. Nothing needs doing.",
   };
   const productName = scope === PLATFORM_SCOPE ? null : scope;
-  const outcome = await deliverOne(env, db, row, alert, productName, now, deps);
-  await recordOutcome(db, row, outcome, now, false);
+  const delivered = await deliverOne(
+    env,
+    db,
+    row,
+    alert,
+    productName,
+    now,
+    deps,
+  );
+  const outcome = delivered.outcome;
+  await recordOutcome(db, row, delivered, now, false);
   await record(
     db,
     scope,
@@ -962,5 +996,5 @@ export async function testDestination(
     id,
     `Sent a test alert to ${row.target} (${outcome})`,
   );
-  return { ok: true, outcome };
+  return { ok: true, outcome, detail: delivered.detail };
 }

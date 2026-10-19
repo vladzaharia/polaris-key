@@ -109,19 +109,27 @@ export interface WebhookDeps {
   fetchImpl?: (input: string, init?: RequestInit) => Promise<Response>;
 }
 
+export interface WebhookResult {
+  outcome: WebhookOutcome;
+  /** What an operator can act on. Host and status only: never the path, a query or the secret. */
+  detail: string | null;
+}
+
 /**
  * POST `payload` to `url`, signed with `secret`. The URL is re-checked on every delivery (a
  * stored URL is not trusted because it was valid once). Never throws. `refused`: the guard
  * refused the URL, or the endpoint redirected.
  */
-export async function postWebhook(
+export async function postWebhookResult(
   url: string,
   secret: string,
   payload: unknown,
   now: number,
   deps: WebhookDeps = {},
-): Promise<WebhookOutcome> {
-  if (webhookUrlProblem(url) !== null) return "refused";
+): Promise<WebhookResult> {
+  if (webhookUrlProblem(url) !== null)
+    return { outcome: "refused", detail: "Address not allowed" };
+  const host = new URL(url).hostname;
   const body = JSON.stringify(payload);
   const id = randomId("msg");
   try {
@@ -139,11 +147,32 @@ export async function postWebhook(
       body,
     });
     await res.body?.cancel().catch(() => undefined);
-    if (res.status >= 300 && res.status < 400) return "refused";
-    // `redirect: "manual"` may surface a redirect as an opaque response with status 0.
-    if ((res.type as string) === "opaqueredirect") return "refused";
-    return res.status >= 200 && res.status < 300 ? "ok" : "failed";
-  } catch {
-    return "failed";
+    if (
+      (res.status >= 300 && res.status < 400) ||
+      (res.type as string) === "opaqueredirect"
+    )
+      return { outcome: "refused", detail: `Redirect refused by ${host}` };
+    if (res.status >= 200 && res.status < 300)
+      return { outcome: "ok", detail: null };
+    return { outcome: "failed", detail: `HTTP ${res.status} from ${host}` };
+  } catch (e) {
+    const name = (e as { name?: unknown } | null)?.name;
+    return {
+      outcome: "failed",
+      detail:
+        name === "TimeoutError" || name === "AbortError"
+          ? `Timed out after ${WEBHOOK_TIMEOUT_MS / 1000} s`
+          : `Could not reach ${host}`,
+    };
   }
+}
+
+export async function postWebhook(
+  url: string,
+  secret: string,
+  payload: unknown,
+  now: number,
+  deps: WebhookDeps = {},
+): Promise<WebhookOutcome> {
+  return (await postWebhookResult(url, secret, payload, now, deps)).outcome;
 }

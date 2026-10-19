@@ -14,7 +14,7 @@ export function ProductAlertsSection({
     <SettingsSection
       id="settings-alerts"
       title="Alerts"
-      description="Where this product's alerts go, instead of the platform's. Auto-halts, store and commerce problems, access changes."
+      description="Destinations here replace the platform's for the alerts they take."
     >
       <AlertDestinations
         scope={{ kind: "product", slug }}

@@ -2,8 +2,8 @@
  * Why each step-up route needs one, and the gate that reads it. A route that is irreversible,
  * exports personal data, forces a key change or leaves a long-lived credential behind is listed
  * here. Since ST-29 the route table (`./routes.ts`, `stepUp: true`) is what the dispatcher
- * enforces, before the handler runs. The one row whose step-up depends on the request body (a
- * break-glass key activation) keeps its own `requireStepUp` in the handler, and `(a|b)` spells two
+ * enforces, before the handler runs. The rows whose step-up depends on the request body (a
+ * break-glass key activation; an alert destination PATCH, marked `(body)`) keep their own `requireStepUp` in the handler, and `(a|b)` spells two
  * table rows. `test/rbacRouteMatrix.test.ts` keeps this list and the table's step-up rows in step.
  *
  * A step-up is `session.stepUpAt` (see ./session.ts): set only by a `prompt=login` flow the IdP
@@ -43,8 +43,8 @@ export const STEP_UP_ROUTES: readonly StepUpRoute[] = [
   },
   {
     method: "PATCH",
-    path: "/platform/alerts/:id",
-    why: "retargets or re-secrets an alert destination",
+    path: "/platform/alerts/:id (body)",
+    why: "retargets, re-secrets, narrows or turns off an alert destination (only turning one on skips it)",
   },
   {
     method: "POST",
@@ -53,8 +53,8 @@ export const STEP_UP_ROUTES: readonly StepUpRoute[] = [
   },
   {
     method: "PATCH",
-    path: "/products/:slug/alerts/:id",
-    why: "retargets or re-secrets an alert destination",
+    path: "/products/:slug/alerts/:id (body)",
+    why: "retargets, re-secrets, narrows or turns off an alert destination (only turning one on skips it)",
   },
   {
     method: "GET",

@@ -108,3 +108,17 @@ commit of the PR:
 - **Console.** `console/sections/notify/AlertDestinations.tsx` in Platform → Settings → Email and
   alerts and in a product's Settings → Alerts.
 - **Threat model.** "Notification destinations: operator alerts (ST-27)".
+
+## Fix round 2026-10-19
+
+- Security review: DELETE is a step-up row; atomic guarded update; per-scope test caps from the audit
+  trail; no test send to a product's email address until confirmation exists; parallel delivery;
+  tests do not move `failures`; a product's `notifications_failing` stays in its scope.
+- UX review: PATCH checks the step-up in its handler (only `enabled: true` skips it); one
+  page-level sign-in callout, shown once an action needs it; one-line rows with a ⋯ menu; an Edit
+  dialog (URL write-only behind Replace URL); field errors under the field; "5 of 5"; `retryAfter`
+  countdown on a throttled test; the last delivery error (`last_error`, host and status only); the
+  per-kind routing summary; focus after Remove, Done and a new secret.
+- **Follow-up, not built:** dual-secret signing for 24 h on rotate (sign with the old and the new
+  secret, as Stripe's roll does), so a rotation has no gap. Today a new secret ends the old one at
+  once.
