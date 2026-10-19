@@ -58,6 +58,15 @@ export function verificationUrl(ctx: Context): string {
   return c === "tv" || c === "console" ? DEFAULT_TV_URL : DEFAULT_DEVICE_URL;
 }
 
+/** What opening, copying or scanning the link does: the Polaris Key page we fall back to carries
+ *  the code (`?user_code=`), so the person need not type it. The displayed address stays bare. */
+function verificationTarget(ctx: Context, shown: string): string {
+  const code = ctx.input.deviceCode?.userCode;
+  if (!code || (shown !== DEFAULT_DEVICE_URL && shown !== DEFAULT_TV_URL))
+    return shown;
+  return `${shown}?user_code=${encodeURIComponent(code)}`;
+}
+
 // ── SignIn ─────────────────────────────────────────────────────────────────────────────────────
 
 export type SignInState =
@@ -293,7 +302,11 @@ export function signInHandoffView(
   const id = identityText(ctx);
   const dc = ctx.input.deviceCode;
   const c = platformClass(ctx.platform);
-  const link = linkVerdict(verificationUrl(ctx), ctx.platform, "sign-in");
+  const shown = verificationUrl(ctx);
+  const bare = linkVerdict(shown, ctx.platform, "sign-in");
+  const link = bare.url
+    ? { ...bare, url: verificationTarget(ctx, bare.url) }
+    : bare;
   const args = {
     product: id.name,
     url: link.display ?? undefined,

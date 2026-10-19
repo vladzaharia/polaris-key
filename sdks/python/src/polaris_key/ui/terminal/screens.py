@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 from typing import Any, List, Optional, Sequence, Tuple
+from urllib.parse import quote
 
 from ..core.models import (
     BOOT_STAGE_COPY,
@@ -26,7 +27,7 @@ from ..core.models import (
     UpdateView,
 )
 from . import fmt
-from .parts import STACK_COLUMNS, Kit
+from .parts import STACK_COLUMNS, Kit, _display_url
 from .text import DROP, Line, Span, cell_len, wrap
 
 __all__ = [
@@ -369,6 +370,10 @@ def sign_in(k: Kit, v: SignInView, verb: str = "sign-in", *, frame: int = 0) -> 
     end: List[Span] = []
     hints = False
     url = v.url or DEVICE_CODE_URL
+    # The page we fall back to carries the code, so opening or copying the link needs no typing.
+    target = url
+    if not v.url and v.user_code:
+        target = f"{DEVICE_CODE_URL}?user_code={quote(v.user_code, safe='')}"
     wait = "signin.handoff.finishing" if v.state == "finishing" else "cli.signin.waitingCode"
     if v.state == "starting":
         body += _wait_line(k, "signInHandoff.starting", frame)
@@ -388,7 +393,7 @@ def sign_in(k: Kit, v: SignInView, verb: str = "sign-in", *, frame: int = 0) -> 
             body += k.step("warn", [k.t("signin.handoff.noBrowser", "strong")])
         elif not v.headless or k.env.device_code:
             body += k.step("active", [k.t("signin.handoff.codeTitle", "strong")])
-        body += _with_link(k, "signin.handoff.codeBody", url)
+        body += _with_link(k, "signin.handoff.codeBody", url, target)
         body += _code_rows(k, v.user_code or "")
         body += [replace(ln, drop=DROP["check"]) for ln in k.body([k.t("signin.handoff.check")])]
         if v.seconds_left is not None:
@@ -447,12 +452,13 @@ def _code_rows(k: Kit, code: str) -> Lines:
     return _gap(k, DROP["blank_code"]) + _code_row(k, code) + _gap(k, DROP["blank_code"])
 
 
-def _with_link(k: Kit, key: str, url: str) -> Lines:
-    """A message with ``{url}`` inside, the URL drawn as a link (OSC 8) and never broken."""
+def _with_link(k: Kit, key: str, url: str, target: Optional[str] = None) -> Lines:
+    """A message with ``{url}`` inside, the URL drawn as a link (OSC 8) and never broken. The link
+    opens ``target`` when it differs from the address shown (the fallback page with the code)."""
     marker = "￿"
     text = k.s(key, url=marker)
     before, _, after = text.partition(marker)
-    spans = [Span(before, (), None, "key:" + key), k.link(url), Span(after, (), None, "key:" + key)]
+    spans = [Span(before, (), None, "key:" + key), k.link(target or url, _display_url(url)), Span(after, (), None, "key:" + key)]
     # The lines that hold the URL stay when the screen is cut to the height; the lead-in goes first.
     return [
         replace(ln, keep=any(sp.src == "data:url" for sp in ln.spans))
