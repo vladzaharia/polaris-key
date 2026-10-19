@@ -953,9 +953,10 @@ async function seedOidc(db: Db): Promise<void> {
 describe("R10-05 /<p>/auth/* is unauthenticated, unrate-limited and writes durable records", () => {
   // P1-06 added a third record per flow — the RFC 8628 user-code index — so the per-request
   // cost is now 3. I-02 moved all three from KV into the single-use store (self-expiring, swept
-  // by its alarm); the count is unchanged. The per-IP `authDeviceStart` bucket (60/min,
+  // by its alarm); the count is unchanged. The platform entry page (`/device`) added a fourth: the
+  // product-less code index, so the cost is now 4. The per-IP `authDeviceStart` bucket (60/min,
   // fail-closed) is what bounds it; 25 requests stay under it.
-  it("POST /<p>/auth/device/start costs 3 single-use writes per anonymous request", async () => {
+  it("POST /<p>/auth/device/start costs 4 single-use writes per anonymous request", async () => {
     const db = makeTestDb();
     const kv = new KvMock();
     const env = makeEnv(kv, ["djdl"]);
@@ -976,13 +977,17 @@ describe("R10-05 /<p>/auth/* is unauthenticated, unrate-limited and writes durab
       );
       expect(res.status).toBe(200);
     }
-    // 25 anonymous requests ⇒ 75 durable records, none in KV. No 429 anywhere.
+    // 25 anonymous requests ⇒ 100 durable records, none in KV. No 429 anywhere. The fourth is the
+    // platform user-code index (`device-user-global`).
     const keys = singleUseMock(env).keys();
     expect(kv.keys().length).toBe(0);
-    expect(keys.length).toBe(75);
+    expect(keys.length).toBe(100);
     expect(keys.filter((k) => k.startsWith("oidc-flow:")).length).toBe(25);
     expect(keys.filter((k) => k.startsWith("device-flow:")).length).toBe(25);
     expect(keys.filter((k) => k.startsWith("device-user:")).length).toBe(25);
+    expect(keys.filter((k) => k.startsWith("device-user-global:")).length).toBe(
+      25,
+    );
   });
 
   it("GET /<p>/auth/start costs 1 single-use write per anonymous request", async () => {

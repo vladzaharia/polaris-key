@@ -6,13 +6,27 @@ import { randomBytes } from "../../../platform/random.js";
 import {
   artefactRef,
   deleteArtefact,
+  putArtefact,
   type ArtefactRef,
 } from "../../../core/singleUse.js";
 
-/** RFC 8628 §6.1's recommended user-code alphabet (20 consonants). */
-export const USER_CODE_ALPHABET = "BCDFGHJKLMNPQRSTVWXZ";
+import {
+  USER_CODE_ALPHABET,
+  USER_CODE_LENGTH,
+  claimDeviceCode,
+  formatUserCode,
+  normalizeUserCode,
+  releaseDeviceCode,
+} from "../../../core/deviceCodeIndex.js";
 
-export const USER_CODE_LENGTH = 8;
+// The alphabet, the format and the normaliser live in Core: the platform entry pages normalise a
+// typed code with no product in hand.
+export {
+  USER_CODE_ALPHABET,
+  USER_CODE_LENGTH,
+  formatUserCode,
+  normalizeUserCode,
+};
 
 /** Retries on an index collision before giving up (a collision among live codes is ~1e-10). */
 export const USER_CODE_ATTEMPTS = 5;
@@ -29,26 +43,6 @@ export function generateUserCode(): string {
     }
   }
   return out;
-}
-
-/** `WDJBMJHT` → `WDJB-MJHT`, the display (and `userCode` wire) form. */
-export function formatUserCode(normalised: string): string {
-  return `${normalised.slice(0, 4)}-${normalised.slice(4)}`;
-}
-
-/**
- * What a human typed (or a QR code carried) → the canonical code, or `null` when it cannot be
- * one. Upper-case; spaces and hyphens dropped; anything outside the alphabet, or the wrong
- * length, is invalid — never "corrected", so a lookup only ever happens for a well-formed code.
- */
-export function normalizeUserCode(
-  raw: string | null | undefined,
-): string | null {
-  if (!raw || raw.length > 64) return null;
-  const code = raw.toUpperCase().replace(/[\s-]/g, "");
-  if (code.length !== USER_CODE_LENGTH) return null;
-  for (const ch of code) if (!USER_CODE_ALPHABET.includes(ch)) return null;
-  return code;
 }
 
 /**
@@ -78,5 +72,36 @@ export async function deleteUserCodeIndex(
   userCode: string,
 ): Promise<void> {
   const code = normalizeUserCode(userCode);
-  if (code) await deleteArtefact(env, await deviceUserKey(env, product, code));
+  if (!code) return;
+  await deleteArtefact(env, await deviceUserKey(env, product, code));
+  await releaseDeviceCode(env, code, product);
+}
+
+/**
+ * Claim a fresh user code for a flow: unique among live flows platform-wide (the platform index
+ * is written `ifAbsent`) and within the product. Returns the normalised code, or null when every
+ * attempt collided. A collision draws a new code; the platform entry is rolled back when the
+ * per-product slot is the one that was taken (a flow that predates the platform index).
+ */
+export async function claimUserCode(
+  env: Env,
+  product: string,
+  deviceCode: string,
+  ttlSec: number,
+  generate: () => string = generateUserCode,
+): Promise<string | null> {
+  for (let i = 0; i < USER_CODE_ATTEMPTS; i++) {
+    const code = generate();
+    if (!(await claimDeviceCode(env, code, product, ttlSec))) continue;
+    const claimed = await putArtefact(
+      env,
+      await deviceUserKey(env, product, code),
+      deviceCode,
+      ttlSec,
+      { ifAbsent: true },
+    );
+    if (claimed) return code;
+    await releaseDeviceCode(env, code, product);
+  }
+  return null;
 }

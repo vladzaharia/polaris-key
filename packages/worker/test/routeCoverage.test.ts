@@ -96,6 +96,11 @@ const CORE_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
  * portal session cookie.
  */
 const PORTAL_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
+  // The platform device-code entry pages: a code typed here finds its product's page.
+  deviceEntry: [
+    ["/device", ["get"]],
+    ["/tv", ["get"]],
+  ],
   portalMedia: [
     ["/media/{product}/{asset}", ["get"]],
     // I-07, PX-W16: account pictures, re-encoded (`avatar` is a reserved product slug).

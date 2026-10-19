@@ -58,6 +58,7 @@ import { handleAssetsPush } from "./core/assets/hostedAssetUploads.js";
 // HA-06: a CI push into a listing-model slot also writes Distribution's listing row; Core takes
 // the writer from here rather than importing the service.
 import { listingSlotMirror } from "./services/distribution/api.js";
+import { handleDeviceEntry } from "./core/deviceEntry.js";
 import { dispatchBytesHost, isBytesHost } from "./core/assets/bytesHost.js";
 import {
   dispatchRegistryHost,
@@ -229,6 +230,9 @@ async function routeRequest(
     // under the prefix — assets and machine-readable artifacts included.
     case "docs":
       return handleDocs(req, env, now);
+    // The platform device-code entry pages: no product, no session, no database.
+    case "deviceEntry":
+      return handleDeviceEntry(req, env, route.tv, now);
     case "portalSpa":
     case "portalApi":
     case "portalLogin":
