@@ -942,6 +942,27 @@ wait for the owner's go and are never listed by `--ready` (see `deferred` in wor
 | [D-04](wp/D-04-diceroll-after-p4.md)    | Diceroll: packs as release deliverables, with `PKeyBoot` driving the boot shell           | P4-08, P4-12, P4-03, P4-05, P4-24, P4-34        | godot-engineer | 1.5–2 | todo   |
 | [D-05](wp/D-05-diceroll-after-p6.md) ✋ | Diceroll: Background Assets, in-app updates and paid packs                                | P5-08, P6-01, P4-33, LX-35                      | godot-engineer | 1–2   | todo   |
 
+## LK: Polaris Locker
+
+14 work packages, 8.25–10.75 weeks.
+
+| Id                                                        | Title                                                                                                                            | Depends on                               | Role         | Weeks    | Status |
+| --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- | ------------ | -------- | ------ |
+| [LK-00](wp/LK-00-polaris-locker-plan.md) ⚑                | Polaris Locker plan (plans/LK-00.md)                                                                                             | —                                        | wire-planner | 0.5      | done   |
+| [LK-01](wp/LK-01-brand-locker-kit.md)                     | Brand: the Locker kit in `@polaris-key/brand`                                                                                    | —                                        | implementer  | 0.5–0.75 | todo   |
+| [LK-02](wp/LK-02-locker-words-and-docs.md)                | Words: glossary, BRAND §14.4, PORTAL, SIGN-IN, EXPERIENCE and UI-KITS amendments (D8)                                            | —                                        | implementer  | 0.25     | todo   |
+| [LK-03](wp/LK-03-customer-host-and-origin.md)             | Customer host, `customerOrigin()`, `customer.host`, `/signin` made host-aware (A2), `/device` `/tv` served on it, reserved slugs | —                                        | implementer  | 1–1.25   | todo   |
+| [LK-04](wp/LK-04-cross-host-sign-in.md) ⚑                 | Cross-host sign-in: bind hop, extends the device page and global index (A1), Locker transcripts, contract text                   | LK-00, LK-03                             | implementer  | 0.75–1   | todo   |
+| [LK-05](wp/LK-05-passkeys-related-origins.md)             | Passkeys through Related Origin Requests                                                                                         | LK-03                                    | implementer  | 0.5      | todo   |
+| [LK-06](wp/LK-06-locker-shell-portal-card.md)             | Locker shell: the portal and the card on the Locker identity and `data-brand`; copy says `{brandName}`                           | LK-01, LK-03                             | implementer  | 1–1.5    | todo   |
+| [LK-07](wp/LK-07-worker-pages-and-mail.md)                | Worker pages and customer mail on the Locker identity                                                                            | LK-01, LK-03                             | implementer  | 0.75     | todo   |
+| [LK-08a](wp/LK-08a-locker-copy-constants.md) ⚑ _deferred_ | Copy and constants: generators, ui-core, elements, React, Node, Python; ui-matrix                                                | LK-00, LK-02, LK-06                      | implementer  | 0.75–1   | todo   |
+| [LK-08b](wp/LK-08b-locker-copy-native.md) _deferred_      | The same in Swift, Kotlin and Godot                                                                                              | LK-08a                                   | sdk-porter   | 0.5–0.75 | todo   |
+| [LK-09](wp/LK-09-locker-docs.md)                          | Docs: Help door words and host (D7), the 26 developer pages, a badges page                                                       | LK-02, DOC-03b                           | implementer  | 0.5–0.75 | todo   |
+| [LK-10](wp/LK-10-console-locker-words.md)                 | Console: Locker words and links, the switch with its preflight, Connections callbacks, "Get a badge"                             | LK-01, LK-03                             | implementer  | 0.5–0.75 | todo   |
+| [LK-11](wp/LK-11-cutover.md) ✋ _deferred_                | Cutover: wrangler routes and vars, old-URL redirects, cookie expiry, RUNBOOK, smoke                                              | LK-03, LK-04, LK-05, LK-06, LK-07, LK-10 | implementer  | 0.5      | todo   |
+| [LK-12](wp/LK-12-locker-badges-in-use.md) _deferred_      | Badges in use: `polaris.locker/<slug>`, the download page's badge link                                                           | LK-01, LK-11                             | implementer  | 0.25–0.5 | todo   |
+
 ## Plans
 
 Every ⚑ package needs an approved plan in [`plans/`](plans/) before implementation. The plan is written by `pkey-wire-planner`; after approval the package's own role implements it.
@@ -1073,6 +1094,9 @@ Every ⚑ package needs an approved plan in [`plans/`](plans/) before implementa
 | [UK-44](wp/UK-44-sdk-signin-hints.md)                            | `plans/UK-44.md`                     | sdk-porter     |
 | [UK-51](wp/UK-51-terminal-drop-in-contract.md)                   | `plans/UK-51.md`                     | implementer    |
 | [AX-16](wp/AX-16-the-cli-for-agents-json-codes-pkey-explain.md)  | `plans/AX-16.md`                     | implementer    |
+| [LK-00](wp/LK-00-polaris-locker-plan.md)                         | `plans/LK-00.md`                     | planning only  |
+| [LK-04](wp/LK-04-cross-host-sign-in.md)                          | `plans/LK-00.md` (shared with LK-00) | implementer    |
+| [LK-08a](wp/LK-08a-locker-copy-constants.md)                     | `plans/LK-00.md` (shared with LK-00) | implementer    |
 
 ## Human inputs
 
@@ -1190,3 +1214,4 @@ What a person must supply, per work package. Ask early: several sit on the criti
 | [AX-19](wp/AX-19-operator-reads-pkey-product-status-and-two-mcp-tools.md) | The owner's go (plan §8.1)                                                                                                                                                                                                                                                                                                                |
 | [AX-20](wp/AX-20-evals-on-a-schedule-and-the-safety-bar.md)               | An API key with a spending cap for CI eval runs, and the cap (owner step; plan decision 9; the baseline's token counts from AX-05 size the cap)                                                                                                                                                                                           |
 | [AX-21](wp/AX-21-product-read-token-scope-bound-to-one-product.md)        | The owner's go (plan §8.1)                                                                                                                                                                                                                                                                                                                |
+| [LK-11](wp/LK-11-cutover.md)                                              | Owner steps O2–O10 (plans/LK-00.md §12)                                                                                                                                                                                                                                                                                                   |
