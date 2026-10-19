@@ -213,13 +213,9 @@ jobs:
   npm-tier-3:
     name: npm feed, tier 3
     needs: [version, npm-pack, npm-tier-2]
-    # ui-core and server are published on v* tag builds only. The live product rejects npm.ui-core and npm.server with
-    # `unknown_deliverable` until a v* tag deploy (deploy.yml) registers the deliverable, so a
-    # push to main would fail here. Every tier above needs this one, so node, react, cli and the
-    # install check are skipped with it on a build of main: none can publish before the ui-core
-    # version it pins is on the feed. Remove this `if` after the first release that deploys the
-    # ui-core and server deliverables.
-    if: startsWith(github.ref, 'refs/tags/')
+    # ui-core and server publish on every build. Every tier above needs this one, so node, react,
+    # cli and the install check wait for it: none can publish before the ui-core version it pins
+    # is on the feed.
     strategy:
       fail-fast: false
       max-parallel: 3
@@ -562,78 +558,16 @@ jobs:
           - android-direct
           - zstd
           - desktop
+          - ui-android
+          - ui-core
+          - server
+          - server-ktor
     permissions:
       contents: read
       id-token: write
     uses: ./.github/workflows/publish-package.yml
     with:
       deliverable: maven.${{ matrix.artifact }}
-      artifact: maven-repo
-      version: ${{ needs.version.outputs.version }}
-      channel: ${{ needs.version.outputs.channel }}
-
-  # maven.ui-core is a job of its own, not a leg of the matrix above: a matrix leg cannot be
-  # skipped by a job-level `if`. Same gate as npm-tier-3, for the same reason: the live product
-  # rejects maven.ui-core with `unknown_deliverable` until a v* tag deploy (deploy.yml) registers
-  # the deliverable. Remove the `if` once the first release that deploys it has shipped, and move
-  # `ui-core` into the matrix.
-  maven-ui-android:
-    name: Maven feed (ui-android)
-    needs: [version, kotlin-build]
-    if: startsWith(github.ref, 'refs/tags/')
-    permissions:
-      contents: read
-      id-token: write
-    uses: ./.github/workflows/publish-package.yml
-    with:
-      deliverable: maven.ui-android
-      artifact: maven-repo
-      version: ${{ needs.version.outputs.version }}
-      channel: ${{ needs.version.outputs.channel }}
-
-  maven-ui-core:
-    name: Maven feed (ui-core)
-    needs: [version, kotlin-build]
-    if: startsWith(github.ref, 'refs/tags/')
-    permissions:
-      contents: read
-      id-token: write
-    uses: ./.github/workflows/publish-package.yml
-    with:
-      deliverable: maven.ui-core
-      artifact: maven-repo
-      version: ${{ needs.version.outputs.version }}
-      channel: ${{ needs.version.outputs.channel }}
-
-  # maven.ui-android is a job of its own for the same reason as maven-ui-core below.
-  # maven.server and maven.server-ktor are jobs of their own, for the same reason as maven-ui-core
-  # above: the live product rejects them with `unknown_deliverable` until a v* tag deploy
-  # (deploy.yml) registers them. Remove the `if` once the first release that deploys them has
-  # shipped, and move `server` and `server-ktor` into the matrix.
-  maven-server:
-    name: Maven feed (server)
-    needs: [version, kotlin-build]
-    if: startsWith(github.ref, 'refs/tags/')
-    permissions:
-      contents: read
-      id-token: write
-    uses: ./.github/workflows/publish-package.yml
-    with:
-      deliverable: maven.server
-      artifact: maven-repo
-      version: ${{ needs.version.outputs.version }}
-      channel: ${{ needs.version.outputs.channel }}
-
-  maven-server-ktor:
-    name: Maven feed (server-ktor)
-    needs: [version, kotlin-build]
-    if: startsWith(github.ref, 'refs/tags/')
-    permissions:
-      contents: read
-      id-token: write
-    uses: ./.github/workflows/publish-package.yml
-    with:
-      deliverable: maven.server-ktor
       artifact: maven-repo
       version: ${{ needs.version.outputs.version }}
       channel: ${{ needs.version.outputs.channel }}
@@ -832,10 +766,6 @@ jobs:
         python,
         swift,
         maven,
-        maven-ui-android,
-        maven-ui-core,
-        maven-server,
-        maven-server-ktor,
         godot,
         image,
       ]
@@ -859,13 +789,9 @@ jobs:
           VERSION: ${{ needs.version.outputs.version }}
           PEP440: ${{ needs.version.outputs.pep440 }}
           CHANNEL: ${{ needs.version.outputs.channel }}
-          # What a build of main does not publish (see npm-tier-3): the ui-core, npm.server, maven.server and server-ktor deliverables and
-          # the npm packages that pin ui-core. A tag build publishes them all.
-          SKIP: ${{ !startsWith(github.ref, 'refs/tags/') && 'npm.ui-core,npm.server,npm.node,npm.react,npm.cli,maven.ui-android,maven.ui-core,maven.server,maven.server-ktor' || '' }}
         run: >-
           node tools/feed-drift.mjs --origin https://pkg.plrs.im --owner polaris-key
           --version "$VERSION" --pep440 "$PEP440" --channel "$CHANNEL" --timeout 600
-          --skip "$SKIP"
       # P0-52: every @polaris-key pin of every package at this version is a version the feed
       # lists. Only this version's broken pins fail the run; a broken pin on an older version is
       # a warning here and an error in the daily feed-closure.yml. It runs after a red drift
@@ -907,10 +833,6 @@ jobs:
         python,
         swift,
         maven,
-        maven-ui-android,
-        maven-ui-core,
-        maven-server,
-        maven-server-ktor,
         godot,
         image,
         drift,
