@@ -76,6 +76,8 @@ import { useProduct } from "../../../data/hooks.js";
 import { mutate } from "../../../data/mutations.js";
 import { Link } from "../../../router.js";
 import { r } from "../../../routes.js";
+import { ProductAlertsSection } from "../../notify/ProductAlertsSection.js";
+import { listOf } from "../model/listOf.js";
 import { deviceLimitIssue } from "../../../../lib/deviceLimit.js";
 import {
   DangerAction,
@@ -95,13 +97,6 @@ const CLAIM_OF_FIELD: Partial<Record<keyof Draft, ClaimKey>> = {
   defaultDeviceLimit: "license.defaults.deviceLimit",
   webOrigins: "core.web.origins",
 };
-
-/** "a", "a and b", "a, b and c". */
-function listOf(items: string[]): string {
-  return items.length <= 1
-    ? (items[0] ?? "")
-    : `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
-}
 
 interface Draft extends Record<string, unknown> {
   name: string;
@@ -274,6 +269,7 @@ function SettingsBody({
     { id: "settings-origins", title: "Web origins" },
     { id: "settings-repository", title: "Repository" },
     { id: "settings-storage", title: "Storage" },
+    { id: "settings-alerts", title: "Alerts" },
     { id: "danger-zone", title: "Danger zone" },
   ];
   const nonFieldError =
@@ -430,6 +426,7 @@ function SettingsBody({
 
       <RepositorySection slug={slug} product={product} />
       <StorageSection slug={slug} />
+      <ProductAlertsSection slug={slug} />
 
       <DangerZone>
         <DangerAction

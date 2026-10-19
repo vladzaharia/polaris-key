@@ -281,6 +281,8 @@ export interface OneTimeSecretDialogProps extends Omit<
   title: React.ReactNode;
   description?: React.ReactNode;
   size?: DialogSize;
+  /** Where focus goes once the dialog closes, instead of its opener. */
+  onCloseAutoFocus?: (e: Event) => void;
 }
 
 /**
@@ -294,6 +296,7 @@ export function OneTimeSecretDialog({
   description,
   size = "md",
   onDone,
+  onCloseAutoFocus,
   ...panel
 }: OneTimeSecretDialogProps): React.ReactElement {
   const [acknowledged, setAcknowledged] = React.useState(false);
@@ -315,6 +318,7 @@ export function OneTimeSecretDialog({
       description={description}
       titleRef={titleRef}
       initialFocusRef={titleRef}
+      onCloseAutoFocus={onCloseAutoFocus}
       onOpenChange={(next) => {
         if (next) return onOpenChange(true);
         if (acknowledged) return onOpenChange(false);

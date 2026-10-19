@@ -56,6 +56,8 @@ this page or fails the freshness gate.
 | `admin_api_tokens` | 0119_admin_api_tokens.sql | `id`, `token_hash`, `label`, `scopes_json`, `created_at`, `expires_at`, `last_used_at`, `revoked_at` |
 | `account_tokens` | 0120_account_tokens.sql | `id`, `account_id`, `token_hash`, `hint`, `label`, `scope`, `created_at`, `expires_at`, `last_used_at`, `revoked_at`, `revoked_by`, `revoke_reason` |
 | `sdk_sightings` | 0121_sdk_sightings.sql | `product`, `sdk`, `platform`, `arch`, `first_seen`, `last_seen`, `sdk_version`, `services_ok`, `last_ok_at` |
+| `notify_destinations` | 0123_notify_destinations.sql | `product`, `id`, `kind`, `target`, `label`, `alerts_json`, `enabled`, `version`, `created_at`, `created_by`, `updated_at`, `updated_by`, `last_status`, `last_at`, `last_error`, `failures` |
+| `notify_destination_secrets` | 0123_notify_destinations.sql | `product`, `destination_id`, `enc_secret_json` |
 | `platform_settings` | 0056_platform_settings.sql | `key`, `value_json`, `version`, `updated_at`, `updated_by` |
 | `platform_job_runs` | 0057_platform_operations.sql | `id`, `run_id`, `job`, `cron`, `step`, `started_at`, `duration_ms`, `outcome`, `items`, `rows_affected`, `error_summary` |
 | `platform_heartbeats` | 0057_platform_operations.sql | `script`, `at`, `version_tag`, `cf_version_id`, `outcome`, `backlog_count`, `backlog_bytes`, `oldest_at` |

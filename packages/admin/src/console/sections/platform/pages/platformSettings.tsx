@@ -47,6 +47,8 @@ import {
   IDENTITY_VARS,
   LimitsSection,
 } from "./platformDeploy.js";
+import { AlertDestinations } from "../../notify/AlertDestinations.js";
+import { r } from "../../../routes.js";
 import { FeedPolicySection } from "./platformFeedPolicy.js";
 import { HistorySection } from "./platformHistory.js";
 import { KeyringSection, SecretsSection } from "./platformKeyring.js";
@@ -363,6 +365,23 @@ export function PlatformSettingsPage(): React.ReactElement {
           {EMAIL_VARS.map((n) => (
             <DeployRow key={n} item={deploy.get(n)} />
           ))}
+          <div className="border-t border-border">
+            <div className="px-5 pt-4">
+              <h3 className="flex flex-wrap items-center gap-x-2 text-sm font-semibold text-fg-strong">
+                Alert destinations
+                <code className="rounded border border-border px-1.5 py-px font-mono text-xs font-normal text-fg-muted">
+                  alerts.destinations
+                </code>
+              </h3>
+              <p className="text-sm text-fg-muted">
+                Where the platform&apos;s alerts go.
+              </p>
+            </div>
+            <AlertDestinations
+              scope={{ kind: "platform" }}
+              returnHash={r.platformSettings()}
+            />
+          </div>
         </SettingsSection>
       ) : null}
 

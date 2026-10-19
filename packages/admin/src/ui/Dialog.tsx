@@ -348,6 +348,8 @@ export interface DialogProps {
   onEscapeKeyDown?: (e: KeyboardEvent) => void;
   /** Where focus lands on open (a confirm's Cancel). Default: the first focusable element. */
   initialFocusRef?: React.RefObject<HTMLElement | null>;
+  /** Replaces the default return of focus to the opener (a caller that knows a better target). */
+  onCloseAutoFocus?: (e: Event) => void;
   /** `alertdialog` for confirmations. */
   role?: "dialog" | "alertdialog";
   /** The draft holds unsaved input: dismissing asks first. See also `useDismissGuard`. */
@@ -372,6 +374,7 @@ export function Dialog({
   children,
   onEscapeKeyDown,
   initialFocusRef,
+  onCloseAutoFocus,
   role,
   unsaved = false,
   titleRef: titleRefProp,
@@ -421,7 +424,7 @@ export function Dialog({
               ? {}
               : { "aria-describedby": undefined })}
           onOpenAutoFocus={focus.onOpenAutoFocus}
-          onCloseAutoFocus={focus.onCloseAutoFocus}
+          onCloseAutoFocus={onCloseAutoFocus ?? focus.onCloseAutoFocus}
           onEscapeKeyDown={(e) => {
             if (!dismissible) e.preventDefault();
             onEscapeKeyDown?.(e);

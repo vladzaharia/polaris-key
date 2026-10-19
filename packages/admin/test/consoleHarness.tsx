@@ -192,6 +192,24 @@ export interface BootOptions {
 }
 
 /** Mount the console at `hash` with a scripted backend. */
+/** The alert destinations answer for a scope that has none (ST-27). */
+export const ALERTS_NONE = {
+  destinations: [],
+  kinds: [
+    { id: "auto_halt", label: "Auto-halt tripped", sent: true },
+    { id: "store_connection", label: "Store connection failing", sent: false },
+    { id: "commerce", label: "Commerce problem", sent: false },
+    { id: "access_changed", label: "Access changed", sent: false },
+    {
+      id: "notifications_failing",
+      label: "A destination is failing",
+      sent: true,
+    },
+  ],
+  max: 5,
+  emailAvailable: true,
+};
+
 export function boot(hash: string, opts: BootOptions = {}): FetchLog {
   window.location.hash = hash;
   const me = { ...ME, ...opts.me };
@@ -206,6 +224,8 @@ export function boot(hash: string, opts: BootOptions = {}): FetchLog {
         ),
       ),
     },
+    // ST-27: a product's alert destinations (Settings → Alerts), none set.
+    "/manage/api/products/djdl/alerts": ALERTS_NONE,
     "/manage/api/products/djdl/devices": { devices: [], nextCursor: null },
     "/manage/api/products/djdl/devices/summary": {
       total: 0,

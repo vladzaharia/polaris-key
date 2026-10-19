@@ -4437,6 +4437,68 @@ export type FeedScope =
   | { kind: "platform" }
   | { kind: "product"; slug: string };
 
+// ── alert destinations (ST-27) ───────────────────────────────────────────────
+/** The alert kinds a destination can take (worker `core/notify/alertDestinations.ts`). */
+export type AlertKindId =
+  | "auto_halt"
+  | "store_connection"
+  | "commerce"
+  | "access_changed"
+  | "notifications_failing";
+
+/** Which console scope an alert-destination call is in. */
+export type AlertScope =
+  | { kind: "platform" }
+  | { kind: "product"; slug: string };
+
+/**
+ * One destination as the API shows it. `target` is the address, or `https://host/…` for a
+ * webhook: the URL and the signing secret are sealed on the Worker and never come back.
+ */
+export interface AlertDestination {
+  id: string;
+  scope: string;
+  kind: "email" | "webhook";
+  target: string;
+  label: string | null;
+  alerts: AlertKindId[];
+  enabled: boolean;
+  version: number;
+  lastStatus: "ok" | "failed" | "refused" | null;
+  lastAt: number | null;
+  /** Why the last delivery failed: a host or HTTP status, never a path or secret. */
+  lastError: string | null;
+  failures: number;
+}
+
+export interface AlertDestinationsView {
+  destinations: AlertDestination[];
+  kinds: Array<{ id: AlertKindId; label: string; sent: boolean }>;
+  max: number;
+  emailAvailable: boolean;
+  /** Product scope: how many enabled platform destinations apply where this sets none. */
+  inherited?: number;
+  /** Product scope: enabled platform destinations that take each kind. */
+  inheritedByKind?: Record<AlertKindId, number>;
+}
+
+export interface AlertDestinationBody {
+  kind?: "email" | "webhook";
+  /** An address, or an https URL (write only). */
+  target?: string;
+  label?: string;
+  alerts?: AlertKindId[];
+  enabled?: boolean;
+  rotateSecret?: boolean;
+  expectedVersion?: number;
+}
+
+/** A write's answer. `secret` (a webhook's signing secret) is present on create and rotate only. */
+export interface AlertDestinationWritten {
+  destination: AlertDestination;
+  secret?: string;
+}
+
 // ── activity ──────────────────────────────────────────────────────────────────
 export interface ActivityItem {
   id: string;
@@ -4633,6 +4695,12 @@ const feedsBase = (scope: FeedScope): string =>
     ? "/manage/api/platform/feeds"
     : `${p(scope.slug)}/distribution/feeds`;
 
+/** The alert destinations base of a scope (ST-27). */
+const alertsBase = (scope: AlertScope): string =>
+  scope.kind === "platform"
+    ? "/manage/api/platform/alerts"
+    : `${p(scope.slug)}/alerts`;
+
 /** One package: `:owner/:name` in platform scope, `:name` in product scope. */
 const feedPackagePath = (
   scope: FeedScope,
@@ -4688,6 +4756,39 @@ const rawApi = {
     call<{ ok: true; token: AdminApiToken }>(`/manage/api/tokens/${enc(id)}`, {
       method: "DELETE",
     }),
+  // ── alert destinations (ST-27) ───────────────────────────────────────────────
+  /** Where this scope's alerts go. Never a URL or a secret. */
+  alertDestinations: (scope: AlertScope) =>
+    call<AlertDestinationsView>(alertsBase(scope)),
+  /**
+   * Add one. A webhook answers its signing secret once, in `secret`. Needs a sign-in from the
+   * last five minutes (403 `step_up_required`); 422 `reason` says what was refused.
+   */
+  createAlertDestination: (scope: AlertScope, body: AlertDestinationBody) =>
+    call<AlertDestinationWritten>(alertsBase(scope), {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  /** Change one; `rotateSecret` answers a new secret once. Retargeting needs the step-up. */
+  updateAlertDestination: (
+    scope: AlertScope,
+    id: string,
+    body: AlertDestinationBody,
+  ) =>
+    call<AlertDestinationWritten>(`${alertsBase(scope)}/${enc(id)}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  deleteAlertDestination: (scope: AlertScope, id: string) =>
+    call<{ ok: true }>(`${alertsBase(scope)}/${enc(id)}`, {
+      method: "DELETE",
+    }),
+  /** One test alert; 429 `too_soon` inside 30 seconds of the last send. */
+  testAlertDestination: (scope: AlertScope, id: string) =>
+    call<{ outcome: "ok" | "failed" | "refused"; detail: string | null }>(
+      `${alertsBase(scope)}/${enc(id)}/test`,
+      { method: "POST" },
+    ),
   /** People's `pkeyp_` tokens (F-33): the Superadmin's roster. Never a token or a hash. */
   personalTokens: () =>
     call<{ tokens: AdminPersonalToken[] }>("/manage/api/account-tokens"),

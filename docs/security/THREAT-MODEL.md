@@ -4530,6 +4530,64 @@ resync), `release.publishing.trustedPublisher` (which workflow and environment c
 ST-38 later removed `core.registration`: the registration policy is derived from the enabled
 services, so there is nothing to declare or widen, and four of the five remain.
 
+### Notification destinations: operator alerts (ST-27)
+
+Operator alerts (an auto-halt that tripped, a store connection that failed, a purchase that
+maps to nothing, a change of who may do what, a destination that keeps failing) used to reach the
+audit trail only. ST-27 adds destinations: an email address, mailed through Core's one send choke
+point (`core/notify/emailDelivery.ts`, so the suppression list, the Apple relay gate and the
+provider-error handling apply), or an https webhook. Two scopes: the platform's, and a product's
+own, which replaces the platform's for the alert kinds it takes. The code is
+`core/notify/alertDestinations.ts` (rows, writes, delivery) and `core/notify/alertWebhook.ts` (the
+URL guard, the signature and the one POST). Tables `notify_destinations` and
+`notify_destination_secrets` are Core's.
+
+- **The webhook URL is SSRF-shaped.** An operator writes a URL and the Worker dials it with a
+  signed body. Both guards must accept it, on write and again on every delivery: `guardUrl`
+  (`core/safeFetch.ts`: https only, no userinfo, port 443, no IP literal, no single-label host,
+  not `plrs.im` or `workers.dev` or a private-only suffix) and `outboundUrlProblem`
+  (`core/outboundGuard.ts`: the reserved-range check). A redirect is **refused**, never followed
+  (`redirect: "manual"`; a 3xx is recorded as `refused`), so a public host cannot aim the signed
+  request at an address the guard did not see. Five-second timeout; the response body is
+  cancelled unread, so a hostile endpoint returns the Worker nothing it keeps. There is no
+  response data path back to the operator, so the destination is not an oracle for internal hosts
+  either. The Worker resolves nothing itself and Cloudflare does not dial private space from a
+  Worker (the argument `safeFetch.ts` makes); DNS-rebinding to a private address is therefore
+  not available.
+- **Secrets are sealed and never shown back.** The URL (its path can hold a token) and the signing
+  secret are sealed together under `PLATFORM_KEK`, AAD
+  `pkey:v2:<scope>:notify-destination:<id>` (kind `notify-destination`, a closed-set addition in
+  `platform/keyvault.ts`); the KEK sweep re-seals them (`SEALED_TABLES`). Lists and audit rows
+  hold the address or `https://host/…`, never a URL path or a secret. The signing secret is
+  returned once, by the create and by a rotate, and nowhere else. A deleted destination or product
+  deletes the sealed row with it.
+- **Signing.** The Standard Webhooks scheme (`webhook-id`, `webhook-timestamp`,
+  `webhook-signature: v1,<HMAC-SHA256>` over `id.timestamp.body`), key `whsec_<24 random bytes>`,
+  per destination. A receiver verifies and rejects a stale timestamp. SP-66 adopts the same format.
+- **Who can write.** Platform: the `platform` area. Product: the `settings` area of that product
+  (a role narrowed to one other area cannot aim a product's alerts). Adding or retargeting a
+  destination (`POST`, `PATCH`) needs the console step-up (`STEP_UP_ROUTES`; for `PATCH` the handler checks it, and only a body that just turns a destination on skips it, because turning one off silences alerts), so a stolen session
+  cannot redirect alerts to an attacker or exfiltrate through a webhook. Removing one
+  (`DELETE`) needs it too, because a stolen session could otherwise silence every alert; only a
+  test send does not. Every write appends an audit row (`notify.destination.create|update|rotate|delete|test`,
+  to `platform_audit` or the product's `audit`), and an alert that reached nobody appends
+  `notify.alert.undeliverable`.
+- **Abuse bounds.** At most 5 destinations per scope; a test send at most every 30 seconds and 10 an hour per scope, counted from the audit
+  trail (so deleting and re-adding a destination resets nothing), and **no test send to a
+  product-scope email address** until confirmation exists (it would let a product operator send
+  platform-branded mail to anyone on demand); alert text is clipped (500 characters) and control characters are stripped; mail
+  is platform mail from the platform sender, under the existing daily limits. A product-scope
+  email destination may name any address, as a product operator already can through the licence
+  key emails; the message carries no secret and no link. Residual risk: such an address receives
+  alert text (a product name and a rollout reason). Follow-up: a confirmation link to a
+  product-scope address, owned by the alerts work in P0-51.
+- **No new data is collected.** Alert content is operator-facing state already in the audit trail.
+
+The last delivery failure is stored as words with a host or an HTTP status (`last_error`), never a URL path or a secret.
+
+Review trigger (section 9): a new alert kind, a new destination kind, any change to the URL guard
+or the redirect rule, and any new reader of `notify_destination_secrets`.
+
 ### Self-reported operations (A-14)
 
 `GET /manage/api/platform/operations` (A-14, notes/S-13 §7.2 phase 1) sits behind the same
