@@ -101,8 +101,8 @@ export function TestStep({
   return (
     <div className="space-y-4">
       <p className="text-sm text-fg-muted">
-        Sign in at {hostOf(issuer)} to see which claims arrive. Nothing is
-        saved.
+        Sign in at {issuer ? hostOf(issuer) : "the provider"} to see which
+        claims arrive. Nothing is saved.
       </p>
       {needsSecret ? (
         <Callout tone="info" title="No client secret in this tab">

@@ -2,7 +2,7 @@
 title: "Connections"
 description: "Store connections (the platform's team-level store credentials, the shared store settings, the apps list, assigning an app to a product) and sign-in connections (OpenID Connect providers, verified email domains, enforcement)."
 type: "reference"
-lastReviewed: "2026-10-16"
+lastReviewed: "2026-10-19"
 sidebar:
   order: 13
 ---
@@ -298,9 +298,50 @@ through the Worker's one relying-party client, with discovery, PKCE, `state`, `n
 issuer's hosts as the only hosts it dials. What the card does with a connection is in
 [Customer portal](/docs/features/sign-in/customer-portal/#signing-in).
 
-The console has no page or admin route for sign-in connections yet, so a deploy has only the
-seeded connection below. Adding a connection, proving its domains and enforcing them come with the
-console's connection screens.
+In the console it is **Platform → Connections**, for platform admins. The page groups the
+platform's sign-in plumbing by kind:
+
+- **Single sign-on.** The connections you add, each with its status (On, Off, Needs attention)
+  and how many of its domains are verified.
+- **Sign-in providers.** Google, Apple and Steam on the sign-in card: On or Not set up, with the
+  steps and the redirect URI to register. They still read their `SIGNIN_*` Worker values.
+- **Email** and **Turnstile.** Status only.
+
+Every change needs a sign-in from the last five minutes (a step-up) and is recorded in the
+platform activity log. A client secret is sealed when you save it and is never shown again; the
+page says only "Sealed".
+
+### Add a connection
+
+**Add connection** opens a five-step wizard. Nothing is saved until the last step.
+
+1. **Provider.** Enter the issuer, an https address with no port, credentials, query or fragment.
+   **Check provider** reads its discovery document; the page shows the hosts it uses. An address
+   that is private or not https is refused before any request.
+2. **Client.** Register the redirect URI shown (`<origin>/callback`) at the provider, then enter
+   the client ID and, if it needs one, the client secret.
+3. **Test sign-in.** **Test sign-in** opens the provider in a pop-up and shows the claims that came
+   back: the email, the groups and claims you map, and the names of every claim in the token.
+   Nothing is saved, and only the operator who started the test sees the result. **Use this tab**
+   does the same without a pop-up and returns to this step. A provider's error is shown as plain
+   text.
+4. **Claims.** Name the claim that lists groups, the other claims access rules may use, and the
+   claim for a display name.
+5. **Add.** Review and add. The connection is for customers; operator sign-in through a connection
+   waits for the Superadmin gate.
+
+Then open the connection to claim its domains.
+
+### One connection
+
+The connection's page shows the provider, and **Change** edits the name, client, claim mapping
+and replaces the sealed secret. **On** turns it off without deleting it. **Delete** is refused
+while people sign in through it, and for the seeded connection.
+
+**Domains.** **Add domain** shows the TXT record to publish (name and value, with copy buttons).
+**Check now** reads it; a verified domain can then be required. **Require this connection** stops
+email codes and magic links for that domain's addresses, so it asks you to confirm. **Release**
+drops the claim.
 
 ### The seeded platform connection
 
