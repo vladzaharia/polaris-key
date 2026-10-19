@@ -75,6 +75,10 @@ export function ConnectionPage({ id }: { id: string }): React.ReactElement {
     onTestStep: false,
   });
   const testBtn = React.useRef<HTMLButtonElement>(null);
+  // A failed or closed test sends focus back to the button that starts it.
+  React.useEffect(() => {
+    if (t.error) window.setTimeout(() => testBtn.current?.focus(), 0);
+  }, [t.error]);
 
   /**
    * One write, then a refresh. A stale step-up shows the sign-in callout and still throws, so
@@ -131,9 +135,6 @@ export function ConnectionPage({ id }: { id: string }): React.ReactElement {
     : undefined;
   const redirectUri = page.data?.redirectUri;
   const testFailure = failureOf(t.error);
-  React.useEffect(() => {
-    if (t.error) window.setTimeout(() => testBtn.current?.focus(), 0);
-  }, [t.error]);
 
   const test = (
     <div className="space-y-3">

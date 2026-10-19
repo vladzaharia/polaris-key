@@ -202,16 +202,17 @@ describe("a refused change", () => {
       extra: {
         [`${BASE}/conn_work`]: { connection: WORK },
         [BASE]: PAGE,
-        [`PATCH ${BASE}/conn_work`]: new Response(
-          JSON.stringify({
-            error: {
-              code: "invalid_label",
-              message: "Name it in 1 to 60 characters.",
-              fields: ["label"],
-            },
-          }),
-          { status: 422, headers: { "content-type": "application/json" } },
-        ),
+        [`PATCH ${BASE}/conn_work`]: () =>
+          new Response(
+            JSON.stringify({
+              error: {
+                code: "invalid_label",
+                message: "Name it in 1 to 60 characters.",
+                fields: ["label"],
+              },
+            }),
+            { status: 422, headers: { "content-type": "application/json" } },
+          ),
       },
     });
     await screen.findByRole("heading", { level: 1, name: "Work" });
@@ -234,9 +235,8 @@ describe("a refused change", () => {
     boot(`#/platform/connections/nope`, {
       me: ME,
       extra: {
-        [`${BASE}/nope`]: new Response(JSON.stringify({ error: "not_found" }), {
-          status: 404,
-        }),
+        [`${BASE}/nope`]: () =>
+          new Response(JSON.stringify({ error: "not_found" }), { status: 404 }),
         [BASE]: PAGE,
       },
     });
