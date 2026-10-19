@@ -985,6 +985,7 @@ export const DISTRIBUTION_ROUTES: Record<string, unknown> = {
       licensing: { tiers: 3, licenses: 5 },
       managedConfig: { catalogVersion: 4 },
       shipBuilds: { latest: { version: "2.4.0", channel: "stable" } },
+      commerce: { storefronts: 0, storeGrants: 0 },
     },
   },
 };

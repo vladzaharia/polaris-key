@@ -124,6 +124,9 @@ export const qk = {
   /** The product detail row. Match it with `exact: true`; as a prefix it is the whole product. */
   product: (slug: string): QueryKey => product(slug),
 
+  // commerce
+  commerceView: (slug: string) => product(slug, "commerce", "view"),
+
   // core
   services: (slug: string) => product(slug, "core", "services"),
   devices: (slug: string) => product(slug, "core", "devices"),

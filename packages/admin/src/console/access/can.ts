@@ -83,6 +83,7 @@ const PRODUCT_PAGE_AREAS: Record<ProductPageId, AreaId> = {
   health: "ship",
   credentials: "keys",
   commerce: "commerce",
+  "commerce-overview": "commerce",
   feed: "ship",
   portal: "signin",
   "sign-in": "signin",

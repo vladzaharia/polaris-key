@@ -537,6 +537,7 @@ export const r = {
   appStore: (slug: string, query?: QueryInit) =>
     productPage(slug, "app-store", { query }),
   commerce: (slug: string) => productPage(slug, "commerce"),
+  commerceOverview: (slug: string) => productPage(slug, "commerce-overview"),
   access: (slug: string) => productPage(slug, "access"),
   health: (slug: string, query?: QueryInit) =>
     productPage(slug, "health", { query }),

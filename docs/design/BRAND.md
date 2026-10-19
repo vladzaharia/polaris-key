@@ -413,6 +413,10 @@ the shopping-bag icon and the Pinned K (it requires License), never the Star Cut
 re-scoped to exactly that. Distribution and Commerce never sit side by side as one identity: the
 data-service decides, and the icon tells them apart.
 
+Kit rule (B1): a link inside Commerce is strong text, underlined, never the accent, because green
+reads close to success and the accent never encodes status. `tokens.css` carries it as a rule on
+`[data-service="commerce"] a`; a link styled as a button keeps its own colours.
+
 `on` is `#060912` on every dark solid (5.1–14.7:1) and on the light chartreuse and cyan solids
 (4.8 and 5.0:1); `#ffffff` on the other light solids (4.7–7.2:1). The full set (subtle values, bit colours) is in
 `tokens.json` and the preview.

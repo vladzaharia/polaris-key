@@ -7,6 +7,7 @@
  */
 
 import type { Db } from "../../db/types.js";
+import { readConnectorSettings } from "../../core/stores/settings.js";
 
 export interface FeatureFacts {
   /** Licensing: the product's tiers and licences. */
@@ -15,32 +16,51 @@ export interface FeatureFacts {
   managedConfig: { catalogVersion: number | null };
   /** Ship builds: the app's latest release and its release track, `null` before the first. */
   shipBuilds: { latest: { version: string; channel: string | null } | null };
+  /**
+   * Commerce: the stores with a configured storefront (`commerce` connector settings: one block per
+   * store; CM-21 tightens "configured" to Ready) and the store purchases that are live, which the
+   * Attention state "Store refunds are not landing" reads while Commerce is off.
+   */
+  commerce: { storefronts: number; storeGrants: number };
 }
 
 export async function featureFactsOf(
   db: Db,
   product: string,
 ): Promise<FeatureFacts> {
-  const [tiers, licenses, catalog, release] = await Promise.all([
-    db.first<{ n: number }>(
-      "SELECT COUNT(*) AS n FROM tiers WHERE product = ?",
-      product,
-    ),
-    db.first<{ n: number }>(
-      "SELECT COUNT(*) AS n FROM licenses WHERE product = ?",
-      product,
-    ),
-    db.first<{ v: number | null }>(
-      "SELECT MAX(catalog_version) AS v FROM product_schema WHERE product = ? AND active = 1",
-      product,
-    ),
-    db.first<{ version: string; channel: string | null }>(
-      `SELECT version, channel FROM release_metadata
+  const [tiers, licenses, catalog, release, commerce, storeGrants] =
+    await Promise.all([
+      db.first<{ n: number }>(
+        "SELECT COUNT(*) AS n FROM tiers WHERE product = ?",
+        product,
+      ),
+      db.first<{ n: number }>(
+        "SELECT COUNT(*) AS n FROM licenses WHERE product = ?",
+        product,
+      ),
+      db.first<{ v: number | null }>(
+        "SELECT MAX(catalog_version) AS v FROM product_schema WHERE product = ? AND active = 1",
+        product,
+      ),
+      db.first<{ version: string; channel: string | null }>(
+        `SELECT version, channel FROM release_metadata
         WHERE product = ? AND deliverable_id = 'app'
         ORDER BY COALESCE(published_at, created_at) DESC LIMIT 1`,
-      product,
-    ),
-  ]);
+        product,
+      ),
+      readConnectorSettings(db, product, "commerce"),
+      db.first<{ n: number }>(
+        `SELECT (SELECT COUNT(*) FROM grants WHERE product = ? AND state = 'active'
+                 AND source IN ('app-store', 'play', 'steam'))
+            + (SELECT COUNT(*) FROM license_store_grants WHERE product = ? AND state = 'active') AS n`,
+        product,
+        product,
+      ),
+    ]);
+  const block = (k: string) => {
+    const v = commerce?.value[k];
+    return v !== null && typeof v === "object" && !Array.isArray(v);
+  };
   return {
     licensing: { tiers: tiers?.n ?? 0, licenses: licenses?.n ?? 0 },
     managedConfig: { catalogVersion: catalog?.v ?? null },
@@ -48,6 +68,10 @@ export async function featureFactsOf(
       latest: release
         ? { version: release.version, channel: release.channel ?? null }
         : null,
+    },
+    commerce: {
+      storefronts: ["appStore", "play", "steam"].filter(block).length,
+      storeGrants: storeGrants?.n ?? 0,
     },
   };
 }

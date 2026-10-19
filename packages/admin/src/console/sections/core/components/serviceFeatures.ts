@@ -62,6 +62,24 @@ export const DISABLE_CONSEQUENCES: Record<ServiceSlug, string> = {
     "Commerce’s endpoints answer not-found: no purchase claims, and store refunds do not land until Commerce is back on.",
 };
 
+/** Play drops what Commerce cannot receive: the limits an operator has to beat when it is off. */
+export const COMMERCE_OFF_LIMITS =
+  "Google Play retries notifications for 7 days and lists voided purchases for 31. Turn Commerce back on within them or those refunds are missed.";
+
+/** The row's Attention state: store purchases are live but Commerce is off, so refunds miss. */
+export function storeRefundsAttention(
+  feature: FeatureRow,
+  enabled: Enabled,
+  facts: ServiceFeatureFacts,
+): string | null {
+  return feature.id === "commerce" &&
+    enabled.license &&
+    !enabled.commerce &&
+    facts.commerce.storeGrants > 0
+    ? "Store refunds are not landing while Commerce is off"
+    : null;
+}
+
 export function readEnabled(data: ServicesResponse): Enabled {
   const enabled = {} as Enabled;
   for (const slug of SERVICE_SLUGS)
@@ -156,6 +174,12 @@ export function factFor(
       return latest
         ? `Latest app ${latest.version}${latest.channel ? ` · ${latest.channel}` : ""}`
         : "No app release yet";
+    }
+    case "commerce": {
+      const n = facts.commerce.storefronts;
+      return n > 0
+        ? `${n} ${n === 1 ? "storefront" : "storefronts"} ready`
+        : "Set up a storefront";
     }
     default:
       return null;
