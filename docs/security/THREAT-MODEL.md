@@ -4490,6 +4490,16 @@ composition root and refuses:
 No new data is collected and nothing reaches a device: `wire` only labels which existing channel
 already carries a value.
 
+ST-16 makes three platform entries live on Platform → Settings: the key-entry limit ceiling
+(`identity.keyEntry.limit`, a `policy` bound on the permissive side) and the two hosted-asset
+quota defaults (`assets.quota.*`), so a platform write now reaches every product that inherits or
+is clamped by it. Both directions of each take L2 (typed key on the strict route), and the new
+read-only `GET /api/platform/settings/:key/reach` (platform area, counts and product slugs only,
+no other setting's value) tells the operator how many products a change reaches before they
+confirm. A platform bound clamps on read and never rewrites a product row, so reverting it
+restores every product's own value. The licence defaults stay `pending` until the device hot
+paths read them through the resolver.
+
 ST-19b registers the manifest-declared settings ST-06 left pending (the `.pkey/release` block,
 deliverables, channel policy, trusted publisher, release keys, device registration, required
 secret names, provisioning hooks and transports). Each describes today's storage and adds no

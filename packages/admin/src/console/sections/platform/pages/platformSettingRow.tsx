@@ -38,6 +38,7 @@ import {
 import type { SettingHistoryEntry } from "../../../../ui/settings/SettingExtras.js";
 import { useWriteGate } from "../../../access/useCan.js";
 import { mutate } from "../../../data/mutations.js";
+import { ClampedNote, ReachCount } from "./platformReach.js";
 import { qk } from "../../../data/queries.js";
 
 /** The engine's spec for a platform setting. */
@@ -193,6 +194,19 @@ function consequencesOf(
       return [
         `The delta consumer encodes payloads up to ${next} on either side of a pair (was ${before}).`,
         "Larger pairs cost more consumer CPU and memory. 32 MiB is the measured ceiling.",
+        reach,
+      ];
+    case "identity.keyEntry.limit":
+      return [
+        `No product may allow more than ${next} key entries per license (was ${before}). A product that set a higher limit keeps it and is held to ${next}.`,
+        "Key entries already recorded stay. Nothing is deleted.",
+        reach,
+      ];
+    case "assets.quota.mediaBytes":
+    case "assets.quota.releaseBytes":
+      return [
+        `Products that set no quota of their own now have ${next} (was ${before}).`,
+        "Files already stored stay. A product over its new quota is refused new ones.",
         reach,
       ];
     default:
@@ -364,6 +378,10 @@ export function EditableRow({
     );
   }
 
+  // A bound that clamps products says which, with what each set and what is in effect.
+  if (setting.link === "bound")
+    notes.push(<ClampedNote key="clamped" setting={setting} />);
+
   const undo = (prev: PlatformSetting, written: PlatformSetting) => {
     const restore =
       prev.stored && prev.stored.valid
@@ -409,8 +427,12 @@ export function EditableRow({
       bounds={
         setting.kind === "integer"
           ? bytes
-            ? `${formatNumber(toField(specOf(setting), setting.min))} to ${formatNumber(toField(specOf(setting), setting.max))} MiB. It can only lower the measured ${formatNumber(toField(specOf(setting), setting.max))} MiB ceiling.`
-            : `${formatCount(setting.min)} to ${formatCount(setting.max)} days.`
+            ? `${formatNumber(toField(specOf(setting), setting.min))} to ${formatNumber(toField(specOf(setting), setting.max))} MiB.${
+                setting.key === "LAZY_DELTA_MAX_BYTES"
+                  ? ` It can only lower the measured ${formatNumber(toField(specOf(setting), setting.max))} MiB ceiling.`
+                  : ""
+              }`
+            : `${formatCount(setting.min)} to ${formatCount(setting.max)}${setting.unit === "days" ? " days" : ""}.`
           : undefined
       }
       reloadedBy={
@@ -423,6 +445,11 @@ export function EditableRow({
           queryKey: qk.platformSettings(),
           exact: true,
         })
+      }
+      confirmExtra={
+        setting.link
+          ? (to) => <ReachCount setting={setting} to={to} />
+          : undefined
       }
       consequences={(to) =>
         consequencesOf(setting, to as string | number, propagationSeconds)

@@ -166,6 +166,7 @@ export const ADMIN_ROUTES: readonly AdminRoute[] = [
   ...rows(["GET"], "/platform/reserved-names", "platform", platform),
   ...rows(["GET"], "/platform/settings", "platform", platform),
   ...rows(["PATCH", "DELETE"], "/platform/settings/:key", "platform", platform),
+  ...rows(["GET"], "/platform/settings/:key/reach", "platform", platform),
   ...rows(["GET", "POST"], "/platform/settings/backfill", "platform", platform),
   // P0-49: the data-migration runner. Apply and down are step-up writes.
   // A `migrations:report` token (`pkey migrate`) reaches the read side and the dry run; apply and

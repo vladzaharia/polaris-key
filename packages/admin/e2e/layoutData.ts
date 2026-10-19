@@ -542,6 +542,64 @@ function lazyDeltas(over: Setting = {}): Setting {
   };
 }
 
+/** ST-16: the product defaults the Worker lists under Platform → Settings. */
+function keyEntryCeiling(over: Setting = {}): Setting {
+  return {
+    key: "identity.keyEntry.limit",
+    area: "product-defaults",
+    label: "Key-entry limit ceiling",
+    description:
+      "The most key entries any product may allow per license that is in no account. A product may set a lower limit, never a higher one.",
+    kind: "integer",
+    unit: "count",
+    min: 1,
+    max: 100,
+    scripts: ["main"],
+    precedence: "runtime",
+    default: 100,
+    deployValue: null,
+    value: 20,
+    source: "runtime",
+    forcedOff: false,
+    stored: {
+      value: 20,
+      valid: true,
+      updatedAt: 1_790_000_000,
+      updatedBy: "ops@x.io",
+    },
+    version: 2,
+    link: "bound",
+    confirm: { raise: "L2", lower: "L2" },
+    ...over,
+  };
+}
+
+function mediaQuota(over: Setting = {}): Setting {
+  return {
+    key: "assets.quota.mediaBytes",
+    area: "product-defaults",
+    label: "Default media quota",
+    description:
+      "How many bytes of hosted images a product may hold when it sets no quota of its own.",
+    kind: "integer",
+    unit: "bytes",
+    min: 0,
+    max: 1_099_511_627_776,
+    scripts: ["main"],
+    precedence: "runtime",
+    default: 536_870_912,
+    deployValue: null,
+    value: 536_870_912,
+    source: "default",
+    forcedOff: false,
+    stored: null,
+    version: 0,
+    link: "default",
+    confirm: { raise: "L2", lower: "L2" },
+    ...over,
+  };
+}
+
 function maxBytes(over: Setting = {}): Setting {
   return {
     key: "LAZY_DELTA_MAX_BYTES",
@@ -618,7 +676,14 @@ function grace(over: Setting = {}): Setting {
 
 function view(over: Record<string, unknown> = {}) {
   return {
-    settings: [lazyDeltas(), maxBytes(), gcMode(), grace()],
+    settings: [
+      lazyDeltas(),
+      keyEntryCeiling(),
+      mediaQuota(),
+      maxBytes(),
+      gcMode(),
+      grace(),
+    ],
     storeAvailable: true,
     propagationSeconds: 30,
     deployTime: [
@@ -1711,6 +1776,15 @@ export const DATA_ROUTES: Record<string, unknown> = {
   },
   "/manage/api/platform/operations": operations(),
   "/manage/api/platform/settings": view(),
+  "/manage/api/platform/settings/identity.keyEntry.limit/reach": {
+    kind: "bound",
+    total: 14,
+    reaches: 2,
+    clamped: [
+      { product: "djdl", set: 50, effective: 20 },
+      { product: "northwind", set: 10, effective: 20 },
+    ],
+  },
   "/manage/api/platform/override-migration": { state: MIGRATION_STATE },
   "/manage/api/platform/override-migration/report": MIGRATION_REPORT,
   "/manage/api/products/kek": KEK,

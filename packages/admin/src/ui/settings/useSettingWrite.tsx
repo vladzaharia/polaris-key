@@ -59,6 +59,8 @@ export interface SettingWriteOptions {
   confirmCopy?: (to: unknown) => { title: string; confirmLabel: string };
   /** Extra lines for the confirmation of a change to `to`. */
   consequences?: (to: unknown) => string[];
+  /** Extra content under the consequences of a change to `to` (a live count, a list). */
+  confirmExtra?: (to: unknown) => React.ReactNode;
   /** The confirmation of Revert, or `null` when there is nothing to revert. */
   revertPlan?: () => RevertPlan | null;
   /** Refetch the setting; resolves when the new value is in. */
@@ -258,6 +260,7 @@ export function useSettingWrite(o: SettingWriteOptions) {
           setPending(null);
         }}
       >
+        {!isRevert ? o.confirmExtra?.(pending.value) : null}
         {needsReason ? (
           <div className="space-y-1 text-sm">
             <label className="block space-y-1">

@@ -118,8 +118,11 @@ section (`?section=`), so a link opens there.
   `PLATFORM_KEK` kept as a legacy key beside `PLATFORM_KEK_KEYS`, `PORTAL_SESSION_SECRET` unset),
   no admin group and no GitHub App. One banner shows the most severe item with a link to where it
   is fixed; **Show all** lists the rest. With nothing to fix the banner is not shown.
-- **Product defaults.** The values a product starts from when it sets none of its own. Shown once
-  a default is editable.
+- **Product defaults.** The values a product starts from when it sets none of its own: the key-entry
+  limit ceiling and the hosted-asset quotas. Every change asks for the L2 confirmation and says how
+  many products it reaches. The key-entry ceiling is a bound: it clamps a product that set a higher
+  limit and never rewrites its value, and the row lists the products it clamps with what each set
+  and what is in effect. The licence defaults (device limit, offline window) are not editable yet.
 - **Sign-in.** The reserved display-name setting and the console session length. The identity
   provider's deploy-time values are under Advanced.
 - **Storefront and hosting.** The hosted-assets switch (`ASSET_HOSTING`; turning it

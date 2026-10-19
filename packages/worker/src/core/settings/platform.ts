@@ -343,9 +343,10 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     widensWhen: "higher",
     productLink: { default: false, bound: true },
     ownership: "operator",
-    confirm: { up: "L1", down: "L2" },
+    // Both directions reach every product (ST-16): the dialog shows how many.
+    confirm: { up: "L2", down: "L2" },
+    readers: ["core/licensing/keyEntries.ts"],
     storage: { kind: "scalar" },
-    pending: { wp: "ST-16" },
   }),
 
   // ── The Polaris Key storefront (PS-02, notes/S-21 §6.2) ─────────────────────────────────
@@ -434,7 +435,7 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     merge: "cascade",
     productLink: { default: true, bound: false },
     ownership: "operator",
-    confirm: { up: "L1", down: "L1" },
+    confirm: { up: "L2", down: "L2" },
     readers: ["core/assets/assetSettings.ts", "core/assets/assetQuota.ts"],
     storage: { kind: "scalar" },
     since: "HA-10",
@@ -459,7 +460,7 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     merge: "cascade",
     productLink: { default: true, bound: false },
     ownership: "operator",
-    confirm: { up: "L1", down: "L1" },
+    confirm: { up: "L2", down: "L2" },
     readers: ["core/assets/assetSettings.ts", "core/assets/assetQuota.ts"],
     storage: { kind: "scalar" },
     since: "HA-10",
