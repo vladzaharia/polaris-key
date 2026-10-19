@@ -63,3 +63,18 @@ export const nameOf = (d: AlertDestination): string => d.label ?? d.target;
 
 export const isStepUp = (e: unknown): boolean =>
   e instanceof ApiError && e.code === "step_up_required";
+
+/** A wait in words: seconds up to 90, then minutes ("28 s", "57 min"). */
+export function formatWait(seconds: number): string {
+  const n = Math.max(1, Math.ceil(seconds));
+  return n <= 90 ? `${n} s` : `${Math.ceil(n / 60)} min`;
+}
+
+/** Seconds left until `at` (ms since the epoch); 0 once it has passed. */
+export const secondsUntil = (at: number): number =>
+  Math.max(0, Math.ceil((at - Date.now()) / 1000));
+
+/** Split after "@" and "." so a phone breaks an address at a word boundary, not mid-word. */
+export function breakPoints(text: string): string[] {
+  return text.split(/(?<=[@.])/);
+}

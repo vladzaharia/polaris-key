@@ -1851,27 +1851,25 @@ describe("Alert destinations in Email and alerts (ST-27)", () => {
     ).toHaveLength(1);
   });
 
-  it("asks for a fresh sign-in on submit, not before", async () => {
+  it("asks for a fresh sign-in when Add is pressed, announces it and focuses its link", async () => {
     const log = boot("#/platform/settings", {
       me: STALE,
       extra: routes({ "/manage/api/platform/alerts": ALERTS_NONE }),
     });
     const email = await section("Email and alerts");
+    const panel = await within(email).findByTestId("alert-destinations");
+    expect(within(panel).queryByText("Sign in again to continue")).toBeNull();
     await userEvent.click(
-      await within(email).findByRole("button", { name: "Add destination" }),
+      await within(panel).findByRole("button", { name: "Add destination" }),
     );
-    const dialog = await screen.findByRole("dialog");
-    expect(within(dialog).queryByText("Sign in again to continue")).toBeNull();
-    await userEvent.type(
-      within(dialog).getByLabelText(/Email address/),
-      "ops@example.com",
+    const callout = await within(panel).findByRole("status");
+    expect(within(callout).getByText("Sign in again to continue")).toBeTruthy();
+    expect(screen.queryByRole("dialog")).toBeNull();
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        within(callout).getByRole("link", { name: "Sign in again" }),
+      ),
     );
-    await userEvent.click(
-      within(dialog).getByRole("button", { name: "Add destination" }),
-    );
-    expect(
-      await within(dialog).findByText("Sign in again to continue"),
-    ).toBeTruthy();
     expect(log.calls.filter((c) => c.method === "POST")).toHaveLength(0);
   });
 
@@ -1909,6 +1907,16 @@ describe("Alert destinations in Email and alerts (ST-27)", () => {
     );
     await userEvent.click(
       within(panel).getByRole("button", { name: "Actions for Hook 0" }),
+    );
+    expect(await screen.findByText("Try again in 18 s")).toBeTruthy();
+    // The throttle is per scope: every row counts down, and the tapped row says so in words.
+    await userEvent.keyboard("{Escape}");
+    expect(
+      within(panel).getByText("Test not sent. Try again in 18 s."),
+    ).toBeTruthy();
+    expect(within(panel).getAllByRole("status").length).toBeGreaterThan(0);
+    await userEvent.click(
+      within(panel).getByRole("button", { name: "Actions for Hook 3" }),
     );
     expect(await screen.findByText("Try again in 18 s")).toBeTruthy();
   });
@@ -1953,6 +1961,80 @@ describe("Alert destinations in Email and alerts (ST-27)", () => {
   });
 });
 
+describe("Alert destinations: focus and refusals (ST-27)", () => {
+  const FRESH = {
+    authAt: Math.floor(Date.now() / 1000) - 30,
+    stepUpMaxAgeSeconds: 300,
+  };
+  const MAIL = {
+    id: "dst_mail000001",
+    scope: "_platform",
+    kind: "email",
+    target: "ops@example.com",
+    label: null,
+    alerts: ["auto_halt"],
+    enabled: true,
+    version: 1,
+    lastStatus: null,
+    lastAt: null,
+    lastError: null,
+    failures: 0,
+  };
+
+  it("an empty submit puts focus on the first invalid field", async () => {
+    boot("#/platform/settings", {
+      me: FRESH,
+      extra: routes({ "/manage/api/platform/alerts": ALERTS_NONE }),
+    });
+    const email = await section("Email and alerts");
+    await userEvent.click(
+      await within(email).findByRole("button", { name: "Add destination" }),
+    );
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Add destination" }),
+    );
+    const field = within(dialog).getByLabelText(/Email address/);
+    expect(field.getAttribute("aria-invalid")).toBe("true");
+    await waitFor(() => expect(document.activeElement).toBe(field));
+  });
+
+  it("a step-up refusal inside Remove closes it and shows the one sign-in callout", async () => {
+    boot("#/platform/settings", {
+      me: FRESH,
+      extra: routes({
+        "/manage/api/platform/alerts": { ...ALERTS_NONE, destinations: [MAIL] },
+        "DELETE /manage/api/platform/alerts/dst_mail000001": () =>
+          new Response(
+            JSON.stringify({
+              error: { code: "step_up_required" },
+              code: "step_up_required",
+            }),
+            { status: 403, headers: { "content-type": "application/json" } },
+          ),
+      }),
+    });
+    const email = await section("Email and alerts");
+    const panel = await within(email).findByTestId("alert-destinations");
+    await userEvent.click(
+      within(panel).getByRole("button", {
+        name: "Actions for ops@example.com",
+      }),
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: /Remove/ }),
+    );
+    const dialog = await screen.findByRole("alertdialog");
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Remove" }),
+    );
+    expect(
+      await within(panel).findByText("Sign in again to continue"),
+    ).toBeTruthy();
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+  });
+});
+
 describe("A product's alert routing (ST-27)", () => {
   it("says which alerts go to the product and which to the platform", async () => {
     boot("#/p/djdl/settings", {
@@ -1991,8 +2073,13 @@ describe("A product's alert routing (ST-27)", () => {
       },
     });
     const summary = await screen.findByTestId("alert-routing");
-    expect(summary.textContent).toBe(
-      "Auto-halt tripped → this product · Store connection failing (not sent yet), Commerce problem (not sent yet), Access changed (not sent yet) → platform (2) · A destination is failing → the audit trail only",
-    );
+    const lines = [...summary.querySelectorAll("p")].map((p) => p.textContent);
+    expect(lines).toEqual([
+      "This product: Auto-halt tripped",
+      "Platform (2): Store connection failing, Commerce problem, Access changed",
+      // The failing-destination alert stays in the product, so the platform never covers it.
+      "Audit trail only: A destination is failing",
+      "Not sent yet: Store connection failing, Commerce problem, Access changed.",
+    ]);
   });
 });

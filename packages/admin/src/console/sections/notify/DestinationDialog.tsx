@@ -1,6 +1,7 @@
 /** The Add and Edit dialog for an alert destination (ST-27). */
 
 import * as React from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   type AlertDestination,
   type AlertKindId,
@@ -15,7 +16,8 @@ import { Input } from "../../../ui/Input.js";
 import { SegmentedControl } from "../../../ui/SegmentedControl.js";
 import { toast } from "../../../ui/toast.js";
 import { mutate } from "../../data/mutations.js";
-import { StepUpCallout } from "../core/pages/UserRelink.js";
+import { qk } from "../../data/queries.js";
+import { SignInCallout } from "./SignInCallout.js";
 import {
   LABEL_MAX,
   REASONS,
@@ -33,6 +35,7 @@ export function DestinationDialog({
   scope,
   kinds,
   existing,
+  currentVersion,
   fresh,
   returnHash,
   onStepUp,
@@ -43,6 +46,8 @@ export function DestinationDialog({
   scope: AlertScope;
   kinds: readonly KindInfo[];
   existing: AlertDestination | null;
+  /** The version the list holds now: it moves on when a save finds the row changed. */
+  currentVersion?: number;
   fresh: boolean;
   returnHash: string;
   onStepUp: () => void;
@@ -51,6 +56,25 @@ export function DestinationDialog({
   onSaved: (id: string) => void;
 }): React.ReactElement {
   const editing = existing !== null;
+  const queryClient = useQueryClient();
+  const ids = React.useRef<Partial<Record<Field, string>>>({});
+  const [focusReq, setFocusReq] = React.useState<{
+    field: Field;
+    n: number;
+  } | null>(null);
+  const requestFocus = (field: Field): void =>
+    setFocusReq((p) => ({ field, n: (p?.n ?? 0) + 1 }));
+  React.useEffect(() => {
+    if (!focusReq) return;
+    const raf = requestAnimationFrame(() => {
+      const el = document.getElementById(ids.current[focusReq.field] ?? "");
+      (focusReq.field === "alerts"
+        ? el?.querySelector<HTMLElement>('[role="checkbox"]')
+        : el
+      )?.focus();
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [focusReq]);
   const [kind, setKind] = React.useState<"email" | "webhook">(
     existing?.kind ?? "email",
   );
@@ -91,6 +115,7 @@ export function DestinationDialog({
     if (alerts.length === 0) problems.alerts = REASONS.alerts_required!.text;
     if (Object.keys(problems).length > 0) {
       setErrors(problems);
+      requestFocus(problems.target ? "target" : "alerts");
       return;
     }
     if (!fresh) {
@@ -105,7 +130,7 @@ export function DestinationDialog({
           alerts,
           label: label.trim(),
           ...(replacing ? { target: target.trim() } : {}),
-          expectedVersion: existing.version,
+          expectedVersion: currentVersion ?? existing.version,
         });
         if (res.secret) onSecret(res.secret, res.destination);
         toast.success("Destination saved");
@@ -129,8 +154,18 @@ export function DestinationDialog({
       } else {
         const reason = err instanceof ApiError ? err.reason : undefined;
         const spec = reason ? REASONS[reason] : undefined;
-        if (spec?.field) setError(spec.field, spec.text);
-        else setFailure(failureText(err));
+        if (spec?.field) {
+          setError(spec.field, spec.text);
+          requestFocus(spec.field);
+        } else if (reason === "stale") {
+          // Load what it is now, keep the operator's edits, and say to look again.
+          await queryClient.refetchQueries({
+            queryKey: qk.alertDestinations(scope),
+          });
+          setFailure(
+            "Changed elsewhere. Your edits are kept: review them and save again.",
+          );
+        } else setFailure(failureText(err));
       }
     } finally {
       setSaving(false);
@@ -150,35 +185,44 @@ export function DestinationDialog({
       <form onSubmit={submit} noValidate>
         <DialogBody className="space-y-4">
           {wantsSignIn && !fresh ? (
-            <StepUpCallout hash={returnHash}>
+            <SignInCallout hash={returnHash}>
               Saving needs a sign-in from the last five minutes. You come back
               to this page afterwards.
-            </StepUpCallout>
+            </SignInCallout>
           ) : null}
-          <FormField
-            name="kind"
-            label="Type"
-            group
-            value={kind}
-            onChange={() => undefined}
-          >
-            {(f) => (
-              <SegmentedControl
-                aria-labelledby={f["aria-labelledby"]}
-                value={kind}
-                disabled={editing}
-                options={[
-                  { value: "email", label: "Email" },
-                  { value: "webhook", label: "Webhook" },
-                ]}
-                onChange={(v) => {
-                  setKind(v);
-                  setTarget("");
-                  setError("target", undefined);
-                }}
-              />
-            )}
-          </FormField>
+          {editing ? (
+            <p className="text-sm">
+              <span className="font-semibold text-fg-strong">Type</span>{" "}
+              <span className="text-fg-muted">
+                {kind === "email" ? "Email" : "Webhook"}
+              </span>
+            </p>
+          ) : (
+            <FormField
+              name="kind"
+              label="Type"
+              group
+              value={kind}
+              onChange={() => undefined}
+            >
+              {(f) => (
+                <SegmentedControl
+                  aria-labelledby={f["aria-labelledby"]}
+                  className="w-fit"
+                  value={kind}
+                  options={[
+                    { value: "email", label: "Email" },
+                    { value: "webhook", label: "Webhook" },
+                  ]}
+                  onChange={(v) => {
+                    setKind(v);
+                    setTarget("");
+                    setError("target", undefined);
+                  }}
+                />
+              )}
+            </FormField>
+          )}
           {replacing ? (
             <FormField
               name="target"
@@ -196,26 +240,29 @@ export function DestinationDialog({
                 setError("target", undefined);
               }}
             >
-              {(f) => (
-                <Input
-                  {...f}
-                  type={kind === "email" ? "email" : "url"}
-                  autoComplete="off"
-                  dir="ltr"
-                  placeholder={
-                    kind === "email"
-                      ? "ops@example.com"
-                      : "https://hooks.example.com/…"
-                  }
-                  onBlur={() => {
-                    if (target.trim() !== "")
-                      setError(
-                        "target",
-                        targetProblem(kind, target) ?? undefined,
-                      );
-                  }}
-                />
-              )}
+              {(f) => {
+                ids.current.target = f.id;
+                return (
+                  <Input
+                    {...f}
+                    type={kind === "email" ? "email" : "url"}
+                    autoComplete="off"
+                    dir="ltr"
+                    placeholder={
+                      kind === "email"
+                        ? "ops@example.com"
+                        : "https://hooks.example.com/…"
+                    }
+                    onBlur={() => {
+                      if (target.trim() !== "")
+                        setError(
+                          "target",
+                          targetProblem(kind, target) ?? undefined,
+                        );
+                    }}
+                  />
+                );
+              }}
             </FormField>
           ) : (
             <div className="space-y-1">
@@ -228,7 +275,10 @@ export function DestinationDialog({
                   type="button"
                   size="sm"
                   variant="ghost"
-                  onClick={() => setReplacing(true)}
+                  onClick={() => {
+                    setReplacing(true);
+                    requestFocus("target");
+                  }}
                 >
                   Replace URL
                 </Button>
@@ -262,6 +312,10 @@ export function DestinationDialog({
           >
             {(f) => (
               <div
+                id={f.id}
+                ref={() => {
+                  ids.current.alerts = f.id;
+                }}
                 role="group"
                 aria-labelledby={f["aria-labelledby"]}
                 aria-describedby={f["aria-describedby"]}

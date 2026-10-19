@@ -1067,7 +1067,7 @@ describe("fix round: security review", () => {
       {
         kind: "email",
         target: "p@example.com",
-        alerts: ["auto_halt", "commerce"],
+        alerts: ["auto_halt", "commerce", "notifications_failing"],
       },
       NOW,
     );
@@ -1076,6 +1076,8 @@ describe("fix round: security review", () => {
       auto_halt: 1,
       commerce: 1,
       access_changed: 0,
+      // A product's failing-destination alert never falls back to the platform's.
+      notifications_failing: 0,
     });
     expect(l.json.kinds.find((k: any) => k.id === "commerce").sent).toBe(false);
   });

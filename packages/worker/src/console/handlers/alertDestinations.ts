@@ -51,10 +51,14 @@ async function inheritedView(db: Db) {
   );
   return {
     inherited: enabled.length,
+    // `notifications_failing` about a product stays inside the product (`raiseAlert` never falls
+    // back to the platform's for it), so the platform covers none of it here.
     inheritedByKind: Object.fromEntries(
       ALERT_KINDS.map((k) => [
         k,
-        enabled.filter((d) => d.alerts.includes(k)).length,
+        k === "notifications_failing"
+          ? 0
+          : enabled.filter((d) => d.alerts.includes(k)).length,
       ]),
     ),
   };
