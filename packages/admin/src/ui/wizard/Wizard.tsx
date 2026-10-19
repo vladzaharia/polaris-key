@@ -17,6 +17,8 @@ export interface WizardFooter {
   skipLoading?: boolean;
   /** Back one step. Absent on the first step. */
   onBack?: () => void;
+  /** `start`: Back sits at the footer's left, before everything else. Default: beside the primary. */
+  backAt?: "start" | "end";
   /**
    * The one filled primary of the step; its label names the action, not "Next". Absent when the
    * step's own typed action is the action (Submit): the footer then has Do this later and Back only.
@@ -139,8 +141,15 @@ export function Wizard({
     </div>
   );
 
+  const back = footer.onBack ? (
+    <Button variant="outline" onClick={footer.onBack}>
+      <ArrowLeft aria-hidden />
+      Back
+    </Button>
+  ) : null;
   const footRow = (
     <>
+      {footer.backAt === "start" ? back : null}
       {footer.later}
       {footer.onSkip ? (
         <Button
@@ -158,12 +167,7 @@ export function Wizard({
         </span>
       ) : null}
       <div className="ml-auto flex flex-wrap items-center gap-2">
-        {footer.onBack ? (
-          <Button variant="outline" onClick={footer.onBack}>
-            <ArrowLeft aria-hidden />
-            Back
-          </Button>
-        ) : null}
+        {footer.onBack && footer.backAt !== "start" ? back : null}
         {React.isValidElement<{ "aria-describedby"?: string }>(footer.primary)
           ? React.cloneElement(footer.primary, {
               "aria-describedby":

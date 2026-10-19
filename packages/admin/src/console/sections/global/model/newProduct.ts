@@ -100,12 +100,21 @@ export const isDirty = (d: ProductDraft): boolean =>
  * letters and digits, everything else a single hyphen, no hyphen at either end.
  */
 export function slugFromName(name: string): string {
-  return name
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
+  return (
+    name
+      // Letters NFKD leaves whole: ø, æ, ß, đ, ł, þ and their capitals.
+      .replace(/[øØ]/g, "o")
+      .replace(/[æÆ]/g, "ae")
+      .replace(/ß/g, "ss")
+      .replace(/[đĐ]/g, "d")
+      .replace(/[łŁ]/g, "l")
+      .replace(/[þÞ]/g, "th")
+      .normalize("NFKD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+  );
 }
 
 /**
@@ -207,39 +216,84 @@ export function slugRefusal(
 
 // ── What it's for ───────────────────────────────────────────────────────────────────────────
 
-const labelOf = (slug: ServiceSlug): string =>
-  FEATURES.find((f) => f.services.includes(slug))?.label ?? slug;
+/** The label a feature or service is called by, never its slug. */
+export const featureLabel = (id: FeatureId): string =>
+  FEATURES.find((f) => f.id === id)?.label ?? id;
 
-/** The services a set of features turns on: their own, and what those require. */
+export { platformName as platformLabel } from "../../../../lib/vocab/platforms.js";
+
+/** One line of what each feature is for, in the reader's terms (the mockup's copy). */
+export function featureCopy(id: FeatureId, name: string): string {
+  const who = name.trim() || "your product";
+  return {
+    licensing: `Gate ${who} on a license.`,
+    "managed-config": "Change settings and secrets without shipping a build.",
+    "ship-builds": "Publish releases from CI to every store.",
+    "sign-in": "Let people sign in with a Polaris Key account.",
+    "cloud-sync": "Each person's saves and settings, the same on every device.",
+    commerce:
+      "Sell packs and tiers on App Store, Google Play, Steam and itch.io.",
+  }[id];
+}
+
+/** The features a feature needs on first: the owners of the services its own services require. */
+export function needsOf(id: FeatureId): FeatureId[] {
+  const f = FEATURES.find((x) => x.id === id)!;
+  const out = new Set<FeatureId>();
+  for (const s of f.primary)
+    for (const req of SERVICE_REQUIRES[s]) {
+      const owner = FEATURES.find((x) => x.primary.includes(req));
+      if (owner && owner.id !== id) out.add(owner.id);
+    }
+  return FEATURES.filter((x) => out.has(x.id)).map((x) => x.id);
+}
+
+/** A feature can be chosen once everything it needs is chosen. */
+export const unlocked = (
+  id: FeatureId,
+  chosen: readonly FeatureId[],
+): boolean => needsOf(id).every((n) => chosen.includes(n));
+
+/**
+ * Turn a feature on or off. Turning one off turns off whatever needs it, and says which (the
+ * mockup: "clearing Licensing also clears Commerce").
+ */
+export function toggleFeature(
+  chosen: readonly FeatureId[],
+  id: FeatureId,
+  on: boolean,
+): { features: FeatureId[]; cleared: FeatureId[] } {
+  if (on)
+    return {
+      features: unlocked(id, chosen)
+        ? [...new Set([...chosen, id])]
+        : [...chosen],
+      cleared: [],
+    };
+  let next = chosen.filter((f) => f !== id);
+  const cleared: FeatureId[] = [];
+  for (;;) {
+    const drop = next.filter((f) => !unlocked(f, next));
+    if (drop.length === 0) break;
+    cleared.push(...drop);
+    next = next.filter((f) => !drop.includes(f));
+  }
+  return { features: next, cleared };
+}
+
+/** The services a set of features turns on (each feature's own; the cards keep it closed). */
 export function servicesFor(features: readonly FeatureId[]): {
   services: ServiceSlug[];
-  /** Services that come with the choice rather than being chosen, with the feature each is. */
-  alongside: { feature: string; because: string }[];
 } {
   const own = new Set<ServiceSlug>();
   for (const f of FEATURES)
     if (features.includes(f.id)) for (const s of f.primary) own.add(s);
-  const all = new Set<ServiceSlug>(own);
-  const because = new Map<ServiceSlug, ServiceSlug>();
-  const add = (slug: ServiceSlug, from: ServiceSlug) => {
-    for (const req of SERVICE_REQUIRES[slug]) {
-      if (!all.has(req)) {
-        all.add(req);
-        because.set(req, from);
-      }
-      add(req, from);
-    }
+  return {
+    services: SERVICE_TABLE.map((r) => r.slug).filter((s) => own.has(s)),
   };
-  for (const s of [...own]) add(s, s);
-  const order = SERVICE_TABLE.map((r) => r.slug);
-  const services = order.filter((s) => all.has(s));
-  const alongside = services
-    .filter((s) => !own.has(s))
-    .map((s) => ({ feature: labelOf(s), because: labelOf(because.get(s)!) }));
-  return { services, alongside };
 }
 
-/** The body of a manual create for these answers (no licence defaults: tiers own them). */
+/** What Create writes for these answers: the same facts the body below sends. */
 export function choicesFor(d: ProductDraft): CreateChoices {
   if (d.later) return { services: [], starterTier: "none" };
   const { services } = servicesFor(d.features);
@@ -252,23 +306,45 @@ export function choicesFor(d: ProductDraft): CreateChoices {
   };
 }
 
-/** The plan in the future tense (FLOWS.md §3.4 "Polaris Key will set this up"). */
-export function planFor(d: ProductDraft): string[] {
+/** "Creates": the rail's list, and its one-line summary for the collapsed bar. */
+export function createsFor(d: ProductDraft): {
+  lines: string[];
+  summary: string;
+} {
   const choices = choicesFor(d);
+  const n = d.later ? 0 : d.features.length;
+  const platforms = choices.intendedPlatforms?.length ?? 0;
+  const free = choices.starterTier === "free";
   const lines = [
-    "Mint and activate the signing key",
-    "Create the Default profile",
+    "A signing key",
+    n === 0 ? "No features yet" : `${n} ${n === 1 ? "feature" : "features"}`,
+    ...(platforms > 0
+      ? [`${platforms} ${platforms === 1 ? "platform" : "platforms"}`]
+      : []),
+    "Default profile",
+    "Catalog v1",
+    ...(free ? ["The Free tier"] : []),
   ];
-  const { services, alongside } = servicesFor(d.later ? [] : d.features);
-  if (services.length === 0) lines.push("Turn on no services yet");
-  else {
-    const chosen = FEATURES.filter((f) => d.features.includes(f.id));
-    lines.push(`Turn on ${chosen.map((f) => f.label).join(", ")}`);
-    for (const a of alongside)
-      lines.push(`${a.feature} comes with ${a.because}`);
-  }
-  if (choices.starterTier === "free") lines.push("Create the Free tier");
-  if (choices.intendedPlatforms?.length)
-    lines.push(`Plan ${choices.intendedPlatforms.join(", ")} builds`);
-  return lines;
+  const summary = [
+    n === 0 ? "No features yet" : `${n} ${n === 1 ? "feature" : "features"}`,
+    ...(platforms > 0
+      ? [`${platforms} ${platforms === 1 ? "platform" : "platforms"}`]
+      : []),
+    ...(free ? ["Free tier"] : []),
+  ].join(" · ");
+  return { lines, summary };
+}
+
+/** "pushed last month", in words (the picker's meta line). */
+export function pushedWords(
+  seconds: number,
+  nowMs: number = Date.now(),
+): string {
+  const days = Math.floor((nowMs / 1000 - seconds) / 86_400);
+  const rtf = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
+  if (days < 1) return "pushed today";
+  if (days < 30) return `pushed ${rtf.format(-days, "day")}`;
+  if (days < 365)
+    return `pushed ${rtf.format(-Math.floor(days / 30), "month")}`;
+  return `pushed ${rtf.format(-Math.floor(days / 365), "year")}`;
 }

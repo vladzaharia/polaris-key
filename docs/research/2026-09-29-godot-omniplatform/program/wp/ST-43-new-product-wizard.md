@@ -143,6 +143,21 @@ Corrections from the code (the code is the fact):
   `.pkey/`, the accent swatches and the shared-element morph into the masthead (MO-04), and the
   AutoList running live during Create (the button shows loading, then the route changes).
 
+### Fix round (2026-10-19)
+
+The BUILT UX review failed (B1, F1 to F7, V1 to V6, minors) and the security review left two notes;
+all are addressed: the long name wraps in the primary (B1); focus goes to the Integration h1 after
+Create, to the refusal callout after a failure, and to the result after Check again, and the
+moment is a `role=status` (F1); features are cards with Needs marks, locks and cascading clears,
+and the Free tier row shows exactly when Licensing is on (F2); a registered repository hides the
+plan and Open is the primary (F3); a 409 reads the repository again and holds Create (F4); Install
+opens the App's `installUrl`, a mistyped repository is "wasn't found" (F5); `.pkey/` missing shows
+`pkey init`, docs and Start from scratch (F6); the footer reason fits the failure (F7); the wizard
+is capped and has the Creates rail (from 1024 px) and a collapsed bar below (V1); platform names
+come from `lib/vocab` (V3); the source is a segmented control above the stepper, the picker a
+radiogroup with Show more (V4 to V6). Worker: `fromDocuments` says "invalid manifest"; the no-
+repository coherence refusals have tests; the dry run answers `starterTier`.
+
 ## Hand-off
 
 What downstream work packages rely on from this one is named in their briefs (the Unblocks row). The role agent sets `--set ST-43 in-review` when it hands off. After review, the lead adds the last commit of the PR:

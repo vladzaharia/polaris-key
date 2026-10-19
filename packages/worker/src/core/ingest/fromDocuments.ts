@@ -66,7 +66,7 @@ export async function createFromDocuments(
   if (!parsed.ok)
     return {
       ok: false,
-      error: "invalid schema",
+      error: "invalid manifest",
       errors: parsed.errors,
       status: 422,
     };

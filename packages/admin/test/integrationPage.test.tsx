@@ -89,7 +89,10 @@ describe("Core → Integration", () => {
       extra: { [`${API}/integration`]: view() },
     });
     await page();
-    expect(await screen.findByText(/is ready$/)).toBeTruthy();
+    const moment = await screen.findByText(/is ready$/);
+    expect(moment.closest("[role=status]")).toBeTruthy();
+    // Focus lands on the page's heading, not on the document.
+    await waitFor(() => expect(document.activeElement?.tagName).toBe("H1"));
     // The link is a plain Integration link afterwards: a refresh does not repeat it.
     await waitFor(() =>
       expect(window.location.hash).toBe("#/p/djdl/integration"),

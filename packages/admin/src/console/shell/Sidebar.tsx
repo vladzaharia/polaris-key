@@ -254,11 +254,11 @@ function useRailSwap(rail: boolean): boolean {
   return swapped;
 }
 
-/** A page is active itself, or as the parent of the page shown (New product → Products). */
+/** A page is active itself, or as the parent of the page shown (New product → Home, its crumb). */
 function isActivePage(activePage: PageId | null, page: string): boolean {
   return (
     activePage === page ||
-    (activePage === "product-new" && page === "products") ||
+    (activePage === "product-new" && page === "home") ||
     // The settings hub's tabs are Settings (ST-08).
     (page === "settings" &&
       activePage !== null &&

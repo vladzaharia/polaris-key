@@ -108,6 +108,16 @@ export function IntegrationPage({
   // Arriving from New product (ST-43): the product's first moment shows once; the link is then
   // a plain Integration link, so a refresh or a share does not repeat it.
   const [justCreated] = React.useState(q.created === "1");
+  // The shell focused the skeleton's heading; the page's own heading replaces it once the data is
+  // in, so focus goes to that one (a route change leaves focus on the h1, not on the body).
+  const loaded = view.data !== undefined;
+  React.useEffect(() => {
+    if (!justCreated || !loaded) return;
+    const h1 = document.querySelector<HTMLElement>("h1[data-page-title]");
+    if (!h1) return;
+    if (!h1.hasAttribute("tabindex")) h1.setAttribute("tabindex", "-1");
+    h1.focus({ preventScroll: true });
+  }, [justCreated, loaded]);
   React.useEffect(() => {
     if (justCreated) setQ({ created: null });
     // eslint-disable-next-line react-hooks/exhaustive-deps

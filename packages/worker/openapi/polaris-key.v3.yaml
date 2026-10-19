@@ -21068,6 +21068,10 @@ components:
         releaseWorkflow:
           type: [boolean, "null"]
           description: Whether `.github/workflows/release.yml` exists at the commit.
+        starterTier:
+          type: string
+          enum: [free, none]
+          description: Whether the create adds the Free tier (License on, no tier declared).
         problems:
           type: array
           items: { $ref: "#/components/schemas/AdminManifestProblem" }

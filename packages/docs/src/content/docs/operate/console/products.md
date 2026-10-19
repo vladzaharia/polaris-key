@@ -55,11 +55,14 @@ hyphens) until you edit it, and the server checks it after a short pause. A take
 offers a free one to take with one click (**Use tonebox-app**). A reserved or malformed slug is
 refused before anything is sent. The slug is permanent: it is used in keys and URLs.
 
-**What it's for.** The features of the Services page as checkboxes: **Licensing** and **Ship
-builds** start on and marked Recommended. Licensing carries **Start with a free tier** (on). Ship
-builds asks for the platforms, which the storefronts follow. A feature that needs another brings
-it, and the plan under the choices says so ("Managed config comes with Cloud Sync"). **I'll choose
-later** creates the product with no services. **Create** then writes the plan below in one batch.
+**What it's for.** The features of the Services page as cards, each with its service's accent
+edge and one line of why: **Licensing** and **Ship builds** start on and are marked Recommended.
+A card that needs another says **Needs** and what: **Cloud Sync** needs Managed config and
+Sign-in, **Commerce** needs Licensing, and a locked card says what to select to unlock it.
+Turning a feature off turns off whatever needs it, and says which. Licensing carries **Start with a
+Free tier** (on); Ship builds asks for the platforms, which the storefronts follow. The
+**Creates** rail (a collapsed bar on a narrow screen) lists exactly what Create writes. **I'll
+choose later** creates the product with no features. **Create** writes everything in one batch.
 
 Licence defaults are not asked here: tiers own them. A config catalog, the compatibility window
 ([Update → Feed](/docs/operate/console/tour/#update)) and everything else are set up later. Under
@@ -85,16 +88,21 @@ slug come from `.pkey/product`, so the wizard does not ask for them.
 
 When the check or the create is refused, the step shows what to do next:
 
-- **The GitHub App isn't installed on the repository, or the repository is private.** Install the
-  Polaris Key GitHub App on the repository, then press **Check again**.
+- **The repository is a product already.** The step says so and **Open** that product is the
+  action; nothing is created twice.
+- **The repository has no `.pkey/`.** The step shows the `pkey init` command to run, a link to how
+  `.pkey/` works, and **Start from scratch instead**.
+- **The GitHub App can't read the repository.** **Install on GitHub** opens the app's page; install
+  it on the owner, then press **Check again**. If the app is on the owner already, the step says
+  the repository wasn't found: check the name, or add it to the app's repositories.
 - **The manifest has problems.** **Fix these in one commit** lists each problem with its file and
   path, and **Create** stays off. Push the fix and press **Check again**.
 - **The manifest's slug is taken, reserved or malformed.** Change `product.slug` in
   `.pkey/product`, push, then press **Check again**. Creating registers new products only: if the
   slug is taken because this repository is already registered, open that product and resync it
   instead (see [What resync actually re-applies](/docs/operate/console/product-actions/#what-resync-actually-re-applies)).
-- **`.pkey/` changed since the check.** The create carries the check's digest and refuses; press
-  **Check again** to read what is there now.
+- **`.pkey/` changed after the check.** The create carries the check's digest and refuses. The step
+  reads the repository again and holds **Create** until it has.
 
 The Check step names any secrets the manifest declared that have no value yet, such as an OIDC
 client secret or an edge-mint signing key. Set them after creating, from

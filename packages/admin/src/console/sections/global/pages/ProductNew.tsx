@@ -1,9 +1,11 @@
 import * as React from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, type SlugCheck } from "../../../../api.js";
+import { ApiError, api, type SlugCheck } from "../../../../api.js";
 import { errorCopy } from "../../../../lib/errorCopy.js";
 import { Button } from "../../../../ui/Button.js";
 import { PageHeader } from "../../../../ui/PageHeader.js";
+import { announce } from "../../../../ui/LiveRegion.js";
+import { SegmentedControl } from "../../../../ui/SegmentedControl.js";
 import { useUnsavedChangesGuard } from "../../../../ui/useUnsavedChangesGuard.js";
 import { Wizard } from "../../../../ui/wizard/index.js";
 import { Breadcrumbs } from "../../../components/Breadcrumbs.js";
@@ -15,14 +17,22 @@ import {
   NEW_PRODUCT_REPO_FLOW,
   NEW_PRODUCT_SCRATCH_FLOW,
 } from "../../../wizard/flows.js";
-import { CheckStep, RepoStep } from "../components/NewProductRepo.js";
 import {
+  CheckStep,
+  RepoStep,
+  repoCreates,
+} from "../components/NewProductRepo.js";
+import {
+  CreatesBar,
+  CreatesRail,
   NameStep,
   PurposeStep,
   RefusalCallout,
 } from "../components/NewProductSteps.js";
 import {
   choicesFor,
+  createsFor,
+  featureLabel,
   isDirty,
   manifestSlugRefusal,
   readDraft,
@@ -30,12 +40,14 @@ import {
   slugFromName,
   slugVerdict,
   slugRefusal,
+  toggleFeature,
   type ProductDraft,
   type Via,
   writeDraft,
   DRAFT_KEY,
   suggestSlug,
 } from "../model/newProduct.js";
+import { checkFailure, nameFieldErrors } from "../model/newProductChecks.js";
 
 // The pure helpers keep their old home for the callers and tests that import them from here.
 export {
@@ -78,11 +90,16 @@ const TITLES: Record<string, string> = {
   purpose: "What is it for?",
 };
 
+/** Move focus to an element that is not tabbable on its own, once it is on screen. */
+const focusSoon = (el: () => HTMLElement | null): void => {
+  window.setTimeout(() => el()?.focus({ preventScroll: false }), 0);
+};
+
 /**
- * New product (ST-43; FLOWS.md §3): two or three steps. From a GitHub repository: pick it, then
- * check what `.pkey/` says and create. From scratch: name it (the slug follows and is checked),
- * say what it is for, create. Creating lands on Integration, where the product's first moment
- * shows. A refusal stays on the step it belongs to, worded by `errorCopy`.
+ * New product (ST-43; FLOWS.md §3): two steps. From a GitHub repository: pick it, then check what
+ * `.pkey/` says and create. From scratch: name it (the slug follows and is checked), say what it
+ * is for, create. Creating lands on Integration, where the product's first moment shows. A refusal
+ * stays on the step it belongs to, worded by `errorCopy`; focus follows it.
  *
  * The step is a search parameter, so a refresh resumes; `?via=` still preselects the source for
  * Home's and Products' first-run links. The draft lives in `sessionStorage` (ADMIN.md §5.7).
@@ -106,7 +123,11 @@ export function ProductNew(): React.ReactElement {
   } | null>(null);
   const [submitting, setSubmitting] = React.useState(false);
   const [advancing, setAdvancing] = React.useState(false);
+  const [notice, setNotice] = React.useState<string | null>(null);
+  const [stale, setStale] = React.useState(false);
   const created = React.useRef(false);
+  const refusalRef = React.useRef<HTMLDivElement>(null);
+  const resultRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
     if (!created.current) writeDraft(isDirty(draft) ? draft : null);
@@ -130,6 +151,16 @@ export function ProductNew(): React.ReactElement {
     update(draft.slugEdited ? { name } : { name, slug: slugFromName(name) });
   const setSlug = (slug: string) =>
     update({ slug, slugEdited: slug !== slugFromName(draft.name) });
+  const toggle = (id: Parameters<typeof toggleFeature>[1], on: boolean) => {
+    const next = toggleFeature(draft.features, id, on);
+    update({ features: next.features });
+    const said =
+      next.cleared.length > 0
+        ? `${next.cleared.map(featureLabel).join(" and ")} ${next.cleared.length === 1 ? "is" : "are"} off too: ${next.cleared.length === 1 ? "it needs" : "they need"} ${featureLabel(id)}.`
+        : null;
+    setNotice(said);
+    if (said) announce(said);
+  };
 
   const repo = repoOf(draft.repo);
   const slug = draft.slug.trim();
@@ -167,10 +198,16 @@ export function ProductNew(): React.ReactElement {
   const repos = useQuery({
     queryKey: qk.githubRepositories(search),
     queryFn: () => api.githubRepositories(search),
-    enabled: via === "github" && current === "repo",
+    enabled: via === "github" && (current === "repo" || current === "check"),
     staleTime: 30_000,
     retry: false,
   });
+  const listed = repo
+    ? repos.data?.repositories.find(
+        (x) => x.fullName.toLowerCase() === repo.toLowerCase(),
+      )
+    : undefined;
+  const installUrl = repos.data?.app?.installUrl ?? null;
 
   // W23: what `.pkey/` says, read when the step opens and again on demand.
   const check = useQuery({
@@ -182,9 +219,13 @@ export function ProductNew(): React.ReactElement {
     retry: false,
     refetchOnWindowFocus: false,
   });
-  const checkFailure = check.error
-    ? errorCopy(check.error, { thing: "Product", ...(repo ? { repo } : {}) })
-    : null;
+  const checkAgain = async () => {
+    await check.refetch();
+    setStale(false);
+    focusSoon(() => resultRef.current);
+  };
+
+  const failure = checkFailure(check.error, repo, repos.data, installUrl);
 
   const refusal = submitError && submitError.via === via ? submitError : null;
   const worded = refusal
@@ -201,20 +242,19 @@ export function ProductNew(): React.ReactElement {
     copy && via === "manual" && copy.focus === "slug"
       ? slugRefusal(copy, refusal!.slug, new Set())
       : null;
+  const showRefusal = copy !== null && !slugServer;
+  React.useEffect(() => {
+    if (showRefusal) focusSoon(() => refusalRef.current);
+  }, [showRefusal, refusal]);
 
-  const nameErrors: { name?: string; slug?: string } = {};
-  if (showErrors && draft.name.trim() === "")
-    nameErrors.name = "Enter the product's name.";
-  if (slugServer) nameErrors.slug = slugServer.message;
-  else if (local.kind === "invalid") nameErrors.slug = local.message;
-  else if (local.kind === "reserved")
-    nameErrors.slug = `${slug} is reserved. Choose another slug.`;
-  else if (slugAnswer && slugAnswer.status !== "available")
-    nameErrors.slug = slugAnswer.suggestion
-      ? `${slug} is ${slugAnswer.status}. Try ${slugAnswer.suggestion}.`
-      : slugAnswer.message;
-  else if (showErrors && local.kind === "empty")
-    nameErrors.slug = "Enter a slug.";
+  const nameErrors = nameFieldErrors({
+    showErrors,
+    name: draft.name,
+    slug,
+    local,
+    slugAnswer,
+    slugServer,
+  });
   const suggestion =
     slugServer?.suggestion ??
     (slugAnswer && slugAnswer.status !== "available"
@@ -235,8 +275,14 @@ export function ProductNew(): React.ReactElement {
   };
 
   const failWith = (err: unknown, at: Via) => {
-    setSubmitError({ error: err, via: at, slug });
     setSubmitting(false);
+    // `.pkey/` changed after the check: read it again; Create waits for that.
+    if (at === "github" && err instanceof ApiError && err.status === 409) {
+      setStale(true);
+      void checkAgain();
+      return;
+    }
+    setSubmitError({ error: err, via: at, slug });
     const f = errorCopy(err).focus;
     if (at === "manual" && f === "slug") {
       go("name");
@@ -308,14 +354,20 @@ export function ProductNew(): React.ReactElement {
     go("purpose");
   };
 
-  const ready2 = check.data?.ready === true && check.data.registeredAs === null;
+  const data = check.data;
+  const registered = data?.registeredAs ?? null;
+  const unreadable = failure !== null;
   const checkReason = check.isPending
     ? "Reading the repository"
-    : !ready2
-      ? check.data?.registeredAs
-        ? "This repository is a product already"
-        : "Fix the problems first"
-      : undefined;
+    : unreadable
+      ? failure.kind === "network"
+        ? "Can't reach Polaris Key. Check again."
+        : "Polaris Key can't read the repository."
+      : stale
+        ? "Check again first."
+        : data && !data.ready
+          ? "Fix the problems first."
+          : undefined;
 
   const stepDefs = flow.steps.map((s) => ({
     id: s.id,
@@ -327,30 +379,65 @@ export function ProductNew(): React.ReactElement {
   }));
 
   const name = draft.name.trim();
+  // A long name wraps inside the button; it never pushes the button off a narrow screen.
+  const wrap =
+    "h-auto min-h-9 max-w-full whitespace-normal break-words py-2 text-left";
+  const open = (slugToOpen: string) => (
+    <Button asChild className={wrap}>
+      <Link to={r.overview(slugToOpen)}>Open {slugToOpen}</Link>
+    </Button>
+  );
   const primary =
     current === "repo" ? (
-      <Button type="submit" form="np-repo">
-        {repo ? `Read ${repo}` : "Read repository"}
-      </Button>
+      listed?.product ? (
+        open(listed.product)
+      ) : (
+        <Button type="submit" form="np-repo" className={wrap}>
+          {repo ? `Read ${repo}` : "Read repository"}
+        </Button>
+      )
     ) : current === "check" ? (
-      <Button
-        onClick={() => void createLinked()}
-        loading={submitting}
-        disabledReason={checkReason}
-      >
-        {check.data?.product?.name
-          ? `Create ${check.data.product.name}`
-          : "Create product"}
-      </Button>
+      registered ? (
+        open(registered)
+      ) : (
+        <Button
+          onClick={() => void createLinked()}
+          loading={submitting}
+          disabledReason={checkReason}
+          className={wrap}
+        >
+          {data?.product?.name
+            ? `Create ${data.product.name}`
+            : "Create product"}
+        </Button>
+      )
     ) : current === "name" ? (
       <Button type="submit" form="np-name" loading={advancing}>
         Continue
       </Button>
     ) : (
-      <Button onClick={() => void createManual()} loading={submitting}>
+      <Button
+        onClick={() => void createManual()}
+        loading={submitting}
+        className={wrap}
+      >
         {name ? `Create ${name}` : "Create product"}
       </Button>
     );
+
+  const scratchCreates = createsFor(draft);
+  const repoLines =
+    data && !registered && data.ready ? repoCreates(data) : null;
+  const rail =
+    via === "manual" && (current === "name" || current === "purpose")
+      ? { lines: scratchCreates.lines, summary: scratchCreates.summary, name }
+      : repoLines
+        ? {
+            lines: repoLines,
+            summary: `${repoLines.length - 1} rows`,
+            name: data?.product?.name ?? "",
+          }
+        : null;
 
   return (
     <div className="space-y-6" data-template="flow">
@@ -368,46 +455,58 @@ export function ProductNew(): React.ReactElement {
         }
       />
       <Wizard
-        centered={false}
         label="New product"
         steps={stepDefs}
         current={current}
         title={TITLES[current]!}
         onStep={go}
+        eyebrow={
+          index === 0 ? (
+            <SegmentedControl<Via>
+              aria-label="Start from"
+              size="sm"
+              value={via}
+              onChange={(v) => {
+                setShowErrors(false);
+                setViaParam(v);
+              }}
+              options={[
+                { value: "github", label: "A GitHub repository" },
+                { value: "manual", label: "From scratch" },
+              ]}
+            />
+          ) : undefined
+        }
+        aside={
+          rail ? <CreatesRail lines={rail.lines} name={rail.name} /> : undefined
+        }
         footer={{
+          backAt: "start",
           onBack: index > 0 ? () => go(ids[index - 1]!) : undefined,
           later:
             current === "purpose" ? (
               <Button
                 variant="ghost"
                 disabled={submitting}
-                onClick={() => {
-                  update({ later: true });
-                  void createManual({ later: true });
-                }}
+                onClick={() => void createManual({ later: true })}
               >
                 I'll choose later
               </Button>
             ) : undefined,
           primary,
-          reason: current === "check" ? checkReason : undefined,
+          reason: current === "check" && !registered ? checkReason : undefined,
         }}
       >
         <div className="space-y-4">
-          {current === "repo" || current === "name" ? (
-            <SourceChoice
-              via={via}
-              onChange={(v) => {
-                setShowErrors(false);
-                setViaParam(v);
-              }}
-            />
-          ) : null}
           {current === "repo" ? (
             <RepoStep
               value={draft.repo}
               onChange={(v) => update({ repo: v })}
-              onSubmit={toCheck}
+              onSubmit={() =>
+                listed?.product
+                  ? navigate(r.overview(listed.product))
+                  : toCheck()
+              }
               error={repoError}
               list={{
                 pending: repos.isPending,
@@ -418,13 +517,25 @@ export function ProductNew(): React.ReactElement {
             />
           ) : null}
           {current === "check" ? (
-            <CheckStep
-              repo={repo ?? draft.repo}
-              state={{ pending: check.isPending, data: check.data }}
-              failure={checkFailure}
-              checking={check.isFetching}
-              onCheckAgain={() => void check.refetch()}
-            />
+            <div ref={resultRef} tabIndex={-1} className="outline-none">
+              <CheckStep
+                repo={repo ?? draft.repo}
+                state={{ pending: check.isPending, data: check.data }}
+                failure={failure}
+                stale={stale}
+                checking={check.isFetching}
+                onCheckAgain={() => void checkAgain()}
+                onScratch={() => {
+                  if (!name && repo)
+                    update({
+                      name: repo.split("/")[1] ?? "",
+                      slug: slugFromName(repo.split("/")[1] ?? ""),
+                      slugEdited: false,
+                    });
+                  navigate(r.productNew({ via: "manual", step: "name" }));
+                }}
+              />
+            </div>
           ) : null}
           {current === "name" ? (
             <NameStep
@@ -436,6 +547,7 @@ export function ProductNew(): React.ReactElement {
               errors={nameErrors}
               available={slugAnswer?.status === "available"}
               checking={slugQuery.isFetching && slug !== ""}
+              checkFailed={slugQuery.isError}
               suggestion={suggestion}
               onUseSuggestion={(s) => {
                 setSlug(s);
@@ -444,56 +556,31 @@ export function ProductNew(): React.ReactElement {
             />
           ) : null}
           {current === "purpose" ? (
-            <PurposeStep draft={draft} onChange={update} />
-          ) : null}
-          {copy && !slugServer ? (
-            <RefusalCallout
-              copy={copy}
-              onCheckAgain={() => {
-                setSubmitError(null);
-                if (via === "github") void check.refetch();
-              }}
+            <PurposeStep
+              draft={draft}
+              onToggle={toggle}
+              onChange={update}
+              notice={notice}
             />
+          ) : null}
+          {rail ? (
+            <CreatesBar lines={rail.lines} summary={rail.summary} />
+          ) : null}
+          {showRefusal ? (
+            <div ref={refusalRef} tabIndex={-1} className="outline-none">
+              <RefusalCallout
+                copy={copy!}
+                installUrl={installUrl}
+                onCheckAgain={() => {
+                  setSubmitError(null);
+                  if (via === "github") void checkAgain();
+                }}
+              />
+            </div>
           ) : null}
         </div>
       </Wizard>
       {guard.dialog}
-    </div>
-  );
-}
-
-/** From a repository, or from scratch. Home's and Products' links preselect it. */
-function SourceChoice({
-  via,
-  onChange,
-}: {
-  via: Via;
-  onChange: (v: Via) => void;
-}): React.ReactElement {
-  return (
-    <div
-      role="group"
-      aria-label="Start from"
-      className="flex flex-wrap items-center gap-2"
-    >
-      <Button
-        type="button"
-        size="sm"
-        variant={via === "github" ? "secondary" : "outline"}
-        aria-pressed={via === "github"}
-        onClick={() => onChange("github")}
-      >
-        A GitHub repository
-      </Button>
-      <Button
-        type="button"
-        size="sm"
-        variant={via === "manual" ? "secondary" : "outline"}
-        aria-pressed={via === "manual"}
-        onClick={() => onChange("manual")}
-      >
-        From scratch
-      </Button>
     </div>
   );
 }

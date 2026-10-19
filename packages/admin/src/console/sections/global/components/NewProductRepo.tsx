@@ -2,34 +2,55 @@ import * as React from "react";
 import { ArrowRight, Check, TriangleAlert } from "lucide-react";
 import type {
   CreateDryRun,
-  GithubRepoRow,
   GithubRepositories,
   SlugCheck,
 } from "../../../../api.js";
-import type { ErrorCopy } from "../../../../lib/errorCopy.js";
-import { cn } from "../../../../lib/cn.js";
-import { formatRelative } from "../../../../lib/format.js";
+import { DOCS_LINKS } from "../../../../lib/docsLinks.js";
 import { Button } from "../../../../ui/Button.js";
 import { Callout } from "../../../../ui/Callout.js";
+import { CodeBlock } from "../../../../ui/CodeBlock.js";
 import { FormField } from "../../../../ui/form.js";
 import { Input } from "../../../../ui/Input.js";
+import { RadioCards } from "../../../../ui/RadioCards.js";
 import { Skeleton } from "../../../../ui/Skeleton.js";
 import { StatusPill } from "../../../../ui/StatusPill.js";
+import { FormStep } from "../../../../ui/wizard/index.js";
+import { FEATURES } from "../../../../services.generated.js";
 import {
-  AutoList,
-  FormStep,
-  type AutoItem,
-} from "../../../../ui/wizard/index.js";
-import { Link } from "../../../router.js";
-import { r } from "../../../routes.js";
-import { repoOf } from "../model/newProduct.js";
-import { RefusalFix } from "./NewProductSteps.js";
+  platformLabel,
+  pushedWords,
+  repoOf,
+  slugFromName,
+} from "../model/newProduct.js";
+
+const PAGE = 8;
+
+/** A slow read shows its skeleton only after a beat, so a quick one doesn't flash. */
+export function useGrace(pending: boolean, ms = 250): boolean {
+  const [shown, setShown] = React.useState(false);
+  React.useEffect(() => {
+    if (!pending) {
+      setShown(false);
+      return;
+    }
+    const t = window.setTimeout(() => setShown(true), ms);
+    return () => window.clearTimeout(t);
+  }, [pending, ms]);
+  return shown;
+}
 
 // ── Repository ───────────────────────────────────────────────────────────────────────────────
 
+export interface RepoList {
+  pending: boolean;
+  error: boolean;
+  data: GithubRepositories | undefined;
+  retry: () => void;
+}
+
 /**
  * The repository step (W22): paste `owner/repo` or a URL, or pick one the Polaris Key app can
- * read. A repository that is a product already opens that product; it is never registered twice.
+ * read. A repository that is a product already says so, and the primary opens that product.
  */
 export function RepoStep({
   value,
@@ -42,16 +63,12 @@ export function RepoStep({
   onChange: (v: string) => void;
   onSubmit: () => void;
   error?: string;
-  list: {
-    pending: boolean;
-    error: boolean;
-    data: GithubRepositories | undefined;
-    retry: () => void;
-  };
+  list: RepoList;
 }): React.ReactElement {
-  const picked = repoOf(value)?.toLowerCase();
   return (
     <FormStep formId="np-repo" onSubmit={onSubmit}>
+      {/* The picker adds fields to the form: without a submit button Enter would do nothing. */}
+      <button type="submit" tabIndex={-1} aria-hidden className="sr-only" />
       <FormField
         name="repoUrl"
         label="Repository"
@@ -73,36 +90,29 @@ export function RepoStep({
           />
         )}
       </FormField>
-      <RepoList
-        list={list}
-        picked={picked}
-        onPick={(row) => onChange(row.fullName)}
-      />
+      <RepoPicker list={list} value={repoOf(value) ?? ""} onPick={onChange} />
     </FormStep>
   );
 }
 
-function RepoList({
+function RepoPicker({
   list,
-  picked,
+  value,
   onPick,
 }: {
-  list: {
-    pending: boolean;
-    error: boolean;
-    data: GithubRepositories | undefined;
-    retry: () => void;
-  };
-  picked: string | undefined;
-  onPick: (row: GithubRepoRow) => void;
+  list: RepoList;
+  value: string;
+  onPick: (full: string) => void;
 }): React.ReactElement | null {
+  const [shown, setShown] = React.useState(PAGE);
+  const grace = useGrace(list.pending);
   if (list.pending)
-    return (
+    return grace ? (
       <div className="space-y-2" aria-busy="true">
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-14 w-full" />
+        <Skeleton className="h-14 w-full" />
       </div>
-    );
+    ) : null;
   if (list.error || !list.data)
     return (
       <p className="text-sm text-fg-muted">
@@ -142,54 +152,29 @@ function RepoList({
     );
   if (data.repositories.length === 0)
     return <p className="text-sm text-fg-muted">No repository matches.</p>;
+  const rows = data.repositories.slice(0, shown);
   return (
-    <ul
-      aria-label="Repositories the Polaris Key app can read"
-      className="max-h-72 divide-y divide-border overflow-y-auto rounded-lg border border-border"
-    >
-      {data.repositories.map((row) => (
-        <li
-          key={row.fullName}
-          className="flex flex-wrap items-center gap-2 p-2"
-        >
-          {row.product ? (
-            <>
-              <span className="min-w-0 basis-full break-all font-mono text-sm">
-                {row.fullName}
-              </span>
-              <span className="text-sm text-fg-muted">
-                Already a product · {row.product}
-              </span>
-              <Button variant="ghost" size="sm" asChild>
-                <Link to={r.overview(row.product)}>Open product</Link>
-              </Button>
-            </>
-          ) : (
-            <button
-              type="button"
-              aria-pressed={picked === row.fullName.toLowerCase()}
-              onClick={() => onPick(row)}
-              className={cn(
-                "flex min-h-8 min-w-0 flex-1 basis-full flex-wrap items-center gap-x-3 gap-y-1 rounded-md px-1 text-left text-sm sm:basis-0",
-                "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus",
-                picked === row.fullName.toLowerCase() &&
-                  "bg-surface-sunken ring-1 ring-border-strong",
-              )}
-            >
-              <span className="min-w-0 break-all font-mono">
-                {row.fullName}
-              </span>
-              <span className="text-fg-muted">
+    <div className="space-y-2">
+      <RadioCards
+        aria-label="Repositories the Polaris Key app can read"
+        columns={1}
+        value={rows.some((r) => r.fullName === value) ? value : null}
+        onChange={onPick}
+        options={rows.map((row) => ({
+          value: row.fullName,
+          label: <span className="break-words">{row.fullName}</span>,
+          description: (
+            <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span>
                 {[
+                  row.product ? `Already a product · ${row.product}` : null,
                   row.language,
-                  row.pushedAt
-                    ? `pushed ${formatRelative(row.pushedAt * 1000)}`
-                    : null,
+                  row.pushedAt ? pushedWords(row.pushedAt) : null,
                 ]
                   .filter(Boolean)
-                  .join(" · ")}
+                  .join(" · ") || "No pushes yet"}
               </span>
-              {row.hasManifest === true ? (
+              {row.hasManifest === true && !row.product ? (
                 <StatusPill tone="success" size="sm">
                   Has .pkey/
                 </StatusPill>
@@ -198,120 +183,180 @@ function RepoList({
                   No .pkey/ yet
                 </StatusPill>
               ) : null}
-            </button>
-          )}
-        </li>
-      ))}
-    </ul>
+            </span>
+          ),
+        }))}
+      />
+      {data.repositories.length > shown ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => setShown((n) => n + PAGE)}
+        >
+          Show more ({data.repositories.length - shown})
+        </Button>
+      ) : null}
+    </div>
   );
 }
 
 // ── Check ────────────────────────────────────────────────────────────────────────────────────
 
+/** Why the check could not be read, in the words of what to do next. */
+export interface CheckFailure {
+  kind: "app" | "notfound" | "network" | "other";
+  title: string;
+  description: string;
+  /** Where "Install on GitHub" goes (W22's `installUrl`). */
+  installUrl: string | null;
+}
+
 const slugWords = (s: SlugCheck | null): string | null =>
   s?.status === "available" ? "Available" : s ? s.message : null;
 
+/** The feature names a set of enabled services turns on (never the slugs). */
+export function featuresOfServices(services: readonly string[]): string[] {
+  return FEATURES.filter((f) =>
+    f.primary.some((s) => services.includes(s)),
+  ).map((f) => f.label);
+}
+
+/** `.pkey/product` is missing: the one-command start, the docs, and the way out. */
+function NoPkey({
+  repo,
+  onScratch,
+}: {
+  repo: string;
+  onScratch: () => void;
+}): React.ReactElement {
+  const name = repo.split("/")[1] ?? repo;
+  const slug = slugFromName(name) || "my-product";
+  return (
+    <Callout tone="info" title={`${repo} has no .pkey/ yet`}>
+      <p>
+        Run this in the repository, commit and push, then check again. Or start
+        from scratch and link the repository later.
+      </p>
+      <div className="mt-2">
+        <CodeBlock
+          code={`pkey init --product ${slug} --name "${name}"`}
+          language="text"
+        />
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        <a
+          href={DOCS_LINKS.createProduct}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-1 text-sm font-medium underline underline-offset-4"
+        >
+          How .pkey/ works
+          <ArrowRight aria-hidden className="size-3.5" />
+        </a>
+        <Button type="button" variant="outline" size="sm" onClick={onScratch}>
+          Start from scratch instead
+        </Button>
+      </div>
+    </Callout>
+  );
+}
+
 /**
- * The check step (W23): what `.pkey/` says, the product as it will be, and every problem with its
- * file and path. Nothing to type: creating is the consent.
+ * The check step (W23): what `.pkey/` says and the product as it would be created, or why it can't
+ * be read. Nothing to type: creating is the consent. The list of what Create writes is the rail.
  */
 export function CheckStep({
   repo,
   state,
   failure,
+  stale,
   onCheckAgain,
   checking,
+  onScratch,
 }: {
   repo: string;
   state: { pending: boolean; data: CreateDryRun | undefined };
-  failure: ErrorCopy | null;
+  failure: CheckFailure | null;
+  /** The create was refused because `.pkey/` changed after the check. */
+  stale: boolean;
   onCheckAgain: () => void;
   checking: boolean;
+  onScratch: () => void;
 }): React.ReactElement {
+  const grace = useGrace(state.pending);
+  const again = (
+    <Button
+      type="button"
+      variant="secondary"
+      size="sm"
+      loading={checking}
+      onClick={onCheckAgain}
+    >
+      Check again
+    </Button>
+  );
   if (state.pending)
-    return (
+    return grace ? (
       <div className="space-y-3" aria-busy="true">
         <Skeleton className="h-16 w-full" />
         <Skeleton className="h-24 w-full" />
       </div>
+    ) : (
+      <div aria-busy="true" />
     );
   if (failure || !state.data)
     return (
       <Callout
-        tone="danger"
+        tone={failure?.kind === "network" ? "warning" : "danger"}
         title={failure?.title ?? "Could not read the repository"}
         live
       >
         <p>{failure?.description ?? `Polaris Key could not read ${repo}.`}</p>
         <div className="mt-3 flex flex-wrap items-center gap-3">
-          {failure?.fix?.kind === "install-github-app" ? (
-            <RefusalFix fix={failure.fix} onCheckAgain={onCheckAgain} />
+          {failure &&
+          (failure.kind === "app" || failure.kind === "notfound") ? (
+            <a
+              href={failure.installUrl ?? DOCS_LINKS.createProduct}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 text-sm font-medium underline underline-offset-4"
+            >
+              {failure.kind === "app"
+                ? "Install on GitHub"
+                : "Open the app on GitHub"}
+              <ArrowRight aria-hidden className="size-3.5" />
+            </a>
           ) : null}
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            loading={checking}
-            onClick={onCheckAgain}
-          >
-            Check again
-          </Button>
+          {again}
         </div>
       </Callout>
     );
   const d = state.data;
-  const rows: [string, string][] = [
-    ["Services", d.services.length ? d.services.join(", ") : "none"],
-    [
-      "Catalog",
-      d.catalog
-        ? `${d.catalog.entries} ${d.catalog.entries === 1 ? "entry" : "entries"}`
-        : "none",
-    ],
-    [
-      "Platforms",
-      d.platforms.values.length
-        ? d.platforms.values.join(", ")
-        : "none declared",
-    ],
-  ];
-  const items: AutoItem[] = [
-    { id: "key", label: "Mint and activate the signing key", state: "will" },
-    { id: "profile", label: "Create the Default profile", state: "will" },
-    ...(d.services.includes("license")
-      ? [
-          {
-            id: "tier",
-            label: "Create the Free tier if the manifest declares no tier",
-            state: "will" as const,
-          },
-        ]
-      : []),
-    ...(d.releaseWorkflow
-      ? [
-          {
-            id: "trust",
-            label: "Trust .github/workflows/release.yml to publish",
-            state: "will" as const,
-          },
-        ]
-      : []),
-    {
-      id: "sync",
-      label: "Keep the product in sync with every push",
-      state: "will",
-    },
-  ];
+  const noPkey = d.problems.some(
+    (p) =>
+      p.file === "product" && p.message.includes(".pkey/product is required"),
+  );
   return (
     <div className="space-y-5">
+      {stale ? (
+        <Callout
+          tone="warning"
+          title="The repository changed after the check"
+          live
+        >
+          <p>Its .pkey/ changed. Check it again before you create.</p>
+          <div className="mt-3">{again}</div>
+        </Callout>
+      ) : null}
       <section
         aria-label="The product"
         className="space-y-2 rounded-lg border border-border bg-surface-sunken p-4"
       >
-        <p className="text-base font-semibold text-fg-strong">
+        <p className="break-words text-base font-semibold text-fg-strong">
           {d.product?.name ?? d.repository}
         </p>
-        {d.product ? (
+        {d.product && !d.registeredAs ? (
           <p className="text-sm text-fg-muted">
             <span className="font-mono">{d.product.slug}</span>
             {slugWords(d.slug) ? (
@@ -330,23 +375,18 @@ export function CheckStep({
           </p>
         ) : null}
         <p className="text-sm text-fg-muted">
-          <span className="font-mono break-all">{d.repository}</span> at{" "}
+          <span className="break-words font-mono">{d.repository}</span> at{" "}
           <span className="font-mono">{d.commit.slice(0, 7)}</span>
         </p>
       </section>
 
       {d.registeredAs ? (
         <Callout tone="info" title={`Already a product: ${d.registeredAs}`}>
-          <Link
-            to={r.overview(d.registeredAs)}
-            className="underline underline-offset-4"
-          >
-            Open {d.registeredAs}
-          </Link>
+          Polaris Key keeps it in sync with every push. Open it to see it.
         </Callout>
-      ) : null}
-
-      {d.problems.length > 0 ? (
+      ) : noPkey ? (
+        <NoPkey repo={d.repository} onScratch={onScratch} />
+      ) : d.problems.length > 0 ? (
         <Callout tone="danger" title="Fix these in one commit" live>
           <ul className="mt-1 list-disc space-y-1 pl-5">
             {d.problems.map((p) => (
@@ -363,38 +403,63 @@ export function CheckStep({
               </li>
             ))}
           </ul>
-          <div className="mt-3">
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              loading={checking}
-              onClick={onCheckAgain}
-            >
-              Check again
-            </Button>
-          </div>
+          <div className="mt-3">{again}</div>
         </Callout>
       ) : (
         <>
           <dl className="grid gap-x-6 gap-y-1 text-sm sm:grid-cols-[8rem_1fr]">
-            {rows.map(([k, v]) => (
-              <React.Fragment key={k}>
-                <dt className="text-fg-muted">{k}</dt>
-                <dd className="min-w-0 break-words text-fg">{v}</dd>
-              </React.Fragment>
-            ))}
+            <Row k="Features">
+              {featuresOfServices(d.services).join(", ") || "none"}
+            </Row>
+            <Row k="Catalog">
+              {d.catalog
+                ? `${d.catalog.entries} ${d.catalog.entries === 1 ? "entry" : "entries"}`
+                : "none"}
+            </Row>
+            <Row k="Platforms">
+              {d.platforms.values.length
+                ? d.platforms.values.map(platformLabel).join(", ")
+                : "none declared"}
+            </Row>
           </dl>
           {d.secrets.length > 0 ? (
             <p className="text-sm text-fg-muted">
               {d.secrets.length} {d.secrets.length === 1 ? "secret" : "secrets"}{" "}
               to set after creating:{" "}
-              <span className="font-mono">{d.secrets.join(", ")}</span>
+              <span className="break-words font-mono">
+                {d.secrets.join(", ")}
+              </span>
             </p>
           ) : null}
-          <AutoList title="Polaris Key will set this up" items={items} />
         </>
       )}
     </div>
   );
+}
+
+function Row({
+  k,
+  children,
+}: {
+  k: string;
+  children: React.ReactNode;
+}): React.ReactElement {
+  return (
+    <>
+      <dt className="text-fg-muted">{k}</dt>
+      <dd className="min-w-0 break-words text-fg">{children}</dd>
+    </>
+  );
+}
+
+/** What a checked repository's create writes (the rail on a repository path). */
+export function repoCreates(d: CreateDryRun): string[] {
+  return [
+    "A signing key",
+    "Default profile",
+    `Catalog v1 (${d.catalog?.entries ?? 0} ${d.catalog?.entries === 1 ? "entry" : "entries"})`,
+    ...(d.starterTier === "free" ? ["The Free tier"] : []),
+    ...(d.releaseWorkflow ? ["Trust for .github/workflows/release.yml"] : []),
+    "Sync with every push",
+  ];
 }

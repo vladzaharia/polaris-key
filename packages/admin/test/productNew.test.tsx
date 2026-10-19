@@ -159,6 +159,7 @@ const DRY = {
   platforms: { values: ["macos"], source: "artifact-map" },
   secrets: ["SENTRY_AUTH_TOKEN"],
   releaseWorkflow: true,
+  starterTier: "free",
   problems: [],
 };
 
@@ -168,6 +169,7 @@ describe("slug and repository helpers", () => {
     expect(slugFromName("  Beat Grid Pro! ")).toBe("beat-grid-pro");
     expect(slugFromName("Café Über")).toBe("cafe-uber");
     expect(slugFromName("---")).toBe("");
+    expect(slugFromName("Øresund Æble")).toBe("oresund-aeble");
   });
 
   it("checks a slug against the registry and the reserved list", () => {
@@ -299,15 +301,17 @@ describe("New product from scratch", () => {
     expect(box(/^Licensing/).getAttribute("aria-checked")).toBe("true");
     expect(box(/^Ship builds/).getAttribute("aria-checked")).toBe("true");
     expect(box(/^Managed config/).getAttribute("aria-checked")).toBe("false");
-    // The plan reads in the future tense and follows the answers.
-    expect(within(main()).getByText("Create the Free tier")).toBeTruthy();
-    await userEvent.click(box(/^Cloud Sync/));
+    // The card says what it is for, in one line.
     expect(
-      within(main()).getByText("Managed config comes with Cloud Sync"),
+      within(main()).getByText(/Gate Tonebox on a license\./),
     ).toBeTruthy();
-    await userEvent.click(box(/^Cloud Sync/));
+    // The Free tier row and the rail follow the answers.
+    expect(within(main()).getByText("Start with a Free tier")).toBeTruthy();
+    expect(within(main()).getAllByText("The Free tier").length).toBeGreaterThan(
+      0,
+    );
     await userEvent.click(
-      within(main()).getByRole("button", { name: "macos" }),
+      within(main()).getByRole("checkbox", { name: "macOS" }),
     );
     await userEvent.click(next("Create Tonebox"));
     await waitFor(() =>
@@ -324,9 +328,44 @@ describe("New product from scratch", () => {
       starterTier: "free",
     });
     expect(window.sessionStorage.getItem(DRAFT_KEY)).toBeNull();
-    // Licence defaults are not asked: no offline grace, no device limit.
     expect(post.json).not.toHaveProperty("defaultMaxOfflineDays");
     expect(post.json).not.toHaveProperty("defaultDeviceLimit");
+  });
+
+  it("locks what needs another feature, and clearing one clears what needs it", async () => {
+    boot("#/products/new", {
+      extra: { "/manage/api/products/slug-check": slugCheck() },
+    });
+    await page();
+    await userEvent.type(field(/^Name/), "Tonebox{Enter}");
+    await screen.findByRole("heading", { level: 2, name: "What is it for?" });
+    const box = (label: RegExp) =>
+      within(main()).getByRole("checkbox", { name: label });
+    // Cloud Sync needs Managed config and Sign-in; Commerce needs Licensing.
+    expect(box(/^Cloud Sync/).getAttribute("aria-disabled")).toBe("true");
+    expect(
+      within(main()).getByText(/Select Managed config and Sign-in to unlock/),
+    ).toBeTruthy();
+    await userEvent.click(box(/^Cloud Sync/));
+    expect(box(/^Cloud Sync/).getAttribute("aria-checked")).toBe("false");
+    await userEvent.click(box(/^Managed config/));
+    await userEvent.click(box(/^Sign-in/));
+    expect(box(/^Cloud Sync/).getAttribute("aria-disabled")).toBeNull();
+    await userEvent.click(box(/^Cloud Sync/));
+    expect(box(/^Cloud Sync/).getAttribute("aria-checked")).toBe("true");
+    await userEvent.click(box(/^Commerce/));
+    expect(box(/^Commerce/).getAttribute("aria-checked")).toBe("true");
+    // Clearing Licensing clears Commerce, says so, and the Free tier row goes with Licensing.
+    await userEvent.click(box(/^Licensing/));
+    expect(box(/^Commerce/).getAttribute("aria-checked")).toBe("false");
+    expect(
+      within(main()).getByText(/Commerce is off too: it needs Licensing\./),
+    ).toBeTruthy();
+    expect(within(main()).queryByText("Start with a Free tier")).toBeNull();
+    expect(within(main()).queryByText("The Free tier")).toBeNull();
+    // Clearing Managed config clears Cloud Sync.
+    await userEvent.click(box(/^Managed config/));
+    expect(box(/^Cloud Sync/).getAttribute("aria-checked")).toBe("false");
   });
 
   it("I'll choose later creates with no services and no tier", async () => {
@@ -383,6 +422,54 @@ describe("New product from scratch", () => {
     ).toBeTruthy();
   });
 
+  it("says so when the slug can't be checked, and hints at a name with no Latin letters", async () => {
+    boot("#/products/new", {
+      extra: {
+        "/manage/api/products/slug-check": () => {
+          throw new TypeError("Failed to fetch");
+        },
+      },
+    });
+    await page();
+    await userEvent.type(field(/^Name/), "Tonebox");
+    expect(
+      await within(main()).findByText(
+        /Could not check the slug\. The server checks it when you create\./,
+      ),
+    ).toBeTruthy();
+    await userEvent.clear(field(/^Name/));
+    await userEvent.type(field(/^Name/), "مرحبا");
+    expect(
+      await within(main()).findByText(
+        "Type a slug: lowercase letters, digits and hyphens.",
+      ),
+    ).toBeTruthy();
+  });
+
+  it("a failed create keeps the draft and moves focus to the refusal", async () => {
+    boot("#/products/new", {
+      extra: {
+        "/manage/api/products/slug-check": slugCheck(),
+        "POST /manage/api/products": new Response(
+          JSON.stringify({ error: "boom" }),
+          { status: 500, headers: { "content-type": "application/json" } },
+        ),
+      },
+    });
+    await page();
+    await userEvent.type(field(/^Name/), "Tonebox{Enter}");
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Create Tonebox" }),
+    );
+    await waitFor(() => {
+      const el = document.activeElement as HTMLElement;
+      expect(el.getAttribute("tabindex")).toBe("-1");
+      expect(main().contains(el)).toBe(true);
+      expect(el.textContent?.length).toBeGreaterThan(0);
+    });
+    expect(window.sessionStorage.getItem(DRAFT_KEY)).toContain("tonebox");
+  });
+
   it("keeps the draft across a refresh", async () => {
     boot("#/products/new", {
       extra: { "/manage/api/products/slug-check": slugCheck() },
@@ -419,34 +506,57 @@ describe("New product from scratch", () => {
 describe("New product from a repository", () => {
   const routes = (over: Record<string, unknown> = {}) => ({
     "/manage/api/github/repositories": REPOS,
-    "POST /manage/api/products/link-repo": (
-      _q: URLSearchParams,
-      req: { json?: unknown },
-    ) =>
-      (req as { path: string }).path.length && false
-        ? null
-        : { ok: true, slug: "tonebox", kid: "gh:1", product: null },
     ...createdRoutes("tonebox", "Tonebox", {
       path: "/manage/api/products/link-repo",
       body: { ok: true, slug: "tonebox", kid: "gh:1", product: null },
     }),
+    "POST /manage/api/products/link-repo": (q: URLSearchParams) =>
+      q.get("dryRun") === "1"
+        ? DRY
+        : { ok: true, slug: "tonebox", kid: "gh:1", product: null },
     ...over,
   });
+  const json = (status: number, body: unknown) =>
+    new Response(JSON.stringify(body), {
+      status,
+      headers: { "content-type": "application/json" },
+    });
 
-  it("opens on the repository, lists what the app can read, and opens a registered one", async () => {
+  it("opens on the repository: one radiogroup of rows, the same shape each, no inner scroll", async () => {
     boot("#/products/new?via=github", { extra: routes() });
     await page();
     expect(within(main()).queryByLabelText(/^Name/)).toBeNull();
-    const list = await within(main()).findByRole("list", {
+    const group = await within(main()).findByRole("radiogroup", {
       name: "Repositories the Polaris Key app can read",
     });
-    expect(within(list).getAllByRole("listitem")).toHaveLength(3);
-    expect(within(list).getByText("Has .pkey/")).toBeTruthy();
-    expect(within(list).getByText("No .pkey/ yet")).toBeTruthy();
-    expect(within(list).getByText("Already a product · beatgrid")).toBeTruthy();
+    const rows = within(group).getAllByRole("radio");
+    expect(rows).toHaveLength(3);
+    expect(within(group).getByText("Has .pkey/")).toBeTruthy();
+    expect(within(group).getByText("No .pkey/ yet")).toBeTruthy();
     expect(
-      within(list).getByRole("link", { name: "Open product" }),
+      within(group).getByText(/Already a product · beatgrid/),
     ).toBeTruthy();
+    expect(group.className).not.toMatch(/overflow-y|max-h-/);
+    // The source is a segmented control above the stepper.
+    const source = within(main()).getByRole("radiogroup", {
+      name: "Start from",
+    });
+    expect(
+      source.compareDocumentPosition(
+        within(main()).getByRole("navigation", { name: "New product" }),
+      ),
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
+  it("a repository that is a product already: Open <slug> is the primary", async () => {
+    boot("#/products/new?via=github", { extra: routes() });
+    await page();
+    await userEvent.click(
+      await within(main()).findByRole("radio", { name: /acme\/beatgrid/ }),
+    );
+    const open = within(main()).getByRole("link", { name: "Open beatgrid" });
+    expect(open.getAttribute("href")).toBe("#/p/beatgrid");
+    expect(within(main()).queryByRole("button", { name: /^Read/ })).toBeNull();
   });
 
   it("says when the app is not installed, with the install link", async () => {
@@ -485,28 +595,26 @@ describe("New product from a repository", () => {
   });
 
   it("picks a repository, checks it (W23), and creates it with the digest", async () => {
-    const log = boot("#/products/new?via=github", {
-      extra: routes({
-        "POST /manage/api/products/link-repo": (q: URLSearchParams) =>
-          q.get("dryRun") === "1"
-            ? DRY
-            : { ok: true, slug: "tonebox", kid: "gh:1", product: null },
-      }),
-    });
+    const log = boot("#/products/new?via=github", { extra: routes() });
     await page();
     await userEvent.click(
-      await within(main()).findByRole("button", { name: /acme\/tonebox/ }),
+      await within(main()).findByRole("radio", { name: /acme\/tonebox/ }),
     );
     await userEvent.click(next("Read acme/tonebox"));
     expect(
       await screen.findByRole("heading", { level: 2, name: "Check it" }),
     ).toBeTruthy();
-    expect(await within(main()).findByText("Tonebox")).toBeTruthy();
+    expect(await within(main()).findByLabelText("The product")).toBeTruthy();
     expect(within(main()).getByText("Available")).toBeTruthy();
+    // Feature and platform names, never ids.
+    expect(within(main()).getByText("Licensing, Managed config")).toBeTruthy();
+    expect(within(main()).getByText("macOS")).toBeTruthy();
     expect(within(main()).getByText(/SENTRY_AUTH_TOKEN/)).toBeTruthy();
-    expect(
-      within(main()).getByText("Polaris Key will set this up"),
-    ).toBeTruthy();
+    // The Free tier line is the dry run's answer, not a hedge.
+    expect(within(main()).getAllByText("The Free tier").length).toBeGreaterThan(
+      0,
+    );
+    expect(main().textContent).not.toMatch(/if the manifest declares/);
     await userEvent.click(next("Create Tonebox"));
     await waitFor(() =>
       expect(window.location.hash).toMatch(/^#\/p\/tonebox\/integration/),
@@ -522,6 +630,24 @@ describe("New product from a repository", () => {
       manifestDigest: "digest-1",
       trustReleaseWorkflow: true,
     });
+  });
+
+  it("a long name wraps inside the Create button", async () => {
+    boot("#/products/new?via=github", {
+      extra: routes({
+        "POST /manage/api/products/link-repo": () => ({
+          ...DRY,
+          product: { slug: "x", name: "A".repeat(80), presentation: null },
+        }),
+      }),
+    });
+    await page();
+    await userEvent.type(field(/^Repository/), "acme/tonebox{Enter}");
+    const create = await within(main()).findByRole("button", {
+      name: /^Create A/,
+    });
+    expect(create.className).toMatch(/whitespace-normal/);
+    expect(create.className).toMatch(/max-w-full/);
   });
 
   it("lists every problem with its file and path, holds Create, and Check again reads again", async () => {
@@ -564,8 +690,10 @@ describe("New product from a repository", () => {
     expect(
       within(main()).getByText(/\.pkey\/schema \/entries\/0/),
     ).toBeTruthy();
-    const create = next(/^Create/);
-    expect(create.getAttribute("aria-disabled")).toBe("true");
+    expect(next(/^Create/).getAttribute("aria-disabled")).toBe("true");
+    expect(
+      within(main()).getAllByText("Fix the problems first.").length,
+    ).toBeGreaterThan(0);
     await userEvent.click(next("Check again"));
     await waitFor(() =>
       expect(within(main()).queryByText("Fix these in one commit")).toBeNull(),
@@ -573,26 +701,180 @@ describe("New product from a repository", () => {
     expect(next("Create Tonebox").getAttribute("aria-disabled")).not.toBe(
       "true",
     );
+    // Focus lands on the result, not on the page's top.
+    await waitFor(() =>
+      expect(main().contains(document.activeElement)).toBe(true),
+    );
   });
 
-  it("puts a repository the GitHub App can't read on the Check step, with the install fix", async () => {
+  it("an already-registered repository hides the plan; Open <slug> is the primary", async () => {
     boot("#/products/new?via=github", {
       extra: routes({
-        "POST /manage/api/products/link-repo": new Response(
-          JSON.stringify({
-            error: "bad_request",
-            message: "github app is not installed on acme/other",
-          }),
-          { status: 422, headers: { "content-type": "application/json" } },
-        ),
+        "POST /manage/api/products/link-repo": () => ({
+          ...DRY,
+          registeredAs: "tonebox",
+          slug: {
+            slug: "tonebox",
+            status: "taken",
+            message: "tonebox is taken.",
+            suggestion: "tonebox-app",
+          },
+        }),
+      }),
+    });
+    await page();
+    await userEvent.type(field(/^Repository/), "acme/tonebox{Enter}");
+    expect(
+      await within(main()).findByText("Already a product: tonebox"),
+    ).toBeTruthy();
+    expect(within(main()).queryByText("tonebox is taken.")).toBeNull();
+    expect(within(main()).queryByText("Creates")).toBeNull();
+    expect(within(main()).queryByText(/^Features/)).toBeNull();
+    expect(
+      within(main()).getByRole("link", { name: "Open tonebox" }),
+    ).toBeTruthy();
+    expect(
+      within(main()).queryByRole("button", { name: /^Create/ }),
+    ).toBeNull();
+  });
+
+  it("a .pkey/ that changed after the check: reads again, holds Create, plain words", async () => {
+    let reads = 0;
+    boot("#/products/new?via=github", {
+      extra: routes({
+        "POST /manage/api/products/link-repo": (q: URLSearchParams) => {
+          if (q.get("dryRun") === "1") {
+            reads += 1;
+            return DRY;
+          }
+          return json(409, {
+            error:
+              "the repository's .pkey/ changed since the check; check again",
+            reason: "manifest",
+          });
+        },
+      }),
+    });
+    await page();
+    await userEvent.type(field(/^Repository/), "acme/tonebox{Enter}");
+    await userEvent.click(
+      await within(main()).findByRole("button", { name: "Create Tonebox" }),
+    );
+    await waitFor(() => expect(reads).toBe(2));
+    expect(main().textContent).not.toMatch(/since the check; check again/);
+    // Once it has been read again, Create works.
+    await waitFor(() =>
+      expect(next("Create Tonebox").getAttribute("aria-disabled")).not.toBe(
+        "true",
+      ),
+    );
+  });
+
+  it("the App can't read the repository: Install goes to the App's page, in a new tab", async () => {
+    boot("#/products/new?via=github", {
+      extra: routes({
+        "/manage/api/github/repositories": {
+          ...REPOS,
+          installations: [{ ...REPOS.installations[0]!, account: "someone" }],
+        },
+        "POST /manage/api/products/link-repo": json(422, {
+          error: "bad_request",
+          message: "github app is not installed on acme/other",
+        }),
       }),
     });
     await page();
     await userEvent.type(field(/^Repository/), "acme/other{Enter}");
+    const install = await within(main()).findByRole("link", {
+      name: "Install on GitHub",
+    });
+    expect(install.getAttribute("href")).toBe(REPOS.app.installUrl);
+    expect(install.getAttribute("target")).toBe("_blank");
+    expect(main().textContent).not.toMatch(/or the repo is private/);
     expect(
-      await within(main()).findByRole("button", { name: "Check again" }),
+      within(main()).getAllByText("Polaris Key can't read the repository.")[0],
     ).toBeTruthy();
-    expect(within(main()).getByRole("link", { name: /Install/ })).toBeTruthy();
+  });
+
+  it("a mistyped repository on an account the App is on says to check the name", async () => {
+    boot("#/products/new?via=github", {
+      extra: routes({
+        "POST /manage/api/products/link-repo": json(422, {
+          error: "bad_request",
+          message: "github app is not installed on acme/tonebxo",
+        }),
+      }),
+    });
+    await page();
+    await userEvent.type(field(/^Repository/), "acme/tonebxo{Enter}");
+    expect(
+      await within(main()).findByText("acme/tonebxo wasn't found"),
+    ).toBeTruthy();
+    expect(within(main()).getByText(/Check the name/)).toBeTruthy();
+  });
+
+  it("a network failure says so in the footer, not 'fix the problems'", async () => {
+    boot("#/products/new?via=github", {
+      extra: routes({
+        "POST /manage/api/products/link-repo": () => {
+          throw new TypeError("Failed to fetch");
+        },
+      }),
+    });
+    await page();
+    await userEvent.type(field(/^Repository/), "acme/tonebox{Enter}");
+    expect(
+      (
+        await within(main()).findAllByText(
+          "Can't reach Polaris Key. Check again.",
+        )
+      )[0],
+    ).toBeTruthy();
+    expect(main().textContent).not.toMatch(/Fix the problems first/);
+  });
+
+  it("a repository with no .pkey/ shows pkey init, the docs and a way out", async () => {
+    boot("#/products/new?via=github", {
+      extra: routes({
+        "POST /manage/api/products/link-repo": () => ({
+          ...DRY,
+          ready: false,
+          product: null,
+          slug: null,
+          problems: [
+            {
+              check: "manifest",
+              file: "product",
+              path: "/",
+              message: ".pkey/product is required at ingest.",
+            },
+          ],
+        }),
+      }),
+    });
+    await page();
+    await userEvent.type(field(/^Repository/), "acme/tonebox{Enter}");
+    expect(
+      await within(main()).findByText("acme/tonebox has no .pkey/ yet"),
+    ).toBeTruthy();
+    expect(main().textContent).toContain(
+      'pkey init --product tonebox --name "tonebox"',
+    );
+    expect(
+      within(main()).getByRole("link", { name: /How .pkey\/ works/ }),
+    ).toBeTruthy();
+    await userEvent.click(
+      within(main()).getByRole("button", {
+        name: "Start from scratch instead",
+      }),
+    );
+    expect(
+      await screen.findByRole("heading", {
+        level: 2,
+        name: "What is it called?",
+      }),
+    ).toBeTruthy();
+    expect(field(/^Name/).value).toBe("tonebox");
   });
 });
 
@@ -613,7 +895,7 @@ describe("New product accessibility", () => {
       extra: { "/manage/api/github/repositories": REPOS },
     });
     await page();
-    await within(main()).findByRole("list", {
+    await within(main()).findByRole("radiogroup", {
       name: "Repositories the Polaris Key app can read",
     });
     expect((await axe(main())).violations.map((v) => v.id)).toEqual([]);

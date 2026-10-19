@@ -1,24 +1,25 @@
 import * as React from "react";
-import { ArrowRight, Check } from "lucide-react";
+import { ArrowRight, Check, Circle, Lock } from "lucide-react";
 import { RELEASE_PLATFORMS } from "@polaris-key/manifest";
 import { DOCS_LINKS } from "../../../../lib/docsLinks.js";
 import type { ErrorCopy, ErrorFix } from "../../../../lib/errorCopy.js";
+import { cn } from "../../../../lib/cn.js";
 import { Button } from "../../../../ui/Button.js";
 import { Callout } from "../../../../ui/Callout.js";
-import { Checkbox } from "../../../../ui/Checkbox.js";
 import { FormField } from "../../../../ui/form.js";
 import { Input } from "../../../../ui/Input.js";
+import { ServiceGlyph } from "../../../../ui/ServiceBadge.js";
 import { StatusPill } from "../../../../ui/StatusPill.js";
 import { Switch } from "../../../../ui/Switch.js";
-import { AutoList, FormStep } from "../../../../ui/wizard/index.js";
-import {
-  FEATURES,
-  SERVICE_TABLE,
-  type FeatureId,
-} from "../../../../services.generated.js";
+import { FormStep } from "../../../../ui/wizard/index.js";
+import { FEATURES, type FeatureId } from "../../../../services.generated.js";
 import {
   RECOMMENDED,
-  planFor,
+  featureCopy,
+  featureLabel,
+  needsOf,
+  platformLabel,
+  unlocked,
   type ProductDraft,
 } from "../model/newProduct.js";
 
@@ -35,6 +36,7 @@ export function NameStep({
   available,
   suggestion,
   checking,
+  checkFailed,
   onUseSuggestion,
 }: {
   name: string;
@@ -46,8 +48,18 @@ export function NameStep({
   available: boolean;
   suggestion: string | null;
   checking: boolean;
+  /** The slug check could not be asked: the server decides on Create. */
+  checkFailed: boolean;
   onUseSuggestion: (slug: string) => void;
 }): React.ReactElement {
+  const hint =
+    errors.slug || available || checking
+      ? null
+      : checkFailed
+        ? "Could not check the slug. The server checks it when you create."
+        : name.trim() !== "" && slug.trim() === ""
+          ? "Type a slug: lowercase letters, digits and hyphens."
+          : null;
   return (
     <FormStep formId="np-name" onSubmit={onSubmit}>
       {/* Two text fields and no submit button inside the form: Enter would do nothing. */}
@@ -86,7 +98,9 @@ export function NameStep({
             </span>
           ) : checking && !errors.slug ? (
             "Checking…"
-          ) : undefined
+          ) : (
+            (hint ?? undefined)
+          )
         }
         value={slug}
         onChange={onSlug}
@@ -123,105 +137,237 @@ export function NameStep({
 
 // ── What it's for ────────────────────────────────────────────────────────────────────────────
 
-const summaryOf = (id: FeatureId): string => {
+/** A feature the person can turn on: a card with its service's accent edge and one line of why. */
+function FeatureCard({
+  id,
+  name,
+  chosen,
+  onToggle,
+}: {
+  id: FeatureId;
+  name: string;
+  chosen: readonly FeatureId[];
+  onToggle: (id: FeatureId, on: boolean) => void;
+}): React.ReactElement {
   const f = FEATURES.find((x) => x.id === id)!;
-  return SERVICE_TABLE.find((s) => s.slug === f.primary[0])?.summary ?? "";
-};
+  const on = chosen.includes(id);
+  const open = unlocked(id, chosen);
+  const needs = needsOf(id);
+  const missing = needs.filter((n) => !chosen.includes(n));
+  const descId = `np-feature-${id}-desc`;
+  return (
+    <button
+      type="button"
+      role="checkbox"
+      aria-checked={on}
+      aria-disabled={!open || undefined}
+      aria-describedby={descId}
+      data-service={f.primary[0]}
+      onClick={() => {
+        if (open) onToggle(id, !on);
+      }}
+      className={cn(
+        "pk-pressable flex min-w-0 flex-col items-start gap-1.5 rounded-lg border-2 p-3 text-left",
+        "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface-page",
+        on
+          ? "border-accent bg-accent-subtle"
+          : "border-border bg-surface-raised hover:border-border-strong",
+        !open && "cursor-not-allowed opacity-70",
+      )}
+    >
+      <span className="flex w-full items-center gap-2 text-sm font-medium text-fg-strong">
+        <ServiceGlyph id={f.primary[0]!} />
+        <span className="min-w-0 flex-1 break-words">{f.label}</span>
+        {RECOMMENDED.includes(id) && open ? (
+          <StatusPill tone="info" size="sm">
+            Recommended
+          </StatusPill>
+        ) : null}
+        <span
+          aria-hidden
+          className={cn(
+            "flex size-4 shrink-0 items-center justify-center rounded-sm border",
+            on
+              ? "border-accent bg-accent text-accent-on"
+              : "border-border-strong bg-surface-sunken",
+          )}
+        >
+          {on ? <Check className="size-3" /> : null}
+          {!open ? <Lock className="size-3 text-fg-muted" /> : null}
+        </span>
+      </span>
+      <span id={descId} className="text-xs text-fg-muted">
+        {featureCopy(id, name)}
+        {needs.length > 0 ? (
+          <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5">
+            {needs.map((n) => (
+              <span key={n} className="inline-flex items-center gap-1">
+                Needs
+                {chosen.includes(n) ? (
+                  <Check aria-label="chosen" className="size-3 text-success" />
+                ) : (
+                  <Circle aria-label="not chosen" className="size-3" />
+                )}
+                {featureLabel(n)}
+              </span>
+            ))}
+          </span>
+        ) : null}
+        {!open ? (
+          <span className="mt-1 block font-medium text-fg">
+            Select {missing.map(featureLabel).join(" and ")} to unlock
+          </span>
+        ) : null}
+      </span>
+    </button>
+  );
+}
 
-/** "What is it for?": the features (the Services page's), the Free tier and the platforms. */
+/** "What is it for?": the features, the Free tier (when License is on) and the platforms. */
 export function PurposeStep({
   draft,
+  onToggle,
   onChange,
+  notice,
 }: {
   draft: ProductDraft;
+  onToggle: (id: FeatureId, on: boolean) => void;
   onChange: (patch: Partial<ProductDraft>) => void;
+  /** What a change turned off with it ("Commerce is off too: it needs Licensing."). */
+  notice: string | null;
 }): React.ReactElement {
-  const toggle = (id: FeatureId, on: boolean) =>
-    onChange({
-      features: on
-        ? [...draft.features, id]
-        : draft.features.filter((f) => f !== id),
-    });
+  const name = draft.name.trim();
+  const licensing = draft.features.includes("licensing");
+  const ships = draft.features.includes("ship-builds");
   return (
     <div className="space-y-5">
       <fieldset className="space-y-3">
-        <legend className="sr-only">What it is for</legend>
-        {FEATURES.map((f) => {
-          const on = draft.features.includes(f.id);
-          return (
-            <div key={f.id} className="space-y-2">
-              <Checkbox
-                label={
-                  <span className="inline-flex flex-wrap items-center gap-2">
-                    {f.label}
-                    {RECOMMENDED.includes(f.id) ? (
-                      <StatusPill tone="info" size="sm">
-                        Recommended
-                      </StatusPill>
-                    ) : null}
-                  </span>
-                }
-                description={summaryOf(f.id)}
-                checked={on}
-                onCheckedChange={(c) => toggle(f.id, c)}
-              />
-              {f.id === "licensing" && on ? (
-                <div className="ml-7">
-                  <Switch
-                    label="Start with a free tier"
-                    checked={draft.freeTier}
-                    onCheckedChange={(c) => onChange({ freeTier: c })}
-                  />
-                </div>
-              ) : null}
-              {f.id === "ship-builds" && on ? (
-                <div className="ml-7 space-y-2">
-                  <p className="text-sm text-fg-muted" id="np-platforms">
-                    What does it ship? Storefronts follow these.
-                  </p>
-                  <div
-                    role="group"
-                    aria-labelledby="np-platforms"
-                    className="flex flex-wrap gap-2"
-                  >
-                    {RELEASE_PLATFORMS.map((p) => {
-                      const sel = draft.platforms.includes(p);
-                      return (
-                        <Button
-                          key={p}
-                          type="button"
-                          size="sm"
-                          variant={sel ? "secondary" : "outline"}
-                          aria-pressed={sel}
-                          iconStart={sel ? <Check aria-hidden /> : undefined}
-                          onClick={() =>
-                            onChange({
-                              platforms: sel
-                                ? draft.platforms.filter((x) => x !== p)
-                                : [...draft.platforms, p],
-                            })
-                          }
-                        >
-                          {p}
-                        </Button>
-                      );
-                    })}
-                  </div>
-                </div>
-              ) : null}
-            </div>
-          );
-        })}
+        <legend className="sr-only">Features</legend>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {FEATURES.map((f) => (
+            <FeatureCard
+              key={f.id}
+              id={f.id}
+              name={name}
+              chosen={draft.features}
+              onToggle={onToggle}
+            />
+          ))}
+        </div>
+        <p role="status" className="min-h-0 text-sm text-fg-muted">
+          {notice}
+        </p>
       </fieldset>
-      <AutoList
-        title="Polaris Key will set this up"
-        items={planFor(draft).map((label, i) => ({
-          id: `p${i}`,
-          label,
-          state: "will" as const,
-        }))}
-      />
+      {licensing ? (
+        <Switch
+          touch
+          className="justify-start gap-4"
+          label="Start with a Free tier"
+          description="Lifetime, 5 devices."
+          checked={draft.freeTier}
+          onCheckedChange={(c) => onChange({ freeTier: c })}
+        />
+      ) : null}
+      {ships ? (
+        <div className="space-y-2">
+          <p className="text-sm text-fg" id="np-platforms">
+            Where will {name || "it"} run?
+          </p>
+          <div
+            role="group"
+            aria-labelledby="np-platforms"
+            className="flex flex-wrap gap-2"
+          >
+            {RELEASE_PLATFORMS.map((p) => {
+              const sel = draft.platforms.includes(p);
+              return (
+                <button
+                  key={p}
+                  type="button"
+                  role="checkbox"
+                  aria-checked={sel}
+                  onClick={() =>
+                    onChange({
+                      platforms: sel
+                        ? draft.platforms.filter((x) => x !== p)
+                        : [...draft.platforms, p],
+                    })
+                  }
+                  className={cn(
+                    "pk-pressable inline-flex min-h-9 items-center gap-1.5 rounded-md border-2 px-3 text-sm",
+                    "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface-page",
+                    sel
+                      ? "border-accent bg-accent-subtle text-fg-strong"
+                      : "border-border bg-surface-raised text-fg hover:border-border-strong",
+                  )}
+                >
+                  {sel ? <Check aria-hidden className="size-3.5" /> : null}
+                  {platformLabel(p)}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
     </div>
+  );
+}
+
+// ── Creates ──────────────────────────────────────────────────────────────────────────────────
+
+/** The rail (from 1024 px): what Create writes, as plain rows. */
+export function CreatesRail({
+  lines,
+  name,
+}: {
+  lines: readonly string[];
+  name: string;
+}): React.ReactElement {
+  return (
+    <div className="space-y-2">
+      <h3 className="text-sm font-semibold text-fg-strong">Creates</h3>
+      {name ? <p className="break-words text-fg-muted">{name}</p> : null}
+      <ul className="space-y-1">
+        {lines.map((l) => (
+          <li key={l} className="flex items-start gap-2">
+            <Check
+              aria-hidden
+              className="mt-0.5 size-3.5 shrink-0 text-fg-muted"
+            />
+            <span className="min-w-0 break-words">{l}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/** The same list under 1024 px, collapsed to one line. */
+export function CreatesBar({
+  lines,
+  summary,
+}: {
+  lines: readonly string[];
+  summary: string;
+}): React.ReactElement {
+  return (
+    <details className="rounded-lg border border-border bg-surface-sunken px-3 py-2 text-sm lg:hidden">
+      <summary className="cursor-pointer text-fg">
+        <span className="font-semibold text-fg-strong">Creates</span>
+        {summary ? ` · ${summary}` : ""}
+      </summary>
+      <ul className="mt-2 space-y-1">
+        {lines.map((l) => (
+          <li key={l} className="flex items-start gap-2">
+            <Check
+              aria-hidden
+              className="mt-0.5 size-3.5 shrink-0 text-fg-muted"
+            />
+            <span className="min-w-0 break-words">{l}</span>
+          </li>
+        ))}
+      </ul>
+    </details>
   );
 }
 
@@ -234,9 +380,11 @@ export function PurposeStep({
 export function RefusalCallout({
   copy,
   onCheckAgain,
+  installUrl,
 }: {
   copy: ErrorCopy;
   onCheckAgain: () => void;
+  installUrl?: string | null;
 }): React.ReactElement {
   const lines = copy.problems?.length
     ? copy.problems.map((p) => ({
@@ -268,7 +416,11 @@ export function RefusalCallout({
       ) : null}
       {copy.fix ? (
         <div className="mt-3">
-          <RefusalFix fix={copy.fix} onCheckAgain={onCheckAgain} />
+          <RefusalFix
+            fix={copy.fix}
+            onCheckAgain={onCheckAgain}
+            installUrl={installUrl}
+          />
         </div>
       ) : null}
     </Callout>
@@ -282,9 +434,11 @@ export function RefusalCallout({
 export function RefusalFix({
   fix,
   onCheckAgain,
+  installUrl,
 }: {
   fix: ErrorFix;
   onCheckAgain: () => void;
+  installUrl?: string | null;
 }): React.ReactElement {
   if (fix.kind === "check-again")
     return (
@@ -299,7 +453,7 @@ export function RefusalFix({
     );
   return (
     <a
-      href={DOCS_LINKS.createProduct}
+      href={installUrl ?? DOCS_LINKS.createProduct}
       target="_blank"
       rel="noreferrer"
       className="inline-flex items-center gap-1 text-sm font-medium underline underline-offset-4"

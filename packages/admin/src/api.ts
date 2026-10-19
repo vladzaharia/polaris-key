@@ -1704,6 +1704,8 @@ export interface CreateDryRun {
   platforms: { values: string[]; source: "artifact-map" | "none" };
   secrets: string[];
   releaseWorkflow: boolean | null;
+  /** Whether the create adds the Free tier (License on, no tier declared). */
+  starterTier: "free" | "none";
   problems: CreateProblem[];
 }
 
