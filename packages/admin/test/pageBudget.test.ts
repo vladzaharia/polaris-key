@@ -17,8 +17,7 @@ const SECTIONS = join(import.meta.dirname, "../src/console/sections");
  * Over-budget files (relative to `src/console/`) and the line count each may not exceed. Five
  * ceilings (UserRecord, PackageRecord, PackRecord, ReleaseRecord, ListingPage) were raised by the
  * `pk-vt-tabpanel` wrapper around each tab panel, merged from the UI-kit branches; split those
- * pages when next touched. ProductNew's went up one line for the `GithubIcon` import that
- * replaced lucide-react's removed `Github` brand glyph (lucide 1.x).
+ * pages when next touched.
  */
 const OVER_BUDGET: Record<string, number> = {
   "sections/config/components/CatalogEntryForm.tsx": 819,
@@ -41,7 +40,6 @@ const OVER_BUDGET: Record<string, number> = {
   "sections/feeds/pages/FeedSettings.tsx": 1083,
   "sections/feeds/pages/PackageRecord.tsx": 606,
   "sections/feeds/pages/RegistryTokens.tsx": 889,
-  "sections/global/pages/ProductNew.tsx": 749,
   "sections/license/components/CreateLicenseDialog.tsx": 718,
   "sections/platform/index.tsx": 707,
   "sections/platform/pages/platformOperations.tsx": 1214,

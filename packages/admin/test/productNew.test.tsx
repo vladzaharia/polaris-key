@@ -9,19 +9,11 @@ import {
   slugVerdict,
   suggestSlug,
 } from "../src/console/sections/global/pages/ProductNew.js";
-import type { Me } from "../src/api.js";
-import {
-  ALL_ON,
-  boot,
-  ME,
-  productRow,
-  resetConsole,
-} from "./consoleHarness.js";
+import { ALL_ON, boot, productRow, resetConsole } from "./consoleHarness.js";
 
 /**
- * New product on one screen (EXPERIENCE.md §0.4 S1, C1; UX-20): Start from, then Name with the
- * slug following it and checked as you type, Advanced license defaults, and Enter creates. No
- * result page and no toast: the product opens on Overview.
+ * New product (ST-43; FLOWS.md §3) on the wizard kit: from scratch (Name, What it's for) or from a
+ * repository (Repository, Check), then Create lands on Integration with the product's moment.
  */
 
 const axe = configureAxe({
@@ -47,8 +39,23 @@ async function page(): Promise<HTMLElement> {
 const field = (label: RegExp): HTMLInputElement =>
   within(main()).getByLabelText(label) as HTMLInputElement;
 
-/** The routes a freshly created `slug` needs for its Overview to render. */
-function newProductRoutes(
+const integrationView = (slug: string) => ({
+  product: slug,
+  now: 1,
+  snippet: {
+    slug,
+    services: ["license"],
+    pins: [{ kid: `${slug}-2026`, publicKey: "PUBKEY" }],
+    releaseKeys: [],
+  },
+  features: [],
+  server: [],
+  sightings: [],
+  verified: false,
+});
+
+/** The routes a freshly created `slug` needs for Integration to render. */
+function createdRoutes(
   slug: string,
   name: string,
   post: { path: string; body: unknown },
@@ -56,39 +63,104 @@ function newProductRoutes(
   return {
     [`POST ${post.path}`]: post.body,
     [`/manage/api/products/${slug}`]: {
-      product: productRow(slug, name, {
-        license: { enabled: true },
-        config: { enabled: false },
-        release: { enabled: false },
-        distribution: { enabled: false },
-        update: { enabled: false },
-        identity: { enabled: false },
-      }),
+      product: productRow(slug, name, ALL_ON),
     },
-    [`/manage/api/products/${slug}/license/licenses`]: { licenses: [] },
-    [`/manage/api/products/${slug}/activity`]: { items: [], nextCursor: null },
+    [`/manage/api/products/${slug}/integration`]: integrationView(slug),
   };
 }
 
-/**
- * Boot options for a create that succeeds: the registry (the slug check) doesn't hold the new
- * product yet, and the session refetched after the create does, so its Overview opens.
- */
-function created(
-  slug: string,
-  name: string,
-  post: { path: string; body: unknown },
-): { me: { products: Me["products"] }; extra: Record<string, unknown> } {
-  return {
-    me: { products: [...ME.products, { slug, name, schemaVersion: 1 }] },
-    extra: {
-      "/manage/api/products": {
-        products: ME.products.map((p) => productRow(p.slug, p.name, ALL_ON)),
-      },
-      ...newProductRoutes(slug, name, post),
-    },
+const AVAILABLE = (slug: string) => ({ slug, status: "available" });
+
+/** A slug check that answers from the registry in the scripted `taken` set. */
+const slugCheck =
+  (taken: Record<string, string> = {}) =>
+  (query: URLSearchParams) => {
+    const slug = query.get("slug") ?? "";
+    return taken[slug]
+      ? {
+          slug,
+          status: "taken",
+          message: `${slug} is taken.`,
+          suggestion: taken[slug],
+        }
+      : AVAILABLE(slug);
   };
-}
+
+const REPOS = {
+  configured: true,
+  app: {
+    slug: "polaris-key",
+    installUrl: "https://github.com/apps/polaris-key/installations/new",
+  },
+  installations: [
+    {
+      id: 1,
+      account: "acme",
+      repositorySelection: "all",
+      repositoryCount: 3,
+      listingError: null,
+    },
+  ],
+  repositories: [
+    {
+      installationId: 1,
+      owner: "acme",
+      name: "tonebox",
+      fullName: "acme/tonebox",
+      language: "TypeScript",
+      pushedAt: 1_700_000_000,
+      private: false,
+      defaultBranch: "main",
+      product: null,
+      hasManifest: true,
+    },
+    {
+      installationId: 1,
+      owner: "acme",
+      name: "beatgrid",
+      fullName: "acme/beatgrid",
+      language: null,
+      pushedAt: null,
+      private: true,
+      defaultBranch: "main",
+      product: "beatgrid",
+      hasManifest: true,
+    },
+    {
+      installationId: 1,
+      owner: "acme",
+      name: "empty",
+      fullName: "acme/empty",
+      language: null,
+      pushedAt: null,
+      private: false,
+      defaultBranch: "main",
+      product: null,
+      hasManifest: false,
+    },
+  ],
+  total: 3,
+  nextCursor: null,
+};
+
+const DRY = {
+  ok: true,
+  dryRun: true,
+  repository: "acme/tonebox",
+  installationId: 1,
+  commit: "abcdef1234567890",
+  manifestDigest: "digest-1",
+  ready: true,
+  product: { slug: "tonebox", name: "Tonebox", presentation: null },
+  slug: AVAILABLE("tonebox"),
+  registeredAs: null,
+  services: ["license", "config"],
+  catalog: { entries: 4 },
+  platforms: { values: ["macos"], source: "artifact-map" },
+  secrets: ["SENTRY_AUTH_TOKEN"],
+  releaseWorkflow: true,
+  problems: [],
+};
 
 describe("slug and repository helpers", () => {
   it("derives a slug from a name", () => {
@@ -129,70 +201,56 @@ describe("slug and repository helpers", () => {
   });
 });
 
-describe("New product", () => {
-  it("is one screen: Start from, Name, Slug and Advanced; no steps, catalog, admin group or compatibility window", async () => {
-    boot("#/products/new");
+const next = (name: RegExp | string) =>
+  within(main()).getByRole("button", { name });
+
+describe("New product from scratch", () => {
+  it("has two steps: Name it, What it's for; no steps for catalog, admin group, or licence defaults", async () => {
+    boot("#/products/new", {
+      extra: { "/manage/api/products/slug-check": slugCheck() },
+    });
     await page();
-    expect(
-      within(main()).queryByRole("navigation", { name: /steps/i }),
-    ).toBeNull();
-    expect(
-      (
-        within(main()).getByRole("radio", { name: /Nothing/ }) as HTMLElement
-      ).getAttribute("aria-checked"),
-    ).toBe("true");
-    expect(field(/^Name/)).toBeTruthy();
-    expect(field(/^Slug/)).toBeTruthy();
-    expect(within(main()).queryByLabelText(/Catalog/)).toBeNull();
-    expect(within(main()).queryByLabelText(/Admin group/)).toBeNull();
-    expect(main().textContent).not.toMatch(/compat|PLATFORM_ADMIN_GROUP/i);
-    expect(main().textContent).not.toMatch(/add a repository later/i);
-    expect(
-      within(main()).getByRole("button", { name: /Advanced/ }),
-    ).toHaveProperty("ariaExpanded", "false");
-    expect(
-      within(main()).getByRole("button", { name: "Create product" }),
-    ).toBeTruthy();
+    const list = within(main()).getByRole("navigation", {
+      name: "New product",
+    });
+    expect(within(list).getAllByRole("listitem")).toHaveLength(2);
+    expect(within(main()).getByRole("heading", { level: 2 }).textContent).toBe(
+      "What is it called?",
+    );
+    expect(within(main()).queryByText(/Advanced/)).toBeNull();
+    expect(within(main()).queryByLabelText(/Offline grace/)).toBeNull();
+    expect(within(main()).queryByLabelText(/Device limit/)).toBeNull();
   });
 
-  it("derives the slug from the name until the slug is edited, and shows it is available", async () => {
-    boot("#/products/new");
+  it("derives the slug from the name until it is edited, and says it is available", async () => {
+    boot("#/products/new", {
+      extra: { "/manage/api/products/slug-check": slugCheck() },
+    });
     await page();
     await userEvent.type(field(/^Name/), "Tone Box");
     expect(field(/^Slug/).value).toBe("tone-box");
     expect(await within(main()).findByText("Available")).toBeTruthy();
-    expect(
-      within(main()).getByRole("button", { name: "Create Tone Box" }),
-    ).toBeTruthy();
-
     await userEvent.clear(field(/^Slug/));
-    await userEvent.type(field(/^Slug/), "tb");
-    await userEvent.type(field(/^Name/), "!");
-    expect(field(/^Slug/).value).toBe("tb");
-
-    // Typing the derived slug again hands it back to the name.
-    await userEvent.clear(field(/^Slug/));
-    expect(field(/^Slug/).value).toBe("");
-    await userEvent.type(field(/^Slug/), "tone-box!");
-    expect(field(/^Slug/).value).toBe("tone-box!");
-    await userEvent.type(field(/^Slug/), "{Backspace}");
-    await userEvent.type(field(/^Name/), "{Backspace}");
-    expect(field(/^Slug/).value).toBe("tone-box");
+    await userEvent.type(field(/^Slug/), "tonebox");
+    await userEvent.type(field(/^Name/), "x");
+    expect(field(/^Slug/).value).toBe("tonebox");
   });
 
-  it("says a taken slug is taken as you type and offers a free one", async () => {
-    boot("#/products/new");
+  it("says a taken slug is taken (W24) and offers a free one", async () => {
+    boot("#/products/new", {
+      extra: {
+        "/manage/api/products/slug-check": slugCheck({
+          tonebox: "tonebox-app",
+        }),
+      },
+    });
     await page();
-    await userEvent.type(field(/^Name/), "DJDL");
+    await userEvent.type(field(/^Name/), "Tonebox");
     expect(
-      await within(main()).findByText("djdl is taken. Try djdl-app."),
+      await within(main()).findByText("tonebox is taken. Try tonebox-app."),
     ).toBeTruthy();
-    expect(main().textContent).not.toMatch(/Available/);
-    await userEvent.click(
-      within(main()).getByRole("button", { name: "Use djdl-app" }),
-    );
-    expect(field(/^Slug/).value).toBe("djdl-app");
-    expect(within(main()).queryByText(/is taken/)).toBeNull();
+    await userEvent.click(next("Use tonebox-app"));
+    expect(field(/^Slug/).value).toBe("tonebox-app");
   });
 
   it("refuses a reserved slug before asking the server", async () => {
@@ -202,278 +260,142 @@ describe("New product", () => {
     expect(
       await within(main()).findByText("docs is reserved. Choose another slug."),
     ).toBeTruthy();
-    await userEvent.click(
-      within(main()).getByRole("button", { name: "Create Docs" }),
-    );
-    expect(log.calls.some((c) => c.method === "POST")).toBe(false);
-    await waitFor(() => expect(document.activeElement).toBe(field(/^Slug/)));
+    expect(log.calls.some((c) => c.path.endsWith("/slug-check"))).toBe(false);
   });
 
-  it("an empty Create names the missing field and focuses it", async () => {
+  it("an empty Continue names the missing field and focuses it", async () => {
     boot("#/products/new");
     await page();
-    await userEvent.click(
-      within(main()).getByRole("button", { name: "Create product" }),
-    );
+    await userEvent.click(next("Continue"));
     expect(
       await within(main()).findByText("Enter the product's name."),
     ).toBeTruthy();
     await waitFor(() => expect(document.activeElement).toBe(field(/^Name/)));
   });
 
-  it("Enter creates, once, and lands on Overview; no welcome, no toast", async () => {
+  it("asks what it is for, with Licensing and Ship builds recommended, then creates", async () => {
     const log = boot("#/products/new", {
-      ...created("tonebox", "Tonebox", {
-        path: "/manage/api/products",
-        body: {
-          ok: true,
-          slug: "tonebox",
-          kid: "tonebox-2026",
-          signing: { kid: "tonebox-2026", publicKey: "PUBKEY-XYZ" },
-          product: null,
-        },
-      }),
+      extra: {
+        "/manage/api/products/slug-check": slugCheck(),
+        ...createdRoutes("tonebox", "Tonebox", {
+          path: "/manage/api/products",
+          body: {
+            ok: true,
+            slug: "tonebox",
+            kid: "tonebox-2026",
+            signing: { kid: "tonebox-2026", publicKey: "PUBKEY" },
+            product: null,
+          },
+        }),
+      },
     });
     await page();
     await userEvent.type(field(/^Name/), "Tonebox{Enter}");
-    await waitFor(() => expect(window.location.hash).toBe("#/p/tonebox"));
-    const posts = log.calls.filter(
-      (c) => c.method === "POST" && c.path === "/manage/api/products",
-    );
-    expect(posts).toHaveLength(1);
-    expect(posts[0]!.json).toEqual({ slug: "tonebox", name: "Tonebox" });
-
-    expect(screen.queryByTestId("product-welcome")).toBeNull();
-    expect(screen.queryByText("Product created")).toBeNull();
-    expect(window.sessionStorage.getItem(DRAFT_KEY)).toBeNull();
-  });
-
-  it("sends the license defaults from Advanced", async () => {
-    const log = boot("#/products/new", {
-      ...created("new-p", "New P", {
-        path: "/manage/api/products",
-        body: { ok: true, slug: "new-p", kid: "new-p-2026", product: null },
-      }),
-    });
-    await page();
-    await userEvent.type(field(/^Name/), "New P");
+    expect(
+      await screen.findByRole("heading", { level: 2, name: "What is it for?" }),
+    ).toBeTruthy();
+    const box = (label: RegExp) =>
+      within(main()).getByRole("checkbox", { name: label });
+    expect(box(/^Licensing/).getAttribute("aria-checked")).toBe("true");
+    expect(box(/^Ship builds/).getAttribute("aria-checked")).toBe("true");
+    expect(box(/^Managed config/).getAttribute("aria-checked")).toBe("false");
+    // The plan reads in the future tense and follows the answers.
+    expect(within(main()).getByText("Create the Free tier")).toBeTruthy();
+    await userEvent.click(box(/^Cloud Sync/));
+    expect(
+      within(main()).getByText("Managed config comes with Cloud Sync"),
+    ).toBeTruthy();
+    await userEvent.click(box(/^Cloud Sync/));
     await userEvent.click(
-      within(main()).getByRole("button", { name: /Advanced/ }),
+      within(main()).getByRole("button", { name: "macos" }),
     );
-    await userEvent.type(field(/^Offline grace/), "30");
-    await userEvent.type(field(/^Device limit/), "2");
-    await userEvent.click(
-      within(main()).getByRole("button", { name: "Create New P" }),
+    await userEvent.click(next("Create Tonebox"));
+    await waitFor(() =>
+      expect(window.location.hash).toMatch(/^#\/p\/tonebox\/integration/),
     );
-    await waitFor(() => expect(window.location.hash).toBe("#/p/new-p"));
     const post = log.calls.find(
       (c) => c.method === "POST" && c.path === "/manage/api/products",
+    )!;
+    expect(post.json).toEqual({
+      slug: "tonebox",
+      name: "Tonebox",
+      services: ["license", "release", "distribution"],
+      intendedPlatforms: ["macos"],
+      starterTier: "free",
+    });
+    expect(window.sessionStorage.getItem(DRAFT_KEY)).toBeNull();
+    // Licence defaults are not asked: no offline grace, no device limit.
+    expect(post.json).not.toHaveProperty("defaultMaxOfflineDays");
+    expect(post.json).not.toHaveProperty("defaultDeviceLimit");
+  });
+
+  it("I'll choose later creates with no services and no tier", async () => {
+    const log = boot("#/products/new", {
+      extra: {
+        "/manage/api/products/slug-check": slugCheck(),
+        ...createdRoutes("tonebox", "Tonebox", {
+          path: "/manage/api/products",
+          body: { ok: true, slug: "tonebox", kid: "k", product: null },
+        }),
+      },
+    });
+    await page();
+    await userEvent.type(field(/^Name/), "Tonebox{Enter}");
+    await userEvent.click(
+      await screen.findByRole("button", { name: "I'll choose later" }),
     );
-    expect(post!.json).toEqual({
-      slug: "new-p",
-      name: "New P",
-      defaultMaxOfflineDays: 30,
-      defaultDeviceLimit: 2,
+    await waitFor(() =>
+      expect(window.location.hash).toMatch(/^#\/p\/tonebox\/integration/),
+    );
+    const post = log.calls.find((c) => c.method === "POST")!;
+    expect(post.json).toEqual({
+      slug: "tonebox",
+      name: "Tonebox",
+      services: [],
+      starterTier: "none",
     });
   });
 
-  it("keeps offline grace within the worker's 365 days, on the field", async () => {
-    const log = boot("#/products/new");
-    await page();
-    await userEvent.type(field(/^Name/), "New P");
-    await userEvent.click(
-      within(main()).getByRole("button", { name: /Advanced/ }),
-    );
-    await userEvent.type(field(/^Offline grace/), "400");
-    await userEvent.click(
-      within(main()).getByRole("button", { name: "Create New P" }),
-    );
-    expect(
-      await within(main()).findByText(
-        "Use a whole number from 1 to 365, or leave it blank.",
-      ),
-    ).toBeTruthy();
-    expect(log.calls.some((c) => c.method === "POST")).toBe(false);
-  });
-
-  it("puts a slug the server refuses on the slug field, with a free one to take", async () => {
+  it("puts a slug the server refuses back on the Name step, with a free one to take", async () => {
     boot("#/products/new", {
       extra: {
+        "/manage/api/products/slug-check": slugCheck(),
         "POST /manage/api/products": new Response(
-          JSON.stringify({
-            error: "bad_request",
-            message: "product exists",
-            fields: ["slug"],
-          }),
+          JSON.stringify({ error: "product exists", fields: ["slug"] }),
           { status: 409, headers: { "content-type": "application/json" } },
         ),
       },
     });
     await page();
-    await userEvent.type(field(/^Name/), "Ghost{Enter}");
-    expect(
-      await within(main()).findByText("ghost is taken. Try ghost-app."),
-    ).toBeTruthy();
-    expect(window.location.hash).toBe("#/products/new");
-    expect(main().textContent).not.toMatch(/409|bad_request/);
-    await waitFor(() => expect(document.activeElement).toBe(field(/^Slug/)));
+    await userEvent.type(field(/^Name/), "Tonebox{Enter}");
     await userEvent.click(
-      within(main()).getByRole("button", { name: "Use ghost-app" }),
+      await screen.findByRole("button", { name: "Create Tonebox" }),
     );
-    expect(field(/^Slug/).value).toBe("ghost-app");
-  });
-
-  it("links a repository and lands on Overview", async () => {
-    const log = boot("#/products/new?via=github", {
-      ...created("linked", "Linked", {
-        path: "/manage/api/products/link-repo",
-        body: {
-          ok: true,
-          slug: "linked",
-          kid: "gh:99",
-          remainingSecrets: ["GITHUB_APP_PRIVATE_KEY", "WEBHOOK_SECRET"],
-        },
+    expect(
+      await screen.findByRole("heading", {
+        level: 2,
+        name: "What is it called?",
       }),
-    });
-    await page();
-    expect(within(main()).queryByLabelText(/^Name/)).toBeNull();
-    await userEvent.type(field(/^Repository/), "acme/linked");
-    expect(
-      within(main()).getByText(
-        /reads .pkey\/ on acme\/linked's default branch/,
-      ),
     ).toBeTruthy();
-    await userEvent.click(
-      within(main()).getByRole("button", { name: "Link repository" }),
-    );
-    await waitFor(() => expect(window.location.hash).toBe("#/p/linked"));
-    const post = log.calls.find(
-      (c) => c.method === "POST" && c.path === "/manage/api/products/link-repo",
-    );
-    expect(post!.json).toEqual({ repoUrl: "acme/linked" });
-    expect(screen.queryByTestId("product-welcome")).toBeNull();
-  });
-
-  it("checks the repository's shape before asking the server", async () => {
-    const log = boot("#/products/new?via=github");
-    await page();
-    await userEvent.type(field(/^Repository/), "not a repo{Enter}");
+    expect(await within(main()).findByText(/tonebox is taken/)).toBeTruthy();
     expect(
-      await within(main()).findByText(
-        "Use owner/repo or the repository's GitHub URL.",
-      ),
+      within(main()).getByRole("button", { name: /^Use tonebox/ }),
     ).toBeTruthy();
-    expect(log.calls.some((c) => c.method === "POST")).toBe(false);
-  });
-
-  it("lists every problem of a refused manifest with its file and path, and Check again links again", async () => {
-    const log = boot("#/products/new?via=github", {
-      extra: {
-        "POST /manage/api/products/link-repo": new Response(
-          JSON.stringify({
-            error: "bad_request",
-            message: "manifest invalid",
-            errors: [
-              "product/name: is required",
-              "product/licensing/tiers/0: must be an object",
-            ],
-          }),
-          { status: 422, headers: { "content-type": "application/json" } },
-        ),
-      },
-    });
-    await page();
-    await userEvent.type(field(/^Repository/), "acme/bad{Enter}");
-    expect(
-      await within(main()).findByText("2 problems in .pkey/product"),
-    ).toBeTruthy();
-    expect(within(main()).getByText(/is required/)).toBeTruthy();
-    expect(within(main()).getByText(/must be an object/)).toBeTruthy();
-    expect(
-      within(main()).getByText(".pkey/product /licensing/tiers/0"),
-    ).toBeTruthy();
-    expect(window.location.hash).toBe("#/products/new?via=github");
-    expect(main().textContent).not.toMatch(/422|api 4/);
-    const posts = () =>
-      log.calls.filter(
-        (c) => c.method === "POST" && c.path.endsWith("/link-repo"),
-      ).length;
-    expect(posts()).toBe(1);
-    await userEvent.click(
-      within(main()).getByRole("button", { name: "Check again" }),
-    );
-    await waitFor(() => expect(posts()).toBe(2));
-  });
-
-  it("puts a repository the GitHub App can't read on the field, with the install fix beside it", async () => {
-    boot("#/products/new?via=github", {
-      extra: {
-        "POST /manage/api/products/link-repo": new Response(
-          JSON.stringify({
-            error: "bad_request",
-            message: "github app is not installed on acme/private",
-          }),
-          { status: 422, headers: { "content-type": "application/json" } },
-        ),
-      },
-    });
-    await page();
-    await userEvent.type(field(/^Repository/), "acme/private{Enter}");
-    expect(
-      await within(main()).findByText(
-        "The Polaris Key GitHub App isn't installed on acme/private, or the repo is private.",
-      ),
-    ).toBeTruthy();
-    expect(
-      within(main()).getByRole("link", { name: /Install the GitHub App/ }),
-    ).toBeTruthy();
-    await waitFor(() =>
-      expect(document.activeElement).toBe(field(/^Repository/)),
-    );
-    expect(main().textContent).not.toMatch(/422/);
-  });
-
-  it("says a linked manifest's slug is taken, as a change to .pkey/product, with Check again", async () => {
-    const log = boot("#/products/new?via=github", {
-      extra: {
-        "POST /manage/api/products/link-repo": new Response(
-          JSON.stringify({
-            error: "bad_request",
-            message: "product already exists: tonebox",
-          }),
-          { status: 422, headers: { "content-type": "application/json" } },
-        ),
-      },
-    });
-    await page();
-    await userEvent.type(field(/^Repository/), "acme/tonebox{Enter}");
-    expect(await within(main()).findByText("tonebox is taken")).toBeTruthy();
-    expect(
-      within(main()).getByText(
-        "The slug comes from product.slug in .pkey/product: change it there, push, then check again. If it is this repository's product, resync it from that product instead.",
-      ),
-    ).toBeTruthy();
-    expect(within(main()).queryByRole("button", { name: /^Use / })).toBeNull();
-    expect(main().textContent).not.toMatch(/tonebox-app|422/);
-    const posts = () =>
-      log.calls.filter(
-        (c) => c.method === "POST" && c.path.endsWith("/link-repo"),
-      ).length;
-    await userEvent.click(
-      within(main()).getByRole("button", { name: "Check again" }),
-    );
-    await waitFor(() => expect(posts()).toBe(2));
   });
 
   it("keeps the draft across a refresh", async () => {
-    boot("#/products/new");
+    boot("#/products/new", {
+      extra: { "/manage/api/products/slug-check": slugCheck() },
+    });
     await page();
     await userEvent.type(field(/^Name/), "Keep Me");
     expect(window.sessionStorage.getItem(DRAFT_KEY)).toContain("keep-me");
     cleanup();
     vi.unstubAllGlobals();
     resetConsole();
-    boot("#/products/new");
+    boot("#/products/new", {
+      extra: { "/manage/api/products/slug-check": slugCheck() },
+    });
     await page();
     expect(field(/^Name/).value).toBe("Keep Me");
     expect(field(/^Slug/).value).toBe("keep-me");
@@ -492,18 +414,208 @@ describe("New product", () => {
     await waitFor(() => expect(window.location.hash).toBe("#/products"));
     expect(window.sessionStorage.getItem(DRAFT_KEY)).toBeNull();
   });
+});
 
-  it("passes axe, both sources", async () => {
-    boot("#/products/new");
+describe("New product from a repository", () => {
+  const routes = (over: Record<string, unknown> = {}) => ({
+    "/manage/api/github/repositories": REPOS,
+    "POST /manage/api/products/link-repo": (
+      _q: URLSearchParams,
+      req: { json?: unknown },
+    ) =>
+      (req as { path: string }).path.length && false
+        ? null
+        : { ok: true, slug: "tonebox", kid: "gh:1", product: null },
+    ...createdRoutes("tonebox", "Tonebox", {
+      path: "/manage/api/products/link-repo",
+      body: { ok: true, slug: "tonebox", kid: "gh:1", product: null },
+    }),
+    ...over,
+  });
+
+  it("opens on the repository, lists what the app can read, and opens a registered one", async () => {
+    boot("#/products/new?via=github", { extra: routes() });
     await page();
-    await userEvent.type(field(/^Name/), "DJDL");
+    expect(within(main()).queryByLabelText(/^Name/)).toBeNull();
+    const list = await within(main()).findByRole("list", {
+      name: "Repositories the Polaris Key app can read",
+    });
+    expect(within(list).getAllByRole("listitem")).toHaveLength(3);
+    expect(within(list).getByText("Has .pkey/")).toBeTruthy();
+    expect(within(list).getByText("No .pkey/ yet")).toBeTruthy();
+    expect(within(list).getByText("Already a product · beatgrid")).toBeTruthy();
+    expect(
+      within(list).getByRole("link", { name: "Open product" }),
+    ).toBeTruthy();
+  });
+
+  it("says when the app is not installed, with the install link", async () => {
+    boot("#/products/new?via=github", {
+      extra: routes({
+        "/manage/api/github/repositories": {
+          ...REPOS,
+          installations: [],
+          repositories: [],
+        },
+      }),
+    });
+    await page();
+    expect(
+      await within(main()).findByText(
+        "The Polaris Key app is not installed on GitHub",
+      ),
+    ).toBeTruthy();
+    expect(
+      within(main())
+        .getByRole("link", { name: /Install on GitHub/ })
+        .getAttribute("href"),
+    ).toContain("installations/new");
+  });
+
+  it("checks the repository's shape before reading it", async () => {
+    const log = boot("#/products/new?via=github", { extra: routes() });
+    await page();
+    await userEvent.type(field(/^Repository/), "nope{Enter}");
+    expect(
+      await within(main()).findByText(
+        "Use owner/repo or the repository's GitHub URL.",
+      ),
+    ).toBeTruthy();
+    expect(log.calls.some((c) => c.method === "POST")).toBe(false);
+  });
+
+  it("picks a repository, checks it (W23), and creates it with the digest", async () => {
+    const log = boot("#/products/new?via=github", {
+      extra: routes({
+        "POST /manage/api/products/link-repo": (q: URLSearchParams) =>
+          q.get("dryRun") === "1"
+            ? DRY
+            : { ok: true, slug: "tonebox", kid: "gh:1", product: null },
+      }),
+    });
+    await page();
+    await userEvent.click(
+      await within(main()).findByRole("button", { name: /acme\/tonebox/ }),
+    );
+    await userEvent.click(next("Read acme/tonebox"));
+    expect(
+      await screen.findByRole("heading", { level: 2, name: "Check it" }),
+    ).toBeTruthy();
+    expect(await within(main()).findByText("Tonebox")).toBeTruthy();
+    expect(within(main()).getByText("Available")).toBeTruthy();
+    expect(within(main()).getByText(/SENTRY_AUTH_TOKEN/)).toBeTruthy();
+    expect(
+      within(main()).getByText("Polaris Key will set this up"),
+    ).toBeTruthy();
+    await userEvent.click(next("Create Tonebox"));
+    await waitFor(() =>
+      expect(window.location.hash).toMatch(/^#\/p\/tonebox\/integration/),
+    );
+    const dry = log.calls.find((c) => c.query === "dryRun=1")!;
+    expect(dry.json).toEqual({ repoUrl: "acme/tonebox" });
+    const post = log.calls.find(
+      (c) =>
+        c.method === "POST" && c.path.endsWith("/link-repo") && c.query === "",
+    )!;
+    expect(post.json).toEqual({
+      repoUrl: "acme/tonebox",
+      manifestDigest: "digest-1",
+      trustReleaseWorkflow: true,
+    });
+  });
+
+  it("lists every problem with its file and path, holds Create, and Check again reads again", async () => {
+    let reads = 0;
+    boot("#/products/new?via=github", {
+      extra: routes({
+        "POST /manage/api/products/link-repo": () => {
+          reads += 1;
+          return reads === 1
+            ? {
+                ...DRY,
+                ready: false,
+                problems: [
+                  {
+                    check: "manifest",
+                    file: "product",
+                    path: "/slug",
+                    message: "slug must be lowercase",
+                  },
+                  {
+                    check: "manifest",
+                    file: "schema",
+                    path: "/entries/0",
+                    message: "unknown kind",
+                  },
+                ],
+              }
+            : DRY;
+        },
+      }),
+    });
+    await page();
+    await userEvent.type(field(/^Repository/), "acme/tonebox{Enter}");
+    expect(
+      await within(main()).findByText("Fix these in one commit"),
+    ).toBeTruthy();
+    expect(
+      within(main()).getByText("slug must be lowercase", { exact: false }),
+    ).toBeTruthy();
+    expect(
+      within(main()).getByText(/\.pkey\/schema \/entries\/0/),
+    ).toBeTruthy();
+    const create = next(/^Create/);
+    expect(create.getAttribute("aria-disabled")).toBe("true");
+    await userEvent.click(next("Check again"));
+    await waitFor(() =>
+      expect(within(main()).queryByText("Fix these in one commit")).toBeNull(),
+    );
+    expect(next("Create Tonebox").getAttribute("aria-disabled")).not.toBe(
+      "true",
+    );
+  });
+
+  it("puts a repository the GitHub App can't read on the Check step, with the install fix", async () => {
+    boot("#/products/new?via=github", {
+      extra: routes({
+        "POST /manage/api/products/link-repo": new Response(
+          JSON.stringify({
+            error: "bad_request",
+            message: "github app is not installed on acme/other",
+          }),
+          { status: 422, headers: { "content-type": "application/json" } },
+        ),
+      }),
+    });
+    await page();
+    await userEvent.type(field(/^Repository/), "acme/other{Enter}");
+    expect(
+      await within(main()).findByRole("button", { name: "Check again" }),
+    ).toBeTruthy();
+    expect(within(main()).getByRole("link", { name: /Install/ })).toBeTruthy();
+  });
+});
+
+describe("New product accessibility", () => {
+  it("passes axe, both sources", async () => {
+    boot("#/products/new", {
+      extra: { "/manage/api/products/slug-check": slugCheck() },
+    });
+    await page();
+    await userEvent.type(field(/^Name/), "DJDL{Enter}");
+    await screen.findByRole("heading", { level: 2, name: "What is it for?" });
     expect((await axe(main())).violations.map((v) => v.id)).toEqual([]);
     cleanup();
     vi.unstubAllGlobals();
     resetConsole();
     window.sessionStorage.clear();
-    boot("#/products/new?via=github");
+    boot("#/products/new?via=github", {
+      extra: { "/manage/api/github/repositories": REPOS },
+    });
     await page();
+    await within(main()).findByRole("list", {
+      name: "Repositories the Polaris Key app can read",
+    });
     expect((await axe(main())).violations.map((v) => v.id)).toEqual([]);
   });
 });

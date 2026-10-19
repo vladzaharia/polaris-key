@@ -38,7 +38,32 @@ export const APPSTORE_FLOW: FlowDef = {
   ],
 };
 
-export const FLOWS: readonly FlowDef[] = [STOREFRONTS_FLOW, APPSTORE_FLOW];
+/** New product from a GitHub repository (ST-43): the creating is the Check step's action. */
+export const NEW_PRODUCT_REPO_FLOW: FlowDef = {
+  id: "new-product-repo",
+  title: "New product",
+  steps: [
+    { id: "repo", label: "Repository", kind: "form" },
+    { id: "check", label: "Check", kind: "confirm" },
+  ],
+};
+
+/** New product from scratch (ST-43): the creating is the last step's action. */
+export const NEW_PRODUCT_SCRATCH_FLOW: FlowDef = {
+  id: "new-product-scratch",
+  title: "New product",
+  steps: [
+    { id: "name", label: "Name it", kind: "form" },
+    { id: "purpose", label: "What it's for", kind: "choice" },
+  ],
+};
+
+export const FLOWS: readonly FlowDef[] = [
+  STOREFRONTS_FLOW,
+  APPSTORE_FLOW,
+  NEW_PRODUCT_REPO_FLOW,
+  NEW_PRODUCT_SCRATCH_FLOW,
+];
 
 /** Flows longer than five steps today: the most they may have, and who splits them. */
 export const FLOW_EXEMPT: Readonly<

@@ -15429,10 +15429,13 @@ paths:
       tags: [admin]
       summary: Create a product by hand, ready for an SDK in one call
       description: >
-        Manual create (no repository). In one batch, rolled back whole on any failure: the
-        product, its sealed Ed25519 signing key, catalog v1 (empty, or the supplied `schema`), the
+        Manual create (no repository), written by the manifest ingest pipeline from the `.pkey/`
+        documents the request implies (ST-43, plans/P0-26.md D8): the snapshot origin is `link`
+        with no commit, and no release configuration is written. In one batch, rolled back whole
+        on any failure: the product, its sealed Ed25519 signing key, catalog v1 (empty, or the supplied `schema`), the
         Default profile (`default`, reserved), the Free tier, the planned platforms and the
-        services, from the `AdminCreateChoices` below. The licence defaults and the compatibility
+        services, from the `AdminCreateChoices` below. `services` is taken as the exact list
+        (`[]` turns none on), through the requirement rule. The licence defaults and the compatibility
         window are not create fields: tiers and platform defaults own the first, `release.compatWindow`
         the second (`compatMin`, `compatMax` and the like are ignored). The slug rules are
         `GET /manage/api/products/slug-check`'s. Platform admin; admin session cookie and CSRF

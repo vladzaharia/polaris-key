@@ -84,6 +84,18 @@ const page = () =>
 afterEach(cleanup);
 
 describe("Core → Integration", () => {
+  it("shows the product's first moment once when it arrives from New product (ST-43)", async () => {
+    boot("#/p/djdl/integration?created=1", {
+      extra: { [`${API}/integration`]: view() },
+    });
+    await page();
+    expect(await screen.findByText(/is ready$/)).toBeTruthy();
+    // The link is a plain Integration link afterwards: a refresh does not repeat it.
+    await waitFor(() =>
+      expect(window.location.hash).toBe("#/p/djdl/integration"),
+    );
+  });
+
   it("shows each feature's setup, its code and where it was seen, per platform", async () => {
     boot("#/p/djdl/integration", { extra: { [`${API}/integration`]: view() } });
     await page();

@@ -33,61 +33,73 @@ copy.
 
 ## Registering a product
 
-**New product** opens one screen at `#/products/new`. **Start from** picks the source:
-**Nothing** or **A GitHub repository** (`?via=manual|github` preselects it). There are no steps
-and no review page: fill the fields and press **Enter** or the button to create. The draft is
-kept for the tab, so a refresh loses nothing; leaving with a draft asks first.
+**New product** is a short wizard at `#/products/new`: two steps from a repository, two from
+scratch. **A GitHub repository** and **From scratch** sit above the first step (`?via=github|manual`
+preselects one); the step is in the URL, so a refresh resumes it. The draft is kept for the tab, and
+leaving with a draft asks first. **Cancel** is on the title line.
 
-A refusal stays on the screen, in plain words, with its fix beside it. A refusal about one field
-sits on that field and moves focus there, such as a taken slug or a repository the GitHub App
-can't read. Anything else goes in a callout above the button, such as a manifest the server
-would not accept. Nothing is created until every check passes.
+A refusal stays on the step it belongs to, in plain words, with its fix beside it. A refusal about
+one field sits on that field and moves focus there, such as a taken slug. Anything else goes in a
+callout below the step, such as a manifest the server would not accept. Nothing is created until
+every check passes.
 
-There is no result page. A new product opens on its **Overview**, which shows "_Name_ is ready"
-once, with the new signing `kid` and a button that copies its public key. Give the public key to
-your SDK trust configuration and release tooling; it is also in the product's JWKS. The private
-key never leaves the platform: it is sealed under `PLATFORM_KEK` from the moment it's minted.
-Dismiss the welcome, refresh, or come back later and Overview shows its ordinary setup.
+Creating lands on **Integration**, which shows "_Name_ is ready" once, with the key the product
+signs with. The private key never leaves the platform: it is sealed under `PLATFORM_KEK` from the
+moment it's minted. Give the public key to your SDK trust configuration and release tooling; it is
+also in the product's JWKS.
 
-### Starting from nothing
+### From scratch
 
-For early experiments, before release syncing, OIDC or provisioning matter. Type the **Name**
-first. The **Slug** follows it (lowercase letters, digits and hyphens) until you edit it, and it is
-checked against the registry as you type. A taken slug says so and offers a free one to take
-with one click (**Use tonebox-app**). A reserved or malformed slug is refused before anything is
-sent. The slug is permanent: it is used in keys and URLs.
+**Name it.** Type the **Name** first. The **Slug** follows it (lowercase letters, digits and
+hyphens) until you edit it, and the server checks it after a short pause. A taken slug says so and
+offers a free one to take with one click (**Use tonebox-app**). A reserved or malformed slug is
+refused before anything is sent. The slug is permanent: it is used in keys and URLs.
 
-**Advanced: license defaults** holds the per-license offline grace (1 to 365 days) and device
-limit. Leave either blank to use the platform default. A config catalog, the compatibility window
-([Update → Feed](/docs/operate/console/tour/#update)) and everything else are set up later from
-Overview. The worker mints an Ed25519 signing key and an empty active catalog in one batch:
-**a product can never exist without a usable signing key**. No release row and no edge-mint row
-are created, because this path has no GitHub coordinates to hang them on.
+**What it's for.** The six features of the Services page as checkboxes: **Licensing** and **Ship
+builds** start on and marked Recommended. Licensing carries **Start with a free tier** (on). Ship
+builds asks for the platforms, which the storefronts follow. A feature that needs another brings
+it, and the plan under the choices says so ("Managed config comes with Cloud Sync"). **I'll choose
+later** creates the product with no services. **Create** then writes the plan below in one batch.
+
+Licence defaults are not asked here: tiers own them. A config catalog, the compatibility window
+([Update → Feed](/docs/operate/console/tour/#update)) and everything else are set up later. Under
+the hood the console sends the name and slug as `.pkey/` documents to the same ingest pipeline a
+linked repository uses, with no repository: the snapshot origin is `link` with no commit.
+**A product can never exist without a usable signing key.** No release row and no edge-mint row are
+created, because this path has no GitHub coordinates to hang them on, and a `trustedPublisher`
+needs a repository.
 
 ### From a GitHub repository
 
-This is the path onboarding uses. Give the repository as `owner/repo` or its GitHub URL and press
-**Link repository**. The linked GitHub App reads the `.pkey/` directory on the default branch,
-validates the manifest, and registers the product from it: name, slug, services, tiers, profiles,
-OIDC configuration, release coordinates, edge-mint recipes, all of it. The name and slug come from
-`.pkey/product`, so the screen does not ask for them.
+**Repository.** Paste `owner/repo` or its GitHub URL, or pick one the Polaris Key app can read:
+each row says **Has .pkey/**, **No .pkey/ yet** or **Already a product** (which opens that product
+instead of registering it twice). With the app not installed, the step offers **Install on GitHub**
+and you can still paste a repository.
 
-When the link is refused, the screen shows what to do next:
+**Check.** Nothing is written. Polaris Key reads `.pkey/` on the default branch and shows the
+product as it will be: name, slug and whether it is available, the services, the catalog's size,
+the platforms and the secrets to set after creating. Under **Polaris Key will set this up** are the
+rows the create writes. Press **Create** to register the product from it: name, slug, services,
+tiers, profiles, OIDC configuration, release coordinates, edge-mint recipes, all of it. The name and
+slug come from `.pkey/product`, so the wizard does not ask for them.
 
-- **The GitHub App isn't installed on the repository, or the repository is private.** The message
-  sits on the Repository field, with **Install the GitHub App** beside it. Install the Polaris Key
-  GitHub App on the repository, then link again.
-- **The manifest has problems.** The callout lists each problem with its file and path, so you can
-  fix them all in one commit. Push the fix and press **Check again** to link again.
+When the check or the create is refused, the step shows what to do next:
+
+- **The GitHub App isn't installed on the repository, or the repository is private.** Install the
+  Polaris Key GitHub App on the repository, then press **Check again**.
+- **The manifest has problems.** **Fix these in one commit** lists each problem with its file and
+  path, and **Create** stays off. Push the fix and press **Check again**.
 - **The manifest's slug is taken, reserved or malformed.** Change `product.slug` in
-  `.pkey/product`, push, then press **Check again**. Linking registers new products only: if the
+  `.pkey/product`, push, then press **Check again**. Creating registers new products only: if the
   slug is taken because this repository is already registered, open that product and resync it
   instead (see [What resync actually re-applies](/docs/operate/console/product-actions/#what-resync-actually-re-applies)).
+- **`.pkey/` changed since the check.** The create carries the check's digest and refuses; press
+  **Check again** to read what is there now.
 
-Overview's welcome lists any **remaining secrets**. These are names the manifest declared that
-have no value yet, such as an OIDC client secret or an edge-mint signing key. A **Set _n_ missing
-secrets** link goes to [Keys & secrets](/docs/operate/console/keys-and-secrets/). Secrets are write-only
-and never echoed back.
+The Check step names any secrets the manifest declared that have no value yet, such as an OIDC
+client secret or an edge-mint signing key. Set them after creating, from
+[Keys & secrets](/docs/operate/console/keys-and-secrets/). Secrets are write-only and never echoed
+back.
 
 ### What a create writes
 

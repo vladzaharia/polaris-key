@@ -1612,7 +1612,15 @@ export type RevertClaimResult =
   | { ok: true; key: ClaimKey; applied: true; value: unknown }
   | { ok: true; key: ClaimKey; applied: false; message: string };
 
-export interface CreateManualProductBody {
+/** ST-42 (W25): the choices both create routes take, all optional. */
+export interface CreateChoices {
+  /** Service slugs; the Worker applies the requirement rule. */
+  services?: ServiceSlug[];
+  intendedPlatforms?: string[];
+  starterTier?: "free" | "none";
+}
+
+export interface CreateManualProductBody extends CreateChoices {
   slug: string;
   name?: string;
   schema?: ProductCatalog | string;
@@ -1622,6 +1630,88 @@ export interface CreateManualProductBody {
   defaultMaxOfflineDays?: number;
   defaultDeviceLimit?: number;
   adminGroup?: string;
+}
+
+/** `GET /manage/api/products/slug-check?slug=` (W24). */
+export type SlugCheck =
+  | { slug: string; status: "available" }
+  | {
+      slug: string;
+      status: "taken" | "reserved" | "invalid";
+      message: string;
+      suggestion: string | null;
+    };
+
+/** One repository the GitHub App can read (W22). */
+export interface GithubRepoRow {
+  installationId: number;
+  owner: string;
+  name: string;
+  fullName: string;
+  language: string | null;
+  pushedAt: number | null;
+  private: boolean;
+  defaultBranch: string | null;
+  /** The slug of the product registered from it, or null. */
+  product: string | null;
+  /** A `.pkey/product` on the default branch; null when GitHub would not say. */
+  hasManifest: boolean | null;
+}
+
+/** `GET /manage/api/github/repositories` (W22). */
+export interface GithubRepositories {
+  configured: boolean;
+  app: { slug: string; installUrl: string } | null;
+  installations: {
+    id: number;
+    account: string;
+    repositorySelection: string;
+    repositoryCount: number | null;
+    listingError: string | null;
+  }[];
+  repositories: GithubRepoRow[];
+  total: number;
+  nextCursor: string | null;
+}
+
+/** One thing that blocks a create, with its `.pkey/` document and JSON path when it has one. */
+export interface CreateProblem {
+  check: string;
+  file: "product" | "schema" | "release" | "distribution" | null;
+  path: string | null;
+  message: string;
+  suggestion?: string;
+}
+
+/** `POST /manage/api/products/link-repo?dryRun=1` (W23): the product as it will be. */
+export interface CreateDryRun {
+  ok: true;
+  dryRun: true;
+  repository: string;
+  installationId: number;
+  commit: string;
+  manifestDigest: string;
+  ready: boolean;
+  product: {
+    slug: string;
+    name: string;
+    presentation: unknown;
+  } | null;
+  slug: SlugCheck | null;
+  registeredAs: string | null;
+  services: string[];
+  catalog: { entries: number } | null;
+  platforms: { values: string[]; source: "artifact-map" | "none" };
+  secrets: string[];
+  releaseWorkflow: boolean | null;
+  problems: CreateProblem[];
+}
+
+/** What a create answers for the choices it applied (ST-42). */
+export interface CreateLinkOptions extends CreateChoices {
+  /** From the dry run: a `.pkey/` that changed since refuses the create. */
+  manifestDigest?: string;
+  trustReleaseWorkflow?: boolean;
 }
 
 export type UpdatePortalSettingsBody = Partial<
@@ -4806,11 +4896,27 @@ const rawApi = {
       method: "POST",
       body: JSON.stringify(body),
     }),
-  linkRepo: (repoUrl: string) =>
+  linkRepo: (repoUrl: string, options?: CreateLinkOptions) =>
     call<LinkRepoResult>("/manage/api/products/link-repo", {
+      method: "POST",
+      body: JSON.stringify({ repoUrl, ...options }),
+    }),
+  /** W23: check a repository for a product that does not exist yet. Writes nothing. */
+  checkRepoCreate: (repoUrl: string) =>
+    call<CreateDryRun>("/manage/api/products/link-repo?dryRun=1", {
       method: "POST",
       body: JSON.stringify({ repoUrl }),
     }),
+  /** W24: whether a slug is free for a new product. */
+  slugCheck: (slug: string) =>
+    call<SlugCheck>(
+      `/manage/api/products/slug-check?slug=${encodeURIComponent(slug)}`,
+    ),
+  /** W22: the repositories the GitHub App can read. */
+  githubRepositories: (q: string) =>
+    call<GithubRepositories>(
+      `/manage/api/github/repositories?q=${encodeURIComponent(q)}`,
+    ),
   updateProduct: (slug: string, body: UpdateProductBody) =>
     call<{ ok: true; slug: string }>(p(slug), {
       method: "PATCH",

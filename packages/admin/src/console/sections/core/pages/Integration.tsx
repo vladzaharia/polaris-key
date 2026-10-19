@@ -38,6 +38,7 @@ import { qk } from "../../../data/queries.js";
 import { Link } from "../../../router.js";
 import { r } from "../../../routes.js";
 import { focusWhenReady } from "../../../shell/palette/focus.js";
+import { MomentLine, momentKey } from "../../../components/Moment.js";
 import { useSetup } from "../../../wizard/useSetup.js";
 import { CreateLicenseDialog } from "../../license/components/CreateLicenseDialog.js";
 import {
@@ -57,7 +58,7 @@ import {
 import { SDK_QUICK_START_ID } from "../model/sdkQuickStart.js";
 import { useQueryParams } from "../model/urlState.js";
 
-const PARAMS = ["sdk", "feature"] as const;
+const PARAMS = ["sdk", "feature", "created"] as const;
 
 export function IntegrationPage({
   slug,
@@ -104,6 +105,13 @@ export function IntegrationPage({
   const setup = useSetup(slug);
   const licenseGate = useWriteGate("license", slug);
   const [q, setQ] = useQueryParams(PARAMS);
+  // Arriving from New product (ST-43): the product's first moment shows once; the link is then
+  // a plain Integration link, so a refresh or a share does not repeat it.
+  const [justCreated] = React.useState(q.created === "1");
+  React.useEffect(() => {
+    if (justCreated) setQ({ created: null });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [licenseOpen, setLicenseOpen] = React.useState(false);
   useLoadingAnnouncement("integration", view.isPending);
 
@@ -187,6 +195,16 @@ export function IntegrationPage({
           refreshing: view.isFetching,
         }}
       />
+      {justCreated ? (
+        <MomentLine
+          momentKey={momentKey("product-created", slug)}
+          title={`${product.data?.name ?? slug} is ready`}
+          className="rounded-xl border border-border bg-surface-raised px-5 py-3"
+        >
+          Signed by {data.snippet.pins[0]?.kid ?? "its key"}. Connect your app
+          below.
+        </MomentLine>
+      ) : null}
       {total === 0 ? (
         <EmptyState
           kind="first-run"

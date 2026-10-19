@@ -37,6 +37,10 @@ export const qk = {
     area,
   ],
   products: (): QueryKey => ["products"],
+  /** New product (ST-43): W22 repositories, W23 create check, W24 slug check. */
+  githubRepositories: (q: string): QueryKey => ["new-product", "repos", q],
+  createCheck: (repo: string): QueryKey => ["new-product", "check", repo],
+  slugCheck: (slug: string): QueryKey => ["new-product", "slug", slug],
   /** Every product's per-service facts (`GET /summary`); no reader since the 2026-10-07 polish. */
   summary: (): QueryKey => ["summary"],
 
