@@ -133,6 +133,18 @@
       "pattern": "Usage: tidewater \\[options\\] \\[command\\]|Options:|Build:|Commands:|License:|(-v, --verbose <level>|-h, --help|build|export|import|publish <target> \\[channel\\]|activate \\[key\\]|status|deactivate|login|devices list|update check|update apply) .+|its seat",
       "boards": ["terminal"],
       "reason": "Host CLI help as the Node golden help-host prints it: the host's commander lines and headings, with the kit's verbs under License."
+    },
+    {
+      "pattern": "(Pro|Team) (Lifetime|Yearly)",
+      "reason": "Mockup fixture: a license row's tier name and its term chip (signin.term.*), drawn as one row title."
+    },
+    {
+      "pattern": "(Work laptop|Mara’s iPad)( Least recent)?|Mara’s studio workstation in the second-floor mixing room|Living room Mac mini|Pixel tablet|Old desktop|Kitchen iPad|Travel laptop|Studio Mac Pro|Spare tablet|Rehearsal laptop",
+      "reason": "Mockup fixtures: Mara's device names for the 12-device replace list, with the signin.replace.leastRecent chip."
+    },
+    {
+      "pattern": "Download \\d+(\\.\\d+)+ ↗",
+      "reason": "UpdatePrompt on the web: the kit formats the version into the button (a link out, so the arrow)."
     }
   ]
 }
