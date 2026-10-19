@@ -17540,7 +17540,7 @@
       "optional": false,
       "refs": ["plans/LK-00.md §2.3, D8"],
       "brief": "wp/LK-02-locker-words-and-docs.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "LK-03",
