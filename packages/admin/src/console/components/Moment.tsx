@@ -176,7 +176,6 @@ export function MomentLine({
   return (
     <div
       data-moment={key}
-      role="status"
       className={cn("flex items-start gap-3 text-sm", className)}
     >
       <span className="shrink-0 text-accent-fg">

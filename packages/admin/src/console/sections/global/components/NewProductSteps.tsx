@@ -153,14 +153,15 @@ function FeatureCard({
   const on = chosen.includes(id);
   const open = unlocked(id, chosen);
   const needs = needsOf(id);
-  const missing = needs.filter((n) => !chosen.includes(n));
   const descId = `np-feature-${id}-desc`;
+  const titleId = `np-feature-${id}-title`;
   return (
     <button
       type="button"
       role="checkbox"
       aria-checked={on}
       aria-disabled={!open || undefined}
+      aria-labelledby={titleId}
       aria-describedby={descId}
       data-service={f.primary[0]}
       onClick={() => {
@@ -175,14 +176,11 @@ function FeatureCard({
         !open && "cursor-not-allowed opacity-70",
       )}
     >
-      <span className="flex w-full items-center gap-2 text-sm font-medium text-fg-strong">
+      <span className="flex w-full min-w-0 items-center gap-2 text-sm font-medium text-fg-strong">
         <ServiceGlyph id={f.primary[0]!} />
-        <span className="min-w-0 flex-1 break-words">{f.label}</span>
-        {RECOMMENDED.includes(id) && open ? (
-          <StatusPill tone="info" size="sm">
-            Recommended
-          </StatusPill>
-        ) : null}
+        <span id={titleId} className="min-w-[6ch] flex-1 break-words">
+          {f.label}
+        </span>
         <span
           aria-hidden
           className={cn(
@@ -196,6 +194,11 @@ function FeatureCard({
           {!open ? <Lock className="size-3 text-fg-muted" /> : null}
         </span>
       </span>
+      {RECOMMENDED.includes(id) && open ? (
+        <StatusPill tone="info" size="sm">
+          Recommended
+        </StatusPill>
+      ) : null}
       <span id={descId} className="text-xs text-fg-muted">
         {featureCopy(id, name)}
         {needs.length > 0 ? (
@@ -211,11 +214,6 @@ function FeatureCard({
                 {featureLabel(n)}
               </span>
             ))}
-          </span>
-        ) : null}
-        {!open ? (
-          <span className="mt-1 block font-medium text-fg">
-            Select {missing.map(featureLabel).join(" and ")} to unlock
           </span>
         ) : null}
       </span>
@@ -243,16 +241,18 @@ export function PurposeStep({
     <div className="space-y-5">
       <fieldset className="space-y-3">
         <legend className="sr-only">Features</legend>
-        <div className="grid gap-2 sm:grid-cols-2">
-          {FEATURES.map((f) => (
-            <FeatureCard
-              key={f.id}
-              id={f.id}
-              name={name}
-              chosen={draft.features}
-              onToggle={onToggle}
-            />
-          ))}
+        <div className="@container">
+          <div className="grid gap-2 @lg:grid-cols-2">
+            {FEATURES.map((f) => (
+              <FeatureCard
+                key={f.id}
+                id={f.id}
+                name={name}
+                chosen={draft.features}
+                onToggle={onToggle}
+              />
+            ))}
+          </div>
         </div>
         <p role="status" className="min-h-0 text-sm text-fg-muted">
           {notice}
@@ -351,7 +351,7 @@ export function CreatesBar({
   summary: string;
 }): React.ReactElement {
   return (
-    <details className="rounded-lg border border-border bg-surface-sunken px-3 py-2 text-sm lg:hidden">
+    <details className="rounded-lg border border-border bg-surface-sunken px-3 py-2 text-sm @4xl:hidden">
       <summary className="cursor-pointer text-fg">
         <span className="font-semibold text-fg-strong">Creates</span>
         {summary ? ` · ${summary}` : ""}

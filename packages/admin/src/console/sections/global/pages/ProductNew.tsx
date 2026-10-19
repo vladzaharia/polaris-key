@@ -19,6 +19,7 @@ import {
 } from "../../../wizard/flows.js";
 import {
   CheckStep,
+  isNoPkey,
   RepoStep,
   repoCreates,
 } from "../components/NewProductRepo.js";
@@ -48,6 +49,7 @@ import {
   suggestSlug,
 } from "../model/newProduct.js";
 import { checkFailure, nameFieldErrors } from "../model/newProductChecks.js";
+import { focusField, focusSoon, useSettled } from "../model/newProductDom.js";
 
 // The pure helpers keep their old home for the callers and tests that import them from here.
 export {
@@ -63,36 +65,11 @@ export {
 const viaCodec = codecs.string();
 const stepCodec = codecs.string();
 
-const focusField = (name: string): void => {
-  window.setTimeout(
-    () =>
-      document
-        .querySelector<HTMLElement>(`[data-field-name="${name}"]`)
-        ?.focus(),
-    0,
-  );
-};
-
-/** A value that follows `value` after `ms` (the slug check and the repository search). */
-function useSettled<T>(value: T, ms = 300): T {
-  const [settled, setSettled] = React.useState(value);
-  React.useEffect(() => {
-    const t = window.setTimeout(() => setSettled(value), ms);
-    return () => window.clearTimeout(t);
-  }, [value, ms]);
-  return settled;
-}
-
 const TITLES: Record<string, string> = {
   repo: "Which repository?",
   check: "Check it",
   name: "What is it called?",
   purpose: "What is it for?",
-};
-
-/** Move focus to an element that is not tabbable on its own, once it is on screen. */
-const focusSoon = (el: () => HTMLElement | null): void => {
-  window.setTimeout(() => el()?.focus({ preventScroll: false }), 0);
 };
 
 /**
@@ -125,6 +102,7 @@ export function ProductNew(): React.ReactElement {
   const [advancing, setAdvancing] = React.useState(false);
   const [notice, setNotice] = React.useState<string | null>(null);
   const [stale, setStale] = React.useState(false);
+  const [changed, setChanged] = React.useState(false);
   const created = React.useRef(false);
   const refusalRef = React.useRef<HTMLDivElement>(null);
   const resultRef = React.useRef<HTMLDivElement>(null);
@@ -220,6 +198,8 @@ export function ProductNew(): React.ReactElement {
     refetchOnWindowFocus: false,
   });
   const checkAgain = async () => {
+    // The button that asked unmounts or disables while it reads: keep focus in the result.
+    focusSoon(() => resultRef.current);
     await check.refetch();
     setStale(false);
     focusSoon(() => resultRef.current);
@@ -268,6 +248,12 @@ export function ProductNew(): React.ReactElement {
         ? "Use owner/repo or the repository's GitHub URL."
         : undefined;
 
+  // Opening a product that exists is leaving, not discarding: the draft was for a new one.
+  const leave = () => {
+    created.current = true;
+    writeDraft(null);
+  };
+
   const finish = (made: string) => {
     created.current = true;
     writeDraft(null);
@@ -279,6 +265,7 @@ export function ProductNew(): React.ReactElement {
     // `.pkey/` changed after the check: read it again; Create waits for that.
     if (at === "github" && err instanceof ApiError && err.status === 409) {
       setStale(true);
+      setChanged(true);
       void checkAgain();
       return;
     }
@@ -311,6 +298,7 @@ export function ProductNew(): React.ReactElement {
     if (submitting || !check.data) return;
     setSubmitting(true);
     setSubmitError(null);
+    setChanged(false);
     try {
       const res = await mutate("linkRepo", draft.repo.trim(), {
         manifestDigest: check.data.manifestDigest,
@@ -361,13 +349,15 @@ export function ProductNew(): React.ReactElement {
     ? "Reading the repository"
     : unreadable
       ? failure.kind === "network"
-        ? "Can't reach Polaris Key. Check again."
+        ? "Check again to read the repository."
         : "Polaris Key can't read the repository."
       : stale
         ? "Check again first."
-        : data && !data.ready
-          ? "Fix the problems first."
-          : undefined;
+        : data && isNoPkey(data)
+          ? "Add .pkey/ first."
+          : data && !data.ready
+            ? "Fix the problems first."
+            : undefined;
 
   const stepDefs = flow.steps.map((s) => ({
     id: s.id,
@@ -384,7 +374,9 @@ export function ProductNew(): React.ReactElement {
     "h-auto min-h-9 max-w-full whitespace-normal break-words py-2 text-left";
   const open = (slugToOpen: string) => (
     <Button asChild className={wrap}>
-      <Link to={r.overview(slugToOpen)}>Open {slugToOpen}</Link>
+      <Link to={r.overview(slugToOpen)} onClick={leave}>
+        Open {slugToOpen}
+      </Link>
     </Button>
   );
   const primary =
@@ -434,7 +426,7 @@ export function ProductNew(): React.ReactElement {
       : repoLines
         ? {
             lines: repoLines,
-            summary: `${repoLines.length - 1} rows`,
+            summary: "Signing key · Default profile · Catalog v1",
             name: data?.product?.name ?? "",
           }
         : null;
@@ -502,11 +494,11 @@ export function ProductNew(): React.ReactElement {
             <RepoStep
               value={draft.repo}
               onChange={(v) => update({ repo: v })}
-              onSubmit={() =>
-                listed?.product
-                  ? navigate(r.overview(listed.product))
-                  : toCheck()
-              }
+              onSubmit={() => {
+                if (!listed?.product) return toCheck();
+                leave();
+                navigate(r.overview(listed.product));
+              }}
               error={repoError}
               list={{
                 pending: repos.isPending,
@@ -523,6 +515,7 @@ export function ProductNew(): React.ReactElement {
                 state={{ pending: check.isPending, data: check.data }}
                 failure={failure}
                 stale={stale}
+                changed={changed}
                 checking={check.isFetching}
                 onCheckAgain={() => void checkAgain()}
                 onScratch={() => {

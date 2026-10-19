@@ -180,7 +180,8 @@ export function Wizard({
     </>
   );
   const foot = (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-border pt-4">
+    // Sticky: on a long step the primary stays on screen (the page scrolls inside `main`).
+    <div className="sticky bottom-0 z-10 -mb-6 flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-border bg-surface-page pb-4 pt-4">
       {footRow}
     </div>
   );
@@ -223,7 +224,9 @@ export function Wizard({
       aria-labelledby={`${uid}-title`}
       data-wizard="page"
       className={cn(
-        "space-y-6",
+        // A container, so the rail follows the room the wizard has, not the viewport: at 200%
+        // text the rem-sized rail would otherwise squeeze the column.
+        "@container space-y-6",
         centered && "mx-auto w-full max-w-[60rem]",
         className,
       )}
@@ -245,12 +248,12 @@ export function Wizard({
       <div
         className={cn(
           "grid gap-6",
-          aside ? "lg:grid-cols-[minmax(0,1fr)_18rem]" : null,
+          aside ? "@4xl:grid-cols-[minmax(0,1fr)_18rem]" : null,
         )}
       >
         {body}
         {aside ? (
-          <aside className="space-y-2 rounded-lg border border-border bg-surface-sunken p-4 text-sm text-fg self-start max-lg:hidden lg:sticky lg:top-4">
+          <aside className="space-y-2 rounded-lg border border-border bg-surface-sunken p-4 text-sm text-fg self-start hidden @4xl:block @4xl:sticky @4xl:top-4">
             {aside}
           </aside>
         ) : null}

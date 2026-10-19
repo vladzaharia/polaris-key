@@ -7,6 +7,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { lastAnnouncement } from "../src/ui/LiveRegion.js";
 import { boot } from "./consoleHarness.js";
 import { expectNoAxeViolations } from "./coreTestUtils.js";
 
@@ -90,7 +91,8 @@ describe("Core → Integration", () => {
     });
     await page();
     const moment = await screen.findByText(/is ready$/);
-    expect(moment.closest("[role=status]")).toBeTruthy();
+    expect(moment).toBeTruthy();
+    await waitFor(() => expect(lastAnnouncement()).toMatch(/is ready$/));
     // Focus lands on the page's heading, not on the document.
     await waitFor(() => expect(document.activeElement?.tagName).toBe("H1"));
     // The link is a plain Integration link afterwards: a refresh does not repeat it.

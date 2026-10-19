@@ -28,6 +28,7 @@ import { CodeBlock } from "../../../../ui/CodeBlock.js";
 import { CopyButton } from "../../../../ui/CopyButton.js";
 import { EmptyState } from "../../../../ui/EmptyState.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
+import { announce } from "../../../../ui/LiveRegion.js";
 import { useLoadingAnnouncement } from "../../../../ui/loading.js";
 import { PageHeader } from "../../../../ui/PageHeader.js";
 import { SegmentedControl } from "../../../../ui/SegmentedControl.js";
@@ -117,6 +118,14 @@ export function IntegrationPage({
     if (!h1) return;
     if (!h1.hasAttribute("tabindex")) h1.setAttribute("tabindex", "-1");
     h1.focus({ preventScroll: true });
+    // Said once, in the polite region (a line that mounts with its text is not announced), after
+    // the page's own "loaded".
+    const t = window.setTimeout(
+      () => announce(`${product.data?.name ?? slug} is ready`),
+      400,
+    );
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [justCreated, loaded]);
   React.useEffect(() => {
     if (justCreated) setQ({ created: null });

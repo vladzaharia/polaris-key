@@ -343,9 +343,7 @@ describe("New product from scratch", () => {
       within(main()).getByRole("checkbox", { name: label });
     // Cloud Sync needs Managed config and Sign-in; Commerce needs Licensing.
     expect(box(/^Cloud Sync/).getAttribute("aria-disabled")).toBe("true");
-    expect(
-      within(main()).getByText(/Select Managed config and Sign-in to unlock/),
-    ).toBeTruthy();
+    expect(within(main()).getAllByText(/Needs/).length).toBeGreaterThan(0);
     await userEvent.click(box(/^Cloud Sync/));
     expect(box(/^Cloud Sync/).getAttribute("aria-checked")).toBe("false");
     await userEvent.click(box(/^Managed config/));
@@ -826,7 +824,7 @@ describe("New product from a repository", () => {
     expect(
       (
         await within(main()).findAllByText(
-          "Can't reach Polaris Key. Check again.",
+          "Check again to read the repository.",
         )
       )[0],
     ).toBeTruthy();
@@ -854,9 +852,7 @@ describe("New product from a repository", () => {
     });
     await page();
     await userEvent.type(field(/^Repository/), "acme/tonebox{Enter}");
-    expect(
-      await within(main()).findByText("acme/tonebox has no .pkey/ yet"),
-    ).toBeTruthy();
+    expect(await within(main()).findByText("No .pkey/ yet")).toBeTruthy();
     expect(main().textContent).toContain(
       'pkey init --product tonebox --name "tonebox"',
     );
@@ -875,6 +871,176 @@ describe("New product from a repository", () => {
       }),
     ).toBeTruthy();
     expect(field(/^Name/).value).toBe("tonebox");
+  });
+});
+
+describe("New product: leaving, focus and the edges (re-review)", () => {
+  const routes = (over: Record<string, unknown> = {}) => ({
+    "/manage/api/github/repositories": REPOS,
+    ...createdRoutes("tonebox", "Tonebox", {
+      path: "/manage/api/products/link-repo",
+      body: { ok: true, slug: "tonebox", kid: "gh:1", product: null },
+    }),
+    "/manage/api/products/beatgrid": {
+      product: productRow("beatgrid", "Beatgrid", ALL_ON),
+    },
+    "POST /manage/api/products/link-repo": (q: URLSearchParams) =>
+      q.get("dryRun") === "1" ? DRY : { ok: true, slug: "tonebox" },
+    ...over,
+  });
+
+  it("N1: Open <slug> opens the product without asking to discard", async () => {
+    boot("#/products/new?via=github", { extra: routes() });
+    await page();
+    await userEvent.click(
+      await within(main()).findByRole("radio", { name: /acme\/beatgrid/ }),
+    );
+    await userEvent.click(
+      within(main()).getByRole("link", { name: "Open beatgrid" }),
+    );
+    await waitFor(() => expect(window.location.hash).toBe("#/p/beatgrid"));
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(window.sessionStorage.getItem(DRAFT_KEY)).toBeNull();
+  });
+
+  it("N1: Enter on a registered repository opens it too", async () => {
+    boot("#/products/new?via=github", { extra: routes() });
+    await page();
+    await userEvent.click(
+      await within(main()).findByRole("radio", { name: /acme\/beatgrid/ }),
+    );
+    await userEvent.type(field(/^Repository/), "{Enter}");
+    await waitFor(() => expect(window.location.hash).toBe("#/p/beatgrid"));
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+  });
+
+  it("N3: no .pkey/ has Check again and its own footer reason", async () => {
+    boot("#/products/new?via=github", {
+      extra: routes({
+        "POST /manage/api/products/link-repo": () => ({
+          ...DRY,
+          ready: false,
+          product: null,
+          slug: null,
+          problems: [
+            {
+              check: "manifest",
+              file: "product",
+              path: "/",
+              message: ".pkey/product is required at ingest.",
+            },
+          ],
+        }),
+      }),
+    });
+    await page();
+    await userEvent.type(field(/^Repository/), "acme/tonebox{Enter}");
+    await within(main()).findByText("No .pkey/ yet");
+    expect(
+      within(main()).getByRole("button", { name: "Check again" }),
+    ).toBeTruthy();
+    expect(
+      within(main()).getAllByText("Add .pkey/ first.").length,
+    ).toBeGreaterThan(0);
+    expect(main().textContent).toContain("Terminal");
+  });
+
+  it("N4: after a 409 the note stays until the next Create, and focus stays in the result", async () => {
+    boot("#/products/new?via=github", {
+      extra: routes({
+        "POST /manage/api/products/link-repo": (q: URLSearchParams) =>
+          q.get("dryRun") === "1"
+            ? DRY
+            : new Response(
+                JSON.stringify({ error: "changed", reason: "manifest" }),
+                {
+                  status: 409,
+                  headers: { "content-type": "application/json" },
+                },
+              ),
+      }),
+    });
+    await page();
+    await userEvent.type(field(/^Repository/), "acme/tonebox{Enter}");
+    await userEvent.click(
+      await within(main()).findByRole("button", { name: "Create Tonebox" }),
+    );
+    expect(
+      await within(main()).findByText("The repository changed after the check"),
+    ).toBeTruthy();
+    await waitFor(() =>
+      expect(next("Create Tonebox").getAttribute("aria-disabled")).not.toBe(
+        "true",
+      ),
+    );
+    expect(within(main()).getByText(/Nothing was created\./)).toBeTruthy();
+    expect(main().contains(document.activeElement)).toBe(true);
+  });
+
+  it("N5: Show more focuses the first row it adds", async () => {
+    boot("#/products/new?via=github", {
+      extra: routes({
+        "/manage/api/github/repositories": {
+          ...REPOS,
+          repositories: Array.from({ length: 8 }, (_, i) => ({
+            ...REPOS.repositories[0]!,
+            name: `r${i}`,
+            fullName: `acme/r${i}`,
+          })),
+        },
+      }),
+    });
+    await page();
+    const group = await within(main()).findByRole("radiogroup", {
+      name: "Repositories the Polaris Key app can read",
+    });
+    expect(within(group).getAllByRole("radio")).toHaveLength(5);
+    await userEvent.click(
+      within(main()).getByRole("button", { name: /Show more/ }),
+    );
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        within(group).getAllByRole("radio")[5],
+      ),
+    );
+  });
+
+  it("N7: an unconfigured App says it isn't set up, not 'install it'", async () => {
+    boot("#/products/new?via=github", {
+      extra: routes({
+        "/manage/api/github/repositories": {
+          configured: false,
+          app: null,
+          installations: [],
+          repositories: [],
+          total: 0,
+          nextCursor: null,
+        },
+      }),
+    });
+    await page();
+    expect(
+      await within(main()).findByText("The GitHub App isn't set up"),
+    ).toBeTruthy();
+    expect(within(main()).queryByText(/Install on GitHub/)).toBeNull();
+    expect(
+      within(main()).getByRole("link", { name: /Open Platform/ }),
+    ).toBeTruthy();
+  });
+
+  it("N8: a feature card is named by its title; its line is the description", async () => {
+    boot("#/products/new", {
+      extra: { "/manage/api/products/slug-check": slugCheck() },
+    });
+    await page();
+    await userEvent.type(field(/^Name/), "Tonebox{Enter}");
+    await screen.findByRole("heading", { level: 2, name: "What is it for?" });
+    const box = within(main()).getByRole("checkbox", { name: "Licensing" });
+    expect(box.getAttribute("aria-describedby")).toBeTruthy();
+    expect(
+      document.getElementById(box.getAttribute("aria-describedby")!)!
+        .textContent,
+    ).toMatch(/Gate Tonebox/);
   });
 });
 

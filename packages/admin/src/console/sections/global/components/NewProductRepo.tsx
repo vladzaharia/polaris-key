@@ -15,6 +15,8 @@ import { RadioCards } from "../../../../ui/RadioCards.js";
 import { Skeleton } from "../../../../ui/Skeleton.js";
 import { StatusPill } from "../../../../ui/StatusPill.js";
 import { FormStep } from "../../../../ui/wizard/index.js";
+import { Link } from "../../../router.js";
+import { r } from "../../../routes.js";
 import { FEATURES } from "../../../../services.generated.js";
 import {
   platformLabel,
@@ -23,7 +25,7 @@ import {
   slugFromName,
 } from "../model/newProduct.js";
 
-const PAGE = 8;
+const PAGE = 5;
 
 /** A slow read shows its skeleton only after a beat, so a quick one doesn't flash. */
 export function useGrace(pending: boolean, ms = 250): boolean {
@@ -106,6 +108,16 @@ function RepoPicker({
 }): React.ReactElement | null {
   const [shown, setShown] = React.useState(PAGE);
   const grace = useGrace(list.pending);
+  // "Show more" focuses the first row it adds, so the keyboard continues where the list grew.
+  const focusFrom = React.useRef<number | null>(null);
+  React.useEffect(() => {
+    const at = focusFrom.current;
+    if (at === null) return;
+    focusFrom.current = null;
+    document
+      .querySelectorAll<HTMLElement>("#np-repos [role=radio]")
+      [at]?.focus();
+  }, [shown]);
   if (list.pending)
     return grace ? (
       <div className="space-y-2" aria-busy="true">
@@ -128,7 +140,23 @@ function RepoPicker({
       </p>
     );
   const data = list.data;
-  if (!data.configured || data.installations.length === 0)
+  if (!data.configured || !data.app)
+    return (
+      <Callout tone="info" title="The GitHub App isn't set up">
+        This platform has no GitHub App credentials yet. Add them on the
+        Platform page. You can still paste a repository above once it is.
+        <div className="mt-2">
+          <Link
+            to={r.platform()}
+            className="inline-flex items-center gap-1 text-sm font-medium underline underline-offset-4"
+          >
+            Open Platform
+            <ArrowRight aria-hidden className="size-3.5" />
+          </Link>
+        </div>
+      </Callout>
+    );
+  if (data.installations.length === 0)
     return (
       <Callout
         tone="info"
@@ -156,6 +184,7 @@ function RepoPicker({
   return (
     <div className="space-y-2">
       <RadioCards
+        id="np-repos"
         aria-label="Repositories the Polaris Key app can read"
         columns={1}
         value={rows.some((r) => r.fullName === value) ? value : null}
@@ -192,7 +221,10 @@ function RepoPicker({
           type="button"
           variant="ghost"
           size="sm"
-          onClick={() => setShown((n) => n + PAGE)}
+          onClick={() => {
+            focusFrom.current = shown;
+            setShown((n) => n + PAGE);
+          }}
         >
           Show more ({data.repositories.length - shown})
         </Button>
@@ -226,14 +258,16 @@ export function featuresOfServices(services: readonly string[]): string[] {
 function NoPkey({
   repo,
   onScratch,
+  again,
 }: {
   repo: string;
   onScratch: () => void;
+  again: React.ReactNode;
 }): React.ReactElement {
   const name = repo.split("/")[1] ?? repo;
   const slug = slugFromName(name) || "my-product";
   return (
-    <Callout tone="info" title={`${repo} has no .pkey/ yet`}>
+    <Callout tone="info" title="No .pkey/ yet">
       <p>
         Run this in the repository, commit and push, then check again. Or start
         from scratch and link the repository later.
@@ -242,6 +276,7 @@ function NoPkey({
         <CodeBlock
           code={`pkey init --product ${slug} --name "${name}"`}
           language="text"
+          filename="Terminal"
         />
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-3">
@@ -254,11 +289,20 @@ function NoPkey({
           How .pkey/ works
           <ArrowRight aria-hidden className="size-3.5" />
         </a>
+        {again}
         <Button type="button" variant="outline" size="sm" onClick={onScratch}>
           Start from scratch instead
         </Button>
       </div>
     </Callout>
+  );
+}
+
+/** `.pkey/product` is missing: the repository has no `.pkey/` yet. */
+export function isNoPkey(d: CreateDryRun): boolean {
+  return d.problems.some(
+    (p) =>
+      p.file === "product" && p.message.includes(".pkey/product is required"),
   );
 }
 
@@ -271,6 +315,7 @@ export function CheckStep({
   state,
   failure,
   stale,
+  changed,
   onCheckAgain,
   checking,
   onScratch,
@@ -280,6 +325,8 @@ export function CheckStep({
   failure: CheckFailure | null;
   /** The create was refused because `.pkey/` changed after the check. */
   stale: boolean;
+  /** The last create was refused because `.pkey/` changed after the check; nothing was created. */
+  changed: boolean;
   onCheckAgain: () => void;
   checking: boolean;
   onScratch: () => void;
@@ -333,20 +380,21 @@ export function CheckStep({
       </Callout>
     );
   const d = state.data;
-  const noPkey = d.problems.some(
-    (p) =>
-      p.file === "product" && p.message.includes(".pkey/product is required"),
-  );
+  const noPkey = isNoPkey(d);
   return (
     <div className="space-y-5">
-      {stale ? (
+      {changed ? (
         <Callout
           tone="warning"
           title="The repository changed after the check"
           live
         >
-          <p>Its .pkey/ changed. Check it again before you create.</p>
-          <div className="mt-3">{again}</div>
+          <p>
+            Nothing was created.{" "}
+            {stale
+              ? "Polaris Key is reading it again."
+              : "Check what it found, then create."}
+          </p>
         </Callout>
       ) : null}
       <section
@@ -382,10 +430,10 @@ export function CheckStep({
 
       {d.registeredAs ? (
         <Callout tone="info" title={`Already a product: ${d.registeredAs}`}>
-          Polaris Key keeps it in sync with every push. Open it to see it.
+          Polaris Key keeps it in sync with every push.
         </Callout>
       ) : noPkey ? (
-        <NoPkey repo={d.repository} onScratch={onScratch} />
+        <NoPkey repo={d.repository} onScratch={onScratch} again={again} />
       ) : d.problems.length > 0 ? (
         <Callout tone="danger" title="Fix these in one commit" live>
           <ul className="mt-1 list-disc space-y-1 pl-5">
