@@ -214,6 +214,11 @@
       "verdict": "pass",
       "date": "2026-10-17",
       "evidence": "_mockups/review/ST-41/ux-review-2.md (re-review pass-with-fixes after one fix round; N1 one-command with --product/--expect/--release-key, N2, N9 + minors in wp/ST-41-polish 3d23db9fe)"
+    },
+    "LX-29": {
+      "verdict": "pass",
+      "date": "2026-10-19",
+      "evidence": "_mockups/review/LX-29/ux-review-2.md (re-review pass-with-fixes after one fix round; N1/N2/layering + minors in wp/LX-29-wizard)"
     }
   }
 }
