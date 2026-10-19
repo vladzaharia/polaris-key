@@ -62,6 +62,7 @@ export type Route =
   | { kind: "portalApi" }
   | { kind: "portalLogin" }
   | { kind: "deviceEntry"; tv: boolean }
+  | { kind: "signInEntry" }
   /** I-06: the login card's platform providers, `/login/<provider>[/callback|/notifications]`. */
   | { kind: "portalProviderSignIn" }
   | { kind: "portalCallback" }
@@ -187,6 +188,7 @@ export function matchRoute(pathname: string): Route {
     return { kind: "portalSpa" };
   if (path === "/login") return { kind: "portalLogin" };
   // The platform device-code entry pages: a code typed here finds its product (core/deviceEntry.ts).
+  if (path === "/signin") return { kind: "signInEntry" };
   if (path === "/device") return { kind: "deviceEntry", tv: false };
   if (path === "/tv") return { kind: "deviceEntry", tv: true };
   // I-06: `/login/<provider>`, its callback and Apple's notifications (`login` is a reserved

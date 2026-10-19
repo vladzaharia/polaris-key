@@ -97,6 +97,7 @@ const CORE_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
  */
 const PORTAL_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
   // The platform device-code entry pages: a code typed here finds its product's page.
+  signInEntry: [["/signin", ["get"]]],
   deviceEntry: [
     ["/device", ["get"]],
     ["/tv", ["get"]],
