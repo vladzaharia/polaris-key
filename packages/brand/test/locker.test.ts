@@ -46,7 +46,7 @@ describe("generated tokens", () => {
   );
   it("css/tokens.css carries --pk-locker-* per theme and the data-brand scope", () => {
     const css = read("css/tokens.css");
-    for (const k of ["accent", "fg", "on", "subtle"] as const)
+    for (const k of ["accent", "fg", "on", "subtle", "hover"] as const)
       for (const theme of THEMES)
         expect(css).toContain(
           `--pk-locker-${k}: ${LOCKER_TOKENS[theme][k === "accent" ? "solid" : k]};`,
@@ -60,7 +60,7 @@ describe("generated tokens", () => {
       "--pk-focus:",
     ])
       expect(scope).toContain(v);
-    expect(scope).not.toMatch(/--pk-action/);
+    expect(scope).not.toMatch(/--pk-action[a-z-]*:/);
     // a data-service still wins: its block comes after the Locker scope
     expect(css.indexOf('[data-brand="locker"]')).toBeLessThan(
       css.indexOf('[data-service="license"]'),
@@ -68,7 +68,7 @@ describe("generated tokens", () => {
   });
   it("css/theme.css maps --color-locker-*", () => {
     const css = read("css/theme.css");
-    for (const k of ["accent", "fg", "on", "subtle"])
+    for (const k of ["accent", "fg", "on", "subtle", "hover"])
       expect(css).toContain(`--color-locker-${k}: var(--pk-locker-${k});`);
   });
   it("tokens.json carries locker", () => {
@@ -96,8 +96,17 @@ describe("contrast (BRAND §5.1)", () => {
     it(`${theme}: on is >= 4.5:1 on a coral fill`, () => {
       expect(contrastRatio(l.on, l.solid)).toBeGreaterThanOrEqual(4.5);
     });
-    it(`${theme}: the ring is >= 3:1 on the selected-nav fill`, () => {
-      expect(contrastRatio(l.solid, l.subtle)).toBeGreaterThanOrEqual(3);
+    it(`${theme}: the neutral ring is >= 3:1 on the page and the selected fill`, () => {
+      expect(
+        contrastRatio(t.text.strong, t.surface.page),
+      ).toBeGreaterThanOrEqual(3);
+      expect(contrastRatio(t.text.strong, l.subtle)).toBeGreaterThanOrEqual(3);
+    });
+    it(`${theme}: text is >= 4.5:1 on the selected and hover fills`, () => {
+      for (const fill of [l.subtle, l.hover]) {
+        expect(contrastRatio(t.text.default, fill)).toBeGreaterThanOrEqual(4.5);
+        expect(contrastRatio(t.text.strong, fill)).toBeGreaterThanOrEqual(4.5);
+      }
     });
   }
   it("the measured values (kit contrast-report.json)", () => {
@@ -150,6 +159,53 @@ describe("why coral is not a section accent or a status (D9)", () => {
     expect(THEME_TOKENS.dark.action.fill).toBe(BRAND.page.light);
     expect(THEME_TOKENS.light.action.fill).toBe(BRAND.page.dark);
   });
+});
+
+// D9a: coral is identity only. The state tokens in the Locker scope are neutral ink, and where
+// they are tints they sit well clear of the danger callout (before: subtle was ΔE00 0.6 light and
+// 1.7 dark from danger-subtle, light link text 2.8 from danger text, the ring 4.6 from the danger
+// border).
+describe("D9a: states inside data-brand=locker are not coral", () => {
+  const css = read("css/tokens.css");
+  const scope = /\[data-brand="locker"\] \{([^}]*)\}/.exec(css)![1]!;
+  const decl = (name: string) =>
+    new RegExp(`${name}: ([^;]+);`).exec(scope)?.[1];
+  it("coral appears only as the accent (nav marker) and the context edge", () => {
+    const coral = [
+      ...scope.matchAll(/(--pk-[a-z-]+): var\(--pk-locker-(accent|fg)\)/g),
+    ].map((m) => m[1]);
+    expect(coral.sort()).toEqual(["--pk-accent", "--pk-state-context-edge"]);
+  });
+  it("focus, selection, hover, links and checked controls take neutral sources", () => {
+    expect(decl("--pk-focus")).toBe("var(--pk-text-strong)");
+    expect(decl("--pk-state-ring")).toBe("var(--pk-text-strong)");
+    expect(decl("--pk-accent-fg")).toBe("var(--pk-text-strong)");
+    expect(decl("--pk-state-selected-fill")).toBe("var(--pk-locker-subtle)");
+    expect(decl("--pk-state-hover-tint")).toBe("var(--pk-locker-hover)");
+    expect(decl("--pk-state-checked-fill")).toBe("var(--pk-action)");
+    expect(decl("--pk-state-checked-edge")).toBe("var(--pk-action)");
+    expect(decl("--pk-state-checked-on")).toBe("var(--pk-action-on)");
+    expect(decl("--pk-state-context-edge")).toBe("var(--pk-locker-accent)");
+  });
+  it.each(THEMES)(
+    "%s: the tints and the ink are far from the danger tokens",
+    (theme) => {
+      const t = THEME_TOKENS[theme];
+      const l = LOCKER_TOKENS[theme];
+      // the core accent-vs-danger floor is 17.5 for a hue; a neutral tint only has to read as not-error
+      expect(deltaE2000(l.subtle, t.status.danger.subtle)).toBeGreaterThan(5);
+      expect(deltaE2000(l.hover, t.status.danger.subtle)).toBeGreaterThan(5);
+      expect(deltaE2000(t.text.strong, t.status.danger.fg)).toBeGreaterThan(
+        17.5,
+      );
+      expect(deltaE2000(t.text.strong, t.status.danger.border)).toBeGreaterThan(
+        17.5,
+      );
+      expect(deltaE2000(t.action.fill, t.status.danger.fg)).toBeGreaterThan(
+        17.5,
+      );
+    },
+  );
 });
 
 describe("Locker is a subbrand, not a service", () => {
@@ -257,7 +313,10 @@ describe("the API", () => {
       expect(svg).toContain('viewBox="0 0 320 104"');
     }
     expect(badgeSvg({ kind: "locker-open-in", width: 160 })).toContain(
-      'height="52"',
+      'width="240" height="78"',
+    );
+    expect(badgeSvg({ kind: "locker-open-in", width: 480 })).toContain(
+      'height="156"',
     );
     expect(() => badgeSvg({ kind: "locker-nope" as never })).toThrow();
   });

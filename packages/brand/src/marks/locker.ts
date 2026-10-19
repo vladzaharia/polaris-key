@@ -141,7 +141,7 @@ export interface LockerBadgeOptions {
   treatment?: LockerBadgeTreatment;
   /** Which ground it is FOR. */
   theme?: LockerBadgeTheme;
-  /** Rendered width in CSS px. Default: the canvas, 320. The 320 × 104 aspect is never changed. */
+  /** Rendered width in CSS px. Default: the canvas, 320; raised to the 240 minimum. The aspect is never changed. */
   width?: number;
   /** Accessible name; defaults to the action ("Open in Polaris Locker"). "" marks it decorative. */
   title?: string;
@@ -149,6 +149,9 @@ export interface LockerBadgeOptions {
 
 /** The badge canvas, 320 × 104 (never cropped). */
 export const LOCKER_BADGE_CANVAS = { width: 320, height: 104 } as const;
+
+/** The smallest rendered badge width, in CSS px; a smaller request is raised to it (as `badgeSize`). */
+export const LOCKER_BADGE_MIN_WIDTH = 240;
 
 export function lockerBadgeTemplate(
   kind: LockerBadgeKind,

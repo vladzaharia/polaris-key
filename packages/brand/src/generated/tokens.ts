@@ -394,13 +394,25 @@ export const THEME_TOKENS = {
   },
 } as const satisfies Record<Theme, ResolvedTheme>;
 
-/** Polaris Locker's accent per theme (solid, fg, on, subtle); a subbrand, not a section. */
+/** Polaris Locker's accent per theme (coral solid, fg, on; neutral subtle, hover); a subbrand, not a section. */
 export const LOCKER_TOKENS = {
-  dark: { solid: "#ff7869", fg: "#ff7869", on: "#060912", subtle: "#24161c" },
-  light: { solid: "#c44438", fg: "#b8382e", on: "#ffffff", subtle: "#f0e2e7" },
+  dark: {
+    solid: "#ff7869",
+    fg: "#ff7869",
+    on: "#060912",
+    subtle: "#171a23",
+    hover: "#10131b",
+  },
+  light: {
+    solid: "#c44438",
+    fg: "#b8382e",
+    on: "#ffffff",
+    subtle: "#e5e7ee",
+    hover: "#eceef6",
+  },
 } as const satisfies Record<
   Theme,
-  { solid: string; fg: string; on: string; subtle: string }
+  { solid: string; fg: string; on: string; subtle: string; hover: string }
 >;
 
 /**

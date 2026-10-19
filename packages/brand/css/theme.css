@@ -115,6 +115,7 @@
   --color-locker-fg: var(--pk-locker-fg);
   --color-locker-on: var(--pk-locker-on);
   --color-locker-subtle: var(--pk-locker-subtle);
+  --color-locker-hover: var(--pk-locker-hover);
 
   --font-sans: var(--pk-font-sans);
   --font-mono: var(--pk-font-mono);

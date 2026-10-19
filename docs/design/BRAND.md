@@ -210,8 +210,9 @@ data-theme="light" on <html>             → light  (whatever the OS says)
 - **Sections**: `data-service="core|license|config|release|distribution|update|identity|sync"` on, or
   inside, the themed element re-points `--pk-accent*` and `--pk-section-bit`. No attribute means
   core.
-- **Brand**: `data-brand="locker"` on, or above, the themed element re-points `--pk-accent*`,
-  `--pk-focus`, `--pk-state-ring` and `--pk-state-selected-fill` at Polaris Locker's coral (§15).
+- **Brand**: `data-brand="locker"` on, or above, the themed element re-points `--pk-accent*` and
+  the state tokens (focus, selected, hover, checked, context edge) per §15: coral for identity,
+  neutral ink for state.
   Put it on the same element as `data-theme`, or below it. A `data-service` on the same element, or
   inside, still wins. Locker is a brand, never a section: no `data-service="locker"`.
 
@@ -1177,20 +1178,40 @@ light, white, black and coral) are outlined Rubik and used as supplied. The badg
 **Tokens.** Grounds are Key's (`page`, `surface`, `text`, `muted` equal `surface.page`,
 `surface.raised`, `text.default`, `text.muted`); only the accent is new.
 
-| Token                | Dark                      | Light                                                       | Use                                      |
-| -------------------- | ------------------------- | ----------------------------------------------------------- | ---------------------------------------- |
-| `--pk-locker-accent` | `#ff7869`                 | `#c44438`                                                   | mark, selected-nav marker, focus (≥ 3:1) |
-| `--pk-locker-fg`     | `#ff7869`                 | `#b8382e` (kit hue and chroma, lightness lowered for 4.5:1) | links and text                           |
-| `--pk-locker-on`     | `#060912`                 | `#ffffff`                                                   | text on a coral fill (7.71, 4.96:1)      |
-| `--pk-locker-subtle` | coral at 12 % over `page` | the same                                                    | selected-nav fill                        |
+| Token                | Dark                             | Light                                                       | Use                                          |
+| -------------------- | -------------------------------- | ----------------------------------------------------------- | -------------------------------------------- |
+| `--pk-locker-accent` | `#ff7869`                        | `#c44438`                                                   | mark, 3 px selected-nav marker, context edge |
+| `--pk-locker-fg`     | `#ff7869`                        | `#b8382e` (kit hue and chroma, lightness lowered for 4.5:1) | coral text that is identity (none today)     |
+| `--pk-locker-on`     | `#060912`                        | `#ffffff`                                                   | text on a coral fill (7.71, 4.96:1)          |
+| `--pk-locker-subtle` | `text.strong` at 7 % over `page` | the same                                                    | selected-nav fill (neutral)                  |
+| `--pk-locker-hover`  | `text.strong` at 4 % over `page` | the same                                                    | hover tint (neutral)                         |
 
 Tailwind: `--color-locker-{accent,fg,on,subtle}`. `css/locker.css` is the kit's `locker.css`
 verbatim, for plrs.im. `[data-brand="locker"]` is described in §3.
 
-**Where coral goes: identity, the selected-nav marker, focus and links.** Never a status and never
-a primary fill. The primary action stays neutral ink (§4.7, D9): light coral is ΔE00 5.8 from the
-danger fill, so a coral button would read as destructive. Measured with `src/color.ts`
-(`test/locker.test.ts` pins them, so a palette change reopens D9):
+**Where coral goes (D9a): identity only.** The mark, the 3 px selected-nav marker, a 2 px link
+underline and the context edge (`--pk-state-context-edge`). Everything stateful is neutral ink:
+selected fill and hover tint (`text.strong` at 7 % and 4 % over the page), the focus ring
+(`--pk-text-strong`, 2 px, 2 px offset), link text (`text.strong` with the coral underline), and
+checked controls and switches (`--pk-action` fill and edge, `--pk-action-on` glyph). The primary
+action stays neutral ink (§4.7, D9). Coral is never a status. `--pk-locker-fg` is kept for coral
+text that is identity; nothing in the Locker scope uses it, so `#b8382e` is only there for such a
+future use.
+
+Why (D9, D9a): coral is too close to danger to carry state. The first cut re-pointed the states at
+coral and the review found it unreadable as state. Before and after, ΔE00, light / dark:
+
+| Pair                             | Coral states (before) | Neutral ink (D9a) |
+| -------------------------------- | --------------------- | ----------------- |
+| selected fill vs `danger-subtle` | 0.6 / 1.7             | 6.7 / 11.1        |
+| hover tint vs `danger-subtle`    | n/a                   | 6.8 / 11.2        |
+| link text vs danger `fg`         | 2.8 / 8.9             | 40.8 / 41.1       |
+| focus ring vs danger `border`    | 4.6 / 18.7            | 46.8 / 48.3       |
+
+The neutral focus ring is 18.7 / 19.9:1 on the page and 16.1 / 17.4:1 on the selected fill.
+`test/locker.test.ts` pins the token sources inside the scope (coral only as `--pk-accent` and
+the context edge) and these distances. Coral against the other colours, measured with
+`src/color.ts` (also pinned, so a palette change reopens D9):
 
 | Coral vs               | Dark `#ff7869`     | Light `#c44438`    | Floor (§5.1)        |
 | ---------------------- | ------------------ | ------------------ | ------------------- |
@@ -1201,10 +1222,10 @@ danger fill, so a coral button would read as destructive. Measured with `src/col
 
 **API.** `markSvg`, `lockupSvg`, `<PolarisMark>` and `<PolarisLockup>` take `kind: "locker"` and
 throw on `signed` or any `bit` but `"none"`. `lockupSvg` also takes `theme: "coral"` for Locker.
-`badgeSvg({ kind: "locker-open-in" | "locker-available-on", treatment, theme })` draws the badges.
+`badgeSvg({ kind: "locker-open-in" | "locker-available-on", treatment, theme })` draws the badges, never narrower than 240 px (a smaller `width` is raised to it).
 Files: `@polaris-key/brand/{marks,lockups,badges,social,app-icons,web}/locker/…` and `/locker.css`.
 The preview shows Locker at 16, 24, 32, 48 and 96 px in both themes and mono (the guide's p.18
 check). There is no native, Python, C# or Node-CLI output: the kits are host-owned.
 
-**Not yet.** The checked-control and hover tokens keep the core violet inside `data-brand="locker"`;
-the `accent-as-status` lint (UK-55) must learn `--pk-locker-*`.
+**Not yet.** The `accent-as-status` lint (UK-55) must learn `--pk-locker-*`. The compact lockup is
+never rendered under 120 px wide (kit p.7).

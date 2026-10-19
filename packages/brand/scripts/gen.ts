@@ -271,6 +271,7 @@ function themeVars(theme: Theme): [string, string][] {
   v.push(["locker-fg", LK[theme].fg]);
   v.push(["locker-on", LK[theme].on]);
   v.push(["locker-subtle", LK[theme].subtle]);
+  v.push(["locker-hover", LK[theme].hover]);
   for (const id of CSS_IDS) {
     const a = serviceAccent(theme, id);
     v.push([`service-${id}`, a.solid]);
@@ -346,21 +347,28 @@ function scaleVars(): [string, string][] {
 }
 
 /**
- * The Locker scope: `data-brand="locker"` re-points the core context at coral. It sits after the
- * core block and before the service blocks, so a \`data-service\` on the same element, or inside,
- * still wins (B17). The section bit stays off (Locker has no section bit); the checked-control
- * and hover tokens keep the core's.
+ * The Locker scope (D9a): \`data-brand="locker"\` makes coral identity only. The accent (the
+ * 3 px selected-nav marker) and the context edge are coral; selection, hover, focus, links and
+ * checked controls are neutral ink, because coral tints and rings read as the danger status. It
+ * sits after the core block and before the service blocks, so a \`data-service\` on the same
+ * element, or inside, still wins (B17). The section bit stays off.
  */
-const lockerScope = `/* Polaris Locker (BRAND.md §15): identity, the selected-nav marker, focus and links. Coral is
-   never a status and never a primary fill; --pk-action stays neutral ink. */
+const lockerScope = `/* Polaris Locker (BRAND.md §15, D9a): coral is identity only: the mark, the 3 px selected-nav
+   marker, a 2 px link underline and the context edge. Selection, hover, focus, links and checked
+   controls are neutral ink. --pk-action stays neutral ink. */
 [data-brand="locker"] {
   --pk-accent: var(--pk-locker-accent);
-  --pk-accent-fg: var(--pk-locker-fg);
+  --pk-accent-fg: var(--pk-text-strong);
   --pk-accent-on: var(--pk-locker-on);
   --pk-accent-subtle: var(--pk-locker-subtle);
-  --pk-focus: var(--pk-locker-accent);
-  --pk-state-ring: var(--pk-locker-accent);
+  --pk-focus: var(--pk-text-strong);
+  --pk-state-ring: var(--pk-text-strong);
   --pk-state-selected-fill: var(--pk-locker-subtle);
+  --pk-state-hover-tint: var(--pk-locker-hover);
+  --pk-state-checked-fill: var(--pk-action);
+  --pk-state-checked-on: var(--pk-action-on);
+  --pk-state-checked-edge: var(--pk-action);
+  --pk-state-context-edge: var(--pk-locker-accent);
 }`;
 
 function tokensCss(): string {
@@ -604,7 +612,7 @@ function themeCss(): string {
     colors.push([`signed${k}`, `signed${k}`]);
   for (const k of ["violet", "gold", "star", "page", "text", "muted", "rose"])
     colors.push([`brand-${k}`, `brand-${k}`]);
-  for (const k of ["accent", "fg", "on", "subtle"])
+  for (const k of ["accent", "fg", "on", "subtle", "hover"])
     colors.push([`locker-${k}`, `locker-${k}`]);
   const lines: string[] = [];
   for (const [tw, pk] of colors)
@@ -735,10 +743,10 @@ import type { ServiceId, Theme } from "../tokens/source.js";
 /** Every semantic colour, resolved to hex, per theme. */
 export const THEME_TOKENS = ${JSON.stringify(m.themes)} as const satisfies Record<Theme, ResolvedTheme>;
 
-/** Polaris Locker's accent per theme (solid, fg, on, subtle); a subbrand, not a section. */
+/** Polaris Locker's accent per theme (coral solid, fg, on; neutral subtle, hover); a subbrand, not a section. */
 export const LOCKER_TOKENS = ${JSON.stringify(m.locker)} as const satisfies Record<
   Theme,
-  { solid: string; fg: string; on: string; subtle: string }
+  { solid: string; fg: string; on: string; subtle: string; hover: string }
 >;
 
 /**

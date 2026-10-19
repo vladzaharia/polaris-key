@@ -39,6 +39,7 @@ import {
 } from "./core.js";
 import {
   LOCKER_BADGE_CANVAS,
+  LOCKER_BADGE_MIN_WIDTH,
   lockerBadgeBody,
   lockerBadgeTemplate,
   lockerLockupBody,
@@ -399,7 +400,10 @@ export function badgeSvg(opts: LockerBadgeOptions): string {
   if (!(opts.kind in LOCKER_BADGE_ALT))
     throw new RangeError(`badge: unknown kind ${String(opts.kind)}`);
   const t = lockerBadgeTemplate(opts.kind, opts.treatment);
-  const width = opts.width ?? LOCKER_BADGE_CANVAS.width;
+  const width =
+    opts.width === undefined || !Number.isFinite(opts.width)
+      ? LOCKER_BADGE_CANVAS.width
+      : Math.max(opts.width, LOCKER_BADGE_MIN_WIDTH);
   const head = a11y(opts.title ?? LOCKER_BADGE_ALT[opts.kind]);
   return `<svg xmlns="${SVG_NS}" width="${fmt(width)}" height="${fmt((width * t.height) / t.width)}" viewBox="0 0 ${t.width} ${t.height}"${head.attrs}>${badgeInner(opts)}</svg>`;
 }

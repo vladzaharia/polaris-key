@@ -313,8 +313,10 @@ export const ACCENTS: Record<AccentFamily, Record<Theme, AccentSpec>> = {
  * #c44438 for the mark and the focus ring (4.68 / 4.96 / 4.28:1 on page / raised / sunken, so
  * >= 3:1 as UI), and `fg` keeps its hue and chroma with the lightness lowered until text clears
  * 4.5:1 on `sunken` and on `subtle`. `on` is the kit's `onAccent` (7.71 / 4.96:1 on the fill).
- * Coral is too close to danger (ΔE00 8.9 dark, 5.8 light) to be a status or a primary fill:
- * the primary action stays neutral ink (D9).
+ * Coral is too close to danger (ΔE00 8.9 dark, 5.8 light) to be a status, a primary fill or
+ * any state colour: the primary action, focus, selection and checked controls stay neutral ink
+ * (D9, D9a). `fg` (coral text, 4.5:1) is kept for identity text; no state in the Locker scope
+ * uses it.
  */
 export const LOCKER_ACCENT: Record<Theme, AccentSpec> = {
   dark: {
@@ -329,8 +331,14 @@ export const LOCKER_ACCENT: Record<Theme, AccentSpec> = {
   },
 };
 
-/** The selected-nav fill: coral at 12 % over the page ground, in both themes. */
-export const LOCKER_SUBTLE_ALPHA = 0.12;
+/**
+ * D9a: coral is identity only (the mark, the 3 px selected-nav marker, a 2 px link underline and
+ * the context edge). Everything stateful is neutral ink: the selected-nav fill is `text.strong`
+ * at this alpha over the page ground, and the hover tint at the lighter one. Coral tints sat
+ * within ΔE00 2 of the danger callout, so a selected row read as an error row.
+ */
+export const LOCKER_SELECTED_ALPHA = 0.07;
+export const LOCKER_HOVER_ALPHA = 0.04;
 
 // ── Neutrals ────────────────────────────────────────────────────────────────────────────────
 
