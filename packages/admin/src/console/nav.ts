@@ -784,7 +784,7 @@ const PLATFORM_PAGES: NavPage[] = [
     keywords: "sso oidc identity provider sign-in google apple steam domain",
     path: "platform/connections",
     icon: KeyRound,
-    docs: "/docs/operate/platform/connections/",
+    docs: "/docs/operate/platform/sign-in-connections/",
     inNav: true,
     group: "platform",
     record: { noun: "Connection" },
