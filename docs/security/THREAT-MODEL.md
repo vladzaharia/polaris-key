@@ -4541,12 +4541,15 @@ URL guard, the signature and the one POST). Tables `notify_destinations` and
 - **Who can write.** Platform: the `platform` area. Product: the `settings` area of that product
   (a role narrowed to one other area cannot aim a product's alerts). Adding or retargeting a
   destination (`POST`, `PATCH`) needs the console step-up (`STEP_UP_ROUTES`), so a stolen session
-  cannot redirect alerts to an attacker or exfiltrate through a webhook; removing one and a test
-  send do not. Every write appends an audit row (`notify.destination.create|update|rotate|delete|test`,
+  cannot redirect alerts to an attacker or exfiltrate through a webhook. Removing one
+  (`DELETE`) needs it too, because a stolen session could otherwise silence every alert; only a
+  test send does not. Every write appends an audit row (`notify.destination.create|update|rotate|delete|test`,
   to `platform_audit` or the product's `audit`), and an alert that reached nobody appends
   `notify.alert.undeliverable`.
-- **Abuse bounds.** At most 5 destinations per scope; a test send at most every 30 seconds per
-  destination; alert text is clipped (500 characters) and control characters are stripped; mail
+- **Abuse bounds.** At most 5 destinations per scope; a test send at most every 30 seconds and 10 an hour per scope, counted from the audit
+  trail (so deleting and re-adding a destination resets nothing), and **no test send to a
+  product-scope email address** until confirmation exists (it would let a product operator send
+  platform-branded mail to anyone on demand); alert text is clipped (500 characters) and control characters are stripped; mail
   is platform mail from the platform sender, under the existing daily limits. A product-scope
   email destination may name any address, as a product operator already can through the licence
   key emails; the message carries no secret and no link. Residual risk: such an address receives

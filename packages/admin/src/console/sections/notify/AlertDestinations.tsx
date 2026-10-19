@@ -51,6 +51,9 @@ const REASON_COPY: Record<string, string> = {
   alerts_required: "Pick at least one alert.",
   too_many: "That is the most destinations. Remove one first.",
   too_soon: "Wait a few seconds before sending another test.",
+  too_many_tests: "Too many test alerts. Try again later.",
+  test_unavailable:
+    "A product's email address cannot be tested until it is confirmed.",
   stale: "Changed elsewhere. Reload and try again.",
 };
 
@@ -256,26 +259,28 @@ function Row({
       </div>
       {canEdit ? (
         <div className="flex flex-wrap gap-2">
-          <Button
-            size="sm"
-            variant="ghost"
-            loading={busy === "test"}
-            disabled={busy !== null}
-            onClick={() =>
-              void run("test", async () => {
-                const r = await mutate("testAlertDestination", scope, d.id);
-                if (r.outcome === "ok") toast.success("Test alert delivered");
-                else
-                  setError(
-                    r.outcome === "refused"
-                      ? "The endpoint was refused: it redirected, or its address is not allowed."
-                      : "The test did not get through.",
-                  );
-              })
-            }
-          >
-            Send test
-          </Button>
+          {d.kind === "email" && scope.kind === "product" ? null : (
+            <Button
+              size="sm"
+              variant="ghost"
+              loading={busy === "test"}
+              disabled={busy !== null}
+              onClick={() =>
+                void run("test", async () => {
+                  const r = await mutate("testAlertDestination", scope, d.id);
+                  if (r.outcome === "ok") toast.success("Test alert delivered");
+                  else
+                    setError(
+                      r.outcome === "refused"
+                        ? "The endpoint was refused: it redirected, or its address is not allowed."
+                        : "The test did not get through.",
+                    );
+                })
+              }
+            >
+              Send test
+            </Button>
+          )}
           {d.kind === "webhook" ? (
             <Button
               size="sm"
@@ -289,17 +294,17 @@ function Row({
           <Button
             size="sm"
             variant="ghost"
-            disabled={busy !== null}
+            disabled={busy !== null || !fresh}
             onClick={() => setRemoving(true)}
           >
             Remove
           </Button>
         </div>
       ) : null}
-      {canEdit && !fresh && d.kind === "webhook" ? (
+      {canEdit && !fresh ? (
         <StepUpCallout hash={returnHash}>
-          A new secret needs a sign-in from the last five minutes. You come back
-          to this page afterwards.
+          Removing a destination or issuing a new secret needs a sign-in from
+          the last five minutes. You come back to this page afterwards.
         </StepUpCallout>
       ) : null}
       {error ? (
@@ -316,8 +321,14 @@ function Row({
         confirmLabel="Remove"
         describeError={(e) => ({ title: failureText(e) })}
         onConfirm={async () => {
-          await mutate("deleteAlertDestination", scope, d.id);
-          toast.success("Destination removed");
+          try {
+            await mutate("deleteAlertDestination", scope, d.id);
+            toast.success("Destination removed");
+          } catch (e) {
+            if (e instanceof ApiError && e.code === "step_up_required")
+              markStale();
+            throw e;
+          }
         }}
       />
       <ConfirmDialog
@@ -354,7 +365,7 @@ function AddDialog({
   onSecret,
 }: {
   scope: AlertScope;
-  kinds: Array<{ id: AlertKindId; label: string }>;
+  kinds: Array<{ id: AlertKindId; label: string; sent: boolean }>;
   returnHash: string;
   onClose: () => void;
   onSecret: (secret: string) => void;
@@ -364,7 +375,9 @@ function AddDialog({
   const [target, setTarget] = React.useState("");
   const [label, setLabel] = React.useState("");
   const [alerts, setAlerts] = React.useState<AlertKindId[]>(
-    kinds.filter((k) => k.id !== "notifications_failing").map((k) => k.id),
+    kinds
+      .filter((k) => k.sent && k.id !== "notifications_failing")
+      .map((k) => k.id),
   );
   const [saving, setSaving] = React.useState(false);
   const [failure, setFailure] = React.useState<string | null>(null);
@@ -476,6 +489,7 @@ function AddDialog({
               <Checkbox
                 key={k.id}
                 label={k.label}
+                description={k.sent ? undefined : "Not sent yet"}
                 checked={alerts.includes(k.id)}
                 onCheckedChange={(on) =>
                   setAlerts(

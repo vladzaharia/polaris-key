@@ -83,6 +83,7 @@ const INTERNAL: Record<string, string[]> = {
   "core/notify/alertDestinations.ts": [
     "MAX_DESTINATIONS_PER_SCOPE",
     "TEST_INTERVAL_SECONDS",
+    "TESTS_PER_HOUR",
   ],
   "core/notify/alertWebhook.ts": ["WEBHOOK_TIMEOUT_MS"],
   "core/notify/emailLimits.ts": ["EMAIL_LOCKOUT_WINDOW_SECONDS"],

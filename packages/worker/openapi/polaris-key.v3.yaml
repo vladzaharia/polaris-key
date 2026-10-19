@@ -19195,10 +19195,15 @@ paths:
                     type: array
                     items:
                       type: object
-                      required: [id, label]
+                      required: [id, label, sent]
                       properties:
                         id: { type: string }
                         label: { type: string }
+                        sent:
+                          {
+                            type: boolean,
+                            description: "False: defined, but nothing raises it yet.",
+                          }
                   max: { type: integer }
                   emailAvailable: { type: boolean }
         "401": { $ref: "#/components/responses/AdminUnauthorized" }
@@ -19346,8 +19351,8 @@ paths:
       tags: [admin]
       summary: Remove an alert destination
       description: >
-        Removes the destination and its sealed secret. Needs no step-up: it only narrows where
-        alerts go. Audited. Admin session cookie and CSRF header.
+        Removes the destination and its sealed secret. Needs a sign-in from the last 5 minutes
+        (`403 step_up_required`): removing destinations can silence alerts. Audited. Admin session cookie and CSRF header.
       security:
         - adminSession: []
       parameters:
@@ -19374,8 +19379,8 @@ paths:
       summary: Send a test alert to a destination
       description: >
         One test alert, delivered like a real one; the outcome (`ok`, `failed`, `refused`) is
-        recorded on the destination. At most one every 30 seconds per destination (`429
-        too_soon`). Audited. Admin session cookie and CSRF header.
+        recorded on the destination. At most one every 30 seconds and 10 an hour per scope (`429 too_soon`, `too_many_tests`),
+        and none to a product's email address (`422 test_unavailable`). Audited. Admin session cookie and CSRF header.
       security:
         - adminSession: []
       parameters:
@@ -19423,10 +19428,15 @@ paths:
                     type: array
                     items:
                       type: object
-                      required: [id, label]
+                      required: [id, label, sent]
                       properties:
                         id: { type: string }
                         label: { type: string }
+                        sent:
+                          {
+                            type: boolean,
+                            description: "False: defined, but nothing raises it yet.",
+                          }
                   max: { type: integer }
                   emailAvailable: { type: boolean }
                   inherited:
@@ -19580,8 +19590,8 @@ paths:
       tags: [admin]
       summary: Remove an alert destination
       description: >
-        Removes the destination and its sealed secret. Needs no step-up: it only narrows where
-        alerts go. Audited. Admin session cookie and CSRF header.
+        Removes the destination and its sealed secret. Needs a sign-in from the last 5 minutes
+        (`403 step_up_required`): removing destinations can silence alerts. Audited. Admin session cookie and CSRF header.
       security:
         - adminSession: []
       parameters:
@@ -19609,8 +19619,8 @@ paths:
       summary: Send a test alert to a destination
       description: >
         One test alert, delivered like a real one; the outcome (`ok`, `failed`, `refused`) is
-        recorded on the destination. At most one every 30 seconds per destination (`429
-        too_soon`). Audited. Admin session cookie and CSRF header.
+        recorded on the destination. At most one every 30 seconds and 10 an hour per scope (`429 too_soon`, `too_many_tests`),
+        and none to a product's email address (`422 test_unavailable`). Audited. Admin session cookie and CSRF header.
       security:
         - adminSession: []
       parameters:

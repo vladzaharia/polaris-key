@@ -364,6 +364,8 @@ describe("negative controls", () => {
         "POST /products/:slug/config/mint/:id/approve",
         "POST /platform/alerts",
         "PATCH /platform/alerts/:id",
+        "DELETE /platform/alerts/:id",
+        "DELETE /products/:slug/alerts/:id",
         "POST /products/:slug/alerts",
         "PATCH /products/:slug/alerts/:id",
       ].sort(),

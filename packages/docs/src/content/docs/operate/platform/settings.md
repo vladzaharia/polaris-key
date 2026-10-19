@@ -131,8 +131,10 @@ section (`?section=`), so a link opens there.
   Apple private relay: deploy-time, read-only. Below them, **Alert destinations**: where
   auto-halts, store and commerce problems, access changes and failing destinations are sent.
   A destination is an email address or an https webhook, with the alerts it takes. A product can
-  set its own under its Settings, which replace these for the alerts they take. Adding one needs
-  a sign-in from the last five minutes. A webhook must be a public https address: `http`, a port
+  set its own under its Settings, which replace these for the alerts they take. Adding, changing
+  or removing one needs a sign-in from the last five minutes. Today only auto-halt alerts (and a
+  failing destination's own alert) are sent; the other kinds are marked _Not sent yet_ and start
+  when the feature that raises them ships. A product's email address cannot be sent a test. A webhook must be a public https address: `http`, a port
   other than 443, an IP address, `plrs.im` and private names are refused, and a redirect is not
   followed. Its URL and signing secret are stored sealed. The secret (`whsec_…`) is shown once,
   when you add the webhook or issue a new one. Each alert is a JSON body signed in the

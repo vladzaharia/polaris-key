@@ -32,6 +32,16 @@ export const STEP_UP_ROUTES: readonly StepUpRoute[] = [
     why: "aims the platform's alerts at a new address or URL",
   },
   {
+    method: "DELETE",
+    path: "/platform/alerts/:id",
+    why: "removes an alert destination, which can silence alerts",
+  },
+  {
+    method: "DELETE",
+    path: "/products/:slug/alerts/:id",
+    why: "removes an alert destination, which can silence alerts",
+  },
+  {
     method: "PATCH",
     path: "/platform/alerts/:id",
     why: "retargets or re-secrets an alert destination",

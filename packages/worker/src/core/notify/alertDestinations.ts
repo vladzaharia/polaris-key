@@ -71,12 +71,20 @@ export const ALERT_KIND_LABELS: Readonly<Record<AlertKind, string>> = {
   notifications_failing: "A destination is failing",
 };
 
+/** The kinds something raises today; the rest are defined and deliverable but have no emit site yet. */
+export const ALERT_KINDS_SENT: readonly AlertKind[] = [
+  "auto_halt",
+  "notifications_failing",
+];
+
 export const PLATFORM_SCOPE = "_platform";
 export const MAX_DESTINATIONS_PER_SCOPE = 5;
 /** Consecutive failures before `notifications_failing` is raised. */
 export const FAILING_AFTER = 3;
-/** The least seconds between two test sends to one destination. */
+/** The least seconds between two test sends in one scope. */
 export const TEST_INTERVAL_SECONDS = 30;
+/** Test sends one scope may make in an hour. */
+export const TESTS_PER_HOUR = 10;
 const LABEL_MAX = 64;
 const FAILURES_CAP = 1000;
 
@@ -496,6 +504,7 @@ export async function updateDestination(
     return fail(422, "rotate_invalid", "Only a webhook has a secret.");
 
   let secret: string | undefined;
+  let issuedSecret = false;
   const statements = [
     {
       sql: `UPDATE notify_destinations
@@ -515,6 +524,12 @@ export async function updateDestination(
       ],
     },
   ];
+  // Every statement is guarded by the version the caller read, and the main UPDATE runs last,
+  // so a lost race writes nothing (not the sealed row, not the reset) and the batch is atomic.
+  const guard = `EXISTS (SELECT 1 FROM notify_destinations WHERE product = ? AND id = ? AND version = ?)`;
+  const guardParams = [scope, id, row.version];
+  const sealed: Array<{ sql: string; params: Array<string | number | null> }> =
+    [];
   if (row.kind === "webhook" && (retarget || rotate)) {
     const current = await openPayload(env, db, scope, id);
     if (!current && !retarget)
@@ -523,32 +538,47 @@ export async function updateDestination(
         "secret_unreadable",
         "Enter the URL again to repair it.",
       );
-    secret = rotate || !current ? newWebhookSecret() : current.secret;
+    // A fresh secret is issued on a rotate, or when the sealed row cannot be read (a retarget
+    // repairs it). Either way the caller gets it once.
+    const issued = rotate || !current;
+    secret = issued ? newWebhookSecret() : current!.secret;
+    issuedSecret = issued;
     const blob = await sealPayload(env, scope, id, {
       url: retarget ? target.stored : current!.url,
       secret,
     });
-    statements.push({
-      sql: `INSERT INTO notify_destination_secrets (product, destination_id, enc_secret_json) VALUES (?, ?, ?)
-            ON CONFLICT(product, destination_id) DO UPDATE SET enc_secret_json = excluded.enc_secret_json`,
-      params: [scope, id, blob],
-    });
+    sealed.push(
+      {
+        sql: `UPDATE notify_destination_secrets SET enc_secret_json = ?
+               WHERE product = ? AND destination_id = ? AND ${guard}`,
+        params: [blob, scope, id, ...guardParams],
+      },
+      {
+        sql: `INSERT INTO notify_destination_secrets (product, destination_id, enc_secret_json)
+              SELECT ?, ?, ? WHERE NOT EXISTS (SELECT 1 FROM notify_destination_secrets WHERE product = ? AND destination_id = ?)
+                AND ${guard}`,
+        params: [scope, id, blob, scope, id, ...guardParams],
+      },
+    );
     // A new URL is a new endpoint: it starts with a clean record.
     if (retarget)
-      statements.push({
-        sql: "UPDATE notify_destinations SET last_status = NULL, last_at = NULL, failures = 0 WHERE product = ? AND id = ?",
-        params: [scope, id],
+      sealed.push({
+        sql: `UPDATE notify_destinations SET last_status = NULL, last_at = NULL, failures = 0
+               WHERE product = ? AND id = ? AND version = ?`,
+        params: [...guardParams],
       });
   }
-  // The version guard is on the first statement only; run it alone first so a lost race writes
-  // nothing of the sealed row.
-  const changed = await db.runChanges(
-    statements[0]!.sql,
-    ...statements[0]!.params,
-  );
-  if (changed === 0)
+  const batch = [...sealed, ...statements];
+  let applied: boolean;
+  if (db.batchChanges) {
+    const counts = await db.batchChanges(batch);
+    applied = (counts[counts.length - 1] ?? 0) > 0;
+  } else {
+    await db.batch(batch);
+    applied = (await getRow(db, scope, id))?.version === row.version + 1;
+  }
+  if (!applied)
     return fail(409, "stale", "Changed elsewhere. Reload and try again.");
-  for (const s of statements.slice(1)) await db.run(s.sql, ...s.params);
   const after = view((await getRow(db, scope, id))!);
   await record(
     db,
@@ -566,7 +596,7 @@ export async function updateDestination(
   return {
     ok: true,
     destination: after,
-    ...(secret && rotate ? { secret } : {}),
+    ...(secret && issuedSecret ? { secret } : {}),
   };
 }
 
@@ -709,7 +739,14 @@ async function recordOutcome(
   row: Row,
   outcome: Outcome,
   now: number,
+  /** False for a test send: it records what happened but does not move the failure run. */
+  counts = true,
 ): Promise<number> {
+  const next = !counts
+    ? row.failures
+    : outcome === "ok"
+      ? 0
+      : Math.min(row.failures + 1, FAILURES_CAP);
   try {
     await db.run(
       `UPDATE notify_destinations
@@ -717,14 +754,14 @@ async function recordOutcome(
         WHERE product = ? AND id = ?`,
       outcome,
       now,
-      outcome === "ok" ? 0 : Math.min(row.failures + 1, FAILURES_CAP),
+      next,
       row.product,
       row.id,
     );
   } catch {
     // The record of an outcome never fails the alert.
   }
-  return outcome === "ok" ? 0 : row.failures + 1;
+  return next;
 }
 
 /** The destinations an alert goes to: the product's override for this kind, else the platform's. */
@@ -732,6 +769,8 @@ export async function resolveDestinations(
   db: Db,
   kind: AlertKind,
   product: string | null,
+  /** Stay inside this scope: no fall back to the platform's destinations. */
+  scopeOnly = false,
 ): Promise<Row[]> {
   const takes = (r: Row): boolean =>
     r.enabled === 1 && alertsOf(r.alerts_json).includes(kind);
@@ -742,7 +781,7 @@ export async function resolveDestinations(
         product,
       )
     ).filter(takes);
-    if (own.length > 0) return own;
+    if (own.length > 0 || scopeOnly) return own;
   }
   return (
     await db.all<Row>(
@@ -772,8 +811,14 @@ export async function raiseAlert(
   exclude: readonly string[] = [],
 ): Promise<RaiseResult> {
   try {
+    // A failing product-scope destination is reported to that product's own, never the platform's.
     const rows = (
-      await resolveDestinations(db, alert.kind, alert.product)
+      await resolveDestinations(
+        db,
+        alert.kind,
+        alert.product,
+        alert.kind === "notifications_failing" && alert.product !== null,
+      )
     ).filter((r) => !exclude.includes(r.id));
     if (rows.length === 0) return { destinations: 0, delivered: 0 };
     let productName: string | null = null;
@@ -784,23 +829,30 @@ export async function raiseAlert(
       );
       productName = displayValue(p?.name ?? alert.product, alert.product);
     }
-    let delivered = 0;
-    for (const row of rows) {
-      const outcome = await deliverOne(
-        env,
-        db,
-        row,
-        alert,
-        productName,
-        now,
-        deps,
-      );
-      const failures = await recordOutcome(db, row, outcome, now);
-      if (outcome === "ok") delivered++;
-      else if (
-        failures === FAILING_AFTER &&
-        alert.kind !== "notifications_failing"
-      ) {
+    // In parallel: one slow endpoint must not hold up the others (or the caller, which is the
+    // auto-halt tick). Each destination's own timeout bounds the whole.
+    const results = await Promise.all(
+      rows.map(async (row) => {
+        const outcome = await deliverOne(
+          env,
+          db,
+          row,
+          alert,
+          productName,
+          now,
+          deps,
+        );
+        return {
+          row,
+          outcome,
+          failures: await recordOutcome(db, row, outcome, now),
+        };
+      }),
+    );
+    const delivered = results.filter((r) => r.outcome === "ok").length;
+    if (alert.kind !== "notifications_failing") {
+      for (const { row, outcome, failures } of results) {
+        if (outcome === "ok" || failures !== FAILING_AFTER) continue;
         await raiseAlert(
           env,
           db,
@@ -837,6 +889,26 @@ export async function raiseAlert(
   }
 }
 
+/** The `at` of this scope's test sends since `since`, newest first. */
+async function recentTests(
+  db: Db,
+  scope: string,
+  since: number,
+): Promise<number[]> {
+  const rows =
+    scope === PLATFORM_SCOPE
+      ? await db.all<{ at: number }>(
+          "SELECT at FROM platform_audit WHERE action = 'notify.destination.test' AND at > ? ORDER BY at DESC LIMIT 50",
+          since,
+        )
+      : await db.all<{ at: number }>(
+          "SELECT at FROM audit WHERE product = ? AND action = 'notify.destination.test' AND at > ? ORDER BY at DESC LIMIT 50",
+          scope,
+          since,
+        );
+  return rows.map((r) => r.at);
+}
+
 /** Send one test alert to one destination. Throttled; the outcome is recorded like any other. */
 export async function testDestination(
   env: Env,
@@ -849,11 +921,27 @@ export async function testDestination(
 ): Promise<{ ok: true; outcome: Outcome } | Failure> {
   const row = await getRow(db, scope, id);
   if (!row) return fail(404, "not_found", "No such destination.");
-  if (row.last_at !== null && now - row.last_at < TEST_INTERVAL_SECONDS)
+  // A product's email address is unconfirmed: a test would let a product operator send
+  // platform-branded mail to anyone. Webhooks and the platform's own addresses are fine.
+  if (row.kind === "email" && scope !== PLATFORM_SCOPE)
+    return fail(
+      422,
+      "test_unavailable",
+      "A product's email address cannot be tested until it is confirmed.",
+    );
+  // Counted from the audit trail per scope, so deleting and re-adding a destination resets nothing.
+  const tests = await recentTests(db, scope, now - 3600);
+  if (tests.length > 0 && now - tests[0]! < TEST_INTERVAL_SECONDS)
     return fail(
       429,
       "too_soon",
       "Wait a few seconds before sending another test.",
+    );
+  if (tests.length >= TESTS_PER_HOUR)
+    return fail(
+      429,
+      "too_many_tests",
+      "Too many test alerts. Try again later.",
     );
   const alert: Alert = {
     kind: "notifications_failing",
@@ -864,7 +952,7 @@ export async function testDestination(
   };
   const productName = scope === PLATFORM_SCOPE ? null : scope;
   const outcome = await deliverOne(env, db, row, alert, productName, now, deps);
-  await recordOutcome(db, row, outcome, now);
+  await recordOutcome(db, row, outcome, now, false);
   await record(
     db,
     scope,

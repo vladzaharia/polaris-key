@@ -196,11 +196,15 @@ export interface BootOptions {
 export const ALERTS_NONE = {
   destinations: [],
   kinds: [
-    { id: "auto_halt", label: "Auto-halt tripped" },
-    { id: "store_connection", label: "Store connection failing" },
-    { id: "commerce", label: "Commerce problem" },
-    { id: "access_changed", label: "Access changed" },
-    { id: "notifications_failing", label: "A destination is failing" },
+    { id: "auto_halt", label: "Auto-halt tripped", sent: true },
+    { id: "store_connection", label: "Store connection failing", sent: false },
+    { id: "commerce", label: "Commerce problem", sent: false },
+    { id: "access_changed", label: "Access changed", sent: false },
+    {
+      id: "notifications_failing",
+      label: "A destination is failing",
+      sent: true,
+    },
   ],
   max: 5,
   emailAvailable: true,

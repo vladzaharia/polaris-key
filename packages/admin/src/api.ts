@@ -4406,7 +4406,7 @@ export interface AlertDestination {
 
 export interface AlertDestinationsView {
   destinations: AlertDestination[];
-  kinds: Array<{ id: AlertKindId; label: string }>;
+  kinds: Array<{ id: AlertKindId; label: string; sent: boolean }>;
   max: number;
   emailAvailable: boolean;
   /** Product scope: how many enabled platform destinations apply where this sets none. */

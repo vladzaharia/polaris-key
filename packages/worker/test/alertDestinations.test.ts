@@ -26,8 +26,12 @@ import {
 import {
   FAILING_AFTER,
   PLATFORM_SCOPE,
+  TESTS_PER_HOUR,
+  TEST_INTERVAL_SECONDS,
   createDestination,
+  deleteDestination,
   listDestinations,
+  updateDestination,
   raiseAlert,
   testDestination,
   type Alert,
@@ -713,5 +717,265 @@ describe("delivery", () => {
     expect(await db.all("SELECT * FROM notify_destination_secrets")).toEqual(
       [],
     );
+  });
+});
+
+describe("fix round: security review", () => {
+  it("removing a destination needs the step-up, at both scopes", async () => {
+    const env = adminEnv();
+    const db = makeTestDb();
+    await seedProduct(db, SLUG);
+    const auth = await session(env);
+    const plain = await session(env, false);
+    for (const base of [
+      "/api/platform/alerts",
+      `/api/products/${SLUG}/alerts`,
+    ]) {
+      const c = await call(env, db, auth, "POST", base, {
+        kind: "webhook",
+        target: URL_OK,
+        alerts: ["auto_halt"],
+      });
+      const id = c.json.destination.id as string;
+      const denied = await call(env, db, plain, "DELETE", `${base}/${id}`);
+      expect(denied.status).toBe(403);
+      expect(
+        (await db.all("SELECT * FROM notify_destinations WHERE id = ?", id))
+          .length,
+      ).toBe(1);
+      expect(
+        (await call(env, db, auth, "DELETE", `${base}/${id}`)).status,
+      ).toBe(200);
+    }
+  });
+
+  it("a retarget that repairs an unreadable sealed row returns the new secret once", async () => {
+    const env = adminEnv();
+    const db = makeTestDb();
+    const c = await createDestination(
+      env,
+      db,
+      PLATFORM_SCOPE,
+      ACTOR,
+      { kind: "webhook", target: URL_OK, alerts: ["auto_halt"] },
+      NOW,
+    );
+    if (!c.ok) throw new Error("setup");
+    await db.run(
+      "UPDATE notify_destination_secrets SET enc_secret_json = 'garbage'",
+    );
+    const r = await updateDestination(
+      env,
+      db,
+      PLATFORM_SCOPE,
+      ACTOR,
+      c.destination.id,
+      { target: "https://hooks.example.com/new" },
+      NOW,
+    );
+    expect(r.ok && r.secret).toMatch(/^whsec_/);
+    const plain = await updateDestination(
+      env,
+      db,
+      PLATFORM_SCOPE,
+      ACTOR,
+      c.destination.id,
+      { label: "x" },
+      NOW,
+    );
+    expect(plain.ok && plain.secret).toBeUndefined();
+  });
+
+  it("a stale update writes nothing of the sealed row", async () => {
+    const env = adminEnv();
+    const db = makeTestDb();
+    const c = await createDestination(
+      env,
+      db,
+      PLATFORM_SCOPE,
+      ACTOR,
+      { kind: "webhook", target: URL_OK, alerts: ["auto_halt"] },
+      NOW,
+    );
+    if (!c.ok) throw new Error("setup");
+    const before = await db.all(
+      "SELECT enc_secret_json FROM notify_destination_secrets",
+    );
+    const r = await updateDestination(
+      env,
+      db,
+      PLATFORM_SCOPE,
+      ACTOR,
+      c.destination.id,
+      { rotateSecret: true, expectedVersion: 99 },
+      NOW,
+    );
+    expect(r.ok).toBe(false);
+    await db.run("UPDATE notify_destinations SET version = 7");
+    const r2 = await updateDestination(
+      env,
+      db,
+      PLATFORM_SCOPE,
+      ACTOR,
+      c.destination.id,
+      { rotateSecret: true, expectedVersion: 1 },
+      NOW,
+    );
+    expect(r2.ok).toBe(false);
+    expect(
+      await db.all("SELECT enc_secret_json FROM notify_destination_secrets"),
+    ).toEqual(before);
+  });
+
+  it("test sends are capped per scope from the audit trail, and re-adding resets nothing", async () => {
+    const env = adminEnv();
+    const db = makeTestDb();
+    const deps = { fetchImpl: async () => new Response(null, { status: 200 }) };
+    let t = NOW;
+    let sent = 0;
+    for (let i = 0; i < TESTS_PER_HOUR + 2; i++) {
+      const c = await createDestination(
+        env,
+        db,
+        PLATFORM_SCOPE,
+        ACTOR,
+        { kind: "webhook", target: URL_OK, alerts: ["auto_halt"] },
+        t,
+      );
+      if (!c.ok) throw new Error("setup");
+      const r = await testDestination(
+        env,
+        db,
+        PLATFORM_SCOPE,
+        ACTOR,
+        c.destination.id,
+        t,
+        deps,
+      );
+      if (r.ok) sent++;
+      await deleteDestination(
+        db,
+        PLATFORM_SCOPE,
+        ACTOR,
+        c.destination.id,
+        undefined,
+        t,
+      );
+      t += TEST_INTERVAL_SECONDS + 1;
+    }
+    expect(sent).toBe(TESTS_PER_HOUR);
+  });
+
+  it("refuses a test to a product's email address", async () => {
+    const env = adminEnv();
+    const db = makeTestDb();
+    await seedProduct(db, SLUG);
+    const c = await createDestination(
+      env,
+      db,
+      SLUG,
+      ACTOR,
+      { kind: "email", target: "a@example.com", alerts: ["auto_halt"] },
+      NOW,
+    );
+    if (!c.ok) throw new Error("setup");
+    const r = await testDestination(
+      env,
+      db,
+      SLUG,
+      ACTOR,
+      c.destination.id,
+      NOW,
+      { sendEmail: async () => true },
+    );
+    expect(r).toMatchObject({ ok: false, status: 422 });
+  });
+
+  it("a test send does not count toward failures", async () => {
+    const env = adminEnv();
+    const db = makeTestDb();
+    const c = await createDestination(
+      env,
+      db,
+      PLATFORM_SCOPE,
+      ACTOR,
+      { kind: "webhook", target: URL_OK, alerts: ["auto_halt"] },
+      NOW,
+    );
+    if (!c.ok) throw new Error("setup");
+    await testDestination(
+      env,
+      db,
+      PLATFORM_SCOPE,
+      ACTOR,
+      c.destination.id,
+      NOW,
+      { fetchImpl: async () => new Response(null, { status: 500 }) },
+    );
+    const [row] = await listDestinations(db, PLATFORM_SCOPE);
+    expect(row).toMatchObject({ lastStatus: "failed", failures: 0 });
+  });
+
+  it("a product's failing destination is reported inside the product, not to the platform", async () => {
+    const env = adminEnv();
+    const db = makeTestDb();
+    await seedProduct(db, SLUG);
+    const mails: string[] = [];
+    const deps = {
+      sendEmail: async (to: string) => (mails.push(to), true),
+      fetchImpl: async () => new Response(null, { status: 500 }),
+    };
+    await createDestination(
+      env,
+      db,
+      PLATFORM_SCOPE,
+      ACTOR,
+      {
+        kind: "email",
+        target: "platform@example.com",
+        alerts: ["notifications_failing"],
+      },
+      NOW,
+    );
+    await createDestination(
+      env,
+      db,
+      SLUG,
+      ACTOR,
+      { kind: "webhook", target: URL_OK, alerts: ["auto_halt"] },
+      NOW,
+    );
+    for (let i = 0; i < FAILING_AFTER; i++)
+      await raiseAlert(env, db, alert(), NOW + i, deps);
+    expect(mails).toEqual([]);
+  });
+
+  it("delivers to destinations in parallel", async () => {
+    const env = adminEnv();
+    const db = makeTestDb();
+    for (let i = 0; i < 3; i++)
+      await createDestination(
+        env,
+        db,
+        PLATFORM_SCOPE,
+        ACTOR,
+        {
+          kind: "webhook",
+          target: `https://h${i}.example.com/x`,
+          alerts: ["auto_halt"],
+        },
+        NOW,
+      );
+    let inflight = 0;
+    let peak = 0;
+    await raiseAlert(env, db, alert({ product: null }), NOW, {
+      fetchImpl: async () => {
+        peak = Math.max(peak, ++inflight);
+        await new Promise((r) => setTimeout(r, 20));
+        inflight--;
+        return new Response(null, { status: 200 });
+      },
+    });
+    expect(peak).toBe(3);
   });
 });

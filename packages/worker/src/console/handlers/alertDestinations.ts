@@ -31,6 +31,7 @@ import { ErrorCode } from "../../core/errors.js";
 import {
   ALERT_KINDS,
   ALERT_KIND_LABELS,
+  ALERT_KINDS_SENT,
   MAX_DESTINATIONS_PER_SCOPE,
   PLATFORM_SCOPE,
   createDestination,
