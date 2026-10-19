@@ -17,9 +17,12 @@ import {
   ALT,
   BRAND,
   CUT_GRID,
+  LOCKER_BADGE_ALT,
   LOCKUP_TRIM,
   OPTICAL,
   type BadgeLayout,
+  type AnyMarkKind,
+  type LockerCut,
   type LockupKind,
   type MarkKind,
   type OpticalCut,
@@ -34,7 +37,23 @@ import {
   type BitColor,
   type MarkTheme,
 } from "./core.js";
-import type { KitPalette, KitRole, KitTemplate } from "./types.js";
+import {
+  LOCKER_BADGE_CANVAS,
+  lockerBadgeBody,
+  lockerBadgeTemplate,
+  lockerLockupBody,
+  lockerLockupTemplate,
+  lockerMarkParts,
+  refuseBit,
+  type LockerBadgeOptions,
+  type LockerLockupTheme,
+} from "./locker.js";
+import type {
+  KitPalette,
+  KitRole,
+  KitTemplate,
+  LockerTemplate,
+} from "./types.js";
 
 export { SPRITE };
 
@@ -65,8 +84,12 @@ const fmt = (n: number) => String(Math.round(n * 100) / 100);
 // ── The mark ────────────────────────────────────────────────────────────────────────────────
 
 export interface MarkOptions {
-  /** Pinned K (the platform) or the Star Cut (the Polaris Key Delivery service). Default "key". */
-  kind?: MarkKind;
+  /**
+   * Pinned K (the platform), the Star Cut (the Polaris Key Delivery service) or Polaris Locker.
+   * Default "key". Locker has two cuts (micro below 24 px, master above) and no bit: `signed`
+   * and any `bit` but "none" throw.
+   */
+  kind?: AnyMarkKind;
   /** Displayed size in CSS px; selects the optical cut. Default 24. */
   size?: number;
   /** Ground the mark sits on, or "mono" for one inherited ink (currentColor). Default "dark". */
@@ -133,10 +156,11 @@ function bitPaint(
 export function markParts(opts: MarkOptions = {}): {
   size: number;
   grid: number;
-  cut: OpticalCut;
+  cut: OpticalCut | LockerCut;
   parts: MarkPart[];
 } {
   const { kind = "key", size = 24, theme = "dark", signed = false, bit } = opts;
+  if (kind === "locker") return lockerMarkParts(opts);
   const cut = opticalCut(size);
   const grid = CUT_GRID[cut];
   const ink = theme === "mono" ? "currentColor" : BRAND.violet[theme];
@@ -215,10 +239,14 @@ export type LayoutTheme =
   | "light"
   | "mono"
   | "mono-black"
-  | "mono-white";
+  | "mono-white"
+  | "coral";
 
-const paletteFor = (theme: LayoutTheme): KitPalette =>
-  KIT_PALETTES[theme === "mono" ? "currentColor" : theme];
+const paletteFor = (theme: LayoutTheme): KitPalette => {
+  if (theme === "coral")
+    throw new RangeError("lockup: the coral ink is Locker's (kind: locker)");
+  return KIT_PALETTES[theme === "mono" ? "currentColor" : theme];
+};
 
 const groundOf = (theme: LayoutTheme): MarkTheme =>
   theme === "dark" || theme === "light" ? theme : "mono";
@@ -239,7 +267,10 @@ export interface LockupOptions {
    */
   kind?: LockupKind;
   layout?: LockupLayout;
-  /** dark / light grounds, "mono" for currentColor, or the kit's mono-black / mono-white ink. */
+  /**
+   * dark / light grounds, "mono" for currentColor, or the kit's mono-black / mono-white ink.
+   * "coral" is Locker's one-ink coral (kind "locker" only).
+   */
   theme?: LayoutTheme;
   /** Rendered height in CSS px. Default: the kit's natural size. Width follows the aspect ratio. */
   height?: number;
@@ -262,8 +293,32 @@ export interface LockupOptions {
 }
 
 /** The lockup's geometry at a given height: size, viewBox, the glyph's rendered edge and whether the bit shows. */
-export function lockupMetrics(opts: LockupOptions = {}) {
+export function lockupMetrics(opts: LockupOptions = {}): {
+  template: KitTemplate | LockerTemplate;
+  view: { x: number; y: number; width: number; height: number };
+  width: number;
+  height: number;
+  glyphPx: number;
+  cut: OpticalCut | LockerCut;
+  bit: boolean;
+} {
   const { kind = "key", layout = "horizontal" } = opts;
+  if (kind === "locker") {
+    refuseBit("lockup", opts);
+    if (opts.trim)
+      throw new RangeError("lockup: trim does not apply to the Locker lockup");
+    const t = lockerLockupTemplate(layout);
+    const height = opts.height ?? t.height;
+    return {
+      template: t,
+      view: { x: 0, y: 0, width: t.width, height: t.height },
+      width: (t.width * height) / t.height,
+      height,
+      glyphPx: height,
+      cut: "master",
+      bit: false,
+    };
+  }
   const t = LOCKUP_TEMPLATES[kind][layout];
   if (opts.trim && layout !== "horizontal")
     throw new RangeError(
@@ -293,6 +348,10 @@ export function lockupMetrics(opts: LockupOptions = {}) {
 export function lockupInner(opts: LockupOptions = {}): string {
   const theme = opts.theme ?? "dark";
   const m = lockupMetrics(opts);
+  if (opts.kind === "locker") {
+    const name = opts.title ?? m.template.title;
+    return `${name ? `<title>${escapeHtml(name)}</title>` : ""}${lockerLockupBody(opts.layout ?? "horizontal", theme as LockerLockupTheme)}`;
+  }
   const palette = paletteFor(theme);
   let body: string = m.template.body;
   const goldPath = /<path fill="\{gold\}" (d="[^"]+")\/>/;
@@ -314,6 +373,35 @@ export function lockupSvg(opts: LockupOptions = {}): string {
   const title = opts.title ?? m.template.title;
   const head = a11y(title);
   return `<svg xmlns="${SVG_NS}" width="${fmt(m.width)}" height="${fmt(m.height)}" viewBox="${m.view.x} ${m.view.y} ${m.view.width} ${m.view.height}"${head.attrs}>${lockupInner(opts)}</svg>`;
+}
+
+// ── Polaris Locker badges ───────────────────────────────────────────────────────────────────
+
+export type { LockerBadgeOptions } from "./locker.js";
+export {
+  lockerKitBadgeSvg,
+  lockerKitLockupSvg,
+  lockerKitMarkSvg,
+} from "./locker.js";
+
+/** The inner markup of a Locker badge (the title is the action, not the artwork's own name). */
+export function badgeInner(opts: LockerBadgeOptions): string {
+  const title = opts.title ?? LOCKER_BADGE_ALT[opts.kind];
+  return `${title ? `<title>${escapeHtml(title)}</title>` : ""}${lockerBadgeBody(opts.kind, opts.treatment, opts.theme)}`;
+}
+
+/**
+ * A Polaris Locker badge ("Open in" or "Available on") as an SVG string. The kit's badges label
+ * themselves only "Polaris Locker", so the accessible name carries the action. The 320 × 104
+ * canvas keeps its aspect and is never cropped.
+ */
+export function badgeSvg(opts: LockerBadgeOptions): string {
+  if (!(opts.kind in LOCKER_BADGE_ALT))
+    throw new RangeError(`badge: unknown kind ${String(opts.kind)}`);
+  const t = lockerBadgeTemplate(opts.kind, opts.treatment);
+  const width = opts.width ?? LOCKER_BADGE_CANVAS.width;
+  const head = a11y(opts.title ?? LOCKER_BADGE_ALT[opts.kind]);
+  return `<svg xmlns="${SVG_NS}" width="${fmt(width)}" height="${fmt((width * t.height) / t.width)}" viewBox="0 0 ${t.width} ${t.height}"${head.attrs}>${badgeInner(opts)}</svg>`;
 }
 
 /** One of the kit's lockup files (kit/02-lockups), byte for byte. */

@@ -17,7 +17,7 @@
 //   * neutrals carry the kit's own cool ground tint (#060912 / #f6f8ff / #48536b / #dbe4ff are
 //     all tinted at OKLCH hue ~267–273) at low chroma; that tint is the kit's, not a blue accent.
 
-import { BRAND } from "./primitives.js";
+import { BRAND, LOCKER } from "./primitives.js";
 
 /** An OKLCH design value: lightness 0..1, chroma, hue in degrees. */
 export interface OklchSpec {
@@ -304,6 +304,33 @@ export const ACCENTS: Record<AccentFamily, Record<Theme, AccentSpec>> = {
     },
   },
 };
+
+// ── Polaris Locker ──────────────────────────────────────────────────────────────────────────
+
+/**
+ * Locker's accent (BRAND.md §15), a subbrand and not a service: it never enters ACCENTS,
+ * SERVICE_IDS or tools/services.json. Dark coral is the kit's, exact. Light coral is the kit's
+ * #c44438 for the mark and the focus ring (4.68 / 4.96 / 4.28:1 on page / raised / sunken, so
+ * >= 3:1 as UI), and `fg` keeps its hue and chroma with the lightness lowered until text clears
+ * 4.5:1 on `sunken` and on `subtle`. `on` is the kit's `onAccent` (7.71 / 4.96:1 on the fill).
+ * Coral is too close to danger (ΔE00 8.9 dark, 5.8 light) to be a status or a primary fill:
+ * the primary action stays neutral ink (D9).
+ */
+export const LOCKER_ACCENT: Record<Theme, AccentSpec> = {
+  dark: {
+    solid: LOCKER.accent.dark,
+    fg: LOCKER.accent.dark,
+    on: LOCKER.onAccent.dark,
+  },
+  light: {
+    solid: LOCKER.accent.light,
+    fg: oklch(0.529, 0.1657, 28.74),
+    on: LOCKER.onAccent.light,
+  },
+};
+
+/** The selected-nav fill: coral at 12 % over the page ground, in both themes. */
+export const LOCKER_SUBTLE_ALPHA = 0.12;
 
 // ── Neutrals ────────────────────────────────────────────────────────────────────────────────
 

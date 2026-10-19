@@ -212,6 +212,10 @@
   --pk-brand-text: #ffffff;
   --pk-brand-muted: #dbe4ff;
   --pk-brand-rose: #ff6fa6;
+  --pk-locker-accent: #ff7869;
+  --pk-locker-fg: #ff7869;
+  --pk-locker-on: #060912;
+  --pk-locker-subtle: #24161c;
   --pk-service-core: #9a5cff;
   --pk-service-core-fg: #9a5cff;
   --pk-service-core-on: #060912;
@@ -362,6 +366,10 @@
     --pk-brand-text: #060912;
     --pk-brand-muted: #48536b;
     --pk-brand-rose: #e0348a;
+    --pk-locker-accent: #c44438;
+    --pk-locker-fg: #b8382e;
+    --pk-locker-on: #ffffff;
+    --pk-locker-subtle: #f0e2e7;
     --pk-service-core: #7a2fff;
     --pk-service-core-fg: #7a2fff;
     --pk-service-core-on: #ffffff;
@@ -512,6 +520,10 @@
   --pk-brand-text: #060912;
   --pk-brand-muted: #48536b;
   --pk-brand-rose: #e0348a;
+  --pk-locker-accent: #c44438;
+  --pk-locker-fg: #b8382e;
+  --pk-locker-on: #ffffff;
+  --pk-locker-subtle: #f0e2e7;
   --pk-service-core: #7a2fff;
   --pk-service-core-fg: #7a2fff;
   --pk-service-core-on: #ffffff;
@@ -595,6 +607,18 @@
   --pk-state-context-edge: var(--pk-state-core-context-edge);
   --pk-section-bit: none;
   --pk-section-bit-display: none;
+}
+
+/* Polaris Locker (BRAND.md §15): identity, the selected-nav marker, focus and links. Coral is
+   never a status and never a primary fill; --pk-action stays neutral ink. */
+[data-brand="locker"] {
+  --pk-accent: var(--pk-locker-accent);
+  --pk-accent-fg: var(--pk-locker-fg);
+  --pk-accent-on: var(--pk-locker-on);
+  --pk-accent-subtle: var(--pk-locker-subtle);
+  --pk-focus: var(--pk-locker-accent);
+  --pk-state-ring: var(--pk-locker-accent);
+  --pk-state-selected-fill: var(--pk-locker-subtle);
 }
 
 [data-service="license"] {

@@ -7,6 +7,8 @@ import {
   ACCENTS,
   ACTION,
   ACTION_STEPS,
+  LOCKER_ACCENT,
+  LOCKER_SUBTLE_ALPHA,
   HOVER_ALPHA,
   SERVICE_FAMILY,
   SERVICE_IDS,
@@ -205,4 +207,24 @@ export function resolveTokens(): Record<Theme, ResolvedTheme> {
     Theme,
     ResolvedTheme
   >;
+}
+
+/** Locker's accent (`solid` is `--pk-locker-accent`), resolved per theme. */
+export function resolveLocker(): Record<Theme, ResolvedAccent> {
+  const out = {} as Record<Theme, ResolvedAccent>;
+  for (const t of THEMES) {
+    const a = LOCKER_ACCENT[t];
+    const solid = resolveColor(a.solid);
+    out[t] = {
+      solid,
+      fg: resolveColor(a.fg),
+      on: resolveColor(a.on),
+      subtle: mixOver(
+        solid,
+        LOCKER_SUBTLE_ALPHA,
+        resolveColor(NEUTRALS[t].surface.page),
+      ),
+    };
+  }
+  return out;
 }

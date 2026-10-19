@@ -10,13 +10,19 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { contrastRatio } from "../src/color.js";
-import { SERVICE_ACCENTS, THEME_TOKENS } from "../src/generated/tokens.js";
+import {
+  LOCKER_TOKENS,
+  SERVICE_ACCENTS,
+  THEME_TOKENS,
+} from "../src/generated/tokens.js";
+import { opticalCut } from "../src/marks/core.js";
 import {
   serviceIconSvg,
   serviceIconSymbolId,
   serviceIconTileSvg,
 } from "../src/marks/icons.js";
 import {
+  badgeSvg,
   escapeHtml,
   lockupSvg,
   markSvg,
@@ -130,6 +136,51 @@ function marks(): string {
         `<div class="ground" data-theme="${t}"><h3>For ${t} grounds (signed where allowed)</h3><div class="row">${row(t, "key")}</div><div class="row">${row(t, "update")}</div><div class="row mono" style="color:var(--pk-text-strong)">${row("mono", "key")}</div></div>`,
     )
     .join("");
+}
+
+/** Polaris Locker (BRAND.md §15): the tokens, the two-cut check at the guide's sizes, lockups,
+ *  badges and the coral roles in a live `data-brand="locker"` sample. */
+function lockerSection(): string {
+  const sizes = [16, 24, 32, 48, 96];
+  const marksRow = (theme: "dark" | "light" | "mono") =>
+    sizes
+      .map(
+        (size) =>
+          `<figure>${markSvg({ kind: "locker", size, theme, title: "Polaris Locker" })}<figcaption>${size} px · ${opticalCut(size, "locker")}</figcaption></figure>`,
+      )
+      .join("");
+  const panel = (theme: Theme) => {
+    const l = LOCKER_TOKENS[theme];
+    const t = THEME_TOKENS[theme];
+    const chip = (name: string, hex: string, against: string, min: string) =>
+      swatch(`locker.${name}`, hex, `${ratio(hex, against)}:1 · ${min}`);
+    const lay = (["horizontal", "compact", "stacked"] as const)
+      .map((layout) =>
+        lockupSvg({
+          kind: "locker",
+          layout,
+          theme,
+          height: layout === "stacked" ? 96 : 56,
+        }),
+      )
+      .join("");
+    const badges = (["locker-open-in", "locker-available-on"] as const)
+      .map((kind) =>
+        (["transparent", "sticker", "outline"] as const)
+          .map((treatment) => badgeSvg({ kind, treatment, theme, width: 240 }))
+          .join(""),
+      )
+      .join("");
+    return `<section class="panel" data-theme="${theme}" data-brand="locker"><h3>${theme}</h3>
+<div class="grid">${chip("accent", l.solid, t.surface.sunken, "UI, 3:1 on sunken")}${chip("fg", l.fg, t.surface.sunken, "text, 4.5:1 on sunken")}${chip("on", l.on, l.solid, "text on a coral fill")}${chip("subtle", l.subtle, t.surface.page, "selected-nav fill")}</div>
+<div class="row"><span class="ground">${marksRow(theme)}</span><span class="ground" style="color:var(--pk-text-strong)">${marksRow("mono")}</span></div>
+<div class="row">${lay}</div>
+<div class="row">${badges}</div>
+<nav class="loc-nav" aria-label="Sample"><a href="#locker" aria-current="page">Files</a><a href="#locker">Shared</a><a href="#locker">Activity</a></nav>
+<p>Body text with a <a href="#locker">coral link</a>. Tab to the buttons to see the coral focus ring.</p>
+<div class="row"><button type="button" class="primary">Upload</button><button type="button">Cancel</button><button type="button" class="danger">Delete</button></div></section>`;
+  };
+  return `<p>Coral is identity, the selected-nav marker, focus and links. It is never a status and never a primary fill: the primary action stays neutral ink (D9). <code>data-brand="locker"</code> re-points <code>--pk-accent*</code> and <code>--pk-focus</code>.</p><div class="themes">${THEMES.map(panel).join("")}</div>`;
 }
 
 function sectionBitDemo(): string {
@@ -367,6 +418,13 @@ const html = `<!doctype html>
   .icon-row .ink { color: var(--pk-accent-fg); }
   .icon-row.neutral .ink { color: var(--pk-text-strong); }
   .ink { color: var(--pk-text-strong); }
+  .loc-nav { display: flex; gap: var(--pk-space-1); margin: var(--pk-space-3) 0; }
+  .loc-nav a { color: var(--pk-text-default); text-decoration: none; padding: var(--pk-space-1) var(--pk-space-3); border-radius: var(--pk-radius-md); border-left: 3px solid transparent; }
+  .loc-nav a[aria-current="page"] { background: var(--pk-accent-subtle); border-left-color: var(--pk-accent); color: var(--pk-text-strong); }
+  [data-brand="locker"] p a, .loc-nav a:focus-visible { color: var(--pk-accent-fg); }
+  .loc-nav a:focus-visible, [data-brand="locker"] a:focus-visible { outline: 2px solid var(--pk-focus); outline-offset: 2px; }
+  button.primary { background: var(--pk-action); color: var(--pk-action-on); border-color: var(--pk-action); }
+  button.danger { color: var(--pk-danger); border-color: var(--pk-danger-border); }
 </style>
 </head>
 <body>
@@ -400,6 +458,9 @@ ${marks()}
 
 <h2>Lockups</h2>
 ${lockups()}
+
+<h2>Polaris Locker</h2>
+${lockerSection()}
 
 <h2>Trimmed lockup (console header)</h2>
 ${trimmedLockups()}

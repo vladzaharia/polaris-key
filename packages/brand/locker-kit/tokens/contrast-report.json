@@ -1,0 +1,32 @@
+[
+  {
+    "pair": "Coral / dark",
+    "foreground": "#ff7869",
+    "background": "#060912",
+    "ratio": 7.714
+  },
+  {
+    "pair": "Deep coral / light",
+    "foreground": "#c44438",
+    "background": "#f6f8ff",
+    "ratio": 4.677
+  },
+  {
+    "pair": "White / deep coral",
+    "foreground": "#ffffff",
+    "background": "#c44438",
+    "ratio": 4.963
+  },
+  {
+    "pair": "Dark / coral",
+    "foreground": "#060912",
+    "background": "#ff7869",
+    "ratio": 7.714
+  },
+  {
+    "pair": "Body / dark",
+    "foreground": "#dbe4ff",
+    "background": "#060912",
+    "ratio": 15.682
+  }
+]

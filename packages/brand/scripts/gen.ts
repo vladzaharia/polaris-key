@@ -27,6 +27,10 @@
 //                                       "Polaris Key Delivery" (scripts/assets.ts)
 //   social/{key,delivery}/portrait-*.svg  the 1080 x 1350 portrait cards (the square on a taller
 //                                       canvas)
+//   css/locker.css                      the Locker kit's tokens/locker.css, verbatim, for plrs.im
+//   src/generated/locker.ts             the Locker marks' geometry, lockup and badge templates
+//   web/locker/*                        the Locker kit's web icons (bytes copied), the manifest
+//                                       (id, start_url, scope /) and head snippet
 //   GENERATED.sha256                    SHA-256 of every text asset above, the lockups, the CSS and
 //                                       tokens.json, for a consumer to pin this package's revision
 //   sdks/godot/addons/polaris_key/ui/theme/brand_tokens_generated.gd    GDScript constants
@@ -89,7 +93,11 @@ import {
   OPTICAL,
   POWERED_BY,
 } from "../src/tokens/primitives.js";
-import { resolveTokens, type ResolvedTheme } from "../src/tokens/resolve.js";
+import {
+  resolveLocker,
+  resolveTokens,
+  type ResolvedTheme,
+} from "../src/tokens/resolve.js";
 import {
   ELEVATION,
   FONT,
@@ -129,6 +137,12 @@ import {
   proveCards,
 } from "./assets.js";
 import { DELIVERY_TITLE, deliveryLockups } from "./delivery.js";
+import {
+  LOCKER_LAYOUTS,
+  loadLocker,
+  lockerHeadSnippet,
+  lockerManifest,
+} from "./locker.js";
 import { serviceIconFile, serviceIconSprite } from "../src/marks/icons.js";
 import { SERVICE_ICON_IDS } from "../src/tokens/icons.js";
 import {
@@ -179,6 +193,7 @@ const banner = (prefix: string) =>
 const cssBanner = `/*\n${BANNER_LINES.map((l) => (l ? ` * ${l}` : " *")).join("\n")}\n */`;
 
 const T = resolveTokens();
+const LK = resolveLocker();
 
 // ── Per-section values ──────────────────────────────────────────────────────────────────────
 
@@ -251,6 +266,11 @@ function themeVars(theme: Theme): [string, string][] {
   v.push(["brand-text", BRAND.text[theme]]);
   v.push(["brand-muted", BRAND.muted[theme]]);
   v.push(["brand-rose", BRAND.rose[theme]]);
+  // Polaris Locker (BRAND.md §15): a subbrand namespace, never a service.
+  v.push(["locker-accent", LK[theme].solid]);
+  v.push(["locker-fg", LK[theme].fg]);
+  v.push(["locker-on", LK[theme].on]);
+  v.push(["locker-subtle", LK[theme].subtle]);
   for (const id of CSS_IDS) {
     const a = serviceAccent(theme, id);
     v.push([`service-${id}`, a.solid]);
@@ -325,6 +345,24 @@ function scaleVars(): [string, string][] {
   return v;
 }
 
+/**
+ * The Locker scope: `data-brand="locker"` re-points the core context at coral. It sits after the
+ * core block and before the service blocks, so a \`data-service\` on the same element, or inside,
+ * still wins (B17). The section bit stays off (Locker has no section bit); the checked-control
+ * and hover tokens keep the core's.
+ */
+const lockerScope = `/* Polaris Locker (BRAND.md §15): identity, the selected-nav marker, focus and links. Coral is
+   never a status and never a primary fill; --pk-action stays neutral ink. */
+[data-brand="locker"] {
+  --pk-accent: var(--pk-locker-accent);
+  --pk-accent-fg: var(--pk-locker-fg);
+  --pk-accent-on: var(--pk-locker-on);
+  --pk-accent-subtle: var(--pk-locker-subtle);
+  --pk-focus: var(--pk-locker-accent);
+  --pk-state-ring: var(--pk-locker-accent);
+  --pk-state-selected-fill: var(--pk-locker-subtle);
+}`;
+
 function tokensCss(): string {
   const kitPrimitives = [
     ["polaris-key-violet-dark", BRAND.violet.dark],
@@ -397,6 +435,8 @@ ${decl(themeVars("light"))}
 [data-service="core"] {
 ${sectionDecl("core")}
 }
+
+${lockerScope}
 ${SERVICE_IDS.filter((id) => id !== "core")
   .map(
     (id) =>
@@ -564,6 +604,8 @@ function themeCss(): string {
     colors.push([`signed${k}`, `signed${k}`]);
   for (const k of ["violet", "gold", "star", "page", "text", "muted", "rose"])
     colors.push([`brand-${k}`, `brand-${k}`]);
+  for (const k of ["accent", "fg", "on", "subtle"])
+    colors.push([`locker-${k}`, `locker-${k}`]);
   const lines: string[] = [];
   for (const [tw, pk] of colors)
     lines.push(`  --color-${tw}: var(--pk-${pk});`);
@@ -655,6 +697,7 @@ function tokenModel() {
     clearSpaceRatio: CLEAR_SPACE_RATIO,
     poweredBy: POWERED_BY,
     themes: T,
+    locker: LK,
     services,
     serviceFamily: SERVICE_FAMILY,
     serviceMark: SERVICE_MARK,
@@ -692,6 +735,12 @@ import type { ServiceId, Theme } from "../tokens/source.js";
 /** Every semantic colour, resolved to hex, per theme. */
 export const THEME_TOKENS = ${JSON.stringify(m.themes)} as const satisfies Record<Theme, ResolvedTheme>;
 
+/** Polaris Locker's accent per theme (solid, fg, on, subtle); a subbrand, not a section. */
+export const LOCKER_TOKENS = ${JSON.stringify(m.locker)} as const satisfies Record<
+  Theme,
+  { solid: string; fg: string; on: string; subtle: string }
+>;
+
 /**
  * Per theme, each section's accent (solid, fg, on, subtle) and its section-bit colour; bit is
  * null on core, which draws no bit.
@@ -707,6 +756,49 @@ export const SERVICE_ACCENTS = ${JSON.stringify(m.services)} as const satisfies 
 }
 
 const KIT = loadKit(join(PKG, "kit"));
+const LOCKER_DIR = join(PKG, "locker-kit");
+const LOCKER_KIT = loadLocker(LOCKER_DIR);
+
+function lockerTs(): string {
+  const k = LOCKER_KIT;
+  const lockupPalettes = k.lockupPalettes.horizontal;
+  for (const layout of LOCKER_LAYOUTS)
+    if (
+      JSON.stringify(k.lockupPalettes[layout]) !==
+      JSON.stringify(lockupPalettes)
+    )
+      throw new Error(
+        `locker: the ${layout} lockup palettes differ from horizontal`,
+      );
+  return `${banner("//")}
+
+import type { LockerTemplate } from "../marks/types.js";
+
+/** locker-kit/logos/svg/locker-mark-dark-*.svg: per cut, [grid, [role, path][]]. */
+export const LOCKER_GEOMETRY = ${JSON.stringify(k.geometry)} as const;
+
+/** The body and star fill each mark file uses, per cut and variant. */
+export const LOCKER_MARK_PALETTES = ${JSON.stringify(k.markPalettes)} as const;
+
+/** locker-kit/logos/svg/locker-<layout>-*.svg as colour templates (the kit's own artwork). */
+export const LOCKER_LOCKUP_TEMPLATES: Record<
+  "horizontal" | "compact" | "stacked",
+  LockerTemplate
+> = ${JSON.stringify(k.lockups)};
+
+/** The colour each role takes in each lockup variant. */
+export const LOCKER_LOCKUP_PALETTES = ${JSON.stringify(lockupPalettes)} as const;
+
+/** locker-kit/badges/locker-<kind>-*.svg as colour templates, per kind and treatment. */
+export const LOCKER_BADGE_TEMPLATES: Record<
+  "open-in" | "available-on",
+  Record<"transparent" | "sticker" | "outline", LockerTemplate>
+> = ${JSON.stringify(k.badges)};
+
+/** The colour each role takes in each badge treatment and theme. */
+export const LOCKER_BADGE_PALETTES = ${JSON.stringify(k.badgePalettes)} as const;
+`;
+}
 
 /** The "Polaris Key Delivery" lockups, set from the bundled Rubik Bold (scripts/delivery.ts). */
 const DELIVERY = deliveryLockups(join(PKG, "kit"), KIT.lockups);
@@ -1462,6 +1554,11 @@ type Copy = { path: string } & (
   | { pkgPath: string; kitPath?: never }
 );
 
+/** The Locker kit's web icons, reused byte for byte (the manifest and head snippet are ours). */
+const LOCKER_WEB_COPIES = readdirSync(join(PKG, "locker-kit", "web"))
+  .filter((f) => !["site.webmanifest", "README.md"].includes(f))
+  .sort();
+
 const PYTHON_UI = "sdks/python/src/polaris_key/ui";
 const VARIABLE_FONTS: [string, string][] = [
   ["Rubik-Variable.ttf", "polaris_rubik_variable.ttf"],
@@ -1503,6 +1600,10 @@ const COPIES: Copy[] = [
   ...DELIVERY_WEB_COPIES.map((f) => ({
     path: `packages/brand/web/delivery/${f}`,
     kitPath: `04-web/update/${f}`,
+  })),
+  ...LOCKER_WEB_COPIES.map((f) => ({
+    path: `packages/brand/web/locker/${f}`,
+    pkgPath: `locker-kit/web/${f}`,
   })),
   // The Python wheel's fonts (polaris_key/ui/fonts), for the Qt kit.
   ...VARIABLE_FONTS.map(([ttf]) => ({
@@ -1645,6 +1746,23 @@ const TARGETS: Target[] = [
     parser: "css",
   },
   { path: "packages/brand/tokens.json", render: tokensJson, parser: "json" },
+  {
+    path: "packages/brand/css/locker.css",
+    render: () => readFileSync(join(LOCKER_DIR, "tokens/locker.css"), "utf8"),
+  },
+  {
+    path: "packages/brand/src/generated/locker.ts",
+    render: lockerTs,
+    parser: "typescript",
+  },
+  {
+    path: "packages/brand/web/locker/site.webmanifest",
+    render: () => lockerManifest(LOCKER_DIR),
+  },
+  {
+    path: "packages/brand/web/locker/head-snippet.html",
+    render: lockerHeadSnippet,
+  },
   {
     path: "packages/brand/src/generated/tokens.ts",
     render: tokensTs,
@@ -1870,6 +1988,7 @@ const MANIFEST_PREFIXES = [
   "web/delivery/",
   "social/delivery/",
   "social/key/portrait-",
+  "web/locker/",
   "icons/services/",
   "css/",
   "tokens.json",
@@ -1887,6 +2006,17 @@ function hashManifest(out: Map<string, string>): string {
     if (rel === path || !MANIFEST_PREFIXES.some((p) => rel.startsWith(p)))
       continue;
     lines.push(`${createHash("sha256").update(content).digest("hex")}  ${rel}`);
+  }
+  // The Locker kit copy (vendor text files, read from disk: they are inputs, not outputs).
+  const walk = (dir: string): string[] =>
+    readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
+      e.isDirectory() ? walk(join(dir, e.name)) : [join(dir, e.name)],
+    );
+  for (const abs of walk(join(PKG, "locker-kit"))) {
+    if (!/\.(svg|css|json)$/.test(abs)) continue;
+    lines.push(
+      `${createHash("sha256").update(readFileSync(abs)).digest("hex")}  ${relative(PKG, abs)}`,
+    );
   }
   lines.sort((a, b) => (a.slice(66) < b.slice(66) ? -1 : 1));
   return `${lines.join("\n")}\n`;

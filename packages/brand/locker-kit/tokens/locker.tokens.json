@@ -1,0 +1,32 @@
+{
+  "version": "1.0.0",
+  "brand": "Polaris Locker",
+  "concept": "A2 compact bookends",
+  "dark": {
+    "accent": "#ff7869",
+    "onAccent": "#060912",
+    "page": "#060912",
+    "surface": "#0d111b",
+    "text": "#dbe4ff",
+    "muted": "#b5bed3"
+  },
+  "light": {
+    "accent": "#c44438",
+    "onAccent": "#ffffff",
+    "page": "#f6f8ff",
+    "surface": "#ffffff",
+    "text": "#262d40",
+    "muted": "#48536b"
+  },
+  "font": {
+    "family": "Rubik",
+    "body": 400,
+    "control": 500,
+    "heading": 600
+  },
+  "clearSpace": "one quarter of visible glyph height",
+  "opticalCut": {
+    "micro": "16-23 CSS px",
+    "master": "24 CSS px and above"
+  }
+}

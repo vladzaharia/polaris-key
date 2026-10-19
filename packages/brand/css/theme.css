@@ -111,6 +111,10 @@
   --color-brand-text: var(--pk-brand-text);
   --color-brand-muted: var(--pk-brand-muted);
   --color-brand-rose: var(--pk-brand-rose);
+  --color-locker-accent: var(--pk-locker-accent);
+  --color-locker-fg: var(--pk-locker-fg);
+  --color-locker-on: var(--pk-locker-on);
+  --color-locker-subtle: var(--pk-locker-subtle);
 
   --font-sans: var(--pk-font-sans);
   --font-mono: var(--pk-font-mono);

@@ -7,6 +7,7 @@
 //   @polaris-key/brand/accent     the product accent resolver (UI-KITS.md §3.3)
 //   @polaris-key/brand/tokens.css, /theme.css (Tailwind v4), /kit.css, /fonts.css, /tokens.json
 //   @polaris-key/brand/web/{key,update}/…, /games/…, /social/…, /kit/… (the launch kit files)
+//   @polaris-key/brand/locker.css, /marks|lockups|badges|social|app-icons|web/locker/… (Polaris Locker)
 //
 // The written spec is docs/design/BRAND.md; the UI kits' is docs/design/UI-KITS.md.
 
@@ -32,7 +33,11 @@ export type {
   ResolvedStatus,
   ResolvedTheme,
 } from "./tokens/resolve.js";
-export { SERVICE_ACCENTS, THEME_TOKENS } from "./generated/tokens.js";
+export {
+  LOCKER_TOKENS,
+  SERVICE_ACCENTS,
+  THEME_TOKENS,
+} from "./generated/tokens.js";
 export {
   badgeSize,
   bitVisible,

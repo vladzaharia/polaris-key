@@ -22,7 +22,8 @@ Contents: [1. Kit rules](#1-kit-rules) · [2. Using the package](#2-using-the-pa
 [9. Accessibility](#9-accessibility) · [10. Do and don't](#10-do-and-dont) ·
 [11. Migration from the console's `--pk-*` tokens](#11-migration-from-the-consoles---pk--tokens) ·
 [12. Native consumers](#12-native-consumers) · [13. Changing the system](#13-changing-the-system) ·
-[14. Brand expression and marketing](#14-brand-expression-and-marketing)
+[14. Brand expression and marketing](#14-brand-expression-and-marketing) ·
+[15. Polaris Locker](#15-polaris-locker)
 
 ---
 
@@ -31,12 +32,13 @@ Contents: [1. Kit rules](#1-kit-rules) · [2. Using the package](#2-using-the-pa
 Restated from the kit, with the source of each. These are not negotiable in product work; the
 only owner-approved extension is [the section bit](#6-the-section-bit).
 
-### 1.1 Two marks
+### 1.1 Three marks
 
 | Mark         | Identifies                                                                                                                                        | Alt text               |
 | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- |
 | **Pinned K** | The platform, "Polaris Key". The default mark has no terminal bit (§6); the kit's gold bit marks signed artwork only.                             | `Polaris Key`          |
 | **Star Cut** | The service mark **Polaris Key Delivery**: the delivery family as a whole (the bytes host, Distribution, Update). Stationary star, open geometry. | `Polaris Key Delivery` |
+| **Bookends** | The subbrand **Polaris Locker**: what customers see (§15). Two cuts, no bit, no gold. Not a service.                                              | `Polaris Locker`       |
 
 Source: `kit/Brand-Guide.pdf` p.1; `kit/README.md` ("General use"). The Star Cut covering the whole
 delivery family (not only the `update` slug) is an owner direction of 2026-10-03, and so is its
@@ -208,6 +210,10 @@ data-theme="light" on <html>             → light  (whatever the OS says)
 - **Sections**: `data-service="core|license|config|release|distribution|update|identity|sync"` on, or
   inside, the themed element re-points `--pk-accent*` and `--pk-section-bit`. No attribute means
   core.
+- **Brand**: `data-brand="locker"` on, or above, the themed element re-points `--pk-accent*`,
+  `--pk-focus`, `--pk-state-ring` and `--pk-state-selected-fill` at Polaris Locker's coral (§15).
+  Put it on the same element as `data-theme`, or below it. A `data-service` on the same element, or
+  inside, still wins. Locker is a brand, never a section: no `data-service="locker"`.
 
 ---
 
@@ -593,7 +599,8 @@ consistent with the ¼-glyph rule for the outward edges).
 
 | Surface                                                                                                                                         | Mark                                                                  | Favicon / PWA identity            |
 | ----------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- | --------------------------------- |
-| Admin console, customer portal, docs site, Worker pages on key.plrs.im, emails                                                                  | Pinned K                                                              | `web/key/`                        |
+| Admin console, docs site, operator emails                                                                                                       | Pinned K                                                              | `web/key/`                        |
+| Customer portal, licence card, Worker customer pages, customer emails (once the customer host moves, plans/LOCKER.md)                           | Bookends (Polaris Locker, §15)                                        | `web/locker/`                     |
 | Delivery surfaces: dl.plrs.im (and dl-staging, dl-dev), updater prompts, feed pages, the Distribution and Update console sections' empty states | Star Cut                                                              | `web/update/` (on the bytes host) |
 | Console header (service sections, including Distribution/Update; core pages show no bit)                                                        | Pinned K with the section bit                                         | `web/key/`                        |
 | Service navigation, diagrams, marketing menus                                                                                                   | Service icon in the section accent (`fg`), beside the name (§1.1)     | n/a                               |
@@ -1119,6 +1126,7 @@ entry points; body copy uses glossary words, and no marketing name becomes a pro
 | Cloud Sync     | `sync`                       | Cloud Sync                      | Cloud Sync            |
 | Commerce       | `commerce` (CM-29)           | Commerce                        | Commerce              |
 | Packs (update) | none: a capability of Update | none: under Releases            | Content Packs         |
+| Locker         | none: a subbrand, not a slug | none: the customer-facing brand | Polaris Locker        |
 
 Eight slugs, nine marketing entry points, six console features. Ship builds is one console
 identity (Package glyph, Release cyan); the marketing identities (Delivery, Update tangerine, Packs
@@ -1145,3 +1153,58 @@ Service icon set and tile (§1.1, §7.8); Delivery-named marks, web manifest and
 console header (48 px glyph; replaces live "Polaris Key" text); the `GENERATED.sha256` manifest;
 the `action-neutral` role, the display scale and tracking tokens, and the 400/500/600 weight
 reconciliation (UK-58).
+
+---
+
+## 15. Polaris Locker
+
+Polaris Locker is the customer-facing brand: the portal, the licence card, customer pages and
+customer mail. It is a **subbrand**, not a service: no slug, no `data-service`, no entry in
+`SERVICE_ACCENTS` or `tools/services.json`. Source: the Polaris Locker Launch Kit v1.0 (19 October
+2026), copied into `packages/brand/locker-kit/` and checked against its `manifest.json` by
+`test/locker-fidelity.test.ts`. Left out because the package already has them: `fonts/` (variable
+Rubik), and two copies of the Key guide. Its guide is `locker-kit/docs/Polaris-Locker-Brand-Guide-v1.pdf`.
+
+**Mark.** The Bookends: two blocks and a four-point star, flat, no bit and no gold. Two cuts, by
+displayed size and never DPR: **micro** below 24 CSS px (16-unit grid), **master** from 24 px (128).
+`opticalCut(size, "locker")` picks one; the app, `<img>` and favicon sizes follow the kit's exports.
+Clear space is a quarter of the glyph height. The lockups (horizontal, compact, stacked in dark,
+light, white, black and coral) are outlined Rubik and used as supplied. The badges keep their
+320 × 104 canvas, never cropped; their art says only "Polaris Locker", so the `<img alt>` carries
+"Open in Polaris Locker" or "Available on Polaris Locker". "Open in" needs a real destination and
+"Available on" real availability.
+
+**Tokens.** Grounds are Key's (`page`, `surface`, `text`, `muted` equal `surface.page`,
+`surface.raised`, `text.default`, `text.muted`); only the accent is new.
+
+| Token                | Dark                      | Light                                                       | Use                                      |
+| -------------------- | ------------------------- | ----------------------------------------------------------- | ---------------------------------------- |
+| `--pk-locker-accent` | `#ff7869`                 | `#c44438`                                                   | mark, selected-nav marker, focus (≥ 3:1) |
+| `--pk-locker-fg`     | `#ff7869`                 | `#b8382e` (kit hue and chroma, lightness lowered for 4.5:1) | links and text                           |
+| `--pk-locker-on`     | `#060912`                 | `#ffffff`                                                   | text on a coral fill (7.71, 4.96:1)      |
+| `--pk-locker-subtle` | coral at 12 % over `page` | the same                                                    | selected-nav fill                        |
+
+Tailwind: `--color-locker-{accent,fg,on,subtle}`. `css/locker.css` is the kit's `locker.css`
+verbatim, for plrs.im. `[data-brand="locker"]` is described in §3.
+
+**Where coral goes: identity, the selected-nav marker, focus and links.** Never a status and never
+a primary fill. The primary action stays neutral ink (§4.7, D9): light coral is ΔE00 5.8 from the
+danger fill, so a coral button would read as destructive. Measured with `src/color.ts`
+(`test/locker.test.ts` pins them, so a palette change reopens D9):
+
+| Coral vs               | Dark `#ff7869`     | Light `#c44438`    | Floor (§5.1)        |
+| ---------------------- | ------------------ | ------------------ | ------------------- |
+| danger `fg`            | ΔE00 8.9           | ΔE00 5.8           | 17.5 for any accent |
+| Update tangerine       | ΔE00 20.1          | ΔE00 16.3          | 17.5                |
+| rose (ΔEOK)            | 0.091              | 0.131              | 0.12                |
+| page / raised / sunken | 7.71 / 7.32 / 7.96 | 4.68 / 4.96 / 4.28 | 4.5 text, 3 UI      |
+
+**API.** `markSvg`, `lockupSvg`, `<PolarisMark>` and `<PolarisLockup>` take `kind: "locker"` and
+throw on `signed` or any `bit` but `"none"`. `lockupSvg` also takes `theme: "coral"` for Locker.
+`badgeSvg({ kind: "locker-open-in" | "locker-available-on", treatment, theme })` draws the badges.
+Files: `@polaris-key/brand/{marks,lockups,badges,social,app-icons,web}/locker/…` and `/locker.css`.
+The preview shows Locker at 16, 24, 32, 48 and 96 px in both themes and mono (the guide's p.18
+check). There is no native, Python, C# or Node-CLI output: the kits are host-owned.
+
+**Not yet.** The checked-control and hover tokens keep the core violet inside `data-brand="locker"`;
+the `accent-as-status` lint (UK-55) must learn `--pk-locker-*`.

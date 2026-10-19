@@ -20,5 +20,7 @@ conformance/corpus/v2/content/blobs/** binary
 # @polaris-key/brand's launch-kit copy is checksum-tested byte for byte (kit/SHA256SUMS.txt) and its
 # fonts are binaries: no checkout may rewrite line endings in either.
 packages/brand/kit/** binary
+# The Locker kit copy is checksum-tested against its manifest.json the same way.
+packages/brand/locker-kit/** binary
 packages/brand/fonts/*.woff2 binary
 packages/brand/preview/proofs/*.png binary

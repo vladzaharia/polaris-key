@@ -24,10 +24,23 @@ export const MARKS = {
 export type MarkKind = keyof typeof MARKS;
 
 /**
+ * Polaris Locker, the customer-facing subbrand (docs/design/BRAND.md §15): a third mark with its
+ * own two-cut rule, outside the kit's Key / Star Cut pair. Source: locker-kit/ (the Locker
+ * launch kit), checked by test/locker-fidelity.test.ts.
+ */
+export const LOCKER_MARK = {
+  name: "Compact bookends",
+  alt: "Polaris Locker",
+} as const;
+
+/** Every mark `markSvg`, `lockupSvg` and the React components draw. */
+export type AnyMarkKind = MarkKind | "locker";
+
+/**
  * Which lockup: the kit's two (`key`, and `update`, the kit's "Polaris Key Update" original),
  * or `delivery`, the Star Cut with the "Polaris Key Delivery" wordmark our surfaces use.
  */
-export type LockupKind = MarkKind | "delivery";
+export type LockupKind = AnyMarkKind | "delivery";
 
 /** Ground the artwork sits on. */
 export type Ground = "dark" | "light";
@@ -59,6 +72,28 @@ export const OPTICAL = {
   serviceMax: 32,
   /** Gold appears on the K's terminal bit only when the rendered glyph is at least this size. */
   goldMinimumGlyphSize: 48,
+} as const;
+
+/**
+ * Locker has two cuts, not three (locker-kit/README.md: "Use the micro source below 24 CSS px").
+ * `micro` is drawn on a 16-unit grid, `master` on a 128-unit grid.
+ */
+export const LOCKER_OPTICAL = { microBelow: 24 } as const;
+export const LOCKER_CUT_GRID = { micro: 16, master: 128 } as const;
+export type LockerCut = keyof typeof LOCKER_CUT_GRID;
+
+/**
+ * The Locker palette, verbatim from locker-kit/tokens/locker.tokens.json. Grounds equal Key's
+ * (`page`, `surface`, `text`, `muted`); only `accent` and `onAccent` are new. Locker coral is an
+ * identity colour, never a status and never a primary fill (BRAND.md §15, D9).
+ */
+export const LOCKER = {
+  accent: { dark: "#ff7869", light: "#c44438" },
+  onAccent: { dark: "#060912", light: "#ffffff" },
+  page: { dark: "#060912", light: "#f6f8ff" },
+  surface: { dark: "#0d111b", light: "#ffffff" },
+  text: { dark: "#dbe4ff", light: "#262d40" },
+  muted: { dark: "#b5bed3", light: "#48536b" },
 } as const;
 
 /** Grid of each optical cut, in SVG user units. */
@@ -100,6 +135,12 @@ export const ALT = {
   update: "Polaris Key Update",
   delivery: "Polaris Key Delivery",
   poweredBy: "Powered by Polaris Key",
+} as const;
+
+/** Locker badges name themselves only "Polaris Locker"; the `<img alt>` carries the action. */
+export const LOCKER_BADGE_ALT = {
+  "locker-open-in": "Open in Polaris Locker",
+  "locker-available-on": "Available on Polaris Locker",
 } as const;
 
 /** Typefaces the kit sets its type in. */

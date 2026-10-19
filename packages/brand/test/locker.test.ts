@@ -1,0 +1,328 @@
+// Polaris Locker (docs/design/BRAND.md §15): the coral tokens and their measured facts, the
+// namespace (a subbrand, never a service), the two-cut mark rule, and the API's refusals.
+
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { describe, expect, it } from "vitest";
+
+import { contrastRatio, deltaE2000, deltaEOK } from "../src/color.js";
+import {
+  LOCKER_TOKENS,
+  SERVICE_ACCENTS,
+  THEME_TOKENS,
+} from "../src/generated/tokens.js";
+import { PolarisLockup, PolarisMark } from "../src/react.js";
+import { badgeSvg, lockupSvg, markSvg } from "../src/svg.js";
+import { opticalCut } from "../src/marks/core.js";
+import { BRAND, LOCKER, LOCKER_BADGE_ALT } from "../src/tokens/primitives.js";
+import { resolveLocker } from "../src/tokens/resolve.js";
+import { SERVICE_IDS, THEMES } from "../src/tokens/source.js";
+import { renderToStaticMarkup } from "react-dom/server";
+import { createElement } from "react";
+
+const PKG = join(import.meta.dirname, "..");
+const read = (p: string) => readFileSync(join(PKG, p), "utf8");
+
+describe("the grounds are Key's; only accent and onAccent are new", () => {
+  it.each(THEMES)("%s", (theme) => {
+    const t = THEME_TOKENS[theme];
+    expect(LOCKER.page[theme]).toBe(t.surface.page);
+    expect(LOCKER.surface[theme]).toBe(t.surface.raised);
+    expect(LOCKER.text[theme]).toBe(t.text.default);
+    expect(LOCKER.muted[theme]).toBe(t.text.muted);
+  });
+});
+
+describe("generated tokens", () => {
+  it("LOCKER_TOKENS equals the resolver", () => {
+    expect(LOCKER_TOKENS).toEqual(resolveLocker());
+  });
+  it.each(THEMES)(
+    "%s: solid and on are the kit's accent and onAccent",
+    (theme) => {
+      expect(LOCKER_TOKENS[theme].solid).toBe(LOCKER.accent[theme]);
+      expect(LOCKER_TOKENS[theme].on).toBe(LOCKER.onAccent[theme]);
+    },
+  );
+  it("css/tokens.css carries --pk-locker-* per theme and the data-brand scope", () => {
+    const css = read("css/tokens.css");
+    for (const k of ["accent", "fg", "on", "subtle"] as const)
+      for (const theme of THEMES)
+        expect(css).toContain(
+          `--pk-locker-${k}: ${LOCKER_TOKENS[theme][k === "accent" ? "solid" : k]};`,
+        );
+    const scope = /\[data-brand="locker"\] \{([^}]*)\}/.exec(css)![1]!;
+    for (const v of [
+      "--pk-accent:",
+      "--pk-accent-fg:",
+      "--pk-accent-on:",
+      "--pk-accent-subtle:",
+      "--pk-focus:",
+    ])
+      expect(scope).toContain(v);
+    expect(scope).not.toMatch(/--pk-action/);
+    // a data-service still wins: its block comes after the Locker scope
+    expect(css.indexOf('[data-brand="locker"]')).toBeLessThan(
+      css.indexOf('[data-service="license"]'),
+    );
+  });
+  it("css/theme.css maps --color-locker-*", () => {
+    const css = read("css/theme.css");
+    for (const k of ["accent", "fg", "on", "subtle"])
+      expect(css).toContain(`--color-locker-${k}: var(--pk-locker-${k});`);
+  });
+  it("tokens.json carries locker", () => {
+    expect(JSON.parse(read("tokens.json")).locker).toEqual(LOCKER_TOKENS);
+  });
+});
+
+describe("contrast (BRAND §5.1)", () => {
+  for (const theme of THEMES) {
+    const t = THEME_TOKENS[theme];
+    const l = LOCKER_TOKENS[theme];
+    const surfaces = Object.entries(t.surface);
+    it.each(surfaces)(
+      `${theme}: accent is >= 3:1 as UI on surface.%s`,
+      (_, s) => {
+        expect(contrastRatio(l.solid, s)).toBeGreaterThanOrEqual(3);
+      },
+    );
+    it.each([...surfaces, ["subtle", l.subtle] as const])(
+      `${theme}: fg is >= 4.5:1 as text on %s`,
+      (_, s) => {
+        expect(contrastRatio(l.fg, s)).toBeGreaterThanOrEqual(4.5);
+      },
+    );
+    it(`${theme}: on is >= 4.5:1 on a coral fill`, () => {
+      expect(contrastRatio(l.on, l.solid)).toBeGreaterThanOrEqual(4.5);
+    });
+    it(`${theme}: the ring is >= 3:1 on the selected-nav fill`, () => {
+      expect(contrastRatio(l.solid, l.subtle)).toBeGreaterThanOrEqual(3);
+    });
+  }
+  it("the measured values (kit contrast-report.json)", () => {
+    expect(contrastRatio(LOCKER.accent.dark, BRAND.page.dark)).toBeCloseTo(
+      7.714,
+      2,
+    );
+    expect(contrastRatio(LOCKER.accent.light, BRAND.page.light)).toBeCloseTo(
+      4.677,
+      2,
+    );
+    expect(
+      contrastRatio(LOCKER.onAccent.light, LOCKER.accent.light),
+    ).toBeCloseTo(4.963, 2);
+  });
+});
+
+// §0.5 of plans/LOCKER.md: coral cannot be a section accent. Pinned so a palette change reopens
+// D9 (coral stays identity, nav marker, focus and links; the primary action stays neutral ink).
+describe("why coral is not a section accent or a status (D9)", () => {
+  const near = (a: number, b: number, d = 0.1) => Math.abs(a - b) <= d;
+  it.each(THEMES)("%s: the distances", (theme) => {
+    const c = LOCKER.accent[theme];
+    const t = THEME_TOKENS[theme];
+    const expected = {
+      dark: { danger: 8.9, update: 20.1, rose: 0.091 },
+      light: { danger: 5.8, update: 16.3, rose: 0.131 },
+    }[theme];
+    expect(near(deltaE2000(c, t.status.danger.fg), expected.danger)).toBe(true);
+    expect(near(deltaE2000(c, t.accent.tangerine.solid), expected.update)).toBe(
+      true,
+    );
+    expect(near(deltaEOK(c, BRAND.rose[theme]), expected.rose, 0.001)).toBe(
+      true,
+    );
+  });
+  it("it is under the 17.5 accent floor against danger in both themes", () => {
+    for (const theme of THEMES)
+      expect(
+        deltaE2000(LOCKER.accent[theme], THEME_TOKENS[theme].status.danger.fg),
+      ).toBeLessThan(17.5);
+  });
+  it("light coral is under 4.5:1 on surface.sunken (so fg is a lower lightness)", () => {
+    expect(
+      contrastRatio(LOCKER.accent.light, THEME_TOKENS.light.surface.sunken),
+    ).toBeLessThan(4.5);
+    expect(LOCKER_TOKENS.light.fg).not.toBe(LOCKER.accent.light);
+  });
+  it("the neutral action role is untouched (primary stays ink)", () => {
+    expect(THEME_TOKENS.dark.action.fill).toBe(BRAND.page.light);
+    expect(THEME_TOKENS.light.action.fill).toBe(BRAND.page.dark);
+  });
+});
+
+describe("Locker is a subbrand, not a service", () => {
+  it("is not a section id, accent or services.json slug", () => {
+    expect(SERVICE_IDS as readonly string[]).not.toContain("locker");
+    for (const theme of THEMES)
+      expect(Object.keys(SERVICE_ACCENTS[theme])).not.toContain("locker");
+    const table = JSON.parse(
+      readFileSync(join(PKG, "../../tools/services.json"), "utf8"),
+    ) as {
+      services: { slug: string }[];
+    };
+    expect(table.services.map((s) => s.slug)).not.toContain("locker");
+  });
+});
+
+describe("two optical cuts", () => {
+  it.each([
+    [16, "micro"],
+    [20, "micro"],
+    [23.9, "micro"],
+    [24, "master"],
+    [32, "master"],
+    [96, "master"],
+  ] as const)("size %s uses the %s cut", (size, cut) => {
+    expect(opticalCut(size, "locker")).toBe(cut);
+    const svg = markSvg({ kind: "locker", size });
+    expect(svg).toContain(
+      cut === "micro" ? 'viewBox="0 0 16 16"' : 'viewBox="0 0 128 128"',
+    );
+  });
+  it("the Key rule is unchanged", () => {
+    expect(opticalCut(23)).toBe("favicon");
+    expect(opticalCut(24)).toBe("service");
+    expect(opticalCut(40)).toBe("display");
+  });
+});
+
+describe("the API", () => {
+  it("refuses a bit and the signed gold", () => {
+    expect(() => markSvg({ kind: "locker", signed: true })).toThrow(/no bit/);
+    expect(() => markSvg({ kind: "locker", bit: "gold" })).toThrow(/no bit/);
+    expect(() => markSvg({ kind: "locker", bit: "license" })).toThrow(/no bit/);
+    expect(() => lockupSvg({ kind: "locker", signed: true })).toThrow(/no bit/);
+    expect(() => lockupSvg({ kind: "locker", bit: "section" })).toThrow(
+      /no bit/,
+    );
+    expect(() =>
+      renderToStaticMarkup(
+        createElement(PolarisMark, { kind: "locker", bit: "gold" }),
+      ),
+    ).toThrow();
+    expect(markSvg({ kind: "locker", bit: "none" })).toContain("<path");
+  });
+  it("draws coral on dark and deep coral on light; mono follows the text", () => {
+    expect(markSvg({ kind: "locker", size: 48 })).toContain('fill="#ff7869"');
+    expect(markSvg({ kind: "locker", size: 48, theme: "light" })).toContain(
+      'fill="#c44438"',
+    );
+    expect(markSvg({ kind: "locker", size: 48, theme: "mono" })).toContain(
+      'fill="currentColor"',
+    );
+  });
+  it("names the mark only when asked", () => {
+    expect(markSvg({ kind: "locker" })).toContain('aria-hidden="true"');
+    expect(markSvg({ kind: "locker", title: "Polaris Locker" })).toContain(
+      'aria-label="Polaris Locker"',
+    );
+  });
+  it("lockups render in every layout and ink; the React and string markup agree", () => {
+    for (const layout of ["horizontal", "compact", "stacked"] as const)
+      for (const theme of [
+        "dark",
+        "light",
+        "mono",
+        "mono-black",
+        "mono-white",
+        "coral",
+      ] as const) {
+        const svg = lockupSvg({ kind: "locker", layout, theme });
+        expect(svg).toContain('aria-label="Polaris Locker"');
+        expect(
+          renderToStaticMarkup(
+            createElement(PolarisLockup, { kind: "locker", layout, theme }),
+          ),
+        ).toBe(svg);
+      }
+  });
+  it("the coral ink is Locker's alone, and trim does not apply", () => {
+    expect(() => lockupSvg({ theme: "coral" })).toThrow();
+    expect(() => lockupSvg({ kind: "locker", trim: true })).toThrow();
+  });
+  it("the React mark equals the string mark", () => {
+    for (const size of [16, 32, 64])
+      expect(
+        renderToStaticMarkup(
+          createElement(PolarisMark, { kind: "locker", size, title: "x" }),
+        ),
+      ).toBe(markSvg({ kind: "locker", size, title: "x" }));
+  });
+  it("badges carry the action in the accessible name and keep the 320 x 104 canvas", () => {
+    for (const kind of ["locker-open-in", "locker-available-on"] as const) {
+      const svg = badgeSvg({ kind });
+      expect(svg).toContain(`aria-label="${LOCKER_BADGE_ALT[kind]}"`);
+      expect(svg).toContain('viewBox="0 0 320 104"');
+    }
+    expect(badgeSvg({ kind: "locker-open-in", width: 160 })).toContain(
+      'height="52"',
+    );
+    expect(() => badgeSvg({ kind: "locker-nope" as never })).toThrow();
+  });
+});
+
+describe("exports", () => {
+  const pkg = JSON.parse(read("package.json")) as {
+    exports: Record<string, string>;
+    files: string[];
+  };
+  /** Node's rule: the longest matching pattern key; every `*` in the target takes the match. */
+  const resolve = (spec: string) => {
+    if (pkg.exports[spec]) return pkg.exports[spec];
+    const best = Object.keys(pkg.exports)
+      .filter((k) => k.includes("*") && spec.startsWith(k.split("*")[0]!))
+      .sort((a, b) => b.length - a.length)[0]!;
+    return pkg.exports[best]!.replaceAll(
+      "*",
+      spec.slice(best.split("*")[0]!.length),
+    );
+  };
+  it.each([
+    ["./locker.css", "css/locker.css"],
+    [
+      "./marks/locker/dark-micro.svg",
+      "locker-kit/logos/svg/locker-mark-dark-micro.svg",
+    ],
+    [
+      "./marks/locker/coral-master.svg",
+      "locker-kit/logos/svg/locker-mark-coral-master.svg",
+    ],
+    [
+      "./lockups/locker/horizontal-dark.svg",
+      "locker-kit/logos/svg/locker-horizontal-dark.svg",
+    ],
+    [
+      "./badges/locker/open-in-dark-sticker.svg",
+      "locker-kit/badges/locker-open-in-dark-sticker.svg",
+    ],
+    [
+      "./social/locker/social-square.svg",
+      "locker-kit/social/social-square.svg",
+    ],
+    [
+      "./app-icons/locker/platform/locker.icns",
+      "locker-kit/icons/platform/locker.icns",
+    ],
+    ["./web/locker/site.webmanifest", "web/locker/site.webmanifest"],
+    ["./locker-kit/README.md", "locker-kit/README.md"],
+  ])("%s resolves to a shipped file", (spec, file) => {
+    const target = resolve(spec)!.replace(/^\.\//, "");
+    expect(target).toBe(file);
+    expect(() => readFileSync(join(PKG, target))).not.toThrow();
+    expect(
+      pkg.files.some((f) => target === f || target.startsWith(`${f}/`)),
+    ).toBe(true);
+  });
+  it("GENERATED.sha256 pins the Locker files", () => {
+    const sums = read("GENERATED.sha256");
+    for (const f of [
+      "css/locker.css",
+      "web/locker/site.webmanifest",
+      "locker-kit/tokens/locker.css",
+      "locker-kit/logos/svg/locker-mark-dark-micro.svg",
+    ])
+      expect(sums).toContain(`  ${f}\n`);
+  });
+});
