@@ -80,6 +80,11 @@ const INTERNAL: Record<string, string[]> = {
     "MIGRATION_LEASE_SECONDS",
     "MIGRATION_REPORT_MAX_AGE_SECONDS",
   ],
+  "core/notify/alertDestinations.ts": [
+    "MAX_DESTINATIONS_PER_SCOPE",
+    "TEST_INTERVAL_SECONDS",
+  ],
+  "core/notify/alertWebhook.ts": ["WEBHOOK_TIMEOUT_MS"],
   "core/notify/emailLimits.ts": ["EMAIL_LOCKOUT_WINDOW_SECONDS"],
   "core/notify/emailSender.ts": ["SENDER_APP_NAME_MAX"],
   "core/notify/templates.ts": ["NOTICE_VALUE_MAX"],

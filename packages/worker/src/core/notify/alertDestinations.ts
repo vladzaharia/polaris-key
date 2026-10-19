@@ -859,7 +859,8 @@ export async function testDestination(
     kind: "notifications_failing",
     product: scope === PLATFORM_SCOPE ? null : scope,
     title: "Test alert",
-    detail: "This is a test from the Polaris Key console. Nothing needs doing.",
+    detail:
+      "This is a test sent from the Polaris Key admin. Nothing needs doing.",
   };
   const productName = scope === PLATFORM_SCOPE ? null : scope;
   const outcome = await deliverOne(env, db, row, alert, productName, now, deps);

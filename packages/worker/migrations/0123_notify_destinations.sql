@@ -18,13 +18,15 @@
 -- `pkey:v2:<product>:notify-destination:<id>`), so a read of the destinations never touches it
 -- and the KEK sweep re-seals it with the other sealed tables. It is never read back to a caller.
 --
+-- `product` leads the primary key like every product-scoped table (test/attack/R11-data.test.ts).
+--
 -- Expand-only. Core owns both tables (`TABLE_OWNERS.core`). Down: scripts/rollback/0123_notify_destinations.down.sql.
 -- The `CREATE TABLE` keeps one column per line and closes on its own line: the docs data-model
 -- generator parses this file literally.
 
 CREATE TABLE IF NOT EXISTS notify_destinations (
-  id TEXT PRIMARY KEY,
   product TEXT NOT NULL,
+  id TEXT NOT NULL,
   kind TEXT NOT NULL CHECK (kind IN ('email', 'webhook')),
   target TEXT NOT NULL,
   label TEXT,
@@ -37,10 +39,9 @@ CREATE TABLE IF NOT EXISTS notify_destinations (
   updated_by TEXT NOT NULL,
   last_status TEXT,
   last_at INTEGER,
-  failures INTEGER NOT NULL DEFAULT 0
+  failures INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (product, id)
 );
-
-CREATE INDEX IF NOT EXISTS idx_notify_destinations_product ON notify_destinations(product);
 
 CREATE TABLE IF NOT EXISTS notify_destination_secrets (
   product TEXT NOT NULL,
