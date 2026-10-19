@@ -76,7 +76,8 @@ import { useProduct } from "../../../data/hooks.js";
 import { mutate } from "../../../data/mutations.js";
 import { Link } from "../../../router.js";
 import { r } from "../../../routes.js";
-import { AlertDestinations } from "../../notify/AlertDestinations.js";
+import { ProductAlertsSection } from "../../notify/ProductAlertsSection.js";
+import { listOf } from "../model/listOf.js";
 import { deviceLimitIssue } from "../../../../lib/deviceLimit.js";
 import {
   DangerAction,
@@ -96,13 +97,6 @@ const CLAIM_OF_FIELD: Partial<Record<keyof Draft, ClaimKey>> = {
   defaultDeviceLimit: "license.defaults.deviceLimit",
   webOrigins: "core.web.origins",
 };
-
-/** "a", "a and b", "a, b and c". */
-function listOf(items: string[]): string {
-  return items.length <= 1
-    ? (items[0] ?? "")
-    : `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
-}
 
 interface Draft extends Record<string, unknown> {
   name: string;
@@ -432,16 +426,7 @@ function SettingsBody({
 
       <RepositorySection slug={slug} product={product} />
       <StorageSection slug={slug} />
-      <SettingsSection
-        id="settings-alerts"
-        title="Alerts"
-        description="Where this product's alerts go, instead of the platform's. Auto-halts, store and commerce problems, access changes."
-      >
-        <AlertDestinations
-          scope={{ kind: "product", slug }}
-          returnHash={r.settings(slug)}
-        />
-      </SettingsSection>
+      <ProductAlertsSection slug={slug} />
 
       <DangerZone>
         <DangerAction
