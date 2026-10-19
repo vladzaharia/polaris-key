@@ -33,8 +33,8 @@ copy.
 
 ## Registering a product
 
-**New product** is a short wizard at `#/products/new`: two steps from a repository, two from
-scratch. **A GitHub repository** and **From scratch** sit above the first step (`?via=github|manual`
+**New product** is a short wizard at `#/products/new`: a repository takes you through Repository and Check,
+scratch through Name it and What it's for. **A GitHub repository** and **From scratch** sit above the first step (`?via=github|manual`
 preselects one); the step is in the URL, so a refresh resumes it. The draft is kept for the tab, and
 leaving with a draft asks first. **Cancel** is on the title line.
 
@@ -55,7 +55,7 @@ hyphens) until you edit it, and the server checks it after a short pause. A take
 offers a free one to take with one click (**Use tonebox-app**). A reserved or malformed slug is
 refused before anything is sent. The slug is permanent: it is used in keys and URLs.
 
-**What it's for.** The six features of the Services page as checkboxes: **Licensing** and **Ship
+**What it's for.** The features of the Services page as checkboxes: **Licensing** and **Ship
 builds** start on and marked Recommended. Licensing carries **Start with a free tier** (on). Ship
 builds asks for the platforms, which the storefronts follow. A feature that needs another brings
 it, and the plan under the choices says so ("Managed config comes with Cloud Sync"). **I'll choose
@@ -77,9 +77,9 @@ instead of registering it twice). With the app not installed, the step offers **
 and you can still paste a repository.
 
 **Check.** Nothing is written. Polaris Key reads `.pkey/` on the default branch and shows the
-product as it will be: name, slug and whether it is available, the services, the catalog's size,
-the platforms and the secrets to set after creating. Under **Polaris Key will set this up** are the
-rows the create writes. Press **Create** to register the product from it: name, slug, services,
+product as it would be created: name, slug and whether it is available, the services, the catalog's size,
+the platforms and the secrets to set after creating. The plan under the details names the rows
+the create writes. Press **Create** to register the product from it: name, slug, services,
 tiers, profiles, OIDC configuration, release coordinates, edge-mint recipes, all of it. The name and
 slug come from `.pkey/product`, so the wizard does not ask for them.
 
