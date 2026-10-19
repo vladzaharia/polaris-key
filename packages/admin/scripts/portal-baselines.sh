@@ -9,6 +9,8 @@
 #
 #   scripts/portal-baselines.sh            re-record every linux baseline
 #   scripts/portal-baselines.sh --check    compare against the committed set, as CI does
+#   PORTAL_FILTER=product-token scripts/portal-baselines.sh   only the tests whose name matches
+#                                          (vitest -t); update mode then keeps every other baseline
 #
 # Needs Docker; the container is linux/amd64 (what CI runs), emulated on an arm64 host. The pnpm store lives in the `pk-portal-baselines-pnpm` volume between runs.
 set -euo pipefail
@@ -28,7 +30,7 @@ mkdir -p "$OUT/linux"
 PNPM="$(mise exec node@22 -- node -p "require('$ROOT/package.json').packageManager.split('@')[1]")"
 
 docker run --rm --init --ipc=host --platform linux/amd64 \
-  -e MODE="$MODE" -e PNPM="$PNPM" -e CI=1 \
+  -e MODE="$MODE" -e PNPM="$PNPM" -e FILTER="${PORTAL_FILTER:-}" -e CI=1 \
   -v "$ROOT":/src:ro \
   -v "$OUT":/out \
   -v pk-portal-baselines-pnpm:/pnpm-store \
@@ -61,7 +63,7 @@ docker run --rm --init --ipc=host --platform linux/amd64 \
       export PK_UPDATE_BASELINES=1
     fi
     status=0
-    pnpm exec vitest run -c vitest.e2e.config.ts e2e/portalQuality.e2e.test.ts || status=$?
+    pnpm exec vitest run -c vitest.e2e.config.ts e2e/portalQuality.e2e.test.ts ${FILTER:+-t "$FILTER"} || status=$?
     if [ "$MODE" = update ]; then
       rm -f /out/linux/*.png
       cp e2e/__baselines__/portal/linux/*.png /out/linux/
