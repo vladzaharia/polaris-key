@@ -25,6 +25,10 @@ const STORES: readonly { id: CommerceStore; label: string }[] = [
   { id: "steam", label: "Steam" },
 ];
 
+/** "no settings for this store" → "No settings for this store". */
+const sentence = (reason: string | null): string =>
+  reason ? reason.charAt(0).toUpperCase() + reason.slice(1) : "Not set up";
+
 const LINK = "text-accent-fg underline underline-offset-2";
 
 export function CommerceOverviewPage({
@@ -89,7 +93,7 @@ export function CommerceOverviewPage({
                   <th scope="col" className="py-2 pr-4 font-medium">
                     Status
                   </th>
-                  <th scope="col" className="py-2 font-medium">
+                  <th scope="col" className="py-2 text-right font-medium">
                     Mapped products
                   </th>
                 </tr>
@@ -103,9 +107,9 @@ export function CommerceOverviewPage({
                     <td className="py-2 pr-4">
                       {setup[s.id].configured
                         ? "Ready"
-                        : (setup[s.id].reason ?? "Not set up")}
+                        : sentence(setup[s.id].reason)}
                     </td>
-                    <td className="py-2">
+                    <td className="py-2 text-right tabular-nums">
                       {products.filter((p) => p.store === s.id).length}
                     </td>
                   </tr>
@@ -145,7 +149,7 @@ export function CommerceOverviewPage({
                     <th scope="col" className="py-2 pr-4 font-medium">
                       State
                     </th>
-                    <th scope="col" className="py-2 font-medium">
+                    <th scope="col" className="py-2 text-right font-medium">
                       Verified
                     </th>
                   </tr>
@@ -162,7 +166,7 @@ export function CommerceOverviewPage({
                         </code>
                       </td>
                       <td className="py-2 pr-4">{p.state}</td>
-                      <td className="py-2">
+                      <td className="py-2 text-right tabular-nums">
                         {formatTableTime(fromSeconds(p.lastVerified))}
                       </td>
                     </tr>
