@@ -1744,6 +1744,8 @@ describe("Product defaults (ST-16)", () => {
   });
   const withDefaults = (k: Setting = keyLimit()) =>
     view({ settings: [lazyDeltas(), k, quota()] });
+  const withQuota = (q: Setting) =>
+    view({ settings: [lazyDeltas(), keyLimit(), q] });
   const REACH = "/manage/api/platform/settings/identity.keyEntry.limit/reach";
   const lowerReach = {
     kind: "bound",
@@ -1778,10 +1780,11 @@ describe("Product defaults (ST-16)", () => {
     expect(within(defaults).getByText("Key-entry limit ceiling")).toBeTruthy();
     expect(
       within(defaults).getByText(
-        "12 of 14 products use this · Acme sets 8 GiB",
+        "12 of 14 products use this · \u2068Acme\u2069 sets 8 GiB",
       ),
     ).toBeTruthy();
-    expect(within(defaults).getByText("per license")).toBeTruthy();
+    // The unit sits under the field with the bounds, never inside a phone-width input.
+    expect(within(defaults).getByText("1 to 100 per license.")).toBeTruthy();
     expect(within(defaults).getByText("0 to 1,024 GiB.")).toBeTruthy();
     const pills = screen.getByRole("navigation", { name: "Jump to section" });
     expect(
@@ -1808,9 +1811,9 @@ describe("Product defaults (ST-16)", () => {
     expect(
       within(dialog).getByText("Tidewater").closest("li")!.textContent,
     ).toMatch(/10 → 5 \(default\)/);
-    expect(
-      within(dialog).getByText("Each keeps the value it set."),
-    ).toBeTruthy();
+    // A default is listed once; the list names an inheritor, so no "each keeps" line.
+    expect(within(dialog).queryByText(/Each keeps the value/)).toBeNull();
+    expect(within(dialog).queryByText(/Acme.*\(default\)/)).toBeNull();
     expect(writes(log, "PATCH")).toHaveLength(0);
     await userEvent.click(
       within(dialog).getByRole("button", { name: "Lower 4 products to 10" }),
@@ -1878,7 +1881,7 @@ describe("Product defaults (ST-16)", () => {
     const dialog = await openKeyDialog("10");
     expect(
       await within(dialog).findByText(
-        "Couldn't count the products this reaches.",
+        "Couldn't count the products this reaches, so you can't save yet.",
       ),
     ).toBeTruthy();
     const confirm = within(dialog).getByRole("button", { name: /^Save/ });
@@ -1897,6 +1900,156 @@ describe("Product defaults (ST-16)", () => {
         }) as HTMLButtonElement
       ).disabled,
     ).toBe(false);
+  });
+
+  it("isolates product names so an RTL name cannot reorder its numbers", async () => {
+    boot("#/platform/settings", {
+      extra: routes({
+        "/manage/api/platform/settings": withQuota(
+          quota({
+            fleet: {
+              kind: "default",
+              total: 2,
+              inheriting: 1,
+              own: [{ product: "lumen", name: "لومن الاستوديو", value: 1 }],
+            },
+          }),
+        ),
+        [REACH]: {
+          ...lowerReach,
+          products: [
+            {
+              product: "lumen",
+              name: "لومن الاستوديو",
+              from: 20,
+              to: 10,
+              inherited: false,
+            },
+          ],
+        },
+      }),
+    });
+    const defaults = await section("Product defaults");
+    expect(
+      within(defaults).getByText(/ sets /, { selector: "p" }).textContent,
+    ).toContain("\u2068لومن الاستوديو\u2069");
+    const dialog = await openKeyDialog("10");
+    const name = await within(dialog).findByText("لومن الاستوديو");
+    expect(name.tagName).toBe("BDI");
+    expect(
+      name.closest("li")!.querySelector(".whitespace-nowrap"),
+    ).toBeTruthy();
+  });
+
+  it("says one product and no inheritor plainly", async () => {
+    boot("#/platform/settings", {
+      extra: routes({
+        "/manage/api/platform/settings": withQuota(
+          quota({
+            fleet: { kind: "default", total: 1, inheriting: 0, own: [] },
+          }),
+        ),
+        [REACH]: {
+          kind: "bound",
+          direction: "raise",
+          total: 14,
+          reaches: 1,
+          from: 20,
+          to: 60,
+          products: [
+            {
+              product: "djdl",
+              name: "DJDL",
+              from: 20,
+              to: 50,
+              inherited: false,
+            },
+          ],
+        },
+      }),
+    });
+    const defaults = await section("Product defaults");
+    expect(within(defaults).getByText("No product uses this")).toBeTruthy();
+    const dialog = await openKeyDialog("60");
+    expect(
+      await within(dialog).findByText(
+        "Raises 1 of 14 products to its own value:",
+      ),
+    ).toBeTruthy();
+    expect(within(dialog).queryByText(/Each keeps/)).toBeNull();
+    expect(
+      within(dialog).getByRole("button", {
+        name: "Raise the ceiling for 1 product",
+      }),
+    ).toBeTruthy();
+  });
+
+  it("a revert's button is short", async () => {
+    boot("#/platform/settings", {
+      extra: routes({
+        "/manage/api/platform/settings": withDefaults(
+          keyLimit({
+            value: 20,
+            version: 2,
+            source: "runtime",
+            stored: { value: 20, valid: true, updatedAt: 1, updatedBy: "ada" },
+          }),
+        ),
+        [REACH]: {
+          kind: "bound",
+          direction: "raise",
+          total: 14,
+          reaches: 3,
+          from: 20,
+          to: 100,
+          products: [],
+        },
+      }),
+    });
+    const defaults = await section("Product defaults");
+    await userEvent.click(
+      within(defaults).getByRole("button", {
+        name: "Revert key-entry limit ceiling…",
+      }),
+    );
+    const dialog = await screen.findByRole("alertdialog");
+    expect(
+      await within(dialog).findByRole("button", {
+        name: "Revert: raise 3 products",
+      }),
+    ).toBeTruthy();
+  });
+
+  it("lowering the media quota says a product over it is refused new files", async () => {
+    boot("#/platform/settings", {
+      extra: routes({
+        "/manage/api/platform/settings": withDefaults(),
+        "/manage/api/platform/settings/assets.quota.mediaBytes/reach": {
+          kind: "default",
+          direction: "lower",
+          total: 14,
+          reaches: 12,
+          from: 536_870_912,
+          to: 268_435_456,
+          products: [],
+        },
+      }),
+    });
+    const defaults = await section("Product defaults");
+    const input = within(defaults).getByLabelText(/Default media quota/);
+    await userEvent.clear(input);
+    await userEvent.type(input, "0.25");
+    const bar = await within(defaults).findByRole("region", {
+      name: "Unsaved changes in Default media quota",
+    });
+    await userEvent.click(within(bar).getByRole("button", { name: "Save…" }));
+    const dialog = await screen.findByRole("alertdialog");
+    expect(
+      await within(dialog).findByText(
+        /A product over 256 MiB can't add new ones until it's under/,
+      ),
+    ).toBeTruthy();
+    expect(within(dialog).queryByText(/\(default\)/)).toBeNull();
   });
 
   it("a revert shows its count too", async () => {

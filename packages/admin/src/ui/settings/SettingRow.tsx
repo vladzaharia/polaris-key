@@ -130,7 +130,9 @@ export function SettingRow(props: SettingRowProps): React.ReactElement {
   const off = disabled || locked !== undefined || viewOnly || w.busy;
   const errId = `${id}-error`;
   const hintId = `${id}-hint`;
+  // A custom unit is long ("per license"): it goes under the field with the bounds, never inside.
   const unit = props.unitLabel ?? fieldUnit(spec);
+  const fieldSuffix = props.unitLabel ? undefined : unit;
   const state = w.conflict
     ? "conflict"
     : w.error
@@ -227,7 +229,7 @@ export function SettingRow(props: SettingRowProps): React.ReactElement {
             .join(" ")}
           value={typeof w.draft === "number" ? toField(spec, w.draft) : null}
           onChange={(v) => w.setDraft(v === null ? null : fromField(spec, v))}
-          unit={unit}
+          unit={fieldSuffix}
           min={min}
           max={max}
           step={spec.unit === "bytes" ? "any" : 1}
@@ -318,7 +320,10 @@ export function SettingRow(props: SettingRowProps): React.ReactElement {
       <ConflictNote
         state={w.conflict}
         reloading={w.reloading}
-        onReload={() => void w.reload()}
+        onReload={() =>
+          // The Reload button unmounts with the refusal: the field takes the focus.
+          void w.reload().then(() => document.getElementById(id)?.focus())
+        }
         onDismiss={w.clearConflict}
         now={`${fmt(value)}${reloadedBy ? `, ${reloadedBy}` : ""}`}
         draft={draftText}

@@ -441,7 +441,7 @@ export function EditableRow({
                   ? ` It can only lower the measured ${formatNumber(toField(specOf(setting), setting.max))} MiB ceiling.`
                   : ""
               }`
-            : `${formatCount(setting.min)} to ${formatCount(setting.max)}${setting.unit === "days" ? " days" : ""}.`
+            : `${formatCount(setting.min)} to ${formatCount(setting.max)}${setting.unit === "days" ? " days" : setting.key === "identity.keyEntry.limit" ? " per license" : ""}.`
           : undefined
       }
       reloadedBy={
