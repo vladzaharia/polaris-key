@@ -61,6 +61,7 @@ export type Route =
   | { kind: "portalSpa" }
   | { kind: "portalApi" }
   | { kind: "portalLogin" }
+  | { kind: "deviceEntry"; tv: boolean }
   /** I-06: the login card's platform providers, `/login/<provider>[/callback|/notifications]`. */
   | { kind: "portalProviderSignIn" }
   | { kind: "portalCallback" }
@@ -185,6 +186,9 @@ export function matchRoute(pathname: string): Route {
   )
     return { kind: "portalSpa" };
   if (path === "/login") return { kind: "portalLogin" };
+  // The platform device-code entry pages: a code typed here finds its product (core/deviceEntry.ts).
+  if (path === "/device") return { kind: "deviceEntry", tv: false };
+  if (path === "/tv") return { kind: "deviceEntry", tv: true };
   // I-06: `/login/<provider>`, its callback and Apple's notifications (`login` is a reserved
   // slug), and I-30's `/login/sso/<connection id>` (finished by `/callback`). The provider, step
   // and connection are validated by the handler; any other shape under `/login/` is its

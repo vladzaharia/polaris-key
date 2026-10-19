@@ -196,6 +196,16 @@ export const BRAND_PAGE_CSS = [
   `a{color:var(--accent-fg)}`,
   `:focus-visible{outline:2px solid var(--focus);outline-offset:2px}`,
   `@media (max-width: 30rem){.card{padding:1.5rem}}`,
+  // The TV variant (`variant: "tv"`): read from a sofa, typed with a remote. Larger type and
+  // targets, the same flow.
+  `.tv main{max-width:48rem}`,
+  `.tv .card{padding:3rem}`,
+  `.tv h1{font-size:2.5rem;line-height:3rem}`,
+  `.tv h1+p,.tv .alert{font-size:1.5rem;line-height:2rem}`,
+  `.tv label{font-size:1.5rem;line-height:2rem}`,
+  `.tv input[type=text]{min-height:5rem;font-size:2.5rem}`,
+  `.tv .button{min-height:4.5rem;font-size:1.75rem;line-height:2rem}`,
+  `@media (max-width: 30rem){.tv .card{padding:1.5rem}.tv h1{font-size:2rem;line-height:2.5rem}.tv input[type=text]{font-size:1.75rem}}`,
 ].join("");
 
 let styleSource: string | null = null;
@@ -224,6 +234,8 @@ export interface BrandPageOptions {
   app?: { name: string; iconUrl?: string | null };
   /** The card's body below the heading: TRUSTED markup built by the caller, every value escaped. */
   body?: string;
+  /** `tv`: larger type and targets for a TV browser (`/tv`). */
+  variant?: "tv";
 }
 
 let mark: string | null = null;
@@ -263,7 +275,7 @@ export function renderBrandPage(opts: BrandPageOptions): string {
     `<link rel="icon" type="image/svg+xml" href="${BRAND_WEB_KEY_PATH}/favicon.svg">`,
     `<style>${BRAND_PAGE_CSS}</style>`,
     `</head>`,
-    `<body>`,
+    opts.variant === "tv" ? `<body class="tv">` : `<body>`,
     `<main>`,
     `<div class="brand" role="img" aria-label="Polaris Key${opts.surface ? ` ${escapeHtml(opts.surface)}` : ""}">${mark}<span class="wordmark" aria-hidden="true">Polaris&nbsp;Key${surface}</span></div>`,
     app,

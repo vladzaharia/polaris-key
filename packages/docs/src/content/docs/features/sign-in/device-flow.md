@@ -47,6 +47,12 @@ The origin check and CSRF token stop a cross-site page from confirming someone e
 
 The person then signs in as in the browser flow, landing on `/identity/auth/callback`. The callback sets no cookie and activates nothing: it checks that the identity would be entitled, stores the verified identity on the flow and stops. The poll activates it. By default the device moves onto the signing-in identity's own license, or a new one from the group mapping or `oidcDefault` tier. Nothing claims, migrates or disables the license the device is already on, because the user code is public and whoever confirms need not own the device.
 
+### The platform page
+
+`GET https://key.plrs.im/device` (and `/tv`, the same page with larger type for a TV browser) is for an app that can't build its product's URL, such as a UI kit's fallback link. The person types the code, and the Worker looks it up across all products and answers `302` to `/<product>/identity/auth/device?user_code=` on the same host. That page owns every later state, so a product with Identity off or a disabled product still redirects.
+
+Codes are unique among live flows: if a drawn code is already held, the Worker draws another. An unknown, expired or malformed code re-renders the form with "That code didn't match or has expired. Check it and try again." and names no product. Lookups are limited to 30 a minute per network. The pages are `no-store` and send no referrer.
+
 ## Poll
 
 `POST /<product>/identity/auth/device/poll` takes `{ "deviceCode": "<secret>", "deviceId": "<id>" }`. The `deviceId` must equal the one given at start, else `401`, so a stolen code can't be redeemed by another device. The advertised `interval` is enforced: a second poll inside it gets `429` with `{ "status": "slow_down", "interval": 2 }`.

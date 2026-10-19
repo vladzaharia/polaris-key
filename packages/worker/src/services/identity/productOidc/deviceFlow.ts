@@ -30,11 +30,10 @@ import {
 } from "./config.js";
 import { renderDeviceConfirmation, renderDeviceEntry } from "./pages.js";
 import {
-  USER_CODE_ATTEMPTS,
+  claimUserCode,
   deleteUserCodeIndex,
   deviceUserKey,
   formatUserCode,
-  generateUserCode,
   normalizeUserCode,
 } from "./userCode.js";
 
@@ -90,19 +89,13 @@ export async function handleAuthDeviceStart(
   // point two flows at one code, so the index slot is claimed atomically (`ifAbsent`) and an
   // occupied one means "draw again". The device record is written right after; until then the
   // index resolves to nothing and the entry page answers "not valid or expired".
-  let claimed = false;
-  let code = "";
-  for (let i = 0; i < USER_CODE_ATTEMPTS && !claimed; i++) {
-    code = generateUserCode();
-    claimed = await putArtefact(
-      env,
-      await deviceUserKey(env, product.slug, code),
-      deviceCode,
-      FLOW_TTL_SECONDS,
-      { ifAbsent: true },
-    );
-  }
-  if (!claimed) return errorResponse(503, "unavailable", "try again");
+  const code = await claimUserCode(
+    env,
+    product.slug,
+    deviceCode,
+    FLOW_TTL_SECONDS,
+  );
+  if (!code) return errorResponse(503, "unavailable", "try again");
   const userCode = formatUserCode(code);
   const deviceRecord: DeviceFlowRecord = {
     state: flow.state,

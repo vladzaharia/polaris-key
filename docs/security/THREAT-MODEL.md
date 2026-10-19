@@ -3593,6 +3593,22 @@ product. R10-04a shards only the platform-global `_portal` and `_admin` limiters
 (`core/rateLimit.ts` `SHARDED_LIMITERS`); `email*` buckets are separately sharded in every
 limiter, but the device-code buckets use the product's one object.
 
+**Platform code lookup (`/device`, `/tv`).** These pages take a user code with no product and
+look it up across all products (`core/deviceCodeIndex.ts`, kind `device-user-global`: the
+peppered hash of the code → the issuing product's slug, written `ifAbsent` at `/device/start`,
+same 600-second life, deleted with the per-product entry on confirmation and on a ready or
+timed-out poll). It is a second guess oracle with the same code space, so it carries its own
+bucket: 30 lookups a minute per client network (`deviceEntry`, fail-closed, in the sharded
+`_portal` limiter, so an attacker cannot exhaust a product's budget through it). Each of the
+three outcomes that leaks nothing (unknown, expired, malformed) is the same page and the same
+one store read; a hit answers `302` to the product's own page, which applies the per-product
+bucket and every later check, so the lookup reveals the product only to whoever already holds a
+live code. A miss names no product. The platform index makes a code unique among all live flows,
+so two products cannot hand out one code. The pages send `Cache-Control: no-store` and
+`Referrer-Policy: no-referrer`, take the code by `GET` (it is in the URL, as in
+`verificationUriComplete`) and log nothing. Residual: a holder of a live code learns its product
+slug, which the code's own display already implies; the guess bound is unchanged.
+
 **Remote phishing (RFC 8628 §5.4) — forwarded authorize URL closed; residual R1-07 open,
 rooted in R8-03.** A starter can confirm without a browser and forward the resulting IdP URL,
 but confirmation now sets a `__Host-pk_lcb` binder on the confirming browser and stores its
