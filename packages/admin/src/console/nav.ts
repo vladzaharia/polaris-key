@@ -100,6 +100,7 @@ export type GlobalPageId =
   | "platform-deployment"
   | "platform-operations"
   | "platform-stores"
+  | "platform-connections"
   | "platform-feeds"
   | "platform-override-migration";
 
@@ -774,6 +775,19 @@ const PLATFORM_PAGES: NavPage[] = [
     docs: "/docs/operate/platform/jobs/",
     inNav: true,
     group: "platform",
+  },
+  {
+    // I-31: the platform's sign-in connections (SSO providers, the built-in providers, email and
+    // Turnstile status) and their add wizard. Stores join this page with P0-28.
+    page: "platform-connections",
+    label: "Connections",
+    keywords: "sso oidc identity provider sign-in google apple steam domain",
+    path: "platform/connections",
+    icon: KeyRound,
+    docs: "/docs/operate/platform/connections/",
+    inNav: true,
+    group: "platform",
+    record: { noun: "Connection" },
   },
   {
     page: "platform-stores",

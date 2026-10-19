@@ -747,6 +747,93 @@ export interface PlatformOperations {
   };
 }
 
+// ── platform connections (I-31; worker `console/handlers/platformConnections.ts`) ──────────────
+
+/** One email domain a connection claims. `record` is what to publish in DNS (not a secret). */
+export interface ConnectionDomain {
+  domain: string;
+  verified: boolean;
+  verifiedAt: number | null;
+  checkedAt: number | null;
+  enforce: boolean;
+  record: { name: string; value: string };
+}
+
+export interface ClaimMapDto {
+  groups?: string;
+  claims?: string[];
+  name?: string;
+  picture?: string;
+  birthdate?: string;
+}
+
+/** A platform connection. A client secret is never in it: `hasSecret` says only whether one is sealed. */
+export interface PlatformConnection {
+  id: string;
+  label: string;
+  issuer: string;
+  clientId: string;
+  jwksUri: string | null;
+  audience: "customers" | "operators" | "both";
+  claimMap: ClaimMapDto;
+  status: "active" | "disabled";
+  source: "env" | "console" | "manifest";
+  hasSecret: boolean;
+  domains: ConnectionDomain[];
+  /** People who sign in through it. */
+  links: number;
+  lastSuccessAt: number | null;
+  lastError: string | null;
+}
+
+export interface PlatformConnectionsPage {
+  connections: PlatformConnection[];
+  /** The redirect URI to register at every provider. */
+  redirectUri: string;
+  builtIns: {
+    kind: "google" | "apple" | "steam";
+    label: string;
+    configured: boolean;
+  }[];
+  email: { configured: boolean };
+  turnstile: { enabled: boolean };
+}
+
+/** What the add wizard sends. `clientSecret` goes in once and is sealed. */
+export interface ConnectionBody {
+  label?: string;
+  issuer?: string;
+  clientId?: string;
+  clientSecret?: string;
+  jwksUri?: string | null;
+  claimMap?: ClaimMapDto;
+  status?: "active" | "disabled";
+}
+
+export interface ConnectionDiscovery {
+  issuer: string;
+  authorizationHost: string;
+  tokenHost: string;
+  jwksHost: string;
+  redirectUri: string;
+  issParameter: boolean;
+}
+
+export interface ConnectionTestResult {
+  ok: boolean;
+  /** Plain text. */
+  message?: string;
+  preview?: {
+    issuer: string;
+    email: string | null;
+    emailVerified: boolean | null;
+    name: string | null;
+    groups: string[] | null;
+    claims: Record<string, string> | null;
+    claimNames: string[];
+  };
+}
+
 // ── platform store connections (A-16; worker `console/handlers/platformStoreConnections.ts`) ──
 
 /** A store the platform holds one team-level connection for. */
@@ -4711,6 +4798,71 @@ const rawApi = {
     ),
   /** The KEK keyring: active kid, the ring, per-kid counts. 503 when the ring does not parse. */
   platformKek: () => call<PlatformKekStatus>("/manage/api/products/kek"),
+  /** The Connections page: connections, built-in providers, email and Turnstile status. */
+  platformConnections: () =>
+    call<PlatformConnectionsPage>("/manage/api/platform/connections"),
+  platformConnection: (id: string) =>
+    call<{ connection: PlatformConnection }>(
+      `/manage/api/platform/connections/${enc(id)}`,
+    ),
+  /** Add a connection (step-up). The secret is sealed and never returned. */
+  createPlatformConnection: (body: ConnectionBody) =>
+    call<{ ok: true; connection: PlatformConnection }>(
+      "/manage/api/platform/connections",
+      { method: "POST", body: JSON.stringify(body) },
+    ),
+  updatePlatformConnection: (id: string, body: ConnectionBody) =>
+    call<{ ok: true; connection: PlatformConnection }>(
+      `/manage/api/platform/connections/${enc(id)}`,
+      { method: "PATCH", body: JSON.stringify(body) },
+    ),
+  deletePlatformConnection: (id: string) =>
+    call<{ ok: true }>(`/manage/api/platform/connections/${enc(id)}`, {
+      method: "DELETE",
+    }),
+  /** Run discovery for an issuer; nothing is saved. */
+  discoverConnection: (body: { issuer: string; jwksUri?: string | null }) =>
+    call<{ ok: true; discovery: ConnectionDiscovery }>(
+      "/manage/api/platform/connections/discover",
+      { method: "POST", body: JSON.stringify(body) },
+    ),
+  /** Begin a test sign-in: the provider's address to open, and the flow's state. */
+  startConnectionTest: (
+    body: ConnectionBody & { draftId: string; connectionId?: string },
+  ) =>
+    call<{ ok: true; url: string; state: string }>(
+      "/manage/api/platform/connections/test/start",
+      { method: "POST", body: JSON.stringify(body) },
+    ),
+  /** The test's claims, once, to the operator and draft that started it. */
+  connectionTestResult: (state: string, draftId: string) =>
+    call<{ ok: true; result: ConnectionTestResult }>(
+      `/manage/api/platform/connections/test/result?state=${enc(state)}&draft=${enc(draftId)}`,
+    ),
+  addConnectionDomain: (id: string, domain: string) =>
+    call<{ ok: true; connection: PlatformConnection }>(
+      `/manage/api/platform/connections/${enc(id)}/domains`,
+      { method: "POST", body: JSON.stringify({ domain }) },
+    ),
+  verifyConnectionDomain: (id: string, domain: string) =>
+    call<{
+      ok: true;
+      connection: PlatformConnection;
+      verify?: "verified" | "absent" | "error" | "taken";
+    }>(`/manage/api/platform/connections/${enc(id)}/domains/verify`, {
+      method: "POST",
+      body: JSON.stringify({ domain }),
+    }),
+  setConnectionDomainEnforce: (id: string, domain: string, enforce: boolean) =>
+    call<{ ok: true; connection: PlatformConnection }>(
+      `/manage/api/platform/connections/${enc(id)}/domains/${enc(domain)}`,
+      { method: "PATCH", body: JSON.stringify({ enforce }) },
+    ),
+  removeConnectionDomain: (id: string, domain: string) =>
+    call<{ ok: true; connection: PlatformConnection }>(
+      `/manage/api/platform/connections/${enc(id)}/domains/${enc(domain)}`,
+      { method: "DELETE" },
+    ),
   /** Every store's team credential (presence and metadata only), settings and assignments. */
   platformStoreConnections: () =>
     call<{ stores: PlatformStoreConnection[] }>(

@@ -91,6 +91,7 @@ describe("the sources", () => {
       "Settings",
       "Deployment",
       "Operations",
+      "Connections",
       "Store connections",
       "Package feeds",
     ]);

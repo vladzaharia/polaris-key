@@ -483,6 +483,7 @@ describe("the nav model (nav.ts)", () => {
       "product-new",
       "api-tokens",
       "personal-tokens",
+      "platform-connections",
       "platform-settings",
       "platform-deployment",
       "platform-operations",
@@ -701,6 +702,7 @@ describe("global pages", () => {
       "platform-settings",
       "platform-deployment",
       "platform-operations",
+      "platform-connections",
       "platform-stores",
       "platform-feeds",
       "platform-override-migration",
@@ -724,6 +726,7 @@ describe("global pages", () => {
       "platform-settings",
       "platform-deployment",
       "platform-operations",
+      "platform-connections",
       "platform-stores",
       "platform-feeds",
     ]);

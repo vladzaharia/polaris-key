@@ -450,6 +450,12 @@ export const r = {
   platformDeployment: () => globalPage("platform-deployment"),
   platformOperations: () => globalPage("platform-operations"),
   platformStores: () => globalPage("platform-stores"),
+  platformConnections: (query?: QueryInit) =>
+    globalPage("platform-connections", query),
+  platformConnection: (id: string, query?: QueryInit) =>
+    globalPage("platform-connections", query, { id }),
+  platformConnectionNew: (query?: QueryInit) =>
+    globalPage("platform-connections", query, { id: "new" }),
   platformFeeds: () => globalPage("platform-feeds"),
   platformOverrideMigration: () => globalPage("platform-override-migration"),
   platformFeed: (eco: string, tab?: string) =>
