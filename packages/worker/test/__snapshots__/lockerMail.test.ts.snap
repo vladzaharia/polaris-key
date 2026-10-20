@@ -1,6 +1,6 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`customer templates in both brands > each has a Polaris Locker variant with no Polaris Key in it 1`] = `
+exports[`customer templates > say Polaris Locker and never Polaris Key 1`] = `
 {
   "added": {
     "subject": "Mossgarden is in your library",

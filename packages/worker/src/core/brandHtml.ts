@@ -19,11 +19,12 @@
  *
  * ── Polaris Locker (LK-07; plans/LK-00.md §7.12, A3 §14.2) ──────────────────────────────────
  *
- * `brand: "locker"` gives a page the Locker identity: `data-brand="locker"` on `<html>`, the
- * Locker lockup in place of the Pinned K and wordmark, the Locker favicon and title suffix, and
- * neutral-ink actions and links with coral as identity only (D9a). Its stylesheet is the Key one
- * plus a constant tail (`BRAND_PAGE_CSS_LOCKER`) with its own SHA-256, so a Key page's policy and
- * bytes are exactly what they were; the caller chooses the brand from the `customer.host` switch.
+ * The shell draws the Polaris Locker identity by default: `data-brand="locker"` on `<html>`, the
+ * Locker lockup, the Locker favicon and title suffix, and neutral-ink actions and links with coral
+ * as identity only (D9a). Every page the Worker answers to a customer is one. The console's own
+ * pages (`console/auth.ts`) pass `brand: "key"`: the Pinned K, the Polaris Key wordmark, the
+ * violet accent. Each has its own stylesheet and SHA-256: the Locker one is the Key one plus a
+ * constant tail (`BRAND_PAGE_CSS_LOCKER`).
  *
  * The bytes host never uses this shell: its pages stay on the system stack with no font source
  * at all (`bytesLanding.ts`, BRAND.md §8).
@@ -253,16 +254,16 @@ const LOCKER_PAGE_CSS_TAIL = [
 /** The stylesheet of a Locker page: `BRAND_PAGE_CSS` and its tail. */
 export const BRAND_PAGE_CSS_LOCKER = BRAND_PAGE_CSS + LOCKER_PAGE_CSS_TAIL;
 
-export type BrandPageBrand = "locker";
+export type BrandPageBrand = "key" | "locker";
 
 const styleSources = new Map<string, string>();
 
 /**
- * The `'sha256-…'` source expression that allows the page stylesheet (`BRAND_PAGE_CSS`, or
- * `BRAND_PAGE_CSS_LOCKER` for `"locker"`), computed once.
+ * The `'sha256-…'` source expression that allows the page stylesheet (`BRAND_PAGE_CSS_LOCKER` for
+ * `"locker"`, the default; `BRAND_PAGE_CSS` for `"key"`), computed once.
  */
-export function brandPageStyleSource(brand?: BrandPageBrand): string {
-  const key = brand ?? "key";
+export function brandPageStyleSource(brand: BrandPageBrand = "locker"): string {
+  const key = brand;
   let v = styleSources.get(key);
   if (v === undefined) {
     const css = brand === "locker" ? BRAND_PAGE_CSS_LOCKER : BRAND_PAGE_CSS;
@@ -292,7 +293,7 @@ export interface BrandPageOptions {
   body?: string;
   /** `tv`: larger type and targets for a TV browser (`/tv`). */
   variant?: "tv";
-  /** `locker`: the Polaris Locker identity (see the header); omitted: Polaris Key. */
+  /** `key`: the Polaris Key console identity; the default is Polaris Locker (see the header). */
   brand?: BrandPageBrand;
 }
 
@@ -326,7 +327,7 @@ function brandBlock(
  * than the Worker's module load.
  */
 export function renderBrandPage(opts: BrandPageOptions): string {
-  const locker = opts.brand === "locker";
+  const locker = opts.brand !== "key";
   const brandName = locker ? "Polaris Locker" : "Polaris Key";
   const app = opts.app
     ? `<div class="app">${
@@ -353,7 +354,10 @@ export function renderBrandPage(opts: BrandPageOptions): string {
     `</head>`,
     opts.variant === "tv" ? `<body class="tv">` : `<body>`,
     `<main>`,
-    brandBlock(opts.brand, opts.surface ? escapeHtml(opts.surface) : ""),
+    brandBlock(
+      opts.brand ?? "locker",
+      opts.surface ? escapeHtml(opts.surface) : "",
+    ),
     app,
     `<div class="card">`,
     opts.eyebrow ? `<p class="eyebrow">${escapeHtml(opts.eyebrow)}</p>` : "",
@@ -367,43 +371,4 @@ export function renderBrandPage(opts: BrandPageOptions): string {
   ]
     .filter((line, i, all) => line !== "" || i === all.length - 1)
     .join("\n");
-}
-
-/**
- * A Key page from `renderBrandPage` as the Locker page `renderBrandPage({...opts, brand: "locker"})`
- * would have drawn (the shell parts only: the document element, the title suffix, the favicon,
- * the stylesheet and the brand block; the card is the caller's). `null` when `html` is not a Key
- * brand page. The dispatcher uses it for every customer page while `customer.host` is on, so the
- * 90-odd call sites that draw one never read the switch (LK-07; `pageBrand.ts`).
- */
-export function lockerizeBrandPageHtml(html: string): string | null {
-  const head = `<html lang="en">\n<head>`;
-  const css = `<style>${BRAND_PAGE_CSS}</style>`;
-  const iconKey = `<link rel="icon" type="image/svg+xml" href="${BRAND_WEB_KEY_PATH}/favicon.svg">`;
-  const blockAt = html.indexOf('<div class="brand" role="img"');
-  const blockEnd = blockAt < 0 ? -1 : html.indexOf("</div>", blockAt) + 6;
-  const titleEnd = html.indexOf(" · Polaris Key</title>");
-  if (
-    !html.startsWith("<!doctype html>\n" + head) ||
-    !html.includes(css) ||
-    !html.includes(iconKey) ||
-    blockAt < 0 ||
-    titleEnd < 0
-  )
-    return null;
-  const block = html.slice(blockAt, blockEnd);
-  const surface =
-    /<span class="surface">([\s\S]*?)<\/span>/.exec(block)?.[1] ?? "";
-  return (
-    html
-      .replace(head, `<html lang="en" data-brand="locker">\n<head>`)
-      .replace(" · Polaris Key</title>", " · Polaris Locker</title>")
-      .replace(
-        iconKey,
-        iconKey.replace(BRAND_WEB_KEY_PATH, BRAND_WEB_LOCKER_PATH),
-      )
-      .replace(css, `<style>${BRAND_PAGE_CSS_LOCKER}</style>`)
-      // A function replacer: the block holds `$` sequences a string replacement would expand.
-      .replace(block, () => brandBlock("locker", surface))
-  );
 }

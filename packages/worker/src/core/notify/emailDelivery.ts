@@ -7,7 +7,6 @@ import {
   EMAIL_SEND_PRODUCT_DAILY_DEFAULT,
   recipientHash,
 } from "./emailLimits.js";
-import { customerHostMode } from "../licensing/manageUrl.js";
 import { passthroughSender, platformSender } from "./emailSender.js";
 
 // The ONE place sign-in and account email leaves the Worker (I-18). Every send, platform or
@@ -63,9 +62,8 @@ export type SuppressionReason =
 
 export type EmailSender =
   /**
-   * Platform mail. Customer mail is sent as "Polaris Locker" while `customer.host` is on (LK-07).
-   * `audience: "operator"` (alerts, invites, member notices: the console side) stays "Polaris
-   * Key" in either state.
+   * Platform mail: customer mail is "Polaris Locker" (LK-07). `audience: "operator"` (alerts,
+   * invites, member notices: the console side) is "Polaris Key".
    */
   | { kind: "platform"; audience?: "operator" }
   | {
@@ -82,11 +80,6 @@ export interface OutgoingEmail {
   text: string;
   html?: string;
   sender: EmailSender;
-  /**
-   * The same message in the Polaris Locker identity, for customer mail: sent instead of the
-   * fields above while `customer.host` is on (see `templates.ts` `lockerVariantOf`).
-   */
-  locker?: { subject: string; text: string; html?: string };
 }
 
 export type DeliveryResult =
@@ -293,22 +286,11 @@ export async function deliverEmail(
   const binding = env.EMAIL;
   if (!binding) return unavailable;
 
-  // The brand of customer mail: Polaris Locker while `customer.host` is on (LK-07). Off: today's
-  // sender, byte for byte. Operator and member mail stays Key.
-  const operator = msg.sender.kind === "platform" && !!msg.sender.audience;
-  const locker = !operator && (await customerHostMode(env, db)) !== "off";
   const from =
     msg.sender.kind === "platform"
-      ? platformSender(env, locker)
-      : passthroughSender(
-          env,
-          msg.sender.displayName,
-          msg.sender.product,
-          locker,
-        );
+      ? platformSender(env, msg.sender.audience)
+      : passthroughSender(env, msg.sender.displayName, msg.sender.product);
   if (!from) return unavailable;
-
-  const body = locker && msg.locker ? msg.locker : msg;
 
   // Whatever reached here, only a bare addr-spec is accepted (and is mailed trimmed) to the provider.
   if (strictEmail(msg.to) === null) return unavailable;
@@ -332,9 +314,9 @@ export async function deliverEmail(
     await binding.send({
       from,
       to: strictEmail(msg.to) ?? msg.to,
-      subject: body.subject,
-      text: body.text,
-      ...(body.html !== undefined ? { html: body.html } : {}),
+      subject: msg.subject,
+      text: msg.text,
+      ...(msg.html !== undefined ? { html: msg.html } : {}),
     });
     return { ok: true };
   } catch (err) {

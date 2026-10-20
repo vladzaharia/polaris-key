@@ -82,8 +82,9 @@ export interface AppSecurityOptions {
    */
   imgOrigin?: string | null;
   /**
-   * A branded page in the Polaris Locker identity: its stylesheet is the Key one plus a constant
-   * tail with its own hash (`BRAND_PAGE_CSS_LOCKER`). Only `brandedHtmlSecurityHeaders` reads it.
+   * The identity of a branded page: Polaris Locker by default (LK-07), its stylesheet the Key
+   * one plus a constant tail with its own hash (`BRAND_PAGE_CSS_LOCKER`); `"key"` for the
+   * console's own pages. Only `brandedHtmlSecurityHeaders` reads it.
    */
   brand?: BrandPageBrand;
 }

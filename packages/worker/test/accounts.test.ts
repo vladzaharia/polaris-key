@@ -845,7 +845,7 @@ describe("licence claim rules", () => {
     if (!ok.ok) throw new Error("unreachable");
     expect(ok.subject).toMatch(PAIRWISE_SUBJECT_PATTERN);
     expect(w.sent.map((m) => m.to)).toEqual(["buyer@example.com"]);
-    expect(w.sent[0]!.subject).toMatch(/added to a Polaris Key account/);
+    expect(w.sent[0]!.subject).toMatch(/added to a Polaris Locker account/);
   });
 
   it("an account that verified the licence's email attaches it without claimByKey and is not emailed about itself", async () => {

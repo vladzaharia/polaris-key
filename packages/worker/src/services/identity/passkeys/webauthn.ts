@@ -53,7 +53,7 @@ export const PASSKEY_CEREMONY_TTL_SECONDS = 5 * 60;
 /** EdDSA, ES256, RS256 (COSE ids), in the order offered. */
 export const PASSKEY_ALGORITHMS = [-8, -7, -257];
 /** The name an authenticator shows for the relying party. */
-export const PASSKEY_RP_NAME = "Polaris Key";
+export const PASSKEY_RP_NAME = "Polaris Locker";
 
 /** base64url, as WebAuthn's JSON forms carry it. */
 const B64URL = /^[A-Za-z0-9_-]+$/;

@@ -65,9 +65,10 @@ describe("the document rule admits exactly the image host as an image source", (
   });
 
   it("the page's policy names the image host only when given one", async () => {
-    expect(await pageCsp()).not.toContain("img-src");
+    // The favicon is a data: URI, so the policy always names it; the image host only on request.
+    expect(await pageCsp()).toContain("img-src data:;");
     const csp = await pageCsp(IMG);
-    expect(csp).toContain(`img-src ${IMG}`);
+    expect(csp).toContain(`img-src data: ${IMG}`);
     expect(inertDocumentPolicy(csp, { imgOrigin: IMG })).toBe(true);
     expect(inertDocumentPolicy(csp)).toBe(false);
   });

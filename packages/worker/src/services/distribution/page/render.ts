@@ -23,9 +23,8 @@
  * `maxTouchPoints > 1`. With no detected platform, every platform's primary is offered.
  */
 
-import { BRAND, FONT, SERVICE_ACCENTS, THEME_TOKENS } from "@polaris-key/brand";
+import { FONT, SERVICE_ACCENTS, THEME_TOKENS } from "@polaris-key/brand";
 import { buildLabel, type BuildLabel } from "@polaris-key/manifest";
-import { themedLockup } from "../../../core/brandHtml.js";
 import {
   LOCKER_SHELL_CSS,
   lockerFaviconHref,
@@ -97,9 +96,6 @@ function palette(theme: "dark" | "light"): string {
     `--accent-fg:${accent.on}`,
     `--accent-subtle:${accent.subtle}`,
     `--focus:${t.focus}`,
-    `--mb:${BRAND.violet[theme]}`,
-    `--ms:${BRAND.star[theme]}`,
-    `--mt:${BRAND.text[theme]}`,
   ].join(";");
 }
 
@@ -151,11 +147,8 @@ export const PAGE_CSS = [
   `footer p{margin:0 0 1rem}`,
   `.delivery{display:block;line-height:0}`,
   `.delivery svg{display:block;max-width:100%;height:auto}`,
-  `.mb{fill:var(--mb)}.ms{fill:var(--ms)}.mt{fill:var(--mt)}`,
+  LOCKER_SHELL_CSS,
 ].join("\n");
-
-/** The Polaris Locker shell's stylesheet (LK-07): `PAGE_CSS` and the shell's tail. */
-export const PAGE_CSS_LOCKER = PAGE_CSS + "\n" + LOCKER_SHELL_CSS;
 
 const KEY_LABELS: Readonly<Record<string, string>> = {
   "android-app-signing": "Android app signing certificate",
@@ -297,15 +290,11 @@ function primaryBlock(
 }
 
 /** One entry of "Other ways to get it". */
-function way(
-  a: PageAction,
-  group: PagePlatformGroup,
-  brandName: string,
-): string {
+function way(a: PageAction, group: PagePlatformGroup): string {
   const parts: string[] = [];
-  // The `direct` outlet is presented as Polaris Key (S-21 §6.8); its id stays `direct`.
+  // The `direct` outlet is presented as Polaris Locker (S-21 §6.8, LK-07); its id stays `direct`.
   const head =
-    a.kind === "download" && a.build ? `Download from ${brandName}` : a.label;
+    a.kind === "download" && a.build ? `Download from Polaris Locker` : a.label;
   parts.push(
     `<span class="way-head">${esc(head)}</span>${
       a.version ? ` <span class="meta">Version ${esc(a.version)}</span>` : ""
@@ -374,17 +363,6 @@ function iconTag(url: string | null): string {
     : "";
 }
 
-let delivery: string | null = null;
-
-/**
- * The footer's service mark: the Polaris Key Delivery compact lockup (the Star Cut, BRAND.md
- * §1.1, §7.1) at 48 px tall, so its glyph is the 24 px service cut. Built once, on first use.
- */
-function deliveryMark(): string {
-  delivery ??= themedLockup("delivery", "compact", 48, "lockup");
-  return delivery;
-}
-
 /**
  * The release's generated `SHA256SUMS` (DC-15), beside its files: the URL of one of the release's
  * builds with the file name swapped. Null when the page offers no build of the release with a
@@ -407,12 +385,6 @@ export interface PageExtras {
    * `https:` URL `safeHref` accepts; it is decorative (the name is the heading beside it).
    */
   iconUrl?: string | null;
-  /**
-   * `locker`: the Polaris Locker shell (title, lockup, favicon, "Download from Polaris Locker"),
-   * with the Star Cut kept as Delivery's symbol (LK-07; `core/assets/lockerShell.ts`). Omitted:
-   * the page of old, byte for byte. The caller sets it while `customer.host` is on.
-   */
-  brand?: "locker";
 }
 
 /** Render the page. */
@@ -422,7 +394,6 @@ export function renderDownloadPage(
   extras: PageExtras = {},
 ): string {
   const name = model.listing.name;
-  const locker = extras.brand === "locker";
   const groupOf = (p: PagePlatform | null) =>
     p === null ? undefined : model.platforms.find((g) => g.platform === p);
   const mine = groupOf(detected.platform);
@@ -466,7 +437,7 @@ export function renderDownloadPage(
       const items = g.actions
         .map((id) => model.actions.find((a) => a.id === id))
         .filter((a): a is PageAction => a !== undefined)
-        .map((a) => way(a, g, locker ? "Polaris Locker" : "Polaris Key"));
+        .map((a) => way(a, g));
       return items.length
         ? `<h3>${esc(g.label)}</h3><ul class="ways">${items.join("")}</ul>`
         : "";
@@ -526,18 +497,12 @@ export function renderDownloadPage(
 
   return [
     "<!doctype html>",
-    locker
-      ? '<html lang="en" data-brand="locker"><head><meta charset="utf-8">'
-      : '<html lang="en"><head><meta charset="utf-8">',
+    '<html lang="en" data-brand="locker"><head><meta charset="utf-8">',
     '<meta name="viewport" content="width=device-width, initial-scale=1">',
     '<meta name="referrer" content="no-referrer">',
-    locker
-      ? `<title>Download ${esc(name)} · Polaris Locker</title>`
-      : `<title>Download ${esc(name)}</title>`,
-    ...(locker
-      ? [`<link rel="icon" type="image/svg+xml" href="${lockerFaviconHref()}">`]
-      : []),
-    `<style>${locker ? PAGE_CSS_LOCKER : PAGE_CSS}</style>`,
+    `<title>Download ${esc(name)} · Polaris Locker</title>`,
+    `<link rel="icon" type="image/svg+xml" href="${lockerFaviconHref()}">`,
+    `<style>${PAGE_CSS}</style>`,
     "</head><body>",
     `<header>${iconTag(extras.iconUrl ?? null)}<h1>${esc(name)}</h1>${
       model.listing.subtitle
@@ -553,7 +518,7 @@ export function renderDownloadPage(
         ? `<section aria-labelledby="ways-title"><h2 id="ways-title">Other ways to get it</h2>${ways}</section>`
         : ""
     }${files}${keys}${about}</main>`,
-    `<footer><p>Verify a download's SHA-256 before you install it.</p>${locker ? `<p class="delivery">${lockerLockup(40, "lockup")}</p>${serviceRow()}` : `<p class="delivery">${deliveryMark()}</p>`}</footer>`,
+    `<footer><p>Verify a download's SHA-256 before you install it.</p><p class="delivery">${lockerLockup(40, "lockup")}</p>${serviceRow()}</footer>`,
     "</body></html>",
     "",
   ].join("\n");

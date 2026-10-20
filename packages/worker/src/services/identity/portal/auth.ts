@@ -553,7 +553,7 @@ async function completeConnectionCallback(
 function emailInUsePage(): Response {
   return htmlError(
     409,
-    "A Polaris Key account already uses this email address. Sign in with the method you used before. Adding another sign-in method to an account is not available yet; until it is, contact the product's support if you can no longer use that method.",
+    "A Polaris Locker account already uses this email address. Sign in with the method you used before. Adding another sign-in method to an account is not available yet; until it is, contact the product's support if you can no longer use that method.",
   );
 }
 

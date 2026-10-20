@@ -990,7 +990,7 @@ async function gateConfirmed(
       {
         error: "email_in_use",
         message:
-          "A Polaris Key account already uses this email. Join this sign-in to that account, or use a different email.",
+          "A Polaris Locker account already uses this email. Join this sign-in to that account, or use a different email.",
         email,
         proven,
       },
@@ -1247,7 +1247,7 @@ function emailTaken(): Response {
     {
       error: "email_in_use",
       message:
-        "A Polaris Key account already uses this email. Start again to join it or use a different email.",
+        "A Polaris Locker account already uses this email. Start again to join it or use a different email.",
     },
     409,
     [clearGate()],
@@ -1361,7 +1361,7 @@ async function gateJoin(
       {
         error: "step_up_required",
         message:
-          "Sign in to the Polaris Key account that uses this email, then join.",
+          "Sign in to the Polaris Locker account that uses this email, then join.",
       },
       403,
     );

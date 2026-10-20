@@ -11,6 +11,7 @@ import { loadProduct } from "../src/core/products.js";
 import {
   BRAND_FONT_PATH,
   BRAND_PAGE_CSS,
+  BRAND_PAGE_CSS_LOCKER,
   brandPageStyleSource,
   renderBrandPage,
 } from "../src/core/brandHtml.js";
@@ -48,7 +49,10 @@ function sha256(text: string): string {
 }
 
 /** The checks every branded page must pass, as served (after the dispatcher's backstop). */
-async function expectBrandedPage(res: Response): Promise<string> {
+async function expectBrandedPage(
+  res: Response,
+  brand: "key" | "locker" = "locker",
+): Promise<string> {
   const served = secureResponse(res);
   const csp = served.headers.get("content-security-policy")!;
   const html = await served.text();
@@ -62,17 +66,27 @@ async function expectBrandedPage(res: Response): Promise<string> {
   expect(styles).toHaveLength(1);
   expect(csp).toContain(`'sha256-${sha256(styles[0]![1]!)}'`);
   expect(html).not.toMatch(/\sstyle=|<script|\son\w+=/i);
-  // The console Logo's brand block: the Pinned K at 48 px (display cut) beside the wordmark text,
-  // without the gold bit, and no lockup drawn at twice the console's size.
-  expect(html).toMatch(
-    /<div class="brand" role="img" aria-label="Polaris Key[^"]*">/,
-  );
-  expect(html).toContain(
-    '<svg class="mark" xmlns="http://www.w3.org/2000/svg" width="48" height="48"',
-  );
-  expect(html).toContain(
-    '<span class="wordmark" aria-hidden="true">Polaris&nbsp;Key',
-  );
+  if (brand === "key") {
+    // The console Logo's brand block: the Pinned K at 48 px (display cut) beside the wordmark
+    // text, without the gold bit, and no lockup drawn at twice the console's size.
+    expect(html).toMatch(
+      /<div class="brand" role="img" aria-label="Polaris Key[^"]*">/,
+    );
+    expect(html).toContain(
+      '<svg class="mark" xmlns="http://www.w3.org/2000/svg" width="48" height="48"',
+    );
+    expect(html).toContain(
+      '<span class="wordmark" aria-hidden="true">Polaris&nbsp;Key',
+    );
+  } else {
+    // Every page a customer sees: the Polaris Locker lockup at 48 px tall, never Polaris Key.
+    expect(html).toContain('data-brand="locker"');
+    expect(html).toMatch(
+      /<div class="brand" role="img" aria-label="Polaris Locker[^"]*">/,
+    );
+    expect(html).toContain('<svg class="mark"');
+    expect(html).not.toContain("Polaris&nbsp;Key");
+  }
   expect(html).not.toContain('class="lockup"');
   expect(html.replace(styles[0]![0], "")).not.toContain("{");
   expect(html.toLowerCase()).not.toContain(BRAND.gold.dark.toLowerCase());
@@ -83,7 +97,12 @@ async function expectBrandedPage(res: Response): Promise<string> {
 describe("the branded page shell", () => {
   it("allows its stylesheet by hash and nothing else inline", () => {
     const csp = brandedHtmlSecurityHeaders().get("content-security-policy")!;
-    expect(brandPageStyleSource()).toBe(`'sha256-${sha256(BRAND_PAGE_CSS)}'`);
+    expect(brandPageStyleSource("key")).toBe(
+      `'sha256-${sha256(BRAND_PAGE_CSS)}'`,
+    );
+    expect(brandPageStyleSource()).toBe(
+      `'sha256-${sha256(BRAND_PAGE_CSS_LOCKER)}'`,
+    );
     expect(csp).toBe(
       [
         "default-src 'none'",
@@ -129,12 +148,18 @@ describe("the branded page shell", () => {
       title: "t",
       heading: "h",
       surface: "console",
+      brand: "key",
     });
     expect(html).toContain(
       '<div class="brand" role="img" aria-label="Polaris Key console">',
     );
     expect(html).toContain(
       'Polaris&nbsp;Key<span class="surface">console</span></span>',
+    );
+    expect(
+      renderBrandPage({ title: "t", heading: "h", surface: "device" }),
+    ).toContain(
+      '<div class="brand" role="img" aria-label="Polaris Locker device">',
     );
     expect(renderBrandPage({ title: "t", heading: "h" })).not.toContain(
       'class="surface"',
@@ -178,6 +203,7 @@ describe("the branded page shell", () => {
       heading: '"><script>alert(1)</script>',
       eyebrow: "<e>",
       surface: "<s>",
+      brand: "key",
     });
     expect(html).not.toContain("<script>");
     expect(html).toContain('<span class="surface">&lt;s&gt;</span>');
@@ -200,7 +226,7 @@ describe("every server-rendered page on the console host uses the shell", () => 
       1_800_000_000,
     );
     expect(res.status).toBe(400);
-    const html = await expectBrandedPage(res);
+    const html = await expectBrandedPage(res, "key");
     expect(html).toContain("Missing authorization code.");
     expect(html).toContain('<span class="surface">console</span>');
     expect(html).not.toContain('class="eyebrow"');
@@ -327,16 +353,16 @@ describe("the portal email", () => {
     expect(html).toContain('<table role="presentation"');
     expect(html).toContain('<meta name="color-scheme" content="light dark">');
     expect(html).toContain("@media (prefers-color-scheme: dark)");
-    expect(html).toContain(THEME_TOKENS.light.accent.violet.solid);
+    expect(html).toContain(THEME_TOKENS.light.action.fill);
     expect(html).toContain(THEME_TOKENS.dark.surface.page);
     // The link, escaped, in the button and as copyable text; the kit lockup from the link's origin.
     const escaped = link.replace(/&/g, "&amp;");
     expect(html.split(`href="${escaped}"`)).toHaveLength(3);
     expect(html).toContain(
-      `<img class="pk-logo-light" src="${ORIGIN}/assets/branding/key/key-horizontal-light-944.png" width="472" height="160" alt="Polaris Key"`,
+      `<img class="pk-logo-light" src="${ORIGIN}/assets/branding/locker/locker-horizontal-light-640.png" width="230" height="64" alt="Polaris Locker"`,
     );
     expect(html).toContain(
-      `<img class="pk-logo-dark" src="${ORIGIN}/assets/branding/key/key-horizontal-dark-944.png" width="472" height="160" alt="Polaris Key"`,
+      `<img class="pk-logo-dark" src="${ORIGIN}/assets/branding/locker/locker-horizontal-dark-640.png" width="230" height="64" alt="Polaris Locker"`,
     );
     expect(html).toContain(".pk-logo-dark{display:block !important");
     expect(html).not.toMatch(/app-icon|powered by/i);
@@ -355,7 +381,7 @@ describe("the portal email", () => {
     await sendNotice(env, makeTestDb(), "ada@example.com", message, NOW);
     expect(sent[0]!.text).toBe(message.text);
     expect(sent[0]!.html).not.toContain("<img");
-    expect(sent[0]!.html).toContain(">Polaris Key</p>");
+    expect(sent[0]!.html).toContain(">Polaris Locker</p>");
   });
 
   it("loads the lockup only over https (or http on loopback)", () => {

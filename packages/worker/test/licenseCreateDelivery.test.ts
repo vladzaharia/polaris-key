@@ -110,7 +110,7 @@ describe("create with deviceLimit and delivery, and send-key (LX-27)", () => {
     }
   });
 
-  it("delivery.email sends exactly one email with the key, via Polaris Key", async () => {
+  it("delivery.email sends exactly one email with the key, via Polaris Locker", async () => {
     const res = await create({
       email: "holder@example.com",
       name: "Grace",
@@ -122,14 +122,14 @@ describe("create with deviceLimit and delivery, and send-key (LX-27)", () => {
     expect(sent).toHaveLength(1);
     const m = sent[0]!;
     expect(m.to).toBe("holder@example.com");
-    expect(m.from.name).toBe("Mossgarden via Polaris Key");
+    expect(m.from.name).toBe("Mossgarden via Polaris Locker");
     expect(m.subject).toBe("Your Mossgarden license");
     expect(m.subject).not.toContain(body.key);
     expect(m.text).toContain(body.key);
     expect(m.html.replaceAll("<wbr>", "")).toContain(body.key);
     expect(m.text).toContain("Hi Grace,");
     expect(m.text).toMatch(
-      /Open in Polaris Key: https?:\/\/[^\s]+\/signin\?product=djdl/,
+      /Open in Polaris Locker: https?:\/\/[^\s]+\/signin\?product=djdl/,
     );
   });
 

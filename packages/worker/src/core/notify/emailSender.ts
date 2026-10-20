@@ -8,8 +8,9 @@ import type { Env } from "../../platform/env.js";
 // display names exist, and nothing else may appear in the `From` header:
 //
 //   - platform mail (the login card's own codes and links, account notices, the dormant-account
-//     warning, merge and join notices): exactly "Polaris Key", never " via";
-//   - passthrough mail (sign-in started through a product): "<App> via Polaris Key", where
+//     warning, merge and join notices): exactly "Polaris Locker" (LK-07; "Polaris Key" for
+//     operator and member mail), never " via";
+//   - passthrough mail (sign-in started through a product): "<App> via Polaris Locker", where
 //     <App> is the product's display name AFTER `checkSenderAppName` accepts it and the suffix is
 //     fixed text a tenant cannot change.
 //
@@ -28,24 +29,19 @@ export const AUTH_EMAIL_ADDRESS = `noreply@${AUTH_EMAIL_DOMAIN}`;
  */
 export const LEGACY_EMAIL_ADDRESS = "noreply@plrs.im";
 
-/** The platform's own display name. */
+/** The display name of operator and member mail: the platform's own (the console side). */
 export const PLATFORM_SENDER_NAME = "Polaris Key";
+/** The display name of customer mail (LK-07, D6); the address is the same. */
+export const CUSTOMER_SENDER_NAME = "Polaris Locker";
 /** The fixed suffix of every passthrough display name. */
-export const PASSTHROUGH_SENDER_SUFFIX = " via Polaris Key";
-/**
- * The display name of customer mail once `customer.host` is on (LK-07, D6; the address never
- * changes). Operator and member mail stays "Polaris Key".
- */
-export const LOCKER_SENDER_NAME = "Polaris Locker";
-/** The passthrough suffix while the brand is Polaris Locker. */
-export const LOCKER_PASSTHROUGH_SENDER_SUFFIX = " via Polaris Locker";
+export const PASSTHROUGH_SENDER_SUFFIX = " via Polaris Locker";
 /** The longest product display name (in code points) accepted into a sender name. */
 export const SENDER_APP_NAME_MAX = 40;
 
 /**
  * Whole names that may never be a sender's <App>, compared after folding (`foldForReserve`).
  * The S-16 list (portal, console, admin) plus the mailbox roles a recipient reads as the
- * platform speaking ("Support via Polaris Key", "Security via Polaris Key").
+ * platform speaking ("Support via Polaris Locker", "Security via Polaris Locker").
  */
 const RESERVED_WHOLE_NAMES = new Set([
   "portal",
@@ -158,7 +154,7 @@ export function foldForReserve(name: string): string {
 }
 
 /**
- * Whether a product display name may become the <App> of "<App> via Polaris Key", and the
+ * Whether a product display name may become the <App> of "<App> via Polaris Locker", and the
  * canonical form it is used in (NFC, trimmed, inner whitespace runs collapsed to one space).
  * Refuses an empty name, one longer than `SENDER_APP_NAME_MAX` code points, any forbidden
  * character (before any whitespace is collapsed, so an embedded CR/LF is refused, never
@@ -211,18 +207,18 @@ export function senderAddress(env: Env): string {
 }
 
 /**
- * The `From` of platform mail: "Polaris Key", never " via"; "Polaris Locker" when `locker`
- * (customer mail while `customer.host` is on).
+ * The `From` of platform mail, never " via": "Polaris Locker" for customer mail, "Polaris Key"
+ * for operator and member mail (`audience: "operator"`).
  */
-export function platformSender(env: Env, locker = false): EmailAddress {
+export function platformSender(env: Env, audience?: "operator"): EmailAddress {
   return {
-    name: locker ? LOCKER_SENDER_NAME : PLATFORM_SENDER_NAME,
+    name: audience === "operator" ? PLATFORM_SENDER_NAME : CUSTOMER_SENDER_NAME,
     email: senderAddress(env),
   };
 }
 
 /**
- * The `From` of passthrough mail for a product: "<App> via Polaris Key" from its display name,
+ * The `From` of passthrough mail for a product: "<App> via Polaris Locker" from its display name,
  * or, when that is refused, from its slug (slugs are `[a-z0-9-]`, so only the reserved check can
  * refuse one). Null when both are refused: such a product sends no passthrough mail, because
  * borrowing the platform's own name would let tenant mail pass as Polaris Key's.
@@ -231,13 +227,12 @@ export function passthroughSender(
   env: Env,
   displayName: string | null | undefined,
   slug: string,
-  locker = false,
 ): EmailAddress | null {
   for (const candidate of [displayName, slug]) {
     const check = checkSenderAppName(candidate);
     if (check.ok)
       return {
-        name: `${check.name}${locker ? LOCKER_PASSTHROUGH_SENDER_SUFFIX : PASSTHROUGH_SENDER_SUFFIX}`,
+        name: `${check.name}${PASSTHROUGH_SENDER_SUFFIX}`,
         email: senderAddress(env),
       };
   }

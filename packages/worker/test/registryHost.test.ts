@@ -549,11 +549,11 @@ describe("registry host: the landing page at /", () => {
     expect(html).not.toMatch(
       /<script|\son[a-z]+=|\sstyle=|<form|<iframe|<object|<embed|@import|@font-face|url\(/i,
     );
-    expect(html).toContain('role="img" aria-label="Polaris Key Delivery"');
-    expect(html).toContain("<title>Polaris Key Delivery</title>");
-    expect(html).toContain(
-      "The package registry for libraries and tools published through Polaris Key.",
-    );
+    expect(html).toContain('role="img" aria-label="Polaris Locker"');
+    expect(html).toContain("<title>Delivery · Polaris Locker</title>");
+    expect(html).toContain('<div class="svc">');
+    expect(html).not.toContain("Polaris Key");
+    expect(html).toContain("The package registry for libraries and tools.");
     expect(html).not.toContain("noindex");
     const urls = [...html.matchAll(/(?:href|src)="([^"]+)"/g)]
       .map((m) => m[1]!)
@@ -593,7 +593,7 @@ describe("registry host: the landing page at /", () => {
       ).text();
       expect(html, origin).toContain(`<p class="env">${word} environment</p>`);
       expect(html, origin).toContain(
-        `<title>Polaris Key Delivery (${word})</title>`,
+        `<title>Delivery (${word}) · Polaris Locker</title>`,
       );
       expect(html, origin).toContain(
         '<meta name="robots" content="noindex, nofollow">',

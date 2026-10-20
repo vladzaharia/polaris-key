@@ -3,7 +3,7 @@
  *
  * Three layers: the templates' copy is pinned by snapshot (subject and plain text for every
  * template, full HTML for one plain and one security notice), the rules every template must
- * hold are asserted directly (named "Polaris Key", never "portal"; product names and device
+ * hold are asserted directly (named "Polaris Locker", never "portal"; product names and device
  * labels, never ids; deep links into the app, never tokens; "Wasn't you?" exactly on the
  * security notices), and the handlers are driven end to end for who receives what.
  */
@@ -164,23 +164,23 @@ describe("notice templates: copy", () => {
       "Studio PC was removed from Tidewater Studio",
     );
     expect(TEMPLATES.methodRemoved!().subject).toBe(
-      "Steam was disconnected from your Polaris Key account",
+      "Steam was disconnected from your Polaris Locker account",
     );
     // SIGN-IN.md §3.15: signin.mail.newDevice.subject.
     expect(TEMPLATES.newDeviceSignIn!().subject).toBe(
-      "A new device signed in to your Polaris Key account",
+      "A new device signed in to your Polaris Locker account",
     );
   });
 });
 
 describe("notice templates: rules", () => {
   for (const [name, build] of Object.entries(TEMPLATES)) {
-    it(`${name}: "Polaris Key", never "portal"; branded and dark-mode safe`, () => {
+    it(`${name}: "Polaris Locker", never "portal"; branded and dark-mode safe`, () => {
       const m = build();
       for (const part of [m.subject, m.text, m.html]) {
         expect(part).not.toMatch(/portal/i);
       }
-      expect(`${m.text}\n${m.html}`).toContain("Polaris Key");
+      expect(`${m.text}\n${m.html}`).toContain("Polaris Locker");
       expect(m.html).toContain(
         '<meta name="color-scheme" content="light dark">',
       );
@@ -244,7 +244,7 @@ describe("notice templates: rules", () => {
     for (const name of ["madeFloatingWaiting", "reassignedAwayWaiting"]) {
       const m = TEMPLATES[name]!();
       expect(m.text).toContain("issued a license to this email address");
-      expect(m.text).not.toContain("Polaris Key account,");
+      expect(m.text).not.toContain("Polaris Locker account,");
     }
     for (const name of [
       "madeFloating",
@@ -404,9 +404,12 @@ describe("security notices reach every verified address", () => {
       "ada.work@example.com",
       "ada@example.com",
     ]);
-    // Platform mail, From "Polaris Key" (core/notify/emailSender.ts platformSender, I-18).
+    // Platform mail, From "Polaris Locker" (core/notify/emailSender.ts platformSender, I-18).
     for (const m of sent)
-      expect(m.from).toEqual({ name: "Polaris Key", email: "noreply@plrs.im" });
+      expect(m.from).toEqual({
+        name: "Polaris Locker",
+        email: "noreply@plrs.im",
+      });
   });
 
   it("an account with no deliverable address leaves an audit row, no address", async () => {
@@ -494,7 +497,7 @@ describe("security notices reach every verified address", () => {
     // S-16: the licence's own address hears about it, without learning which account.
     const owner = sent.find((m) => m.to === "ada@example.com")!;
     expect(owner.subject).toBe(
-      "Your DJ Download license was added to a Polaris Key account",
+      "Your DJ Download license was added to a Polaris Locker account",
     );
     expect(owner.text).not.toContain("someone@example.com");
     for (const m of sent) expect(m.text).not.toContain(key);
@@ -518,7 +521,7 @@ describe("security notices reach every verified address", () => {
       "ada@example.com",
     ]);
     expect(sent[0]!.subject).toBe(
-      "Your Polaris Key account is scheduled for deletion",
+      "Your Polaris Locker account is scheduled for deletion",
     );
     expect(`${sent[0]!.subject}${sent[0]!.text}`).not.toMatch(/portal/i);
   });

@@ -26,11 +26,6 @@ export const keyEmailIntro = (holderName: string): string[] => [
 export const KEY_EMAIL_AFTER =
   "Enter it in the app to activate. Keep it private: anyone with the key can use it.";
 
-/**
- * The primary button: the product's download when it has one, else the portal sign-in. Under the
- * Polaris Locker brand (LK-07) the caller passes "Polaris Locker".
- */
-export const keyEmailPrimaryLabel = (
-  hasDownload: boolean,
-  brandName = "Polaris Key",
-): string => (hasDownload ? "Download" : `Open in ${brandName}`);
+/** The primary button: the product's download when it has one, else the portal sign-in. */
+export const keyEmailPrimaryLabel = (hasDownload: boolean): string =>
+  hasDownload ? "Download" : "Open in Polaris Locker";
