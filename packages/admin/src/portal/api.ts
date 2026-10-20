@@ -76,6 +76,8 @@ export interface PortalCapabilities {
      * each a "Continue with <label>" button to `/login/sso/<id>`. Absent on an older Worker.
      */
     connections?: PortalConnection[];
+    /** I-16: passkeys are an account sign-in method (platform-level; absent on an older Worker). */
+    passkey?: boolean;
   };
   /**
    * The product named by `?product=`, for the login card's context header (G1/G28). Not sent by
@@ -1003,6 +1005,83 @@ export interface PortalPasskeyOptions {
   expiresIn: number;
 }
 
+/** `GET /api/signin/confirm-email` (I-27, I-33): the finish step's state. No account id in it. */
+export interface PortalGate {
+  status: "gate";
+  /** `google`, `apple`, `steam`, `email`, … */
+  provider: string;
+  stage: "choose" | "code_sent" | "join_offer";
+  expiresAt: number;
+  /** False when the account has an email and only the profile and terms are asked. */
+  emailRequired: boolean;
+  email: {
+    provider: string | null;
+    providerVerified: boolean;
+    relay: boolean;
+    pending: string | null;
+    confirmed: string | null;
+  };
+  profile: {
+    name: string | null;
+    nameExplicit: boolean;
+    suggestions?: { name: string; source: string }[];
+    /** Same-origin proxy path, or null. */
+    picture: string | null;
+    initials?: boolean;
+    birthdate?: { value: string; offered: string; from: string } | null;
+  };
+  terms: { url: string; version: string } | null;
+  platformTerms?: { url: string; version: string } | null;
+  product: { slug: string; name: string | null } | null;
+  join?: { email: string | null; proven: boolean };
+}
+
+/** What a gate POST sends: only what the step asked. */
+export interface PortalGateChoice {
+  choice?: "provider" | "typed";
+  email?: string;
+  name?: string;
+  picture?: "provider" | "initials";
+  birthdate?: string;
+  termsVersion?: string;
+  platformTermsVersion?: string;
+}
+
+/** `POST /api/device-login/start` (PX-W14): the code, its QR and the poll handle. */
+export interface PortalDeviceLoginStart {
+  id: string;
+  /** `KRQP-BMXD`, shown as is. */
+  code: string;
+  /** An SVG `data:` URI of `approveUrl`. */
+  qr: string;
+  approveUrl: string;
+  /** Seconds the code works. */
+  expiresIn: number;
+  /** Seconds between polls. */
+  interval: number;
+}
+
+export type PortalDeviceLoginPoll =
+  | { status: "pending"; expiresIn?: number; interval?: number }
+  | { status: "approved" | "denied" };
+
+/** `POST /api/device-login/lookup`: what asks to sign in, for the approver. */
+export interface PortalDeviceLoginRequest {
+  code: string;
+  device: { label: string; browser: string | null; os: string | null };
+  location: {
+    city: string | null;
+    region: string | null;
+    country: string | null;
+    label: string | null;
+  };
+  requestedAt: number;
+  expiresIn: number;
+  approverCountry: string | null;
+  newLocation: boolean;
+  stepUpRequired: boolean;
+}
+
 /** One live session of the account (`GET /api/sessions`, I-07), newest first. */
 export interface PortalSession {
   /** The row key (a hash, never a cookie): the path segment that ends it. */
@@ -1045,6 +1124,8 @@ export class PortalApiError extends Error {
   reason?: string;
   /** I-30: an enforced domain's refusal names the connection to use instead. */
   next?: PortalSsoNext;
+  /** I-16: a passkey sign-in refused because no account here holds that credential. */
+  unknownCredential?: boolean;
   constructor(
     public readonly status: number,
     public readonly code?: string,
@@ -1098,6 +1179,7 @@ async function send(
     let retryAfter: number | undefined;
     let reason: string | undefined;
     let next: PortalSsoNext | undefined;
+    let unknownCredential = false;
     try {
       const body = (await res.json()) as {
         error?: string;
@@ -1106,7 +1188,9 @@ async function send(
         retryAfter?: unknown;
         reason?: unknown;
         next?: unknown;
+        unknownCredential?: unknown;
       };
+      unknownCredential = body.unknownCredential === true;
       code = body.error;
       message = body.message;
       if (typeof body.triesLeft === "number") triesLeft = body.triesLeft;
@@ -1122,6 +1206,7 @@ async function send(
     if (retryAfter !== undefined) error.retryAfter = retryAfter;
     if (reason !== undefined) error.reason = reason;
     if (next) error.next = next;
+    if (unknownCredential) error.unknownCredential = true;
     throw error;
   }
   return res;
@@ -1223,7 +1308,7 @@ export const portalApi = {
   },
   /** Redeems the emailed code for this browser's sign-in (the Worker sets the session cookie). */
   verifySignInCode: async (code: string) => {
-    const out = await call<{ status: string; next?: string }>(
+    const out = await call<{ status: string; next?: string; nudge?: boolean }>(
       "/api/signin/email/verify",
       { method: "POST", body: JSON.stringify({ code }) },
     );
@@ -1419,17 +1504,74 @@ export const portalApi = {
       method: "PATCH",
       body: JSON.stringify({ name }),
     }),
-  /** A passkey sign-in's challenge: how the account page confirms it's you (step-up). */
-  passkeySignInOptions: () =>
+  /**
+   * A passkey sign-in's challenge: the card's **Sign in with a passkey**, and how the account page
+   * confirms it's you (step-up). `returnTo` is where a signed-out sign-in carries on.
+   */
+  passkeySignInOptions: (returnTo?: string) =>
     call<PortalPasskeyOptions>("/api/signin/passkey/options", {
+      method: "POST",
+      body: JSON.stringify(returnTo ? { returnTo } : {}),
+    }),
+  passkeySignInVerify: (response: unknown) =>
+    call<{ status: string; next?: string; nudge?: boolean }>(
+      "/api/signin/passkey/verify",
+      {
+        method: "POST",
+        body: JSON.stringify({ response }),
+      },
+    ),
+  /** The email gate's state (the finish step); a 400 means it expired or was never opened. */
+  gate: () => call<PortalGate>("/api/signin/confirm-email"),
+  /** Confirm the provider's email or a typed one, with the profile and terms choices. */
+  gateChoose: (body: PortalGateChoice) =>
+    call<
+      | { status: "signed_in"; next: string; nudge: boolean }
+      | {
+          status: "code_sent";
+          email: string;
+          expiresIn: number;
+          codeLength: number;
+        }
+    >("/api/signin/confirm-email", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  gateVerify: (code: string) =>
+    call<{ status: "signed_in"; next: string; nudge: boolean }>(
+      "/api/signin/confirm-email/verify",
+      { method: "POST", body: JSON.stringify({ code }) },
+    ),
+  gateJoin: () =>
+    call<{ status: "signed_in"; next: string; nudge: boolean }>(
+      "/api/signin/confirm-email/join",
+      { method: "POST", body: JSON.stringify({}) },
+    ),
+  gateCancel: () =>
+    call<{ status: "cancelled" }>("/api/signin/confirm-email/cancel", {
       method: "POST",
       body: JSON.stringify({}),
     }),
-  passkeySignInVerify: (response: unknown) =>
-    call<{ status: string }>("/api/signin/passkey/verify", {
+  /** PX-W14: ask to sign in on this browser by approving it from a signed-in device. */
+  deviceLoginStart: () =>
+    call<PortalDeviceLoginStart>("/api/device-login/start", {
       method: "POST",
-      body: JSON.stringify({ response }),
+      body: JSON.stringify({}),
     }),
+  /** The asking browser's poll: `pending`, `denied` or `approved` (the session cookie is set). */
+  deviceLoginPoll: (id: string) =>
+    call<PortalDeviceLoginPoll>(`/api/device-login/${enc(id)}`),
+  /** The approver reads what is asking, before deciding (reads only). */
+  deviceLoginLookup: (code: string) =>
+    call<{ request: PortalDeviceLoginRequest }>("/api/device-login/lookup", {
+      method: "POST",
+      body: JSON.stringify({ code }),
+    }),
+  deviceLoginDecide: (code: string, decision: "approve" | "deny") =>
+    call<{ ok: true; status: "approved" | "denied" }>(
+      "/api/device-login/approve",
+      { method: "POST", body: JSON.stringify({ code, decision }) },
+    ),
   /** Where you're signed in (I-07): the account's live sessions. */
   sessions: () => call<{ sessions: PortalSession[] }>("/api/sessions"),
   endSession: (id: string) =>

@@ -74,9 +74,10 @@ export function portalErrorCopy(
   return opts.account
     ? {
         ...copy,
+        // Locker's own page has no developer to contact, and no support line to point at.
         description: copy.description.replace(
-          "contact the developer",
-          "contact Polaris Locker support",
+          "Try again. If it keeps happening, contact the developer.",
+          "Try again in a few minutes.",
         ),
       }
     : copy;

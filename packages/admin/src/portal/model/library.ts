@@ -1,7 +1,6 @@
 import {
   AUTOMATIC_GRANT,
   EXPIRES_SOON_DAYS,
-  FROM_SIGNING_IN,
   devicesText,
   expiresInText,
 } from "../../lib/vocab/license.js";
@@ -476,11 +475,11 @@ export function licenseStatus(
   if (isSignInLicense(l)) {
     return {
       kind: "signedInApp",
-      label: FROM_SIGNING_IN,
+      label: AUTOMATIC_GRANT,
       tone: "neutral",
       note: [
         tier ?? "Standard",
-        FROM_SIGNING_IN,
+        AUTOMATIC_GRANT,
         devicesText(seats ? seats.inUse : l.deviceCount, seats?.limit),
       ].join(" · "),
       attention: false,

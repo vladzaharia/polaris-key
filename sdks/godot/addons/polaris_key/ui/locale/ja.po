@@ -2141,10 +2141,10 @@ msgstr "{date}まで"
 msgid "signin.term.yearlyUntil"
 msgstr "年間、{date}まで"
 
-#. From signing in
+#. Automatic grant
 #. Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label).
 msgid "signin.choice.origin.signIn"
-msgstr "サインインで取得"
+msgstr "自動付与"
 
 #. Key ending {last6}
 #. Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). Arguments: {last6} = the license key's last six characters, shown as is.
@@ -3766,6 +3766,431 @@ msgstr "{product}を入手した場所から新しいバージョンを入手し
 #. Terminal: activate read a piped stdin (a file, pipe or socket) and no key arrived in time.
 msgid "cli.activate.noKeyPiped"
 msgstr "stdin からライセンスキーが届きませんでした。"
+
+#. On a phone or computer where you're signed in, scan the code, or open Account → Approve a new device and type it.
+#. Sign in with another device: under the title (SIGN-IN.md §3.11). Account → Approve a new device is the portal's own menu path.
+msgid "signin.approve.lede"
+msgstr "サインイン済みのスマートフォンまたはコンピュータで、コードをスキャンするか、アカウント → 新しいデバイスを承認 を開いて入力してください。"
+
+#. Use another way to sign in
+#. Polaris Locker sign-in card (SIGN-IN.md §3.4, §3.5, §3.11).
+msgid "signin.approve.other"
+msgstr "別の方法でサインイン"
+
+#. macos: Use Another Way to Sign In
+msgctxt "macos"
+msgid "signin.approve.other"
+msgstr "別の方法でサインイン"
+
+#. One minute left on this code.
+#. Announced once when the sign-in code has one minute left (WCAG 2.2.1).
+msgid "signin.approve.minuteLeft"
+msgstr "このコードの有効時間はあと1分です。"
+
+#. Getting your code
+#. Busy label while the sign-in code is requested.
+msgid "signin.approve.starting"
+msgstr "コードを取得しています"
+
+#. That account can't sign in. Use another way to sign in.
+#. Sign in with another device or a passkey, for an account that can't sign in.
+msgid "signin.approve.disabled"
+msgstr "このアカウントはサインインできません。別の方法でサインインしてください。"
+
+#. Approve a new device
+#. Account → Where you're signed in: opens the approve dialog (SIGN-IN.md §3.11).
+msgid "signin.approve.open"
+msgstr "新しいデバイスを承認"
+
+#. macos: Approve a New Device
+msgctxt "macos"
+msgid "signin.approve.open"
+msgstr "新しいデバイスを承認"
+
+#. Enter the code shown on the other device.
+#. Approve dialog, when the link carried no code.
+msgid "signin.approve.enter"
+msgstr "もう一方のデバイスに表示されているコードを入力してください。"
+
+#. Code
+#. Approve dialog: the field's label.
+msgid "signin.approve.codeLabel"
+msgstr "コード"
+
+#. Find it
+#. Approve dialog: looks the code up (reads only, never approves).
+msgid "signin.approve.look"
+msgstr "検索"
+
+#. macos: Find It
+msgctxt "macos"
+msgid "signin.approve.look"
+msgstr "検索"
+
+#. Code {code} asks to sign in to your account.
+#. Approve dialog. Arguments: {code} = the 8-letter code, shown as is.
+msgid "signin.approve.askBody"
+msgstr "コード {code} がアカウントへのサインインを求めています。"
+
+#. Where
+#. Approve dialog: the request's coarse place, as a row label.
+msgid "signin.approve.where"
+msgstr "場所"
+
+#. When
+#. Approve dialog: when it asked, as a row label.
+msgid "signin.approve.when"
+msgstr "日時"
+
+#. Device
+#. Approve dialog: the asking device, as a row label.
+msgid "signin.approve.device"
+msgstr "デバイス"
+
+#. Unknown place
+#. Approve dialog: no coarse location was available.
+msgid "signin.approve.unknownPlace"
+msgstr "不明な場所"
+
+#. It's asking from a different place than you're in now, or from a place we can't tell.
+#. Approve dialog: why the person must confirm it's them first.
+msgid "signin.approve.stepUpWhy"
+msgstr "いまの場所とは別の場所、または場所を特定できない場所からのリクエストです。"
+
+#. approve it
+#. Approve dialog: completes 'Use your passkey to …' in the confirm-it's-you prompt.
+msgid "signin.approve.stepUpVerb"
+msgstr "承認する"
+
+#. Approved. {device} is signed in.
+#. Approve dialog outcome. Arguments: {device} = the device label.
+msgid "signin.approve.approved"
+msgstr "承認しました。{device} はサインインしています。"
+
+#. Denied. Nothing changed.
+#. Approve dialog outcome.
+msgid "signin.approve.deniedDone"
+msgstr "拒否しました。何も変更されていません。"
+
+#. That didn't go through. Try again.
+#. Approve dialog: a decision that failed.
+msgid "signin.approve.failed"
+msgstr "完了できませんでした。もう一度お試しください。"
+
+#. Your passkey wasn't used. Try again, or use another way.
+#. Passkey prompt closed or timed out.
+msgid "signin.passkey.cancelled"
+msgstr "パスキーは使用されませんでした。もう一度お試しいただくか、別の方法をお使いください。"
+
+#. This browser can't use your passkey here. Use another way.
+#. Passkey not usable in this browser.
+msgid "signin.passkey.unsupported"
+msgstr "このブラウザではここでパスキーを使用できません。別の方法をお使いください。"
+
+#. Your passkey didn't work. Try again, or use another way.
+#. Passkey refused.
+msgid "signin.passkey.failed"
+msgstr "パスキーが機能しませんでした。もう一度お試しいただくか、別の方法をお使いください。"
+
+#. Signed in with {provider}
+#. Finish step strip when the provider shared no identity to show. Arguments: {provider} = a provider's name.
+msgid "signin.gate.stripNoIdentity"
+msgstr "{provider} でサインイン済み"
+
+#. One more step
+#. Finish step title when only the terms are asked.
+msgid "signin.gate.termsTitle"
+msgstr "あと1ステップ"
+
+#. Your name
+#. Finish step: the screen name field.
+msgid "signin.gate.name"
+msgstr "お名前"
+
+#. Use {email}
+#. Finish step: the provider's address as a radio. Arguments: {email} = an address.
+msgid "signin.gate.useEmail"
+msgstr "{email} を使用"
+
+#. Your private Apple address
+#. Finish step: marks an Apple private-relay address.
+msgid "signin.gate.relay"
+msgstr "Apple のプライベートアドレス"
+
+#. Use my initials
+#. Finish step: swaps the provider's picture for initials.
+msgid "signin.gate.pictureInitials"
+msgstr "イニシャルを使用"
+
+#. macos: Use My Initials
+msgctxt "macos"
+msgid "signin.gate.pictureInitials"
+msgstr "イニシャルを使用"
+
+#. Use my {provider} picture
+#. Finish step: back to the provider's picture. Arguments: {provider} = a provider's name.
+msgid "signin.gate.pictureProvider"
+msgstr "{provider} の画像を使用"
+
+#. macos: Use My {provider} Picture
+msgctxt "macos"
+msgid "signin.gate.pictureProvider"
+msgstr "{provider} の画像を使用"
+
+#. Add my birth date from {org}
+#. Finish step: only when a connection offered a birth date. Arguments: {org} = the organization that offered it.
+msgid "signin.gate.birthdate"
+msgstr "{org} から生年月日を追加"
+
+#. Only you can see it. Apps never get it.
+#. Finish step: under the birth date choice.
+msgid "signin.gate.birthdateHelp"
+msgstr "表示されるのはご本人だけです。アプリには渡されません。"
+
+#. I agree to the {term}
+#. Finish step: the product's terms checkbox. Arguments: {product} = the product's name.
+msgid "signin.gate.productTerms"
+msgstr "{term}に同意します"
+
+#. By continuing you agree to the {term}.
+#. Finish step: the platform's terms line, with the link below it. Polaris Locker is never translated.
+msgid "signin.gate.platformTerms"
+msgstr "続行すると、{term}に同意したことになります。"
+
+#. That sign-in has expired. Sign in again.
+#. Finish step: the 15-minute sign-in ran out.
+msgid "signin.gate.expired"
+msgstr "このサインインは期限切れです。もう一度サインインしてください。"
+
+#. Join your accounts
+#. Finish step: the join offer (SIGN-IN.md §3.5).
+msgid "signin.gate.joinTitle"
+msgstr "アカウントを統合"
+
+#. {email} already belongs to a Polaris Locker account. Join this sign-in to it, or use a different email.
+#. Finish step: the join offer. Arguments: {email} = an address. Polaris Locker is never translated.
+msgid "signin.gate.joinLede"
+msgstr "{email} はすでに Polaris Locker のアカウントに属しています。このサインインをそのアカウントに統合するか、別のメールアドレスを使用してください。"
+
+#. To join, sign in to that account in this browser first, then add this sign-in from Account.
+#. Finish step: the join offer cannot be taken until the other account is proven.
+msgid "signin.gate.joinProve"
+msgstr "統合するには、まずこのブラウザでそのアカウントにサインインし、アカウントからこのサインインを追加してください。"
+
+#. We sent a code to {email}.
+#. Finish step, code stage. Arguments: {email} = an address.
+msgid "signin.gate.codeSent"
+msgstr "{email} にコードを送信しました。"
+
+#. On this browser, last time {when}
+#. HintStep under the usual method. Arguments: {when} = a relative time such as '2 days ago'.
+msgid "signin.hint.when"
+msgstr "このブラウザで、前回は {when}"
+
+#. Welcome back
+#. HintStep title when the browser kept no name.
+msgid "signin.hint.welcomeNoName"
+msgstr "おかえりなさい"
+
+#. a passkey
+#. HintStep: completes 'You usually sign in with {method}'.
+msgid "signin.hint.method.passkey"
+msgstr "パスキー"
+
+#. an email code
+#. HintStep: completes 'You usually sign in with {method}'.
+msgid "signin.hint.method.email"
+msgstr "メールのコード"
+
+#. Use a passkey
+#. HintStep: passkey button.
+msgid "signin.hint.usePasskey"
+msgstr "パスキーを使用"
+
+#. macos: Use a Passkey
+msgctxt "macos"
+msgid "signin.hint.usePasskey"
+msgstr "パスキーを使用"
+
+#. Email me a code
+#. HintStep: sends a sign-in code.
+msgid "signin.hint.emailCode"
+msgstr "メールでコードを送る"
+
+#. macos: Email Me a Code
+msgctxt "macos"
+msgid "signin.hint.emailCode"
+msgstr "メールでコードを送る"
+
+#. Change
+#. HintStep: back to the email field.
+msgid "signin.hint.change"
+msgstr "変更"
+
+#. Sign in to add {product}
+#. Sign-in card when a license key is carried through sign-in. Arguments: {product} = the product's name.
+msgid "signin.key.carriedTitle"
+msgstr "{product} を追加するにはサインイン"
+
+#. Your key is ready. Sign in or create an account, and {product} joins your library.
+#. Sign-in card when a license key is carried. Arguments: {product} = the product's name.
+msgid "signin.key.carriedLede"
+msgstr "キーの準備ができました。サインインまたはアカウントを作成すると、{product} がライブラリに追加されます。"
+
+#. Sign in without the key
+#. Sign-in card: drops the carried license key.
+msgid "signin.key.withoutKey"
+msgstr "キーなしでサインイン"
+
+#. macos: Sign In Without the Key
+msgctxt "macos"
+msgid "signin.key.withoutKey"
+msgstr "キーなしでサインイン"
+
+#. Paste the key from your receipt email. Sign in next, and it joins your library.
+#. Have a license key? step, under the title.
+msgid "signin.key.onrampLede"
+msgstr "領収メールのキーを貼り付けてください。次にサインインすると、ライブラリに追加されます。"
+
+#. That sign-in has expired. Continue to get a new code.
+#. Sign-in card, back at the email step after the sign-in ran out.
+msgid "signin.code.expiredRestart"
+msgstr "このサインインは期限切れです。続行して新しいコードを取得してください。"
+
+#. No more codes can be sent for this sign-in. The latest code still works.
+#. Code step: the per-sign-in resend cap.
+msgid "signin.code.noMore"
+msgstr "このサインインでは、これ以上コードを送信できません。最新のコードは引き続き使えます。"
+
+#. Sign in with {org}
+#. Sign-in card, a domain routed to its connection. Arguments: {org} = the organization's name.
+msgid "signin.sso.title"
+msgstr "{org} でサインイン"
+
+#. Required for {host} addresses.
+#. Sign-in card, an enforced connection. Arguments: {host} = the email domain.
+msgid "signin.sso.required"
+msgstr "{host} のアドレスでは必須です。"
+
+#. Email me a code in {time}
+#. Sign-in card, the resend countdown on a routed step. Arguments: {time} = the wait, such as 0:42.
+msgid "signin.sso.codeIn"
+msgstr "{time} 後にメールでコードを送る"
+
+#. macos: Email Me a Code in {time}
+msgctxt "macos"
+msgid "signin.sso.codeIn"
+msgstr "{time} 後にメールでコードを送る"
+
+#. Email me a code instead
+#. Sign-in card, a routed step that is not enforced.
+msgid "signin.sso.code"
+msgstr "代わりにメールでコードを送る"
+
+#. macos: Email Me a Code Instead
+msgctxt "macos"
+msgid "signin.sso.code"
+msgstr "代わりにメールでコードを送る"
+
+#. This account can't sign in
+#. Sign-in card: a right code for an account that can't sign in (SIGN-IN.md §3.4).
+msgid "signin.refused.title"
+msgstr "このアカウントはサインインできません"
+
+#. {email} belongs to an account that can't sign in. Try a different email or another way to sign in.
+#. Sign-in card, account disabled. Arguments: {email} = an address.
+msgid "signin.refused.lede"
+msgstr "{email} はサインインできないアカウントに属しています。別のメールアドレスまたは別の方法をお試しください。"
+
+#. Sign-in is turned off
+#. Sign-in card: no way to sign in is enabled.
+msgid "signin.off.title"
+msgstr "サインインは無効です"
+
+#. The security check did not pass. Try again.
+#. Sign-in card: the bot check refused.
+msgid "signin.turnstile.failed"
+msgstr "セキュリティチェックに失敗しました。もう一度お試しください。"
+
+#. Too many tries. Wait a minute, then try again.
+#. Code step: the verify's 429.
+msgid "signin.code.rateLimited"
+msgstr "試行回数が多すぎます。1分待ってからもう一度お試しください。"
+
+#. {product} terms
+#. The product's terms link in the finish step; fills {term} in the terms sentence. Arguments: {product} = the product's name.
+msgid "signin.gate.termsLinkProduct"
+msgstr "{product} の利用規約"
+
+#. Polaris Locker terms
+#. The platform's terms link in the finish step. Polaris Locker is never translated.
+msgid "signin.gate.termsLinkPlatform"
+msgstr "Polaris Locker の利用規約"
+
+#. That code expired. Ask for a new one on the other device.
+#. Approve dialog: the code is spent or expired (410).
+msgid "signin.approve.expiredCode"
+msgstr "そのコードは期限切れです。もう一方のデバイスで新しいコードを取得してください。"
+
+#. No sign-in is waiting for that code. Check it on the other device.
+#. Approve dialog: no pending request has this code (404 or 422).
+msgid "signin.approve.notFound"
+msgstr "そのコードを待っているサインインはありません。もう一方のデバイスで確認してください。"
+
+#. you@example.com
+#. Placeholder of the email field on the sign-in card. Not translated.
+msgid "signin.email.placeholder"
+msgstr "you@example.com"
+
+#. single sign-on
+#. Names the platform's single sign-on in 'Continue with {provider}' when it has no display name.
+msgid "signin.sso.name"
+msgstr "シングルサインオン"
+
+#. its developer
+#. Stands for {developer} when a product has no developer name, in 'Contact {developer}'.
+msgid "signin.off.developer"
+msgstr "開発元"
+
+#. Change email
+#. Accessible name of the control that goes back to the email step.
+msgid "signin.code.changeEmail"
+msgstr "メールアドレスを変更"
+
+#. Wait {time}
+#. Why a resend is disabled. Arguments: {time} = the wait, such as 0:42.
+msgid "signin.sso.wait"
+msgstr "{time} お待ちください"
+
+#. Key for {product}
+#. Have a license key? step, under a valid key. Arguments: {product} = the product's name.
+msgid "signin.key.keyFor"
+msgstr "{product} のキー"
+
+#. Starts with pkey_. Case-sensitive.
+#. Have a license key? step: help under the field.
+msgid "signin.key.help"
+msgstr "pkey_ で始まります。大文字と小文字は区別されます。"
+
+#. Paste your license key to continue.
+#. Have a license key? step: Continue pressed with an empty field.
+msgid "signin.key.empty"
+msgstr "続行するにはライセンスキーを貼り付けてください。"
+
+#. Or connect another account
+#. Group label of the provider buttons when adding a sign-in method.
+msgid "signin.provider.connectGroup"
+msgstr "または別のアカウントを接続"
+
+#. Too many codes. Try again in a few minutes.
+#. Rate limit with no wait given.
+msgid "signin.rateLimitedFew"
+msgstr "コードが多すぎます。数分後にもう一度お試しください。"
+
+#. Another Polaris Locker account uses this email. Sign in the way you did before.
+#. Sign-in card, code step: the address belongs to another account that does not use it as a sign-in method. Polaris Locker is never translated.
+msgid "signin.code.emailInUse"
+msgstr "別の Polaris Locker アカウントがこのメールアドレスを使用しています。以前の方法でサインインしてください。"
 
 #. Something went wrong
 #. Core copy (conformance/parity/copy.en.json, fallback).

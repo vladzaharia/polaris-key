@@ -1,3 +1,4 @@
+import { t } from "../../../lib/copy.js";
 import * as React from "react";
 import { KeyRound, Trash2 } from "lucide-react";
 import { Button } from "../../../ui/Button.js";
@@ -87,7 +88,7 @@ function SupportCodeRow({ slug }: { slug: string }): React.ReactElement {
     create.error instanceof PortalApiError && create.error.status === 429;
   const failure = create.error
     ? limited
-      ? "Too many tries. Wait a minute, then try again."
+      ? t("signin.code.rateLimited")
       : `${portalErrorCopy(create.error).title}. ${portalErrorCopy(create.error).description}`
     : null;
   return (

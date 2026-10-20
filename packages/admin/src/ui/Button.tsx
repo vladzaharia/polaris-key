@@ -37,6 +37,13 @@ export const buttonVariants = cva(
       variant: {
         primary:
           "bg-accent text-accent-on shadow-elevation-1 hover:not-disabled:not-aria-disabled:bg-[color-mix(in_oklab,var(--pk-accent),white_10%)]",
+        /**
+         * The action-neutral primary (BRAND.md B2, SIGN-IN.md §3.1): near-white ink on dark,
+         * near-black on light, the label in the page colour. The sign-in card's one filled
+         * action; disabled keeps the shape at the role's disabled pair.
+         */
+        neutral:
+          "bg-action text-action-on font-medium hover:not-disabled:not-aria-disabled:bg-action-hover active:not-disabled:not-aria-disabled:bg-action-pressed disabled:bg-action-disabled disabled:text-action-disabled-on disabled:opacity-100 aria-disabled:bg-action-disabled aria-disabled:text-action-disabled-on aria-disabled:opacity-100",
         secondary:
           "bg-hover text-fg-strong hover:not-disabled:not-aria-disabled:bg-surface-sunken",
         outline:

@@ -126,6 +126,8 @@ export async function createPasskey(
 export async function passkeyAssertion(
   options: Record<string, unknown>,
   allow: readonly { id: string; transports: readonly string[] }[] = [],
+  /** `conditional`: the browser offers passkeys in the email field's autofill (no modal). */
+  extra: { mediation?: "conditional"; signal?: AbortSignal } = {},
 ): Promise<Record<string, unknown>> {
   if (!passkeysSupported()) throw new PasskeyError("unsupported");
   const publicKey: PublicKeyCredentialRequestOptions = {
@@ -141,6 +143,8 @@ export async function passkeyAssertion(
   try {
     cred = (await navigator.credentials.get({
       publicKey,
+      ...(extra.mediation ? { mediation: extra.mediation } : {}),
+      ...(extra.signal ? { signal: extra.signal } : {}),
     })) as PublicKeyCredential | null;
   } catch (err) {
     throw failure(err);
@@ -160,4 +164,39 @@ export async function passkeyAssertion(
     clientExtensionResults: {},
     authenticatorAttachment: cred.authenticatorAttachment ?? null,
   };
+}
+
+/** Whether the browser can offer passkeys in the email field's autofill (conditional UI). */
+export async function conditionalPasskeysAvailable(): Promise<boolean> {
+  if (!passkeysSupported()) return false;
+  const pk = window.PublicKeyCredential as unknown as {
+    isConditionalMediationAvailable?: () => Promise<boolean>;
+  };
+  try {
+    return (await pk.isConditionalMediationAvailable?.()) === true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The Worker said no account here holds this passkey (`unknownCredential`): tell the browser to
+ * stop offering it, where it can (Signal API). Best effort, never an error.
+ */
+export function signalUnknownPasskey(
+  options: Record<string, unknown>,
+  credentialId: unknown,
+): void {
+  const pk = window.PublicKeyCredential as unknown as {
+    signalUnknownCredential?: (a: {
+      rpId: string;
+      credentialId: string;
+    }) => Promise<void>;
+  };
+  const rpId =
+    typeof options.rpId === "string" ? options.rpId : window.location.hostname;
+  if (typeof credentialId !== "string" || !pk.signalUnknownCredential) return;
+  void pk
+    .signalUnknownCredential({ rpId, credentialId })
+    .catch(() => undefined);
 }

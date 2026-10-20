@@ -51,7 +51,7 @@ import {
   createPasskey,
   passkeysSupported,
 } from "../../webauthn.js";
-import { CODE_LENGTH, CodeCells } from "../CodeCells.js";
+import { CODE_LENGTH, CodeCells } from "../../../ui/auth/CodeCells.js";
 import {
   AppleGlyph,
   GoogleGlyph,
@@ -960,7 +960,7 @@ function AddEmail({
                 htmlFor={codeId}
                 className="text-sm font-medium text-fg-strong"
               >
-                Code
+                {t("signin.approve.codeLabel")}
               </label>
               <div className="max-w-xs">
                 <CodeCells

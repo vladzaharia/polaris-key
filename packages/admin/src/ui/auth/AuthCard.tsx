@@ -1,14 +1,16 @@
 import * as React from "react";
-import { cn } from "../../../lib/cn.js";
-import { Lockup } from "../Lockup.js";
-import { ProductIcon } from "../ProductIcon.js";
-import { t } from "../../../lib/copy.js";
+import { cn } from "../../lib/cn.js";
+import { t } from "../../lib/copy.js";
 
 /**
- * The one sign-in frame (SIGN-IN.md §3.1, PORTAL.md §5.2 `LoginCard`): the lockup above, the
+ * The one sign-in frame (SIGN-IN.md §3.1, PORTAL.md §5.2 `AuthCard`; UX-40 promoted the portal's
+ * `LoginCard` here). It knows no app: the brand row (`brand`), the product icon of a context
+ * header and every string arrive from the host, so the portal and the Worker's pages share it.
+ *
+ * The frame: the lockup above, the
  * 28.5 rem card (radius 22 px, elevation 3) with its optional persistent `header`, the step
- * `children` (one primary each) and the passthrough `footer`, on the static star field (wide
- * screens only). Phones: the card goes edge to edge under a 56 px lockup row. No
+ * `children` (one primary each) and the passthrough `footer`, on the plain page (the Locker look
+ * has no star field, LK-06). Phones: the card goes edge to edge under a 56 px lockup row. No
  * "Polaris Key · key.plrs.im" line under the card.
  *
  * Steps replace each other in place (§3.18, S-23 tokens): when `stepKey` changes the body's
@@ -18,14 +20,18 @@ import { t } from "../../../lib/copy.js";
  * footer stay still. Under reduced motion (the OS setting or `data-motion="reduce"`) the brand's
  * durations are 0 ms, so every step swaps instantly with no fade (S-23 D3).
  */
-export function LoginCard({
+export function AuthCard({
+  brand,
   header,
   footer,
   stepKey,
   direction = "forward",
   loadingKey = "loading",
+  focusKey = 0,
   children,
 }: {
+  /** The brand row: the lockup (portal: Polaris Locker). Decorative; the page names itself. */
+  brand: React.ReactNode;
   header?: React.ReactNode;
   footer?: React.ReactNode;
   /** Changes with the step; the new step's h1 is focused. */
@@ -34,6 +40,11 @@ export function LoginCard({
   direction?: "forward" | "back";
   /** The page-load placeholder's step key; leaving it is not a step change. */
   loadingKey?: string;
+  /**
+   * Bump it when the control the person pressed is about to vanish into a reload (Try again):
+   * the next h1 to appear takes focus and is announced, though no step changed.
+   */
+  focusKey?: number;
   children: React.ReactNode;
 }): React.ReactElement {
   const bodyRef = React.useRef<HTMLDivElement>(null);
@@ -87,15 +98,21 @@ export function LoginCard({
     setAnnounce(h1?.textContent ?? "");
   }, [stepKey]);
 
+  React.useEffect(() => {
+    if (!focusKey) return;
+    const h1 = bodyRef.current?.querySelector<HTMLElement>("h1");
+    if (!h1) return;
+    h1.focus({ preventScroll: true });
+    setAnnounce(h1.textContent ?? "");
+  }, [focusKey, stepKey]);
+
   return (
     <div className="relative flex min-h-dvh flex-col bg-surface-page text-fg">
-      <StarField />
       <div className="relative z-10 flex h-14 items-center justify-center border-b border-border sm:h-auto sm:border-0 sm:pb-4 sm:pt-[10vh]">
-        <Lockup height={64} className="hidden sm:block" />
-        <Lockup height={52} className="sm:hidden" />
+        {brand}
       </div>
       <main className="relative z-10 flex flex-1 flex-col items-center sm:px-4">
-        <div className="w-full overflow-hidden bg-surface-raised sm:mb-6 sm:max-w-[28.5rem] sm:rounded-[1.375rem] sm:border sm:border-border sm:shadow-elevation-3">
+        <div className="w-full overflow-hidden bg-surface-raised max-sm:flex-1 sm:mb-6 sm:max-w-[28.5rem] sm:rounded-[1.375rem] sm:border sm:border-border sm:shadow-elevation-3">
           {header ? (
             <div className="border-b border-border">{header}</div>
           ) : null}
@@ -152,12 +169,13 @@ function motionMs(name: string): number {
  */
 export function CardHeader({
   variant,
-  slug,
+  icon,
   name,
   developer,
 }: {
   variant: "context";
-  slug: string;
+  /** The product's icon, drawn by the host (48 px). */
+  icon: React.ReactNode;
   name: string;
   developer: string | null;
 }): React.ReactElement {
@@ -166,7 +184,7 @@ export function CardHeader({
       data-variant={variant}
       className="flex items-center gap-4 px-5 py-4 sm:px-7"
     >
-      <ProductIcon slug={slug} name={name} tint={null} size={48} />
+      {icon}
       <div className="min-w-0">
         <p className="text-fg-strong">
           <span className="font-medium">{name}</span>
@@ -177,49 +195,5 @@ export function CardHeader({
         </p>
       </div>
     </div>
-  );
-}
-
-/** A sparse, static star field behind the card on wide screens. Nothing moves. */
-const STARS: readonly [number, number, number][] = [
-  [6, 8, 1.2],
-  [14, 30, 0.8],
-  [22, 64, 1],
-  [9, 82, 0.8],
-  [31, 14, 0.8],
-  [38, 88, 1.2],
-  [47, 6, 0.8],
-  [62, 10, 1],
-  [70, 26, 0.8],
-  [84, 12, 1.2],
-  [93, 34, 0.8],
-  [88, 58, 1],
-  [96, 80, 0.8],
-  [76, 90, 1],
-  [58, 94, 0.8],
-  [18, 48, 0.8],
-  [80, 72, 0.8],
-  [4, 60, 1],
-];
-
-function StarField(): React.ReactElement {
-  return (
-    <svg
-      aria-hidden
-      className={cn(
-        "pointer-events-none absolute inset-0 hidden size-full text-fg-subtle opacity-60 sm:block",
-      )}
-      preserveAspectRatio="none"
-    >
-      {STARS.map(([x, y, r], i) => (
-        <circle
-          key={i}
-          cx={`${x}%`}
-          cy={`${y}%`}
-          r={r}
-          className="fill-current"
-        />
-      ))}
-    </svg>
   );
 }

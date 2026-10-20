@@ -60,10 +60,73 @@ const WITH_PROVIDERS = {
       oidc: false,
       magic: true,
       providers: ["apple", "google", "steam"],
+      passkey: true,
     },
     modules: { licensing: true, claim: true, releases: true },
   },
 };
+/** PX-W14's start: the code, an SVG data URI (a block pattern stands in for the QR) and the poll. */
+const QR_SVG =
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 21 21" shape-rendering="crispEdges"><path d="M0 0h7v7H0zM14 0h7v7h-7zM0 14h7v7H0zM9 1h3v2H9zM9 5h2v3h3v2H8zM1 9h3v2H1zM5 9h2v3H5zM15 9h3v3h-3zM9 13h3v3H9zM14 15h2v4h-2zM17 14h4v2h-4zM18 18h3v3h-3z"/></svg>';
+const DEVICE_START = {
+  "POST /api/device-login/start": {
+    status: 201,
+    body: {
+      id: "dl_q3Jm1n0b6r2x9VYkU8sA4pQe7tWzLdH5fCgN0oRiXyE",
+      code: "KRQP-BMXD",
+      qr: `data:image/svg+xml;base64,${Buffer.from(QR_SVG).toString("base64")}`,
+      approveUrl: "https://key.plrs.im/#/account/approve?code=KRQP-BMXD",
+      expiresIn: 292,
+      interval: 3,
+    },
+  },
+};
+const DEVICE_REQUEST = {
+  code: "KRQP-BMXD",
+  device: { label: "Chrome on macOS", browser: "Chrome", os: "macOS" },
+  location: {
+    city: "Lisbon",
+    region: "Lisbon",
+    country: "PT",
+    label: "Lisbon, Portugal",
+  },
+  requestedAt: FIXTURE_NOW - 40,
+  expiresIn: 248,
+  approverCountry: "PT",
+  newLocation: false,
+  stepUpRequired: false,
+};
+/** `GET /api/signin/confirm-email` (I-33): the finish step's view, with what each case changes. */
+const gateView = (over: Record<string, unknown>) => ({
+  "GET /api/signin/confirm-email": {
+    body: {
+      status: "gate",
+      provider: "google",
+      stage: "choose",
+      expiresAt: FIXTURE_NOW + 900,
+      emailRequired: true,
+      email: {
+        provider: "mara@fennick.studio",
+        providerVerified: true,
+        relay: false,
+        pending: null,
+        confirmed: null,
+      },
+      profile: {
+        name: "Mara Fennick",
+        nameExplicit: false,
+        suggestions: [{ name: "Mara", source: "email" }],
+        picture: null,
+        initials: false,
+        birthdate: null,
+      },
+      terms: null,
+      platformTerms: null,
+      product: null,
+      ...over,
+    },
+  },
+});
 const NIGHTFALL_CONTEXT = {
   body: {
     auth: { oidc: false, magic: true, providers: ["google", "steam"] },
@@ -226,7 +289,7 @@ export const SHIPPED: ShippedState[] = [
     title: "Login card, email first",
     scenario: "signedOut",
     path: "/",
-    ready: (p) => h1(p, "Sign in to Polaris Key"),
+    ready: (p) => h1(p, "Sign in to Polaris Locker"),
   },
   {
     section: "4.1",
@@ -236,8 +299,237 @@ export const SHIPPED: ShippedState[] = [
     path: "/",
     routes: { "/api/capabilities": WITH_PROVIDERS },
     ready: async (p) => {
-      await h1(p, "Sign in to Polaris Key");
+      await h1(p, "Sign in to Polaris Locker");
       await p.getByRole("link", { name: "Continue with Steam" }).waitFor();
+    },
+  },
+  {
+    section: "4.1",
+    id: "signin-passkey",
+    title: "Login card, passkey refused by the browser",
+    scenario: "signedOut",
+    path: "/",
+    routes: {
+      "/api/capabilities": WITH_PROVIDERS,
+      "POST /api/signin/passkey/options": {
+        body: {
+          options: { challenge: "AAAA", timeout: 60000 },
+          expiresIn: 300,
+        },
+      },
+    },
+    ready: async (p) => {
+      await h1(p, "Sign in to Polaris Locker");
+      await p.evaluate(() => {
+        navigator.credentials.get = () =>
+          Promise.reject(new DOMException("denied", "NotAllowedError"));
+      });
+      await p.getByRole("button", { name: "Sign in with a passkey" }).click();
+      await p.getByText("Your passkey wasn't used").waitFor();
+    },
+  },
+  {
+    section: "4.1",
+    id: "signin-device",
+    title: "Login card, Sign in with another device (code and QR, waiting)",
+    scenario: "signedOut",
+    path: "/",
+    routes: {
+      ...DEVICE_START,
+      "GET /api/device-login/dl_q3Jm1n0b6r2x9VYkU8sA4pQe7tWzLdH5fCgN0oRiXyE": {
+        body: { status: "pending", expiresIn: 290, interval: 3 },
+      },
+    },
+    ready: async (p) => {
+      await h1(p, "Sign in to Polaris Locker");
+      await p
+        .getByRole("button", { name: "Sign in with another device" })
+        .click();
+      await h1(p, "Sign in with another device");
+      await p.getByText("KRQP-BMXD").waitFor();
+      await p.getByText("Waiting for you to approve").waitFor();
+    },
+  },
+  {
+    section: "4.1",
+    id: "signin-device-denied",
+    title: "Login card, Sign in with another device, denied",
+    scenario: "signedOut",
+    path: "/",
+    routes: {
+      ...DEVICE_START,
+      "POST /api/device-login/start": {
+        status: 201,
+        body: {
+          ...DEVICE_START["POST /api/device-login/start"].body,
+          interval: 1,
+        },
+      },
+      "GET /api/device-login/dl_q3Jm1n0b6r2x9VYkU8sA4pQe7tWzLdH5fCgN0oRiXyE": {
+        body: { status: "denied" },
+      },
+    },
+    ready: async (p) => {
+      await h1(p, "Sign in to Polaris Locker");
+      await p
+        .getByRole("button", { name: "Sign in with another device" })
+        .click();
+      await p.getByText("That request was denied").waitFor();
+    },
+  },
+  {
+    section: "4.3",
+    id: "signin-hint",
+    title: 'Known account: "You usually sign in with Steam" (HintStep)',
+    scenario: "signedOut",
+    path: "/",
+    routes: { "/api/capabilities": WITH_PROVIDERS },
+    ready: async (p) => {
+      await h1(p, "Sign in to Polaris Locker");
+      // What a past Steam sign-in left in this browser (lastMethod.ts), written the same way.
+      await p.evaluate(
+        async (at) => {
+          localStorage.setItem("pk-hint-salt", "e2e");
+          const bytes = new TextEncoder().encode("e2e:mara@fennick.studio");
+          const digest = await crypto.subtle.digest("SHA-256", bytes);
+          const h = Array.from(new Uint8Array(digest).slice(0, 12), (x) =>
+            x.toString(16).padStart(2, "0"),
+          ).join("");
+          document.cookie = `pk_last_method=steam.${h}.${at}; Path=/`;
+          localStorage.setItem(`pk-hint-name:${h}`, "Mara");
+        },
+        FIXTURE_NOW - 2 * 86400,
+      );
+      await typeEmail(p, "mara@fennick.studio");
+      await h1(p, "Welcome back, Mara");
+      await p.getByRole("link", { name: "Continue with Steam" }).waitFor();
+    },
+  },
+  {
+    section: "4.29",
+    id: "signin-finish-google",
+    title:
+      "Finish: Google's verified address (no code), product terms, platform terms",
+    scenario: "signedOut",
+    path: "/?signin=confirm-email",
+    routes: gateView({
+      terms: { url: "https://lanternworks.example/terms", version: "2" },
+      platformTerms: { url: "https://polaris.locker/terms", version: "1" },
+      product: { slug: "nightfall", name: "Nightfall" },
+      profile: {
+        name: "Mara Fennick",
+        nameExplicit: false,
+        suggestions: [{ name: "Mara", source: "email" }],
+        picture: null,
+        initials: false,
+        birthdate: {
+          value: "1991-04-02",
+          offered: "1991-04-02",
+          from: "Lakeside University",
+        },
+      },
+    }),
+    ready: async (p) => {
+      await h1(p, "Confirm your email");
+      await p.getByRole("button", { name: "Continue" }).waitFor();
+    },
+  },
+  {
+    section: "4.29",
+    id: "signin-finish-steam",
+    title: "Finish: Steam shares no email (field empty, Send code)",
+    scenario: "signedOut",
+    path: "/?signin=confirm-email",
+    routes: gateView({
+      provider: "steam",
+      email: {
+        provider: null,
+        providerVerified: false,
+        relay: false,
+        pending: null,
+        confirmed: null,
+      },
+      profile: {
+        name: "marafox",
+        nameExplicit: false,
+        suggestions: [],
+        picture: null,
+        initials: false,
+        birthdate: null,
+      },
+    }),
+    ready: async (p) => {
+      await h1(p, "Confirm your email");
+      await p.getByRole("button", { name: "Send code" }).waitFor();
+    },
+  },
+  {
+    section: "4.29",
+    id: "signin-finish-register",
+    title: "Finish: Create your account (email already verified)",
+    scenario: "signedOut",
+    path: "/?signin=confirm-email",
+    routes: gateView({
+      provider: "email",
+      emailRequired: false,
+      email: {
+        provider: null,
+        providerVerified: false,
+        relay: false,
+        pending: null,
+        confirmed: "mara@fennick.studio",
+      },
+      platformTerms: { url: "https://polaris.locker/terms", version: "1" },
+      profile: {
+        name: null,
+        nameExplicit: false,
+        suggestions: [{ name: "mara", source: "email" }],
+        picture: null,
+        initials: false,
+        birthdate: null,
+      },
+    }),
+    ready: async (p) => {
+      await h1(p, "Create your account");
+      await p
+        .getByRole("button", { name: "Create account and continue" })
+        .waitFor();
+    },
+  },
+  {
+    section: "4.29",
+    id: "signin-finish-code",
+    title: "Finish: the code for a typed address",
+    scenario: "signedOut",
+    path: "/?signin=confirm-email",
+    routes: gateView({
+      stage: "code_sent",
+      email: {
+        provider: null,
+        providerVerified: false,
+        relay: false,
+        pending: "mara@fennick.studio",
+        confirmed: null,
+      },
+    }),
+    ready: async (p) => {
+      await h1(p, "Check your email");
+      await p.getByRole("textbox", { name: "6-digit code" }).waitFor();
+    },
+  },
+  {
+    section: "4.11",
+    id: "signin-finish-join",
+    title: "Finish: the join offer for an address another account uses",
+    scenario: "signedOut",
+    path: "/?signin=confirm-email",
+    routes: gateView({
+      stage: "join_offer",
+      join: { email: "mara@fennick.studio", proven: true },
+    }),
+    ready: async (p) => {
+      await h1(p, "Join your accounts");
+      await p.getByRole("button", { name: "Join into one account" }).waitFor();
     },
   },
   {
@@ -287,7 +579,7 @@ export const SHIPPED: ShippedState[] = [
     scenario: "signedOut",
     path: "/",
     ready: async (p) => {
-      await h1(p, "Sign in to Polaris Key");
+      await h1(p, "Sign in to Polaris Locker");
       await p.getByRole("button", { name: "Have a license key?" }).click();
       await h1(p, "Have a license key?");
     },
@@ -347,7 +639,7 @@ export const SHIPPED: ShippedState[] = [
     path: "/",
     routes: { "/api/capabilities": WITH_CONNECTION },
     ready: async (p) => {
-      await h1(p, "Sign in to Polaris Key");
+      await h1(p, "Sign in to Polaris Locker");
       await p
         .getByRole("link", { name: "Continue with Lakeside University" })
         .waitFor();
@@ -1098,6 +1390,59 @@ export const SHIPPED: ShippedState[] = [
     },
   },
   {
+    section: "4.24",
+    id: "account-approve",
+    title: "Approve a new device (the QR's link, with the code filled in)",
+    scenario: "three",
+    path: "/#/account/approve?code=KRQP-BMXD",
+    routes: {
+      "POST /api/device-login/lookup": { body: { request: DEVICE_REQUEST } },
+    },
+    ready: async (p) => {
+      await p.getByRole("dialog", { name: "Approve a new device?" }).waitFor();
+      await p.getByText("Lisbon, Portugal").waitFor();
+    },
+  },
+  {
+    section: "4.24",
+    id: "account-approve-step-up",
+    title: "Approve a new device from another place: confirm it's you first",
+    scenario: "three",
+    path: "/#/account/approve?code=KRQP-BMXD",
+    routes: {
+      "POST /api/device-login/lookup": {
+        body: {
+          request: {
+            ...DEVICE_REQUEST,
+            newLocation: true,
+            stepUpRequired: true,
+          },
+        },
+      },
+      "POST /api/device-login/approve": {
+        status: 401,
+        body: { error: "step_up_required", maxAgeSeconds: 300 },
+      },
+    },
+    ready: async (p) => {
+      const d = p.getByRole("dialog", { name: "Approve a new device?" });
+      await d.getByRole("button", { name: "Approve and sign it in" }).click();
+      await p.getByRole("dialog", { name: "Confirm it's you" }).waitFor();
+    },
+  },
+  {
+    section: "4.24",
+    id: "account-approve-enter",
+    title: "Approve a new device: type the code",
+    scenario: "three",
+    path: "/#/account",
+    ready: async (p) => {
+      await h1(p, "Account");
+      await p.getByRole("button", { name: "Approve a new device" }).click();
+      await p.getByRole("dialog", { name: "Approve a new device" }).waitFor();
+    },
+  },
+  {
     section: "4.26",
     id: "account-disconnect",
     title: "Account: disconnect with step-up",
@@ -1265,16 +1610,6 @@ export const SHIPPED: ShippedState[] = [
 
 export const PENDING: PendingState[] = [
   {
-    section: "4.1",
-    title: "Login card: passkey button and conditional UI",
-    wp: ["PX-12"],
-  },
-  {
-    section: "4.3",
-    title: 'Known account: "You usually sign in with Steam"',
-    wp: ["PX-12"],
-  },
-  {
     section: "4.4",
     title: "Enter the code (wrong, expired, too many tries, resend)",
     wp: ["PX-12", "PX-W4"],
@@ -1307,7 +1642,6 @@ export const PENDING: PendingState[] = [
     title: "Add another way to sign in (nudge)",
     wp: ["PX-15"],
   },
-  { section: "4.11", title: "Link an existing account: join", wp: ["PX-15"] },
   { section: "4.20", title: "Product page with Cloud Sync", wp: ["PX-18"] },
   {
     section: "4.20",
@@ -1322,12 +1656,6 @@ export const PENDING: PendingState[] = [
     wp: ["PX-13 follow-up"],
   },
   {
-    section: "4.23",
-    title: "Sign in with another device: QR and code",
-    wp: ["PX-15"],
-  },
-  { section: "4.24", title: "Approve a new device", wp: ["PX-15"] },
-  {
     section: "4.26",
     title: "Account: connected products, Download my data (need their API)",
     wp: ["PX-13 follow-up"],
@@ -1337,12 +1665,6 @@ export const PENDING: PendingState[] = [
     title:
       "Account → Sign-in methods: Make primary, passkey Rename, products per email (API and controls built; linux baselines and UX review not recorded yet)",
     wp: ["PX-W19"],
-  },
-  {
-    section: "4.29",
-    title:
-      "Email gate: provider verified, typed code, Steam empty, product terms",
-    wp: ["PX-21"],
   },
   {
     section: "4.29",

@@ -2141,10 +2141,10 @@ msgstr "有效期至{date}"
 msgid "signin.term.yearlyUntil"
 msgstr "按年订阅，有效期至{date}"
 
-#. From signing in
+#. Automatic grant
 #. Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label).
 msgid "signin.choice.origin.signIn"
-msgstr "通过登录获得"
+msgstr "自动授予"
 
 #. Key ending {last6}
 #. Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). Arguments: {last6} = the license key's last six characters, shown as is.
@@ -3766,6 +3766,431 @@ msgstr "请从你获取 {product} 的地方获取新版本。"
 #. Terminal: activate read a piped stdin (a file, pipe or socket) and no key arrived in time.
 msgid "cli.activate.noKeyPiped"
 msgstr "stdin 上没有收到许可证密钥。"
+
+#. On a phone or computer where you're signed in, scan the code, or open Account → Approve a new device and type it.
+#. Sign in with another device: under the title (SIGN-IN.md §3.11). Account → Approve a new device is the portal's own menu path.
+msgid "signin.approve.lede"
+msgstr "在已登录的手机或电脑上扫描该代码，或打开“账户 → 批准新设备”并输入。"
+
+#. Use another way to sign in
+#. Polaris Locker sign-in card (SIGN-IN.md §3.4, §3.5, §3.11).
+msgid "signin.approve.other"
+msgstr "使用其他登录方式"
+
+#. macos: Use Another Way to Sign In
+msgctxt "macos"
+msgid "signin.approve.other"
+msgstr "使用其他登录方式"
+
+#. One minute left on this code.
+#. Announced once when the sign-in code has one minute left (WCAG 2.2.1).
+msgid "signin.approve.minuteLeft"
+msgstr "此代码还剩一分钟。"
+
+#. Getting your code
+#. Busy label while the sign-in code is requested.
+msgid "signin.approve.starting"
+msgstr "正在获取代码"
+
+#. That account can't sign in. Use another way to sign in.
+#. Sign in with another device or a passkey, for an account that can't sign in.
+msgid "signin.approve.disabled"
+msgstr "该账户无法登录。请使用其他登录方式。"
+
+#. Approve a new device
+#. Account → Where you're signed in: opens the approve dialog (SIGN-IN.md §3.11).
+msgid "signin.approve.open"
+msgstr "批准新设备"
+
+#. macos: Approve a New Device
+msgctxt "macos"
+msgid "signin.approve.open"
+msgstr "批准新设备"
+
+#. Enter the code shown on the other device.
+#. Approve dialog, when the link carried no code.
+msgid "signin.approve.enter"
+msgstr "输入另一台设备上显示的代码。"
+
+#. Code
+#. Approve dialog: the field's label.
+msgid "signin.approve.codeLabel"
+msgstr "代码"
+
+#. Find it
+#. Approve dialog: looks the code up (reads only, never approves).
+msgid "signin.approve.look"
+msgstr "查找"
+
+#. macos: Find It
+msgctxt "macos"
+msgid "signin.approve.look"
+msgstr "查找"
+
+#. Code {code} asks to sign in to your account.
+#. Approve dialog. Arguments: {code} = the 8-letter code, shown as is.
+msgid "signin.approve.askBody"
+msgstr "代码 {code} 请求登录您的账户。"
+
+#. Where
+#. Approve dialog: the request's coarse place, as a row label.
+msgid "signin.approve.where"
+msgstr "位置"
+
+#. When
+#. Approve dialog: when it asked, as a row label.
+msgid "signin.approve.when"
+msgstr "时间"
+
+#. Device
+#. Approve dialog: the asking device, as a row label.
+msgid "signin.approve.device"
+msgstr "设备"
+
+#. Unknown place
+#. Approve dialog: no coarse location was available.
+msgid "signin.approve.unknownPlace"
+msgstr "未知位置"
+
+#. It's asking from a different place than you're in now, or from a place we can't tell.
+#. Approve dialog: why the person must confirm it's them first.
+msgid "signin.approve.stepUpWhy"
+msgstr "请求来自与您当前不同的位置，或无法确定的位置。"
+
+#. approve it
+#. Approve dialog: completes 'Use your passkey to …' in the confirm-it's-you prompt.
+msgid "signin.approve.stepUpVerb"
+msgstr "批准"
+
+#. Approved. {device} is signed in.
+#. Approve dialog outcome. Arguments: {device} = the device label.
+msgid "signin.approve.approved"
+msgstr "已批准。{device} 已登录。"
+
+#. Denied. Nothing changed.
+#. Approve dialog outcome.
+msgid "signin.approve.deniedDone"
+msgstr "已拒绝。未做任何更改。"
+
+#. That didn't go through. Try again.
+#. Approve dialog: a decision that failed.
+msgid "signin.approve.failed"
+msgstr "未能完成。请重试。"
+
+#. Your passkey wasn't used. Try again, or use another way.
+#. Passkey prompt closed or timed out.
+msgid "signin.passkey.cancelled"
+msgstr "未使用您的通行密钥。请重试或使用其他方式。"
+
+#. This browser can't use your passkey here. Use another way.
+#. Passkey not usable in this browser.
+msgid "signin.passkey.unsupported"
+msgstr "此浏览器无法在此使用您的通行密钥。请使用其他方式。"
+
+#. Your passkey didn't work. Try again, or use another way.
+#. Passkey refused.
+msgid "signin.passkey.failed"
+msgstr "您的通行密钥无效。请重试或使用其他方式。"
+
+#. Signed in with {provider}
+#. Finish step strip when the provider shared no identity to show. Arguments: {provider} = a provider's name.
+msgid "signin.gate.stripNoIdentity"
+msgstr "已通过 {provider} 登录"
+
+#. One more step
+#. Finish step title when only the terms are asked.
+msgid "signin.gate.termsTitle"
+msgstr "还有一步"
+
+#. Your name
+#. Finish step: the screen name field.
+msgid "signin.gate.name"
+msgstr "您的姓名"
+
+#. Use {email}
+#. Finish step: the provider's address as a radio. Arguments: {email} = an address.
+msgid "signin.gate.useEmail"
+msgstr "使用 {email}"
+
+#. Your private Apple address
+#. Finish step: marks an Apple private-relay address.
+msgid "signin.gate.relay"
+msgstr "您的 Apple 私密地址"
+
+#. Use my initials
+#. Finish step: swaps the provider's picture for initials.
+msgid "signin.gate.pictureInitials"
+msgstr "使用我的首字母"
+
+#. macos: Use My Initials
+msgctxt "macos"
+msgid "signin.gate.pictureInitials"
+msgstr "使用我的首字母"
+
+#. Use my {provider} picture
+#. Finish step: back to the provider's picture. Arguments: {provider} = a provider's name.
+msgid "signin.gate.pictureProvider"
+msgstr "使用我的 {provider} 头像"
+
+#. macos: Use My {provider} Picture
+msgctxt "macos"
+msgid "signin.gate.pictureProvider"
+msgstr "使用我的 {provider} 头像"
+
+#. Add my birth date from {org}
+#. Finish step: only when a connection offered a birth date. Arguments: {org} = the organization that offered it.
+msgid "signin.gate.birthdate"
+msgstr "添加来自 {org} 的出生日期"
+
+#. Only you can see it. Apps never get it.
+#. Finish step: under the birth date choice.
+msgid "signin.gate.birthdateHelp"
+msgstr "只有您能看到。应用永远不会获得。"
+
+#. I agree to the {term}
+#. Finish step: the product's terms checkbox. Arguments: {product} = the product's name.
+msgid "signin.gate.productTerms"
+msgstr "我同意{term}"
+
+#. By continuing you agree to the {term}.
+#. Finish step: the platform's terms line, with the link below it. Polaris Locker is never translated.
+msgid "signin.gate.platformTerms"
+msgstr "继续即表示您同意{term}。"
+
+#. That sign-in has expired. Sign in again.
+#. Finish step: the 15-minute sign-in ran out.
+msgid "signin.gate.expired"
+msgstr "此次登录已过期。请重新登录。"
+
+#. Join your accounts
+#. Finish step: the join offer (SIGN-IN.md §3.5).
+msgid "signin.gate.joinTitle"
+msgstr "合并您的账户"
+
+#. {email} already belongs to a Polaris Locker account. Join this sign-in to it, or use a different email.
+#. Finish step: the join offer. Arguments: {email} = an address. Polaris Locker is never translated.
+msgid "signin.gate.joinLede"
+msgstr "{email} 已属于一个 Polaris Locker 账户。请将此登录合并到该账户，或使用其他邮箱。"
+
+#. To join, sign in to that account in this browser first, then add this sign-in from Account.
+#. Finish step: the join offer cannot be taken until the other account is proven.
+msgid "signin.gate.joinProve"
+msgstr "要合并，请先在此浏览器中登录该账户，然后在“账户”中添加此登录。"
+
+#. We sent a code to {email}.
+#. Finish step, code stage. Arguments: {email} = an address.
+msgid "signin.gate.codeSent"
+msgstr "我们已向 {email} 发送了验证码。"
+
+#. On this browser, last time {when}
+#. HintStep under the usual method. Arguments: {when} = a relative time such as '2 days ago'.
+msgid "signin.hint.when"
+msgstr "在此浏览器上，上次为 {when}"
+
+#. Welcome back
+#. HintStep title when the browser kept no name.
+msgid "signin.hint.welcomeNoName"
+msgstr "欢迎回来"
+
+#. a passkey
+#. HintStep: completes 'You usually sign in with {method}'.
+msgid "signin.hint.method.passkey"
+msgstr "通行密钥"
+
+#. an email code
+#. HintStep: completes 'You usually sign in with {method}'.
+msgid "signin.hint.method.email"
+msgstr "邮件验证码"
+
+#. Use a passkey
+#. HintStep: passkey button.
+msgid "signin.hint.usePasskey"
+msgstr "使用通行密钥"
+
+#. macos: Use a Passkey
+msgctxt "macos"
+msgid "signin.hint.usePasskey"
+msgstr "使用通行密钥"
+
+#. Email me a code
+#. HintStep: sends a sign-in code.
+msgid "signin.hint.emailCode"
+msgstr "通过邮件发送验证码"
+
+#. macos: Email Me a Code
+msgctxt "macos"
+msgid "signin.hint.emailCode"
+msgstr "通过邮件发送验证码"
+
+#. Change
+#. HintStep: back to the email field.
+msgid "signin.hint.change"
+msgstr "更改"
+
+#. Sign in to add {product}
+#. Sign-in card when a license key is carried through sign-in. Arguments: {product} = the product's name.
+msgid "signin.key.carriedTitle"
+msgstr "登录以添加 {product}"
+
+#. Your key is ready. Sign in or create an account, and {product} joins your library.
+#. Sign-in card when a license key is carried. Arguments: {product} = the product's name.
+msgid "signin.key.carriedLede"
+msgstr "密钥已就绪。登录或创建账户后，{product} 将加入您的库。"
+
+#. Sign in without the key
+#. Sign-in card: drops the carried license key.
+msgid "signin.key.withoutKey"
+msgstr "不使用密钥登录"
+
+#. macos: Sign In Without the Key
+msgctxt "macos"
+msgid "signin.key.withoutKey"
+msgstr "不使用密钥登录"
+
+#. Paste the key from your receipt email. Sign in next, and it joins your library.
+#. Have a license key? step, under the title.
+msgid "signin.key.onrampLede"
+msgstr "粘贴收据邮件中的密钥。接着登录，它就会加入您的库。"
+
+#. That sign-in has expired. Continue to get a new code.
+#. Sign-in card, back at the email step after the sign-in ran out.
+msgid "signin.code.expiredRestart"
+msgstr "此次登录已过期。请继续以获取新验证码。"
+
+#. No more codes can be sent for this sign-in. The latest code still works.
+#. Code step: the per-sign-in resend cap.
+msgid "signin.code.noMore"
+msgstr "此次登录无法再发送验证码。最新的验证码仍然有效。"
+
+#. Sign in with {org}
+#. Sign-in card, a domain routed to its connection. Arguments: {org} = the organization's name.
+msgid "signin.sso.title"
+msgstr "使用 {org} 登录"
+
+#. Required for {host} addresses.
+#. Sign-in card, an enforced connection. Arguments: {host} = the email domain.
+msgid "signin.sso.required"
+msgstr "{host} 地址必须使用。"
+
+#. Email me a code in {time}
+#. Sign-in card, the resend countdown on a routed step. Arguments: {time} = the wait, such as 0:42.
+msgid "signin.sso.codeIn"
+msgstr "{time} 后通过邮件发送验证码"
+
+#. macos: Email Me a Code in {time}
+msgctxt "macos"
+msgid "signin.sso.codeIn"
+msgstr "{time} 后通过邮件发送验证码"
+
+#. Email me a code instead
+#. Sign-in card, a routed step that is not enforced.
+msgid "signin.sso.code"
+msgstr "改为通过邮件发送验证码"
+
+#. macos: Email Me a Code Instead
+msgctxt "macos"
+msgid "signin.sso.code"
+msgstr "改为通过邮件发送验证码"
+
+#. This account can't sign in
+#. Sign-in card: a right code for an account that can't sign in (SIGN-IN.md §3.4).
+msgid "signin.refused.title"
+msgstr "该账户无法登录"
+
+#. {email} belongs to an account that can't sign in. Try a different email or another way to sign in.
+#. Sign-in card, account disabled. Arguments: {email} = an address.
+msgid "signin.refused.lede"
+msgstr "{email} 属于无法登录的账户。请尝试其他邮箱或其他登录方式。"
+
+#. Sign-in is turned off
+#. Sign-in card: no way to sign in is enabled.
+msgid "signin.off.title"
+msgstr "登录已关闭"
+
+#. The security check did not pass. Try again.
+#. Sign-in card: the bot check refused.
+msgid "signin.turnstile.failed"
+msgstr "安全检查未通过。请重试。"
+
+#. Too many tries. Wait a minute, then try again.
+#. Code step: the verify's 429.
+msgid "signin.code.rateLimited"
+msgstr "尝试次数过多。请等待一分钟后重试。"
+
+#. {product} terms
+#. The product's terms link in the finish step; fills {term} in the terms sentence. Arguments: {product} = the product's name.
+msgid "signin.gate.termsLinkProduct"
+msgstr "{product} 条款"
+
+#. Polaris Locker terms
+#. The platform's terms link in the finish step. Polaris Locker is never translated.
+msgid "signin.gate.termsLinkPlatform"
+msgstr "Polaris Locker 条款"
+
+#. That code expired. Ask for a new one on the other device.
+#. Approve dialog: the code is spent or expired (410).
+msgid "signin.approve.expiredCode"
+msgstr "该代码已过期。请在另一台设备上获取新代码。"
+
+#. No sign-in is waiting for that code. Check it on the other device.
+#. Approve dialog: no pending request has this code (404 or 422).
+msgid "signin.approve.notFound"
+msgstr "没有等待该代码的登录。请在另一台设备上核对。"
+
+#. you@example.com
+#. Placeholder of the email field on the sign-in card. Not translated.
+msgid "signin.email.placeholder"
+msgstr "you@example.com"
+
+#. single sign-on
+#. Names the platform's single sign-on in 'Continue with {provider}' when it has no display name.
+msgid "signin.sso.name"
+msgstr "单点登录"
+
+#. its developer
+#. Stands for {developer} when a product has no developer name, in 'Contact {developer}'.
+msgid "signin.off.developer"
+msgstr "其开发者"
+
+#. Change email
+#. Accessible name of the control that goes back to the email step.
+msgid "signin.code.changeEmail"
+msgstr "更改邮箱"
+
+#. Wait {time}
+#. Why a resend is disabled. Arguments: {time} = the wait, such as 0:42.
+msgid "signin.sso.wait"
+msgstr "请等待 {time}"
+
+#. Key for {product}
+#. Have a license key? step, under a valid key. Arguments: {product} = the product's name.
+msgid "signin.key.keyFor"
+msgstr "{product} 的密钥"
+
+#. Starts with pkey_. Case-sensitive.
+#. Have a license key? step: help under the field.
+msgid "signin.key.help"
+msgstr "以 pkey_ 开头。区分大小写。"
+
+#. Paste your license key to continue.
+#. Have a license key? step: Continue pressed with an empty field.
+msgid "signin.key.empty"
+msgstr "请粘贴您的许可证密钥以继续。"
+
+#. Or connect another account
+#. Group label of the provider buttons when adding a sign-in method.
+msgid "signin.provider.connectGroup"
+msgstr "或连接其他账户"
+
+#. Too many codes. Try again in a few minutes.
+#. Rate limit with no wait given.
+msgid "signin.rateLimitedFew"
+msgstr "验证码过多。请几分钟后重试。"
+
+#. Another Polaris Locker account uses this email. Sign in the way you did before.
+#. Sign-in card, code step: the address belongs to another account that does not use it as a sign-in method. Polaris Locker is never translated.
+msgid "signin.code.emailInUse"
+msgstr "另一个 Polaris Locker 账户正在使用此邮箱。请使用之前的方式登录。"
 
 #. Something went wrong
 #. Core copy (conformance/parity/copy.en.json, fallback).

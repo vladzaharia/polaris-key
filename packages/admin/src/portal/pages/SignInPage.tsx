@@ -3,8 +3,10 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   ArrowRight,
   Building2,
+  Fingerprint,
   KeyRound,
   Mail,
+  ScanLine,
   RefreshCw,
   ShieldCheck,
 } from "lucide-react";
@@ -20,14 +22,30 @@ import {
   type PortalEmailSent,
   type PortalSsoNext,
 } from "../api.js";
-import { CardHeader, LoginCard } from "../components/signin/LoginCard.js";
-import { ProviderRow } from "../components/signin/ProviderRow.js";
-import { CODE_LENGTH, CodeCells } from "../components/CodeCells.js";
+import {
+  AuthCard,
+  AuthTitle as Title,
+  CardHeader,
+  CODE_LENGTH,
+  CodeCells,
+  OrDivider as Divider,
+  ProviderRow,
+  QuietLink,
+  QuietLinks,
+} from "../../ui/auth/index.js";
+import { Lockup } from "../components/Lockup.js";
+import { ProductIcon } from "../components/ProductIcon.js";
 import { KeyField } from "../components/KeyField.js";
 import { portalKeys, useCapabilities } from "../data.js";
 import { portalErrorCopy } from "../errors.js";
 import { checkKey, formatVerdict, productLabel } from "../model/key.js";
 import { setParams, useDocumentTitle, useRoute } from "../router.js";
+import { FinishStep } from "../components/signin/FinishStep.js";
+import { DeviceStep } from "../components/signin/DeviceStep.js";
+import { passkeysSupported } from "../webauthn.js";
+import { rememberVia, readLastMethod, type LastMethod } from "../lastMethod.js";
+import { usePasskeySignIn } from "../components/signin/usePasskeySignIn.js";
+import { HintStep } from "../components/signin/HintStep.js";
 import { useSessionRecheck } from "../session.js";
 import { returnUrl, stashCarriedKey } from "../carriedKey.js";
 
@@ -77,7 +95,13 @@ type Step =
   | { kind: "refused"; email: string }
   /** I-30: the address's domain routes to a connection (`next` from the start or a refusal). */
   | { kind: "sso"; email: string; next: PortalSsoNext }
-  | { kind: "key" };
+  | { kind: "key" }
+  /** Sign in with another device (§3.11): this browser asks, a signed-in device approves. */
+  | { kind: "device" }
+  /** FinishStep (§3.5): a provider's first sign-in, or a new address's code, finishes here. */
+  | { kind: "finish" }
+  /** HintStep (§3.4): the typed address is the one this browser last signed in with. */
+  | { kind: "hint"; email: string; last: LastMethod };
 
 /** The countdown when an answer carries no `resendIn` (a Worker from before PX-W4). */
 const RESEND_FALLBACK_S = 60;
@@ -88,6 +112,19 @@ function resendDelay(out: PortalEmailSent | undefined): number {
   return typeof n === "number" && Number.isFinite(n) && n >= 0
     ? Math.ceil(n)
     : RESEND_FALLBACK_S;
+}
+
+/**
+ * The brand row (SIGN-IN.md §3.1): one 40 px Locker lockup on every sign-in surface, the same as
+ * the Worker's pages; muted in an app or product context so the product reads first. The size
+ * never changes between steps.
+ */
+function AuthBrand({ muted }: { muted: boolean }): React.ReactElement {
+  return (
+    <span className={muted ? "text-fg-muted opacity-80" : undefined}>
+      <Lockup height={40} />
+    </span>
+  );
 }
 
 function productFromUrl(): string | null {
@@ -122,7 +159,13 @@ function useCarriedKey(): string | null {
 export function SignInPage(): React.ReactElement {
   const [product] = React.useState(productFromUrl);
   const caps = useCapabilities(product);
-  const [step, setStep] = React.useState<Step>({ kind: "methods" });
+  const [step, setStep] = React.useState<Step>(() =>
+    // A front door's redirect (`/?signin=confirm-email`) opens the finish step.
+    new URLSearchParams(window.location.search).get("signin") ===
+    "confirm-email"
+      ? { kind: "finish" }
+      : { kind: "methods" },
+  );
   const [direction, setDirection] = React.useState<"forward" | "back">(
     "forward",
   );
@@ -131,16 +174,43 @@ export function SignInPage(): React.ReactElement {
     setStep(next);
   };
   useSessionRecheck(step.kind === "code");
+  /** Bumped by Try again: the heading that follows the reload takes focus. */
+  const [focusTick, setFocusTick] = React.useState(0);
+  /** The finish step's own title (it differs per view). */
+  const [finishTitle, setFinishTitle] = React.useState<string>(
+    t("signin.register.title"),
+  );
+  // Escape backs out of the steps that have somewhere to go back to.
+  React.useEffect(() => {
+    if (!["key", "code", "device", "hint"].includes(step.kind)) return;
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key !== "Escape" || e.defaultPrevented) return;
+      go(
+        step.kind === "code" || step.kind === "hint"
+          ? { kind: "methods", email: step.email, focusEmail: true }
+          : { kind: "methods" },
+        "back",
+      );
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  });
   useDocumentTitle(
     step.kind === "code"
       ? t("signin.code.title")
       : step.kind === "refused"
-        ? "This account can't sign in"
-        : step.kind === "key"
-          ? t("signin.link.key")
-          : step.kind === "sso"
-            ? step.next.connection.label
-            : t("signin.methods.titleApp"),
+        ? t("signin.refused.title")
+        : step.kind === "hint"
+          ? t("signin.hint.welcomeNoName")
+          : step.kind === "finish"
+            ? finishTitle
+            : step.kind === "device"
+              ? t("signin.approve.title")
+              : step.kind === "key"
+                ? t("signin.link.key")
+                : step.kind === "sso"
+                  ? step.next.connection.label
+                  : t("signin.methods.titleApp"),
   );
   /** The card's step key: a connection step is keyed by its route, so a change re-announces. */
   const ssoKey =
@@ -152,7 +222,9 @@ export function SignInPage(): React.ReactElement {
   const header = ctx ? (
     <CardHeader
       variant="context"
-      slug={ctx.slug}
+      icon={
+        <ProductIcon slug={ctx.slug} name={ctx.name} tint={null} size={48} />
+      }
       name={ctx.name}
       developer={ctx.developerName ?? null}
     />
@@ -165,25 +237,39 @@ export function SignInPage(): React.ReactElement {
       : (ssoKey ?? step.kind);
 
   return (
-    <LoginCard header={header} stepKey={stepKey} direction={direction}>
+    <AuthCard
+      brand={<AuthBrand muted={Boolean(ctx)} />}
+      focusKey={focusTick}
+      header={header}
+      stepKey={stepKey}
+      direction={direction}
+    >
       {caps.isPending ? (
         <MethodsSkeleton />
       ) : caps.error ? (
-        <Unreachable error={caps.error} onRetry={() => void caps.refetch()} />
+        <Unreachable
+          error={caps.error}
+          onRetry={() => {
+            setFocusTick((n) => n + 1);
+            void caps.refetch();
+          }}
+        />
       ) : step.kind === "code" ? (
         <CodeStep
           email={step.email}
           resendIn={step.resendIn}
-          onChangeEmail={() => go({ kind: "methods" }, "back")}
+          onChangeEmail={() =>
+            go({ kind: "methods", email: step.email, focusEmail: true }, "back")
+          }
           onRefused={() => go({ kind: "refused", email: step.email })}
           onRouted={(next) => go({ kind: "sso", email: step.email, next })}
+          onFinish={() => go({ kind: "finish" })}
           onExpired={() =>
             go(
               {
                 kind: "methods",
                 email: step.email,
-                // signin.code.expiredRestart (PX-W4): no catalog key yet
-                notice: "That sign-in has expired. Continue to get a new code.",
+                notice: t("signin.code.expiredRestart"),
               },
               "back",
             )
@@ -205,8 +291,7 @@ export function SignInPage(): React.ReactElement {
               {
                 kind: "methods",
                 email: step.email,
-                // signin.code.expiredRestart (PX-W4): no catalog key yet
-                notice: "That sign-in has expired. Continue to get a new code.",
+                notice: t("signin.code.expiredRestart"),
               },
               "back",
             )
@@ -217,6 +302,48 @@ export function SignInPage(): React.ReactElement {
           email={step.email}
           onChangeEmail={() => go({ kind: "methods" }, "back")}
         />
+      ) : step.kind === "hint" ? (
+        <HintStep
+          email={step.email}
+          last={step.last}
+          passkeyAvailable={
+            caps.data?.auth.passkey === true && passkeysSupported()
+          }
+          hrefFor={(p) =>
+            `/login/${p}?return_to=${encodeURIComponent(returnTo())}${
+              ctx ? `&product=${encodeURIComponent(ctx.slug)}` : ""
+            }`
+          }
+          onProvider={(p) => {
+            rememberVia(p);
+            stashCarriedKey();
+          }}
+          onSent={(email, sent) =>
+            go(
+              sent?.next
+                ? { kind: "sso", email, next: sent.next }
+                : { kind: "code", email, resendIn: resendDelay(sent) },
+            )
+          }
+          onOther={() =>
+            go({ kind: "methods", email: step.email, focusEmail: true }, "back")
+          }
+          returnTo={returnTo}
+        />
+      ) : step.kind === "finish" ? (
+        <FinishStep
+          onTitle={setFinishTitle}
+          onLeave={() => {
+            window.history.replaceState(null, "", "/");
+            go({ kind: "methods" }, "back");
+          }}
+          onExpired={() => {
+            window.history.replaceState(null, "", "/");
+            go({ kind: "methods", notice: t("signin.gate.expired") }, "back");
+          }}
+        />
+      ) : step.kind === "device" ? (
+        <DeviceStep onOther={() => go({ kind: "methods" }, "back")} />
       ) : step.kind === "key" ? (
         <KeyStep
           onBack={() => go({ kind: "methods" }, "back")}
@@ -240,9 +367,11 @@ export function SignInPage(): React.ReactElement {
             )
           }
           onKey={() => go({ kind: "key" })}
+          onDevice={() => go({ kind: "device" })}
+          onHint={(email, last) => go({ kind: "hint", email, last })}
         />
       )}
-    </LoginCard>
+    </AuthCard>
   );
 }
 
@@ -250,7 +379,7 @@ export function SignInPage(): React.ReactElement {
 function MethodsSkeleton(): React.ReactElement {
   return (
     <div aria-busy className="space-y-5" data-testid="signin-skeleton">
-      <span className="sr-only">Loading</span>
+      <span className="sr-only">{t("common.loading")}</span>
       <div aria-hidden className="h-8 w-2/3 rounded-md bg-hover" />
       <div aria-hidden className="space-y-1.5">
         <div className="h-4 w-12 rounded bg-hover" />
@@ -261,21 +390,6 @@ function MethodsSkeleton(): React.ReactElement {
   );
 }
 
-function Title({
-  children,
-}: {
-  children: React.ReactNode;
-}): React.ReactElement {
-  return (
-    <h1
-      tabIndex={-1}
-      className="text-2xl font-semibold text-fg-strong outline-none"
-    >
-      {children}
-    </h1>
-  );
-}
-
 function Unreachable({
   error,
   onRetry,
@@ -283,13 +397,17 @@ function Unreachable({
   error: unknown;
   onRetry: () => void;
 }): React.ReactElement {
-  const copy = portalErrorCopy(error);
+  const copy = portalErrorCopy(error, { account: true });
   return (
     <>
-      <Title>{copy.title}</Title>
-      <p className="text-fg-muted">{copy.description}</p>
+      <div className="space-y-2">
+        <Title>{copy.title}</Title>
+        <p className="text-fg-muted">{copy.description}</p>
+      </div>
       <Button
-        variant="outline"
+        variant="neutral"
+        size="lg"
+        className="h-auto min-h-12 w-full whitespace-normal py-2 text-center text-base font-semibold"
         iconStart={<RefreshCw aria-hidden />}
         onClick={onRetry}
       >
@@ -301,59 +419,16 @@ function Unreachable({
 
 function startErrorText(err: unknown): string {
   if (err instanceof PortalApiError) {
-    // The Worker's 429 carries no wait yet, so `{minutes}` reads "a few".
+    // The Worker's 429 carries no wait yet.
     if (err.status === 429 || err.code === "rate_limited")
-      return t("signin.rateLimited", { minutes: "a few" });
+      return t("signin.rateLimitedFew");
     if (err.code === "email_unavailable" || err.code === "email_not_configured")
       return t("signin.emailDown");
     if (err.status === 422) return t("signin.email.invalid");
     if (err.code === "auth_method_disabled") return t("signin.off.any");
-    if (err.code === "turnstile_failed")
-      return "The security check did not pass. Try again.";
+    if (err.code === "turnstile_failed") return t("signin.turnstile.failed");
   }
-  return portalErrorCopy(err).title + ". " + portalErrorCopy(err).description;
-}
-
-/**
- * The quiet links under a rule (§3.3), centred and evenly spaced: 24 px from the rule to the text
- * and 24 px from the text to the card's bottom edge. Each link is a 44 px target with its 20 px
- * line centred in it (12 px either side), so the row adds 12 px of padding above it and pulls the
- * body's bottom padding (24 px on phones, 32 px wide) in by 12 px or 20 px below it.
- */
-function QuietLinks({
-  children,
-}: {
-  children: React.ReactNode;
-}): React.ReactElement {
-  return (
-    <div
-      data-quiet-links
-      className="-mb-3 flex flex-wrap items-center justify-center gap-x-5 border-t border-border pt-3 text-sm text-fg-muted sm:-mb-5"
-    >
-      {children}
-    </div>
-  );
-}
-
-function QuietLink({
-  onClick,
-  icon,
-  children,
-}: {
-  onClick: () => void;
-  icon?: React.ReactNode;
-  children: React.ReactNode;
-}): React.ReactElement {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="inline-flex min-h-11 items-center gap-1.5 rounded-sm px-1 transition-colors duration-(--pk-duration-fast) hover:text-fg-strong"
-    >
-      {icon}
-      {children}
-    </button>
-  );
+  return `${portalErrorCopy(err, { account: true }).title}. ${portalErrorCopy(err, { account: true }).description}`;
 }
 
 function MethodsStep({
@@ -364,6 +439,8 @@ function MethodsStep({
   notice,
   onSent,
   onKey,
+  onDevice,
+  onHint,
 }: {
   caps: PortalCapabilities;
   context: { slug: string; name: string; developerName?: string | null } | null;
@@ -376,7 +453,22 @@ function MethodsStep({
   /** The start's answer: a code was sent, or (`next`) the domain routes to a connection. */
   onSent: (email: string, sent: PortalEmailSent | undefined) => void;
   onKey: () => void;
+  onDevice: () => void;
+  /** The address matches this browser's last sign-in with a method the card still offers. */
+  onHint: (email: string, last: LastMethod) => void;
 }): React.ReactElement {
+  /** The usual method is only a hint while this card still offers it. */
+  const offers = (last: LastMethod): boolean =>
+    last.kind === "passkey"
+      ? caps.auth.passkey === true && passkeysSupported()
+      : last.kind === "email"
+        ? true
+        : (caps.auth.providers ?? []).includes(last.kind);
+  const pk = usePasskeySignIn(returnTo);
+  const passkeyBusy = pk.busy;
+  const passkeyError = pk.error;
+  const withPasskey = pk.run;
+  const startConditional = pk.conditional;
   const [email, setEmail] = React.useState(initialEmail ?? "");
   const [invalid, setInvalid] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -392,6 +484,12 @@ function MethodsStep({
     }
   }, [focusEmail]);
   const carried = useCarriedKey();
+  const passkey = caps.auth.passkey === true && passkeysSupported();
+  // Conditional UI: the email field's autofill offers this browser's passkeys.
+  React.useEffect(
+    () => (passkey ? startConditional() : undefined),
+    [passkey, startConditional],
+  );
   const providers = caps.auth.providers ?? [];
   const magic = caps.auth.magic;
   // With the email field, the address routes to its connection (identifier-first); the buttons
@@ -399,19 +497,19 @@ function MethodsStep({
   const connections = magic ? [] : (caps.auth.connections ?? []);
   const oidc = caps.auth.oidc;
   const ssoLabel = t("signin.provider.continue", {
-    provider: caps.auth.oidcName ?? "single sign-on",
+    provider: caps.auth.oidcName ?? t("signin.sso.name"),
   });
   const ssoHref = `/login?return_to=${encodeURIComponent(returnTo())}`;
 
   if (!magic && !oidc && providers.length === 0 && connections.length === 0) {
     return (
       <>
-        <Title>Sign-in is turned off</Title>
+        <Title>{t("signin.off.title")}</Title>
         <p className="text-fg-muted">
           {context
             ? t("signin.off.product", {
                 product: context.name,
-                developer: context.developerName ?? "its developer",
+                developer: context.developerName ?? t("signin.off.developer"),
               })
             : t("signin.off.any")}
         </p>
@@ -431,6 +529,13 @@ function MethodsStep({
     setError(null);
     setSending(true);
     try {
+      // The usual way first, when this browser knows one for this address (never a server lookup).
+      const last = await readLastMethod(value);
+      if (last && last.kind !== "email" && offers(last)) {
+        setSending(false);
+        onHint(value, last);
+        return;
+      }
       onSent(value, await portalApi.startEmailSignIn(value));
     } catch (err) {
       setError(startErrorText(err));
@@ -444,12 +549,12 @@ function MethodsStep({
   const carriedName =
     carriedCheck?.kind === "valid" ? productLabel(carriedCheck.slug) : null;
   const title = carriedName
-    ? `Sign in to add ${carriedName}` // signin.key.carriedTitle (no catalog key yet)
+    ? t("signin.key.carriedTitle", { product: carriedName })
     : context
       ? t("signin.methods.titleApp")
       : t("signin.methods.title");
   const lede = carriedName
-    ? `Your key is ready. Sign in or create an account, and ${carriedName} joins your library.` // signin.key.carriedLede
+    ? t("signin.key.carriedLede", { product: carriedName })
     : context
       ? t("signin.methods.ledeApp", { product: context.name })
       : null;
@@ -480,6 +585,8 @@ function MethodsStep({
               type="email"
               inputMode="email"
               autoComplete="username webauthn"
+              placeholder={t("signin.email.placeholder")}
+              autoFocus
               value={email}
               onValueChange={(v) => {
                 setEmail(v);
@@ -489,16 +596,19 @@ function MethodsStep({
               aria-describedby={error ? errorId : undefined}
               className="h-12 text-base"
             />
-            {error ? (
-              <p id={errorId} role="alert" className="text-sm text-danger">
-                {error}
-              </p>
-            ) : null}
+            <div className="mt-1.5 min-h-5">
+              {error ? (
+                <p id={errorId} role="alert" className="text-sm text-danger">
+                  {error}
+                </p>
+              ) : null}
+            </div>
           </div>
           <Button
             type="submit"
+            variant="neutral"
             size="lg"
-            className="h-12 w-full text-base font-semibold"
+            className="h-auto min-h-12 w-full whitespace-normal py-2 text-center text-base font-semibold"
             loading={sending}
             iconEnd={<ArrowRight aria-hidden />}
           >
@@ -517,14 +627,17 @@ function MethodsStep({
             context ? `&product=${encodeURIComponent(context.slug)}` : ""
           }`
         }
-        onNavigate={() => stashCarriedKey()}
+        onNavigate={(p) => {
+          rememberVia(p);
+          stashCarriedKey();
+        }}
       />
       {oidc ? (
         <Button
           asChild
-          variant={magic || providers.length ? "secondary" : "primary"}
+          variant={magic || providers.length ? "secondary" : "neutral"}
           size="lg"
-          className="h-12 w-full"
+          className="h-auto min-h-12 w-full whitespace-normal py-2 text-center"
         >
           <a href={ssoHref} onClick={() => stashCarriedKey()}>
             <ShieldCheck aria-hidden />
@@ -540,24 +653,52 @@ function MethodsStep({
           primary={!oidc && providers.length === 0 && c === connections[0]}
         />
       ))}
-      {carried ? (
-        <QuietLinks>
-          <QuietLink
-            onClick={() => setParams({ activate: null })}
-            icon={<KeyRound aria-hidden className="size-4" />}
+      {passkey ? (
+        <div className="space-y-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="lg"
+            className="h-auto min-h-12 w-full whitespace-normal py-2 text-center text-base font-medium"
+            loading={passkeyBusy}
+            busyFocusable
+            onClick={() => void withPasskey()}
+            iconStart={<Fingerprint aria-hidden />}
           >
-            {/* signin.key.withoutKey */}
-            Sign in without the key
-          </QuietLink>
-        </QuietLinks>
-      ) : caps.modules.claim ? (
+            {t("signin.passkey")}
+          </Button>
+          {passkeyError ? (
+            <p role="alert" className="text-center text-sm text-danger">
+              {passkeyError}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+      {carried || caps.modules.claim || magic ? (
         <QuietLinks>
-          <QuietLink
-            onClick={onKey}
-            icon={<KeyRound aria-hidden className="size-4" />}
-          >
-            {t("signin.link.key")}
-          </QuietLink>
+          {carried ? (
+            <QuietLink
+              onClick={() => setParams({ activate: null })}
+              icon={<KeyRound aria-hidden className="size-4" />}
+            >
+              {t("signin.key.withoutKey")}
+            </QuietLink>
+          ) : caps.modules.claim ? (
+            <QuietLink
+              onClick={onKey}
+              icon={<KeyRound aria-hidden className="size-4" />}
+            >
+              {t("signin.link.key")}
+            </QuietLink>
+          ) : null}
+          {magic ? (
+            <QuietLink
+              onClick={onDevice}
+              icon={<ScanLine aria-hidden className="size-4" />}
+            >
+              {t("signin.link.anotherDevice")}
+            </QuietLink>
+          ) : null}
         </QuietLinks>
       ) : null}
     </>
@@ -580,7 +721,7 @@ function ConnectionButton({
   return (
     <Button
       asChild
-      variant={primary ? "primary" : "secondary"}
+      variant={primary ? "neutral" : "secondary"}
       size="lg"
       className="h-auto min-h-12 w-full whitespace-normal py-2 text-center"
     >
@@ -600,16 +741,6 @@ function ConnectionButton({
   );
 }
 
-function Divider(): React.ReactElement {
-  return (
-    <div className="flex items-center gap-3 text-sm text-fg-muted" aria-hidden>
-      <span className="h-px flex-1 bg-border" />
-      {t("signin.or")}
-      <span className="h-px flex-1 bg-border" />
-    </div>
-  );
-}
-
 function codeErrorText(err: unknown): string {
   if (err instanceof PortalApiError) {
     if (err.code === "invalid_code") {
@@ -617,11 +748,12 @@ function codeErrorText(err: unknown): string {
     }
     if (err.code === "signin_expired") return expiredCodeText();
     if (err.status === 429 || err.code === "rate_limited")
-      return "Too many tries. Wait a minute, then try again.";
-    if (err.code === "forbidden" || err.code === "email_in_use")
-      return err.message;
+      return t("signin.code.rateLimited");
+    // Worded here, from the catalog: the Worker's prose never reaches the page.
+    if (err.code === "forbidden") return t("signin.refused.title");
+    if (err.code === "email_in_use") return t("signin.code.emailInUse");
   }
-  return portalErrorCopy(err).title + ". " + portalErrorCopy(err).description;
+  return `${portalErrorCopy(err, { account: true }).title}. ${portalErrorCopy(err, { account: true }).description}`;
 }
 
 function CodeStep({
@@ -631,6 +763,7 @@ function CodeStep({
   onRefused,
   onRouted,
   onExpired,
+  onFinish,
 }: {
   email: string;
   /** Seconds before the first "Send a new code" (the start's `resendIn`). */
@@ -642,6 +775,8 @@ function CodeStep({
   onRouted: (next: PortalSsoNext) => void;
   /** The sign-in itself is gone (the resend answered `signin_expired`): back to the email. */
   onExpired: () => void;
+  /** A new address: the account is created in FinishStep (the verify answered `finish`). */
+  onFinish: () => void;
 }): React.ReactElement {
   const qc = useQueryClient();
   const [code, setCode] = React.useState("");
@@ -669,7 +804,13 @@ function CodeStep({
     setError(null);
     setStatus(null);
     try {
-      await portalApi.verifySignInCode(value);
+      const out = await portalApi.verifySignInCode(value);
+      rememberVia("email");
+      // A new address finishes first (I-33): the account is created there.
+      if (out?.status === "finish") {
+        onFinish();
+        return;
+      }
       await qc.invalidateQueries({ queryKey: portalKeys.me });
     } catch (err) {
       // I-30: the domain requires its connection now (enforced after this code was sent).
@@ -747,8 +888,7 @@ function CodeStep({
         // one to use.
         setCapped(true);
         setStatus({
-          // signin.code.noMore (PX-W4): no catalog key yet
-          text: "No more codes can be sent for this sign-in. The latest code still works.",
+          text: t("signin.code.noMore"),
           tone: "muted",
         });
         focusCode();
@@ -792,7 +932,7 @@ function CodeStep({
             htmlFor={inputId}
             className="text-sm font-medium text-fg-strong"
           >
-            Code
+            {t("signin.approve.codeLabel")}
           </label>
           <CodeCells
             id={inputId}
@@ -814,8 +954,9 @@ function CodeStep({
         <p className="text-sm text-fg-muted">{t("signin.code.link")}</p>
         <Button
           type="submit"
+          variant="neutral"
           size="lg"
-          className="h-12 w-full text-base font-semibold"
+          className="h-auto min-h-12 w-full whitespace-normal py-2 text-center text-base font-semibold"
           disabled={code.length !== CODE_LENGTH}
           loading={verifying}
         >
@@ -842,7 +983,7 @@ function CodeStep({
           </span>
         ) : (
           <QuietLink onClick={() => void resend()}>
-            {sending ? "Sending…" : t("signin.code.resend")}
+            {sending ? t("common.working") : t("signin.code.resend")}
           </QuietLink>
         )}
         <QuietLink onClick={onChangeEmail}>
@@ -878,8 +1019,8 @@ function IdChip({
         <button
           type="button"
           onClick={onChange}
-          aria-label="Change email"
-          className="inline-flex min-h-8 shrink-0 items-center rounded-full px-2 font-medium text-accent-fg hover:underline"
+          aria-label={t("signin.code.changeEmail")}
+          className="inline-flex min-h-11 shrink-0 items-center rounded-full px-2 font-medium text-fg-strong underline decoration-2 underline-offset-4"
         >
           {t("signin.consent.change")}
         </button>
@@ -967,23 +1108,20 @@ function SsoStep({
           >
             <Building2 className="size-5" />
           </span>
-          <Title>
-            {/* signin.sso.title (I-30): no catalog key yet */}
-            Sign in with <bdi>{connection.label}</bdi>
-          </Title>
+          <Title>{t("signin.sso.title", { org: connection.label })}</Title>
         </div>
         {enforced ? (
           <p className="text-fg-muted">
-            {/* signin.sso.required (I-30): no catalog key yet */}
-            Required for <bdi>{domain}</bdi> addresses.
+            {t("signin.sso.required", { host: domain })}
           </p>
         ) : null}
       </div>
       <div className="space-y-3">
         <Button
           asChild
+          variant="neutral"
           size="lg"
-          className="h-12 w-full text-base font-semibold"
+          className="h-auto min-h-12 w-full whitespace-normal py-2 text-center text-base font-semibold"
         >
           <a
             href={connectionHref(connection.id, email)}
@@ -998,18 +1136,18 @@ function SsoStep({
             ref={codeRef}
             variant="outline"
             size="lg"
-            className="h-12 w-full text-base font-semibold"
+            className="h-auto min-h-12 w-full whitespace-normal py-2 text-center text-base font-semibold"
             loading={sending}
-            disabledReason={wait > 0 ? `Wait ${clock}` : undefined}
+            disabledReason={
+              wait > 0 ? t("signin.sso.wait", { time: clock }) : undefined
+            }
             aria-describedby={error ? errorId : undefined}
             iconStart={<Mail aria-hidden />}
             onClick={() => void sendCode()}
           >
             {wait > 0
-              ? // signin.sso.codeIn (I-30): no catalog key yet
-                `Email me a code in ${clock}`
-              : // signin.sso.code (I-30): no catalog key yet
-                "Email me a code instead"}
+              ? t("signin.sso.codeIn", { time: clock })
+              : t("signin.sso.code")}
           </Button>
         )}
         {error ? (
@@ -1037,18 +1175,13 @@ function RefusedStep({
   return (
     <>
       <div className="space-y-2">
-        {/* signin.disabled.title */}
-        <Title>This account can't sign in</Title>
-        <p className="text-fg">
-          {/* signin.disabled.lede */}
-          <span className="font-medium text-fg-strong">{email}</span> belongs to
-          an account that can't sign in. Try a different email or another way to
-          sign in.
-        </p>
+        <Title>{t("signin.refused.title")}</Title>
+        <p className="text-fg">{t("signin.refused.lede", { email })}</p>
       </div>
       <Button
+        variant="neutral"
         size="lg"
-        className="h-12 w-full text-base font-semibold"
+        className="h-auto min-h-12 w-full whitespace-normal py-2 text-center text-base font-semibold"
         onClick={onChangeEmail}
       >
         {t("signin.code.differentEmail")}
@@ -1067,17 +1200,17 @@ function KeyStep({
   const [key, setKey] = React.useState("");
   const [touched, setTouched] = React.useState(false);
   const check = checkKey(key);
-  const verdict = touched ? formatVerdict(check) : null;
+  const verdict = touched
+    ? key.trim() === ""
+      ? { message: t("signin.key.empty") }
+      : formatVerdict(check)
+    : null;
   return (
     <>
       <div className="space-y-2">
         {/* The on-ramp keeps the link's words as its title. */}
         <Title>{t("signin.link.key")}</Title>
-        <p className="text-fg-muted">
-          {/* signin.key.onrampLede */}
-          Paste the key from your receipt email. Sign in next, and it joins your
-          library.
-        </p>
+        <p className="text-fg-muted">{t("signin.key.onrampLede")}</p>
       </div>
       <form
         noValidate
@@ -1086,6 +1219,7 @@ function KeyStep({
           e.preventDefault();
           setTouched(true);
           if (check.kind === "valid") onContinue(key);
+          else document.getElementById("pk-signin-key")?.focus();
         }}
       >
         <KeyField
@@ -1103,19 +1237,17 @@ function KeyStep({
           hint={
             check.kind === "valid" ? (
               <p className="text-sm text-fg-muted">
-                Key for{" "}
-                <span className="font-medium text-fg-strong">
-                  {productLabel(check.slug)}
-                </span>
+                {t("signin.key.keyFor", { product: productLabel(check.slug) })}
               </p>
             ) : null
           }
-          help="Starts with pkey_. Case-sensitive."
+          help={t("signin.key.help")}
         />
         <Button
           type="submit"
+          variant="neutral"
           size="lg"
-          className="h-12 w-full text-base font-semibold"
+          className="h-auto min-h-12 w-full whitespace-normal py-2 text-center text-base font-semibold"
           iconEnd={<ArrowRight aria-hidden />}
         >
           {t("signin.continue")}

@@ -125,3 +125,67 @@ Then the full green gate in `AGENTS.md`.
 
 What downstream work packages rely on from this one is named in their briefs (the Unblocks row). The role agent sets `--set P0-38 in-review` when it hands off. After review, the lead adds the last commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P0-38 done`.
+
+## Progress and continuation (2026-10-19)
+
+Built on integ/next (branch `wp/P0-38-authcard`). Corrections to this brief, the code being the fact:
+`LoginCard`, `ProviderRow` and the step pieces already existed in `portal/components/signin` (PX-W
+series, I-30).
+
+Done:
+
+- `packages/admin/src/ui/auth/`: `AuthCard` (was `LoginCard`; the brand row and the product icon are
+  slots, so `ui/` stays app-neutral), `CardHeader`, `ProviderRow`, `ProviderGlyphs`, `CodeCells`,
+  and `AuthTitle`, `OrDivider`, `QuietLinks`, `QuietLink`. The portal's `SignInPage` uses them.
+- Neutral-ink primary: new `Button` variant `neutral` (`action-neutral` tokens), used for every
+  filled action on the card. No star field (lead, 2026-10-19).
+- MethodsStep: **Sign in with a passkey** (ghost; `auth.passkey` + `passkeysSupported()`; same
+  options/verify routes as the step-up) and **Sign in with another device** under the rule.
+- DeviceStep (new side, PX-W14 routes): QR, code, "Works for m:ss", poll, one-minute announcement,
+  denied / expired / disabled outcomes with their ways on.
+- Approver: `ApproveDeviceDialog` (lookup, review, Approve / Deny, step-up through `StepUpInline`,
+  outcomes), opened by `#/account/approve?code=` (router rewrites to `?approve=`) or **Approve a new
+  device** under Where you're signed in.
+- e2e: states `signin-passkey`, `signin-device`, `signin-device-denied`, `account-approve`,
+  `account-approve-step-up`, `account-approve-enter`; PENDING rows 4.23 and 4.24 removed.
+
+Not done (owners):
+
+- New sentences are in `portal/copy/signin.ts` under the keys they will take, not in the catalog (a
+  key is nine locales and every SDK table, and LK-08a is rewriting the same file): one batch with
+  LK-08a.
+- The Worker twin `renderAuthCard()`: I-38a, after LK-07 and LK-04 (lead).
+- Help, Privacy and Terms under the card: no public destination yet (Help needs a session).
+- One `CodeEntry` for SignInPage, StepUp and SignInMethods (the cells are shared; the surrounding
+  flows differ), `KeyField` promotion, conditional passkey UI, HintStep, ReturnStep and the
+  passthrough header (their wire is PX-14 / PX-W13), and the console card (ST-30).
+
+## Progress, second slice (2026-10-20)
+
+Merged integ/next (Locker mockups), LK-06 and LK-08a once each. Added: FinishStep (EmailGateStep, RegisterStep,
+code, join offer; profile, birth date, product and platform terms), HintStep with `pk_last_method`
+(`portal/lastMethod.ts`: kind and a salted address hash in the cookie; the first name stays in
+localStorage), passkey conditional UI and `signalUnknownCredential`. The catalog batch landed: 61 keys in
+nine locales (unreviewed, as the others), `signin.approve.*`, `signin.passkey.*`, `signin.gate.*`,
+`signin.hint.*`, the SignInPage placeholders; `portal/copy/signin.ts` is gone, and the copy lint caught
+13 more duplicates, now `t()`.
+
+Left: FinishStep for every new email address (the Worker's `beginEmailFinish` still opens it only
+once platform terms are published; making it unconditional changes the email-verify answer and the
+transcripts, a lead call); AccountUpgrade (needs `POST /api/key/preview` in KeyStep); "Automatic grant"
+(the catalog says "From signing in"; the portal says "Automatic grant"; an owner call); the ui-qa portal
+board; `BRAND_NAME_SOURCES` reads JSON packs only, so the portal's TS copy is not covered.
+
+## Fix round after the BUILT UX review (2026-10-20)
+
+Lead decisions recorded:
+
+- "Automatic grant" stays (glossary, concepts.md). `signin.choice.origin.signIn` is "Automatic grant" in
+  nine locales (the `grant` ban has one exception, that key); `FROM_SIGNING_IN` is gone, the portal
+  reads `AUTOMATIC_GRANT` from the catalog.
+- The Worker's `nudge: true` is kept in sessionStorage (`pk-signin-nudge`, `lastMethod.ts`) for PX-15 to
+  show; it is not discarded.
+- The Worker falls back for an empty screen name (`gate.name ?? profile.name ?? displayName ?? email`),
+  so the name field is optional.
+- Follow-ups, out of this round: FinishStep rebuilt to identity.finish with the unconditional Worker gate
+  (PX-21); AccountUpgrade (PX-12); Help, Privacy and Terms links.

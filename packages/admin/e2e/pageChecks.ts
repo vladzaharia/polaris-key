@@ -203,3 +203,13 @@ export function emptyStateStarBreaches(page: Page): Promise<string[]> {
     return out;
   });
 }
+
+/**
+ * An unfilled catalog argument that reached the screen (`{org}`, `{product}`): any `{word}` in
+ * the page's visible text. The quality bar runs it on every state.
+ */
+export function rawPlaceholders(page: Page): Promise<string[]> {
+  return page.evaluate(() =>
+    Array.from(document.body.innerText.matchAll(/\{[a-zA-Z]+\}/g), (m) => m[0]),
+  );
+}

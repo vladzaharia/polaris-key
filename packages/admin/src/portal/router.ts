@@ -180,6 +180,15 @@ export function resolveHash(hash: string): Resolved {
       return { route };
     }
     case "account": {
+      // The QR's link (`#/account/approve?code=`, PX-W14): the dialog over Account, with the
+      // code filled in. `approve=` is the one parameter; it holds the code ("" asks for it).
+      if (a === "approve") {
+        const to = new URLSearchParams({ approve: params.get("code") ?? "" });
+        return {
+          route: { kind: "account", section: null, params: to },
+          redirect: `#/account?${to.toString()}`,
+        };
+      }
       if (a === "emails" || a === "passkeys" || a === "linked")
         return {
           route: { kind: "account", section: "methods", params },

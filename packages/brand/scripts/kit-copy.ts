@@ -760,7 +760,9 @@ export function validateKitCopy(src: KitCopySources): string[] {
     for (const [w, text] of texts) {
       errors.push(...checkText(w, text));
       const banned = BANNED_EN.exec(text);
-      if (banned)
+      // The one sanctioned "grant": the portal's License source for a license issued at sign-in
+      // (owner polish 2026-10-07; the glossary names it, concepts.md).
+      if (banned && key !== "signin.choice.origin.signIn")
         errors.push(
           `${w}: "${banned[0]}" is banned vocabulary (license, device, tier; never grant)`,
         );

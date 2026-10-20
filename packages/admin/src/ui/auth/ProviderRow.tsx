@@ -1,8 +1,7 @@
 import * as React from "react";
-import { cn } from "../../../lib/cn.js";
-import type { PortalProvider } from "../../api.js";
-import { AppleGlyph, GoogleGlyph, SteamGlyph } from "../Glyphs.js";
-import { t } from "../../../lib/copy.js";
+import { cn } from "../../lib/cn.js";
+import { AppleGlyph, GoogleGlyph, SteamGlyph } from "./ProviderGlyphs.js";
+import { t } from "../../lib/copy.js";
 
 /**
  * The provider row (PORTAL.md §4.1, owner decision 2026-10-04): Apple, Google and Steam as
@@ -11,20 +10,23 @@ import { t } from "../../../lib/copy.js";
  * the tooltip; the row is a group labelled "Or continue with". Three split the row in thirds,
  * two in halves, and one keeps a half-row width, centred. No other providers.
  */
-export const PROVIDER_ORDER: readonly PortalProvider[] = [
+/** The providers the row can show (the portal's `AuthProvider`). */
+export type AuthProvider = "apple" | "google" | "steam";
+
+export const PROVIDER_ORDER: readonly AuthProvider[] = [
   "apple",
   "google",
   "steam",
 ];
 
-const NAME: Record<PortalProvider, string> = {
+const NAME: Record<AuthProvider, string> = {
   apple: "Apple",
   google: "Google",
   steam: "Steam",
 };
 
 export function providerLabel(
-  p: PortalProvider,
+  p: AuthProvider,
   mode: "continue" | "connect",
 ): string {
   return t(
@@ -40,12 +42,12 @@ export function ProviderRow({
   className,
   onNavigate,
 }: {
-  providers: readonly PortalProvider[];
-  hrefFor: (p: PortalProvider) => string;
+  providers: readonly AuthProvider[];
+  hrefFor: (p: AuthProvider) => string;
   mode?: "continue" | "connect";
   className?: string;
   /** Runs before the browser leaves for the provider (the portal stashes a carried key). */
-  onNavigate?: () => void;
+  onNavigate?: (p: AuthProvider) => void;
 }): React.ReactElement | null {
   const list = PROVIDER_ORDER.filter((p) => providers.includes(p));
   if (list.length === 0) return null;
@@ -54,7 +56,7 @@ export function ProviderRow({
       role="group"
       aria-label={
         mode === "connect"
-          ? "Or connect another account"
+          ? t("signin.provider.connectGroup")
           : t("signin.provider.group")
       }
       data-count={list.length}
@@ -70,12 +72,12 @@ export function ProviderRow({
           <a
             key={p}
             href={hrefFor(p)}
-            onClick={onNavigate}
+            onClick={() => onNavigate?.(p)}
             aria-label={label}
             title={label}
             className={cn(
-              "inline-flex h-[3.25rem] items-center justify-center rounded-md border border-border bg-hover text-fg-strong",
-              "hover:border-border-strong",
+              "inline-flex h-[3.25rem] items-center justify-center rounded-md border border-border-strong bg-surface-raised text-fg-strong",
+              "hover:bg-hover",
               list.length === 1 && "col-span-2 mx-auto w-[calc(50%-0.375rem)]",
             )}
           >

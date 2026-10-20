@@ -2155,10 +2155,10 @@ msgstr "Fino al {date}"
 msgid "signin.term.yearlyUntil"
 msgstr "Annuale, fino al {date}"
 
-#. From signing in
+#. Automatic grant
 #. Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label).
 msgid "signin.choice.origin.signIn"
-msgstr "Dall'accesso"
+msgstr "Assegnazione automatica"
 
 #. Key ending {last6}
 #. Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). Arguments: {last6} = the license key's last six characters, shown as is.
@@ -3786,6 +3786,431 @@ msgstr "Scarica la nuova versione da dove hai ottenuto {product}."
 #. Terminal: activate read a piped stdin (a file, pipe or socket) and no key arrived in time.
 msgid "cli.activate.noKeyPiped"
 msgstr "Nessuna chiave di licenza è arrivata da stdin."
+
+#. On a phone or computer where you're signed in, scan the code, or open Account → Approve a new device and type it.
+#. Sign in with another device: under the title (SIGN-IN.md §3.11). Account → Approve a new device is the portal's own menu path.
+msgid "signin.approve.lede"
+msgstr "Su un telefono o un computer dove hai già effettuato l'accesso, inquadra il codice, oppure apri Account → Approva un nuovo dispositivo e digitalo."
+
+#. Use another way to sign in
+#. Polaris Locker sign-in card (SIGN-IN.md §3.4, §3.5, §3.11).
+msgid "signin.approve.other"
+msgstr "Usa un altro modo per accedere"
+
+#. macos: Use Another Way to Sign In
+msgctxt "macos"
+msgid "signin.approve.other"
+msgstr "Usa un altro modo per accedere"
+
+#. One minute left on this code.
+#. Announced once when the sign-in code has one minute left (WCAG 2.2.1).
+msgid "signin.approve.minuteLeft"
+msgstr "Resta un minuto per questo codice."
+
+#. Getting your code
+#. Busy label while the sign-in code is requested.
+msgid "signin.approve.starting"
+msgstr "Recupero del codice"
+
+#. That account can't sign in. Use another way to sign in.
+#. Sign in with another device or a passkey, for an account that can't sign in.
+msgid "signin.approve.disabled"
+msgstr "Questo account non può accedere. Usa un altro modo per accedere."
+
+#. Approve a new device
+#. Account → Where you're signed in: opens the approve dialog (SIGN-IN.md §3.11).
+msgid "signin.approve.open"
+msgstr "Approva un nuovo dispositivo"
+
+#. macos: Approve a New Device
+msgctxt "macos"
+msgid "signin.approve.open"
+msgstr "Approva un nuovo dispositivo"
+
+#. Enter the code shown on the other device.
+#. Approve dialog, when the link carried no code.
+msgid "signin.approve.enter"
+msgstr "Inserisci il codice mostrato sull'altro dispositivo."
+
+#. Code
+#. Approve dialog: the field's label.
+msgid "signin.approve.codeLabel"
+msgstr "Codice"
+
+#. Find it
+#. Approve dialog: looks the code up (reads only, never approves).
+msgid "signin.approve.look"
+msgstr "Cerca"
+
+#. macos: Find It
+msgctxt "macos"
+msgid "signin.approve.look"
+msgstr "Cerca"
+
+#. Code {code} asks to sign in to your account.
+#. Approve dialog. Arguments: {code} = the 8-letter code, shown as is.
+msgid "signin.approve.askBody"
+msgstr "Il codice {code} chiede di accedere al tuo account."
+
+#. Where
+#. Approve dialog: the request's coarse place, as a row label.
+msgid "signin.approve.where"
+msgstr "Luogo"
+
+#. When
+#. Approve dialog: when it asked, as a row label.
+msgid "signin.approve.when"
+msgstr "Quando"
+
+#. Device
+#. Approve dialog: the asking device, as a row label.
+msgid "signin.approve.device"
+msgstr "Dispositivo"
+
+#. Unknown place
+#. Approve dialog: no coarse location was available.
+msgid "signin.approve.unknownPlace"
+msgstr "Luogo sconosciuto"
+
+#. It's asking from a different place than you're in now, or from a place we can't tell.
+#. Approve dialog: why the person must confirm it's them first.
+msgid "signin.approve.stepUpWhy"
+msgstr "La richiesta arriva da un luogo diverso dal tuo, o da un luogo che non riconosciamo."
+
+#. approve it
+#. Approve dialog: completes 'Use your passkey to …' in the confirm-it's-you prompt.
+msgid "signin.approve.stepUpVerb"
+msgstr "approvarlo"
+
+#. Approved. {device} is signed in.
+#. Approve dialog outcome. Arguments: {device} = the device label.
+msgid "signin.approve.approved"
+msgstr "Approvato. {device} ha effettuato l'accesso."
+
+#. Denied. Nothing changed.
+#. Approve dialog outcome.
+msgid "signin.approve.deniedDone"
+msgstr "Rifiutato. Non è cambiato nulla."
+
+#. That didn't go through. Try again.
+#. Approve dialog: a decision that failed.
+msgid "signin.approve.failed"
+msgstr "Non è andata a buon fine. Riprova."
+
+#. Your passkey wasn't used. Try again, or use another way.
+#. Passkey prompt closed or timed out.
+msgid "signin.passkey.cancelled"
+msgstr "La tua passkey non è stata usata. Riprova o usa un altro modo."
+
+#. This browser can't use your passkey here. Use another way.
+#. Passkey not usable in this browser.
+msgid "signin.passkey.unsupported"
+msgstr "Questo browser non può usare la tua passkey qui. Usa un altro modo."
+
+#. Your passkey didn't work. Try again, or use another way.
+#. Passkey refused.
+msgid "signin.passkey.failed"
+msgstr "La tua passkey non ha funzionato. Riprova o usa un altro modo."
+
+#. Signed in with {provider}
+#. Finish step strip when the provider shared no identity to show. Arguments: {provider} = a provider's name.
+msgid "signin.gate.stripNoIdentity"
+msgstr "Accesso eseguito con {provider}"
+
+#. One more step
+#. Finish step title when only the terms are asked.
+msgid "signin.gate.termsTitle"
+msgstr "Ancora un passaggio"
+
+#. Your name
+#. Finish step: the screen name field.
+msgid "signin.gate.name"
+msgstr "Il tuo nome"
+
+#. Use {email}
+#. Finish step: the provider's address as a radio. Arguments: {email} = an address.
+msgid "signin.gate.useEmail"
+msgstr "Usa {email}"
+
+#. Your private Apple address
+#. Finish step: marks an Apple private-relay address.
+msgid "signin.gate.relay"
+msgstr "Il tuo indirizzo privato Apple"
+
+#. Use my initials
+#. Finish step: swaps the provider's picture for initials.
+msgid "signin.gate.pictureInitials"
+msgstr "Usa le mie iniziali"
+
+#. macos: Use My Initials
+msgctxt "macos"
+msgid "signin.gate.pictureInitials"
+msgstr "Usa le mie iniziali"
+
+#. Use my {provider} picture
+#. Finish step: back to the provider's picture. Arguments: {provider} = a provider's name.
+msgid "signin.gate.pictureProvider"
+msgstr "Usa la mia immagine di {provider}"
+
+#. macos: Use My {provider} Picture
+msgctxt "macos"
+msgid "signin.gate.pictureProvider"
+msgstr "Usa la mia immagine di {provider}"
+
+#. Add my birth date from {org}
+#. Finish step: only when a connection offered a birth date. Arguments: {org} = the organization that offered it.
+msgid "signin.gate.birthdate"
+msgstr "Aggiungi la mia data di nascita da {org}"
+
+#. Only you can see it. Apps never get it.
+#. Finish step: under the birth date choice.
+msgid "signin.gate.birthdateHelp"
+msgstr "Solo tu puoi vederla. Le app non la ricevono mai."
+
+#. I agree to the {term}
+#. Finish step: the product's terms checkbox. Arguments: {product} = the product's name.
+msgid "signin.gate.productTerms"
+msgstr "Accetto i {term}"
+
+#. By continuing you agree to the {term}.
+#. Finish step: the platform's terms line, with the link below it. Polaris Locker is never translated.
+msgid "signin.gate.platformTerms"
+msgstr "Continuando accetti i {term}."
+
+#. That sign-in has expired. Sign in again.
+#. Finish step: the 15-minute sign-in ran out.
+msgid "signin.gate.expired"
+msgstr "Questo accesso è scaduto. Accedi di nuovo."
+
+#. Join your accounts
+#. Finish step: the join offer (SIGN-IN.md §3.5).
+msgid "signin.gate.joinTitle"
+msgstr "Unisci i tuoi account"
+
+#. {email} already belongs to a Polaris Locker account. Join this sign-in to it, or use a different email.
+#. Finish step: the join offer. Arguments: {email} = an address. Polaris Locker is never translated.
+msgid "signin.gate.joinLede"
+msgstr "{email} appartiene già a un account Polaris Locker. Unisci questo accesso a quell'account, oppure usa un'altra email."
+
+#. To join, sign in to that account in this browser first, then add this sign-in from Account.
+#. Finish step: the join offer cannot be taken until the other account is proven.
+msgid "signin.gate.joinProve"
+msgstr "Per unirli, accedi prima a quell'account in questo browser, poi aggiungi questo accesso da Account."
+
+#. We sent a code to {email}.
+#. Finish step, code stage. Arguments: {email} = an address.
+msgid "signin.gate.codeSent"
+msgstr "Abbiamo inviato un codice a {email}."
+
+#. On this browser, last time {when}
+#. HintStep under the usual method. Arguments: {when} = a relative time such as '2 days ago'.
+msgid "signin.hint.when"
+msgstr "In questo browser, l'ultima volta {when}"
+
+#. Welcome back
+#. HintStep title when the browser kept no name.
+msgid "signin.hint.welcomeNoName"
+msgstr "Bentornato"
+
+#. a passkey
+#. HintStep: completes 'You usually sign in with {method}'.
+msgid "signin.hint.method.passkey"
+msgstr "una passkey"
+
+#. an email code
+#. HintStep: completes 'You usually sign in with {method}'.
+msgid "signin.hint.method.email"
+msgstr "un codice via email"
+
+#. Use a passkey
+#. HintStep: passkey button.
+msgid "signin.hint.usePasskey"
+msgstr "Usa una passkey"
+
+#. macos: Use a Passkey
+msgctxt "macos"
+msgid "signin.hint.usePasskey"
+msgstr "Usa una passkey"
+
+#. Email me a code
+#. HintStep: sends a sign-in code.
+msgid "signin.hint.emailCode"
+msgstr "Inviami un codice via email"
+
+#. macos: Email Me a Code
+msgctxt "macos"
+msgid "signin.hint.emailCode"
+msgstr "Inviami un codice via email"
+
+#. Change
+#. HintStep: back to the email field.
+msgid "signin.hint.change"
+msgstr "Cambia"
+
+#. Sign in to add {product}
+#. Sign-in card when a license key is carried through sign-in. Arguments: {product} = the product's name.
+msgid "signin.key.carriedTitle"
+msgstr "Accedi per aggiungere {product}"
+
+#. Your key is ready. Sign in or create an account, and {product} joins your library.
+#. Sign-in card when a license key is carried. Arguments: {product} = the product's name.
+msgid "signin.key.carriedLede"
+msgstr "La tua chiave è pronta. Accedi o crea un account e {product} entra nella tua libreria."
+
+#. Sign in without the key
+#. Sign-in card: drops the carried license key.
+msgid "signin.key.withoutKey"
+msgstr "Accedi senza la chiave"
+
+#. macos: Sign In Without the Key
+msgctxt "macos"
+msgid "signin.key.withoutKey"
+msgstr "Accedi senza la chiave"
+
+#. Paste the key from your receipt email. Sign in next, and it joins your library.
+#. Have a license key? step, under the title.
+msgid "signin.key.onrampLede"
+msgstr "Incolla la chiave dalla email della ricevuta. Poi accedi e entra nella tua libreria."
+
+#. That sign-in has expired. Continue to get a new code.
+#. Sign-in card, back at the email step after the sign-in ran out.
+msgid "signin.code.expiredRestart"
+msgstr "Questo accesso è scaduto. Continua per ricevere un nuovo codice."
+
+#. No more codes can be sent for this sign-in. The latest code still works.
+#. Code step: the per-sign-in resend cap.
+msgid "signin.code.noMore"
+msgstr "Non è possibile inviare altri codici per questo accesso. L'ultimo codice è ancora valido."
+
+#. Sign in with {org}
+#. Sign-in card, a domain routed to its connection. Arguments: {org} = the organization's name.
+msgid "signin.sso.title"
+msgstr "Accedi con {org}"
+
+#. Required for {host} addresses.
+#. Sign-in card, an enforced connection. Arguments: {host} = the email domain.
+msgid "signin.sso.required"
+msgstr "Obbligatorio per gli indirizzi {host}."
+
+#. Email me a code in {time}
+#. Sign-in card, the resend countdown on a routed step. Arguments: {time} = the wait, such as 0:42.
+msgid "signin.sso.codeIn"
+msgstr "Inviami un codice tra {time}"
+
+#. macos: Email Me a Code in {time}
+msgctxt "macos"
+msgid "signin.sso.codeIn"
+msgstr "Inviami un codice tra {time}"
+
+#. Email me a code instead
+#. Sign-in card, a routed step that is not enforced.
+msgid "signin.sso.code"
+msgstr "Inviami invece un codice via email"
+
+#. macos: Email Me a Code Instead
+msgctxt "macos"
+msgid "signin.sso.code"
+msgstr "Inviami invece un codice via email"
+
+#. This account can't sign in
+#. Sign-in card: a right code for an account that can't sign in (SIGN-IN.md §3.4).
+msgid "signin.refused.title"
+msgstr "Questo account non può accedere"
+
+#. {email} belongs to an account that can't sign in. Try a different email or another way to sign in.
+#. Sign-in card, account disabled. Arguments: {email} = an address.
+msgid "signin.refused.lede"
+msgstr "{email} appartiene a un account che non può accedere. Prova un'altra email o un altro modo per accedere."
+
+#. Sign-in is turned off
+#. Sign-in card: no way to sign in is enabled.
+msgid "signin.off.title"
+msgstr "L'accesso è disattivato"
+
+#. The security check did not pass. Try again.
+#. Sign-in card: the bot check refused.
+msgid "signin.turnstile.failed"
+msgstr "Il controllo di sicurezza non è andato a buon fine. Riprova."
+
+#. Too many tries. Wait a minute, then try again.
+#. Code step: the verify's 429.
+msgid "signin.code.rateLimited"
+msgstr "Troppi tentativi. Attendi un minuto, poi riprova."
+
+#. {product} terms
+#. The product's terms link in the finish step; fills {term} in the terms sentence. Arguments: {product} = the product's name.
+msgid "signin.gate.termsLinkProduct"
+msgstr "termini di {product}"
+
+#. Polaris Locker terms
+#. The platform's terms link in the finish step. Polaris Locker is never translated.
+msgid "signin.gate.termsLinkPlatform"
+msgstr "termini di Polaris Locker"
+
+#. That code expired. Ask for a new one on the other device.
+#. Approve dialog: the code is spent or expired (410).
+msgid "signin.approve.expiredCode"
+msgstr "Quel codice è scaduto. Chiedine uno nuovo sull'altro dispositivo."
+
+#. No sign-in is waiting for that code. Check it on the other device.
+#. Approve dialog: no pending request has this code (404 or 422).
+msgid "signin.approve.notFound"
+msgstr "Nessun accesso è in attesa di quel codice. Controllalo sull'altro dispositivo."
+
+#. you@example.com
+#. Placeholder of the email field on the sign-in card. Not translated.
+msgid "signin.email.placeholder"
+msgstr "you@example.com"
+
+#. single sign-on
+#. Names the platform's single sign-on in 'Continue with {provider}' when it has no display name.
+msgid "signin.sso.name"
+msgstr "accesso singolo"
+
+#. its developer
+#. Stands for {developer} when a product has no developer name, in 'Contact {developer}'.
+msgid "signin.off.developer"
+msgstr "il suo sviluppatore"
+
+#. Change email
+#. Accessible name of the control that goes back to the email step.
+msgid "signin.code.changeEmail"
+msgstr "Cambia email"
+
+#. Wait {time}
+#. Why a resend is disabled. Arguments: {time} = the wait, such as 0:42.
+msgid "signin.sso.wait"
+msgstr "Attendi {time}"
+
+#. Key for {product}
+#. Have a license key? step, under a valid key. Arguments: {product} = the product's name.
+msgid "signin.key.keyFor"
+msgstr "Chiave per {product}"
+
+#. Starts with pkey_. Case-sensitive.
+#. Have a license key? step: help under the field.
+msgid "signin.key.help"
+msgstr "Inizia con pkey_. Distingue maiuscole e minuscole."
+
+#. Paste your license key to continue.
+#. Have a license key? step: Continue pressed with an empty field.
+msgid "signin.key.empty"
+msgstr "Incolla la tua chiave di licenza per continuare."
+
+#. Or connect another account
+#. Group label of the provider buttons when adding a sign-in method.
+msgid "signin.provider.connectGroup"
+msgstr "Oppure collega un altro account"
+
+#. Too many codes. Try again in a few minutes.
+#. Rate limit with no wait given.
+msgid "signin.rateLimitedFew"
+msgstr "Troppi codici. Riprova tra qualche minuto."
+
+#. Another Polaris Locker account uses this email. Sign in the way you did before.
+#. Sign-in card, code step: the address belongs to another account that does not use it as a sign-in method. Polaris Locker is never translated.
+msgid "signin.code.emailInUse"
+msgstr "Un altro account Polaris Locker usa questa email. Accedi come prima."
 
 #. Something went wrong
 #. Core copy (conformance/parity/copy.en.json, fallback).

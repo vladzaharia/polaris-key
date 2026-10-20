@@ -480,7 +480,7 @@ export function ActivateDialog({
               help={
                 prefill
                   ? "Filled in from your link. Check it matches the key you have."
-                  : "Starts with pkey_. Case-sensitive."
+                  : t("signin.key.help")
               }
             />
           </DialogBody>

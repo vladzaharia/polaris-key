@@ -213,7 +213,7 @@ export function claimVerdict(
     return {
       code: "rate_limited",
       tone: "danger",
-      message: "Too many tries. Wait a minute, then try again.",
+      message: t("signin.code.rateLimited"),
     };
   return null;
 }
