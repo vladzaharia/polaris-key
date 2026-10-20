@@ -13,7 +13,6 @@ import {
 import {
   accountPortalUrl,
   buildSignInUrl,
-  customerOriginOf,
 } from "../src/core/licensing/manageUrl.js";
 import type { Env } from "../src/platform/env.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
@@ -115,7 +114,7 @@ describe("customer URLs follow CUSTOMER_ORIGIN", () => {
   });
 
   it("is the console origin with no customer origin", async () => {
-    expect(await customerOriginOf(env, db, `${API}/x`)).toBe(API);
+    expect(customerOrigin(env, `${API}/x`)).toBe(API);
   });
 
   it("moves every customer URL together once set", async () => {

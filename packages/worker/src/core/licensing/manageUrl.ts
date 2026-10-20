@@ -120,20 +120,6 @@ export function portalOriginFor(env: Env, fallback: string): string | null {
 }
 
 /**
- * The one source for every customer-facing URL: {@link customerOrigin}. The customer origin
- * while `CUSTOMER_ORIGIN` is usable (LK-17: no switch), else the portal origin of old
- * ({@link portalOriginOf}). `fallback` is the request, or an absolute URL the Worker was reached on.
- * `db` is unused; the signature stays so the call sites do not move.
- */
-export async function customerOriginOf(
-  env: Env,
-  _db: Db,
-  fallback: Request | string,
-): Promise<string | null> {
-  return customerOrigin(env, fallback);
-}
-
-/**
  * Is the product's customer portal on? `portal_product_settings.portal_enabled`, defaulting ON
  * when the product has no row (the same default `getPortalProductSettings` applies). Read
  * here, not through Identity's repo, because Core may not import a service. Becomes the S-18
@@ -161,7 +147,7 @@ export async function buildManageUrl(
   ctx: ManageContext,
 ): Promise<string | undefined> {
   if (!(await portalEnabled(db, product.slug))) return undefined;
-  const origin = await customerOriginOf(env, db, req);
+  const origin = customerOrigin(env, req);
   if (!origin) return undefined;
   const slug = encode(product.slug);
 
@@ -192,8 +178,7 @@ export async function buildSignInUrl(
   req: Request,
   product: { slug: string },
 ): Promise<string> {
-  const origin =
-    (await customerOriginOf(env, db, req)) ?? new URL(req.url).origin;
+  const origin = customerOrigin(env, req) ?? new URL(req.url).origin;
   return `${origin}/signin?product=${encode(product.slug)}`;
 }
 
@@ -207,6 +192,6 @@ export async function accountPortalUrl(
   fallbackOrigin: string,
   product: { slug: string },
 ): Promise<string | null> {
-  const origin = await customerOriginOf(env, db, fallbackOrigin);
+  const origin = customerOrigin(env, fallbackOrigin);
   return origin ? `${origin}/#/p/${encode(product.slug)}` : null;
 }

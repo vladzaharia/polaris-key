@@ -31,7 +31,7 @@ import { ErrorCode, wireError } from "../errors.js";
 import { codeRefusalPage } from "../brandPage.js";
 import type { Db } from "../../db/types.js";
 import type { Env } from "../../platform/env.js";
-import { customerOriginOf } from "../licensing/manageUrl.js";
+import { customerOrigin } from "../hosts.js";
 import { parseServices, type ServicesMap } from "../services.js";
 
 /** The query value the friendly card reads (`/signin?…&error=identity_disabled`). Mirrors
@@ -123,8 +123,7 @@ export async function identityNavigationRedirect(
   if (product.services.identity?.enabled) return null;
   if (!IDENTITY_NAVIGATION_ENTRIES.includes(rest.join("/"))) return null;
   if (!isNavigation(req)) return null;
-  const origin =
-    (await customerOriginOf(env, db, req)) ?? new URL(req.url).origin;
+  const origin = customerOrigin(env, req) ?? new URL(req.url).origin;
   const params = new URLSearchParams({
     product: product.slug,
     error: IDENTITY_DISABLED,

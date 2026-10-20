@@ -30,12 +30,12 @@ import {
   sweepErasures,
 } from "./accounts/deletion.js";
 import { sweepAccountDeletions } from "./accounts/lifecycle.js";
-import { customerOriginOf } from "../../core/licensing/manageUrl.js";
+import { customerOrigin } from "../../core/hosts.js";
 import type { Db } from "../../db/types.js";
 
 /** The origin account mail links to: the customer site while `CUSTOMER_ORIGIN` is usable. */
 const originOf = async (env: Env, db: Db): Promise<string> =>
-  (await customerOriginOf(env, db, env.CONSOLE_ORIGIN ?? "")) ?? "";
+  customerOrigin(env, env.CONSOLE_ORIGIN ?? "") ?? "";
 
 /**
  * I-11: one bounded pass of the erasure ledger replay (`accounts/erasureLedger.ts`). The count is
