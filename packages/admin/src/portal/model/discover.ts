@@ -49,7 +49,7 @@ export function reasonCopy(reason: string): ReasonCopy {
   if (reason === ADDED_REASON)
     return { kind: "added", text: "Added from Discover, at no cost" };
   if (reason === "free_with_account")
-    return { kind: "account", text: "Free with a Polaris Key account" };
+    return { kind: "account", text: `Free with a Polaris Locker account` };
   if (reason === "open") return { kind: "open", text: "Free to use" };
   if (reason.startsWith("group:")) {
     const group = reason.slice("group:".length).trim();
@@ -85,7 +85,7 @@ export function pathCopy(path: PortalObtainPath): ReasonCopy {
           kind: "trial",
           text: `Free trial · until ${formatDay(t.expiresAt)}`,
         };
-      return { kind: "account", text: "Free with a Polaris Key account" };
+      return { kind: "account", text: `Free with a Polaris Locker account` };
     }
     case "group": {
       const label = path.label?.trim();

@@ -133,7 +133,7 @@ async function geometry(page: Page) {
 async function wordmarkWidth(page: Page): Promise<number> {
   return page.evaluate(() => {
     const svg = [
-      ...document.querySelectorAll("header a[aria-label^='Polaris Key'] svg"),
+      ...document.querySelectorAll("header a[aria-label^='Polaris Locker'] svg"),
     ].find((el) => el.getBoundingClientRect().width > 0)!;
     return svg.querySelectorAll("g")[1]!.getBoundingClientRect().width;
   });
