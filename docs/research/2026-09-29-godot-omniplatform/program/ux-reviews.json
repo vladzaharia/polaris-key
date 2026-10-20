@@ -279,6 +279,11 @@
       "verdict": "pass",
       "date": "2026-10-20",
       "evidence": "UX review FAIL B1–B5 + majors + frontend mockup gaps fixed in one round (ba98b6c44; layout e2e incl. zoom rows); security PASS; prod has no toggled product."
+    },
+    "ST-08": {
+      "verdict": "pass",
+      "date": "2026-10-20",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/ST-08/rebuild/ (built re-check 2026-10-20 after one fix round; notes are ST-08n follow-ups)"
     }
   }
 }
