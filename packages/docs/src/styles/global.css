@@ -170,6 +170,10 @@ h6,
   text-decoration-color: var(--pk-accent);
 }
 
+[data-brand="locker"]:not([data-service]) .sl-markdown-content .sl-link-card a {
+  text-decoration: none;
+}
+
 .sl-markdown-content a:hover {
   color: var(--pk-text-strong);
 }
