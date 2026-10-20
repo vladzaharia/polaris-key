@@ -324,6 +324,7 @@ function screen(c: RenderCtx, layout: Layout): TemplateResult {
       ${actions(c, p.controls, view.component === "UpdatePrompt")}
       ${links(c, p.links)} ${a11yOnly(c)}
       ${p.footnote.length ? paragraphs(c, p.footnote, "footnote") : nothing}
+      ${attribution(c, p.meta)}
     </div>
   </section>`;
 }
@@ -336,7 +337,6 @@ function statusLine(
 ): TemplateResult | typeof nothing {
   if (keys.length === 0) return nothing;
   const ticking: string[] = keys.filter((k) => k === "signin.handoff.expires");
-  const attribution = keys.includes(POWERED_BY_KEY);
   const live = keys.filter((k) => !ticking.includes(k) && k !== POWERED_BY_KEY);
   return html`${ticking.map(
     (k) =>
@@ -350,10 +350,18 @@ function statusLine(
             html`${i ? " · " : ""}<span data-key=${k}>${text(c, k)}</span>`,
         )}
       </p>`
-    : nothing}${attribution ? poweredBy(c) : nothing}`;
+    : nothing}`;
 }
 
 const POWERED_BY_KEY = "part.poweredBy";
+
+/** The attribution at the foot of a pane or screen, when the view carries it (UI-KITS §1.6). */
+function attribution(
+  c: RenderCtx,
+  meta: string[],
+): TemplateResult | typeof nothing {
+  return meta.includes(POWERED_BY_KEY) ? poweredBy(c) : nothing;
+}
 
 /**
  * The optional attribution (UI-KITS §1.6): `<Locker micro mark, 16 px> Powered by Polaris Locker`
@@ -416,6 +424,7 @@ function pane(c: RenderCtx, layout: Layout): TemplateResult {
       : nothing}
     ${locked(c)} ${contentFor(c)} ${progressFor(c)} ${callout(c, errorKeys)}
     ${actions(c, p.controls, true)} ${links(c, p.links)} ${a11yOnly(c)}
+    ${attribution(c, p.meta)}
   </section>`;
 }
 
