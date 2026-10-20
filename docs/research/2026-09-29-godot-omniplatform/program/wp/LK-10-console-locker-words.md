@@ -25,6 +25,11 @@ Console: Locker words and links, the switch with its preflight, Connections call
 
 Exactly `plans/LK-00.md` §7, §10. Anything else is another package's row in §9.
 
+Required, before LK-11's cutover (LK-03 security review): a server-side fresh sign-in step-up for
+changing `customer.host` (today L2 is a typed-key confirmation only), and the health-check
+preflight before `on`. LK-03's `/.well-known/polaris-host.json` now answers only `{host:
+"customer"}`; the preflight checks that, not `environment` or `version`.
+
 ## Acceptance criteria
 
 - [ ] `pnpm gen --check` settings clean; admin build succeeds

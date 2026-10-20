@@ -19784,8 +19784,8 @@ paths:
       tags: [customer]
       summary: Customer host health check (customer host only)
       description: >
-        LK-03. `{host: "customer", environment, version}`: the document the console reads before
-        it lets `customer.host` turn on, matching its own `environment`. `access-control-allow-origin`
+        LK-03. `{host: "customer"}`: the document the console reads before it lets `customer.host`
+        turn on. It names nothing else. `access-control-allow-origin`
         names the console origin only, and no credentials are allowed. `cache-control: no-store`.
         `GET` and `HEAD` only.
       responses:
@@ -19795,12 +19795,9 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [host, environment, version]
+                required: [host]
                 properties:
                   host: { type: string, enum: [customer] }
-                  environment:
-                    { type: [string, "null"], enum: [prod, staging, dev, null] }
-                  version: { type: [string, "null"] }
         "405":
           { description: "Any method but GET and HEAD (`Allow: GET, HEAD`)." }
     head:

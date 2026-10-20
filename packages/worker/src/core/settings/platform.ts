@@ -130,9 +130,10 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     since: "A-13",
   }),
   // LK-03: the customer-host switch. Brand, links and old-URL redirects move together (LK-00 D1).
-  // Ordered: `up` is toward `permanent`. Every change is a step-up: it changes where customers
-  // land and what the browser caches (a 301 outlives a rollback). The console refuses `on` until
-  // the host answers its health check.
+  // Ordered: `up` is toward `permanent`. Every change is a typed-key confirmation (L2), audited;
+  // no fresh sign-in yet (LK-10 adds the server-side step-up). It changes where customers land and
+  // what the browser caches (a 301 outlives a rollback). The health-check preflight before `on`
+  // is LK-10's; it is not built yet.
   setting({
     key: "customer.host",
     aliases: ["CUSTOMER_HOST"],

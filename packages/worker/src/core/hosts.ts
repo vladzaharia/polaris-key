@@ -71,7 +71,25 @@ export function hostname(kind: HostKind, env: HostsEnv): string | null {
   if (own === null) return null;
   // The customer host is a second host for the SAME Worker, never the console's own: naming the
   // console host would confine the console to customer routes (LK-03).
-  if (kind === "customer" && hostOf(env.CONSOLE_ORIGIN) === own) return null;
+  if (kind === "customer") {
+    // Usable means a bare https (or loopback http) origin, and only with a usable console origin
+    // beside it: without one a misconfigured deploy could confine the console, and the customer
+    // host's hand-off to the API host would have no origin to name.
+    if (
+      hostOf(env.CONSOLE_ORIGIN) === null ||
+      hostOf(env.CONSOLE_ORIGIN) === own
+    )
+      return null;
+    const raw = env.CUSTOMER_ORIGIN!.trim();
+    const u = new URL(raw);
+    if (
+      usableOrigin(raw) === null ||
+      u.pathname !== "/" ||
+      u.search !== "" ||
+      u.hash !== ""
+    )
+      return null;
+  }
   for (const earlier of HOSTS.slice(0, at))
     if (hostname(earlier.kind, env) === own) return null;
   return own;

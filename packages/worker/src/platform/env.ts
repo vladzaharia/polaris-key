@@ -228,9 +228,10 @@ export interface Env {
    */
   CUSTOMER_ORIGIN?: string;
   /**
-   * The `customer.host` switch (LK-03): `runtime` lets the console decide `off` / `on` /
-   * `permanent`; `off` is a hard off no console value overrides. Unset means off, so turning it
-   * on takes a deploy and a step-up console action. `core/settings/platform.ts`, `ceiling`.
+   * The `customer.host` switch (LK-03): unset or `runtime` lets the console decide `off` / `on` /
+   * `permanent` (default `off`); only an explicit `off` is a hard off no console value overrides.
+   * A stored `on` goes live the moment `CUSTOMER_ORIGIN` is deployed. `core/settings/platform.ts`,
+   * `ceiling`.
    * @inventory var delivery
    * @editable CUSTOMER_HOST
    */

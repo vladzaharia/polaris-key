@@ -7208,13 +7208,18 @@ the same Worker on a fifth custom domain (plans/LK-00.md §7). `core/customerHos
 to the customer routes: the root portal (`/`, `/activate`, `/assets/*`, `/login[/…]`, `/callback`,
 `/logout`, `/magic/verify`, `/api/*`, `/media/*`, `/download/<token>`), `/signin`, `/device`, `/tv`,
 and two answers of its own, `/.well-known/polaris-host.json` and `/robots.txt`. `/manage`, `/docs`,
-every product route and every webhook are the plain not-found there. Unset, unusable, equal to the
-console host or equal to an earlier auxiliary host, the origin names no host and routing is what
+every product route and every webhook are the plain not-found there. Unset, not a bare
+`https:` origin (no userinfo, path, query or fragment), set while `CONSOLE_ORIGIN` is unset or
+unusable, equal to the console host or equal to an earlier auxiliary host, the origin names no host and routing is what
 it was. It is deploy-time only (`DENIED_PLATFORM_NAMES`).
 
 **The switch.** `customer.host` is `off`, `on` or `permanent`, off by default; `[vars]`
-`CUSTOMER_HOST=off` is a hard off no console value overrides. Every change is step-up (L2) and
-audited. It is effectively `off` while the host is unusable, without a database read. While it is
+`CUSTOMER_HOST=off` is a hard off no console value overrides; unset or `runtime` leaves the
+console in charge, so a stored `on` goes live the moment `CUSTOMER_ORIGIN` is deployed. Every
+change is a typed-key confirmation (L2) and audited. **Gap:** there is no fresh sign-in
+requirement yet. A stolen console session with the settings permission can flip the switch.
+The server-side fresh step-up for `customer.host`, and the health-check preflight before `on`, are
+required LK-10 items before LK-11's cutover. It is effectively `off` while the host is unusable, without a database read. While it is
 not `off`, `customerOrigin()` (`core/hosts.ts`) is the one source of every customer link: refusal
 `manageUrl` and `signInUrl`, discovery's `accountPortal`, the device code's `verificationUri`, the
 choice view's links, the identity-off card redirect, the licence-key and account mail links.
@@ -7226,10 +7231,9 @@ choice view's links, the identity-off card redirect, the licence-key and account
   (`CUSTOMER_ORIGIN`, else `CONSOLE_ORIGIN`); the request's origin is only the last fallback it
   always was. The customer host's redirect to a product's device page (`/device` after a code
   hit) uses `CONSOLE_ORIGIN`, never a request value: a fixed map with no request-supplied host.
-- _The health check._ `polaris-host.json` holds `host`, `environment` and a build version, nothing
-  secret. CORS names the console origin only and allows no credentials, so another site cannot
-  read it from a browser; reading it from a script outside a browser reveals the same facts the
-  public response headers do.
+- _The health check._ `polaris-host.json` holds `{host: "customer"}` and nothing else: no
+  environment, no version. CORS names the console origin only and allows no credentials, so
+  another site cannot read it from a browser.
 - _The console bundle on the customer host._ `/assets/*` is one admin build; the console bundle is
   public code and useless without a console session, which is host-only and never exists there.
 - _Cookies._ Both hosts keep the same `__Host-` names, so each is host-only. The customer realm

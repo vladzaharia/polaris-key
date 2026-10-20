@@ -20,7 +20,6 @@
 import type { Env } from "../platform/env.js";
 import { methodNotAllowed } from "./errors.js";
 import { usableOrigin, type CustomerHostMode } from "./hosts.js";
-import { deployIdentity } from "./ops/deployIdentity.js";
 
 /** The route kinds the customer host serves: the root portal and the platform entry pages. */
 export const CUSTOMER_ROUTE_KINDS: ReadonlySet<string> = new Set([
@@ -40,8 +39,6 @@ export const CUSTOMER_ROUTE_KINDS: ReadonlySet<string> = new Set([
 export const HOST_DOCUMENT_PATH = "/.well-known/polaris-host.json";
 export const ROBOTS_PATH = "/robots.txt";
 
-const ENVIRONMENTS = ["prod", "staging", "dev"];
-
 /** The paths the host answers itself (no route kind, no session, no database). */
 export function isCustomerHostOwnPath(pathname: string): boolean {
   return pathname === HOST_DOCUMENT_PATH || pathname === ROBOTS_PATH;
@@ -49,8 +46,7 @@ export function isCustomerHostOwnPath(pathname: string): boolean {
 
 /**
  * The host's own answers. `polaris-host.json` is the health check the console reads before it
- * turns `customer.host` on: `{host: "customer", environment, version}`, matching `/manage/api/me`'s
- * `environment`. CORS for the console origin only, without credentials. `robots.txt` disallows
+ * turns `customer.host` on: `{host: "customer"}`. CORS for the console origin only, without credentials. `robots.txt` disallows
  * everything while the switch is `off` (the host is up, but nothing points at it yet).
  */
 export function customerHostOwnResponse(
@@ -73,8 +69,6 @@ export function customerHostOwnResponse(
       },
     });
   }
-  const environment = env.PKEY_ENVIRONMENT?.trim().toLowerCase() ?? "";
-  const id = deployIdentity(env);
   const headers = new Headers({
     "content-type": "application/json; charset=utf-8",
     "cache-control": "no-store",
@@ -84,13 +78,7 @@ export function customerHostOwnResponse(
   const consoleOrigin = usableOrigin(env.CONSOLE_ORIGIN?.trim() ?? "");
   if (consoleOrigin) headers.set("access-control-allow-origin", consoleOrigin);
   return new Response(
-    req.method === "HEAD"
-      ? null
-      : JSON.stringify({
-          host: "customer",
-          environment: ENVIRONMENTS.includes(environment) ? environment : null,
-          version: id.gitSha ?? id.releaseTag ?? id.cloudflare?.id ?? null,
-        }),
+    req.method === "HEAD" ? null : JSON.stringify({ host: "customer" }),
     { headers },
   );
 }

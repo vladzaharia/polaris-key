@@ -31,22 +31,42 @@ describe("the customer host kind", () => {
     expect(
       customerHostname({ CUSTOMER_ORIGIN: API, CONSOLE_ORIGIN: API }),
     ).toBeNull();
-    expect(customerHostname({ CUSTOMER_ORIGIN: CUSTOMER })).toBe(
-      "polaris.locker",
-    );
+    expect(
+      customerHostname({ CUSTOMER_ORIGIN: CUSTOMER, CONSOLE_ORIGIN: API }),
+    ).toBe("polaris.locker");
+  });
+
+  it("needs a usable console origin and a bare origin", () => {
+    // No console origin: a misconfigured deploy must not confine the console.
+    expect(customerHostname({ CUSTOMER_ORIGIN: CUSTOMER })).toBeNull();
+    expect(
+      customerHostname({ CUSTOMER_ORIGIN: CUSTOMER, CONSOLE_ORIGIN: "nope" }),
+    ).toBeNull();
+    for (const bad of [
+      `${CUSTOMER}/path`,
+      `${CUSTOMER}/?q=1`,
+      `${CUSTOMER}/#x`,
+      "https://user:pw@polaris.locker",
+      "http://polaris.locker",
+    ])
+      expect(
+        customerHostname({ CUSTOMER_ORIGIN: bad, CONSOLE_ORIGIN: API }),
+        bad,
+      ).toBeNull();
   });
 
   it("loses to an earlier auxiliary host", () => {
     expect(
       customerHostname({
         CUSTOMER_ORIGIN: CUSTOMER,
+        CONSOLE_ORIGIN: API,
         IMG_ORIGIN: "https://polaris.locker",
       }),
     ).toBeNull();
   });
 
   it("matches in any case and with the trailing dot", () => {
-    const env = { CUSTOMER_ORIGIN: CUSTOMER };
+    const env = { CUSTOMER_ORIGIN: CUSTOMER, CONSOLE_ORIGIN: API };
     expect(isCustomerHost(new URL("https://POLARIS.locker./x"), env)).toBe(
       true,
     );
@@ -66,7 +86,7 @@ describe("customerOrigin()", () => {
   });
 
   it("falls back to the console origin, then the request's", () => {
-    expect(customerOrigin({ CUSTOMER_ORIGIN: CUSTOMER }, "off", req)).toBe(
+    expect(customerOrigin({ CUSTOMER_ORIGIN: CUSTOMER }, "on", req)).toBe(
       "https://other.example",
     );
     expect(customerOrigin({}, "on", "https://x.example/p?q=1")).toBe(
@@ -149,7 +169,6 @@ describe("customer host confinement", () => {
     env = makeEnv(new KvMock(), ["djdl"]);
     env.CONSOLE_ORIGIN = API;
     env.CUSTOMER_ORIGIN = CUSTOMER;
-    env.PKEY_ENVIRONMENT = "staging";
     await seedProduct(db, "djdl");
   });
   const get = (url: string, init?: RequestInit) =>
@@ -184,10 +203,7 @@ describe("customer host confinement", () => {
   it("answers the health check with CORS for the console only", async () => {
     const res = await get(`${CUSTOMER}/.well-known/polaris-host.json`);
     expect(res.status).toBe(200);
-    expect(await res.json()).toMatchObject({
-      host: "customer",
-      environment: "staging",
-    });
+    expect(await res.json()).toEqual({ host: "customer" });
     expect(res.headers.get("access-control-allow-origin")).toBe(API);
     expect(res.headers.get("access-control-allow-credentials")).toBeNull();
     expect(
