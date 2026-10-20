@@ -44,7 +44,7 @@ export function PlatformReady({
     >
       <div
         data-card-header=""
-        className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-border px-5 py-3"
+        className="space-y-2 border-b border-border px-5 py-3"
       >
         <h2
           id={titleId}
@@ -52,15 +52,16 @@ export function PlatformReady({
         >
           Platform ready
         </h2>
-        <div className="flex items-center gap-3 text-sm text-fg-muted">
-          <span className="tabular-nums">
+        {/* The meter runs the card's full width under the title. */}
+        <div className="space-y-1">
+          <span className="block text-sm tabular-nums text-fg-muted">
             {ready.done} of {ready.total} done
           </span>
           <progress
             value={ready.done}
             max={ready.total}
             aria-label="Platform ready progress"
-            className="h-1.5 w-24 appearance-none overflow-hidden rounded-full [&::-moz-progress-bar]:bg-success [&::-webkit-progress-bar]:bg-surface-sunken [&::-webkit-progress-value]:bg-success"
+            className="block h-1.5 w-full appearance-none overflow-hidden rounded-full [&::-moz-progress-bar]:bg-success [&::-webkit-progress-bar]:bg-surface-sunken [&::-webkit-progress-value]:bg-success"
           />
         </div>
       </div>
@@ -71,33 +72,35 @@ export function PlatformReady({
       </ul>
       {done.length > 0 ? (
         <div className="border-t border-border px-5 py-2">
-          <Button
-            variant="link"
-            size="sm"
+          <button
+            type="button"
             aria-expanded={showDone}
             aria-controls={listId}
             onClick={() => setShowDone((v) => !v)}
-            className="min-h-6 gap-1 px-0"
+            className="grid min-h-6 w-full grid-cols-[1.75rem_minmax(0,1fr)] items-center gap-x-3 rounded-sm text-left text-sm text-fg-muted hover:text-fg-strong focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
           >
             <ChevronRight
               aria-hidden
               className={cn(
-                "size-4 transition-transform",
+                "mx-auto size-4 transition-transform",
                 showDone && "rotate-90",
               )}
             />
-            {showDone ? "Hide done steps" : "Show done steps"}
-          </Button>
+            <span>{showDone ? "Hide done steps" : "Show done steps"}</span>
+          </button>
           <ul
             id={listId}
             hidden={!showDone}
-            className="mt-2 space-y-1.5 pl-7 text-sm text-fg-muted"
+            className="mt-2 space-y-1.5 text-sm text-fg-muted"
           >
             {done.map((row) => (
-              <li key={row.id} className="flex items-start gap-2">
+              <li
+                key={row.id}
+                className="grid grid-cols-[1.75rem_minmax(0,1fr)] items-start gap-x-3"
+              >
                 <Check
                   aria-hidden
-                  className="mt-0.5 size-4 shrink-0 text-success"
+                  className="mx-auto mt-0.5 size-4 text-success"
                 />
                 <span>{row.title}</span>
               </li>
@@ -125,7 +128,12 @@ function Task({ row }: { row: PlatformReadyRow }): React.ReactElement {
           <p className="text-sm text-fg-muted">{row.detail}</p>
         ) : null}
         {row.action && to ? (
-          <Button variant="outline" size="sm" asChild className="mt-1">
+          <Button
+            variant="outline"
+            size="sm"
+            asChild
+            className="mt-1 h-auto min-h-8 max-w-full whitespace-normal text-left"
+          >
             <Link to={to}>{row.action.label}</Link>
           </Button>
         ) : null}

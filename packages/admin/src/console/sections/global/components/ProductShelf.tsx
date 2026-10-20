@@ -1,13 +1,16 @@
 import * as React from "react";
-import { LayoutGrid, Table2 } from "lucide-react";
+import { Download, LayoutGrid, Table2 } from "lucide-react";
 import { formatCount, fromSeconds } from "../../../../lib/format.js";
 import { label, PROVIDER_LABELS } from "../../../../lib/labels.js";
 import {
   DataTable,
+  downloadCsv,
   FilterBar,
+  tableCsv,
   type DataColumn,
   type RowActionItem,
 } from "../../../../ui/data-table/index.js";
+import { Button } from "../../../../ui/Button.js";
 import { EmptyState } from "../../../../ui/EmptyState.js";
 import { SegmentedControl } from "../../../../ui/SegmentedControl.js";
 import { ServiceGlyph } from "../../../../ui/ServiceBadge.js";
@@ -60,7 +63,7 @@ const VIEW_OPTIONS = [
 const FACET_LABELS = [
   {
     id: "verified",
-    label: "Integration verified",
+    label: "Integration",
     options: [
       { value: "yes", label: "Verified" },
       { value: "no", label: "Not verified" },
@@ -68,7 +71,7 @@ const FACET_LABELS = [
   },
   {
     id: "attention",
-    label: "Needs attention",
+    label: "Attention",
     options: [
       { value: "yes", label: "Needs attention" },
       { value: "no", label: "Healthy" },
@@ -207,6 +210,9 @@ export function ProductShelf({
   const filtering =
     state.q.trim() !== "" || Object.keys(state.filters).length > 0;
   const headingId = React.useId();
+  const sectionRef = React.useRef<HTMLElement>(null);
+  // One product needs no filters or second view: the toolbar appears from the second.
+  const many = rows.length > 1;
   // The console's one resync flow (UX-78) and the one delete dialog, as the retired Products page
   // held them: a table row's menu is where a product is resynced or deleted.
   const resync = useResyncFlow();
@@ -236,8 +242,8 @@ export function ProductShelf({
   ];
 
   return (
-    <section aria-labelledby={headingId} className="space-y-3">
-      <div className="flex items-center justify-between gap-3">
+    <section ref={sectionRef} aria-labelledby={headingId} className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
         <div className="flex items-baseline gap-2">
           <h2
             id={headingId}
@@ -248,49 +254,69 @@ export function ProductShelf({
           {!loading ? (
             <span className="text-sm tabular-nums text-fg-muted">
               {formatCount(rows.length)}
+              <span className="sr-only">
+                {rows.length === 1 ? " product" : " products"}
+              </span>
             </span>
           ) : null}
         </div>
-        <SegmentedControl
-          size="sm"
-          aria-label="View"
-          options={VIEW_OPTIONS}
-          value={view}
-          onChange={(v) => {
-            setView(v);
-            writePref(PREF_KEYS.homeView, v);
-          }}
-        />
+        {many ? (
+          <SegmentedControl
+            size="sm"
+            aria-label="View"
+            options={VIEW_OPTIONS}
+            value={view}
+            onChange={(v) => {
+              setView(v);
+              writePref(PREF_KEYS.homeView, v);
+            }}
+          />
+        ) : null}
       </div>
-      <FilterBar
-        search={{
-          value: state.q,
-          onChange: (q) => setState({ ...state, q, offset: 0 }),
-          placeholder: "Filter products",
-        }}
-        facets={FACET_LABELS.map((f) => ({
-          id: f.id,
-          label: f.label,
-          options: [...f.options],
-          selected: state.filters[f.id] ?? [],
-          onChange: (next) =>
-            setState({
-              ...state,
-              offset: 0,
-              filters: { ...state.filters, [f.id]: next },
-            }),
-        }))}
-        onClearAll={
-          filtering
-            ? () => setState({ ...state, q: "", filters: {}, offset: 0 })
-            : undefined
-        }
-      />
+      {many ? (
+        <FilterBar
+          stackSearch
+          search={{
+            value: state.q,
+            onChange: (q) => setState({ ...state, q, offset: 0 }),
+            placeholder: "Filter products",
+          }}
+          facets={FACET_LABELS.map((f) => ({
+            id: f.id,
+            label: f.label,
+            options: [...f.options],
+            selected: state.filters[f.id] ?? [],
+            onChange: (next) =>
+              setState({
+                ...state,
+                offset: 0,
+                filters: { ...state.filters, [f.id]: next },
+              }),
+          }))}
+          actions={
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                downloadCsv("products.csv", tableCsv(filtered, COLUMNS))
+              }
+            >
+              <Download aria-hidden />
+              Export CSV
+            </Button>
+          }
+          onClearAll={
+            filtering
+              ? () => setState({ ...state, q: "", filters: {}, offset: 0 })
+              : undefined
+          }
+        />
+      ) : null}
       {loading ? (
         <ul
           aria-label="Products"
           aria-busy
-          className="pk-skeleton-group grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3"
+          className="pk-skeleton-group grid grid-cols-1 gap-4 sm:grid-cols-[repeat(auto-fill,minmax(min(20rem,100%),1fr))]"
         >
           {[0, 1, 2].map((i) => (
             <li
@@ -303,14 +329,18 @@ export function ProductShelf({
         <EmptyState
           kind="no-results"
           title="No products match"
-          onClearFilters={() =>
-            setState({ ...state, q: "", filters: {}, offset: 0 })
-          }
+          onClearFilters={() => {
+            setState({ ...state, q: "", filters: {}, offset: 0 });
+            // The cleared field is where the operator goes on: focus it.
+            sectionRef.current
+              ?.querySelector<HTMLInputElement>('input[type="search"], input')
+              ?.focus();
+          }}
         />
       ) : view === "cards" ? (
         <ul
           aria-label="Products"
-          className="grid grid-cols-1 gap-4 sm:grid-cols-2 min-[100rem]:grid-cols-3 xl:grid-cols-3"
+          className="grid grid-cols-1 gap-3 sm:gap-4 sm:grid-cols-[repeat(auto-fill,minmax(min(20rem,100%),1fr))]"
         >
           {filtered.map((row) => (
             <li key={row.slug} className="flex min-w-0">
@@ -332,6 +362,7 @@ export function ProductShelf({
           state={state}
           onStateChange={setState}
           loading={false}
+          exportCsv={false}
           mobile="cards"
         />
       )}

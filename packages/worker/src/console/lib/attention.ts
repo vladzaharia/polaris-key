@@ -151,7 +151,9 @@ export async function productAttention(
       tone: "warning",
       service: secretService(secrets.get(name)?.sources ?? []) ?? "config",
       short: "Missing secret",
-      lines: [`Required secret ${name} has no value.`],
+      lines: [
+        `Required secret \`${name}\` has no value in the Default profile.`,
+      ],
       action: { label: "Set secret", page: "keys" },
       area: "keys",
     });
@@ -178,7 +180,7 @@ export async function productAttention(
       tone: "warning",
       service: "config",
       short: "Secret not marked",
-      lines: [`Secret ${name} is not marked for edge minting.`],
+      lines: [`Secret \`${name}\` is not marked for edge minting.`],
       action: { label: "Open keys", page: "keys" },
       area: "keys",
     });
@@ -193,7 +195,7 @@ export async function productAttention(
         tone: "warning",
         service: "config",
         short: "Needs approval",
-        lines: [`Edge-mint recipe ${recipe} awaits approval.`],
+        lines: [`Edge-mint recipe \`${recipe}\` awaits approval.`],
         action: {
           label: "Review recipe",
           page: "catalog-edit",

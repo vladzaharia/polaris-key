@@ -43,34 +43,33 @@ const STORE_OUTLETS: Readonly<Record<string, string>> = {
   steam: "steam",
 };
 
-const STORE_NAMES: Readonly<Record<string, string>> = {
-  "app-store": "App Store",
-  "google-play": "Google Play",
-  "microsoft-store": "Microsoft Store",
-  steam: "Steam",
-};
+export interface MissingStoreAccount {
+  store: string;
+  /** Product slugs with a live outlet for the store, sorted. */
+  products: string[];
+}
 
-/** The names of the stores some product has a live outlet for and the platform has no account for. */
+/** The stores some product has a live outlet for and the platform has no account for. */
 export async function storesMissingAccount(
   env: Env,
   db: Db,
-): Promise<string[]> {
-  const kinds = new Set(
-    (
-      await db.all<{ kind: string }>(
-        "SELECT DISTINCT kind FROM dist_outlets WHERE removed_at IS NULL",
-      )
-    ).map((r) => r.kind),
+): Promise<MissingStoreAccount[]> {
+  const rows = await db.all<{ product: string; kind: string }>(
+    "SELECT DISTINCT product, kind FROM dist_outlets WHERE removed_at IS NULL",
   );
-  const missing: string[] = [];
+  const missing: MissingStoreAccount[] = [];
   for (const store of PLATFORM_STORES) {
-    if (!kinds.has(STORE_OUTLETS[store]!)) continue;
+    const products = rows
+      .filter((r) => r.kind === STORE_OUTLETS[store])
+      .map((r) => r.product)
+      .sort();
+    if (products.length === 0) continue;
     const status = await platformCredentialStatus(
       env,
       db,
       primaryPlatformCredential(store),
     );
-    if (!status.configured) missing.push(STORE_NAMES[store] ?? store);
+    if (!status.configured) missing.push({ store, products });
   }
   return missing;
 }

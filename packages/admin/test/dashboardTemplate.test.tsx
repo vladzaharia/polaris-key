@@ -36,11 +36,11 @@ describe("AttentionList", () => {
     const object = screen.getByRole("link", { name: LONG }).parentElement!;
     // The full name is the truncated span's tooltip, and the span may shrink (no shrink-0).
     expect(object.getAttribute("title")).toBe(LONG);
-    expect(object.className).toContain("truncate");
+    expect(object.className).toContain("break-words");
     expect(object.className).toContain("min-w-0");
     expect(object.className).not.toContain("shrink-0");
     // The subject has its own grid column from `sm`, so a long name cannot crush the message.
-    expect(object.closest("li")!.className).toContain("sm:grid-cols-subgrid");
+    expect(object.closest("li")!.className).toContain("@xl:grid-cols-subgrid");
     const reason = screen.getByText(
       "Missing required secret OIDC_CLIENT_SECRET",
     );

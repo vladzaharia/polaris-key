@@ -52,5 +52,6 @@ export {
 export {
   expiringCredentials,
   type ExpiringCredential,
+  type MissingStoreAccount,
   storesMissingAccount,
 } from "./attentionFacts.js";

@@ -257,17 +257,12 @@ describe("NoAccessPage", () => {
     ).toBeTruthy();
   });
 
-  it("disables New product for a member without the Platform area, naming who can help", async () => {
-    boot("#/products", {
+  it("offers no New product to a member without the Platform area (ST-44)", async () => {
+    boot("#/", {
       me: SHIP_ONLY,
       extra: { "/manage/api/access/admins": ADMINS },
     });
-    const create = await screen.findByRole("link", { name: /New product/ });
-    expect(create.getAttribute("aria-disabled")).toBe("true");
-    await waitFor(() =>
-      expect(document.body.textContent).toContain(
-        "Ask Kenji Mori (kenji@example.com) or Ada Lindqvist for Platform access.",
-      ),
-    );
+    await screen.findByRole("heading", { level: 1, name: "Home" });
+    expect(screen.queryByRole("link", { name: /New product/ })).toBeNull();
   });
 });

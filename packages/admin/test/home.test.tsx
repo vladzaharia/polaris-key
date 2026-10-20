@@ -236,7 +236,7 @@ describe("Home", () => {
     const log = boot("#/", { extra: registry() });
     await home();
     const region = await within(main()).findByRole("region", {
-      name: /Needs attention/,
+      name: /^Needs attention/,
     });
     const rows = within(region).getAllByRole("listitem");
     expect(rows).toHaveLength(2);
@@ -263,13 +263,124 @@ describe("Home", () => {
     expect(within(main()).queryByText("Linked to a repository")).toBeNull();
   });
 
-  it("omits the attention list when nothing needs the operator", async () => {
+  it("says so quietly, in one line, when nothing needs the operator", async () => {
     boot("#/");
     await home();
     await waitFor(() => expect(cards()).toHaveLength(2));
     expect(
       within(main()).queryByRole("region", { name: /Needs attention/ }),
     ).toBeNull();
+    expect(within(main()).getByText("Nothing needs attention.")).toBeTruthy();
+  });
+
+  it("a failed attention read keeps its card with Try again; it is never an all-clear (B1)", async () => {
+    let calls = 0;
+    boot("#/", {
+      extra: {
+        ...registry(),
+        "/manage/api/attention": () => {
+          calls++;
+          return calls < 3
+            ? new Response("{}", { status: 500 })
+            : { items: ATTENTION };
+        },
+      },
+    });
+    await home();
+    const card = await within(main()).findByRole("region", {
+      name: "Needs attention",
+    });
+    expect(
+      within(card).getByText("What needs attention didn't load."),
+    ).toBeTruthy();
+    expect(within(main()).queryByText("Nothing needs attention.")).toBeNull();
+    fireEvent.click(within(card).getByRole("button", { name: "Try again" }));
+    expect(await within(main()).findByText("Resync failed.")).toBeTruthy();
+  });
+
+  it("a failed Platform ready read keeps its card with Try again", async () => {
+    boot("#/", {
+      extra: {
+        ...registry(),
+        "/manage/api/platform/ready": new Response("{}", { status: 500 }),
+      },
+    });
+    await home();
+    const card = await within(main()).findByRole("region", {
+      name: "Platform ready",
+    });
+    expect(within(card).getByText("Platform ready didn't load.")).toBeTruthy();
+    expect(
+      within(card).getByRole("button", { name: "Try again" }),
+    ).toBeTruthy();
+  });
+
+  it("holds the slots with skeletons while the reads load", async () => {
+    boot("#/", {
+      extra: {
+        ...registry(),
+        "/manage/api/attention": PENDING,
+        "/manage/api/platform/ready": PENDING,
+      },
+    });
+    await home();
+    expect(
+      await within(main()).findByRole("region", {
+        name: "Loading Needs attention",
+      }),
+    ).toBeTruthy();
+    expect(
+      within(main()).getByRole("region", { name: "Loading Platform ready" }),
+    ).toBeTruthy();
+  });
+
+  it("identifiers in attention lines are code", async () => {
+    boot("#/", {
+      extra: {
+        ...registry(),
+        "/manage/api/attention": {
+          items: [
+            item({
+              id: "x",
+              lines: ["Required secret `identity.acoustidKey` has no value."],
+            }),
+          ],
+        },
+      },
+    });
+    await home();
+    const code = await within(main()).findByText("identity.acoustidKey");
+    expect(code.tagName).toBe("CODE");
+  });
+
+  it("one product needs no toolbar", async () => {
+    boot("#/", {
+      me: { products: [{ slug: "djdl", name: "DJDL", schemaVersion: 1 }] },
+      extra: {
+        "/manage/api/products": {
+          products: [productRow("djdl", "DJDL", ALL_ON)],
+        },
+      },
+    });
+    await home();
+    await waitFor(() => expect(cards()).toHaveLength(1));
+    expect(
+      within(main()).queryByRole("searchbox", { name: "Filter products" }),
+    ).toBeNull();
+    expect(within(main()).queryByRole("radio", { name: /Table/ })).toBeNull();
+  });
+
+  it("Clear filters puts the focus in the filter field (M6)", async () => {
+    boot("#/?q=nothing-here", { extra: registry() });
+    await home();
+    fireEvent.click(
+      await within(main()).findByRole("button", { name: /Clear filters/ }),
+    );
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        within(main()).getByRole("searchbox", { name: "Filter products" }),
+      ),
+    );
   });
 
   it("Platform ready: open tasks with their fix, the done steps folded away", async () => {
@@ -342,9 +453,14 @@ describe("Home", () => {
     expect(within(table).getByText("Acme")).toBeTruthy();
   });
 
-  it("the Products address lands on Home, filters kept", () => {
-    const parsed = parseLocation("#/products?q=dj");
-    expect(parsed.redirect).toBe("#/?q=dj");
+  it("the Products address lands on Home, filters kept; the retired Setup facet is Attention", () => {
+    expect(parseLocation("#/products?q=dj").redirect).toBe("#/?q=dj");
+    expect(parseLocation("#/products?setup=attention").redirect).toBe(
+      "#/?attention=yes",
+    );
+    expect(parseLocation("#/products?setup=complete").redirect).toBe(
+      "#/?attention=no",
+    );
   });
 
   it("first run: opens the wizard with the source chosen (DSH-6)", async () => {

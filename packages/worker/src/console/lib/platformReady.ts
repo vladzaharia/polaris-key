@@ -10,7 +10,7 @@
 
 import type { Db } from "../../db/types.js";
 import type { Env } from "../../platform/env.js";
-import { getProduct } from "../../core/products/store.js";
+import { getProduct, listProducts } from "../../core/products/store.js";
 import { SYSTEM_PRODUCT_SLUG } from "@polaris-key/manifest";
 import { storesMissingAccount } from "../../services/distribution/public.js";
 import { adminOidcIsDedicated } from "../../platform/platformOidc.js";
@@ -32,6 +32,41 @@ export interface PlatformReady {
   total: number;
 }
 
+const STORE_LABEL: Readonly<Record<string, string>> = {
+  "app-store": "App Store",
+  "google-play": "Google Play",
+  "microsoft-store": "Microsoft Store",
+  steam: "Steam",
+};
+
+/** What each store's platform account is, in the sentence that asks for it. */
+const STORE_NEEDS: Readonly<Record<string, string>> = {
+  "app-store": "an App Store Connect API key",
+  "google-play": "a Google Play service account",
+  "microsoft-store": "a Partner Center credential",
+  steam: "a Steamworks publisher key",
+};
+
+/** "A", "A and B", "A, B and C". */
+export function listOf(items: readonly string[]): string {
+  return items.length <= 1
+    ? (items[0] ?? "")
+    : `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
+}
+
+/** "Diceroll's Steam uploads need a Steamworks publisher key." */
+function storeSentence(
+  m: { store: string; products: string[] },
+  names: ReadonlyMap<string, string>,
+): string {
+  const label = STORE_LABEL[m.store] ?? m.store;
+  const who = m.products.map((p) => names.get(p) ?? p);
+  const needs = STORE_NEEDS[m.store] ?? "a platform account";
+  return who.length === 1
+    ? `${who[0]}'s ${label} uploads need ${needs}.`
+    : `${label} uploads for ${listOf(who)} need ${needs}.`;
+}
+
 /** The cron runs every 15 minutes (`wrangler.toml`); one missed run is not an outage. */
 const TICK_WINDOW_SECONDS = 20 * 60;
 
@@ -47,6 +82,11 @@ export async function platformReady(
     }>("SELECT MAX(at) AS at FROM platform_heartbeats")
     .catch(() => null);
   const missingStores = await storesMissingAccount(env, db);
+  const names = new Map(
+    missingStores.length === 0
+      ? []
+      : (await listProducts(db)).map((p) => [p.slug, p.name || p.slug]),
+  );
   const system = await getProduct(db, SYSTEM_PRODUCT_SLUG);
 
   const rows: ReadyRow[] = [
@@ -81,24 +121,27 @@ export async function platformReady(
     },
     {
       id: "email-sender",
-      title: "Email sender",
+      title: "Email sender configured",
       done: env.EMAIL != null,
       detail: "Sign-in and alert email can't be sent.",
       action: { label: "Open settings", to: "settings" },
     },
     {
       id: "store-accounts",
-      title: "Store accounts",
+      title: "Store accounts connected",
       done: missingStores.length === 0,
-      detail:
-        missingStores.length === 0
-          ? undefined
-          : `${missingStores.join(", ")} uploads need a platform account.`,
-      action: { label: "Open connections", to: "connections" },
+      detail: missingStores.map((m) => storeSentence(m, names)).join(" "),
+      action: {
+        label:
+          missingStores.length === 1
+            ? `Connect ${STORE_LABEL[missingStores[0]!.store] ?? "store"}`
+            : "Open connections",
+        to: "connections",
+      },
     },
     {
       id: "platform-packages",
-      title: "Platform packages",
+      title: "Platform packages set up",
       done: system !== null,
       detail: "The platform's own package feeds aren't set up.",
       action: { label: "Open packages", to: "packages" },

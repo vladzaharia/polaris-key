@@ -22,6 +22,11 @@ import {
   useFirstLoad,
   type AttentionItem,
 } from "../../../templates/Dashboard.js";
+import {
+  AllClear,
+  CardSkeleton,
+  LoadFailedCard,
+} from "../components/HomeStates.js";
 import { PlatformReady } from "../components/PlatformReady.js";
 import { ProductShelf } from "../components/ProductShelf.js";
 import { attentionHref, type HomeRow } from "../model/home.js";
@@ -93,10 +98,10 @@ export function Home(): React.ReactElement {
     [list, bySlug],
   );
 
-  const hasReady =
-    platform &&
-    Array.isArray(ready.data?.rows) &&
-    ready.data.done < ready.data.total;
+  // The slot is decided by who is asking (`/me`), never by what the read returns: a platform
+  // admin's Platform ready has its place from the first paint, and leaves it only when complete.
+  const readyOpen =
+    platform && !(ready.data && ready.data.done >= ready.data.total);
   const loading = products.isPending;
   const failed = products.isError && !products.data;
   const firstLoad = useFirstLoad("home", attention.isPending);
@@ -132,7 +137,7 @@ export function Home(): React.ReactElement {
       }
       primaryAction={
         // With no products, the empty state's own two calls to action are the way in.
-        loading || list.length > 0 ? (
+        platform && (loading || list.length > 0) ? (
           <Button asChild disabledReason={create.disabledReason}>
             <Link to={r.productNew()}>
               <Plus aria-hidden />
@@ -184,43 +189,60 @@ export function Home(): React.ReactElement {
           }
           docs="/docs/admin/products/"
         />
-        {hasReady ? <PlatformReady ready={ready.data!} /> : null}
+        {readyOpen && ready.data && Array.isArray(ready.data.rows) ? (
+          <PlatformReady ready={ready.data} />
+        ) : null}
       </div>
     );
 
   const items = attentionRows(attention.data ?? [], logoOf);
-  const hasAttention = !loading && items.length > 0;
+  const attentionSlot = attention.isPending ? (
+    <CardSkeleton label="Needs attention" rows={2} />
+  ) : attention.isError ? (
+    <LoadFailedCard
+      title="Needs attention"
+      message="What needs attention didn't load."
+      onRetry={() => void attention.refetch()}
+    />
+  ) : items.length > 0 ? (
+    <AttentionList items={items} max={6} stagger={firstLoad} />
+  ) : (
+    <AllClear />
+  );
+  const readySlot = !readyOpen ? null : ready.isPending ? (
+    <CardSkeleton label="Platform ready" rows={3} className={READY_AREA} />
+  ) : ready.isError || !Array.isArray(ready.data?.rows) ? (
+    <LoadFailedCard
+      title="Platform ready"
+      message="Platform ready didn't load."
+      onRetry={() => void ready.refetch()}
+      className={READY_AREA}
+    />
+  ) : (
+    <PlatformReady ready={ready.data} className={READY_AREA} />
+  );
 
   return (
-    <div className="space-y-6" data-template="dashboard">
+    // The page is its own container: the split follows the content column's width, so a larger
+    // text size or a narrow window stacks the cards instead of squeezing them.
+    <div className="@container space-y-6" data-template="dashboard">
       {header}
       <div
         data-home-grid=""
         data-top-aligned=""
         className={cn(
           "grid grid-cols-1 items-start gap-6",
-          hasReady &&
-            "xl:grid-cols-[minmax(0,2fr)_minmax(17.5rem,1fr)] min-[100rem]:grid-cols-[minmax(0,1fr)_25rem]",
+          readyOpen &&
+            "@[60rem]:grid-cols-[minmax(0,2fr)_minmax(17.5rem,1fr)] @[80rem]:grid-cols-[minmax(0,1fr)_25rem]",
         )}
       >
-        {hasAttention ? (
-          <AttentionList items={items} max={6} stagger={firstLoad} />
-        ) : null}
-        {hasReady ? (
-          <PlatformReady
-            ready={ready.data!}
-            className={cn(
-              !hasAttention && "xl:col-span-2",
-              "min-[100rem]:col-span-1 min-[100rem]:col-start-2 min-[100rem]:row-span-2 min-[100rem]:row-start-1",
-            )}
-          />
-        ) : null}
+        {attentionSlot}
+        {readySlot}
         <div
           className={cn(
             "min-w-0",
-            hasReady &&
-              "xl:col-span-2 min-[100rem]:col-span-1 min-[100rem]:col-start-1 min-[100rem]:row-start-2",
-            hasReady && !hasAttention && "min-[100rem]:row-start-1",
+            readyOpen &&
+              "@[60rem]:col-span-2 @[80rem]:col-span-1 @[80rem]:col-start-1 @[80rem]:row-start-2",
           )}
         >
           <ProductShelf rows={rows} loading={loading} />
@@ -229,3 +251,7 @@ export function Home(): React.ReactElement {
     </div>
   );
 }
+
+/** Platform ready beside the cards: below the split it stacks, at 80rem it is the aside. */
+const READY_AREA =
+  "@[80rem]:col-start-2 @[80rem]:row-span-2 @[80rem]:row-start-1";
