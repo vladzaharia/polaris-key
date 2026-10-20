@@ -940,7 +940,7 @@ function actionFromDownloads(
     if (desktop)
       return {
         kind: "email",
-        label: "Email me the download",
+        label: t("getIt.flow.emailMe"),
         platform: desktop,
       };
     return anyCovered ? seeDownloads : null;
@@ -953,7 +953,7 @@ function actionFromDownloads(
       : [];
   if (os && files.length > 0) {
     const label = rec!.latest
-      ? `Download for ${osName(os)}`
+      ? t("getIt.downloadFor", { platform: osName(os) })
       : `Download ${rec!.version}`;
     if (files.length > 1)
       // Two Mac builds and no Universal one: both are on the page, Apple silicon first.
@@ -1052,11 +1052,17 @@ export function quickAction(
     const builds = buildsFor(r, os);
     if (builds.length === 0) continue;
     const pick = pickBuild(builds);
-    if (!pick) return { ...seeDownloads, label: `Download for ${osName(os)}` };
+    if (!pick)
+      return {
+        ...seeDownloads,
+        label: t("getIt.downloadFor", { platform: osName(os) }),
+      };
     const isLatest = r === latest;
     return {
       kind: "download",
-      label: isLatest ? `Download for ${osName(os)}` : `Download ${r.version}`,
+      label: isLatest
+        ? t("getIt.downloadFor", { platform: osName(os) })
+        : `Download ${r.version}`,
       detail: [
         `Version ${r.version}`,
         archName(pick),

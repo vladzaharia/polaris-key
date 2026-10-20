@@ -841,9 +841,7 @@ describe("open products in the Library (PS-05)", () => {
       await screen.findByText("Driftwood Notes stays in your library"),
     ).toBeTruthy();
     // The licence's page: its License card arrives, the URL never left, and its h1 has focus.
-    expect(
-      await screen.findByRole("region", { name: "License" }),
-    ).toBeTruthy();
+    expect(await screen.findByRole("region", { name: "License" })).toBeTruthy();
     expect(window.location.hash).toBe("#/p/driftwood");
     await waitFor(() =>
       expect(document.activeElement).toBe(

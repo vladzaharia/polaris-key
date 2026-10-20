@@ -63,7 +63,10 @@ export function QuickActionButton({
         {
           onSuccess: () =>
             toast.success(t("signin.code.title"), {
-              description: `We sent you the link to download ${product.name} for ${osName(action.platform)}.`,
+              description: t("getIt.flow.emailSent", {
+                product: product.name,
+                platform: osName(action.platform),
+              }),
             }),
           onError: (err) =>
             toast.error("The email didn't go out", {
@@ -98,7 +101,7 @@ export function QuickActionButton({
           onSuccess: () =>
             announce(`Downloading ${product.name} ${action.release.version}`),
           onError: (err) =>
-            toast.error("The download didn't start", {
+            toast.error(t("getIt.downloadFailed"), {
               description: portalErrorCopy(err).description,
             }),
         },

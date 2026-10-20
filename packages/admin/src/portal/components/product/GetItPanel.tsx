@@ -283,7 +283,7 @@ function FileRow({
           </span>
         </span>
       </th>
-      <td className="hidden px-2 py-3 sm:table-cell">
+      <td className="hidden whitespace-nowrap px-2 py-3 sm:table-cell">
         {r.artifact.sha256 ? (
           <Hash value={r.artifact.sha256} label="SHA-256" />
         ) : null}

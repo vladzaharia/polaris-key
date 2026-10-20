@@ -82,3 +82,11 @@ apply says why in one line. One home: EXPERIENCE.md ยง7.3; kits also follow DL1โ
 ## Hand-off
 
 The role agent sets `--set PX-28a in-review` when it hands off; the lead sets done after review. Branch from integ/next after the packages in Depends on have merged. Do not start while LK-06 or P0-36 is unmerged.
+
+## Built (PX-28a, 2026-10-20)
+
+- `LicenseTerm.tsx` (new): the term as words plus a neutral-ink timeline (start, today, end); lifetime is the word alone; ended reads "Ended <date>". Renew is one outlined link in `LicenseCard.tsx`, only for an ended or ending license and only when the developer left a link (support, then website); never disabled, never primary.
+- `GetItPanel.tsx`: one downloads table (the device's build first and tinted, SHA-256, Download), install sources under it. The old recommended box and the "All platforms" groups are gone.
+- Copy: `license.*` and `getIt.*` keys in the catalog, nine locales (`license` and `getIt` added as shared namespaces in `packages/brand/scripts/kit-copy.ts`); `portal/copy/getIt.ts` keeps its exports and reads the catalog. `pnpm gen brand` run.
+- Brief corrections: the card title is now "License" (mockup), so the region name changed from "<Product> license"; "Licensed to <email>" and the device-less "Access" and "Activated" facts are replaced by the term (Activated only shows with no chart).
+- Not done (PX-28b): duration, add-ons, subscriptions, "Keeps the last version" line, channel picker.

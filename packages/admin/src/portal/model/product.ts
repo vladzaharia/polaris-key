@@ -56,10 +56,10 @@ export const SECTION_ORDER: readonly ProductSection[] = [
 ];
 
 export const SECTION_LABEL: Record<ProductSection, string> = {
-  get: "Get it",
+  get: t("getIt.heading"),
   sync: t("account.cloudSync"),
   new: t("update.whatsNew"),
-  license: "License",
+  license: t("license.title"),
   devices: t("account.devices"),
   package: "Packages",
   help: "Help",
