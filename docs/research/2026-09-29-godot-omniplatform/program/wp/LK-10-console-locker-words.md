@@ -32,6 +32,15 @@ changing `customer.host` (today L2 is a typed-key confirmation only), and the he
 preflight before `on`. LK-03's `/.well-known/polaris-host.json` now answers only `{host:
 "customer"}`; the preflight checks that, not `environment` or `version`.
 
+## Correction (A5, built)
+
+There is no switch: the customer site is Polaris Locker whenever CUSTOMER_ORIGIN is set, so the
+switch preflight and the customer.host step-up are dropped. Built: Connections list the Polaris
+Locker address first, then the Polaris Key Console one (`redirectUris`, `registrations`);
+`/me.customerOrigin`; "Open on Polaris Locker" on the product's Locker page; "Get a badge"
+(`LockerBadges`, `model/badges.ts`). The badge grid's self-look was a static render; the UX review
+still owes the built page.
+
 ## Acceptance criteria
 
 - [ ] `pnpm gen --check` settings clean; admin build succeeds
