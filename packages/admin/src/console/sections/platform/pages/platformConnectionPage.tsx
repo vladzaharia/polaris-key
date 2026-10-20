@@ -75,6 +75,11 @@ export function ConnectionPage({ id }: { id: string }): React.ReactElement {
     onTestStep: false,
   });
   const testBtn = React.useRef<HTMLButtonElement>(null);
+  const outcome = React.useRef<HTMLDivElement>(null);
+  // A test that came back: the result takes focus (hooks stay above every early return).
+  React.useEffect(() => {
+    if (t.test) outcome.current?.focus();
+  }, [t.test]);
   // A failed or closed test sends focus back to the button that starts it.
   React.useEffect(() => {
     if (t.error) window.setTimeout(() => testBtn.current?.focus(), 0);
@@ -143,16 +148,19 @@ export function ConnectionPage({ id }: { id: string }): React.ReactElement {
         variant="outline"
         size="sm"
         loading={t.testing}
+        disabledReason={gate.allowed ? undefined : gate.disabledReason}
         onClick={() => void t.run("popup")}
       >
         Test sign-in
       </Button>
-      {testFailure ? (
-        <Callout tone="danger" title={testFailure.title} live>
-          {testFailure.description}
-        </Callout>
-      ) : null}
-      {t.test ? <TestResultView result={t.test} /> : null}
+      <div ref={outcome} tabIndex={-1} className="space-y-3 outline-none">
+        {testFailure ? (
+          <Callout tone="danger" title={testFailure.title} live>
+            {testFailure.description}
+          </Callout>
+        ) : null}
+        {t.test ? <TestResultView result={t.test} /> : null}
+      </div>
     </div>
   );
 
@@ -203,6 +211,9 @@ export function ConnectionPage({ id }: { id: string }): React.ReactElement {
                   size="sm"
                   variant="outline"
                   loading={t.testing}
+                  disabledReason={
+                    gate.allowed ? undefined : gate.disabledReason
+                  }
                   onClick={() => void t.run("popup")}
                 >
                   Test sign-in
@@ -212,130 +223,141 @@ export function ConnectionPage({ id }: { id: string }): React.ReactElement {
               <span className="break-words">{c.lastError}</span>
             </Callout>
           ) : null}
-          <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
-            <div className="min-w-0 space-y-6">
-              <Section
-                title="Provider"
-                actions={
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabledReason={writeReason}
-                    onClick={() => setEditing(true)}
-                  >
-                    Change
-                  </Button>
-                }
-              >
-                <DescriptionList
-                  columns={2}
-                  items={[
-                    {
-                      term: "Issuer",
-                      detail: <span className="break-all">{c.issuer}</span>,
-                    },
-                    {
-                      term: "Client ID",
-                      detail: <span className="break-all">{c.clientId}</span>,
-                    },
-                    {
-                      term: "Client secret",
-                      detail: c.hasSecret ? "Sealed" : "None",
-                    },
-                    {
-                      term: "Who signs in",
-                      detail:
-                        c.audience === "customers"
-                          ? "Customers"
-                          : c.audience === "operators"
-                            ? "Operators"
-                            : "Customers and operators",
-                    },
-                    {
-                      term: "Groups claim",
-                      detail: c.claimMap.groups ?? "Not mapped",
-                    },
-                    {
-                      term: "Other claims",
-                      detail: c.claimMap.claims?.join(", ") ?? "None",
-                    },
-                    {
-                      term: "Last sign-in",
-                      detail: c.lastSuccessAt ? (
-                        <Timestamp at={fromSeconds(c.lastSuccessAt)} />
-                      ) : c.lastError ? (
-                        "Never succeeded"
-                      ) : (
-                        "None yet"
-                      ),
-                    },
-                    { term: "People", detail: String(c.links) },
-                  ]}
+          <div className="@container">
+            <div className="grid gap-6 @4xl:grid-cols-[minmax(0,1fr)_min(22rem,35%)]">
+              <div className="min-w-0 space-y-6">
+                <Section
+                  title="Provider"
+                  actions={
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabledReason={writeReason}
+                      onClick={() => setEditing(true)}
+                    >
+                      Change
+                    </Button>
+                  }
+                >
+                  <DescriptionList
+                    columns={2}
+                    items={[
+                      {
+                        term: "Issuer",
+                        detail: <span className="break-all">{c.issuer}</span>,
+                      },
+                      {
+                        term: "Client ID",
+                        detail: <span className="break-all">{c.clientId}</span>,
+                      },
+                      {
+                        term: "Client secret",
+                        detail: c.hasSecret ? "Sealed" : "None",
+                      },
+                      {
+                        term: "Who signs in",
+                        detail:
+                          c.audience === "customers"
+                            ? "Customers"
+                            : c.audience === "operators"
+                              ? "Operators"
+                              : "Customers and operators",
+                      },
+                      {
+                        term: "Groups claim",
+                        detail: c.claimMap.groups ?? "Not mapped",
+                      },
+                      {
+                        term: "Other claims",
+                        detail: c.claimMap.claims?.join(", ") ?? "None",
+                      },
+                      {
+                        term: "Last sign-in",
+                        detail: c.lastSuccessAt ? (
+                          <Timestamp at={fromSeconds(c.lastSuccessAt)} />
+                        ) : c.lastError ? (
+                          "Never succeeded"
+                        ) : (
+                          "None yet"
+                        ),
+                      },
+                      { term: "People", detail: String(c.links) },
+                    ]}
+                  />
+                </Section>
+                <DomainsSection
+                  c={c}
+                  writeReason={writeReason}
+                  act={act}
+                  focusAdd={add === "domain"}
+                  onEnforce={(d) => setConfirm({ enforce: d })}
                 />
-              </Section>
-              <DomainsSection
-                c={c}
-                writeReason={writeReason}
-                act={act}
-                focusAdd={add === "domain"}
-                onEnforce={(d) => setConfirm({ enforce: d })}
-              />
-            </div>
-            <div className="min-w-0 space-y-6">
-              <Section title="Sign-in card">
-                <Switch
-                  checked={c.status === "active"}
-                  label="Show on the sign-in card"
-                  description="Off hides the button. People already signed in stay signed in."
-                  disabled={toggling || Boolean(writeReason)}
-                  onCheckedChange={(on) => {
-                    setToggling(true);
-                    setToggleError(null);
-                    act(() =>
-                      mutate("updatePlatformConnection", c.id, {
-                        status: on ? "active" : "disabled",
-                      }),
-                    )
-                      .then(() => toast.success(on ? "Shown" : "Hidden"))
-                      .catch(setToggleError)
-                      .finally(() => setToggling(false));
-                  }}
-                />
-                {toggleError ? (
-                  <p role="alert" className="mt-2 text-sm text-danger">
-                    {failureOf(toggleError)?.title}.{" "}
-                    {failureOf(toggleError)?.description}
-                  </p>
-                ) : null}
-              </Section>
-              <Section title="Register at the provider">
-                {redirectUri ? (
-                  <div className="space-y-1">
-                    <p className="text-xs text-fg-muted">Redirect URI</p>
-                    <div className="flex items-center gap-2">
-                      <code className="min-w-0 flex-1 break-all rounded-md bg-surface-sunken px-2 py-1 text-xs">
-                        {redirectUri}
-                      </code>
-                      <CopyButton value={redirectUri} label="redirect URI" />
+              </div>
+              <div className="min-w-0 space-y-6">
+                <Section title="Sign-in card">
+                  <Switch
+                    checked={c.status === "active"}
+                    label="Show on the sign-in card"
+                    description="Off hides the button. People already signed in stay signed in."
+                    disabled={toggling || Boolean(writeReason)}
+                    onCheckedChange={(on) => {
+                      setToggling(true);
+                      setToggleError(null);
+                      act(() =>
+                        mutate("updatePlatformConnection", c.id, {
+                          status: on ? "active" : "disabled",
+                        }),
+                      )
+                        .then(() =>
+                          toast.success(
+                            on
+                              ? "Shown on the sign-in card"
+                              : "Hidden from the sign-in card",
+                          ),
+                        )
+                        .catch(setToggleError)
+                        .finally(() => setToggling(false));
+                    }}
+                  />
+                  {toggleError ? (
+                    <p role="alert" className="mt-2 text-sm text-danger">
+                      {failureOf(toggleError)?.title}.{" "}
+                      {failureOf(toggleError)?.description}
+                    </p>
+                  ) : null}
+                </Section>
+                <Section title="Register at the provider">
+                  {redirectUri ? (
+                    <div className="space-y-1">
+                      <p className="text-xs text-fg-muted">Redirect URI</p>
+                      <div className="flex items-center gap-2">
+                        <code className="min-w-0 flex-1 break-all rounded-md bg-surface-sunken px-2 py-1 text-xs">
+                          {redirectUri}
+                        </code>
+                        <CopyButton
+                          value={redirectUri}
+                          label="Copy redirect URI"
+                        />
+                      </div>
                     </div>
+                  ) : null}
+                  <div className="mt-4">{test}</div>
+                </Section>
+                <Section title="Delete">
+                  <p className="text-sm text-fg-muted">
+                    {deleteReason ?? "Removes the connection and its domains."}
+                  </p>
+                  <div className="mt-3">
+                    <Button
+                      variant="outline"
+                      disabledReason={writeReason ?? deleteReason}
+                      onClick={() => setConfirm("delete")}
+                    >
+                      Delete connection…
+                    </Button>
                   </div>
-                ) : null}
-                <div className="mt-4">{test}</div>
-              </Section>
-              <Section title="Delete">
-                <p className="text-sm text-fg-muted">
-                  {deleteReason ?? "Removes the connection and its domains."}
-                </p>
-                <div className="mt-3">
-                  <Button
-                    variant="outline"
-                    disabledReason={writeReason ?? deleteReason}
-                    onClick={() => setConfirm("delete")}
-                  >
-                    Delete connection…
-                  </Button>
-                </div>
-              </Section>
+                </Section>
+              </div>
             </div>
           </div>
 

@@ -14,6 +14,7 @@ import { FormField } from "../../../../ui/form.js";
 import { Callout } from "../../../../ui/Callout.js";
 import { DescriptionList } from "../../../../ui/DescriptionList.js";
 import { codecs } from "../../../router.js";
+import type { Failure } from "./connectionErrors.js";
 import { StepUpCallout } from "../../core/pages/UserRelink.js";
 
 export const STEP_IDS = [
@@ -97,7 +98,7 @@ export function TestStep({
 }: {
   issuer: string;
   needsSecret: boolean;
-  error: { title: string; description?: string } | null;
+  error: Failure | null;
   result: ConnectionTestResult | null;
   testing: boolean;
   onTab: () => void;
@@ -114,7 +115,7 @@ export function TestStep({
         Sign in at {issuer ? hostOf(issuer) : "the provider"} to see which
         claims arrive. Nothing is saved.
       </p>
-      {needsSecret ? (
+      {needsSecret && !result?.ok ? (
         <Callout tone="info" title="No client secret in this tab">
           Go back to Client and enter it again if the provider needs one.
         </Callout>
@@ -126,15 +127,20 @@ export function TestStep({
           </Callout>
         ) : null}
         {result ? <TestResultView result={result} /> : null}
-        {error || (result && !result.ok) ? (
+        {(error &&
+          error.code !== "popup_closed" &&
+          error.code !== "popup_blocked") ||
+        (result && !result.ok) ? (
           <Button variant="outline" size="sm" onClick={onBackToClient}>
             Back to Client
           </Button>
         ) : null}
       </div>
-      <Button variant="ghost" size="sm" disabled={testing} onClick={onTab}>
-        Open in this tab instead
-      </Button>
+      {result?.ok ? null : (
+        <Button variant="ghost" size="sm" disabled={testing} onClick={onTab}>
+          Open in this tab instead
+        </Button>
+      )}
     </div>
   );
 }
@@ -148,6 +154,7 @@ export function ReviewStep({
   stepUpHash,
   error,
   secretMissing,
+  onBackToClient,
 }: {
   draft: Draft;
   secret: string;
@@ -155,8 +162,9 @@ export function ReviewStep({
   test: ConnectionTestResult | null;
   fresh: boolean;
   stepUpHash: string;
-  error: { title: string; description?: string } | null;
+  error: Failure | null;
   secretMissing: boolean;
+  onBackToClient: () => void;
 }): React.ReactElement {
   const failed = React.useRef<HTMLDivElement>(null);
   // A failed save puts focus on its words.
@@ -175,7 +183,25 @@ export function ReviewStep({
         <div ref={failed} tabIndex={-1} className="outline-none">
           <Callout tone="danger" title={error.title} live>
             {error.description}
+            {error.link ? (
+              <>
+                {" "}
+                <a href={error.link.href} className="text-accent-fg underline">
+                  {error.link.label}
+                </a>
+              </>
+            ) : null}
           </Callout>
+          {error.code === "exists" ? (
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-2"
+              onClick={onBackToClient}
+            >
+              Back to Client
+            </Button>
+          ) : null}
         </div>
       ) : null}
       {secretMissing || draft.hadSecret ? (
@@ -201,10 +227,10 @@ export function ReviewStep({
           { term: "Name", detail: draft.label.trim() || hostOf(draft.issuer) },
           { term: "Issuer", detail: draft.issuer },
           { term: "Client ID", detail: draft.clientId },
-          {
-            term: "Client secret",
-            detail: secret ? "Sealed when added" : "None",
-          },
+          // One place: the field above holds the secret when one is expected.
+          ...(secretMissing || draft.hadSecret
+            ? []
+            : [{ term: "Client secret", detail: "None" }]),
           { term: "Who signs in", detail: "Customers" },
           {
             term: "Test",

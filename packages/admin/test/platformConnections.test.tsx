@@ -13,7 +13,8 @@ import { TestResultView } from "../src/console/sections/platform/pages/platformC
 import { claimMapOf } from "../src/console/sections/platform/pages/platformConnectionParts.js";
 import { CONNECTION_FLOW } from "../src/console/wizard/flows.js";
 import { lintFlow } from "../src/ui/wizard/index.js";
-import type { PlatformConnection } from "../src/api.js";
+import { ApiError, type PlatformConnection } from "../src/api.js";
+import { failureOf } from "../src/console/sections/platform/pages/connectionErrors.js";
 
 /**
  * Platform → Connections (I-31): the page by kind, a connection's domains with the TXT record
@@ -361,7 +362,7 @@ describe("add wizard", () => {
         { timeout: 3000 },
       ),
     ).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Back to Client" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Back to Client" })).toBeNull();
   });
 
   it("the flow is within the kit's rules", () => {
@@ -412,5 +413,17 @@ describe("claims preview", () => {
       groups: "groups",
       claims: ["a", "b"],
     });
+  });
+});
+
+describe("error words", () => {
+  it("never shows a bare status, names a duplicate and an unsealable secret", () => {
+    const bare = new ApiError(500);
+    expect(failureOf(bare)?.description ?? "").not.toMatch(/api 500/);
+    const dup = new ApiError(409, undefined, "exists");
+    expect(failureOf(dup)?.title).toBe("Already connected");
+    const kek = new ApiError(409, undefined, "no_kek");
+    expect(failureOf(kek)?.title).toBe("Secrets can't be sealed yet");
+    expect(failureOf(kek)?.link?.href).toContain("/runbook/");
   });
 });

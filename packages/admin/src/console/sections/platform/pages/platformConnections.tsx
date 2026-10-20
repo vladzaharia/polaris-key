@@ -58,6 +58,8 @@ export function ConnectionsRoute({ id }: { id?: string }): React.ReactElement {
 
 // ── the list ─────────────────────────────────────────────────────────────────────────────────
 
+/** One column template for the header and every row, in rem so it follows the text size. */
+const COLS = "sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1.6fr)_6rem_7rem]";
 const SEAL = "pnpm --filter @polaris-key/worker signin:seal";
 const SETUP: Record<
   "google" | "apple" | "steam",
@@ -173,6 +175,15 @@ export function ConnectionsPage(): React.ReactElement {
               />
             ) : (
               <ul className="divide-y divide-border">
+                <li
+                  aria-hidden
+                  className={`hidden gap-x-4 pb-2 text-xs text-fg-muted sm:grid ${COLS}`}
+                >
+                  <span>Connection</span>
+                  <span>Domains</span>
+                  <span>Routing</span>
+                  <span className="text-right">Status</span>
+                </li>
                 {d.connections.map((c) => {
                   const s = connectionStatus(c);
                   const verified = c.domains.filter((x) => x.verified);
@@ -180,7 +191,7 @@ export function ConnectionsPage(): React.ReactElement {
                     <li key={c.id}>
                       <Link
                         to={r.platformConnection(c.id)}
-                        className="grid items-center gap-x-4 gap-y-1 py-3 hover:bg-hover sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1.5fr)_minmax(0,0.8fr)_auto]"
+                        className={`grid items-center gap-x-4 gap-y-1 py-3 hover:bg-hover ${COLS}`}
                       >
                         <span className="min-w-0">
                           <span className="font-medium text-accent-fg">
@@ -197,7 +208,7 @@ export function ConnectionsPage(): React.ReactElement {
                             c.domains.map((x) => (
                               <span
                                 key={x.domain}
-                                className="rounded-md bg-surface-sunken px-1.5 py-0.5 text-fg"
+                                className="max-w-full break-all rounded-md bg-surface-sunken px-1.5 py-0.5 text-fg"
                               >
                                 {x.domain}
                                 {x.verified ? "" : " (not verified)"}
@@ -207,7 +218,7 @@ export function ConnectionsPage(): React.ReactElement {
                         </span>
                         <span className="text-xs text-fg-muted">
                           {verified.length > 0
-                            ? `${verified.length} verified`
+                            ? `${verified.length} routed`
                             : "Button only"}
                         </span>
                         <span className="flex items-center justify-end gap-2">
@@ -280,8 +291,8 @@ export function ConnectionsPage(): React.ReactElement {
                               value={b.registration.value}
                               label={
                                 b.registration.kind === "realm"
-                                  ? "realm"
-                                  : "redirect URI"
+                                  ? "Copy realm"
+                                  : "Copy redirect URI"
                               }
                             />
                           </div>

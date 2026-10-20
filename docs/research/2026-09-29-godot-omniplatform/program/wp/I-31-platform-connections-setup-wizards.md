@@ -185,3 +185,12 @@ items.
   `hasSecret` is true for a secret reference; two threat-model lines.
 - Not done: session lengths read-only (brief scope, still absent); the unverified-domain Undo is a
   toast action that claims the domain again with a new TXT record.
+
+## Last round (2026-10-19)
+
+PageHeader keeps its three-column grid at normal text and gets the large-text layout from the
+header's own width in rem (`@container`, `@2xl`); below it the actions take right-aligned rows under
+the title. Error words (no bare "api 500", "Already connected", "Secrets can't be sealed yet"),
+focus to the opener or heading, verb copy-button names, viewer reasons, "Claim again" with the new
+TXT record named, one place for the secret on Review, a columned list with headers, a container-width
+rail. Follow-up **I-31c**: session lengths as a read-only card (brief scope).

@@ -156,7 +156,7 @@ export function AddConnectionPage(): React.ReactElement {
   // ── discovery ──────────────────────────────────────────────────────────────────────────────
   const [checking, setChecking] = React.useState(false);
   const [providerError, setProviderError] = React.useState<unknown>(null);
-  const found = React.useRef<HTMLParagraphElement>(null);
+  const checkBtn = React.useRef<HTMLButtonElement>(null);
   const check = async (): Promise<void> => {
     setChecking(true);
     setProviderError(null);
@@ -165,11 +165,12 @@ export function AddConnectionPage(): React.ReactElement {
         issuer: draft.issuer.trim(),
       });
       setDiscovery({ issuer: draft.issuer.trim(), value: res.discovery });
-      window.setTimeout(() => found.current?.focus(), 0);
+      window.setTimeout(() => checkBtn.current?.focus(), 0);
     } catch (e) {
       setDiscovery(null);
       setProviderError(e);
       if (failureOf(e)?.fields.includes("issuer")) focusField("issuer");
+      else window.setTimeout(() => checkBtn.current?.focus(), 0);
     } finally {
       setChecking(false);
     }
@@ -257,7 +258,11 @@ export function AddConnectionPage(): React.ReactElement {
                 next()
               ) : (
                 <Button loading={t.testing} onClick={() => void t.run("popup")}>
-                  {test || t.error ? "Try again" : `Sign in with ${name}`}
+                  {t.testing
+                    ? `Waiting for ${name}…`
+                    : test || t.error
+                      ? "Try again"
+                      : `Sign in with ${name}`}
                 </Button>
               ),
               reason: test?.ok ? undefined : "Sign in to continue",
@@ -337,7 +342,10 @@ export function AddConnectionPage(): React.ReactElement {
               value={draft.issuer}
               error={fieldMessage(providerFailure, "issuer")}
               announceError
-              onChange={(v: string) => setDraft({ issuer: v })}
+              onChange={(v: string) => {
+                setProviderError(null);
+                setDraft({ issuer: v });
+              }}
             >
               {(f) => (
                 <Input
@@ -362,22 +370,22 @@ export function AddConnectionPage(): React.ReactElement {
             </FormField>
             <div className="flex flex-wrap items-center gap-3">
               <Button
+                ref={checkBtn}
                 type="submit"
                 variant="outline"
                 loading={checking}
                 disabledReason={
-                  draft.issuer.trim() ? undefined : "Enter the issuer"
+                  !gate.allowed
+                    ? gate.disabledReason
+                    : draft.issuer.trim()
+                      ? undefined
+                      : "Enter the issuer"
                 }
               >
                 Check provider
               </Button>
               {discovered ? (
-                <p
-                  ref={found}
-                  tabIndex={-1}
-                  role="status"
-                  className="outline-none"
-                >
+                <p role="status">
                   <StatusPill tone="success" size="sm">
                     Found
                   </StatusPill>
@@ -388,7 +396,7 @@ export function AddConnectionPage(): React.ReactElement {
               <DescriptionList
                 items={[
                   {
-                    term: "Sign-in page",
+                    term: "Sign-in host",
                     detail: discovery.value.authorizationHost,
                   },
                   { term: "Token endpoint", detail: discovery.value.tokenHost },
@@ -416,7 +424,7 @@ export function AddConnectionPage(): React.ReactElement {
                     discovery?.value.redirectUri ??
                     `${window.location.origin}/callback`
                   }
-                  label="redirect URI"
+                  label="Copy redirect URI"
                 />
               </div>
               <p className="text-xs text-fg-muted">
@@ -508,6 +516,7 @@ export function AddConnectionPage(): React.ReactElement {
             secret={secret}
             onSecret={setSecret}
             secretMissing={secretMissing}
+            onBackToClient={() => go("client")}
             test={test}
             fresh={fresh}
             stepUpHash={r.platformConnectionNew({

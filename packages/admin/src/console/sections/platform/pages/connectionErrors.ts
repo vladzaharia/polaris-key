@@ -16,6 +16,15 @@ export interface Failure {
   description?: string;
   /** The request fields the server refused. */
   fields: string[];
+  /** What happened, for a caller that offers a way on. */
+  code?: string;
+  /** A page that explains the next step. */
+  link?: { label: string; href: string };
+}
+
+/** The server's own words, or nothing: `ApiError`'s default message is just "api 500". */
+function serverWords(e: ApiError): string | undefined {
+  return e.message && !/^api \d{3}$/.test(e.message) ? e.message : undefined;
 }
 
 export function failureOf(e: unknown): Failure | null {
@@ -31,23 +40,46 @@ export function failureOf(e: unknown): Failure | null {
   if (e instanceof PopupClosedError) {
     return {
       title: "The sign-in window closed",
-      description: "Try again.",
       fields: [],
+      code: "popup_closed",
     };
   }
   if (e instanceof ApiError) {
     const fields = e.fields ?? [];
+    if (e.code === "exists") {
+      return {
+        title: "Already connected",
+        description:
+          serverWords(e) ?? "This issuer and client ID are already connected.",
+        fields,
+        code: "exists",
+      };
+    }
+    if (e.code === "no_kek") {
+      return {
+        title: "Secrets can't be sealed yet",
+        description:
+          "The platform key is not set up, so a client secret cannot be stored.",
+        fields,
+        code: "no_kek",
+        link: {
+          label: "Rotate the KEK",
+          href: "/docs/operate/platform/runbook/rotate-the-kek/",
+        },
+      };
+    }
     if (e.code === "discovery_unreachable") {
       return {
         title: "The provider didn't answer",
-        description: e.message || "Check the issuer address and try again.",
+        description:
+          serverWords(e) ?? "Check the issuer address and try again.",
         fields,
       };
     }
     if (e.code === "discovery_invalid") {
       return {
         title: "The provider's discovery document isn't usable",
-        description: e.message,
+        description: serverWords(e),
         fields,
       };
     }
@@ -55,7 +87,8 @@ export function failureOf(e: unknown): Failure | null {
   const c = errorCopy(e, { thing: "The connection" });
   return {
     title: c.title,
-    description: e instanceof ApiError && e.message ? e.message : c.description,
+    description:
+      (e instanceof ApiError ? serverWords(e) : undefined) ?? c.description,
     fields: e instanceof ApiError ? (e.fields ?? []) : [],
   };
 }

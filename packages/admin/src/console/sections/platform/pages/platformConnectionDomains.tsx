@@ -28,7 +28,10 @@ function RecordLine({ label, value }: { label: string; value: string }) {
       <code className="min-w-0 flex-1 break-all rounded-md bg-surface-sunken px-2 py-1 text-xs">
         {value}
       </code>
-      <CopyButton value={value} label={label.toLowerCase()} />
+      <CopyButton
+        value={value}
+        label={`Copy the TXT record ${label.toLowerCase()}`}
+      />
     </div>
   );
 }
@@ -87,14 +90,25 @@ export function DomainsSection({
     }
   };
 
+  /** The row is gone: focus goes to the section's heading. */
+  const focusHeading = (delay = 0): void => {
+    window.setTimeout(() => {
+      const h = document.querySelector<HTMLElement>("#connection-domains h2");
+      h?.setAttribute("tabindex", "-1");
+      h?.focus();
+    }, delay);
+  };
+
   const release = (d: ConnectionDomain): void => {
     void run(`release:${d.domain}`, () =>
       mutate("removeConnectionDomain", c.id, d.domain),
     ).then((ok) => {
+      if (ok) focusHeading();
       if (ok && !d.verified) {
         toast.success(`Released ${d.domain}`, {
+          description: "Claiming it again gives a new TXT record.",
           action: {
-            label: "Undo",
+            label: "Claim again",
             onClick: () =>
               void mutate("addConnectionDomain", c.id, d.domain).then(() =>
                 act(async () => undefined),
@@ -107,6 +121,7 @@ export function DomainsSection({
 
   return (
     <Section
+      id="connection-domains"
       title="Domains"
       description="Addresses at a verified domain sign in through this connection. Each domain, subdomains included, is its own entry."
     >
@@ -122,7 +137,11 @@ export function DomainsSection({
           {c.domains.map((d) => (
             <li key={d.domain} className="space-y-3 py-3">
               <div className="grid items-center gap-x-4 gap-y-2 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
-                <span className="break-all font-medium text-fg-strong">
+                <span
+                  id={`domain-name-${d.domain}`}
+                  tabIndex={-1}
+                  className="break-all font-medium text-fg-strong outline-none"
+                >
                   {d.domain}
                 </span>
                 <StatusPill tone={d.verified ? "success" : "warning"} size="sm">
@@ -149,9 +168,15 @@ export function DomainsSection({
                         }).then(() =>
                           window.setTimeout(
                             () =>
-                              document
-                                .getElementById(`domain-status-${d.domain}`)
-                                ?.focus(),
+                              // Verified: the button is gone, so the domain's name takes focus.
+                              (
+                                document.getElementById(
+                                  `domain-status-${d.domain}`,
+                                ) ??
+                                document.getElementById(
+                                  `domain-name-${d.domain}`,
+                                )
+                              )?.focus(),
                             0,
                           ),
                         )

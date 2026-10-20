@@ -155,7 +155,7 @@ export function PageHeader({
     mobileMenu.length > 0;
 
   return (
-    <header className={cn("relative space-y-3", className)}>
+    <header className={cn("@container relative space-y-3", className)}>
       {eyebrow}
       {/* Title left; freshness, secondary actions and the primary action right. Below 640 px the
           "More actions" menu stays on the title row and the primary action takes its own
@@ -164,12 +164,16 @@ export function PageHeader({
           would keep its gap and stop the actions short of the right edge. */}
       <div
         className={cn(
-          // Phone: a grid (the primary action takes its own row). From 640 px a wrapping row: at
-          // 200 % text the actions drop under the title instead of overlapping it.
-          "grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-3 sm:flex sm:flex-wrap",
+          // Three columns when the header itself has the room (a width in rem, so it follows the
+          // text size). With less (a phone, or 200 % text) the cluster and the primary action
+          // take their own right-aligned rows under the title instead of squeezing it.
+          "grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-3",
+          hasCluster &&
+            primaryAction &&
+            "sm:@2xl:grid-cols-[minmax(0,1fr)_auto_auto]",
         )}
       >
-        <div className="min-w-0 space-y-1 sm:flex-1 sm:basis-72">
+        <div className="min-w-0 space-y-1">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
             {nested ? (
               <h2 className="text-lg font-medium tracking-tight text-fg-strong">
@@ -199,7 +203,7 @@ export function PageHeader({
         {hasCluster ? (
           <div
             className={cn(
-              "flex shrink-0 items-center justify-end gap-2 sm:ml-auto",
+              "flex shrink-0 items-center justify-end gap-2 sm:@max-2xl:col-span-2 sm:@max-2xl:justify-self-end",
               // With an auto-refresh switch the cluster is too wide to share a phone's title row.
               freshness?.auto && "col-span-2 sm:col-span-1",
             )}
@@ -262,8 +266,8 @@ export function PageHeader({
         {primaryAction ? (
           <div
             className={cn(
-              "col-span-2 sm:col-span-1 [&>:not(.sr-only)]:w-full sm:[&>:not(.sr-only)]:w-auto",
-              hasCluster ? "" : "sm:ml-auto",
+              "col-span-2 sm:@2xl:col-span-1 sm:@2xl:row-start-1 [&>:not(.sr-only)]:w-full sm:[&>:not(.sr-only)]:w-auto sm:@max-2xl:justify-self-end",
+              hasCluster ? "sm:@2xl:col-start-3" : "sm:@2xl:col-start-2",
             )}
           >
             {primaryAction}
