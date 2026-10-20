@@ -6562,7 +6562,28 @@ and 12 (cross-tenant correlation) are the deltas.
   email prefix, never the account's primary email, so the page is not an "is this person a
   Polaris Key user" oracle. The account email is shown only with the person's consent for this
   product (`account_product_grants.claims_json` holds `email`; D19). A subject minted only for a
-  support code stays unlisted until it holds a licence, a signed-in device or a sign-in.
+  support code stays unlisted until it holds a licence, a signed-in device or a sign-in. A
+  search by support code finds it, within the product.
+- **Readable support codes (I-41).** The code a person reads out is not the subject: nine
+  characters from a 30-symbol alphabet without lookalikes (`core/accounts/supportCodes.ts`,
+  `support_codes`, one stable code per (product, person)). It is an identifier for that
+  product's support, never a credential: it opens no session, licence, key or data, and the
+  signed licence and the export still carry the subject. Three rows:
+  - _Enumeration._ 30^9 (about 2e13) codes, drawn by rejection sampling, so a guess hits a real
+    code with probability under 1e-7 per try even with a million codes issued. The console
+    route `GET /manage/api/support-codes/<code>` is rate-limited per operator (30 a minute,
+    `adminSupportCode`) on top of the admin API budget, and answers only an operator who may read
+    the product, so a guess is also a sign-in away. Guessing finds a product's own customer
+    only, and that customer's subject, which the Users page already shows that operator.
+  - _Cross-tenant._ The route resolves a code to `{product, subject}` and then checks
+    `can(product, core, view)`. A code of another product, an unknown code, a malformed one and
+    an operator without the area all answer the same `404` (`test/supportCodes.test.ts`), so it
+    is no oracle for another tenant's customers. The Users search is an exact lookup within the
+    product in the URL; the relink target accepts a code of THIS product only.
+  - _Code versus subject._ The portal never shows the subject, and a lookup never returns the
+    account id or email. Erasure (`deletion.ts`) deletes the code with the subject; a merge
+    leaves the absorbed subject's code resolving to the survivor, and the account being merged
+    away leaks nothing new because both are the same person to that product.
 - **Relink (item 9).** The target is named only by a subject of THIS product (`target_not_found`
   otherwise; never an email, never another product's subject). The operator needs an interactive
   sign-in no older than 5 minutes (`session.stepUpAt`, set only by a `stepUp=1` flow whose ID token

@@ -40,14 +40,15 @@ records through that license. Removing the license takes it out of your library 
 
 ## Get a support code
 
-A support code is a short code for one app. Read it to the app's support team so they can find the
-right person without seeing your Locker account.
+A support code is a short code for one app, like `K7M-4QX-9TB`. Give it to the app's support team
+so they can find you without seeing your Locker account. It's only for that app, and it opens
+nothing.
 
 1. Open the app in your library.
 2. Select **Get a support code**.
-3. Read the code to the app's support team.
+3. Read the code out, or select **Copy**.
 
-Removing your information from that app ends the old code. Ask for another code if you need one.
+You keep the same code until you remove your information from that app. Then ask for a new one.
 
 ## Delete your account
 

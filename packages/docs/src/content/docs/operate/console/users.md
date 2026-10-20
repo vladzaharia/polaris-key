@@ -22,8 +22,8 @@ nothing on this page links the two. The console never shows:
 - personal details beyond what they agreed to share with this product.
 
 A person appears once they hold a license of this product, have a device signed in with it, or
-have signed in to it. Someone who only asked for a support code (see [Relink](#relink-a-license))
-stays off the list until one of those happens.
+have signed in to it. Someone who only asked for a support code stays off the list until one of
+those happens. Searching by their code still finds them.
 
 ## The list
 
@@ -36,9 +36,21 @@ stays off the list until one of those happens.
 | **Last sign-in** | Only with Identity on: their last sign-in to this product.                                                                                                |
 | **First seen**   | When this product first had an id for them.                                                                                                               |
 
-Search matches the start of a user id, an exact license id, or the start of a buyer email. It
-never searches account emails, so the page can't be used to find out whether someone has an
-account.
+Search matches a support code, the start of a user id, an exact license id, or the start of a buyer
+email. It never searches account emails, so the page can't be used to find out whether someone has
+an account.
+
+## Find a user by support code
+
+A support code is nine characters, shown as `K7M-4QX-9TB`. The person reads it from their
+product page in Polaris Locker. Type it in the **Users** search, or press **Cmd+K** (**Ctrl+K**)
+and type it anywhere in the console. Case, spaces, dashes and dots don't matter. A palette result,
+**Open support code K7M-4QX-9TB**, opens that person's record in their product.
+
+A code finds someone only in a product you can manage. For any other code, or one that doesn't
+exist, you get the same answer: nothing. The code is not a password. It names the person to
+your product's support and opens nothing else. **Support code** is a column on the list and on the
+record.
 
 ## The user record
 
@@ -87,9 +99,9 @@ lost access to the account their license is in. The steps are in
 [Help a customer](/docs/operate/console/help-a-customer/#move-a-license-to-another-person). It
 carries these safeguards:
 
-1. **Name the target by their user id for this product.** Never by email. The person gets an id
-   by signing in to your product, or with **Get a support code** on your product's page in their
-   Polaris Key account, and reads it to you.
+1. **Name the target by their support code or user id for this product.** Never by email. The
+   person finds the code with **Get a support code** on your product's page in Polaris Locker
+   and reads it to you.
 2. **Sign in again.** Relink needs a console sign-in from the last five minutes. The dialog
    offers **Sign in again** and brings you back to the person afterwards.
 3. **Give a reason.** Up to 500 characters, kept with the relink and in **Activity** with the

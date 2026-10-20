@@ -114,7 +114,7 @@ Deletion erases sessions, emails, identities, links and the account row in one a
 | `GET` `/api/products/<product>` | One library product: licenses, seats, entitlements, devices, purchase |
 | `GET` `/api/products/<product>/export` | What is held for the person in one product |
 | `DELETE` `/api/products/<product>/data` | Remove my data from this app (step-up, 5 a minute) |
-| `POST` `/api/products/<product>/support-code` | The person's pairwise id for this product (10 a minute) |
+| `POST` `/api/products/<product>/support-code` | The person's readable support code for this product, `XXX-XXX-XXX` (10 a minute) |
 
 Removing a license from the library leaves it with its email, so it waits for an account that verifies that address. An auto-attach block keeps it out of this account until its key is added again. Package tokens for it are revoked and its devices keep their seats. Only a `removable` license can go: a sign-in license, a Discover claim or a keyless store or developer license answers `409 not_removable` with `reason` `no_active_key` or `key_claim_off`.
 

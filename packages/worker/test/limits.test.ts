@@ -29,6 +29,7 @@ const INTERNAL: Record<string, string[]> = {
     "PERSONA_STORES_MAX",
   ],
   "console/handlers/refusals.ts": ["REFUSED_SINCE_DEFAULT_SECONDS"],
+  "console/handlers/supportCodes.ts": ["SUPPORT_CODE_LOOKUPS_PER_MINUTE"],
   "console/settingsBackfill.ts": ["BATCH_LIMIT"],
   "core/accounts/accountSubjects.ts": ["MERGE_REDIRECT_SECONDS"],
   "core/accounts/erasureFence.ts": ["ERASURE_CLEAR_TTL_SECONDS"],

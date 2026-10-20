@@ -190,6 +190,34 @@ describe("Users list", () => {
     );
   });
 
+  it("shows the readable support code beside each user, and None yet before one is asked for (I-41)", async () => {
+    productUsers.mockResolvedValue({
+      identityOn: false,
+      users: [row({ supportCode: "K7M-4QX-9TB" }), row({ supportCode: null })],
+      nextCursor: null,
+    });
+    mount("#/p/djdl/users");
+    expect((await screen.findAllByText("K7M-4QX-9TB")).length).toBeGreaterThan(
+      0,
+    );
+    expect(screen.getAllByText("None yet").length).toBeGreaterThan(0);
+  });
+
+  it("sends a support code as the search, however it was typed", async () => {
+    productUsers.mockResolvedValue({
+      identityOn: false,
+      users: [row({ supportCode: "K7M-4QX-9TB" })],
+      nextCursor: null,
+    });
+    mount("#/p/djdl/users?q=k7m4qx9tb");
+    await waitFor(() =>
+      expect(productUsers).toHaveBeenCalledWith(
+        "djdl",
+        expect.objectContaining({ q: "k7m4qx9tb" }),
+      ),
+    );
+  });
+
   it("says where a contact email came from", async () => {
     productUsers.mockResolvedValue({
       identityOn: false,
@@ -217,6 +245,20 @@ describe("User record", () => {
         .map((l) => l.textContent?.replace(/\d+$/, "")),
     ).toEqual(["Overview", "Licenses", "Devices", "Activity"]);
     expect(screen.queryByRole("heading", { name: "Sign-ins" })).toBeNull();
+  });
+
+  it("shows the support code in the header with Copy, when the person has one (I-41)", async () => {
+    productUser.mockResolvedValue({
+      user: detail({ supportCode: "K7M-4QX-9TB" }),
+    });
+    mount(`#/p/djdl/users/${SUBJECT}`);
+    expect(await screen.findByLabelText("Support code")).toBeTruthy();
+    expect(screen.getByLabelText("Support code").textContent).toBe(
+      "K7M-4QX-9TB",
+    );
+    expect(
+      screen.getByRole("button", { name: "Copy support code" }),
+    ).toBeTruthy();
   });
 
   it("lists sign-ins by method kind with Identity on", async () => {

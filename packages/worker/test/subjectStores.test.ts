@@ -44,6 +44,8 @@ const WORKER_ROOT = join(HERE, "..");
 const NOT_A_SUBJECT_STORE: Record<string, string> = {
   account_product_subjects:
     "the pairwise subject table itself; Identity's merge aliases it and its deletion removes it",
+  support_codes:
+    "the readable name of a pairwise subject (I-41); written by Identity's portal ask, deleted with the subject in Identity's deletion, and it holds no data of its own",
   account_product_subject_aliases:
     "merge aliases (D21); written and expired by Identity's merge",
   subject_events:
