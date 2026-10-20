@@ -79,7 +79,7 @@
       "reason": "Fixture device and tier names (data, not copy); the straight apostrophe the matrix input carries."
     },
     {
-      "pattern": "(From (signing in|Tidewater Studio|Harbor Audio)|Added with a key|Free)( · (Lifetime|Until [\\d/]+))?",
+      "pattern": "(Automatic grant|From (Tidewater Studio|Harbor Audio)|Added with a key|Free)( · (Lifetime|Until [\\d/]+))?",
       "boards": ["elements"],
       "reason": "A license row's meta line: the origin and term joined as the catalog's {origin} · {term}; the whole line is arguments, so the matcher cannot key it."
     },

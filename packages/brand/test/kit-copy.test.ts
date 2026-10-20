@@ -85,7 +85,8 @@ describe("the committed catalog", () => {
     expect(Object.values(m).some((x) => x.value.includes("Account-wide"))).toBe(
       false,
     );
-    expect(m["signin.choice.origin.signIn"]!.value).toBe("From signing in");
+    // v1.3 words (LK-13): the glossary (concepts.md) makes "Automatic grant" Locker's label and lists "From signing in" as the replaced term.
+    expect(m["signin.choice.origin.signIn"]!.value).toBe("Automatic grant");
     expect(m["signin.choice.origin.key"]!.value).toBe("Key ending {last6}");
     expect(m["signin.choice.origin.storeKey"]!.value).toBe(
       "{store} key ending {last6}",
