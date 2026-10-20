@@ -93,14 +93,20 @@ describe("trust refreshes are serialised and never roll back", () => {
     expect(
       (await core.authenticate([["X-PKey-License", jws]])).problem,
     ).toBeNull();
-    // A newer one that drops the key does take effect.
+    // A newer one that drops the key does take effect. The refresh runs in the background (real
+    // WebCrypto signing and verifying), so wait for it to land rather than a fixed 10 ms, which a
+    // loaded runner overshoots.
     now += 900;
     serve.current = manifest(PRODUCT, pin, [pin], T0 + 200, 100_000);
     await core.authenticate([["X-PKey-License", jws]]);
-    await tick();
-    expect(
-      (await core.authenticate([["X-PKey-License", jws]])).problem?.code,
-    ).toBe("license_invalid");
+    await vi.waitFor(
+      async () => {
+        expect(
+          (await core.authenticate([["X-PKey-License", jws]])).problem?.code,
+        ).toBe("license_invalid");
+      },
+      { timeout: 2000, interval: 20 },
+    );
   });
 
   it("a periodic refresh and an unknown-kid refresh overlap as one flight", async () => {
