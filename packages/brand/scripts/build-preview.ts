@@ -16,6 +16,7 @@ import {
   THEME_TOKENS,
 } from "../src/generated/tokens.js";
 import { opticalCut } from "../src/marks/core.js";
+import { LOCKER_BADGE_KINDS } from "../src/marks/locker.js";
 import {
   serviceIconSvg,
   serviceIconSymbolId,
@@ -164,13 +165,14 @@ function lockerSection(): string {
         }),
       )
       .join("");
-    const badges = (["locker-open-in", "locker-available-on"] as const)
-      .map((kind) =>
-        (["transparent", "sticker", "outline"] as const)
-          .map((treatment) => badgeSvg({ kind, treatment, theme, width: 240 }))
-          .join(""),
-      )
-      .join("");
+    const badges = [
+      ...LOCKER_BADGE_KINDS.map((kind) => badgeSvg({ kind, theme })),
+      ...(["sticker", "outline"] as const).flatMap((treatment) =>
+        (["locker-open-in", "locker-sync-with"] as const).map((kind) =>
+          badgeSvg({ kind, treatment, theme }),
+        ),
+      ),
+    ].join("");
     return `<section class="panel" data-theme="${theme}" data-brand="locker"><h3>${theme}</h3>
 <div class="grid">${chip("accent", l.solid, t.surface.sunken, "UI, 3:1 on sunken")}${chip("fg", l.fg, t.surface.sunken, "text, 4.5:1 on sunken")}${chip("on", l.on, l.solid, "text on a coral fill")}${chip("subtle", l.subtle, t.surface.page, "selected fill, neutral")}${chip("hover", l.hover, t.surface.page, "hover tint, neutral")}</div>
 <div class="row"><span class="ground">${marksRow(theme)}</span><span class="ground" style="color:var(--pk-text-strong)">${marksRow("mono")}</span></div>
@@ -421,6 +423,7 @@ const html = `<!doctype html>
   .icon-row .ink { color: var(--pk-accent-fg); }
   .icon-row.neutral .ink { color: var(--pk-text-strong); }
   .ink { color: var(--pk-text-strong); }
+  .panel .row svg { max-width: 100%; height: auto; }
   .loc-nav { display: flex; gap: var(--pk-space-1); margin: var(--pk-space-3) 0; }
   .loc-nav a { color: var(--pk-text-default); text-decoration: none; padding: var(--pk-space-1) var(--pk-space-3); border-radius: var(--pk-radius-md); border-left: 3px solid transparent; }
   .loc-nav a[aria-current="page"] { background: var(--pk-accent-subtle); border-left-color: var(--pk-accent); color: var(--pk-text-strong); }

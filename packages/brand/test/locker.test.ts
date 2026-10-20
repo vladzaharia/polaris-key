@@ -13,8 +13,10 @@ import {
 } from "../src/generated/tokens.js";
 import { PolarisLockup, PolarisMark } from "../src/react.js";
 import { badgeSvg, lockupSvg, markSvg } from "../src/svg.js";
+import { LOCKER_BADGE_LABELS } from "../src/generated/locker.js";
+import { LOCKER_BADGE_KINDS } from "../src/marks/locker.js";
 import { opticalCut } from "../src/marks/core.js";
-import { BRAND, LOCKER, LOCKER_BADGE_ALT } from "../src/tokens/primitives.js";
+import { BRAND, LOCKER } from "../src/tokens/primitives.js";
 import { resolveLocker } from "../src/tokens/resolve.js";
 import { SERVICE_IDS, THEMES } from "../src/tokens/source.js";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -306,17 +308,34 @@ describe("the API", () => {
         ),
       ).toBe(markSvg({ kind: "locker", size, title: "x" }));
   });
-  it("badges carry the action in the accessible name and keep the 320 x 104 canvas", () => {
-    for (const kind of ["locker-open-in", "locker-available-on"] as const) {
+  it("badges: 16 labels, named for the label, 320 CSS px minimum", () => {
+    expect(LOCKER_BADGE_KINDS.length).toBe(16);
+    for (const kind of LOCKER_BADGE_KINDS) {
       const svg = badgeSvg({ kind });
-      expect(svg).toContain(`aria-label="${LOCKER_BADGE_ALT[kind]}"`);
+      expect(svg).toContain(
+        `aria-label="${LOCKER_BADGE_LABELS[kind.slice(7) as keyof typeof LOCKER_BADGE_LABELS]} Polaris Locker"`,
+      );
       expect(svg).toContain('viewBox="0 0 320 104"');
+      expect(svg).toContain('width="320" height="104"');
     }
-    expect(badgeSvg({ kind: "locker-open-in", width: 160 })).toContain(
-      'width="240" height="78"',
+    expect(badgeSvg({ kind: "locker-open-in" })).toContain(
+      'aria-label="Open in Polaris Locker"',
     );
-    expect(badgeSvg({ kind: "locker-open-in", width: 480 })).toContain(
-      'height="156"',
+    expect(badgeSvg({ kind: "locker-sync-with" })).toContain(
+      'aria-label="Sync with Polaris Locker"',
+    );
+    // below the floor it is raised, never shrunk
+    expect(badgeSvg({ kind: "locker-open-in", width: 160 })).toContain(
+      'width="320" height="104"',
+    );
+    expect(badgeSvg({ kind: "locker-open-in", width: 240 })).toContain(
+      'width="320"',
+    );
+    expect(badgeSvg({ kind: "locker-open-in", width: 640 })).toContain(
+      'width="640" height="208"',
+    );
+    expect(badgeSvg({ kind: "locker-open-in", title: "" })).toContain(
+      'aria-hidden="true"',
     );
     expect(() => badgeSvg({ kind: "locker-nope" as never })).toThrow();
   });

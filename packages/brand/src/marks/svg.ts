@@ -17,7 +17,6 @@ import {
   ALT,
   BRAND,
   CUT_GRID,
-  LOCKER_BADGE_ALT,
   LOCKUP_TRIM,
   OPTICAL,
   type BadgeLayout,
@@ -41,6 +40,7 @@ import {
   LOCKER_BADGE_CANVAS,
   LOCKER_BADGE_MIN_WIDTH,
   lockerBadgeBody,
+  lockerBadgeAlt,
   lockerBadgeTemplate,
   lockerLockupBody,
   lockerLockupTemplate,
@@ -380,31 +380,31 @@ export function lockupSvg(opts: LockupOptions = {}): string {
 
 export type { LockerBadgeOptions } from "./locker.js";
 export {
+  LOCKER_BADGE_KINDS,
   lockerKitBadgeSvg,
   lockerKitLockupSvg,
   lockerKitMarkSvg,
 } from "./locker.js";
 
-/** The inner markup of a Locker badge (the title is the action, not the artwork's own name). */
+/** The inner markup of a Locker badge (the title is the label's action, not the artwork's own name). */
 export function badgeInner(opts: LockerBadgeOptions): string {
-  const title = opts.title ?? LOCKER_BADGE_ALT[opts.kind];
+  const title = opts.title ?? lockerBadgeAlt(opts.kind);
   return `${title ? `<title>${escapeHtml(title)}</title>` : ""}${lockerBadgeBody(opts.kind, opts.treatment, opts.theme)}`;
 }
 
 /**
- * A Polaris Locker badge ("Open in" or "Available on") as an SVG string. The kit's badges label
- * themselves only "Polaris Locker", so the accessible name carries the action. The 320 × 104
- * canvas keeps its aspect and is never cropped.
+ * A Polaris Locker badge as an SVG string, for any of the kit's 16 labels ("Open in", "Sync
+ * with", "Powered by", ...). The accessible name is "<label> Polaris Locker". The 320 × 104 canvas
+ * keeps its aspect and is never cropped, and renders at 320 CSS px or wider: a smaller `width` is
+ * raised to 320. The art is not a control: add a real destination.
  */
 export function badgeSvg(opts: LockerBadgeOptions): string {
-  if (!(opts.kind in LOCKER_BADGE_ALT))
-    throw new RangeError(`badge: unknown kind ${String(opts.kind)}`);
-  const t = lockerBadgeTemplate(opts.kind, opts.treatment);
+  const t = lockerBadgeTemplate(opts.treatment);
   const width =
     opts.width === undefined || !Number.isFinite(opts.width)
       ? LOCKER_BADGE_CANVAS.width
       : Math.max(opts.width, LOCKER_BADGE_MIN_WIDTH);
-  const head = a11y(opts.title ?? LOCKER_BADGE_ALT[opts.kind]);
+  const head = a11y(opts.title ?? lockerBadgeAlt(opts.kind));
   return `<svg xmlns="${SVG_NS}" width="${fmt(width)}" height="${fmt((width * t.height) / t.width)}" viewBox="0 0 ${t.width} ${t.height}"${head.attrs}>${badgeInner(opts)}</svg>`;
 }
 

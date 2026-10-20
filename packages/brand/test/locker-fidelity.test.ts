@@ -10,7 +10,6 @@ import { describe, expect, it } from "vitest";
 
 import {
   LOCKER_LAYOUTS,
-  LOCKER_BADGE_KINDS,
   LOCKER_BADGE_THEMES,
   LOCKER_BADGE_TREATMENTS,
   LOCKER_MARK_VARIANTS,
@@ -20,6 +19,8 @@ import {
   lockerKitLockupSvg,
   lockerKitMarkSvg,
 } from "../src/marks/svg.js";
+import { LOCKER_BADGE_KINDS } from "../src/marks/locker.js";
+import { THEME_TOKENS } from "../src/generated/tokens.js";
 import { LOCKER } from "../src/tokens/primitives.js";
 
 const PKG = join(import.meta.dirname, "..");
@@ -27,18 +28,15 @@ const KIT = join(PKG, "locker-kit");
 const read = (p: string) => readFileSync(join(KIT, p), "utf8");
 
 /**
- * Left out of the copy because the package already ships them: the variable Rubik and its
- * licence (fonts/), and two copies of the Key brand guide (2.9 MB).
+ * Left out of the copy: the variable Rubik and its licence (fonts/, the package ships Rubik), two
+ * copies of the Key guide (2.9 MB), and the badges' PNG and PDF renderings (about 13 MB; the 16
+ * labels x 9 styles stay as SVG, with badges/index.json and the README).
  */
-const OMITTED = [
-  "fonts/OFL.txt",
-  "fonts/Rubik-400.ttf",
-  "fonts/Rubik-500.ttf",
-  "fonts/Rubik-600.ttf",
-  "fonts/Rubik-Variable.ttf",
-  "source/Polaris-Key-Brand-Guide-Edition04.pdf",
-  "docs/Polaris-Key-Brand-Guide-with-Locker-v1.pdf",
-];
+const OMITTED = (path: string) =>
+  path.startsWith("fonts/") ||
+  path === "source/reference/Polaris-Key-Brand-Guide-Edition04.pdf" ||
+  path === "docs/Polaris-Key-Brand-Guide-with-Locker-v1.pdf" ||
+  (path.startsWith("badges/") && /\.(png|pdf)$/.test(path));
 
 function walk(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
@@ -52,13 +50,14 @@ describe("locker-kit/ matches the kit's manifest.json", () => {
     version: string;
     files: { path: string; bytes: number; sha256: string }[];
   };
-  const kept = manifest.files.filter((f) => !OMITTED.includes(f.path));
+  const kept = manifest.files.filter((f) => !OMITTED(f.path));
 
-  it("is Launch Kit v1.0.0 and omits exactly the named files", () => {
-    expect(manifest.version).toBe("1.0.0");
-    const listed = manifest.files.map((f) => f.path);
-    for (const o of OMITTED) expect(listed).toContain(o);
-    for (const o of OMITTED) expect(existsSync(join(KIT, o))).toBe(false);
+  it("is Launch Kit v1.3.0 and omits exactly the named files", () => {
+    expect(manifest.version).toBe("1.3.0");
+    const omitted = manifest.files.filter((f) => OMITTED(f.path));
+    // fonts (5), two Key guides, 16 labels x 9 styles x (3 PNG + 1 PDF)
+    expect(omitted.length).toBe(5 + 2 + 16 * 9 * 4);
+    for (const o of omitted) expect(existsSync(join(KIT, o.path))).toBe(false);
   });
 
   it("holds no file the manifest does not list", () => {
@@ -121,9 +120,12 @@ describe("rendered artwork is the kit's file, byte for byte", () => {
       LOCKER_BADGE_TREATMENTS.map((tr) => [k, th, tr] as const),
     ),
   );
+  it("covers all 16 labels x 9 styles", () => {
+    expect(badges.length).toBe(16 * 9);
+  });
   it.each(badges)("badge %s %s %s", (kind, theme, treatment) => {
-    expect(lockerKitBadgeSvg(`locker-${kind}`, treatment, theme)).toBe(
-      read(`badges/locker-${kind}-${theme}-${treatment}.svg`).trimEnd(),
+    expect(lockerKitBadgeSvg(kind, treatment, theme)).toBe(
+      read(`badges/${kind}-${theme}-${treatment}.svg`).trimEnd(),
     );
   });
 });
@@ -148,5 +150,37 @@ describe("web files", () => {
         ),
         f,
       ).toBe(true);
+  });
+});
+
+describe("tokens/polaris-family.tokens.json (reference only)", () => {
+  const family = JSON.parse(
+    read("tokens/polaris-family.tokens.json"),
+  ) as Record<"dark" | "light", Record<string, string>>;
+  const locker = JSON.parse(read("tokens/locker.tokens.json")) as typeof family;
+  it.each(["dark", "light"] as const)(
+    "%s: the shared neutrals are Key's own tokens",
+    (theme) => {
+      const t = THEME_TOKENS[theme];
+      for (const src of [family, locker]) {
+        expect(src[theme]!.page).toBe(t.surface.page);
+        expect(src[theme]!.surface).toBe(t.surface.raised);
+        expect(src[theme]!.text).toBe(t.text.default);
+        expect(src[theme]!.muted).toBe(t.text.muted);
+        // controlBoundary is Key's border.strong: no gap, no new role
+        expect(src[theme]!.controlBoundary).toBe(t.border.strong);
+      }
+    },
+  );
+  it("the family and Locker agree on every shared role", () => {
+    for (const theme of ["dark", "light"] as const)
+      for (const k of ["page", "surface", "text", "muted", "controlBoundary"])
+        expect(family[theme]![k]).toBe(locker[theme]![k]);
+  });
+  it("the Locker accent in the family file is the kit's", () => {
+    const css = read("tokens/polaris-family.css");
+    expect(css).toContain(
+      `[data-polaris-brand="locker"] { --polaris-brand-accent: ${LOCKER.accent.dark}; }`,
+    );
   });
 });

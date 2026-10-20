@@ -1160,20 +1160,32 @@ reconciliation (UK-58).
 ## 15. Polaris Locker
 
 Polaris Locker is the customer-facing brand: the portal, the licence card, customer pages and
-customer mail. It is a **subbrand**, not a service: no slug, no `data-service`, no entry in
-`SERVICE_ACCENTS` or `tools/services.json`. Source: the Polaris Locker Launch Kit v1.0 (19 October
-2026), copied into `packages/brand/locker-kit/` and checked against its `manifest.json` by
-`test/locker-fidelity.test.ts`. Left out because the package already has them: `fonts/` (variable
-Rubik), and two copies of the Key guide. Its guide is `locker-kit/docs/Polaris-Locker-Brand-Guide-v1.pdf`.
+customer mail. It is a **subbrand** in code, not a service: no slug, no `data-service`, no entry in
+`SERVICE_ACCENTS` or `tools/services.json`. Source: the Polaris Locker Launch Kit **v1.3.0**
+(19 October 2026), copied into `packages/brand/locker-kit/` and checked against its
+`manifest.json` (SHA-256 of every kept file) by `test/locker-fidelity.test.ts`. Left out: `fonts/`
+(the package ships variable Rubik), two copies of the Key guide, and the badges' PNG and PDF
+renderings (about 13 MB; the SVGs, `badges/index.json` and the README stay). Its guide is
+`locker-kit/docs/Polaris-Locker-Brand-Guide-v1.pdf`, the badge catalogue
+`docs/Polaris-Locker-Badge-Catalogue-v1.pdf`, the family spec `docs/brand-alignment.md`.
+
+**Public brand architecture (kit v1.3, stated by the kit).** Locker is the public identity on every
+public surface (marketing, docs, console, sign-in, downloads, emails, SDK presentation and partner
+badges), the attribution is "Powered by Polaris Locker", and Polaris Key is the underlying platform
+with its own guide. The kit does not rename live systems; the programme plan decides what moves
+(this package only imports the assets and tokens).
 
 **Mark.** The Bookends: two blocks and a four-point star, flat, no bit and no gold. Two cuts, by
 displayed size and never DPR: **micro** below 24 CSS px (16-unit grid), **master** from 24 px (128).
 `opticalCut(size, "locker")` picks one; the app, `<img>` and favicon sizes follow the kit's exports.
 Clear space is a quarter of the glyph height. The lockups (horizontal, compact, stacked in dark,
 light, white, black and coral) are outlined Rubik and used as supplied. The badges keep their
-320 × 104 canvas, never cropped; their art says only "Polaris Locker", so the `<img alt>` carries
-"Open in Polaris Locker" or "Available on Polaris Locker". "Open in" needs a real destination and
-"Available on" real availability.
+320 × 104 canvas, never cropped, and render at 320 CSS px or wider (PNG resolution does not change
+that). There are 16 labels (available-in, available-on, buy-on, connect-with, download-from,
+get-it-on, install-with, login-with, manage-with, open-in, play-on, powered-by, purchase-with,
+sign-in-with, sync-with, update-with) in dark, light and white, as transparent, sticker or outline;
+the accessible name is "<label> Polaris Locker". Each label needs a real destination or capability
+(a purchase flow, an authentication integration, availability); the art implements none of them.
 
 **Tokens.** Grounds are Key's (`page`, `surface`, `text`, `muted` equal `surface.page`,
 `surface.raised`, `text.default`, `text.muted`); only the accent is new.
@@ -1222,10 +1234,17 @@ the context edge) and these distances. Coral against the other colours, measured
 
 **API.** `markSvg`, `lockupSvg`, `<PolarisMark>` and `<PolarisLockup>` take `kind: "locker"` and
 throw on `signed` or any `bit` but `"none"`. `lockupSvg` also takes `theme: "coral"` for Locker.
-`badgeSvg({ kind: "locker-open-in" | "locker-available-on", treatment, theme })` draws the badges, never narrower than 240 px (a smaller `width` is raised to it).
+`badgeSvg({ kind: "locker-<label>", treatment, theme })` draws any of the 16 badges, never narrower than 320 px (a smaller `width` is raised to it).
 Files: `@polaris-key/brand/{marks,lockups,badges,social,app-icons,web}/locker/…` and `/locker.css`.
 The preview shows Locker at 16, 24, 32, 48 and 96 px in both themes and mono (the guide's p.18
 check). There is no native, Python, C# or Node-CLI output: the kits are host-owned.
+
+**Reference tokens.** `locker-kit/tokens/polaris-family.{css,tokens.json}` (shared neutrals under
+`[data-polaris-brand]`, `--polaris-*`, capability display swatches) are kept as reference and not
+imported. The test pins that the shared neutrals are Key's own: `page`, `surface`, `text`, `muted`
+equal `surface.page`, `surface.raised`, `text.default`, `text.muted`, and the kit's new
+`controlBoundary` (`#61697b` dark, `#7e8699` light) equals `border.strong` exactly (3.61 / 3.44:1 on
+the page), so it needs no new role. The capability swatches are display references, not UI roles.
 
 **Not yet.** The `accent-as-status` lint (UK-55) must learn `--pk-locker-*`. The compact lockup is
 never rendered under 120 px wide (kit p.7).

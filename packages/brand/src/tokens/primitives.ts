@@ -90,6 +90,8 @@ export type LockerCut = keyof typeof LOCKER_CUT_GRID;
 export const LOCKER = {
   accent: { dark: "#ff7869", light: "#c44438" },
   onAccent: { dark: "#060912", light: "#ffffff" },
+  /** v1.3: the 3:1 boundary of a control. Reference only; Key's `border.strong` is the role. */
+  controlBoundary: { dark: "#61697b", light: "#7e8699" },
   page: { dark: "#060912", light: "#f6f8ff" },
   surface: { dark: "#0d111b", light: "#ffffff" },
   text: { dark: "#dbe4ff", light: "#262d40" },
@@ -135,12 +137,6 @@ export const ALT = {
   update: "Polaris Key Update",
   delivery: "Polaris Key Delivery",
   poweredBy: "Powered by Polaris Key",
-} as const;
-
-/** Locker badges name themselves only "Polaris Locker"; the `<img alt>` carries the action. */
-export const LOCKER_BADGE_ALT = {
-  "locker-open-in": "Open in Polaris Locker",
-  "locker-available-on": "Available on Polaris Locker",
 } as const;
 
 /** Typefaces the kit sets its type in. */

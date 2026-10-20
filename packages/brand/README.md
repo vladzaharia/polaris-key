@@ -146,7 +146,7 @@ so it is identical on every platform; export `./GENERATED.sha256`). No generated
   (`scripts/assets.ts` re-sets every kit card first and requires it back byte for byte). The kit
   originals stay in `kit/`.
 - **Polaris Locker** (`locker-kit/`, `css/locker.css`, `web/locker/`, `src/generated/locker.ts`): the
-  Locker launch kit copied except `fonts/` and two Key-guide PDFs, hash-checked against its
+  Locker launch kit v1.3 copied except `fonts/`, two Key-guide PDFs and the badge PNG/PDF renderings, hash-checked against its
   `manifest.json`. `scripts/locker.ts` turns its lockups and badges into role templates and
   requires each variant back byte for byte before writing. `kind: "locker"` has two cuts and no
   bit; `--pk-locker-*` and `data-brand="locker"` are in `tokens.css`. The kit's `build.py` is never run.

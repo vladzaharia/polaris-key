@@ -26,7 +26,6 @@ export const LOCKER_MARK_VARIANTS = [
   "coral",
 ] as const;
 export const LOCKER_LAYOUTS = ["horizontal", "compact", "stacked"] as const;
-export const LOCKER_BADGE_KINDS = ["open-in", "available-on"] as const;
 export const LOCKER_BADGE_THEMES = ["dark", "light", "white"] as const;
 export const LOCKER_BADGE_TREATMENTS = [
   "transparent",
@@ -194,29 +193,81 @@ export function loadLocker(dir: string) {
         `locker: the ${layout} lockup does not carry the master cut`,
       );
 
+  // Badges (v1.3): 16 labels share one structure per treatment; only the prefix text group
+  // ("Open in", "Sync with", ...) differs, so each treatment is a template with a {prefix} slot
+  // and each label contributes its outlined prefix. Every file must reproduce from them.
+  const index = JSON.parse(read(dir, "badges/index.json")) as {
+    canvas: [number, number];
+    minimumDisplayWidthCssPx: number;
+    themes: string[];
+    styles: string[];
+    labels: { label: string; slug: string }[];
+  };
+  if (
+    index.canvas.join("x") !== "320x104" ||
+    index.minimumDisplayWidthCssPx !== 320 ||
+    index.themes.join() !== LOCKER_BADGE_THEMES.join() ||
+    index.styles.join() !== LOCKER_BADGE_TREATMENTS.join()
+  )
+    throw new Error("locker: badges/index.json changed shape");
+  const PREFIX =
+    /<g fill="\{text\}" transform="translate\(96,42\) scale\(0\.014, -0\.014\)">(?:<path transform="translate\(\d+,0\)" d="[^"]*"\/>)+<\/g>/;
+  const badgeLabels: Record<string, string> = {};
+  const badgePrefixes: Record<string, string> = {};
   const badges = {} as Record<
-    string,
-    Record<(typeof LOCKER_BADGE_TREATMENTS)[number], LockerTemplate>
+    (typeof LOCKER_BADGE_TREATMENTS)[number],
+    LockerTemplate
   >;
   const badgePalettes = {} as Record<
     (typeof LOCKER_BADGE_TREATMENTS)[number],
     Record<string, LockerPalette>
   >;
-  for (const kind of LOCKER_BADGE_KINDS) {
-    badges[kind] = {} as (typeof badges)[string];
+  for (const { label, slug } of index.labels) {
+    badgeLabels[slug] = label;
     for (const treatment of LOCKER_BADGE_TREATMENTS) {
-      const r = template(
-        dir,
-        LOCKER_BADGE_THEMES.map((th) => [
-          th,
-          `badges/locker-${kind}-${th}-${treatment}.svg`,
-        ]),
-      );
-      badges[kind]![treatment] = r.t;
-      const known = badgePalettes[treatment];
-      if (known && JSON.stringify(known) !== JSON.stringify(r.palettes))
-        throw new Error(`locker: ${kind} ${treatment} badge palette differs`);
-      badgePalettes[treatment] = r.palettes;
+      for (const theme of LOCKER_BADGE_THEMES) {
+        const path = `badges/locker-${slug}-${theme}-${treatment}.svg`;
+        const svg = read(dir, path);
+        const { t, palette } = abstract(svg);
+        if (t.title !== `${label} Polaris Locker`)
+          throw new Error(
+            `locker: ${path} is not named "${label} Polaris Locker"`,
+          );
+        const m = PREFIX.exec(t.body);
+        if (!m) throw new Error(`locker: ${path} has no prefix group`);
+        if (badgePrefixes[slug] !== undefined && badgePrefixes[slug] !== m[0])
+          throw new Error(`locker: ${path} prefix differs from its siblings`);
+        badgePrefixes[slug] = m[0];
+        const rest: LockerTemplate = {
+          width: t.width,
+          height: t.height,
+          title: "",
+          body: t.body.replace(PREFIX, "{prefix}"),
+        };
+        const known = badges[treatment];
+        if (known && JSON.stringify(known) !== JSON.stringify(rest))
+          throw new Error(`locker: ${path} differs from its treatment`);
+        badges[treatment] = rest;
+        const pal = (badgePalettes[treatment] ??= {});
+        if (
+          pal[theme] &&
+          JSON.stringify(pal[theme]) !== JSON.stringify(palette)
+        )
+          throw new Error(`locker: ${path} palette differs`);
+        pal[theme] = palette;
+        const again = lockerFile(
+          {
+            ...rest,
+            title: t.title,
+            body: rest.body.replace("{prefix}", badgePrefixes[slug]!),
+          },
+          palette,
+        );
+        if (again !== svg.trimEnd())
+          throw new Error(
+            `locker: ${path} does not reproduce from its template`,
+          );
+      }
     }
   }
   return {
@@ -226,6 +277,8 @@ export function loadLocker(dir: string) {
     lockupPalettes,
     badges,
     badgePalettes,
+    badgeLabels,
+    badgePrefixes,
   };
 }
 

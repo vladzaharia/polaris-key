@@ -797,11 +797,20 @@ export const LOCKER_LOCKUP_TEMPLATES: Record<
 /** The colour each role takes in each lockup variant. */
 export const LOCKER_LOCKUP_PALETTES = ${JSON.stringify(lockupPalettes)} as const;
 
-/** locker-kit/badges/locker-<kind>-*.svg as colour templates, per kind and treatment. */
+/**
+ * locker-kit/badges/*.svg as one template per treatment with a \`{prefix}\` slot (the 16 labels
+ * share every other byte), the label names and each label's outlined prefix group.
+ */
 export const LOCKER_BADGE_TEMPLATES: Record<
-  "open-in" | "available-on",
-  Record<"transparent" | "sticker" | "outline", LockerTemplate>
+  "transparent" | "sticker" | "outline",
+  LockerTemplate
 > = ${JSON.stringify(k.badges)};
+
+/** badges/index.json: slug to label ("open-in" to "Open in"). The accessible name is "<label> Polaris Locker". */
+export const LOCKER_BADGE_LABELS = ${JSON.stringify(k.badgeLabels)} as const;
+
+/** Each label's outlined prefix text group, as the kit draws it. */
+export const LOCKER_BADGE_PREFIXES = ${JSON.stringify(k.badgePrefixes)} as const;
 
 /** The colour each role takes in each badge treatment and theme. */
 export const LOCKER_BADGE_PALETTES = ${JSON.stringify(k.badgePalettes)} as const;

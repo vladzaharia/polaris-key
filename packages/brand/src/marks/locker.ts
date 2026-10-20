@@ -5,18 +5,16 @@
 // alone.
 
 import {
+  LOCKER_BADGE_LABELS,
   LOCKER_BADGE_PALETTES,
+  LOCKER_BADGE_PREFIXES,
   LOCKER_BADGE_TEMPLATES,
   LOCKER_GEOMETRY,
   LOCKER_LOCKUP_PALETTES,
   LOCKER_LOCKUP_TEMPLATES,
   LOCKER_MARK_PALETTES,
 } from "../generated/locker.js";
-import {
-  LOCKER_BADGE_ALT,
-  LOCKER_CUT_GRID,
-  type LockerCut,
-} from "../tokens/primitives.js";
+import { LOCKER_CUT_GRID, type LockerCut } from "../tokens/primitives.js";
 import { isNoBit, opticalCut, type BitColor, type MarkTheme } from "./core.js";
 import type { LockerTemplate } from "./types.js";
 
@@ -131,37 +129,50 @@ export function lockerKitLockupSvg(
 
 // ── Badges ──────────────────────────────────────────────────────────────────────────────────
 
-export type LockerBadgeKind = keyof typeof LOCKER_BADGE_ALT;
+/** A badge label slug from the kit's badges/index.json ("open-in", "sync-with", ...). */
+export type LockerBadgeSlug = keyof typeof LOCKER_BADGE_LABELS;
+/** `locker-<slug>`: all 16 labels. "Open in" needs a real destination, "Purchase with" a real flow. */
+export type LockerBadgeKind = `locker-${LockerBadgeSlug}`;
 export type LockerBadgeTreatment = "transparent" | "sticker" | "outline";
 export type LockerBadgeTheme = "dark" | "light" | "white";
 
 export interface LockerBadgeOptions {
-  /** "locker-open-in" needs a real destination; "locker-available-on" needs real availability. */
   kind: LockerBadgeKind;
   treatment?: LockerBadgeTreatment;
   /** Which ground it is FOR. */
   theme?: LockerBadgeTheme;
-  /** Rendered width in CSS px. Default: the canvas, 320; raised to the 240 minimum. The aspect is never changed. */
+  /** Rendered width in CSS px. Default 320; a smaller request is raised to the 320 minimum. */
   width?: number;
-  /** Accessible name; defaults to the action ("Open in Polaris Locker"). "" marks it decorative. */
+  /** Accessible name; defaults to "<label> Polaris Locker". "" marks it decorative. */
   title?: string;
 }
 
 /** The badge canvas, 320 × 104 (never cropped). */
 export const LOCKER_BADGE_CANVAS = { width: 320, height: 104 } as const;
 
-/** The smallest rendered badge width, in CSS px; a smaller request is raised to it (as `badgeSize`). */
-export const LOCKER_BADGE_MIN_WIDTH = 240;
+/** The smallest displayed width (kit v1.3): the full canvas at 320 CSS px or more. */
+export const LOCKER_BADGE_MIN_WIDTH = 320;
+
+export const LOCKER_BADGE_KINDS = (
+  Object.keys(LOCKER_BADGE_LABELS) as LockerBadgeSlug[]
+).map((slug) => `locker-${slug}` as LockerBadgeKind);
+
+const slugOf = (kind: LockerBadgeKind): LockerBadgeSlug => {
+  const slug = kind.slice("locker-".length) as LockerBadgeSlug;
+  if (!kind.startsWith("locker-") || !(slug in LOCKER_BADGE_LABELS))
+    throw new RangeError(`badge: unknown kind ${String(kind)}`);
+  return slug;
+};
+
+/** The accessible name of a label's badge: "<label> Polaris Locker". */
+export function lockerBadgeAlt(kind: LockerBadgeKind): string {
+  return `${LOCKER_BADGE_LABELS[slugOf(kind)]} Polaris Locker`;
+}
 
 export function lockerBadgeTemplate(
-  kind: LockerBadgeKind,
   treatment: LockerBadgeTreatment = "transparent",
 ): LockerTemplate {
-  const t =
-    LOCKER_BADGE_TEMPLATES[
-      kind === "locker-open-in" ? "open-in" : "available-on"
-    ][treatment];
-  return t;
+  return LOCKER_BADGE_TEMPLATES[treatment];
 }
 
 export function lockerBadgeBody(
@@ -169,18 +180,19 @@ export function lockerBadgeBody(
   treatment: LockerBadgeTreatment = "transparent",
   theme: LockerBadgeTheme = "dark",
 ): string {
+  const prefix = LOCKER_BADGE_PREFIXES[slugOf(kind)];
   return fillRoles(
-    lockerBadgeTemplate(kind, treatment).body,
+    lockerBadgeTemplate(treatment).body.replace("{prefix}", prefix),
     LOCKER_BADGE_PALETTES[treatment][theme],
   );
 }
 
-/** The kit's own badge file, byte for byte (badges/locker-<kind>-<theme>-<treatment>.svg). */
+/** The kit's own badge file, byte for byte (badges/locker-<slug>-<theme>-<treatment>.svg). */
 export function lockerKitBadgeSvg(
   kind: LockerBadgeKind,
   treatment: LockerBadgeTreatment,
   theme: LockerBadgeTheme,
 ): string {
-  const t = lockerBadgeTemplate(kind, treatment);
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${t.width}" height="${t.height}" viewBox="0 0 ${t.width} ${t.height}" role="img" aria-label="${t.title}">${lockerBadgeBody(kind, treatment, theme)}</svg>`;
+  const t = lockerBadgeTemplate(treatment);
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${t.width}" height="${t.height}" viewBox="0 0 ${t.width} ${t.height}" role="img" aria-label="${lockerBadgeAlt(kind)}">${lockerBadgeBody(kind, treatment, theme)}</svg>`;
 }
