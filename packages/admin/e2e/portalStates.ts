@@ -430,8 +430,31 @@ export const SHIPPED: ShippedState[] = [
       },
     }),
     ready: async (p) => {
-      await h1(p, "Confirm your email");
-      await p.getByRole("button", { name: "Continue" }).waitFor();
+      await h1(p, "Create your account");
+      await p.getByText("Confirmed by Google").waitFor();
+      await p
+        .getByRole("button", { name: "Create account and continue" })
+        .waitFor();
+    },
+  },
+  {
+    section: "4.29",
+    id: "signin-finish-terms",
+    title:
+      "Finish: the primary stays enabled; each unticked agreement is named at its box",
+    scenario: "signedOut",
+    path: "/?signin=confirm-email",
+    routes: gateView({
+      terms: { url: "https://lanternworks.example/terms", version: "2" },
+      platformTerms: { url: "https://polaris.locker/terms", version: "1" },
+      product: { slug: "nightfall", name: "Nightfall" },
+    }),
+    ready: async (p) => {
+      await h1(p, "Create your account");
+      await p
+        .getByRole("button", { name: "Create account and continue" })
+        .click();
+      await p.getByText("Agree to the terms to continue.").first().waitFor();
     },
   },
   {
@@ -459,7 +482,7 @@ export const SHIPPED: ShippedState[] = [
       },
     }),
     ready: async (p) => {
-      await h1(p, "Confirm your email");
+      await h1(p, "Create your account");
       await p.getByRole("button", { name: "Send code" }).waitFor();
     },
   },

@@ -343,11 +343,9 @@ sign-in, requested at {time} from {place}", with "The device that asked signs in
 **Confirm**, then "Sign-in confirmed. Go back to the device where you started. It signs in by
 itself."
 
-**RegisterStep** (a new account after an email code) is FinishStep (§3.5) with the email already
-verified: "Create your account". A success line reads "{email} is verified". **Screen name** has the
-help "Shown to you and in emails. Developers see it only when you continue to their app." Then the
-other finish stages that apply (§3.5), the opt-in "Add a passkey after this, so next time is one
-tap", **Create account and continue**, and the terms line when terms are set.
+**RegisterStep** (a new account after an email code) is FinishStep (§3.5) with the address already
+proven: h1 "Create your account", the email as plain text with "Confirmed by code" beside its label.
+Every new address reaches it, whether or not Polaris Locker's terms are published.
 
 ### 3.5 FinishStep: a new account, EmailGateStep and profile import
 
@@ -370,10 +368,18 @@ first provider sign-in of an account). It asks, in this order, only what the acc
 
 - **Required, once per account.** No skip path. **Cancel sign-in** abandons the sign-in. No token,
   session or binding is issued before the gate passes.
-- **Layout:** the "Signed in with <Provider> · <identity> · Done" strip; h1 "Confirm your email";
-  lede (in an app: "One step before <App>. We send sign-in codes, receipts and security notices
-  here."); **ProfileImport**; the email radio cards; Terms when the product requires them; the
-  primary; the Polaris Locker terms line.
+- **Layout** (mockup `identity.finish`, which wins over frame 04): h1 "Create your account", one
+  step for both entries and no "Signed in with" strip. The **Email** label carries "Confirmed by
+  Google" (the provider) beside it, and the address is plain text with a lock, said once.
+  **Screen name** (never "Your name") with "Use a name from" and one chip per source, the current
+  one marked, and the hint "Shown in Polaris Locker and in emails." **Picture** as tiles: each
+  source's picture, Initials ("From your name") and Upload (PNG or JPEG); the tile in use says "In
+  use". A birth date only when a source offered one. Then one explicit check for Polaris Locker's
+  Terms and Privacy Policy and one for the product's, then the quiet opt-in "Add a passkey after
+  this". The primary **Create account and continue** is never disabled: an unticked agreement is
+  named at its checkbox ("Agree to the terms to continue.") and takes focus. **Cancel sign-in** is
+  a ghost button under it. A passkey chosen here is made after the account exists, and an upload
+  is sent then too; a refusal of either leaves initials and no passkey.
 - **Fast path:** a provider-verified address needs **no code**. That means any Apple address,
   private relay included, or a Google address with `email_verified: true` that is either
   `@gmail.com`/`@googlemail.com` or carries a signed `hd` claim equal to its domain (a Workspace
@@ -1109,8 +1115,8 @@ to the existing `portal/` renders, which stand where this document does not redr
 FinishStep (§3.5) runs its email stage first:
 
 - **Verified email** (Apple incl. relay; Google `email_verified` on a Gmail address or a matching
-  Workspace `hd`, §3.5): the strip, ProfileImport, the
-  provider address preselected, **Continue to <App>** with no code. In the app it then continues to
+  Workspace `hd`, §3.5): the address as plain text "Confirmed by Google", the profile choices and
+  **Create account and continue** with no code. In the app it then continues to
   LicenseChoiceStep. Profile import shows what came from the provider ("Name and picture from
   Google") with **Change picture**; the person can disconnect the provider later in Account →
   Sign-in methods, once another method exists.

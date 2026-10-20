@@ -10,3 +10,5 @@ export {
   QuietLinks,
   useStepFocus,
 } from "./parts.js";
+export { CodeEntry } from "./CodeEntry.js";
+export type { CodeResendOutcome, CodeVerifyOutcome } from "./CodeEntry.js";

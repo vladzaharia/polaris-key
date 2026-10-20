@@ -1,20 +1,22 @@
 import * as React from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Check, User } from "lucide-react";
+import { Check, CircleCheck, Lock, Mail, Upload } from "lucide-react";
 import { Button } from "../../../ui/Button.js";
 import { Checkbox } from "../../../ui/Checkbox.js";
 import { Input } from "../../../ui/Input.js";
 import {
   AuthTitle,
-  CODE_LENGTH,
-  CodeCells,
-  QuietLink,
+  CodeEntry,
+  type CodeResendOutcome,
+  type CodeVerifyOutcome,
   useStepFocus,
 } from "../../../ui/auth/index.js";
+import { cn } from "../../../lib/cn.js";
 import { t, tParts } from "../../../lib/copy.js";
 import {
   portalApi,
   PortalApiError,
+  setPortalCsrf,
   type PortalGate,
   type PortalGateChoice,
 } from "../../api.js";
@@ -24,6 +26,7 @@ import { rememberNudge, rememberVia } from "../../lastMethod.js";
 import { announceSignedIn } from "../../session.js";
 import { wrongCodeText } from "../../copy/codeEntry.js";
 import { initialsOf } from "../Avatar.js";
+import { createPasskey, passkeysSupported } from "../../webauthn.js";
 import {
   AppleGlyph,
   GoogleGlyph,
@@ -31,13 +34,13 @@ import {
 } from "../../../ui/auth/ProviderGlyphs.js";
 
 /**
- * FinishStep (SIGN-IN.md §3.5, I-27 §2.4; API I-33): a new account finishes in one step that asks,
- * in this order, only what the account lacks: the email (a code unless the provider vouches for
- * it), the screen name with the provider's picture, a birth date only when a source offered one,
- * and the terms. **EmailGateStep** is a provider's first sign-in; **RegisterStep** is an email
- * code's ("Create your account", the address already proven). Nothing is issued before the gate
+ * FinishStep (identity.finish, SIGN-IN.md §3.5, I-27 §2.4; API I-33): every new account finishes
+ * in this one step, "Create your account": the email (a code unless the provider vouches for it),
+ * the screen name with a chip per source, the picture, a birth date only when a source offered
+ * one, the explicit terms checks and the passkey opt-in. Nothing is issued before the gate
  * passes: Cancel sign-in abandons it. A proven address another account uses becomes the join
- * offer, never a silent join.
+ * offer, never a silent join. The primary is never disabled: a missing agreement is named at its
+ * checkbox.
  */
 type Phase =
   | { kind: "loading" }
@@ -59,8 +62,14 @@ function safeHref(url: string): string | null {
   return /^https:\/\//.test(url) || url.startsWith("/") ? url : null;
 }
 
-function ProviderMark({ kind }: { kind: string }): React.ReactElement | null {
-  const c = "size-5 shrink-0";
+function ProviderMark({
+  kind,
+  className = "size-4 shrink-0",
+}: {
+  kind: string;
+  className?: string;
+}): React.ReactElement | null {
+  const c = className;
   return kind === "apple" ? (
     <AppleGlyph className={c} />
   ) : kind === "google" ? (
@@ -248,11 +257,73 @@ function GateUnreachable({
 /** The gate answers no `resendIn`: a fixed pause between codes. */
 const RESEND_S = 30;
 
-function clockText(s: number): string {
-  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+type FieldError = { field: "email" | "code" | "form"; text: string };
+type Pick = "provider" | "initials" | "upload";
+
+/** What the screen asks of a picture file: a PNG or JPEG the Worker then judges by its bytes. */
+function pictureOk(file: File): boolean {
+  return file.type === "image/png" || file.type === "image/jpeg";
 }
 
-type FieldError = { field: "email" | "terms" | "code" | "form"; text: string };
+/**
+ * The account exists and the session is set: the choices the gate could not carry (an uploaded
+ * picture, a passkey) are made now. Best effort, never in the way: a refusal leaves the account
+ * with its initials and no passkey, both one tap away in Account.
+ */
+async function afterFinish(opts: {
+  upload: File | null;
+  passkey: boolean;
+}): Promise<void> {
+  if (!opts.upload && !opts.passkey) return;
+  try {
+    setPortalCsrf((await portalApi.me()).csrf);
+  } catch {
+    return;
+  }
+  if (opts.upload) {
+    try {
+      const { upload } = await portalApi.uploadPicture(opts.upload);
+      await portalApi.updateProfile({ picture: { upload: upload.asset } });
+    } catch {
+      // Initials stay.
+    }
+  }
+  if (opts.passkey) {
+    try {
+      const { options } = await portalApi.passkeyRegistrationOptions();
+      await portalApi.addPasskey(await createPasskey(options));
+    } catch {
+      // Cancelled or refused: Account → Sign-in methods adds one later.
+    }
+  }
+}
+
+/** A field label row with a status word at its end ("Confirmed by Google"). */
+function EmailConfirmed({
+  status,
+  value,
+}: {
+  status: string;
+  value: string;
+}): React.ReactElement {
+  return (
+    <div className="space-y-1.5">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+        <span className="text-sm font-medium text-fg-strong">
+          {t("signin.email.label")}
+        </span>
+        <span className="inline-flex items-center gap-1 text-sm text-success">
+          <CircleCheck aria-hidden className="size-4" />
+          {status}
+        </span>
+      </div>
+      <div className="flex min-h-11 items-center gap-2 text-fg">
+        <Lock aria-hidden className="size-4 shrink-0 text-fg-muted" />
+        <span className="min-w-0 [overflow-wrap:anywhere]">{value}</span>
+      </div>
+    </div>
+  );
+}
 
 function FinishForm({
   gate,
@@ -278,37 +349,42 @@ function FinishForm({
   /** Back from the code or the join offer to the email choice (the next choose replaces it). */
   const [editing, setEditing] = React.useState(false);
   const [name, setName] = React.useState(gate.profile.name ?? "");
-  const [initials, setInitials] = React.useState(
-    gate.profile.initials === true,
+  const hasPicture = Boolean(gate.profile.picture);
+  const [pick, setPick] = React.useState<Pick>(
+    hasPicture && gate.profile.initials !== true ? "provider" : "initials",
   );
+  const [upload, setUpload] = React.useState<File | null>(null);
+  const [uploadUrl, setUploadUrl] = React.useState<string | null>(null);
+  const [pictureError, setPictureError] = React.useState<string | null>(null);
   const [birth, setBirth] = React.useState(false);
-  const [product, setProduct] = React.useState(false);
-  const [code, setCode] = React.useState("");
+  const [platformOk, setPlatformOk] = React.useState(false);
+  const [productOk, setProductOk] = React.useState(false);
+  const [termsError, setTermsError] = React.useState({
+    platform: false,
+    product: false,
+  });
+  const [passkey, setPasskey] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<FieldError | null>(null);
-  /** Seconds before "Send a new code" (the code stage), and the line that says one was sent. */
-  const [wait, setWait] = React.useState(RESEND_S);
-  const [resent, setResent] = React.useState<string | null>(null);
-  React.useEffect(() => {
-    if (wait <= 0) return;
-    const id = window.setTimeout(() => setWait((n) => n - 1), 1000);
-    return () => window.clearTimeout(id);
-  }, [wait]);
   const errorId = React.useId();
   const nameId = React.useId();
   const emailId = React.useId();
-  const codeId = React.useId();
+  const fileRef = React.useRef<HTMLInputElement>(null);
   const emailRef = React.useRef<HTMLInputElement>(null);
-  const termsRef = React.useRef<HTMLButtonElement>(null);
+  const platformRef = React.useRef<HTMLButtonElement>(null);
+  const productRef = React.useRef<HTMLButtonElement>(null);
+  React.useEffect(
+    () => () => {
+      if (uploadUrl) URL.revokeObjectURL(uploadUrl);
+    },
+    [uploadUrl],
+  );
 
   const emailAsked = gate.emailRequired;
+  const existing = !emailAsked && !register;
   const productTerms = gate.terms;
   const platformTerms = gate.platformTerms ?? null;
   const needsCode = emailAsked && !(way === "provider" && vouched);
-  // The strip names who signed in once: the address is the radio's job when there is one.
-  const identity = providerEmail
-    ? null
-    : (gate.email.confirmed ?? gate.profile.name ?? null);
   const view =
     editing && gate.stage !== "choose"
       ? "choose"
@@ -324,14 +400,12 @@ function FinishForm({
       ? t("signin.gate.joinTitle")
       : view === "code"
         ? t("signin.code.title")
-        : register
-          ? t("signin.register.title")
-          : emailAsked
-            ? t("signin.gate.title")
-            : t("signin.gate.termsTitle");
+        : existing
+          ? t("signin.gate.termsTitle")
+          : t("signin.register.title");
   React.useEffect(() => {
-    onTitle?.(view === "join" ? t("signin.gate.joinTitle") : title);
-  }, [title, view, onTitle]);
+    onTitle?.(title);
+  }, [title, onTitle]);
 
   // The first arrival takes focus on the heading, like a step change.
   React.useEffect(() => {
@@ -345,8 +419,19 @@ function FinishForm({
     setError({ field, text });
     requestAnimationFrame(() => {
       if (field === "email") emailRef.current?.focus();
-      else if (field === "terms") termsRef.current?.focus();
     });
+  };
+
+  /** Name the unticked agreements at their checkboxes and focus the first. */
+  const failTerms = (): void => {
+    const next = {
+      platform: Boolean(platformTerms) && !platformOk,
+      product: Boolean(productTerms) && !productOk,
+    };
+    setTermsError(next);
+    requestAnimationFrame(() =>
+      (next.platform ? platformRef : productRef).current?.focus(),
+    );
   };
 
   const run = async (fn: () => Promise<void>): Promise<void> => {
@@ -361,10 +446,7 @@ function FinishForm({
           setEditing(false);
           return void (await reload());
         }
-        if (err.code === "terms_required")
-          return fail("terms", t("core.codes.terms_required.message"));
-        if (err.code === "invalid_code")
-          return fail("code", wrongCodeText(err.triesLeft));
+        if (err.code === "terms_required") return failTerms();
         if (err.status === 422) return fail("email", t("signin.email.invalid"));
         if (err.status === 429) return fail("form", t("signin.rateLimitedFew"));
         if (err.status === 400) return void (await reload());
@@ -383,19 +465,28 @@ function FinishForm({
     }
     const n = name.trim();
     if (n) out.name = n;
-    if (gate.profile.picture) out.picture = initials ? "initials" : "provider";
+    if (hasPicture) out.picture = pick === "provider" ? "provider" : "initials";
     if (gate.profile.birthdate && birth)
       out.birthdate = gate.profile.birthdate.value;
-    if (productTerms) out.termsVersion = productTerms.version;
-    if (platformTerms) out.platformTermsVersion = platformTerms.version;
+    if (productTerms && productOk) out.termsVersion = productTerms.version;
+    if (platformTerms && platformOk)
+      out.platformTermsVersion = platformTerms.version;
     return out;
+  };
+
+  /** The gate passed: the choices the gate could not carry, then onward. */
+  const done = async (next: string, nudge?: boolean): Promise<void> => {
+    await afterFinish({
+      upload: pick === "upload" ? upload : null,
+      passkey: passkey && passkeysSupported(),
+    });
+    await onPassed(next, nudge);
   };
 
   /** Back to the email choice with "a different email" selected and the address kept. */
   const editEmail = (from: string | null): void => {
     setWay("typed");
     setTyped(from ?? "");
-    setCode("");
     setError(null);
     setEditing(true);
     requestAnimationFrame(() => emailRef.current?.focus());
@@ -460,14 +551,49 @@ function FinishForm({
     );
   }
 
-  const lede =
-    gate.product?.name && !register
-      ? t("signin.gate.ledeApp", { app: gate.product.name })
-      : null;
-
-  // The code for a typed or unvouched address.
+  // The code for a typed or unvouched address: the same control the sign-in's code step uses.
   if (view === "code") {
     const to = gate.email.pending ?? "";
+    const verify = async (value: string): Promise<CodeVerifyOutcome | void> => {
+      setBusy(true);
+      try {
+        const out = await portalApi.gateVerify(value);
+        await done(out.next, out.nudge);
+      } catch (err) {
+        if (err instanceof PortalApiError) {
+          if (err.status === 409 || err.code === "email_in_use") {
+            setEditing(false);
+            return void (await reload());
+          }
+          if (err.code === "invalid_code")
+            return {
+              error: wrongCodeText(err.triesLeft),
+              resendNow: err.triesLeft === 0,
+            };
+          if (err.status === 429) return { error: t("signin.rateLimitedFew") };
+          if (err.status === 400) return void (await reload());
+        }
+        return { error: t("signin.approve.failed") };
+      } finally {
+        setBusy(false);
+      }
+    };
+    const resend = async (): Promise<CodeResendOutcome | void> => {
+      try {
+        await portalApi.gateChoose({ ...body(), choice: "typed", email: to });
+        return {
+          wait: RESEND_S,
+          status: {
+            text: t("signin.code.resent", { email: to }),
+            tone: "success",
+          },
+        };
+      } catch (err) {
+        if (err instanceof PortalApiError && err.status === 429)
+          return { error: t("signin.rateLimitedFew") };
+        return { error: t("signin.approve.failed") };
+      }
+    };
     return (
       <div ref={ref} className="space-y-5">
         <div className="space-y-2">
@@ -476,129 +602,53 @@ function FinishForm({
             {t("signin.gate.codeSent", { email: to })}
           </p>
         </div>
-        <form
-          noValidate
-          className="space-y-4"
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (code.length === CODE_LENGTH)
-              void run(async () => {
-                const out = await portalApi.gateVerify(code);
-                await onPassed(out.next, out.nudge);
-              });
-          }}
+        <CodeEntry
+          resendIn={RESEND_S}
+          submitLabel={t("signin.gate.verify")}
+          verify={verify}
+          resend={resend}
         >
-          <CodeCells
-            id={codeId}
-            value={code}
-            invalid={error?.field === "code"}
-            describedBy={error ? errorId : undefined}
-            onChange={(v) => {
-              setCode(v);
-              setError(null);
-            }}
-          />
-          <div className="min-h-5">
-            {error ? (
-              <p id={errorId} role="alert" className="text-sm text-danger">
-                {error.text}
-              </p>
-            ) : (
-              <p role="status" className="text-sm text-fg-muted">
-                {resent}
-              </p>
-            )}
-          </div>
-          <Button
-            type="submit"
-            variant="neutral"
-            size="lg"
-            className={primaryClass}
-            disabled={code.length !== CODE_LENGTH}
-            loading={busy}
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => editEmail(to)}
+            className="inline-flex min-h-11 items-center rounded-sm px-1 underline decoration-2 underline-offset-4 hover:text-fg-strong"
           >
-            {t("signin.gate.verify")}
-          </Button>
-        </form>
-        <div className="flex flex-wrap items-center justify-center gap-x-5">
-          {wait > 0 ? (
-            <span className="inline-flex min-h-11 items-center text-fg-muted">
-              {t("signin.code.resendIn", { time: clockText(wait) })}
-            </span>
-          ) : (
-            <QuietLink
-              onClick={() =>
-                void run(async () => {
-                  await portalApi.gateChoose({
-                    ...body(),
-                    choice: "typed",
-                    email: to,
-                  });
-                  setCode("");
-                  setWait(RESEND_S);
-                  setResent(t("signin.code.resent", { email: to }));
-                })
-              }
-            >
-              {t("signin.code.resend")}
-            </QuietLink>
-          )}
-          <QuietLink onClick={() => editEmail(to)}>
             {t("signin.code.differentEmail")}
-          </QuietLink>
-          <QuietLink onClick={onCancel}>{t("signin.gate.cancel")}</QuietLink>
-        </div>
+          </button>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="inline-flex min-h-11 items-center rounded-sm px-1 underline decoration-2 underline-offset-4 hover:text-fg-strong"
+          >
+            {t("signin.gate.cancel")}
+          </button>
+        </CodeEntry>
         {live}
       </div>
     );
   }
 
-  const primary = register
-    ? t("signin.register.submit")
-    : !emailAsked
-      ? t("signin.continue")
-      : needsCode
-        ? t("signin.gate.sendCode")
-        : t("signin.continue");
-  const suggestions = (gate.profile.suggestions ?? []).filter(
-    (s) => s.name !== name,
-  );
-  const initialsText = name.trim() ? initialsOf(name, null) : null;
+  const primary = existing
+    ? t("signin.continue")
+    : needsCode
+      ? t("signin.gate.sendCode")
+      : t("signin.register.submit");
+  const suggestions = gate.profile.suggestions ?? [];
+  const initialsText = name.trim() ? initialsOf(name, null) : "";
   const radio =
     "flex min-h-11 cursor-pointer items-center gap-3 rounded-md border border-border-strong px-3 py-2 text-sm has-[:checked]:border-fg-strong";
   const emailInvalid = error?.field === "email";
+  const tile =
+    "relative flex min-h-24 cursor-pointer flex-col items-center gap-1 rounded-lg border border-border-strong bg-surface-sunken px-1 py-2 text-center text-sm text-fg-strong has-[:checked]:border-fg-strong has-[:checked]:ring-2 has-[:checked]:ring-fg-strong has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-focus";
+  const circle =
+    "inline-flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border-strong bg-surface-raised text-sm font-medium text-fg-strong";
+  const pickMeta = (which: Pick, idle: string): string =>
+    pick === which ? t("signin.gate.pictureInUse") : idle;
 
   return (
     <div ref={ref} className="space-y-5">
-      {register ? null : (
-        <div
-          data-gate-strip
-          className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border border-success-border bg-success-subtle px-3 py-2.5 text-sm text-fg"
-        >
-          <ProviderMark kind={gate.provider} />
-          <span className="min-w-0 flex-1 [overflow-wrap:break-word]">
-            {identity
-              ? t("signin.gate.strip", { provider, identity })
-              : t("signin.gate.stripNoIdentity", { provider })}
-          </span>
-          <span className="inline-flex shrink-0 items-center gap-1 font-medium text-success">
-            <Check aria-hidden className="size-4" />
-            {t("common.done")}
-          </span>
-        </div>
-      )}
-      <div className="space-y-2">
-        <AuthTitle>{title}</AuthTitle>
-        {register ? (
-          <p role="status" className="text-fg-muted [overflow-wrap:anywhere]">
-            {t("signin.register.verified", {
-              email: gate.email.confirmed ?? "",
-            })}
-          </p>
-        ) : lede ? (
-          <p className="text-fg-muted">{lede}</p>
-        ) : null}
-      </div>
+      <AuthTitle>{title}</AuthTitle>
       <form
         noValidate
         className="space-y-5"
@@ -610,167 +660,123 @@ function FinishForm({
             !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(typed.trim())
           )
             return fail("email", t("signin.email.invalid"));
-          if (productTerms && !product)
-            return fail("terms", t("core.codes.terms_required.message"));
+          if ((platformTerms && !platformOk) || (productTerms && !productOk))
+            return failTerms();
+          setTermsError({ platform: false, product: false });
           void run(async () => {
             const out = await portalApi.gateChoose(body());
-            if (out.status === "signed_in")
-              return onPassed(out.next, out.nudge);
+            if (out.status === "signed_in") return done(out.next, out.nudge);
             setEditing(false);
             await reload();
           });
         }}
       >
-        <div className="rounded-lg border border-border bg-surface-sunken p-3">
-          <div className="flex flex-col items-start gap-3 min-[22rem]:flex-row">
-            {gate.profile.picture && !initials ? (
-              <img
-                src={gate.profile.picture}
-                alt=""
-                width={40}
-                height={40}
-                className="size-10 shrink-0 rounded-full object-cover min-[22rem]:mt-6"
+        {register ? (
+          <EmailConfirmed
+            status={t("signin.gate.confirmedByCode")}
+            value={gate.email.confirmed ?? ""}
+          />
+        ) : emailAsked ? (
+          providerEmail && vouched && way === "provider" ? (
+            <div className="space-y-1">
+              <EmailConfirmed
+                status={t("signin.gate.confirmedBy", { provider })}
+                value={providerEmail}
               />
-            ) : (
-              <span
-                aria-hidden
-                className="inline-flex size-10 shrink-0 min-[22rem]:mt-6 items-center justify-center rounded-full border border-border-strong bg-surface-raised text-sm font-medium text-fg-strong"
-              >
-                {initialsText ?? <User className="size-5 text-fg-muted" />}
-              </span>
-            )}
-            <div className="min-w-0 flex-1 space-y-1.5">
-              <label
-                htmlFor={nameId}
-                className="text-sm font-medium text-fg-strong"
-              >
-                {t("signin.gate.name")}
-              </label>
-              <Input
-                id={nameId}
-                value={name}
-                onValueChange={setName}
-                maxLength={64}
-                autoComplete="name"
-                className="h-12 text-base"
-              />
-              {suggestions.length > 0 ? (
-                <ul
-                  className="flex flex-wrap gap-2"
-                  aria-label={t("signin.gate.name")}
-                >
-                  {suggestions.map((s) => (
-                    <li key={s.name}>
-                      <button
-                        type="button"
-                        onClick={() => setName(s.name)}
-                        className="min-h-11 rounded-full border border-border-strong px-3 text-sm text-fg-strong hover:bg-hover"
-                      >
-                        {s.name}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
+              {gate.email.relay ? (
+                <p className="text-sm text-fg-muted">
+                  {t("signin.gate.relay")}
+                </p>
               ) : null}
-              <p className="text-sm text-fg-muted">
-                {gate.profile.picture
-                  ? t("signin.profile.source", { provider })
-                  : gate.provider === "apple"
-                    ? t("signin.profile.applePicture")
-                    : null}{" "}
-                {gate.profile.picture ? (
-                  <button
-                    type="button"
-                    className="inline-flex min-h-11 items-center font-medium text-fg-strong underline decoration-2 underline-offset-4"
-                    onClick={() => setInitials(!initials)}
-                  >
-                    {initials
-                      ? t("signin.gate.pictureProvider", { provider })
-                      : t("signin.gate.pictureInitials")}
-                  </button>
-                ) : null}
-              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setWay("typed");
+                  setError(null);
+                  requestAnimationFrame(() => emailRef.current?.focus());
+                }}
+                className="inline-flex min-h-11 items-center rounded-sm text-sm text-fg-muted underline decoration-2 underline-offset-4 hover:text-fg-strong"
+              >
+                {t("signin.code.differentEmail")}
+              </button>
             </div>
-          </div>
-        </div>
-        {emailAsked ? (
-          <fieldset className="space-y-2">
-            <legend className="text-sm font-medium text-fg-strong">
-              {t("signin.email.label")}
-            </legend>
-            {providerEmail ? (
-              <>
-                <label className={radio}>
-                  <input
-                    type="radio"
-                    name="pk-gate-email"
-                    className="accent-action"
-                    checked={way === "provider"}
-                    onChange={() => {
-                      setWay("provider");
-                      setError(null);
+          ) : (
+            <fieldset className="space-y-2">
+              <legend className="text-sm font-medium text-fg-strong">
+                {t("signin.email.label")}
+              </legend>
+              {providerEmail ? (
+                <>
+                  <label className={radio}>
+                    <input
+                      type="radio"
+                      name="pk-gate-email"
+                      className="accent-action"
+                      checked={way === "provider"}
+                      onChange={() => {
+                        setWay("provider");
+                        setError(null);
+                      }}
+                    />
+                    <span className="min-w-0 [overflow-wrap:anywhere]">
+                      <bdi>
+                        {t("signin.gate.useEmail", { email: providerEmail })}
+                      </bdi>
+                      {gate.email.relay ? (
+                        <span className="block text-fg-muted">
+                          {t("signin.gate.relay")}
+                        </span>
+                      ) : null}
+                    </span>
+                  </label>
+                  <label className={radio}>
+                    <input
+                      type="radio"
+                      name="pk-gate-email"
+                      className="accent-action"
+                      checked={way === "typed"}
+                      onChange={() => {
+                        setWay("typed");
+                        requestAnimationFrame(() => emailRef.current?.focus());
+                      }}
+                    />
+                    {t("signin.code.differentEmail")}
+                  </label>
+                </>
+              ) : null}
+              {way === "typed" ? (
+                <div className="space-y-1.5">
+                  <label htmlFor={emailId} className="sr-only">
+                    {t("signin.email.label")}
+                  </label>
+                  <Input
+                    id={emailId}
+                    ref={emailRef}
+                    type="email"
+                    inputMode="email"
+                    autoComplete="email"
+                    placeholder={t("signin.email.placeholder")}
+                    value={typed}
+                    onValueChange={(v) => {
+                      setTyped(v);
+                      if (emailInvalid) setError(null);
                     }}
+                    className="h-12 text-base"
+                    aria-invalid={emailInvalid || undefined}
+                    aria-describedby={
+                      [
+                        gate.provider === "steam" ? `${emailId}-help` : null,
+                        emailInvalid ? errorId : null,
+                      ]
+                        .filter(Boolean)
+                        .join(" ") || undefined
+                    }
                   />
-                  <span className="min-w-0 [overflow-wrap:anywhere]">
-                    <bdi>
-                      {t("signin.gate.useEmail", { email: providerEmail })}
-                    </bdi>
-                    {gate.email.relay ? (
-                      <span className="block text-fg-muted">
-                        {t("signin.gate.relay")}
-                      </span>
-                    ) : null}
-                  </span>
-                </label>
-                <label className={radio}>
-                  <input
-                    type="radio"
-                    name="pk-gate-email"
-                    className="accent-action"
-                    checked={way === "typed"}
-                    onChange={() => {
-                      setWay("typed");
-                      requestAnimationFrame(() => emailRef.current?.focus());
-                    }}
-                  />
-                  {t("signin.code.differentEmail")}
-                </label>
-              </>
-            ) : null}
-            {way === "typed" ? (
-              <div className="space-y-1.5">
-                <label htmlFor={emailId} className="sr-only">
-                  {t("signin.email.label")}
-                </label>
-                <Input
-                  id={emailId}
-                  ref={emailRef}
-                  type="email"
-                  inputMode="email"
-                  autoComplete="email"
-                  placeholder={t("signin.email.placeholder")}
-                  value={typed}
-                  onValueChange={(v) => {
-                    setTyped(v);
-                    if (emailInvalid) setError(null);
-                  }}
-                  className="h-12 text-base"
-                  aria-invalid={emailInvalid || undefined}
-                  aria-describedby={
-                    [
-                      gate.provider === "steam" ? `${emailId}-help` : null,
-                      emailInvalid ? errorId : null,
-                    ]
-                      .filter(Boolean)
-                      .join(" ") || undefined
-                  }
-                />
-                {gate.provider === "steam" ? (
-                  <p id={`${emailId}-help`} className="text-sm text-fg-muted">
-                    {t("signin.gate.steam")}
-                  </p>
-                ) : null}
-                <div className="mt-1.5 min-h-5">
+                  {gate.provider === "steam" ? (
+                    <p id={`${emailId}-help`} className="text-sm text-fg-muted">
+                      {t("signin.gate.steam")}
+                    </p>
+                  ) : null}
                   {emailInvalid ? (
                     <p
                       id={errorId}
@@ -781,10 +787,178 @@ function FinishForm({
                     </p>
                   ) : null}
                 </div>
-              </div>
-            ) : null}
-          </fieldset>
+              ) : null}
+            </fieldset>
+          )
         ) : null}
+
+        <div className="space-y-2">
+          <label
+            htmlFor={nameId}
+            className="block text-sm font-medium text-fg-strong"
+          >
+            {t("signin.gate.name")}
+          </label>
+          <Input
+            id={nameId}
+            value={name}
+            onValueChange={setName}
+            maxLength={64}
+            autoComplete="name"
+            aria-describedby={`${nameId}-hint`}
+            className="h-12 text-base"
+          />
+          {suggestions.length > 0 ? (
+            <div
+              role="group"
+              aria-labelledby={`${nameId}-from`}
+              className="space-y-1"
+            >
+              <span id={`${nameId}-from`} className="text-sm text-fg-muted">
+                {t("signin.gate.nameFrom")}
+              </span>
+              <ul className="flex flex-wrap gap-2">
+                {suggestions.map((s) => {
+                  const on = s.name === name.trim();
+                  return (
+                    <li key={`${s.source}:${s.name}`}>
+                      <button
+                        type="button"
+                        aria-pressed={on}
+                        onClick={() => setName(s.name)}
+                        className={cn(
+                          "inline-flex min-h-11 max-w-full items-center gap-1.5 rounded-full border px-3 text-sm text-fg-strong hover:bg-hover",
+                          on
+                            ? "border-fg-strong ring-1 ring-fg-strong"
+                            : "border-border-strong",
+                        )}
+                      >
+                        {s.source === "email" ? (
+                          <Mail aria-hidden className="size-4 shrink-0" />
+                        ) : (
+                          <ProviderMark kind={s.source} />
+                        )}
+                        <span className="min-w-0 [overflow-wrap:anywhere]">
+                          {s.name}
+                        </span>
+                        {on ? (
+                          <Check aria-hidden className="size-4 shrink-0" />
+                        ) : null}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ) : null}
+          <p id={`${nameId}-hint`} className="text-sm text-fg-muted">
+            {t("signin.gate.nameHint")}
+          </p>
+        </div>
+
+        <fieldset className="space-y-2">
+          <legend className="text-sm font-medium text-fg-strong">
+            {t("signin.gate.picture")}
+          </legend>
+          <div className="grid grid-cols-3 gap-2">
+            {hasPicture ? (
+              <label className={tile}>
+                <input
+                  type="radio"
+                  name="pk-gate-picture"
+                  className="sr-only"
+                  checked={pick === "provider"}
+                  onChange={() => setPick("provider")}
+                />
+                <img
+                  src={gate.profile.picture ?? ""}
+                  alt=""
+                  width={40}
+                  height={40}
+                  className="size-10 shrink-0 rounded-full object-cover"
+                />
+                <span>{provider}</span>
+                <span className="text-xs text-fg-muted">
+                  {pickMeta("provider", "")}
+                </span>
+              </label>
+            ) : null}
+            <label className={tile}>
+              <input
+                type="radio"
+                name="pk-gate-picture"
+                className="sr-only"
+                checked={pick === "initials"}
+                onChange={() => setPick("initials")}
+              />
+              <span aria-hidden className={circle}>
+                {initialsText}
+              </span>
+              <span>{t("signin.gate.pictureInitialsTile")}</span>
+              <span className="text-xs text-fg-muted">
+                {pickMeta("initials", t("signin.gate.pictureFromName"))}
+              </span>
+            </label>
+            <label className={tile}>
+              <input
+                type="radio"
+                name="pk-gate-picture"
+                className="sr-only"
+                checked={pick === "upload"}
+                onChange={() => {
+                  if (upload) setPick("upload");
+                  else fileRef.current?.click();
+                }}
+                onClick={() => {
+                  // Picking the tile again chooses another file.
+                  if (pick === "upload") fileRef.current?.click();
+                }}
+              />
+              {uploadUrl ? (
+                <img
+                  src={uploadUrl}
+                  alt=""
+                  width={40}
+                  height={40}
+                  className="size-10 shrink-0 rounded-full object-cover"
+                />
+              ) : (
+                <span aria-hidden className={circle}>
+                  <Upload className="size-5 text-fg-muted" />
+                </span>
+              )}
+              <span>{t("signin.gate.pictureUpload")}</span>
+              <span className="text-xs text-fg-muted">
+                {pickMeta("upload", t("signin.gate.pictureUploadHint"))}
+              </span>
+            </label>
+          </div>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/png,image/jpeg"
+            className="sr-only"
+            tabIndex={-1}
+            aria-hidden
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              e.target.value = "";
+              if (!file) return;
+              if (!pictureOk(file))
+                return void setPictureError(t("signin.gate.pictureInvalid"));
+              setPictureError(null);
+              setUpload(file);
+              setUploadUrl(URL.createObjectURL(file));
+              setPick("upload");
+            }}
+          />
+          {pictureError ? (
+            <p role="alert" className="text-sm text-danger">
+              {pictureError}
+            </p>
+          ) : null}
+        </fieldset>
+
         {gate.profile.birthdate ? (
           <Checkbox
             checked={birth}
@@ -795,61 +969,113 @@ function FinishForm({
             description={t("signin.gate.birthdateHelp")}
           />
         ) : null}
-        {productTerms ? (
-          <div>
-            <Checkbox
-              ref={termsRef}
-              checked={product}
-              onCheckedChange={(v) => {
-                setProduct(v);
-                if (error?.field === "terms") setError(null);
-              }}
-              aria-invalid={error?.field === "terms" || undefined}
-              aria-describedby={error?.field === "terms" ? errorId : undefined}
-              label={
-                <TermsSentence
-                  sentence="signin.gate.productTerms"
-                  url={productTerms.url}
-                  label={t("signin.gate.termsLinkProduct", {
-                    product: gate.product?.name ?? "",
-                  })}
+
+        {platformTerms || productTerms ? (
+          <div className="space-y-3">
+            {platformTerms ? (
+              <div>
+                <Checkbox
+                  ref={platformRef}
+                  checked={platformOk}
+                  onCheckedChange={(v) => {
+                    setPlatformOk(v);
+                    if (v) setTermsError((e) => ({ ...e, platform: false }));
+                  }}
+                  aria-invalid={termsError.platform || undefined}
+                  aria-describedby={
+                    termsError.platform ? `${errorId}-platform` : undefined
+                  }
+                  label={
+                    <TermsSentence
+                      sentence="signin.gate.platformTerms"
+                      url={platformTerms.url}
+                      label={t("signin.gate.termsLinkPlatform")}
+                    />
+                  }
                 />
-              }
-            />
-            <div className="mt-1.5 min-h-5">
-              {error?.field === "terms" ? (
-                <p id={errorId} role="alert" className="text-sm text-danger">
-                  {error.text}
-                </p>
-              ) : null}
-            </div>
+                {termsError.platform ? (
+                  <p
+                    id={`${errorId}-platform`}
+                    role="alert"
+                    className="mt-1.5 text-sm text-danger"
+                  >
+                    {t("core.codes.terms_required.message")}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+            {productTerms ? (
+              <div>
+                <Checkbox
+                  ref={productRef}
+                  checked={productOk}
+                  onCheckedChange={(v) => {
+                    setProductOk(v);
+                    if (v) setTermsError((e) => ({ ...e, product: false }));
+                  }}
+                  aria-invalid={termsError.product || undefined}
+                  aria-describedby={
+                    termsError.product ? `${errorId}-product` : undefined
+                  }
+                  label={
+                    <TermsSentence
+                      sentence="signin.gate.productTerms"
+                      url={productTerms.url}
+                      label={t("signin.gate.termsLinkProduct", {
+                        product: gate.product?.name ?? "",
+                      })}
+                    />
+                  }
+                />
+                {termsError.product ? (
+                  <p
+                    id={`${errorId}-product`}
+                    role="alert"
+                    className="mt-1.5 text-sm text-danger"
+                  >
+                    {t("core.codes.terms_required.message")}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
           </div>
         ) : null}
-        {platformTerms ? (
-          <p className="text-sm text-fg-muted">
-            <TermsSentence
-              sentence="signin.gate.platformTerms"
-              url={platformTerms.url}
-              label={t("signin.gate.termsLinkPlatform")}
-            />
-          </p>
+
+        {passkeysSupported() && !existing ? (
+          <Checkbox
+            checked={passkey}
+            onCheckedChange={setPasskey}
+            label={
+              <span className="text-fg-muted">{t("signin.gate.passkey")}</span>
+            }
+          />
         ) : null}
+
         {error?.field === "form" ? (
           <p role="alert" className="text-sm text-danger">
             {error.text}
           </p>
         ) : null}
-        <Button
-          type="submit"
-          variant="neutral"
-          size="lg"
-          className={primaryClass}
-          loading={busy}
-        >
-          {primary}
-        </Button>
-        <div className="flex justify-center">
-          <QuietLink onClick={onCancel}>{t("signin.gate.cancel")}</QuietLink>
+        <div className="space-y-2">
+          <Button
+            type="submit"
+            variant="neutral"
+            size="lg"
+            className={primaryClass}
+            loading={busy}
+          >
+            {primary}
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="lg"
+            className={primaryClass}
+            disabled={busy}
+            onClick={onCancel}
+          >
+            {t("signin.gate.cancel")}
+          </Button>
         </div>
       </form>
       {live}

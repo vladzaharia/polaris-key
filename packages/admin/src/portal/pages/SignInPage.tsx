@@ -26,8 +26,9 @@ import {
   AuthCard,
   AuthTitle as Title,
   CardHeader,
-  CODE_LENGTH,
-  CodeCells,
+  CodeEntry,
+  type CodeResendOutcome,
+  type CodeVerifyOutcome,
   OrDivider as Divider,
   ProviderRow,
   QuietLink,
@@ -779,129 +780,67 @@ function CodeStep({
   onFinish: () => void;
 }): React.ReactElement {
   const qc = useQueryClient();
-  const [code, setCode] = React.useState("");
-  const [wait, setWait] = React.useState(resendIn);
-  const [status, setStatus] = React.useState<{
-    text: string;
-    tone: "success" | "muted";
-  } | null>(null);
-  const [error, setError] = React.useState<string | null>(null);
-  const [verifying, setVerifying] = React.useState(false);
-  const [sending, setSending] = React.useState(false);
-  /** This sign-in sent every code it may (the Worker's per-flow cap): no more resends. */
-  const [capped, setCapped] = React.useState(false);
-  const errorId = React.useId();
-  const inputId = React.useId();
-  React.useEffect(() => {
-    if (wait <= 0) return;
-    const t = window.setTimeout(() => setWait((w) => w - 1), 1000);
-    return () => window.clearTimeout(t);
-  }, [wait]);
 
-  const verify = async (value: string): Promise<void> => {
-    if (value.length !== CODE_LENGTH || verifying) return;
-    setVerifying(true);
-    setError(null);
-    setStatus(null);
+  const verify = async (value: string): Promise<CodeVerifyOutcome | void> => {
     try {
       const out = await portalApi.verifySignInCode(value);
       rememberVia("email");
       // A new address finishes first (I-33): the account is created there.
-      if (out?.status === "finish") {
-        onFinish();
-        return;
-      }
+      if (out?.status === "finish") return void onFinish();
       await qc.invalidateQueries({ queryKey: portalKeys.me });
     } catch (err) {
       // I-30: the domain requires its connection now (enforced after this code was sent).
-      if (err instanceof PortalApiError && err.next) {
-        onRouted(err.next);
-        return;
-      }
+      if (err instanceof PortalApiError && err.next)
+        return void onRouted(err.next);
       // The verify's other 403: a right code for an account that can't sign in (the Worker's
       // `forbidden`, §3.13). Another code or a resend would end the same way.
-      if (err instanceof PortalApiError && err.status === 403) {
-        onRefused();
-        return;
-      }
-      setError(codeErrorText(err));
-      setCode("");
-      // Out of tries, or the code expired: "Send a new code" is the way on, at once.
-      if (
-        err instanceof PortalApiError &&
-        ((err.code === "invalid_code" && err.triesLeft === 0) ||
-          err.code === "signin_expired")
-      )
-        setWait(0);
-    } finally {
-      setVerifying(false);
+      if (err instanceof PortalApiError && err.status === 403)
+        return void onRefused();
+      return {
+        error: codeErrorText(err),
+        // Out of tries, or the code expired: "Send a new code" is the way on, at once.
+        resendNow:
+          err instanceof PortalApiError &&
+          ((err.code === "invalid_code" && err.triesLeft === 0) ||
+            err.code === "signin_expired"),
+      };
     }
   };
 
-  /**
-   * The resend's button goes away (a countdown, or nothing at the cap) while this step stays, so
-   * focus moves to the code, the next thing to do, rather than falling to the page (§9 item 9).
-   */
-  const focusCode = (): void => {
-    document.getElementById(inputId)?.focus();
-  };
-
-  const resend = async (): Promise<void> => {
-    if (sending) return;
-    setSending(true);
-    setError(null);
-    setStatus(null);
+  const resend = async (): Promise<CodeResendOutcome | void> => {
     try {
       const out = await portalApi.resendSignInCode();
-      setStatus({
-        text: t("signin.code.resent", { email }),
-        tone: "success",
-      });
-      setCode("");
-      setWait(resendDelay(out));
-      focusCode();
+      return {
+        status: { text: t("signin.code.resent", { email }), tone: "success" },
+        wait: resendDelay(out),
+      };
     } catch (err) {
-      if (err instanceof PortalApiError && err.next) {
-        onRouted(err.next);
-        return;
-      }
-      if (err instanceof PortalApiError && err.code === "signin_expired") {
-        onExpired();
-        return;
-      }
+      if (err instanceof PortalApiError && err.next)
+        return void onRouted(err.next);
+      if (err instanceof PortalApiError && err.code === "signin_expired")
+        return void onExpired();
       if (
         err instanceof PortalApiError &&
         err.status === 429 &&
         err.retryAfter !== undefined
-      ) {
+      )
         // Too soon (or this address's minute is spent): the countdown says when.
-        setWait(Math.max(1, Math.ceil(err.retryAfter)));
-        focusCode();
-        return;
-      }
+        return { wait: Math.max(1, Math.ceil(err.retryAfter)) };
       if (
         err instanceof PortalApiError &&
         err.status === 429 &&
         err.code === "rate_limited"
-      ) {
+      )
         // The Worker's per-flow cap (its only 429 without a wait): the code already sent is the
         // one to use.
-        setCapped(true);
-        setStatus({
-          text: t("signin.code.noMore"),
-          tone: "muted",
-        });
-        focusCode();
-        return;
-      }
+        return {
+          capped: true,
+          status: { text: t("signin.code.noMore"), tone: "muted" },
+        };
       // Anything else, a bare 429 from the edge included: retry later, the link stays.
-      setError(startErrorText(err));
-    } finally {
-      setSending(false);
+      return { error: startErrorText(err) };
     }
   };
-
-  const clock = `${Math.floor(wait / 60)}:${String(wait % 60).padStart(2, "0")}`;
 
   return (
     <>
@@ -919,77 +858,17 @@ function CodeStep({
           )}
         </p>
       </div>
-      <form
-        noValidate
-        className="space-y-4"
-        onSubmit={(e) => {
-          e.preventDefault();
-          void verify(code);
-        }}
+      <CodeEntry
+        resendIn={resendIn}
+        submitLabel={t("signin.continue")}
+        verify={verify}
+        resend={resend}
+        hint={t("signin.code.link")}
       >
-        <div className="space-y-1.5">
-          <label
-            htmlFor={inputId}
-            className="text-sm font-medium text-fg-strong"
-          >
-            {t("signin.approve.codeLabel")}
-          </label>
-          <CodeCells
-            id={inputId}
-            value={code}
-            invalid={Boolean(error)}
-            describedBy={error ? errorId : undefined}
-            onChange={(v) => {
-              setCode(v);
-              if (error) setError(null);
-              if (v.length === CODE_LENGTH) void verify(v);
-            }}
-          />
-          {error ? (
-            <p id={errorId} role="alert" className="text-sm text-danger">
-              {error}
-            </p>
-          ) : null}
-        </div>
-        <p className="text-sm text-fg-muted">{t("signin.code.link")}</p>
-        <Button
-          type="submit"
-          variant="neutral"
-          size="lg"
-          className="h-auto min-h-12 w-full whitespace-normal py-2 text-center text-base font-semibold"
-          disabled={code.length !== CODE_LENGTH}
-          loading={verifying}
-        >
-          {t("signin.continue")}
-        </Button>
-      </form>
-      {/* Always in the tree so the resend is announced; visually hidden while empty. */}
-      <div
-        role="status"
-        className={
-          status
-            ? status.tone === "success"
-              ? "text-sm text-success"
-              : "text-sm text-fg-muted"
-            : "sr-only"
-        }
-      >
-        {status?.text}
-      </div>
-      <QuietLinks>
-        {capped ? null : wait > 0 ? (
-          <span className="inline-flex min-h-11 items-center px-1 text-fg-muted">
-            {t("signin.code.resendIn", { time: clock })}
-          </span>
-        ) : (
-          <QuietLink onClick={() => void resend()}>
-            {sending ? t("common.working") : t("signin.code.resend")}
-          </QuietLink>
-        )}
         <QuietLink onClick={onChangeEmail}>
           {t("signin.code.differentEmail")}
         </QuietLink>
-      </QuietLinks>
+      </CodeEntry>
     </>
   );
 }

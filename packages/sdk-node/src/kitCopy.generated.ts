@@ -780,7 +780,7 @@ export const KIT_COPY: Readonly<
       "Your passkey didn't work. Try again, or use another way.",
     "signin.gate.stripNoIdentity": "Signed in with {provider}",
     "signin.gate.termsTitle": "One more step",
-    "signin.gate.name": "Your name",
+    "signin.gate.name": "Screen name",
     "signin.gate.useEmail": "Use {email}",
     "signin.gate.relay": "Your private Apple address",
     "signin.gate.pictureInitials": "Use my initials",
@@ -788,7 +788,7 @@ export const KIT_COPY: Readonly<
     "signin.gate.birthdate": "Add my birth date from {org}",
     "signin.gate.birthdateHelp": "Only you can see it. Apps never get it.",
     "signin.gate.productTerms": "I agree to the {term}",
-    "signin.gate.platformTerms": "By continuing you agree to the {term}.",
+    "signin.gate.platformTerms": "I agree to {term}",
     "signin.gate.expired": "That sign-in has expired. Sign in again.",
     "signin.gate.joinTitle": "Join your accounts",
     "signin.gate.joinLede":
@@ -824,7 +824,8 @@ export const KIT_COPY: Readonly<
     "signin.turnstile.failed": "The security check did not pass. Try again.",
     "signin.code.rateLimited": "Too many tries. Wait a minute, then try again.",
     "signin.gate.termsLinkProduct": "{product} terms",
-    "signin.gate.termsLinkPlatform": "Polaris Locker terms",
+    "signin.gate.termsLinkPlatform":
+      "Polaris Locker’s Terms and Privacy Policy",
     "signin.approve.expiredCode":
       "That code expired. Ask for a new one on the other device.",
     "signin.approve.notFound":
@@ -841,6 +842,18 @@ export const KIT_COPY: Readonly<
     "signin.rateLimitedFew": "Too many codes. Try again in a few minutes.",
     "signin.code.emailInUse":
       "Another Polaris Locker account uses this email. Sign in the way you did before.",
+    "signin.gate.confirmedBy": "Confirmed by {provider}",
+    "signin.gate.confirmedByCode": "Confirmed by code",
+    "signin.gate.nameFrom": "Use a name from",
+    "signin.gate.nameHint": "Shown in Polaris Locker and in emails.",
+    "signin.gate.picture": "Picture",
+    "signin.gate.pictureInitialsTile": "Initials",
+    "signin.gate.pictureFromName": "From your name",
+    "signin.gate.pictureUpload": "Upload",
+    "signin.gate.pictureUploadHint": "PNG or JPEG",
+    "signin.gate.pictureInUse": "In use",
+    "signin.gate.passkey": "Add a passkey after this",
+    "signin.gate.pictureInvalid": "Choose a PNG or JPEG.",
     "core.fallback.title": "Something went wrong",
     "core.fallback.message": "Something went wrong ({code}). Try again.",
     "core.codes.unauthorized.title": "Not signed in",
@@ -2223,7 +2236,7 @@ export const KIT_COPY: Readonly<
       "Ihr Passkey hat nicht funktioniert. Versuchen Sie es erneut oder nutzen Sie eine andere Möglichkeit.",
     "signin.gate.stripNoIdentity": "Mit {provider} angemeldet",
     "signin.gate.termsTitle": "Noch ein Schritt",
-    "signin.gate.name": "Ihr Name",
+    "signin.gate.name": "Anzeigename",
     "signin.gate.useEmail": "{email} verwenden",
     "signin.gate.relay": "Ihre private Apple-Adresse",
     "signin.gate.pictureInitials": "Meine Initialen verwenden",
@@ -2232,8 +2245,7 @@ export const KIT_COPY: Readonly<
     "signin.gate.birthdateHelp":
       "Nur Sie können es sehen. Apps erhalten es nie.",
     "signin.gate.productTerms": "Ich stimme den {term} zu",
-    "signin.gate.platformTerms":
-      "Mit dem Fortfahren stimmen Sie den {term} zu.",
+    "signin.gate.platformTerms": "Ich stimme den {term} zu",
     "signin.gate.expired":
       "Diese Anmeldung ist abgelaufen. Melden Sie sich erneut an.",
     "signin.gate.joinTitle": "Konten zusammenführen",
@@ -2272,7 +2284,8 @@ export const KIT_COPY: Readonly<
     "signin.code.rateLimited":
       "Zu viele Versuche. Warten Sie eine Minute und versuchen Sie es erneut.",
     "signin.gate.termsLinkProduct": "Bedingungen von {product}",
-    "signin.gate.termsLinkPlatform": "Bedingungen von Polaris Locker",
+    "signin.gate.termsLinkPlatform":
+      "Bedingungen und Datenschutzerklärung von Polaris Locker",
     "signin.approve.expiredCode":
       "Dieser Code ist abgelaufen. Fordern Sie auf dem anderen Gerät einen neuen an.",
     "signin.approve.notFound":
@@ -2290,6 +2303,18 @@ export const KIT_COPY: Readonly<
       "Zu viele Codes. Versuchen Sie es in ein paar Minuten erneut.",
     "signin.code.emailInUse":
       "Ein anderes Konto bei Polaris Locker verwendet diese E-Mail-Adresse. Melden Sie sich auf dem bisherigen Weg an.",
+    "signin.gate.confirmedBy": "Bestätigt von {provider}",
+    "signin.gate.confirmedByCode": "Per Code bestätigt",
+    "signin.gate.nameFrom": "Namen übernehmen von",
+    "signin.gate.nameHint": "Wird in Polaris Locker und in E-Mails angezeigt.",
+    "signin.gate.picture": "Bild",
+    "signin.gate.pictureInitialsTile": "Initialen",
+    "signin.gate.pictureFromName": "Aus Ihrem Namen",
+    "signin.gate.pictureUpload": "Hochladen",
+    "signin.gate.pictureUploadHint": "PNG oder JPEG",
+    "signin.gate.pictureInUse": "In Verwendung",
+    "signin.gate.passkey": "Danach einen Passkey hinzufügen",
+    "signin.gate.pictureInvalid": "Wählen Sie ein PNG oder JPEG.",
     "core.fallback.title": "Ein Fehler ist aufgetreten",
     "core.fallback.message":
       "Ein Fehler ist aufgetreten ({code}). Versuchen Sie es erneut.",
@@ -3676,7 +3701,7 @@ export const KIT_COPY: Readonly<
       "Votre passkey n'a pas fonctionné. Réessayez ou utilisez une autre méthode.",
     "signin.gate.stripNoIdentity": "Connecté avec {provider}",
     "signin.gate.termsTitle": "Encore une étape",
-    "signin.gate.name": "Votre nom",
+    "signin.gate.name": "Nom d’affichage",
     "signin.gate.useEmail": "Utiliser {email}",
     "signin.gate.relay": "Votre adresse privée Apple",
     "signin.gate.pictureInitials": "Utiliser mes initiales",
@@ -3685,7 +3710,7 @@ export const KIT_COPY: Readonly<
     "signin.gate.birthdateHelp":
       "Vous seul pouvez la voir. Les apps ne la reçoivent jamais.",
     "signin.gate.productTerms": "J'accepte les {term}",
-    "signin.gate.platformTerms": "En continuant, vous acceptez les {term}.",
+    "signin.gate.platformTerms": "J’accepte {term}",
     "signin.gate.expired": "Cette connexion a expiré. Reconnectez-vous.",
     "signin.gate.joinTitle": "Réunir vos comptes",
     "signin.gate.joinLede":
@@ -3723,7 +3748,8 @@ export const KIT_COPY: Readonly<
     "signin.code.rateLimited":
       "Trop de tentatives. Attendez une minute, puis réessayez.",
     "signin.gate.termsLinkProduct": "conditions de {product}",
-    "signin.gate.termsLinkPlatform": "conditions de Polaris Locker",
+    "signin.gate.termsLinkPlatform":
+      "les Conditions et la Politique de confidentialité de Polaris Locker",
     "signin.approve.expiredCode":
       "Ce code a expiré. Demandez-en un nouveau sur l'autre appareil.",
     "signin.approve.notFound":
@@ -3740,6 +3766,18 @@ export const KIT_COPY: Readonly<
     "signin.rateLimitedFew": "Trop de codes. Réessayez dans quelques minutes.",
     "signin.code.emailInUse":
       "Un autre compte Polaris Locker utilise cet e-mail. Connectez-vous comme avant.",
+    "signin.gate.confirmedBy": "Confirmé par {provider}",
+    "signin.gate.confirmedByCode": "Confirmé par code",
+    "signin.gate.nameFrom": "Utiliser un nom de",
+    "signin.gate.nameHint": "Affiché dans Polaris Locker et dans les e-mails.",
+    "signin.gate.picture": "Image",
+    "signin.gate.pictureInitialsTile": "Initiales",
+    "signin.gate.pictureFromName": "D’après votre nom",
+    "signin.gate.pictureUpload": "Importer",
+    "signin.gate.pictureUploadHint": "PNG ou JPEG",
+    "signin.gate.pictureInUse": "Utilisée",
+    "signin.gate.passkey": "Ajouter une clé d’accès ensuite",
+    "signin.gate.pictureInvalid": "Choisissez un PNG ou un JPEG.",
     "core.fallback.title": "Something went wrong",
     "core.fallback.message": "Something went wrong ({code}). Try again.",
     "core.codes.unauthorized.title": "Not signed in",
@@ -5096,7 +5134,7 @@ export const KIT_COPY: Readonly<
       "Tu passkey no funcionó. Inténtalo de nuevo o usa otra forma.",
     "signin.gate.stripNoIdentity": "Sesión iniciada con {provider}",
     "signin.gate.termsTitle": "Un paso más",
-    "signin.gate.name": "Tu nombre",
+    "signin.gate.name": "Nombre visible",
     "signin.gate.useEmail": "Usar {email}",
     "signin.gate.relay": "Tu dirección privada de Apple",
     "signin.gate.pictureInitials": "Usar mis iniciales",
@@ -5105,7 +5143,7 @@ export const KIT_COPY: Readonly<
     "signin.gate.birthdateHelp":
       "Solo tú puedes verla. Las apps nunca la reciben.",
     "signin.gate.productTerms": "Acepto las {term}",
-    "signin.gate.platformTerms": "Al continuar, aceptas las {term}.",
+    "signin.gate.platformTerms": "Acepto {term}",
     "signin.gate.expired":
       "Ese inicio de sesión ha caducado. Vuelve a iniciar sesión.",
     "signin.gate.joinTitle": "Unir tus cuentas",
@@ -5144,7 +5182,8 @@ export const KIT_COPY: Readonly<
     "signin.code.rateLimited":
       "Demasiados intentos. Espera un minuto y vuelve a intentarlo.",
     "signin.gate.termsLinkProduct": "condiciones de {product}",
-    "signin.gate.termsLinkPlatform": "condiciones de Polaris Locker",
+    "signin.gate.termsLinkPlatform":
+      "los Términos y la Política de privacidad de Polaris Locker",
     "signin.approve.expiredCode":
       "Ese código ha caducado. Pide uno nuevo en el otro dispositivo.",
     "signin.approve.notFound":
@@ -5162,6 +5201,18 @@ export const KIT_COPY: Readonly<
       "Demasiados códigos. Inténtalo de nuevo en unos minutos.",
     "signin.code.emailInUse":
       "Otra cuenta de Polaris Locker usa este correo. Inicia sesión como antes.",
+    "signin.gate.confirmedBy": "Confirmado por {provider}",
+    "signin.gate.confirmedByCode": "Confirmado con código",
+    "signin.gate.nameFrom": "Usar un nombre de",
+    "signin.gate.nameHint": "Se muestra en Polaris Locker y en los correos.",
+    "signin.gate.picture": "Imagen",
+    "signin.gate.pictureInitialsTile": "Iniciales",
+    "signin.gate.pictureFromName": "De tu nombre",
+    "signin.gate.pictureUpload": "Subir",
+    "signin.gate.pictureUploadHint": "PNG o JPEG",
+    "signin.gate.pictureInUse": "En uso",
+    "signin.gate.passkey": "Añadir una llave de acceso después",
+    "signin.gate.pictureInvalid": "Elige un PNG o JPEG.",
     "core.fallback.title": "Algo salió mal",
     "core.fallback.message": "Algo salió mal ({code}). Vuelve a intentarlo.",
     "core.codes.unauthorized.title": "Sin sesión iniciada",
@@ -6535,7 +6586,7 @@ export const KIT_COPY: Readonly<
       "Sua passkey não funcionou. Tente novamente ou use outra forma.",
     "signin.gate.stripNoIdentity": "Conectado com {provider}",
     "signin.gate.termsTitle": "Mais uma etapa",
-    "signin.gate.name": "Seu nome",
+    "signin.gate.name": "Nome de exibição",
     "signin.gate.useEmail": "Usar {email}",
     "signin.gate.relay": "Seu endereço privado da Apple",
     "signin.gate.pictureInitials": "Usar minhas iniciais",
@@ -6543,7 +6594,7 @@ export const KIT_COPY: Readonly<
     "signin.gate.birthdate": "Adicionar minha data de nascimento de {org}",
     "signin.gate.birthdateHelp": "Só você pode ver. Os apps nunca a recebem.",
     "signin.gate.productTerms": "Concordo com os {term}",
-    "signin.gate.platformTerms": "Ao continuar, você concorda com os {term}.",
+    "signin.gate.platformTerms": "Concordo com {term}",
     "signin.gate.expired": "Esse login expirou. Entre novamente.",
     "signin.gate.joinTitle": "Juntar suas contas",
     "signin.gate.joinLede":
@@ -6581,7 +6632,8 @@ export const KIT_COPY: Readonly<
     "signin.code.rateLimited":
       "Muitas tentativas. Aguarde um minuto e tente novamente.",
     "signin.gate.termsLinkProduct": "termos de {product}",
-    "signin.gate.termsLinkPlatform": "termos do Polaris Locker",
+    "signin.gate.termsLinkPlatform":
+      "os Termos e a Política de Privacidade do Polaris Locker",
     "signin.approve.expiredCode":
       "Esse código expirou. Peça um novo no outro dispositivo.",
     "signin.approve.notFound":
@@ -6599,6 +6651,18 @@ export const KIT_COPY: Readonly<
       "Muitos códigos. Tente novamente em alguns minutos.",
     "signin.code.emailInUse":
       "Outra conta do Polaris Locker usa este e-mail. Entre como você fazia antes.",
+    "signin.gate.confirmedBy": "Confirmado por {provider}",
+    "signin.gate.confirmedByCode": "Confirmado por código",
+    "signin.gate.nameFrom": "Usar um nome de",
+    "signin.gate.nameHint": "Aparece no Polaris Locker e nos e-mails.",
+    "signin.gate.picture": "Imagem",
+    "signin.gate.pictureInitialsTile": "Iniciais",
+    "signin.gate.pictureFromName": "Do seu nome",
+    "signin.gate.pictureUpload": "Enviar",
+    "signin.gate.pictureUploadHint": "PNG ou JPEG",
+    "signin.gate.pictureInUse": "Em uso",
+    "signin.gate.passkey": "Adicionar uma chave de acesso depois",
+    "signin.gate.pictureInvalid": "Escolha um PNG ou JPEG.",
     "core.fallback.title": "Algo deu errado",
     "core.fallback.message": "Algo deu errado ({code}). Tente novamente.",
     "core.codes.unauthorized.title": "Não conectado",
@@ -7961,7 +8025,7 @@ export const KIT_COPY: Readonly<
       "La tua passkey non ha funzionato. Riprova o usa un altro modo.",
     "signin.gate.stripNoIdentity": "Accesso eseguito con {provider}",
     "signin.gate.termsTitle": "Ancora un passaggio",
-    "signin.gate.name": "Il tuo nome",
+    "signin.gate.name": "Nome visualizzato",
     "signin.gate.useEmail": "Usa {email}",
     "signin.gate.relay": "Il tuo indirizzo privato Apple",
     "signin.gate.pictureInitials": "Usa le mie iniziali",
@@ -7970,7 +8034,7 @@ export const KIT_COPY: Readonly<
     "signin.gate.birthdateHelp":
       "Solo tu puoi vederla. Le app non la ricevono mai.",
     "signin.gate.productTerms": "Accetto i {term}",
-    "signin.gate.platformTerms": "Continuando accetti i {term}.",
+    "signin.gate.platformTerms": "Accetto {term}",
     "signin.gate.expired": "Questo accesso è scaduto. Accedi di nuovo.",
     "signin.gate.joinTitle": "Unisci i tuoi account",
     "signin.gate.joinLede":
@@ -8008,7 +8072,8 @@ export const KIT_COPY: Readonly<
     "signin.code.rateLimited":
       "Troppi tentativi. Attendi un minuto, poi riprova.",
     "signin.gate.termsLinkProduct": "termini di {product}",
-    "signin.gate.termsLinkPlatform": "termini di Polaris Locker",
+    "signin.gate.termsLinkPlatform":
+      "i Termini e l’Informativa sulla privacy di Polaris Locker",
     "signin.approve.expiredCode":
       "Quel codice è scaduto. Chiedine uno nuovo sull'altro dispositivo.",
     "signin.approve.notFound":
@@ -8025,6 +8090,18 @@ export const KIT_COPY: Readonly<
     "signin.rateLimitedFew": "Troppi codici. Riprova tra qualche minuto.",
     "signin.code.emailInUse":
       "Un altro account Polaris Locker usa questa email. Accedi come prima.",
+    "signin.gate.confirmedBy": "Confermata da {provider}",
+    "signin.gate.confirmedByCode": "Confermata con codice",
+    "signin.gate.nameFrom": "Usa un nome da",
+    "signin.gate.nameHint": "Mostrato in Polaris Locker e nelle email.",
+    "signin.gate.picture": "Immagine",
+    "signin.gate.pictureInitialsTile": "Iniziali",
+    "signin.gate.pictureFromName": "Dal tuo nome",
+    "signin.gate.pictureUpload": "Carica",
+    "signin.gate.pictureUploadHint": "PNG o JPEG",
+    "signin.gate.pictureInUse": "In uso",
+    "signin.gate.passkey": "Aggiungi una passkey dopo",
+    "signin.gate.pictureInvalid": "Scegli un PNG o JPEG.",
     "core.fallback.title": "Si è verificato un problema",
     "core.fallback.message": "Si è verificato un problema ({code}). Riprova.",
     "core.codes.unauthorized.title": "Accesso non effettuato",
@@ -9406,7 +9483,7 @@ export const KIT_COPY: Readonly<
       "パスキーが機能しませんでした。もう一度お試しいただくか、別の方法をお使いください。",
     "signin.gate.stripNoIdentity": "{provider} でサインイン済み",
     "signin.gate.termsTitle": "あと1ステップ",
-    "signin.gate.name": "お名前",
+    "signin.gate.name": "表示名",
     "signin.gate.useEmail": "{email} を使用",
     "signin.gate.relay": "Apple のプライベートアドレス",
     "signin.gate.pictureInitials": "イニシャルを使用",
@@ -9415,7 +9492,7 @@ export const KIT_COPY: Readonly<
     "signin.gate.birthdateHelp":
       "表示されるのはご本人だけです。アプリには渡されません。",
     "signin.gate.productTerms": "{term}に同意します",
-    "signin.gate.platformTerms": "続行すると、{term}に同意したことになります。",
+    "signin.gate.platformTerms": "{term}に同意します",
     "signin.gate.expired":
       "このサインインは期限切れです。もう一度サインインしてください。",
     "signin.gate.joinTitle": "アカウントを統合",
@@ -9454,7 +9531,8 @@ export const KIT_COPY: Readonly<
     "signin.code.rateLimited":
       "試行回数が多すぎます。1分待ってからもう一度お試しください。",
     "signin.gate.termsLinkProduct": "{product} の利用規約",
-    "signin.gate.termsLinkPlatform": "Polaris Locker の利用規約",
+    "signin.gate.termsLinkPlatform":
+      "Polaris Lockerの利用規約とプライバシーポリシー",
     "signin.approve.expiredCode":
       "そのコードは期限切れです。もう一方のデバイスで新しいコードを取得してください。",
     "signin.approve.notFound":
@@ -9472,6 +9550,18 @@ export const KIT_COPY: Readonly<
       "コードが多すぎます。数分後にもう一度お試しください。",
     "signin.code.emailInUse":
       "別の Polaris Locker アカウントがこのメールアドレスを使用しています。以前の方法でサインインしてください。",
+    "signin.gate.confirmedBy": "{provider}で確認済み",
+    "signin.gate.confirmedByCode": "コードで確認済み",
+    "signin.gate.nameFrom": "次の名前を使う",
+    "signin.gate.nameHint": "Polaris Lockerとメールに表示されます。",
+    "signin.gate.picture": "画像",
+    "signin.gate.pictureInitialsTile": "イニシャル",
+    "signin.gate.pictureFromName": "名前から作成",
+    "signin.gate.pictureUpload": "アップロード",
+    "signin.gate.pictureUploadHint": "PNGまたはJPEG",
+    "signin.gate.pictureInUse": "使用中",
+    "signin.gate.passkey": "この後でパスキーを追加",
+    "signin.gate.pictureInvalid": "PNGまたはJPEGを選んでください。",
     "core.fallback.title": "問題が発生しました",
     "core.fallback.message":
       "問題が発生しました（{code}）。もう一度お試しください。",
@@ -10818,7 +10908,7 @@ export const KIT_COPY: Readonly<
       "패스키가 작동하지 않았습니다. 다시 시도하거나 다른 방법을 사용하세요.",
     "signin.gate.stripNoIdentity": "{provider}(으)로 로그인됨",
     "signin.gate.termsTitle": "한 단계 남았습니다",
-    "signin.gate.name": "이름",
+    "signin.gate.name": "표시 이름",
     "signin.gate.useEmail": "{email} 사용",
     "signin.gate.relay": "Apple 비공개 주소",
     "signin.gate.pictureInitials": "이니셜 사용",
@@ -10827,8 +10917,7 @@ export const KIT_COPY: Readonly<
     "signin.gate.birthdateHelp":
       "본인만 볼 수 있습니다. 앱에는 전달되지 않습니다.",
     "signin.gate.productTerms": "{term}에 동의합니다",
-    "signin.gate.platformTerms":
-      "계속하면 {term}에 동의하는 것으로 간주됩니다.",
+    "signin.gate.platformTerms": "{term}에 동의합니다",
     "signin.gate.expired": "이 로그인은 만료되었습니다. 다시 로그인하세요.",
     "signin.gate.joinTitle": "계정 통합",
     "signin.gate.joinLede":
@@ -10866,7 +10955,7 @@ export const KIT_COPY: Readonly<
     "signin.code.rateLimited":
       "시도 횟수가 너무 많습니다. 1분 기다린 후 다시 시도하세요.",
     "signin.gate.termsLinkProduct": "{product} 약관",
-    "signin.gate.termsLinkPlatform": "Polaris Locker 약관",
+    "signin.gate.termsLinkPlatform": "Polaris Locker 약관 및 개인정보 처리방침",
     "signin.approve.expiredCode":
       "이 코드는 만료되었습니다. 다른 기기에서 새 코드를 받으세요.",
     "signin.approve.notFound":
@@ -10883,6 +10972,18 @@ export const KIT_COPY: Readonly<
     "signin.rateLimitedFew": "코드가 너무 많습니다. 몇 분 후 다시 시도하세요.",
     "signin.code.emailInUse":
       "다른 Polaris Locker 계정이 이 이메일을 사용하고 있습니다. 이전에 쓰던 방법으로 로그인하세요.",
+    "signin.gate.confirmedBy": "{provider}에서 확인됨",
+    "signin.gate.confirmedByCode": "코드로 확인됨",
+    "signin.gate.nameFrom": "다음에서 이름 사용",
+    "signin.gate.nameHint": "Polaris Locker와 이메일에 표시됩니다.",
+    "signin.gate.picture": "사진",
+    "signin.gate.pictureInitialsTile": "이니셜",
+    "signin.gate.pictureFromName": "이름에서 만들기",
+    "signin.gate.pictureUpload": "업로드",
+    "signin.gate.pictureUploadHint": "PNG 또는 JPEG",
+    "signin.gate.pictureInUse": "사용 중",
+    "signin.gate.passkey": "이후 패스키 추가",
+    "signin.gate.pictureInvalid": "PNG 또는 JPEG를 선택하세요.",
     "core.fallback.title": "문제가 발생했어요",
     "core.fallback.message": "문제가 발생했어요({code}). 다시 시도하세요.",
     "core.codes.unauthorized.title": "로그인되지 않음",
@@ -12156,7 +12257,7 @@ export const KIT_COPY: Readonly<
     "signin.passkey.failed": "您的通行密钥无效。请重试或使用其他方式。",
     "signin.gate.stripNoIdentity": "已通过 {provider} 登录",
     "signin.gate.termsTitle": "还有一步",
-    "signin.gate.name": "您的姓名",
+    "signin.gate.name": "显示名称",
     "signin.gate.useEmail": "使用 {email}",
     "signin.gate.relay": "您的 Apple 私密地址",
     "signin.gate.pictureInitials": "使用我的首字母",
@@ -12164,7 +12265,7 @@ export const KIT_COPY: Readonly<
     "signin.gate.birthdate": "添加来自 {org} 的出生日期",
     "signin.gate.birthdateHelp": "只有您能看到。应用永远不会获得。",
     "signin.gate.productTerms": "我同意{term}",
-    "signin.gate.platformTerms": "继续即表示您同意{term}。",
+    "signin.gate.platformTerms": "我同意{term}",
     "signin.gate.expired": "此次登录已过期。请重新登录。",
     "signin.gate.joinTitle": "合并您的账户",
     "signin.gate.joinLede":
@@ -12198,7 +12299,7 @@ export const KIT_COPY: Readonly<
     "signin.turnstile.failed": "安全检查未通过。请重试。",
     "signin.code.rateLimited": "尝试次数过多。请等待一分钟后重试。",
     "signin.gate.termsLinkProduct": "{product} 条款",
-    "signin.gate.termsLinkPlatform": "Polaris Locker 条款",
+    "signin.gate.termsLinkPlatform": "Polaris Locker 的条款和隐私政策",
     "signin.approve.expiredCode": "该代码已过期。请在另一台设备上获取新代码。",
     "signin.approve.notFound": "没有等待该代码的登录。请在另一台设备上核对。",
     "signin.email.placeholder": "you@example.com",
@@ -12213,6 +12314,18 @@ export const KIT_COPY: Readonly<
     "signin.rateLimitedFew": "验证码过多。请几分钟后重试。",
     "signin.code.emailInUse":
       "另一个 Polaris Locker 账户正在使用此邮箱。请使用之前的方式登录。",
+    "signin.gate.confirmedBy": "已由{provider}确认",
+    "signin.gate.confirmedByCode": "已通过验证码确认",
+    "signin.gate.nameFrom": "使用来自以下的名称",
+    "signin.gate.nameHint": "显示在 Polaris Locker 和电子邮件中。",
+    "signin.gate.picture": "头像",
+    "signin.gate.pictureInitialsTile": "首字母",
+    "signin.gate.pictureFromName": "来自你的名称",
+    "signin.gate.pictureUpload": "上传",
+    "signin.gate.pictureUploadHint": "PNG 或 JPEG",
+    "signin.gate.pictureInUse": "使用中",
+    "signin.gate.passkey": "之后添加通行密钥",
+    "signin.gate.pictureInvalid": "请选择 PNG 或 JPEG。",
     "core.fallback.title": "出现问题",
     "core.fallback.message": "出现问题（{code}）。请重试。",
     "core.codes.unauthorized.title": "未登录",

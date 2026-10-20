@@ -46,6 +46,24 @@ These approved plans change this package. Where they differ from the text below,
 
 - [`plans/I-27.md`](../plans/I-27.md) §12: the D4 flow and ConsentStep's toggles; FinishStep per §2.4.
 
+## Rebuilt to identity.finish (2026-10-20)
+
+Owner direction and lead decisions of 2026-10-20 win over everything above. Verified against the
+code: P0-38's FinishStep (`portal/components/signin/FinishStep.tsx`) is replaced by the
+`identity.finish` mockup (MK-L1 re-skin).
+
+- One h1 "Create your account" for every new account; the email is plain text with "Confirmed by
+  Google" (or "Confirmed by code") beside its label; no "Signed in with" strip.
+- "Screen name", "Use a name from" chips (current marked), picture tiles (provider, Initials,
+  Upload), explicit terms checkboxes with the error at the checkbox, the passkey opt-in. The
+  primary is never disabled (it replaces the older "disabled until both terms" rule above).
+- The finish code stage and the sign-in's CodeStep share one `CodeEntry` (`ui/auth/CodeEntry.tsx`).
+- Worker: `beginEmailFinish` no longer returns `null` when Polaris Locker's terms are unset, so a
+  new email-code address always finishes here. `pnpm gen transcripts` changed nothing.
+- Corrections: the gate cannot take an upload, so an upload and a passkey are made right after the
+  gate passes (best effort); the product terms' "From {developer} · {date}" line needs the gate
+  view to carry both (follow-up); SIGN-IN.md §3.4, §3.5, §4.6 and EXPERIENCE.md follow identity.finish.
+
 ## Goal
 
 The login card's `/signin/confirm-email` step renders `EmailGate` with `ProfileImport` in every §4.29 variant (verified, code, Steam empty, terms), plain and under the app header, with the `email_in_use` join hand-off and no skip path.
