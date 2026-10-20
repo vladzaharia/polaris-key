@@ -75,7 +75,7 @@ var _aside: VBoxContainer
 var _head: VBoxContainer
 var _main: VBoxContainer
 var _product: PKeyProductHeader
-var _powered_by: TextureRect
+var _powered_by: PKeyPoweredBy
 var _glyph: TextureRect
 var _title: Label
 var _body: Label

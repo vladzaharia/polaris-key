@@ -39,8 +39,8 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	t.check("33 px is the display cut", Brand.optical_cut(33) == "display")
 	t.check("no bit at 47 px", not Brand.bit_visible(47))
 	t.check("bit at 48 px", Brand.bit_visible(48))
-	t.check("badge minimum (compact)", Brand.BADGE_MIN_COMPACT == Vector2i(232, 88))
-	t.check("phrase", Brand.POWERED_BY_PHRASE == "Powered by Polaris Key")
+	t.check("badge minimum (Locker)", Brand.BADGE_MIN == Vector2i(320, 104))
+	t.check("phrase", Brand.POWERED_BY_PHRASE == "Powered by Polaris Locker")
 	_theme(t)
 	await _overrides(t)
 	_accent(t)
@@ -280,13 +280,16 @@ func _theme(t: PKeyTestContext) -> void:
 	t.check("brand: text on a deep accent is white", deep.get_color("font_color", "PKeyPrimary") == Color.WHITE)
 
 	t.check("mark: the Pinned K carries no terminal bit", not PKeyBrandMarks.PINNED_K_DARK.to_lower().contains("#ffc24d") and not PKeyBrandMarks.PINNED_K_LIGHT.to_lower().contains("#d07a00"))
+	t.check("mark: the Locker micro mark is the kit's, coral on dark", PKeyBrandMarks.LOCKER_MICRO_DARK.contains("#ff7869") and PKeyBrandMarks.LOCKER_MICRO_DARK.contains('viewBox="0 0 128 128"'))
+	t.check("powered by: the phrase is Polaris Locker's", PKeyBrand.POWERED_BY_PHRASE == "Powered by Polaris Locker")
 	var badge := PKeyUiTheme.powered_by_texture(false)
-	t.check("powered by: the compact badge rasterises at 2x its minimum", badge != null and badge.get_width() == 2 * PKeyBrand.BADGE_MIN_COMPACT.x)
-	t.check("powered by: compact minimum", PKeyUiTheme.powered_by_size("compact") == Vector2(232, 88))
-	t.check("powered by: a smaller request is raised", PKeyUiTheme.powered_by_size("compact", Vector2(100, 40)) == Vector2(232, 88))
-	t.check("powered by: horizontal minimum", PKeyUiTheme.powered_by_size("horizontal", Vector2(10, 10)) == Vector2(376, 144))
-	t.check("powered by: stacked minimum", PKeyUiTheme.powered_by_size("stacked") == Vector2(288, 336))
-	t.check("powered by: larger keeps the proportions", PKeyUiTheme.powered_by_size("compact", Vector2(464, 0)) == Vector2(464, 176))
+	t.check("powered by: the Locker badge rasterises at 2x its minimum", badge != null and badge.get_width() == 2 * PKeyBrand.BADGE_MIN.x and badge.get_height() == 2 * PKeyBrand.BADGE_MIN.y)
+	t.check("powered by: minimum is 320 x 104", PKeyUiTheme.powered_by_size() == Vector2(320, 104) and PKeyBrand.BADGE_MIN == Vector2i(320, 104))
+	t.check("powered by: a smaller request is raised", PKeyUiTheme.powered_by_size(Vector2(100, 40)) == Vector2(320, 104))
+	t.check("powered by: larger keeps the proportions", PKeyUiTheme.powered_by_size(Vector2(640, 0)) == Vector2(640, 208))
+	var micro := PKeyUiTheme.micro_mark_texture(true)
+	t.check("powered by: the micro mark rasterises at 2x 16 px", micro != null and micro.get_width() == 2 * PKeyBrand.POWERED_BY_MARK_SIZE)
+	t.check("powered by: Key's badge art is not in the addon", not FileAccess.file_exists("res://addons/polaris_key/brand/powered-by-compact-dark.svg"))
 
 
 func _overrides(t: PKeyTestContext) -> void:
@@ -305,7 +308,10 @@ func _overrides(t: PKeyTestContext) -> void:
 		tree.root.remove_child(v)
 		v.free()
 	var shown := func(v: Control, n: String) -> bool:
-		var r := v.find_child(n, true, false) as TextureRect
+		var c := v.find_child(n, true, false) as Control
+		if c is PKeyPoweredBy:
+			return c.visible and (c as PKeyPoweredBy).texture != null
+		var r := c as TextureRect
 		return r != null and r.visible and r.texture != null
 	# The product's identity leads a gate card (UI-KITS.md §1.2): its icon or monogram and name.
 	var product := func(v: Control) -> bool:
@@ -360,9 +366,20 @@ func _overrides(t: PKeyTestContext) -> void:
 	for i in 3:
 		await tree.process_frame
 	t.check("powered by: shown when asked", shown.call(v, "PoweredBy"))
-	var badge := v.find_child("PoweredBy", true, false) as Control
-	t.check("powered by: never below the kit minimum", badge != null and badge.custom_minimum_size.x >= 232 and badge.custom_minimum_size.y >= 88)
+	var badge := v.find_child("PoweredBy", true, false) as PKeyPoweredBy
+	t.check("powered by: the line (mark 16 px and phrase) or the badge, never smaller than its art", badge != null and badge.texture != null and (badge.custom_minimum_size.x >= 320 and badge.custom_minimum_size.y >= 104 or badge.custom_minimum_size.y >= 16))
+	t.check("powered by: the phrase is Powered by Polaris Locker", badge != null and (badge.find_child("Phrase", true, false) as Label).text == "Powered by Polaris Locker" or badge.tooltip_text == "Powered by Polaris Locker")
 	unmount.call(v)
+	opts.ui_powered_by_style = "line"
+	PKeyUiTheme.apply_options(opts)
+	v = mount.call()
+	for i in 3:
+		await tree.process_frame
+	badge = v.find_child("PoweredBy", true, false) as PKeyPoweredBy
+	t.check("powered by: style line draws the micro mark and the phrase, never the badge", badge != null and badge.visible and (badge.find_child("LockerBadge", true, false) as Control).visible == false and (badge.find_child("Phrase", true, false) as Label).visible and badge.texture.get_width() == 2 * PKeyBrand.POWERED_BY_MARK_SIZE)
+	unmount.call(v)
+	opts.ui_powered_by_style = "badge"
+	PKeyUiTheme.apply_options(opts)
 
 	opts.ui_accent = Brand.service_accent("release", false)
 	PKeyUiTheme.apply_options(opts)

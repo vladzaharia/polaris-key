@@ -24,7 +24,7 @@ extends RefCounted
 ##   options.ui_brand_scheme = "light"          # the brand's light theme
 ##   options.ui_accent = Color("#39d075")       # your accent in the brand theme
 ##   options.ui_theme = preload("res://my_theme.tres")   # your whole Theme, whatever branding
-##   options.ui_powered_by = true               # the "Powered by Polaris Key" badge (off by default)
+##   options.ui_powered_by = true               # "Powered by Polaris Locker" (off by default)
 ##
 ## A scene given a Theme of its own (in the inspector or in code) keeps it; only a scene still on
 ## the kit's stock theme follows these settings. PKeyBoot's `theme` option (a Theme a mounted pack
@@ -250,8 +250,11 @@ static var accent := Color(0, 0, 0, 0):
 		_cache = null
 ## A Theme that replaces the kit's in every scene still on the stock theme; null for none.
 static var override: Theme = null
-## Show the "Powered by Polaris Key" badge where the scenes offer it (gate, boot, settings).
+## Show "Powered by Polaris Locker" where the scenes offer it (gate, boot, settings).
 static var powered_by := false
+## How it is drawn (UI-KITS.md §1.6): "badge" (the 320 x 104 badge where 320 px are free, else the
+## line; the default) or "line" (the Locker micro mark and the phrase).
+static var powered_by_mode := "badge"
 ## The density the scenes use where the screen has room for it (UI-KITS.md §3.1): "spacious" (the
 ## Godot default), "comfortable" or "compact". A screen too small for it steps down on its own.
 static var density := DEFAULT_DENSITY
@@ -307,6 +310,8 @@ static func apply_options(opts: Resource) -> void:
 	accent = opts.get("ui_accent") if opts.get("ui_accent") is Color else Color(0, 0, 0, 0)
 	override = opts.get("ui_theme") as Theme
 	powered_by = opts.get("ui_powered_by") == true
+	var pm = opts.get("ui_powered_by_style")
+	powered_by_mode = pm if pm is String and pm in ["line", "badge"] else "badge"
 	var d = opts.get("ui_density")
 	density = d if d is String and DENSITIES.has(d) else DEFAULT_DENSITY
 	var rm = opts.get("ui_reduce_motion")
@@ -334,6 +339,7 @@ static func reset() -> void:
 	accent = Color(0, 0, 0, 0)
 	override = null
 	powered_by = false
+	powered_by_mode = "badge"
 	density = DEFAULT_DENSITY
 	product_name = ""
 	product_icon = null
@@ -1083,10 +1089,21 @@ static func palette(dark: bool) -> Dictionary:
 
 # ── Marks ────────────────────────────────────────────────────────────────────────────────
 
-## The compact "Powered by Polaris Key" badge (the kit's transparent treatment) for a dark or
-## light ground, rasterised at 2x its minimum. Show it at powered_by_size("compact") or larger.
+## The attribution in effect: "" (off), "line" or "badge".
+static func powered_by_style() -> String:
+	return powered_by_mode if powered_by else ""
+
+
+## The Locker `powered-by` badge (the kit's transparent treatment) for a dark or light ground,
+## rasterised at 2x its 320 x 104 minimum. Show it at powered_by_size() or larger.
 static func powered_by_texture(dark: bool) -> Texture2D:
-	return _svg("powered-%s" % dark, PKeyBrandMarks.POWERED_BY_COMPACT_DARK if dark else PKeyBrandMarks.POWERED_BY_COMPACT_LIGHT, 2.0 * PKeyBrand.BADGE_MIN_COMPACT.x / PKeyBrandMarks.POWERED_BY_COMPACT_WIDTH)
+	return _svg("powered-%s" % dark, PKeyBrandMarks.LOCKER_POWERED_BY_DARK if dark else PKeyBrandMarks.LOCKER_POWERED_BY_LIGHT, 2.0 * PKeyBrand.BADGE_MIN.x / PKeyBrandMarks.LOCKER_POWERED_BY_WIDTH)
+
+
+## The Locker micro mark (the Powered-by line's mark), rasterised at 2x its 16 px size. The SVG is
+## on a 128 grid (the kit's micro cut scaled 8x), so the scale is 2 * 16 / 128.
+static func micro_mark_texture(dark: bool) -> Texture2D:
+	return _svg("micro-%s" % dark, PKeyBrandMarks.LOCKER_MICRO_DARK if dark else PKeyBrandMarks.LOCKER_MICRO_LIGHT, 2.0 * PKeyBrand.POWERED_BY_MARK_SIZE / 128.0)
 
 
 static func _svg(key: String, svg: String, scale: float) -> Texture2D:
@@ -1100,14 +1117,10 @@ static func _svg(key: String, svg: String, scale: float) -> Texture2D:
 	return tex
 
 
-## The size a "Powered by Polaris Key" badge is shown at: `requested`, raised to the kit minimum
-## for its layout ("compact" for app UI, "horizontal" for credits, "stacked" for square spots),
-## keeping the badge's proportions. Never crop the badge or show it smaller (BRAND.md §1.5).
-static func powered_by_size(layout: String, requested := Vector2.ZERO) -> Vector2:
-	var minimum: Vector2 = {
-		"horizontal": Vector2(PKeyBrand.BADGE_MIN_HORIZONTAL),
-		"stacked": Vector2(PKeyBrand.BADGE_MIN_STACKED),
-	}.get(layout, Vector2(PKeyBrand.BADGE_MIN_COMPACT))
+## The size the Locker "Powered by" badge is shown at: `requested`, raised to the 320 x 104
+## minimum, keeping the badge's proportions. Never crop the badge or show it smaller (BRAND.md §1.5).
+static func powered_by_size(requested := Vector2.ZERO) -> Vector2:
+	var minimum := Vector2(PKeyBrand.BADGE_MIN)
 	var k := maxf(1.0, maxf(requested.x / minimum.x, requested.y / minimum.y))
 	return minimum * k
 

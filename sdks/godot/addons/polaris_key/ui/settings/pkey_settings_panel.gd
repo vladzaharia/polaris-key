@@ -80,7 +80,7 @@ var _pane: PanelContainer
 var _scroll: ScrollContainer
 var _fade: TextureRect
 var _inset: MarginContainer
-var _powered_by: TextureRect
+var _powered_by: PKeyPoweredBy
 var _close_row: BoxContainer
 var _close: Button
 var _title: Label

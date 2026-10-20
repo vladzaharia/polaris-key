@@ -9,6 +9,12 @@ as the GitHub Release notes, and the same text is the Asset Store version's chan
 
 ## Unreleased
 
+- **Powered by Polaris Locker (LK-16).** `ui_powered_by` now draws the Locker attribution: the
+  320 × 104 `powered-by` badge where 320 px are free, else the line (the Locker micro mark at 16 px
+  and the phrase); `ui_powered_by_style = "line"` always draws the line. `PKeyPoweredBy` is the node;
+  `PKeyUiTheme.powered_by_size()` takes no layout, and the Key badges (`powered-by-compact-*`) are no
+  longer shipped. The credits folder holds the Locker badge and micro mark.
+
 - **Client backend (`core.backend`, SP-59).** `PolarisKey.backend.headers()` (raw lines for
   `HTTPRequest`; set `max_redirects = 0`), `headers_for(url)` and `request()` send `X-PKey-License` and
   `X-PKey-Device` to the app's own backend, only to `PKeyOptions.backend_origins`; `request()` checks

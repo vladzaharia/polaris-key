@@ -362,7 +362,8 @@ gamepad or a TV remote.
   options.ui_brand_scheme = "light"     # the Polaris Key light theme (default "dark")
   options.ui_accent = Color("#39d075")  # your accent for the primary action and chips (optional)
   options.ui_theme = load("res://ui/my_theme.tres")  # or your whole Theme, whatever the branding
-  options.ui_powered_by = true          # the "Powered by Polaris Key" badge (off by default)
+  options.ui_powered_by = true          # "Powered by Polaris Locker" (off by default)
+  options.ui_powered_by_style = "line"  # "badge" (default; the line where 320 px are not free) or "line"
   ```
 
   The same switches exist on `PKeyUiTheme` (`branding`, `scheme`, `accent`, `override`,
@@ -372,9 +373,9 @@ gamepad or a TV remote.
   calls `PolarisKey.boot()` gets its UI options from `res://polaris_key.tres`, which boot
   configures from once its view is showing: put `ui_branding`, `ui_powered_by` and the rest in
   that resource (the setup dock's file), not in statics set before `boot()`. With `ui_powered_by`,
-  the gate, boot and settings scenes end with the compact "Powered by Polaris Key" badge, at its
-  kit minimum of 232 × 88 or larger and never cropped; it is off unless you turn it on, with or
-  without branding.
+  the gate, boot and settings scenes end with "Powered by Polaris Locker": the Locker badge at its
+  320 × 104 minimum or larger and never cropped where 320 px are free, else the line (the Locker
+  micro mark at 16 px and the phrase); it is off unless you turn it on, with or without branding.
 
 - **Your own theme.** A scene given a Theme of its own (in the inspector or in code) keeps it; only
   a scene still on the kit's stock theme follows the options. `ui_theme` is layered: your Theme
@@ -396,13 +397,13 @@ bold_font)` makes the Polaris Key theme with your accent or fonts if you want a 
   (`copy.overrides = {"activation_title": "Unlock Diceroll"}`) without forking a scene. The
   gettext tables in `ui/locale/` are keyed on the shared catalog ids and only the headless view
   models read them: a scene does not load them, so they do not translate the kit yet.
-- **Credits.** `addons/polaris_key/brand/` holds the "Powered by Polaris Key" credit screens
-  (1920×1080, dark and light) and compact badges for your credits or about screen. The folder is
+- **Credits.** `addons/polaris_key/brand/` holds the Locker "Powered by" badge
+  (`powered-by-credit-*`, 320 × 104, dark and light) and the Locker micro mark (`locker-micro-*`) for your credits or about screen. The folder is
   never imported (`.gdignore`); copy the file you need into your project. (The kit scenes show
-  the compact badge only with `ui_powered_by`.) Where you place one yourself: compact for app UI, the credit screen for credits; the
-  dark file on a dark ground and the light file on a light one; never cropped, never recoloured,
-  and never smaller than the kit minimum (`PKeyUiTheme.powered_by_size("compact", wanted)` raises
-  a smaller size to 232 × 88, keeping the proportions).
+  the attribution only with `ui_powered_by`.) Use the dark file on a dark ground and the light file
+  on a light one; never cropped, never recoloured, and never smaller than the kit minimum
+  (`PKeyUiTheme.powered_by_size(wanted)` raises a smaller size to 320 × 104, keeping the
+  proportions).
 
 ### Product presentation (`core.presentation`)
 

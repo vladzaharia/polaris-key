@@ -23,14 +23,14 @@ func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	alignment = BoxContainer.ALIGNMENT_CENTER
 	visible = false
-	_mark = _rect("Mark")
+	_mark = _rect("LockerMark")
 	_label = Label.new()
 	_label.name = "Phrase"
 	_label.theme_type_variation = "PKeyMuted"
 	_label.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	_badge = _rect("Badge")
+	_badge = _rect("LockerBadge")
 	add_child(_mark)
 	add_child(_label)
 	add_child(_badge)
