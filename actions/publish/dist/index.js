@@ -11664,6 +11664,7 @@ var TERMINAL_SYMBOLS = {
     barEmpty: "─",
     separator: "·",
     ellipsis: "…",
+    lockerMark: "✦",
     arrows: "↑↓"
   },
   ascii: {
@@ -11681,6 +11682,7 @@ var TERMINAL_SYMBOLS = {
     barEmpty: "-",
     separator: "-",
     ellipsis: "...",
+    lockerMark: "*",
     arrows: "^v"
   }
 };

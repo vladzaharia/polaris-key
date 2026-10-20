@@ -450,7 +450,7 @@ screen:
   in both themes. The fixture Tidewater Studio resolves to teal; it is never "violet with a teal
   icon pasted in".
 
-- **Polaris Key appears only as an optional "Powered by Polaris Key"** line or badge (`poweredBy`,
+- **Polaris Locker appears only as an optional "Powered by Polaris Locker"** line or badge (`poweredBy`,
   off by default, §4.5). No kit screen shows the Pinned K, the Star Cut or the "Polaris Key" name
   otherwise. Two exceptions, both true statements about who handles a step:
   - the sign-in footnote "Polaris Key signs you in for <App>. <Developer> never sees your codes or
@@ -1390,8 +1390,9 @@ WCAG 2.2 AA in both themes (BRAND §9) plus:
 
 ### 4.5 Powered by
 
-`poweredBy: "line"` adds the 12 px line at the foot of AccountAndLicense and About; `"badge"` adds the
-compact badge at its minimum on About. Off by default in every kit and in both presets.
+`poweredBy: "line"` adds the 12 px line (the Locker micro mark at 16 px and the phrase) at the foot of
+AccountAndLicense and About; `"badge"` adds the Locker `powered-by` badge at 320 × 104 on About where 320 px
+are free, else the line. Off by default in every kit and in both presets.
 
 ### 4.6 States and copy are data
 
