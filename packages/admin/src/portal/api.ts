@@ -76,6 +76,8 @@ export interface PortalCapabilities {
      * each a "Continue with <label>" button to `/login/sso/<id>`. Absent on an older Worker.
      */
     connections?: PortalConnection[];
+    /** I-16: passkeys are an account sign-in method (platform-level; absent on an older Worker). */
+    passkey?: boolean;
   };
   /**
    * The product named by `?product=`, for the login card's context header (G1/G28). Not sent by
@@ -1003,6 +1005,41 @@ export interface PortalPasskeyOptions {
   expiresIn: number;
 }
 
+/** `POST /api/device-login/start` (PX-W14): the code, its QR and the poll handle. */
+export interface PortalDeviceLoginStart {
+  id: string;
+  /** `KRQP-BMXD`, shown as is. */
+  code: string;
+  /** An SVG `data:` URI of `approveUrl`. */
+  qr: string;
+  approveUrl: string;
+  /** Seconds the code works. */
+  expiresIn: number;
+  /** Seconds between polls. */
+  interval: number;
+}
+
+export type PortalDeviceLoginPoll =
+  | { status: "pending"; expiresIn?: number; interval?: number }
+  | { status: "approved" | "denied" };
+
+/** `POST /api/device-login/lookup`: what asks to sign in, for the approver. */
+export interface PortalDeviceLoginRequest {
+  code: string;
+  device: { label: string; browser: string | null; os: string | null };
+  location: {
+    city: string | null;
+    region: string | null;
+    country: string | null;
+    label: string | null;
+  };
+  requestedAt: number;
+  expiresIn: number;
+  approverCountry: string | null;
+  newLocation: boolean;
+  stepUpRequired: boolean;
+}
+
 /** One live session of the account (`GET /api/sessions`, I-07), newest first. */
 export interface PortalSession {
   /** The row key (a hash, never a cookie): the path segment that ends it. */
@@ -1419,17 +1456,40 @@ export const portalApi = {
       method: "PATCH",
       body: JSON.stringify({ name }),
     }),
-  /** A passkey sign-in's challenge: how the account page confirms it's you (step-up). */
-  passkeySignInOptions: () =>
+  /**
+   * A passkey sign-in's challenge: the card's **Sign in with a passkey**, and how the account page
+   * confirms it's you (step-up). `returnTo` is where a signed-out sign-in carries on.
+   */
+  passkeySignInOptions: (returnTo?: string) =>
     call<PortalPasskeyOptions>("/api/signin/passkey/options", {
       method: "POST",
-      body: JSON.stringify({}),
+      body: JSON.stringify(returnTo ? { returnTo } : {}),
     }),
   passkeySignInVerify: (response: unknown) =>
-    call<{ status: string }>("/api/signin/passkey/verify", {
+    call<{ status: string; next?: string }>("/api/signin/passkey/verify", {
       method: "POST",
       body: JSON.stringify({ response }),
     }),
+  /** PX-W14: ask to sign in on this browser by approving it from a signed-in device. */
+  deviceLoginStart: () =>
+    call<PortalDeviceLoginStart>("/api/device-login/start", {
+      method: "POST",
+      body: JSON.stringify({}),
+    }),
+  /** The asking browser's poll: `pending`, `denied` or `approved` (the session cookie is set). */
+  deviceLoginPoll: (id: string) =>
+    call<PortalDeviceLoginPoll>(`/api/device-login/${enc(id)}`),
+  /** The approver reads what is asking, before deciding (reads only). */
+  deviceLoginLookup: (code: string) =>
+    call<{ request: PortalDeviceLoginRequest }>("/api/device-login/lookup", {
+      method: "POST",
+      body: JSON.stringify({ code }),
+    }),
+  deviceLoginDecide: (code: string, decision: "approve" | "deny") =>
+    call<{ ok: true; status: "approved" | "denied" }>(
+      "/api/device-login/approve",
+      { method: "POST", body: JSON.stringify({ code, decision }) },
+    ),
   /** Where you're signed in (I-07): the account's live sessions. */
   sessions: () => call<{ sessions: PortalSession[] }>("/api/sessions"),
   endSession: (id: string) =>

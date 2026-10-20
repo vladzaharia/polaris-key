@@ -51,7 +51,7 @@ import {
   createPasskey,
   passkeysSupported,
 } from "../../webauthn.js";
-import { CODE_LENGTH, CodeCells } from "../CodeCells.js";
+import { CODE_LENGTH, CodeCells } from "../../../ui/auth/CodeCells.js";
 import {
   AppleGlyph,
   GoogleGlyph,

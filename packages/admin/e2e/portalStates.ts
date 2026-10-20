@@ -60,9 +60,41 @@ const WITH_PROVIDERS = {
       oidc: false,
       magic: true,
       providers: ["apple", "google", "steam"],
+      passkey: true,
     },
     modules: { licensing: true, claim: true, releases: true },
   },
+};
+/** PX-W14's start: the code, an SVG data URI (a block pattern stands in for the QR) and the poll. */
+const QR_SVG =
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 21 21" shape-rendering="crispEdges"><path d="M0 0h7v7H0zM14 0h7v7h-7zM0 14h7v7H0zM9 1h3v2H9zM9 5h2v3h3v2H8zM1 9h3v2H1zM5 9h2v3H5zM15 9h3v3h-3zM9 13h3v3H9zM14 15h2v4h-2zM17 14h4v2h-4zM18 18h3v3h-3z"/></svg>';
+const DEVICE_START = {
+  "POST /api/device-login/start": {
+    status: 201,
+    body: {
+      id: "dl_q3Jm1n0b6r2x9VYkU8sA4pQe7tWzLdH5fCgN0oRiXyE",
+      code: "KRQP-BMXD",
+      qr: `data:image/svg+xml;base64,${Buffer.from(QR_SVG).toString("base64")}`,
+      approveUrl: "https://key.plrs.im/#/account/approve?code=KRQP-BMXD",
+      expiresIn: 292,
+      interval: 3,
+    },
+  },
+};
+const DEVICE_REQUEST = {
+  code: "KRQP-BMXD",
+  device: { label: "Chrome on macOS", browser: "Chrome", os: "macOS" },
+  location: {
+    city: "Lisbon",
+    region: "Lisbon",
+    country: "PT",
+    label: "Lisbon, Portugal",
+  },
+  requestedAt: FIXTURE_NOW - 40,
+  expiresIn: 248,
+  approverCountry: "PT",
+  newLocation: false,
+  stepUpRequired: false,
 };
 const NIGHTFALL_CONTEXT = {
   body: {
@@ -238,6 +270,80 @@ export const SHIPPED: ShippedState[] = [
     ready: async (p) => {
       await h1(p, "Sign in to Polaris Key");
       await p.getByRole("link", { name: "Continue with Steam" }).waitFor();
+    },
+  },
+  {
+    section: "4.1",
+    id: "signin-passkey",
+    title: "Login card, passkey refused by the browser",
+    scenario: "signedOut",
+    path: "/",
+    routes: {
+      "/api/capabilities": WITH_PROVIDERS,
+      "POST /api/signin/passkey/options": {
+        body: {
+          options: { challenge: "AAAA", timeout: 60000 },
+          expiresIn: 300,
+        },
+      },
+    },
+    ready: async (p) => {
+      await h1(p, "Sign in to Polaris Key");
+      await p.evaluate(() => {
+        navigator.credentials.get = () =>
+          Promise.reject(new DOMException("denied", "NotAllowedError"));
+      });
+      await p.getByRole("button", { name: "Sign in with a passkey" }).click();
+      await p.getByText("Your passkey wasn't used").waitFor();
+    },
+  },
+  {
+    section: "4.1",
+    id: "signin-device",
+    title: "Login card, Sign in with another device (code and QR, waiting)",
+    scenario: "signedOut",
+    path: "/",
+    routes: {
+      ...DEVICE_START,
+      "GET /api/device-login/dl_q3Jm1n0b6r2x9VYkU8sA4pQe7tWzLdH5fCgN0oRiXyE": {
+        body: { status: "pending", expiresIn: 290, interval: 3 },
+      },
+    },
+    ready: async (p) => {
+      await h1(p, "Sign in to Polaris Key");
+      await p
+        .getByRole("button", { name: "Sign in with another device" })
+        .click();
+      await h1(p, "Sign in with another device");
+      await p.getByText("KRQP-BMXD").waitFor();
+      await p.getByText("Waiting for you to approve").waitFor();
+    },
+  },
+  {
+    section: "4.1",
+    id: "signin-device-denied",
+    title: "Login card, Sign in with another device, denied",
+    scenario: "signedOut",
+    path: "/",
+    routes: {
+      ...DEVICE_START,
+      "POST /api/device-login/start": {
+        status: 201,
+        body: {
+          ...DEVICE_START["POST /api/device-login/start"].body,
+          interval: 1,
+        },
+      },
+      "GET /api/device-login/dl_q3Jm1n0b6r2x9VYkU8sA4pQe7tWzLdH5fCgN0oRiXyE": {
+        body: { status: "denied" },
+      },
+    },
+    ready: async (p) => {
+      await h1(p, "Sign in to Polaris Key");
+      await p
+        .getByRole("button", { name: "Sign in with another device" })
+        .click();
+      await p.getByText("That request was denied").waitFor();
     },
   },
   {
@@ -1098,6 +1204,59 @@ export const SHIPPED: ShippedState[] = [
     },
   },
   {
+    section: "4.24",
+    id: "account-approve",
+    title: "Approve a new device (the QR's link, with the code filled in)",
+    scenario: "three",
+    path: "/#/account/approve?code=KRQP-BMXD",
+    routes: {
+      "POST /api/device-login/lookup": { body: { request: DEVICE_REQUEST } },
+    },
+    ready: async (p) => {
+      await p.getByRole("dialog", { name: "Approve a new device?" }).waitFor();
+      await p.getByText("Lisbon, Portugal").waitFor();
+    },
+  },
+  {
+    section: "4.24",
+    id: "account-approve-step-up",
+    title: "Approve a new device from another place: confirm it's you first",
+    scenario: "three",
+    path: "/#/account/approve?code=KRQP-BMXD",
+    routes: {
+      "POST /api/device-login/lookup": {
+        body: {
+          request: {
+            ...DEVICE_REQUEST,
+            newLocation: true,
+            stepUpRequired: true,
+          },
+        },
+      },
+      "POST /api/device-login/approve": {
+        status: 401,
+        body: { error: "step_up_required", maxAgeSeconds: 300 },
+      },
+    },
+    ready: async (p) => {
+      const d = p.getByRole("dialog", { name: "Approve a new device?" });
+      await d.getByRole("button", { name: "Approve and sign it in" }).click();
+      await p.getByRole("dialog", { name: "Confirm it's you" }).waitFor();
+    },
+  },
+  {
+    section: "4.24",
+    id: "account-approve-enter",
+    title: "Approve a new device: type the code",
+    scenario: "three",
+    path: "/#/account",
+    ready: async (p) => {
+      await h1(p, "Account");
+      await p.getByRole("button", { name: "Approve a new device" }).click();
+      await p.getByRole("dialog", { name: "Approve a new device" }).waitFor();
+    },
+  },
+  {
     section: "4.26",
     id: "account-disconnect",
     title: "Account: disconnect with step-up",
@@ -1317,12 +1476,6 @@ export const PENDING: PendingState[] = [
       'Product page: "<Product> knows you as" the method it uses (needs the product users on the portal API)',
     wp: ["PX-13 follow-up"],
   },
-  {
-    section: "4.23",
-    title: "Sign in with another device: QR and code",
-    wp: ["PX-15"],
-  },
-  { section: "4.24", title: "Approve a new device", wp: ["PX-15"] },
   {
     section: "4.26",
     title: "Account: connected products, Download my data (need their API)",

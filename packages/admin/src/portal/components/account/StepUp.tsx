@@ -23,7 +23,7 @@ import {
   passkeyAssertion,
   passkeysSupported,
 } from "../../webauthn.js";
-import { CODE_LENGTH, CodeCells } from "../CodeCells.js";
+import { CODE_LENGTH, CodeCells } from "../../../ui/auth/CodeCells.js";
 
 /**
  * "Confirm it's you first" (PORTAL.md §4.26; PX-W12's step-up rule): an account change needs a

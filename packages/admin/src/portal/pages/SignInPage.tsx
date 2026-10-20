@@ -3,8 +3,10 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   ArrowRight,
   Building2,
+  Fingerprint,
   KeyRound,
   Mail,
+  ScanLine,
   RefreshCw,
   ShieldCheck,
 } from "lucide-react";
@@ -20,14 +22,32 @@ import {
   type PortalEmailSent,
   type PortalSsoNext,
 } from "../api.js";
-import { CardHeader, LoginCard } from "../components/signin/LoginCard.js";
-import { ProviderRow } from "../components/signin/ProviderRow.js";
-import { CODE_LENGTH, CodeCells } from "../components/CodeCells.js";
+import {
+  AuthCard,
+  AuthTitle as Title,
+  CardHeader,
+  CODE_LENGTH,
+  CodeCells,
+  OrDivider as Divider,
+  ProviderRow,
+  QuietLink,
+  QuietLinks,
+} from "../../ui/auth/index.js";
+import { Lockup } from "../components/Lockup.js";
+import { ProductIcon } from "../components/ProductIcon.js";
 import { KeyField } from "../components/KeyField.js";
 import { portalKeys, useCapabilities } from "../data.js";
 import { portalErrorCopy } from "../errors.js";
 import { checkKey, formatVerdict, productLabel } from "../model/key.js";
 import { setParams, useDocumentTitle, useRoute } from "../router.js";
+import { DeviceStep } from "../components/signin/DeviceStep.js";
+import {
+  PasskeyError,
+  passkeyAssertion,
+  passkeysSupported,
+} from "../webauthn.js";
+import { sc } from "../copy/signin.js";
+import { announceSignedIn } from "../session.js";
 import { useSessionRecheck } from "../session.js";
 import { returnUrl, stashCarriedKey } from "../carriedKey.js";
 
@@ -77,7 +97,9 @@ type Step =
   | { kind: "refused"; email: string }
   /** I-30: the address's domain routes to a connection (`next` from the start or a refusal). */
   | { kind: "sso"; email: string; next: PortalSsoNext }
-  | { kind: "key" };
+  | { kind: "key" }
+  /** Sign in with another device (§3.11): this browser asks, a signed-in device approves. */
+  | { kind: "device" };
 
 /** The countdown when an answer carries no `resendIn` (a Worker from before PX-W4). */
 const RESEND_FALLBACK_S = 60;
@@ -88,6 +110,15 @@ function resendDelay(out: PortalEmailSent | undefined): number {
   return typeof n === "number" && Number.isFinite(n) && n >= 0
     ? Math.ceil(n)
     : RESEND_FALLBACK_S;
+}
+
+function AuthBrand(): React.ReactElement {
+  return (
+    <>
+      <Lockup height={64} className="hidden sm:block" />
+      <Lockup height={52} className="sm:hidden" />
+    </>
+  );
 }
 
 function productFromUrl(): string | null {
@@ -136,11 +167,13 @@ export function SignInPage(): React.ReactElement {
       ? t("signin.code.title")
       : step.kind === "refused"
         ? "This account can't sign in"
-        : step.kind === "key"
-          ? t("signin.link.key")
-          : step.kind === "sso"
-            ? step.next.connection.label
-            : t("signin.methods.titleApp"),
+        : step.kind === "device"
+          ? t("signin.approve.title")
+          : step.kind === "key"
+            ? t("signin.link.key")
+            : step.kind === "sso"
+              ? step.next.connection.label
+              : t("signin.methods.titleApp"),
   );
   /** The card's step key: a connection step is keyed by its route, so a change re-announces. */
   const ssoKey =
@@ -152,7 +185,9 @@ export function SignInPage(): React.ReactElement {
   const header = ctx ? (
     <CardHeader
       variant="context"
-      slug={ctx.slug}
+      icon={
+        <ProductIcon slug={ctx.slug} name={ctx.name} tint={null} size={48} />
+      }
       name={ctx.name}
       developer={ctx.developerName ?? null}
     />
@@ -165,7 +200,12 @@ export function SignInPage(): React.ReactElement {
       : (ssoKey ?? step.kind);
 
   return (
-    <LoginCard header={header} stepKey={stepKey} direction={direction}>
+    <AuthCard
+      brand={<AuthBrand />}
+      header={header}
+      stepKey={stepKey}
+      direction={direction}
+    >
       {caps.isPending ? (
         <MethodsSkeleton />
       ) : caps.error ? (
@@ -217,6 +257,8 @@ export function SignInPage(): React.ReactElement {
           email={step.email}
           onChangeEmail={() => go({ kind: "methods" }, "back")}
         />
+      ) : step.kind === "device" ? (
+        <DeviceStep onOther={() => go({ kind: "methods" }, "back")} />
       ) : step.kind === "key" ? (
         <KeyStep
           onBack={() => go({ kind: "methods" }, "back")}
@@ -240,9 +282,10 @@ export function SignInPage(): React.ReactElement {
             )
           }
           onKey={() => go({ kind: "key" })}
+          onDevice={() => go({ kind: "device" })}
         />
       )}
-    </LoginCard>
+    </AuthCard>
   );
 }
 
@@ -258,21 +301,6 @@ function MethodsSkeleton(): React.ReactElement {
       </div>
       <div aria-hidden className="h-12 rounded-md bg-hover" />
     </div>
-  );
-}
-
-function Title({
-  children,
-}: {
-  children: React.ReactNode;
-}): React.ReactElement {
-  return (
-    <h1
-      tabIndex={-1}
-      className="text-2xl font-semibold text-fg-strong outline-none"
-    >
-      {children}
-    </h1>
   );
 }
 
@@ -314,48 +342,6 @@ function startErrorText(err: unknown): string {
   return portalErrorCopy(err).title + ". " + portalErrorCopy(err).description;
 }
 
-/**
- * The quiet links under a rule (§3.3), centred and evenly spaced: 24 px from the rule to the text
- * and 24 px from the text to the card's bottom edge. Each link is a 44 px target with its 20 px
- * line centred in it (12 px either side), so the row adds 12 px of padding above it and pulls the
- * body's bottom padding (24 px on phones, 32 px wide) in by 12 px or 20 px below it.
- */
-function QuietLinks({
-  children,
-}: {
-  children: React.ReactNode;
-}): React.ReactElement {
-  return (
-    <div
-      data-quiet-links
-      className="-mb-3 flex flex-wrap items-center justify-center gap-x-5 border-t border-border pt-3 text-sm text-fg-muted sm:-mb-5"
-    >
-      {children}
-    </div>
-  );
-}
-
-function QuietLink({
-  onClick,
-  icon,
-  children,
-}: {
-  onClick: () => void;
-  icon?: React.ReactNode;
-  children: React.ReactNode;
-}): React.ReactElement {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="inline-flex min-h-11 items-center gap-1.5 rounded-sm px-1 transition-colors duration-(--pk-duration-fast) hover:text-fg-strong"
-    >
-      {icon}
-      {children}
-    </button>
-  );
-}
-
 function MethodsStep({
   caps,
   context,
@@ -364,6 +350,7 @@ function MethodsStep({
   notice,
   onSent,
   onKey,
+  onDevice,
 }: {
   caps: PortalCapabilities;
   context: { slug: string; name: string; developerName?: string | null } | null;
@@ -376,7 +363,11 @@ function MethodsStep({
   /** The start's answer: a code was sent, or (`next`) the domain routes to a connection. */
   onSent: (email: string, sent: PortalEmailSent | undefined) => void;
   onKey: () => void;
+  onDevice: () => void;
 }): React.ReactElement {
+  const qc = useQueryClient();
+  const [passkeyBusy, setPasskeyBusy] = React.useState(false);
+  const [passkeyError, setPasskeyError] = React.useState<string | null>(null);
   const [email, setEmail] = React.useState(initialEmail ?? "");
   const [invalid, setInvalid] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -392,6 +383,7 @@ function MethodsStep({
     }
   }, [focusEmail]);
   const carried = useCarriedKey();
+  const passkey = caps.auth.passkey === true && passkeysSupported();
   const providers = caps.auth.providers ?? [];
   const magic = caps.auth.magic;
   // With the email field, the address routes to its connection (identifier-first); the buttons
@@ -437,6 +429,31 @@ function MethodsStep({
       if (err instanceof PortalApiError && err.status === 422) setInvalid(true);
     } finally {
       setSending(false);
+    }
+  };
+
+  /** Sign in with a passkey (I-16): the browser picks one, the Worker opens the session. */
+  const withPasskey = async (): Promise<void> => {
+    setPasskeyBusy(true);
+    setPasskeyError(null);
+    try {
+      const { options } = await portalApi.passkeySignInOptions(returnTo());
+      const response = await passkeyAssertion(options);
+      await portalApi.passkeySignInVerify(response);
+      announceSignedIn();
+      await qc.invalidateQueries({ queryKey: portalKeys.me });
+    } catch (err) {
+      setPasskeyError(
+        err instanceof PasskeyError && err.reason === "cancelled"
+          ? sc("signin.passkey.cancelled")
+          : err instanceof PasskeyError && err.reason === "unsupported"
+            ? sc("signin.passkey.unsupported")
+            : err instanceof PortalApiError && err.status === 403
+              ? sc("signin.approve.disabled")
+              : sc("signin.passkey.failed"),
+      );
+    } finally {
+      setPasskeyBusy(false);
     }
   };
 
@@ -497,6 +514,7 @@ function MethodsStep({
           </div>
           <Button
             type="submit"
+            variant="neutral"
             size="lg"
             className="h-12 w-full text-base font-semibold"
             loading={sending}
@@ -522,7 +540,7 @@ function MethodsStep({
       {oidc ? (
         <Button
           asChild
-          variant={magic || providers.length ? "secondary" : "primary"}
+          variant={magic || providers.length ? "secondary" : "neutral"}
           size="lg"
           className="h-12 w-full"
         >
@@ -540,24 +558,52 @@ function MethodsStep({
           primary={!oidc && providers.length === 0 && c === connections[0]}
         />
       ))}
-      {carried ? (
-        <QuietLinks>
-          <QuietLink
-            onClick={() => setParams({ activate: null })}
-            icon={<KeyRound aria-hidden className="size-4" />}
+      {passkey ? (
+        <div className="space-y-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="lg"
+            className="h-12 w-full text-base font-medium"
+            loading={passkeyBusy}
+            onClick={() => void withPasskey()}
+            iconStart={<Fingerprint aria-hidden />}
           >
-            {/* signin.key.withoutKey */}
-            Sign in without the key
-          </QuietLink>
-        </QuietLinks>
-      ) : caps.modules.claim ? (
+            {t("signin.passkey")}
+          </Button>
+          {passkeyError ? (
+            <p role="alert" className="text-center text-sm text-danger">
+              {passkeyError}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+      {carried || caps.modules.claim || magic ? (
         <QuietLinks>
-          <QuietLink
-            onClick={onKey}
-            icon={<KeyRound aria-hidden className="size-4" />}
-          >
-            {t("signin.link.key")}
-          </QuietLink>
+          {carried ? (
+            <QuietLink
+              onClick={() => setParams({ activate: null })}
+              icon={<KeyRound aria-hidden className="size-4" />}
+            >
+              {/* signin.key.withoutKey */}
+              Sign in without the key
+            </QuietLink>
+          ) : caps.modules.claim ? (
+            <QuietLink
+              onClick={onKey}
+              icon={<KeyRound aria-hidden className="size-4" />}
+            >
+              {t("signin.link.key")}
+            </QuietLink>
+          ) : null}
+          {magic ? (
+            <QuietLink
+              onClick={onDevice}
+              icon={<ScanLine aria-hidden className="size-4" />}
+            >
+              {t("signin.link.anotherDevice")}
+            </QuietLink>
+          ) : null}
         </QuietLinks>
       ) : null}
     </>
@@ -580,7 +626,7 @@ function ConnectionButton({
   return (
     <Button
       asChild
-      variant={primary ? "primary" : "secondary"}
+      variant={primary ? "neutral" : "secondary"}
       size="lg"
       className="h-auto min-h-12 w-full whitespace-normal py-2 text-center"
     >
@@ -597,16 +643,6 @@ function ConnectionButton({
         </span>
       </a>
     </Button>
-  );
-}
-
-function Divider(): React.ReactElement {
-  return (
-    <div className="flex items-center gap-3 text-sm text-fg-muted" aria-hidden>
-      <span className="h-px flex-1 bg-border" />
-      {t("signin.or")}
-      <span className="h-px flex-1 bg-border" />
-    </div>
   );
 }
 
@@ -814,6 +850,7 @@ function CodeStep({
         <p className="text-sm text-fg-muted">{t("signin.code.link")}</p>
         <Button
           type="submit"
+          variant="neutral"
           size="lg"
           className="h-12 w-full text-base font-semibold"
           disabled={code.length !== CODE_LENGTH}
@@ -982,6 +1019,7 @@ function SsoStep({
       <div className="space-y-3">
         <Button
           asChild
+          variant="neutral"
           size="lg"
           className="h-12 w-full text-base font-semibold"
         >
@@ -1047,6 +1085,7 @@ function RefusedStep({
         </p>
       </div>
       <Button
+        variant="neutral"
         size="lg"
         className="h-12 w-full text-base font-semibold"
         onClick={onChangeEmail}
@@ -1114,6 +1153,7 @@ function KeyStep({
         />
         <Button
           type="submit"
+          variant="neutral"
           size="lg"
           className="h-12 w-full text-base font-semibold"
           iconEnd={<ArrowRight aria-hidden />}

@@ -9,7 +9,7 @@ import {
   within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { ProviderRow } from "../src/portal/components/signin/ProviderRow.js";
+import { ProviderRow } from "../src/ui/auth/ProviderRow.js";
 import { SESSION_CHANNEL } from "../src/portal/session.js";
 import {
   ACCOUNT,
@@ -59,12 +59,12 @@ describe("LoginCard (SIGN-IN.md §3.1–§3.4, §3.9)", () => {
     ).toBeTruthy();
     expect(
       screen.getByRole("button", { name: "Continue" }).className,
-    ).toContain("bg-accent");
+    ).toContain("bg-action");
     const sso = screen.getByRole("link", {
       name: "Continue with single sign-on",
     });
     expect(sso.getAttribute("href")).toMatch(/^\/login\?return_to=/);
-    expect(sso.className).not.toContain("bg-accent");
+    expect(sso.className).not.toContain("bg-action");
     // No providers until the Worker names them (G11), and never OIDC jargon or "Portal".
     expect(
       screen.queryByRole("group", { name: "Or continue with" }),
@@ -82,7 +82,7 @@ describe("LoginCard (SIGN-IN.md §3.1–§3.4, §3.9)", () => {
     const sso = await screen.findByRole("link", {
       name: "Continue with Acme SSO",
     });
-    expect(sso.className).toContain("bg-accent");
+    expect(sso.className).toContain("bg-action");
     expect(screen.queryByRole("textbox", { name: "Email" })).toBeNull();
   });
 
@@ -776,7 +776,7 @@ describe("Connections on the card (I-30; mockup identity.sign-in-routes)", () =>
     expect(href.pathname).toBe("/login/sso/conn_lakeside");
     expect(href.searchParams.get("login_hint")).toBe("dana@example.edu");
     expect(href.searchParams.get("return_to")).toBeTruthy();
-    expect(go.className).toContain("bg-accent");
+    expect(go.className).toContain("bg-action");
     expect(
       screen.queryByRole("button", { name: "Email me a code instead" }),
     ).toBeNull();

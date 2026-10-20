@@ -28,6 +28,7 @@ import { DownloadFlowPage } from "./pages/DownloadFlowPage.js";
 import { FreeDevicePage } from "./pages/FreeDevicePage.js";
 import { LibraryPage } from "./pages/LibraryPage.js";
 import { ProductPage } from "./pages/ProductPage.js";
+import { ApproveDeviceDialog } from "./components/ApproveDeviceDialog.js";
 import { SignInPage } from "./pages/SignInPage.js";
 import { StorefrontPage } from "./pages/StorefrontPage.js";
 import { restoreCarriedKey } from "./carriedKey.js";
@@ -159,6 +160,8 @@ function SignedInShell({
   route: Exclude<PortalRoute, { kind: "focused" }>;
 }): React.ReactElement {
   const activate = useActivate();
+  // `#/account?approve=<code>` (the QR's link, or Approve a new device): the dialog over Account.
+  const approve = "params" in route ? route.params.get("approve") : null;
 
   // `#/?activate=<key>` (and `/activate#key=…`, rewritten to it) opens the modal over the
   // Library with the key filled in, with what the link carried. A hash written by hand goes
@@ -220,6 +223,12 @@ function SignedInShell({
       }
     >
       <Page route={route} account={account} />
+      {route.kind === "account" && approve !== null ? (
+        <ApproveDeviceDialog
+          code={approve}
+          onClose={() => setParams({ approve: null })}
+        />
+      ) : null}
       {scaled ? (
         <JumpPalette
           open={jumpOpen}

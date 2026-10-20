@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { LogOut, Monitor, Smartphone } from "lucide-react";
+import { LogOut, Monitor, ScanLine, Smartphone } from "lucide-react";
 import { Button } from "../../../ui/Button.js";
 import { Skeleton } from "../../../ui/Skeleton.js";
 import { Expand } from "../../../ui/motion/index.js";
@@ -16,7 +16,8 @@ import {
 } from "../../data.js";
 import { portalErrorCopy } from "../../errors.js";
 import { sessionMethodText } from "../../model/methods.js";
-import { scrollBehavior } from "../../router.js";
+import { href, scrollBehavior } from "../../router.js";
+import { sc } from "../../copy/signin.js";
 import { ErrorPanel } from "../States.js";
 import { SectionCard } from "../product/Card.js";
 import { t } from "../../../lib/copy.js";
@@ -86,6 +87,18 @@ function SessionList({
         ))}
       </ul>
       <Everywhere others={others} />
+      <div className="mt-1">
+        <Button
+          variant="link"
+          className="h-11 font-medium"
+          iconStart={<ScanLine aria-hidden />}
+          onClick={() => {
+            window.location.hash = href.account("sessions", { approve: "" });
+          }}
+        >
+          {sc("signin.approve.open")}
+        </Button>
+      </div>
     </>
   );
 }

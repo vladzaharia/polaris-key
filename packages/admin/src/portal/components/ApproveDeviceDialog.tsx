@@ -1,0 +1,259 @@
+import * as React from "react";
+import { Check, ScanLine } from "lucide-react";
+import { Button } from "../../ui/Button.js";
+import { Callout } from "../../ui/Callout.js";
+import { Dialog, DialogBody, DialogFooter } from "../../ui/Dialog.js";
+import { Input } from "../../ui/Input.js";
+import { formatRelative } from "../../lib/format.js";
+import { t } from "../../lib/copy.js";
+import { sc } from "../copy/signin.js";
+import {
+  portalApi,
+  PortalApiError,
+  type PortalDeviceLoginRequest,
+} from "../api.js";
+import { isStepUpRequired, portalErrorCopy } from "../errors.js";
+import { StepUpInline } from "./account/StepUpInline.js";
+
+/**
+ * Approve a new device (SIGN-IN.md §3.11, PORTAL.md §4.24): the signed-in side of "Sign in with
+ * another device". A dialog over Account, opened by the QR's link (`#/account/approve?code=`, which
+ * the router turns into `?approve=<code>`) or by **Approve a new device** under Where you're
+ * signed in. Looking never approves: the code is looked up first, then the person sees the device,
+ * where and when, and chooses. There is no default. A request from another place, or one whose
+ * place is unknown, needs a sign-in no older than 5 minutes first ("Confirm it's you"); the code
+ * stays live for the retry.
+ */
+type Phase =
+  | { kind: "enter"; error?: string }
+  | { kind: "looking" }
+  | { kind: "review"; request: PortalDeviceLoginRequest; error?: string }
+  | { kind: "stepup"; request: PortalDeviceLoginRequest; decision: Decision }
+  | { kind: "deciding"; request: PortalDeviceLoginRequest }
+  | {
+      kind: "done";
+      request: PortalDeviceLoginRequest;
+      status: "approved" | "denied";
+    };
+
+type Decision = "approve" | "deny";
+
+/** Group and case are ignored by the Worker; keep what the person typed readable. */
+function tidyCode(raw: string): string {
+  return raw
+    .toUpperCase()
+    .replace(/[^A-Z]/g, "")
+    .slice(0, 8)
+    .replace(/^(.{4})(.+)$/, "$1-$2");
+}
+
+export function ApproveDeviceDialog({
+  code,
+  onClose,
+}: {
+  /** The code from the link, or "" to ask for it. */
+  code: string;
+  onClose: () => void;
+}): React.ReactElement {
+  const [phase, setPhase] = React.useState<Phase>({ kind: "enter" });
+  const [typed, setTyped] = React.useState(tidyCode(code));
+  const started = React.useRef(false);
+
+  const look = React.useCallback(async (value: string): Promise<void> => {
+    setPhase({ kind: "looking" });
+    try {
+      const { request } = await portalApi.deviceLoginLookup(value);
+      setPhase({ kind: "review", request });
+    } catch (err) {
+      setPhase({
+        kind: "enter",
+        error:
+          err instanceof PortalApiError &&
+          (err.status === 410 || err.status === 422)
+            ? t("signin.approve.expired")
+            : portalErrorCopy(err).title +
+              ". " +
+              portalErrorCopy(err).description,
+      });
+    }
+  }, []);
+
+  // A link that carried a code looks it up at once.
+  React.useEffect(() => {
+    if (started.current || tidyCode(code).length < 9) return;
+    started.current = true;
+    void look(tidyCode(code));
+  }, [code, look]);
+
+  const decide = async (
+    request: PortalDeviceLoginRequest,
+    decision: Decision,
+  ): Promise<void> => {
+    setPhase({ kind: "deciding", request });
+    try {
+      const out = await portalApi.deviceLoginDecide(request.code, decision);
+      setPhase({ kind: "done", request, status: out.status });
+    } catch (err) {
+      if (isStepUpRequired(err))
+        return setPhase({ kind: "stepup", request, decision });
+      if (
+        err instanceof PortalApiError &&
+        (err.status === 410 || err.status === 422)
+      )
+        return setPhase({ kind: "enter", error: t("signin.approve.expired") });
+      setPhase({ kind: "review", request, error: sc("signin.approve.failed") });
+    }
+  };
+
+  const title =
+    phase.kind === "review" || phase.kind === "deciding"
+      ? t("signin.approve.ask")
+      : phase.kind === "stepup"
+        ? t("core.codes.step_up_required.title")
+        : phase.kind === "done"
+          ? t("signin.approve.title")
+          : sc("signin.approve.open");
+
+  return (
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+      size="sm"
+      title={title}
+      dismissible={phase.kind !== "deciding" && phase.kind !== "looking"}
+    >
+      {phase.kind === "enter" || phase.kind === "looking" ? (
+        <form
+          noValidate
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (typed.length === 9) void look(typed);
+          }}
+        >
+          <DialogBody className="space-y-3">
+            <p className="text-fg-muted">{sc("signin.approve.enter")}</p>
+            <div className="space-y-1.5">
+              <label
+                htmlFor="pk-approve-code"
+                className="text-sm font-medium text-fg-strong"
+              >
+                {sc("signin.approve.codeLabel")}
+              </label>
+              <Input
+                id="pk-approve-code"
+                value={typed}
+                onValueChange={(v) => setTyped(tidyCode(v))}
+                autoComplete="off"
+                autoCapitalize="characters"
+                spellCheck={false}
+                aria-invalid={
+                  phase.kind === "enter" && phase.error ? true : undefined
+                }
+                aria-describedby={
+                  phase.kind === "enter" && phase.error
+                    ? "pk-approve-err"
+                    : undefined
+                }
+                className="h-12 font-mono text-lg tracking-widest"
+              />
+              {phase.kind === "enter" && phase.error ? (
+                <p
+                  id="pk-approve-err"
+                  role="alert"
+                  className="text-sm text-danger"
+                >
+                  {phase.error}
+                </p>
+              ) : null}
+            </div>
+          </DialogBody>
+          <DialogFooter>
+            <Button
+              type="submit"
+              variant="neutral"
+              loading={phase.kind === "looking"}
+              disabled={typed.length !== 9}
+              iconStart={<ScanLine aria-hidden />}
+            >
+              {sc("signin.approve.look")}
+            </Button>
+          </DialogFooter>
+        </form>
+      ) : phase.kind === "review" || phase.kind === "deciding" ? (
+        <>
+          <DialogBody className="space-y-4">
+            <p className="text-fg">
+              {sc("signin.approve.askBody", { code: phase.request.code })}
+            </p>
+            <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+              <dt className="text-fg-muted">{sc("signin.approve.device")}</dt>
+              <dd className="text-fg-strong">{phase.request.device.label}</dd>
+              <dt className="text-fg-muted">{sc("signin.approve.where")}</dt>
+              <dd className="text-fg-strong">
+                {phase.request.location.label ??
+                  sc("signin.approve.unknownPlace")}
+              </dd>
+              <dt className="text-fg-muted">{sc("signin.approve.when")}</dt>
+              <dd className="text-fg-strong">
+                {formatRelative(phase.request.requestedAt * 1000, Date.now())}
+              </dd>
+            </dl>
+            <Callout tone="warning">{t("signin.approve.warning")}</Callout>
+            {phase.kind === "review" && phase.error ? (
+              <p role="alert" className="text-sm text-danger">
+                {phase.error}
+              </p>
+            ) : null}
+          </DialogBody>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              disabled={phase.kind === "deciding"}
+              onClick={() => void decide(phase.request, "deny")}
+            >
+              {t("signin.approve.deny")}
+            </Button>
+            <Button
+              variant="neutral"
+              loading={phase.kind === "deciding"}
+              onClick={() => void decide(phase.request, "approve")}
+            >
+              {t("signin.approve.approve")}
+            </Button>
+          </DialogFooter>
+        </>
+      ) : phase.kind === "stepup" ? (
+        <DialogBody className="space-y-3">
+          <p className="text-fg-muted">{sc("signin.approve.stepUpWhy")}</p>
+          <StepUpInline
+            verb={sc("signin.approve.stepUpVerb")}
+            onConfirmed={() => void decide(phase.request, phase.decision)}
+            onCancel={() =>
+              setPhase({ kind: "review", request: phase.request })
+            }
+          />
+        </DialogBody>
+      ) : (
+        <>
+          <DialogBody>
+            <p role="status" className="flex items-center gap-2 text-fg">
+              <Check aria-hidden className="size-4 shrink-0 text-success" />
+              {phase.status === "approved"
+                ? sc("signin.approve.approved", {
+                    device: phase.request.device.label,
+                  })
+                : sc("signin.approve.deniedDone")}
+            </p>
+          </DialogBody>
+          <DialogFooter>
+            <Button variant="neutral" onClick={onClose}>
+              {t("common.close")}
+            </Button>
+          </DialogFooter>
+        </>
+      )}
+    </Dialog>
+  );
+}
