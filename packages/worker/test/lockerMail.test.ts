@@ -10,6 +10,15 @@ import {
   type OutgoingEmail,
 } from "../src/core/notify/emailDelivery.js";
 import { renderEmail } from "../src/core/notify/render.js";
+import {
+  accountDeletedNotice,
+  licenseAddedNotice,
+  licenseKeyEmail,
+  lockerVariantOf,
+  newDeviceSignInNotice,
+  type NoticeMessage,
+} from "../src/core/notify/templates.js";
+import { sendMagicLink, sendSignInEmail } from "../src/core/notify/send.js";
 import { checkSenderAppName } from "../src/core/notify/emailSender.js";
 import { invalidatePlatformSettings } from "../src/core/platformSettings.js";
 import type { Env } from "../src/platform/env.js";
@@ -155,5 +164,87 @@ describe("the lockup", () => {
   it("falls back to a Locker text wordmark without an origin", () => {
     const html = renderEmail({ ...base, origin: null, brand: "locker" });
     expect(html).toContain(">Polaris Locker</p>");
+  });
+});
+
+describe("customer templates in both brands", () => {
+  const origin = API;
+  const msgs = (): Record<string, NoticeMessage> => ({
+    added: licenseAddedNotice({
+      productName: "Mossgarden",
+      productSlug: "mossgarden",
+      origin,
+    }),
+    newDevice: newDeviceSignInNotice({
+      deviceLabel: "Studio PC",
+      location: "Lisbon, Portugal",
+      at: 1_800_000_000,
+      origin,
+    }),
+    deleted: accountDeletedNotice({ origin }),
+    keyEmail: licenseKeyEmail({
+      productName: "Mossgarden",
+      holderName: "Ada",
+      key: "pkey_abc",
+      signInUrl: `${origin}/signin?product=mossgarden`,
+      origin,
+    }),
+  });
+
+  it("the returned message is the Polaris Key one", () => {
+    for (const [name, m] of Object.entries(msgs())) {
+      if (name !== "keyEmail") expect(m.html).toContain('alt="Polaris Key"');
+      expect(m.html).not.toContain("Locker");
+      expect(m.subject + m.text).not.toContain("Locker");
+    }
+  });
+
+  it("each has a Polaris Locker variant with no Polaris Key in it", () => {
+    for (const [name, m] of Object.entries(msgs())) {
+      const l = lockerVariantOf(m);
+      expect(l, name).toBeDefined();
+      expect(l!.subject + l!.text + l!.html, name).not.toContain("Polaris Key");
+      // The product-hero key mail shows no platform lockup unless it has a second link.
+      if (name !== "keyEmail")
+        expect(l!.html, name).toContain(
+          "/assets/branding/locker/locker-horizontal-light-640.png",
+        );
+    }
+    expect(
+      Object.fromEntries(
+        Object.entries(msgs()).map(([k, m]) => [
+          k,
+          {
+            subject: lockerVariantOf(m)!.subject,
+            text: lockerVariantOf(m)!.text,
+          },
+        ]),
+      ),
+    ).toMatchSnapshot();
+  });
+
+  it("the sign-in code and link mails follow the switch end to end", async () => {
+    await sendSignInEmail(
+      env,
+      db,
+      "a@example.com",
+      { code: "123456", link: `${API}/magic`, purpose: "signin" },
+      NOW,
+    );
+    expect(sent[0]!.from.name).toBe("Polaris Key");
+    expect(sent[0]!.subject).toBe("Your Polaris Key code: 123456");
+    await setMode("on");
+    await sendSignInEmail(
+      env,
+      db,
+      "a@example.com",
+      { code: "123456", link: `${API}/magic`, purpose: "signin" },
+      NOW,
+    );
+    expect(sent[1]!.from.name).toBe("Polaris Locker");
+    expect(sent[1]!.subject).toBe("Your Polaris Locker code: 123456");
+    expect(sent[1]!.html).toContain('alt="Polaris Locker"');
+    await sendMagicLink(env, db, "a@example.com", `${API}/magic`, NOW);
+    expect(sent[2]!.subject).toBe("Sign in to Polaris Locker");
   });
 });

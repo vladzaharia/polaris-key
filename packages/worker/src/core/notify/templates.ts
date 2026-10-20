@@ -41,6 +41,36 @@ export interface NoticeMessage {
   html: string;
 }
 
+/** The brand a customer message is written in: its name in the copy, and the lockup. */
+export interface MailBrand {
+  name: string;
+  locker: boolean;
+}
+export const KEY_BRAND: MailBrand = { name: "Polaris Key", locker: false };
+export const LOCKER_BRAND: MailBrand = { name: "Polaris Locker", locker: true };
+
+const LOCKER_VARIANTS = new WeakMap<NoticeMessage, NoticeMessage>();
+
+/**
+ * A customer template: built twice from the same input, once in Polaris Key (the message
+ * returned, today's output byte for byte) and once in Polaris Locker, which `deliverEmail` sends
+ * instead while `customer.host` is on (LK-07; plans/LK-00.md §7.11). The callers never choose.
+ */
+function dual<I>(
+  build: (input: I, b: MailBrand) => NoticeMessage,
+): (input: I) => NoticeMessage {
+  return (input) => {
+    const m = build(input, KEY_BRAND);
+    LOCKER_VARIANTS.set(m, build(input, LOCKER_BRAND));
+    return m;
+  };
+}
+
+/** The Polaris Locker form of a message a {@link dual} template built, if it has one. */
+export function lockerVariantOf(m: NoticeMessage): NoticeMessage | undefined {
+  return LOCKER_VARIANTS.get(m);
+}
+
 /** The longest display value (product name, device label, method name) a notice prints. */
 export const NOTICE_VALUE_MAX = 64;
 
@@ -85,11 +115,10 @@ function productRoute(slug: string, section?: string): string {
   return section ? `${base}/${section}` : base;
 }
 
-const NOTICE_FOOTER =
-  "You are receiving this because of a change to your Polaris Key account.";
-const SECURITY_FOOTER =
-  "You are receiving this because of a change to your Polaris Key account. " +
-  "We sent it to every verified email on the account.";
+const noticeFooter = (b: MailBrand) =>
+  `You are receiving this because of a change to your ${b.name} account.`;
+const securityFooter = (b: MailBrand) =>
+  `${noticeFooter(b)} We sent it to every verified email on the account.`;
 const SECURE_LABEL = "Secure your account";
 
 interface NoticeSpec {
@@ -104,9 +133,9 @@ interface NoticeSpec {
   origin: string;
 }
 
-function buildNotice(spec: NoticeSpec): NoticeMessage {
+function buildNotice(b: MailBrand, spec: NoticeSpec): NoticeMessage {
   const footer =
-    spec.footer ?? (spec.secureUrl ? SECURITY_FOOTER : NOTICE_FOOTER);
+    spec.footer ?? (spec.secureUrl ? securityFooter(b) : noticeFooter(b));
   const lines: string[] = [...spec.paragraphs];
   if (spec.action) lines.push(`${spec.action.label}: ${spec.action.url}`);
   if (spec.secureUrl)
@@ -122,6 +151,7 @@ function buildNotice(spec: NoticeSpec): NoticeMessage {
       : {}),
     footer,
     origin: emailAssetOrigin(spec.origin),
+    ...(b.locker ? { brand: "locker" as const } : {}),
   };
   return {
     subject: spec.subject,
@@ -133,180 +163,216 @@ function buildNotice(spec: NoticeSpec): NoticeMessage {
 // ── Library ──────────────────────────────────────────────────────────────────────────────────
 
 /** A license was added with a key: "Mossgarden is in your library". */
-export function licenseAddedNotice(input: {
-  productName: string | null | undefined;
-  productSlug: string;
-  origin: string;
-}): NoticeMessage {
-  const name = displayValue(input.productName, "Your new product");
-  return buildNotice({
-    subject: `${name} is in your library`,
-    paragraphs: [
-      `${name} was added to your Polaris Key account with a license key.`,
-    ],
-    action: {
-      label: `Open ${name}`,
-      url: appLink(input.origin, productRoute(input.productSlug)),
+export const licenseAddedNotice = dual(
+  (
+    input: {
+      productName: string | null | undefined;
+      productSlug: string;
+      origin: string;
     },
-    origin: input.origin,
-  });
-}
+    b: MailBrand,
+  ): NoticeMessage => {
+    const name = displayValue(input.productName, "Your new product");
+    return buildNotice(b, {
+      subject: `${name} is in your library`,
+      paragraphs: [
+        `${name} was added to your ${b.name} account with a license key.`,
+      ],
+      action: {
+        label: `Open ${name}`,
+        url: appLink(input.origin, productRoute(input.productSlug)),
+      },
+      origin: input.origin,
+    });
+  },
+);
 
 /**
  * S-16: a license was added to an account with its key, and the license's own email is a
  * different address. Tells the buyer which product, never which account (no address, no id).
  */
-export function licenseAttachedNotice(input: {
-  productName: string | null | undefined;
-  origin: string;
-}): NoticeMessage {
-  const name = displayValue(input.productName, "Your");
-  return buildNotice({
-    subject: `Your ${name} license was added to a Polaris Key account`,
-    paragraphs: [
-      `Your ${name} license was added to a Polaris Key account with its license key.`,
-      "If that wasn't you, contact the developer.",
-    ],
-    origin: input.origin,
-  });
-}
+export const licenseAttachedNotice = dual(
+  (
+    input: {
+      productName: string | null | undefined;
+      origin: string;
+    },
+    b: MailBrand,
+  ): NoticeMessage => {
+    const name = displayValue(input.productName, "Your");
+    return buildNotice(b, {
+      subject: `Your ${name} license was added to a ${b.name} account`,
+      paragraphs: [
+        `Your ${name} license was added to a ${b.name} account with its license key.`,
+        "If that wasn't you, contact the developer.",
+      ],
+      origin: input.origin,
+    });
+  },
+);
 
 /** PX-W5 (G7): a new key replaced the license's old ones. Sent to the account and the license email. */
-export function licenseKeyReplacedNotice(input: {
-  productName: string | null | undefined;
-  productSlug: string;
-  origin: string;
-}): NoticeMessage {
-  const name = displayValue(input.productName, "your product");
-  return buildNotice({
-    subject: "Your license has a new key",
-    paragraphs: [
-      `A new license key for ${name} was made in your Polaris Key account.`,
-      "The old key no longer activates new devices; devices already using the product keep working.",
-      "If this wasn't you, sign in and get a new key again, then contact the developer.",
-    ],
-    action: {
-      label: `Open ${name}`,
-      url: appLink(input.origin, productRoute(input.productSlug)),
+export const licenseKeyReplacedNotice = dual(
+  (
+    input: {
+      productName: string | null | undefined;
+      productSlug: string;
+      origin: string;
     },
-    secureUrl: appLink(input.origin, "account/methods"),
-    origin: input.origin,
-  });
-}
+    b: MailBrand,
+  ): NoticeMessage => {
+    const name = displayValue(input.productName, "your product");
+    return buildNotice(b, {
+      subject: "Your license has a new key",
+      paragraphs: [
+        `A new license key for ${name} was made in your ${b.name} account.`,
+        "The old key no longer activates new devices; devices already using the product keep working.",
+        "If this wasn't you, sign in and get a new key again, then contact the developer.",
+      ],
+      action: {
+        label: `Open ${name}`,
+        url: appLink(input.origin, productRoute(input.productSlug)),
+      },
+      secureUrl: appLink(input.origin, "account/methods"),
+      origin: input.origin,
+    });
+  },
+);
 
 /** G23: the download link the account holder asked to have emailed. */
-export function downloadLinkEmail(input: {
-  productName: string | null | undefined;
-  productSlug: string;
-  platform: string;
-  origin: string;
-}): NoticeMessage {
-  const name = displayValue(input.productName, "your product");
-  const platform = platformLabel(input.platform, { audience: "consumer" });
-  const url = appLink(
-    input.origin,
-    `${productRoute(input.productSlug, "download")}?platform=${encodeURIComponent(input.platform)}`,
-  );
-  return buildNotice({
-    subject: `Download ${name} for ${platform}`,
-    paragraphs: [
-      `Here is the ${platform} download you asked for. Open this email on the device you want to install ${name} on.`,
-      "The link opens your Polaris Key library, so you may be asked to sign in first.",
-    ],
-    action: { label: `Download ${name}`, url },
-    footer:
-      "You are receiving this because you asked Polaris Key to email you a download link. " +
-      "If you didn't, you can ignore it: the link only opens your own library.",
-    origin: input.origin,
-  });
-}
+export const downloadLinkEmail = dual(
+  (
+    input: {
+      productName: string | null | undefined;
+      productSlug: string;
+      platform: string;
+      origin: string;
+    },
+    b: MailBrand,
+  ): NoticeMessage => {
+    const name = displayValue(input.productName, "your product");
+    const platform = platformLabel(input.platform, { audience: "consumer" });
+    const url = appLink(
+      input.origin,
+      `${productRoute(input.productSlug, "download")}?platform=${encodeURIComponent(input.platform)}`,
+    );
+    return buildNotice(b, {
+      subject: `Download ${name} for ${platform}`,
+      paragraphs: [
+        `Here is the ${platform} download you asked for. Open this email on the device you want to install ${name} on.`,
+        `The link opens your ${b.name} library, so you may be asked to sign in first.`,
+      ],
+      action: { label: `Download ${name}`, url },
+      footer:
+        `You are receiving this because you asked ${b.name} to email you a download link. ` +
+        "If you didn't, you can ignore it: the link only opens your own library.",
+      origin: input.origin,
+    });
+  },
+);
 
 /** Why the key email was sent: it picks the footer, which must be true for each path. */
 export type { KeyEmailContext };
 
 /**
  * LX-27 (S-24 §8.4, D11/D12): the key an operator emailed to a licence's holder, sent as
- * "<App> via Polaris Key" (the caller picks the sender). The product is the hero (name, and its
+ * "<App> via Polaris Key" ("via Polaris Locker" once `customer.host` is on; the caller picks the sender). The product is the hero (name, and its
  * icon when it has a hosted one); the key sits in a monospace box in the body only, never in the
  * subject. The primary button is the product's download when it has one, else **Open in Polaris
  * Key**, a plain portal sign-in link that carries no token, so a forwarded email signs nobody in.
  */
-export function licenseKeyEmail(input: {
-  productName: string | null | undefined;
-  holderName: string | null | undefined;
-  key: string;
-  /** The portal's sign-in page; carries no token. */
-  signInUrl: string;
-  /** The product's download page, when it has one. */
-  downloadUrl?: string | null;
-  /** The product's hosted icon (https), when it has one. */
-  iconUrl?: string | null;
-  context?: KeyEmailContext;
-  origin: string;
-}): NoticeMessage {
-  const name = displayValue(input.productName, "");
-  const holder = displayValue(input.holderName, "");
-  const subject = keyEmailSubject(name);
-  const footer = KEY_FOOTERS[input.context ?? "created"];
-  const intro = keyEmailIntro(holder);
-  const after = [KEY_EMAIL_AFTER];
-  const primary = input.downloadUrl
-    ? { label: keyEmailPrimaryLabel(true), url: input.downloadUrl }
-    : { label: keyEmailPrimaryLabel(false), url: input.signInUrl };
-  const secondary = input.downloadUrl
-    ? { label: keyEmailPrimaryLabel(false), url: input.signInUrl }
-    : undefined;
-  const text = [
-    ...(name ? [name] : []),
-    ...intro,
-    input.key,
-    ...after,
-    `${primary.label}: ${primary.url}`,
-    ...(secondary ? [`${secondary.label}: ${secondary.url}`] : []),
-    footer,
-  ].join("\n\n");
-  const content: EmailContent = {
-    subject,
-    heading: name || "Your license",
-    ...(name
-      ? { hero: { name, ...(input.iconUrl ? { iconUrl: input.iconUrl } : {}) } }
-      : {}),
-    paragraphs: intro,
-    secret: input.key,
-    paragraphsAfter: after,
-    action: primary,
-    ...(secondary ? { secondary } : {}),
-    footer,
-    origin: emailAssetOrigin(input.origin),
-  };
-  return { subject, text, html: renderEmail(content) };
-}
+export const licenseKeyEmail = dual(
+  (
+    input: {
+      productName: string | null | undefined;
+      holderName: string | null | undefined;
+      key: string;
+      /** The portal's sign-in page; carries no token. */
+      signInUrl: string;
+      /** The product's download page, when it has one. */
+      downloadUrl?: string | null;
+      /** The product's hosted icon (https), when it has one. */
+      iconUrl?: string | null;
+      context?: KeyEmailContext;
+      origin: string;
+    },
+    b: MailBrand,
+  ): NoticeMessage => {
+    const name = displayValue(input.productName, "");
+    const holder = displayValue(input.holderName, "");
+    const subject = keyEmailSubject(name);
+    const footer = KEY_FOOTERS[input.context ?? "created"];
+    const intro = keyEmailIntro(holder);
+    const after = [KEY_EMAIL_AFTER];
+    const primary = input.downloadUrl
+      ? { label: keyEmailPrimaryLabel(true, b.name), url: input.downloadUrl }
+      : { label: keyEmailPrimaryLabel(false, b.name), url: input.signInUrl };
+    const secondary = input.downloadUrl
+      ? { label: keyEmailPrimaryLabel(false, b.name), url: input.signInUrl }
+      : undefined;
+    const text = [
+      ...(name ? [name] : []),
+      ...intro,
+      input.key,
+      ...after,
+      `${primary.label}: ${primary.url}`,
+      ...(secondary ? [`${secondary.label}: ${secondary.url}`] : []),
+      footer,
+    ].join("\n\n");
+    const content: EmailContent = {
+      subject,
+      heading: name || "Your license",
+      ...(name
+        ? {
+            hero: {
+              name,
+              ...(input.iconUrl ? { iconUrl: input.iconUrl } : {}),
+            },
+          }
+        : {}),
+      paragraphs: intro,
+      secret: input.key,
+      paragraphsAfter: after,
+      action: primary,
+      ...(secondary ? { secondary } : {}),
+      footer,
+      origin: emailAssetOrigin(input.origin),
+      ...(b.locker ? { brand: "locker" as const } : {}),
+    };
+    return { subject, text, html: renderEmail(content) };
+  },
+);
 
 // ── Security notices ─────────────────────────────────────────────────────────────────────────
 
 /** A device was removed from a product license: "Studio PC was removed from Tidewater Studio". */
-export function deviceRemovedNotice(input: {
-  deviceLabel: string | null | undefined;
-  productName: string | null | undefined;
-  productSlug: string;
-  origin: string;
-}): NoticeMessage {
-  const device = displayValue(input.deviceLabel, "A device");
-  const name = displayValue(input.productName, "your product");
-  return buildNotice({
-    subject: `${device} was removed from ${name}`,
-    paragraphs: [
-      `${device} was removed from your ${name} license and no longer counts toward its device limit.`,
-      `To use ${name} on it again, sign in to ${name} on that device.`,
-    ],
-    action: {
-      label: "See your devices",
-      url: appLink(input.origin, productRoute(input.productSlug, "devices")),
+export const deviceRemovedNotice = dual(
+  (
+    input: {
+      deviceLabel: string | null | undefined;
+      productName: string | null | undefined;
+      productSlug: string;
+      origin: string;
     },
-    secureUrl: appLink(input.origin, "account/methods"),
-    origin: input.origin,
-  });
-}
+    b: MailBrand,
+  ): NoticeMessage => {
+    const device = displayValue(input.deviceLabel, "A device");
+    const name = displayValue(input.productName, "your product");
+    return buildNotice(b, {
+      subject: `${device} was removed from ${name}`,
+      paragraphs: [
+        `${device} was removed from your ${name} license and no longer counts toward its device limit.`,
+        `To use ${name} on it again, sign in to ${name} on that device.`,
+      ],
+      action: {
+        label: "See your devices",
+        url: appLink(input.origin, productRoute(input.productSlug, "devices")),
+      },
+      secureUrl: appLink(input.origin, "account/methods"),
+      origin: input.origin,
+    });
+  },
+);
 
 /** "4 Oct 2026, 14:34 UTC": a unix time for a sentence in an email. */
 function emailDate(at: number): string {
@@ -334,144 +400,176 @@ function emailDate(at: number): string {
  * A new device signed in to the account (SIGN-IN.md §3.15): `signin.mail.newDevice.subject`,
  * `signin.mail.newDevice.body` and **Open Polaris Key** (`signin.mail.open`).
  */
-export function newDeviceSignInNotice(input: {
-  deviceLabel: string | null | undefined;
-  /** An approximate place, when the sign-in had one ("Lisbon, Portugal"). */
-  location?: string | null;
-  /** When it signed in (unix seconds), for "signed in on {date}". */
-  at?: number;
-  origin: string;
-}): NoticeMessage {
-  const device = displayValue(input.deviceLabel, "A new device");
-  const location = input.location ? displayValue(input.location, "") : "";
-  const when = input.at !== undefined ? ` on ${emailDate(input.at)}` : "";
-  const where = location ? ` from ${location}` : "";
-  return buildNotice({
-    subject: "A new device signed in to your Polaris Key account", // signin.mail.newDevice.subject
-    paragraphs: [
-      // signin.mail.newDevice.body
-      `${device} signed in${when}${where}. If this wasn't you, sign it out in Polaris Key under Where you're signed in.`,
-    ],
-    action: {
-      label: "Open Polaris Key", // signin.mail.open
-      url: appLink(input.origin, "account/sessions"),
+export const newDeviceSignInNotice = dual(
+  (
+    input: {
+      deviceLabel: string | null | undefined;
+      /** An approximate place, when the sign-in had one ("Lisbon, Portugal"). */
+      location?: string | null;
+      /** When it signed in (unix seconds), for "signed in on {date}". */
+      at?: number;
+      origin: string;
     },
-    secureUrl: appLink(input.origin, "account/methods"),
-    origin: input.origin,
-  });
-}
+    b: MailBrand,
+  ): NoticeMessage => {
+    const device = displayValue(input.deviceLabel, "A new device");
+    const location = input.location ? displayValue(input.location, "") : "";
+    const when = input.at !== undefined ? ` on ${emailDate(input.at)}` : "";
+    const where = location ? ` from ${location}` : "";
+    return buildNotice(b, {
+      subject: `A new device signed in to your ${b.name} account`, // signin.mail.newDevice.subject
+      paragraphs: [
+        // signin.mail.newDevice.body
+        `${device} signed in${when}${where}. If this wasn't you, sign it out in ${b.name} under Where you're signed in.`,
+      ],
+      action: {
+        label: `Open ${b.name}`, // signin.mail.open
+        url: appLink(input.origin, "account/sessions"),
+      },
+      secureUrl: appLink(input.origin, "account/methods"),
+      origin: input.origin,
+    });
+  },
+);
 
 /** A sign-in method was connected: "Steam was connected to your Polaris Key account". */
-export function signInMethodAddedNotice(input: {
-  /** The method by its own name: "Apple", "Google", "Steam", "A passkey", an email address. */
-  method: string;
-  origin: string;
-}): NoticeMessage {
-  const method = displayValue(input.method, "A sign-in method");
-  return buildNotice({
-    subject: `${method} was connected to your Polaris Key account`,
-    paragraphs: [
-      `${method} was added as a way to sign in to your Polaris Key account.`,
-    ],
-    action: {
-      label: "See your sign-in methods",
-      url: appLink(input.origin, "account/methods"),
+export const signInMethodAddedNotice = dual(
+  (
+    input: {
+      /** The method by its own name: "Apple", "Google", "Steam", "A passkey", an email address. */
+      method: string;
+      origin: string;
     },
-    secureUrl: appLink(input.origin, "account/methods"),
-    origin: input.origin,
-  });
-}
+    b: MailBrand,
+  ): NoticeMessage => {
+    const method = displayValue(input.method, "A sign-in method");
+    return buildNotice(b, {
+      subject: `${method} was connected to your ${b.name} account`,
+      paragraphs: [
+        `${method} was added as a way to sign in to your ${b.name} account.`,
+      ],
+      action: {
+        label: "See your sign-in methods",
+        url: appLink(input.origin, "account/methods"),
+      },
+      secureUrl: appLink(input.origin, "account/methods"),
+      origin: input.origin,
+    });
+  },
+);
 
 /** A sign-in method was removed: "Steam was disconnected from your Polaris Key account". */
-export function signInMethodRemovedNotice(input: {
-  method: string;
-  origin: string;
-}): NoticeMessage {
-  const method = displayValue(input.method, "A sign-in method");
-  return buildNotice({
-    subject: `${method} was disconnected from your Polaris Key account`,
-    paragraphs: [
-      `${method} can no longer be used to sign in to your Polaris Key account.`,
-    ],
-    action: {
-      label: "See your sign-in methods",
-      url: appLink(input.origin, "account/methods"),
+export const signInMethodRemovedNotice = dual(
+  (
+    input: {
+      method: string;
+      origin: string;
     },
-    secureUrl: appLink(input.origin, "account/methods"),
-    origin: input.origin,
-  });
-}
+    b: MailBrand,
+  ): NoticeMessage => {
+    const method = displayValue(input.method, "A sign-in method");
+    return buildNotice(b, {
+      subject: `${method} was disconnected from your ${b.name} account`,
+      paragraphs: [
+        `${method} can no longer be used to sign in to your ${b.name} account.`,
+      ],
+      action: {
+        label: "See your sign-in methods",
+        url: appLink(input.origin, "account/methods"),
+      },
+      secureUrl: appLink(input.origin, "account/methods"),
+      origin: input.origin,
+    });
+  },
+);
 
 /** The primary email changed. Names no address: it goes to every verified one (PX-W19). */
-export function primaryEmailChangedNotice(input: {
-  origin: string;
-}): NoticeMessage {
-  return buildNotice({
-    subject: "Your Polaris Key primary email was changed",
-    paragraphs: [
-      "Another verified email on your Polaris Key account is now its primary. Security notices and the email apps see for you now go there.",
-    ],
-    action: {
-      label: "See your sign-in methods",
-      url: appLink(input.origin, "account/methods"),
+export const primaryEmailChangedNotice = dual(
+  (
+    input: {
+      origin: string;
     },
-    secureUrl: appLink(input.origin, "account/methods"),
-    origin: input.origin,
-  });
-}
+    b: MailBrand,
+  ): NoticeMessage => {
+    return buildNotice(b, {
+      subject: `Your ${b.name} primary email was changed`,
+      paragraphs: [
+        `Another verified email on your ${b.name} account is now its primary. Security notices and the email apps see for you now go there.`,
+      ],
+      action: {
+        label: "See your sign-in methods",
+        url: appLink(input.origin, "account/methods"),
+      },
+      secureUrl: appLink(input.origin, "account/methods"),
+      origin: input.origin,
+    });
+  },
+);
 
 /** The account holder scheduled a reversible, self-service deletion. */
-export function accountDeletionScheduledNotice(input: {
-  origin: string;
-  dueAt: number;
-}): NoticeMessage {
-  return buildNotice({
-    subject: "Your Polaris Key account is scheduled for deletion",
-    paragraphs: [
-      `Your Polaris Key account is scheduled to be erased on ${utcInstant(input.dueAt)} unless you cancel the deletion before then.`,
-      "Your account stays active during that 14-day period. Deleting it does not cancel your licenses: they stay with each developer, and you can add them again with a new account.",
-    ],
-    action: {
-      label: "Review account settings",
-      url: appLink(input.origin, "account/data"),
+export const accountDeletionScheduledNotice = dual(
+  (
+    input: {
+      origin: string;
+      dueAt: number;
     },
-    secureUrl: appLink(input.origin, "account/methods"),
-    origin: input.origin,
-  });
-}
+    b: MailBrand,
+  ): NoticeMessage => {
+    return buildNotice(b, {
+      subject: `Your ${b.name} account is scheduled for deletion`,
+      paragraphs: [
+        `Your ${b.name} account is scheduled to be erased on ${utcInstant(input.dueAt)} unless you cancel the deletion before then.`,
+        "Your account stays active during that 14-day period. Deleting it does not cancel your licenses: they stay with each developer, and you can add them again with a new account.",
+      ],
+      action: {
+        label: "Review account settings",
+        url: appLink(input.origin, "account/data"),
+      },
+      secureUrl: appLink(input.origin, "account/methods"),
+      origin: input.origin,
+    });
+  },
+);
 
 /** The account holder cancelled a scheduled self-service deletion. */
-export function accountDeletionCancelledNotice(input: {
-  origin: string;
-}): NoticeMessage {
-  return buildNotice({
-    subject: "Your Polaris Key account deletion was cancelled",
-    paragraphs: [
-      "Your Polaris Key account will stay active. No account data will be erased.",
-    ],
-    action: {
-      label: "Review account settings",
-      url: appLink(input.origin, "account/data"),
+export const accountDeletionCancelledNotice = dual(
+  (
+    input: {
+      origin: string;
     },
-    secureUrl: appLink(input.origin, "account/methods"),
-    origin: input.origin,
-  });
-}
+    b: MailBrand,
+  ): NoticeMessage => {
+    return buildNotice(b, {
+      subject: `Your ${b.name} account deletion was cancelled`,
+      paragraphs: [
+        `Your ${b.name} account will stay active. No account data will be erased.`,
+      ],
+      action: {
+        label: "Review account settings",
+        url: appLink(input.origin, "account/data"),
+      },
+      secureUrl: appLink(input.origin, "account/methods"),
+      origin: input.origin,
+    });
+  },
+);
 
 /** The account was deleted at the holder's request (sent before the rows go). */
-export function accountDeletedNotice(input: { origin: string }): NoticeMessage {
-  return buildNotice({
-    subject: "Your Polaris Key account has been deleted",
-    paragraphs: [
-      "Your Polaris Key account, its email addresses and its sign-in methods have been erased, as you asked.",
-      "Deleting it doesn't cancel your licenses: they stay with each developer, and you can add them again with a new account. To have a developer erase its own records, contact that developer's support.",
-    ],
-    footer:
-      "You are receiving this because your Polaris Key account was deleted. " +
-      "We sent it to every verified email on the account.",
-    origin: input.origin,
-  });
-}
+export const accountDeletedNotice = dual(
+  (input: { origin: string }, b: MailBrand): NoticeMessage => {
+    return buildNotice(b, {
+      subject: `Your ${b.name} account has been deleted`,
+      paragraphs: [
+        `Your ${b.name} account, its email addresses and its sign-in methods have been erased, as you asked.`,
+        "Deleting it doesn't cancel your licenses: they stay with each developer, and you can add them again with a new account. To have a developer erase its own records, contact that developer's support.",
+      ],
+      footer:
+        `You are receiving this because your ${b.name} account was deleted. ` +
+        "We sent it to every verified email on the account.",
+      origin: input.origin,
+    });
+  },
+);
 
 // ── Accounts (I-05) ──────────────────────────────────────────────────────────────────────────
 
@@ -484,65 +582,80 @@ function utcInstant(at: number): string {
  * Two accounts were joined into one, after the person signed in to both (S-16 §5.1, D21). With
  * `undoUntil` (PX-W12) it says until when the join can be undone, and where.
  */
-export function accountsMergedNotice(input: {
-  origin: string;
-  undoUntil?: number;
-}): NoticeMessage {
-  return buildNotice({
-    subject: "Two Polaris Key accounts were joined",
-    paragraphs: [
-      "Two Polaris Key accounts were joined into one after someone signed in to both. Their sign-in methods and licenses are now on a single account.",
-      ...(input.undoUntil === undefined
-        ? []
-        : [
-            `You can separate them again until ${utcInstant(input.undoUntil)} from Account → Sign-in methods.`,
-          ]),
-    ],
-    action: {
-      label: "See your sign-in methods",
-      url: appLink(input.origin, "account/methods"),
+export const accountsMergedNotice = dual(
+  (
+    input: {
+      origin: string;
+      undoUntil?: number;
     },
-    secureUrl: appLink(input.origin, "account/methods"),
-    origin: input.origin,
-  });
-}
+    b: MailBrand,
+  ): NoticeMessage => {
+    return buildNotice(b, {
+      subject: `Two ${b.name} accounts were joined`,
+      paragraphs: [
+        `Two ${b.name} accounts were joined into one after someone signed in to both. Their sign-in methods and licenses are now on a single account.`,
+        ...(input.undoUntil === undefined
+          ? []
+          : [
+              `You can separate them again until ${utcInstant(input.undoUntil)} from Account → Sign-in methods.`,
+            ]),
+      ],
+      action: {
+        label: "See your sign-in methods",
+        url: appLink(input.origin, "account/methods"),
+      },
+      secureUrl: appLink(input.origin, "account/methods"),
+      origin: input.origin,
+    });
+  },
+);
 
 /** A join was undone within its 72 hours (PX-W12): two accounts again. */
-export function accountsSeparatedNotice(input: {
-  origin: string;
-}): NoticeMessage {
-  return buildNotice({
-    subject: "Your Polaris Key accounts were separated",
-    paragraphs: [
-      "Two Polaris Key accounts that were joined are separate again. Each has its own sign-in methods and licenses back, as they were before the join.",
-    ],
-    action: {
-      label: "See your sign-in methods",
-      url: appLink(input.origin, "account/methods"),
+export const accountsSeparatedNotice = dual(
+  (
+    input: {
+      origin: string;
     },
-    secureUrl: appLink(input.origin, "account/methods"),
-    origin: input.origin,
-  });
-}
+    b: MailBrand,
+  ): NoticeMessage => {
+    return buildNotice(b, {
+      subject: `Your ${b.name} accounts were separated`,
+      paragraphs: [
+        `Two ${b.name} accounts that were joined are separate again. Each has its own sign-in methods and licenses back, as they were before the join.`,
+      ],
+      action: {
+        label: "See your sign-in methods",
+        url: appLink(input.origin, "account/methods"),
+      },
+      secureUrl: appLink(input.origin, "account/methods"),
+      origin: input.origin,
+    });
+  },
+);
 
 /**
  * I-04 §8 Q1: a license had links to several accounts and keeps one owner; this account was not
  * it. Says which product, never which account owns it now.
  */
-export function licenseLinkSupersededNotice(input: {
-  productName: string | null | undefined;
-  origin: string;
-}): NoticeMessage {
-  const name = displayValue(input.productName, "A");
-  return buildNotice({
-    subject: `A ${name} license left your library`,
-    paragraphs: [
-      `A ${name} license was linked to more than one Polaris Key account. A license now belongs to one account, and another account holds this one, so it has left your library.`,
-      "If you bought it, contact the developer: they can move it to your account.",
-    ],
-    origin: input.origin,
-  });
-}
+export const licenseLinkSupersededNotice = dual(
+  (
+    input: {
+      productName: string | null | undefined;
+      origin: string;
+    },
+    b: MailBrand,
+  ): NoticeMessage => {
+    const name = displayValue(input.productName, "A");
+    return buildNotice(b, {
+      subject: `A ${name} license left your library`,
+      paragraphs: [
+        `A ${name} license was linked to more than one ${b.name} account. A license now belongs to one account, and another account holds this one, so it has left your library.`,
+        "If you bought it, contact the developer: they can move it to your account.",
+      ],
+      origin: input.origin,
+    });
+  },
+);
 
 // ── The developer's relink tool (I-12) ──────────────────────────────────────────────────────
 
@@ -554,60 +667,75 @@ const RELINK_UNDO_WORDS = "72 hours";
  * email on the account before the move takes effect. Says which product, never which account
  * receives it.
  */
-export function licenseRelinkedAwayNotice(input: {
-  productName: string | null | undefined;
-  origin: string;
-}): NoticeMessage {
-  const name = displayValue(input.productName, "A");
-  return buildNotice({
-    subject: `The developer moved your ${name} license to another account`,
-    paragraphs: [
-      `The developer of ${name} moved one of its licenses from your Polaris Key account to another account, at the request of its support.`,
-      `If you did not expect this, contact the developer's support now: they can undo it for ${RELINK_UNDO_WORDS}.`,
-    ],
-    secureUrl: appLink(input.origin, "account/methods"),
-    origin: input.origin,
-  });
-}
+export const licenseRelinkedAwayNotice = dual(
+  (
+    input: {
+      productName: string | null | undefined;
+      origin: string;
+    },
+    b: MailBrand,
+  ): NoticeMessage => {
+    const name = displayValue(input.productName, "A");
+    return buildNotice(b, {
+      subject: `The developer moved your ${name} license to another account`,
+      paragraphs: [
+        `The developer of ${name} moved one of its licenses from your ${b.name} account to another account, at the request of its support.`,
+        `If you did not expect this, contact the developer's support now: they can undo it for ${RELINK_UNDO_WORDS}.`,
+      ],
+      secureUrl: appLink(input.origin, "account/methods"),
+      origin: input.origin,
+    });
+  },
+);
 
 /** The receiving side of a relink: a licence is being added to this account by the developer. */
-export function licenseRelinkedInNotice(input: {
-  productName: string | null | undefined;
-  productSlug: string;
-  origin: string;
-}): NoticeMessage {
-  const name = displayValue(input.productName, "A product");
-  return buildNotice({
-    subject: `${name} is being added to your library`,
-    paragraphs: [
-      `The developer of ${name} moved one of its licenses to your Polaris Key account, at the request of its support.`,
-      `If you did not ask for this, contact the developer's support: they can undo it for ${RELINK_UNDO_WORDS}.`,
-    ],
-    action: {
-      label: `Open ${name}`,
-      url: appLink(input.origin, productRoute(input.productSlug)),
+export const licenseRelinkedInNotice = dual(
+  (
+    input: {
+      productName: string | null | undefined;
+      productSlug: string;
+      origin: string;
     },
-    secureUrl: appLink(input.origin, "account/methods"),
-    origin: input.origin,
-  });
-}
+    b: MailBrand,
+  ): NoticeMessage => {
+    const name = displayValue(input.productName, "A product");
+    return buildNotice(b, {
+      subject: `${name} is being added to your library`,
+      paragraphs: [
+        `The developer of ${name} moved one of its licenses to your ${b.name} account, at the request of its support.`,
+        `If you did not ask for this, contact the developer's support: they can undo it for ${RELINK_UNDO_WORDS}.`,
+      ],
+      action: {
+        label: `Open ${name}`,
+        url: appLink(input.origin, productRoute(input.productSlug)),
+      },
+      secureUrl: appLink(input.origin, "account/methods"),
+      origin: input.origin,
+    });
+  },
+);
 
 /** A relink was undone: the licence goes back to the account it came from. */
-export function licenseRelinkUndoneNotice(input: {
-  productName: string | null | undefined;
-  origin: string;
-}): NoticeMessage {
-  const name = displayValue(input.productName, "A");
-  return buildNotice({
-    subject: `The developer undid a move of a ${name} license`,
-    paragraphs: [
-      `The developer of ${name} undid an earlier move of one of its licenses. The license goes back to the account it came from.`,
-      "If you did not expect this, contact the developer's support.",
-    ],
-    secureUrl: appLink(input.origin, "account/methods"),
-    origin: input.origin,
-  });
-}
+export const licenseRelinkUndoneNotice = dual(
+  (
+    input: {
+      productName: string | null | undefined;
+      origin: string;
+    },
+    b: MailBrand,
+  ): NoticeMessage => {
+    const name = displayValue(input.productName, "A");
+    return buildNotice(b, {
+      subject: `The developer undid a move of a ${name} license`,
+      paragraphs: [
+        `The developer of ${name} undid an earlier move of one of its licenses. The license goes back to the account it came from.`,
+        "If you did not expect this, contact the developer's support.",
+      ],
+      secureUrl: appLink(input.origin, "account/methods"),
+      origin: input.origin,
+    });
+  },
+);
 
 // ── Holder moves (LX-30; notes/S-24 §5.5, D20) ───────────────────────────────────────────────
 //
@@ -623,14 +751,17 @@ const LICENSE_ADDRESS_FOOTER =
   "You are receiving this because a developer issued a license to this email address.";
 
 /** The away side of a holder move: an account (security notice) or a waiting licence's address. */
-function holderMovedAwayNotice(input: {
-  subject: string;
-  paragraph: string;
-  inAccount: boolean;
-  origin: string;
-}): NoticeMessage {
+function holderMovedAwayNotice(
+  b: MailBrand,
+  input: {
+    subject: string;
+    paragraph: string;
+    inAccount: boolean;
+    origin: string;
+  },
+): NoticeMessage {
   const undo = `If you did not expect this, contact the developer's support now: they can undo it for ${RELINK_UNDO_WORDS}.`;
-  return buildNotice({
+  return buildNotice(b, {
     subject: input.subject,
     paragraphs: [input.paragraph, undo],
     ...(input.inAccount
@@ -644,66 +775,81 @@ function holderMovedAwayNotice(input: {
  * Make floating: the developer took the licence off its holder. It keeps working on every device
  * that has its key; it is no longer in anyone's library.
  */
-export function licenseMadeFloatingNotice(input: {
-  productName: string | null | undefined;
-  /** True: sent to the account the licence leaves. False: to a waiting licence's address. */
-  inAccount: boolean;
-  origin: string;
-}): NoticeMessage {
-  const name = displayValue(input.productName, "product");
-  const dev = displayValue(input.productName, "this product");
-  return holderMovedAwayNotice({
-    subject: input.inAccount
-      ? `The developer removed a ${name} license from your account`
-      : `A ${name} license is no longer assigned to you`,
-    paragraph: input.inAccount
-      ? `The developer of ${dev} removed one of its licenses from your Polaris Key account, at the request of its support. It is no longer in your library.`
-      : `The developer of ${dev} removed your name and email address from one of its licenses, at the request of its support.`,
-    inAccount: input.inAccount,
-    origin: input.origin,
-  });
-}
+export const licenseMadeFloatingNotice = dual(
+  (
+    input: {
+      productName: string | null | undefined;
+      /** True: sent to the account the licence leaves. False: to a waiting licence's address. */
+      inAccount: boolean;
+      origin: string;
+    },
+    b: MailBrand,
+  ): NoticeMessage => {
+    const name = displayValue(input.productName, "product");
+    const dev = displayValue(input.productName, "this product");
+    return holderMovedAwayNotice(b, {
+      subject: input.inAccount
+        ? `The developer removed a ${name} license from your account`
+        : `A ${name} license is no longer assigned to you`,
+      paragraph: input.inAccount
+        ? `The developer of ${dev} removed one of its licenses from your ${b.name} account, at the request of its support. It is no longer in your library.`
+        : `The developer of ${dev} removed your name and email address from one of its licenses, at the request of its support.`,
+      inAccount: input.inAccount,
+      origin: input.origin,
+    });
+  },
+);
 
 /** Reassign…: the developer gave the licence to someone else. */
-export function licenseReassignedAwayNotice(input: {
-  productName: string | null | undefined;
-  inAccount: boolean;
-  origin: string;
-}): NoticeMessage {
-  const name = displayValue(input.productName, "product");
-  const dev = displayValue(input.productName, "this product");
-  return holderMovedAwayNotice({
-    subject: `The developer assigned your ${name} license to someone else`,
-    paragraph: input.inAccount
-      ? `The developer of ${dev} assigned one of its licenses in your Polaris Key account to someone else, at the request of its support. It is no longer in your library.`
-      : `The developer of ${dev} assigned one of its licenses, issued to this email address, to someone else, at the request of its support.`,
-    inAccount: input.inAccount,
-    origin: input.origin,
-  });
-}
+export const licenseReassignedAwayNotice = dual(
+  (
+    input: {
+      productName: string | null | undefined;
+      inAccount: boolean;
+      origin: string;
+    },
+    b: MailBrand,
+  ): NoticeMessage => {
+    const name = displayValue(input.productName, "product");
+    const dev = displayValue(input.productName, "this product");
+    return holderMovedAwayNotice(b, {
+      subject: `The developer assigned your ${name} license to someone else`,
+      paragraph: input.inAccount
+        ? `The developer of ${dev} assigned one of its licenses in your ${b.name} account to someone else, at the request of its support. It is no longer in your library.`
+        : `The developer of ${dev} assigned one of its licenses, issued to this email address, to someone else, at the request of its support.`,
+      inAccount: input.inAccount,
+      origin: input.origin,
+    });
+  },
+);
 
 /**
  * Reassign…, the receiving side: sent to the new address only. Never says whether an account
  * holds that address (S-24 D4): the same words whether the licence is waiting or already joined.
  */
-export function licenseAssignedToYouNotice(input: {
-  productName: string | null | undefined;
-  productSlug: string;
-  origin: string;
-}): NoticeMessage {
-  const name = displayValue(input.productName, "product");
-  const dev = displayValue(input.productName, "this product");
-  return buildNotice({
-    subject: `A ${name} license was assigned to you`,
-    paragraphs: [
-      `The developer of ${dev} assigned one of its licenses to this email address.`,
-      "Sign in to Polaris Key with this email address to find it in your library.",
-    ],
-    action: {
-      label: `Open ${displayValue(input.productName, "it")}`,
-      url: appLink(input.origin, productRoute(input.productSlug)),
+export const licenseAssignedToYouNotice = dual(
+  (
+    input: {
+      productName: string | null | undefined;
+      productSlug: string;
+      origin: string;
     },
-    footer: LICENSE_ADDRESS_FOOTER,
-    origin: input.origin,
-  });
-}
+    b: MailBrand,
+  ): NoticeMessage => {
+    const name = displayValue(input.productName, "product");
+    const dev = displayValue(input.productName, "this product");
+    return buildNotice(b, {
+      subject: `A ${name} license was assigned to you`,
+      paragraphs: [
+        `The developer of ${dev} assigned one of its licenses to this email address.`,
+        `Sign in to ${b.name} with this email address to find it in your library.`,
+      ],
+      action: {
+        label: `Open ${displayValue(input.productName, "it")}`,
+        url: appLink(input.origin, productRoute(input.productSlug)),
+      },
+      footer: LICENSE_ADDRESS_FOOTER,
+      origin: input.origin,
+    });
+  },
+);

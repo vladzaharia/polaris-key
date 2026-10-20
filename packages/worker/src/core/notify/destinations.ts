@@ -10,6 +10,7 @@
 import type { Db } from "../../db/types.js";
 import type { Env } from "../../platform/env.js";
 import { deliverEmail } from "./emailDelivery.js";
+import { lockerOf } from "./send.js";
 import type { NoticeMessage } from "./templates.js";
 
 /** Can this deploy send platform mail at all? */
@@ -40,7 +41,7 @@ export async function deliverOrLink(
     const result = await deliverEmail(
       env,
       db,
-      { sender: { kind: "platform" }, to, ...message },
+      { sender: { kind: "platform" }, to, ...message, ...lockerOf(message) },
       now,
     );
     return result.ok ? { delivered: true } : { delivered: false, link };

@@ -2,7 +2,8 @@
  * Sending platform mail: the magic sign-in link, the login card's code email and the account
  * notices (whose copy lives in `templates.ts`).
  *
- * Every message is platform mail, sent as "Polaris Key" through Core's one send choke point
+ * Every message is platform mail, sent as "Polaris Key" ("Polaris Locker" while `customer.host`
+ * is on: each is built in both brands, and `deliverEmail` picks; LK-07) through Core's one send choke point
  * (`emailDelivery.ts`, I-18), which applies the suppression list, the Apple private-relay
  * gate and the provider-error handling; platform mail is never counted against a product cap.
  * Every message carries a plain-text part (the canonical copy) and a branded HTML part.
@@ -14,7 +15,13 @@ import { portalAudit } from "../accounts/portalAudit.js";
 import { deliverEmail } from "./emailDelivery.js";
 import { emailAssetOrigin, renderEmail } from "./render.js";
 import { securityNoticeRecipients } from "./recipients.js";
-import type { NoticeMessage } from "./templates.js";
+import {
+  KEY_BRAND,
+  LOCKER_BRAND,
+  lockerVariantOf,
+  type MailBrand,
+  type NoticeMessage,
+} from "./templates.js";
 
 /**
  * Mail a magic sign-in link. False only when email cannot be sent at all (`email_unavailable`);
@@ -28,20 +35,16 @@ export async function sendMagicLink(
   link: string,
   now: number,
 ): Promise<boolean> {
-  const subject = "Sign in to Polaris Key";
-  const result = await deliverEmail(
-    env,
-    db,
-    {
-      sender: { kind: "platform" },
-      to,
+  const build = (b: MailBrand): NoticeMessage => {
+    const subject = `Sign in to ${b.name}`;
+    return {
       subject,
       text:
-        `Use this link to sign in to Polaris Key:\n\n${link}\n\n` +
+        `Use this link to sign in to ${b.name}:\n\n${link}\n\n` +
         `This link expires in 10 minutes and works once. If you did not ask to sign in, you can ignore this email.`,
       html: renderEmail({
         subject,
-        heading: "Sign in to Polaris Key",
+        heading: `Sign in to ${b.name}`,
         paragraphs: [
           "Use the button below to sign in. The link expires in 10 minutes and works once.",
         ],
@@ -49,7 +52,18 @@ export async function sendMagicLink(
         footer:
           "If you did not ask to sign in, you can ignore this email. Nothing changes until the link is used.",
         origin: emailAssetOrigin(link, env.CONSOLE_ORIGIN),
+        ...(b.locker ? { brand: "locker" as const } : {}),
       }),
+    };
+  };
+  const result = await deliverEmail(
+    env,
+    db,
+    {
+      sender: { kind: "platform" },
+      to,
+      ...build(KEY_BRAND),
+      locker: build(LOCKER_BRAND),
     },
     now,
   );
@@ -79,11 +93,6 @@ export async function sendSignInEmail(
 ): Promise<"sent" | "unavailable"> {
   const spaced = `${content.code.slice(0, 3)} ${content.code.slice(3)}`;
   const confirm = content.purpose === "confirm";
-  // SIGN-IN.md §3.4 / §3.15: the code in the subject, then first and large in the body.
-  const subject = confirm
-    ? "Confirm your email for Polaris Key"
-    : `Your Polaris Key code: ${content.code}`; // signin.email.subject
-  const heading = confirm ? "Confirm your email" : "Your Polaris Key code";
   const lines = content.link
     ? [
         // signin.email.body
@@ -98,12 +107,13 @@ export async function sendSignInEmail(
   const footer = confirm
     ? "If you did not ask for this, you can ignore this email. Nothing changes until it is used."
     : "If you did not ask to sign in, you can ignore this email. Nothing changes until the link is used.";
-  const result = await deliverEmail(
-    env,
-    db,
-    {
-      sender: { kind: "platform" },
-      to,
+  const build = (b: MailBrand): NoticeMessage => {
+    // SIGN-IN.md §3.4 / §3.15: the code in the subject, then first and large in the body.
+    const subject = confirm
+      ? `Confirm your email for ${b.name}`
+      : `Your ${b.name} code: ${content.code}`; // signin.email.subject
+    const heading = confirm ? "Confirm your email" : `Your ${b.name} code`;
+    return {
       subject,
       text:
         `${heading}: ${spaced}\n\n` +
@@ -120,11 +130,30 @@ export async function sendSignInEmail(
           : {}),
         footer,
         origin: emailAssetOrigin(content.link, env.CONSOLE_ORIGIN),
+        ...(b.locker ? { brand: "locker" as const } : {}),
       }),
+    };
+  };
+  const result = await deliverEmail(
+    env,
+    db,
+    {
+      sender: { kind: "platform" },
+      to,
+      ...build(KEY_BRAND),
+      locker: build(LOCKER_BRAND),
     },
     now,
   );
   return result.ok || result.reason === "suppressed" ? "sent" : "unavailable";
+}
+
+/** The `locker` field of an outgoing email for a template message (none: it has no variant). */
+export function lockerOf(
+  message: NoticeMessage,
+): { locker: NoticeMessage } | Record<string, never> {
+  const locker = lockerVariantOf(message);
+  return locker ? { locker } : {};
 }
 
 /**
@@ -143,7 +172,12 @@ export async function sendNotice(
   const result = await deliverEmail(
     env,
     db,
-    { sender: { kind: "platform" }, to, ...message },
+    {
+      sender: { kind: "platform" },
+      to,
+      ...message,
+      ...lockerOf(message),
+    },
     now,
   );
   return result.ok;

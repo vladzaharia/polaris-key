@@ -33,6 +33,7 @@ import {
   productEmailCapOk,
 } from "../../../core/notify/emailDelivery.js";
 import { passthroughSender } from "../../../core/notify/emailSender.js";
+import { lockerOf } from "../../../core/notify/send.js";
 import { strictEmail } from "../../../core/strictEmail.js";
 import {
   appLink,
@@ -170,6 +171,7 @@ export async function emailLicenseKey(
         },
         to,
         ...message,
+        ...lockerOf(message),
       },
       now,
     );
