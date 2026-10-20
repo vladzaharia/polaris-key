@@ -4,6 +4,7 @@
 //   #Preview { PolarisKeyPreview(.named(.welcome, "default")!) }
 //   PolarisKeyGallery()   // every state, grouped by component
 
+import PolarisKeyCore
 import PolarisKeyUICore
 import SwiftUI
 
@@ -26,8 +27,8 @@ public struct PolarisKeyPreview: View {
         default: route = .welcome
         }
         let request = KitSignInRequest(
-            userCode: "WDJB-MJHT", verificationUri: "https://key.plrs.im/device",
-            verificationUriComplete: "https://key.plrs.im/device?code=WDJB-MJHT",
+            userCode: "WDJB-MJHT", verificationUri: DEVICE_CODE_PAGE,
+            verificationUriComplete: DEVICE_CODE_PAGE + "?code=WDJB-MJHT",
             expiresAt: Int(now.timeIntervalSince1970) + 252)
         _model = State(
             initialValue: PolarisKeyGateModel(
