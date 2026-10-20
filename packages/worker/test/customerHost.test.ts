@@ -107,7 +107,7 @@ describe("customerOrigin()", () => {
   });
 });
 
-describe("the customer.host switch", () => {
+describe("hard cutover (LK-00 A5)", () => {
   let db: SqliteDb;
   let env: Env;
   beforeEach(async () => {
@@ -117,47 +117,21 @@ describe("the customer.host switch", () => {
     await seedProduct(db, "djdl");
   });
 
-  async function setMode(mode: string): Promise<void> {
-    await db.run(
-      "INSERT OR REPLACE INTO platform_settings (key, value_json, version, updated_at, updated_by) VALUES ('CUSTOMER_HOST', ?, 1, ?, 'test')",
-      JSON.stringify(mode),
-      NOW,
-    );
-    invalidatePlatformSettings(env, db);
-  }
-
-  it("is off by default and with no customer origin, even when set", async () => {
-    expect(await customerHostMode(env, db)).toBe("off");
-    await setMode("on");
+  it("is off with no customer origin", async () => {
     expect(await customerHostMode(env, db)).toBe("off");
     expect(await customerOriginOf(env, db, `${API}/x`)).toBe(API);
   });
 
-  it("moves every customer URL together once on", async () => {
+  it("moves every customer URL once CUSTOMER_ORIGIN is set", async () => {
     env.CUSTOMER_ORIGIN = CUSTOMER;
-    expect(await customerHostMode(env, db)).toBe("off");
-    const req = new Request(`${API}/djdl/license/activate`);
-    expect(await buildSignInUrl(env, db, req, { slug: "djdl" })).toBe(
-      `${API}/signin?product=djdl`,
-    );
-    await setMode("on");
     expect(await customerHostMode(env, db)).toBe("on");
+    const req = new Request(`${API}/djdl/license/activate`);
     expect(await buildSignInUrl(env, db, req, { slug: "djdl" })).toBe(
       `${CUSTOMER}/signin?product=djdl`,
     );
     expect(await accountPortalUrl(env, db, API, { slug: "djdl" })).toBe(
       `${CUSTOMER}/#/p/djdl`,
     );
-    await setMode("permanent");
-    expect(await customerHostMode(env, db)).toBe("permanent");
-  });
-
-  it("a hard off in [vars] beats a console value", async () => {
-    env.CUSTOMER_ORIGIN = CUSTOMER;
-    await setMode("on");
-    env.CUSTOMER_HOST = "off";
-    invalidatePlatformSettings(env, db);
-    expect(await customerHostMode(env, db)).toBe("off");
   });
 });
 
@@ -219,9 +193,11 @@ describe("customer host confinement", () => {
     );
   });
 
-  it("robots.txt disallows everything while the switch is off", async () => {
+  it("robots.txt keeps crawlers out of the API and sign-in paths", async () => {
     const res = await get(`${CUSTOMER}/robots.txt`);
-    expect(await res.text()).toContain("Disallow: /\n");
+    const body = await res.text();
+    expect(body).toContain("Disallow: /api/\n");
+    expect(body).not.toContain("Disallow: /\n");
   });
 
   it("is inert with CUSTOMER_ORIGIN unset", async () => {
