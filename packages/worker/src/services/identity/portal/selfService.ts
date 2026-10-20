@@ -192,10 +192,7 @@ async function resolveClaimKey(
   if (!license) return { kind: "unknown", product: null };
 
   const settings = await getPortalProductSettings(db, slug);
-  if (
-    settings.portal_enabled !== 1 ||
-    settings.license_key_claim_enabled !== 1
-  ) {
+  if (settings.portal_enabled !== 1) {
     return { kind: "portal_off", product, license };
   }
   return { kind: "resolved", product, license, settings };
@@ -693,7 +690,7 @@ export async function handleLicenseRemove(
   const keys = await listVisibleKeys(db, product, licenseId);
   const reason = notRemovableReason(
     keys.filter((k) => k.status === "active").length,
-    settings.license_key_claim_enabled === 1,
+    settings.portal_enabled === 1,
   );
   if (reason) {
     return portalJson(

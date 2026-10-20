@@ -46,7 +46,7 @@ const PREREQ: Record<
   },
   oidc: {
     label: "A sign-in provider",
-    href: r.signIn,
+    href: r.appSignIn,
     action: "Connect a provider",
   },
   release: { label: "A release", href: r.releases, action: "Add a release" },

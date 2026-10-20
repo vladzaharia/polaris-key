@@ -491,7 +491,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     rbacArea: "core",
     label: "Product name",
     description:
-      "The display name shown in the console, the portal and the discovery document.",
+      "The display name shown in the console, Polaris Locker and the discovery document.",
     keywords: [],
     docs: "/docs/operate/console/products/",
     ownership: "claimable",
@@ -629,7 +629,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     rbacArea: "core",
     label: "Icon and accent",
     description:
-      "The product's icon and accent colours (light and dark), declared in .pkey/product and shown by the console, the portal and the SDK UI kits. Manifest-only.",
+      "The product's icon and accent colours (light and dark), declared in .pkey/product and shown by the console, Polaris Locker and the SDK UI kits. Manifest-only.",
     keywords: ["icon", "accent", "brand", "colour", "color"],
     docs: "/docs/build/manifest/",
     ownership: "manifest",
@@ -667,7 +667,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     rbacArea: "commerce",
     label: "Listing",
     description:
-      "Whether the Polaris Key library lists this product. Auto lists it where auto-issue or a mapped group would give it to the person (today's Discover); Listed adds every other way to obtain it; Unlisted hides it in the portal while every policy keeps working.",
+      "Whether the Polaris Key library lists this product. Auto lists it where auto-issue or a mapped group would give it to the person (today's Discover); Listed adds every other way to obtain it; Unlisted hides it in Polaris Locker while every policy keeps working.",
     keywords: ["discover", "library", "storefront", "unlisted", "visibility"],
     docs: "/docs/features/sign-in/customer-portal/",
     ownership: "operator",
@@ -1586,7 +1586,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     rbacArea: "signin",
     label: "Key-entry limit",
     description:
-      "How many times the key of a license that is in no account may be entered on new devices while Identity is on. Past it, with key-entry refusals on, key entry is refused with a link to the portal.",
+      "How many times the key of a license that is in no account may be entered on new devices while Identity is on. Past it, with key-entry refusals on, key entry is refused with a link to Polaris Locker.",
     keywords: ["key entry", "key_entry_limit", "activations"],
     docs: "/docs/features/sign-in/",
     ownership: "claimable",
@@ -1909,14 +1909,14 @@ export const NOT_A_SETTING_INDEX: readonly NotASettingEntry[] = [
   {
     thing: "Customer licence links",
     reason:
-      "Customer data: how a portal account came to hold a licence, not Polaris behaviour.",
+      "Customer data: how a Polaris Locker account came to hold a license, not Polaris behaviour.",
     shows: "License → Licenses",
   },
   {
     thing: "An account's birth date and where it came from (I-33)",
     reason:
       "Personal data the person keeps on their own account (typed by them, or accepted from a connection's claim), not Polaris behaviour. No operator sees it.",
-    shows: "The customer portal's Account → Profile, to that person only",
+    shows: "Polaris Locker's Account → Profile, to that person only",
   },
   {
     thing: "Grant and licence provenance (LX-08)",

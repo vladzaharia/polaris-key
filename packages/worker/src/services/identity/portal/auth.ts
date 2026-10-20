@@ -263,7 +263,7 @@ export async function handleConnectionLogin(
   );
   if (!ok) return signInPage.tooMany();
   const caps = await portalAuthCapabilities(db);
-  if (!caps.portalEnabled || !caps.oidcEnabled) {
+  if (!caps.portalEnabled) {
     return signInPage.off();
   }
   const conn = await customerConnection(env, db, connectionId, now);
@@ -387,7 +387,7 @@ export async function handlePortalCallback(
     peeked !== null && testFlowOf(parseFlowRecord<FlowRecord>(peeked)) !== null;
   if (!isTest) {
     const caps = await portalAuthCapabilities(db);
-    if (!caps.portalEnabled || !caps.oidcEnabled) {
+    if (!caps.portalEnabled) {
       return signInPage.off();
     }
   }

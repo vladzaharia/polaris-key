@@ -776,19 +776,11 @@ function IdentityTile({ slug }: { slug: string }): React.ReactElement {
     queryFn: () => api.portalSettings(slug).then((r) => r.settings),
   });
   const s = portal.data;
-  const methods = s
-    ? [
-        s.oidcEnabled ? "single sign-on" : null,
-        s.magicEnabled ? "email link" : null,
-      ]
-        .filter(Boolean)
-        .join(" and ")
-    : "";
   return (
     <TileFrame
       service="identity"
-      href={r.portal(slug)}
-      linkLabel="Locker"
+      href={r.appSignIn(slug)}
+      linkLabel="App sign-in"
       loading={portal.isPending}
       error={portal.isError ? portal.error : undefined}
       onRetry={() => void portal.refetch()}
@@ -796,9 +788,7 @@ function IdentityTile({ slug }: { slug: string }): React.ReactElement {
       {s ? (
         <>
           <Big>Locker {s.portalEnabled ? "on" : "off"}</Big>
-          <Line>
-            {methods ? `Sign-in by ${methods}` : "No sign-in method on"}
-          </Line>
+          <Line>Sign-in by email code and passkeys</Line>
         </>
       ) : null}
     </TileFrame>

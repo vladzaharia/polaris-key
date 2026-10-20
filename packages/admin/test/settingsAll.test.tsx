@@ -131,9 +131,9 @@ describe("All settings → Edit in", () => {
     ],
     [
       "identity.keyEntry.claimByKey",
-      "Identity → Locker",
+      "Identity → App sign-in",
       "License keys",
-      "#/p/djdl/identity/portal",
+      "#/p/djdl/identity/app-sign-in",
     ],
   ])("%s links to %s and opens it", async (key, where, section, hash) => {
     mount();

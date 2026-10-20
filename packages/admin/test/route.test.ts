@@ -267,6 +267,20 @@ describe("section roots redirect to the section's first page", () => {
     }
   });
 
+  it("the retired Identity pages say they moved to App sign-in (I-29)", () => {
+    for (const old of [
+      "#/p/djdl/identity/portal",
+      "#/p/djdl/identity/sign-in",
+    ]) {
+      const { route } = parseLocation(old);
+      expect(route.kind, old).toBe("not-found");
+      if (route.kind !== "not-found") continue;
+      expect(movedHref(route.slug!, route.moved!, route.query), old).toBe(
+        "#/p/djdl/identity/app-sign-in",
+      );
+    }
+  });
+
   it("only an old tab, or an old tab and an id its page has records for, is moved", () => {
     for (const hash of [
       "#/p/djdl/nope",
@@ -296,7 +310,7 @@ describe("section roots redirect to the section's first page", () => {
     for (const [hash, page] of [
       ["#/p/djdl/license/settings", "license-settings"],
       ["#/p/djdl/license/enrollment", "enrollment"],
-      ["#/p/djdl/identity/portal", "portal"],
+      ["#/p/djdl/identity/app-sign-in", "app-sign-in"],
       ["#/p/djdl/update/feed", "feed"],
     ] as const) {
       const parsed = parseLocation(hash);
@@ -529,8 +543,7 @@ describe("the nav model (nav.ts)", () => {
       "health",
       "credentials",
       "feed",
-      "portal",
-      "sign-in",
+      "app-sign-in",
       "sync-data",
     ];
     expect(ALL_PAGES.map((p) => p.page).sort()).toEqual([...expected].sort());

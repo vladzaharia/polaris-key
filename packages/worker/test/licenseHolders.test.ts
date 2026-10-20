@@ -454,11 +454,11 @@ describe("association at creation (S-24 D3, D4)", () => {
 
   it("does not attach on a product whose auto-link resolves off; the licence waits", async () => {
     const ada = await account("ada@example.com");
-    await upsertPortalProductSettings(
-      db,
+    // I-29: auto-link resolves off only for a tenant-controlled (custom) issuer.
+    await db.run(
+      `INSERT INTO oidc_config (product, issuer, client_id, provider)
+       VALUES (?, 'https://id.example.com', 'c', 'custom')`,
       SLUG,
-      { autoLinkEnabled: false },
-      NOW,
     );
     const created = await create({ email: "ada@example.com" });
     expect(created.license.holder).toEqual({

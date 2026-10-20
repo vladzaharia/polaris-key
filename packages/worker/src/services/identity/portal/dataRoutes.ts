@@ -192,8 +192,7 @@ async function notRemovable(
   product: string,
 ): Promise<NotRemovableReason | null> {
   const settings = await getPortalProductSettings(db, product);
-  const keyClaimOn =
-    settings.portal_enabled === 1 && settings.license_key_claim_enabled === 1;
+  const keyClaimOn = settings.portal_enabled === 1;
   for (const { id } of await accountLicenses(db, accountId, product)) {
     const keys = await listVisibleKeys(db, product, id);
     const reason = notRemovableReason(

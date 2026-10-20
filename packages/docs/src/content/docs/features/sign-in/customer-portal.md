@@ -13,7 +13,7 @@ Polaris Locker is a self-service account surface. A customer signs in once, sees
 
 `/login`, `/callback`, `/logout`, `/magic/verify`, `/api/*`, `/download/<token>` and `/media/*` are reserved ahead of every product slug. One account can hold licenses for several products at once, so no single product could own these paths.
 
-The Identity flag doesn't gate Locker. A product with Identity off has no `/identity/*` routes, yet its customers still see its licenses in Locker, claim them by key and manage their devices. The product's Locker settings decide that, never `services_json`. The one service flag Locker reads is Release's: release downloads need both `releasesEnabled` and the Release service on.
+The Identity flag doesn't gate Locker. A product with Identity off has no `/identity/*` routes, yet its customers still see its licenses in Locker, claim them by key and manage their devices. The product's Locker switch decides that, never `services_json`. The one service flag Locker reads is Release's: release downloads need the Release service on.
 
 ## Signing in
 
@@ -74,18 +74,18 @@ Every email is from Polaris Key (`PORTAL_EMAIL_FROM`) and names the product and 
 | New device signed in  | Every verified address |
 | Account deleted       | Every verified address |
 
-## Per-product settings
+## App sign-in settings
 
-Each product has Locker settings, edited at **Identity → Locker**. They default on for a product that never wrote a row: `portalEnabled`, `oidcEnabled`, `magicEnabled`, `licenseKeyClaimEnabled`, `releasesEnabled` and `discoverEnabled`. These default off:
+Each product has Locker settings, edited on **App sign-in**. They default on for a product that never wrote a row: `portalEnabled` and `discoverEnabled`. These default off:
 
 - `keyReissueEnabled`: customers may replace a license's key from Locker.
 - `claimByKey`: a license that carries an email may be added by anyone holding its key. Off is the safe default: such a license joins only an account that verified that email. A license already in an account never moves by its key either way.
 
-`autoLinkEnabled` is tri-state. `true` or `false` is an operator override. `null` derives from the issuer that vouched for the license's address: on for the platform issuer, off for a product's own custom issuer, because a tenant-controlled provider's `email` and `sub` are outside the platform's trust boundary. The issuer class is recorded on the license when its address is written, so editing `oidc.provider` later can't turn a tenant-minted license into one that auto-links.
+Email codes and passkeys are always on, platform single sign-on is on while a connection signs customers in, and adding a license by key is always on. There are no per-product switches for them. A domain's owner turns the email methods off for that domain's addresses by enforcing it under **Platform → Connections**. Downloads follow the product's Release service. Automatic linking has no switch either. It derives from the issuer that vouched for the license's address: on for the platform issuer, off for a product's own custom issuer, because a tenant-controlled provider's `email` and `sub` are outside the platform's trust boundary. The issuer class is recorded on the license when its address is written, so editing `oidc.provider` later can't turn a tenant-minted license into one that auto-links.
 
 Only addresses Locker proved (a magic link it sent, or `email_verified: true` from the platform issuer) can drive a link, and only a platform-issuer subject can match a license's `sub`.
 
-**Identity → Locker** is read-only for the sign-in methods and modules while the product's **Locker** switch is off, and for **Release downloads** while the Release service is off.
+The Polaris Locker card on **App sign-in** holds the Locker switch and key reissue.
 
 ### Polaris Locker listing
 

@@ -271,17 +271,11 @@ describe("R5-01 cross-tenant license injection by unverified email", () => {
     expect(products).toEqual([ACME]);
     expect(body.licenses.some((l) => l.id === injectedId)).toBe(false);
 
-    // Cross-PRODUCT visibility itself still works: an opted-in, platform-issuer product with
-    // the same verified email still links, which is the behaviour the owner chose to keep.
-    await upsertPortalProductSettings(
-      db,
-      EVILCO,
-      { autoLinkEnabled: true },
-      NOW,
-    );
+    // I-29: there is no operator opt-in for a custom issuer any more (the per-product
+    // auto-link override is gone), so a second sweep still links nothing of the attacker's.
     await syncAccountLicenseLinks(db, account.id, NOW);
     const after = await listPortalLicenses(db, account.id);
-    expect(after.map((r) => r.product).sort()).toEqual([ACME, EVILCO]);
+    expect(after.map((r) => r.product).sort()).toEqual([ACME]);
   });
 
   it("the injected link also grants the victim's account release visibility for the attacker's product", async () => {
@@ -371,17 +365,6 @@ describe("cross-issuer OIDC subject collision", () => {
         EVILCO,
       ),
     ).toBeNull();
-
-    // Even an explicit operator opt-in cannot re-open the SUBJECT join for a custom issuer:
-    // auto_link_enabled governs the email join, the issuer qualifier governs this one.
-    await upsertPortalProductSettings(
-      db,
-      EVILCO,
-      { autoLinkEnabled: true },
-      NOW,
-    );
-    await syncAccountLicenseLinks(db, victim.id, NOW);
-    expect(await listPortalLicenses(db, victim.id)).toEqual([]);
 
     // INVERTED. This used to read as a control — "the same subject on a PLATFORM-issuer product
     // still links" — but the way it got there is the attack: it flips the LIVE provider AFTER the
@@ -658,25 +641,20 @@ describe("R5-03 cross-tenant rate-limit bucket sharing", () => {
 // re-enables it platform-wide for tenants that switched it off.
 // ───────────────────────────────────────────────────────────────────────────────
 describe("R5-04 cross-tenant portal capability coupling", () => {
-  it("one tenant keeping magic-link on overrides every other tenant's opt-out", async () => {
+  it("one tenant's portal opt-out neither reaches another tenant nor closes the platform", async () => {
     const db = makeTestDb();
     const e = env();
     await seedProduct(db, ACME);
     await seedProduct(db, EVILCO);
 
     // ACME explicitly turns the portal AND magic-link sign-in off.
-    await upsertPortalProductSettings(
-      db,
-      ACME,
-      { portalEnabled: false, magicEnabled: false, oidcEnabled: false },
-      NOW,
-    );
+    await upsertPortalProductSettings(db, ACME, { portalEnabled: false }, NOW);
     // EVILCO leaves the defaults (everything on).
 
-    const caps = await portalAuthCapabilities(db);
-    expect(caps.portalEnabled).toBe(true);
-    expect(caps.magicEnabled).toBe(true);
-    expect(caps.oidcEnabled).toBe(true);
+    // I-29: a product's answer is its own row; ACME's opt-out never reaches EVILCO.
+    expect((await portalAuthCapabilities(db, ACME)).portalEnabled).toBe(false);
+    expect((await portalAuthCapabilities(db, EVILCO)).portalEnabled).toBe(true);
+    expect((await portalAuthCapabilities(db)).portalEnabled).toBe(true);
 
     // And the gate really does open: the handler proceeds past the capability check and
     // fails later on email config (503, I-18's `email_unavailable`) rather than refusing as

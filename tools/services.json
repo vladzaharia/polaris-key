@@ -40,7 +40,7 @@
       "switches": [
         {
           "id": "customer-portal",
-          "label": "Customer portal",
+          "label": "Polaris Locker",
           "kind": "setting"
         }
       ]
@@ -130,7 +130,7 @@
     {
       "slug": "identity",
       "label": "Identity",
-      "summary": "OIDC sign-in and browser sessions for this product. The customer portal is platform-wide and runs either way.",
+      "summary": "OIDC sign-in and browser sessions for this product. Polaris Locker is platform-wide and runs either way.",
       "defaultEnabled": false,
       "requires": [],
       "legacyModules": ["oidc"],

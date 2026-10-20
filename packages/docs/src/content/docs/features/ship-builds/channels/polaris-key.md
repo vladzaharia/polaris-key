@@ -26,7 +26,7 @@ Five checks, each **Ready**, **Ready, with a note** or **Needs a fix**, with the
 
 | Check           | Ready when                                                                                            |
 | --------------- | ----------------------------------------------------------------------------------------------------- |
-| Locker          | Locker is on for the product (Identity → Locker)                                                      |
+| Locker          | Locker is on for the product (App sign-in → Polaris Locker)                                           |
 | Listing         | The listing has a name, an icon and a short description that fit Polaris Locker in its default locale |
 | A way to add it | At least one way to add it is offered, or the audience is everyone (a note)                           |
 | Get it          | A release download or a live store link; the developer's website alone is a note                      |

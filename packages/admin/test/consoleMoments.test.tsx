@@ -214,7 +214,7 @@ beforeEach(() => {
     compatMax: "2.0.0",
   });
   fns.portalSettings.mockResolvedValue({
-    settings: { portalEnabled: false, oidcEnabled: false, magicEnabled: false },
+    settings: { portalEnabled: false },
   });
   fns.activity.mockResolvedValue({ items: [], nextCursor: null });
   fns.productKeys.mockResolvedValue({ keys: [], now: NOW });

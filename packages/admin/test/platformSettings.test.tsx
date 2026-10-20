@@ -1144,7 +1144,7 @@ describe("the read-only inventory", () => {
       within(warnings).getByRole("button", { name: /^Show all/ }),
     );
     expect(
-      within(warnings).getByText("Customer portal sessions cannot be signed"),
+      within(warnings).getByText("Polaris Locker sessions cannot be signed"),
     ).toBeTruthy();
     expect(
       within(warnings).getByText(/The console shares the customer sign-in/),

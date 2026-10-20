@@ -58,6 +58,15 @@ import {
  */
 export const STOREFRONT_AUDIENCE_CONFIRM = "storefront.polarisKey.audience";
 
+/** Per-product switches I-29 retired: `PATCH …/identity/portal` answers 422 for each. */
+const RETIRED_PORTAL_KEYS = [
+  "oidcEnabled",
+  "magicEnabled",
+  "licenseKeyClaimEnabled",
+  "releasesEnabled",
+  "autoLinkEnabled",
+] as const;
+
 export async function handleIdentityAdmin(
   ctx: ServiceContext & { session: AdminSession },
 ): Promise<Response | null> {
@@ -200,15 +209,10 @@ async function handlePortalSettings(
   const body = await readBody(req);
   const patch: PortalSettingsPatch = {};
   const listing: ListingPatch = {};
-  const booleans = [
-    "portalEnabled",
-    "oidcEnabled",
-    "magicEnabled",
-    "licenseKeyClaimEnabled",
-    "releasesEnabled",
-    "keyReissueEnabled",
-  ] as const;
+  const booleans = ["portalEnabled", "keyReissueEnabled"] as const;
   const fields: string[] = [];
+  // I-29: the retired per-product toggles are refused, not ignored, so a stale client learns.
+  for (const key of RETIRED_PORTAL_KEYS) if (key in body) fields.push(key);
   for (const key of booleans) {
     if (body[key] === undefined) continue;
     if (typeof body[key] !== "boolean") fields.push(key);
@@ -226,15 +230,6 @@ async function handlePortalSettings(
     if (typeof body.discoverEnabled !== "boolean")
       fields.push("discoverEnabled");
     else listing.discoverEnabled = body.discoverEnabled;
-  }
-  // R5-01/R5-02 — tri-state, so an operator can override the issuer-derived default in either
-  // direction: `null` restores "auto" (on for platform-issuer products, OFF for products on a
-  // tenant-controlled 'custom' issuer, whose email/sub claims are outside the trust boundary).
-  if (body.autoLinkEnabled !== undefined) {
-    if (body.autoLinkEnabled === null) patch.autoLinkEnabled = null;
-    else if (typeof body.autoLinkEnabled === "boolean")
-      patch.autoLinkEnabled = body.autoLinkEnabled;
-    else fields.push("autoLinkEnabled");
   }
   if (body.branding !== undefined) patch.branding = body.branding;
   // PS-02: the Polaris Key listing state (S-21 §6.2). Accepted here until ST-05's generic

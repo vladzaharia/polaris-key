@@ -605,51 +605,6 @@ describe("DELETE /api/licenses/:product/:licenseId: Remove from my library (S-24
     ).toEqual([]);
   });
 
-  it("a key licence is not removable while the product turns key claims off", async () => {
-    const db = makeTestDb();
-    const env = portalEnv();
-    await seedProduct(db, SLUG);
-    const { licenseId } = await seedLicenseWithKey(db, SLUG);
-    const s = await session(env, db, ADA);
-    await upsertPortalProductSettings(
-      db,
-      SLUG,
-      { licenseKeyClaimEnabled: false },
-      NOW,
-    );
-    const detail = await json(
-      await call(env, db, "GET", `/api/licenses/${SLUG}/${licenseId}`, s),
-    );
-    expect(detail).toMatchObject({ id: licenseId, removable: false });
-    const refused = await call(
-      env,
-      db,
-      "DELETE",
-      `/api/licenses/${SLUG}/${licenseId}`,
-      s,
-    );
-    expect(refused.status).toBe(409);
-    expect(await json(refused)).toMatchObject({
-      error: "not_removable",
-      reason: "key_claim_off",
-    });
-    expect(await licenceIds(env, db, s)).toEqual([licenseId]);
-    // Turned back on, it is removable again.
-    await upsertPortalProductSettings(
-      db,
-      SLUG,
-      { licenseKeyClaimEnabled: true },
-      NOW,
-    );
-    expect(
-      (
-        await json(
-          await call(env, db, "GET", `/api/licenses/${SLUG}/${licenseId}`, s),
-        )
-      ).removable,
-    ).toBe(true);
-  });
-
   it(`is rate limited to ${LICENSE_REMOVE_LIMIT_PER_MINUTE} a minute per account and product`, async () => {
     const db = makeTestDb();
     const env = portalEnv();

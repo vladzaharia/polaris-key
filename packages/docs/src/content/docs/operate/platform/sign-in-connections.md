@@ -102,4 +102,4 @@ another's claim. The Worker reads the record over DNS-over-HTTPS from `cloudflar
 
 **Enforce** is set per domain. While the domain is verified, its addresses get no email code and
 no magic link on the sign-in card, only the connection; codes and links sent before enforcement
-stop working too. Passkeys and the account's other sign-in methods keep working.
+stop working too. Passkeys and the account's other sign-in methods keep working. This is the only way to require single sign-on: products have no switch that turns email codes off.

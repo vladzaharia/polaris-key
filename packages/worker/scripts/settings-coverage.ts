@@ -387,7 +387,7 @@ export const NOT_A_SETTING: readonly NotASetting[] = [
   {
     thing: "Customer licence links",
     reason:
-      "Customer data: how a portal account came to hold a licence, not Polaris behaviour.",
+      "Customer data: how a Polaris Locker account came to hold a license, not Polaris behaviour.",
     shows: "License → Licenses",
     covers: { ids: ["column:portal_license_links.source"] },
   },
@@ -395,7 +395,7 @@ export const NOT_A_SETTING: readonly NotASetting[] = [
     thing: "An account's birth date and where it came from (I-33)",
     reason:
       "Personal data the person keeps on their own account (typed by them, or accepted from a connection's claim), not Polaris behaviour. No operator sees it.",
-    shows: "The customer portal's Account → Profile, to that person only",
+    shows: "Polaris Locker's Account → Profile, to that person only",
     covers: { ids: ["column:accounts.birthdate_source"] },
   },
   {

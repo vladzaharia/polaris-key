@@ -150,8 +150,7 @@ export type ProductPageId =
   // update
   | "feed"
   // identity
-  | "portal"
-  | "sign-in"
+  | "app-sign-in"
   // sync
   | "sync-data"
   // commerce
@@ -684,19 +683,11 @@ export const SECTIONS: NavSection[] = [
     docs: "/docs/features/sign-in/",
     items: [
       {
-        page: "portal",
-        label: "Locker",
-        path: "identity/portal",
-        icon: AppWindow,
-        docs: "/docs/features/sign-in/customer-portal/",
-        inNav: true,
-      },
-      {
-        page: "sign-in",
-        label: "Sign-in",
-        path: "identity/sign-in",
+        page: "app-sign-in",
+        label: "App sign-in",
+        path: "identity/app-sign-in",
         icon: LogIn,
-        docs: "/docs/features/sign-in/oidc/",
+        docs: "/docs/features/sign-in/customer-portal/",
         inNav: true,
       },
     ],

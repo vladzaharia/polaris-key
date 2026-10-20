@@ -315,7 +315,7 @@ does not expose whether a product uses platform or custom OIDC.
 `oidc.syncTierOnSignIn` decides whether a sign-in may move a license to the tier its
 `groupRoleMap` groups map to: `off` (the default) or `upgradeOnly`, which never lowers a tier. It
 is a claimable setting like the [licensing settings](#licensing-settings-licensing): a change on
-**Identity → Sign-in** claims it until you revert it.
+**App sign-in** claims it until you revert it.
 
 ## Identity settings: `identity`
 

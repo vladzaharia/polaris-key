@@ -208,7 +208,7 @@ describe("Home", () => {
     for (const [label, href] of [
       ["Distribution", "#/p/djdl/distribution/matrix"],
       ["Update", "#/p/djdl/update/feed"],
-      ["Identity", "#/p/djdl/identity/portal"],
+      ["Identity", "#/p/djdl/identity/app-sign-in"],
       ["Cloud Sync", "#/p/djdl/sync/data"],
     ])
       expect(

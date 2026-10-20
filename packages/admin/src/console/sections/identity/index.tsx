@@ -1,17 +1,14 @@
 import * as React from "react";
-import { PortalPage } from "./pages/Portal.js";
-import { SignInPage } from "./pages/SignIn.js";
+import { AppSignInPage } from "./pages/AppSignIn.js";
 import type { SectionPageProps } from "../../pages/types.js";
 
-/** Identity: Portal (T4) and Sign-in (T3, with I-12's sign-in-through-product settings). */
+/** Identity: the one App sign-in page (T4). */
 export default function IdentityPages({
   route,
 }: SectionPageProps): React.ReactElement | null {
   switch (route.page) {
-    case "portal":
-      return <PortalPage slug={route.slug} />;
-    case "sign-in":
-      return <SignInPage slug={route.slug} />;
+    case "app-sign-in":
+      return <AppSignInPage slug={route.slug} />;
     default:
       return null;
   }

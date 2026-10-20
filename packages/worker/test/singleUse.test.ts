@@ -323,12 +323,7 @@ describe("portal magic links and flows are consumed atomically (G15)", () => {
       },
     } as never;
     await seedProduct(db, "acme");
-    await upsertPortalProductSettings(
-      db,
-      "acme",
-      { portalEnabled: true, magicEnabled: true },
-      NOW,
-    );
+    await upsertPortalProductSettings(db, "acme", { portalEnabled: true }, NOW);
     const res = await handleMagicStart(
       new Request("https://key.plrs.im/api/magic/start", {
         method: "POST",
