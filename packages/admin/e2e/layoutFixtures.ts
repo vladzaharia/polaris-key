@@ -63,8 +63,10 @@ const product = (
  */
 export const IMG_ORIGIN = "https://img.layout.test";
 
-const iconOf = (slug: string) => {
-  const sha = createHash("sha256").update(slug).digest("hex");
+const iconOf = (slug: string, kind = "") => {
+  const sha = createHash("sha256")
+    .update(kind ? `${slug}:${kind}` : slug)
+    .digest("hex");
   const url = `${IMG_ORIGIN}/${slug}/a/${sha}`;
   return { url, w64: `${url}/64.webp`, w128: `${url}/128.webp` };
 };
@@ -87,7 +89,10 @@ export function fixtureImage(url: URL): Buffer | undefined {
 }
 
 const PRODUCTS = [
-  product("djdl", "DJDL", { presentation: { icon: iconOf("djdl") } }),
+  product("djdl", "DJDL", {
+    verified: true,
+    presentation: { icon: iconOf("djdl"), header: iconOf("djdl", "header") },
+  }),
   product("acme", "Acme", {
     setup: { status: "ok", healthy: true, nextActions: [] },
     presentation: { icon: iconOf("acme") },
@@ -181,34 +186,66 @@ const ROUTES: Record<string, unknown> = {
   [`${P}/config/catalog/usage`]: { keys: {} },
   "/manage/api/me": ME,
   "/manage/api/products": { products: PRODUCTS },
-  // Home's product-card facts (`GET /summary`), long figures included.
-  "/manage/api/summary": {
-    products: {
-      djdl: {
-        license: { active: 1_284 },
-        release: { version: "12.40.3-beta.17", channel: "nightly-canary" },
-        distribution: { storefronts: 11 },
-        identity: { users: 128_406 },
+  // Home: what needs attention (`GET /attention`, long names and lines included) and Platform ready.
+  "/manage/api/attention": {
+    items: [
+      {
+        id: "acme:sync.failed",
+        product: { slug: "acme", name: "Acme" },
+        kind: "sync.failed",
+        tone: "danger",
+        service: "release",
+        short: "Resync failed",
+        lines: [
+          "Resync failed.",
+          ".pkey/release line 14 names “switch”, which Acme doesn’t ship.",
+        ],
+        action: { label: "Open error", page: "releases" },
+        area: "ship",
       },
-      acme: {
-        license: { active: 46 },
-        release: { version: "0.9.2", channel: "beta" },
-        identity: { users: 0 },
+      {
+        id: "djdl:secret.missing:identity.acoustidKey",
+        product: { slug: "djdl", name: "DJDL" },
+        kind: "secret.missing",
+        tone: "warning",
+        service: "config",
+        short: "Missing secret",
+        lines: ["Required secret identity.acoustidKey has no value."],
+        action: { label: "Set secret", page: "keys" },
+        area: "keys",
       },
-      [LONG_SLUG]: {
-        license: { active: 9_412 },
-        release: null,
-        distribution: { storefronts: 1 },
-        identity: { users: 71 },
+      {
+        id: `${LONG_SLUG}:credential.expiring:play`,
+        product: { slug: LONG_SLUG, name: LONG_NAME },
+        kind: "credential.expiring",
+        tone: "warning",
+        service: "release",
+        short: "Credential expiring",
+        lines: ["Google Play key expires Oct 16."],
+        action: { label: "Replace key", page: "storefronts" },
+        area: "ship",
       },
-      diceroll: { license: { active: 12 } },
-      empty: {
-        license: { active: 0 },
-        release: null,
-        distribution: { storefronts: 0 },
-        identity: { users: 0 },
+    ],
+  },
+  "/manage/api/platform/ready": {
+    done: 7,
+    total: 8,
+    rows: [
+      { id: "keyring", title: "Keyring configured", done: true },
+      { id: "portal-sessions", title: "Portal sessions isolated", done: true },
+      { id: "console-sign-in", title: "Console sign-in separate", done: true },
+      { id: "background-jobs", title: "Background jobs ticking", done: true },
+      { id: "email-sender", title: "Email sender", done: true },
+      { id: "platform-packages", title: "Platform packages", done: true },
+      { id: "keys", title: "Reserved names reviewed", done: true },
+      {
+        id: "store-accounts",
+        title: "Store accounts",
+        done: false,
+        detail: "Steam uploads need a platform account.",
+        action: { label: "Open connections", to: "connections" },
       },
-    },
+    ],
   },
   [P]: { product: PRODUCTS[0] },
 };

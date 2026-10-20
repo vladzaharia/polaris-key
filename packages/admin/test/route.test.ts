@@ -136,7 +136,6 @@ describe("every page parses and round-trips", () => {
 
   it("the typed builders produce the same hashes as the table", () => {
     expect(r.home()).toBe("#/");
-    expect(r.products()).toBe("#/products");
     expect(r.overview("djdl")).toBe("#/p/djdl");
     expect(r.keys("djdl")).toBe("#/p/djdl/settings/keys");
     expect(r.license("djdl", "lic_1", "keys")).toBe(
@@ -479,7 +478,6 @@ describe("the nav model (nav.ts)", () => {
   it("covers the §2.3 page set", () => {
     const expected: PageId[] = [
       "home",
-      "products",
       "product-new",
       "api-tokens",
       "personal-tokens",
@@ -688,7 +686,6 @@ describe("global pages", () => {
   it("have no section", () => {
     for (const id of [
       "home",
-      "products",
       "product-new",
       "api-tokens",
       "personal-tokens",
@@ -698,7 +695,7 @@ describe("global pages", () => {
     }
   });
 
-  it("the Platform section's pages are one sidebar group; Home and Products are links", () => {
+  it("the Platform section's pages are one sidebar group; Home is a link", () => {
     expect(PLATFORM_GROUP.items.map((p) => p.page)).toEqual([
       "platform-settings",
       "platform-deployment",
@@ -717,7 +714,6 @@ describe("global pages", () => {
     expect(groupOf("tiers")).toBe("license");
     expect(platformLinks().map((p) => p.page)).toEqual([
       "home",
-      "products",
       "api-tokens",
       "personal-tokens",
     ]);

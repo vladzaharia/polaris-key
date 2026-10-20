@@ -49,7 +49,7 @@ describe("the sources", () => {
     });
     const labels = items.map((i) => i.label);
     expect(labels).toContain("Home");
-    expect(labels).toContain("Products");
+    expect(labels).not.toContain("Products");
     expect(labels).toContain("Licenses");
     // P0-47: the matrix is Rollouts' view, so the palette offers Rollouts, not Matrix.
     expect(labels).toContain("Rollouts");
@@ -84,7 +84,6 @@ describe("the sources", () => {
   it("navigation off a product is the platform links only", () => {
     expect(navigationSource(null, null, null).map((i) => i.label)).toEqual([
       "Home",
-      "Products",
       "API tokens",
       "Personal tokens",
       // The Platform section's built pages (notes/S-13 §9.1).

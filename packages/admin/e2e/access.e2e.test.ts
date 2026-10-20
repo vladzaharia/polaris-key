@@ -221,7 +221,7 @@ async function open(
       area: "license",
       admins: state.admins,
     },
-    "/manage/api/summary": { products: {} },
+    "/manage/api/attention": { items: [] },
   };
   await ctx.route("**/*", async (route) => {
     const url = new URL(route.request().url());

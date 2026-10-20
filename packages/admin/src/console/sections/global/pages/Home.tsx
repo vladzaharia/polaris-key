@@ -93,6 +93,10 @@ export function Home(): React.ReactElement {
     [list, bySlug],
   );
 
+  const hasReady =
+    platform &&
+    Array.isArray(ready.data?.rows) &&
+    ready.data.done < ready.data.total;
   const loading = products.isPending;
   const failed = products.isError && !products.data;
   const firstLoad = useFirstLoad("home", attention.isPending);
@@ -180,14 +184,12 @@ export function Home(): React.ReactElement {
           }
           docs="/docs/admin/products/"
         />
-        {platform && ready.data ? <PlatformReady ready={ready.data} /> : null}
+        {hasReady ? <PlatformReady ready={ready.data!} /> : null}
       </div>
     );
 
   const items = attentionRows(attention.data ?? [], logoOf);
   const hasAttention = !loading && items.length > 0;
-  const hasReady =
-    platform && ready.data !== undefined && ready.data.done < ready.data.total;
 
   return (
     <div className="space-y-6" data-template="dashboard">

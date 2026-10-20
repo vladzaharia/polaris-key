@@ -136,6 +136,14 @@ function cases(): Case[] {
   }
   // Query-addressed views and overlays.
   list.push(
+    {
+      name: "home:table",
+      hash: "#/",
+      act: async (page) => {
+        await page.getByRole("radio", { name: "Table" }).click();
+        await page.getByRole("table").first().waitFor();
+      },
+    },
     { name: "djdl:activity?table", hash: "#/p/djdl/activity?view=table" },
     {
       name: "djdl:rollouts?view=matrix&cell",
@@ -184,7 +192,7 @@ const CASES = cases();
 /** The cases the zoom rows open: Home, tables, a record, a settings page and an overlay. */
 const ZOOM_CASES = [
   "global:home",
-  "global:products",
+  "home:table",
   "djdl:overview",
   "djdl:licenses",
   "djdl:licenses/record/overview",
@@ -262,6 +270,7 @@ const VIEWPORTS: {
         forcedColors: "active" as const,
         only: [
           "global:home",
+  "home:table",
           "djdl:licenses",
           "djdl:services",
           "dialog:set-secret",
@@ -274,6 +283,7 @@ const VIEWPORTS: {
         contrast: "more" as const,
         only: [
           "global:home",
+  "home:table",
           "djdl:licenses",
           "djdl:services",
           "dialog:set-secret",
@@ -624,7 +634,8 @@ async function axeWithin(page: Page, selector: string): Promise<string[]> {
 }
 
 describe("Home's product card (owner polish 2026-10-07)", () => {
-  const HOME: Case = { name: "global:home", hash: "#/" };
+  const HOME: Case = { name: "global:home",
+  "home:table", hash: "#/" };
   const CARDS = 'main [aria-label="Products"]';
 
   for (const theme of THEMES) {

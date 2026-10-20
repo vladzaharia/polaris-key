@@ -106,7 +106,7 @@ describe.concurrent("Personal tokens roster", () => {
       const routes: Record<string, unknown> = {
         "/manage/api/me": ME,
         "/manage/api/products": { products: [] },
-        "/manage/api/summary": { products: {} },
+        "/manage/api/attention": { items: [] },
         "/manage/api/account-tokens": { tokens: TOKENS },
       };
       await ctx.route("**/*", async (route) => {

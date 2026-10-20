@@ -126,7 +126,7 @@ function UrlTable(): React.ReactElement {
 
 describe("useTableUrlState with a DataTable", () => {
   it("reads filters from the hash on load", () => {
-    window.location.hash = "#/products?status=expired";
+    window.location.hash = "#/tokens?status=expired";
     render(<UrlTable />);
     const rows = screen.getAllByRole("row").slice(1);
     expect(rows).toHaveLength(1);
@@ -134,23 +134,23 @@ describe("useTableUrlState with a DataTable", () => {
   });
 
   it("writes sort to the hash, replacing the history entry, and keeps other keys", async () => {
-    window.location.hash = "#/products?keep=1";
+    window.location.hash = "#/tokens?keep=1";
     const before = window.history.length;
     render(<UrlTable />);
     const user = userEvent.setup();
     await user.click(screen.getByRole("button", { name: /Holder/ }));
     expect(query().get("sort")).toBe("name");
     expect(query().get("keep")).toBe("1");
-    expect(window.location.hash.startsWith("#/products?")).toBe(true);
+    expect(window.location.hash.startsWith("#/tokens?")).toBe(true);
     expect(window.history.length).toBe(before);
   });
 
   it("follows the hash when it changes (Back restores the filters)", async () => {
-    window.location.hash = "#/products";
+    window.location.hash = "#/tokens";
     render(<UrlTable />);
     expect(screen.getAllByRole("row").slice(1)).toHaveLength(3);
     act(() => {
-      navigate("#/products?q=booth");
+      navigate("#/tokens?q=booth");
     });
     await waitFor(() =>
       expect(screen.getAllByRole("row").slice(1)).toHaveLength(1),

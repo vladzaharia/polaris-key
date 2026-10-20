@@ -32,7 +32,7 @@ const fns = vi.hoisted(() => ({
   product: vi.fn(),
   products: vi.fn(),
   me: vi.fn(),
-  summary: vi.fn(),
+  attention: vi.fn(),
   licenses: vi.fn(),
   productDeviceSummary: vi.fn(),
   schema: vi.fn(),
@@ -745,25 +745,30 @@ describe("the stagger class leaves when the items' animations end (never on a ti
   });
 });
 
+const ATTENTION_ITEM = {
+  id: "acme:secret.missing:S",
+  product: { slug: "acme", name: "Acme" },
+  kind: "secret.missing",
+  tone: "warning",
+  service: "config",
+  short: "Missing secret",
+  lines: ["Required secret S has no value."],
+  action: { label: "Set secret", page: "keys" },
+  area: "keys",
+};
+
 describe("Home's attention list staggers in on Home's first load only", () => {
   beforeEach(() => {
-    const row = {
-      ...product({ slug: "acme", name: "Acme" }),
-      setup: {
-        healthy: false,
-        secrets: [
-          { name: "OIDC_CLIENT_SECRET", configured: false, sources: ["OIDC"] },
-        ],
-      },
-    };
-    fns.products.mockResolvedValue({ products: [row] });
+    fns.products.mockResolvedValue({
+      products: [product({ slug: "acme", name: "Acme" })],
+    });
+    fns.attention.mockResolvedValue({ items: [ATTENTION_ITEM] });
     fns.me.mockResolvedValue({
       sub: "u",
       email: "u@x.io",
       platformAdmin: true,
       products: [],
     });
-    fns.summary.mockResolvedValue({ products: {} });
   });
 
   it("staggers when the products arrive, and not on a return visit", async () => {
@@ -784,16 +789,9 @@ describe("Home's attention list staggers in on Home's first load only", () => {
     home();
     await screen.findByText("Register your first product");
     fns.products.mockResolvedValue({
-      products: [
-        {
-          ...product({ slug: "acme", name: "Acme" }),
-          setup: {
-            healthy: false,
-            secrets: [{ name: "S", configured: false, sources: ["S"] }],
-          },
-        },
-      ],
+      products: [product({ slug: "acme", name: "Acme" })],
     });
+    fns.attention.mockResolvedValue({ items: [ATTENTION_ITEM] });
     await refetch();
     await screen.findByRole("region", { name: "Needs attention" });
     expect(attentionList().className).not.toMatch(/\bpk-stagger\b/);

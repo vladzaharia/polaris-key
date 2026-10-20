@@ -162,7 +162,7 @@ describe("today's operator (the root rule)", () => {
     boot("#/", { me: { permissions: ROOT } });
     const nav = await screen.findByRole("navigation", { name: "Console" });
     expect(within(nav).getByText("Platform")).toBeTruthy();
-    expect(within(nav).getByRole("link", { name: "Products" })).toBeTruthy();
+    expect(within(nav).getByRole("link", { name: "Home" })).toBeTruthy();
   });
 });
 
@@ -242,7 +242,7 @@ describe("NoAccessPage", () => {
     const nav = screen.getByRole("navigation", { name: "Console" });
     expect(within(nav).queryByText("Platform")).toBeNull();
     // Home is the only page: there is no product to list.
-    expect(within(nav).queryByRole("link", { name: "Products" })).toBeNull();
+    expect(within(nav).queryByRole("link", { name: "API tokens" })).toBeNull();
   });
 
   it("answers a Platform page for a member without the Platform area", async () => {

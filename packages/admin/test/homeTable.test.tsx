@@ -12,17 +12,23 @@ import {
 } from "./consoleHarness.js";
 
 /**
- * Products (ADMIN.md §2.3, T2; replaces `views/Products.tsx` and `products/*`). Closes PRD-1 to
- * PRD-5 and PRD-10 to PRD-12; the create flow is the wizard's (productNew.test.tsx).
+ * Home's Table view (ST-44): the table of the retired Products page (ADMIN.md §2.3, PRD-1 to
+ * PRD-5 and PRD-10 to PRD-12), now a view of Home. The create flow is the wizard's
+ * (productNew.test.tsx).
  */
 
 const axe = configureAxe({
   rules: { "color-contrast": { enabled: false } },
 });
 
-beforeEach(resetConsole);
+beforeEach(() => {
+  resetConsole();
+  // Home's Table view (ST-44): the retired Products page's table, with the same row menu.
+  window.localStorage.setItem("pk-admin-home-view", '"table"');
+});
 afterEach(() => {
   cleanup();
+  window.localStorage.clear();
   vi.unstubAllGlobals();
 });
 
@@ -36,10 +42,21 @@ function registry(): Record<string, unknown> {
         {
           ...productRow("acme", "Acme", ALL_ON),
           releaseSource: "github",
-          setup: {
-            healthy: false,
-            nextActions: [{ id: "secret:WEBHOOK_SECRET", label: "x" }],
-          },
+        },
+      ],
+    },
+    "/manage/api/attention": {
+      items: [
+        {
+          id: "acme:secret.missing:WEBHOOK_SECRET",
+          product: { slug: "acme", name: "Acme" },
+          kind: "secret.missing",
+          tone: "warning",
+          service: "config",
+          short: "Missing secret",
+          lines: ["Required secret WEBHOOK_SECRET has no value."],
+          action: { label: "Set secret", page: "keys" },
+          area: "keys",
         },
       ],
     },
@@ -47,7 +64,7 @@ function registry(): Record<string, unknown> {
 }
 
 async function page(): Promise<HTMLElement> {
-  await screen.findByRole("heading", { level: 1, name: /Products/ });
+  await screen.findByRole("heading", { level: 1, name: "Home" });
   return main();
 }
 
@@ -63,17 +80,17 @@ async function openRowMenu(name: string): Promise<void> {
   );
 }
 
-describe("Products", () => {
-  it("lists every product with its slug, source, services and setup (PRD-11)", async () => {
-    boot("#/products", { extra: registry() });
+describe("Home table", () => {
+  it("lists every product with its slug, source, features and attention (PRD-11)", async () => {
+    boot("#/", { extra: registry() });
     await page();
     await waitFor(() => expect(rows()).toHaveLength(2));
     const acme = rows().find((r) => r.textContent?.includes("acme"))!;
     expect(within(acme).getByText("GitHub")).toBeTruthy();
-    expect(within(acme).getByText("1 needs attention")).toBeTruthy();
+    expect(within(acme).getByText("Missing secret")).toBeTruthy();
     expect(
       within(acme).getByText(
-        "Runs License, Config, Release, Distribution, Update, Identity, Cloud Sync and Commerce",
+        "Licensing, Managed config, Ship builds, Sign-in, Cloud Sync, Commerce",
       ),
     ).toBeTruthy();
     const djdl = rows().find((r) => r.textContent?.includes("djdl"))!;
@@ -82,7 +99,7 @@ describe("Products", () => {
     // column; a healthy product draws no pill, only words for assistive tech.
     const acmeCells = within(acme).getAllByRole("cell");
     const setupCell = acmeCells.find((c) =>
-      c.textContent?.includes("1 needs attention"),
+      c.textContent?.includes("Missing secret"),
     )!;
     expect(setupCell.querySelector("[data-status=pill]")).not.toBeNull();
     expect(
@@ -90,14 +107,12 @@ describe("Products", () => {
         acmeCells.filter((c) => c.textContent?.trim()).length - 1,
     ).toBe(true);
     expect(djdl.querySelector("[data-status=pill]")).toBeNull();
-    expect(within(djdl).getByText("Setup complete").className).toContain(
-      "sr-only",
-    );
+    expect(within(djdl).getByText("Healthy").className).toContain("sr-only");
   });
 
   it("shows each product's 24 px logo beside its name, or the monogram when it has none", async () => {
     const url = "https://img.test/acme/a/" + "b".repeat(64);
-    boot("#/products", {
+    boot("#/", {
       extra: {
         "/manage/api/products": {
           products: [
@@ -136,7 +151,7 @@ describe("Products", () => {
   });
 
   it("the product name links to its Overview, never a service page (PRD-1)", async () => {
-    boot("#/products", { extra: registry() });
+    boot("#/", { extra: registry() });
     await page();
     await waitFor(() => expect(rows()).toHaveLength(2));
     expect(
@@ -145,7 +160,7 @@ describe("Products", () => {
   });
 
   it("opens a product's Overview when its row is clicked (owner, 2026-10-03)", async () => {
-    boot("#/products", { extra: registry() });
+    boot("#/", { extra: registry() });
     await page();
     await waitFor(() => expect(rows()).toHaveLength(2));
     await userEvent.click(within(main()).getByText("djdl"));
@@ -153,36 +168,38 @@ describe("Products", () => {
   });
 
   it("is not a role=button row wrapping its menu (PRD-2)", async () => {
-    boot("#/products", { extra: registry() });
+    boot("#/", { extra: registry() });
     await page();
     await waitFor(() => expect(rows()).toHaveLength(2));
     expect(main().querySelector("tr[role=button]")).toBeNull();
   });
 
   it("keeps search and facets in the URL", async () => {
-    boot("#/products?source=github", { extra: registry() });
+    boot("#/?attention=yes", { extra: registry() });
     await page();
     await waitFor(() => expect(rows()).toHaveLength(1));
     expect(rows()[0]!.textContent).toContain("acme");
     await userEvent.type(
-      within(main()).getByRole("searchbox", { name: /Search/ }),
+      within(main()).getByRole("searchbox", { name: "Filter products" }),
       "zz",
     );
     await waitFor(() =>
-      expect(window.location.hash).toBe("#/products?source=github&q=zz"),
+      expect(window.location.hash).toBe("#/?attention=yes&q=zz"),
     );
   });
 
   it("says when filters match nothing, with Clear filters", async () => {
-    boot("#/products?q=nothing-here", { extra: registry() });
+    boot("#/?q=nothing-here", { extra: registry() });
     await page();
     expect(await within(main()).findByText(/No products match/)).toBeTruthy();
   });
 
   it("first run: the empty state opens the wizard", async () => {
-    boot("#/products", { me: { products: [] } });
+    boot("#/", { me: { products: [] } });
     await page();
-    expect(await within(main()).findByText("No products yet")).toBeTruthy();
+    expect(
+      await within(main()).findByText("Register your first product"),
+    ).toBeTruthy();
     expect(
       within(main())
         .getByRole("link", { name: "Link a repository" })
@@ -190,15 +207,8 @@ describe("Products", () => {
     ).toBe("#/products/new?via=github");
   });
 
-  it("shows skeleton rows while loading", async () => {
-    boot("#/products", { extra: { "/manage/api/products": PENDING } });
-    await page();
-    // Five skeleton rows, hidden from assistive tech (the live region announces the load).
-    expect(main().querySelectorAll("tbody tr[aria-hidden]")).toHaveLength(5);
-  });
-
   it("words a failed load and offers Retry (PRD-12)", async () => {
-    boot("#/products", {
+    boot("#/", {
       extra: {
         "/manage/api/products": new Response("{}", { status: 500 }),
       },
@@ -210,7 +220,7 @@ describe("Products", () => {
   });
 
   it("New product opens the wizard page", async () => {
-    boot("#/products", { extra: registry() });
+    boot("#/", { extra: registry() });
     await page();
     expect(
       within(main())
@@ -220,7 +230,7 @@ describe("Products", () => {
   });
 
   it("links to the product's own forms instead of copying them (PRD-5)", async () => {
-    boot("#/products", { extra: registry() });
+    boot("#/", { extra: registry() });
     await page();
     await waitFor(() => expect(rows()).toHaveLength(2));
     await openRowMenu("DJDL");
@@ -243,7 +253,7 @@ describe("Products", () => {
   });
 
   it("deletes only after the slug is typed, and sends the typed slug (PRD-3, PRD-4, L3)", async () => {
-    const log: FetchLog = boot("#/products", { extra: registry() });
+    const log: FetchLog = boot("#/", { extra: registry() });
     await page();
     await waitFor(() => expect(rows()).toHaveLength(2));
     await openRowMenu("DJDL");
@@ -288,7 +298,7 @@ describe("Products", () => {
   });
 
   it("keeps the delete dialog open with the worded error when the server refuses (PRD-12)", async () => {
-    boot("#/products", {
+    boot("#/", {
       extra: {
         ...registry(),
         "/manage/api/products/djdl": new Response(
@@ -316,7 +326,7 @@ describe("Products", () => {
   });
 
   it("offers Resync from repo only for repository-linked products, behind the plan (UX-78)", async () => {
-    const log = boot("#/products", {
+    const log = boot("#/", {
       extra: {
         ...registry(),
         // One path answers both: the dry run (`?dryRun=1`) reads `plan`, the resync `updated`.
@@ -376,7 +386,7 @@ describe("Products", () => {
   });
 
   it("passes axe", async () => {
-    boot("#/products", { extra: registry() });
+    boot("#/", { extra: registry() });
     await page();
     await waitFor(() => expect(rows()).toHaveLength(2));
     const results = await axe(main());

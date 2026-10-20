@@ -117,7 +117,10 @@ section (`?section=`), so a link opens there.
   returns (the console still shares the customer sign-in client, `PLATFORM_KEK_ID` set,
   `PLATFORM_KEK` kept as a legacy key beside `PLATFORM_KEK_KEYS`, `PORTAL_SESSION_SECRET` unset),
   no admin group and no GitHub App. One banner shows the most severe item with a link to where it
-  is fixed; **Show all** lists the rest. With nothing to fix the banner is not shown.
+  is fixed; **Show all** lists the rest. With nothing to fix the banner is not shown. Home has its own **Platform ready** checklist for
+  platform admins, until every step is done: the keyring loads, portal sessions are signed, the
+  console has its own sign-in client, the scheduled jobs ran in the last 20 minutes, an email sender
+  is bound, each store your products ship to has a platform account, and the platform packages exist.
 - **Product defaults.** The values a product starts from when it sets none of its own: the key-entry
   limit ceiling and the hosted-asset quotas. Every change, and every revert, asks for the L2 confirmation. The dialog leads with the
   products whose value changes, named, with what each goes from and to; its button carries the

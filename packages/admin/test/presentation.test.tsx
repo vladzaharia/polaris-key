@@ -266,7 +266,7 @@ describe("Core → Presentation", () => {
       qk.hostedAssets("djdl"),
       qk.products(),
       qk.product("djdl"),
-      qk.summary(),
+      qk.attention(),
     ])
       expect(keys).toContain(JSON.stringify(k));
     spy.mockRestore();

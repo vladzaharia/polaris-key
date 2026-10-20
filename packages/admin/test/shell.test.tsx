@@ -147,7 +147,7 @@ describe("sections by enablement (D-15)", () => {
   });
 
   it("shows only platform links off a product (SH-10)", async () => {
-    boot("#/products");
+    boot("#/");
     await screen.findByRole("navigation", { name: "Console" });
     expect(sectionHeaders()).toEqual([]);
     // The Platform section is instance-wide: there with or without a product.
@@ -155,7 +155,8 @@ describe("sections by enablement (D-15)", () => {
       within(nav()).getByRole("button", { name: "Platform" }),
     ).toBeTruthy();
     expect(within(nav()).getByRole("link", { name: "Home" })).toBeTruthy();
-    expect(within(nav()).getByRole("link", { name: "Products" })).toBeTruthy();
+    // The products are on Home: no Products link of their own (ST-44).
+    expect(within(nav()).queryByRole("link", { name: "Products" })).toBeNull();
   });
 
   it("lists neither Matrix nor Override migration; their URLs still answer (P0-47)", async () => {
@@ -166,7 +167,7 @@ describe("sections by enablement (D-15)", () => {
     expect(within(nav()).getByRole("link", { name: "Rollouts" })).toBeTruthy();
     expect(within(nav()).queryByRole("link", { name: "Matrix" })).toBeNull();
     cleanup();
-    boot("#/products");
+    boot("#/");
     await screen.findByRole("navigation", { name: "Console" });
     await userEvent.click(
       within(nav()).getByRole("button", { name: "Platform" }),
@@ -483,7 +484,7 @@ describe("accents and the section bit (BRAND.md §6)", () => {
     );
   });
 
-  it("the header mark: no bit on Home, Products and Core; each service section's own accent elsewhere", async () => {
+  it("the header mark: no bit on Home and Core; each service section's own accent elsewhere", async () => {
     // The display cut's terminal bit (the kit's "gold" path).
     const BIT_D = "M70 85 L84 71 L90 77 L76 91 Z";
     boot("#/p/djdl", { services: ALL_ON });
@@ -522,7 +523,7 @@ describe("accents and the section bit (BRAND.md §6)", () => {
     }
 
     act(() => {
-      window.location.hash = "#/products";
+      window.location.hash = "#/";
     });
     await waitFor(() => expect(bit()).toBeNull());
   });
@@ -910,10 +911,10 @@ describe("page heading, title and focus", () => {
       expect(document.title).toBe("Tiers · DJDL · Polaris Key Console"),
     );
     act(() => {
-      window.location.hash = "#/products";
+      window.location.hash = "#/tokens";
     });
     await waitFor(() =>
-      expect(document.title).toBe("Products · Polaris Key Console"),
+      expect(document.title).toBe("API tokens · Polaris Key Console"),
     );
   });
 
