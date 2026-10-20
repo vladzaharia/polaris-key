@@ -27,7 +27,7 @@ import {
 import {
   deviceFlowKey,
   handleAuthDeviceEntry,
-  handleAuthDeviceVerify,
+  deviceUserKey,
 } from "../src/services/identity/oidc.js";
 import { emailAssetOrigin, renderEmail } from "../src/core/notify/render.js";
 import { sendMagicLink, sendNotice } from "../src/core/notify/send.js";
@@ -305,14 +305,18 @@ describe("every server-rendered page on the console host uses the shell", () => 
       JSON.stringify({
         state: "s",
         deviceId: "d",
-        userCode: "ABCD-EFGH",
+        userCode: "BCDF-GHJK",
         deviceName: "Ada's Mac",
         authorizeUrl: "https://id.example/authorize",
       }),
     );
-    const page = await handleAuthDeviceVerify(
+    await artefacts(env).put(
+      await deviceUserKey(env, "djdl", "BCDFGHJK"),
+      "dc",
+    );
+    const page = await handleAuthDeviceEntry(
       new Request(
-        `${ORIGIN}/djdl/auth/device/verify?device_code=dc`,
+        `${ORIGIN}/djdl/identity/auth/device?user_code=BCDF-GHJK`,
       ) as unknown as Request,
       env,
       product,
@@ -322,8 +326,9 @@ describe("every server-rendered page on the console host uses the shell", () => 
       "form-action 'self' https://id.example",
     );
     const html = await expectBrandedPage(page);
-    expect(html).toContain('<span class="code">ABCD-EFGH</span>');
-    expect(html).toContain("Sign in on \u2068Ada&#x27;s Mac\u2069?");
+    expect(html).toContain('<span class="code">BCDF-GHJK</span>');
+    // Before sign-in the page approves nothing (I-37): "Continue to sign in".
+    expect(html).toContain("Continue to sign in");
     expect(html).toContain('name="decision" value="deny">Deny</button>');
   });
 });

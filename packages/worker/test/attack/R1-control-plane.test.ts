@@ -38,7 +38,8 @@ import { loadProduct } from "../../src/core/products.js";
 import {
   deviceFlowKey,
   handleAuthDeviceStart,
-  handleAuthDeviceVerify,
+  handleAuthDeviceEntry,
+  deviceUserKey,
 } from "../../src/services/identity/oidc.js";
 import { artefacts, singleUseMock } from "../singleUseMock.js";
 import { adminFlowKey } from "../../src/console/auth.js";
@@ -761,13 +762,16 @@ describe("R1-07 device-code confirmation gate is bypassable by the flow's own st
       db,
       product,
     );
-    const { deviceCode } = (await started.json()) as { deviceCode: string };
+    const { deviceCode, userCode } = (await started.json()) as {
+      deviceCode: string;
+      userCode: string;
+    };
 
     // The "user confirmation" page is a GET with no CSRF token, no session and no binding
     // to a human — the attacker simply calls it themselves.
-    const confirmed = await handleAuthDeviceVerify(
+    const confirmed = await handleAuthDeviceEntry(
       new Request(
-        `https://key.plrs.im/djdl/auth/device/verify?device_code=${encodeURIComponent(deviceCode)}&confirm=1`,
+        `https://key.plrs.im/djdl/identity/auth/device?user_code=${userCode}&confirm=1`,
       ) as unknown as Request,
       env,
       product,
@@ -799,19 +803,23 @@ describe("R1-07 device-code confirmation gate is bypassable by the flow's own st
       JSON.stringify({
         state: "s",
         deviceId: "attacker-device",
-        userCode: "ABCD-EFGH",
+        userCode: "BCDF-GHJK",
         authorizeUrl: "https://id.example/authorize",
       }),
     );
-    const page = await handleAuthDeviceVerify(
+    await artefacts(env).put(
+      await deviceUserKey(env, "djdl", "BCDFGHJK"),
+      "dc",
+    );
+    const page = await handleAuthDeviceEntry(
       new Request(
-        "https://key.plrs.im/djdl/auth/device/verify?device_code=dc",
+        "https://key.plrs.im/djdl/identity/auth/device?user_code=BCDF-GHJK",
       ) as unknown as Request,
       env,
       product,
     );
     expect(page.status).toBe(200);
-    // FIXED (R1-07b) at the HANDLER too: `handleAuthDeviceVerify` now builds its headers with
+    // FIXED (R1-07b) at the HANDLER too: `handleAuthDeviceEntry` builds its headers with
     // `staticHtmlSecurityHeaders`, so a direct handler call is hardened without the
     // dispatcher. `referrer-policy: no-referrer` (R8-02) survives the helper.
     expect(page.headers.get("content-security-policy")).toContain(

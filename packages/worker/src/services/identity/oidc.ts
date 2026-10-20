@@ -28,6 +28,7 @@
 //   pages.ts       the branded pages those flows render
 //   callback.ts    GET  /auth/callback       (`handleAuthCallback`, `completeBrowserFlow`)
 //   chooser.ts     the licence chooser       (`handleAuthChoose`)
+//   deviceApproval.ts  the explicit approval of a device-code sign-in (I-37)
 //   poll.ts        POST /auth/device/poll    (`handleAuthDevicePoll`, `authorizeAndMint`)
 //   activate.ts    `activateFromIdentity`, the adapter over the issuance engine
 //
@@ -66,4 +67,5 @@ export {
 } from "./productOidc/deviceFlow.js";
 export { handleAuthCallback } from "./productOidc/callback.js";
 export { handleAuthChoose } from "./productOidc/chooser.js";
+export { handleAuthDeviceApprove } from "./productOidc/deviceApproval.js";
 export { authorizeAndMint, handleAuthDevicePoll } from "./productOidc/poll.js";

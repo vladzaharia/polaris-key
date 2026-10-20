@@ -87,6 +87,8 @@ const FAIL_MODE: Record<string, FailMode> = {
   authDevicePollCode: "closed",
   // I-26: the legacy sign-in's licence chooser, a step of the sign-in that binds a licence.
   authChoose: "closed",
+  // I-37: the explicit approval of a device-code sign-in, a step that releases a mint.
+  authDeviceApprove: "closed",
   // I-09: the device attach writes a licence's owner (first claim wins) and rotates the token, so
   // an outage refuses rather than letting a flood of claims through.
   identityAttach: "closed",

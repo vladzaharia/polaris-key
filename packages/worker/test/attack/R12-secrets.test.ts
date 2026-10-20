@@ -13,6 +13,7 @@ import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { exportJWK, generateKeyPair, importJWK, SignJWT } from "jose";
 import { makeTestDb } from "../helpers.js";
+import { decideDeviceFlowAs } from "../flowBinderHelper.js";
 import { artefacts, singleUseMock } from "../singleUseMock.js";
 import { portalMagicKey } from "../../src/services/identity/portal/auth.js";
 import { KvMock, asKv } from "../kvMock.js";
@@ -64,7 +65,7 @@ import {
   handleAuthCallback,
   handleAuthDevicePoll,
   handleAuthDeviceStart,
-  handleAuthDeviceVerify,
+  handleAuthDeviceEntry,
   handleAuthStart,
 } from "../../src/services/identity/oidc.js";
 import {
@@ -1482,22 +1483,22 @@ describe("R12-04 credentials are KV key names, so a KV LIST is a credential dump
     );
 
     // Confirm the way the rendered page does: GET mints the CSRF token, POST sends it back.
-    const verifyUrl = `${SIGN_IN_ORIGIN}/${SIGN_IN_SLUG}/identity/auth/device/verify?device_code=${encodeURIComponent(deviceCode)}`;
-    const page = await handleAuthDeviceVerify(
-      signInReq(verifyUrl),
+    const entryUrl = `${SIGN_IN_ORIGIN}/${SIGN_IN_SLUG}/identity/auth/device`;
+    const page = await handleAuthDeviceEntry(
+      signInReq(`${entryUrl}?user_code=${userCode}`),
       env,
       product,
     );
     expect(page.status).toBe(200);
     const csrf = (await page.text()).match(/name="csrf" value="([^"]+)"/)![1]!;
-    const confirmed = await handleAuthDeviceVerify(
-      signInReq(verifyUrl, {
+    const confirmed = await handleAuthDeviceEntry(
+      signInReq(entryUrl, {
         method: "POST",
         headers: {
           "content-type": "application/x-www-form-urlencoded",
           origin: SIGN_IN_ORIGIN,
         },
-        body: new URLSearchParams({ csrf }).toString(),
+        body: new URLSearchParams({ user_code: userCode, csrf }).toString(),
       }),
       env,
       product,
@@ -1524,7 +1525,15 @@ describe("R12-04 credentials are KV key names, so a KV LIST is a credential dump
       product,
       NOW,
     );
-    expect(callback.status).toBe(200);
+    // The callback stops at the approval page (I-37); the approval writes the marker.
+    expect(callback.status).toBe(303);
+    const approved = await decideDeviceFlowAs(
+      { env, db, product },
+      "approve",
+      confirmed.headers.get("set-cookie")!.split(";")[0]!,
+      NOW,
+    );
+    expect(approved.status).toBe(200);
 
     const poll = await handleAuthDevicePoll(
       signInReq(`${SIGN_IN_ORIGIN}/${SIGN_IN_SLUG}/identity/auth/device/poll`, {

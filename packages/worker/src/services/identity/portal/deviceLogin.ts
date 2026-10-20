@@ -83,10 +83,10 @@ import {
 import { portalSessionAuthenticatedAt, type PortalSession } from "./session.js";
 import { startAccountSession } from "./accountSessions.js";
 import { sendSecurityNotice } from "../../../core/notify/send.js";
-import {
-  displayValue,
-  newDeviceSignInNotice,
-} from "../../../core/notify/templates.js";
+import { newDeviceSignInNotice } from "../../../core/notify/templates.js";
+import { type DeviceLoginLocation, requestLocation } from "../place.js";
+export { requestLocation, type DeviceLoginLocation };
+
 import { appSecurityHeaders as portalSecurityHeaders } from "../../../core/securityHeaders.js";
 
 /** How long a request (and its code) lives: the "Works for 4:52" countdown starts here. */
@@ -131,16 +131,6 @@ export interface DeviceLoginRecord {
    *  new device's session carries it as its own sign-in time, so an approval never mints a
    *  session fresher than the proof behind it (see `deviceSessionAuthenticatedAt`). */
   approverAuthenticatedAt?: number;
-}
-
-/** A coarse place from Cloudflare's edge geolocation; every field may be unknown. */
-export interface DeviceLoginLocation {
-  city: string | null;
-  region: string | null;
-  /** ISO 3166-1 alpha-2, upper-case. */
-  country: string | null;
-  /** "Lisbon, Portugal", or null when nothing is known. */
-  label: string | null;
 }
 
 function json(body: unknown, status = 200, cookies: string[] = []): Response {
@@ -217,46 +207,6 @@ export function requestingDevice(
       ? `A browser on ${os}`
       : "A device";
   return { label, browser, os };
-}
-
-function countryName(code: string): string {
-  try {
-    const names = new Intl.DisplayNames(["en"], { type: "region" });
-    return names.of(code) ?? code;
-  } catch {
-    return code;
-  }
-}
-
-/**
- * The request's coarse place: Cloudflare's `request.cf` (city, region, country), falling back to
- * the `cf-ipcountry` header the edge sets. Both are written by Cloudflare, never the client. Each
- * value is cleaned (`displayValue`) because it reaches an email subject's neighbourhood.
- */
-export function requestLocation(req: Request): DeviceLoginLocation {
-  const cf = (req as unknown as { cf?: Record<string, unknown> }).cf ?? {};
-  const str = (v: unknown): string | null =>
-    typeof v === "string" && v.trim() ? displayValue(v, "") || null : null;
-  const rawCountry =
-    str(cf.country) ?? str(req.headers.get("cf-ipcountry")) ?? null;
-  // `XX` (unknown) and `T1` (Tor) are Cloudflare's "no country".
-  const country =
-    rawCountry &&
-    /^[A-Za-z]{2}$/.test(rawCountry) &&
-    !/^(XX|T1)$/i.test(rawCountry)
-      ? rawCountry.toUpperCase()
-      : null;
-  const city = str(cf.city);
-  const region = str(cf.region);
-  const parts = [city, country ? countryName(country) : region].filter(
-    (p): p is string => Boolean(p),
-  );
-  return {
-    city,
-    region,
-    country,
-    label: parts.length ? parts.join(", ") : null,
-  };
 }
 
 /**

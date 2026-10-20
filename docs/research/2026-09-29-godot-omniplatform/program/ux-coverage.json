@@ -5345,8 +5345,8 @@
       "source": "_brand/DECISIONS.md B9",
       "area": "decisions",
       "owners": ["I-37"],
-      "built": "mockup-only",
-      "evidence": "searched packages/worker/src/services/identity (licenseChoice.ts, routes.ts, deviceLogin.ts): no unconditional confirm; I-37 todo"
+      "built": "partial",
+      "evidence": "I-37: packages/worker/src/services/identity/productOidc/deviceApproval.ts, GET|POST /<p>/identity/auth/device/approve (Sign in on {device}, Deny, Not you?), tested in test/deviceApproval.test.ts; I-38a styles it; PX-14 moves it to the card"
     },
     {
       "id": "B9.2",
@@ -5355,8 +5355,8 @@
       "source": "_brand/DECISIONS.md B9",
       "area": "decisions",
       "owners": ["I-37"],
-      "built": "mockup-only",
-      "evidence": "same; no test asserts pending until confirm"
+      "built": "built",
+      "evidence": "I-37: test/deviceApproval.test.ts the gate (every poll pending until approval, no identity or token) and R8-oidc.test.ts"
     },
     {
       "id": "B9.3",
@@ -5368,8 +5368,8 @@
       "resolvedBy": ["I-37"],
       "resolution": "Negative test: the device-code page cannot name the product before the code resolves.",
       "owners": ["I-37", "PX-14a"],
-      "built": "partial",
-      "evidence": "not verified in worker/src/services/identity/portal/deviceLogin.ts"
+      "built": "built",
+      "evidence": "I-37: renderDeviceEntry drops the app strip; test/deviceApproval.test.ts neither entry page names the product before the code resolves"
     },
     {
       "id": "B9.4",

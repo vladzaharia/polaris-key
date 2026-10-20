@@ -1,5 +1,7 @@
 # PX-14a Card header, licence choice, replace device, consent, key confirm, web return and passport pane (split of PX-14)
 
+> **I-37 (2026-10-20).** The card's DeviceConfirm calls `decideDeviceFlow` (`productOidc/deviceApproval.ts`) from its JSON route. Neither the request handle nor `__Host-pk_req` is approval; only the page token for the flow, found through the binder, is.
+
 | Field       | Value                                                                                                                                                                                                                                                                                                                                                             |
 | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Phase       | PX: Customer portal (docs/design/PORTAL.md) (Locker UX waves)                                                                                                                                                                                                                                                                                                     |

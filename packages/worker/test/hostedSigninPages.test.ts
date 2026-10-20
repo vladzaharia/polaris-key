@@ -148,10 +148,12 @@ describe("the code entry", () => {
 });
 
 describe("the confirm step", () => {
-  it("offers Sign in on the device and Deny, with the static expiry", async () => {
+  it("offers Continue to sign in and Deny, with the static expiry", async () => {
     const { userCode } = await start();
     const { html } = await confirmPage(userCode);
-    expect(html).toContain("Sign in on \u2068Living room PC\u2069?");
+    // Before sign-in this page approves nothing (I-37): the explicit step is after sign-in.
+    expect(html).toContain("Continue to sign in?");
+    expect(html).not.toContain("Sign in on");
     expect(html).toContain('name="decision" value="approve" autofocus');
     expect(html).toContain('name="decision" value="deny">Deny</button>');
     expect(html).toContain("wants you to sign in");
@@ -235,15 +237,19 @@ describe("the TV variant after the code", () => {
 });
 
 describe("the end of a device flow is a page", () => {
-  it("an expired device link", async () => {
-    const res = await send(
-      `${API}/djdl/identity/auth/device/verify?device_code=gone`,
-    );
-    expect(res.status).toBe(404);
-    expect(res.headers.get("content-type")).toContain("text/html");
-    const html = await res.text();
-    expect(html).toContain("That code expired");
-    expect(html).toContain('href="/device">Enter the new code</a>');
+  it("the retired by-device-code link is the start-again page, for browsers and JSON clients alike", async () => {
+    for (const headers of [
+      {} as Record<string, string>,
+      { accept: "application/json" },
+    ]) {
+      const res = await send(
+        `${API}/djdl/identity/auth/device/verify?device_code=gone`,
+        { headers },
+      );
+      expect(res.status).toBe(403);
+      expect(res.headers.get("content-type")).toContain("text/html");
+      expect(await res.text()).toContain("Start again on your device");
+    }
   });
 
   it("a confirm POST for a code that has gone", async () => {
@@ -270,11 +276,16 @@ describe("the end of a device flow is a page", () => {
   });
 
   it("a JSON client keeps its JSON error", async () => {
-    const res = await send(
-      `${API}/djdl/identity/auth/device/verify?device_code=gone`,
-      { headers: { accept: "application/json" } },
-    );
-    expect(res.status).toBe(404);
+    const res = await send(`${API}/djdl/identity/auth/device`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        accept: "application/json",
+        "sec-fetch-site": "same-origin",
+      },
+      body: JSON.stringify({ user_code: "ZZZZ-ZZZZ", csrf: "x" }),
+    });
+    expect(res.status).toBe(403);
     expect(res.headers.get("content-type")).toContain("application/json");
   });
 });

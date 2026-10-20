@@ -1,7 +1,6 @@
 /// <reference types="@cloudflare/workers-types" />
 
 import { activateFromIdentity } from "./activate.js";
-import { bearer } from "../../../platform/http.js";
 import { platformOidcConfig } from "../../../platform/platformOidc.js";
 import { type Env } from "../../../platform/env.js";
 import { parseFlowRecord } from "../../../platform/json.js";
@@ -9,17 +8,8 @@ import type { Db } from "../../../db/types.js";
 import { type Product } from "../../../core/products.js";
 import { errorResponse, json, methodNotAllowed } from "../../../core/errors.js";
 import { clientNetwork } from "../../../core/rateLimit.js";
-import { getLicense, getLicenseBySub } from "../../../core/licensing/store.js";
-import {
-  countActiveDevices,
-  seatActiveSince,
-} from "../../../core/devices/store.js";
-import { type LicenseMerge } from "../../../core/licensing/licenseMerge.js";
-import {
-  authorizeDevice,
-  tierFingerprintMode,
-} from "../../../core/licensing/authz.js";
-import { licenseUsable, validateDeviceToken } from "../../../core/devices.js";
+import { getLicense } from "../../../core/licensing/store.js";
+import { authorizeDevice } from "../../../core/licensing/authz.js";
 import { attachClaimedLicenses } from "../accounts/platformMigration.js";
 import {
   consumeArtefact,
@@ -36,14 +26,13 @@ import {
   FLOW_TTL_SECONDS,
   type FlowRecord,
   deviceFlowKey,
+  flowApproved,
   flowKey,
   rateLimited,
 } from "./config.js";
 import {
   type OidcIdentity,
   getOidcConfig,
-  identityTier,
-  postActivationDeviceLimit,
 } from "../../../core/licensing/issue.js";
 import { deleteUserCodeIndex } from "./userCode.js";
 
@@ -68,27 +57,24 @@ export async function authorizeAndMint(
   return result.token;
 }
 
-/** What a `/device/poll` asks for beyond "is it done yet" (P1-07). All three are absent on an
- *  ordinary poll, which then completes exactly as before: the identity's own licence, nothing
- *  merged. */
+/** What a `/device/poll` asks for beyond "is it done yet". Both are absent on an ordinary poll,
+ *  which then completes exactly as before: the identity's own licence, nothing merged.
+ *
+ *  I-37 retired P1-07's attach on a device-code flow: the person approving a sign-in on a
+ *  device is never told that the starter's licence and devices would join their account, so
+ *  `attachLicense: true` is read as `false` and `confirm` says `attachable: false`. */
 export interface DevicePollAsk {
   /** Hold the flow at the signed-in identity (`confirm`) instead of minting, so the device can
-   *  show it and the player can accept it first. */
+   *  show it first. */
   confirmIdentity: boolean;
-  /** The player's decision, sent after the device was shown the identity: attach this device's
-   *  anonymous enrolled licence to the account (`true`) or not (`false`). `null`: none sent. */
+  /** The decision sent after the device was shown the identity. Honoured as "do not attach"
+   *  whatever it says; `null`: none sent. */
   attachLicense: boolean | null;
-  /** The device token the poll carried (`Authorization: Bearer`), naming the licence to attach. */
-  token: string | null;
-  /** LX-03: Core's licence-merge collector, which an attach that migrates needs
-   *  (`activateFromIdentity`). */
-  licenseMerge?: LicenseMerge;
 }
 
 export const NO_ASK: DevicePollAsk = {
   confirmIdentity: false,
   attachLicense: null,
-  token: null,
 };
 
 /** The name and verified e-mail of a signed-in identity, for the device to show. Never `sub`,
@@ -101,104 +87,6 @@ export function shownIdentity(identity: OidcIdentity): {
     ...(identity.name ? { name: identity.name } : {}),
     ...(identity.email ? { email: identity.email } : {}),
   };
-}
-
-/** The licence `token` holds for `deviceId` when it is one the opt-in may attach: a live token
- *  OF THAT DEVICE (`validateDeviceToken` with the device id), on an anonymous enrolled licence
- *  (`origin = 'enroll'`, no subject) that is usable now. Anything else attaches nothing.
- *
- *  Under R1-07 (the flow's starter phishes the authorize URL) the starter makes this decision,
- *  not the identity's owner, so the attach must never take the victim's licence past its
- *  device limit, on either arm:
- *  - claim (the identity has no licence yet): `claimEnrolledLicense` re-subjects the anonymous
- *    row with every authorized device still on it. It is offered only while those devices
- *    (dormant or not) fit the limit the row will carry AFTER the claim rewrites its tier and
- *    overrides to the identity's.
- *  - migrate (the identity has a usable licence): `planDeviceMove` re-points EVERY authorized
- *    device on the anonymous licence at it, each taking a seat ordinal there. It is offered only
- *    while the moved devices (dormant or not) plus the destination's seat-holding devices fit the
- *    limit the destination will carry AFTER `activateFromIdentity`'s sign-in write, which since
- *    LX-02 keeps the destination's own tier and rewrites only the provisioning's declared
- *    override keys. Since LX-03 the move itself re-checks the same bound inside the merge, so
- *    this offer is no longer the only guard.
- *  Both limits come from `postActivationDeviceLimit`. The attach can still fill the victim's
- *  free seats (see THREAT-MODEL, R1-07).
- *  Like the pre-count in `authorizeDevice`, this is a read, not a claim. Nothing is attachable
- *  onto a tier whose mint would refuse this device (fingerprint mode `strict`). */
-export async function attachableLicense(
-  env: Env,
-  db: Db,
-  product: Product,
-  token: string | null,
-  deviceId: string,
-  identity: OidcIdentity,
-  now: number,
-): Promise<string | null> {
-  if (!token) return null;
-  const valid = await validateDeviceToken(env, db, product, token, now, {
-    deviceId,
-  });
-  if ("error" in valid) return null;
-  const license = valid.license;
-  if (!license || license.origin !== "enroll" || license.sub !== null)
-    return null;
-  if (!licenseUsable(license, now)) return null;
-  // The merge is committed BEFORE the mint (`activateFromIdentity`, then `authorizeAndMint`)
-  // and nothing undoes it, so it is offered only when the mint can succeed. A device-code mint
-  // presents no fingerprint, so a `strict` tier always refuses it (`fingerprint_required`): an
-  // attach there would claim or retire the anonymous licence while the poll answers `error`,
-  // and under R1-07 hand the starter's devices the victim's entitlements on a flow the Worker
-  // refuses. A claim ends on the identity's mapped tier (`claimEnrolledLicense` rewrites the
-  // anonymous row's `tier_id` to it); a migrate ends on the destination's OWN tier, which the
-  // sign-in write no longer changes (LX-02). That is the tier the mint resolves on each arm.
-  const tier = await identityTier(db, product, identity, now);
-  if ("error" in tier) return null;
-  const destination = await getLicenseBySub(db, product.slug, identity.sub);
-  const mintTierId = destination ? destination.tier_id : tier.tierId;
-  if ((await tierFingerprintMode(db, product, mintTierId)) === "strict")
-    return null;
-  // `moving` has NO dormancy floor. A claim keeps every row on the licence and a migrate
-  // (`planDeviceMove`) re-points every row, dormant ones included (LX-03: each authorized one
-  // takes an ordinal, and the move counts them the same way). A dormant device has given up its
-  // ordinal (`releaseDormantSeats`), so the
-  // starter can fill that seat again with a new device; the dormant one then comes back without
-  // claiming a seat (`validateDeviceToken` rebuilds its token record from the device row, and
-  // nothing on that path calls `claimDeviceSeat`). Counting only recently seen devices would let
-  // a starter stockpile dormant devices on its own anonymous licence and land all of them on the
-  // victim's.
-  const moving = await countActiveDevices(db, product.slug, license.id);
-  if (!destination) {
-    const limit = await postActivationDeviceLimit(
-      db,
-      product,
-      identity,
-      license,
-      { kind: "claim", tier },
-      now,
-    );
-    if (limit <= 0 || moving > limit) return null;
-    return license.id;
-  }
-  // An unusable destination makes `activateFromIdentity` refuse before it moves anything.
-  if (!licenseUsable(destination, now)) return null;
-  const limit = await postActivationDeviceLimit(
-    db,
-    product,
-    identity,
-    destination,
-    { kind: "signin" },
-    now,
-  );
-  // `held` keeps the floor: the destination's own dormant devices have given up their seats
-  // under R3.
-  const held = await countActiveDevices(
-    db,
-    product.slug,
-    destination.id,
-    seatActiveSince(now),
-  );
-  if (limit <= 0 || moving + held > limit) return null;
-  return license.id;
 }
 
 export async function pollAuthFlow(
@@ -234,6 +122,11 @@ export async function pollAuthFlow(
   if (!flow.deviceId || flow.deviceId !== deviceId)
     return json({ status: "error" });
   if (!flow.confirmedAt) return json({ status: "pending" });
+  // I-37: a device-code flow does nothing account-bound until the person approved it in the
+  // browser that signed in. BEFORE the account check, the identity disclosure, `confirm`, the
+  // activation and the mint, so the poll cannot tell a prober anything else. Unapproved is
+  // anything but a numeric `approvedAt`: absent, malformed, or written by an older Worker.
+  if (!flowApproved(flow)) return json({ status: "pending" });
   // N9: the callback refused a subject whose account can no longer sign in, but the account can
   // be disabled (or its deletion begun) while the flow waits for this poll. Checked again before
   // anything is shown, activated or minted; the flow is dropped and the answer is the generic
@@ -247,30 +140,14 @@ export async function pollAuthFlow(
   }
 
   let licenseId = flow.licenseId;
-  let attached: "claimed" | "migrated" | undefined;
   if (!licenseId) {
     // The deferred activation of a device-code flow (P1-07). Only `/device/poll` gets here, so
     // only the device-code holder, polling as the device the flow was started for, decides.
     const identity = flow.identity!;
-    let enrolledLicenseId: string | null = null;
     if (ask.confirmIdentity || ask.attachLicense !== null) {
-      const attachable = await attachableLicense(
-        env,
-        db,
-        product,
-        ask.token,
-        deviceId,
-        identity,
-        now,
-      );
-      // The decision is honoured only once the device has been shown the identity, and an
-      // attach only while there is something to attach; otherwise the device is (re)shown the
-      // identity with what is attachable NOW, and nothing is minted or merged.
-      if (
-        ask.attachLicense === null ||
-        !flow.identityShownAt ||
-        (ask.attachLicense && !attachable)
-      ) {
+      // The decision is honoured only once the device has been shown the identity; until then
+      // it is (re)shown it, and nothing is minted. `attachable` is always false (I-37, D6).
+      if (ask.attachLicense === null || !flow.identityShownAt) {
         if (!flow.identityShownAt) {
           flow.identityShownAt = now;
           await updateArtefact(env, stateKey, {
@@ -281,14 +158,11 @@ export async function pollAuthFlow(
         return json({
           status: "confirm",
           identity: shownIdentity(identity),
-          attachable: attachable !== null,
+          attachable: false,
         });
       }
-      if (ask.attachLicense) enrolledLicenseId = attachable;
     }
     const result = await activateFromIdentity(db, product, identity, now, {
-      enrolledLicenseId,
-      licenseMerge: ask.licenseMerge,
       env,
     });
     if ("error" in result) {
@@ -298,7 +172,6 @@ export async function pollAuthFlow(
       return json({ status: "error" });
     }
     licenseId = result.licenseId;
-    attached = result.merged;
     // Recorded before minting, so a retried poll after a failed mint reuses this licence and
     // never runs the activation (or the merge) twice.
     flow.licenseId = licenseId;
@@ -336,7 +209,6 @@ export async function pollAuthFlow(
     // who confirmed and signed in as themselves binds the device to THEIR account, and the
     // player must be able to see that). Device-code flows only.
     ...(flow.identity ? { identity: shownIdentity(flow.identity) } : {}),
-    ...(attached ? { attached } : {}),
   });
 }
 
@@ -373,8 +245,6 @@ export async function handleAuthDevicePoll(
   db: Db,
   product: Product,
   now: number,
-  /** LX-03: `ServiceContext.licenseMerge`, for an attach that migrates. */
-  licenseMerge?: LicenseMerge,
 ): Promise<Response> {
   if (req.method !== "POST") return methodNotAllowed();
   let body: Record<string, unknown>;
@@ -450,8 +320,6 @@ export async function handleAuthDevicePoll(
       confirmIdentity: body.confirmIdentity === true,
       attachLicense:
         typeof body.attachLicense === "boolean" ? body.attachLicense : null,
-      token: bearer(req),
-      licenseMerge,
     },
   );
   const bodyOut = (await res

@@ -1819,23 +1819,26 @@ describe("R9-12 escapeHtml coverage", () => {
       JSON.stringify({
         state: "s",
         deviceId: "dev-1",
-        userCode: "ABCD-1234",
+        userCode: "BCDF-GHJK",
         authorizeUrl: "https://id.example/authorize",
         deviceName: "Ada's Mac",
       }),
     );
-    const { handleAuthDeviceVerify } =
+    const { handleAuthDeviceEntry, deviceUserKey } =
       await import("../../src/services/identity/oidc.js");
-    const res = await handleAuthDeviceVerify(
-      req(`https://key.plrs.im/${SLUG}/auth/device/verify?device_code=DC`),
+    await artefacts(env).put(await deviceUserKey(env, SLUG, "BCDFGHJK"), "DC");
+    const res = await handleAuthDeviceEntry(
+      req(
+        `https://key.plrs.im/${SLUG}/identity/auth/device?user_code=BCDF-GHJK`,
+      ),
       env,
       makeProduct(),
     );
     expect(res.status).toBe(200);
     const html = await res.text();
-    // The apostrophe survives escapeHtml — harmless in a text node, but it is the
-    // reason this helper must never be reused in a single-quoted attribute.
-    expect(html).toContain("Ada's Mac");
+    // The label is drawn by the card's passport header, which escapes the apostrophe too.
+    expect(html).toContain("Ada&#x27;s Mac");
+    expect(html).not.toContain("<Ada");
     // FIXED at the handler — `oidc.ts` now adopts `staticHtmlSecurityHeaders` directly, so
     // the page is hardened even when the handler is called without the dispatcher.
     expect(res.headers.get("content-security-policy")).toContain(

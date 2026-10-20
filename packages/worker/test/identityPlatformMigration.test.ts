@@ -18,6 +18,7 @@ import { issuerMetadataResponse } from "./oidcIssuerFake.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { exportJWK, generateKeyPair, importJWK, SignJWT } from "jose";
 import { makeTestDb } from "./helpers.js";
+import { decideDeviceFlowAs } from "./flowBinderHelper.js";
 import { KvMock } from "./kvMock.js";
 import { asR2, R2Mock } from "./r2Mock.js";
 import { makeEnv, NOW, seedProduct } from "./seed.js";
@@ -529,7 +530,18 @@ describe("claim at next sign-in through a provider: platform product", () => {
       product,
       NOW,
     );
-    expect(cb.status).toBe(200);
+    // A device-code flow stops at the approval page (I-37); press Sign in there.
+    expect(cb.status).toBe(303);
+    expect(
+      (
+        await decideDeviceFlowAs(
+          { env, db, product },
+          "approve",
+          `${LICENSE_CHOICE_BINDER_COOKIE}=${binder}`,
+          NOW,
+        )
+      ).status,
+    ).toBe(200);
     // The callback made the account; no licence exists until the device-code holder polls.
     expect(await count(db, "SELECT COUNT(*) AS n FROM accounts")).toBe(1);
     expect(await licenseOf()).toBeNull();
@@ -904,6 +916,18 @@ describe("claim at next sign-in through a provider: platform product", () => {
         product,
         NOW,
       );
+      // A device-code flow stops at the approval page (I-37): press Sign in there. A refused
+      // callback (403) is not a redirect and passes through untouched.
+      const finished =
+        callback.status === 303 &&
+        callback.headers.get("location")?.endsWith("/auth/device/approve")
+          ? await decideDeviceFlowAs(
+              { env, db, product },
+              "approve",
+              `${LICENSE_CHOICE_BINDER_COOKIE}=${binder}`,
+              NOW,
+            )
+          : callback;
       let at = NOW;
       const poll = async () => {
         // Past the advertised interval each time, so no poll is told to slow down.
@@ -921,7 +945,7 @@ describe("claim at next sign-in through a provider: platform product", () => {
         );
         return (await res.json()) as { status: string; token?: string };
       };
-      return { callback, poll };
+      return { callback: finished, poll };
     }
 
     for (const mode of ["off", "claim", "operators-only"] as const) {

@@ -15,7 +15,15 @@ Entries are ordered by how often they happen. Every code is in the [error codes]
 
 **Fix** Start the sign-in again and show the new code. Poll no faster than the advertised `interval`.
 
-**Check it works** The poll returns `pending`, then `ready` after the person confirms.
+**Check it works** The poll returns `pending`, then `ready` after the person approves.
+
+## pending never ends
+
+**Cause** The poll stays `pending` until the person presses **Sign in on {device}** on the approval page that follows sign-in. Confirming the code and signing in are not enough. The flow expires after 600 seconds and the poll then answers `timeout`.
+
+**Fix** Tell the person to finish on the page after sign-in, or start again with a new code. A **Deny** answers `error`, not `pending`.
+
+**Check it works** The poll returns `ready` right after the person presses **Sign in on {device}**.
 
 ## slow_down
 

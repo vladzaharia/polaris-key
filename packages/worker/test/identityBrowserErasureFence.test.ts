@@ -26,6 +26,7 @@ import { issuerMetadataResponse } from "./oidcIssuerFake.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { exportJWK, generateKeyPair, importJWK, SignJWT } from "jose";
 import { makeTestDb } from "./helpers.js";
+import { decideDeviceFlowAs } from "./flowBinderHelper.js";
 import { KvMock } from "./kvMock.js";
 import { asR2 } from "./r2Mock.js";
 import { makeEnv, NOW, seedLicenseWithKey, seedProduct } from "./seed.js";
@@ -685,6 +686,18 @@ describe("I-11 fence: product sign-in through the platform IdP", () => {
       product,
       NOW,
     );
+    // A device-code flow stops at the approval page (I-37): press Sign in there. A refused
+    // callback (403) is not a redirect and passes through untouched.
+    const finished =
+      callback.status === 303 &&
+      callback.headers.get("location")?.endsWith("/auth/device/approve")
+        ? await decideDeviceFlowAs(
+            { env, db, product },
+            "approve",
+            `${LICENSE_CHOICE_BINDER_COOKIE}=${binder}`,
+            NOW,
+          )
+        : callback;
     let at = NOW;
     const poll = async () => {
       // Past the advertised interval each time, so no poll is told to slow down.
@@ -702,7 +715,7 @@ describe("I-11 fence: product sign-in through the platform IdP", () => {
       );
       return (await res.json()) as { status: string; token?: string };
     };
-    return { callback, poll };
+    return { callback: finished, poll };
   }
 
   for (const mode of ["off", "claim", "operators-only"] as const) {
