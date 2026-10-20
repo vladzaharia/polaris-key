@@ -10,7 +10,7 @@ sidebar:
 
 Polaris Locker is where your apps, licenses and downloads live. An app's developer can use it for
 licenses, sign-in, and downloads. You see it in your browser, in account emails, and at
-[key.plrs.im](https://key.plrs.im). Some screens and emails still say Polaris Key. It is the same service.
+[key.plrs.im](https://key.plrs.im).
 
 Your library at [key.plrs.im](https://key.plrs.im) lists the apps connected to your account. You may
 be able to add an app, sign in, or download it there. Some apps use only a license key.
