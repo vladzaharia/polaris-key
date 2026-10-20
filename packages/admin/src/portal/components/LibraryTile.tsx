@@ -144,7 +144,7 @@ export function LibraryTile({
                 id={`tile-${product.slug}`}
                 dir="auto"
                 className={cn(
-                  "truncate font-semibold text-fg-strong",
+                  "line-clamp-2 break-words font-semibold text-fg-strong",
                   compact
                     ? "text-base @max-[17rem]/tile:whitespace-normal"
                     : "text-lg",
@@ -156,7 +156,7 @@ export function LibraryTile({
                   // still meets the target size (WCAG 2.5.8; PS-05). Its focus ring is the
                   // card's, which it stretches over (styles.css, .pk-press-link).
                   className={cn(
-                    "pk-press-link block truncate rounded-sm after:absolute after:inset-0 after:content-[''] focus-visible:outline-none",
+                    "pk-press-link block rounded-sm after:absolute after:inset-0 after:content-[''] focus-visible:outline-none",
                     compact &&
                       "@max-[17rem]/tile:line-clamp-2 @max-[17rem]/tile:whitespace-normal @max-[17rem]/tile:break-words",
                   )}

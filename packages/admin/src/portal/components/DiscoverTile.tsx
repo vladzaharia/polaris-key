@@ -77,6 +77,7 @@ export function DiscoverTile({
   error = null,
   ended = false,
   onAdd,
+  reserveStoreRow = false,
 }: {
   offer: PortalDiscoverOffer;
   state: DiscoverTileState;
@@ -85,6 +86,8 @@ export function DiscoverTile({
   /** The offer is gone (409 `not_eligible`): no Add button any more. */
   ended?: boolean;
   onAdd: () => void;
+  /** Some tile in the grid shows store links: every tile keeps the row so the actions sit level. */
+  reserveStoreRow?: boolean;
 }): React.ReactElement {
   const reason = offerReason(offer);
   const ReasonIcon = reason ? REASON_ICON[reason.kind] : null;
@@ -101,6 +104,8 @@ export function DiscoverTile({
     ? href.product(offer.product)
     : href.storefront(offer.product);
   const facts = discoverTileFacts(offer);
+  // No cover: a short tint field with the icon (or its letter tile) large and centred, as Library.
+  const noArt = !offer.headerUrl;
   const stores = !link && !added && offer.cta === "add" ? offer.stores : [];
   return (
     <div className="pk-lift pk-pressable-card relative grid rounded-xl">
@@ -119,15 +124,24 @@ export function DiscoverTile({
           tint={offer.tintColor}
           src={offer.headerUrl}
           variant="tile"
-          // No cover: a bare tint field; the icon (or its letter tile) in front of the art's lower
-          // edge already shows the letter, as on Library cards.
-          letter={false}
+          letter={noArt && !offer.iconUrl}
           liftArt
           // The whole 16:9 frame edge to edge, capped at 280 px tall (contained over a blurred
           // copy of itself where the column is wider), as on Library tiles.
           fit="contain"
           className="aspect-video max-h-[17.5rem] w-full"
         >
+          {noArt && offer.iconUrl ? (
+            <ProductIcon
+              slug={offer.product}
+              name={offer.name}
+              tint={offer.tintColor}
+              src={offer.iconUrl}
+              size={64}
+              lift
+              className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
+            />
+          ) : null}
           {added ? (
             <span
               className={cn(
@@ -141,28 +155,32 @@ export function DiscoverTile({
           ) : null}
         </ProductArt>
         <div className="flex flex-1 flex-col px-5 pb-5">
-          <div className="-mt-5 flex items-start gap-3">
-            <ProductIcon
-              slug={offer.product}
-              name={offer.name}
-              tint={offer.tintColor}
-              src={offer.iconUrl}
-              size={56}
-              className="relative border-[3px] border-surface-raised shadow-elevation-2"
-            />
-            <div className="min-w-0 flex-1 pt-8">
+          <div
+            className={cn("flex items-start gap-3", noArt ? "mt-4" : "-mt-5")}
+          >
+            {noArt ? null : (
+              <ProductIcon
+                slug={offer.product}
+                name={offer.name}
+                tint={offer.tintColor}
+                src={offer.iconUrl}
+                size={56}
+                className="relative border-[3px] border-surface-raised shadow-elevation-2"
+              />
+            )}
+            <div className={cn("min-w-0 flex-1", !noArt && "pt-8")}>
               <div className="flex min-w-0 flex-wrap items-baseline gap-x-2">
                 <h3
                   id={id}
                   dir="auto"
-                  className="min-w-0 max-w-full truncate text-lg font-semibold text-fg-strong"
+                  className="line-clamp-2 min-w-0 max-w-full break-words text-lg font-semibold text-fg-strong"
                 >
                   <a
                     href={page}
                     // block: the name's full line is the link (24 px or taller), so a short name
                     // still meets the target size (WCAG 2.5.8; PS-05). Its focus ring is the
                     // card's, which it stretches over (styles.css, .pk-press-link).
-                    className="pk-press-link block truncate rounded-sm after:absolute after:inset-0 after:content-[''] focus-visible:outline-none"
+                    className="pk-press-link block rounded-sm after:absolute after:inset-0 after:content-[''] focus-visible:outline-none"
                   >
                     {offer.name}
                   </a>
@@ -252,9 +270,16 @@ export function DiscoverTile({
               )}
             </div>
           )}
-          {/* The row is kept for every addable tile, so Add sits level across a row of tiles. */}
-          {!link && !added && offer.cta === "add" ? (
-            <div className="mt-4 min-h-9">
+          {/* The row is kept on every tile when any tile has store links, from tablets up, so
+              the actions sit level across a row. */}
+          {reserveStoreRow || stores.length > 0 ? (
+            <div
+              className={cn(
+                "mt-4",
+                reserveStoreRow ? "hidden min-h-9 desk:block" : "",
+                stores.length > 0 && "block",
+              )}
+            >
               {stores.length > 0 ? (
                 <StoreLinks offer={offer} stores={stores} />
               ) : null}

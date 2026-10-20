@@ -34,7 +34,7 @@ Page navigation uses the shared motion layer when motion is allowed. A page rout
 
 ## 3. Signed-in shell
 
-`PortalShell` provides a skip link, one banner, named main navigation, a main region, and footer. The banner carries the Polaris Locker lockup, no Key mark; the footer reads "Polaris Locker · Help · Privacy · Terms", with no host. The primary is neutral ink, the focus ring `--pk-text-strong`, and coral marks identity only: the lockup, a 3 px selected marker and a 2 px link underline (D9a). On desktop it shows Library, conditional Discover, the Activate license action, and the account menu. Discover appears only when `GET /api/library` returns `discoverCount`; this prevents a navigation link to an unavailable list.
+`PortalShell` provides a skip link, one banner, named main navigation, a main region, and footer. The banner carries the Polaris Locker lockup, no Key mark; the footer reads "Polaris Locker · Help · Privacy", with no host (Terms joins when `identity.platformTerms.termsUrl` reaches the portal). The primary is neutral ink, the focus ring `--pk-text-strong`, and coral marks identity only: the lockup, a 3 px selected marker and a 2 px link underline (D9a). On desktop it shows Library, conditional Discover, the Activate license action, and the account menu. Discover appears only when `GET /api/library` returns `discoverCount`; this prevents a navigation link to an unavailable list.
 
 On phones the fixed bar has Library, an outlined Activate license pill, and conditional Discover. The shell reserves room for that bar and positions phone toasts above it. The account menu contains the account destinations, appearance controls, Help, and sign-out.
 
@@ -55,7 +55,7 @@ The card fetches capabilities before it chooses product context or providers. It
 
 ### 4.2 Library
 
-The Library is the default page and presents one item per product, not one per license. It explicitly handles loading, read failure with Retry, an empty library, a one-product hero, two to seven large tiles, and the scaled library at eight or more products. The scaled view supplies search, filters, sort, a persisted grid/list preference, an attention shelf, and a jump palette. Products added recently sort first where the scaled view can sort them.
+The Library is the default page and presents one item per product, not one per license. It explicitly handles loading, read failure with Retry, an empty library, a one-product hero, two to seven large tiles, and the scaled library at eight or more products. The scaled view supplies search, filters, sort, a persisted grid/list preference, an attention shelf, and a jump palette: ⌘K / Ctrl K focuses the toolbar search on the Library ("/" is an alias) and opens the palette on every other page, where a phone also gets a header search icon. Products added recently sort first where the scaled view can sort them.
 
 Every library state retains the ways to add a key. An empty library offers "See N in Discover" only when the Worker has supplied a discover count; it lists no offers itself. Quick actions are calculated from the Worker product, download, license, and device facts; the portal does not infer a download it has not received.
 

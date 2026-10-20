@@ -175,7 +175,7 @@ export function PortalShell({
               <a
                 key={l.href}
                 href={l.href}
-                className="inline-flex min-h-6 items-center underline decoration-[var(--pk-locker-accent)] underline-offset-4 hover:text-fg-strong"
+                className="inline-flex min-h-6 items-center pointer-coarse:min-h-11 underline decoration-[var(--pk-locker-accent)] underline-offset-4 hover:text-fg-strong"
               >
                 {l.label}
               </a>
@@ -305,7 +305,7 @@ function NavLink({
             "inline-flex min-w-6 items-center justify-center rounded-full px-2 py-0.5 text-xs font-normal tabular-nums",
             // Discover's count of offers is always the small violet count (§4.16).
             accentCount
-              ? "bg-fg-strong text-surface-page"
+              ? "bg-hover font-medium text-fg-strong ring-1 ring-inset ring-border"
               : active
                 ? "bg-accent-subtle text-accent-fg"
                 : "bg-surface-raised text-fg-muted ring-1 ring-inset ring-border",

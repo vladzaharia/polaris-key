@@ -17,6 +17,7 @@ import { portalErrorCopy } from "../errors.js";
 import {
   addedOfferFromLibrary,
   addedParam,
+  navDiscoverCount,
   mergeAdded,
   withAdded,
 } from "../model/discover.js";
@@ -129,6 +130,11 @@ export function DiscoverPage({
     [...addedTiles, ...adding.values()],
   );
 
+  // Store links on any addable tile: every tile keeps their row (DiscoverTile).
+  const reserveStores = tiles.some(
+    (o) => o.cta === "add" && !addedSlugs.has(o.product) && o.stores.length > 0,
+  );
+
   const add = async (offer: PortalDiscoverOffer): Promise<void> => {
     const slug = offer.product;
     if (inFlight.current.has(slug)) return;
@@ -161,6 +167,11 @@ export function DiscoverPage({
     }
   };
 
+  // The grid's columns follow the tile count; while loading, the Worker's count (or three).
+  const expected = Math.max(
+    1,
+    Math.min(3, navDiscoverCount(library.data?.discoverCount) ?? 3),
+  );
   const pending =
     discover.isPending || (addedParams.length > 0 && library.isPending);
   const empty = !pending && !discover.error && tiles.length === 0;
@@ -174,10 +185,22 @@ export function DiscoverPage({
       </div>
       {pending ? (
         // Two columns on tablets, three from 1180 px (§4.16), as the loaded grid.
-        <div className="grid gap-6 desk:grid-cols-2 wide:grid-cols-3" aria-busy>
+        <div
+          className={cn("grid gap-6 desk:grid-cols-2", wideColumns(expected))}
+          aria-busy
+        >
           <Skeleton className="h-96 rounded-xl" />
-          <Skeleton className="hidden h-96 rounded-xl desk:block" />
-          <Skeleton className="hidden h-96 rounded-xl wide:block" />
+          {expected >= 2 ? (
+            <Skeleton className="hidden h-96 rounded-xl desk:block" />
+          ) : null}
+          {expected >= 3 ? (
+            <Skeleton
+              className={cn(
+                "hidden h-96 rounded-xl",
+                wideColumns(expected) ? "wide:block" : "desk:block",
+              )}
+            />
+          ) : null}
         </div>
       ) : discover.error ? (
         <ErrorPanel
@@ -218,7 +241,7 @@ export function DiscoverPage({
               className={cn(
                 "grid gap-6 desk:grid-cols-2",
                 // Two or four tiles at three columns leave a row with a hole (3 + 1).
-                tiles.length !== 2 && tiles.length !== 4 && "wide:grid-cols-3",
+                wideColumns(tiles.length),
                 stagger.className,
               )}
             >
@@ -238,6 +261,7 @@ export function DiscoverPage({
                       error={error?.text ?? null}
                       ended={error?.ended ?? false}
                       onAdd={() => void add(offer)}
+                      reserveStoreRow={reserveStores}
                     />
                   </li>
                 );
@@ -248,6 +272,14 @@ export function DiscoverPage({
       )}
     </section>
   );
+}
+
+/**
+ * Three columns from the wide breakpoint, except for one, two or four tiles, where a third column
+ * leaves a hole (3 + 1) or a lone tile wider than two columns' worth.
+ */
+function wideColumns(n: number): string {
+  return n <= 2 || n === 4 ? "" : "wide:grid-cols-3";
 }
 
 /** An Add that didn't go through, in the person's words (§6.4), inline on the tile. */

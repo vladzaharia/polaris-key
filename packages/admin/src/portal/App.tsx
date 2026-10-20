@@ -194,6 +194,8 @@ function SignedInShell({
     if (!scaled) return;
     const onKey = (e: KeyboardEvent): void => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        // The Library's toolbar search takes ⌘K while it is on screen (LibraryToolbar).
+        if (document.querySelector("[data-library-search]")) return;
         e.preventDefault();
         setJumpOpen((o) => !o);
       }
@@ -209,7 +211,9 @@ function SignedInShell({
       libraryCount={libraryCount}
       discoverCount={lib.discoverCount}
       phoneHeaderExtra={
-        scaled ? <JumpIconButton onOpen={() => setJumpOpen(true)} /> : null
+        scaled && route.kind !== "library" ? (
+          <JumpIconButton onOpen={() => setJumpOpen(true)} />
+        ) : null
       }
     >
       <Page route={route} account={account} />

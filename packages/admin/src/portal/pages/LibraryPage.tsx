@@ -323,7 +323,7 @@ function ScaledLibrary({
             ref={stagger.ref}
             data-library-grid="compact"
             className={cn(
-              "grid gap-5 desk:grid-cols-3 wide:grid-cols-4",
+              "grid gap-5 [grid-template-columns:repeat(auto-fill,minmax(min(100%,17rem),1fr))]",
               stagger.className,
             )}
           >

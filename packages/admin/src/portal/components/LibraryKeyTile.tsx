@@ -6,12 +6,11 @@ import { Button } from "../../ui/Button.js";
 import { useActivate } from "../activate.js";
 
 /**
- * How many columns the key tile takes so the last row of a grid of `count` products is never
- * half empty: the rest of the row after the products (a whole row when they fill it).
+ * How many columns the key tile takes: the whole row when the products fill their rows (it then
+ * lays out as one line), else one cell, never part of a row.
  */
 export function keyTileSpan(count: number, columns: 2 | 3): 1 | 2 | 3 {
-  const rest = columns - (count % columns);
-  return (rest === 0 ? columns : rest) as 1 | 2 | 3;
+  return (count % columns === 0 ? columns : 1) as 1 | 2 | 3;
 }
 
 const SPAN = {
@@ -25,9 +24,8 @@ const SPAN = {
 
 /**
  * The Library's own entry for a key (2-7 products, B12): the grid's last tile, dashed and quiet
- * beside the products, with its one outlined action. It takes the rest of its row, so the grid
- * never ends half empty: at two columns it spans the row when the products fill it, and beside a
- * wide span it lays out as a row.
+ * beside the products, with its one outlined action. One cell, or a whole row (one line) when the
+ * products fill their rows.
  */
 export function LibraryKeyTile({
   count,
@@ -40,28 +38,28 @@ export function LibraryKeyTile({
     <li
       aria-labelledby="key-tile-h"
       className={cn(
-        "grid",
+        "grid @container",
         SPAN[2][keyTileSpan(count, 2) as 1 | 2],
         SPAN[3][keyTileSpan(count, 3)],
       )}
     >
       {/* A phone: the key beside the text, the button full width under them. In a one-cell tile
           (from 900 px) a flat well stands where a product's art would be, the key at its centre,
-          and the button sits at the foot, level with the tiles' actions. A tile that spans cells
-          keeps this layout: the well stays capped at 280 px. */}
-      <div className="flex flex-col gap-4 overflow-hidden rounded-xl border border-dashed border-border-strong bg-transparent p-4 desk:gap-0 desk:p-0">
+          and the button sits at the foot, level with the tiles' actions. A tile with a row to
+          itself is one line: the 48 px key, the title, the button on the right. */}
+      <div className="flex flex-col gap-4 overflow-hidden rounded-xl border border-dashed border-border-strong bg-transparent p-4 desk:gap-0 desk:p-0 @2xl:flex-row @2xl:items-center @2xl:gap-6 @2xl:p-6">
         <div
           aria-hidden
-          className="hidden min-h-40 max-h-[17.5rem] w-full flex-1 items-center justify-center bg-surface-sunken desk:flex"
+          className="hidden min-h-40 max-h-[17.5rem] w-full flex-1 items-center justify-center bg-surface-sunken desk:flex @2xl:hidden"
         >
           <span className="inline-flex size-16 items-center justify-center rounded-2xl bg-accent-subtle text-accent-fg">
             <KeyRound className="size-7" />
           </span>
         </div>
-        <div className="flex min-w-0 items-center gap-3 desk:px-5 desk:pt-5">
+        <div className="flex min-w-0 items-center gap-3 desk:px-5 desk:pt-5 @2xl:flex-1 @2xl:p-0">
           <span
             aria-hidden
-            className="inline-flex size-10 shrink-0 items-center justify-center rounded-xl bg-accent-subtle text-accent-fg desk:hidden"
+            className="inline-flex size-10 shrink-0 items-center justify-center rounded-xl bg-accent-subtle text-accent-fg desk:hidden @2xl:inline-flex @2xl:size-12"
           >
             <KeyRound className="size-5" />
           </span>
@@ -69,11 +67,11 @@ export function LibraryKeyTile({
             {t("signin.link.key")}
           </h3>
         </div>
-        <div className="desk:mt-auto desk:p-5">
+        <div className="desk:mt-auto desk:p-5 @2xl:mt-0 @2xl:p-0">
           <Button
             variant="quiet"
             size="lg"
-            className="h-11 w-full shrink-0"
+            className="h-11 w-full shrink-0 @2xl:w-auto"
             iconStart={<KeyRound aria-hidden />}
             onClick={() => activate.open()}
           >
