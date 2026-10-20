@@ -167,13 +167,13 @@ export const SETTING_HOMES: Readonly<Record<string, SettingHome>> = {
 
   // ── Identity ───────────────────────────────────────────────────────────────────────────────
   "identity.keyEntry.limit": manifest("product"),
-  // Sign-in shows it read-only and links to Locker, where the switch is.
-  "identity.keyEntry.claimByKey": at("portal", "License keys"),
+  // App sign-in, License keys.
+  "identity.keyEntry.claimByKey": at("app-sign-in", "License keys"),
   "identity.terms": manifest("product"),
   // The paths a web app's sign-in may return to (I-08's `authorize` reads them).
   "identity.redirectPaths": manifest("product"),
   // Sign-in reads the provider and the group map; the page's one action is a resync.
   "identity.oidc": manifest("product"),
   "identity.provisioning": manifest("product"),
-  "identity.oidc.syncTierOnSignIn": at("sign-in", "Tier sync"),
+  "identity.oidc.syncTierOnSignIn": at("app-sign-in", "Tier sync"),
 };

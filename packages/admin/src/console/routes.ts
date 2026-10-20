@@ -557,8 +557,7 @@ export const r = {
       child: { ids: [name], tab },
     }),
   feed: (slug: string) => productPage(slug, "feed"),
-  portal: (slug: string) => productPage(slug, "portal"),
-  signIn: (slug: string) => productPage(slug, "sign-in"),
+  appSignIn: (slug: string) => productPage(slug, "app-sign-in"),
   syncData: (slug: string) => productPage(slug, "sync-data"),
 };
 

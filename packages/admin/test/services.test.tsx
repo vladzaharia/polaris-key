@@ -92,11 +92,6 @@ const state = (over: Partial<ServicesResponse> = {}): ServicesResponse => ({
 });
 const portal: PortalProductSettings = {
   portalEnabled: false,
-  oidcEnabled: false,
-  magicEnabled: false,
-  licenseKeyClaimEnabled: false,
-  releasesEnabled: false,
-  autoLinkEnabled: null,
 };
 const mount = () =>
   renderAt("#/p/djdl/settings/features", <ServicesPage slug="djdl" />);

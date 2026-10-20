@@ -22,6 +22,11 @@ const PAGES: { name: string; hash: string; title: string }[] = [
   { name: "overview", hash: "#/p/djdl", title: "DJDL" },
   { name: "integration", hash: "#/p/djdl/integration", title: "Integration" },
   { name: "services", hash: "#/p/djdl/settings/features", title: "Settings" },
+  {
+    name: "app-sign-in",
+    hash: "#/p/djdl/identity/app-sign-in",
+    title: "App sign-in",
+  },
   { name: "devices", hash: "#/p/djdl/devices", title: "Devices" },
   {
     name: "device-drawer",

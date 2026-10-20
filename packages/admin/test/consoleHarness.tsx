@@ -284,8 +284,6 @@ export function boot(hash: string, opts: BootOptions = {}): FetchLog {
     "/manage/api/products/djdl/identity/portal": {
       settings: {
         portalEnabled: false,
-        oidcEnabled: false,
-        magicEnabled: false,
       },
     },
     ...opts.extra,

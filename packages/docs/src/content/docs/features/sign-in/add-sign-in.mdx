@@ -21,9 +21,9 @@ Before you start:
 ## Steps
 
 1. **Console** Open **Core → Services** and switch **Identity** on. Without License, this also makes keyless registration require sign-in.
-2. **CLI** Optional: link your own provider with the `oidc:` block of `.pkey/product`, then select **Resync from repo** on **Identity → Sign-in**. Without it the product uses the platform provider.
+2. **CLI** Optional: link your own provider with the `oidc:` block of `.pkey/product`, then select **Resync from repo** on **App sign-in**. Without it the product uses the platform provider.
 3. **CLI** Optional: map groups to tiers with `groupRoleMap`, or set an `autoIssue` policy with mode `oidcDefault` so people in no group land on a default tier.
-4. **Console** Optional: open **Identity → Locker** and set what customers can do: sign-in methods, adding a license by key, release downloads and key reissue.
+4. **Console** Optional: open **App sign-in** and set what customers can do: adding a license by key, showing the product in libraries and key reissue. Email codes and passkeys are always on.
 5. **App** Start the sign-in from your SDK, per the table. A client with no browser shows the user code and a QR code, then polls. A browser app redirects.
 6. **App** On success, store the result the SDK hands back and refresh the license status. A device flow ends in a device token. A browser flow with a `return_to` ends in a session cookie.
 7. **Server** Optional: read the signed-in account on your backend. The license document carries `profile.user` with the account's pairwise subject (`ps_…`) while an account is signed in on that device. A drop-in verifies the document and hands you the account as `user.subject`: `@polaris-key/server` (Express, Hono, Next.js; it ships with the next release), `polaris_key.server` (FastAPI, Starlette, Django, DRF, Flask) as `auth.user`, and `polaris-key-server-ktor`. See [Verify licenses on your server](/docs/features/licensing/server-verification/). Without a drop-in, verify the document yourself, then read `profile.user.subject`. In `@polaris-key/client-core/license`, `licenseUserOf(doc)` returns `{ subject }` or `null` and never throws.

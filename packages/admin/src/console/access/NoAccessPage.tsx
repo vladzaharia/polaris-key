@@ -42,7 +42,7 @@ const AREA_LANDING: Partial<Record<AreaId, ProductPageId>> = {
   commerce: "commerce-overview",
   license: "licenses",
   config: "catalog",
-  signin: "sign-in",
+  signin: "app-sign-in",
   sync: "sync-data",
   keys: "keys",
   core: "overview",

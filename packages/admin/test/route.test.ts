@@ -296,7 +296,7 @@ describe("section roots redirect to the section's first page", () => {
     for (const [hash, page] of [
       ["#/p/djdl/license/settings", "license-settings"],
       ["#/p/djdl/license/enrollment", "enrollment"],
-      ["#/p/djdl/identity/portal", "portal"],
+      ["#/p/djdl/identity/app-sign-in", "app-sign-in"],
       ["#/p/djdl/update/feed", "feed"],
     ] as const) {
       const parsed = parseLocation(hash);
@@ -529,8 +529,7 @@ describe("the nav model (nav.ts)", () => {
       "health",
       "credentials",
       "feed",
-      "portal",
-      "sign-in",
+      "app-sign-in",
       "sync-data",
     ];
     expect(ALL_PAGES.map((p) => p.page).sort()).toEqual([...expected].sort());
