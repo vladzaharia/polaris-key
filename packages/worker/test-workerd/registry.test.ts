@@ -122,7 +122,7 @@ describe("registry host isolation on workerd", () => {
     expect(csp).toBe(await landingCsp());
     expect(inertDocumentPolicy(csp)).toBe(true);
     const html = await res.text();
-    expect(html).toContain('aria-label="Polaris Key Delivery"');
+    expect(html).toContain('aria-label="Polaris Locker"');
     expect(html).toContain("The package registry for libraries and tools");
     expect(html).not.toMatch(/<script/i);
   });
