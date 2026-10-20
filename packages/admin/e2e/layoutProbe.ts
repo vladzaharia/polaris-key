@@ -9,7 +9,7 @@
  *                   page's bottom padding. The report names the elements that reach past the
  *                   content, with the height rules (min-height, height, padding, margin, flex-grow)
  *                   that put them there.
- *   equal-height    Cards that sit side by side in one grid/flex row differ in outer height (a cell
+ *   equal-height    Cards that sit side by side in one grid/flex row (a sticky rail excepted) differ in outer height (a cell
  *                   that opens with its card and follows it with an actions row counts by its card),
  *                   their footers (a short closing block holding an action) do not share a bottom
  *                   edge, or a card stretched to its row's height leaves more than a row of empty
@@ -650,6 +650,9 @@ export function probeLayout(opts: ProbeOptions): ProbeResult {
         }
         for (const row of rows.values()) {
           if (row.length < 2) continue;
+          // A sticky rail (the Presentation preview beside its rows, admin-4-11) follows the
+          // scroll on its own, so its height is not the rows'.
+          if (row.some((x) => cs(x).position === "sticky")) continue;
           const rs = row.map((x) => x.getBoundingClientRect());
           const hs = rs.map((r) => r.height);
           const tops = rs.map((r) => r.top);

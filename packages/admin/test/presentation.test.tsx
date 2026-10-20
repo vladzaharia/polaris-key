@@ -181,6 +181,11 @@ const mount = () =>
 
 /** The settings row whose label is `label`. */
 async function row(label: string): Promise<HTMLElement> {
+  return await screen.findByRole("group", { name: label });
+}
+
+/** A Hosting and quotas settings row. */
+async function settingRow(label: string): Promise<HTMLElement> {
   const el = await screen.findByText(label, {
     selector: "span.font-medium, label.font-medium",
   });
@@ -202,21 +207,21 @@ describe("Core → Presentation", () => {
     expect(
       within(icon).getByText("From https://cdn.example.com/icon.png"),
     ).toBeTruthy();
-    expect(within(icon).getByText("Ready")).toBeTruthy();
-    expect(within(icon).getByText(/512×512/)).toBeTruthy();
-    expect(
-      within(icon).getByRole("img", { name: "Product icon preview" }),
-    ).toHaveProperty("src", `${IMG}/djdl/a/${A}/256.webp`);
+    expect(within(icon).getByText(/512 × 512/)).toBeTruthy();
+    expect(icon.querySelector("img")).toHaveProperty(
+      "src",
+      `${IMG}/djdl/a/${A}/256.webp`,
+    );
     const header = await row("Header");
     expect(within(header).getByText("Uploaded in the console")).toBeTruthy();
     expect(within(header).getByText("Sizes pending")).toBeTruthy();
     expect(
-      within(header).getByRole("button", { name: "Revert to manifest" }),
+      within(header).getByRole("button", { name: /^Revert .* to manifest$/ }),
     ).toBeTruthy();
     // Revert only for a console claim the manifest names, and then no Delete copy: the server
     // would revert it rather than leave it for the next resync.
     expect(
-      within(icon).queryByRole("button", { name: "Revert to manifest" }),
+      within(icon).queryByRole("button", { name: /^Revert .* to manifest$/ }),
     ).toBeNull();
     expect(
       within(header).queryByRole("button", { name: "Delete copy" }),
@@ -229,13 +234,13 @@ describe("Core → Presentation", () => {
     // An empty slot for the next screenshot, and the empty listing icon.
     expect(await row("Screenshot 2")).toBeTruthy();
     expect(
-      within(await row("Listing icon")).getByText("Nothing hosted yet."),
+      within(await row("Listing icon")).getByText("Nothing hosted yet"),
     ).toBeTruthy();
     // A release file is listed read-only.
-    const other = await row("release-file");
+    const other = await row("Release file");
     expect(within(other).queryByText("Upload")).toBeNull();
     expect(
-      within(other).queryByRole("button", { name: "Delete copy" }),
+      within(other).queryByRole("button", { name: /^More for / }),
     ).toBeNull();
     await expectNoAxeViolations(container);
   });
@@ -280,7 +285,7 @@ describe("Core → Presentation", () => {
     });
     Object.defineProperty(big, "size", { value: 10 * 1024 * 1024 + 1 });
     await userEvent.upload(input, big);
-    expect(await screen.findByText(/larger than this slot takes/)).toBeTruthy();
+    expect(await screen.findByText(/this slot takes/)).toBeTruthy();
     expect(fns.uploadHostedAsset).not.toHaveBeenCalled();
     fns.uploadHostedAsset.mockRejectedValue(
       new ApiError(422, undefined, "asset_refused", undefined, "not-an-image"),
@@ -304,7 +309,7 @@ describe("Core → Presentation", () => {
     mount();
     const header = await row("Header");
     await userEvent.click(
-      within(header).getByRole("button", { name: "Revert to manifest" }),
+      within(header).getByRole("button", { name: /^Revert .* to manifest$/ }),
     );
     const dialog = await screen.findByRole("alertdialog");
     expect(
@@ -330,7 +335,10 @@ describe("Core → Presentation", () => {
     mount();
     const icon = await row("Product icon");
     await userEvent.click(
-      within(icon).getByRole("button", { name: "Delete copy" }),
+      within(icon).getByRole("button", { name: "More for Product icon" }),
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Delete copy" }),
     );
     const dialog = await screen.findByRole("alertdialog");
     expect(
@@ -348,7 +356,7 @@ describe("Core → Presentation", () => {
 describe("the page's words", () => {
   it("names slots and statuses", () => {
     expect(slotLabel("listing.screenshot:3")).toBe("Screenshot 3");
-    expect(slotLabel("play:icon", "de-DE")).toBe("play:icon (de-DE)");
+    expect(slotLabel("play:icon", "de-DE")).toBe("Play icon (de-DE)");
     expect(statusOf(asset({ status: "pending" })).label).toBe("Pulling");
     expect(statusOf(asset({ pullPending: true })).label).toBe("Updating");
     expect(statusOf(asset({ status: "failed" })).tone).toBe("danger");
@@ -358,20 +366,20 @@ describe("the page's words", () => {
 describe("Core → Presentation → Hosting and quotas (HA-10)", () => {
   it("Hosting and quotas: usage against each quota, a warning when one is full", async () => {
     const { container } = mount();
-    const images = await row("Images");
+    const images = await settingRow("Images");
     expect(
       within(images).getByText(/128 MiB of 512 MiB · 7 files/),
     ).toBeTruthy();
     expect(within(images).queryByText("Quota full")).toBeNull();
-    const files = await row("Release files");
+    const files = await settingRow("Release files");
     expect(within(files).getByText(/2 GiB of 2 GiB · 3 files/)).toBeTruthy();
     expect(within(files).getByText("Quota full")).toBeTruthy();
     expect(within(files).getByText(/mirroring has stopped/)).toBeTruthy();
     expect(
-      within(await row("Media quota")).getByText("Default: 512 MiB"),
+      within(await settingRow("Media quota")).getByText("Default: 512 MiB"),
     ).toBeTruthy();
     expect(
-      within(await row("Release-file quota")).getByText(
+      within(await settingRow("Release-file quota")).getByText(
         "Set for this product: 2 GiB",
       ),
     ).toBeTruthy();
@@ -395,7 +403,7 @@ describe("Core → Presentation → Hosting and quotas (HA-10)", () => {
     fns.saveAssetSetting.mockResolvedValue(usage());
     fns.resetAssetSetting.mockResolvedValue(usage());
     mount();
-    const quota = await row("Media quota");
+    const quota = await settingRow("Media quota");
     const input = within(quota).getByLabelText("Media quota in MiB");
     await userEvent.clear(input);
     await userEvent.type(input, "1024");
@@ -413,7 +421,7 @@ describe("Core → Presentation → Hosting and quotas (HA-10)", () => {
     expect(keys).toContain(JSON.stringify(qk.hostedAssets("djdl")));
     spy.mockRestore();
 
-    const release = await row("Release-file quota");
+    const release = await settingRow("Release-file quota");
     await userEvent.click(
       within(release).getByRole("button", { name: "Reset" }),
     );
@@ -446,7 +454,7 @@ describe("Core → Presentation → Hosting and quotas (HA-10)", () => {
       return saved;
     });
     mount();
-    const quota = await row("Media quota");
+    const quota = await settingRow("Media quota");
     const input = within(quota).getByLabelText("Media quota in MiB");
     await userEvent.clear(input);
     await userEvent.type(input, "1024");
@@ -461,7 +469,7 @@ describe("Core → Presentation → Hosting and quotas (HA-10)", () => {
   it("turning mirroring off asks first", async () => {
     fns.saveAssetSetting.mockResolvedValue(usage());
     mount();
-    const mirror = await row("Mirror release files");
+    const mirror = await settingRow("Mirror release files");
     await userEvent.click(within(mirror).getByRole("switch"));
     expect(
       await screen.findByText("Stop mirroring this product's release files?"),
