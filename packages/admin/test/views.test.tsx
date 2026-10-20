@@ -97,9 +97,9 @@ describe("theme toggle", () => {
 });
 
 describe("brand + dashboard views", () => {
-  it("renders the Polaris Key logo lockup", () => {
+  it("renders the Polaris Locker logo lockup", () => {
     render(<Logo subtitle="admin" />);
-    expect(screen.getByLabelText("Polaris Key")).toBeTruthy();
+    expect(screen.getByLabelText("Polaris Locker")).toBeTruthy();
     expect(screen.getByText("admin")).toBeTruthy();
   });
 

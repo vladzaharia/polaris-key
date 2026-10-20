@@ -268,11 +268,11 @@ export function ServiceOffPage({
 }
 
 /**
- * Before the session loads, and the console's own sign-in moment: the Polaris Key lockup (the
- * Pinned K, no bit, BRAND.md §6) above a live "Loading console…", or, when the session cannot
+ * Before the session loads, and the console's own sign-in moment: the Polaris Locker lockup (the
+ * Bookends, BRAND.md §15) above a live "Loading console…", or, when the session cannot
  * load, one card with Retry and Sign in. It shares the customer portal's sign-in look (the
  * centred lockup over a 28 rem card, brand type and spacing, both themes) without any of the
- * portal's customer parts, and matches the Worker's sign-in error pages (`core/brandHtml.ts`).
+ * portal's customer parts.
  */
 export function BootScreen({
   error,

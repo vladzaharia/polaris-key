@@ -67,8 +67,42 @@ describe("the brand head snippet", () => {
     for (const icon of manifest.icons) expect(emitted).toContain(icon.src);
   });
 
-  it.each(["index.html", "manage.html"])(
-    "%s links the favicon, touch icon and manifest, all emitted",
+  it("vite.config.ts emits the Locker web identity, all from @polaris-key/brand/web/locker", () => {
+    const locker = Array.from(
+      (
+        viteConfig.match(/BRAND_LOCKER_FILES[^=]*=\s*\[([\s\S]*?)\]/)?.[1] ?? ""
+      ).matchAll(/"([^"]+)"/g),
+      (m) => m[1]!,
+    );
+    const brandWebLocker = join(pkg, "..", "brand", "web", "locker");
+    expect(locker.length).toBeGreaterThan(0);
+    for (const name of locker)
+      expect(existsSync(join(brandWebLocker, name)), name).toBe(true);
+    const manifest = JSON.parse(
+      readFileSync(join(brandWebLocker, "site.webmanifest"), "utf8"),
+    ) as { icons: { src: string }[] };
+    for (const icon of manifest.icons) expect(locker).toContain(icon.src);
+    const html = readFileSync(join(pkg, "manage.html"), "utf8");
+    const links = [...html.matchAll(/href="([^"]+)"/g)]
+      .map((m) => m[1]!)
+      .filter((h) => h.startsWith("/assets/branding/locker/"))
+      .map((h) => h.slice("/assets/branding/locker/".length));
+    expect(links.sort()).toEqual(
+      [
+        "apple-touch-icon.png",
+        "favicon.ico",
+        "favicon.svg",
+        "site.webmanifest",
+      ].sort(),
+    );
+    for (const name of links) expect(locker).toContain(name);
+    expect(html).toContain('<html lang="en" data-brand="locker">');
+    expect(html).toContain("<title>Polaris Locker console</title>");
+    expect(html).not.toContain("branding/key/");
+  });
+
+  it.each(["index.html"])(
+    "%s (the portal) links the Key favicon, touch icon and manifest, all emitted",
     (file) => {
       const html = readFileSync(join(pkg, file), "utf8");
       const links = headLinks(html);

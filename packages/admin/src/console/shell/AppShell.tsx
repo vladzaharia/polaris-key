@@ -92,7 +92,7 @@ function knownProductPageRefused(me: Me, route: Route): boolean {
   );
 }
 
-/** `"{page title} · {product} · Polaris Key"`, or `"{page title} · Polaris Key"` off a product. */
+/** `"{page title} · {product} · Polaris Locker console"`, or `"{page title} · Polaris Locker console"` off a product. */
 export function documentTitle(
   route: Route,
   productName: string | null,
@@ -101,7 +101,7 @@ export function documentTitle(
   return [
     refused ? `No access · ${pageTitle(route)}` : pageTitle(route),
     productName,
-    "Polaris Key",
+    "Polaris Locker console",
   ]
     .filter(Boolean)
     .join(" · ");
@@ -215,6 +215,9 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
   // The sidebar group holding the page: its product section, or the Platform section.
   const group = page ? groupOf(page) : null;
   const accent = page ? accentOf(page) : "core";
+  // Core pages carry no `data-service`: the Locker context (`data-brand` on <html>, D9a) applies
+  // there. A service section's `data-service` still wins (LK-00 §14.5, B17).
+  const scope = accent === "core" ? undefined : accent;
   const productPageId: ProductPageId | null =
     route.kind === "product" ? route.page : null;
   // The page the product switcher keeps. A not-found page under a known product keeps the
@@ -223,12 +226,13 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
     productPageId ?? (slug !== null ? "overview" : null);
 
   // The section rides <html> too, so what Radix portals out of this tree (dialogs, menus) takes
-  // the section's accent, and the header mark's bit follows the route (BRAND.md §6).
+  // the section's accent, (core: none, so the Locker context applies).
   React.useEffect(() => {
     const root = document.documentElement;
-    root.setAttribute("data-service", accent);
+    if (scope === undefined) root.removeAttribute("data-service");
+    else root.setAttribute("data-service", scope);
     return () => root.removeAttribute("data-service");
-  }, [accent]);
+  }, [scope]);
 
   // A page the member's role does not include renders NoAccessPage, so its title says so.
   const refused =
@@ -362,7 +366,7 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
       <TooltipProvider delayDuration={300}>
         <>
           <div
-            data-service={accent}
+            data-service={scope}
             style={
               {
                 "--sidebar-w": rail ? "3.5rem" : "15rem",
@@ -383,7 +387,6 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
             <TopBar
               className="lg:col-span-2"
               me={me}
-              section={accent}
               product={slug ? product : null}
               products={productList}
               page={switcherPage}
@@ -410,7 +413,7 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
               className="relative min-h-0 overflow-y-auto outline-hidden pk-scroll"
             >
               <div
-                data-service={accent}
+                data-service={scope}
                 className="mx-auto w-full max-w-[110rem] px-4 py-6 sm:px-6 lg:px-8"
               >
                 <PageContent

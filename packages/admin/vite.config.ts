@@ -63,6 +63,29 @@ const brandFonts = dirname(
   ),
 );
 
+/**
+ * The Polaris Locker web identity (LK-14, LK-00 §14.4): the console's favicon, touch icon and
+ * manifest, from `@polaris-key/brand/web/locker/`. Emitted beside the Key set under
+ * `/assets/branding/locker/`; only `manage.html` (the console) links them. `index.html` (the
+ * customer portal) keeps the Key set until the customer switch.
+ */
+const BRAND_LOCKER_DIR = "assets/branding/locker";
+const BRAND_LOCKER_FILES: readonly string[] = [
+  "favicon.svg",
+  "favicon.ico",
+  "apple-touch-icon.png",
+  "icon-192.png",
+  "icon-512.png",
+  "maskable-512.png",
+  "site.webmanifest",
+];
+
+const brandWebLocker = dirname(
+  createRequire(import.meta.url).resolve(
+    "@polaris-key/brand/web/locker/favicon.svg",
+  ),
+);
+
 const brandWebKey = dirname(
   createRequire(import.meta.url).resolve(
     "@polaris-key/brand/web/key/favicon.svg",
@@ -91,6 +114,7 @@ const BRAND_DIRS: readonly {
 }[] = [
   { dir: BRAND_WEB_DIR, files: BRAND_WEB_FILES, from: brandWebKey },
   { dir: BRAND_WEB_DIR, files: BRAND_LOCKUP_FILES, from: brandLockupKey },
+  { dir: BRAND_LOCKER_DIR, files: BRAND_LOCKER_FILES, from: brandWebLocker },
   { dir: BRAND_FONT_DIR, files: BRAND_FONT_FILES, from: brandFonts },
 ];
 
