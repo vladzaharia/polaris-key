@@ -28,7 +28,10 @@ import {
   docsTierOf,
   handleDocs,
 } from "../src/docs.js";
-import { TIER_PREFIXES } from "../../docs/src/lib/doors.js";
+import {
+  SEARCH_BUNDLES as DOCS_SEARCH_BUNDLES,
+  TIER_PREFIXES,
+} from "../../docs/src/lib/doors.js";
 import { PRINCIPALS, type PrincipalName } from "./rbacFixtures.js";
 import { matchRoute } from "../src/router.js";
 import {
@@ -518,6 +521,10 @@ describe("the docs tiers", () => {
     ]);
     for (const [dir, tier] of SEARCH_BUNDLES)
       expect(docsTierOf(`${dir}pagefind.js`), dir).toBe(tier);
+    // The docs build writes the same directories (packages/docs/src/lib/doors.ts).
+    expect(SEARCH_BUNDLES.map(([dir, tier]) => [dir, tier])).toEqual(
+      DOCS_SEARCH_BUNDLES.map(([dir, tier]) => [`/docs/${dir}/`, tier]),
+    );
   });
 
   it("name every page row the docs site does, and nothing public beyond the site assets", () => {
