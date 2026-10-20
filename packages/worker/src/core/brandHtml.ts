@@ -302,19 +302,19 @@ let lockerLockup: string | null = null;
 
 /**
  * The brand block above the card. `surface` is the already-escaped surface label, or "". Key:
- * the Pinned K and "Polaris Key" with the label beside it. Locker: the Locker lockup (its own
- * wordmark) with the label beside it.
+ * the Pinned K and "Polaris Key" with the label beside it. Locker: the Locker lockup alone; it is
+ * its own wordmark, so no surface label sits beside it.
  */
 function brandBlock(
   brand: BrandPageBrand | undefined,
   surface: string,
 ): string {
-  const label = surface ? `<span class="surface">${surface}</span>` : "";
-  const aria = surface ? ` ${surface}` : "";
   if (brand === "locker") {
     lockerLockup ??= themedLockup("locker", "horizontal", 48, "mark");
-    return `<div class="brand" role="img" aria-label="Polaris Locker${aria}">${lockerLockup}${label ? `<span class="wordmark" aria-hidden="true">${label}</span>` : ""}</div>`;
+    return `<div class="brand" role="img" aria-label="Polaris Locker">${lockerLockup}</div>`;
   }
+  const label = surface ? `<span class="surface">${surface}</span>` : "";
+  const aria = surface ? ` ${surface}` : "";
   mark ??= themedMark(48, "mark");
   return `<div class="brand" role="img" aria-label="Polaris Key${aria}">${mark}<span class="wordmark" aria-hidden="true">Polaris&nbsp;Key${label}</span></div>`;
 }

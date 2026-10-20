@@ -2396,17 +2396,19 @@ describe("Alert destinations in Email and alerts (ST-27)", () => {
     await userEvent.click(
       within(panel).getByRole("button", { name: "Actions for Hook 0" }),
     );
-    expect(await screen.findByText("Try again in 18 s")).toBeTruthy();
+    // The countdown runs on the real clock from the server's 18 s, so a slow runner may already
+    // read a second or two less: match the count, not the exact second.
+    expect(await screen.findByText(/^Try again in 1[0-8] s$/)).toBeTruthy();
     // The throttle is per scope: every row counts down, and the tapped row says so in words.
     await userEvent.keyboard("{Escape}");
     expect(
-      within(panel).getByText("Test not sent. Try again in 18 s."),
+      within(panel).getByText(/^Test not sent\. Try again in 1[0-8] s\.$/),
     ).toBeTruthy();
     expect(within(panel).getAllByRole("status").length).toBeGreaterThan(0);
     await userEvent.click(
       within(panel).getByRole("button", { name: "Actions for Hook 3" }),
     );
-    expect(await screen.findByText("Try again in 18 s")).toBeTruthy();
+    expect(await screen.findByText(/^Try again in 1[0-8] s$/)).toBeTruthy();
   });
 
   it("edits kinds and label without asking for the URL again", async () => {
