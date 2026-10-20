@@ -136,14 +136,14 @@ export async function handleServicesAdmin(
       now,
     );
     const state = serviceStateOf(await getProduct(db, slug));
-    return adminJson({ ...state, facts: await featureFactsOf(db, slug) });
+    return adminJson({ ...state, facts: await featureFactsOf(env, db, slug) });
   }
   if (action !== undefined) return notFound();
 
   if (req.method === "GET")
     return adminJson({
       ...serviceStateOf(row),
-      facts: await featureFactsOf(db, slug),
+      facts: await featureFactsOf(env, db, slug),
     });
   if (req.method !== "PATCH")
     return err(405, ErrorCode.BadRequest, "method not allowed");
@@ -262,5 +262,5 @@ export async function handleServicesAdmin(
   if (!written.ok) return settingRefused(written);
   await applyServiceTransitions(env, db, slug, services, session, now);
   const state = serviceStateOf(await getProduct(db, slug));
-  return adminJson({ ...state, facts: await featureFactsOf(db, slug) });
+  return adminJson({ ...state, facts: await featureFactsOf(env, db, slug) });
 }

@@ -2262,6 +2262,8 @@ export interface ServiceFeatureFacts {
   shipBuilds: {
     latest: { version: string; channel: string | null } | null;
   };
+  /** Configured storefronts, and live store purchases (the Attention state while Commerce is off). */
+  commerce: { storefronts: number; storeGrants: number };
 }
 
 /** The service-enable state returned by mutations and embedded in the reader response. */
@@ -2271,6 +2273,38 @@ export interface ServiceState {
   effectiveRegistration: RegistrationPolicy;
   /** Who owns the row: `manifest` (a resync may rewrite it) or `admin` (operator-claimed). */
   source: string;
+}
+
+/** `GET …/commerce` (worker `services/commerce/admin.ts` `view`): the overview's read. */
+export type CommerceStore = "app-store" | "play" | "steam";
+export interface CommerceView {
+  licenseEnabled: boolean;
+  setup: Record<
+    CommerceStore,
+    { configured: boolean; credential: string | null; reason: string | null }
+  >;
+  products: Array<{
+    store: CommerceStore;
+    productId: string;
+    deliverable: string;
+    flag: string;
+  }>;
+  purchases: Array<{
+    store: CommerceStore;
+    purchase: string;
+    storeProductId: string;
+    state: string;
+    environment: string;
+    /** Epoch seconds. */
+    lastVerified: number;
+  }>;
+  events: Array<{
+    connector: string;
+    id: string;
+    type: string;
+    outcome: string;
+    receivedAt: number;
+  }>;
 }
 
 /** `GET …/services` adds read-only feature facts to the service state. */
@@ -5360,6 +5394,9 @@ const rawApi = {
       method: "DELETE",
       body: JSON.stringify({ expectedVersion }),
     }),
+
+  // ── commerce (CM-29) ────────────────────────────────────────────────────────
+  commerceView: (slug: string) => call<CommerceView>(`${p(slug)}/commerce`),
 
   // ── services (per-product enablement) ───────────────────────────────────────
   services: (slug: string) => call<ServicesResponse>(`${p(slug)}/services`),

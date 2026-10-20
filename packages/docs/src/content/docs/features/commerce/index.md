@@ -22,7 +22,11 @@ Commerce is its own service, off by default. It needs Licensing: turning Licensi
 Commerce off in the same change, and turning Licensing back on does not turn it back on. Declare
 it with `modules: { commerce: { enabled: true } }` in `.pkey/product`. With Commerce off, its
 routes answer not-found and store refund notifications are not processed; the store retries and
-then drops them.
+then drops them. Google Play retries for 7 days and lists voided purchases for 31.
+
+## Overview in the console
+
+Commerce → Overview shows each store's status, its mapped products and the latest purchases.
 
 ## How it works
 

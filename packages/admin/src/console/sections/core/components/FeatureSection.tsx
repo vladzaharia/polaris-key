@@ -29,7 +29,10 @@ import {
   featureOn,
   featureSwitchId,
   listOf,
+  SET_UP_STOREFRONT,
+  STOREFRONT_DOCS,
   serviceChange,
+  storeRefundsAttention,
   unmetRequirements,
   type Enabled,
   type FailedChange,
@@ -72,6 +75,7 @@ export function FeatureSection({
   const errorId = `${sectionId}-error`;
   const detailId = `${sectionId}-error-detail`;
   const fact = factFor(feature, facts);
+  const attention = storeRefundsAttention(feature, enabled, facts);
   const errorMessages = codes.map(codeMessage);
   const copy = error && !errorMessages.length ? errorCopy(error.error) : null;
   // The switch that asked for the failed change: a service row when it requested only its own
@@ -167,9 +171,29 @@ export function FeatureSection({
           />
         </SettingsRow>
 
+        {attention ? (
+          <div className="border-t border-border px-5 py-3">
+            <Callout tone="warning" title={attention}>
+              Purchases stay unlocked, but their refunds are missed until
+              Commerce is on. Google Play stops retrying after 7 days.
+            </Callout>
+          </div>
+        ) : null}
+
         {fact && on ? (
           <p className="border-t border-border px-5 py-3 text-sm text-fg-muted">
-            {fact}
+            {fact === SET_UP_STOREFRONT ? (
+              <a
+                href={STOREFRONT_DOCS}
+                target="_blank"
+                rel="noreferrer"
+                className="text-accent-fg underline underline-offset-2 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
+              >
+                {fact} →
+              </a>
+            ) : (
+              fact
+            )}
           </p>
         ) : null}
 

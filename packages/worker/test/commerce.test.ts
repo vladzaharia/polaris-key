@@ -7,6 +7,7 @@
  * API, the re-checks through the real connector cron (`runConnectorPolls`).
  */
 
+import { readyStorefronts } from "../src/services/commerce/public.js";
 import { storeGrantDrift } from "../src/core/licensing/grants.js";
 import { runLicensingCatchUp } from "../src/core/licensing/licensingCatchUp.js";
 import { SERVICES } from "../src/mount.js";
@@ -193,6 +194,18 @@ describe("commerce: binding and the licence-document grant layer", () => {
       (await route(cw, "POST", "/distribution/hooks/app-store", { body: {} }))
         .status,
     ).toBe(404);
+  });
+
+  it("counts a storefront ready only when its credential resolves (the Services row and the Overview agree)", async () => {
+    const saved = await world({
+      settings: { steam: SETTINGS.steam },
+      credentials: false,
+    });
+    expect(await readyStorefronts(saved.env, saved.db, SLUG)).toBe(0);
+    saved.close();
+    w = null;
+    const full = await world({ settings: { steam: SETTINGS.steam } });
+    expect(await readyStorefronts(full.env, full.db, SLUG)).toBe(1);
   });
 
   it("a store without settings or without a pinned credential is the not-found", async () => {
