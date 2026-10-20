@@ -56,9 +56,9 @@ public struct PolarisMark: View {
 
     /// - Parameters:
     ///   - size: the displayed glyph size in points (at least 33; 48 by default).
-    ///   - accessibilityLabel: "Polaris Locker" by default. Pass nil when an adjacent visible label
+    ///   - accessibilityLabel: "Polaris Key" by default. Pass nil when an adjacent visible label
     ///     already names it, which makes the mark decorative.
-    nonisolated public init(size: CGFloat = 48, accessibilityLabel: String? = "Polaris Locker") {
+    nonisolated public init(size: CGFloat = 48, accessibilityLabel: String? = "Polaris Key") {
         self.size = PolarisMark.displaySize(size)
         self.label = accessibilityLabel
     }
