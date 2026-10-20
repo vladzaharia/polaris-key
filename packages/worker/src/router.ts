@@ -75,6 +75,8 @@ export type Route =
    *  route reserved ahead of product slugs, like `/manage`: the gate + asset serving live in
    *  `docs.ts`, and the slug `docs` is on the reserved list so a product can never take it. */
   | { kind: "docs" }
+  /** `GET /.well-known/webauthn` — the WebAuthn Related Origin Requests list (LK-05). */
+  | { kind: "webauthnOrigins" }
   | { kind: "githubWebhook" }
   | { kind: "deployHook" }
   | { kind: "discovery"; product: string }
@@ -162,6 +164,7 @@ export function matchRoute(pathname: string): Route {
     path.startsWith("/manage/api/products/")
   )
     return { kind: "products" };
+  if (path === "/.well-known/webauthn") return { kind: "webauthnOrigins" };
   if (path === "/webhooks/github") return { kind: "githubWebhook" };
   if (path === "/webhooks/deploy") return { kind: "deployHook" };
   if (path === "/manage/login") return { kind: "adminLogin" };
