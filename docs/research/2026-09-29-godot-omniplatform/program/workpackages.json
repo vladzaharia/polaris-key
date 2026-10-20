@@ -9981,7 +9981,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/products-onboarding.md"
       ],
       "brief": "wp/ST-43-new-product-wizard.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "ST-44",
@@ -17522,7 +17522,7 @@
       "optional": false,
       "refs": ["plans/LK-00.md §8"],
       "brief": "wp/LK-01-brand-locker-kit.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "LK-02",
@@ -17774,7 +17774,7 @@
       "optional": false,
       "refs": ["plans/LK-00.md §14"],
       "brief": "wp/LK-13-locker-words-v13.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "LK-14",

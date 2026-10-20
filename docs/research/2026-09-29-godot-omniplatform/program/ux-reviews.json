@@ -229,6 +229,16 @@
       "verdict": "pass",
       "date": "2026-10-19",
       "evidence": "Re-review PASS-WITH-FIXES (2026-10-19, _mockups/review/ST-16/ux-review-2.md): F1–F6 resolved, 0 axe/CSP at 1440/390/320 + 200%; required N1–N4 + minors fixed on 72ef1edd0 with tests (RTL bdi/FSI, unit under field, wrapping confirm buttons, lower-quota warning); lead reviewed the shared ConfirmDialog/SettingRow changes."
+    },
+    "ST-43": {
+      "verdict": "pass",
+      "date": "2026-10-20",
+      "evidence": "Re-review PASS-WITH-NOTES 2026-10-19 (_mockups/review/ST-43/rr2/); N1–N9 + copy fixed (6771db768); spot check B1 sticky-footer focus fixed (dc4f8b1b8): Tab walks 0 hidden stops at 390, 195 CSS px, 720x450@2x on New product and all six Storefronts steps."
+    },
+    "LK-01": {
+      "verdict": "pass",
+      "date": "2026-10-20",
+      "evidence": "Brand review 2026-10-19 (_mockups/review/LK-01/): kit fidelity PASS; colour-state FAIL fixed by D9a (9b124751f, neutral states; ΔE00 vs danger 6.7–48); v1.3 re-import 45ec070d6; lead-verified preview _scratch/LK-01/locker-light-1440.png."
     }
   }
 }
