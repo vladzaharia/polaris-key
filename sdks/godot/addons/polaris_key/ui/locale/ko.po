@@ -4247,10 +4247,70 @@ msgstr "사용 중"
 msgid "signin.gate.passkey"
 msgstr "이후 패스키 추가"
 
-#. Choose a PNG or JPEG.
+#. Choose a PNG or JPEG up to 5 MB.
 #. Finish step: an upload that is not a PNG or JPEG.
 msgid "signin.gate.pictureInvalid"
-msgstr "PNG 또는 JPEG를 선택하세요."
+msgstr "5 MB 이하의 PNG 또는 JPEG를 선택하세요."
+
+#. Add a passkey
+#. Finish: the step after the account exists, offering one passkey.
+msgid "signin.gate.passkeyTitle"
+msgstr "패스키 추가"
+
+#. Next time is one tap.
+#. Finish: under the passkey step title.
+msgid "signin.gate.passkeyLede"
+msgstr "다음부터는 한 번의 탭으로 됩니다."
+
+#. Add a passkey
+#. Finish: the one-tap button that opens the browser passkey prompt.
+msgid "signin.gate.passkeyAdd"
+msgstr "패스키 추가"
+
+#. macos: Add a Passkey
+msgctxt "macos"
+msgid "signin.gate.passkeyAdd"
+msgstr "패스키 추가"
+
+#. Passkey added.
+#. Finish: passkey outcome, success.
+msgid "signin.gate.passkeyAdded"
+msgstr "패스키를 추가했습니다."
+
+#. No passkey was added. You can add one in Account.
+#. Finish: passkey outcome, none added.
+msgid "signin.gate.passkeyFailed"
+msgstr "패스키가 추가되지 않았습니다. 계정에서 추가할 수 있습니다."
+
+#. Skip
+#. Finish: leaves the passkey step.
+msgid "signin.gate.passkeySkip"
+msgstr "건너뛰기"
+
+#. Your upload
+#. Finish: the tile of a picture the person picked from their device.
+msgid "signin.gate.pictureYours"
+msgstr "내 업로드"
+
+#. Your picture wasn't saved. Add one in Account.
+#. Finish: shown on arrival when the picked picture could not be saved.
+msgid "signin.gate.uploadFailed"
+msgstr "사진이 저장되지 않았습니다. 계정에서 추가하세요."
+
+#. We sent a new code to {email}.
+#. Finish: the code stage after a resend. Arguments: {email}.
+msgid "signin.gate.resent"
+msgstr "새 코드를 {email}(으)로 보냈습니다."
+
+#. {email} already belongs to a Polaris Locker account. Use a different email, or sign in to that account first.
+#. Finish: the join offer when the other account is not yet proven. Arguments: {email}.
+msgid "signin.gate.joinOtherLede"
+msgstr "{email}은(는) 이미 Polaris Locker 계정에 속해 있습니다. 다른 이메일을 사용하거나 먼저 그 계정에 로그인하세요."
+
+#. Enter a screen name.
+#. Finish: the screen name field left empty.
+msgid "signin.gate.nameRequired"
+msgstr "표시 이름을 입력하세요."
 
 #. Something went wrong
 #. Core copy (conformance/parity/copy.en.json, fallback).

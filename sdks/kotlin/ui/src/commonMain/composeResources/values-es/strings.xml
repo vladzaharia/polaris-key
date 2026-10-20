@@ -1612,7 +1612,30 @@
     <!-- Finish step: the unticked passkey opt-in. -->
     <string name="signin_gate_passkey">Añadir una llave de acceso después</string>
     <!-- Finish step: an upload that is not a PNG or JPEG. -->
-    <string name="signin_gate_pictureInvalid">Elige un PNG o JPEG.</string>
+    <string name="signin_gate_pictureInvalid">Elige un PNG o JPEG de hasta 5 MB.</string>
+    <!-- Finish: the step after the account exists, offering one passkey. -->
+    <string name="signin_gate_passkeyTitle">Añadir una llave de acceso</string>
+    <!-- Finish: under the passkey step title. -->
+    <string name="signin_gate_passkeyLede">La próxima vez basta un toque.</string>
+    <!-- Finish: the one-tap button that opens the browser passkey prompt. -->
+    <string name="signin_gate_passkeyAdd">Añadir una llave de acceso</string>
+    <string name="signin_gate_passkeyAdd__macos">Añadir una llave de acceso</string>
+    <!-- Finish: passkey outcome, success. -->
+    <string name="signin_gate_passkeyAdded">Llave de acceso añadida.</string>
+    <!-- Finish: passkey outcome, none added. -->
+    <string name="signin_gate_passkeyFailed">No se añadió ninguna llave de acceso. Puedes añadir una en Cuenta.</string>
+    <!-- Finish: leaves the passkey step. -->
+    <string name="signin_gate_passkeySkip">Omitir</string>
+    <!-- Finish: the tile of a picture the person picked from their device. -->
+    <string name="signin_gate_pictureYours">Tu archivo</string>
+    <!-- Finish: shown on arrival when the picked picture could not be saved. -->
+    <string name="signin_gate_uploadFailed">No se guardó tu imagen. Añade una en Cuenta.</string>
+    <!-- Finish: the code stage after a resend. Arguments: {email}. Arguments: 1=email. -->
+    <string name="signin_gate_resent">Enviamos un código nuevo a %1$s.</string>
+    <!-- Finish: the join offer when the other account is not yet proven. Arguments: {email}. Arguments: 1=email. -->
+    <string name="signin_gate_joinOtherLede">%1$s ya pertenece a una cuenta de Polaris Locker. Usa otro correo o inicia sesión primero en esa cuenta.</string>
+    <!-- Finish: the screen name field left empty. -->
+    <string name="signin_gate_nameRequired">Escribe un nombre visible.</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">Algo salió mal</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->

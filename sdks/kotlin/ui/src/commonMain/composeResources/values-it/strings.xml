@@ -1612,7 +1612,30 @@
     <!-- Finish step: the unticked passkey opt-in. -->
     <string name="signin_gate_passkey">Aggiungi una passkey dopo</string>
     <!-- Finish step: an upload that is not a PNG or JPEG. -->
-    <string name="signin_gate_pictureInvalid">Scegli un PNG o JPEG.</string>
+    <string name="signin_gate_pictureInvalid">Scegli un PNG o JPEG fino a 5 MB.</string>
+    <!-- Finish: the step after the account exists, offering one passkey. -->
+    <string name="signin_gate_passkeyTitle">Aggiungi una passkey</string>
+    <!-- Finish: under the passkey step title. -->
+    <string name="signin_gate_passkeyLede">La prossima volta basta un tocco.</string>
+    <!-- Finish: the one-tap button that opens the browser passkey prompt. -->
+    <string name="signin_gate_passkeyAdd">Aggiungi una passkey</string>
+    <string name="signin_gate_passkeyAdd__macos">Aggiungi una passkey</string>
+    <!-- Finish: passkey outcome, success. -->
+    <string name="signin_gate_passkeyAdded">Passkey aggiunta.</string>
+    <!-- Finish: passkey outcome, none added. -->
+    <string name="signin_gate_passkeyFailed">Nessuna passkey aggiunta. Puoi aggiungerne una in Account.</string>
+    <!-- Finish: leaves the passkey step. -->
+    <string name="signin_gate_passkeySkip">Salta</string>
+    <!-- Finish: the tile of a picture the person picked from their device. -->
+    <string name="signin_gate_pictureYours">Il tuo file</string>
+    <!-- Finish: shown on arrival when the picked picture could not be saved. -->
+    <string name="signin_gate_uploadFailed">L’immagine non è stata salvata. Aggiungine una in Account.</string>
+    <!-- Finish: the code stage after a resend. Arguments: {email}. Arguments: 1=email. -->
+    <string name="signin_gate_resent">Abbiamo inviato un nuovo codice a %1$s.</string>
+    <!-- Finish: the join offer when the other account is not yet proven. Arguments: {email}. Arguments: 1=email. -->
+    <string name="signin_gate_joinOtherLede">%1$s appartiene già a un account Polaris Locker. Usa un’altra email o accedi prima a quell’account.</string>
+    <!-- Finish: the screen name field left empty. -->
+    <string name="signin_gate_nameRequired">Inserisci un nome visualizzato.</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">Si è verificato un problema</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->

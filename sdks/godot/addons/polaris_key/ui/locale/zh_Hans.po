@@ -4247,10 +4247,70 @@ msgstr "使用中"
 msgid "signin.gate.passkey"
 msgstr "之后添加通行密钥"
 
-#. Choose a PNG or JPEG.
+#. Choose a PNG or JPEG up to 5 MB.
 #. Finish step: an upload that is not a PNG or JPEG.
 msgid "signin.gate.pictureInvalid"
-msgstr "请选择 PNG 或 JPEG。"
+msgstr "请选择不超过 5 MB 的 PNG 或 JPEG。"
+
+#. Add a passkey
+#. Finish: the step after the account exists, offering one passkey.
+msgid "signin.gate.passkeyTitle"
+msgstr "添加通行密钥"
+
+#. Next time is one tap.
+#. Finish: under the passkey step title.
+msgid "signin.gate.passkeyLede"
+msgstr "下次只需轻点一下。"
+
+#. Add a passkey
+#. Finish: the one-tap button that opens the browser passkey prompt.
+msgid "signin.gate.passkeyAdd"
+msgstr "添加通行密钥"
+
+#. macos: Add a Passkey
+msgctxt "macos"
+msgid "signin.gate.passkeyAdd"
+msgstr "添加通行密钥"
+
+#. Passkey added.
+#. Finish: passkey outcome, success.
+msgid "signin.gate.passkeyAdded"
+msgstr "已添加通行密钥。"
+
+#. No passkey was added. You can add one in Account.
+#. Finish: passkey outcome, none added.
+msgid "signin.gate.passkeyFailed"
+msgstr "未添加通行密钥。你可以在账户中添加。"
+
+#. Skip
+#. Finish: leaves the passkey step.
+msgid "signin.gate.passkeySkip"
+msgstr "跳过"
+
+#. Your upload
+#. Finish: the tile of a picture the person picked from their device.
+msgid "signin.gate.pictureYours"
+msgstr "你上传的图片"
+
+#. Your picture wasn't saved. Add one in Account.
+#. Finish: shown on arrival when the picked picture could not be saved.
+msgid "signin.gate.uploadFailed"
+msgstr "图片未保存。请在账户中添加。"
+
+#. We sent a new code to {email}.
+#. Finish: the code stage after a resend. Arguments: {email}.
+msgid "signin.gate.resent"
+msgstr "我们已向 {email} 发送新的验证码。"
+
+#. {email} already belongs to a Polaris Locker account. Use a different email, or sign in to that account first.
+#. Finish: the join offer when the other account is not yet proven. Arguments: {email}.
+msgid "signin.gate.joinOtherLede"
+msgstr "{email} 已属于一个 Polaris Locker 账户。请使用其他邮箱，或先登录该账户。"
+
+#. Enter a screen name.
+#. Finish: the screen name field left empty.
+msgid "signin.gate.nameRequired"
+msgstr "请输入显示名称。"
 
 #. Something went wrong
 #. Core copy (conformance/parity/copy.en.json, fallback).

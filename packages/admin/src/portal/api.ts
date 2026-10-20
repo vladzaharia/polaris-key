@@ -1008,6 +1008,8 @@ export interface PortalPasskeyOptions {
 /** `GET /api/signin/confirm-email` (I-27, I-33): the finish step's state. No account id in it. */
 export interface PortalGate {
   status: "gate";
+  /** PX-21: a new account; false for an existing account that only owes terms. */
+  newAccount?: boolean;
   /** `google`, `apple`, `steam`, `email`, … */
   provider: string;
   stage: "choose" | "code_sent" | "join_offer";

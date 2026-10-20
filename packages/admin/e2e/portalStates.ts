@@ -459,6 +459,55 @@ export const SHIPPED: ShippedState[] = [
   },
   {
     section: "4.29",
+    id: "signin-finish-upload",
+    title:
+      "Finish: a picked picture previews as a data: image (the CSP allows no blob:) and becomes the tile in use",
+    scenario: "signedOut",
+    path: "/?signin=confirm-email",
+    routes: gateView({
+      platformTerms: { url: "https://polaris.locker/terms", version: "1" },
+    }),
+    ready: async (p) => {
+      await h1(p, "Create your account");
+      await p.locator('input[type="file"]').setInputFiles({
+        name: "me.png",
+        mimeType: "image/png",
+        buffer: Buffer.from(
+          "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+          "base64",
+        ),
+      });
+      await p.getByText("Your upload").waitFor();
+      await p.locator('img[src^="data:image/png"]').waitFor();
+    },
+  },
+  {
+    section: "4.29",
+    id: "signin-finish-terms-only",
+    title:
+      "Finish: an existing account that only owes terms sees only the terms",
+    scenario: "signedOut",
+    path: "/?signin=confirm-email",
+    routes: gateView({
+      newAccount: false,
+      emailRequired: false,
+      email: {
+        provider: null,
+        providerVerified: false,
+        relay: false,
+        pending: null,
+        confirmed: "mara@fennick.studio",
+      },
+      terms: { url: "https://lanternworks.example/terms", version: "2" },
+      product: { slug: "nightfall", name: "Nightfall" },
+    }),
+    ready: async (p) => {
+      await h1(p, "One more step");
+      await p.getByRole("button", { name: "Continue" }).waitFor();
+    },
+  },
+  {
+    section: "4.29",
     id: "signin-finish-steam",
     title: "Finish: Steam shares no email (field empty, Send code)",
     scenario: "signedOut",

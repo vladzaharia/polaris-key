@@ -723,6 +723,17 @@
     "signin.gate.pictureUploadHint": "PNG o JPEG",
     "signin.gate.pictureInUse": "In uso",
     "signin.gate.passkey": "Aggiungi una passkey dopo",
-    "signin.gate.pictureInvalid": "Scegli un PNG o JPEG."
+    "signin.gate.pictureInvalid": "Scegli un PNG o JPEG fino a 5 MB.",
+    "signin.gate.passkeyTitle": "Aggiungi una passkey",
+    "signin.gate.passkeyLede": "La prossima volta basta un tocco.",
+    "signin.gate.passkeyAdd": "Aggiungi una passkey",
+    "signin.gate.passkeyAdded": "Passkey aggiunta.",
+    "signin.gate.passkeyFailed": "Nessuna passkey aggiunta. Puoi aggiungerne una in Account.",
+    "signin.gate.passkeySkip": "Salta",
+    "signin.gate.pictureYours": "Il tuo file",
+    "signin.gate.uploadFailed": "L’immagine non è stata salvata. Aggiungine una in Account.",
+    "signin.gate.resent": "Abbiamo inviato un nuovo codice a {email}.",
+    "signin.gate.joinOtherLede": "{email} appartiene già a un account Polaris Locker. Usa un’altra email o accedi prima a quell’account.",
+    "signin.gate.nameRequired": "Inserisci un nome visualizzato."
   }
 }

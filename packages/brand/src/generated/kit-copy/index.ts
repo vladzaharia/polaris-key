@@ -731,6 +731,17 @@ export type KitCopyKey =
   | "signin.gate.pictureInUse"
   | "signin.gate.passkey"
   | "signin.gate.pictureInvalid"
+  | "signin.gate.passkeyTitle"
+  | "signin.gate.passkeyLede"
+  | "signin.gate.passkeyAdd"
+  | "signin.gate.passkeyAdded"
+  | "signin.gate.passkeyFailed"
+  | "signin.gate.passkeySkip"
+  | "signin.gate.pictureYours"
+  | "signin.gate.uploadFailed"
+  | "signin.gate.resent"
+  | "signin.gate.joinOtherLede"
+  | "signin.gate.nameRequired"
   | "core.fallback.title"
   | "core.fallback.message"
   | "core.codes.unauthorized.title"
@@ -1244,6 +1255,7 @@ export const KIT_COPY_VARIANTS: Readonly<
   "signin.key.withoutKey": { macos: "Sign In Without the Key" },
   "signin.sso.codeIn": { macos: "Email Me a Code in {time}" },
   "signin.sso.code": { macos: "Email Me a Code Instead" },
+  "signin.gate.passkeyAdd": { macos: "Add a Passkey" },
 };
 
 /** Locales whose core.* strings are English until their core pack lands. */

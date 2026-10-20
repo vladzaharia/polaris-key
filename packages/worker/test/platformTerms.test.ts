@@ -1,7 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { NOW, seedProduct } from "./seed.js";
 import {
   Device,
+  lastCode,
   lastLink,
   seededWorld,
   type CardWorld,
@@ -318,6 +319,58 @@ describe("set: the email path finishes through the gate", () => {
     expect(res.status).toBe(409);
     expect(await acceptances(w)).toEqual([]);
     expect(await count(w, "accounts")).toBe(1);
+  });
+});
+
+describe("set: a resend after a reload (PX-21)", () => {
+  it("keeps the ticked terms on the gate, so the resend needs no new tick", async () => {
+    const w = await seededWorld();
+    await publish(w, TERMS);
+    const d = await arrive(w, google("g-9", "ada@gmail.com"));
+    const view = (await (await d.send("GET", GATE)).json()) as {
+      newAccount: boolean;
+    };
+    expect(view.newAccount).toBe(true);
+    const sent = await d.send("POST", GATE, {
+      choice: "typed",
+      email: "ada@work.example",
+      platformTermsVersion: TERMS.version,
+    });
+    expect(((await sent.json()) as { status: string }).status).toBe(
+      "code_sent",
+    );
+    // The page reloaded: it no longer knows the box was ticked.
+    const again = await d.send("POST", GATE, {
+      choice: "typed",
+      email: "ada@work.example",
+    });
+    expect(again.status).toBe(200);
+    expect(((await again.json()) as { status: string }).status).toBe(
+      "code_sent",
+    );
+    // Never ticked: still refused.
+    const fresh = await arrive(w, google("g-10", "bo@gmail.com"));
+    const refused = await fresh.send("POST", GATE, {
+      choice: "typed",
+      email: "bo@work.example",
+    });
+    expect(refused.status).toBe(400);
+  });
+
+  it("an expired code says so and burns no try", async () => {
+    const w = await seededWorld();
+    const d = await arrive(w, google("g-11", "ada@gmail.com"));
+    await d.send("POST", GATE, { choice: "typed", email: "ada@work.example" });
+    const code = lastCode(w, "ada@work.example");
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(Date.now() + 601_000);
+    const late = await d
+      .send("POST", `${GATE}/verify`, { code }, { now: NOW + 601 })
+      .finally(() => vi.useRealTimers());
+    expect(late.status).toBe(400);
+    expect(await late.json()).toEqual(
+      expect.objectContaining({ error: "code_expired" }),
+    );
   });
 });
 

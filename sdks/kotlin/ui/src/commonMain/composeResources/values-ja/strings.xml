@@ -1592,7 +1592,30 @@
     <!-- Finish step: the unticked passkey opt-in. -->
     <string name="signin_gate_passkey">この後でパスキーを追加</string>
     <!-- Finish step: an upload that is not a PNG or JPEG. -->
-    <string name="signin_gate_pictureInvalid">PNGまたはJPEGを選んでください。</string>
+    <string name="signin_gate_pictureInvalid">5 MBまでのPNGまたはJPEGを選んでください。</string>
+    <!-- Finish: the step after the account exists, offering one passkey. -->
+    <string name="signin_gate_passkeyTitle">パスキーを追加</string>
+    <!-- Finish: under the passkey step title. -->
+    <string name="signin_gate_passkeyLede">次回はワンタップです。</string>
+    <!-- Finish: the one-tap button that opens the browser passkey prompt. -->
+    <string name="signin_gate_passkeyAdd">パスキーを追加</string>
+    <string name="signin_gate_passkeyAdd__macos">パスキーを追加</string>
+    <!-- Finish: passkey outcome, success. -->
+    <string name="signin_gate_passkeyAdded">パスキーを追加しました。</string>
+    <!-- Finish: passkey outcome, none added. -->
+    <string name="signin_gate_passkeyFailed">パスキーは追加されませんでした。アカウントから追加できます。</string>
+    <!-- Finish: leaves the passkey step. -->
+    <string name="signin_gate_passkeySkip">スキップ</string>
+    <!-- Finish: the tile of a picture the person picked from their device. -->
+    <string name="signin_gate_pictureYours">アップロードした画像</string>
+    <!-- Finish: shown on arrival when the picked picture could not be saved. -->
+    <string name="signin_gate_uploadFailed">画像を保存できませんでした。アカウントから追加してください。</string>
+    <!-- Finish: the code stage after a resend. Arguments: {email}. Arguments: 1=email. -->
+    <string name="signin_gate_resent">新しいコードを%1$sに送信しました。</string>
+    <!-- Finish: the join offer when the other account is not yet proven. Arguments: {email}. Arguments: 1=email. -->
+    <string name="signin_gate_joinOtherLede">%1$sはすでにPolaris Lockerのアカウントで使われています。別のメールを使うか、先にそのアカウントでログインしてください。</string>
+    <!-- Finish: the screen name field left empty. -->
+    <string name="signin_gate_nameRequired">表示名を入力してください。</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">問題が発生しました</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->

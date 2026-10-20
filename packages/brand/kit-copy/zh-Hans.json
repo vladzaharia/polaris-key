@@ -723,6 +723,17 @@
     "signin.gate.pictureUploadHint": "PNG 或 JPEG",
     "signin.gate.pictureInUse": "使用中",
     "signin.gate.passkey": "之后添加通行密钥",
-    "signin.gate.pictureInvalid": "请选择 PNG 或 JPEG。"
+    "signin.gate.pictureInvalid": "请选择不超过 5 MB 的 PNG 或 JPEG。",
+    "signin.gate.passkeyTitle": "添加通行密钥",
+    "signin.gate.passkeyLede": "下次只需轻点一下。",
+    "signin.gate.passkeyAdd": "添加通行密钥",
+    "signin.gate.passkeyAdded": "已添加通行密钥。",
+    "signin.gate.passkeyFailed": "未添加通行密钥。你可以在账户中添加。",
+    "signin.gate.passkeySkip": "跳过",
+    "signin.gate.pictureYours": "你上传的图片",
+    "signin.gate.uploadFailed": "图片未保存。请在账户中添加。",
+    "signin.gate.resent": "我们已向 {email} 发送新的验证码。",
+    "signin.gate.joinOtherLede": "{email} 已属于一个 Polaris Locker 账户。请使用其他邮箱，或先登录该账户。",
+    "signin.gate.nameRequired": "请输入显示名称。"
   }
 }

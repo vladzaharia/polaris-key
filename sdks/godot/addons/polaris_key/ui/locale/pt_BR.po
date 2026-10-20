@@ -4267,10 +4267,70 @@ msgstr "Em uso"
 msgid "signin.gate.passkey"
 msgstr "Adicionar uma chave de acesso depois"
 
-#. Choose a PNG or JPEG.
+#. Choose a PNG or JPEG up to 5 MB.
 #. Finish step: an upload that is not a PNG or JPEG.
 msgid "signin.gate.pictureInvalid"
-msgstr "Escolha um PNG ou JPEG."
+msgstr "Escolha um PNG ou JPEG de até 5 MB."
+
+#. Add a passkey
+#. Finish: the step after the account exists, offering one passkey.
+msgid "signin.gate.passkeyTitle"
+msgstr "Adicionar uma chave de acesso"
+
+#. Next time is one tap.
+#. Finish: under the passkey step title.
+msgid "signin.gate.passkeyLede"
+msgstr "Da próxima vez, basta um toque."
+
+#. Add a passkey
+#. Finish: the one-tap button that opens the browser passkey prompt.
+msgid "signin.gate.passkeyAdd"
+msgstr "Adicionar uma chave de acesso"
+
+#. macos: Add a Passkey
+msgctxt "macos"
+msgid "signin.gate.passkeyAdd"
+msgstr "Adicionar uma chave de acesso"
+
+#. Passkey added.
+#. Finish: passkey outcome, success.
+msgid "signin.gate.passkeyAdded"
+msgstr "Chave de acesso adicionada."
+
+#. No passkey was added. You can add one in Account.
+#. Finish: passkey outcome, none added.
+msgid "signin.gate.passkeyFailed"
+msgstr "Nenhuma chave de acesso foi adicionada. Você pode adicionar uma em Conta."
+
+#. Skip
+#. Finish: leaves the passkey step.
+msgid "signin.gate.passkeySkip"
+msgstr "Pular"
+
+#. Your upload
+#. Finish: the tile of a picture the person picked from their device.
+msgid "signin.gate.pictureYours"
+msgstr "Seu envio"
+
+#. Your picture wasn't saved. Add one in Account.
+#. Finish: shown on arrival when the picked picture could not be saved.
+msgid "signin.gate.uploadFailed"
+msgstr "Sua imagem não foi salva. Adicione uma em Conta."
+
+#. We sent a new code to {email}.
+#. Finish: the code stage after a resend. Arguments: {email}.
+msgid "signin.gate.resent"
+msgstr "Enviamos um novo código para {email}."
+
+#. {email} already belongs to a Polaris Locker account. Use a different email, or sign in to that account first.
+#. Finish: the join offer when the other account is not yet proven. Arguments: {email}.
+msgid "signin.gate.joinOtherLede"
+msgstr "{email} já pertence a uma conta do Polaris Locker. Use outro e-mail ou entre primeiro nessa conta."
+
+#. Enter a screen name.
+#. Finish: the screen name field left empty.
+msgid "signin.gate.nameRequired"
+msgstr "Digite um nome de exibição."
 
 #. Something went wrong
 #. Core copy (conformance/parity/copy.en.json, fallback).

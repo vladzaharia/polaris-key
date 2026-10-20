@@ -1592,7 +1592,30 @@
     <!-- Finish step: the unticked passkey opt-in. -->
     <string name="signin_gate_passkey">이후 패스키 추가</string>
     <!-- Finish step: an upload that is not a PNG or JPEG. -->
-    <string name="signin_gate_pictureInvalid">PNG 또는 JPEG를 선택하세요.</string>
+    <string name="signin_gate_pictureInvalid">5 MB 이하의 PNG 또는 JPEG를 선택하세요.</string>
+    <!-- Finish: the step after the account exists, offering one passkey. -->
+    <string name="signin_gate_passkeyTitle">패스키 추가</string>
+    <!-- Finish: under the passkey step title. -->
+    <string name="signin_gate_passkeyLede">다음부터는 한 번의 탭으로 됩니다.</string>
+    <!-- Finish: the one-tap button that opens the browser passkey prompt. -->
+    <string name="signin_gate_passkeyAdd">패스키 추가</string>
+    <string name="signin_gate_passkeyAdd__macos">패스키 추가</string>
+    <!-- Finish: passkey outcome, success. -->
+    <string name="signin_gate_passkeyAdded">패스키를 추가했습니다.</string>
+    <!-- Finish: passkey outcome, none added. -->
+    <string name="signin_gate_passkeyFailed">패스키가 추가되지 않았습니다. 계정에서 추가할 수 있습니다.</string>
+    <!-- Finish: leaves the passkey step. -->
+    <string name="signin_gate_passkeySkip">건너뛰기</string>
+    <!-- Finish: the tile of a picture the person picked from their device. -->
+    <string name="signin_gate_pictureYours">내 업로드</string>
+    <!-- Finish: shown on arrival when the picked picture could not be saved. -->
+    <string name="signin_gate_uploadFailed">사진이 저장되지 않았습니다. 계정에서 추가하세요.</string>
+    <!-- Finish: the code stage after a resend. Arguments: {email}. Arguments: 1=email. -->
+    <string name="signin_gate_resent">새 코드를 %1$s(으)로 보냈습니다.</string>
+    <!-- Finish: the join offer when the other account is not yet proven. Arguments: {email}. Arguments: 1=email. -->
+    <string name="signin_gate_joinOtherLede">%1$s은(는) 이미 Polaris Locker 계정에 속해 있습니다. 다른 이메일을 사용하거나 먼저 그 계정에 로그인하세요.</string>
+    <!-- Finish: the screen name field left empty. -->
+    <string name="signin_gate_nameRequired">표시 이름을 입력하세요.</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">문제가 발생했어요</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->
