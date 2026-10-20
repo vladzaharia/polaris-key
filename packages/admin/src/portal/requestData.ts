@@ -12,22 +12,22 @@ import {
  * handle, so a new request never shows the last one's answer. Nothing retries silently; a failed
  * read shows its error and a Try again.
  */
-const rk = {
-  request: (h: string) => ["portal", "signinRequest", h] as const,
-  licenses: (h: string) => ["portal", "signinLicenses", h] as const,
-  devices: (h: string, license: string) =>
+const qk = {
+  signinRequest: (h: string) => ["portal", "signinRequest", h] as const,
+  signinLicenses: (h: string) => ["portal", "signinLicenses", h] as const,
+  signinDevices: (h: string, license: string) =>
     ["portal", "signinDevices", h, license] as const,
-  consent: (h: string) => ["portal", "signinConsent", h] as const,
+  signinConsent: (h: string) => ["portal", "signinConsent", h] as const,
 };
 
-export const requestKeys = rk;
+export const requestKeys = qk;
 
 /** The app asking (works before sign-in: the binder cookie, not a session). */
 export function useSignInRequest(
   handle: string | null,
 ): UseQueryResult<SignInRequestView> {
   return useQuery({
-    queryKey: rk.request(handle ?? ""),
+    queryKey: qk.signinRequest(handle ?? ""),
     queryFn: () => portalApi.signinRequest(handle!),
     enabled: handle !== null,
     staleTime: 60_000,
@@ -39,7 +39,7 @@ export function useSignInLicenses(
   enabled: boolean,
 ): UseQueryResult<LicenseChoiceView> {
   return useQuery({
-    queryKey: rk.licenses(handle),
+    queryKey: qk.signinLicenses(handle),
     queryFn: () => portalApi.signinLicenses(handle),
     enabled,
     staleTime: 0,
@@ -51,7 +51,7 @@ export function useSignInDevices(
   licenseId: string,
 ): UseQueryResult<ReplaceView> {
   return useQuery({
-    queryKey: rk.devices(handle, licenseId),
+    queryKey: qk.signinDevices(handle, licenseId),
     queryFn: () => portalApi.signinDevices(handle, licenseId),
     staleTime: 0,
   });
@@ -62,7 +62,7 @@ export function useSignInConsent(
   enabled: boolean,
 ): UseQueryResult<AppConsentView> {
   return useQuery({
-    queryKey: rk.consent(handle),
+    queryKey: qk.signinConsent(handle),
     queryFn: () => portalApi.signinConsent(handle),
     enabled,
     staleTime: 0,

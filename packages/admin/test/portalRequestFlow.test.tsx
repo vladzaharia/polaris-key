@@ -1,0 +1,549 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { cleanup, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import type {
+  AppConsentView,
+  KeyPreview,
+  LicenseChoice,
+  LicenseChoiceView,
+  ReplaceView,
+  SignInRequestView,
+} from "@polaris-key/protocol/identity";
+import { navigation } from "../src/portal/model/signInRequest.js";
+import {
+  ACCOUNT,
+  axeViolations,
+  CAPS_ALL,
+  fetchedRequests,
+  mockFetch,
+  renderPortal,
+  signedIn,
+} from "./portalHarness.js";
+
+const HANDLE = "rq_AAAAAAAAAAAAAAAAAAAAAA";
+const REQUEST = `/api/signin/requests/${HANDLE}`;
+
+const VIEW: SignInRequestView = {
+  request: HANDLE,
+  client: {
+    product: "diceroll",
+    kind: "native",
+    appName: "Diceroll",
+    developerName: "Example Games",
+    iconUrl: null,
+    origins: [],
+    services: { license: true, cloudSync: true },
+    nameVerified: true,
+  },
+  deviceLabel: "Mara's Pixel 8",
+  userCode: null,
+  expiresAt: 0,
+  purpose: "signin",
+  licenseChoice: "card",
+  scope: ["openid"],
+};
+
+const ROW: LicenseChoice = {
+  id: "lic_std",
+  tierName: "Standard",
+  name: "Diceroll Standard",
+  origin: "key",
+  access: "seats",
+  seats: { used: 1, limit: 3 },
+  current: false,
+  expiresAt: null,
+  state: "free",
+  replace: null,
+  freeDeviceUrl: null,
+};
+const FULL: LicenseChoice = {
+  ...ROW,
+  id: "lic_full",
+  name: "Diceroll Family",
+  tierName: "Family",
+  origin: "free",
+  seats: { used: 3, limit: 3 },
+  state: "full",
+  replace: { allowed: true, retryAfter: null },
+};
+
+function choices(over: Partial<LicenseChoiceView> = {}): LicenseChoiceView {
+  return {
+    state: "choose",
+    choices: [ROW],
+    keep: false,
+    preselected: ROW.id,
+    create: null,
+    getLicense: null,
+    ...over,
+  };
+}
+
+const CONSENT: AppConsentView = {
+  request: HANDLE,
+  person: {
+    displayName: "Mara Fennick",
+    email: ACCOUNT.email,
+    avatarUrl: null,
+  },
+  items: [
+    { kind: "cloudSync" },
+    { kind: "profile", claims: ["name", "picture", "email"] },
+  ],
+  scopeHash: "x",
+  firstTime: true,
+  changed: false,
+};
+
+const DEVICES: ReplaceView = {
+  licenseId: FULL.id,
+  seats: { used: 3, limit: 3 },
+  devices: [
+    {
+      id: "d1",
+      label: "Work laptop",
+      platform: "macOS",
+      deviceType: "computer",
+      lastSeen: Math.floor(Date.now() / 1000) - 30 * 86400,
+      leastRecent: true,
+      activeNow: false,
+      thisBrowser: false,
+    },
+    {
+      id: "d2",
+      label: "Studio Mac mini",
+      platform: "macOS",
+      deviceType: "computer",
+      lastSeen: Math.floor(Date.now() / 1000) - 60,
+      leastRecent: false,
+      activeNow: true,
+      thisBrowser: false,
+    },
+  ],
+  replace: { allowed: true, retryAfter: null },
+};
+
+let went: string[] = [];
+beforeEach(() => {
+  went = [];
+  vi.spyOn(navigation, "go").mockImplementation((u) => void went.push(u));
+  window.history.replaceState(null, "", `/signin?request=${HANDLE}`);
+  window.sessionStorage.clear();
+});
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+  window.history.replaceState(null, "", "/");
+});
+
+function flow(
+  licenses: LicenseChoiceView,
+  extra: Record<string, unknown> = {},
+) {
+  mockFetch({
+    ...signedIn(),
+    [REQUEST]: VIEW,
+    [`${REQUEST}/licenses`]: licenses,
+    [`${REQUEST}/consent`]: CONSENT,
+    [`${REQUEST}/licenses/${FULL.id}/devices`]: DEVICES,
+    [`POST ${REQUEST}/continue`]: { redirect: "https://app.example/cb?code=1" },
+    [`POST ${REQUEST}/cancel`]: {
+      redirect: "https://app.example/cb?error=access_denied",
+    },
+    ...extra,
+  });
+}
+
+function posted(path: string): unknown {
+  const call = vi
+    .mocked(fetch)
+    .mock.calls.find(
+      ([u, init]) =>
+        String(u).endsWith(path) && (init?.method ?? "GET") === "POST",
+    );
+  return call?.[1]?.body ? JSON.parse(String(call[1].body)) : undefined;
+}
+
+describe("the app card, signed out (SIGN-IN.md §3.1)", () => {
+  it("shows the request's header and footer from data alone, and ignores a spoofed name", async () => {
+    window.history.replaceState(
+      null,
+      "",
+      `/signin?request=${HANDLE}&appName=Evil&developer=Mallory`,
+    );
+    mockFetch({
+      "/api/me": { status: 401 },
+      "/api/capabilities": CAPS_ALL,
+      [REQUEST]: VIEW,
+    });
+    renderPortal();
+    expect(
+      await screen.findByText("wants you to sign in", { exact: false }),
+    ).toBeTruthy();
+    expect(screen.getByText("Diceroll", { selector: "strong" })).toBeTruthy();
+    expect(screen.getByText("Example Games")).toBeTruthy();
+    expect(screen.getByText("on Mara's Pixel 8")).toBeTruthy();
+    expect(
+      screen.getByText(
+        "Polaris Locker signs you in for Diceroll. Example Games never sees your codes or passkeys.",
+      ),
+    ).toBeTruthy();
+    expect(document.body.textContent).not.toMatch(/Evil|Mallory/);
+    expect(document.body.textContent).not.toMatch(/Polaris Key/);
+  });
+
+  it("an unverified name draws the neutral frame, not a developer", async () => {
+    mockFetch({
+      "/api/me": { status: 401 },
+      "/api/capabilities": CAPS_ALL,
+      [REQUEST]: {
+        ...VIEW,
+        client: { ...VIEW.client, appName: "diceroll", nameVerified: false },
+      },
+    });
+    renderPortal();
+    await screen.findByText("wants you to sign in", { exact: false });
+    expect(screen.queryByText("Example Games")).toBeNull();
+  });
+
+  it("a request that is gone says so and offers no sign-in", async () => {
+    mockFetch({
+      "/api/me": { status: 401 },
+      "/api/capabilities": CAPS_ALL,
+      [REQUEST]: { status: 404, body: { error: "not_found" } },
+    });
+    renderPortal();
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "This sign-in has ended",
+      }),
+    ).toBeTruthy();
+    expect(screen.queryByRole("textbox", { name: "Email" })).toBeNull();
+  });
+
+  it("Identity off: the product card says so (identity_disabled)", async () => {
+    window.history.replaceState(
+      null,
+      "",
+      "/signin?product=diceroll&error=identity_disabled",
+    );
+    mockFetch({
+      "/api/me": { status: 401 },
+      "/api/capabilities": {
+        ...CAPS_ALL,
+        product: {
+          slug: "diceroll",
+          name: "Diceroll",
+          developerName: "Example Games",
+        },
+      },
+    });
+    renderPortal();
+    expect(
+      await screen.findByText(
+        "Diceroll doesn't use Polaris Locker sign-in. Open Diceroll and enter your license key there.",
+      ),
+    ).toBeTruthy();
+    expect(
+      screen.queryByText("wants you to sign in", { exact: false }),
+    ).toBeNull();
+  });
+});
+
+describe("LicenseChoiceStep (§3.6)", () => {
+  it("lists the licences, preselects the server's pick and goes on to consent with it", async () => {
+    flow(choices());
+    renderPortal();
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "Choose a license for this device",
+      }),
+    ).toBeTruthy();
+    const radio = screen.getByRole("radio", { name: /Diceroll Standard/ });
+    expect(radio.getAttribute("aria-checked")).toBe("true");
+    expect(screen.getByText("1 of 3 devices")).toBeTruthy();
+    expect(screen.getByText("Added with a key · Lifetime")).toBeTruthy();
+    expect(await axeViolations()).toEqual([]);
+    await userEvent.click(
+      screen.getByRole("button", { name: "Use this license and continue" }),
+    );
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "Continue to Diceroll as Mara?",
+      }),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(
+        "Diceroll Standard Standard · Lifetime · Mara's Pixel 8 becomes device 2 of 3",
+      ),
+    ).toBeTruthy();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Continue to Diceroll" }),
+    );
+    await waitFor(() =>
+      expect(posted(`${REQUEST}/continue`)).toEqual({
+        choice: { kind: "license", licenseId: "lic_std" },
+      }),
+    );
+    await waitFor(() =>
+      expect(went).toEqual(["https://app.example/cb?code=1"]),
+    );
+  });
+
+  it("nothing chosen: an enabled primary and the error under the group", async () => {
+    flow(
+      choices({
+        preselected: null,
+        choices: [ROW, { ...ROW, id: "lic_b", name: "Other" }],
+      }),
+    );
+    renderPortal();
+    const primary = await screen.findByRole("button", {
+      name: "Use this license and continue",
+    });
+    expect((primary as HTMLButtonElement).disabled).toBe(false);
+    await userEvent.click(primary);
+    const group = screen.getByRole("radiogroup");
+    expect(
+      await screen.findByText("Choose a license to continue."),
+    ).toBeTruthy();
+    expect(group.getAttribute("aria-invalid")).toBe("true");
+    expect(group.getAttribute("aria-describedby")).toBeTruthy();
+    expect(
+      fetchedRequests().some(
+        (r) => r.startsWith("POST") && r.includes("/continue"),
+      ),
+    ).toBe(false);
+  });
+
+  it("every licence full: Replace a device, the safety line, nothing preselected, then a done state naming both devices", async () => {
+    flow(
+      choices({
+        choices: [FULL, { ...FULL, id: "lic_full2", name: "Other" }],
+        preselected: null,
+      }),
+    );
+    renderPortal();
+    await screen.findByRole("heading", {
+      level: 1,
+      name: "Choose a license for this device",
+    });
+    expect(screen.getAllByText("No free devices").length).toBeGreaterThan(0);
+    await userEvent.click(
+      screen.getByRole("radio", { name: /Diceroll Family/ }),
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Replace a device" }),
+    );
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "Replace a device",
+      }),
+    ).toBeTruthy();
+    // Nothing preselected, an enabled primary, the error at the group.
+    const devices = screen.getAllByRole("radio");
+    expect(
+      devices.every((d) => d.getAttribute("aria-checked") === "false"),
+    ).toBe(true);
+    expect(
+      screen.getByText(
+        "The device you choose signs out of Diceroll. It can sign in again later if a seat is free. We'll email you about it.",
+      ),
+    ).toBeTruthy();
+    const primary = screen.getByRole("button", { name: "Replace and sign in" });
+    expect((primary as HTMLButtonElement).disabled).toBe(false);
+    await userEvent.click(primary);
+    expect(await screen.findByText("Choose a device to replace.")).toBeTruthy();
+    expect(await axeViolations()).toEqual([]);
+
+    await userEvent.click(
+      screen.getByRole("radio", { name: /Studio Mac mini/ }),
+    );
+    expect(
+      screen.getByText("Studio Mac mini is in use right now."),
+    ).toBeTruthy();
+    await userEvent.click(primary);
+    // Consent names what replaces what.
+    expect(
+      await screen.findByText(
+        "Diceroll Family Family · replaces Studio Mac mini",
+      ),
+    ).toBeTruthy();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Continue to Diceroll" }),
+    );
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "Device replaced" }),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(
+        "Studio Mac mini signed out of Diceroll. Mara's Pixel 8 is signed in.",
+      ),
+    ).toBeTruthy();
+    expect(posted(`${REQUEST}/continue`)).toEqual({
+      choice: { kind: "license", licenseId: "lic_full", replaceDeviceId: "d2" },
+    });
+  });
+
+  it("D4: with no licence and an automatic grant, choice is skipped and consent says New", async () => {
+    flow(
+      choices({
+        state: "autoIssue",
+        choices: [],
+        preselected: null,
+        create: { tierName: "Free", access: "account" },
+      }),
+    );
+    renderPortal();
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "Continue to Diceroll as Mara?",
+      }),
+    ).toBeTruthy();
+    expect(
+      screen.getByText("New: Free license, created when you continue"),
+    ).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Change" })).toBeNull();
+  });
+
+  it("Don't allow returns access_denied; consent has equal buttons and no toggles", async () => {
+    flow(choices());
+    renderPortal();
+    await userEvent.click(
+      await screen.findByRole("button", {
+        name: "Use this license and continue",
+      }),
+    );
+    await screen.findByRole("heading", {
+      level: 1,
+      name: "Continue to Diceroll as Mara?",
+    });
+    expect(screen.queryAllByRole("switch")).toHaveLength(0);
+    const main = screen.getByRole("main");
+    const allow = within(main).getByRole("button", {
+      name: "Continue to Diceroll",
+    });
+    const deny = within(main).getByRole("button", { name: "Don't allow" });
+    expect(allow.className).toContain("min-h-12");
+    expect(deny.className).toContain("min-h-12");
+    expect(allow.className).toContain("w-full");
+    expect(deny.className).toContain("w-full");
+    await userEvent.click(deny);
+    await waitFor(() => expect(posted(`${REQUEST}/cancel`)).toBeDefined());
+    await waitFor(() =>
+      expect(went).toEqual(["https://app.example/cb?error=access_denied"]),
+    );
+  });
+
+  it("Change goes back to the list with the selection kept", async () => {
+    flow(choices());
+    renderPortal();
+    await userEvent.click(
+      await screen.findByRole("button", {
+        name: "Use this license and continue",
+      }),
+    );
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Change" }),
+    );
+    expect(
+      (
+        await screen.findByRole("radio", { name: /Diceroll Standard/ })
+      ).getAttribute("aria-checked"),
+    ).toBe("true");
+  });
+});
+
+describe("AccountUpgrade on the key step (§3.9)", () => {
+  const KEY = `pkey_diceroll_${"A".repeat(22)}`;
+  function preview(over: Partial<KeyPreview> = {}): KeyPreview {
+    return {
+      product: {
+        slug: "diceroll",
+        name: "Diceroll",
+        branding: null,
+        developerName: "Example Games",
+        iconUrl: null,
+        headerUrl: null,
+      },
+      verdict: "addable",
+      license: { tierName: "Standard", term: "perpetual" },
+      keyEntries: { used: 3, limit: 5 },
+      upgrade: "skippable",
+      ...over,
+    };
+  }
+  async function enter(handle: boolean, p: KeyPreview) {
+    if (!handle) window.history.replaceState(null, "", "/");
+    mockFetch({
+      "/api/me": { status: 401 },
+      "/api/capabilities": CAPS_ALL,
+      [REQUEST]: VIEW,
+      "POST /api/key/preview": p,
+    });
+    renderPortal();
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Have a license key?" }),
+    );
+    await userEvent.click(await screen.findByRole("textbox"));
+    await userEvent.paste(KEY);
+    await userEvent.click(screen.getByRole("button", { name: "Continue" }));
+  }
+
+  it("skippable while entries remain: the meter is neutral, never amber, and Skip is there for an app", async () => {
+    await enter(true, preview());
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "Keep Diceroll in an account",
+      }),
+    ).toBeTruthy();
+    expect(
+      screen.getByText("2 of 5 key entries left · This will be entry 4"),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("img", { name: "3 of 5 key entries used" }).innerHTML,
+    ).not.toMatch(/warning|amber|danger/);
+    expect(screen.getByRole("button", { name: "Skip for now" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Create account" })).toBeTruthy();
+    expect(await axeViolations()).toEqual([]);
+  });
+
+  it("the standalone portal has no skip", async () => {
+    await enter(false, preview());
+    await screen.findByRole("heading", {
+      level: 1,
+      name: "Keep Diceroll in an account",
+    });
+    expect(screen.queryByRole("button", { name: "Skip for now" })).toBeNull();
+  });
+
+  it("forced at zero entries: a neutral callout, Create account, no skip", async () => {
+    await enter(
+      true,
+      preview({ keyEntries: { used: 5, limit: 5 }, upgrade: "forced" }),
+    );
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "Create an account to keep Diceroll",
+      }),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(/This key has no entries left in Diceroll/),
+    ).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Skip for now" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Create account" })).toBeTruthy();
+  });
+
+  it("a key in another account is refused under the field", async () => {
+    await enter(false, preview({ verdict: "license_owned", license: null }));
+    expect(await screen.findByText(/already in another/i)).toBeTruthy();
+  });
+});

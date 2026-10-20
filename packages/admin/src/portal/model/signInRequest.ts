@@ -304,3 +304,10 @@ export function safeRedirect(raw: string): string | null {
     return null;
   }
 }
+
+/** The one place the card leaves for the app: a seam, so a test can watch where it goes. */
+export const navigation = {
+  go(url: string): void {
+    window.location.assign(url);
+  },
+};

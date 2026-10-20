@@ -18,6 +18,7 @@ import {
 import { portalErrorCopy } from "../../errors.js";
 import { portalKeys } from "../../data.js";
 import {
+  navigation,
   safeRedirect,
   thisDeviceName,
   type Chosen,
@@ -125,7 +126,7 @@ export function RequestFlow({
 
   const leave = (redirect: string): void => {
     const to = safeRedirect(redirect);
-    if (to) window.location.assign(to);
+    if (to) navigation.go(to);
     else setError(t("signin.request.gone"));
   };
 
@@ -178,7 +179,9 @@ export function RequestFlow({
             : t("signin.choice.raced"),
         );
         setChosen(null);
-        await qc.invalidateQueries({ queryKey: requestKeys.licenses(handle) });
+        await qc.invalidateQueries({
+          queryKey: requestKeys.signinLicenses(handle),
+        });
         go({ kind: "choice" }, "back");
         return;
       }
