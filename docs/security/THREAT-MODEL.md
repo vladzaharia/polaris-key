@@ -7252,7 +7252,12 @@ hash), so an assertion from any other origin, a subdomain or a look-alike is ref
 record keeps `rpId` and a credential keeps its stored `rp_id`: one RP id per ceremony. Adding an
 origin to the list is the whole trust change: that origin's page can start a passkey sign-in for
 every account, so the customer origin is a deploy-time value, never a request or database one.
-Firefox does not support ROR: a browser without it cannot use a passkey on the customer host, and
+The customer origin is trusted whenever the customer host is usable, whatever the
+`customer.host` mode (`off` included). Removing `CUSTOMER_ORIGIN` stops server verification at
+once, but a browser may keep the cached list for up to 5 minutes (`max-age=300`). Both
+verifications also refuse client data with `crossOrigin: true` (the library does not check it),
+and the card's `frame-ancestors 'none'` already blocks cross-origin ceremonies. Firefox does not
+support ROR: a browser without it cannot use a passkey on the customer host, and
 the card offers email and the providers instead (LK-06 detects it). Accounts whose only sign-in
 method is a passkey are an O10 preflight count before the cutover. Tests:
 `test/webauthnRelatedOrigins.test.ts`, `test-workerd/passkeys.test.ts` (customer origin).

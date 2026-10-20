@@ -61,6 +61,8 @@ const FLAG_AT = 0x40;
 export interface CeremonyOverrides {
   /** The origin the "browser" reports (default `https://key.plrs.im`). */
   origin?: string;
+  /** The client data `crossOrigin` flag (default false). */
+  crossOrigin?: boolean;
   /** The RP id the authenticator hashes (default the options' `rpId` / `rp.id`). */
   rpId?: string;
   /** The challenge the client data carries (default the options'). */
@@ -158,10 +160,13 @@ export class SoftAuthenticator {
     return FLAG_UP | FLAG_UV | (this.synced ? FLAG_BE | FLAG_BS : 0);
   }
 
-  private clientData(type: string, challenge: string, origin: string): Bytes {
-    return utf8(
-      JSON.stringify({ type, challenge, origin, crossOrigin: false }),
-    );
+  private clientData(
+    type: string,
+    challenge: string,
+    origin: string,
+    crossOrigin = false,
+  ): Bytes {
+    return utf8(JSON.stringify({ type, challenge, origin, crossOrigin }));
   }
 
   private async sign(data: Bytes): Promise<Bytes> {
@@ -221,6 +226,7 @@ export class SoftAuthenticator {
       o.type ?? "webauthn.create",
       o.challenge ?? options.challenge,
       o.origin ?? "https://key.plrs.im",
+      o.crossOrigin,
     );
     return {
       id: this.id,
@@ -255,6 +261,7 @@ export class SoftAuthenticator {
       o.type ?? "webauthn.get",
       o.challenge ?? options.challenge,
       o.origin ?? "https://key.plrs.im",
+      o.crossOrigin,
     );
     const signer = o.signWith ?? this;
     const signature = await signer.sign(

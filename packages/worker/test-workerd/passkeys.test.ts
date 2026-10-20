@@ -269,6 +269,48 @@ describe("passkeys on workerd", () => {
       expect(res.status).toBe(201);
     });
 
+    it("refuses a cross-origin ceremony (crossOrigin: true), at sign-in and at registration", async () => {
+      const { browser } = await world("lockerframe@example.com");
+      const auth = await SoftAuthenticator.create();
+      expect((await enrol(browser, auth)).status).toBe(201);
+      const card = new Browser(LOCKER, lockerEnv);
+      const options = await challenge(card);
+      const res = await card.send("POST", "/api/signin/passkey/verify", {
+        response: await auth.assert(options, {
+          origin: LOCKER,
+          crossOrigin: true,
+        }),
+      });
+      expect(res.status).toBe(401);
+      const start = await browser.send("POST", "/api/me/passkeys/options", {});
+      const { options: reg } = (await start.json()) as {
+        options: Parameters<SoftAuthenticator["register"]>[0];
+      };
+      const other = await SoftAuthenticator.create();
+      const made = await browser.send("POST", "/api/me/passkeys", {
+        response: await other.register(reg, { crossOrigin: true }),
+      });
+      expect(made.status).toBeGreaterThanOrEqual(400);
+    });
+
+    it("refuses an assertion for the customer origin once the customer host is unusable", async () => {
+      const { browser } = await world("lockergone@example.com");
+      const auth = await SoftAuthenticator.create();
+      expect((await enrol(browser, auth)).status).toBe(201);
+      const card = new Browser(LOCKER, lockerEnv);
+      const options = await challenge(card);
+      // CUSTOMER_ORIGIN removed between the challenge and the answer.
+      const gone = new Browser("https://key.plrs.im", {
+        ...lockerEnv,
+        CUSTOMER_ORIGIN: undefined,
+      } as WorkerEnv);
+      gone.jar = card.jar;
+      const res = await gone.send("POST", "/api/signin/passkey/verify", {
+        response: await auth.assert(options, { origin: LOCKER }),
+      });
+      expect(res.status).toBe(401);
+    });
+
     it("refuses an origin that is not on the list, and a ceremony on an unlisted host", async () => {
       const { browser } = await world("lockerbad@example.com");
       const auth = await SoftAuthenticator.create();

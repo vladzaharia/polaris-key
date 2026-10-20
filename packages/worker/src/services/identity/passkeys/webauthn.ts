@@ -73,6 +73,22 @@ const MAX_AUTHENTICATOR_DATA = 8 * 1024;
 const MAX_SIGNATURE = 2 * 1024;
 const MAX_ATTESTATION_OBJECT = 64 * 1024;
 
+/**
+ * True when the client data says the ceremony ran in a cross-origin frame. The library does not
+ * check `crossOrigin`; a ceremony here is top-level only (defence in depth beside the card's
+ * `frame-ancestors 'none'`).
+ */
+function isCrossOrigin(clientDataJSON: string): boolean {
+  try {
+    const data = JSON.parse(
+      new TextDecoder().decode(isoBase64URL.toBuffer(clientDataJSON)),
+    ) as { crossOrigin?: unknown };
+    return data.crossOrigin === true;
+  } catch {
+    return true;
+  }
+}
+
 export interface RelyingParty {
   /** The RP id: the console host (`key.plrs.im`). */
   id: string;
@@ -349,6 +365,8 @@ export async function verifyAssertion(input: {
   passkey: PasskeyRow;
   transports: string[];
 }): Promise<AssertionVerdict> {
+  if (isCrossOrigin(input.response.response.clientDataJSON))
+    return { ok: false, reason: "invalid" };
   let result: Awaited<ReturnType<typeof verifyAuthenticationResponse>>;
   try {
     result = await verifyAuthenticationResponse({
@@ -408,6 +426,8 @@ export async function verifyRegistration(input: {
   challenge: string;
   rp: RelyingParty;
 }): Promise<RegistrationVerdict> {
+  if (isCrossOrigin(input.response.response.clientDataJSON))
+    return { ok: false };
   let result: Awaited<ReturnType<typeof verifyRegistrationResponse>>;
   try {
     result = await verifyRegistrationResponse({

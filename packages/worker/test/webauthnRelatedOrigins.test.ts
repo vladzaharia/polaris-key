@@ -60,4 +60,19 @@ describe("LK-05 related origins", () => {
       name: "Polaris Key",
     });
   });
+
+  it("refuses a trailing-dot or case variant of the customer origin", () => {
+    for (const url of [
+      "https://polaris.locker./api/x",
+      "https://POLARIS.LOCKER/api/x",
+      "https://polaris.locker:8443/api/x",
+      "http://polaris.locker/api/x",
+    ]) {
+      const rp = passkeyRelyingParty(on, get(url));
+      // The URL parser lowercases the host, so only the exact origin passes.
+      if (new URL(url).origin === "https://polaris.locker")
+        expect(rp?.origin).toBe("https://polaris.locker");
+      else expect(rp, url).toBeNull();
+    }
+  });
 });
