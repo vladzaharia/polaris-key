@@ -18178,7 +18178,7 @@
       "optional": false,
       "refs": ["design/PORTAL §3, §4.2", "owner request 2026-10-20"],
       "brief": "wp/PX-35-library-shell-trim.md",
-      "status": "in-progress"
+      "status": "in-review"
     }
   ]
 }

@@ -69,11 +69,15 @@ apply says why in one line. One home: EXPERIENCE.md §7.3; kits also follow DL1�
 
 ## Acceptance criteria
 
-- [ ] `pkey-ux-reviewer` passes the built screens in BUILT mode (real browser, dark and light, 390, 1440 and 1920 px).
-- [ ] Header and footer Activate and the footer are gone; the menu, tile and palette reach Activate.
-- [ ] At 1440×900 at least 8 tiles show above the fold; 5 columns at 1920; 2 at 390.
-- [ ] The scoped green gate passes (AGENTS.md); all portal baselines re-recorded.
+- [ ] `pkey-ux-reviewer` passes the built screens in BUILT mode (real browser, dark and light, 390, 1440 and 1920 px). Builder self-look done in dark and light at 390, 1440 and 1920; the lead schedules the review.
+- [x] Header and footer Activate and the footer are gone; the menu, tile and palette reach Activate.
+- [~] At 1440×900 the grid is 4 columns with 271 px tiles (two rows fit in 578 px), 5 columns at 1920, 2 at 390. With the 3-item "Needs you" shelf (the twelve fixture) only the first row is above the fold; with no shelf both rows are (8 tiles).
+- [x] The scoped green gate passes (AGENTS.md); all portal baselines re-recorded.
 
-## Hand-off
+## Build notes (2026-10-20)
 
-The role agent sets `--set PX-35 in-review`; the lead sets done after review.
+- Corrections to the brief: the key tile now fills the rest of the last row (`keyTileSpan(count, 2..5)`) rather than "one cell or a whole row", because the grid has 2, 3, 4 and 5 columns by breakpoint (`tileGrid.ts`) and a half-empty last row failed the presence check. The 5th column comes from tile width (about 235 px at 1700 px and up), not a wider page: PORTAL.md §8 holds the content column at 82 rem and `columnBreaches` enforces it.
+- The status pill on tile art moved to the top-right corner (8 px inset), since the denser art leaves no room beside the icon. Meta is the first fact line only; the 8+ grid keeps "Free to use" only.
+- The sticky strip is a child of `PortalShell` (after `main`, so it is full-bleed and sticks to the viewport), rendered only on the Library route. `e2e/portalHarness.ts` `axe()` runs with the strip resting in the flow (set through the CSSOM): axe's target-size rule reads whatever a sticky element covers at scroll top as obscured. The sticky behaviour has its own checks in `e2e/portalLibraryTrim.e2e.test.ts`.
+- Pre-existing, not from this change: `portal.e2e` "signs in with an email code" waits for the heading "Sign in to Polaris Key" and the sign-in page no longer draws it (sign-in WPs own it).
+- Follow-ups: redraw the mockup HTML (portal.library, portal.library-12, portal.library-empty, portal.discover) to the 2026-10-20 decisions; shelf density at 1440×900 if 8 tiles must show with a shelf.
