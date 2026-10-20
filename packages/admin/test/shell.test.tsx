@@ -487,7 +487,9 @@ describe("accents and the section bit (BRAND.md §6)", () => {
     // The display cut's terminal bit (the kit's "gold" path).
     const BIT_D = "M70 85 L84 71 L90 77 L76 91 Z";
     boot("#/p/djdl", { services: ALL_ON });
-    const brand = await screen.findByRole("link", { name: "Polaris Key Console home" });
+    const brand = await screen.findByRole("link", {
+      name: "Polaris Key Console home",
+    });
     expect(brand.querySelector("svg")!.getAttribute("width")).toBe("48");
     const theme = (): "dark" | "light" =>
       document.documentElement.classList.contains("light") ? "light" : "dark";
@@ -910,7 +912,9 @@ describe("page heading, title and focus", () => {
     act(() => {
       window.location.hash = "#/products";
     });
-    await waitFor(() => expect(document.title).toBe("Products · Polaris Key Console"));
+    await waitFor(() =>
+      expect(document.title).toBe("Products · Polaris Key Console"),
+    );
   });
 
   it("moves focus to the new page's h1 and announces it", async () => {

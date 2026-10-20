@@ -203,6 +203,20 @@ async function routeRequest(
   const route = matchRoute(url.pathname);
   if (onCustomerHost && !CUSTOMER_ROUTE_KINDS.has(route.kind))
     return notFound();
+  // The API host's root is the console's front door while `customer.host` is on (the customer
+  // site lives on its own host then). While `off`, `/` is still the customer portal. A hash route
+  // (`/#/library`) never reaches the Worker; those old bookmarks need LK-11's client redirect.
+  if (
+    !onCustomerHost &&
+    route.kind === "portalSpa" &&
+    (url.pathname === "/" || url.pathname === "/index.html") &&
+    (req.method === "GET" || req.method === "HEAD") &&
+    (await customerHostMode(env, db)) !== "off"
+  )
+    return new Response(null, {
+      status: 302,
+      headers: { location: "/manage", "cache-control": "no-store" },
+    });
   // The portal is one account across every product, so it has no product to dispatch on; when
   // it reaches a product's downloads it asks for that product's hooks (P2b-04: the delivery
   // access every download surface reads), built here from the composition root's registry under

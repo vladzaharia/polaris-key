@@ -152,6 +152,28 @@ describe("the customer.host switch", () => {
     expect(await customerHostMode(env, db)).toBe("permanent");
   });
 
+  it("the API host's root is the customer portal while off and the console's front door once on (LK-14)", async () => {
+    env.CUSTOMER_ORIGIN = CUSTOMER;
+    const get = (path: string, init?: RequestInit) =>
+      dispatchWith(new Request(`${API}${path}`, init), env, db, NOW);
+    expect((await get("/")).status).toBe(200);
+    await setMode("on");
+    for (const path of ["/", "/index.html"]) {
+      const res = await get(path);
+      expect(res.status, path).toBe(302);
+      expect(res.headers.get("location")).toBe("/manage");
+    }
+    // Only the root: the rest of the portal's routes and assets are untouched.
+    expect((await get("/activate")).status).toBe(200);
+    expect((await get("/manage")).status).not.toBe(302);
+    // The customer host's own root is still the portal.
+    expect(
+      (await dispatchWith(new Request(`${CUSTOMER}/`), env, db, NOW)).status,
+    ).toBe(200);
+    await setMode("off");
+    expect((await get("/")).status).toBe(200);
+  });
+
   it("a hard off in [vars] beats a console value", async () => {
     env.CUSTOMER_ORIGIN = CUSTOMER;
     await setMode("on");
