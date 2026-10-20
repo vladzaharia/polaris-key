@@ -1228,12 +1228,15 @@ describe("main flows", () => {
   });
 
   it("jumps to a product with ⌘K from 8 products", async () => {
-    const o = await open("twelve", "/");
-    await h1(o.page, "Your library");
+    // Off the Library: its toolbar search takes ⌘K there.
+    const o = await open("twelve", "/#/p/nightfall");
+    await h1(o.page, "Nightfall");
     // ⌘K listens only once the library has loaded (8+ products), after the h1 shows.
-    await o.page.getByText("Glyphsmith").first().waitFor();
-    await o.page.keyboard.press("Control+k");
     const palette = o.page.getByRole("dialog", { name: "Jump to a product" });
+    for (let i = 0; i < 40 && !(await palette.isVisible()); i++) {
+      await o.page.keyboard.press("Control+k");
+      await o.page.waitForTimeout(250);
+    }
     await palette.waitFor();
     await o.page.keyboard.type("glyph");
     await shoot(o.page, "switcher-desktop-dark");

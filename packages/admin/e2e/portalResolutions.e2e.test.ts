@@ -403,7 +403,7 @@ describe("the tablet and short-screen rules (PORTAL.md §8)", () => {
     }
   });
 
-  it("the compact grid keeps three columns on tablets, every action label inside its button", async ({
+  it("the compact grid fills its columns from 17 rem tiles (two on tablets), every action label inside its button", async ({
     expect,
   }) => {
     const o = await portal.open("twelve", "/", { width: 761 });
@@ -417,7 +417,19 @@ describe("the tablet and short-screen rules (PORTAL.md §8)", () => {
           "[data-library-grid=compact]",
           "article .mt-auto > :first-child",
         );
-        expect.soft(grid.columns, `columns at ${width}`).toBe(3);
+        expect
+          .soft(grid.columns, `columns at ${width}`)
+          .toBe(
+            Math.floor(
+              ((await o.page.evaluate(
+                () =>
+                  document.querySelector("[data-library-grid=compact]")!
+                    .clientWidth,
+              )) +
+                20) /
+                (17 * 16 + 20),
+            ),
+          );
         for (const [i, it] of grid.items.entries())
           expect
             .soft(it.action?.fits, `tile ${i}'s action at ${width}`)
@@ -793,9 +805,9 @@ describe("the tablet and short-screen rules (PORTAL.md §8)", () => {
   it("Jump to a product gives focus back to its opener when closed without a jump", async ({
     expect,
   }) => {
-    const o = await portal.open("twelve", "/", { width: 700 });
+    const o = await portal.open("twelve", "/#/p/nightfall", { width: 700 });
     try {
-      await h1(o.page, "Your library");
+      await h1(o.page, "Nightfall");
       const trigger = o.page
         .getByRole("banner")
         .getByRole("button", { name: "Jump to a product" });
@@ -819,17 +831,6 @@ describe("the tablet and short-screen rules (PORTAL.md §8)", () => {
           .poll(focused, { message: `after Escape at ${width}` })
           .toBe("Jump to a product");
       }
-      // ⌘K from a tile's link, then Escape: back on the link.
-      const link = o.page
-        .getByRole("main")
-        .getByRole("link", { name: "Glyphsmith", exact: true })
-        .first();
-      await link.focus();
-      await o.page.keyboard.press("Control+k");
-      await dialog.waitFor();
-      await o.page.keyboard.press("Escape");
-      await dialog.waitFor({ state: "detached" });
-      await expect.poll(focused).toBe("Glyphsmith");
     } finally {
       await o.close();
     }

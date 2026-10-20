@@ -1204,13 +1204,17 @@ export const SHIPPED: ShippedState[] = [
     id: "switcher",
     title: "Jump to a product (⌘K)",
     scenario: "twelve",
-    path: "/",
+    // Off the Library: its toolbar search takes ⌘K there.
+    path: "/#/p/nightfall",
     ready: async (p) => {
-      await h1(p, "Your library");
+      await h1(p, "Nightfall");
       // ⌘K listens only once the library has loaded (8+ products), after the h1 shows.
-      await p.getByText("Glyphsmith").first().waitFor();
-      await p.keyboard.press("Control+k");
-      await p.getByRole("dialog", { name: "Jump to a product" }).waitFor();
+      const dialog = p.getByRole("dialog", { name: "Jump to a product" });
+      for (let i = 0; i < 40 && !(await dialog.isVisible()); i++) {
+        await p.keyboard.press("Control+k");
+        await p.waitForTimeout(250);
+      }
+      await dialog.waitFor();
       await p.keyboard.type("glyph");
       await p
         .getByRole("option", { name: /Glyphsmith/ })
