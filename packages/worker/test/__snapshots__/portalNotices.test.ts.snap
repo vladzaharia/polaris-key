@@ -202,10 +202,10 @@ You are receiving this because of a change to your Polaris Key account. We sent 
 
 exports[`notice templates: copy > newDeviceSignIn: subject and plain text 1`] = `
 {
-  "subject": "A new device signed in to your Polaris Key account",
-  "text": "Mara's MacBook Pro signed in from Lisbon, Portugal. If this wasn't you, sign it out in Polaris Key under Where you're signed in.
+  "subject": "A new device signed in to your Polaris Locker account",
+  "text": "Mara's MacBook Pro signed in from Lisbon, Portugal. If this wasn't you, sign it out in Polaris Locker under Where you're signed in.
 
-Open Polaris Key: https://key.plrs.im/#/account/sessions
+Open Polaris Locker: https://key.plrs.im/#/account/sessions
 
 Wasn't you? Secure your account: https://key.plrs.im/#/account/methods
 

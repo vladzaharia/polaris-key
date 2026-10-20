@@ -99,7 +99,7 @@
     {
       "board": "android",
       "state": "sign-in",
-      "text": "Polaris Key handles sign-in. Harbor Audio never sees your passkeys."
+      "text": "Polaris Locker handles sign-in. Harbor Audio never sees your passkeys."
     },
     {
       "board": "android",
@@ -539,7 +539,7 @@
     {
       "board": "ios",
       "state": "sign-in",
-      "text": "Polaris Key handles sign-in. Harbor Audio never sees your passkeys."
+      "text": "Polaris Locker handles sign-in. Harbor Audio never sees your passkeys."
     },
     {
       "board": "ios",

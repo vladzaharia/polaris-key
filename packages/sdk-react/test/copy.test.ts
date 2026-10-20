@@ -139,7 +139,7 @@ describe("copy catalog (§3.2)", () => {
         code: "sign-in-failed",
         activation: { kind: "refused", code: "license_owned" },
       }),
-    ).toMatch(/already in another Polaris Key account/);
+    ).toMatch(/already in another Polaris Locker account/);
     expect(
       describeError({
         code: "release-refused",

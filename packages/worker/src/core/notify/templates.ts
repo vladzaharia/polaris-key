@@ -332,7 +332,7 @@ function emailDate(at: number): string {
 
 /**
  * A new device signed in to the account (SIGN-IN.md §3.15): `signin.mail.newDevice.subject`,
- * `signin.mail.newDevice.body` and **Open Polaris Key** (`signin.mail.open`).
+ * `signin.mail.newDevice.body` and **Open Polaris Locker** (`signin.mail.open`).
  */
 export function newDeviceSignInNotice(input: {
   deviceLabel: string | null | undefined;
@@ -347,13 +347,13 @@ export function newDeviceSignInNotice(input: {
   const when = input.at !== undefined ? ` on ${emailDate(input.at)}` : "";
   const where = location ? ` from ${location}` : "";
   return buildNotice({
-    subject: "A new device signed in to your Polaris Key account", // signin.mail.newDevice.subject
+    subject: "A new device signed in to your Polaris Locker account", // signin.mail.newDevice.subject
     paragraphs: [
       // signin.mail.newDevice.body
-      `${device} signed in${when}${where}. If this wasn't you, sign it out in Polaris Key under Where you're signed in.`,
+      `${device} signed in${when}${where}. If this wasn't you, sign it out in Polaris Locker under Where you're signed in.`,
     ],
     action: {
-      label: "Open Polaris Key", // signin.mail.open
+      label: "Open Polaris Locker", // signin.mail.open
       url: appLink(input.origin, "account/sessions"),
     },
     secureUrl: appLink(input.origin, "account/methods"),

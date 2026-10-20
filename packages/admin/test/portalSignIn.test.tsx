@@ -55,7 +55,10 @@ describe("LoginCard (SIGN-IN.md §3.1–§3.4, §3.9)", () => {
       ),
     ).toBe("username webauthn");
     expect(
-      screen.getByRole("heading", { level: 1, name: "Sign in to Polaris Key" }),
+      screen.getByRole("heading", {
+        level: 1,
+        name: "Sign in to Polaris Locker",
+      }),
     ).toBeTruthy();
     expect(
       screen.getByRole("button", { name: "Continue" }).className,
@@ -98,7 +101,9 @@ describe("LoginCard (SIGN-IN.md §3.1–§3.4, §3.9)", () => {
     mockFetch({ "/api/me": { status: 401 }, "/api/capabilities": "network" });
     renderPortal();
     expect(
-      await screen.findByRole("heading", { name: "Can't reach Polaris Key" }),
+      await screen.findByRole("heading", {
+        name: "Can't reach Polaris Locker",
+      }),
     ).toBeTruthy();
     expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
   });
@@ -179,7 +184,7 @@ describe("LoginCard (SIGN-IN.md §3.1–§3.4, §3.9)", () => {
     expect(
       await screen.findByRole("heading", {
         level: 1,
-        name: "Sign in to Polaris Key",
+        name: "Sign in to Polaris Locker",
       }),
     ).toBeTruthy();
   });
@@ -338,7 +343,7 @@ describe("LoginCard (SIGN-IN.md §3.1–§3.4, §3.9)", () => {
     expect(
       await screen.findByRole("heading", {
         level: 1,
-        name: "Sign in to Polaris Key",
+        name: "Sign in to Polaris Locker",
       }),
     ).toBeTruthy();
     expect(window.location.hash).not.toContain("activate");
@@ -600,7 +605,7 @@ describe("LoginCard (SIGN-IN.md §3.1–§3.4, §3.9)", () => {
       );
       const h1 = await screen.findByRole("heading", {
         level: 1,
-        name: "Sign in to Polaris Key",
+        name: "Sign in to Polaris Locker",
       });
       await waitFor(() => expect(document.activeElement).toBe(h1));
       expect(
@@ -643,7 +648,7 @@ describe("LoginCard (SIGN-IN.md §3.1–§3.4, §3.9)", () => {
     expect(
       await screen.findByRole("heading", {
         level: 1,
-        name: "Sign in to Polaris Key",
+        name: "Sign in to Polaris Locker",
       }),
     ).toBeTruthy();
   });
@@ -790,7 +795,7 @@ describe("Connections on the card (I-30; mockup identity.sign-in-routes)", () =>
     expect(
       await screen.findByRole("heading", {
         level: 1,
-        name: "Sign in to Polaris Key",
+        name: "Sign in to Polaris Locker",
       }),
     ).toBeTruthy();
     const field = screen.getByRole("textbox", { name: "Email" });

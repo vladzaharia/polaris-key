@@ -121,6 +121,10 @@ __all__ = [
     "REQUEST_HANDLE_PATTERN",
     "REQUEST_HANDLE_TTL_SECONDS",
     "PAIRWISE_SUBJECT_PATTERN",
+    "CUSTOMER_ORIGIN_DEFAULT",
+    "DEVICE_CODE_PAGE",
+    "TV_CODE_PAGE",
+    "SIGN_IN_PROVIDER_NAME",
     "PRESENTATION_TEXT_MAX_BYTES",
     "PRESENTATION_URL_MAX_BYTES",
     "PRESENTATION_MAX_ICON_SIZES",
@@ -1733,6 +1737,22 @@ REQUEST_HANDLE_TTL_SECONDS: Final[int] = 600
 
 #: Signed-in subject: `PAIRWISE_SUBJECT_PATTERN` (WIRE-CONTRACT-V4 §3.2, `@polaris-key/protocol/core`).
 PAIRWISE_SUBJECT_PATTERN: Final[str] = "^ps_[A-Za-z0-9_-]{22}$"
+
+
+#: Customer site display fallback: `CUSTOMER_ORIGIN_DEFAULT` (LK-00 §3, `@polaris-key/protocol/core`).
+CUSTOMER_ORIGIN_DEFAULT: Final[str] = "https://polaris.locker"
+
+
+#: Customer site display fallback: `DEVICE_CODE_PAGE` (LK-00 §3, `@polaris-key/protocol/core`).
+DEVICE_CODE_PAGE: Final[str] = "https://polaris.locker/device"
+
+
+#: Customer site display fallback: `TV_CODE_PAGE` (LK-00 §3, `@polaris-key/protocol/core`).
+TV_CODE_PAGE: Final[str] = "https://polaris.locker/tv"
+
+
+#: Customer site display fallback: `SIGN_IN_PROVIDER_NAME` (LK-00 §3, `@polaris-key/protocol/core`).
+SIGN_IN_PROVIDER_NAME: Final[str] = "Polaris Locker"
 
 
 #: Product presentation: `PRESENTATION_TEXT_MAX_BYTES` (WIRE-CONTRACT-V4 §5.5, `@polaris-key/protocol/core`).

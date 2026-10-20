@@ -15,6 +15,7 @@ import {
 import { CHROME } from "./boards.ts";
 import { cssPageUrl, lintTargets, serveDir, type PageTarget } from "./run.ts";
 import {
+  lintBrandName,
   lintStrings,
   loadAllow,
   loadCatalog,
@@ -195,6 +196,7 @@ export async function runLint(
         );
       }
     }
+    if (args.strings !== false) run.strings.push(...lintBrandName(root));
     if (args.kits !== false) run.kits = lintKits(root).findings;
   } finally {
     await srv.close();

@@ -45,7 +45,7 @@
     <!-- Shared verb used across the kit's screens. Signs this device out of the product. -->
     <string name="common_signOut">サインアウト</string>
     <string name="common_signOut__macos">サインアウト</string>
-    <!-- Shared verb used across the kit's screens. Opens the person's Polaris Key account in the browser. -->
+    <!-- Shared verb used across the kit's screens. Opens the person's Polaris Locker account in the browser. -->
     <string name="common_manage">管理</string>
     <!-- Shared verb used across the kit's screens. Tries to reach the licensing service again. -->
     <string name="common_reconnect">再接続</string>
@@ -123,8 +123,8 @@
     <string name="part_qr_scanInstead__macos">代わりにスマートフォンでスキャン</string>
     <!-- Caption under the seat meter. {used} and {limit} are numbers of devices. Arguments: {used} = how many devices use the license, as a number; {limit} = the license's device limit, as a number. Arguments: 1=used, 2=limit. -->
     <string name="part_seatMeter_caption">%2$s台中%1$s台を使用中</string>
-    <!-- Optional footer line. Polaris Key is never translated. -->
-    <string name="part_poweredBy">Powered by Polaris Key</string>
+    <!-- Optional footer line. Polaris Locker is never translated. -->
+    <string name="part_poweredBy">Powered by Polaris Locker</string>
     <!-- Status pill: the license works. -->
     <string name="part_status_ok">有効</string>
     <!-- Status pill: offline grace period. -->
@@ -631,7 +631,7 @@
     <!-- Toast: an update is available. Arguments: {product} = the product's name from ProductIdentity (never translated); {version} = a version string such as 2.4.1. Arguments: 1=product, 2=version. -->
     <string name="toast_updateAvailable">%1$s %2$sが利用可能です</string>
     <!-- Hosted sign-in card, method chooser (SIGN-IN.md §3.3). -->
-    <string name="signin_methods_title">Polaris Keyにサインイン</string>
+    <string name="signin_methods_title">Polaris Lockerにサインイン</string>
     <!-- Hosted sign-in card, method chooser (SIGN-IN.md §3.3). -->
     <string name="signin_methods_titleApp">サインイン</string>
     <!-- Hosted sign-in card, method chooser (SIGN-IN.md §3.3). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
@@ -674,7 +674,7 @@
     <!-- Header of the sign-in card when an app asks (SIGN-IN.md §3.1). Arguments: {code} = a code shown to the person (a user code or an error code); never split or translated. Arguments: 1=code. -->
     <string name="signin_header_codePanel">画面上のコード · %1$s · 画面と一致することを確認してください</string>
     <!-- Hosted sign-in card (SIGN-IN.md). Arguments: {app} = the requesting app's name (never translated); {developer} = the developer's name (never translated). Arguments: 1=app, 2=developer. -->
-    <string name="signin_footer">Polaris Keyが%1$sへのサインインを行います。%2$sにコードやパスキーが知られることはありません。</string>
+    <string name="signin_footer">Polaris Lockerが%1$sへのサインインを行います。%2$sにコードやパスキーが知られることはありません。</string>
     <!-- Sign-in is turned off (SIGN-IN.md §4.12). Arguments: {product} = the product's name from ProductIdentity (never translated); {developer} = the developer's name (never translated). Arguments: 1=product, 2=developer. -->
     <string name="signin_off_product">%1$sのサインインは無効になっています。%2$sに問い合わせてください。</string>
     <!-- Sign-in is turned off (SIGN-IN.md §4.12). -->
@@ -684,7 +684,7 @@
     <!-- Hosted sign-in card (SIGN-IN.md). -->
     <string name="signin_emailDown">現在メールを送信できません。別の方法でサインインしてください。</string>
     <!-- The card can't reach the service. -->
-    <string name="signin_network_title">Polaris Keyに接続できません</string>
+    <string name="signin_network_title">Polaris Lockerに接続できません</string>
     <!-- Hosted sign-in card (SIGN-IN.md). -->
     <string name="signin_retry">再試行</string>
     <string name="signin_retry__macos">再試行</string>
@@ -714,7 +714,7 @@
     <string name="signin_code_differentEmail">別のメールアドレスを使う</string>
     <string name="signin_code_differentEmail__macos">別のメールアドレスを使う</string>
     <!-- Sign-in email subject (SIGN-IN.md §3.15). Arguments: {code} = a code shown to the person (a user code or an error code); never split or translated. Arguments: 1=code. -->
-    <string name="signin_email_subject">Polaris Keyのコード：%1$s</string>
+    <string name="signin_email_subject">Polaris Lockerのコード：%1$s</string>
     <!-- Sign-in email body (SIGN-IN.md §3.15). -->
     <string name="signin_email_body">またはボタンからサインインしてください。コードとリンクは1回限り、10分間有効です。</string>
     <!-- Page opened from the email's sign-in link on another device (SIGN-IN.md §3.4). Arguments: {time} = a duration or time already formatted by the platform (“4:12”, “2 min ago”); {place} = an approximate place (city, country). Arguments: 1=time, 2=place. -->
@@ -1008,7 +1008,7 @@
     <string name="signin_menu_signIn">サインイン…</string>
     <string name="signin_menu_signIn__macos">サインイン…</string>
     <!-- App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
-    <string name="signin_handoff_browserBody">ブラウザでPolaris Keyを開きました。そこでサインインすると、%1$sが自動的に続行します。</string>
+    <string name="signin_handoff_browserBody">ブラウザでPolaris Lockerを開きました。そこでサインインすると、%1$sが自動的に続行します。</string>
     <!-- App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). -->
     <string name="signin_handoff_waiting">ブラウザを待っています…</string>
     <!-- App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). -->
@@ -1049,7 +1049,7 @@
     <!-- Choose a license for this device (SIGN-IN.md §3.6). -->
     <string name="signin_choice_freed">このライセンスのデバイス枠が1つ空きました。</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). -->
-    <string name="signin_replace_opensBrowser">ブラウザでPolaris Keyが開きます</string>
+    <string name="signin_replace_opensBrowser">ブラウザでPolaris Lockerが開きます</string>
     <!-- Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. -->
     <string name="signin_cli_opening">ブラウザを開いています…</string>
     <!-- Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. Arguments: {url} = a web address, shown as is. Arguments: 1=url. -->
@@ -1077,7 +1077,7 @@
     <!-- Sign in with another device (SIGN-IN.md §3.11). -->
     <string name="signin_approve_ask">新しいデバイスを承認しますか？</string>
     <!-- Sign in with another device (SIGN-IN.md §3.11). -->
-    <string name="signin_approve_warning">ご自身が目の前のデバイスで開始した場合にのみ承認してください。Polaris Keyや開発者がこれを求めることは絶対にありません。</string>
+    <string name="signin_approve_warning">ご自身が目の前のデバイスで開始した場合にのみ承認してください。Polaris Lockerや開発者がこれを求めることは絶対にありません。</string>
     <!-- Sign in with another device (SIGN-IN.md §3.11). -->
     <string name="signin_approve_approve">承認してサインイン</string>
     <string name="signin_approve_approve__macos">承認してサインイン</string>
@@ -1108,9 +1108,9 @@
     <!-- Expired code or link page (SIGN-IN.md §4.12). -->
     <string name="signin_again">もう一度サインイン</string>
     <string name="signin_again__macos">もう一度サインイン</string>
-    <!-- The product doesn't use Polaris Key sign-in (SIGN-IN.md §4.12). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
-    <string name="signin_identityOff_notice">%1$sはPolaris Keyのサインインを使用しません。%1$sを開いて、そこでライセンスキーを入力してください。</string>
-    <!-- The product doesn't use Polaris Key sign-in (SIGN-IN.md §4.12). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <!-- The product doesn't use Polaris Locker sign-in (SIGN-IN.md §4.12). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="signin_identityOff_notice">%1$sはPolaris Lockerのサインインを使用しません。%1$sを開いて、そこでライセンスキーを入力してください。</string>
+    <!-- The product doesn't use Polaris Locker sign-in (SIGN-IN.md §4.12). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="signin_identityOff_lede">ここでサインインすると、ライブラリに%1$sが表示されます。</string>
     <!-- Sign-out confirmation (SIGN-IN.md §4.9). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="signin_signout_title">このデバイスで%1$sからサインアウトしますか？</string>
@@ -1130,21 +1130,21 @@
     <!-- Session ended (SIGN-IN.md §4.10). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="signin_session_kitEnded">サインインが終了しました。%1$sを引き続き使うには、もう一度サインインしてください。</string>
     <!-- Sign-in provider buttons (SIGN-IN.md §3.3). -->
-    <string name="signin_provider_manage">Polaris Keyでサインイン方法を管理</string>
-    <string name="signin_provider_manage__macos">Polaris Keyでサインイン方法を管理</string>
+    <string name="signin_provider_manage">Polaris Lockerでサインイン方法を管理</string>
+    <string name="signin_provider_manage__macos">Polaris Lockerでサインイン方法を管理</string>
     <!-- Profile import (SIGN-IN.md §3.5). -->
     <string name="signin_profile_changePicture">写真を変更</string>
     <string name="signin_profile_changePicture__macos">写真を変更</string>
     <!-- Security email (SIGN-IN.md §3.15). Arguments: {product} = the product's name from ProductIdentity (never translated); {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=product, 2=device. -->
     <string name="signin_mail_replaced_subject">%2$sで%1$sがサインアウトされました</string>
     <!-- Security email (SIGN-IN.md §3.15). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {newDevice} = the new device's friendly name; {product} = the product's name from ProductIdentity (never translated); {date} = a date already formatted by the platform. Arguments: 1=device, 2=newDevice, 3=product, 4=date. -->
-    <string name="signin_mail_replaced_body">%4$sに%3$sにサインインした際、%1$sは%2$sに置き換えられました。枠が空けば、後で再びサインインできます。心当たりがない場合は、Polaris Keyを開いてデバイスを確認してください。</string>
+    <string name="signin_mail_replaced_body">%4$sに%3$sにサインインした際、%1$sは%2$sに置き換えられました。枠が空けば、後で再びサインインできます。心当たりがない場合は、Polaris Lockerを開いてデバイスを確認してください。</string>
     <!-- Security email (SIGN-IN.md §3.15). -->
-    <string name="signin_mail_newDevice_subject">Polaris Keyアカウントに新しいデバイスがサインインしました</string>
+    <string name="signin_mail_newDevice_subject">Polaris Lockerアカウントに新しいデバイスがサインインしました</string>
     <!-- Security email (SIGN-IN.md §3.15). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {date} = a date already formatted by the platform; {place} = an approximate place (city, country). Arguments: 1=device, 2=date, 3=place. -->
-    <string name="signin_mail_newDevice_body">%2$sに%3$sから%1$sがサインインしました。心当たりがない場合は、Polaris Keyの「サインイン中のデバイス」からサインアウトしてください。</string>
+    <string name="signin_mail_newDevice_body">%2$sに%3$sから%1$sがサインインしました。心当たりがない場合は、Polaris Lockerの「サインイン中のデバイス」からサインアウトしてください。</string>
     <!-- Security email (SIGN-IN.md §3.15). -->
-    <string name="signin_mail_open">Polaris Keyを開く</string>
+    <string name="signin_mail_open">Polaris Lockerを開く</string>
     <!-- Email code step (SIGN-IN.md §3.4). -->
     <string name="signin_code_label">6桁のコード</string>
     <!-- Terminal help: the heading over the license commands (activate, status…). -->
@@ -1375,9 +1375,9 @@
     <string name="cli_update_download">ここからダウンロード:</string>
     <!-- Terminal status: a device activated with a license key only, and the license is no longer valid. -->
     <string name="cli_status_keyRevoked_title">このライセンスキーは使えなくなりました</string>
-    <!-- Terminal status, under the title above. It ends in a colon: the product's account page on Polaris Key follows on its own line, as a link. -->
+    <!-- Terminal status, under the title above. It ends in a colon: the product's account page on Polaris Locker follows on its own line, as a link. -->
     <string name="cli_status_keyRevoked_message">期限切れか無効にされた可能性があります。</string>
-    <!-- Terminal activate: the server did not accept the license key, under the title 'Key not accepted'. It answers the same for a wrong key and for one that expired or was turned off, so the text covers both. It ends in a colon: the product's account page on Polaris Key follows on its own line, as a link. -->
+    <!-- Terminal activate: the server did not accept the license key, under the title 'Key not accepted'. It answers the same for a wrong key and for one that expired or was turned off, so the text covers both. It ends in a colon: the product's account page on Polaris Locker follows on its own line, as a link. -->
     <string name="cli_activate_unauthorized">入力を確認してください。正しい場合は、期限切れか無効にされた可能性があります。</string>
     <!-- Terminal help: what the -reveal flag does. A command-line flag; keep it as is. -->
     <string name="cli_option_reveal">値を出力</string>
@@ -1604,7 +1604,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_email_in_use_title">メールアドレスは使用中です</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_email_in_use_message">別のPolaris Keyアカウントがすでにこのメールアドレスを使用しています。このサインインをそのアカウントに統合するか、別のメールアドレスを使用してください。</string>
+    <string name="core_codes_email_in_use_message">別のPolaris Lockerアカウントがすでにこのメールアドレスを使用しています。このサインインをそのアカウントに統合するか、別のメールアドレスを使用してください。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_terms_required_title">規約に同意していません</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -1612,15 +1612,15 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_owned_title">別のアカウントのライセンス</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). Arguments: 1=product. -->
-    <string name="core_codes_license_owned_message">この%1$sのライセンスは、すでに別のPolaris Keyアカウントにあります。ライセンスがキーによって移動することはありません。</string>
+    <string name="core_codes_license_owned_message">この%1$sのライセンスは、すでに別のPolaris Lockerアカウントにあります。ライセンスがキーによって移動することはありません。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_email_bound_title">メールアドレスが確認されていません</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_license_email_bound_message">このライセンスは、お使いのPolaris Keyアカウントで確認されていないメールアドレスに紐付いています。アカウントでそのメールアドレスを確認してから、もう一度お試しください。</string>
+    <string name="core_codes_license_email_bound_message">このライセンスは、お使いのPolaris Lockerアカウントで確認されていないメールアドレスに紐付いています。アカウントでそのメールアドレスを確認してから、もう一度お試しください。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_account_required_title">サインインが必要です</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_account_required_message">このデバイスでPolaris Keyアカウントにサインインしてから、もう一度お試しください。</string>
+    <string name="core_codes_account_required_message">このデバイスでPolaris Lockerアカウントにサインインしてから、もう一度お試しください。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_email_mismatch_title">メールアドレスが確認されていません</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -1628,7 +1628,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_link_conflict_title">すでに連携済みです</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_link_conflict_message">このサインイン方法は別のPolaris Keyアカウントに連携されています。そのアカウントにサインインするか、2つのアカウントを統合してください。</string>
+    <string name="core_codes_link_conflict_message">このサインイン方法は別のPolaris Lockerアカウントに連携されています。そのアカウントにサインインするか、2つのアカウントを統合してください。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_last_link_title">削除できません</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -1728,7 +1728,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_network_title">接続できません</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_network_message">Polaris Keyに接続できません。接続を確認して、もう一度お試しください。</string>
+    <string name="core_codes_network_message">Polaris Lockerに接続できません。接続を確認して、もう一度お試しください。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_refresh_failed_title">更新できませんでした</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -1800,7 +1800,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_network_error_title">接続できません</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_network_error_message">Polaris Keyに接続できません。接続を確認して、もう一度お試しください。</string>
+    <string name="core_codes_network_error_message">Polaris Lockerに接続できません。接続を確認して、もう一度お試しください。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_server_error_title">サービスの問題</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2092,7 +2092,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_sign_in_required_title">サインインが必要です</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_sign_in_required_message">アプリでPolaris Keyアカウントにサインインしてから、もう一度お試しください。</string>
+    <string name="core_codes_sign_in_required_message">アプリでPolaris Lockerアカウントにサインインしてから、もう一度お試しください。</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
     <string name="core_gate_ok_title">ライセンス有効</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->

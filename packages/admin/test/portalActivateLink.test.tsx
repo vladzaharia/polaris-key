@@ -234,7 +234,7 @@ describe("§4.19 Activate license errors: every case, inline, never a toast", ()
     [
       "Owned by another account",
       { verdict: "license_owned", product: PRODUCT, entries: null },
-      "This Mossgarden license is already in another Polaris Key account. A license never moves by its key.",
+      "This Mossgarden license is already in another Polaris Locker account. A license never moves by its key.",
       ["Use a different key"],
     ],
     [
@@ -339,7 +339,7 @@ describe("§4.19 Activate license errors: every case, inline, never a toast", ()
     ],
     [
       { status: 403, body: { error: "license_owned" } },
-      /already in another Polaris Key account/,
+      /already in another Polaris Locker account/,
     ],
     [
       { status: 403, body: { error: "email_mismatch" } },

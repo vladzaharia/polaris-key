@@ -3466,6 +3466,13 @@ function i18nRows(S: UiMatrixSources): I18nRow[] {
     key: "core.codes.license_owned.message",
     args: { product: "Tidewater Studio" },
   });
+  // The customer site's address (LK-00 §5): the displayed form of polaris.locker/activate.
+  rows.push({
+    name: "en: signin.handoff.url, the customer site address",
+    locale: "en",
+    key: "signin.handoff.url",
+    args: { url: "polaris.locker/activate" },
+  });
   // Per-key fallback from an override map, and a locale with no pack.
   const overrides = {
     de: { "welcome.signIn": "Mit Tidewater anmelden" },

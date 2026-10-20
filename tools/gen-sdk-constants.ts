@@ -945,6 +945,15 @@ export const IDENTITY_EXPORTS = [
  *  plans/SP-54.md; `@polaris-key/protocol/core`). */
 export const SIGNED_IN_EXPORTS = ["PAIRWISE_SUBJECT_PATTERN"] as const;
 
+/** The customer-site display fallbacks every SDK carries (LK-00 §3, plans/LK-00.md; display
+ *  only, never a routing or trust input; `@polaris-key/protocol/core`). */
+export const CUSTOMER_EXPORTS = [
+  "CUSTOMER_ORIGIN_DEFAULT",
+  "DEVICE_CODE_PAGE",
+  "TV_CODE_PAGE",
+  "SIGN_IN_PROVIDER_NAME",
+] as const;
+
 /** The product-presentation limits every SDK carries (WIRE-CONTRACT-V4 §5.5, plans/HA-12.md
  *  §2.5 and Q6; `@polaris-key/protocol/core`). */
 export const PRESENTATION_EXPORTS = [
@@ -1174,6 +1183,11 @@ export function buildModel(sources: Sources): Model {
     ...SIGNED_IN_EXPORTS.map((name) => ({
       name,
       doc: `Signed-in subject: \`${name}\` (WIRE-CONTRACT-V4 §3.2, \`@polaris-key/protocol/core\`).`,
+      value: scalarValue(name, protocol[name]),
+    })),
+    ...CUSTOMER_EXPORTS.map((name) => ({
+      name,
+      doc: `Customer site display fallback: \`${name}\` (LK-00 §3, \`@polaris-key/protocol/core\`).`,
       value: scalarValue(name, protocol[name]),
     })),
     ...PRESENTATION_EXPORTS.map((name) => ({
