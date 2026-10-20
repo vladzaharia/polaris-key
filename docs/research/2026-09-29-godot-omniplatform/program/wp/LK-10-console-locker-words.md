@@ -27,6 +27,11 @@ Exactly `plans/LK-00.md` §7, §10. Anything else is another package's row in §
 
 Re-scoped by Amendment A3: "Get a badge" offers only labels the product backs, previews at 320 px or wider; see `plans/LK-00.md` §14.6.
 
+Required, before LK-11's cutover (LK-03 security review): a server-side fresh sign-in step-up for
+changing `customer.host` (today L2 is a typed-key confirmation only), and the health-check
+preflight before `on`. LK-03's `/.well-known/polaris-host.json` now answers only `{host:
+"customer"}`; the preflight checks that, not `environment` or `version`.
+
 ## Acceptance criteria
 
 - [ ] `pnpm gen --check` settings clean; admin build succeeds

@@ -36,6 +36,12 @@ import {
 import type { Db } from "../../db/types.js";
 import type { Env } from "../../platform/env.js";
 import {
+  customerOrigin,
+  customerHostname,
+  type CustomerHostMode,
+} from "../hosts.js";
+import { platformSetting } from "../settings/platformRead.js";
+import {
   normalizeArchHeader,
   normalizePlatformHeader,
 } from "../clientMetadata.js";
@@ -115,26 +121,36 @@ export function portalOriginOf(env: Env, req: Request): string | null {
  * configured origin, else `fallback` (an absolute URL or origin the Worker was reached on).
  */
 export function portalOriginFor(env: Env, fallback: string): string | null {
-  const usable = (raw: string): string | null => {
-    try {
-      const u = new URL(raw);
-      if (u.username !== "" || u.password !== "") return null;
-      if (u.protocol === "https:") return u.origin;
-      if (
-        u.protocol === "http:" &&
-        (u.hostname === "localhost" || u.hostname === "127.0.0.1")
-      )
-        return u.origin;
-      return null;
-    } catch {
-      return null;
-    }
-  };
-  const configured =
-    typeof env.CONSOLE_ORIGIN === "string" && env.CONSOLE_ORIGIN.trim() !== ""
-      ? usable(env.CONSOLE_ORIGIN.trim())
-      : null;
-  return configured ?? usable(fallback);
+  return customerOrigin(env, "off", fallback);
+}
+
+/**
+ * The `customer.host` mode (LK-03): `off` without a read while there is no usable customer host,
+ * so a deployment that never sets `CUSTOMER_ORIGIN` costs nothing and every URL is what it was.
+ */
+export async function customerHostMode(
+  env: Env,
+  db: Db,
+): Promise<CustomerHostMode> {
+  if (customerHostname(env) === null) return "off";
+  try {
+    return await platformSetting(env, db, "customer.host");
+  } catch {
+    return "off";
+  }
+}
+
+/**
+ * The one source for every customer-facing URL: {@link customerOrigin} with the switch read. The
+ * origin of `customerOrigin()` while `customer.host` is on, else the portal origin of old
+ * ({@link portalOriginOf}). `fallback` is the request, or an absolute URL the Worker was reached on.
+ */
+export async function customerOriginOf(
+  env: Env,
+  db: Db,
+  fallback: Request | string,
+): Promise<string | null> {
+  return customerOrigin(env, await customerHostMode(env, db), fallback);
 }
 
 /**
@@ -165,7 +181,7 @@ export async function buildManageUrl(
   ctx: ManageContext,
 ): Promise<string | undefined> {
   if (!(await portalEnabled(db, product.slug))) return undefined;
-  const origin = portalOriginOf(env, req);
+  const origin = await customerOriginOf(env, db, req);
   if (!origin) return undefined;
   const slug = encode(product.slug);
 
@@ -190,12 +206,14 @@ export async function buildManageUrl(
  * every product), so the link does not depend on the product's portal settings. It carries no
  * key, account or holder hint: the card explains how to sign in on the device.
  */
-export function buildSignInUrl(
+export async function buildSignInUrl(
   env: Env,
+  db: Db,
   req: Request,
   product: { slug: string },
-): string {
-  const origin = portalOriginOf(env, req) ?? new URL(req.url).origin;
+): Promise<string> {
+  const origin =
+    (await customerOriginOf(env, db, req)) ?? new URL(req.url).origin;
   return `${origin}/signin?product=${encode(product.slug)}`;
 }
 
@@ -203,11 +221,12 @@ export function buildSignInUrl(
  * The account portal's page for a product, `<portal>/#/p/<slug>` (I-09, §12.6 `accountPortal`):
  * where `openAccount()` sends the person. `null` when no usable origin exists.
  */
-export function accountPortalUrl(
+export async function accountPortalUrl(
   env: Env,
+  db: Db,
   fallbackOrigin: string,
   product: { slug: string },
-): string | null {
-  const origin = portalOriginFor(env, fallbackOrigin);
+): Promise<string | null> {
+  const origin = await customerOriginOf(env, db, fallbackOrigin);
   return origin ? `${origin}/#/p/${encode(product.slug)}` : null;
 }

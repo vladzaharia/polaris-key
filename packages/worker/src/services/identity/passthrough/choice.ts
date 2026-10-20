@@ -39,7 +39,10 @@ import {
   type AnchorCandidates,
 } from "../../../core/licensing/anchor.js";
 import { accountGrant } from "../../../core/licensing/issueAccount.js";
-import { buildManageUrl } from "../../../core/licensing/manageUrl.js";
+import {
+  buildManageUrl,
+  customerOriginOf,
+} from "../../../core/licensing/manageUrl.js";
 import type { OidcIdentity } from "../../../core/licensing/issue.js";
 import { getAccountRow } from "../accounts/repo.js";
 import { discoverIdentity } from "../portal/store/obtain.js";
@@ -156,11 +159,13 @@ export async function licenseChoiceView(
   const portal =
     (await getPortalProductSettings(db, product.slug)).portal_enabled === 1;
 
+  const customer =
+    (await customerOriginOf(cx.env, db, req)) ?? new URL(req.url).origin;
   const choices: LicenseChoice[] = [];
   for (const c of offer.candidates) {
     const license = await getLicense(db, product.slug, c.licenseId);
     if (!license) continue;
-    choices.push(await choiceRow(cx, req, license, c, portal, opts.card));
+    choices.push(await choiceRow(cx, customer, license, c, portal, opts.card));
   }
   const state: LicenseChoiceView["state"] =
     offer.candidates.length > 0 || offer.keep
@@ -183,7 +188,7 @@ export async function licenseChoiceView(
     const activateUrl =
       (await buildManageUrl(cx.env, db, req, product, {
         kind: "key_entry_limit",
-      })) ?? `${new URL(req.url).origin}/activate?product=${product.slug}`;
+      })) ?? `${customer}/activate?product=${product.slug}`;
     getLicenseMember = {
       activateUrl,
       purchaseUrl: null,
@@ -203,7 +208,7 @@ export async function licenseChoiceView(
 
 async function choiceRow(
   cx: ChoiceCx,
-  req: Request,
+  origin: string,
   license: LicenseRow,
   c: AnchorCandidate,
   portal: boolean,
@@ -215,7 +220,7 @@ async function choiceRow(
     : null; /* the card's own address */
   const freeDeviceUrl =
     card && full && portal
-      ? `${new URL(req.url).origin}/#/p/${encodeURIComponent(cx.product.slug)}/free-device?license=${encodeURIComponent(c.licenseId)}${
+      ? `${origin}/#/p/${encodeURIComponent(cx.product.slug)}/free-device?license=${encodeURIComponent(c.licenseId)}${
           card.deviceLabel ? `&for=${encodeURIComponent(card.deviceLabel)}` : ""
         }&return=${encodeURIComponent(returnTo ?? "")}`
       : null;

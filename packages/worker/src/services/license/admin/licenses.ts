@@ -94,7 +94,7 @@ import {
 } from "../../../core/ops/overrideMigration.js";
 import {
   portalEnabled,
-  portalOriginOf,
+  customerOriginOf,
 } from "../../../core/licensing/manageUrl.js";
 import {
   associateLicenseHolder,
@@ -304,7 +304,7 @@ async function configOverridesView(
   const slug = ctx.product.slug;
   const state = await readOverrideMigrationState(ctx.db);
   const owned = (license.account_id ?? null) !== null;
-  const origin = portalOriginOf(ctx.env, ctx.req);
+  const origin = await customerOriginOf(ctx.env, ctx.db, ctx.req);
   return {
     phase: licenseConfigRetired(state)
       ? "moved"

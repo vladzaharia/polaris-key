@@ -313,17 +313,18 @@ export async function keyEntryGate(
  * product's login card; it never carries the key and says nothing about the account. Not an auth
  * failure: a client keeps its state and offers sign-in behind a user action.
  */
-export function licenseOwnedResponse(
+export async function licenseOwnedResponse(
   env: Parameters<typeof buildSignInUrl>[0],
+  db: Db,
   req: Request,
   product: { slug: string },
-): Response {
+): Promise<Response> {
   return errorResponse(
     403,
     ErrorCode.LicenseOwned,
     "license is in an account",
     {
-      signInUrl: buildSignInUrl(env, req, product),
+      signInUrl: await buildSignInUrl(env, db, req, product),
     },
   );
 }

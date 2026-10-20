@@ -73,7 +73,7 @@ import {
 import { clearDeviceSubjects } from "../../core/accounts/subjectHooks.js";
 import { type LicenseRow } from "../../core/repo.js";
 import { appendAudit } from "../../core/audit.js";
-import { portalOriginOf } from "../../core/licensing/manageUrl.js";
+import { customerOriginOf } from "../../core/licensing/manageUrl.js";
 import { readBodyJson } from "../../core/cappedBody.js";
 import { attachLicense, evaluateAttach } from "./accounts/claim.js";
 import { getAccountRow } from "./accounts/repo.js";
@@ -219,7 +219,8 @@ export async function handleIdentityAttach(
     return json(preview);
   }
 
-  const origin = portalOriginOf(env, req) ?? new URL(req.url).origin;
+  const origin =
+    (await customerOriginOf(env, db, req)) ?? new URL(req.url).origin;
   const attached = await attachLicense(
     { db, env, now, origin },
     {
