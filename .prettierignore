@@ -104,6 +104,9 @@ conformance/corpus/v2/content/blobs/
 # @polaris-key/brand's copy of the launch kit: verbatim vendor files, checksum-tested against the
 # kit's SHA256SUMS.txt (packages/brand/test/kit-fidelity.test.ts), so prettier must never rewrite them.
 packages/brand/kit/
+# The Polaris Locker launch kit (LK-01): verbatim, hash-checked against its manifest.json
+# (packages/brand/test/locker-fidelity.test.ts).
+packages/brand/locker-kit/
 # The Godot native plugins' fetched inputs and build outputs (P5-07; git-ignored by sdks/godot/.gitignore).
 sdks/godot/native/.deps/
 sdks/godot/native/macos/dist/

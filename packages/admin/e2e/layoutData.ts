@@ -542,6 +542,91 @@ function lazyDeltas(over: Setting = {}): Setting {
   };
 }
 
+/** ST-16: the product defaults the Worker lists under Platform → Settings. */
+function keyEntryCeiling(over: Setting = {}): Setting {
+  return {
+    key: "identity.keyEntry.limit",
+    area: "product-defaults",
+    label: "Key-entry limit ceiling",
+    description:
+      "The most key entries any product may allow per license that is in no account. A product may set a lower limit, never a higher one.",
+    kind: "integer",
+    unit: "count",
+    min: 1,
+    max: 100,
+    scripts: ["main"],
+    precedence: "runtime",
+    default: 100,
+    deployValue: null,
+    value: 20,
+    source: "runtime",
+    forcedOff: false,
+    stored: {
+      value: 20,
+      valid: true,
+      updatedAt: 1_790_000_000,
+      updatedBy: "ops@x.io",
+    },
+    version: 2,
+    link: "bound",
+    fleet: {
+      kind: "bound",
+      total: 14,
+      count: 2,
+      products: [
+        {
+          product: "djdl",
+          name: "DJDL",
+          set: 50,
+          effective: 20,
+          inherited: false,
+        },
+        {
+          product: "northwind",
+          name: "Northwind",
+          set: 10,
+          effective: 20,
+          inherited: true,
+        },
+      ],
+    },
+    confirm: { raise: "L2", lower: "L2" },
+    ...over,
+  };
+}
+
+function mediaQuota(over: Setting = {}): Setting {
+  return {
+    key: "assets.quota.mediaBytes",
+    area: "product-defaults",
+    label: "Default media quota",
+    description:
+      "How many bytes of hosted images a product may hold when it sets no quota of its own.",
+    kind: "integer",
+    unit: "bytes",
+    min: 0,
+    max: 1_099_511_627_776,
+    scripts: ["main"],
+    precedence: "runtime",
+    default: 536_870_912,
+    deployValue: null,
+    value: 536_870_912,
+    source: "default",
+    forcedOff: false,
+    stored: null,
+    version: 0,
+    link: "default",
+    fleet: {
+      kind: "default",
+      total: 14,
+      inheriting: 12,
+      own: [{ product: "djdl", name: "DJDL", value: 8_589_934_592 }],
+    },
+    confirm: { raise: "L2", lower: "L2" },
+    ...over,
+  };
+}
+
 function maxBytes(over: Setting = {}): Setting {
   return {
     key: "LAZY_DELTA_MAX_BYTES",
@@ -618,7 +703,14 @@ function grace(over: Setting = {}): Setting {
 
 function view(over: Record<string, unknown> = {}) {
   return {
-    settings: [lazyDeltas(), maxBytes(), gcMode(), grace()],
+    settings: [
+      lazyDeltas(),
+      keyEntryCeiling(),
+      mediaQuota(),
+      maxBytes(),
+      gcMode(),
+      grace(),
+    ],
     storeAvailable: true,
     propagationSeconds: 30,
     deployTime: [
@@ -1689,6 +1781,56 @@ const POLARIS_KEY_ROUTES: Record<string, unknown> = {
 
 export const DATA_ROUTES: Record<string, unknown> = {
   ...POLARIS_KEY_ROUTES,
+  // CM-29: Commerce's overview read.
+  [`${PROD}/commerce`]: {
+    licenseEnabled: true,
+    setup: {
+      "app-store": { configured: true, credential: "cred_asc", reason: null },
+      play: {
+        configured: false,
+        credential: null,
+        reason: "no settings for this store",
+      },
+      steam: {
+        configured: false,
+        credential: null,
+        reason:
+          "no active steam-publisher-key credential pinned to the configured app",
+      },
+    },
+    products: [
+      {
+        store: "app-store",
+        productId: "com.djdl.app.pro",
+        deliverable: "app",
+        flag: "pro",
+      },
+    ],
+    purchases: [
+      {
+        store: "app-store",
+        purchase: "a1b2c3d4e5f60718",
+        storeProductId: "com.djdl.app.pro",
+        licenseId: "lic_1",
+        state: "active",
+        environment: "Production",
+        firstSeen: GENERATED - 90000,
+        lastVerified: GENERATED - 3600,
+      },
+      {
+        store: "app-store",
+        purchase: "b1b2c3d4e5f60719",
+        storeProductId:
+          "com.djdl.app.pro.with.a.very.long.identifier.for.wrapping",
+        licenseId: "lic_2",
+        state: "revoked",
+        environment: "Sandbox",
+        firstSeen: GENERATED - 900000,
+        lastVerified: GENERATED - 90000,
+      },
+    ],
+    events: [],
+  },
   "/manage/api/platform/version": IDENTITY,
   "/manage/api/platform/deployment": deployment({
     deploys: {
@@ -1711,6 +1853,24 @@ export const DATA_ROUTES: Record<string, unknown> = {
   },
   "/manage/api/platform/operations": operations(),
   "/manage/api/platform/settings": view(),
+  "/manage/api/platform/settings/identity.keyEntry.limit/reach": {
+    kind: "bound",
+    direction: "lower",
+    total: 14,
+    reaches: 4,
+    from: 20,
+    to: 10,
+    products: [
+      { product: "djdl", name: "DJDL", from: 20, to: 10, inherited: false },
+      {
+        product: "northwind",
+        name: "Northwind Broadcast Audio Workstation",
+        from: 10,
+        to: 5,
+        inherited: true,
+      },
+    ],
+  },
   "/manage/api/platform/override-migration": { state: MIGRATION_STATE },
   "/manage/api/platform/override-migration/report": MIGRATION_REPORT,
   "/manage/api/products/kek": KEK,

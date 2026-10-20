@@ -38,6 +38,40 @@ export const APPSTORE_FLOW: FlowDef = {
   ],
 };
 
+/** New product from a GitHub repository (ST-43): the creating is the Check step's action. */
+export const NEW_PRODUCT_REPO_FLOW: FlowDef = {
+  id: "new-product-repo",
+  title: "New product",
+  steps: [
+    { id: "repo", label: "Repository", kind: "form" },
+    { id: "check", label: "Check", kind: "confirm" },
+  ],
+};
+
+/** New product from scratch (ST-43): the creating is the last step's action. */
+export const NEW_PRODUCT_SCRATCH_FLOW: FlowDef = {
+  id: "new-product-scratch",
+  title: "New product",
+  steps: [
+    { id: "name", label: "Name it", kind: "form" },
+    { id: "purpose", label: "What it's for", kind: "choice" },
+  ],
+};
+
+/** License → Licenses → New license (LX-29; S-24 §8): a drawer over the list. */
+export const NEW_LICENSE_FLOW: FlowDef = {
+  id: "new-license",
+  title: "New license",
+  steps: [
+    { id: "tier", label: "Tier", kind: "choice" },
+    { id: "holder", label: "Who", kind: "form" },
+    { id: "limits", label: "Limits", kind: "form" },
+    { id: "delivery", label: "Delivery", kind: "choice" },
+    { id: "review", label: "Review", kind: "confirm" },
+    { id: "done", label: "Done", kind: "done" },
+  ],
+};
+
 /**
  * Platform → Connections → Add connection (I-31). Nothing is saved until the last step: the
  * provider is checked (discovery), the client is entered, a test sign-in shows the claims, and
@@ -59,6 +93,9 @@ export const CONNECTION_FLOW: FlowDef = {
 export const FLOWS: readonly FlowDef[] = [
   STOREFRONTS_FLOW,
   APPSTORE_FLOW,
+  NEW_LICENSE_FLOW,
+  NEW_PRODUCT_REPO_FLOW,
+  NEW_PRODUCT_SCRATCH_FLOW,
   CONNECTION_FLOW,
 ];
 

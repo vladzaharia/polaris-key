@@ -16,7 +16,7 @@ export interface Choice<V extends string = string> {
   label: string;
   /** One line. */
   description?: string;
-  /** Marks the card "Recommended", with this reason beside it. */
+  /** Marks the card "Recommended", with this reason beside it ("" for no reason). */
   recommended?: string;
   disabled?: boolean;
 }
@@ -48,19 +48,21 @@ export function ChoiceStep<V extends string = string>({
       options={choices.map((c) => ({
         value: c.value,
         disabled: c.disabled,
-        label: c.recommended ? (
-          <span className="inline-flex flex-wrap items-center gap-2">
-            {c.label}
-            <StatusPill tone="info" size="sm">
-              Recommended
-            </StatusPill>
-          </span>
-        ) : (
-          c.label
-        ),
-        description: c.recommended
-          ? [c.description, c.recommended].filter(Boolean).join(" ")
-          : c.description,
+        label:
+          c.recommended !== undefined ? (
+            <span className="inline-flex flex-wrap items-center gap-2">
+              {c.label}
+              <StatusPill tone="info" size="sm">
+                Recommended
+              </StatusPill>
+            </span>
+          ) : (
+            c.label
+          ),
+        description:
+          c.recommended !== undefined
+            ? [c.description, c.recommended].filter(Boolean).join(" ")
+            : c.description,
       }))}
     />
   );

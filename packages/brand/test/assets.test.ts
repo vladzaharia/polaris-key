@@ -20,6 +20,10 @@ import { LOCKUP_TRIM } from "../src/tokens/primitives.js";
 const PKG = join(import.meta.dirname, "..");
 const read = (p: string) => readFileSync(join(PKG, p), "utf8");
 const list = (d: string) => readdirSync(join(PKG, d)).sort();
+const locker = (d: string): string[] =>
+  readdirSync(join(PKG, d), { withFileTypes: true }).flatMap((e) =>
+    e.isDirectory() ? locker(`${d}/${e.name}`) : [`${d}/${e.name}`],
+  );
 const paths = (svg: string) =>
   [...svg.matchAll(/ d="([^"]+)"/g)].map((m) => m[1]);
 
@@ -240,6 +244,10 @@ describe("GENERATED.sha256", () => {
       "social/key/portrait-light.svg",
       "web/delivery/site.webmanifest",
       "web/delivery/head-snippet.html",
+      "web/locker/site.webmanifest",
+      "web/locker/head-snippet.html",
+      // the Locker kit copy's text files (vendor inputs, pinned by hash)
+      ...locker("locker-kit").filter((f) => /\.(svg|css|json)$/.test(f)),
     ];
     for (const p of want) expect(have.has(p), p).toBe(true);
     expect(have.size).toBe(want.length);

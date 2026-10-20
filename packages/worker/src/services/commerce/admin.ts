@@ -61,8 +61,8 @@ import { APP_STORE_EVENTS, PLAY_EVENTS } from "./bridge.js";
 
 type AdminCtx = ServiceContext & { session: AdminSession };
 
-async function setupOf(
-  ctx: AdminCtx,
+export async function setupOf(
+  ctx: Pick<AdminCtx, "env" | "db"> & { product: { slug: string } },
   settings: CommerceSettings,
 ): Promise<
   Record<
@@ -166,6 +166,10 @@ const licenseOff = () =>
  *
  * With no catalog, or one that cannot be read, only the gate is accepted, and the refusal says
  * which: "declares no flag" would be untrue there.
+ *
+ * Stricter than before CM-29 while Distribution is off: the gate is read through Distribution's
+ * hook, which answers `null` then, so a flag that only a delivery gate names is refused until the
+ * catalog declares it (or Distribution is on). The refusal says so.
  */
 async function flagRefusal(
   db: AdminCtx["db"],
@@ -175,11 +179,15 @@ async function flagRefusal(
   deliverable: string,
 ): Promise<string | null> {
   // Distribution's gate, through its hook: no gate is read while Distribution is off.
-  const gate = await hooks.delivery()?.entitlement(deliverable);
+  const delivery = hooks.delivery();
+  const gate = await delivery?.entitlement(deliverable);
   if (gate === flag) return null;
+  const noGate = delivery
+    ? ""
+    : " (Distribution is off, so no delivery gate is read)";
   const active = await readActiveCatalog(db, slug);
   if (active.state === "missing")
-    return `the product has no catalog to check ${flag} against: publish one that declares ${flag} as a flag`;
+    return `the product has no catalog to check ${flag} against${noGate}: publish one that declares ${flag} as a flag`;
   if (active.state === "unreadable")
     return `the product's active catalog cannot be read, so ${flag} cannot be checked: publish the catalog again`;
   const declared = active.catalog.entryByKey(flag);

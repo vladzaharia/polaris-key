@@ -77,7 +77,6 @@ const WRITE_SEAMS: readonly (readonly [string, string, RemovedBy])[] = [
   ["core/licensing/store.ts", "tiers", "permanent"],
   // deleteProduct's cascade: each service erases its own rows (`contributes.productDeletion`).
   // Product registration's statement-builders write rows other owners hold.
-  ["core/products/store.ts", "profiles", "ST-43"],
   // Core's storefront columns on Identity's table: the `storefront.*` entries are Core's slice,
   // so moving the adapters means moving the entries (and the generated settings pages) to
   // Identity. P0-19 did not take that move; the lead retags this row to the package that does.

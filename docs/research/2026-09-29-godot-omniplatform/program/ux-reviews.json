@@ -214,6 +214,36 @@
       "verdict": "pass",
       "date": "2026-10-17",
       "evidence": "_mockups/review/ST-41/ux-review-2.md (re-review pass-with-fixes after one fix round; N1 one-command with --product/--expect/--release-key, N2, N9 + minors in wp/ST-41-polish 3d23db9fe)"
+    },
+    "LX-29": {
+      "verdict": "pass",
+      "date": "2026-10-19",
+      "evidence": "_mockups/review/LX-29/ux-review-2.md (re-review pass-with-fixes after one fix round; N1/N2/layering + minors in wp/LX-29-wizard)"
+    },
+    "ST-27": {
+      "verdict": "pass",
+      "date": "2026-10-19",
+      "evidence": "Lead-verified after the final round (2026-10-19): re-review FAIL items B1–B6 + N1–N12 fixed on d2a9e0090; lead checked 1280 light and 390 dark (fixed right control column, clean wrap); builder axe 0 incl. off row, CSP 0, no sideways scroll at 1024/1280/1440/390. Security re-check PASS."
+    },
+    "ST-16": {
+      "verdict": "pass",
+      "date": "2026-10-19",
+      "evidence": "Re-review PASS-WITH-FIXES (2026-10-19, _mockups/review/ST-16/ux-review-2.md): F1–F6 resolved, 0 axe/CSP at 1440/390/320 + 200%; required N1–N4 + minors fixed on 72ef1edd0 with tests (RTL bdi/FSI, unit under field, wrapping confirm buttons, lower-quota warning); lead reviewed the shared ConfirmDialog/SettingRow changes."
+    },
+    "ST-43": {
+      "verdict": "pass",
+      "date": "2026-10-20",
+      "evidence": "Re-review PASS-WITH-NOTES 2026-10-19 (_mockups/review/ST-43/rr2/); N1–N9 + copy fixed (6771db768); spot check B1 sticky-footer focus fixed (dc4f8b1b8): Tab walks 0 hidden stops at 390, 195 CSS px, 720x450@2x on New product and all six Storefronts steps."
+    },
+    "LK-01": {
+      "verdict": "pass",
+      "date": "2026-10-20",
+      "evidence": "Brand review 2026-10-19 (_mockups/review/LK-01/): kit fidelity PASS; colour-state FAIL fixed by D9a (9b124751f, neutral states; ΔE00 vs danger 6.7–48); v1.3 re-import 45ec070d6; lead-verified preview _scratch/LK-01/locker-light-1440.png."
+    },
+    "CM-29": {
+      "verdict": "pass",
+      "date": "2026-10-20",
+      "evidence": "Built review 2026-10-19 (_mockups/review/CM-29/): FAIL B1 ready-count mismatch, B2 tile missing -> fixed 9074d769b with tests; notes 1,2,4,6–10 fixed; lead-verified overview 1440 light (_scratch/CM-29/); layout e2e 0 violations over 60 loads."
     }
   }
 }

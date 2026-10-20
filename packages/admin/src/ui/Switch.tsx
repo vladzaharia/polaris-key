@@ -15,6 +15,8 @@ export interface SwitchProps extends Omit<
   label?: React.ReactNode;
   description?: React.ReactNode;
   readOnly?: boolean;
+  /** 44×24 on a phone (the touch size); the default 36×20 from `sm` up and everywhere else. */
+  touch?: boolean;
   ref?: React.Ref<HTMLButtonElement>;
 }
 
@@ -31,6 +33,7 @@ export function Switch({
   label,
   description,
   readOnly,
+  touch,
   id,
   ref,
   ...props
@@ -59,6 +62,7 @@ export function Switch({
         // and the knob is CanvasText, so on, off and blocked read apart without colour.
         "forced-colors:data-[state=checked]:border-[Highlight] forced-colors:data-[state=checked]:bg-[Highlight] forced-colors:data-[state=unchecked]:bg-[Canvas] forced-colors:disabled:border-[GrayText] forced-colors:aria-disabled:border-[GrayText]",
         "after:absolute after:-inset-x-1 after:-inset-y-1.5 after:content-['']",
+        touch && "max-sm:h-6 max-sm:w-11",
         !label && className,
       )}
       {...props}
@@ -67,7 +71,13 @@ export function Switch({
         undefined
       }
     >
-      <SwitchPrimitive.Thumb className="pointer-events-none block size-3.5 rounded-full bg-fg-muted shadow-elevation-1 [transition:translate_var(--pk-duration-slow)_var(--pk-ease-spring),background-color_var(--pk-duration-micro)_var(--pk-ease-standard)] data-[state=checked]:translate-x-[1.125rem] data-[state=checked]:bg-accent-on data-[state=unchecked]:translate-x-0.5 forced-colors:bg-[CanvasText] forced-colors:data-[state=checked]:bg-[HighlightText]" />
+      <SwitchPrimitive.Thumb
+        className={cn(
+          "pointer-events-none block size-3.5 rounded-full bg-fg-muted shadow-elevation-1 [transition:translate_var(--pk-duration-slow)_var(--pk-ease-spring),background-color_var(--pk-duration-micro)_var(--pk-ease-standard)] data-[state=checked]:translate-x-[1.125rem] data-[state=checked]:bg-accent-on data-[state=unchecked]:translate-x-0.5 forced-colors:bg-[CanvasText] forced-colors:data-[state=checked]:bg-[HighlightText]",
+          touch &&
+            "max-sm:size-[1.125rem] max-sm:data-[state=checked]:translate-x-[1.375rem] max-sm:data-[state=unchecked]:translate-x-[0.1875rem]",
+        )}
+      />
     </SwitchPrimitive.Root>
   );
   if (!label) return control;

@@ -136,10 +136,12 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 ## Acceptance criteria
 
 - [ ] All three outcomes (assigned with email, single floating, batch) work end to end against the
-      Worker (e2e), in both themes at 1440 and 390, with zero layout-lint findings.
-- [ ] No step reveals whether an email has an account (review of copy and network answers).
-- [ ] Focus lands on each step heading, step changes are announced, Escape asks before discarding.
-- [ ] The batch drawer cannot close before the CSV is downloaded or copied.
+      Worker (e2e), in both themes at 1440 and 390, with zero layout-lint findings. (Met in the
+      console against mocked Worker answers: `newLicense.test.tsx` for all three, `flowConformance`
+      e2e for the emailed path at 1440, 390 and 360 in both themes. Not run against a live Worker.)
+- [x] No step reveals whether an email has an account (review of copy and network answers).
+- [x] Focus lands on each step heading, step changes are announced, Escape asks before discarding.
+- [x] The batch drawer cannot close before the CSV is downloaded or copied.
 - [ ] Console CSP parity and docsLinks pass; the green gate passes (AGENTS.md).
 
 ## Verify
@@ -157,3 +159,52 @@ LX-31 documents the wizard and runs the cross-surface e2e. FLOWS.md C-17 becomes
 The role agent sets `--set LX-29 in-review` when it hands off. After review, the lead adds the last
 commit of the PR: `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set LX-29
 done`.
+
+## Progress and continuation (2026-10-17)
+
+Built on the ST-39 kit (`ui/wizard` drawer host) from `integ/next`. Verified against the code (the code wins):
+
+- `CreateLicenseDialog` is removed. `InlineFailure` moved to `license/components/InlineFailure.tsx`; the
+  validators and bodies live in `license/wizard/draft.ts` (pure, unit-tested).
+- Step ids are `tier | holder | limits | delivery | review`, plus the kit's `done` (a sixth, Done-kind step in
+  `NEW_LICENSE_FLOW`, so the drawer reads "Step 6 of 6" on the result). The drawer is
+  `?setup=new-license&step=<id>` (`r.newLicense(slug)`); the draft is in `sessionStorage` per product
+  (`pk-new-license:<slug>`), never the key, never the CSV.
+- The Worker already had `POST …/license/batches` (LX-28); the console gained `createLicenseBatch`
+  (`api.ts`, mutation registry) and the CSV is built in the browser from that one response.
+- `Drawer` and `Wizard` gained a `discard` words prop ("Discard this license?", "Close without copying?")
+  and the wizard a `dismissible` flag; `OneTimeSecretPanel` exports `SecretValue` (the value, Copy and
+  "I've stored it" without a dialog around it). A batch's drawer cannot close until the CSV is downloaded,
+  all keys are copied or "I've stored them" is ticked.
+- "Key not emailed" (LX-27 review: adopt in the mockup) is the Done screen when `delivered.email` is
+  `failed`: the one-time key, a warning with the reason, **Try again** gated on "I've stored it".
+- Profiles are not in the wizard (consolidation: no "profiles in order"); a tier carries its profile.
+- Entry points: header and empty-state **New license**, the palette's "New license…" (navigates to the
+  Licenses page with the drawer open), Overview's primary. The `n` shortcut and the launch path's
+  **First license** do not exist in the console today; not added.
+
+Not done (follow-ups):
+
+- **The Identity-default invitation** (a sign-in link with no key, "Also create a key" optional). It needs
+  the Worker: `delivery.invite` on create, a `key: false` option that mints no key, an invitation email
+  template, OpenAPI, tests and a threat-model row. That is a Worker package (LX-26/LX-27 territory), not a
+  console one; the wizard's Delivery step takes it as one more choice when it lands (`deliveriesFor`).
+- The auto-link-off line under Email (needs the product's resolved auto-link setting in the create context).
+- The mockup frames (docs/design/licenses/\_src) still show five steps without Done-as-step and without
+  "Key not emailed" / "Assign and email key"; LX-31 or a design pass updates them.
+
+## Fix round after the UX review (2026-10-17)
+
+`_mockups/review/LX-29/ux-review.md`; every finding is addressed except as noted.
+
+- **Partial batch?** No. `POST …/license/batches` writes the batch row, every licence, every key and the
+  audit row in one `db.batch` (`batches.ts`): it all commits or none does, so there is no partial-batch state
+  to build. The one gap is a lost response after commit (keys made, never seen); the batch is then in the list
+  and its keys cannot be shown again (the Worker keeps only hashes).
+- Done is the result, not a step: the stepper shows the five steps all done, the heading is a check, the title
+  and "Pro · 3 devices · for Lena Ortiz". Only a screen holding the only copy gates leaving (Show it once, a
+  failed email, a batch); an email that went out leaves Done free and the key optional.
+- A single floating key and a batch have one way to get the keys, so Delivery is skipped for both
+  ("Download a CSV" for one key is gone).
+- The email preview is built from `core/notify/keyEmailCopy.ts`, the template's own strings (pure, shared by
+  `templates.ts` and the console).

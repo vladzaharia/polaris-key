@@ -152,6 +152,30 @@ describe("DL14: links fail closed", () => {
     expect(view.decisions.link?.url).toBe("https://key.plrs.im/device");
   });
 
+  it("the fallback page carries the code; the shown address stays bare", () => {
+    const input = (platform: Platform) => ({
+      platform,
+      signIn: {
+        presentation: "inline" as const,
+        replace: "inline" as const,
+        channel: "device-code" as const,
+      },
+      deviceCode: {
+        phase: "waiting" as const,
+        secondsLeft: 200,
+        userCode: "WDJB-MJHT",
+      },
+    });
+    const mac = viewOf("SignInHandoff", input(MAC));
+    expect(mac.decisions.link?.url).toBe(
+      "https://key.plrs.im/device?user_code=WDJB-MJHT",
+    );
+    expect(mac.decisions.link?.display).toBe("key.plrs.im/device");
+    expect(viewOf("SignInHandoff", input(TV)).decisions.link?.url).toBe(
+      "https://key.plrs.im/tv?user_code=WDJB-MJHT",
+    );
+  });
+
   it("the QR, Copy and the text carry the same link", () => {
     const view = viewOf("SignInHandoff", {
       platform: TV,

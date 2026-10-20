@@ -1552,7 +1552,7 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
   ],
   "$defs": {
     "slug": {
-      "description": "The product's tenant slug: lowercase [a-z0-9-], 1-64 chars, starting with a letter or digit, and not a reserved platform route (docs, manage, api, assets, login, logout, callback, magic, download, webhooks, well-known, media, activate, avatar) or admin route action (kek, link-repo, slug-check). Mirrors PRODUCT_SLUG_PATTERN, RESERVED_PRODUCT_SLUGS and PRODUCT_ROUTE_ACTIONS in @polaris-key/manifest.",
+      "description": "The product's tenant slug: lowercase [a-z0-9-], 1-64 chars, starting with a letter or digit, and not a reserved platform route (docs, manage, api, assets, login, logout, callback, magic, download, webhooks, well-known, media, activate, avatar, device, tv, signin) or admin route action (kek, link-repo, slug-check). Mirrors PRODUCT_SLUG_PATTERN, RESERVED_PRODUCT_SLUGS and PRODUCT_ROUTE_ACTIONS in @polaris-key/manifest.",
       "type": "string",
       "pattern": "^[a-z0-9][a-z0-9-]{0,63}$",
       "not": {
@@ -1571,6 +1571,9 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
           "media",
           "activate",
           "avatar",
+          "device",
+          "tv",
+          "signin",
           "kek",
           "link-repo",
           "slug-check"
@@ -16342,7 +16345,12 @@ var RESERVED_PRODUCT_SLUGS = [
   "activate",
   // PX-W16 (G33): avatars will be served at `/media/avatar/<asset>`, which the media proxy's
   // `/media/<product>/<asset>` would read as a product slugged `avatar`; reserved now.
-  "avatar"
+  "avatar",
+  // The platform's device-code entry pages, `/device` and `/tv`.
+  "device",
+  "tv",
+  // The platform sign-in entry, `/signin`.
+  "signin"
 ];
 var PRODUCT_ROUTE_ACTIONS = [
   "kek",

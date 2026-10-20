@@ -273,15 +273,25 @@ export function useGuardedDismissal({
   };
 }
 
+/** The words of a guarded close, when the default ("Discard your changes?") does not fit. */
+export interface DiscardWords {
+  message?: string;
+  keep?: string;
+  discard?: string;
+}
+
 /** "Discard your changes?", asked in place when an overlay with unsaved input is dismissed. */
 export function DiscardStrip({
   onKeep,
   onDiscard,
   className,
+  words,
 }: {
   onKeep: () => void;
   onDiscard: () => void;
   className?: string;
+  /** What this overlay says instead of the default (LX-29: "Discard this license?"). */
+  words?: DiscardWords;
 }): React.ReactElement {
   return (
     <div
@@ -291,16 +301,16 @@ export function DiscardStrip({
         className,
       )}
     >
-      <p className="flex min-w-0 flex-1 items-center gap-2 font-medium text-fg-strong">
+      <p className="flex min-w-0 flex-1 items-center gap-2 font-medium text-fg-strong max-sm:basis-full">
         <TriangleAlert aria-hidden className="size-4 shrink-0 text-warning" />
-        Discard your changes? Nothing has been saved.
+        {words?.message ?? "Discard your changes? Nothing has been saved."}
       </p>
-      <div className="flex gap-2">
+      <div className="flex gap-2 max-sm:w-full max-sm:[&>*]:flex-1">
         <Button size="sm" variant="outline" autoFocus onClick={onKeep}>
-          Keep editing
+          {words?.keep ?? "Keep editing"}
         </Button>
         <Button size="sm" variant="danger" onClick={onDiscard}>
-          Discard
+          {words?.discard ?? "Discard"}
         </Button>
       </div>
     </div>
@@ -338,6 +348,8 @@ export interface DialogProps {
   onEscapeKeyDown?: (e: KeyboardEvent) => void;
   /** Where focus lands on open (a confirm's Cancel). Default: the first focusable element. */
   initialFocusRef?: React.RefObject<HTMLElement | null>;
+  /** Replaces the default return of focus to the opener (a caller that knows a better target). */
+  onCloseAutoFocus?: (e: Event) => void;
   /** `alertdialog` for confirmations. */
   role?: "dialog" | "alertdialog";
   /** The draft holds unsaved input: dismissing asks first. See also `useDismissGuard`. */
@@ -362,6 +374,7 @@ export function Dialog({
   children,
   onEscapeKeyDown,
   initialFocusRef,
+  onCloseAutoFocus,
   role,
   unsaved = false,
   titleRef: titleRefProp,
@@ -411,7 +424,7 @@ export function Dialog({
               ? {}
               : { "aria-describedby": undefined })}
           onOpenAutoFocus={focus.onOpenAutoFocus}
-          onCloseAutoFocus={focus.onCloseAutoFocus}
+          onCloseAutoFocus={onCloseAutoFocus ?? focus.onCloseAutoFocus}
           onEscapeKeyDown={(e) => {
             if (!dismissible) e.preventDefault();
             onEscapeKeyDown?.(e);

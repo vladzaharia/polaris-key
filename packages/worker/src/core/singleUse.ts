@@ -38,6 +38,8 @@ export type SingleUseKind =
   | "device-flow"
   /** RFC 8628 user-code index (user code → device code), by normalised user code. */
   | "device-user"
+  /** The platform index of the same codes (user code → product), for the `/device` entry page. */
+  | "device-user-global"
   /** A portal "sign in with another device" request (PX-W14, G29), by its poll handle. */
   | "device-login"
   /** Its code index (code → the request's address), by normalised code. */

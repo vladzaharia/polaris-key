@@ -22,7 +22,7 @@ import { Input } from "../../../../ui/Input.js";
 import { NumberInput } from "../../../../ui/NumberInput.js";
 import { Select } from "../../../../ui/Select.js";
 import { VersionInput } from "../../../../ui/VersionInput.js";
-import { InlineFailure } from "./CreateLicenseDialog.js";
+import { InlineFailure } from "./InlineFailure.js";
 import { useManualChannels, useProfiles } from "./shared.js";
 
 /** The manifest's tier id rule. */

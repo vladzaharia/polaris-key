@@ -216,10 +216,10 @@ export function Stepper({
                     aria-hidden
                     data-filled={reached(step.id) || isCurrent || undefined}
                     className={cn(
-                      "h-1 rounded-full",
+                      "h-1 rounded-full forced-color-adjust-none",
                       reached(step.id) || isCurrent
-                        ? "bg-accent"
-                        : "bg-border-strong",
+                        ? "bg-accent forced-colors:bg-[Highlight]"
+                        : "bg-border-strong forced-colors:h-0.5 forced-colors:bg-[GrayText]",
                     )}
                   />
                   <span

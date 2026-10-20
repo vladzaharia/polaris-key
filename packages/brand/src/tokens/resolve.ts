@@ -7,6 +7,9 @@ import {
   ACCENTS,
   ACTION,
   ACTION_STEPS,
+  LOCKER_ACCENT,
+  LOCKER_HOVER_ALPHA,
+  LOCKER_SELECTED_ALPHA,
   HOVER_ALPHA,
   SERVICE_FAMILY,
   SERVICE_IDS,
@@ -205,4 +208,29 @@ export function resolveTokens(): Record<Theme, ResolvedTheme> {
     Theme,
     ResolvedTheme
   >;
+}
+
+/**
+ * Locker's tokens, per theme: the coral `solid`/`fg`/`on`, and the neutral `subtle` (selected-nav
+ * fill) and `hover` tints (D9a: `text.strong` over the page, never coral).
+ */
+export function resolveLocker(): Record<
+  Theme,
+  ResolvedAccent & { hover: string }
+> {
+  const out = {} as Record<Theme, ResolvedAccent & { hover: string }>;
+  for (const t of THEMES) {
+    const a = LOCKER_ACCENT[t];
+    const n = NEUTRALS[t];
+    const page = resolveColor(n.surface.page);
+    const ink = resolveColor(n.text.strong);
+    out[t] = {
+      solid: resolveColor(a.solid),
+      fg: resolveColor(a.fg),
+      on: resolveColor(a.on),
+      subtle: mixOver(ink, LOCKER_SELECTED_ALPHA, page),
+      hover: mixOver(ink, LOCKER_HOVER_ALPHA, page),
+    };
+  }
+  return out;
 }

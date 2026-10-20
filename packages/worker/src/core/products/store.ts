@@ -266,22 +266,6 @@ export async function activeSchemaVersions(
 // can compose them into a single atomic `db.batch([...])`. Column order mirrors
 // products/gen-seed.ts so the manual + GitHub paths persist identically to the seed SQL.
 
-/** ST-42: a profile the console's create adds (`source = 'console'`: a resync never rewrites it). */
-export function stmtInsertConsoleProfile(p: {
-  product: string;
-  id: string;
-  name: string;
-  payloadJson: string;
-  author: string;
-  now: number;
-}): DbStatement {
-  return {
-    sql: `INSERT INTO profiles (product, id, name, description, payload_json, modified_by, modified_at, source)
-          VALUES (?, ?, ?, NULL, ?, ?, ?, 'console')`,
-    params: [p.product, p.id, p.name, p.payloadJson, p.author, p.now],
-  };
-}
-
 /** Build the `products`-INSERT as a statement (for atomic batch with its child rows). */
 /**
  * Build the products INSERT as a statement (for atomic batch).
@@ -591,6 +575,15 @@ export async function deleteProduct(
     },
     // ST-40: SDK sightings hold no personal data; a deleted product keeps none of them.
     { sql: "DELETE FROM sdk_sightings WHERE product = ?", params: [slug] },
+    // ST-27: a deleted product's alert override goes with it (its sealed webhook secrets too).
+    {
+      sql: "DELETE FROM notify_destination_secrets WHERE product = ?",
+      params: [slug],
+    },
+    {
+      sql: "DELETE FROM notify_destinations WHERE product = ?",
+      params: [slug],
+    },
     // A-16: a deleted product holds no platform store app: its pins on the team credentials go,
     // which frees the app for another product.
     {

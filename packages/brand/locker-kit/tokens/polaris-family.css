@@ -1,0 +1,26 @@
+/* Shared neutral foundations; explicitly opt in with data-polaris-brand. */
+[data-polaris-brand] {
+  --polaris-page: #060912;
+  --polaris-surface: #0d111b;
+  --polaris-text: #dbe4ff;
+  --polaris-muted: #b5bed3;
+  --polaris-controlBoundary: #61697b;
+  --polaris-font: Rubik, system-ui, sans-serif;
+  --polaris-body-weight: 400;
+  --polaris-control-weight: 500;
+  --polaris-heading-weight: 600;
+  --polaris-prefix-weight: 400;
+  --polaris-reading-line-height: 1.6;
+  --polaris-primary-target: 44px;
+}
+[data-theme="light"][data-polaris-brand], [data-theme="light"] [data-polaris-brand] {
+  --polaris-page: #f6f8ff;
+  --polaris-surface: #ffffff;
+  --polaris-text: #262d40;
+  --polaris-muted: #48536b;
+  --polaris-controlBoundary: #7e8699;
+}
+[data-polaris-brand="key"] { --polaris-brand-accent: #9a5cff; }
+[data-theme="light"][data-polaris-brand="key"], [data-theme="light"] [data-polaris-brand="key"] { --polaris-brand-accent: #7a2fff; }
+[data-polaris-brand="locker"] { --polaris-brand-accent: #ff7869; }
+[data-theme="light"][data-polaris-brand="locker"], [data-theme="light"] [data-polaris-brand="locker"] { --polaris-brand-accent: #c44438; }

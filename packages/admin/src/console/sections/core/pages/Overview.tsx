@@ -83,6 +83,7 @@ const SERVICE_ORDER: ServiceSlug[] = [
   "update",
   "identity",
   "sync",
+  "commerce",
 ];
 
 /** The licenses query, made once by the page and shared with the License tile. */
@@ -179,7 +180,7 @@ function OverviewBody({
 
   const fallback = on(p, "license") ? (
     <Button asChild>
-      <Link to={r.licenses(slug)}>Create license</Link>
+      <Link to={r.newLicense(slug)}>New license</Link>
     </Button>
   ) : on(p, "config") ? (
     <Button asChild>

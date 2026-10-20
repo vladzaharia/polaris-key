@@ -63,6 +63,8 @@ export const SETTING_HOMES: Readonly<Record<string, SettingHome>> = {
   "core.adminGroup": manifest("product"),
   "core.web.origins": at("settings", "Web origins"),
   "core.manifest.authoritative": at("settings", "Repository"),
+  // ST-27: this product's alert destinations, which replace the platform's.
+  "core.alerts.destinations": at("settings", "Alerts"),
   // The icon and accents are declared in `.pkey/product`; Presentation uploads hosted files
   // (other keys), and nothing in the console reads the accents.
   "core.presentation": manifest("product"),

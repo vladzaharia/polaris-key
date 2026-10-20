@@ -1,0 +1,1 @@
+Use favicon.svg with rel="icon" type="image/svg+xml"; favicon.ico as fallback; apple-touch-icon.png for touch devices. Link site.webmanifest after setting the final start_url, scope and deployment paths. Serve assets with correct MIME types. maskable-512.png has additional safe area.

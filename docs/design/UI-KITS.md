@@ -721,11 +721,11 @@ that breaks one does not ship.
 
 ### 1.6 Marks
 
-- Kit screens show **no Polaris Key mark**. The Pinned K appears only inside the optional Powered-by
-  line or badge; the Star Cut does not appear in SDK UI at all. This supersedes BRAND §7.1's two
+- Kit screens show **no Polaris Key mark and no Polaris Locker mark or coral**. Kits may name Polaris Locker as a destination in words ("Manage in Polaris Locker", the sign-in footer, the device-code address); they never draw its mark. The Locker name reaches kits through the copy tables when `customer.host` turns on. The Powered-by line says Polaris Locker (the Locker mark and coral appear only inside it). The optional Powered-by
+  line or badge is the only place a mark is drawn; the Star Cut does not appear in SDK UI at all. This supersedes BRAND §7.1's two
   "SDK UI" rows (§9).
-- The Powered-by line is `<Pinned K favicon cut at 16 px, no bit> Powered by Polaris Key` in live text, `text-subtle` at 12–13 px,
-  or the kit's compact badge at its 232 × 88 minimum (BRAND §1.5) on About screens. It is off by
+- The Powered-by line is `<Locker micro mark, 16 px> Powered by Polaris Locker` in live text, `text-subtle` at 12–13 px,
+  or the Locker `powered-by` badge at ≥ 320 × 104 where 320 px is free, else the line (BRAND §1.5). It is off by
   default and sits only at the foot of settings, about and credits screens, never on the gate. Default
   mockups show the default: no Powered-by.
 

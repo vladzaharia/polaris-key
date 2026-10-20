@@ -194,3 +194,7 @@ the title. Error words (no bare "api 500", "Already connected", "Secrets can't b
 focus to the opener or heading, verb copy-button names, viewer reasons, "Claim again" with the new
 TXT record named, one place for the secret on Review, a columned list with headers, a container-width
 rail. Follow-up **I-31c**: session lengths as a read-only card (brief scope).
+
+Follow-up (not a CI row): `djdl:deliverables/record/delivery` shows a `trailing-space/main` violation
+(scrolls 102 px past the last box) at 640×400 and 720×450, found with ad-hoc viewports of the layout
+e2e. The page is not in `ZOOM_CASES`; I did not check whether it predates this package.

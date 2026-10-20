@@ -86,7 +86,7 @@ AS 2.2 or PJ B4.
   space.
 - **Pills only for issues**, right-aligned. No healthy-state pills.
 - Platform is hidden inside a product.
-- The customer portal is "Polaris Key", never "Polaris Key Portal". Portal nav: Library (default)
+- The customer site is "Polaris Locker", then "Locker" (D8), never "Polaris Key Portal", "the portal" or "customer portal" in copy. The console is Polaris Locker too; "Polaris Key" names only the platform (LK-00 §14.1). Portal nav: Library (default)
   and Discover, with Activate License as a right-aligned modal. On phones, Activate is the middle
   pill of the bottom bar, as the owner-approved PORTAL.md §3.2 already specifies (§5.2).
 - One login card: a logo-only Apple/Google/Steam row, identifier-first email, passkey, "Have a
@@ -508,7 +508,7 @@ Also: the license list searches by key and has a **Refusing devices** facet (ref
 activation in the last 7 days) with a right-aligned issue pill on those rows; a full license that
 refuses nothing gets no pill (AO J1.2, J1.9). The Status facet replaces the four stat tiles (CL 2).
 The holder email opens the **person drawer**: every license and device for that email across
-products; when the email belongs to a Polaris Key account it links I-04's Users page, which holds
+products; when the email belongs to a Polaris Locker account it links I-04's Users page, which holds
 the account's licenses, grants and effective set (S-19 §7.11) (AO J1.3).
 
 #### O2 · A bad release: investigate, halt, roll back (AO J2)
@@ -665,7 +665,7 @@ footer ([storyboard](experience/15-story-portal-desktop-dark.png)):
    when the key has used its entries (frame 4). Verdicts, inline under the field:
    - format errors and the cut-short message (UX-05);
    - **`license_owned`** (I-09; on the portal path for every product): "This Tidewater Studio license
-     is already in another Polaris Key account. A license never moves by its key." with **Sign in to
+     is already in another Polaris Locker account. A license never moves by its key." with **Sign in to
      that account** (the `signInUrl` flow) and **Use a different key** (frame 5);
    - **`key_entry_limit`** (I-09, Identity-on products): the app sends the person here with its
      `manageUrl` (`/activate?product=<slug>`); the card shows PORTAL.md §4.18's notice ("This key has
@@ -1216,9 +1216,9 @@ no second copy of their rules.
 
 | Variant         | Brand row                  | Header                                               | Methods                                                                                                                                                                                                                                                                                             |
 | --------------- | -------------------------- | ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Portal**      | Polaris Key                | Product context when a developer link sent you       | Identifier-first email · Continue · or · provider row (Apple, Google, Steam; logo only) · Sign in with a passkey · Have a license key? · Sign in with another device                                                                                                                                |
+| **Portal**      | Polaris Locker             | Product context when a developer link sent you       | Identifier-first email · Continue · or · provider row (Apple, Google, Steam; logo only) · Sign in with a passkey · Have a license key? · Sign in with another device                                                                                                                                |
 | **Console**     | Polaris Key │ Console      | none                                                 | **Identifier-first email**, the same field; for a known operator it is prefilled as a chip ("vlad@zaharia.dev · Change"). Continue routes to that operator's sign-in: the operator IdP (Pocket ID on the reference deployment, any OIDC SSO) or a passkey. "Sign in with a passkey" sits under "or" |
-| **Passthrough** | Polaris Key                | "**<App>** wants you to sign in" · developer · where | The portal methods for that product's providers, Have a license key?, then the step list above; lock footer                                                                                                                                                                                         |
+| **Passthrough** | Polaris Locker             | "**<App>** wants you to sign in" · developer · where | The portal methods for that product's providers, Have a license key?, then the step list above; lock footer                                                                                                                                                                                         |
 | **Worker page** | Polaris Key (or │ Console) | as above                                             | Server-rendered, no JS: forms that POST (send a new code, retry sign-in, enter a device code)                                                                                                                                                                                                       |
 
 ![Console sign-in](experience/02-signin-console-desktop-dark.png)

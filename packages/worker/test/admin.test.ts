@@ -1428,6 +1428,7 @@ describe("admin services enablement", () => {
       licensing: { tiers: 2, licenses: 3 },
       managedConfig: { catalogVersion: 1 },
       shipBuilds: { latest: { version: "2.4.0", channel: "beta" } },
+      commerce: { storefronts: 0, storeGrants: 0 },
     };
 
     expect((await call(w, "GET")).body.facts).toEqual(expected);
@@ -1466,6 +1467,7 @@ describe("admin services enablement", () => {
       licensing: { tiers: 0, licenses: 0 },
       managedConfig: { catalogVersion: 1 },
       shipBuilds: { latest: null },
+      commerce: { storefronts: 0, storeGrants: 0 },
     });
     expect(body.services).toEqual({
       license: { enabled: true },
@@ -1771,6 +1773,7 @@ describe("admin services enablement", () => {
       licensing: { tiers: 0, licenses: 0 },
       managedConfig: { catalogVersion: 1 },
       shipBuilds: { latest: null },
+      commerce: { storefronts: 0, storeGrants: 0 },
     });
 
     // …and now a resync is permitted to write again.

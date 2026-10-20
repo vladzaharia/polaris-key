@@ -1,4 +1,4 @@
-# Polaris Key customer portal: current state
+# Polaris Locker (the customer portal): current state
 
 This document records the customer portal that ships in `packages/admin/src/portal/`. It is not an implementation plan. The code, the Worker responses it consumes, and the tests are the source of truth; a feature is described here only when the portal renders it today.
 
@@ -6,7 +6,7 @@ This document records the customer portal that ships in `packages/admin/src/port
 
 ## 1. Purpose and boundary
 
-The portal is the signed-in customer surface at `key.plrs.im`. A person can inspect the products in their library, get a build or a store link, manage the devices and licenses attached to a product, add an eligible product or a license key, and manage their account.
+The portal is the signed-in customer surface, which customers know as **Polaris Locker**, then **Locker** (D8). Until the Worker's `customer.host` switch turns on it is served at `key.plrs.im`, then at `polaris.locker`. "Portal" is the internal word only (route kinds, `handlePortal`, `portal_*` tables, this file's name); no customer-facing string says "portal" or "customer portal". Developer-facing words say Polaris Locker too (LK-00 §14.1). Words and copy rules: [concepts](../../packages/docs/src/content/docs/start/concepts.md). A person can inspect the products in their library, get a build or a store link, manage the devices and licenses attached to a product, add an eligible product or a license key, and manage their account.
 
 It is distinct from the operator console. The portal has no product administration, provider configuration, catalog editing, or platform permissions. Product records and license policy are decided by the Worker; the portal presents the data and sends the person to the supported mutation endpoint.
 

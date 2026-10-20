@@ -4,10 +4,12 @@
 import { SERVICE_ACCENTS } from "../generated/tokens.js";
 import {
   BRAND,
+  LOCKER_OPTICAL,
   OPTICAL,
   POWERED_BY,
   type BadgeLayout,
-  type MarkKind,
+  type AnyMarkKind,
+  type LockerCut,
   type OpticalCut,
 } from "../tokens/primitives.js";
 import { SERVICE_IDS, type ServiceId } from "../tokens/source.js";
@@ -20,7 +22,19 @@ export type MarkTheme = "dark" | "light" | "mono";
  * below 24 the 16-grid favicon cut, 24–32 the service cut, above 32 the display master. Device
  * pixel ratio never enters: a 16 px mark on a 2× screen still draws the favicon geometry.
  */
-export function opticalCut(size: number): OpticalCut {
+export function opticalCut(size: number): OpticalCut;
+/** Locker has two cuts: micro below 24 CSS px, master from 24 up (BRAND.md §15). */
+export function opticalCut(size: number, kind: "locker"): LockerCut;
+export function opticalCut(
+  size: number,
+  kind?: AnyMarkKind,
+): OpticalCut | LockerCut;
+export function opticalCut(
+  size: number,
+  kind?: AnyMarkKind,
+): OpticalCut | LockerCut {
+  if (kind === "locker")
+    return size < LOCKER_OPTICAL.microBelow ? "micro" : "master";
   if (size < OPTICAL.faviconBelow) return "favicon";
   if (size <= OPTICAL.serviceMax) return "service";
   return "display";
@@ -76,7 +90,7 @@ export function resolveBitFill(bit: BitColor, theme: MarkTheme): string | null {
  * Whether the K's terminal bit may be drawn: the Pinned K only (the Update mark has no bit), the
  * display cut only, and only when the rendered glyph is at least 48 CSS px.
  */
-export function bitVisible(kind: MarkKind, size: number): boolean {
+export function bitVisible(kind: AnyMarkKind, size: number): boolean {
   return (
     kind === "key" &&
     opticalCut(size) === "display" &&

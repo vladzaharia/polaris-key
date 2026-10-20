@@ -29,6 +29,7 @@ import { SettingRow } from "../../../../ui/settings/SettingRow.js";
 import {
   LEVEL_RANK,
   confirmLevel,
+  fieldUnit,
   formatSettingValue,
   toField,
   type SettingConfirm,
@@ -38,6 +39,7 @@ import {
 import type { SettingHistoryEntry } from "../../../../ui/settings/SettingExtras.js";
 import { useWriteGate } from "../../../access/useCan.js";
 import { mutate } from "../../../data/mutations.js";
+import { FleetNote, fleetMeta, useReachPlan } from "./platformReach.js";
 import { qk } from "../../../data/queries.js";
 
 /** The engine's spec for a platform setting. */
@@ -45,7 +47,15 @@ export function specOf(s: PlatformSetting): SettingSpec {
   if (s.kind === "switch") return { kind: "switch" };
   if (s.kind === "choice")
     return { kind: "enum", values: s.options.map((o) => o.value) };
-  return { kind: "integer", unit: s.unit, min: s.min, max: s.max };
+  // The hosted-asset quotas are gigabytes of images and mirrored files, not megabytes.
+  const gib = s.unit === "bytes" && s.key.startsWith("assets.quota.");
+  return {
+    kind: "integer",
+    unit: s.unit,
+    min: s.min,
+    max: s.max,
+    ...(gib ? { byteUnit: "GiB" as const } : {}),
+  };
 }
 
 /** The engine's confirm vocabulary for a platform setting. */
@@ -193,6 +203,19 @@ function consequencesOf(
       return [
         `The delta consumer encodes payloads up to ${next} on either side of a pair (was ${before}).`,
         "Larger pairs cost more consumer CPU and memory. 32 MiB is the measured ceiling.",
+        reach,
+      ];
+    case "identity.keyEntry.limit":
+      return [
+        `No product may allow more than ${next} key entries per license (was ${before}). A product that set a higher limit keeps it and is held to ${next}.`,
+        "Key entries already recorded stay. Nothing is deleted.",
+        reach,
+      ];
+    case "assets.quota.mediaBytes":
+    case "assets.quota.releaseBytes":
+      return [
+        `Products that set no quota of their own now have ${next} (was ${before}).`,
+        "Files already stored stay. A product over its new quota is refused new ones.",
         reach,
       ];
     default:
@@ -364,6 +387,10 @@ export function EditableRow({
     );
   }
 
+  // A bound that clamps products says which, with what each set and what is in effect.
+  if (setting.link === "bound")
+    notes.push(<FleetNote key="clamped" setting={setting} />);
+
   const undo = (prev: PlatformSetting, written: PlatformSetting) => {
     const restore =
       prev.stored && prev.stored.valid
@@ -402,15 +429,19 @@ export function EditableRow({
       locked={setting.forcedOff ? <HardOff setting={setting} /> : undefined}
       notes={notes.length > 0 ? notes : undefined}
       footnote={
-        bytes
+        bytes && setting.key === "LAZY_DELTA_MAX_BYTES"
           ? `In effect: ${formatCount(setting.value as number)} bytes.`
           : undefined
       }
       bounds={
         setting.kind === "integer"
           ? bytes
-            ? `${formatNumber(toField(specOf(setting), setting.min))} to ${formatNumber(toField(specOf(setting), setting.max))} MiB. It can only lower the measured ${formatNumber(toField(specOf(setting), setting.max))} MiB ceiling.`
-            : `${formatCount(setting.min)} to ${formatCount(setting.max)} days.`
+            ? `${formatNumber(toField(specOf(setting), setting.min))} to ${formatNumber(toField(specOf(setting), setting.max))} ${fieldUnit(specOf(setting))}.${
+                setting.key === "LAZY_DELTA_MAX_BYTES"
+                  ? ` It can only lower the measured ${formatNumber(toField(specOf(setting), setting.max))} MiB ceiling.`
+                  : ""
+              }`
+            : `${formatCount(setting.min)} to ${formatCount(setting.max)}${setting.unit === "days" ? " days" : setting.key === "identity.keyEntry.limit" ? " per license" : ""}.`
           : undefined
       }
       reloadedBy={
@@ -423,6 +454,21 @@ export function EditableRow({
           queryKey: qk.platformSettings(),
           exact: true,
         })
+      }
+      confirmPlan={(target) =>
+        // eslint-disable-next-line react-hooks/rules-of-hooks -- the same on every render
+        useReachPlan(
+          setting,
+          target,
+          propagationSeconds,
+          setting.key === "identity.keyEntry.limit"
+            ? "Recorded key entries stay."
+            : "Stored files stay.",
+        )
+      }
+      meta={fleetMeta(setting)}
+      unitLabel={
+        setting.key === "identity.keyEntry.limit" ? "per license" : undefined
       }
       consequences={(to) =>
         consequencesOf(setting, to as string | number, propagationSeconds)
@@ -456,6 +502,7 @@ export function EditableRow({
         const next = fmt(after.value);
         return {
           level,
+          to: after.value,
           title: `Revert ${setting.label.toLowerCase()}?`,
           confirmLabel: `Revert to ${next}`,
           consequences: [

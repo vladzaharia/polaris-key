@@ -20,7 +20,7 @@
  */
 
 import type { QueryKey } from "@tanstack/react-query";
-import type { FeedEcosystem, FeedScope } from "../../api.js";
+import type { AlertScope, FeedEcosystem, FeedScope } from "../../api.js";
 
 const product = (slug: string, ...rest: (string | number)[]): QueryKey => [
   "product",
@@ -37,6 +37,10 @@ export const qk = {
     area,
   ],
   products: (): QueryKey => ["products"],
+  /** New product (ST-43): W22 repositories, W23 create check, W24 slug check. */
+  githubRepositories: (q: string): QueryKey => ["new-product", "repos", q],
+  createCheck: (repo: string): QueryKey => ["new-product", "check", repo],
+  slugCheck: (slug: string): QueryKey => ["new-product", "slug", slug],
   /** Every product's per-service facts (`GET /summary`); no reader since the 2026-10-07 polish. */
   summary: (): QueryKey => ["summary"],
 
@@ -45,6 +49,14 @@ export const qk = {
   platformDeployment: (): QueryKey => ["platform", "deployment"],
   platformActivity: (): QueryKey => ["platform", "activity"],
   platformSettings: (): QueryKey => ["platform", "settings"],
+  /** ST-16: the reach of a product default or bound, per proposed value. */
+  platformReach: (key: string, value?: number): QueryKey => [
+    "platform",
+    "settings",
+    "reach",
+    key,
+    value ?? null,
+  ],
   /** Settings → Licensing: the reserved entitlement-name report (LX-05). */
   platformReservedNames: (): QueryKey => ["platform", "reserved-names"],
   /** The KEK keyring status (`GET /products/kek`): instance-wide, so under `platform`. */
@@ -87,6 +99,11 @@ export const qk = {
     scope.kind === "platform"
       ? ["platform", "feeds"]
       : product(scope.slug, "distribution", "feeds"),
+  /** Alert destinations (ST-27), in either scope. */
+  alertDestinations: (scope: AlertScope): QueryKey =>
+    scope.kind === "platform"
+      ? ["platform", "alerts"]
+      : product(scope.slug, "alerts"),
   pkgFeed: (scope: FeedScope, eco: FeedEcosystem): QueryKey => [
     ...qkFeeds(scope),
     eco,
@@ -118,6 +135,9 @@ export const qk = {
   allProducts: (): QueryKey => ["product"],
   /** The product detail row. Match it with `exact: true`; as a prefix it is the whole product. */
   product: (slug: string): QueryKey => product(slug),
+
+  // commerce
+  commerceView: (slug: string) => product(slug, "commerce", "view"),
 
   // core
   services: (slug: string) => product(slug, "core", "services"),

@@ -1727,6 +1727,9 @@ describe("reserved product slugs", () => {
       "media",
       "activate",
       "avatar",
+      "device",
+      "tv",
+      "signin",
     ]) {
       expect(
         validateManifestDocuments({

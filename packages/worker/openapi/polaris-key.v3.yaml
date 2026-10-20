@@ -106,6 +106,12 @@ tags:
       SwiftPM, Maven and Gradle, OCI, Godot). Same Worker, third custom domain; every path here
       carries a `servers` override. No cookies, no CORS, GET and HEAD only, a sandbox CSP on
       every answer and an explicit type allowlist (`core/registry/registryHost.ts`).
+  - name: customer
+    description: >
+      The customer host, `polaris.locker` (LK-03; the `CUSTOMER_ORIGIN` host). Same Worker, fifth
+      custom domain. It serves only the customer routes (the portal, `/signin`, `/device`, `/tv`)
+      and the paths here, which carry a `servers` override; everything else is the plain
+      not-found (`core/customerHost.ts`).
   - name: img
     description: >
       The image host, `img.plrs.im` (HA-02): a product's public hosted images, content-addressed
@@ -13230,6 +13236,122 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
+  /signin:
+    get:
+      operationId: getPlatformSignIn
+      tags: [portal]
+      summary: Sign-in entry (redirect)
+      description: >
+        The address `license_owned`'s `signInUrl`, the licence-key email and the identity gate link
+        to. Until the login card lands (PX-12, PX-14) it answers `302` to the customer portal's
+        own sign-in. `product` (a slug) rides along as the portal's product context. `return_to`
+        is honoured only as a same-origin relative path the portal serves (`/` or `/activate`,
+        with query and fragment); a scheme, `//`, backslash, control character, traversal or
+        console path, plain or percent-encoded, is dropped and the portal root is used. With
+        `error=identity_disabled` it lands on the portal root with the product context. With
+        `request` it is `404` (the card's address, not built yet). `cache-control: no-store`,
+        `referrer-policy: no-referrer`.
+      parameters:
+        - {
+            name: product,
+            in: query,
+            required: false,
+            schema: { type: string },
+          }
+        - {
+            name: return_to,
+            in: query,
+            required: false,
+            schema: { type: string, maxLength: 512 },
+          }
+        - { name: error, in: query, required: false, schema: { type: string } }
+        - {
+            name: request,
+            in: query,
+            required: false,
+            schema: { type: string },
+          }
+      responses:
+        "302":
+          description: The portal. `Location` is relative to this host.
+          headers:
+            Location: { schema: { type: string } }
+        "404":
+          description: A `request` handle was given.
+  /device:
+    get:
+      operationId: getPlatformDeviceEntry
+      tags: [portal]
+      summary: Device-code entry page (HTML)
+      description: >
+        The platform-level page an app sends people to when it cannot build its product's own
+        device page (a UI kit's fallback link). With no `user_code`: a script-free code-entry form
+        that `GET`s back here. With one: the code is normalised (upper-cased, spaces and hyphens
+        dropped), looked up across all products, and a hit answers `302` to
+        `/{product}/identity/auth/device?user_code=` on the same host (on the customer host, on
+        the API host: an absolute `Location` from configuration), whatever the product's
+        state; that page owns every later state. A miss, an expired code and a malformed code all
+        render the form again with one line and name no product. Lookups are limited per client
+        network (30 per minute). `cache-control: no-store`, `referrer-policy: no-referrer`.
+        `/tv` is the same page with larger type for a TV browser.
+      parameters:
+        - name: user_code
+          in: query
+          required: false
+          description: The code the app shows, in any case, with or without the hyphen.
+          schema: { type: string, maxLength: 64 }
+      responses:
+        "200":
+          description: "The code-entry form. `text/html; charset=utf-8`."
+          content:
+            text/html:
+              schema: { type: string }
+        "302":
+          description: A live code. `Location` is the product's device page, relative to this host.
+          headers:
+            Location: { schema: { type: string } }
+        "404":
+          description: The code matched no live flow. The form again, with one generic line.
+          content:
+            text/html:
+              schema: { type: string }
+        "429":
+          description: Too many lookups from this network. The form with a retry line; `retry-after`.
+          content:
+            text/html:
+              schema: { type: string }
+  /tv:
+    get:
+      operationId: getPlatformDeviceEntryTv
+      tags: [portal]
+      summary: Device-code entry page, TV variant (HTML)
+      description: The same page and flow as `/device`, with larger type and targets for a TV browser. The redirect target is the same product page.
+      parameters:
+        - name: user_code
+          in: query
+          required: false
+          description: The code the app shows.
+          schema: { type: string, maxLength: 64 }
+      responses:
+        "200":
+          description: "The code-entry form. `text/html; charset=utf-8`."
+          content:
+            text/html:
+              schema: { type: string }
+        "302":
+          description: A live code. `Location` is the product's device page.
+          headers:
+            Location: { schema: { type: string } }
+        "404":
+          description: The code matched no live flow.
+          content:
+            text/html:
+              schema: { type: string }
+        "429":
+          description: Too many lookups from this network.
+          content:
+            text/html:
+              schema: { type: string }
   /media/{product}/{asset}:
     get:
       operationId: getPortalMedia
@@ -15429,10 +15551,13 @@ paths:
       tags: [admin]
       summary: Create a product by hand, ready for an SDK in one call
       description: >
-        Manual create (no repository). In one batch, rolled back whole on any failure: the
-        product, its sealed Ed25519 signing key, catalog v1 (empty, or the supplied `schema`), the
+        Manual create (no repository), written by the manifest ingest pipeline from the `.pkey/`
+        documents the request implies (ST-43, plans/P0-26.md D8): the snapshot origin is `link`
+        with no commit, and no release configuration is written. In one batch, rolled back whole
+        on any failure: the product, its sealed Ed25519 signing key, catalog v1 (empty, or the supplied `schema`), the
         Default profile (`default`, reserved), the Free tier, the planned platforms and the
-        services, from the `AdminCreateChoices` below. The licence defaults and the compatibility
+        services, from the `AdminCreateChoices` below. `services` is taken as the exact list
+        (`[]` turns none on), through the requirement rule. The licence defaults and the compatibility
         window are not create fields: tiers and platform defaults own the first, `release.compatWindow`
         the second (`compatMin`, `compatMax` and the like are ignored). The slug rules are
         `GET /manage/api/products/slug-check`'s. Platform admin; admin session cookie and CSRF
@@ -19167,6 +19292,524 @@ paths:
         "302": { description: "As `GET`." }
         "404": { description: "The not-found." }
 
+  # ── Alert destinations (ST-27) ──
+  /manage/api/platform/alerts:
+    get:
+      operationId: listPlatformAlertDestinations
+      tags: [admin]
+      summary: Alert destinations (the platform's)
+      description: >
+        Where the platform's alerts go (ST-27): email addresses and signed https webhooks, each
+        taking some alert kinds. A webhook is shown as `https://host/…`; its URL and signing secret
+        are sealed and never returned. Platform admins only. Admin session cookie.
+      security:
+        - adminSession: []
+      responses:
+        "200":
+          description: The destinations, the alert kinds, the per-scope maximum and whether the deploy can send email.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [destinations, kinds, max, emailAvailable]
+                properties:
+                  destinations:
+                    type: array
+                    items: { $ref: "#/components/schemas/AlertDestination" }
+                  kinds:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, label, sent]
+                      properties:
+                        id: { type: string }
+                        label: { type: string }
+                        sent:
+                          {
+                            type: boolean,
+                            description: "False: defined, but nothing raises it yet.",
+                          }
+                  max: { type: integer }
+                  emailAvailable: { type: boolean }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
+    post:
+      operationId: createPlatformAlertDestination
+      tags: [admin]
+      summary: Add an alert destination (step-up)
+      description: >
+        A webhook `target` must be a public https URL: http, userinfo, a port other than 443, an
+        IP literal, a single-label host, `plrs.im`, `workers.dev` and the private-only suffixes
+        are refused (`422 url_refused`), and the Worker re-checks the URL on every delivery and
+        refuses a redirect. The response carries the webhook's signing secret (`whsec_…`, the
+        Standard Webhooks scheme) ONCE; nothing can show it again, so rotate to replace it. Needs
+        a sign-in from the last 5 minutes (`403 step_up_required`). Up to 5 per scope (`409
+        too_many`). Audited. Admin session cookie and CSRF header.
+      security:
+        - adminSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [kind, target, alerts]
+              properties:
+                kind: { type: string, enum: [email, webhook] }
+                target:
+                  {
+                    type: string,
+                    maxLength: 2048,
+                    description: An email address,
+                    or an https URL for a webhook.,
+                  }
+                label: { type: string, maxLength: 64 }
+                alerts:
+                  type: array
+                  minItems: 1
+                  items:
+                    {
+                      type: string,
+                      enum:
+                        [
+                          auto_halt,
+                          store_connection,
+                          commerce,
+                          access_changed,
+                          notifications_failing,
+                        ],
+                    }
+      responses:
+        "201":
+          description: Added.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [destination]
+                properties:
+                  destination: { $ref: "#/components/schemas/AlertDestination" }
+                  secret:
+                    {
+                      type: string,
+                      description: "The signing secret, present for a webhook, shown once.",
+                    }
+        "409":
+          {
+            description: "Too many destinations, or changed elsewhere (`stale`).",
+          }
+        "422":
+          {
+            description: "A field is refused: `url_refused`, `url_not_https`, `target_invalid`, `alerts_required`, `alert_unknown`, `kind_invalid`.",
+          }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
+  /manage/api/platform/alerts/{id}:
+    patch:
+      operationId: updatePlatformAlertDestination
+      tags: [admin]
+      summary: Change, disable or re-secret an alert destination (step-up)
+      description: >
+        Any of `target` (a webhook's new URL goes through the same guard; email or URL), `label`,
+        `alerts`, `enabled`. `rotateSecret: true` issues a new signing secret, returned once. With
+        `expectedVersion`, a destination changed elsewhere answers `409 stale`. Needs a sign-in from the last 5 minutes (`403 step_up_required`) unless the body only sets `enabled: true`. Audited. Admin session cookie and CSRF header.
+      security:
+        - adminSession: []
+      parameters:
+        - { $ref: "#/components/parameters/AlertId" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                target: { type: string, maxLength: 2048 }
+                label: { type: string, maxLength: 64 }
+                alerts:
+                  type: array
+                  minItems: 1
+                  items:
+                    {
+                      type: string,
+                      enum:
+                        [
+                          auto_halt,
+                          store_connection,
+                          commerce,
+                          access_changed,
+                          notifications_failing,
+                        ],
+                    }
+                enabled: { type: boolean }
+                rotateSecret: { type: boolean }
+                expectedVersion: { type: integer }
+      responses:
+        "200":
+          description: Changed.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [destination]
+                properties:
+                  destination: { $ref: "#/components/schemas/AlertDestination" }
+                  secret:
+                    { type: string, description: "Only after `rotateSecret`." }
+        "409":
+          {
+            description: "Too many destinations, or changed elsewhere (`stale`).",
+          }
+        "422":
+          {
+            description: "A field is refused: `url_refused`, `url_not_https`, `target_invalid`, `alerts_required`, `alert_unknown`, `kind_invalid`.",
+          }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404": { description: No such destination. }
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
+    delete:
+      operationId: deletePlatformAlertDestination
+      tags: [admin]
+      summary: Remove an alert destination
+      description: >
+        Removes the destination and its sealed secret. Needs a sign-in from the last 5 minutes
+        (`403 step_up_required`): removing destinations can silence alerts. Audited. Admin session cookie and CSRF header.
+      security:
+        - adminSession: []
+      parameters:
+        - { $ref: "#/components/parameters/AlertId" }
+      responses:
+        "200":
+          description: Removed.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok: { type: boolean }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404": { description: No such destination. }
+        "409": { description: Changed elsewhere (`stale`). }
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
+  /manage/api/platform/alerts/{id}/test:
+    post:
+      operationId: testPlatformAlertDestination
+      tags: [admin]
+      summary: Send a test alert to a destination
+      description: >
+        One test alert, delivered like a real one; the outcome (`ok`, `failed`, `refused`) is
+        recorded on the destination. At most one every 30 seconds and 10 an hour per scope (`429 too_soon`, `too_many_tests`),
+        and none to a product's email address (`422 test_unavailable`). Audited. Admin session cookie and CSRF header.
+      security:
+        - adminSession: []
+      parameters:
+        - { $ref: "#/components/parameters/AlertId" }
+      responses:
+        "200":
+          description: Sent.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [outcome]
+                properties:
+                  outcome: { type: string, enum: [ok, failed, refused] }
+                  detail:
+                    {
+                      type: [string, "null"],
+                      description: "Why it failed, when it did.",
+                    }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404": { description: No such destination. }
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
+  /manage/api/products/{product}/alerts:
+    get:
+      operationId: listProductAlertDestinations
+      tags: [admin]
+      summary: Alert destinations (a product's)
+      description: >
+        Where a product's alerts go (ST-27): email addresses and signed https webhooks, each
+        taking some alert kinds. A webhook is shown as `https://host/…`; its URL and signing secret
+        are sealed and never returned. Needs the settings area of the product. Admin session cookie.
+      security:
+        - adminSession: []
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "200":
+          description: The destinations, the alert kinds, the per-scope maximum and whether the deploy can send email.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [destinations, kinds, max, emailAvailable]
+                properties:
+                  destinations:
+                    type: array
+                    items: { $ref: "#/components/schemas/AlertDestination" }
+                  kinds:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, label, sent]
+                      properties:
+                        id: { type: string }
+                        label: { type: string }
+                        sent:
+                          {
+                            type: boolean,
+                            description: "False: defined, but nothing raises it yet.",
+                          }
+                  max: { type: integer }
+                  inheritedByKind:
+                    type: object
+                    description: "Product scope: enabled platform destinations that take each kind."
+                    additionalProperties: { type: integer }
+                  emailAvailable: { type: boolean }
+                  inherited:
+                    type: integer
+                    description: How many enabled platform destinations apply where this product sets none of its own.
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
+    post:
+      operationId: createProductAlertDestination
+      tags: [admin]
+      summary: Add an alert destination (step-up)
+      description: >
+        A webhook `target` must be a public https URL: http, userinfo, a port other than 443, an
+        IP literal, a single-label host, `plrs.im`, `workers.dev` and the private-only suffixes
+        are refused (`422 url_refused`), and the Worker re-checks the URL on every delivery and
+        refuses a redirect. The response carries the webhook's signing secret (`whsec_…`, the
+        Standard Webhooks scheme) ONCE; nothing can show it again, so rotate to replace it. Needs
+        a sign-in from the last 5 minutes (`403 step_up_required`). Up to 5 per scope (`409
+        too_many`). Audited. Admin session cookie and CSRF header.
+      security:
+        - adminSession: []
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [kind, target, alerts]
+              properties:
+                kind: { type: string, enum: [email, webhook] }
+                target:
+                  {
+                    type: string,
+                    maxLength: 2048,
+                    description: An email address,
+                    or an https URL for a webhook.,
+                  }
+                label: { type: string, maxLength: 64 }
+                alerts:
+                  type: array
+                  minItems: 1
+                  items:
+                    {
+                      type: string,
+                      enum:
+                        [
+                          auto_halt,
+                          store_connection,
+                          commerce,
+                          access_changed,
+                          notifications_failing,
+                        ],
+                    }
+      responses:
+        "201":
+          description: Added.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [destination]
+                properties:
+                  destination: { $ref: "#/components/schemas/AlertDestination" }
+                  secret:
+                    {
+                      type: string,
+                      description: "The signing secret, present for a webhook, shown once.",
+                    }
+        "409":
+          {
+            description: "Too many destinations, or changed elsewhere (`stale`).",
+          }
+        "422":
+          {
+            description: "A field is refused: `url_refused`, `url_not_https`, `target_invalid`, `alerts_required`, `alert_unknown`, `kind_invalid`.",
+          }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
+  /manage/api/products/{product}/alerts/{id}:
+    patch:
+      operationId: updateProductAlertDestination
+      tags: [admin]
+      summary: Change, disable or re-secret an alert destination (step-up)
+      description: >
+        Any of `target` (a webhook's new URL goes through the same guard; email or URL), `label`,
+        `alerts`, `enabled`. `rotateSecret: true` issues a new signing secret, returned once. With
+        `expectedVersion`, a destination changed elsewhere answers `409 stale`. Needs a sign-in from the last 5 minutes (`403 step_up_required`) unless the body only sets `enabled: true`. Audited. Admin session cookie and CSRF header.
+      security:
+        - adminSession: []
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { $ref: "#/components/parameters/AlertId" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                target: { type: string, maxLength: 2048 }
+                label: { type: string, maxLength: 64 }
+                alerts:
+                  type: array
+                  minItems: 1
+                  items:
+                    {
+                      type: string,
+                      enum:
+                        [
+                          auto_halt,
+                          store_connection,
+                          commerce,
+                          access_changed,
+                          notifications_failing,
+                        ],
+                    }
+                enabled: { type: boolean }
+                rotateSecret: { type: boolean }
+                expectedVersion: { type: integer }
+      responses:
+        "200":
+          description: Changed.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [destination]
+                properties:
+                  destination: { $ref: "#/components/schemas/AlertDestination" }
+                  secret:
+                    { type: string, description: "Only after `rotateSecret`." }
+        "409":
+          {
+            description: "Too many destinations, or changed elsewhere (`stale`).",
+          }
+        "422":
+          {
+            description: "A field is refused: `url_refused`, `url_not_https`, `target_invalid`, `alerts_required`, `alert_unknown`, `kind_invalid`.",
+          }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404": { description: No such destination. }
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
+    delete:
+      operationId: deleteProductAlertDestination
+      tags: [admin]
+      summary: Remove an alert destination
+      description: >
+        Removes the destination and its sealed secret. Needs a sign-in from the last 5 minutes
+        (`403 step_up_required`): removing destinations can silence alerts. Audited. Admin session cookie and CSRF header.
+      security:
+        - adminSession: []
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { $ref: "#/components/parameters/AlertId" }
+      responses:
+        "200":
+          description: Removed.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok: { type: boolean }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404": { description: No such destination. }
+        "409": { description: Changed elsewhere (`stale`). }
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
+  /manage/api/products/{product}/alerts/{id}/test:
+    post:
+      operationId: testProductAlertDestination
+      tags: [admin]
+      summary: Send a test alert to a destination
+      description: >
+        One test alert, delivered like a real one; the outcome (`ok`, `failed`, `refused`) is
+        recorded on the destination. At most one every 30 seconds and 10 an hour per scope (`429 too_soon`, `too_many_tests`),
+        and none to a product's email address (`422 test_unavailable`). Audited. Admin session cookie and CSRF header.
+      security:
+        - adminSession: []
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { $ref: "#/components/parameters/AlertId" }
+      responses:
+        "200":
+          description: Sent.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [outcome]
+                properties:
+                  outcome: { type: string, enum: [ok, failed, refused] }
+                  detail:
+                    {
+                      type: [string, "null"],
+                      description: "Why it failed, when it did.",
+                    }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404": { description: No such destination. }
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
+
+  /.well-known/polaris-host.json:
+    servers:
+      - url: https://polaris.locker
+        description: The customer host (polaris.locker; staging.polaris.locker and dev.polaris.locker in the other environments).
+    get:
+      operationId: getCustomerHostDocument
+      tags: [customer]
+      summary: Customer host health check (customer host only)
+      description: >
+        LK-03. `{host: "customer"}`: the document the console reads before it lets `customer.host`
+        turn on. It names nothing else. `access-control-allow-origin`
+        names the console origin only, and no credentials are allowed. `cache-control: no-store`.
+        `GET` and `HEAD` only.
+      responses:
+        "200":
+          description: The host answers.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [host]
+                properties:
+                  host: { type: string, enum: [customer] }
+        "405":
+          { description: "Any method but GET and HEAD (`Allow: GET, HEAD`)." }
+    head:
+      operationId: getCustomerHostDocumentHead
+      tags: [customer]
+      summary: Customer host health check, headers only (customer host only)
+      description: LK-03. As `GET /.well-known/polaris-host.json`.
+      responses:
+        "200": { description: The host answers. }
 components:
   securitySchemes:
     ciToken:
@@ -19240,6 +19883,12 @@ components:
       required: true
       description: The admin API token's opaque id (`apitok_…`), from the mint response or the roster.
       schema: { type: string, pattern: "^apitok_[A-Za-z0-9_-]+$" }
+    AlertId:
+      name: id
+      in: path
+      required: true
+      description: The alert destination's opaque id (`dst_…`), from the list.
+      schema: { type: string, pattern: "^dst_[A-Za-z0-9_-]{6,40}$" }
     OciOwner:
       name: owner
       in: path
@@ -20059,6 +20708,49 @@ components:
         scope the dispatcher does not consult would be a claim about authority that nothing
         enforces, so a scope is added alongside the route that needs it, never ahead of it.
       enum: [bundles:mint, migrations:report]
+    AlertDestination:
+      type: object
+      description: >
+        An alert destination as a caller may see it (ST-27). `target` is the address, or
+        `https://host/…` for a webhook: the URL and the signing secret are sealed and never
+        returned.
+      required: [id, scope, kind, target, alerts, enabled, version, failures]
+      properties:
+        id: { type: string }
+        scope:
+          { type: string, description: "`_platform`, or the product slug." }
+        kind: { type: string, enum: [email, webhook] }
+        target: { type: string }
+        label: { type: [string, "null"] }
+        alerts:
+          type: array
+          items:
+            {
+              type: string,
+              enum:
+                [
+                  auto_halt,
+                  store_connection,
+                  commerce,
+                  access_changed,
+                  notifications_failing,
+                ],
+            }
+        enabled: { type: boolean }
+        version: { type: integer }
+        lastStatus:
+          { type: [string, "null"], enum: [ok, failed, refused, null] }
+        lastAt: { type: [integer, "null"] }
+        lastError:
+          {
+            type: [string, "null"],
+            description: "Why the last delivery failed: a host or HTTP status, never a URL path or a secret.",
+          }
+        failures: { type: integer }
+        createdAt: { type: integer }
+        createdBy: { type: string }
+        updatedAt: { type: integer }
+        updatedBy: { type: string }
     AdminApiToken:
       type: object
       description: >
@@ -21065,6 +21757,10 @@ components:
         releaseWorkflow:
           type: [boolean, "null"]
           description: Whether `.github/workflows/release.yml` exists at the commit.
+        starterTier:
+          type: string
+          enum: [free, none]
+          description: Whether the create adds the Free tier (License on, no tier declared).
         problems:
           type: array
           items: { $ref: "#/components/schemas/AdminManifestProblem" }

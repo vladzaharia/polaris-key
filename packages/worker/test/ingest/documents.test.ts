@@ -81,3 +81,122 @@ describe("create from documents (D8)", () => {
     ).toBeNull();
   });
 });
+
+describe("the create dry run asks what the create refuses (P0-26b)", () => {
+  const profileWithSecret = () =>
+    minimal({
+      product: {
+        profiles: [
+          {
+            id: "standard",
+            name: "Standard",
+            payload: {
+              config: {},
+              secrets: {
+                "api.key": {
+                  state: "default",
+                  value: "a-secret-value",
+                  updatedAt: 0,
+                },
+              },
+            },
+          },
+        ],
+      },
+    });
+
+  it("plan reports the seal refusal the create makes, with no KEK", async () => {
+    const files = profileWithSecret();
+    const parsed = parseManifest(
+      Object.fromEntries(
+        Object.entries(files).map(([path, text]) => [
+          path.replace(/^\.pkey\//, "").replace(/\.(json|yaml)$/, ""),
+          text,
+        ]),
+      ),
+    );
+    if (!parsed.ok) throw new Error(parsed.errors.join("; "));
+    const env = envFor();
+    delete (env as { PLATFORM_KEK?: string }).PLATFORM_KEK;
+    const db = makeTestDb();
+    const input = {
+      mode: "create" as const,
+      product: SLUG,
+      manifest: parsed.manifest,
+      now: NOW,
+      source: {
+        origin: "link" as const,
+        sha: null,
+        files,
+        fetchImpl: async () => new Response("no", { status: 404 }),
+      },
+    };
+    const ingest = ingestFor(SERVICES);
+    const run = await ingest.run(env, db, input);
+    expect(run.ok).toBe(false);
+    const plan = await ingest.plan(env, db, input);
+    expect(plan.problems.map((p) => p.check)).toContain("seal");
+  });
+});
+
+describe("service coherence on a create with no repository (ST-43)", () => {
+  const run = async (services: string[], starterTier?: "free" | "none") => {
+    const { createFromDocuments } =
+      await import("../../src/core/ingest/fromDocuments.js");
+    const db = makeTestDb();
+    const res = await createFromDocuments(envFor(), db, ingestFor(SERVICES), {
+      slug: SLUG,
+      name: "Acme",
+      choices: {
+        services: services as never,
+        intendedPlatforms: [],
+        starterTier: starterTier ?? null,
+        trustReleaseWorkflow: false,
+      },
+      author: "ada",
+      now: NOW,
+    });
+    return { db, res };
+  };
+
+  it.each([
+    [["distribution"], "distribution_requires_release"],
+    [["release", "update"], "update_requires_distribution"],
+    [["sync"], "sync_requires_config"],
+    [["config", "sync"], "sync_requires_identity"],
+  ])("refuses %j with %s and writes nothing", async (services, code) => {
+    const { db, res } = await run(services);
+    expect(res.ok).toBe(false);
+    if (!res.ok && "reason" in res) {
+      expect(res.reason).toBe(code);
+      expect(res.codes).toContain(code);
+    }
+    expect(
+      await db.first("SELECT slug FROM products WHERE slug = ?", SLUG),
+    ).toBeNull();
+  });
+
+  it("takes the list as it is: an empty list turns nothing on", async () => {
+    const { db, res } = await run([], "none");
+    expect(res.ok, JSON.stringify(res)).toBe(true);
+    const row = await db.first<{
+      services_json: string;
+      services_source: string;
+    }>(
+      "SELECT services_json, services_source FROM products WHERE slug = ?",
+      SLUG,
+    );
+    expect(row?.services_source).toBe("admin");
+    const on = Object.entries(JSON.parse(row!.services_json)).filter(
+      ([, v]) => (v as { enabled: boolean }).enabled,
+    );
+    expect(on).toEqual([]);
+  });
+
+  it("refuses the Free tier without License", async () => {
+    const { res } = await run(["config"], "free");
+    expect(res.ok).toBe(false);
+    if (!res.ok && "reason" in res)
+      expect(res.reason).toBe("starter_tier_requires_license");
+  });
+});

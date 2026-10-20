@@ -216,7 +216,7 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("Core → Overview", () => {
-  it("titles the page with the product and offers Create license when License is on (OVR-1)", async () => {
+  it("titles the page with the product and offers New license when License is on (OVR-1)", async () => {
     // Nothing left to do on Integration: the header's primary follows enablement.
     fns.integration.mockResolvedValue(
       integrationView({ features: [], verified: false }),
@@ -226,10 +226,10 @@ describe("Core → Overview", () => {
       await screen.findByRole("heading", { level: 1, name: "DJDL" }),
     ).toBeTruthy();
     expect(
-      (
-        await screen.findByRole("link", { name: "Create license" })
-      ).getAttribute("href"),
-    ).toBe("#/p/djdl/license/licenses");
+      (await screen.findByRole("link", { name: "New license" })).getAttribute(
+        "href",
+      ),
+    ).toBe("#/p/djdl/license/licenses?setup=new-license&step=tier");
   });
 
   it("offers Publish catalog with only Config on, else Enable services", async () => {
@@ -272,6 +272,22 @@ describe("Core → Overview", () => {
     ).toBeNull();
     expect(await screen.findByText("2 keys")).toBeTruthy();
     expect(await screen.findByText("7 devices")).toBeTruthy();
+  });
+
+  it("draws Commerce's tile and counts it among the services the product runs", async () => {
+    fns.product.mockResolvedValue({
+      product: product({
+        services: {
+          ...enablement(["license"]),
+          commerce: { enabled: true },
+        } as Record<ServiceSlug, { enabled: boolean }>,
+      }),
+    });
+    mount();
+    expect(
+      await screen.findByRole("heading", { level: 2, name: "Commerce" }),
+    ).toBeTruthy();
+    expect(screen.getByText(/Runs 2 services/)).toBeTruthy();
   });
 
   it("replaces the checklist, Trust & SDK and the welcome with the Integration card", async () => {

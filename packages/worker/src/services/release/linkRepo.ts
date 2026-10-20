@@ -491,6 +491,8 @@ export interface CreateDryRun {
   secrets: string[];
   /** Whether `.github/workflows/release.yml` exists at the commit; null when GitHub would not say. */
   releaseWorkflow: boolean | null;
+  /** Whether the create adds the Free tier: License on and the manifest declares no tier. */
+  starterTier: "free" | "none";
   /** Every blocking problem, with its file and path. Empty when `ready`. */
   problems: ManifestProblem[];
 }
@@ -554,6 +556,7 @@ export async function prepareCreate(
       catalog: null,
       platforms: { values: [], source: "none" },
       secrets: [],
+      starterTier: "none" as const,
       problems: manifestProblems(result.errors),
     };
   }
@@ -621,6 +624,10 @@ export async function prepareCreate(
       source: platforms.length ? "artifact-map" : "none",
     },
     secrets: collectSecretNames(manifest),
+    starterTier:
+      manifest.services.license.enabled && manifest.tiers.length === 0
+        ? ("free" as const)
+        : ("none" as const),
     problems,
   };
 }

@@ -153,7 +153,9 @@ export type ProductPageId =
   | "portal"
   | "sign-in"
   // sync
-  | "sync-data";
+  | "sync-data"
+  // commerce
+  | "commerce-overview";
 
 export type PageId = GlobalPageId | ProductPageId;
 
@@ -725,6 +727,14 @@ export const SECTIONS: NavSection[] = [
     glyph: ShoppingBag,
     docs: "/docs/features/commerce/",
     items: [
+      {
+        page: "commerce-overview",
+        label: "Overview",
+        path: "commerce",
+        icon: LayoutDashboard,
+        docs: "/docs/features/commerce/",
+        inNav: true,
+      },
       {
         // A-17g: the commerce mappings beside the store's own products (App Store products, T2),
         // moved from Distribution by CM-29. CM-23 adds the offers, purchases and sales pages.

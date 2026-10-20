@@ -3593,6 +3593,22 @@ product. R10-04a shards only the platform-global `_portal` and `_admin` limiters
 (`core/rateLimit.ts` `SHARDED_LIMITERS`); `email*` buckets are separately sharded in every
 limiter, but the device-code buckets use the product's one object.
 
+**Platform code lookup (`/device`, `/tv`).** These pages take a user code with no product and
+look it up across all products (`core/deviceCodeIndex.ts`, kind `device-user-global`: the
+peppered hash of the code → the issuing product's slug, written `ifAbsent` at `/device/start`,
+same 600-second life, deleted with the per-product entry on confirmation and on a ready or
+timed-out poll). It is a second guess oracle with the same code space, so it carries its own
+bucket: 30 lookups a minute per client network (`deviceEntry`, fail-closed, in the sharded
+`_portal` limiter, so an attacker cannot exhaust a product's budget through it). Each of the
+three outcomes that leaks nothing (unknown, expired, malformed) is the same page and the same
+one store read; a hit answers `302` to the product's own page, which applies the per-product
+bucket and every later check, so the lookup reveals the product only to whoever already holds a
+live code. A miss names no product. The platform index makes a code unique among all live flows,
+so two products cannot hand out one code. The pages send `Cache-Control: no-store` and
+`Referrer-Policy: no-referrer`, take the code by `GET` (it is in the URL, as in
+`verificationUriComplete`) and log nothing. Residual: a holder of a live code learns its product
+slug, which the code's own display already implies; the guess bound is unchanged.
+
 **Remote phishing (RFC 8628 §5.4) — forwarded authorize URL closed; residual R1-07 open,
 rooted in R8-03.** A starter can confirm without a browser and forward the resulting IdP URL,
 but confirmation now sets a `__Host-pk_lcb` binder on the confirming browser and stores its
@@ -4490,6 +4506,16 @@ composition root and refuses:
 No new data is collected and nothing reaches a device: `wire` only labels which existing channel
 already carries a value.
 
+ST-16 makes three platform entries live on Platform → Settings: the key-entry limit ceiling
+(`identity.keyEntry.limit`, a `policy` bound on the permissive side) and the two hosted-asset
+quota defaults (`assets.quota.*`), so a platform write now reaches every product that inherits or
+is clamped by it. Both directions of each take L2 (typed key on the strict route), and the new
+read-only `GET /api/platform/settings/:key/reach` (platform area, counts and product slugs only,
+no other setting's value) tells the operator how many products a change reaches before they
+confirm. A platform bound clamps on read and never rewrites a product row, so reverting it
+restores every product's own value. The licence defaults stay `pending` until the device hot
+paths read them through the resolver.
+
 ST-19b registers the manifest-declared settings ST-06 left pending (the `.pkey/release` block,
 deliverables, channel policy, trusted publisher, release keys, device registration, required
 secret names, provisioning hooks and transports). Each describes today's storage and adds no
@@ -4503,6 +4529,64 @@ resync), `release.publishing.trustedPublisher` (which workflow and environment c
 `secret`: it names secrets, never holds a value, and stays pending until ST-08 wires it.
 ST-38 later removed `core.registration`: the registration policy is derived from the enabled
 services, so there is nothing to declare or widen, and four of the five remain.
+
+### Notification destinations: operator alerts (ST-27)
+
+Operator alerts (an auto-halt that tripped, a store connection that failed, a purchase that
+maps to nothing, a change of who may do what, a destination that keeps failing) used to reach the
+audit trail only. ST-27 adds destinations: an email address, mailed through Core's one send choke
+point (`core/notify/emailDelivery.ts`, so the suppression list, the Apple relay gate and the
+provider-error handling apply), or an https webhook. Two scopes: the platform's, and a product's
+own, which replaces the platform's for the alert kinds it takes. The code is
+`core/notify/alertDestinations.ts` (rows, writes, delivery) and `core/notify/alertWebhook.ts` (the
+URL guard, the signature and the one POST). Tables `notify_destinations` and
+`notify_destination_secrets` are Core's.
+
+- **The webhook URL is SSRF-shaped.** An operator writes a URL and the Worker dials it with a
+  signed body. Both guards must accept it, on write and again on every delivery: `guardUrl`
+  (`core/safeFetch.ts`: https only, no userinfo, port 443, no IP literal, no single-label host,
+  not `plrs.im` or `workers.dev` or a private-only suffix) and `outboundUrlProblem`
+  (`core/outboundGuard.ts`: the reserved-range check). A redirect is **refused**, never followed
+  (`redirect: "manual"`; a 3xx is recorded as `refused`), so a public host cannot aim the signed
+  request at an address the guard did not see. Five-second timeout; the response body is
+  cancelled unread, so a hostile endpoint returns the Worker nothing it keeps. There is no
+  response data path back to the operator, so the destination is not an oracle for internal hosts
+  either. The Worker resolves nothing itself and Cloudflare does not dial private space from a
+  Worker (the argument `safeFetch.ts` makes); DNS-rebinding to a private address is therefore
+  not available.
+- **Secrets are sealed and never shown back.** The URL (its path can hold a token) and the signing
+  secret are sealed together under `PLATFORM_KEK`, AAD
+  `pkey:v2:<scope>:notify-destination:<id>` (kind `notify-destination`, a closed-set addition in
+  `platform/keyvault.ts`); the KEK sweep re-seals them (`SEALED_TABLES`). Lists and audit rows
+  hold the address or `https://host/…`, never a URL path or a secret. The signing secret is
+  returned once, by the create and by a rotate, and nowhere else. A deleted destination or product
+  deletes the sealed row with it.
+- **Signing.** The Standard Webhooks scheme (`webhook-id`, `webhook-timestamp`,
+  `webhook-signature: v1,<HMAC-SHA256>` over `id.timestamp.body`), key `whsec_<24 random bytes>`,
+  per destination. A receiver verifies and rejects a stale timestamp. SP-66 adopts the same format.
+- **Who can write.** Platform: the `platform` area. Product: the `settings` area of that product
+  (a role narrowed to one other area cannot aim a product's alerts). Adding or retargeting a
+  destination (`POST`, `PATCH`) needs the console step-up (`STEP_UP_ROUTES`; for `PATCH` the handler checks it, and only a body that just turns a destination on skips it, because turning one off silences alerts), so a stolen session
+  cannot redirect alerts to an attacker or exfiltrate through a webhook. Removing one
+  (`DELETE`) needs it too, because a stolen session could otherwise silence every alert; only a
+  test send does not. Every write appends an audit row (`notify.destination.create|update|rotate|delete|test`,
+  to `platform_audit` or the product's `audit`), and an alert that reached nobody appends
+  `notify.alert.undeliverable`.
+- **Abuse bounds.** At most 5 destinations per scope; a test send at most every 30 seconds and 10 an hour per scope, counted from the audit
+  trail (so deleting and re-adding a destination resets nothing), and **no test send to a
+  product-scope email address** until confirmation exists (it would let a product operator send
+  platform-branded mail to anyone on demand); alert text is clipped (500 characters) and control characters are stripped; mail
+  is platform mail from the platform sender, under the existing daily limits. A product-scope
+  email destination may name any address, as a product operator already can through the licence
+  key emails; the message carries no secret and no link. Residual risk: such an address receives
+  alert text (a product name and a rollout reason). Follow-up: a confirmation link to a
+  product-scope address, owned by the alerts work in P0-51.
+- **No new data is collected.** Alert content is operator-facing state already in the audit trail.
+
+The last delivery failure is stored as words with a host or an HTTP status (`last_error`), never a URL path or a secret.
+
+Review trigger (section 9): a new alert kind, a new destination kind, any change to the URL guard
+or the redirect rule, and any new reader of `notify_destination_secrets`.
 
 ### Self-reported operations (A-14)
 
@@ -7116,6 +7200,52 @@ is missing or disagrees with its name is the not-found, as in `blobResponse`.
 
 Residual risk: an operator can host abusive or illegal images, now served from a Polaris Key host.
 The operator terms apply, and HA-06's delete-a-copy (below) takes effect at the next request.
+
+### The customer host and the `customer.host` switch (LK-03)
+
+**What it is.** `CUSTOMER_ORIGIN` (`https://polaris.locker`; `staging.` and `dev.` elsewhere) is
+the same Worker on a fifth custom domain (plans/LK-00.md §7). `core/customerHost.ts` confines it
+to the customer routes: the root portal (`/`, `/activate`, `/assets/*`, `/login[/…]`, `/callback`,
+`/logout`, `/magic/verify`, `/api/*`, `/media/*`, `/download/<token>`), `/signin`, `/device`, `/tv`,
+and two answers of its own, `/.well-known/polaris-host.json` and `/robots.txt`. `/manage`, `/docs`,
+every product route and every webhook are the plain not-found there. Unset, not a bare
+`https:` origin (no userinfo, path, query or fragment), set while `CONSOLE_ORIGIN` is unset or
+unusable, equal to the console host or equal to an earlier auxiliary host, the origin names no host and routing is what
+it was. It is deploy-time only (`DENIED_PLATFORM_NAMES`).
+
+**The switch.** `customer.host` is `off`, `on` or `permanent`, off by default; `[vars]`
+`CUSTOMER_HOST=off` is a hard off no console value overrides; unset or `runtime` leaves the
+console in charge, so a stored `on` goes live the moment `CUSTOMER_ORIGIN` is deployed. Every
+change is a typed-key confirmation (L2) and audited. **Gap:** there is no fresh sign-in
+requirement yet. A stolen console session with the settings permission can flip the switch.
+The server-side fresh step-up for `customer.host`, and the health-check preflight before `on`, are
+required LK-10 items before LK-11's cutover. It is effectively `off` while the host is unusable, without a database read. While it is
+not `off`, `customerOrigin()` (`core/hosts.ts`) is the one source of every customer link: refusal
+`manageUrl` and `signInUrl`, discovery's `accountPortal`, the device code's `verificationUri`, the
+choice view's links, the identity-off card redirect, the licence-key and account mail links.
+`test/customerOrigin.test.ts` fails on a customer path literal built on any other origin.
+
+**What an attacker gets.**
+
+- _A host-header or request-supplied origin._ Customer links come from configuration
+  (`CUSTOMER_ORIGIN`, else `CONSOLE_ORIGIN`); the request's origin is only the last fallback it
+  always was. The customer host's redirect to a product's device page (`/device` after a code
+  hit) uses `CONSOLE_ORIGIN`, never a request value: a fixed map with no request-supplied host.
+- _The health check._ `polaris-host.json` holds `{host: "customer"}` and nothing else: no
+  environment, no version. CORS names the console origin only and allows no credentials, so
+  another site cannot read it from a browser.
+- _The console bundle on the customer host._ `/assets/*` is one admin build; the console bundle is
+  public code and useless without a console session, which is host-only and never exists there.
+- _Cookies._ Both hosts keep the same `__Host-` names, so each is host-only. The customer realm
+  leaves the console's site entirely, so R1-09's shared-origin caveat stops covering customers once
+  customers are served there. No session crosses hosts (LK-00 D10).
+- _A rollback._ `permanent` is the 301 phase of the old-URL redirects (LK-11); a cached 301
+  outlives a rollback, which is why `on` (302) comes first.
+
+Still to come, each in its own package with its own entry here: the cross-host bind hop (LK-04),
+Related Origin Requests for passkeys (LK-05), the old-URL redirects and cookie expiry (LK-11).
+Tests: `test/customerHost.test.ts`, `test/customerOrigin.test.ts`, `test/routeCoverage.test.ts`
+(`CUSTOMER_PATHS`).
 
 ### The console loads product logos from the image host (console product card)
 

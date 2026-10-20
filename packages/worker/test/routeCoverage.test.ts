@@ -96,6 +96,12 @@ const CORE_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
  * portal session cookie.
  */
 const PORTAL_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
+  // The platform device-code entry pages: a code typed here finds its product's page.
+  signInEntry: [["/signin", ["get"]]],
+  deviceEntry: [
+    ["/device", ["get"]],
+    ["/tv", ["get"]],
+  ],
   portalMedia: [
     ["/media/{product}/{asset}", ["get"]],
     // I-07, PX-W16: account pictures, re-encoded (`avatar` is a reserved product slug).
@@ -208,6 +214,10 @@ const ADMIN_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     // token reaches it.
     ["/manage/api/tokens", ["get", "post"]],
     ["/manage/api/tokens/{tokenId}", ["delete"]],
+    // ST-27: where operator alerts go (platform scope).
+    ["/manage/api/platform/alerts", ["get", "post"]],
+    ["/manage/api/platform/alerts/{id}", ["patch", "delete"]],
+    ["/manage/api/platform/alerts/{id}/test", ["post"]],
     ["/manage/api/account-tokens", ["get"]],
     ["/manage/api/account-tokens/{tokenId}", ["delete"]],
   ],
@@ -231,6 +241,10 @@ const ADMIN_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
       "/manage/api/products/{product}/assets/settings/{key}",
       ["patch", "delete"],
     ],
+    // ST-27: a product's alert destinations (the override of the platform's).
+    ["/manage/api/products/{product}/alerts", ["get", "post"]],
+    ["/manage/api/products/{product}/alerts/{id}", ["patch", "delete"]],
+    ["/manage/api/products/{product}/alerts/{id}/test", ["post"]],
     // LX-26: the licence reads and writes that carry the derived holder (DELETE stays narrative).
     ["/manage/api/products/{product}/license/licenses", ["get", "post"]],
     [
@@ -369,6 +383,17 @@ const IMG_PATHS: Array<[string, string[], "asset" | "alias"]> = [
   ["/{product}/icon", ["get", "head"], "alias"],
   ["/{product}/header", ["get", "head"], "alias"],
   ["/{product}/screenshots/{n}", ["get", "head"], "alias"],
+];
+
+/**
+ * The customer host's own paths (LK-03, plans/LK-00.md §7.13): `polaris.locker` answers these
+ * itself (`core/customerHost.ts`), each documented under a path-level `servers` override with tag
+ * `customer`. Its other routes are the root portal's and the platform entry pages, already
+ * covered above.
+ */
+const CUSTOMER_SERVER = "https://polaris.locker";
+const CUSTOMER_PATHS: Array<[string, string[]]> = [
+  ["/.well-known/polaris-host.json", ["get", "head"]],
 ];
 
 function specMethods(path: string): string[] {
@@ -520,6 +545,7 @@ describe("spec → router", () => {
         ...ALIAS_PATHS,
         ...REGISTRY_PATHS,
         ...IMG_PATHS,
+        ...CUSTOMER_PATHS,
         ...Object.values(PORTAL_KIND_PATHS).flat(),
         ...Object.values(ADMIN_KIND_PATHS).flat(),
       ].map(([path]) => path),
@@ -573,8 +599,9 @@ describe("registry host (F-02, rule 10)", () => {
   it("only registry paths carry the registry server or the registry tag", () => {
     const registry = new Set(REGISTRY_PATHS.map(([p]) => p));
     const img = new Set(IMG_PATHS.map(([p]) => p));
+    const customer = new Set(CUSTOMER_PATHS.map(([p]) => p));
     for (const [path, entry] of Object.entries(spec.paths)) {
-      if (registry.has(path)) continue;
+      if (registry.has(path) || customer.has(path)) continue;
       // The image host's paths carry their own server (checked below), never the registry's.
       if (img.has(path)) {
         for (const method of specMethods(path)) {
@@ -614,6 +641,36 @@ describe("registry host (F-02, rule 10)", () => {
     for (const [path] of REGISTRY_PATHS) {
       expect(CORS_SERVICE_PATHS as readonly string[], path).not.toContain(path);
       expect(spec.paths[path]?.options, path).toBeUndefined();
+    }
+  });
+});
+
+describe("customer host (LK-03, rule 10)", () => {
+  it("every customer path is documented on the customer server with tag customer", () => {
+    for (const [path, methods] of CUSTOMER_PATHS) {
+      expect(spec.paths[path]?.servers, path).toEqual([
+        expect.objectContaining({ url: CUSTOMER_SERVER }),
+      ]);
+      expect(specMethods(path).sort(), path).toEqual([...methods].sort());
+      for (const method of methods) {
+        const op = spec.paths[path]![method] as { tags?: string[] };
+        expect(op.tags, `${method} ${path}`).toEqual(["customer"]);
+      }
+      expect(spec.paths[path]?.options, path).toBeUndefined();
+    }
+  });
+
+  it("only customer paths carry the customer server or the customer tag", () => {
+    const customer = new Set(CUSTOMER_PATHS.map(([p]) => p));
+    for (const [path, entry] of Object.entries(spec.paths)) {
+      if (customer.has(path)) continue;
+      expect(JSON.stringify(entry.servers ?? []), path).not.toContain(
+        CUSTOMER_SERVER,
+      );
+      for (const method of specMethods(path)) {
+        const op = entry[method] as { tags?: string[] };
+        expect(op.tags ?? [], `${method} ${path}`).not.toContain("customer");
+      }
     }
   });
 });
@@ -788,6 +845,7 @@ function concrete(template: string): string {
     methodId: "lnk_AAAAAAAAAAAA",
     subject: `ps_${"A".repeat(22)}`,
     tokenId: "apitok_AAAAAAAAAAAA",
+    id: "dst_AAAAAAAAAAAA",
     runId: "mig_AAAAAAAAAAAA",
   };
   return template.replace(/\{(\w+)\}/g, (_, name: string) => {

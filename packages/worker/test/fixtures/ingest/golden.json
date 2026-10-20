@@ -9473,7 +9473,8 @@
         "source": "none"
       },
       "secrets": ["OIDC_SECRET__ACME", "MINT_KEY__ACME"],
-      "problems": []
+      "problems": [],
+      "starterTier": "none"
     },
     "trips": 3
   },
@@ -12797,7 +12798,8 @@
           "path": "/product/name",
           "message": "product.name uses a reserved platform or store name (Polaris Key, Apple, Google Play, Steam and others); an app may not present itself as one. Rename it, or ask the platform operator to approve it."
         }
-      ]
+      ],
+      "starterTier": "none"
     },
     "trips": 2
   },

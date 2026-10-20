@@ -37,7 +37,7 @@ export interface PaletteRunApi {
   openPanel: (render: PanelRender) => void;
 }
 
-/** A dialog the palette hosts after it closes: `<CreateLicenseDialog slug open onOpenChange />`. */
+/** A dialog the palette hosts after it closes: `a dialog or drawer`. */
 export type PanelRender = (props: {
   open: boolean;
   onOpenChange: (open: boolean) => void;

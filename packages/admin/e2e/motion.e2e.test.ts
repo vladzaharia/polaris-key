@@ -719,10 +719,9 @@ describe("motion on: the console under the Worker's CSP", () => {
       await atRest(page);
       await takeLog(page);
 
-      await page
-        .getByRole("button", { name: "Create license" })
-        .first()
-        .click();
+      // The shortcut sheet: a plain `role=dialog` (Clean up duplicates is an alertdialog since
+      // LX-29 moved it into a menu, and the New license wizard is a drawer).
+      await page.keyboard.press("?");
       const dialog = page.getByRole("dialog");
       await dialog.waitFor();
       await atRest(page);
@@ -1442,10 +1441,9 @@ describe("reduced motion: the same interactions are instant swaps", () => {
       ).toBe(true);
       await takeLog(page);
 
-      await page
-        .getByRole("button", { name: "Create license" })
-        .first()
-        .click();
+      // The shortcut sheet: a plain `role=dialog` (Clean up duplicates is an alertdialog since
+      // LX-29 moved it into a menu, and the New license wizard is a drawer).
+      await page.keyboard.press("?");
       await page.getByRole("dialog").waitFor();
       expect(await running(page)).toEqual([]);
       await page.keyboard.press("Escape");

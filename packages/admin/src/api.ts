@@ -310,6 +310,10 @@ interface PlatformSettingBase {
   description: string;
   /** The Worker scripts that read it (`main`, `deltas`). */
   scripts: string[];
+  /** ST-16: `default`: products that set none inherit it; `bound`: it clamps products. */
+  link?: "default" | "bound" | null;
+  /** ST-16: what the setting reaches at rest (linked rows only). */
+  fleet?: PlatformFleet;
   /** `ceiling`: a deploy-time `off` is a hard off no runtime value can override. */
   precedence: "runtime" | "ceiling";
   /** The raw `[vars]` string, `null` when unset. */
@@ -337,7 +341,7 @@ export interface PlatformSwitchSetting extends PlatformSettingBase {
 
 export interface PlatformIntegerSetting extends PlatformSettingBase {
   kind: "integer";
-  unit: "bytes" | "days";
+  unit: "bytes" | "days" | "count";
   /** Inclusive bounds on a runtime value. */
   min: number;
   max: number;
@@ -392,6 +396,53 @@ export interface PlatformDeployValue {
   area: string;
   value: string | string[] | null;
 }
+
+/** One product a change reaches: its effective value before and after. */
+export interface PlatformReachProduct {
+  product: string;
+  name: string;
+  from: unknown;
+  to: unknown;
+  /** The product sets no value of its own. */
+  inherited: boolean;
+}
+
+/**
+ * `GET /manage/api/platform/settings/:key/reach?value=` (ST-16, worker
+ * `console/handlers/platformReach.ts`): the products whose effective value changes when the
+ * platform value goes from `from` to `to`.
+ */
+export interface PlatformReach {
+  kind: "default" | "bound";
+  direction: "lower" | "raise" | "none";
+  total: number;
+  reaches: number;
+  from: unknown;
+  to: unknown;
+  /** Up to five. */
+  products: PlatformReachProduct[];
+}
+
+/** What a linked row reaches at rest, sent with the settings list (so never stale). */
+export type PlatformFleet =
+  | {
+      kind: "bound";
+      total: number;
+      count: number;
+      products: {
+        product: string;
+        name: string;
+        set: unknown;
+        effective: unknown;
+        inherited: boolean;
+      }[];
+    }
+  | {
+      kind: "default";
+      total: number;
+      inheriting: number;
+      own: { product: string; name: string; value: unknown }[];
+    };
 
 /** `GET /manage/api/platform/settings` (worker `console/handlers/platformSettings.ts`). */
 export interface PlatformSettingsView {
@@ -1701,7 +1752,15 @@ export type RevertClaimResult =
   | { ok: true; key: ClaimKey; applied: true; value: unknown }
   | { ok: true; key: ClaimKey; applied: false; message: string };
 
-export interface CreateManualProductBody {
+/** ST-42 (W25): the choices both create routes take, all optional. */
+export interface CreateChoices {
+  /** Service slugs; the Worker applies the requirement rule. */
+  services?: ServiceSlug[];
+  intendedPlatforms?: string[];
+  starterTier?: "free" | "none";
+}
+
+export interface CreateManualProductBody extends CreateChoices {
   slug: string;
   name?: string;
   schema?: ProductCatalog | string;
@@ -1711,6 +1770,90 @@ export interface CreateManualProductBody {
   defaultMaxOfflineDays?: number;
   defaultDeviceLimit?: number;
   adminGroup?: string;
+}
+
+/** `GET /manage/api/products/slug-check?slug=` (W24). */
+export type SlugCheck =
+  | { slug: string; status: "available" }
+  | {
+      slug: string;
+      status: "taken" | "reserved" | "invalid";
+      message: string;
+      suggestion: string | null;
+    };
+
+/** One repository the GitHub App can read (W22). */
+export interface GithubRepoRow {
+  installationId: number;
+  owner: string;
+  name: string;
+  fullName: string;
+  language: string | null;
+  pushedAt: number | null;
+  private: boolean;
+  defaultBranch: string | null;
+  /** The slug of the product registered from it, or null. */
+  product: string | null;
+  /** A `.pkey/product` on the default branch; null when GitHub would not say. */
+  hasManifest: boolean | null;
+}
+
+/** `GET /manage/api/github/repositories` (W22). */
+export interface GithubRepositories {
+  configured: boolean;
+  app: { slug: string; installUrl: string } | null;
+  installations: {
+    id: number;
+    account: string;
+    repositorySelection: string;
+    repositoryCount: number | null;
+    listingError: string | null;
+  }[];
+  repositories: GithubRepoRow[];
+  total: number;
+  nextCursor: string | null;
+}
+
+/** One thing that blocks a create, with its `.pkey/` document and JSON path when it has one. */
+export interface CreateProblem {
+  check: string;
+  file: "product" | "schema" | "release" | "distribution" | null;
+  path: string | null;
+  message: string;
+  suggestion?: string;
+}
+
+/** `POST /manage/api/products/link-repo?dryRun=1` (W23): the product as it will be. */
+export interface CreateDryRun {
+  ok: true;
+  dryRun: true;
+  repository: string;
+  installationId: number;
+  commit: string;
+  manifestDigest: string;
+  ready: boolean;
+  product: {
+    slug: string;
+    name: string;
+    presentation: unknown;
+  } | null;
+  slug: SlugCheck | null;
+  registeredAs: string | null;
+  services: string[];
+  catalog: { entries: number } | null;
+  platforms: { values: string[]; source: "artifact-map" | "none" };
+  secrets: string[];
+  releaseWorkflow: boolean | null;
+  /** Whether the create adds the Free tier (License on, no tier declared). */
+  starterTier: "free" | "none";
+  problems: CreateProblem[];
+}
+
+/** What a create answers for the choices it applied (ST-42). */
+export interface CreateLinkOptions extends CreateChoices {
+  /** From the dry run: a `.pkey/` that changed since refuses the create. */
+  manifestDigest?: string;
+  trustReleaseWorkflow?: boolean;
 }
 
 export type UpdatePortalSettingsBody = Partial<
@@ -2208,6 +2351,8 @@ export interface ServiceFeatureFacts {
   shipBuilds: {
     latest: { version: string; channel: string | null } | null;
   };
+  /** Configured storefronts, and live store purchases (the Attention state while Commerce is off). */
+  commerce: { storefronts: number; storeGrants: number };
 }
 
 /** The service-enable state returned by mutations and embedded in the reader response. */
@@ -2217,6 +2362,38 @@ export interface ServiceState {
   effectiveRegistration: RegistrationPolicy;
   /** Who owns the row: `manifest` (a resync may rewrite it) or `admin` (operator-claimed). */
   source: string;
+}
+
+/** `GET …/commerce` (worker `services/commerce/admin.ts` `view`): the overview's read. */
+export type CommerceStore = "app-store" | "play" | "steam";
+export interface CommerceView {
+  licenseEnabled: boolean;
+  setup: Record<
+    CommerceStore,
+    { configured: boolean; credential: string | null; reason: string | null }
+  >;
+  products: Array<{
+    store: CommerceStore;
+    productId: string;
+    deliverable: string;
+    flag: string;
+  }>;
+  purchases: Array<{
+    store: CommerceStore;
+    purchase: string;
+    storeProductId: string;
+    state: string;
+    environment: string;
+    /** Epoch seconds. */
+    lastVerified: number;
+  }>;
+  events: Array<{
+    connector: string;
+    id: string;
+    type: string;
+    outcome: string;
+    receivedAt: number;
+  }>;
 }
 
 /** `GET …/services` adds read-only feature facts to the service state. */
@@ -4022,8 +4199,9 @@ export interface LicenseDetail extends LicenseSummary {
 }
 
 export interface CreateLicenseBody {
-  name: string;
-  email: string;
+  /** LX-26: an `email` assigns the licence; without one it is floating. */
+  name?: string;
+  email?: string;
   /** Omitted: the tier's term (`policyExpiryDays` from now). `null`: no expiry. */
   expiresAt?: number | null;
   profile?: string;
@@ -4037,6 +4215,19 @@ export interface CreateLicenseBody {
   deviceLimit?: number;
   /** LX-27: `email: true` mails the first key to `email` in the same request. */
   delivery?: { email: boolean };
+}
+
+/** LX-28: `POST …/license/batches`: up to 500 floating licences under one label. */
+export interface CreateLicenseBatchBody {
+  label: string;
+  count: number;
+  tier: string;
+  deviceLimit?: number | null;
+  expiresAt?: number | null;
+  maxOfflineDays?: number;
+  channels?: string[];
+  minVersion?: string;
+  maxVersion?: string;
 }
 
 /** LX-27: how the key email went. */
@@ -4461,6 +4652,68 @@ export type FeedScope =
   | { kind: "platform" }
   | { kind: "product"; slug: string };
 
+// ── alert destinations (ST-27) ───────────────────────────────────────────────
+/** The alert kinds a destination can take (worker `core/notify/alertDestinations.ts`). */
+export type AlertKindId =
+  | "auto_halt"
+  | "store_connection"
+  | "commerce"
+  | "access_changed"
+  | "notifications_failing";
+
+/** Which console scope an alert-destination call is in. */
+export type AlertScope =
+  | { kind: "platform" }
+  | { kind: "product"; slug: string };
+
+/**
+ * One destination as the API shows it. `target` is the address, or `https://host/…` for a
+ * webhook: the URL and the signing secret are sealed on the Worker and never come back.
+ */
+export interface AlertDestination {
+  id: string;
+  scope: string;
+  kind: "email" | "webhook";
+  target: string;
+  label: string | null;
+  alerts: AlertKindId[];
+  enabled: boolean;
+  version: number;
+  lastStatus: "ok" | "failed" | "refused" | null;
+  lastAt: number | null;
+  /** Why the last delivery failed: a host or HTTP status, never a path or secret. */
+  lastError: string | null;
+  failures: number;
+}
+
+export interface AlertDestinationsView {
+  destinations: AlertDestination[];
+  kinds: Array<{ id: AlertKindId; label: string; sent: boolean }>;
+  max: number;
+  emailAvailable: boolean;
+  /** Product scope: how many enabled platform destinations apply where this sets none. */
+  inherited?: number;
+  /** Product scope: enabled platform destinations that take each kind. */
+  inheritedByKind?: Record<AlertKindId, number>;
+}
+
+export interface AlertDestinationBody {
+  kind?: "email" | "webhook";
+  /** An address, or an https URL (write only). */
+  target?: string;
+  label?: string;
+  alerts?: AlertKindId[];
+  enabled?: boolean;
+  rotateSecret?: boolean;
+  expectedVersion?: number;
+}
+
+/** A write's answer. `secret` (a webhook's signing secret) is present on create and rotate only. */
+export interface AlertDestinationWritten {
+  destination: AlertDestination;
+  secret?: string;
+}
+
 // ── activity ──────────────────────────────────────────────────────────────────
 export interface ActivityItem {
   id: string;
@@ -4657,6 +4910,12 @@ const feedsBase = (scope: FeedScope): string =>
     ? "/manage/api/platform/feeds"
     : `${p(scope.slug)}/distribution/feeds`;
 
+/** The alert destinations base of a scope (ST-27). */
+const alertsBase = (scope: AlertScope): string =>
+  scope.kind === "platform"
+    ? "/manage/api/platform/alerts"
+    : `${p(scope.slug)}/alerts`;
+
 /** One package: `:owner/:name` in platform scope, `:name` in product scope. */
 const feedPackagePath = (
   scope: FeedScope,
@@ -4712,6 +4971,39 @@ const rawApi = {
     call<{ ok: true; token: AdminApiToken }>(`/manage/api/tokens/${enc(id)}`, {
       method: "DELETE",
     }),
+  // ── alert destinations (ST-27) ───────────────────────────────────────────────
+  /** Where this scope's alerts go. Never a URL or a secret. */
+  alertDestinations: (scope: AlertScope) =>
+    call<AlertDestinationsView>(alertsBase(scope)),
+  /**
+   * Add one. A webhook answers its signing secret once, in `secret`. Needs a sign-in from the
+   * last five minutes (403 `step_up_required`); 422 `reason` says what was refused.
+   */
+  createAlertDestination: (scope: AlertScope, body: AlertDestinationBody) =>
+    call<AlertDestinationWritten>(alertsBase(scope), {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  /** Change one; `rotateSecret` answers a new secret once. Retargeting needs the step-up. */
+  updateAlertDestination: (
+    scope: AlertScope,
+    id: string,
+    body: AlertDestinationBody,
+  ) =>
+    call<AlertDestinationWritten>(`${alertsBase(scope)}/${enc(id)}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  deleteAlertDestination: (scope: AlertScope, id: string) =>
+    call<{ ok: true }>(`${alertsBase(scope)}/${enc(id)}`, {
+      method: "DELETE",
+    }),
+  /** One test alert; 429 `too_soon` inside 30 seconds of the last send. */
+  testAlertDestination: (scope: AlertScope, id: string) =>
+    call<{ outcome: "ok" | "failed" | "refused"; detail: string | null }>(
+      `${alertsBase(scope)}/${enc(id)}/test`,
+      { method: "POST" },
+    ),
   /** People's `pkeyp_` tokens (F-33): the Superadmin's roster. Never a token or a hash. */
   personalTokens: () =>
     call<{ tokens: AdminPersonalToken[] }>("/manage/api/account-tokens"),
@@ -4724,6 +5016,11 @@ const rawApi = {
   /** The runtime settings, the read-only inventory, secrets presence and the warnings (A-13). */
   platformSettings: () =>
     call<PlatformSettingsView>("/manage/api/platform/settings"),
+  /** How many products a change to this default or bound reaches (`value`: the proposed one). */
+  platformSettingReach: (key: string, value?: number) =>
+    call<PlatformReach>(
+      `/manage/api/platform/settings/${enc(key)}/reach${value === undefined ? "" : `?value=${value}`}`,
+    ),
   /** The reserved entitlement names and the products that declare one (LX-05). */
   platformReservedNames: () =>
     call<PlatformReservedNames>("/manage/api/platform/reserved-names"),
@@ -4960,11 +5257,27 @@ const rawApi = {
       method: "POST",
       body: JSON.stringify(body),
     }),
-  linkRepo: (repoUrl: string) =>
+  linkRepo: (repoUrl: string, options?: CreateLinkOptions) =>
     call<LinkRepoResult>("/manage/api/products/link-repo", {
+      method: "POST",
+      body: JSON.stringify({ repoUrl, ...options }),
+    }),
+  /** W23: check a repository for a product that does not exist yet. Writes nothing. */
+  checkRepoCreate: (repoUrl: string) =>
+    call<CreateDryRun>("/manage/api/products/link-repo?dryRun=1", {
       method: "POST",
       body: JSON.stringify({ repoUrl }),
     }),
+  /** W24: whether a slug is free for a new product. */
+  slugCheck: (slug: string) =>
+    call<SlugCheck>(
+      `/manage/api/products/slug-check?slug=${encodeURIComponent(slug)}`,
+    ),
+  /** W22: the repositories the GitHub App can read. */
+  githubRepositories: (q: string) =>
+    call<GithubRepositories>(
+      `/manage/api/github/repositories?q=${encodeURIComponent(q)}`,
+    ),
   updateProduct: (slug: string, body: UpdateProductBody) =>
     call<{ ok: true; slug: string }>(p(slug), {
       method: "PATCH",
@@ -5235,6 +5548,9 @@ const rawApi = {
       method: "DELETE",
       body: JSON.stringify({ expectedVersion }),
     }),
+
+  // ── commerce (CM-29) ────────────────────────────────────────────────────────
+  commerceView: (slug: string) => call<CommerceView>(`${p(slug)}/commerce`),
 
   // ── services (per-product enablement) ───────────────────────────────────────
   services: (slug: string) => call<ServicesResponse>(`${p(slug)}/services`),
@@ -5768,6 +6084,16 @@ const rawApi = {
       `${p(slug)}/license/batches${qs ? `?${qs}` : ""}`,
     );
   },
+  createLicenseBatch: (slug: string, body: CreateLicenseBatchBody) =>
+    call<{
+      batchId: string;
+      licenses: { licenseId: string; key: string }[];
+      batch: LicenseBatch;
+      expiresAt: number | null;
+    }>(`${p(slug)}/license/batches`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
   licenseBatch: (slug: string, id: string) =>
     call<LicenseBatch>(`${p(slug)}/license/batches/${enc(id)}`),
   /** Typed confirmation: `confirm` is the batch label. */

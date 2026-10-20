@@ -13,6 +13,8 @@
  *                                         a key that is no live platform setting, 422
  *                                         for a value outside its bounds, 409 when the row is no
  *                                         longer at `expectedVersion` (0 = no row).
+ *   GET    /api/platform/settings/:key/reach?value=  — how many products a change to a product
+ *                                         default or bound reaches, and which a bound clamps (ST-16).
  *   DELETE /api/platform/settings/:key  — `{ expectedVersion }` (body or `?expectedVersion=`):
  *                                         drop the runtime value, reverting to `[vars]` or the
  *                                         code default.
@@ -43,11 +45,13 @@ import { LIMITS } from "../../limits.js";
 import {
   aliasedPlatformEntries,
   platformSettingResolved,
+  productDefaultEntries,
   unrecognisedCeilingVars,
 } from "../../core/settings/platformRead.js";
 import type { ResolvedSetting } from "../../core/settings/resolve.js";
 import type { ConfirmLevel, SettingDef } from "../../core/settings/types.js";
 import { writeSetting } from "../../core/settings/write.js";
+import { reachOf, standingOf } from "./platformReach.js";
 import { PLATFORM_INVENTORY } from "../../platformInventory.generated.js";
 import type { InventoryArea } from "../../platformInventory.js";
 
@@ -262,6 +266,13 @@ function settingView(def: SettingDef, r: ResolvedSetting, env: Env) {
     )
       ? ["main", "deltas"]
       : ["main"],
+    // ST-16: what a change reaches. `default`: products that set none inherit it; `bound`: it
+    // clamps products on the permissive side. `null`: it reaches no product.
+    link: def.productLink?.bound
+      ? "bound"
+      : def.productLink?.default
+        ? "default"
+        : null,
     precedence: def.precedence ?? "runtime",
     default: def.defaultValue,
     deployValue: typeof raw === "string" ? raw : null,
@@ -282,14 +293,30 @@ function settingView(def: SettingDef, r: ResolvedSetting, env: Env) {
   };
 }
 
-async function list(env: Env, db: Db): Promise<Response> {
-  const defs = aliasedPlatformEntries();
+/** The view of an entry, with what it reaches at rest when it is linked to product settings. */
+async function viewOf(
+  def: SettingDef,
+  r: ResolvedSetting,
+  env: Env,
+  db: Db,
+  now: number,
+) {
+  const v = settingView(def, r, env);
+  return def.productLink
+    ? { ...v, fleet: await standingOf(db, def, r.value, now) }
+    : v;
+}
+
+async function list(env: Env, db: Db, now: number): Promise<Response> {
+  const defs = [...aliasedPlatformEntries(), ...productDefaultEntries()];
   const resolved = await Promise.all(
     defs.map((d) => platformSettingResolved(env, db, d.key, { fresh: true })),
   );
   const storeAvailable = !resolved.some((r) => r.failsafe);
   return adminJson({
-    settings: defs.map((d, i) => settingView(d, resolved[i]!, env)),
+    settings: await Promise.all(
+      defs.map((d, i) => viewOf(d, resolved[i]!, env, db, now)),
+    ),
     storeAvailable,
     propagationSeconds: SETTINGS_CACHE_MS / 1000,
     deployTime: deployValues(env),
@@ -379,7 +406,7 @@ async function write(
   const after = await platformSettingResolved(env, db, def.key, {
     fresh: true,
   });
-  return adminJson(settingView(def, after, env));
+  return adminJson(await viewOf(def, after, env, db, now));
 }
 
 export async function handlePlatformSettings(
@@ -393,7 +420,27 @@ export async function handlePlatformSettings(
   if (rest.length === 0) {
     if (req.method !== "GET")
       return err(405, "method_not_allowed", "method not allowed");
-    return list(env, db);
+    return list(env, db, now);
+  }
+  if (rest.length === 2 && rest[1] === "reach") {
+    const def = servedDef(rest[0]!);
+    if (!def?.productLink) return notFound();
+    if (req.method !== "GET")
+      return err(405, "method_not_allowed", "method not allowed");
+    const raw = new URL(req.url).searchParams.get("value");
+    const given = raw === null || raw.trim() === "" ? NaN : Number(raw);
+    const current = (
+      await platformSettingResolved(env, db, def.key, { fresh: true })
+    ).value;
+    return adminJson(
+      await reachOf(
+        db,
+        def,
+        current,
+        Number.isFinite(given) ? given : current,
+        now,
+      ),
+    );
   }
   if (rest.length !== 1) return notFound();
   const def = servedDef(rest[0]!);

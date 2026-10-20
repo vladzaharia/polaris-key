@@ -678,11 +678,8 @@ describe("overlays under the Worker's CSP", () => {
       await page.locator("body").press("?");
       await page.getByRole("dialog", { name: "Keyboard shortcuts" }).waitFor();
     });
-    await check(page, "create license dialog", async () => {
-      await page
-        .getByRole("button", { name: "Create license" })
-        .first()
-        .click();
+    await check(page, "new license drawer", async () => {
+      await page.getByRole("button", { name: "New license" }).first().click();
       await page.getByRole("dialog").waitFor();
     });
     // A popover is not modal: it must not violate the CSP, and it does not lock scroll.

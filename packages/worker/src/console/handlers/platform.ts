@@ -12,6 +12,9 @@
  *   GET/PATCH/DELETE /api/platform/settings[/:key]
  *                                 — the platform settings store and the read-only inventory
  *                                   (A-13, `platformSettings.ts`).
+ *   GET/POST /api/platform/alerts[/:id[/test]]
+ *                                 — the platform's alert destinations (ST-27,
+ *                                   `alertDestinations.ts`; in the OpenAPI spec, rule 10).
  *   GET/POST /api/platform/settings/backfill
  *                                 — the settings backfill's platform batch and every product's
  *                                   newest report (ST-01c, `settingsBackfill.ts`).
@@ -53,6 +56,8 @@ import {
   notFound,
 } from "../../core/console/respond.js";
 import { handlePlatformSettings } from "./platformSettings.js";
+import { handleAlertDestinations } from "./alertDestinations.js";
+import { PLATFORM_SCOPE } from "../../core/notify/alertDestinations.js";
 import { handlePlatformSettingsBackfill } from "./settingsBackfill.js";
 import { handleReservedNames } from "./reservedNames.js";
 import {
@@ -256,6 +261,17 @@ export async function handlePlatform(
       throw e;
     }
   }
+  // ST-27: the platform's alert destinations.
+  if (rest[0] === "alerts")
+    return handleAlertDestinations(
+      req,
+      env,
+      db,
+      session,
+      PLATFORM_SCOPE,
+      rest.slice(1),
+      now,
+    );
   // S-19 §7.4 (LX-05): the reserved entitlement-name report, read-only.
   if (rest.length === 1 && rest[0] === "reserved-names")
     return handleReservedNames(req, env, db);

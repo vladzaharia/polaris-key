@@ -218,6 +218,7 @@ describe("PLATFORM_SETTINGS", () => {
       "ASSET_HOSTING",
       "BLOB_GC_GRACE_DAYS",
       "BLOB_GC_MODE",
+      "CUSTOMER_HOST",
       "IDENTITY_RESERVED_DISPLAY_NAMES",
       "KEYENTRY_REFUSALS",
       "LAZY_DELTAS",
@@ -234,6 +235,8 @@ describe("PLATFORM_SETTINGS", () => {
       BLOB_GC_MODE: "ceiling",
       LAZY_DELTA_MAX_BYTES: "runtime",
       BLOB_GC_GRACE_DAYS: "runtime",
+      // LK-03: the customer-host switch; `off` in `[vars]` is a hard off.
+      CUSTOMER_HOST: "ceiling",
       LICENSING_RESERVED_NAMES: "runtime",
       IDENTITY_RESERVED_DISPLAY_NAMES: "runtime",
       // PX-W9: a rollout switch, not a kill switch. Off is the permissive side (every key entry is
@@ -355,8 +358,13 @@ describe("PLATFORM_SETTINGS", () => {
     expect(
       settingConfirmLevel(def("LAZY_DELTA_MAX_BYTES"), 33_554_432, 2_097_152),
     ).toBe("L0");
-    // None of the five is L2+: the `{ confirm }` echo is reserved for future settings.
-    for (const d of PLATFORM_SETTINGS)
+    // LK-03: the customer-host switch is L2 both ways (it moves every customer link and the brand).
+    expect(settingConfirmLevel(def("CUSTOMER_HOST"), "off", "on")).toBe("L2");
+    expect(settingConfirmLevel(def("CUSTOMER_HOST"), "on", "off")).toBe("L2");
+    // No other is L2+: the `{ confirm }` echo is reserved for future settings.
+    for (const d of PLATFORM_SETTINGS.filter(
+      (d) => rowKeyOf(d) !== "CUSTOMER_HOST",
+    ))
       expect(
         Object.values(d.confirm).every((l) => l === "L0" || l === "L1"),
       ).toBe(true);
@@ -1245,7 +1253,7 @@ describe("A-13 hardening", () => {
     // Negative controls: a pending entry, a list-valued entry and a non-platform key are 404,
     // and nothing is stored for them.
     for (const key of [
-      "identity.keyEntry.limit",
+      "license.defaults.deviceLimit",
       "identity.platformTerms",
       "core.name",
       "NOT_A_SETTING",

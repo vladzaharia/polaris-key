@@ -5,6 +5,7 @@ import { cn } from "../lib/cn.js";
 import {
   DialogOverlay,
   DiscardStrip,
+  type DiscardWords,
   DismissGuardContext,
   useGuardedDismissal,
   useOverlayFocus,
@@ -53,6 +54,15 @@ export interface DrawerProps {
   dismissible?: boolean;
   /** The draft holds unsaved input: dismissing asks first. See also `useDismissGuard`. */
   unsaved?: boolean;
+  /** The words of the "discard" question, when the default does not fit. */
+  discard?: DiscardWords;
+  /** A line above the title ("DJDL · Licenses"): where the drawer belongs. */
+  eyebrow?: React.ReactNode;
+  /**
+   * What the phone header's control is. `back` (default) is a "Back" that closes; `close` is an X
+   * at every width, for a drawer whose body has its own Back (a wizard).
+   */
+  closeStyle?: "back" | "close";
   /** Replaces the default return of focus to the opener (the handler says where focus goes). */
   onCloseAutoFocus?: (e: Event) => void;
   children?: React.ReactNode;
@@ -68,6 +78,9 @@ export function Drawer({
   size = "md",
   dismissible = true,
   unsaved = false,
+  discard,
+  eyebrow,
+  closeStyle = "back",
   onCloseAutoFocus,
   children,
   className,
@@ -123,16 +136,21 @@ export function Drawer({
             data-pk-overlay-header=""
             className="flex shrink-0 items-start gap-3 border-b border-border px-4 py-3 lg:px-6 lg:py-4"
           >
-            <button
-              type="button"
-              onClick={close}
-              disabled={!dismissible}
-              className="-ml-1 inline-flex h-8 shrink-0 items-center gap-1 rounded-md px-2 text-sm text-fg hover:bg-hover disabled:opacity-50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus lg:hidden"
-            >
-              <ArrowLeft aria-hidden className="size-4" />
-              Back
-            </button>
+            {closeStyle === "back" ? (
+              <button
+                type="button"
+                onClick={close}
+                disabled={!dismissible}
+                className="-ml-1 inline-flex h-8 shrink-0 items-center gap-1 rounded-md px-2 text-sm text-fg hover:bg-hover disabled:opacity-50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus lg:hidden"
+              >
+                <ArrowLeft aria-hidden className="size-4" />
+                Back
+              </button>
+            ) : null}
             <div className="min-w-0 flex-1 space-y-1">
+              {eyebrow ? (
+                <p className="truncate text-xs text-fg-muted">{eyebrow}</p>
+              ) : null}
               <DialogPrimitive.Title
                 ref={titleRef}
                 tabIndex={-1}
@@ -146,10 +164,16 @@ export function Drawer({
                 </DialogPrimitive.Description>
               ) : null}
             </div>
-            {dismissible ? (
+            {dismissible || closeStyle === "close" ? (
               <DialogPrimitive.Close
                 aria-label="Close"
-                className="-mr-2 hidden size-8 shrink-0 items-center justify-center rounded-md text-fg-muted hover:bg-hover hover:text-fg-strong focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus lg:inline-flex"
+                disabled={!dismissible}
+                className={cn(
+                  "-mr-2 size-8 shrink-0 items-center justify-center rounded-md text-fg-muted hover:bg-hover hover:text-fg-strong focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-50",
+                  closeStyle === "close"
+                    ? "inline-flex"
+                    : "hidden lg:inline-flex",
+                )}
               >
                 <X aria-hidden className="size-4" />
               </DialogPrimitive.Close>
@@ -158,6 +182,7 @@ export function Drawer({
           {dismissal.asking ? (
             <DiscardStrip
               className="px-4 lg:px-6"
+              words={discard}
               onKeep={dismissal.keepEditing}
               onDiscard={dismissal.discard}
             />

@@ -454,3 +454,17 @@ def test_osc11_and_colorfgbg_parsing() -> None:
 def test_a_bare_termenv_is_plain() -> None:
     e = TermEnv()
     assert (e.tty, e.color, e.interactive) == (False, "none", False)
+
+
+def test_the_fallback_device_page_carries_the_code_but_shows_bare() -> None:
+    from polaris_key.ui.core.models import SignInView
+    from polaris_key.ui.terminal import screens
+
+    from .fixtures import kit
+    from .golden_support import env
+
+    view = SignInView("SignInHandoff", "code", user_code="WDJB-MJHT", headless=True)
+    lines = screens.sign_in(kit(env("truecolor", "unicode", 80, "dark")), view, "login", frame=0)
+    links = [sp for ln in lines for sp in ln.spans if sp.link]
+    assert [sp.text for sp in links] == ["key.plrs.im/device"]
+    assert links[0].link == "https://key.plrs.im/device?user_code=WDJB-MJHT"

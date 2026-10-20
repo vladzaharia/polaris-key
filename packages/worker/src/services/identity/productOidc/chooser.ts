@@ -3,6 +3,7 @@
 import { activateFromIdentity } from "./activate.js";
 import { hashKey, randomId } from "../../../platform/crypto.js";
 import { type Env } from "../../../platform/env.js";
+import { customerOriginOf } from "../../../core/licensing/manageUrl.js";
 import { brandedHtmlSecurityHeaders } from "../../../core/securityHeaders.js";
 import { randomToken } from "../../../platform/random.js";
 import { parseFlowRecord } from "../../../platform/json.js";
@@ -185,6 +186,7 @@ export async function endChooser(
 
 export async function chooserView(
   req: Request,
+  env: Env,
   db: Db,
   product: Product,
   c: ChooserContext,
@@ -202,7 +204,7 @@ export async function chooserView(
     deviceId: c.flow.deviceId ?? null,
     grantTierId: "error" in grant ? undefined : grant.tierId,
     hooks,
-    origin: new URL(req.url).origin,
+    origin: (await customerOriginOf(env, db, req)) ?? new URL(req.url).origin,
     deviceLabel: c.deviceLabel,
     now,
   });
@@ -312,7 +314,7 @@ export async function handleAuthChoose(
     return redirectToChooser(req, product);
   }
 
-  const view = await chooserView(req, db, product, c, now, hooks);
+  const view = await chooserView(req, env, db, product, c, now, hooks);
   if (!view) return endChooser(env, c);
 
   if (action.startsWith("replace:")) {
@@ -357,7 +359,7 @@ export async function handleAuthChoose(
       }
       // Re-read: someone may have taken the freed seat in between (a race). The freed device
       // stays freed (audited and emailed), and the person chooses again.
-      const after = await chooserView(req, db, product, c, now, hooks);
+      const after = await chooserView(req, env, db, product, c, now, hooks);
       if (!after) return endChooser(env, c);
       const fresh = after.rows.find((r) => r.id === pending.licenseId);
       if (fresh?.state !== "free") return notice({ kind: "unavailable" });
@@ -386,7 +388,7 @@ export async function renderChooser(
   now: number,
   hooks: ServiceHooks | undefined,
 ): Promise<Response> {
-  const view = await chooserView(req, db, product, c, now, hooks);
+  const view = await chooserView(req, env, db, product, c, now, hooks);
   if (!view) return endChooser(env, c);
   const token = randomToken(24);
   const minted = await updateArtefact(env, c.stateKey, {

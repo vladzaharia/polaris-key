@@ -161,7 +161,12 @@ async function setup(
     // set then differs from the manifest's, so it is the operator's (`admin`).
     const asked = input.create?.choices?.services;
     if (asked) {
-      const resolved = resolveServices(asked, manifest.services);
+      // A manifest can not say "no services" (an empty `modules:` is the defaults), so with no
+      // repository the list is taken as it is, over nothing.
+      const resolved = resolveServices(
+        asked,
+        source.repo ? manifest.services : null,
+      );
       if (!resolved.ok)
         servicesProblem = {
           check: "services",
@@ -174,7 +179,12 @@ async function setup(
         };
       else {
         services = resolved.services;
-        if (JSON.stringify(services) !== JSON.stringify(manifest.services))
+        // With no repository (documents only, D8) nothing will ever push a manifest set, so a
+        // list is the operator's.
+        if (
+          !source.repo ||
+          JSON.stringify(services) !== JSON.stringify(manifest.services)
+        )
           servicesSource = "admin";
       }
     }
@@ -281,7 +291,18 @@ const PLAN_ORDER = {
     "seal",
     "publisher",
   ],
-  create: ["binary", "issuer", "catalog", "publisher"],
+  // The same checks the create refuses on (`REFUSAL_ORDER.create`), so a dry run cannot pass
+  // where the create refuses (the P0-26b security review: `seal` was missing).
+  create: [
+    "binary",
+    "issuer",
+    "catalog",
+    "seal",
+    "publisher",
+    "services",
+    "starter",
+    "trust",
+  ],
 } as const;
 
 /**

@@ -2,6 +2,7 @@ import * as React from "react";
 import { ArrowLeft } from "lucide-react";
 import { cn } from "../../lib/cn.js";
 import { Button } from "../Button.js";
+import type { DiscardWords } from "../Dialog.js";
 import { Drawer, DrawerBody, DrawerFooter } from "../Drawer.js";
 import { Stepper } from "./Stepper.js";
 import type { WizardStep } from "./model.js";
@@ -17,6 +18,10 @@ export interface WizardFooter {
   skipLoading?: boolean;
   /** Back one step. Absent on the first step. */
   onBack?: () => void;
+  /** `start`: Back sits at the footer's left, before everything else. Default: beside the primary. */
+  backAt?: "start" | "end";
+  /** Back stays in place but does nothing (a request is running). */
+  backDisabled?: boolean;
   /**
    * The one filled primary of the step; its label names the action, not "Next". Absent when the
    * step's own typed action is the action (Submit): the footer then has Do this later and Back only.
@@ -52,6 +57,12 @@ export interface WizardProps {
   footer: WizardFooter;
   /** Focus the step's heading on first render too (the page just routed into the flow). */
   focusOnMount?: boolean;
+  /**
+   * The wizard's result: the last step is the answer, not a step. The heading drops "Step n of m",
+   * the stepper shows every step done, and `titleIcon` leads the heading.
+   */
+  result?: boolean;
+  titleIcon?: React.ReactNode;
   /** Centre the page host in a 960 px column (default). */
   centered?: boolean;
   /** The drawer host's open state and title. */
@@ -60,6 +71,12 @@ export interface WizardProps {
     onOpenChange: (open: boolean) => void;
     title: string;
     unsaved?: boolean;
+    /** The words of the guarded close ("Discard this license?"). */
+    discard?: DiscardWords;
+    /** False while busy, or while a one-time value must be kept first. */
+    dismissible?: boolean;
+    /** A line above the drawer's title ("DJDL · Licenses"). */
+    eyebrow?: React.ReactNode;
   };
   className?: string;
 }
@@ -90,6 +107,8 @@ export function Wizard({
   footer,
   centered = true,
   focusOnMount = false,
+  result = false,
+  titleIcon,
   drawer,
   className,
 }: WizardProps): React.ReactElement {
@@ -105,7 +124,11 @@ export function Wizard({
     const skipFocus = first.current && !focusOnMount;
     first.current = false;
     // The live line says where the operator is: "Add to storefronts, step 2 of 7, Check the prerequisites".
-    setAnnounced(`${label}, step ${index + 1} of ${steps.length}, ${title}`);
+    setAnnounced(
+      result
+        ? `${label}, ${title}`
+        : `${label}, step ${index + 1} of ${steps.length}, ${title}`,
+    );
     if (!skipFocus) headingRef.current?.focus();
     // Only a change of step moves focus.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -123,8 +146,13 @@ export function Wizard({
           tabIndex={-1}
           className="text-lg font-semibold text-fg-strong outline-none"
         >
-          {isDrawer ? (
-            <span className="font-normal text-fg-muted">
+          {titleIcon ? (
+            <span className="mr-2 inline-flex align-text-bottom">
+              {titleIcon}
+            </span>
+          ) : null}
+          {isDrawer && !result ? (
+            <span className="font-normal text-fg-muted max-sm:sr-only">
               Step {index + 1} of {steps.length} ·{" "}
             </span>
           ) : null}
@@ -139,9 +167,53 @@ export function Wizard({
     </div>
   );
 
+  const footRef = React.useRef<HTMLDivElement>(null);
+  // Tell the scroller how much of its bottom the pinned footer covers (styles.css reads it), or
+  // nothing while the footer is in the flow.
+  React.useEffect(() => {
+    const el = footRef.current;
+    if (isDrawer || !el) return;
+    const root = document.documentElement;
+    const measure = () => {
+      const pinned = getComputedStyle(el).position === "sticky";
+      if (pinned)
+        root.style.setProperty("--pk-wizard-foot", `${el.offsetHeight}px`);
+      else root.style.removeProperty("--pk-wizard-foot");
+    };
+    measure();
+    const ro =
+      typeof ResizeObserver === "function" ? new ResizeObserver(measure) : null;
+    ro?.observe(el);
+    window.addEventListener("resize", measure);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener("resize", measure);
+      root.style.removeProperty("--pk-wizard-foot");
+    };
+  }, [isDrawer]);
+
+  const back = footer.onBack ? (
+    <Button
+      variant="outline"
+      className={cn(isDrawer && "max-sm:order-2 max-sm:ml-auto")}
+      disabled={footer.backDisabled}
+      onClick={footer.onBack}
+    >
+      <ArrowLeft aria-hidden />
+      Back
+    </Button>
+  ) : null;
   const footRow = (
     <>
-      {footer.later}
+      {footer.backAt === "start" && (back || footer.later) ? (
+        // Back and "do this later" stay together when the footer wraps.
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+          {back}
+          {footer.later}
+        </div>
+      ) : footer.later ? (
+        <div className={cn(isDrawer && "max-sm:order-1")}>{footer.later}</div>
+      ) : null}
       {footer.onSkip ? (
         <Button
           variant="ghost"
@@ -157,26 +229,39 @@ export function Wizard({
           {footer.reason}
         </span>
       ) : null}
-      <div className="ml-auto flex flex-wrap items-center gap-2">
-        {footer.onBack ? (
-          <Button variant="outline" onClick={footer.onBack}>
-            <ArrowLeft aria-hidden />
-            Back
-          </Button>
-        ) : null}
+      <div
+        className={cn(
+          "ml-auto flex flex-wrap items-center gap-2",
+          isDrawer && "max-sm:contents",
+        )}
+      >
+        {footer.backAt !== "start" ? back : null}
         {React.isValidElement<{ "aria-describedby"?: string }>(footer.primary)
-          ? React.cloneElement(footer.primary, {
-              "aria-describedby":
-                [footer.primary.props["aria-describedby"], reasonId]
-                  .filter((x) => x && footer.reason)
-                  .join(" ") || undefined,
-            })
+          ? React.cloneElement(
+              footer.primary as React.ReactElement<Record<string, unknown>>,
+              {
+                className: cn(
+                  (footer.primary.props as { className?: string }).className,
+                  isDrawer &&
+                    "max-sm:order-3 max-sm:w-full min-w-0 max-w-full whitespace-normal",
+                ),
+                "aria-describedby":
+                  [footer.primary.props["aria-describedby"], reasonId]
+                    .filter((x) => x && footer.reason)
+                    .join(" ") || undefined,
+              },
+            )
           : footer.primary}
       </div>
     </>
   );
   const foot = (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-border pt-4">
+    // Sticky: on a long step the primary stays on screen (the page scrolls inside `main`).
+    <div
+      ref={footRef}
+      data-wizard-foot=""
+      className="pinfoot:sticky pinfoot:bottom-0 pinfoot:z-10 pinfoot:-mb-6 flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-border bg-surface-page pb-4 pt-4"
+    >
       {footRow}
     </div>
   );
@@ -189,6 +274,10 @@ export function Wizard({
         title={drawer.title}
         size="lg"
         unsaved={drawer.unsaved}
+        discard={drawer.discard}
+        dismissible={drawer.dismissible}
+        eyebrow={drawer.eyebrow}
+        closeStyle="close"
       >
         <DrawerBody className={className} data-wizard="drawer">
           <div className="space-y-4">
@@ -196,8 +285,8 @@ export function Wizard({
               variant="segments"
               label={label}
               steps={steps}
-              current={current}
-              done={done}
+              current={result ? "" : current}
+              done={result ? steps.map((s) => s.id) : done}
               skipped={skipped}
               unmet={unmet}
               visited={visited}
@@ -219,7 +308,9 @@ export function Wizard({
       aria-labelledby={`${uid}-title`}
       data-wizard="page"
       className={cn(
-        "space-y-6",
+        // A container, so the rail follows the room the wizard has, not the viewport: at 200%
+        // text the rem-sized rail would otherwise squeeze the column.
+        "@container space-y-6",
         centered && "mx-auto w-full max-w-[60rem]",
         className,
       )}
@@ -241,12 +332,12 @@ export function Wizard({
       <div
         className={cn(
           "grid gap-6",
-          aside ? "lg:grid-cols-[minmax(0,1fr)_18rem]" : null,
+          aside ? "@4xl:grid-cols-[minmax(0,1fr)_18rem]" : null,
         )}
       >
         {body}
         {aside ? (
-          <aside className="space-y-2 rounded-lg border border-border bg-surface-sunken p-4 text-sm text-fg self-start max-lg:hidden lg:sticky lg:top-4">
+          <aside className="space-y-2 rounded-lg border border-border bg-surface-sunken p-4 text-sm text-fg self-start hidden @4xl:block @4xl:sticky @4xl:top-4">
             {aside}
           </aside>
         ) : null}

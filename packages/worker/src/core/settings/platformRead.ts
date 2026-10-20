@@ -38,6 +38,7 @@ export interface PlatformValues {
   "identity.reservedDisplayNames": ReservedDisplayNamesMode;
   "identity.keyEntryRefusals": "on" | "off";
   "assets.hosting.enabled": "on" | "off";
+  "customer.host": "off" | "on" | "permanent";
 }
 
 let CORE_REGISTRY: SettingsRegistry | undefined;
@@ -87,6 +88,23 @@ export function aliasedPlatformEntries(): SettingDef[] {
       d.storage.kind === "scalar" &&
       d.storage.storedAs !== undefined &&
       d.varName !== undefined,
+  );
+}
+
+/**
+ * ST-16: the live product defaults and bounds the page edits as rows (`area: "product-defaults"`,
+ * a scalar the operator owns, linked to a product entry). The licence defaults stay pending until
+ * the hot paths read them through the resolver.
+ */
+export function productDefaultEntries(): SettingDef[] {
+  return PLATFORM_SLICE.filter(
+    (d) =>
+      !d.pending &&
+      d.area === "product-defaults" &&
+      d.ownership === "operator" &&
+      d.storage.kind === "scalar" &&
+      d.productLink !== undefined &&
+      ["switch", "integer", "enum"].includes(d.value.kind),
   );
 }
 
