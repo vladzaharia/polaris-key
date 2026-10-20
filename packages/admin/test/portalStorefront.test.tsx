@@ -416,7 +416,7 @@ describe("the storefront product page, #/discover/:product (PS-05)", () => {
     ]);
     expect(shots[0]!.getAttribute("alt")).toBe("Lumen RAW, screenshot 1 of 1");
     // Every way, with its terms; the first is preselected.
-    const ways = screen.getByRole("region", { name: "Ways to add it" });
+    const ways = screen.getByRole("region", { name: "Get Lumen RAW" });
     const group = within(ways).getByRole("radio", {
       name: /Included with Aperture Seven/,
     }) as HTMLInputElement;
@@ -424,11 +424,11 @@ describe("the storefront product page, #/discover/:product (PS-05)", () => {
       name: /Free trial · 14 days/,
     }) as HTMLInputElement;
     expect(group.checked).toBe(true);
-    expect(within(ways).getByText("Trial · 14 days · 1 device")).toBeTruthy();
+    expect(within(ways).getByText("1 device")).toBeTruthy();
     // Where else it is.
     expect(
-      within(screen.getByRole("region", { name: "Also on" }))
-        .getByRole("link", { name: /Get it on Steam/ })
+      within(ways)
+        .getByRole("link", { name: /Steam: Lumen RAW/ })
         .getAttribute("href"),
     ).toBe("https://store.example/steam/lumen");
     // The Discover tab stays current.
@@ -553,6 +553,27 @@ describe("the storefront product page, #/discover/:product (PS-05)", () => {
     expect(texts[0]).toBe(texts[1]);
   });
 
+  it("one way: the panel reads where it runs, what you'd get and why you qualify", async () => {
+    window.history.replaceState(null, "", "/#/discover/driftwood");
+    mockFetch(storefrontWorker([DRIFTWOOD]));
+    renderPortal();
+    const panel = await screen.findByRole("region", {
+      name: "Get Driftwood Notes",
+    });
+    const rows = Object.fromEntries(
+      within(panel)
+        .getAllByRole("term")
+        .map((dt) => [dt.textContent, dt.nextElementSibling?.textContent]),
+    );
+    expect(rows).toEqual({
+      "Runs on": "macOS, Linux",
+      "You’d get": "No license needed",
+      "You qualify": "Free to use",
+    });
+    expect(within(panel).queryByRole("radio")).toBeNull();
+    expect(within(panel).getAllByRole("button")).toHaveLength(1);
+  });
+
   it("says inline when the offer ended, and drops Add", async () => {
     window.history.replaceState(null, "", "/#/discover/lumen-raw");
     mockFetch({
@@ -571,6 +592,14 @@ describe("the storefront product page, #/discover/:product (PS-05)", () => {
     );
     expect(screen.queryByRole("button", { name: "Add to library" })).toBeNull();
     expect(window.location.hash).toBe("#/discover/lumen-raw");
+    expect(
+      screen
+        .getByRole("link", { name: "Back to Discover" })
+        .getAttribute("href"),
+    ).toBe("#/discover");
+    expect(document.activeElement).toBe(
+      screen.getByRole("link", { name: "Back to Discover" }),
+    );
   });
 
   it("sends a product the library holds to its library page", async () => {

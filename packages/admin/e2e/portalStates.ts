@@ -783,7 +783,7 @@ export const SHIPPED: ShippedState[] = [
     path: "/#/discover/lumen-raw",
     ready: async (p) => {
       await h1(p, "Lumen RAW");
-      await p.getByRole("region", { name: "Ways to add it" }).waitFor();
+      await p.getByRole("region", { name: "Get Lumen RAW" }).waitFor();
     },
   },
   {
@@ -794,7 +794,7 @@ export const SHIPPED: ShippedState[] = [
     path: "/#/discover/driftwood",
     ready: async (p) => {
       await h1(p, "Driftwood Notes");
-      await p.getByRole("region", { name: "Why you can add it" }).waitFor();
+      await p.getByRole("region", { name: "Get Driftwood Notes" }).waitFor();
     },
   },
   {

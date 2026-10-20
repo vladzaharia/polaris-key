@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   AlertCircle,
   ArrowLeft,
@@ -17,13 +18,12 @@ import {
   type PortalObtainPath,
   type PortalStorefrontProduct,
 } from "../api.js";
-import { REASON_ICON } from "../components/DiscoverTile.js";
-import { PlatformGlyphs } from "../components/Glyphs.js";
 import { ProductArt } from "../components/ProductArt.js";
 import { ProductIcon } from "../components/ProductIcon.js";
 import { SectionCard } from "../components/product/Card.js";
 import { ErrorPanel } from "../components/States.js";
 import {
+  portalKeys,
   useClaimDiscover,
   useLibraryView,
   useStorefrontProduct,
@@ -39,6 +39,7 @@ import {
 import { mediaUrl } from "../model/library.js";
 import { href, useDocumentTitle } from "../router.js";
 import { t } from "../../lib/copy.js";
+import { platformConsumerName } from "../../lib/vocab/platforms.js";
 
 /**
  * The storefront product page, `#/discover/:product` (PS-05; notes/S-21 §6.5): a product the
@@ -141,6 +142,7 @@ function StorefrontBody({
   product: PortalStorefrontProduct;
 }): React.ReactElement {
   const claim = useClaimDiscover();
+  const qc = useQueryClient();
   const slug = product.product;
   const [chosen, setChosen] = React.useState<string | null>(
     product.paths[0]?.kind ?? null,
@@ -148,7 +150,6 @@ function StorefrontBody({
   const [error, setError] = React.useState<AddError | null>(null);
   // A double click fires twice before React re-renders the button as busy.
   const inFlight = React.useRef(false);
-  const errorId = "storefront-add-error";
 
   const add = async (): Promise<void> => {
     if (inFlight.current) return;
@@ -166,7 +167,11 @@ function StorefrontBody({
       requestHeadingFocus(slug);
       window.location.replace(href.product(slug));
     } catch (err) {
-      setError(addError(product, err));
+      const failed = addError(product, err);
+      // The offer is gone: Discover stops listing it.
+      if (failed.ended)
+        void qc.invalidateQueries({ queryKey: portalKeys.discover });
+      setError(failed);
     } finally {
       inFlight.current = false;
     }
@@ -176,98 +181,253 @@ function StorefrontBody({
   const platforms = offerPlatforms(product.platforms);
   const canAdd = product.cta === "add" && !error?.ended;
   return (
-    <div className="space-y-6 desk:space-y-8">
-      <StorefrontHeader product={product}>
-        {product.cta === "link" ? (
-          <StoreButtons product={product} lead />
-        ) : canAdd ? (
-          <Button
-            size="lg"
-            className="h-12 w-full px-6 font-medium desk:w-auto"
-            iconStart={<Plus aria-hidden />}
-            loading={claim.isPending}
-            aria-describedby={error ? errorId : undefined}
-            onClick={() => void add()}
-          >
-            Add to library
-          </Button>
-        ) : null}
-      </StorefrontHeader>
-      {error ? (
-        <p
-          id={errorId}
-          role="alert"
-          className="flex gap-2 rounded-lg border border-danger-border bg-surface-raised p-4 text-danger"
+    <div>
+      <nav aria-label="Breadcrumb" className="mb-2">
+        <a
+          href={href.discover()}
+          className="inline-flex min-h-11 items-center gap-2 rounded-sm text-sm text-fg-muted hover:text-fg-strong"
         >
-          <AlertCircle aria-hidden className="mt-0.5 size-5 shrink-0" />
-          {error.text}
-        </p>
-      ) : null}
-      <div className="flex flex-col gap-6 desk:grid desk:grid-cols-[minmax(0,1fr)_21.25rem] desk:items-start wide:grid-cols-[minmax(0,1fr)_24rem]">
-        <div className="flex min-w-0 flex-col gap-6">
-          {product.description || platforms.length ? (
-            <SectionCard id="about" title={`About ${product.name}`}>
-              <div className="space-y-4">
-                {product.description ? (
-                  <p className="whitespace-pre-line text-fg [overflow-wrap:anywhere]">
-                    {product.description}
-                  </p>
-                ) : null}
-                {platforms.length ? (
-                  <p className="flex flex-wrap items-center gap-3 text-sm text-fg-muted">
-                    Runs on
-                    <PlatformGlyphs platforms={platforms} />
-                  </p>
+          <ArrowLeft aria-hidden className="size-4" />
+          Discover
+        </a>
+      </nav>
+      <div className="flex flex-col gap-6 desk:grid desk:grid-cols-[minmax(0,1fr)_21.25rem] desk:items-start desk:gap-x-8 desk:gap-y-8 wide:grid-cols-[minmax(0,1fr)_24rem]">
+        <div className="min-w-0 desk:col-start-1 desk:row-start-1">
+          <StorefrontHeader product={product} />
+        </div>
+        <aside className="@container min-w-0 desk:sticky desk:top-24 desk:col-start-2 desk:row-span-2 desk:row-start-1">
+          <DecisionPanel
+            product={product}
+            platforms={platforms}
+            chosen={chosen}
+            onChoose={setChosen}
+            canAdd={canAdd}
+            adding={claim.isPending}
+            error={error}
+            onAdd={() => void add()}
+          />
+        </aside>
+        {product.description || shots.length ? (
+          <div className="flex min-w-0 flex-col gap-6 desk:col-start-1 desk:row-start-2 desk:gap-8">
+            {product.description ? (
+              <p className="max-w-prose whitespace-pre-line text-fg break-words hyphens-auto">
+                {product.description}
+              </p>
+            ) : null}
+            {shots.length ? (
+              <SectionCard
+                id="screenshots"
+                title="Screenshots"
+                className="min-w-0"
+              >
+                <ul className="grid gap-3 desk:grid-cols-2">
+                  {shots.map((src, i) => (
+                    <li key={src}>
+                      <img
+                        src={src}
+                        alt={`${product.name}, screenshot ${i + 1} of ${shots.length}`}
+                        decoding="async"
+                        className="aspect-video w-full rounded-lg border border-border bg-surface-sunken object-cover"
+                      />
+                    </li>
+                  ))}
+                </ul>
+              </SectionCard>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The one decision panel (PX-32a, portal-19): where it runs, what the person would get, why they
+ * qualify, and the one action. With several ways to add it, the rows become a choice. Add is the
+ * one primary; a store-only listing has no Add, its store links are the action.
+ */
+function DecisionPanel({
+  product,
+  platforms,
+  chosen,
+  onChoose,
+  canAdd,
+  adding,
+  error,
+  onAdd,
+}: {
+  product: PortalStorefrontProduct;
+  platforms: ReturnType<typeof offerPlatforms>;
+  chosen: string | null;
+  onChoose: (kind: string) => void;
+  canAdd: boolean;
+  adding: boolean;
+  error: AddError | null;
+  onAdd: () => void;
+}): React.ReactElement {
+  const errorId = "storefront-add-error";
+  const paths = product.paths;
+  const several = paths.length > 1;
+  const path = paths.find((p) => p.kind === chosen) ?? paths[0] ?? null;
+  const lockedIn = adding || error?.ended === true;
+  // Add unmounts once the offer has ended: focus goes to the way out.
+  const backRef = React.useRef<HTMLAnchorElement>(null);
+  const ended = error?.ended === true;
+  React.useEffect(() => {
+    if (ended) backRef.current?.focus();
+  }, [ended]);
+  const hasLinks = product.stores.length > 0 || siteOf(product) !== null;
+  const hasFooter =
+    product.cta === "link"
+      ? hasLinks
+      : canAdd || error !== null || product.stores.length > 0;
+  return (
+    <SectionCard id="get" title={`Get ${product.name}`}>
+      <div className="-mx-5 -mb-5 desk:-mx-6 desk:-mb-6">
+        {platforms.length || (product.cta === "add" && !several && path) ? (
+          <dl className="divide-y divide-border border-t border-border text-sm">
+            {platforms.length ? (
+              <Row term="Runs on">
+                {platforms.map((p) => platformConsumerName(p)).join(", ")}
+              </Row>
+            ) : null}
+            {product.cta === "add" && !several && path ? (
+              <>
+                <Row term="You’d get">{pathTermsLine(path)}</Row>
+                <Row term="You qualify">{pathCopy(path).text}</Row>
+              </>
+            ) : null}
+          </dl>
+        ) : null}
+        {product.cta === "add" && several ? (
+          <div className="border-t border-border px-5 py-4 @max-[20rem]:px-3 desk:px-6">
+            <fieldset disabled={lockedIn} className="min-w-0 space-y-2">
+              <legend className="mb-1 text-sm text-fg-muted">
+                Ways to add it
+              </legend>
+              {paths.map((p) => (
+                <label
+                  key={p.kind}
+                  className={cn(
+                    "flex min-h-11 cursor-pointer gap-3 rounded-lg border p-2.5 @max-[20rem]:gap-2 @max-[20rem]:p-2",
+                    chosen === p.kind
+                      ? "border-border-strong bg-surface-sunken"
+                      : "border-border hover:bg-hover",
+                  )}
+                >
+                  <input
+                    type="radio"
+                    name="storefront-path"
+                    value={p.kind}
+                    checked={chosen === p.kind}
+                    onChange={() => onChoose(p.kind)}
+                    className="mt-1 size-4 shrink-0 accent-[var(--pk-fg-strong,currentColor)]"
+                  />
+                  <PathLines path={p} />
+                </label>
+              ))}
+            </fieldset>
+          </div>
+        ) : null}
+        {product.cta === "link" && !hasLinks ? (
+          <p className="border-t border-border px-5 py-4 text-sm text-fg-muted desk:px-6">
+            {`${product.developerName ?? "Its developer"} shows it to everyone with a Polaris Locker account.`}
+          </p>
+        ) : null}
+        {hasFooter ? (
+          <div className="space-y-3 border-t border-border px-5 py-4 @max-[20rem]:px-3 desk:px-6 desk:py-5">
+            {product.cta === "link" ? (
+              <StoreButtons product={product} lead />
+            ) : canAdd ? (
+              <Button
+                size="lg"
+                className="h-auto min-h-12 w-full whitespace-normal px-6 py-2 font-medium"
+                busyFocusable
+                iconStart={<Plus aria-hidden />}
+                loading={adding}
+                aria-describedby={error ? errorId : undefined}
+                onClick={onAdd}
+              >
+                {adding ? "Adding…" : "Add to library"}
+              </Button>
+            ) : null}
+            {error ? (
+              <div className="space-y-3">
+                <p
+                  id={errorId}
+                  role="alert"
+                  className="flex gap-2 text-sm text-danger"
+                >
+                  <AlertCircle aria-hidden className="mt-0.5 size-4 shrink-0" />
+                  {error.text}
+                </p>
+                {error.ended ? (
+                  <Button
+                    asChild
+                    variant="outline"
+                    size="lg"
+                    className="h-auto min-h-12 w-full whitespace-normal px-6 py-2 font-medium"
+                  >
+                    <a ref={backRef} href={href.discover()}>
+                      Back to Discover
+                    </a>
+                  </Button>
                 ) : null}
               </div>
-            </SectionCard>
-          ) : null}
-          {shots.length ? (
-            <SectionCard id="screenshots" title="Screenshots">
-              <ul className="grid gap-3 desk:grid-cols-2">
-                {shots.map((src, i) => (
-                  <li key={src}>
-                    <img
-                      src={src}
-                      alt={`${product.name}, screenshot ${i + 1} of ${shots.length}`}
-                      decoding="async"
-                      className="aspect-video w-full rounded-lg border border-border bg-surface-sunken object-cover"
-                    />
-                  </li>
-                ))}
-              </ul>
-            </SectionCard>
-          ) : null}
-        </div>
-        <div className="flex min-w-0 flex-col gap-6">
-          {product.cta === "add" ? (
-            <WaysToAdd
-              paths={product.paths}
-              chosen={chosen}
-              onChoose={setChosen}
-              disabled={claim.isPending || error?.ended === true}
-            />
-          ) : null}
-          {product.cta === "add" && product.stores.length ? (
-            <SectionCard id="stores" title="Also on">
-              <StoreButtons product={product} />
-            </SectionCard>
-          ) : null}
-        </div>
+            ) : null}
+            {product.cta === "add" && product.stores.length ? (
+              <AlsoOn product={product} />
+            ) : null}
+          </div>
+        ) : null}
       </div>
-      <p className="flex gap-2 text-sm text-fg-muted">
-        <Compass aria-hidden className="mt-0.5 size-4 shrink-0" />
-        {product.cta === "add"
-          ? "Adding it is free and puts it in your library."
-          : `${product.developerName ?? "Its developer"} shows it to everyone with a Polaris Locker account.${
-              product.stores.length
-                ? " Get it from a store above."
-                : siteOf(product)
-                  ? " Get it from their website above."
-                  : ""
-            }`}
-      </p>
+    </SectionCard>
+  );
+}
+
+function Row({
+  term,
+  children,
+}: {
+  term: string;
+  children: React.ReactNode;
+}): React.ReactElement {
+  return (
+    <div className="flex flex-wrap gap-x-4 gap-y-1 px-5 py-3 @max-[20rem]:px-3 desk:px-6">
+      <dt className="w-[6.5rem] shrink-0 text-fg-muted">{term}</dt>
+      <dd className="min-w-0 flex-[1_1_8rem] text-fg break-words hyphens-auto">
+        {children}
+      </dd>
     </div>
+  );
+}
+
+/** "Also on the App Store, Google Play and Steam": each store name a link to its page. */
+function AlsoOn({
+  product,
+}: {
+  product: PortalStorefrontProduct;
+}): React.ReactElement {
+  const n = product.stores.length;
+  return (
+    <p className="text-sm text-fg-muted">
+      Also on{" "}
+      {product.stores.map((s, i) => (
+        <React.Fragment key={s.id}>
+          {i > 0 ? (i === n - 1 ? " and " : ", ") : null}
+          <a
+            href={s.url}
+            target="_blank"
+            rel="noreferrer"
+            aria-label={`${s.label}: ${product.name} (opens in a new tab)`}
+            className="rounded-sm font-medium text-fg-strong underline decoration-fg-subtle underline-offset-[3px] hover:decoration-fg-strong"
+          >
+            {s.label}
+          </a>
+        </React.Fragment>
+      ))}
+      .
+    </p>
   );
 }
 
@@ -280,23 +440,16 @@ function StorefrontBody({
  */
 function StorefrontHeader({
   product,
-  children,
 }: {
   product: PortalStorefrontProduct;
-  children: React.ReactNode;
 }): React.ReactElement {
   const [coverFailed, setCoverFailed] = React.useState(false);
   const cover = mediaUrl(product.headerUrl);
   const hasCover = Boolean(cover) && !coverFailed;
+  // On a phone the icon stands for the cover, so the panel reaches the first screen.
+  const hasIcon = Boolean(mediaUrl(product.iconUrl));
   return (
-    <div>
-      <a
-        href={href.discover()}
-        className="mb-4 inline-flex items-center gap-2 rounded-sm text-sm text-fg-muted hover:text-fg-strong"
-      >
-        <ArrowLeft aria-hidden className="size-4" />
-        Discover
-      </a>
+    <div className="@container">
       {hasCover ? (
         <ProductArt
           slug={product.product}
@@ -305,16 +458,17 @@ function StorefrontHeader({
           src={cover}
           variant="banner"
           onError={() => setCoverFailed(true)}
-          className="pk-vt-hero -mx-4 aspect-video desk:mx-0 desk:aspect-[3/1] desk:max-h-[26rem] desk:rounded-xl"
+          className={cn(
+            "pk-vt-hero aspect-[3/1] rounded-xl desk:aspect-[3/1] desk:max-h-[26rem]",
+            hasIcon && "max-desk:hidden",
+          )}
         />
       ) : null}
       <div
         data-cover={hasCover ? "image" : "none"}
         className={cn(
-          "flex gap-4 desk:gap-6",
-          hasCover
-            ? "flex-col desk:flex-row desk:items-end desk:px-6"
-            : "flex-row flex-wrap items-center pt-2 desk:flex-nowrap",
+          "flex flex-col gap-3 @[20rem]:flex-row @[20rem]:items-start @[20rem]:gap-4",
+          hasCover ? (hasIcon ? "desk:mt-5" : "mt-5") : "pt-2",
         )}
       >
         <ProductIcon
@@ -322,125 +476,43 @@ function StorefrontHeader({
           name={product.name}
           tint={product.tintColor}
           src={mediaUrl(product.iconUrl)}
-          size={112}
-          lift={hasCover}
-          tileClassName="border-4 border-surface-page max-desk:text-3xl"
-          className={cn(
-            "pk-vt-hero-icon relative z-10 max-desk:size-20",
-            hasCover && "-mt-10 desk:-mt-16 desk:self-start",
-          )}
+          size={64}
+          className="pk-vt-hero-icon shrink-0"
         />
-        <div className="min-w-0 flex-1 space-y-2 desk:pb-1">
+        <div className="min-w-0 flex-1 space-y-1 @[20rem]:pt-1">
           <h1
             tabIndex={-1}
-            className="pk-vt-hero-title w-fit text-headline font-semibold leading-tight text-fg-strong outline-none desk:text-4xl"
+            className="pk-vt-hero-title w-fit max-w-full text-headline break-words hyphens-auto font-semibold leading-tight text-fg-strong outline-none desk:text-4xl"
           >
             {product.name}
           </h1>
           {product.developerName ? (
-            <p className="text-fg-muted">
-              by{" "}
-              <span className="font-medium text-accent-fg">
-                {product.developerName}
-              </span>
-            </p>
-          ) : null}
-          {product.shortDescription ? (
-            <p className="max-w-prose text-fg [overflow-wrap:anywhere]">
-              {product.shortDescription}
-            </p>
+            <p className="text-fg-muted">by {product.developerName}</p>
           ) : null}
         </div>
-        <div className="flex max-desk:w-full desk:pb-1">{children}</div>
       </div>
+      {product.shortDescription ? (
+        <p className="mt-5 max-w-prose text-fg break-words hyphens-auto">
+          {product.shortDescription}
+        </p>
+      ) : null}
     </div>
   );
 }
 
-/**
- * Every way to add the product, each with why and what it gives (S-21 §6.5). With more than one,
- * a choice; the first (the Worker's order) is preselected.
- */
-function WaysToAdd({
-  paths,
-  chosen,
-  onChoose,
-  disabled,
-}: {
-  paths: readonly PortalObtainPath[];
-  chosen: string | null;
-  onChoose: (kind: string) => void;
-  disabled: boolean;
-}): React.ReactElement {
-  const several = paths.length > 1;
-  return (
-    <SectionCard
-      id="ways"
-      title={several ? "Ways to add it" : "Why you can add it"}
-      subtitle={several ? "Pick the one Add uses." : undefined}
-    >
-      {several ? (
-        <fieldset disabled={disabled} className="space-y-2">
-          <legend className="sr-only">Choose how to add it</legend>
-          {paths.map((p) => (
-            <label
-              key={p.kind}
-              className={cn(
-                "flex cursor-pointer gap-3 rounded-lg border p-3",
-                chosen === p.kind
-                  ? "border-accent bg-accent-subtle"
-                  : "border-border hover:bg-hover",
-              )}
-            >
-              <input
-                type="radio"
-                name="storefront-path"
-                value={p.kind}
-                checked={chosen === p.kind}
-                onChange={() => onChoose(p.kind)}
-                className="mt-1 size-4 shrink-0 accent-[var(--pk-accent)]"
-              />
-              <PathLines path={p} />
-            </label>
-          ))}
-        </fieldset>
-      ) : (
-        <ul className="space-y-2">
-          {paths.map((p) => (
-            <li
-              key={p.kind}
-              className="flex gap-3 rounded-lg bg-surface-sunken p-3"
-            >
-              <PathLines path={p} icon />
-            </li>
-          ))}
-        </ul>
-      )}
-    </SectionCard>
-  );
-}
-
-function PathLines({
-  path,
-  icon = false,
-}: {
-  path: PortalObtainPath;
-  icon?: boolean;
-}): React.ReactElement {
+function PathLines({ path }: { path: PortalObtainPath }): React.ReactElement {
   const copy = pathCopy(path);
-  const Icon = REASON_ICON[copy.kind];
+  const devices = path.terms?.deviceLimit ?? 0;
+  // A trial's name already says how long: the line under it adds only what is new.
+  const line =
+    copy.kind === "trial" && devices > 0
+      ? `${devices} ${devices === 1 ? "device" : "devices"}`
+      : pathTermsLine(path);
   return (
-    <>
-      {icon ? (
-        <Icon aria-hidden className="mt-0.5 size-4 shrink-0 text-accent-fg" />
-      ) : null}
-      <span className="min-w-0">
-        <span className="block font-medium text-fg-strong">{copy.text}</span>
-        <span className="block text-sm text-fg-muted">
-          {pathTermsLine(path)}
-        </span>
-      </span>
-    </>
+    <span className="min-w-0">
+      <span className="block font-medium text-fg-strong">{copy.text}</span>
+      <span className="block text-sm text-fg-muted">{line}</span>
+    </span>
   );
 }
 
@@ -470,15 +542,19 @@ function StoreButtons({
       : [];
   if (links.length === 0) return null;
   return (
-    <ul className={cn("flex flex-wrap gap-2", lead && "max-desk:w-full")}>
+    <ul className={cn("flex flex-wrap gap-2", lead && "w-full flex-col")}>
       {links.map((l, i) => (
-        <li key={l.id} className={cn(lead && "max-desk:w-full")}>
+        <li key={l.id} className={cn(lead && "w-full")}>
           <Button
             asChild
             // One solid lead per page: the first store; any others are outlined.
             variant={lead && i === 0 ? "primary" : lead ? "outline" : "quiet"}
             size="lg"
-            className={cn(lead ? "h-12 w-full px-6 font-medium" : "h-11")}
+            className={cn(
+              lead
+                ? "h-auto min-h-12 w-full whitespace-normal px-6 py-2 font-medium"
+                : "h-11",
+            )}
           >
             <a
               href={l.url}
@@ -514,6 +590,11 @@ function addError(product: PortalStorefrontProduct, err: unknown): AddError {
       text: `${product.developerName ?? "The developer"} no longer gives ${product.name} to your account.`,
       ended: true,
     };
+  // The words PX-34 settled on Discover's tile.
+  const offline = err instanceof PortalApiError && err.status === 0;
   const copy = portalErrorCopy(err);
-  return { text: `${copy.title}. ${copy.description}`, ended: false };
+  return {
+    text: `Couldn't add ${product.name}. ${offline ? t("core.codes.transport.message") : copy.description}`,
+    ended: false,
+  };
 }

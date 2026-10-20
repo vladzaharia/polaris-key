@@ -78,6 +78,13 @@ apply says why in one line. One home: EXPERIENCE.md §7.3; kits also follow DL1�
 - [ ] `pkey-ux-reviewer` passes the built screens in BUILT mode (a real browser, dark and light, 390 and 1440 px), against the matching Locker mockup.
 - [ ] The scoped green gate passes (AGENTS.md); the header's gates hold.
 
+## Build notes (2026-10-20)
+
+- The page is `packages/admin/src/portal/pages/StorefrontPage.tsx` (the brief said `pages/`; it lives under `portal/`).
+- Built to portal.discover-detail (Locker): cover, icon beside the name, "by developer", story; one panel "Get <name>" with Runs on, You'd get, You qualify (several ways become a radio choice), one ink primary "Add to library" ("Adding…" while busy), "Also on" store-name links. Link-only: store buttons, no Add.
+- Kept from PX-34's flow: add failure copy ("Couldn't add …"), redirect to the library page after Add (mockup's "In your library" state is not built: the page is replaced, Back skips it).
+- Duration, downloads, listing entries, Discover visibility: PX-32b.
+
 ## Hand-off
 
 The role agent sets `--set PX-32a in-review` when it hands off; the lead sets done after review. Branch from integ/next after the packages in Depends on have merged.

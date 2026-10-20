@@ -122,7 +122,7 @@ describe.concurrent("the storefront's flows (PS-05)", () => {
             .click();
           await page.waitForURL(/#\/discover\/lumen-raw$/);
           await h1(page, "Lumen RAW");
-          const ways = page.getByRole("region", { name: "Ways to add it" });
+          const ways = page.getByRole("region", { name: "Get Lumen RAW" });
           await ways
             .getByRole("radio", { name: /Included with Aperture Seven/ })
             .waitFor();
@@ -137,6 +137,29 @@ describe.concurrent("the storefront's flows (PS-05)", () => {
               .getByRole("img")
               .count(),
           ).toBe(2);
+          if (w.width === 390) {
+            // The one primary is in the first screen of a phone, above the tab bar.
+            for (const [vw, vh] of [
+              [390, 844],
+              [360, 780],
+              [360, 800],
+            ] as const) {
+              await page.setViewportSize({ width: vw, height: vh });
+              await page.evaluate(() => window.scrollTo(0, 0));
+              await page.waitForTimeout(100);
+              const box = await page
+                .getByRole("button", { name: "Add to library" })
+                .boundingBox();
+              const bar = await page
+                .getByRole("navigation", { name: "Phone" })
+                .boundingBox();
+              expect(
+                box!.y + box!.height,
+                `${vw}x${vh}: Add above the tab bar`,
+              ).toBeLessThanOrEqual(bar!.y);
+            }
+            await page.setViewportSize({ width: 390, height: 844 });
+          }
           await clean(expect, o, w.width, "storefront page");
 
           await ways
@@ -162,6 +185,47 @@ describe.concurrent("the storefront's flows (PS-05)", () => {
           await page.goBack();
           await page.waitForURL(/#\/discover$/);
           await h1(page, "Discover");
+        } finally {
+          await o.close();
+        }
+      });
+
+      it(`the decision panel reflows at 320 px and 200 % text: ${theme}, ${w.width} px`, async ({
+        expect,
+      }) => {
+        const o = await portal.open(
+          "storefront",
+          "/#/discover/lumen-raw",
+          opts,
+        );
+        try {
+          const { page } = o;
+          await h1(page, "Lumen RAW");
+          await page.setViewportSize({ width: 320, height: 640 });
+          await page.evaluate(() => {
+            document.documentElement.style.fontSize = "200%";
+          });
+          await page.waitForTimeout(150);
+          const add = page.getByRole("button", { name: "Add to library" });
+          await add.scrollIntoViewIfNeeded();
+          expect(await add.isVisible()).toBe(true);
+          expect(await horizontalOverflow(page)).toBeLessThanOrEqual(0);
+          // Nothing inside the panel reaches past its edge.
+          const past = await page.evaluate(() => {
+            const box = document
+              .querySelector("#section-get")!
+              .getBoundingClientRect();
+            return [...document.querySelectorAll("#section-get *")]
+              .filter((e) => {
+                const r = e.getBoundingClientRect();
+                return (
+                  r.width > 0 &&
+                  (r.right > box.right + 1 || r.left < box.left - 1)
+                );
+              })
+              .map((e) => e.tagName + "." + String(e.className).slice(0, 40));
+          });
+          expect(past).toEqual([]);
         } finally {
           await o.close();
         }

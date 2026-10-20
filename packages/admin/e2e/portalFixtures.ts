@@ -1072,7 +1072,7 @@ const STOREFRONT_PAGES: Record<string, Record<string, unknown>> = {
   },
   starfall: {
     description:
-      "Short arena battles between ships of light. Free on Steam for everyone with a Polaris Key account.",
+      "Short arena battles between ships of light. Free on Steam for everyone with a Polaris Locker account.",
     screenshots: ["/media/starfall/screenshot-0?v=1"],
     stores: [STEAM_STARFALL],
   },
