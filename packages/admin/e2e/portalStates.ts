@@ -308,7 +308,7 @@ export const SHIPPED: ShippedState[] = [
     scenario: "signedOut",
     path: "/",
     routes: { "/api/capabilities": "abort" },
-    ready: (p) => h1(p, "Can't reach Polaris Key"),
+    ready: (p) => h1(p, "Can't reach Polaris Locker"),
   },
   // §4.1 Where the address goes (I-30; mockup identity.sign-in-routes pins 1 and 2).
   {
@@ -1230,11 +1230,11 @@ export const SHIPPED: ShippedState[] = [
   {
     section: "4.28",
     id: "boot-unreachable",
-    title: "Can't reach Polaris Key",
+    title: "Can't reach Polaris Locker",
     scenario: "three",
     path: "/",
     routes: { "/api/me": "abort" },
-    ready: (p) => h1(p, "Can't reach Polaris Key"),
+    ready: (p) => h1(p, "Can't reach Polaris Locker"),
   },
   {
     section: "4.28",

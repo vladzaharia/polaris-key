@@ -337,7 +337,7 @@ describe("Your data: Download my data (I-11)", () => {
     [
       "a dropped connection",
       "network",
-      "Can't reach Polaris Key. Check your connection, then try again.",
+      "Can't reach Polaris Locker. Check your connection, then try again.",
     ],
     [
       "an error from the Worker",
