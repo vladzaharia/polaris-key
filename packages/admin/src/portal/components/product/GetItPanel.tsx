@@ -303,7 +303,11 @@ function FileRow({
               {mine
                 ? `${t("getIt.forYour", { device: deviceNoun(mine) })} · `
                 : ""}
-              {fileSource(r.artifact)}
+              {/* A size never breaks across lines ("3.1 GB"). */}
+              {fileSource(r.artifact)?.replace(
+                /(\d) (?=[KMGT]?B\b)/,
+                "$1\u00a0",
+              )}
             </span>
           </span>
         </span>
