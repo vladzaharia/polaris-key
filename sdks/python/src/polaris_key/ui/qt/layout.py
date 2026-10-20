@@ -82,6 +82,9 @@ class ScreenSpec:
     product: str = ""
     developer: str = ""
     focus: str = ""
+    #: The attribution (UI-KITS §1.6): ``""`` (off), ``"line"`` or ``"badge"``, with its text.
+    powered_by: str = ""
+    powered_by_text: str = ""
 
     def as_dict(self) -> Dict[str, Any]:
         return {
@@ -96,6 +99,8 @@ class ScreenSpec:
             "product": self.product,
             "developer": self.developer,
             "focus": self.focus,
+            "poweredBy": self.powered_by,
+            "poweredByText": self.powered_by_text,
             "hidden": self.state == "hidden" or not (self.title or self.body or self.buttons),
         }
 
@@ -112,7 +117,9 @@ def _open(text: str) -> bool:
     return "{" in text
 
 
-def build_spec(view: View, copy: Copy, *, product: str = "", developer: str = "") -> ScreenSpec:
+def build_spec(
+    view: View, copy: Copy, *, product: str = "", developer: str = "", powered_by: str = ""
+) -> ScreenSpec:
     """Lay one view out. Heading, then sentences, then the buttons in catalog order with the
     model's primary first among equals; at most one filled button.
 
@@ -130,6 +137,8 @@ def build_spec(view: View, copy: Copy, *, product: str = "", developer: str = ""
     busy = False
     for key in view.copy:
         if key == "common.byDeveloper":  # the identity header draws it
+            continue
+        if key == "part.poweredBy":  # drawn at the foot with the Locker mark, when the theme asks
             continue
         if key.startswith("a11y."):
             busy = busy or key in ("a11y.busy", "a11y.progress")
@@ -175,4 +184,6 @@ def build_spec(view: View, copy: Copy, *, product: str = "", developer: str = ""
         product=product,
         developer=developer,
         focus=view.decisions.focus or "",
+        powered_by=powered_by if "part.poweredBy" in view.copy else "",
+        powered_by_text=copy("part.poweredBy") if powered_by and "part.poweredBy" in view.copy else "",
     )

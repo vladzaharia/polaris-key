@@ -204,7 +204,19 @@ def gate(k: Kit, v: GateView, verb: str = "status") -> Lines:
         body += k.step("active", [k.t("core.gate.needs-activation.title", "strong")])
         body += _gap(k)
         body += _fixes(k, [("activate", "welcome.useKey"), ("login", "welcome.signIn")])
+    body += powered_by(k)
     return _frame(k, verb, body, end)
+
+
+def powered_by(k: Kit) -> Lines:
+    """The optional attribution (UI-KITS §1.6): the Locker mark's glyph and "Powered by Polaris
+    Locker", muted. A terminal has no badge, so ``"badge"`` prints the line too. Piped output
+    keeps the words and drops the glyph."""
+    if not k.theme.powered_by:
+        return []
+    glyph = k.sym("lockerMark", "muted")
+    line = ([glyph, Span(" ")] if glyph.text else []) + [k.t("part.poweredBy", "muted")]
+    return _gap(k) + k.body(line)
 
 
 # ── Activate, DeviceLimit ────────────────────────────────────────────────────────────────────

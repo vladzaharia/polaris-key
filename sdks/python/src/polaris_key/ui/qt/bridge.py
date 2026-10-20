@@ -11,6 +11,7 @@ from __future__ import annotations
 import base64
 from typing import Any, Callable, Dict, Mapping, Optional
 
+from .._tokens import POWERED_BY
 from ..core.copy import Copy
 from ..core.identity import ProductIdentity, ResolvedIdentity, resolve_identity
 from ..core.theme import Theme
@@ -100,6 +101,7 @@ class KitBridge(_Base):  # type: ignore[misc]
                 self._copy,
                 product=bidi_isolate(self._identity.name) if self._identity.name else "",
                 developer=self._identity.developer or "",
+                powered_by=self._powered_by(),
             )
         self.changed.emit()
 
@@ -148,6 +150,20 @@ class KitBridge(_Base):  # type: ignore[misc]
             return ""
         return "data:image/png;base64," + base64.b64encode(bytes(data)).decode("ascii")
 
+    def _powered_by(self) -> str:
+        v = self._theme.powered_by
+        return "" if not v else ("badge" if v == "badge" else "line")
+
+    def _svg_uri(self, field: str) -> str:
+        svg = POWERED_BY[field][self._get_scheme()]
+        return "data:image/svg+xml;base64," + base64.b64encode(svg.encode("utf-8")).decode("ascii")
+
+    def _get_powered_by_mark(self) -> str:
+        return self._svg_uri("mark_svg")
+
+    def _get_powered_by_badge(self) -> str:
+        return self._svg_uri("badge_svg")
+
     def _get_developer_line(self) -> str:
         dev = self._identity.developer
         return self._copy("common.byDeveloper", developer=bidi_isolate(dev)) if dev else ""
@@ -173,6 +189,8 @@ class KitBridge(_Base):  # type: ignore[misc]
         focusRing = qt.Property(str, lambda s: s._accent("focus"), notify=changed)
         iconSource = qt.Property(str, _get_icon, notify=changed)
         iconLabel = qt.Property(str, _get_icon_label, notify=changed)
+        poweredByMark = qt.Property(str, _get_powered_by_mark, notify=changed)
+        poweredByBadge = qt.Property(str, _get_powered_by_badge, notify=changed)
         developerLine = qt.Property(str, _get_developer_line, notify=changed)
         fontScale = qt.Property(float, lambda s: s._font_scale, notify=changed)
         animate = qt.Property(bool, _get_animate, notify=changed)

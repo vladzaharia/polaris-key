@@ -40,6 +40,9 @@ class Theme:
     product: Optional[ProductIdentity] = None
     #: Partial copy overrides (``{locale: {key: value}}`` or ``{key: value}``) and/or ``locale``.
     copy: Mapping[str, Any] = field(default_factory=dict)
+    #: The Powered by Polaris Locker attribution (UI-KITS §1.6): ``False`` (default), ``"line"`` (the
+    #: Locker micro mark and the phrase) or ``"badge"`` (the 320 x 104 badge where 320 px is free,
+    #: else the line; a terminal prints the line). ``True`` means ``"line"``.
     powered_by: Union[bool, str] = False
     platform: str = "auto"
     #: Terminal only: ``"auto"`` (Unicode unless ``TERM=dumb``), ``"unicode"`` or ``"ascii"``.
@@ -52,6 +55,8 @@ class Theme:
             raise ValueError(f"theme.color_scheme must be one of {COLOR_SCHEMES}, not {self.color_scheme!r}")
         if self.motion not in MOTIONS:
             raise ValueError(f"theme.motion must be one of {MOTIONS}, not {self.motion!r}")
+        if self.powered_by not in (False, True, "line", "badge"):
+            raise ValueError(f"theme.powered_by must be False, 'line' or 'badge', not {self.powered_by!r}")
         if self.symbols not in ("auto", "unicode", "ascii"):
             raise ValueError(f"theme.symbols must be auto, unicode or ascii, not {self.symbols!r}")
 
