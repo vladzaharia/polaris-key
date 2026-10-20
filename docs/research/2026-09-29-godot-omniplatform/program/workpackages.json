@@ -17558,7 +17558,7 @@
       "optional": false,
       "refs": ["plans/LK-00.md §4, §7.1–7.5, §7.13"],
       "brief": "wp/LK-03-customer-host-and-origin.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "LK-04",
