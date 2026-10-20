@@ -141,8 +141,8 @@ describe("customer URLs follow CUSTOMER_ORIGIN", () => {
       expect(res.status, path).toBe(302);
       expect(res.headers.get("location")).toBe("/manage");
     }
-    // Only the root: the rest of the portal's routes and assets are untouched.
-    expect((await get("/activate")).status).toBe(200);
+    // Only the root here: the old customer pages redirect (LK-17, below); assets are untouched.
+    expect((await get("/activate")).status).toBe(301);
     expect((await get("/manage")).status).not.toBe(302);
     // The customer host's own root is still the portal.
     expect(
