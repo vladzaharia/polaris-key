@@ -36,13 +36,43 @@ import {
   type ServiceChange,
 } from "../components/serviceFeatures.js";
 
+/**
+ * The Features tab: the feature list, and under it the product's own settings (name, origins,
+ * repository, danger zone) when its folded row is open. Those do not wait on the list's read.
+ */
 export function ServicesPage({
   slug,
   openDetails = false,
 }: {
   slug: string;
-  /** The product's own settings (name, origins, repository, danger zone) start unfolded. */
+  /** The product's own settings start unfolded (`#/p/<slug>/settings`). */
   openDetails?: boolean;
+}): React.ReactElement {
+  const [detailsOpen, setDetailsOpen] = React.useState(openDetails);
+  return (
+    <div className="space-y-6">
+      <FeatureList
+        slug={slug}
+        detailsOpen={detailsOpen}
+        onDetails={setDetailsOpen}
+      />
+      {detailsOpen ? (
+        <div id="feature-details-panel">
+          <ProductDetails slug={slug} />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function FeatureList({
+  slug,
+  detailsOpen,
+  onDetails,
+}: {
+  slug: string;
+  detailsOpen: boolean;
+  onDetails: (open: boolean) => void;
 }): React.ReactElement {
   const query = useQuery({
     queryKey: qk.services(slug),
@@ -60,18 +90,25 @@ export function ServicesPage({
   }
 
   return (
-    <ServicesForm slug={slug} data={query.data} openDetails={openDetails} />
+    <ServicesForm
+      slug={slug}
+      data={query.data}
+      detailsOpen={detailsOpen}
+      onDetails={onDetails}
+    />
   );
 }
 
 function ServicesForm({
   slug,
   data,
-  openDetails,
+  detailsOpen,
+  onDetails,
 }: {
   slug: string;
   data: ServicesResponse;
-  openDetails: boolean;
+  detailsOpen: boolean;
+  onDetails: (open: boolean) => void;
 }): React.ReactElement {
   const queryClient = useQueryClient();
   const gate = useWriteGate("core", slug);
@@ -82,7 +119,6 @@ function ServicesForm({
     React.useState<OffConfirmation | null>(null);
   const [confirmRevert, setConfirmRevert] = React.useState(false);
   const [reverting, setReverting] = React.useState(false);
-  const [detailsOpen, setDetailsOpen] = React.useState(openDetails);
   const product = useProduct(slug);
 
   const saved = React.useMemo(() => readEnabled(data), [data]);
@@ -184,15 +220,9 @@ function ServicesForm({
           enabled={enabled}
           effectiveRegistration={data.effectiveRegistration}
           detailsOpen={detailsOpen}
-          onDetails={setDetailsOpen}
+          onDetails={onDetails}
         />
       </section>
-      {detailsOpen ? (
-        <div id="feature-details-panel">
-          <ProductDetails slug={slug} />
-        </div>
-      ) : null}
-
       <ServiceOffConfirmation
         confirmation={offConfirmation}
         onOpenChange={(open) => {

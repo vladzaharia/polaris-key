@@ -98,6 +98,7 @@ export function StorefrontListingControl({
   return (
     <>
       <FeatureSubRow
+        stack
         title={<span id={`${id}-label`}>Polaris Locker listing</span>}
         lines={[
           `Who finds ${name} on Discover`,

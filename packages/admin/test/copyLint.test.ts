@@ -9,6 +9,7 @@ import { dirname, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { KIT_COPY_EN } from "@polaris-key/brand/kit-copy";
 import ts from "typescript";
+import { SETTINGS_INDEX } from "../src/console/settings.generated.js";
 import { describe, expect, it } from "vitest";
 
 /**
@@ -766,5 +767,38 @@ describe("the portal copy lint", () => {
       `const E = kind === "Cancel";`,
     ].join("\n");
     expect(lintCatalogCopy(ok, "x.tsx", patterns)).toEqual([]);
+  });
+});
+
+/**
+ * The registry's own words that predate the rule (the worker's `settings/registry`): each is
+ * `<key> <field> <rule>`. The list only shrinks: a new hit fails, and so does a stale entry.
+ */
+const REGISTRY_COPY_DEBT: readonly string[] = [
+  "distribution.capabilities description outlet",
+  "distribution.capabilities label capability",
+  "distribution.capabilities label outlet",
+  "distribution.outlets label outlet",
+  "distribution.transports description outlet",
+  "release.manualChannels description grant",
+];
+
+describe("the settings registry's labels", () => {
+  it("say no word the console copy rules retire, beyond the recorded debt (All settings reads them)", () => {
+    const hits = new Set<string>();
+    for (const e of SETTINGS_INDEX)
+      for (const rule of COPY_RULES)
+        for (const [field, text] of [
+          ["label", e.label],
+          ["description", e.description],
+        ] as const) {
+          const clean = (rule.allow ?? []).reduce(
+            (t, a) => t.replace(a, ""),
+            text,
+          );
+          if (rule.pattern.test(clean))
+            hits.add(`${e.key} ${field} ${rule.id}`);
+        }
+    expect([...hits].sort()).toEqual([...REGISTRY_COPY_DEBT].sort());
   });
 });

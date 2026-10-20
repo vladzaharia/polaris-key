@@ -111,4 +111,26 @@ describe("OriginsEditor", () => {
     );
     expect(onChange).toHaveBeenLastCalledWith(["https://b.example"]);
   });
+
+  it("keeps focus in the editor: Add returns to the field, Remove to the next Remove or the field, and a problem describes it", async () => {
+    renderAt("#/", <Host onChange={vi.fn()} />);
+    const u = userEvent.setup();
+    const box = screen.getByRole("textbox", { name: "Add a web origin" });
+    await u.type(box, "https://b.example");
+    await u.click(screen.getByRole("button", { name: "Add" }));
+    expect(document.activeElement).toBe(box);
+    await u.click(
+      screen.getByRole("button", { name: "Remove https://a.example" }),
+    );
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: "Remove https://b.example" }),
+    );
+    await u.click(
+      screen.getByRole("button", { name: "Remove https://b.example" }),
+    );
+    expect(document.activeElement).toBe(box);
+    await u.type(box, "nope{Enter}");
+    const problem = await screen.findByRole("alert");
+    expect(box.getAttribute("aria-describedby")).toContain(problem.id);
+  });
 });

@@ -17,10 +17,11 @@ export function fetchFeedsOverview(scope: FeedScope) {
   return api.feedsOverview(scope);
 }
 
-export function useFeedsOverview(scope: FeedScope) {
+export function useFeedsOverview(scope: FeedScope, enabled = true) {
   return useQuery({
     queryKey: qk.pkgFeeds(scope),
     queryFn: () => fetchFeedsOverview(scope),
+    enabled,
   });
 }
 

@@ -157,7 +157,7 @@ export function PresentationSlotRow({
 
   return (
     <div role="group" aria-label={label} className="px-5 py-4">
-      <div className="flex items-start gap-4 max-sm:flex-wrap">
+      <div className="flex items-start gap-4 max-sm:grid max-sm:grid-cols-[auto_minmax(0,1fr)]">
         {asset?.previewUrl ? (
           <img
             src={asset.previewUrl}
@@ -194,12 +194,15 @@ export function PresentationSlotRow({
             ) : null}
           </p>
           {facts.map((f, i) => (
-            <p key={i} className="text-sm text-fg-muted">
+            <p
+              key={i}
+              className="text-sm text-fg-muted [overflow-wrap:anywhere]"
+            >
               {f}
             </p>
           ))}
         </div>
-        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 max-sm:col-span-2 max-sm:justify-start">
           {uploadable ? (
             <label
               aria-disabled={busy || undefined}

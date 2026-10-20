@@ -10,7 +10,7 @@ import { Switch } from "../../../../ui/Switch.js";
 import { toast } from "../../../../ui/toast.js";
 import { mutate } from "../../../data/mutations.js";
 import { qk } from "../../../data/queries.js";
-import { fetchFeedsOverview } from "../../feeds/data.js";
+import { useFeedsOverview } from "../../feeds/data.js";
 
 export function PackageFeedsControl({
   slug,
@@ -30,11 +30,10 @@ export function PackageFeedsControl({
     queryFn: () => api.packageFeeds(slug),
     enabled: distributionOn,
   });
-  const overview = useQuery({
-    queryKey: qk.pkgFeeds({ kind: "product", slug }),
-    queryFn: () => fetchFeedsOverview({ kind: "product", slug }),
-    enabled: distributionOn && featureOn,
-  });
+  const overview = useFeedsOverview(
+    { kind: "product", slug },
+    distributionOn && featureOn,
+  );
   const registryHost = overview.data?.registryOrigin
     ? new URL(overview.data.registryOrigin).host
     : undefined;

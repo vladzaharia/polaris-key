@@ -11,6 +11,7 @@ export function FeatureSubRow({
   lines = [],
   control,
   footer,
+  stack = false,
   className,
 }: {
   title: React.ReactNode;
@@ -20,11 +21,18 @@ export function FeatureSubRow({
   lines?: React.ReactNode[];
   control: React.ReactNode;
   footer?: React.ReactNode;
+  /** A wide control (a segmented choice) drops under the text on a phone; a switch stays flush right. */
+  stack?: boolean;
   className?: string;
 }): React.ReactElement {
   return (
     <div className={cn("px-4 py-3", className)}>
-      <div className="flex items-center justify-between gap-4 max-sm:flex-wrap">
+      <div
+        className={cn(
+          "flex items-center justify-between gap-4",
+          stack && "max-sm:flex-wrap",
+        )}
+      >
         <div className="min-w-0 max-w-[72ch]">
           {htmlFor ? (
             <label
@@ -42,7 +50,12 @@ export function FeatureSubRow({
             </p>
           ))}
         </div>
-        <div className="flex shrink-0 items-center max-sm:w-full max-sm:justify-start">
+        <div
+          className={cn(
+            "flex shrink-0 items-center",
+            stack && "max-sm:w-full max-sm:justify-start",
+          )}
+        >
           {control}
         </div>
       </div>

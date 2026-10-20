@@ -86,7 +86,7 @@ export function storeRefundsAttention(
 export function readEnabled(data: ServicesResponse): Enabled {
   const enabled = {} as Enabled;
   for (const slug of SERVICE_SLUGS)
-    enabled[slug] = data.services[slug]?.enabled === true;
+    enabled[slug] = data.services?.[slug]?.enabled === true;
   return enabled;
 }
 

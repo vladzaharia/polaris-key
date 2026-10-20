@@ -11,6 +11,7 @@
 
 import * as React from "react";
 import { History, ListTree } from "lucide-react";
+import { PageHeaderNested } from "../../../../ui/PageHeader.js";
 import { Button } from "../../../../ui/Button.js";
 import { ProductLogo } from "../../../../ui/ProductLogo.js";
 import { PageTabs, type PageTab } from "../../../components/PageTabs.js";
@@ -56,7 +57,7 @@ export function SettingsHub({
     label: a.label,
     to: productPage(slug, a.page),
     count:
-      a.page === "settings-members" && admins.data
+      a.page === "settings-members" && admins.data?.admins
         ? admins.data.admins.length
         : undefined,
   }));
@@ -108,7 +109,7 @@ export function SettingsHub({
           />
         </div>
       </header>
-      {children}
+      <PageHeaderNested.Provider value>{children}</PageHeaderNested.Provider>
     </div>
   );
 }

@@ -224,7 +224,7 @@ export function FeatureRowItem({
         <p className="text-base font-medium text-fg-strong">{feature.label}</p>
         <Needs feature={feature} enabled={enabled} />
       </div>
-      <div className="max-sm:order-last max-sm:col-span-3 max-sm:col-start-1 max-sm:pl-12 sm:order-none">
+      <div className="max-sm:col-span-2 max-sm:col-start-2 max-sm:row-start-2">
         <Status
           on={on}
           text={factFor(feature, ctx.facts)}

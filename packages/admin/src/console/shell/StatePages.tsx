@@ -16,7 +16,12 @@ import { Logo } from "../../components/brand/Logo.js";
 import { Button } from "../../ui/Button.js";
 import { EmptyState } from "../../ui/EmptyState.js";
 import { Spinner } from "../../ui/Spinner.js";
-import { pageOf, sectionOf, type NavSection } from "../nav.js";
+import {
+  SETTINGS_HUB_PAGES,
+  pageOf,
+  sectionOf,
+  type NavSection,
+} from "../nav.js";
 import { Link } from "../router.js";
 import { movedHref, r, searchTermFor, type MovedTo } from "../routes.js";
 import { LiveRegion } from "../../ui/LiveRegion.js";
@@ -137,6 +142,12 @@ export function MovedPage({
   const page = pageOf(moved.page);
   const section = sectionOf(moved.page);
   const record = moved.id !== undefined ? page.record : undefined;
+  // The hub's tabs are reached from Settings, whatever section the page sits in.
+  const home = SETTINGS_HUB_PAGES.includes(moved.page)
+    ? "Settings\u00a0→\u00a0"
+    : section
+      ? `${section.label}\u00a0→\u00a0`
+      : "";
   return (
     <section className="space-y-6 animate-pk-enter">
       <StateHeading>Page moved</StateHeading>
@@ -144,11 +155,12 @@ export function MovedPage({
         kind="not-found"
         headingLevel={2}
         // No-break spaces keep "License → Licenses" on one line when the title wraps on a phone.
-        title={`This page moved to ${section ? `${section.label}\u00a0→\u00a0` : ""}${page.label}`}
+        title={`This page moved to ${home}${page.label}`}
         description={
           <>
-            <code className="font-mono">{path}</code> is an address from before
-            the console was reorganized. Update your bookmark to the new one.
+            An address from before the console was reorganized:{" "}
+            <code className="font-mono">{path}</code>. Update your bookmark to
+            the new one.
           </>
         }
         primaryAction={

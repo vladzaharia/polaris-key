@@ -26,14 +26,15 @@ import {
 } from "../../../../lib/secretUsage.js";
 import { Button } from "../../../../ui/Button.js";
 import { Callout } from "../../../../ui/Callout.js";
-import { DataTable, type DataColumn } from "../../../../ui/data-table/index.js";
+import { ErrorState } from "../../../../ui/ErrorState.js";
+import { StatusPill } from "../../../../ui/StatusPill.js";
+import { Skeleton } from "../../../../ui/Skeleton.js";
 import { Drawer, DrawerBody, DrawerFooter } from "../../../../ui/Drawer.js";
 import { EmptyState } from "../../../../ui/EmptyState.js";
 import { FormField } from "../../../../ui/form.js";
 import { Input } from "../../../../ui/Input.js";
 import { SecretInput } from "../../../../ui/SecretInput.js";
 import { Select } from "../../../../ui/Select.js";
-import { StatusPill } from "../../../../ui/StatusPill.js";
 import { Timestamp } from "../../../../ui/Timestamp.js";
 import { toast } from "../../../../ui/toast.js";
 import { mutate } from "../../../data/mutations.js";
@@ -94,58 +95,6 @@ export function SecretsSection({
     rows.filter((r) => r.configured).map((r) => r.name),
   );
 
-  const columns = React.useMemo<DataColumn<ProductSecretDto>[]>(
-    () => [
-      {
-        id: "name",
-        header: "Name",
-        accessorKey: "name",
-        meta: { priority: 1, mono: true, primary: true },
-      },
-      {
-        id: "usage",
-        header: "Usage",
-        accessorFn: (s) => (s.usage ? USAGE_TEXT[s.usage] : "—"),
-        meta: { priority: 2 },
-      },
-      {
-        id: "status",
-        header: "Status",
-        accessorFn: (s) => (s.configured ? "configured" : "missing"),
-        meta: { priority: 1 },
-        cell: ({ row }) => (
-          <StatusPill
-            domain="secret"
-            state={row.original.configured ? "configured" : "missing"}
-          />
-        ),
-      },
-      {
-        id: "updatedAt",
-        header: "Updated",
-        accessorFn: (s) => s.updatedAt ?? 0,
-        meta: { numeric: true, priority: 2 },
-        cell: ({ row }) =>
-          row.original.updatedAt ? (
-            <Timestamp at={fromSeconds(row.original.updatedAt)} />
-          ) : (
-            "—"
-          ),
-      },
-      {
-        id: "requiredBy",
-        header: "Required by",
-        accessorFn: (s) => s.requiredBy.join(", "),
-        meta: { priority: 2 },
-        cell: ({ row }) =>
-          row.original.requiredBy.length
-            ? row.original.requiredBy.join(", ")
-            : "—",
-      },
-    ],
-    [],
-  );
-
   return (
     <SettingsSection
       id="keys-secrets"
@@ -162,51 +111,106 @@ export function SecretsSection({
         </Button>
       }
     >
-      <div className="px-5 py-4">
-        <DataTable<ProductSecretDto>
-          id="secrets"
-          caption="Secrets"
-          data={rows}
-          columns={columns}
-          getRowId={(s) => s.name}
-          rowLabel={(s) => s.name}
-          rowActions={(s) => [
-            {
-              label: s.configured ? "Replace…" : "Set…",
-              onSelect: () => setEditing({ name: s.name }),
-            },
-          ]}
-          loading={secrets.isPending && rows.length === 0}
-          error={
-            secrets.isError && rows.length === 0 ? secrets.error : undefined
-          }
-          onRetry={() => void secrets.refetch()}
-          exportCsv={false}
-          mobile="cards"
-          empty={
-            <EmptyState
-              kind="first-run"
-              headingLevel={3}
-              title="No secrets"
-              description="Set a secret when a custom OIDC provider or an edge-mint recipe needs one. The manifest names which."
-              primaryAction={
-                <Button size="sm" onClick={() => setEditing({ name: "" })}>
-                  Set secret
-                </Button>
-              }
-            />
+      {secrets.isPending && rows.length === 0 ? (
+        <div className="space-y-2 px-5 py-4" aria-label="secrets">
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
+        </div>
+      ) : secrets.isError && rows.length === 0 ? (
+        <div className="px-5 py-4">
+          <ErrorState
+            compact
+            error={secrets.error}
+            onRetry={() => void secrets.refetch()}
+          />
+        </div>
+      ) : rows.length === 0 ? (
+        <EmptyState
+          kind="first-run"
+          headingLevel={3}
+          title="No secrets"
+          description="Set a secret when a custom OIDC provider or an edge-mint recipe needs one. The manifest names which."
+          primaryAction={
+            <Button size="sm" onClick={() => setEditing({ name: "" })}>
+              Set secret
+            </Button>
           }
         />
-        {secrets.isError && rows.length > 0 ? (
+      ) : (
+        <ul aria-label="Secrets" className="divide-y divide-border">
+          {rows.map((s) => (
+            <li
+              key={s.name}
+              className="flex items-center justify-between gap-4 px-5 py-4 max-sm:flex-wrap"
+            >
+              <div className="min-w-0">
+                <p className="flex flex-wrap items-center gap-2">
+                  <span className="font-mono text-sm font-medium text-fg-strong [overflow-wrap:anywhere]">
+                    {s.name}
+                  </span>
+                  <StatusPill
+                    domain="secret"
+                    state={s.configured ? "configured" : "missing"}
+                    size="sm"
+                  />
+                </p>
+                <p className="text-sm text-fg-muted">
+                  {s.configured ? (
+                    <>
+                      {s.updatedAt ? (
+                        <>
+                          Set <Timestamp at={fromSeconds(s.updatedAt)} />
+                        </>
+                      ) : (
+                        "Set"
+                      )}
+                    </>
+                  ) : (
+                    "No value"
+                  )}
+                </p>
+                {s.usage ? (
+                  <p className="text-sm text-fg-muted">{USAGE_TEXT[s.usage]}</p>
+                ) : null}
+                {s.requiredBy.length ? (
+                  <p className="text-sm text-fg-muted">
+                    {s.configured ? "Required by " : "Without it, "}
+                    <span>{s.requiredBy.join(", ")}</span>
+                    {s.configured ? "" : " won’t work"}
+                  </p>
+                ) : null}
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                aria-label={`${s.configured ? "Replace" : "Set value for"} ${s.name}`}
+                onClick={() => setEditing({ name: s.name })}
+              >
+                {s.configured ? "Replace" : "Set value"}
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {secrets.isError && rows.length > 0 ? (
+        <div className="px-5 pb-4">
           <Callout
             tone="warning"
-            className="mt-3"
             title="Showing required secrets only"
+            action={
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => void secrets.refetch()}
+              >
+                Try again
+              </Button>
+            }
           >
             The full list could not load. {errorCopy(secrets.error).description}
           </Callout>
-        ) : null}
-      </div>
+        </div>
+      ) : null}
       <SetSecretDrawer
         slug={slug}
         initialName={editing?.name ?? null}

@@ -124,6 +124,7 @@ export function SettingsAllPage({
   });
   useLoadingAnnouncement("all settings", values.isPending);
   const [text, setText] = React.useState("");
+  const find = React.useRef<HTMLInputElement>(null);
   const [service, setService] = React.useState<string>(ALL);
 
   const entries = React.useMemo(
@@ -170,6 +171,7 @@ export function SettingsAllPage({
           <label className="min-w-0 flex-1 basis-56 space-y-1 text-sm text-fg-muted">
             <span>Find a setting</span>
             <Input
+              ref={find}
               clearable
               value={text}
               onValueChange={setText}
@@ -221,6 +223,8 @@ export function SettingsAllPage({
             onClearFilters={() => {
               setText("");
               setService(ALL);
+              // The Clear button that held focus is gone: the field it cleared takes it.
+              requestAnimationFrame(() => find.current?.focus());
             }}
           />
         ) : (

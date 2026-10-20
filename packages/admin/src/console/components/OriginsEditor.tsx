@@ -52,6 +52,22 @@ export function OriginsEditor({
 }): React.ReactElement {
   const [text, setText] = React.useState("");
   const [problem, setProblem] = React.useState<string | null>(null);
+  const input = React.useRef<HTMLInputElement>(null);
+  const list = React.useRef<HTMLUListElement>(null);
+  const problemId = `${id}-problem`;
+  /** Where focus goes once the list has changed: the Remove that took a removed row's place. */
+  const refocus = React.useRef<{ index: number } | null>(null);
+  React.useEffect(() => {
+    const at = refocus.current;
+    if (!at) return;
+    refocus.current = null;
+    const removes = list.current?.querySelectorAll<HTMLButtonElement>(
+      "button[data-origin-remove]",
+    );
+    if (removes && removes.length > 0)
+      removes[Math.min(at.index, removes.length - 1)]!.focus();
+    else input.current?.focus();
+  }, [value]);
   const full = value.length >= MAX_ORIGINS;
 
   const add = (): void => {
@@ -63,6 +79,7 @@ export function OriginsEditor({
     if (why) return;
     onChange([...value, origin]);
     setText("");
+    input.current?.focus();
   };
 
   return (
@@ -73,10 +90,11 @@ export function OriginsEditor({
         </p>
       ) : (
         <ul
+          ref={list}
           aria-label="Web origins"
           className="divide-y divide-border rounded-md border border-border"
         >
-          {value.map((origin) => (
+          {value.map((origin, index) => (
             <li
               key={origin}
               className="flex items-center justify-between gap-2 py-1 pl-3 pr-1"
@@ -89,7 +107,11 @@ export function OriginsEditor({
                 icon={<X />}
                 size="sm"
                 disabled={disabled}
-                onClick={() => onChange(value.filter((o) => o !== origin))}
+                data-origin-remove=""
+                onClick={() => {
+                  refocus.current = { index };
+                  onChange(value.filter((o) => o !== origin));
+                }}
               />
             </li>
           ))}
@@ -98,6 +120,7 @@ export function OriginsEditor({
       <div className="flex items-start gap-2">
         <div className="min-w-0 flex-1 space-y-1">
           <Input
+            ref={input}
             id={id}
             mono
             inputMode="url"
@@ -105,7 +128,11 @@ export function OriginsEditor({
             spellCheck={false}
             placeholder="https://app.example.com"
             aria-label="Add a web origin"
-            aria-describedby={describedBy}
+            aria-describedby={
+              [describedBy, problem ? problemId : undefined]
+                .filter(Boolean)
+                .join(" ") || undefined
+            }
             aria-invalid={invalid || problem ? true : undefined}
             disabled={disabled || full}
             value={text}
@@ -121,7 +148,7 @@ export function OriginsEditor({
             }}
           />
           {problem ? (
-            <p role="alert" className="text-xs text-danger">
+            <p id={problemId} role="alert" className="text-xs text-danger">
               {problem}
             </p>
           ) : null}
