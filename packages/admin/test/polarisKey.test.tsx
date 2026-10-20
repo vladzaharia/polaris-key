@@ -309,7 +309,7 @@ describe("the Polaris Key panel", () => {
     const { container } = { container: document.body };
     bootWith(PAGE, routes());
     expect(
-      await screen.findByRole("heading", { level: 1, name: "Polaris Key" }),
+      await screen.findByRole("heading", { level: 1, name: "Polaris Locker" }),
     ).toBeTruthy();
     const readiness = await screen.findByRole("list", { name: "Readiness" });
     expect(
@@ -359,10 +359,10 @@ describe("the Polaris Key panel", () => {
     // Who can see this, in plain words.
     const who = screen.getByRole("list", { name: "Who can see this" });
     expect(who.textContent).toContain(
-      "Members of aperture-beta at the Polaris Key sign-in, shown “Included with Aperture Seven”",
+      "Members of aperture-beta at the Polaris Locker sign-in, shown “Included with Aperture Seven”",
     );
     expect(who.textContent).toContain(
-      "Everyone with a Polaris Key account, as a 14-day free trial",
+      "Everyone with a Polaris Locker account, as a 14-day free trial",
     );
 
     // The card.
@@ -387,7 +387,7 @@ describe("the Polaris Key panel", () => {
     await userEvent.click(listed);
     const dialog = await screen.findByRole("alertdialog");
     expect(dialog.textContent).toContain(
-      "Set the Polaris Key listing to listed?",
+      "Set the Polaris Locker listing to listed?",
     );
     expect(writes(calls)).toEqual([]);
     await userEvent.click(
@@ -669,7 +669,7 @@ describe("the panel's words (notes/S-21 §6.5)", () => {
 
   it("gives every path its reason line", () => {
     expect(reasonLine(path("auto_issue"))).toBe(
-      "Free with a Polaris Key account",
+      "Free with a Polaris Locker account",
     );
     expect(
       reasonLine(

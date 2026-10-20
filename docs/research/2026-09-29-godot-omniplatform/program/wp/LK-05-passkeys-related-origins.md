@@ -27,7 +27,7 @@ Exactly `plans/LK-00.md` §7.7. Anything else is another package's row in §9.
 ## Acceptance criteria
 
 - [ ] `test-workerd/passkeys.test.ts` passes on both origins
-- [ ] The relevant `plans/LK-00.md` §13 commands pass; the green gate passes (AGENTS.md).
+- [x] The relevant `plans/LK-00.md` §13 commands pass; the green gate passes (AGENTS.md).
 
 ## Hand-off
 

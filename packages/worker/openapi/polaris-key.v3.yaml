@@ -19787,8 +19787,8 @@ paths:
       tags: [customer]
       summary: Customer host health check (customer host only)
       description: >
-        LK-03. `{host: "customer"}`: the document the console reads before it lets `customer.host`
-        turn on. It names nothing else. `access-control-allow-origin`
+        LK-03. `{host: "customer"}`: the document the deploy smoke check reads to prove the host is
+        serving. It names nothing else. `access-control-allow-origin`
         names the console origin only, and no credentials are allowed. `cache-control: no-store`.
         `GET` and `HEAD` only.
       responses:
@@ -19810,6 +19810,40 @@ paths:
       description: LK-03. As `GET /.well-known/polaris-host.json`.
       responses:
         "200": { description: The host answers. }
+  /.well-known/webauthn:
+    get:
+      operationId: getWebauthnRelatedOrigins
+      tags: [portal]
+      summary: WebAuthn related origins (console host)
+      description: >
+        LK-05. The WebAuthn Related Origin Requests list: the origins that may run a passkey
+        ceremony with this host's RP id (`key.plrs.im`). It names the customer origin
+        (`CUSTOMER_ORIGIN`, e.g. `https://polaris.locker`), built from configuration and never from
+        stored data, and only while the customer host is usable. Otherwise the plain not-found.
+        `GET` and `HEAD` only; `cache-control: public, max-age=300`.
+      responses:
+        "200":
+          description: The related origins.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [origins]
+                properties:
+                  origins:
+                    type: array
+                    items: { type: string, format: uri }
+        "404": { description: No customer host is configured. }
+        "405":
+          { description: "Any method but GET and HEAD (`Allow: GET, HEAD`)." }
+    head:
+      operationId: getWebauthnRelatedOriginsHead
+      tags: [portal]
+      summary: WebAuthn related origins, headers only
+      description: LK-05. As `GET /.well-known/webauthn`.
+      responses:
+        "200": { description: The related origins. }
+        "404": { description: No customer host is configured. }
 components:
   securitySchemes:
     ciToken:

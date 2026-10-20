@@ -1,7 +1,7 @@
 {
   "transcriptVersion": 1,
   "id": "locker-devicecode",
-  "description": "Device-code sign-in with the customer host on (plans/LK-00.md §3, §7.9): the same conversation as devicecode-happy, but verificationUri is https://polaris.locker/device and verificationUriComplete adds ?user_code=. The player confirms on the customer host and the API host's continue route sets the flow's binder for the IdP's callback; the device code, the poll and the signed token are exactly the twin's. A client shows both URIs as given and never builds one.",
+  "description": "Device-code sign-in with the customer host on (plans/LK-00.md §3, §7.9): the same conversation as devicecode-happy, but verificationUri is https://polaris.locker/device and verificationUriComplete adds ?user_code=. The customer host's entry hands the player to the product's page on the API host, where they confirm and the flow's binder is set by their browser for the IdP's callback; the device code, the poll and the signed token are exactly the twin's. A client shows both URIs as given and never builds one.",
   "features": ["identity.devicecode"],
   "requires": ["core.store", "core.sync"],
   "product": "djdl",
@@ -170,7 +170,7 @@
               },
               "body": {
                 "status": "ready",
-                "token": "pkeyt__6VtzVi9Rh50ooe5f9s9LEAHigNFBySa_0hGF0YOC24",
+                "token": "pkeyt__fEF5-dR_iIlMHZ06bkVSVLX1WmbUqvMrhRtTgQNiIU",
                 "schemaVersion": 1,
                 "identity": { "name": "Transcript Player" }
               }
@@ -219,9 +219,9 @@
               "headers": {
                 "cache-control": "no-store",
                 "content-type": "application/jwt",
-                "etag": "\"zbX9oItqVzh2-zBYlJ_wPs3OaymlpbHumPOzds6q7A0\""
+                "etag": "\"D3YEJHPqk-TezD0l6NsK_UAx7nNJ2ZVmEa5s0LOB9bg\""
               },
-              "body": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktbGljZW5zZStqd3MiLCJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2In0.eyJpc3MiOiJrZXkucGxycy5pbSIsImF1ZCI6ImRqZGwiLCJkZXZpY2VJZCI6IlRSQU5TQ1JJUFRERVZJQ0UwMDAwMDAwMDAwMDAwMDAxIiwiaXNzdWVkQXQiOjE3MDAwMDAwMDcsImV4cGlyZXNBdCI6MTcwMDAwMzYwNywiZ3JhY2VVbnRpbCI6MTcwMjU5MjAwNywibGljZW5zZUlkIjoibGljX0ZVbFMxOVZwbTFLciIsInByb2ZpbGUiOnsibmFtZSI6IlRyYW5zY3JpcHQgUGxheWVyIiwiZmlyc3ROYW1lIjoiVHJhbnNjcmlwdCIsImVtYWlsIjoiIiwiYWN0aXZhdGVkQXQiOjE3MDAwMDAwMDd9LCJlbnRpdGxlbWVudHMiOnsibGljZW5zZS50aWVyIjp7InN0YXRlIjoiZW5mb3JjZWQiLCJ2YWx1ZSI6InBybyIsInVwZGF0ZWRBdCI6MTcwMDAwMDAwN30sImxpY2Vuc2UudGllckxhYmVsIjp7InN0YXRlIjoiZW5mb3JjZWQiLCJ2YWx1ZSI6InBybyIsInVwZGF0ZWRBdCI6MTcwMDAwMDAwN319fQ.ugXgGWkR2RUjkWT3AH64e4Qp-dTxw4b8RIukryvjvagr4iDzSSd5_EE_dHHWaOFSpCLApSk8Q1taZzhyZkKbDw"
+              "body": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktbGljZW5zZStqd3MiLCJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2In0.eyJpc3MiOiJrZXkucGxycy5pbSIsImF1ZCI6ImRqZGwiLCJkZXZpY2VJZCI6IlRSQU5TQ1JJUFRERVZJQ0UwMDAwMDAwMDAwMDAwMDAxIiwiaXNzdWVkQXQiOjE3MDAwMDAwMDcsImV4cGlyZXNBdCI6MTcwMDAwMzYwNywiZ3JhY2VVbnRpbCI6MTcwMjU5MjAwNywibGljZW5zZUlkIjoibGljX21maFlOM294MnliTyIsInByb2ZpbGUiOnsibmFtZSI6IlRyYW5zY3JpcHQgUGxheWVyIiwiZmlyc3ROYW1lIjoiVHJhbnNjcmlwdCIsImVtYWlsIjoiIiwiYWN0aXZhdGVkQXQiOjE3MDAwMDAwMDd9LCJlbnRpdGxlbWVudHMiOnsibGljZW5zZS50aWVyIjp7InN0YXRlIjoiZW5mb3JjZWQiLCJ2YWx1ZSI6InBybyIsInVwZGF0ZWRBdCI6MTcwMDAwMDAwN30sImxpY2Vuc2UudGllckxhYmVsIjp7InN0YXRlIjoiZW5mb3JjZWQiLCJ2YWx1ZSI6InBybyIsInVwZGF0ZWRBdCI6MTcwMDAwMDAwN319fQ.xvLv_d8KMW1MfdOyth4cpaKf3u5N8hF_sFxAbBlq-_Vn_9S5pXzzRL2OZ67_o9TTNNCjae9vbI6jCEktLhmTCg"
             }
           },
           {

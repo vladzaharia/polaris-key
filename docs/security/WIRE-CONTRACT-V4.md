@@ -1783,13 +1783,11 @@ unchanged, and a client reads every value below as any https URL.
    `Location` is built from the stored handle; nothing in the query is echoed. An unknown, used,
    expired, malformed or mismatched token is the plain `404`; `HEAD` does not redeem. A bind URL is
    worth what the `authorize` URL is worth: whoever opens it binds their browser to that request.
-4. **The device page.** `/device` and `/tv` look a code up across products and serve the product's
-   own device page on the customer host (the confirmation, its single-use CSRF token and the
-   sign-in request's binder live there); its forms `POST` back to `/device`. A `GET` of
-   `/<p>/identity/auth/device` on the API host answers `303` to `<customer>/device[?user_code=]`.
-   The IdP calls back on the API host, so a confirmation made on the customer host answers `303`
-   to `<api>/<p>/identity/auth/device/continue?bind=<token>`: the same kind of token, redeemed once,
-   sets the flow's binder on the API host and answers `303` to the IdP address stored with it.
+4. **The device page stays on the API host.** `/device` and `/tv` look a code up across products
+   and answer `302` to `<api>/<p>/identity/auth/device?user_code=` (`<api>` from configuration,
+   never the request). The confirmation, the IdP leg and the callback happen in one browser on one
+   host, because the flow's binder must be set by the confirming browser (R1-07): a device
+   confirmation never crosses hosts, and there is no bind token for it.
 5. **No session crosses hosts.** Cookies are host-only on both hosts; a person signs in on the one
    they use.
 

@@ -38,7 +38,6 @@ export interface PlatformValues {
   "identity.reservedDisplayNames": ReservedDisplayNamesMode;
   "identity.keyEntryRefusals": "on" | "off";
   "assets.hosting.enabled": "on" | "off";
-  "customer.host": "off" | "on" | "permanent";
 }
 
 let CORE_REGISTRY: SettingsRegistry | undefined;

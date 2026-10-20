@@ -101,6 +101,7 @@ const GLOBAL_PAGE_AREAS: Record<GlobalPageId, AreaId> = {
   "platform-deployment": "platform",
   "platform-operations": "platform",
   "platform-stores": "platform",
+  "platform-connections": "platform",
   "platform-feeds": "platform",
   "platform-override-migration": "platform",
 };

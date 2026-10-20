@@ -75,9 +75,10 @@ import {
   apiOrigin,
   customerHostOwnResponse,
   isCustomerHostOwnPath,
+  oldCustomerUrlRedirect,
 } from "./core/customerHost.js";
-import { isCustomerHost } from "./core/hosts.js";
-import { customerHostMode } from "./core/licensing/manageUrl.js";
+import { customerHostname, isCustomerHost } from "./core/hosts.js";
+import { relatedOriginsResponse } from "./core/customerHost.js";
 import {
   drainRenderQueue,
   watchRenderEnqueues,
@@ -197,15 +198,29 @@ async function routeRequest(
   // routing is exactly what it was before the customer host existed.
   const onCustomerHost = isCustomerHost(url, env);
   if (onCustomerHost && isCustomerHostOwnPath(url.pathname))
-    return customerHostOwnResponse(
-      req,
-      env,
-      url.pathname,
-      await customerHostMode(env, db),
-    );
+    return customerHostOwnResponse(req, env, url.pathname);
   const route = matchRoute(url.pathname);
   if (onCustomerHost && !CUSTOMER_ROUTE_KINDS.has(route.kind))
     return notFound();
+  // The API host's root is the console's front door once `CUSTOMER_ORIGIN` is set (hard cutover: the
+  // customer site lives on its own host then, no switch). Unset, `/` is still the customer portal. A hash route
+  // (`/#/library`) never reaches the Worker; those old bookmarks need LK-11's client redirect.
+  if (
+    !onCustomerHost &&
+    route.kind === "portalSpa" &&
+    (url.pathname === "/" || url.pathname === "/index.html") &&
+    (req.method === "GET" || req.method === "HEAD") &&
+    customerHostname(env) !== null
+  )
+    return new Response(null, {
+      status: 302,
+      headers: { location: "/manage", "cache-control": "no-store" },
+    });
+  // LK-17: with a usable customer host, the old customer URLs on the console host redirect to it.
+  if (!onCustomerHost) {
+    const moved = oldCustomerUrlRedirect(req, env, route, url);
+    if (moved) return moved;
+  }
   // The portal is one account across every product, so it has no product to dispatch on; when
   // it reaches a product's downloads it asks for that product's hooks (P2b-04: the delivery
   // access every download surface reads), built here from the composition root's registry under
@@ -256,6 +271,9 @@ async function routeRequest(
     // under the prefix — assets and machine-readable artifacts included.
     case "docs":
       return handleDocs(req, env, now);
+    // WebAuthn Related Origin Requests (LK-05): the customer origin may use this host's RP id.
+    case "webauthnOrigins":
+      return relatedOriginsResponse(req, env);
     // The platform device-code entry pages: no product, no session, no database.
     case "signInEntry":
       return onCustomerHost && isBindHop(req)

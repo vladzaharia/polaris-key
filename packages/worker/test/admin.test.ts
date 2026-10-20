@@ -174,6 +174,32 @@ describe("admin api", () => {
     expect(sessionExpiresAt).toBe(NOW + 8 * 60 * 60);
   });
 
+  it("/api/me names the customer origin only while the customer host is usable (LK-17)", async () => {
+    const customerOrigin = async (
+      set: boolean,
+    ): Promise<string | null | undefined> => {
+      const env = adminEnv(new KvMock(), []);
+      env.CONSOLE_ORIGIN = "https://key.plrs.im";
+      if (set) env.CUSTOMER_ORIGIN = "https://polaris.locker";
+      const { cookie } = await sessionCookie(env, {
+        sub: "u1",
+        name: "Ada",
+        email: "ada@x.io",
+        groups: [PLATFORM_GROUP],
+      });
+      const res = await dispatch(
+        mkReq("GET", "/api/me", { cookie }),
+        env,
+        makeTestDb(),
+        "/api/me",
+      );
+      return ((await res.json()) as { customerOrigin?: string | null })
+        .customerOrigin;
+    };
+    expect(await customerOrigin(true)).toBe("https://polaris.locker");
+    expect(await customerOrigin(false)).toBeNull();
+  });
+
   it("every deployment in wrangler.toml names itself to the console", async () => {
     const { readFileSync } = await import("node:fs");
     const toml = readFileSync(

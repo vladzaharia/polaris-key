@@ -277,8 +277,9 @@ export const lockerDiscoveryIdentity: Scenario = {
 
 // ── locker-devicecode ───────────────────────────────────────────────────────────────────────
 
-/** The player opens the customer host's page, confirms, follows the bind hop to the API host and
- *  signs in at the mocked IdP; the callback runs for real. Unrecorded, like the twin's. */
+/** The player opens the customer host's entry, which hands the browser to the product's page on
+ *  the API host; there they confirm, sign in at the mocked IdP, and the callback runs for real.
+ *  Unrecorded, like the twin's. */
 async function playerSignsInAtLocker(
   w: World,
   now: number,
@@ -287,31 +288,29 @@ async function playerSignsInAtLocker(
   const complete = new URL(verificationUriComplete);
   expect(complete.origin).toBe(CUSTOMER);
   const userCode = complete.searchParams.get("user_code")!;
-  const page = await browserAt(
+  const entry = await browserAt(
     w,
     CUSTOMER,
     now,
     "GET",
     complete.pathname + complete.search,
   );
-  expect(page.status).toBe(200);
-  const csrf = /name="csrf" value="([^"]+)"/.exec(await page.text())?.[1];
-  expect(csrf).toBeTruthy();
-  const confirmed = await browserAt(w, CUSTOMER, now, "POST", "/device", {
-    form: { user_code: userCode, csrf: csrf! },
-  });
-  expect(confirmed.status).toBe(303);
-  // No cookie from the customer host: the flow's binder is set by the API host's continue.
-  expect(confirmed.headers.get("set-cookie")).toBeNull();
-  const hop = new URL(confirmed.headers.get("location")!);
-  expect(hop.origin).toBe(BASE_URL);
-  const continued = await browserAt(
+  expect(entry.status).toBe(302);
+  const page = new URL(entry.headers.get("location")!);
+  expect(page.origin).toBe(BASE_URL);
+  const shown = await browserAt(
     w,
     BASE_URL,
     now,
     "GET",
-    hop.pathname + hop.search,
+    page.pathname + page.search,
   );
+  expect(shown.status).toBe(200);
+  const csrf = /name="csrf" value="([^"]+)"/.exec(await shown.text())?.[1];
+  expect(csrf).toBeTruthy();
+  const continued = await browserAt(w, BASE_URL, now, "POST", page.pathname, {
+    form: { user_code: userCode, csrf: csrf! },
+  });
   expect(continued.status).toBe(303);
   const authorize = new URL(continued.headers.get("location")!);
   const state = authorize.searchParams.get("state")!;
@@ -340,7 +339,7 @@ export const lockerDevicecode: Scenario = {
       const r = new TranscriptRecorder({
         id: "locker-devicecode",
         description:
-          "Device-code sign-in with the customer host on (plans/LK-00.md §3, §7.9): the same conversation as devicecode-happy, but verificationUri is https://polaris.locker/device and verificationUriComplete adds ?user_code=. The player confirms on the customer host and the API host's continue route sets the flow's binder for the IdP's callback; the device code, the poll and the signed token are exactly the twin's. A client shows both URIs as given and never builds one.",
+          "Device-code sign-in with the customer host on (plans/LK-00.md §3, §7.9): the same conversation as devicecode-happy, but verificationUri is https://polaris.locker/device and verificationUriComplete adds ?user_code=. The customer host's entry hands the player to the product's page on the API host, where they confirm and the flow's binder is set by their browser for the IdP's callback; the device code, the poll and the signed token are exactly the twin's. A client shows both URIs as given and never builds one.",
         features: ["identity.devicecode"],
         requires: ["core.store", "core.sync"],
         product: PRODUCT,

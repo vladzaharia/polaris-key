@@ -35,11 +35,7 @@ import {
 } from "@polaris-key/protocol/license";
 import type { Db } from "../../db/types.js";
 import type { Env } from "../../platform/env.js";
-import {
-  customerOrigin,
-  customerHostname,
-  type CustomerHostMode,
-} from "../hosts.js";
+import { consoleOrigin, customerOrigin } from "../hosts.js";
 import {
   normalizeArchHeader,
   normalizePlatformHeader,
@@ -120,33 +116,7 @@ export function portalOriginOf(env: Env, req: Request): string | null {
  * configured origin, else `fallback` (an absolute URL or origin the Worker was reached on).
  */
 export function portalOriginFor(env: Env, fallback: string): string | null {
-  return customerOrigin(env, "off", fallback);
-}
-
-/**
- * Is the customer host the customer site? Owner direction 2026-10-19 (LK-04): a hard cutover, no
- * switch. Whenever `CUSTOMER_ORIGIN` is a usable origin the customer host IS the customer site
- * (`on`); unset or unusable (tests, local development), `off` without a read and every URL is what
- * it was. The `customer.host` platform setting is no longer read; retiring it is LK-03's follow-up.
- */
-export async function customerHostMode(
-  env: Env,
-  _db?: Db,
-): Promise<CustomerHostMode> {
-  return customerHostname(env) === null ? "off" : "on";
-}
-
-/**
- * The one source for every customer-facing URL: {@link customerOrigin} with the switch read. The
- * origin of `customerOrigin()` while `customer.host` is on, else the portal origin of old
- * ({@link portalOriginOf}). `fallback` is the request, or an absolute URL the Worker was reached on.
- */
-export async function customerOriginOf(
-  env: Env,
-  db: Db,
-  fallback: Request | string,
-): Promise<string | null> {
-  return customerOrigin(env, await customerHostMode(env, db), fallback);
+  return consoleOrigin(env, fallback);
 }
 
 /**
@@ -177,7 +147,7 @@ export async function buildManageUrl(
   ctx: ManageContext,
 ): Promise<string | undefined> {
   if (!(await portalEnabled(db, product.slug))) return undefined;
-  const origin = await customerOriginOf(env, db, req);
+  const origin = customerOrigin(env, req);
   if (!origin) return undefined;
   const slug = encode(product.slug);
 
@@ -208,8 +178,7 @@ export async function buildSignInUrl(
   req: Request,
   product: { slug: string },
 ): Promise<string> {
-  const origin =
-    (await customerOriginOf(env, db, req)) ?? new URL(req.url).origin;
+  const origin = customerOrigin(env, req) ?? new URL(req.url).origin;
   return `${origin}/signin?product=${encode(product.slug)}`;
 }
 
@@ -223,6 +192,6 @@ export async function accountPortalUrl(
   fallbackOrigin: string,
   product: { slug: string },
 ): Promise<string | null> {
-  const origin = await customerOriginOf(env, db, fallbackOrigin);
+  const origin = customerOrigin(env, fallbackOrigin);
   return origin ? `${origin}/#/p/${encode(product.slug)}` : null;
 }

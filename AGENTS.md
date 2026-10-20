@@ -258,7 +258,7 @@ of the opt-in services; adding one is the checklist at
 
 **4. Terminology comes from the concepts page.** `packages/docs/src/content/docs/start/concepts.md`
 (served at `/docs/start/concepts/`) is the canonical glossary — the former `docs/CONCEPTS.md`,
-moved into the site. **Polaris Locker** is the public brand on every surface people read (customer site, console, docs, mail, kit attribution, badges). **Polaris Key** is the platform under it, named only where a sentence explains the platform, or as an identifier (LK-00 §14.1). Device, not machine. Tier, not plan. **Product** is the record in Polaris
+moved into the site. **Polaris Locker** is the brand customers see (the customer site, customer mail, Help, SDK presentation, badges). **Polaris Key** is the platform and its backend — the Polaris Key Console at key.plrs.im, the developer docs, the CLI and the API — and names every identifier (LK-00 §15). Device, not machine. Tier, not plan. **Product** is the record in Polaris
 Key (the console's product, the manifest, the API); **app** is the developer's build that embeds an
 SDK, and what consumers use. "Create the product in the console" and "Add licensing to your app"
 are both right; "create the app in the console" is wrong, and Help says "app" throughout. The

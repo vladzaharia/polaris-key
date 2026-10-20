@@ -32,15 +32,9 @@ Exactly `plans/LK-00.md` §3, §5, §7.8–7.9. Anything else is another package
 
 ## Corrections to the brief (2026-10-19, from the code)
 
-- The plan's bind hop covers `authorize` only. A device confirmation made on the customer host
-  would also lose its flow binder: the IdP calls back on the API host, and `__Host-pk_lcb` set on
-  the customer host never reaches it. LK-04 adds a second hop of the same kind
-  (`GET /<p>/identity/auth/device/continue?bind=`, one new route: OpenAPI, `routeCoverage`,
-  CORS-excluded) and widens the device page's `form-action` to the API host.
-- The device page was already served by LK-03/A1 with a 302 to the API host; it is now served on
-  the customer host by running the product's own device handler there (`dispatch.ts`), and the
-  product's page on the API host 303s to `<customer>/device`.
-- Owner direction mid-package (2026-10-19): no `customer.host` switch. `customerHostMode()` now answers `on` whenever `CUSTOMER_ORIGIN` is usable and `off` otherwise, without reading the setting; the hops, the device page and the transcripts follow that. The setting, its console row, `CUSTOMER_HOST` and LK-03's switch tests are vestigial: retiring them is a follow-up (settings page, `env.ts`, platform inventory).
+- Security review: a device-confirmation hop across hosts reopens R1-07 (a forwarded bind URL binds the victim's browser to the attacker's flow). It was removed: the device page stays on the API host and the customer host's `/device` and `/tv` 302 to it. Only the request hop remains.
+- The device page keeps A1/LK-03's behaviour (302 to the API host's product page).
+- Owner direction mid-package: no `customer.host` switch; LK-17 removed it and the package follows (`customerHostname(env) !== null` is the cutover).
 - `apiOrigin()` in `core/customerHost.ts` is gone: nothing reads it.
 
 ## Hand-off

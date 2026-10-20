@@ -101,5 +101,5 @@ export const LISTING_GROUP_LABELS: Record<string, string> = {
   flathub: "Flathub",
   winget: "winget",
   fdroid: "F-Droid",
-  "polaris-key": "Polaris Key",
+  "polaris-key": "Polaris Locker",
 };

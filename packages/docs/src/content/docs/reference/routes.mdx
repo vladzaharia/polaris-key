@@ -140,7 +140,6 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | GET | `/{product}/identity/auth/callback` | identity | OIDC redirect URI |
 | GET | `/{product}/identity/auth/choose` | identity | The legacy sign-in's license chooser (I-26) |
 | POST | `/{product}/identity/auth/choose` | identity | Record a step of the license chooser, or the choice (I-26) |
-| GET | `/{product}/identity/auth/device/continue` | identity | The API host's half of a device confirmation made on the customer host |
 | POST | `/{product}/identity/auth/device/poll` | identity | Poll the device-code flow |
 | POST | `/{product}/identity/auth/device/start` | identity | Begin the device-code flow |
 | GET | `/{product}/identity/auth/device/verify` | identity | The device-authorization page (side-effect-free GET) |
@@ -174,6 +173,8 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | GET | `/{product}/license/document` | license | The signed license document (pkey-license+jws) |
 | POST | `/{product}/license/enroll` | license | Keyless enrollment (auto-issue policy) |
 | POST | `/{product}/license/token` | license | Rotate/re-acquire the device token |
+| GET | `/.well-known/webauthn` | portal | WebAuthn related origins (console host) |
+| HEAD | `/.well-known/webauthn` | portal | WebAuthn related origins, headers only |
 | GET | `/api/device-login/{requestId}` | portal | Wait for the other device to approve this one |
 | POST | `/api/device-login/approve` | portal | Approve or deny a device asking to sign in |
 | POST | `/api/device-login/lookup` | portal | See what is asking to sign in, before deciding |
@@ -236,12 +237,10 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | GET | `/api/signin/requests/{request}/licenses` | portal | The licence choice for the signed-in account (the card's step) |
 | GET | `/api/signin/requests/{request}` | portal | One app sign-in request, as the sign-in card renders it |
 | GET | `/device` | portal | Device-code entry page (HTML) |
-| POST | `/device` | portal | Device-code entry and confirmation form (customer host only) |
 | GET | `/media/{product}/{asset}` | portal | A product's art, as a redirect to its hosted copy |
 | GET | `/media/avatar/{asset}` | portal | An account picture, re-encoded and served same-origin |
 | GET | `/signin` | portal | Sign-in entry (redirect) |
 | GET | `/tv` | portal | Device-code entry page, TV variant (HTML) |
-| POST | `/tv` | portal | Device-code entry and confirmation form, TV variant (customer host only) |
 | GET | `https://pkg.plrs.im/` | registry | The registry host's landing page (registry host only) |
 | HEAD | `https://pkg.plrs.im/` | registry | The registry host's landing page, headers only (registry host only) |
 | GET | `https://pkg.plrs.im/cargo/{owner}/{prefix1}/{prefix2}/{name}` | registry | Cargo sparse-index file, a longer name under `<characters 1-2>/<characters 3-4>/` (registry host only) |
