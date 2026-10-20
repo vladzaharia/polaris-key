@@ -2,13 +2,12 @@
  * The gated docs site (`/docs`) + the `returnTo` leg of the admin sign-in.
  *
  * What is pinned here, and why it matters:
- *  - The site is tiered (ST-29; docs plan §3.1, D2): the landing page, the developer sections and
- *    the shared site assets are public; Operate → Console (and Help, until D4) needs a console
- *    member; Operate → Platform, Contribute, the search index and every unlisted path need
+ *  - The site is tiered (ST-29; docs plan §3.1, D2): the landing page, Help, the developer sections
+ *    and the shared site assets are public; Operate → Console needs a console member;
+ *    Operate → Platform, Contribute, the full search bundle and every unlisted path need
  *    `can(platform, docs)`. The worker's tier table must agree with the docs site's own
  *    `TIER_PREFIXES`, or a page's sidebar door and its gate would disagree.
- *  - The unauthenticated response is a redirect into the normal sign-in carrying the wanted
- *    path, and the callback honours it ONLY through `sanitizeReturnTo`'s allowlist — the
+ *  - The unauthenticated response is a redirect to the public access page, and the callback honours it ONLY through `sanitizeReturnTo`'s allowlist — the
  *    validator matrix below is the open-redirect defense (R9 discipline).
  *  - Cache policy is part of the gate: HTML is `no-store`, immutable assets are `private` —
  *    a shared cache must never hold gated bytes.
@@ -22,7 +21,7 @@ import { makeEnv, NOW } from "./seed.js";
 import { makeTestDb } from "./helpers.js";
 import {
   DOCS_TIERS,
-  HELP_TIER,
+  SEARCH_BUNDLES,
   docsAllows,
   docsAssetPath,
   docsSecurityHeaders,
@@ -67,6 +66,26 @@ const ASSET_FILES: Record<string, { body: string; type: string }> = {
   },
   "/docs/start/index.html": { body: "<html>start</html>", type: "text/html" },
   "/docs/_astro/app.abc123.css": { body: "body{}", type: "text/css" },
+  "/docs/help/activate/index.html": {
+    body: "<html>help activate</html>",
+    type: "text/html",
+  },
+  "/docs/operate/console/members/index.html": {
+    body: "<html>members</html>",
+    type: "text/html",
+  },
+  "/docs/pagefind-member/pagefind.js": {
+    body: "export{}",
+    type: "text/javascript",
+  },
+  "/docs/pagefind-member/index/en_m1.pf_index": {
+    body: "shard",
+    type: "application/octet-stream",
+  },
+  "/docs/pagefind-admin/pagefind.js": {
+    body: "export{}",
+    type: "text/javascript",
+  },
   "/docs/pagefind/pagefind.js": { body: "export{}", type: "text/javascript" },
   "/docs/pagefind/index/en_abc123.pf_index": {
     body: "shard",
@@ -139,17 +158,32 @@ describe("router: /docs is a reserved platform route", () => {
 // ── the gate ─────────────────────────────────────────────────────────────────
 
 describe("handleDocs: the platform-admin gate", () => {
-  it("redirects an unauthenticated page hit into sign-in with returnTo", async () => {
+  it("sends a sessionless reader of a gated page to the public access page", async () => {
     const res = await handleDocs(
       get("/docs/services/license/"),
       docsEnv(),
       NOW,
     );
     expect(res.status).toBe(302);
-    expect(res.headers.get("location")).toBe(
-      `/manage/login?returnTo=${encodeURIComponent("/docs/services/license/")}`,
-    );
+    expect(res.headers.get("location")).toBe("/docs/access/");
     expect(res.headers.get("cache-control")).toBe("no-store");
+  });
+
+  it("serves Help and the public search bundle with no session", async () => {
+    const env = docsEnv();
+    for (const path of [
+      "/docs/help/activate/",
+      "/docs/pagefind/pagefind.js",
+      "/docs/pagefind/index/en_abc123.pf_index",
+      "/docs/access/",
+    ]) {
+      const res = await handleDocs(get(path, undefined), env, NOW);
+      expect(res.status, path).not.toBe(302);
+      expect(res.status, path).not.toBe(403);
+    }
+    expect(
+      (await handleDocs(get("/docs/help/activate/"), env, NOW)).status,
+    ).toBe(200);
   });
 
   it("serves the public tier with no session: the landing, the developer door, the site assets", async () => {
@@ -165,11 +199,12 @@ describe("handleDocs: the platform-admin gate", () => {
     }
   });
 
-  it("gates the search index (it holds every tier's text) and every unlisted path", async () => {
+  it("gates the member and admin search bundles and every unlisted path", async () => {
     const env = docsEnv();
     for (const path of [
-      "/docs/pagefind/pagefind.js",
-      "/docs/pagefind/index/en_abc123.pf_index",
+      "/docs/pagefind-member/pagefind.js",
+      "/docs/pagefind-member/index/en_m1.pf_index",
+      "/docs/pagefind-admin/pagefind.js",
       "/docs/operate/platform/runbook/",
       "/docs/contribute/",
       "/docs/operate/console/members/",
@@ -209,7 +244,11 @@ describe("handleDocs: the platform-admin gate", () => {
     const cookie = await adminCookie(env);
     // The platform group moves away: the same cookie now resolves to no grant.
     env.PLATFORM_ADMIN_GROUP = "someone-else";
-    for (const path of ["/docs/operate/", "/docs/operate/platform/runbook/"]) {
+    for (const path of [
+      "/docs/operate/",
+      "/docs/operate/platform/runbook/",
+      "/docs/pagefind-member/pagefind.js",
+    ]) {
       const res = await handleDocs(get(path, cookie), env, NOW);
       expect(res.status, path).toBe(403);
     }
@@ -463,23 +502,30 @@ describe("the docs tiers", () => {
   const tierOfId = (id: string) =>
     docsTierOf(docsAssetPath(id === "index" ? "/docs/" : `/docs/${id}/`));
 
-  it("agree with the docs site's TIER_PREFIXES for every door (Help waits for D4)", () => {
+  it("agree with the docs site's TIER_PREFIXES for every door", () => {
     for (const [prefix, , tier] of TIER_PREFIXES) {
       const sample = prefix.endsWith("/") ? `${prefix}some-page` : prefix;
-      const expected = prefix === "help/" ? HELP_TIER : tier;
-      expect(tierOfId(sample), prefix).toBe(
-        expected === "member" ? "member" : expected,
-      );
+      expect(tierOfId(sample), prefix).toBe(tier);
     }
-    // Until the owner's support address exists, Help is for console members (docs plan D4).
-    expect(HELP_TIER).toBe("member");
+    expect(tierOfId("help/activate")).toBe("public");
+  });
+
+  it("gives each search bundle its tier, with the public one open", () => {
+    expect(SEARCH_BUNDLES.map(([, t]) => t)).toEqual([
+      "public",
+      "member",
+      "admin",
+    ]);
+    for (const [dir, tier] of SEARCH_BUNDLES)
+      expect(docsTierOf(`${dir}pagefind.js`), dir).toBe(tier);
   });
 
   it("name every page row the docs site does, and nothing public beyond the site assets", () => {
     const pageRows = DOCS_TIERS.filter(
       ([path]) =>
-        !/^\/docs\/(_astro|branding|schemas|openapi|pagefind)\//.test(path) &&
-        path !== "/docs/404.html",
+        !/^\/docs\/(_astro|branding|schemas|openapi|pagefind(-member|-admin)?)\//.test(
+          path,
+        ) && path !== "/docs/404.html",
     );
     const sitePrefixes = TIER_PREFIXES.map(([prefix]) =>
       prefix.endsWith("/")
