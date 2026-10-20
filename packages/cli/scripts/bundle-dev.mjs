@@ -35,9 +35,7 @@ const migrations = {
     }));
     b.onLoad({ filter: /.*/, namespace: "pkey-dev" }, async () => {
       const dir = path.join(worker, "migrations");
-      const names = (await readdir(dir))
-        .filter((f) => f.endsWith(".sql"))
-        .sort();
+      const names = (await readdir(dir)).filter((f) => f.endsWith(".sql")).sort();
       const sql = await Promise.all(
         names.map((n) => readFile(path.join(dir, n), "utf8")),
       );

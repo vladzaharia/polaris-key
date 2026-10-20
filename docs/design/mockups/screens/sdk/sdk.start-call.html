@@ -31,13 +31,8 @@
       <section class="section">
         <div class="section-head"><h2>The file</h2></div>
         <div class="code wrap-phone" data-service="core">
-          <div class="code-head">
-            <span class="code-file">polaris-key.json</span
-            ><button class="btn ghost xs">
-              <i class="ic ic-copy"></i>Copy
-            </button>
-          </div>
-          <pre tabindex="0"><span class="t-o">{</span>
+          <div class="code-head"><span class="code-file">polaris-key.json</span><button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button></div>
+<pre tabindex="0"><span class="t-o">{</span>
   <span class="t-p">"$schema"</span><span class="t-o">:</span> <span class="t-s">"https://key.plrs.im/schemas/v1/sdk-config.schema.json"</span><span class="t-o">,</span>
   <span class="t-p">"configVersion"</span><span class="t-o">:</span> <span class="t-n">1</span><span class="t-o">,</span>
   <span class="t-p">"productSlug"</span><span class="t-o">:</span> <span class="t-s">"djdl"</span><span class="t-o">,</span>
@@ -51,10 +46,7 @@
   <span class="t-p">"expectedServices"</span><span class="t-o">: [</span><span class="t-s">"license"</span><span class="t-o">,</span> <span class="t-s">"config"</span><span class="t-o">,</span> <span class="t-s">"release"</span><span class="t-o">,</span>
     <span class="t-s">"distribution"</span><span class="t-o">,</span> <span class="t-s">"update"</span><span class="t-o">,</span> <span class="t-s">"identity"</span><span class="t-o">,</span> <span class="t-s">"sync"</span><span class="t-o">]</span>
 <span class="t-o">}</span></pre>
-          <div class="code-foot">
-            <i class="ic ic-info sm"></i
-            ><span>Safe to commit: public keys only</span>
-          </div>
+          <div class="code-foot"><i class="ic ic-info sm"></i><span>Safe to commit: public keys only</span></div>
         </div>
       </section>
 
@@ -62,71 +54,14 @@
         <div class="section-head"><h2>Where each SDK reads it</h2></div>
         <section class="card">
           <table class="table compact flush sdk-reads">
-            <thead>
-              <tr>
-                <th>SDK</th>
-                <th>Reads from</th>
-                <th>App version</th>
-              </tr>
-            </thead>
+            <thead><tr><th>SDK</th><th>Reads from</th><th>App version</th></tr></thead>
             <tbody>
-              <tr>
-                <td><span class="cell-title">Node</span></td>
-                <td>
-                  <span
-                    >Beside <code>package.json</code>, or a path you pass</span
-                  >
-                </td>
-                <td>
-                  <span
-                    ><code>package.json</code>, or Electron’s app version</span
-                  >
-                </td>
-              </tr>
-              <tr>
-                <td><span class="cell-title">React</span></td>
-                <td><span>A JSON import, bundled at build time</span></td>
-                <td>
-                  <span>The <code>version</code> prop, if the app has one</span>
-                </td>
-              </tr>
-              <tr>
-                <td><span class="cell-title">Python</span></td>
-                <td><span>A path, or package data</span></td>
-                <td>
-                  <span>You pass <code>version=</code></span>
-                </td>
-              </tr>
-              <tr>
-                <td><span class="cell-title">Swift</span></td>
-                <td><span>The app bundle</span></td>
-                <td>
-                  <span><code>CFBundleShortVersionString</code></span>
-                </td>
-              </tr>
-              <tr>
-                <td><span class="cell-title">Kotlin</span></td>
-                <td>
-                  <span
-                    >Android <code>assets/</code>, or the JVM classpath</span
-                  >
-                </td>
-                <td>
-                  <span><code>versionName</code></span>
-                </td>
-              </tr>
-              <tr>
-                <td><span class="cell-title">Godot</span></td>
-                <td>
-                  <span
-                    ><code>res://polaris-key.json</code>, kept by the export
-                    filter</span
-                  >
-                </td>
-                <td>
-                  <span><code>application/config/version</code></span>
-                </td>
-              </tr>
+              <tr><td><span class="cell-title">Node</span></td><td><span>Beside <code>package.json</code>, or a path you pass</span></td><td><span><code>package.json</code>, or Electron’s app version</span></td></tr>
+              <tr><td><span class="cell-title">React</span></td><td><span>A JSON import, bundled at build time</span></td><td><span>The <code>version</code> prop, if the app has one</span></td></tr>
+              <tr><td><span class="cell-title">Python</span></td><td><span>A path, or package data</span></td><td><span>You pass <code>version=</code></span></td></tr>
+              <tr><td><span class="cell-title">Swift</span></td><td><span>The app bundle</span></td><td><span><code>CFBundleShortVersionString</code></span></td></tr>
+              <tr><td><span class="cell-title">Kotlin</span></td><td><span>Android <code>assets/</code>, or the JVM classpath</span></td><td><span><code>versionName</code></span></td></tr>
+              <tr><td><span class="cell-title">Godot</span></td><td><span><code>res://polaris-key.json</code>, kept by the export filter</span></td><td><span><code>application/config/version</code></span></td></tr>
             </tbody>
           </table>
         </section>
@@ -139,15 +74,10 @@
       <!-- Phone: one block, Swift's tab with the other five behind “5 more”. -->
       <div class="code show-phone wrap-phone" data-service="core">
         <div class="code-head">
-          <div class="code-tabs" tabindex="0">
-            <span class="active">Swift<small>macOS</small></span
-            ><span class="more">5 more<i class="ic ic-chevron-down"></i></span>
-          </div>
+          <div class="code-tabs" tabindex="0"><span class="active">Swift<small>macOS</small></span><span class="more">5 more<i class="ic ic-chevron-down"></i></span></div>
           <button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button>
         </div>
-        <pre
-          tabindex="0"
-        ><span class="t-k">import</span> <span class="t-t">PolarisKey</span>
+<pre tabindex="0"><span class="t-k">import</span> <span class="t-t">PolarisKey</span>
 
 <span class="hl"><span class="t-k">let</span> pk = <span class="t-k">try await</span> <span class="t-t">PolarisKeyClient</span>.<span class="t-f">fromConfig</span>()</span>
 <span class="hl"><span class="t-k">await</span> pk.<span class="t-f">boot</span>()</span>
@@ -163,15 +93,8 @@
       <!-- 640 and up: all six, once each, Swift first. -->
       <div class="board-aside hide-phone">
         <div class="code wrap-phone" data-service="core">
-          <div class="code-head">
-            <span class="code-file">Swift · App.swift (macOS)</span
-            ><button class="btn ghost xs">
-              <i class="ic ic-copy"></i>Copy
-            </button>
-          </div>
-          <pre
-            tabindex="0"
-          ><span class="t-k">import</span> <span class="t-t">PolarisKey</span>
+          <div class="code-head"><span class="code-file">Swift · App.swift (macOS)</span><button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button></div>
+<pre tabindex="0"><span class="t-k">import</span> <span class="t-t">PolarisKey</span>
 
 <span class="hl"><span class="t-k">let</span> pk = <span class="t-k">try await</span> <span class="t-t">PolarisKeyClient</span>.<span class="t-f">fromConfig</span>()</span>
 <span class="hl"><span class="t-k">await</span> pk.<span class="t-f">boot</span>()</span>
@@ -184,15 +107,8 @@
 }</pre>
         </div>
         <div class="code wrap-phone" data-service="core">
-          <div class="code-head">
-            <span class="code-file">Node · main.ts</span
-            ><button class="btn ghost xs">
-              <i class="ic ic-copy"></i>Copy
-            </button>
-          </div>
-          <pre
-            tabindex="0"
-          ><span class="t-k">import</span> { <span class="t-t">PolarisKeyClient</span> }
+          <div class="code-head"><span class="code-file">Node · main.ts</span><button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button></div>
+<pre tabindex="0"><span class="t-k">import</span> { <span class="t-t">PolarisKeyClient</span> }
   <span class="t-k">from</span> <span class="t-s">"@polaris-key/node"</span>;
 
 <span class="t-k">const</span> pk = <span class="t-k">await</span> <span class="t-t">PolarisKeyClient</span>.<span class="t-f">fromConfig</span>();
@@ -203,15 +119,8 @@
 }</pre>
         </div>
         <div class="code wrap-phone" data-service="core">
-          <div class="code-head">
-            <span class="code-file">React · main.tsx</span
-            ><button class="btn ghost xs">
-              <i class="ic ic-copy"></i>Copy
-            </button>
-          </div>
-          <pre
-            tabindex="0"
-          ><span class="t-k">import</span> polarisKey <span class="t-k">from</span> <span class="t-s">"../polaris-key.json"</span>;
+          <div class="code-head"><span class="code-file">React · main.tsx</span><button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button></div>
+<pre tabindex="0"><span class="t-k">import</span> polarisKey <span class="t-k">from</span> <span class="t-s">"../polaris-key.json"</span>;
 <span class="t-k">import</span> { <span class="t-t">PolarisKeyProvider</span>, <span class="t-t">PolarisKeyGate</span> }
   <span class="t-k">from</span> <span class="t-s">"@polaris-key/react"</span>;
 
@@ -222,15 +131,8 @@
 );</pre>
         </div>
         <div class="code wrap-phone" data-service="core">
-          <div class="code-head">
-            <span class="code-file">Python · app.py</span
-            ><button class="btn ghost xs">
-              <i class="ic ic-copy"></i>Copy
-            </button>
-          </div>
-          <pre
-            tabindex="0"
-          ><span class="t-k">from</span> polaris_key <span class="t-k">import</span> <span class="t-t">PolarisKeyClient</span>
+          <div class="code-head"><span class="code-file">Python · app.py</span><button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button></div>
+<pre tabindex="0"><span class="t-k">from</span> polaris_key <span class="t-k">import</span> <span class="t-t">PolarisKeyClient</span>
 
 pk = <span class="t-t">PolarisKeyClient</span>.<span class="t-f">from_config</span>(
     <span class="t-s">"polaris-key.json"</span>, <span class="t-p">version</span>=<span class="t-s">"4.2.1"</span>
@@ -241,90 +143,47 @@ pk.<span class="t-f">boot</span>()
     <span class="t-f">show_sign_in</span>(pk)</pre>
         </div>
         <div class="code wrap-phone" data-service="core">
-          <div class="code-head">
-            <span class="code-file">Kotlin · Main.kt (Windows)</span
-            ><button class="btn ghost xs">
-              <i class="ic ic-copy"></i>Copy
-            </button>
-          </div>
-          <pre
-            tabindex="0"
-          ><span class="t-c">// Android: PolarisKeyAndroid.client(context)</span>
+          <div class="code-head"><span class="code-file">Kotlin · Main.kt (Windows)</span><button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button></div>
+<pre tabindex="0"><span class="t-c">// Android: PolarisKeyAndroid.client(context)</span>
 <span class="t-k">val</span> pk = <span class="t-t">PolarisKeyClient</span>.<span class="t-f">fromConfig</span>()
 pk.<span class="t-f">boot</span>()
 
 <span class="t-k">if</span> (!pk.<span class="t-f">isLicensed</span>()) <span class="t-f">showSignIn</span>(pk)</pre>
         </div>
         <div class="code wrap-phone" data-service="core">
-          <div class="code-head">
-            <span class="code-file">Godot · main.gd</span
-            ><button class="btn ghost xs">
-              <i class="ic ic-copy"></i>Copy
-            </button>
-          </div>
-          <pre
-            tabindex="0"
-          ><span class="t-k">func</span> <span class="t-f">_ready</span>() <span class="t-o">-></span> <span class="t-t">void</span>:
+          <div class="code-head"><span class="code-file">Godot · main.gd</span><button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button></div>
+<pre tabindex="0"><span class="t-k">func</span> <span class="t-f">_ready</span>() <span class="t-o">-></span> <span class="t-t">void</span>:
   <span class="t-k">await</span> PolarisKey.<span class="t-f">boot</span>()
   <span class="t-k">if not</span> PolarisKey.<span class="t-f">is_licensed</span>():
     $SignIn.<span class="t-f">show</span>()</pre>
         </div>
       </div>
+
     </section>
 
-    <section class="section">
-      <div class="section-head"><h2>How it gets into the project</h2></div>
-      <section class="card">
-        <div class="card-rows">
-          <div class="item-row top">
-            <span class="icon-tile sm"
-              ><i class="ic ic-square-terminal"></i
-            ></span>
-            <div class="item-text">
-              <div class="item-title">pkey sdk add</div>
-              <div class="item-desc">Adds the SDK and writes the file</div>
-              <div class="item-desc">
-                Pins only keys that match Integration’s fingerprint
+      <section class="section">
+        <div class="section-head"><h2>How it gets into the project</h2></div>
+        <section class="card">
+          <div class="card-rows">
+            <div class="item-row top">
+              <span class="icon-tile sm"><i class="ic ic-square-terminal"></i></span>
+              <div class="item-text"><div class="item-title">pkey sdk add</div><div class="item-desc">Adds the SDK and writes the file</div><div class="item-desc">Pins only keys that match Integration’s fingerprint</div></div>
+              <div class="item-more mk-stack-2">
+                <div class="cmd one-line wrap-phone"><span tabindex="0">pkey sdk add swift --dir macos/ --expect djdl-2026@sha256:3f9a0c…e41b</span><button class="btn ghost icon xs" aria-label="Copy"><i class="ic ic-copy"></i></button></div>
+                <p class="type-meta">Outside DJDL’s repository, add <code>--product djdl</code></p>
               </div>
             </div>
-            <div class="item-more mk-stack-2">
-              <div class="cmd one-line wrap-phone">
-                <span tabindex="0"
-                  >pkey sdk add swift --dir macos/ --expect
-                  djdl-2026@sha256:3f9a0c…e41b</span
-                ><button class="btn ghost icon xs" aria-label="Copy">
-                  <i class="ic ic-copy"></i>
-                </button>
-              </div>
-              <p class="type-meta">
-                Outside DJDL’s repository, add <code>--product djdl</code>
-              </p>
+            <div class="item-row top">
+              <span class="icon-tile sm"><i class="ic ic-download"></i></span>
+              <div class="item-text"><div class="item-title">Download on Integration</div><div class="item-desc">The same file, for adding the SDK by hand</div><div class="item-desc">Holds the active and the staged signing keys</div></div>
+            </div>
+            <div class="item-row top">
+              <span class="icon-tile sm"><i class="ic ic-godot"></i></span>
+              <div class="item-text"><div class="item-title">Import file… in the Godot dock</div><div class="item-desc">Writes <code>res://polaris-key.json</code></div><div class="item-desc">No Node needed</div></div>
             </div>
           </div>
-          <div class="item-row top">
-            <span class="icon-tile sm"><i class="ic ic-download"></i></span>
-            <div class="item-text">
-              <div class="item-title">Download on Integration</div>
-              <div class="item-desc">
-                The same file, for adding the SDK by hand
-              </div>
-              <div class="item-desc">
-                Holds the active and the staged signing keys
-              </div>
-            </div>
-          </div>
-          <div class="item-row top">
-            <span class="icon-tile sm"><i class="ic ic-godot"></i></span>
-            <div class="item-text">
-              <div class="item-title">Import file… in the Godot dock</div>
-              <div class="item-desc">
-                Writes <code>res://polaris-key.json</code>
-              </div>
-              <div class="item-desc">No Node needed</div>
-            </div>
-          </div>
-        </div>
+        </section>
       </section>
-    </section>
+
   </div>
 </div>
