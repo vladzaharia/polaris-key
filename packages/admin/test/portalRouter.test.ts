@@ -19,7 +19,9 @@ describe("portal routes (PORTAL.md §3.3)", () => {
     // The QR's link (PX-W14) opens the approve dialog over Account, code filled in.
     const approve = resolveHash("#/account/approve?code=KRQP-BMXD");
     expect(approve.redirect).toBe("#/account?approve=KRQP-BMXD");
-    expect(approve.route.kind === "account" && approve.route.params.get("approve")).toBe("KRQP-BMXD");
+    expect(
+      approve.route.kind === "account" && approve.route.params.get("approve"),
+    ).toBe("KRQP-BMXD");
     expect(resolveHash("#/").route.kind).toBe("library");
     expect(resolveHash("#/").redirect).toBeUndefined();
   });
