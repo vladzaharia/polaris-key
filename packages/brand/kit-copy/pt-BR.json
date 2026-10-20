@@ -735,6 +735,7 @@
     "signin.join.sameAccount": "É a conta de onde você começou. Entre na sua outra conta.",
     "signin.join.failed": "Não foi possível unir. Tente de novo.",
     "signin.join.ownedNotice": "Se essa conta também é sua, entre nela e una as duas.",
-    "signin.approve.codeShort": "Digite as 8 letras do código."
+    "signin.approve.codeShort": "Digite as 8 letras do código.",
+    "signin.join.stepUpVerb": "vincular contas"
   }
 }

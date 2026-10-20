@@ -4348,6 +4348,11 @@ msgstr "Wenn das Konto auch Ihnen gehört, melden Sie sich dort an und führen S
 msgid "signin.approve.codeShort"
 msgstr "Geben Sie alle 8 Buchstaben des Codes ein."
 
+#. link accounts
+#. Link dialog: completes 'Use your passkey to …' in the confirm-it's-you prompt.
+msgid "signin.join.stepUpVerb"
+msgstr "Konten zu verknüpfen"
+
 #. Something went wrong
 #. Core copy (conformance/parity/copy.en.json, fallback).
 msgid "core.fallback.title"

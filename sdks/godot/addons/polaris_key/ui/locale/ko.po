@@ -4336,6 +4336,11 @@ msgstr "그 계정도 본인 것이면 로그인해 두 계정을 합치세요."
 msgid "signin.approve.codeShort"
 msgstr "코드 8글자를 모두 입력하세요."
 
+#. link accounts
+#. Link dialog: completes 'Use your passkey to …' in the confirm-it's-you prompt.
+msgid "signin.join.stepUpVerb"
+msgstr "계정을 연결"
+
 #. Something went wrong
 #. Core copy (conformance/parity/copy.en.json, fallback).
 msgid "core.fallback.title"

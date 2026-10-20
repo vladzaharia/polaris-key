@@ -729,6 +729,7 @@
   "signin.join.failed": "합치지 못했습니다. 다시 시도하세요.",
   "signin.join.ownedNotice": "그 계정도 본인 것이면 로그인해 두 계정을 합치세요.",
   "signin.approve.codeShort": "코드 8글자를 모두 입력하세요.",
+  "signin.join.stepUpVerb": "계정을 연결",
   "core.fallback.title": "문제가 발생했어요",
   "core.fallback.message": "문제가 발생했어요({code}). 다시 시도하세요.",
   "core.codes.unauthorized.title": "로그인되지 않음",

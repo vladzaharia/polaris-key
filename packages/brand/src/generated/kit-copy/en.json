@@ -729,6 +729,7 @@
   "signin.join.failed": "Couldn't join. Try again.",
   "signin.join.ownedNotice": "If that account is yours too, sign in to it and join the two.",
   "signin.approve.codeShort": "Enter all 8 letters of the code.",
+  "signin.join.stepUpVerb": "link accounts",
   "core.fallback.title": "Something went wrong",
   "core.fallback.message": "Something went wrong ({code}). Try again.",
   "core.codes.unauthorized.title": "Not signed in",

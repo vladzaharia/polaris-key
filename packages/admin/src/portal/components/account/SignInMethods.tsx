@@ -43,6 +43,7 @@ import {
 import {
   focusPageHeading,
   href,
+  navigate,
   scrollBehavior,
   setParams,
 } from "../../router.js";
@@ -95,8 +96,8 @@ import { StepUp } from "./StepUp.js";
  * an older Worker gets the page without them.
  *
  * Not here yet, for want of an API: the products that know the person through a method (see
- * PX-13's brief). **Link an existing account** is PX-15's (`LinkAccounts`), so neither the header
- * nor the Hide My Email notice links to it until that screen exists.
+ * PX-13's brief). **Link an existing account** (PX-15's `LinkAccountsDialog`) is the button under
+ * the footnote; neither the header nor the Hide My Email notice links to it.
  */
 export function SignInMethods({
   account,
@@ -570,6 +571,15 @@ function MethodGroups({
           ? `Changing a method asks you to confirm it's you. Every change is recorded and emailed to ${notifyTo}.`
           : "Changing a method asks you to confirm it's you. Every change is recorded."}
       </p>
+      <div>
+        <Button
+          variant="outline"
+          className="max-sm:min-h-11"
+          onClick={() => navigate("#/account/link")}
+        >
+          {t("signin.join.title")}
+        </Button>
+      </div>
     </div>
   );
 }

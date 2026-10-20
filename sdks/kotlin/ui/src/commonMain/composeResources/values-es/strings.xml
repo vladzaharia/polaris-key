@@ -1649,6 +1649,8 @@
     <string name="signin_join_ownedNotice">Si esa cuenta también es tuya, inicia sesión en ella y une las dos.</string>
     <!-- Approve dialog: Find it pressed with an incomplete code. -->
     <string name="signin_approve_codeShort">Introduce las 8 letras del código.</string>
+    <!-- Link dialog: completes 'Use your passkey to …' in the confirm-it's-you prompt. -->
+    <string name="signin_join_stepUpVerb">vincular cuentas</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">Algo salió mal</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->

@@ -4336,6 +4336,11 @@ msgstr "そのアカウントもあなたのものなら、サインインして
 msgid "signin.approve.codeShort"
 msgstr "コードの8文字をすべて入力してください。"
 
+#. link accounts
+#. Link dialog: completes 'Use your passkey to …' in the confirm-it's-you prompt.
+msgid "signin.join.stepUpVerb"
+msgstr "アカウントをリンク"
+
 #. Something went wrong
 #. Core copy (conformance/parity/copy.en.json, fallback).
 msgid "core.fallback.title"

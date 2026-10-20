@@ -743,6 +743,7 @@ export type KitCopyKey =
   | "signin.join.failed"
   | "signin.join.ownedNotice"
   | "signin.approve.codeShort"
+  | "signin.join.stepUpVerb"
   | "core.fallback.title"
   | "core.fallback.message"
   | "core.codes.unauthorized.title"

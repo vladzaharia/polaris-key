@@ -729,6 +729,7 @@
   "signin.join.failed": "Réunion impossible. Réessayez.",
   "signin.join.ownedNotice": "Si ce compte est aussi le vôtre, connectez-vous et réunissez les deux.",
   "signin.approve.codeShort": "Saisissez les 8 lettres du code.",
+  "signin.join.stepUpVerb": "lier des comptes",
   "core.fallback.title": "Something went wrong",
   "core.fallback.message": "Something went wrong ({code}). Try again.",
   "core.codes.unauthorized.title": "Not signed in",

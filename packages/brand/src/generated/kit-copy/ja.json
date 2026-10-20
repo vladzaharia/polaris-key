@@ -729,6 +729,7 @@
   "signin.join.failed": "まとめられませんでした。もう一度お試しください。",
   "signin.join.ownedNotice": "そのアカウントもあなたのものなら、サインインして2つをまとめてください。",
   "signin.approve.codeShort": "コードの8文字をすべて入力してください。",
+  "signin.join.stepUpVerb": "アカウントをリンク",
   "core.fallback.title": "問題が発生しました",
   "core.fallback.message": "問題が発生しました（{code}）。もう一度お試しください。",
   "core.codes.unauthorized.title": "サインインしていません",

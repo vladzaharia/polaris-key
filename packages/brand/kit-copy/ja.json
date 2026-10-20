@@ -735,6 +735,7 @@
     "signin.join.sameAccount": "最初のアカウントです。もう一方のアカウントにサインインしてください。",
     "signin.join.failed": "まとめられませんでした。もう一度お試しください。",
     "signin.join.ownedNotice": "そのアカウントもあなたのものなら、サインインして2つをまとめてください。",
-    "signin.approve.codeShort": "コードの8文字をすべて入力してください。"
+    "signin.approve.codeShort": "コードの8文字をすべて入力してください。",
+    "signin.join.stepUpVerb": "アカウントをリンク"
   }
 }

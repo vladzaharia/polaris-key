@@ -735,6 +735,7 @@
     "signin.join.sameAccount": "C'est le compte de départ. Connectez-vous à votre autre compte.",
     "signin.join.failed": "Réunion impossible. Réessayez.",
     "signin.join.ownedNotice": "Si ce compte est aussi le vôtre, connectez-vous et réunissez les deux.",
-    "signin.approve.codeShort": "Saisissez les 8 lettres du code."
+    "signin.approve.codeShort": "Saisissez les 8 lettres du code.",
+    "signin.join.stepUpVerb": "lier des comptes"
   }
 }

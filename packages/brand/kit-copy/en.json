@@ -3665,6 +3665,11 @@
       "value": "Enter all 8 letters of the code.",
       "role": "body",
       "note": "Approve dialog: Find it pressed with an incomplete code."
+    },
+    "signin.join.stepUpVerb": {
+      "value": "link accounts",
+      "role": "body",
+      "note": "Link dialog: completes 'Use your passkey to …' in the confirm-it's-you prompt."
     }
   }
 }

@@ -1637,6 +1637,8 @@
     <string name="signin_join_ownedNotice">If that account is yours too, sign in to it and join the two.</string>
     <!-- Approve dialog: Find it pressed with an incomplete code. -->
     <string name="signin_approve_codeShort">Enter all 8 letters of the code.</string>
+    <!-- Link dialog: completes 'Use your passkey to …' in the confirm-it's-you prompt. -->
+    <string name="signin_join_stepUpVerb">link accounts</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">Something went wrong</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->

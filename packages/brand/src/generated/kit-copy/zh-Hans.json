@@ -729,6 +729,7 @@
   "signin.join.failed": "无法合并，请重试。",
   "signin.join.ownedNotice": "如果那个账户也是你的，请登录并合并两者。",
   "signin.approve.codeShort": "请输入完整的 8 个字母。",
+  "signin.join.stepUpVerb": "关联账户",
   "core.fallback.title": "出现问题",
   "core.fallback.message": "出现问题（{code}）。请重试。",
   "core.codes.unauthorized.title": "未登录",

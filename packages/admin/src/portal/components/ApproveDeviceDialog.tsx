@@ -146,7 +146,10 @@ export function ApproveDeviceDialog({
           noValidate
           onSubmit={(e) => {
             e.preventDefault();
+            // Always pressable: a short code is answered at the field, not by a dead button.
             if (typed.length === 9) void look(typed);
+            else
+              setPhase({ kind: "enter", error: t("signin.approve.codeShort") });
           }}
         >
           <DialogBody className="space-y-3">
@@ -191,7 +194,6 @@ export function ApproveDeviceDialog({
               type="submit"
               variant="neutral"
               loading={phase.kind === "looking"}
-              disabled={typed.length !== 9}
               iconStart={<ScanLine aria-hidden />}
             >
               {t("signin.approve.look")}

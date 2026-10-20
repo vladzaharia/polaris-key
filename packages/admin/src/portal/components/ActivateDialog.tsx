@@ -429,6 +429,14 @@ export function ActivateDialog({
                         verdict.code === "email_mismatch" ? (
                           <RefusalActions
                             signInUrl={verdict.signInUrl}
+                            onLink={
+                              verdict.code === "license_owned"
+                                ? () => {
+                                    onOpenChange(false);
+                                    navigate("#/account/link");
+                                  }
+                                : undefined
+                            }
                             onDifferentKey={() => {
                               setKey("");
                               setTouched(false);
@@ -518,13 +526,21 @@ function RefusalActions({
   signInUrl,
   onDifferentKey,
   onAddEmail,
+  onLink,
 }: {
   signInUrl?: string;
   onDifferentKey: () => void;
   onAddEmail?: () => void;
+  /** Signed in on the portal, `license_owned`: join the two accounts (SIGN-IN.md D-27). */
+  onLink?: () => void;
 }): React.ReactElement {
   return (
     <>
+      {onLink ? (
+        <p className="basis-full text-sm text-fg-muted">
+          {t("signin.join.ownedNotice")}
+        </p>
+      ) : null}
       <Button
         variant="ghost"
         size="sm"
@@ -541,6 +557,16 @@ function RefusalActions({
           onClick={onAddEmail}
         >
           Add and verify that email
+        </Button>
+      ) : null}
+      {onLink ? (
+        <Button
+          variant="outline"
+          size="sm"
+          className="font-medium"
+          onClick={onLink}
+        >
+          {t("signin.join.title")}
         </Button>
       ) : null}
       {signInUrl ? (

@@ -735,6 +735,7 @@
     "signin.join.sameAccount": "Das ist das Konto, bei dem Sie begonnen haben. Melden Sie sich bei Ihrem anderen Konto an.",
     "signin.join.failed": "Zusammenführen fehlgeschlagen. Versuchen Sie es erneut.",
     "signin.join.ownedNotice": "Wenn das Konto auch Ihnen gehört, melden Sie sich dort an und führen Sie beide zusammen.",
-    "signin.approve.codeShort": "Geben Sie alle 8 Buchstaben des Codes ein."
+    "signin.approve.codeShort": "Geben Sie alle 8 Buchstaben des Codes ein.",
+    "signin.join.stepUpVerb": "Konten zu verknüpfen"
   }
 }

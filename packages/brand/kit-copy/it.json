@@ -735,6 +735,7 @@
     "signin.join.sameAccount": "È l'account da cui sei partito. Accedi all'altro account.",
     "signin.join.failed": "Unione non riuscita. Riprova.",
     "signin.join.ownedNotice": "Se anche quell'account è tuo, accedi e unisci i due.",
-    "signin.approve.codeShort": "Inserisci tutte le 8 lettere del codice."
+    "signin.approve.codeShort": "Inserisci tutte le 8 lettere del codice.",
+    "signin.join.stepUpVerb": "collegare gli account"
   }
 }

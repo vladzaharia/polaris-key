@@ -872,6 +872,7 @@ export const KIT_COPY: Readonly<
     "signin.join.ownedNotice":
       "If that account is yours too, sign in to it and join the two.",
     "signin.approve.codeShort": "Enter all 8 letters of the code.",
+    "signin.join.stepUpVerb": "link accounts",
     "core.fallback.title": "Something went wrong",
     "core.fallback.message": "Something went wrong ({code}). Try again.",
     "core.codes.unauthorized.title": "Not signed in",
@@ -2357,6 +2358,7 @@ export const KIT_COPY: Readonly<
     "signin.join.ownedNotice":
       "Wenn das Konto auch Ihnen gehört, melden Sie sich dort an und führen Sie beide zusammen.",
     "signin.approve.codeShort": "Geben Sie alle 8 Buchstaben des Codes ein.",
+    "signin.join.stepUpVerb": "Konten zu verknüpfen",
     "core.fallback.title": "Ein Fehler ist aufgetreten",
     "core.fallback.message":
       "Ein Fehler ist aufgetreten ({code}). Versuchen Sie es erneut.",
@@ -3839,6 +3841,7 @@ export const KIT_COPY: Readonly<
     "signin.join.ownedNotice":
       "Si ce compte est aussi le vôtre, connectez-vous et réunissez les deux.",
     "signin.approve.codeShort": "Saisissez les 8 lettres du code.",
+    "signin.join.stepUpVerb": "lier des comptes",
     "core.fallback.title": "Something went wrong",
     "core.fallback.message": "Something went wrong ({code}). Try again.",
     "core.codes.unauthorized.title": "Not signed in",
@@ -5293,6 +5296,7 @@ export const KIT_COPY: Readonly<
     "signin.join.ownedNotice":
       "Si esa cuenta también es tuya, inicia sesión en ella y une las dos.",
     "signin.approve.codeShort": "Introduce las 8 letras del código.",
+    "signin.join.stepUpVerb": "vincular cuentas",
     "core.fallback.title": "Algo salió mal",
     "core.fallback.message": "Algo salió mal ({code}). Vuelve a intentarlo.",
     "core.codes.unauthorized.title": "Sin sesión iniciada",
@@ -6761,6 +6765,7 @@ export const KIT_COPY: Readonly<
     "signin.join.ownedNotice":
       "Se essa conta também é sua, entre nela e una as duas.",
     "signin.approve.codeShort": "Digite as 8 letras do código.",
+    "signin.join.stepUpVerb": "vincular contas",
     "core.fallback.title": "Algo deu errado",
     "core.fallback.message": "Algo deu errado ({code}). Tente novamente.",
     "core.codes.unauthorized.title": "Não conectado",
@@ -8219,6 +8224,7 @@ export const KIT_COPY: Readonly<
     "signin.join.ownedNotice":
       "Se anche quell'account è tuo, accedi e unisci i due.",
     "signin.approve.codeShort": "Inserisci tutte le 8 lettere del codice.",
+    "signin.join.stepUpVerb": "collegare gli account",
     "core.fallback.title": "Si è verificato un problema",
     "core.fallback.message": "Si è verificato un problema ({code}). Riprova.",
     "core.codes.unauthorized.title": "Accesso non effettuato",
@@ -9699,6 +9705,7 @@ export const KIT_COPY: Readonly<
     "signin.join.ownedNotice":
       "そのアカウントもあなたのものなら、サインインして2つをまとめてください。",
     "signin.approve.codeShort": "コードの8文字をすべて入力してください。",
+    "signin.join.stepUpVerb": "アカウントをリンク",
     "core.fallback.title": "問題が発生しました",
     "core.fallback.message":
       "問題が発生しました（{code}）。もう一度お試しください。",
@@ -11139,6 +11146,7 @@ export const KIT_COPY: Readonly<
     "signin.join.ownedNotice":
       "그 계정도 본인 것이면 로그인해 두 계정을 합치세요.",
     "signin.approve.codeShort": "코드 8글자를 모두 입력하세요.",
+    "signin.join.stepUpVerb": "계정을 연결",
     "core.fallback.title": "문제가 발생했어요",
     "core.fallback.message": "문제가 발생했어요({code}). 다시 시도하세요.",
     "core.codes.unauthorized.title": "로그인되지 않음",
@@ -12496,6 +12504,7 @@ export const KIT_COPY: Readonly<
     "signin.join.failed": "无法合并，请重试。",
     "signin.join.ownedNotice": "如果那个账户也是你的，请登录并合并两者。",
     "signin.approve.codeShort": "请输入完整的 8 个字母。",
+    "signin.join.stepUpVerb": "关联账户",
     "core.fallback.title": "出现问题",
     "core.fallback.message": "出现问题（{code}）。请重试。",
     "core.codes.unauthorized.title": "未登录",

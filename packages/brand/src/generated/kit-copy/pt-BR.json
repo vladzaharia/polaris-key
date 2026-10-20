@@ -729,6 +729,7 @@
   "signin.join.failed": "Não foi possível unir. Tente de novo.",
   "signin.join.ownedNotice": "Se essa conta também é sua, entre nela e una as duas.",
   "signin.approve.codeShort": "Digite as 8 letras do código.",
+  "signin.join.stepUpVerb": "vincular contas",
   "core.fallback.title": "Algo deu errado",
   "core.fallback.message": "Algo deu errado ({code}). Tente novamente.",
   "core.codes.unauthorized.title": "Não conectado",

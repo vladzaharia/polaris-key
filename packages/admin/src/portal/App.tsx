@@ -24,7 +24,9 @@ import { DownloadFlowPage } from "./pages/DownloadFlowPage.js";
 import { FreeDevicePage } from "./pages/FreeDevicePage.js";
 import { LibraryPage } from "./pages/LibraryPage.js";
 import { ProductPage } from "./pages/ProductPage.js";
+import { AddMethodNudge } from "./components/AddMethodNudge.js";
 import { ApproveDeviceDialog } from "./components/ApproveDeviceDialog.js";
+import { LinkAccountsDialog } from "./components/LinkAccountsDialog.js";
 import { commitLastMethod } from "./lastMethod.js";
 import { SignInPage } from "./pages/SignInPage.js";
 import { StorefrontPage } from "./pages/StorefrontPage.js";
@@ -163,6 +165,8 @@ function SignedInShell({
   const activate = useActivate();
   // `#/account?approve=<code>` (the QR's link, or Approve a new device): the dialog over Account.
   const approve = "params" in route ? route.params.get("approve") : null;
+  // `#/account?link=1` (Link an existing account, and where the other sign-in returns).
+  const link = "params" in route ? route.params.get("link") : null;
 
   // `#/?activate=<key>` (and `/activate#key=…`, rewritten to it) opens the modal over the
   // Library with the key filled in, with what the link carried. A hash written by hand goes
@@ -224,7 +228,11 @@ function SignedInShell({
         ) : null
       }
     >
+      <AddMethodNudge route={route} />
       <Page route={route} account={account} />
+      {route.kind === "account" && link !== null ? (
+        <LinkAccountsDialog onClose={() => setParams({ link: null })} />
+      ) : null}
       {route.kind === "account" && approve !== null ? (
         <ApproveDeviceDialog
           code={approve}

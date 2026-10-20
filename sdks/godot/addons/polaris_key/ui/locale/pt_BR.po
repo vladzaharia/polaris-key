@@ -4360,6 +4360,11 @@ msgstr "Se essa conta também é sua, entre nela e una as duas."
 msgid "signin.approve.codeShort"
 msgstr "Digite as 8 letras do código."
 
+#. link accounts
+#. Link dialog: completes 'Use your passkey to …' in the confirm-it's-you prompt.
+msgid "signin.join.stepUpVerb"
+msgstr "vincular contas"
+
 #. Something went wrong
 #. Core copy (conformance/parity/copy.en.json, fallback).
 msgid "core.fallback.title"

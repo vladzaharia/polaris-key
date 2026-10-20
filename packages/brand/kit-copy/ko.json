@@ -735,6 +735,7 @@
     "signin.join.sameAccount": "처음 시작한 계정입니다. 다른 계정에 로그인하세요.",
     "signin.join.failed": "합치지 못했습니다. 다시 시도하세요.",
     "signin.join.ownedNotice": "그 계정도 본인 것이면 로그인해 두 계정을 합치세요.",
-    "signin.approve.codeShort": "코드 8글자를 모두 입력하세요."
+    "signin.approve.codeShort": "코드 8글자를 모두 입력하세요.",
+    "signin.join.stepUpVerb": "계정을 연결"
   }
 }
