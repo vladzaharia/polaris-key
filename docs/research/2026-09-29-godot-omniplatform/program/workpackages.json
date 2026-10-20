@@ -17583,7 +17583,7 @@
       "optional": false,
       "refs": ["plans/LK-00.md §3, §5, §7.8–7.9"],
       "brief": "wp/LK-04-cross-host-sign-in.md",
-      "status": "todo",
+      "status": "in-review",
       "planRef": "LK-00"
     },
     {
