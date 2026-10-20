@@ -1,5 +1,7 @@
 # I-08 App passthrough on an OAuth-shaped authorize and token (absorbs PX-W18)
 
+> **Correction (I-37, 2026-10-20).** Device code is "explicit approval ([plans/I-37.md](../plans/I-37.md))", not "fails closed".
+
 > **Plan approved (lead, 2026-10-17): [`plans/I-08.md`](../plans/I-08.md).** It narrows this brief: the licence-choice half moves to I-08b, the device-code half to I-37, and the plan wins where they differ.
 
 | Field       | Value                                                                                                                                                                                                                                                                                                                                                                                                                                                               |

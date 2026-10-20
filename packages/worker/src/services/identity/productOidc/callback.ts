@@ -35,15 +35,20 @@ import {
 import {
   deleteArtefact,
   getArtefact,
+  putArtefact,
   updateArtefact,
   type ArtefactRef,
 } from "../../../core/singleUse.js";
 import { legacyRelyingParty } from "./browserFlow.js";
-import { beginLicenseChoice } from "./chooser.js";
+import { beginLicenseChoice, choiceKey, startAgainPage } from "./chooser.js";
+import { deviceLabelOf, redirectToApprove } from "./deviceApproval.js";
+import { escapeHtmlKeepApostrophe as escapeHtml } from "../../../platform/html.js";
 import {
+  FLOW_TTL_SECONDS,
   type FlowRecord,
   type ResolvedOidcConfig,
   flowKey,
+  isDeviceCodeFlow,
   rateLimited,
   redirectUriAllowed,
   resolveOidcConfig,
@@ -56,6 +61,7 @@ import {
 import {
   joinOfferNotice,
   platformSignInEndedPage,
+  signInRefusalPage,
   productAccountDisabledPage,
   signedInPage,
   flowView,
@@ -309,18 +315,32 @@ export async function handleAuthCallback(
   );
   if (chooser) return chooser;
 
-  if (flow.viaDeviceCode) {
+  if (isDeviceCodeFlow(flow)) {
     if (await identityRefusal(db, product, identity, now)) {
       await deleteArtefact(env, stateKey);
-      return errorResponse(403, "forbidden", "not entitled");
+      // A person in a browser gets a page, never raw JSON.
+      return signInRefusalPage(
+        "You can't sign in here",
+        `<p>${escapeHtml(identity.name || identity.email || "This account")} doesn't have access to ${escapeHtml(product.name)}. On ${escapeHtml(deviceLabelOf(flow))}, start again and sign in with another account.</p>`,
+      );
     }
+    // I-37: the verified identity is stored and the flow STOPS. Nothing is activated, shown to
+    // the device or minted until the person presses **Sign in on {device}** on the approval
+    // page (`deviceApproval.ts`), which is the only thing that sets `approvedAt`. The page is
+    // reached through the binder cookie alone, so the URL carries nothing.
     flow.identity = identity;
-    await updateArtefact(env, stateKey, { set: { identity } });
-    return signedInPage(
-      [],
-      migration.notice,
-      await flowView(env, db, product, flow),
+    const stored = await updateArtefact(env, stateKey, { set: { identity } });
+    if (!stored.ok) return startAgainPage();
+    await putArtefact(
+      env,
+      choiceKey(
+        product.slug,
+        await hashKey(callbackBinder, env.KEY_HASH_PEPPER),
+      ),
+      state,
+      FLOW_TTL_SECONDS,
     );
+    return redirectToApprove(req, product);
   }
   const result = await activateFromIdentity(db, product, identity, now, {
     env,
@@ -490,6 +510,9 @@ export async function completeBrowserFlow(
    *  page to show it on. */
   notice: string | null = null,
 ): Promise<Response> {
+  // Defence in depth (I-37): a device-code flow completes only through its approval.
+  if (isDeviceCodeFlow(flow))
+    return errorResponse(403, "forbidden", "not entitled");
   flow.licenseId = licenseId;
   if (flow.returnTo) {
     const license = await getLicense(db, product.slug, licenseId);

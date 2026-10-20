@@ -750,6 +750,7 @@ const CORS_EXCLUDED = new Set([
   "/{product}/identity/auth/logout",
   "/{product}/identity/auth/device",
   "/{product}/identity/auth/device/verify",
+  "/{product}/identity/auth/device/approve",
   "/{product}/identity/auth/choose",
   // I-08: `authorize` is a browser navigation to the card; only `token` is a page's `fetch`.
   "/{product}/identity/authorize",

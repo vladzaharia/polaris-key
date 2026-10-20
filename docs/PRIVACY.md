@@ -279,6 +279,11 @@ What the sections above do not promise, stated plainly:
   and an operator's console actions on anyone else's license stay attributed. The product's
   developer sees the marker, never the global account id. Removing your data from a single app does
   not rewrite them.
+- **A device-code sign-in's start place** (I-37). When a device starts a sign-in, the Worker keeps
+  the coarse place Cloudflare's edge reports for that request (country and a city or region label)
+  on the sign-in record for at most 600 seconds, and shows it to the person who is asked to approve
+  the sign-in on the device. It is never stored after that, logged or audited; the audit row names
+  only the device label.
 - **Merge tombstones** (`account_tombstones` with a merge target, which carry an email hash) are
   deleted after 90 days; an erasure tombstone holds only the account id and is kept, so an erased
   account is never recreated by the legacy catch-up. Subject events (`subject_events`) are deleted

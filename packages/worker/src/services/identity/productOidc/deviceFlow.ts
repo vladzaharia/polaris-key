@@ -16,6 +16,7 @@ import { type Product } from "../../../core/products.js";
 import { errorResponse, json, methodNotAllowed } from "../../../core/errors.js";
 import { clientNetwork } from "../../../core/rateLimit.js";
 import { binderSetCookie } from "../licenseChoice.js";
+import { requestLocation } from "../place.js";
 import {
   getArtefact,
   putArtefact,
@@ -23,6 +24,7 @@ import {
 } from "../../../core/singleUse.js";
 import { readBodyText } from "../../../core/cappedBody.js";
 import { beginAuthFlow } from "./browserFlow.js";
+import { startAgainPage } from "./chooser.js";
 import {
   DEVICE_POLL_INTERVAL_SECONDS,
   type DeviceFlowRecord,
@@ -92,7 +94,14 @@ export async function handleAuthDeviceStart(
     undefined,
     deviceId,
     true,
-    { deviceName },
+    {
+      deviceName,
+      // I-37: shown on the DeviceConfirm page, set by the edge and never by the client.
+      startedAt: Math.floor(Date.now() / 1000),
+      startPlace: (({ country, label }) => ({ country, label }))(
+        requestLocation(req),
+      ),
+    },
   );
   if (flow instanceof Response) return flow;
   const deviceCode = randomToken(16);
@@ -108,6 +117,9 @@ export async function handleAuthDeviceStart(
   );
   if (!code) return errorResponse(503, "unavailable", "try again");
   const userCode = formatUserCode(code);
+  await updateArtefact(env, await flowKey(env, product.slug, flow.state), {
+    set: { userCode },
+  });
   const deviceRecord: DeviceFlowRecord = {
     state: flow.state,
     deviceId,
@@ -237,8 +249,8 @@ export async function confirmDeviceFlow(
   if (!record.csrf || !token || !constantTimeEqual(token, record.csrf))
     return gone(req, product, 403, "stale", refused, view);
 
-  // THE decision (identity.device-confirm: Sign in on <device> / Deny). I-37 adds the approval
-  // marker here, in the one branch each outcome takes.
+  // Before sign-in. "Continue" approves nothing (I-37): `approvedAt` is set only on the approval
+  // page after sign-in. Deny here spends the code, so nothing starts.
   if (decision === "deny") {
     // Spend the token and the user code: the code stops resolving, and nothing is signed in.
     const spentDeny = await updateArtefact(
@@ -484,86 +496,14 @@ export async function handleAuthDeviceEntry(
   );
 }
 
-/** GET /<product>/identity/auth/device/verify — render the confirmation page.
- *  POST /<product>/identity/auth/device/verify — confirm it. The GET is deliberately side-effect free:
- *  it used to accept `?confirm=1`, which made an `<img src>` enough to confirm a flow AND
- *  handed the caller `state` + `nonce` in the 302 (R8-02).
- *
- *  Kept for flows started before `/device` existed and for any client that builds this URL;
- *  `/device/start` no longer hands it out. */
-export async function handleAuthDeviceVerify(
-  req: Request,
-  env: Env,
-  product: Product,
-  ctx?: DevicePageContext,
-): Promise<Response> {
+/**
+ * `GET`/`POST /<product>/identity/auth/device/verify`: retired (I-37 D5). It confirmed a flow by
+ * the secret device code in the URL, which a forwarded link could carry. `/device/start` has not
+ * handed it out since `/device` shipped, so it answers the generic start-again page for everyone
+ * and reads nothing from the store. The route and discovery's `authDeviceVerify` stay until the
+ * next `PROTOCOL_VERSION`.
+ */
+export async function handleAuthDeviceVerify(req: Request): Promise<Response> {
   if (req.method !== "GET" && req.method !== "POST") return methodNotAllowed();
-  const now = Math.floor(Date.now() / 1000);
-  const limited = await rateLimited(env, product, now, {
-    bucket: "authDeviceVerify",
-    id: clientNetwork(req),
-    limit: 60,
-    windowSec: 60,
-  });
-  const url = new URL(req.url);
-  if (limited)
-    return wantsJson(req)
-      ? limited
-      : renderDeviceEntry(
-          product,
-          `${url.origin}/${product.slug}/identity/auth/device`,
-          429,
-        );
-  const app = await appFor(env, product, ctx);
-  const tv = url.searchParams.get("tv") === "1";
-  const view: PageView = { tv, app };
-  const deviceCode = url.searchParams.get("device_code");
-  if (!deviceCode)
-    return gone(
-      req,
-      product,
-      404,
-      "expired",
-      errorResponse(400, "bad_request", "missing code"),
-      view,
-    );
-  const deviceKey = await deviceFlowKey(env, product.slug, deviceCode);
-  const raw = await getArtefact(env, deviceKey);
-  const record = raw ? parseFlowRecord<DeviceFlowRecord>(raw) : null;
-  if (!record)
-    return gone(
-      req,
-      product,
-      404,
-      "expired",
-      errorResponse(404, "not_found", "device code expired"),
-      view,
-    );
-
-  if (req.method === "POST") {
-    const { token, decision } = await readConfirmForm(req);
-    return confirmDeviceFlow(
-      req,
-      env,
-      product,
-      deviceCode,
-      record,
-      token,
-      now,
-      decision,
-      view,
-    );
-  }
-  return renderDeviceConfirmation(
-    req,
-    env,
-    product,
-    deviceCode,
-    record,
-    url.toString(),
-    {},
-    now,
-    app,
-    tv,
-  );
+  return startAgainPage();
 }

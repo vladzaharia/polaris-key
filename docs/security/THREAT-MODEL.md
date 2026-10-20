@@ -3528,7 +3528,7 @@ below) it is not: the flow's starter holds the device code and its own device's 
 starter, not the victim who signed in, makes the attach decision. See "What the opt-in attach
 adds under R1-07" there.
 
-Four controls make that true. The first and the fourth are the ones that matter:
+Five controls make that true. The first, the fourth and the fifth are the ones that matter:
 
 1. **Only the device code redeems a device-code flow.** Confirming 303s the browser to the IdP
    authorize URL, and that URL carries `state`. `/identity/auth/poll` redeems `state` plus a
@@ -3548,6 +3548,22 @@ Four controls make that true. The first and the fourth are the ones that matter:
    are device-code flows, and those are confirmed with the public user code, so the device's
    current license must not be an input to whoever signs in. The browser-redirect flow carries no
    device id and never merged.
+
+5. **Nothing account-bound happens until the person approves (I-37).** The callback no longer
+   activates, discloses or mints anything for a device-code flow: it stores the verified identity
+   and sends the browser to `GET|POST /<p>/identity/auth/device/approve`, where the person sees
+   the app, the account, the device label, the code and where and when the request started, and
+   presses **Sign in on {device}** or **Deny**. Only that press sets `approvedAt` on the flow
+   record (one compare-and-set that spends the page's single-use token; the licence chooser's
+   choice sets it in the same update that records the choice). `/device/poll` answers `pending`
+   until it is a number, before any account check, identity disclosure, `confirm`, activation
+   or mint, and a record that is not provably approved (absent, malformed, or written by an
+   older Worker) is unapproved. The page is found only through the `__Host-pk_lcb` binder of the
+   browser that confirmed the code and signed in; no request field, label, user code, request
+   handle or `state` maps to the marker. **A chooser choice is an approval:** it sets the same
+   marker, so the chooser shows the same facts first (account, code, where and when the request
+   started, and the callout when the place differs) and its primary names the device ("Use this
+   license on {device}"). Tests: `deviceApproval.test.ts`, `oidcLicenseChoice.test.ts`.
 
 **Cross-site POSTs.** Both device pages carry `referrer-policy: no-referrer`, and under that
 policy a browser sends a same-origin form POST with `Origin: null`. The origin check therefore
@@ -3609,8 +3625,8 @@ so two products cannot hand out one code. The pages send `Cache-Control: no-stor
 `verificationUriComplete`) and log nothing. Residual: a holder of a live code learns its product
 slug, which the code's own display already implies; the guess bound is unchanged.
 
-**Remote phishing (RFC 8628 §5.4) — forwarded authorize URL closed; residual R1-07 open,
-rooted in R8-03.** A starter can confirm without a browser and forward the resulting IdP URL,
+**Remote phishing (RFC 8628 §5.4) — forwarded authorize URL closed; residual R1-07 reduced by
+explicit approval; open (rooted in R8-03).** A starter can confirm without a browser and forward the resulting IdP URL,
 but confirmation now sets a `__Host-pk_lcb` binder on the confirming browser and stores its
 peppered hash. `handleAuthCallback` requires that binder before claiming the flow, so a victim
 browser that never held it receives 400 without consuming the flow; the starter's poll stays
@@ -3619,13 +3635,26 @@ and the admin console sign-in. Regression tests: `R8-oidc.test.ts` ›
 `FIXED (R1-07 / R8-03): the starter confirms its own flow…`, the binder cases in
 `identityBinders.test.ts`, and `R1-control-plane.test.ts` › `R1-01b`.
 
-What remains open is a browser/person mismatch: the victim can confirm the
-`verificationUriComplete` link in their own browser (or be phished into the starter's browser).
-That browser legitimately holds the binder, while the starter still holds the device code and
-chooses the P1-07 attach in `/device/poll`. A cookie cannot establish that the device-code holder
-is the person who completed IdP sign-in.
+What remains is a browser/person mismatch, now reduced by an explicit approval (I-37). The victim
+can confirm the `verificationUriComplete` link in their own browser, so that browser legitimately
+holds the binder, while the starter still holds the device code. A cookie cannot establish that
+the device-code holder is the person who completed IdP sign-in, so the flow no longer completes on
+sign-in alone: it waits at the approval page (see control 5 above).
 
-**What the opt-in attach adds under R1-07 (P1-07).** The attach is decided by the device-code
+- **Closed, each proven by tests (`deviceApproval.test.ts`, `R8-oidc.test.ts`):** completion
+  without an explicit approval; approval from any browser except the one that confirmed the code
+  and signed in; approval from a request handle, a label, a user code, `state` or either cookie
+  alone; replayed, cross-flow, stale and expired approvals; the starter's P1-07 claim and migrate
+  (the attach is retired on device code); and the `/device/verify` path (retired).
+- **Open (R1-07, reduced):** someone persuaded to press **Sign in on {device}** after reading
+  the page, including the place. The starter's one device is then authorized on their licence:
+  seat-checked, listed in their devices and revocable. The device also receives their name and
+  verified e-mail (`ready.identity`). A VPN in the victim's country hides the place, and the
+  device label is the starter's own text, so neither is a trust signal. No package owns this
+  residual; I-40 (account-initiated pairing) becomes optional.
+
+**What the opt-in attach adds under R1-07 (P1-07). RETIRED on device code by I-37; kept as
+history.** The attach is decided by the device-code
 holder, and here that is the starter. If the starter's device is on an anonymous enrolled
 license, the starter polls with `confirmIdentity` and its own bearer, is told the license is
 `attachable`, and sends `attachLicense: true`. The victim is asked nothing. Compared with the
@@ -3738,19 +3767,19 @@ starter's device. The chooser therefore applies the fix direction above, for thi
   <label>") and the security email to every verified address. Nothing is written before the
   explicit "Replace and continue".
 
-Residual (open, owned by I-08 and I-37; PX-W13's `__Host-pk_req` binder is done): the cookie
+Residual (reduced by I-37's explicit approval, see "Remote phishing"; PX-W13's `__Host-pk_req` binder is done): the cookie
 binds the browser that _started or confirmed_ the flow, not the person who owns the device. In
 the plain R1-07 pattern the starter confirms with curl and holds the cookie, so the victim's
 callback is refused. In the `verificationUriComplete` variant, though, the starter sends the
 victim the confirmation link: the victim confirms **in their own browser**, receives the binder
-and signs in. The starter still has the device code and can then accept the attach. The device
-label is only a speed bump because `deviceName` is client-supplied. Closing this needs I-08's
-browser-side Continue binding and I-37's explicit “Sign in on <device>?” confirmation; flows
-outside the chooser trigger retain this residual too. Pinned by
+and signs in. The starter still has the device code and (before I-37) could then accept the attach. The device
+label is only a speed bump because `deviceName` is client-supplied. I-37 retired the attach and
+put the explicit “Sign in on <device>?” approval before any account-bound step, for the chooser
+and for flows outside the chooser trigger alike; the chooser's choice is itself that approval. Pinned by
 `test/oidcLicenseChoice.test.ts` (› "I-26 browser binder").
 
-**Unchanged.** The legacy `/identity/auth/device/verify?device_code=` page stays for flows in
-flight across the deploy. Confirmation on both routes is one function: the Fetch Metadata /
+**Unchanged until I-37.** The legacy `/identity/auth/device/verify?device_code=` page stayed for
+flows in flight across the deploy; I-37 retired it (the generic start-again page, no store read). Confirmation on both routes is one function: the Fetch Metadata /
 `Origin` check above, a single-use CSRF token, and a `303` to the IdP with `no-referrer` and
 `no-store`. The confirmation
 page's CSP widens `form-action` by exactly the IdP origin that `303` goes to.
@@ -8724,8 +8753,8 @@ and `choice-*.json`.
   `token` answers `403 not_entitled`. Registering rotates the token, so without this a code holder
   could have bound their own account to someone else's licence-less device row.
 
-- **R1-07 for device code.** Device code's own binding is I-37's (it fails closed under D1.A);
-  this section covers the web redirect only.
+- **R1-07 for device code.** Device code's own boundary is I-37's explicit approval (see "The
+  device-code user-code page" and "Remote phishing"); this section covers the web redirect only.
 
 ### Platform → Connections: the operator's side of connections (I-31)
 

@@ -148,7 +148,33 @@ async function playerSignsIn(
       binder,
     ),
   );
-  expect(callback.status).toBe(200);
+  // I-37: the callback stops at the approval page; the browser that signed in presses
+  // "Sign in on {device}". The device's own conversation (pending ... ready) is unchanged.
+  expect(callback.status).toBe(303);
+  const approvePath = `/${PRODUCT}/identity/auth/device/approve`;
+  expect(new URL(callback.headers.get("location")!).pathname).toBe(approvePath);
+  const approvePage = await browser(
+    w,
+    now,
+    "GET",
+    approvePath,
+    undefined,
+    binder,
+  );
+  expect(approvePage.status).toBe(200);
+  const token = /name="token" value="([^"]+)"/.exec(
+    await approvePage.text(),
+  )?.[1];
+  expect(token).toBeTruthy();
+  const approved = await browser(
+    w,
+    now,
+    "POST",
+    approvePath,
+    { token: token!, decision: "approve" },
+    binder,
+  );
+  expect(approved.status).toBe(200);
 }
 
 /** The KV records a device flow lives in expire with the flow (`FLOW_TTL_SECONDS`). The test KV

@@ -1,6 +1,6 @@
 ---
 title: "Device flow"
-description: "Sign in a client that can't receive a browser redirect: the start route, the user-code page, the poll and attaching the device's anonymous license."
+description: "Sign in a client that can't receive a browser redirect: the start route, the user-code page, the explicit approval and the poll."
 type: "concept"
 lastReviewed: "2026-10-16"
 sidebar:
@@ -39,13 +39,21 @@ The client shows `userCode` large, renders `verificationUriComplete` as a QR cod
 
 A `POST` with `csrf` confirms, and only when the request isn't cross-site, the posted CSRF token matches the one the render minted, and that token is deleted at once. On success the page stamps `confirmedAt` on the flow, stops resolving the user code and answers `303` to the provider's authorize URL with `Referrer-Policy: no-referrer` and `Cache-Control: no-store`. A cross-site request and an empty, wrong or reused token get the same `403`.
 
-An unknown, expired, malformed or already-confirmed code re-renders the form with one generic line and status `404`, so a guesser learns nothing. `GET` and `POST /<product>/identity/auth/device/verify` is the same page addressed by device code.
+An unknown, expired, malformed or already-confirmed code re-renders the form with one generic line and status `404`, so a guesser learns nothing. The entry form names no product and tells the person to use only a code their own device shows. `GET` and `POST /<product>/identity/auth/device/verify` is retired: it answers the generic "Start again on your device" page and reads nothing. Confirming the code here approves nothing.
 
 :::caution[A confirmation doesn't prove who started the flow]
 The origin check and CSRF token stop a cross-site page from confirming someone else's flow. They don't stop a flow's own starter from reading the token and posting it back. The provider callback is bound to the browser that confirmed it, through a `__Host-` cookie, so a starter who sends the authorize URL to a victim gets no token.
 :::
 
-The person then signs in as in the browser flow, landing on `/identity/auth/callback`. The callback sets no cookie and activates nothing: it checks that the identity would be entitled, stores the verified identity on the flow and stops. The poll activates it. By default the device moves onto the signing-in identity's own license, or a new one from the group mapping or `oidcDefault` tier. Nothing claims, migrates or disables the license the device is already on, because the user code is public and whoever confirms need not own the device.
+The person then signs in as in the browser flow, landing on `/identity/auth/callback`. The callback sets no cookie and activates nothing: it checks that the identity would be entitled, stores the verified identity on the flow and sends the browser to the approval page. The poll activates the identity after the approval. By default the device moves onto the signing-in identity's own license, or a new one from the group mapping or `oidcDefault` tier. Nothing claims, migrates or disables the license the device is already on, because the user code is public and whoever confirms need not own the device.
+
+## Approve the sign-in
+
+`GET` or `POST /<product>/identity/auth/device/approve` is the explicit step. Only the browser that confirmed the code and signed in reaches it, through its `__Host-` cookie; the URL carries nothing. The page shows the app and developer, the signed-in account, the device label, the code, when and from where the request started, and when it expires. The place is the edge's coarse guess, and a VPN can choose it, so the page also warns when it differs from where the person is. The device label is the starter's own text, never a trust signal.
+
+**Sign in on {device}** sets a server-side marker, and the device's next poll is `ready`. **Deny** (and Cancel on the license chooser) makes the poll answer `error`, and nothing is signed in. A page token is single-use: a replayed, stale or foreign one changes nothing. The flow's own 600 seconds bound all of it.
+
+Until the person approves, the poll answers `pending`: no identity is disclosed, no license is created and no token is minted. A flow that began before this step existed waits and then times out; the device shows a new code.
 
 ### The platform page
 
@@ -57,24 +65,19 @@ Codes are unique among live flows: if a drawn code is already held, the Worker d
 
 `POST /<product>/identity/auth/device/poll` takes `{ "deviceCode": "<secret>", "deviceId": "<id>" }`. The `deviceId` must equal the one given at start, else `401`, so a stolen code can't be redeemed by another device. The advertised `interval` is enforced: a second poll inside it gets `429` with `{ "status": "slow_down", "interval": 2 }`.
 
-| Status    | Meaning                                                                          |
-| --------- | -------------------------------------------------------------------------------- |
-| `pending` | The person hasn't confirmed, or the callback hasn't finished                     |
-| `confirm` | See below: the identity is waiting for the device's decision                     |
-| `ready`   | Carries `token` (a device token, never a cookie), `schemaVersion` and `identity` |
-| `error`   | The provider failed. The same generic shape for every cause                      |
-| `timeout` | The code expired or is stale                                                     |
+| Status    | Meaning                                                                           |
+| --------- | --------------------------------------------------------------------------------- |
+| `pending` | The person hasn't confirmed, signed in or approved yet                            |
+| `confirm` | See below: the identity is waiting for the device's decision                      |
+| `ready`   | Carries `token` (a device token, never a cookie), `schemaVersion` and `identity`  |
+| `error`   | The provider failed, or the person denied. The same generic shape for every cause |
+| `timeout` | The code expired or is stale                                                      |
 
-Show `identity` (`name`, and `email` only when the provider verified it): if someone else confirmed the flow, this is where the player sees the device is now on a stranger's account. The flow record is deleted the moment a poll returns `ready` or `timeout`, so a token is handed out once. Minting runs the same seat authorization as activation.
+Show `identity` (`name`, and `email` only when the provider verified it): if someone else approved the flow, this is where the player sees the device is now on a stranger's account. The flow record is deleted the moment a poll returns `ready` or `timeout`, so a token is handed out once. Minting runs the same seat authorization as activation.
 
-## Attach the device's anonymous license
+## Attach is retired
 
-A device that enrolled anonymously holds a license of its own. Attaching makes it the account's. It is a two-step opt-in that only the party holding the device code can make.
-
-1. While polling, the device sends `"confirmIdentity": true` and its device token as `Authorization: Bearer`. After sign-in the answer is `confirm` with `identity` and `attachable`. Nothing has been minted or merged.
-2. After the player accepts the identity on the device, the next poll sends `"attachLicense": true` (or `false` to sign in without attaching). An identity with no license takes the anonymous one over in place (`"attached": "claimed"`). An identity with a license gets the anonymous license's devices moved onto it and the anonymous one retired (`"attached": "migrated"`). Then `ready`.
-
-`attachable` is true when the bearer is a live token of the device the flow started for, on an anonymous usable enrolled license. It is false when the attach would pass the identity's device limit (counting every authorized device on the anonymous license, dormant ones included) or when the tier the mint would run on has fingerprint mode `strict`, because a device poll presents no fingerprint. A decision sent before the device saw the identity, or `attachLicense: true` with nothing attachable, is answered `confirm` again and changes nothing.
+Attaching a device's anonymous license to the account was an opt-in the device-code holder made. The person approving a sign-in is never told that the starter's license and devices would join their account, so a device-code flow never attaches. A poll that sends `"confirmIdentity": true` is still answered `confirm` with `identity`, but `attachable` is always `false`, and `"attachLicense": true` is read as `false`: the device signs in on the identity's own license and nothing is claimed or merged. The fields stay so deployed SDKs keep working.
 
 ## Lifetime and limits
 

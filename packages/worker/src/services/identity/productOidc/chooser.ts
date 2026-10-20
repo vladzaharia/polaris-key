@@ -9,7 +9,7 @@ import { randomToken } from "../../../platform/random.js";
 import { parseFlowRecord } from "../../../platform/json.js";
 import type { Db } from "../../../db/types.js";
 import { type Product } from "../../../core/products.js";
-import { appHeader, renderBrandPage } from "../../../core/brandHtml.js";
+import { appHeader, note, renderBrandPage } from "../../../core/brandHtml.js";
 import { errorResponse, methodNotAllowed } from "../../../core/errors.js";
 import { clientNetwork } from "../../../core/rateLimit.js";
 import { appendAudit } from "../../../core/audit.js";
@@ -39,10 +39,18 @@ import {
 import { readBodyText } from "../../../core/cappedBody.js";
 import { completeBrowserFlow } from "./callback.js";
 import {
+  approvalFacts,
+  deniedPage,
+  deviceDonePage,
+  denyChosenDeviceFlow,
+} from "./deviceApproval.js";
+import {
+  CHOICE_FIELDS,
   FLOW_TTL_SECONDS,
   type FlowRecord,
   type ResolvedOidcConfig,
   flowKey,
+  isDeviceCodeFlow,
   rateLimited,
 } from "./config.js";
 import {
@@ -51,18 +59,10 @@ import {
 } from "../../../core/licensing/issue.js";
 import { sameOriginPost } from "./deviceFlow.js";
 import { isReplaceGroup } from "../licenseChoice.js";
-import { flowView, listingDeveloper, signedInPage } from "./pages.js";
+import { flowView, listingDeveloper } from "./pages.js";
 import { appForPage, pageApp } from "../../../core/brandPage.js";
 
-/** Flow fields the chooser owns, dropped when the choice is recorded. */
-export const CHOICE_FIELDS = [
-  "choiceOpen",
-  "choiceToken",
-  "choiceReplace",
-  "choiceNotice",
-  "choiceAccount",
-  "choiceIdentity",
-];
+export { CHOICE_FIELDS };
 
 /** Single-use store address of the chooser index: the binder's (peppered) hash → `state`. */
 export function choiceKey(product: string, binderHash: string): ArtefactRef {
@@ -107,8 +107,8 @@ export function choicePage(
 export function startAgainPage(): Response {
   return choicePage(403, {
     title: "Start again",
-    heading: "Start again on your device",
-    body: `<p class="muted">This sign-in can't be finished in this browser. Go back to the app and sign in again.</p>`,
+    heading: "This page has expired",
+    body: `<p class="muted">This page is no longer active. If your device still asks, start again there.</p>`,
   });
 }
 
@@ -168,7 +168,7 @@ export async function beginLicenseChoice(
     set: {
       choiceOpen: true,
       choiceAccount: accountId,
-      ...(flow.viaDeviceCode ? { identity } : { choiceIdentity: identity }),
+      ...(isDeviceCodeFlow(flow) ? { identity } : { choiceIdentity: identity }),
     },
   });
   if (!opened.ok) return startAgainPage();
@@ -257,7 +257,8 @@ export async function handleAuthChoose(
   const stateKey = await flowKey(env, product.slug, state);
   const raw = await getArtefact(env, stateKey);
   const flow = raw ? parseFlowRecord<FlowRecord>(raw) : null;
-  const identity = flow?.viaDeviceCode ? flow.identity : flow?.choiceIdentity;
+  const identity =
+    flow && isDeviceCodeFlow(flow) ? flow.identity : flow?.choiceIdentity;
   if (
     !flow ||
     !flow.choiceOpen ||
@@ -274,7 +275,7 @@ export async function handleAuthChoose(
     flow,
     accountId: flow.choiceAccount,
     identity,
-    deviceLabel: flow.viaDeviceCode
+    deviceLabel: isDeviceCodeFlow(flow)
       ? flow.deviceName || "Unnamed device"
       : "This browser",
   };
@@ -307,6 +308,15 @@ export async function handleAuthChoose(
   };
 
   if (action === "cancel") {
+    // For a device-code flow Cancel is Deny (I-37): the device's poll answers `error`, and the
+    // ending is the one "denied" page. A browser flow is simply dropped.
+    if (isDeviceCodeFlow(flow)) {
+      await denyChosenDeviceFlow(env, db, product, stateKey, flow, now);
+      await deleteArtefact(env, indexKey);
+      return deniedPage(flow, await flowView(env, db, product, flow), [
+        binderClearCookie(),
+      ]);
+    }
     await deleteArtefact(env, stateKey);
     await deleteArtefact(env, indexKey);
     return choicePage(
@@ -440,7 +450,7 @@ export async function renderChooser(
     iconUrl: shown.app.iconUrl,
     action: "wants you to sign in",
     ...(developer ? { sub: developer } : {}),
-    device: c.flow.viaDeviceCode ? c.deviceLabel : "this browser",
+    device: isDeviceCodeFlow(c.flow) ? c.deviceLabel : "this browser",
   });
   const tvOpt = c.flow.tv ? { variant: "tv" as const } : {};
   const pending = c.flow.choiceReplace;
@@ -459,7 +469,9 @@ export async function renderChooser(
             token,
             device: device.label,
             productName: product.name,
-            thisDevice: c.flow.viaDeviceCode ? c.deviceLabel : "this browser",
+            thisDevice: isDeviceCodeFlow(c.flow)
+              ? c.deviceLabel
+              : "this browser",
             activeNow: device.activeNow,
           }),
         },
@@ -469,6 +481,10 @@ export async function renderChooser(
     }
     await updateArtefact(env, c.stateKey, { unset: ["choiceReplace"] });
   }
+  // I-37: a device-code chooser says how to stop a sign-in the person did not start.
+  const cancelNote = isDeviceCodeFlow(c.flow)
+    ? note("info", "Didn't start this yourself? Cancel it.") // signin.device.cancel
+    : "";
   // No eyebrow (SIGN-IN.md §3.13, D-32): the lede names the product.
   return choicePage(
     200,
@@ -482,17 +498,29 @@ export async function renderChooser(
       heading: isReplaceGroup(view)
         ? "Replace a device"
         : "Choose a license for this device",
-      body: chooserBody({
-        productName: product.name,
-        deviceLabel: c.deviceLabel,
-        action,
-        token,
-        view,
-        notice: c.flow.choiceNotice ?? null,
-        now,
-        namedByDevice: Boolean(c.flow.viaDeviceCode),
-        developerName: developer,
-      }),
+      // I-37: a choice on a device-code flow IS the approval, so it shows the same facts first.
+      body:
+        (isDeviceCodeFlow(c.flow) ? approvalFacts(req, c.flow, now) : "") +
+        chooserBody({
+          productName: product.name,
+          deviceLabel: c.deviceLabel,
+          action,
+          token,
+          view,
+          notice: c.flow.choiceNotice ?? null,
+          now,
+          namedByDevice: Boolean(isDeviceCodeFlow(c.flow)),
+          developerName: developer,
+          ...(isDeviceCodeFlow(c.flow)
+            ? {
+                primaryLabel:
+                  view.preselected === "create"
+                    ? `Create a license on ${c.deviceLabel}`
+                    : `Use this license on ${c.deviceLabel}`,
+              }
+            : {}),
+        }) +
+        cancelNote,
     },
     [],
     shown.imgOrigin,
@@ -515,9 +543,6 @@ export async function completeChoice(
 ): Promise<Response> {
   const { flow, identity } = c;
   const view = await flowView(env, db, product, flow);
-  const doneNote = replaced
-    ? { thisDevice: c.deviceLabel, replaced }
-    : undefined;
   // Through the identity's own activation: a new licence, or the identity's own `sub`-keyed one
   // (the deferred P1-07 activation, attach opt-in included, stays as it is today).
   const activate = choice === "create" || choice.own;
@@ -542,18 +567,22 @@ export async function completeChoice(
   await deleteArtefact(env, c.indexKey);
   const cookies = [binderClearCookie()];
 
-  if (flow.viaDeviceCode) {
+  if (isDeviceCodeFlow(flow)) {
     // The device-code poll completes it: on the chosen licence (`authorizeAndMint`, seat-checked),
     // or through the deferred activation when `licenseId` stays unset.
+    // I-37: the licence choice IS the explicit step, so it sets `approvedAt` in the same
+    // compare-and-set that records it. A denied or already approved flow takes no choice.
     const done = await updateArtefact(env, c.stateKey, {
-      ...(activate
-        ? {}
-        : { set: { licenseId: (choice as LegacyChoiceRow).id } }),
+      expect: { approvedAt: null, error: null },
+      set: {
+        approvedAt: now,
+        ...(activate ? {} : { licenseId: (choice as LegacyChoiceRow).id }),
+      },
       unset: CHOICE_FIELDS,
     });
     if (!done.ok) return startAgainPage();
     await audit();
-    return signedInPage(cookies, null, view, doneNote);
+    return deviceDonePage(c.deviceLabel, view, cookies, replaced);
   }
 
   let licenseId: string;

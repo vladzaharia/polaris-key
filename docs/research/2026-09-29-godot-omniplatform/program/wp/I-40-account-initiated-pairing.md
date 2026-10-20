@@ -1,5 +1,7 @@
 # I-40 Account-initiated pairing for browserless TV and console apps
 
+> **Optional (I-37, 2026-10-20).** The premise, D1.A's browserless regression, is gone: I-37 ships an explicit approval, so TV and console apps keep account sign-in. This package stays only if the owner wants pairing as a stronger answer to the R1-07 residual.
+
 | Field       | Value                                                                                            |
 | ----------- | ------------------------------------------------------------------------------------------------ |
 | Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16)                               |

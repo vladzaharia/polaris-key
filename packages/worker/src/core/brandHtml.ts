@@ -169,7 +169,7 @@ export const BRAND_PAGE_CSS = [
   `dl{display:grid;grid-template-columns:6rem 1fr;gap:.5rem 1rem;margin:1.5rem 0;padding:1rem;border-radius:6px;background:var(--sunken)}`,
   `dt{color:var(--muted)}`,
   `dd{margin:0;color:var(--strong);overflow-wrap:anywhere}`,
-  `.code{font-family:${FONT.mono};font-weight:700;letter-spacing:.08em}`,
+  `.code{font-family:${FONT.mono};font-weight:700;letter-spacing:.08em;white-space:nowrap}`,
   `form{margin:0}`,
   `label{display:block;margin:1.5rem 0 .5rem;color:var(--strong);font-size:.875rem;line-height:1.25rem;font-weight:700}`,
   `input[type=text]{display:block;width:100%;min-height:44px;padding:0 .75rem;margin:0 0 1rem;border:1px solid var(--edge);border-radius:6px;background:var(--sunken);color:var(--strong);font-family:${FONT.mono};font-size:1.25rem;letter-spacing:.08em;text-transform:uppercase}`,
@@ -300,7 +300,11 @@ const LOCKER_PAGE_CSS_TAIL = [
   `.ac-body input[type=text][aria-invalid=true]{border-color:var(--danger-edge)}`,
   `.field-err{display:flex;gap:.5rem;align-items:flex-start;color:var(--danger);font-size:.875rem;line-height:1.25rem}`,
   `.field-err .ic{margin-top:.125rem}`,
-  `.ac-body dl{margin:0}`,
+  `.ac-body dl{display:flex;flex-wrap:wrap;gap:.5rem 1rem;margin:0}`,
+  `.ac-body dt{flex:0 0 6rem}`,
+  `.ac-body dd{flex:1 1 calc(100% - 7rem);min-width:min(100%,12rem);overflow-wrap:break-word}`,
+  `.ac-body h1:focus{outline:none}`,
+  `@media (forced-colors: active){[data-brand=locker] .button:not(.secondary):not(.link){border:3px solid Highlight}}`,
   // The licence chooser: the selected row is a neutral 7 % fill with a coral 3 px marker (D9a);
   // a link inside a row is a 44 px target.
   `[data-brand=locker] .choice:has(input:checked){border-color:var(--edge);background:color-mix(in srgb,var(--strong) 7%,var(--sunken));box-shadow:inset 3px 0 0 var(--mb)}`,
@@ -328,6 +332,8 @@ const LOCKER_PAGE_CSS_TAIL = [
   `.tv .ac-head-sub{font-size:1.25rem;line-height:1.75rem}`,
   `.tv .ac-head .ic,.tv .ac-dev .ic{width:1.5rem;height:1.5rem}`,
   `.tv .ac-foot,.tv .ac-head{padding-left:3rem;padding-right:3rem}`,
+  `.tv .ac-body dl{font-size:1.5rem;line-height:2rem}`,
+  `.tv .ac-body .small{font-size:1.25rem;line-height:1.75rem}`,
   `@media (max-width: 30rem){.tv .ac-body{padding:1.5rem}.tv .ac-body h1{font-size:2rem;line-height:2.5rem}.tv .ac-body input[type=text]{font-size:min(2rem,7vw)}.tv .ac-foot,.tv .ac-head{padding-left:1.25rem;padding-right:1.25rem}}`,
 ].join("");
 
@@ -377,6 +383,8 @@ export interface BrandPageOptions {
   brand?: BrandPageBrand;
   /** Locker only: TRUSTED markup for the card's header slot (`appHeader`). Wins over `app`. */
   header?: string;
+  /** Locker only: initial focus on the `<h1>` (`tabindex=-1`), so a carried-over Enter presses nothing. */
+  focusHeading?: boolean;
   /** Locker only: the card's footer line, plain text beside an icon. */
   footer?: { icon: IconName; text: string };
   /**
@@ -618,7 +626,9 @@ export function renderAuthCard(opts: AuthCardOptions): string {
     header,
     wide ? passportPane(opts.passport!) : "",
     `<div class="ac-body">`,
-    `<h1>${escapeHtml(opts.heading)}</h1>`,
+    opts.focusHeading
+      ? `<h1 tabindex="-1" autofocus>${escapeHtml(opts.heading)}</h1>`
+      : `<h1>${escapeHtml(opts.heading)}</h1>`,
     opts.body ?? "",
     `</div>`,
     opts.footer

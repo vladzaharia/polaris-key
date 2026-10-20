@@ -15,6 +15,7 @@ import { issuerMetadataResponse } from "./oidcIssuerFake.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { exportJWK, generateKeyPair, importJWK, SignJWT } from "jose";
 import { makeTestDb } from "./helpers.js";
+import { decideDeviceFlowAs } from "./flowBinderHelper.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedProduct } from "./seed.js";
 import { loadProduct, type Product } from "../src/core/products.js";
@@ -313,6 +314,16 @@ async function startDeviceFlow(
   };
 }
 
+/** Press **Sign in on {device}** in the browser carrying `flow.binder` (I-37). */
+function pressSignIn(flow: { binder: string | null }): Promise<Response> {
+  return decideDeviceFlowAs(
+    { env, db, product },
+    "approve",
+    `${LICENSE_CHOICE_BINDER_COOKIE}=${flow.binder}`,
+    NOW,
+  );
+}
+
 async function callback(
   state: string,
   nonce: string,
@@ -462,7 +473,7 @@ describe("I-26 device-code flow", () => {
     expect(page.html).toContain(
       '<legend class="sr-only">Licenses for djdl</legend>',
     );
-    expect(page.html).toContain(">Use this license and continue</button>");
+    expect(page.html).toContain(">Use this license on ");
     // The page never names the flow.
     expect(page.html).not.toContain(flow.state);
     expect(page.rows).toEqual([
@@ -475,7 +486,7 @@ describe("I-26 device-code flow", () => {
       license: "lic_std",
     });
     expect(chosen.status).toBe(200);
-    expect(await chosen.text()).toContain("You&#x27;re signed in");
+    expect(await chosen.text()).toContain("it continues by itself");
     expect(cookieOf(chosen, LICENSE_CHOICE_BINDER_COOKIE)).toBe("");
 
     const ready = await devicePoll(flow, NOW + 30);
@@ -879,8 +890,9 @@ describe("I-26 browser binder", () => {
       choice: page.token,
       action: "cancel",
     });
-    expect(await res.text()).toContain("Sign-in cancelled");
-    expect((await devicePoll(flow, NOW + 10)).status).toBe("timeout");
+    expect(await res.text()).toContain("Sign-in denied");
+    // Cancel is Deny for a device-code flow (I-37): the device's poll ends in the generic error.
+    expect((await devicePoll(flow, NOW + 10)).status).toBe("error");
   });
 });
 
@@ -891,8 +903,13 @@ describe("I-26 outside the trigger", () => {
     const before = await licenseCount();
     const flow = await startDeviceFlow();
     const cb = await callback(flow.state, flow.nonce, flow.binder);
-    expect(cb.status).toBe(200);
-    expect(await cb.text()).toContain("You&#x27;re signed in");
+    // No chooser: the callback stops at the approval page (I-37), and pressing Sign in finishes.
+    expect(cb.status).toBe(303);
+    expect(cb.headers.get("location")).toMatch(/\/auth\/device\/approve$/);
+    expect((await devicePoll(flow, NOW + 6)).status).toBe("pending");
+    const pressed = await pressSignIn(flow);
+    expect(pressed.status).toBe(200);
+    expect(await pressed.text()).toContain("it continues by itself");
     const ready = await devicePoll(flow, NOW + 10);
     expect(ready.status).toBe("ready");
     // Today's behaviour: the identity's own `sub`-keyed licence, minted.
@@ -942,7 +959,8 @@ describe("I-26 outside the trigger", () => {
     expect(flow.binder).not.toBeNull();
     const before = await licenseCount();
     const cb = await callback(flow.state, flow.nonce, flow.binder);
-    expect(cb.status).toBe(200);
+    expect(cb.status).toBe(303);
+    expect((await pressSignIn(flow)).status).toBe(200);
     expect((await devicePoll(flow, NOW + 10)).status).toBe("ready");
     expect(await licenseCount()).toBe(before + 1);
   });

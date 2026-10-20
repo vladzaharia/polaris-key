@@ -28,13 +28,11 @@ import {
   typedCode,
 } from "../../../core/deviceEntry.js";
 import { accountDisabledPage } from "../card/http.js";
-import { errorResponse } from "../../../core/errors.js";
 import { PLATFORM_SIGNIN_ENDED } from "../accounts/platformMigration.js";
 import { updateArtefact } from "../../../core/singleUse.js";
 import {
   type DeviceFlowRecord,
   type FlowRecord,
-  FLOW_TTL_SECONDS,
   deviceFlowKey,
 } from "./config.js";
 
@@ -169,18 +167,13 @@ export async function renderDeviceConfirmation(
         `<input type="hidden" name="${escapeHtml(name)}" value="${escapeHtml(value)}">`,
     )
     .join("");
-  // A static expiry, never a ticking countdown (the page has no script): "Expires 14:32 UTC".
-  const expiry =
-    typeof record.startedAt === "number"
-      ? ` Expires ${new Date((record.startedAt + FLOW_TTL_SECONDS) * 1000).toISOString().slice(11, 16)} UTC.`
-      : "";
-  // The explicit step (SIGN-IN.md §4.2, identity.device-confirm): the person decides here, and
-  // both buttons post the same form. The decision is read in one place (`decideDeviceFlow`).
+  // Before sign-in: this page approves NOTHING (I-37). "Continue" only hands the browser to the
+  // IdP; the explicit step is the approval page after sign-in (`deviceApproval.ts`), the only
+  // thing that sets `approvedAt`.
   const who = app?.developer?.trim() || product.name;
-  const dev = isolate(deviceLabel);
   const html = renderAuthCard({
-    title: `Sign in on ${dev}?`,
-    heading: `Sign in on ${dev}?`,
+    title: "Sign in to continue",
+    heading: "Sign in to continue",
     ...(tv ? { variant: "tv" as const } : {}),
     passport: {
       name: product.name,
@@ -190,10 +183,10 @@ export async function renderDeviceConfirmation(
       action: "wants you to sign in",
     },
     body:
-      `<p>It showed the code <span class="code">${escapeHtml(record.userCode)}</span>.${expiry}</p>` +
+      `<p>${escapeHtml(isolate(deviceLabel))} showed the code <span class="code">${escapeHtml(record.userCode)}</span>. You'll confirm after you sign in.</p>` +
       `<form method="post" action="${escapeHtml(action)}" data-request="${escapeHtml(signInRequest.handle)}">${hiddenInputs}` +
       `<input type="hidden" name="csrf" value="${escapeHtml(csrf)}">` +
-      `<div class="stack"><button class="button" type="submit" name="decision" value="approve" autofocus><span>Sign in on <bdi>${escapeHtml(deviceLabel)}</bdi></span></button>` +
+      `<div class="stack"><button class="button" type="submit" name="decision" value="approve" autofocus><span>Continue to sign in</span></button>` +
       `<button class="button secondary" type="submit" name="decision" value="deny">Deny</button></div></form>` +
       note("info", "Didn't start this? Deny, and nothing signs in."),
     footer: {
@@ -211,19 +204,18 @@ export async function renderDeviceConfirmation(
  *  and renders the single generic "no device is waiting" line under the field: the page never
  *  says WHICH reason (RFC 8628 §5.1). `status` 429 is the neutral too-many-tries card. */
 export function renderDeviceEntry(
-  product: Product,
+  _product: Product,
   action: string,
   status: 200 | 404 | 429,
   typed?: string | null,
-  app?: { name: string; iconUrl?: string | null },
+  _app?: { name: string; iconUrl?: string | null },
   tv = false,
 ): Response {
-  const shown = pageApp(app ?? { name: product.name });
   const html = renderAuthCard({
     title: "Enter your code",
     heading: "Enter the code from your device",
     ...(tv ? { variant: "tv" as const } : {}),
-    header: appHeader({ name: product.name, iconUrl: shown.app.iconUrl }),
+    // B9.3: no product name before the code resolves. A forwarded link must not borrow one.
     body:
       status === 429
         ? tooManyBody(action)
@@ -235,7 +227,7 @@ export function renderDeviceEntry(
           }),
     footer: ENTRY_FOOTER,
   });
-  const headers = deviceHtmlHeaders(undefined, shown.imgOrigin);
+  const headers = deviceHtmlHeaders();
   if (status === 429) headers.set("retry-after", "60");
   return new Response(html, { status, headers });
 }

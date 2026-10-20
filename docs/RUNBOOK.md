@@ -2425,6 +2425,18 @@ polaris-key-deltas-<env>`).
   the consumer's logs for Error 1102 or "exceeded resource limits"; the consumer's reported CPU
   ms; the R2 event-to-consumer latency; and a re-PUT of the same object producing one delta.
 
+## Device-code approval deploy window (I-37)
+
+Deploying I-37 adds an approval step to every device-code sign-in. There is no flag, migration or
+backfill, and nothing in flight is grandfathered. A flow that was already past the IdP callback
+holds an identity but no `approvedAt`: its device's poll answers `pending` until the flow expires
+(at most 600 seconds), then `timeout`, and the person gets a new code. A flow that has not reached
+the callback gets the approval page as normal. Deployed SDKs need no release: they see one more
+browser press, and Deny ends in their generic failure. Roll back only in an availability emergency:
+an older Worker ignores `approvedAt`, so flows waiting at the approval page would complete at their
+next poll. Count approved, denied and expired-unapproved flows from the audit rows
+`identity.signin.device_approved` and `identity.signin.device_denied`.
+
 ## Customer host (Polaris Locker)
 
 The customer site (Polaris Locker) is a second host on this Worker, `CUSTOMER_ORIGIN`; the console

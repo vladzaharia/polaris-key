@@ -1,5 +1,9 @@
 import { issuerMetadataResponse } from "./oidcIssuerFake.js";
-import { bindFlow } from "./flowBinderHelper.js";
+import {
+  TEST_BINDER_COOKIE,
+  bindFlow,
+  decideDeviceFlowAs,
+} from "./flowBinderHelper.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { exportJWK, generateKeyPair, importJWK, SignJWT } from "jose";
 import type { ManagedPayload } from "../src/core/licensing/payload.js";
@@ -309,6 +313,7 @@ describe("poll states (pollAuthFlow, through /device/poll)", () => {
         redirectUri: "r",
         deviceId: "dev-1",
         confirmedAt: NOW,
+        approvedAt: NOW,
         ...flow,
       }),
     );
@@ -459,22 +464,28 @@ describe("poll states (pollAuthFlow, through /device/poll)", () => {
     expect(body.token.startsWith("pkeyt_")).toBe(true);
   });
 
-  it("renders and confirms the JSON device verification page", async () => {
-    await putFlow("oauth-state", { deviceId: "dev-json" });
+  it("renders and confirms the device page by user code", async () => {
+    await putFlow("oauth-state", {
+      deviceId: "dev-json",
+      approvedAt: undefined,
+    });
     await artefacts(env).put(
       await deviceFlowKey(env, "djdl", "device-code"),
       JSON.stringify({
         state: "oauth-state",
         deviceId: "dev-json",
-        userCode: "ABCD-EFGH",
+        userCode: "BCDF-GHJK",
         authorizeUrl: "https://id.example/authorize",
         deviceName: "Studio Mac",
       }),
     );
-    const page = await handleAuthDeviceVerify(
-      new Request(
-        "https://key.plrs.im/djdl/identity/auth/device/verify?device_code=device-code",
-      ) as unknown as Request,
+    await artefacts(env).put(
+      await deviceUserKey(env, "djdl", "BCDFGHJK"),
+      "device-code",
+    );
+    const url = "https://key.plrs.im/djdl/identity/auth/device";
+    const page = await handleAuthDeviceEntry(
+      new Request(`${url}?user_code=BCDF-GHJK`) as unknown as Request,
       env,
       product,
     );
@@ -484,18 +495,15 @@ describe("poll states (pollAuthFlow, through /device/poll)", () => {
     // The GET renders only; confirmation is a POST carrying the token minted here (R8-02).
     const csrf = html.match(/name="csrf" value="([^"]+)"/)![1]!;
 
-    const confirm = await handleAuthDeviceVerify(
-      new Request(
-        "https://key.plrs.im/djdl/identity/auth/device/verify?device_code=device-code",
-        {
-          method: "POST",
-          headers: {
-            "content-type": "application/x-www-form-urlencoded",
-            origin: "https://key.plrs.im",
-          },
-          body: new URLSearchParams({ csrf }).toString(),
+    const confirm = await handleAuthDeviceEntry(
+      new Request(url, {
+        method: "POST",
+        headers: {
+          "content-type": "application/x-www-form-urlencoded",
+          origin: "https://key.plrs.im",
         },
-      ) as unknown as Request,
+        body: new URLSearchParams({ user_code: "BCDF-GHJK", csrf }).toString(),
+      }) as unknown as Request,
       env,
       product,
     );
@@ -514,8 +522,11 @@ describe("poll states (pollAuthFlow, through /device/poll)", () => {
       (await artefacts(env).get(await flowKey(env, "djdl", "oauth-state")))!,
     ) as {
       confirmedAt?: number;
+      approvedAt?: number;
     };
     expect(flow.confirmedAt).toBeTruthy();
+    // Confirming the code is NOT the approval (I-37): that is the page after sign-in.
+    expect(flow.approvedAt).toBeUndefined();
   });
 
   it("rejects JSON device polls from a different device id", async () => {
@@ -827,7 +838,7 @@ describe("the RFC 8628 user-code page", () => {
     if (!("licenseId" in r)) throw new Error("expected license");
     await artefacts(env).put(
       await flowKey(env, "djdl", state),
-      JSON.stringify({ ...flow, licenseId: r.licenseId }),
+      JSON.stringify({ ...flow, licenseId: r.licenseId, approvedAt: NOW }),
     );
     const ready = (await (await poll(body.deviceCode, NOW + 5)).json()) as {
       status: string;
@@ -916,29 +927,16 @@ describe("the RFC 8628 user-code page", () => {
       "https://id.example",
     );
 
-    // The same header shape on the legacy `/device/verify` page, which shares the check.
+    // The legacy `/device/verify` page is retired (I-37): the same request is the generic
+    // start-again page, whatever headers it carries.
     const other = await start();
-    const verifyUrl = `${ORIGIN}/djdl/identity/auth/device/verify?device_code=${encodeURIComponent(other.deviceCode)}`;
-    const verifyPage = await handleAuthDeviceVerify(
-      new Request(verifyUrl) as unknown as Request,
-      env,
-      product,
-    );
-    const verifyCsrf = csrfOf(await verifyPage.text());
     const verified = await handleAuthDeviceVerify(
-      new Request(verifyUrl, {
-        method: "POST",
-        headers: {
-          "content-type": "application/x-www-form-urlencoded",
-          "cf-connecting-ip": "203.0.113.8",
-          ...browser,
-        },
-        body: new URLSearchParams({ csrf: verifyCsrf }).toString(),
-      }) as unknown as Request,
-      env,
-      product,
+      new Request(
+        `${ORIGIN}/djdl/identity/auth/device/verify?device_code=${encodeURIComponent(other.deviceCode)}`,
+        { method: "POST", headers: { ...browser } },
+      ) as unknown as Request,
     );
-    expect(verified.status).toBe(303);
+    expect(verified.status).toBe(403);
   });
 
   it("refuses a cross-site POST by Fetch Metadata, even with the real csrf and this Origin", async () => {
@@ -1140,7 +1138,7 @@ describe("the RFC 8628 user-code page", () => {
     ).toBeNull();
   });
 
-  it("still completes a flow started before the user code existed (prefix-style code, no index)", async () => {
+  it("a flow started before the approval step existed stays pending: nothing is grandfathered (I-37)", async () => {
     const r = await activateFromIdentity(db, product, identity(), NOW);
     if (!("licenseId" in r)) throw new Error("expected license");
     await artefacts(env).put(
@@ -1167,7 +1165,7 @@ describe("the RFC 8628 user-code page", () => {
     const res = (await (await poll("legacy-code", NOW)).json()) as {
       status: string;
     };
-    expect(res.status).toBe("ready");
+    expect(res.status).toBe("pending");
   });
 
   it("answers anything but GET and POST with 405", async () => {
@@ -1360,8 +1358,8 @@ describe("handleAuthCallback ID-token verification (D9/D8)", () => {
     );
   }
 
-  const callback = async (state: string, code = "auth-code") =>
-    handleAuthCallback(
+  const callback = async (state: string, code = "auth-code") => {
+    const res = await handleAuthCallback(
       new Request(
         `https://key.plrs.im/djdl/identity/auth/callback?code=${code}&state=${state}`,
         { headers: { cookie: await bindFlow(env, "djdl", state) } },
@@ -1371,6 +1369,17 @@ describe("handleAuthCallback ID-token verification (D9/D8)", () => {
       product,
       NOW,
     );
+    // A device-code flow stops at the approval page (I-37); press Sign in there.
+    return res.status === 303 &&
+      res.headers.get("location")?.endsWith("/auth/device/approve")
+      ? decideDeviceFlowAs(
+          { env, db, product },
+          "approve",
+          TEST_BINDER_COOKIE,
+          NOW,
+        )
+      : res;
+  };
 
   const poll = (state: string) => pollState(env, db, product, state);
 
@@ -1462,6 +1471,11 @@ describe("handleAuthCallback ID-token verification (D9/D8)", () => {
     );
     const res = await callback("n-platform");
     expect(res.status).toBe(200);
+    // A device-code flow activates at the poll, after the approval (I-37).
+    expect(
+      ((await poll("n-platform").then((r) => r.json())) as { status: string })
+        .status,
+    ).toBe("ready");
     const lic = await getLicenseBySub(db, "djdl", "platform-user");
     expect(lic?.product).toBe("djdl");
   });

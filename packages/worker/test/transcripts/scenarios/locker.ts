@@ -327,7 +327,23 @@ async function playerSignsInAtLocker(
       { cookie: binder },
     ),
   );
-  expect(callback.status).toBe(200);
+  // I-37: the callback stops at the approval page; the same browser presses "Sign in on {device}".
+  expect(callback.status).toBe(303);
+  const approvePath = `/${PRODUCT}/identity/auth/device/approve`;
+  expect(new URL(callback.headers.get("location")!).pathname).toBe(approvePath);
+  const approvePage = await browserAt(w, BASE_URL, now, "GET", approvePath, {
+    cookie: binder,
+  });
+  expect(approvePage.status).toBe(200);
+  const token = /name="token" value="([^"]+)"/.exec(
+    await approvePage.text(),
+  )?.[1];
+  expect(token).toBeTruthy();
+  const approved = await browserAt(w, BASE_URL, now, "POST", approvePath, {
+    form: { token: token!, decision: "approve" },
+    cookie: binder,
+  });
+  expect(approved.status).toBe(200);
 }
 
 export const lockerDevicecode: Scenario = {

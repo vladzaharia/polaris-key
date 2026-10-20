@@ -119,6 +119,7 @@ cookie, or they are top-level navigations:
 - `/{product}/identity/auth/logout`
 - `/{product}/identity/auth/device`
 - `/{product}/identity/auth/device/verify`
+- `/{product}/identity/auth/device/approve`
 - `/{product}/config/mint/{mintId}/auth`
 
 The console (`/manage/*`), Polaris Locker (`/`, `/api/*`, `/login`, `/download/*`), the

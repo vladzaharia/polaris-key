@@ -7089,9 +7089,12 @@ paths:
         The single-use landing point for both flows. `state` is consumed on first use, so a
         replayed callback is an `unknown state` 400 rather than a second sign-in. Which
         response you get depends on how the flow STARTED: a flow with `return_to` (browser)
-        answers 302 to that URL with the session `Set-Cookie`; a flow without one (device/CLI)
-        answers 200 with a static, script-free HTML page telling the user to close the tab —
-        the token is collected by polling, never by this response. I-26: on a
+        answers 302 to that URL with the session `Set-Cookie`; a flow without one answers 200
+        with a static, script-free HTML page telling the user to close the tab. A device-code
+        flow (`deviceAuthStart`) is different (I-37): it activates nothing here. It stores the
+        verified identity and answers 303 to `deviceAuthApprovePage`, where the person must press
+        **Sign in on {device}**; the token is collected by polling once they have, never by this
+        response. I-26: on a
         `provider: platform` product, when the verified identity is linked to a Polaris Key
         account that already owns a usable licence for the product, nothing is minted here:
         a browser carrying the flow's binder (`__Host-pk_lcb`) is sent with a 303 to
@@ -7124,11 +7127,12 @@ paths:
                   value: '<!doctype html><meta charset=utf-8><title>Signed in</title><body style="font-family:system-ui;padding:3rem;text-align:center"><h1>You''re signed in</h1><p>You can close this tab and return to the app.</p>'
         "303":
           description: >
-            I-26: the licence chooser applies. Empty body; `cache-control: no-store`,
+            I-26: the licence chooser applies. I-37: or, for a device-code flow with no chooser,
+            the approval page. Empty body; `cache-control: no-store`,
             `referrer-policy: no-referrer`.
           headers:
             Location:
-              description: The chooser, `/<product>/identity/auth/choose`.
+              description: The chooser, `/<product>/identity/auth/choose`, or the approval page, `/<product>/identity/auth/device/approve`.
               schema: { type: string, format: uri }
               example: https://key.plrs.im/djdl/identity/auth/choose
         "302":
@@ -7558,60 +7562,83 @@ paths:
   /{product}/identity/auth/device/verify:
     parameters:
       - { $ref: "#/components/parameters/Product" }
-      - name: device_code
-        in: query
-        required: true
-        description: >
-          The `deviceCode` from `deviceAuthStart`. Snake_case HERE, like `user_code` on
-          `/identity/auth/device`, because it is a URL a browser opens. `deviceAuthStart` no
-          longer hands this URL out (its `verificationUri` is the user-code page); the route stays
-          for flows started before that change and for any client that builds it itself.
-        schema: { type: string }
     get:
       operationId: deviceAuthVerifyPage
       tags: [identity]
-      summary: The device-authorization page (side-effect-free GET)
+      summary: RETIRED. Answers the start-again page
       description: >
-        Renders the user code, the device label (`deviceName` if given, else the device id)
-        and the product slug, plus a POST form carrying a single-use hidden field named
-        `csrf`. Nothing is confirmed by this GET — that is the point of splitting the two
-        methods. Served under the strict script-free static-HTML CSP with `no-store` and
-        `referrer-policy: no-referrer`, so the device code never leaks in a Referer.
+        Retired (I-37). It used to confirm a device flow by the secret `deviceCode` in the URL,
+        which a forwarded link could carry. `deviceAuthStart` has not handed it out since the
+        user-code page shipped, so every request, with or without parameters, now answers the
+        generic "Start again on your device" page (403) without reading the store or writing
+        anything. The route and discovery's `authDeviceVerify` stay until the next
+        `PROTOCOL_VERSION`.
       responses:
-        "303": { $ref: "#/components/responses/IdentityDisabledRedirect" }
+        "403":
+          description: The branded "Start again on your device" page. `text/html`.
+          content:
+            text/html:
+              schema: { type: string }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+    post:
+      operationId: deviceAuthVerify
+      tags: [identity]
+      summary: RETIRED. Answers the start-again page
+      description: See `deviceAuthVerifyPage`. A POST changes nothing.
+      responses:
+        "403":
+          description: The branded "Start again on your device" page. `text/html`.
+          content:
+            text/html:
+              schema: { type: string }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+  /{product}/identity/auth/device/approve:
+    parameters:
+      - { $ref: "#/components/parameters/Product" }
+    get:
+      operationId: deviceAuthApprovePage
+      tags: [identity]
+      summary: The explicit approval of a device-code sign-in (I-37)
+      description: >
+        Where the callback sends the browser that confirmed the code and signed in. A device-code
+        flow does nothing account-bound until the person presses **Sign in on {device}** here:
+        until then `deviceAuthPoll` answers `pending`, discloses no identity, activates no
+        licence and mints no token. The page shows the app and developer, the signed-in
+        account, the device label (`deviceName`, device-supplied, never a trust signal), the
+        user code, "Started {ago} from {place}" (the edge's coarse place, which a VPN can
+        choose), a callout when the start country differs from this request's or either is
+        unknown, and the flow's expiry. The URL carries no `state`, code or handle: only the
+        `__Host-pk_lcb` binder cookie of the confirming browser finds the flow, so a reload or a
+        forwarded copy reaches nothing. Each render replaces the page's single-use `token`.
+        Script-free, `cache-control: no-store`, `referrer-policy: no-referrer`.
+      responses:
         "200":
-          description: "HTML confirmation page. `text/html; charset=utf-8`, `cache-control: no-store`."
+          description: "The decision page. `text/html; charset=utf-8`."
           content:
             text/html:
               schema: { type: string }
               examples:
                 page:
-                  summary: The form the POST needs (test/oidcEdge.test.ts reads `csrf` out of it)
+                  summary: What the POST needs (test/deviceApproval.test.ts reads `token` out of it)
                   value: |
-                    <dl><dt>Code<dd>ZK8L-QR8N<dt>Device<dd>Studio Mac<dt>Product<dd>djdl</dl>
-                    <form method="post" action="https://key.plrs.im/djdl/identity/auth/device/verify?device_code=Zk8LqR8nT0sYp2vcEgHj6A">
-                      <input type="hidden" name="csrf" value="7hK2mQ0xZk8LqR8nT0sYp2">
-                      <button type="submit">Continue to sign in</button>
+                    <form method="post" action="https://key.plrs.im/djdl/identity/auth/device/approve">
+                      <input type="hidden" name="token" value="Qm9sZC1hcHByb3ZlLXRva2Vu">
+                      <button class="button" type="submit" name="decision" value="approve">Sign in on Studio Mac</button>
+                      <button class="button secondary" type="submit" name="decision" value="deny">Deny</button>
                     </form>
-        "400":
-          description: No `device_code` — LEGACY FLAT.
+        "303":
+          description: "The licence chooser is still open, and it is the explicit step. `Location` is the chooser."
+        "403":
+          description: >
+            No binder, a binder for another flow, a flow that is not a confirmed and signed-in
+            device-code flow, one already decided, or an expired one: the branded "Start again on
+            your device" page. One answer for all of them. `text/html`.
           content:
-            application/json:
-              schema: { $ref: "#/components/schemas/FlatError" }
-              examples:
-                missingCode:
-                  { value: { error: bad_request, message: missing code } }
-        "404":
-          description: Unknown or lapsed device code — LEGACY FLAT.
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/FlatError" }
-              examples:
-                expired:
-                  { value: { error: not_found, message: device code expired } }
+            text/html:
+              schema: { type: string }
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
         "429":
-          description: 60 requests per 60 s per client IP — LEGACY FLAT.
+          description: 60 requests per 60 s per client network (fail-closed) — LEGACY FLAT.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
@@ -7619,72 +7646,64 @@ paths:
                 limited:
                   { value: { error: rate_limited, message: too many requests } }
     post:
-      operationId: deviceAuthVerify
+      operationId: deviceAuthApprove
       tags: [identity]
-      summary: Confirm the device authorization (CSRF from the GET)
+      summary: Sign in on the device, or Deny (I-37)
       description: >
-        Consumes the single-use `csrf` token the GET embedded and hands the browser on to the
-        IdP. Success is 303 with an empty body and a `Location` naming the authorize URL
-        stored at device-start — not 200, and not 302, so the follow-up is a GET regardless of
-        this POST. The token is deleted on use. The body may be
-        `application/x-www-form-urlencoded` (the page's own form) or JSON when the
-        `content-type` says so; either way the field is named `csrf`. A cross-site request
-        (the same `Sec-Fetch-Site` / `Origin` rule as `deviceAuthEntry`, under which
-        `Origin: null` passes) and a missing/wrong token share ONE 403 message.
+        A same-origin form POST (Fetch Metadata, else no foreign `Origin`) from the browser that
+        holds the binder, carrying the page's single-use `token` and `decision`. One
+        compare-and-set spends the token and records the decision: of two racing requests
+        exactly one wins. `approve` sets the server-side marker the poll requires (`ready`
+        follows on the device's next poll, with the account's own licence: the starter's licence
+        is never attached to it, so `confirm.attachable` is always `false`) and shows the done
+        page. `deny` sets the poll's answer to the generic `error`, drops the
+        signed-in identity and shows "Sign-in denied". Either way the binder is cleared. A
+        missing or unknown `decision`, or a spent, stale or foreign `token`, is a `303` back to
+        the GET and writes nothing. Audited as `identity.signin.device_approved` and
+        `identity.signin.device_denied`.
       requestBody:
         required: true
         content:
           application/x-www-form-urlencoded:
-            schema: { $ref: "#/components/schemas/DeviceAuthConfirmRequest" }
+            schema:
+              type: object
+              required: [token, decision]
+              properties:
+                token:
+                  type: string
+                  description: The single-use token of the page being submitted.
+                decision:
+                  type: string
+                  enum: [approve, deny]
+              additionalProperties: { type: string }
             examples:
-              form:
-                summary: What the rendered page submits (test/oidcEdge.test.ts)
-                value: { csrf: 7hK2mQ0xZk8LqR8nT0sYp2 }
-          application/json:
-            schema: { $ref: "#/components/schemas/DeviceAuthConfirmRequest" }
-            examples:
-              json:
-                value: { csrf: 7hK2mQ0xZk8LqR8nT0sYp2 }
+              approve:
+                value: { token: Qm9sZC1hcHByb3ZlLXRva2Vu, decision: approve }
       responses:
+        "200":
+          description: The done page, or "Sign-in denied". `text/html`; the binder is cleared.
+          content:
+            text/html:
+              schema: { type: string }
         "303":
           description: >
-            Confirmed. Empty body; the browser is sent to the IdP. `cache-control: no-store`,
-            `referrer-policy: no-referrer`. On a `provider: platform` product it also sets the
-            licence chooser's browser binder `__Host-pk_lcb` (I-26; see `authChoosePage`).
+            Back to the page: a missing or unknown decision, or a token that is spent, stale or
+            another page's. Nothing was written.
           headers:
             Location:
-              description: The IdP authorize URL stored when the device flow started.
+              description: The approval page.
               schema: { type: string, format: uri }
-              example: https://id.example/authorize
-        "400":
-          description: No `device_code` — LEGACY FLAT.
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/FlatError" }
-              examples:
-                missingCode:
-                  { value: { error: bad_request, message: missing code } }
+              example: https://key.plrs.im/djdl/identity/auth/device/approve
         "403":
           description: >
-            A cross-site request, or a missing/mismatched `csrf` — LEGACY FLAT. One message for
-            both, deliberately.
+            Cross-site, no binder, or no flow waiting for it: the branded "Start again on your
+            device" page. `text/html`.
           content:
-            application/json:
-              schema: { $ref: "#/components/schemas/FlatError" }
-              examples:
-                confirmationFailed:
-                  { value: { error: forbidden, message: confirmation failed } }
-        "404":
-          description: Unknown or lapsed device code, or the flow record is gone — LEGACY FLAT.
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/FlatError" }
-              examples:
-                expired:
-                  { value: { error: not_found, message: device code expired } }
+            text/html:
+              schema: { type: string }
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
         "429":
-          description: 60 requests per 60 s per client IP — LEGACY FLAT.
+          description: 60 requests per 60 s per client network (fail-closed) — LEGACY FLAT.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
@@ -7862,40 +7881,29 @@ paths:
 
 
         The sign-in callback activates nothing for a device-code flow: it stores the verified
-        identity, and the poll that completes the flow activates it. An ordinary poll then yields
+        identity, and the poll that completes the flow activates it. **`pending` lasts until the
+        person approves** (I-37): the browser that signed in must press **Sign in on {device}**
+        on `deviceAuthApprovePage` first, and until it has this route discloses no identity,
+        activates no licence and mints no token. **Deny** (or Cancel on the
+        licence chooser) makes the poll answer `error`. An ordinary poll after approval yields
         the identity's own licence (or a new one) and nothing else, and its `ready` carries the
         `identity` (name, verified e-mail) for the device to show the player.
 
 
-        **Opt-in attach** (P1-07). A device that is on an anonymous enrolled licence can offer
-        the player to attach it to the account. Its polls send `confirmIdentity: true` (and the
-        device token as a bearer): once the player has signed in, the answer is `confirm` with
-        the `identity` and whether this device's licence is `attachable`, and nothing is minted.
-        The device shows the identity; after the player accepts it ON THE DEVICE, the next poll
-        sends `attachLicense: true` (or `false` to sign in without attaching) with the same
-        bearer. Only then does the Worker claim the anonymous licence for the identity (no licence
-        yet), or move every device on the anonymous licence onto the identity's licence and
-        retire the anonymous one, and `ready` reports `attached`. The bearer must be a live token
-        of the device the flow was started for, on an anonymous, usable enrolled licence. The
-        attach never takes the identity's licence past its device limit, measured as the licence
-        will be after the activation rewrites its tier and overrides to the identity's mapped
-        tier and provisioning: a claim is attachable only while every authorized device on the
-        anonymous licence (dormant ones too) fits that limit, and a migrate only while those
-        devices plus the identity licence's seat-holding devices do. Nothing is attachable when the identity's tier has
-        fingerprint mode `strict`: this poll presents no fingerprint, so its mint would be
-        refused, and the attach is never committed for a mint that cannot succeed. A decision sent before the device was shown the
-        identity, or an attach with nothing attachable, is answered with `confirm` again and
-        changes nothing. A user-code holder cannot reach any of this: it needs the device code.
-        The flow's starter can, but the IdP callback is bound to the browser that confirmed
-        the flow, so a phished victim's sign-in never reaches this decision.
+        **Attach is retired** (I-37; was P1-07). The person approving is never told that the
+        starter's licence and devices would join their account, so a device-code flow never
+        attaches. A poll with `confirmIdentity: true` is still answered with `confirm` and the
+        `identity`, but `attachable` is always `false`, and `attachLicense: true` is read as
+        `false`: the sign-in completes on the identity's own licence and nothing is claimed or
+        merged. The fields stay so deployed SDKs keep working.
       parameters:
         - { $ref: "#/components/parameters/Product" }
         - name: Authorization
           in: header
           required: false
           description: >
-            `Bearer pkeyt_…` — the device's current token, read only with `confirmIdentity` or
-            `attachLicense`, to find the anonymous enrolled licence the opt-in attach names.
+            `Bearer pkeyt_…` — no longer read (the opt-in attach is retired, I-37); accepted so
+            deployed SDKs keep working.
           schema: { type: string }
       requestBody:
         required: true
@@ -7907,7 +7915,7 @@ paths:
                 summary: test/oidcEdge.test.ts
                 value: { deviceCode: Zk8LqR8nT0sYp2vcEgHj6A, deviceId: dev-1 }
               confirmIdentity:
-                summary: test/attack/R8-oidc.test.ts — hold at the identity (opt-in attach)
+                summary: test/attack/R8-oidc.test.ts — hold at the identity
                 value:
                   {
                     deviceCode: Zk8LqR8nT0sYp2vcEgHj6A,
@@ -7915,7 +7923,7 @@ paths:
                     confirmIdentity: true,
                   }
               attach:
-                summary: test/attack/R8-oidc.test.ts — the player accepted on the device
+                summary: test/attack/R8-oidc.test.ts — read as `false` (attach is retired)
                 value:
                   {
                     deviceCode: Zk8LqR8nT0sYp2vcEgHj6A,
@@ -7931,11 +7939,11 @@ paths:
               examples:
                 pending: { value: { status: pending } }
                 confirm:
-                  summary: test/attack/R8-oidc.test.ts — signed in; nothing minted yet
+                  summary: test/attack/R8-oidc.test.ts — signed in and approved; nothing minted yet
                   value:
                     status: confirm
                     identity: { name: Player, email: player@example.com }
-                    attachable: true
+                    attachable: false
                 ready:
                   summary: test/oidcEdge.test.ts — the flow record is deleted by this call
                   value:
@@ -7943,14 +7951,6 @@ paths:
                     token: pkeyt_Zk8LqR8nT0sYp2vcEgHj6Bf3QdNwXr7uKmA1sVe9tYo
                     schemaVersion: 1
                     identity: { name: Player, email: player@example.com }
-                readyAttached:
-                  summary: "test/attack/R8-oidc.test.ts — after `attachLicense: true`"
-                  value:
-                    status: ready
-                    token: pkeyt_Zk8LqR8nT0sYp2vcEgHj6Bf3QdNwXr7uKmA1sVe9tYo
-                    schemaVersion: 1
-                    identity: { name: Player, email: player@example.com }
-                    attached: claimed
                 timeout: { value: { status: timeout } }
                 error: { value: { status: error } }
         "400":
@@ -25376,20 +25376,15 @@ components:
         attachable:
           type: boolean
           description: >
-            On `confirm`: the poll's bearer is a live token of the flow's device on an anonymous,
-            usable enrolled licence, so `attachLicense: true` would attach it, and that the
-            attach keeps the identity's licence within its device limit as the activation will
-            leave it (the identity's mapped tier and provisioned overrides): every authorized
-            device on the anonymous licence (dormant ones included), plus on a migrate the
-            identity licence's seat-holding devices, fits that limit. Always `false` when the identity's tier has fingerprint
-            mode `strict`, because the mint would be refused.
+            On `confirm`: always `false` (I-37 retired the opt-in attach on a device-code flow:
+            the person approving is never told the starter's licence would join their account).
+            The member stays so deployed SDKs keep working.
         attached:
           type: string
           enum: [claimed, migrated]
           description: >
-            On `ready` after `attachLicense: true`: the anonymous licence became the identity's
-            (`claimed`), or every device on it moved onto the identity's licence and the
-            anonymous one was retired (`migrated`).
+            Never present on a device-code `ready` since I-37. Kept for the attach routes of
+            other flows (`identityAttach`) and for deployed SDKs.
     SlowDown:
       type: object
       description: >
@@ -25483,7 +25478,8 @@ components:
       description: >
         `deviceCode` and `deviceId` are both required; the spelling `state` is accepted as an
         alias for `deviceCode`. `confirmIdentity` and `attachLicense` are the opt-in attach
-        (P1-07); without them the poll completes as an ordinary sign-in.
+        (P1-07, retired by I-37: `confirm.attachable` is always `false` and `attachLicense: true`
+        is read as `false`); without them the poll completes as an ordinary sign-in.
       required: [deviceId]
       properties:
         deviceCode: { type: string }
@@ -25497,5 +25493,5 @@ components:
         attachLicense:
           type: boolean
           description: >
-            The player's decision, sent after a `confirm`: `true` attaches the anonymous enrolled
-            licence the bearer is on, `false` signs in without attaching.
+            The player's decision, sent after a `confirm`. Read as `false` whatever it says
+            (I-37): the sign-in completes on the identity's own licence and nothing is attached.

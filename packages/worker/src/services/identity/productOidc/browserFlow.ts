@@ -46,6 +46,9 @@ export async function beginAuthFlow(
     /** `/auth/start`: the request is the browser that will sign in, so it gets the binder. */
     browser?: boolean;
     deviceName?: string;
+    /** I-37: the DeviceConfirm page's display data, stored beside the flow. */
+    startedAt?: number;
+    startPlace?: { country: string | null; label: string | null };
   } = {},
 ): Promise<
   | {
@@ -97,6 +100,8 @@ export async function beginAuthFlow(
   const flow: FlowRecord = { verifier, nonce, redirectUri, returnTo, deviceId };
   if (viaDeviceCode) flow.viaDeviceCode = true;
   if (opts.deviceName) flow.deviceName = opts.deviceName;
+  if (opts.startedAt !== undefined) flow.startedAt = opts.startedAt;
+  if (opts.startPlace) flow.startPlace = opts.startPlace;
   // I-26: only a `provider: platform` product can reach the licence chooser, so only its flows
   // carry a binder; a custom-IdP product's sign-in is byte-identical to before.
   let binderCookie: string | undefined;

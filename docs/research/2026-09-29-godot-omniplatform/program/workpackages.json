@@ -5133,28 +5133,42 @@
       "phase": "I",
       "lane": "worker",
       "role": "pkey-implementer",
-      "estimateWeeks": [0.6, 1],
-      "deps": ["I-08"],
+      "estimateWeeks": [0.6, 0.8],
+      "deps": ["I-08", "LK-04"],
       "planMode": true,
       "gates": [
         "plan-mode",
         "drift-gate",
+        "rule-10",
         "threat-model",
-        "workerd",
-        "portal-e2e",
-        "ui-snapshots"
+        "workerd"
       ],
-      "humanInputs": [
-        "owner approval: device-holder proof, legacy-flow policy and generic refusal copy"
-      ],
+      "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
       "refs": [
         "docs/security/THREAT-MODEL.md: R1-07/R8-03 Remote phishing",
         "plans/I-04.md §2.4/G (device-code passthrough)",
-        "plans/I-37.md (awaiting owner approval)"
+        "plans/I-37.md (approved 2026-10-19)"
       ],
       "brief": "wp/I-37-device-code-explicit-confirm.md",
+      "status": "in-review"
+    },
+    {
+      "id": "I-37b",
+      "title": "Device-code denied in the kits: `signInHandoff.confirm` copy, Deny maps to sign-in-denied in Node/Python/Swift/Kotlin, `devicecode-denied` transcript in six SDKs",
+      "phase": "I",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [0.3, 0.5],
+      "deps": ["I-37"],
+      "planMode": false,
+      "gates": ["drift-gate", "all-sdks", "corpus"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": ["plans/I-37.md §8"],
+      "brief": "wp/I-37b-device-code-denied-kits.md",
       "status": "todo"
     },
     {
@@ -5237,7 +5251,7 @@
         "owner approval of the pairing threat analysis (relay by social engineering)"
       ],
       "repo": "polaris-key",
-      "optional": false,
+      "optional": true,
       "refs": [
         "plans/I-08.md D1",
         "plans/I-37.md §2",

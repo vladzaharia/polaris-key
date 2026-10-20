@@ -16,6 +16,16 @@ import {
   getOidcConfig,
 } from "../../../core/licensing/issue.js";
 
+/** Flow fields the chooser owns, dropped when the choice is recorded. */
+export const CHOICE_FIELDS = [
+  "choiceOpen",
+  "choiceToken",
+  "choiceReplace",
+  "choiceNotice",
+  "choiceAccount",
+  "choiceIdentity",
+];
+
 export const FLOW_TTL_SECONDS = 600;
 
 /** The poll cadence advertised by `/identity/auth/device/start`, enforced server-side (R8-02). */
@@ -87,6 +97,32 @@ export interface FlowRecord {
    *  the flow activates later (the device-code poll, the chooser) attaches to it. Server-side
    *  only; never on a page. */
   claimAccount?: string;
+  /** I-37: the explicit approval of a device-code flow, set by exactly two writers, each through
+   *  one compare-and-set that spends a single-use page token: `decideDeviceFlow` (**Sign in on
+   *  {device}**) and `completeChoice` (a licence choice). Until it is a number the poll answers
+   *  `pending` and nothing account-bound happens ({@link flowApproved}). No request field,
+   *  cookie, header, label, user code, handle or `state` maps to it. */
+  approvedAt?: number;
+  /** I-37: the peppered hash of the current DeviceConfirm page's single-use token. */
+  approveToken?: string;
+  /** I-37, display only: when and (coarsely) where `/device/start` was called, and the user code,
+   *  for the DeviceConfirm page. The place comes from Cloudflare's edge, never the client. */
+  startedAt?: number;
+  userCode?: string;
+  startPlace?: { country: string | null; label: string | null };
+}
+
+/** A flow `/device/start` began. The second arm catches a record written before the
+ *  `viaDeviceCode` marker existed: only device-code flows carry a device id. */
+export function isDeviceCodeFlow(flow: FlowRecord): boolean {
+  return flow.viaDeviceCode === true || flow.deviceId !== undefined;
+}
+
+/** Whether a flow may complete an account-bound outcome. A browser flow always may; a
+ *  device-code flow only once `approvedAt` is a number. FAIL CLOSED: absent, malformed or
+ *  written by an older Worker is unapproved. */
+export function flowApproved(flow: FlowRecord): boolean {
+  return !isDeviceCodeFlow(flow) || typeof flow.approvedAt === "number";
 }
 
 export interface DeviceFlowRecord {

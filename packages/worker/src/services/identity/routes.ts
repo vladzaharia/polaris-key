@@ -12,7 +12,9 @@
  *                                                 confirmation page for `?user_code=`)
  *                                           POST  look a typed code up, or confirm it (CSRF)
  *     /identity/auth/device/start           POST  begin a device-code flow
- *     /identity/auth/device/verify          GET   render the confirmation page (by device code;
+ *     /identity/auth/device/approve         GET   the explicit approval after sign-in (I-37)
+ *                                           POST  Sign in on {device}, or Deny
+ *     /identity/auth/device/verify          GET   retired (I-37): the start-again page (by device code;
  *                                                 kept for flows started before `/device`)
  *                                           POST  confirm it
  *     /identity/auth/device/poll            POST  poll a confirmed device flow
@@ -54,6 +56,7 @@ import {
 import {
   handleAuthCallback,
   handleAuthChoose,
+  handleAuthDeviceApprove,
   handleAuthDeviceEntry,
   handleAuthDevicePoll,
   handleAuthDeviceStart,
@@ -206,6 +209,13 @@ export const IDENTITY_ROUTES = serviceRoutes("identity", [
       handleAuthChoose(req, env, db, product, now, hooks),
   },
   {
+    path: "auth/device/approve",
+    methods: ["GET", "POST"],
+    auth: { kind: "code" },
+    handler: ({ req, env, db, product, now, hooks }) =>
+      handleAuthDeviceApprove(req, env, db, product, now, hooks),
+  },
+  {
     path: "auth/device/start",
     methods: ["POST"],
     auth: { kind: "none" },
@@ -216,14 +226,13 @@ export const IDENTITY_ROUTES = serviceRoutes("identity", [
     path: "auth/device/verify",
     methods: ["GET", "POST"],
     auth: { kind: "code" },
-    handler: ({ req, env, db, product, hooks }) =>
-      handleAuthDeviceVerify(req, env, product, { db, hooks }),
+    handler: ({ req }) => handleAuthDeviceVerify(req),
   },
   {
     path: "auth/device/poll",
     methods: ["POST"],
     auth: { kind: "code" },
-    handler: ({ req, env, db, product, now, licenseMerge }) =>
-      handleAuthDevicePoll(req, env, db, product, now, licenseMerge),
+    handler: ({ req, env, db, product, now }) =>
+      handleAuthDevicePoll(req, env, db, product, now),
   },
 ]);

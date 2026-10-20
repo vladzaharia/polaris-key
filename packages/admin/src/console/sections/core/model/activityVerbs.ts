@@ -72,6 +72,8 @@ const VERBS: Record<string, string> = {
   "license.merge": "merged license",
   "license.mint.oidc": "signed in and was issued license",
   "identity.signin.license_chosen": "chose license to sign in a device",
+  "identity.signin.device_approved": "approved a sign-in on a device",
+  "identity.signin.device_denied": "denied a sign-in on a device",
   "license.tier": "changed the tier of license",
   "device.attest": "attested device",
   "device.attest.rejected": "rejected the attestation of device",
